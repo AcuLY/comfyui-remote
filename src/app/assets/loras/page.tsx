@@ -1,40 +1,20 @@
-import { FolderTree, Upload } from "lucide-react";
+import { FolderTree } from "lucide-react";
+import { LoraUploadPanel } from "@/components/lora-upload-panel";
 import { PageHeader } from "@/components/page-header";
 import { SectionCard } from "@/components/section-card";
 import { getLoraAssets } from "@/lib/server-data";
 
-const pathOptions = [
-  "characters",
-  "styles",
-  "poses",
-  "misc",
-];
+const pathOptions = ["characters", "styles", "poses", "misc"];
 
 export default async function LoraAssetsPage() {
   const loraAssets = await getLoraAssets();
 
   return (
     <div className="space-y-4">
-      <PageHeader title="LoRA 资源" description="后续会接文件上传接口，并映射到本地 LoRA 目录。" />
+      <PageHeader title="LoRA 资源" description="优先接真实上传接口，并映射到本地 LoRA 目录。" />
 
-      <SectionCard title="上传入口" subtitle="首版先做页面骨架，后续接真实上传接口。">
-        <div className="grid gap-3 sm:grid-cols-[1fr_180px]">
-          <label className="flex min-h-32 cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-white/15 bg-white/[0.03] px-4 py-6 text-center">
-            <Upload className="size-5 text-sky-300" />
-            <div className="mt-2 text-sm font-medium text-white">选择文件或拖拽上传</div>
-            <div className="mt-1 text-xs text-zinc-400">支持 safetensors / ckpt 等文件</div>
-            <input type="file" className="hidden" />
-          </label>
-          <div className="space-y-2 rounded-2xl bg-white/[0.03] p-3">
-            <div className="text-xs text-zinc-500">目标分类</div>
-            <select className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none">
-              {pathOptions.map((option) => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </select>
-            <button className="w-full rounded-xl border border-sky-500/20 bg-sky-500/10 px-3 py-2 text-sm text-sky-300">上传到指定路径</button>
-          </div>
-        </div>
+      <SectionCard title="上传入口" subtitle="已接真实 /api/loras，接口不可用时会显示错误提示。">
+        <LoraUploadPanel categories={pathOptions} />
       </SectionCard>
 
       <SectionCard title="已登记 LoRA" subtitle={`当前示例 ${loraAssets.length} 个`}>
