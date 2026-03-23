@@ -47,6 +47,7 @@ type ApiJobLatestRun = {
 type ApiJobDetailPosition = {
   id?: string;
   name?: string;
+  enabled?: boolean;
   aspectRatio?: string;
   batchSize?: number;
   seedPolicy?: string;
@@ -124,6 +125,7 @@ export type JobPresetInfo = {
 export type JobDetailPosition = {
   id: string;
   name: string;
+  enabled: boolean;
   aspectRatio: string;
   batchSize: number;
   seedPolicy: string;
@@ -299,6 +301,7 @@ function createFallbackPosition(jobTitle: string, index: number, id?: string, na
   return {
     id: typeof id === "string" ? id : template.id,
     name: resolvedName,
+    enabled: true,
     aspectRatio: template.aspectRatio,
     batchSize: template.batchSize,
     seedPolicy: template.seedPolicy,
@@ -440,6 +443,7 @@ function normalizePosition(
   return {
     id: coalesceString(apiPosition?.id, fallback.id) ?? fallback.id,
     name: coalesceString(apiPosition?.name, fallback.name) ?? fallback.name,
+    enabled: typeof apiPosition?.enabled === "boolean" ? apiPosition.enabled : fallback.enabled,
     aspectRatio: coalesceString(apiPosition?.aspectRatio, fallback.aspectRatio) ?? fallback.aspectRatio,
     batchSize: coalesceNumber(apiPosition?.batchSize, fallback.batchSize) ?? fallback.batchSize,
     seedPolicy: coalesceString(apiPosition?.seedPolicy, fallback.seedPolicy) ?? fallback.seedPolicy,

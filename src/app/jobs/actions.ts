@@ -19,16 +19,6 @@ export const initialJobSaveState: JobSaveState = {
 
 export const initialJobRunState: JobRunState = {
   status: "idle",
-  message: "",
-};
-
-export type JobRunState = {
-  status: "idle" | "success" | "error";
-  message: string;
-};
-
-export const initialJobRunState: JobRunState = {
-  status: "idle",
   message: "Ready to enqueue this job in the backend run queue.",
 };
 
@@ -39,12 +29,20 @@ type MutationApiResponse = {
   };
 };
 
+type MutationErrorState = {
+  status: "error";
+  message: string;
+};
+
+type RequiredIdResult = { value: string } | { error: MutationErrorState };
+type PositiveIntegerResult = { value: number | null } | { error: MutationErrorState };
+
 function getApiUrl(path: string) {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   return new URL(path, baseUrl).toString();
 }
 
-function getRequiredId(formData: FormData, fieldName: string, label: string) {
+function getRequiredId(formData: FormData, fieldName: string, label: string): RequiredIdResult {
   const value = String(formData.get(fieldName) ?? "").trim();
 
   if (!value) {
@@ -64,7 +62,7 @@ function getNullableString(formData: FormData, fieldName: string) {
   return value.trim() ? value : null;
 }
 
-function getPositiveInteger(formData: FormData, fieldName: string, label: string) {
+function getPositiveInteger(formData: FormData, fieldName: string, label: string): PositiveIntegerResult {
   const rawValue = String(formData.get(fieldName) ?? "").trim();
 
   if (!rawValue) {
@@ -289,84 +287,3 @@ export async function runJobPositionAction(_prevState: JobRunState, formData: Fo
   }
 }
 
-export async function runJobAction(_prevState: JobRunState, formData: FormData): Promise<JobRunState> {
-  const jobId = getRequiredId(formData, "jobId", "Job id");
-  if ("error" in jobId) {
-    return jobId.error;
-  }
-
-  try {
-    const response = await fetch(getApiUrl(`/api/jobs/${encodeURIComponent(jobId.value)}/run`), {
-      method: "POST",
-      cache: "no-store",
-    });
-
-    const result = (await response.json().catch(() => null)) as MutationApiResponse | null;
-
-    if (!response.ok || !result?.ok) {
-      return {
-        status: "error",
-        message: result?.error?.message ?? `Request failed with status ${response.status}.`,
-      };
-    }
-
-    revalidatePath("/jobs");
-    revalidatePath(`/jobs/${jobId.value}`);
-    refresh();
-
-    return {
-      status: "success",
-      message: "Queued the whole job. Check the queue for new runs.",
-    };
-  } catch {
-    return {
-      status: "error",
-      message: "The run API is unavailable right now.",
-    };
-  }
-}
-
-export async function runJobPositionAction(_prevState: JobRunState, formData: FormData): Promise<JobRunState> {
-  const jobId = getRequiredId(formData, "jobId", "Job id");
-  if ("error" in jobId) {
-    return jobId.error;
-  }
-
-  const positionId = getRequiredId(formData, "positionId", "Position id");
-  if ("error" in positionId) {
-    return positionId.error;
-  }
-
-  try {
-    const response = await fetch(
-      getApiUrl(`/api/jobs/${encodeURIComponent(jobId.value)}/positions/${encodeURIComponent(positionId.value)}/run`),
-      {
-        method: "POST",
-        cache: "no-store",
-      },
-    );
-
-    const result = (await response.json().catch(() => null)) as MutationApiResponse | null;
-
-    if (!response.ok || !result?.ok) {
-      return {
-        status: "error",
-        message: result?.error?.message ?? `Request failed with status ${response.status}.`,
-      };
-    }
-
-    revalidatePath("/jobs");
-    revalidatePath(`/jobs/${jobId.value}`);
-    refresh();
-
-    return {
-      status: "success",
-      message: "Queued this position run. Check the queue for progress.",
-    };
-  } catch {
-    return {
-      status: "error",
-      message: "The position run API is unavailable right now.",
-    };
-  }
-}

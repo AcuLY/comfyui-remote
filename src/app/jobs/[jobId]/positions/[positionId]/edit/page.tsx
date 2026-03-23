@@ -17,6 +17,7 @@ export default async function JobPositionEditPage({ params }: { params: Promise<
       : {
           id: positionId,
           name: positionId,
+          enabled: true,
           aspectRatio: "3:4",
           batchSize: 8,
           seedPolicy: "random-per-run",
