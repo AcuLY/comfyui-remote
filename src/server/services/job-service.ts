@@ -3,6 +3,7 @@ import {
   copyJob as copyJobInRepository,
   enqueueJobPositionRun as enqueueJobPositionRunInRepository,
   enqueueJobRuns as enqueueJobRunsInRepository,
+  listJobs as listJobsInRepository,
   updateJob as updateJobInRepository,
   updateJobPosition as updateJobPositionInRepository,
 } from "@/server/repositories/job-repository";
@@ -14,6 +15,13 @@ type UpdateJobRequestBody = {
   characterLoraPath?: unknown;
   aspectRatio?: unknown;
   batchSize?: unknown;
+};
+
+type ListJobsQuery = {
+  search?: unknown;
+  status?: unknown;
+  enabledOnly?: unknown;
+  hasPending?: unknown;
 };
 
 type UpdateJobPositionRequestBody = {
@@ -112,6 +120,73 @@ function normalizeNullableStringField(value: unknown, fieldName: string) {
   return value;
 }
 
+function normalizeOptionalSearch(value: unknown) {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (typeof value !== "string") {
+    throw new JobServiceError("search must be a string", 400);
+  }
+
+  const normalizedValue = value.trim();
+  return normalizedValue ? normalizedValue : undefined;
+}
+
+const SUPPORTED_JOB_STATUSES = ["draft", "queued", "running", "partial_done", "done", "failed"] as const;
+
+function normalizeOptionalJobStatus(value: unknown) {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (typeof value !== "string") {
+    throw new JobServiceError("status must be a string", 400);
+  }
+
+  const normalizedValue = value.trim();
+
+  if (!normalizedValue) {
+    return undefined;
+  }
+
+  if (!SUPPORTED_JOB_STATUSES.includes(normalizedValue as (typeof SUPPORTED_JOB_STATUSES)[number])) {
+    throw new JobServiceError("status must be a valid job status", 400, {
+      supportedStatuses: SUPPORTED_JOB_STATUSES,
+    });
+  }
+
+  return normalizedValue as (typeof SUPPORTED_JOB_STATUSES)[number];
+}
+
+function normalizeOptionalBoolean(value: unknown, fieldName: string) {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    const normalizedValue = value.trim().toLowerCase();
+
+    if (!normalizedValue) {
+      return undefined;
+    }
+
+    if (normalizedValue === "true" || normalizedValue === "1") {
+      return true;
+    }
+
+    if (normalizedValue === "false" || normalizedValue === "0") {
+      return false;
+    }
+  }
+
+  throw new JobServiceError(`${fieldName} must be a boolean`, 400);
+}
+
 function normalizeBatchSize(value: unknown, fieldName: string) {
   if (value === undefined) {
     return undefined;
@@ -138,6 +213,15 @@ function ensureAtLeastOneField(
   if (!hasAtLeastOneField) {
     throw new JobServiceError(message, 400, { supportedFields });
   }
+}
+
+export async function listJobs(query: ListJobsQuery = {}) {
+  return listJobsInRepository({
+    search: normalizeOptionalSearch(query.search),
+    status: normalizeOptionalJobStatus(query.status),
+    enabledOnly: normalizeOptionalBoolean(query.enabledOnly, "enabledOnly"),
+    hasPending: normalizeOptionalBoolean(query.hasPending, "hasPending"),
+  });
 }
 
 export async function updateJob(jobId: string, body: unknown) {

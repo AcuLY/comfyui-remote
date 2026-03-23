@@ -1,12 +1,19 @@
+import { NextRequest } from "next/server";
 import { fail, ok } from "@/lib/api-response";
-import { listJobs } from "@/server/repositories/job-repository";
+import { listJobs, mapJobError } from "@/server/services/job-service";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const data = await listJobs();
+    const data = await listJobs({
+      search: request.nextUrl.searchParams.get("search") ?? undefined,
+      status: request.nextUrl.searchParams.get("status") ?? undefined,
+      enabledOnly: request.nextUrl.searchParams.get("enabledOnly") ?? undefined,
+      hasPending: request.nextUrl.searchParams.get("hasPending") ?? undefined,
+    });
     return ok(data);
   } catch (error) {
-    return fail("Failed to load jobs", 500, String(error));
+    const mapped = mapJobError(error);
+    return fail(mapped.message, mapped.status, mapped.details);
   }
 }
 

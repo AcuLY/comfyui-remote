@@ -18,6 +18,13 @@ export type JobPositionUpdateInput = {
   seedPolicy?: string | null;
 };
 
+export type ListJobsFilters = {
+  status?: JobStatus;
+  search?: string;
+  enabledOnly?: boolean;
+  hasPending?: boolean;
+};
+
 type LatestRunRecord = {
   id: string;
   runIndex: number;
@@ -481,8 +488,33 @@ async function createQueuedRunsForPositions(
   return queuedRuns;
 }
 
-export async function listJobs() {
+export async function listJobs(filters: ListJobsFilters = {}) {
+  const search = filters.search?.trim();
+
   const jobs = await db.completeJob.findMany({
+    where: {
+      ...(filters.status ? { status: filters.status } : {}),
+      ...(search
+        ? {
+            OR: [
+              { title: { contains: search, mode: "insensitive" } },
+              { slug: { contains: search, mode: "insensitive" } },
+              { character: { name: { contains: search, mode: "insensitive" } } },
+              { scenePreset: { is: { name: { contains: search, mode: "insensitive" } } } },
+              { stylePreset: { is: { name: { contains: search, mode: "insensitive" } } } },
+            ],
+          }
+        : {}),
+      ...(filters.enabledOnly
+        ? {
+            positions: {
+              some: {
+                enabled: true,
+              },
+            },
+          }
+        : {}),
+    },
     orderBy: { updatedAt: "desc" },
     include: {
       character: true,
@@ -507,11 +539,13 @@ export async function listJobs() {
 
   const latestRunsById = await getLatestRunsById(latestRunIds);
 
-  return jobs.map((job) => {
+  const serializedJobs = jobs.map((job) => {
     const latestRun = job.positions
       .map((position) => (position.latestRunId ? latestRunsById.get(position.latestRunId) ?? null : null))
       .filter((run): run is LatestRunRecord => run !== null)
       .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())[0] ?? null;
+
+    const latestRunSummary = latestRun ? summarizeRunImages(latestRun.images) : null;
 
     return {
       id: job.id,
@@ -525,10 +559,16 @@ export async function listJobs() {
       enabledPositionCount: job.positions.filter((position) => position.enabled).length,
       latestRunAt: latestRun?.createdAt.toISOString() ?? null,
       latestRunStatus: latestRun?.status ?? null,
-      latestRunPendingCount: latestRun ? summarizeRunImages(latestRun.images).pendingCount : 0,
-      latestRunTotalCount: latestRun ? summarizeRunImages(latestRun.images).totalCount : 0,
+      latestRunPendingCount: latestRunSummary?.pendingCount ?? 0,
+      latestRunTotalCount: latestRunSummary?.totalCount ?? 0,
     };
   });
+
+  if (filters.hasPending) {
+    return serializedJobs.filter((job) => job.latestRunPendingCount > 0);
+  }
+
+  return serializedJobs;
 }
 
 export async function getJobDetail(jobId: string) {
