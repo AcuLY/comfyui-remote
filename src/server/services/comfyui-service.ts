@@ -9,9 +9,16 @@ type ComfyPromptHistoryEntry = {
   status: JsonRecord | null;
 };
 
+export type ComfyPromptOutputImage = {
+  filename: string;
+  subfolder: string;
+  type: string;
+};
+
 export type ComfyPromptExecutionResult = {
   comfyPromptId: string;
   outputDir: string | null;
+  outputImages: ComfyPromptOutputImage[];
 };
 
 export class ComfyPromptExecutionError extends Error {
@@ -167,31 +174,62 @@ function isHistoryComplete(entry: ComfyPromptHistoryEntry) {
   return Boolean(entry.outputs && Object.keys(entry.outputs).length > 0);
 }
 
-function extractOutputDir(entry: ComfyPromptHistoryEntry) {
-  const imageBaseDir = env.imageBaseDir.trim();
-
-  if (!imageBaseDir || !entry.outputs) {
-    return null;
+function extractOutputImages(entry: ComfyPromptHistoryEntry): ComfyPromptOutputImage[] {
+  if (!entry.outputs) {
+    return [];
   }
+
+  const images: ComfyPromptOutputImage[] = [];
+  const seenImages = new Set<string>();
 
   for (const nodeOutput of Object.values(entry.outputs)) {
     const output = asRecord(nodeOutput);
-    const images = Array.isArray(output?.images) ? output.images : [];
+    const outputImages = Array.isArray(output?.images) ? output.images : [];
 
-    for (const image of images) {
+    for (const image of outputImages) {
       const imageRecord = asRecord(image);
+      const filename =
+        typeof imageRecord?.filename === "string" ? imageRecord.filename.trim() : "";
+
+      if (!filename) {
+        continue;
+      }
+
       const subfolder =
         typeof imageRecord?.subfolder === "string" ? imageRecord.subfolder.trim() : "";
-      const normalizedBaseDir = imageBaseDir.replace(/\\/g, "/").replace(/\/+$/, "");
-      const normalizedSubfolder = subfolder.replace(/\\/g, "/").replace(/^\/+/, "");
+      const type =
+        typeof imageRecord?.type === "string" && imageRecord.type.trim()
+          ? imageRecord.type.trim()
+          : "output";
+      const imageKey = `${type}::${subfolder}::${filename}`;
 
-      return normalizedSubfolder
-        ? `${normalizedBaseDir}/${normalizedSubfolder}`
-        : normalizedBaseDir;
+      if (seenImages.has(imageKey)) {
+        continue;
+      }
+
+      seenImages.add(imageKey);
+      images.push({
+        filename,
+        subfolder,
+        type,
+      });
     }
   }
 
-  return null;
+  return images;
+}
+
+function extractOutputDir(images: ComfyPromptOutputImage[]) {
+  const imageBaseDir = env.imageBaseDir.trim();
+
+  if (!imageBaseDir || images.length === 0) {
+    return null;
+  }
+
+  const normalizedBaseDir = imageBaseDir.replace(/\\/g, "/").replace(/\/+$/, "");
+  const normalizedSubfolder = images[0]?.subfolder.replace(/\\/g, "/").replace(/^\/+/, "") ?? "";
+
+  return normalizedSubfolder ? `${normalizedBaseDir}/${normalizedSubfolder}` : normalizedBaseDir;
 }
 
 async function sleep(ms: number) {
@@ -383,8 +421,11 @@ export async function executeComfyPromptDraft(
     throw new ComfyPromptExecutionError(message, comfyPromptId);
   }
 
+  const outputImages = extractOutputImages(historyEntry);
+
   return {
     comfyPromptId,
-    outputDir: extractOutputDir(historyEntry),
+    outputDir: extractOutputDir(outputImages),
+    outputImages,
   };
 }

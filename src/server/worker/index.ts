@@ -4,6 +4,10 @@ import {
   ComfyPromptExecutionError,
   executeComfyPromptDraft,
 } from "@/server/services/comfyui-service";
+import {
+  persistComfyOutputImages,
+  removeManagedRunOutput,
+} from "@/server/services/image-result-service";
 import { buildComfyPromptDraft, normalizeResolvedConfigSnapshot } from "@/server/worker/payload-builder";
 import {
   claimQueuedWorkerRun,
@@ -51,24 +55,54 @@ export async function runWorkerPass(limit = 10): Promise<WorkerPassReport> {
     let resolvedConfig: NormalizedResolvedConfigSnapshot | null = null;
     let promptDraft: ComfyPromptDraft | null = null;
     let comfyPromptId: string | null = null;
-    let processError: unknown = null;
-    let processResult: Awaited<ReturnType<typeof executeComfyPromptDraft>> | null = null;
 
     try {
       resolvedConfig = normalizeResolvedConfigSnapshot(run.resolvedConfigSnapshot);
       promptDraft = buildComfyPromptDraft(run);
-      processResult = await executeComfyPromptDraft(run.comfyApiUrl, promptDraft);
+      const processResult = await executeComfyPromptDraft(run.comfyApiUrl, promptDraft);
       comfyPromptId = processResult.comfyPromptId;
-    } catch (error) {
-      comfyPromptId = extractFailedComfyPromptId(error);
-      processError = error;
-    }
+      const persistedOutput = await persistComfyOutputImages(
+        run,
+        run.comfyApiUrl,
+        processResult.outputImages,
+      );
+      const completedRun = await completeWorkerRun(run.runId, {
+        status: RunStatus.done,
+        comfyPromptId,
+        outputDir: persistedOutput.outputDir,
+        images: persistedOutput.images,
+      });
 
-    if (processError) {
+      drafts.push({
+        runId: run.runId,
+        status: completedRun.status,
+        comfyApiUrl: run.comfyApiUrl,
+        comfyPromptId: completedRun.comfyPromptId,
+        outputDir: completedRun.outputDir,
+        resolvedConfig,
+        promptDraft,
+        startedAt: completedRun.startedAt,
+        finishedAt: completedRun.finishedAt,
+        errorMessage: completedRun.errorMessage,
+      });
+    } catch (error) {
+      if (!comfyPromptId) {
+        comfyPromptId = extractFailedComfyPromptId(error);
+      }
+
+      let errorMessage = formatWorkerError(error);
+
+      try {
+        await removeManagedRunOutput(run);
+      } catch (cleanupError) {
+        errorMessage = `${errorMessage} | cleanup: ${formatWorkerError(cleanupError)}`;
+      }
+
       const failedRun = await completeWorkerRun(run.runId, {
         status: RunStatus.failed,
-        errorMessage: formatWorkerError(processError),
+        errorMessage,
         comfyPromptId,
+        outputDir: null,
       });
 
       drafts.push({
@@ -83,32 +117,7 @@ export async function runWorkerPass(limit = 10): Promise<WorkerPassReport> {
         finishedAt: failedRun.finishedAt,
         errorMessage: failedRun.errorMessage,
       });
-
-      continue;
     }
-
-    if (!processResult) {
-      throw new Error("Worker processing step did not return a result");
-    }
-
-    const completedRun = await completeWorkerRun(run.runId, {
-      status: RunStatus.done,
-      comfyPromptId: processResult.comfyPromptId,
-      outputDir: processResult.outputDir,
-    });
-
-    drafts.push({
-      runId: run.runId,
-      status: completedRun.status,
-      comfyApiUrl: run.comfyApiUrl,
-      comfyPromptId: completedRun.comfyPromptId,
-      outputDir: completedRun.outputDir,
-      resolvedConfig,
-      promptDraft,
-      startedAt: completedRun.startedAt,
-      finishedAt: completedRun.finishedAt,
-      errorMessage: completedRun.errorMessage,
-    });
   }
 
   const failedRunCount = drafts.filter((draft) => draft.status === RunStatus.failed).length;

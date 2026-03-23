@@ -33,6 +33,13 @@ type CompleteWorkerRunInput = {
   errorMessage?: string | null;
   comfyPromptId?: string | null;
   outputDir?: string | null;
+  images?: Array<{
+    filePath: string;
+    thumbPath: string | null;
+    width: number | null;
+    height: number | null;
+    fileSize: bigint | null;
+  }>;
 };
 
 function serializeWorkerRunSnapshot(run: WorkerRunRecord): WorkerRunSnapshot {
@@ -210,6 +217,27 @@ export async function completeWorkerRun(
 
     if (input.outputDir !== undefined) {
       data.outputDir = input.outputDir;
+    }
+
+    if (input.status === RunStatus.done && input.images !== undefined) {
+      await tx.imageResult.deleteMany({
+        where: {
+          positionRunId: runId,
+        },
+      });
+
+      if (input.images.length > 0) {
+        await tx.imageResult.createMany({
+          data: input.images.map((image) => ({
+            positionRunId: runId,
+            filePath: image.filePath,
+            thumbPath: image.thumbPath,
+            width: image.width,
+            height: image.height,
+            fileSize: image.fileSize,
+          })),
+        });
+      }
     }
 
     const completedRun = await tx.positionRun.updateMany({
