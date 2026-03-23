@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { Copy, Play, SlidersHorizontal } from "lucide-react";
+import { Copy, SlidersHorizontal } from "lucide-react";
 import { notFound } from "next/navigation";
 import { SectionCard } from "@/components/section-card";
 import { formatJobSubtitle, getJobDetail } from "@/lib/server-data";
 import type { JobDetailPosition } from "@/lib/server-data";
+import { JobRunButton, PositionRunButton } from "./job-run-controls";
 
 function formatPositionMeta(position: JobDetailPosition) {
   const parts = [`batch ${position.batchSize}`, position.aspectRatio];
@@ -39,9 +40,9 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
     <div className="space-y-4">
       <SectionCard title={job.title} subtitle={formatJobSubtitle(job)}>
         <div className="grid grid-cols-2 gap-3 text-sm">
-          <button className="inline-flex items-center justify-center gap-2 rounded-2xl border border-sky-500/20 bg-sky-500/10 px-4 py-3 text-sky-300">
-            <Play className="size-4" /> 运行整组
-          </button>
+          <div className="col-span-2">
+            <JobRunButton jobId={job.id} />
+          </div>
           <button className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-zinc-200">
             <Copy className="size-4" /> 复制任务
           </button>
@@ -91,9 +92,12 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
                     >
                       编辑
                     </Link>
-                    <button className="inline-flex items-center gap-1 rounded-xl border border-sky-500/20 bg-sky-500/10 px-3 py-2 text-xs text-sky-300">
-                      <Play className="size-3.5" /> 运行本节
-                    </button>
+                    <PositionRunButton
+                      jobId={job.id}
+                      positionId={position.id}
+                      positionName={position.name}
+                      disabled={position.enabled === false}
+                    />
                   </div>
                 </div>
               </div>
