@@ -1,6 +1,5 @@
 import { db } from "@/lib/db";
 import { ActorType, ReviewStatus } from "@/generated/prisma";
-import { Prisma } from "@/generated/prisma";
 
 type ReviewableImage = {
   id: string;
@@ -42,16 +41,27 @@ export async function keepRunImages(runId: string, imageIds: string[]) {
   const images = await getRunImages(runId, imageIds);
   const reviewedAt = new Date();
 
-  await db.imageResult.updateMany({
-    where: {
-      id: { in: imageIds },
-      positionRunId: runId,
-    },
-    data: {
-      reviewStatus: ReviewStatus.kept,
-      reviewedAt,
-    },
-  });
+  await db.$transaction([
+    db.imageResult.updateMany({
+      where: {
+        id: { in: imageIds },
+        positionRunId: runId,
+      },
+      data: {
+        reviewStatus: ReviewStatus.kept,
+        reviewedAt,
+      },
+    }),
+    db.trashRecord.updateMany({
+      where: {
+        imageResultId: { in: imageIds },
+        restoredAt: null,
+      },
+      data: {
+        restoredAt: reviewedAt,
+      },
+    }),
+  ]);
 
   return {
     runId,
@@ -156,52 +166,4 @@ export async function restoreImage(imageId: string) {
     reviewedAt,
     restoredAt,
   };
-}
-
-export function isKnownReviewError(error: unknown) {
-  if (!(error instanceof Error)) {
-    return false;
-  }
-
-  return [
-    "RUN_NOT_FOUND",
-    "IMAGES_NOT_FOUND",
-    "IMAGE_NOT_FOUND",
-    "TRASH_RECORD_NOT_FOUND",
-  ].includes(error.message);
-}
-
-export function mapReviewError(error: unknown) {
-  if (!(error instanceof Error)) {
-    return {
-      message: "Unexpected review error",
-      status: 500,
-      details: String(error),
-    };
-  }
-
-  switch (error.message) {
-    case "RUN_NOT_FOUND":
-      return { message: "Run not found", status: 404 };
-    case "IMAGES_NOT_FOUND":
-      return { message: "One or more images were not found in this run", status: 404 };
-    case "IMAGE_NOT_FOUND":
-      return { message: "Image not found", status: 404 };
-    case "TRASH_RECORD_NOT_FOUND":
-      return { message: "Image is not currently in trash", status: 404 };
-    default:
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        return {
-          message: "Database request failed",
-          status: 500,
-          details: error.message,
-        };
-      }
-
-      return {
-        message: "Unexpected review error",
-        status: 500,
-        details: error.message,
-      };
-  }
 }

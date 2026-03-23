@@ -1,5 +1,5 @@
 import { fail, ok } from "@/lib/api-response";
-import { mapReviewError, restoreImage } from "@/server/repositories/review-repository";
+import { mapReviewError, restoreImage } from "@/server/services/review-service";
 
 type RouteContext = {
   params: Promise<{ imageId: string }>;
