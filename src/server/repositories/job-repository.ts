@@ -34,6 +34,13 @@ export type ListJobsFilters = {
   hasPending?: boolean;
 };
 
+export type JobCreateOptions = {
+  characters: Array<{ id: string; name: string; slug: string }>;
+  scenePresets: Array<{ id: string; name: string; slug: string }>;
+  stylePresets: Array<{ id: string; name: string; slug: string }>;
+  positionTemplates: Array<{ id: string; name: string; slug: string; enabled: boolean }>;
+};
+
 type LatestRunRecord = {
   id: string;
   runIndex: number;
@@ -1212,4 +1219,35 @@ export async function enqueueJobPositionRun(jobId: string, jobPositionId: string
       runs,
     };
   });
+}
+
+export async function getJobCreateOptions(): Promise<JobCreateOptions> {
+  const [characters, scenePresets, stylePresets, positionTemplates] = await Promise.all([
+    db.character.findMany({
+      where: { isActive: true },
+      orderBy: [{ name: "asc" }, { id: "asc" }],
+      select: { id: true, name: true, slug: true },
+    }),
+    db.scenePreset.findMany({
+      where: { isActive: true },
+      orderBy: [{ name: "asc" }, { id: "asc" }],
+      select: { id: true, name: true, slug: true },
+    }),
+    db.stylePreset.findMany({
+      where: { isActive: true },
+      orderBy: [{ name: "asc" }, { id: "asc" }],
+      select: { id: true, name: true, slug: true },
+    }),
+    db.positionTemplate.findMany({
+      orderBy: [{ name: "asc" }, { id: "asc" }],
+      select: { id: true, name: true, slug: true, enabled: true },
+    }),
+  ]);
+
+  return {
+    characters,
+    scenePresets,
+    stylePresets,
+    positionTemplates,
+  };
 }
