@@ -1,6 +1,8 @@
 import { copyFile, mkdir, rm, stat, writeFile } from "node:fs/promises";
 import { extname, join, posix, resolve } from "node:path";
 
+import sharp from "sharp";
+
 import { env } from "@/lib/env";
 import { ComfyPromptOutputImage } from "@/server/services/comfyui-service";
 import { WorkerRunSnapshot } from "@/server/worker/types";
@@ -21,8 +23,14 @@ export type PersistedRunOutput = {
 type ManagedRunOutputPaths = {
   absoluteRunDir: string;
   absoluteOutputDir: string;
+  absoluteThumbDir: string;
   relativeOutputDir: string;
+  relativeThumbDir: string;
 };
+
+const THUMBNAIL_MAX_DIMENSION = 400;
+const THUMBNAIL_QUALITY = 80;
+const THUMBNAIL_EXTENSION = ".jpg";
 
 function formatError(error: unknown) {
   if (error instanceof Error) {
@@ -78,11 +86,14 @@ function resolveManagedRunOutputPaths(run: WorkerRunSnapshot): ManagedRunOutputP
   const runSegment = `run-${String(run.runIndex).padStart(2, "0")}`;
   const absoluteRunDir = resolve(process.cwd(), "data", "images", jobSegment, positionSegment, runSegment);
   const absoluteOutputDir = join(absoluteRunDir, "raw");
+  const absoluteThumbDir = join(absoluteRunDir, "thumb");
 
   return {
     absoluteRunDir,
     absoluteOutputDir,
+    absoluteThumbDir,
     relativeOutputDir: posix.join("data", "images", jobSegment, positionSegment, runSegment, "raw"),
+    relativeThumbDir: posix.join("data", "images", jobSegment, positionSegment, runSegment, "thumb"),
   };
 }
 
@@ -190,6 +201,33 @@ async function persistSingleOutputImage(
   return downloadOutputImage(apiUrl, outputImage, targetAbsolutePath);
 }
 
+async function createThumbnailAndReadDimensions(
+  sourceAbsolutePath: string,
+  targetThumbAbsolutePath: string,
+) {
+  const sourceImage = sharp(sourceAbsolutePath);
+  const metadata = await sourceImage.metadata();
+
+  await sourceImage
+    .clone()
+    .rotate()
+    .resize({
+      width: THUMBNAIL_MAX_DIMENSION,
+      height: THUMBNAIL_MAX_DIMENSION,
+      fit: "inside",
+      withoutEnlargement: true,
+    })
+    .jpeg({
+      quality: THUMBNAIL_QUALITY,
+    })
+    .toFile(targetThumbAbsolutePath);
+
+  return {
+    width: metadata.width ?? null,
+    height: metadata.height ?? null,
+  };
+}
+
 export async function removeManagedRunOutput(run: WorkerRunSnapshot) {
   const { absoluteRunDir } = resolveManagedRunOutputPaths(run);
   await rm(absoluteRunDir, { recursive: true, force: true });
@@ -204,25 +242,39 @@ export async function persistComfyOutputImages(
     throw new Error("ComfyUI history did not include any output images");
   }
 
-  const { absoluteRunDir, absoluteOutputDir, relativeOutputDir } = resolveManagedRunOutputPaths(run);
+  const {
+    absoluteRunDir,
+    absoluteOutputDir,
+    absoluteThumbDir,
+    relativeOutputDir,
+    relativeThumbDir,
+  } = resolveManagedRunOutputPaths(run);
 
   await rm(absoluteRunDir, { recursive: true, force: true });
   await mkdir(absoluteOutputDir, { recursive: true });
+  await mkdir(absoluteThumbDir, { recursive: true });
 
   try {
     const persistedImages: PersistedRunOutputImage[] = [];
 
     for (const [index, outputImage] of outputImages.entries()) {
       const fileName = `${String(index + 1).padStart(2, "0")}${resolveTargetExtension(outputImage)}`;
+      const thumbFileName = `${String(index + 1).padStart(2, "0")}${THUMBNAIL_EXTENSION}`;
       const relativeFilePath = posix.join(relativeOutputDir, fileName);
+      const relativeThumbPath = posix.join(relativeThumbDir, thumbFileName);
       const absoluteFilePath = join(absoluteOutputDir, fileName);
+      const absoluteThumbPath = join(absoluteThumbDir, thumbFileName);
       const fileSize = await persistSingleOutputImage(apiUrl, outputImage, absoluteFilePath);
+      const { width, height } = await createThumbnailAndReadDimensions(
+        absoluteFilePath,
+        absoluteThumbPath,
+      );
 
       persistedImages.push({
         filePath: relativeFilePath,
-        thumbPath: null,
-        width: null,
-        height: null,
+        thumbPath: relativeThumbPath,
+        width,
+        height,
         fileSize,
       });
     }
