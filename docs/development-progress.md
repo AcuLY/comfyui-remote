@@ -59,6 +59,7 @@ Current state:
 - jobs 列表页现在会展示后端返回的真实启用 position 数、最近一次 run 状态与 pending/total 审核统计，并把首页“编辑/运行整组”入口直接接到真实页面与 server action，继续减少 jobs 首页对 mock 信息的依赖
 - jobs 列表页的“复制”按钮已接到真实 server action：会调用后端 `POST /api/jobs/:jobId/copy` 复制整条任务及其 position 覆盖，创建新的 draft，并在成功后提供进入新草稿编辑页的入口
 - jobs 列表页已接上 query-string 驱动的筛选 UI（search/status/enabledOnly/hasPending），支持关键词搜索、状态过滤、仅看有启用 position、仅看 latest run 仍有 pending 审核的任务，也保留 `/jobs?...` 可分享/可回放的筛选链接
+- jobs 列表页已新增“新建任务”入口；frontend 新增 `/jobs/new` 页面与真实 server action 表单，可选择 Character / Scene / Style / Position templates 并直接调用 `POST /api/jobs` 创建 draft，成功后可一跳进入新草稿编辑页
 
 ### Backend
 Latest pushed commits:
@@ -109,13 +110,15 @@ Current state:
 - job 创建会基于 title 生成唯一 slug，并对 Character / ScenePreset / StylePreset / PositionTemplate 缺失或 disabled 场景返回明确错误映射，便于下一步前端接入“新建任务”表单
 - 本轮已再次验证 backend worktree `cmd /c npm run lint` 与 `cmd /c npm run build` 可通过（包含本轮 draft job creation API 改动）
 - `POST /api/jobs` 已于 backend 分支提交并 push（`96802d2` feat(jobs): add draft job creation api）；本次提交实际通过 `cmd /c git ...` 完成，绕过了 PowerShell 直跑 git commit 时的 worktree lock/quote 问题
+- backend 已新增 `GET /api/job-create-options`，会返回当前可用的 Character / ScenePreset / StylePreset / PositionTemplate 元数据，供新建任务表单直接读取真实选项
+- 本轮再次验证 frontend/backend worktree `cmd /c npm run build` 可通过（包含 job create options API 与 `/jobs/new` 页面）
 
 ## Next Suggested Milestones
-1. 补 frontend 的“新建任务”最小入口（表单或 server action），接上已完成的 `POST /api/jobs`
-2. 验证并补齐本机最小启动链路（至少形成一条从创建 job 到进入 detail/edit 的可操作路径）
-3. 视需要补一次本机手动验证记录（seed -> enqueue -> local worker pass -> ComfyUI history -> output images）
-4. 继续减少 jobs / queue / detail 页对 mock fallback 的依赖，并补真实启动链路中的剩余缺口
-5. 视情况补文件移动/归档服务（若后续 review flow 需要从 raw 拆分 kept/trashed 路径）
+1. 验证并补齐本机最小启动链路（至少形成一条从创建 job 到进入 detail/edit 的可操作路径）
+2. 视需要补一次本机手动验证记录（seed -> enqueue -> local worker pass -> ComfyUI history -> output images）
+3. 继续减少 jobs / queue / detail 页对 mock fallback 的依赖，并补真实启动链路中的剩余缺口
+4. 视情况补文件移动/归档服务（若后续 review flow 需要从 raw 拆分 kept/trashed 路径）
+5. 视需要把 Character / Scene / Style / PositionTemplate 管理页或配置来源补成更正式的可维护入口
 
 ## Cron Job
 - Job ID: `44d5a257-0ff6-4dee-a6e9-e249a0399055`
