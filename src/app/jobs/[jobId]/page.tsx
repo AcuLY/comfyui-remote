@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Copy, Play, SlidersHorizontal } from "lucide-react";
 import { notFound } from "next/navigation";
 import { SectionCard } from "@/components/section-card";
@@ -28,7 +29,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
           <div className="rounded-2xl bg-white/[0.03] p-3"><div className="text-xs text-zinc-500">Character prompt</div><div className="mt-1">miku, long hair, calm expression...</div></div>
           <div className="rounded-2xl bg-white/[0.03] p-3"><div className="text-xs text-zinc-500">Scene prompt</div><div className="mt-1">park bench, spring afternoon, outdoor...</div></div>
           <div className="rounded-2xl bg-white/[0.03] p-3"><div className="text-xs text-zinc-500">Style prompt</div><div className="mt-1">soft daylight, anime cinematic, detailed shading...</div></div>
-          <button className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-zinc-200"><SlidersHorizontal className="size-4" /> 编辑当前大任务参数</button>
+          <Link href={`/jobs/${job.id}/edit`} className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-zinc-200"><SlidersHorizontal className="size-4" /> 编辑当前大任务参数</Link>
         </div>
       </SectionCard>
 
@@ -41,7 +42,10 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
                   <div className="text-sm font-semibold text-white">{position.name}</div>
                   <div className="mt-1 text-xs text-zinc-400">batch {position.batch} · {position.ratio} · {position.status}</div>
                 </div>
-                <button className="inline-flex items-center gap-1 rounded-xl border border-sky-500/20 bg-sky-500/10 px-3 py-2 text-xs text-sky-300"><Play className="size-3.5" /> 运行本节</button>
+                <div className="flex gap-2">
+                  <Link href={`/jobs/${job.id}/positions/${position.id}/edit`} className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-zinc-200">编辑</Link>
+                  <button className="inline-flex items-center gap-1 rounded-xl border border-sky-500/20 bg-sky-500/10 px-3 py-2 text-xs text-sky-300"><Play className="size-3.5" /> 运行本节</button>
+                </div>
               </div>
             </div>
           ))}
