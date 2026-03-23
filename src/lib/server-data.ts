@@ -112,6 +112,13 @@ export type JobPromptOverview = {
   jobLevelOverrides: unknown;
 };
 
+export type JobCreateOptions = {
+  characters: Array<{ id: string; name: string; slug: string }>;
+  scenePresets: Array<{ id: string; name: string; slug: string }>;
+  stylePresets: Array<{ id: string; name: string; slug: string }>;
+  positionTemplates: Array<{ id: string; name: string; slug: string; enabled: boolean }>;
+};
+
 export type JobCharacterInfo = {
   id: string;
   name: string;
@@ -643,4 +650,28 @@ export function getLoraAssets(): Promise<LoraAsset[]> {
 export function getReviewGroup(runId: string): Promise<ReviewGroup | null> {
   const fallback = reviewGroups.find((group) => group.id === runId) ?? null;
   return fetchJson(`/api/runs/${encodeURIComponent(runId)}`, fallback);
+}
+
+export function getJobCreateOptions(): Promise<JobCreateOptions> {
+  const fallback: JobCreateOptions = {
+    characters: [
+      { id: "nakano-miku", name: "Nakano Miku", slug: "nakano-miku" },
+      { id: "tangtang", name: "Tangtang", slug: "tangtang" },
+    ],
+    scenePresets: [
+      { id: "park-bench", name: "Park bench", slug: "park-bench" },
+      { id: "riverside", name: "Riverside", slug: "riverside" },
+    ],
+    stylePresets: [
+      { id: "soft-daylight", name: "Soft daylight", slug: "soft-daylight" },
+      { id: "anime-cinematic", name: "Anime cinematic", slug: "anime-cinematic" },
+    ],
+    positionTemplates: [
+      { id: "standing", name: "Standing", slug: "standing", enabled: true },
+      { id: "watching", name: "Watching", slug: "watching", enabled: true },
+      { id: "bench-sit", name: "Bench sit", slug: "bench-sit", enabled: true },
+    ],
+  };
+
+  return fetchJson("/api/job-create-options", fallback);
 }

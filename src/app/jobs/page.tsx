@@ -61,7 +61,18 @@ export default async function JobsPage({
 
   return (
     <div className="space-y-4">
-      <PageHeader title="大任务" description="管理 Character、场景、风格与 position 组合。" />
+      <PageHeader
+        title="大任务"
+        description="管理 Character、场景、风格与 position 组合。"
+        actions={
+          <Link
+            href="/jobs/new"
+            className="inline-flex items-center justify-center rounded-xl border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-sm text-sky-200"
+          >
+            新建任务
+          </Link>
+        }
+      />
       <SectionCard title="任务筛选" subtitle="优先查看特定状态、待审核结果或关键词匹配的任务。">
         <form className="grid gap-3 md:grid-cols-[minmax(0,1.4fr)_180px_auto_auto_auto] md:items-end">
           <label className="space-y-1.5 text-xs text-zinc-400">

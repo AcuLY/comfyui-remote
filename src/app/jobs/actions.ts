@@ -18,6 +18,12 @@ export type JobCopyState = {
   copiedJobId?: string;
 };
 
+export type JobCreateState = {
+  status: "idle" | "success" | "error";
+  message: string;
+  createdJobId?: string;
+};
+
 export const initialJobSaveState: JobSaveState = {
   status: "idle",
   message: "Update the fields and save them to the backend.",
@@ -31,6 +37,11 @@ export const initialJobRunState: JobRunState = {
 export const initialJobCopyState: JobCopyState = {
   status: "idle",
   message: "Ready to duplicate this job in the backend.",
+};
+
+export const initialJobCreateState: JobCreateState = {
+  status: "idle",
+  message: "Fill in the basics to create a new draft job.",
 };
 
 type MutationApiResponse = {
@@ -213,6 +224,83 @@ export async function saveJobPositionEditAction(
     return {
       status: "error",
       message: "The position API is unavailable right now.",
+    };
+  }
+}
+
+export async function createJobAction(_prevState: JobCreateState, formData: FormData): Promise<JobCreateState> {
+  const title = String(formData.get("title") ?? "").trim();
+  if (!title) {
+    return {
+      status: "error",
+      message: "Title is required.",
+    };
+  }
+
+  const characterId = String(formData.get("characterId") ?? "").trim();
+  if (!characterId) {
+    return {
+      status: "error",
+      message: "Character is required.",
+    };
+  }
+
+  const positionTemplateIds = formData
+    .getAll("positionTemplateIds")
+    .map((value) => String(value).trim())
+    .filter(Boolean);
+
+  if (positionTemplateIds.length < 1) {
+    return {
+      status: "error",
+      message: "Pick at least one position template.",
+    };
+  }
+
+  const payload = {
+    title,
+    characterId,
+    scenePresetId: getNullableString(formData, "scenePresetId"),
+    stylePresetId: getNullableString(formData, "stylePresetId"),
+    positionTemplateIds,
+    notes: getNullableString(formData, "notes"),
+  };
+
+  try {
+    const response = await fetch(getApiUrl("/api/jobs"), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+      cache: "no-store",
+    });
+
+    const result = (await response.json().catch(() => null)) as MutationApiResponse | null;
+
+    if (!response.ok || result?.ok === false) {
+      return {
+        status: "error",
+        message: result?.error?.message ?? `Create request failed with status ${response.status}.`,
+      };
+    }
+
+    const createdJobId = typeof result?.data?.id === "string" ? result.data.id : undefined;
+    revalidatePath("/jobs");
+    if (createdJobId) {
+      revalidatePath(`/jobs/${createdJobId}`);
+    }
+    refresh();
+
+    return {
+      status: "success",
+      message: "Created a new draft job.",
+      createdJobId,
+    };
+  } catch {
+    return {
+      status: "error",
+      message: "The job create API is unavailable right now.",
     };
   }
 }
