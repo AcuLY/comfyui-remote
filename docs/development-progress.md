@@ -51,8 +51,8 @@ Current state:
 
 ### Backend
 Latest pushed commits:
+- `b862dbd` feat(api): add job detail endpoint
 - `b0e2736` feat(api): add run review detail endpoint
-- `d2f2633` feat(backend): add local prisma bootstrap seed
 
 Current state:
 - 已有 Prisma schema 草案
@@ -68,11 +68,14 @@ Current state:
 - LoRA 上传现在会把 category / env 配置错误区分成明确的 4xx/5xx 响应，前端接真实上传表单时更容易处理
 - 已增加 `prisma/seed.ts` 与 `npm run db:bootstrap`：当前可用 `generate + db push + seed` 一次性初始化本地数据库
 - seed 会写入 queue/jobs/trash/loras 相关的最小样例数据，便于本机先跑通 API 与页面
-- 已确认 backend worktree 当前 `npm run lint` 可通过（包含本轮 `/api/runs/:id` 接口改动）
+- 已确认 backend worktree 当前 `npm run lint` 可通过（包含本轮 jobs PATCH / position PATCH 接口改动）
+- 已补上 job 保存入口：`PATCH /api/jobs/:id` 可保存任务级 prompt / LoRA / aspect ratio / batch size 覆盖
+- 已补上 position 保存入口：`PATCH /api/jobs/:id/positions/:jobPositionId` 可保存 position 级 prompt / aspect ratio / batch size / seed policy 覆盖
+- jobs service 已统一 PATCH 请求字段白名单、空 body 校验、ID 校验与错误映射，便于前端下一步直接接保存动作
 - 目前尚未接入真实数据库迁移和完整业务逻辑
 
 ## Next Suggested Milestones
-1. 继续完善 jobs API，补保存动作与 job detail / edit 页的真实提交链路
+1. 前端接上 job detail / edit 页与 position 编辑页的真实 PATCH 保存链路
 2. 验证并补齐本机 `npm install` / 全仓 `npm run lint` / 最小启动链路
 3. 接入 worker scaffold 与 ComfyUI run pipeline
 4. 预留图片缩略图生成与文件移动服务
