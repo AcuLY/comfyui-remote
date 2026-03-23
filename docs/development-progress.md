@@ -62,9 +62,9 @@ Current state:
 
 ### Backend
 Latest pushed commits:
-- `3fdcd3e` feat(review): move trashed images in managed storage
-- `c54c91a` feat(images): generate run thumbnails and dimensions
-- `8572ffa` feat(worker): persist ComfyUI outputs to image results
+- `96802d2` feat(jobs): add draft job creation api
+- `9fb6572` feat(jobs): add list filters
+- `4ee573f` feat(jobs): add job copy api
 
 Current state:
 - 已有 Prisma schema 草案
@@ -105,13 +105,17 @@ Current state:
 - jobs 列表接口已支持 query params：`search`（title / slug / character / scene / style）/ `status` / `enabledOnly` / `hasPending`；查询校验放在 service 层，路由只负责解析 searchParams 并返回统一错误结构
 - 已补 `POST /api/jobs/:jobId/copy`：会复制 job 基础配置、jobLevelOverrides 与全部 position 覆盖，自动生成唯一 title/slug，并把新任务创建为 `draft`
 - backend/frontend worktree 当前 `cmd /c npm run lint` 与 `cmd /c npm run build` 可通过（包含本轮 jobs 列表筛选与搜索链路）
+- 已在 backend worktree 实装 `POST /api/jobs` 的最小真实创建链路：校验 `title` / `characterId` / 可选 scene/style preset / `positionTemplateIds`，创建 draft `CompleteJob` 与有序 `CompleteJobPosition`，并返回现有 job detail 结构
+- job 创建会基于 title 生成唯一 slug，并对 Character / ScenePreset / StylePreset / PositionTemplate 缺失或 disabled 场景返回明确错误映射，便于下一步前端接入“新建任务”表单
+- 本轮已再次验证 backend worktree `cmd /c npm run lint` 与 `cmd /c npm run build` 可通过（包含本轮 draft job creation API 改动）
+- `POST /api/jobs` 已于 backend 分支提交并 push（`96802d2` feat(jobs): add draft job creation api）；本次提交实际通过 `cmd /c git ...` 完成，绕过了 PowerShell 直跑 git commit 时的 worktree lock/quote 问题
 
 ## Next Suggested Milestones
-1. 验证并补齐本机 `npm install` / 全仓 `npm run lint` / 最小启动链路
-2. 视情况补文件移动/归档服务（若后续 review flow 需要从 raw 拆分 kept/trashed 路径）
-3. 视情况补宫格页提交后的局部状态优化（如成功后清空选择 / 更细粒度提示）
-4. 视需要补一次本机手动验证记录（seed -> enqueue -> local worker pass -> ComfyUI history -> output images）
-5. 继续减少 jobs / queue / detail 页对 mock fallback 的依赖，并补真实启动链路中的剩余缺口
+1. 补 frontend 的“新建任务”最小入口（表单或 server action），接上已完成的 `POST /api/jobs`
+2. 验证并补齐本机最小启动链路（至少形成一条从创建 job 到进入 detail/edit 的可操作路径）
+3. 视需要补一次本机手动验证记录（seed -> enqueue -> local worker pass -> ComfyUI history -> output images）
+4. 继续减少 jobs / queue / detail 页对 mock fallback 的依赖，并补真实启动链路中的剩余缺口
+5. 视情况补文件移动/归档服务（若后续 review flow 需要从 raw 拆分 kept/trashed 路径）
 
 ## Cron Job
 - Job ID: `44d5a257-0ff6-4dee-a6e9-e249a0399055`

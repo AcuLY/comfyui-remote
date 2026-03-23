@@ -43,6 +43,8 @@
 
 - [x] 宫格页提交后的局部状态优化（成功后清空选择 / 忽略已失效选中项）
 
+- [ ] 补 frontend 的“新建任务”最小入口（表单或 server action），接上已完成的 `POST /api/jobs`
+
 ## Working Notes
 - 前后端并行开发，分别在 `frontend` / `backend` 分支提交并 push
 - 共享进度文档放在 `main`
