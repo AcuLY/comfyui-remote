@@ -29,7 +29,7 @@
 ## Current Status
 ### Frontend
 Latest pushed commits:
-- `ce4f82a` feat(frontend): add review support pages and navigation
+- `de0d859` feat(frontend): prefer api data with mock fallback
 - `f079ace` feat(frontend): add job parameter editor pages
 
 Current state:
@@ -39,7 +39,8 @@ Current state:
 - 已有回收站页
 - 已有 LoRA 页骨架
 - 已有大任务详情和参数编辑页骨架
-- 目前仍主要使用 mock data
+- 队列 / jobs / trash / loras 已优先读取真实 API，并保留 mock fallback
+- 回收站页已对齐 `/api/trash` 返回结构，真实数据缺少预览图时也不会渲染报错
 
 ### Backend
 Latest pushed commits:

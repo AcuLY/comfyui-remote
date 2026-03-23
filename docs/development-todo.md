@@ -5,11 +5,11 @@
 - [ ] 确认可在本机完成 `npm install`
 - [ ] 确认可在本机完成 `npm run lint`
 - [ ] 增加数据库初始化说明或 seed 方案
-- [ ] 让前端至少有一部分页面从真实 API 读数据
+- [x] 让前端至少有一部分页面从真实 API 读数据
 
 ## Priority B: review flow
-- [ ] 实现 queue API 与前端对接
-- [ ] 实现 trash API 与前端对接
+- [x] 实现 queue API 与前端对接
+- [x] 实现 trash API 与前端对接
 - [x] 实现 keep / trash / restore 的最小真实逻辑
 - [x] 整理 review API 的 service 层校验与错误映射
 - [ ] 让宫格页从 run 真实数据渲染
