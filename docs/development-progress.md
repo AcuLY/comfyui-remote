@@ -29,8 +29,8 @@
 ## Current Status
 ### Frontend
 Latest pushed commits:
+- `a898978` feat(frontend): wire job edit forms to patch api
 - `c7202ef` feat(review): wire queue batch actions to api
-- `a6bdc3b` feat(frontend): wire job detail pages to api
 
 Current state:
 - 已有待审核队列页
@@ -47,7 +47,9 @@ Current state:
 - job 详情页 / 大任务编辑页 / position 编辑页 已改为优先读取 `/api/jobs/:id`，并在字段缺失时回退到 jobs 列表与本地模板默认值，避免后端数据尚未补齐时页面直接 notFound 或空白
 - job 详情页的 position 列表会展示真实 latest run 状态与 pending 计数，便于先验证 job flow 的只读链路
 - 宫格审核页的批量保留 / 删除按钮已接到真实 `/api/runs/:id/review/keep|trash`，支持客户端多选、提交态禁用、成功/失败反馈，并在提交后 refresh 当前页数据
-- 已确认 frontend worktree 当前 `npm run lint` 可通过（包含本轮宫格页真实批量审图接线）
+- job 编辑页与 position 编辑页已改为真实 server action 表单，直接调用后端 `PATCH /api/jobs/:id` 与 `PATCH /api/jobs/:id/positions/:jobPositionId`，并在成功后 revalidate jobs/job detail 页面
+- 表单现在会处理缺失 ID、batch size 非法值、接口失败提示与提交态禁用，方便本机先验证最小保存链路
+- 已确认 frontend worktree 当前 `npm run lint` 可通过（包含本轮 job / position 编辑页真实保存接线）
 
 ### Backend
 Latest pushed commits:
@@ -75,8 +77,8 @@ Current state:
 - 目前尚未接入真实数据库迁移和完整业务逻辑
 
 ## Next Suggested Milestones
-1. 前端接上 job detail / edit 页与 position 编辑页的真实 PATCH 保存链路
-2. 验证并补齐本机 `npm install` / 全仓 `npm run lint` / 最小启动链路
+1. 验证并补齐本机 `npm install` / 全仓 `npm run lint` / 最小启动链路
+2. 补齐 jobs API 的 run-all / run-single-position 真实入口，并让前端能触发
 3. 接入 worker scaffold 与 ComfyUI run pipeline
 4. 预留图片缩略图生成与文件移动服务
 5. 视情况补宫格页提交后的局部状态优化（如成功后清空选择 / 更细粒度提示）
