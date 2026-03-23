@@ -46,8 +46,8 @@ Current state:
 
 ### Backend
 Latest pushed commits:
-- `9558560` feat(backend): implement review action endpoints
-- `bb8621b` feat(backend): add lora upload path mapping skeleton
+- `d2f2633` feat(backend): add local prisma bootstrap seed
+- `b74b4b1` fix(backend): make lora api json-safe
 
 Current state:
 - 已有 Prisma schema 草案
@@ -59,6 +59,8 @@ Current state:
 - keep 动作现在会同时关闭未恢复的 TrashRecord，避免图片从回收站“保留”后状态残留
 - `/api/loras` 现在会把 BigInt/Date 转成可安全 JSON 返回的结构，避免真实 LoRA 列表接口在序列化阶段报错
 - LoRA 上传现在会把 category / env 配置错误区分成明确的 4xx/5xx 响应，前端接真实上传表单时更容易处理
+- 已增加 `prisma/seed.ts` 与 `npm run db:bootstrap`：当前可用 `generate + db push + seed` 一次性初始化本地数据库
+- seed 会写入 queue/jobs/trash/loras 相关的最小样例数据，便于本机先跑通 API 与页面
 - 目前尚未接入真实数据库迁移和完整业务逻辑
 
 ## Next Suggested Milestones

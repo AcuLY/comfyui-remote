@@ -1,10 +1,10 @@
 # Development Todo
 
 ## Priority A: make local run viable
-- [ ] 准备 `.env.example` / 本地启动说明统一化
+- [x] 准备 `.env.example` / 本地启动说明统一化
 - [ ] 确认可在本机完成 `npm install`
 - [ ] 确认可在本机完成 `npm run lint`
-- [ ] 增加数据库初始化说明或 seed 方案
+- [x] 增加数据库初始化说明或 seed 方案
 - [x] 让前端至少有一部分页面从真实 API 读数据
 
 ## Priority B: review flow
