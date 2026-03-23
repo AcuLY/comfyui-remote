@@ -16,7 +16,8 @@
 
 ## Priority C: job flow
 - [ ] 完善 jobs API
-- [ ] 完善 job detail / edit 页与真实数据衔接
+- [x] 完善 job detail / edit 页与真实数据衔接（先完成只读加载与 fallback）
+- [ ] 预留 job 参数保存动作与 position 参数保存动作
 - [ ] 预留 run-all / run-single-position 的真实逻辑入口
 
 ## Priority D: lora flow
