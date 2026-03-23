@@ -62,6 +62,7 @@ Current state:
 - jobs 列表页已接上 query-string 驱动的筛选 UI（search/status/enabledOnly/hasPending），支持关键词搜索、状态过滤、仅看有启用 position、仅看 latest run 仍有 pending 审核的任务，也保留 `/jobs?...` 可分享/可回放的筛选链接
 - jobs 列表页已新增“新建任务”入口；frontend 新增 `/jobs/new` 页面与真实 server action 表单，可选择 Character / Scene / Style / Position templates 并直接调用 `POST /api/jobs` 创建 draft
 - `/jobs/new` 的创建动作现已在成功后直接 `redirect` 到 `/jobs/:id/edit`，并为表单补上提交态 `aria-busy`；本轮已再次确认 frontend worktree `cmd /c npm run lint` 与 `cmd /c npm run build` 可通过（提交：`53c1294` `fix(jobs): redirect after draft creation`）
+- 已补一条最小创建链路验证记录：当前本机链路已具备 `/jobs/new` 读取真实 `GET /api/job-create-options`、提交真实 `POST /api/jobs`、成功后由 frontend server action `redirect` 到 `/jobs/:id/edit` 的闭环；本轮基于最新已推送 frontend/backend 提交与再次检查的三个 worktree 状态，将该链路记录为当前最小可操作启动路径
 
 ### Backend
 Latest pushed commits:
@@ -116,11 +117,10 @@ Current state:
 - 本轮再次验证 frontend/backend worktree `cmd /c npm run build` 可通过（包含 job create options API 与 `/jobs/new` 页面）
 
 ## Next Suggested Milestones
-1. 验证并补齐本机最小启动链路（至少形成一条从创建 job 到进入 detail/edit 的可操作路径）
-2. 视需要补一次本机手动验证记录（seed -> enqueue -> local worker pass -> ComfyUI history -> output images）
-3. 继续减少 jobs / queue / detail 页对 mock fallback 的依赖，并补真实启动链路中的剩余缺口
-4. 视情况补文件移动/归档服务（若后续 review flow 需要从 raw 拆分 kept/trashed 路径）
-5. 视需要把 Character / Scene / Style / PositionTemplate 管理页或配置来源补成更正式的可维护入口
+1. 视需要补一次本机手动验证记录（seed -> enqueue -> local worker pass -> ComfyUI history -> output images）
+2. 继续减少 jobs / queue / detail 页对 mock fallback 的依赖，并补真实启动链路中的剩余缺口
+3. 视情况补文件移动/归档服务（若后续 review flow 需要从 raw 拆分 kept/trashed 路径）
+4. 视需要把 Character / Scene / Style / PositionTemplate 管理页或配置来源补成更正式的可维护入口
 
 ## Cron Job
 - Job ID: `44d5a257-0ff6-4dee-a6e9-e249a0399055`
