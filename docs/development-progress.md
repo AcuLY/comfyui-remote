@@ -53,8 +53,8 @@ Current state:
 
 ### Backend
 Latest pushed commits:
-- `b862dbd` feat(api): add job detail endpoint
-- `b0e2736` feat(api): add run review detail endpoint
+- `9765617` feat(api): add job run enqueue endpoints
+- `3ba50d2` feat(api): add job patch endpoints
 
 Current state:
 - 已有 Prisma schema 草案
@@ -70,15 +70,17 @@ Current state:
 - LoRA 上传现在会把 category / env 配置错误区分成明确的 4xx/5xx 响应，前端接真实上传表单时更容易处理
 - 已增加 `prisma/seed.ts` 与 `npm run db:bootstrap`：当前可用 `generate + db push + seed` 一次性初始化本地数据库
 - seed 会写入 queue/jobs/trash/loras 相关的最小样例数据，便于本机先跑通 API 与页面
-- 已确认 backend worktree 当前 `npm run lint` 可通过（包含本轮 jobs PATCH / position PATCH 接口改动）
+- 已确认 backend worktree 当前 `npm run lint` 可通过（包含本轮 jobs run enqueue 接口改动）
 - 已补上 job 保存入口：`PATCH /api/jobs/:id` 可保存任务级 prompt / LoRA / aspect ratio / batch size 覆盖
 - 已补上 position 保存入口：`PATCH /api/jobs/:id/positions/:jobPositionId` 可保存 position 级 prompt / aspect ratio / batch size / seed policy 覆盖
-- jobs service 已统一 PATCH 请求字段白名单、空 body 校验、ID 校验与错误映射，便于前端下一步直接接保存动作
-- 目前尚未接入真实数据库迁移和完整业务逻辑
+- 已补上最小可用的 run 入口：`POST /api/jobs/:jobId/run` 会为所有启用 position 创建 `queued` 的 `PositionRun`，递增 `runIndex`，更新 `latestRunId`，必要时把 job 状态置为 `queued`
+- 已补上最小可用的单 position run 入口：`POST /api/jobs/:jobId/positions/:jobPositionId/run` 会校验 position 属于当前 job 且已启用，再创建单条 `queued` run
+- jobs service 已统一 PATCH / run 请求的 ID 校验与错误映射，空 position / disabled position 会返回明确 409，便于前端下一步直接接运行按钮
+- 目前尚未接入 worker 消费队列、ComfyUI 真正执行链路和完整启动验证
 
 ## Next Suggested Milestones
 1. 验证并补齐本机 `npm install` / 全仓 `npm run lint` / 最小启动链路
-2. 补齐 jobs API 的 run-all / run-single-position 真实入口，并让前端能触发
+2. 让前端 job detail 页接上 run-all / run-single-position 真实触发按钮与反馈
 3. 接入 worker scaffold 与 ComfyUI run pipeline
 4. 预留图片缩略图生成与文件移动服务
 5. 视情况补宫格页提交后的局部状态优化（如成功后清空选择 / 更细粒度提示）
