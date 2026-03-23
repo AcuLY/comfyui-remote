@@ -448,21 +448,47 @@ export async function listJobs() {
       character: true,
       scenePreset: true,
       stylePreset: true,
-      positions: true,
+      positions: {
+        select: {
+          id: true,
+          enabled: true,
+          latestRunId: true,
+        },
+      },
     },
     take: 50,
   });
 
-  return jobs.map((job) => ({
-    id: job.id,
-    title: job.title,
-    status: job.status,
-    updatedAt: job.updatedAt.toISOString(),
-    characterName: job.character.name,
-    sceneName: job.scenePreset?.name ?? "未设置",
-    styleName: job.stylePreset?.name ?? "未设置",
-    positionCount: job.positions.length,
-  }));
+  const latestRunIds = jobs.flatMap((job) =>
+    job.positions
+      .map((position) => position.latestRunId)
+      .filter((runId): runId is string => runId !== null),
+  );
+
+  const latestRunsById = await getLatestRunsById(latestRunIds);
+
+  return jobs.map((job) => {
+    const latestRun = job.positions
+      .map((position) => (position.latestRunId ? latestRunsById.get(position.latestRunId) ?? null : null))
+      .filter((run): run is LatestRunRecord => run !== null)
+      .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())[0] ?? null;
+
+    return {
+      id: job.id,
+      title: job.title,
+      status: job.status,
+      updatedAt: job.updatedAt.toISOString(),
+      characterName: job.character.name,
+      sceneName: job.scenePreset?.name ?? "未设置",
+      styleName: job.stylePreset?.name ?? "未设置",
+      positionCount: job.positions.length,
+      enabledPositionCount: job.positions.filter((position) => position.enabled).length,
+      latestRunAt: latestRun?.createdAt.toISOString() ?? null,
+      latestRunStatus: latestRun?.status ?? null,
+      latestRunPendingCount: latestRun ? summarizeRunImages(latestRun.images).pendingCount : 0,
+      latestRunTotalCount: latestRun ? summarizeRunImages(latestRun.images).totalCount : 0,
+    };
+  });
 }
 
 export async function getJobDetail(jobId: string) {
