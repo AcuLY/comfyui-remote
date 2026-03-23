@@ -1,36 +1,32 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ComfyUI Remote
 
-## Getting Started
+移动优先的 ComfyUI 管理后台，目标是把大任务管理、批量审图、回收站、LoRA 上传、参数编辑和后续 Agent 操作整合进一个仓库。
 
-First, run the development server:
+## 当前结构
+- `src/app/queue`：待审核队列、宫格审核、单图查看
+- `src/app/jobs`：大任务列表与详情骨架
+- `src/app/trash`：回收站页
+- `src/app/assets/loras`：LoRA 资源页
+- `prisma/`：数据库模型草案
+- `docs/design-v0.1.md`：产品与架构设计文档
 
+## 开发方式
+- 前端分支：`frontend`
+- 后端分支：`backend`
+- 整合分支：`main`
+
+每次提交遵循 Conventional Commits，并在提交后立即 push 到远程对应分支。
+
+## 本地运行
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+打开 `http://localhost:3000`。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 后续计划
+1. 完成前端交互与真实数据接入
+2. 接入 Prisma + PostgreSQL
+3. 增加 API / worker / 文件上传
+4. 打通 ComfyUI HTTP API

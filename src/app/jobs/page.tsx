@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { Copy, Play, Sparkles } from "lucide-react";
+import { PageHeader } from "@/components/page-header";
 import { SectionCard } from "@/components/section-card";
 import { jobs } from "@/lib/mock-data";
 
 export default function JobsPage() {
   return (
     <div className="space-y-4">
-      <SectionCard title="大任务" subtitle="支持复制任务、运行整组、运行单个 position。">
+      <PageHeader title="大任务" description="管理 Character、场景、风格与 position 组合。" />
+      <SectionCard title="任务列表" subtitle="支持复制任务、运行整组、运行单个 position。">
         <div className="space-y-3">
           {jobs.map((job) => (
             <div key={job.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
