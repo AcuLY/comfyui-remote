@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { fail, ok } from "@/lib/api-response";
-import { listJobs, mapJobError } from "@/server/services/job-service";
+import { createJob, listJobs, mapJobError } from "@/server/services/job-service";
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,6 +17,19 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST() {
-  return fail("Job creation is not implemented yet", 501);
+export async function POST(request: Request) {
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return fail("Invalid JSON body", 400);
+  }
+
+  try {
+    const data = await createJob(body);
+    return ok(data, { status: 201 });
+  } catch (error) {
+    const mapped = mapJobError(error);
+    return fail(mapped.message, mapped.status, mapped.details);
+  }
 }

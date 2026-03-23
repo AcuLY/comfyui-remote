@@ -10,6 +10,15 @@ export type JobUpdateInput = {
   batchSize?: number | null;
 };
 
+export type JobCreateInput = {
+  title: string;
+  characterId: string;
+  scenePresetId: string | null;
+  stylePresetId: string | null;
+  positionTemplateIds: string[];
+  notes: string | null;
+};
+
 export type JobPositionUpdateInput = {
   positivePrompt?: string | null;
   negativePrompt?: string | null;
@@ -396,6 +405,43 @@ function buildCopySlug(slug: string, copyNumber: number) {
   return copyNumber === 1 ? `${slug}-copy` : `${slug}-copy-${copyNumber}`;
 }
 
+function slugifyJobTitle(title: string) {
+  const normalizedTitle = title
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+  const slug = normalizedTitle
+    .replace(/[^\p{Letter}\p{Number}]+/gu, "-")
+    .replace(/^-+|-+$/g, "");
+
+  return slug || "job";
+}
+
+function buildUniqueJobSlug(baseSlug: string, suffixNumber: number) {
+  return suffixNumber === 1 ? baseSlug : `${baseSlug}-${suffixNumber}`;
+}
+
+async function resolveUniqueJobSlug(
+  tx: Prisma.TransactionClient,
+  title: string,
+) {
+  const baseSlug = slugifyJobTitle(title);
+
+  for (let suffixNumber = 1; suffixNumber <= 100; suffixNumber += 1) {
+    const slug = buildUniqueJobSlug(baseSlug, suffixNumber);
+    const existingJob = await tx.completeJob.findUnique({
+      where: { slug },
+      select: { id: true },
+    });
+
+    if (!existingJob) {
+      return slug;
+    }
+  }
+
+  throw new Error("JOB_SLUG_EXHAUSTED");
+}
+
 async function resolveUniqueJobCopyIdentity(
   tx: Prisma.TransactionClient,
   job: Pick<QueuableJobRecord, "title" | "slug">,
@@ -708,6 +754,107 @@ export async function getJobPositionDetail(jobId: string, jobPositionId: string)
   const latestRunsById = await getLatestRunsById(latestRunIds);
 
   return serializeJobPosition(position, latestRunsById);
+}
+
+export async function createJob(input: JobCreateInput) {
+  const jobId = await db.$transaction(async (tx: Prisma.TransactionClient) => {
+    const [character, scenePreset, stylePreset, positionTemplates] = await Promise.all([
+      tx.character.findUnique({
+        where: { id: input.characterId },
+        select: {
+          id: true,
+          prompt: true,
+          loraPath: true,
+        },
+      }),
+      input.scenePresetId
+        ? tx.scenePreset.findUnique({
+            where: { id: input.scenePresetId },
+            select: {
+              id: true,
+              prompt: true,
+            },
+          })
+        : Promise.resolve(null),
+      input.stylePresetId
+        ? tx.stylePreset.findUnique({
+            where: { id: input.stylePresetId },
+            select: {
+              id: true,
+              prompt: true,
+            },
+          })
+        : Promise.resolve(null),
+      tx.positionTemplate.findMany({
+        where: {
+          id: { in: input.positionTemplateIds },
+        },
+        select: {
+          id: true,
+          enabled: true,
+        },
+      }),
+    ]);
+
+    if (!character) {
+      throw new Error("CHARACTER_NOT_FOUND");
+    }
+
+    if (input.scenePresetId && !scenePreset) {
+      throw new Error("SCENE_PRESET_NOT_FOUND");
+    }
+
+    if (input.stylePresetId && !stylePreset) {
+      throw new Error("STYLE_PRESET_NOT_FOUND");
+    }
+
+    const positionTemplateById = new Map(
+      positionTemplates.map((positionTemplate): [string, { id: string; enabled: boolean }] => [
+        positionTemplate.id,
+        positionTemplate,
+      ]),
+    );
+    const orderedPositionTemplates = input.positionTemplateIds.map((positionTemplateId) =>
+      positionTemplateById.get(positionTemplateId),
+    );
+
+    if (orderedPositionTemplates.some((positionTemplate) => !positionTemplate)) {
+      throw new Error("POSITION_TEMPLATE_NOT_FOUND");
+    }
+
+    if (orderedPositionTemplates.some((positionTemplate) => !positionTemplate?.enabled)) {
+      throw new Error("POSITION_TEMPLATE_DISABLED");
+    }
+
+    const slug = await resolveUniqueJobSlug(tx, input.title);
+    const createdJob = await tx.completeJob.create({
+      data: {
+        title: input.title,
+        slug,
+        status: JobStatus.draft,
+        characterId: character.id,
+        scenePresetId: scenePreset?.id ?? null,
+        stylePresetId: stylePreset?.id ?? null,
+        characterPrompt: character.prompt,
+        characterLoraPath: character.loraPath,
+        scenePrompt: scenePreset?.prompt ?? null,
+        stylePrompt: stylePreset?.prompt ?? null,
+        notes: input.notes,
+        positions: {
+          create: orderedPositionTemplates.map((positionTemplate, index) => ({
+            positionTemplateId: positionTemplate!.id,
+            sortOrder: index + 1,
+            enabled: true,
+          })),
+        },
+      },
+      select: { id: true },
+    });
+
+    return createdJob.id;
+  });
+
+  return getJobDetail(jobId);
 }
 
 export async function updateJob(jobId: string, input: JobUpdateInput) {

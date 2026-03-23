@@ -1,5 +1,6 @@
 import { Prisma } from "@/generated/prisma";
 import {
+  createJob as createJobInRepository,
   copyJob as copyJobInRepository,
   enqueueJobPositionRun as enqueueJobPositionRunInRepository,
   enqueueJobRuns as enqueueJobRunsInRepository,
@@ -7,6 +8,15 @@ import {
   updateJob as updateJobInRepository,
   updateJobPosition as updateJobPositionInRepository,
 } from "@/server/repositories/job-repository";
+
+type CreateJobRequestBody = {
+  title?: unknown;
+  characterId?: unknown;
+  scenePresetId?: unknown;
+  stylePresetId?: unknown;
+  positionTemplateIds?: unknown;
+  notes?: unknown;
+};
 
 type UpdateJobRequestBody = {
   characterPrompt?: unknown;
@@ -31,6 +41,15 @@ type UpdateJobPositionRequestBody = {
   batchSize?: unknown;
   seedPolicy?: unknown;
 };
+
+const JOB_CREATE_FIELDS = [
+  "title",
+  "characterId",
+  "scenePresetId",
+  "stylePresetId",
+  "positionTemplateIds",
+  "notes",
+] as const;
 
 const JOB_UPDATE_FIELDS = [
   "characterPrompt",
@@ -66,6 +85,20 @@ function parsePatchRequestBody<T extends Record<string, unknown>>(body: unknown)
   }
 
   return body as T;
+}
+
+function normalizeRequiredStringField(value: unknown, fieldName: string) {
+  if (typeof value !== "string") {
+    throw new JobServiceError(`${fieldName} is required`, 400);
+  }
+
+  const normalizedValue = value.trim();
+
+  if (!normalizedValue) {
+    throw new JobServiceError(`${fieldName} is required`, 400);
+  }
+
+  return normalizedValue;
 }
 
 function normalizeRequiredId(value: string, fieldName: string) {
@@ -118,6 +151,80 @@ function normalizeNullableStringField(value: unknown, fieldName: string) {
   }
 
   return value;
+}
+
+function normalizeNullableIdField(value: unknown, fieldName: string) {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (value === null) {
+    return null;
+  }
+
+  if (typeof value !== "string") {
+    throw new JobServiceError(`${fieldName} must be a string or null`, 400);
+  }
+
+  const normalizedValue = value.trim();
+
+  if (!normalizedValue) {
+    throw new JobServiceError(`${fieldName} must not be empty`, 400);
+  }
+
+  return normalizedValue;
+}
+
+function normalizeNullableNotesField(value: unknown, fieldName: string) {
+  if (value === undefined || value === null) {
+    return value ?? null;
+  }
+
+  if (typeof value !== "string") {
+    throw new JobServiceError(`${fieldName} must be a string or null`, 400);
+  }
+
+  const normalizedValue = value.trim();
+  return normalizedValue ? normalizedValue : null;
+}
+
+function normalizePositionTemplateIds(value: unknown) {
+  if (!Array.isArray(value) || value.length === 0) {
+    throw new JobServiceError("positionTemplateIds must be a non-empty array", 400);
+  }
+
+  const normalizedIds = value.map((entry, index) => {
+    if (typeof entry !== "string") {
+      throw new JobServiceError(`positionTemplateIds[${index}] must be a string`, 400);
+    }
+
+    const normalizedValue = entry.trim();
+
+    if (!normalizedValue) {
+      throw new JobServiceError(`positionTemplateIds[${index}] must not be empty`, 400);
+    }
+
+    return normalizedValue;
+  });
+  const seenIds = new Set<string>();
+  const duplicateIds: string[] = [];
+
+  for (const id of normalizedIds) {
+    if (seenIds.has(id)) {
+      duplicateIds.push(id);
+      continue;
+    }
+
+    seenIds.add(id);
+  }
+
+  if (duplicateIds.length > 0) {
+    throw new JobServiceError("positionTemplateIds must not contain duplicates", 400, {
+      duplicatePositionTemplateIds: [...new Set(duplicateIds)],
+    });
+  }
+
+  return normalizedIds;
 }
 
 function normalizeOptionalSearch(value: unknown) {
@@ -224,6 +331,20 @@ export async function listJobs(query: ListJobsQuery = {}) {
   });
 }
 
+export async function createJob(body: unknown) {
+  const parsedBody = parsePatchRequestBody<CreateJobRequestBody>(body);
+  ensureSupportedFields(parsedBody, JOB_CREATE_FIELDS);
+
+  return createJobInRepository({
+    title: normalizeRequiredStringField(parsedBody.title, "title"),
+    characterId: normalizeRequiredStringField(parsedBody.characterId, "characterId"),
+    scenePresetId: normalizeNullableIdField(parsedBody.scenePresetId, "scenePresetId") ?? null,
+    stylePresetId: normalizeNullableIdField(parsedBody.stylePresetId, "stylePresetId") ?? null,
+    positionTemplateIds: normalizePositionTemplateIds(parsedBody.positionTemplateIds),
+    notes: normalizeNullableNotesField(parsedBody.notes, "notes"),
+  });
+}
+
 export async function updateJob(jobId: string, body: unknown) {
   const parsedBody = parsePatchRequestBody<UpdateJobRequestBody>(body);
   ensureSupportedFields(parsedBody, JOB_UPDATE_FIELDS);
@@ -311,16 +432,37 @@ export function mapJobError(error: unknown) {
   }
 
   switch (error.message) {
+    case "CHARACTER_NOT_FOUND":
+      return { message: "Character not found", status: 404 };
+    case "SCENE_PRESET_NOT_FOUND":
+      return { message: "Scene preset not found", status: 404 };
+    case "STYLE_PRESET_NOT_FOUND":
+      return { message: "Style preset not found", status: 404 };
     case "JOB_NOT_FOUND":
       return { message: "Job not found", status: 404 };
+    case "POSITION_TEMPLATE_NOT_FOUND":
+      return { message: "Position template not found", status: 404 };
+    case "POSITION_TEMPLATE_DISABLED":
+      return { message: "Position template is disabled", status: 409 };
     case "JOB_POSITION_NOT_FOUND":
       return { message: "Job position not found", status: 404 };
     case "JOB_HAS_NO_ENABLED_POSITIONS":
       return { message: "Job has no enabled positions to queue", status: 409 };
     case "JOB_POSITION_DISABLED":
       return { message: "Job position is disabled", status: 409 };
+    case "JOB_SLUG_EXHAUSTED":
+    case "JOB_COPY_IDENTITY_EXHAUSTED":
+      return { message: "Unable to generate a unique job identity", status: 409 };
     default:
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === "P2002") {
+          return {
+            message: "Database uniqueness check failed",
+            status: 409,
+            details: error.meta?.target ?? error.message,
+          };
+        }
+
         return {
           message: "Database request failed",
           status: 500,
