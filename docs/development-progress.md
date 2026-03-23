@@ -63,6 +63,8 @@ Current state:
 - jobs 列表页已新增“新建任务”入口；frontend 新增 `/jobs/new` 页面与真实 server action 表单，可选择 Character / Scene / Style / Position templates 并直接调用 `POST /api/jobs` 创建 draft
 - `/jobs/new` 的创建动作现已在成功后直接 `redirect` 到 `/jobs/:id/edit`，并为表单补上提交态 `aria-busy`；本轮已再次确认 frontend worktree `cmd /c npm run lint` 与 `cmd /c npm run build` 可通过（提交：`53c1294` `fix(jobs): redirect after draft creation`）
 - 已补一条最小创建链路验证记录：当前本机链路已具备 `/jobs/new` 读取真实 `GET /api/job-create-options`、提交真实 `POST /api/jobs`、成功后由 frontend server action `redirect` 到 `/jobs/:id/edit` 的闭环；本轮基于最新已推送 frontend/backend 提交与再次检查的三个 worktree 状态，将该链路记录为当前最小可操作启动路径
+- 单图查看页 `/queue/:runId/images/:imageId` 已改为优先读取真实 `GET /api/runs/:id` 返回的 run 图片数据，不再是纯 mock-only 页面；单图页的“保留 / 删除”按钮也已复用真实 review server action，支持直接提交单张 keep / trash 并在成功后 refresh 当前 run 数据
+- 已再次确认 frontend worktree `cmd /c npm run lint` 与 `cmd /c npm run build` 可通过（包含本轮单图页真实数据与单张审图动作接线）
 
 ### Backend
 Latest pushed commits:
