@@ -62,7 +62,7 @@ Current state:
 6. 接入 worker scaffold 与 ComfyUI run pipeline
 
 ## Cron Job
-- Job ID: `PENDING_CREATE`
+- Job ID: `44d5a257-0ff6-4dee-a6e9-e249a0399055`
 - Schedule: every 15 minutes
 - Mode: isolated, no-deliver
 
