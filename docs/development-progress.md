@@ -51,13 +51,14 @@ Current state:
 - 表单现在会处理缺失 ID、batch size 非法值、接口失败提示与提交态禁用，方便本机先验证最小保存链路
 - job detail 页的“运行整组 / 运行本节”已接到真实 `POST /api/jobs/:jobId/run` 与 `POST /api/jobs/:jobId/positions/:jobPositionId/run`，支持提交态禁用、成功/失败反馈与成功后 refresh/revalidate
 - 禁用状态的 position 现在会在按钮层直接阻止单独运行，避免前端继续误触发已知会被后端拒绝的动作
-- 已确认 frontend worktree 当前 `npm run lint` 可通过（包含本轮 run 按钮真实接线）
+- 宫格审核页提交成功后现在会立即清空本地多选，并自动忽略当前 run 数据里已不存在的旧选中项，减少 refresh 前后残留勾选带来的误操作
+- 已确认 frontend worktree 当前 `npm run lint` 可通过（包含本轮宫格页提交后本地状态收口）
 
 ### Backend
 Latest pushed commits:
+- `3fdcd3e` feat(review): move trashed images in managed storage
 - `c54c91a` feat(images): generate run thumbnails and dimensions
 - `8572ffa` feat(worker): persist ComfyUI outputs to image results
-- `e6b8e74` feat(worker): add local pass trigger route
 
 Current state:
 - 已有 Prisma schema 草案
