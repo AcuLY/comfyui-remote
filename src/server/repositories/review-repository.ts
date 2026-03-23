@@ -6,6 +6,62 @@ type ReviewableImage = {
   filePath: string;
 };
 
+export async function getRunReviewGroup(runId: string) {
+  const run = await db.positionRun.findUnique({
+    where: { id: runId },
+    select: {
+      id: true,
+      createdAt: true,
+      completeJob: {
+        select: {
+          title: true,
+          character: {
+            select: { name: true },
+          },
+        },
+      },
+      completeJobPosition: {
+        select: {
+          positionTemplate: {
+            select: { name: true },
+          },
+        },
+      },
+      images: {
+        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+        select: {
+          id: true,
+          filePath: true,
+          thumbPath: true,
+          reviewStatus: true,
+        },
+      },
+    },
+  });
+
+  if (!run) {
+    throw new Error("RUN_NOT_FOUND");
+  }
+
+  const images = run.images.map((image, index) => ({
+    id: image.id,
+    src: image.thumbPath ?? image.filePath,
+    label: String(index + 1).padStart(2, "0"),
+    status: image.reviewStatus,
+  }));
+
+  return {
+    id: run.id,
+    title: run.completeJob.title,
+    characterName: run.completeJob.character.name,
+    positionName: run.completeJobPosition.positionTemplate.name,
+    createdAt: run.createdAt,
+    pendingCount: images.filter((image) => image.status === ReviewStatus.pending).length,
+    totalCount: images.length,
+    images,
+  };
+}
+
 async function ensureRunExists(runId: string) {
   const run = await db.positionRun.findUnique({
     where: { id: runId },
