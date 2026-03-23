@@ -29,6 +29,7 @@
 ## Current Status
 ### Frontend
 Latest pushed commits:
+- `53c1294` fix(jobs): redirect after draft creation
 - `a898978` feat(frontend): wire job edit forms to patch api
 - `c7202ef` feat(review): wire queue batch actions to api
 
@@ -59,7 +60,8 @@ Current state:
 - jobs 列表页现在会展示后端返回的真实启用 position 数、最近一次 run 状态与 pending/total 审核统计，并把首页“编辑/运行整组”入口直接接到真实页面与 server action，继续减少 jobs 首页对 mock 信息的依赖
 - jobs 列表页的“复制”按钮已接到真实 server action：会调用后端 `POST /api/jobs/:jobId/copy` 复制整条任务及其 position 覆盖，创建新的 draft，并在成功后提供进入新草稿编辑页的入口
 - jobs 列表页已接上 query-string 驱动的筛选 UI（search/status/enabledOnly/hasPending），支持关键词搜索、状态过滤、仅看有启用 position、仅看 latest run 仍有 pending 审核的任务，也保留 `/jobs?...` 可分享/可回放的筛选链接
-- jobs 列表页已新增“新建任务”入口；frontend 新增 `/jobs/new` 页面与真实 server action 表单，可选择 Character / Scene / Style / Position templates 并直接调用 `POST /api/jobs` 创建 draft，成功后可一跳进入新草稿编辑页
+- jobs 列表页已新增“新建任务”入口；frontend 新增 `/jobs/new` 页面与真实 server action 表单，可选择 Character / Scene / Style / Position templates 并直接调用 `POST /api/jobs` 创建 draft
+- `/jobs/new` 的创建动作现已在成功后直接 `redirect` 到 `/jobs/:id/edit`，并为表单补上提交态 `aria-busy`；本轮已再次确认 frontend worktree `cmd /c npm run lint` 与 `cmd /c npm run build` 可通过（提交：`53c1294` `fix(jobs): redirect after draft creation`）
 
 ### Backend
 Latest pushed commits:

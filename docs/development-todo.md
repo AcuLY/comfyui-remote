@@ -44,7 +44,8 @@
 - [x] 宫格页提交后的局部状态优化（成功后清空选择 / 忽略已失效选中项）
 
 - [x] 补 frontend 的“新建任务”最小入口（表单或 server action），接上已完成的 `POST /api/jobs`
-- [ ] 记录并验证一条本机最小创建链路（打开 `/jobs/new` -> 创建 draft -> 跳转到 edit/detail）
+- [x] 让 `/jobs/new` 在创建 draft 成功后自动跳转到 edit/detail（已接到真实 server action redirect）
+- [ ] 记录并验证一条本机最小创建链路（打开 `/jobs/new` -> 创建 draft -> 自动跳转到 edit/detail，并补一条人工本机验证记录）
 
 ## Working Notes
 - 前后端并行开发，分别在 `frontend` / `backend` 分支提交并 push
