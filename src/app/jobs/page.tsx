@@ -1,8 +1,31 @@
 import Link from "next/link";
-import { Copy, Play, Sparkles } from "lucide-react";
+import { Copy, Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { SectionCard } from "@/components/section-card";
 import { getJobs } from "@/lib/server-data";
+import type { JobCard } from "@/lib/types";
+import { JobRunButton } from "./[jobId]/job-run-controls";
+
+function formatLatestRunLine(job: JobCard) {
+  if (!job.latestRunAt || !job.latestRunStatus) {
+    return "最近运行：暂无";
+  }
+
+  const reviewSummary =
+    typeof job.latestRunPendingCount === "number" && typeof job.latestRunTotalCount === "number"
+      ? ` · 审核 ${job.latestRunPendingCount}/${job.latestRunTotalCount} pending`
+      : "";
+
+  return `最近运行：${job.latestRunStatus} · ${job.latestRunAt}${reviewSummary}`;
+}
+
+function formatPositionLine(job: JobCard) {
+  if (typeof job.enabledPositionCount === "number") {
+    return `${job.enabledPositionCount}/${job.positionCount} 个启用 position`;
+  }
+
+  return `${job.positionCount} 个 position`;
+}
 
 export default async function JobsPage() {
   const jobs = await getJobs();
@@ -20,11 +43,24 @@ export default async function JobsPage() {
                 </div>
                 <span className="rounded-full border border-white/10 px-2 py-1 text-[11px] text-zinc-300">{job.status}</span>
               </div>
-              <div className="mt-3 text-xs text-zinc-500">最近更新：{job.updatedAt} · {job.positionCount} 个 position</div>
-              <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
-                <button className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-zinc-200">编辑</button>
-                <button className="inline-flex items-center justify-center gap-1 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-zinc-200"><Copy className="size-3.5" /> 复制</button>
-                <button className="inline-flex items-center justify-center gap-1 rounded-xl border border-sky-500/20 bg-sky-500/10 px-3 py-2 text-sky-300"><Play className="size-3.5" /> 运行</button>
+              <div className="mt-3 space-y-1 text-xs text-zinc-500">
+                <div>最近更新：{job.updatedAt}</div>
+                <div>{formatPositionLine(job)}</div>
+                <div>{formatLatestRunLine(job)}</div>
+              </div>
+              <div className="mt-4 grid gap-2 text-xs md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                <Link
+                  href={`/jobs/${job.id}/edit`}
+                  className="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-zinc-200"
+                >
+                  编辑
+                </Link>
+                <button className="inline-flex items-center justify-center gap-1 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-zinc-200">
+                  <Copy className="size-3.5" /> 复制
+                </button>
+                <div className="md:col-span-2">
+                  <JobRunButton jobId={job.id} />
+                </div>
               </div>
               <div className="mt-3 flex justify-end">
                 <Link href={`/jobs/${job.id}`} className="inline-flex items-center gap-1 text-xs text-sky-300">查看详情 <Sparkles className="size-3.5" /></Link>

@@ -38,6 +38,11 @@ export type JobCard = {
   status: "draft" | "queued" | "running" | "partial_done" | "done" | "failed";
   updatedAt: string;
   positionCount: number;
+  enabledPositionCount?: number;
+  latestRunAt?: string | null;
+  latestRunStatus?: "queued" | "running" | "done" | "failed" | "cancelled" | null;
+  latestRunPendingCount?: number;
+  latestRunTotalCount?: number;
 };
 
 export type TrashItem = {
