@@ -12,8 +12,12 @@ export function ReviewGrid({ group }: { group: ReviewGroup }) {
   const submitAction = useMemo(() => submitReviewSelectionAction.bind(null, group.id), [group.id]);
   const [state, formAction, pending] = useActionState(submitAction, initialReviewMutationState);
 
-  const selectedCount = selectedIds.length;
-  const hiddenImageIds = selectedIds.join(",");
+  const availableIds = useMemo(() => new Set(group.images.map((image) => image.id)), [group.images]);
+  const effectiveSelectedIds = state.status === "success"
+    ? []
+    : selectedIds.filter((imageId) => availableIds.has(imageId));
+  const selectedCount = effectiveSelectedIds.length;
+  const hiddenImageIds = effectiveSelectedIds.join(",");
   const feedbackClassName =
     state.status === "error"
       ? "border-rose-500/20 bg-rose-500/10 text-rose-200"
@@ -33,7 +37,7 @@ export function ReviewGrid({ group }: { group: ReviewGroup }) {
 
       <div className="grid grid-cols-3 gap-3">
         {group.images.map((image) => {
-          const checked = selectedIds.includes(image.id);
+          const checked = effectiveSelectedIds.includes(image.id);
 
           return (
             <div key={image.id} className="group relative overflow-hidden rounded-2xl border border-white/10 bg-[var(--panel-soft)]">
