@@ -1,0 +1,239 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum JobStatus {
+  draft
+  queued
+  running
+  partial_done
+  done
+  failed
+}
+
+enum RunStatus {
+  queued
+  running
+  done
+  failed
+  cancelled
+}
+
+enum ReviewStatus {
+  pending
+  kept
+  trashed
+}
+
+enum ActorType {
+  user
+  system
+  agent
+}
+
+model Character {
+  id          String        @id @default(cuid())
+  name        String
+  slug        String        @unique
+  prompt      String        @db.Text
+  loraPath    String
+  notes       String?       @db.Text
+  isActive    Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  jobs        CompleteJob[]
+}
+
+model ScenePreset {
+  id          String        @id @default(cuid())
+  name        String
+  slug        String        @unique
+  prompt      String        @db.Text
+  notes       String?       @db.Text
+  isActive    Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  jobs        CompleteJob[]
+}
+
+model StylePreset {
+  id          String        @id @default(cuid())
+  name        String
+  slug        String        @unique
+  prompt      String        @db.Text
+  notes       String?       @db.Text
+  isActive    Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  jobs        CompleteJob[]
+}
+
+model PositionTemplate {
+  id                  String                @id @default(cuid())
+  name                String
+  slug                String                @unique
+  prompt              String                @db.Text
+  negativePrompt      String?               @db.Text
+  defaultLoraConfig   Json?
+  defaultAspectRatio  String?
+  defaultBatchSize    Int?                  @default(1)
+  defaultSeedPolicy   String?
+  defaultParams       Json?
+  enabled             Boolean               @default(true)
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  completeJobItems    CompleteJobPosition[]
+}
+
+model CompleteJob {
+  id                    String                @id @default(cuid())
+  title                 String
+  slug                  String                @unique
+  status                JobStatus             @default(draft)
+  characterId           String
+  scenePresetId         String?
+  stylePresetId         String?
+  characterPrompt       String                @db.Text
+  characterLoraPath     String
+  scenePrompt           String?               @db.Text
+  stylePrompt           String?               @db.Text
+  jobLevelOverrides     Json?
+  notes                 String?               @db.Text
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  character             Character             @relation(fields: [characterId], references: [id], onDelete: Restrict)
+  scenePreset           ScenePreset?          @relation(fields: [scenePresetId], references: [id], onDelete: SetNull)
+  stylePreset           StylePreset?          @relation(fields: [stylePresetId], references: [id], onDelete: SetNull)
+  positions             CompleteJobPosition[]
+  runs                  PositionRun[]
+  revisions             JobRevision[]
+
+  @@index([status, updatedAt])
+  @@index([characterId, updatedAt])
+}
+
+model CompleteJobPosition {
+  id                    String            @id @default(cuid())
+  completeJobId         String
+  positionTemplateId    String
+  sortOrder             Int               @default(0)
+  enabled               Boolean           @default(true)
+  positivePrompt        String?           @db.Text
+  negativePrompt        String?           @db.Text
+  aspectRatio           String?
+  batchSize             Int?
+  seedPolicy            String?
+  loraConfig            Json?
+  extraParams           Json?
+  latestRunId           String?
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  completeJob           CompleteJob      @relation(fields: [completeJobId], references: [id], onDelete: Cascade)
+  positionTemplate      PositionTemplate @relation(fields: [positionTemplateId], references: [id], onDelete: Restrict)
+  runs                  PositionRun[]
+
+  @@unique([completeJobId, positionTemplateId])
+  @@index([completeJobId, sortOrder])
+}
+
+model PositionRun {
+  id                    String                @id @default(cuid())
+  completeJobId         String
+  completeJobPositionId String
+  runIndex              Int                   @default(1)
+  status                RunStatus             @default(queued)
+  resolvedConfigSnapshot Json
+  comfyPromptId         String?
+  outputDir             String?
+  errorMessage          String?               @db.Text
+  startedAt             DateTime?
+  finishedAt            DateTime?
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  completeJob           CompleteJob           @relation(fields: [completeJobId], references: [id], onDelete: Cascade)
+  completeJobPosition   CompleteJobPosition   @relation(fields: [completeJobPositionId], references: [id], onDelete: Cascade)
+  images                ImageResult[]
+
+  @@index([status, createdAt])
+  @@index([completeJobId, createdAt])
+  @@index([completeJobPositionId, createdAt])
+}
+
+model ImageResult {
+  id                    String          @id @default(cuid())
+  positionRunId         String
+  filePath              String          @unique
+  thumbPath             String?
+  width                 Int?
+  height                Int?
+  fileSize              BigInt?
+  reviewStatus          ReviewStatus    @default(pending)
+  reviewedAt            DateTime?
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+  positionRun           PositionRun     @relation(fields: [positionRunId], references: [id], onDelete: Cascade)
+  trashRecord           TrashRecord?
+
+  @@index([reviewStatus, createdAt])
+  @@index([positionRunId, createdAt])
+}
+
+model TrashRecord {
+  id                    String       @id @default(cuid())
+  imageResultId         String       @unique
+  originalPath          String
+  trashPath             String
+  reason                String?
+  deletedAt             DateTime     @default(now())
+  restoredAt            DateTime?
+  actorType             ActorType    @default(user)
+  imageResult           ImageResult  @relation(fields: [imageResultId], references: [id], onDelete: Cascade)
+
+  @@index([deletedAt])
+  @@index([restoredAt])
+}
+
+model LoraAsset {
+  id                    String      @id @default(cuid())
+  name                  String
+  category              String
+  fileName              String
+  absolutePath          String      @unique
+  relativePath          String
+  size                  BigInt?
+  source                String?
+  notes                 String?     @db.Text
+  uploadedAt            DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+}
+
+model JobRevision {
+  id                    String      @id @default(cuid())
+  completeJobId         String
+  revisionNumber        Int
+  snapshot              Json
+  createdAt             DateTime    @default(now())
+  actorType             ActorType   @default(user)
+  completeJob           CompleteJob @relation(fields: [completeJobId], references: [id], onDelete: Cascade)
+
+  @@unique([completeJobId, revisionNumber])
+  @@index([completeJobId, createdAt])
+}
+
+model AuditLog {
+  id                    String      @id @default(cuid())
+  entityType            String
+  entityId              String
+  action                String
+  payload               Json?
+  actorType             ActorType   @default(system)
+  createdAt             DateTime    @default(now())
+
+  @@index([entityType, entityId, createdAt])
+  @@index([action, createdAt])
+}
