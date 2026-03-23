@@ -36,8 +36,9 @@
 - [x] 让 worker scaffold 真正消费 queued run（状态流转 / 错误记录）
 - [x] 补一个最小 worker 手动触发入口（本地受控 API）以便验证 queue -> worker 闭环
 - [x] 接入 ComfyUI prompt submit / history polling
-- [ ] 接入 ComfyUI 输出下载与 ImageResult 落库
+- [x] 接入 ComfyUI 输出下载与 ImageResult 落库
 - [ ] 预留图片缩略图生成与文件移动服务
+- [ ] 补图片缩略图 / 宽高元数据提取
 
 ## Working Notes
 - 前后端并行开发，分别在 `frontend` / `backend` 分支提交并 push
