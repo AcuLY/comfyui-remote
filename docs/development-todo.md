@@ -10,7 +10,7 @@
 ## Priority B: review flow
 - [ ] 实现 queue API 与前端对接
 - [ ] 实现 trash API 与前端对接
-- [ ] 实现 keep / trash / restore 的最小真实逻辑
+- [x] 实现 keep / trash / restore 的最小真实逻辑
 - [ ] 让宫格页从 run 真实数据渲染
 
 ## Priority C: job flow

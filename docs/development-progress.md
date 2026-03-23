@@ -43,7 +43,7 @@ Current state:
 
 ### Backend
 Latest pushed commits:
-- `b3a3c52` feat(backend): add prisma repositories and api skeleton
+- `9558560` feat(backend): implement review action endpoints
 - `bb8621b` feat(backend): add lora upload path mapping skeleton
 
 Current state:
@@ -51,6 +51,7 @@ Current state:
 - 已有 db/env/api-response 基础层
 - 已有 queue/jobs/trash/loras API 占位
 - 已有 LoRA 路径映射与上传服务骨架
+- 已实现 keep / trash / restore 的最小真实审图逻辑（Prisma + TrashRecord）
 - 目前尚未接入真实数据库迁移和完整业务逻辑
 
 ## Next Suggested Milestones
