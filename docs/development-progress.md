@@ -29,9 +29,9 @@
 ## Current Status
 ### Frontend
 Latest pushed commits:
+- `b35684f` fix(jobs): wire detail copy action
+- `83dbae7` feat(review): wire single image page to real review data
 - `53c1294` fix(jobs): redirect after draft creation
-- `a898978` feat(frontend): wire job edit forms to patch api
-- `c7202ef` feat(review): wire queue batch actions to api
 
 Current state:
 - 已有待审核队列页
@@ -65,6 +65,7 @@ Current state:
 - 已补一条最小创建链路验证记录：当前本机链路已具备 `/jobs/new` 读取真实 `GET /api/job-create-options`、提交真实 `POST /api/jobs`、成功后由 frontend server action `redirect` 到 `/jobs/:id/edit` 的闭环；本轮基于最新已推送 frontend/backend 提交与再次检查的三个 worktree 状态，将该链路记录为当前最小可操作启动路径
 - 单图查看页 `/queue/:runId/images/:imageId` 已改为优先读取真实 `GET /api/runs/:id` 返回的 run 图片数据，不再是纯 mock-only 页面；单图页的“保留 / 删除”按钮也已复用真实 review server action，支持直接提交单张 keep / trash 并在成功后 refresh 当前 run 数据
 - 已再次确认 frontend worktree `cmd /c npm run lint` 与 `cmd /c npm run build` 可通过（包含本轮单图页真实数据与单张审图动作接线）
+- job detail 页原本只是占位的“复制任务”按钮现已复用真实 `JobCopyButton` / `copyJobAction`，详情页与 jobs 列表页的复制行为一致；frontend worktree 已再次验证 `cmd /c npm run lint` 与 `cmd /c npm run build` 可通过（提交：`b35684f` `fix(jobs): wire detail copy action`）
 
 ### Backend
 Latest pushed commits:

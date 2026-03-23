@@ -48,6 +48,7 @@
 - [x] 记录并验证一条本机最小创建链路（打开 `/jobs/new` -> 创建 draft -> 自动跳转到 edit/detail，并补一条人工本机验证记录）
 
 - [x] 让单图查看页优先读取真实 run 数据，并接上单张 keep / trash 动作
+- [x] 让 job detail 页的“复制任务”入口复用真实 copy action，不再保留死按钮
 
 ## Working Notes
 - 前后端并行开发，分别在 `frontend` / `backend` 分支提交并 push
