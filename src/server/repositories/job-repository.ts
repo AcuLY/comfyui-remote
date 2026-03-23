@@ -1,4 +1,4 @@
-import { Prisma, ReviewStatus } from "@/generated/prisma";
+import { JobStatus, Prisma, ReviewStatus } from "@/generated/prisma";
 import { db } from "@/lib/db";
 
 export type JobUpdateInput = {
@@ -35,9 +35,11 @@ type PositionTemplateRecord = {
   slug: string;
   prompt: string;
   negativePrompt: string | null;
+  defaultLoraConfig: Prisma.JsonValue | null;
   defaultAspectRatio: string | null;
   defaultBatchSize: number | null;
   defaultSeedPolicy: string | null;
+  defaultParams: Prisma.JsonValue | null;
 };
 
 type JobPositionRecord = {
@@ -55,6 +57,40 @@ type JobPositionRecord = {
   extraParams: Prisma.JsonValue | null;
   positionTemplate: PositionTemplateRecord;
   runs: LatestRunRecord[];
+};
+
+type QueuableJobRecord = {
+  id: string;
+  title: string;
+  slug: string;
+  status: JobStatus;
+  characterPrompt: string;
+  characterLoraPath: string;
+  scenePrompt: string | null;
+  stylePrompt: string | null;
+  jobLevelOverrides: Prisma.JsonValue | null;
+  character: {
+    id: string;
+    name: string;
+    slug: string;
+  };
+  scenePreset: {
+    id: string;
+    name: string;
+    slug: string;
+  } | null;
+  stylePreset: {
+    id: string;
+    name: string;
+    slug: string;
+  } | null;
+};
+
+type EnqueuedRunRecord = {
+  id: string;
+  runIndex: number;
+  status: string;
+  createdAt: Date;
 };
 
 function toIsoString(value: Date | null) {
@@ -168,7 +204,9 @@ async function getLatestRunsById(latestRunIds: string[]) {
     },
   });
 
-  return new Map(latestRuns.map((run) => [run.id, run]));
+  return new Map<string, LatestRunRecord>(
+    latestRuns.map((run): [string, LatestRunRecord] => [run.id, run]),
+  );
 }
 
 function toInputJsonObject(value: Prisma.JsonValue | null): Prisma.InputJsonObject {
@@ -206,6 +244,195 @@ function buildJobLevelOverridesUpdate(
   }
 
   return Object.keys(nextOverrides).length > 0 ? nextOverrides : Prisma.DbNull;
+}
+
+function resolveJobOverrideString(
+  overrides: Prisma.InputJsonObject,
+  key: string,
+) {
+  const value = overrides[key];
+  return typeof value === "string" ? value : null;
+}
+
+function resolveJobOverrideInteger(
+  overrides: Prisma.InputJsonObject,
+  key: string,
+) {
+  const value = overrides[key];
+  return typeof value === "number" && Number.isInteger(value) ? value : null;
+}
+
+function mergeJsonObjects(
+  baseValue: Prisma.JsonValue | null,
+  overrideValue: Prisma.JsonValue | null,
+) {
+  const mergedValue = {
+    ...toInputJsonObject(baseValue),
+    ...toInputJsonObject(overrideValue),
+  };
+
+  return Object.keys(mergedValue).length > 0 ? mergedValue : null;
+}
+
+function buildResolvedConfigSnapshot(
+  job: QueuableJobRecord,
+  position: JobPositionRecord,
+): Prisma.InputJsonObject {
+  const jobLevelOverrides = toInputJsonObject(job.jobLevelOverrides);
+  const resolvedAspectRatio =
+    position.aspectRatio ??
+    resolveJobOverrideString(jobLevelOverrides, "aspectRatio") ??
+    position.positionTemplate.defaultAspectRatio;
+  const resolvedBatchSize =
+    position.batchSize ??
+    resolveJobOverrideInteger(jobLevelOverrides, "batchSize") ??
+    position.positionTemplate.defaultBatchSize;
+  const resolvedSeedPolicy =
+    position.seedPolicy ?? position.positionTemplate.defaultSeedPolicy;
+
+  return {
+    job: {
+      id: job.id,
+      title: job.title,
+      slug: job.slug,
+    },
+    character: {
+      id: job.character.id,
+      name: job.character.name,
+      slug: job.character.slug,
+      prompt: job.characterPrompt,
+      loraPath: job.characterLoraPath,
+    },
+    scene: job.scenePreset
+      ? {
+          id: job.scenePreset.id,
+          name: job.scenePreset.name,
+          slug: job.scenePreset.slug,
+          prompt: job.scenePrompt,
+        }
+      : null,
+    style: job.stylePreset
+      ? {
+          id: job.stylePreset.id,
+          name: job.stylePreset.name,
+          slug: job.stylePreset.slug,
+          prompt: job.stylePrompt,
+        }
+      : null,
+    position: {
+      id: position.id,
+      templateId: position.positionTemplateId,
+      name: position.positionTemplate.name,
+      slug: position.positionTemplate.slug,
+      templatePrompt: position.positionTemplate.prompt,
+      positivePrompt: position.positivePrompt,
+      negativePrompt:
+        position.negativePrompt ?? position.positionTemplate.negativePrompt,
+    },
+    parameters: {
+      aspectRatio: resolvedAspectRatio,
+      batchSize: resolvedBatchSize,
+      seedPolicy: resolvedSeedPolicy,
+    },
+    loraConfig: mergeJsonObjects(
+      position.positionTemplate.defaultLoraConfig,
+      position.loraConfig,
+    ),
+    extraParams: mergeJsonObjects(
+      position.positionTemplate.defaultParams,
+      position.extraParams,
+    ),
+  };
+}
+
+function serializeEnqueuedRun(
+  position: Pick<
+    JobPositionRecord,
+    "id" | "sortOrder" | "positionTemplateId" | "positionTemplate"
+  >,
+  run: EnqueuedRunRecord,
+) {
+  return {
+    runId: run.id,
+    jobPositionId: position.id,
+    positionTemplateId: position.positionTemplateId,
+    sortOrder: position.sortOrder,
+    positionName: position.positionTemplate.name,
+    positionSlug: position.positionTemplate.slug,
+    runIndex: run.runIndex,
+    status: run.status,
+    createdAt: run.createdAt.toISOString(),
+  };
+}
+
+async function ensureQueuedJobStatus(
+  tx: Prisma.TransactionClient,
+  job: Pick<QueuableJobRecord, "id" | "status">,
+) {
+  if (job.status === JobStatus.queued || job.status === JobStatus.running) {
+    return job.status;
+  }
+
+  const updatedJob = await tx.completeJob.update({
+    where: { id: job.id },
+    data: { status: JobStatus.queued },
+    select: { status: true },
+  });
+
+  return updatedJob.status;
+}
+
+async function createQueuedRunsForPositions(
+  tx: Prisma.TransactionClient,
+  job: QueuableJobRecord,
+  positions: JobPositionRecord[],
+) {
+  const positionIds = positions.map((position) => position.id);
+  const latestRunIndexes = await tx.positionRun.groupBy({
+    by: ["completeJobPositionId"],
+    where: {
+      completeJobPositionId: { in: positionIds },
+    },
+    _max: {
+      runIndex: true,
+    },
+  });
+
+  const latestRunIndexByPositionId = new Map<string, number>(
+    latestRunIndexes.map((entry): [string, number] => [
+      entry.completeJobPositionId,
+      entry._max.runIndex ?? 0,
+    ]),
+  );
+
+  const queuedRuns: Array<ReturnType<typeof serializeEnqueuedRun>> = [];
+
+  for (const position of positions) {
+    const createdRun = await tx.positionRun.create({
+      data: {
+        completeJobId: job.id,
+        completeJobPositionId: position.id,
+        runIndex: (latestRunIndexByPositionId.get(position.id) ?? 0) + 1,
+        status: "queued",
+        resolvedConfigSnapshot: buildResolvedConfigSnapshot(job, position),
+      },
+      select: {
+        id: true,
+        runIndex: true,
+        status: true,
+        createdAt: true,
+      },
+    });
+
+    await tx.completeJobPosition.update({
+      where: { id: position.id },
+      data: { latestRunId: createdRun.id },
+    });
+
+    queuedRuns.push(serializeEnqueuedRun(position, createdRun));
+  }
+
+  return queuedRuns;
 }
 
 export async function listJobs() {
@@ -469,4 +696,181 @@ export async function updateJobPosition(
   });
 
   return getJobPositionDetail(jobId, jobPositionId);
+}
+
+export async function enqueueJobRuns(jobId: string) {
+  return db.$transaction(async (tx: Prisma.TransactionClient) => {
+    const job = await tx.completeJob.findUnique({
+      where: { id: jobId },
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        status: true,
+        characterPrompt: true,
+        characterLoraPath: true,
+        scenePrompt: true,
+        stylePrompt: true,
+        jobLevelOverrides: true,
+        character: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+        scenePreset: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+        stylePreset: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+        positions: {
+          where: { enabled: true },
+          orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+          include: {
+            positionTemplate: true,
+            runs: {
+              orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+              take: 1,
+              select: {
+                id: true,
+                runIndex: true,
+                status: true,
+                createdAt: true,
+                startedAt: true,
+                finishedAt: true,
+                outputDir: true,
+                errorMessage: true,
+                images: {
+                  select: {
+                    reviewStatus: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!job) {
+      throw new Error("JOB_NOT_FOUND");
+    }
+
+    if (job.positions.length === 0) {
+      throw new Error("JOB_HAS_NO_ENABLED_POSITIONS");
+    }
+
+    const runs = await createQueuedRunsForPositions(tx, job, job.positions);
+    const jobStatus = await ensureQueuedJobStatus(tx, job);
+
+    return {
+      jobId: job.id,
+      jobTitle: job.title,
+      jobStatus,
+      queuedRunCount: runs.length,
+      runs,
+    };
+  });
+}
+
+export async function enqueueJobPositionRun(jobId: string, jobPositionId: string) {
+  return db.$transaction(async (tx: Prisma.TransactionClient) => {
+    const job = await tx.completeJob.findUnique({
+      where: { id: jobId },
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        status: true,
+        characterPrompt: true,
+        characterLoraPath: true,
+        scenePrompt: true,
+        stylePrompt: true,
+        jobLevelOverrides: true,
+        character: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+        scenePreset: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+        stylePreset: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+      },
+    });
+
+    if (!job) {
+      throw new Error("JOB_NOT_FOUND");
+    }
+
+    const position = await tx.completeJobPosition.findFirst({
+      where: {
+        id: jobPositionId,
+        completeJobId: jobId,
+      },
+      include: {
+        positionTemplate: true,
+        runs: {
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+          take: 1,
+          select: {
+            id: true,
+            runIndex: true,
+            status: true,
+            createdAt: true,
+            startedAt: true,
+            finishedAt: true,
+            outputDir: true,
+            errorMessage: true,
+            images: {
+              select: {
+                reviewStatus: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!position) {
+      throw new Error("JOB_POSITION_NOT_FOUND");
+    }
+
+    if (!position.enabled) {
+      throw new Error("JOB_POSITION_DISABLED");
+    }
+
+    const runs = await createQueuedRunsForPositions(tx, job, [position]);
+    const jobStatus = await ensureQueuedJobStatus(tx, job);
+
+    return {
+      jobId: job.id,
+      jobTitle: job.title,
+      jobStatus,
+      queuedRunCount: runs.length,
+      runs,
+    };
+  });
 }

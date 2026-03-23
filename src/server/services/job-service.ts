@@ -1,5 +1,7 @@
 import { Prisma } from "@/generated/prisma";
 import {
+  enqueueJobPositionRun as enqueueJobPositionRunInRepository,
+  enqueueJobRuns as enqueueJobRunsInRepository,
   updateJob as updateJobInRepository,
   updateJobPosition as updateJobPositionInRepository,
 } from "@/server/repositories/job-repository";
@@ -188,6 +190,20 @@ export async function updateJobPosition(
   );
 }
 
+export async function enqueueJobRuns(jobId: string) {
+  return enqueueJobRunsInRepository(normalizeRequiredId(jobId, "jobId"));
+}
+
+export async function enqueueJobPositionRun(
+  jobId: string,
+  jobPositionId: string,
+) {
+  return enqueueJobPositionRunInRepository(
+    normalizeRequiredId(jobId, "jobId"),
+    normalizeRequiredId(jobPositionId, "jobPositionId"),
+  );
+}
+
 export function mapJobError(error: unknown) {
   if (error instanceof JobServiceError) {
     return {
@@ -210,6 +226,10 @@ export function mapJobError(error: unknown) {
       return { message: "Job not found", status: 404 };
     case "JOB_POSITION_NOT_FOUND":
       return { message: "Job position not found", status: 404 };
+    case "JOB_HAS_NO_ENABLED_POSITIONS":
+      return { message: "Job has no enabled positions to queue", status: 409 };
+    case "JOB_POSITION_DISABLED":
+      return { message: "Job position is disabled", status: 409 };
     default:
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         return {
