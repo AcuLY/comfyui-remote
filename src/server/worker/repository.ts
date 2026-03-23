@@ -76,7 +76,7 @@ async function updateCompleteJobStatus(
     activeRuns.map((entry) => [entry.status, entry._count._all]),
   );
 
-  let nextStatus = JobStatus.draft;
+  let nextStatus: JobStatus = JobStatus.draft;
 
   if ((activeRunCountByStatus.get(RunStatus.running) ?? 0) > 0) {
     nextStatus = JobStatus.running;

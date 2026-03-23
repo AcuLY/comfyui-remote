@@ -209,12 +209,14 @@ async function getLatestRunsById(latestRunIds: string[]) {
   );
 }
 
-function toInputJsonObject(value: Prisma.JsonValue | null): Prisma.InputJsonObject {
+type MutableInputJsonObject = Record<string, Prisma.InputJsonValue>;
+
+function toInputJsonObject(value: Prisma.JsonValue | null): MutableInputJsonObject {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return {};
   }
 
-  return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonObject;
+  return JSON.parse(JSON.stringify(value)) as MutableInputJsonObject;
 }
 
 function buildJobLevelOverridesUpdate(
@@ -243,11 +245,13 @@ function buildJobLevelOverridesUpdate(
     }
   }
 
-  return Object.keys(nextOverrides).length > 0 ? nextOverrides : Prisma.DbNull;
+  return Object.keys(nextOverrides).length > 0
+    ? (nextOverrides as Prisma.InputJsonObject)
+    : Prisma.DbNull;
 }
 
 function resolveJobOverrideString(
-  overrides: Prisma.InputJsonObject,
+  overrides: MutableInputJsonObject,
   key: string,
 ) {
   const value = overrides[key];
@@ -255,7 +259,7 @@ function resolveJobOverrideString(
 }
 
 function resolveJobOverrideInteger(
-  overrides: Prisma.InputJsonObject,
+  overrides: MutableInputJsonObject,
   key: string,
 ) {
   const value = overrides[key];
@@ -271,7 +275,9 @@ function mergeJsonObjects(
     ...toInputJsonObject(overrideValue),
   };
 
-  return Object.keys(mergedValue).length > 0 ? mergedValue : null;
+  return Object.keys(mergedValue).length > 0
+    ? (mergedValue as Prisma.InputJsonObject)
+    : null;
 }
 
 function buildResolvedConfigSnapshot(

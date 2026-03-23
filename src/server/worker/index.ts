@@ -1,5 +1,9 @@
 import { RunStatus } from "@/generated/prisma";
 import { assertEnv } from "@/lib/env";
+import {
+  ComfyPromptExecutionError,
+  executeComfyPromptDraft,
+} from "@/server/services/comfyui-service";
 import { buildComfyPromptDraft, normalizeResolvedConfigSnapshot } from "@/server/worker/payload-builder";
 import {
   claimQueuedWorkerRun,
@@ -21,19 +25,12 @@ function formatWorkerError(error: unknown) {
   return String(error);
 }
 
-function performWorkerProcessingStep(promptDraft: ComfyPromptDraft) {
-  if (!promptDraft.workflowId.trim()) {
-    throw new Error("Resolved workflow id is empty");
+function extractFailedComfyPromptId(error: unknown) {
+  if (error instanceof ComfyPromptExecutionError) {
+    return error.comfyPromptId;
   }
 
-  if (!promptDraft.prompt.positive.trim()) {
-    throw new Error("Resolved positive prompt is empty");
-  }
-
-  return {
-    comfyPromptId: null,
-    outputDir: null,
-  };
+  return null;
 }
 
 export async function runWorkerPass(limit = 10): Promise<WorkerPassReport> {
@@ -53,14 +50,17 @@ export async function runWorkerPass(limit = 10): Promise<WorkerPassReport> {
 
     let resolvedConfig: NormalizedResolvedConfigSnapshot | null = null;
     let promptDraft: ComfyPromptDraft | null = null;
+    let comfyPromptId: string | null = null;
     let processError: unknown = null;
-    let processResult: ReturnType<typeof performWorkerProcessingStep> | null = null;
+    let processResult: Awaited<ReturnType<typeof executeComfyPromptDraft>> | null = null;
 
     try {
       resolvedConfig = normalizeResolvedConfigSnapshot(run.resolvedConfigSnapshot);
       promptDraft = buildComfyPromptDraft(run);
-      processResult = performWorkerProcessingStep(promptDraft);
+      processResult = await executeComfyPromptDraft(run.comfyApiUrl, promptDraft);
+      comfyPromptId = processResult.comfyPromptId;
     } catch (error) {
+      comfyPromptId = extractFailedComfyPromptId(error);
       processError = error;
     }
 
@@ -68,12 +68,14 @@ export async function runWorkerPass(limit = 10): Promise<WorkerPassReport> {
       const failedRun = await completeWorkerRun(run.runId, {
         status: RunStatus.failed,
         errorMessage: formatWorkerError(processError),
+        comfyPromptId,
       });
 
       drafts.push({
         runId: run.runId,
         status: failedRun.status,
         comfyApiUrl: run.comfyApiUrl,
+        comfyPromptId: failedRun.comfyPromptId,
         outputDir: failedRun.outputDir,
         resolvedConfig,
         promptDraft,
@@ -99,6 +101,7 @@ export async function runWorkerPass(limit = 10): Promise<WorkerPassReport> {
       runId: run.runId,
       status: completedRun.status,
       comfyApiUrl: run.comfyApiUrl,
+      comfyPromptId: completedRun.comfyPromptId,
       outputDir: completedRun.outputDir,
       resolvedConfig,
       promptDraft,

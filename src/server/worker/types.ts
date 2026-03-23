@@ -91,6 +91,7 @@ export type WorkerRunDraft = {
   runId: string;
   status: string;
   comfyApiUrl: string;
+  comfyPromptId: string | null;
   outputDir: string | null;
   resolvedConfig: NormalizedResolvedConfigSnapshot | null;
   promptDraft: ComfyPromptDraft | null;

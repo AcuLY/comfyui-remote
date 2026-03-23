@@ -32,7 +32,9 @@ npm run dev
 ### 本地手动触发 worker pass
 - 启动 `npm run dev` 后，可用 `POST /api/local/worker/pass?limit=1` 手动触发一次 worker pass。
 - 该接口只允许 `localhost / 127.0.0.1 / ::1` 访问，默认处理 1 个 queued run，`limit` 最大 10。
-- 当前 pass 会 claim queued run、组装 prompt draft，并把占位执行结果写回为 `done` 或 `failed`，用于验证本地 queue -> worker 闭环；暂未真正调用 ComfyUI。
+- 当前 pass 会 claim queued run、校验 draft、向 ComfyUI 提交 `/prompt`，再轮询 `/history/:promptId`。
+- 若 history 返回完成状态，会把 `PositionRun` 标记为 `done` 并回写 `comfyPromptId`；提交、轮询或超时失败则会标记为 `failed` 并记录错误。
+- 当前仍未下载图片或生成缩略图；要让提交成功，`resolvedConfigSnapshot.extraParams` 里需要带实际的 ComfyUI graph（优先读取 `comfyPrompt`，也兼容 `workflowApiPrompt`）。
 
 ### 本地数据库 bootstrap
 - `npm run prisma:db:push`：把当前 Prisma schema 同步到本地数据库（适合当前尚未正式维护 migration 的阶段）

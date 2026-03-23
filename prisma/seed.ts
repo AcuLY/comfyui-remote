@@ -1,9 +1,9 @@
-import { PrismaClient } from "../src/generated/prisma/client.ts";
+import { createPrismaClient } from "../src/lib/prisma";
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 const now = new Date();
-const hoursAgo = (hours) => new Date(now.getTime() - hours * 60 * 60 * 1000);
+const hoursAgo = (hours: number) => new Date(now.getTime() - hours * 60 * 60 * 1000);
 
 async function main() {
   const [miku, tangtang] = await Promise.all([
