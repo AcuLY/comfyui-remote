@@ -1,5 +1,6 @@
 import { fail, ok } from "@/lib/api-response";
 import { listLoraAssets } from "@/server/repositories/lora-repository";
+import { getUploadMeta, saveUploadedLora } from "@/server/services/lora-upload-service";
 
 export async function GET() {
   try {
@@ -10,8 +11,19 @@ export async function GET() {
   }
 }
 
-export async function POST() {
-  return fail("LoRA upload is not implemented yet", 501, {
-    acceptedCategories: ["characters", "styles", "poses", "misc"],
-  });
+export async function POST(request: Request) {
+  try {
+    const formData = await request.formData();
+    const category = String(formData.get("category") ?? "");
+    const file = formData.get("file");
+
+    if (!(file instanceof File)) {
+      return fail("Missing file", 400, getUploadMeta());
+    }
+
+    const saved = await saveUploadedLora(file, category);
+    return ok(saved, { status: 201 });
+  } catch (error) {
+    return fail("Failed to upload LoRA", 500, String(error));
+  }
 }

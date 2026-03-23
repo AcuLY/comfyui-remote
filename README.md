@@ -14,6 +14,8 @@
 - 环境变量封装：`src/lib/env.ts`
 - repository 骨架：`src/server/repositories/*`
 - API 占位：`src/app/api/**`
+- 路径映射：`config/path-maps.json`
+- LoRA 上传服务：`src/server/services/lora-upload-service.ts`
 - worker 目录：`src/server/worker/`
 
 ## 本地准备
