@@ -55,9 +55,9 @@ Current state:
 
 ### Backend
 Latest pushed commits:
+- `c54c91a` feat(images): generate run thumbnails and dimensions
 - `8572ffa` feat(worker): persist ComfyUI outputs to image results
 - `e6b8e74` feat(worker): add local pass trigger route
-- `6782994` feat(worker): consume queued runs in worker pass
 
 Current state:
 - 已有 Prisma schema 草案
@@ -91,14 +91,15 @@ Current state:
 - backend worktree 当前 `cmd /c npm run lint` 与 `cmd /c npm run build` 可通过（包含本轮 ComfyUI 提交/轮询接线）
 - worker 现会从 ComfyUI history 提取输出图片清单，优先从本地 `IMAGE_BASE_DIR` 复制原图，缺失时回退到 ComfyUI `/view` 下载，再把文件落到受控的 `data/images/<job>/<position>/run-xx/raw/`
 - worker 完成 run 时会同步重建该 run 的 `ImageResult` 记录，并写回 `filePath` / `fileSize`；失败时会清理本轮受控输出目录，避免残留半成品
-- 当前仍未生成缩略图；`ImageResult.thumbPath` / width / height 暂为空，下一步应补缩略图与元数据提取
+- worker 现在会为每张持久化后的输出图生成 `data/images/<job>/<position>/run-xx/thumb/NN.jpg` 缩略图，并回填 `ImageResult.thumbPath` / `width` / `height`
+- backend worktree 当前 `cmd /c npm run lint` 与 `cmd /c npm run build` 可通过（包含本轮缩略图与元数据提取改动）
 
 ## Next Suggested Milestones
 1. 验证并补齐本机 `npm install` / 全仓 `npm run lint` / 最小启动链路
-2. 补图片缩略图生成与宽高元数据提取，让宫格页能直接使用真实缩略图
-3. 视情况补文件移动/归档服务（若后续 review flow 需要从 raw 拆分 kept/trashed 路径）
-4. 视情况补宫格页提交后的局部状态优化（如成功后清空选择 / 更细粒度提示）
-5. 视需要补一次本机手动验证记录（seed -> enqueue -> local worker pass -> ComfyUI history -> output images）
+2. 视情况补文件移动/归档服务（若后续 review flow 需要从 raw 拆分 kept/trashed 路径）
+3. 视情况补宫格页提交后的局部状态优化（如成功后清空选择 / 更细粒度提示）
+4. 视需要补一次本机手动验证记录（seed -> enqueue -> local worker pass -> ComfyUI history -> output images）
+5. 按前端真实使用情况继续收口 jobs 列表/统计缺口，减少 mock fallback 依赖
 
 ## Cron Job
 - Job ID: `44d5a257-0ff6-4dee-a6e9-e249a0399055`

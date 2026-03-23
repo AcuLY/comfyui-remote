@@ -38,7 +38,7 @@
 - [x] 接入 ComfyUI prompt submit / history polling
 - [x] 接入 ComfyUI 输出下载与 ImageResult 落库
 - [ ] 预留图片缩略图生成与文件移动服务
-- [ ] 补图片缩略图 / 宽高元数据提取
+- [x] 补图片缩略图 / 宽高元数据提取
 
 ## Working Notes
 - 前后端并行开发，分别在 `frontend` / `backend` 分支提交并 push
