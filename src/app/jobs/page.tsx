@@ -2,9 +2,10 @@ import Link from "next/link";
 import { Copy, Play, Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { SectionCard } from "@/components/section-card";
-import { jobs } from "@/lib/mock-data";
+import { getJobs } from "@/lib/server-data";
 
-export default function JobsPage() {
+export default async function JobsPage() {
+  const jobs = await getJobs();
   return (
     <div className="space-y-4">
       <PageHeader title="大任务" description="管理 Character、场景、风格与 position 组合。" />

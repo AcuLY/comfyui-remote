@@ -3,9 +3,10 @@ import { ChevronRight, Clock3, Eye, Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { SectionCard } from "@/components/section-card";
 import { StatChip } from "@/components/stat-chip";
-import { queueRuns } from "@/lib/mock-data";
+import { getQueueRuns } from "@/lib/server-data";
 
-export default function QueuePage() {
+export default async function QueuePage() {
+  const queueRuns = await getQueueRuns();
   const pendingTotal = queueRuns.reduce((sum, run) => sum + run.pendingCount, 0);
   const runTotal = queueRuns.length;
 

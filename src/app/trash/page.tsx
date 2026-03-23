@@ -3,9 +3,10 @@ import { RotateCcw } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { SectionCard } from "@/components/section-card";
-import { trashItems } from "@/lib/mock-data";
+import { getTrashItems } from "@/lib/server-data";
 
-export default function TrashPage() {
+export default async function TrashPage() {
+  const trashItems = await getTrashItems();
   return (
     <div className="space-y-4">
       <PageHeader title="回收站" description="删除后的图片会先进入这里，支持恢复。" />

@@ -1,7 +1,7 @@
 import { FolderTree, Upload } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { SectionCard } from "@/components/section-card";
-import { loraAssets } from "@/lib/mock-data";
+import { getLoraAssets } from "@/lib/server-data";
 
 const pathOptions = [
   "characters",
@@ -10,7 +10,9 @@ const pathOptions = [
   "misc",
 ];
 
-export default function LoraAssetsPage() {
+export default async function LoraAssetsPage() {
+  const loraAssets = await getLoraAssets();
+
   return (
     <div className="space-y-4">
       <PageHeader title="LoRA 资源" description="后续会接文件上传接口，并映射到本地 LoRA 目录。" />
