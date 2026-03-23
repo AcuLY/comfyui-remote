@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { Copy, SlidersHorizontal } from "lucide-react";
+import { SlidersHorizontal } from "lucide-react";
 import { notFound } from "next/navigation";
 import { SectionCard } from "@/components/section-card";
 import { formatJobSubtitle, getJobDetail } from "@/lib/server-data";
 import type { JobDetailPosition } from "@/lib/server-data";
-import { JobRunButton, PositionRunButton } from "./job-run-controls";
+import { JobCopyButton, JobRunButton, PositionRunButton } from "./job-run-controls";
 
 function formatPositionMeta(position: JobDetailPosition) {
   const parts = [`batch ${position.batchSize}`, position.aspectRatio];
@@ -43,9 +43,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
           <div className="col-span-2">
             <JobRunButton jobId={job.id} />
           </div>
-          <button className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-zinc-200">
-            <Copy className="size-4" /> 复制任务
-          </button>
+          <JobCopyButton jobId={job.id} />
         </div>
       </SectionCard>
 
