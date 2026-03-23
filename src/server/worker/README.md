@@ -3,7 +3,13 @@
 当前已补上最小 scaffold：
 - `repository.ts`：读取 queued `PositionRun` 并整理成 worker snapshot
 - `payload-builder.ts`：把 `resolvedConfigSnapshot` 规范化，并产出占位的 ComfyUI prompt draft
-- `index.ts`：执行一次 worker pass，当前只扫描 / 组装 draft，不会真正调用 ComfyUI 或修改 run 状态
+- `index.ts`：执行一次 worker pass，当前会 claim queued run、组装 draft，并把占位执行结果写回为 `done` / `failed`；还不会真正调用 ComfyUI
+- `src/app/api/local/worker/pass/route.ts`：本地手动触发入口，只允许从 `localhost` 发起 `POST`，默认处理 1 个 queued run（`limit` 最大 10）
+
+本地调用示例：
+```bash
+curl -X POST "http://localhost:3000/api/local/worker/pass?limit=1"
+```
 
 后续这里负责：
 - 读取待执行 PositionRun

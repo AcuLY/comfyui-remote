@@ -29,6 +29,11 @@ npm run lint
 npm run dev
 ```
 
+### 本地手动触发 worker pass
+- 启动 `npm run dev` 后，可用 `POST /api/local/worker/pass?limit=1` 手动触发一次 worker pass。
+- 该接口只允许 `localhost / 127.0.0.1 / ::1` 访问，默认处理 1 个 queued run，`limit` 最大 10。
+- 当前 pass 会 claim queued run、组装 prompt draft，并把占位执行结果写回为 `done` 或 `failed`，用于验证本地 queue -> worker 闭环；暂未真正调用 ComfyUI。
+
 ### 本地数据库 bootstrap
 - `npm run prisma:db:push`：把当前 Prisma schema 同步到本地数据库（适合当前尚未正式维护 migration 的阶段）
 - `npm run prisma:seed`：写入一组可直接驱动 queue / jobs / trash / loras 页面与 API 的最小样例数据
