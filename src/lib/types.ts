@@ -42,7 +42,7 @@ export type JobCard = {
 
 export type TrashItem = {
   id: string;
-  src: string;
+  src?: string;
   title: string;
   deletedAt: string;
   originalPath: string;

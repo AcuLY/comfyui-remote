@@ -17,8 +17,12 @@ export default async function TrashPage() {
           <div className="space-y-3">
             {trashItems.map((item) => (
               <div key={item.id} className="flex gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-                <div className="relative h-24 w-18 overflow-hidden rounded-xl">
-                  <Image src={item.src} alt={item.title} fill className="object-cover" unoptimized />
+                <div className="relative flex h-24 w-18 items-center justify-center overflow-hidden rounded-xl bg-white/[0.04]">
+                  {item.src ? (
+                    <Image src={item.src} alt={item.title} fill className="object-cover" unoptimized />
+                  ) : (
+                    <span className="px-2 text-center text-[11px] leading-4 text-zinc-500">无预览</span>
+                  )}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-sm font-medium text-white">{item.title}</div>
