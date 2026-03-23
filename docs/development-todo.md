@@ -21,7 +21,7 @@
 
 ## Priority D: lora flow
 - [x] LoRA 页接真实 `/api/loras`
-- [ ] 接真实上传表单到 `/api/loras`
+- [x] 接真实上传表单到 `/api/loras`
 - [x] 校验 category/path mapping
 - [ ] 记录上传后的 DB 数据
 

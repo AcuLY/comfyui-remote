@@ -29,8 +29,8 @@
 ## Current Status
 ### Frontend
 Latest pushed commits:
+- `043a0dd` feat(frontend): wire lora upload form
 - `de0d859` feat(frontend): prefer api data with mock fallback
-- `f079ace` feat(frontend): add job parameter editor pages
 
 Current state:
 - 已有待审核队列页
@@ -41,6 +41,8 @@ Current state:
 - 已有大任务详情和参数编辑页骨架
 - 队列 / jobs / trash / loras 已优先读取真实 API，并保留 mock fallback
 - 回收站页已对齐 `/api/trash` 返回结构，真实数据缺少预览图时也不会渲染报错
+- LoRA 页面已接入真实上传表单：通过 server action 提交到 `/api/loras`，会校验 category / file，并在成功后刷新列表
+- 已确认 frontend worktree 当前 `npm run lint` 可通过（包含本轮 LoRA 上传改动）
 
 ### Backend
 Latest pushed commits:
