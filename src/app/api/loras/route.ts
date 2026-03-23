@@ -1,6 +1,6 @@
 import { fail, ok } from "@/lib/api-response";
 import { listLoraAssets } from "@/server/repositories/lora-repository";
-import { getUploadMeta, saveUploadedLora } from "@/server/services/lora-upload-service";
+import { getUploadMeta, LoraUploadError, saveUploadedLora } from "@/server/services/lora-upload-service";
 
 export async function GET() {
   try {
@@ -24,6 +24,10 @@ export async function POST(request: Request) {
     const saved = await saveUploadedLora(file, category);
     return ok(saved, { status: 201 });
   } catch (error) {
+    if (error instanceof LoraUploadError) {
+      return fail(error.message, error.status, getUploadMeta());
+    }
+
     return fail("Failed to upload LoRA", 500, String(error));
   }
 }
