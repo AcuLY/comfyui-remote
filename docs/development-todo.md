@@ -2,7 +2,7 @@
 
 ## Priority A: make local run viable
 - [x] 准备 `.env.example` / 本地启动说明统一化
-- [ ] 确认可在本机完成 `npm install`
+- [x] 确认可在本机完成 `npm install`
 - [x] 确认可在本机完成 `npm run lint`
 - [x] 增加数据库初始化说明或 seed 方案
 - [x] 让前端至少有一部分页面从真实 API 读数据
@@ -37,7 +37,7 @@
 - [x] 补一个最小 worker 手动触发入口（本地受控 API）以便验证 queue -> worker 闭环
 - [x] 接入 ComfyUI prompt submit / history polling
 - [x] 接入 ComfyUI 输出下载与 ImageResult 落库
-- [ ] 预留图片缩略图生成与文件移动服务
+- [x] 预留图片缩略图生成与文件移动服务
 - [x] 补图片缩略图 / 宽高元数据提取
 
 - [x] 宫格页提交后的局部状态优化（成功后清空选择 / 忽略已失效选中项）

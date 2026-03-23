@@ -53,6 +53,9 @@ Current state:
 - 禁用状态的 position 现在会在按钮层直接阻止单独运行，避免前端继续误触发已知会被后端拒绝的动作
 - 宫格审核页提交成功后现在会立即清空本地多选，并自动忽略当前 run 数据里已不存在的旧选中项，减少 refresh 前后残留勾选带来的误操作
 - 已确认 frontend worktree 当前 `npm run lint` 可通过（包含本轮宫格页提交后本地状态收口）
+- 已确认 frontend/backend worktree 当前 `npm install` 可在本机完成（依赖已是 up to date）
+- 已修复 frontend `src/app/jobs/actions.ts` 的重复导出与类型收窄问题；`npm run build` 现可通过
+- 已为 frontend/backend 设置 `next.config.ts -> turbopack.root = __dirname`，消除多 lockfile 场景下的 workspace root 推断警告
 
 ### Backend
 Latest pushed commits:
@@ -94,6 +97,7 @@ Current state:
 - worker 完成 run 时会同步重建该 run 的 `ImageResult` 记录，并写回 `filePath` / `fileSize`；失败时会清理本轮受控输出目录，避免残留半成品
 - worker 现在会为每张持久化后的输出图生成 `data/images/<job>/<position>/run-xx/thumb/NN.jpg` 缩略图，并回填 `ImageResult.thumbPath` / `width` / `height`
 - backend worktree 当前 `cmd /c npm run lint` 与 `cmd /c npm run build` 可通过（包含本轮缩略图与元数据提取改动）
+- 本轮再次验证 backend worktree `cmd /c npm run lint` 与 `cmd /c npm run build` 可通过，且已消除 workspace root 推断警告
 
 ## Next Suggested Milestones
 1. 验证并补齐本机 `npm install` / 全仓 `npm run lint` / 最小启动链路
