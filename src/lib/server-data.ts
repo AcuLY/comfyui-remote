@@ -82,6 +82,13 @@ type ApiJobDetail = {
   positions?: ApiJobDetailPosition[];
 };
 
+export type JobsQuery = {
+  search?: string;
+  status?: JobCard["status"] | "";
+  enabledOnly?: boolean;
+  hasPending?: boolean;
+};
+
 export type JobLatestRun = {
   id: string;
   runIndex: number;
@@ -553,8 +560,57 @@ export function getQueueRuns(): Promise<QueueRun[]> {
   return fetchJson("/api/queue", queueRuns);
 }
 
-export function getJobs(): Promise<JobCard[]> {
-  return fetchJson("/api/jobs", jobs);
+export type JobListFilters = {
+  search?: string;
+  status?: JobCard["status"] | "";
+  enabledOnly?: boolean;
+  hasPending?: boolean;
+};
+
+export function getJobs(filters: JobListFilters = {}): Promise<JobCard[]> {
+  const searchParams = new URLSearchParams();
+  const normalizedSearch = filters.search?.trim().toLowerCase();
+
+  if (filters.search?.trim()) {
+    searchParams.set("search", filters.search.trim());
+  }
+
+  if (filters.status) {
+    searchParams.set("status", filters.status);
+  }
+
+  if (filters.enabledOnly) {
+    searchParams.set("enabledOnly", "true");
+  }
+
+  if (filters.hasPending) {
+    searchParams.set("hasPending", "true");
+  }
+
+  const path = searchParams.size > 0 ? `/api/jobs?${searchParams.toString()}` : "/api/jobs";
+  const filteredFallback = jobs.filter((job) => {
+    if (filters.status && job.status !== filters.status) {
+      return false;
+    }
+
+    if (filters.enabledOnly && (job.enabledPositionCount ?? 0) < 1) {
+      return false;
+    }
+
+    if (filters.hasPending && (job.latestRunPendingCount ?? 0) < 1) {
+      return false;
+    }
+
+    if (!normalizedSearch) {
+      return true;
+    }
+
+    return [job.title, job.characterName, job.sceneName, job.styleName].some((value) =>
+      value.toLowerCase().includes(normalizedSearch),
+    );
+  });
+
+  return fetchJson(path, filteredFallback);
 }
 
 export async function getJobDetail(jobId: string): Promise<JobDetail | null> {
