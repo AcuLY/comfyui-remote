@@ -58,7 +58,7 @@ Current state:
 - 已为 frontend/backend 设置 `next.config.ts -> turbopack.root = __dirname`，消除多 lockfile 场景下的 workspace root 推断警告
 - jobs 列表页现在会展示后端返回的真实启用 position 数、最近一次 run 状态与 pending/total 审核统计，并把首页“编辑/运行整组”入口直接接到真实页面与 server action，继续减少 jobs 首页对 mock 信息的依赖
 - jobs 列表页的“复制”按钮已接到真实 server action：会调用后端 `POST /api/jobs/:jobId/copy` 复制整条任务及其 position 覆盖，创建新的 draft，并在成功后提供进入新草稿编辑页的入口
-- jobs 列表页已补可用筛选表单：支持关键词搜索、状态过滤、仅看有启用 position、仅看 latest run 仍有 pending 审核的任务，便于在真实数据量上继续操作而不是全量滚列表
+- jobs 列表页已接上 query-string 驱动的筛选 UI（search/status/enabledOnly/hasPending），支持关键词搜索、状态过滤、仅看有启用 position、仅看 latest run 仍有 pending 审核的任务，也保留 `/jobs?...` 可分享/可回放的筛选链接
 
 ### Backend
 Latest pushed commits:
@@ -102,9 +102,9 @@ Current state:
 - backend worktree 当前 `cmd /c npm run lint` 与 `cmd /c npm run build` 可通过（包含本轮缩略图与元数据提取改动）
 - 本轮再次验证 backend worktree `cmd /c npm run lint` 与 `cmd /c npm run build` 可通过，且已消除 workspace root 推断警告
 - jobs 列表接口现在会返回真实启用 position 数、最新 run 时间/状态，以及该最新 run 的 pending/total 审核统计，方便前端 jobs 首页直接展示真实概览
+- jobs 列表接口已支持 query params：`search`（title / slug / character / scene / style）/ `status` / `enabledOnly` / `hasPending`；查询校验放在 service 层，路由只负责解析 searchParams 并返回统一错误结构
 - 已补 `POST /api/jobs/:jobId/copy`：会复制 job 基础配置、jobLevelOverrides 与全部 position 覆盖，自动生成唯一 title/slug，并把新任务创建为 `draft`
-- backend/frontend worktree 当前 `cmd /c npm run lint` 与 `cmd /c npm run build` 可通过（包含本轮 job copy API 与 jobs 列表复制按钮接线）
-- `/api/jobs` 已支持真实 query 过滤：`search`（title / slug / character / scene / style）、`status`、`enabledOnly`、`hasPending`；当前已确认 backend/frontend worktree 的 `cmd /c npm run lint` 与 `cmd /c npm run build` 可通过
+- backend/frontend worktree 当前 `cmd /c npm run lint` 与 `cmd /c npm run build` 可通过（包含本轮 jobs 列表筛选与搜索链路）
 
 ## Next Suggested Milestones
 1. 验证并补齐本机 `npm install` / 全仓 `npm run lint` / 最小启动链路
