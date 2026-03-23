@@ -49,7 +49,9 @@ Current state:
 - 宫格审核页的批量保留 / 删除按钮已接到真实 `/api/runs/:id/review/keep|trash`，支持客户端多选、提交态禁用、成功/失败反馈，并在提交后 refresh 当前页数据
 - job 编辑页与 position 编辑页已改为真实 server action 表单，直接调用后端 `PATCH /api/jobs/:id` 与 `PATCH /api/jobs/:id/positions/:jobPositionId`，并在成功后 revalidate jobs/job detail 页面
 - 表单现在会处理缺失 ID、batch size 非法值、接口失败提示与提交态禁用，方便本机先验证最小保存链路
-- 已确认 frontend worktree 当前 `npm run lint` 可通过（包含本轮 job / position 编辑页真实保存接线）
+- job detail 页的“运行整组 / 运行本节”已接到真实 `POST /api/jobs/:jobId/run` 与 `POST /api/jobs/:jobId/positions/:jobPositionId/run`，支持提交态禁用、成功/失败反馈与成功后 refresh/revalidate
+- 禁用状态的 position 现在会在按钮层直接阻止单独运行，避免前端继续误触发已知会被后端拒绝的动作
+- 已确认 frontend worktree 当前 `npm run lint` 可通过（包含本轮 run 按钮真实接线）
 
 ### Backend
 Latest pushed commits:

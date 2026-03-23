@@ -21,7 +21,7 @@
 - [x] 预留 job 参数保存动作与 position 参数保存动作
 - [x] 前端接上 job / position 编辑页真实 PATCH 保存链路
 - [x] 预留 run-all / run-single-position 的真实逻辑入口
-- [ ] 前端接上 run-all / run-single-position 的真实触发与反馈
+- [x] 前端接上 run-all / run-single-position 的真实触发与反馈
 
 ## Priority D: lora flow
 - [x] LoRA 页接真实 `/api/loras`
