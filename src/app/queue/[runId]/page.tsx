@@ -4,16 +4,31 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, ChevronLeft, ChevronRight, Ellipsis, Expand, Trash2 } from "lucide-react";
 import { SectionCard } from "@/components/section-card";
 import { reviewGroups } from "@/lib/mock-data";
+import { getQueueRuns, getReviewGroup } from "@/lib/server-data";
 
 export default async function ReviewGroupPage({ params }: { params: Promise<{ runId: string }> }) {
   const { runId } = await params;
-  const currentIndex = reviewGroups.findIndex((group) => group.id === runId);
-  const group = reviewGroups[currentIndex];
+  const [group, runs] = await Promise.all([getReviewGroup(runId), getQueueRuns()]);
 
   if (!group) notFound();
 
-  const prev = currentIndex > 0 ? reviewGroups[currentIndex - 1] : null;
-  const next = currentIndex < reviewGroups.length - 1 ? reviewGroups[currentIndex + 1] : null;
+  const currentIndex = runs.findIndex((run) => run.id === runId);
+  const runNeighbors = currentIndex >= 0
+    ? {
+        prev: currentIndex > 0 ? runs[currentIndex - 1] : null,
+        next: currentIndex < runs.length - 1 ? runs[currentIndex + 1] : null,
+      }
+    : null;
+  const fallbackIndex = reviewGroups.findIndex((item) => item.id === runId);
+  const fallbackNeighbors = fallbackIndex >= 0
+    ? {
+        prev: fallbackIndex > 0 ? reviewGroups[fallbackIndex - 1] : null,
+        next: fallbackIndex < reviewGroups.length - 1 ? reviewGroups[fallbackIndex + 1] : null,
+      }
+    : { prev: null, next: null };
+
+  const prev = runNeighbors?.prev ?? fallbackNeighbors.prev;
+  const next = runNeighbors?.next ?? fallbackNeighbors.next;
 
   return (
     <div className="space-y-4">

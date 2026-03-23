@@ -1,5 +1,5 @@
-import { jobs, loraAssets, queueRuns, trashItems } from "@/lib/mock-data";
-import type { JobCard, LoraAsset, QueueRun, TrashItem } from "@/lib/types";
+import { jobs, loraAssets, queueRuns, reviewGroups, trashItems } from "@/lib/mock-data";
+import type { JobCard, LoraAsset, QueueRun, ReviewGroup, TrashItem } from "@/lib/types";
 
 type ApiEnvelope<T> = { ok?: boolean; data?: T };
 type ApiTrashItem = {
@@ -59,4 +59,9 @@ export async function getTrashItems(): Promise<TrashItem[]> {
 
 export function getLoraAssets(): Promise<LoraAsset[]> {
   return fetchJson("/api/loras", loraAssets);
+}
+
+export function getReviewGroup(runId: string): Promise<ReviewGroup | null> {
+  const fallback = reviewGroups.find((group) => group.id === runId) ?? null;
+  return fetchJson(`/api/runs/${encodeURIComponent(runId)}`, fallback);
 }
