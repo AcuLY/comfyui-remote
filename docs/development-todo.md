@@ -13,6 +13,7 @@
 - [x] 实现 keep / trash / restore 的最小真实逻辑
 - [x] 整理 review API 的 service 层校验与错误映射
 - [x] 让宫格页从 run 真实数据渲染
+- [x] 为宫格页接入批量 keep / trash 的真实提交
 
 ## Priority C: job flow
 - [ ] 完善 jobs API

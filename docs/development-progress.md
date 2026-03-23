@@ -29,8 +29,8 @@
 ## Current Status
 ### Frontend
 Latest pushed commits:
+- `c7202ef` feat(review): wire queue batch actions to api
 - `a6bdc3b` feat(frontend): wire job detail pages to api
-- `f4c109c` feat(queue): load review group page from API fallback
 
 Current state:
 - 已有待审核队列页
@@ -46,7 +46,8 @@ Current state:
 - LoRA 页面已接入真实上传表单：通过 server action 提交到 `/api/loras`，会校验 category / file，并在成功后刷新列表
 - job 详情页 / 大任务编辑页 / position 编辑页 已改为优先读取 `/api/jobs/:id`，并在字段缺失时回退到 jobs 列表与本地模板默认值，避免后端数据尚未补齐时页面直接 notFound 或空白
 - job 详情页的 position 列表会展示真实 latest run 状态与 pending 计数，便于先验证 job flow 的只读链路
-- 已确认 frontend worktree 当前 `npm run lint` 可通过（包含本轮 job detail 页面真实数据接线）
+- 宫格审核页的批量保留 / 删除按钮已接到真实 `/api/runs/:id/review/keep|trash`，支持客户端多选、提交态禁用、成功/失败反馈，并在提交后 refresh 当前页数据
+- 已确认 frontend worktree 当前 `npm run lint` 可通过（包含本轮宫格页真实批量审图接线）
 
 ### Backend
 Latest pushed commits:
@@ -71,11 +72,11 @@ Current state:
 - 目前尚未接入真实数据库迁移和完整业务逻辑
 
 ## Next Suggested Milestones
-1. 为宫格页接入批量 keep / trash 的真实提交
-2. 继续完善 jobs API，补保存动作与 job detail / edit 页的真实提交链路
-3. 验证并补齐本机 `npm install` / 全仓 `npm run lint` / 最小启动链路
-4. 接入 worker scaffold 与 ComfyUI run pipeline
-5. 预留图片缩略图生成与文件移动服务
+1. 继续完善 jobs API，补保存动作与 job detail / edit 页的真实提交链路
+2. 验证并补齐本机 `npm install` / 全仓 `npm run lint` / 最小启动链路
+3. 接入 worker scaffold 与 ComfyUI run pipeline
+4. 预留图片缩略图生成与文件移动服务
+5. 视情况补宫格页提交后的局部状态优化（如成功后清空选择 / 更细粒度提示）
 
 ## Cron Job
 - Job ID: `44d5a257-0ff6-4dee-a6e9-e249a0399055`
