@@ -31,8 +31,9 @@
 
 ## Priority E: infra
 - [x] 增加 seed/mock bootstrap 脚本
-- [ ] 增加 worker scaffold
-- [ ] 预留 ComfyUI payload builder
+- [x] 增加 worker scaffold
+- [x] 预留 ComfyUI payload builder
+- [ ] 让 worker scaffold 真正消费 queued run（状态流转 / 错误记录）
 - [ ] 预留图片缩略图生成与文件移动服务
 
 ## Working Notes

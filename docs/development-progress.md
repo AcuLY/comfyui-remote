@@ -55,8 +55,8 @@ Current state:
 
 ### Backend
 Latest pushed commits:
+- `887fe11` feat(worker): add queued run scaffold and payload drafts
 - `9765617` feat(api): add job run enqueue endpoints
-- `3ba50d2` feat(api): add job patch endpoints
 
 Current state:
 - 已有 Prisma schema 草案
@@ -78,12 +78,15 @@ Current state:
 - 已补上最小可用的 run 入口：`POST /api/jobs/:jobId/run` 会为所有启用 position 创建 `queued` 的 `PositionRun`，递增 `runIndex`，更新 `latestRunId`，必要时把 job 状态置为 `queued`
 - 已补上最小可用的单 position run 入口：`POST /api/jobs/:jobId/positions/:jobPositionId/run` 会校验 position 属于当前 job 且已启用，再创建单条 `queued` run
 - jobs service 已统一 PATCH / run 请求的 ID 校验与错误映射，空 position / disabled position 会返回明确 409，便于前端下一步直接接运行按钮
+- 已补上 worker 最小 scaffold：`src/server/worker/index.ts` 可扫描 queued runs；`repository.ts` 会读取待执行 run 快照；`payload-builder.ts` 会把 `resolvedConfigSnapshot` 规范化并产出占位的 ComfyUI prompt draft
+- 当前 worker pass 仍是只读 scaffold：不会修改 run 状态，也不会真正调用 ComfyUI / 下载图片 / 生成缩略图
+- 已确认 backend worktree 当前 `npm run lint` 可通过（包含本轮 worker scaffold 改动）
 - 目前尚未接入 worker 消费队列、ComfyUI 真正执行链路和完整启动验证
 
 ## Next Suggested Milestones
 1. 验证并补齐本机 `npm install` / 全仓 `npm run lint` / 最小启动链路
-2. 让前端 job detail 页接上 run-all / run-single-position 真实触发按钮与反馈
-3. 接入 worker scaffold 与 ComfyUI run pipeline
+2. 让 worker scaffold 从“只读 draft”推进到真实消费链路（领取 queued run、写 running 状态、记录失败）
+3. 接入 ComfyUI prompt submit / history polling / 输出下载
 4. 预留图片缩略图生成与文件移动服务
 5. 视情况补宫格页提交后的局部状态优化（如成功后清空选择 / 更细粒度提示）
 
