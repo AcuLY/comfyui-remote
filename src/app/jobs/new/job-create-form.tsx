@@ -16,7 +16,7 @@ export function JobCreateForm({ options }: { options: JobCreateOptions }) {
   const enabledPositionTemplates = options.positionTemplates.filter((template) => template.enabled);
 
   return (
-    <form action={formAction} className="space-y-4">
+    <form action={formAction} aria-busy={pending} className="space-y-4">
       <div className="grid gap-3 md:grid-cols-2">
         <label className="space-y-1.5 text-xs text-zinc-400 md:col-span-2">
           <span>任务标题</span>

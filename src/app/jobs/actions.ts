@@ -1,6 +1,7 @@
 "use server";
 
 import { refresh, revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 export type JobSaveState = {
   status: "idle" | "success" | "error";
@@ -265,6 +266,7 @@ export async function createJobAction(_prevState: JobCreateState, formData: Form
     positionTemplateIds,
     notes: getNullableString(formData, "notes"),
   };
+  let createdJobId: string | undefined;
 
   try {
     const response = await fetch(getApiUrl("/api/jobs"), {
@@ -285,24 +287,25 @@ export async function createJobAction(_prevState: JobCreateState, formData: Form
       };
     }
 
-    const createdJobId = typeof result?.data?.id === "string" ? result.data.id : undefined;
-    revalidatePath("/jobs");
-    if (createdJobId) {
-      revalidatePath(`/jobs/${createdJobId}`);
-    }
-    refresh();
-
-    return {
-      status: "success",
-      message: "Created a new draft job.",
-      createdJobId,
-    };
+    createdJobId = typeof result?.data?.id === "string" ? result.data.id : undefined;
   } catch {
     return {
       status: "error",
       message: "The job create API is unavailable right now.",
     };
   }
+
+  if (!createdJobId) {
+    return {
+      status: "error",
+      message: "The draft was created, but the API response did not include a job id.",
+    };
+  }
+
+  revalidatePath("/jobs");
+  revalidatePath(`/jobs/${createdJobId}`);
+
+  redirect(`/jobs/${createdJobId}/edit`);
 }
 
 export async function copyJobAction(_prevState: JobCopyState, formData: FormData): Promise<JobCopyState> {
@@ -428,4 +431,3 @@ export async function runJobPositionAction(_prevState: JobRunState, formData: Fo
     };
   }
 }
-
