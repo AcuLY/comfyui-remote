@@ -1,8 +1,9 @@
 "use client";
 
-import { Play } from "lucide-react";
+import Link from "next/link";
+import { Copy, Play } from "lucide-react";
 import { useActionState } from "react";
-import { initialJobRunState, runJobAction, runJobPositionAction } from "@/app/jobs/actions";
+import { copyJobAction, initialJobCopyState, initialJobRunState, runJobAction, runJobPositionAction } from "@/app/jobs/actions";
 
 const idleFeedbackClassName = "border-white/10 bg-white/[0.03] text-zinc-400";
 const errorFeedbackClassName = "border-rose-500/20 bg-rose-500/10 text-rose-200";
@@ -18,6 +19,41 @@ function getFeedbackClassName(status: "idle" | "success" | "error") {
   }
 
   return idleFeedbackClassName;
+}
+
+type JobCopyButtonProps = {
+  jobId: string;
+};
+
+export function JobCopyButton({ jobId }: JobCopyButtonProps) {
+  const [state, formAction, pending] = useActionState(copyJobAction, initialJobCopyState);
+
+  return (
+    <form action={formAction} className="space-y-3">
+      <input type="hidden" name="jobId" value={jobId} />
+      <button
+        type="submit"
+        disabled={pending}
+        className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-zinc-200 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        <Copy className="size-3.5" />
+        {pending ? "正在复制..." : "复制"}
+      </button>
+      <div className="space-y-2">
+        <p aria-live="polite" className={`rounded-2xl border px-3 py-2 text-xs leading-5 ${getFeedbackClassName(state.status)}`}>
+          {pending ? "正在让后端复制这个任务..." : state.message}
+        </p>
+        {state.status === "success" && state.copiedJobId ? (
+          <Link
+            href={`/jobs/${state.copiedJobId}/edit`}
+            className="inline-flex text-xs text-sky-300"
+          >
+            打开复制后的草稿
+          </Link>
+        ) : null}
+      </div>
+    </form>
+  );
 }
 
 type JobRunButtonProps = {

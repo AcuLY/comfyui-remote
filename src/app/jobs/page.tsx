@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { Copy, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { SectionCard } from "@/components/section-card";
 import { getJobs } from "@/lib/server-data";
 import type { JobCard } from "@/lib/types";
-import { JobRunButton } from "./[jobId]/job-run-controls";
+import { JobCopyButton, JobRunButton } from "./[jobId]/job-run-controls";
 
 function formatLatestRunLine(job: JobCard) {
   if (!job.latestRunAt || !job.latestRunStatus) {
@@ -55,9 +55,7 @@ export default async function JobsPage() {
                 >
                   编辑
                 </Link>
-                <button className="inline-flex items-center justify-center gap-1 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-zinc-200">
-                  <Copy className="size-3.5" /> 复制
-                </button>
+                <JobCopyButton jobId={job.id} />
                 <div className="md:col-span-2">
                   <JobRunButton jobId={job.id} />
                 </div>

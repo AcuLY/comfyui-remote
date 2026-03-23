@@ -12,6 +12,12 @@ export type JobRunState = {
   message: string;
 };
 
+export type JobCopyState = {
+  status: "idle" | "success" | "error";
+  message: string;
+  copiedJobId?: string;
+};
+
 export const initialJobSaveState: JobSaveState = {
   status: "idle",
   message: "Update the fields and save them to the backend.",
@@ -22,8 +28,16 @@ export const initialJobRunState: JobRunState = {
   message: "Ready to enqueue this job in the backend run queue.",
 };
 
+export const initialJobCopyState: JobCopyState = {
+  status: "idle",
+  message: "Ready to duplicate this job in the backend.",
+};
+
 type MutationApiResponse = {
   ok?: boolean;
+  data?: {
+    id?: string;
+  };
   error?: {
     message?: string;
   };
@@ -199,6 +213,46 @@ export async function saveJobPositionEditAction(
     return {
       status: "error",
       message: "The position API is unavailable right now.",
+    };
+  }
+}
+
+export async function copyJobAction(_prevState: JobCopyState, formData: FormData): Promise<JobCopyState> {
+  const jobId = getRequiredId(formData, "jobId", "Job id");
+  if ("error" in jobId) {
+    return jobId.error;
+  }
+
+  try {
+    const response = await fetch(getApiUrl(`/api/jobs/${encodeURIComponent(jobId.value)}/copy`), {
+      method: "POST",
+      cache: "no-store",
+    });
+
+    const result = (await response.json().catch(() => null)) as MutationApiResponse | null;
+
+    if (!response.ok || result?.ok === false) {
+      return {
+        status: "error",
+        message: result?.error?.message ?? `Copy request failed with status ${response.status}.`,
+      };
+    }
+
+    revalidatePath("/jobs");
+    if (typeof result?.data?.id === "string" && result.data.id) {
+      revalidatePath(`/jobs/${result.data.id}`);
+    }
+    refresh();
+
+    return {
+      status: "success",
+      message: "Duplicated this job as a new draft.",
+      copiedJobId: typeof result?.data?.id === "string" ? result.data.id : undefined,
+    };
+  } catch {
+    return {
+      status: "error",
+      message: "The job copy API is unavailable right now.",
     };
   }
 }
