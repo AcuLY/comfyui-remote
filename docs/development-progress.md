@@ -29,8 +29,8 @@
 ## Current Status
 ### Frontend
 Latest pushed commits:
+- `f4c109c` feat(queue): load review group page from API fallback
 - `043a0dd` feat(frontend): wire lora upload form
-- `de0d859` feat(frontend): prefer api data with mock fallback
 
 Current state:
 - 已有待审核队列页
@@ -40,14 +40,16 @@ Current state:
 - 已有 LoRA 页骨架
 - 已有大任务详情和参数编辑页骨架
 - 队列 / jobs / trash / loras 已优先读取真实 API，并保留 mock fallback
+- 宫格审核页现在会优先读取 `/api/runs/:id` 的真实 run 数据，并在接口不可用时回退到 mock reviewGroups
+- 宫格页上一组 / 下一组导航会优先基于真实 queue 列表计算，缺失时再回退到 mock 邻居，避免页面直接断掉
 - 回收站页已对齐 `/api/trash` 返回结构，真实数据缺少预览图时也不会渲染报错
 - LoRA 页面已接入真实上传表单：通过 server action 提交到 `/api/loras`，会校验 category / file，并在成功后刷新列表
-- 已确认 frontend worktree 当前 `npm run lint` 可通过（包含本轮 LoRA 上传改动）
+- 已确认 frontend worktree 当前 `npm run lint` 可通过（包含本轮宫格页真实数据接线）
 
 ### Backend
 Latest pushed commits:
+- `b0e2736` feat(api): add run review detail endpoint
 - `d2f2633` feat(backend): add local prisma bootstrap seed
-- `b74b4b1` fix(backend): make lora api json-safe
 
 Current state:
 - 已有 Prisma schema 草案
@@ -56,20 +58,22 @@ Current state:
 - 已有 LoRA 路径映射与上传服务骨架
 - 已实现 keep / trash / restore 的最小真实审图逻辑（Prisma + TrashRecord）
 - 已把 review 接口请求校验与错误映射上收至 service 层，路由更薄，后续更容易接前端真实调用
+- 已新增 `GET /api/runs/:id`：会从 Prisma 真实读取单个 PositionRun 的标题 / 角色 / position / 审核图片列表，供宫格页直接渲染
+- run 详情接口会优先返回 `thumbPath`，否则回退到原图路径；图片标签按稳定顺序生成两位编号，便于宫格页先跑通
 - keep 动作现在会同时关闭未恢复的 TrashRecord，避免图片从回收站“保留”后状态残留
 - `/api/loras` 现在会把 BigInt/Date 转成可安全 JSON 返回的结构，避免真实 LoRA 列表接口在序列化阶段报错
 - LoRA 上传现在会把 category / env 配置错误区分成明确的 4xx/5xx 响应，前端接真实上传表单时更容易处理
 - 已增加 `prisma/seed.ts` 与 `npm run db:bootstrap`：当前可用 `generate + db push + seed` 一次性初始化本地数据库
 - seed 会写入 queue/jobs/trash/loras 相关的最小样例数据，便于本机先跑通 API 与页面
+- 已确认 backend worktree 当前 `npm run lint` 可通过（包含本轮 `/api/runs/:id` 接口改动）
 - 目前尚未接入真实数据库迁移和完整业务逻辑
 
 ## Next Suggested Milestones
-1. 前端改为优先读取真实 API，保留 mock fallback
-2. 后端补种子数据 / 初始化方案，方便本地跑起来
-3. 打通 queue/jobs/trash/loras 的最小真实闭环
-4. 增加图片 review keep/trash/restore 的真实逻辑
-5. 增加 LoRA 上传前端真实调用
-6. 接入 worker scaffold 与 ComfyUI run pipeline
+1. 完善 jobs API，补 job detail / edit 页真实数据读取
+2. 为宫格页接入批量 keep / trash 的真实提交
+3. 验证并补齐本机 `npm install` / 全仓 `npm run lint` / 最小启动链路
+4. 接入 worker scaffold 与 ComfyUI run pipeline
+5. 预留图片缩略图生成与文件移动服务
 
 ## Cron Job
 - Job ID: `44d5a257-0ff6-4dee-a6e9-e249a0399055`
