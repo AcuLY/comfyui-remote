@@ -1,5 +1,6 @@
 import { Prisma } from "@/generated/prisma";
 import {
+  copyJob as copyJobInRepository,
   enqueueJobPositionRun as enqueueJobPositionRunInRepository,
   enqueueJobRuns as enqueueJobRunsInRepository,
   updateJob as updateJobInRepository,
@@ -192,6 +193,10 @@ export async function updateJobPosition(
 
 export async function enqueueJobRuns(jobId: string) {
   return enqueueJobRunsInRepository(normalizeRequiredId(jobId, "jobId"));
+}
+
+export async function copyJob(jobId: string) {
+  return copyJobInRepository(normalizeRequiredId(jobId, "jobId"));
 }
 
 export async function enqueueJobPositionRun(

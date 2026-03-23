@@ -371,6 +371,46 @@ function serializeEnqueuedRun(
   };
 }
 
+function cloneJsonValueForCreate(
+  value: Prisma.JsonValue | null,
+): Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput {
+  if (value === null) {
+    return Prisma.DbNull;
+  }
+
+  return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
+}
+
+function buildCopyTitle(title: string, copyNumber: number) {
+  return copyNumber === 1 ? `${title} Copy` : `${title} Copy ${copyNumber}`;
+}
+
+function buildCopySlug(slug: string, copyNumber: number) {
+  return copyNumber === 1 ? `${slug}-copy` : `${slug}-copy-${copyNumber}`;
+}
+
+async function resolveUniqueJobCopyIdentity(
+  tx: Prisma.TransactionClient,
+  job: Pick<QueuableJobRecord, "title" | "slug">,
+) {
+  for (let copyNumber = 1; copyNumber <= 100; copyNumber += 1) {
+    const title = buildCopyTitle(job.title, copyNumber);
+    const slug = buildCopySlug(job.slug, copyNumber);
+    const existingJob = await tx.completeJob.findFirst({
+      where: {
+        OR: [{ title }, { slug }],
+      },
+      select: { id: true },
+    });
+
+    if (!existingJob) {
+      return { title, slug };
+    }
+  }
+
+  throw new Error("JOB_COPY_IDENTITY_EXHAUSTED");
+}
+
 async function ensureQueuedJobStatus(
   tx: Prisma.TransactionClient,
   job: Pick<QueuableJobRecord, "id" | "status">,
@@ -728,6 +768,86 @@ export async function updateJobPosition(
   });
 
   return getJobPositionDetail(jobId, jobPositionId);
+}
+
+export async function copyJob(jobId: string) {
+  return db.$transaction(async (tx: Prisma.TransactionClient) => {
+    const job = await tx.completeJob.findUnique({
+      where: { id: jobId },
+      include: {
+        positions: {
+          orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+          select: {
+            positionTemplateId: true,
+            sortOrder: true,
+            enabled: true,
+            positivePrompt: true,
+            negativePrompt: true,
+            aspectRatio: true,
+            batchSize: true,
+            seedPolicy: true,
+            loraConfig: true,
+            extraParams: true,
+          },
+        },
+      },
+    });
+
+    if (!job) {
+      throw new Error("JOB_NOT_FOUND");
+    }
+
+    const identity = await resolveUniqueJobCopyIdentity(tx, job);
+    const copiedJob = await tx.completeJob.create({
+      data: {
+        title: identity.title,
+        slug: identity.slug,
+        status: JobStatus.draft,
+        characterId: job.characterId,
+        scenePresetId: job.scenePresetId,
+        stylePresetId: job.stylePresetId,
+        characterPrompt: job.characterPrompt,
+        characterLoraPath: job.characterLoraPath,
+        scenePrompt: job.scenePrompt,
+        stylePrompt: job.stylePrompt,
+        jobLevelOverrides: cloneJsonValueForCreate(job.jobLevelOverrides),
+        notes: job.notes,
+        positions: {
+          create: job.positions.map((position) => ({
+            positionTemplateId: position.positionTemplateId,
+            sortOrder: position.sortOrder,
+            enabled: position.enabled,
+            positivePrompt: position.positivePrompt,
+            negativePrompt: position.negativePrompt,
+            aspectRatio: position.aspectRatio,
+            batchSize: position.batchSize,
+            seedPolicy: position.seedPolicy,
+            loraConfig: cloneJsonValueForCreate(position.loraConfig),
+            extraParams: cloneJsonValueForCreate(position.extraParams),
+          })),
+        },
+      },
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        status: true,
+        createdAt: true,
+        positions: {
+          select: { id: true },
+        },
+      },
+    });
+
+    return {
+      id: copiedJob.id,
+      title: copiedJob.title,
+      slug: copiedJob.slug,
+      status: copiedJob.status,
+      createdAt: copiedJob.createdAt.toISOString(),
+      positionCount: copiedJob.positions.length,
+    };
+  });
 }
 
 export async function enqueueJobRuns(jobId: string) {
