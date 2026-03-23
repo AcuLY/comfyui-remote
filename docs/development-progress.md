@@ -55,6 +55,8 @@ Current state:
 - 已实现 keep / trash / restore 的最小真实审图逻辑（Prisma + TrashRecord）
 - 已把 review 接口请求校验与错误映射上收至 service 层，路由更薄，后续更容易接前端真实调用
 - keep 动作现在会同时关闭未恢复的 TrashRecord，避免图片从回收站“保留”后状态残留
+- `/api/loras` 现在会把 BigInt/Date 转成可安全 JSON 返回的结构，避免真实 LoRA 列表接口在序列化阶段报错
+- LoRA 上传现在会把 category / env 配置错误区分成明确的 4xx/5xx 响应，前端接真实上传表单时更容易处理
 - 目前尚未接入真实数据库迁移和完整业务逻辑
 
 ## Next Suggested Milestones

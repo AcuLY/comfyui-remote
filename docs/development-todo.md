@@ -20,9 +20,9 @@
 - [ ] 预留 run-all / run-single-position 的真实逻辑入口
 
 ## Priority D: lora flow
-- [ ] LoRA 页接真实 `/api/loras`
+- [x] LoRA 页接真实 `/api/loras`
 - [ ] 接真实上传表单到 `/api/loras`
-- [ ] 校验 category/path mapping
+- [x] 校验 category/path mapping
 - [ ] 记录上传后的 DB 数据
 
 ## Priority E: infra
