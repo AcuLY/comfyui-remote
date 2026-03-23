@@ -35,7 +35,8 @@
 - [x] 预留 ComfyUI payload builder
 - [x] 让 worker scaffold 真正消费 queued run（状态流转 / 错误记录）
 - [x] 补一个最小 worker 手动触发入口（本地受控 API）以便验证 queue -> worker 闭环
-- [ ] 接入 ComfyUI prompt submit / history polling / 输出下载
+- [x] 接入 ComfyUI prompt submit / history polling
+- [ ] 接入 ComfyUI 输出下载与 ImageResult 落库
 - [ ] 预留图片缩略图生成与文件移动服务
 
 ## Working Notes

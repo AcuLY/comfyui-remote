@@ -85,15 +85,18 @@ Current state:
 - worker report 现在会返回本轮 claimed / skipped / failed 计数及每条 run 的最终状态，便于后续挂接真实 ComfyUI 调用前先验证状态机
 - 已确认 backend worktree 当前 `npm run lint` 可通过（本轮使用 `cmd /c npm run lint` 以绕过本机 PowerShell execution policy 对 `npm.ps1` 的限制）
 - 已补一个本地受控 worker 触发入口：`POST /api/local/worker/pass?limit=1`，仅允许 localhost 访问，默认处理 1 条 queued run（最多 10 条），便于本机先验证 queue -> worker 的最小闭环
-- backend README 与 worker README 已同步更新本地手动触发说明，当前 worker 会把占位执行结果写回 `done` / `failed`，但仍未真正调用 ComfyUI
-- 目前尚未接入 ComfyUI prompt submit / history polling / 输出下载 / 缩略图生成，也尚未做完整本机启动验证
+- backend README 与 worker README 已同步更新本地手动触发说明；worker 现在会校验 draft、向 ComfyUI 提交 `/prompt`，并轮询 `/history/:promptId`，提交成功时回写 `comfyPromptId`
+- worker 若在提交、轮询或超时阶段失败，会把 run 标记为 `failed` 并记录错误，便于先验证真实 ComfyUI 状态回写链路
+- 已新增 `COMFY_REQUEST_TIMEOUT_MS` / `COMFY_HISTORY_POLL_INTERVAL_MS` / `COMFY_HISTORY_MAX_ATTEMPTS` 到 env 示例，方便本机调 ComfyUI 时控制超时与轮询频率
+- backend worktree 当前 `cmd /c npm run lint` 与 `cmd /c npm run build` 可通过（包含本轮 ComfyUI 提交/轮询接线）
+- 当前仍未下载输出图片或生成缩略图；`PositionRun.outputDir` 仅从 ComfyUI history 的输出子目录推导
 
 ## Next Suggested Milestones
 1. 验证并补齐本机 `npm install` / 全仓 `npm run lint` / 最小启动链路
-2. 接入 ComfyUI prompt submit / history polling / 输出下载，把 worker 从本地状态机推进到真实执行链路
+2. 补上 ComfyUI 输出下载与 ImageResult 落库，把 worker 从“提交/轮询”推进到最小可见结果链路
 3. 预留图片缩略图生成与文件移动服务
 4. 视情况补宫格页提交后的局部状态优化（如成功后清空选择 / 更细粒度提示）
-5. 继续把 worker 从本地占位状态机推进到真实 ComfyUI 执行链路（submit / poll / download）
+5. 视需要补一次本机手动验证记录（seed -> enqueue -> local worker pass -> ComfyUI history）
 
 ## Cron Job
 - Job ID: `44d5a257-0ff6-4dee-a6e9-e249a0399055`
