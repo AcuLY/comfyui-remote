@@ -9,7 +9,13 @@
     "lint": "eslint",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
+    "prisma:db:push": "prisma db push",
+    "prisma:seed": "node --experimental-strip-types prisma/seed.ts",
+    "db:bootstrap": "npm run prisma:generate && npm run prisma:db:push && npm run prisma:seed",
     "prisma:studio": "prisma studio"
+  },
+  "prisma": {
+    "seed": "node --experimental-strip-types prisma/seed.ts"
   },
   "dependencies": {
     "@prisma/client": "^7.5.0",

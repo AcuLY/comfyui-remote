@@ -24,10 +24,24 @@
 3. 执行：
 ```bash
 npm install
-npm run prisma:generate
+npm run db:bootstrap
 npm run lint
 npm run dev
 ```
+
+### 本地数据库 bootstrap
+- `npm run prisma:db:push`：把当前 Prisma schema 同步到本地数据库（适合当前尚未正式维护 migration 的阶段）
+- `npm run prisma:seed`：写入一组可直接驱动 queue / jobs / trash / loras 页面与 API 的最小样例数据
+- `npm run db:bootstrap`：串联 generate + db push + seed，作为新的本地初始化默认入口
+
+当前 seed 会写入：
+- 2 个角色（Nakano Miku / Tangtang）
+- 2 个 scene preset + 2 个 style preset
+- 3 个 position template
+- 2 个 complete job
+- 3 个 position run（含待审核 / 已保留 / 已回收状态图片）
+- 1 条 trash record
+- 2 条 LoRA asset 记录
 
 ## 下一步
 1. 接入真实 PostgreSQL
