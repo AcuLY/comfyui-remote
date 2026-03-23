@@ -57,6 +57,7 @@ Current state:
 - 已修复 frontend `src/app/jobs/actions.ts` 的重复导出与类型收窄问题；`npm run build` 现可通过
 - 已为 frontend/backend 设置 `next.config.ts -> turbopack.root = __dirname`，消除多 lockfile 场景下的 workspace root 推断警告
 - jobs 列表页现在会展示后端返回的真实启用 position 数、最近一次 run 状态与 pending/total 审核统计，并把首页“编辑/运行整组”入口直接接到真实页面与 server action，继续减少 jobs 首页对 mock 信息的依赖
+- jobs 列表页的“复制”按钮已接到真实 server action：会调用后端 `POST /api/jobs/:jobId/copy` 复制整条任务及其 position 覆盖，创建新的 draft，并在成功后提供进入新草稿编辑页的入口
 
 ### Backend
 Latest pushed commits:
@@ -100,6 +101,8 @@ Current state:
 - backend worktree 当前 `cmd /c npm run lint` 与 `cmd /c npm run build` 可通过（包含本轮缩略图与元数据提取改动）
 - 本轮再次验证 backend worktree `cmd /c npm run lint` 与 `cmd /c npm run build` 可通过，且已消除 workspace root 推断警告
 - jobs 列表接口现在会返回真实启用 position 数、最新 run 时间/状态，以及该最新 run 的 pending/total 审核统计，方便前端 jobs 首页直接展示真实概览
+- 已补 `POST /api/jobs/:jobId/copy`：会复制 job 基础配置、jobLevelOverrides 与全部 position 覆盖，自动生成唯一 title/slug，并把新任务创建为 `draft`
+- backend/frontend worktree 当前 `cmd /c npm run lint` 与 `cmd /c npm run build` 可通过（包含本轮 job copy API 与 jobs 列表复制按钮接线）
 
 ## Next Suggested Milestones
 1. 验证并补齐本机 `npm install` / 全仓 `npm run lint` / 最小启动链路

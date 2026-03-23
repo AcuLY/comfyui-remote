@@ -16,7 +16,8 @@
 - [x] 为宫格页接入批量 keep / trash 的真实提交
 
 ## Priority C: job flow
-- [ ] 继续完善 jobs API（如复制任务、列表筛选，或继续按前端缺口补更多聚合信息）
+- [ ] 继续完善 jobs API（列表筛选，或继续按前端缺口补更多聚合信息）
+- [x] 补 job 复制 API，并把 jobs 列表“复制”按钮接到真实动作
 - [x] 完善 job detail / edit 页与真实数据衔接（先完成只读加载与 fallback）
 - [x] 预留 job 参数保存动作与 position 参数保存动作
 - [x] 前端接上 job / position 编辑页真实 PATCH 保存链路
