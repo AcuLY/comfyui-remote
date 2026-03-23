@@ -56,6 +56,7 @@ Current state:
 - 已确认 frontend/backend worktree 当前 `npm install` 可在本机完成（依赖已是 up to date）
 - 已修复 frontend `src/app/jobs/actions.ts` 的重复导出与类型收窄问题；`npm run build` 现可通过
 - 已为 frontend/backend 设置 `next.config.ts -> turbopack.root = __dirname`，消除多 lockfile 场景下的 workspace root 推断警告
+- jobs 列表页现在会展示后端返回的真实启用 position 数、最近一次 run 状态与 pending/total 审核统计，并把首页“编辑/运行整组”入口直接接到真实页面与 server action，继续减少 jobs 首页对 mock 信息的依赖
 
 ### Backend
 Latest pushed commits:
@@ -98,6 +99,7 @@ Current state:
 - worker 现在会为每张持久化后的输出图生成 `data/images/<job>/<position>/run-xx/thumb/NN.jpg` 缩略图，并回填 `ImageResult.thumbPath` / `width` / `height`
 - backend worktree 当前 `cmd /c npm run lint` 与 `cmd /c npm run build` 可通过（包含本轮缩略图与元数据提取改动）
 - 本轮再次验证 backend worktree `cmd /c npm run lint` 与 `cmd /c npm run build` 可通过，且已消除 workspace root 推断警告
+- jobs 列表接口现在会返回真实启用 position 数、最新 run 时间/状态，以及该最新 run 的 pending/total 审核统计，方便前端 jobs 首页直接展示真实概览
 
 ## Next Suggested Milestones
 1. 验证并补齐本机 `npm install` / 全仓 `npm run lint` / 最小启动链路
