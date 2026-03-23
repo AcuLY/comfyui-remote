@@ -1,0 +1,36 @@
+# Development Todo
+
+## Priority A: make local run viable
+- [ ] 准备 `.env.example` / 本地启动说明统一化
+- [ ] 确认可在本机完成 `npm install`
+- [ ] 确认可在本机完成 `npm run lint`
+- [ ] 增加数据库初始化说明或 seed 方案
+- [ ] 让前端至少有一部分页面从真实 API 读数据
+
+## Priority B: review flow
+- [ ] 实现 queue API 与前端对接
+- [ ] 实现 trash API 与前端对接
+- [ ] 实现 keep / trash / restore 的最小真实逻辑
+- [ ] 让宫格页从 run 真实数据渲染
+
+## Priority C: job flow
+- [ ] 完善 jobs API
+- [ ] 完善 job detail / edit 页与真实数据衔接
+- [ ] 预留 run-all / run-single-position 的真实逻辑入口
+
+## Priority D: lora flow
+- [ ] LoRA 页接真实 `/api/loras`
+- [ ] 接真实上传表单到 `/api/loras`
+- [ ] 校验 category/path mapping
+- [ ] 记录上传后的 DB 数据
+
+## Priority E: infra
+- [ ] 增加 seed/mock bootstrap 脚本
+- [ ] 增加 worker scaffold
+- [ ] 预留 ComfyUI payload builder
+- [ ] 预留图片缩略图生成与文件移动服务
+
+## Working Notes
+- 前后端并行开发，分别在 `frontend` / `backend` 分支提交并 push
+- 共享进度文档放在 `main`
+- 每轮优先选择“最小但可见”的下一步
