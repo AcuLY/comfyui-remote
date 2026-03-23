@@ -52,6 +52,8 @@ Current state:
 - 已有 queue/jobs/trash/loras API 占位
 - 已有 LoRA 路径映射与上传服务骨架
 - 已实现 keep / trash / restore 的最小真实审图逻辑（Prisma + TrashRecord）
+- 已把 review 接口请求校验与错误映射上收至 service 层，路由更薄，后续更容易接前端真实调用
+- keep 动作现在会同时关闭未恢复的 TrashRecord，避免图片从回收站“保留”后状态残留
 - 目前尚未接入真实数据库迁移和完整业务逻辑
 
 ## Next Suggested Milestones
