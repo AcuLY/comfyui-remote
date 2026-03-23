@@ -55,6 +55,7 @@ Current state:
 
 ### Backend
 Latest pushed commits:
+- `e6b8e74` feat(worker): add local pass trigger route
 - `6782994` feat(worker): consume queued runs in worker pass
 - `887fe11` feat(worker): add queued run scaffold and payload drafts
 
@@ -83,6 +84,8 @@ Current state:
 - `repository.ts` 已补上 worker 侧 claim / complete 流程：会写 `startedAt` / `finishedAt`、清理旧错误、回填 `comfyPromptId` / `outputDir`（若有）并同步更新 CompleteJob 状态
 - worker report 现在会返回本轮 claimed / skipped / failed 计数及每条 run 的最终状态，便于后续挂接真实 ComfyUI 调用前先验证状态机
 - 已确认 backend worktree 当前 `npm run lint` 可通过（本轮使用 `cmd /c npm run lint` 以绕过本机 PowerShell execution policy 对 `npm.ps1` 的限制）
+- 已补一个本地受控 worker 触发入口：`POST /api/local/worker/pass?limit=1`，仅允许 localhost 访问，默认处理 1 条 queued run（最多 10 条），便于本机先验证 queue -> worker 的最小闭环
+- backend README 与 worker README 已同步更新本地手动触发说明，当前 worker 会把占位执行结果写回 `done` / `failed`，但仍未真正调用 ComfyUI
 - 目前尚未接入 ComfyUI prompt submit / history polling / 输出下载 / 缩略图生成，也尚未做完整本机启动验证
 
 ## Next Suggested Milestones
@@ -90,7 +93,7 @@ Current state:
 2. 接入 ComfyUI prompt submit / history polling / 输出下载，把 worker 从本地状态机推进到真实执行链路
 3. 预留图片缩略图生成与文件移动服务
 4. 视情况补宫格页提交后的局部状态优化（如成功后清空选择 / 更细粒度提示）
-5. 视需要补一个最小 worker 触发入口（脚本或受控 API）以便本机端到端验证
+5. 继续把 worker 从本地占位状态机推进到真实 ComfyUI 执行链路（submit / poll / download）
 
 ## Cron Job
 - Job ID: `44d5a257-0ff6-4dee-a6e9-e249a0399055`

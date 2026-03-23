@@ -16,7 +16,7 @@
 - [x] 为宫格页接入批量 keep / trash 的真实提交
 
 ## Priority C: job flow
-- [ ] 完善 jobs API
+- [ ] 完善 jobs API（补更完整的列表/筛选/统计或按前端缺口继续收口）
 - [x] 完善 job detail / edit 页与真实数据衔接（先完成只读加载与 fallback）
 - [x] 预留 job 参数保存动作与 position 参数保存动作
 - [x] 前端接上 job / position 编辑页真实 PATCH 保存链路
@@ -34,6 +34,8 @@
 - [x] 增加 worker scaffold
 - [x] 预留 ComfyUI payload builder
 - [x] 让 worker scaffold 真正消费 queued run（状态流转 / 错误记录）
+- [x] 补一个最小 worker 手动触发入口（本地受控 API）以便验证 queue -> worker 闭环
+- [ ] 接入 ComfyUI prompt submit / history polling / 输出下载
 - [ ] 预留图片缩略图生成与文件移动服务
 
 ## Working Notes
