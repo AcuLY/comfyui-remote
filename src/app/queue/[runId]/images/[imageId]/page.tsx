@@ -2,12 +2,15 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
-import { getReviewGroup } from "@/lib/server-data";
+import { getReviewGroup, getReviewGroupIds } from "@/lib/server-data";
 import { ImageActions } from "./image-actions";
 
 export default async function ReviewImagePage({ params }: { params: Promise<{ runId: string; imageId: string }> }) {
   const { runId, imageId } = await params;
-  const group = await getReviewGroup(runId);
+  const [group, allIds] = await Promise.all([
+    getReviewGroup(runId),
+    getReviewGroupIds(),
+  ]);
 
   if (!group) notFound();
 
@@ -18,6 +21,12 @@ export default async function ReviewImagePage({ params }: { params: Promise<{ ru
 
   const prev = imageIndex > 0 ? group.images[imageIndex - 1] : null;
   const next = imageIndex < group.images.length - 1 ? group.images[imageIndex + 1] : null;
+
+  const currentGroupIndex = allIds.indexOf(runId);
+  const nextRunId = currentGroupIndex < allIds.length - 1 ? allIds[currentGroupIndex + 1] : null;
+  const pendingImageIds = group.images
+    .filter((img) => img.status === "pending")
+    .map((img) => img.id);
 
   return (
     <div className="space-y-4">
@@ -45,7 +54,12 @@ export default async function ReviewImagePage({ params }: { params: Promise<{ ru
         <Image src={image.src} alt={image.id} width={1080} height={1440} className="h-auto w-full rounded-[22px] object-cover" unoptimized />
       </div>
 
-      <ImageActions imageId={imageId} />
+      <ImageActions
+        imageId={imageId}
+        runId={runId}
+        pendingImageIds={pendingImageIds}
+        nextRunId={nextRunId}
+      />
 
       <div className="grid grid-cols-2 gap-3">
         {prev ? (

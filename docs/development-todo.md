@@ -86,6 +86,11 @@
 - [x] API 端点 `ALL /api/mcp`（stateless Streamable HTTP transport）
 - [x] agent-api.md 增加 MCP 配置说明和 Tools/Resources 文档
 
+## ~~Priority B: 审图快捷操作~~ ✅ DONE
+- [x] 宫格审图：批量保留/删除后显示「保留剩余 / 删除剩余」按钮，点击后处理剩余 pending 图片并自动跳转下一组
+- [x] 单图详情：保留/删除当前图后显示「保留剩余 / 删除剩余」按钮，同样支持跳转下一组
+- [x] 无下一组时回退到队列列表页
+
 ## Working Notes
 - 单体 Next.js 项目，统一在 `main` 分支开发
 - `frontend` / `backend` 分支已合并到 `main` 并可归档

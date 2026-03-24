@@ -5,7 +5,7 @@
 ## ✨ 功能亮点
 
 - **大任务管理** — 用 Character × Scene × Style × Position 组合创建批量生图任务
-- **宫格审图** — 在手机上滑动式多选，批量保留 / 删除，支持单张放大
+- **宫格审图** — 在手机上滑动式多选，批量保留 / 删除，支持单张放大；操作后一键处理剩余并跳转下一组
 - **回收站** — 误删随时恢复，文件级 trash / restore
 - **参数编辑** — Job 级和 Position 级覆盖：prompt、LoRA、画幅、batch size、seed 策略
 - **Workflow 模板** — 内置 SDXL txt2img / HiRes Fix，支持从 ComfyUI 导出 JSON 一键导入自定义模板
@@ -115,8 +115,8 @@ npm run db:bootstrap:sqlite
 | 页面 | 路径 | 功能 |
 |------|------|------|
 | 审核队列 | `/queue` | 待审核 Run 列表，按时间倒序 |
-| 宫格审图 | `/queue/:runId` | 多选 + 批量保留 / 删除 |
-| 单张查看 | `/queue/:runId/images/:imageId` | 大图 + 左右切换 + 元数据 |
+| 宫格审图 | `/queue/:runId` | 多选 + 批量保留 / 删除 + 处理剩余跳转下一组 |
+| 单张查看 | `/queue/:runId/images/:imageId` | 大图 + 左右切换 + 处理剩余跳转下一组 |
 | Job 列表 | `/jobs` | 创建 / 编辑 / 复制 / 运行 |
 | 创建 Job | `/jobs/new` | 选择 Character / Scene / Style，勾选 Position |
 | Job 详情 | `/jobs/:jobId` | Position 列表 + 运行状态 + 修订历史 |

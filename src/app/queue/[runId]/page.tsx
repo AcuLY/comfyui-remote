@@ -41,7 +41,7 @@ export default async function ReviewGroupPage({ params }: { params: Promise<{ ru
         title="宫格审核"
         subtitle="多选后批量保留或删除，点图片放大查看。"
       >
-        <ReviewGrid runId={group.id} images={group.images} />
+        <ReviewGrid runId={group.id} images={group.images} nextRunId={nextId} />
       </SectionCard>
 
       <div className="grid grid-cols-2 gap-3">

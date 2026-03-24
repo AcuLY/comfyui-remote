@@ -2,20 +2,28 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { Expand, Trash2, Check } from "lucide-react";
+import { Check, ChevronRight, Expand, Trash2 } from "lucide-react";
 import { keepImages, trashImages } from "@/lib/actions";
 import type { ReviewImage } from "@/lib/types";
+
+type LastAction = "keep" | "trash";
 
 export function ReviewGrid({
   runId,
   images,
+  nextRunId,
 }: {
   runId: string;
   images: ReviewImage[];
+  nextRunId: string | null;
 }) {
+  const router = useRouter();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [isPending, startTransition] = useTransition();
+  /** Tracks the last bulk action so we can offer the complementary "handle rest" button. */
+  const [lastAction, setLastAction] = useState<LastAction | null>(null);
 
   function toggleSelect(id: string) {
     setSelected((prev) => {
@@ -34,11 +42,29 @@ export function ReviewGrid({
     }
   }
 
+  const pendingImages = images.filter((img) => img.status === "pending");
+  const selectedCount = selected.size;
+
+  /** IDs of images that are still pending **and** were NOT part of the last action selection. */
+  const remainingPendingIds = pendingImages
+    .filter((img) => !selected.has(img.id))
+    .map((img) => img.id);
+
+  // After a bulk keep / trash, the remaining pending images are those NOT yet acted upon.
+  // We recalculate them from the *current* images list because React Server Components will
+  // revalidate and pass updated props, but within the same render cycle after an action the
+  // `images` prop still has the pre-action statuses. So we use the `lastAction` state to
+  // derive which images still need handling.
+  const pendingAfterAction = lastAction
+    ? images.filter((img) => img.status === "pending").map((img) => img.id)
+    : [];
+
   function handleKeep() {
     const ids = [...selected];
     if (ids.length === 0) return;
     startTransition(async () => {
       await keepImages(ids);
+      setLastAction("keep");
       setSelected(new Set());
     });
   }
@@ -48,12 +74,29 @@ export function ReviewGrid({
     if (ids.length === 0) return;
     startTransition(async () => {
       await trashImages(ids);
+      setLastAction("trash");
       setSelected(new Set());
     });
   }
 
-  const pendingImages = images.filter((img) => img.status === "pending");
-  const selectedCount = selected.size;
+  /** Handle the remaining pending images with the complementary action and navigate to the next group. */
+  function handleRestAndNext(action: LastAction) {
+    startTransition(async () => {
+      const ids = pendingAfterAction.length > 0 ? pendingAfterAction : remainingPendingIds;
+      if (ids.length > 0) {
+        if (action === "keep") {
+          await keepImages(ids);
+        } else {
+          await trashImages(ids);
+        }
+      }
+      if (nextRunId) {
+        router.push(`/queue/${nextRunId}`);
+      } else {
+        router.push("/queue");
+      }
+    });
+  }
 
   return (
     <div>
@@ -153,6 +196,28 @@ export function ReviewGrid({
           {isPending ? "处理中…" : `批量删除${selectedCount > 0 ? ` (${selectedCount})` : ""}`}
         </button>
       </div>
+
+      {/* 保留/删除剩余 → 跳转下一组 */}
+      {lastAction && pendingAfterAction.length > 0 && (
+        <div className="mt-3 grid grid-cols-2 gap-3">
+          <button
+            onClick={() => handleRestAndNext("keep")}
+            disabled={isPending}
+            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-emerald-500/30 bg-emerald-500/20 px-4 py-3 text-sm font-medium text-emerald-200 transition hover:bg-emerald-500/30 disabled:opacity-40"
+          >
+            {isPending ? "处理中…" : `保留剩余 (${pendingAfterAction.length})`}
+            <ChevronRight className="size-4" />
+          </button>
+          <button
+            onClick={() => handleRestAndNext("trash")}
+            disabled={isPending}
+            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-rose-500/30 bg-rose-500/20 px-4 py-3 text-sm font-medium text-rose-200 transition hover:bg-rose-500/30 disabled:opacity-40"
+          >
+            {isPending ? "处理中…" : `删除剩余 (${pendingAfterAction.length})`}
+            <ChevronRight className="size-4" />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

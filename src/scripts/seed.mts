@@ -1,4 +1,6 @@
 import "dotenv/config";
+import { mkdir, writeFile } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
 import { PrismaClient } from "../generated/prisma/client.js";
 
 function detectProvider(): "postgresql" | "sqlite" {
@@ -22,8 +24,74 @@ async function createAdapter() {
 const adapter = await createAdapter();
 const prisma = new PrismaClient({ adapter });
 
+/** Minimal 1×1 PNG (67 bytes) used as placeholder for seed images. */
+const PLACEHOLDER_PNG = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==",
+  "base64",
+);
+
+/** Minimal 1×1 JPEG (107 bytes) used as placeholder for seed thumbnails. */
+const PLACEHOLDER_JPG = Buffer.from(
+  "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAABAAEDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAFBABAAAAAAAAAAAAAAAAAAAACf/EABQBAQAAAAAAAAAAAAAAAAAAAAD/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCwAB//2Q==",
+  "base64",
+);
+
+/**
+ * Ensure a placeholder file exists on disk so that
+ * image-file-service file operations (trash / restore) work correctly.
+ */
+async function ensurePlaceholderFile(relativePath: string, content: Buffer) {
+  const absolutePath = resolve(process.cwd(), relativePath);
+  await mkdir(dirname(absolutePath), { recursive: true });
+  await writeFile(absolutePath, content);
+}
+
+/** Build image entries for a position run and write placeholder files to disk. */
+async function buildSeedImages(
+  jobSlug: string,
+  positionSlug: string,
+  runIndex: number,
+  count: number,
+  reviewStatusFn: (i: number) => "kept" | "pending" | "trashed",
+) {
+  const runSegment = `run-${String(runIndex).padStart(2, "0")}`;
+  const entries: Array<{
+    filePath: string;
+    thumbPath: string;
+    width: number;
+    height: number;
+  }> = [];
+
+  for (let i = 0; i < count; i++) {
+    const fileName = `${String(i + 1).padStart(2, "0")}.png`;
+    const thumbName = `${String(i + 1).padStart(2, "0")}.jpg`;
+    const filePath = `data/images/${jobSlug}/${positionSlug}/${runSegment}/raw/${fileName}`;
+    const thumbPath = `data/images/${jobSlug}/${positionSlug}/${runSegment}/thumb/${thumbName}`;
+
+    await ensurePlaceholderFile(filePath, PLACEHOLDER_PNG);
+    await ensurePlaceholderFile(thumbPath, PLACEHOLDER_JPG);
+
+    entries.push({
+      filePath,
+      thumbPath,
+      width: 900,
+      height: 1200,
+      reviewStatus: reviewStatusFn(i),
+    } as any);
+  }
+
+  return entries;
+}
+
 async function main() {
   console.log("🌱 Seeding database...");
+
+  // Clean up previous seed data to avoid unique constraint conflicts.
+  // Order matters: trash records → image results → position runs.
+  await prisma.trashRecord.deleteMany({});
+  await prisma.imageResult.deleteMany({});
+  await prisma.positionRun.deleteMany({});
+  console.log("   Cleaned old run / image / trash data.");
 
   // --- Characters ---
   const miku = await prisma.character.upsert({
@@ -208,6 +276,11 @@ async function main() {
   });
 
   // --- PositionRuns + ImageResults ---
+  const mikuStandingImages = await buildSeedImages(
+    "miku-spring-batch-a", "standing", 1, 9,
+    (i) => i < 2 ? "kept" : "pending",
+  );
+
   const runMikuStanding = await prisma.positionRun.create({
     data: {
       completeJobId: jobMiku.id,
@@ -218,16 +291,15 @@ async function main() {
       startedAt: new Date("2026-03-23T22:00:00Z"),
       finishedAt: new Date("2026-03-23T22:08:00Z"),
       images: {
-        create: Array.from({ length: 9 }, (_, i) => ({
-          filePath: `https://picsum.photos/seed/miku-standing-${i + 1}/900/1200`,
-          thumbPath: `https://picsum.photos/seed/miku-standing-${i + 1}/300/400`,
-          width: 900,
-          height: 1200,
-          reviewStatus: i < 2 ? "kept" as const : "pending" as const,
-        })),
+        create: mikuStandingImages,
       },
     },
   });
+
+  const mikuWatchingImages = await buildSeedImages(
+    "miku-spring-batch-a", "watching", 1, 9,
+    (i) => i < 4 ? "pending" : "kept",
+  );
 
   await prisma.positionRun.create({
     data: {
@@ -239,16 +311,15 @@ async function main() {
       startedAt: new Date("2026-03-23T21:50:00Z"),
       finishedAt: new Date("2026-03-23T21:56:00Z"),
       images: {
-        create: Array.from({ length: 9 }, (_, i) => ({
-          filePath: `https://picsum.photos/seed/miku-watching-${i + 1}/900/1200`,
-          thumbPath: `https://picsum.photos/seed/miku-watching-${i + 1}/300/400`,
-          width: 900,
-          height: 1200,
-          reviewStatus: i < 4 ? "pending" as const : "kept" as const,
-        })),
+        create: mikuWatchingImages,
       },
     },
   });
+
+  const tangtangBenchImages = await buildSeedImages(
+    "tangtang-park-test", "bench-sit", 1, 9,
+    () => "pending",
+  );
 
   const runTangtangBench = await prisma.positionRun.create({
     data: {
@@ -260,13 +331,7 @@ async function main() {
       startedAt: new Date("2026-03-23T21:15:00Z"),
       finishedAt: new Date("2026-03-23T21:22:00Z"),
       images: {
-        create: Array.from({ length: 9 }, (_, i) => ({
-          filePath: `https://picsum.photos/seed/tangtang-bench-${i + 1}/900/1200`,
-          thumbPath: `https://picsum.photos/seed/tangtang-bench-${i + 1}/300/400`,
-          width: 900,
-          height: 1200,
-          reviewStatus: "pending" as const,
-        })),
+        create: tangtangBenchImages,
       },
     },
   });
@@ -299,42 +364,48 @@ async function main() {
   });
 
   // --- Trash Records ---
-  const mikuStandingImages = await prisma.imageResult.findMany({
+  const mikuStandingDbImages = await prisma.imageResult.findMany({
     where: { positionRunId: runMikuStanding.id },
     orderBy: { createdAt: "asc" },
   });
 
-  if (mikuStandingImages[3]) {
+  if (mikuStandingDbImages[3]) {
+    const trashTarget = mikuStandingDbImages[3];
+    const trashPath = `data/images/.trash/${trashTarget.id}/${trashTarget.filePath.split("/").pop()}`;
+    await ensurePlaceholderFile(trashPath, PLACEHOLDER_PNG);
     await prisma.imageResult.update({
-      where: { id: mikuStandingImages[3].id },
+      where: { id: trashTarget.id },
       data: { reviewStatus: "trashed" },
     });
     await prisma.trashRecord.create({
       data: {
-        imageResultId: mikuStandingImages[3].id,
-        originalPath: mikuStandingImages[3].filePath,
-        trashPath: `data/images/.trash/${mikuStandingImages[3].id}.png`,
+        imageResultId: trashTarget.id,
+        originalPath: trashTarget.filePath,
+        trashPath,
         reason: "User review: not good enough",
         actorType: "user",
       },
     });
   }
 
-  const tangtangBenchImages = await prisma.imageResult.findMany({
+  const tangtangBenchDbImages = await prisma.imageResult.findMany({
     where: { positionRunId: runTangtangBench.id },
     orderBy: { createdAt: "asc" },
   });
 
-  if (tangtangBenchImages[6]) {
+  if (tangtangBenchDbImages[6]) {
+    const trashTarget = tangtangBenchDbImages[6];
+    const trashPath = `data/images/.trash/${trashTarget.id}/${trashTarget.filePath.split("/").pop()}`;
+    await ensurePlaceholderFile(trashPath, PLACEHOLDER_PNG);
     await prisma.imageResult.update({
-      where: { id: tangtangBenchImages[6].id },
+      where: { id: trashTarget.id },
       data: { reviewStatus: "trashed" },
     });
     await prisma.trashRecord.create({
       data: {
-        imageResultId: tangtangBenchImages[6].id,
-        originalPath: tangtangBenchImages[6].filePath,
-        trashPath: `data/images/.trash/${tangtangBenchImages[6].id}.png`,
+        imageResultId: trashTarget.id,
+        originalPath: trashTarget.filePath,
+        trashPath,
         reason: "User review: duplicate pose",
         actorType: "user",
       },
