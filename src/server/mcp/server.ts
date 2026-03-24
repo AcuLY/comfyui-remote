@@ -35,6 +35,14 @@ import {
   listWorkflowTemplateSummaries,
   getWorkflowTemplate,
 } from "@/server/services/workflow-template-service";
+import {
+  addPromptBlock,
+  editPromptBlock,
+  removePromptBlock,
+  setPromptBlockOrder,
+  getPromptBlocks,
+  mapPromptBlockError,
+} from "@/server/services/prompt-block-service";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -57,7 +65,7 @@ export function getMcpServer(): McpServer {
   const server = new McpServer(
     {
       name: "comfyui-remote",
-      version: "0.1.0",
+      version: "0.2.0",
     },
     {
       capabilities: {
@@ -66,9 +74,11 @@ export function getMcpServer(): McpServer {
       },
       instructions: [
         "ComfyUI Remote MCP Server — manage AI image generation jobs.",
-        "Use tools to list/update jobs, trigger runs, and review generated images.",
-        "Use resources to read detailed context for jobs, runs, workflows, and revisions.",
+        "Use tools to list/update jobs, trigger runs, review images, and manage prompt blocks.",
+        "Use resources to read detailed context for jobs, runs, workflows, revisions, and prompt blocks.",
         "Typical workflow: list_jobs → get job context → update params → run → poll run context → review images.",
+        "Prompt blocks (v0.2): Each position's prompt is composed from ordered blocks (character/scene/style/position/custom).",
+        "Use list_prompt_blocks + add/update/remove/reorder to manage blocks via MCP.",
       ].join("\n"),
     },
   );
@@ -221,6 +231,104 @@ export function getMcpServer(): McpServer {
   );
 
   // -------------------------------------------------------------------------
+  // PromptBlock Tools (v0.2)
+  // -------------------------------------------------------------------------
+
+  server.tool(
+    "list_prompt_blocks",
+    "List all prompt blocks for a specific position within a job.",
+    {
+      jobPositionId: z.string().describe("The position ID to list blocks for"),
+    },
+    async ({ jobPositionId }) => {
+      try {
+        const blocks = await getPromptBlocks(jobPositionId);
+        return { content: [{ type: "text", text: JSON.stringify(blocks, null, 2) }] };
+      } catch (error) {
+        const mapped = mapPromptBlockError(error);
+        return { content: [{ type: "text", text: `Error: ${mapped.message}` }], isError: true };
+      }
+    },
+  );
+
+  server.tool(
+    "add_prompt_block",
+    "Add a new prompt block to a position. Use this to add custom prompt blocks or import from character/scene/style/position presets.",
+    {
+      jobPositionId: z.string().describe("The position ID to add the block to"),
+      type: z.enum(["character", "scene", "style", "position", "custom"]).describe("Block type"),
+      label: z.string().describe("Display label for this block"),
+      positive: z.string().describe("Positive prompt text"),
+      negative: z.string().nullable().optional().describe("Negative prompt text (optional)"),
+      sourceId: z.string().nullable().optional().describe("Source entity ID (e.g. Character.id) if referencing a preset"),
+    },
+    async ({ jobPositionId, type, label, positive, negative, sourceId }) => {
+      try {
+        const block = await addPromptBlock(jobPositionId, { type, label, positive, negative, sourceId }, ActorType.agent);
+        return { content: [{ type: "text", text: JSON.stringify(block, null, 2) }] };
+      } catch (error) {
+        const mapped = mapPromptBlockError(error);
+        return { content: [{ type: "text", text: `Error: ${mapped.message}` }], isError: true };
+      }
+    },
+  );
+
+  server.tool(
+    "update_prompt_block",
+    "Update an existing prompt block's label, positive, or negative prompt content.",
+    {
+      blockId: z.string().describe("The block ID to update"),
+      label: z.string().optional().describe("New display label"),
+      positive: z.string().optional().describe("New positive prompt text"),
+      negative: z.string().nullable().optional().describe("New negative prompt text (null to clear)"),
+    },
+    async ({ blockId, label, positive, negative }) => {
+      try {
+        const block = await editPromptBlock(blockId, { label, positive, negative }, ActorType.agent);
+        return { content: [{ type: "text", text: JSON.stringify(block, null, 2) }] };
+      } catch (error) {
+        const mapped = mapPromptBlockError(error);
+        return { content: [{ type: "text", text: `Error: ${mapped.message}` }], isError: true };
+      }
+    },
+  );
+
+  server.tool(
+    "remove_prompt_block",
+    "Delete a prompt block from a position.",
+    {
+      blockId: z.string().describe("The block ID to remove"),
+    },
+    async ({ blockId }) => {
+      try {
+        await removePromptBlock(blockId, ActorType.agent);
+        return { content: [{ type: "text", text: JSON.stringify({ deleted: true, blockId }) }] };
+      } catch (error) {
+        const mapped = mapPromptBlockError(error);
+        return { content: [{ type: "text", text: `Error: ${mapped.message}` }], isError: true };
+      }
+    },
+  );
+
+  server.tool(
+    "reorder_prompt_blocks",
+    "Reorder prompt blocks for a position. Provide the block IDs in the desired order.",
+    {
+      jobPositionId: z.string().describe("The position ID"),
+      blockIds: z.array(z.string()).describe("Array of block IDs in the desired order"),
+    },
+    async ({ jobPositionId, blockIds }) => {
+      try {
+        const blocks = await setPromptBlockOrder(jobPositionId, blockIds, ActorType.agent);
+        return { content: [{ type: "text", text: JSON.stringify(blocks, null, 2) }] };
+      } catch (error) {
+        const mapped = mapPromptBlockError(error);
+        return { content: [{ type: "text", text: `Error: ${mapped.message}` }], isError: true };
+      }
+    },
+  );
+
+  // -------------------------------------------------------------------------
   // Resources
   // -------------------------------------------------------------------------
 
@@ -341,6 +449,34 @@ export function getMcpServer(): McpServer {
           text: JSON.stringify(data, null, 2),
         }],
       };
+    },
+  );
+
+  // Dynamic resource: Position prompt blocks
+  server.resource(
+    "position-blocks",
+    new ResourceTemplate("comfyui://positions/{positionId}/blocks", { list: undefined }),
+    { description: "All prompt blocks for a specific position, ordered by sortOrder" },
+    async (uri, vars) => {
+      try {
+        const data = await getPromptBlocks(str(vars.positionId));
+        return {
+          contents: [{
+            uri: uri.href,
+            mimeType: "application/json",
+            text: JSON.stringify(data, null, 2),
+          }],
+        };
+      } catch (error) {
+        const mapped = mapPromptBlockError(error);
+        return {
+          contents: [{
+            uri: uri.href,
+            mimeType: "application/json",
+            text: JSON.stringify({ error: mapped.message }),
+          }],
+        };
+      }
     },
   );
 

@@ -495,26 +495,54 @@ ComfyUI Remote 内置 MCP Server，端点为 `POST /api/mcp`（Streamable HTTP t
 | `run_all_positions` | 触发 Job 中所有 enabled Position 运行 |
 | `run_position` | 触发单个 Position 运行 |
 | `review_images` | 批量审核图片（keep / trash） |
+| `list_prompt_blocks` | 列出 Position 的所有提示词块 |
+| `add_prompt_block` | 添加新的提示词块（角色/场景/风格/Position/自定义） |
+| `update_prompt_block` | 修改提示词块内容（标签/正面/负面） |
+| `remove_prompt_block` | 删除提示词块 |
+| `reorder_prompt_blocks` | 重排序提示词块 |
 
 ### 可用 Resources
 
 | URI 模式 | 描述 |
 |----------|------|
-| `comfyui://jobs/{jobId}/context` | Job 完整上下文 |
+| `comfyui://jobs/{jobId}/context` | Job 完整上下文（含 position 的 promptBlocks 和 promptDraft） |
 | `comfyui://runs/{runId}/context` | Run 结果上下文 |
 | `comfyui://workflows` | Workflow 模板列表 |
 | `comfyui://workflows/{templateId}` | 模板详情 |
 | `comfyui://jobs/{jobId}/revisions` | 修订历史列表 |
 | `comfyui://jobs/{jobId}/revisions/{n}` | 修订快照 |
+| `comfyui://positions/{positionId}/blocks` | Position 的提示词块列表 |
 
 ### MCP Agent 典型工作流
 
 ```
 1. 调用 list_jobs → 发现可操作的 Job
-2. 读取 comfyui://jobs/{id}/context → 了解当前参数和结果
-3. 调用 update_job → 优化提示词
+2. 读取 comfyui://jobs/{id}/context → 了解当前参数和结果（含 promptBlocks）
+3. 调用 update_job → 优化提示词（或使用 prompt block tools 精细控制）
 4. 调用 run_all_positions → 触发运行
 5. （等待 Worker 完成...）
 6. 读取 comfyui://runs/{id}/context → 查看生成结果
 7. 调用 review_images → 保留好的、删除差的
+```
+
+### Prompt Block 管理工作流（v0.2）
+
+```
+1. 调用 list_prompt_blocks(jobPositionId) → 查看当前块
+2. 调用 add_prompt_block → 添加自定义提示词块
+3. 调用 update_prompt_block → 修改某个块的内容
+4. 调用 reorder_prompt_blocks → 调整块的顺序
+5. 调用 remove_prompt_block → 删除不需要的块
+```
+
+### 迁移说明
+
+对于在 v0.2 之前创建的 Job（Position 没有 PromptBlocks），Worker 会自动回退到旧的提示词拼接逻辑。可以通过以下方式迁移：
+
+```bash
+# 查看哪些 Position 没有 PromptBlocks
+DRY_RUN=1 npx tsx src/scripts/migrate-prompt-blocks.mts
+
+# 执行迁移
+npx tsx src/scripts/migrate-prompt-blocks.mts
 ```

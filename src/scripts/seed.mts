@@ -83,15 +83,81 @@ async function buildSeedImages(
   return entries;
 }
 
+/** Generate initial PromptBlocks for a position (mirrors createJob logic). */
+async function generatePromptBlocks(
+  positionId: string,
+  character: { id: string; name: string; prompt: string; negativePrompt?: string | null },
+  scenePreset: { id: string; name: string; prompt: string; negativePrompt?: string | null } | null,
+  stylePreset: { id: string; name: string; prompt: string; negativePrompt?: string | null } | null,
+  positionTemplate: { id: string; name: string; prompt: string; negativePrompt?: string | null } | null,
+) {
+  let sortOrder = 0;
+
+  await prisma.promptBlock.create({
+    data: {
+      completeJobPositionId: positionId,
+      type: "character",
+      sourceId: character.id,
+      label: character.name,
+      positive: character.prompt,
+      negative: character.negativePrompt ?? null,
+      sortOrder: sortOrder++,
+    },
+  });
+
+  if (scenePreset) {
+    await prisma.promptBlock.create({
+      data: {
+        completeJobPositionId: positionId,
+        type: "scene",
+        sourceId: scenePreset.id,
+        label: scenePreset.name,
+        positive: scenePreset.prompt,
+        negative: scenePreset.negativePrompt ?? null,
+        sortOrder: sortOrder++,
+      },
+    });
+  }
+
+  if (stylePreset) {
+    await prisma.promptBlock.create({
+      data: {
+        completeJobPositionId: positionId,
+        type: "style",
+        sourceId: stylePreset.id,
+        label: stylePreset.name,
+        positive: stylePreset.prompt,
+        negative: stylePreset.negativePrompt ?? null,
+        sortOrder: sortOrder++,
+      },
+    });
+  }
+
+  if (positionTemplate) {
+    await prisma.promptBlock.create({
+      data: {
+        completeJobPositionId: positionId,
+        type: "position",
+        sourceId: positionTemplate.id,
+        label: positionTemplate.name,
+        positive: positionTemplate.prompt,
+        negative: positionTemplate.negativePrompt ?? null,
+        sortOrder: sortOrder++,
+      },
+    });
+  }
+}
+
 async function main() {
   console.log("🌱 Seeding database...");
 
   // Clean up previous seed data to avoid unique constraint conflicts.
-  // Order matters: trash records → image results → position runs.
+  // Order matters: trash records → image results → position runs → prompt blocks.
   await prisma.trashRecord.deleteMany({});
   await prisma.imageResult.deleteMany({});
   await prisma.positionRun.deleteMany({});
-  console.log("   Cleaned old run / image / trash data.");
+  await prisma.promptBlock.deleteMany({});
+  console.log("   Cleaned old run / image / trash / prompt-block data.");
 
   // --- Characters ---
   const miku = await prisma.character.upsert({
@@ -235,6 +301,7 @@ async function main() {
       },
     });
   }
+  await generatePromptBlocks(mikuStanding.id, miku, parkBench, softDaylight, standing);
 
   let mikuWatching = await prisma.completeJobPosition.findFirst({
     where: { completeJobId: jobMiku.id, positionTemplateId: watching.id },
@@ -250,6 +317,7 @@ async function main() {
       },
     });
   }
+  await generatePromptBlocks(mikuWatching.id, miku, parkBench, softDaylight, watching);
 
   // --- CompleteJob: Tangtang park test ---
   const jobTangtang = await prisma.completeJob.upsert({
@@ -283,6 +351,7 @@ async function main() {
       },
     });
   }
+  await generatePromptBlocks(tangtangBench.id, tangtang, riverside, animeCinematic, benchSit);
 
   // --- PositionRuns + ImageResults ---
   const mikuStandingImages = await buildSeedImages(
@@ -427,9 +496,11 @@ async function main() {
   console.log(`   Style Presets: ${softDaylight.name}, ${animeCinematic.name}`);
   console.log(`   Position Templates: ${standing.name}, ${watching.name}, ${benchSit.name}`);
   console.log(`   Jobs: ${jobMiku.title}, ${jobTangtang.title}`);
+  console.log(`   Positions: ${mikuStanding.id.split("-")[0]}..${mikuWatching.id.split("-")[0]}, ${tangtangBench.id.split("-")[0]}..`);
   console.log(`   Runs: 3 (with 27 images total)`);
   console.log(`   Trash records: 2`);
   console.log(`   LoRA assets: 2`);
+  console.log(`   PromptBlocks: 4 per position (12 total)`);
 
   await prisma.$disconnect();
 }
