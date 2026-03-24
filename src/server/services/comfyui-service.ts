@@ -1,5 +1,6 @@
 import { Prisma } from "@/generated/prisma";
 import { env } from "@/lib/env";
+import { buildFallbackPromptNodes } from "@/server/worker/fallback-prompt-builder";
 import { ComfyPromptDraft } from "@/server/worker/types";
 
 type JsonRecord = Record<string, unknown>;
@@ -303,17 +304,17 @@ function validateComfyPromptDraft(
   }
 
   const extraParams = asJsonRecord(promptDraft.extraParams);
-  const apiPrompt = extractJsonRecordByKeys(extraParams, [
+  const customApiPrompt = extractJsonRecordByKeys(extraParams, [
     "comfyPrompt",
     "workflowApiPrompt",
     "apiPrompt",
   ]);
 
-  if (!apiPrompt || Object.keys(apiPrompt).length === 0) {
-    throw new Error(
-      "Resolved draft is missing a ComfyUI prompt graph in extraParams.comfyPrompt, workflowApiPrompt, or apiPrompt",
-    );
-  }
+  // Use custom prompt graph if provided, otherwise fall back to built-in SDXL txt2img
+  const apiPrompt =
+    customApiPrompt && Object.keys(customApiPrompt).length > 0
+      ? customApiPrompt
+      : buildFallbackPromptNodes(promptDraft);
 
   const extraData = {
     ...(extractJsonRecordByKeys(extraParams, ["comfyExtraData", "workflowExtraData"]) ?? {}),

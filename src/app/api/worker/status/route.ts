@@ -10,7 +10,18 @@
 
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getComfyUIClient } from "@/lib/comfyui-client";
+import { env } from "@/lib/env";
+
+async function pingComfyUI(): Promise<boolean> {
+  try {
+    const res = await fetch(`${env.comfyApiUrl}/system_stats`, {
+      signal: AbortSignal.timeout(5000),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
 
 export async function GET() {
   try {
@@ -43,13 +54,13 @@ export async function GET() {
             completeJob: { select: { title: true } },
           },
         }),
-        getComfyUIClient().ping(),
+        pingComfyUI(),
       ]);
 
     return NextResponse.json({
       comfyui: {
         reachable: comfyReachable,
-        url: process.env.COMFYUI_URL ?? "http://127.0.0.1:8188",
+        url: env.comfyApiUrl,
       },
       queue: {
         queued: queuedCount,

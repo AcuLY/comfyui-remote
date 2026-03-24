@@ -26,13 +26,18 @@
 - [x] 图片文件移动服务 `image-file-service.ts`
 - [x] REST API 审核流程含文件移动
 
-## Priority A: 收尾
-- [ ] Server Actions 中的 trash/restore 接入 `image-file-service` 文件移动
-- [ ] 补一条清晰的本机验证文档：seed → create job → enqueue → worker → ComfyUI → output
+## ~~Priority A: 收尾~~ ✅ DONE
+- [x] Server Actions 中的 trash/restore 接入 `image-file-service` 文件移动
+- [x] 补一条清晰的本机验证文档：seed → create job → enqueue → worker → ComfyUI → output
 
-## Priority B: 代码统一
-- [ ] 统一 Server Actions（`src/lib/actions.ts`）和 REST API（`src/server/`）的审核/运行逻辑，消除重复
-- [ ] 考虑让 Server Actions 直接调用 service 层而非直接操作 Prisma
+## ~~Priority B: 代码统一~~ ✅ DONE
+- [x] 统一 Server Actions（`src/lib/actions.ts`）和 REST API（`src/server/`）的审核/运行逻辑，消除重复
+- [x] Server Actions 中 runJob/runPosition/copyJob 直接调用 repository 层
+
+## Priority A: Worker 统一
+- [ ] 统一新旧两套 Worker 系统（`src/lib/worker.ts` vs `src/server/worker/`）
+- [ ] 在 `comfyui-service.ts` 中增加 fallback：无 `extraParams.comfyPrompt` 时用内置 SDXL txt2img workflow
+- [ ] 清理旧版 worker 代码（`src/lib/worker.ts`、`prompt-builder.ts`、`comfyui-client.ts`）
 
 ## Priority C: Workflow 模板
 - [ ] 实现 workflow 模板系统（从 `config/workflows/*.json` 加载）
@@ -47,3 +52,4 @@
 - `frontend` / `backend` 分支已合并到 `main` 并可归档
 - 两套数据访问路径：Server Actions（前端 RSC 直接调用）+ REST API（外部/Agent 调用）
 - `development-progress.md` 保持当前态摘要
+- 存在两套 Worker：旧版（`src/lib/`，硬编码 SDXL）和新版（`src/server/worker/`，需要 extraParams 里有 comfyPrompt）→ 需要统一
