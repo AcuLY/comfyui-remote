@@ -29,9 +29,9 @@
 ## Current Status
 ### Frontend
 Latest pushed commits:
+- `5d45596` fix(queue): derive review neighbors from queue api
 - `b35684f` fix(jobs): wire detail copy action
 - `83dbae7` feat(review): wire single image page to real review data
-- `53c1294` fix(jobs): redirect after draft creation
 
 Current state:
 - 已有待审核队列页
@@ -42,7 +42,7 @@ Current state:
 - 已有大任务详情和参数编辑页骨架
 - 队列 / jobs / trash / loras 已优先读取真实 API，并保留 mock fallback
 - 宫格审核页现在会优先读取 `/api/runs/:id` 的真实 run 数据，并在接口不可用时回退到 mock reviewGroups
-- 宫格页上一组 / 下一组导航会优先基于真实 queue 列表计算，缺失时再回退到 mock 邻居，避免页面直接断掉
+- 宫格页上一组 / 下一组导航现已统一基于真实 queue 列表计算，不再伪造 mock 邻居；若当前 run 暂未出现在队列列表中，则安全地不渲染上一组 / 下一组链接，避免真实数据与导航错位
 - 回收站页已对齐 `/api/trash` 返回结构，真实数据缺少预览图时也不会渲染报错
 - LoRA 页面已接入真实上传表单：通过 server action 提交到 `/api/loras`，会校验 category / file，并在成功后刷新列表
 - job 详情页 / 大任务编辑页 / position 编辑页 已改为优先读取 `/api/jobs/:id`，并在字段缺失时回退到 jobs 列表与本地模板默认值，避免后端数据尚未补齐时页面直接 notFound 或空白
@@ -67,6 +67,7 @@ Current state:
 - 已再次确认 frontend worktree `cmd /c npm run lint` 与 `cmd /c npm run build` 可通过（包含本轮单图页真实数据与单张审图动作接线）
 - job detail 页原本只是占位的“复制任务”按钮现已复用真实 `JobCopyButton` / `copyJobAction`，详情页与 jobs 列表页的复制行为一致；frontend worktree 已再次验证 `cmd /c npm run lint` 与 `cmd /c npm run build` 可通过（提交：`b35684f` `fix(jobs): wire detail copy action`）
 - 宫格审核页右上角“参数编辑”已不再是死按钮：当前会优先使用真实 `GET /api/runs/:id` 返回的 `jobId` / `jobPositionId` 跳转到对应 position 编辑页；mock fallback 场景则保持禁用态，避免错误跳转
+- 本轮已再次确认 frontend worktree `cmd /c npm run lint` 与 `cmd /c npm run build` 可通过（提交：`5d45596` `fix(queue): derive review neighbors from queue api`）
 
 ### Backend
 Latest pushed commits:

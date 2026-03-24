@@ -50,6 +50,7 @@
 - [x] 让单图查看页优先读取真实 run 数据，并接上单张 keep / trash 动作
 - [x] 让 job detail 页的“复制任务”入口复用真实 copy action，不再保留死按钮
 - [x] 让宫格审核页的“参数编辑”入口优先跳到真实 position 编辑页，并在 mock fallback 场景保持安全禁用
+- [x] 让宫格审核页上一组 / 下一组导航仅依赖真实 queue 数据，移除 mock 邻居兜底
 
 ## Working Notes
 - 前后端并行开发，分别在 `frontend` / `backend` 分支提交并 push
