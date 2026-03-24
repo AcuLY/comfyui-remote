@@ -29,6 +29,9 @@ export default async function ReviewGroupPage({ params }: { params: Promise<{ ru
 
   const prev = runNeighbors?.prev ?? fallbackNeighbors.prev;
   const next = runNeighbors?.next ?? fallbackNeighbors.next;
+  const editHref = group.jobId && group.jobPositionId
+    ? `/jobs/${group.jobId}/positions/${group.jobPositionId}/edit`
+    : null;
 
   return (
     <div className="space-y-4">
@@ -36,9 +39,15 @@ export default async function ReviewGroupPage({ params }: { params: Promise<{ ru
         <Link href="/queue" className="inline-flex items-center gap-2 text-sm text-zinc-300">
           <ArrowLeft className="size-4" /> 返回队列
         </Link>
-        <button className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-2 text-xs text-zinc-300">
-          <Ellipsis className="size-4" /> 参数编辑
-        </button>
+        {editHref ? (
+          <Link href={editHref} className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-2 text-xs text-zinc-300 transition hover:bg-white/[0.06]">
+            <Ellipsis className="size-4" /> 参数编辑
+          </Link>
+        ) : (
+          <span className="inline-flex cursor-not-allowed items-center gap-2 rounded-full border border-white/10 px-3 py-2 text-xs text-zinc-500">
+            <Ellipsis className="size-4" /> 参数编辑
+          </span>
+        )}
       </div>
 
       <SectionCard title={group.title} subtitle={`${group.characterName} · ${group.positionName} · ${group.createdAt}`}>

@@ -20,6 +20,8 @@ export type ReviewImage = {
 
 export type ReviewGroup = {
   id: string;
+  jobId?: string;
+  jobPositionId?: string;
   title: string;
   characterName: string;
   positionName: string;
