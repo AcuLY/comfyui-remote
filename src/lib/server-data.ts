@@ -567,6 +567,31 @@ export function getQueueRuns(): Promise<QueueRun[]> {
   return fetchJson("/api/queue", queueRuns);
 }
 
+export type QueueRunNeighbors = {
+  prev: QueueRun | null;
+  next: QueueRun | null;
+};
+
+export async function getQueueRunNeighbors(runId: string): Promise<QueueRunNeighbors> {
+  const normalizedRunId = runId.trim();
+
+  if (!normalizedRunId) {
+    return { prev: null, next: null };
+  }
+
+  const runs = await getQueueRuns();
+  const currentIndex = runs.findIndex((run) => run?.id === normalizedRunId);
+
+  if (currentIndex < 0) {
+    return { prev: null, next: null };
+  }
+
+  return {
+    prev: currentIndex > 0 ? runs[currentIndex - 1] : null,
+    next: currentIndex < runs.length - 1 ? runs[currentIndex + 1] : null,
+  };
+}
+
 export type JobListFilters = {
   search?: string;
   status?: JobCard["status"] | "";
