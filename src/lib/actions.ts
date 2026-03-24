@@ -553,3 +553,82 @@ export async function deletePositionTemplate(id: string) {
   revalidatePath("/settings/positions");
   revalidatePath("/jobs/new");
 }
+
+// ---------------------------------------------------------------------------
+// PromptBlock — 提示词块管理（Server Actions）
+// ---------------------------------------------------------------------------
+
+export type PromptBlockData = {
+  id: string;
+  type: string;
+  sourceId: string | null;
+  label: string;
+  positive: string;
+  negative: string | null;
+  sortOrder: number;
+};
+
+export async function listPositionBlocks(jobPositionId: string): Promise<PromptBlockData[]> {
+  const { listPromptBlocks } = await import("@/server/repositories/prompt-block-repository");
+  const blocks = await listPromptBlocks(jobPositionId);
+  return blocks;
+}
+
+export async function addPositionBlock(
+  jobPositionId: string,
+  input: {
+    type: string;
+    label: string;
+    positive: string;
+    negative?: string | null;
+  },
+): Promise<PromptBlockData> {
+  const { createPromptBlock } = await import("@/server/repositories/prompt-block-repository");
+  const { PromptBlockType } = await import("@/generated/prisma");
+  const { audit } = await import("@/server/services/audit-service");
+
+  const block = await createPromptBlock(jobPositionId, {
+    type: input.type as (typeof PromptBlockType)[keyof typeof PromptBlockType],
+    label: input.label,
+    positive: input.positive,
+    negative: input.negative ?? null,
+  });
+  audit("PromptBlock", block.id, "create", { jobPositionId, type: input.type }, "user" as const);
+  return block;
+}
+
+export async function updatePositionBlock(
+  blockId: string,
+  input: {
+    label?: string;
+    positive?: string;
+    negative?: string | null;
+  },
+): Promise<PromptBlockData> {
+  const { updatePromptBlock } = await import("@/server/repositories/prompt-block-repository");
+  const { audit } = await import("@/server/services/audit-service");
+
+  const block = await updatePromptBlock(blockId, input);
+  audit("PromptBlock", blockId, "update", Object.fromEntries(Object.entries(input)), "user" as const);
+  return block;
+}
+
+export async function deletePositionBlock(blockId: string): Promise<void> {
+  const { deletePromptBlock } = await import("@/server/repositories/prompt-block-repository");
+  const { audit } = await import("@/server/services/audit-service");
+
+  await deletePromptBlock(blockId);
+  audit("PromptBlock", blockId, "delete", {}, "user" as const);
+}
+
+export async function reorderPositionBlocks(
+  jobPositionId: string,
+  blockIds: string[],
+): Promise<PromptBlockData[]> {
+  const { reorderPromptBlocks } = await import("@/server/repositories/prompt-block-repository");
+  const { audit } = await import("@/server/services/audit-service");
+
+  const reordered = await reorderPromptBlocks(jobPositionId, blockIds);
+  audit("PromptBlock", jobPositionId, "reorder", { blockIds }, "user" as const);
+  return reordered;
+}

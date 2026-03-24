@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { SlidersHorizontal } from "lucide-react";
+import { Layers, SlidersHorizontal } from "lucide-react";
 import { notFound } from "next/navigation";
 import { SectionCard } from "@/components/section-card";
 import { getJobDetail, getJobRevisions } from "@/lib/server-data";
@@ -39,14 +39,29 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
           {job.positions.map((position) => (
             <div key={position.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
               <div className="flex items-start justify-between gap-3">
-                <div>
-                  <div className="text-sm font-semibold text-white">{position.name}</div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <div className="text-sm font-semibold text-white">{position.name}</div>
+                    {position.promptBlockCount > 0 && (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-white/10 px-2 py-0.5 text-[10px] text-zinc-400">
+                        <Layers className="size-3" />
+                        {position.promptBlockCount} blocks
+                      </span>
+                    )}
+                  </div>
                   <div className="mt-1 text-xs text-zinc-400">
                     batch {position.batchSize ?? "—"} · {position.aspectRatio ?? "—"} · {position.latestRunStatus ?? "no runs"}
                   </div>
                 </div>
                 <PositionRunButton positionId={position.id} />
               </div>
+              <Link
+                href={`/jobs/${jobId}/positions/${position.id}/blocks`}
+                className="mt-3 inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-zinc-300 transition hover:bg-white/[0.08]"
+              >
+                <Layers className="size-3.5" />
+                提示词块
+              </Link>
             </div>
           ))}
         </div>

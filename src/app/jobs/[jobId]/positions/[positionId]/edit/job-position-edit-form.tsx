@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, Layers, Save } from "lucide-react";
 import { useActionState } from "react";
 import { initialJobSaveState, saveJobPositionEditAction } from "@/app/jobs/actions";
 import { PageHeader } from "@/components/page-header";
@@ -102,6 +102,13 @@ export function JobPositionEditForm({ jobId, position, positivePrompt }: JobPosi
           </label>
         </div>
       </SectionCard>
+
+      <Link
+        href={`/jobs/${jobId}/positions/${position.id}/blocks`}
+        className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-zinc-200 transition hover:bg-white/[0.08]"
+      >
+        <Layers className="size-4" /> 管理提示词块
+      </Link>
     </form>
   );
 }

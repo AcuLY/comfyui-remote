@@ -150,6 +150,7 @@ export type JobDetail = {
     batchSize: number | null;
     aspectRatio: string | null;
     latestRunStatus: string | null;
+    promptBlockCount: number;
   }[];
 };
 
@@ -168,6 +169,9 @@ export async function getJobDetail(jobId: string): Promise<JobDetail | null> {
             orderBy: { createdAt: "desc" },
             take: 1,
             select: { status: true },
+          },
+          _count: {
+            select: { promptBlocks: true },
           },
         },
       },
@@ -192,6 +196,7 @@ export async function getJobDetail(jobId: string): Promise<JobDetail | null> {
       batchSize: pos.batchSize ?? pos.positionTemplate?.defaultBatchSize ?? null,
       aspectRatio: pos.aspectRatio ?? pos.positionTemplate?.defaultAspectRatio ?? null,
       latestRunStatus: pos.runs[0]?.status ?? null,
+      promptBlockCount: pos._count.promptBlocks,
     })),
   };
 }
@@ -409,6 +414,34 @@ export async function getJobRevisions(jobId: string): Promise<JobRevisionSummary
     revisionNumber: rev.revisionNumber,
     actorType: rev.actorType,
     createdAt: formatDate(rev.createdAt),
+  }));
+}
+
+// ---------------------------------------------------------------------------
+// PromptBlocks — 某个 Position 的提示词块列表
+// ---------------------------------------------------------------------------
+
+export type PositionBlockSummary = {
+  id: string;
+  type: string;
+  label: string;
+  positive: string;
+  negative: string | null;
+  sortOrder: number;
+};
+
+export async function getPositionBlocks(
+  jobPositionId: string,
+): Promise<PositionBlockSummary[]> {
+  const { listPromptBlocks } = await import("@/server/repositories/prompt-block-repository");
+  const blocks = await listPromptBlocks(jobPositionId);
+  return blocks.map((b) => ({
+    id: b.id,
+    type: b.type,
+    label: b.label,
+    positive: b.positive,
+    negative: b.negative,
+    sortOrder: b.sortOrder,
   }));
 }
 
