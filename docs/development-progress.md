@@ -29,9 +29,9 @@
 ## Current Status
 ### Frontend
 Latest pushed commits:
+- `8c70ed0` feat(loras): load upload categories from path maps
 - `5d45596` fix(queue): derive review neighbors from queue api
 - `b35684f` fix(jobs): wire detail copy action
-- `83dbae7` feat(review): wire single image page to real review data
 
 Current state:
 - 已有待审核队列页
@@ -67,7 +67,9 @@ Current state:
 - 已再次确认 frontend worktree `cmd /c npm run lint` 与 `cmd /c npm run build` 可通过（包含本轮单图页真实数据与单张审图动作接线）
 - job detail 页原本只是占位的“复制任务”按钮现已复用真实 `JobCopyButton` / `copyJobAction`，详情页与 jobs 列表页的复制行为一致；frontend worktree 已再次验证 `cmd /c npm run lint` 与 `cmd /c npm run build` 可通过（提交：`b35684f` `fix(jobs): wire detail copy action`）
 - 宫格审核页右上角“参数编辑”已不再是死按钮：当前会优先使用真实 `GET /api/runs/:id` 返回的 `jobId` / `jobPositionId` 跳转到对应 position 编辑页；mock fallback 场景则保持禁用态，避免错误跳转
-- 本轮已再次确认 frontend worktree `cmd /c npm run lint` 与 `cmd /c npm run build` 可通过（提交：`5d45596` `fix(queue): derive review neighbors from queue api`）
+- LoRA 上传页不再把分类写死在前端：现在会优先读取真实 `/api/path-maps` 的 `loraCategories` 并渲染上传下拉选项，接口不可用时才回退到内置默认分类
+- LoRA 上传页会同时展示当前分类到相对目录的映射，方便本机直接确认上传目标路径；upload server action 也已移除前端硬编码分类白名单，改为只校验非空并直接复用后端返回的错误信息
+- 本轮已再次确认 frontend worktree `cmd /c npm run lint` 与 `cmd /c npm run build` 可通过（提交：`8c70ed0` `feat(loras): load upload categories from path maps`）
 
 ### Backend
 Latest pushed commits:
