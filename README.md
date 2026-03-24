@@ -29,37 +29,7 @@
 - `src/server`：repository / service / worker
 - `config/path-maps.json`：LoRA 分类到相对目录的映射
 
-## 分支 / worktree 规则
-- `main`：共享文档、整合基线
-- `frontend`：前端页面、交互、页面级数据接入
-- `backend`：Prisma、API、worker、文件处理、ComfyUI 对接
-
-本地 worktree：
-- `D:\luca\code\myproject\comfyui-manager`
-- `D:\luca\code\myproject\comfyui-manager-frontend`
-- `D:\luca\code\myproject\comfyui-manager-backend`
-
-## 开发约定
-- 使用 Conventional Commits
-- 每次提交后立即 push 到对应远程分支
-- 小步推进，优先做可验证的小闭环
-
-## 当前状态
-项目已经不是纯骨架，当前已具备：
-- queue / review / trash / jobs / lora 的主要页面骨架
-- 多数关键页面已优先读取真实 API，保留 mock fallback
-- review keep / trash / restore 的最小真实逻辑
-- job create / copy / edit / run 的最小真实 API
-- worker scaffold、local worker pass、ComfyUI prompt submit / history polling / 输出落库 / 缩略图生成
-- agent context / update / review / single-position run 的最小接口
-
-还未完全完成的主要部分：
-- 进一步减少页面对 mock fallback 的依赖
-- 补更完整的本机启动与手动验证记录
-- 视需要补文件归档 / kept-raw 组织逻辑
-- 补更正式的 Character / Scene / Style / PositionTemplate 管理入口
-
-## 本地启动（当前建议）
+## 本地启动
 1. 安装依赖
 ```bash
 npm install
@@ -77,8 +47,20 @@ npm run db:bootstrap
 npm run dev
 ```
 
+### 本地手动触发 worker pass
+- 启动 `npm run dev` 后，可用 `POST /api/worker/process` 手动触发一次 worker pass。
+- `POST /api/local/worker/pass?limit=1` 也可触发（只允许 localhost 访问）。
+- 当前 pass 会 claim queued run、向 ComfyUI 提交 `/prompt`，再轮询 `/history/:promptId`。
+- 成功后下载图片、生成缩略图、写入 ImageResult，标记 PositionRun 为 `done`。
+
+### 本地数据库 bootstrap
+- `npm run prisma:generate`：生成 Prisma client
+- `npm run prisma:migrate`：运行数据库 migration
+- `npm run db:seed`：写入样例 seed 数据
+- `npm run db:bootstrap`：串联 migrate + seed，作为本地初始化默认入口
+
 ## 建议接手顺序
 1. 先读 `docs/handoff.md`
 2. 再读 `docs/design-v0.1.md`
 3. 看 `docs/development-todo.md`
-4. 然后在对应分支/worktree 上继续开发
+4. 然后继续开发
