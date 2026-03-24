@@ -2,13 +2,20 @@
 
 import { Upload } from "lucide-react";
 import { useActionState, useEffect, useId, useRef } from "react";
+import type { LoraUploadMeta } from "@/lib/server-data";
 import { uploadLoraAction } from "./actions";
-import { initialLoraUploadState, loraCategories } from "./lora-upload";
+import { initialLoraUploadState } from "./lora-upload";
 
-export function LoraUploadForm() {
+type LoraUploadFormProps = {
+  uploadMeta: LoraUploadMeta;
+};
+
+export function LoraUploadForm({ uploadMeta }: LoraUploadFormProps) {
   const [state, formAction, pending] = useActionState(uploadLoraAction, initialLoraUploadState);
   const formRef = useRef<HTMLFormElement>(null);
   const fileInputId = useId();
+  const categoryOptions = uploadMeta.categories;
+  const defaultCategory = categoryOptions[0]?.category ?? "";
 
   useEffect(() => {
     if (state.status !== "success") {
@@ -48,20 +55,20 @@ export function LoraUploadForm() {
         <div className="text-xs text-zinc-500">Category</div>
         <select
           name="category"
-          defaultValue={loraCategories[0]}
-          disabled={pending}
+          defaultValue={defaultCategory}
+          disabled={pending || !defaultCategory}
           className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none"
         >
-          {loraCategories.map((category) => (
-            <option key={category} value={category}>
-              {category}
+          {categoryOptions.map((option) => (
+            <option key={option.category} value={option.category}>
+              {option.category}
             </option>
           ))}
         </select>
 
         <button
           type="submit"
-          disabled={pending}
+          disabled={pending || !defaultCategory}
           className="w-full rounded-xl border border-sky-500/20 bg-sky-500/10 px-3 py-2 text-sm text-sky-300 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {pending ? "Uploading..." : "Upload to library"}
@@ -71,7 +78,7 @@ export function LoraUploadForm() {
           aria-live="polite"
           className={`rounded-xl border px-3 py-2 text-xs leading-5 ${feedbackClassName}`}
         >
-          {state.message ?? "Select a file, choose a category, and submit to the real LoRA API."}
+          {state.message ?? "Select a file, choose a category from the backend path map, and submit to the real LoRA API."}
         </p>
       </div>
     </form>

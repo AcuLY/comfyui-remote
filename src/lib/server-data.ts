@@ -10,6 +10,9 @@ type ApiTrashItem = {
   src?: string;
   title?: string;
 };
+type ApiPathMaps = {
+  loraCategories?: Record<string, string>;
+};
 type JobRunStatus = QueueRun["status"] | "cancelled";
 
 type ApiPresetInfo = {
@@ -117,6 +120,15 @@ export type JobCreateOptions = {
   scenePresets: Array<{ id: string; name: string; slug: string }>;
   stylePresets: Array<{ id: string; name: string; slug: string }>;
   positionTemplates: Array<{ id: string; name: string; slug: string; enabled: boolean }>;
+};
+
+export type LoraCategoryOption = {
+  category: string;
+  relativeDir: string;
+};
+
+export type LoraUploadMeta = {
+  categories: LoraCategoryOption[];
 };
 
 export type JobCharacterInfo = {
@@ -670,6 +682,33 @@ export async function getTrashItems(): Promise<TrashItem[]> {
 
 export function getLoraAssets(): Promise<LoraAsset[]> {
   return fetchJson("/api/loras", loraAssets);
+}
+
+export async function getLoraUploadMeta(): Promise<LoraUploadMeta> {
+  const fallback: LoraUploadMeta = {
+    categories: [
+      { category: "characters", relativeDir: "characters" },
+      { category: "styles", relativeDir: "styles" },
+      { category: "poses", relativeDir: "poses" },
+      { category: "misc", relativeDir: "misc" },
+    ],
+  };
+
+  const pathMaps = await fetchJson<ApiPathMaps | null>("/api/path-maps", null);
+  const categories = pathMaps?.loraCategories;
+
+  if (!categories || typeof categories !== "object") {
+    return fallback;
+  }
+
+  const normalizedCategories = Object.entries(categories)
+    .filter(([category, relativeDir]) => typeof category === "string" && typeof relativeDir === "string")
+    .map(([category, relativeDir]) => ({
+      category,
+      relativeDir,
+    }));
+
+  return normalizedCategories.length > 0 ? { categories: normalizedCategories } : fallback;
 }
 
 export function getReviewGroup(runId: string): Promise<ReviewGroup | null> {

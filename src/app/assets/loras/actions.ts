@@ -1,7 +1,7 @@
 "use server";
 
 import { refresh } from "next/cache";
-import { isLoraCategory, type LoraUploadState } from "./lora-upload";
+import type { LoraUploadState } from "./lora-upload";
 
 type UploadApiResponse = {
   ok?: boolean;
@@ -10,6 +10,7 @@ type UploadApiResponse = {
   };
   error?: {
     message?: string;
+    details?: unknown;
   };
 };
 
@@ -19,13 +20,13 @@ function getApiUrl(path: string) {
 }
 
 export async function uploadLoraAction(_prevState: LoraUploadState, formData: FormData): Promise<LoraUploadState> {
-  const category = String(formData.get("category") ?? "");
+  const category = String(formData.get("category") ?? "").trim();
   const file = formData.get("file");
 
-  if (!isLoraCategory(category)) {
+  if (!category) {
     return {
       status: "error",
-      message: "Choose a valid category before uploading.",
+      message: "Choose a category before uploading.",
     };
   }
 

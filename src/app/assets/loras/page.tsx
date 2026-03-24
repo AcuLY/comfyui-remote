@@ -1,24 +1,42 @@
 import { FolderTree } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { SectionCard } from "@/components/section-card";
-import { getLoraAssets } from "@/lib/server-data";
+import { getLoraAssets, getLoraUploadMeta } from "@/lib/server-data";
 import { LoraUploadForm } from "./lora-upload-form";
 
 export default async function LoraAssetsPage() {
-  const loraAssets = await getLoraAssets();
+  const [loraAssets, uploadMeta] = await Promise.all([getLoraAssets(), getLoraUploadMeta()]);
 
   return (
     <div className="space-y-4">
       <PageHeader
         title="LoRA Assets"
-        description="Upload files to the real API while keeping the existing library list and mock fallback intact."
+        description="Upload files through the real API using backend-provided category metadata and review the current library here."
       />
 
       <SectionCard
         title="Upload LoRA"
-        subtitle="Choose a file, pick a category, submit it to `/api/loras`, and review the result here."
+        subtitle="Choose a file, pick a backend path-map category, submit it to `/api/loras`, and review the result here."
       >
-        <LoraUploadForm />
+        <div className="space-y-4">
+          <LoraUploadForm uploadMeta={uploadMeta} />
+
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+            <div className="text-xs font-medium text-white">Resolved upload targets</div>
+            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+              {uploadMeta.categories.map((option) => (
+                <div
+                  key={option.category}
+                  className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-xs text-zinc-300"
+                >
+                  <span className="font-medium text-white">{option.category}</span>
+                  <span className="mx-2 text-zinc-500">→</span>
+                  <span className="break-all text-zinc-400">{option.relativeDir}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </SectionCard>
 
       <SectionCard
