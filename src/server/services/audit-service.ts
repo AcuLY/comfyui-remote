@@ -22,7 +22,8 @@ export type AuditEntityType =
   | "Character"
   | "ScenePreset"
   | "StylePreset"
-  | "PositionTemplate";
+  | "PositionTemplate"
+  | "PromptBlock";
 
 export type AuditAction =
   | "create"
@@ -35,6 +36,7 @@ export type AuditAction =
   | "trash"
   | "restore"
   | "upload"
+  | "reorder"
   | "worker.claim"
   | "worker.done"
   | "worker.failed";

@@ -54,6 +54,14 @@ export type NormalizedResolvedConfigSnapshot = {
     positivePrompt: string | null;
     negativePrompt: string | null;
   };
+  promptBlocks: Array<{
+    positive: string;
+    negative: string | null;
+  }> | null;
+  composedPrompt: {
+    positive: string;
+    negative: string | null;
+  } | null;
   parameters: {
     aspectRatio: string | null;
     batchSize: number | null;

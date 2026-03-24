@@ -47,6 +47,17 @@ export function normalizeResolvedConfigSnapshot(
   const style = asJsonObject(root?.style ?? null);
   const position = asJsonObject(root?.position ?? null);
   const parameters = asJsonObject(root?.parameters ?? null);
+  const composedPrompt = asJsonObject(root?.composedPrompt ?? null);
+
+  // Parse promptBlocks array
+  const rawBlocks = root?.promptBlocks;
+  let promptBlocks: NormalizedResolvedConfigSnapshot["promptBlocks"] = null;
+  if (Array.isArray(rawBlocks)) {
+    promptBlocks = rawBlocks.map((block: Prisma.JsonValue) => ({
+      positive: asString((block as Record<string, Prisma.JsonValue>)?.positive),
+      negative: asNullableString((block as Record<string, Prisma.JsonValue>)?.negative),
+    }));
+  }
 
   return {
     job: {
@@ -86,6 +97,13 @@ export function normalizeResolvedConfigSnapshot(
       positivePrompt: asNullableString(position?.positivePrompt),
       negativePrompt: asNullableString(position?.negativePrompt),
     },
+    promptBlocks,
+    composedPrompt: composedPrompt
+      ? {
+          positive: asString(composedPrompt.positive),
+          negative: asNullableString(composedPrompt.negative),
+        }
+      : null,
     parameters: {
       aspectRatio: asNullableString(parameters?.aspectRatio),
       batchSize: asNullableInteger(parameters?.batchSize),
@@ -99,12 +117,16 @@ export function normalizeResolvedConfigSnapshot(
 export function buildComfyPromptDraft(run: WorkerRunSnapshot): ComfyPromptDraft {
   const resolvedConfig = normalizeResolvedConfigSnapshot(run.resolvedConfigSnapshot);
 
+  // Prefer composedPrompt from blocks (v0.2), fall back to legacy composition
+  const positive = resolvedConfig.composedPrompt?.positive ?? composePositivePrompt(resolvedConfig);
+  const negative = resolvedConfig.composedPrompt?.negative ?? resolvedConfig.position.negativePrompt;
+
   return {
     clientId: `run-${run.runId}`,
     workflowId: run.workflowId,
     prompt: {
-      positive: composePositivePrompt(resolvedConfig),
-      negative: resolvedConfig.position.negativePrompt,
+      positive,
+      negative,
     },
     parameters: resolvedConfig.parameters,
     loraConfig: resolvedConfig.loraConfig,

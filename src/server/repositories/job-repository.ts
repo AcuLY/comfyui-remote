@@ -67,6 +67,11 @@ type PositionTemplateRecord = {
   defaultParams: Prisma.JsonValue | null;
 };
 
+type PromptBlockSummaryRecord = {
+  positive: string;
+  negative: string | null;
+};
+
 type JobPositionRecord = {
   id: string;
   sortOrder: number;
@@ -82,6 +87,7 @@ type JobPositionRecord = {
   extraParams: Prisma.JsonValue | null;
   positionTemplate: PositionTemplateRecord | null;
   runs: LatestRunRecord[];
+  promptBlocks: PromptBlockSummaryRecord[];
 };
 
 type QueuableJobRecord = {
@@ -308,6 +314,10 @@ function mergeJsonObjects(
 function buildResolvedConfigSnapshot(
   job: QueuableJobRecord,
   position: JobPositionRecord,
+  blocks?: Array<{
+    positive: string;
+    negative: string | null;
+  }>,
 ): Prisma.InputJsonObject {
   const jobLevelOverrides = toInputJsonObject(job.jobLevelOverrides);
   const resolvedAspectRatio =
@@ -322,6 +332,9 @@ function buildResolvedConfigSnapshot(
     null;
   const resolvedSeedPolicy =
     position.seedPolicy ?? position.positionTemplate?.defaultSeedPolicy ?? null;
+
+  // Compose final prompt from blocks (v0.2) or legacy fallback
+  const promptDraft = buildResolvedPromptDraft(job, position, blocks);
 
   return {
     job: {
@@ -362,6 +375,8 @@ function buildResolvedConfigSnapshot(
       negativePrompt:
         position.negativePrompt ?? position.positionTemplate?.negativePrompt ?? null,
     },
+    promptBlocks: blocks ?? null,
+    composedPrompt: promptDraft,
     parameters: {
       aspectRatio: resolvedAspectRatio,
       batchSize: resolvedBatchSize,
@@ -387,7 +402,27 @@ function buildResolvedPromptDraft(
     JobPositionRecord,
     "positivePrompt" | "negativePrompt" | "positionTemplate"
   >,
+  blocks?: Array<{
+    positive: string;
+    negative: string | null;
+  }>,
 ) {
+  if (blocks && blocks.length > 0) {
+    // Block-based prompt composition (v0.2)
+    const positiveParts = blocks
+      .map((b) => b.positive)
+      .filter((v): v is string => Boolean(v && v.trim()));
+    const negativeParts = blocks
+      .map((b) => b.negative)
+      .filter((v): v is string => Boolean(v && v.trim()));
+
+    return {
+      positive: positiveParts.join(", "),
+      negative: negativeParts.length > 0 ? negativeParts.join(", ") : null,
+    };
+  }
+
+  // Legacy fallback (pre-block positions)
   return {
     positive: [
       job.characterPrompt,
@@ -673,6 +708,13 @@ export async function getJobDetail(jobId: string) {
         orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
         include: {
           positionTemplate: true,
+          promptBlocks: {
+            orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+            select: {
+              positive: true,
+              negative: true,
+            },
+          },
           runs: {
             orderBy: [{ createdAt: "desc" }, { id: "desc" }],
             take: 1,
@@ -802,6 +844,18 @@ export async function getJobAgentContext(jobId: string) {
         orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
         include: {
           positionTemplate: true,
+          promptBlocks: {
+            orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+            select: {
+              id: true,
+              type: true,
+              sourceId: true,
+              label: true,
+              positive: true,
+              negative: true,
+              sortOrder: true,
+            },
+          },
           runs: {
             orderBy: [{ createdAt: "desc" }, { id: "desc" }],
             take: 1,
@@ -868,8 +922,9 @@ export async function getJobAgentContext(jobId: string) {
       name: position.positionTemplate?.name ?? null,
       slug: position.positionTemplate?.slug ?? null,
       latestRun: serializeLatestRun(latestRun),
-      promptDraft: buildResolvedPromptDraft(job, position),
-      resolvedConfig: buildResolvedConfigSnapshot(job, position),
+      promptBlocks: position.promptBlocks,
+      promptDraft: buildResolvedPromptDraft(job, position, position.promptBlocks),
+      resolvedConfig: buildResolvedConfigSnapshot(job, position, position.promptBlocks),
     };
   });
 
@@ -934,6 +989,13 @@ export async function getJobPositionDetail(jobId: string, jobPositionId: string)
     },
     include: {
       positionTemplate: true,
+      promptBlocks: {
+        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+        select: {
+          positive: true,
+          negative: true,
+        },
+      },
       runs: {
         orderBy: [{ createdAt: "desc" }, { id: "desc" }],
         take: 1,
@@ -973,7 +1035,9 @@ export async function createJob(input: JobCreateInput) {
         where: { id: input.characterId },
         select: {
           id: true,
+          name: true,
           prompt: true,
+          negativePrompt: true,
           loraPath: true,
         },
       }),
@@ -982,7 +1046,9 @@ export async function createJob(input: JobCreateInput) {
             where: { id: input.scenePresetId },
             select: {
               id: true,
+              name: true,
               prompt: true,
+              negativePrompt: true,
             },
           })
         : Promise.resolve(null),
@@ -991,7 +1057,9 @@ export async function createJob(input: JobCreateInput) {
             where: { id: input.stylePresetId },
             select: {
               id: true,
+              name: true,
               prompt: true,
+              negativePrompt: true,
             },
           })
         : Promise.resolve(null),
@@ -1001,7 +1069,10 @@ export async function createJob(input: JobCreateInput) {
         },
         select: {
           id: true,
+          name: true,
           enabled: true,
+          prompt: true,
+          negativePrompt: true,
         },
       }),
     ]);
@@ -1019,7 +1090,7 @@ export async function createJob(input: JobCreateInput) {
     }
 
     const positionTemplateById = new Map(
-      positionTemplates.map((positionTemplate): [string, { id: string; enabled: boolean }] => [
+      positionTemplates.map((positionTemplate): [string, typeof positionTemplate] => [
         positionTemplate.id,
         positionTemplate,
       ]),
@@ -1058,8 +1129,77 @@ export async function createJob(input: JobCreateInput) {
           })),
         },
       },
-      select: { id: true },
+      select: {
+        id: true,
+        positions: {
+          select: { id: true },
+          orderBy: { sortOrder: "asc" },
+        },
+      },
     });
+
+    // Generate initial PromptBlocks for each position
+    for (let i = 0; i < createdJob.positions.length; i++) {
+      const positionId = createdJob.positions[i].id;
+      const pt = orderedPositionTemplates[i]!;
+      let sortOrder = 0;
+
+      // Character block
+      await tx.promptBlock.create({
+        data: {
+          completeJobPositionId: positionId,
+          type: "character",
+          sourceId: character.id,
+          label: character.name,
+          positive: character.prompt,
+          negative: character.negativePrompt,
+          sortOrder: sortOrder++,
+        },
+      });
+
+      // Scene block
+      if (scenePreset) {
+        await tx.promptBlock.create({
+          data: {
+            completeJobPositionId: positionId,
+            type: "scene",
+            sourceId: scenePreset.id,
+            label: scenePreset.name,
+            positive: scenePreset.prompt,
+            negative: scenePreset.negativePrompt,
+            sortOrder: sortOrder++,
+          },
+        });
+      }
+
+      // Style block
+      if (stylePreset) {
+        await tx.promptBlock.create({
+          data: {
+            completeJobPositionId: positionId,
+            type: "style",
+            sourceId: stylePreset.id,
+            label: stylePreset.name,
+            positive: stylePreset.prompt,
+            negative: stylePreset.negativePrompt,
+            sortOrder: sortOrder++,
+          },
+        });
+      }
+
+      // Position block
+      await tx.promptBlock.create({
+        data: {
+          completeJobPositionId: positionId,
+          type: "position",
+          sourceId: pt.id,
+          label: pt.name,
+          positive: pt.prompt,
+          negative: pt.negativePrompt,
+          sortOrder: sortOrder++,
+        },
+      });
+    }
 
     return createdJob.id;
   });
@@ -1185,6 +1325,17 @@ export async function copyJob(jobId: string) {
             seedPolicy: true,
             loraConfig: true,
             extraParams: true,
+            promptBlocks: {
+              orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+              select: {
+                type: true,
+                sourceId: true,
+                label: true,
+                positive: true,
+                negative: true,
+                sortOrder: true,
+              },
+            },
           },
         },
       },
@@ -1221,6 +1372,16 @@ export async function copyJob(jobId: string) {
             seedPolicy: position.seedPolicy,
             loraConfig: cloneJsonValueForCreate(position.loraConfig),
             extraParams: cloneJsonValueForCreate(position.extraParams),
+            promptBlocks: {
+              create: position.promptBlocks.map((block) => ({
+                type: block.type,
+                sourceId: block.sourceId,
+                label: block.label,
+                positive: block.positive,
+                negative: block.negative,
+                sortOrder: block.sortOrder,
+              })),
+            },
           })),
         },
       },
@@ -1287,6 +1448,13 @@ export async function enqueueJobRuns(jobId: string) {
           orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
           include: {
             positionTemplate: true,
+            promptBlocks: {
+              orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+              select: {
+                positive: true,
+                negative: true,
+              },
+            },
             runs: {
               orderBy: [{ createdAt: "desc" }, { id: "desc" }],
               take: 1,
@@ -1381,6 +1549,13 @@ export async function enqueueJobPositionRun(jobId: string, jobPositionId: string
       },
       include: {
         positionTemplate: true,
+        promptBlocks: {
+          orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+          select: {
+            positive: true,
+            negative: true,
+          },
+        },
         runs: {
           orderBy: [{ createdAt: "desc" }, { id: "desc" }],
           take: 1,
