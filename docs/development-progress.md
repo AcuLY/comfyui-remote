@@ -9,63 +9,69 @@
 - 前后端真实数据闭环
 - Worker / ComfyUI 最小可运行链路
 
-## Current State
-### Frontend
-最新重要提交：
-- `8f5f409` fix(frontend): resolve server fetch origin from request headers
-- `8c70ed0` feat(loras): load upload categories from path maps
-- `5d45596` fix(queue): derive review neighbors from queue api
+## Current State (2026-03-24)
 
-当前已完成：
-- queue / review / single image / trash / jobs / lora 页面已建立
-- 队列、jobs、trash、loras 已优先读取真实 API，并保留 fallback
-- 单图 / 宫格审图已接 keep / trash 真实提交
-- job create / copy / edit / run 的前端动作已接上真实接口
-- LoRA 上传表单已接真实 `/api/loras`
-- frontend 当前 lint / build 基线可通过
+当前为单体 Next.js 项目（App Router），前后端统一在 `main` 分支。
 
-### Backend
-最新重要提交：
-- `13800fd` feat(agent): add position run endpoint
-- `c647790` feat(agent): add update and review endpoints
-- `b5a7d73` feat(agent): add run context endpoint
+### 已完成 — Phase 1: 数据库基础设施 + 页面真实数据
+提交 `3fd72a0`:
+- PostgreSQL docker-compose.yml
+- Prisma schema + initial migration + seed 脚本
+- `src/lib/prisma.ts` Prisma client 单例
+- `src/lib/server-data.ts` 服务端查询层（getQueueItems / getReviewGroup / getJobs / getJobDetail / getTrashItems 等）
+- 所有页面从 mock-data 迁移到真实 Prisma 查询
+- 移除 `src/lib/mock-data.ts`
 
-当前已完成：
-- Prisma schema、seed、bootstrap 已有
-- queue / jobs / runs / trash / loras / agent 已有最小真实 API
-- review keep / trash / restore 已有真实逻辑
-- job create / copy / patch / run 已有真实逻辑
-- worker scaffold 已能消费 queued run
-- 已接上 ComfyUI prompt submit / history polling
-- 已支持输出下载/复制、ImageResult 落库、缩略图生成
-- backend 当前 lint / build 基线可通过
+### 已完成 — Phase 2: 交互接线 + 新页面
+提交 `1f89c73`:
+- `src/lib/actions.ts` Server Actions：
+  - reviewImages（批量 keep/trash）
+  - restoreImage（从回收站恢复）
+  - runJob（运行整组）/ runPosition（运行单节）
+  - copyJob（复制大任务，含 Prisma JSON 类型桥接）
+- `/trash` 回收站页面 + RestoreButton 客户端组件
+- `/assets/loras` LoRA 资源列表页面
+- `ReviewGrid` 客户端组件：多选 + 批量保留/删除
+- `ImageActions` 客户端组件：单图保留/删除
+- `JobActions` 客户端组件：编辑/复制/运行
+- `JobDetailActions` + `PositionRunButton`：运行整组/复制/运行单节
+
+### 页面清单
+| 路径 | 状态 |
+|------|------|
+| `/queue` | ✅ 真实数据 |
+| `/queue/[runId]` | ✅ 真实数据 + 交互接线 |
+| `/queue/[runId]/images/[imageId]` | ✅ 真实数据 + 交互接线 |
+| `/jobs` | ✅ 真实数据 + 交互接线 |
+| `/jobs/[jobId]` | ✅ 真实数据 + 交互接线 |
+| `/trash` | ✅ 真实数据 + 恢复按钮 |
+| `/assets/loras` | ✅ 真实数据（只读列表） |
 
 ## Verified Baseline
-- `npm install` 可在 frontend/backend worktree 完成
-- frontend: `cmd /c npm run lint`、`cmd /c npm run build` 可通过
-- backend: `cmd /c npm run lint`、`cmd /c npm run build` 可通过
-- 已有最小本机创建链路：`/jobs/new` -> 创建 draft -> 跳转到 edit
-- 已有最小 worker 本地触发入口：`POST /api/local/worker/pass?limit=1`
+- `npm run lint` 通过
+- `npm run build` 通过
+- 所有页面 HTTP 200 可访问
+- 关键操作按钮（批量保留/删除、恢复、运行、复制）已渲染
 
 ## Active Gaps
-- 前端部分页面仍保留 mock fallback，尚未全部切到真实数据主链路
-- 本机从 seed -> enqueue -> local worker -> ComfyUI -> output images 的完整手动验证记录还不够清晰
-- 文件归档策略（如 raw / kept / trashed）还未正式定稿并实现
-- Character / Scene / Style / PositionTemplate 的正式管理入口还未补齐
+- 参数编辑页（从宫格三点菜单或 Job 详情进入）尚未实现
+- Job 创建页 `/jobs/new` 尚未实现
+- LoRA 上传功能尚未实现（当前只有只读列表）
+- Worker / ComfyUI 对接尚未实现（runJob/runPosition 目前只创建 PositionRun 记录，无实际 worker 消费）
+- 文件归档策略（raw / kept / trashed 目录组织）尚未实现
+- Character / Scene / Style / PositionTemplate 管理入口尚未实现
+- 本机完整链路文档（seed → create job → enqueue → worker → ComfyUI → output）尚未补
 
 ## Next Recommended Steps
-1. 补一条清晰、可复现的本机手动验证文档
-2. 继续减少 queue / jobs / detail 页对 mock fallback 的依赖
-3. 视需要补文件移动/归档逻辑
-4. 视需要补模板配置管理入口
-5. 继续完善 agent 写接口
+1. 实现参数编辑页（宫格三点菜单 + Job 详情入口）
+2. 实现 Job 创建页 `/jobs/new`
+3. 实现 LoRA 上传功能
+4. 实现 Worker scaffold + ComfyUI API 对接
+5. 补文件归档逻辑
+6. 补 Character / Scene / Style / PositionTemplate 管理入口
+7. 补完整本机验证文档
 
-## Repo / Branch Rules
-- `main`: 共享文档、整合基线
-- `frontend`: 前端页面、交互、页面级数据接入
-- `backend`: Prisma、API、worker、文件处理、ComfyUI 对接
+## Repo Rules
+- `main` 分支：唯一开发分支
 - 使用 Conventional Commits
-- 每次提交后立即 push 到对应远程分支
-
-## Automation Status
-- 之前的自动开发 cron 已停用，当前以人工整理和接手友好为主
+- 每次提交后推送到远程

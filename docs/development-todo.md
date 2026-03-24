@@ -1,28 +1,35 @@
 # Development Todo
 
-## Priority A: make the local path explicit
-- [ ] 写一条可复现的本机验证文档：seed -> create job -> enqueue -> local worker pass -> ComfyUI history -> output images
-- [ ] 把 `.env.example`、数据库初始化、worker 本地触发方式统一整理进 README / handoff
+## ~~Priority B: reduce fallback dependence~~ ✅ DONE
+- [x] 所有页面已从 mock-data 迁移到真实 Prisma 查询
+- [x] mock-data.ts 已移除
+- [x] 所有交互按钮已接上真实 Server Actions
 
-## Priority B: reduce fallback dependence
-- [ ] 继续减少 queue / jobs / detail 页面上的 mock fallback
-- [ ] 明确哪些 fallback 只是开发期保底，哪些应长期保留
+## Priority A: 核心缺失页面
+- [ ] 实现参数编辑页（入口：宫格三点菜单 + Job 详情页）
+- [ ] 实现 Job 创建页 `/jobs/new`（选择 Character / Scene / Style，勾选 Position）
+- [ ] 实现 LoRA 上传功能（当前只有只读列表）
 
-## Priority C: file/output flow
+## Priority B: Worker / ComfyUI 对接
+- [ ] 实现 Worker scaffold（消费 queued PositionRun）
+- [ ] 接入 ComfyUI API（/prompt 提交 + /history 轮询）
+- [ ] 实现输出图下载、缩略图生成、ImageResult 落库
+- [ ] 补一条清晰的本机验证文档：seed → create job → enqueue → worker → ComfyUI → output
+
+## Priority C: 文件归档
 - [ ] 明确 raw / kept / trashed 的目标目录组织
 - [ ] 按最终目录策略补文件移动 / 恢复 / 归档逻辑
 
-## Priority D: config management
+## Priority D: 配置管理
 - [ ] 补 Character 管理入口
 - [ ] 补 Scene / Style / PositionTemplate 管理入口
 - [ ] 明确模板配置与大任务覆盖的边界
 
-## Priority E: agent / automation
+## Priority E: Agent / Automation
 - [ ] 继续完善 agent 写接口
 - [ ] 明确后续 agent / MCP 接口边界
 - [ ] 为外部 AI/Agent 接手补更清晰的 API 使用说明
 
 ## Working Notes
-- 前后端并行开发，分别在 `frontend` / `backend` 分支提交并 push
-- 共享文档放在 `main`
+- 单体 Next.js 项目，统一在 `main` 分支开发
 - `development-progress.md` 保持当前态摘要，不再写成流水账
