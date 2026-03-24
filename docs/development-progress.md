@@ -36,40 +36,48 @@
 - `JobActions` 客户端组件：编辑/复制/运行
 - `JobDetailActions` + `PositionRunButton`：运行整组/复制/运行单节
 
+### 已完成 — Phase 3: Job 创建/编辑 + LoRA 上传
+提交 `1191391`:
+- `/jobs/new` Job 创建页：Character / Scene / Style 选择 + Position 多选
+- `/jobs/[jobId]/edit` 参数编辑页：Job 级别字段 + Position 级别覆盖参数
+- `createJob` / `updateJob` Server Actions
+- LoRA 上传表单：分类选择 + 文件上传 + 路径预览
+- `uploadLora` Server Action（数据库登记，文件写入待接）
+- `getJobFormOptions` / `getJobEditData` 服务端查询函数
+- Jobs 列表页添加"创建新任务"按钮
+- Job 详情页和列表页编辑按钮链接到 `/edit`
+
 ### 页面清单
 | 路径 | 状态 |
 |------|------|
 | `/queue` | ✅ 真实数据 |
 | `/queue/[runId]` | ✅ 真实数据 + 交互接线 |
 | `/queue/[runId]/images/[imageId]` | ✅ 真实数据 + 交互接线 |
-| `/jobs` | ✅ 真实数据 + 交互接线 |
-| `/jobs/[jobId]` | ✅ 真实数据 + 交互接线 |
+| `/jobs` | ✅ 真实数据 + 交互接线 + 创建入口 |
+| `/jobs/new` | ✅ 创建表单 |
+| `/jobs/[jobId]` | ✅ 真实数据 + 交互接线 + 编辑入口 |
+| `/jobs/[jobId]/edit` | ✅ 参数编辑表单 |
 | `/trash` | ✅ 真实数据 + 恢复按钮 |
-| `/assets/loras` | ✅ 真实数据（只读列表） |
+| `/assets/loras` | ✅ 真实数据 + 上传表单 |
 
 ## Verified Baseline
 - `npm run lint` 通过
 - `npm run build` 通过
 - 所有页面 HTTP 200 可访问
-- 关键操作按钮（批量保留/删除、恢复、运行、复制）已渲染
+- 关键操作按钮（批量保留/删除、恢复、运行、复制、创建、编辑、上传）已渲染
 
 ## Active Gaps
-- 参数编辑页（从宫格三点菜单或 Job 详情进入）尚未实现
-- Job 创建页 `/jobs/new` 尚未实现
-- LoRA 上传功能尚未实现（当前只有只读列表）
 - Worker / ComfyUI 对接尚未实现（runJob/runPosition 目前只创建 PositionRun 记录，无实际 worker 消费）
 - 文件归档策略（raw / kept / trashed 目录组织）尚未实现
+- LoRA 上传的真实文件写入磁盘尚未实现（当前只做数据库登记）
 - Character / Scene / Style / PositionTemplate 管理入口尚未实现
 - 本机完整链路文档（seed → create job → enqueue → worker → ComfyUI → output）尚未补
 
 ## Next Recommended Steps
-1. 实现参数编辑页（宫格三点菜单 + Job 详情入口）
-2. 实现 Job 创建页 `/jobs/new`
-3. 实现 LoRA 上传功能
-4. 实现 Worker scaffold + ComfyUI API 对接
-5. 补文件归档逻辑
-6. 补 Character / Scene / Style / PositionTemplate 管理入口
-7. 补完整本机验证文档
+1. 实现 Worker scaffold + ComfyUI API 对接
+2. 补文件归档逻辑（LoRA 真实写入 + 图片 trash/restore 文件移动）
+3. 补 Character / Scene / Style / PositionTemplate 管理入口
+4. 补完整本机验证文档
 
 ## Repo Rules
 - `main` 分支：唯一开发分支
