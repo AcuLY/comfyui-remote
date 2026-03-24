@@ -69,7 +69,7 @@ export async function GET() {
       recentDone: recentDone.map((r) => ({
         id: r.id,
         jobTitle: r.completeJob.title,
-        positionName: r.completeJobPosition.positionTemplate.name,
+        positionName: r.completeJobPosition.positionTemplate?.name ?? null,
         imagesCount: r._count.images,
         finishedAt: r.finishedAt,
       })),

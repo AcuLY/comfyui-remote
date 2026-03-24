@@ -28,7 +28,7 @@ export async function getQueueRuns(): Promise<QueueRun[]> {
     id: run.id,
     characterName: run.completeJob.character.name,
     jobTitle: run.completeJob.title,
-    positionName: run.completeJobPosition.positionTemplate.name,
+    positionName: run.completeJobPosition.positionTemplate?.name ?? "Unknown",
     createdAt: formatDate(run.createdAt),
     pendingCount: run.images.filter((img) => img.reviewStatus === "pending").length,
     totalCount: run.images.length,
@@ -69,7 +69,7 @@ export async function getReviewGroup(runId: string): Promise<ReviewGroup | null>
     id: run.id,
     title: run.completeJob.title,
     characterName: run.completeJob.character.name,
-    positionName: run.completeJobPosition.positionTemplate.name,
+    positionName: run.completeJobPosition.positionTemplate?.name ?? "Unknown",
     createdAt: formatDate(run.createdAt),
     pendingCount: images.filter((img) => img.status === "pending").length,
     totalCount: images.length,
@@ -188,9 +188,9 @@ export async function getJobDetail(jobId: string): Promise<JobDetail | null> {
     stylePrompt: job.stylePrompt,
     positions: job.positions.map((pos) => ({
       id: pos.id,
-      name: pos.positionTemplate.name,
-      batchSize: pos.batchSize ?? pos.positionTemplate.defaultBatchSize,
-      aspectRatio: pos.aspectRatio ?? pos.positionTemplate.defaultAspectRatio,
+      name: pos.positionTemplate?.name ?? "Unknown",
+      batchSize: pos.batchSize ?? pos.positionTemplate?.defaultBatchSize ?? null,
+      aspectRatio: pos.aspectRatio ?? pos.positionTemplate?.defaultAspectRatio ?? null,
       latestRunStatus: pos.runs[0]?.status ?? null,
     })),
   };
@@ -225,7 +225,7 @@ export async function getTrashItems(): Promise<TrashItem[]> {
     return {
       id: rec.id,
       src: rec.imageResult.thumbPath ?? rec.imageResult.filePath,
-      title: `${run.completeJob.title} / ${run.completeJobPosition.positionTemplate.name}`,
+      title: `${run.completeJob.title} / ${run.completeJobPosition.positionTemplate?.name ?? "Unknown"}`,
       deletedAt: formatDate(rec.deletedAt),
       originalPath: rec.originalPath,
     };
@@ -306,7 +306,7 @@ export type JobEditData = {
   notes: string | null;
   positions: {
     id: string;
-    positionTemplateId: string;
+    positionTemplateId: string | null;
     sortOrder: number;
     enabled: boolean;
     positivePrompt: string | null;

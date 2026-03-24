@@ -37,40 +37,43 @@ enum ActorType {
 }
 
 model Character {
-  id          String        @id @default(cuid())
-  name        String
-  slug        String        @unique
-  prompt      String        @db.Text
-  loraPath    String
-  notes       String?       @db.Text
-  isActive    Boolean       @default(true)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  jobs        CompleteJob[]
+  id              String        @id @default(cuid())
+  name            String
+  slug            String        @unique
+  prompt          String        @db.Text
+  negativePrompt  String?       @db.Text
+  loraPath        String
+  notes           String?       @db.Text
+  isActive        Boolean       @default(true)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  jobs            CompleteJob[]
 }
 
 model ScenePreset {
-  id          String        @id @default(cuid())
-  name        String
-  slug        String        @unique
-  prompt      String        @db.Text
-  notes       String?       @db.Text
-  isActive    Boolean       @default(true)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  jobs        CompleteJob[]
+  id              String        @id @default(cuid())
+  name            String
+  slug            String        @unique
+  prompt          String        @db.Text
+  negativePrompt  String?       @db.Text
+  notes           String?       @db.Text
+  isActive        Boolean       @default(true)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  jobs            CompleteJob[]
 }
 
 model StylePreset {
-  id          String        @id @default(cuid())
-  name        String
-  slug        String        @unique
-  prompt      String        @db.Text
-  notes       String?       @db.Text
-  isActive    Boolean       @default(true)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  jobs        CompleteJob[]
+  id              String        @id @default(cuid())
+  name            String
+  slug            String        @unique
+  prompt          String        @db.Text
+  negativePrompt  String?       @db.Text
+  notes           String?       @db.Text
+  isActive        Boolean       @default(true)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  jobs            CompleteJob[]
 }
 
 model PositionTemplate {
@@ -117,27 +120,51 @@ model CompleteJob {
   @@index([characterId, updatedAt])
 }
 
+enum PromptBlockType {
+  character
+  scene
+  style
+  position
+  custom
+}
+
+model PromptBlock {
+  id                    String                @id @default(cuid())
+  completeJobPositionId String
+  type                  PromptBlockType
+  sourceId              String?
+  label                 String
+  positive              String                @db.Text
+  negative              String?               @db.Text
+  sortOrder             Int                   @default(0)
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  completeJobPosition   CompleteJobPosition   @relation(fields: [completeJobPositionId], references: [id], onDelete: Cascade)
+
+  @@index([completeJobPositionId, sortOrder])
+}
+
 model CompleteJobPosition {
-  id                    String            @id @default(cuid())
+  id                    String                @id @default(cuid())
   completeJobId         String
-  positionTemplateId    String
-  sortOrder             Int               @default(0)
-  enabled               Boolean           @default(true)
-  positivePrompt        String?           @db.Text
-  negativePrompt        String?           @db.Text
+  positionTemplateId    String?
+  sortOrder             Int                   @default(0)
+  enabled               Boolean               @default(true)
+  positivePrompt        String?               @db.Text
+  negativePrompt        String?               @db.Text
   aspectRatio           String?
   batchSize             Int?
   seedPolicy            String?
   loraConfig            Json?
   extraParams           Json?
   latestRunId           String?
-  createdAt             DateTime         @default(now())
-  updatedAt             DateTime         @updatedAt
-  completeJob           CompleteJob      @relation(fields: [completeJobId], references: [id], onDelete: Cascade)
-  positionTemplate      PositionTemplate @relation(fields: [positionTemplateId], references: [id], onDelete: Restrict)
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  completeJob           CompleteJob           @relation(fields: [completeJobId], references: [id], onDelete: Cascade)
+  positionTemplate      PositionTemplate?     @relation(fields: [positionTemplateId], references: [id], onDelete: SetNull)
   runs                  PositionRun[]
+  promptBlocks          PromptBlock[]
 
-  @@unique([completeJobId, positionTemplateId])
   @@index([completeJobId, sortOrder])
 }
 

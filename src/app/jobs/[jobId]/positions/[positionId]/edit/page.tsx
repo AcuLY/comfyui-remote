@@ -15,6 +15,10 @@ export default async function JobPositionEditPage({ params }: { params: Promise<
     notFound();
   }
 
+  if (!pos.positionTemplate) {
+    notFound();
+  }
+
   const position: JobDetailPosition = {
     id: pos.id,
     name: pos.positionTemplate.name,

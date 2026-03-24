@@ -11,40 +11,43 @@ datasource db {
 // Prisma handles validation at the application layer.
 
 model Character {
-  id          String        @id @default(cuid())
-  name        String
-  slug        String        @unique
-  prompt      String
-  loraPath    String
-  notes       String?
-  isActive    Boolean       @default(true)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  jobs        CompleteJob[]
+  id              String        @id @default(cuid())
+  name            String
+  slug            String        @unique
+  prompt          String
+  negativePrompt  String?
+  loraPath        String
+  notes           String?
+  isActive        Boolean       @default(true)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  jobs            CompleteJob[]
 }
 
 model ScenePreset {
-  id          String        @id @default(cuid())
-  name        String
-  slug        String        @unique
-  prompt      String
-  notes       String?
-  isActive    Boolean       @default(true)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  jobs        CompleteJob[]
+  id              String        @id @default(cuid())
+  name            String
+  slug            String        @unique
+  prompt          String
+  negativePrompt  String?
+  notes           String?
+  isActive        Boolean       @default(true)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  jobs            CompleteJob[]
 }
 
 model StylePreset {
-  id          String        @id @default(cuid())
-  name        String
-  slug        String        @unique
-  prompt      String
-  notes       String?
-  isActive    Boolean       @default(true)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  jobs        CompleteJob[]
+  id              String        @id @default(cuid())
+  name            String
+  slug            String        @unique
+  prompt          String
+  negativePrompt  String?
+  notes           String?
+  isActive        Boolean       @default(true)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  jobs            CompleteJob[]
 }
 
 model PositionTemplate {
@@ -92,11 +95,11 @@ model CompleteJob {
 }
 
 model CompleteJobPosition {
-  id                    String            @id @default(cuid())
+  id                    String                @id @default(cuid())
   completeJobId         String
-  positionTemplateId    String
-  sortOrder             Int               @default(0)
-  enabled               Boolean           @default(true)
+  positionTemplateId    String?
+  sortOrder             Int                   @default(0)
+  enabled               Boolean               @default(true)
   positivePrompt        String?
   negativePrompt        String?
   aspectRatio           String?
@@ -105,14 +108,30 @@ model CompleteJobPosition {
   loraConfig            Json?
   extraParams           Json?
   latestRunId           String?
-  createdAt             DateTime         @default(now())
-  updatedAt             DateTime         @updatedAt
-  completeJob           CompleteJob      @relation(fields: [completeJobId], references: [id], onDelete: Cascade)
-  positionTemplate      PositionTemplate @relation(fields: [positionTemplateId], references: [id], onDelete: Restrict)
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  completeJob           CompleteJob           @relation(fields: [completeJobId], references: [id], onDelete: Cascade)
+  positionTemplate      PositionTemplate?     @relation(fields: [positionTemplateId], references: [id], onDelete: SetNull)
   runs                  PositionRun[]
+  promptBlocks          PromptBlock[]
 
-  @@unique([completeJobId, positionTemplateId])
   @@index([completeJobId, sortOrder])
+}
+
+model PromptBlock {
+  id                    String                @id @default(cuid())
+  completeJobPositionId String
+  type                  String                @default("custom")
+  sourceId              String?
+  label                 String
+  positive              String
+  negative              String?
+  sortOrder             Int                   @default(0)
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  completeJobPosition   CompleteJobPosition   @relation(fields: [completeJobPositionId], references: [id], onDelete: Cascade)
+
+  @@index([completeJobPositionId, sortOrder])
 }
 
 model PositionRun {

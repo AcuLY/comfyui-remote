@@ -166,62 +166,56 @@ async function main() {
     },
   });
 
-  const mikuStanding = await prisma.completeJobPosition.upsert({
-    where: {
-      completeJobId_positionTemplateId: {
+  const mikuStanding = await prisma.completeJobPosition.findFirst({
+    where: { completeJobId: mikuJob.id, positionTemplateId: standingTemplate.id },
+  });
+  if (!mikuStanding) {
+    await prisma.completeJobPosition.create({
+      data: {
         completeJobId: mikuJob.id,
         positionTemplateId: standingTemplate.id,
+        sortOrder: 1,
+        enabled: true,
+        batchSize: 9,
+        aspectRatio: "3:4",
+        seedPolicy: "random",
       },
-    },
-    update: { sortOrder: 1, enabled: true, batchSize: 9, aspectRatio: "3:4", seedPolicy: "random" },
-    create: {
-      completeJobId: mikuJob.id,
-      positionTemplateId: standingTemplate.id,
-      sortOrder: 1,
-      enabled: true,
-      batchSize: 9,
-      aspectRatio: "3:4",
-      seedPolicy: "random",
-    },
-  });
+    });
+  }
 
-  const mikuWatching = await prisma.completeJobPosition.upsert({
-    where: {
-      completeJobId_positionTemplateId: {
+  const mikuWatching = await prisma.completeJobPosition.findFirst({
+    where: { completeJobId: mikuJob.id, positionTemplateId: watchingTemplate.id },
+  });
+  if (!mikuWatching) {
+    await prisma.completeJobPosition.create({
+      data: {
         completeJobId: mikuJob.id,
         positionTemplateId: watchingTemplate.id,
+        sortOrder: 2,
+        enabled: true,
+        batchSize: 9,
+        aspectRatio: "3:4",
+        seedPolicy: "random",
       },
-    },
-    update: { sortOrder: 2, enabled: true, batchSize: 9, aspectRatio: "3:4", seedPolicy: "random" },
-    create: {
-      completeJobId: mikuJob.id,
-      positionTemplateId: watchingTemplate.id,
-      sortOrder: 2,
-      enabled: true,
-      batchSize: 9,
-      aspectRatio: "3:4",
-      seedPolicy: "random",
-    },
-  });
+    });
+  }
 
-  const tangtangBench = await prisma.completeJobPosition.upsert({
-    where: {
-      completeJobId_positionTemplateId: {
+  const tangtangBench = await prisma.completeJobPosition.findFirst({
+    where: { completeJobId: tangtangJob.id, positionTemplateId: benchSitTemplate.id },
+  });
+  if (!tangtangBench) {
+    await prisma.completeJobPosition.create({
+      data: {
         completeJobId: tangtangJob.id,
         positionTemplateId: benchSitTemplate.id,
+        sortOrder: 1,
+        enabled: true,
+        batchSize: 9,
+        aspectRatio: "3:4",
+        seedPolicy: "random",
       },
-    },
-    update: { sortOrder: 1, enabled: true, batchSize: 9, aspectRatio: "3:4", seedPolicy: "random" },
-    create: {
-      completeJobId: tangtangJob.id,
-      positionTemplateId: benchSitTemplate.id,
-      sortOrder: 1,
-      enabled: true,
-      batchSize: 9,
-      aspectRatio: "3:4",
-      seedPolicy: "random",
-    },
-  });
+    });
+  }
 
   const standingRun = await prisma.positionRun.upsert({
     where: { id: "seed-run-miku-standing" },

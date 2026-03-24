@@ -59,8 +59,8 @@ function serializeWorkerRunSnapshot(run: WorkerRunRecord): WorkerRunSnapshot {
     },
     position: {
       id: run.completeJobPosition.id,
-      name: run.completeJobPosition.positionTemplate.name,
-      slug: run.completeJobPosition.positionTemplate.slug,
+      name: run.completeJobPosition.positionTemplate?.name ?? "Unknown",
+      slug: run.completeJobPosition.positionTemplate?.slug ?? "unknown",
     },
   };
 }

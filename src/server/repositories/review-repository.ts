@@ -109,7 +109,7 @@ export async function getRunReviewGroup(runId: string) {
     jobPositionId: run.completeJobPosition.id,
     title: run.completeJob.title,
     characterName: run.completeJob.character.name,
-    positionName: run.completeJobPosition.positionTemplate.name,
+    positionName: run.completeJobPosition.positionTemplate?.name ?? "Unknown",
     createdAt: run.createdAt,
     pendingCount: images.filter((image) => image.status === ReviewStatus.pending).length,
     totalCount: images.length,

@@ -72,7 +72,7 @@ type JobPositionRecord = {
   sortOrder: number;
   enabled: boolean;
   latestRunId: string | null;
-  positionTemplateId: string;
+  positionTemplateId: string | null;
   positivePrompt: string | null;
   negativePrompt: string | null;
   aspectRatio: string | null;
@@ -80,7 +80,7 @@ type JobPositionRecord = {
   seedPolicy: string | null;
   loraConfig: Prisma.JsonValue | null;
   extraParams: Prisma.JsonValue | null;
-  positionTemplate: PositionTemplateRecord;
+  positionTemplate: PositionTemplateRecord | null;
   runs: LatestRunRecord[];
 };
 
@@ -187,17 +187,17 @@ function serializeJobPosition(
     enabled: position.enabled,
     latestRunId: position.latestRunId,
     positionTemplateId: position.positionTemplateId,
-    name: position.positionTemplate.name,
-    slug: position.positionTemplate.slug,
-    aspectRatio: position.aspectRatio ?? position.positionTemplate.defaultAspectRatio,
-    batchSize: position.batchSize ?? position.positionTemplate.defaultBatchSize,
-    seedPolicy: position.seedPolicy ?? position.positionTemplate.defaultSeedPolicy,
+    name: position.positionTemplate?.name ?? null,
+    slug: position.positionTemplate?.slug ?? null,
+    aspectRatio: position.aspectRatio ?? position.positionTemplate?.defaultAspectRatio ?? null,
+    batchSize: position.batchSize ?? position.positionTemplate?.defaultBatchSize ?? null,
+    seedPolicy: position.seedPolicy ?? position.positionTemplate?.defaultSeedPolicy ?? null,
     loraConfig: position.loraConfig,
     extraParams: position.extraParams,
     promptOverview: {
-      templatePrompt: position.positionTemplate.prompt,
+      templatePrompt: position.positionTemplate?.prompt ?? null,
       positivePrompt: position.positivePrompt,
-      negativePrompt: position.negativePrompt ?? position.positionTemplate.negativePrompt,
+      negativePrompt: position.negativePrompt ?? position.positionTemplate?.negativePrompt ?? null,
     },
     latestRun: serializeLatestRun(resolveLatestRun(position, latestRunsById)),
   };
@@ -313,13 +313,15 @@ function buildResolvedConfigSnapshot(
   const resolvedAspectRatio =
     position.aspectRatio ??
     resolveJobOverrideString(jobLevelOverrides, "aspectRatio") ??
-    position.positionTemplate.defaultAspectRatio;
+    position.positionTemplate?.defaultAspectRatio ??
+    null;
   const resolvedBatchSize =
     position.batchSize ??
     resolveJobOverrideInteger(jobLevelOverrides, "batchSize") ??
-    position.positionTemplate.defaultBatchSize;
+    position.positionTemplate?.defaultBatchSize ??
+    null;
   const resolvedSeedPolicy =
-    position.seedPolicy ?? position.positionTemplate.defaultSeedPolicy;
+    position.seedPolicy ?? position.positionTemplate?.defaultSeedPolicy ?? null;
 
   return {
     job: {
@@ -353,12 +355,12 @@ function buildResolvedConfigSnapshot(
     position: {
       id: position.id,
       templateId: position.positionTemplateId,
-      name: position.positionTemplate.name,
-      slug: position.positionTemplate.slug,
-      templatePrompt: position.positionTemplate.prompt,
+      name: position.positionTemplate?.name ?? null,
+      slug: position.positionTemplate?.slug ?? null,
+      templatePrompt: position.positionTemplate?.prompt ?? null,
       positivePrompt: position.positivePrompt,
       negativePrompt:
-        position.negativePrompt ?? position.positionTemplate.negativePrompt,
+        position.negativePrompt ?? position.positionTemplate?.negativePrompt ?? null,
     },
     parameters: {
       aspectRatio: resolvedAspectRatio,
@@ -366,11 +368,11 @@ function buildResolvedConfigSnapshot(
       seedPolicy: resolvedSeedPolicy,
     },
     loraConfig: mergeJsonObjects(
-      position.positionTemplate.defaultLoraConfig,
+      position.positionTemplate?.defaultLoraConfig ?? null,
       position.loraConfig,
     ),
     extraParams: mergeJsonObjects(
-      position.positionTemplate.defaultParams,
+      position.positionTemplate?.defaultParams ?? null,
       position.extraParams,
     ),
   };
@@ -391,12 +393,12 @@ function buildResolvedPromptDraft(
       job.characterPrompt,
       job.scenePrompt,
       job.stylePrompt,
-      position.positionTemplate.prompt,
+      position.positionTemplate?.prompt,
       position.positivePrompt,
     ]
       .filter((value): value is string => Boolean(value && value.trim()))
       .join(", "),
-    negative: position.negativePrompt ?? position.positionTemplate.negativePrompt,
+    negative: position.negativePrompt ?? position.positionTemplate?.negativePrompt ?? null,
   };
 }
 
@@ -412,8 +414,8 @@ function serializeEnqueuedRun(
     jobPositionId: position.id,
     positionTemplateId: position.positionTemplateId,
     sortOrder: position.sortOrder,
-    positionName: position.positionTemplate.name,
-    positionSlug: position.positionTemplate.slug,
+    positionName: position.positionTemplate?.name ?? null,
+    positionSlug: position.positionTemplate?.slug ?? null,
     runIndex: run.runIndex,
     status: run.status,
     createdAt: run.createdAt.toISOString(),
@@ -863,8 +865,8 @@ export async function getJobAgentContext(jobId: string) {
       enabled: position.enabled,
       latestRunId: position.latestRunId,
       positionTemplateId: position.positionTemplateId,
-      name: position.positionTemplate.name,
-      slug: position.positionTemplate.slug,
+      name: position.positionTemplate?.name ?? null,
+      slug: position.positionTemplate?.slug ?? null,
       latestRun: serializeLatestRun(latestRun),
       promptDraft: buildResolvedPromptDraft(job, position),
       resolvedConfig: buildResolvedConfigSnapshot(job, position),

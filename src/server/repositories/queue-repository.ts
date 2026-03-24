@@ -15,7 +15,7 @@ export async function listQueueRuns() {
     id: run.id,
     characterName: run.completeJob.character.name,
     jobTitle: run.completeJob.title,
-    positionName: run.completeJobPosition.positionTemplate.name,
+    positionName: run.completeJobPosition.positionTemplate?.name ?? "Unknown",
     createdAt: run.createdAt,
     pendingCount: run.images.filter((image) => image.reviewStatus === "pending").length,
     totalCount: run.images.length,

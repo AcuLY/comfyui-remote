@@ -221,29 +221,35 @@ async function main() {
     },
   });
 
-  const mikuStanding = await prisma.completeJobPosition.upsert({
-    where: { completeJobId_positionTemplateId: { completeJobId: jobMiku.id, positionTemplateId: standing.id } },
-    update: {},
-    create: {
-      completeJobId: jobMiku.id,
-      positionTemplateId: standing.id,
-      sortOrder: 0,
-      batchSize: 8,
-      aspectRatio: "3:4",
-    },
+  let mikuStanding = await prisma.completeJobPosition.findFirst({
+    where: { completeJobId: jobMiku.id, positionTemplateId: standing.id },
   });
+  if (!mikuStanding) {
+    mikuStanding = await prisma.completeJobPosition.create({
+      data: {
+        completeJobId: jobMiku.id,
+        positionTemplateId: standing.id,
+        sortOrder: 0,
+        batchSize: 8,
+        aspectRatio: "3:4",
+      },
+    });
+  }
 
-  const mikuWatching = await prisma.completeJobPosition.upsert({
-    where: { completeJobId_positionTemplateId: { completeJobId: jobMiku.id, positionTemplateId: watching.id } },
-    update: {},
-    create: {
-      completeJobId: jobMiku.id,
-      positionTemplateId: watching.id,
-      sortOrder: 1,
-      batchSize: 8,
-      aspectRatio: "3:4",
-    },
+  let mikuWatching = await prisma.completeJobPosition.findFirst({
+    where: { completeJobId: jobMiku.id, positionTemplateId: watching.id },
   });
+  if (!mikuWatching) {
+    mikuWatching = await prisma.completeJobPosition.create({
+      data: {
+        completeJobId: jobMiku.id,
+        positionTemplateId: watching.id,
+        sortOrder: 1,
+        batchSize: 8,
+        aspectRatio: "3:4",
+      },
+    });
+  }
 
   // --- CompleteJob: Tangtang park test ---
   const jobTangtang = await prisma.completeJob.upsert({
@@ -263,17 +269,20 @@ async function main() {
     },
   });
 
-  const tangtangBench = await prisma.completeJobPosition.upsert({
-    where: { completeJobId_positionTemplateId: { completeJobId: jobTangtang.id, positionTemplateId: benchSit.id } },
-    update: {},
-    create: {
-      completeJobId: jobTangtang.id,
-      positionTemplateId: benchSit.id,
-      sortOrder: 0,
-      batchSize: 6,
-      aspectRatio: "3:4",
-    },
+  let tangtangBench = await prisma.completeJobPosition.findFirst({
+    where: { completeJobId: jobTangtang.id, positionTemplateId: benchSit.id },
   });
+  if (!tangtangBench) {
+    tangtangBench = await prisma.completeJobPosition.create({
+      data: {
+        completeJobId: jobTangtang.id,
+        positionTemplateId: benchSit.id,
+        sortOrder: 0,
+        batchSize: 6,
+        aspectRatio: "3:4",
+      },
+    });
+  }
 
   // --- PositionRuns + ImageResults ---
   const mikuStandingImages = await buildSeedImages(
