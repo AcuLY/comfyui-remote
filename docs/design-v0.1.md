@@ -317,6 +317,13 @@
 - GET /api/runs/:id
 - GET /api/queue
 
+### Prompt Blocks (v0.2)
+- GET /api/jobs/:jobId/positions/:jobPositionId/blocks — 列出某个小节的所有提示词块
+- POST /api/jobs/:jobId/positions/:jobPositionId/blocks — 创建新提示词块（body 为对象）
+- POST /api/jobs/:jobId/positions/:jobPositionId/blocks — 重排序（body 为 blockId 数组）
+- PATCH /api/jobs/:jobId/positions/:jobPositionId/blocks/:blockId — 更新某个块的内容
+- DELETE /api/jobs/:jobId/positions/:jobPositionId/blocks/:blockId — 删除某个块
+
 ### Review
 - POST /api/runs/:id/review/keep
 - POST /api/runs/:id/review/trash
