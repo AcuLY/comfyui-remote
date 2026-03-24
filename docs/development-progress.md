@@ -66,6 +66,7 @@ Current state:
 - 单图查看页 `/queue/:runId/images/:imageId` 已改为优先读取真实 `GET /api/runs/:id` 返回的 run 图片数据，不再是纯 mock-only 页面；单图页的“保留 / 删除”按钮也已复用真实 review server action，支持直接提交单张 keep / trash 并在成功后 refresh 当前 run 数据
 - 已再次确认 frontend worktree `cmd /c npm run lint` 与 `cmd /c npm run build` 可通过（包含本轮单图页真实数据与单张审图动作接线）
 - job detail 页原本只是占位的“复制任务”按钮现已复用真实 `JobCopyButton` / `copyJobAction`，详情页与 jobs 列表页的复制行为一致；frontend worktree 已再次验证 `cmd /c npm run lint` 与 `cmd /c npm run build` 可通过（提交：`b35684f` `fix(jobs): wire detail copy action`）
+- 宫格审核页右上角“参数编辑”已不再是死按钮：当前会优先使用真实 `GET /api/runs/:id` 返回的 `jobId` / `jobPositionId` 跳转到对应 position 编辑页；mock fallback 场景则保持禁用态，避免错误跳转
 
 ### Backend
 Latest pushed commits:
@@ -117,6 +118,7 @@ Current state:
 - 本轮已再次验证 backend worktree `cmd /c npm run lint` 与 `cmd /c npm run build` 可通过（包含本轮 draft job creation API 改动）
 - `POST /api/jobs` 已于 backend 分支提交并 push（`96802d2` feat(jobs): add draft job creation api）；本次提交实际通过 `cmd /c git ...` 完成，绕过了 PowerShell 直跑 git commit 时的 worktree lock/quote 问题
 - backend 已新增 `GET /api/job-create-options`，会返回当前可用的 Character / ScenePreset / StylePreset / PositionTemplate 元数据，供新建任务表单直接读取真实选项
+- `GET /api/runs/:id` 现在会额外返回真实 `jobId` 与 `jobPositionId`，供队列宫格页直接跳转回对应的 position 参数编辑页，进一步减少 review flow 上的占位按钮
 - 本轮再次验证 frontend/backend worktree `cmd /c npm run build` 可通过（包含 job create options API 与 `/jobs/new` 页面）
 
 ## Next Suggested Milestones
