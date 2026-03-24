@@ -29,9 +29,9 @@
 ## Current Status
 ### Frontend
 Latest pushed commits:
+- `8f5f409` fix(frontend): resolve server fetch origin from request headers
 - `8c70ed0` feat(loras): load upload categories from path maps
 - `5d45596` fix(queue): derive review neighbors from queue api
-- `b35684f` fix(jobs): wire detail copy action
 
 Current state:
 - 已有待审核队列页
@@ -70,6 +70,8 @@ Current state:
 - LoRA 上传页不再把分类写死在前端：现在会优先读取真实 `/api/path-maps` 的 `loraCategories` 并渲染上传下拉选项，接口不可用时才回退到内置默认分类
 - LoRA 上传页会同时展示当前分类到相对目录的映射，方便本机直接确认上传目标路径；upload server action 也已移除前端硬编码分类白名单，改为只校验非空并直接复用后端返回的错误信息
 - 本轮已再次确认 frontend worktree `cmd /c npm run lint` 与 `cmd /c npm run build` 可通过（提交：`8c70ed0` `feat(loras): load upload categories from path maps`）
+- frontend server-side 数据读取不再把应用根地址硬编码为 `http://localhost:3000`：`src/lib/server-data.ts` 现会通过新的 `getServerAppOrigin()` 优先读取当前请求的 `host` / `x-forwarded-*` 头推导 origin，仅在无请求上下文时才回退到 `NEXT_PUBLIC_APP_URL` 或默认 localhost，减少本机改端口/反代时页面自请求失败的概率
+- 本轮已再次确认 frontend worktree `cmd /c npm run lint` 与 `cmd /c npm run build` 可通过（提交：`8f5f409` `fix(frontend): resolve server fetch origin from request headers`）
 
 ### Backend
 Latest pushed commits:
@@ -128,7 +130,7 @@ Current state:
 - backend 已新增 `POST /api/agent/runs/:runId/review`：支持 `keep` / `trash` 两种动作，复用现有真实 review service，并返回动作结果与最新 run agent context，方便后续 agent 审图工作流直接闭环
 - backend 已新增 `POST /api/agent/positions/:jobPositionId/run`：只需提供 jobPositionId 即可触发真实单 position 入队，并返回入队结果与最新 job agent context，补齐 agent 侧最小写闭环
 - 本轮再次验证 backend worktree `cmd /c npm run lint` 与 `cmd /c npm run build` 可通过（包含 agent position run endpoint）
-- 本轮重新检查三个 worktree 均干净，且当前分支头分别为：main `681f69b`、frontend `8c70ed0`、backend `13800fd`
+- 本轮重新检查三个 worktree 均干净，且当前分支头分别为：main `681f69b`、frontend `8f5f409`、backend `13800fd`
 - frontend/backend 当前仍可继续作为本机可启动基线
 
 ## Next Suggested Milestones

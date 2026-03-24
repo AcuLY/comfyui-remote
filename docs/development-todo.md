@@ -46,6 +46,7 @@
 - [x] 补 frontend 的“新建任务”最小入口（表单或 server action），接上已完成的 `POST /api/jobs`
 - [x] 让 `/jobs/new` 在创建 draft 成功后自动跳转到 edit/detail（已接到真实 server action redirect）
 - [x] 记录并验证一条本机最小创建链路（打开 `/jobs/new` -> 创建 draft -> 自动跳转到 edit/detail，并补一条人工本机验证记录）
+- [x] 去掉 frontend server-side 自请求对固定 `localhost:3000` 的依赖，改为按当前请求头推导 origin
 
 - [x] 让单图查看页优先读取真实 run 数据，并接上单张 keep / trash 动作
 - [x] 让 job detail 页的“复制任务”入口复用真实 copy action，不再保留死按钮
