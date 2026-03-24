@@ -73,9 +73,9 @@ Current state:
 
 ### Backend
 Latest pushed commits:
+- `13800fd` feat(agent): add position run endpoint
+- `c647790` feat(agent): add update and review endpoints
 - `b5a7d73` feat(agent): add run context endpoint
-- `133dc1a` feat(agent): add job context endpoint
-- `cd0cc35` feat(review): expose run edit identifiers
 
 Current state:
 - 已有 Prisma schema 草案
@@ -126,8 +126,9 @@ Current state:
 - backend 已新增 `GET /api/agent/runs/:runId/context`：会返回 run / job / position 元数据、`resolvedConfigSnapshot`、输出图片清单与 review 汇总，便于后续 agent 审图或诊断 run，而不必复用前端宫格专用 payload
 - backend 已新增 agent 最小写接口：`POST /api/agent/jobs/:jobId/update` 支持一次请求内提交 job 级 patch 与多条 position patch，并返回更新后的 job agent context，便于自动化按结构化 payload 回写参数
 - backend 已新增 `POST /api/agent/runs/:runId/review`：支持 `keep` / `trash` 两种动作，复用现有真实 review service，并返回动作结果与最新 run agent context，方便后续 agent 审图工作流直接闭环
-- 本轮再次验证 backend worktree `cmd /c npm run lint` 与 `cmd /c npm run build` 可通过（包含 agent job update / run review endpoints）
-- 本轮重新检查三个 worktree 均干净，且当前分支头分别为：main `681f69b`、frontend `8c70ed0`、backend `b5a7d73`
+- backend 已新增 `POST /api/agent/positions/:jobPositionId/run`：只需提供 jobPositionId 即可触发真实单 position 入队，并返回入队结果与最新 job agent context，补齐 agent 侧最小写闭环
+- 本轮再次验证 backend worktree `cmd /c npm run lint` 与 `cmd /c npm run build` 可通过（包含 agent position run endpoint）
+- 本轮重新检查三个 worktree 均干净，且当前分支头分别为：main `681f69b`、frontend `8c70ed0`、backend `13800fd`
 - frontend/backend 当前仍可继续作为本机可启动基线
 
 ## Next Suggested Milestones

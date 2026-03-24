@@ -56,6 +56,7 @@
 
 - [x] 补 agent 只读上下文接口：job context / run context，方便后续自动化先读取真实结构化数据
 - [x] 补 agent 最小写接口：job update / run review，形成 context + update/review 的基础闭环
+- [x] 补 agent 单 position 触发入口：`POST /api/agent/positions/:jobPositionId/run`，形成 context + update + review + run 的最小可写闭环
 
 ## Working Notes
 - 前后端并行开发，分别在 `frontend` / `backend` 分支提交并 push
