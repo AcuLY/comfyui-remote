@@ -33,6 +33,7 @@
 - name
 - slug
 - prompt
+- **negativePrompt** (v0.2 新增)
 - loraPath
 - notes
 - createdAt / updatedAt
@@ -42,6 +43,7 @@
 - id
 - name
 - prompt
+- **negativePrompt** (v0.2 新增)
 - notes
 
 ### 3. StylePreset
@@ -49,6 +51,7 @@
 - id
 - name
 - prompt
+- **negativePrompt** (v0.2 新增)
 - notes
 
 ### 4. PositionTemplate
@@ -75,13 +78,35 @@
 - createdAt / updatedAt
 
 ### 6. CompleteJobPosition
-大任务中启用的某个 position：
+大任务中启用的某个 position（小节）：
 - completeJobId
-- positionTemplateId
+- **positionTemplateId (nullable, v0.2 改为可选)** — 不再强制绑定 PositionTemplate，支持无模板的自定义小节
 - sortOrder
 - enabled
+- positivePrompt
+- negativePrompt
 - paramOverrides（json）
 - latestRunId（可空）
+- **promptBlocks[] (v0.2 新增)** — 提示词块列表，支持增删、排序、自定义编辑
+
+### 6.1. PromptBlock (v0.2 新增)
+提示词块，每个小节由多个块有序组成：
+- id
+- completeJobPositionId
+- type (character / scene / style / position / custom)
+- sourceId (可选，引用 Character/Scene/Style/PositionTemplate 的 ID)
+- label (显示标签)
+- positive (正面提示词内容)
+- negative (负面提示词内容)
+- sortOrder
+
+**提示词模型变更说明（v0.2）**：
+- Character/Scene/Style/PositionTemplate 都是预制的提示词块来源
+- 新建小节时，角色/地点/风格的块自动填入
+- 可从 Position 提示词库选一组导入
+- 可添加自定义块
+- 所有块支持调整顺序、编辑内容、删除
+- 最终按顺序 join 成完整 positive/negative 发给 ComfyUI
 
 ### 7. PositionRun
 某个大任务中的单个 position 实际运行记录：
