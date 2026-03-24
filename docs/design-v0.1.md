@@ -324,6 +324,13 @@
 - PATCH /api/jobs/:jobId/positions/:jobPositionId/blocks/:blockId — 更新某个块的内容
 - DELETE /api/jobs/:jobId/positions/:jobPositionId/blocks/:blockId — 删除某个块
 
+**前端页面（v0.2 Phase 3）**：
+- `/jobs/[jobId]/positions/[positionId]/blocks` — 提示词块编辑器页面
+- `PromptBlockEditor` 客户端组件：块列表、内联编辑、新增/删除、上下移动排序、合成提示词预览
+- 类型标签（角色/场景/风格/Position/自定义）带颜色区分
+- Job 详情页 Position 列表显示 block 数量 + 快捷入口
+- Server Actions：list/add/update/delete/reorder
+
 ### Review
 - POST /api/runs/:id/review/keep
 - POST /api/runs/:id/review/trash

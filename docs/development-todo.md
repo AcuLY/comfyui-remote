@@ -91,6 +91,20 @@
 - [x] 单图详情：保留/删除当前图后显示「保留剩余 / 删除剩余」按钮，同样支持跳转下一组
 - [x] 无下一组时回退到队列列表页
 
+## ~~v0.2 Prompt Block Refactoring~~ Phase 3 ✅ DONE
+- [x] Phase 1 (schema + type fixes) ✅
+- [x] Phase 2 (backend: block CRUD, prompt composition, worker adaptation) ✅
+- [x] Phase 3 (frontend: block editor UI) ✅
+  - [x] PromptBlockEditor 客户端组件：块列表、内联编辑、新增/删除、上下移动排序
+  - [x] 类型标签（角色/场景/风格/Position/自定义）带颜色区分
+  - [x] 合成提示词实时预览
+  - [x] `/jobs/[jobId]/positions/[positionId]/blocks` 页面
+  - [x] Job 详情页 Position 列表显示 block 数量 + 快捷入口
+  - [x] Position 编辑页增加 blocks 入口链接
+  - [x] PromptBlock Server Actions（list/add/update/delete/reorder）
+  - [x] server-data.ts getPositionBlocks 查询
+- [ ] Phase 4 (migration scripts, Agent API adaptation) pending
+
 ## Working Notes
 - 单体 Next.js 项目，统一在 `main` 分支开发
 - `frontend` / `backend` 分支已合并到 `main` 并可归档
