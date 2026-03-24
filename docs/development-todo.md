@@ -75,6 +75,17 @@
 - [x] Settings 页新增 Workflow 管理入口 `/settings/workflows`
 - [x] 前端导入表单：支持粘贴 JSON 和上传 `.json` 文件
 
+## ~~Priority B: Agent API 补齐~~ ✅ DONE
+- [x] `GET /api/agent/jobs` — Job 列表端点（支持 search、status、hasPending 筛选）
+- [x] `POST /api/agent/jobs/:jobId/run-all` — 批量触发所有 enabled Position 运行
+
+## ~~Priority A: MCP Server~~ ✅ DONE
+- [x] MCP Server 核心 `src/server/mcp/server.ts`（McpServer + WebStandard Streamable HTTP）
+- [x] 6 个 Tools：list_jobs / update_job / update_job_position / run_all_positions / run_position / review_images
+- [x] 6 个 Resources：job context / run context / workflow templates / workflow detail / job revisions / revision snapshot
+- [x] API 端点 `ALL /api/mcp`（stateless Streamable HTTP transport）
+- [x] agent-api.md 增加 MCP 配置说明和 Tools/Resources 文档
+
 ## Working Notes
 - 单体 Next.js 项目，统一在 `main` 分支开发
 - `frontend` / `backend` 分支已合并到 `main` 并可归档
