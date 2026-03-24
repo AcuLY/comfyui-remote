@@ -100,20 +100,21 @@ export async function restoreImage(trashRecordId: string) {
 // ---------------------------------------------------------------------------
 
 export async function runJob(jobId: string) {
-  // 获取任务下所有启用的 position
+  // 获取任务下所有启用的 position（含模板信息用于快照）
   const job = await prisma.completeJob.findUnique({
     where: { id: jobId },
     include: {
       positions: {
         where: { enabled: true },
         orderBy: { sortOrder: "asc" },
+        include: { positionTemplate: true },
       },
     },
   });
 
   if (!job) return;
 
-  // 为每个启用的 position 创建 PositionRun
+  // 为每个启用的 position 创建 PositionRun，快照包含完整配置
   const runs = await prisma.$transaction(
     job.positions.map((pos) =>
       prisma.positionRun.create({
@@ -123,10 +124,17 @@ export async function runJob(jobId: string) {
           status: "queued",
           resolvedConfigSnapshot: {
             positionTemplateId: pos.positionTemplateId,
-            batchSize: pos.batchSize,
-            aspectRatio: pos.aspectRatio,
-            loraConfig: pos.loraConfig,
-            extraParams: pos.extraParams,
+            positionName: pos.positionTemplate.name,
+            batchSize: pos.batchSize ?? pos.positionTemplate.defaultBatchSize ?? 1,
+            aspectRatio: pos.aspectRatio ?? pos.positionTemplate.defaultAspectRatio ?? "3:4",
+            seedPolicy: pos.seedPolicy ?? pos.positionTemplate.defaultSeedPolicy ?? "random",
+            characterPrompt: job.characterPrompt,
+            characterLoraPath: job.characterLoraPath,
+            scenePrompt: job.scenePrompt,
+            stylePrompt: job.stylePrompt,
+            positionPrompt: pos.positionTemplate.prompt,
+            negativePrompt: pos.negativePrompt ?? pos.positionTemplate.negativePrompt,
+            positivePromptOverride: pos.positivePrompt,
           },
         },
       })
@@ -160,18 +168,16 @@ export async function runJob(jobId: string) {
 export async function runPosition(jobPositionId: string) {
   const pos = await prisma.completeJobPosition.findUnique({
     where: { id: jobPositionId },
-    select: {
-      id: true,
-      completeJobId: true,
-      positionTemplateId: true,
-      batchSize: true,
-      aspectRatio: true,
-      loraConfig: true,
-      extraParams: true,
+    include: {
+      positionTemplate: true,
+      completeJob: true,
     },
   });
 
   if (!pos) return;
+
+  const job = pos.completeJob;
+  const tmpl = pos.positionTemplate;
 
   const run = await prisma.positionRun.create({
     data: {
@@ -180,10 +186,17 @@ export async function runPosition(jobPositionId: string) {
       status: "queued",
       resolvedConfigSnapshot: {
         positionTemplateId: pos.positionTemplateId,
-        batchSize: pos.batchSize,
-        aspectRatio: pos.aspectRatio,
-        loraConfig: pos.loraConfig,
-        extraParams: pos.extraParams,
+        positionName: tmpl.name,
+        batchSize: pos.batchSize ?? tmpl.defaultBatchSize ?? 1,
+        aspectRatio: pos.aspectRatio ?? tmpl.defaultAspectRatio ?? "3:4",
+        seedPolicy: pos.seedPolicy ?? tmpl.defaultSeedPolicy ?? "random",
+        characterPrompt: job.characterPrompt,
+        characterLoraPath: job.characterLoraPath,
+        scenePrompt: job.scenePrompt,
+        stylePrompt: job.stylePrompt,
+        positionPrompt: tmpl.prompt,
+        negativePrompt: pos.negativePrompt ?? tmpl.negativePrompt,
+        positivePromptOverride: pos.positivePrompt,
       },
     },
   });

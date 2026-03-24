@@ -60,23 +60,32 @@
 | `/trash` | ✅ 真实数据 + 恢复按钮 |
 | `/assets/loras` | ✅ 真实数据 + 上传表单 |
 
+### API 路由清单
+| 路径 | 方法 | 说明 |
+|------|------|------|
+| `/api/worker/process` | POST | 手动触发 Worker 消费 queued runs |
+| `/api/worker/status` | GET | Worker 状态 + ComfyUI 连通性 |
+| `/api/images/[...path]` | GET | 本地图片文件服务 |
+
 ## Verified Baseline
 - `npm run lint` 通过
 - `npm run build` 通过
 - 所有页面 HTTP 200 可访问
 - 关键操作按钮（批量保留/删除、恢复、运行、复制、创建、编辑、上传）已渲染
+- `GET /api/worker/status` 返回正确的队列统计和 ComfyUI 连通性
 
 ## Active Gaps
-- Worker / ComfyUI 对接尚未实现（runJob/runPosition 目前只创建 PositionRun 记录，无实际 worker 消费）
+- Worker 实际执行需要运行中的 ComfyUI 实例（可通过 `COMFYUI_URL` 环境变量配置）
 - 文件归档策略（raw / kept / trashed 目录组织）尚未实现
 - LoRA 上传的真实文件写入磁盘尚未实现（当前只做数据库登记）
 - Character / Scene / Style / PositionTemplate 管理入口尚未实现
 - 本机完整链路文档（seed → create job → enqueue → worker → ComfyUI → output）尚未补
+- Prompt builder 当前只支持基础 SDXL txt2img workflow，需要支持自定义 workflow 模板
 
 ## Next Recommended Steps
-1. 实现 Worker scaffold + ComfyUI API 对接
-2. 补文件归档逻辑（LoRA 真实写入 + 图片 trash/restore 文件移动）
-3. 补 Character / Scene / Style / PositionTemplate 管理入口
+1. 补文件归档逻辑（LoRA 真实写入 + 图片 trash/restore 文件移动）
+2. 补 Character / Scene / Style / PositionTemplate 管理入口
+3. 实现 workflow 模板系统（从 config/workflows/*.json 加载）
 4. 补完整本机验证文档
 
 ## Repo Rules

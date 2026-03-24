@@ -10,20 +10,20 @@
 - [x] 实现 Job 创建页 `/jobs/new`（选择 Character / Scene / Style，勾选 Position）
 - [x] 实现 LoRA 上传功能（当前只有只读列表）
 
-## Priority A: Worker / ComfyUI 对接
-- [ ] 实现 Worker scaffold（消费 queued PositionRun）
-- [ ] 接入 ComfyUI API（/prompt 提交 + /history 轮询）
-- [ ] 实现输出图下载、缩略图生成、ImageResult 落库
+## ~~Priority A: Worker / ComfyUI 对接~~ ✅ DONE
+- [x] 实现 Worker scaffold（消费 queued PositionRun）
+- [x] 接入 ComfyUI API（/prompt 提交 + /history 轮询）
+- [x] 实现输出图下载、缩略图生成、ImageResult 落库
 - [ ] 补一条清晰的本机验证文档：seed → create job → enqueue → worker → ComfyUI → output
 
-## Priority C: 文件归档
+## Priority A: 文件归档 + 配置管理
 - [ ] 明确 raw / kept / trashed 的目标目录组织
 - [ ] 按最终目录策略补文件移动 / 恢复 / 归档逻辑
-
-## Priority D: 配置管理
+- [ ] 实现 LoRA 真实文件写入磁盘
 - [ ] 补 Character 管理入口
 - [ ] 补 Scene / Style / PositionTemplate 管理入口
 - [ ] 明确模板配置与大任务覆盖的边界
+- [ ] 补一条清晰的本机验证文档：seed → create job → enqueue → worker → ComfyUI → output
 
 ## Priority E: Agent / Automation
 - [ ] 继续完善 agent 写接口
