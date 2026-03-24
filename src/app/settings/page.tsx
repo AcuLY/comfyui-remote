@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { SectionCard } from "@/components/section-card";
-import { User, MapPin, Palette, LayoutGrid, Activity, Workflow } from "lucide-react";
+import { User, MapPin, Palette, LayoutGrid, Activity, Workflow, HeartPulse } from "lucide-react";
 
 const settingsGroups = [
   {
@@ -34,9 +34,15 @@ const settingsGroups = [
     icon: Workflow,
   },
   {
+    href: "/settings/monitor",
+    label: "ComfyUI 监控",
+    description: "ComfyUI 进程状态、健康检查、启停控制",
+    icon: HeartPulse,
+  },
+  {
     href: "/api/worker/status",
     label: "Worker 状态",
-    description: "查看 Worker 队列和 ComfyUI 连通性",
+    description: "查看 Worker 队列和 ComfyUI 连通性（JSON）",
     icon: Activity,
     external: true,
   },
