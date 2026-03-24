@@ -1,4 +1,5 @@
 import { jobs, loraAssets, queueRuns, reviewGroups, trashItems } from "@/lib/mock-data";
+import { getServerAppOrigin } from "@/lib/server-app-origin";
 import type { JobCard, LoraAsset, QueueRun, ReviewGroup, TrashItem } from "@/lib/types";
 
 type ApiEnvelope<T> = { ok?: boolean; data?: T };
@@ -232,10 +233,10 @@ function normalizeTrashItems(items: ApiTrashItem[]): TrashItem[] {
 }
 
 async function fetchJson<T>(path: string, fallback: T): Promise<T> {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const baseUrl = await getServerAppOrigin();
 
   try {
-    const response = await fetch(`${baseUrl}${path}`, {
+    const response = await fetch(new URL(path, baseUrl), {
       cache: "no-store",
     });
 
