@@ -1,6 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import type { QueueRun, ReviewGroup, ReviewImage, JobCard, TrashItem, LoraAsset } from "@/lib/types";
 
+// Re-export types used by frontend components (originally from backend branch)
+export type { JobCreateOptions } from "@/server/repositories/job-repository";
+
 // ---------------------------------------------------------------------------
 // Queue — 待审核队列
 // ---------------------------------------------------------------------------
@@ -116,6 +119,19 @@ export async function getJobs(): Promise<JobCard[]> {
 // ---------------------------------------------------------------------------
 // Job Detail — 大任务详情 + positions
 // ---------------------------------------------------------------------------
+
+/** Used by the frontend position-edit form */
+export type JobDetailPosition = {
+  id: string;
+  name: string;
+  batchSize: number | null;
+  aspectRatio: string | null;
+  seedPolicy: string | null;
+  promptOverview: {
+    positivePrompt: string | null;
+    negativePrompt: string | null;
+  };
+};
 
 export type JobDetail = {
   id: string;

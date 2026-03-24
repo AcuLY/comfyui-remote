@@ -1,12 +1,5 @@
-import { PrismaClient } from "@/generated/prisma";
-import { createPrismaClient } from "@/lib/prisma";
+// Legacy entry point from backend branch — re-exports from prisma.ts
+// New code should import { prisma } from "@/lib/prisma" directly.
+import { prisma } from "@/lib/prisma";
 
-declare global {
-  var prisma: PrismaClient | undefined;
-}
-
-export const db = global.prisma ?? createPrismaClient();
-
-if (process.env.NODE_ENV !== "production") {
-  global.prisma = db;
-}
+export const db = prisma;

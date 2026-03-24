@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ChevronRight, Clock3, Eye, Sparkles } from "lucide-react";
+import { PageHeader } from "@/components/page-header";
 import { SectionCard } from "@/components/section-card";
 import { StatChip } from "@/components/stat-chip";
 import { getQueueRuns } from "@/lib/server-data";
@@ -11,7 +12,8 @@ export default async function QueuePage() {
 
   return (
     <div className="space-y-4">
-      <SectionCard title="待审核队列" subtitle="默认按最新 Position Run 倒序显示。">
+      <PageHeader title="待审核队列" description="默认按最新 Position Run 倒序显示，先处理最新的一组。" />
+      <SectionCard title="队列概览" subtitle="审核通过后会从待审核列表中消失。">
         <div className="grid grid-cols-2 gap-3">
           <StatChip label="待审核图片" value={pendingTotal} tone="accent" />
           <StatChip label="待处理组数" value={runTotal} tone="warn" />

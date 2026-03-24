@@ -20,6 +20,8 @@ export type ReviewImage = {
 
 export type ReviewGroup = {
   id: string;
+  jobId?: string;
+  jobPositionId?: string;
   title: string;
   characterName: string;
   positionName: string;
@@ -38,11 +40,16 @@ export type JobCard = {
   status: "draft" | "queued" | "running" | "partial_done" | "done" | "failed";
   updatedAt: string;
   positionCount: number;
+  enabledPositionCount?: number;
+  latestRunAt?: string | null;
+  latestRunStatus?: "queued" | "running" | "done" | "failed" | "cancelled" | null;
+  latestRunPendingCount?: number;
+  latestRunTotalCount?: number;
 };
 
 export type TrashItem = {
   id: string;
-  src: string;
+  src?: string;
   title: string;
   deletedAt: string;
   originalPath: string;

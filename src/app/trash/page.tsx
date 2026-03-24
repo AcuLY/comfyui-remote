@@ -31,7 +31,7 @@ export default async function TrashPage() {
               >
                 <div className="relative size-16 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-[var(--panel-soft)]">
                   <Image
-                    src={item.src}
+                    src={item.src ?? "/placeholder.svg"}
                     alt={item.id}
                     width={128}
                     height={128}
