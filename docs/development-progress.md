@@ -73,9 +73,9 @@ Current state:
 
 ### Backend
 Latest pushed commits:
+- `b5a7d73` feat(agent): add run context endpoint
+- `133dc1a` feat(agent): add job context endpoint
 - `cd0cc35` feat(review): expose run edit identifiers
-- `4b60d32` feat(jobs): expose create form options
-- `96802d2` feat(jobs): add draft job creation api
 
 Current state:
 - 已有 Prisma schema 草案
@@ -122,15 +122,18 @@ Current state:
 - `POST /api/jobs` 已于 backend 分支提交并 push（`96802d2` feat(jobs): add draft job creation api）；本次提交实际通过 `cmd /c git ...` 完成，绕过了 PowerShell 直跑 git commit 时的 worktree lock/quote 问题
 - backend 已新增 `GET /api/job-create-options`，会返回当前可用的 Character / ScenePreset / StylePreset / PositionTemplate 元数据，供新建任务表单直接读取真实选项
 - `GET /api/runs/:id` 现在会额外返回真实 `jobId` 与 `jobPositionId`，供队列宫格页直接跳转回对应的 position 参数编辑页，进一步减少 review flow 上的占位按钮
-- 本轮再次验证 frontend/backend worktree `cmd /c npm run build` 可通过（包含 job create options API 与 `/jobs/new` 页面）
-- 本轮重新检查三个 worktree 均干净，且当前分支头分别为：main `2ecff98`、frontend `8c70ed0`、backend `cd0cc35`
-- 本轮再次验证 frontend/backend worktree `cmd /c npm run lint` 与 `cmd /c npm run build` 可通过，可继续作为当前本机可启动基线
+- backend 已新增 agent 上下文接口：`GET /api/agent/jobs/:jobId/context` 会返回 job 概览、已启用 position 的 resolved prompt/config 与最新 run 汇总，便于后续自动化或外部 agent 直接读取结构化任务上下文
+- backend 已新增 `GET /api/agent/runs/:runId/context`：会返回 run / job / position 元数据、`resolvedConfigSnapshot`、输出图片清单与 review 汇总，便于后续 agent 审图或诊断 run，而不必复用前端宫格专用 payload
+- 本轮再次验证 backend worktree `cmd /c npm run lint` 与 `cmd /c npm run build` 可通过（包含 agent run context endpoint）
+- 本轮重新检查三个 worktree 均干净，且当前分支头分别为：main `a0121ce`、frontend `8c70ed0`、backend `b5a7d73`
+- frontend/backend 当前仍可继续作为本机可启动基线
 
 ## Next Suggested Milestones
 1. 视需要补一次本机手动验证记录（seed -> enqueue -> local worker pass -> ComfyUI history -> output images）
 2. 继续减少 jobs / queue / detail 页对 mock fallback 的依赖，并补真实启动链路中的剩余缺口
 3. 视情况补文件移动/归档服务（若后续 review flow 需要从 raw 拆分 kept/trashed 路径）
 4. 视需要把 Character / Scene / Style / PositionTemplate 管理页或配置来源补成更正式的可维护入口
+5. 继续补 agent 侧写接口（如结构化 review/update），让现有 agent context endpoint 逐步形成读写闭环
 
 ## Cron Job
 - Job ID: `44d5a257-0ff6-4dee-a6e9-e249a0399055`
