@@ -34,22 +34,26 @@
 - [x] 统一 Server Actions（`src/lib/actions.ts`）和 REST API（`src/server/`）的审核/运行逻辑，消除重复
 - [x] Server Actions 中 runJob/runPosition/copyJob 直接调用 repository 层
 
-## Priority A: Worker 统一
-- [ ] 统一新旧两套 Worker 系统（`src/lib/worker.ts` vs `src/server/worker/`）
-- [ ] 在 `comfyui-service.ts` 中增加 fallback：无 `extraParams.comfyPrompt` 时用内置 SDXL txt2img workflow
-- [ ] 清理旧版 worker 代码（`src/lib/worker.ts`、`prompt-builder.ts`、`comfyui-client.ts`）
+## ~~Priority A: Worker 统一~~ ✅ DONE
+- [x] 统一新旧两套 Worker 系统（新版 `src/server/worker/` 体系 + fallback prompt builder）
+- [x] 在 `comfyui-service.ts` 中增加 fallback：无 `extraParams.comfyPrompt` 时用内置 SDXL txt2img workflow
+- [x] 清理旧版 worker 代码（`src/lib/worker.ts`、`prompt-builder.ts`、`comfyui-client.ts`）
 
-## Priority C: Workflow 模板
-- [ ] 实现 workflow 模板系统（从 `config/workflows/*.json` 加载）
-- [ ] 支持自定义 ComfyUI workflow（当前只有基础 SDXL txt2img）
+## ~~Priority C: Workflow 模板~~ ✅ DONE
+- [x] 创建 `config/workflows/` 目录 + 示例 workflow JSON 模板（`sdxl-txt2img` + `sdxl-txt2img-hires`）
+- [x] 实现 workflow 模板加载器服务（`src/server/services/workflow-template-service.ts`）
+- [x] `comfyui-service.ts` 支持 `workflowTemplateId` 解析（优先级：自定义 comfyPrompt > 模板 > fallback）
+- [x] API 端点 `GET /api/workflows` + `GET /api/workflows/:templateId`
+- [x] PositionTemplate 通过 `defaultParams.workflowTemplateId` 关联 workflow 模板
+- [x] 前端 Position 模板设置页显示 Workflow 模板选择下拉框
 
-## Priority E: Agent / Automation
-- [ ] 为外部 AI/Agent 补更清晰的 API 使用说明
-- [ ] 明确后续 agent / MCP 接口边界
+## ~~Priority E: Agent / Automation~~ ✅ DONE
+- [x] 编写 Agent API 使用说明文档（`docs/agent-api.md`）
+- [x] 包含完整端点说明、请求/响应格式、典型工作流、Workflow 模板系统文档
 
 ## Working Notes
 - 单体 Next.js 项目，统一在 `main` 分支开发
 - `frontend` / `backend` 分支已合并到 `main` 并可归档
 - 两套数据访问路径：Server Actions（前端 RSC 直接调用）+ REST API（外部/Agent 调用）
 - `development-progress.md` 保持当前态摘要
-- 存在两套 Worker：旧版（`src/lib/`，硬编码 SDXL）和新版（`src/server/worker/`，需要 extraParams 里有 comfyPrompt）→ 需要统一
+- Worker 已统一为 `src/server/worker/` 单一体系，支持 fallback SDXL txt2img

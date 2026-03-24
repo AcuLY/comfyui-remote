@@ -1,6 +1,10 @@
 import { Prisma } from "@/generated/prisma";
 import { env } from "@/lib/env";
 import { buildFallbackPromptNodes } from "@/server/worker/fallback-prompt-builder";
+import {
+  getWorkflowTemplate,
+  resolveWorkflowTemplate,
+} from "@/server/services/workflow-template-service";
 import { ComfyPromptDraft } from "@/server/worker/types";
 
 type JsonRecord = Record<string, unknown>;
@@ -291,10 +295,74 @@ async function fetchJson(
   }
 }
 
-function validateComfyPromptDraft(
+const ASPECT_RATIOS: Record<string, { width: number; height: number }> = {
+  "1:1": { width: 1024, height: 1024 },
+  "3:4": { width: 896, height: 1152 },
+  "4:3": { width: 1152, height: 896 },
+  "9:16": { width: 768, height: 1344 },
+  "16:9": { width: 1344, height: 768 },
+  "2:3": { width: 832, height: 1216 },
+  "3:2": { width: 1216, height: 832 },
+};
+
+async function resolveApiPromptFromWorkflowTemplate(
+  extraParams: JsonRecord | null,
+  promptDraft: ComfyPromptDraft,
+): Promise<JsonRecord | null> {
+  const templateId =
+    typeof extraParams?.workflowTemplateId === "string"
+      ? extraParams.workflowTemplateId.trim()
+      : null;
+
+  if (!templateId) {
+    return null;
+  }
+
+  const template = await getWorkflowTemplate(templateId);
+
+  if (!template) {
+    throw new Error(
+      `Workflow template "${templateId}" not found in config/workflows/`,
+    );
+  }
+
+  // Build variable overrides from the prompt draft
+  const aspectRatio = promptDraft.parameters.aspectRatio ?? "3:4";
+  const resolution = ASPECT_RATIOS[aspectRatio] ?? ASPECT_RATIOS["3:4"];
+  const seed =
+    promptDraft.parameters.seedPolicy === "fixed"
+      ? 42
+      : Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
+
+  const overrides: Record<string, string | number> = {
+    positivePrompt: promptDraft.prompt.positive,
+    negativePrompt:
+      promptDraft.prompt.negative ??
+      "bad anatomy, extra limbs, blurry, low quality, watermark",
+    width: resolution.width,
+    height: resolution.height,
+    batchSize: promptDraft.parameters.batchSize ?? 1,
+    seed,
+  };
+
+  // Allow extraParams to override any template variable
+  if (extraParams) {
+    for (const key of Object.keys(template.variables)) {
+      const overrideValue = extraParams[key];
+
+      if (typeof overrideValue === "string" || typeof overrideValue === "number") {
+        overrides[key] = overrideValue;
+      }
+    }
+  }
+
+  return resolveWorkflowTemplate(template, overrides);
+}
+
+async function validateComfyPromptDraft(
   apiUrl: string,
   promptDraft: ComfyPromptDraft,
-): ValidatedComfyPromptDraft {
+): Promise<ValidatedComfyPromptDraft> {
   if (!promptDraft.workflowId.trim()) {
     throw new Error("Resolved workflow id is empty");
   }
@@ -310,11 +378,20 @@ function validateComfyPromptDraft(
     "apiPrompt",
   ]);
 
-  // Use custom prompt graph if provided, otherwise fall back to built-in SDXL txt2img
-  const apiPrompt =
-    customApiPrompt && Object.keys(customApiPrompt).length > 0
-      ? customApiPrompt
-      : buildFallbackPromptNodes(promptDraft);
+  // Priority: 1) explicit comfyPrompt in extraParams
+  //           2) workflowTemplateId → resolve from config/workflows/
+  //           3) built-in SDXL txt2img fallback
+  let apiPrompt: JsonRecord;
+
+  if (customApiPrompt && Object.keys(customApiPrompt).length > 0) {
+    apiPrompt = customApiPrompt;
+  } else {
+    const templatePrompt = await resolveApiPromptFromWorkflowTemplate(
+      extraParams,
+      promptDraft,
+    );
+    apiPrompt = templatePrompt ?? buildFallbackPromptNodes(promptDraft);
+  }
 
   const extraData = {
     ...(extractJsonRecordByKeys(extraParams, ["comfyExtraData", "workflowExtraData"]) ?? {}),
@@ -410,7 +487,7 @@ export async function executeComfyPromptDraft(
   apiUrl: string,
   promptDraft: ComfyPromptDraft,
 ): Promise<ComfyPromptExecutionResult> {
-  const validatedDraft = validateComfyPromptDraft(apiUrl, promptDraft);
+  const validatedDraft = await validateComfyPromptDraft(apiUrl, promptDraft);
   const comfyPromptId = await submitComfyPrompt(validatedDraft, promptDraft);
 
   let historyEntry: ComfyPromptHistoryEntry;

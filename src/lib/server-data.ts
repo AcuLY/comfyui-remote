@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import type { QueueRun, ReviewGroup, ReviewImage, JobCard, TrashItem, LoraAsset } from "@/lib/types";
+import { listWorkflowTemplateSummaries } from "@/server/services/workflow-template-service";
 
 // Re-export types used by frontend components (originally from backend branch)
 export type { JobCreateOptions } from "@/server/repositories/job-repository";
@@ -373,6 +374,10 @@ export async function getStylePresets() {
 
 export async function getPositionTemplates() {
   return prisma.positionTemplate.findMany({ orderBy: { name: "asc" } });
+}
+
+export async function getWorkflowTemplateOptions() {
+  return listWorkflowTemplateSummaries();
 }
 
 // ---------------------------------------------------------------------------

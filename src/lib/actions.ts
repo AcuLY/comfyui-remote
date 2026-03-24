@@ -3,6 +3,7 @@
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import { revalidatePath } from "next/cache";
+import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import {
   buildManagedTrashPath,
@@ -526,17 +527,61 @@ export type PositionTemplateInput = {
   defaultAspectRatio?: string | null;
   defaultBatchSize?: number | null;
   defaultSeedPolicy?: string | null;
+  workflowTemplateId?: string | null;
   enabled?: boolean;
 };
 
+function buildDefaultParams(
+  workflowTemplateId: string | null | undefined,
+  existingDefaultParams?: unknown,
+): Record<string, unknown> | undefined {
+  const existing =
+    existingDefaultParams && typeof existingDefaultParams === "object" && !Array.isArray(existingDefaultParams)
+      ? { ...(existingDefaultParams as Record<string, unknown>) }
+      : {};
+
+  if (workflowTemplateId) {
+    existing.workflowTemplateId = workflowTemplateId;
+  } else {
+    delete existing.workflowTemplateId;
+  }
+
+  return Object.keys(existing).length > 0 ? existing : undefined;
+}
+
+function toInputJson(value: Record<string, unknown> | undefined): Prisma.InputJsonObject | undefined {
+  if (value === undefined) return undefined;
+  // Round-trip through JSON to produce a Prisma-compatible InputJsonObject
+  return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonObject;
+}
+
 export async function createPositionTemplate(input: PositionTemplateInput) {
-  await prisma.positionTemplate.create({ data: input });
+  const { workflowTemplateId, ...rest } = input;
+  const defaultParams = toInputJson(buildDefaultParams(workflowTemplateId));
+  await prisma.positionTemplate.create({
+    data: {
+      ...rest,
+      ...(defaultParams !== undefined ? { defaultParams } : {}),
+    },
+  });
   revalidatePath("/settings/positions");
   revalidatePath("/jobs/new");
 }
 
 export async function updatePositionTemplate(id: string, input: Partial<PositionTemplateInput>) {
-  await prisma.positionTemplate.update({ where: { id }, data: input });
+  const { workflowTemplateId, ...rest } = input;
+  const existingTemplate = await prisma.positionTemplate.findUnique({
+    where: { id },
+    select: { defaultParams: true },
+  });
+  const defaultParams = toInputJson(buildDefaultParams(workflowTemplateId, existingTemplate?.defaultParams));
+  await prisma.positionTemplate.update({
+    where: { id },
+    data: {
+      ...rest,
+      ...(defaultParams !== undefined ? { defaultParams } : {}),
+    },
+  });
   revalidatePath("/settings/positions");
   revalidatePath("/jobs/new");
 }
