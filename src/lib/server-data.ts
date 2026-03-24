@@ -381,6 +381,38 @@ export async function getWorkflowTemplateOptions() {
 }
 
 // ---------------------------------------------------------------------------
+// Job Revisions — 修订历史
+// ---------------------------------------------------------------------------
+
+export type JobRevisionSummary = {
+  id: string;
+  revisionNumber: number;
+  actorType: string;
+  createdAt: string;
+};
+
+export async function getJobRevisions(jobId: string): Promise<JobRevisionSummary[]> {
+  const revisions = await prisma.jobRevision.findMany({
+    where: { completeJobId: jobId },
+    orderBy: { revisionNumber: "desc" },
+    take: 20,
+    select: {
+      id: true,
+      revisionNumber: true,
+      actorType: true,
+      createdAt: true,
+    },
+  });
+
+  return revisions.map((rev) => ({
+    id: rev.id,
+    revisionNumber: rev.revisionNumber,
+    actorType: rev.actorType,
+    createdAt: formatDate(rev.createdAt),
+  }));
+}
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 

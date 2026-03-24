@@ -63,6 +63,18 @@
 - [x] `/api/worker/process` 增加 localhost 安全检查（与 `/api/local/worker/pass` 一致）
 - [x] `/api/worker/status` 统一使用 `ok/fail` 响应格式
 
+## ~~Priority B: 前端修订历史~~ ✅ DONE
+- [x] `server-data.ts` 增加 `getJobRevisions()` 查询
+- [x] Job 详情页增加「修订历史」SectionCard，显示 revision 列表
+- [x] 客户端组件 `RevisionHistory`：点击展开加载完整快照（actor badge + prompt 详情 + position 参数）
+
+## ~~Priority C: Workflow 导入~~ ✅ DONE
+- [x] `workflow-import-service.ts`：解析 ComfyUI API 格式 JSON → 自动识别可参数化字段 → 生成模板文件
+- [x] 支持已知节点类型自动提取：CLIPTextEncode / EmptyLatentImage / KSampler / CheckpointLoader / LoRA / VAE 等
+- [x] API 端点 `POST /api/workflows/import`
+- [x] Settings 页新增 Workflow 管理入口 `/settings/workflows`
+- [x] 前端导入表单：支持粘贴 JSON 和上传 `.json` 文件
+
 ## Working Notes
 - 单体 Next.js 项目，统一在 `main` 分支开发
 - `frontend` / `backend` 分支已合并到 `main` 并可归档

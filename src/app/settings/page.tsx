@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { SectionCard } from "@/components/section-card";
-import { User, MapPin, Palette, LayoutGrid, Activity } from "lucide-react";
+import { User, MapPin, Palette, LayoutGrid, Activity, Workflow } from "lucide-react";
 
 const settingsGroups = [
   {
@@ -26,6 +26,12 @@ const settingsGroups = [
     label: "Position 模板",
     description: "管理通用 position 模板：默认画幅、batch、seed 策略",
     icon: LayoutGrid,
+  },
+  {
+    href: "/settings/workflows",
+    label: "Workflow 模板",
+    description: "查看和导入 ComfyUI Workflow 模板",
+    icon: Workflow,
   },
   {
     href: "/api/worker/status",

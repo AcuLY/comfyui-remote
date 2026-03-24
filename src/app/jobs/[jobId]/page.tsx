@@ -2,12 +2,16 @@ import Link from "next/link";
 import { SlidersHorizontal } from "lucide-react";
 import { notFound } from "next/navigation";
 import { SectionCard } from "@/components/section-card";
-import { getJobDetail } from "@/lib/server-data";
+import { getJobDetail, getJobRevisions } from "@/lib/server-data";
 import { JobDetailActions, PositionRunButton } from "./job-detail-actions";
+import { RevisionHistory } from "./revision-history";
 
 export default async function JobDetailPage({ params }: { params: Promise<{ jobId: string }> }) {
   const { jobId } = await params;
-  const job = await getJobDetail(jobId);
+  const [job, revisions] = await Promise.all([
+    getJobDetail(jobId),
+    getJobRevisions(jobId),
+  ]);
   if (!job) notFound();
 
   return (
@@ -46,6 +50,10 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
             </div>
           ))}
         </div>
+      </SectionCard>
+
+      <SectionCard title="修订历史" subtitle="每次编辑参数前自动保存快照，点击展开查看。">
+        <RevisionHistory revisions={revisions} jobId={job.id} />
       </SectionCard>
     </div>
   );
