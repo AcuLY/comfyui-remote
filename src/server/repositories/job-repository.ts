@@ -895,6 +895,27 @@ export async function getJobAgentContext(jobId: string) {
   };
 }
 
+export async function getJobPositionOwner(jobPositionId: string) {
+  const position = await db.completeJobPosition.findUnique({
+    where: { id: jobPositionId },
+    select: {
+      id: true,
+      completeJobId: true,
+      enabled: true,
+    },
+  });
+
+  if (!position) {
+    throw new Error("JOB_POSITION_NOT_FOUND");
+  }
+
+  return {
+    id: position.id,
+    jobId: position.completeJobId,
+    enabled: position.enabled,
+  };
+}
+
 export async function getJobPositionDetail(jobId: string, jobPositionId: string) {
   const position = await db.completeJobPosition.findFirst({
     where: {
