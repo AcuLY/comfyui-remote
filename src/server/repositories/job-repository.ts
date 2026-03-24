@@ -374,6 +374,30 @@ function buildResolvedConfigSnapshot(
   };
 }
 
+function buildResolvedPromptDraft(
+  job: Pick<
+    QueuableJobRecord,
+    "characterPrompt" | "scenePrompt" | "stylePrompt"
+  >,
+  position: Pick<
+    JobPositionRecord,
+    "positivePrompt" | "negativePrompt" | "positionTemplate"
+  >,
+) {
+  return {
+    positive: [
+      job.characterPrompt,
+      job.scenePrompt,
+      job.stylePrompt,
+      position.positionTemplate.prompt,
+      position.positivePrompt,
+    ]
+      .filter((value): value is string => Boolean(value && value.trim()))
+      .join(", "),
+    negative: position.negativePrompt ?? position.positionTemplate.negativePrompt,
+  };
+}
+
 function serializeEnqueuedRun(
   position: Pick<
     JobPositionRecord,
@@ -720,6 +744,154 @@ export async function getJobDetail(jobId: string) {
         }
       : null,
     positions: job.positions.map((position) => serializeJobPosition(position, latestRunsById)),
+  };
+}
+
+export async function getJobAgentContext(jobId: string) {
+  const job = await db.completeJob.findUnique({
+    where: { id: jobId },
+    select: {
+      id: true,
+      title: true,
+      slug: true,
+      status: true,
+      notes: true,
+      createdAt: true,
+      updatedAt: true,
+      characterPrompt: true,
+      characterLoraPath: true,
+      scenePrompt: true,
+      stylePrompt: true,
+      jobLevelOverrides: true,
+      character: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+        },
+      },
+      scenePreset: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+        },
+      },
+      stylePreset: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+        },
+      },
+      _count: {
+        select: { positions: true },
+      },
+      positions: {
+        where: { enabled: true },
+        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+        include: {
+          positionTemplate: true,
+          runs: {
+            orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+            take: 1,
+            select: {
+              id: true,
+              runIndex: true,
+              status: true,
+              createdAt: true,
+              startedAt: true,
+              finishedAt: true,
+              outputDir: true,
+              errorMessage: true,
+              images: {
+                select: {
+                  reviewStatus: true,
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!job) {
+    throw new Error("JOB_NOT_FOUND");
+  }
+
+  const latestRunIds = job.positions
+    .map((position) => position.latestRunId)
+    .filter((runId): runId is string => runId !== null);
+
+  const latestRunsById = await getLatestRunsById(latestRunIds);
+  const latestRunStatusCounts: Record<string, number> = {};
+  const latestRunImageSummary = {
+    totalCount: 0,
+    pendingCount: 0,
+    keptCount: 0,
+    trashedCount: 0,
+  };
+  let positionsWithLatestRunCount = 0;
+
+  const positions = job.positions.map((position) => {
+    const latestRun = resolveLatestRun(position, latestRunsById);
+
+    if (latestRun) {
+      positionsWithLatestRunCount += 1;
+      latestRunStatusCounts[latestRun.status] =
+        (latestRunStatusCounts[latestRun.status] ?? 0) + 1;
+
+      const imageSummary = summarizeRunImages(latestRun.images);
+      latestRunImageSummary.totalCount += imageSummary.totalCount;
+      latestRunImageSummary.pendingCount += imageSummary.pendingCount;
+      latestRunImageSummary.keptCount += imageSummary.keptCount;
+      latestRunImageSummary.trashedCount += imageSummary.trashedCount;
+    }
+
+    return {
+      id: position.id,
+      sortOrder: position.sortOrder,
+      enabled: position.enabled,
+      latestRunId: position.latestRunId,
+      positionTemplateId: position.positionTemplateId,
+      name: position.positionTemplate.name,
+      slug: position.positionTemplate.slug,
+      latestRun: serializeLatestRun(latestRun),
+      promptDraft: buildResolvedPromptDraft(job, position),
+      resolvedConfig: buildResolvedConfigSnapshot(job, position),
+    };
+  });
+
+  return {
+    job: {
+      id: job.id,
+      title: job.title,
+      slug: job.slug,
+      status: job.status,
+      createdAt: job.createdAt.toISOString(),
+      updatedAt: job.updatedAt.toISOString(),
+      notes: job.notes,
+      positionCount: job._count.positions,
+      enabledPositionCount: job.positions.length,
+      character: job.character,
+      scenePreset: job.scenePreset,
+      stylePreset: job.stylePreset,
+      promptOverview: {
+        characterPrompt: job.characterPrompt,
+        scenePrompt: job.scenePrompt,
+        stylePrompt: job.stylePrompt,
+        characterLoraPath: job.characterLoraPath,
+        jobLevelOverrides: job.jobLevelOverrides,
+      },
+    },
+    summary: {
+      positionsWithLatestRunCount,
+      positionsWithoutRunsCount: job.positions.length - positionsWithLatestRunCount,
+      latestRunStatusCounts,
+      latestRunImageSummary,
+    },
+    positions,
   };
 }
 
