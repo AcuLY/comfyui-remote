@@ -340,6 +340,26 @@ export async function getJobEditData(jobId: string): Promise<JobEditData | null>
 }
 
 // ---------------------------------------------------------------------------
+// Settings — Character / Scene / Style / PositionTemplate 管理
+// ---------------------------------------------------------------------------
+
+export async function getCharacters() {
+  return prisma.character.findMany({ orderBy: { name: "asc" } });
+}
+
+export async function getScenePresets() {
+  return prisma.scenePreset.findMany({ orderBy: { name: "asc" } });
+}
+
+export async function getStylePresets() {
+  return prisma.stylePreset.findMany({ orderBy: { name: "asc" } });
+}
+
+export async function getPositionTemplates() {
+  return prisma.positionTemplate.findMany({ orderBy: { name: "asc" } });
+}
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 

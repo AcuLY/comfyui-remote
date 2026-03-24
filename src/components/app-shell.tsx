@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Boxes, FolderOpen, Images, Trash2, Upload } from "lucide-react";
+import { Boxes, FolderOpen, Images, Settings, Trash2, Upload } from "lucide-react";
 import type { ReactNode } from "react";
 
 const navItems = [
@@ -7,6 +7,7 @@ const navItems = [
   { href: "/jobs", label: "大任务", icon: FolderOpen },
   { href: "/trash", label: "回收站", icon: Trash2 },
   { href: "/assets/loras", label: "LoRA", icon: Upload },
+  { href: "/settings", label: "设置", icon: Settings },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -23,7 +24,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </header>
       <main className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-4 pb-24">{children}</main>
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-[var(--panel)]/95 backdrop-blur">
-        <div className="mx-auto grid max-w-6xl grid-cols-4 gap-1 px-2 py-2">
+        <div className="mx-auto grid max-w-6xl grid-cols-5 gap-1 px-2 py-2">
           {navItems.map(({ href, label, icon: Icon }) => (
             <Link
               key={href}

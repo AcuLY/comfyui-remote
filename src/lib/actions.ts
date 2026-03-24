@@ -1,5 +1,7 @@
 "use server";
 
+import { mkdir, writeFile } from "fs/promises";
+import path from "path";
 import { Prisma } from "@/generated/prisma/client";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
@@ -420,14 +422,13 @@ export async function uploadLora(formData: FormData) {
   const relativePath = `${category}/${fileName}`;
 
   // 基础路径（可通过 env 配置）
-  const basePath = process.env.LORA_BASE_PATH ?? "/models/loras";
-  const absolutePath = `${basePath}/${relativePath}`;
+  const basePath = process.env.LORA_BASE_PATH ?? path.join(/* turbopackIgnore: true */ process.cwd(), "data/assets/loras");
+  const absolutePath = path.join(basePath, relativePath);
 
-  // TODO: 实现真实文件写入到磁盘
-  // import { mkdir, writeFile } from "fs/promises";
-  // import path from "path";
-  // await mkdir(path.dirname(absolutePath), { recursive: true });
-  // await writeFile(absolutePath, Buffer.from(await file.arrayBuffer()));
+  // 确保目录存在并写入文件
+  await mkdir(path.dirname(absolutePath), { recursive: true });
+  const buffer = Buffer.from(await file.arrayBuffer());
+  await writeFile(absolutePath, buffer);
 
   // 登记到数据库
   await prisma.loraAsset.upsert({
@@ -450,4 +451,129 @@ export async function uploadLora(formData: FormData) {
   });
 
   revalidatePath("/assets/loras");
+}
+
+// ---------------------------------------------------------------------------
+// Character CRUD
+// ---------------------------------------------------------------------------
+
+export type CharacterInput = {
+  name: string;
+  slug: string;
+  prompt: string;
+  loraPath: string;
+  notes?: string | null;
+  isActive?: boolean;
+};
+
+export async function createCharacter(input: CharacterInput) {
+  await prisma.character.create({ data: input });
+  revalidatePath("/settings/characters");
+  revalidatePath("/jobs/new");
+}
+
+export async function updateCharacter(id: string, input: Partial<CharacterInput>) {
+  await prisma.character.update({ where: { id }, data: input });
+  revalidatePath("/settings/characters");
+  revalidatePath("/jobs/new");
+}
+
+export async function deleteCharacter(id: string) {
+  // Soft delete: set isActive = false
+  await prisma.character.update({ where: { id }, data: { isActive: false } });
+  revalidatePath("/settings/characters");
+  revalidatePath("/jobs/new");
+}
+
+// ---------------------------------------------------------------------------
+// Scene Preset CRUD
+// ---------------------------------------------------------------------------
+
+export type ScenePresetInput = {
+  name: string;
+  slug: string;
+  prompt: string;
+  notes?: string | null;
+  isActive?: boolean;
+};
+
+export async function createScenePreset(input: ScenePresetInput) {
+  await prisma.scenePreset.create({ data: input });
+  revalidatePath("/settings/scenes");
+  revalidatePath("/jobs/new");
+}
+
+export async function updateScenePreset(id: string, input: Partial<ScenePresetInput>) {
+  await prisma.scenePreset.update({ where: { id }, data: input });
+  revalidatePath("/settings/scenes");
+  revalidatePath("/jobs/new");
+}
+
+export async function deleteScenePreset(id: string) {
+  await prisma.scenePreset.update({ where: { id }, data: { isActive: false } });
+  revalidatePath("/settings/scenes");
+  revalidatePath("/jobs/new");
+}
+
+// ---------------------------------------------------------------------------
+// Style Preset CRUD
+// ---------------------------------------------------------------------------
+
+export type StylePresetInput = {
+  name: string;
+  slug: string;
+  prompt: string;
+  notes?: string | null;
+  isActive?: boolean;
+};
+
+export async function createStylePreset(input: StylePresetInput) {
+  await prisma.stylePreset.create({ data: input });
+  revalidatePath("/settings/styles");
+  revalidatePath("/jobs/new");
+}
+
+export async function updateStylePreset(id: string, input: Partial<StylePresetInput>) {
+  await prisma.stylePreset.update({ where: { id }, data: input });
+  revalidatePath("/settings/styles");
+  revalidatePath("/jobs/new");
+}
+
+export async function deleteStylePreset(id: string) {
+  await prisma.stylePreset.update({ where: { id }, data: { isActive: false } });
+  revalidatePath("/settings/styles");
+  revalidatePath("/jobs/new");
+}
+
+// ---------------------------------------------------------------------------
+// Position Template CRUD
+// ---------------------------------------------------------------------------
+
+export type PositionTemplateInput = {
+  name: string;
+  slug: string;
+  prompt: string;
+  negativePrompt?: string | null;
+  defaultAspectRatio?: string | null;
+  defaultBatchSize?: number | null;
+  defaultSeedPolicy?: string | null;
+  enabled?: boolean;
+};
+
+export async function createPositionTemplate(input: PositionTemplateInput) {
+  await prisma.positionTemplate.create({ data: input });
+  revalidatePath("/settings/positions");
+  revalidatePath("/jobs/new");
+}
+
+export async function updatePositionTemplate(id: string, input: Partial<PositionTemplateInput>) {
+  await prisma.positionTemplate.update({ where: { id }, data: input });
+  revalidatePath("/settings/positions");
+  revalidatePath("/jobs/new");
+}
+
+export async function deletePositionTemplate(id: string) {
+  await prisma.positionTemplate.update({ where: { id }, data: { enabled: false } });
+  revalidatePath("/settings/positions");
+  revalidatePath("/jobs/new");
 }

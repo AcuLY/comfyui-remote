@@ -1,0 +1,89 @@
+import { SectionCard } from "@/components/section-card";
+import { ConfigManager, type FieldDef } from "@/components/config-manager";
+import { getPositionTemplates } from "@/lib/server-data";
+import {
+  createPositionTemplate,
+  updatePositionTemplate,
+  deletePositionTemplate,
+} from "@/lib/actions";
+
+const fields: FieldDef[] = [
+  { key: "name", label: "名称", type: "text", placeholder: "例：Standing", required: true },
+  { key: "slug", label: "Slug", type: "text", placeholder: "例：standing", required: true },
+  { key: "prompt", label: "Prompt", type: "textarea", placeholder: "Position 提示词…", required: true },
+  { key: "negativePrompt", label: "Negative Prompt", type: "textarea", placeholder: "反向提示词…" },
+  {
+    key: "defaultAspectRatio",
+    label: "默认画幅",
+    type: "select",
+    options: [
+      { value: "1:1", label: "1:1 (1024×1024)" },
+      { value: "3:4", label: "3:4 (896×1152)" },
+      { value: "4:3", label: "4:3 (1152×896)" },
+      { value: "2:3", label: "2:3 (832×1216)" },
+      { value: "3:2", label: "3:2 (1216×832)" },
+      { value: "9:16", label: "9:16 (768×1344)" },
+      { value: "16:9", label: "16:9 (1344×768)" },
+    ],
+  },
+  { key: "defaultBatchSize", label: "默认 Batch Size", type: "number" },
+  {
+    key: "defaultSeedPolicy",
+    label: "默认 Seed 策略",
+    type: "select",
+    options: [
+      { value: "random", label: "随机 (random)" },
+      { value: "fixed", label: "固定 (fixed)" },
+    ],
+  },
+  { key: "enabled", label: "启用", type: "boolean" },
+];
+
+export default async function PositionsPage() {
+  const templates = await getPositionTemplates();
+
+  return (
+    <div className="space-y-4">
+      <SectionCard
+        title="Position 模板管理"
+        subtitle="管理通用 Position 模板。停用模板不会影响已有大任务中的 position。"
+      >
+        <ConfigManager
+          items={templates.map((t) => ({ ...t, id: t.id }))}
+          fields={fields}
+          entityName="Position 模板"
+          onCreateAction={async (data) => {
+            "use server";
+            await createPositionTemplate({
+              name: String(data.name),
+              slug: String(data.slug),
+              prompt: String(data.prompt),
+              negativePrompt: data.negativePrompt ? String(data.negativePrompt) : null,
+              defaultAspectRatio: data.defaultAspectRatio ? String(data.defaultAspectRatio) : null,
+              defaultBatchSize: data.defaultBatchSize ? Number(data.defaultBatchSize) : null,
+              defaultSeedPolicy: data.defaultSeedPolicy ? String(data.defaultSeedPolicy) : null,
+              enabled: data.enabled !== false,
+            });
+          }}
+          onUpdateAction={async (id, data) => {
+            "use server";
+            await updatePositionTemplate(id, {
+              name: String(data.name),
+              slug: String(data.slug),
+              prompt: String(data.prompt),
+              negativePrompt: data.negativePrompt ? String(data.negativePrompt) : null,
+              defaultAspectRatio: data.defaultAspectRatio ? String(data.defaultAspectRatio) : null,
+              defaultBatchSize: data.defaultBatchSize ? Number(data.defaultBatchSize) : null,
+              defaultSeedPolicy: data.defaultSeedPolicy ? String(data.defaultSeedPolicy) : null,
+              enabled: data.enabled !== false,
+            });
+          }}
+          onDeleteAction={async (id) => {
+            "use server";
+            await deletePositionTemplate(id);
+          }}
+        />
+      </SectionCard>
+    </div>
+  );
+}

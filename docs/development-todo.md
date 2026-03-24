@@ -16,13 +16,15 @@
 - [x] 实现输出图下载、缩略图生成、ImageResult 落库
 - [ ] 补一条清晰的本机验证文档：seed → create job → enqueue → worker → ComfyUI → output
 
-## Priority A: 文件归档 + 配置管理
+## ~~Priority A: 文件归档 + 配置管理~~ ✅ DONE
+- [x] 实现 LoRA 真实文件写入磁盘
+- [x] 补 Character 管理入口
+- [x] 补 Scene / Style / PositionTemplate 管理入口
 - [ ] 明确 raw / kept / trashed 的目标目录组织
-- [ ] 按最终目录策略补文件移动 / 恢复 / 归档逻辑
-- [ ] 实现 LoRA 真实文件写入磁盘
-- [ ] 补 Character 管理入口
-- [ ] 补 Scene / Style / PositionTemplate 管理入口
-- [ ] 明确模板配置与大任务覆盖的边界
+- [ ] 按最终目录策略补图片文件移动 / 恢复 / 归档逻辑
+
+## Priority A: 收尾
+- [ ] 实现图片 trash/restore 文件移动
 - [ ] 补一条清晰的本机验证文档：seed → create job → enqueue → worker → ComfyUI → output
 
 ## Priority E: Agent / Automation

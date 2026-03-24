@@ -47,6 +47,17 @@
 - Jobs 列表页添加"创建新任务"按钮
 - Job 详情页和列表页编辑按钮链接到 `/edit`
 
+### 已完成 — Phase 5: 配置管理 + LoRA 文件写入
+- `/settings` 设置首页：四个配置入口 + Worker 状态链接
+- `/settings/characters` 角色 CRUD 管理
+- `/settings/scenes` 场景 CRUD 管理
+- `/settings/styles` 风格 CRUD 管理
+- `/settings/positions` Position 模板 CRUD 管理
+- 通用 `ConfigManager` 客户端组件：行内编辑 / 新增 / 软删除
+- Character / ScenePreset / StylePreset / PositionTemplate CRUD Server Actions
+- LoRA 上传现已实现真实文件写入磁盘（`data/assets/loras/<category>/`）
+- AppShell 底部导航添加"设置"入口
+
 ### 页面清单
 | 路径 | 状态 |
 |------|------|
@@ -76,17 +87,15 @@
 
 ## Active Gaps
 - Worker 实际执行需要运行中的 ComfyUI 实例（可通过 `COMFYUI_URL` 环境变量配置）
-- 文件归档策略（raw / kept / trashed 目录组织）尚未实现
-- LoRA 上传的真实文件写入磁盘尚未实现（当前只做数据库登记）
-- Character / Scene / Style / PositionTemplate 管理入口尚未实现
-- 本机完整链路文档（seed → create job → enqueue → worker → ComfyUI → output）尚未补
+- 图片 trash/restore 文件移动尚未实现（当前只更新 DB 状态，不移动实际文件）
 - Prompt builder 当前只支持基础 SDXL txt2img workflow，需要支持自定义 workflow 模板
+- 本机完整链路文档尚未补
 
 ## Next Recommended Steps
-1. 补文件归档逻辑（LoRA 真实写入 + 图片 trash/restore 文件移动）
-2. 补 Character / Scene / Style / PositionTemplate 管理入口
-3. 实现 workflow 模板系统（从 config/workflows/*.json 加载）
-4. 补完整本机验证文档
+1. 实现图片 trash/restore 文件移动逻辑
+2. 实现 workflow 模板系统（从 config/workflows/*.json 加载）
+3. 补完整本机验证文档
+4. Agent API 路由
 
 ## Repo Rules
 - `main` 分支：唯一开发分支
