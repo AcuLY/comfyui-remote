@@ -2,17 +2,17 @@
 
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
-import { Prisma } from "@/generated/prisma/client";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-
-function toNullableJsonInput(value: Prisma.JsonValue | null | undefined) {
-  if (typeof value === "undefined") {
-    return undefined;
-  }
-
-  return value === null ? Prisma.JsonNull : (value as Prisma.InputJsonValue);
-}
+import {
+  buildManagedTrashPath,
+  moveManagedImageFile,
+} from "@/server/services/image-file-service";
+import {
+  enqueueJobRuns as enqueueJobRunsRepo,
+  enqueueJobPositionRun as enqueueJobPositionRunRepo,
+  copyJob as copyJobRepo,
+} from "@/server/repositories/job-repository";
 
 // ---------------------------------------------------------------------------
 // 审核操作：保留图片
@@ -21,10 +21,58 @@ function toNullableJsonInput(value: Prisma.JsonValue | null | undefined) {
 export async function keepImages(imageIds: string[]) {
   if (imageIds.length === 0) return;
 
-  await prisma.imageResult.updateMany({
+  const images = await prisma.imageResult.findMany({
     where: { id: { in: imageIds } },
-    data: { reviewStatus: "kept", reviewedAt: new Date() },
+    select: {
+      id: true,
+      filePath: true,
+      trashRecord: {
+        select: { originalPath: true, restoredAt: true },
+      },
+    },
   });
+
+  const now = new Date();
+
+  // 如果图片在回收站中，先移回原始位置
+  const plans = await Promise.all(
+    images.map(async (img) => {
+      const activeTrash =
+        img.trashRecord && !img.trashRecord.restoredAt ? img.trashRecord : null;
+      const nextFilePath = activeTrash ? activeTrash.originalPath : img.filePath;
+
+      if (activeTrash) {
+        try {
+          await moveManagedImageFile(img.filePath, nextFilePath);
+        } catch {
+          // 文件移动失败不阻塞 DB 更新
+        }
+      }
+
+      return { imageId: img.id, nextFilePath, hadTrash: !!activeTrash };
+    }),
+  );
+
+  await prisma.$transaction([
+    ...plans.map((plan) =>
+      prisma.imageResult.update({
+        where: { id: plan.imageId },
+        data: {
+          filePath: plan.nextFilePath,
+          reviewStatus: "kept",
+          reviewedAt: now,
+        },
+      }),
+    ),
+    // 标记所有活跃 trash record 为已恢复
+    prisma.trashRecord.updateMany({
+      where: {
+        imageResultId: { in: imageIds },
+        restoredAt: null,
+      },
+      data: { restoredAt: now },
+    }),
+  ]);
 
   revalidatePath("/queue");
 }
@@ -38,33 +86,70 @@ export async function trashImages(imageIds: string[]) {
 
   const images = await prisma.imageResult.findMany({
     where: { id: { in: imageIds } },
-    select: { id: true, filePath: true },
+    select: {
+      id: true,
+      filePath: true,
+      trashRecord: {
+        select: { originalPath: true, restoredAt: true, trashPath: true },
+      },
+    },
   });
 
-  // 批量创建 TrashRecord + 更新 reviewStatus
-  await prisma.$transaction(
-    images.map((img) =>
+  const now = new Date();
+
+  // 1. 计算每张图的 trash path 并移动文件
+  const plans = await Promise.all(
+    images.map(async (img) => {
+      const activeTrash =
+        img.trashRecord && !img.trashRecord.restoredAt ? img.trashRecord : null;
+      const originalPath = activeTrash ? activeTrash.originalPath : img.filePath;
+      const trashPath = activeTrash
+        ? activeTrash.trashPath
+        : buildManagedTrashPath(img.id, originalPath);
+
+      let moveStatus: "moved" | "skipped" | "missing" = "skipped";
+      try {
+        moveStatus = await moveManagedImageFile(img.filePath, trashPath);
+      } catch {
+        // 文件移动失败不阻塞 DB 更新——可能文件本就不在 data/images 下
+      }
+
+      return { imageId: img.id, originalPath, trashPath, nextFilePath: trashPath, moveStatus };
+    }),
+  );
+
+  // 2. 批量更新 DB
+  await prisma.$transaction([
+    ...plans.map((plan) =>
+      prisma.imageResult.update({
+        where: { id: plan.imageId },
+        data: {
+          filePath: plan.nextFilePath,
+          reviewStatus: "trashed",
+          reviewedAt: now,
+        },
+      }),
+    ),
+    ...plans.map((plan) =>
       prisma.trashRecord.upsert({
-        where: { imageResultId: img.id },
+        where: { imageResultId: plan.imageId },
         create: {
-          imageResultId: img.id,
-          originalPath: img.filePath,
-          trashPath: img.filePath.replace("/raw/", "/.trash/"),
+          imageResultId: plan.imageId,
+          originalPath: plan.originalPath,
+          trashPath: plan.trashPath,
           actorType: "user",
+          deletedAt: now,
         },
         update: {
-          deletedAt: new Date(),
+          originalPath: plan.originalPath,
+          trashPath: plan.trashPath,
+          deletedAt: now,
           restoredAt: null,
           actorType: "user",
         },
-      })
-    )
-  );
-
-  await prisma.imageResult.updateMany({
-    where: { id: { in: imageIds } },
-    data: { reviewStatus: "trashed", reviewedAt: new Date() },
-  });
+      }),
+    ),
+  ]);
 
   revalidatePath("/queue");
   revalidatePath("/trash");
@@ -77,19 +162,39 @@ export async function trashImages(imageIds: string[]) {
 export async function restoreImage(trashRecordId: string) {
   const record = await prisma.trashRecord.findUnique({
     where: { id: trashRecordId },
-    select: { imageResultId: true },
+    select: {
+      imageResultId: true,
+      originalPath: true,
+      trashPath: true,
+      restoredAt: true,
+      imageResult: { select: { filePath: true } },
+    },
   });
 
-  if (!record) return;
+  if (!record || record.restoredAt) return;
 
+  const now = new Date();
+
+  // 1. 将文件从回收站移回原始位置
+  try {
+    await moveManagedImageFile(record.imageResult.filePath, record.originalPath);
+  } catch {
+    // 文件移动失败不阻塞 DB 更新
+  }
+
+  // 2. 更新 DB
   await prisma.$transaction([
     prisma.trashRecord.update({
       where: { id: trashRecordId },
-      data: { restoredAt: new Date() },
+      data: { restoredAt: now },
     }),
     prisma.imageResult.update({
       where: { id: record.imageResultId },
-      data: { reviewStatus: "pending", reviewedAt: null },
+      data: {
+        filePath: record.originalPath,
+        reviewStatus: "pending",
+        reviewedAt: null,
+      },
     }),
   ]);
 
@@ -102,63 +207,7 @@ export async function restoreImage(trashRecordId: string) {
 // ---------------------------------------------------------------------------
 
 export async function runJob(jobId: string) {
-  // 获取任务下所有启用的 position（含模板信息用于快照）
-  const job = await prisma.completeJob.findUnique({
-    where: { id: jobId },
-    include: {
-      positions: {
-        where: { enabled: true },
-        orderBy: { sortOrder: "asc" },
-        include: { positionTemplate: true },
-      },
-    },
-  });
-
-  if (!job) return;
-
-  // 为每个启用的 position 创建 PositionRun，快照包含完整配置
-  const runs = await prisma.$transaction(
-    job.positions.map((pos) =>
-      prisma.positionRun.create({
-        data: {
-          completeJobId: jobId,
-          completeJobPositionId: pos.id,
-          status: "queued",
-          resolvedConfigSnapshot: {
-            positionTemplateId: pos.positionTemplateId,
-            positionName: pos.positionTemplate.name,
-            batchSize: pos.batchSize ?? pos.positionTemplate.defaultBatchSize ?? 1,
-            aspectRatio: pos.aspectRatio ?? pos.positionTemplate.defaultAspectRatio ?? "3:4",
-            seedPolicy: pos.seedPolicy ?? pos.positionTemplate.defaultSeedPolicy ?? "random",
-            characterPrompt: job.characterPrompt,
-            characterLoraPath: job.characterLoraPath,
-            scenePrompt: job.scenePrompt,
-            stylePrompt: job.stylePrompt,
-            positionPrompt: pos.positionTemplate.prompt,
-            negativePrompt: pos.negativePrompt ?? pos.positionTemplate.negativePrompt,
-            positivePromptOverride: pos.positivePrompt,
-          },
-        },
-      })
-    )
-  );
-
-  // 更新 job 状态为 queued
-  await prisma.completeJob.update({
-    where: { id: jobId },
-    data: { status: "queued" },
-  });
-
-  // 更新每个 position 的 latestRunId
-  await prisma.$transaction(
-    runs.map((run, i) =>
-      prisma.completeJobPosition.update({
-        where: { id: job.positions[i].id },
-        data: { latestRunId: run.id },
-      })
-    )
-  );
-
+  await enqueueJobRunsRepo(jobId);
   revalidatePath("/jobs");
   revalidatePath("/queue");
 }
@@ -168,46 +217,15 @@ export async function runJob(jobId: string) {
 // ---------------------------------------------------------------------------
 
 export async function runPosition(jobPositionId: string) {
+  // 需要先拿到 jobId，因为 repository 函数需要它
   const pos = await prisma.completeJobPosition.findUnique({
     where: { id: jobPositionId },
-    include: {
-      positionTemplate: true,
-      completeJob: true,
-    },
+    select: { completeJobId: true },
   });
 
   if (!pos) return;
 
-  const job = pos.completeJob;
-  const tmpl = pos.positionTemplate;
-
-  const run = await prisma.positionRun.create({
-    data: {
-      completeJobId: pos.completeJobId,
-      completeJobPositionId: pos.id,
-      status: "queued",
-      resolvedConfigSnapshot: {
-        positionTemplateId: pos.positionTemplateId,
-        positionName: tmpl.name,
-        batchSize: pos.batchSize ?? tmpl.defaultBatchSize ?? 1,
-        aspectRatio: pos.aspectRatio ?? tmpl.defaultAspectRatio ?? "3:4",
-        seedPolicy: pos.seedPolicy ?? tmpl.defaultSeedPolicy ?? "random",
-        characterPrompt: job.characterPrompt,
-        characterLoraPath: job.characterLoraPath,
-        scenePrompt: job.scenePrompt,
-        stylePrompt: job.stylePrompt,
-        positionPrompt: tmpl.prompt,
-        negativePrompt: pos.negativePrompt ?? tmpl.negativePrompt,
-        positivePromptOverride: pos.positivePrompt,
-      },
-    },
-  });
-
-  await prisma.completeJobPosition.update({
-    where: { id: pos.id },
-    data: { latestRunId: run.id },
-  });
-
+  await enqueueJobPositionRunRepo(pos.completeJobId, jobPositionId);
   revalidatePath("/jobs");
   revalidatePath("/queue");
 }
@@ -345,56 +363,7 @@ export async function updateJob(input: UpdateJobInput) {
 // ---------------------------------------------------------------------------
 
 export async function copyJob(jobId: string): Promise<string | null> {
-  const job = await prisma.completeJob.findUnique({
-    where: { id: jobId },
-    include: {
-      positions: {
-        orderBy: { sortOrder: "asc" },
-      },
-    },
-  });
-
-  if (!job) return null;
-
-  // 生成唯一 slug
-  const baseSlug = `${job.slug}-copy`;
-  let slug = baseSlug;
-  let i = 1;
-  while (await prisma.completeJob.findUnique({ where: { slug } })) {
-    slug = `${baseSlug}-${i++}`;
-  }
-
-  const newJob = await prisma.completeJob.create({
-    data: {
-      title: `${job.title} (副本)`,
-      slug,
-      status: "draft",
-      characterId: job.characterId,
-      scenePresetId: job.scenePresetId,
-      stylePresetId: job.stylePresetId,
-      characterPrompt: job.characterPrompt,
-      characterLoraPath: job.characterLoraPath,
-      scenePrompt: job.scenePrompt,
-      stylePrompt: job.stylePrompt,
-      jobLevelOverrides: toNullableJsonInput(job.jobLevelOverrides),
-      notes: job.notes,
-      positions: {
-        create: job.positions.map((pos) => ({
-          positionTemplateId: pos.positionTemplateId,
-          sortOrder: pos.sortOrder,
-          enabled: pos.enabled,
-          positivePrompt: pos.positivePrompt,
-          negativePrompt: pos.negativePrompt,
-          aspectRatio: pos.aspectRatio,
-          batchSize: pos.batchSize,
-          seedPolicy: pos.seedPolicy,
-          loraConfig: toNullableJsonInput(pos.loraConfig),
-          extraParams: toNullableJsonInput(pos.extraParams),
-        })),
-      },
-    },
-  });
-
+  const newJob = await copyJobRepo(jobId);
   revalidatePath("/jobs");
   return newJob.id;
 }

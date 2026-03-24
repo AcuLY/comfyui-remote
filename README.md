@@ -24,6 +24,7 @@
 - `docs/handoff.md`：接手文档 / 当前状态摘要
 - `docs/development-progress.md`：精简后的当前进度
 - `docs/development-todo.md`：当前待办清单
+- `docs/local-verification.md`：本机完整链路验证指南
 - `prisma/`：数据模型、seed
 - `src/app`：前端页面与 API 路由
 - `src/server`：repository / service / worker
