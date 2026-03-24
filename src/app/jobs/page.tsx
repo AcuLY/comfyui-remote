@@ -1,9 +1,12 @@
 import Link from "next/link";
-import { Copy, Play, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { SectionCard } from "@/components/section-card";
-import { jobs } from "@/lib/mock-data";
+import { getJobs } from "@/lib/server-data";
+import { JobActions } from "./job-actions";
 
-export default function JobsPage() {
+export default async function JobsPage() {
+  const jobs = await getJobs();
+
   return (
     <div className="space-y-4">
       <SectionCard title="大任务" subtitle="支持复制任务、运行整组、运行单个 position。">
@@ -18,10 +21,8 @@ export default function JobsPage() {
                 <span className="rounded-full border border-white/10 px-2 py-1 text-[11px] text-zinc-300">{job.status}</span>
               </div>
               <div className="mt-3 text-xs text-zinc-500">最近更新：{job.updatedAt} · {job.positionCount} 个 position</div>
-              <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
-                <button className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-zinc-200">编辑</button>
-                <button className="inline-flex items-center justify-center gap-1 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-zinc-200"><Copy className="size-3.5" /> 复制</button>
-                <button className="inline-flex items-center justify-center gap-1 rounded-xl border border-sky-500/20 bg-sky-500/10 px-3 py-2 text-sky-300"><Play className="size-3.5" /> 运行</button>
+              <div className="mt-4">
+                <JobActions jobId={job.id} />
               </div>
               <div className="mt-3 flex justify-end">
                 <Link href={`/jobs/${job.id}`} className="inline-flex items-center gap-1 text-xs text-sky-300">查看详情 <Sparkles className="size-3.5" /></Link>
