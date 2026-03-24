@@ -8,6 +8,7 @@ import {
   persistComfyOutputImages,
   removeManagedRunOutput,
 } from "@/server/services/image-result-service";
+import { audit } from "@/server/services/audit-service";
 import { buildComfyPromptDraft, normalizeResolvedConfigSnapshot } from "@/server/worker/payload-builder";
 import {
   claimQueuedWorkerRun,
@@ -52,6 +53,11 @@ export async function runWorkerPass(limit = 10): Promise<WorkerPassReport> {
       continue;
     }
 
+    audit("PositionRun", run.runId, "worker.claim", {
+      jobId: run.job.id,
+      positionName: run.position.name,
+    });
+
     let resolvedConfig: NormalizedResolvedConfigSnapshot | null = null;
     let promptDraft: ComfyPromptDraft | null = null;
     let comfyPromptId: string | null = null;
@@ -71,6 +77,11 @@ export async function runWorkerPass(limit = 10): Promise<WorkerPassReport> {
         comfyPromptId,
         outputDir: persistedOutput.outputDir,
         images: persistedOutput.images,
+      });
+
+      audit("PositionRun", run.runId, "worker.done", {
+        comfyPromptId,
+        imageCount: persistedOutput.images.length,
       });
 
       drafts.push({
@@ -103,6 +114,11 @@ export async function runWorkerPass(limit = 10): Promise<WorkerPassReport> {
         errorMessage,
         comfyPromptId,
         outputDir: null,
+      });
+
+      audit("PositionRun", run.runId, "worker.failed", {
+        errorMessage,
+        comfyPromptId,
       });
 
       drafts.push({

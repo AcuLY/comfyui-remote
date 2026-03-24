@@ -8,7 +8,7 @@
  * - ComfyUI connectivity status
  */
 
-import { NextResponse } from "next/server";
+import { fail, ok } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
 import { env } from "@/lib/env";
 
@@ -57,7 +57,7 @@ export async function GET() {
         pingComfyUI(),
       ]);
 
-    return NextResponse.json({
+    return ok({
       comfyui: {
         reachable: comfyReachable,
         url: env.comfyApiUrl,
@@ -82,6 +82,6 @@ export async function GET() {
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return fail("Failed to load worker status", 500, message);
   }
 }

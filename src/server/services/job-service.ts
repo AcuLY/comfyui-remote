@@ -1,4 +1,4 @@
-import { Prisma } from "@/generated/prisma";
+import { ActorType, Prisma } from "@/generated/prisma";
 import {
   createJob as createJobInRepository,
   copyJob as copyJobInRepository,
@@ -8,6 +8,8 @@ import {
   updateJob as updateJobInRepository,
   updateJobPosition as updateJobPositionInRepository,
 } from "@/server/repositories/job-repository";
+import { audit } from "@/server/services/audit-service";
+import { createJobRevision } from "@/server/services/revision-service";
 
 type CreateJobRequestBody = {
   title?: unknown;
@@ -331,21 +333,25 @@ export async function listJobs(query: ListJobsQuery = {}) {
   });
 }
 
-export async function createJob(body: unknown) {
+export async function createJob(body: unknown, actorType: ActorType = ActorType.user) {
   const parsedBody = parsePatchRequestBody<CreateJobRequestBody>(body);
   ensureSupportedFields(parsedBody, JOB_CREATE_FIELDS);
 
-  return createJobInRepository({
+  const input = {
     title: normalizeRequiredStringField(parsedBody.title, "title"),
     characterId: normalizeRequiredStringField(parsedBody.characterId, "characterId"),
     scenePresetId: normalizeNullableIdField(parsedBody.scenePresetId, "scenePresetId") ?? null,
     stylePresetId: normalizeNullableIdField(parsedBody.stylePresetId, "stylePresetId") ?? null,
     positionTemplateIds: normalizePositionTemplateIds(parsedBody.positionTemplateIds),
     notes: normalizeNullableNotesField(parsedBody.notes, "notes"),
-  });
+  };
+
+  const result = await createJobInRepository(input);
+  audit("CompleteJob", result.id, "create", { title: input.title }, actorType);
+  return result;
 }
 
-export async function updateJob(jobId: string, body: unknown) {
+export async function updateJob(jobId: string, body: unknown, actorType: ActorType = ActorType.user) {
   const parsedBody = parsePatchRequestBody<UpdateJobRequestBody>(body);
   ensureSupportedFields(parsedBody, JOB_UPDATE_FIELDS);
 
@@ -364,13 +370,27 @@ export async function updateJob(jobId: string, body: unknown) {
     JOB_UPDATE_FIELDS,
   );
 
-  return updateJobInRepository(normalizeRequiredId(jobId, "jobId"), input);
+  const normalizedId = normalizeRequiredId(jobId, "jobId");
+
+  // Snapshot before update (best-effort, non-blocking)
+  await createJobRevision(normalizedId, actorType);
+
+  const result = await updateJobInRepository(normalizedId, input);
+
+  // Strip undefined values for clean audit payload
+  const changedFields = Object.fromEntries(
+    Object.entries(input).filter(([, v]) => v !== undefined),
+  );
+  audit("CompleteJob", normalizedId, "update", changedFields, actorType);
+
+  return result;
 }
 
 export async function updateJobPosition(
   jobId: string,
   jobPositionId: string,
   body: unknown,
+  actorType: ActorType = ActorType.user,
 ) {
   const parsedBody = parsePatchRequestBody<UpdateJobPositionRequestBody>(body);
   ensureSupportedFields(parsedBody, JOB_POSITION_UPDATE_FIELDS);
@@ -389,29 +409,52 @@ export async function updateJobPosition(
     JOB_POSITION_UPDATE_FIELDS,
   );
 
-  return updateJobPositionInRepository(
-    normalizeRequiredId(jobId, "jobId"),
-    normalizeRequiredId(jobPositionId, "jobPositionId"),
+  const normalizedJobId = normalizeRequiredId(jobId, "jobId");
+  const normalizedJobPositionId = normalizeRequiredId(jobPositionId, "jobPositionId");
+
+  // Snapshot before update (best-effort, non-blocking)
+  await createJobRevision(normalizedJobId, actorType);
+
+  const result = await updateJobPositionInRepository(
+    normalizedJobId,
+    normalizedJobPositionId,
     input,
   );
+
+  const changedFields = Object.fromEntries(
+    Object.entries(input).filter(([, v]) => v !== undefined),
+  );
+  audit("CompleteJobPosition", normalizedJobPositionId, "update", changedFields, actorType);
+
+  return result;
 }
 
-export async function enqueueJobRuns(jobId: string) {
-  return enqueueJobRunsInRepository(normalizeRequiredId(jobId, "jobId"));
+export async function enqueueJobRuns(jobId: string, actorType: ActorType = ActorType.user) {
+  const normalizedId = normalizeRequiredId(jobId, "jobId");
+  const result = await enqueueJobRunsInRepository(normalizedId);
+  audit("CompleteJob", normalizedId, "enqueue", { queuedRunCount: result.queuedRunCount }, actorType);
+  return result;
 }
 
-export async function copyJob(jobId: string) {
-  return copyJobInRepository(normalizeRequiredId(jobId, "jobId"));
+export async function copyJob(jobId: string, actorType: ActorType = ActorType.user) {
+  const normalizedId = normalizeRequiredId(jobId, "jobId");
+  const result = await copyJobInRepository(normalizedId);
+  audit("CompleteJob", result.id, "copy", { sourceJobId: normalizedId }, actorType);
+  return result;
 }
 
 export async function enqueueJobPositionRun(
   jobId: string,
   jobPositionId: string,
+  actorType: ActorType = ActorType.user,
 ) {
-  return enqueueJobPositionRunInRepository(
+  const normalizedJobPositionId = normalizeRequiredId(jobPositionId, "jobPositionId");
+  const result = await enqueueJobPositionRunInRepository(
     normalizeRequiredId(jobId, "jobId"),
-    normalizeRequiredId(jobPositionId, "jobPositionId"),
+    normalizedJobPositionId,
   );
+  audit("CompleteJobPosition", normalizedJobPositionId, "enqueue", { jobId }, actorType);
+  return result;
 }
 
 export function mapJobError(error: unknown) {

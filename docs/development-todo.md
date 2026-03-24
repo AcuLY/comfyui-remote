@@ -51,9 +51,22 @@
 - [x] 编写 Agent API 使用说明文档（`docs/agent-api.md`）
 - [x] 包含完整端点说明、请求/响应格式、典型工作流、Workflow 模板系统文档
 
+## ~~Priority C: AuditLog + JobRevision~~ ✅ DONE
+- [x] 实现 `audit-service.ts`：fire-and-forget 审计日志写入，支持 `user` / `system` / `agent` actor
+- [x] 在关键操作点插入审计：Job CRUD、enqueue、review keep/trash/restore、Worker claim/done/failed
+- [x] Agent API 路由传入 `ActorType.agent`，区分 AI 和人工操作
+- [x] 实现 `revision-service.ts`：Job 更新前自动保存快照（`JobRevision` 表）
+- [x] API 端点 `GET /api/jobs/:id/revisions` + `GET /api/jobs/:id/revisions/:revisionNumber`
+- [x] API 端点 `GET /api/audit-logs`（支持 entityType / entityId / action 过滤）
+
+## ~~Priority B: Worker 端点统一~~ ✅ DONE
+- [x] `/api/worker/process` 增加 localhost 安全检查（与 `/api/local/worker/pass` 一致）
+- [x] `/api/worker/status` 统一使用 `ok/fail` 响应格式
+
 ## Working Notes
 - 单体 Next.js 项目，统一在 `main` 分支开发
 - `frontend` / `backend` 分支已合并到 `main` 并可归档
 - 两套数据访问路径：Server Actions（前端 RSC 直接调用）+ REST API（外部/Agent 调用）
 - `development-progress.md` 保持当前态摘要
 - Worker 已统一为 `src/server/worker/` 单一体系，支持 fallback SDXL txt2img
+- AuditLog 和 JobRevision 模型已激活，有完整的应用层代码

@@ -1,3 +1,4 @@
+import { ActorType } from "@/generated/prisma";
 import { fail, ok } from "@/lib/api-response";
 import {
   getJobAgentContext,
@@ -17,7 +18,7 @@ export async function POST(_request: Request, context: RouteContext) {
 
   try {
     const position = await getJobPositionOwner(jobPositionId);
-    const result = await enqueueJobPositionRun(position.jobId, position.id);
+    const result = await enqueueJobPositionRun(position.jobId, position.id, ActorType.agent);
     const contextData = await getJobAgentContext(position.jobId);
 
     return ok(

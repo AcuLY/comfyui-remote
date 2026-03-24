@@ -1,4 +1,4 @@
-import { Prisma } from "@/generated/prisma";
+import { ActorType, Prisma } from "@/generated/prisma";
 import {
   getRunAgentContext as getRunAgentContextInRepository,
   getRunReviewGroup as getRunReviewGroupInRepository,
@@ -6,6 +6,7 @@ import {
   restoreImage as restoreImageInRepository,
   trashRunImages as trashRunImagesInRepository,
 } from "@/server/repositories/review-repository";
+import { audit, auditMany } from "@/server/services/audit-service";
 
 type ReviewRequestBody = {
   imageIds?: unknown;
@@ -75,27 +76,44 @@ function normalizeReason(value: unknown) {
   return normalizedValue.length > 0 ? normalizedValue : undefined;
 }
 
-export async function keepRunImages(runId: string, body: unknown) {
+export async function keepRunImages(runId: string, body: unknown, actorType: ActorType = ActorType.user) {
   const { imageIds } = parseReviewRequestBody(body);
+  const normalizedRunId = normalizeRequiredId(runId, "runId");
+  const normalizedImageIds = normalizeImageIds(imageIds);
 
-  return keepRunImagesInRepository(
-    normalizeRequiredId(runId, "runId"),
-    normalizeImageIds(imageIds),
-  );
+  const result = await keepRunImagesInRepository(normalizedRunId, normalizedImageIds);
+  auditMany(normalizedImageIds.map((id) => ({
+    entityType: "ImageResult" as const,
+    entityId: id,
+    action: "keep" as const,
+    payload: { runId: normalizedRunId },
+    actorType,
+  })));
+  return result;
 }
 
-export async function trashRunImages(runId: string, body: unknown) {
+export async function trashRunImages(runId: string, body: unknown, actorType: ActorType = ActorType.user) {
   const { imageIds, reason } = parseReviewRequestBody(body);
+  const normalizedRunId = normalizeRequiredId(runId, "runId");
+  const normalizedImageIds = normalizeImageIds(imageIds);
+  const normalizedReason = normalizeReason(reason);
 
-  return trashRunImagesInRepository(
-    normalizeRequiredId(runId, "runId"),
-    normalizeImageIds(imageIds),
-    normalizeReason(reason),
-  );
+  const result = await trashRunImagesInRepository(normalizedRunId, normalizedImageIds, normalizedReason);
+  auditMany(normalizedImageIds.map((id) => ({
+    entityType: "ImageResult" as const,
+    entityId: id,
+    action: "trash" as const,
+    payload: { runId: normalizedRunId, reason: normalizedReason ?? null },
+    actorType,
+  })));
+  return result;
 }
 
-export async function restoreImage(imageId: string) {
-  return restoreImageInRepository(normalizeRequiredId(imageId, "imageId"));
+export async function restoreImage(imageId: string, actorType: ActorType = ActorType.user) {
+  const normalizedId = normalizeRequiredId(imageId, "imageId");
+  const result = await restoreImageInRepository(normalizedId);
+  audit("ImageResult", normalizedId, "restore", null, actorType);
+  return result;
 }
 
 export async function getRunReviewGroup(runId: string) {

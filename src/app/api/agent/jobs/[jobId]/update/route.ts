@@ -1,3 +1,4 @@
+import { ActorType } from "@/generated/prisma";
 import { fail, ok } from "@/lib/api-response";
 import {
   getJobAgentContext,
@@ -121,11 +122,11 @@ export async function POST(request: Request, context: RouteContext) {
     };
 
     if (jobPatch !== undefined) {
-      updated.job = await updateJob(jobId, jobPatch);
+      updated.job = await updateJob(jobId, jobPatch, ActorType.agent);
     }
 
     for (const positionPatch of positionPatches) {
-      await updateJobPosition(jobId, positionPatch.jobPositionId, positionPatch.patch);
+      await updateJobPosition(jobId, positionPatch.jobPositionId, positionPatch.patch, ActorType.agent);
       updated.positions.push(await getJobPositionDetail(jobId, positionPatch.jobPositionId));
     }
 

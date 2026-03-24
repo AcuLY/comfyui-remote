@@ -1,3 +1,4 @@
+import { ActorType } from "@/generated/prisma";
 import { fail, ok } from "@/lib/api-response";
 import {
   getRunAgentContext,
@@ -43,11 +44,11 @@ export async function POST(request: Request, context: RouteContext) {
   try {
     const result =
       action === "keep"
-        ? await keepRunImages(runId, { imageIds: body.imageIds })
+        ? await keepRunImages(runId, { imageIds: body.imageIds }, ActorType.agent)
         : await trashRunImages(runId, {
             imageIds: body.imageIds,
             reason: body.reason,
-          });
+          }, ActorType.agent);
 
     const contextData = await getRunAgentContext(runId);
 
