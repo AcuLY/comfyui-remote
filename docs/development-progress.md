@@ -73,9 +73,9 @@ Current state:
 
 ### Backend
 Latest pushed commits:
+- `cd0cc35` feat(review): expose run edit identifiers
+- `4b60d32` feat(jobs): expose create form options
 - `96802d2` feat(jobs): add draft job creation api
-- `9fb6572` feat(jobs): add list filters
-- `4ee573f` feat(jobs): add job copy api
 
 Current state:
 - 已有 Prisma schema 草案
@@ -123,6 +123,8 @@ Current state:
 - backend 已新增 `GET /api/job-create-options`，会返回当前可用的 Character / ScenePreset / StylePreset / PositionTemplate 元数据，供新建任务表单直接读取真实选项
 - `GET /api/runs/:id` 现在会额外返回真实 `jobId` 与 `jobPositionId`，供队列宫格页直接跳转回对应的 position 参数编辑页，进一步减少 review flow 上的占位按钮
 - 本轮再次验证 frontend/backend worktree `cmd /c npm run build` 可通过（包含 job create options API 与 `/jobs/new` 页面）
+- 本轮重新检查三个 worktree 均干净，且当前分支头分别为：main `2ecff98`、frontend `8c70ed0`、backend `cd0cc35`
+- 本轮再次验证 frontend/backend worktree `cmd /c npm run lint` 与 `cmd /c npm run build` 可通过，可继续作为当前本机可启动基线
 
 ## Next Suggested Milestones
 1. 视需要补一次本机手动验证记录（seed -> enqueue -> local worker pass -> ComfyUI history -> output images）
