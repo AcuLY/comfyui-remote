@@ -1,5 +1,6 @@
 import { Prisma } from "@/generated/prisma";
 import {
+  getRunAgentContext as getRunAgentContextInRepository,
   getRunReviewGroup as getRunReviewGroupInRepository,
   keepRunImages as keepRunImagesInRepository,
   restoreImage as restoreImageInRepository,
@@ -99,6 +100,10 @@ export async function restoreImage(imageId: string) {
 
 export async function getRunReviewGroup(runId: string) {
   return getRunReviewGroupInRepository(normalizeRequiredId(runId, "runId"));
+}
+
+export async function getRunAgentContext(runId: string) {
+  return getRunAgentContextInRepository(normalizeRequiredId(runId, "runId"));
 }
 
 export function mapReviewError(error: unknown) {

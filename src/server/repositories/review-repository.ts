@@ -28,26 +28,45 @@ type TrashPlan = ImagePathChangePlan & {
   trashPath: string;
 };
 
-export async function getRunReviewGroup(runId: string) {
+async function getRunReviewBase(runId: string) {
   const run = await db.positionRun.findUnique({
     where: { id: runId },
     select: {
       id: true,
+      runIndex: true,
+      status: true,
       createdAt: true,
+      startedAt: true,
+      finishedAt: true,
+      outputDir: true,
+      errorMessage: true,
+      comfyPromptId: true,
+      resolvedConfigSnapshot: true,
       completeJob: {
         select: {
           id: true,
           title: true,
+          slug: true,
+          status: true,
           character: {
-            select: { name: true },
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+            },
           },
         },
       },
       completeJobPosition: {
         select: {
           id: true,
+          sortOrder: true,
           positionTemplate: {
-            select: { name: true },
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+            },
           },
         },
       },
@@ -57,7 +76,11 @@ export async function getRunReviewGroup(runId: string) {
           id: true,
           filePath: true,
           thumbPath: true,
+          width: true,
+          height: true,
+          fileSize: true,
           reviewStatus: true,
+          createdAt: true,
         },
       },
     },
@@ -66,6 +89,12 @@ export async function getRunReviewGroup(runId: string) {
   if (!run) {
     throw new Error("RUN_NOT_FOUND");
   }
+
+  return run;
+}
+
+export async function getRunReviewGroup(runId: string) {
+  const run = await getRunReviewBase(runId);
 
   const images = run.images.map((image, index) => ({
     id: image.id,
@@ -85,6 +114,64 @@ export async function getRunReviewGroup(runId: string) {
     pendingCount: images.filter((image) => image.status === ReviewStatus.pending).length,
     totalCount: images.length,
     images,
+  };
+}
+
+export async function getRunAgentContext(runId: string) {
+  const run = await getRunReviewBase(runId);
+
+  const imageSummary = run.images.reduce(
+    (summary, image) => {
+      summary.totalCount += 1;
+      summary[`${image.reviewStatus}Count` as "pendingCount" | "keptCount" | "trashedCount"] += 1;
+      return summary;
+    },
+    {
+      totalCount: 0,
+      pendingCount: 0,
+      keptCount: 0,
+      trashedCount: 0,
+    },
+  );
+
+  return {
+    run: {
+      id: run.id,
+      runIndex: run.runIndex,
+      status: run.status,
+      createdAt: run.createdAt.toISOString(),
+      startedAt: run.startedAt?.toISOString() ?? null,
+      finishedAt: run.finishedAt?.toISOString() ?? null,
+      outputDir: run.outputDir,
+      errorMessage: run.errorMessage,
+      comfyPromptId: run.comfyPromptId,
+      resolvedConfigSnapshot: run.resolvedConfigSnapshot,
+    },
+    job: {
+      id: run.completeJob.id,
+      title: run.completeJob.title,
+      slug: run.completeJob.slug,
+      status: run.completeJob.status,
+      character: run.completeJob.character,
+    },
+    position: {
+      id: run.completeJobPosition.id,
+      sortOrder: run.completeJobPosition.sortOrder,
+      template: run.completeJobPosition.positionTemplate,
+    },
+    summary: imageSummary,
+    images: run.images.map((image, index) => ({
+      id: image.id,
+      index,
+      label: String(index + 1).padStart(2, "0"),
+      reviewStatus: image.reviewStatus,
+      filePath: image.filePath,
+      thumbPath: image.thumbPath,
+      width: image.width,
+      height: image.height,
+      fileSize: image.fileSize,
+      createdAt: image.createdAt.toISOString(),
+    })),
   };
 }
 
