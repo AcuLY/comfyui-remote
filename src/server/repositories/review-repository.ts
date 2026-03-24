@@ -36,6 +36,7 @@ export async function getRunReviewGroup(runId: string) {
       createdAt: true,
       completeJob: {
         select: {
+          id: true,
           title: true,
           character: {
             select: { name: true },
@@ -44,6 +45,7 @@ export async function getRunReviewGroup(runId: string) {
       },
       completeJobPosition: {
         select: {
+          id: true,
           positionTemplate: {
             select: { name: true },
           },
@@ -74,6 +76,8 @@ export async function getRunReviewGroup(runId: string) {
 
   return {
     id: run.id,
+    jobId: run.completeJob.id,
+    jobPositionId: run.completeJobPosition.id,
     title: run.completeJob.title,
     characterName: run.completeJob.character.name,
     positionName: run.completeJobPosition.positionTemplate.name,
