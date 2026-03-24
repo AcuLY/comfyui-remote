@@ -1,4 +1,4 @@
-import { RunStatus } from "@/generated/prisma";
+import { RunStatus } from "@/lib/db-enums";
 import { assertEnv } from "@/lib/env";
 import {
   ComfyPromptExecutionError,

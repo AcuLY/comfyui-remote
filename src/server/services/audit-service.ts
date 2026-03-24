@@ -10,7 +10,7 @@
  *   audit("CompleteJob", jobId, "create", { title }, "user");
  */
 
-import { ActorType } from "@/generated/prisma";
+import { ActorType } from "@/lib/db-enums";
 import { prisma } from "@/lib/prisma";
 
 export type AuditEntityType =

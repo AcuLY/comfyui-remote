@@ -1,7 +1,5 @@
 "use server";
 
-import { mkdir, writeFile } from "fs/promises";
-import path from "path";
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
@@ -9,6 +7,7 @@ import {
   buildManagedTrashPath,
   moveManagedImageFile,
 } from "@/server/services/image-file-service";
+import { saveUploadedLora } from "@/server/services/lora-upload-service";
 import {
   enqueueJobRuns as enqueueJobRunsRepo,
   enqueueJobPositionRun as enqueueJobPositionRunRepo,
@@ -370,11 +369,8 @@ export async function copyJob(jobId: string): Promise<string | null> {
 }
 
 // ---------------------------------------------------------------------------
-// LoRA 上传
+// LoRA 上传 — 委托给 lora-upload-service（统一使用 LORA_BASE_DIR）
 // ---------------------------------------------------------------------------
-
-const LORA_CATEGORIES = ["characters", "styles", "poses", "misc"] as const;
-type LoraCategory = (typeof LORA_CATEGORIES)[number];
 
 export async function uploadLora(formData: FormData) {
   const file = formData.get("file") as File | null;
@@ -384,41 +380,7 @@ export async function uploadLora(formData: FormData) {
     throw new Error("请选择文件");
   }
 
-  if (!LORA_CATEGORIES.includes(category as LoraCategory)) {
-    throw new Error("无效的分类");
-  }
-
-  const fileName = file.name;
-  const relativePath = `${category}/${fileName}`;
-
-  // 基础路径（可通过 env 配置）
-  const basePath = process.env.LORA_BASE_PATH ?? path.join(/* turbopackIgnore: true */ process.cwd(), "data/assets/loras");
-  const absolutePath = path.join(basePath, relativePath);
-
-  // 确保目录存在并写入文件
-  await mkdir(path.dirname(absolutePath), { recursive: true });
-  const buffer = Buffer.from(await file.arrayBuffer());
-  await writeFile(absolutePath, buffer);
-
-  // 登记到数据库
-  await prisma.loraAsset.upsert({
-    where: { absolutePath },
-    create: {
-      name: fileName,
-      category,
-      fileName,
-      absolutePath,
-      relativePath,
-      size: file.size,
-      source: "upload",
-    },
-    update: {
-      name: fileName,
-      size: file.size,
-      source: "upload",
-      updatedAt: new Date(),
-    },
-  });
+  await saveUploadedLora(file, category);
 
   revalidatePath("/assets/loras");
 }

@@ -8,7 +8,7 @@
  * Snapshot creation is best-effort — it should not block the update.
  */
 
-import { ActorType } from "@/generated/prisma";
+import { ActorType } from "@/lib/db-enums";
 import { prisma } from "@/lib/prisma";
 
 // ---------------------------------------------------------------------------

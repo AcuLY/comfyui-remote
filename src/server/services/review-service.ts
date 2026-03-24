@@ -1,4 +1,5 @@
-import { ActorType, Prisma } from "@/generated/prisma";
+import { Prisma } from "@/generated/prisma";
+import { ActorType } from "@/lib/db-enums";
 import {
   getRunAgentContext as getRunAgentContextInRepository,
   getRunReviewGroup as getRunReviewGroupInRepository,

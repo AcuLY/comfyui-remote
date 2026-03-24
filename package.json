@@ -13,15 +13,18 @@
     "prisma:seed": "node --experimental-strip-types prisma/seed.ts",
     "prisma:studio": "prisma studio",
     "db:seed": "npx tsx src/scripts/seed.mts",
-    "db:bootstrap": "prisma migrate dev && npx tsx src/scripts/seed.mts"
+    "db:bootstrap": "prisma migrate dev && npx tsx src/scripts/seed.mts",
+    "db:bootstrap:sqlite": "DB_PROVIDER=sqlite DATABASE_URL=file:./data/comfyui.db prisma migrate dev && DB_PROVIDER=sqlite DATABASE_URL=file:./data/comfyui.db npx tsx src/scripts/seed.mts"
   },
   "prisma": {
     "seed": "node --experimental-strip-types prisma/seed.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.27.1",
+    "@prisma/adapter-better-sqlite3": "^7.5.0",
     "@prisma/adapter-pg": "^7.5.0",
     "@prisma/client": "^7.5.0",
+    "better-sqlite3": "^12.8.0",
     "clsx": "^2.1.1",
     "lucide-react": "^1.0.0",
     "next": "16.2.1",
@@ -32,6 +35,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20",
     "@types/pg": "^8.20.0",
     "@types/react": "^19",

@@ -1,8 +1,25 @@
 import "dotenv/config";
 import { PrismaClient } from "../generated/prisma/client.js";
-import { PrismaPg } from "@prisma/adapter-pg";
 
-const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
+function detectProvider(): "postgresql" | "sqlite" {
+  const explicit = process.env.DB_PROVIDER?.toLowerCase();
+  if (explicit === "sqlite") return "sqlite";
+  if (explicit === "postgresql" || explicit === "postgres") return "postgresql";
+  const url = process.env.DATABASE_URL ?? "";
+  if (url.startsWith("file:") || url.endsWith(".db") || url.endsWith(".sqlite")) return "sqlite";
+  return "postgresql";
+}
+
+async function createAdapter() {
+  if (detectProvider() === "sqlite") {
+    const { PrismaBetterSqlite3 } = await import("@prisma/adapter-better-sqlite3");
+    return new PrismaBetterSqlite3({ url: process.env.DATABASE_URL! });
+  }
+  const { PrismaPg } = await import("@prisma/adapter-pg");
+  return new PrismaPg({ connectionString: process.env.DATABASE_URL! });
+}
+
+const adapter = await createAdapter();
 const prisma = new PrismaClient({ adapter });
 
 async function main() {

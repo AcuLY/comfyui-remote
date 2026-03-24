@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { ActorType, ReviewStatus } from "@/generated/prisma";
+import { ActorType, ReviewStatus } from "@/lib/db-enums";
 import {
   buildManagedTrashPath,
   type ManagedImageMoveStatus,

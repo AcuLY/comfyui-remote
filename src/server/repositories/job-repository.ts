@@ -1,5 +1,7 @@
-import { JobStatus, Prisma, ReviewStatus } from "@/generated/prisma";
+import { Prisma } from "@/generated/prisma";
+import { JobStatus, ReviewStatus } from "@/lib/db-enums";
 import { db } from "@/lib/db";
+import { detectProvider } from "@/lib/prisma";
 
 export type JobUpdateInput = {
   characterPrompt?: string;
@@ -50,7 +52,7 @@ type LatestRunRecord = {
   finishedAt: Date | null;
   outputDir: string | null;
   errorMessage: string | null;
-  images: Array<{ reviewStatus: ReviewStatus }>;
+  images: Array<{ reviewStatus: string }>;
 };
 
 type PositionTemplateRecord = {
@@ -86,7 +88,7 @@ type QueuableJobRecord = {
   id: string;
   title: string;
   slug: string;
-  status: JobStatus;
+  status: string;
   characterPrompt: string;
   characterLoraPath: string;
   scenePrompt: string | null;
@@ -120,7 +122,7 @@ function toIsoString(value: Date | null) {
   return value?.toISOString() ?? null;
 }
 
-function summarizeRunImages(images: Array<{ reviewStatus: ReviewStatus }>) {
+function summarizeRunImages(images: Array<{ reviewStatus: string }>) {
   const summary = {
     totalCount: images.length,
     pendingCount: 0,
@@ -567,6 +569,12 @@ async function createQueuedRunsForPositions(
 
 export async function listJobs(filters: ListJobsFilters = {}) {
   const search = filters.search?.trim();
+  // SQLite LIKE is case-insensitive for ASCII by default;
+  // PostgreSQL requires explicit mode: "insensitive".
+  const ciContains = (value: string) =>
+    detectProvider() === "postgresql"
+      ? { contains: value, mode: "insensitive" as const }
+      : { contains: value };
 
   const jobs = await db.completeJob.findMany({
     where: {
@@ -574,11 +582,11 @@ export async function listJobs(filters: ListJobsFilters = {}) {
       ...(search
         ? {
             OR: [
-              { title: { contains: search, mode: "insensitive" } },
-              { slug: { contains: search, mode: "insensitive" } },
-              { character: { name: { contains: search, mode: "insensitive" } } },
-              { scenePreset: { is: { name: { contains: search, mode: "insensitive" } } } },
-              { stylePreset: { is: { name: { contains: search, mode: "insensitive" } } } },
+              { title: ciContains(search) },
+              { slug: ciContains(search) },
+              { character: { name: ciContains(search) } },
+              { scenePreset: { is: { name: ciContains(search) } } },
+              { stylePreset: { is: { name: ciContains(search) } } },
             ],
           }
         : {}),

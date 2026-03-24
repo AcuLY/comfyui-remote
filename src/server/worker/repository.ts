@@ -1,4 +1,5 @@
-import { JobStatus, Prisma, RunStatus } from "@/generated/prisma";
+import { Prisma } from "@/generated/prisma";
+import { JobStatus, RunStatus } from "@/lib/db-enums";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
 import { WorkerRunSnapshot } from "@/server/worker/types";

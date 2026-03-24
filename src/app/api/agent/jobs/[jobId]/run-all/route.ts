@@ -1,4 +1,4 @@
-import { ActorType } from "@/generated/prisma";
+import { ActorType } from "@/lib/db-enums";
 import { fail, ok } from "@/lib/api-response";
 import { getJobAgentContext } from "@/server/repositories/job-repository";
 import {

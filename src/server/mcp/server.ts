@@ -10,7 +10,7 @@
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
-import { ActorType } from "@/generated/prisma";
+import { ActorType } from "@/lib/db-enums";
 import {
   listJobs,
   updateJob,
