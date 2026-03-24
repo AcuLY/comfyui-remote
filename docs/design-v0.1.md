@@ -331,6 +331,14 @@
 - Job 详情页 Position 列表显示 block 数量 + 快捷入口
 - Server Actions：list/add/update/delete/reorder
 
+**迁移工具（v0.2 Phase 4）**：
+- `src/scripts/migrate-prompt-blocks.mts` — 为旧 Position 补生成 PromptBlocks（支持 `DRY_RUN=1`）
+
+**MCP Server（v0.2 Phase 4）**：
+- 5 个 PromptBlock Tools：`list_prompt_blocks` / `add_prompt_block` / `update_prompt_block` / `remove_prompt_block` / `reorder_prompt_blocks`
+- 1 个 Resource：`comfyui://positions/{positionId}/blocks`
+- Job context resource 已包含每个 Position 的 `promptBlocks` 数组和 `promptDraft`
+
 ### Review
 - POST /api/runs/:id/review/keep
 - POST /api/runs/:id/review/trash

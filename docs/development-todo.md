@@ -91,7 +91,7 @@
 - [x] 单图详情：保留/删除当前图后显示「保留剩余 / 删除剩余」按钮，同样支持跳转下一组
 - [x] 无下一组时回退到队列列表页
 
-## ~~v0.2 Prompt Block Refactoring~~ Phase 3 ✅ DONE
+## ~~v0.2 Prompt Block Refactoring~~ ✅ ALL PHASES DONE
 - [x] Phase 1 (schema + type fixes) ✅
 - [x] Phase 2 (backend: block CRUD, prompt composition, worker adaptation) ✅
 - [x] Phase 3 (frontend: block editor UI) ✅
@@ -103,7 +103,12 @@
   - [x] Position 编辑页增加 blocks 入口链接
   - [x] PromptBlock Server Actions（list/add/update/delete/reorder）
   - [x] server-data.ts getPositionBlocks 查询
-- [ ] Phase 4 (migration scripts, Agent API adaptation) pending
+- [x] Phase 4 (migration + MCP adaptation) ✅
+  - [x] migrate-prompt-blocks.mts: 为旧 Position 补生成 PromptBlocks（支持 DRY_RUN）
+  - [x] MCP Server v0.2.0: 5 个 PromptBlock Tools（list/add/update/remove/reorder）
+  - [x] MCP Server: position-blocks Resource
+  - [x] seed.mts: 为每个 Position 生成 4 个 PromptBlocks
+  - [x] agent-api.md: 文档更新
 
 ## Working Notes
 - 单体 Next.js 项目，统一在 `main` 分支开发
