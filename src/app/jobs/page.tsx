@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Sparkles } from "lucide-react";
+import { Plus, Sparkles } from "lucide-react";
 import { SectionCard } from "@/components/section-card";
 import { getJobs } from "@/lib/server-data";
 import { JobActions } from "./job-actions";
@@ -9,6 +9,15 @@ export default async function JobsPage() {
 
   return (
     <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div />
+        <Link
+          href="/jobs/new"
+          className="inline-flex items-center gap-2 rounded-2xl border border-sky-500/20 bg-sky-500/10 px-4 py-2 text-sm text-sky-300 transition hover:bg-sky-500/20"
+        >
+          <Plus className="size-4" /> 创建新任务
+        </Link>
+      </div>
       <SectionCard title="大任务" subtitle="支持复制任务、运行整组、运行单个 position。">
         <div className="space-y-3">
           {jobs.map((job) => (

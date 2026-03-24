@@ -1,6 +1,7 @@
 import { SectionCard } from "@/components/section-card";
 import { StatChip } from "@/components/stat-chip";
 import { getLoraAssets } from "@/lib/server-data";
+import { LoraUploadForm } from "./lora-upload-form";
 
 export default async function LorasPage() {
   const assets = await getLoraAssets();
@@ -14,6 +15,10 @@ export default async function LorasPage() {
           <StatChip label="已登记 LoRA" value={assets.length} tone="accent" />
           <StatChip label="分类数" value={categories.length} tone="default" />
         </div>
+      </SectionCard>
+
+      <SectionCard title="上传 LoRA" subtitle="选择分类并上传 .safetensors 文件。">
+        <LoraUploadForm />
       </SectionCard>
 
       {assets.length === 0 ? (

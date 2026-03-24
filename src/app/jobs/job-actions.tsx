@@ -2,7 +2,8 @@
 
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Copy, Play } from "lucide-react";
+import Link from "next/link";
+import { Copy, Play, Pencil } from "lucide-react";
 import { runJob, copyJob } from "@/lib/actions";
 
 export function JobActions({ jobId }: { jobId: string }) {
@@ -26,9 +27,12 @@ export function JobActions({ jobId }: { jobId: string }) {
 
   return (
     <div className="grid grid-cols-3 gap-2 text-xs">
-      <button className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-zinc-200 transition hover:bg-white/[0.08]">
-        编辑
-      </button>
+      <Link
+        href={`/jobs/${jobId}/edit`}
+        className="inline-flex items-center justify-center gap-1 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-zinc-200 transition hover:bg-white/[0.08]"
+      >
+        <Pencil className="size-3.5" /> 编辑
+      </Link>
       <button
         disabled={isPending}
         onClick={handleCopy}

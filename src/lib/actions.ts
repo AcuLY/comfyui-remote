@@ -198,6 +198,134 @@ export async function runPosition(jobPositionId: string) {
 }
 
 // ---------------------------------------------------------------------------
+// 创建大任务
+// ---------------------------------------------------------------------------
+
+export type CreateJobInput = {
+  title: string;
+  characterId: string;
+  scenePresetId: string | null;
+  stylePresetId: string | null;
+  characterPrompt: string;
+  characterLoraPath: string;
+  scenePrompt: string | null;
+  stylePrompt: string | null;
+  notes: string | null;
+  positions: {
+    positionTemplateId: string;
+    sortOrder: number;
+    enabled: boolean;
+    aspectRatio: string | null;
+    batchSize: number | null;
+    seedPolicy: string | null;
+  }[];
+};
+
+export async function createJob(input: CreateJobInput): Promise<string> {
+  // 生成唯一 slug
+  const baseSlug = input.title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    || "untitled";
+  let slug = baseSlug;
+  let i = 1;
+  while (await prisma.completeJob.findUnique({ where: { slug } })) {
+    slug = `${baseSlug}-${i++}`;
+  }
+
+  const job = await prisma.completeJob.create({
+    data: {
+      title: input.title,
+      slug,
+      status: "draft",
+      characterId: input.characterId,
+      scenePresetId: input.scenePresetId,
+      stylePresetId: input.stylePresetId,
+      characterPrompt: input.characterPrompt,
+      characterLoraPath: input.characterLoraPath,
+      scenePrompt: input.scenePrompt,
+      stylePrompt: input.stylePrompt,
+      notes: input.notes,
+      positions: {
+        create: input.positions.map((pos) => ({
+          positionTemplateId: pos.positionTemplateId,
+          sortOrder: pos.sortOrder,
+          enabled: pos.enabled,
+          aspectRatio: pos.aspectRatio,
+          batchSize: pos.batchSize,
+          seedPolicy: pos.seedPolicy,
+        })),
+      },
+    },
+  });
+
+  revalidatePath("/jobs");
+  return job.id;
+}
+
+// ---------------------------------------------------------------------------
+// 更新大任务
+// ---------------------------------------------------------------------------
+
+export type UpdateJobInput = {
+  jobId: string;
+  title?: string;
+  characterId?: string;
+  scenePresetId?: string | null;
+  stylePresetId?: string | null;
+  characterPrompt?: string;
+  characterLoraPath?: string;
+  scenePrompt?: string | null;
+  stylePrompt?: string | null;
+  notes?: string | null;
+  positions?: {
+    positionTemplateId: string;
+    sortOrder: number;
+    enabled: boolean;
+    positivePrompt?: string | null;
+    negativePrompt?: string | null;
+    aspectRatio?: string | null;
+    batchSize?: number | null;
+    seedPolicy?: string | null;
+  }[];
+};
+
+export async function updateJob(input: UpdateJobInput) {
+  const { jobId, positions, ...jobData } = input;
+
+  // 更新 job 基础字段
+  await prisma.completeJob.update({
+    where: { id: jobId },
+    data: jobData,
+  });
+
+  // 如果传了 positions，删除旧的并重建
+  if (positions) {
+    await prisma.completeJobPosition.deleteMany({
+      where: { completeJobId: jobId },
+    });
+
+    await prisma.completeJobPosition.createMany({
+      data: positions.map((pos) => ({
+        completeJobId: jobId,
+        positionTemplateId: pos.positionTemplateId,
+        sortOrder: pos.sortOrder,
+        enabled: pos.enabled,
+        positivePrompt: pos.positivePrompt ?? null,
+        negativePrompt: pos.negativePrompt ?? null,
+        aspectRatio: pos.aspectRatio ?? null,
+        batchSize: pos.batchSize ?? null,
+        seedPolicy: pos.seedPolicy ?? null,
+      })),
+    });
+  }
+
+  revalidatePath("/jobs");
+  revalidatePath(`/jobs/${jobId}`);
+}
+
+// ---------------------------------------------------------------------------
 // 复制大任务
 // ---------------------------------------------------------------------------
 
@@ -254,4 +382,59 @@ export async function copyJob(jobId: string): Promise<string | null> {
 
   revalidatePath("/jobs");
   return newJob.id;
+}
+
+// ---------------------------------------------------------------------------
+// LoRA 上传
+// ---------------------------------------------------------------------------
+
+const LORA_CATEGORIES = ["characters", "styles", "poses", "misc"] as const;
+type LoraCategory = (typeof LORA_CATEGORIES)[number];
+
+export async function uploadLora(formData: FormData) {
+  const file = formData.get("file") as File | null;
+  const category = formData.get("category") as string;
+
+  if (!file || !file.name) {
+    throw new Error("请选择文件");
+  }
+
+  if (!LORA_CATEGORIES.includes(category as LoraCategory)) {
+    throw new Error("无效的分类");
+  }
+
+  const fileName = file.name;
+  const relativePath = `${category}/${fileName}`;
+
+  // 基础路径（可通过 env 配置）
+  const basePath = process.env.LORA_BASE_PATH ?? "/models/loras";
+  const absolutePath = `${basePath}/${relativePath}`;
+
+  // TODO: 实现真实文件写入到磁盘
+  // import { mkdir, writeFile } from "fs/promises";
+  // import path from "path";
+  // await mkdir(path.dirname(absolutePath), { recursive: true });
+  // await writeFile(absolutePath, Buffer.from(await file.arrayBuffer()));
+
+  // 登记到数据库
+  await prisma.loraAsset.upsert({
+    where: { absolutePath },
+    create: {
+      name: fileName,
+      category,
+      fileName,
+      absolutePath,
+      relativePath,
+      size: file.size,
+      source: "upload",
+    },
+    update: {
+      name: fileName,
+      size: file.size,
+      source: "upload",
+      updatedAt: new Date(),
+    },
+  });
+
+  revalidatePath("/assets/loras");
 }

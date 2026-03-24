@@ -234,6 +234,112 @@ export async function getLoraAssets(): Promise<LoraAsset[]> {
 }
 
 // ---------------------------------------------------------------------------
+// Job Form Options — 创建/编辑 Job 所需的下拉选项
+// ---------------------------------------------------------------------------
+
+export type FormOption = { id: string; name: string; slug: string };
+export type PositionOption = FormOption & {
+  defaultAspectRatio: string | null;
+  defaultBatchSize: number | null;
+  defaultSeedPolicy: string | null;
+};
+
+export async function getJobFormOptions() {
+  const [characters, scenes, styles, positions] = await Promise.all([
+    prisma.character.findMany({
+      where: { isActive: true },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, slug: true, prompt: true, loraPath: true },
+    }),
+    prisma.scenePreset.findMany({
+      where: { isActive: true },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, slug: true, prompt: true },
+    }),
+    prisma.stylePreset.findMany({
+      where: { isActive: true },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, slug: true, prompt: true },
+    }),
+    prisma.positionTemplate.findMany({
+      where: { enabled: true },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, slug: true, defaultAspectRatio: true, defaultBatchSize: true, defaultSeedPolicy: true },
+    }),
+  ]);
+
+  return { characters, scenes, styles, positions };
+}
+
+// ---------------------------------------------------------------------------
+// Job Edit Data — 编辑 Job 时加载完整数据
+// ---------------------------------------------------------------------------
+
+export type JobEditData = {
+  id: string;
+  title: string;
+  slug: string;
+  characterId: string;
+  scenePresetId: string | null;
+  stylePresetId: string | null;
+  characterPrompt: string;
+  characterLoraPath: string;
+  scenePrompt: string | null;
+  stylePrompt: string | null;
+  notes: string | null;
+  positions: {
+    id: string;
+    positionTemplateId: string;
+    sortOrder: number;
+    enabled: boolean;
+    positivePrompt: string | null;
+    negativePrompt: string | null;
+    aspectRatio: string | null;
+    batchSize: number | null;
+    seedPolicy: string | null;
+  }[];
+};
+
+export async function getJobEditData(jobId: string): Promise<JobEditData | null> {
+  const job = await prisma.completeJob.findUnique({
+    where: { id: jobId },
+    include: {
+      positions: {
+        orderBy: { sortOrder: "asc" },
+        select: {
+          id: true,
+          positionTemplateId: true,
+          sortOrder: true,
+          enabled: true,
+          positivePrompt: true,
+          negativePrompt: true,
+          aspectRatio: true,
+          batchSize: true,
+          seedPolicy: true,
+        },
+      },
+    },
+  });
+
+  if (!job) return null;
+
+  return {
+    id: job.id,
+    title: job.title,
+    slug: job.slug,
+    characterId: job.characterId,
+    scenePresetId: job.scenePresetId,
+    stylePresetId: job.stylePresetId,
+    characterPrompt: job.characterPrompt,
+    characterLoraPath: job.characterLoraPath,
+    scenePrompt: job.scenePrompt,
+    stylePrompt: job.stylePrompt,
+    notes: job.notes,
+    positions: job.positions,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
