@@ -124,7 +124,9 @@ Current state:
 - `GET /api/runs/:id` 现在会额外返回真实 `jobId` 与 `jobPositionId`，供队列宫格页直接跳转回对应的 position 参数编辑页，进一步减少 review flow 上的占位按钮
 - backend 已新增 agent 上下文接口：`GET /api/agent/jobs/:jobId/context` 会返回 job 概览、已启用 position 的 resolved prompt/config 与最新 run 汇总，便于后续自动化或外部 agent 直接读取结构化任务上下文
 - backend 已新增 `GET /api/agent/runs/:runId/context`：会返回 run / job / position 元数据、`resolvedConfigSnapshot`、输出图片清单与 review 汇总，便于后续 agent 审图或诊断 run，而不必复用前端宫格专用 payload
-- 本轮再次验证 backend worktree `cmd /c npm run lint` 与 `cmd /c npm run build` 可通过（包含 agent run context endpoint）
+- backend 已新增 agent 最小写接口：`POST /api/agent/jobs/:jobId/update` 支持一次请求内提交 job 级 patch 与多条 position patch，并返回更新后的 job agent context，便于自动化按结构化 payload 回写参数
+- backend 已新增 `POST /api/agent/runs/:runId/review`：支持 `keep` / `trash` 两种动作，复用现有真实 review service，并返回动作结果与最新 run agent context，方便后续 agent 审图工作流直接闭环
+- 本轮再次验证 backend worktree `cmd /c npm run lint` 与 `cmd /c npm run build` 可通过（包含 agent job update / run review endpoints）
 - 本轮重新检查三个 worktree 均干净，且当前分支头分别为：main `681f69b`、frontend `8c70ed0`、backend `b5a7d73`
 - frontend/backend 当前仍可继续作为本机可启动基线
 

@@ -55,6 +55,7 @@
 - [x] 让 LoRA 上传页优先读取真实 `/api/path-maps` 分类元数据，并展示分类到目标相对目录的映射
 
 - [x] 补 agent 只读上下文接口：job context / run context，方便后续自动化先读取真实结构化数据
+- [x] 补 agent 最小写接口：job update / run review，形成 context + update/review 的基础闭环
 
 ## Working Notes
 - 前后端并行开发，分别在 `frontend` / `backend` 分支提交并 push
