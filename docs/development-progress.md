@@ -125,7 +125,7 @@ Current state:
 - backend 已新增 agent 上下文接口：`GET /api/agent/jobs/:jobId/context` 会返回 job 概览、已启用 position 的 resolved prompt/config 与最新 run 汇总，便于后续自动化或外部 agent 直接读取结构化任务上下文
 - backend 已新增 `GET /api/agent/runs/:runId/context`：会返回 run / job / position 元数据、`resolvedConfigSnapshot`、输出图片清单与 review 汇总，便于后续 agent 审图或诊断 run，而不必复用前端宫格专用 payload
 - 本轮再次验证 backend worktree `cmd /c npm run lint` 与 `cmd /c npm run build` 可通过（包含 agent run context endpoint）
-- 本轮重新检查三个 worktree 均干净，且当前分支头分别为：main `a0121ce`、frontend `8c70ed0`、backend `b5a7d73`
+- 本轮重新检查三个 worktree 均干净，且当前分支头分别为：main `681f69b`、frontend `8c70ed0`、backend `b5a7d73`
 - frontend/backend 当前仍可继续作为本机可启动基线
 
 ## Next Suggested Milestones
