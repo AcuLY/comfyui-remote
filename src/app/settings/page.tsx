@@ -23,8 +23,8 @@ const settingsGroups = [
   },
   {
     href: "/settings/positions",
-    label: "Position 模板",
-    description: "管理通用 position 模板：默认画幅、batch、seed 策略",
+    label: "提示词库",
+    description: "管理通用提示词模板：默认画幅、batch、seed 策略",
     icon: LayoutGrid,
   },
   {
@@ -51,7 +51,7 @@ const settingsGroups = [
 export default function SettingsPage() {
   return (
     <div className="space-y-4">
-      <SectionCard title="设置" subtitle="管理角色、场景、风格和 Position 模板。">
+      <SectionCard title="设置" subtitle="管理角色、场景、风格和提示词库。">
         <div className="space-y-2">
           {settingsGroups.map(({ href, label, description, icon: Icon, external }) => (
             <Link

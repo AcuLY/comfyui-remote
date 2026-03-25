@@ -82,13 +82,13 @@ export default async function PositionsPage() {
         <ArrowLeft className="size-4" /> 返回设置
       </Link>
       <SectionCard
-        title="Position 模板管理"
-        subtitle="管理通用 Position 模板。Workflow 模板控制 ComfyUI 节点图（留空使用内置 SDXL txt2img）。"
+        title="提示词库"
+        subtitle="管理通用提示词模板。Workflow 模板控制 ComfyUI 节点图（留空使用内置 SDXL txt2img）。"
       >
         <ConfigManager
           items={items}
           fields={fields}
-          entityName="Position 模板"
+          entityName="提示词模板"
           onCreateAction={async (data) => {
             "use server";
             await createPositionTemplate({
