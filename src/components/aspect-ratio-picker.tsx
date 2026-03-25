@@ -138,30 +138,28 @@ export function AspectRatioPicker({
         ))}
       </div>
 
-      {/* Short side px input */}
-      {selected && (
-        <div className="flex items-center gap-3">
-          <label className="flex items-center gap-1.5 text-[11px] text-zinc-500">
-            短边像素
-            <input
-              type="number"
-              min={256}
-              max={4096}
-              step={8}
-              disabled={disabled}
-              value={shortSidePx}
-              onChange={(e) => setShortSidePx(e.target.value)}
-              placeholder={builtinShort ? String(builtinShort) : "默认"}
-              className="input-number w-20 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30 disabled:opacity-70"
-            />
-          </label>
+      {/* Short side px input - 始终显示 */}
+      <div className="flex items-center gap-3">
+        <label className="flex items-center gap-1.5 text-[11px] text-zinc-500">
+          短边像素
+          <input
+            type="number"
+            min={256}
+            max={4096}
+            step={8}
+            disabled={disabled}
+            value={shortSidePx}
+            onChange={(e) => setShortSidePx(e.target.value)}
+            placeholder={builtinShort ? String(builtinShort) : "1024"}
+            className="input-number w-20 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30 disabled:opacity-70"
+          />
+        </label>
+        {selected && resolved && (
           <div className="text-[10px] text-zinc-500">
-            {resolved
-              ? `→ ${resolved.width}×${resolved.height} px`
-              : ""}
+            → {resolved.width}×{resolved.height} px
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
