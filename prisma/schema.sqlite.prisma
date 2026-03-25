@@ -17,6 +17,7 @@ model Character {
   prompt          String
   negativePrompt  String?
   loraPath        String
+  loraBindings    Json?
   notes           String?
   isActive        Boolean       @default(true)
   createdAt       DateTime      @default(now())

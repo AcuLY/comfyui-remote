@@ -16,6 +16,8 @@ export function LoraBindingEditor({
   loraOptions,
 }: LoraBindingEditorProps) {
   const [expanded, setExpanded] = useState(bindings.length > 0);
+  // Track local weight input values (allow empty during editing)
+  const [weightInputs, setWeightInputs] = useState<Record<number, string>>({});
 
   function handleAdd() {
     onChange([
@@ -27,6 +29,12 @@ export function LoraBindingEditor({
 
   function handleRemove(index: number) {
     onChange(bindings.filter((_, i) => i !== index));
+    // Clean up local input state
+    setWeightInputs((prev) => {
+      const next = { ...prev };
+      delete next[index];
+      return next;
+    });
   }
 
   function handleUpdate(index: number, updates: Partial<LoraBinding>) {
@@ -37,13 +45,38 @@ export function LoraBindingEditor({
     );
   }
 
-  function handleWeightChange(index: number, value: string) {
-    const num = parseFloat(value);
+  // Get displayed weight value (local input or binding value)
+  function getWeightDisplay(index: number, binding: LoraBinding): string {
+    if (index in weightInputs) {
+      return weightInputs[index];
+    }
+    return binding.weight.toFixed(2);
+  }
+
+  // Handle weight input change (allow any input including empty)
+  function handleWeightInputChange(index: number, value: string) {
+    setWeightInputs((prev) => ({ ...prev, [index]: value }));
+  }
+
+  // Handle weight input blur (validate and commit)
+  function handleWeightBlur(index: number, binding: LoraBinding) {
+    const inputValue = weightInputs[index];
+    
+    // If no local edit was made, nothing to do
+    if (inputValue === undefined) return;
+
+    const num = parseFloat(inputValue);
     if (!isNaN(num)) {
       const clamped = Math.min(2.0, Math.max(0, num));
       const rounded = Math.round(clamped * 100) / 100;
       handleUpdate(index, { weight: rounded });
     }
+    // Clear local input state (will fall back to binding value)
+    setWeightInputs((prev) => {
+      const next = { ...prev };
+      delete next[index];
+      return next;
+    });
   }
 
   return (
@@ -126,13 +159,12 @@ export function LoraBindingEditor({
                 <div className="flex items-center gap-1">
                   <span className="text-[10px] text-zinc-500">权重</span>
                   <input
-                    type="number"
-                    value={binding.weight}
-                    onChange={(e) => handleWeightChange(index, e.target.value)}
-                    step="0.05"
-                    min="0"
-                    max="2"
-                    className="input-number w-14 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-center text-xs text-zinc-200 outline-none focus:border-sky-500/30"
+                    type="text"
+                    inputMode="decimal"
+                    value={getWeightDisplay(index, binding)}
+                    onChange={(e) => handleWeightInputChange(index, e.target.value)}
+                    onBlur={() => handleWeightBlur(index, binding)}
+                    className="w-14 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-center text-xs text-zinc-200 outline-none focus:border-sky-500/30"
                   />
                 </div>
 

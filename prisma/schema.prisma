@@ -42,7 +42,8 @@ model Character {
   slug            String        @unique
   prompt          String        @db.Text
   negativePrompt  String?       @db.Text
-  loraPath        String
+  loraPath        String        // Primary LoRA path (for backward compatibility)
+  loraBindings    Json?         // Array of { path: string, weight: number, enabled: boolean }
   notes           String?       @db.Text
   isActive        Boolean       @default(true)
   createdAt       DateTime      @default(now())

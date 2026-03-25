@@ -387,6 +387,7 @@ export type CharacterInput = {
   prompt: string;
   negativePrompt?: string | null;
   loraPath: string;
+  loraBindings?: unknown[] | null;
   notes?: string | null;
   isActive?: boolean;
 };
@@ -850,7 +851,7 @@ export async function copySection(sectionId: string): Promise<string | null> {
       shortSidePx: section.shortSidePx,
       batchSize: section.batchSize,
       seedPolicy: section.seedPolicy,
-      overrideParams: section.overrideParams ?? undefined,
+      extraParams: section.extraParams ?? undefined,
     },
   });
 
