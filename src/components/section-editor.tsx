@@ -42,38 +42,23 @@ export function SectionEditor({
     loraBindings?: unknown,
   ) {
     const newEntries: LoraEntry[] = [];
+    const sourceLabels: Record<LoraSource, string> = {
+      character: `角色: ${sourceName}`,
+      scene: `场景: ${sourceName}`,
+      style: `风格: ${sourceName}`,
+      position: `Position: ${sourceName}`,
+      manual: "",
+    };
 
-    // Character 有 loraPath
-    if (sourceType === "character" && loraPath) {
-      // 检查是否已存在相同路径的 LoRA
-      const exists = loraEntries.some((e) => e.path === loraPath);
-      if (!exists) {
-        newEntries.push({
-          id: generateLoraEntryId(),
-          path: loraPath,
-          weight: 1.0,
-          enabled: true,
-          source: "character",
-          sourceLabel: `角色: ${sourceName}`,
-        });
-      }
-    }
-
-    // Scene/Style/Position 有 loraBindings
+    // 首先检查 loraBindings（所有类型都可能有）
     if (loraBindings) {
       const bindings = parseLoraBindings(loraBindings);
       for (const binding of bindings) {
         if (!binding.path) continue;
         // 检查是否已存在相同路径的 LoRA
-        const exists = loraEntries.some((e) => e.path === binding.path);
+        const exists = loraEntries.some((e) => e.path === binding.path) ||
+                       newEntries.some((e) => e.path === binding.path);
         if (!exists) {
-          const sourceLabels: Record<LoraSource, string> = {
-            character: `角色: ${sourceName}`,
-            scene: `场景: ${sourceName}`,
-            style: `风格: ${sourceName}`,
-            position: `Position: ${sourceName}`,
-            manual: "",
-          };
           newEntries.push({
             id: generateLoraEntryId(),
             path: binding.path,
@@ -83,6 +68,21 @@ export function SectionEditor({
             sourceLabel: sourceLabels[sourceType],
           });
         }
+      }
+    }
+    
+    // Character 的 loraPath 作为后备（向后兼容，如果 loraBindings 为空）
+    if (sourceType === "character" && loraPath && newEntries.length === 0) {
+      const exists = loraEntries.some((e) => e.path === loraPath);
+      if (!exists) {
+        newEntries.push({
+          id: generateLoraEntryId(),
+          path: loraPath,
+          weight: 1.0,
+          enabled: true,
+          source: "character",
+          sourceLabel: sourceLabels.character,
+        });
       }
     }
 

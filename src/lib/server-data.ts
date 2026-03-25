@@ -293,7 +293,7 @@ export async function getPromptLibrary(): Promise<PromptLibrary> {
     prisma.character.findMany({
       where: { isActive: true },
       orderBy: { name: "asc" },
-      select: { id: true, name: true, prompt: true, negativePrompt: true, loraPath: true },
+      select: { id: true, name: true, prompt: true, negativePrompt: true, loraPath: true, loraBindings: true },
     }),
     prisma.scenePreset.findMany({
       where: { isActive: true },

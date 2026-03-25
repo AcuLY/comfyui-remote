@@ -393,13 +393,27 @@ export type CharacterInput = {
 };
 
 export async function createCharacter(input: CharacterInput) {
-  await prisma.character.create({ data: input });
+  const { loraBindings, ...rest } = input;
+  await prisma.character.create({
+    data: {
+      ...rest,
+      loraBindings: toJsonValue(loraBindings) ?? Prisma.DbNull,
+    },
+  });
   revalidatePath("/settings/characters");
   revalidatePath("/jobs/new");
 }
 
 export async function updateCharacter(id: string, input: Partial<CharacterInput>) {
-  await prisma.character.update({ where: { id }, data: input });
+  const { loraBindings, ...rest } = input;
+  const loraData = toJsonValue(loraBindings);
+  await prisma.character.update({
+    where: { id },
+    data: {
+      ...rest,
+      ...(loraData !== undefined ? { loraBindings: loraData } : {}),
+    },
+  });
   revalidatePath("/settings/characters");
   revalidatePath("/jobs/new");
 }
