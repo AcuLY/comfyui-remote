@@ -414,6 +414,12 @@ export async function deleteCharacter(id: string) {
 // Scene Preset CRUD
 // ---------------------------------------------------------------------------
 
+function toJsonValue(value: unknown[] | null | undefined): Prisma.InputJsonValue | typeof Prisma.DbNull | undefined {
+  if (value === null) return Prisma.DbNull;
+  if (value === undefined) return undefined;
+  return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
+}
+
 export type ScenePresetInput = {
   name: string;
   slug: string;
@@ -425,21 +431,27 @@ export type ScenePresetInput = {
 };
 
 export async function createScenePreset(input: ScenePresetInput) {
-  const data = {
-    ...input,
-    loraBindings: input.loraBindings ?? Prisma.DbNull,
-  };
-  await prisma.scenePreset.create({ data });
+  const { loraBindings, ...rest } = input;
+  await prisma.scenePreset.create({
+    data: {
+      ...rest,
+      loraBindings: toJsonValue(loraBindings) ?? Prisma.DbNull,
+    },
+  });
   revalidatePath("/settings/scenes");
   revalidatePath("/jobs/new");
 }
 
 export async function updateScenePreset(id: string, input: Partial<ScenePresetInput>) {
-  const data = {
-    ...input,
-    loraBindings: input.loraBindings === null ? Prisma.DbNull : input.loraBindings,
-  };
-  await prisma.scenePreset.update({ where: { id }, data });
+  const { loraBindings, ...rest } = input;
+  const loraData = toJsonValue(loraBindings);
+  await prisma.scenePreset.update({
+    where: { id },
+    data: {
+      ...rest,
+      ...(loraData !== undefined ? { loraBindings: loraData } : {}),
+    },
+  });
   revalidatePath("/settings/scenes");
   revalidatePath("/jobs/new");
 }
@@ -465,21 +477,27 @@ export type StylePresetInput = {
 };
 
 export async function createStylePreset(input: StylePresetInput) {
-  const data = {
-    ...input,
-    loraBindings: input.loraBindings ?? Prisma.DbNull,
-  };
-  await prisma.stylePreset.create({ data });
+  const { loraBindings, ...rest } = input;
+  await prisma.stylePreset.create({
+    data: {
+      ...rest,
+      loraBindings: toJsonValue(loraBindings) ?? Prisma.DbNull,
+    },
+  });
   revalidatePath("/settings/styles");
   revalidatePath("/jobs/new");
 }
 
 export async function updateStylePreset(id: string, input: Partial<StylePresetInput>) {
-  const data = {
-    ...input,
-    loraBindings: input.loraBindings === null ? Prisma.DbNull : input.loraBindings,
-  };
-  await prisma.stylePreset.update({ where: { id }, data });
+  const { loraBindings, ...rest } = input;
+  const loraData = toJsonValue(loraBindings);
+  await prisma.stylePreset.update({
+    where: { id },
+    data: {
+      ...rest,
+      ...(loraData !== undefined ? { loraBindings: loraData } : {}),
+    },
+  });
   revalidatePath("/settings/styles");
   revalidatePath("/jobs/new");
 }
@@ -537,7 +555,7 @@ export async function createPositionTemplate(input: PositionTemplateInput) {
   await prisma.positionTemplate.create({
     data: {
       ...rest,
-      loraBindings: loraBindings ?? Prisma.DbNull,
+      loraBindings: toJsonValue(loraBindings) ?? Prisma.DbNull,
       ...(defaultParams !== undefined ? { defaultParams } : {}),
     },
   });
@@ -552,11 +570,12 @@ export async function updatePositionTemplate(id: string, input: Partial<Position
     select: { defaultParams: true },
   });
   const defaultParams = toInputJson(buildDefaultParams(workflowTemplateId, existingTemplate?.defaultParams));
+  const loraData = toJsonValue(loraBindings);
   await prisma.positionTemplate.update({
     where: { id },
     data: {
       ...rest,
-      loraBindings: loraBindings === null ? Prisma.DbNull : loraBindings,
+      ...(loraData !== undefined ? { loraBindings: loraData } : {}),
       ...(defaultParams !== undefined ? { defaultParams } : {}),
     },
   });
