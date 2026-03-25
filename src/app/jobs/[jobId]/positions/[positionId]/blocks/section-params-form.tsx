@@ -1,10 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { useActionState } from "react";
 import { Save, Loader2 } from "lucide-react";
 import { saveJobPositionEditAction } from "@/app/jobs/actions";
 import { initialJobSaveState } from "@/app/jobs/action-types";
 import { AspectRatioPicker } from "@/components/aspect-ratio-picker";
+import { BatchSizeQuickFill } from "@/components/batch-size-quick-fill";
 
 type SectionParamsFormProps = {
   jobId: string;
@@ -53,18 +55,25 @@ export function SectionParamsForm({ jobId, positionId, initialParams }: SectionP
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <label className="space-y-1.5">
+            <div className="space-y-1.5">
               <div className="text-[11px] text-zinc-500">Batch Size</div>
               <input
                 name="batchSize"
                 type="number"
                 min={1}
                 disabled={pending}
-                defaultValue={initialParams.batchSize ?? ""}
+                value={batchSize}
+                onChange={(e) => setBatchSize(e.target.value)}
                 placeholder="默认"
                 className="input-number w-full rounded-xl border border-white/10 bg-white/[0.04] px-2.5 py-2 text-xs text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30 disabled:opacity-70"
               />
-            </label>
+              <BatchSizeQuickFill
+                onSelect={(val) => setBatchSize(String(val))}
+                currentValue={batchSize ? parseInt(batchSize, 10) : null}
+                disabled={pending}
+                size="sm"
+              />
+            </div>
             <label className="space-y-1.5">
               <div className="text-[11px] text-zinc-500">Seed 策略</div>
               <select

@@ -19,6 +19,7 @@ type JobPositionEditFormProps = {
 
 export function JobPositionEditForm({ jobId, position, positivePrompt }: JobPositionEditFormProps) {
   const [state, formAction, pending] = useActionState(saveJobPositionEditAction, initialJobSaveState);
+  const [batchSize, setBatchSize] = useState<string>(position.batchSize?.toString() ?? "");
 
   const feedbackClassName =
     state.status === "error"
@@ -90,8 +91,14 @@ export function JobPositionEditForm({ jobId, position, positivePrompt }: JobPosi
               type="number"
               min={1}
               disabled={pending}
-              defaultValue={position.batchSize ?? ""}
+              value={batchSize}
+              onChange={(e) => setBatchSize(e.target.value)}
               className="input-number w-full rounded-2xl border border-white/10 bg-black/20 px-3 py-3 text-white outline-none disabled:opacity-70"
+            />
+            <BatchSizeQuickFill
+              onSelect={(val) => setBatchSize(String(val))}
+              currentValue={batchSize ? parseInt(batchSize, 10) : null}
+              disabled={pending}
             />
           </label>
           <label className="col-span-2 space-y-2">
