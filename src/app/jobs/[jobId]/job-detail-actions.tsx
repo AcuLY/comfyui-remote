@@ -37,6 +37,8 @@ export function JobDetailActions({ jobId }: { jobId: string }) {
           onSelect={(val) => setBatchSize(String(val))}
           currentValue={parsedBatchSize}
           disabled={isPending}
+          showClear
+          onClear={() => setBatchSize("")}
         />
       </div>
       <button
