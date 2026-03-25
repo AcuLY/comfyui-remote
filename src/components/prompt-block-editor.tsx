@@ -311,24 +311,68 @@ function BlockColumn({
 }
 
 // ---------------------------------------------------------------------------
-// AddBlockForm (simplified)
+// AddBlockForm (支持自定义输入和从词库导入)
 // ---------------------------------------------------------------------------
+
+type LibraryItem = {
+  id: string;
+  name: string;
+  prompt: string;
+  negativePrompt: string | null;
+};
+
+type PromptLibrary = {
+  characters: LibraryItem[];
+  scenes: LibraryItem[];
+  styles: LibraryItem[];
+  positions: LibraryItem[];
+};
+
+type AddBlockFormProps = {
+  polarity: "positive" | "negative";
+  onAdd: (input: { type: string; label: string; positive: string; negative?: string | null; sourceId?: string }) => void;
+  onCancel: () => void;
+  isPending: boolean;
+  library?: PromptLibrary;
+};
+
+type AddMode = "custom" | "library";
+type LibraryCategory = "character" | "scene" | "style" | "position";
+
+const LIBRARY_CATEGORIES: { key: LibraryCategory; label: string; type: string }[] = [
+  { key: "character", label: "角色", type: "character" },
+  { key: "scene", label: "场景", type: "scene" },
+  { key: "style", label: "风格", type: "style" },
+  { key: "position", label: "Position", type: "position" },
+];
 
 function AddBlockForm({
   polarity,
   onAdd,
   onCancel,
   isPending,
-}: {
-  polarity: "positive" | "negative";
-  onAdd: (input: { type: string; label: string; positive: string; negative?: string | null }) => void;
-  onCancel: () => void;
-  isPending: boolean;
-}) {
+  library,
+}: AddBlockFormProps) {
+  const [mode, setMode] = useState<AddMode>("custom");
   const [positive, setPositive] = useState("");
   const [negative, setNegative] = useState("");
+  const [category, setCategory] = useState<LibraryCategory>("character");
+  const [selectedId, setSelectedId] = useState<string>("");
 
-  function handleSubmit() {
+  // 获取当前分类的词库列表
+  const libraryItems: LibraryItem[] = library
+    ? (category === "character" ? library.characters :
+       category === "scene" ? library.scenes :
+       category === "style" ? library.styles :
+       library.positions)
+    : [];
+
+  // 当切换分类时重置选择
+  useEffect(() => {
+    setSelectedId("");
+  }, [category]);
+
+  function handleSubmitCustom() {
     const text = polarity === "positive" ? positive : negative;
     if (!text.trim()) return;
     const label = text.trim().slice(0, 20);
@@ -340,32 +384,156 @@ function AddBlockForm({
     });
   }
 
+  function handleSubmitLibrary() {
+    if (!selectedId) return;
+    const item = libraryItems.find((i) => i.id === selectedId);
+    if (!item) return;
+
+    const categoryConfig = LIBRARY_CATEGORIES.find((c) => c.key === category);
+    onAdd({
+      type: categoryConfig?.type ?? "custom",
+      label: item.name,
+      positive: item.prompt,
+      negative: item.negativePrompt,
+      sourceId: item.id,
+    });
+  }
+
+  const hasLibrary = library && (
+    library.characters.length > 0 ||
+    library.scenes.length > 0 ||
+    library.styles.length > 0 ||
+    library.positions.length > 0
+  );
+
   return (
-    <div className="rounded-xl border border-sky-500/20 bg-sky-500/[0.03] p-3 space-y-2">
-      <div className="text-[11px] font-medium text-sky-300">
-        添加{polarity === "positive" ? "正面" : "负面"}提示词块
+    <div className="rounded-xl border border-sky-500/20 bg-sky-500/[0.03] p-3 space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="text-[11px] font-medium text-sky-300">
+          添加{polarity === "positive" ? "正面" : "负面"}提示词块
+        </div>
+        {hasLibrary && (
+          <div className="flex gap-1">
+            <button
+              type="button"
+              onClick={() => setMode("custom")}
+              className={`rounded-lg px-2 py-1 text-[10px] transition ${
+                mode === "custom"
+                  ? "bg-sky-500/20 text-sky-300"
+                  : "text-zinc-500 hover:text-zinc-300"
+              }`}
+            >
+              自定义
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("library")}
+              className={`rounded-lg px-2 py-1 text-[10px] transition ${
+                mode === "library"
+                  ? "bg-sky-500/20 text-sky-300"
+                  : "text-zinc-500 hover:text-zinc-300"
+              }`}
+            >
+              从词库导入
+            </button>
+          </div>
+        )}
       </div>
-      <textarea
-        value={polarity === "positive" ? positive : negative}
-        onChange={(e) => polarity === "positive" ? setPositive(e.target.value) : setNegative(e.target.value)}
-        rows={2}
-        placeholder="提示词内容…"
-        className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30"
-      />
-      <div className="flex gap-1.5">
-        <button
-          type="button"
-          disabled={isPending || !(polarity === "positive" ? positive : negative).trim()}
-          onClick={handleSubmit}
-          className="inline-flex items-center gap-1 rounded-lg bg-sky-500/20 px-2 py-1 text-[11px] text-sky-300 hover:bg-sky-500/30 disabled:opacity-50"
-        >
-          {isPending ? <Loader2 className="size-3 animate-spin" /> : <Plus className="size-3" />}
-          添加
-        </button>
-        <button type="button" onClick={onCancel} className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-2 py-1 text-[11px] text-zinc-400 hover:bg-white/[0.06]">
-          <X className="size-3" /> 取消
-        </button>
-      </div>
+
+      {mode === "custom" ? (
+        <>
+          <textarea
+            value={polarity === "positive" ? positive : negative}
+            onChange={(e) => polarity === "positive" ? setPositive(e.target.value) : setNegative(e.target.value)}
+            rows={2}
+            placeholder="提示词内容…"
+            className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30"
+          />
+          <div className="flex gap-1.5">
+            <button
+              type="button"
+              disabled={isPending || !(polarity === "positive" ? positive : negative).trim()}
+              onClick={handleSubmitCustom}
+              className="inline-flex items-center gap-1 rounded-lg bg-sky-500/20 px-2 py-1 text-[11px] text-sky-300 hover:bg-sky-500/30 disabled:opacity-50"
+            >
+              {isPending ? <Loader2 className="size-3 animate-spin" /> : <Plus className="size-3" />}
+              添加
+            </button>
+            <button type="button" onClick={onCancel} className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-2 py-1 text-[11px] text-zinc-400 hover:bg-white/[0.06]">
+              <X className="size-3" /> 取消
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          {/* 分类选择 */}
+          <div className="flex flex-wrap gap-1.5">
+            {LIBRARY_CATEGORIES.map((cat) => {
+              const items = library
+                ? (cat.key === "character" ? library.characters :
+                   cat.key === "scene" ? library.scenes :
+                   cat.key === "style" ? library.styles :
+                   library.positions)
+                : [];
+              if (items.length === 0) return null;
+              return (
+                <button
+                  key={cat.key}
+                  type="button"
+                  onClick={() => setCategory(cat.key)}
+                  className={`rounded-lg px-2 py-1 text-[10px] transition ${
+                    category === cat.key
+                      ? "bg-white/10 text-white"
+                      : "text-zinc-500 hover:text-zinc-300"
+                  }`}
+                >
+                  {cat.label} ({items.length})
+                </button>
+              );
+            })}
+          </div>
+
+          {/* 词库列表 */}
+          <div className="max-h-40 overflow-y-auto space-y-1">
+            {libraryItems.length === 0 ? (
+              <div className="text-center text-[11px] text-zinc-600 py-2">该分类暂无词库</div>
+            ) : (
+              libraryItems.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setSelectedId(item.id)}
+                  className={`w-full rounded-lg border p-2 text-left transition ${
+                    selectedId === item.id
+                      ? "border-sky-500/30 bg-sky-500/10"
+                      : "border-white/5 bg-white/[0.02] hover:border-white/10"
+                  }`}
+                >
+                  <div className="text-[11px] font-medium text-zinc-200">{item.name}</div>
+                  <div className="mt-0.5 text-[10px] text-zinc-500 truncate">
+                    {item.prompt.slice(0, 50)}{item.prompt.length > 50 ? "..." : ""}
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+
+          <div className="flex gap-1.5">
+            <button
+              type="button"
+              disabled={isPending || !selectedId}
+              onClick={handleSubmitLibrary}
+              className="inline-flex items-center gap-1 rounded-lg bg-sky-500/20 px-2 py-1 text-[11px] text-sky-300 hover:bg-sky-500/30 disabled:opacity-50"
+            >
+              {isPending ? <Loader2 className="size-3 animate-spin" /> : <Plus className="size-3" />}
+              导入
+            </button>
+            <button type="button" onClick={onCancel} className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-2 py-1 text-[11px] text-zinc-400 hover:bg-white/[0.06]">
+              <X className="size-3" /> 取消
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -377,9 +545,11 @@ function AddBlockForm({
 export function PromptBlockEditor({
   positionId,
   initialBlocks,
+  library,
 }: {
   positionId: string;
   initialBlocks: PromptBlockData[];
+  library?: PromptLibrary;
 }) {
   const [blocks, setBlocks] = useState<PromptBlockData[]>(initialBlocks);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -523,6 +693,7 @@ export function PromptBlockEditor({
           onAdd={handleAdd}
           onCancel={() => setAddingColumn(null)}
           isPending={isPending}
+          library={library}
         />
       )}
     </div>

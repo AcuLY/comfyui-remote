@@ -267,6 +267,51 @@ export async function getLoraAssets(): Promise<LoraAsset[]> {
 }
 
 // ---------------------------------------------------------------------------
+// Prompt Library — 词库（用于添加提示词块时选择）
+// ---------------------------------------------------------------------------
+
+export type PromptLibraryItem = {
+  id: string;
+  name: string;
+  prompt: string;
+  negativePrompt: string | null;
+};
+
+export type PromptLibrary = {
+  characters: PromptLibraryItem[];
+  scenes: PromptLibraryItem[];
+  styles: PromptLibraryItem[];
+  positions: PromptLibraryItem[];
+};
+
+export async function getPromptLibrary(): Promise<PromptLibrary> {
+  const [characters, scenes, styles, positions] = await Promise.all([
+    prisma.character.findMany({
+      where: { isActive: true },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, prompt: true, negativePrompt: true },
+    }),
+    prisma.scenePreset.findMany({
+      where: { isActive: true },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, prompt: true, negativePrompt: true },
+    }),
+    prisma.stylePreset.findMany({
+      where: { isActive: true },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, prompt: true, negativePrompt: true },
+    }),
+    prisma.positionTemplate.findMany({
+      where: { enabled: true },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, prompt: true, negativePrompt: true },
+    }),
+  ]);
+
+  return { characters, scenes, styles, positions };
+}
+
+// ---------------------------------------------------------------------------
 // Job Form Options — 创建/编辑 Job 所需的下拉选项
 // ---------------------------------------------------------------------------
 

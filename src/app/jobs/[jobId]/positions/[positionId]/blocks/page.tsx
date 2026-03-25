@@ -6,6 +6,7 @@ import { SectionCard } from "@/components/section-card";
 import { PromptBlockEditor } from "@/components/prompt-block-editor";
 import { SectionParamsForm } from "./section-params-form";
 import type { PromptBlockData } from "@/lib/actions";
+import { getPromptLibrary } from "@/lib/server-data";
 
 export default async function SectionEditPage({
   params,
@@ -14,32 +15,35 @@ export default async function SectionEditPage({
 }) {
   const { jobId, positionId } = await params;
 
-  const pos = await prisma.completeJobPosition.findUnique({
-    where: { id: positionId },
-    include: {
-      positionTemplate: true,
-      completeJob: true,
-      promptBlocks: {
-        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-        select: {
-          id: true,
-          type: true,
-          sourceId: true,
-          label: true,
-          positive: true,
-          negative: true,
-          sortOrder: true,
+  const [pos, library] = await Promise.all([
+    prisma.completeJobPosition.findUnique({
+      where: { id: positionId },
+      include: {
+        positionTemplate: true,
+        completeJob: true,
+        promptBlocks: {
+          orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+          select: {
+            id: true,
+            type: true,
+            sourceId: true,
+            label: true,
+            positive: true,
+            negative: true,
+            sortOrder: true,
+          },
         },
       },
-    },
-  });
+    }),
+    getPromptLibrary(),
+  ]);
 
   if (!pos || pos.completeJobId !== jobId) {
     notFound();
   }
 
   const sectionName =
-    pos.positivePrompt || pos.positionTemplate?.name || `小节 ${pos.sortOrder}`;
+    pos.name || pos.positionTemplate?.name || `小节 ${pos.sortOrder}`;
 
   const initialBlocks: PromptBlockData[] = pos.promptBlocks.map((b) => ({
     id: b.id,
@@ -85,7 +89,7 @@ export default async function SectionEditPage({
           />
           <div className="border-t border-white/5 pt-4">
             <div className="mb-3 text-xs font-medium text-zinc-400">提示词块</div>
-            <PromptBlockEditor positionId={positionId} initialBlocks={initialBlocks} />
+            <PromptBlockEditor positionId={positionId} initialBlocks={initialBlocks} library={library} />
           </div>
         </div>
       </SectionCard>
