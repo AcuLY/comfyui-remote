@@ -246,24 +246,11 @@ export async function createJobAction(_prevState: JobCreateState, formData: Form
     };
   }
 
-  const positionTemplateIds = formData
-    .getAll("positionTemplateIds")
-    .map((value) => String(value).trim())
-    .filter(Boolean);
-
-  if (positionTemplateIds.length < 1) {
-    return {
-      status: "error",
-      message: "Pick at least one position template.",
-    };
-  }
-
   const payload = {
     title,
     characterId,
     scenePresetId: getNullableString(formData, "scenePresetId"),
     stylePresetId: getNullableString(formData, "stylePresetId"),
-    positionTemplateIds,
     notes: getNullableString(formData, "notes"),
   };
   let createdJobId: string | undefined;

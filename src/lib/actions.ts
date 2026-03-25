@@ -244,14 +244,6 @@ export type CreateJobInput = {
   scenePrompt: string | null;
   stylePrompt: string | null;
   notes: string | null;
-  positions: {
-    positionTemplateId: string;
-    sortOrder: number;
-    enabled: boolean;
-    aspectRatio: string | null;
-    batchSize: number | null;
-    seedPolicy: string | null;
-  }[];
 };
 
 export async function createJob(input: CreateJobInput): Promise<string> {
@@ -280,16 +272,6 @@ export async function createJob(input: CreateJobInput): Promise<string> {
       scenePrompt: input.scenePrompt,
       stylePrompt: input.stylePrompt,
       notes: input.notes,
-      positions: {
-        create: input.positions.map((pos) => ({
-          positionTemplateId: pos.positionTemplateId,
-          sortOrder: pos.sortOrder,
-          enabled: pos.enabled,
-          aspectRatio: pos.aspectRatio,
-          batchSize: pos.batchSize,
-          seedPolicy: pos.seedPolicy,
-        })),
-      },
     },
   });
 

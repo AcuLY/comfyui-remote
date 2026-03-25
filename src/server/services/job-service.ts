@@ -191,9 +191,17 @@ function normalizeNullableNotesField(value: unknown, fieldName: string) {
   return normalizedValue ? normalizedValue : null;
 }
 
-function normalizePositionTemplateIds(value: unknown) {
-  if (!Array.isArray(value) || value.length === 0) {
-    throw new JobServiceError("positionTemplateIds must be a non-empty array", 400);
+function normalizePositionTemplateIds(value: unknown): string[] | undefined {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+
+  if (!Array.isArray(value)) {
+    throw new JobServiceError("positionTemplateIds must be an array", 400);
+  }
+
+  if (value.length === 0) {
+    return undefined;
   }
 
   const normalizedIds = value.map((entry, index) => {

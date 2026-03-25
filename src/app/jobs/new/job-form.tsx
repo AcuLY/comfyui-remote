@@ -2,21 +2,19 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check, ChevronDown, Loader2, Plus } from "lucide-react";
+import { ChevronDown, Loader2, Plus } from "lucide-react";
 import { createJob, type CreateJobInput } from "@/lib/actions";
 
 type Character = { id: string; name: string; slug: string; prompt: string; loraPath: string };
 type SceneStyle = { id: string; name: string; slug: string; prompt: string };
-type Position = { id: string; name: string; slug: string; defaultAspectRatio: string | null; defaultBatchSize: number | null; defaultSeedPolicy: string | null };
 
 type Props = {
   characters: Character[];
   scenes: SceneStyle[];
   styles: SceneStyle[];
-  positions: Position[];
 };
 
-export function JobForm({ characters, scenes, styles, positions }: Props) {
+export function JobForm({ characters, scenes, styles }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -25,22 +23,10 @@ export function JobForm({ characters, scenes, styles, positions }: Props) {
   const [sceneId, setSceneId] = useState("");
   const [styleId, setStyleId] = useState("");
   const [notes, setNotes] = useState("");
-  const [enabledPositions, setEnabledPositions] = useState<Set<string>>(
-    new Set(positions.map((p) => p.id))
-  );
 
   const selectedChar = characters.find((c) => c.id === characterId);
   const selectedScene = scenes.find((s) => s.id === sceneId);
   const selectedStyle = styles.find((s) => s.id === styleId);
-
-  function togglePosition(id: string) {
-    setEnabledPositions((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
 
   function handleSubmit() {
     if (!title.trim() || !characterId) return;
@@ -55,16 +41,6 @@ export function JobForm({ characters, scenes, styles, positions }: Props) {
       scenePrompt: selectedScene?.prompt ?? null,
       stylePrompt: selectedStyle?.prompt ?? null,
       notes: notes.trim() || null,
-      positions: positions
-        .filter((p) => enabledPositions.has(p.id))
-        .map((p, i) => ({
-          positionTemplateId: p.id,
-          sortOrder: i,
-          enabled: true,
-          aspectRatio: p.defaultAspectRatio,
-          batchSize: p.defaultBatchSize,
-          seedPolicy: p.defaultSeedPolicy,
-        })),
     };
 
     startTransition(async () => {
@@ -146,42 +122,6 @@ export function JobForm({ characters, scenes, styles, positions }: Props) {
         </div>
       </div>
 
-      {/* Position 多选 */}
-      <div className="space-y-2">
-        <label className="text-xs text-zinc-400">启用的 Position</label>
-        <div className="space-y-2">
-          {positions.map((pos) => {
-            const enabled = enabledPositions.has(pos.id);
-            return (
-              <button
-                key={pos.id}
-                type="button"
-                onClick={() => togglePosition(pos.id)}
-                className={`flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left text-sm transition ${
-                  enabled
-                    ? "border-sky-500/30 bg-sky-500/10 text-white"
-                    : "border-white/10 bg-white/[0.03] text-zinc-500"
-                }`}
-              >
-                <div
-                  className={`flex size-5 items-center justify-center rounded-md border ${
-                    enabled ? "border-sky-400 bg-sky-500/30" : "border-white/20 bg-white/5"
-                  }`}
-                >
-                  {enabled && <Check className="size-3 text-sky-300" />}
-                </div>
-                <div className="flex-1">
-                  <div className="font-medium">{pos.name}</div>
-                  <div className="mt-0.5 text-xs text-zinc-500">
-                    {pos.defaultAspectRatio ?? "—"} · batch {pos.defaultBatchSize ?? "—"} · {pos.defaultSeedPolicy ?? "—"}
-                  </div>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
       {/* 备注 */}
       <div className="space-y-2">
         <label className="text-xs text-zinc-400">备注（可选）</label>
@@ -194,11 +134,13 @@ export function JobForm({ characters, scenes, styles, positions }: Props) {
         />
       </div>
 
+      <p className="text-xs text-zinc-500">创建后可在任务详情页添加小节（Section）来设置画面参数和提示词。</p>
+
       {/* 提交 */}
       <button
         type="button"
         onClick={handleSubmit}
-        disabled={isPending || !title.trim() || !characterId || enabledPositions.size === 0}
+        disabled={isPending || !title.trim() || !characterId}
         className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-sky-500/20 bg-sky-500/10 px-4 py-3 text-sm font-medium text-sky-300 transition hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-40"
       >
         {isPending ? (

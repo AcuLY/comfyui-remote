@@ -13,7 +13,6 @@ const feedbackClassNames = {
 
 export function JobCreateForm({ options }: { options: JobCreateOptions }) {
   const [state, formAction, pending] = useActionState(createJobAction, initialJobCreateState);
-  const enabledPositionTemplates = options.positionTemplates.filter((template) => template.enabled);
 
   return (
     <form action={formAction} aria-busy={pending} className="space-y-4">
@@ -69,24 +68,7 @@ export function JobCreateForm({ options }: { options: JobCreateOptions }) {
         </label>
       </div>
 
-      <fieldset className="space-y-2">
-        <legend className="text-xs text-zinc-400">Position templates（至少选一个）</legend>
-        <div className="grid gap-2 md:grid-cols-2">
-          {enabledPositionTemplates.map((template, index) => (
-            <label key={template.id} className="flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-zinc-200">
-              <input
-                type="checkbox"
-                name="positionTemplateIds"
-                value={template.id}
-                defaultChecked={index === 0}
-                className="size-4"
-              />
-              <span>{template.name}</span>
-              <span className="text-[11px] text-zinc-500">{template.slug}</span>
-            </label>
-          ))}
-        </div>
-      </fieldset>
+      <p className="text-xs text-zinc-500">创建后可在任务详情页添加小节（Section）来设置画面参数和提示词。</p>
 
       <div className="space-y-2">
         <p aria-live="polite" className={`rounded-2xl border px-3 py-2 text-xs leading-5 ${feedbackClassNames[state.status]}`}>

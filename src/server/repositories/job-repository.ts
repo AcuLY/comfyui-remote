@@ -17,7 +17,7 @@ export type JobCreateInput = {
   characterId: string;
   scenePresetId: string | null;
   stylePresetId: string | null;
-  positionTemplateIds: string[];
+  positionTemplateIds?: string[];
   notes: string | null;
 };
 
@@ -1033,7 +1033,7 @@ export async function getJobPositionDetail(jobId: string, jobPositionId: string)
 
 export async function createJob(input: JobCreateInput) {
   const jobId = await db.$transaction(async (tx: Prisma.TransactionClient) => {
-    const [character, scenePreset, stylePreset, positionTemplates] = await Promise.all([
+    const [character, scenePreset, stylePreset] = await Promise.all([
       tx.character.findUnique({
         where: { id: input.characterId },
         select: {
@@ -1066,18 +1066,6 @@ export async function createJob(input: JobCreateInput) {
             },
           })
         : Promise.resolve(null),
-      tx.positionTemplate.findMany({
-        where: {
-          id: { in: input.positionTemplateIds },
-        },
-        select: {
-          id: true,
-          name: true,
-          enabled: true,
-          prompt: true,
-          negativePrompt: true,
-        },
-      }),
     ]);
 
     if (!character) {
@@ -1092,22 +1080,42 @@ export async function createJob(input: JobCreateInput) {
       throw new Error("STYLE_PRESET_NOT_FOUND");
     }
 
-    const positionTemplateById = new Map(
-      positionTemplates.map((positionTemplate): [string, typeof positionTemplate] => [
-        positionTemplate.id,
-        positionTemplate,
-      ]),
-    );
-    const orderedPositionTemplates = input.positionTemplateIds.map((positionTemplateId) =>
-      positionTemplateById.get(positionTemplateId),
-    );
+    // Optionally resolve position templates
+    const positionTemplateIds = input.positionTemplateIds ?? [];
+    let orderedPositionTemplates: Array<{
+      id: string;
+      name: string;
+      enabled: boolean;
+      prompt: string;
+      negativePrompt: string | null;
+    }> = [];
 
-    if (orderedPositionTemplates.some((positionTemplate) => !positionTemplate)) {
-      throw new Error("POSITION_TEMPLATE_NOT_FOUND");
-    }
+    if (positionTemplateIds.length > 0) {
+      const positionTemplates = await tx.positionTemplate.findMany({
+        where: { id: { in: positionTemplateIds } },
+        select: {
+          id: true,
+          name: true,
+          enabled: true,
+          prompt: true,
+          negativePrompt: true,
+        },
+      });
 
-    if (orderedPositionTemplates.some((positionTemplate) => !positionTemplate?.enabled)) {
-      throw new Error("POSITION_TEMPLATE_DISABLED");
+      const positionTemplateById = new Map(
+        positionTemplates.map((pt): [string, typeof pt] => [pt.id, pt]),
+      );
+      orderedPositionTemplates = positionTemplateIds
+        .map((id) => positionTemplateById.get(id))
+        .filter((pt): pt is NonNullable<typeof pt> => !!pt);
+
+      if (orderedPositionTemplates.length !== positionTemplateIds.length) {
+        throw new Error("POSITION_TEMPLATE_NOT_FOUND");
+      }
+
+      if (orderedPositionTemplates.some((pt) => !pt.enabled)) {
+        throw new Error("POSITION_TEMPLATE_DISABLED");
+      }
     }
 
     const slug = await resolveUniqueJobSlug(tx, input.title);
@@ -1124,13 +1132,17 @@ export async function createJob(input: JobCreateInput) {
         scenePrompt: scenePreset?.prompt ?? null,
         stylePrompt: stylePreset?.prompt ?? null,
         notes: input.notes,
-        positions: {
-          create: orderedPositionTemplates.map((positionTemplate, index) => ({
-            positionTemplateId: positionTemplate!.id,
-            sortOrder: index + 1,
-            enabled: true,
-          })),
-        },
+        ...(orderedPositionTemplates.length > 0
+          ? {
+              positions: {
+                create: orderedPositionTemplates.map((pt, index) => ({
+                  positionTemplateId: pt.id,
+                  sortOrder: index + 1,
+                  enabled: true,
+                })),
+              },
+            }
+          : {}),
       },
       select: {
         id: true,
@@ -1141,10 +1153,10 @@ export async function createJob(input: JobCreateInput) {
       },
     });
 
-    // Generate initial PromptBlocks for each position
+    // Generate initial PromptBlocks for each position (if any)
     for (let i = 0; i < createdJob.positions.length; i++) {
       const positionId = createdJob.positions[i].id;
-      const pt = orderedPositionTemplates[i]!;
+      const pt = orderedPositionTemplates[i];
       let sortOrder = 0;
 
       // Character block
@@ -1191,17 +1203,19 @@ export async function createJob(input: JobCreateInput) {
       }
 
       // Position block
-      await tx.promptBlock.create({
-        data: {
-          completeJobPositionId: positionId,
-          type: "position",
-          sourceId: pt.id,
-          label: pt.name,
-          positive: pt.prompt,
-          negative: pt.negativePrompt,
-          sortOrder: sortOrder++,
-        },
-      });
+      if (pt) {
+        await tx.promptBlock.create({
+          data: {
+            completeJobPositionId: positionId,
+            type: "position",
+            sourceId: pt.id,
+            label: pt.name,
+            positive: pt.prompt,
+            negative: pt.negativePrompt,
+            sortOrder: sortOrder++,
+          },
+        });
+      }
     }
 
     return createdJob.id;
