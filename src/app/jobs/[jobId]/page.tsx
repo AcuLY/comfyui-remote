@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { ArrowLeft, Layers, Pencil, SlidersHorizontal } from "lucide-react";
+import { ArrowLeft, SlidersHorizontal } from "lucide-react";
 import { notFound } from "next/navigation";
 import { SectionCard } from "@/components/section-card";
 import { getJobDetail, getJobRevisions } from "@/lib/server-data";
-import { JobDetailActions, PositionRunButton } from "./job-detail-actions";
-import { AddSectionButton, DeleteSectionButton } from "./section-actions";
+import { JobDetailActions } from "./job-detail-actions";
+import { AddSectionButton } from "./section-actions";
 import { RevisionHistory } from "./revision-history";
+import { SectionList } from "./section-list";
 
 export const dynamic = "force-dynamic";
 
@@ -40,44 +41,14 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
         </div>
       </SectionCard>
 
-      <SectionCard title="小节列表" subtitle="每个小节对应一次完整生图的参数集合，可独立运行。">
+      <SectionCard title="小节列表" subtitle="拖动排序、点击名称重命名。每个小节对应一次完整生图的参数集合，可独立运行。">
         <div className="space-y-3">
           {job.positions.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-white/10 p-6 text-center text-sm text-zinc-500">
               暂无小节，点击下方按钮添加
             </div>
           ) : (
-            job.positions.map((section) => (
-              <div key={section.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <div className="text-sm font-semibold text-white">{section.name}</div>
-                      {section.promptBlockCount > 0 && (
-                        <span className="inline-flex items-center gap-1 rounded-full border border-white/10 px-2 py-0.5 text-[10px] text-zinc-400">
-                          <Layers className="size-3" />
-                          正 {section.positiveBlockCount} · 负 {section.negativeBlockCount}
-                        </span>
-                      )}
-                    </div>
-                    <div className="mt-1 text-xs text-zinc-400">
-                      batch {section.batchSize ?? "—"} · {section.aspectRatio ?? "—"} · seed {section.seedPolicy ?? "—"} · {section.latestRunStatus ?? "未运行"}
-                    </div>
-                  </div>
-                  <PositionRunButton positionId={section.id} defaultBatchSize={section.batchSize} />
-                </div>
-                <div className="mt-3 flex items-center gap-2">
-                  <Link
-                    href={`/jobs/${jobId}/positions/${section.id}/blocks`}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-zinc-300 transition hover:bg-white/[0.08]"
-                  >
-                    <Pencil className="size-3.5" />
-                    编辑小节
-                  </Link>
-                  <DeleteSectionButton sectionId={section.id} sectionName={section.name} />
-                </div>
-              </div>
-            ))
+            <SectionList jobId={job.id} sections={job.positions} />
           )}
           <AddSectionButton jobId={job.id} />
         </div>

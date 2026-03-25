@@ -199,7 +199,7 @@ export async function getJobDetail(jobId: string): Promise<JobDetail | null> {
       const negativeBlockCount = pos.promptBlocks.filter((b) => b.negative?.trim()).length;
       return {
         id: pos.id,
-        name: pos.positivePrompt || pos.positionTemplate?.name || `小节 ${pos.sortOrder}`,
+        name: pos.name || pos.positionTemplate?.name || `小节 ${pos.sortOrder}`,
         batchSize: pos.batchSize ?? pos.positionTemplate?.defaultBatchSize ?? null,
         aspectRatio: pos.aspectRatio ?? pos.positionTemplate?.defaultAspectRatio ?? null,
         seedPolicy: pos.seedPolicy ?? pos.positionTemplate?.defaultSeedPolicy ?? null,

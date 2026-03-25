@@ -654,7 +654,7 @@ export async function addSection(jobId: string, name?: string): Promise<string> 
       completeJobId: jobId,
       sortOrder,
       enabled: true,
-      positivePrompt: name || null,
+      name: name || null,
     },
   });
 
@@ -703,6 +703,43 @@ export async function addSection(jobId: string, name?: string): Promise<string> 
 
   revalidatePath(`/jobs/${jobId}`);
   return section.id;
+}
+
+// ---------------------------------------------------------------------------
+// 重命名小节
+// ---------------------------------------------------------------------------
+
+export async function renameSection(sectionId: string, name: string): Promise<void> {
+  const section = await prisma.completeJobPosition.findUnique({
+    where: { id: sectionId },
+    select: { completeJobId: true },
+  });
+  if (!section) return;
+
+  await prisma.completeJobPosition.update({
+    where: { id: sectionId },
+    data: { name: name.trim() || null },
+  });
+
+  revalidatePath(`/jobs/${section.completeJobId}`);
+}
+
+// ---------------------------------------------------------------------------
+// 小节排序
+// ---------------------------------------------------------------------------
+
+export async function reorderSections(jobId: string, sectionIds: string[]): Promise<void> {
+  // 批量更新 sortOrder
+  await prisma.$transaction(
+    sectionIds.map((id, index) =>
+      prisma.completeJobPosition.update({
+        where: { id },
+        data: { sortOrder: index + 1 },
+      }),
+    ),
+  );
+
+  revalidatePath(`/jobs/${jobId}`);
 }
 
 // ---------------------------------------------------------------------------

@@ -99,6 +99,7 @@ model CompleteJobPosition {
   id                    String                @id @default(cuid())
   completeJobId         String
   positionTemplateId    String?
+  name                  String?
   sortOrder             Int                   @default(0)
   enabled               Boolean               @default(true)
   positivePrompt        String?
