@@ -202,20 +202,18 @@ class ComfyProcessManager {
     }
 
     try {
-      // Force UTF-8 encoding for child process to handle emoji and unicode chars
-      // This prevents UnicodeEncodeError on Windows (GBK) when custom nodes output emoji
-      const utf8Env: Record<string, string> = {
-        ...process.env as Record<string, string>,
-        PYTHONIOENCODING: "utf-8",
-        PYTHONLEGACYWINDOWSSTDIO: "0",
-        PYTHONUTF8: "1",
-      };
-
       const child = spawn(cmd, [], {
         shell: true,
         cwd,
         stdio: ["ignore", "pipe", "pipe"],
-        env: utf8Env,
+        // Force UTF-8 encoding for child process to handle emoji and unicode chars
+        // This prevents UnicodeEncodeError on Windows (GBK) when custom nodes output emoji
+        env: {
+          ...process.env,
+          PYTHONIOENCODING: "utf-8",
+          PYTHONLEGACYWINDOWSSTDIO: "0",
+          PYTHONUTF8: "1",
+        },
       });
 
       this.process = child;
