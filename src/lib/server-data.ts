@@ -376,6 +376,11 @@ export type JobEditData = {
     batchSize: number | null;
     seedPolicy: string | null;
   }[];
+  // 小节默认值
+  defaultAspectRatio: string;
+  defaultShortSidePx: number;
+  defaultBatchSize: number;
+  defaultSeedPolicy: string;
 };
 
 export async function getJobEditData(jobId: string): Promise<JobEditData | null> {
@@ -401,6 +406,14 @@ export async function getJobEditData(jobId: string): Promise<JobEditData | null>
 
   if (!job) return null;
 
+  // 解析 jobLevelOverrides
+  const overrides = (job.jobLevelOverrides ?? {}) as {
+    defaultAspectRatio?: string;
+    defaultShortSidePx?: number;
+    defaultBatchSize?: number;
+    defaultSeedPolicy?: string;
+  };
+
   return {
     id: job.id,
     title: job.title,
@@ -414,6 +427,11 @@ export async function getJobEditData(jobId: string): Promise<JobEditData | null>
     stylePrompt: job.stylePrompt,
     notes: job.notes,
     positions: job.positions,
+    // 小节默认值
+    defaultAspectRatio: overrides.defaultAspectRatio ?? "2:3",
+    defaultShortSidePx: overrides.defaultShortSidePx ?? 512,
+    defaultBatchSize: overrides.defaultBatchSize ?? 2,
+    defaultSeedPolicy: overrides.defaultSeedPolicy ?? "random",
   };
 }
 

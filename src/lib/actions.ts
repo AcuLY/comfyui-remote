@@ -304,15 +304,25 @@ export type UpdateJobInput = {
     batchSize?: number | null;
     seedPolicy?: string | null;
   }[];
+  // 小节默认值覆盖
+  jobLevelOverrides?: {
+    defaultAspectRatio?: string;
+    defaultShortSidePx?: number;
+    defaultBatchSize?: number;
+    defaultSeedPolicy?: string;
+  };
 };
 
 export async function updateJob(input: UpdateJobInput) {
-  const { jobId, positions, ...jobData } = input;
+  const { jobId, positions, jobLevelOverrides, ...jobData } = input;
 
-  // 更新 job 基础字段
+  // 更新 job 基础字段（包括 jobLevelOverrides）
   await prisma.completeJob.update({
     where: { id: jobId },
-    data: jobData,
+    data: {
+      ...jobData,
+      ...(jobLevelOverrides !== undefined ? { jobLevelOverrides } : {}),
+    },
   });
 
   // 如果传了 positions，删除旧的并重建
@@ -631,6 +641,8 @@ export async function addSection(jobId: string, name?: string): Promise<string> 
       characterPrompt: true,
       scenePrompt: true,
       stylePrompt: true,
+      // 读取大任务级别的默认值
+      jobLevelOverrides: true,
       character: {
         select: { id: true, name: true, prompt: true, negativePrompt: true },
       },
@@ -648,6 +660,20 @@ export async function addSection(jobId: string, name?: string): Promise<string> 
 
   const sortOrder = job._count.positions + 1;
 
+  // 解析大任务级别的默认值覆盖
+  const overrides = (job.jobLevelOverrides ?? {}) as {
+    defaultAspectRatio?: string;
+    defaultShortSidePx?: number;
+    defaultBatchSize?: number;
+    defaultSeedPolicy?: string;
+  };
+
+  // 默认值：2:3 竖图、短边 512、batch 2
+  const defaultAspectRatio = overrides.defaultAspectRatio ?? "2:3";
+  const defaultShortSidePx = overrides.defaultShortSidePx ?? 512;
+  const defaultBatchSize = overrides.defaultBatchSize ?? 2;
+  const defaultSeedPolicy = overrides.defaultSeedPolicy ?? "random";
+
   // 创建小节（CompleteJobPosition）
   const section = await prisma.completeJobPosition.create({
     data: {
@@ -655,6 +681,10 @@ export async function addSection(jobId: string, name?: string): Promise<string> 
       sortOrder,
       enabled: true,
       name: name || null,
+      aspectRatio: defaultAspectRatio,
+      shortSidePx: defaultShortSidePx,
+      batchSize: defaultBatchSize,
+      seedPolicy: defaultSeedPolicy,
     },
   });
 

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { SectionCard } from "@/components/section-card";
 import { PromptBlockEditor } from "@/components/prompt-block-editor";
 import { SectionParamsForm } from "./section-params-form";
+import { SectionNameEditor } from "./section-name-editor";
 import type { PromptBlockData } from "@/lib/actions";
 import { getPromptLibrary } from "@/lib/server-data";
 
@@ -78,7 +79,12 @@ export default async function SectionEditPage({
       </div>
 
       <SectionCard
-        title={`编辑小节 — ${sectionName}`}
+        title={
+          <div className="flex items-center gap-3">
+            <span>编辑小节 —</span>
+            <SectionNameEditor sectionId={positionId} initialName={sectionName} />
+          </div>
+        }
         subtitle="管理此小节的运行参数和提示词块，调整顺序后自动合成完整 prompt。"
       >
         <div className="space-y-6">

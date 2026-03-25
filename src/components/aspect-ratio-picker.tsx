@@ -45,7 +45,7 @@ const ORIENTATION_LABELS: Record<OrientationKey, string> = {
   square: "方图",
 };
 
-const ORIENTATION_ORDER: OrientationKey[] = ["portrait", "square", "landscape"];
+const ORIENTATION_ORDER: OrientationKey[] = ["square", "portrait", "landscape"];
 
 function getPreviewSize(opt: AspectRatioOption) {
   const maxDim = 28;
