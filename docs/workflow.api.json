@@ -1,0 +1,438 @@
+{
+  "1": {
+    "inputs": {
+      "ckpt_name": "JANKUTrainedNoobaiRouwei_v69.safetensors"
+    },
+    "class_type": "CheckpointLoaderSimple",
+    "_meta": {
+      "title": "Load Checkpoint"
+    }
+  },
+  "3": {
+    "inputs": {
+      "seed": 854083548914543,
+      "steps": 30,
+      "cfg": 4,
+      "sampler_name": "euler_ancestral",
+      "scheduler": "karras",
+      "denoise": 1,
+      "model": [
+        "524",
+        0
+      ],
+      "positive": [
+        "4",
+        0
+      ],
+      "negative": [
+        "12",
+        0
+      ],
+      "latent_image": [
+        "407",
+        0
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "KSampler1"
+    }
+  },
+  "4": {
+    "inputs": {
+      "text": [
+        "511",
+        0
+      ],
+      "clip": [
+        "524",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Prompt)"
+    }
+  },
+  "9": {
+    "inputs": {
+      "images": [
+        "410",
+        0
+      ]
+    },
+    "class_type": "PreviewImage",
+    "_meta": {
+      "title": "Preview Image"
+    }
+  },
+  "12": {
+    "inputs": {
+      "text": [
+        "513",
+        0
+      ],
+      "clip": [
+        "524",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Prompt)"
+    }
+  },
+  "24": {
+    "inputs": {
+      "PowerLoraLoaderHeaderWidget": {
+        "type": "PowerLoraLoaderHeaderWidget"
+      },
+      "lora_1": {
+        "on": true,
+        "lora": "artist\\trt_v0.3_noobai_cwhj.safetensors",
+        "strength": 0.9272888183593748
+      },
+      "lora_2": {
+        "on": true,
+        "lora": "artist\\rella.safetensors",
+        "strength": 0.3818115234375001
+      },
+      "➕ Add Lora": "",
+      "model": [
+        "36",
+        0
+      ],
+      "clip": [
+        "36",
+        1
+      ]
+    },
+    "class_type": "Power Lora Loader (rgthree)",
+    "_meta": {
+      "title": "Power Lora Loader (rgthree)"
+    }
+  },
+  "25": {
+    "inputs": {
+      "PowerLoraLoaderHeaderWidget": {
+        "type": "PowerLoraLoaderHeaderWidget"
+      },
+      "lora_4": {
+        "on": true,
+        "lora": "style\\lightingSlider.safetensors",
+        "strength": 0.3109118652343771
+      },
+      "lora_5": {
+        "on": true,
+        "lora": "environment\\2dRealPhoto_Background.safetensors",
+        "strength": 0.30909423828125016
+      },
+      "➕ Add Lora": "",
+      "model": [
+        "24",
+        0
+      ],
+      "clip": [
+        "24",
+        1
+      ]
+    },
+    "class_type": "Power Lora Loader (rgthree)",
+    "_meta": {
+      "title": "Power Lora Loader (rgthree)"
+    }
+  },
+  "36": {
+    "inputs": {
+      "PowerLoraLoaderHeaderWidget": {
+        "type": "PowerLoraLoaderHeaderWidget"
+      },
+      "lora_1": {
+        "on": true,
+        "lora": "style\\Breast Size Slider - Illustrious - V2_alpha1.0_rank4_noxattn_last.safetensors",
+        "strength": -0.6000122070312499
+      },
+      "lora_2": {
+        "on": true,
+        "lora": "style\\eyelid_target.safetensors",
+        "strength": 1
+      },
+      "➕ Add Lora": "",
+      "model": [
+        "482",
+        0
+      ],
+      "clip": [
+        "482",
+        1
+      ]
+    },
+    "class_type": "Power Lora Loader (rgthree)",
+    "_meta": {
+      "title": "lora 2"
+    }
+  },
+  "407": {
+    "inputs": {
+      "width": 512,
+      "height": 768,
+      "batch_size": 1
+    },
+    "class_type": "EmptyLatentImage",
+    "_meta": {
+      "title": "Empty Latent Image"
+    }
+  },
+  "410": {
+    "inputs": {
+      "samples": [
+        "427",
+        0
+      ],
+      "vae": [
+        "1",
+        2
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "425": {
+    "inputs": {
+      "upscale_method": "bilinear",
+      "width": 1024,
+      "height": 1536,
+      "crop": "disabled",
+      "samples": [
+        "3",
+        0
+      ]
+    },
+    "class_type": "LatentUpscale",
+    "_meta": {
+      "title": "Upscale Latent"
+    }
+  },
+  "427": {
+    "inputs": {
+      "seed": 584686411970599,
+      "steps": 30,
+      "cfg": 7,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 0.6,
+      "model": [
+        "25",
+        0
+      ],
+      "positive": [
+        "519",
+        0
+      ],
+      "negative": [
+        "520",
+        0
+      ],
+      "latent_image": [
+        "425",
+        0
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "KSampler2"
+    }
+  },
+  "428": {
+    "inputs": {
+      "samples": [
+        "3",
+        0
+      ],
+      "vae": [
+        "1",
+        2
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "429": {
+    "inputs": {
+      "images": [
+        "428",
+        0
+      ]
+    },
+    "class_type": "PreviewImage",
+    "_meta": {
+      "title": "Preview Image"
+    }
+  },
+  "482": {
+    "inputs": {
+      "PowerLoraLoaderHeaderWidget": {
+        "type": "PowerLoraLoaderHeaderWidget"
+      },
+      "lora_1": {
+        "on": true,
+        "lora": "character\\Kokoro-10.safetensors",
+        "strength": 0.9836322021484375
+      },
+      "➕ Add Lora": "",
+      "model": [
+        "1",
+        0
+      ],
+      "clip": [
+        "1",
+        1
+      ]
+    },
+    "class_type": "Power Lora Loader (rgthree)",
+    "_meta": {
+      "title": "character lora"
+    }
+  },
+  "511": {
+    "inputs": {
+      "text": ""
+    },
+    "class_type": "Text Multiline",
+    "_meta": {
+      "title": "positive prompt"
+    }
+  },
+  "513": {
+    "inputs": {
+      "text": ""
+    },
+    "class_type": "Text Multiline",
+    "_meta": {
+      "title": "negative prompt"
+    }
+  },
+  "515": {
+    "inputs": {
+      "output_path": "",
+      "filename_prefix": "",
+      "filename_delimiter": "",
+      "filename_number_padding": 4,
+      "filename_number_start": "false",
+      "extension": "png",
+      "dpi": 300,
+      "quality": 100,
+      "optimize_image": "true",
+      "lossless_webp": "false",
+      "overwrite_mode": "false",
+      "show_history": "false",
+      "show_history_by_prefix": "true",
+      "embed_workflow": "true",
+      "show_previews": "true",
+      "images": [
+        "410",
+        0
+      ]
+    },
+    "class_type": "Image Save",
+    "_meta": {
+      "title": "Image Save"
+    }
+  },
+  "519": {
+    "inputs": {
+      "text": [
+        "511",
+        0
+      ],
+      "clip": [
+        "25",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Prompt)"
+    }
+  },
+  "520": {
+    "inputs": {
+      "text": [
+        "513",
+        0
+      ],
+      "clip": [
+        "25",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Prompt)"
+    }
+  },
+  "522": {
+    "inputs": {
+      "PowerLoraLoaderHeaderWidget": {
+        "type": "PowerLoraLoaderHeaderWidget"
+      },
+      "➕ Add Lora": "",
+      "model": [
+        "482",
+        0
+      ],
+      "clip": [
+        "482",
+        1
+      ]
+    },
+    "class_type": "Power Lora Loader (rgthree)",
+    "_meta": {
+      "title": "lora 1"
+    }
+  },
+  "524": {
+    "inputs": {
+      "PowerLoraLoaderHeaderWidget": {
+        "type": "PowerLoraLoaderHeaderWidget"
+      },
+      "lora_1": {
+        "on": true,
+        "lora": "style\\cinematic feeling V5-000022.safetensors",
+        "strength": 0.6727233886718752
+      },
+      "lora_2": {
+        "on": true,
+        "lora": "style\\S1 Dramatic Lighting Illustrious_V2.safetensors",
+        "strength": 0.6127142333984374
+      },
+      "lora_3": {
+        "on": true,
+        "lora": "style\\Shaft_of_light_mood_art_dramatic_lighting.safetensors",
+        "strength": 0.236370849609375
+      },
+      "lora_4": {
+        "on": true,
+        "lora": "style\\lightingSlider.safetensors",
+        "strength": 0.20180847167968763
+      },
+      "➕ Add Lora": "",
+      "model": [
+        "522",
+        0
+      ],
+      "clip": [
+        "522",
+        1
+      ]
+    },
+    "class_type": "Power Lora Loader (rgthree)",
+    "_meta": {
+      "title": "Power Lora Loader (rgthree)"
+    }
+  }
+}
