@@ -110,6 +110,32 @@ npm run prisma:studio     # 打开 Prisma Studio 数据浏览器
 npm run db:bootstrap:sqlite
 ```
 
+### 日志配置
+
+后端内置完善的日志系统，支持多级别日志、结构化数据、性能追踪。通过环境变量配置：
+
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `LOG_LEVEL` | `info` | 日志级别：`debug` / `info` / `warn` / `error` |
+| `LOG_FORMAT` | `pretty` | 输出格式：`pretty`（彩色控制台）/ `json`（结构化） |
+| `LOG_ENABLE_FILE` | `false` | 是否同时写入文件 |
+| `LOG_FILE_PATH` | `logs/app.log` | 日志文件路径 |
+| `LOG_MAX_FILE_SIZE` | `10485760` | 单文件最大字节数（10MB） |
+| `LOG_MAX_FILES` | `5` | 保留的轮转文件数量 |
+
+**API 端点**：`GET /api/logs` — 查询最近日志（需启用文件日志）
+
+```bash
+# 获取最近 100 条日志
+curl "http://localhost:3000/api/logs"
+
+# 过滤：只看 error 级别，最近 50 条
+curl "http://localhost:3000/api/logs?level=error&lines=50"
+
+# 过滤：指定模块
+curl "http://localhost:3000/api/logs?module=worker"
+```
+
 ## 📱 页面一览
 
 | 页面 | 路径 | 功能 |

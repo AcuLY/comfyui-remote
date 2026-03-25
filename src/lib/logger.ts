@@ -265,7 +265,7 @@ function formatJson(entry: LogEntry): string {
 // Logger Class
 // ---------------------------------------------------------------------------
 
-class Logger {
+export class Logger {
   private context: LogContext;
   private minLevel: LogLevel;
   private module?: string;

@@ -451,14 +451,24 @@ export async function updateJobPosition(
 
 export async function enqueueJobRuns(jobId: string, overrideBatchSize?: number, actorType: ActorType = ActorType.user) {
   const normalizedId = normalizeRequiredId(jobId, "jobId");
+
+  log.info("Enqueueing job runs", { jobId: normalizedId, overrideBatchSize });
+
   const result = await enqueueJobRunsInRepository(normalizedId, overrideBatchSize);
+
+  log.info("Job runs enqueued", { jobId: normalizedId, queuedRunCount: result.queuedRunCount });
   audit("CompleteJob", normalizedId, "enqueue", { queuedRunCount: result.queuedRunCount }, actorType);
   return result;
 }
 
 export async function copyJob(jobId: string, actorType: ActorType = ActorType.user) {
   const normalizedId = normalizeRequiredId(jobId, "jobId");
+
+  log.info("Copying job", { sourceJobId: normalizedId });
+
   const result = await copyJobInRepository(normalizedId);
+
+  log.info("Job copied", { sourceJobId: normalizedId, newJobId: result.id });
   audit("CompleteJob", result.id, "copy", { sourceJobId: normalizedId }, actorType);
   return result;
 }
@@ -481,6 +491,7 @@ export async function enqueueJobPositionRun(
 
 export function mapJobError(error: unknown) {
   if (error instanceof JobServiceError) {
+    log.warn("Job service error", { message: error.message, status: error.status });
     return {
       message: error.message,
       status: error.status,
@@ -489,6 +500,7 @@ export function mapJobError(error: unknown) {
   }
 
   if (!(error instanceof Error)) {
+    log.error("Unexpected job error (non-Error)", error);
     return {
       message: "Unexpected job error",
       status: 500,
@@ -520,6 +532,7 @@ export function mapJobError(error: unknown) {
       return { message: "Unable to generate a unique job identity", status: 409 };
     default:
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        log.error("Prisma error", error, { code: error.code });
         if (error.code === "P2002") {
           return {
             message: "Database uniqueness check failed",
@@ -535,6 +548,7 @@ export function mapJobError(error: unknown) {
         };
       }
 
+      log.error("Unexpected job error", error);
       return {
         message: "Unexpected job error",
         status: 500,

@@ -1,5 +1,6 @@
 import { Prisma } from "@/generated/prisma";
 import { env } from "@/lib/env";
+import { createLogger } from "@/lib/logger";
 import { resolveResolution } from "@/lib/aspect-ratio-utils";
 import { buildFallbackPromptNodes } from "@/server/worker/fallback-prompt-builder";
 import {
@@ -7,6 +8,9 @@ import {
   resolveWorkflowTemplate,
 } from "@/server/services/workflow-template-service";
 import { ComfyPromptDraft } from "@/server/worker/types";
+
+// ComfyUI service logger
+const log = createLogger({ module: "comfyui" });
 
 type JsonRecord = Record<string, unknown>;
 
@@ -480,8 +484,15 @@ export async function executeComfyPromptDraft(
   apiUrl: string,
   promptDraft: ComfyPromptDraft,
 ): Promise<ComfyPromptExecutionResult> {
+  const timer = log.startTimer("comfy-prompt-execution", { workflowId: promptDraft.workflowId });
+
   const validatedDraft = await validateComfyPromptDraft(apiUrl, promptDraft);
+
+  log.debug("Submitting prompt to ComfyUI", { apiUrl: validatedDraft.apiUrl });
+
   const comfyPromptId = await submitComfyPrompt(validatedDraft, promptDraft);
+
+  log.debug("Prompt submitted, waiting for completion", { comfyPromptId });
 
   let historyEntry: ComfyPromptHistoryEntry;
 
@@ -489,10 +500,13 @@ export async function executeComfyPromptDraft(
     historyEntry = await pollComfyPromptHistory(validatedDraft.apiUrl, comfyPromptId);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    log.error("ComfyUI prompt execution failed", error, { comfyPromptId });
     throw new ComfyPromptExecutionError(message, comfyPromptId);
   }
 
   const outputImages = extractOutputImages(historyEntry);
+
+  timer.done({ comfyPromptId, imageCount: outputImages.length });
 
   return {
     comfyPromptId,
