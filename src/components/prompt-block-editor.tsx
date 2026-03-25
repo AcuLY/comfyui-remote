@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import {
   DndContext,
   closestCenter,
@@ -123,11 +123,17 @@ function SortableBlockCard({
     id: block.id,
   });
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
+  // Only apply dnd transform styles after client mount to avoid hydration mismatch
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  const style = mounted
+    ? {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+      }
+    : undefined;
 
   const text = column === "positive" ? block.positive : (block.negative ?? "");
   const isEmpty = !text.trim();
@@ -140,8 +146,8 @@ function SortableBlockCard({
         <button
           type="button"
           className="cursor-grab touch-none text-zinc-600 hover:text-zinc-400"
-          {...attributes}
-          {...listeners}
+          {...(mounted ? attributes : {})}
+          {...(mounted ? listeners : {})}
         >
           <GripVertical className="size-3.5" />
         </button>
@@ -242,42 +248,56 @@ function BlockColumn({
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
+  // Only render DndContext after client mount to avoid hydration mismatch
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   // Filter blocks with content for this column
   const visibleBlocks = blocks.filter((b) => {
     const text = column === "positive" ? b.positive : (b.negative ?? "");
     return text.trim() || editingId === b.id;
   });
 
+  const blockItems = blocks.map((b) => b.id);
+
+  const cardList = (
+    <div className="space-y-1.5">
+      {visibleBlocks.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-white/5 px-3 py-4 text-center text-[11px] text-zinc-600">
+          暂无
+        </div>
+      ) : (
+        visibleBlocks.map((block) => (
+          <SortableBlockCard
+            key={block.id}
+            block={block}
+            column={column}
+            isEditing={editingId === block.id}
+            editValue={editValue}
+            onEditChange={onEditChange}
+            onStartEdit={() => onStartEdit(block)}
+            onCancelEdit={onCancelEdit}
+            onSaveEdit={onSaveEdit}
+            onDelete={() => onDelete(block.id)}
+            isSaving={isSaving}
+          />
+        ))
+      )}
+    </div>
+  );
+
   return (
     <div className="flex-1 min-w-0">
       <div className={`mb-2 text-xs font-medium ${titleColor}`}>{title}</div>
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-        <SortableContext items={blocks.map((b) => b.id)} strategy={verticalListSortingStrategy}>
-          <div className="space-y-1.5">
-            {visibleBlocks.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-white/5 px-3 py-4 text-center text-[11px] text-zinc-600">
-                暂无
-              </div>
-            ) : (
-              visibleBlocks.map((block) => (
-                <SortableBlockCard
-                  key={block.id}
-                  block={block}
-                  column={column}
-                  isEditing={editingId === block.id}
-                  editValue={editValue}
-                  onEditChange={onEditChange}
-                  onStartEdit={() => onStartEdit(block)}
-                  onCancelEdit={onCancelEdit}
-                  onSaveEdit={onSaveEdit}
-                  onDelete={() => onDelete(block.id)}
-                  isSaving={isSaving}
-                />
-              ))
-            )}
-          </div>
-        </SortableContext>
-      </DndContext>
+      {mounted ? (
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+          <SortableContext items={blockItems} strategy={verticalListSortingStrategy}>
+            {cardList}
+          </SortableContext>
+        </DndContext>
+      ) : (
+        cardList
+      )}
       <button
         type="button"
         onClick={onAdd}
