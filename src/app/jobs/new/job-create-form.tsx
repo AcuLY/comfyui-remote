@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useActionState } from "react";
-import { createJobAction, initialJobCreateState } from "@/app/jobs/actions";
+import { createJobAction } from "@/app/jobs/actions";
+import { initialJobCreateState } from "@/app/jobs/action-types";
 import type { JobCreateOptions } from "@/lib/server-data";
 
 const feedbackClassNames = {

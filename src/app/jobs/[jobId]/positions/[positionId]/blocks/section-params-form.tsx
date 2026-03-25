@@ -2,7 +2,8 @@
 
 import { useActionState } from "react";
 import { Save, Loader2 } from "lucide-react";
-import { initialJobSaveState, saveJobPositionEditAction } from "@/app/jobs/actions";
+import { saveJobPositionEditAction } from "@/app/jobs/actions";
+import { initialJobSaveState } from "@/app/jobs/action-types";
 import { AspectRatioPicker } from "@/components/aspect-ratio-picker";
 
 type SectionParamsFormProps = {

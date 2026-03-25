@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { Copy, Play } from "lucide-react";
 import { useActionState } from "react";
-import { copyJobAction, initialJobCopyState, initialJobRunState, runJobAction, runJobPositionAction } from "@/app/jobs/actions";
+import { copyJobAction, runJobAction, runJobPositionAction } from "@/app/jobs/actions";
+import { initialJobCopyState, initialJobRunState } from "@/app/jobs/action-types";
 
 const idleFeedbackClassName = "border-white/10 bg-white/[0.03] text-zinc-400";
 const errorFeedbackClassName = "border-rose-500/20 bg-rose-500/10 text-rose-200";

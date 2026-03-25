@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { ArrowLeft, Layers, Save } from "lucide-react";
 import { useActionState } from "react";
-import { initialJobSaveState, saveJobPositionEditAction } from "@/app/jobs/actions";
+import { saveJobPositionEditAction } from "@/app/jobs/actions";
+import { initialJobSaveState } from "@/app/jobs/action-types";
 import { PageHeader } from "@/components/page-header";
 import { SectionCard } from "@/components/section-card";
 import type { JobDetailPosition } from "@/lib/server-data";
