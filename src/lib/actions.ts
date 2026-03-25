@@ -419,19 +419,27 @@ export type ScenePresetInput = {
   slug: string;
   prompt: string;
   negativePrompt?: string | null;
-  loraBindings?: Prisma.NullableJsonNullValueInput | Prisma.InputJsonValue;
+  loraBindings?: unknown[] | null;
   notes?: string | null;
   isActive?: boolean;
 };
 
 export async function createScenePreset(input: ScenePresetInput) {
-  await prisma.scenePreset.create({ data: input });
+  const data = {
+    ...input,
+    loraBindings: input.loraBindings ?? Prisma.DbNull,
+  };
+  await prisma.scenePreset.create({ data });
   revalidatePath("/settings/scenes");
   revalidatePath("/jobs/new");
 }
 
 export async function updateScenePreset(id: string, input: Partial<ScenePresetInput>) {
-  await prisma.scenePreset.update({ where: { id }, data: input });
+  const data = {
+    ...input,
+    loraBindings: input.loraBindings === null ? Prisma.DbNull : input.loraBindings,
+  };
+  await prisma.scenePreset.update({ where: { id }, data });
   revalidatePath("/settings/scenes");
   revalidatePath("/jobs/new");
 }
@@ -451,19 +459,27 @@ export type StylePresetInput = {
   slug: string;
   prompt: string;
   negativePrompt?: string | null;
-  loraBindings?: Prisma.NullableJsonNullValueInput | Prisma.InputJsonValue;
+  loraBindings?: unknown[] | null;
   notes?: string | null;
   isActive?: boolean;
 };
 
 export async function createStylePreset(input: StylePresetInput) {
-  await prisma.stylePreset.create({ data: input });
+  const data = {
+    ...input,
+    loraBindings: input.loraBindings ?? Prisma.DbNull,
+  };
+  await prisma.stylePreset.create({ data });
   revalidatePath("/settings/styles");
   revalidatePath("/jobs/new");
 }
 
 export async function updateStylePreset(id: string, input: Partial<StylePresetInput>) {
-  await prisma.stylePreset.update({ where: { id }, data: input });
+  const data = {
+    ...input,
+    loraBindings: input.loraBindings === null ? Prisma.DbNull : input.loraBindings,
+  };
+  await prisma.stylePreset.update({ where: { id }, data });
   revalidatePath("/settings/styles");
   revalidatePath("/jobs/new");
 }
@@ -483,7 +499,7 @@ export type PositionTemplateInput = {
   slug: string;
   prompt: string;
   negativePrompt?: string | null;
-  loraBindings?: Prisma.NullableJsonNullValueInput | Prisma.InputJsonValue;
+  loraBindings?: unknown[] | null;
   defaultAspectRatio?: string | null;
   defaultBatchSize?: number | null;
   defaultSeedPolicy?: string | null;
@@ -516,11 +532,12 @@ function toInputJson(value: Record<string, unknown> | undefined): Prisma.InputJs
 }
 
 export async function createPositionTemplate(input: PositionTemplateInput) {
-  const { workflowTemplateId, ...rest } = input;
+  const { workflowTemplateId, loraBindings, ...rest } = input;
   const defaultParams = toInputJson(buildDefaultParams(workflowTemplateId));
   await prisma.positionTemplate.create({
     data: {
       ...rest,
+      loraBindings: loraBindings ?? Prisma.DbNull,
       ...(defaultParams !== undefined ? { defaultParams } : {}),
     },
   });
@@ -529,7 +546,7 @@ export async function createPositionTemplate(input: PositionTemplateInput) {
 }
 
 export async function updatePositionTemplate(id: string, input: Partial<PositionTemplateInput>) {
-  const { workflowTemplateId, ...rest } = input;
+  const { workflowTemplateId, loraBindings, ...rest } = input;
   const existingTemplate = await prisma.positionTemplate.findUnique({
     where: { id },
     select: { defaultParams: true },
@@ -539,6 +556,7 @@ export async function updatePositionTemplate(id: string, input: Partial<Position
     where: { id },
     data: {
       ...rest,
+      loraBindings: loraBindings === null ? Prisma.DbNull : loraBindings,
       ...(defaultParams !== undefined ? { defaultParams } : {}),
     },
   });
