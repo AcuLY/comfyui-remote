@@ -419,6 +419,7 @@ export type ScenePresetInput = {
   slug: string;
   prompt: string;
   negativePrompt?: string | null;
+  loraBindings?: unknown[] | null;
   notes?: string | null;
   isActive?: boolean;
 };
@@ -450,6 +451,7 @@ export type StylePresetInput = {
   slug: string;
   prompt: string;
   negativePrompt?: string | null;
+  loraBindings?: unknown[] | null;
   notes?: string | null;
   isActive?: boolean;
 };
@@ -481,6 +483,7 @@ export type PositionTemplateInput = {
   slug: string;
   prompt: string;
   negativePrompt?: string | null;
+  loraBindings?: unknown[] | null;
   defaultAspectRatio?: string | null;
   defaultBatchSize?: number | null;
   defaultSeedPolicy?: string | null;

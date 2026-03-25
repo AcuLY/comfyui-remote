@@ -3,6 +3,8 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2, Save, X } from "lucide-react";
+import { LoraBindingEditor } from "@/components/lora-binding-editor";
+import type { LoraBinding } from "@/lib/lora-types";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -11,9 +13,10 @@ import { Plus, Trash2, Save, X } from "lucide-react";
 export type FieldDef = {
   key: string;
   label: string;
-  type: "text" | "textarea" | "number" | "boolean" | "select";
+  type: "text" | "textarea" | "number" | "boolean" | "select" | "lora-bindings";
   placeholder?: string;
   options?: { value: string; label: string }[];
+  loraOptions?: { value: string; label: string }[];
   required?: boolean;
 };
 
@@ -157,6 +160,19 @@ export function ConfigManager({
               </option>
             ))}
           </select>
+        </div>
+      );
+    }
+
+    if (field.type === "lora-bindings") {
+      const bindings = Array.isArray(value) ? (value as LoraBinding[]) : [];
+      return (
+        <div key={field.key}>
+          <LoraBindingEditor
+            bindings={bindings}
+            onChange={(newBindings) => handleFieldChange(field.key, newBindings)}
+            loraOptions={field.loraOptions}
+          />
         </div>
       );
     }

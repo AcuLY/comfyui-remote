@@ -1,0 +1,163 @@
+"use client";
+
+import { useState } from "react";
+import { Plus, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import type { LoraBinding } from "@/lib/lora-types";
+
+type LoraBindingEditorProps = {
+  bindings: LoraBinding[];
+  onChange: (bindings: LoraBinding[]) => void;
+  loraOptions?: { value: string; label: string }[];
+};
+
+export function LoraBindingEditor({
+  bindings,
+  onChange,
+  loraOptions,
+}: LoraBindingEditorProps) {
+  const [expanded, setExpanded] = useState(bindings.length > 0);
+
+  function handleAdd() {
+    onChange([
+      ...bindings,
+      { path: "", weight: 1.0, enabled: true },
+    ]);
+    setExpanded(true);
+  }
+
+  function handleRemove(index: number) {
+    onChange(bindings.filter((_, i) => i !== index));
+  }
+
+  function handleUpdate(index: number, updates: Partial<LoraBinding>) {
+    onChange(
+      bindings.map((b, i) =>
+        i === index ? { ...b, ...updates } : b,
+      ),
+    );
+  }
+
+  function handleWeightChange(index: number, value: string) {
+    const num = parseFloat(value);
+    if (!isNaN(num)) {
+      const clamped = Math.min(2.0, Math.max(0, num));
+      const rounded = Math.round(clamped * 100) / 100;
+      handleUpdate(index, { weight: rounded });
+    }
+  }
+
+  return (
+    <div className="space-y-2">
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="flex w-full items-center justify-between rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2 text-left text-xs text-zinc-400 transition hover:bg-white/[0.04]"
+      >
+        <span>
+          LoRA 绑定
+          {bindings.length > 0 && (
+            <span className="ml-2 rounded bg-sky-500/20 px-1.5 py-0.5 text-[10px] text-sky-300">
+              {bindings.length}
+            </span>
+          )}
+        </span>
+        {expanded ? (
+          <ChevronUp className="size-4" />
+        ) : (
+          <ChevronDown className="size-4" />
+        )}
+      </button>
+
+      {expanded && (
+        <div className="space-y-2 rounded-lg border border-white/5 bg-white/[0.01] p-2">
+          {bindings.length === 0 ? (
+            <div className="py-2 text-center text-[11px] text-zinc-600">
+              暂无绑定的 LoRA
+            </div>
+          ) : (
+            bindings.map((binding, index) => (
+              <div
+                key={index}
+                className="flex items-center gap-2 rounded-lg border border-white/5 bg-white/[0.02] p-2"
+              >
+                {/* Enabled toggle */}
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={binding.enabled}
+                    onChange={(e) =>
+                      handleUpdate(index, { enabled: e.target.checked })
+                    }
+                    className="size-3.5 rounded border-white/20 bg-white/10"
+                  />
+                </label>
+
+                {/* Path input or select */}
+                <div className="flex-1 min-w-0">
+                  {loraOptions && loraOptions.length > 0 ? (
+                    <select
+                      value={binding.path}
+                      onChange={(e) =>
+                        handleUpdate(index, { path: e.target.value })
+                      }
+                      className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
+                    >
+                      <option value="">选择 LoRA...</option>
+                      {loraOptions.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      value={binding.path}
+                      onChange={(e) =>
+                        handleUpdate(index, { path: e.target.value })
+                      }
+                      placeholder="LoRA 路径..."
+                      className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30"
+                    />
+                  )}
+                </div>
+
+                {/* Weight input */}
+                <div className="flex items-center gap-1">
+                  <span className="text-[10px] text-zinc-500">权重</span>
+                  <input
+                    type="number"
+                    value={binding.weight}
+                    onChange={(e) => handleWeightChange(index, e.target.value)}
+                    step="0.05"
+                    min="0"
+                    max="2"
+                    className="input-number w-14 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-center text-xs text-zinc-200 outline-none focus:border-sky-500/30"
+                  />
+                </div>
+
+                {/* Remove button */}
+                <button
+                  type="button"
+                  onClick={() => handleRemove(index)}
+                  className="rounded p-1 text-zinc-500 transition hover:bg-red-500/10 hover:text-red-400"
+                >
+                  <Trash2 className="size-3.5" />
+                </button>
+              </div>
+            ))
+          )}
+
+          <button
+            type="button"
+            onClick={handleAdd}
+            className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-white/10 bg-white/[0.01] py-1.5 text-[11px] text-zinc-500 transition hover:bg-white/[0.03] hover:text-zinc-300"
+          >
+            <Plus className="size-3" />
+            添加 LoRA
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}

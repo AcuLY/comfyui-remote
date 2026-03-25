@@ -314,11 +314,15 @@ function BlockColumn({
 // AddBlockForm (支持自定义输入和从词库导入)
 // ---------------------------------------------------------------------------
 
+import type { LoraSource } from "@/lib/lora-types";
+
 type LibraryItem = {
   id: string;
   name: string;
   prompt: string;
   negativePrompt: string | null;
+  loraPath?: string | null;
+  loraBindings?: unknown;
 };
 
 type PromptLibrary = {
@@ -330,7 +334,7 @@ type PromptLibrary = {
 
 type AddBlockFormProps = {
   polarity: "positive" | "negative";
-  onAdd: (input: { type: string; label: string; positive: string; negative?: string | null; sourceId?: string }) => void;
+  onAdd: (input: { type: string; label: string; positive: string; negative?: string | null; sourceId?: string }, item?: LibraryItem) => void;
   onCancel: () => void;
   isPending: boolean;
   library?: PromptLibrary;
@@ -396,7 +400,7 @@ function AddBlockForm({
       positive: item.prompt,
       negative: item.negativePrompt,
       sourceId: item.id,
-    });
+    }, item);
   }
 
   const hasLibrary = library && (
@@ -546,10 +550,18 @@ export function PromptBlockEditor({
   positionId,
   initialBlocks,
   library,
+  onBlockImport,
 }: {
   positionId: string;
   initialBlocks: PromptBlockData[];
   library?: PromptLibrary;
+  onBlockImport?: (
+    sourceType: LoraSource,
+    sourceId: string,
+    sourceName: string,
+    loraPath?: string | null,
+    loraBindings?: unknown,
+  ) => void;
 }) {
   const [blocks, setBlocks] = useState<PromptBlockData[]>(initialBlocks);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -601,11 +613,28 @@ export function PromptBlockEditor({
 
   // ---- Add handler ----
 
-  function handleAdd(input: { type: string; label: string; positive: string; negative?: string | null }) {
+  function handleAdd(
+    input: { type: string; label: string; positive: string; negative?: string | null; sourceId?: string },
+    libraryItem?: LibraryItem,
+  ) {
     startTransition(async () => {
       const newBlock = await addPositionBlock(positionId, input);
       setBlocks((prev) => [...prev, newBlock]);
       setAddingColumn(null);
+
+      // Notify parent about imported LoRA if applicable
+      if (onBlockImport && libraryItem && input.sourceId) {
+        const sourceType = input.type as LoraSource;
+        if (sourceType === "character" || sourceType === "scene" || sourceType === "style" || sourceType === "position") {
+          onBlockImport(
+            sourceType,
+            input.sourceId,
+            input.label,
+            libraryItem.loraPath,
+            libraryItem.loraBindings,
+          );
+        }
+      }
     });
   }
 

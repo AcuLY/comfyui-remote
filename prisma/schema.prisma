@@ -56,6 +56,7 @@ model ScenePreset {
   slug            String        @unique
   prompt          String        @db.Text
   negativePrompt  String?       @db.Text
+  loraBindings    Json?         // Array of { path: string, weight: number, enabled: boolean }
   notes           String?       @db.Text
   isActive        Boolean       @default(true)
   createdAt       DateTime      @default(now())
@@ -69,6 +70,7 @@ model StylePreset {
   slug            String        @unique
   prompt          String        @db.Text
   negativePrompt  String?       @db.Text
+  loraBindings    Json?         // Array of { path: string, weight: number, enabled: boolean }
   notes           String?       @db.Text
   isActive        Boolean       @default(true)
   createdAt       DateTime      @default(now())
@@ -82,6 +84,7 @@ model PositionTemplate {
   slug                String                @unique
   prompt              String                @db.Text
   negativePrompt      String?               @db.Text
+  loraBindings        Json?                 // Array of { path: string, weight: number, enabled: boolean }
   defaultLoraConfig   Json?
   defaultAspectRatio  String?
   defaultShortSidePx  Int?

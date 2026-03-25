@@ -56,6 +56,7 @@ model PositionTemplate {
   slug                String                @unique
   prompt              String
   negativePrompt      String?
+  loraBindings        Json?
   defaultLoraConfig   Json?
   defaultAspectRatio  String?
   defaultShortSidePx  Int?

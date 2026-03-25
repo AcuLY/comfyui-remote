@@ -270,11 +270,15 @@ export async function getLoraAssets(): Promise<LoraAsset[]> {
 // Prompt Library — 词库（用于添加提示词块时选择）
 // ---------------------------------------------------------------------------
 
+import type { Prisma } from "@/generated/prisma";
+
 export type PromptLibraryItem = {
   id: string;
   name: string;
   prompt: string;
   negativePrompt: string | null;
+  loraPath?: string | null;          // Character only
+  loraBindings?: Prisma.JsonValue;   // Scene/Style/Position
 };
 
 export type PromptLibrary = {
@@ -289,22 +293,22 @@ export async function getPromptLibrary(): Promise<PromptLibrary> {
     prisma.character.findMany({
       where: { isActive: true },
       orderBy: { name: "asc" },
-      select: { id: true, name: true, prompt: true, negativePrompt: true },
+      select: { id: true, name: true, prompt: true, negativePrompt: true, loraPath: true },
     }),
     prisma.scenePreset.findMany({
       where: { isActive: true },
       orderBy: { name: "asc" },
-      select: { id: true, name: true, prompt: true, negativePrompt: true },
+      select: { id: true, name: true, prompt: true, negativePrompt: true, loraBindings: true },
     }),
     prisma.stylePreset.findMany({
       where: { isActive: true },
       orderBy: { name: "asc" },
-      select: { id: true, name: true, prompt: true, negativePrompt: true },
+      select: { id: true, name: true, prompt: true, negativePrompt: true, loraBindings: true },
     }),
     prisma.positionTemplate.findMany({
       where: { enabled: true },
       orderBy: { name: "asc" },
-      select: { id: true, name: true, prompt: true, negativePrompt: true },
+      select: { id: true, name: true, prompt: true, negativePrompt: true, loraBindings: true },
     }),
   ]);
 

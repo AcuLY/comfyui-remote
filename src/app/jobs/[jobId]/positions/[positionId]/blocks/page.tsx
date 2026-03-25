@@ -3,11 +3,14 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, Layers } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { SectionCard } from "@/components/section-card";
-import { PromptBlockEditor } from "@/components/prompt-block-editor";
+import { SectionEditor } from "@/components/section-editor";
 import { SectionParamsForm } from "./section-params-form";
 import { SectionNameEditor } from "./section-name-editor";
 import type { PromptBlockData } from "@/lib/actions";
-import { getPromptLibrary } from "@/lib/server-data";
+import { getPromptLibrary, getLoraAssets } from "@/lib/server-data";
+import { parsePositionLoraConfig, serializePositionLoraConfig } from "@/lib/lora-types";
+import type { LoraEntry } from "@/lib/lora-types";
+import { revalidatePath } from "next/cache";
 
 export default async function SectionEditPage({
   params,
@@ -16,7 +19,7 @@ export default async function SectionEditPage({
 }) {
   const { jobId, positionId } = await params;
 
-  const [pos, library] = await Promise.all([
+  const [pos, library, loraAssets] = await Promise.all([
     prisma.completeJobPosition.findUnique({
       where: { id: positionId },
       include: {
@@ -37,6 +40,7 @@ export default async function SectionEditPage({
       },
     }),
     getPromptLibrary(),
+    getLoraAssets(),
   ]);
 
   if (!pos || pos.completeJobId !== jobId) {
@@ -63,6 +67,32 @@ export default async function SectionEditPage({
     seedPolicy: pos.seedPolicy ?? pos.positionTemplate?.defaultSeedPolicy ?? null,
   };
 
+  // Parse existing LoRA config
+  const loraConfig = parsePositionLoraConfig(pos.loraConfig);
+  const initialLoraEntries = loraConfig.entries;
+
+  // LoRA options for manual selection
+  const loraOptions = loraAssets.map((lora) => ({
+    value: lora.relativePath,
+    label: `${lora.name} (${lora.category})`,
+  }));
+
+  // Server action to save LoRA config
+  async function handleLoraChange(entries: LoraEntry[]) {
+    "use server";
+    const { prisma } = await import("@/lib/prisma");
+    const { serializePositionLoraConfig } = await import("@/lib/lora-types");
+    
+    await prisma.completeJobPosition.update({
+      where: { id: positionId },
+      data: {
+        loraConfig: serializePositionLoraConfig({ entries }),
+      },
+    });
+    
+    revalidatePath(`/jobs/${jobId}/positions/${positionId}/blocks`);
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
@@ -85,7 +115,7 @@ export default async function SectionEditPage({
             <SectionNameEditor sectionId={positionId} initialName={sectionName} />
           </div>
         }
-        subtitle="管理此小节的运行参数和提示词块，调整顺序后自动合成完整 prompt。"
+        subtitle="管理此小节的运行参数、提示词块和 LoRA 列表。导入词库时会自动添加关联的 LoRA。"
       >
         <div className="space-y-6">
           <SectionParamsForm
@@ -94,8 +124,15 @@ export default async function SectionEditPage({
             initialParams={sectionParams}
           />
           <div className="border-t border-white/5 pt-4">
-            <div className="mb-3 text-xs font-medium text-zinc-400">提示词块</div>
-            <PromptBlockEditor positionId={positionId} initialBlocks={initialBlocks} library={library} />
+            <div className="mb-3 text-xs font-medium text-zinc-400">提示词块 & LoRA</div>
+            <SectionEditor
+              positionId={positionId}
+              initialBlocks={initialBlocks}
+              initialLoraEntries={initialLoraEntries}
+              library={library}
+              loraOptions={loraOptions}
+              onLoraChange={handleLoraChange}
+            />
           </div>
         </div>
       </SectionCard>
