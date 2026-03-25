@@ -82,6 +82,7 @@ type JobPositionRecord = {
   positivePrompt: string | null;
   negativePrompt: string | null;
   aspectRatio: string | null;
+  shortSidePx: number | null;
   batchSize: number | null;
   seedPolicy: string | null;
   loraConfig: Prisma.JsonValue | null;
