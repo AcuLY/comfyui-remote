@@ -160,7 +160,7 @@ export function getMcpServer(): McpServer {
     },
     async ({ jobId }) => {
       try {
-        const result = await enqueueJobRuns(jobId, ActorType.agent);
+        const result = await enqueueJobRuns(jobId, undefined, ActorType.agent);
         const context = await getJobAgentContext(jobId);
         return {
           content: [{
@@ -184,7 +184,7 @@ export function getMcpServer(): McpServer {
     },
     async ({ jobId, jobPositionId }) => {
       try {
-        const result = await enqueueJobPositionRun(jobId, jobPositionId, ActorType.agent);
+        const result = await enqueueJobPositionRun(jobId, jobPositionId, undefined, ActorType.agent);
         const context = await getJobAgentContext(jobId);
         return {
           content: [{
