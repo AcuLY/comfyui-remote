@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useState, useEffect, useTransition, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ChevronRight, Clock3, Eye, Sparkles, Loader2, RefreshCw } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { SectionCard } from "@/components/section-card";
 import { StatChip } from "@/components/stat-chip";
-import { getQueueRuns, getRunningRuns } from "@/lib/server-data";
 import type { QueueRun, RunningRun } from "@/lib/types";
 
 export type QueueTabKey = "pending" | "running";
@@ -20,33 +20,34 @@ const TABS: TabDef[] = [
 
 const POLL_INTERVAL_MS = 5_000;
 
-export function QueuePageClient() {
+type Props = {
+  initialQueueRuns: QueueRun[];
+  initialRunningRuns: RunningRun[];
+};
+
+export function QueuePageClient({ initialQueueRuns, initialRunningRuns }: Props) {
   const [activeTab, setActiveTab] = useState<QueueTabKey>("pending");
-  const [queueRuns, setQueueRuns] = useState<QueueRun[]>([]);
-  const [runningRuns, setRunningRuns] = useState<RunningRun[]>([]);
+  const [queueRuns, setQueueRuns] = useState<QueueRun[]>(initialQueueRuns);
+  const [runningRuns, setRunningRuns] = useState<RunningRun[]>(initialRunningRuns);
   const [isPending, startTransition] = useTransition();
+  const router = useRouter();
 
-  async function refresh() {
+  const refresh = useCallback(() => {
     startTransition(async () => {
-      const [pending, running] = await Promise.all([
-        getQueueRuns(),
-        getRunningRuns(),
-      ]);
-      setQueueRuns(pending);
-      setRunningRuns(running);
+      const res = await fetch("/api/queue-data");
+      if (!res.ok) return;
+      const data = await res.json();
+      setQueueRuns(data.queueRuns ?? []);
+      setRunningRuns(data.runningRuns ?? []);
+      router.refresh();
     });
-  }
+  }, [router]);
 
-  // Initial load
-  useEffect(() => {
-    refresh();
-  }, []);
-
-  // Auto-poll for running runs
+  // Auto-poll
   useEffect(() => {
     const timer = setInterval(refresh, POLL_INTERVAL_MS);
     return () => clearInterval(timer);
-  }, []);
+  }, [refresh]);
 
   const pendingTotal = queueRuns.reduce((sum, run) => sum + run.pendingCount, 0);
   const runTotal = queueRuns.length;
