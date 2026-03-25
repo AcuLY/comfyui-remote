@@ -64,6 +64,7 @@ export type NormalizedResolvedConfigSnapshot = {
   } | null;
   parameters: {
     aspectRatio: string | null;
+    shortSidePx: number | null;
     batchSize: number | null;
     seedPolicy: string | null;
   };
@@ -80,6 +81,7 @@ export type ComfyPromptDraft = {
   };
   parameters: {
     aspectRatio: string | null;
+    shortSidePx: number | null;
     batchSize: number | null;
     seedPolicy: string | null;
   };

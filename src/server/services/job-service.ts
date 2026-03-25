@@ -41,6 +41,7 @@ type UpdateJobPositionRequestBody = {
   positivePrompt?: unknown;
   negativePrompt?: unknown;
   aspectRatio?: unknown;
+  shortSidePx?: unknown;
   batchSize?: unknown;
   seedPolicy?: unknown;
 };
@@ -67,6 +68,7 @@ const JOB_POSITION_UPDATE_FIELDS = [
   "positivePrompt",
   "negativePrompt",
   "aspectRatio",
+  "shortSidePx",
   "batchSize",
   "seedPolicy",
 ] as const;
@@ -408,6 +410,7 @@ export async function updateJobPosition(
     positivePrompt: normalizeNullableStringField(parsedBody.positivePrompt, "positivePrompt"),
     negativePrompt: normalizeNullableStringField(parsedBody.negativePrompt, "negativePrompt"),
     aspectRatio: normalizeNullableStringField(parsedBody.aspectRatio, "aspectRatio"),
+    shortSidePx: normalizeBatchSize(parsedBody.shortSidePx, "shortSidePx"),
     batchSize: normalizeBatchSize(parsedBody.batchSize, "batchSize"),
     seedPolicy: normalizeNullableStringField(parsedBody.seedPolicy, "seedPolicy"),
   };

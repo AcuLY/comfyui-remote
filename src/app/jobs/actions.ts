@@ -183,10 +183,16 @@ export async function saveJobPositionEditAction(
     return batchSize.error;
   }
 
+  const shortSidePx = getPositiveInteger(formData, "shortSidePx", "Short side px");
+  if ("error" in shortSidePx) {
+    return shortSidePx.error;
+  }
+
   const payload = {
     positivePrompt: getNullableString(formData, "positivePrompt"),
     negativePrompt: getNullableString(formData, "negativePrompt"),
     aspectRatio: getNullableString(formData, "aspectRatio"),
+    shortSidePx: shortSidePx.value,
     batchSize: batchSize.value,
     seedPolicy: getNullableString(formData, "seedPolicy"),
   };

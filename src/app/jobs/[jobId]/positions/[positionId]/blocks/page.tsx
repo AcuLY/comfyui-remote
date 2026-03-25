@@ -54,6 +54,7 @@ export default async function SectionEditPage({
   const sectionParams = {
     batchSize: pos.batchSize ?? pos.positionTemplate?.defaultBatchSize ?? null,
     aspectRatio: pos.aspectRatio ?? pos.positionTemplate?.defaultAspectRatio ?? null,
+    shortSidePx: pos.shortSidePx ?? pos.positionTemplate?.defaultShortSidePx ?? null,
     seedPolicy: pos.seedPolicy ?? pos.positionTemplate?.defaultSeedPolicy ?? null,
   };
 

@@ -11,22 +11,9 @@
  */
 
 import { ComfyPromptDraft } from "@/server/worker/types";
+import { resolveResolution } from "@/lib/aspect-ratio-utils";
 
 type JsonRecord = Record<string, unknown>;
-
-// ---------------------------------------------------------------------------
-// Aspect ratio → SDXL-optimal resolution lookup
-// ---------------------------------------------------------------------------
-
-const ASPECT_RATIOS: Record<string, { width: number; height: number }> = {
-  "1:1": { width: 1024, height: 1024 },
-  "3:4": { width: 896, height: 1152 },
-  "4:3": { width: 1152, height: 896 },
-  "9:16": { width: 768, height: 1344 },
-  "16:9": { width: 1344, height: 768 },
-  "2:3": { width: 832, height: 1216 },
-  "3:2": { width: 1216, height: 832 },
-};
 
 const DEFAULT_CHECKPOINT =
   process.env.COMFYUI_CHECKPOINT ?? "sd_xl_base_1.0.safetensors";
@@ -72,8 +59,10 @@ function resolveSeed(draft: ComfyPromptDraft): number {
  * `prompt` field to ComfyUI `/prompt`.
  */
 export function buildFallbackPromptNodes(draft: ComfyPromptDraft): JsonRecord {
-  const aspectRatio = draft.parameters.aspectRatio ?? "3:4";
-  const { width, height } = ASPECT_RATIOS[aspectRatio] ?? ASPECT_RATIOS["3:4"];
+  const { width, height } = resolveResolution(
+    draft.parameters.aspectRatio,
+    draft.parameters.shortSidePx,
+  );
   const batchSize = draft.parameters.batchSize ?? 1;
 
   const positivePrompt = draft.prompt.positive;

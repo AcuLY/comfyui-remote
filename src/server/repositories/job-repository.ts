@@ -25,6 +25,7 @@ export type JobPositionUpdateInput = {
   positivePrompt?: string | null;
   negativePrompt?: string | null;
   aspectRatio?: string | null;
+  shortSidePx?: number | null;
   batchSize?: number | null;
   seedPolicy?: string | null;
 };
@@ -326,6 +327,11 @@ function buildResolvedConfigSnapshot(
     resolveJobOverrideString(jobLevelOverrides, "aspectRatio") ??
     position.positionTemplate?.defaultAspectRatio ??
     null;
+  const resolvedShortSidePx =
+    position.shortSidePx ??
+    resolveJobOverrideInteger(jobLevelOverrides, "shortSidePx") ??
+    position.positionTemplate?.defaultShortSidePx ??
+    null;
   const resolvedBatchSize =
     overrideBatchSize ??
     position.batchSize ??
@@ -381,6 +387,7 @@ function buildResolvedConfigSnapshot(
     composedPrompt: promptDraft,
     parameters: {
       aspectRatio: resolvedAspectRatio,
+      shortSidePx: resolvedShortSidePx,
       batchSize: resolvedBatchSize,
       seedPolicy: resolvedSeedPolicy,
     },
@@ -1306,6 +1313,10 @@ export async function updateJobPosition(
 
   if (input.aspectRatio !== undefined) {
     data.aspectRatio = input.aspectRatio;
+  }
+
+  if (input.shortSidePx !== undefined) {
+    data.shortSidePx = input.shortSidePx;
   }
 
   if (input.batchSize !== undefined) {

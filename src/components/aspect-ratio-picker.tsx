@@ -1,9 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import {
+  ASPECT_RATIOS,
+  resolveResolution,
+  getDefaultShortSidePx,
+} from "@/lib/aspect-ratio-utils";
 
 // ---------------------------------------------------------------------------
-// Aspect ratio data — mirrors ASPECT_RATIOS in server code
+// Aspect ratio data — derived from shared utils
 // ---------------------------------------------------------------------------
 
 type OrientationKey = "portrait" | "landscape" | "square";
@@ -16,15 +21,23 @@ type AspectRatioOption = {
   orientation: OrientationKey;
 };
 
-const ASPECT_OPTIONS: AspectRatioOption[] = [
-  { value: "1:1",  label: "1:1",  width: 1024, height: 1024, orientation: "square" },
-  { value: "3:4",  label: "3:4",  width: 896,  height: 1152, orientation: "portrait" },
-  { value: "2:3",  label: "2:3",  width: 832,  height: 1216, orientation: "portrait" },
-  { value: "9:16", label: "9:16", width: 768,  height: 1344, orientation: "portrait" },
-  { value: "4:3",  label: "4:3",  width: 1152, height: 896,  orientation: "landscape" },
-  { value: "3:2",  label: "3:2",  width: 1216, height: 832,  orientation: "landscape" },
-  { value: "16:9", label: "16:9", width: 1344, height: 768,  orientation: "landscape" },
-];
+const ASPECT_OPTIONS: AspectRatioOption[] = Object.entries(ASPECT_RATIOS).map(
+  ([key, entry]) => {
+    const orientation: OrientationKey =
+      entry.width === entry.height
+        ? "square"
+        : entry.height > entry.width
+          ? "portrait"
+          : "landscape";
+    return {
+      value: key,
+      label: key,
+      width: entry.width,
+      height: entry.height,
+      orientation,
+    };
+  },
+);
 
 const ORIENTATION_LABELS: Record<OrientationKey, string> = {
   portrait: "竖图",
@@ -49,14 +62,21 @@ function getPreviewSize(opt: AspectRatioOption) {
 
 export function AspectRatioPicker({
   name,
+  shortSidePxName = "shortSidePx",
   defaultValue,
+  defaultShortSidePx,
   disabled,
 }: {
   name: string;
+  shortSidePxName?: string;
   defaultValue: string | null;
+  defaultShortSidePx?: number | null;
   disabled?: boolean;
 }) {
   const [selected, setSelected] = useState(defaultValue ?? "");
+  const [shortSidePx, setShortSidePx] = useState<string>(
+    defaultShortSidePx ? String(defaultShortSidePx) : "",
+  );
 
   const grouped = ORIENTATION_ORDER.map((orientation) => ({
     key: orientation,
@@ -64,9 +84,21 @@ export function AspectRatioPicker({
     items: ASPECT_OPTIONS.filter((o) => o.orientation === orientation),
   }));
 
+  // Resolved dimensions for display
+  const shortPx = shortSidePx ? parseInt(shortSidePx, 10) : null;
+  const resolved = selected
+    ? resolveResolution(selected, shortPx && shortPx > 0 ? shortPx : null)
+    : null;
+  const builtinShort = selected ? getDefaultShortSidePx(selected) : null;
+
   return (
     <div className="space-y-2">
       <input type="hidden" name={name} value={selected} />
+      <input
+        type="hidden"
+        name={shortSidePxName}
+        value={shortSidePx || ""}
+      />
 
       <div className="flex flex-wrap gap-3">
         {grouped.map((group) => (
@@ -106,10 +138,28 @@ export function AspectRatioPicker({
         ))}
       </div>
 
+      {/* Short side px input */}
       {selected && (
-        <div className="text-[10px] text-zinc-500">
-          {ASPECT_OPTIONS.find((o) => o.value === selected)?.width}×
-          {ASPECT_OPTIONS.find((o) => o.value === selected)?.height} px
+        <div className="flex items-center gap-3">
+          <label className="flex items-center gap-1.5 text-[11px] text-zinc-500">
+            短边像素
+            <input
+              type="number"
+              min={256}
+              max={4096}
+              step={8}
+              disabled={disabled}
+              value={shortSidePx}
+              onChange={(e) => setShortSidePx(e.target.value)}
+              placeholder={builtinShort ? String(builtinShort) : "默认"}
+              className="w-20 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30 disabled:opacity-70"
+            />
+          </label>
+          <div className="text-[10px] text-zinc-500">
+            {resolved
+              ? `→ ${resolved.width}×${resolved.height} px`
+              : ""}
+          </div>
         </div>
       )}
     </div>

@@ -11,6 +11,7 @@ type SectionParamsFormProps = {
   initialParams: {
     batchSize: number | null;
     aspectRatio: string | null;
+    shortSidePx: number | null;
     seedPolicy: string | null;
   };
 };
@@ -45,6 +46,7 @@ export function SectionParamsForm({ jobId, positionId, initialParams }: SectionP
             <AspectRatioPicker
               name="aspectRatio"
               defaultValue={initialParams.aspectRatio}
+              defaultShortSidePx={initialParams.shortSidePx}
               disabled={pending}
             />
           </div>

@@ -84,6 +84,7 @@ model PositionTemplate {
   negativePrompt      String?               @db.Text
   defaultLoraConfig   Json?
   defaultAspectRatio  String?
+  defaultShortSidePx  Int?
   defaultBatchSize    Int?                  @default(1)
   defaultSeedPolicy   String?
   defaultParams       Json?
@@ -153,6 +154,7 @@ model CompleteJobPosition {
   positivePrompt        String?               @db.Text
   negativePrompt        String?               @db.Text
   aspectRatio           String?
+  shortSidePx           Int?
   batchSize             Int?
   seedPolicy            String?
   loraConfig            Json?
