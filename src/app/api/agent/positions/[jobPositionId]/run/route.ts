@@ -18,7 +18,7 @@ export async function POST(_request: Request, context: RouteContext) {
 
   try {
     const position = await getJobPositionOwner(jobPositionId);
-    const result = await enqueueJobPositionRun(position.jobId, position.id, ActorType.agent);
+    const result = await enqueueJobPositionRun(position.jobId, position.id, undefined, ActorType.agent);
     const contextData = await getJobAgentContext(position.jobId);
 
     return ok(
