@@ -657,10 +657,10 @@ export function PromptBlockEditor({
     });
   }
 
-  // ---- Composed prompt preview ----
+  // ---- Composed prompt preview (per-block lines) ----
 
-  const composedPositive = blocks.map((b) => b.positive).filter(Boolean).join(", ");
-  const composedNegative = blocks.map((b) => b.negative).filter((v): v is string => Boolean(v)).join(", ");
+  const hasPositive = blocks.some((b) => b.positive?.trim());
+  const hasNegative = blocks.some((b) => b.negative?.trim());
 
   return (
     <div className="space-y-4">
@@ -668,13 +668,24 @@ export function PromptBlockEditor({
       {blocks.length > 0 && (
         <div className="rounded-2xl bg-white/[0.03] p-3 space-y-2">
           <div className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">合成提示词预览</div>
-          <div className="text-xs text-zinc-300 break-words">
-            <span className="text-emerald-500/60">+</span> {composedPositive || "（无）"}
-          </div>
-          {composedNegative && (
-            <div className="text-xs text-zinc-400 break-words">
-              <span className="text-rose-500/60">−</span> {composedNegative}
+          {blocks.map((b) => (
+            <div key={b.id} className="text-xs break-words leading-relaxed">
+              {b.positive?.trim() && (
+                <div className="text-zinc-300">
+                  <span className="text-emerald-500/60">+</span>{" "}
+                  <span className="text-zinc-500">[{b.label}]</span> {b.positive.trim()}
+                </div>
+              )}
+              {b.negative?.trim() && (
+                <div className="text-zinc-400">
+                  <span className="text-rose-500/60">−</span>{" "}
+                  <span className="text-zinc-500">[{b.label}]</span> {b.negative.trim()}
+                </div>
+              )}
             </div>
+          ))}
+          {!hasPositive && !hasNegative && (
+            <div className="text-xs text-zinc-500">（无）</div>
           )}
         </div>
       )}
