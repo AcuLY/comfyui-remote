@@ -109,6 +109,7 @@ function SortableSectionCard({ section, jobId }: { section: Section; jobId: stri
       style={style}
       className={`rounded-2xl border border-white/10 bg-white/[0.03] p-4 ${isDragging ? "shadow-lg ring-2 ring-sky-500/30" : ""}`}
     >
+      {/* 主内容区：拖动手柄 + 信息 */}
       <div className="flex items-start gap-3">
         {/* 拖动手柄 */}
         <button
@@ -124,7 +125,7 @@ function SortableSectionCard({ section, jobId }: { section: Section; jobId: stri
           href={`/jobs/${jobId}/positions/${section.id}/blocks`}
           className="min-w-0 flex-1 cursor-pointer"
         >
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm font-semibold text-white">
               {section.name}
             </span>
@@ -141,9 +142,21 @@ function SortableSectionCard({ section, jobId }: { section: Section; jobId: stri
           </div>
         </Link>
 
-        {/* 操作按钮组：运行、复制、删除 */}
-        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-          <PositionRunButton positionId={section.id} defaultBatchSize={section.batchSize} />
+        {/* 桌面端：复制、删除按钮（紧凑） */}
+        <div className="hidden items-center gap-2 sm:flex" onClick={(e) => e.stopPropagation()}>
+          <CopySectionButton sectionId={section.id} />
+          <DeleteSectionButton sectionId={section.id} sectionName={section.name} />
+        </div>
+      </div>
+
+      {/* 操作按钮区：运行控件 + 移动端的复制/删除 */}
+      <div
+        className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-white/5 pt-3"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <PositionRunButton positionId={section.id} defaultBatchSize={section.batchSize} />
+        {/* 移动端：复制、删除按钮 */}
+        <div className="flex items-center gap-2 sm:hidden">
           <CopySectionButton sectionId={section.id} />
           <DeleteSectionButton sectionId={section.id} sectionName={section.name} />
         </div>
