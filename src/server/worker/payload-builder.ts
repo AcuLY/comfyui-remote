@@ -106,6 +106,7 @@ export function normalizeResolvedConfigSnapshot(
       : null,
     parameters: {
       aspectRatio: asNullableString(parameters?.aspectRatio),
+      shortSidePx: asNullableInteger(parameters?.shortSidePx),
       batchSize: asNullableInteger(parameters?.batchSize),
       seedPolicy: asNullableString(parameters?.seedPolicy),
     },
