@@ -211,7 +211,7 @@ class ComfyProcessManager {
         PYTHONUTF8: "1",
       };
 
-      const child = spawn(cmd, {
+      const child = spawn(cmd, [], {
         shell: true,
         cwd,
         stdio: ["ignore", "pipe", "pipe"],
