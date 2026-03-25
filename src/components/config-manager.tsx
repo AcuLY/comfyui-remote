@@ -228,7 +228,10 @@ export function ConfigManager({
           {editingId === item.id ? (
             renderForm()
           ) : (
-            <div className="flex items-start justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+            <div
+              onClick={() => startEdit(item)}
+              className="flex cursor-pointer items-start justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition hover:bg-white/[0.06]"
+            >
               <div className="min-w-0 flex-1 space-y-1">
                 <div className="text-sm font-medium text-zinc-200">
                   {String(item.name ?? item.id)}
@@ -242,13 +245,7 @@ export function ConfigManager({
                   </div>
                 )}
               </div>
-              <div className="flex shrink-0 gap-1">
-                <button
-                  onClick={() => startEdit(item)}
-                  className="rounded-lg p-2 text-zinc-400 transition hover:bg-white/[0.06] hover:text-white"
-                >
-                  <Pencil className="size-3.5" />
-                </button>
+              <div className="flex shrink-0 gap-1" onClick={(e) => e.stopPropagation()}>
                 <button
                   disabled={isPending}
                   onClick={() => handleDelete(item.id)}

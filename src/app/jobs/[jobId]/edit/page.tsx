@@ -26,7 +26,6 @@ export default async function EditJobPage({ params }: { params: Promise<{ jobId:
           characters={options.characters}
           scenes={options.scenes}
           styles={options.styles}
-          positions={options.positions}
         />
       </SectionCard>
     </div>
