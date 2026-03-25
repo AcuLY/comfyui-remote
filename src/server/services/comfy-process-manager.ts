@@ -202,18 +202,27 @@ class ComfyProcessManager {
     }
 
     try {
+      // Force UTF-8 encoding for child process to handle emoji and unicode chars
+      // This prevents UnicodeEncodeError on Windows (GBK) when custom nodes output emoji
+      const utf8Env: Record<string, string> = {
+        ...process.env as Record<string, string>,
+        PYTHONIOENCODING: "utf-8",
+        PYTHONLEGACYWINDOWSSTDIO: "0",
+        PYTHONUTF8: "1",
+      };
+
       const child = spawn(cmd, {
         shell: true,
         cwd,
         stdio: ["ignore", "pipe", "pipe"],
-        env: { ...process.env },
+        env: utf8Env,
       });
 
       this.process = child;
       this.startedAt = Date.now();
 
       child.stdout?.on("data", (data: Buffer) => {
-        for (const line of data.toString().split("\n")) {
+        for (const line of data.toString("utf8").split("\n")) {
           if (line.trim()) {
             this.log(`[stdout] ${line}`);
           }
@@ -221,7 +230,7 @@ class ComfyProcessManager {
       });
 
       child.stderr?.on("data", (data: Buffer) => {
-        for (const line of data.toString().split("\n")) {
+        for (const line of data.toString("utf8").split("\n")) {
           if (line.trim()) {
             this.log(`[stderr] ${line}`);
           }

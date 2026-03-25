@@ -43,6 +43,14 @@ export const env = {
   comfyHealthIntervalMs: readPositiveIntegerEnv("COMFY_HEALTH_INTERVAL_MS", 10_000),
   comfyMaxRestarts: readPositiveIntegerEnv("COMFY_MAX_RESTARTS", 3),
   comfyRestartWindowMs: readPositiveIntegerEnv("COMFY_RESTART_WINDOW_MS", 300_000),
+
+  // 日志配置
+  logLevel: (process.env.LOG_LEVEL ?? "info").toLowerCase() as "debug" | "info" | "warn" | "error",
+  logFormat: (process.env.LOG_FORMAT ?? "pretty").toLowerCase() as "json" | "pretty",
+  logEnableFile: readBoolEnv("LOG_ENABLE_FILE", false),
+  logFilePath: process.env.LOG_FILE_PATH ?? "logs/app.log",
+  logMaxFileSize: readPositiveIntegerEnv("LOG_MAX_FILE_SIZE", 10 * 1024 * 1024), // 10MB
+  logMaxFiles: readPositiveIntegerEnv("LOG_MAX_FILES", 5),
 };
 
 export function assertEnv() {

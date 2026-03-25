@@ -1,5 +1,6 @@
 import { RunStatus } from "@/lib/db-enums";
 import { assertEnv } from "@/lib/env";
+import { createLogger } from "@/lib/logger";
 import {
   ComfyPromptExecutionError,
   executeComfyPromptDraft,
@@ -22,6 +23,9 @@ import {
   WorkerRunDraft,
 } from "@/server/worker/types";
 
+// Worker logger
+const log = createLogger({ module: "worker" });
+
 function formatWorkerError(error: unknown) {
   if (error instanceof Error) {
     return error.message;
@@ -41,17 +45,27 @@ function extractFailedComfyPromptId(error: unknown) {
 export async function runWorkerPass(limit = 10): Promise<WorkerPassReport> {
   assertEnv();
 
+  const passTimer = log.startTimer("worker-pass");
+
   const queuedRuns = await listQueuedWorkerRuns(limit);
   const drafts: WorkerRunDraft[] = [];
   let skippedRunCount = 0;
 
+  log.debug("Worker pass started", { limit, queuedCount: queuedRuns.length });
+
   for (const run of queuedRuns) {
+    const runLog = log.child({ runId: run.runId, jobId: run.job.id });
+    const runTimer = runLog.startTimer("process-run");
+
     const claim = await claimQueuedWorkerRun(run.runId);
 
     if (!claim) {
+      runLog.debug("Run skipped (already claimed)");
       skippedRunCount += 1;
       continue;
     }
+
+    runLog.info("Run claimed", { position: run.position.name });
 
     audit("PositionRun", run.runId, "worker.claim", {
       jobId: run.job.id,
@@ -65,8 +79,20 @@ export async function runWorkerPass(limit = 10): Promise<WorkerPassReport> {
     try {
       resolvedConfig = normalizeResolvedConfigSnapshot(run.resolvedConfigSnapshot);
       promptDraft = buildComfyPromptDraft(run);
+
+      runLog.debug("Executing ComfyUI prompt", {
+        workflowId: promptDraft.workflowId,
+        batchSize: promptDraft.parameters.batchSize,
+      });
+
       const processResult = await executeComfyPromptDraft(run.comfyApiUrl, promptDraft);
       comfyPromptId = processResult.comfyPromptId;
+
+      runLog.debug("ComfyUI prompt completed", {
+        comfyPromptId,
+        imageCount: processResult.outputImages.length,
+      });
+
       const persistedOutput = await persistComfyOutputImages(
         run,
         run.comfyApiUrl,
@@ -83,6 +109,8 @@ export async function runWorkerPass(limit = 10): Promise<WorkerPassReport> {
         comfyPromptId,
         imageCount: persistedOutput.images.length,
       });
+
+      runTimer.done({ status: "done", imageCount: persistedOutput.images.length });
 
       drafts.push({
         runId: run.runId,
@@ -103,9 +131,12 @@ export async function runWorkerPass(limit = 10): Promise<WorkerPassReport> {
 
       let errorMessage = formatWorkerError(error);
 
+      runLog.error("Run failed", error, { comfyPromptId });
+
       try {
         await removeManagedRunOutput(run);
       } catch (cleanupError) {
+        runLog.warn("Cleanup failed", { error: formatWorkerError(cleanupError) });
         errorMessage = `${errorMessage} | cleanup: ${formatWorkerError(cleanupError)}`;
       }
 
@@ -120,6 +151,8 @@ export async function runWorkerPass(limit = 10): Promise<WorkerPassReport> {
         errorMessage,
         comfyPromptId,
       });
+
+      runTimer.done({ status: "failed", error: errorMessage });
 
       drafts.push({
         runId: run.runId,
@@ -137,6 +170,13 @@ export async function runWorkerPass(limit = 10): Promise<WorkerPassReport> {
   }
 
   const failedRunCount = drafts.filter((draft) => draft.status === RunStatus.failed).length;
+
+  passTimer.done({
+    queued: queuedRuns.length,
+    claimed: drafts.length,
+    skipped: skippedRunCount,
+    failed: failedRunCount,
+  });
 
   return {
     scannedAt: new Date().toISOString(),

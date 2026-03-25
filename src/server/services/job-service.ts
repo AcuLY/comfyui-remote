@@ -1,5 +1,6 @@
 import { Prisma } from "@/generated/prisma";
 import { ActorType } from "@/lib/db-enums";
+import { createLogger } from "@/lib/logger";
 import {
   createJob as createJobInRepository,
   copyJob as copyJobInRepository,
@@ -11,6 +12,9 @@ import {
 } from "@/server/repositories/job-repository";
 import { audit } from "@/server/services/audit-service";
 import { createJobRevision } from "@/server/services/revision-service";
+
+// Job service logger
+const log = createLogger({ module: "job-service" });
 
 type CreateJobRequestBody = {
   title?: unknown;
@@ -357,7 +361,11 @@ export async function createJob(body: unknown, actorType: ActorType = ActorType.
     notes: normalizeNullableNotesField(parsedBody.notes, "notes"),
   };
 
+  log.info("Creating job", { title: input.title, characterId: input.characterId });
+
   const result = await createJobInRepository(input);
+
+  log.info("Job created", { jobId: result.id, title: input.title });
   audit("CompleteJob", result.id, "create", { title: input.title }, actorType);
   return result;
 }
