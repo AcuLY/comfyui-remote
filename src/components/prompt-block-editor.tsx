@@ -2,8 +2,23 @@
 
 import { useState, useTransition } from "react";
 import {
-  ChevronDown,
-  ChevronRight,
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import {
   GripVertical,
   Plus,
   Pencil,
@@ -18,7 +33,6 @@ import {
   Sparkles,
 } from "lucide-react";
 import {
-  listPositionBlocks,
   addPositionBlock,
   updatePositionBlock,
   deletePositionBlock,
@@ -61,8 +75,6 @@ const BLOCK_TYPE_CONFIG: Record<
   },
 };
 
-const BLOCK_TYPES = Object.keys(BLOCK_TYPE_CONFIG);
-
 // ---------------------------------------------------------------------------
 // TypeBadge
 // ---------------------------------------------------------------------------
@@ -70,11 +82,8 @@ const BLOCK_TYPES = Object.keys(BLOCK_TYPE_CONFIG);
 function TypeBadge({ type }: { type: string }) {
   const config = BLOCK_TYPE_CONFIG[type] ?? BLOCK_TYPE_CONFIG.custom;
   const Icon = config.icon;
-
   return (
-    <span
-      className={`inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 text-[10px] font-medium ${config.color}`}
-    >
+    <span className={`inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 text-[10px] font-medium ${config.color}`}>
       <Icon className="size-3" />
       {config.label}
     </span>
@@ -82,14 +91,15 @@ function TypeBadge({ type }: { type: string }) {
 }
 
 // ---------------------------------------------------------------------------
-// BlockItem — 单个 PromptBlock
+// SortableBlockCard
 // ---------------------------------------------------------------------------
 
-type BlockItemProps = {
+type SortableBlockCardProps = {
   block: PromptBlockData;
+  column: "positive" | "negative";
   isEditing: boolean;
-  editData: { label: string; positive: string; negative: string };
-  onEditChange: (field: string, value: string) => void;
+  editValue: string;
+  onEditChange: (value: string) => void;
   onStartEdit: () => void;
   onCancelEdit: () => void;
   onSaveEdit: () => void;
@@ -97,122 +107,91 @@ type BlockItemProps = {
   isSaving: boolean;
 };
 
-function BlockItem({
+function SortableBlockCard({
   block,
+  column,
   isEditing,
-  editData,
+  editValue,
   onEditChange,
   onStartEdit,
   onCancelEdit,
   onSaveEdit,
   onDelete,
   isSaving,
-}: BlockItemProps) {
-  const Chevron = isEditing ? ChevronDown : ChevronRight;
+}: SortableBlockCardProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: block.id,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  const text = column === "positive" ? block.positive : (block.negative ?? "");
+  const isEmpty = !text.trim();
+
+  if (isEmpty && !isEditing) return null;
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.03]">
-      {/* Header */}
-      <div className="flex items-center gap-2 p-3">
-        <div className="flex items-center text-zinc-600">
-          <GripVertical className="size-4" />
-        </div>
-
+    <div ref={setNodeRef} style={style} className="rounded-xl border border-white/10 bg-white/[0.03]">
+      <div className="flex items-center gap-1.5 p-2">
         <button
           type="button"
-          onClick={isEditing ? onCancelEdit : onStartEdit}
-          className="flex items-center gap-1 text-zinc-500 transition hover:text-zinc-300"
+          className="cursor-grab touch-none text-zinc-600 hover:text-zinc-400"
+          {...attributes}
+          {...listeners}
         >
-          <Chevron className="size-3.5 shrink-0" />
+          <GripVertical className="size-3.5" />
         </button>
-
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-medium text-zinc-200 truncate">
-              {block.label}
-            </span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] font-medium text-zinc-300 truncate">{block.label}</span>
             <TypeBadge type={block.type} />
           </div>
           {!isEditing && (
             <div className="mt-0.5 text-[11px] text-zinc-500 truncate">
-              {block.positive.slice(0, 80)}
-              {block.positive.length > 80 ? "..." : ""}
+              {text.slice(0, 60)}{text.length > 60 ? "..." : ""}
             </div>
           )}
         </div>
-
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5">
           {!isEditing && (
-            <button
-              type="button"
-              onClick={onStartEdit}
-              className="rounded-lg p-1.5 text-zinc-500 transition hover:bg-white/[0.06] hover:text-white"
-            >
-              <Pencil className="size-3.5" />
+            <button type="button" onClick={onStartEdit} className="rounded p-1 text-zinc-500 hover:bg-white/[0.06] hover:text-white">
+              <Pencil className="size-3" />
             </button>
           )}
-          <button
-            type="button"
-            onClick={onDelete}
-            className="rounded-lg p-1.5 text-zinc-500 transition hover:bg-red-500/10 hover:text-red-400"
-          >
-            <Trash2 className="size-3.5" />
+          <button type="button" onClick={onDelete} className="rounded p-1 text-zinc-500 hover:bg-red-500/10 hover:text-red-400">
+            <Trash2 className="size-3" />
           </button>
         </div>
       </div>
 
-      {/* Edit form (expanded) */}
       {isEditing && (
-        <div className="border-t border-white/5 p-3 space-y-3">
-          <div className="space-y-1">
-            <label className="text-[10px] text-zinc-500">标签</label>
-            <input
-              type="text"
-              value={editData.label}
-              onChange={(e) => onEditChange("label", e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
-            />
-          </div>
-          <div className="space-y-1">
-            <label className="text-[10px] text-zinc-500">Positive Prompt</label>
-            <textarea
-              value={editData.positive}
-              onChange={(e) => onEditChange("positive", e.target.value)}
-              rows={3}
-              className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
-            />
-          </div>
-          <div className="space-y-1">
-            <label className="text-[10px] text-zinc-500">Negative Prompt（可选）</label>
-            <textarea
-              value={editData.negative}
-              onChange={(e) => onEditChange("negative", e.target.value)}
-              rows={2}
-              placeholder="留空则不添加负面提示词"
-              className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30"
-            />
-          </div>
-          <div className="flex gap-2">
+        <div className="border-t border-white/5 p-2 space-y-2">
+          <textarea
+            value={editValue}
+            onChange={(e) => onEditChange(e.target.value)}
+            rows={3}
+            className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
+          />
+          <div className="flex gap-1.5">
             <button
               type="button"
               disabled={isSaving}
               onClick={onSaveEdit}
-              className="inline-flex items-center gap-1 rounded-xl bg-sky-500/20 px-3 py-1.5 text-xs text-sky-300 transition hover:bg-sky-500/30 disabled:opacity-50"
+              className="inline-flex items-center gap-1 rounded-lg bg-sky-500/20 px-2 py-1 text-[11px] text-sky-300 hover:bg-sky-500/30 disabled:opacity-50"
             >
-              {isSaving ? (
-                <Loader2 className="size-3 animate-spin" />
-              ) : (
-                <Save className="size-3" />
-              )}
+              {isSaving ? <Loader2 className="size-3 animate-spin" /> : <Save className="size-3" />}
               保存
             </button>
             <button
               type="button"
               onClick={onCancelEdit}
-              className="inline-flex items-center gap-1 rounded-xl border border-white/10 px-3 py-1.5 text-xs text-zinc-400 transition hover:bg-white/[0.06]"
+              className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-2 py-1 text-[11px] text-zinc-400 hover:bg-white/[0.06]"
             >
-              <X className="size-3" />
-              取消
+              <X className="size-3" /> 取消
             </button>
           </div>
         </div>
@@ -222,141 +201,149 @@ function BlockItem({
 }
 
 // ---------------------------------------------------------------------------
-// AddBlockForm — 新增块表单
+// BlockColumn — 单栏（正面或负面）
 // ---------------------------------------------------------------------------
 
-type AddBlockFormProps = {
-  onAdd: (input: {
-    type: string;
-    label: string;
-    positive: string;
-    negative?: string | null;
-  }) => void;
-  isPending: boolean;
+type BlockColumnProps = {
+  title: string;
+  titleColor: string;
+  column: "positive" | "negative";
+  blocks: PromptBlockData[];
+  editingId: string | null;
+  editValue: string;
+  onEditChange: (value: string) => void;
+  onStartEdit: (block: PromptBlockData) => void;
+  onCancelEdit: () => void;
+  onSaveEdit: () => void;
+  onDelete: (blockId: string) => void;
+  onDragEnd: (event: DragEndEvent) => void;
+  isSaving: boolean;
+  onAdd: () => void;
 };
 
-function AddBlockForm({ onAdd, isPending }: AddBlockFormProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [type, setType] = useState("custom");
-  const [label, setLabel] = useState("");
+function BlockColumn({
+  title,
+  titleColor,
+  column,
+  blocks,
+  editingId,
+  editValue,
+  onEditChange,
+  onStartEdit,
+  onCancelEdit,
+  onSaveEdit,
+  onDelete,
+  onDragEnd,
+  isSaving,
+  onAdd,
+}: BlockColumnProps) {
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  // Filter blocks with content for this column
+  const visibleBlocks = blocks.filter((b) => {
+    const text = column === "positive" ? b.positive : (b.negative ?? "");
+    return text.trim() || editingId === b.id;
+  });
+
+  return (
+    <div className="flex-1 min-w-0">
+      <div className={`mb-2 text-xs font-medium ${titleColor}`}>{title}</div>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+        <SortableContext items={blocks.map((b) => b.id)} strategy={verticalListSortingStrategy}>
+          <div className="space-y-1.5">
+            {visibleBlocks.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-white/5 px-3 py-4 text-center text-[11px] text-zinc-600">
+                暂无
+              </div>
+            ) : (
+              visibleBlocks.map((block) => (
+                <SortableBlockCard
+                  key={block.id}
+                  block={block}
+                  column={column}
+                  isEditing={editingId === block.id}
+                  editValue={editValue}
+                  onEditChange={onEditChange}
+                  onStartEdit={() => onStartEdit(block)}
+                  onCancelEdit={onCancelEdit}
+                  onSaveEdit={onSaveEdit}
+                  onDelete={() => onDelete(block.id)}
+                  isSaving={isSaving}
+                />
+              ))
+            )}
+          </div>
+        </SortableContext>
+      </DndContext>
+      <button
+        type="button"
+        onClick={onAdd}
+        className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-white/10 bg-white/[0.02] px-3 py-2 text-[11px] text-zinc-500 transition hover:bg-white/[0.04] hover:text-zinc-300"
+      >
+        <Plus className="size-3" />
+        添加{column === "positive" ? "正面" : "负面"}提示词块
+      </button>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// AddBlockForm (simplified)
+// ---------------------------------------------------------------------------
+
+function AddBlockForm({
+  polarity,
+  onAdd,
+  onCancel,
+  isPending,
+}: {
+  polarity: "positive" | "negative";
+  onAdd: (input: { type: string; label: string; positive: string; negative?: string | null }) => void;
+  onCancel: () => void;
+  isPending: boolean;
+}) {
   const [positive, setPositive] = useState("");
   const [negative, setNegative] = useState("");
 
-  if (!isOpen) {
-    return (
-      <button
-        type="button"
-        onClick={() => setIsOpen(true)}
-        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-zinc-400 transition hover:bg-white/[0.04] hover:text-zinc-200"
-      >
-        <Plus className="size-4" />
-        添加提示词块
-      </button>
-    );
-  }
-
   function handleSubmit() {
-    if (!label.trim() || !positive.trim()) return;
+    const text = polarity === "positive" ? positive : negative;
+    if (!text.trim()) return;
+    const label = text.trim().slice(0, 20);
     onAdd({
-      type,
-      label: label.trim(),
-      positive: positive.trim(),
-      negative: negative.trim() || null,
+      type: "custom",
+      label,
+      positive: polarity === "positive" ? positive.trim() : "",
+      negative: polarity === "negative" ? negative.trim() : null,
     });
-    setLabel("");
-    setPositive("");
-    setNegative("");
-    setIsOpen(false);
-  }
-
-  function handleCancel() {
-    setIsOpen(false);
-    setLabel("");
-    setPositive("");
-    setNegative("");
   }
 
   return (
-    <div className="rounded-2xl border border-sky-500/20 bg-sky-500/[0.03] p-4 space-y-3">
-      <div className="text-sm font-medium text-sky-300">新增提示词块</div>
-
-      <div className="space-y-1">
-        <label className="text-[10px] text-zinc-500">类型</label>
-        <div className="flex flex-wrap gap-1.5">
-          {BLOCK_TYPES.map((t) => {
-            const config = BLOCK_TYPE_CONFIG[t];
-            return (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setType(t)}
-                className={`rounded-lg border px-2.5 py-1 text-[11px] transition ${
-                  type === t
-                    ? config.color
-                    : "border-white/10 text-zinc-500 hover:text-zinc-300"
-                }`}
-              >
-                {config.label}
-              </button>
-            );
-          })}
-        </div>
+    <div className="rounded-xl border border-sky-500/20 bg-sky-500/[0.03] p-3 space-y-2">
+      <div className="text-[11px] font-medium text-sky-300">
+        添加{polarity === "positive" ? "正面" : "负面"}提示词块
       </div>
-
-      <div className="space-y-1">
-        <label className="text-[10px] text-zinc-500">标签</label>
-        <input
-          type="text"
-          value={label}
-          onChange={(e) => setLabel(e.target.value)}
-          placeholder="例：角色描述"
-          className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30"
-        />
-      </div>
-
-      <div className="space-y-1">
-        <label className="text-[10px] text-zinc-500">Positive Prompt</label>
-        <textarea
-          value={positive}
-          onChange={(e) => setPositive(e.target.value)}
-          rows={2}
-          placeholder="提示词内容…"
-          className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30"
-        />
-      </div>
-
-      <div className="space-y-1">
-        <label className="text-[10px] text-zinc-500">Negative Prompt（可选）</label>
-        <textarea
-          value={negative}
-          onChange={(e) => setNegative(e.target.value)}
-          rows={2}
-          placeholder="留空则不添加"
-          className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30"
-        />
-      </div>
-
-      <div className="flex gap-2">
+      <textarea
+        value={polarity === "positive" ? positive : negative}
+        onChange={(e) => polarity === "positive" ? setPositive(e.target.value) : setNegative(e.target.value)}
+        rows={2}
+        placeholder="提示词内容…"
+        className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30"
+      />
+      <div className="flex gap-1.5">
         <button
           type="button"
-          disabled={isPending || !label.trim() || !positive.trim()}
+          disabled={isPending || !(polarity === "positive" ? positive : negative).trim()}
           onClick={handleSubmit}
-          className="inline-flex items-center gap-1 rounded-xl bg-sky-500/20 px-3 py-1.5 text-xs text-sky-300 transition hover:bg-sky-500/30 disabled:opacity-50"
+          className="inline-flex items-center gap-1 rounded-lg bg-sky-500/20 px-2 py-1 text-[11px] text-sky-300 hover:bg-sky-500/30 disabled:opacity-50"
         >
-          {isPending ? (
-            <Loader2 className="size-3 animate-spin" />
-          ) : (
-            <Plus className="size-3" />
-          )}
+          {isPending ? <Loader2 className="size-3 animate-spin" /> : <Plus className="size-3" />}
           添加
         </button>
-        <button
-          type="button"
-          onClick={handleCancel}
-          className="inline-flex items-center gap-1 rounded-xl border border-white/10 px-3 py-1.5 text-xs text-zinc-400 transition hover:bg-white/[0.06]"
-        >
-          <X className="size-3" />
-          取消
+        <button type="button" onClick={onCancel} className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-2 py-1 text-[11px] text-zinc-400 hover:bg-white/[0.06]">
+          <X className="size-3" /> 取消
         </button>
       </div>
     </div>
@@ -364,7 +351,7 @@ function AddBlockForm({ onAdd, isPending }: AddBlockFormProps) {
 }
 
 // ---------------------------------------------------------------------------
-// PromptBlockEditor — 主组件
+// PromptBlockEditor — 主组件（正负两栏 + 拖拽）
 // ---------------------------------------------------------------------------
 
 export function PromptBlockEditor({
@@ -376,44 +363,38 @@ export function PromptBlockEditor({
 }) {
   const [blocks, setBlocks] = useState<PromptBlockData[]>(initialBlocks);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editData, setEditData] = useState({
-    label: "",
-    positive: "",
-    negative: "",
-  });
+  const [editColumn, setEditColumn] = useState<"positive" | "negative">("positive");
+  const [editValue, setEditValue] = useState("");
+  const [addingColumn, setAddingColumn] = useState<"positive" | "negative" | null>(null);
   const [isPending, startTransition] = useTransition();
 
   // ---- Edit handlers ----
 
-  function startEdit(block: PromptBlockData) {
+  function startEdit(block: PromptBlockData, column: "positive" | "negative") {
     setEditingId(block.id);
-    setEditData({
-      label: block.label,
-      positive: block.positive,
-      negative: block.negative ?? "",
-    });
+    setEditColumn(column);
+    setEditValue(column === "positive" ? block.positive : (block.negative ?? ""));
   }
 
   function cancelEdit() {
     setEditingId(null);
-    setEditData({ label: "", positive: "", negative: "" });
+    setEditValue("");
   }
 
-  function handleEditChange(field: string, value: string) {
-    setEditData((prev) => ({ ...prev, [field]: value }));
-  }
+  function saveEdit() {
+    if (!editingId) return;
+    const block = blocks.find((b) => b.id === editingId);
+    if (!block) return;
 
-  function saveEdit(blockId: string) {
-    if (!editData.label.trim() || !editData.positive.trim()) return;
+    const update = editColumn === "positive"
+      ? { positive: editValue.trim() }
+      : { negative: editValue.trim() || null };
 
     startTransition(async () => {
-      const updated = await updatePositionBlock(blockId, {
-        label: editData.label.trim(),
-        positive: editData.positive.trim(),
-        negative: editData.negative.trim() || null,
-      });
-      setBlocks((prev) => prev.map((b) => (b.id === blockId ? updated : b)));
+      const updated = await updatePositionBlock(editingId, update);
+      setBlocks((prev) => prev.map((b) => (b.id === editingId ? updated : b)));
       setEditingId(null);
+      setEditValue("");
     });
   }
 
@@ -421,7 +402,6 @@ export function PromptBlockEditor({
 
   function handleDelete(blockId: string) {
     if (!confirm("确认删除此提示词块？")) return;
-
     startTransition(async () => {
       await deletePositionBlock(blockId);
       setBlocks((prev) => prev.filter((b) => b.id !== blockId));
@@ -431,125 +411,100 @@ export function PromptBlockEditor({
 
   // ---- Add handler ----
 
-  function handleAdd(input: {
-    type: string;
-    label: string;
-    positive: string;
-    negative?: string | null;
-  }) {
+  function handleAdd(input: { type: string; label: string; positive: string; negative?: string | null }) {
     startTransition(async () => {
       const newBlock = await addPositionBlock(positionId, input);
       setBlocks((prev) => [...prev, newBlock]);
+      setAddingColumn(null);
     });
   }
 
-  // ---- Move up/down (simple reorder without drag) ----
+  // ---- DnD reorder ----
 
-  function moveBlock(blockId: string, direction: "up" | "down") {
-    const index = blocks.findIndex((b) => b.id === blockId);
-    if (index === -1) return;
-    if (direction === "up" && index === 0) return;
-    if (direction === "down" && index === blocks.length - 1) return;
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
 
-    const nextBlocks = [...blocks];
-    const swapIndex = direction === "up" ? index - 1 : index + 1;
-    [nextBlocks[index], nextBlocks[swapIndex]] = [
-      nextBlocks[swapIndex],
-      nextBlocks[index],
-    ];
+    const oldIndex = blocks.findIndex((b) => b.id === active.id);
+    const newIndex = blocks.findIndex((b) => b.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
 
+    const nextBlocks = arrayMove(blocks, oldIndex, newIndex);
     setBlocks(nextBlocks);
 
     startTransition(async () => {
-      const reordered = await reorderPositionBlocks(
-        positionId,
-        nextBlocks.map((b) => b.id),
-      );
+      const reordered = await reorderPositionBlocks(positionId, nextBlocks.map((b) => b.id));
       setBlocks(reordered);
     });
   }
 
   // ---- Composed prompt preview ----
 
-  const composedPositive = blocks
-    .map((b) => b.positive)
-    .filter(Boolean)
-    .join(", ");
-  const composedNegative = blocks
-    .map((b) => b.negative)
-    .filter((v): v is string => Boolean(v))
-    .join(", ");
+  const composedPositive = blocks.map((b) => b.positive).filter(Boolean).join(", ");
+  const composedNegative = blocks.map((b) => b.negative).filter((v): v is string => Boolean(v)).join(", ");
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {/* Composed prompt preview */}
       {blocks.length > 0 && (
         <div className="rounded-2xl bg-white/[0.03] p-3 space-y-2">
-          <div className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">
-            合成提示词预览
-          </div>
+          <div className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">合成提示词预览</div>
           <div className="text-xs text-zinc-300 break-words">
-            <span className="text-zinc-500">+</span> {composedPositive}
+            <span className="text-emerald-500/60">+</span> {composedPositive || "（无）"}
           </div>
           {composedNegative && (
             <div className="text-xs text-zinc-400 break-words">
-              <span className="text-zinc-500">-</span> {composedNegative}
+              <span className="text-rose-500/60">−</span> {composedNegative}
             </div>
           )}
         </div>
       )}
 
-      {/* Block list */}
-      {blocks.length === 0 && (
-        <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] px-4 py-8 text-center text-xs text-zinc-500">
-          暂无提示词块。点击下方按钮添加。
-        </div>
-      )}
-
-      <div className="space-y-2">
-        {blocks.map((block, index) => (
-          <div key={block.id} className="relative">
-            <BlockItem
-              block={block}
-              isEditing={editingId === block.id}
-              editData={editData}
-              onEditChange={handleEditChange}
-              onStartEdit={() => startEdit(block)}
-              onCancelEdit={cancelEdit}
-              onSaveEdit={() => saveEdit(block.id)}
-              onDelete={() => handleDelete(block.id)}
-              isSaving={isPending}
-            />
-
-            {/* Move buttons */}
-            {editingId !== block.id && (
-              <div className="absolute right-2 top-1/2 -translate-y-1/2 flex flex-col gap-0.5">
-                <button
-                  type="button"
-                  onClick={() => moveBlock(block.id, "up")}
-                  disabled={index === 0 || isPending}
-                  className="rounded p-0.5 text-[10px] text-zinc-600 transition hover:bg-white/[0.06] hover:text-zinc-300 disabled:invisible"
-                  title="上移"
-                >
-                  &#9650;
-                </button>
-                <button
-                  type="button"
-                  onClick={() => moveBlock(block.id, "down")}
-                  disabled={index === blocks.length - 1 || isPending}
-                  className="rounded p-0.5 text-[10px] text-zinc-600 transition hover:bg-white/[0.06] hover:text-zinc-300 disabled:invisible"
-                  title="下移"
-                >
-                  &#9660;
-                </button>
-              </div>
-            )}
-          </div>
-        ))}
+      {/* Two-column layout */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <BlockColumn
+          title="✅ 正面提示词"
+          titleColor="text-emerald-400"
+          column="positive"
+          blocks={blocks}
+          editingId={editColumn === "positive" ? editingId : null}
+          editValue={editColumn === "positive" ? editValue : ""}
+          onEditChange={setEditValue}
+          onStartEdit={(block) => startEdit(block, "positive")}
+          onCancelEdit={cancelEdit}
+          onSaveEdit={saveEdit}
+          onDelete={handleDelete}
+          onDragEnd={handleDragEnd}
+          isSaving={isPending}
+          onAdd={() => setAddingColumn("positive")}
+        />
+        <BlockColumn
+          title="❌ 负面提示词"
+          titleColor="text-rose-400"
+          column="negative"
+          blocks={blocks}
+          editingId={editColumn === "negative" ? editingId : null}
+          editValue={editColumn === "negative" ? editValue : ""}
+          onEditChange={setEditValue}
+          onStartEdit={(block) => startEdit(block, "negative")}
+          onCancelEdit={cancelEdit}
+          onSaveEdit={saveEdit}
+          onDelete={handleDelete}
+          onDragEnd={handleDragEnd}
+          isSaving={isPending}
+          onAdd={() => setAddingColumn("negative")}
+        />
       </div>
 
-      {/* Add form */}
-      <AddBlockForm onAdd={handleAdd} isPending={isPending} />
+      {/* Add block form overlay */}
+      {addingColumn && (
+        <AddBlockForm
+          polarity={addingColumn}
+          onAdd={handleAdd}
+          onCancel={() => setAddingColumn(null)}
+          isPending={isPending}
+        />
+      )}
     </div>
   );
 }

@@ -1,0 +1,101 @@
+"use client";
+
+import { useActionState } from "react";
+import { Save, Loader2 } from "lucide-react";
+import { initialJobSaveState, saveJobPositionEditAction } from "@/app/jobs/actions";
+
+type SectionParamsFormProps = {
+  jobId: string;
+  positionId: string;
+  initialParams: {
+    batchSize: number | null;
+    aspectRatio: string | null;
+    seedPolicy: string | null;
+  };
+};
+
+export function SectionParamsForm({ jobId, positionId, initialParams }: SectionParamsFormProps) {
+  const [state, formAction, pending] = useActionState(saveJobPositionEditAction, initialJobSaveState);
+
+  return (
+    <form action={formAction}>
+      <input type="hidden" name="jobId" value={jobId} />
+      <input type="hidden" name="positionId" value={positionId} />
+      {/* 提交空值让 API 保持原 prompt 不变 */}
+      <input type="hidden" name="positivePrompt" value="" />
+      <input type="hidden" name="negativePrompt" value="" />
+
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="text-xs font-medium text-zinc-400">运行参数</div>
+          <button
+            type="submit"
+            disabled={pending}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-sky-500/20 bg-sky-500/10 px-3 py-1.5 text-[11px] text-sky-300 transition hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {pending ? <Loader2 className="size-3 animate-spin" /> : <Save className="size-3" />}
+            {pending ? "保存中…" : "保存参数"}
+          </button>
+        </div>
+
+        <div className="grid grid-cols-3 gap-3">
+          <label className="space-y-1.5">
+            <div className="text-[11px] text-zinc-500">画幅比例</div>
+            <select
+              name="aspectRatio"
+              disabled={pending}
+              defaultValue={initialParams.aspectRatio ?? ""}
+              className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-2.5 py-2 text-xs text-zinc-200 outline-none focus:border-sky-500/30 disabled:opacity-70"
+            >
+              <option value="">默认</option>
+              <option value="1:1">1:1 (1024×1024)</option>
+              <option value="3:4">3:4 (896×1152)</option>
+              <option value="4:3">4:3 (1152×896)</option>
+              <option value="2:3">2:3 (832×1216)</option>
+              <option value="3:2">3:2 (1216×832)</option>
+              <option value="9:16">9:16 (768×1344)</option>
+              <option value="16:9">16:9 (1344×768)</option>
+            </select>
+          </label>
+          <label className="space-y-1.5">
+            <div className="text-[11px] text-zinc-500">Batch Size</div>
+            <input
+              name="batchSize"
+              type="number"
+              min={1}
+              disabled={pending}
+              defaultValue={initialParams.batchSize ?? ""}
+              placeholder="默认"
+              className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-2.5 py-2 text-xs text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30 disabled:opacity-70"
+            />
+          </label>
+          <label className="space-y-1.5">
+            <div className="text-[11px] text-zinc-500">Seed 策略</div>
+            <select
+              name="seedPolicy"
+              disabled={pending}
+              defaultValue={initialParams.seedPolicy ?? ""}
+              className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-2.5 py-2 text-xs text-zinc-200 outline-none focus:border-sky-500/30 disabled:opacity-70"
+            >
+              <option value="">默认</option>
+              <option value="random">随机 (random)</option>
+              <option value="fixed">固定 (fixed)</option>
+            </select>
+          </label>
+        </div>
+
+        {state.status !== "idle" && (
+          <p
+            className={`rounded-xl border px-3 py-1.5 text-[11px] leading-5 ${
+              state.status === "error"
+                ? "border-rose-500/20 bg-rose-500/10 text-rose-200"
+                : "border-emerald-500/20 bg-emerald-500/10 text-emerald-200"
+            }`}
+          >
+            {state.message}
+          </p>
+        )}
+      </div>
+    </form>
+  );
+}

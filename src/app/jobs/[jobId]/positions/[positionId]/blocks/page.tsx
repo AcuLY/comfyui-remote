@@ -4,9 +4,10 @@ import { ArrowLeft, Layers } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { SectionCard } from "@/components/section-card";
 import { PromptBlockEditor } from "@/components/prompt-block-editor";
+import { SectionParamsForm } from "./section-params-form";
 import type { PromptBlockData } from "@/lib/actions";
 
-export default async function PositionBlocksPage({
+export default async function SectionEditPage({
   params,
 }: {
   params: Promise<{ jobId: string; positionId: string }>;
@@ -37,7 +38,8 @@ export default async function PositionBlocksPage({
     notFound();
   }
 
-  const positionName = pos.positionTemplate?.name ?? "未命名 Position";
+  const sectionName =
+    pos.positivePrompt || pos.positionTemplate?.name || `小节 ${pos.sortOrder}`;
 
   const initialBlocks: PromptBlockData[] = pos.promptBlocks.map((b) => ({
     id: b.id,
@@ -48,6 +50,12 @@ export default async function PositionBlocksPage({
     negative: b.negative,
     sortOrder: b.sortOrder,
   }));
+
+  const sectionParams = {
+    batchSize: pos.batchSize ?? pos.positionTemplate?.defaultBatchSize ?? null,
+    aspectRatio: pos.aspectRatio ?? pos.positionTemplate?.defaultAspectRatio ?? null,
+    seedPolicy: pos.seedPolicy ?? pos.positionTemplate?.defaultSeedPolicy ?? null,
+  };
 
   return (
     <div className="space-y-4">
@@ -65,10 +73,20 @@ export default async function PositionBlocksPage({
       </div>
 
       <SectionCard
-        title={`${positionName} — 提示词块`}
-        subtitle="管理此小节的提示词块，调整顺序后自动合成完整 prompt。"
+        title={`编辑小节 — ${sectionName}`}
+        subtitle="管理此小节的运行参数和提示词块，调整顺序后自动合成完整 prompt。"
       >
-        <PromptBlockEditor positionId={positionId} initialBlocks={initialBlocks} />
+        <div className="space-y-6">
+          <SectionParamsForm
+            jobId={jobId}
+            positionId={positionId}
+            initialParams={sectionParams}
+          />
+          <div className="border-t border-white/5 pt-4">
+            <div className="mb-3 text-xs font-medium text-zinc-400">提示词块</div>
+            <PromptBlockEditor positionId={positionId} initialBlocks={initialBlocks} />
+          </div>
+        </div>
       </SectionCard>
     </div>
   );
