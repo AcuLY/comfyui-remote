@@ -63,6 +63,7 @@ type PositionTemplateRecord = {
   negativePrompt: string | null;
   defaultLoraConfig: Prisma.JsonValue | null;
   defaultAspectRatio: string | null;
+  defaultShortSidePx: number | null;
   defaultBatchSize: number | null;
   defaultSeedPolicy: string | null;
   defaultParams: Prisma.JsonValue | null;
