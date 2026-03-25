@@ -1,0 +1,46 @@
+"use client";
+
+import { useTransition } from "react";
+import { Plus, Trash2 } from "lucide-react";
+import { addSection, deleteSection } from "@/lib/actions";
+
+export function AddSectionButton({ jobId }: { jobId: string }) {
+  const [isPending, startTransition] = useTransition();
+
+  function handleAdd() {
+    startTransition(async () => {
+      await addSection(jobId);
+    });
+  }
+
+  return (
+    <button
+      disabled={isPending}
+      onClick={handleAdd}
+      className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-zinc-400 transition hover:border-sky-500/30 hover:bg-sky-500/5 hover:text-sky-300 disabled:opacity-50"
+    >
+      <Plus className="size-4" /> {isPending ? "添加中…" : "添加小节"}
+    </button>
+  );
+}
+
+export function DeleteSectionButton({ sectionId, sectionName }: { sectionId: string; sectionName: string }) {
+  const [isPending, startTransition] = useTransition();
+
+  function handleDelete() {
+    if (!confirm(`确定要删除小节"${sectionName}"吗？此操作不可撤销。`)) return;
+    startTransition(async () => {
+      await deleteSection(sectionId);
+    });
+  }
+
+  return (
+    <button
+      disabled={isPending}
+      onClick={handleDelete}
+      className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-zinc-500 transition hover:border-rose-500/20 hover:bg-rose-500/10 hover:text-rose-300 disabled:opacity-50"
+    >
+      <Trash2 className="size-3.5" /> {isPending ? "删除中…" : "删除"}
+    </button>
+  );
+}

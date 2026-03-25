@@ -614,3 +614,117 @@ export async function reorderPositionBlocks(
   audit("PromptBlock", jobPositionId, "reorder", { blockIds }, "user" as const);
   return reordered;
 }
+
+// ---------------------------------------------------------------------------
+// 添加小节（Section）
+// ---------------------------------------------------------------------------
+
+export async function addSection(jobId: string, name?: string): Promise<string> {
+  // 获取大任务信息以创建初始 PromptBlocks
+  const job = await prisma.completeJob.findUnique({
+    where: { id: jobId },
+    select: {
+      id: true,
+      characterId: true,
+      scenePresetId: true,
+      stylePresetId: true,
+      characterPrompt: true,
+      scenePrompt: true,
+      stylePrompt: true,
+      character: {
+        select: { id: true, name: true, prompt: true, negativePrompt: true },
+      },
+      scenePreset: {
+        select: { id: true, name: true, prompt: true, negativePrompt: true },
+      },
+      stylePreset: {
+        select: { id: true, name: true, prompt: true, negativePrompt: true },
+      },
+      _count: { select: { positions: true } },
+    },
+  });
+
+  if (!job) throw new Error("JOB_NOT_FOUND");
+
+  const sortOrder = job._count.positions + 1;
+
+  // 创建小节（CompleteJobPosition）
+  const section = await prisma.completeJobPosition.create({
+    data: {
+      completeJobId: jobId,
+      sortOrder,
+      enabled: true,
+      positivePrompt: name || null,
+    },
+  });
+
+  // 创建初始 PromptBlocks（从大任务的 character/scene/style 复制）
+  let blockSortOrder = 0;
+
+  await prisma.promptBlock.create({
+    data: {
+      completeJobPositionId: section.id,
+      type: "character",
+      sourceId: job.character.id,
+      label: job.character.name,
+      positive: job.character.prompt,
+      negative: job.character.negativePrompt,
+      sortOrder: blockSortOrder++,
+    },
+  });
+
+  if (job.scenePreset) {
+    await prisma.promptBlock.create({
+      data: {
+        completeJobPositionId: section.id,
+        type: "scene",
+        sourceId: job.scenePreset.id,
+        label: job.scenePreset.name,
+        positive: job.scenePreset.prompt,
+        negative: job.scenePreset.negativePrompt,
+        sortOrder: blockSortOrder++,
+      },
+    });
+  }
+
+  if (job.stylePreset) {
+    await prisma.promptBlock.create({
+      data: {
+        completeJobPositionId: section.id,
+        type: "style",
+        sourceId: job.stylePreset.id,
+        label: job.stylePreset.name,
+        positive: job.stylePreset.prompt,
+        negative: job.stylePreset.negativePrompt,
+        sortOrder: blockSortOrder++,
+      },
+    });
+  }
+
+  revalidatePath(`/jobs/${jobId}`);
+  return section.id;
+}
+
+// ---------------------------------------------------------------------------
+// 删除小节
+// ---------------------------------------------------------------------------
+
+export async function deleteSection(sectionId: string): Promise<void> {
+  const section = await prisma.completeJobPosition.findUnique({
+    where: { id: sectionId },
+    select: { completeJobId: true },
+  });
+  if (!section) return;
+
+  // 先删除所有 PromptBlocks
+  await prisma.promptBlock.deleteMany({
+    where: { completeJobPositionId: sectionId },
+  });
+
+  // 再删除小节
+  await prisma.completeJobPosition.delete({
+    where: { id: sectionId },
+  });
+
+  revalidatePath(`/jobs/${section.completeJobId}`);
+}

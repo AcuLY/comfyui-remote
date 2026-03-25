@@ -149,8 +149,11 @@ export type JobDetail = {
     name: string;
     batchSize: number | null;
     aspectRatio: string | null;
+    seedPolicy: string | null;
     latestRunStatus: string | null;
     promptBlockCount: number;
+    positiveBlockCount: number;
+    negativeBlockCount: number;
   }[];
 };
 
@@ -171,7 +174,8 @@ export async function getJobDetail(jobId: string): Promise<JobDetail | null> {
             select: { status: true },
           },
           promptBlocks: {
-            select: { id: true },
+            orderBy: { sortOrder: "asc" },
+            select: { id: true, positive: true, negative: true },
           },
         },
       },
@@ -190,14 +194,21 @@ export async function getJobDetail(jobId: string): Promise<JobDetail | null> {
     characterPrompt: job.characterPrompt,
     scenePrompt: job.scenePrompt,
     stylePrompt: job.stylePrompt,
-    positions: job.positions.map((pos) => ({
-      id: pos.id,
-      name: pos.positionTemplate?.name ?? "Unknown",
-      batchSize: pos.batchSize ?? pos.positionTemplate?.defaultBatchSize ?? null,
-      aspectRatio: pos.aspectRatio ?? pos.positionTemplate?.defaultAspectRatio ?? null,
-      latestRunStatus: pos.runs[0]?.status ?? null,
-      promptBlockCount: pos.promptBlocks.length,
-    })),
+    positions: job.positions.map((pos) => {
+      const positiveBlockCount = pos.promptBlocks.filter((b) => b.positive?.trim()).length;
+      const negativeBlockCount = pos.promptBlocks.filter((b) => b.negative?.trim()).length;
+      return {
+        id: pos.id,
+        name: pos.positivePrompt || pos.positionTemplate?.name || `小节 ${pos.sortOrder}`,
+        batchSize: pos.batchSize ?? pos.positionTemplate?.defaultBatchSize ?? null,
+        aspectRatio: pos.aspectRatio ?? pos.positionTemplate?.defaultAspectRatio ?? null,
+        seedPolicy: pos.seedPolicy ?? pos.positionTemplate?.defaultSeedPolicy ?? null,
+        latestRunStatus: pos.runs[0]?.status ?? null,
+        promptBlockCount: pos.promptBlocks.length,
+        positiveBlockCount,
+        negativeBlockCount,
+      };
+    }),
   };
 }
 
