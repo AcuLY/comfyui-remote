@@ -54,23 +54,19 @@ export function JobDetailActions({ jobId }: { jobId: string }) {
 
 export function PositionRunButton({ positionId, defaultBatchSize }: { positionId: string; defaultBatchSize?: number | null }) {
   const [isPending, startTransition] = useTransition();
-  const [batchSize, setBatchSize] = useState<string>(defaultBatchSize?.toString() ?? "");
+  const [batchSize, setBatchSize] = useState<number>(defaultBatchSize ?? 2);
 
   function handleRun() {
-    const parsed = batchSize.trim() ? parseInt(batchSize, 10) : undefined;
-    const overrideBatchSize = parsed && Number.isInteger(parsed) && parsed >= 1 ? parsed : undefined;
-    startTransition(() => runPosition(positionId, overrideBatchSize));
+    startTransition(() => runPosition(positionId, batchSize));
   }
 
   return (
     <div className="flex items-center gap-2">
-      <input
-        type="number"
-        min={1}
-        placeholder="batch"
-        value={batchSize}
-        onChange={(e) => setBatchSize(e.target.value)}
-        className="w-16 rounded-lg border border-white/10 bg-black/20 px-2 py-1.5 text-xs text-white outline-none placeholder:text-zinc-600"
+      <BatchSizeQuickFill
+        onSelect={(val) => setBatchSize(val)}
+        currentValue={batchSize}
+        disabled={isPending}
+        size="sm"
       />
       <button
         disabled={isPending}
