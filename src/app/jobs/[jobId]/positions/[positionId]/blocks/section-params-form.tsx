@@ -21,6 +21,7 @@ type SectionParamsFormProps = {
 
 export function SectionParamsForm({ jobId, positionId, initialParams }: SectionParamsFormProps) {
   const [state, formAction, pending] = useActionState(saveJobPositionEditAction, initialJobSaveState);
+  const [batchSize, setBatchSize] = useState<string>(initialParams.batchSize?.toString() ?? "");
 
   return (
     <form action={formAction}>
