@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Save, X } from "lucide-react";
+import { Plus, Trash2, Save, X, Check } from "lucide-react";
 import { LoraBindingEditor } from "@/components/lora-binding-editor";
 import type { LoraBinding } from "@/lib/lora-types";
 
@@ -49,6 +49,11 @@ export function ConfigManager({
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
+  // Remember original values for rollback on failed save
+  const originalDataRef = useRef<Record<string, unknown>>({});
+  // Track per-field save status: key → "saving" | "saved" | "error"
+  const [fieldSaveStatus, setFieldSaveStatus] = useState<Record<string, string>>({});
+
   function startEdit(item: ConfigItem) {
     setEditingId(item.id);
     setIsCreating(false);
@@ -57,6 +62,8 @@ export function ConfigManager({
       data[field.key] = item[field.key] ?? "";
     }
     setFormData(data);
+    originalDataRef.current = { ...data };
+    setFieldSaveStatus({});
   }
 
   function startCreate() {
@@ -78,6 +85,46 @@ export function ConfigManager({
   function handleFieldChange(key: string, value: unknown) {
     setFormData((prev) => ({ ...prev, [key]: value }));
   }
+
+  /** Auto-save on blur (edit mode only) */
+  const handleFieldBlur = useCallback(
+    (key: string) => {
+      if (!editingId || isPending) return;
+      const currentVal = formData[key];
+      const originalVal = originalDataRef.current[key];
+      // No change → skip
+      if (currentVal === originalVal) return;
+
+      setFieldSaveStatus((prev) => ({ ...prev, [key]: "saving" }));
+      startTransition(async () => {
+        try {
+          await onUpdateAction(editingId, formData);
+          originalDataRef.current = { ...formData };
+          setFieldSaveStatus((prev) => ({ ...prev, [key]: "saved" }));
+          setTimeout(() => {
+            setFieldSaveStatus((prev) => {
+              const next = { ...prev };
+              if (next[key] === "saved") delete next[key];
+              return next;
+            });
+          }, 1500);
+          router.refresh();
+        } catch {
+          // Rollback to original value on error
+          setFormData((prev) => ({ ...prev, [key]: originalVal }));
+          setFieldSaveStatus((prev) => ({ ...prev, [key]: "error" }));
+          setTimeout(() => {
+            setFieldSaveStatus((prev) => {
+              const next = { ...prev };
+              if (next[key] === "error") delete next[key];
+              return next;
+            });
+          }, 2000);
+        }
+      });
+    },
+    [editingId, isPending, formData, onUpdateAction, router],
+  );
 
   function handleSave() {
     startTransition(async () => {
@@ -117,21 +164,27 @@ export function ConfigManager({
     }
 
     if (field.type === "textarea") {
+      const status = fieldSaveStatus[field.key];
       return (
         <div key={field.key}>
           <label className="mb-1 block text-xs text-zinc-500">{field.label}</label>
           <textarea
             value={String(value ?? "")}
             onChange={(e) => handleFieldChange(field.key, e.target.value)}
+            onBlur={() => !isCreating && handleFieldBlur(field.key)}
             placeholder={field.placeholder}
             rows={3}
             className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-zinc-200 outline-none focus:border-sky-500/30"
           />
+          {!isCreating && status === "saving" && <span className="mt-0.5 block text-[11px] text-sky-400">保存中…</span>}
+          {!isCreating && status === "saved" && <span className="mt-0.5 block text-[11px] text-emerald-400">已保存 ✓</span>}
+          {!isCreating && status === "error" && <span className="mt-0.5 block text-[11px] text-rose-400">保存失败，已回退</span>}
         </div>
       );
     }
 
     if (field.type === "number") {
+      const status = fieldSaveStatus[field.key];
       return (
         <div key={field.key}>
           <label className="mb-1 block text-xs text-zinc-500">{field.label}</label>
@@ -139,8 +192,12 @@ export function ConfigManager({
             type="number"
             value={Number(value ?? 0)}
             onChange={(e) => handleFieldChange(field.key, parseInt(e.target.value) || 0)}
+            onBlur={() => !isCreating && handleFieldBlur(field.key)}
             className="input-number w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-zinc-200 outline-none focus:border-sky-500/30"
           />
+          {!isCreating && status === "saving" && <span className="mt-0.5 block text-[11px] text-sky-400">保存中…</span>}
+          {!isCreating && status === "saved" && <span className="mt-0.5 block text-[11px] text-emerald-400">已保存 ✓</span>}
+          {!isCreating && status === "error" && <span className="mt-0.5 block text-[11px] text-rose-400">保存失败，已回退</span>}
         </div>
       );
     }
@@ -151,7 +208,35 @@ export function ConfigManager({
           <label className="mb-1 block text-xs text-zinc-500">{field.label}</label>
           <select
             value={String(value ?? "")}
-            onChange={(e) => handleFieldChange(field.key, e.target.value)}
+            onChange={(e) => {
+              handleFieldChange(field.key, e.target.value);
+              // Auto-save immediately for select (no blur needed)
+              if (!isCreating && editingId) {
+                const newVal = e.target.value;
+                const origVal = originalDataRef.current[field.key];
+                if (newVal === origVal) return;
+                setFieldSaveStatus((prev) => ({ ...prev, [field.key]: "saving" }));
+                startTransition(async () => {
+                  try {
+                    const updated = { ...formData, [field.key]: newVal };
+                    await onUpdateAction(editingId, updated);
+                    originalDataRef.current = { ...updated };
+                    setFieldSaveStatus((prev) => ({ ...prev, [field.key]: "saved" }));
+                    setTimeout(() => {
+                      setFieldSaveStatus((prev) => {
+                        const next = { ...prev };
+                        if (next[field.key] === "saved") delete next[field.key];
+                        return next;
+                      });
+                    }, 1500);
+                    router.refresh();
+                  } catch {
+                    setFormData((prev) => ({ ...prev, [field.key]: origVal }));
+                    setFieldSaveStatus((prev) => ({ ...prev, [field.key]: "error" }));
+                  }
+                });
+              }
+            }}
             className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-zinc-200 outline-none focus:border-sky-500/30"
           >
             {field.options?.map((opt) => (
@@ -178,6 +263,7 @@ export function ConfigManager({
     }
 
     // text
+    const status = fieldSaveStatus[field.key];
     return (
       <div key={field.key}>
         <label className="mb-1 block text-xs text-zinc-500">{field.label}</label>
@@ -185,9 +271,13 @@ export function ConfigManager({
           type="text"
           value={String(value ?? "")}
           onChange={(e) => handleFieldChange(field.key, e.target.value)}
+          onBlur={() => !isCreating && handleFieldBlur(field.key)}
           placeholder={field.placeholder}
           className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-zinc-200 outline-none focus:border-sky-500/30"
         />
+        {!isCreating && status === "saving" && <span className="mt-0.5 block text-[11px] text-sky-400">保存中…</span>}
+        {!isCreating && status === "saved" && <span className="mt-0.5 block text-[11px] text-emerald-400">已保存 ✓</span>}
+        {!isCreating && status === "error" && <span className="mt-0.5 block text-[11px] text-rose-400">保存失败，已回退</span>}
       </div>
     );
   }
@@ -197,21 +287,24 @@ export function ConfigManager({
     <div className="space-y-3 rounded-2xl border border-sky-500/20 bg-sky-500/[0.03] p-4">
       <div className="text-sm font-medium text-sky-300">
         {isCreating ? `新增${entityName}` : `编辑${entityName}`}
+        {!isCreating && <span className="ml-2 text-[11px] text-zinc-500">失焦自动保存</span>}
       </div>
       {fields.map(renderField)}
       <div className="flex gap-2">
-        <button
-          disabled={isPending}
-          onClick={handleSave}
-          className="inline-flex items-center gap-1 rounded-xl bg-sky-500/20 px-4 py-2 text-sm text-sky-300 transition hover:bg-sky-500/30 disabled:opacity-50"
-        >
-          <Save className="size-3.5" /> {isPending ? "保存中…" : "保存"}
-        </button>
+        {isCreating && (
+          <button
+            disabled={isPending}
+            onClick={handleSave}
+            className="inline-flex items-center gap-1 rounded-xl bg-sky-500/20 px-4 py-2 text-sm text-sky-300 transition hover:bg-sky-500/30 disabled:opacity-50"
+          >
+            <Save className="size-3.5" /> {isPending ? "保存中…" : "保存"}
+          </button>
+        )}
         <button
           onClick={cancel}
           className="inline-flex items-center gap-1 rounded-xl border border-white/10 px-4 py-2 text-sm text-zinc-400 transition hover:bg-white/[0.06]"
         >
-          <X className="size-3.5" /> 取消
+          <X className="size-3.5" /> {isCreating ? "取消" : "完成"}
         </button>
       </div>
     </div>
