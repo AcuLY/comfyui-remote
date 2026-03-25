@@ -22,7 +22,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Layers, Pencil, Check, X } from "lucide-react";
 import { reorderSections, renameSection } from "@/lib/actions";
 import { PositionRunButton } from "./job-detail-actions";
-import { DeleteSectionButton } from "./section-actions";
+import { CopySectionButton, DeleteSectionButton } from "./section-actions";
 
 type Section = {
   id: string;
