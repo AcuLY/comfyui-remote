@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { Save, Loader2 } from "lucide-react";
 import { initialJobSaveState, saveJobPositionEditAction } from "@/app/jobs/actions";
+import { AspectRatioPicker } from "@/components/aspect-ratio-picker";
 
 type SectionParamsFormProps = {
   jobId: string;
@@ -38,50 +39,43 @@ export function SectionParamsForm({ jobId, positionId, initialParams }: SectionP
           </button>
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
-          <label className="space-y-1.5">
+        <div className="space-y-3">
+          <div className="space-y-1.5">
             <div className="text-[11px] text-zinc-500">画幅比例</div>
-            <select
+            <AspectRatioPicker
               name="aspectRatio"
+              defaultValue={initialParams.aspectRatio}
               disabled={pending}
-              defaultValue={initialParams.aspectRatio ?? ""}
-              className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-2.5 py-2 text-xs text-zinc-200 outline-none focus:border-sky-500/30 disabled:opacity-70"
-            >
-              <option value="">默认</option>
-              <option value="1:1">1:1 (1024×1024)</option>
-              <option value="3:4">3:4 (896×1152)</option>
-              <option value="4:3">4:3 (1152×896)</option>
-              <option value="2:3">2:3 (832×1216)</option>
-              <option value="3:2">3:2 (1216×832)</option>
-              <option value="9:16">9:16 (768×1344)</option>
-              <option value="16:9">16:9 (1344×768)</option>
-            </select>
-          </label>
-          <label className="space-y-1.5">
-            <div className="text-[11px] text-zinc-500">Batch Size</div>
-            <input
-              name="batchSize"
-              type="number"
-              min={1}
-              disabled={pending}
-              defaultValue={initialParams.batchSize ?? ""}
-              placeholder="默认"
-              className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-2.5 py-2 text-xs text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30 disabled:opacity-70"
             />
-          </label>
-          <label className="space-y-1.5">
-            <div className="text-[11px] text-zinc-500">Seed 策略</div>
-            <select
-              name="seedPolicy"
-              disabled={pending}
-              defaultValue={initialParams.seedPolicy ?? ""}
-              className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-2.5 py-2 text-xs text-zinc-200 outline-none focus:border-sky-500/30 disabled:opacity-70"
-            >
-              <option value="">默认</option>
-              <option value="random">随机 (random)</option>
-              <option value="fixed">固定 (fixed)</option>
-            </select>
-          </label>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <label className="space-y-1.5">
+              <div className="text-[11px] text-zinc-500">Batch Size</div>
+              <input
+                name="batchSize"
+                type="number"
+                min={1}
+                disabled={pending}
+                defaultValue={initialParams.batchSize ?? ""}
+                placeholder="默认"
+                className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-2.5 py-2 text-xs text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30 disabled:opacity-70"
+              />
+            </label>
+            <label className="space-y-1.5">
+              <div className="text-[11px] text-zinc-500">Seed 策略</div>
+              <select
+                name="seedPolicy"
+                disabled={pending}
+                defaultValue={initialParams.seedPolicy ?? ""}
+                className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-2.5 py-2 text-xs text-zinc-200 outline-none focus:border-sky-500/30 disabled:opacity-70"
+              >
+                <option value="">默认</option>
+                <option value="random">随机 (random)</option>
+                <option value="fixed">固定 (fixed)</option>
+              </select>
+            </label>
+          </div>
         </div>
 
         {state.status !== "idle" && (
