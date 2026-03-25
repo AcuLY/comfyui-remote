@@ -9,7 +9,6 @@
  */
 
 import { spawn, type ChildProcess } from "node:child_process";
-import { createConnection } from "node:net";
 import { env } from "@/lib/env";
 
 // ---------------------------------------------------------------------------
@@ -140,6 +139,13 @@ class ComfyProcessManager {
       return { ok: false, message: `ComfyUI is already ${this.state}` };
     }
 
+    // Check if ComfyUI is already reachable (e.g. started externally)
+    const alreadyRunning = await this.checkExistingComfyUI();
+    if (alreadyRunning) {
+      this.setState("running");
+      return { ok: true, message: "ComfyUI is already running" };
+    }
+
     this.maxRestartsReached = false;
     this.errorMessage = null;
     return this.spawnProcess();
@@ -192,9 +198,6 @@ class ComfyProcessManager {
   private async spawnProcess(): Promise<{ ok: boolean; message: string }> {
     this.setState("starting");
     this.errorMessage = null;
-
-    // Check and kill any process occupying the ComfyUI port before spawning
-    await this.ensurePortFree();
 
     const cmd = env.comfyLaunchCmd.trim();
     const cwd = env.comfyLaunchCwd.trim() || undefined;
@@ -302,55 +305,23 @@ class ComfyProcessManager {
   }
 
   // -------------------------------------------------------------------------
-  // Internal: Port check
+  // Internal: Pre-launch health check
   // -------------------------------------------------------------------------
 
-  /** Extract port number from ComfyUI API URL (e.g. http://127.0.0.1:8188 → 8188) */
-  private extractPort(): number {
+  /** Check if ComfyUI is already reachable via its API endpoint */
+  private async checkExistingComfyUI(): Promise<boolean> {
     try {
-      const url = new URL(env.comfyApiUrl);
-      const port = parseInt(url.port, 10);
-      return port > 0 ? port : 8188;
+      const res = await fetch(`${env.comfyApiUrl}/system_stats`, {
+        signal: AbortSignal.timeout(3000),
+      });
+      if (res.ok) {
+        this.log("[manager] ComfyUI is already reachable, skipping spawn");
+        return true;
+      }
     } catch {
-      return 8188;
+      // Not reachable
     }
-  }
-
-  /** Check if the port is in use; if so, kill the occupying process */
-  private ensurePortFree(): Promise<void> {
-    const port = this.extractPort();
-
-    return new Promise((resolve) => {
-      const server = createConnection({ port, host: "127.0.0.1" }, () => {
-        // Connection succeeded → port is occupied
-        server.destroy();
-        this.log(`[manager] Port ${port} is occupied, killing existing process...`);
-        const { execSync } = require("node:child_process") as typeof import("node:child_process");
-        try {
-          const pids = execSync(`lsof -ti :${port}`, { encoding: "utf8" }).trim();
-          if (pids) {
-            execSync(`kill -9 ${pids.split("\n").join(" ")}`, { encoding: "utf8" });
-            this.log(`[manager] Killed process(es) on port ${port}: ${pids}`);
-          }
-        } catch {
-          // lsof found nothing or kill failed — ignore
-        }
-        // Give OS a moment to release the port
-        setTimeout(resolve, 500);
-      });
-
-      server.on("error", () => {
-        // Connection refused → port is free
-        server.destroy();
-        resolve();
-      });
-
-      // Timeout after 2 seconds (treat as free)
-      setTimeout(() => {
-        server.destroy();
-        resolve();
-      }, 2000);
-    });
+    return false;
   }
 
   // -------------------------------------------------------------------------
