@@ -354,9 +354,21 @@ export async function runJobAction(_prevState: JobRunState, formData: FormData):
     return jobId.error;
   }
 
+  const batchSize = getPositiveInteger(formData, "batchSize", "Batch size");
+  if ("error" in batchSize) {
+    return batchSize.error;
+  }
+
   try {
+    const body: Record<string, unknown> = {};
+    if (batchSize.value !== null) {
+      body.batchSize = batchSize.value;
+    }
+
     const response = await fetch(getApiUrl(`/api/jobs/${encodeURIComponent(jobId.value)}/run`), {
       method: "POST",
+      headers: Object.keys(body).length > 0 ? { "Content-Type": "application/json" } : undefined,
+      body: Object.keys(body).length > 0 ? JSON.stringify(body) : undefined,
       cache: "no-store",
     });
 
@@ -397,11 +409,23 @@ export async function runJobPositionAction(_prevState: JobRunState, formData: Fo
     return positionId.error;
   }
 
+  const batchSize = getPositiveInteger(formData, "batchSize", "Batch size");
+  if ("error" in batchSize) {
+    return batchSize.error;
+  }
+
   try {
+    const body: Record<string, unknown> = {};
+    if (batchSize.value !== null) {
+      body.batchSize = batchSize.value;
+    }
+
     const response = await fetch(
       getApiUrl(`/api/jobs/${encodeURIComponent(jobId.value)}/positions/${encodeURIComponent(positionId.value)}/run`),
       {
         method: "POST",
+        headers: Object.keys(body).length > 0 ? { "Content-Type": "application/json" } : undefined,
+        body: Object.keys(body).length > 0 ? JSON.stringify(body) : undefined,
         cache: "no-store",
       },
     );

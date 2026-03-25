@@ -206,8 +206,8 @@ export async function restoreImage(trashRecordId: string) {
 // 运行整个大任务
 // ---------------------------------------------------------------------------
 
-export async function runJob(jobId: string) {
-  await enqueueJobRunsRepo(jobId);
+export async function runJob(jobId: string, overrideBatchSize?: number | null) {
+  await enqueueJobRunsRepo(jobId, overrideBatchSize ?? undefined);
   revalidatePath("/jobs");
   revalidatePath("/queue");
 }
@@ -216,7 +216,7 @@ export async function runJob(jobId: string) {
 // 运行单个 Position
 // ---------------------------------------------------------------------------
 
-export async function runPosition(jobPositionId: string) {
+export async function runPosition(jobPositionId: string, overrideBatchSize?: number | null) {
   // 需要先拿到 jobId，因为 repository 函数需要它
   const pos = await prisma.completeJobPosition.findUnique({
     where: { id: jobPositionId },
@@ -225,7 +225,7 @@ export async function runPosition(jobPositionId: string) {
 
   if (!pos) return;
 
-  await enqueueJobPositionRunRepo(pos.completeJobId, jobPositionId);
+  await enqueueJobPositionRunRepo(pos.completeJobId, jobPositionId, overrideBatchSize ?? undefined);
   revalidatePath("/jobs");
   revalidatePath("/queue");
 }

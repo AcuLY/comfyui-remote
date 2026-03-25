@@ -58,7 +58,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
                     batch {position.batchSize ?? "—"} · {position.aspectRatio ?? "—"} · {position.latestRunStatus ?? "no runs"}
                   </div>
                 </div>
-                <PositionRunButton positionId={position.id} />
+                <PositionRunButton positionId={position.id} defaultBatchSize={position.batchSize} />
               </div>
               <Link
                 href={`/jobs/${jobId}/positions/${position.id}/blocks`}

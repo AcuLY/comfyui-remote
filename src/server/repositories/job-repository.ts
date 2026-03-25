@@ -318,6 +318,7 @@ function buildResolvedConfigSnapshot(
     positive: string;
     negative: string | null;
   }>,
+  overrideBatchSize?: number,
 ): Prisma.InputJsonObject {
   const jobLevelOverrides = toInputJsonObject(job.jobLevelOverrides);
   const resolvedAspectRatio =
@@ -326,6 +327,7 @@ function buildResolvedConfigSnapshot(
     position.positionTemplate?.defaultAspectRatio ??
     null;
   const resolvedBatchSize =
+    overrideBatchSize ??
     position.batchSize ??
     resolveJobOverrideInteger(jobLevelOverrides, "batchSize") ??
     position.positionTemplate?.defaultBatchSize ??
@@ -555,6 +557,7 @@ async function createQueuedRunsForPositions(
   tx: Prisma.TransactionClient,
   job: QueuableJobRecord,
   positions: JobPositionRecord[],
+  overrideBatchSize?: number,
 ) {
   const positionIds = positions.map((position) => position.id);
   const latestRunIndexes = await tx.positionRun.groupBy({
@@ -583,7 +586,7 @@ async function createQueuedRunsForPositions(
         completeJobPositionId: position.id,
         runIndex: (latestRunIndexByPositionId.get(position.id) ?? 0) + 1,
         status: "queued",
-        resolvedConfigSnapshot: buildResolvedConfigSnapshot(job, position),
+        resolvedConfigSnapshot: buildResolvedConfigSnapshot(job, position, undefined, overrideBatchSize),
       },
       select: {
         id: true,
@@ -1408,7 +1411,7 @@ export async function copyJob(jobId: string) {
   });
 }
 
-export async function enqueueJobRuns(jobId: string) {
+export async function enqueueJobRuns(jobId: string, overrideBatchSize?: number) {
   return db.$transaction(async (tx: Prisma.TransactionClient) => {
     const job = await tx.completeJob.findUnique({
       where: { id: jobId },
@@ -1487,7 +1490,7 @@ export async function enqueueJobRuns(jobId: string) {
       throw new Error("JOB_HAS_NO_ENABLED_POSITIONS");
     }
 
-    const runs = await createQueuedRunsForPositions(tx, job, job.positions);
+    const runs = await createQueuedRunsForPositions(tx, job, job.positions, overrideBatchSize);
     const jobStatus = await ensureQueuedJobStatus(tx, job);
 
     return {
@@ -1500,7 +1503,7 @@ export async function enqueueJobRuns(jobId: string) {
   });
 }
 
-export async function enqueueJobPositionRun(jobId: string, jobPositionId: string) {
+export async function enqueueJobPositionRun(jobId: string, jobPositionId: string, overrideBatchSize?: number) {
   return db.$transaction(async (tx: Prisma.TransactionClient) => {
     const job = await tx.completeJob.findUnique({
       where: { id: jobId },
@@ -1586,7 +1589,7 @@ export async function enqueueJobPositionRun(jobId: string, jobPositionId: string
       throw new Error("JOB_POSITION_DISABLED");
     }
 
-    const runs = await createQueuedRunsForPositions(tx, job, [position]);
+    const runs = await createQueuedRunsForPositions(tx, job, [position], overrideBatchSize);
     const jobStatus = await ensureQueuedJobStatus(tx, job);
 
     return {

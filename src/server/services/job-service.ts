@@ -430,9 +430,9 @@ export async function updateJobPosition(
   return result;
 }
 
-export async function enqueueJobRuns(jobId: string, actorType: ActorType = ActorType.user) {
+export async function enqueueJobRuns(jobId: string, overrideBatchSize?: number, actorType: ActorType = ActorType.user) {
   const normalizedId = normalizeRequiredId(jobId, "jobId");
-  const result = await enqueueJobRunsInRepository(normalizedId);
+  const result = await enqueueJobRunsInRepository(normalizedId, overrideBatchSize);
   audit("CompleteJob", normalizedId, "enqueue", { queuedRunCount: result.queuedRunCount }, actorType);
   return result;
 }
@@ -447,12 +447,14 @@ export async function copyJob(jobId: string, actorType: ActorType = ActorType.us
 export async function enqueueJobPositionRun(
   jobId: string,
   jobPositionId: string,
+  overrideBatchSize?: number,
   actorType: ActorType = ActorType.user,
 ) {
   const normalizedJobPositionId = normalizeRequiredId(jobPositionId, "jobPositionId");
   const result = await enqueueJobPositionRunInRepository(
     normalizeRequiredId(jobId, "jobId"),
     normalizedJobPositionId,
+    overrideBatchSize,
   );
   audit("CompleteJobPosition", normalizedJobPositionId, "enqueue", { jobId }, actorType);
   return result;
