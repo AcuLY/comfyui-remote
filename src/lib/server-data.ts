@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import type { QueueRun, ReviewGroup, ReviewImage, JobCard, TrashItem, LoraAsset } from "@/lib/types";
+import type { QueueRun, RunningRun, ReviewGroup, ReviewImage, JobCard, TrashItem, LoraAsset } from "@/lib/types";
 import { listWorkflowTemplateSummaries } from "@/server/services/workflow-template-service";
 
 // Re-export types used by frontend components (originally from backend branch)
@@ -33,6 +33,30 @@ export async function getQueueRuns(): Promise<QueueRun[]> {
     pendingCount: run.images.filter((img) => img.reviewStatus === "pending").length,
     totalCount: run.images.length,
     status: run.status as QueueRun["status"],
+  }));
+}
+
+// ---------------------------------------------------------------------------
+// Running Runs — 当前运行中的任务
+// ---------------------------------------------------------------------------
+
+export async function getRunningRuns(): Promise<RunningRun[]> {
+  const runs = await prisma.positionRun.findMany({
+    where: { status: { in: ["queued", "running"] } },
+    orderBy: { createdAt: "desc" },
+    include: {
+      completeJob: { include: { character: true } },
+      completeJobPosition: { include: { positionTemplate: true } },
+    },
+  });
+
+  return runs.map((run) => ({
+    id: run.id,
+    characterName: run.completeJob.character.name,
+    jobTitle: run.completeJob.title,
+    positionName: run.completeJobPosition.positionTemplate?.name ?? "Unknown",
+    startedAt: formatDate(run.createdAt),
+    status: run.status as RunningRun["status"],
   }));
 }
 

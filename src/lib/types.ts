@@ -11,6 +11,15 @@ export type QueueRun = {
   status: "queued" | "running" | "done" | "failed";
 };
 
+export type RunningRun = {
+  id: string;
+  characterName: string;
+  jobTitle: string;
+  positionName: string;
+  startedAt: string;
+  status: "queued" | "running";
+};
+
 export type ReviewImage = {
   id: string;
   src: string;
