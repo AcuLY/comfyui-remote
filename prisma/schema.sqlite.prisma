@@ -30,6 +30,7 @@ model ScenePreset {
   slug            String        @unique
   prompt          String
   negativePrompt  String?
+  loraBindings    Json?
   notes           String?
   isActive        Boolean       @default(true)
   createdAt       DateTime      @default(now())
@@ -43,6 +44,7 @@ model StylePreset {
   slug            String        @unique
   prompt          String
   negativePrompt  String?
+  loraBindings    Json?
   notes           String?
   isActive        Boolean       @default(true)
   createdAt       DateTime      @default(now())
