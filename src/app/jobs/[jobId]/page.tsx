@@ -6,6 +6,8 @@ import { getJobDetail, getJobRevisions } from "@/lib/server-data";
 import { JobDetailActions, PositionRunButton } from "./job-detail-actions";
 import { RevisionHistory } from "./revision-history";
 
+export const dynamic = "force-dynamic";
+
 export default async function JobDetailPage({ params }: { params: Promise<{ jobId: string }> }) {
   const { jobId } = await params;
   const [job, revisions] = await Promise.all([

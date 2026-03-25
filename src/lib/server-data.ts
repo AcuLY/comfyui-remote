@@ -170,8 +170,8 @@ export async function getJobDetail(jobId: string): Promise<JobDetail | null> {
             take: 1,
             select: { status: true },
           },
-          _count: {
-            select: { promptBlocks: true },
+          promptBlocks: {
+            select: { id: true },
           },
         },
       },
@@ -196,7 +196,7 @@ export async function getJobDetail(jobId: string): Promise<JobDetail | null> {
       batchSize: pos.batchSize ?? pos.positionTemplate?.defaultBatchSize ?? null,
       aspectRatio: pos.aspectRatio ?? pos.positionTemplate?.defaultAspectRatio ?? null,
       latestRunStatus: pos.runs[0]?.status ?? null,
-      promptBlockCount: pos._count.promptBlocks,
+      promptBlockCount: pos.promptBlocks.length,
     })),
   };
 }
