@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Layers, SlidersHorizontal } from "lucide-react";
+import { ArrowLeft, Layers, SlidersHorizontal } from "lucide-react";
 import { notFound } from "next/navigation";
 import { SectionCard } from "@/components/section-card";
 import { getJobDetail, getJobRevisions } from "@/lib/server-data";
@@ -18,6 +18,9 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
 
   return (
     <div className="space-y-4">
+      <Link href="/jobs" className="inline-flex items-center gap-2 text-sm text-zinc-400 transition hover:text-zinc-200">
+        <ArrowLeft className="size-4" /> 返回任务列表
+      </Link>
       <SectionCard title={job.title} subtitle={`${job.characterName} · ${job.sceneName} · ${job.styleName}`}>
         <JobDetailActions jobId={job.id} />
       </SectionCard>

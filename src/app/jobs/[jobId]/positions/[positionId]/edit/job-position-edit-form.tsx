@@ -31,7 +31,7 @@ export function JobPositionEditForm({ jobId, position, positivePrompt }: JobPosi
 
       <div className="flex items-center justify-between gap-3">
         <Link href={`/jobs/${jobId}`} className="inline-flex items-center gap-2 text-sm text-zinc-300">
-          <ArrowLeft className="size-4" /> Back to Job
+          <ArrowLeft className="size-4" /> 返回任务详情
         </Link>
         <button
           type="submit"

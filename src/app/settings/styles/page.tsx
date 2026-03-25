@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { SectionCard } from "@/components/section-card";
 import { ConfigManager, type FieldDef } from "@/components/config-manager";
 import { getStylePresets } from "@/lib/server-data";
@@ -16,6 +18,9 @@ export default async function StylesPage() {
 
   return (
     <div className="space-y-4">
+      <Link href="/settings" className="inline-flex items-center gap-2 text-sm text-zinc-400 transition hover:text-zinc-200">
+        <ArrowLeft className="size-4" /> 返回设置
+      </Link>
       <SectionCard title="风格管理" subtitle="管理风格预设。停用风格不会影响已有大任务。">
         <ConfigManager
           items={styles.map((s) => ({ ...s, id: s.id }))}

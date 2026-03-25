@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { SectionCard } from "@/components/section-card";
 import { getWorkflowTemplateOptions } from "@/lib/server-data";
 import { WorkflowImportForm } from "./workflow-import-form";
@@ -7,6 +9,9 @@ export default async function WorkflowsSettingsPage() {
 
   return (
     <div className="space-y-4">
+      <Link href="/settings" className="inline-flex items-center gap-2 text-sm text-zinc-400 transition hover:text-zinc-200">
+        <ArrowLeft className="size-4" /> 返回设置
+      </Link>
       <SectionCard title="Workflow 模板" subtitle="已注册的 ComfyUI Workflow 模板。">
         {templates.length === 0 ? (
           <div className="text-xs text-zinc-500">暂无已注册的 Workflow 模板。</div>

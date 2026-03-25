@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { SectionCard } from "@/components/section-card";
 import { ConfigManager, type FieldDef } from "@/components/config-manager";
 import { getCharacters } from "@/lib/server-data";
@@ -17,6 +19,9 @@ export default async function CharactersPage() {
 
   return (
     <div className="space-y-4">
+      <Link href="/settings" className="inline-flex items-center gap-2 text-sm text-zinc-400 transition hover:text-zinc-200">
+        <ArrowLeft className="size-4" /> 返回设置
+      </Link>
       <SectionCard title="角色管理" subtitle="管理角色配置。停用角色不会影响已有大任务。">
         <ConfigManager
           items={characters.map((c) => ({ ...c, id: c.id }))}

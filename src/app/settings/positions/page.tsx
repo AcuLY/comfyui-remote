@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { SectionCard } from "@/components/section-card";
 import { ConfigManager, type FieldDef } from "@/components/config-manager";
 import { getPositionTemplates, getWorkflowTemplateOptions } from "@/lib/server-data";
@@ -76,6 +78,9 @@ export default async function PositionsPage() {
 
   return (
     <div className="space-y-4">
+      <Link href="/settings" className="inline-flex items-center gap-2 text-sm text-zinc-400 transition hover:text-zinc-200">
+        <ArrowLeft className="size-4" /> 返回设置
+      </Link>
       <SectionCard
         title="Position 模板管理"
         subtitle="管理通用 Position 模板。Workflow 模板控制 ComfyUI 节点图（留空使用内置 SDXL txt2img）。"
