@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ChevronDown, Loader2, Save } from "lucide-react";
 import { updateJob, type UpdateJobInput } from "@/lib/actions";
 import type { JobEditData } from "@/lib/server-data";
+import { BatchSizeQuickFill } from "@/components/batch-size-quick-fill";
 
 type Character = { id: string; name: string; slug: string; prompt: string; loraPath: string };
 type SceneStyle = { id: string; name: string; slug: string; prompt: string };
