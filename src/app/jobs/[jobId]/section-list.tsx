@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useRef, useEffect } from "react";
+import { useState, useTransition, useRef, useEffect, useId } from "react";
 import Link from "next/link";
 import {
   DndContext,
@@ -44,6 +44,7 @@ type SectionListProps = {
 export function SectionList({ jobId, sections: initialSections }: SectionListProps) {
   const [sections, setSections] = useState(initialSections);
   const [isPending, startTransition] = useTransition();
+  const dndId = useId();
 
   // 当 props 更新时同步 state（例如添加/删除小节后）
   useEffect(() => {
@@ -79,7 +80,7 @@ export function SectionList({ jobId, sections: initialSections }: SectionListPro
   }
 
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+    <DndContext id={dndId} sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <SortableContext items={sections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
         <div className={`space-y-3 ${isPending ? "opacity-60" : ""}`}>
           {sections.map((section) => (
