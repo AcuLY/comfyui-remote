@@ -8,13 +8,15 @@
     "start": "next start",
     "lint": "eslint",
     "prisma:generate": "prisma generate",
+    "prisma:generate:sqlite": "DB_PROVIDER=sqlite prisma generate",
+    "prisma:generate:all": "prisma generate && DB_PROVIDER=sqlite prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:db:push": "prisma db push",
     "prisma:seed": "node --experimental-strip-types prisma/seed.ts",
     "prisma:studio": "prisma studio",
     "db:seed": "npx tsx src/scripts/seed.mts",
     "db:bootstrap": "prisma migrate dev && npx tsx src/scripts/seed.mts",
-    "db:bootstrap:sqlite": "DB_PROVIDER=sqlite DATABASE_URL=file:./data/comfyui.db prisma migrate dev && DB_PROVIDER=sqlite DATABASE_URL=file:./data/comfyui.db npx tsx src/scripts/seed.mts"
+    "db:bootstrap:sqlite": "DB_PROVIDER=sqlite prisma generate && DB_PROVIDER=sqlite DATABASE_URL=file:./data/comfyui.db prisma migrate dev && DB_PROVIDER=sqlite DATABASE_URL=file:./data/comfyui.db npx tsx src/scripts/seed.mts"
   },
   "prisma": {
     "seed": "node --experimental-strip-types prisma/seed.ts"

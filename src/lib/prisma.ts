@@ -1,5 +1,11 @@
 import { PrismaClient } from "@/generated/prisma/client";
 
+// Re-export the PrismaClient type from the PostgreSQL schema (the superset)
+// so that all application code can use a single import path for types.
+// At runtime we may actually instantiate the SQLite client — the two are
+// structurally compatible (same models/fields), just different providers.
+export type { PrismaClient } from "@/generated/prisma/client";
+
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined };
 
 /**
@@ -41,11 +47,24 @@ function createAdapter() {
 /**
  * Create a PrismaClient with the appropriate driver adapter.
  *
+ * When DB_PROVIDER=sqlite, we instantiate the PrismaClient from the
+ * SQLite-specific generated client (src/generated/prisma-sqlite/) so that the
+ * embedded `activeProvider` matches the driver adapter.  For PostgreSQL we use
+ * the default generated client (src/generated/prisma/).
+ *
  * Exported for use in seed scripts and other standalone entry points
  * that need their own client instance.
  */
 export function createPrismaClient(): PrismaClient {
   const adapter = createAdapter();
+  const provider = detectProvider();
+
+  if (provider === "sqlite") {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { PrismaClient: SqliteClient } = require("@/generated/prisma-sqlite/client");
+    return new SqliteClient({ adapter }) as PrismaClient;
+  }
+
   return new PrismaClient({ adapter });
 }
 

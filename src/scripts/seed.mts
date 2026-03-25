@@ -1,7 +1,6 @@
 import "dotenv/config";
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
-import { PrismaClient } from "../generated/prisma/client.js";
 
 function detectProvider(): "postgresql" | "sqlite" {
   const explicit = process.env.DB_PROVIDER?.toLowerCase();
@@ -11,6 +10,16 @@ function detectProvider(): "postgresql" | "sqlite" {
   if (url.startsWith("file:") || url.endsWith(".db") || url.endsWith(".sqlite")) return "sqlite";
   return "postgresql";
 }
+
+// Dynamically import the correct PrismaClient based on DB_PROVIDER.
+// We cast through `any` because the two generated PrismaClient constructors
+// have identical shapes at runtime but differ nominally in their TS types,
+// making the union non-constructable.
+const clientModule = detectProvider() === "sqlite"
+  ? await import("../generated/prisma-sqlite/client.js")
+  : await import("../generated/prisma/client.js");
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const PrismaClient = clientModule.PrismaClient as any;
 
 async function createAdapter() {
   if (detectProvider() === "sqlite") {
