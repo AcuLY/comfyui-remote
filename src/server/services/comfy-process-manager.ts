@@ -9,6 +9,7 @@
  */
 
 import { spawn, type ChildProcess } from "node:child_process";
+import { execSync } from "node:child_process";
 import { env } from "@/lib/env";
 
 // ---------------------------------------------------------------------------
@@ -100,6 +101,13 @@ class ComfyProcessManager {
   private errorMessage: string | null = null;
   private consecutiveHealthFailures = 0;
 
+  /**
+   * When true, ComfyUI was detected as already running (not spawned by us).
+   * stop() must use an external kill method (lsof/taskkill) since we don't
+   * hold the ChildProcess handle.
+   */
+  private externallyStarted = false;
+
   /** Number of consecutive health-check failures before considering unhealthy */
   private static readonly UNHEALTHY_THRESHOLD = 3;
 
@@ -142,23 +150,38 @@ class ComfyProcessManager {
     // Check if ComfyUI is already reachable (e.g. started externally)
     const alreadyRunning = await this.checkExistingComfyUI();
     if (alreadyRunning) {
+      this.externallyStarted = true;
       this.setState("running");
-      return { ok: true, message: "ComfyUI is already running" };
+      this.startHealthCheck();
+      return { ok: true, message: "ComfyUI is already running (external)" };
     }
 
     this.maxRestartsReached = false;
     this.errorMessage = null;
+    this.externallyStarted = false;
     return this.spawnProcess();
   }
 
   async stop(): Promise<{ ok: boolean; message: string }> {
+    // ComfyUI detected as externally started — kill by port
+    if (this.externallyStarted && (this.state === "running" || this.state === "unhealthy")) {
+      this.log("[manager] ComfyUI was started externally, killing by port...");
+      this.stopHealthCheck();
+      this.setState("stopped");
+      this.externallyStarted = false;
+      await this.killByPort();
+      return { ok: true, message: "ComfyUI external process kill signal sent" };
+    }
+
     if (!this.process || this.state === "stopped") {
       this.setState("stopped");
+      this.externallyStarted = false;
       return { ok: true, message: "ComfyUI is already stopped" };
     }
 
     this.stopHealthCheck();
     this.killProcess();
+    this.externallyStarted = false;
     return { ok: true, message: "ComfyUI stop signal sent" };
   }
 
@@ -302,6 +325,127 @@ class ComfyProcessManager {
         // Ignore
       }
     }, 5000);
+  }
+
+  /**
+   * Kill a process listening on the ComfyUI port.
+   * Used when ComfyUI was started externally (we don't hold the ChildProcess handle).
+   * Uses `lsof` (macOS/Linux) or `netstat` (Windows) to find the PID.
+   */
+  private async killByPort() {
+    const port = this.extractPortFromUrl(env.comfyApiUrl);
+    if (!port) {
+      this.log("[manager] Cannot extract port from comfyApiUrl, trying taskkill on all python processes...");
+      this.execKillAll("python");
+      return;
+    }
+
+    this.log(`[manager] Looking for processes on port ${port}...`);
+
+    try {
+      const pids = this.findPidsOnPort(port);
+      if (pids.length === 0) {
+        this.log(`[manager] No processes found on port ${port}`);
+        return;
+      }
+
+      this.log(`[manager] Found PIDs on port ${port}: ${pids.join(", ")}`);
+
+      for (const pid of pids) {
+        this.killPid(pid);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.log(`[manager] Failed to kill by port: ${message}`);
+    }
+  }
+
+  private extractPortFromUrl(url: string): number | null {
+    try {
+      const parsed = new URL(url);
+      const port = parsed.port;
+      return port ? parseInt(port, 10) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  private findPidsOnPort(port: number): number[] {
+    const isWin = process.platform === "win32";
+
+    try {
+      if (isWin) {
+        // netstat -ano | findstr :PORT
+        const output = execSync(`netstat -ano | findstr :${port}`, {
+          encoding: "utf8",
+          timeout: 5000,
+        });
+        const pids = new Set<number>();
+        for (const line of output.split("\n")) {
+          const match = line.match(/\s+LISTENING\s+(\d+)/);
+          if (match) pids.add(parseInt(match[1], 10));
+        }
+        return [...pids];
+      } else {
+        // lsof -ti :PORT
+        const output = execSync(`lsof -ti :${port}`, {
+          encoding: "utf8",
+          timeout: 5000,
+        });
+        return output
+          .split("\n")
+          .map((s) => parseInt(s.trim(), 10))
+          .filter((n) => !isNaN(n));
+      }
+    } catch {
+      // Command returned non-zero (no process found) — that's fine
+      return [];
+    }
+  }
+
+  private killPid(pid: number) {
+    const isWin = process.platform === "win32";
+
+    try {
+      if (isWin) {
+        execSync(`taskkill /F /PID ${pid}`, { encoding: "utf8", timeout: 5000 });
+        this.log(`[manager] Killed PID ${pid} via taskkill`);
+      } else {
+        process.kill(pid, "SIGTERM");
+        this.log(`[manager] Sent SIGTERM to PID ${pid}`);
+
+        // Force kill after 3 seconds
+        setTimeout(() => {
+          try {
+            process.kill(pid, 0); // Check if process still exists
+            this.log(`[manager] PID ${pid} still alive, sending SIGKILL...`);
+            process.kill(pid, "SIGKILL");
+          } catch {
+            // Process already dead
+          }
+        }, 3000);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.log(`[manager] Failed to kill PID ${pid}: ${message}`);
+    }
+  }
+
+  private execKillAll(name: string) {
+    const isWin = process.platform === "win32";
+
+    try {
+      if (isWin) {
+        execSync(`taskkill /F /IM ${name}.exe`, { encoding: "utf8", timeout: 10000 });
+        this.log(`[manager] Killed all ${name}.exe processes`);
+      } else {
+        execSync(`pkill -f ${name}`, { encoding: "utf8", timeout: 10000 });
+        this.log(`[manager] Sent pkill for ${name}`);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.log(`[manager] execKillAll failed: ${message}`);
+    }
   }
 
   // -------------------------------------------------------------------------
