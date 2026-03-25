@@ -378,6 +378,16 @@ export async function uploadLora(formData: FormData) {
 }
 
 // ---------------------------------------------------------------------------
+// JSON 辅助函数
+// ---------------------------------------------------------------------------
+
+function toJsonValue(value: unknown[] | null | undefined): Prisma.InputJsonValue | typeof Prisma.DbNull | undefined {
+  if (value === null) return Prisma.DbNull;
+  if (value === undefined) return undefined;
+  return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
+}
+
+// ---------------------------------------------------------------------------
 // Character CRUD
 // ---------------------------------------------------------------------------
 
@@ -428,12 +438,6 @@ export async function deleteCharacter(id: string) {
 // ---------------------------------------------------------------------------
 // Scene Preset CRUD
 // ---------------------------------------------------------------------------
-
-function toJsonValue(value: unknown[] | null | undefined): Prisma.InputJsonValue | typeof Prisma.DbNull | undefined {
-  if (value === null) return Prisma.DbNull;
-  if (value === undefined) return undefined;
-  return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
-}
 
 export type ScenePresetInput = {
   name: string;
