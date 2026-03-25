@@ -743,6 +743,64 @@ export async function reorderSections(jobId: string, sectionIds: string[]): Prom
 }
 
 // ---------------------------------------------------------------------------
+// 复制小节
+// ---------------------------------------------------------------------------
+
+export async function copySection(sectionId: string): Promise<string | null> {
+  const section = await prisma.completeJobPosition.findUnique({
+    where: { id: sectionId },
+    include: {
+      promptBlocks: {
+        orderBy: { sortOrder: "asc" },
+      },
+    },
+  });
+
+  if (!section) return null;
+
+  // 获取当前任务的小节数量以确定新的 sortOrder
+  const count = await prisma.completeJobPosition.count({
+    where: { completeJobId: section.completeJobId },
+  });
+
+  // 创建新小节
+  const newSection = await prisma.completeJobPosition.create({
+    data: {
+      completeJobId: section.completeJobId,
+      positionTemplateId: section.positionTemplateId,
+      sortOrder: count + 1,
+      enabled: section.enabled,
+      name: section.name ? `${section.name} (副本)` : null,
+      positivePrompt: section.positivePrompt,
+      negativePrompt: section.negativePrompt,
+      aspectRatio: section.aspectRatio,
+      shortSidePx: section.shortSidePx,
+      batchSize: section.batchSize,
+      seedPolicy: section.seedPolicy,
+      overrideParams: section.overrideParams ?? undefined,
+    },
+  });
+
+  // 复制所有 PromptBlocks
+  if (section.promptBlocks.length > 0) {
+    await prisma.promptBlock.createMany({
+      data: section.promptBlocks.map((block) => ({
+        completeJobPositionId: newSection.id,
+        type: block.type,
+        sourceId: block.sourceId,
+        label: block.label,
+        positive: block.positive,
+        negative: block.negative,
+        sortOrder: block.sortOrder,
+      })),
+    });
+  }
+
+  revalidatePath(`/jobs/${section.completeJobId}`);
+  return newSection.id;
+}
+
+// ---------------------------------------------------------------------------
 // 删除小节
 // ---------------------------------------------------------------------------
 

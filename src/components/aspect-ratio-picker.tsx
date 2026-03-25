@@ -152,7 +152,7 @@ export function AspectRatioPicker({
               value={shortSidePx}
               onChange={(e) => setShortSidePx(e.target.value)}
               placeholder={builtinShort ? String(builtinShort) : "默认"}
-              className="w-20 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30 disabled:opacity-70"
+              className="input-number w-20 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30 disabled:opacity-70"
             />
           </label>
           <div className="text-[10px] text-zinc-500">

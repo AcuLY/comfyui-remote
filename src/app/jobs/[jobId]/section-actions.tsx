@@ -1,8 +1,8 @@
 "use client";
 
 import { useTransition } from "react";
-import { Plus, Trash2 } from "lucide-react";
-import { addSection, deleteSection } from "@/lib/actions";
+import { Copy, Plus, Trash2 } from "lucide-react";
+import { addSection, copySection, deleteSection } from "@/lib/actions";
 
 export function AddSectionButton({ jobId }: { jobId: string }) {
   const [isPending, startTransition] = useTransition();
@@ -20,6 +20,26 @@ export function AddSectionButton({ jobId }: { jobId: string }) {
       className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-zinc-400 transition hover:border-sky-500/30 hover:bg-sky-500/5 hover:text-sky-300 disabled:opacity-50"
     >
       <Plus className="size-4" /> {isPending ? "添加中…" : "添加小节"}
+    </button>
+  );
+}
+
+export function CopySectionButton({ sectionId }: { sectionId: string }) {
+  const [isPending, startTransition] = useTransition();
+
+  function handleCopy() {
+    startTransition(async () => {
+      await copySection(sectionId);
+    });
+  }
+
+  return (
+    <button
+      disabled={isPending}
+      onClick={handleCopy}
+      className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-zinc-400 transition hover:bg-white/[0.08] disabled:opacity-50"
+    >
+      <Copy className="size-3.5" /> {isPending ? "复制中…" : "复制"}
     </button>
   );
 }

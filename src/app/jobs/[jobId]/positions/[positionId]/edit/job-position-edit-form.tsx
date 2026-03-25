@@ -89,7 +89,7 @@ export function JobPositionEditForm({ jobId, position, positivePrompt }: JobPosi
               min={1}
               disabled={pending}
               defaultValue={position.batchSize ?? ""}
-              className="w-full rounded-2xl border border-white/10 bg-black/20 px-3 py-3 text-white outline-none disabled:opacity-70"
+              className="input-number w-full rounded-2xl border border-white/10 bg-black/20 px-3 py-3 text-white outline-none disabled:opacity-70"
             />
           </label>
           <label className="col-span-2 space-y-2">

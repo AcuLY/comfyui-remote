@@ -240,7 +240,7 @@ export function JobEditForm({ job, characters, scenes, styles, positions }: Prop
                       value={override.batchSize}
                       onChange={(e) => updatePositionField(tpl.id, "batchSize", e.target.value)}
                       placeholder={tpl.defaultBatchSize?.toString() ?? "1"}
-                      className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-white outline-none placeholder:text-zinc-600 focus:border-sky-500/40"
+                      className="input-number w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-white outline-none placeholder:text-zinc-600 focus:border-sky-500/40"
                     />
                   </div>
                   <div className="space-y-1">

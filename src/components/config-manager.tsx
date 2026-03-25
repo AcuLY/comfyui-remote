@@ -136,7 +136,7 @@ export function ConfigManager({
             type="number"
             value={Number(value ?? 0)}
             onChange={(e) => handleFieldChange(field.key, parseInt(e.target.value) || 0)}
-            className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-zinc-200 outline-none focus:border-sky-500/30"
+            className="input-number w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-zinc-200 outline-none focus:border-sky-500/30"
           />
         </div>
       );

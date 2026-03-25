@@ -143,6 +143,7 @@ function SortableSectionCard({ section, jobId }: { section: Section; jobId: stri
               <Pencil className="size-3.5" />
               编辑小节
             </Link>
+            <CopySectionButton sectionId={section.id} />
             <DeleteSectionButton sectionId={section.id} sectionName={section.name} />
           </div>
         </div>

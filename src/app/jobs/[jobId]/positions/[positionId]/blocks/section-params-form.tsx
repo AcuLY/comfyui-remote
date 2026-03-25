@@ -62,7 +62,7 @@ export function SectionParamsForm({ jobId, positionId, initialParams }: SectionP
                 disabled={pending}
                 defaultValue={initialParams.batchSize ?? ""}
                 placeholder="默认"
-                className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-2.5 py-2 text-xs text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30 disabled:opacity-70"
+                className="input-number w-full rounded-xl border border-white/10 bg-white/[0.04] px-2.5 py-2 text-xs text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30 disabled:opacity-70"
               />
             </label>
             <label className="space-y-1.5">
