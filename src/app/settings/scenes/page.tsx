@@ -9,6 +9,7 @@ const fields: FieldDef[] = [
   { key: "name", label: "名称", type: "text", placeholder: "例：Park bench", required: true },
   { key: "slug", label: "Slug", type: "text", placeholder: "例：park-bench", required: true },
   { key: "prompt", label: "Prompt", type: "textarea", placeholder: "场景提示词…", required: true },
+  { key: "negativePrompt", label: "Negative Prompt", type: "textarea", placeholder: "负面提示词…" },
   { key: "notes", label: "备注", type: "textarea", placeholder: "可选备注…" },
   { key: "isActive", label: "启用", type: "boolean" },
 ];

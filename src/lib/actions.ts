@@ -385,6 +385,7 @@ export type CharacterInput = {
   name: string;
   slug: string;
   prompt: string;
+  negativePrompt?: string | null;
   loraPath: string;
   notes?: string | null;
   isActive?: boolean;
@@ -417,6 +418,7 @@ export type ScenePresetInput = {
   name: string;
   slug: string;
   prompt: string;
+  negativePrompt?: string | null;
   notes?: string | null;
   isActive?: boolean;
 };
@@ -447,6 +449,7 @@ export type StylePresetInput = {
   name: string;
   slug: string;
   prompt: string;
+  negativePrompt?: string | null;
   notes?: string | null;
   isActive?: boolean;
 };

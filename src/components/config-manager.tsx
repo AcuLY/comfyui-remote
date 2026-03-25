@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Pencil, Trash2, Save, X } from "lucide-react";
+import { Plus, Trash2, Save, X } from "lucide-react";
 
 // ---------------------------------------------------------------------------
 // Types

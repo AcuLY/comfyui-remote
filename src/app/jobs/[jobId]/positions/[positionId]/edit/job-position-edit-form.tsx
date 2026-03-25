@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Layers, Save } from "lucide-react";
 import { useActionState } from "react";
@@ -7,6 +8,7 @@ import { saveJobPositionEditAction } from "@/app/jobs/actions";
 import { initialJobSaveState } from "@/app/jobs/action-types";
 import { PageHeader } from "@/components/page-header";
 import { SectionCard } from "@/components/section-card";
+import { BatchSizeQuickFill } from "@/components/batch-size-quick-fill";
 import type { JobDetailPosition } from "@/lib/server-data";
 
 type JobPositionEditFormProps = {

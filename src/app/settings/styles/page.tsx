@@ -9,6 +9,7 @@ const fields: FieldDef[] = [
   { key: "name", label: "名称", type: "text", placeholder: "例：Soft daylight", required: true },
   { key: "slug", label: "Slug", type: "text", placeholder: "例：soft-daylight", required: true },
   { key: "prompt", label: "Prompt", type: "textarea", placeholder: "风格提示词…", required: true },
+  { key: "negativePrompt", label: "Negative Prompt", type: "textarea", placeholder: "负面提示词…" },
   { key: "notes", label: "备注", type: "textarea", placeholder: "可选备注…" },
   { key: "isActive", label: "启用", type: "boolean" },
 ];
@@ -32,6 +33,7 @@ export default async function StylesPage() {
               name: String(data.name),
               slug: String(data.slug),
               prompt: String(data.prompt),
+              negativePrompt: data.negativePrompt ? String(data.negativePrompt) : null,
               notes: data.notes ? String(data.notes) : null,
               isActive: data.isActive !== false,
             });
@@ -42,6 +44,7 @@ export default async function StylesPage() {
               name: String(data.name),
               slug: String(data.slug),
               prompt: String(data.prompt),
+              negativePrompt: data.negativePrompt ? String(data.negativePrompt) : null,
               notes: data.notes ? String(data.notes) : null,
               isActive: data.isActive !== false,
             });

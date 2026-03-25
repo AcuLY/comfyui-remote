@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Play } from "lucide-react";
 import { runJob, runPosition } from "@/lib/actions";
+import { BatchSizeQuickFill } from "@/components/batch-size-quick-fill";
 
 export function JobDetailActions({ jobId }: { jobId: string }) {
   const [isPending, startTransition] = useTransition();
@@ -16,9 +17,11 @@ export function JobDetailActions({ jobId }: { jobId: string }) {
     });
   }
 
+  const parsedBatchSize = batchSize.trim() ? parseInt(batchSize, 10) : null;
+
   return (
     <div className="space-y-3 text-sm">
-      <div className="flex items-center gap-3">
+      <div className="space-y-2">
         <label className="flex items-center gap-2 text-xs text-zinc-400">
           Batch Size 覆盖
           <input
@@ -30,6 +33,11 @@ export function JobDetailActions({ jobId }: { jobId: string }) {
             className="input-number w-40 rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-600"
           />
         </label>
+        <BatchSizeQuickFill
+          onSelect={(val) => setBatchSize(String(val))}
+          currentValue={parsedBatchSize}
+          disabled={isPending}
+        />
       </div>
       <button
         disabled={isPending}

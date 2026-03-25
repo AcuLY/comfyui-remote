@@ -190,6 +190,10 @@ export function JobEditForm({ job, characters, scenes, styles }: Props) {
               onChange={(e) => setDefaultBatchSize(e.target.value)}
               className="input-number w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white outline-none focus:border-sky-500/40"
             />
+            <BatchSizeQuickFill
+              onSelect={(val) => setDefaultBatchSize(String(val))}
+              currentValue={defaultBatchSize ? parseInt(defaultBatchSize, 10) : null}
+            />
           </div>
           <div className="space-y-2">
             <label className="text-xs text-zinc-400">默认 Seed 策略</label>

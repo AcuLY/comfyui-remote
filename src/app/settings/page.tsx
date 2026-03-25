@@ -23,8 +23,8 @@ const settingsGroups = [
   },
   {
     href: "/settings/positions",
-    label: "提示词库",
-    description: "管理通用提示词模板：默认画幅、batch、seed 策略",
+    label: "Position 模板",
+    description: "管理 Position 提示词模板（和角色场景风格结构相同）",
     icon: LayoutGrid,
   },
   {
