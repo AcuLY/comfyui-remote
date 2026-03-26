@@ -153,7 +153,8 @@ export async function saveJobPositionEditAction(
     aspectRatio: getNullableString(formData, "aspectRatio"),
     shortSidePx: shortSidePx.value,
     batchSize: batchSize.value,
-    seedPolicy: getNullableString(formData, "seedPolicy"),
+    seedPolicy1: getNullableString(formData, "seedPolicy1"),
+    seedPolicy2: getNullableString(formData, "seedPolicy2"),
   };
 
   try {

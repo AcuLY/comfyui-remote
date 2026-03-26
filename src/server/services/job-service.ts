@@ -47,7 +47,10 @@ type UpdateJobPositionRequestBody = {
   aspectRatio?: unknown;
   shortSidePx?: unknown;
   batchSize?: unknown;
-  seedPolicy?: unknown;
+  seedPolicy1?: unknown;
+  seedPolicy2?: unknown;
+  ksampler1?: unknown;
+  ksampler2?: unknown;
 };
 
 const JOB_CREATE_FIELDS = [
@@ -74,7 +77,10 @@ const JOB_POSITION_UPDATE_FIELDS = [
   "aspectRatio",
   "shortSidePx",
   "batchSize",
-  "seedPolicy",
+  "seedPolicy1",
+  "seedPolicy2",
+  "ksampler1",
+  "ksampler2",
 ] as const;
 
 class JobServiceError extends Error {
@@ -420,7 +426,14 @@ export async function updateJobPosition(
     aspectRatio: normalizeNullableStringField(parsedBody.aspectRatio, "aspectRatio"),
     shortSidePx: normalizeBatchSize(parsedBody.shortSidePx, "shortSidePx"),
     batchSize: normalizeBatchSize(parsedBody.batchSize, "batchSize"),
-    seedPolicy: normalizeNullableStringField(parsedBody.seedPolicy, "seedPolicy"),
+    seedPolicy1: normalizeNullableStringField(parsedBody.seedPolicy1, "seedPolicy1"),
+    seedPolicy2: normalizeNullableStringField(parsedBody.seedPolicy2, "seedPolicy2"),
+    ksampler1: parsedBody.ksampler1 !== undefined
+      ? (parsedBody.ksampler1 as Record<string, unknown> | null)
+      : undefined,
+    ksampler2: parsedBody.ksampler2 !== undefined
+      ? (parsedBody.ksampler2 as Record<string, unknown> | null)
+      : undefined,
   };
 
   ensureAtLeastOneField(

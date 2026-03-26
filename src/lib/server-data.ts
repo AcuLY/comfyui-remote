@@ -151,8 +151,6 @@ export type JobDetailPosition = {
   name: string;
   batchSize: number | null;
   aspectRatio: string | null;
-  /** @deprecated Use seedPolicy1 */
-  seedPolicy: string | null;
   seedPolicy1: string | null;
   seedPolicy2: string | null;
   promptOverview: {
@@ -176,8 +174,6 @@ export type JobDetail = {
     name: string;
     batchSize: number | null;
     aspectRatio: string | null;
-    /** @deprecated Use seedPolicy1 */
-    seedPolicy: string | null;
     seedPolicy1: string | null;
     seedPolicy2: string | null;
     latestRunStatus: string | null;
@@ -232,8 +228,7 @@ export async function getJobDetail(jobId: string): Promise<JobDetail | null> {
         name: pos.name || pos.positionTemplate?.name || `小节 ${pos.sortOrder}`,
         batchSize: pos.batchSize ?? pos.positionTemplate?.defaultBatchSize ?? null,
         aspectRatio: pos.aspectRatio ?? pos.positionTemplate?.defaultAspectRatio ?? null,
-        // v0.3: support dual seedPolicy
-        seedPolicy: pos.seedPolicy1 ?? pos.positionTemplate?.defaultSeedPolicy1 ?? null,
+        // v0.3: dual seedPolicy
         seedPolicy1: pos.seedPolicy1 ?? pos.positionTemplate?.defaultSeedPolicy1 ?? null,
         seedPolicy2: pos.seedPolicy2 ?? pos.positionTemplate?.defaultSeedPolicy2 ?? null,
         latestRunStatus: pos.runs[0]?.status ?? null,
@@ -358,8 +353,6 @@ export type FormOption = { id: string; name: string; slug: string };
 export type PositionOption = FormOption & {
   defaultAspectRatio: string | null;
   defaultBatchSize: number | null;
-  /** @deprecated Use defaultSeedPolicy1 */
-  defaultSeedPolicy: string | null;
   defaultSeedPolicy1: string | null;
   defaultSeedPolicy2: string | null;
 };
@@ -396,10 +389,9 @@ export async function getJobFormOptions() {
     }),
   ]);
 
-  // Map positions to include backward-compatible seedPolicy
+  // Map positions to include seedPolicy fields
   const mappedPositions = positions.map((p) => ({
     ...p,
-    defaultSeedPolicy: p.defaultSeedPolicy1, // backward compatibility
   }));
 
   return { characters, scenes, styles, positions: mappedPositions };
@@ -430,8 +422,6 @@ export type JobEditData = {
     negativePrompt: string | null;
     aspectRatio: string | null;
     batchSize: number | null;
-    /** @deprecated Use seedPolicy1 */
-    seedPolicy: string | null;
     seedPolicy1: string | null;
     seedPolicy2: string | null;
   }[];
@@ -439,8 +429,6 @@ export type JobEditData = {
   defaultAspectRatio: string;
   defaultShortSidePx: number;
   defaultBatchSize: number;
-  /** @deprecated Use defaultSeedPolicy1 */
-  defaultSeedPolicy: string;
   defaultSeedPolicy1: string;
   defaultSeedPolicy2: string;
 };
@@ -474,7 +462,6 @@ export async function getJobEditData(jobId: string): Promise<JobEditData | null>
     defaultAspectRatio?: string;
     defaultShortSidePx?: number;
     defaultBatchSize?: number;
-    defaultSeedPolicy?: string;
     defaultSeedPolicy1?: string;
     defaultSeedPolicy2?: string;
   };
@@ -493,15 +480,12 @@ export async function getJobEditData(jobId: string): Promise<JobEditData | null>
     notes: job.notes,
     positions: job.positions.map((pos) => ({
       ...pos,
-      // v0.3: backward compatibility
-      seedPolicy: pos.seedPolicy1,
     })),
     // 小节默认值
     defaultAspectRatio: overrides.defaultAspectRatio ?? "2:3",
     defaultShortSidePx: overrides.defaultShortSidePx ?? 512,
     defaultBatchSize: overrides.defaultBatchSize ?? 2,
-    defaultSeedPolicy: overrides.defaultSeedPolicy1 ?? overrides.defaultSeedPolicy ?? "random",
-    defaultSeedPolicy1: overrides.defaultSeedPolicy1 ?? overrides.defaultSeedPolicy ?? "random",
+    defaultSeedPolicy1: overrides.defaultSeedPolicy1 ?? "random",
     defaultSeedPolicy2: overrides.defaultSeedPolicy2 ?? "random",
   };
 }

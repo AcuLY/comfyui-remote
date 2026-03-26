@@ -178,7 +178,8 @@ async function main() {
         enabled: true,
         batchSize: 9,
         aspectRatio: "3:4",
-        seedPolicy: "random",
+        seedPolicy1: "random",
+        seedPolicy2: "random",
       },
     });
   }
@@ -195,7 +196,8 @@ async function main() {
         enabled: true,
         batchSize: 9,
         aspectRatio: "3:4",
-        seedPolicy: "random",
+        seedPolicy1: "random",
+        seedPolicy2: "random",
       },
     });
   }
@@ -212,7 +214,8 @@ async function main() {
         enabled: true,
         batchSize: 9,
         aspectRatio: "3:4",
-        seedPolicy: "random",
+        seedPolicy1: "random",
+        seedPolicy2: "random",
       },
     });
   }

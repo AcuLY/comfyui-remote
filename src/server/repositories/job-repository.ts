@@ -218,7 +218,6 @@ function serializeJobPosition(
     aspectRatio: position.aspectRatio ?? position.positionTemplate?.defaultAspectRatio ?? null,
     batchSize: position.batchSize ?? position.positionTemplate?.defaultBatchSize ?? null,
     // v0.3: dual seedPolicy
-    seedPolicy: position.seedPolicy1 ?? position.positionTemplate?.defaultSeedPolicy1 ?? null,
     seedPolicy1: position.seedPolicy1 ?? position.positionTemplate?.defaultSeedPolicy1 ?? null,
     seedPolicy2: position.seedPolicy2 ?? position.positionTemplate?.defaultSeedPolicy2 ?? null,
     // v0.3: ksampler params

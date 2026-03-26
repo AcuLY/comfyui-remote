@@ -139,7 +139,10 @@ export function getMcpServer(): McpServer {
       negativePrompt: z.string().nullable().optional().describe("Negative prompt override"),
       aspectRatio: z.string().nullable().optional().describe("Aspect ratio override"),
       batchSize: z.number().nullable().optional().describe("Batch size override"),
-      seedPolicy: z.string().nullable().optional().describe("Seed policy: 'random' or 'fixed'"),
+      seedPolicy1: z.string().nullable().optional().describe("Seed policy for KSampler1: 'random', 'fixed', or 'increment'"),
+      seedPolicy2: z.string().nullable().optional().describe("Seed policy for KSampler2: 'random', 'fixed', or 'increment'"),
+      ksampler1: z.record(z.string(), z.unknown()).nullable().optional().describe("KSampler1 params: { steps, cfg, sampler_name, scheduler, denoise }"),
+      ksampler2: z.record(z.string(), z.unknown()).nullable().optional().describe("KSampler2 params: { steps, cfg, sampler_name, scheduler, denoise }"),
     },
     async ({ jobId, jobPositionId, ...patch }) => {
       try {

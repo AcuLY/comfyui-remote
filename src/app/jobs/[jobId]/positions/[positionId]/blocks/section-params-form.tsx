@@ -15,7 +15,8 @@ type SectionParamsFormProps = {
     batchSize: number | null;
     aspectRatio: string | null;
     shortSidePx: number | null;
-    seedPolicy: string | null;
+    seedPolicy1: string | null;
+    seedPolicy2: string | null;
   };
 };
 
@@ -76,16 +77,17 @@ export function SectionParamsForm({ jobId, positionId, initialParams }: SectionP
               />
             </div>
             <label className="space-y-1.5">
-              <div className="text-[11px] text-zinc-500">Seed 策略</div>
+              <div className="text-[11px] text-zinc-500">Seed 策略 (KSampler1)</div>
               <select
-                name="seedPolicy"
+                name="seedPolicy1"
                 disabled={pending}
-                defaultValue={initialParams.seedPolicy ?? ""}
+                defaultValue={initialParams.seedPolicy1 ?? ""}
                 className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-2.5 py-2 text-xs text-zinc-200 outline-none focus:border-sky-500/30 disabled:opacity-70"
               >
                 <option value="">默认</option>
                 <option value="random">随机 (random)</option>
                 <option value="fixed">固定 (fixed)</option>
+                <option value="increment">递增 (increment)</option>
               </select>
             </label>
           </div>

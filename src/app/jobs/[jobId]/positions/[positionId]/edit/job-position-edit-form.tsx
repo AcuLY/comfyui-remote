@@ -102,11 +102,11 @@ export function JobPositionEditForm({ jobId, position, positivePrompt }: JobPosi
             />
           </label>
           <label className="col-span-2 space-y-2">
-            <div className="text-xs text-zinc-500">Seed policy</div>
+            <div className="text-xs text-zinc-500">Seed policy (KSampler1)</div>
             <input
-              name="seedPolicy"
+              name="seedPolicy1"
               disabled={pending}
-              defaultValue={position.seedPolicy ?? ""}
+              defaultValue={position.seedPolicy1 ?? ""}
               className="w-full rounded-2xl border border-white/10 bg-black/20 px-3 py-3 text-white outline-none disabled:opacity-70"
             />
           </label>

@@ -31,7 +31,7 @@ export function JobEditForm({ job, characters, scenes, styles }: Props) {
   const [defaultAspectRatio, setDefaultAspectRatio] = useState(job.defaultAspectRatio);
   const [defaultShortSidePx, setDefaultShortSidePx] = useState(job.defaultShortSidePx.toString());
   const [defaultBatchSize, setDefaultBatchSize] = useState(job.defaultBatchSize.toString());
-  const [defaultSeedPolicy, setDefaultSeedPolicy] = useState(job.defaultSeedPolicy);
+  const [defaultSeedPolicy, setDefaultSeedPolicy] = useState(job.defaultSeedPolicy1);
 
   const selectedChar = characters.find((c) => c.id === characterId);
   const selectedScene = scenes.find((s) => s.id === sceneId);
@@ -56,7 +56,7 @@ export function JobEditForm({ job, characters, scenes, styles }: Props) {
         defaultAspectRatio,
         defaultShortSidePx: parseInt(defaultShortSidePx, 10) || 512,
         defaultBatchSize: parseInt(defaultBatchSize, 10) || 2,
-        defaultSeedPolicy,
+        defaultSeedPolicy1: defaultSeedPolicy,
       },
     };
 

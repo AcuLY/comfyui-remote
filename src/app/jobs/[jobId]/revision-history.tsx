@@ -16,7 +16,10 @@ type RevisionSnapshot = {
     negativePrompt?: string | null;
     aspectRatio?: string | null;
     batchSize?: number | null;
-    seedPolicy?: string | null;
+    seedPolicy1?: string | null;
+    seedPolicy2?: string | null;
+    ksampler1?: Record<string, unknown> | null;
+    ksampler2?: Record<string, unknown> | null;
   }>;
 };
 
@@ -143,7 +146,8 @@ function RevisionItem({ revision, jobId }: { revision: JobRevisionSummary; jobId
                         <span className="text-zinc-300">#{i + 1}</span>
                         {pos.aspectRatio && <span>{pos.aspectRatio}</span>}
                         {pos.batchSize && <span>batch {pos.batchSize}</span>}
-                        {pos.seedPolicy && <span>{pos.seedPolicy}</span>}
+                        {pos.seedPolicy1 && <span>seed1: {pos.seedPolicy1}</span>}
+                        {pos.seedPolicy2 && <span>seed2: {pos.seedPolicy2}</span>}
                       </div>
                       {pos.positivePrompt && (
                         <div className="mt-1 text-zinc-400 break-words">

@@ -302,14 +302,18 @@ export type UpdateJobInput = {
     negativePrompt?: string | null;
     aspectRatio?: string | null;
     batchSize?: number | null;
-    seedPolicy?: string | null;
+    seedPolicy1?: string | null;
+    seedPolicy2?: string | null;
+    ksampler1?: Record<string, unknown> | null;
+    ksampler2?: Record<string, unknown> | null;
   }[];
   // 小节默认值覆盖
   jobLevelOverrides?: {
     defaultAspectRatio?: string;
     defaultShortSidePx?: number;
     defaultBatchSize?: number;
-    defaultSeedPolicy?: string;
+    defaultSeedPolicy1?: string;
+    defaultSeedPolicy2?: string;
   };
 };
 
@@ -341,7 +345,10 @@ export async function updateJob(input: UpdateJobInput) {
         negativePrompt: pos.negativePrompt ?? null,
         aspectRatio: pos.aspectRatio ?? null,
         batchSize: pos.batchSize ?? null,
-        seedPolicy: pos.seedPolicy ?? null,
+        seedPolicy1: pos.seedPolicy1 ?? null,
+        seedPolicy2: pos.seedPolicy2 ?? null,
+        ksampler1: pos.ksampler1 ? (pos.ksampler1 as Prisma.InputJsonValue) : undefined,
+        ksampler2: pos.ksampler2 ? (pos.ksampler2 as Prisma.InputJsonValue) : undefined,
       })),
     });
   }
@@ -718,7 +725,6 @@ export async function addSection(jobId: string, name?: string): Promise<string> 
     defaultAspectRatio?: string;
     defaultShortSidePx?: number;
     defaultBatchSize?: number;
-    defaultSeedPolicy?: string;
     defaultSeedPolicy1?: string;
     defaultSeedPolicy2?: string;
   };
@@ -728,7 +734,7 @@ export async function addSection(jobId: string, name?: string): Promise<string> 
   const defaultShortSidePx = overrides.defaultShortSidePx ?? 512;
   const defaultBatchSize = overrides.defaultBatchSize ?? 2;
   // v0.3: dual seedPolicy support
-  const defaultSeedPolicy1 = overrides.defaultSeedPolicy1 ?? overrides.defaultSeedPolicy ?? "random";
+  const defaultSeedPolicy1 = overrides.defaultSeedPolicy1 ?? "random";
   const defaultSeedPolicy2 = overrides.defaultSeedPolicy2 ?? "random";
 
   // 创建小节（CompleteJobPosition）

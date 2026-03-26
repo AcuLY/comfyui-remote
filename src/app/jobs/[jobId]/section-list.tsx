@@ -29,7 +29,8 @@ type Section = {
   name: string;
   batchSize: number | null;
   aspectRatio: string | null;
-  seedPolicy: string | null;
+  seedPolicy1: string | null;
+  seedPolicy2: string | null;
   latestRunStatus: string | null;
   promptBlockCount: number;
   positiveBlockCount: number;
@@ -138,7 +139,7 @@ function SortableSectionCard({ section, jobId }: { section: Section; jobId: stri
           </div>
           <div className="mt-1 text-xs text-zinc-400">
             batch {section.batchSize ?? "—"} · {section.aspectRatio ?? "—"} · seed{" "}
-            {section.seedPolicy ?? "—"} · {section.latestRunStatus ?? "未运行"}
+            {section.seedPolicy1 ?? "—"} · {section.latestRunStatus ?? "未运行"}
           </div>
         </Link>
 
