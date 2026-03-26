@@ -12,11 +12,11 @@
  *   407  Empty Latent Image (width, height, batch_size)
  *   425  Upscale Latent (width, height)
  *   482  character lora (Power Lora Loader)
- *   522  lora 1 — empty shell (Power Lora Loader)
- *   24   lora 1 — actual entries (Power Lora Loader, chained after 522)
- *   36   lora 2 — KSampler1 branch (Power Lora Loader)
- *   25   lora 2 — KSampler1 branch cont. (Power Lora Loader, chained after 24)
- *   524  lora 2 — KSampler2 branch (Power Lora Loader, chained after 522)
+ *   522  lora 1 — KS1 branch (Power Lora Loader, 482→522→524→KS1)
+ *   24   lora 1 — KS2 branch (Power Lora Loader, 36→24→25→KS2)
+ *   36   lora 2 — KS2 branch entry (Power Lora Loader, 482→36)
+ *   25   lora 2 — KS2 branch cont. (Power Lora Loader, 24→25→KS2)
+ *   524  lora 2 — KS1 branch (Power Lora Loader, 522→524→KS1)
  *   3    KSampler1
  *   427  KSampler2
  *   515  Image Save (output_path)
@@ -155,15 +155,19 @@ export function buildWorkflowPrompt(input: WorkflowBuildInput): Record<string, u
     fillPowerLoraLoader(nodeInputs(wf, "482"), input.characterLora);
   }
 
-  // 5. LoRA 1 — nodes 522 (empty shell) and 24 (actual entries)
-  //    Design: merge all lora1 into node 24 (which chains after 522)
+  // 5. LoRA 1 — nodes 522 (KS1 branch) and 24 (KS2 branch)
+  //    KS1 chain: 482 → 522 → 524 → KS1(3)
+  //    KS2 chain: 482 → 36 → 24 → 25 → KS2(427)
+  //    Both 522 and 24 carry lora1 entries for their respective branches
+  fillPowerLoraLoader(nodeInputs(wf, "522"), input.lora1List);
   fillPowerLoraLoader(nodeInputs(wf, "24"), input.lora1List);
 
-  // 6. LoRA 2 — nodes 36, 25 (KSampler1 branch) and 524 (KSampler2 branch)
-  //    Design: fill same lora2 list into all three nodes
+  // 6. LoRA 2 — nodes 524 (KS1 branch), 36 and 25 (KS2 branch)
+  //    KS1 chain: ... → 522 → 524(lora2) → KS1(3)
+  //    KS2 chain: ... → 36(lora2) → 24 → 25(lora2) → KS2(427)
+  fillPowerLoraLoader(nodeInputs(wf, "524"), input.lora2List);
   fillPowerLoraLoader(nodeInputs(wf, "36"), input.lora2List);
   fillPowerLoraLoader(nodeInputs(wf, "25"), input.lora2List);
-  fillPowerLoraLoader(nodeInputs(wf, "524"), input.lora2List);
 
   // 7. KSampler1 — node 3
   const ks1Defaults = DEFAULT_KSAMPLER1;

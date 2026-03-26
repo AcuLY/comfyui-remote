@@ -48,6 +48,7 @@ export type NormalizedResolvedConfigSnapshot = {
   position: {
     id: string;
     templateId: string;
+    sortOrder: number;
     name: string;
     slug: string;
     templatePrompt: string;
@@ -110,6 +111,7 @@ export type ComfyPromptDraft = {
     jobTitle: string;
     positionId: string;
     positionName: string;
+    positionSortOrder: number;
   };
 };
 

@@ -403,6 +403,7 @@ function buildResolvedConfigSnapshot(
     position: {
       id: position.id,
       templateId: position.positionTemplateId,
+      sortOrder: position.sortOrder,
       name: position.positionTemplate?.name ?? null,
       slug: position.positionTemplate?.slug ?? null,
       templatePrompt: position.positionTemplate?.prompt ?? null,

@@ -25,6 +25,10 @@ function asNullableInteger(value: Prisma.JsonValue | undefined) {
   return typeof value === "number" && Number.isInteger(value) ? value : null;
 }
 
+function asInteger(value: Prisma.JsonValue | undefined, fallback: number) {
+  return typeof value === "number" && Number.isInteger(value) ? value : fallback;
+}
+
 function composePositivePrompt(snapshot: NormalizedResolvedConfigSnapshot) {
   return [
     snapshot.character.prompt,
@@ -91,6 +95,7 @@ export function normalizeResolvedConfigSnapshot(
     position: {
       id: asString(position?.id),
       templateId: asString(position?.templateId),
+      sortOrder: asInteger(position?.sortOrder, 0),
       name: asString(position?.name),
       slug: asString(position?.slug),
       templatePrompt: asString(position?.templatePrompt),
@@ -145,6 +150,7 @@ export function buildComfyPromptDraft(run: WorkerRunSnapshot): ComfyPromptDraft 
       jobTitle: resolvedConfig.job.title || run.job.title,
       positionId: resolvedConfig.position.id || run.position.id,
       positionName: resolvedConfig.position.name || run.position.name,
+      positionSortOrder: resolvedConfig.position.sortOrder,
     },
   };
 }

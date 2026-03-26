@@ -1,7 +1,7 @@
 # v0.3 Workflow 集成 & LoRA/采样器参数化 — 设计文档
 
-> 状态：待实施（v0.2 已完成，此为下一阶段）
-> 日期：2026-03-25
+> 状态：Phase 1-3 已完成（Schema + Types + Workflow Builder + Worker 集成）
+> 日期：2026-03-26
 
 ## 1. 背景与目标
 
@@ -27,9 +27,9 @@
 | **4** | CLIP Text Encode (pos) | CLIPTextEncode | 正提示词（引用 511） |
 | 9 | Preview Image | PreviewImage | — |
 | **12** | CLIP Text Encode (neg) | CLIPTextEncode | 负提示词（引用 513） |
-| **24** | Power Lora Loader | Power Lora Loader (rgthree) | **lora1** 节点 |
-| **25** | Power Lora Loader | Power Lora Loader (rgthree) | **lora2** 节点 |
-| **36** | lora 2 | Power Lora Loader (rgthree) | **lora2** 节点（串联在 25 之后） |
+| **24** | Power Lora Loader | Power Lora Loader (rgthree) | **lora1** 节点（KS2 分支，model from 36） |
+| **25** | Power Lora Loader | Power Lora Loader (rgthree) | **lora2** 节点（KS2 分支，model from 24） |
+| **36** | lora 2 | Power Lora Loader (rgthree) | **lora2** 节点（KS2 分支入口，model from 482） |
 | **407** | Empty Latent Image | EmptyLatentImage | width=短边, height=长边, batch_size |
 | 410 | VAE Decode | VAEDecode | KSampler1 输出 |
 | **425** | Upscale Latent | LatentUpscale | width=长边×放大系数, height=短边×放大系数 |
@@ -40,31 +40,32 @@
 | **515** | Image Save | Image Save | output_path = 大任务名/序号.小节名 |
 | 519 | CLIP Text Encode | CLIPTextEncode | KSampler2 正提示词（引用 511） |
 | 520 | CLIP Text Encode | CLIPTextEncode | KSampler2 负提示词（引用 513） |
-| **522** | lora 1 | Power Lora Loader (rgthree) | **lora1** 节点（无默认 lora，串联在 482 之后） |
-| **524** | Power Lora Loader | Power Lora Loader (rgthree) | **lora2** 节点（串联在 522 之后，KSampler2 的模型源） |
+| **522** | lora 1 | Power Lora Loader (rgthree) | **lora1** 节点（KS1 分支，model from 482） |
+| **524** | Power Lora Loader | Power Lora Loader (rgthree) | **lora2** 节点（KS1 分支，model from 522） |
 
 ### LoRA 链路分析
 
 ```
 Checkpoint(1)
   → character lora(482)    # 角色专属 LoRA（大任务自带）
-    → lora 1(522)          # lora1 列表（空，待填充）
-      → Power Lora Loader(24)   # lora1 的实际内容
-        → lora 2(36)        # lora2 列表
-          → Power Lora Loader(25)  # lora2 的实际内容
-            → KSampler1 model(3)
-      → Power Lora Loader(524)  # lora2（KSampler2 用）
-        → KSampler2 model(427)
+    → lora 1(522)          # lora1 列表（KS1 分支）
+      → Power Lora Loader(524)  # lora2（KS1 用）
+        → KSampler1 model(3)
+    → lora 2(36)           # lora2 列表（KS2 分支入口）
+      → Power Lora Loader(24)   # lora1（KS2 用）
+        → Power Lora Loader(25)  # lora2（KS2 用）
+          → KSampler2 model(427)
 ```
 
 **关键发现**：
-- `lora 1` 节点（522）当前为空，用于放 lora1 列表
-- `lora 1` → `Power Lora Loader`(24) 串联，24 当前已有 2 个 lora（artist 风格 lora）
-- `lora 2` 节点（36）当前已有 2 个 lora（style 类型），是 KSampler1 的 lora2
-- `Power Lora Loader`(524) 当前已有 4 个 lora（style + lighting），是 KSampler2 的 lora2
-- `Power Lora Loader`(25) 当前已有 2 个 lora，也在 lora2 链路中
+- KS1 链路：`Checkpoint → 482(char) → 522(lora1) → 524(lora2) → KSampler1(3)`
+- KS2 链路：`Checkpoint → 482(char) → 36(lora2) → 24(lora1) → 25(lora2) → KSampler2(427)`
+- 两条链路共享 `character lora(482)` 后分岔
+- `lora 1` 需要填入 522（KS1用）和 24（KS2用）两个节点
+- `lora 2` 需要填入 524（KS1用）、36 和 25（KS2用）三个节点
+- CLIP 编码也分支：KS1 用 4/12（clip from 524），KS2 用 519/520（clip from 25）
 
-**简化策略**：填充时，保留 workflow 节点结构，只替换动态输入值。LoRA 节点的 lora 列表按"所有 lora 合并后排序"方式填充。
+**填充策略**：相同的 lora1 列表填入 522 和 24，相同的 lora2 列表填入 524、36 和 25。
 
 ---
 
@@ -97,14 +98,16 @@ Checkpoint(1)
 
 ### 3.4 LoRA 1 / LoRA 2
 
-**LoRA 1 节点链路**（522 → 24）：
-- 522 节点（`lora 1`）当前为空壳，24 节点已有内容
-- 填充方式：将小节的 lora1 列表合并到 24 节点
+**LoRA 1 节点**（522 + 24）：
+- 522 节点（`lora 1`）：KS1 分支的 lora1，模型来自 482
+- 24 节点（`Power Lora Loader`）：KS2 分支的 lora1，模型来自 36
+- 填充方式：将小节的 lora1 列表同时填入 522 和 24 两个节点
 
-**LoRA 2 节点链路**（36 → 25，以及 524）：
-- 36 节点（`lora 2`）和 25 节点都有内容
-- 524 节点也有内容
-- 填充方式：将小节的 lora2 列表合并到对应节点
+**LoRA 2 节点**（524 + 36 + 25）：
+- 524 节点：KS1 分支的 lora2，模型来自 522
+- 36 节点（`lora 2`）：KS2 分支的 lora2 入口，模型来自 482
+- 25 节点：KS2 分支的 lora2 续接，模型来自 24
+- 填充方式：将小节的 lora2 列表同时填入 524、36 和 25 三个节点
 
 **Power Lora Loader 的 lora 条目格式**：
 ```json
@@ -309,11 +312,11 @@ function buildWorkflowPrompt(input: WorkflowBuildInput): Record<string, unknown>
 2. **提示词**：设置 511.text 和 513.text
 3. **尺寸**：设置 407 的 width/height/batch_size，425 的 width/height
 4. **角色 LoRA**：设置 482 的 lora_1
-5. **LoRA 1**：清除 24 节点现有 lora，按 lora1List 填充
-6. **LoRA 2**：清除 36 和 524 节点现有 lora，按 lora2List 填充
+5. **LoRA 1**：清除 522 和 24 节点现有 lora，按 lora1List 填充两个节点
+6. **LoRA 2**：清除 524、36 和 25 节点现有 lora，按 lora2List 填充三个节点
 7. **KSampler1**：设置节点 3 的 steps/cfg/sampler_name/scheduler/denoise/seed
 8. **KSampler2**：设置节点 427 的 steps/cfg/sampler_name/scheduler/denoise/seed
-9. **输出路径**：设置 515 的 output_path
+9. **输出路径**：设置 515 的 output_path = `{大任务名}/{小节sortOrder}.{小节名}`
 
 ---
 
@@ -392,21 +395,21 @@ PositionTemplate 的 LoRA 编辑也拆分为 lora1 和 lora2，并新增 default
 ## 9. 开发计划（分阶段）
 
 ### Phase 1: Schema + Types
-- [ ] Prisma schema 变更（PositionTemplate, ScenePreset, StylePreset, CompleteJobPosition）
-- [ ] 生成 migration
-- [ ] 更新 TypeScript 类型（lora-types.ts, worker/types.ts, server-data.ts）
+- [x] Prisma schema 变更（PositionTemplate, ScenePreset, StylePreset, CompleteJobPosition）
+- [x] 生成 migration
+- [x] 更新 TypeScript 类型（lora-types.ts, worker/types.ts, server-data.ts）
 - [ ] 数据迁移脚本（现有 loraBindings → lora1/lora2）
 
 ### Phase 2: Workflow Prompt Builder
-- [ ] 新建 `workflow-prompt-builder.ts`
-- [ ] 实现标准 workflow.api.json 填充逻辑
-- [ ] 集成到 comfyui-service.ts 的优先级链路
+- [x] 新建 `workflow-prompt-builder.ts`
+- [x] 实现标准 workflow.api.json 填充逻辑
+- [x] 集成到 comfyui-service.ts 的优先级链路
 
 ### Phase 3: 后端 API + Worker 适配
-- [ ] 更新 job-service / actions 支持 ksampler1/ksampler2 参数
-- [ ] 更新 worker 的 ComfyPromptDraft 类型
-- [ ] 更新 resolvedConfigSnapshot 包含新字段
-- [ ] 更新 createJob/copyJob 逻辑
+- [x] 更新 job-service / actions 支持 ksampler1/ksampler2 参数
+- [x] 更新 worker 的 ComfyPromptDraft 类型
+- [x] 更新 resolvedConfigSnapshot 包含新字段（含 sortOrder）
+- [x] 更新 createJob/copyJob 逻辑
 
 ### Phase 4: 前端 UI
 - [ ] LoRA 编辑器三栏分区（characterLora / lora1 / lora2）

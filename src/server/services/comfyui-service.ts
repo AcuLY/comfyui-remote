@@ -425,7 +425,7 @@ async function resolveStandardWorkflowPrompt(
     entries.map((e) => ({ path: e.path, weight: e.weight, enabled: e.enabled }));
 
   const positionSlug = promptDraft.metadata.positionName?.replace(/\s+/g, "_") ?? "position";
-  const runIndex = promptDraft.metadata.runIndex ?? 0;
+  const sortOrder = promptDraft.metadata.positionSortOrder ?? 0;
 
   const buildInput: WorkflowBuildInput = {
     workflowTemplate: cloned,
@@ -442,7 +442,7 @@ async function resolveStandardWorkflowPrompt(
     lora2List: toBindings(loraConfig.lora2),
     ksampler1,
     ksampler2,
-    outputPath: `${promptDraft.metadata.jobTitle}/${runIndex}.${positionSlug}`,
+    outputPath: `${promptDraft.metadata.jobTitle}/${sortOrder}.${positionSlug}`,
   };
 
   return buildWorkflowPrompt(buildInput);
