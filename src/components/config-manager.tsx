@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useTransition, useRef, useCallback } from "react";
+import { useState, useTransition, useRef, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Save, X, Check } from "lucide-react";
+import { Plus, Trash2, Save, X } from "lucide-react";
 import { LoraBindingEditor } from "@/components/lora-binding-editor";
 import type { LoraBinding } from "@/lib/lora-types";
 
@@ -51,6 +51,9 @@ export function ConfigManager({
 
   // Remember original values for rollback on failed save
   const originalDataRef = useRef<Record<string, unknown>>({});
+  // Keep a ref to latest formData so closures always see fresh values
+  const formDataRef = useRef<Record<string, unknown>>(formData);
+  useEffect(() => { formDataRef.current = formData; }, [formData]);
   // Track per-field save status: key → "saving" | "saved" | "error"
   const [fieldSaveStatus, setFieldSaveStatus] = useState<Record<string, string>>({});
 
@@ -86,11 +89,46 @@ export function ConfigManager({
     setFormData((prev) => ({ ...prev, [key]: value }));
   }
 
+  /** Auto-save a single field immediately (for select, lora-bindings, checkbox). */
+  const saveFieldNow = useCallback(
+    (key: string, newValue: unknown) => {
+      if (!editingId) return;
+      setFieldSaveStatus((prev) => ({ ...prev, [key]: "saving" }));
+      startTransition(async () => {
+        try {
+          const payload = { ...formDataRef.current, [key]: newValue };
+          await onUpdateAction(editingId, payload);
+          originalDataRef.current = { ...payload };
+          setFieldSaveStatus((prev) => ({ ...prev, [key]: "saved" }));
+          setTimeout(() => {
+            setFieldSaveStatus((prev) => {
+              const next = { ...prev };
+              if (next[key] === "saved") delete next[key];
+              return next;
+            });
+          }, 1500);
+          router.refresh();
+        } catch {
+          setFormData((prev) => ({ ...prev, [key]: originalDataRef.current[key] }));
+          setFieldSaveStatus((prev) => ({ ...prev, [key]: "error" }));
+          setTimeout(() => {
+            setFieldSaveStatus((prev) => {
+              const next = { ...prev };
+              if (next[key] === "error") delete next[key];
+              return next;
+            });
+          }, 2000);
+        }
+      });
+    },
+    [editingId, onUpdateAction, router],
+  );
+
   /** Auto-save on blur (edit mode only) */
   const handleFieldBlur = useCallback(
     (key: string) => {
       if (!editingId || isPending) return;
-      const currentVal = formData[key];
+      const currentVal = formDataRef.current[key];
       const originalVal = originalDataRef.current[key];
       // No change → skip
       if (currentVal === originalVal) return;
@@ -98,8 +136,9 @@ export function ConfigManager({
       setFieldSaveStatus((prev) => ({ ...prev, [key]: "saving" }));
       startTransition(async () => {
         try {
-          await onUpdateAction(editingId, formData);
-          originalDataRef.current = { ...formData };
+          const payload = { ...formDataRef.current };
+          await onUpdateAction(editingId, payload);
+          originalDataRef.current = { ...payload };
           setFieldSaveStatus((prev) => ({ ...prev, [key]: "saved" }));
           setTimeout(() => {
             setFieldSaveStatus((prev) => {
@@ -123,7 +162,7 @@ export function ConfigManager({
         }
       });
     },
-    [editingId, isPending, formData, onUpdateAction, router],
+    [editingId, isPending, onUpdateAction, router],
   );
 
   function handleSave() {
@@ -155,7 +194,12 @@ export function ConfigManager({
           <input
             type="checkbox"
             checked={!!value}
-            onChange={(e) => handleFieldChange(field.key, e.target.checked)}
+            onChange={(e) => {
+              handleFieldChange(field.key, e.target.checked);
+              if (!isCreating) {
+                saveFieldNow(field.key, e.target.checked);
+              }
+            }}
             className="size-4 rounded border-white/20 bg-white/10"
           />
           {field.label}
@@ -211,30 +255,8 @@ export function ConfigManager({
             onChange={(e) => {
               handleFieldChange(field.key, e.target.value);
               // Auto-save immediately for select (no blur needed)
-              if (!isCreating && editingId) {
-                const newVal = e.target.value;
-                const origVal = originalDataRef.current[field.key];
-                if (newVal === origVal) return;
-                setFieldSaveStatus((prev) => ({ ...prev, [field.key]: "saving" }));
-                startTransition(async () => {
-                  try {
-                    const updated = { ...formData, [field.key]: newVal };
-                    await onUpdateAction(editingId, updated);
-                    originalDataRef.current = { ...updated };
-                    setFieldSaveStatus((prev) => ({ ...prev, [field.key]: "saved" }));
-                    setTimeout(() => {
-                      setFieldSaveStatus((prev) => {
-                        const next = { ...prev };
-                        if (next[field.key] === "saved") delete next[field.key];
-                        return next;
-                      });
-                    }, 1500);
-                    router.refresh();
-                  } catch {
-                    setFormData((prev) => ({ ...prev, [field.key]: origVal }));
-                    setFieldSaveStatus((prev) => ({ ...prev, [field.key]: "error" }));
-                  }
-                });
+              if (!isCreating) {
+                saveFieldNow(field.key, e.target.value);
               }
             }}
             className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-zinc-200 outline-none focus:border-sky-500/30"
@@ -258,35 +280,9 @@ export function ConfigManager({
             bindings={bindings}
             onChange={(newBindings) => {
               handleFieldChange(field.key, newBindings);
-              // Auto-save immediately for lora-bindings (no blur event available)
-              if (!isCreating && editingId) {
-                setFieldSaveStatus((prev) => ({ ...prev, [field.key]: "saving" }));
-                startTransition(async () => {
-                  try {
-                    const updated = { ...formData, [field.key]: newBindings };
-                    await onUpdateAction(editingId, updated);
-                    originalDataRef.current = { ...updated };
-                    setFieldSaveStatus((prev) => ({ ...prev, [field.key]: "saved" }));
-                    setTimeout(() => {
-                      setFieldSaveStatus((prev) => {
-                        const next = { ...prev };
-                        if (next[field.key] === "saved") delete next[field.key];
-                        return next;
-                      });
-                    }, 1500);
-                    router.refresh();
-                  } catch {
-                    setFormData((prev) => ({ ...prev, [field.key]: originalDataRef.current[field.key] }));
-                    setFieldSaveStatus((prev) => ({ ...prev, [field.key]: "error" }));
-                    setTimeout(() => {
-                      setFieldSaveStatus((prev) => {
-                        const next = { ...prev };
-                        if (next[field.key] === "error") delete next[field.key];
-                        return next;
-                      });
-                    }, 2000);
-                  }
-                });
+              // Auto-save immediately for lora-bindings
+              if (!isCreating) {
+                saveFieldNow(field.key, newBindings);
               }
             }}
             loraOptions={field.loraOptions}
@@ -321,37 +317,31 @@ export function ConfigManager({
   // Inline edit / create form
   const renderForm = () => (
     <div className="space-y-3 rounded-2xl border border-sky-500/20 bg-sky-500/[0.03] p-4">
-      <div className="text-sm font-medium text-sky-300">
+      <div
+        className={`text-sm font-medium ${isCreating ? "text-sky-300" : "cursor-pointer text-sky-300"}`}
+        onClick={isCreating ? undefined : cancel}
+      >
         {isCreating ? `新增${entityName}` : `编辑${entityName}`}
-        {!isCreating && <span className="ml-2 text-[11px] text-zinc-500">失焦自动保存</span>}
+        {!isCreating && <span className="ml-2 text-[11px] text-zinc-500">失焦自动保存 · 点击收起</span>}
       </div>
       {fields.map(renderField)}
-      <div className="flex gap-2">
-        {isCreating ? (
-          <>
-            <button
-              disabled={isPending}
-              onClick={handleSave}
-              className="inline-flex items-center gap-1 rounded-xl bg-sky-500/20 px-4 py-2 text-sm text-sky-300 transition hover:bg-sky-500/30 disabled:opacity-50"
-            >
-              <Save className="size-3.5" /> {isPending ? "保存中…" : "保存"}
-            </button>
-            <button
-              onClick={cancel}
-              className="inline-flex items-center gap-1 rounded-xl border border-white/10 px-4 py-2 text-sm text-zinc-400 transition hover:bg-white/[0.06]"
-            >
-              <X className="size-3.5" /> 取消
-            </button>
-          </>
-        ) : (
+      {isCreating && (
+        <div className="flex gap-2">
+          <button
+            disabled={isPending}
+            onClick={handleSave}
+            className="inline-flex items-center gap-1 rounded-xl bg-sky-500/20 px-4 py-2 text-sm text-sky-300 transition hover:bg-sky-500/30 disabled:opacity-50"
+          >
+            <Save className="size-3.5" /> {isPending ? "保存中…" : "保存"}
+          </button>
           <button
             onClick={cancel}
-            className="inline-flex items-center gap-1 rounded-xl border border-white/10 px-3 py-1.5 text-xs text-zinc-500 transition hover:bg-white/[0.06]"
+            className="inline-flex items-center gap-1 rounded-xl border border-white/10 px-4 py-2 text-sm text-zinc-400 transition hover:bg-white/[0.06]"
           >
-            <Check className="size-3" /> 收起
+            <X className="size-3.5" /> 取消
           </button>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 

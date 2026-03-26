@@ -24,7 +24,7 @@ export default async function LorasPage() {
       {assets.length === 0 ? (
         <SectionCard title="暂无 LoRA" subtitle="还没有任何已登记的 LoRA 文件。">
           <div className="py-8 text-center text-sm text-zinc-500">
-            可通过上传功能添加 LoRA 📦
+            可通过上传功能添加 LoRA
           </div>
         </SectionCard>
       ) : (
@@ -43,8 +43,11 @@ export default async function LorasPage() {
                     className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4"
                   >
                     <div className="min-w-0 flex-1">
-                      <div className="text-sm font-medium text-white">
+                      <div className="flex items-center gap-2 text-sm font-medium text-white">
                         {asset.name}
+                        <span className="rounded-full bg-sky-500/15 px-2 py-0.5 text-[10px] font-normal text-sky-300">
+                          {cat}
+                        </span>
                       </div>
                       <div className="mt-1 truncate text-xs text-zinc-500">
                         {asset.relativePath}
