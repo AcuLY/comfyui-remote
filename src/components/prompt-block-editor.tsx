@@ -224,7 +224,11 @@ type BlockColumnProps = {
   onDelete: (blockId: string) => void;
   onDragEnd: (event: DragEndEvent) => void;
   isSaving: boolean;
+  isAdding: boolean;
   onAdd: () => void;
+  onCancelAdd: () => void;
+  onSubmitAdd: (input: { type: string; label: string; positive: string; negative?: string | null; sourceId?: string }, item?: LibraryItem) => void;
+  library?: PromptLibrary;
 };
 
 function BlockColumn({
@@ -241,7 +245,11 @@ function BlockColumn({
   onDelete,
   onDragEnd,
   isSaving,
+  isAdding,
   onAdd,
+  onCancelAdd,
+  onSubmitAdd,
+  library,
 }: BlockColumnProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -298,14 +306,26 @@ function BlockColumn({
       ) : (
         cardList
       )}
-      <button
-        type="button"
-        onClick={onAdd}
-        className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-white/10 bg-white/[0.02] px-3 py-2 text-[11px] text-zinc-500 transition hover:bg-white/[0.04] hover:text-zinc-300"
-      >
-        <Plus className="size-3" />
-        添加{column === "positive" ? "正面" : "负面"}提示词块
-      </button>
+      {isAdding ? (
+        <div className="mt-2">
+          <AddBlockForm
+            polarity={column}
+            onAdd={onSubmitAdd}
+            onCancel={onCancelAdd}
+            isPending={isSaving}
+            library={library}
+          />
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={onAdd}
+          className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-white/10 bg-white/[0.02] px-3 py-2 text-[11px] text-zinc-500 transition hover:bg-white/[0.04] hover:text-zinc-300"
+        >
+          <Plus className="size-3" />
+          添加{column === "positive" ? "正面" : "负面"}提示词块
+        </button>
+      )}
     </div>
   );
 }
@@ -712,7 +732,11 @@ export function PromptBlockEditor({
           onDelete={handleDelete}
           onDragEnd={handleDragEnd}
           isSaving={isPending}
+          isAdding={addingColumn === "positive"}
           onAdd={() => setAddingColumn("positive")}
+          onCancelAdd={() => setAddingColumn(null)}
+          onSubmitAdd={handleAdd}
+          library={library}
         />
         <BlockColumn
           title="❌ 负面提示词"
@@ -728,20 +752,13 @@ export function PromptBlockEditor({
           onDelete={handleDelete}
           onDragEnd={handleDragEnd}
           isSaving={isPending}
+          isAdding={addingColumn === "negative"}
           onAdd={() => setAddingColumn("negative")}
-        />
-      </div>
-
-      {/* Add block form overlay */}
-      {addingColumn && (
-        <AddBlockForm
-          polarity={addingColumn}
-          onAdd={handleAdd}
-          onCancel={() => setAddingColumn(null)}
-          isPending={isPending}
+          onCancelAdd={() => setAddingColumn(null)}
+          onSubmitAdd={handleAdd}
           library={library}
         />
-      )}
+      </div>
     </div>
   );
 }

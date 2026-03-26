@@ -191,17 +191,29 @@ export function ConfigManager({
     if (field.type === "boolean") {
       return (
         <label key={field.key} className="flex items-center gap-2 text-sm text-zinc-300">
-          <input
-            type="checkbox"
-            checked={!!value}
-            onChange={(e) => {
-              handleFieldChange(field.key, e.target.checked);
+          <button
+            type="button"
+            role="switch"
+            aria-checked={!!value}
+            onClick={() => {
+              const newValue = !value;
+              handleFieldChange(field.key, newValue);
               if (!isCreating) {
-                saveFieldNow(field.key, e.target.checked);
+                saveFieldNow(field.key, newValue);
               }
             }}
-            className="size-4 rounded border-white/20 bg-white/10"
-          />
+            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border transition-colors ${
+              value
+                ? "border-sky-500/30 bg-sky-500"
+                : "border-white/10 bg-white/10"
+            }`}
+          >
+            <span
+              className={`pointer-events-none block size-4 rounded-full bg-white shadow transition-transform ${
+                value ? "translate-x-4.5" : "translate-x-0.5"
+              }`}
+            />
+          </button>
           {field.label}
         </label>
       );
