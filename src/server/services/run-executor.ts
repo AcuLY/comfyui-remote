@@ -11,7 +11,7 @@
  *   executeQueuedRuns().catch(() => {}); // fire-and-forget
  */
 
-import { RunStatus } from "@/lib/db-enums";
+import { RunStatus, JobStatus } from "@/lib/db-enums";
 import { assertEnv } from "@/lib/env";
 import { createLogger } from "@/lib/logger";
 import {
@@ -23,13 +23,12 @@ import {
   removeManagedRunOutput,
 } from "@/server/services/image-result-service";
 import { audit } from "@/server/services/audit-service";
-import { buildComfyPromptDraft, normalizeResolvedConfigSnapshot } from "@/server/worker/payload-builder";
+import { buildComfyPromptDraft } from "@/server/worker/payload-builder";
 import {
   listQueuedWorkerRuns,
   completeWorkerRun,
 } from "@/server/worker/repository";
 import { db } from "@/lib/db";
-import { JobStatus } from "@/lib/db-enums";
 
 const log = createLogger({ module: "run-executor" });
 
@@ -114,7 +113,6 @@ export async function executeQueuedRuns(): Promise<void> {
           positionName: run.position.name,
         });
 
-        const resolvedConfig = normalizeResolvedConfigSnapshot(run.resolvedConfigSnapshot);
         const promptDraft = buildComfyPromptDraft(run);
 
         runLog.debug("Executing ComfyUI prompt", {

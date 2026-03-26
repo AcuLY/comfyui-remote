@@ -31,7 +31,7 @@ export const env = {
   comfyApiUrl: process.env.COMFY_API_URL ?? "http://127.0.0.1:8188",
   comfyRequestTimeoutMs: readPositiveIntegerEnv("COMFY_REQUEST_TIMEOUT_MS", 10_000),
   comfyHistoryPollIntervalMs: readPositiveIntegerEnv("COMFY_HISTORY_POLL_INTERVAL_MS", 2_000),
-  comfyHistoryMaxAttempts: readPositiveIntegerEnv("COMFY_HISTORY_MAX_ATTEMPTS", 15),
+  comfyHistoryMaxAttempts: readPositiveIntegerEnv("COMFY_HISTORY_MAX_ATTEMPTS", 300),
   loraBaseDir: process.env.LORA_BASE_DIR ?? "",
   imageBaseDir: process.env.IMAGE_BASE_DIR ?? "",
 
