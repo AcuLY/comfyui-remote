@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
-import { ChevronRight, Folder, FileText, X, ChevronLeft } from "lucide-react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { ChevronRight, Folder, FileText, X, ChevronLeft, Search } from "lucide-react";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -46,6 +46,40 @@ function pathSegments(p: string): string[] {
 }
 
 // ---------------------------------------------------------------------------
+// Shared search hook — recursively search all lora files
+// ---------------------------------------------------------------------------
+
+function useLoraSearch() {
+  const [query, setQuery] = useState("");
+  const [allFiles, setAllFiles] = useState<BrowseItem[]>([]);
+  const [searching, setSearching] = useState(false);
+  const loaded = useRef(false);
+
+  // Lazy-load all files on first search keystroke
+  useEffect(() => {
+    if (!query.trim() || loaded.current) return;
+    loaded.current = true;
+    setSearching(true);
+    fetch("/api/loras/browse?recursive=true")
+      .then((r) => r.json())
+      .then((json) => {
+        const data: BrowseResult = json.data;
+        setAllFiles(data.items.filter((i) => i.type === "file"));
+      })
+      .catch(() => {})
+      .finally(() => setSearching(false));
+  }, [query]);
+
+  const results = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return null; // null = not searching
+    return allFiles.filter((f) => f.name.toLowerCase().includes(q));
+  }, [query, allFiles]);
+
+  return { query, setQuery, results, searching, reset: () => { setQuery(""); } };
+}
+
+// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
@@ -63,6 +97,8 @@ export function LoraCascadePicker({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const search = useLoraSearch();
 
   const fetchDir = useCallback(async (dirPath: string) => {
     setLoading(true);
@@ -90,9 +126,12 @@ export function LoraCascadePicker({
   // Fetch on open
   useEffect(() => {
     if (open) {
-      // Start browsing from the directory of the current value
       const initial = value ? value.substring(0, value.lastIndexOf("/")) : "";
       fetchDir(initial);
+      // Focus search on open
+      setTimeout(() => searchInputRef.current?.focus(), 100);
+    } else {
+      search.reset();
     }
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -108,6 +147,7 @@ export function LoraCascadePicker({
 
   function handleSelect(item: BrowseItem) {
     if (item.type === "directory") {
+      search.reset();
       fetchDir(item.path);
     } else {
       onChange(item.path);
@@ -116,11 +156,13 @@ export function LoraCascadePicker({
   }
 
   function handleBreadcrumbClick(targetPath: string) {
+    search.reset();
     fetchDir(targetPath);
   }
 
   const displayValue = value ? value.split("/").pop() : null;
   const segments = pathSegments(browsePath);
+  const isSearching = search.results !== null;
 
   const triggerSizeClasses = size === "sm"
     ? "px-2 py-1 text-xs"
@@ -141,76 +183,137 @@ export function LoraCascadePicker({
         <ChevronRight className="size-3.5 shrink-0 text-zinc-500" />
       </button>
 
-      {/* Bottom-sheet overlay */}
+      {/* Centered modal overlay */}
       {open && (
         <div
           ref={backdropRef}
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
           onClick={(e) => {
             if (e.target === backdropRef.current) setOpen(false);
           }}
         >
-          <div
-            className="flex w-full max-w-lg flex-col rounded-t-2xl border border-white/10 bg-zinc-900 shadow-2xl"
-            style={{ maxHeight: "65vh" }}
-          >
-            {/* Header: breadcrumb + close */}
-            <div className="flex items-center gap-2 border-b border-white/5 px-4 py-3">
-              {/* Back button */}
-              {parentPath !== null && (
-                <button
-                  type="button"
-                  onClick={() => fetchDir(parentPath)}
-                  className="shrink-0 rounded-lg p-1.5 text-zinc-400 transition hover:bg-white/[0.06] hover:text-zinc-200"
-                >
-                  <ChevronLeft className="size-4" />
-                </button>
-              )}
-
-              {/* Breadcrumb */}
-              <div className="flex flex-1 items-center gap-1 overflow-x-auto text-xs scrollbar-none">
-                <button
-                  type="button"
-                  onClick={() => handleBreadcrumbClick("")}
-                  className="shrink-0 text-sky-400 transition hover:text-sky-300"
-                >
-                  LoRA
-                </button>
-                {segments.map((seg, i) => {
-                  const segPath = segments.slice(0, i + 1).join("/");
-                  const isLast = i === segments.length - 1;
-                  return (
-                    <span key={segPath} className="flex items-center gap-1">
-                      <ChevronRight className="size-3 text-zinc-600" />
-                      {isLast ? (
-                        <span className="shrink-0 text-zinc-200">{seg}</span>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => handleBreadcrumbClick(segPath)}
-                          className="shrink-0 text-sky-400 transition hover:text-sky-300"
-                        >
-                          {seg}
-                        </button>
-                      )}
-                    </span>
-                  );
-                })}
+          <div className="flex w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-900 shadow-2xl" style={{ maxHeight: "75vh" }}>
+            {/* Search bar */}
+            <div className="border-b border-white/5 px-4 pt-3 pb-2">
+              <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2">
+                <Search className="size-3.5 shrink-0 text-zinc-500" />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  value={search.query}
+                  onChange={(e) => search.setQuery(e.target.value)}
+                  placeholder="搜索 LoRA 文件…"
+                  className="flex-1 bg-transparent text-xs text-zinc-200 outline-none placeholder:text-zinc-600"
+                />
+                {search.query && (
+                  <button
+                    type="button"
+                    onClick={() => search.reset()}
+                    className="shrink-0 text-zinc-500 hover:text-zinc-300"
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                )}
               </div>
-
-              {/* Close */}
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className="shrink-0 rounded-lg p-1.5 text-zinc-500 transition hover:bg-white/[0.06] hover:text-zinc-200"
-              >
-                <X className="size-4" />
-              </button>
             </div>
+
+            {/* Breadcrumb (hidden during search) */}
+            {!isSearching && (
+              <div className="flex items-center gap-2 border-b border-white/5 px-4 py-2">
+                {parentPath !== null && (
+                  <button
+                    type="button"
+                    onClick={() => fetchDir(parentPath)}
+                    className="shrink-0 rounded-lg p-1.5 text-zinc-400 transition hover:bg-white/[0.06] hover:text-zinc-200"
+                  >
+                    <ChevronLeft className="size-4" />
+                  </button>
+                )}
+                <div className="flex flex-1 items-center gap-1 overflow-x-auto text-xs scrollbar-none">
+                  <button
+                    type="button"
+                    onClick={() => handleBreadcrumbClick("")}
+                    className="shrink-0 text-sky-400 transition hover:text-sky-300"
+                  >
+                    LoRA
+                  </button>
+                  {segments.map((seg, i) => {
+                    const segPath = segments.slice(0, i + 1).join("/");
+                    const isLast = i === segments.length - 1;
+                    return (
+                      <span key={segPath} className="flex items-center gap-1">
+                        <ChevronRight className="size-3 text-zinc-600" />
+                        {isLast ? (
+                          <span className="shrink-0 text-zinc-200">{seg}</span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleBreadcrumbClick(segPath)}
+                            className="shrink-0 text-sky-400 transition hover:text-sky-300"
+                          >
+                            {seg}
+                          </button>
+                        )}
+                      </span>
+                    );
+                  })}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  className="shrink-0 rounded-lg p-1.5 text-zinc-500 transition hover:bg-white/[0.06] hover:text-zinc-200"
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
+            )}
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-2">
-              {loading ? (
+              {isSearching ? (
+                // Search results
+                search.searching ? (
+                  <div className="flex items-center justify-center py-12 text-xs text-zinc-500">
+                    搜索中…
+                  </div>
+                ) : search.results!.length === 0 ? (
+                  <div className="flex items-center justify-center py-12 text-xs text-zinc-600">
+                    未找到匹配的 LoRA 文件
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    {search.results!.map((item) => {
+                      const isSelected = item.path === value;
+                      const dirHint = item.path.substring(0, item.path.lastIndexOf("/")) || "/";
+                      return (
+                        <button
+                          key={item.path}
+                          type="button"
+                          onClick={() => handleSelect(item)}
+                          className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition ${
+                            isSelected
+                              ? "bg-sky-500/10 text-sky-300"
+                              : "text-zinc-300 hover:bg-white/[0.04]"
+                          }`}
+                          style={{ minHeight: 44 }}
+                        >
+                          <FileText className="size-4 shrink-0 text-zinc-500" />
+                          <div className="flex-1 min-w-0">
+                            <div className="truncate text-xs">{item.name}</div>
+                            <div className="truncate text-[10px] text-zinc-600">{dirHint}</div>
+                          </div>
+                          {item.size != null && (
+                            <span className="shrink-0 text-[10px] text-zinc-600">
+                              {formatSize(item.size)}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )
+              ) : loading ? (
                 <div className="flex items-center justify-center py-12 text-xs text-zinc-500">
                   加载中…
                 </div>
@@ -317,12 +420,9 @@ export function LoraDirPicker({ onSelect, onCancel }: LoraDirPickerProps) {
     <div
       ref={backdropRef}
       onClick={(e) => { if (e.target === backdropRef.current) onCancel(); }}
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
     >
-      <div
-        className="flex w-full max-w-lg flex-col rounded-t-2xl border border-white/10 bg-zinc-900 shadow-2xl"
-        style={{ maxHeight: "60vh" }}
-      >
+      <div className="flex w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-900 shadow-2xl" style={{ maxHeight: "70vh" }}>
         {/* Header */}
         <div className="flex items-center gap-2 border-b border-white/5 px-4 py-3">
           {parentPath !== null && (
