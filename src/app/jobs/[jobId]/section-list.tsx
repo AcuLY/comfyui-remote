@@ -71,15 +71,22 @@ export function SectionList({ jobId, sections: initialSections }: SectionListPro
     const oldIndex = sections.findIndex((s) => s.id === active.id);
     const newIndex = sections.findIndex((s) => s.id === over.id);
 
+    const oldSections = sections;
     const newSections = arrayMove(sections, oldIndex, newIndex);
     setSections(newSections);
 
     // 服务端更新排序
     startTransition(async () => {
-      await reorderSections(
-        jobId,
-        newSections.map((s) => s.id),
-      );
+      try {
+        await reorderSections(
+          jobId,
+          newSections.map((s) => s.id),
+        );
+      } catch (err) {
+        // 回滚乐观更新
+        setSections(oldSections);
+        alert(err instanceof Error ? err.message : "排序失败");
+      }
     });
   }
 
@@ -87,8 +94,8 @@ export function SectionList({ jobId, sections: initialSections }: SectionListPro
     <DndContext id={dndId} sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <SortableContext items={sections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
         <div className={`space-y-3 ${isPending ? "opacity-60" : ""}`}>
-          {sections.map((section) => (
-            <SortableSectionCard key={section.id} section={section} jobId={jobId} />
+          {sections.map((section, index) => (
+            <SortableSectionCard key={section.id} section={section} jobId={jobId} index={index} />
           ))}
         </div>
       </SortableContext>
@@ -96,7 +103,7 @@ export function SectionList({ jobId, sections: initialSections }: SectionListPro
   );
 }
 
-function SortableSectionCard({ section, jobId }: { section: Section; jobId: string }) {
+function SortableSectionCard({ section, jobId, index }: { section: Section; jobId: string; index: number }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: section.id,
   });
@@ -131,7 +138,7 @@ function SortableSectionCard({ section, jobId }: { section: Section; jobId: stri
         >
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm font-semibold text-white">
-              {section.name}
+              {index + 1}. {section.name}
             </span>
             {section.promptBlockCount > 0 && (
               <span className="inline-flex items-center gap-1 rounded-full border border-white/10 px-2 py-0.5 text-[10px] text-zinc-400">

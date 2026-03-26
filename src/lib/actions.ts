@@ -1,8 +1,11 @@
 "use server";
 
+import { resolve } from "node:path";
+import { rename, stat } from "node:fs/promises";
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
+import { env } from "@/lib/env";
 import {
   buildManagedTrashPath,
   moveManagedImageFile,
@@ -823,7 +826,33 @@ export async function renameSection(sectionId: string, name: string): Promise<vo
 // ---------------------------------------------------------------------------
 
 export async function reorderSections(jobId: string, sectionIds: string[]): Promise<void> {
-  // 批量更新 sortOrder
+  // 0. 检查是否有正在执行的 run，避免重排序导致输出路径不一致
+  const runningCount = await prisma.positionRun.count({
+    where: {
+      completeJobId: jobId,
+      status: { in: ["queued", "running"] },
+    },
+  });
+  if (runningCount > 0) {
+    throw new Error("有正在执行或排队中的任务，请等待完成后再调整顺序");
+  }
+
+  // 1. 查询旧 sortOrder、name 和 job title（用于文件夹重命名）
+  const sections = await prisma.completeJobPosition.findMany({
+    where: { id: { in: sectionIds } },
+    select: { id: true, sortOrder: true, name: true, positionTemplate: { select: { name: true } } },
+  });
+  const job = await prisma.completeJob.findUnique({
+    where: { id: jobId },
+    select: { title: true },
+  });
+
+  const oldSortMap = new Map(sections.map((s) => [s.id, {
+    sortOrder: s.sortOrder,
+    name: s.name || s.positionTemplate?.name || "position",
+  }]));
+
+  // 2. 批量更新 sortOrder
   await prisma.$transaction(
     sectionIds.map((id, index) =>
       prisma.completeJobPosition.update({
@@ -832,6 +861,50 @@ export async function reorderSections(jobId: string, sectionIds: string[]): Prom
       }),
     ),
   );
+
+  // 3. Best-effort 重命名 ComfyUI 输出文件夹
+  const imageBaseDir = env.imageBaseDir.trim();
+  if (imageBaseDir && job) {
+    const jobDir = resolve(imageBaseDir, job.title);
+    const toSlug = (name: string) => name.replace(/\s+/g, "_");
+
+    // 收集需要重命名的项
+    const renames: { id: string; oldDir: string; newDir: string }[] = [];
+    for (let i = 0; i < sectionIds.length; i++) {
+      const id = sectionIds[i];
+      const old = oldSortMap.get(id);
+      if (!old) continue;
+
+      const newSortOrder = i + 1;
+      if (old.sortOrder === newSortOrder) continue; // 没变化
+
+      const slug = toSlug(old.name);
+      const oldDir = resolve(jobDir, `${old.sortOrder}.${slug}`);
+      const newDir = resolve(jobDir, `${newSortOrder}.${slug}`);
+      renames.push({ id, oldDir, newDir });
+    }
+
+    if (renames.length > 0) {
+      try {
+        // Phase 1: rename 到临时名（避免冲突）
+        const tmpNames: { tmpDir: string; newDir: string }[] = [];
+        for (const r of renames) {
+          const tmpDir = resolve(jobDir, `_tmp_${r.id}`);
+          const exists = await stat(r.oldDir).then(() => true).catch(() => false);
+          if (exists) {
+            await rename(r.oldDir, tmpDir);
+            tmpNames.push({ tmpDir, newDir: r.newDir });
+          }
+        }
+        // Phase 2: 临时名 → 新名
+        for (const t of tmpNames) {
+          await rename(t.tmpDir, t.newDir);
+        }
+      } catch (err) {
+        console.error("[reorderSections] Failed to rename output folders:", err);
+      }
+    }
+  }
 
   revalidatePath(`/jobs/${jobId}`);
 }
