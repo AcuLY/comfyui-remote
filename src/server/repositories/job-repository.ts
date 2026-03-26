@@ -625,7 +625,7 @@ async function createQueuedRunsForPositions(
         completeJobPositionId: position.id,
         runIndex: (latestRunIndexByPositionId.get(position.id) ?? 0) + 1,
         status: "queued",
-        resolvedConfigSnapshot: buildResolvedConfigSnapshot(job, position, undefined, overrideBatchSize),
+        resolvedConfigSnapshot: buildResolvedConfigSnapshot(job, position, position.promptBlocks, overrideBatchSize),
       },
       select: {
         id: true,
