@@ -161,7 +161,7 @@ function SortableSectionCard({ section, jobId, index }: { section: Section; jobI
       </div>
 
       {/* 结果预览：缩略图条 */}
-      {section.latestImages.length > 0 && (
+      {section.latestImages.length > 0 ? (
         <div className="mt-3 border-t border-white/5 pt-3">
           <div className="mb-1.5 flex items-center gap-1.5 text-[10px] text-zinc-500">
             <ImageIcon className="size-3" />
@@ -217,6 +217,12 @@ function SortableSectionCard({ section, jobId, index }: { section: Section; jobI
                 +{section.latestImages.length - 8}
               </div>
             )}
+          </div>
+        </div>
+      ) : (
+        <div className="mt-3 border-t border-white/5 pt-3">
+          <div className="flex items-center justify-center rounded-xl border border-dashed border-white/5 bg-white/[0.01] py-4 text-[11px] text-zinc-600">
+            暂无结果
           </div>
         </div>
       )}
