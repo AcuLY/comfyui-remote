@@ -1,7 +1,7 @@
 "use server";
 
-import { resolve, join } from "node:path";
-import { rename, stat, readdir } from "node:fs/promises";
+import { resolve } from "node:path";
+import { rename, stat } from "node:fs/promises";
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
@@ -852,7 +852,7 @@ export async function reorderSections(jobId: string, sectionIds: string[]): Prom
   );
 
   // 3. Best-effort 重命名 ComfyUI 输出文件夹
-  const imageBaseDir = process.env.IMAGE_BASE_DIR?.trim();
+  const imageBaseDir = env.imageBaseDir.trim();
   if (imageBaseDir && job) {
     const jobDir = resolve(imageBaseDir, job.title);
     const toSlug = (name: string) => name.replace(/\s+/g, "_");
