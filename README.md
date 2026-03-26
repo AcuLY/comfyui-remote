@@ -93,7 +93,7 @@ DB_PROVIDER=sqlite DATABASE_URL="file:./data/comfyui.db" npm run dev
 | `DB_PROVIDER` | 否 | `postgresql` | `sqlite` | 数据库类型：`postgresql` / `sqlite` |
 | `DATABASE_URL` | 是 | — | `file:./data/comfyui.db` | 数据库连接字符串 |
 | `COMFY_API_URL` | 否 | `http://127.0.0.1:8188` | `http://127.0.0.1:8188` | ComfyUI API 地址 |
-| `IMAGE_BASE_DIR` | 否 | — | `D:\ComfyUI\output` | ComfyUI 输出目录（用于本地复制而非 HTTP 下载） |
+| `IMAGE_BASE_DIR` | 否 | — | `D:\ComfyUI\output` | ComfyUI 的默认输出目录。Worker 会从此目录本地复制生成的图片到 `data/images/`；不填则通过 HTTP 下载 |
 | `LORA_BASE_DIR` | 否 | — | `D:\ComfyUI\models\loras` | LoRA 文件根目录（用于文件管理器浏览） |
 | `LOG_LEVEL` | 否 | `info` | `info` | 日志级别：`debug` / `info` / `warn` / `error` |
 | `LOG_FORMAT` | 否 | `pretty` | `pretty` | 输出格式：`pretty` / `json` |
