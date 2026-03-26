@@ -251,13 +251,49 @@ export function ConfigManager({
 
     if (field.type === "lora-bindings") {
       const bindings = Array.isArray(value) ? (value as LoraBinding[]) : [];
+      const status = fieldSaveStatus[field.key];
       return (
         <div key={field.key}>
           <LoraBindingEditor
             bindings={bindings}
-            onChange={(newBindings) => handleFieldChange(field.key, newBindings)}
+            onChange={(newBindings) => {
+              handleFieldChange(field.key, newBindings);
+              // Auto-save immediately for lora-bindings (no blur event available)
+              if (!isCreating && editingId) {
+                setFieldSaveStatus((prev) => ({ ...prev, [field.key]: "saving" }));
+                startTransition(async () => {
+                  try {
+                    const updated = { ...formData, [field.key]: newBindings };
+                    await onUpdateAction(editingId, updated);
+                    originalDataRef.current = { ...updated };
+                    setFieldSaveStatus((prev) => ({ ...prev, [field.key]: "saved" }));
+                    setTimeout(() => {
+                      setFieldSaveStatus((prev) => {
+                        const next = { ...prev };
+                        if (next[field.key] === "saved") delete next[field.key];
+                        return next;
+                      });
+                    }, 1500);
+                    router.refresh();
+                  } catch {
+                    setFormData((prev) => ({ ...prev, [field.key]: originalDataRef.current[field.key] }));
+                    setFieldSaveStatus((prev) => ({ ...prev, [field.key]: "error" }));
+                    setTimeout(() => {
+                      setFieldSaveStatus((prev) => {
+                        const next = { ...prev };
+                        if (next[field.key] === "error") delete next[field.key];
+                        return next;
+                      });
+                    }, 2000);
+                  }
+                });
+              }
+            }}
             loraOptions={field.loraOptions}
           />
+          {!isCreating && status === "saving" && <span className="mt-0.5 block text-[11px] text-sky-400">保存中…</span>}
+          {!isCreating && status === "saved" && <span className="mt-0.5 block text-[11px] text-emerald-400">已保存 ✓</span>}
+          {!isCreating && status === "error" && <span className="mt-0.5 block text-[11px] text-rose-400">保存失败，已回退</span>}
         </div>
       );
     }
@@ -291,21 +327,30 @@ export function ConfigManager({
       </div>
       {fields.map(renderField)}
       <div className="flex gap-2">
-        {isCreating && (
+        {isCreating ? (
+          <>
+            <button
+              disabled={isPending}
+              onClick={handleSave}
+              className="inline-flex items-center gap-1 rounded-xl bg-sky-500/20 px-4 py-2 text-sm text-sky-300 transition hover:bg-sky-500/30 disabled:opacity-50"
+            >
+              <Save className="size-3.5" /> {isPending ? "保存中…" : "保存"}
+            </button>
+            <button
+              onClick={cancel}
+              className="inline-flex items-center gap-1 rounded-xl border border-white/10 px-4 py-2 text-sm text-zinc-400 transition hover:bg-white/[0.06]"
+            >
+              <X className="size-3.5" /> 取消
+            </button>
+          </>
+        ) : (
           <button
-            disabled={isPending}
-            onClick={handleSave}
-            className="inline-flex items-center gap-1 rounded-xl bg-sky-500/20 px-4 py-2 text-sm text-sky-300 transition hover:bg-sky-500/30 disabled:opacity-50"
+            onClick={cancel}
+            className="inline-flex items-center gap-1 rounded-xl border border-white/10 px-3 py-1.5 text-xs text-zinc-500 transition hover:bg-white/[0.06]"
           >
-            <Save className="size-3.5" /> {isPending ? "保存中…" : "保存"}
+            <Check className="size-3" /> 收起
           </button>
         )}
-        <button
-          onClick={cancel}
-          className="inline-flex items-center gap-1 rounded-xl border border-white/10 px-4 py-2 text-sm text-zinc-400 transition hover:bg-white/[0.06]"
-        >
-          <X className="size-3.5" /> {isCreating ? "取消" : "完成"}
-        </button>
       </div>
     </div>
   );
