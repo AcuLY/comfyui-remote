@@ -14,6 +14,39 @@ function isWithinBase(baseDir: string, targetPath: string): boolean {
   return resolved === resolvedBase || resolved.startsWith(resolvedBase + path.sep);
 }
 
+/** Recursively collect all lora files under a directory */
+async function collectFilesRecursive(
+  baseDir: string,
+  dirRelative: string,
+): Promise<{ name: string; type: "file"; path: string; size?: number }[]> {
+  const absoluteDir = path.resolve(baseDir, dirRelative);
+  const entries = await readdir(absoluteDir, { withFileTypes: true });
+  const results: { name: string; type: "file"; path: string; size?: number }[] = [];
+
+  for (const entry of entries) {
+    if (entry.name.startsWith(".")) continue;
+    const relPath = dirRelative ? `${dirRelative}/${entry.name}` : entry.name;
+
+    if (entry.isDirectory()) {
+      const subFiles = await collectFilesRecursive(baseDir, relPath);
+      results.push(...subFiles);
+    } else if (entry.isFile()) {
+      const ext = path.extname(entry.name).toLowerCase();
+      if (LORA_EXTENSIONS.has(ext)) {
+        const filePath = path.join(absoluteDir, entry.name);
+        const fileStat = await stat(filePath);
+        results.push({
+          name: entry.name,
+          type: "file",
+          path: relPath,
+          size: Number(fileStat.size),
+        });
+      }
+    }
+  }
+  return results;
+}
+
 export async function GET(request: NextRequest) {
   if (!env.loraBaseDir) {
     return fail("LORA_BASE_DIR is not configured.", 500);
@@ -21,6 +54,7 @@ export async function GET(request: NextRequest) {
 
   const searchParams = request.nextUrl.searchParams;
   const relativePath = (searchParams.get("path") ?? "").replace(/\\/g, "/");
+  const recursive = searchParams.get("recursive") === "true";
 
   const absoluteDir = path.resolve(env.loraBaseDir, relativePath);
 
@@ -29,6 +63,12 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    // Recursive mode: return all files across all subdirectories (for search)
+    if (recursive) {
+      const files = await collectFilesRecursive(env.loraBaseDir, relativePath);
+      files.sort((a, b) => a.name.localeCompare(b.name));
+      return ok({ currentPath: relativePath, parentPath: null, items: files });
+    }
     const entries = await readdir(absoluteDir, { withFileTypes: true });
 
     const items: {

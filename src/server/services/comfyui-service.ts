@@ -387,11 +387,13 @@ async function loadStandardWorkflowTemplate(): Promise<JsonRecord> {
 }
 
 /**
- * Returns true when the draft has v0.3 ksampler/lora fields, indicating
- * we should use the standard workflow.api.json template.
+ * Always use the standard workflow.api.json template as the default.
+ * Previously gated on ksampler1/ksampler2 presence; now always true
+ * so that all runs use the fully-mapped template with proper LoRA/KSampler support.
+ * The fallback builder is kept as a last resort if the template file is missing.
  */
-function shouldUseStandardWorkflow(draft: ComfyPromptDraft): boolean {
-  return draft.ksampler1 !== null || draft.ksampler2 !== null;
+function shouldUseStandardWorkflow(_draft: ComfyPromptDraft): boolean {
+  return true;
 }
 
 async function resolveStandardWorkflowPrompt(
