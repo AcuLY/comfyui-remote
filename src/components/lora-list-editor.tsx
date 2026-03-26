@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { Plus, Trash2, Pencil } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { Select } from "@/components/ui/select";
 import type { LoraEntry, LoraSource } from "@/lib/lora-types";
 
@@ -28,8 +27,6 @@ export function LoraListEditor({
   disabled = false,
   readOnly = false,
 }: LoraListEditorProps) {
-  const [editingId, setEditingId] = useState<string | null>(null);
-
   function handleAdd() {
     const newEntry: LoraEntry = {
       id: `lora-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
@@ -39,12 +36,10 @@ export function LoraListEditor({
       source: "manual",
     };
     onChange([...entries, newEntry]);
-    setEditingId(newEntry.id);
   }
 
   function handleRemove(id: string) {
     onChange(entries.filter((e) => e.id !== id));
-    if (editingId === id) setEditingId(null);
   }
 
   function handleUpdate(id: string, updates: Partial<LoraEntry>) {
@@ -83,7 +78,6 @@ export function LoraListEditor({
         ) : (
           entries.map((entry) => {
             const sourceConfig = SOURCE_LABELS[entry.source] || SOURCE_LABELS.manual;
-            const isEditing = editingId === entry.id;
             const isManual = entry.source === "manual";
 
             return (
@@ -118,22 +112,57 @@ export function LoraListEditor({
                     />
                   </button>
 
-                  {/* Path display */}
+                  {/* Path: selector for manual, display for imported */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs text-zinc-200 truncate">
-                        {entry.path ? (entry.path.split("/").pop() || entry.path) : "未选择"}
-                      </span>
-                      <span
-                        className={`shrink-0 rounded-lg border px-1.5 py-0.5 text-[9px] font-medium ${sourceConfig.color}`}
-                      >
-                        {isManual ? sourceConfig.label : (entry.sourceLabel || sourceConfig.label)}
-                      </span>
-                    </div>
-                    {!isManual && entry.path && (
-                      <div className="mt-0.5 text-[10px] text-zinc-600 truncate">
-                        {entry.path}
+                    {isManual ? (
+                      <div className="flex items-center gap-1.5">
+                        <div className="flex-1 min-w-0">
+                          {loraOptions && loraOptions.length > 0 ? (
+                            <Select
+                              value={entry.path}
+                              onChange={(v) => handleUpdate(entry.id, { path: v })}
+                              options={loraOptions}
+                              placeholder="选择 LoRA..."
+                              size="sm"
+                              disabled={disabled}
+                            />
+                          ) : (
+                            <input
+                              type="text"
+                              value={entry.path}
+                              onChange={(e) =>
+                                handleUpdate(entry.id, { path: e.target.value })
+                              }
+                              placeholder="LoRA 路径..."
+                              disabled={disabled}
+                              className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30"
+                            />
+                          )}
+                        </div>
+                        <span
+                          className={`shrink-0 rounded-lg border px-1.5 py-0.5 text-[9px] font-medium ${sourceConfig.color}`}
+                        >
+                          {sourceConfig.label}
+                        </span>
                       </div>
+                    ) : (
+                      <>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs text-zinc-200 truncate">
+                            {entry.path ? (entry.path.split("/").pop() || entry.path) : "未选择"}
+                          </span>
+                          <span
+                            className={`shrink-0 rounded-lg border px-1.5 py-0.5 text-[9px] font-medium ${sourceConfig.color}`}
+                          >
+                            {entry.sourceLabel || sourceConfig.label}
+                          </span>
+                        </div>
+                        {entry.path && (
+                          <div className="mt-0.5 text-[10px] text-zinc-600 truncate">
+                            {entry.path}
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
 
@@ -152,22 +181,6 @@ export function LoraListEditor({
                     />
                   </div>
 
-                  {/* Edit button for manual entries */}
-                  {isManual && !readOnly && (
-                    <button
-                      type="button"
-                      onClick={() => setEditingId(isEditing ? null : entry.id)}
-                      disabled={disabled}
-                      className={`rounded p-1 transition disabled:opacity-50 ${
-                        isEditing
-                          ? "bg-sky-500/10 text-sky-400"
-                          : "text-zinc-500 hover:bg-white/[0.06] hover:text-zinc-300"
-                      }`}
-                    >
-                      <Pencil className="size-3.5" />
-                    </button>
-                  )}
-
                   {/* Remove button */}
                   {!readOnly && (
                     <button
@@ -180,32 +193,6 @@ export function LoraListEditor({
                     </button>
                   )}
                 </div>
-
-                {/* Selector shown when editing manual entry */}
-                {isManual && isEditing && (
-                  <div className="mt-2">
-                    {loraOptions && loraOptions.length > 0 ? (
-                      <Select
-                        value={entry.path}
-                        onChange={(v) => handleUpdate(entry.id, { path: v })}
-                        options={loraOptions}
-                        placeholder="选择 LoRA..."
-                        size="sm"
-                      />
-                    ) : (
-                      <input
-                        type="text"
-                        value={entry.path}
-                        onChange={(e) =>
-                          handleUpdate(entry.id, { path: e.target.value })
-                        }
-                        placeholder="LoRA 路径..."
-                        disabled={disabled}
-                        className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30"
-                      />
-                    )}
-                  </div>
-                )}
               </div>
             );
           })
