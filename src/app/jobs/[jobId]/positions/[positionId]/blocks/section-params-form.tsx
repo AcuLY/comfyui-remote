@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useActionState } from "react";
-import { Save, Loader2, ChevronDown } from "lucide-react";
+import { Loader2, ChevronDown } from "lucide-react";
 import { saveJobPositionEditAction } from "@/app/jobs/actions";
 import { initialJobSaveState } from "@/app/jobs/action-types";
 import { AspectRatioPicker } from "@/components/aspect-ratio-picker";
@@ -53,6 +53,9 @@ const SEED_OPTIONS = [
   { value: "increment", label: "递增 (increment)" },
 ];
 
+/** Debounce delay for auto-save (ms) */
+const AUTO_SAVE_DELAY = 600;
+
 // ---------------------------------------------------------------------------
 // KSampler Panel
 // ---------------------------------------------------------------------------
@@ -63,14 +66,22 @@ type KSamplerPanelProps = {
   params: KSamplerParams;
   defaults: Required<KSamplerParams>;
   onChange: (params: KSamplerParams) => void;
+  onFieldBlur: () => void;
   disabled?: boolean;
 };
 
-function KSamplerPanel({ label, subtitle, params, defaults, onChange, disabled }: KSamplerPanelProps) {
+function KSamplerPanel({ label, subtitle, params, defaults, onChange, onFieldBlur, disabled }: KSamplerPanelProps) {
   const [open, setOpen] = useState(false);
 
   function update(key: keyof KSamplerParams, value: unknown) {
     onChange({ ...params, [key]: value });
+  }
+
+  /** For Select fields — update value and trigger save immediately */
+  function updateAndSave(key: keyof KSamplerParams, value: unknown) {
+    onChange({ ...params, [key]: value });
+    // Schedule save on next tick so the state has updated
+    setTimeout(onFieldBlur, 0);
   }
 
   const inputCls =
@@ -109,6 +120,7 @@ function KSamplerPanel({ label, subtitle, params, defaults, onChange, disabled }
                   const v = e.target.value.trim();
                   update("steps", v ? Number(v) : undefined);
                 }}
+                onBlur={onFieldBlur}
                 placeholder={String(defaults.steps)}
                 className={inputCls}
               />
@@ -126,6 +138,7 @@ function KSamplerPanel({ label, subtitle, params, defaults, onChange, disabled }
                   const v = e.target.value.trim();
                   update("cfg", v ? Number(v) : undefined);
                 }}
+                onBlur={onFieldBlur}
                 placeholder={String(defaults.cfg)}
                 className={inputCls}
               />
@@ -138,7 +151,7 @@ function KSamplerPanel({ label, subtitle, params, defaults, onChange, disabled }
               <div className="text-[10px] text-zinc-500">Sampler</div>
               <Select
                 value={params.sampler_name ?? defaults.sampler_name}
-                onChange={(v) => update("sampler_name", v)}
+                onChange={(v) => updateAndSave("sampler_name", v)}
                 options={SAMPLER_OPTIONS}
                 disabled={disabled}
                 size="sm"
@@ -148,7 +161,7 @@ function KSamplerPanel({ label, subtitle, params, defaults, onChange, disabled }
               <div className="text-[10px] text-zinc-500">Scheduler</div>
               <Select
                 value={params.scheduler ?? defaults.scheduler}
-                onChange={(v) => update("scheduler", v)}
+                onChange={(v) => updateAndSave("scheduler", v)}
                 options={SCHEDULER_OPTIONS}
                 disabled={disabled}
                 size="sm"
@@ -171,6 +184,7 @@ function KSamplerPanel({ label, subtitle, params, defaults, onChange, disabled }
                   const v = e.target.value.trim();
                   update("denoise", v ? Number(v) : undefined);
                 }}
+                onBlur={onFieldBlur}
                 placeholder={String(defaults.denoise)}
                 className={inputCls}
               />
@@ -179,7 +193,7 @@ function KSamplerPanel({ label, subtitle, params, defaults, onChange, disabled }
               <div className="text-[10px] text-zinc-500">Seed 策略</div>
               <Select
                 value={params.seedPolicy ?? defaults.seedPolicy}
-                onChange={(v) => update("seedPolicy", v)}
+                onChange={(v) => updateAndSave("seedPolicy", v)}
                 options={SEED_OPTIONS}
                 disabled={disabled}
                 size="sm"
@@ -236,6 +250,8 @@ type SectionParamsFormProps = {
 export function SectionParamsForm({ jobId, positionId, initialParams }: SectionParamsFormProps) {
   const [state, formAction, pending] = useActionState(saveJobPositionEditAction, initialJobSaveState);
   const [batchSize, setBatchSize] = useState<string>(initialParams.batchSize?.toString() ?? "");
+  const formRef = useRef<HTMLFormElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [ks1, setKs1] = useState<KSamplerParams>(() =>
     parseInitialKSampler(initialParams.ksampler1, DEFAULT_KSAMPLER1),
@@ -244,8 +260,23 @@ export function SectionParamsForm({ jobId, positionId, initialParams }: SectionP
     parseInitialKSampler(initialParams.ksampler2, DEFAULT_KSAMPLER2),
   );
 
+  // Auto-save: debounced form submit
+  const scheduleAutoSave = useCallback(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      formRef.current?.requestSubmit();
+    }, AUTO_SAVE_DELAY);
+  }, []);
+
+  // Clear timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
+
   return (
-    <form action={formAction}>
+    <form ref={formRef} action={formAction}>
       <input type="hidden" name="jobId" value={jobId} />
       <input type="hidden" name="positionId" value={positionId} />
       {/* 提交空值让 API 保持原 prompt 不变 */}
@@ -258,14 +289,15 @@ export function SectionParamsForm({ jobId, positionId, initialParams }: SectionP
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <div className="text-xs font-medium text-zinc-400">运行参数</div>
-          <button
-            type="submit"
-            disabled={pending}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-sky-500/20 bg-sky-500/10 px-3 py-1.5 text-[11px] text-sky-300 transition hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {pending ? <Loader2 className="size-3 animate-spin" /> : <Save className="size-3" />}
-            {pending ? "保存中…" : "保存参数"}
-          </button>
+          {pending && (
+            <span className="inline-flex items-center gap-1.5 text-[11px] text-zinc-500">
+              <Loader2 className="size-3 animate-spin" />
+              保存中…
+            </span>
+          )}
+          {!pending && state.status === "success" && (
+            <span className="text-[11px] text-emerald-400/70">已保存</span>
+          )}
         </div>
 
         <div className="space-y-3">
@@ -276,6 +308,7 @@ export function SectionParamsForm({ jobId, positionId, initialParams }: SectionP
               defaultValue={initialParams.aspectRatio}
               defaultShortSidePx={initialParams.shortSidePx}
               disabled={pending}
+              onChange={scheduleAutoSave}
             />
           </div>
 
@@ -288,11 +321,16 @@ export function SectionParamsForm({ jobId, positionId, initialParams }: SectionP
               disabled={pending}
               value={batchSize}
               onChange={(e) => setBatchSize(e.target.value)}
+              onBlur={scheduleAutoSave}
               placeholder="默认"
               className="input-number w-full rounded-xl border border-white/10 bg-white/[0.04] px-2.5 py-2 text-xs text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30 disabled:opacity-70"
             />
             <BatchSizeQuickFill
-              onSelect={(val) => setBatchSize(String(val))}
+              onSelect={(val) => {
+                setBatchSize(String(val));
+                // Schedule save after state update
+                setTimeout(scheduleAutoSave, 0);
+              }}
               currentValue={batchSize ? parseInt(batchSize, 10) : null}
               disabled={pending}
               size="sm"
@@ -306,6 +344,7 @@ export function SectionParamsForm({ jobId, positionId, initialParams }: SectionP
             params={ks1}
             defaults={DEFAULT_KSAMPLER1}
             onChange={setKs1}
+            onFieldBlur={scheduleAutoSave}
             disabled={pending}
           />
           <KSamplerPanel
@@ -314,18 +353,13 @@ export function SectionParamsForm({ jobId, positionId, initialParams }: SectionP
             params={ks2}
             defaults={DEFAULT_KSAMPLER2}
             onChange={setKs2}
+            onFieldBlur={scheduleAutoSave}
             disabled={pending}
           />
         </div>
 
-        {state.status !== "idle" && (
-          <p
-            className={`rounded-xl border px-3 py-1.5 text-[11px] leading-5 ${
-              state.status === "error"
-                ? "border-rose-500/20 bg-rose-500/10 text-rose-200"
-                : "border-emerald-500/20 bg-emerald-500/10 text-emerald-200"
-            }`}
-          >
+        {state.status === "error" && (
+          <p className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-1.5 text-[11px] leading-5 text-rose-200">
             {state.message}
           </p>
         )}

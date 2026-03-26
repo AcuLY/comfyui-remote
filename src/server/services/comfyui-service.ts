@@ -586,6 +586,20 @@ export async function executeComfyPromptDraft(
 
   const validatedDraft = await validateComfyPromptDraft(apiUrl, promptDraft);
 
+  // Debug: write the resolved prompt to disk for inspection
+  try {
+    const fs = await import("fs/promises");
+    const path = await import("path");
+    const debugPath = path.join(process.cwd(), "debug-submitted-prompt.json");
+    await fs.writeFile(
+      debugPath,
+      JSON.stringify(validatedDraft.apiPrompt, null, 2),
+      "utf-8",
+    );
+  } catch {
+    // Best-effort — don't block execution
+  }
+
   log.debug("Submitting prompt to ComfyUI", { apiUrl: validatedDraft.apiUrl });
 
   const comfyPromptId = await submitComfyPrompt(validatedDraft, promptDraft);

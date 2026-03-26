@@ -66,12 +66,15 @@ export function AspectRatioPicker({
   defaultValue,
   defaultShortSidePx,
   disabled,
+  onChange,
 }: {
   name: string;
   shortSidePxName?: string;
   defaultValue: string | null;
   defaultShortSidePx?: number | null;
   disabled?: boolean;
+  /** Called when aspect ratio or short-side px changes (for auto-save) */
+  onChange?: () => void;
 }) {
   const [selected, setSelected] = useState(defaultValue ?? "");
   const [shortSidePx, setShortSidePx] = useState<string>(
@@ -115,7 +118,10 @@ export function AspectRatioPicker({
                     key={opt.value}
                     type="button"
                     disabled={disabled}
-                    onClick={() => setSelected(isSelected ? "" : opt.value)}
+                    onClick={() => {
+                      setSelected(isSelected ? "" : opt.value);
+                      onChange?.();
+                    }}
                     title={`${opt.label} (${opt.width}×${opt.height})`}
                     className={`flex flex-col items-center gap-1 rounded-lg px-2 py-1.5 text-[10px] transition ${
                       isSelected
@@ -150,6 +156,7 @@ export function AspectRatioPicker({
             disabled={disabled}
             value={shortSidePx}
             onChange={(e) => setShortSidePx(e.target.value)}
+            onBlur={() => onChange?.()}
             placeholder={builtinShort ? String(builtinShort) : "1024"}
             className="input-number w-20 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30 disabled:opacity-70"
           />
