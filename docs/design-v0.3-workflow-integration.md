@@ -1,6 +1,6 @@
 # v0.3 Workflow 集成 & LoRA/采样器参数化 — 设计文档
 
-> 状态：Phase 1-3 已完成（Schema + Types + Workflow Builder + Worker 集成）
+> 状态：✅ 全部完成（Phase 1-5：Schema + Types + Workflow Builder + Worker 集成 + 前端 UI）
 > 日期：2026-03-26
 
 ## 1. 背景与目标

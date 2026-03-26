@@ -6,8 +6,11 @@
 
 - **大任务管理** — 用 Character × Scene × Style × Position 组合创建批量生图任务
 - **宫格审图** — 在手机上滑动式多选，批量保留 / 删除，支持单张放大；操作后一键处理剩余并跳转下一组
+- **结果 Gallery** — 独立结果页展示小节所有运行图片，Lightbox 放大查看，支持精选标记（⭐）
+- **图片整合导出** — 一键将已保留图片转 JPG 打包 zip，精选图片单独输出到 pixiv/ 目录
 - **回收站** — 误删随时恢复，文件级 trash / restore
-- **参数编辑** — Job 级和 Position 级覆盖：prompt、LoRA、画幅、batch size、seed 策略
+- **参数编辑** — Job 级和 Position 级覆盖：prompt、LoRA、画幅、batch size、双 KSampler 参数
+- **LoRA 文件管理** — 磁盘目录浏览、上传、跨目录移动、备注；级联选择器替代传统下拉
 - **Workflow 模板** — 内置 SDXL txt2img / HiRes Fix，支持从 ComfyUI 导出 JSON 一键导入自定义模板
 - **Worker 引擎** — 自动消费队列、调用 ComfyUI API、下载输出、生成缩略图
 - **审计日志 + 修订历史** — 全操作可追溯，区分人工 / AI / 系统，参数修改前自动快照
@@ -23,6 +26,7 @@
 | 数据库 | **PostgreSQL 16** 或 **SQLite**（可插拔），Prisma 7 ORM |
 | Worker | Node claim-based 执行引擎，对接 ComfyUI HTTP API |
 | AI 集成 | Agent REST API + MCP Server（`@modelcontextprotocol/sdk`） |
+| 图片处理 | sharp（缩略图 / JPG 转换）+ archiver（ZIP 打包） |
 | 存储 | 本地文件系统（图片 / LoRA / Workflow 模板） |
 
 ## 🚀 快速开始
@@ -82,6 +86,19 @@ DB_PROVIDER=sqlite DATABASE_URL="file:./data/comfyui.db" npm run dev
 
 打开 `http://localhost:3000` 即可使用。
 
+### 环境变量
+
+| 变量 | 必填 | 默认值 | 说明 |
+|------|------|--------|------|
+| `DB_PROVIDER` | 否 | `postgresql` | 数据库类型：`postgresql` / `sqlite` |
+| `DATABASE_URL` | 是 | — | 数据库连接字符串 |
+| `COMFY_API_URL` | 否 | `http://127.0.0.1:8188` | ComfyUI API 地址 |
+| `IMAGE_BASE_DIR` | 否 | — | ComfyUI 输出目录（用于本地复制而非 HTTP 下载） |
+| `LORA_BASE_DIR` | 否 | — | LoRA 文件根目录（用于文件管理器浏览） |
+| `LOG_LEVEL` | 否 | `info` | 日志级别：`debug` / `info` / `warn` / `error` |
+| `LOG_FORMAT` | 否 | `pretty` | 输出格式：`pretty` / `json` |
+| `LOG_ENABLE_FILE` | 否 | `false` | 是否写入日志文件 |
+
 ### 触发 Worker
 
 Worker 不是长驻进程，需要通过 HTTP 调用触发：
@@ -110,32 +127,6 @@ npm run prisma:studio     # 打开 Prisma Studio 数据浏览器
 npm run db:bootstrap:sqlite
 ```
 
-### 日志配置
-
-后端内置完善的日志系统，支持多级别日志、结构化数据、性能追踪。通过环境变量配置：
-
-| 变量 | 默认值 | 说明 |
-|------|--------|------|
-| `LOG_LEVEL` | `info` | 日志级别：`debug` / `info` / `warn` / `error` |
-| `LOG_FORMAT` | `pretty` | 输出格式：`pretty`（彩色控制台）/ `json`（结构化） |
-| `LOG_ENABLE_FILE` | `false` | 是否同时写入文件 |
-| `LOG_FILE_PATH` | `logs/app.log` | 日志文件路径 |
-| `LOG_MAX_FILE_SIZE` | `10485760` | 单文件最大字节数（10MB） |
-| `LOG_MAX_FILES` | `5` | 保留的轮转文件数量 |
-
-**API 端点**：`GET /api/logs` — 查询最近日志（需启用文件日志）
-
-```bash
-# 获取最近 100 条日志
-curl "http://localhost:3000/api/logs"
-
-# 过滤：只看 error 级别，最近 50 条
-curl "http://localhost:3000/api/logs?level=error&lines=50"
-
-# 过滤：指定模块
-curl "http://localhost:3000/api/logs?module=worker"
-```
-
 ## 📱 页面一览
 
 | 页面 | 路径 | 功能 |
@@ -145,11 +136,13 @@ curl "http://localhost:3000/api/logs?module=worker"
 | 单张查看 | `/queue/:runId/images/:imageId` | 大图 + 左右切换 + 处理剩余跳转下一组 |
 | Job 列表 | `/jobs` | 创建 / 编辑 / 复制 / 运行 |
 | 创建 Job | `/jobs/new` | 选择 Character / Scene / Style，勾选 Position |
-| Job 详情 | `/jobs/:jobId` | Position 列表 + 运行状态 + 修订历史 |
+| Job 详情 | `/jobs/:jobId` | Position 列表 + 缩略图条 + 运行 + 图片整合导出 |
 | Job 编辑 | `/jobs/:jobId/edit` | 参数编辑表单 |
-| Position 编辑 | `/jobs/:jobId/positions/:positionId/edit` | Position 级参数覆盖 |
+| Position 编辑 | `/jobs/:jobId/positions/:posId/edit` | LoRA 三栏 + KSampler1/2 参数 |
+| 提示词块 | `/jobs/:jobId/positions/:posId/blocks` | Prompt Block 编辑器 |
+| 结果 Gallery | `/jobs/:jobId/positions/:posId/results` | 全部运行结果 + Lightbox + 精选标记 |
 | 回收站 | `/trash` | 已删除图片 + 恢复按钮 |
-| LoRA 资源 | `/assets/loras` | 上传 + 列表 + 路径管理 |
+| LoRA 管理 | `/assets/loras` | 文件管理器：浏览 / 上传 / 移动 / 备注 |
 | 设置首页 | `/settings` | 各管理入口 |
 | Character 管理 | `/settings/characters` | CRUD |
 | Scene 管理 | `/settings/scenes` | CRUD |
@@ -209,24 +202,37 @@ comfyui-remote/
 ├── config/                     # 配置文件
 │   ├── path-maps.json          #   LoRA 分类 → 目录映射
 │   └── workflows/*.json        #   Workflow 模板
+├── data/                       # 运行时数据（git ignored）
+│   ├── images/                 #   管理的图片文件
+│   ├── export/                 #   图片整合导出输出
+│   └── loras/                  #   LoRA 文件（由 LORA_BASE_DIR 指定）
 ├── docs/                       # 文档
 │   ├── design-v0.1.md          #   产品与架构设计
+│   ├── design-v0.3-*.md        #   v0.3 Workflow 集成设计
 │   ├── handoff.md              #   接手文档 / 当前状态
 │   ├── agent-api.md            #   Agent API 完整说明
 │   ├── development-todo.md     #   开发进度记录
+│   ├── development-progress.md #   项目总览 + 版本历史
 │   └── local-verification.md   #   本机链路验证指南
 ├── prisma/                     # 数据库 schema + migration
+│   ├── schema.prisma           #   PostgreSQL schema
+│   └── schema.sqlite.prisma    #   SQLite schema
 ├── src/
 │   ├── app/                    # Next.js App Router
-│   │   ├── (pages)             #   17 个页面
-│   │   └── api/                #   34 个 API 路由
+│   │   ├── (pages)             #   20 个页面
+│   │   └── api/                #   38+ 个 API 路由
 │   ├── components/             # 通用 UI 组件
+│   │   ├── lora-cascade-picker.tsx  # LoRA 级联目录选择器
+│   │   ├── lora-list-editor.tsx     # LoRA 列表编辑器
+│   │   ├── section-editor.tsx       # 小节编辑器（blocks + LoRA）
+│   │   └── ...
 │   ├── lib/                    # 共享工具
 │   │   ├── actions.ts          #   Server Actions
 │   │   ├── server-data.ts      #   数据查询函数
-│   │   └── types.ts            #   类型定义
+│   │   ├── lora-types.ts       #   LoRA / KSampler 类型定义
+│   │   └── types.ts            #   通用类型定义
 │   ├── server/
-│   │   ├── services/           #   10 个 Service（业务逻辑 + 校验）
+│   │   ├── services/           #   10+ 个 Service（业务逻辑 + 校验）
 │   │   ├── repositories/       #   5 个 Repository（数据库访问）
 │   │   ├── worker/             #   Worker 执行引擎
 │   │   └── mcp/                #   MCP Server
@@ -239,15 +245,26 @@ comfyui-remote/
 1. **Server Actions**（`actions.ts` + `server-data.ts`）— 前端 RSC 直接调用，简单快速
 2. **REST API**（`api/` → `services/` → `repositories/`）— 完整输入校验，供外部 / Agent 调用
 
+### 图片生命周期
+
+```
+ComfyUI 输出 → Worker 复制到 data/images/{job}/{position}/run-{N}/raw/
+→ 生成缩略图 thumb/ → 创建 ImageResult（pending）
+→ 审核：kept / trashed → 精选标记：featured
+→ 导出：kept→zip, featured→pixiv/
+```
+
 ## 📖 文档
 
 | 文档 | 内容 |
 |------|------|
 | [`docs/design-v0.1.md`](docs/design-v0.1.md) | 产品设计、数据模型、页面规划、API 初稿 |
+| [`docs/design-v0.3-workflow-integration.md`](docs/design-v0.3-workflow-integration.md) | v0.3 Workflow 集成设计（LoRA 分区、KSampler、填充器） |
 | [`docs/handoff.md`](docs/handoff.md) | 代码组织、架构特点、完成度清单、接手指南 |
 | [`docs/agent-api.md`](docs/agent-api.md) | Agent API + MCP Server 完整使用说明 |
 | [`docs/local-verification.md`](docs/local-verification.md) | 本机端到端验证：seed → create job → enqueue → worker → output |
 | [`docs/development-todo.md`](docs/development-todo.md) | 开发进度与历史 |
+| [`docs/development-progress.md`](docs/development-progress.md) | 项目总览 + 页面/API 清单 + 版本历史 |
 
 ## License
 

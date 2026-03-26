@@ -18,15 +18,26 @@ All planned features for v0.1 and v0.2 have been implemented:
 - **审图快捷操作** — 批量保留/删除 + 自动跳转下一组
 - **Prompt Block (v0.2)** — 提示词块系统（schema / backend / frontend / migration / MCP）
 
-## Next: v0.3 Workflow 集成
+## Completed (v0.3 — Workflow 集成 + LoRA 改造)
 
-详见 `design-v0.3-workflow-integration.md`，主要内容：
+详见 `design-v0.3-workflow-integration.md`，全部 5 个 Phase 已完成：
 
-- [ ] LoRA 分区管理（characterLora / lora1 / lora2）
-- [ ] 双 KSampler 参数支持（KSampler1 + KSampler2）
-- [ ] 标准 workflow.api.json 填充器
-- [ ] Prisma schema 变更 + 数据迁移
-- [ ] 前端 LoRA 三栏编辑 + KSampler 参数表单
+- [x] LoRA 分区管理（characterLora / lora1 / lora2 三栏编辑）
+- [x] 双 KSampler 参数支持（KSampler1 + KSampler2 可折叠面板）
+- [x] 标准 workflow.api.json 填充器（workflow-prompt-builder.ts）
+- [x] Prisma schema 变更 + Worker 集成
+- [x] 前端 LoRA 三栏编辑 + KSampler 参数表单
+
+## Completed (v0.4 — 结果管理 + LoRA 文件管理)
+
+- [x] **结果 Gallery 页** — 独立页面展示小节所有运行结果，3-5 列网格，按 Run 分组
+- [x] **Lightbox 放大** — 点击图片放大查看，左右切换，键盘快捷键
+- [x] **精选标记** — Lightbox 中星形按钮标记精选（F 快捷键），缩略图显示星标
+- [x] **图片整合导出** — 一键将 kept 图片转 JPG 打包 zip，featured 图片单独输出到 pixiv/ 目录
+- [x] **LoRA 文件管理器** — 磁盘目录浏览、上传到当前目录、跨目录移动文件
+- [x] **LoRA 级联选择器** — 替换所有 LoRA 下拉为逐级目录导航的底部弹窗选择器
+- [x] **LoRA 备注** — 数据库绑定文件的备注字段，文件移动时自动跟随
+- [x] **结果缩略图条** — Job 详情的小节列表直接展示最近运行图片
 
 ## Working Notes
 
