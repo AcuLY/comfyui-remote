@@ -65,7 +65,6 @@ export default async function SectionEditPage({
     aspectRatio: pos.aspectRatio ?? pos.positionTemplate?.defaultAspectRatio ?? null,
     shortSidePx: pos.shortSidePx ?? pos.positionTemplate?.defaultShortSidePx ?? null,
     // v0.3: dual seedPolicy
-    seedPolicy: pos.seedPolicy1 ?? pos.positionTemplate?.defaultSeedPolicy1 ?? null,
     seedPolicy1: pos.seedPolicy1 ?? pos.positionTemplate?.defaultSeedPolicy1 ?? null,
     seedPolicy2: pos.seedPolicy2 ?? pos.positionTemplate?.defaultSeedPolicy2 ?? null,
     // v0.3: ksampler params
