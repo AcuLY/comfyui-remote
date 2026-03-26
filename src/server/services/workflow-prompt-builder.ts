@@ -87,6 +87,14 @@ function fillPowerLoraLoader(
   inputs: JsonRecord,
   bindings: LoraBinding[],
 ): void {
+  const enabledBindings = bindings.filter((b) => b.enabled);
+
+  // Only clear and replace existing lora_N entries when we have new bindings.
+  // If the list is empty, keep template defaults untouched.
+  if (enabledBindings.length === 0) {
+    return;
+  }
+
   // Remove all existing lora_N entries
   for (const key of Object.keys(inputs)) {
     if (/^lora_\d+$/.test(key)) {
@@ -95,7 +103,6 @@ function fillPowerLoraLoader(
   }
 
   // Fill with new bindings
-  const enabledBindings = bindings.filter((b) => b.enabled);
   for (let i = 0; i < enabledBindings.length; i++) {
     const b = enabledBindings[i];
     inputs[`lora_${i + 1}`] = {

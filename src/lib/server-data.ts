@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { toImageUrl } from "@/lib/image-url";
 import type { QueueRun, RunningRun, ReviewGroup, ReviewImage, ReviewStatus, JobCard, TrashItem, LoraAsset } from "@/lib/types";
 import { listWorkflowTemplateSummaries } from "@/server/services/workflow-template-service";
 
@@ -84,7 +85,7 @@ export async function getReviewGroup(runId: string): Promise<ReviewGroup | null>
 
   const images: ReviewImage[] = run.images.map((img, index) => ({
     id: img.id,
-    src: img.thumbPath ?? img.filePath,
+    src: toImageUrl(img.thumbPath ?? img.filePath) ?? "",
     label: `${index + 1}`.padStart(2, "0"),
     status: img.reviewStatus as ReviewImage["status"],
   }));
@@ -254,7 +255,7 @@ export async function getJobDetail(jobId: string): Promise<JobDetail | null> {
         negativeBlockCount,
         latestImages: (latestRun?.images ?? []).map((img) => ({
           id: img.id,
-          src: img.thumbPath ?? img.filePath,
+          src: toImageUrl(img.thumbPath ?? img.filePath) ?? "",
           status: img.reviewStatus,
         })),
       };
@@ -323,8 +324,8 @@ export async function getPositionResults(positionId: string): Promise<PositionRe
       .filter((img) => img.reviewStatus !== "trashed")
       .map((img) => ({
         id: img.id,
-        src: img.thumbPath ?? img.filePath,
-        full: img.filePath,
+        src: toImageUrl(img.thumbPath ?? img.filePath) ?? "",
+        full: toImageUrl(img.filePath) ?? "",
         status: img.reviewStatus as ReviewStatus,
         featured: img.featured,
       }));
@@ -384,7 +385,7 @@ export async function getTrashItems(): Promise<TrashItem[]> {
     const run = rec.imageResult.positionRun;
     return {
       id: rec.id,
-      src: rec.imageResult.thumbPath ?? rec.imageResult.filePath,
+      src: toImageUrl(rec.imageResult.thumbPath ?? rec.imageResult.filePath) ?? "",
       title: `${run.completeJob.title} / ${run.completeJobPosition.positionTemplate?.name ?? "Unknown"}`,
       deletedAt: formatDate(rec.deletedAt),
       originalPath: rec.originalPath,

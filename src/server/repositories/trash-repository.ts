@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { toImageUrl } from "@/lib/image-url";
 
 export async function listTrashItems() {
   const records = await db.trashRecord.findMany({
@@ -16,6 +17,6 @@ export async function listTrashItems() {
     deletedAt: record.deletedAt,
     originalPath: record.originalPath,
     trashPath: record.trashPath,
-    previewPath: record.imageResult.thumbPath ?? record.imageResult.filePath,
+    previewPath: toImageUrl(record.imageResult.thumbPath ?? record.imageResult.filePath) ?? "",
   }));
 }

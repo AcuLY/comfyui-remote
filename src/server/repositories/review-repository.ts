@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { toImageUrl } from "@/lib/image-url";
 import { ActorType, ReviewStatus } from "@/lib/db-enums";
 import {
   buildManagedTrashPath,
@@ -98,7 +99,7 @@ export async function getRunReviewGroup(runId: string) {
 
   const images = run.images.map((image, index) => ({
     id: image.id,
-    src: image.thumbPath ?? image.filePath,
+    src: toImageUrl(image.thumbPath ?? image.filePath) ?? "",
     label: String(index + 1).padStart(2, "0"),
     status: image.reviewStatus,
   }));
