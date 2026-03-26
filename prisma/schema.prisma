@@ -57,7 +57,6 @@ model ScenePreset {
   slug            String        @unique
   prompt          String        @db.Text
   negativePrompt  String?       @db.Text
-  loraBindings    Json?         // Array of { path: string, weight: number, enabled: boolean }
   notes           String?       @db.Text
   isActive        Boolean       @default(true)
   createdAt       DateTime      @default(now())
@@ -71,7 +70,6 @@ model StylePreset {
   slug            String        @unique
   prompt          String        @db.Text
   negativePrompt  String?       @db.Text
-  loraBindings    Json?         // Array of { path: string, weight: number, enabled: boolean }
   notes           String?       @db.Text
   isActive        Boolean       @default(true)
   createdAt       DateTime      @default(now())
@@ -85,12 +83,15 @@ model PositionTemplate {
   slug                String                @unique
   prompt              String                @db.Text
   negativePrompt      String?               @db.Text
-  loraBindings        Json?                 // Array of { path: string, weight: number, enabled: boolean }
-  defaultLoraConfig   Json?
+  lora1               Json?                 // Array<LoraBinding> — lora1 列表
+  lora2               Json?                 // Array<LoraBinding> — lora2 列表
   defaultAspectRatio  String?
   defaultShortSidePx  Int?
   defaultBatchSize    Int?                  @default(1)
-  defaultSeedPolicy   String?
+  defaultSeedPolicy1  String?
+  defaultSeedPolicy2  String?
+  defaultKsampler1    Json?                 // KSamplerParams for KSampler1
+  defaultKsampler2    Json?                 // KSamplerParams for KSampler2
   defaultParams       Json?
   enabled             Boolean               @default(true)
   createdAt           DateTime              @default(now())
@@ -161,8 +162,11 @@ model CompleteJobPosition {
   aspectRatio           String?
   shortSidePx           Int?
   batchSize             Int?
-  seedPolicy            String?
-  loraConfig            Json?
+  seedPolicy1           String?
+  seedPolicy2           String?
+  ksampler1             Json?                 // KSamplerParams for KSampler1
+  ksampler2             Json?                 // KSamplerParams for KSampler2
+  loraConfig            Json?                 // { characterLora, lora1, lora2 }
   extraParams           Json?
   latestRunId           String?
   createdAt             DateTime              @default(now())

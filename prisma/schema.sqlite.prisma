@@ -31,7 +31,6 @@ model ScenePreset {
   slug            String        @unique
   prompt          String
   negativePrompt  String?
-  loraBindings    Json?
   notes           String?
   isActive        Boolean       @default(true)
   createdAt       DateTime      @default(now())
@@ -45,7 +44,6 @@ model StylePreset {
   slug            String        @unique
   prompt          String
   negativePrompt  String?
-  loraBindings    Json?
   notes           String?
   isActive        Boolean       @default(true)
   createdAt       DateTime      @default(now())
@@ -59,12 +57,15 @@ model PositionTemplate {
   slug                String                @unique
   prompt              String
   negativePrompt      String?
-  loraBindings        Json?
-  defaultLoraConfig   Json?
+  lora1               Json?
+  lora2               Json?
   defaultAspectRatio  String?
   defaultShortSidePx  Int?
   defaultBatchSize    Int?                  @default(1)
-  defaultSeedPolicy   String?
+  defaultSeedPolicy1  String?
+  defaultSeedPolicy2  String?
+  defaultKsampler1    Json?
+  defaultKsampler2    Json?
   defaultParams       Json?
   enabled             Boolean               @default(true)
   createdAt           DateTime              @default(now())
@@ -111,7 +112,10 @@ model CompleteJobPosition {
   aspectRatio           String?
   shortSidePx           Int?
   batchSize             Int?
-  seedPolicy            String?
+  seedPolicy1           String?
+  seedPolicy2           String?
+  ksampler1             Json?
+  ksampler2             Json?
   loraConfig            Json?
   extraParams           Json?
   latestRunId           String?
