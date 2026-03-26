@@ -281,6 +281,7 @@ export type PositionResultsData = {
       src: string;
       full: string;
       status: ReviewStatus;
+      featured: boolean;
     }[];
   }[];
   /** 最新有 pending 图片的 run id（用于「跳转至审核」按钮） */
@@ -304,6 +305,7 @@ export async function getPositionResults(positionId: string): Promise<PositionRe
               thumbPath: true,
               filePath: true,
               reviewStatus: true,
+              featured: true,
             },
           },
         },
@@ -324,6 +326,7 @@ export async function getPositionResults(positionId: string): Promise<PositionRe
         src: img.thumbPath ?? img.filePath,
         full: img.filePath,
         status: img.reviewStatus as ReviewStatus,
+        featured: img.featured,
       }));
 
     const runPending = images.filter((img) => img.status === "pending").length;

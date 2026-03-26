@@ -1,13 +1,16 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Play } from "lucide-react";
+import { Play, Download, CheckCircle, XCircle } from "lucide-react";
 import { runJob, runPosition } from "@/lib/actions";
+import { exportJobImages } from "@/app/jobs/actions-export";
 import { BatchSizeQuickFill } from "@/components/batch-size-quick-fill";
 
 export function JobDetailActions({ jobId }: { jobId: string }) {
   const [isPending, startTransition] = useTransition();
   const [batchSize, setBatchSize] = useState<string>("");
+  const [exporting, setExporting] = useState(false);
+  const [exportMsg, setExportMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   function handleRun() {
     const parsed = batchSize.trim() ? parseInt(batchSize, 10) : undefined;
@@ -15,6 +18,19 @@ export function JobDetailActions({ jobId }: { jobId: string }) {
     startTransition(async () => {
       await runJob(jobId, overrideBatchSize);
     });
+  }
+
+  async function handleExport() {
+    setExporting(true);
+    setExportMsg(null);
+    try {
+      const result = await exportJobImages(jobId);
+      setExportMsg({ ok: result.success, text: result.message });
+    } catch {
+      setExportMsg({ ok: false, text: "导出失败" });
+    } finally {
+      setExporting(false);
+    }
   }
 
   const parsedBatchSize = batchSize.trim() ? parseInt(batchSize, 10) : null;
@@ -48,6 +64,29 @@ export function JobDetailActions({ jobId }: { jobId: string }) {
       >
         <Play className="size-4" /> {isPending ? "提交中…" : "运行整组"}
       </button>
+      <button
+        disabled={exporting}
+        onClick={handleExport}
+        className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-emerald-300 transition hover:bg-emerald-500/20 disabled:opacity-50"
+      >
+        <Download className="size-4" /> {exporting ? "导出中…" : "图片整合"}
+      </button>
+      {exportMsg && (
+        <div
+          className={`flex items-start gap-2 rounded-2xl border px-3 py-2.5 text-xs ${
+            exportMsg.ok
+              ? "border-emerald-500/20 bg-emerald-500/5 text-emerald-300"
+              : "border-rose-500/20 bg-rose-500/5 text-rose-300"
+          }`}
+        >
+          {exportMsg.ok ? (
+            <CheckCircle className="mt-0.5 size-3.5 shrink-0" />
+          ) : (
+            <XCircle className="mt-0.5 size-3.5 shrink-0" />
+          )}
+          <span>{exportMsg.text}</span>
+        </div>
+      )}
     </div>
   );
 }

@@ -211,6 +211,7 @@ model ImageResult {
   height                Int?
   fileSize              BigInt?
   reviewStatus          ReviewStatus    @default(pending)
+  featured              Boolean         @default(false)
   reviewedAt            DateTime?
   createdAt             DateTime        @default(now())
   updatedAt             DateTime        @updatedAt
