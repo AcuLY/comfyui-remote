@@ -279,6 +279,7 @@ export type PositionResultsData = {
     images: {
       id: string;
       src: string;
+      full: string;
       status: ReviewStatus;
     }[];
   }[];
@@ -316,11 +317,14 @@ export async function getPositionResults(positionId: string): Promise<PositionRe
   let totalPending = 0;
 
   const runs = pos.runs.map((run) => {
-    const images = run.images.map((img) => ({
-      id: img.id,
-      src: img.thumbPath ?? img.filePath,
-      status: img.reviewStatus as ReviewStatus,
-    }));
+    const images = run.images
+      .filter((img) => img.reviewStatus !== "trashed")
+      .map((img) => ({
+        id: img.id,
+        src: img.thumbPath ?? img.filePath,
+        full: img.filePath,
+        status: img.reviewStatus as ReviewStatus,
+      }));
 
     const runPending = images.filter((img) => img.status === "pending").length;
     totalPending += runPending;

@@ -4,14 +4,9 @@ import Image from "next/image";
 import { ArrowLeft, AlertCircle } from "lucide-react";
 import { SectionCard } from "@/components/section-card";
 import { getPositionResults } from "@/lib/server-data";
+import { ResultsGallery } from "./results-gallery";
 
 export const dynamic = "force-dynamic";
-
-const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
-  pending: { label: "待审", cls: "bg-amber-500/80 text-white" },
-  kept: { label: "kept", cls: "bg-emerald-500/80 text-white" },
-  trashed: { label: "trash", cls: "bg-zinc-600/80 text-zinc-300" },
-};
 
 const RUN_STATUS_BADGE: Record<string, string> = {
   done: "border-emerald-500/20 bg-emerald-500/10 text-emerald-300",
@@ -33,6 +28,17 @@ export default async function PositionResultsPage({
   }
 
   const totalImages = data.runs.reduce((sum, run) => sum + run.images.length, 0);
+
+  // Flatten all images for the lightbox
+  const allImages = data.runs.flatMap((run) =>
+    run.images.map((img) => ({
+      id: img.id,
+      src: img.src,
+      full: img.full,
+      status: img.status,
+      runIndex: run.runIndex,
+    }))
+  );
 
   return (
     <div className="space-y-4">
@@ -81,14 +87,6 @@ export default async function PositionResultsPage({
                   >
                     {run.status}
                   </span>
-                  {run.images.some((img) => img.status === "pending") && (
-                    <Link
-                      href={`/queue/${run.id}`}
-                      className="ml-auto text-[10px] text-sky-400 hover:text-sky-300"
-                    >
-                      审核此组
-                    </Link>
-                  )}
                 </div>
 
                 {/* Image grid */}
@@ -99,33 +97,35 @@ export default async function PositionResultsPage({
                 ) : (
                   <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 md:grid-cols-5">
                     {run.images.map((img) => {
-                      const badge = STATUS_BADGE[img.status] ?? STATUS_BADGE.pending;
+                      const globalIndex = allImages.findIndex((a) => a.id === img.id);
                       return (
-                        <Link
+                        <ResultsGallery
                           key={img.id}
-                          href={`/queue/${run.id}/images/${img.id}`}
-                          className={`group relative overflow-hidden rounded-xl border transition hover:border-sky-500/40 ${
-                            img.status === "trashed"
-                              ? "border-white/5 opacity-40"
-                              : img.status === "kept"
+                          imageIndex={globalIndex}
+                          allImages={allImages}
+                        >
+                          <div
+                            className={`group relative cursor-pointer overflow-hidden rounded-xl border transition hover:border-sky-500/40 ${
+                              img.status === "kept"
                                 ? "border-emerald-500/30"
                                 : "border-white/10"
-                          }`}
-                        >
-                          <Image
-                            src={img.src}
-                            alt=""
-                            width={200}
-                            height={280}
-                            className="aspect-[3/4] w-full object-cover"
-                            unoptimized
-                          />
-                          <div
-                            className={`absolute bottom-0 left-0 right-0 py-0.5 text-center text-[8px] font-medium ${badge.cls}`}
+                            }`}
                           >
-                            {badge.label}
+                            <Image
+                              src={img.src}
+                              alt=""
+                              width={200}
+                              height={280}
+                              className="aspect-[3/4] w-full object-cover"
+                              unoptimized
+                            />
+                            {img.status === "pending" && (
+                              <div className="absolute bottom-0 left-0 right-0 bg-amber-500/80 py-0.5 text-center text-[8px] font-medium text-white">
+                                待审
+                              </div>
+                            )}
                           </div>
-                        </Link>
+                        </ResultsGallery>
                       );
                     })}
                   </div>
