@@ -19,7 +19,8 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Layers } from "lucide-react";
+import { GripVertical, Layers, ImageIcon } from "lucide-react";
+import Image from "next/image";
 import { reorderSections } from "@/lib/actions";
 import { PositionRunButton } from "./job-detail-actions";
 import { CopySectionButton, DeleteSectionButton } from "./section-actions";
@@ -32,9 +33,11 @@ type Section = {
   seedPolicy1: string | null;
   seedPolicy2: string | null;
   latestRunStatus: string | null;
+  latestRunId: string | null;
   promptBlockCount: number;
   positiveBlockCount: number;
   negativeBlockCount: number;
+  latestImages: { id: string; src: string; status: string }[];
 };
 
 type SectionListProps = {
@@ -149,6 +152,67 @@ function SortableSectionCard({ section, jobId }: { section: Section; jobId: stri
           <DeleteSectionButton sectionId={section.id} sectionName={section.name} />
         </div>
       </div>
+
+      {/* 结果预览：缩略图条 */}
+      {section.latestImages.length > 0 && (
+        <div className="mt-3 border-t border-white/5 pt-3">
+          <div className="mb-1.5 flex items-center gap-1.5 text-[10px] text-zinc-500">
+            <ImageIcon className="size-3" />
+            <span>
+              最近结果 · {section.latestImages.length} 张
+              {section.latestImages.some((img) => img.status === "pending") && (
+                <span className="ml-1 text-amber-400">
+                  ({section.latestImages.filter((img) => img.status === "pending").length} 待审)
+                </span>
+              )}
+            </span>
+            {section.latestRunId && (
+              <Link
+                href={`/queue/${section.latestRunId}`}
+                className="ml-auto text-sky-400 hover:text-sky-300"
+                onClick={(e) => e.stopPropagation()}
+              >
+                查看全部
+              </Link>
+            )}
+          </div>
+          <div className="flex gap-1.5 overflow-x-auto scrollbar-none">
+            {section.latestImages.slice(0, 8).map((img) => (
+              <Link
+                key={img.id}
+                href={section.latestRunId ? `/queue/${section.latestRunId}` : "#"}
+                onClick={(e) => e.stopPropagation()}
+                className={`relative shrink-0 overflow-hidden rounded-lg border transition hover:border-sky-500/40 ${
+                  img.status === "kept"
+                    ? "border-emerald-500/30"
+                    : img.status === "trashed"
+                      ? "border-rose-500/20 opacity-40"
+                      : "border-white/10"
+                }`}
+              >
+                <Image
+                  src={img.src}
+                  alt=""
+                  width={56}
+                  height={80}
+                  className="h-[80px] w-[56px] object-cover"
+                  unoptimized
+                />
+                {img.status === "kept" && (
+                  <div className="absolute bottom-0 left-0 right-0 bg-emerald-500/80 py-px text-center text-[8px] text-white">
+                    kept
+                  </div>
+                )}
+              </Link>
+            ))}
+            {section.latestImages.length > 8 && (
+              <div className="flex shrink-0 items-center justify-center rounded-lg border border-white/5 bg-white/[0.02] px-3 text-[10px] text-zinc-500">
+                +{section.latestImages.length - 8}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* 操作按钮区：运行控件 + 移动端的复制/删除 */}
       <div

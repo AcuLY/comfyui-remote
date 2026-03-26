@@ -177,9 +177,12 @@ export type JobDetail = {
     seedPolicy1: string | null;
     seedPolicy2: string | null;
     latestRunStatus: string | null;
+    latestRunId: string | null;
     promptBlockCount: number;
     positiveBlockCount: number;
     negativeBlockCount: number;
+    /** Thumbnail images from the latest completed run */
+    latestImages: { id: string; src: string; status: string }[];
   }[];
 };
 
@@ -197,7 +200,19 @@ export async function getJobDetail(jobId: string): Promise<JobDetail | null> {
           runs: {
             orderBy: { createdAt: "desc" },
             take: 1,
-            select: { status: true },
+            select: {
+              id: true,
+              status: true,
+              images: {
+                orderBy: { createdAt: "asc" },
+                select: {
+                  id: true,
+                  thumbPath: true,
+                  filePath: true,
+                  reviewStatus: true,
+                },
+              },
+            },
           },
           promptBlocks: {
             orderBy: { sortOrder: "asc" },
@@ -223,6 +238,7 @@ export async function getJobDetail(jobId: string): Promise<JobDetail | null> {
     positions: job.positions.map((pos) => {
       const positiveBlockCount = pos.promptBlocks.filter((b) => b.positive?.trim()).length;
       const negativeBlockCount = pos.promptBlocks.filter((b) => b.negative?.trim()).length;
+      const latestRun = pos.runs[0] ?? null;
       return {
         id: pos.id,
         name: pos.name || pos.positionTemplate?.name || `小节 ${pos.sortOrder}`,
@@ -231,10 +247,16 @@ export async function getJobDetail(jobId: string): Promise<JobDetail | null> {
         // v0.3: dual seedPolicy
         seedPolicy1: pos.seedPolicy1 ?? pos.positionTemplate?.defaultSeedPolicy1 ?? null,
         seedPolicy2: pos.seedPolicy2 ?? pos.positionTemplate?.defaultSeedPolicy2 ?? null,
-        latestRunStatus: pos.runs[0]?.status ?? null,
+        latestRunStatus: latestRun?.status ?? null,
+        latestRunId: latestRun?.id ?? null,
         promptBlockCount: pos.promptBlocks.length,
         positiveBlockCount,
         negativeBlockCount,
+        latestImages: (latestRun?.images ?? []).map((img) => ({
+          id: img.id,
+          src: img.thumbPath ?? img.filePath,
+          status: img.reviewStatus,
+        })),
       };
     }),
   };
