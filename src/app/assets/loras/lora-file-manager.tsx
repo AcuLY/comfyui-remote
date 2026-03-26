@@ -11,6 +11,8 @@ import {
   ChevronLeft,
   X,
   FolderOpen,
+  MessageSquare,
+  Check,
 } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -22,6 +24,7 @@ type BrowseItem = {
   type: "directory" | "file";
   path: string;
   size?: number;
+  notes?: string;
 };
 
 type BrowseResult = {
@@ -215,9 +218,16 @@ export function LoraFileManager() {
   const [movingFile, setMovingFile] = useState<string | null>(null);
   const [moveMsg, setMoveMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
+  // Notes editing state
+  const [editingNotesPath, setEditingNotesPath] = useState<string | null>(null);
+  const [editingNotesText, setEditingNotesText] = useState("");
+  const [savingNotes, setSavingNotes] = useState(false);
+  const notesInputRef = useRef<HTMLTextAreaElement>(null);
+
   const fetchDir = useCallback(async (dirPath: string) => {
     setLoading(true);
     setError(null);
+    setEditingNotesPath(null);
     try {
       const params = new URLSearchParams();
       if (dirPath) params.set("path", dirPath);
@@ -317,6 +327,43 @@ export function LoraFileManager() {
     setMovingFile(null);
   }
 
+  function handleEditNotes(item: BrowseItem) {
+    if (editingNotesPath === item.path) {
+      // Toggle off
+      setEditingNotesPath(null);
+      return;
+    }
+    setEditingNotesPath(item.path);
+    setEditingNotesText(item.notes ?? "");
+    // Focus the textarea after render
+    setTimeout(() => notesInputRef.current?.focus(), 50);
+  }
+
+  async function handleSaveNotes() {
+    if (!editingNotesPath) return;
+    setSavingNotes(true);
+    try {
+      const res = await fetch("/api/loras/notes", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path: editingNotesPath, notes: editingNotesText }),
+      });
+      if (res.ok) {
+        // Update local state
+        setItems((prev) =>
+          prev.map((item) =>
+            item.path === editingNotesPath
+              ? { ...item, notes: editingNotesText || undefined }
+              : item
+          )
+        );
+        setEditingNotesPath(null);
+      }
+    } finally {
+      setSavingNotes(false);
+    }
+  }
+
   const segments = pathSegments(currentPath);
   const fileCount = items.filter((i) => i.type === "file").length;
   const dirCount = items.filter((i) => i.type === "directory").length;
@@ -385,42 +432,101 @@ export function LoraFileManager() {
           空目录
         </div>
       ) : (
-        <div className="space-y-1">
+        <div className="space-y-0.5">
           {items.map((item) => (
-            <div
-              key={item.path}
-              className="group flex items-center gap-3 rounded-xl px-3 py-2.5 transition hover:bg-white/[0.03]"
-              style={{ minHeight: 44 }}
-            >
-              {item.type === "directory" ? (
-                <button
-                  type="button"
-                  onClick={() => fetchDir(item.path)}
-                  className="flex flex-1 items-center gap-3 text-left"
-                >
-                  <Folder className="size-4 shrink-0 text-amber-400/70" />
-                  <span className="flex-1 truncate text-xs text-zinc-200">{item.name}</span>
-                  <ChevronRight className="size-3.5 shrink-0 text-zinc-600" />
-                </button>
-              ) : (
-                <>
-                  <FileText className="size-4 shrink-0 text-zinc-500" />
-                  <span className="flex-1 truncate text-xs text-zinc-300">{item.name}</span>
-                  {item.size != null && (
-                    <span className="shrink-0 text-[10px] text-zinc-600">
-                      {formatSize(item.size)}
-                    </span>
-                  )}
-                  {/* Move button */}
+            <div key={item.path}>
+              <div
+                className="group flex items-center gap-3 rounded-xl px-3 py-2.5 transition hover:bg-white/[0.03]"
+                style={{ minHeight: 44 }}
+              >
+                {item.type === "directory" ? (
                   <button
                     type="button"
-                    onClick={() => setMovingFile(item.path)}
-                    className="shrink-0 rounded-lg p-1.5 text-zinc-600 opacity-0 transition hover:bg-white/[0.06] hover:text-zinc-300 group-hover:opacity-100"
-                    title="移动文件"
+                    onClick={() => fetchDir(item.path)}
+                    className="flex flex-1 items-center gap-3 text-left"
                   >
-                    <ArrowRightLeft className="size-3.5" />
+                    <Folder className="size-4 shrink-0 text-amber-400/70" />
+                    <span className="flex-1 truncate text-xs text-zinc-200">{item.name}</span>
+                    <ChevronRight className="size-3.5 shrink-0 text-zinc-600" />
                   </button>
-                </>
+                ) : (
+                  <>
+                    <FileText className="size-4 shrink-0 text-zinc-500" />
+                    <div className="flex-1 min-w-0">
+                      <span className="block truncate text-xs text-zinc-300">{item.name}</span>
+                      {item.notes && editingNotesPath !== item.path && (
+                        <span className="block truncate text-[10px] text-zinc-500 mt-0.5">
+                          {item.notes}
+                        </span>
+                      )}
+                    </div>
+                    {item.size != null && (
+                      <span className="shrink-0 text-[10px] text-zinc-600">
+                        {formatSize(item.size)}
+                      </span>
+                    )}
+                    {/* Notes button */}
+                    <button
+                      type="button"
+                      onClick={() => handleEditNotes(item)}
+                      className={`shrink-0 rounded-lg p-1.5 transition ${
+                        editingNotesPath === item.path
+                          ? "bg-sky-500/10 text-sky-400"
+                          : item.notes
+                            ? "text-sky-500/50 hover:bg-white/[0.06] hover:text-sky-400"
+                            : "text-zinc-600 opacity-0 hover:bg-white/[0.06] hover:text-zinc-300 group-hover:opacity-100"
+                      }`}
+                      title="备注"
+                    >
+                      <MessageSquare className="size-3.5" />
+                    </button>
+                    {/* Move button */}
+                    <button
+                      type="button"
+                      onClick={() => setMovingFile(item.path)}
+                      className="shrink-0 rounded-lg p-1.5 text-zinc-600 opacity-0 transition hover:bg-white/[0.06] hover:text-zinc-300 group-hover:opacity-100"
+                      title="移动文件"
+                    >
+                      <ArrowRightLeft className="size-3.5" />
+                    </button>
+                  </>
+                )}
+              </div>
+
+              {/* Notes editor (inline, below the file row) */}
+              {editingNotesPath === item.path && (
+                <div className="ml-10 mr-3 mb-1 flex items-start gap-2">
+                  <textarea
+                    ref={notesInputRef}
+                    value={editingNotesText}
+                    onChange={(e) => setEditingNotesText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSaveNotes();
+                      }
+                      if (e.key === "Escape") {
+                        setEditingNotesPath(null);
+                      }
+                    }}
+                    placeholder="添加备注…"
+                    rows={2}
+                    className="flex-1 resize-none rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1.5 text-xs text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSaveNotes}
+                    disabled={savingNotes}
+                    className="shrink-0 rounded-lg bg-sky-500/10 p-1.5 text-sky-400 transition hover:bg-sky-500/20 disabled:opacity-50"
+                    title="保存 (Enter)"
+                  >
+                    {savingNotes ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      <Check className="size-3.5" />
+                    )}
+                  </button>
+                </div>
               )}
             </div>
           ))}

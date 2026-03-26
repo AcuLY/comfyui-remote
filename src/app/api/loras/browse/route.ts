@@ -3,6 +3,7 @@ import path from "node:path";
 import { NextRequest } from "next/server";
 import { ok, fail } from "@/lib/api-response";
 import { env } from "@/lib/env";
+import { db } from "@/lib/db";
 
 const LORA_EXTENSIONS = new Set([".safetensors", ".ckpt", ".pt", ".pth"]);
 
@@ -35,7 +36,10 @@ export async function GET(request: NextRequest) {
       type: "directory" | "file";
       path: string;
       size?: number;
+      notes?: string;
     }[] = [];
+
+    const fileAbsolutePaths: string[] = [];
 
     for (const entry of entries) {
       // Skip hidden files/directories
@@ -58,6 +62,25 @@ export async function GET(request: NextRequest) {
             path: relativePath ? `${relativePath}/${entry.name}` : entry.name,
             size: Number(fileStat.size),
           });
+          fileAbsolutePaths.push(filePath);
+        }
+      }
+    }
+
+    // Batch-fetch notes from DB for all files in this directory
+    if (fileAbsolutePaths.length > 0) {
+      const assets = await db.loraAsset.findMany({
+        where: { absolutePath: { in: fileAbsolutePaths } },
+        select: { absolutePath: true, notes: true },
+      });
+      const notesMap = new Map(
+        assets.filter((a) => a.notes).map((a) => [a.absolutePath, a.notes!])
+      );
+      for (const item of items) {
+        if (item.type === "file") {
+          const absPath = path.resolve(env.loraBaseDir, item.path);
+          const note = notesMap.get(absPath);
+          if (note) item.notes = note;
         }
       }
     }
