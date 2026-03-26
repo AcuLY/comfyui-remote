@@ -826,6 +826,17 @@ export async function renameSection(sectionId: string, name: string): Promise<vo
 // ---------------------------------------------------------------------------
 
 export async function reorderSections(jobId: string, sectionIds: string[]): Promise<void> {
+  // 0. 检查是否有正在执行的 run，避免重排序导致输出路径不一致
+  const runningCount = await prisma.positionRun.count({
+    where: {
+      completeJobId: jobId,
+      status: { in: ["queued", "running"] },
+    },
+  });
+  if (runningCount > 0) {
+    throw new Error("有正在执行或排队中的任务，请等待完成后再调整顺序");
+  }
+
   // 1. 查询旧 sortOrder、name 和 job title（用于文件夹重命名）
   const sections = await prisma.completeJobPosition.findMany({
     where: { id: { in: sectionIds } },

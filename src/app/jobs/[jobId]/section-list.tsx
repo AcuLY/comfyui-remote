@@ -71,15 +71,22 @@ export function SectionList({ jobId, sections: initialSections }: SectionListPro
     const oldIndex = sections.findIndex((s) => s.id === active.id);
     const newIndex = sections.findIndex((s) => s.id === over.id);
 
+    const oldSections = sections;
     const newSections = arrayMove(sections, oldIndex, newIndex);
     setSections(newSections);
 
     // 服务端更新排序
     startTransition(async () => {
-      await reorderSections(
-        jobId,
-        newSections.map((s) => s.id),
-      );
+      try {
+        await reorderSections(
+          jobId,
+          newSections.map((s) => s.id),
+        );
+      } catch (err) {
+        // 回滚乐观更新
+        setSections(oldSections);
+        alert(err instanceof Error ? err.message : "排序失败");
+      }
     });
   }
 
