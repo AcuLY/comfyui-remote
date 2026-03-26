@@ -16,6 +16,7 @@ import {
   enqueueJobPositionRun as enqueueJobPositionRunRepo,
   copyJob as copyJobRepo,
 } from "@/server/repositories/job-repository";
+import { executeQueuedRuns } from "@/server/services/run-executor";
 
 // ---------------------------------------------------------------------------
 // 审核操作：保留图片
@@ -213,6 +214,9 @@ export async function runJob(jobId: string, overrideBatchSize?: number | null) {
   await enqueueJobRunsRepo(jobId, overrideBatchSize ?? undefined);
   revalidatePath("/jobs");
   revalidatePath("/queue");
+
+  // Fire-and-forget: submit queued runs directly to ComfyUI
+  executeQueuedRuns().catch(() => {});
 }
 
 // ---------------------------------------------------------------------------
@@ -231,6 +235,9 @@ export async function runPosition(jobPositionId: string, overrideBatchSize?: num
   await enqueueJobPositionRunRepo(pos.completeJobId, jobPositionId, overrideBatchSize ?? undefined);
   revalidatePath("/jobs");
   revalidatePath("/queue");
+
+  // Fire-and-forget: submit queued runs directly to ComfyUI
+  executeQueuedRuns().catch(() => {});
 }
 
 // ---------------------------------------------------------------------------

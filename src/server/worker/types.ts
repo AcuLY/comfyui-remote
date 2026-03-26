@@ -114,25 +114,3 @@ export type ComfyPromptDraft = {
     positionSortOrder: number;
   };
 };
-
-export type WorkerRunDraft = {
-  runId: string;
-  status: string;
-  comfyApiUrl: string;
-  comfyPromptId: string | null;
-  outputDir: string | null;
-  resolvedConfig: NormalizedResolvedConfigSnapshot | null;
-  promptDraft: ComfyPromptDraft | null;
-  startedAt: string | null;
-  finishedAt: string | null;
-  errorMessage: string | null;
-};
-
-export type WorkerPassReport = {
-  scannedAt: string;
-  queuedRunCount: number;
-  claimedRunCount: number;
-  skippedRunCount: number;
-  failedRunCount: number;
-  drafts: WorkerRunDraft[];
-};

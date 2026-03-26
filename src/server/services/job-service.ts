@@ -11,6 +11,7 @@ import {
   updateJobPosition as updateJobPositionInRepository,
 } from "@/server/repositories/job-repository";
 import { audit } from "@/server/services/audit-service";
+import { executeQueuedRuns } from "@/server/services/run-executor";
 import { createJobRevision } from "@/server/services/revision-service";
 
 // Job service logger
@@ -471,6 +472,10 @@ export async function enqueueJobRuns(jobId: string, overrideBatchSize?: number, 
 
   log.info("Job runs enqueued", { jobId: normalizedId, queuedRunCount: result.queuedRunCount });
   audit("CompleteJob", normalizedId, "enqueue", { queuedRunCount: result.queuedRunCount }, actorType);
+
+  // Fire-and-forget: submit queued runs directly to ComfyUI
+  executeQueuedRuns().catch(() => {});
+
   return result;
 }
 
@@ -499,6 +504,10 @@ export async function enqueueJobPositionRun(
     overrideBatchSize,
   );
   audit("CompleteJobPosition", normalizedJobPositionId, "enqueue", { jobId }, actorType);
+
+  // Fire-and-forget: submit queued runs directly to ComfyUI
+  executeQueuedRuns().catch(() => {});
+
   return result;
 }
 
