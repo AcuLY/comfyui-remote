@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { SectionCard } from "@/components/section-card";
 import { ConfigManager, type FieldDef } from "@/components/config-manager";
-import { getPositionTemplates, getLoraAssets } from "@/lib/server-data";
+import { getPositionTemplates } from "@/lib/server-data";
 import {
   createPositionTemplate,
   updatePositionTemplate,
@@ -11,15 +11,7 @@ import {
 import { parseLoraBindings } from "@/lib/lora-types";
 
 export default async function PositionsPage() {
-  const [templates, loraAssets] = await Promise.all([
-    getPositionTemplates(),
-    getLoraAssets(),
-  ]);
-
-  const loraOptions = loraAssets.map((lora) => ({
-    value: lora.relativePath,
-    label: `${lora.name} (${lora.category})`,
-  }));
+  const templates = await getPositionTemplates();
 
   // v0.3: LoRA 分为 lora1 和 lora2 两组
   const fields: FieldDef[] = [
@@ -27,8 +19,8 @@ export default async function PositionsPage() {
     { key: "slug", label: "Slug", type: "text", placeholder: "例：standing", required: true },
     { key: "prompt", label: "Prompt", type: "textarea", placeholder: "Position 提示词…", required: true },
     { key: "negativePrompt", label: "Negative Prompt", type: "textarea", placeholder: "反向提示词…" },
-    { key: "lora1", label: "LoRA 1", type: "lora-bindings", loraOptions },
-    { key: "lora2", label: "LoRA 2", type: "lora-bindings", loraOptions },
+    { key: "lora1", label: "LoRA 1", type: "lora-bindings" },
+    { key: "lora2", label: "LoRA 2", type: "lora-bindings" },
     { key: "enabled", label: "启用", type: "boolean" },
   ];
 

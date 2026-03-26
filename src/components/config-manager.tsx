@@ -17,7 +17,6 @@ export type FieldDef = {
   type: "text" | "textarea" | "number" | "boolean" | "select" | "lora-bindings";
   placeholder?: string;
   options?: { value: string; label: string }[];
-  loraOptions?: { value: string; label: string }[];
   required?: boolean;
 };
 
@@ -291,7 +290,6 @@ export function ConfigManager({
                 saveFieldNow(field.key, newBindings);
               }
             }}
-            loraOptions={field.loraOptions}
           />
           {!isCreating && status === "saving" && <span className="mt-0.5 block text-[11px] text-sky-400">保存中…</span>}
           {!isCreating && status === "saved" && <span className="mt-0.5 block text-[11px] text-emerald-400">已保存 ✓</span>}

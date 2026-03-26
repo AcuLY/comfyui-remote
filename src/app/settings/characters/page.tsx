@@ -2,28 +2,19 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { SectionCard } from "@/components/section-card";
 import { ConfigManager, type FieldDef } from "@/components/config-manager";
-import { getCharacters, getLoraAssets } from "@/lib/server-data";
+import { getCharacters } from "@/lib/server-data";
 import { createCharacter, updateCharacter, deleteCharacter } from "@/lib/actions";
 import { parseLoraBindings } from "@/lib/lora-types";
-import type { LoraBinding } from "@/lib/lora-types";
 
 export default async function CharactersPage() {
-  const [characters, loraAssets] = await Promise.all([
-    getCharacters(),
-    getLoraAssets(),
-  ]);
-
-  const loraOptions = loraAssets.map((lora) => ({
-    value: lora.relativePath,
-    label: `${lora.name} (${lora.category})`,
-  }));
+  const characters = await getCharacters();
 
   const fields: FieldDef[] = [
     { key: "name", label: "名称", type: "text", placeholder: "例：Nakano Miku", required: true },
     { key: "slug", label: "Slug", type: "text", placeholder: "例：nakano-miku", required: true },
     { key: "prompt", label: "Prompt", type: "textarea", placeholder: "角色提示词…", required: true },
     { key: "negativePrompt", label: "Negative Prompt", type: "textarea", placeholder: "负面提示词…" },
-    { key: "loraBindings", label: "LoRA 绑定", type: "lora-bindings", loraOptions },
+    { key: "loraBindings", label: "LoRA 绑定", type: "lora-bindings" },
     { key: "notes", label: "备注", type: "textarea", placeholder: "可选备注…" },
     { key: "isActive", label: "启用", type: "boolean" },
   ];

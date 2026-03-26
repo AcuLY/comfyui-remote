@@ -7,7 +7,7 @@ import { SectionEditor } from "@/components/section-editor";
 import { SectionParamsForm } from "./section-params-form";
 import { SectionNameEditor } from "./section-name-editor";
 import type { PromptBlockData } from "@/lib/actions";
-import { getPromptLibrary, getLoraAssets } from "@/lib/server-data";
+import { getPromptLibrary } from "@/lib/server-data";
 import { parsePositionLoraConfig, parseLoraBindings, generateLoraEntryId, serializePositionLoraConfig } from "@/lib/lora-types";
 import type { LoraEntry, PositionLoraConfig } from "@/lib/lora-types";
 import { revalidatePath } from "next/cache";
@@ -19,7 +19,7 @@ export default async function SectionEditPage({
 }) {
   const { jobId, positionId } = await params;
 
-  const [pos, library, loraAssets] = await Promise.all([
+  const [pos, library] = await Promise.all([
     prisma.completeJobPosition.findUnique({
       where: { id: positionId },
       include: {
@@ -40,7 +40,6 @@ export default async function SectionEditPage({
       },
     }),
     getPromptLibrary(),
-    getLoraAssets(),
   ]);
 
   if (!pos || pos.completeJobId !== jobId) {
@@ -133,12 +132,6 @@ export default async function SectionEditPage({
     }
   }
 
-  // LoRA options for manual selection
-  const loraOptions = loraAssets.map((lora) => ({
-    value: lora.relativePath,
-    label: `${lora.name} (${lora.category})`,
-  }));
-
   // Server action to save LoRA config (v0.3 format)
   async function handleLoraChange(config: { characterLora: LoraEntry[]; lora1: LoraEntry[]; lora2: LoraEntry[] }) {
     "use server";
@@ -192,7 +185,6 @@ export default async function SectionEditPage({
               initialBlocks={initialBlocks}
               initialLoraConfig={loraConfig}
               library={library}
-              loraOptions={loraOptions}
               onLoraChange={handleLoraChange}
             />
           </div>

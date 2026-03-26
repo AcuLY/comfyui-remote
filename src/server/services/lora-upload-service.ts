@@ -2,7 +2,6 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
-import { getLoraCategories, resolveLoraRelativeDir } from "@/lib/path-maps";
 
 export class LoraUploadError extends Error {
   status: number;
@@ -18,30 +17,49 @@ function sanitizeFileName(fileName: string) {
   return fileName.replace(/[\\/:*?"<>|]/g, "_");
 }
 
-export async function saveUploadedLora(file: File, category: string) {
-  const relativeDir = resolveLoraRelativeDir(category);
-  if (!relativeDir) {
-    throw new LoraUploadError(`Unsupported category: ${category}`, 400);
-  }
+/** Ensure resolved path stays within baseDir */
+function isWithinBase(baseDir: string, targetPath: string): boolean {
+  const resolved = path.resolve(targetPath);
+  const resolvedBase = path.resolve(baseDir);
+  return resolved === resolvedBase || resolved.startsWith(resolvedBase + path.sep);
+}
+
+/**
+ * Save an uploaded LoRA file to disk and create a DB record.
+ * @param file - The uploaded file
+ * @param targetDir - Relative directory within LORA_BASE_DIR (e.g. "characters/miku" or "")
+ */
+export async function saveUploadedLora(file: File, targetDir: string) {
   if (!env.loraBaseDir) {
     throw new LoraUploadError("LORA_BASE_DIR is not configured.", 500);
   }
 
+  // Sanitize targetDir: allow empty (root), but prevent traversal
+  const normalizedDir = (targetDir || "").replace(/\\/g, "/");
+  const absoluteTargetDir = path.resolve(env.loraBaseDir, normalizedDir);
+
+  if (!isWithinBase(env.loraBaseDir, absoluteTargetDir)) {
+    throw new LoraUploadError("Invalid target directory", 400);
+  }
+
   const safeName = sanitizeFileName(file.name);
-  const targetDir = path.join(env.loraBaseDir, relativeDir);
-  const targetPath = path.join(targetDir, safeName);
+  const targetPath = path.join(absoluteTargetDir, safeName);
   const buffer = Buffer.from(await file.arrayBuffer());
 
-  await mkdir(targetDir, { recursive: true });
+  await mkdir(absoluteTargetDir, { recursive: true });
   await writeFile(targetPath, buffer);
+
+  const relativePath = path
+    .relative(env.loraBaseDir, targetPath)
+    .replace(/\\/g, "/");
 
   const record = await db.loraAsset.create({
     data: {
       name: safeName,
-      category,
+      category: normalizedDir || ".",
       fileName: safeName,
       absolutePath: targetPath,
-      relativePath: path.join(relativeDir, safeName).replaceAll("\\", "/"),
+      relativePath,
       size: BigInt(buffer.byteLength),
       source: "upload",
     },
@@ -57,6 +75,6 @@ export async function saveUploadedLora(file: File, category: string) {
 
 export function getUploadMeta() {
   return {
-    categories: getLoraCategories(),
+    loraBaseDir: env.loraBaseDir ? "configured" : "not configured",
   };
 }

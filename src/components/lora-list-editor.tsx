@@ -1,7 +1,7 @@
 "use client";
 
 import { Plus, Trash2 } from "lucide-react";
-import { Select } from "@/components/ui/select";
+import { LoraCascadePicker } from "@/components/lora-cascade-picker";
 import type { LoraEntry, LoraSource } from "@/lib/lora-types";
 
 const SOURCE_LABELS: Record<LoraSource, { label: string; color: string }> = {
@@ -15,7 +15,6 @@ const SOURCE_LABELS: Record<LoraSource, { label: string; color: string }> = {
 type LoraListEditorProps = {
   entries: LoraEntry[];
   onChange: (entries: LoraEntry[]) => void;
-  loraOptions?: { value: string; label: string }[];
   disabled?: boolean;
   readOnly?: boolean;
 };
@@ -23,7 +22,6 @@ type LoraListEditorProps = {
 export function LoraListEditor({
   entries,
   onChange,
-  loraOptions,
   disabled = false,
   readOnly = false,
 }: LoraListEditorProps) {
@@ -117,27 +115,11 @@ export function LoraListEditor({
                     {isManual ? (
                       <div className="flex items-center gap-1.5">
                         <div className="flex-1 min-w-0">
-                          {loraOptions && loraOptions.length > 0 ? (
-                            <Select
-                              value={entry.path}
-                              onChange={(v) => handleUpdate(entry.id, { path: v })}
-                              options={loraOptions}
-                              placeholder="选择 LoRA..."
-                              size="sm"
-                              disabled={disabled}
-                            />
-                          ) : (
-                            <input
-                              type="text"
-                              value={entry.path}
-                              onChange={(e) =>
-                                handleUpdate(entry.id, { path: e.target.value })
-                              }
-                              placeholder="LoRA 路径..."
-                              disabled={disabled}
-                              className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30"
-                            />
-                          )}
+                          <LoraCascadePicker
+                            value={entry.path}
+                            onChange={(v) => handleUpdate(entry.id, { path: v })}
+                            disabled={disabled}
+                          />
                         </div>
                         <span
                           className={`shrink-0 rounded-lg border px-1.5 py-0.5 text-[9px] font-medium ${sourceConfig.color}`}

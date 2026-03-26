@@ -2,19 +2,17 @@
 
 import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
-import { Select } from "@/components/ui/select";
+import { LoraCascadePicker } from "@/components/lora-cascade-picker";
 import type { LoraBinding } from "@/lib/lora-types";
 
 type LoraBindingEditorProps = {
   bindings: LoraBinding[];
   onChange: (bindings: LoraBinding[]) => void;
-  loraOptions?: { value: string; label: string }[];
 };
 
 export function LoraBindingEditor({
   bindings,
   onChange,
-  loraOptions,
 }: LoraBindingEditorProps) {
   // Track local weight input values (allow empty during editing)
   const [weightInputs, setWeightInputs] = useState<Record<number, string>>({});
@@ -114,27 +112,12 @@ export function LoraBindingEditor({
                 />
               </button>
 
-              {/* Path input or select */}
+              {/* Path picker */}
               <div className="flex-1 min-w-0">
-                {loraOptions && loraOptions.length > 0 ? (
-                  <Select
-                    value={binding.path}
-                    onChange={(v) => handleUpdate(index, { path: v })}
-                    options={loraOptions}
-                    placeholder="选择 LoRA..."
-                    size="sm"
-                  />
-                ) : (
-                  <input
-                    type="text"
-                    value={binding.path}
-                    onChange={(e) =>
-                      handleUpdate(index, { path: e.target.value })
-                    }
-                    placeholder="LoRA 路径..."
-                    className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30"
-                  />
-                )}
+                <LoraCascadePicker
+                  value={binding.path}
+                  onChange={(v) => handleUpdate(index, { path: v })}
+                />
               </div>
 
               {/* Weight input */}

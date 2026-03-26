@@ -17,7 +17,6 @@ type SectionEditorProps = {
   /** v0.3: Full loraConfig with characterLora, lora1, lora2 */
   initialLoraConfig: PositionLoraConfig;
   library: PromptLibrary;
-  loraOptions: { value: string; label: string }[];
   onLoraChange: (config: PositionLoraConfig) => Promise<void>;
 };
 
@@ -26,7 +25,6 @@ export function SectionEditor({
   initialBlocks,
   initialLoraConfig,
   library,
-  loraOptions,
   onLoraChange,
 }: SectionEditorProps) {
   // v0.3: Separate state for each LoRA section
@@ -202,7 +200,6 @@ export function SectionEditor({
             <LoraListEditor
               entries={characterLora}
               onChange={handleCharacterLoraChange}
-              loraOptions={[]}
               readOnly={true}
             />
           </div>
@@ -214,18 +211,16 @@ export function SectionEditor({
           <LoraListEditor
             entries={lora1}
             onChange={handleLora1Change}
-            loraOptions={loraOptions}
             disabled={isPending}
           />
         </div>
-        
+
         {/* v0.3: LoRA 2（可编辑） */}
         <div>
           <div className="mb-2 text-xs font-medium text-zinc-400">LoRA 2</div>
           <LoraListEditor
             entries={lora2}
             onChange={handleLora2Change}
-            loraOptions={loraOptions}
             disabled={isPending}
           />
         </div>
