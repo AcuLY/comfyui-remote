@@ -246,7 +246,7 @@ async function main() {
       negativePrompt: "bad anatomy, extra limbs, blurry",
       defaultAspectRatio: "3:4",
       defaultBatchSize: 8,
-      defaultSeedPolicy: "random",
+      defaultSeedPolicy1: "random",
     },
   });
 
@@ -260,7 +260,7 @@ async function main() {
       negativePrompt: "bad anatomy, extra limbs, blurry",
       defaultAspectRatio: "3:4",
       defaultBatchSize: 8,
-      defaultSeedPolicy: "random",
+      defaultSeedPolicy1: "random",
     },
   });
 
@@ -274,7 +274,7 @@ async function main() {
       negativePrompt: "bad anatomy, extra limbs, blurry",
       defaultAspectRatio: "3:4",
       defaultBatchSize: 6,
-      defaultSeedPolicy: "random",
+      defaultSeedPolicy1: "random",
     },
   });
 
