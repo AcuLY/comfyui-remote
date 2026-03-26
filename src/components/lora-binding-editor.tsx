@@ -114,16 +114,25 @@ export function LoraBindingEditor({
                 className="flex items-center gap-2 rounded-lg border border-white/5 bg-white/[0.02] p-2"
               >
                 {/* Enabled toggle */}
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={binding.enabled}
-                    onChange={(e) =>
-                      handleUpdate(index, { enabled: e.target.checked })
-                    }
-                    className="size-3.5 rounded border-white/20 bg-white/10"
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={binding.enabled}
+                  onClick={() =>
+                    handleUpdate(index, { enabled: !binding.enabled })
+                  }
+                  className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer items-center rounded-full border transition-colors ${
+                    binding.enabled
+                      ? "border-sky-500/30 bg-sky-500"
+                      : "border-white/10 bg-white/10"
+                  }`}
+                >
+                  <span
+                    className={`pointer-events-none block size-3 rounded-full bg-white shadow transition-transform ${
+                      binding.enabled ? "translate-x-3.5" : "translate-x-0.5"
+                    }`}
                   />
-                </label>
+                </button>
 
                 {/* Path input or select */}
                 <div className="flex-1 min-w-0">

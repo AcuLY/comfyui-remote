@@ -104,17 +104,26 @@ export function LoraListEditor({
                   }`}
                 >
                   {/* Enabled toggle */}
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={entry.enabled}
-                      onChange={(e) =>
-                        handleUpdate(entry.id, { enabled: e.target.checked })
-                      }
-                      disabled={disabled}
-                      className="size-4 rounded border-white/20 bg-white/10"
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={entry.enabled}
+                    onClick={() =>
+                      handleUpdate(entry.id, { enabled: !entry.enabled })
+                    }
+                    disabled={disabled}
+                    className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer items-center rounded-full border transition-colors disabled:opacity-50 ${
+                      entry.enabled
+                        ? "border-sky-500/30 bg-sky-500"
+                        : "border-white/10 bg-white/10"
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none block size-3 rounded-full bg-white shadow transition-transform ${
+                        entry.enabled ? "translate-x-3.5" : "translate-x-0.5"
+                      }`}
                     />
-                  </label>
+                  </button>
 
                   {/* Path input or display */}
                   <div className="flex-1 min-w-0">
@@ -130,33 +139,42 @@ export function LoraListEditor({
                             {entry.sourceLabel || sourceConfig.label}
                           </span>
                         </>
-                      ) : loraOptions && loraOptions.length > 0 ? (
-                        <select
-                          value={entry.path}
-                          onChange={(e) =>
-                            handleUpdate(entry.id, { path: e.target.value })
-                          }
-                          disabled={disabled}
-                          className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
-                        >
-                          <option value="">选择 LoRA...</option>
-                          {loraOptions.map((opt) => (
-                            <option key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </option>
-                          ))}
-                        </select>
                       ) : (
-                        <input
-                          type="text"
-                          value={entry.path}
-                          onChange={(e) =>
-                            handleUpdate(entry.id, { path: e.target.value })
-                          }
-                          placeholder="LoRA 路径..."
-                          disabled={disabled}
-                          className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30"
-                        />
+                        <div className="flex items-center gap-1.5">
+                          {loraOptions && loraOptions.length > 0 ? (
+                            <select
+                              value={entry.path}
+                              onChange={(e) =>
+                                handleUpdate(entry.id, { path: e.target.value })
+                              }
+                              disabled={disabled}
+                              className="flex-1 min-w-0 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
+                            >
+                              <option value="">选择 LoRA...</option>
+                              {loraOptions.map((opt) => (
+                                <option key={opt.value} value={opt.value}>
+                                  {opt.label}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <input
+                              type="text"
+                              value={entry.path}
+                              onChange={(e) =>
+                                handleUpdate(entry.id, { path: e.target.value })
+                              }
+                              placeholder="LoRA 路径..."
+                              disabled={disabled}
+                              className="flex-1 min-w-0 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30"
+                            />
+                          )}
+                          <span
+                            className={`shrink-0 rounded-lg border px-1.5 py-0.5 text-[9px] font-medium ${sourceConfig.color}`}
+                          >
+                            {sourceConfig.label}
+                          </span>
+                        </div>
                       )}
                     </div>
                     {entry.source !== "manual" && (
