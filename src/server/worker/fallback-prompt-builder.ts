@@ -67,8 +67,7 @@ export function buildFallbackPromptNodes(draft: ComfyPromptDraft): JsonRecord {
 
   const positivePrompt = draft.prompt.positive;
   const negativePrompt =
-    draft.prompt.negative ??
-    "bad anatomy, extra limbs, blurry, low quality, watermark";
+    draft.prompt.negative ?? "";
 
   const seed = resolveSeed(draft);
   const loraPath = resolveLoraPath(draft);

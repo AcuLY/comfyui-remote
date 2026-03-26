@@ -88,6 +88,7 @@ type PromptBlockSummaryRecord = {
 
 type JobPositionRecord = {
   id: string;
+  name: string | null;
   sortOrder: number;
   enabled: boolean;
   latestRunId: string | null;
@@ -404,7 +405,7 @@ function buildResolvedConfigSnapshot(
       id: position.id,
       templateId: position.positionTemplateId,
       sortOrder: position.sortOrder,
-      name: position.positionTemplate?.name ?? null,
+      name: position.name ?? position.positionTemplate?.name ?? null,
       slug: position.positionTemplate?.slug ?? null,
       templatePrompt: position.positionTemplate?.prompt ?? null,
       positivePrompt: position.positivePrompt,
@@ -480,7 +481,7 @@ function buildResolvedPromptDraft(
 function serializeEnqueuedRun(
   position: Pick<
     JobPositionRecord,
-    "id" | "sortOrder" | "positionTemplateId" | "positionTemplate"
+    "id" | "name" | "sortOrder" | "positionTemplateId" | "positionTemplate"
   >,
   run: EnqueuedRunRecord,
 ) {
@@ -489,7 +490,7 @@ function serializeEnqueuedRun(
     jobPositionId: position.id,
     positionTemplateId: position.positionTemplateId,
     sortOrder: position.sortOrder,
-    positionName: position.positionTemplate?.name ?? null,
+    positionName: position.name ?? position.positionTemplate?.name ?? null,
     positionSlug: position.positionTemplate?.slug ?? null,
     runIndex: run.runIndex,
     status: run.status,
@@ -960,7 +961,7 @@ export async function getJobAgentContext(jobId: string) {
       enabled: position.enabled,
       latestRunId: position.latestRunId,
       positionTemplateId: position.positionTemplateId,
-      name: position.positionTemplate?.name ?? null,
+      name: position.name ?? position.positionTemplate?.name ?? null,
       slug: position.positionTemplate?.slug ?? null,
       latestRun: serializeLatestRun(latestRun),
       promptBlocks: position.promptBlocks,
