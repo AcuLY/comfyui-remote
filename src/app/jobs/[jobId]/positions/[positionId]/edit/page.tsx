@@ -24,7 +24,10 @@ export default async function JobPositionEditPage({ params }: { params: Promise<
     name: pos.positionTemplate.name,
     batchSize: pos.batchSize ?? pos.positionTemplate.defaultBatchSize,
     aspectRatio: pos.aspectRatio ?? pos.positionTemplate.defaultAspectRatio,
-    seedPolicy: pos.seedPolicy ?? pos.positionTemplate.defaultSeedPolicy,
+    // v0.3: dual seedPolicy
+    seedPolicy: pos.seedPolicy1 ?? pos.positionTemplate.defaultSeedPolicy1,
+    seedPolicy1: pos.seedPolicy1 ?? pos.positionTemplate.defaultSeedPolicy1,
+    seedPolicy2: pos.seedPolicy2 ?? pos.positionTemplate.defaultSeedPolicy2,
     promptOverview: {
       positivePrompt: pos.positivePrompt ?? null,
       negativePrompt: pos.negativePrompt ?? pos.positionTemplate.negativePrompt ?? null,

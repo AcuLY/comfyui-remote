@@ -151,7 +151,10 @@ export type JobDetailPosition = {
   name: string;
   batchSize: number | null;
   aspectRatio: string | null;
+  /** @deprecated Use seedPolicy1 */
   seedPolicy: string | null;
+  seedPolicy1: string | null;
+  seedPolicy2: string | null;
   promptOverview: {
     positivePrompt: string | null;
     negativePrompt: string | null;
@@ -173,7 +176,10 @@ export type JobDetail = {
     name: string;
     batchSize: number | null;
     aspectRatio: string | null;
+    /** @deprecated Use seedPolicy1 */
     seedPolicy: string | null;
+    seedPolicy1: string | null;
+    seedPolicy2: string | null;
     latestRunStatus: string | null;
     promptBlockCount: number;
     positiveBlockCount: number;
@@ -226,7 +232,10 @@ export async function getJobDetail(jobId: string): Promise<JobDetail | null> {
         name: pos.name || pos.positionTemplate?.name || `小节 ${pos.sortOrder}`,
         batchSize: pos.batchSize ?? pos.positionTemplate?.defaultBatchSize ?? null,
         aspectRatio: pos.aspectRatio ?? pos.positionTemplate?.defaultAspectRatio ?? null,
-        seedPolicy: pos.seedPolicy ?? pos.positionTemplate?.defaultSeedPolicy ?? null,
+        // v0.3: support dual seedPolicy
+        seedPolicy: pos.seedPolicy1 ?? pos.positionTemplate?.defaultSeedPolicy1 ?? null,
+        seedPolicy1: pos.seedPolicy1 ?? pos.positionTemplate?.defaultSeedPolicy1 ?? null,
+        seedPolicy2: pos.seedPolicy2 ?? pos.positionTemplate?.defaultSeedPolicy2 ?? null,
         latestRunStatus: pos.runs[0]?.status ?? null,
         promptBlockCount: pos.promptBlocks.length,
         positiveBlockCount,
@@ -302,7 +311,9 @@ export type PromptLibraryItem = {
   prompt: string;
   negativePrompt: string | null;
   loraPath?: string | null;          // Character only
-  loraBindings?: Prisma.JsonValue;   // Scene/Style/Position
+  loraBindings?: Prisma.JsonValue;   // Character only (v0.3: Scene/Style no longer have loraBindings)
+  lora1?: Prisma.JsonValue;          // PositionTemplate only (v0.3)
+  lora2?: Prisma.JsonValue;          // PositionTemplate only (v0.3)
 };
 
 export type PromptLibrary = {
@@ -322,17 +333,17 @@ export async function getPromptLibrary(): Promise<PromptLibrary> {
     prisma.scenePreset.findMany({
       where: { isActive: true },
       orderBy: { name: "asc" },
-      select: { id: true, name: true, prompt: true, negativePrompt: true, loraBindings: true },
+      select: { id: true, name: true, prompt: true, negativePrompt: true },
     }),
     prisma.stylePreset.findMany({
       where: { isActive: true },
       orderBy: { name: "asc" },
-      select: { id: true, name: true, prompt: true, negativePrompt: true, loraBindings: true },
+      select: { id: true, name: true, prompt: true, negativePrompt: true },
     }),
     prisma.positionTemplate.findMany({
       where: { enabled: true },
       orderBy: { name: "asc" },
-      select: { id: true, name: true, prompt: true, negativePrompt: true, loraBindings: true },
+      select: { id: true, name: true, prompt: true, negativePrompt: true, lora1: true, lora2: true },
     }),
   ]);
 
@@ -347,7 +358,10 @@ export type FormOption = { id: string; name: string; slug: string };
 export type PositionOption = FormOption & {
   defaultAspectRatio: string | null;
   defaultBatchSize: number | null;
+  /** @deprecated Use defaultSeedPolicy1 */
   defaultSeedPolicy: string | null;
+  defaultSeedPolicy1: string | null;
+  defaultSeedPolicy2: string | null;
 };
 
 export async function getJobFormOptions() {
@@ -370,11 +384,25 @@ export async function getJobFormOptions() {
     prisma.positionTemplate.findMany({
       where: { enabled: true },
       orderBy: { name: "asc" },
-      select: { id: true, name: true, slug: true, defaultAspectRatio: true, defaultBatchSize: true, defaultSeedPolicy: true },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        defaultAspectRatio: true,
+        defaultBatchSize: true,
+        defaultSeedPolicy1: true,
+        defaultSeedPolicy2: true,
+      },
     }),
   ]);
 
-  return { characters, scenes, styles, positions };
+  // Map positions to include backward-compatible seedPolicy
+  const mappedPositions = positions.map((p) => ({
+    ...p,
+    defaultSeedPolicy: p.defaultSeedPolicy1, // backward compatibility
+  }));
+
+  return { characters, scenes, styles, positions: mappedPositions };
 }
 
 // ---------------------------------------------------------------------------
@@ -402,13 +430,19 @@ export type JobEditData = {
     negativePrompt: string | null;
     aspectRatio: string | null;
     batchSize: number | null;
+    /** @deprecated Use seedPolicy1 */
     seedPolicy: string | null;
+    seedPolicy1: string | null;
+    seedPolicy2: string | null;
   }[];
   // 小节默认值
   defaultAspectRatio: string;
   defaultShortSidePx: number;
   defaultBatchSize: number;
+  /** @deprecated Use defaultSeedPolicy1 */
   defaultSeedPolicy: string;
+  defaultSeedPolicy1: string;
+  defaultSeedPolicy2: string;
 };
 
 export async function getJobEditData(jobId: string): Promise<JobEditData | null> {
@@ -426,7 +460,8 @@ export async function getJobEditData(jobId: string): Promise<JobEditData | null>
           negativePrompt: true,
           aspectRatio: true,
           batchSize: true,
-          seedPolicy: true,
+          seedPolicy1: true,
+          seedPolicy2: true,
         },
       },
     },
@@ -440,6 +475,8 @@ export async function getJobEditData(jobId: string): Promise<JobEditData | null>
     defaultShortSidePx?: number;
     defaultBatchSize?: number;
     defaultSeedPolicy?: string;
+    defaultSeedPolicy1?: string;
+    defaultSeedPolicy2?: string;
   };
 
   return {
@@ -454,12 +491,18 @@ export async function getJobEditData(jobId: string): Promise<JobEditData | null>
     scenePrompt: job.scenePrompt,
     stylePrompt: job.stylePrompt,
     notes: job.notes,
-    positions: job.positions,
+    positions: job.positions.map((pos) => ({
+      ...pos,
+      // v0.3: backward compatibility
+      seedPolicy: pos.seedPolicy1,
+    })),
     // 小节默认值
     defaultAspectRatio: overrides.defaultAspectRatio ?? "2:3",
     defaultShortSidePx: overrides.defaultShortSidePx ?? 512,
     defaultBatchSize: overrides.defaultBatchSize ?? 2,
-    defaultSeedPolicy: overrides.defaultSeedPolicy ?? "random",
+    defaultSeedPolicy: overrides.defaultSeedPolicy1 ?? overrides.defaultSeedPolicy ?? "random",
+    defaultSeedPolicy1: overrides.defaultSeedPolicy1 ?? overrides.defaultSeedPolicy ?? "random",
+    defaultSeedPolicy2: overrides.defaultSeedPolicy2 ?? "random",
   };
 }
 

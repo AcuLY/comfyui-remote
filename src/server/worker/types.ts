@@ -66,8 +66,16 @@ export type NormalizedResolvedConfigSnapshot = {
     aspectRatio: string | null;
     shortSidePx: number | null;
     batchSize: number | null;
+    /** @deprecated Use seedPolicy1 and seedPolicy2 */
     seedPolicy: string | null;
+    seedPolicy1: string | null;
+    seedPolicy2: string | null;
   };
+  /** v0.3: KSampler1 parameters (第一阶段) */
+  ksampler1: Prisma.JsonObject | null;
+  /** v0.3: KSampler2 parameters (高清修复阶段) */
+  ksampler2: Prisma.JsonObject | null;
+  /** v0.3: Restructured to { characterLora, lora1, lora2 } */
   loraConfig: Prisma.JsonObject | null;
   extraParams: Prisma.JsonObject | null;
 };
@@ -83,8 +91,16 @@ export type ComfyPromptDraft = {
     aspectRatio: string | null;
     shortSidePx: number | null;
     batchSize: number | null;
+    /** @deprecated Use seedPolicy1 and seedPolicy2 */
     seedPolicy: string | null;
+    seedPolicy1: string | null;
+    seedPolicy2: string | null;
   };
+  /** v0.3: KSampler1 parameters (第一阶段) */
+  ksampler1: Prisma.JsonObject | null;
+  /** v0.3: KSampler2 parameters (高清修复阶段) */
+  ksampler2: Prisma.JsonObject | null;
+  /** v0.3: Restructured to { characterLora, lora1, lora2 } */
   loraConfig: Prisma.JsonObject | null;
   extraParams: Prisma.JsonObject | null;
   metadata: {

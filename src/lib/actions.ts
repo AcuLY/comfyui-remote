@@ -436,7 +436,7 @@ export async function deleteCharacter(id: string) {
 }
 
 // ---------------------------------------------------------------------------
-// Scene Preset CRUD
+// Scene Preset CRUD (v0.3: loraBindings removed)
 // ---------------------------------------------------------------------------
 
 export type ScenePresetInput = {
@@ -444,32 +444,22 @@ export type ScenePresetInput = {
   slug: string;
   prompt: string;
   negativePrompt?: string | null;
-  loraBindings?: unknown[] | null;
   notes?: string | null;
   isActive?: boolean;
 };
 
 export async function createScenePreset(input: ScenePresetInput) {
-  const { loraBindings, ...rest } = input;
   await prisma.scenePreset.create({
-    data: {
-      ...rest,
-      loraBindings: toJsonValue(loraBindings) ?? Prisma.DbNull,
-    },
+    data: input,
   });
   revalidatePath("/settings/scenes");
   revalidatePath("/jobs/new");
 }
 
 export async function updateScenePreset(id: string, input: Partial<ScenePresetInput>) {
-  const { loraBindings, ...rest } = input;
-  const loraData = toJsonValue(loraBindings);
   await prisma.scenePreset.update({
     where: { id },
-    data: {
-      ...rest,
-      ...(loraData !== undefined ? { loraBindings: loraData } : {}),
-    },
+    data: input,
   });
   revalidatePath("/settings/scenes");
   revalidatePath("/jobs/new");
@@ -482,7 +472,7 @@ export async function deleteScenePreset(id: string) {
 }
 
 // ---------------------------------------------------------------------------
-// Style Preset CRUD
+// Style Preset CRUD (v0.3: loraBindings removed)
 // ---------------------------------------------------------------------------
 
 export type StylePresetInput = {
@@ -490,32 +480,22 @@ export type StylePresetInput = {
   slug: string;
   prompt: string;
   negativePrompt?: string | null;
-  loraBindings?: unknown[] | null;
   notes?: string | null;
   isActive?: boolean;
 };
 
 export async function createStylePreset(input: StylePresetInput) {
-  const { loraBindings, ...rest } = input;
   await prisma.stylePreset.create({
-    data: {
-      ...rest,
-      loraBindings: toJsonValue(loraBindings) ?? Prisma.DbNull,
-    },
+    data: input,
   });
   revalidatePath("/settings/styles");
   revalidatePath("/jobs/new");
 }
 
 export async function updateStylePreset(id: string, input: Partial<StylePresetInput>) {
-  const { loraBindings, ...rest } = input;
-  const loraData = toJsonValue(loraBindings);
   await prisma.stylePreset.update({
     where: { id },
-    data: {
-      ...rest,
-      ...(loraData !== undefined ? { loraBindings: loraData } : {}),
-    },
+    data: input,
   });
   revalidatePath("/settings/styles");
   revalidatePath("/jobs/new");
@@ -528,7 +508,7 @@ export async function deleteStylePreset(id: string) {
 }
 
 // ---------------------------------------------------------------------------
-// Position Template CRUD
+// Position Template CRUD (v0.3: loraBindings → lora1 + lora2)
 // ---------------------------------------------------------------------------
 
 export type PositionTemplateInput = {
@@ -536,10 +516,14 @@ export type PositionTemplateInput = {
   slug: string;
   prompt: string;
   negativePrompt?: string | null;
-  loraBindings?: unknown[] | null;
+  lora1?: unknown[] | null;           // v0.3: replaces loraBindings
+  lora2?: unknown[] | null;           // v0.3: new field
   defaultAspectRatio?: string | null;
   defaultBatchSize?: number | null;
-  defaultSeedPolicy?: string | null;
+  defaultSeedPolicy1?: string | null; // v0.3: replaces defaultSeedPolicy
+  defaultSeedPolicy2?: string | null; // v0.3: new field
+  defaultKsampler1?: Record<string, unknown> | null;  // v0.3: new field
+  defaultKsampler2?: Record<string, unknown> | null;  // v0.3: new field
   workflowTemplateId?: string | null;
   enabled?: boolean;
 };
@@ -569,12 +553,15 @@ function toInputJson(value: Record<string, unknown> | undefined): Prisma.InputJs
 }
 
 export async function createPositionTemplate(input: PositionTemplateInput) {
-  const { workflowTemplateId, loraBindings, ...rest } = input;
+  const { workflowTemplateId, lora1, lora2, defaultKsampler1, defaultKsampler2, ...rest } = input;
   const defaultParams = toInputJson(buildDefaultParams(workflowTemplateId));
   await prisma.positionTemplate.create({
     data: {
       ...rest,
-      loraBindings: toJsonValue(loraBindings) ?? Prisma.DbNull,
+      lora1: toJsonValue(lora1) ?? Prisma.DbNull,
+      lora2: toJsonValue(lora2) ?? Prisma.DbNull,
+      defaultKsampler1: defaultKsampler1 ? (JSON.parse(JSON.stringify(defaultKsampler1)) as Prisma.InputJsonValue) : Prisma.DbNull,
+      defaultKsampler2: defaultKsampler2 ? (JSON.parse(JSON.stringify(defaultKsampler2)) as Prisma.InputJsonValue) : Prisma.DbNull,
       ...(defaultParams !== undefined ? { defaultParams } : {}),
     },
   });
@@ -583,18 +570,22 @@ export async function createPositionTemplate(input: PositionTemplateInput) {
 }
 
 export async function updatePositionTemplate(id: string, input: Partial<PositionTemplateInput>) {
-  const { workflowTemplateId, loraBindings, ...rest } = input;
+  const { workflowTemplateId, lora1, lora2, defaultKsampler1, defaultKsampler2, ...rest } = input;
   const existingTemplate = await prisma.positionTemplate.findUnique({
     where: { id },
     select: { defaultParams: true },
   });
   const defaultParams = toInputJson(buildDefaultParams(workflowTemplateId, existingTemplate?.defaultParams));
-  const loraData = toJsonValue(loraBindings);
+  const lora1Data = toJsonValue(lora1);
+  const lora2Data = toJsonValue(lora2);
   await prisma.positionTemplate.update({
     where: { id },
     data: {
       ...rest,
-      ...(loraData !== undefined ? { loraBindings: loraData } : {}),
+      ...(lora1Data !== undefined ? { lora1: lora1Data } : {}),
+      ...(lora2Data !== undefined ? { lora2: lora2Data } : {}),
+      ...(defaultKsampler1 !== undefined ? { defaultKsampler1: defaultKsampler1 ? (JSON.parse(JSON.stringify(defaultKsampler1)) as Prisma.InputJsonValue) : Prisma.DbNull } : {}),
+      ...(defaultKsampler2 !== undefined ? { defaultKsampler2: defaultKsampler2 ? (JSON.parse(JSON.stringify(defaultKsampler2)) as Prisma.InputJsonValue) : Prisma.DbNull } : {}),
       ...(defaultParams !== undefined ? { defaultParams } : {}),
     },
   });
@@ -728,13 +719,17 @@ export async function addSection(jobId: string, name?: string): Promise<string> 
     defaultShortSidePx?: number;
     defaultBatchSize?: number;
     defaultSeedPolicy?: string;
+    defaultSeedPolicy1?: string;
+    defaultSeedPolicy2?: string;
   };
 
   // 默认值：2:3 竖图、短边 512、batch 2
   const defaultAspectRatio = overrides.defaultAspectRatio ?? "2:3";
   const defaultShortSidePx = overrides.defaultShortSidePx ?? 512;
   const defaultBatchSize = overrides.defaultBatchSize ?? 2;
-  const defaultSeedPolicy = overrides.defaultSeedPolicy ?? "random";
+  // v0.3: dual seedPolicy support
+  const defaultSeedPolicy1 = overrides.defaultSeedPolicy1 ?? overrides.defaultSeedPolicy ?? "random";
+  const defaultSeedPolicy2 = overrides.defaultSeedPolicy2 ?? "random";
 
   // 创建小节（CompleteJobPosition）
   const section = await prisma.completeJobPosition.create({
@@ -746,7 +741,8 @@ export async function addSection(jobId: string, name?: string): Promise<string> 
       aspectRatio: defaultAspectRatio,
       shortSidePx: defaultShortSidePx,
       batchSize: defaultBatchSize,
-      seedPolicy: defaultSeedPolicy,
+      seedPolicy1: defaultSeedPolicy1,
+      seedPolicy2: defaultSeedPolicy2,
     },
   });
 
@@ -868,7 +864,13 @@ export async function copySection(sectionId: string): Promise<string | null> {
       aspectRatio: section.aspectRatio,
       shortSidePx: section.shortSidePx,
       batchSize: section.batchSize,
-      seedPolicy: section.seedPolicy,
+      // v0.3: dual seedPolicy
+      seedPolicy1: section.seedPolicy1,
+      seedPolicy2: section.seedPolicy2,
+      // v0.3: ksampler params
+      ksampler1: section.ksampler1 ?? undefined,
+      ksampler2: section.ksampler2 ?? undefined,
+      loraConfig: section.loraConfig ?? undefined,
       extraParams: section.extraParams ?? undefined,
     },
   });

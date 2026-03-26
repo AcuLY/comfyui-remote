@@ -64,12 +64,17 @@ export default async function SectionEditPage({
     batchSize: pos.batchSize ?? pos.positionTemplate?.defaultBatchSize ?? null,
     aspectRatio: pos.aspectRatio ?? pos.positionTemplate?.defaultAspectRatio ?? null,
     shortSidePx: pos.shortSidePx ?? pos.positionTemplate?.defaultShortSidePx ?? null,
-    seedPolicy: pos.seedPolicy ?? pos.positionTemplate?.defaultSeedPolicy ?? null,
+    // v0.3: dual seedPolicy
+    seedPolicy: pos.seedPolicy1 ?? pos.positionTemplate?.defaultSeedPolicy1 ?? null,
+    seedPolicy1: pos.seedPolicy1 ?? pos.positionTemplate?.defaultSeedPolicy1 ?? null,
+    seedPolicy2: pos.seedPolicy2 ?? pos.positionTemplate?.defaultSeedPolicy2 ?? null,
+    // v0.3: ksampler params
+    ksampler1: pos.ksampler1 ?? pos.positionTemplate?.defaultKsampler1 ?? null,
+    ksampler2: pos.ksampler2 ?? pos.positionTemplate?.defaultKsampler2 ?? null,
   };
 
-  // Parse existing LoRA config
+  // Parse existing LoRA config (v0.3: { characterLora, lora1, lora2 })
   const loraConfig = parsePositionLoraConfig(pos.loraConfig);
-  const initialLoraEntries = loraConfig.entries;
 
   // LoRA options for manual selection
   const loraOptions = loraAssets.map((lora) => ({
@@ -77,8 +82,8 @@ export default async function SectionEditPage({
     label: `${lora.name} (${lora.category})`,
   }));
 
-  // Server action to save LoRA config
-  async function handleLoraChange(entries: LoraEntry[]) {
+  // Server action to save LoRA config (v0.3 format)
+  async function handleLoraChange(config: { characterLora: LoraEntry[]; lora1: LoraEntry[]; lora2: LoraEntry[] }) {
     "use server";
     const { prisma } = await import("@/lib/prisma");
     const { serializePositionLoraConfig } = await import("@/lib/lora-types");
@@ -86,7 +91,7 @@ export default async function SectionEditPage({
     await prisma.completeJobPosition.update({
       where: { id: positionId },
       data: {
-        loraConfig: serializePositionLoraConfig({ entries }),
+        loraConfig: serializePositionLoraConfig(config),
       },
     });
     
@@ -128,7 +133,7 @@ export default async function SectionEditPage({
             <SectionEditor
               positionId={positionId}
               initialBlocks={initialBlocks}
-              initialLoraEntries={initialLoraEntries}
+              initialLoraConfig={loraConfig}
               library={library}
               loraOptions={loraOptions}
               onLoraChange={handleLoraChange}

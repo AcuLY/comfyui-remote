@@ -17,6 +17,7 @@ type LoraListEditorProps = {
   onChange: (entries: LoraEntry[]) => void;
   loraOptions?: { value: string; label: string }[];
   disabled?: boolean;
+  readOnly?: boolean;  // v0.3: 只读模式（用于角色 LoRA）
 };
 
 export function LoraListEditor({
@@ -24,6 +25,7 @@ export function LoraListEditor({
   onChange,
   loraOptions,
   disabled = false,
+  readOnly = false,
 }: LoraListEditorProps) {
   const [expanded, setExpanded] = useState(entries.length > 0);
 
@@ -179,29 +181,34 @@ export function LoraListEditor({
                     />
                   </div>
 
-                  {/* Remove button */}
-                  <button
-                    type="button"
-                    onClick={() => handleRemove(entry.id)}
-                    disabled={disabled}
-                    className="rounded p-1 text-zinc-500 transition hover:bg-red-500/10 hover:text-red-400 disabled:opacity-50"
-                  >
-                    <Trash2 className="size-3.5" />
-                  </button>
+                  {/* Remove button (hidden in readOnly mode) */}
+                  {!readOnly && (
+                    <button
+                      type="button"
+                      onClick={() => handleRemove(entry.id)}
+                      disabled={disabled}
+                      className="rounded p-1 text-zinc-500 transition hover:bg-red-500/10 hover:text-red-400 disabled:opacity-50"
+                    >
+                      <Trash2 className="size-3.5" />
+                    </button>
+                  )}
                 </div>
               );
             })
           )}
 
-          <button
-            type="button"
-            onClick={handleAdd}
-            disabled={disabled}
-            className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-white/10 bg-white/[0.01] py-2 text-[11px] text-zinc-500 transition hover:bg-white/[0.03] hover:text-zinc-300 disabled:opacity-50"
-          >
-            <Plus className="size-3" />
-            添加额外 LoRA
-          </button>
+          {/* Add button (hidden in readOnly mode) */}
+          {!readOnly && (
+            <button
+              type="button"
+              onClick={handleAdd}
+              disabled={disabled}
+              className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-white/10 bg-white/[0.01] py-2 text-[11px] text-zinc-500 transition hover:bg-white/[0.03] hover:text-zinc-300 disabled:opacity-50"
+            >
+              <Plus className="size-3" />
+              添加额外 LoRA
+            </button>
+          )}
         </div>
       )}
     </div>

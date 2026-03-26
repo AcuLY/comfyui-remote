@@ -22,8 +22,82 @@ export type LoraEntry = LoraBinding & {
   sourceLabel?: string; // e.g. "角色: Miku" or "场景: Park"
 };
 
-/** LoRA config structure stored in CompleteJobPosition.loraConfig */
+// ---------------------------------------------------------------------------
+// KSampler Parameters (v0.3)
+// ---------------------------------------------------------------------------
+
+/** Seed policy for KSampler */
+export type SeedPolicy = "random" | "fixed" | "increment";
+
+/** KSampler parameters for workflow filling */
+export type KSamplerParams = {
+  steps?: number;          // 默认 30
+  cfg?: number;            // 默认 4 (KSampler1) / 7 (KSampler2)
+  sampler_name?: string;   // 默认 "euler_ancestral" (KSampler1) / "dpmpp_2m" (KSampler2)
+  scheduler?: string;      // 默认 "karras"
+  denoise?: number;        // 默认 1 (KSampler1) / 0.6 (KSampler2)
+  seedPolicy?: SeedPolicy; // 默认 "random"
+};
+
+/** Default KSampler1 parameters */
+export const DEFAULT_KSAMPLER1: Required<KSamplerParams> = {
+  steps: 30,
+  cfg: 4,
+  sampler_name: "euler_ancestral",
+  scheduler: "karras",
+  denoise: 1,
+  seedPolicy: "random",
+};
+
+/** Default KSampler2 parameters (高清修复) */
+export const DEFAULT_KSAMPLER2: Required<KSamplerParams> = {
+  steps: 30,
+  cfg: 7,
+  sampler_name: "dpmpp_2m",
+  scheduler: "karras",
+  denoise: 0.6,
+  seedPolicy: "random",
+};
+
+/** Parse KSamplerParams JSON from database */
+export function parseKSamplerParams(
+  json: unknown,
+  defaults: Required<KSamplerParams>,
+): KSamplerParams {
+  if (!json || typeof json !== "object" || Array.isArray(json)) {
+    return { ...defaults };
+  }
+  const obj = json as Record<string, unknown>;
+  return {
+    steps: typeof obj.steps === "number" ? obj.steps : defaults.steps,
+    cfg: typeof obj.cfg === "number" ? obj.cfg : defaults.cfg,
+    sampler_name: typeof obj.sampler_name === "string" ? obj.sampler_name : defaults.sampler_name,
+    scheduler: typeof obj.scheduler === "string" ? obj.scheduler : defaults.scheduler,
+    denoise: typeof obj.denoise === "number" ? obj.denoise : defaults.denoise,
+    seedPolicy: isSeedPolicy(obj.seedPolicy) ? obj.seedPolicy : defaults.seedPolicy,
+  };
+}
+
+function isSeedPolicy(value: unknown): value is SeedPolicy {
+  return value === "random" || value === "fixed" || value === "increment";
+}
+
+// ---------------------------------------------------------------------------
+// LoRA Config (v0.3)
+// ---------------------------------------------------------------------------
+
+/**
+ * LoRA config structure stored in CompleteJobPosition.loraConfig
+ * v0.3: Restructured to separate characterLora, lora1, lora2
+ */
 export type PositionLoraConfig = {
+  characterLora: LoraEntry[];  // 从大任务角色带入（只读展示）
+  lora1: LoraEntry[];          // lora1 列表（可编辑，来自 position template 或手动添加）
+  lora2: LoraEntry[];          // lora2 列表（可编辑，来自 position template 或手动添加）
+};
+
+/** @deprecated Use PositionLoraConfig instead */
+export type LegacyPositionLoraConfig = {
   entries: LoraEntry[];
 };
 
@@ -50,31 +124,67 @@ export function parseLoraBindings(json: unknown): LoraBinding[] {
 
 /**
  * Parse PositionLoraConfig JSON from database
+ * Supports both v0.3 format (characterLora/lora1/lora2) and legacy format (entries)
  */
 export function parsePositionLoraConfig(json: unknown): PositionLoraConfig {
+  if (!json || typeof json !== "object" || Array.isArray(json)) {
+    return { characterLora: [], lora1: [], lora2: [] };
+  }
+  const obj = json as Record<string, unknown>;
+
+  // v0.3 format
+  if ("characterLora" in obj || "lora1" in obj || "lora2" in obj) {
+    return {
+      characterLora: parseLoraEntryArray(obj.characterLora),
+      lora1: parseLoraEntryArray(obj.lora1),
+      lora2: parseLoraEntryArray(obj.lora2),
+    };
+  }
+
+  // Legacy format: migrate entries to lora1
+  if ("entries" in obj && Array.isArray(obj.entries)) {
+    const entries = parseLoraEntryArray(obj.entries);
+    // Split by source: character -> characterLora, others -> lora1
+    const characterLora = entries.filter((e) => e.source === "character");
+    const lora1 = entries.filter((e) => e.source !== "character");
+    return { characterLora, lora1, lora2: [] };
+  }
+
+  return { characterLora: [], lora1: [], lora2: [] };
+}
+
+/**
+ * Parse legacy PositionLoraConfig JSON (for migration)
+ * @deprecated Use parsePositionLoraConfig
+ */
+export function parseLegacyPositionLoraConfig(json: unknown): LegacyPositionLoraConfig {
   if (!json || typeof json !== "object" || Array.isArray(json)) {
     return { entries: [] };
   }
   const obj = json as Record<string, unknown>;
   return {
-    entries: Array.isArray(obj.entries)
-      ? obj.entries
-          .filter(
-            (item): item is LoraEntry =>
-              typeof item === "object" &&
-              item !== null &&
-              typeof (item as LoraEntry).id === "string" &&
-              typeof (item as LoraEntry).path === "string" &&
-              typeof (item as LoraEntry).weight === "number" &&
-              typeof (item as LoraEntry).enabled === "boolean" &&
-              typeof (item as LoraEntry).source === "string",
-          )
-          .map((item) => ({
-            ...item,
-            weight: Math.round(item.weight * 100) / 100,
-          }))
-      : [],
+    entries: parseLoraEntryArray(obj.entries),
   };
+}
+
+/** Helper: parse array of LoraEntry */
+function parseLoraEntryArray(arr: unknown): LoraEntry[] {
+  if (!Array.isArray(arr)) return [];
+  return arr
+    .filter(
+      (item): item is LoraEntry =>
+        typeof item === "object" &&
+        item !== null &&
+        typeof (item as LoraEntry).id === "string" &&
+        typeof (item as LoraEntry).path === "string" &&
+        typeof (item as LoraEntry).weight === "number" &&
+        typeof (item as LoraEntry).enabled === "boolean" &&
+        typeof (item as LoraEntry).source === "string",
+    )
+    .map((item) => ({
+      ...item,
+      weight: Math.round(item.weight * 100) / 100,
+    }));
 }
 
 /**
@@ -92,15 +202,19 @@ export function serializeLoraBindings(bindings: LoraBinding[]): LoraBinding[] {
  * Serialize PositionLoraConfig for database storage
  */
 export function serializePositionLoraConfig(config: PositionLoraConfig): PositionLoraConfig {
+  const serializeEntry = (e: LoraEntry) => ({
+    id: e.id,
+    path: e.path,
+    weight: Math.round(e.weight * 100) / 100,
+    enabled: e.enabled,
+    source: e.source,
+    sourceLabel: e.sourceLabel,
+  });
+
   return {
-    entries: config.entries.map((e) => ({
-      id: e.id,
-      path: e.path,
-      weight: Math.round(e.weight * 100) / 100,
-      enabled: e.enabled,
-      source: e.source,
-      sourceLabel: e.sourceLabel,
-    })),
+    characterLora: config.characterLora.map(serializeEntry),
+    lora1: config.lora1.map(serializeEntry),
+    lora2: config.lora2.map(serializeEntry),
   };
 }
 

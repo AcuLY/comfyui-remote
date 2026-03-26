@@ -27,7 +27,12 @@ export type JobPositionUpdateInput = {
   aspectRatio?: string | null;
   shortSidePx?: number | null;
   batchSize?: number | null;
-  seedPolicy?: string | null;
+  // v0.3: dual seedPolicy
+  seedPolicy1?: string | null;
+  seedPolicy2?: string | null;
+  // v0.3: ksampler params
+  ksampler1?: Record<string, unknown> | null;
+  ksampler2?: Record<string, unknown> | null;
 };
 
 export type ListJobsFilters = {
@@ -61,11 +66,18 @@ type PositionTemplateRecord = {
   slug: string;
   prompt: string;
   negativePrompt: string | null;
-  defaultLoraConfig: Prisma.JsonValue | null;
+  // v0.3: lora1/lora2 replace loraBindings
+  lora1: Prisma.JsonValue | null;
+  lora2: Prisma.JsonValue | null;
   defaultAspectRatio: string | null;
   defaultShortSidePx: number | null;
   defaultBatchSize: number | null;
-  defaultSeedPolicy: string | null;
+  // v0.3: dual seedPolicy
+  defaultSeedPolicy1: string | null;
+  defaultSeedPolicy2: string | null;
+  // v0.3: ksampler params
+  defaultKsampler1: Prisma.JsonValue | null;
+  defaultKsampler2: Prisma.JsonValue | null;
   defaultParams: Prisma.JsonValue | null;
 };
 
@@ -85,7 +97,12 @@ type JobPositionRecord = {
   aspectRatio: string | null;
   shortSidePx: number | null;
   batchSize: number | null;
-  seedPolicy: string | null;
+  // v0.3: dual seedPolicy
+  seedPolicy1: string | null;
+  seedPolicy2: string | null;
+  // v0.3: ksampler params
+  ksampler1: Prisma.JsonValue | null;
+  ksampler2: Prisma.JsonValue | null;
   loraConfig: Prisma.JsonValue | null;
   extraParams: Prisma.JsonValue | null;
   positionTemplate: PositionTemplateRecord | null;
@@ -200,7 +217,13 @@ function serializeJobPosition(
     slug: position.positionTemplate?.slug ?? null,
     aspectRatio: position.aspectRatio ?? position.positionTemplate?.defaultAspectRatio ?? null,
     batchSize: position.batchSize ?? position.positionTemplate?.defaultBatchSize ?? null,
-    seedPolicy: position.seedPolicy ?? position.positionTemplate?.defaultSeedPolicy ?? null,
+    // v0.3: dual seedPolicy
+    seedPolicy: position.seedPolicy1 ?? position.positionTemplate?.defaultSeedPolicy1 ?? null,
+    seedPolicy1: position.seedPolicy1 ?? position.positionTemplate?.defaultSeedPolicy1 ?? null,
+    seedPolicy2: position.seedPolicy2 ?? position.positionTemplate?.defaultSeedPolicy2 ?? null,
+    // v0.3: ksampler params
+    ksampler1: position.ksampler1 ?? position.positionTemplate?.defaultKsampler1 ?? null,
+    ksampler2: position.ksampler2 ?? position.positionTemplate?.defaultKsampler2 ?? null,
     loraConfig: position.loraConfig,
     extraParams: position.extraParams,
     promptOverview: {

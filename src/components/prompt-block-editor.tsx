@@ -555,12 +555,15 @@ export function PromptBlockEditor({
   positionId: string;
   initialBlocks: PromptBlockData[];
   library?: PromptLibrary;
+  /** v0.3: Added lora1Bindings and lora2Bindings for position templates */
   onBlockImport?: (
     sourceType: LoraSource,
     sourceId: string,
     sourceName: string,
     loraPath?: string | null,
     loraBindings?: unknown,
+    lora1Bindings?: unknown,
+    lora2Bindings?: unknown,
   ) => void;
 }) {
   const [blocks, setBlocks] = useState<PromptBlockData[]>(initialBlocks);
@@ -632,6 +635,9 @@ export function PromptBlockEditor({
             input.label,
             libraryItem.loraPath,
             libraryItem.loraBindings,
+            // v0.3: Position templates have lora1/lora2
+            (libraryItem as { lora1?: unknown }).lora1,
+            (libraryItem as { lora2?: unknown }).lora2,
           );
         }
       }
