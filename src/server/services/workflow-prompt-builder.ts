@@ -146,9 +146,10 @@ export function buildWorkflowPrompt(input: WorkflowBuildInput): Record<string, u
   latent.batch_size = input.batchSize;
 
   // 3. Upscale dimensions — node 425 (Upscale Latent)
+  //    Must match the same orientation as node 407: width = short, height = long
   const upscaleInputs = nodeInputs(wf, "425");
-  upscaleInputs.width = input.longSidePx * upscale;
-  upscaleInputs.height = input.shortSidePx * upscale;
+  upscaleInputs.width = input.shortSidePx * upscale;
+  upscaleInputs.height = input.longSidePx * upscale;
 
   // 4. Character LoRA — node 482
   if (input.characterLora.length > 0) {

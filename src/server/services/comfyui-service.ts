@@ -345,8 +345,7 @@ async function resolveApiPromptFromWorkflowTemplate(
   const overrides: Record<string, string | number> = {
     positivePrompt: promptDraft.prompt.positive,
     negativePrompt:
-      promptDraft.prompt.negative ??
-      "bad anatomy, extra limbs, blurry, low quality, watermark",
+      promptDraft.prompt.negative ?? "",
     width: resolution.width,
     height: resolution.height,
     batchSize: promptDraft.parameters.batchSize ?? 1,
@@ -433,8 +432,7 @@ async function resolveStandardWorkflowPrompt(
     workflowTemplate: cloned,
     positivePrompt: promptDraft.prompt.positive,
     negativePrompt:
-      promptDraft.prompt.negative ??
-      "bad anatomy, extra limbs, blurry, low quality, watermark",
+      promptDraft.prompt.negative ?? "",
     shortSidePx: shortSide,
     longSidePx: longSide,
     batchSize: promptDraft.parameters.batchSize ?? 1,
