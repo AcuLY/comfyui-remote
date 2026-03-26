@@ -381,30 +381,8 @@
 - 触发单个 position 重跑
 - 批量审图操作
 
-## 开发顺序建议
-### Phase 1
-- 项目骨架
-- Prisma schema
-- PostgreSQL 接入
-- Character / CompleteJob / PositionRun / ImageResult 基础 CRUD
-- 待审核队列页
-- 宫格审核页
-- 回收站
+## 实现状态
 
-### Phase 2
-- 参数编辑页
-- 运行全部 / 运行单个 position
-- Worker + ComfyUI API 接入
-- 缩略图生成
-
-### Phase 3
-- LoRA 上传页
-- Agent API
-- 修订历史
-
-## 当前开发起点
-首轮开发优先做：
-1. 基础工程搭建
-2. 数据模型落地
-3. 队列页 / 宫格页 / 回收站页静态骨架
-4. 预留 Worker 与 Agent API 目录结构
+> ✅ v0.1 和 v0.2 的所有功能均已实现。详见 `development-progress.md`。
+>
+> v0.3 规划详见 `design-v0.3-workflow-integration.md`。
