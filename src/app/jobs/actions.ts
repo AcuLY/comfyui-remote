@@ -47,6 +47,20 @@ function getNullableString(formData: FormData, fieldName: string) {
   return value.trim() ? value : null;
 }
 
+function getNullableJsonObject(formData: FormData, fieldName: string): Record<string, unknown> | undefined {
+  const raw = String(formData.get(fieldName) ?? "").trim();
+  if (!raw) return undefined;
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>;
+    }
+    return undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function getPositiveInteger(formData: FormData, fieldName: string, label: string): PositiveIntegerResult {
   const rawValue = String(formData.get(fieldName) ?? "").trim();
 
@@ -147,15 +161,29 @@ export async function saveJobPositionEditAction(
     return shortSidePx.error;
   }
 
-  const payload = {
+  const ksampler1 = getNullableJsonObject(formData, "ksampler1");
+  const ksampler2 = getNullableJsonObject(formData, "ksampler2");
+
+  // Extract seedPolicy from ksampler params (seed策略已移入 KSampler 面板)
+  const seedPolicy1 = typeof ksampler1?.seedPolicy === "string" ? ksampler1.seedPolicy : getNullableString(formData, "seedPolicy1");
+  const seedPolicy2 = typeof ksampler2?.seedPolicy === "string" ? ksampler2.seedPolicy : getNullableString(formData, "seedPolicy2");
+
+  const payload: Record<string, unknown> = {
     positivePrompt: getNullableString(formData, "positivePrompt"),
     negativePrompt: getNullableString(formData, "negativePrompt"),
     aspectRatio: getNullableString(formData, "aspectRatio"),
     shortSidePx: shortSidePx.value,
     batchSize: batchSize.value,
-    seedPolicy1: getNullableString(formData, "seedPolicy1"),
-    seedPolicy2: getNullableString(formData, "seedPolicy2"),
+    seedPolicy1,
+    seedPolicy2,
   };
+
+  if (ksampler1 !== undefined) {
+    payload.ksampler1 = ksampler1;
+  }
+  if (ksampler2 !== undefined) {
+    payload.ksampler2 = ksampler2;
+  }
 
   try {
     const response = await fetch(
