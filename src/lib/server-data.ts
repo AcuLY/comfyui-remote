@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import type { QueueRun, RunningRun, ReviewGroup, ReviewImage, JobCard, TrashItem, LoraAsset } from "@/lib/types";
+import type { QueueRun, RunningRun, ReviewGroup, ReviewImage, ReviewStatus, JobCard, TrashItem, LoraAsset } from "@/lib/types";
 import { listWorkflowTemplateSummaries } from "@/server/services/workflow-template-service";
 
 // Re-export types used by frontend components (originally from backend branch)
@@ -259,6 +259,93 @@ export async function getJobDetail(jobId: string): Promise<JobDetail | null> {
         })),
       };
     }),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Position Results — 小节结果页
+// ---------------------------------------------------------------------------
+
+export type PositionResultsData = {
+  jobId: string;
+  jobTitle: string;
+  positionId: string;
+  positionName: string;
+  runs: {
+    id: string;
+    runIndex: number;
+    status: string;
+    createdAt: string;
+    images: {
+      id: string;
+      src: string;
+      status: ReviewStatus;
+    }[];
+  }[];
+  /** 最新有 pending 图片的 run id（用于「跳转至审核」按钮） */
+  pendingRunId: string | null;
+  totalPending: number;
+};
+
+export async function getPositionResults(positionId: string): Promise<PositionResultsData | null> {
+  const pos = await prisma.completeJobPosition.findUnique({
+    where: { id: positionId },
+    include: {
+      positionTemplate: { select: { name: true } },
+      completeJob: { select: { id: true, title: true } },
+      runs: {
+        orderBy: { createdAt: "desc" },
+        include: {
+          images: {
+            orderBy: { createdAt: "asc" },
+            select: {
+              id: true,
+              thumbPath: true,
+              filePath: true,
+              reviewStatus: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!pos) return null;
+
+  let pendingRunId: string | null = null;
+  let totalPending = 0;
+
+  const runs = pos.runs.map((run) => {
+    const images = run.images.map((img) => ({
+      id: img.id,
+      src: img.thumbPath ?? img.filePath,
+      status: img.reviewStatus as ReviewStatus,
+    }));
+
+    const runPending = images.filter((img) => img.status === "pending").length;
+    totalPending += runPending;
+
+    if (runPending > 0 && !pendingRunId) {
+      pendingRunId = run.id;
+    }
+
+    return {
+      id: run.id,
+      runIndex: run.runIndex,
+      status: run.status,
+      createdAt: formatDate(run.createdAt),
+      images,
+    };
+  });
+
+  return {
+    jobId: pos.completeJob.id,
+    jobTitle: pos.completeJob.title,
+    positionId: pos.id,
+    positionName: pos.name || pos.positionTemplate?.name || `小节`,
+    runs,
+    pendingRunId,
+    totalPending,
   };
 }
 

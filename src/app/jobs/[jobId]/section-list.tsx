@@ -168,7 +168,7 @@ function SortableSectionCard({ section, jobId }: { section: Section; jobId: stri
             </span>
             {section.latestRunId && (
               <Link
-                href={`/queue/${section.latestRunId}`}
+                href={`/jobs/${jobId}/positions/${section.id}/results`}
                 className="ml-auto text-sky-400 hover:text-sky-300"
                 onClick={(e) => e.stopPropagation()}
               >
