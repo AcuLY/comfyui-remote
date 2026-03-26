@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
+import { Select } from "@/components/ui/select";
 import type { LoraBinding } from "@/lib/lora-types";
 
 type LoraBindingEditorProps = {
@@ -116,20 +117,13 @@ export function LoraBindingEditor({
               {/* Path input or select */}
               <div className="flex-1 min-w-0">
                 {loraOptions && loraOptions.length > 0 ? (
-                  <select
+                  <Select
                     value={binding.path}
-                    onChange={(e) =>
-                      handleUpdate(index, { path: e.target.value })
-                    }
-                    className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
-                  >
-                    <option value="">选择 LoRA...</option>
-                    {loraOptions.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(v) => handleUpdate(index, { path: v })}
+                    options={loraOptions}
+                    placeholder="选择 LoRA..."
+                    size="sm"
+                  />
                 ) : (
                   <input
                     type="text"

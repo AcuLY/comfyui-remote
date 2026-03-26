@@ -3,6 +3,7 @@
 import { useState, useTransition, useRef, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2, Save, X } from "lucide-react";
+import { Select } from "@/components/ui/select";
 import { LoraBindingEditor } from "@/components/lora-binding-editor";
 import type { LoraBinding } from "@/lib/lora-types";
 
@@ -262,23 +263,16 @@ export function ConfigManager({
       return (
         <div key={field.key}>
           <label className="mb-1 block text-xs text-zinc-500">{field.label}</label>
-          <select
+          <Select
             value={String(value ?? "")}
-            onChange={(e) => {
-              handleFieldChange(field.key, e.target.value);
-              // Auto-save immediately for select (no blur needed)
+            onChange={(v) => {
+              handleFieldChange(field.key, v);
               if (!isCreating) {
-                saveFieldNow(field.key, e.target.value);
+                saveFieldNow(field.key, v);
               }
             }}
-            className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-zinc-200 outline-none focus:border-sky-500/30"
-          >
-            {field.options?.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
+            options={field.options ?? []}
+          />
         </div>
       );
     }

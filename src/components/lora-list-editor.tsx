@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Pencil } from "lucide-react";
+import { Select } from "@/components/ui/select";
 import type { LoraEntry, LoraSource } from "@/lib/lora-types";
 
 const SOURCE_LABELS: Record<LoraSource, { label: string; color: string }> = {
@@ -9,7 +10,7 @@ const SOURCE_LABELS: Record<LoraSource, { label: string; color: string }> = {
   scene: { label: "场景", color: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30" },
   style: { label: "风格", color: "bg-violet-500/20 text-violet-300 border-violet-500/30" },
   position: { label: "Position", color: "bg-amber-500/20 text-amber-300 border-amber-500/30" },
-  manual: { label: "手动添加", color: "bg-zinc-500/20 text-zinc-300 border-zinc-500/30" },
+  manual: { label: "自定义", color: "bg-rose-500/20 text-rose-300 border-rose-500/30" },
 };
 
 type LoraListEditorProps = {
@@ -17,7 +18,7 @@ type LoraListEditorProps = {
   onChange: (entries: LoraEntry[]) => void;
   loraOptions?: { value: string; label: string }[];
   disabled?: boolean;
-  readOnly?: boolean;  // v0.3: 只读模式（用于角色 LoRA）
+  readOnly?: boolean;
 };
 
 export function LoraListEditor({
@@ -27,7 +28,7 @@ export function LoraListEditor({
   disabled = false,
   readOnly = false,
 }: LoraListEditorProps) {
-  const [tagInputs, setTagInputs] = useState<Record<string, string>>({});
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   function handleAdd() {
     const newEntry: LoraEntry = {
@@ -38,10 +39,12 @@ export function LoraListEditor({
       source: "manual",
     };
     onChange([...entries, newEntry]);
+    setEditingId(newEntry.id);
   }
 
   function handleRemove(id: string) {
     onChange(entries.filter((e) => e.id !== id));
+    if (editingId === id) setEditingId(null);
   }
 
   function handleUpdate(id: string, updates: Partial<LoraEntry>) {
@@ -57,15 +60,6 @@ export function LoraListEditor({
       const rounded = Math.round(clamped * 100) / 100;
       handleUpdate(id, { weight: rounded });
     }
-  }
-
-  function handleTagKeyDown(id: string, e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key !== "Enter") return;
-    e.preventDefault();
-    const value = tagInputs[id]?.trim();
-    if (!value) return;
-    handleUpdate(id, { sourceLabel: value });
-    setTagInputs((prev) => ({ ...prev, [id]: "" }));
   }
 
   const enabledCount = entries.filter((e) => e.enabled).length;
@@ -89,6 +83,9 @@ export function LoraListEditor({
         ) : (
           entries.map((entry) => {
             const sourceConfig = SOURCE_LABELS[entry.source] || SOURCE_LABELS.manual;
+            const isEditing = editingId === entry.id;
+            const isManual = entry.source === "manual";
+
             return (
               <div
                 key={entry.id}
@@ -121,59 +118,19 @@ export function LoraListEditor({
                     />
                   </button>
 
-                  {/* Path input or display */}
+                  {/* Path display */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
-                      {entry.source !== "manual" ? (
-                        <>
-                          <span className="text-xs text-zinc-200 truncate">
-                            {entry.path.split("/").pop() || entry.path}
-                          </span>
-                          <span
-                            className={`shrink-0 rounded-lg border px-1.5 py-0.5 text-[9px] font-medium ${sourceConfig.color}`}
-                          >
-                            {entry.sourceLabel || sourceConfig.label}
-                          </span>
-                        </>
-                      ) : (
-                        <>
-                          {loraOptions && loraOptions.length > 0 ? (
-                            <select
-                              value={entry.path}
-                              onChange={(e) =>
-                                handleUpdate(entry.id, { path: e.target.value })
-                              }
-                              disabled={disabled}
-                              className="flex-1 min-w-0 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
-                            >
-                              <option value="">选择 LoRA...</option>
-                              {loraOptions.map((opt) => (
-                                <option key={opt.value} value={opt.value}>
-                                  {opt.label}
-                                </option>
-                              ))}
-                            </select>
-                          ) : (
-                            <input
-                              type="text"
-                              value={entry.path}
-                              onChange={(e) =>
-                                handleUpdate(entry.id, { path: e.target.value })
-                              }
-                              placeholder="LoRA 路径..."
-                              disabled={disabled}
-                              className="flex-1 min-w-0 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30"
-                            />
-                          )}
-                          <span
-                            className={`shrink-0 rounded-lg border px-1.5 py-0.5 text-[9px] font-medium ${sourceConfig.color}`}
-                          >
-                            {entry.sourceLabel || sourceConfig.label}
-                          </span>
-                        </>
-                      )}
+                      <span className="text-xs text-zinc-200 truncate">
+                        {entry.path ? (entry.path.split("/").pop() || entry.path) : "未选择"}
+                      </span>
+                      <span
+                        className={`shrink-0 rounded-lg border px-1.5 py-0.5 text-[9px] font-medium ${sourceConfig.color}`}
+                      >
+                        {isManual ? sourceConfig.label : (entry.sourceLabel || sourceConfig.label)}
+                      </span>
                     </div>
-                    {entry.source !== "manual" && (
+                    {!isManual && entry.path && (
                       <div className="mt-0.5 text-[10px] text-zinc-600 truncate">
                         {entry.path}
                       </div>
@@ -195,7 +152,23 @@ export function LoraListEditor({
                     />
                   </div>
 
-                  {/* Remove button (hidden in readOnly mode) */}
+                  {/* Edit button for manual entries */}
+                  {isManual && !readOnly && (
+                    <button
+                      type="button"
+                      onClick={() => setEditingId(isEditing ? null : entry.id)}
+                      disabled={disabled}
+                      className={`rounded p-1 transition disabled:opacity-50 ${
+                        isEditing
+                          ? "bg-sky-500/10 text-sky-400"
+                          : "text-zinc-500 hover:bg-white/[0.06] hover:text-zinc-300"
+                      }`}
+                    >
+                      <Pencil className="size-3.5" />
+                    </button>
+                  )}
+
+                  {/* Remove button */}
                   {!readOnly && (
                     <button
                       type="button"
@@ -208,32 +181,27 @@ export function LoraListEditor({
                   )}
                 </div>
 
-                {/* Tag input for manual entries */}
-                {entry.source === "manual" && (
-                  <div className="mt-1.5 flex items-center gap-1.5">
-                    {entry.sourceLabel && (
-                      <span className="rounded-lg border border-zinc-500/30 bg-zinc-500/20 px-1.5 py-0.5 text-[9px] font-medium text-zinc-300">
-                        {entry.sourceLabel}
-                        {!readOnly && (
-                          <button
-                            type="button"
-                            onClick={() => handleUpdate(entry.id, { sourceLabel: undefined })}
-                            className="ml-1 text-zinc-500 hover:text-zinc-300"
-                          >
-                            ×
-                          </button>
-                        )}
-                      </span>
-                    )}
-                    {!readOnly && (
+                {/* Selector shown when editing manual entry */}
+                {isManual && isEditing && (
+                  <div className="mt-2">
+                    {loraOptions && loraOptions.length > 0 ? (
+                      <Select
+                        value={entry.path}
+                        onChange={(v) => handleUpdate(entry.id, { path: v })}
+                        options={loraOptions}
+                        placeholder="选择 LoRA..."
+                        size="sm"
+                      />
+                    ) : (
                       <input
                         type="text"
-                        value={tagInputs[entry.id] ?? ""}
-                        onChange={(e) => setTagInputs((prev) => ({ ...prev, [entry.id]: e.target.value }))}
-                        onKeyDown={(e) => handleTagKeyDown(entry.id, e)}
-                        placeholder="添加标签 (回车确认)..."
+                        value={entry.path}
+                        onChange={(e) =>
+                          handleUpdate(entry.id, { path: e.target.value })
+                        }
+                        placeholder="LoRA 路径..."
                         disabled={disabled}
-                        className="flex-1 rounded-lg border border-white/5 bg-transparent px-1.5 py-0.5 text-[10px] text-zinc-400 outline-none placeholder:text-zinc-600 focus:border-sky-500/20"
+                        className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30"
                       />
                     )}
                   </div>
@@ -243,7 +211,7 @@ export function LoraListEditor({
           })
         )}
 
-        {/* Add button (hidden in readOnly mode) */}
+        {/* Add button */}
         {!readOnly && (
           <button
             type="button"
@@ -252,7 +220,7 @@ export function LoraListEditor({
             className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-white/10 bg-white/[0.01] py-2 text-[11px] text-zinc-500 transition hover:bg-white/[0.03] hover:text-zinc-300 disabled:opacity-50"
           >
             <Plus className="size-3" />
-            添加额外 LoRA
+            添加 LoRA
           </button>
         )}
       </div>

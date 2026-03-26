@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState, useTransition } from "react";
 import { Upload } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { Select } from "@/components/ui/select";
 import type { LoraAsset } from "@/lib/types";
 import { getApiBaseUrl } from "@/lib/api-base-url";
 
@@ -90,15 +91,13 @@ export function LoraUploadPanel({ categories }: Props) {
       <div className="space-y-2 rounded-2xl bg-white/[0.03] p-3">
         <div>
           <div className="text-xs text-zinc-500">目标分类</div>
-          <select
-            value={category}
-            onChange={(event) => setCategory(event.target.value)}
-            className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none"
-          >
-            {categories.map((option) => (
-              <option key={option} value={option}>{option}</option>
-            ))}
-          </select>
+          <div className="mt-2">
+            <Select
+              value={category}
+              onChange={(v) => setCategory(v)}
+              options={categories.map((c) => ({ value: c, label: c }))}
+            />
+          </div>
         </div>
         <button
           type="submit"
