@@ -39,7 +39,10 @@ export type AuditAction =
   | "reorder"
   | "worker.claim"
   | "worker.done"
-  | "worker.failed";
+  | "worker.failed"
+  | "executor.start"
+  | "executor.done"
+  | "executor.failed";
 
 /**
  * Write an audit log entry. Returns immediately (fire-and-forget).

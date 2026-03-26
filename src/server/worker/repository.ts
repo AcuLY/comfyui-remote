@@ -155,48 +155,6 @@ export async function listQueuedWorkerRuns(limit = 10): Promise<WorkerRunSnapsho
   return runs.map(serializeWorkerRunSnapshot);
 }
 
-export async function claimQueuedWorkerRun(runId: string) {
-  return db.$transaction(async (tx: Prisma.TransactionClient) => {
-    const run = await tx.positionRun.findUnique({
-      where: { id: runId },
-      select: {
-        completeJobId: true,
-      },
-    });
-
-    if (!run) {
-      return null;
-    }
-
-    const startedAt = new Date();
-    const claimedRun = await tx.positionRun.updateMany({
-      where: {
-        id: runId,
-        status: RunStatus.queued,
-      },
-      data: {
-        status: RunStatus.running,
-        startedAt,
-        finishedAt: null,
-        errorMessage: null,
-      },
-    });
-
-    if (claimedRun.count === 0) {
-      return null;
-    }
-
-    await tx.completeJob.update({
-      where: { id: run.completeJobId },
-      data: { status: JobStatus.running },
-    });
-
-    return {
-      startedAt: startedAt.toISOString(),
-    };
-  });
-}
-
 export async function completeWorkerRun(
   runId: string,
   input: CompleteWorkerRunInput,
