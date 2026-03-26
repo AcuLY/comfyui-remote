@@ -8,8 +8,8 @@ import { SectionParamsForm } from "./section-params-form";
 import { SectionNameEditor } from "./section-name-editor";
 import type { PromptBlockData } from "@/lib/actions";
 import { getPromptLibrary, getLoraAssets } from "@/lib/server-data";
-import { parsePositionLoraConfig, serializePositionLoraConfig } from "@/lib/lora-types";
-import type { LoraEntry } from "@/lib/lora-types";
+import { parsePositionLoraConfig, parseLoraBindings, generateLoraEntryId, serializePositionLoraConfig } from "@/lib/lora-types";
+import type { LoraEntry, PositionLoraConfig } from "@/lib/lora-types";
 import { revalidatePath } from "next/cache";
 
 export default async function SectionEditPage({
@@ -74,6 +74,64 @@ export default async function SectionEditPage({
 
   // Parse existing LoRA config (v0.3: { characterLora, lora1, lora2 })
   const loraConfig = parsePositionLoraConfig(pos.loraConfig);
+
+  // Auto-populate characterLora from job's character if not yet present
+  if (pos.completeJob) {
+    const job = pos.completeJob;
+    let characterLoraChanged = false;
+
+    // Character's main loraPath
+    if (job.characterLoraPath) {
+      const exists = loraConfig.characterLora.some((e) => e.path === job.characterLoraPath);
+      if (!exists) {
+        loraConfig.characterLora.push({
+          id: generateLoraEntryId(),
+          path: job.characterLoraPath,
+          weight: 1.0,
+          enabled: true,
+          source: "character",
+          sourceLabel: `角色 LoRA`,
+        });
+        characterLoraChanged = true;
+      }
+    }
+
+    // Character's loraBindings (from character preset)
+    if (job.characterId) {
+      const character = await prisma.character.findUnique({
+        where: { id: job.characterId },
+        select: { name: true, loraBindings: true },
+      });
+      if (character?.loraBindings) {
+        const bindings = parseLoraBindings(character.loraBindings);
+        for (const binding of bindings) {
+          if (!binding.path) continue;
+          const exists = loraConfig.characterLora.some((e) => e.path === binding.path);
+          if (!exists) {
+            loraConfig.characterLora.push({
+              id: generateLoraEntryId(),
+              path: binding.path,
+              weight: binding.weight,
+              enabled: binding.enabled,
+              source: "character",
+              sourceLabel: `角色: ${character.name}`,
+            });
+            characterLoraChanged = true;
+          }
+        }
+      }
+    }
+
+    // Persist if we added new character LoRAs
+    if (characterLoraChanged) {
+      await prisma.completeJobPosition.update({
+        where: { id: positionId },
+        data: {
+          loraConfig: serializePositionLoraConfig(loraConfig),
+        },
+      });
+    }
+  }
 
   // LoRA options for manual selection
   const loraOptions = loraAssets.map((lora) => ({

@@ -58,13 +58,14 @@ export function SectionEditor({
     let updatedLora2 = [...lora2];
     let changed = false;
 
-    // Character 的主 LoRA 和 loraBindings 都进入 characterLora
+    // Character 的 LoRA 进入 lora1（不是 characterLora，characterLora 只由大任务角色自动填充）
     if (sourceType === "character") {
       // 主 loraPath
       if (loraPath) {
-        const exists = updatedCharacterLora.some((e) => e.path === loraPath);
-        if (!exists) {
-          updatedCharacterLora.push({
+        const existsInAny = updatedCharacterLora.some((e) => e.path === loraPath)
+          || updatedLora1.some((e) => e.path === loraPath);
+        if (!existsInAny) {
+          updatedLora1.push({
             id: generateLoraEntryId(),
             path: loraPath,
             weight: 1.0,
@@ -80,9 +81,10 @@ export function SectionEditor({
         const bindings = parseLoraBindings(loraBindings);
         for (const binding of bindings) {
           if (!binding.path) continue;
-          const exists = updatedCharacterLora.some((e) => e.path === binding.path);
-          if (!exists) {
-            updatedCharacterLora.push({
+          const existsInAny = updatedCharacterLora.some((e) => e.path === binding.path)
+            || updatedLora1.some((e) => e.path === binding.path);
+          if (!existsInAny) {
+            updatedLora1.push({
               id: generateLoraEntryId(),
               path: binding.path,
               weight: binding.weight,
@@ -150,6 +152,17 @@ export function SectionEditor({
     }
   }
 
+  function handleCharacterLoraChange(entries: LoraEntry[]) {
+    setCharacterLora(entries);
+    startTransition(async () => {
+      await onLoraChange({
+        characterLora: entries,
+        lora1,
+        lora2,
+      });
+    });
+  }
+
   function handleLora1Change(entries: LoraEntry[]) {
     setLora1(entries);
     startTransition(async () => {
@@ -182,15 +195,14 @@ export function SectionEditor({
       />
       
       <div className="border-t border-white/5 pt-4 space-y-4">
-        {/* v0.3: 角色 LoRA（只读） */}
+        {/* v0.3: 角色 LoRA（不可删除，可调权重） */}
         {characterLora.length > 0 && (
           <div>
-            <div className="mb-2 text-xs font-medium text-zinc-500">角色 LoRA（只读）</div>
+            <div className="mb-2 text-xs font-medium text-zinc-500">角色 LoRA（不可删除）</div>
             <LoraListEditor
               entries={characterLora}
-              onChange={() => {}} // 只读
+              onChange={handleCharacterLoraChange}
               loraOptions={[]}
-              disabled={true}
               readOnly={true}
             />
           </div>
