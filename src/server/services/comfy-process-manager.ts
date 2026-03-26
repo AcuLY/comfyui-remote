@@ -100,6 +100,8 @@ class ComfyProcessManager {
   private logs = new RingBuffer();
   private errorMessage: string | null = null;
   private consecutiveHealthFailures = 0;
+  /** Timestamp when the process was last spawned — used for startup grace period */
+  private spawnedAt: number | null = null;
 
   /**
    * When true, ComfyUI was detected as already running (not spawned by us).
@@ -248,6 +250,7 @@ class ComfyProcessManager {
 
       this.process = child;
       this.startedAt = Date.now();
+      this.spawnedAt = Date.now();
 
       child.stdout?.on("data", (data: Buffer) => {
         for (const line of data.toString("utf8").split("\n")) {
@@ -519,6 +522,22 @@ class ComfyProcessManager {
 
     this.lastHealthOk = false;
     this.consecutiveHealthFailures += 1;
+
+    // During startup grace period, don't escalate to unhealthy
+    const inGracePeriod =
+      this.spawnedAt !== null &&
+      Date.now() - this.spawnedAt < env.comfyStartupGraceMs;
+
+    if (inGracePeriod && this.state === "starting") {
+      // Still within grace period — log but don't act
+      if (this.consecutiveHealthFailures % 6 === 1) {
+        // Log every ~60s to avoid spam (6 × 10s interval)
+        this.log(
+          `[health] ComfyUI starting up (${Math.round((Date.now() - this.spawnedAt!) / 1000)}s elapsed, grace period ${env.comfyStartupGraceMs / 1000}s)`,
+        );
+      }
+      return;
+    }
 
     // Only mark unhealthy after threshold consecutive failures
     if (
