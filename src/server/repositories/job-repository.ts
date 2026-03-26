@@ -363,8 +363,11 @@ function buildResolvedConfigSnapshot(
     resolveJobOverrideInteger(jobLevelOverrides, "batchSize") ??
     position.positionTemplate?.defaultBatchSize ??
     null;
-  const resolvedSeedPolicy =
-    position.seedPolicy ?? position.positionTemplate?.defaultSeedPolicy ?? null;
+  // v0.3: dual seedPolicy
+  const resolvedSeedPolicy1 =
+    position.seedPolicy1 ?? position.positionTemplate?.defaultSeedPolicy1 ?? null;
+  const resolvedSeedPolicy2 =
+    position.seedPolicy2 ?? position.positionTemplate?.defaultSeedPolicy2 ?? null;
 
   // Compose final prompt from blocks (v0.2) or legacy fallback
   const promptDraft = buildResolvedPromptDraft(job, position, blocks);
@@ -414,12 +417,15 @@ function buildResolvedConfigSnapshot(
       aspectRatio: resolvedAspectRatio,
       shortSidePx: resolvedShortSidePx,
       batchSize: resolvedBatchSize,
-      seedPolicy: resolvedSeedPolicy,
+      // v0.3: dual seedPolicy (keep seedPolicy for backward compat)
+      seedPolicy: resolvedSeedPolicy1,
+      seedPolicy1: resolvedSeedPolicy1,
+      seedPolicy2: resolvedSeedPolicy2,
     },
-    loraConfig: mergeJsonObjects(
-      position.positionTemplate?.defaultLoraConfig ?? null,
-      position.loraConfig,
-    ),
+    // v0.3: ksampler params
+    ksampler1: position.ksampler1 ?? position.positionTemplate?.defaultKsampler1 ?? null,
+    ksampler2: position.ksampler2 ?? position.positionTemplate?.defaultKsampler2 ?? null,
+    loraConfig: position.loraConfig,
     extraParams: mergeJsonObjects(
       position.positionTemplate?.defaultParams ?? null,
       position.extraParams,
@@ -1348,8 +1354,19 @@ export async function updateJobPosition(
     data.batchSize = input.batchSize;
   }
 
-  if (input.seedPolicy !== undefined) {
-    data.seedPolicy = input.seedPolicy;
+  // v0.3: dual seedPolicy
+  if (input.seedPolicy1 !== undefined) {
+    data.seedPolicy1 = input.seedPolicy1;
+  }
+  if (input.seedPolicy2 !== undefined) {
+    data.seedPolicy2 = input.seedPolicy2;
+  }
+  // v0.3: ksampler params
+  if (input.ksampler1 !== undefined) {
+    data.ksampler1 = input.ksampler1 ? JSON.parse(JSON.stringify(input.ksampler1)) : null;
+  }
+  if (input.ksampler2 !== undefined) {
+    data.ksampler2 = input.ksampler2 ? JSON.parse(JSON.stringify(input.ksampler2)) : null;
   }
 
   await db.completeJobPosition.update({
@@ -1375,7 +1392,12 @@ export async function copyJob(jobId: string) {
             negativePrompt: true,
             aspectRatio: true,
             batchSize: true,
-            seedPolicy: true,
+            // v0.3: dual seedPolicy
+            seedPolicy1: true,
+            seedPolicy2: true,
+            // v0.3: ksampler params
+            ksampler1: true,
+            ksampler2: true,
             loraConfig: true,
             extraParams: true,
             promptBlocks: {
@@ -1422,7 +1444,10 @@ export async function copyJob(jobId: string) {
             negativePrompt: position.negativePrompt,
             aspectRatio: position.aspectRatio,
             batchSize: position.batchSize,
-            seedPolicy: position.seedPolicy,
+            seedPolicy1: position.seedPolicy1,
+            seedPolicy2: position.seedPolicy2,
+            ksampler1: cloneJsonValueForCreate(position.ksampler1),
+            ksampler2: cloneJsonValueForCreate(position.ksampler2),
             loraConfig: cloneJsonValueForCreate(position.loraConfig),
             extraParams: cloneJsonValueForCreate(position.extraParams),
             promptBlocks: {

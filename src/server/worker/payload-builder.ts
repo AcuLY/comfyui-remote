@@ -109,7 +109,11 @@ export function normalizeResolvedConfigSnapshot(
       shortSidePx: asNullableInteger(parameters?.shortSidePx),
       batchSize: asNullableInteger(parameters?.batchSize),
       seedPolicy: asNullableString(parameters?.seedPolicy),
+      seedPolicy1: asNullableString(parameters?.seedPolicy1),
+      seedPolicy2: asNullableString(parameters?.seedPolicy2),
     },
+    ksampler1: asJsonObject(root?.ksampler1 ?? null),
+    ksampler2: asJsonObject(root?.ksampler2 ?? null),
     loraConfig: asJsonObject(root?.loraConfig ?? null),
     extraParams: asJsonObject(root?.extraParams ?? null),
   };
@@ -130,6 +134,8 @@ export function buildComfyPromptDraft(run: WorkerRunSnapshot): ComfyPromptDraft 
       negative,
     },
     parameters: resolvedConfig.parameters,
+    ksampler1: resolvedConfig.ksampler1,
+    ksampler2: resolvedConfig.ksampler2,
     loraConfig: resolvedConfig.loraConfig,
     extraParams: resolvedConfig.extraParams,
     metadata: {

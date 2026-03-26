@@ -2,7 +2,18 @@ import { Prisma } from "@/generated/prisma";
 import { env } from "@/lib/env";
 import { createLogger } from "@/lib/logger";
 import { resolveResolution } from "@/lib/aspect-ratio-utils";
+import {
+  parseLoraBindings,
+  parseKSamplerParams,
+  parsePositionLoraConfig,
+  DEFAULT_KSAMPLER1,
+  DEFAULT_KSAMPLER2,
+} from "@/lib/lora-types";
 import { buildFallbackPromptNodes } from "@/server/worker/fallback-prompt-builder";
+import {
+  buildWorkflowPrompt,
+  type WorkflowBuildInput,
+} from "@/server/services/workflow-prompt-builder";
 import {
   getWorkflowTemplate,
   resolveWorkflowTemplate,
@@ -356,6 +367,87 @@ async function resolveApiPromptFromWorkflowTemplate(
   return resolveWorkflowTemplate(template, overrides);
 }
 
+// ---------------------------------------------------------------------------
+// Priority 3: Standard workflow.api.json via workflow-prompt-builder (v0.3)
+// ---------------------------------------------------------------------------
+
+/** Cached workflow template (loaded once from docs/workflow.api.json) */
+let cachedStandardWorkflow: JsonRecord | null = null;
+
+async function loadStandardWorkflowTemplate(): Promise<JsonRecord> {
+  if (cachedStandardWorkflow) {
+    return cachedStandardWorkflow;
+  }
+  const fs = await import("fs/promises");
+  const path = await import("path");
+  const filePath = path.join(process.cwd(), "docs", "workflow.api.json");
+  const raw = await fs.readFile(filePath, "utf-8");
+  cachedStandardWorkflow = JSON.parse(raw) as JsonRecord;
+  return cachedStandardWorkflow;
+}
+
+/**
+ * Returns true when the draft has v0.3 ksampler/lora fields, indicating
+ * we should use the standard workflow.api.json template.
+ */
+function shouldUseStandardWorkflow(draft: ComfyPromptDraft): boolean {
+  return draft.ksampler1 !== null || draft.ksampler2 !== null;
+}
+
+async function resolveStandardWorkflowPrompt(
+  promptDraft: ComfyPromptDraft,
+): Promise<JsonRecord | null> {
+  if (!shouldUseStandardWorkflow(promptDraft)) {
+    return null;
+  }
+
+  const template = await loadStandardWorkflowTemplate();
+  // Deep-clone so each call gets a fresh copy
+  const cloned = JSON.parse(JSON.stringify(template)) as JsonRecord;
+
+  const { width, height } = resolveResolution(
+    promptDraft.parameters.aspectRatio,
+    promptDraft.parameters.shortSidePx,
+  );
+  // For the workflow template, width = short side, height = long side (portrait default)
+  const shortSide = Math.min(width, height);
+  const longSide = Math.max(width, height);
+
+  const loraConfig = promptDraft.loraConfig
+    ? parsePositionLoraConfig(promptDraft.loraConfig)
+    : { characterLora: [], lora1: [], lora2: [] };
+
+  const ksampler1 = parseKSamplerParams(promptDraft.ksampler1, DEFAULT_KSAMPLER1);
+  const ksampler2 = parseKSamplerParams(promptDraft.ksampler2, DEFAULT_KSAMPLER2);
+
+  // Map LoraEntry[] to LoraBinding[] (strip id/source fields)
+  const toBindings = (entries: Array<{ path: string; weight: number; enabled: boolean }>) =>
+    entries.map((e) => ({ path: e.path, weight: e.weight, enabled: e.enabled }));
+
+  const positionSlug = promptDraft.metadata.positionName?.replace(/\s+/g, "_") ?? "position";
+  const runIndex = promptDraft.metadata.runIndex ?? 0;
+
+  const buildInput: WorkflowBuildInput = {
+    workflowTemplate: cloned,
+    positivePrompt: promptDraft.prompt.positive,
+    negativePrompt:
+      promptDraft.prompt.negative ??
+      "bad anatomy, extra limbs, blurry, low quality, watermark",
+    shortSidePx: shortSide,
+    longSidePx: longSide,
+    batchSize: promptDraft.parameters.batchSize ?? 1,
+    upscaleFactor: 2,
+    characterLora: toBindings(loraConfig.characterLora),
+    lora1List: toBindings(loraConfig.lora1),
+    lora2List: toBindings(loraConfig.lora2),
+    ksampler1,
+    ksampler2,
+    outputPath: `${promptDraft.metadata.jobTitle}/${runIndex}.${positionSlug}`,
+  };
+
+  return buildWorkflowPrompt(buildInput);
+}
+
 async function validateComfyPromptDraft(
   apiUrl: string,
   promptDraft: ComfyPromptDraft,
@@ -377,7 +469,8 @@ async function validateComfyPromptDraft(
 
   // Priority: 1) explicit comfyPrompt in extraParams
   //           2) workflowTemplateId → resolve from config/workflows/
-  //           3) built-in SDXL txt2img fallback
+  //           3) standard workflow.api.json (v0.3, when ksampler1/2 present)
+  //           4) built-in SDXL txt2img fallback
   let apiPrompt: JsonRecord;
 
   if (customApiPrompt && Object.keys(customApiPrompt).length > 0) {
@@ -387,7 +480,12 @@ async function validateComfyPromptDraft(
       extraParams,
       promptDraft,
     );
-    apiPrompt = templatePrompt ?? buildFallbackPromptNodes(promptDraft);
+    if (templatePrompt) {
+      apiPrompt = templatePrompt;
+    } else {
+      const standardPrompt = await resolveStandardWorkflowPrompt(promptDraft);
+      apiPrompt = standardPrompt ?? buildFallbackPromptNodes(promptDraft);
+    }
   }
 
   const extraData = {
