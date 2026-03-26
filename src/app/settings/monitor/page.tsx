@@ -119,6 +119,68 @@ function formatTime(iso: string | null): string {
 // Main component
 // ---------------------------------------------------------------------------
 
+
+// ---------------------------------------------------------------------------
+// Log line coloring
+// ---------------------------------------------------------------------------
+
+/** Patterns that indicate real errors vs harmless stderr info */
+const STDERR_ERROR_PATTERNS = [
+  /Traceback \(most recent/i,
+  /Error:|Exception:|FAILED/i,
+  /Cannot import .* module for custom nodes/i,
+  /ModuleNotFoundError/i,
+  /SyntaxError/i,
+];
+
+const STDERR_HARMLESS_PREFIXES = [
+  "[LoRA-Manager]",
+  "[ComfyUI-Manager]",
+  "Import times for",
+  "### ",
+  "Context impl",
+  "Assets scan",
+  "Starting server",
+  "To see the GUI",
+  "ComfyUI-GGUF:",
+  "Warning:",
+  "sageattention",
+  "0.0 seconds:",
+  "0.1 seconds:",
+  "0.2 seconds:",
+  "0.3 seconds:",
+  "0.4 seconds:",
+  "0.5 seconds:",
+  "0.6 seconds:",
+  "0.7 seconds:",
+  "0.8 seconds:",
+  "0.9 seconds:",
+  "1.",
+  "2.",
+];
+
+function getLogLineColor(line: string): string {
+  // Manager internal messages
+  if (line.includes("[manager]")) return "text-sky-400/70";
+  // Health check success
+  if (line.includes("\u2713")) return "text-emerald-400/70";
+  // Health check failure
+  if (line.includes("\u2717")) return "text-red-400/80";
+
+  if (line.includes("[stderr]")) {
+    const content = line.replace(/^.*?\[stderr\]\s*/, "");
+    // Check if it matches a real error pattern
+    if (STDERR_ERROR_PATTERNS.some((p) => p.test(content))) {
+      return "text-amber-400/80";
+    }
+    // Harmless info that happens to be on stderr
+    return "text-zinc-500";
+  }
+
+  // stdout
+  return "";
+}
+
 const POLL_INTERVAL = 5000;
 
 export default function MonitorPage() {
@@ -296,15 +358,7 @@ export default function MonitorPage() {
             {status.logs.map((line, i) => (
               <div
                 key={i}
-                className={
-                  line.includes("[stderr]") || line.includes("error")
-                    ? "text-red-400/80"
-                    : line.includes("[manager]")
-                      ? "text-sky-400/70"
-                      : line.includes("✓")
-                        ? "text-emerald-400/70"
-                        : ""
-                }
+                className={getLogLineColor(line)}
               >
                 {line}
               </div>
