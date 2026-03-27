@@ -16,6 +16,7 @@ const workerRunInclude = {
     select: {
       id: true,
       name: true,
+      sortOrder: true,
       positionTemplate: {
         select: {
           name: true,
@@ -60,8 +61,8 @@ function serializeWorkerRunSnapshot(run: WorkerRunRecord): WorkerRunSnapshot {
     },
     position: {
       id: run.completeJobPosition.id,
-      name: run.completeJobPosition.name ?? run.completeJobPosition.positionTemplate?.name ?? `section`,
-      slug: run.completeJobPosition.positionTemplate?.slug ?? "unknown",
+      name: run.completeJobPosition.name ?? run.completeJobPosition.positionTemplate?.name ?? `section_${run.completeJobPosition.sortOrder + 1}`,
+      slug: run.completeJobPosition.positionTemplate?.slug ?? `section_${run.completeJobPosition.sortOrder + 1}`,
     },
   };
 }
