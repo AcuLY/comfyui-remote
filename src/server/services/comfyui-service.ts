@@ -241,16 +241,12 @@ function extractOutputImages(entry: ComfyPromptHistoryEntry): ComfyPromptOutputI
 }
 
 function extractOutputDir(images: ComfyPromptOutputImage[]) {
-  const imageBaseDir = env.imageBaseDir.trim();
-
-  if (!imageBaseDir || images.length === 0) {
+  if (images.length === 0) {
     return null;
   }
 
-  const normalizedBaseDir = imageBaseDir.replace(/\\/g, "/").replace(/\/+$/, "");
-  const normalizedSubfolder = images[0]?.subfolder.replace(/\\/g, "/").replace(/^\/+/, "") ?? "";
-
-  return normalizedSubfolder ? `${normalizedBaseDir}/${normalizedSubfolder}` : normalizedBaseDir;
+  const subfolder = images[0]?.subfolder.replace(/\\/g, "/").replace(/^\/+/, "") ?? "";
+  return subfolder || null;
 }
 
 async function sleep(ms: number) {

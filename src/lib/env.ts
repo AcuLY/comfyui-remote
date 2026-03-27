@@ -33,7 +33,6 @@ export const env = {
   comfyHistoryPollIntervalMs: readPositiveIntegerEnv("COMFY_HISTORY_POLL_INTERVAL_MS", 2_000),
   comfyHistoryMaxAttempts: readPositiveIntegerEnv("COMFY_HISTORY_MAX_ATTEMPTS", 300),
   loraBaseDir: process.env.LORA_BASE_DIR ?? "",
-  imageBaseDir: process.env.IMAGE_BASE_DIR ?? "",
 
   // ComfyUI 进程管理
   comfyLaunchCmd: process.env.COMFY_LAUNCH_CMD ?? "",

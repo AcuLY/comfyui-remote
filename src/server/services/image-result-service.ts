@@ -1,4 +1,4 @@
-import { copyFile, mkdir, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import { extname, join, posix, resolve } from "node:path";
 
 import sharp from "sharp";
@@ -102,41 +102,6 @@ function resolveTargetExtension(outputImage: ComfyPromptOutputImage) {
   return extension && extension.length <= 10 ? extension : ".png";
 }
 
-async function tryCopyLocalOutputImage(
-  outputImage: ComfyPromptOutputImage,
-  targetAbsolutePath: string,
-) {
-  const imageBaseDir = env.imageBaseDir.trim();
-
-  if (!imageBaseDir) {
-    return null;
-  }
-
-  const normalizedSubfolder = normalizeSubfolder(outputImage.subfolder);
-  const sourceAbsolutePath = normalizedSubfolder
-    ? resolve(imageBaseDir, normalizedSubfolder, outputImage.filename)
-    : resolve(imageBaseDir, outputImage.filename);
-
-  try {
-    await copyFile(sourceAbsolutePath, targetAbsolutePath);
-    const fileStats = await stat(targetAbsolutePath);
-    return BigInt(fileStats.size);
-  } catch (error) {
-    if (
-      error &&
-      typeof error === "object" &&
-      "code" in error &&
-      (error.code === "ENOENT" || error.code === "ENOTDIR")
-    ) {
-      return null;
-    }
-
-    throw new Error(
-      `Failed to copy ComfyUI output "${outputImage.filename}" from "${sourceAbsolutePath}": ${formatError(error)}`,
-    );
-  }
-}
-
 async function downloadOutputImage(
   apiUrl: string,
   outputImage: ComfyPromptOutputImage,
@@ -192,12 +157,8 @@ async function persistSingleOutputImage(
   outputImage: ComfyPromptOutputImage,
   targetAbsolutePath: string,
 ) {
-  const localFileSize = await tryCopyLocalOutputImage(outputImage, targetAbsolutePath);
-
-  if (localFileSize !== null) {
-    return localFileSize;
-  }
-
+  // Always download via ComfyUI API — avoids path mismatches between
+  // ComfyUI output dir and our managed image store.
   return downloadOutputImage(apiUrl, outputImage, targetAbsolutePath);
 }
 
