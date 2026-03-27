@@ -29,9 +29,10 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
 
       <SectionCard title="参数概览" subtitle="结果侧与任务侧都默认编辑当前大任务配置。">
         <div className="space-y-3 text-sm text-zinc-300">
-          <div className="rounded-2xl bg-white/[0.03] p-3"><div className="text-xs text-zinc-500">Character prompt</div><div className="mt-1">{job.characterPrompt}</div></div>
-          {job.scenePrompt && <div className="rounded-2xl bg-white/[0.03] p-3"><div className="text-xs text-zinc-500">Scene prompt</div><div className="mt-1">{job.scenePrompt}</div></div>}
-          {job.stylePrompt && <div className="rounded-2xl bg-white/[0.03] p-3"><div className="text-xs text-zinc-500">Style prompt</div><div className="mt-1">{job.stylePrompt}</div></div>}
+          <div className="rounded-2xl bg-white/[0.03] p-3">
+            <div className="text-xs text-zinc-500">预设</div>
+            <div className="mt-1">{job.characterName} · {job.sceneName} · {job.styleName}</div>
+          </div>
           <Link
             href={`/jobs/${jobId}/edit`}
             className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-zinc-200 transition hover:bg-white/[0.08]"

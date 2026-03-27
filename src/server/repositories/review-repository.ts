@@ -49,13 +49,7 @@ async function getRunReviewBase(runId: string) {
           title: true,
           slug: true,
           status: true,
-          character: {
-            select: {
-              id: true,
-              name: true,
-              slug: true,
-            },
-          },
+          presetBindings: true,
         },
       },
       completeJobPosition: {
@@ -97,6 +91,24 @@ async function getRunReviewBase(runId: string) {
 export async function getRunReviewGroup(runId: string) {
   const run = await getRunReviewBase(runId);
 
+  // Resolve characterName from presetBindings
+  type PresetBindingJson = Array<{ categoryId: string; presetId: string }>;
+  const bindings = run.completeJob.presetBindings as PresetBindingJson | null;
+  let characterName = "—";
+  if (bindings && bindings.length > 0) {
+    const presetIds = bindings.map((b) => b.presetId);
+    const presets = await db.promptPreset.findMany({
+      where: { id: { in: presetIds } },
+      select: { id: true, name: true, category: { select: { slug: true } } },
+    });
+    for (const preset of presets) {
+      if (preset.category.slug === "character") {
+        characterName = preset.name;
+        break;
+      }
+    }
+  }
+
   const images = run.images.map((image, index) => ({
     id: image.id,
     src: toImageUrl(image.thumbPath ?? image.filePath) ?? "",
@@ -109,7 +121,7 @@ export async function getRunReviewGroup(runId: string) {
     jobId: run.completeJob.id,
     jobPositionId: run.completeJobPosition.id,
     title: run.completeJob.title,
-    characterName: run.completeJob.character.name,
+    characterName,
     positionName: run.completeJobPosition.positionTemplate?.name ?? "Unknown",
     createdAt: run.createdAt,
     pendingCount: images.filter((image) => image.status === ReviewStatus.pending).length,
@@ -120,6 +132,24 @@ export async function getRunReviewGroup(runId: string) {
 
 export async function getRunAgentContext(runId: string) {
   const run = await getRunReviewBase(runId);
+
+  // Resolve character info from presetBindings
+  type PresetBindingJson = Array<{ categoryId: string; presetId: string }>;
+  const bindings = run.completeJob.presetBindings as PresetBindingJson | null;
+  let characterInfo: { id: string; name: string; slug: string } | null = null;
+  if (bindings && bindings.length > 0) {
+    const presetIds = bindings.map((b) => b.presetId);
+    const presets = await db.promptPreset.findMany({
+      where: { id: { in: presetIds } },
+      select: { id: true, name: true, slug: true, category: { select: { slug: true } } },
+    });
+    for (const preset of presets) {
+      if (preset.category.slug === "character") {
+        characterInfo = { id: preset.id, name: preset.name, slug: preset.slug };
+        break;
+      }
+    }
+  }
 
   const imageSummary = run.images.reduce(
     (summary, image) => {
@@ -153,7 +183,7 @@ export async function getRunAgentContext(runId: string) {
       title: run.completeJob.title,
       slug: run.completeJob.slug,
       status: run.completeJob.status,
-      character: run.completeJob.character,
+      character: characterInfo,
     },
     position: {
       id: run.completeJobPosition.id,

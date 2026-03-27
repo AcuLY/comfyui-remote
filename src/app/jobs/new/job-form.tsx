@@ -3,51 +3,72 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown, Loader2, Plus } from "lucide-react";
-import { createJob, type CreateJobInput } from "@/lib/actions";
-
-type Character = { id: string; name: string; slug: string; prompt: string; loraPath: string };
-type SceneStyle = { id: string; name: string; slug: string; prompt: string };
+import { createJob } from "@/lib/actions";
+import type { JobFormCategory } from "@/lib/server-data";
 
 type Props = {
-  characters: Character[];
-  scenes: SceneStyle[];
-  styles: SceneStyle[];
+  categories: JobFormCategory[];
+  // Legacy props (kept for backward compat but unused in new form)
+  characters?: unknown[];
+  scenes?: unknown[];
+  styles?: unknown[];
 };
 
-export function JobForm({ characters, scenes, styles }: Props) {
+export function JobForm({ categories }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
   const [title, setTitle] = useState("");
-  const [characterId, setCharacterId] = useState("");
-  const [sceneId, setSceneId] = useState("");
-  const [styleId, setStyleId] = useState("");
+  // categoryId → presetId (one per category, empty string = not selected)
+  const [selections, setSelections] = useState<Record<string, string>>(() => {
+    const init: Record<string, string> = {};
+    for (const cat of categories) {
+      init[cat.id] = "";
+    }
+    return init;
+  });
   const [notes, setNotes] = useState("");
 
-  const selectedChar = characters.find((c) => c.id === characterId);
-  const selectedScene = scenes.find((s) => s.id === sceneId);
-  const selectedStyle = styles.find((s) => s.id === styleId);
+  function setSelection(categoryId: string, presetId: string) {
+    setSelections((prev) => ({ ...prev, [categoryId]: presetId }));
+  }
+
+  // Find if there's a character category and it's required
+  const characterCategory = categories.find((c) => c.slug === "character");
+  const hasCharacterSelected = characterCategory
+    ? !!selections[characterCategory.id]
+    : true; // if no character category exists, don't block
 
   function handleSubmit() {
-    if (!title.trim() || !characterId) return;
+    if (!title.trim() || !hasCharacterSelected) return;
 
-    const input: CreateJobInput = {
-      title: title.trim(),
-      characterId,
-      scenePresetId: sceneId || null,
-      stylePresetId: styleId || null,
-      characterPrompt: selectedChar?.prompt ?? "",
-      characterLoraPath: selectedChar?.loraPath ?? "",
-      scenePrompt: selectedScene?.prompt ?? null,
-      stylePrompt: selectedStyle?.prompt ?? null,
-      notes: notes.trim() || null,
-    };
+    const presetBindings = Object.entries(selections)
+      .filter(([, presetId]) => presetId)
+      .map(([categoryId, presetId]) => ({ categoryId, presetId }));
 
     startTransition(async () => {
-      const newJobId = await createJob(input);
+      const newJobId = await createJob({
+        title: title.trim(),
+        presetBindings,
+        notes: notes.trim() || null,
+      });
       router.push(`/jobs/${newJobId}`);
     });
   }
+
+  const CATEGORY_COLORS: Record<string, string> = {
+    sky: "border-sky-500/20 focus:border-sky-500/40",
+    emerald: "border-emerald-500/20 focus:border-emerald-500/40",
+    violet: "border-violet-500/20 focus:border-violet-500/40",
+    amber: "border-amber-500/20 focus:border-amber-500/40",
+  };
+
+  const CATEGORY_LABELS: Record<string, string> = {
+    sky: "text-sky-400",
+    emerald: "text-emerald-400",
+    violet: "text-violet-400",
+    amber: "text-amber-400",
+  };
 
   return (
     <div className="space-y-4">
@@ -63,63 +84,46 @@ export function JobForm({ characters, scenes, styles }: Props) {
         />
       </div>
 
-      {/* Character 选择 */}
-      <div className="space-y-2">
-        <label className="text-xs text-zinc-400">Character *</label>
-        <div className="relative">
-          <select
-            value={characterId}
-            onChange={(e) => setCharacterId(e.target.value)}
-            className="w-full appearance-none rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 pr-10 text-sm text-white outline-none focus:border-sky-500/40"
-          >
-            <option value="" className="bg-zinc-900">选择角色...</option>
-            {characters.map((c) => (
-              <option key={c.id} value={c.id} className="bg-zinc-900">{c.name}</option>
-            ))}
-          </select>
-          <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-zinc-500" />
-        </div>
-        {selectedChar && (
-          <div className="rounded-xl bg-white/[0.03] px-3 py-2 text-xs text-zinc-500">
-            Prompt: {selectedChar.prompt.slice(0, 80)}{selectedChar.prompt.length > 80 ? "..." : ""}
-          </div>
-        )}
-      </div>
+      {/* Dynamic category selectors */}
+      <div className="grid gap-3 md:grid-cols-2">
+        {categories.map((cat) => {
+          const colorClass = CATEGORY_COLORS[cat.color ?? ""] ?? "border-white/10 focus:border-sky-500/40";
+          const labelClass = CATEGORY_LABELS[cat.color ?? ""] ?? "text-zinc-400";
+          const isRequired = cat.slug === "character";
 
-      {/* Scene 选择 */}
-      <div className="space-y-2">
-        <label className="text-xs text-zinc-400">Scene（可选）</label>
-        <div className="relative">
-          <select
-            value={sceneId}
-            onChange={(e) => setSceneId(e.target.value)}
-            className="w-full appearance-none rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 pr-10 text-sm text-white outline-none focus:border-sky-500/40"
-          >
-            <option value="" className="bg-zinc-900">不选择场景</option>
-            {scenes.map((s) => (
-              <option key={s.id} value={s.id} className="bg-zinc-900">{s.name}</option>
-            ))}
-          </select>
-          <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-zinc-500" />
-        </div>
-      </div>
+          const selectedPreset = cat.presets.find((p) => p.id === selections[cat.id]);
 
-      {/* Style 选择 */}
-      <div className="space-y-2">
-        <label className="text-xs text-zinc-400">Style（可选）</label>
-        <div className="relative">
-          <select
-            value={styleId}
-            onChange={(e) => setStyleId(e.target.value)}
-            className="w-full appearance-none rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 pr-10 text-sm text-white outline-none focus:border-sky-500/40"
-          >
-            <option value="" className="bg-zinc-900">不选择风格</option>
-            {styles.map((s) => (
-              <option key={s.id} value={s.id} className="bg-zinc-900">{s.name}</option>
-            ))}
-          </select>
-          <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-zinc-500" />
-        </div>
+          return (
+            <div key={cat.id} className="space-y-2">
+              <label className={`text-xs ${labelClass}`}>
+                {cat.name}{isRequired ? " *" : "（可选）"}
+              </label>
+              <div className="relative">
+                <select
+                  value={selections[cat.id]}
+                  onChange={(e) => setSelection(cat.id, e.target.value)}
+                  className={`w-full appearance-none rounded-2xl bg-white/[0.03] px-4 py-3 pr-10 text-sm text-white outline-none ${colorClass}`}
+                >
+                  <option value="" className="bg-zinc-900">
+                    {isRequired ? `选择${cat.name}...` : `不选择${cat.name}`}
+                  </option>
+                  {cat.presets.map((preset) => (
+                    <option key={preset.id} value={preset.id} className="bg-zinc-900">
+                      {preset.name}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-zinc-500" />
+              </div>
+              {selectedPreset && (
+                <div className="rounded-xl bg-white/[0.03] px-3 py-2 text-xs text-zinc-500">
+                  {selectedPreset.prompt.slice(0, 80)}
+                  {selectedPreset.prompt.length > 80 ? "..." : ""}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* 备注 */}
@@ -140,7 +144,7 @@ export function JobForm({ characters, scenes, styles }: Props) {
       <button
         type="button"
         onClick={handleSubmit}
-        disabled={isPending || !title.trim() || !characterId}
+        disabled={isPending || !title.trim() || !hasCharacterSelected}
         className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-sky-500/20 bg-sky-500/10 px-4 py-3 text-sm font-medium text-sky-300 transition hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-40"
       >
         {isPending ? (

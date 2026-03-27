@@ -7,6 +7,47 @@ import { listWorkflowTemplateSummaries } from "@/server/services/workflow-templa
 export type { JobCreateOptions } from "@/server/repositories/job-repository";
 
 // ---------------------------------------------------------------------------
+// Preset binding helpers — resolve display names from presetBindings JSON
+// ---------------------------------------------------------------------------
+
+type PresetBindingJson = Array<{ categoryId: string; presetId: string }>;
+
+async function batchResolvePresetNames(presetIds: string[]): Promise<Map<string, { name: string; categorySlug: string }>> {
+  if (presetIds.length === 0) return new Map();
+  const presets = await prisma.promptPreset.findMany({
+    where: { id: { in: presetIds } },
+    select: { id: true, name: true, category: { select: { slug: true } } },
+  });
+  return new Map(presets.map((p) => [p.id, { name: p.name, categorySlug: p.category.slug }]));
+}
+
+function extractDisplayNames(
+  bindings: PresetBindingJson | null,
+  presetMap: Map<string, { name: string; categorySlug: string }>,
+): { characterName: string; sceneName: string; styleName: string } {
+  const result = { characterName: "—", sceneName: "—", styleName: "—" };
+  if (!bindings) return result;
+  for (const b of bindings) {
+    const preset = presetMap.get(b.presetId);
+    if (!preset) continue;
+    if (preset.categorySlug === "character") result.characterName = preset.name;
+    else if (preset.categorySlug === "scene") result.sceneName = preset.name;
+    else if (preset.categorySlug === "style") result.styleName = preset.name;
+  }
+  return result;
+}
+
+/** Collect all unique preset IDs from an array of presetBindings JSON values */
+function collectPresetIds(bindingsArray: (unknown)[]): string[] {
+  const ids = new Set<string>();
+  for (const raw of bindingsArray) {
+    const bindings = raw as PresetBindingJson | null;
+    if (bindings) for (const b of bindings) ids.add(b.presetId);
+  }
+  return [...ids];
+}
+
+// ---------------------------------------------------------------------------
 // Queue — 待审核队列
 // ---------------------------------------------------------------------------
 
@@ -16,7 +57,7 @@ export async function getQueueRuns(): Promise<QueueRun[]> {
     orderBy: { createdAt: "desc" },
     include: {
       completeJob: {
-        include: { character: true },
+        select: { id: true, title: true, presetBindings: true },
       },
       completeJobPosition: {
         include: { positionTemplate: true },
@@ -25,21 +66,29 @@ export async function getQueueRuns(): Promise<QueueRun[]> {
     },
   });
 
+  // Batch resolve preset names
+  const presetMap = await batchResolvePresetNames(
+    collectPresetIds(runs.map((r) => r.completeJob.presetBindings)),
+  );
+
   return runs
-    .map((run) => ({
-      id: run.id,
-      characterName: run.completeJob.character.name,
-      jobTitle: run.completeJob.title,
-      positionName:
-        run.completeJobPosition.name ??
-        run.completeJobPosition.positionTemplate?.name ??
-        `section_${run.completeJobPosition.sortOrder + 1}`,
-      createdAt: formatDate(run.createdAt),
-      finishedAt: run.finishedAt?.toISOString() ?? null,
-      pendingCount: run.images.filter((img) => img.reviewStatus === "pending").length,
-      totalCount: run.images.length,
-      status: run.status as QueueRun["status"],
-    }))
+    .map((run) => {
+      const names = extractDisplayNames(run.completeJob.presetBindings as PresetBindingJson | null, presetMap);
+      return {
+        id: run.id,
+        characterName: names.characterName,
+        jobTitle: run.completeJob.title,
+        positionName:
+          run.completeJobPosition.name ??
+          run.completeJobPosition.positionTemplate?.name ??
+          `section_${run.completeJobPosition.sortOrder + 1}`,
+        createdAt: formatDate(run.createdAt),
+        finishedAt: run.finishedAt?.toISOString() ?? null,
+        pendingCount: run.images.filter((img) => img.reviewStatus === "pending").length,
+        totalCount: run.images.length,
+        status: run.status as QueueRun["status"],
+      };
+    })
     .filter((run) => run.pendingCount > 0);
 }
 
@@ -52,22 +101,31 @@ export async function getRunningRuns(): Promise<RunningRun[]> {
     where: { status: { in: ["queued", "running"] } },
     orderBy: { createdAt: "desc" },
     include: {
-      completeJob: { include: { character: true } },
+      completeJob: {
+        select: { id: true, title: true, presetBindings: true },
+      },
       completeJobPosition: { include: { positionTemplate: true } },
     },
   });
 
-  return runs.map((run) => ({
-    id: run.id,
-    characterName: run.completeJob.character.name,
-    jobTitle: run.completeJob.title,
-    positionName:
-      run.completeJobPosition.name ??
-      run.completeJobPosition.positionTemplate?.name ??
-      `section_${run.completeJobPosition.sortOrder + 1}`,
-    startedAt: formatDate(run.createdAt),
-    status: run.status as RunningRun["status"],
-  }));
+  const presetMap = await batchResolvePresetNames(
+    collectPresetIds(runs.map((r) => r.completeJob.presetBindings)),
+  );
+
+  return runs.map((run) => {
+    const names = extractDisplayNames(run.completeJob.presetBindings as PresetBindingJson | null, presetMap);
+    return {
+      id: run.id,
+      characterName: names.characterName,
+      jobTitle: run.completeJob.title,
+      positionName:
+        run.completeJobPosition.name ??
+        run.completeJobPosition.positionTemplate?.name ??
+        `section_${run.completeJobPosition.sortOrder + 1}`,
+      startedAt: formatDate(run.createdAt),
+      status: run.status as RunningRun["status"],
+    };
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -80,22 +138,31 @@ export async function getFailedRuns(): Promise<FailedRun[]> {
     orderBy: { finishedAt: "desc" },
     take: 20,
     include: {
-      completeJob: { include: { character: true } },
+      completeJob: {
+        select: { id: true, title: true, presetBindings: true },
+      },
       completeJobPosition: { include: { positionTemplate: true } },
     },
   });
 
-  return runs.map((run) => ({
-    id: run.id,
-    characterName: run.completeJob.character.name,
-    jobTitle: run.completeJob.title,
-    positionName:
-      run.completeJobPosition.name ??
-      run.completeJobPosition.positionTemplate?.name ??
-      `section_${run.completeJobPosition.sortOrder + 1}`,
-    errorMessage: run.errorMessage,
-    finishedAt: run.finishedAt?.toISOString() ?? null,
-  }));
+  const presetMap = await batchResolvePresetNames(
+    collectPresetIds(runs.map((r) => r.completeJob.presetBindings)),
+  );
+
+  return runs.map((run) => {
+    const names = extractDisplayNames(run.completeJob.presetBindings as PresetBindingJson | null, presetMap);
+    return {
+      id: run.id,
+      characterName: names.characterName,
+      jobTitle: run.completeJob.title,
+      positionName:
+        run.completeJobPosition.name ??
+        run.completeJobPosition.positionTemplate?.name ??
+        `section_${run.completeJobPosition.sortOrder + 1}`,
+      errorMessage: run.errorMessage,
+      finishedAt: run.finishedAt?.toISOString() ?? null,
+    };
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -107,7 +174,7 @@ export async function getReviewGroup(runId: string): Promise<ReviewGroup | null>
     where: { id: runId },
     include: {
       completeJob: {
-        include: { character: true },
+        select: { id: true, title: true, presetBindings: true },
       },
       completeJobPosition: {
         include: { positionTemplate: true },
@@ -120,6 +187,12 @@ export async function getReviewGroup(runId: string): Promise<ReviewGroup | null>
 
   if (!run) return null;
 
+  // Resolve characterName from presetBindings
+  const presetMap = await batchResolvePresetNames(
+    collectPresetIds([run.completeJob.presetBindings]),
+  );
+  const names = extractDisplayNames(run.completeJob.presetBindings as PresetBindingJson | null, presetMap);
+
   const images: ReviewImage[] = run.images.map((img, index) => ({
     id: img.id,
     src: toImageUrl(img.thumbPath ?? img.filePath) ?? "",
@@ -130,7 +203,7 @@ export async function getReviewGroup(runId: string): Promise<ReviewGroup | null>
   return {
     id: run.id,
     title: run.completeJob.title,
-    characterName: run.completeJob.character.name,
+    characterName: names.characterName,
     positionName:
       run.completeJobPosition.name ??
       run.completeJobPosition.positionTemplate?.name ??
@@ -162,24 +235,34 @@ export async function getReviewGroupIds(): Promise<string[]> {
 export async function getJobs(): Promise<JobCard[]> {
   const jobs = await prisma.completeJob.findMany({
     orderBy: { updatedAt: "desc" },
-    include: {
-      character: true,
-      scenePreset: true,
-      stylePreset: true,
+    select: {
+      id: true,
+      title: true,
+      status: true,
+      updatedAt: true,
+      presetBindings: true,
       _count: { select: { positions: true } },
     },
   });
 
-  return jobs.map((job) => ({
-    id: job.id,
-    title: job.title,
-    characterName: job.character.name,
-    sceneName: job.scenePreset?.name ?? "—",
-    styleName: job.stylePreset?.name ?? "—",
-    status: job.status as JobCard["status"],
-    updatedAt: formatDate(job.updatedAt),
-    positionCount: job._count.positions,
-  }));
+  // Batch resolve preset names
+  const presetMap = await batchResolvePresetNames(
+    collectPresetIds(jobs.map((j) => j.presetBindings)),
+  );
+
+  return jobs.map((job) => {
+    const names = extractDisplayNames(job.presetBindings as PresetBindingJson | null, presetMap);
+    return {
+      id: job.id,
+      title: job.title,
+      characterName: names.characterName,
+      sceneName: names.sceneName,
+      styleName: names.styleName,
+      status: job.status as JobCard["status"],
+      updatedAt: formatDate(job.updatedAt),
+      positionCount: job._count.positions,
+    };
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -207,9 +290,6 @@ export type JobDetail = {
   sceneName: string;
   styleName: string;
   status: string;
-  characterPrompt: string;
-  scenePrompt: string | null;
-  stylePrompt: string | null;
   positions: {
     id: string;
     name: string;
@@ -230,10 +310,11 @@ export type JobDetail = {
 export async function getJobDetail(jobId: string): Promise<JobDetail | null> {
   const job = await prisma.completeJob.findUnique({
     where: { id: jobId },
-    include: {
-      character: true,
-      scenePreset: true,
-      stylePreset: true,
+    select: {
+      id: true,
+      title: true,
+      status: true,
+      presetBindings: true,
       positions: {
         orderBy: { sortOrder: "asc" },
         include: {
@@ -266,16 +347,19 @@ export async function getJobDetail(jobId: string): Promise<JobDetail | null> {
 
   if (!job) return null;
 
+  // Resolve display names from presetBindings
+  const presetMap = await batchResolvePresetNames(
+    collectPresetIds([job.presetBindings]),
+  );
+  const names = extractDisplayNames(job.presetBindings as PresetBindingJson | null, presetMap);
+
   return {
     id: job.id,
     title: job.title,
-    characterName: job.character.name,
-    sceneName: job.scenePreset?.name ?? "—",
-    styleName: job.stylePreset?.name ?? "—",
+    characterName: names.characterName,
+    sceneName: names.sceneName,
+    styleName: names.styleName,
     status: job.status,
-    characterPrompt: job.characterPrompt,
-    scenePrompt: job.scenePrompt,
-    stylePrompt: job.stylePrompt,
     positions: job.positions.map((pos) => {
       const positiveBlockCount = pos.promptBlocks.filter((b) => b.positive?.trim()).length;
       const negativeBlockCount = pos.promptBlocks.filter((b) => b.negative?.trim()).length;
@@ -455,120 +539,68 @@ export async function getLoraAssets(): Promise<LoraAsset[]> {
 // Prompt Library — 词库（用于添加提示词块时选择）
 // ---------------------------------------------------------------------------
 
-import type { Prisma } from "@/generated/prisma";
-
-export type PromptLibraryItem = {
-  id: string;
-  name: string;
-  prompt: string;
-  negativePrompt: string | null;
-  loraPath?: string | null;          // Character only
-  loraBindings?: Prisma.JsonValue;   // Character only (v0.3: Scene/Style no longer have loraBindings)
-  lora1?: Prisma.JsonValue;          // PositionTemplate only (v0.3)
-  lora2?: Prisma.JsonValue;          // PositionTemplate only (v0.3)
-};
-
-export type PromptLibrary = {
-  characters: PromptLibraryItem[];
-  scenes: PromptLibraryItem[];
-  styles: PromptLibraryItem[];
-  positions: PromptLibraryItem[];
-};
-
-export async function getPromptLibrary(): Promise<PromptLibrary> {
-  const [characters, scenes, styles, positions] = await Promise.all([
-    prisma.character.findMany({
-      where: { isActive: true },
-      orderBy: { name: "asc" },
-      select: { id: true, name: true, prompt: true, negativePrompt: true, loraPath: true, loraBindings: true },
-    }),
-    prisma.scenePreset.findMany({
-      where: { isActive: true },
-      orderBy: { name: "asc" },
-      select: { id: true, name: true, prompt: true, negativePrompt: true },
-    }),
-    prisma.stylePreset.findMany({
-      where: { isActive: true },
-      orderBy: { name: "asc" },
-      select: { id: true, name: true, prompt: true, negativePrompt: true },
-    }),
-    prisma.positionTemplate.findMany({
-      where: { enabled: true },
-      orderBy: { name: "asc" },
-      select: { id: true, name: true, prompt: true, negativePrompt: true, lora1: true, lora2: true },
-    }),
-  ]);
-
-  return { characters, scenes, styles, positions };
-}
 
 // ---------------------------------------------------------------------------
 // Job Form Options — 创建/编辑 Job 所需的下拉选项
 // ---------------------------------------------------------------------------
 
-export type FormOption = { id: string; name: string; slug: string };
-export type PositionOption = FormOption & {
-  defaultAspectRatio: string | null;
-  defaultBatchSize: number | null;
-  defaultSeedPolicy1: string | null;
-  defaultSeedPolicy2: string | null;
+export type JobFormCategory = {
+  id: string;
+  name: string;
+  slug: string;
+  icon: string | null;
+  color: string | null;
+  sortOrder: number;
+  presets: Array<{
+    id: string;
+    name: string;
+    slug: string;
+    prompt: string;
+    negativePrompt: string | null;
+    isActive: boolean;
+  }>;
 };
 
-export async function getJobFormOptions() {
-  const [characters, scenes, styles, positions] = await Promise.all([
-    prisma.character.findMany({
-      where: { isActive: true },
-      orderBy: { name: "asc" },
-      select: { id: true, name: true, slug: true, prompt: true, loraPath: true },
-    }),
-    prisma.scenePreset.findMany({
-      where: { isActive: true },
-      orderBy: { name: "asc" },
-      select: { id: true, name: true, slug: true, prompt: true },
-    }),
-    prisma.stylePreset.findMany({
-      where: { isActive: true },
-      orderBy: { name: "asc" },
-      select: { id: true, name: true, slug: true, prompt: true },
-    }),
-    prisma.positionTemplate.findMany({
-      where: { enabled: true },
-      orderBy: { name: "asc" },
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-        defaultAspectRatio: true,
-        defaultBatchSize: true,
-        defaultSeedPolicy1: true,
-        defaultSeedPolicy2: true,
+export type JobFormOptions = {
+  categories: JobFormCategory[];
+};
+
+export async function getJobFormOptions(): Promise<JobFormOptions> {
+  const categories = await prisma.promptCategory.findMany({
+    orderBy: { sortOrder: "asc" },
+    include: {
+      presets: {
+        where: { isActive: true },
+        orderBy: { sortOrder: "asc" },
+        select: { id: true, name: true, slug: true, prompt: true, negativePrompt: true, isActive: true },
       },
-    }),
-  ]);
+    },
+  });
 
-  // Map positions to include seedPolicy fields
-  const mappedPositions = positions.map((p) => ({
-    ...p,
-  }));
-
-  return { characters, scenes, styles, positions: mappedPositions };
+  return {
+    categories: categories.map((c) => ({
+      id: c.id,
+      name: c.name,
+      slug: c.slug,
+      icon: c.icon,
+      color: c.color,
+      sortOrder: c.sortOrder,
+      presets: c.presets,
+    })),
+  };
 }
 
 // ---------------------------------------------------------------------------
 // Job Edit Data — 编辑 Job 时加载完整数据
 // ---------------------------------------------------------------------------
 
+export type PresetBinding = { categoryId: string; presetId: string };
+
 export type JobEditData = {
   id: string;
   title: string;
   slug: string;
-  characterId: string;
-  scenePresetId: string | null;
-  stylePresetId: string | null;
-  characterPrompt: string;
-  characterLoraPath: string;
-  scenePrompt: string | null;
-  stylePrompt: string | null;
+  presetBindings: PresetBinding[];
   notes: string | null;
   positions: {
     id: string;
@@ -627,13 +659,7 @@ export async function getJobEditData(jobId: string): Promise<JobEditData | null>
     id: job.id,
     title: job.title,
     slug: job.slug,
-    characterId: job.characterId,
-    scenePresetId: job.scenePresetId,
-    stylePresetId: job.stylePresetId,
-    characterPrompt: job.characterPrompt,
-    characterLoraPath: job.characterLoraPath,
-    scenePrompt: job.scenePrompt,
-    stylePrompt: job.stylePrompt,
+    presetBindings: Array.isArray(job.presetBindings) ? (job.presetBindings as PresetBinding[]) : [],
     notes: job.notes,
     positions: job.positions.map((pos) => ({
       ...pos,
@@ -647,28 +673,165 @@ export async function getJobEditData(jobId: string): Promise<JobEditData | null>
   };
 }
 
-// ---------------------------------------------------------------------------
-// Settings — Character / Scene / Style / PositionTemplate 管理
-// ---------------------------------------------------------------------------
-
-export async function getCharacters() {
-  return prisma.character.findMany({ orderBy: { name: "asc" } });
-}
-
-export async function getScenePresets() {
-  return prisma.scenePreset.findMany({ orderBy: { name: "asc" } });
-}
-
-export async function getStylePresets() {
-  return prisma.stylePreset.findMany({ orderBy: { name: "asc" } });
-}
-
-export async function getPositionTemplates() {
-  return prisma.positionTemplate.findMany({ orderBy: { name: "asc" } });
-}
-
 export async function getWorkflowTemplateOptions() {
   return listWorkflowTemplateSummaries();
+}
+
+// ---------------------------------------------------------------------------
+// Prompt Categories & Presets — 统一提示词管理
+// ---------------------------------------------------------------------------
+
+export type PromptCategoryItem = {
+  id: string;
+  name: string;
+  slug: string;
+  icon: string | null;
+  color: string | null;
+  positivePromptOrder: number;
+  negativePromptOrder: number;
+  lora1Order: number;
+  lora2Order: number;
+  sortOrder: number;
+  presetCount: number;
+};
+
+export async function getPromptCategories(): Promise<PromptCategoryItem[]> {
+  const categories = await prisma.promptCategory.findMany({
+    orderBy: { sortOrder: "asc" },
+    include: { _count: { select: { presets: true } } },
+  });
+  return categories.map((c) => ({
+    id: c.id,
+    name: c.name,
+    slug: c.slug,
+    icon: c.icon,
+    color: c.color,
+    positivePromptOrder: c.positivePromptOrder,
+    negativePromptOrder: c.negativePromptOrder,
+    lora1Order: c.lora1Order,
+    lora2Order: c.lora2Order,
+    sortOrder: c.sortOrder,
+    presetCount: c._count.presets,
+  }));
+}
+
+export type PromptPresetItem = {
+  id: string;
+  categoryId: string;
+  name: string;
+  slug: string;
+  prompt: string;
+  negativePrompt: string | null;
+  lora1: unknown;
+  lora2: unknown;
+  defaultParams: unknown;
+  notes: string | null;
+  isActive: boolean;
+  sortOrder: number;
+};
+
+export async function getPromptPresets(categoryId: string): Promise<PromptPresetItem[]> {
+  const presets = await prisma.promptPreset.findMany({
+    where: { categoryId },
+    orderBy: { sortOrder: "asc" },
+  });
+  return presets.map((p) => ({
+    id: p.id,
+    categoryId: p.categoryId,
+    name: p.name,
+    slug: p.slug,
+    prompt: p.prompt,
+    negativePrompt: p.negativePrompt,
+    lora1: p.lora1,
+    lora2: p.lora2,
+    defaultParams: p.defaultParams,
+    notes: p.notes,
+    isActive: p.isActive,
+    sortOrder: p.sortOrder,
+  }));
+}
+
+export type PromptCategoryFull = PromptCategoryItem & {
+  presets: PromptPresetItem[];
+};
+
+export async function getPromptCategoriesWithPresets(): Promise<PromptCategoryFull[]> {
+  const categories = await prisma.promptCategory.findMany({
+    orderBy: { sortOrder: "asc" },
+    include: {
+      _count: { select: { presets: true } },
+      presets: { orderBy: { sortOrder: "asc" } },
+    },
+  });
+  return categories.map((c) => ({
+    id: c.id,
+    name: c.name,
+    slug: c.slug,
+    icon: c.icon,
+    color: c.color,
+    positivePromptOrder: c.positivePromptOrder,
+    negativePromptOrder: c.negativePromptOrder,
+    lora1Order: c.lora1Order,
+    lora2Order: c.lora2Order,
+    sortOrder: c.sortOrder,
+    presetCount: c._count.presets,
+    presets: c.presets.map((p) => ({
+      id: p.id,
+      categoryId: p.categoryId,
+      name: p.name,
+      slug: p.slug,
+      prompt: p.prompt,
+      negativePrompt: p.negativePrompt,
+      lora1: p.lora1,
+      lora2: p.lora2,
+      defaultParams: p.defaultParams,
+      notes: p.notes,
+      isActive: p.isActive,
+      sortOrder: p.sortOrder,
+    })),
+  }));
+}
+
+/** V2 prompt library: dynamic categories for the block editor import panel */
+export type PromptLibraryV2 = {
+  categories: Array<{
+    id: string;
+    name: string;
+    slug: string;
+    color: string | null;
+    icon: string | null;
+    presets: Array<{
+      id: string;
+      name: string;
+      prompt: string;
+      negativePrompt: string | null;
+      lora1: unknown;
+      lora2: unknown;
+    }>;
+  }>;
+};
+
+export async function getPromptLibraryV2(): Promise<PromptLibraryV2> {
+  const categories = await prisma.promptCategory.findMany({
+    orderBy: { sortOrder: "asc" },
+    include: {
+      presets: {
+        where: { isActive: true },
+        orderBy: { sortOrder: "asc" },
+        select: { id: true, name: true, prompt: true, negativePrompt: true, lora1: true, lora2: true },
+      },
+    },
+  });
+  return {
+    categories: categories.map((c) => ({
+      id: c.id,
+      name: c.name,
+      slug: c.slug,
+      color: c.color,
+      icon: c.icon,
+      presets: c.presets,
+    })),
+  };
 }
 
 // ---------------------------------------------------------------------------

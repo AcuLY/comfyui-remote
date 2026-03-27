@@ -13,12 +13,8 @@ export default async function NewJobPage() {
         <ArrowLeft className="size-4" /> 返回大任务
       </Link>
 
-      <SectionCard title="创建大任务" subtitle="选择角色、场景、风格，创建后在详情页添加小节。">
-        <JobForm
-          characters={options.characters}
-          scenes={options.scenes}
-          styles={options.styles}
-        />
+      <SectionCard title="创建大任务" subtitle="选择各分类的预设模板，创建后在详情页添加小节。">
+        <JobForm categories={options.categories} />
       </SectionCard>
     </div>
   );

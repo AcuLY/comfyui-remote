@@ -5,6 +5,7 @@ export type PromptBlockRecord = {
   id: string;
   type: PromptBlockType;
   sourceId: string | null;
+  categoryId: string | null;
   label: string;
   positive: string;
   negative: string | null;
@@ -14,6 +15,7 @@ export type PromptBlockRecord = {
 export type PromptBlockCreateInput = {
   type: PromptBlockType;
   sourceId?: string | null;
+  categoryId?: string | null;
   label: string;
   positive: string;
   negative?: string | null;
@@ -37,6 +39,7 @@ export async function listPromptBlocks(
       id: true,
       type: true,
       sourceId: true,
+      categoryId: true,
       label: true,
       positive: true,
       negative: true,
@@ -64,6 +67,7 @@ export async function createPromptBlock(
       completeJobPositionId: jobPositionId,
       type: input.type,
       sourceId: input.sourceId ?? null,
+      categoryId: input.categoryId ?? null,
       label: input.label,
       positive: input.positive,
       negative: input.negative ?? null,
@@ -73,6 +77,7 @@ export async function createPromptBlock(
       id: true,
       type: true,
       sourceId: true,
+      categoryId: true,
       label: true,
       positive: true,
       negative: true,
@@ -94,6 +99,7 @@ export async function batchCreatePromptBlocks(
           completeJobPositionId: jobPositionId,
           type: input.type,
           sourceId: input.sourceId ?? null,
+          categoryId: input.categoryId ?? null,
           label: input.label,
           positive: input.positive,
           negative: input.negative ?? null,
@@ -103,6 +109,7 @@ export async function batchCreatePromptBlocks(
           id: true,
           type: true,
           sourceId: true,
+          categoryId: true,
           label: true,
           positive: true,
           negative: true,
@@ -139,6 +146,7 @@ export async function updatePromptBlock(
       id: true,
       type: true,
       sourceId: true,
+      categoryId: true,
       label: true,
       positive: true,
       negative: true,
@@ -190,6 +198,7 @@ export async function reorderPromptBlocks(
           id: true,
           type: true,
           sourceId: true,
+          categoryId: true,
           label: true,
           positive: true,
           negative: true,

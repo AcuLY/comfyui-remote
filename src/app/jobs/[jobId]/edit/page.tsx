@@ -23,9 +23,7 @@ export default async function EditJobPage({ params }: { params: Promise<{ jobId:
       <SectionCard title="编辑大任务" subtitle="修改参数后保存，不影响已有运行记录。">
         <JobEditForm
           job={job}
-          characters={options.characters}
-          scenes={options.scenes}
-          styles={options.styles}
+          categories={options.categories}
         />
       </SectionCard>
     </div>

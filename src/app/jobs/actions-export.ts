@@ -20,11 +20,13 @@ type ExportResult = {
  * and all featured images into a pixiv/ folder.
  */
 export async function exportJobImages(jobId: string): Promise<ExportResult> {
-  // 1. Fetch job with character name, positions (sorted), and kept images
+  // 1. Fetch job with positions (sorted) and kept images
   const job = await prisma.completeJob.findUnique({
     where: { id: jobId },
-    include: {
-      character: { select: { name: true } },
+    select: {
+      id: true,
+      title: true,
+      presetBindings: true,
       positions: {
         orderBy: { sortOrder: "asc" },
         include: {
@@ -51,7 +53,23 @@ export async function exportJobImages(jobId: string): Promise<ExportResult> {
     return { success: false, message: "任务不存在" };
   }
 
-  const characterName = job.character.name;
+  // Resolve characterName from presetBindings for directory naming
+  type PresetBindingJson = Array<{ categoryId: string; presetId: string }>;
+  const bindings = job.presetBindings as PresetBindingJson | null;
+  let characterName = job.title; // fallback to job title
+  if (bindings && bindings.length > 0) {
+    const presetIds = bindings.map((b) => b.presetId);
+    const presets = await prisma.promptPreset.findMany({
+      where: { id: { in: presetIds } },
+      select: { id: true, name: true, category: { select: { slug: true } } },
+    });
+    for (const preset of presets) {
+      if (preset.category.slug === "character") {
+        characterName = preset.name;
+        break;
+      }
+    }
+  }
   const exportDir = join(EXPORT_ROOT, characterName);
   const pixivDir = join(exportDir, "pixiv");
   const tempJpgDir = join(exportDir, "_temp_jpg");

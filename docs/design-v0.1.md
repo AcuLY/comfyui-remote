@@ -1,5 +1,9 @@
 # ComfyUI Manager 设计文档 v0.1
 
+> **注意**: 本文档描述的是 v0.1 原始设计。v0.5 已将 Character / ScenePreset / StylePreset / PositionTemplate
+> 替换为统一的 PromptCategory + PromptPreset 系统。旧模型仅保留在 schema 中用于数据兼容，应用层已不再直接查询。
+> 详见 `development-progress.md` 和 `development-todo.md`。
+
 ## 目标
 做一个移动优先的 ComfyUI 管理后台，用来：
 - 按 Character → 大任务 → Position Run 管理生成任务
