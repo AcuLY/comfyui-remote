@@ -78,12 +78,12 @@ export default async function SectionEditPage({
   // Parse existing LoRA config (v0.3: { characterLora, lora1, lora2 })
   const loraConfig = parsePositionLoraConfig(pos.loraConfig);
 
-  // Auto-populate characterLora from job's character if not yet present
+  // Auto-populate characterLora from job's presetBindings if not yet present
   if (pos.completeJob) {
     const job = pos.completeJob;
     let characterLoraChanged = false;
 
-    // Character's main loraPath
+    // Character's main loraPath (legacy field on job)
     if (job.characterLoraPath) {
       const exists = loraConfig.characterLora.some((e) => e.path === job.characterLoraPath);
       if (!exists) {
@@ -99,27 +99,32 @@ export default async function SectionEditPage({
       }
     }
 
-    // Character's loraBindings (from character preset)
-    if (job.characterId) {
-      const character = await prisma.character.findUnique({
-        where: { id: job.characterId },
-        select: { name: true, loraBindings: true },
+    // Character's lora from presetBindings (PromptPreset.lora1)
+    type PresetBindingJson = Array<{ categoryId: string; presetId: string }>;
+    const bindings = job.presetBindings as PresetBindingJson | null;
+    if (bindings && bindings.length > 0) {
+      const presetIds = bindings.map((b) => b.presetId);
+      const presets = await prisma.promptPreset.findMany({
+        where: { id: { in: presetIds } },
+        select: { id: true, name: true, lora1: true, category: { select: { slug: true } } },
       });
-      if (character?.loraBindings) {
-        const bindings = parseLoraBindings(character.loraBindings);
-        for (const binding of bindings) {
-          if (!binding.path) continue;
-          const exists = loraConfig.characterLora.some((e) => e.path === binding.path);
-          if (!exists) {
-            loraConfig.characterLora.push({
-              id: generateLoraEntryId(),
-              path: binding.path,
-              weight: binding.weight,
-              enabled: binding.enabled,
-              source: "character",
-              sourceLabel: `角色: ${character.name}`,
-            });
-            characterLoraChanged = true;
+      for (const preset of presets) {
+        if (preset.category.slug === "character" && preset.lora1) {
+          const lora1Bindings = parseLoraBindings(preset.lora1);
+          for (const binding of lora1Bindings) {
+            if (!binding.path) continue;
+            const exists = loraConfig.characterLora.some((e) => e.path === binding.path);
+            if (!exists) {
+              loraConfig.characterLora.push({
+                id: generateLoraEntryId(),
+                path: binding.path,
+                weight: binding.weight,
+                enabled: binding.enabled,
+                source: "character",
+                sourceLabel: `角色: ${preset.name}`,
+              });
+              characterLoraChanged = true;
+            }
           }
         }
       }
