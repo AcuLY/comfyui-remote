@@ -25,17 +25,22 @@ export async function getQueueRuns(): Promise<QueueRun[]> {
     },
   });
 
-  return runs.map((run) => ({
-    id: run.id,
-    characterName: run.completeJob.character.name,
-    jobTitle: run.completeJob.title,
-    positionName: run.completeJobPosition.positionTemplate?.name ?? "Unknown",
-    createdAt: formatDate(run.createdAt),
-    finishedAt: run.finishedAt?.toISOString() ?? null,
-    pendingCount: run.images.filter((img) => img.reviewStatus === "pending").length,
-    totalCount: run.images.length,
-    status: run.status as QueueRun["status"],
-  }));
+  return runs
+    .map((run) => ({
+      id: run.id,
+      characterName: run.completeJob.character.name,
+      jobTitle: run.completeJob.title,
+      positionName:
+        run.completeJobPosition.name ??
+        run.completeJobPosition.positionTemplate?.name ??
+        `section_${run.completeJobPosition.sortOrder + 1}`,
+      createdAt: formatDate(run.createdAt),
+      finishedAt: run.finishedAt?.toISOString() ?? null,
+      pendingCount: run.images.filter((img) => img.reviewStatus === "pending").length,
+      totalCount: run.images.length,
+      status: run.status as QueueRun["status"],
+    }))
+    .filter((run) => run.pendingCount > 0);
 }
 
 // ---------------------------------------------------------------------------
