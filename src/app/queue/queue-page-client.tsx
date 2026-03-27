@@ -1,21 +1,23 @@
 "use client";
 
-import { useState, useEffect, useTransition, useCallback } from "react";
+import { useState, useEffect, useTransition, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronRight, Clock3, Eye, Sparkles, Loader2, RefreshCw, CheckCircle2 } from "lucide-react";
+import { ChevronRight, Clock3, Eye, Sparkles, Loader2, RefreshCw, CheckCircle2, AlertTriangle } from "lucide-react";
+import { toast } from "sonner";
 import { PageHeader } from "@/components/page-header";
 import { SectionCard } from "@/components/section-card";
 import { StatChip } from "@/components/stat-chip";
-import type { QueueRun, RunningRun } from "@/lib/types";
+import type { QueueRun, RunningRun, FailedRun } from "@/lib/types";
 
-export type QueueTabKey = "pending" | "running";
+export type QueueTabKey = "pending" | "running" | "failed";
 
 type TabDef = { key: QueueTabKey; label: string };
 
 const TABS: TabDef[] = [
   { key: "pending", label: "待审核" },
   { key: "running", label: "运行中" },
+  { key: "failed", label: "失败" },
 ];
 
 const POLL_INTERVAL_MS = 5_000;
@@ -39,14 +41,19 @@ function formatTimeAgo(isoString: string | null): string | null {
 type Props = {
   initialQueueRuns: QueueRun[];
   initialRunningRuns: RunningRun[];
+  initialFailedRuns?: FailedRun[];
 };
 
-export function QueuePageClient({ initialQueueRuns, initialRunningRuns }: Props) {
+export function QueuePageClient({ initialQueueRuns, initialRunningRuns, initialFailedRuns }: Props) {
   const [activeTab, setActiveTab] = useState<QueueTabKey>("pending");
   const [queueRuns, setQueueRuns] = useState<QueueRun[]>(initialQueueRuns);
   const [runningRuns, setRunningRuns] = useState<RunningRun[]>(initialRunningRuns);
+  const [failedRuns, setFailedRuns] = useState<FailedRun[]>(initialFailedRuns ?? []);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
+
+  // Track known failed run IDs for toast diff
+  const knownFailedIdsRef = useRef<Set<string>>(new Set((initialFailedRuns ?? []).map((r) => r.id)));
 
   const refresh = useCallback(() => {
     startTransition(async () => {
@@ -55,6 +62,20 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns }: Props)
       const data = await res.json();
       setQueueRuns(data.queueRuns ?? []);
       setRunningRuns(data.runningRuns ?? []);
+
+      const newFailed: FailedRun[] = data.failedRuns ?? [];
+      // Show toast for newly appeared failures
+      for (const run of newFailed) {
+        if (!knownFailedIdsRef.current.has(run.id)) {
+          toast.error(`${run.jobTitle} / ${run.positionName} 失败`, {
+            description: run.errorMessage ?? "未知错误",
+            duration: 8000,
+          });
+        }
+      }
+      knownFailedIdsRef.current = new Set(newFailed.map((r) => r.id));
+      setFailedRuns(newFailed);
+
       router.refresh();
     });
   }, [router]);
@@ -68,6 +89,7 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns }: Props)
   const pendingTotal = queueRuns.reduce((sum, run) => sum + run.pendingCount, 0);
   const runTotal = queueRuns.length;
   const runningCount = runningRuns.length;
+  const failedCount = failedRuns.length;
 
   return (
     <div className="space-y-4">
@@ -77,14 +99,19 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns }: Props)
       <div className="flex items-center gap-1 rounded-2xl border border-white/10 bg-white/[0.03] p-1">
         {TABS.map((tab) => {
           const isActive = activeTab === tab.key;
-          const badge = tab.key === "pending" ? pendingTotal : runningCount;
+          const badge =
+            tab.key === "pending" ? pendingTotal :
+            tab.key === "running" ? runningCount :
+            failedCount;
           return (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
               className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm transition ${
                 isActive
-                  ? "bg-sky-500/20 text-sky-300"
+                  ? tab.key === "failed"
+                    ? "bg-red-500/20 text-red-300"
+                    : "bg-sky-500/20 text-sky-300"
                   : "text-zinc-400 hover:bg-white/[0.06] hover:text-zinc-200"
               }`}
             >
@@ -92,7 +119,11 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns }: Props)
               {badge > 0 && (
                 <span
                   className={`rounded-full px-1.5 py-0.5 text-[11px] font-medium ${
-                    isActive ? "bg-sky-500/30 text-sky-200" : "bg-white/10 text-zinc-500"
+                    isActive
+                      ? tab.key === "failed"
+                        ? "bg-red-500/30 text-red-200"
+                        : "bg-sky-500/30 text-sky-200"
+                      : "bg-white/10 text-zinc-500"
                   }`}
                 >
                   {badge}
@@ -199,6 +230,44 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns }: Props)
                     <Clock3 className="mb-1 size-3.5" />
                     {run.startedAt}
                   </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Failed tab */}
+      {activeTab === "failed" && (
+        <SectionCard title="失败任务" subtitle="最近 20 条失败记录。">
+          <div className="space-y-3">
+            {failedRuns.length === 0 && (
+              <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6 text-center text-sm text-zinc-500">
+                暂无失败记录
+              </div>
+            )}
+            {failedRuns.map((run) => (
+              <div
+                key={run.id}
+                className="rounded-2xl border border-red-500/10 bg-red-500/[0.03] p-4"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-semibold text-white">{run.jobTitle}</div>
+                    <div className="mt-1 text-xs text-zinc-400">{run.characterName} · {run.positionName}</div>
+                  </div>
+                  <span className="rounded-full border border-red-500/20 bg-red-500/10 px-2 py-1 text-[11px] text-red-300">
+                    <AlertTriangle className="mr-1 inline size-3" />
+                    失败
+                  </span>
+                </div>
+                {run.errorMessage && (
+                  <div className="mt-2 rounded-xl bg-black/30 px-3 py-2 font-mono text-[11px] leading-5 text-red-400/80">
+                    {run.errorMessage}
+                  </div>
+                )}
+                <div className="mt-2 text-xs text-zinc-500">
+                  {formatTimeAgo(run.finishedAt) ?? ""}
                 </div>
               </div>
             ))}
