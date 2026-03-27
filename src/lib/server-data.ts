@@ -31,6 +31,7 @@ export async function getQueueRuns(): Promise<QueueRun[]> {
     jobTitle: run.completeJob.title,
     positionName: run.completeJobPosition.positionTemplate?.name ?? "Unknown",
     createdAt: formatDate(run.createdAt),
+    finishedAt: run.finishedAt?.toISOString() ?? null,
     pendingCount: run.images.filter((img) => img.reviewStatus === "pending").length,
     totalCount: run.images.length,
     status: run.status as QueueRun["status"],

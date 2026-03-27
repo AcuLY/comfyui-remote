@@ -6,6 +6,7 @@ export type QueueRun = {
   jobTitle: string;
   positionName: string;
   createdAt: string;
+  finishedAt: string | null;
   pendingCount: number;
   totalCount: number;
   status: "queued" | "running" | "done" | "failed";

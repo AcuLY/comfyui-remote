@@ -3,7 +3,7 @@
 import { useState, useEffect, useTransition, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronRight, Clock3, Eye, Sparkles, Loader2, RefreshCw } from "lucide-react";
+import { ChevronRight, Clock3, Eye, Sparkles, Loader2, RefreshCw, CheckCircle2 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { SectionCard } from "@/components/section-card";
 import { StatChip } from "@/components/stat-chip";
@@ -19,6 +19,22 @@ const TABS: TabDef[] = [
 ];
 
 const POLL_INTERVAL_MS = 5_000;
+
+/** Format a time string: <1h shows "X 分钟前", >=1h shows absolute time */
+function formatTimeAgo(isoString: string | null): string | null {
+  if (!isoString) return null;
+  const date = new Date(isoString);
+  const now = Date.now();
+  const diffMs = now - date.getTime();
+  const diffMin = Math.floor(diffMs / 60_000);
+
+  if (diffMin < 1) return "刚刚";
+  if (diffMin < 60) return `${diffMin} 分钟前`;
+
+  // Absolute time: MM-DD HH:mm
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
 
 type Props = {
   initialQueueRuns: QueueRun[];
@@ -128,8 +144,8 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns }: Props)
                   </div>
                   <div className="mt-3 grid grid-cols-3 gap-2 text-xs text-zinc-400">
                     <div className="rounded-xl bg-white/[0.03] px-3 py-2">
-                      <Clock3 className="mb-1 size-3.5" />
-                      {run.createdAt}
+                      <CheckCircle2 className="mb-1 size-3.5" />
+                      {formatTimeAgo(run.finishedAt) ?? run.createdAt}
                     </div>
                     <div className="rounded-xl bg-white/[0.03] px-3 py-2">
                       <Eye className="mb-1 size-3.5" />
