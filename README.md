@@ -4,7 +4,7 @@
 
 ## ✨ 功能亮点
 
-- **大任务管理** — 用 Character × Scene × Style × Position 组合创建批量生图任务
+- **大任务管理** — 用统一分类系统（PromptCategory × PromptPreset）组合创建批量生图任务
 - **宫格审图** — 在手机上滑动式多选，批量保留 / 删除，支持单张放大；操作后一键处理剩余并跳转下一组
 - **结果 Gallery** — 独立结果页展示小节所有运行图片，Lightbox 放大查看，支持精选标记（⭐）
 - **图片整合导出** — 一键将已保留图片转 JPG 打包 zip，精选图片单独输出到 pixiv/ 目录
@@ -135,7 +135,7 @@ npm run db:bootstrap:sqlite
 | 宫格审图 | `/queue/:runId` | 多选 + 批量保留 / 删除 + 处理剩余跳转下一组 |
 | 单张查看 | `/queue/:runId/images/:imageId` | 大图 + 左右切换 + 处理剩余跳转下一组 |
 | Job 列表 | `/jobs` | 创建 / 编辑 / 复制 / 运行 |
-| 创建 Job | `/jobs/new` | 选择 Character / Scene / Style，勾选 Position |
+| 创建 Job | `/jobs/new` | 选择各提示词分类的预设模板 |
 | Job 详情 | `/jobs/:jobId` | Position 列表 + 缩略图条 + 运行 + 图片整合导出 |
 | Job 编辑 | `/jobs/:jobId/edit` | 参数编辑表单 |
 | Position 编辑 | `/jobs/:jobId/positions/:posId/edit` | LoRA 三栏 + KSampler1/2 参数 |
@@ -143,11 +143,8 @@ npm run db:bootstrap:sqlite
 | 结果 Gallery | `/jobs/:jobId/positions/:posId/results` | 全部运行结果 + Lightbox + 精选标记 |
 | 回收站 | `/trash` | 已删除图片 + 恢复按钮 |
 | LoRA 管理 | `/assets/loras` | 文件管理器：浏览 / 上传 / 移动 / 备注 |
+| 提示词管理 | `/assets/prompts` | 提示词分类与预设管理 |
 | 设置首页 | `/settings` | 各管理入口 |
-| Character 管理 | `/settings/characters` | CRUD |
-| Scene 管理 | `/settings/scenes` | CRUD |
-| Style 管理 | `/settings/styles` | CRUD |
-| Position 模板 | `/settings/positions` | CRUD + Workflow 模板关联 |
 | Workflow 管理 | `/settings/workflows` | 模板列表 + 从 ComfyUI JSON 导入 |
 
 ## 🤖 AI 集成
@@ -214,12 +211,13 @@ comfyui-remote/
 │   ├── development-todo.md     #   开发进度记录
 │   ├── development-progress.md #   项目总览 + 版本历史
 │   └── local-verification.md   #   本机链路验证指南
-├── prisma/                     # 数据库 schema + migration
+├── prisma/                     # 数据库 schema + migration（含 PromptCategory / PromptPreset 模型）
 │   ├── schema.prisma           #   PostgreSQL schema
-│   └── schema.sqlite.prisma    #   SQLite schema
+│   ├── schema.sqlite.prisma    #   SQLite schema
+│   └── migrate-presets.ts      #   旧数据迁移脚本（Character/Scene/Style → PromptPreset）
 ├── src/
 │   ├── app/                    # Next.js App Router
-│   │   ├── (pages)             #   20 个页面
+│   │   ├── (pages)             #   17 个页面
 │   │   └── api/                #   38+ 个 API 路由
 │   ├── components/             # 通用 UI 组件
 │   │   ├── lora-cascade-picker.tsx  # LoRA 级联目录选择器

@@ -39,6 +39,18 @@ All planned features for v0.1 and v0.2 have been implemented:
 - [x] **LoRA 备注** — 数据库绑定文件的备注字段，文件移动时自动跟随
 - [x] **结果缩略图条** — Job 详情的小节列表直接展示最近运行图片
 
+## Completed (v0.5 — 统一提示词分类系统)
+
+- [x] PromptCategory + PromptPreset schema
+- [x] 数据迁移脚本 (migrate-presets.ts)
+- [x] 后端 CRUD actions + server-data fetchers
+- [x] 提示词管理页 /assets/prompts
+- [x] PromptBlock 编辑器动态分类支持
+- [x] 任务创建/编辑表单动态分类多选
+- [x] Pipeline snapshot presets 数组
+- [x] 删除旧 CRUD、旧 fetchers、旧设置页面
+- [x] 展示层 characterName 改为 presetBindings 解析
+
 ## Working Notes
 
 - 单体 Next.js 项目，统一在 `main` 分支开发

@@ -12,9 +12,9 @@ ComfyUI Remote — 移动优先的 ComfyUI 管理后台，覆盖：
 - Agent API + MCP Server
 - Prompt Block 提示词块系统
 
-## Current State (2026-03-26)
+## Current State (2026-03-27)
 
-单体 Next.js 项目（App Router），前后端统一在 `main` 分支。v0.1 ~ v0.4 功能全部完成。
+单体 Next.js 项目（App Router），前后端统一在 `main` 分支。v0.1 ~ v0.5 功能全部完成。
 
 ### 技术栈
 - Next.js 16 (App Router) + React 19 + Tailwind CSS 4
@@ -24,7 +24,7 @@ ComfyUI Remote — 移动优先的 ComfyUI 管理后台，覆盖：
 - sharp（图片处理 / 缩略图 / 导出压缩）
 - archiver（ZIP 打包）
 
-### 页面清单（20 个页面）
+### 页面清单（17 个页面）
 | 路径 | 状态 |
 |------|------|
 | `/` → 重定向到 `/queue` | ✅ |
@@ -32,7 +32,7 @@ ComfyUI Remote — 移动优先的 ComfyUI 管理后台，覆盖：
 | `/queue/[runId]` | ✅ 多选审核 + 快捷操作 |
 | `/queue/[runId]/images/[imageId]` | ✅ 单图审核 + 快捷操作 |
 | `/jobs` | ✅ 创建/编辑/复制/运行 |
-| `/jobs/new` | ✅ 创建表单 |
+| `/jobs/new` | ✅ 动态分类选择器 + presetBindings |
 | `/jobs/[jobId]` | ✅ 详情 + 修订历史 + 缩略图条 + 图片整合导出 |
 | `/jobs/[jobId]/edit` | ✅ 参数编辑 |
 | `/jobs/[jobId]/positions/[positionId]/edit` | ✅ Position 编辑（KSampler1/2 + LoRA 三栏） |
@@ -40,11 +40,8 @@ ComfyUI Remote — 移动优先的 ComfyUI 管理后台，覆盖：
 | `/jobs/[jobId]/positions/[positionId]/results` | ✅ 结果 Gallery（Lightbox + 精选标记） |
 | `/trash` | ✅ 恢复按钮 |
 | `/assets/loras` | ✅ 文件管理器（浏览 / 上传 / 移动 / 备注） |
+| `/assets/prompts` | ✅ 提示词分类与预设管理（CRUD + 拖拽排序） |
 | `/settings` | ✅ 设置首页 |
-| `/settings/characters` | ✅ CRUD |
-| `/settings/scenes` | ✅ CRUD |
-| `/settings/styles` | ✅ CRUD |
-| `/settings/positions` | ✅ CRUD |
 | `/settings/workflows` | ✅ 模板列表 + 导入 |
 
 ### API 路由清单
@@ -101,6 +98,15 @@ ComfyUI Remote — 移动优先的 ComfyUI 管理后台，覆盖：
 | `/api/mcp` | ALL | MCP Server |
 
 ## Version History
+
+### v0.5 — 统一提示词分类系统
+- 新增 PromptCategory + PromptPreset 通用模型，替代硬编码的 Character/Scene/Style/PositionTemplate
+- 新增提示词管理页 `/assets/prompts`（分类 + 预设 CRUD，拖拽排序）
+- 任务创建/编辑表单改为动态分类选择器 + presetBindings
+- addSection 按分类排序自动生成 PromptBlock
+- 展示层（队列、任务列表等）从 presetBindings 批量解析名称
+- 删除旧设置页面和旧 CRUD actions
+- 数据迁移脚本 `prisma/migrate-presets.ts`
 
 ### v0.4 — 结果管理 + LoRA 文件管理
 - 独立结果 Gallery 页（按 Run 分组、3-5 列网格、Lightbox 放大）
