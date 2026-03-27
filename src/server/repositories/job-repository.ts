@@ -85,6 +85,10 @@ type PositionTemplateRecord = {
 type PromptBlockSummaryRecord = {
   positive: string;
   negative: string | null;
+  type?: string;
+  categoryId?: string | null;
+  sourceId?: string | null;
+  label?: string;
 };
 
 type JobPositionRecord = {
@@ -345,6 +349,10 @@ function buildResolvedConfigSnapshot(
   blocks?: Array<{
     positive: string;
     negative: string | null;
+    type?: string;
+    categoryId?: string | null;
+    sourceId?: string | null;
+    label?: string;
   }>,
   overrideBatchSize?: number,
 ): Prisma.InputJsonObject {
@@ -415,6 +423,16 @@ function buildResolvedConfigSnapshot(
         position.negativePrompt ?? position.positionTemplate?.negativePrompt ?? null,
     },
     promptBlocks: blocks ?? null,
+    // v0.4: presets array from blocks that have type=preset
+    presets: blocks
+      ? blocks
+          .filter((b) => b.type === "preset" && b.categoryId && b.sourceId)
+          .map((b) => ({
+            categoryId: b.categoryId,
+            presetId: b.sourceId,
+            label: b.label ?? null,
+          }))
+      : null,
     composedPrompt: promptDraft,
     parameters: {
       aspectRatio: resolvedAspectRatio,
@@ -895,6 +913,7 @@ export async function getJobAgentContext(jobId: string) {
               id: true,
               type: true,
               sourceId: true,
+              categoryId: true,
               label: true,
               positive: true,
               negative: true,

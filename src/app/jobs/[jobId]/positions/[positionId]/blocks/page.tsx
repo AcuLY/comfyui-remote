@@ -8,7 +8,7 @@ import { SectionParamsForm } from "./section-params-form";
 import { SectionNameEditor } from "./section-name-editor";
 import { PositionRunButton } from "@/app/jobs/[jobId]/job-detail-actions";
 import type { PromptBlockData } from "@/lib/actions";
-import { getPromptLibrary } from "@/lib/server-data";
+import { getPromptLibraryV2 } from "@/lib/server-data";
 import { parsePositionLoraConfig, parseLoraBindings, generateLoraEntryId, serializePositionLoraConfig } from "@/lib/lora-types";
 import type { LoraEntry, PositionLoraConfig } from "@/lib/lora-types";
 import { revalidatePath } from "next/cache";
@@ -20,7 +20,7 @@ export default async function SectionEditPage({
 }) {
   const { jobId, positionId } = await params;
 
-  const [pos, library] = await Promise.all([
+  const [pos, libraryV2] = await Promise.all([
     prisma.completeJobPosition.findUnique({
       where: { id: positionId },
       include: {
@@ -32,6 +32,7 @@ export default async function SectionEditPage({
             id: true,
             type: true,
             sourceId: true,
+            categoryId: true,
             label: true,
             positive: true,
             negative: true,
@@ -40,7 +41,7 @@ export default async function SectionEditPage({
         },
       },
     }),
-    getPromptLibrary(),
+    getPromptLibraryV2(),
   ]);
 
   if (!pos || pos.completeJobId !== jobId) {
@@ -54,6 +55,7 @@ export default async function SectionEditPage({
     id: b.id,
     type: b.type,
     sourceId: b.sourceId,
+    categoryId: b.categoryId,
     label: b.label,
     positive: b.positive,
     negative: b.negative,
@@ -186,7 +188,7 @@ export default async function SectionEditPage({
               positionId={positionId}
               initialBlocks={initialBlocks}
               initialLoraConfig={loraConfig}
-              library={library}
+              libraryV2={libraryV2}
               onLoraChange={handleLoraChange}
             />
           </div>

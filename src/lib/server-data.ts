@@ -514,8 +514,35 @@ export type PositionOption = FormOption & {
   defaultSeedPolicy2: string | null;
 };
 
-export async function getJobFormOptions() {
-  const [characters, scenes, styles, positions] = await Promise.all([
+export type JobFormCategory = {
+  id: string;
+  name: string;
+  slug: string;
+  icon: string | null;
+  color: string | null;
+  sortOrder: number;
+  presets: Array<{
+    id: string;
+    name: string;
+    slug: string;
+    prompt: string;
+    negativePrompt: string | null;
+    isActive: boolean;
+  }>;
+};
+
+export type JobFormOptions = {
+  // Legacy fields (kept for backward compat during transition)
+  characters: Array<{ id: string; name: string; slug: string; prompt: string; loraPath: string }>;
+  scenes: Array<{ id: string; name: string; slug: string; prompt: string }>;
+  styles: Array<{ id: string; name: string; slug: string; prompt: string }>;
+  positions: PositionOption[];
+  // New unified categories
+  categories: JobFormCategory[];
+};
+
+export async function getJobFormOptions(): Promise<JobFormOptions> {
+  const [characters, scenes, styles, positions, categories] = await Promise.all([
     prisma.character.findMany({
       where: { isActive: true },
       orderBy: { name: "asc" },
@@ -544,19 +571,40 @@ export async function getJobFormOptions() {
         defaultSeedPolicy2: true,
       },
     }),
+    prisma.promptCategory.findMany({
+      orderBy: { sortOrder: "asc" },
+      include: {
+        presets: {
+          where: { isActive: true },
+          orderBy: { sortOrder: "asc" },
+          select: { id: true, name: true, slug: true, prompt: true, negativePrompt: true, isActive: true },
+        },
+      },
+    }),
   ]);
 
-  // Map positions to include seedPolicy fields
-  const mappedPositions = positions.map((p) => ({
-    ...p,
-  }));
-
-  return { characters, scenes, styles, positions: mappedPositions };
+  return {
+    characters,
+    scenes,
+    styles,
+    positions,
+    categories: categories.map((c) => ({
+      id: c.id,
+      name: c.name,
+      slug: c.slug,
+      icon: c.icon,
+      color: c.color,
+      sortOrder: c.sortOrder,
+      presets: c.presets,
+    })),
+  };
 }
 
 // ---------------------------------------------------------------------------
 // Job Edit Data — 编辑 Job 时加载完整数据
 // ---------------------------------------------------------------------------
+
+export type PresetBinding = { categoryId: string; presetId: string };
 
 export type JobEditData = {
   id: string;
@@ -569,6 +617,7 @@ export type JobEditData = {
   characterLoraPath: string;
   scenePrompt: string | null;
   stylePrompt: string | null;
+  presetBindings: PresetBinding[];
   notes: string | null;
   positions: {
     id: string;
@@ -634,6 +683,7 @@ export async function getJobEditData(jobId: string): Promise<JobEditData | null>
     characterLoraPath: job.characterLoraPath,
     scenePrompt: job.scenePrompt,
     stylePrompt: job.stylePrompt,
+    presetBindings: Array.isArray(job.presetBindings) ? (job.presetBindings as PresetBinding[]) : [],
     notes: job.notes,
     positions: job.positions.map((pos) => ({
       ...pos,
@@ -669,6 +719,163 @@ export async function getPositionTemplates() {
 
 export async function getWorkflowTemplateOptions() {
   return listWorkflowTemplateSummaries();
+}
+
+// ---------------------------------------------------------------------------
+// Prompt Categories & Presets — 统一提示词管理
+// ---------------------------------------------------------------------------
+
+export type PromptCategoryItem = {
+  id: string;
+  name: string;
+  slug: string;
+  icon: string | null;
+  color: string | null;
+  positivePromptOrder: number;
+  negativePromptOrder: number;
+  lora1Order: number;
+  lora2Order: number;
+  sortOrder: number;
+  presetCount: number;
+};
+
+export async function getPromptCategories(): Promise<PromptCategoryItem[]> {
+  const categories = await prisma.promptCategory.findMany({
+    orderBy: { sortOrder: "asc" },
+    include: { _count: { select: { presets: true } } },
+  });
+  return categories.map((c) => ({
+    id: c.id,
+    name: c.name,
+    slug: c.slug,
+    icon: c.icon,
+    color: c.color,
+    positivePromptOrder: c.positivePromptOrder,
+    negativePromptOrder: c.negativePromptOrder,
+    lora1Order: c.lora1Order,
+    lora2Order: c.lora2Order,
+    sortOrder: c.sortOrder,
+    presetCount: c._count.presets,
+  }));
+}
+
+export type PromptPresetItem = {
+  id: string;
+  categoryId: string;
+  name: string;
+  slug: string;
+  prompt: string;
+  negativePrompt: string | null;
+  lora1: unknown;
+  lora2: unknown;
+  defaultParams: unknown;
+  notes: string | null;
+  isActive: boolean;
+  sortOrder: number;
+};
+
+export async function getPromptPresets(categoryId: string): Promise<PromptPresetItem[]> {
+  const presets = await prisma.promptPreset.findMany({
+    where: { categoryId },
+    orderBy: { sortOrder: "asc" },
+  });
+  return presets.map((p) => ({
+    id: p.id,
+    categoryId: p.categoryId,
+    name: p.name,
+    slug: p.slug,
+    prompt: p.prompt,
+    negativePrompt: p.negativePrompt,
+    lora1: p.lora1,
+    lora2: p.lora2,
+    defaultParams: p.defaultParams,
+    notes: p.notes,
+    isActive: p.isActive,
+    sortOrder: p.sortOrder,
+  }));
+}
+
+export type PromptCategoryFull = PromptCategoryItem & {
+  presets: PromptPresetItem[];
+};
+
+export async function getPromptCategoriesWithPresets(): Promise<PromptCategoryFull[]> {
+  const categories = await prisma.promptCategory.findMany({
+    orderBy: { sortOrder: "asc" },
+    include: {
+      _count: { select: { presets: true } },
+      presets: { orderBy: { sortOrder: "asc" } },
+    },
+  });
+  return categories.map((c) => ({
+    id: c.id,
+    name: c.name,
+    slug: c.slug,
+    icon: c.icon,
+    color: c.color,
+    positivePromptOrder: c.positivePromptOrder,
+    negativePromptOrder: c.negativePromptOrder,
+    lora1Order: c.lora1Order,
+    lora2Order: c.lora2Order,
+    sortOrder: c.sortOrder,
+    presetCount: c._count.presets,
+    presets: c.presets.map((p) => ({
+      id: p.id,
+      categoryId: p.categoryId,
+      name: p.name,
+      slug: p.slug,
+      prompt: p.prompt,
+      negativePrompt: p.negativePrompt,
+      lora1: p.lora1,
+      lora2: p.lora2,
+      defaultParams: p.defaultParams,
+      notes: p.notes,
+      isActive: p.isActive,
+      sortOrder: p.sortOrder,
+    })),
+  }));
+}
+
+/** V2 prompt library: dynamic categories for the block editor import panel */
+export type PromptLibraryV2 = {
+  categories: Array<{
+    id: string;
+    name: string;
+    slug: string;
+    color: string | null;
+    icon: string | null;
+    presets: Array<{
+      id: string;
+      name: string;
+      prompt: string;
+      negativePrompt: string | null;
+      lora1: unknown;
+      lora2: unknown;
+    }>;
+  }>;
+};
+
+export async function getPromptLibraryV2(): Promise<PromptLibraryV2> {
+  const categories = await prisma.promptCategory.findMany({
+    orderBy: { sortOrder: "asc" },
+    include: {
+      presets: {
+        where: { isActive: true },
+        orderBy: { sortOrder: "asc" },
+        select: { id: true, name: true, prompt: true, negativePrompt: true, lora1: true, lora2: true },
+      },
+    },
+  });
+  return {
+    categories: categories.map((c) => ({
+      id: c.id,
+      name: c.name,
+      slug: c.slug,
+      color: c.color,
+      icon: c.icon,
+      presets: c.presets,
+    })),
+  };
 }
 
 // ---------------------------------------------------------------------------

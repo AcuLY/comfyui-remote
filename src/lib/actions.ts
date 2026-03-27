@@ -241,16 +241,20 @@ export async function runPosition(jobPositionId: string, overrideBatchSize?: num
 // 创建大任务
 // ---------------------------------------------------------------------------
 
+export type PresetBinding = { categoryId: string; presetId: string };
+
 export type CreateJobInput = {
   title: string;
-  characterId: string;
-  scenePresetId: string | null;
-  stylePresetId: string | null;
-  characterPrompt: string;
-  characterLoraPath: string;
-  scenePrompt: string | null;
-  stylePrompt: string | null;
+  presetBindings: PresetBinding[];
   notes: string | null;
+  // Legacy (optional, for backward compat)
+  characterId?: string;
+  scenePresetId?: string | null;
+  stylePresetId?: string | null;
+  characterPrompt?: string;
+  characterLoraPath?: string;
+  scenePrompt?: string | null;
+  stylePrompt?: string | null;
 };
 
 export async function createJob(input: CreateJobInput): Promise<string> {
@@ -266,18 +270,90 @@ export async function createJob(input: CreateJobInput): Promise<string> {
     slug = `${baseSlug}-${i++}`;
   }
 
+  // Resolve legacy fields from presetBindings for backward compat
+  let characterId = input.characterId ?? "";
+  let characterPrompt = input.characterPrompt ?? "";
+  let characterLoraPath = input.characterLoraPath ?? "";
+  let scenePresetId = input.scenePresetId ?? null;
+  let scenePrompt = input.scenePrompt ?? null;
+  let stylePresetId = input.stylePresetId ?? null;
+  let stylePrompt = input.stylePrompt ?? null;
+
+  if (input.presetBindings.length > 0) {
+    // Resolve presets to populate legacy fields
+    const presetIds = input.presetBindings.map((b) => b.presetId);
+    const presets = await prisma.promptPreset.findMany({
+      where: { id: { in: presetIds } },
+      include: { category: true },
+    });
+
+    const presetMap = new Map(presets.map((p) => [p.id, p]));
+
+    for (const binding of input.presetBindings) {
+      const preset = presetMap.get(binding.presetId);
+      if (!preset) continue;
+
+      const catSlug = preset.category.slug;
+      if (catSlug === "character" && !input.characterId) {
+        // Find or use a dummy character for legacy FK compat
+        const legacyChar = await prisma.character.findFirst({
+          where: { slug: preset.slug },
+          select: { id: true, prompt: true, loraPath: true },
+        });
+        if (legacyChar) {
+          characterId = legacyChar.id;
+          characterPrompt = legacyChar.prompt;
+          characterLoraPath = legacyChar.loraPath;
+        } else {
+          // Fall back: use first character as placeholder
+          const firstChar = await prisma.character.findFirst({
+            select: { id: true, prompt: true, loraPath: true },
+          });
+          if (firstChar) {
+            characterId = firstChar.id;
+            characterPrompt = preset.prompt;
+            characterLoraPath = firstChar.loraPath;
+          }
+        }
+      } else if (catSlug === "scene" && !input.scenePresetId) {
+        const legacyScene = await prisma.scenePreset.findFirst({
+          where: { slug: preset.slug },
+          select: { id: true, prompt: true },
+        });
+        if (legacyScene) {
+          scenePresetId = legacyScene.id;
+          scenePrompt = legacyScene.prompt;
+        }
+      } else if (catSlug === "style" && !input.stylePresetId) {
+        const legacyStyle = await prisma.stylePreset.findFirst({
+          where: { slug: preset.slug },
+          select: { id: true, prompt: true },
+        });
+        if (legacyStyle) {
+          stylePresetId = legacyStyle.id;
+          stylePrompt = legacyStyle.prompt;
+        }
+      }
+    }
+  }
+
+  if (!characterId) {
+    throw new Error("CHARACTER_REQUIRED: must select a preset from character category or provide characterId");
+  }
+
   const job = await prisma.completeJob.create({
     data: {
       title: input.title,
       slug,
       status: "draft",
-      characterId: input.characterId,
-      scenePresetId: input.scenePresetId,
-      stylePresetId: input.stylePresetId,
-      characterPrompt: input.characterPrompt,
-      characterLoraPath: input.characterLoraPath,
-      scenePrompt: input.scenePrompt,
-      stylePrompt: input.stylePrompt,
+      characterId,
+      scenePresetId,
+      stylePresetId,
+      characterPrompt,
+      characterLoraPath,
+      scenePrompt,
+      stylePrompt,
+      presetBindings: input.presetBindings.length > 0 ? input.presetBindings : undefined,
       notes: input.notes,
     },
   });
@@ -293,6 +369,7 @@ export async function createJob(input: CreateJobInput): Promise<string> {
 export type UpdateJobInput = {
   jobId: string;
   title?: string;
+  presetBindings?: PresetBinding[];
   characterId?: string;
   scenePresetId?: string | null;
   stylePresetId?: string | null;
@@ -325,13 +402,68 @@ export type UpdateJobInput = {
 };
 
 export async function updateJob(input: UpdateJobInput) {
-  const { jobId, positions, jobLevelOverrides, ...jobData } = input;
+  const { jobId, positions, jobLevelOverrides, presetBindings, ...jobData } = input;
+
+  // If presetBindings provided, resolve legacy fields for backward compat
+  const legacyUpdate: Record<string, unknown> = {};
+  if (presetBindings && presetBindings.length > 0) {
+    const presetIds = presetBindings.map((b) => b.presetId);
+    const presets = await prisma.promptPreset.findMany({
+      where: { id: { in: presetIds } },
+      include: { category: true },
+    });
+    const presetMap = new Map(presets.map((p) => [p.id, p]));
+
+    for (const binding of presetBindings) {
+      const preset = presetMap.get(binding.presetId);
+      if (!preset) continue;
+
+      const catSlug = preset.category.slug;
+      if (catSlug === "character" && !jobData.characterId) {
+        const legacyChar = await prisma.character.findFirst({
+          where: { slug: preset.slug },
+          select: { id: true, prompt: true, loraPath: true },
+        });
+        if (legacyChar) {
+          legacyUpdate.characterId = legacyChar.id;
+          legacyUpdate.characterPrompt = legacyChar.prompt;
+          legacyUpdate.characterLoraPath = legacyChar.loraPath;
+        }
+      } else if (catSlug === "scene" && !jobData.scenePresetId) {
+        const legacyScene = await prisma.scenePreset.findFirst({
+          where: { slug: preset.slug },
+          select: { id: true, prompt: true },
+        });
+        if (legacyScene) {
+          legacyUpdate.scenePresetId = legacyScene.id;
+          legacyUpdate.scenePrompt = legacyScene.prompt;
+        } else {
+          legacyUpdate.scenePresetId = null;
+          legacyUpdate.scenePrompt = null;
+        }
+      } else if (catSlug === "style" && !jobData.stylePresetId) {
+        const legacyStyle = await prisma.stylePreset.findFirst({
+          where: { slug: preset.slug },
+          select: { id: true, prompt: true },
+        });
+        if (legacyStyle) {
+          legacyUpdate.stylePresetId = legacyStyle.id;
+          legacyUpdate.stylePrompt = legacyStyle.prompt;
+        } else {
+          legacyUpdate.stylePresetId = null;
+          legacyUpdate.stylePrompt = null;
+        }
+      }
+    }
+  }
 
   // 更新 job 基础字段（包括 jobLevelOverrides）
   await prisma.completeJob.update({
     where: { id: jobId },
     data: {
       ...jobData,
+      ...legacyUpdate,
+      ...(presetBindings !== undefined ? { presetBindings } : {}),
       ...(jobLevelOverrides !== undefined ? { jobLevelOverrides } : {}),
     },
   });
@@ -395,7 +527,7 @@ export async function uploadLora(formData: FormData) {
 // JSON 辅助函数
 // ---------------------------------------------------------------------------
 
-function toJsonValue(value: unknown[] | null | undefined): Prisma.InputJsonValue | typeof Prisma.DbNull | undefined {
+function toJsonValue(value: unknown): Prisma.InputJsonValue | typeof Prisma.DbNull | undefined {
   if (value === null) return Prisma.DbNull;
   if (value === undefined) return undefined;
   return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
@@ -617,10 +749,136 @@ export async function deletePositionTemplate(id: string) {
 // PromptBlock — 提示词块管理（Server Actions）
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// PromptCategory CRUD (unified prompt system)
+// ---------------------------------------------------------------------------
+
+export type PromptCategoryInput = {
+  name: string;
+  slug: string;
+  icon?: string | null;
+  color?: string | null;
+  positivePromptOrder?: number;
+  negativePromptOrder?: number;
+  lora1Order?: number;
+  lora2Order?: number;
+  sortOrder?: number;
+};
+
+export async function createPromptCategory(input: PromptCategoryInput) {
+  // Auto-assign sortOrder if not provided
+  if (input.sortOrder === undefined) {
+    const maxOrder = await prisma.promptCategory.aggregate({ _max: { sortOrder: true } });
+    input.sortOrder = (maxOrder._max.sortOrder ?? -1) + 1;
+  }
+  const cat = await prisma.promptCategory.create({ data: input });
+  revalidatePath("/assets/prompts");
+  return cat;
+}
+
+export async function updatePromptCategory(id: string, input: Partial<PromptCategoryInput>) {
+  const cat = await prisma.promptCategory.update({ where: { id }, data: input });
+  revalidatePath("/assets/prompts");
+  return cat;
+}
+
+export async function deletePromptCategory(id: string) {
+  // Only allow deletion if no presets exist in this category
+  const count = await prisma.promptPreset.count({ where: { categoryId: id } });
+  if (count > 0) {
+    throw new Error(`分类下还有 ${count} 个模板，请先删除或移动它们`);
+  }
+  await prisma.promptCategory.delete({ where: { id } });
+  revalidatePath("/assets/prompts");
+}
+
+export async function reorderPromptCategories(ids: string[]) {
+  await prisma.$transaction(
+    ids.map((id, index) =>
+      prisma.promptCategory.update({ where: { id }, data: { sortOrder: index } }),
+    ),
+  );
+  revalidatePath("/assets/prompts");
+}
+
+// ---------------------------------------------------------------------------
+// PromptPreset CRUD (unified prompt system)
+// ---------------------------------------------------------------------------
+
+export type PromptPresetInput = {
+  categoryId: string;
+  name: string;
+  slug: string;
+  prompt: string;
+  negativePrompt?: string | null;
+  lora1?: unknown;
+  lora2?: unknown;
+  defaultParams?: unknown;
+  notes?: string | null;
+  isActive?: boolean;
+  sortOrder?: number;
+};
+
+export async function createPromptPreset(input: PromptPresetInput) {
+  const { lora1, lora2, defaultParams, ...rest } = input;
+  if (rest.sortOrder === undefined) {
+    const maxOrder = await prisma.promptPreset.aggregate({
+      where: { categoryId: input.categoryId },
+      _max: { sortOrder: true },
+    });
+    rest.sortOrder = (maxOrder._max.sortOrder ?? -1) + 1;
+  }
+  const preset = await prisma.promptPreset.create({
+    data: {
+      ...rest,
+      lora1: toJsonValue(lora1) ?? Prisma.DbNull,
+      lora2: toJsonValue(lora2) ?? Prisma.DbNull,
+      defaultParams: toJsonValue(defaultParams) ?? Prisma.DbNull,
+    },
+  });
+  revalidatePath("/assets/prompts");
+  revalidatePath("/jobs/new");
+  return preset;
+}
+
+export async function updatePromptPreset(id: string, input: Partial<PromptPresetInput>) {
+  const { lora1, lora2, defaultParams, ...rest } = input;
+  const data: Record<string, unknown> = { ...rest };
+  if (lora1 !== undefined) data.lora1 = toJsonValue(lora1) ?? Prisma.DbNull;
+  if (lora2 !== undefined) data.lora2 = toJsonValue(lora2) ?? Prisma.DbNull;
+  if (defaultParams !== undefined) data.defaultParams = toJsonValue(defaultParams) ?? Prisma.DbNull;
+
+  const preset = await prisma.promptPreset.update({ where: { id }, data });
+  revalidatePath("/assets/prompts");
+  revalidatePath("/jobs/new");
+  return preset;
+}
+
+export async function deletePromptPreset(id: string) {
+  // Soft delete: set isActive = false
+  await prisma.promptPreset.update({ where: { id }, data: { isActive: false } });
+  revalidatePath("/assets/prompts");
+  revalidatePath("/jobs/new");
+}
+
+export async function reorderPromptPresets(categoryId: string, ids: string[]) {
+  await prisma.$transaction(
+    ids.map((id, index) =>
+      prisma.promptPreset.update({ where: { id }, data: { sortOrder: index } }),
+    ),
+  );
+  revalidatePath("/assets/prompts");
+}
+
+// ---------------------------------------------------------------------------
+// Prompt Block CRUD
+// ---------------------------------------------------------------------------
+
 export type PromptBlockData = {
   id: string;
   type: string;
   sourceId: string | null;
+  categoryId: string | null;
   label: string;
   positive: string;
   negative: string | null;
@@ -640,6 +898,8 @@ export async function addPositionBlock(
     label: string;
     positive: string;
     negative?: string | null;
+    sourceId?: string;
+    categoryId?: string | null;
   },
 ): Promise<PromptBlockData> {
   const { createPromptBlock } = await import("@/server/repositories/prompt-block-repository");
@@ -648,6 +908,8 @@ export async function addPositionBlock(
 
   const block = await createPromptBlock(jobPositionId, {
     type: input.type as (typeof PromptBlockType)[keyof typeof PromptBlockType],
+    sourceId: input.sourceId ?? null,
+    categoryId: input.categoryId ?? null,
     label: input.label,
     positive: input.positive,
     negative: input.negative ?? null,
@@ -708,6 +970,7 @@ export async function addSection(jobId: string, name?: string): Promise<string> 
       characterPrompt: true,
       scenePrompt: true,
       stylePrompt: true,
+      presetBindings: true,
       // 读取大任务级别的默认值
       jobLevelOverrides: true,
       character: {
@@ -759,47 +1022,85 @@ export async function addSection(jobId: string, name?: string): Promise<string> 
     },
   });
 
-  // 创建初始 PromptBlocks（从大任务的 character/scene/style 复制）
+  // 创建初始 PromptBlocks
   let blockSortOrder = 0;
 
-  await prisma.promptBlock.create({
-    data: {
-      completeJobPositionId: section.id,
-      type: "character",
-      sourceId: job.character.id,
-      label: job.character.name,
-      positive: job.character.prompt,
-      negative: job.character.negativePrompt,
-      sortOrder: blockSortOrder++,
-    },
-  });
+  // New path: use presetBindings if available
+  const bindings = Array.isArray(job.presetBindings) ? (job.presetBindings as PresetBinding[]) : [];
+  if (bindings.length > 0) {
+    // Resolve presets with category info, sorted by category sortOrder
+    const presetIds = bindings.map((b) => b.presetId);
+    const presets = await prisma.promptPreset.findMany({
+      where: { id: { in: presetIds } },
+      include: { category: true },
+    });
+    const presetMap = new Map(presets.map((p) => [p.id, p]));
 
-  if (job.scenePreset) {
+    // Sort bindings by category sortOrder
+    const sortedBindings = [...bindings].sort((a, b) => {
+      const catA = presetMap.get(a.presetId)?.category.sortOrder ?? 999;
+      const catB = presetMap.get(b.presetId)?.category.sortOrder ?? 999;
+      return catA - catB;
+    });
+
+    for (const binding of sortedBindings) {
+      const preset = presetMap.get(binding.presetId);
+      if (!preset) continue;
+
+      await prisma.promptBlock.create({
+        data: {
+          completeJobPositionId: section.id,
+          type: "preset",
+          sourceId: preset.id,
+          categoryId: preset.categoryId,
+          label: preset.name,
+          positive: preset.prompt,
+          negative: preset.negativePrompt,
+          sortOrder: blockSortOrder++,
+        },
+      });
+    }
+  } else {
+    // Legacy path: use character/scene/style FKs
     await prisma.promptBlock.create({
       data: {
         completeJobPositionId: section.id,
-        type: "scene",
-        sourceId: job.scenePreset.id,
-        label: job.scenePreset.name,
-        positive: job.scenePreset.prompt,
-        negative: job.scenePreset.negativePrompt,
+        type: "character",
+        sourceId: job.character.id,
+        label: job.character.name,
+        positive: job.character.prompt,
+        negative: job.character.negativePrompt,
         sortOrder: blockSortOrder++,
       },
     });
-  }
 
-  if (job.stylePreset) {
-    await prisma.promptBlock.create({
-      data: {
-        completeJobPositionId: section.id,
-        type: "style",
-        sourceId: job.stylePreset.id,
-        label: job.stylePreset.name,
-        positive: job.stylePreset.prompt,
-        negative: job.stylePreset.negativePrompt,
-        sortOrder: blockSortOrder++,
-      },
-    });
+    if (job.scenePreset) {
+      await prisma.promptBlock.create({
+        data: {
+          completeJobPositionId: section.id,
+          type: "scene",
+          sourceId: job.scenePreset.id,
+          label: job.scenePreset.name,
+          positive: job.scenePreset.prompt,
+          negative: job.scenePreset.negativePrompt,
+          sortOrder: blockSortOrder++,
+        },
+      });
+    }
+
+    if (job.stylePreset) {
+      await prisma.promptBlock.create({
+        data: {
+          completeJobPositionId: section.id,
+          type: "style",
+          sourceId: job.stylePreset.id,
+          label: job.stylePreset.name,
+          positive: job.stylePreset.prompt,
+          negative: job.stylePreset.negativePrompt,
+          sortOrder: blockSortOrder++,
+        },
+      });
+    }
   }
 
   revalidatePath(`/jobs/${jobId}`);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
+import { useState, useTransition, useEffect, useMemo } from "react";
 import {
   DndContext,
   closestCenter,
@@ -31,6 +31,8 @@ import {
   Palette,
   LayoutGrid,
   Sparkles,
+  BookOpen,
+  type LucideIcon,
 } from "lucide-react";
 import {
   addPositionBlock,
@@ -39,53 +41,152 @@ import {
   reorderPositionBlocks,
   type PromptBlockData,
 } from "@/lib/actions";
+import type { LoraSource } from "@/lib/lora-types";
 
 // ---------------------------------------------------------------------------
-// Constants
+// Types
 // ---------------------------------------------------------------------------
 
-const BLOCK_TYPE_CONFIG: Record<
-  string,
-  { label: string; icon: typeof User; color: string }
-> = {
-  character: {
-    label: "角色",
-    icon: User,
-    color: "border-sky-500/30 bg-sky-500/10 text-sky-300",
-  },
-  scene: {
-    label: "场景",
-    icon: MapPin,
-    color: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300",
-  },
-  style: {
-    label: "风格",
-    icon: Palette,
-    color: "border-violet-500/30 bg-violet-500/10 text-violet-300",
-  },
-  position: {
-    label: "Position",
-    icon: LayoutGrid,
-    color: "border-amber-500/30 bg-amber-500/10 text-amber-300",
-  },
-  custom: {
-    label: "自定义",
-    icon: Sparkles,
-    color: "border-rose-500/30 bg-rose-500/10 text-rose-300",
-  },
+type LibraryItem = {
+  id: string;
+  name: string;
+  prompt: string;
+  negativePrompt: string | null;
+  loraPath?: string | null;
+  loraBindings?: unknown;
+  lora1?: unknown;
+  lora2?: unknown;
+};
+
+/** V2 dynamic library: categories from DB */
+export type PromptLibraryV2 = {
+  categories: Array<{
+    id: string;
+    name: string;
+    slug: string;
+    color: string | null;
+    icon: string | null;
+    presets: Array<{
+      id: string;
+      name: string;
+      prompt: string;
+      negativePrompt: string | null;
+      lora1: unknown;
+      lora2: unknown;
+    }>;
+  }>;
+};
+
+/** Legacy library type (backward compat) */
+type PromptLibraryLegacy = {
+  characters: LibraryItem[];
+  scenes: LibraryItem[];
+  styles: LibraryItem[];
+  positions: LibraryItem[];
+};
+
+/** Category config for dynamic badge rendering */
+type CategoryConfig = {
+  id: string;
+  name: string;
+  slug: string;
+  color: string | null;
+  icon: string | null;
 };
 
 // ---------------------------------------------------------------------------
-// TypeBadge
+// Icon / Color resolution
 // ---------------------------------------------------------------------------
 
-function TypeBadge({ type }: { type: string }) {
-  const config = BLOCK_TYPE_CONFIG[type] ?? BLOCK_TYPE_CONFIG.custom;
-  const Icon = config.icon;
+const ICON_MAP: Record<string, LucideIcon> = {
+  User,
+  MapPin,
+  Palette,
+  LayoutGrid,
+  Sparkles,
+  BookOpen,
+};
+
+function resolveIcon(name: string | null | undefined): LucideIcon {
+  return (name && ICON_MAP[name]) || Sparkles;
+}
+
+const COLOR_CLASS_MAP: Record<string, string> = {
+  sky: "border-sky-500/30 bg-sky-500/10 text-sky-300",
+  emerald: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300",
+  violet: "border-violet-500/30 bg-violet-500/10 text-violet-300",
+  amber: "border-amber-500/30 bg-amber-500/10 text-amber-300",
+  rose: "border-rose-500/30 bg-rose-500/10 text-rose-300",
+  cyan: "border-cyan-500/30 bg-cyan-500/10 text-cyan-300",
+  pink: "border-pink-500/30 bg-pink-500/10 text-pink-300",
+  orange: "border-orange-500/30 bg-orange-500/10 text-orange-300",
+};
+
+function getColorClasses(color: string | null | undefined): string {
+  return (color && COLOR_CLASS_MAP[color]) || "border-zinc-500/30 bg-zinc-500/10 text-zinc-300";
+}
+
+// Fallback for legacy block types
+const LEGACY_TYPE_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
+  character: { label: "角色", color: "sky", icon: "User" },
+  scene: { label: "场景", color: "emerald", icon: "MapPin" },
+  style: { label: "风格", color: "violet", icon: "Palette" },
+  position: { label: "Position", color: "amber", icon: "LayoutGrid" },
+};
+
+// ---------------------------------------------------------------------------
+// TypeBadge — dynamic, uses categoryId or falls back to legacy type
+// ---------------------------------------------------------------------------
+
+function TypeBadge({
+  block,
+  categoryMap,
+}: {
+  block: PromptBlockData;
+  categoryMap: Map<string, CategoryConfig>;
+}) {
+  // Try category-based lookup first
+  if (block.categoryId) {
+    const cat = categoryMap.get(block.categoryId);
+    if (cat) {
+      const Icon = resolveIcon(cat.icon);
+      return (
+        <span className={`inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 text-[10px] font-medium ${getColorClasses(cat.color)}`}>
+          <Icon className="size-3" />
+          {cat.name}
+        </span>
+      );
+    }
+  }
+
+  // Legacy type fallback
+  if (block.type !== "preset" && block.type !== "custom") {
+    const legacy = LEGACY_TYPE_CONFIG[block.type];
+    if (legacy) {
+      const Icon = resolveIcon(legacy.icon);
+      return (
+        <span className={`inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 text-[10px] font-medium ${getColorClasses(legacy.color)}`}>
+          <Icon className="size-3" />
+          {legacy.label}
+        </span>
+      );
+    }
+  }
+
+  // Custom / unknown fallback
+  if (block.type === "custom") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-lg border border-rose-500/30 bg-rose-500/10 px-2 py-0.5 text-[10px] font-medium text-rose-300">
+        <Sparkles className="size-3" />
+        自定义
+      </span>
+    );
+  }
+
   return (
-    <span className={`inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 text-[10px] font-medium ${config.color}`}>
-      <Icon className="size-3" />
-      {config.label}
+    <span className="inline-flex items-center gap-1 rounded-lg border border-zinc-500/30 bg-zinc-500/10 px-2 py-0.5 text-[10px] font-medium text-zinc-300">
+      <Sparkles className="size-3" />
+      预设
     </span>
   );
 }
@@ -105,6 +206,7 @@ type SortableBlockCardProps = {
   onSaveEdit: () => void;
   onDelete: () => void;
   isSaving: boolean;
+  categoryMap: Map<string, CategoryConfig>;
 };
 
 function SortableBlockCard({
@@ -118,12 +220,12 @@ function SortableBlockCard({
   onSaveEdit,
   onDelete,
   isSaving,
+  categoryMap,
 }: SortableBlockCardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: block.id,
   });
 
-  // Only apply dnd transform styles after client mount to avoid hydration mismatch
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
@@ -154,7 +256,7 @@ function SortableBlockCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
             <span className="text-[11px] font-medium text-zinc-300 truncate">{block.label}</span>
-            <TypeBadge type={block.type} />
+            <TypeBadge block={block} categoryMap={categoryMap} />
           </div>
           {!isEditing && (
             <div className="mt-0.5 text-[11px] text-zinc-500 truncate">
@@ -207,7 +309,7 @@ function SortableBlockCard({
 }
 
 // ---------------------------------------------------------------------------
-// BlockColumn — 单栏（正面或负面）
+// BlockColumn
 // ---------------------------------------------------------------------------
 
 type BlockColumnProps = {
@@ -227,8 +329,9 @@ type BlockColumnProps = {
   isAdding: boolean;
   onAdd: () => void;
   onCancelAdd: () => void;
-  onSubmitAdd: (input: { type: string; label: string; positive: string; negative?: string | null; sourceId?: string }, item?: LibraryItem) => void;
-  library?: PromptLibrary;
+  onSubmitAdd: (input: { type: string; label: string; positive: string; negative?: string | null; sourceId?: string; categoryId?: string | null }, item?: LibraryItem) => void;
+  libraryV2?: PromptLibraryV2;
+  categoryMap: Map<string, CategoryConfig>;
 };
 
 function BlockColumn({
@@ -249,18 +352,17 @@ function BlockColumn({
   onAdd,
   onCancelAdd,
   onSubmitAdd,
-  library,
+  libraryV2,
+  categoryMap,
 }: BlockColumnProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
-  // Only render DndContext after client mount to avoid hydration mismatch
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
-  // Filter blocks with content for this column
   const visibleBlocks = blocks.filter((b) => {
     const text = column === "positive" ? b.positive : (b.negative ?? "");
     return text.trim() || editingId === b.id;
@@ -288,6 +390,7 @@ function BlockColumn({
             onSaveEdit={onSaveEdit}
             onDelete={() => onDelete(block.id)}
             isSaving={isSaving}
+            categoryMap={categoryMap}
           />
         ))
       )}
@@ -313,7 +416,7 @@ function BlockColumn({
             onAdd={onSubmitAdd}
             onCancel={onCancelAdd}
             isPending={isSaving}
-            library={library}
+            libraryV2={libraryV2}
           />
         </div>
       ) : (
@@ -331,104 +434,90 @@ function BlockColumn({
 }
 
 // ---------------------------------------------------------------------------
-// AddBlockForm (支持自定义输入和从词库导入)
+// AddBlockForm — dynamic categories from PromptLibraryV2
 // ---------------------------------------------------------------------------
-
-import type { LoraSource } from "@/lib/lora-types";
-
-type LibraryItem = {
-  id: string;
-  name: string;
-  prompt: string;
-  negativePrompt: string | null;
-  loraPath?: string | null;
-  loraBindings?: unknown;
-};
-
-type PromptLibrary = {
-  characters: LibraryItem[];
-  scenes: LibraryItem[];
-  styles: LibraryItem[];
-  positions: LibraryItem[];
-};
 
 type AddBlockFormProps = {
   polarity: "positive" | "negative";
-  onAdd: (input: { type: string; label: string; positive: string; negative?: string | null; sourceId?: string }, item?: LibraryItem) => void;
+  onAdd: (input: { type: string; label: string; positive: string; negative?: string | null; sourceId?: string; categoryId?: string | null }, item?: LibraryItem) => void;
   onCancel: () => void;
   isPending: boolean;
-  library?: PromptLibrary;
+  libraryV2?: PromptLibraryV2;
 };
 
 type AddMode = "custom" | "library";
-type LibraryCategory = "character" | "scene" | "style" | "position";
-
-const LIBRARY_CATEGORIES: { key: LibraryCategory; label: string; type: string }[] = [
-  { key: "character", label: "角色", type: "character" },
-  { key: "scene", label: "场景", type: "scene" },
-  { key: "style", label: "风格", type: "style" },
-  { key: "position", label: "Position", type: "position" },
-];
 
 function AddBlockForm({
   polarity,
   onAdd,
   onCancel,
   isPending,
-  library,
+  libraryV2,
 }: AddBlockFormProps) {
   const [mode, setMode] = useState<AddMode>("custom");
   const [positive, setPositive] = useState("");
   const [negative, setNegative] = useState("");
-  const [category, setCategory] = useState<LibraryCategory>("character");
+  const [selectedCatId, setSelectedCatId] = useState<string>("");
   const [selectedId, setSelectedId] = useState<string>("");
 
-  // 获取当前分类的词库列表
-  const libraryItems: LibraryItem[] = library
-    ? (category === "character" ? library.characters :
-       category === "scene" ? library.scenes :
-       category === "style" ? library.styles :
-       library.positions)
-    : [];
+  // Get categories that have presets
+  const categoriesWithPresets = useMemo(
+    () => (libraryV2?.categories ?? []).filter((c) => c.presets.length > 0),
+    [libraryV2],
+  );
 
-  // 当切换分类时重置选择
+  // Auto-select first category
+  useEffect(() => {
+    if (categoriesWithPresets.length > 0 && !selectedCatId) {
+      setSelectedCatId(categoriesWithPresets[0].id);
+    }
+  }, [categoriesWithPresets, selectedCatId]);
+
+  const selectedCategory = categoriesWithPresets.find((c) => c.id === selectedCatId);
+  const libraryItems = selectedCategory?.presets ?? [];
+
+  // Reset selection when switching category
   useEffect(() => {
     setSelectedId("");
-  }, [category]);
+  }, [selectedCatId]);
 
   function handleSubmitCustom() {
     const text = polarity === "positive" ? positive : negative;
     if (!text.trim()) return;
-    const label = "自定义";
     onAdd({
       type: "custom",
-      label,
+      label: "自定义",
       positive: polarity === "positive" ? positive.trim() : "",
       negative: polarity === "negative" ? negative.trim() : null,
     });
   }
 
   function handleSubmitLibrary() {
-    if (!selectedId) return;
+    if (!selectedId || !selectedCategory) return;
     const item = libraryItems.find((i) => i.id === selectedId);
     if (!item) return;
 
-    const categoryConfig = LIBRARY_CATEGORIES.find((c) => c.key === category);
-    onAdd({
-      type: categoryConfig?.type ?? "custom",
-      label: item.name,
-      positive: item.prompt,
-      negative: item.negativePrompt,
-      sourceId: item.id,
-    }, item);
+    onAdd(
+      {
+        type: "preset",
+        label: item.name,
+        positive: item.prompt,
+        negative: item.negativePrompt,
+        sourceId: item.id,
+        categoryId: selectedCategory.id,
+      },
+      {
+        id: item.id,
+        name: item.name,
+        prompt: item.prompt,
+        negativePrompt: item.negativePrompt,
+        lora1: item.lora1,
+        lora2: item.lora2,
+      },
+    );
   }
 
-  const hasLibrary = library && (
-    library.characters.length > 0 ||
-    library.scenes.length > 0 ||
-    library.styles.length > 0 ||
-    library.positions.length > 0
-  );
+  const hasLibrary = categoriesWithPresets.length > 0;
 
   return (
     <div className="rounded-xl border border-sky-500/20 bg-sky-500/[0.03] p-3 space-y-3">
@@ -490,34 +579,25 @@ function AddBlockForm({
         </>
       ) : (
         <>
-          {/* 分类选择 */}
+          {/* Dynamic category tabs */}
           <div className="flex flex-wrap gap-1.5">
-            {LIBRARY_CATEGORIES.map((cat) => {
-              const items = library
-                ? (cat.key === "character" ? library.characters :
-                   cat.key === "scene" ? library.scenes :
-                   cat.key === "style" ? library.styles :
-                   library.positions)
-                : [];
-              if (items.length === 0) return null;
-              return (
-                <button
-                  key={cat.key}
-                  type="button"
-                  onClick={() => setCategory(cat.key)}
-                  className={`rounded-lg px-2 py-1 text-[10px] transition ${
-                    category === cat.key
-                      ? "bg-white/10 text-white"
-                      : "text-zinc-500 hover:text-zinc-300"
-                  }`}
-                >
-                  {cat.label} ({items.length})
-                </button>
-              );
-            })}
+            {categoriesWithPresets.map((cat) => (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => setSelectedCatId(cat.id)}
+                className={`rounded-lg px-2 py-1 text-[10px] transition ${
+                  selectedCatId === cat.id
+                    ? "bg-white/10 text-white"
+                    : "text-zinc-500 hover:text-zinc-300"
+                }`}
+              >
+                {cat.name} ({cat.presets.length})
+              </button>
+            ))}
           </div>
 
-          {/* 词库列表 */}
+          {/* Preset list */}
           <div className="max-h-40 overflow-y-auto space-y-1">
             {libraryItems.length === 0 ? (
               <div className="text-center text-[11px] text-zinc-600 py-2">该分类暂无词库</div>
@@ -563,21 +643,24 @@ function AddBlockForm({
 }
 
 // ---------------------------------------------------------------------------
-// PromptBlockEditor — 主组件（正负两栏 + 拖拽）
+// PromptBlockEditor — main component
 // ---------------------------------------------------------------------------
 
 export function PromptBlockEditor({
   positionId,
   initialBlocks,
   library,
+  libraryV2,
   onBlockImport,
 }: {
   positionId: string;
   initialBlocks: PromptBlockData[];
-  library?: PromptLibrary;
-  /** v0.3: Added lora1Bindings and lora2Bindings for position templates */
+  /** @deprecated Use libraryV2 instead */
+  library?: PromptLibraryLegacy;
+  /** V2 dynamic library from PromptCategory/PromptPreset */
+  libraryV2?: PromptLibraryV2;
   onBlockImport?: (
-    sourceType: LoraSource,
+    sourceType: LoraSource | string,
     sourceId: string,
     sourceName: string,
     loraPath?: string | null,
@@ -592,6 +675,79 @@ export function PromptBlockEditor({
   const [editValue, setEditValue] = useState("");
   const [addingColumn, setAddingColumn] = useState<"positive" | "negative" | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  // Build effective libraryV2 from legacy library if needed
+  const effectiveLibraryV2 = useMemo<PromptLibraryV2 | undefined>(() => {
+    if (libraryV2) return libraryV2;
+    if (!library) return undefined;
+    // Convert legacy library to V2 format
+    const categories: PromptLibraryV2["categories"] = [];
+    if (library.characters.length > 0) {
+      categories.push({
+        id: "__legacy_character",
+        name: "角色",
+        slug: "character",
+        color: "sky",
+        icon: "User",
+        presets: library.characters.map((c) => ({
+          id: c.id,
+          name: c.name,
+          prompt: c.prompt,
+          negativePrompt: c.negativePrompt,
+          lora1: c.loraBindings ?? (c.loraPath ? [{ path: c.loraPath, weight: 1, enabled: true }] : null),
+          lora2: null,
+        })),
+      });
+    }
+    if (library.scenes.length > 0) {
+      categories.push({
+        id: "__legacy_scene",
+        name: "场景",
+        slug: "scene",
+        color: "emerald",
+        icon: "MapPin",
+        presets: library.scenes.map((s) => ({
+          id: s.id, name: s.name, prompt: s.prompt, negativePrompt: s.negativePrompt, lora1: null, lora2: null,
+        })),
+      });
+    }
+    if (library.styles.length > 0) {
+      categories.push({
+        id: "__legacy_style",
+        name: "风格",
+        slug: "style",
+        color: "violet",
+        icon: "Palette",
+        presets: library.styles.map((s) => ({
+          id: s.id, name: s.name, prompt: s.prompt, negativePrompt: s.negativePrompt, lora1: null, lora2: null,
+        })),
+      });
+    }
+    if (library.positions.length > 0) {
+      categories.push({
+        id: "__legacy_position",
+        name: "镜位",
+        slug: "position",
+        color: "amber",
+        icon: "LayoutGrid",
+        presets: library.positions.map((p) => ({
+          id: p.id, name: p.name, prompt: p.prompt, negativePrompt: p.negativePrompt,
+          lora1: (p as { lora1?: unknown }).lora1 ?? null,
+          lora2: (p as { lora2?: unknown }).lora2 ?? null,
+        })),
+      });
+    }
+    return { categories };
+  }, [library, libraryV2]);
+
+  // Build category map for TypeBadge
+  const categoryMap = useMemo(() => {
+    const map = new Map<string, CategoryConfig>();
+    for (const cat of effectiveLibraryV2?.categories ?? []) {
+      map.set(cat.id, { id: cat.id, name: cat.name, slug: cat.slug, color: cat.color, icon: cat.icon });
+    }
+    return map;
+  }, [effectiveLibraryV2]);
 
   // ---- Edit handlers ----
 
@@ -637,29 +793,32 @@ export function PromptBlockEditor({
   // ---- Add handler ----
 
   function handleAdd(
-    input: { type: string; label: string; positive: string; negative?: string | null; sourceId?: string },
+    input: { type: string; label: string; positive: string; negative?: string | null; sourceId?: string; categoryId?: string | null },
     libraryItem?: LibraryItem,
   ) {
     startTransition(async () => {
-      const newBlock = await addPositionBlock(positionId, input);
+      const newBlock = await addPositionBlock(positionId, {
+        type: input.type,
+        label: input.label,
+        positive: input.positive,
+        negative: input.negative,
+        sourceId: input.sourceId,
+        categoryId: input.categoryId,
+      });
       setBlocks((prev) => [...prev, newBlock]);
       setAddingColumn(null);
 
       // Notify parent about imported LoRA if applicable
       if (onBlockImport && libraryItem && input.sourceId) {
-        const sourceType = input.type as LoraSource;
-        if (sourceType === "character" || sourceType === "scene" || sourceType === "style" || sourceType === "position") {
-          onBlockImport(
-            sourceType,
-            input.sourceId,
-            input.label,
-            libraryItem.loraPath,
-            libraryItem.loraBindings,
-            // v0.3: Position templates have lora1/lora2
-            (libraryItem as { lora1?: unknown }).lora1,
-            (libraryItem as { lora2?: unknown }).lora2,
-          );
-        }
+        onBlockImport(
+          input.type === "preset" ? (input.categoryId ?? "preset") : input.type,
+          input.sourceId,
+          input.label,
+          libraryItem.loraPath,
+          libraryItem.loraBindings,
+          libraryItem.lora1,
+          libraryItem.lora2,
+        );
       }
     });
   }
@@ -683,7 +842,7 @@ export function PromptBlockEditor({
     });
   }
 
-  // ---- Composed prompt preview (per-block lines) ----
+  // ---- Composed prompt preview ----
 
   const hasPositive = blocks.some((b) => b.positive?.trim());
   const hasNegative = blocks.some((b) => b.negative?.trim());
@@ -736,7 +895,8 @@ export function PromptBlockEditor({
           onAdd={() => setAddingColumn("positive")}
           onCancelAdd={() => setAddingColumn(null)}
           onSubmitAdd={handleAdd}
-          library={library}
+          libraryV2={effectiveLibraryV2}
+          categoryMap={categoryMap}
         />
         <BlockColumn
           title="❌ 负面提示词"
@@ -756,7 +916,8 @@ export function PromptBlockEditor({
           onAdd={() => setAddingColumn("negative")}
           onCancelAdd={() => setAddingColumn(null)}
           onSubmitAdd={handleAdd}
-          library={library}
+          libraryV2={effectiveLibraryV2}
+          categoryMap={categoryMap}
         />
       </div>
     </div>

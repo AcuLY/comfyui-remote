@@ -5,7 +5,7 @@ import { PromptBlockEditor } from "@/components/prompt-block-editor";
 import { LoraListEditor } from "@/components/lora-list-editor";
 import type { PromptBlockData } from "@/lib/actions";
 import type { LoraEntry, LoraSource, PositionLoraConfig } from "@/lib/lora-types";
-import type { PromptLibrary } from "@/lib/server-data";
+import type { PromptLibraryV2 } from "@/components/prompt-block-editor";
 import {
   parseLoraBindings,
   generateLoraEntryId,
@@ -16,7 +16,7 @@ type SectionEditorProps = {
   initialBlocks: PromptBlockData[];
   /** v0.3: Full loraConfig with characterLora, lora1, lora2 */
   initialLoraConfig: PositionLoraConfig;
-  library: PromptLibrary;
+  libraryV2?: PromptLibraryV2;
   onLoraChange: (config: PositionLoraConfig) => Promise<void>;
 };
 
@@ -24,7 +24,7 @@ export function SectionEditor({
   positionId,
   initialBlocks,
   initialLoraConfig,
-  library,
+  libraryV2,
   onLoraChange,
 }: SectionEditorProps) {
   // v0.3: Separate state for each LoRA section
@@ -35,7 +35,7 @@ export function SectionEditor({
 
   // 当从词库导入时，自动添加关联的 LoRA
   function handleBlockImport(
-    sourceType: LoraSource,
+    sourceType: LoraSource | string,
     sourceId: string,
     sourceName: string,
     loraPath?: string | null,
@@ -43,95 +43,85 @@ export function SectionEditor({
     lora1Bindings?: unknown,
     lora2Bindings?: unknown,
   ) {
-    const sourceLabels: Record<LoraSource, string> = {
-      character: `角色: ${sourceName}`,
-      scene: `场景: ${sourceName}`,
-      style: `风格: ${sourceName}`,
-      position: `Position: ${sourceName}`,
-      manual: "",
-    };
+    const sourceLabel = `${sourceName}`;
 
     let updatedCharacterLora = [...characterLora];
     let updatedLora1 = [...lora1];
     let updatedLora2 = [...lora2];
     let changed = false;
 
-    // Character 的 LoRA 进入 lora1（不是 characterLora，characterLora 只由大任务角色自动填充）
-    if (sourceType === "character") {
-      // 主 loraPath
-      if (loraPath) {
-        const existsInAny = updatedCharacterLora.some((e) => e.path === loraPath)
-          || updatedLora1.some((e) => e.path === loraPath);
+    // Import loraBindings (legacy character path) into lora1
+    if (loraPath) {
+      const existsInAny = updatedCharacterLora.some((e) => e.path === loraPath)
+        || updatedLora1.some((e) => e.path === loraPath);
+      if (!existsInAny) {
+        updatedLora1.push({
+          id: generateLoraEntryId(),
+          path: loraPath,
+          weight: 1.0,
+          enabled: true,
+          source: (sourceType === "character" || sourceType === "scene" || sourceType === "style" || sourceType === "position" || sourceType === "manual") ? sourceType as LoraSource : "manual",
+          sourceLabel,
+        });
+        changed = true;
+      }
+    }
+    if (loraBindings) {
+      const bindings = parseLoraBindings(loraBindings);
+      for (const binding of bindings) {
+        if (!binding.path) continue;
+        const existsInAny = updatedCharacterLora.some((e) => e.path === binding.path)
+          || updatedLora1.some((e) => e.path === binding.path);
         if (!existsInAny) {
           updatedLora1.push({
             id: generateLoraEntryId(),
-            path: loraPath,
-            weight: 1.0,
-            enabled: true,
-            source: "character",
-            sourceLabel: sourceLabels.character,
+            path: binding.path,
+            weight: binding.weight,
+            enabled: binding.enabled,
+            source: "manual",
+            sourceLabel,
           });
           changed = true;
         }
       }
-      // Character 的扩展 loraBindings
-      if (loraBindings) {
-        const bindings = parseLoraBindings(loraBindings);
-        for (const binding of bindings) {
-          if (!binding.path) continue;
-          const existsInAny = updatedCharacterLora.some((e) => e.path === binding.path)
-            || updatedLora1.some((e) => e.path === binding.path);
-          if (!existsInAny) {
-            updatedLora1.push({
-              id: generateLoraEntryId(),
-              path: binding.path,
-              weight: binding.weight,
-              enabled: binding.enabled,
-              source: "character",
-              sourceLabel: sourceLabels.character,
-            });
-            changed = true;
-          }
+    }
+
+    // Import lora1Bindings into lora1
+    if (lora1Bindings) {
+      const bindings = parseLoraBindings(lora1Bindings);
+      for (const binding of bindings) {
+        if (!binding.path) continue;
+        const exists = updatedLora1.some((e) => e.path === binding.path);
+        if (!exists) {
+          updatedLora1.push({
+            id: generateLoraEntryId(),
+            path: binding.path,
+            weight: binding.weight,
+            enabled: binding.enabled,
+            source: "manual",
+            sourceLabel,
+          });
+          changed = true;
         }
       }
     }
 
-    // Position 模板的 lora1 和 lora2
-    if (sourceType === "position") {
-      if (lora1Bindings) {
-        const bindings = parseLoraBindings(lora1Bindings);
-        for (const binding of bindings) {
-          if (!binding.path) continue;
-          const exists = updatedLora1.some((e) => e.path === binding.path);
-          if (!exists) {
-            updatedLora1.push({
-              id: generateLoraEntryId(),
-              path: binding.path,
-              weight: binding.weight,
-              enabled: binding.enabled,
-              source: "position",
-              sourceLabel: sourceLabels.position,
-            });
-            changed = true;
-          }
-        }
-      }
-      if (lora2Bindings) {
-        const bindings = parseLoraBindings(lora2Bindings);
-        for (const binding of bindings) {
-          if (!binding.path) continue;
-          const exists = updatedLora2.some((e) => e.path === binding.path);
-          if (!exists) {
-            updatedLora2.push({
-              id: generateLoraEntryId(),
-              path: binding.path,
-              weight: binding.weight,
-              enabled: binding.enabled,
-              source: "position",
-              sourceLabel: sourceLabels.position,
-            });
-            changed = true;
-          }
+    // Import lora2Bindings into lora2
+    if (lora2Bindings) {
+      const bindings = parseLoraBindings(lora2Bindings);
+      for (const binding of bindings) {
+        if (!binding.path) continue;
+        const exists = updatedLora2.some((e) => e.path === binding.path);
+        if (!exists) {
+          updatedLora2.push({
+            id: generateLoraEntryId(),
+            path: binding.path,
+            weight: binding.weight,
+            enabled: binding.enabled,
+            source: "manual",
+            sourceLabel,
+          });
+          changed = true;
         }
       }
     }
@@ -188,7 +178,7 @@ export function SectionEditor({
       <PromptBlockEditor
         positionId={positionId}
         initialBlocks={initialBlocks}
-        library={library}
+        libraryV2={libraryV2}
         onBlockImport={handleBlockImport}
       />
       

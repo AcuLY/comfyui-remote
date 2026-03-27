@@ -10,6 +10,8 @@ datasource db {
 // Note: SQLite does not enforce enum values at the database level.
 // Prisma handles validation at the application layer.
 
+// ── Legacy tables (kept for migration, will be removed in Phase 7) ──
+
 model Character {
   id              String        @id @default(cuid())
   name            String
@@ -73,6 +75,44 @@ model PositionTemplate {
   completeJobItems    CompleteJobPosition[]
 }
 
+// ── New unified prompt system ──
+
+model PromptCategory {
+  id                  String          @id @default(cuid())
+  name                String          // e.g. "角色", "场景", "风格", "镜位"
+  slug                String          @unique
+  icon                String?         // lucide icon name for UI badge
+  color               String?         // tailwind color key: "sky", "emerald", "violet", "amber"
+  positivePromptOrder Int             @default(0)
+  negativePromptOrder Int             @default(0)
+  lora1Order          Int             @default(0)
+  lora2Order          Int             @default(0)
+  sortOrder           Int             @default(0)
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+  presets             PromptPreset[]
+}
+
+model PromptPreset {
+  id              String          @id @default(cuid())
+  categoryId      String
+  name            String
+  slug            String          @unique
+  prompt          String          // positive prompt
+  negativePrompt  String?
+  lora1           Json?           // Array<LoraBinding> — stage 1
+  lora2           Json?           // Array<LoraBinding> — stage 2 (upscale)
+  defaultParams   Json?           // generation param defaults (aspect, batch, ksampler, etc.)
+  notes           String?
+  isActive        Boolean         @default(true)
+  sortOrder       Int             @default(0)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  category        PromptCategory  @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  @@index([categoryId, sortOrder])
+}
+
 model CompleteJob {
   id                    String                @id @default(cuid())
   title                 String
@@ -85,6 +125,7 @@ model CompleteJob {
   characterLoraPath     String
   scenePrompt           String?
   stylePrompt           String?
+  presetBindings        Json?                 // NEW: [{ categoryId, presetId }]
   jobLevelOverrides     Json?
   notes                 String?
   createdAt             DateTime              @default(now())
@@ -135,6 +176,7 @@ model PromptBlock {
   completeJobPositionId String
   type                  String                @default("custom")
   sourceId              String?
+  categoryId            String?               // NEW: FK to PromptCategory
   label                 String
   positive              String
   negative              String?

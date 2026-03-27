@@ -4,28 +4,39 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown, Loader2, Save } from "lucide-react";
 import { updateJob, type UpdateJobInput } from "@/lib/actions";
-import type { JobEditData } from "@/lib/server-data";
+import type { JobEditData, JobFormCategory } from "@/lib/server-data";
 import { BatchSizeQuickFill } from "@/components/batch-size-quick-fill";
-
-type Character = { id: string; name: string; slug: string; prompt: string; loraPath: string };
-type SceneStyle = { id: string; name: string; slug: string; prompt: string };
 
 type Props = {
   job: JobEditData;
-  characters: Character[];
-  scenes: SceneStyle[];
-  styles: SceneStyle[];
+  categories: JobFormCategory[];
+  // Legacy props (kept so old callers don't break)
+  characters?: unknown[];
+  scenes?: unknown[];
+  styles?: unknown[];
 };
 
-export function JobEditForm({ job, characters, scenes, styles }: Props) {
+export function JobEditForm({ job, categories }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
   const [title, setTitle] = useState(job.title);
-  const [characterId, setCharacterId] = useState(job.characterId);
-  const [sceneId, setSceneId] = useState(job.scenePresetId ?? "");
-  const [styleId, setStyleId] = useState(job.stylePresetId ?? "");
   const [notes, setNotes] = useState(job.notes ?? "");
+
+  // Initialize selections from presetBindings or legacy fields
+  const [selections, setSelections] = useState<Record<string, string>>(() => {
+    const init: Record<string, string> = {};
+    for (const cat of categories) {
+      init[cat.id] = "";
+    }
+    // Fill from presetBindings
+    for (const binding of job.presetBindings) {
+      if (init[binding.categoryId] !== undefined) {
+        init[binding.categoryId] = binding.presetId;
+      }
+    }
+    return init;
+  });
 
   // 小节默认值
   const [defaultAspectRatio, setDefaultAspectRatio] = useState(job.defaultAspectRatio);
@@ -33,23 +44,27 @@ export function JobEditForm({ job, characters, scenes, styles }: Props) {
   const [defaultBatchSize, setDefaultBatchSize] = useState(job.defaultBatchSize.toString());
   const [defaultSeedPolicy, setDefaultSeedPolicy] = useState(job.defaultSeedPolicy1);
 
-  const selectedChar = characters.find((c) => c.id === characterId);
-  const selectedScene = scenes.find((s) => s.id === sceneId);
-  const selectedStyle = styles.find((s) => s.id === styleId);
+  function setSelection(categoryId: string, presetId: string) {
+    setSelections((prev) => ({ ...prev, [categoryId]: presetId }));
+  }
+
+  // Find if there's a character category and it's required
+  const characterCategory = categories.find((c) => c.slug === "character");
+  const hasCharacterSelected = characterCategory
+    ? !!selections[characterCategory.id]
+    : true;
 
   function handleSubmit() {
-    if (!title.trim() || !characterId) return;
+    if (!title.trim() || !hasCharacterSelected) return;
+
+    const presetBindings = Object.entries(selections)
+      .filter(([, presetId]) => presetId)
+      .map(([categoryId, presetId]) => ({ categoryId, presetId }));
 
     const input: UpdateJobInput = {
       jobId: job.id,
       title: title.trim(),
-      characterId,
-      scenePresetId: sceneId || null,
-      stylePresetId: styleId || null,
-      characterPrompt: selectedChar?.prompt ?? job.characterPrompt,
-      characterLoraPath: selectedChar?.loraPath ?? job.characterLoraPath,
-      scenePrompt: selectedScene?.prompt ?? null,
-      stylePrompt: selectedStyle?.prompt ?? null,
+      presetBindings,
       notes: notes.trim() || null,
       // 小节默认值
       jobLevelOverrides: {
@@ -65,6 +80,20 @@ export function JobEditForm({ job, characters, scenes, styles }: Props) {
       router.push(`/jobs/${job.id}`);
     });
   }
+
+  const CATEGORY_COLORS: Record<string, string> = {
+    sky: "border-sky-500/20 focus:border-sky-500/40",
+    emerald: "border-emerald-500/20 focus:border-emerald-500/40",
+    violet: "border-violet-500/20 focus:border-violet-500/40",
+    amber: "border-amber-500/20 focus:border-amber-500/40",
+  };
+
+  const CATEGORY_LABELS: Record<string, string> = {
+    sky: "text-sky-400",
+    emerald: "text-emerald-400",
+    violet: "text-violet-400",
+    amber: "text-amber-400",
+  };
 
   return (
     <div className="space-y-5">
@@ -82,55 +111,38 @@ export function JobEditForm({ job, characters, scenes, styles }: Props) {
           />
         </div>
 
-        <div className="space-y-2">
-          <label className="text-xs text-zinc-400">Character</label>
-          <div className="relative">
-            <select
-              value={characterId}
-              onChange={(e) => setCharacterId(e.target.value)}
-              className="w-full appearance-none rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 pr-10 text-sm text-white outline-none focus:border-sky-500/40"
-            >
-              {characters.map((c) => (
-                <option key={c.id} value={c.id} className="bg-zinc-900">{c.name}</option>
-              ))}
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-zinc-500" />
-          </div>
-        </div>
-
+        {/* Dynamic category selectors */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-2">
-            <label className="text-xs text-zinc-400">Scene</label>
-            <div className="relative">
-              <select
-                value={sceneId}
-                onChange={(e) => setSceneId(e.target.value)}
-                className="w-full appearance-none rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 pr-10 text-sm text-white outline-none focus:border-sky-500/40"
-              >
-                <option value="" className="bg-zinc-900">无</option>
-                {scenes.map((s) => (
-                  <option key={s.id} value={s.id} className="bg-zinc-900">{s.name}</option>
-                ))}
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-zinc-500" />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <label className="text-xs text-zinc-400">Style</label>
-            <div className="relative">
-              <select
-                value={styleId}
-                onChange={(e) => setStyleId(e.target.value)}
-                className="w-full appearance-none rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 pr-10 text-sm text-white outline-none focus:border-sky-500/40"
-              >
-                <option value="" className="bg-zinc-900">无</option>
-                {styles.map((s) => (
-                  <option key={s.id} value={s.id} className="bg-zinc-900">{s.name}</option>
-                ))}
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-zinc-500" />
-            </div>
-          </div>
+          {categories.map((cat) => {
+            const colorClass = CATEGORY_COLORS[cat.color ?? ""] ?? "border-white/10 focus:border-sky-500/40";
+            const labelClass = CATEGORY_LABELS[cat.color ?? ""] ?? "text-zinc-400";
+            const isRequired = cat.slug === "character";
+
+            return (
+              <div key={cat.id} className="space-y-2">
+                <label className={`text-xs ${labelClass}`}>
+                  {cat.name}{isRequired ? " *" : ""}
+                </label>
+                <div className="relative">
+                  <select
+                    value={selections[cat.id]}
+                    onChange={(e) => setSelection(cat.id, e.target.value)}
+                    className={`w-full appearance-none rounded-2xl bg-white/[0.03] px-4 py-3 pr-10 text-sm text-white outline-none ${colorClass}`}
+                  >
+                    <option value="" className="bg-zinc-900">
+                      {isRequired ? `选择${cat.name}...` : "无"}
+                    </option>
+                    {cat.presets.map((preset) => (
+                      <option key={preset.id} value={preset.id} className="bg-zinc-900">
+                        {preset.name}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-zinc-500" />
+                </div>
+              </div>
+            );
+          })}
         </div>
 
         <div className="space-y-2">
@@ -217,7 +229,7 @@ export function JobEditForm({ job, characters, scenes, styles }: Props) {
       <button
         type="button"
         onClick={handleSubmit}
-        disabled={isPending || !title.trim() || !characterId}
+        disabled={isPending || !title.trim() || !hasCharacterSelected}
         className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-sky-500/20 bg-sky-500/10 px-4 py-3 text-sm font-medium text-sky-300 transition hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-40"
       >
         {isPending ? (
