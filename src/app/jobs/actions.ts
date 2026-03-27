@@ -164,6 +164,10 @@ export async function saveJobPositionEditAction(
   const ksampler1 = getNullableJsonObject(formData, "ksampler1");
   const ksampler2 = getNullableJsonObject(formData, "ksampler2");
 
+  // Parse upscaleFactor (float)
+  const upscaleRaw = formData.get("upscaleFactor");
+  const upscaleFactor = upscaleRaw ? parseFloat(String(upscaleRaw)) : null;
+
   // Extract seedPolicy from ksampler params (seed策略已移入 KSampler 面板)
   const seedPolicy1 = typeof ksampler1?.seedPolicy === "string" ? ksampler1.seedPolicy : getNullableString(formData, "seedPolicy1");
   const seedPolicy2 = typeof ksampler2?.seedPolicy === "string" ? ksampler2.seedPolicy : getNullableString(formData, "seedPolicy2");
@@ -183,6 +187,9 @@ export async function saveJobPositionEditAction(
   }
   if (ksampler2 !== undefined) {
     payload.ksampler2 = ksampler2;
+  }
+  if (upscaleFactor !== null && Number.isFinite(upscaleFactor)) {
+    payload.upscaleFactor = upscaleFactor;
   }
 
   try {

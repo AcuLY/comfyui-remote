@@ -116,6 +116,7 @@ model CompleteJobPosition {
   seedPolicy2           String?
   ksampler1             Json?
   ksampler2             Json?
+  upscaleFactor         Float?
   loraConfig            Json?
   extraParams           Json?
   latestRunId           String?

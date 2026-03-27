@@ -166,6 +166,7 @@ model CompleteJobPosition {
   seedPolicy2           String?
   ksampler1             Json?                 // KSamplerParams for KSampler1
   ksampler2             Json?                 // KSamplerParams for KSampler2
+  upscaleFactor         Float?                // 放大倍数：1/1.5/2/2.5/3，默认 2
   loraConfig            Json?                 // { characterLora, lora1, lora2 }
   extraParams           Json?
   latestRunId           String?

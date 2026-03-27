@@ -33,6 +33,7 @@ export type JobPositionUpdateInput = {
   // v0.3: ksampler params
   ksampler1?: Record<string, unknown> | null;
   ksampler2?: Record<string, unknown> | null;
+  upscaleFactor?: number | null;
 };
 
 export type ListJobsFilters = {
@@ -104,6 +105,7 @@ type JobPositionRecord = {
   // v0.3: ksampler params
   ksampler1: Prisma.JsonValue | null;
   ksampler2: Prisma.JsonValue | null;
+  upscaleFactor: number | null;
   loraConfig: Prisma.JsonValue | null;
   extraParams: Prisma.JsonValue | null;
   positionTemplate: PositionTemplateRecord | null;
@@ -422,6 +424,7 @@ function buildResolvedConfigSnapshot(
       seedPolicy: resolvedSeedPolicy1,
       seedPolicy1: resolvedSeedPolicy1,
       seedPolicy2: resolvedSeedPolicy2,
+      upscaleFactor: position.upscaleFactor ?? null,
     },
     // v0.3: ksampler params
     ksampler1: position.ksampler1 ?? position.positionTemplate?.defaultKsampler1 ?? null,
@@ -1369,6 +1372,9 @@ export async function updateJobPosition(
   if (input.ksampler2 !== undefined) {
     data.ksampler2 = input.ksampler2 ? JSON.parse(JSON.stringify(input.ksampler2)) : null;
   }
+  if (input.upscaleFactor !== undefined) {
+    data.upscaleFactor = input.upscaleFactor;
+  }
 
   await db.completeJobPosition.update({
     where: { id: jobPositionId },
@@ -1399,6 +1405,7 @@ export async function copyJob(jobId: string) {
             // v0.3: ksampler params
             ksampler1: true,
             ksampler2: true,
+            upscaleFactor: true,
             loraConfig: true,
             extraParams: true,
             promptBlocks: {

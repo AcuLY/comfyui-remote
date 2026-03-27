@@ -53,6 +53,14 @@ const SEED_OPTIONS = [
   { value: "increment", label: "递增 (increment)" },
 ];
 
+const UPSCALE_OPTIONS = [
+  { value: "1", label: "1x（无放大）" },
+  { value: "1.5", label: "1.5x" },
+  { value: "2", label: "2x（默认）" },
+  { value: "2.5", label: "2.5x" },
+  { value: "3", label: "3x" },
+];
+
 /** Debounce delay for auto-save (ms) */
 const AUTO_SAVE_DELAY = 600;
 
@@ -244,6 +252,7 @@ type SectionParamsFormProps = {
     seedPolicy2: string | null;
     ksampler1: unknown;
     ksampler2: unknown;
+    upscaleFactor: number | null;
   };
 };
 
@@ -258,6 +267,9 @@ export function SectionParamsForm({ jobId, positionId, initialParams }: SectionP
   );
   const [ks2, setKs2] = useState<KSamplerParams>(() =>
     parseInitialKSampler(initialParams.ksampler2, DEFAULT_KSAMPLER2),
+  );
+  const [upscaleFactor, setUpscaleFactor] = useState<string>(
+    String(initialParams.upscaleFactor ?? 2),
   );
 
   // Auto-save: debounced form submit
@@ -285,6 +297,7 @@ export function SectionParamsForm({ jobId, positionId, initialParams }: SectionP
       {/* KSampler params as JSON */}
       <input type="hidden" name="ksampler1" value={JSON.stringify(ks1)} />
       <input type="hidden" name="ksampler2" value={JSON.stringify(ks2)} />
+      <input type="hidden" name="upscaleFactor" value={upscaleFactor} />
 
       <div className="space-y-3">
         <div className="flex items-center justify-between">
@@ -337,6 +350,25 @@ export function SectionParamsForm({ jobId, positionId, initialParams }: SectionP
             />
           </div>
 
+          <div className="space-y-1.5">
+            <div className="text-[11px] text-zinc-500">放大倍数</div>
+            <Select
+              value={upscaleFactor}
+              onChange={(v) => {
+                setUpscaleFactor(v);
+                setTimeout(scheduleAutoSave, 0);
+              }}
+              options={UPSCALE_OPTIONS}
+              disabled={pending}
+              size="sm"
+            />
+            {upscaleFactor === "1" && (
+              <p className="text-[10px] text-amber-400/70">
+                1x 模式将跳过 Upscale Latent 和 KSampler2（无高清修复）
+              </p>
+            )}
+          </div>
+
           {/* KSampler panels */}
           <KSamplerPanel
             label="KSampler1（第一阶段）"
@@ -349,12 +381,12 @@ export function SectionParamsForm({ jobId, positionId, initialParams }: SectionP
           />
           <KSamplerPanel
             label="KSampler2（高清修复）"
-            subtitle={`steps ${ks2.steps ?? DEFAULT_KSAMPLER2.steps} · cfg ${ks2.cfg ?? DEFAULT_KSAMPLER2.cfg} · ${ks2.sampler_name ?? DEFAULT_KSAMPLER2.sampler_name}`}
+            subtitle={upscaleFactor === "1" ? "1x 模式下不使用" : `steps ${ks2.steps ?? DEFAULT_KSAMPLER2.steps} · cfg ${ks2.cfg ?? DEFAULT_KSAMPLER2.cfg} · ${ks2.sampler_name ?? DEFAULT_KSAMPLER2.sampler_name}`}
             params={ks2}
             defaults={DEFAULT_KSAMPLER2}
             onChange={setKs2}
             onFieldBlur={scheduleAutoSave}
-            disabled={pending}
+            disabled={pending || upscaleFactor === "1"}
           />
         </div>
 

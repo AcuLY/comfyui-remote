@@ -436,7 +436,7 @@ async function resolveStandardWorkflowPrompt(
     shortSidePx: shortSide,
     longSidePx: longSide,
     batchSize: promptDraft.parameters.batchSize ?? 1,
-    upscaleFactor: 2,
+    upscaleFactor: promptDraft.parameters.upscaleFactor ?? 2,
     characterLora: toBindings(loraConfig.characterLora),
     lora1List: toBindings(loraConfig.lora1),
     lora2List: toBindings(loraConfig.lora2),
