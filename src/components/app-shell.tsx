@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Boxes, FolderOpen, Images, Settings, Trash2, Upload } from "lucide-react";
+import { Toaster } from "sonner";
 import type { ReactNode } from "react";
 
 const navItems = [
@@ -13,6 +14,13 @@ const navItems = [
 export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex h-full flex-col">
+      <Toaster
+        theme="dark"
+        position="top-center"
+        toastOptions={{
+          style: { background: "rgba(24,24,27,0.95)", border: "1px solid rgba(255,255,255,0.1)", color: "#e4e4e7" },
+        }}
+      />
       <header className="shrink-0 border-b border-white/10 bg-[var(--panel)]/90 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
           <Link href="/queue" className="flex items-center gap-2 text-sm font-semibold text-white">

@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { toImageUrl } from "@/lib/image-url";
-import type { QueueRun, RunningRun, ReviewGroup, ReviewImage, ReviewStatus, JobCard, TrashItem, LoraAsset } from "@/lib/types";
+import type { QueueRun, RunningRun, FailedRun, ReviewGroup, ReviewImage, ReviewStatus, JobCard, TrashItem, LoraAsset } from "@/lib/types";
 import { listWorkflowTemplateSummaries } from "@/server/services/workflow-template-service";
 
 // Re-export types used by frontend components (originally from backend branch)
@@ -61,9 +61,40 @@ export async function getRunningRuns(): Promise<RunningRun[]> {
     id: run.id,
     characterName: run.completeJob.character.name,
     jobTitle: run.completeJob.title,
-    positionName: run.completeJobPosition.positionTemplate?.name ?? "Unknown",
+    positionName:
+      run.completeJobPosition.name ??
+      run.completeJobPosition.positionTemplate?.name ??
+      `section_${run.completeJobPosition.sortOrder + 1}`,
     startedAt: formatDate(run.createdAt),
     status: run.status as RunningRun["status"],
+  }));
+}
+
+// ---------------------------------------------------------------------------
+// Failed Runs — 最近失败的任务
+// ---------------------------------------------------------------------------
+
+export async function getFailedRuns(): Promise<FailedRun[]> {
+  const runs = await prisma.positionRun.findMany({
+    where: { status: "failed" },
+    orderBy: { finishedAt: "desc" },
+    take: 20,
+    include: {
+      completeJob: { include: { character: true } },
+      completeJobPosition: { include: { positionTemplate: true } },
+    },
+  });
+
+  return runs.map((run) => ({
+    id: run.id,
+    characterName: run.completeJob.character.name,
+    jobTitle: run.completeJob.title,
+    positionName:
+      run.completeJobPosition.name ??
+      run.completeJobPosition.positionTemplate?.name ??
+      `section_${run.completeJobPosition.sortOrder + 1}`,
+    errorMessage: run.errorMessage,
+    finishedAt: run.finishedAt?.toISOString() ?? null,
   }));
 }
 
@@ -100,7 +131,10 @@ export async function getReviewGroup(runId: string): Promise<ReviewGroup | null>
     id: run.id,
     title: run.completeJob.title,
     characterName: run.completeJob.character.name,
-    positionName: run.completeJobPosition.positionTemplate?.name ?? "Unknown",
+    positionName:
+      run.completeJobPosition.name ??
+      run.completeJobPosition.positionTemplate?.name ??
+      `section_${run.completeJobPosition.sortOrder + 1}`,
     createdAt: formatDate(run.createdAt),
     pendingCount: images.filter((img) => img.status === "pending").length,
     totalCount: images.length,

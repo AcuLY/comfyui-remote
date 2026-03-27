@@ -52,6 +52,7 @@ type UpdateJobPositionRequestBody = {
   seedPolicy2?: unknown;
   ksampler1?: unknown;
   ksampler2?: unknown;
+  upscaleFactor?: unknown;
 };
 
 const JOB_CREATE_FIELDS = [
@@ -82,6 +83,7 @@ const JOB_POSITION_UPDATE_FIELDS = [
   "seedPolicy2",
   "ksampler1",
   "ksampler2",
+  "upscaleFactor",
 ] as const;
 
 class JobServiceError extends Error {
@@ -434,6 +436,9 @@ export async function updateJobPosition(
       : undefined,
     ksampler2: parsedBody.ksampler2 !== undefined
       ? (parsedBody.ksampler2 as Record<string, unknown> | null)
+      : undefined,
+    upscaleFactor: parsedBody.upscaleFactor !== undefined
+      ? (typeof parsedBody.upscaleFactor === "number" && Number.isFinite(parsedBody.upscaleFactor) ? parsedBody.upscaleFactor : null)
       : undefined,
   };
 

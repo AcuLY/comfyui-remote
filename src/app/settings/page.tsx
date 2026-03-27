@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { SectionCard } from "@/components/section-card";
-import { User, MapPin, Palette, LayoutGrid, Activity, Workflow, HeartPulse } from "lucide-react";
+import { User, MapPin, Palette, LayoutGrid, Workflow, HeartPulse, ScrollText } from "lucide-react";
 
 const settingsGroups = [
   {
@@ -40,11 +40,10 @@ const settingsGroups = [
     icon: HeartPulse,
   },
   {
-    href: "/api/worker/status",
-    label: "Worker 状态",
-    description: "查看 Worker 队列和 ComfyUI 连通性（JSON）",
-    icon: Activity,
-    external: true,
+    href: "/settings/logs",
+    label: "后端日志",
+    description: "查看运行日志：任务执行、错误信息",
+    icon: ScrollText,
   },
 ];
 
@@ -53,11 +52,10 @@ export default function SettingsPage() {
     <div className="space-y-4">
       <SectionCard title="设置" subtitle="管理角色、场景、风格和提示词库。">
         <div className="space-y-2">
-          {settingsGroups.map(({ href, label, description, icon: Icon, external }) => (
+          {settingsGroups.map(({ href, label, description, icon: Icon }) => (
             <Link
               key={href}
               href={href}
-              target={external ? "_blank" : undefined}
               className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition hover:bg-white/[0.06]"
             >
               <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-white/[0.06]">

@@ -25,6 +25,10 @@ function asNullableInteger(value: Prisma.JsonValue | undefined) {
   return typeof value === "number" && Number.isInteger(value) ? value : null;
 }
 
+function asNullableNumber(value: Prisma.JsonValue | undefined) {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
 function asInteger(value: Prisma.JsonValue | undefined, fallback: number) {
   return typeof value === "number" && Number.isInteger(value) ? value : fallback;
 }
@@ -116,6 +120,7 @@ export function normalizeResolvedConfigSnapshot(
       seedPolicy: asNullableString(parameters?.seedPolicy),
       seedPolicy1: asNullableString(parameters?.seedPolicy1),
       seedPolicy2: asNullableString(parameters?.seedPolicy2),
+      upscaleFactor: asNullableNumber(parameters?.upscaleFactor),
     },
     ksampler1: asJsonObject(root?.ksampler1 ?? null),
     ksampler2: asJsonObject(root?.ksampler2 ?? null),

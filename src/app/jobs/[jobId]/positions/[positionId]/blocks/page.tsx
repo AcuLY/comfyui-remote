@@ -6,6 +6,7 @@ import { SectionCard } from "@/components/section-card";
 import { SectionEditor } from "@/components/section-editor";
 import { SectionParamsForm } from "./section-params-form";
 import { SectionNameEditor } from "./section-name-editor";
+import { PositionRunButton } from "@/app/jobs/[jobId]/job-detail-actions";
 import type { PromptBlockData } from "@/lib/actions";
 import { getPromptLibrary } from "@/lib/server-data";
 import { parsePositionLoraConfig, parseLoraBindings, generateLoraEntryId, serializePositionLoraConfig } from "@/lib/lora-types";
@@ -69,6 +70,7 @@ export default async function SectionEditPage({
     // v0.3: ksampler params
     ksampler1: pos.ksampler1 ?? pos.positionTemplate?.defaultKsampler1 ?? null,
     ksampler2: pos.ksampler2 ?? pos.positionTemplate?.defaultKsampler2 ?? null,
+    upscaleFactor: pos.upscaleFactor ?? null,
   };
 
   // Parse existing LoRA config (v0.3: { characterLora, lora1, lora2 })
@@ -190,6 +192,12 @@ export default async function SectionEditPage({
           </div>
         </div>
       </SectionCard>
+
+      {/* 运行按钮 */}
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+        <div className="mb-2 text-xs font-medium text-zinc-400">运行此小节</div>
+        <PositionRunButton positionId={positionId} defaultBatchSize={sectionParams.batchSize} />
+      </div>
     </div>
   );
 }

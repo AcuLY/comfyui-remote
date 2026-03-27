@@ -399,7 +399,7 @@ function AddBlockForm({
   function handleSubmitCustom() {
     const text = polarity === "positive" ? positive : negative;
     if (!text.trim()) return;
-    const label = text.trim().slice(0, 20);
+    const label = "自定义";
     onAdd({
       type: "custom",
       label,

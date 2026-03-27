@@ -71,6 +71,7 @@ export type NormalizedResolvedConfigSnapshot = {
     seedPolicy: string | null;
     seedPolicy1: string | null;
     seedPolicy2: string | null;
+    upscaleFactor: number | null;
   };
   /** v0.3: KSampler1 parameters (第一阶段) */
   ksampler1: Prisma.JsonObject | null;
@@ -96,6 +97,7 @@ export type ComfyPromptDraft = {
     seedPolicy: string | null;
     seedPolicy1: string | null;
     seedPolicy2: string | null;
+    upscaleFactor: number | null;
   };
   /** v0.3: KSampler1 parameters (第一阶段) */
   ksampler1: Prisma.JsonObject | null;

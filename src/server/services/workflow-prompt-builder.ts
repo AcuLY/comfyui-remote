@@ -141,6 +141,7 @@ function resolveSeed(params: KSamplerParams): number {
 export function buildWorkflowPrompt(input: WorkflowBuildInput): Record<string, unknown> {
   const wf = input.workflowTemplate;
   const upscale = input.upscaleFactor ?? 2;
+  const skipHiresFix = upscale === 1;
 
   // 1. Prompts — nodes 511, 513
   nodeInputs(wf, "511").text = input.positivePrompt;
@@ -152,11 +153,18 @@ export function buildWorkflowPrompt(input: WorkflowBuildInput): Record<string, u
   latent.height = input.longSidePx;
   latent.batch_size = input.batchSize;
 
-  // 3. Upscale dimensions — node 425 (Upscale Latent)
-  //    Must match the same orientation as node 407: width = short, height = long
-  const upscaleInputs = nodeInputs(wf, "425");
-  upscaleInputs.width = input.shortSidePx * upscale;
-  upscaleInputs.height = input.longSidePx * upscale;
+  if (skipHiresFix) {
+    // 1x: bypass hires fix — remove Upscale Latent (425) and KSampler2 (427),
+    // rewire VAEDecode (410) to read from KSampler1 (3) directly
+    delete (wf as Record<string, unknown>)["425"];
+    delete (wf as Record<string, unknown>)["427"];
+    nodeInputs(wf, "410").samples = ["3", 0];
+  } else {
+    // 3. Upscale dimensions — node 425 (Upscale Latent)
+    const upscaleInputs = nodeInputs(wf, "425");
+    upscaleInputs.width = input.shortSidePx * upscale;
+    upscaleInputs.height = input.longSidePx * upscale;
+  }
 
   // 4. Character LoRA — node 482
   if (input.characterLora.length > 0) {
@@ -187,15 +195,17 @@ export function buildWorkflowPrompt(input: WorkflowBuildInput): Record<string, u
   ks1.denoise = input.ksampler1.denoise ?? ks1Defaults.denoise;
   ks1.seed = resolveSeed(input.ksampler1);
 
-  // 8. KSampler2 — node 427
-  const ks2Defaults = DEFAULT_KSAMPLER2;
-  const ks2 = nodeInputs(wf, "427");
-  ks2.steps = input.ksampler2.steps ?? ks2Defaults.steps;
-  ks2.cfg = input.ksampler2.cfg ?? ks2Defaults.cfg;
-  ks2.sampler_name = input.ksampler2.sampler_name ?? ks2Defaults.sampler_name;
-  ks2.scheduler = input.ksampler2.scheduler ?? ks2Defaults.scheduler;
-  ks2.denoise = input.ksampler2.denoise ?? ks2Defaults.denoise;
-  ks2.seed = resolveSeed(input.ksampler2);
+  // 8. KSampler2 — node 427 (only when hires fix is active)
+  if (!skipHiresFix) {
+    const ks2Defaults = DEFAULT_KSAMPLER2;
+    const ks2 = nodeInputs(wf, "427");
+    ks2.steps = input.ksampler2.steps ?? ks2Defaults.steps;
+    ks2.cfg = input.ksampler2.cfg ?? ks2Defaults.cfg;
+    ks2.sampler_name = input.ksampler2.sampler_name ?? ks2Defaults.sampler_name;
+    ks2.scheduler = input.ksampler2.scheduler ?? ks2Defaults.scheduler;
+    ks2.denoise = input.ksampler2.denoise ?? ks2Defaults.denoise;
+    ks2.seed = resolveSeed(input.ksampler2);
+  }
 
   // 9. Output path — node 515 (Image Save)
   nodeInputs(wf, "515").output_path = input.outputPath;

@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
-import { getQueueRuns, getRunningRuns } from "@/lib/server-data";
+import { getQueueRuns, getRunningRuns, getFailedRuns } from "@/lib/server-data";
 
 export async function GET() {
-  const [queueRuns, runningRuns] = await Promise.all([
+  const [queueRuns, runningRuns, failedRuns] = await Promise.all([
     getQueueRuns(),
     getRunningRuns(),
+    getFailedRuns(),
   ]);
-  return NextResponse.json({ queueRuns, runningRuns });
+  return NextResponse.json({ queueRuns, runningRuns, failedRuns });
 }
