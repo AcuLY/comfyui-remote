@@ -22,24 +22,6 @@ const DEFAULT_CHECKPOINT =
 // Helpers
 // ---------------------------------------------------------------------------
 
-function resolveLoraPath(draft: ComfyPromptDraft): string | null {
-  // 1. Check loraConfig for a character LoRA path
-  const loraConfig = draft.loraConfig as JsonRecord | null;
-
-  if (loraConfig) {
-    const characterLora =
-      typeof loraConfig.characterLoraPath === "string"
-        ? loraConfig.characterLoraPath.trim()
-        : null;
-
-    if (characterLora) {
-      return characterLora;
-    }
-  }
-
-  return null;
-}
-
 function resolveSeed(draft: ComfyPromptDraft): number {
   const seedPolicy = draft.parameters.seedPolicy ?? "random";
 
@@ -70,7 +52,6 @@ export function buildFallbackPromptNodes(draft: ComfyPromptDraft): JsonRecord {
     draft.prompt.negative ?? "";
 
   const seed = resolveSeed(draft);
-  const loraPath = resolveLoraPath(draft);
 
   const nodes: JsonRecord = {};
 
@@ -83,30 +64,12 @@ export function buildFallbackPromptNodes(draft: ComfyPromptDraft): JsonRecord {
     _meta: { title: "Load Checkpoint" },
   };
 
-  // Node 2: LoRA Loader (optional)
-  if (loraPath) {
-    nodes["2"] = {
-      class_type: "LoraLoader",
-      inputs: {
-        lora_name: loraPath,
-        strength_model: 0.8,
-        strength_clip: 0.8,
-        model: ["1", 0],
-        clip: ["1", 1],
-      },
-      _meta: { title: "LoRA Loader" },
-    };
-  }
-
-  const modelSource = loraPath ? "2" : "1";
-  const clipSource = loraPath ? "2" : "1";
-
   // Node 3: Positive prompt
   nodes["3"] = {
     class_type: "CLIPTextEncode",
     inputs: {
       text: positivePrompt,
-      clip: [clipSource, 1],
+      clip: ["1", 1],
     },
     _meta: { title: "Positive Prompt" },
   };
@@ -116,7 +79,7 @@ export function buildFallbackPromptNodes(draft: ComfyPromptDraft): JsonRecord {
     class_type: "CLIPTextEncode",
     inputs: {
       text: negativePrompt,
-      clip: [clipSource, 1],
+      clip: ["1", 1],
     },
     _meta: { title: "Negative Prompt" },
   };
@@ -136,7 +99,7 @@ export function buildFallbackPromptNodes(draft: ComfyPromptDraft): JsonRecord {
   nodes["6"] = {
     class_type: "KSampler",
     inputs: {
-      model: [modelSource, 0],
+      model: ["1", 0],
       positive: ["3", 0],
       negative: ["4", 0],
       latent_image: ["5", 0],

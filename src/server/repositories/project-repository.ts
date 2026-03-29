@@ -4,19 +4,12 @@ import { db } from "@/lib/db";
 import { detectProvider } from "@/lib/prisma";
 
 export type ProjectUpdateInput = {
-  characterPrompt?: string;
-  scenePrompt?: string | null;
-  stylePrompt?: string | null;
-  characterLoraPath?: string;
   aspectRatio?: string | null;
   batchSize?: number | null;
 };
 
 export type ProjectCreateInput = {
   title: string;
-  characterId: string;
-  scenePresetId: string | null;
-  stylePresetId: string | null;
   positionTemplateIds?: string[];
   notes: string | null;
 };
@@ -44,9 +37,6 @@ export type ListProjectsFilters = {
 };
 
 export type ProjectCreateOptions = {
-  characters: Array<{ id: string; name: string; slug: string }>;
-  scenePresets: Array<{ id: string; name: string; slug: string }>;
-  stylePresets: Array<{ id: string; name: string; slug: string }>;
   positionTemplates: Array<{ id: string; name: string; slug: string; enabled: boolean }>;
 };
 
@@ -122,26 +112,7 @@ type QueuableProjectRecord = {
   title: string;
   slug: string;
   status: string;
-  characterPrompt: string;
-  characterLoraPath: string;
-  scenePrompt: string | null;
-  stylePrompt: string | null;
   projectLevelOverrides: Prisma.JsonValue | null;
-  character: {
-    id: string;
-    name: string;
-    slug: string;
-  };
-  scenePreset: {
-    id: string;
-    name: string;
-    slug: string;
-  } | null;
-  stylePreset: {
-    id: string;
-    name: string;
-    slug: string;
-  } | null;
 };
 
 type EnqueuedRunRecord = {
@@ -388,29 +359,6 @@ function buildResolvedConfigSnapshot(
       title: project.title,
       slug: project.slug,
     },
-    character: {
-      id: project.character.id,
-      name: project.character.name,
-      slug: project.character.slug,
-      prompt: project.characterPrompt,
-      loraPath: project.characterLoraPath,
-    },
-    scene: project.scenePreset
-      ? {
-          id: project.scenePreset.id,
-          name: project.scenePreset.name,
-          slug: project.scenePreset.slug,
-          prompt: project.scenePrompt,
-        }
-      : null,
-    style: project.stylePreset
-      ? {
-          id: project.stylePreset.id,
-          name: project.stylePreset.name,
-          slug: project.stylePreset.slug,
-          prompt: project.stylePrompt,
-        }
-      : null,
     section: {
       id: section.id,
       templateId: section.positionTemplateId,
@@ -456,10 +404,7 @@ function buildResolvedConfigSnapshot(
 }
 
 function buildResolvedPromptDraft(
-  project: Pick<
-    QueuableProjectRecord,
-    "characterPrompt" | "scenePrompt" | "stylePrompt"
-  >,
+  _project: Pick<QueuableProjectRecord, "id">,
   section: Pick<
     ProjectSectionRecord,
     "positivePrompt" | "negativePrompt" | "positionTemplate"
@@ -470,7 +415,7 @@ function buildResolvedPromptDraft(
   }>,
 ) {
   if (blocks && blocks.length > 0) {
-    // Block-based prompt composition (v0.2)
+    // Block-based prompt composition (v0.2+)
     const positiveParts = blocks
       .map((b) => b.positive)
       .filter((v): v is string => Boolean(v && v.trim()));
@@ -484,12 +429,9 @@ function buildResolvedPromptDraft(
     };
   }
 
-  // Legacy fallback (pre-block positions)
+  // Fallback: use section-level prompts only
   return {
     positive: [
-      project.characterPrompt,
-      project.scenePrompt,
-      project.stylePrompt,
       section.positionTemplate?.prompt,
       section.positivePrompt,
     ]
@@ -684,9 +626,6 @@ export async function listProjects(filters: ListProjectsFilters = {}) {
             OR: [
               { title: ciContains(search) },
               { slug: ciContains(search) },
-              { character: { name: ciContains(search) } },
-              { scenePreset: { is: { name: ciContains(search) } } },
-              { stylePreset: { is: { name: ciContains(search) } } },
             ],
           }
         : {}),
@@ -702,9 +641,6 @@ export async function listProjects(filters: ListProjectsFilters = {}) {
     },
     orderBy: { updatedAt: "desc" },
     include: {
-      character: true,
-      scenePreset: true,
-      stylePreset: true,
       sections: {
         select: {
           id: true,
@@ -737,9 +673,6 @@ export async function listProjects(filters: ListProjectsFilters = {}) {
       title: project.title,
       status: project.status,
       updatedAt: project.updatedAt.toISOString(),
-      characterName: project.character.name,
-      sceneName: project.scenePreset?.name ?? "未设置",
-      styleName: project.stylePreset?.name ?? "未设置",
       sectionCount: project.sections.length,
       enabledPositionCount: project.sections.filter((section) => section.enabled).length,
       latestRunAt: latestRun?.createdAt.toISOString() ?? null,
@@ -760,9 +693,6 @@ export async function getProjectDetail(projectId: string) {
   const project = await db.project.findUnique({
     where: { id: projectId },
     include: {
-      character: true,
-      scenePreset: true,
-      stylePreset: true,
       _count: {
         select: { sections: true },
       },
@@ -820,44 +750,11 @@ export async function getProjectDetail(projectId: string) {
     createdAt: project.createdAt.toISOString(),
     updatedAt: project.updatedAt.toISOString(),
     notes: project.notes,
-    characterName: project.character.name,
-    sceneName: project.scenePreset?.name ?? "未设置",
-    styleName: project.stylePreset?.name ?? "未设置",
     sectionCount: project._count.sections,
     enabledPositionCount: project.sections.length,
     promptOverview: {
-      characterPrompt: project.characterPrompt,
-      scenePrompt: project.scenePrompt,
-      stylePrompt: project.stylePrompt,
-      characterLoraPath: project.characterLoraPath,
       projectLevelOverrides: project.projectLevelOverrides,
     },
-    character: {
-      id: project.character.id,
-      name: project.character.name,
-      slug: project.character.slug,
-      prompt: project.character.prompt,
-      loraPath: project.character.loraPath,
-      notes: project.character.notes,
-    },
-    scenePreset: project.scenePreset
-      ? {
-          id: project.scenePreset.id,
-          name: project.scenePreset.name,
-          slug: project.scenePreset.slug,
-          prompt: project.scenePreset.prompt,
-          notes: project.scenePreset.notes,
-        }
-      : null,
-    stylePreset: project.stylePreset
-      ? {
-          id: project.stylePreset.id,
-          name: project.stylePreset.name,
-          slug: project.stylePreset.slug,
-          prompt: project.stylePreset.prompt,
-          notes: project.stylePreset.notes,
-        }
-      : null,
     sections: project.sections.map((section) => serializeProjectSection(section, latestRunsById)),
   };
 }
@@ -873,32 +770,7 @@ export async function getProjectAgentContext(projectId: string) {
       notes: true,
       createdAt: true,
       updatedAt: true,
-      characterPrompt: true,
-      characterLoraPath: true,
-      scenePrompt: true,
-      stylePrompt: true,
       projectLevelOverrides: true,
-      character: {
-        select: {
-          id: true,
-          name: true,
-          slug: true,
-        },
-      },
-      scenePreset: {
-        select: {
-          id: true,
-          name: true,
-          slug: true,
-        },
-      },
-      stylePreset: {
-        select: {
-          id: true,
-          name: true,
-          slug: true,
-        },
-      },
       _count: {
         select: { sections: true },
       },
@@ -1003,14 +875,7 @@ export async function getProjectAgentContext(projectId: string) {
       notes: project.notes,
       sectionCount: project._count.sections,
       enabledPositionCount: project.sections.length,
-      character: project.character,
-      scenePreset: project.scenePreset,
-      stylePreset: project.stylePreset,
       promptOverview: {
-        characterPrompt: project.characterPrompt,
-        scenePrompt: project.scenePrompt,
-        stylePrompt: project.stylePrompt,
-        characterLoraPath: project.characterLoraPath,
         projectLevelOverrides: project.projectLevelOverrides,
       },
     },
@@ -1094,53 +959,6 @@ export async function getProjectSectionDetail(projectId: string, sectionId: stri
 
 export async function createProject(input: ProjectCreateInput) {
   const projectId = await db.$transaction(async (tx: Prisma.TransactionClient) => {
-    const [character, scenePreset, stylePreset] = await Promise.all([
-      tx.character.findUnique({
-        where: { id: input.characterId },
-        select: {
-          id: true,
-          name: true,
-          prompt: true,
-          negativePrompt: true,
-          loraPath: true,
-        },
-      }),
-      input.scenePresetId
-        ? tx.scenePreset.findUnique({
-            where: { id: input.scenePresetId },
-            select: {
-              id: true,
-              name: true,
-              prompt: true,
-              negativePrompt: true,
-            },
-          })
-        : Promise.resolve(null),
-      input.stylePresetId
-        ? tx.stylePreset.findUnique({
-            where: { id: input.stylePresetId },
-            select: {
-              id: true,
-              name: true,
-              prompt: true,
-              negativePrompt: true,
-            },
-          })
-        : Promise.resolve(null),
-    ]);
-
-    if (!character) {
-      throw new Error("CHARACTER_NOT_FOUND");
-    }
-
-    if (input.scenePresetId && !scenePreset) {
-      throw new Error("SCENE_PRESET_NOT_FOUND");
-    }
-
-    if (input.stylePresetId && !stylePreset) {
-      throw new Error("STYLE_PRESET_NOT_FOUND");
-    }
-
     // Optionally resolve position templates
     const positionTemplateIds = input.positionTemplateIds ?? [];
     let orderedPositionTemplates: Array<{
@@ -1185,13 +1003,6 @@ export async function createProject(input: ProjectCreateInput) {
         title: input.title,
         slug,
         status: JobStatus.draft,
-        characterId: character.id,
-        scenePresetId: scenePreset?.id ?? null,
-        stylePresetId: stylePreset?.id ?? null,
-        characterPrompt: character.prompt,
-        characterLoraPath: character.loraPath,
-        scenePrompt: scenePreset?.prompt ?? null,
-        stylePrompt: stylePreset?.prompt ?? null,
         notes: input.notes,
         ...(orderedPositionTemplates.length > 0
           ? {
@@ -1218,50 +1029,6 @@ export async function createProject(input: ProjectCreateInput) {
     for (let i = 0; i < createdProject.sections.length; i++) {
       const sectionId = createdProject.sections[i].id;
       const pt = orderedPositionTemplates[i];
-      let sortOrder = 0;
-
-      // Character block
-      await tx.promptBlock.create({
-        data: {
-          projectSectionId: sectionId,
-          type: "character",
-          sourceId: character.id,
-          label: character.name,
-          positive: character.prompt,
-          negative: character.negativePrompt,
-          sortOrder: sortOrder++,
-        },
-      });
-
-      // Scene block
-      if (scenePreset) {
-        await tx.promptBlock.create({
-          data: {
-            projectSectionId: sectionId,
-            type: "scene",
-            sourceId: scenePreset.id,
-            label: scenePreset.name,
-            positive: scenePreset.prompt,
-            negative: scenePreset.negativePrompt,
-            sortOrder: sortOrder++,
-          },
-        });
-      }
-
-      // Style block
-      if (stylePreset) {
-        await tx.promptBlock.create({
-          data: {
-            projectSectionId: sectionId,
-            type: "style",
-            sourceId: stylePreset.id,
-            label: stylePreset.name,
-            positive: stylePreset.prompt,
-            negative: stylePreset.negativePrompt,
-            sortOrder: sortOrder++,
-          },
-        });
-      }
 
       // Position block
       if (pt) {
@@ -1273,7 +1040,7 @@ export async function createProject(input: ProjectCreateInput) {
             label: pt.name,
             positive: pt.prompt,
             negative: pt.negativePrompt,
-            sortOrder: sortOrder++,
+            sortOrder: 0,
           },
         });
       }
@@ -1299,22 +1066,6 @@ export async function updateProject(projectId: string, input: ProjectUpdateInput
   }
 
   const data: Prisma.ProjectUpdateInput = {};
-
-  if (input.characterPrompt !== undefined) {
-    data.characterPrompt = input.characterPrompt;
-  }
-
-  if (input.scenePrompt !== undefined) {
-    data.scenePrompt = input.scenePrompt;
-  }
-
-  if (input.stylePrompt !== undefined) {
-    data.stylePrompt = input.stylePrompt;
-  }
-
-  if (input.characterLoraPath !== undefined) {
-    data.characterLoraPath = input.characterLoraPath;
-  }
 
   const projectLevelOverrides = buildProjectLevelOverridesUpdate(project.projectLevelOverrides, input);
   if (projectLevelOverrides !== undefined) {
@@ -1453,15 +1204,9 @@ export async function copyProject(projectId: string) {
         title: identity.title,
         slug: identity.slug,
         status: JobStatus.draft,
-        characterId: project.characterId,
-        scenePresetId: project.scenePresetId,
-        stylePresetId: project.stylePresetId,
-        characterPrompt: project.characterPrompt,
-        characterLoraPath: project.characterLoraPath,
-        scenePrompt: project.scenePrompt,
-        stylePrompt: project.stylePrompt,
         projectLevelOverrides: cloneJsonValueForCreate(project.projectLevelOverrides),
         notes: project.notes,
+        presetBindings: cloneJsonValueForCreate(project.presetBindings),
         sections: {
           create: project.sections.map((section) => ({
             positionTemplateId: section.positionTemplateId,
@@ -1522,32 +1267,7 @@ export async function enqueueProjectRuns(projectId: string, overrideBatchSize?: 
         title: true,
         slug: true,
         status: true,
-        characterPrompt: true,
-        characterLoraPath: true,
-        scenePrompt: true,
-        stylePrompt: true,
         projectLevelOverrides: true,
-        character: {
-          select: {
-            id: true,
-            name: true,
-            slug: true,
-          },
-        },
-        scenePreset: {
-          select: {
-            id: true,
-            name: true,
-            slug: true,
-          },
-        },
-        stylePreset: {
-          select: {
-            id: true,
-            name: true,
-            slug: true,
-          },
-        },
         sections: {
           where: { enabled: true },
           orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
@@ -1614,32 +1334,7 @@ export async function enqueueProjectSectionRun(projectId: string, sectionId: str
         title: true,
         slug: true,
         status: true,
-        characterPrompt: true,
-        characterLoraPath: true,
-        scenePrompt: true,
-        stylePrompt: true,
         projectLevelOverrides: true,
-        character: {
-          select: {
-            id: true,
-            name: true,
-            slug: true,
-          },
-        },
-        scenePreset: {
-          select: {
-            id: true,
-            name: true,
-            slug: true,
-          },
-        },
-        stylePreset: {
-          select: {
-            id: true,
-            name: true,
-            slug: true,
-          },
-        },
       },
     });
 
@@ -1705,32 +1400,12 @@ export async function enqueueProjectSectionRun(projectId: string, sectionId: str
 }
 
 export async function getProjectCreateOptions(): Promise<ProjectCreateOptions> {
-  const [characters, scenePresets, stylePresets, positionTemplates] = await Promise.all([
-    db.character.findMany({
-      where: { isActive: true },
-      orderBy: [{ name: "asc" }, { id: "asc" }],
-      select: { id: true, name: true, slug: true },
-    }),
-    db.scenePreset.findMany({
-      where: { isActive: true },
-      orderBy: [{ name: "asc" }, { id: "asc" }],
-      select: { id: true, name: true, slug: true },
-    }),
-    db.stylePreset.findMany({
-      where: { isActive: true },
-      orderBy: [{ name: "asc" }, { id: "asc" }],
-      select: { id: true, name: true, slug: true },
-    }),
-    db.positionTemplate.findMany({
-      orderBy: [{ name: "asc" }, { id: "asc" }],
-      select: { id: true, name: true, slug: true, enabled: true },
-    }),
-  ]);
+  const positionTemplates = await db.positionTemplate.findMany({
+    orderBy: [{ name: "asc" }, { id: "asc" }],
+    select: { id: true, name: true, slug: true, enabled: true },
+  });
 
   return {
-    characters,
-    scenePresets,
-    stylePresets,
     positionTemplates,
   };
 }

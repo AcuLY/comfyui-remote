@@ -26,25 +26,6 @@ export type NormalizedResolvedConfigSnapshot = {
     title: string;
     slug: string;
   };
-  character: {
-    id: string;
-    name: string;
-    slug: string;
-    prompt: string;
-    loraPath: string;
-  };
-  scene: {
-    id: string;
-    name: string;
-    slug: string;
-    prompt: string | null;
-  } | null;
-  style: {
-    id: string;
-    name: string;
-    slug: string;
-    prompt: string | null;
-  } | null;
   section: {
     id: string;
     templateId: string;
@@ -77,7 +58,7 @@ export type NormalizedResolvedConfigSnapshot = {
   ksampler1: Prisma.JsonObject | null;
   /** v0.3: KSampler2 parameters (高清修复阶段) */
   ksampler2: Prisma.JsonObject | null;
-  /** v0.3: Restructured to { characterLora, lora1, lora2 } */
+  /** v0.4: Restructured to { lora1, lora2 } */
   loraConfig: Prisma.JsonObject | null;
   extraParams: Prisma.JsonObject | null;
 };
@@ -103,7 +84,7 @@ export type ComfyPromptDraft = {
   ksampler1: Prisma.JsonObject | null;
   /** v0.3: KSampler2 parameters (高清修复阶段) */
   ksampler2: Prisma.JsonObject | null;
-  /** v0.3: Restructured to { characterLora, lora1, lora2 } */
+  /** v0.4: Restructured to { lora1, lora2 } */
   loraConfig: Prisma.JsonObject | null;
   extraParams: Prisma.JsonObject | null;
   metadata: {

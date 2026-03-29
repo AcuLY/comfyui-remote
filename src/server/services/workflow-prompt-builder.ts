@@ -1,5 +1,5 @@
 /**
- * Workflow Prompt Builder (v0.3)
+ * Workflow Prompt Builder (v0.4)
  *
  * Fills the standard `docs/workflow.api.json` template with per-section
  * parameters (prompts, dimensions, LoRAs, KSampler settings, output path)
@@ -11,7 +11,6 @@
  *   513  negative prompt (Text Multiline)
  *   407  Empty Latent Image (width, height, batch_size)
  *   425  Upscale Latent (width, height)
- *   482  character lora (Power Lora Loader)
  *   522  lora 1 — KS1 branch (Power Lora Loader, 482→522→524→KS1)
  *   24   lora 1 — KS2 branch (Power Lora Loader, 36→24→25→KS2)
  *   36   lora 2 — KS2 branch entry (Power Lora Loader, 482→36)
@@ -41,8 +40,6 @@ export type WorkflowBuildInput = {
   batchSize: number;
   /** Upscale factor for LatentUpscale (default 2) */
   upscaleFactor?: number;
-  /** Character LoRA (fills node 482) */
-  characterLora: LoraBinding[];
   /** LoRA 1 list (fills nodes 522 → 24) */
   lora1List: LoraBinding[];
   /** LoRA 2 list (fills nodes 36, 25, 524) */
@@ -166,12 +163,7 @@ export function buildWorkflowPrompt(input: WorkflowBuildInput): Record<string, u
     upscaleInputs.height = input.longSidePx * upscale;
   }
 
-  // 4. Character LoRA — node 482
-  if (input.characterLora.length > 0) {
-    fillPowerLoraLoader(nodeInputs(wf, "482"), input.characterLora);
-  }
-
-  // 5. LoRA 1 — nodes 522 (KS1 branch) and 24 (KS2 branch)
+  // 4. LoRA 1 — nodes 522 (KS1 branch) and 24 (KS2 branch)
   //    KS1 chain: 482 → 522 → 524 → KS1(3)
   //    KS2 chain: 482 → 36 → 24 → 25 → KS2(427)
   //    Both 522 and 24 carry lora1 entries for their respective branches

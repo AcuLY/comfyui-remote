@@ -247,14 +247,6 @@ export type CreateProjectInput = {
   title: string;
   presetBindings: PresetBinding[];
   notes: string | null;
-  // Legacy (optional, for backward compat)
-  characterId?: string;
-  scenePresetId?: string | null;
-  stylePresetId?: string | null;
-  characterPrompt?: string;
-  characterLoraPath?: string;
-  scenePrompt?: string | null;
-  stylePrompt?: string | null;
 };
 
 export async function createProject(input: CreateProjectInput): Promise<string> {
@@ -270,89 +262,11 @@ export async function createProject(input: CreateProjectInput): Promise<string> 
     slug = `${baseSlug}-${i++}`;
   }
 
-  // Resolve legacy fields from presetBindings for backward compat
-  let characterId = input.characterId ?? "";
-  let characterPrompt = input.characterPrompt ?? "";
-  let characterLoraPath = input.characterLoraPath ?? "";
-  let scenePresetId = input.scenePresetId ?? null;
-  let scenePrompt = input.scenePrompt ?? null;
-  let stylePresetId = input.stylePresetId ?? null;
-  let stylePrompt = input.stylePrompt ?? null;
-
-  if (input.presetBindings.length > 0) {
-    // Resolve presets to populate legacy fields
-    const presetIds = input.presetBindings.map((b) => b.presetId);
-    const presets = await prisma.promptPreset.findMany({
-      where: { id: { in: presetIds } },
-      include: { category: true },
-    });
-
-    const presetMap = new Map(presets.map((p) => [p.id, p]));
-
-    for (const binding of input.presetBindings) {
-      const preset = presetMap.get(binding.presetId);
-      if (!preset) continue;
-
-      const catSlug = preset.category.slug;
-      if (catSlug === "character" && !input.characterId) {
-        // Find or use a dummy character for legacy FK compat
-        const legacyChar = await prisma.character.findFirst({
-          where: { slug: preset.slug },
-          select: { id: true, prompt: true, loraPath: true },
-        });
-        if (legacyChar) {
-          characterId = legacyChar.id;
-          characterPrompt = legacyChar.prompt;
-          characterLoraPath = legacyChar.loraPath;
-        } else {
-          // Fall back: use first character as placeholder
-          const firstChar = await prisma.character.findFirst({
-            select: { id: true, prompt: true, loraPath: true },
-          });
-          if (firstChar) {
-            characterId = firstChar.id;
-            characterPrompt = preset.prompt;
-            characterLoraPath = firstChar.loraPath;
-          }
-        }
-      } else if (catSlug === "scene" && !input.scenePresetId) {
-        const legacyScene = await prisma.scenePreset.findFirst({
-          where: { slug: preset.slug },
-          select: { id: true, prompt: true },
-        });
-        if (legacyScene) {
-          scenePresetId = legacyScene.id;
-          scenePrompt = legacyScene.prompt;
-        }
-      } else if (catSlug === "style" && !input.stylePresetId) {
-        const legacyStyle = await prisma.stylePreset.findFirst({
-          where: { slug: preset.slug },
-          select: { id: true, prompt: true },
-        });
-        if (legacyStyle) {
-          stylePresetId = legacyStyle.id;
-          stylePrompt = legacyStyle.prompt;
-        }
-      }
-    }
-  }
-
-  if (!characterId) {
-    throw new Error("CHARACTER_REQUIRED: must select a preset from character category or provide characterId");
-  }
-
   const project = await prisma.project.create({
     data: {
       title: input.title,
       slug,
       status: "draft",
-      characterId,
-      scenePresetId,
-      stylePresetId,
-      characterPrompt,
-      characterLoraPath,
-      scenePrompt,
-      stylePrompt,
       presetBindings: input.presetBindings.length > 0 ? input.presetBindings : undefined,
       notes: input.notes,
     },
@@ -370,13 +284,6 @@ export type UpdateProjectInput = {
   projectId: string;
   title?: string;
   presetBindings?: PresetBinding[];
-  characterId?: string;
-  scenePresetId?: string | null;
-  stylePresetId?: string | null;
-  characterPrompt?: string;
-  characterLoraPath?: string;
-  scenePrompt?: string | null;
-  stylePrompt?: string | null;
   notes?: string | null;
   sections?: {
     positionTemplateId: string;
@@ -404,65 +311,11 @@ export type UpdateProjectInput = {
 export async function updateProject(input: UpdateProjectInput) {
   const { projectId, sections, projectLevelOverrides, presetBindings, ...projectData } = input;
 
-  // If presetBindings provided, resolve legacy fields for backward compat
-  const legacyUpdate: Record<string, unknown> = {};
-  if (presetBindings && presetBindings.length > 0) {
-    const presetIds = presetBindings.map((b) => b.presetId);
-    const presets = await prisma.promptPreset.findMany({
-      where: { id: { in: presetIds } },
-      include: { category: true },
-    });
-    const presetMap = new Map(presets.map((p) => [p.id, p]));
-
-    for (const binding of presetBindings) {
-      const preset = presetMap.get(binding.presetId);
-      if (!preset) continue;
-
-      const catSlug = preset.category.slug;
-      if (catSlug === "character" && !projectData.characterId) {
-        const legacyChar = await prisma.character.findFirst({
-          where: { slug: preset.slug },
-          select: { id: true, prompt: true, loraPath: true },
-        });
-        if (legacyChar) {
-          legacyUpdate.characterId = legacyChar.id;
-          legacyUpdate.characterPrompt = legacyChar.prompt;
-          legacyUpdate.characterLoraPath = legacyChar.loraPath;
-        }
-      } else if (catSlug === "scene" && !projectData.scenePresetId) {
-        const legacyScene = await prisma.scenePreset.findFirst({
-          where: { slug: preset.slug },
-          select: { id: true, prompt: true },
-        });
-        if (legacyScene) {
-          legacyUpdate.scenePresetId = legacyScene.id;
-          legacyUpdate.scenePrompt = legacyScene.prompt;
-        } else {
-          legacyUpdate.scenePresetId = null;
-          legacyUpdate.scenePrompt = null;
-        }
-      } else if (catSlug === "style" && !projectData.stylePresetId) {
-        const legacyStyle = await prisma.stylePreset.findFirst({
-          where: { slug: preset.slug },
-          select: { id: true, prompt: true },
-        });
-        if (legacyStyle) {
-          legacyUpdate.stylePresetId = legacyStyle.id;
-          legacyUpdate.stylePrompt = legacyStyle.prompt;
-        } else {
-          legacyUpdate.stylePresetId = null;
-          legacyUpdate.stylePrompt = null;
-        }
-      }
-    }
-  }
-
   // 更新 project 基础字段（包括 projectLevelOverrides）
   await prisma.project.update({
     where: { id: projectId },
     data: {
       ...projectData,
-      ...legacyUpdate,
       ...(presetBindings !== undefined ? { presetBindings } : {}),
       ...(projectLevelOverrides !== undefined ? { projectLevelOverrides } : {}),
     },
@@ -752,24 +605,9 @@ export async function addSection(projectId: string, name?: string): Promise<stri
     where: { id: projectId },
     select: {
       id: true,
-      characterId: true,
-      scenePresetId: true,
-      stylePresetId: true,
-      characterPrompt: true,
-      scenePrompt: true,
-      stylePrompt: true,
       presetBindings: true,
       // 读取项目级别的默认值
       projectLevelOverrides: true,
-      character: {
-        select: { id: true, name: true, prompt: true, negativePrompt: true },
-      },
-      scenePreset: {
-        select: { id: true, name: true, prompt: true, negativePrompt: true },
-      },
-      stylePreset: {
-        select: { id: true, name: true, prompt: true, negativePrompt: true },
-      },
       _count: { select: { sections: true } },
     },
   });
@@ -844,47 +682,6 @@ export async function addSection(projectId: string, name?: string): Promise<stri
           label: preset.name,
           positive: preset.prompt,
           negative: preset.negativePrompt,
-          sortOrder: blockSortOrder++,
-        },
-      });
-    }
-  } else {
-    // Legacy path: use character/scene/style FKs
-    await prisma.promptBlock.create({
-      data: {
-        projectSectionId: section.id,
-        type: "character",
-        sourceId: project.character.id,
-        label: project.character.name,
-        positive: project.character.prompt,
-        negative: project.character.negativePrompt,
-        sortOrder: blockSortOrder++,
-      },
-    });
-
-    if (project.scenePreset) {
-      await prisma.promptBlock.create({
-        data: {
-          projectSectionId: section.id,
-          type: "scene",
-          sourceId: project.scenePreset.id,
-          label: project.scenePreset.name,
-          positive: project.scenePreset.prompt,
-          negative: project.scenePreset.negativePrompt,
-          sortOrder: blockSortOrder++,
-        },
-      });
-    }
-
-    if (project.stylePreset) {
-      await prisma.promptBlock.create({
-        data: {
-          projectSectionId: section.id,
-          type: "style",
-          sourceId: project.stylePreset.id,
-          label: project.stylePreset.name,
-          positive: project.stylePreset.prompt,
-          negative: project.stylePreset.negativePrompt,
           sortOrder: blockSortOrder++,
         },
       });

@@ -1,12 +1,10 @@
 /**
- * Migration script: generate PromptBlocks for existing CompleteJobPositions
+ * Migration script: generate PromptBlocks for existing ProjectSections
  * that don't have any blocks yet.
  *
- * Logic mirrors createProject() in project-repository.ts:
- *   1. Character block (always)
- *   2. Scene block (if scenePreset exists)
- *   3. Style block (if stylePreset exists)
- *   4. Position block (if positionTemplate exists)
+ * v0.4: Simplified — legacy character/scene/style FK fields have been removed
+ * from the Project model. This script now only creates position template blocks
+ * for sections that reference a position template.
  *
  * Usage:
  *   npx tsx src/scripts/migrate-prompt-blocks.mts
@@ -68,14 +66,6 @@ async function main() {
 
   if (DRY_RUN) {
     for (const pos of positionsWithoutBlocks) {
-      const job = await prisma.project.findUnique({
-        where: { id: pos.projectId },
-        select: {
-          characterId: true,
-          scenePresetId: true,
-          stylePresetId: true,
-        },
-      });
       const pt = pos.positionTemplateId
         ? await prisma.positionTemplate.findUnique({
             where: { id: pos.positionTemplateId },
@@ -83,7 +73,7 @@ async function main() {
           })
         : null;
 
-      console.log(`   [DRY] Position ${pos.id}: job=${pos.projectId}, template=${pt?.name ?? "none"}, customPrompt=${pos.positivePrompt ? "yes" : "no"}`);
+      console.log(`   [DRY] Position ${pos.id}: project=${pos.projectId}, template=${pt?.name ?? "none"}, customPrompt=${pos.positivePrompt ? "yes" : "no"}`);
     }
     await prisma.$disconnect();
     return;
@@ -94,46 +84,6 @@ async function main() {
 
   for (const pos of positionsWithoutBlocks) {
     try {
-      const job = await prisma.project.findUnique({
-        where: { id: pos.projectId },
-        select: {
-          characterId: true,
-          scenePresetId: true,
-          stylePresetId: true,
-        },
-      });
-
-      if (!job) {
-        console.warn(`   ⚠ Position ${pos.id}: job ${pos.projectId} not found, skipping.`);
-        errorCount++;
-        continue;
-      }
-
-      const [character, scenePreset, stylePreset, positionTemplate] = await Promise.all([
-        prisma.character.findUnique({
-          where: { id: job.characterId },
-          select: { id: true, name: true, prompt: true, negativePrompt: true },
-        }),
-        job.scenePresetId
-          ? prisma.scenePreset.findUnique({
-              where: { id: job.scenePresetId },
-              select: { id: true, name: true, prompt: true, negativePrompt: true },
-            })
-          : null,
-        job.stylePresetId
-          ? prisma.stylePreset.findUnique({
-              where: { id: job.stylePresetId },
-              select: { id: true, name: true, prompt: true, negativePrompt: true },
-            })
-          : null,
-        pos.positionTemplateId
-          ? prisma.positionTemplate.findUnique({
-              where: { id: pos.positionTemplateId },
-              select: { id: true, name: true, prompt: true, negativePrompt: true },
-            })
-          : null,
-      ]);
-
       let sortOrder = 0;
       const blocks: Array<{
         type: PromptBlockType;
@@ -144,52 +94,23 @@ async function main() {
         sortOrder: number;
       }> = [];
 
-      // Character block
-      if (character) {
-        blocks.push({
-          type: "character" as PromptBlockType,
-          sourceId: character.id,
-          label: character.name,
-          positive: character.prompt,
-          negative: character.negativePrompt,
-          sortOrder: sortOrder++,
-        });
-      }
-
-      // Scene block
-      if (scenePreset) {
-        blocks.push({
-          type: "scene" as PromptBlockType,
-          sourceId: scenePreset.id,
-          label: scenePreset.name,
-          positive: scenePreset.prompt,
-          negative: scenePreset.negativePrompt,
-          sortOrder: sortOrder++,
-        });
-      }
-
-      // Style block
-      if (stylePreset) {
-        blocks.push({
-          type: "style" as PromptBlockType,
-          sourceId: stylePreset.id,
-          label: stylePreset.name,
-          positive: stylePreset.prompt,
-          negative: stylePreset.negativePrompt,
-          sortOrder: sortOrder++,
-        });
-      }
-
       // Position template block
-      if (positionTemplate) {
-        blocks.push({
-          type: "position" as PromptBlockType,
-          sourceId: positionTemplate.id,
-          label: positionTemplate.name,
-          positive: positionTemplate.prompt,
-          negative: positionTemplate.negativePrompt,
-          sortOrder: sortOrder++,
+      if (pos.positionTemplateId) {
+        const positionTemplate = await prisma.positionTemplate.findUnique({
+          where: { id: pos.positionTemplateId },
+          select: { id: true, name: true, prompt: true, negativePrompt: true },
         });
+
+        if (positionTemplate) {
+          blocks.push({
+            type: "position" as PromptBlockType,
+            sourceId: positionTemplate.id,
+            label: positionTemplate.name,
+            positive: positionTemplate.prompt,
+            negative: positionTemplate.negativePrompt,
+            sortOrder: sortOrder++,
+          });
+        }
       }
 
       // If the position has a custom positivePrompt (set via edit form), add as custom block

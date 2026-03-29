@@ -35,9 +35,6 @@ function asInteger(value: Prisma.JsonValue | undefined, fallback: number) {
 
 function composePositivePrompt(snapshot: NormalizedResolvedConfigSnapshot) {
   return [
-    snapshot.character.prompt,
-    snapshot.scene?.prompt,
-    snapshot.style?.prompt,
     snapshot.section.templatePrompt,
     snapshot.section.positivePrompt,
   ]
@@ -50,9 +47,6 @@ export function normalizeResolvedConfigSnapshot(
 ): NormalizedResolvedConfigSnapshot {
   const root = asJsonObject(snapshot);
   const project = asJsonObject(root?.project ?? null);
-  const character = asJsonObject(root?.character ?? null);
-  const scene = asJsonObject(root?.scene ?? null);
-  const style = asJsonObject(root?.style ?? null);
   const position = asJsonObject(root?.position ?? null);
   const parameters = asJsonObject(root?.parameters ?? null);
   const composedPrompt = asJsonObject(root?.composedPrompt ?? null);
@@ -73,29 +67,6 @@ export function normalizeResolvedConfigSnapshot(
       title: asString(project?.title),
       slug: asString(project?.slug),
     },
-    character: {
-      id: asString(character?.id),
-      name: asString(character?.name),
-      slug: asString(character?.slug),
-      prompt: asString(character?.prompt),
-      loraPath: asString(character?.loraPath),
-    },
-    scene: scene
-      ? {
-          id: asString(scene.id),
-          name: asString(scene.name),
-          slug: asString(scene.slug),
-          prompt: asNullableString(scene.prompt),
-        }
-      : null,
-    style: style
-      ? {
-          id: asString(style.id),
-          name: asString(style.name),
-          slug: asString(style.slug),
-          prompt: asNullableString(style.prompt),
-        }
-      : null,
     section: {
       id: asString(position?.id),
       templateId: asString(position?.templateId),

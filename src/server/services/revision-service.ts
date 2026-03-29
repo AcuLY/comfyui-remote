@@ -20,14 +20,8 @@ const JOB_SNAPSHOT_SELECT = {
   title: true,
   slug: true,
   status: true,
-  characterId: true,
-  scenePresetId: true,
-  stylePresetId: true,
-  characterPrompt: true,
-  characterLoraPath: true,
-  scenePrompt: true,
-  stylePrompt: true,
   projectLevelOverrides: true,
+  presetBindings: true,
   notes: true,
   sections: {
     select: {

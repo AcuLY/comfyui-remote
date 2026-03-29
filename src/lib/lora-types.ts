@@ -88,12 +88,11 @@ function isSeedPolicy(value: unknown): value is SeedPolicy {
 
 /**
  * LoRA config structure stored in ProjectSection.loraConfig
- * v0.3: Restructured to separate characterLora, lora1, lora2
+ * v0.4: Simplified to lora1, lora2 only (characterLora merged into lora1)
  */
 export type PositionLoraConfig = {
-  characterLora: LoraEntry[];  // 从项目角色带入（只读展示）
-  lora1: LoraEntry[];          // lora1 列表（可编辑，来自 position template 或手动添加）
-  lora2: LoraEntry[];          // lora2 列表（可编辑，来自 position template 或手动添加）
+  lora1: LoraEntry[];          // lora1 列表（可编辑，来自 preset 或手动添加）
+  lora2: LoraEntry[];          // lora2 列表（可编辑，来自 preset 或手动添加）
 };
 
 /** @deprecated Use PositionLoraConfig instead */
@@ -124,18 +123,28 @@ export function parseLoraBindings(json: unknown): LoraBinding[] {
 
 /**
  * Parse PositionLoraConfig JSON from database
- * Supports both v0.3 format (characterLora/lora1/lora2) and legacy format (entries)
+ * Supports v0.4 format (lora1/lora2), v0.3 format (characterLora/lora1/lora2), and legacy format (entries)
+ * For backward compat: characterLora entries are prepended to lora1
  */
 export function parsePositionLoraConfig(json: unknown): PositionLoraConfig {
   if (!json || typeof json !== "object" || Array.isArray(json)) {
-    return { characterLora: [], lora1: [], lora2: [] };
+    return { lora1: [], lora2: [] };
   }
   const obj = json as Record<string, unknown>;
 
-  // v0.3 format
-  if ("characterLora" in obj || "lora1" in obj || "lora2" in obj) {
+  // v0.3 format with characterLora — merge into lora1
+  if ("characterLora" in obj) {
+    const characterLora = parseLoraEntryArray(obj.characterLora);
+    const lora1 = parseLoraEntryArray(obj.lora1);
     return {
-      characterLora: parseLoraEntryArray(obj.characterLora),
+      lora1: [...characterLora, ...lora1],
+      lora2: parseLoraEntryArray(obj.lora2),
+    };
+  }
+
+  // v0.4 format (lora1/lora2 only)
+  if ("lora1" in obj || "lora2" in obj) {
+    return {
       lora1: parseLoraEntryArray(obj.lora1),
       lora2: parseLoraEntryArray(obj.lora2),
     };
@@ -144,13 +153,10 @@ export function parsePositionLoraConfig(json: unknown): PositionLoraConfig {
   // Legacy format: migrate entries to lora1
   if ("entries" in obj && Array.isArray(obj.entries)) {
     const entries = parseLoraEntryArray(obj.entries);
-    // Split by source: character -> characterLora, others -> lora1
-    const characterLora = entries.filter((e) => e.source === "character");
-    const lora1 = entries.filter((e) => e.source !== "character");
-    return { characterLora, lora1, lora2: [] };
+    return { lora1: entries, lora2: [] };
   }
 
-  return { characterLora: [], lora1: [], lora2: [] };
+  return { lora1: [], lora2: [] };
 }
 
 /**
@@ -212,7 +218,6 @@ export function serializePositionLoraConfig(config: PositionLoraConfig): Positio
   });
 
   return {
-    characterLora: config.characterLora.map(serializeEntry),
     lora1: config.lora1.map(serializeEntry),
     lora2: config.lora2.map(serializeEntry),
   };

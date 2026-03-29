@@ -19,18 +19,11 @@ const log = createLogger({ module: "project-service" });
 
 type CreateProjectRequestBody = {
   title?: unknown;
-  characterId?: unknown;
-  scenePresetId?: unknown;
-  stylePresetId?: unknown;
   positionTemplateIds?: unknown;
   notes?: unknown;
 };
 
 type UpdateProjectRequestBody = {
-  characterPrompt?: unknown;
-  scenePrompt?: unknown;
-  stylePrompt?: unknown;
-  characterLoraPath?: unknown;
   aspectRatio?: unknown;
   batchSize?: unknown;
 };
@@ -57,18 +50,11 @@ type UpdateProjectSectionRequestBody = {
 
 const PROJECT_CREATE_FIELDS = [
   "title",
-  "characterId",
-  "scenePresetId",
-  "stylePresetId",
   "positionTemplateIds",
   "notes",
 ] as const;
 
 const PROJECT_UPDATE_FIELDS = [
-  "characterPrompt",
-  "scenePrompt",
-  "stylePrompt",
-  "characterLoraPath",
   "aspectRatio",
   "batchSize",
 ] as const;
@@ -363,14 +349,11 @@ export async function createProject(body: unknown, actorType: ActorType = ActorT
 
   const input = {
     title: normalizeRequiredStringField(parsedBody.title, "title"),
-    characterId: normalizeRequiredStringField(parsedBody.characterId, "characterId"),
-    scenePresetId: normalizeNullableIdField(parsedBody.scenePresetId, "scenePresetId") ?? null,
-    stylePresetId: normalizeNullableIdField(parsedBody.stylePresetId, "stylePresetId") ?? null,
     positionTemplateIds: normalizePositionTemplateIds(parsedBody.positionTemplateIds),
     notes: normalizeNullableNotesField(parsedBody.notes, "notes"),
   };
 
-  log.info("Creating project", { title: input.title, characterId: input.characterId });
+  log.info("Creating project", { title: input.title });
 
   const result = await createProjectInRepository(input);
 
@@ -384,10 +367,6 @@ export async function updateProject(projectId: string, body: unknown, actorType:
   ensureSupportedFields(parsedBody, PROJECT_UPDATE_FIELDS);
 
   const input = {
-    characterPrompt: normalizeStringField(parsedBody.characterPrompt, "characterPrompt"),
-    scenePrompt: normalizeNullableStringField(parsedBody.scenePrompt, "scenePrompt"),
-    stylePrompt: normalizeNullableStringField(parsedBody.stylePrompt, "stylePrompt"),
-    characterLoraPath: normalizeStringField(parsedBody.characterLoraPath, "characterLoraPath"),
     aspectRatio: normalizeNullableStringField(parsedBody.aspectRatio, "aspectRatio"),
     batchSize: normalizeBatchSize(parsedBody.batchSize, "batchSize"),
   };
@@ -536,12 +515,6 @@ export function mapProjectError(error: unknown) {
   }
 
   switch (error.message) {
-    case "CHARACTER_NOT_FOUND":
-      return { message: "Character not found", status: 404 };
-    case "SCENE_PRESET_NOT_FOUND":
-      return { message: "Scene preset not found", status: 404 };
-    case "STYLE_PRESET_NOT_FOUND":
-      return { message: "Style preset not found", status: 404 };
     case "JOB_NOT_FOUND":
       return { message: "Project not found", status: 404 };
     case "POSITION_TEMPLATE_NOT_FOUND":

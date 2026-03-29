@@ -108,13 +108,9 @@ export function getMcpServer(): McpServer {
 
   server.tool(
     "update_project",
-    "Update a project's parameters (character prompt, scene/style prompt, LoRA path, aspectRatio, batchSize). Creates a revision snapshot before updating.",
+    "Update a project's parameters (aspectRatio, batchSize). Creates a revision snapshot before updating.",
     {
       projectId: z.string().describe("The project ID to update"),
-      characterPrompt: z.string().optional().describe("Character prompt text"),
-      scenePrompt: z.string().nullable().optional().describe("Scene prompt text"),
-      stylePrompt: z.string().nullable().optional().describe("Style prompt text"),
-      characterLoraPath: z.string().optional().describe("LoRA file path"),
       aspectRatio: z.string().nullable().optional().describe("Aspect ratio (e.g. '3:4', '1:1')"),
       batchSize: z.number().nullable().optional().describe("Number of images per run"),
     },

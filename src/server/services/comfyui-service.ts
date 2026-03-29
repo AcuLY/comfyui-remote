@@ -412,7 +412,7 @@ async function resolveStandardWorkflowPrompt(
 
   const loraConfig = promptDraft.loraConfig
     ? parsePositionLoraConfig(promptDraft.loraConfig)
-    : { characterLora: [], lora1: [], lora2: [] };
+    : { lora1: [], lora2: [] };
 
   const ksampler1 = parseKSamplerParams(promptDraft.ksampler1, DEFAULT_KSAMPLER1);
   const ksampler2 = parseKSamplerParams(promptDraft.ksampler2, DEFAULT_KSAMPLER2);
@@ -433,7 +433,6 @@ async function resolveStandardWorkflowPrompt(
     longSidePx: longSide,
     batchSize: promptDraft.parameters.batchSize ?? 1,
     upscaleFactor: promptDraft.parameters.upscaleFactor ?? 2,
-    characterLora: toBindings(loraConfig.characterLora),
     lora1List: toBindings(loraConfig.lora1),
     lora2List: toBindings(loraConfig.lora2),
     ksampler1,
