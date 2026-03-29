@@ -413,7 +413,7 @@ export async function createPromptCategory(input: PromptCategoryInput) {
   // Auto-generate a random HSL color if not provided
   if (!input.color) {
     const hue = Math.floor(Math.random() * 360);
-    input.color = `${hue} 70% 55%`;
+    input.color = `${hue} 50% 55%`;
   }
   const cat = await prisma.promptCategory.create({ data: input });
   revalidatePath("/assets/prompts");

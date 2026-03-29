@@ -232,7 +232,7 @@ function parseHue(color: string | null): number {
 }
 
 function hslString(hue: number): string {
-  return `${hue} 70% 55%`;
+  return `${hue} 50% 55%`;
 }
 
 function CategoryBadge({ color }: { color: string | null }) {
@@ -240,7 +240,7 @@ function CategoryBadge({ color }: { color: string | null }) {
   return (
     <div
       className="size-2.5 shrink-0 rounded-full"
-      style={{ backgroundColor: `hsl(${hue} 70% 55%)` }}
+      style={{ backgroundColor: `hsl(${hue} 50% 55%)` }}
     />
   );
 }
@@ -258,7 +258,7 @@ function HueSlider({ value, onChange }: { value: number; onChange: (hue: number)
     <div className="flex items-center gap-2">
       <div
         className="size-6 shrink-0 rounded-lg"
-        style={{ backgroundColor: `hsl(${value} 70% 55%)` }}
+        style={{ backgroundColor: `hsl(${value} 50% 55%)` }}
       />
       <input
         type="range"
@@ -268,7 +268,7 @@ function HueSlider({ value, onChange }: { value: number; onChange: (hue: number)
         onChange={handleChange}
         className="h-2 w-full cursor-pointer appearance-none rounded-full"
         style={{
-          background: `linear-gradient(to right, ${Array.from({ length: 12 }, (_, i) => `hsl(${i * 30} 70% 55%)`).join(", ")})`,
+          background: `linear-gradient(to right, ${Array.from({ length: 12 }, (_, i) => `hsl(${i * 30} 50% 55%)`).join(", ")})`,
         }}
       />
     </div>

@@ -107,8 +107,8 @@ function parseHue(color: string | null | undefined): number {
 function categoryStyle(color: string | null | undefined): React.CSSProperties {
   const h = parseHue(color);
   return {
-    borderColor: `hsl(${h} 70% 55% / 0.3)`,
-    backgroundColor: `hsl(${h} 70% 55% / 0.1)`,
+    borderColor: `hsl(${h} 50% 55% / 0.3)`,
+    backgroundColor: `hsl(${h} 50% 55% / 0.1)`,
     color: `hsl(${h} 80% 72%)`,
   };
 }
