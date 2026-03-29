@@ -1,15 +1,15 @@
 # ComfyUI Remote
 
-移动优先的 ComfyUI 管理后台。在手机或任何浏览器上管理生图任务、批量审核图片、调整参数，并通过 Agent API / MCP 让 AI 直接操控工作流。
+移动优先的 ComfyUI 管理后台。在手机或任何浏览器上管理生图项目、批量审核图片、调整参数，并通过 Agent API / MCP 让 AI 直接操控工作流。
 
 ## ✨ 功能亮点
 
-- **大任务管理** — 用统一分类系统（PromptCategory × PromptPreset）组合创建批量生图任务
+- **项目管理** — 用统一分类系统（PromptCategory × PromptPreset）组合创建批量生图项目
 - **宫格审图** — 在手机上滑动式多选，批量保留 / 删除，支持单张放大；操作后一键处理剩余并跳转下一组
 - **结果 Gallery** — 独立结果页展示小节所有运行图片，Lightbox 放大查看，支持精选标记（⭐）
 - **图片整合导出** — 一键将已保留图片转 JPG 打包 zip，精选图片单独输出到 pixiv/ 目录
 - **回收站** — 误删随时恢复，文件级 trash / restore
-- **参数编辑** — Job 级和 Position 级覆盖：prompt、LoRA、画幅、batch size、双 KSampler 参数
+- **参数编辑** — Project 级和 Section 级覆盖：prompt、LoRA、画幅、batch size、双 KSampler 参数
 - **LoRA 文件管理** — 磁盘目录浏览、上传、跨目录移动、备注；级联选择器替代传统下拉
 - **Workflow 模板** — 内置 SDXL txt2img / HiRes Fix，支持从 ComfyUI 导出 JSON 一键导入自定义模板
 - **Worker 引擎** — 自动消费队列、调用 ComfyUI API、下载输出、生成缩略图
@@ -134,13 +134,13 @@ npm run db:bootstrap:sqlite
 | 审核队列 | `/queue` | 待审核 Run 列表，按时间倒序 |
 | 宫格审图 | `/queue/:runId` | 多选 + 批量保留 / 删除 + 处理剩余跳转下一组 |
 | 单张查看 | `/queue/:runId/images/:imageId` | 大图 + 左右切换 + 处理剩余跳转下一组 |
-| Job 列表 | `/jobs` | 创建 / 编辑 / 复制 / 运行 |
-| 创建 Job | `/jobs/new` | 选择各提示词分类的预设模板 |
-| Job 详情 | `/jobs/:jobId` | Position 列表 + 缩略图条 + 运行 + 图片整合导出 |
-| Job 编辑 | `/jobs/:jobId/edit` | 参数编辑表单 |
-| Position 编辑 | `/jobs/:jobId/positions/:posId/edit` | LoRA 三栏 + KSampler1/2 参数 |
-| 提示词块 | `/jobs/:jobId/positions/:posId/blocks` | Prompt Block 编辑器 |
-| 结果 Gallery | `/jobs/:jobId/positions/:posId/results` | 全部运行结果 + Lightbox + 精选标记 |
+| Project 列表 | `/projects` | 创建 / 编辑 / 复制 / 运行 |
+| 创建 Project | `/projects/new` | 选择各提示词分类的预设模板 |
+| Project 详情 | `/projects/:projectId` | Section 列表 + 缩略图条 + 运行 + 图片整合导出 |
+| Project 编辑 | `/projects/:projectId/edit` | 参数编辑表单 |
+| Section 编辑 | `/projects/:projectId/sections/:sectionId/edit` | LoRA 三栏 + KSampler1/2 参数 |
+| 提示词块 | `/projects/:projectId/sections/:sectionId/blocks` | Prompt Block 编辑器 |
+| 结果 Gallery | `/projects/:projectId/sections/:sectionId/results` | 全部运行结果 + Lightbox + 精选标记 |
 | 回收站 | `/trash` | 已删除图片 + 恢复按钮 |
 | LoRA 管理 | `/assets/loras` | 文件管理器：浏览 / 上传 / 移动 / 备注 |
 | 提示词管理 | `/assets/prompts` | 提示词分类与预设管理 |
@@ -155,11 +155,11 @@ npm run db:bootstrap:sqlite
 
 | 方法 | 端点 | 功能 |
 |------|------|------|
-| GET | `/api/agent/jobs` | 列出 Job（搜索 / 状态筛选） |
-| GET | `/api/agent/jobs/:id/context` | 获取 Job 完整上下文 |
-| POST | `/api/agent/jobs/:id/update` | 修改 Job 参数 |
-| POST | `/api/agent/jobs/:id/run-all` | 触发所有 enabled Position |
-| POST | `/api/agent/positions/:id/run` | 触发单个 Position |
+| GET | `/api/agent/projects` | 列出 Project（搜索 / 状态筛选） |
+| GET | `/api/agent/projects/:id/context` | 获取 Project 完整上下文 |
+| POST | `/api/agent/projects/:id/update` | 修改 Project 参数 |
+| POST | `/api/agent/projects/:id/run-all` | 触发所有 enabled Section |
+| POST | `/api/agent/sections/:id/run` | 触发单个 Section |
 | GET | `/api/agent/runs/:id/context` | 获取 Run 结果上下文 |
 | POST | `/api/agent/runs/:id/review` | 批量审核图片 |
 
@@ -179,9 +179,9 @@ npm run db:bootstrap:sqlite
 }
 ```
 
-**6 个 Tools**：`list_jobs` · `update_job` · `update_job_position` · `run_all_positions` · `run_position` · `review_images`
+**6 个 Tools**：`list_projects` · `update_project` · `update_project_section` · `run_all_sections` · `run_section` · `review_images`
 
-**6 个 Resources**（`comfyui://` URI scheme）：Job 上下文 · Run 上下文 · Workflow 模板列表 / 详情 · 修订历史列表 / 快照
+**6 个 Resources**（`comfyui://` URI scheme）：Project 上下文 · Run 上下文 · Workflow 模板列表 / 详情 · 修订历史列表 / 快照
 
 ## 🔧 Workflow 模板系统
 
@@ -246,7 +246,7 @@ comfyui-remote/
 ### 图片生命周期
 
 ```
-ComfyUI 输出 → Worker 复制到 data/images/{job}/{position}/run-{N}/raw/
+ComfyUI 输出 → Worker 复制到 data/images/{project}/{section}/run-{N}/raw/
 → 生成缩略图 thumb/ → 创建 ImageResult（pending）
 → 审核：kept / trashed → 精选标记：featured
 → 导出：kept→zip, featured→pixiv/
@@ -260,7 +260,7 @@ ComfyUI 输出 → Worker 复制到 data/images/{job}/{position}/run-{N}/raw/
 | [`docs/design-v0.3-workflow-integration.md`](docs/design-v0.3-workflow-integration.md) | v0.3 Workflow 集成设计（LoRA 分区、KSampler、填充器） |
 | [`docs/handoff.md`](docs/handoff.md) | 代码组织、架构特点、完成度清单、接手指南 |
 | [`docs/agent-api.md`](docs/agent-api.md) | Agent API + MCP Server 完整使用说明 |
-| [`docs/local-verification.md`](docs/local-verification.md) | 本机端到端验证：seed → create job → enqueue → worker → output |
+| [`docs/local-verification.md`](docs/local-verification.md) | 本机端到端验证：seed → create project → enqueue → worker → output |
 | [`docs/development-todo.md`](docs/development-todo.md) | 开发进度与历史 |
 | [`docs/development-progress.md`](docs/development-progress.md) | 项目总览 + 页面/API 清单 + 版本历史 |
 

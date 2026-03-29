@@ -44,7 +44,7 @@ IMAGE_BASE_DIR="/path/to/ComfyUI/output"
 # 生成 Prisma client
 npm run prisma:generate
 
-# 运行 migration + seed（填充测试角色、场景、风格、Position 模板）
+# 运行 migration + seed（填充测试角色、场景、风格、Section 模板）
 npm run db:bootstrap
 ```
 
@@ -56,43 +56,43 @@ npm run dev
 
 打开 http://localhost:3000 ，应该看到待审核队列页面（初始为空）。
 
-## Step 4: 创建大任务
+## Step 4: 创建项目
 
-1. 点击底部导航 **Jobs** 进入任务列表
+1. 点击底部导航 **Projects** 进入任务列表
 2. 点击 **创建新任务**
 3. 填写任务标题，选择 Character / Scene / Style
-4. 勾选要启用的 Position（如 portrait, full_body 等）
+4. 勾选要启用的 Section（如 portrait, full_body 等）
 5. 提交创建
 
 或者通过 REST API：
 
 ```bash
-curl -X POST http://localhost:3000/api/jobs \
+curl -X POST http://localhost:3000/api/projects \
   -H 'Content-Type: application/json' \
   -d '{
-    "title": "Test Job",
+    "title": "Test Project",
     "characterId": "<character-id>",
     "positionTemplateIds": ["<position-template-id>"]
   }'
 ```
 
-> 提示：可通过 `GET /api/job-create-options` 获取可用的 Character / Scene / Style / Position ID。
+> 提示：可通过 `GET /api/project-create-options` 获取可用的 Character / Scene / Style / Section ID。
 
 ## Step 5: 运行任务（入队）
 
-**通过页面：** 在 Job 详情页点击 **Run All** 或对单个 Position 点击 **Run**。
+**通过页面：** 在 Project 详情页点击 **Run All** 或对单个 Section 点击 **Run**。
 
 **通过 API：**
 
 ```bash
 # 运行整个任务
-curl -X POST http://localhost:3000/api/jobs/<jobId>/run
+curl -X POST http://localhost:3000/api/projects/<projectId>/run
 
-# 或运行单个 Position
-curl -X POST http://localhost:3000/api/jobs/<jobId>/positions/<jobPositionId>/run
+# 或运行单个 Section
+curl -X POST http://localhost:3000/api/projects/<projectId>/sections/<projectSectionId>/run
 ```
 
-此时 PositionRun 状态变为 `queued`。
+此时 SectionRun 状态变为 `queued`。
 
 ## Step 6: 触发 Worker
 
@@ -104,15 +104,15 @@ curl -X POST "http://localhost:3000/api/local/worker/pass?limit=1"
 ```
 
 Worker 会执行以下流程：
-1. claim 一个 `queued` 的 PositionRun
+1. claim 一个 `queued` 的 SectionRun
 2. 规范化配置快照
 3. 构建 ComfyUI prompt draft
 4. 提交到 ComfyUI `/prompt` 接口
 5. 轮询 ComfyUI `/history/:promptId`
-6. 下载/复制输出图片到 `data/images/<job>/<position>/run-XX/raw/`
-7. 使用 sharp 生成缩略图到 `data/images/<job>/<position>/run-XX/thumb/`
+6. 下载/复制输出图片到 `data/images/<project>/<section>/run-XX/raw/`
+7. 使用 sharp 生成缩略图到 `data/images/<project>/<section>/run-XX/thumb/`
 8. 写入 ImageResult 记录
-9. 标记 PositionRun 为 `done`
+9. 标记 SectionRun 为 `done`
 
 成功响应示例：
 
@@ -129,7 +129,7 @@ Worker 会执行以下流程：
 
 ## Step 7: 审图
 
-1. 回到首页 `/queue`，可以看到刚完成的 PositionRun
+1. 回到首页 `/queue`，可以看到刚完成的 SectionRun
 2. 点击进入宫格审核页
 3. 多选图片，点击 ✅ 保留 或 🗑 删除
 4. 被删除的图片会移入 `data/images/.trash/` 目录
@@ -151,8 +151,8 @@ curl http://localhost:3000/api/worker/status
 ## 验证 Agent API
 
 ```bash
-# 获取 Job 上下文
-curl http://localhost:3000/api/agent/jobs/<jobId>/context
+# 获取 Project 上下文
+curl http://localhost:3000/api/agent/projects/<projectId>/context
 
 # 获取 Run 上下文
 curl http://localhost:3000/api/agent/runs/<runId>/context
@@ -183,8 +183,8 @@ curl -X POST http://localhost:3000/api/agent/runs/<runId>/review \
 ```
 data/
 ├── images/
-│   ├── <job-slug>/
-│   │   └── <position-slug>/
+│   ├── <project-slug>/
+│   │   └── <section-slug>/
 │   │       └── run-01/
 │   │           ├── raw/     ← 原始图片
 │   │           └── thumb/   ← 缩略图

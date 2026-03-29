@@ -3,7 +3,7 @@
 ## Project Overview
 
 ComfyUI Remote — 移动优先的 ComfyUI 管理后台，覆盖：
-- 大任务管理 + Position Run 队列
+- 项目管理 + Section Run 队列
 - 宫格审图 + 回收站恢复
 - 结果 Gallery + 精选标记 + 图片整合导出
 - LoRA 文件管理 + 级联选择器
@@ -31,13 +31,13 @@ ComfyUI Remote — 移动优先的 ComfyUI 管理后台，覆盖：
 | `/queue` | ✅ 真实数据 |
 | `/queue/[runId]` | ✅ 多选审核 + 快捷操作 |
 | `/queue/[runId]/images/[imageId]` | ✅ 单图审核 + 快捷操作 |
-| `/jobs` | ✅ 创建/编辑/复制/运行 |
-| `/jobs/new` | ✅ 动态分类选择器 + presetBindings |
-| `/jobs/[jobId]` | ✅ 详情 + 修订历史 + 缩略图条 + 图片整合导出 |
-| `/jobs/[jobId]/edit` | ✅ 参数编辑 |
-| `/jobs/[jobId]/positions/[positionId]/edit` | ✅ Position 编辑（KSampler1/2 + LoRA 三栏） |
-| `/jobs/[jobId]/positions/[positionId]/blocks` | ✅ 提示词块编辑器 |
-| `/jobs/[jobId]/positions/[positionId]/results` | ✅ 结果 Gallery（Lightbox + 精选标记） |
+| `/projects` | ✅ 创建/编辑/复制/运行 |
+| `/projects/new` | ✅ 动态分类选择器 + presetBindings |
+| `/projects/[projectId]` | ✅ 详情 + 修订历史 + 缩略图条 + 图片整合导出 |
+| `/projects/[projectId]/edit` | ✅ 参数编辑 |
+| `/projects/[projectId]/sections/[sectionId]/edit` | ✅ Section 编辑（KSampler1/2 + LoRA 三栏） |
+| `/projects/[projectId]/sections/[sectionId]/blocks` | ✅ 提示词块编辑器 |
+| `/projects/[projectId]/sections/[sectionId]/results` | ✅ 结果 Gallery（Lightbox + 精选标记） |
 | `/trash` | ✅ 恢复按钮 |
 | `/assets/loras` | ✅ 文件管理器（浏览 / 上传 / 移动 / 备注） |
 | `/assets/prompts` | ✅ 提示词分类与预设管理（CRUD + 拖拽排序） |
@@ -49,14 +49,14 @@ ComfyUI Remote — 移动优先的 ComfyUI 管理后台，覆盖：
 **核心业务 API**
 | 路径 | 方法 | 说明 |
 |------|------|------|
-| `/api/jobs` | GET/POST | 任务列表 / 创建 |
-| `/api/jobs/[jobId]` | GET/PATCH | 任务详情 / 更新 |
-| `/api/jobs/[jobId]/copy` | POST | 复制任务 |
-| `/api/jobs/[jobId]/run` | POST | 运行整个任务 |
-| `/api/jobs/[jobId]/positions/[jobPositionId]` | PATCH | 更新 Position 配置 |
-| `/api/jobs/[jobId]/positions/[jobPositionId]/run` | POST | 运行单个 Position |
-| `/api/jobs/[jobId]/revisions` | GET | 修订历史列表 |
-| `/api/jobs/[jobId]/revisions/[n]` | GET | 修订快照 |
+| `/api/projects` | GET/POST | 任务列表 / 创建 |
+| `/api/projects/[projectId]` | GET/PATCH | 任务详情 / 更新 |
+| `/api/projects/[projectId]/copy` | POST | 复制任务 |
+| `/api/projects/[projectId]/run` | POST | 运行整个任务 |
+| `/api/projects/[projectId]/sections/[projectSectionId]` | PATCH | 更新 Section 配置 |
+| `/api/projects/[projectId]/sections/[projectSectionId]/run` | POST | 运行单个 Section |
+| `/api/projects/[projectId]/revisions` | GET | 修订历史列表 |
+| `/api/projects/[projectId]/revisions/[n]` | GET | 修订快照 |
 | `/api/queue` | GET | 审核队列 |
 | `/api/runs/[runId]` | GET | Run 详情 |
 | `/api/runs/[runId]/review/keep` | POST | 批量保留 |
@@ -69,7 +69,7 @@ ComfyUI Remote — 移动优先的 ComfyUI 管理后台，覆盖：
 | `/api/loras/browse` | GET | LoRA 目录浏览（文件系统扫描） |
 | `/api/loras/move` | POST | LoRA 文件移动 |
 | `/api/loras/notes` | PUT | LoRA 文件备注（upsert） |
-| `/api/job-create-options` | GET | 创建任务选项 |
+| `/api/project-create-options` | GET | 创建任务选项 |
 | `/api/path-maps` | GET | 路径映射 |
 | `/api/audit-logs` | GET | 审计日志 |
 | `/api/workflows` | GET | Workflow 模板列表 |
@@ -88,16 +88,22 @@ ComfyUI Remote — 移动优先的 ComfyUI 管理后台，覆盖：
 **Agent API**
 | 路径 | 方法 | 说明 |
 |------|------|------|
-| `/api/agent/jobs` | GET | Job 列表（搜索/筛选） |
-| `/api/agent/jobs/[jobId]/context` | GET | Job 上下文 |
-| `/api/agent/jobs/[jobId]/update` | PATCH | AI 更新 Job |
-| `/api/agent/jobs/[jobId]/run-all` | POST | AI 触发全部运行 |
-| `/api/agent/positions/[jobPositionId]/run` | POST | AI 触发 Position 运行 |
+| `/api/agent/projects` | GET | Project 列表（搜索/筛选） |
+| `/api/agent/projects/[projectId]/context` | GET | Project 上下文 |
+| `/api/agent/projects/[projectId]/update` | PATCH | AI 更新 Project |
+| `/api/agent/projects/[projectId]/run-all` | POST | AI 触发全部运行 |
+| `/api/agent/sections/[projectSectionId]/run` | POST | AI 触发 Section 运行 |
 | `/api/agent/runs/[runId]/context` | GET | Run 上下文 |
 | `/api/agent/runs/[runId]/review` | POST | AI 审图 |
 | `/api/mcp` | ALL | MCP Server |
 
 ## Version History
+
+### v0.6 — 实体重命名
+- CompleteJob → Project（项目）、CompleteJobPosition → ProjectSection（小节）、JobRevision → ProjectRevision
+- URL 路径：/jobs → /projects、/positions → /sections
+- Agent API 和 MCP Server 端点同步更新
+- 全部文档同步更新术语
 
 ### v0.5 — 统一提示词分类系统
 - 新增 PromptCategory + PromptPreset 通用模型，替代硬编码的 Character/Scene/Style/PositionTemplate
@@ -115,7 +121,7 @@ ComfyUI Remote — 移动优先的 ComfyUI 管理后台，覆盖：
 - LoRA 文件管理器（磁盘目录浏览、上传、跨目录移动）
 - LoRA 级联选择器（底部弹窗逐级目录导航）
 - LoRA 备注（数据库绑定，文件移动时跟随）
-- 结果缩略图条（Job 详情小节列表展示最近图片）
+- 结果缩略图条（Project 详情小节列表展示最近图片）
 
 ### v0.3 — Workflow 集成
 - LoRA 分区管理（characterLora / lora1 / lora2 三栏编辑）

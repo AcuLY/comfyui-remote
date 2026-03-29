@@ -6,7 +6,7 @@
 ## 1. 背景与目标
 
 `docs/workflow.api.json` 是标准的 ComfyUI API 格式工作流文件。用户点击"运行任务"时，系统需要：
-1. 将小节（Position）的参数填入该 JSON 模板
+1. 将小节（Section）的参数填入该 JSON 模板
 2. 提交给 ComfyUI 执行
 
 当前系统有基本的提示词/画幅/batch/seed 支持，但缺少：
@@ -37,7 +37,7 @@
 | 482 | character lora | Power Lora Loader (rgthree) | **角色 LoRA** |
 | **511** | positive prompt | Text Multiline | 正提示词文本 |
 | **513** | negative prompt | Text Multiline | 负提示词文本 |
-| **515** | Image Save | Image Save | output_path = 大任务名/序号.小节名 |
+| **515** | Image Save | Image Save | output_path = 项目名/序号.小节名 |
 | 519 | CLIP Text Encode | CLIPTextEncode | KSampler2 正提示词（引用 511） |
 | 520 | CLIP Text Encode | CLIPTextEncode | KSampler2 负提示词（引用 513） |
 | **522** | lora 1 | Power Lora Loader (rgthree) | **lora1** 节点（KS1 分支，model from 482） |
@@ -47,7 +47,7 @@
 
 ```
 Checkpoint(1)
-  → character lora(482)    # 角色专属 LoRA（大任务自带）
+  → character lora(482)    # 角色专属 LoRA（项目自带）
     → lora 1(522)          # lora1 列表（KS1 分支）
       → Power Lora Loader(524)  # lora2（KS1 用）
         → KSampler1 model(3)
@@ -94,7 +94,7 @@ Checkpoint(1)
 |------|---------|------|
 | 角色 LoRA 路径 | 482 (character lora) | `inputs.lora_1.lora` |
 
-角色 LoRA 来源：`CompleteJob.characterLoraPath`（大任务级别）
+角色 LoRA 来源：`Project.characterLoraPath`（项目级别）
 
 ### 3.4 LoRA 1 / LoRA 2
 
@@ -147,7 +147,7 @@ Checkpoint(1)
 
 | 参数 | 目标节点 | 字段 | 格式 |
 |------|---------|------|------|
-| output_path | 515 (Image Save) | `inputs.output_path` | `{大任务名}/{序号}.{小节名}` |
+| output_path | 515 (Image Save) | `inputs.output_path` | `{项目名}/{序号}.{小节名}` |
 
 小节名中空格替换为下划线。例如：`"MyJob/1.close_up_shot"`
 
@@ -156,7 +156,7 @@ Checkpoint(1)
 每个 KSampler 有独立的 seed 策略：
 - `random`：生成随机数
 - `fixed`：使用固定值 42
-- `increment`：基于 positionRunId 或 runIndex 递增
+- `increment`：基于 sectionRunId 或 runIndex 递增
 
 当前方案：seedPolicy 拆分为 `seedPolicy1` 和 `seedPolicy2`，默认均为 `"random"`。
 
@@ -188,7 +188,7 @@ lora2: Json?    // Array<LoraBinding>，lora2 列表
 
 `Character.loraPath`（主 LoRA）和 `Character.loraBindings`（扩展列表）保持不变，映射到 workflow 的 `character lora` 节点（482）。
 
-### 4.4 CompleteJobPosition 增加 KSampler 参数
+### 4.4 ProjectSection 增加 KSampler 参数
 
 **新增字段**：
 ```
@@ -208,7 +208,7 @@ type KSamplerParams = {
 };
 ```
 
-### 4.5 CompleteJobPosition LoRA 配置重构
+### 4.5 ProjectSection LoRA 配置重构
 
 **当前**：`loraConfig Json?`（`{ entries: LoraEntry[] }`）
 
@@ -220,9 +220,9 @@ loraConfig: Json?   // 保留但结构变更
 **新的 loraConfig 结构**：
 ```typescript
 type PositionLoraConfig = {
-  characterLora: LoraEntry[];   // 从大任务角色带入（只读展示）
-  lora1: LoraEntry[];           // lora1 列表（可编辑，来自 position template 或手动添加）
-  lora2: LoraEntry[];           // lora2 列表（可编辑，来自 position template 或手动添加）
+  characterLora: LoraEntry[];   // 从项目角色带入（只读展示）
+  lora1: LoraEntry[];           // lora1 列表（可编辑，来自 section template 或手动添加）
+  lora2: LoraEntry[];           // lora2 列表（可编辑，来自 section template 或手动添加）
 };
 ```
 
@@ -245,9 +245,9 @@ defaultKsampler2: Json?   // KSamplerParams defaults for KSampler2
 | PositionTemplate | 新增 | `lora2 Json?` |
 | PositionTemplate | 新增 | `defaultKsampler1 Json?` |
 | PositionTemplate | 新增 | `defaultKsampler2 Json?` |
-| CompleteJobPosition | 新增 | `ksampler1 Json?` |
-| CompleteJobPosition | 新增 | `ksampler2 Json?` |
-| CompleteJobPosition | 修改 | `loraConfig` 结构重构 |
+| ProjectSection | 新增 | `ksampler1 Json?` |
+| ProjectSection | 新增 | `ksampler2 Json?` |
+| ProjectSection | 修改 | `loraConfig` 结构重构 |
 
 ---
 
@@ -259,13 +259,13 @@ defaultKsampler2: Json?   // KSamplerParams defaults for KSampler2
 
 | 列表 | 来源 | 是否可编辑 | workflow 节点 |
 |------|------|----------|-------------|
-| characterLora | 大任务角色自动带入 | 否（跟随角色设置） | 482 (character lora) |
-| lora1 | position 模板预设 + 手动添加 | 是 | 522→24 (lora 1) |
-| lora2 | position 模板预设 + 手动添加 | 是 | 36→25 (lora 2) |
+| characterLora | 项目角色自动带入 | 否（跟随角色设置） | 482 (character lora) |
+| lora1 | section 模板预设 + 手动添加 | 是 | 522→24 (lora 1) |
+| lora2 | section 模板预设 + 手动添加 | 是 | 36→25 (lora 2) |
 
 ### 5.2 创建小节时的 LoRA 初始化
 
-当通过 PositionTemplate 创建 CompleteJobPosition 时：
+当通过 PositionTemplate 创建 ProjectSection 时：
 1. **characterLora**：从 Character 自动填入
 2. **lora1**：从 PositionTemplate.lora1 复制
 3. **lora2**：从 PositionTemplate.lora2 复制
@@ -273,8 +273,8 @@ defaultKsampler2: Json?   // KSamplerParams defaults for KSampler2
 ### 5.3 迁移策略
 
 - 现有 PositionTemplate 的 `loraBindings` 数据迁移到 `lora1`
-- 现有 ScenePreset/StylePreset 的 `loraBindings` 数据丢弃（或迁移到关联的 position template 的 lora2）
-- 现有 CompleteJobPosition 的 `loraConfig.entries` 按 source 分组迁移
+- 现有 ScenePreset/StylePreset 的 `loraBindings` 数据丢弃（或迁移到关联的 section template 的 lora2）
+- 现有 ProjectSection 的 `loraConfig.entries` 按 source 分组迁移
 
 ---
 
@@ -300,7 +300,7 @@ type WorkflowBuildInput = {
   lora2List: LoraBinding[];        // lora2 列表（填入节点 36 + 524）
   ksampler1: KSamplerParams;
   ksampler2: KSamplerParams;
-  outputDir: string;               // "大任务名/序号.小节名"
+  outputDir: string;               // "项目名/序号.小节名"
 };
 
 function buildWorkflowPrompt(input: WorkflowBuildInput): Record<string, unknown>;
@@ -316,7 +316,7 @@ function buildWorkflowPrompt(input: WorkflowBuildInput): Record<string, unknown>
 6. **LoRA 2**：清除 524、36 和 25 节点现有 lora，按 lora2List 填充三个节点
 7. **KSampler1**：设置节点 3 的 steps/cfg/sampler_name/scheduler/denoise/seed
 8. **KSampler2**：设置节点 427 的 steps/cfg/sampler_name/scheduler/denoise/seed
-9. **输出路径**：设置 515 的 output_path = `{大任务名}/{小节sortOrder}.{小节名}`
+9. **输出路径**：设置 515 的 output_path = `{项目名}/{小节sortOrder}.{小节名}`
 
 ---
 
@@ -347,7 +347,7 @@ function buildWorkflowPrompt(input: WorkflowBuildInput): Record<string, unknown>
 ┌─────────────────────────────────────────┐
 │ 角色 LoRA (character lora)              │
 │ ┌─────────────────────────────────────┐ │
-│ │ 🔒 Kokoro-10.safetensors  w:0.98   │ │  ← 只读，来自大任务
+│ │ 🔒 Kokoro-10.safetensors  w:0.98   │ │  ← 只读，来自项目
 │ └─────────────────────────────────────┘ │
 ├─────────────────────────────────────────┤
 │ LoRA 1                                 │
@@ -395,7 +395,7 @@ PositionTemplate 的 LoRA 编辑也拆分为 lora1 和 lora2，并新增 default
 ## 9. 开发计划（分阶段）
 
 ### Phase 1: Schema + Types
-- [x] Prisma schema 变更（PositionTemplate, ScenePreset, StylePreset, CompleteJobPosition）
+- [x] Prisma schema 变更（PositionTemplate, ScenePreset, StylePreset, ProjectSection）
 - [x] 生成 migration
 - [x] 更新 TypeScript 类型（lora-types.ts, worker/types.ts, server-data.ts）
 - [ ] 数据迁移脚本（现有 loraBindings → lora1/lora2）
@@ -406,10 +406,10 @@ PositionTemplate 的 LoRA 编辑也拆分为 lora1 和 lora2，并新增 default
 - [x] 集成到 comfyui-service.ts 的优先级链路
 
 ### Phase 3: 后端 API + Worker 适配
-- [x] 更新 job-service / actions 支持 ksampler1/ksampler2 参数
+- [x] 更新 project-service / actions 支持 ksampler1/ksampler2 参数
 - [x] 更新 worker 的 ComfyPromptDraft 类型
 - [x] 更新 resolvedConfigSnapshot 包含新字段（含 sortOrder）
-- [x] 更新 createJob/copyJob 逻辑
+- [x] 更新 createProject/copyProject 逻辑
 
 ### Phase 4: 前端 UI
 - [ ] LoRA 编辑器三栏分区（characterLora / lora1 / lora2）
