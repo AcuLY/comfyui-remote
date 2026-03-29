@@ -176,14 +176,11 @@ export function ResultsGalleryProvider({
             className="relative max-h-[85vh] max-w-[90vw]"
             onClick={(e) => e.stopPropagation()}
           >
-            <Image
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
               src={current.full}
               alt=""
-              width={1024}
-              height={1440}
-              className="max-h-[85vh] w-auto rounded-lg object-contain"
-              unoptimized
-              priority
+              className="max-h-[85vh] max-w-[90vw] rounded-lg object-contain"
             />
           </div>
 

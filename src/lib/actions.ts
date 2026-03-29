@@ -700,10 +700,10 @@ export async function addSection(projectId: string, name?: string): Promise<stri
     });
     const presetMap = new Map(presets.map((p) => [p.id, p]));
 
-    // Sort bindings by category sortOrder
+    // Sort bindings by category positivePromptOrder (controls block insertion order)
     const sortedBindings = [...bindings].sort((a, b) => {
-      const catA = presetMap.get(a.presetId)?.category.sortOrder ?? 999;
-      const catB = presetMap.get(b.presetId)?.category.sortOrder ?? 999;
+      const catA = presetMap.get(a.presetId)?.category.positivePromptOrder ?? 999;
+      const catB = presetMap.get(b.presetId)?.category.positivePromptOrder ?? 999;
       return catA - catB;
     });
 

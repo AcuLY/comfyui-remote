@@ -303,6 +303,7 @@ export async function getProjectDetail(projectId: string): Promise<ProjectDetail
         orderBy: { sortOrder: "asc" },
         include: {
           runs: {
+            where: { status: "done" },
             orderBy: { createdAt: "desc" },
             take: 1,
             select: {
