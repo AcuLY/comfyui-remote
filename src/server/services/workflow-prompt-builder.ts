@@ -1,23 +1,22 @@
 /**
- * Workflow Prompt Builder (v0.4)
+ * Workflow Prompt Builder (v0.5)
  *
  * Fills the standard `docs/workflow.api.json` template with per-section
  * parameters (prompts, dimensions, LoRAs, KSampler settings, output path)
  * and returns a ready-to-submit ComfyUI API prompt graph.
  *
- * Node mapping (see docs/design-v0.3-workflow-integration.md §2):
+ * Node mapping (from workflow.api.json):
  *
+ *   1    Checkpoint Loader
  *   511  positive prompt (Text Multiline)
  *   513  negative prompt (Text Multiline)
  *   407  Empty Latent Image (width, height, batch_size)
+ *   522  lora 1 — Power Lora Loader (checkpoint → 522 → KS1)
+ *   36   lora 2 — Power Lora Loader (checkpoint → 36 → KS2)
+ *   3    KSampler1 (model from 522)
  *   425  Upscale Latent (width, height)
- *   522  lora 1 — KS1 branch (Power Lora Loader, 482→522→524→KS1)
- *   24   lora 1 — KS2 branch (Power Lora Loader, 36→24→25→KS2)
- *   36   lora 2 — KS2 branch entry (Power Lora Loader, 482→36)
- *   25   lora 2 — KS2 branch cont. (Power Lora Loader, 24→25→KS2)
- *   524  lora 2 — KS1 branch (Power Lora Loader, 522→524→KS1)
- *   3    KSampler1
- *   427  KSampler2
+ *   427  KSampler2 (model from 36)
+ *   410  VAE Decode
  *   515  Image Save (output_path)
  */
 
@@ -40,9 +39,9 @@ export type WorkflowBuildInput = {
   batchSize: number;
   /** Upscale factor for LatentUpscale (default 2) */
   upscaleFactor?: number;
-  /** LoRA 1 list (fills nodes 522 → 24) */
+  /** LoRA 1 list (fills node 522 → KS1) */
   lora1List: LoraBinding[];
-  /** LoRA 2 list (fills nodes 36, 25, 524) */
+  /** LoRA 2 list (fills node 36 → KS2) */
   lora2List: LoraBinding[];
   ksampler1: KSamplerParams;
   ksampler2: KSamplerParams;
@@ -152,13 +151,10 @@ export function buildWorkflowPrompt(input: WorkflowBuildInput): Record<string, u
 
   if (skipHiresFix) {
     // 1x: bypass hires fix — remove Upscale Latent (425), KSampler2 (427),
-    // and KS2 branch LoRA nodes (36, 24, 25) since they feed into 427.
-    // Rewire VAEDecode (410) to read from KSampler1 (3) directly.
+    // and KS2 LoRA node (36). Rewire VAEDecode (410) to read from KS1 (3).
     delete (wf as Record<string, unknown>)["425"];
     delete (wf as Record<string, unknown>)["427"];
     delete (wf as Record<string, unknown>)["36"];
-    delete (wf as Record<string, unknown>)["24"];
-    delete (wf as Record<string, unknown>)["25"];
     nodeInputs(wf, "410").samples = ["3", 0];
   } else {
     // 3. Upscale dimensions — node 425 (Upscale Latent)
@@ -167,17 +163,12 @@ export function buildWorkflowPrompt(input: WorkflowBuildInput): Record<string, u
     upscaleInputs.height = input.longSidePx * upscale;
   }
 
-  // 4. LoRA 1 — node 522 (KS1 branch), and node 24 (KS2 branch, only when hires fix)
+  // 4. LoRA 1 — node 522 (checkpoint → 522 → KS1)
   fillPowerLoraLoader(nodeInputs(wf, "522"), input.lora1List);
-  if (!skipHiresFix) {
-    fillPowerLoraLoader(nodeInputs(wf, "24"), input.lora1List);
-  }
 
-  // 5. LoRA 2 — node 524 (KS1 branch), and nodes 36, 25 (KS2 branch, only when hires fix)
-  fillPowerLoraLoader(nodeInputs(wf, "524"), input.lora2List);
+  // 5. LoRA 2 — node 36 (checkpoint → 36 → KS2, only when hires fix active)
   if (!skipHiresFix) {
     fillPowerLoraLoader(nodeInputs(wf, "36"), input.lora2List);
-    fillPowerLoraLoader(nodeInputs(wf, "25"), input.lora2List);
   }
 
   // 7. KSampler1 — node 3
