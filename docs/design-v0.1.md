@@ -10,7 +10,7 @@
 - 以宫格方式批量审核图片
 - 支持回收站恢复
 - 在网页里直接管理提示词、画幅、 LoRA 等参数
-- 支持直接运行整组任务或单个 section
+- 支持直接运行整组任务或单个 Section
 - 为后续 Agent / AI 接入保留标准接口
 
 ## 非目标（当前阶段）
@@ -59,7 +59,7 @@
 - notes
 
 ### 4. PositionTemplate
-通用、可插拔的 section 模板：
+通用、可插拔的 Section 模板：
 - id
 - name
 - slug
@@ -72,17 +72,17 @@
 - defaultParams（json）
 - enabled
 
-### 5. Project
+### 5. Project (CompleteJob)
 一次完整项目，由以下组成：
 - characterId
 - scenePresetId
 - stylePresetId
-- jobLevelPromptOverrides（json）
+- projectLevelPromptOverrides（json）
 - status（draft / queued / running / partial_done / done / failed）
 - createdAt / updatedAt
 
-### 6. ProjectSection
-项目中启用的某个 section（小节）：
+### 6. ProjectSection (CompleteJobPosition)
+项目中启用的某个小节（Section）：
 - projectId
 - **positionTemplateId (nullable, v0.2 改为可选)** — 不再强制绑定 PositionTemplate，支持无模板的自定义小节
 - sortOrder
@@ -97,7 +97,7 @@
 提示词块，每个小节由多个块有序组成：
 - id
 - projectSectionId
-- type (character / scene / style / position / custom)
+- type (character / scene / style / section / custom)
 - sourceId (可选，引用 Character/Scene/Style/PositionTemplate 的 ID)
 - label (显示标签)
 - positive (正面提示词内容)
@@ -112,8 +112,8 @@
 - 所有块支持调整顺序、编辑内容、删除
 - 最终按顺序 join 成完整 positive/negative 发给 ComfyUI
 
-### 7. SectionRun
-某个项目中的单个 section 实际运行记录：
+### 7. PositionRun
+某个项目中的单个 Section 实际运行记录：
 - projectId
 - projectSectionId
 - runIndex
@@ -125,8 +125,8 @@
 - errorMessage
 
 ### 8. ImageResult
-某次 run 生成的单张图片：
-- sectionRunId
+某次 Run 生成的单张图片：
+- positionRunId
 - filePath
 - thumbPath
 - width / height
@@ -176,7 +176,7 @@
 
 ### 1. 待审核队列
 默认入口。
-展示最新 Section Run 倒序列表，并显示：
+展示最新 PositionRun 倒序列表，并显示：
 - Character
 - Section 名称
 - 生成时间
@@ -185,7 +185,7 @@
 - 快速进入宫格页
 
 ### 2. 宫格审核页
-单位是一个 Section Run。
+单位是一个 PositionRun。
 支持：
 - 宫格展示（单页最多 9 张）
 - 多选
@@ -205,18 +205,18 @@
 ### 4. 项目详情页
 展示：
 - Character / Scene / Style 配置
-- section 列表
-- 每个 section 的当前参数覆盖
+- Section 列表
+- 每个 Section 的当前参数覆盖
 - 最近运行状态
 - 支持运行整个项目
-- 支持单独运行某个 section
+- 支持单独运行某个 Section
 - 支持复制项目
 
 ### 5. 参数编辑页
 两个入口：
 - 结果页三点菜单
 - 项目详情页
-默认编辑“当前项目”的配置，不改全局 section 模板。
+默认编辑"当前项目"的配置，不改全局 Section 模板。
 字段首版包含：
 - character prompt
 - scene prompt
@@ -275,23 +275,23 @@
 ### 1. 创建并运行项目
 1. 创建 Project
 2. 选择 Character / Scene / Style
-3. 勾选 section 列表并设置覆盖参数
+3. 勾选 Section 列表并设置覆盖参数
 4. 点击运行全部
-5. 系统为每个启用 section 生成 SectionRun
+5. 系统为每个启用 Section 生成 PositionRun
 6. worker 依次/并发调用 ComfyUI API
 7. 下载输出、生成缩略图、写入数据库
 
-### 2. 运行单个 section
+### 2. 运行单个 Section
 1. 进入项目详情
-2. 对某个 section 点“运行”
-3. 生成新的 SectionRun
+2. 对某个 Section 点"运行"
+3. 生成新的 PositionRun
 4. worker 执行并回写结果
 
 ### 3. 审核图片
 1. 进入待审核队列
-2. 打开某个 SectionRun 宫格
+2. 打开某个 PositionRun 宫格
 3. 勾选若干图片
-4. 点击“保留”或“删除”
+4. 点击"保留"或"删除"
 5. 保留：更新 reviewStatus=kept
 6. 删除：文件移入回收站，写 TrashRecord，reviewStatus=trashed
 
@@ -317,21 +317,21 @@
 - PATCH /api/projects/:id
 - POST /api/projects/:id/copy
 - POST /api/projects/:id/run
-- POST /api/projects/:id/sections/:projectSectionId/run
+- POST /api/projects/:id/sections/:sectionId/run
 - GET /api/runs/:id
 - GET /api/queue
 
 ### Prompt Blocks (v0.2)
-- GET /api/projects/:projectId/sections/:projectSectionId/blocks — 列出某个小节的所有提示词块
-- POST /api/projects/:projectId/sections/:projectSectionId/blocks — 创建新提示词块（body 为对象）
-- POST /api/projects/:projectId/sections/:projectSectionId/blocks — 重排序（body 为 blockId 数组）
-- PATCH /api/projects/:projectId/sections/:projectSectionId/blocks/:blockId — 更新某个块的内容
-- DELETE /api/projects/:projectId/sections/:projectSectionId/blocks/:blockId — 删除某个块
+- GET /api/projects/:projectId/sections/:sectionId/blocks — 列出某个小节的所有提示词块
+- POST /api/projects/:projectId/sections/:sectionId/blocks — 创建新提示词块（body 为对象）
+- POST /api/projects/:projectId/sections/:sectionId/blocks — 重排序（body 为 blockId 数组）
+- PATCH /api/projects/:projectId/sections/:sectionId/blocks/:blockId — 更新某个块的内容
+- DELETE /api/projects/:projectId/sections/:sectionId/blocks/:blockId — 删除某个块
 
 **前端页面（v0.2 Phase 3）**：
 - `/projects/[projectId]/sections/[sectionId]/blocks` — 提示词块编辑器页面
 - `PromptBlockEditor` 客户端组件：块列表、内联编辑、新增/删除、上下移动排序、合成提示词预览
-- 类型标签（角色/场景/风格/Position/自定义）带颜色区分
+- 类型标签（角色/场景/风格/Section/自定义）带颜色区分
 - Project 详情页 Section 列表显示 block 数量 + 快捷入口
 - Server Actions：list/add/update/delete/reorder
 
@@ -358,31 +358,31 @@
 - GET /api/agent/projects/:id/context
 - POST /api/agent/projects/:id/update
 - POST /api/agent/runs/:id/review
-- POST /api/agent/sections/:projectSectionId/run
+- POST /api/agent/sections/:sectionId/run
 
 ## Worker 职责
-- 轮询或消费待执行 SectionRun
+- 轮询或消费待执行 PositionRun
 - 组装 ComfyUI API payload
 - 提交 /prompt
 - 轮询 /history
 - 下载输出图片
 - 生成缩略图
 - 写入 ImageResult
-- 更新 SectionRun 状态
+- 更新 PositionRun 状态
 - 记录错误与日志
 
 ## 版本历史建议
 不用 git 做主事实源，但仍建议做系统内版本记录：
 - 项目每次保存生成一条 revision
 - 可记录 diff payload
-- 便于以后回溯“这一轮参数怎么改过”
+- 便于以后回溯"这一轮参数怎么改过"
 
 ## AI / Agent 扩展位
 先不开发 AI 调参，但接口设计要支持：
-- 读取某个 project 的完整上下文
-- 读取某个 section run 结果摘要
+- 读取某个 Project 的完整上下文
+- 读取某个 PositionRun 结果摘要
 - 提交结构化参数修改建议
-- 触发单个 section 重跑
+- 触发单个 Section 重跑
 - 批量审图操作
 
 ## 实现状态
