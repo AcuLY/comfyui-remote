@@ -5,7 +5,7 @@
  *       → PromptCategory (4 defaults) + PromptPreset (one per legacy record)
  *
  * Also patches:
- *   - CompleteJob.presetBindings ← built from old FK columns
+ *   - Project.presetBindings ← built from old FK columns
  *   - PromptBlock.type character/scene/style/position → "preset" + categoryId
  *
  * Run with:  npx tsx prisma/migrate-presets.ts
@@ -243,9 +243,9 @@ async function main() {
   }
   console.log(`   PositionTemplates migrated: ${positionTemplates.length}`);
 
-  // ── Step 6: Patch CompleteJob.presetBindings ───────────────────────────
+  // ── Step 6: Patch Project.presetBindings ───────────────────────────
 
-  const jobs = await prisma.completeJob.findMany({
+  const jobs = await prisma.project.findMany({
     select: {
       id: true,
       characterId: true,
@@ -284,14 +284,14 @@ async function main() {
     }
 
     if (bindings.length > 0) {
-      await prisma.completeJob.update({
+      await prisma.project.update({
         where: { id: job.id },
         data: { presetBindings: bindings },
       });
       jobsPatched++;
     }
   }
-  console.log(`   CompleteJobs patched: ${jobsPatched}/${jobs.length}`);
+  console.log(`   Projects patched: ${jobsPatched}/${jobs.length}`);
 
   // ── Step 7: Patch PromptBlock type + categoryId ────────────────────────
 

@@ -2,7 +2,7 @@
  * Migration script: Character / ScenePreset / StylePreset / PositionTemplate
  *   → PromptCategory + PromptPreset
  *
- * Also updates CompleteJob.presetBindings and PromptBlock.type/categoryId.
+ * Also updates Project.presetBindings and PromptBlock.type/categoryId.
  *
  * Usage:
  *   npx tsx src/scripts/migrate-presets.mts
@@ -223,9 +223,9 @@ async function main() {
     console.log(`  + Migrated position "${p.name}" → preset (${preset.id})`);
   }
 
-  // Step 6: Update CompleteJob.presetBindings
-  console.log("\n── Step 6: Updating CompleteJob.presetBindings ──");
-  const jobs = await prisma.completeJob.findMany({
+  // Step 6: Update Project.presetBindings
+  console.log("\n── Step 6: Updating Project.presetBindings ──");
+  const jobs = await prisma.project.findMany({
     select: { id: true, characterId: true, scenePresetId: true, stylePresetId: true, presetBindings: true },
   });
   let jobsUpdated = 0;
@@ -244,14 +244,14 @@ async function main() {
     }
 
     if (bindings.length > 0) {
-      await prisma.completeJob.update({
+      await prisma.project.update({
         where: { id: job.id },
         data: { presetBindings: JSON.stringify(bindings) },
       });
       jobsUpdated++;
     }
   }
-  console.log(`  Updated ${jobsUpdated} / ${jobs.length} jobs`);
+  console.log(`  Updated ${jobsUpdated} / ${jobs.length} projects`);
 
   // Step 7: Update PromptBlock.type and categoryId
   console.log("\n── Step 7: Updating PromptBlock.type/categoryId ──");
