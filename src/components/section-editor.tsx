@@ -4,20 +4,26 @@ import { useState, useTransition } from "react";
 import { PromptBlockEditor } from "@/components/prompt-block-editor";
 import { LoraListEditor } from "@/components/lora-list-editor";
 import type { PromptBlockData } from "@/lib/actions";
-import type { LoraEntry, LoraSource, PositionLoraConfig } from "@/lib/lora-types";
+import type { LoraEntry, LoraSource } from "@/lib/lora-types";
 import type { PromptLibraryV2 } from "@/components/prompt-block-editor";
 import {
   parseLoraBindings,
   generateLoraEntryId,
 } from "@/lib/lora-types";
 
+/** 2-partition LoRA config (lora1 + lora2 only) */
+type LoraConfig2 = {
+  lora1: LoraEntry[];
+  lora2: LoraEntry[];
+};
+
 type SectionEditorProps = {
   sectionId: string;
   initialBlocks: PromptBlockData[];
-  /** v0.3: Full loraConfig with characterLora, lora1, lora2 */
-  initialLoraConfig: PositionLoraConfig;
+  /** v0.4: loraConfig with lora1, lora2 */
+  initialLoraConfig: LoraConfig2;
   libraryV2?: PromptLibraryV2;
-  onLoraChange: (config: PositionLoraConfig) => Promise<void>;
+  onLoraChange: (config: LoraConfig2) => Promise<void>;
 };
 
 export function SectionEditor({
@@ -27,8 +33,6 @@ export function SectionEditor({
   libraryV2,
   onLoraChange,
 }: SectionEditorProps) {
-  // v0.3: Separate state for each LoRA section
-  const [characterLora, setCharacterLora] = useState<LoraEntry[]>(initialLoraConfig.characterLora);
   const [lora1, setLora1] = useState<LoraEntry[]>(initialLoraConfig.lora1);
   const [lora2, setLora2] = useState<LoraEntry[]>(initialLoraConfig.lora2);
   const [isPending, startTransition] = useTransition();
@@ -45,16 +49,14 @@ export function SectionEditor({
   ) {
     const sourceLabel = `${sourceName}`;
 
-    let updatedCharacterLora = [...characterLora];
     let updatedLora1 = [...lora1];
     let updatedLora2 = [...lora2];
     let changed = false;
 
-    // Import loraBindings (legacy character path) into lora1
+    // Import loraBindings (legacy path) into lora1
     if (loraPath) {
-      const existsInAny = updatedCharacterLora.some((e) => e.path === loraPath)
-        || updatedLora1.some((e) => e.path === loraPath);
-      if (!existsInAny) {
+      const exists = updatedLora1.some((e) => e.path === loraPath);
+      if (!exists) {
         updatedLora1.push({
           id: generateLoraEntryId(),
           path: loraPath,
@@ -70,9 +72,8 @@ export function SectionEditor({
       const bindings = parseLoraBindings(loraBindings);
       for (const binding of bindings) {
         if (!binding.path) continue;
-        const existsInAny = updatedCharacterLora.some((e) => e.path === binding.path)
-          || updatedLora1.some((e) => e.path === binding.path);
-        if (!existsInAny) {
+        const exists = updatedLora1.some((e) => e.path === binding.path);
+        if (!exists) {
           updatedLora1.push({
             id: generateLoraEntryId(),
             path: binding.path,
@@ -127,12 +128,10 @@ export function SectionEditor({
     }
 
     if (changed) {
-      setCharacterLora(updatedCharacterLora);
       setLora1(updatedLora1);
       setLora2(updatedLora2);
       startTransition(async () => {
         await onLoraChange({
-          characterLora: updatedCharacterLora,
           lora1: updatedLora1,
           lora2: updatedLora2,
         });
@@ -140,22 +139,10 @@ export function SectionEditor({
     }
   }
 
-  function handleCharacterLoraChange(entries: LoraEntry[]) {
-    setCharacterLora(entries);
-    startTransition(async () => {
-      await onLoraChange({
-        characterLora: entries,
-        lora1,
-        lora2,
-      });
-    });
-  }
-
   function handleLora1Change(entries: LoraEntry[]) {
     setLora1(entries);
     startTransition(async () => {
       await onLoraChange({
-        characterLora,
         lora1: entries,
         lora2,
       });
@@ -166,7 +153,6 @@ export function SectionEditor({
     setLora2(entries);
     startTransition(async () => {
       await onLoraChange({
-        characterLora,
         lora1,
         lora2: entries,
       });
@@ -181,21 +167,9 @@ export function SectionEditor({
         libraryV2={libraryV2}
         onBlockImport={handleBlockImport}
       />
-      
+
       <div className="border-t border-white/5 pt-4 space-y-4">
-        {/* v0.3: 角色 LoRA（不可删除，可调权重） */}
-        {characterLora.length > 0 && (
-          <div>
-            <div className="mb-2 text-xs font-medium text-zinc-500">角色 LoRA（不可删除）</div>
-            <LoraListEditor
-              entries={characterLora}
-              onChange={handleCharacterLoraChange}
-              readOnly={true}
-            />
-          </div>
-        )}
-        
-        {/* v0.3: LoRA 1（可编辑） */}
+        {/* LoRA 1（可编辑） */}
         <div>
           <div className="mb-2 text-xs font-medium text-zinc-400">LoRA 1</div>
           <LoraListEditor
@@ -205,7 +179,7 @@ export function SectionEditor({
           />
         </div>
 
-        {/* v0.3: LoRA 2（可编辑） */}
+        {/* LoRA 2（可编辑） */}
         <div>
           <div className="mb-2 text-xs font-medium text-zinc-400">LoRA 2</div>
           <LoraListEditor

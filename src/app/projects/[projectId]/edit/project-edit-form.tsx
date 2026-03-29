@@ -48,14 +48,8 @@ export function ProjectEditForm({ project, categories }: Props) {
     setSelections((prev) => ({ ...prev, [categoryId]: presetId }));
   }
 
-  // Find if there's a character category and it's required
-  const characterCategory = categories.find((c) => c.slug === "character");
-  const hasCharacterSelected = characterCategory
-    ? !!selections[characterCategory.id]
-    : true;
-
   function handleSubmit() {
-    if (!title.trim() || !hasCharacterSelected) return;
+    if (!title.trim()) return;
 
     const presetBindings = Object.entries(selections)
       .filter(([, presetId]) => presetId)
@@ -116,12 +110,10 @@ export function ProjectEditForm({ project, categories }: Props) {
           {categories.map((cat) => {
             const colorClass = CATEGORY_COLORS[cat.color ?? ""] ?? "border-white/10 focus:border-sky-500/40";
             const labelClass = CATEGORY_LABELS[cat.color ?? ""] ?? "text-zinc-400";
-            const isRequired = cat.slug === "character";
-
             return (
               <div key={cat.id} className="space-y-2">
                 <label className={`text-xs ${labelClass}`}>
-                  {cat.name}{isRequired ? " *" : ""}
+                  {cat.name}（可选）
                 </label>
                 <div className="relative">
                   <select
@@ -130,7 +122,7 @@ export function ProjectEditForm({ project, categories }: Props) {
                     className={`w-full appearance-none rounded-2xl bg-white/[0.03] px-4 py-3 pr-10 text-sm text-white outline-none ${colorClass}`}
                   >
                     <option value="" className="bg-zinc-900">
-                      {isRequired ? `选择${cat.name}...` : "无"}
+                      不选择{cat.name}
                     </option>
                     {cat.presets.map((preset) => (
                       <option key={preset.id} value={preset.id} className="bg-zinc-900">
@@ -229,7 +221,7 @@ export function ProjectEditForm({ project, categories }: Props) {
       <button
         type="button"
         onClick={handleSubmit}
-        disabled={isPending || !title.trim() || !hasCharacterSelected}
+        disabled={isPending || !title.trim()}
         className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-sky-500/20 bg-sky-500/10 px-4 py-3 text-sm font-medium text-sky-300 transition hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-40"
       >
         {isPending ? (

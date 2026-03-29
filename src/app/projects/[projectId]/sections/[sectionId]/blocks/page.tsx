@@ -9,8 +9,8 @@ import { SectionNameEditor } from "./section-name-editor";
 import { SectionRunButton } from "@/app/projects/[projectId]/project-detail-actions";
 import type { PromptBlockData } from "@/lib/actions";
 import { getPromptLibraryV2 } from "@/lib/server-data";
-import { parsePositionLoraConfig, parseLoraBindings, generateLoraEntryId, serializePositionLoraConfig } from "@/lib/lora-types";
-import type { LoraEntry, PositionLoraConfig } from "@/lib/lora-types";
+import { parsePositionLoraConfig, serializePositionLoraConfig, generateLoraEntryId, parseLoraBindings } from "@/lib/lora-types";
+import type { LoraEntry } from "@/lib/lora-types";
 import { revalidatePath } from "next/cache";
 
 export default async function SectionEditPage({
@@ -25,7 +25,11 @@ export default async function SectionEditPage({
       where: { id: sectionId },
       include: {
         positionTemplate: true,
-        project: true,
+        project: {
+          select: {
+            presetBindings: true,
+          },
+        },
         promptBlocks: {
           orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
           select: {
@@ -75,85 +79,22 @@ export default async function SectionEditPage({
     upscaleFactor: pos.upscaleFactor ?? null,
   };
 
-  // Parse existing LoRA config (v0.3: { characterLora, lora1, lora2 })
+  // Parse existing LoRA config ({ lora1, lora2 })
   const loraConfig = parsePositionLoraConfig(pos.loraConfig);
 
-  // Auto-populate characterLora from project's presetBindings if not yet present
-  if (pos.project) {
-    const project = pos.project;
-    let characterLoraChanged = false;
-
-    // Character's main loraPath (legacy field on project)
-    if (project.characterLoraPath) {
-      const exists = loraConfig.characterLora.some((e) => e.path === project.characterLoraPath);
-      if (!exists) {
-        loraConfig.characterLora.push({
-          id: generateLoraEntryId(),
-          path: project.characterLoraPath,
-          weight: 1.0,
-          enabled: true,
-          source: "character",
-          sourceLabel: `角色 LoRA`,
-        });
-        characterLoraChanged = true;
-      }
-    }
-
-    // Character's lora from presetBindings (PromptPreset.lora1)
-    type PresetBindingJson = Array<{ categoryId: string; presetId: string }>;
-    const bindings = project.presetBindings as PresetBindingJson | null;
-    if (bindings && bindings.length > 0) {
-      const presetIds = bindings.map((b) => b.presetId);
-      const presets = await prisma.promptPreset.findMany({
-        where: { id: { in: presetIds } },
-        select: { id: true, name: true, lora1: true, category: { select: { slug: true } } },
-      });
-      for (const preset of presets) {
-        if (preset.category.slug === "character" && preset.lora1) {
-          const lora1Bindings = parseLoraBindings(preset.lora1);
-          for (const binding of lora1Bindings) {
-            if (!binding.path) continue;
-            const exists = loraConfig.characterLora.some((e) => e.path === binding.path);
-            if (!exists) {
-              loraConfig.characterLora.push({
-                id: generateLoraEntryId(),
-                path: binding.path,
-                weight: binding.weight,
-                enabled: binding.enabled,
-                source: "character",
-                sourceLabel: `角色: ${preset.name}`,
-              });
-              characterLoraChanged = true;
-            }
-          }
-        }
-      }
-    }
-
-    // Persist if we added new character LoRAs
-    if (characterLoraChanged) {
-      await prisma.projectSection.update({
-        where: { id: sectionId },
-        data: {
-          loraConfig: serializePositionLoraConfig(loraConfig),
-        },
-      });
-    }
-  }
-
-  // Server action to save LoRA config (v0.3 format)
-  async function handleLoraChange(config: { characterLora: LoraEntry[]; lora1: LoraEntry[]; lora2: LoraEntry[] }) {
+  // Server action to save LoRA config
+  async function handleLoraChange(config: { lora1: LoraEntry[]; lora2: LoraEntry[] }) {
     "use server";
     const { prisma } = await import("@/lib/prisma");
     const { serializePositionLoraConfig } = await import("@/lib/lora-types");
-    
+
     await prisma.projectSection.update({
       where: { id: sectionId },
       data: {
         loraConfig: serializePositionLoraConfig(config),
       },
     });
-    
+
     revalidatePath(`/projects/${projectId}/sections/${sectionId}/blocks`);
   }
 

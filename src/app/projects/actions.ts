@@ -94,10 +94,6 @@ export async function saveProjectEditAction(_prevState: ProjectSaveState, formDa
   }
 
   const payload = {
-    characterPrompt: String(formData.get("characterPrompt") ?? ""),
-    scenePrompt: getNullableString(formData, "scenePrompt"),
-    stylePrompt: getNullableString(formData, "stylePrompt"),
-    characterLoraPath: String(formData.get("characterLoraPath") ?? "").trim(),
     aspectRatio: getNullableString(formData, "aspectRatio"),
     batchSize: batchSize.value,
   };
@@ -239,19 +235,20 @@ export async function createProjectAction(_prevState: ProjectCreateState, formDa
     };
   }
 
-  const characterId = String(formData.get("characterId") ?? "").trim();
-  if (!characterId) {
-    return {
-      status: "error",
-      message: "Character is required.",
-    };
+  // Parse presetBindings from formData (JSON string)
+  let presetBindings: Array<{ categoryId: string; presetId: string }> = [];
+  const bindingsRaw = String(formData.get("presetBindings") ?? "").trim();
+  if (bindingsRaw) {
+    try {
+      presetBindings = JSON.parse(bindingsRaw);
+    } catch {
+      // ignore parse errors
+    }
   }
 
   const payload = {
     title,
-    characterId,
-    scenePresetId: getNullableString(formData, "scenePresetId"),
-    stylePresetId: getNullableString(formData, "stylePresetId"),
+    presetBindings,
     notes: getNullableString(formData, "notes"),
   };
   let createdProjectId: string | undefined;
