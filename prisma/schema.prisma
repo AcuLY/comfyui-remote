@@ -58,7 +58,7 @@ model PromptPreset {
   id              String          @id @default(cuid())
   categoryId      String
   name            String
-  slug            String          @unique
+  slug            String
   prompt          String          @db.Text  // positive prompt
   negativePrompt  String?         @db.Text
   lora1           Json?           // Array<LoraBinding> — stage 1
@@ -71,6 +71,7 @@ model PromptPreset {
   updatedAt       DateTime        @updatedAt
   category        PromptCategory  @relation(fields: [categoryId], references: [id], onDelete: Restrict)
 
+  @@unique([categoryId, slug])
   @@index([categoryId, sortOrder])
 }
 

@@ -1,7 +1,22 @@
 "use client";
 
-import { useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { useState, useCallback, useMemo } from "react";
+import { Plus, Trash2, GripVertical } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { LoraCascadePicker } from "@/components/lora-cascade-picker";
 import type { LoraBinding } from "@/lib/lora-types";
 
@@ -10,68 +25,189 @@ type LoraBindingEditorProps = {
   onChange: (bindings: LoraBinding[]) => void;
 };
 
-export function LoraBindingEditor({
-  bindings,
-  onChange,
-}: LoraBindingEditorProps) {
-  // Track local weight input values (allow empty during editing)
-  const [weightInputs, setWeightInputs] = useState<Record<number, string>>({});
+// Internal type with stable id for dnd-kit
+type BindingWithId = LoraBinding & { _id: string };
 
-  function handleAdd() {
-    onChange([
-      ...bindings,
-      { path: "", weight: 1.0, enabled: true },
-    ]);
+let _idCounter = 0;
+function nextId() {
+  return `lb-${++_idCounter}-${Math.random().toString(36).slice(2, 6)}`;
+}
+
+// ---------------------------------------------------------------------------
+// Sortable row
+// ---------------------------------------------------------------------------
+
+function SortableRow({
+  item,
+  index,
+  weightDisplay,
+  onToggle,
+  onPathChange,
+  onWeightInput,
+  onWeightBlur,
+  onRemove,
+}: {
+  item: BindingWithId;
+  index: number;
+  weightDisplay: string;
+  onToggle: () => void;
+  onPathChange: (path: string) => void;
+  onWeightInput: (value: string) => void;
+  onWeightBlur: () => void;
+  onRemove: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: item._id,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center gap-2 rounded-lg border border-white/5 bg-white/[0.02] p-2"
+    >
+      {/* Drag handle */}
+      <button
+        type="button"
+        className="cursor-grab touch-none text-zinc-600 hover:text-zinc-400 active:cursor-grabbing"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="size-3.5" />
+      </button>
+
+      {/* Enabled toggle */}
+      <button
+        type="button"
+        role="switch"
+        aria-checked={item.enabled}
+        onClick={onToggle}
+        className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer items-center rounded-full border transition-colors ${
+          item.enabled
+            ? "border-sky-500/30 bg-sky-500"
+            : "border-white/10 bg-white/10"
+        }`}
+      >
+        <span
+          className={`pointer-events-none block size-3 rounded-full bg-white shadow transition-transform ${
+            item.enabled ? "translate-x-3.5" : "translate-x-0.5"
+          }`}
+        />
+      </button>
+
+      {/* Path picker */}
+      <div className="flex-1 min-w-0">
+        <LoraCascadePicker value={item.path} onChange={onPathChange} />
+      </div>
+
+      {/* Weight input */}
+      <div className="flex items-center gap-1">
+        <span className="text-[10px] text-zinc-500">权重</span>
+        <input
+          type="text"
+          inputMode="decimal"
+          value={weightDisplay}
+          onChange={(e) => onWeightInput(e.target.value)}
+          onBlur={onWeightBlur}
+          className="w-14 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-center text-xs text-zinc-200 outline-none focus:border-sky-500/30"
+        />
+      </div>
+
+      {/* Remove */}
+      <button
+        type="button"
+        onClick={onRemove}
+        className="rounded p-1 text-zinc-500 transition hover:bg-red-500/10 hover:text-red-400"
+      >
+        <Trash2 className="size-3.5" />
+      </button>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main editor
+// ---------------------------------------------------------------------------
+
+export function LoraBindingEditor({ bindings, onChange }: LoraBindingEditorProps) {
+  // Maintain stable IDs for dnd-kit
+  const [items, setItems] = useState<BindingWithId[]>(() =>
+    bindings.map((b) => ({ ...b, _id: nextId() })),
+  );
+  const [weightInputs, setWeightInputs] = useState<Record<string, string>>({});
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+  );
+
+  const ids = useMemo(() => items.map((i) => i._id), [items]);
+
+  // Sync items → parent (strip _id)
+  const emit = useCallback(
+    (next: BindingWithId[]) => {
+      setItems(next);
+      onChange(next.map(({ _id, ...rest }) => rest));
+    },
+    [onChange],
+  );
+
+  // Sync from parent when bindings array length changes (e.g. external reset)
+  // Simple: just track length mismatch
+  if (bindings.length !== items.length) {
+    const synced = bindings.map((b, i) =>
+      i < items.length ? { ...b, _id: items[i]._id } : { ...b, _id: nextId() },
+    );
+    setItems(synced);
   }
 
-  function handleRemove(index: number) {
-    onChange(bindings.filter((_, i) => i !== index));
-    // Clean up local input state
+  function handleAdd() {
+    emit([...items, { path: "", weight: 1.0, enabled: true, _id: nextId() }]);
+  }
+
+  function handleRemove(id: string) {
+    emit(items.filter((i) => i._id !== id));
     setWeightInputs((prev) => {
       const next = { ...prev };
-      delete next[index];
+      delete next[id];
       return next;
     });
   }
 
-  function handleUpdate(index: number, updates: Partial<LoraBinding>) {
-    onChange(
-      bindings.map((b, i) =>
-        i === index ? { ...b, ...updates } : b,
-      ),
-    );
+  function handleUpdate(id: string, updates: Partial<LoraBinding>) {
+    emit(items.map((i) => (i._id === id ? { ...i, ...updates } : i)));
   }
 
-  // Get displayed weight value (local input or binding value)
-  function getWeightDisplay(index: number, binding: LoraBinding): string {
-    if (index in weightInputs) {
-      return weightInputs[index];
-    }
-    return binding.weight.toFixed(2);
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = ids.indexOf(active.id as string);
+    const newIndex = ids.indexOf(over.id as string);
+    emit(arrayMove(items, oldIndex, newIndex));
   }
 
-  // Handle weight input change (allow any input including empty)
-  function handleWeightInputChange(index: number, value: string) {
-    setWeightInputs((prev) => ({ ...prev, [index]: value }));
+  function getWeightDisplay(item: BindingWithId): string {
+    if (item._id in weightInputs) return weightInputs[item._id];
+    return item.weight.toFixed(2);
   }
 
-  // Handle weight input blur (validate and commit)
-  function handleWeightBlur(index: number, binding: LoraBinding) {
-    const inputValue = weightInputs[index];
-
-    // If no local edit was made, nothing to do
-    if (inputValue === undefined) return;
-
-    const num = parseFloat(inputValue);
+  function handleWeightBlur(item: BindingWithId) {
+    const val = weightInputs[item._id];
+    if (val === undefined) return;
+    const num = parseFloat(val);
     if (!isNaN(num)) {
       const clamped = Math.min(2.0, Math.max(0, num));
       const rounded = Math.round(clamped * 100) / 100;
-      handleUpdate(index, { weight: rounded });
+      handleUpdate(item._id, { weight: rounded });
     }
-    // Clear local input state (will fall back to binding value)
     setWeightInputs((prev) => {
       const next = { ...prev };
-      delete next[index];
+      delete next[item._id];
       return next;
     });
   }
@@ -81,68 +217,30 @@ export function LoraBindingEditor({
       <div className="text-xs text-zinc-500 mb-1">LoRA 绑定</div>
 
       <div className="space-y-2 rounded-lg border border-white/5 bg-white/[0.01] p-2">
-        {bindings.length === 0 ? (
+        {items.length === 0 ? (
           <div className="py-2 text-center text-[11px] text-zinc-600">
             暂无绑定的 LoRA
           </div>
         ) : (
-          bindings.map((binding, index) => (
-            <div
-              key={index}
-              className="flex items-center gap-2 rounded-lg border border-white/5 bg-white/[0.02] p-2"
-            >
-              {/* Enabled toggle (switch) */}
-              <button
-                type="button"
-                role="switch"
-                aria-checked={binding.enabled}
-                onClick={() =>
-                  handleUpdate(index, { enabled: !binding.enabled })
-                }
-                className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer items-center rounded-full border transition-colors ${
-                  binding.enabled
-                    ? "border-sky-500/30 bg-sky-500"
-                    : "border-white/10 bg-white/10"
-                }`}
-              >
-                <span
-                  className={`pointer-events-none block size-3 rounded-full bg-white shadow transition-transform ${
-                    binding.enabled ? "translate-x-3.5" : "translate-x-0.5"
-                  }`}
-                />
-              </button>
-
-              {/* Path picker */}
-              <div className="flex-1 min-w-0">
-                <LoraCascadePicker
-                  value={binding.path}
-                  onChange={(v) => handleUpdate(index, { path: v })}
-                />
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={ids} strategy={verticalListSortingStrategy}>
+              <div className="space-y-2">
+                {items.map((item, index) => (
+                  <SortableRow
+                    key={item._id}
+                    item={item}
+                    index={index}
+                    weightDisplay={getWeightDisplay(item)}
+                    onToggle={() => handleUpdate(item._id, { enabled: !item.enabled })}
+                    onPathChange={(v) => handleUpdate(item._id, { path: v })}
+                    onWeightInput={(v) => setWeightInputs((prev) => ({ ...prev, [item._id]: v }))}
+                    onWeightBlur={() => handleWeightBlur(item)}
+                    onRemove={() => handleRemove(item._id)}
+                  />
+                ))}
               </div>
-
-              {/* Weight input */}
-              <div className="flex items-center gap-1">
-                <span className="text-[10px] text-zinc-500">权重</span>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={getWeightDisplay(index, binding)}
-                  onChange={(e) => handleWeightInputChange(index, e.target.value)}
-                  onBlur={() => handleWeightBlur(index, binding)}
-                  className="w-14 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-center text-xs text-zinc-200 outline-none focus:border-sky-500/30"
-                />
-              </div>
-
-              {/* Remove button */}
-              <button
-                type="button"
-                onClick={() => handleRemove(index)}
-                className="rounded p-1 text-zinc-500 transition hover:bg-red-500/10 hover:text-red-400"
-              >
-                <Trash2 className="size-3.5" />
-              </button>
-            </div>
-          ))
+            </SortableContext>
+          </DndContext>
         )}
 
         <button
