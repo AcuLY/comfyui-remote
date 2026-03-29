@@ -151,10 +151,14 @@ export function buildWorkflowPrompt(input: WorkflowBuildInput): Record<string, u
   latent.batch_size = input.batchSize;
 
   if (skipHiresFix) {
-    // 1x: bypass hires fix — remove Upscale Latent (425) and KSampler2 (427),
-    // rewire VAEDecode (410) to read from KSampler1 (3) directly
+    // 1x: bypass hires fix — remove Upscale Latent (425), KSampler2 (427),
+    // and KS2 branch LoRA nodes (36, 24, 25) since they feed into 427.
+    // Rewire VAEDecode (410) to read from KSampler1 (3) directly.
     delete (wf as Record<string, unknown>)["425"];
     delete (wf as Record<string, unknown>)["427"];
+    delete (wf as Record<string, unknown>)["36"];
+    delete (wf as Record<string, unknown>)["24"];
+    delete (wf as Record<string, unknown>)["25"];
     nodeInputs(wf, "410").samples = ["3", 0];
   } else {
     // 3. Upscale dimensions — node 425 (Upscale Latent)
@@ -163,19 +167,18 @@ export function buildWorkflowPrompt(input: WorkflowBuildInput): Record<string, u
     upscaleInputs.height = input.longSidePx * upscale;
   }
 
-  // 4. LoRA 1 — nodes 522 (KS1 branch) and 24 (KS2 branch)
-  //    KS1 chain: 482 → 522 → 524 → KS1(3)
-  //    KS2 chain: 482 → 36 → 24 → 25 → KS2(427)
-  //    Both 522 and 24 carry lora1 entries for their respective branches
+  // 4. LoRA 1 — node 522 (KS1 branch), and node 24 (KS2 branch, only when hires fix)
   fillPowerLoraLoader(nodeInputs(wf, "522"), input.lora1List);
-  fillPowerLoraLoader(nodeInputs(wf, "24"), input.lora1List);
+  if (!skipHiresFix) {
+    fillPowerLoraLoader(nodeInputs(wf, "24"), input.lora1List);
+  }
 
-  // 6. LoRA 2 — nodes 524 (KS1 branch), 36 and 25 (KS2 branch)
-  //    KS1 chain: ... → 522 → 524(lora2) → KS1(3)
-  //    KS2 chain: ... → 36(lora2) → 24 → 25(lora2) → KS2(427)
+  // 5. LoRA 2 — node 524 (KS1 branch), and nodes 36, 25 (KS2 branch, only when hires fix)
   fillPowerLoraLoader(nodeInputs(wf, "524"), input.lora2List);
-  fillPowerLoraLoader(nodeInputs(wf, "36"), input.lora2List);
-  fillPowerLoraLoader(nodeInputs(wf, "25"), input.lora2List);
+  if (!skipHiresFix) {
+    fillPowerLoraLoader(nodeInputs(wf, "36"), input.lora2List);
+    fillPowerLoraLoader(nodeInputs(wf, "25"), input.lora2List);
+  }
 
   // 7. KSampler1 — node 3
   const ks1Defaults = DEFAULT_KSAMPLER1;
