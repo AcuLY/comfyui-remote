@@ -45,6 +45,7 @@ function SortableRow({
   onPathChange,
   onWeightInput,
   onWeightBlur,
+  onWeightAdjust,
   onRemove,
 }: {
   item: BindingWithId;
@@ -54,6 +55,7 @@ function SortableRow({
   onPathChange: (path: string) => void;
   onWeightInput: (value: string) => void;
   onWeightBlur: () => void;
+  onWeightAdjust: (delta: number) => void;
   onRemove: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -106,9 +108,14 @@ function SortableRow({
         <LoraCascadePicker value={item.path} onChange={onPathChange} />
       </div>
 
-      {/* Weight input */}
+      {/* Weight input + adjust buttons */}
       <div className="flex items-center gap-1">
-        <span className="text-[10px] text-zinc-500">权重</span>
+        <div className="flex gap-0.5">
+          <button type="button" onClick={() => onWeightAdjust(-0.5)}
+            className="rounded px-1 py-0.5 text-[9px] text-zinc-600 hover:bg-white/[0.06] hover:text-zinc-300">-.5</button>
+          <button type="button" onClick={() => onWeightAdjust(-0.1)}
+            className="rounded px-1 py-0.5 text-[9px] text-zinc-600 hover:bg-white/[0.06] hover:text-zinc-300">-.1</button>
+        </div>
         <input
           type="text"
           inputMode="decimal"
@@ -117,6 +124,12 @@ function SortableRow({
           onBlur={onWeightBlur}
           className="w-14 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-center text-xs text-zinc-200 outline-none focus:border-sky-500/30"
         />
+        <div className="flex gap-0.5">
+          <button type="button" onClick={() => onWeightAdjust(0.1)}
+            className="rounded px-1 py-0.5 text-[9px] text-zinc-600 hover:bg-white/[0.06] hover:text-zinc-300">+.1</button>
+          <button type="button" onClick={() => onWeightAdjust(0.5)}
+            className="rounded px-1 py-0.5 text-[9px] text-zinc-600 hover:bg-white/[0.06] hover:text-zinc-300">+.5</button>
+        </div>
       </div>
 
       {/* Remove */}
@@ -201,7 +214,7 @@ export function LoraBindingEditor({ bindings, onChange }: LoraBindingEditorProps
     if (val === undefined) return;
     const num = parseFloat(val);
     if (!isNaN(num)) {
-      const clamped = Math.min(2.0, Math.max(0, num));
+      const clamped = Math.min(2.0, Math.max(-2.0, num));
       const rounded = Math.round(clamped * 100) / 100;
       handleUpdate(item._id, { weight: rounded });
     }
@@ -235,6 +248,10 @@ export function LoraBindingEditor({ bindings, onChange }: LoraBindingEditorProps
                     onPathChange={(v) => handleUpdate(item._id, { path: v })}
                     onWeightInput={(v) => setWeightInputs((prev) => ({ ...prev, [item._id]: v }))}
                     onWeightBlur={() => handleWeightBlur(item)}
+                    onWeightAdjust={(delta) => {
+                      const clamped = Math.min(2.0, Math.max(-2.0, item.weight + delta));
+                      handleUpdate(item._id, { weight: Math.round(clamped * 100) / 100 });
+                    }}
                     onRemove={() => handleRemove(item._id)}
                   />
                 ))}

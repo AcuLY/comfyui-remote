@@ -147,19 +147,30 @@ function SortableLoraRow({
           )}
         </div>
 
-        {/* Weight input */}
+        {/* Weight input + adjust buttons */}
         <div className="flex items-center gap-1">
-          <span className="text-[10px] text-zinc-500">权重</span>
+          <div className="flex gap-0.5">
+            <button type="button" disabled={disabled} onClick={() => onWeightChange(String(entry.weight - 0.5))}
+              className="rounded px-1 py-0.5 text-[9px] text-zinc-600 hover:bg-white/[0.06] hover:text-zinc-300 disabled:opacity-50">-.5</button>
+            <button type="button" disabled={disabled} onClick={() => onWeightChange(String(entry.weight - 0.1))}
+              className="rounded px-1 py-0.5 text-[9px] text-zinc-600 hover:bg-white/[0.06] hover:text-zinc-300 disabled:opacity-50">-.1</button>
+          </div>
           <input
             type="number"
             value={entry.weight}
             onChange={(e) => onWeightChange(e.target.value)}
             step="0.05"
-            min="0"
+            min="-2"
             max="2"
             disabled={disabled}
             className="input-number w-14 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-center text-xs text-zinc-200 outline-none focus:border-sky-500/30 disabled:opacity-50"
           />
+          <div className="flex gap-0.5">
+            <button type="button" disabled={disabled} onClick={() => onWeightChange(String(entry.weight + 0.1))}
+              className="rounded px-1 py-0.5 text-[9px] text-zinc-600 hover:bg-white/[0.06] hover:text-zinc-300 disabled:opacity-50">+.1</button>
+            <button type="button" disabled={disabled} onClick={() => onWeightChange(String(entry.weight + 0.5))}
+              className="rounded px-1 py-0.5 text-[9px] text-zinc-600 hover:bg-white/[0.06] hover:text-zinc-300 disabled:opacity-50">+.5</button>
+          </div>
         </div>
 
         {/* Remove button */}
@@ -218,7 +229,7 @@ export function LoraListEditor({
   function handleWeightChange(id: string, value: string) {
     const num = parseFloat(value);
     if (!isNaN(num)) {
-      const clamped = Math.min(2.0, Math.max(0, num));
+      const clamped = Math.min(2.0, Math.max(-2.0, num));
       const rounded = Math.round(clamped * 100) / 100;
       handleUpdate(id, { weight: rounded });
     }
