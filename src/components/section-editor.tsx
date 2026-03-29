@@ -12,7 +12,7 @@ import {
 } from "@/lib/lora-types";
 
 type SectionEditorProps = {
-  positionId: string;
+  sectionId: string;
   initialBlocks: PromptBlockData[];
   /** v0.3: Full loraConfig with characterLora, lora1, lora2 */
   initialLoraConfig: PositionLoraConfig;
@@ -21,7 +21,7 @@ type SectionEditorProps = {
 };
 
 export function SectionEditor({
-  positionId,
+  sectionId,
   initialBlocks,
   initialLoraConfig,
   libraryV2,
@@ -176,7 +176,7 @@ export function SectionEditor({
   return (
     <div className="space-y-4">
       <PromptBlockEditor
-        positionId={positionId}
+        sectionId={sectionId}
         initialBlocks={initialBlocks}
         libraryV2={libraryV2}
         onBlockImport={handleBlockImport}

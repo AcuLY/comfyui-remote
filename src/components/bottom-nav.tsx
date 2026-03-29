@@ -6,7 +6,7 @@ import { FolderOpen, Images, Trash2, Upload } from "lucide-react";
 
 const navItems = [
   { href: "/queue", label: "待审核", icon: Images },
-  { href: "/jobs", label: "大任务", icon: FolderOpen },
+  { href: "/projects", label: "项目", icon: FolderOpen },
   { href: "/trash", label: "回收站", icon: Trash2 },
   { href: "/assets/loras", label: "LoRA", icon: Upload },
 ];

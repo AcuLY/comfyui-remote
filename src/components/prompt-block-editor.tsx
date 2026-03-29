@@ -82,7 +82,7 @@ type PromptLibraryLegacy = {
   characters: LibraryItem[];
   scenes: LibraryItem[];
   styles: LibraryItem[];
-  positions: LibraryItem[];
+  sections: LibraryItem[];
 };
 
 /** Category config for dynamic badge rendering */
@@ -647,13 +647,13 @@ function AddBlockForm({
 // ---------------------------------------------------------------------------
 
 export function PromptBlockEditor({
-  positionId,
+  sectionId,
   initialBlocks,
   library,
   libraryV2,
   onBlockImport,
 }: {
-  positionId: string;
+  sectionId: string;
   initialBlocks: PromptBlockData[];
   /** @deprecated Use libraryV2 instead */
   library?: PromptLibraryLegacy;
@@ -723,14 +723,14 @@ export function PromptBlockEditor({
         })),
       });
     }
-    if (library.positions.length > 0) {
+    if (library.sections.length > 0) {
       categories.push({
         id: "__legacy_position",
         name: "镜位",
         slug: "position",
         color: "amber",
         icon: "LayoutGrid",
-        presets: library.positions.map((p) => ({
+        presets: library.sections.map((p) => ({
           id: p.id, name: p.name, prompt: p.prompt, negativePrompt: p.negativePrompt,
           lora1: (p as { lora1?: unknown }).lora1 ?? null,
           lora2: (p as { lora2?: unknown }).lora2 ?? null,
@@ -797,7 +797,7 @@ export function PromptBlockEditor({
     libraryItem?: LibraryItem,
   ) {
     startTransition(async () => {
-      const newBlock = await addPositionBlock(positionId, {
+      const newBlock = await addPositionBlock(sectionId, {
         type: input.type,
         label: input.label,
         positive: input.positive,
@@ -837,7 +837,7 @@ export function PromptBlockEditor({
     setBlocks(nextBlocks);
 
     startTransition(async () => {
-      const reordered = await reorderPositionBlocks(positionId, nextBlocks.map((b) => b.id));
+      const reordered = await reorderPositionBlocks(sectionId, nextBlocks.map((b) => b.id));
       setBlocks(reordered);
     });
   }
