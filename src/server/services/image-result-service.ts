@@ -81,10 +81,10 @@ function normalizeApiUrl(apiUrl: string) {
 }
 
 function resolveManagedRunOutputPaths(run: WorkerRunSnapshot): ManagedRunOutputPaths {
-  const jobSegment = sanitizePathSegment(run.job.slug, run.job.id);
-  const positionSegment = sanitizePathSegment(run.position.slug, run.position.id);
+  const projectSegment = sanitizePathSegment(run.project.slug, run.project.id);
+  const sectionSegment = sanitizePathSegment(run.section.slug, run.section.id);
   const runSegment = `run-${String(run.runIndex).padStart(2, "0")}`;
-  const absoluteRunDir = resolve(process.cwd(), "data", "images", jobSegment, positionSegment, runSegment);
+  const absoluteRunDir = resolve(process.cwd(), "data", "images", projectSegment, sectionSegment, runSegment);
   const absoluteOutputDir = join(absoluteRunDir, "raw");
   const absoluteThumbDir = join(absoluteRunDir, "thumb");
 
@@ -92,8 +92,8 @@ function resolveManagedRunOutputPaths(run: WorkerRunSnapshot): ManagedRunOutputP
     absoluteRunDir,
     absoluteOutputDir,
     absoluteThumbDir,
-    relativeOutputDir: posix.join("data", "images", jobSegment, positionSegment, runSegment, "raw"),
-    relativeThumbDir: posix.join("data", "images", jobSegment, positionSegment, runSegment, "thumb"),
+    relativeOutputDir: posix.join("data", "images", projectSegment, sectionSegment, runSegment, "raw"),
+    relativeThumbDir: posix.join("data", "images", projectSegment, sectionSegment, runSegment, "thumb"),
   };
 }
 

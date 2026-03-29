@@ -67,7 +67,7 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns, initialF
       // Show toast for newly appeared failures
       for (const run of newFailed) {
         if (!knownFailedIdsRef.current.has(run.id)) {
-          toast.error(`${run.jobTitle} / ${run.positionName} 失败`, {
+          toast.error(`${run.projectTitle} / ${run.sectionName} 失败`, {
             description: run.errorMessage ?? "未知错误",
             duration: 8000,
           });
@@ -93,7 +93,7 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns, initialF
 
   return (
     <div className="space-y-4">
-      <PageHeader title="待审核队列" description="默认按最新 Position Run 倒序显示，先处理最新的一组。" />
+      <PageHeader title="待审核队列" description="默认按最新 Section Run 倒序显示，先处理最新的一组。" />
 
       {/* Tab bar */}
       <div className="flex items-center gap-1 rounded-2xl border border-white/10 bg-white/[0.03] p-1">
@@ -168,8 +168,8 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns, initialF
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <div className="text-sm font-semibold text-white">{run.jobTitle}</div>
-                      <div className="mt-1 text-xs text-zinc-400">{run.characterName} · {run.positionName}</div>
+                      <div className="text-sm font-semibold text-white">{run.projectTitle}</div>
+                      <div className="mt-1 text-xs text-zinc-400">{run.characterName} · {run.sectionName}</div>
                     </div>
                     <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-[11px] text-emerald-300">{run.status}</span>
                   </div>
@@ -203,7 +203,7 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns, initialF
           <div className="space-y-3">
             {runningRuns.length === 0 && (
               <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6 text-center text-sm text-zinc-500">
-                暂无运行中的任务
+                暂无运行中的项目
               </div>
             )}
             {runningRuns.map((run) => (
@@ -213,8 +213,8 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns, initialF
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <div className="text-sm font-semibold text-white">{run.jobTitle}</div>
-                    <div className="mt-1 text-xs text-zinc-400">{run.characterName} · {run.positionName}</div>
+                    <div className="text-sm font-semibold text-white">{run.projectTitle}</div>
+                    <div className="mt-1 text-xs text-zinc-400">{run.characterName} · {run.sectionName}</div>
                   </div>
                   <span className={`rounded-full border px-2 py-1 text-[11px] ${
                     run.status === "running"
@@ -239,7 +239,7 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns, initialF
 
       {/* Failed tab */}
       {activeTab === "failed" && (
-        <SectionCard title="失败任务" subtitle="最近 20 条失败记录。">
+        <SectionCard title="失败记录" subtitle="最近 20 条失败记录。">
           <div className="space-y-3">
             {failedRuns.length === 0 && (
               <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6 text-center text-sm text-zinc-500">
@@ -253,8 +253,8 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns, initialF
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <div className="text-sm font-semibold text-white">{run.jobTitle}</div>
-                    <div className="mt-1 text-xs text-zinc-400">{run.characterName} · {run.positionName}</div>
+                    <div className="text-sm font-semibold text-white">{run.projectTitle}</div>
+                    <div className="mt-1 text-xs text-zinc-400">{run.characterName} · {run.sectionName}</div>
                   </div>
                   <span className="rounded-full border border-red-500/20 bg-red-500/10 px-2 py-1 text-[11px] text-red-300">
                     <AlertTriangle className="mr-1 inline size-3" />

@@ -2,7 +2,7 @@ import { fail, ok } from "@/lib/api-response";
 import { editPromptBlock, removePromptBlock, mapPromptBlockError } from "@/server/services/prompt-block-service";
 
 type RouteContext = {
-  params: Promise<{ jobId: string; jobPositionId: string; blockId: string }>;
+  params: Promise<{ projectId: string; sectionId: string; blockId: string }>;
 };
 
 export async function PATCH(request: Request, context: RouteContext) {

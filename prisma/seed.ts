@@ -108,7 +108,7 @@ async function main() {
     }),
   ]);
 
-  const mikuJob = await prisma.completeJob.upsert({
+  const mikuJob = await prisma.project.upsert({
     where: { slug: "miku-spring-batch-a" },
     update: {
       title: "Miku spring batch A",
@@ -137,7 +137,7 @@ async function main() {
     },
   });
 
-  const tangtangJob = await prisma.completeJob.upsert({
+  const tangtangJob = await prisma.project.upsert({
     where: { slug: "tangtang-park-test" },
     update: {
       title: "Tangtang park test",
@@ -166,13 +166,13 @@ async function main() {
     },
   });
 
-  const mikuStanding = await prisma.completeJobPosition.findFirst({
-    where: { completeJobId: mikuJob.id, positionTemplateId: standingTemplate.id },
+  const mikuStanding = await prisma.projectSection.findFirst({
+    where: { projectId: mikuJob.id, positionTemplateId: standingTemplate.id },
   });
   if (!mikuStanding) {
-    await prisma.completeJobPosition.create({
+    await prisma.projectSection.create({
       data: {
-        completeJobId: mikuJob.id,
+        projectId: mikuJob.id,
         positionTemplateId: standingTemplate.id,
         sortOrder: 1,
         enabled: true,
@@ -184,13 +184,13 @@ async function main() {
     });
   }
 
-  const mikuWatching = await prisma.completeJobPosition.findFirst({
-    where: { completeJobId: mikuJob.id, positionTemplateId: watchingTemplate.id },
+  const mikuWatching = await prisma.projectSection.findFirst({
+    where: { projectId: mikuJob.id, positionTemplateId: watchingTemplate.id },
   });
   if (!mikuWatching) {
-    await prisma.completeJobPosition.create({
+    await prisma.projectSection.create({
       data: {
-        completeJobId: mikuJob.id,
+        projectId: mikuJob.id,
         positionTemplateId: watchingTemplate.id,
         sortOrder: 2,
         enabled: true,
@@ -202,13 +202,13 @@ async function main() {
     });
   }
 
-  const tangtangBench = await prisma.completeJobPosition.findFirst({
-    where: { completeJobId: tangtangJob.id, positionTemplateId: benchSitTemplate.id },
+  const tangtangBench = await prisma.projectSection.findFirst({
+    where: { projectId: tangtangJob.id, positionTemplateId: benchSitTemplate.id },
   });
   if (!tangtangBench) {
-    await prisma.completeJobPosition.create({
+    await prisma.projectSection.create({
       data: {
-        completeJobId: tangtangJob.id,
+        projectId: tangtangJob.id,
         positionTemplateId: benchSitTemplate.id,
         sortOrder: 1,
         enabled: true,
@@ -223,8 +223,8 @@ async function main() {
   const standingRun = await prisma.positionRun.upsert({
     where: { id: "seed-run-miku-standing" },
     update: {
-      completeJobId: mikuJob.id,
-      completeJobPositionId: mikuStanding.id,
+      projectId: mikuJob.id,
+      projectSectionId: mikuStanding.id,
       runIndex: 1,
       status: "done",
       resolvedConfigSnapshot: {
@@ -240,8 +240,8 @@ async function main() {
     },
     create: {
       id: "seed-run-miku-standing",
-      completeJobId: mikuJob.id,
-      completeJobPositionId: mikuStanding.id,
+      projectId: mikuJob.id,
+      projectSectionId: mikuStanding.id,
       runIndex: 1,
       status: "done",
       resolvedConfigSnapshot: {
@@ -260,8 +260,8 @@ async function main() {
   const watchingRun = await prisma.positionRun.upsert({
     where: { id: "seed-run-miku-watching" },
     update: {
-      completeJobId: mikuJob.id,
-      completeJobPositionId: mikuWatching.id,
+      projectId: mikuJob.id,
+      projectSectionId: mikuWatching.id,
       runIndex: 2,
       status: "done",
       resolvedConfigSnapshot: {
@@ -277,8 +277,8 @@ async function main() {
     },
     create: {
       id: "seed-run-miku-watching",
-      completeJobId: mikuJob.id,
-      completeJobPositionId: mikuWatching.id,
+      projectId: mikuJob.id,
+      projectSectionId: mikuWatching.id,
       runIndex: 2,
       status: "done",
       resolvedConfigSnapshot: {
@@ -297,8 +297,8 @@ async function main() {
   const benchRun = await prisma.positionRun.upsert({
     where: { id: "seed-run-tangtang-bench" },
     update: {
-      completeJobId: tangtangJob.id,
-      completeJobPositionId: tangtangBench.id,
+      projectId: tangtangJob.id,
+      projectSectionId: tangtangBench.id,
       runIndex: 1,
       status: "done",
       resolvedConfigSnapshot: {
@@ -314,8 +314,8 @@ async function main() {
     },
     create: {
       id: "seed-run-tangtang-bench",
-      completeJobId: tangtangJob.id,
-      completeJobPositionId: tangtangBench.id,
+      projectId: tangtangJob.id,
+      projectSectionId: tangtangBench.id,
       runIndex: 1,
       status: "done",
       resolvedConfigSnapshot: {
@@ -331,9 +331,9 @@ async function main() {
     },
   });
 
-  await prisma.completeJobPosition.update({ where: { id: mikuStanding.id }, data: { latestRunId: standingRun.id } });
-  await prisma.completeJobPosition.update({ where: { id: mikuWatching.id }, data: { latestRunId: watchingRun.id } });
-  await prisma.completeJobPosition.update({ where: { id: tangtangBench.id }, data: { latestRunId: benchRun.id } });
+  await prisma.projectSection.update({ where: { id: mikuStanding.id }, data: { latestRunId: standingRun.id } });
+  await prisma.projectSection.update({ where: { id: mikuWatching.id }, data: { latestRunId: watchingRun.id } });
+  await prisma.projectSection.update({ where: { id: tangtangBench.id }, data: { latestRunId: benchRun.id } });
 
   const seedImages = [
     ...Array.from({ length: 9 }, (_, index) => ({

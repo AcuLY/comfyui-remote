@@ -53,7 +53,7 @@ function extractFailedComfyPromptId(error: unknown) {
  * Transition a queued run to running status.
  * Simple update — no atomic claim needed since we're single-instance.
  */
-async function markRunning(runId: string, jobId: string) {
+async function markRunning(runId: string, projectId: string) {
   const startedAt = new Date();
   await db.positionRun.update({
     where: { id: runId },
@@ -64,8 +64,8 @@ async function markRunning(runId: string, jobId: string) {
       errorMessage: null,
     },
   });
-  await db.completeJob.update({
-    where: { id: jobId },
+  await db.project.update({
+    where: { id: projectId },
     data: { status: JobStatus.running },
   });
   return startedAt;
@@ -99,18 +99,18 @@ export async function executeQueuedRuns(): Promise<void> {
     log.info("Processing queued runs", { count: queuedRuns.length });
 
     for (const run of queuedRuns) {
-      const runLog = log.child({ runId: run.runId, jobId: run.job.id });
+      const runLog = log.child({ runId: run.runId, projectId: run.project.id });
       const runTimer = runLog.startTimer("process-run");
       let comfyPromptId: string | null = null;
 
       try {
-        await markRunning(run.runId, run.job.id);
+        await markRunning(run.runId, run.project.id);
 
-        runLog.info("Run started", { position: run.position.name });
+        runLog.info("Run started", { section: run.section.name });
 
         audit("PositionRun", run.runId, "executor.start", {
-          jobId: run.job.id,
-          positionName: run.position.name,
+          projectId: run.project.id,
+          sectionName: run.section.name,
         });
 
         const promptDraft = buildComfyPromptDraft(run);

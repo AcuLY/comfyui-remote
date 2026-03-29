@@ -16,7 +16,7 @@
  *
  *   // With context (e.g., in API routes)
  *   const log = createLogger({ requestId: "abc123", module: "jobs" });
- *   log.info("Processing job", { jobId: "xxx" });
+ *   log.info("Processing project", { projectId: "xxx" });
  *
  *   // Performance timing
  *   const timer = logger.startTimer("database-query");
@@ -411,7 +411,7 @@ export class Logger {
  *
  * @example
  * const log = createLogger({ module: "jobs", requestId: "abc123" });
- * log.info("Processing job", { jobId: "xxx" });
+ * log.info("Processing project", { projectId: "xxx" });
  */
 export function createLogger(options: LoggerOptions = {}): Logger {
   return new Logger(options);

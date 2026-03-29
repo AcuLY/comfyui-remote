@@ -2,14 +2,14 @@ import { fail, ok } from "@/lib/api-response";
 import { getPromptBlocks, addPromptBlock, setPromptBlockOrder, mapPromptBlockError } from "@/server/services/prompt-block-service";
 
 type RouteContext = {
-  params: Promise<{ jobId: string; jobPositionId: string }>;
+  params: Promise<{ projectId: string; sectionId: string }>;
 };
 
 export async function GET(_request: Request, context: RouteContext) {
-  const { jobPositionId } = await context.params;
+  const { sectionId } = await context.params;
 
   try {
-    const blocks = await getPromptBlocks(jobPositionId);
+    const blocks = await getPromptBlocks(sectionId);
     return ok(blocks);
   } catch (error) {
     const mapped = mapPromptBlockError(error);
@@ -18,7 +18,7 @@ export async function GET(_request: Request, context: RouteContext) {
 }
 
 export async function POST(request: Request, context: RouteContext) {
-  const { jobPositionId } = await context.params;
+  const { sectionId } = await context.params;
 
   let body: unknown;
   try {
@@ -30,7 +30,7 @@ export async function POST(request: Request, context: RouteContext) {
   // If body is an array, treat as reorder operation
   if (Array.isArray(body)) {
     try {
-      const result = await setPromptBlockOrder(jobPositionId, body);
+      const result = await setPromptBlockOrder(sectionId, body);
       return ok(result);
     } catch (error) {
       const mapped = mapPromptBlockError(error);
@@ -40,7 +40,7 @@ export async function POST(request: Request, context: RouteContext) {
 
   // Otherwise, create a new block
   try {
-    const block = await addPromptBlock(jobPositionId, body);
+    const block = await addPromptBlock(sectionId, body);
     return ok(block, { status: 201 });
   } catch (error) {
     const mapped = mapPromptBlockError(error);

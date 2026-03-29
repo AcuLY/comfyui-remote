@@ -3,8 +3,8 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useActionState } from "react";
 import { Loader2, ChevronDown } from "lucide-react";
-import { saveJobPositionEditAction } from "@/app/jobs/actions";
-import { initialJobSaveState } from "@/app/jobs/action-types";
+import { saveSectionEditAction } from "@/app/projects/actions";
+import { initialProjectSaveState } from "@/app/projects/action-types";
 import { AspectRatioPicker } from "@/components/aspect-ratio-picker";
 import { BatchSizeQuickFill } from "@/components/batch-size-quick-fill";
 import { Select } from "@/components/ui/select";
@@ -242,8 +242,8 @@ function parseInitialKSampler(raw: unknown, defaults: Required<KSamplerParams>):
 // ---------------------------------------------------------------------------
 
 type SectionParamsFormProps = {
-  jobId: string;
-  positionId: string;
+  projectId: string;
+  sectionId: string;
   initialParams: {
     batchSize: number | null;
     aspectRatio: string | null;
@@ -256,8 +256,8 @@ type SectionParamsFormProps = {
   };
 };
 
-export function SectionParamsForm({ jobId, positionId, initialParams }: SectionParamsFormProps) {
-  const [state, formAction, pending] = useActionState(saveJobPositionEditAction, initialJobSaveState);
+export function SectionParamsForm({ projectId, sectionId, initialParams }: SectionParamsFormProps) {
+  const [state, formAction, pending] = useActionState(saveSectionEditAction, initialProjectSaveState);
   const [batchSize, setBatchSize] = useState<string>(initialParams.batchSize?.toString() ?? "");
   const formRef = useRef<HTMLFormElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -289,8 +289,8 @@ export function SectionParamsForm({ jobId, positionId, initialParams }: SectionP
 
   return (
     <form ref={formRef} action={formAction}>
-      <input type="hidden" name="jobId" value={jobId} />
-      <input type="hidden" name="positionId" value={positionId} />
+      <input type="hidden" name="projectId" value={projectId} />
+      <input type="hidden" name="sectionId" value={sectionId} />
       {/* 提交空值让 API 保持原 prompt 不变 */}
       <input type="hidden" name="positivePrompt" value="" />
       <input type="hidden" name="negativePrompt" value="" />

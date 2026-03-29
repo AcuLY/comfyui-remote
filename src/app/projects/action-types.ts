@@ -1,41 +1,41 @@
-export type JobSaveState = {
+export type ProjectSaveState = {
   status: "idle" | "success" | "error";
   message: string;
 };
 
-export type JobRunState = {
+export type ProjectRunState = {
   status: "idle" | "success" | "error";
   message: string;
 };
 
-export type JobCopyState = {
+export type ProjectCopyState = {
   status: "idle" | "success" | "error";
   message: string;
-  copiedJobId?: string;
+  copiedProjectId?: string;
 };
 
-export type JobCreateState = {
+export type ProjectCreateState = {
   status: "idle" | "success" | "error";
   message: string;
-  createdJobId?: string;
+  createdProjectId?: string;
 };
 
-export const initialJobSaveState: JobSaveState = {
+export const initialProjectSaveState: ProjectSaveState = {
   status: "idle",
   message: "Update the fields and save them to the backend.",
 };
 
-export const initialJobRunState: JobRunState = {
+export const initialProjectRunState: ProjectRunState = {
   status: "idle",
-  message: "Ready to enqueue this job in the backend run queue.",
+  message: "Ready to enqueue this project in the backend run queue.",
 };
 
-export const initialJobCopyState: JobCopyState = {
+export const initialProjectCopyState: ProjectCopyState = {
   status: "idle",
-  message: "Ready to duplicate this job in the backend.",
+  message: "Ready to duplicate this project in the backend.",
 };
 
-export const initialJobCreateState: JobCreateState = {
+export const initialProjectCreateState: ProjectCreateState = {
   status: "idle",
-  message: "Fill in the basics to create a new draft job.",
+  message: "Fill in the basics to create a new draft project.",
 };

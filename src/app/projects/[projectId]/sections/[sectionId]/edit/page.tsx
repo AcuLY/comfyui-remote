@@ -1,17 +1,17 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { JobPositionEditForm } from "./job-position-edit-form";
-import type { JobDetailPosition } from "@/lib/server-data";
+import { SectionEditForm } from "./section-edit-form";
+import type { ProjectDetailSection } from "@/lib/server-data";
 
-export default async function JobPositionEditPage({ params }: { params: Promise<{ jobId: string; positionId: string }> }) {
-  const { jobId, positionId } = await params;
+export default async function SectionEditPage({ params }: { params: Promise<{ projectId: string; sectionId: string }> }) {
+  const { projectId, sectionId } = await params;
 
-  const pos = await prisma.completeJobPosition.findUnique({
-    where: { id: positionId },
-    include: { positionTemplate: true, completeJob: true },
+  const pos = await prisma.projectSection.findUnique({
+    where: { id: sectionId },
+    include: { positionTemplate: true, project: true },
   });
 
-  if (!pos || pos.completeJobId !== jobId) {
+  if (!pos || pos.projectId !== projectId) {
     notFound();
   }
 
@@ -19,7 +19,7 @@ export default async function JobPositionEditPage({ params }: { params: Promise<
     notFound();
   }
 
-  const position: JobDetailPosition = {
+  const section: ProjectDetailSection = {
     id: pos.id,
     name: pos.positionTemplate.name,
     batchSize: pos.batchSize ?? pos.positionTemplate.defaultBatchSize,
@@ -34,9 +34,9 @@ export default async function JobPositionEditPage({ params }: { params: Promise<
   };
 
   const positivePrompt =
-    position.promptOverview.positivePrompt ??
+    section.promptOverview.positivePrompt ??
     pos.positionTemplate.prompt ??
     "";
 
-  return <JobPositionEditForm jobId={jobId} position={position} positivePrompt={positivePrompt} />;
+  return <SectionEditForm projectId={projectId} section={section} positivePrompt={positivePrompt} />;
 }

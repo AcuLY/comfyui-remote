@@ -8,12 +8,12 @@ export type WorkerRunSnapshot = {
   comfyApiUrl: string;
   outputDir: string | null;
   resolvedConfigSnapshot: Prisma.JsonValue | null;
-  job: {
+  project: {
     id: string;
     title: string;
     slug: string;
   };
-  position: {
+  section: {
     id: string;
     name: string;
     slug: string;
@@ -21,7 +21,7 @@ export type WorkerRunSnapshot = {
 };
 
 export type NormalizedResolvedConfigSnapshot = {
-  job: {
+  project: {
     id: string;
     title: string;
     slug: string;
@@ -45,7 +45,7 @@ export type NormalizedResolvedConfigSnapshot = {
     slug: string;
     prompt: string | null;
   } | null;
-  position: {
+  section: {
     id: string;
     templateId: string;
     sortOrder: number;
@@ -109,10 +109,10 @@ export type ComfyPromptDraft = {
   metadata: {
     runId: string;
     runIndex: number;
-    jobId: string;
-    jobTitle: string;
-    positionId: string;
-    positionName: string;
-    positionSortOrder: number;
+    projectId: string;
+    projectTitle: string;
+    sectionId: string;
+    sectionName: string;
+    sectionSortOrder: number;
   };
 };

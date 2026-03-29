@@ -1,12 +1,12 @@
 import { fail, ok } from "@/lib/api-response";
-import { mapJobError, updateJobPosition } from "@/server/services/job-service";
+import { mapProjectError, updateProjectSection } from "@/server/services/project-service";
 
 type RouteContext = {
-  params: Promise<{ jobId: string; jobPositionId: string }>;
+  params: Promise<{ projectId: string; sectionId: string }>;
 };
 
 export async function PATCH(request: Request, context: RouteContext) {
-  const { jobId, jobPositionId } = await context.params;
+  const { projectId, sectionId } = await context.params;
 
   let body: unknown;
   try {
@@ -16,10 +16,10 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 
   try {
-    const data = await updateJobPosition(jobId, jobPositionId, body);
+    const data = await updateProjectSection(projectId, sectionId, body);
     return ok(data);
   } catch (error) {
-    const mapped = mapJobError(error);
+    const mapped = mapProjectError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }

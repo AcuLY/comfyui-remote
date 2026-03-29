@@ -3,18 +3,18 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown, Loader2, Plus } from "lucide-react";
-import { createJob } from "@/lib/actions";
-import type { JobFormCategory } from "@/lib/server-data";
+import { createProject } from "@/lib/actions";
+import type { ProjectFormCategory } from "@/lib/server-data";
 
 type Props = {
-  categories: JobFormCategory[];
+  categories: ProjectFormCategory[];
   // Legacy props (kept for backward compat but unused in new form)
   characters?: unknown[];
   scenes?: unknown[];
   styles?: unknown[];
 };
 
-export function JobForm({ categories }: Props) {
+export function ProjectForm({ categories }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -47,12 +47,12 @@ export function JobForm({ categories }: Props) {
       .map(([categoryId, presetId]) => ({ categoryId, presetId }));
 
     startTransition(async () => {
-      const newJobId = await createJob({
+      const newProjectId = await createProject({
         title: title.trim(),
         presetBindings,
         notes: notes.trim() || null,
       });
-      router.push(`/jobs/${newJobId}`);
+      router.push(`/projects/${newProjectId}`);
     });
   }
 
@@ -72,9 +72,9 @@ export function JobForm({ categories }: Props) {
 
   return (
     <div className="space-y-4">
-      {/* 任务标题 */}
+      {/* 项目标题 */}
       <div className="space-y-2">
-        <label className="text-xs text-zinc-400">任务标题 *</label>
+        <label className="text-xs text-zinc-400">项目标题 *</label>
         <input
           type="text"
           value={title}
@@ -133,12 +133,12 @@ export function JobForm({ categories }: Props) {
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           rows={3}
-          placeholder="任务备注..."
+          placeholder="项目备注..."
           className="w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-sky-500/40"
         />
       </div>
 
-      <p className="text-xs text-zinc-500">创建后可在任务详情页添加小节（Section）来设置画面参数和提示词。</p>
+      <p className="text-xs text-zinc-500">创建后可在项目详情页添加小节（Section）来设置画面参数和提示词。</p>
 
       {/* 提交 */}
       <button
@@ -150,7 +150,7 @@ export function JobForm({ categories }: Props) {
         {isPending ? (
           <><Loader2 className="size-4 animate-spin" /> 创建中...</>
         ) : (
-          <><Plus className="size-4" /> 创建大任务</>
+          <><Plus className="size-4" /> 创建项目</>
         )}
       </button>
     </div>

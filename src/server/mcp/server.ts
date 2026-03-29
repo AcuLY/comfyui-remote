@@ -12,24 +12,24 @@ import { z } from "zod";
 
 import { ActorType } from "@/lib/db-enums";
 import {
-  listJobs,
-  updateJob,
-  updateJobPosition,
-  enqueueJobRuns,
-  enqueueJobPositionRun,
-  mapJobError,
-} from "@/server/services/job-service";
+  listProjects,
+  updateProject,
+  updateProjectSection,
+  enqueueProjectRuns,
+  enqueueProjectSectionRun,
+  mapProjectError,
+} from "@/server/services/project-service";
 import {
   keepRunImages,
   trashRunImages,
   getRunAgentContext,
 } from "@/server/services/review-service";
 import {
-  getJobAgentContext,
-} from "@/server/repositories/job-repository";
+  getProjectAgentContext,
+} from "@/server/repositories/project-repository";
 import {
-  listJobRevisions,
-  getJobRevision,
+  listProjectRevisions,
+  getProjectRevision,
 } from "@/server/services/revision-service";
 import {
   listWorkflowTemplateSummaries,
@@ -73,11 +73,11 @@ export function getMcpServer(): McpServer {
         tools: {},
       },
       instructions: [
-        "ComfyUI Remote MCP Server — manage AI image generation jobs.",
-        "Use tools to list/update jobs, trigger runs, review images, and manage prompt blocks.",
-        "Use resources to read detailed context for jobs, runs, workflows, revisions, and prompt blocks.",
-        "Typical workflow: list_jobs → get job context → update params → run → poll run context → review images.",
-        "Prompt blocks (v0.2): Each position's prompt is composed from ordered blocks (character/scene/style/position/custom).",
+        "ComfyUI Remote MCP Server — manage AI image generation projects.",
+        "Use tools to list/update projects, trigger runs, review images, and manage prompt blocks.",
+        "Use resources to read detailed context for projects, runs, workflows, revisions, and prompt blocks.",
+        "Typical workflow: list_projects → get project context → update params → run → poll run context → review images.",
+        "Prompt blocks (v0.2): Each section's prompt is composed from ordered blocks (character/scene/style/position/custom).",
         "Use list_prompt_blocks + add/update/remove/reorder to manage blocks via MCP.",
       ].join("\n"),
     },
@@ -88,29 +88,29 @@ export function getMcpServer(): McpServer {
   // -------------------------------------------------------------------------
 
   server.tool(
-    "list_jobs",
-    "List all jobs. Supports optional filtering by search text, status, and pending review status.",
+    "list_projects",
+    "List all projects. Supports optional filtering by search text, status, and pending review status.",
     {
       search: z.string().optional().describe("Search by title or character name"),
-      status: z.string().optional().describe("Filter by job status: draft, queued, running, partial_done, done, failed"),
-      hasPending: z.string().optional().describe("Filter to jobs with pending images: 'true' or 'false'"),
+      status: z.string().optional().describe("Filter by project status: draft, queued, running, partial_done, done, failed"),
+      hasPending: z.string().optional().describe("Filter to projects with pending images: 'true' or 'false'"),
     },
     async ({ search, status, hasPending }) => {
       try {
-        const data = await listJobs({ search, status, hasPending });
+        const data = await listProjects({ search, status, hasPending });
         return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
       } catch (error) {
-        const mapped = mapJobError(error);
+        const mapped = mapProjectError(error);
         return { content: [{ type: "text", text: `Error: ${mapped.message}` }], isError: true };
       }
     },
   );
 
   server.tool(
-    "update_job",
-    "Update a job's parameters (character prompt, scene/style prompt, LoRA path, aspectRatio, batchSize). Creates a revision snapshot before updating.",
+    "update_project",
+    "Update a project's parameters (character prompt, scene/style prompt, LoRA path, aspectRatio, batchSize). Creates a revision snapshot before updating.",
     {
-      jobId: z.string().describe("The job ID to update"),
+      projectId: z.string().describe("The project ID to update"),
       characterPrompt: z.string().optional().describe("Character prompt text"),
       scenePrompt: z.string().nullable().optional().describe("Scene prompt text"),
       stylePrompt: z.string().nullable().optional().describe("Style prompt text"),
@@ -118,23 +118,23 @@ export function getMcpServer(): McpServer {
       aspectRatio: z.string().nullable().optional().describe("Aspect ratio (e.g. '3:4', '1:1')"),
       batchSize: z.number().nullable().optional().describe("Number of images per run"),
     },
-    async ({ jobId, ...patch }) => {
+    async ({ projectId, ...patch }) => {
       try {
-        const result = await updateJob(jobId, patch, ActorType.agent);
+        const result = await updateProject(projectId, patch, ActorType.agent);
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
       } catch (error) {
-        const mapped = mapJobError(error);
+        const mapped = mapProjectError(error);
         return { content: [{ type: "text", text: `Error: ${mapped.message}` }], isError: true };
       }
     },
   );
 
   server.tool(
-    "update_job_position",
-    "Update a specific position's parameters within a job.",
+    "update_project_section",
+    "Update a specific section's parameters within a project.",
     {
-      jobId: z.string().describe("The job ID"),
-      jobPositionId: z.string().describe("The position ID within the job"),
+      projectId: z.string().describe("The project ID"),
+      sectionId: z.string().describe("The section ID within the project"),
       positivePrompt: z.string().nullable().optional().describe("Positive prompt override"),
       negativePrompt: z.string().nullable().optional().describe("Negative prompt override"),
       aspectRatio: z.string().nullable().optional().describe("Aspect ratio override"),
@@ -144,27 +144,27 @@ export function getMcpServer(): McpServer {
       ksampler1: z.record(z.string(), z.unknown()).nullable().optional().describe("KSampler1 params: { steps, cfg, sampler_name, scheduler, denoise }"),
       ksampler2: z.record(z.string(), z.unknown()).nullable().optional().describe("KSampler2 params: { steps, cfg, sampler_name, scheduler, denoise }"),
     },
-    async ({ jobId, jobPositionId, ...patch }) => {
+    async ({ projectId, sectionId, ...patch }) => {
       try {
-        const result = await updateJobPosition(jobId, jobPositionId, patch, ActorType.agent);
+        const result = await updateProjectSection(projectId, sectionId, patch, ActorType.agent);
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
       } catch (error) {
-        const mapped = mapJobError(error);
+        const mapped = mapProjectError(error);
         return { content: [{ type: "text", text: `Error: ${mapped.message}` }], isError: true };
       }
     },
   );
 
   server.tool(
-    "run_all_positions",
-    "Trigger all enabled positions in a job to run. Creates queued PositionRun entries for the Worker to process.",
+    "run_all_sections",
+    "Trigger all enabled sections in a project to run. Creates queued PositionRun entries for the Worker to process.",
     {
-      jobId: z.string().describe("The job ID to run all positions for"),
+      projectId: z.string().describe("The project ID to run all sections for"),
     },
-    async ({ jobId }) => {
+    async ({ projectId }) => {
       try {
-        const result = await enqueueJobRuns(jobId, undefined, ActorType.agent);
-        const context = await getJobAgentContext(jobId);
+        const result = await enqueueProjectRuns(projectId, undefined, ActorType.agent);
+        const context = await getProjectAgentContext(projectId);
         return {
           content: [{
             type: "text",
@@ -172,23 +172,23 @@ export function getMcpServer(): McpServer {
           }],
         };
       } catch (error) {
-        const mapped = mapJobError(error);
+        const mapped = mapProjectError(error);
         return { content: [{ type: "text", text: `Error: ${mapped.message}` }], isError: true };
       }
     },
   );
 
   server.tool(
-    "run_position",
-    "Trigger a single position to run within a job.",
+    "run_section",
+    "Trigger a single section to run within a project.",
     {
-      jobId: z.string().describe("The job ID"),
-      jobPositionId: z.string().describe("The position ID to run"),
+      projectId: z.string().describe("The project ID"),
+      sectionId: z.string().describe("The section ID to run"),
     },
-    async ({ jobId, jobPositionId }) => {
+    async ({ projectId, sectionId }) => {
       try {
-        const result = await enqueueJobPositionRun(jobId, jobPositionId, undefined, ActorType.agent);
-        const context = await getJobAgentContext(jobId);
+        const result = await enqueueProjectSectionRun(projectId, sectionId, undefined, ActorType.agent);
+        const context = await getProjectAgentContext(projectId);
         return {
           content: [{
             type: "text",
@@ -196,7 +196,7 @@ export function getMcpServer(): McpServer {
           }],
         };
       } catch (error) {
-        const mapped = mapJobError(error);
+        const mapped = mapProjectError(error);
         return { content: [{ type: "text", text: `Error: ${mapped.message}` }], isError: true };
       }
     },
@@ -239,13 +239,13 @@ export function getMcpServer(): McpServer {
 
   server.tool(
     "list_prompt_blocks",
-    "List all prompt blocks for a specific position within a job.",
+    "List all prompt blocks for a specific section within a project.",
     {
-      jobPositionId: z.string().describe("The position ID to list blocks for"),
+      sectionId: z.string().describe("The section ID to list blocks for"),
     },
-    async ({ jobPositionId }) => {
+    async ({ sectionId }) => {
       try {
-        const blocks = await getPromptBlocks(jobPositionId);
+        const blocks = await getPromptBlocks(sectionId);
         return { content: [{ type: "text", text: JSON.stringify(blocks, null, 2) }] };
       } catch (error) {
         const mapped = mapPromptBlockError(error);
@@ -256,18 +256,18 @@ export function getMcpServer(): McpServer {
 
   server.tool(
     "add_prompt_block",
-    "Add a new prompt block to a position. Use this to add custom prompt blocks or import from character/scene/style/position presets.",
+    "Add a new prompt block to a section. Use this to add custom prompt blocks or import from character/scene/style/position presets.",
     {
-      jobPositionId: z.string().describe("The position ID to add the block to"),
+      sectionId: z.string().describe("The section ID to add the block to"),
       type: z.enum(["character", "scene", "style", "position", "custom"]).describe("Block type"),
       label: z.string().describe("Display label for this block"),
       positive: z.string().describe("Positive prompt text"),
       negative: z.string().nullable().optional().describe("Negative prompt text (optional)"),
       sourceId: z.string().nullable().optional().describe("Source entity ID (e.g. Character.id) if referencing a preset"),
     },
-    async ({ jobPositionId, type, label, positive, negative, sourceId }) => {
+    async ({ sectionId, type, label, positive, negative, sourceId }) => {
       try {
-        const block = await addPromptBlock(jobPositionId, { type, label, positive, negative, sourceId }, ActorType.agent);
+        const block = await addPromptBlock(sectionId, { type, label, positive, negative, sourceId }, ActorType.agent);
         return { content: [{ type: "text", text: JSON.stringify(block, null, 2) }] };
       } catch (error) {
         const mapped = mapPromptBlockError(error);
@@ -298,7 +298,7 @@ export function getMcpServer(): McpServer {
 
   server.tool(
     "remove_prompt_block",
-    "Delete a prompt block from a position.",
+    "Delete a prompt block from a section.",
     {
       blockId: z.string().describe("The block ID to remove"),
     },
@@ -315,14 +315,14 @@ export function getMcpServer(): McpServer {
 
   server.tool(
     "reorder_prompt_blocks",
-    "Reorder prompt blocks for a position. Provide the block IDs in the desired order.",
+    "Reorder prompt blocks for a section. Provide the block IDs in the desired order.",
     {
-      jobPositionId: z.string().describe("The position ID"),
+      sectionId: z.string().describe("The section ID"),
       blockIds: z.array(z.string()).describe("Array of block IDs in the desired order"),
     },
-    async ({ jobPositionId, blockIds }) => {
+    async ({ sectionId, blockIds }) => {
       try {
-        const blocks = await setPromptBlockOrder(jobPositionId, blockIds, ActorType.agent);
+        const blocks = await setPromptBlockOrder(sectionId, blockIds, ActorType.agent);
         return { content: [{ type: "text", text: JSON.stringify(blocks, null, 2) }] };
       } catch (error) {
         const mapped = mapPromptBlockError(error);
@@ -335,13 +335,13 @@ export function getMcpServer(): McpServer {
   // Resources
   // -------------------------------------------------------------------------
 
-  // Dynamic resource: Job context
+  // Dynamic resource: Project context
   server.resource(
-    "job-context",
-    new ResourceTemplate("comfyui://jobs/{jobId}/context", { list: undefined }),
-    { description: "Full context for a specific job including positions, latest runs, and prompt overview" },
+    "project-context",
+    new ResourceTemplate("comfyui://projects/{projectId}/context", { list: undefined }),
+    { description: "Full context for a specific project including sections, latest runs, and prompt overview" },
     async (uri, vars) => {
-      const data = await getJobAgentContext(str(vars.jobId));
+      const data = await getProjectAgentContext(str(vars.projectId));
       return {
         contents: [{
           uri: uri.href,
@@ -412,13 +412,13 @@ export function getMcpServer(): McpServer {
     },
   );
 
-  // Dynamic resource: Job revisions
+  // Dynamic resource: Project revisions
   server.resource(
-    "job-revisions",
-    new ResourceTemplate("comfyui://jobs/{jobId}/revisions", { list: undefined }),
-    { description: "Revision history for a job (newest first)" },
+    "project-revisions",
+    new ResourceTemplate("comfyui://projects/{projectId}/revisions", { list: undefined }),
+    { description: "Revision history for a project (newest first)" },
     async (uri, vars) => {
-      const data = await listJobRevisions(str(vars.jobId));
+      const data = await listProjectRevisions(str(vars.projectId));
       return {
         contents: [{
           uri: uri.href,
@@ -431,11 +431,11 @@ export function getMcpServer(): McpServer {
 
   // Dynamic resource: Single revision snapshot
   server.resource(
-    "job-revision",
-    new ResourceTemplate("comfyui://jobs/{jobId}/revisions/{revisionNumber}", { list: undefined }),
-    { description: "Complete snapshot of a job at a specific revision number" },
+    "project-revision",
+    new ResourceTemplate("comfyui://projects/{projectId}/revisions/{revisionNumber}", { list: undefined }),
+    { description: "Complete snapshot of a project at a specific revision number" },
     async (uri, vars) => {
-      const data = await getJobRevision(str(vars.jobId), parseInt(str(vars.revisionNumber), 10));
+      const data = await getProjectRevision(str(vars.projectId), parseInt(str(vars.revisionNumber), 10));
       if (!data) {
         return {
           contents: [{
@@ -457,12 +457,12 @@ export function getMcpServer(): McpServer {
 
   // Dynamic resource: Position prompt blocks
   server.resource(
-    "position-blocks",
-    new ResourceTemplate("comfyui://positions/{positionId}/blocks", { list: undefined }),
-    { description: "All prompt blocks for a specific position, ordered by sortOrder" },
+    "section-blocks",
+    new ResourceTemplate("comfyui://sections/{sectionId}/blocks", { list: undefined }),
+    { description: "All prompt blocks for a specific section, ordered by sortOrder" },
     async (uri, vars) => {
       try {
-        const data = await getPromptBlocks(str(vars.positionId));
+        const data = await getPromptBlocks(str(vars.sectionId));
         return {
           contents: [{
             uri: uri.href,

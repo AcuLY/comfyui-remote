@@ -1,12 +1,12 @@
 import { fail, ok } from "@/lib/api-response";
-import { enqueueJobRuns, mapJobError } from "@/server/services/job-service";
+import { enqueueProjectRuns, mapProjectError } from "@/server/services/project-service";
 
 type RouteContext = {
-  params: Promise<{ jobId: string }>;
+  params: Promise<{ projectId: string }>;
 };
 
 export async function POST(request: Request, context: RouteContext) {
-  const { jobId } = await context.params;
+  const { projectId } = await context.params;
 
   let overrideBatchSize: number | undefined;
   try {
@@ -19,10 +19,10 @@ export async function POST(request: Request, context: RouteContext) {
   }
 
   try {
-    const data = await enqueueJobRuns(jobId, overrideBatchSize);
+    const data = await enqueueProjectRuns(projectId, overrideBatchSize);
     return ok(data, { status: 201 });
   } catch (error) {
-    const mapped = mapJobError(error);
+    const mapped = mapProjectError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }

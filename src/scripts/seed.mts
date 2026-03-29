@@ -92,7 +92,7 @@ async function buildSeedImages(
   return entries;
 }
 
-/** Generate initial PromptBlocks for a position (mirrors createJob logic). */
+/** Generate initial PromptBlocks for a position (mirrors createProject logic). */
 async function generatePromptBlocks(
   positionId: string,
   character: { id: string; name: string; prompt: string; negativePrompt?: string | null },
@@ -104,7 +104,7 @@ async function generatePromptBlocks(
 
   await prisma.promptBlock.create({
     data: {
-      completeJobPositionId: positionId,
+      projectSectionId: positionId,
       type: "character",
       sourceId: character.id,
       label: character.name,
@@ -117,7 +117,7 @@ async function generatePromptBlocks(
   if (scenePreset) {
     await prisma.promptBlock.create({
       data: {
-        completeJobPositionId: positionId,
+        projectSectionId: positionId,
         type: "scene",
         sourceId: scenePreset.id,
         label: scenePreset.name,
@@ -131,7 +131,7 @@ async function generatePromptBlocks(
   if (stylePreset) {
     await prisma.promptBlock.create({
       data: {
-        completeJobPositionId: positionId,
+        projectSectionId: positionId,
         type: "style",
         sourceId: stylePreset.id,
         label: stylePreset.name,
@@ -145,7 +145,7 @@ async function generatePromptBlocks(
   if (positionTemplate) {
     await prisma.promptBlock.create({
       data: {
-        completeJobPositionId: positionId,
+        projectSectionId: positionId,
         type: "position",
         sourceId: positionTemplate.id,
         label: positionTemplate.name,
@@ -279,7 +279,7 @@ async function main() {
   });
 
   // --- CompleteJob: Miku spring batch A ---
-  const jobMiku = await prisma.completeJob.upsert({
+  const jobMiku = await prisma.project.upsert({
     where: { slug: "miku-spring-batch-a" },
     update: {},
     create: {
@@ -296,13 +296,13 @@ async function main() {
     },
   });
 
-  let mikuStanding = await prisma.completeJobPosition.findFirst({
-    where: { completeJobId: jobMiku.id, positionTemplateId: standing.id },
+  let mikuStanding = await prisma.projectSection.findFirst({
+    where: { projectId: jobMiku.id, positionTemplateId: standing.id },
   });
   if (!mikuStanding) {
-    mikuStanding = await prisma.completeJobPosition.create({
+    mikuStanding = await prisma.projectSection.create({
       data: {
-        completeJobId: jobMiku.id,
+        projectId: jobMiku.id,
         positionTemplateId: standing.id,
         sortOrder: 0,
         batchSize: 8,
@@ -312,13 +312,13 @@ async function main() {
   }
   await generatePromptBlocks(mikuStanding.id, miku, parkBench, softDaylight, standing);
 
-  let mikuWatching = await prisma.completeJobPosition.findFirst({
-    where: { completeJobId: jobMiku.id, positionTemplateId: watching.id },
+  let mikuWatching = await prisma.projectSection.findFirst({
+    where: { projectId: jobMiku.id, positionTemplateId: watching.id },
   });
   if (!mikuWatching) {
-    mikuWatching = await prisma.completeJobPosition.create({
+    mikuWatching = await prisma.projectSection.create({
       data: {
-        completeJobId: jobMiku.id,
+        projectId: jobMiku.id,
         positionTemplateId: watching.id,
         sortOrder: 1,
         batchSize: 8,
@@ -329,7 +329,7 @@ async function main() {
   await generatePromptBlocks(mikuWatching.id, miku, parkBench, softDaylight, watching);
 
   // --- CompleteJob: Tangtang park test ---
-  const jobTangtang = await prisma.completeJob.upsert({
+  const jobTangtang = await prisma.project.upsert({
     where: { slug: "tangtang-park-test" },
     update: {},
     create: {
@@ -346,13 +346,13 @@ async function main() {
     },
   });
 
-  let tangtangBench = await prisma.completeJobPosition.findFirst({
-    where: { completeJobId: jobTangtang.id, positionTemplateId: benchSit.id },
+  let tangtangBench = await prisma.projectSection.findFirst({
+    where: { projectId: jobTangtang.id, positionTemplateId: benchSit.id },
   });
   if (!tangtangBench) {
-    tangtangBench = await prisma.completeJobPosition.create({
+    tangtangBench = await prisma.projectSection.create({
       data: {
-        completeJobId: jobTangtang.id,
+        projectId: jobTangtang.id,
         positionTemplateId: benchSit.id,
         sortOrder: 0,
         batchSize: 6,
@@ -370,8 +370,8 @@ async function main() {
 
   const runMikuStanding = await prisma.positionRun.create({
     data: {
-      completeJobId: jobMiku.id,
-      completeJobPositionId: mikuStanding.id,
+      projectId: jobMiku.id,
+      projectSectionId: mikuStanding.id,
       runIndex: 1,
       status: "done",
       resolvedConfigSnapshot: {},
@@ -390,8 +390,8 @@ async function main() {
 
   await prisma.positionRun.create({
     data: {
-      completeJobId: jobMiku.id,
-      completeJobPositionId: mikuWatching.id,
+      projectId: jobMiku.id,
+      projectSectionId: mikuWatching.id,
       runIndex: 1,
       status: "done",
       resolvedConfigSnapshot: {},
@@ -410,8 +410,8 @@ async function main() {
 
   const runTangtangBench = await prisma.positionRun.create({
     data: {
-      completeJobId: jobTangtang.id,
-      completeJobPositionId: tangtangBench.id,
+      projectId: jobTangtang.id,
+      projectSectionId: tangtangBench.id,
       runIndex: 1,
       status: "done",
       resolvedConfigSnapshot: {},

@@ -4,23 +4,23 @@ import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Copy, Play, Pencil } from "lucide-react";
-import { runJob, copyJob } from "@/lib/actions";
+import { runProject, copyProject } from "@/lib/actions";
 
-export function JobActions({ jobId }: { jobId: string }) {
+export function ProjectActions({ projectId }: { projectId: string }) {
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
   function handleRun() {
     startTransition(async () => {
-      await runJob(jobId);
+      await runProject(projectId);
     });
   }
 
   function handleCopy() {
     startTransition(async () => {
-      const newId = await copyJob(jobId);
+      const newId = await copyProject(projectId);
       if (newId) {
-        router.push(`/jobs/${newId}`);
+        router.push(`/projects/${newId}`);
       }
     });
   }
@@ -28,7 +28,7 @@ export function JobActions({ jobId }: { jobId: string }) {
   return (
     <div className="grid grid-cols-3 gap-2 text-xs">
       <Link
-        href={`/jobs/${jobId}/edit`}
+        href={`/projects/${projectId}/edit`}
         className="inline-flex items-center justify-center gap-1 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-zinc-200 transition hover:bg-white/[0.08]"
       >
         <Pencil className="size-3.5" /> 编辑

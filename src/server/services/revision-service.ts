@@ -1,9 +1,9 @@
 /**
  * Revision Service
  *
- * Captures snapshots of a CompleteJob before it is modified.
- * Each snapshot is stored as a JobRevision record with an incrementing
- * revisionNumber and the full job state at that point in time.
+ * Captures snapshots of a Project before it is modified.
+ * Each snapshot is stored as a ProjectRevision record with an incrementing
+ * revisionNumber and the full project state at that point in time.
  *
  * Snapshot creation is best-effort — it should not block the update.
  */
@@ -27,9 +27,9 @@ const JOB_SNAPSHOT_SELECT = {
   characterLoraPath: true,
   scenePrompt: true,
   stylePrompt: true,
-  jobLevelOverrides: true,
+  projectLevelOverrides: true,
   notes: true,
-  positions: {
+  sections: {
     select: {
       id: true,
       positionTemplateId: true,
@@ -51,24 +51,24 @@ const JOB_SNAPSHOT_SELECT = {
 } as const;
 
 /**
- * Create a revision snapshot of the current job state before an update.
+ * Create a revision snapshot of the current project state before an update.
  * Returns the created revision or null if snapshot failed.
  */
-export async function createJobRevision(
-  jobId: string,
+export async function createProjectRevision(
+  projectId: string,
   actorType: ActorType = ActorType.user,
 ) {
   try {
-    const job = await prisma.completeJob.findUnique({
-      where: { id: jobId },
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
       select: JOB_SNAPSHOT_SELECT,
     });
 
-    if (!job) return null;
+    if (!project) return null;
 
     // Determine next revision number
-    const latestRevision = await prisma.jobRevision.findFirst({
-      where: { completeJobId: jobId },
+    const latestRevision = await prisma.projectRevision.findFirst({
+      where: { projectId: projectId },
       orderBy: { revisionNumber: "desc" },
       select: { revisionNumber: true },
     });
@@ -76,11 +76,11 @@ export async function createJobRevision(
     const nextRevisionNumber = (latestRevision?.revisionNumber ?? 0) + 1;
 
     // Store snapshot
-    return prisma.jobRevision.create({
+    return prisma.projectRevision.create({
       data: {
-        completeJobId: jobId,
+        projectId: projectId,
         revisionNumber: nextRevisionNumber,
-        snapshot: JSON.parse(JSON.stringify(job)) as object,
+        snapshot: JSON.parse(JSON.stringify(project)) as object,
         actorType,
       },
     });
@@ -95,11 +95,11 @@ export async function createJobRevision(
 // ---------------------------------------------------------------------------
 
 /**
- * List revisions for a job (newest first).
+ * List revisions for a project (newest first).
  */
-export async function listJobRevisions(jobId: string, limit = 50) {
-  return prisma.jobRevision.findMany({
-    where: { completeJobId: jobId },
+export async function listProjectRevisions(projectId: string, limit = 50) {
+  return prisma.projectRevision.findMany({
+    where: { projectId: projectId },
     orderBy: { revisionNumber: "desc" },
     take: Math.min(limit, 200),
     select: {
@@ -114,11 +114,11 @@ export async function listJobRevisions(jobId: string, limit = 50) {
 /**
  * Get a specific revision snapshot.
  */
-export async function getJobRevision(jobId: string, revisionNumber: number) {
-  return prisma.jobRevision.findUnique({
+export async function getProjectRevision(projectId: string, revisionNumber: number) {
+  return prisma.projectRevision.findUnique({
     where: {
-      completeJobId_revisionNumber: {
-        completeJobId: jobId,
+      projectId_revisionNumber: {
+        projectId: projectId,
         revisionNumber,
       },
     },

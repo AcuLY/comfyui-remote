@@ -53,7 +53,7 @@ export function PromptManager({
 
   return (
     <div className="space-y-4">
-      <SectionCard title="提示词管理" subtitle="管理提示词分类和模板。每个分类下可创建多个模板，用于大任务绑定和小节导入。">
+      <SectionCard title="提示词管理" subtitle="管理提示词分类和模板。每个分类下可创建多个模板，用于项目绑定和小节导入。">
         <div className="flex flex-col gap-4 md:flex-row">
           {/* Left panel: categories */}
           <div className="w-full shrink-0 space-y-2 md:w-56">

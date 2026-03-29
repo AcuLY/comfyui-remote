@@ -4,22 +4,22 @@ import { useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Layers, Save } from "lucide-react";
 import { useActionState } from "react";
-import { saveJobPositionEditAction } from "@/app/jobs/actions";
-import { initialJobSaveState } from "@/app/jobs/action-types";
+import { saveSectionEditAction } from "@/app/projects/actions";
+import { initialProjectSaveState } from "@/app/projects/action-types";
 import { PageHeader } from "@/components/page-header";
 import { SectionCard } from "@/components/section-card";
 import { BatchSizeQuickFill } from "@/components/batch-size-quick-fill";
-import type { JobDetailPosition } from "@/lib/server-data";
+import type { ProjectDetailSection } from "@/lib/server-data";
 
-type JobPositionEditFormProps = {
-  jobId: string;
-  position: JobDetailPosition;
+type SectionEditFormProps = {
+  projectId: string;
+  section: ProjectDetailSection;
   positivePrompt: string;
 };
 
-export function JobPositionEditForm({ jobId, position, positivePrompt }: JobPositionEditFormProps) {
-  const [state, formAction, pending] = useActionState(saveJobPositionEditAction, initialJobSaveState);
-  const [batchSize, setBatchSize] = useState<string>(position.batchSize?.toString() ?? "");
+export function SectionEditForm({ projectId, section, positivePrompt }: SectionEditFormProps) {
+  const [state, formAction, pending] = useActionState(saveSectionEditAction, initialProjectSaveState);
+  const [batchSize, setBatchSize] = useState<string>(section.batchSize?.toString() ?? "");
 
   const feedbackClassName =
     state.status === "error"
@@ -30,12 +30,13 @@ export function JobPositionEditForm({ jobId, position, positivePrompt }: JobPosi
 
   return (
     <form action={formAction} className="space-y-4">
-      <input type="hidden" name="jobId" value={jobId} />
-      <input type="hidden" name="positionId" value={position.id} />
+      <input type="hidden" name="projectId" value={projectId} />
+      <input type="hidden" name="sectionId" value={section.id} />
+
 
       <div className="flex items-center justify-between gap-3">
-        <Link href={`/jobs/${jobId}`} className="inline-flex items-center gap-2 text-sm text-zinc-300">
-          <ArrowLeft className="size-4" /> 返回任务详情
+        <Link href={`/projects/${projectId}`} className="inline-flex items-center gap-2 text-sm text-zinc-300">
+          <ArrowLeft className="size-4" /> 返回项目详情
         </Link>
         <button
           type="submit"
@@ -43,17 +44,17 @@ export function JobPositionEditForm({ jobId, position, positivePrompt }: JobPosi
           className="inline-flex items-center gap-2 rounded-full border border-sky-500/20 bg-sky-500/10 px-3 py-2 text-xs text-sky-300 disabled:cursor-not-allowed disabled:opacity-60"
         >
           <Save className="size-4" />
-          {pending ? "Saving..." : "Save Position"}
+          {pending ? "Saving..." : "Save Section"}
         </button>
       </div>
 
       <PageHeader
-        title={`Edit ${position.name}`}
-        description="Update the current position overrides with the backend PATCH API."
+        title={`Edit ${section.name}`}
+        description="Update the current section overrides with the backend PATCH API."
       />
 
       <p aria-live="polite" className={`rounded-2xl border px-3 py-2 text-xs leading-5 ${feedbackClassName}`}>
-        {pending ? "Saving position changes..." : state.message}
+        {pending ? "Saving section changes..." : state.message}
       </p>
 
       <SectionCard title="Prompt Overrides" subtitle="Clear a field if you want the backend to fall back to template defaults.">
@@ -68,19 +69,19 @@ export function JobPositionEditForm({ jobId, position, positivePrompt }: JobPosi
             name="negativePrompt"
             disabled={pending}
             className="min-h-24 w-full rounded-2xl border border-white/10 bg-black/20 px-3 py-3 text-white outline-none disabled:opacity-70"
-            defaultValue={position.promptOverview.negativePrompt ?? ""}
+            defaultValue={section.promptOverview.negativePrompt ?? ""}
           />
         </div>
       </SectionCard>
 
-      <SectionCard title="Run Parameters" subtitle="Only supported position fields are submitted from this form.">
+      <SectionCard title="Run Parameters" subtitle="Only supported section fields are submitted from this form.">
         <div className="grid grid-cols-2 gap-3 text-sm">
           <label className="space-y-2">
             <div className="text-xs text-zinc-500">Aspect ratio</div>
             <input
               name="aspectRatio"
               disabled={pending}
-              defaultValue={position.aspectRatio ?? ""}
+              defaultValue={section.aspectRatio ?? ""}
               className="w-full rounded-2xl border border-white/10 bg-black/20 px-3 py-3 text-white outline-none disabled:opacity-70"
             />
           </label>
@@ -106,7 +107,7 @@ export function JobPositionEditForm({ jobId, position, positivePrompt }: JobPosi
             <input
               name="seedPolicy1"
               disabled={pending}
-              defaultValue={position.seedPolicy1 ?? ""}
+              defaultValue={section.seedPolicy1 ?? ""}
               className="w-full rounded-2xl border border-white/10 bg-black/20 px-3 py-3 text-white outline-none disabled:opacity-70"
             />
           </label>
@@ -114,7 +115,7 @@ export function JobPositionEditForm({ jobId, position, positivePrompt }: JobPosi
       </SectionCard>
 
       <Link
-        href={`/jobs/${jobId}/positions/${position.id}/blocks`}
+        href={`/projects/${projectId}/sections/${section.id}/blocks`}
         className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-zinc-200 transition hover:bg-white/[0.08]"
       >
         <Layers className="size-4" /> 管理提示词块

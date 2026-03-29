@@ -1,24 +1,24 @@
 import { fail, ok } from "@/lib/api-response";
-import { getJobAgentContext } from "@/server/repositories/job-repository";
-import { mapJobError } from "@/server/services/job-service";
+import { getProjectAgentContext } from "@/server/repositories/project-repository";
+import { mapProjectError } from "@/server/services/project-service";
 
 type RouteContext = {
-  params: Promise<{ jobId: string }>;
+  params: Promise<{ projectId: string }>;
 };
 
 export async function GET(_request: Request, context: RouteContext) {
-  const { jobId } = await context.params;
-  const normalizedJobId = jobId.trim();
+  const { projectId } = await context.params;
+  const normalizedProjectId = projectId.trim();
 
-  if (!normalizedJobId) {
-    return fail("jobId is required", 400);
+  if (!normalizedProjectId) {
+    return fail("projectId is required", 400);
   }
 
   try {
-    const data = await getJobAgentContext(normalizedJobId);
+    const data = await getProjectAgentContext(normalizedProjectId);
     return ok(data);
   } catch (error) {
-    const mapped = mapJobError(error);
+    const mapped = mapProjectError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }

@@ -2,7 +2,7 @@
 
 import { refresh, revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import type { JobSaveState, JobRunState, JobCopyState, JobCreateState } from "./action-types";
+import type { ProjectSaveState, ProjectRunState, ProjectCopyState, ProjectCreateState } from "./action-types";
 
 type MutationApiResponse = {
   ok?: boolean;
@@ -82,10 +82,10 @@ function getPositiveInteger(formData: FormData, fieldName: string, label: string
   return { value: parsedValue };
 }
 
-export async function saveJobEditAction(_prevState: JobSaveState, formData: FormData): Promise<JobSaveState> {
-  const jobId = getRequiredId(formData, "jobId", "Job id");
-  if ("error" in jobId) {
-    return jobId.error;
+export async function saveProjectEditAction(_prevState: ProjectSaveState, formData: FormData): Promise<ProjectSaveState> {
+  const projectId = getRequiredId(formData, "projectId", "Project id");
+  if ("error" in projectId) {
+    return projectId.error;
   }
 
   const batchSize = getPositiveInteger(formData, "batchSize", "Batch size");
@@ -103,7 +103,7 @@ export async function saveJobEditAction(_prevState: JobSaveState, formData: Form
   };
 
   try {
-    const response = await fetch(getApiUrl(`/api/jobs/${encodeURIComponent(jobId.value)}`), {
+    const response = await fetch(getApiUrl(`/api/projects/${encodeURIComponent(projectId.value)}`), {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
@@ -121,34 +121,34 @@ export async function saveJobEditAction(_prevState: JobSaveState, formData: Form
       };
     }
 
-    revalidatePath("/jobs");
-    revalidatePath(`/jobs/${jobId.value}`);
+    revalidatePath("/projects");
+    revalidatePath(`/projects/${projectId.value}`);
     refresh();
 
     return {
       status: "success",
-      message: "Saved job prompts and defaults.",
+      message: "Saved project prompts and defaults.",
     };
   } catch {
     return {
       status: "error",
-      message: "The job API is unavailable right now.",
+      message: "The project API is unavailable right now.",
     };
   }
 }
 
-export async function saveJobPositionEditAction(
-  _prevState: JobSaveState,
+export async function saveSectionEditAction(
+  _prevState: ProjectSaveState,
   formData: FormData,
-): Promise<JobSaveState> {
-  const jobId = getRequiredId(formData, "jobId", "Job id");
-  if ("error" in jobId) {
-    return jobId.error;
+): Promise<ProjectSaveState> {
+  const projectId = getRequiredId(formData, "projectId", "Project id");
+  if ("error" in projectId) {
+    return projectId.error;
   }
 
-  const positionId = getRequiredId(formData, "positionId", "Position id");
-  if ("error" in positionId) {
-    return positionId.error;
+  const sectionId = getRequiredId(formData, "sectionId", "Position id");
+  if ("error" in sectionId) {
+    return sectionId.error;
   }
 
   const batchSize = getPositiveInteger(formData, "batchSize", "Batch size");
@@ -194,7 +194,7 @@ export async function saveJobPositionEditAction(
 
   try {
     const response = await fetch(
-      getApiUrl(`/api/jobs/${encodeURIComponent(jobId.value)}/positions/${encodeURIComponent(positionId.value)}`),
+      getApiUrl(`/api/projects/${encodeURIComponent(projectId.value)}/sections/${encodeURIComponent(sectionId.value)}`),
       {
         method: "PATCH",
         headers: {
@@ -214,23 +214,23 @@ export async function saveJobPositionEditAction(
       };
     }
 
-    revalidatePath("/jobs");
-    revalidatePath(`/jobs/${jobId.value}`);
+    revalidatePath("/projects");
+    revalidatePath(`/projects/${projectId.value}`);
     refresh();
 
     return {
       status: "success",
-      message: "Saved position overrides.",
+      message: "Saved section overrides.",
     };
   } catch {
     return {
       status: "error",
-      message: "The position API is unavailable right now.",
+      message: "The section API is unavailable right now.",
     };
   }
 }
 
-export async function createJobAction(_prevState: JobCreateState, formData: FormData): Promise<JobCreateState> {
+export async function createProjectAction(_prevState: ProjectCreateState, formData: FormData): Promise<ProjectCreateState> {
   const title = String(formData.get("title") ?? "").trim();
   if (!title) {
     return {
@@ -254,10 +254,10 @@ export async function createJobAction(_prevState: JobCreateState, formData: Form
     stylePresetId: getNullableString(formData, "stylePresetId"),
     notes: getNullableString(formData, "notes"),
   };
-  let createdJobId: string | undefined;
+  let createdProjectId: string | undefined;
 
   try {
-    const response = await fetch(getApiUrl("/api/jobs"), {
+    const response = await fetch(getApiUrl("/api/projects"), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -275,35 +275,35 @@ export async function createJobAction(_prevState: JobCreateState, formData: Form
       };
     }
 
-    createdJobId = typeof result?.data?.id === "string" ? result.data.id : undefined;
+    createdProjectId = typeof result?.data?.id === "string" ? result.data.id : undefined;
   } catch {
     return {
       status: "error",
-      message: "The job create API is unavailable right now.",
+      message: "The project create API is unavailable right now.",
     };
   }
 
-  if (!createdJobId) {
+  if (!createdProjectId) {
     return {
       status: "error",
-      message: "The draft was created, but the API response did not include a job id.",
+      message: "The draft was created, but the API response did not include a project id.",
     };
   }
 
-  revalidatePath("/jobs");
-  revalidatePath(`/jobs/${createdJobId}`);
+  revalidatePath("/projects");
+  revalidatePath(`/projects/${createdProjectId}`);
 
-  redirect(`/jobs/${createdJobId}/edit`);
+  redirect(`/projects/${createdProjectId}/edit`);
 }
 
-export async function copyJobAction(_prevState: JobCopyState, formData: FormData): Promise<JobCopyState> {
-  const jobId = getRequiredId(formData, "jobId", "Job id");
-  if ("error" in jobId) {
-    return jobId.error;
+export async function copyProjectAction(_prevState: ProjectCopyState, formData: FormData): Promise<ProjectCopyState> {
+  const projectId = getRequiredId(formData, "projectId", "Project id");
+  if ("error" in projectId) {
+    return projectId.error;
   }
 
   try {
-    const response = await fetch(getApiUrl(`/api/jobs/${encodeURIComponent(jobId.value)}/copy`), {
+    const response = await fetch(getApiUrl(`/api/projects/${encodeURIComponent(projectId.value)}/copy`), {
       method: "POST",
       cache: "no-store",
     });
@@ -317,29 +317,29 @@ export async function copyJobAction(_prevState: JobCopyState, formData: FormData
       };
     }
 
-    revalidatePath("/jobs");
+    revalidatePath("/projects");
     if (typeof result?.data?.id === "string" && result.data.id) {
-      revalidatePath(`/jobs/${result.data.id}`);
+      revalidatePath(`/projects/${result.data.id}`);
     }
     refresh();
 
     return {
       status: "success",
-      message: "Duplicated this job as a new draft.",
-      copiedJobId: typeof result?.data?.id === "string" ? result.data.id : undefined,
+      message: "Duplicated this project as a new draft.",
+      copiedProjectId: typeof result?.data?.id === "string" ? result.data.id : undefined,
     };
   } catch {
     return {
       status: "error",
-      message: "The job copy API is unavailable right now.",
+      message: "The project copy API is unavailable right now.",
     };
   }
 }
 
-export async function runJobAction(_prevState: JobRunState, formData: FormData): Promise<JobRunState> {
-  const jobId = getRequiredId(formData, "jobId", "Job id");
-  if ("error" in jobId) {
-    return jobId.error;
+export async function runProjectAction(_prevState: ProjectRunState, formData: FormData): Promise<ProjectRunState> {
+  const projectId = getRequiredId(formData, "projectId", "Project id");
+  if ("error" in projectId) {
+    return projectId.error;
   }
 
   const batchSize = getPositiveInteger(formData, "batchSize", "Batch size");
@@ -353,7 +353,7 @@ export async function runJobAction(_prevState: JobRunState, formData: FormData):
       body.batchSize = batchSize.value;
     }
 
-    const response = await fetch(getApiUrl(`/api/jobs/${encodeURIComponent(jobId.value)}/run`), {
+    const response = await fetch(getApiUrl(`/api/projects/${encodeURIComponent(projectId.value)}/run`), {
       method: "POST",
       headers: Object.keys(body).length > 0 ? { "Content-Type": "application/json" } : undefined,
       body: Object.keys(body).length > 0 ? JSON.stringify(body) : undefined,
@@ -369,32 +369,32 @@ export async function runJobAction(_prevState: JobRunState, formData: FormData):
       };
     }
 
-    revalidatePath("/jobs");
-    revalidatePath(`/jobs/${jobId.value}`);
+    revalidatePath("/projects");
+    revalidatePath(`/projects/${projectId.value}`);
     revalidatePath("/queue");
     refresh();
 
     return {
       status: "success",
-      message: "Queued all enabled positions.",
+      message: "Queued all enabled sections.",
     };
   } catch {
     return {
       status: "error",
-      message: "The job run API is unavailable right now.",
+      message: "The project run API is unavailable right now.",
     };
   }
 }
 
-export async function runJobPositionAction(_prevState: JobRunState, formData: FormData): Promise<JobRunState> {
-  const jobId = getRequiredId(formData, "jobId", "Job id");
-  if ("error" in jobId) {
-    return jobId.error;
+export async function runSectionAction(_prevState: ProjectRunState, formData: FormData): Promise<ProjectRunState> {
+  const projectId = getRequiredId(formData, "projectId", "Project id");
+  if ("error" in projectId) {
+    return projectId.error;
   }
 
-  const positionId = getRequiredId(formData, "positionId", "Position id");
-  if ("error" in positionId) {
-    return positionId.error;
+  const sectionId = getRequiredId(formData, "sectionId", "Position id");
+  if ("error" in sectionId) {
+    return sectionId.error;
   }
 
   const batchSize = getPositiveInteger(formData, "batchSize", "Batch size");
@@ -409,7 +409,7 @@ export async function runJobPositionAction(_prevState: JobRunState, formData: Fo
     }
 
     const response = await fetch(
-      getApiUrl(`/api/jobs/${encodeURIComponent(jobId.value)}/positions/${encodeURIComponent(positionId.value)}/run`),
+      getApiUrl(`/api/projects/${encodeURIComponent(projectId.value)}/sections/${encodeURIComponent(sectionId.value)}/run`),
       {
         method: "POST",
         headers: Object.keys(body).length > 0 ? { "Content-Type": "application/json" } : undefined,
@@ -423,23 +423,23 @@ export async function runJobPositionAction(_prevState: JobRunState, formData: Fo
     if (!response.ok || result?.ok === false) {
       return {
         status: "error",
-        message: result?.error?.message ?? `Position run request failed with status ${response.status}.`,
+        message: result?.error?.message ?? `Section run request failed with status ${response.status}.`,
       };
     }
 
-    revalidatePath("/jobs");
-    revalidatePath(`/jobs/${jobId.value}`);
+    revalidatePath("/projects");
+    revalidatePath(`/projects/${projectId.value}`);
     revalidatePath("/queue");
     refresh();
 
     return {
       status: "success",
-      message: "Queued this position to run.",
+      message: "Queued this section to run.",
     };
   } catch {
     return {
       status: "error",
-      message: "The position run API is unavailable right now.",
+      message: "The section run API is unavailable right now.",
     };
   }
 }

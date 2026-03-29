@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { ChevronDown, ChevronRight, Bot, User, Server } from "lucide-react";
-import type { JobRevisionSummary } from "@/lib/server-data";
+import type { ProjectRevisionSummary } from "@/lib/server-data";
 
 type RevisionSnapshot = {
   title?: string;
@@ -10,7 +10,7 @@ type RevisionSnapshot = {
   scenePrompt?: string | null;
   stylePrompt?: string | null;
   characterLoraPath?: string;
-  positions?: Array<{
+  sections?: Array<{
     id: string;
     positivePrompt?: string | null;
     negativePrompt?: string | null;
@@ -73,7 +73,7 @@ function SnapshotField({ label, value }: { label: string; value: string | null |
   );
 }
 
-function RevisionItem({ revision, jobId }: { revision: JobRevisionSummary; jobId: string }) {
+function RevisionItem({ revision, projectId }: { revision: ProjectRevisionSummary; projectId: string }) {
   const [expanded, setExpanded] = useState(false);
   const [detail, setDetail] = useState<RevisionDetail | null>(null);
   const [loading, setLoading] = useState(false);
@@ -91,7 +91,7 @@ function RevisionItem({ revision, jobId }: { revision: JobRevisionSummary; jobId
     setLoading(true);
     try {
       const response = await fetch(
-        `/api/jobs/${encodeURIComponent(jobId)}/revisions/${revision.revisionNumber}`,
+        `/api/projects/${encodeURIComponent(projectId)}/revisions/${revision.revisionNumber}`,
       );
       if (response.ok) {
         const json = await response.json();
@@ -137,10 +137,10 @@ function RevisionItem({ revision, jobId }: { revision: JobRevisionSummary; jobId
               <SnapshotField label="Scene prompt" value={snapshot.scenePrompt} />
               <SnapshotField label="Style prompt" value={snapshot.stylePrompt} />
               <SnapshotField label="LoRA path" value={snapshot.characterLoraPath} />
-              {snapshot.positions && snapshot.positions.length > 0 && (
+              {snapshot.sections && snapshot.sections.length > 0 && (
                 <div className="space-y-1.5">
                   <div className="text-[10px] font-medium text-zinc-500">Positions</div>
-                  {snapshot.positions.map((pos, i) => (
+                  {snapshot.sections.map((pos, i) => (
                     <div key={pos.id ?? i} className="rounded-xl bg-white/[0.02] p-2 text-[11px] text-zinc-400">
                       <div className="flex items-center gap-2">
                         <span className="text-zinc-300">#{i + 1}</span>
@@ -176,10 +176,10 @@ function RevisionItem({ revision, jobId }: { revision: JobRevisionSummary; jobId
 
 export function RevisionHistory({
   revisions,
-  jobId,
+  projectId,
 }: {
-  revisions: JobRevisionSummary[];
-  jobId: string;
+  revisions: ProjectRevisionSummary[];
+  projectId: string;
 }) {
   if (revisions.length === 0) {
     return (
@@ -192,7 +192,7 @@ export function RevisionHistory({
   return (
     <div className="space-y-2">
       {revisions.map((revision) => (
-        <RevisionItem key={revision.id} revision={revision} jobId={jobId} />
+        <RevisionItem key={revision.id} revision={revision} projectId={projectId} />
       ))}
     </div>
   );

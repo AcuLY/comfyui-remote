@@ -1,18 +1,18 @@
 import { fail, ok } from "@/lib/api-response";
-import { copyJob, mapJobError } from "@/server/services/job-service";
+import { copyProject, mapProjectError } from "@/server/services/project-service";
 
 type RouteContext = {
-  params: Promise<{ jobId: string }>;
+  params: Promise<{ projectId: string }>;
 };
 
 export async function POST(_request: Request, context: RouteContext) {
-  const { jobId } = await context.params;
+  const { projectId } = await context.params;
 
   try {
-    const data = await copyJob(jobId);
+    const data = await copyProject(projectId);
     return ok(data, { status: 201 });
   } catch (error) {
-    const mapped = mapJobError(error);
+    const mapped = mapProjectError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }

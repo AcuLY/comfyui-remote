@@ -1,63 +1,63 @@
 import { ActorType } from "@/lib/db-enums";
 import { fail, ok } from "@/lib/api-response";
 import {
-  getJobAgentContext,
-  getJobPositionDetail,
-} from "@/server/repositories/job-repository";
+  getProjectAgentContext,
+  getProjectSectionDetail,
+} from "@/server/repositories/project-repository";
 import {
-  mapJobError,
-  updateJob,
-  updateJobPosition,
-} from "@/server/services/job-service";
+  mapProjectError,
+  updateProject,
+  updateProjectSection,
+} from "@/server/services/project-service";
 
 type RouteContext = {
-  params: Promise<{ jobId: string }>;
+  params: Promise<{ projectId: string }>;
 };
 
-type AgentJobUpdateRequestBody = {
-  job?: unknown;
-  positions?: unknown;
+type AgentProjectUpdateRequestBody = {
+  project?: unknown;
+  sections?: unknown;
 };
 
-function parseRequestBody(body: unknown): AgentJobUpdateRequestBody {
+function parseRequestBody(body: unknown): AgentProjectUpdateRequestBody {
   if (!body || typeof body !== "object" || Array.isArray(body)) {
     throw new Error("REQUEST_BODY_INVALID");
   }
 
-  return body as AgentJobUpdateRequestBody;
+  return body as AgentProjectUpdateRequestBody;
 }
 
-function normalizePositionsInput(value: unknown) {
+function normalizeSectionsInput(value: unknown) {
   if (value === undefined) {
-    return [] as Array<{ jobPositionId: string; patch: Record<string, unknown> }>;
+    return [] as Array<{ sectionId: string; patch: Record<string, unknown> }>;
   }
 
   if (!Array.isArray(value)) {
-    throw new Error("POSITIONS_MUST_BE_ARRAY");
+    throw new Error("SECTIONS_MUST_BE_ARRAY");
   }
 
   return value.map((entry, index) => {
     if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
-      throw new Error(`positions[${index}] must be an object`);
+      throw new Error(`sections[${index}] must be an object`);
     }
 
-    const { jobPositionId, ...patch } = entry as Record<string, unknown>;
+    const { sectionId, ...patch } = entry as Record<string, unknown>;
 
-    if (typeof jobPositionId !== "string" || !jobPositionId.trim()) {
-      throw new Error(`positions[${index}].jobPositionId is required`);
+    if (typeof sectionId !== "string" || !sectionId.trim()) {
+      throw new Error(`sections[${index}].sectionId is required`);
     }
 
     return {
-      jobPositionId: jobPositionId.trim(),
+      sectionId: sectionId.trim(),
       patch,
     };
   });
 }
 
-function mapAgentJobUpdateInputError(error: unknown) {
+function mapAgentProjectUpdateInputError(error: unknown) {
   if (!(error instanceof Error)) {
     return {
-      message: "Invalid agent job update request",
+      message: "Invalid agent project update request",
       status: 400,
       details: String(error),
     };
@@ -66,14 +66,14 @@ function mapAgentJobUpdateInputError(error: unknown) {
   switch (error.message) {
     case "REQUEST_BODY_INVALID":
       return { message: "Request body must be an object", status: 400 };
-    case "POSITIONS_MUST_BE_ARRAY":
-      return { message: "positions must be an array", status: 400 };
-    case "NO_AGENT_JOB_UPDATE_FIELDS":
+    case "SECTIONS_MUST_BE_ARRAY":
+      return { message: "sections must be an array", status: 400 };
+    case "NO_AGENT_PROJECT_UPDATE_FIELDS":
       return {
-        message: "At least one of job or positions is required",
+        message: "At least one of project or sections is required",
         status: 400,
         details: {
-          supportedTopLevelFields: ["job", "positions"],
+          supportedTopLevelFields: ["project", "sections"],
         },
       };
     default:
@@ -85,52 +85,52 @@ function mapAgentJobUpdateInputError(error: unknown) {
 }
 
 export async function POST(request: Request, context: RouteContext) {
-  const { jobId } = await context.params;
+  const { projectId } = await context.params;
 
-  let body: AgentJobUpdateRequestBody;
+  let body: AgentProjectUpdateRequestBody;
   try {
     body = parseRequestBody(await request.json());
   } catch (error) {
-    const mapped = mapAgentJobUpdateInputError(error);
+    const mapped = mapAgentProjectUpdateInputError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 
-  const jobPatch = body.job;
-  const positionPatches = (() => {
+  const projectPatch = body.project;
+  const sectionPatches = (() => {
     try {
-      return normalizePositionsInput(body.positions);
+      return normalizeSectionsInput(body.sections);
     } catch (error) {
-      const mapped = mapAgentJobUpdateInputError(error);
+      const mapped = mapAgentProjectUpdateInputError(error);
       throw fail(mapped.message, mapped.status, mapped.details);
     }
   })();
 
-  if (jobPatch === undefined && positionPatches.length === 0) {
-    return fail("At least one of job or positions is required", 400, {
-      supportedTopLevelFields: ["job", "positions"],
+  if (projectPatch === undefined && sectionPatches.length === 0) {
+    return fail("At least one of project or sections is required", 400, {
+      supportedTopLevelFields: ["project", "sections"],
     });
   }
 
   try {
     const updated: {
-      job?: Awaited<ReturnType<typeof updateJob>>;
-      positions: Awaited<ReturnType<typeof getJobPositionDetail>>[];
-      context: Awaited<ReturnType<typeof getJobAgentContext>>;
+      project?: Awaited<ReturnType<typeof updateProject>>;
+      sections: Awaited<ReturnType<typeof getProjectSectionDetail>>[];
+      context: Awaited<ReturnType<typeof getProjectAgentContext>>;
     } = {
-      positions: [],
-      context: await getJobAgentContext(jobId),
+      sections: [],
+      context: await getProjectAgentContext(projectId),
     };
 
-    if (jobPatch !== undefined) {
-      updated.job = await updateJob(jobId, jobPatch, ActorType.agent);
+    if (projectPatch !== undefined) {
+      updated.project = await updateProject(projectId, projectPatch, ActorType.agent);
     }
 
-    for (const positionPatch of positionPatches) {
-      await updateJobPosition(jobId, positionPatch.jobPositionId, positionPatch.patch, ActorType.agent);
-      updated.positions.push(await getJobPositionDetail(jobId, positionPatch.jobPositionId));
+    for (const sectionPatch of sectionPatches) {
+      await updateProjectSection(projectId, sectionPatch.sectionId, sectionPatch.patch, ActorType.agent);
+      updated.sections.push(await getProjectSectionDetail(projectId, sectionPatch.sectionId));
     }
 
-    updated.context = await getJobAgentContext(jobId);
+    updated.context = await getProjectAgentContext(projectId);
 
     return ok(updated);
   } catch (error) {
@@ -138,7 +138,7 @@ export async function POST(request: Request, context: RouteContext) {
       return error;
     }
 
-    const mapped = mapJobError(error);
+    const mapped = mapProjectError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }

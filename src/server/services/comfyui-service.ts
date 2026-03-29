@@ -421,8 +421,8 @@ async function resolveStandardWorkflowPrompt(
   const toBindings = (entries: Array<{ path: string; weight: number; enabled: boolean }>) =>
     entries.map((e) => ({ path: e.path, weight: e.weight, enabled: e.enabled }));
 
-  const positionSlug = promptDraft.metadata.positionName?.replace(/\s+/g, "_") ?? "position";
-  const sortOrder = promptDraft.metadata.positionSortOrder ?? 0;
+  const sectionSlug = promptDraft.metadata.sectionName?.replace(/\s+/g, "_") ?? "section";
+  const sortOrder = promptDraft.metadata.sectionSortOrder ?? 0;
 
   const buildInput: WorkflowBuildInput = {
     workflowTemplate: cloned,
@@ -438,7 +438,7 @@ async function resolveStandardWorkflowPrompt(
     lora2List: toBindings(loraConfig.lora2),
     ksampler1,
     ksampler2,
-    outputPath: `${promptDraft.metadata.jobTitle}/${sortOrder}.${positionSlug}`,
+    outputPath: `${promptDraft.metadata.projectTitle}/${sortOrder}.${sectionSlug}`,
   };
 
   return buildWorkflowPrompt(buildInput);

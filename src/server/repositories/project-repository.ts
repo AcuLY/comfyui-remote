@@ -3,7 +3,7 @@ import { JobStatus, ReviewStatus } from "@/lib/db-enums";
 import { db } from "@/lib/db";
 import { detectProvider } from "@/lib/prisma";
 
-export type JobUpdateInput = {
+export type ProjectUpdateInput = {
   characterPrompt?: string;
   scenePrompt?: string | null;
   stylePrompt?: string | null;
@@ -12,7 +12,7 @@ export type JobUpdateInput = {
   batchSize?: number | null;
 };
 
-export type JobCreateInput = {
+export type ProjectCreateInput = {
   title: string;
   characterId: string;
   scenePresetId: string | null;
@@ -21,7 +21,7 @@ export type JobCreateInput = {
   notes: string | null;
 };
 
-export type JobPositionUpdateInput = {
+export type ProjectSectionUpdateInput = {
   positivePrompt?: string | null;
   negativePrompt?: string | null;
   aspectRatio?: string | null;
@@ -36,14 +36,14 @@ export type JobPositionUpdateInput = {
   upscaleFactor?: number | null;
 };
 
-export type ListJobsFilters = {
+export type ListProjectsFilters = {
   status?: JobStatus;
   search?: string;
   enabledOnly?: boolean;
   hasPending?: boolean;
 };
 
-export type JobCreateOptions = {
+export type ProjectCreateOptions = {
   characters: Array<{ id: string; name: string; slug: string }>;
   scenePresets: Array<{ id: string; name: string; slug: string }>;
   stylePresets: Array<{ id: string; name: string; slug: string }>;
@@ -91,7 +91,7 @@ type PromptBlockSummaryRecord = {
   label?: string;
 };
 
-type JobPositionRecord = {
+type ProjectSectionRecord = {
   id: string;
   name: string | null;
   sortOrder: number;
@@ -117,7 +117,7 @@ type JobPositionRecord = {
   promptBlocks: PromptBlockSummaryRecord[];
 };
 
-type QueuableJobRecord = {
+type QueuableProjectRecord = {
   id: string;
   title: string;
   slug: string;
@@ -126,7 +126,7 @@ type QueuableJobRecord = {
   characterLoraPath: string;
   scenePrompt: string | null;
   stylePrompt: string | null;
-  jobLevelOverrides: Prisma.JsonValue | null;
+  projectLevelOverrides: Prisma.JsonValue | null;
   character: {
     id: string;
     name: string;
@@ -199,45 +199,45 @@ function serializeLatestRun(run: LatestRunRecord | null) {
 }
 
 function resolveLatestRun(
-  position: Pick<JobPositionRecord, "latestRunId" | "runs">,
+  section: Pick<ProjectSectionRecord, "latestRunId" | "runs">,
   latestRunsById: Map<string, LatestRunRecord>,
 ) {
-  const fallbackLatestRun = position.runs[0] ?? null;
+  const fallbackLatestRun = section.runs[0] ?? null;
 
   return (
-    (position.latestRunId ? latestRunsById.get(position.latestRunId) : undefined) ??
+    (section.latestRunId ? latestRunsById.get(section.latestRunId) : undefined) ??
     fallbackLatestRun
   );
 }
 
-function serializeJobPosition(
-  position: JobPositionRecord,
+function serializeProjectSection(
+  section: ProjectSectionRecord,
   latestRunsById: Map<string, LatestRunRecord>,
 ) {
   return {
-    id: position.id,
-    sortOrder: position.sortOrder,
-    enabled: position.enabled,
-    latestRunId: position.latestRunId,
-    positionTemplateId: position.positionTemplateId,
-    name: position.positionTemplate?.name ?? null,
-    slug: position.positionTemplate?.slug ?? null,
-    aspectRatio: position.aspectRatio ?? position.positionTemplate?.defaultAspectRatio ?? null,
-    batchSize: position.batchSize ?? position.positionTemplate?.defaultBatchSize ?? null,
+    id: section.id,
+    sortOrder: section.sortOrder,
+    enabled: section.enabled,
+    latestRunId: section.latestRunId,
+    positionTemplateId: section.positionTemplateId,
+    name: section.positionTemplate?.name ?? null,
+    slug: section.positionTemplate?.slug ?? null,
+    aspectRatio: section.aspectRatio ?? section.positionTemplate?.defaultAspectRatio ?? null,
+    batchSize: section.batchSize ?? section.positionTemplate?.defaultBatchSize ?? null,
     // v0.3: dual seedPolicy
-    seedPolicy1: position.seedPolicy1 ?? position.positionTemplate?.defaultSeedPolicy1 ?? null,
-    seedPolicy2: position.seedPolicy2 ?? position.positionTemplate?.defaultSeedPolicy2 ?? null,
+    seedPolicy1: section.seedPolicy1 ?? section.positionTemplate?.defaultSeedPolicy1 ?? null,
+    seedPolicy2: section.seedPolicy2 ?? section.positionTemplate?.defaultSeedPolicy2 ?? null,
     // v0.3: ksampler params
-    ksampler1: position.ksampler1 ?? position.positionTemplate?.defaultKsampler1 ?? null,
-    ksampler2: position.ksampler2 ?? position.positionTemplate?.defaultKsampler2 ?? null,
-    loraConfig: position.loraConfig,
-    extraParams: position.extraParams,
+    ksampler1: section.ksampler1 ?? section.positionTemplate?.defaultKsampler1 ?? null,
+    ksampler2: section.ksampler2 ?? section.positionTemplate?.defaultKsampler2 ?? null,
+    loraConfig: section.loraConfig,
+    extraParams: section.extraParams,
     promptOverview: {
-      templatePrompt: position.positionTemplate?.prompt ?? null,
-      positivePrompt: position.positivePrompt,
-      negativePrompt: position.negativePrompt ?? position.positionTemplate?.negativePrompt ?? null,
+      templatePrompt: section.positionTemplate?.prompt ?? null,
+      positivePrompt: section.positivePrompt,
+      negativePrompt: section.negativePrompt ?? section.positionTemplate?.negativePrompt ?? null,
     },
-    latestRun: serializeLatestRun(resolveLatestRun(position, latestRunsById)),
+    latestRun: serializeLatestRun(resolveLatestRun(section, latestRunsById)),
   };
 }
 
@@ -282,9 +282,9 @@ function toInputJsonObject(value: Prisma.JsonValue | null): MutableInputJsonObje
   return JSON.parse(JSON.stringify(value)) as MutableInputJsonObject;
 }
 
-function buildJobLevelOverridesUpdate(
+function buildProjectLevelOverridesUpdate(
   currentValue: Prisma.JsonValue | null,
-  input: JobUpdateInput,
+  input: ProjectUpdateInput,
 ) {
   if (input.aspectRatio === undefined && input.batchSize === undefined) {
     return undefined;
@@ -313,7 +313,7 @@ function buildJobLevelOverridesUpdate(
     : Prisma.DbNull;
 }
 
-function resolveJobOverrideString(
+function resolveProjectOverrideString(
   overrides: MutableInputJsonObject,
   key: string,
 ) {
@@ -321,7 +321,7 @@ function resolveJobOverrideString(
   return typeof value === "string" ? value : null;
 }
 
-function resolveJobOverrideInteger(
+function resolveProjectOverrideInteger(
   overrides: MutableInputJsonObject,
   key: string,
 ) {
@@ -344,8 +344,8 @@ function mergeJsonObjects(
 }
 
 function buildResolvedConfigSnapshot(
-  job: QueuableJobRecord,
-  position: JobPositionRecord,
+  project: QueuableProjectRecord,
+  section: ProjectSectionRecord,
   blocks?: Array<{
     positive: string;
     negative: string | null;
@@ -356,71 +356,71 @@ function buildResolvedConfigSnapshot(
   }>,
   overrideBatchSize?: number,
 ): Prisma.InputJsonObject {
-  const jobLevelOverrides = toInputJsonObject(job.jobLevelOverrides);
+  const projectLevelOverrides = toInputJsonObject(project.projectLevelOverrides);
   const resolvedAspectRatio =
-    position.aspectRatio ??
-    resolveJobOverrideString(jobLevelOverrides, "aspectRatio") ??
-    position.positionTemplate?.defaultAspectRatio ??
+    section.aspectRatio ??
+    resolveProjectOverrideString(projectLevelOverrides, "aspectRatio") ??
+    section.positionTemplate?.defaultAspectRatio ??
     null;
   const resolvedShortSidePx =
-    position.shortSidePx ??
-    resolveJobOverrideInteger(jobLevelOverrides, "shortSidePx") ??
-    position.positionTemplate?.defaultShortSidePx ??
+    section.shortSidePx ??
+    resolveProjectOverrideInteger(projectLevelOverrides, "shortSidePx") ??
+    section.positionTemplate?.defaultShortSidePx ??
     null;
   const resolvedBatchSize =
     overrideBatchSize ??
-    position.batchSize ??
-    resolveJobOverrideInteger(jobLevelOverrides, "batchSize") ??
-    position.positionTemplate?.defaultBatchSize ??
+    section.batchSize ??
+    resolveProjectOverrideInteger(projectLevelOverrides, "batchSize") ??
+    section.positionTemplate?.defaultBatchSize ??
     null;
   // v0.3: dual seedPolicy
   const resolvedSeedPolicy1 =
-    position.seedPolicy1 ?? position.positionTemplate?.defaultSeedPolicy1 ?? null;
+    section.seedPolicy1 ?? section.positionTemplate?.defaultSeedPolicy1 ?? null;
   const resolvedSeedPolicy2 =
-    position.seedPolicy2 ?? position.positionTemplate?.defaultSeedPolicy2 ?? null;
+    section.seedPolicy2 ?? section.positionTemplate?.defaultSeedPolicy2 ?? null;
 
   // Compose final prompt from blocks (v0.2) or legacy fallback
-  const promptDraft = buildResolvedPromptDraft(job, position, blocks);
+  const promptDraft = buildResolvedPromptDraft(project, section, blocks);
 
   return {
-    job: {
-      id: job.id,
-      title: job.title,
-      slug: job.slug,
+    project: {
+      id: project.id,
+      title: project.title,
+      slug: project.slug,
     },
     character: {
-      id: job.character.id,
-      name: job.character.name,
-      slug: job.character.slug,
-      prompt: job.characterPrompt,
-      loraPath: job.characterLoraPath,
+      id: project.character.id,
+      name: project.character.name,
+      slug: project.character.slug,
+      prompt: project.characterPrompt,
+      loraPath: project.characterLoraPath,
     },
-    scene: job.scenePreset
+    scene: project.scenePreset
       ? {
-          id: job.scenePreset.id,
-          name: job.scenePreset.name,
-          slug: job.scenePreset.slug,
-          prompt: job.scenePrompt,
+          id: project.scenePreset.id,
+          name: project.scenePreset.name,
+          slug: project.scenePreset.slug,
+          prompt: project.scenePrompt,
         }
       : null,
-    style: job.stylePreset
+    style: project.stylePreset
       ? {
-          id: job.stylePreset.id,
-          name: job.stylePreset.name,
-          slug: job.stylePreset.slug,
-          prompt: job.stylePrompt,
+          id: project.stylePreset.id,
+          name: project.stylePreset.name,
+          slug: project.stylePreset.slug,
+          prompt: project.stylePrompt,
         }
       : null,
-    position: {
-      id: position.id,
-      templateId: position.positionTemplateId,
-      sortOrder: position.sortOrder,
-      name: position.name ?? position.positionTemplate?.name ?? `section_${position.sortOrder + 1}`,
-      slug: position.positionTemplate?.slug ?? `section_${position.sortOrder + 1}`,
-      templatePrompt: position.positionTemplate?.prompt ?? null,
-      positivePrompt: position.positivePrompt,
+    section: {
+      id: section.id,
+      templateId: section.positionTemplateId,
+      sortOrder: section.sortOrder,
+      name: section.name ?? section.positionTemplate?.name ?? `section_${section.sortOrder + 1}`,
+      slug: section.positionTemplate?.slug ?? `section_${section.sortOrder + 1}`,
+      templatePrompt: section.positionTemplate?.prompt ?? null,
+      positivePrompt: section.positivePrompt,
       negativePrompt:
-        position.negativePrompt ?? position.positionTemplate?.negativePrompt ?? null,
+        section.negativePrompt ?? section.positionTemplate?.negativePrompt ?? null,
     },
     promptBlocks: blocks ?? null,
     // v0.4: presets array from blocks that have type=preset
@@ -442,26 +442,26 @@ function buildResolvedConfigSnapshot(
       seedPolicy: resolvedSeedPolicy1,
       seedPolicy1: resolvedSeedPolicy1,
       seedPolicy2: resolvedSeedPolicy2,
-      upscaleFactor: position.upscaleFactor ?? null,
+      upscaleFactor: section.upscaleFactor ?? null,
     },
     // v0.3: ksampler params
-    ksampler1: position.ksampler1 ?? position.positionTemplate?.defaultKsampler1 ?? null,
-    ksampler2: position.ksampler2 ?? position.positionTemplate?.defaultKsampler2 ?? null,
-    loraConfig: position.loraConfig,
+    ksampler1: section.ksampler1 ?? section.positionTemplate?.defaultKsampler1 ?? null,
+    ksampler2: section.ksampler2 ?? section.positionTemplate?.defaultKsampler2 ?? null,
+    loraConfig: section.loraConfig,
     extraParams: mergeJsonObjects(
-      position.positionTemplate?.defaultParams ?? null,
-      position.extraParams,
+      section.positionTemplate?.defaultParams ?? null,
+      section.extraParams,
     ),
   };
 }
 
 function buildResolvedPromptDraft(
-  job: Pick<
-    QueuableJobRecord,
+  project: Pick<
+    QueuableProjectRecord,
     "characterPrompt" | "scenePrompt" | "stylePrompt"
   >,
-  position: Pick<
-    JobPositionRecord,
+  section: Pick<
+    ProjectSectionRecord,
     "positivePrompt" | "negativePrompt" | "positionTemplate"
   >,
   blocks?: Array<{
@@ -487,32 +487,32 @@ function buildResolvedPromptDraft(
   // Legacy fallback (pre-block positions)
   return {
     positive: [
-      job.characterPrompt,
-      job.scenePrompt,
-      job.stylePrompt,
-      position.positionTemplate?.prompt,
-      position.positivePrompt,
+      project.characterPrompt,
+      project.scenePrompt,
+      project.stylePrompt,
+      section.positionTemplate?.prompt,
+      section.positivePrompt,
     ]
       .filter((value): value is string => Boolean(value && value.trim()))
       .join(", "),
-    negative: position.negativePrompt ?? position.positionTemplate?.negativePrompt ?? null,
+    negative: section.negativePrompt ?? section.positionTemplate?.negativePrompt ?? null,
   };
 }
 
 function serializeEnqueuedRun(
-  position: Pick<
-    JobPositionRecord,
+  section: Pick<
+    ProjectSectionRecord,
     "id" | "name" | "sortOrder" | "positionTemplateId" | "positionTemplate"
   >,
   run: EnqueuedRunRecord,
 ) {
   return {
     runId: run.id,
-    jobPositionId: position.id,
-    positionTemplateId: position.positionTemplateId,
-    sortOrder: position.sortOrder,
-    positionName: position.name ?? position.positionTemplate?.name ?? `section_${position.sortOrder + 1}`,
-    positionSlug: position.positionTemplate?.slug ?? `section_${position.sortOrder + 1}`,
+    sectionId: section.id,
+    positionTemplateId: section.positionTemplateId,
+    sortOrder: section.sortOrder,
+    sectionName: section.name ?? section.positionTemplate?.name ?? `section_${section.sortOrder + 1}`,
+    sectionSlug: section.positionTemplate?.slug ?? `section_${section.sortOrder + 1}`,
     runIndex: run.runIndex,
     status: run.status,
     createdAt: run.createdAt.toISOString(),
@@ -537,7 +537,7 @@ function buildCopySlug(slug: string, copyNumber: number) {
   return copyNumber === 1 ? `${slug}-copy` : `${slug}-copy-${copyNumber}`;
 }
 
-function slugifyJobTitle(title: string) {
+function slugifyProjectTitle(title: string) {
   const normalizedTitle = title
     .normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -546,27 +546,27 @@ function slugifyJobTitle(title: string) {
     .replace(/[^\p{Letter}\p{Number}]+/gu, "-")
     .replace(/^-+|-+$/g, "");
 
-  return slug || "job";
+  return slug || "project";
 }
 
-function buildUniqueJobSlug(baseSlug: string, suffixNumber: number) {
+function buildUniqueProjectSlug(baseSlug: string, suffixNumber: number) {
   return suffixNumber === 1 ? baseSlug : `${baseSlug}-${suffixNumber}`;
 }
 
-async function resolveUniqueJobSlug(
+async function resolveUniqueProjectSlug(
   tx: Prisma.TransactionClient,
   title: string,
 ) {
-  const baseSlug = slugifyJobTitle(title);
+  const baseSlug = slugifyProjectTitle(title);
 
   for (let suffixNumber = 1; suffixNumber <= 100; suffixNumber += 1) {
-    const slug = buildUniqueJobSlug(baseSlug, suffixNumber);
-    const existingJob = await tx.completeJob.findUnique({
+    const slug = buildUniqueProjectSlug(baseSlug, suffixNumber);
+    const existingProject = await tx.project.findUnique({
       where: { slug },
       select: { id: true },
     });
 
-    if (!existingJob) {
+    if (!existingProject) {
       return slug;
     }
   }
@@ -574,21 +574,21 @@ async function resolveUniqueJobSlug(
   throw new Error("JOB_SLUG_EXHAUSTED");
 }
 
-async function resolveUniqueJobCopyIdentity(
+async function resolveUniqueProjectCopyIdentity(
   tx: Prisma.TransactionClient,
-  job: Pick<QueuableJobRecord, "title" | "slug">,
+  project: Pick<QueuableProjectRecord, "title" | "slug">,
 ) {
   for (let copyNumber = 1; copyNumber <= 100; copyNumber += 1) {
-    const title = buildCopyTitle(job.title, copyNumber);
-    const slug = buildCopySlug(job.slug, copyNumber);
-    const existingJob = await tx.completeJob.findFirst({
+    const title = buildCopyTitle(project.title, copyNumber);
+    const slug = buildCopySlug(project.slug, copyNumber);
+    const existingProject = await tx.project.findFirst({
       where: {
         OR: [{ title }, { slug }],
       },
       select: { id: true },
     });
 
-    if (!existingJob) {
+    if (!existingProject) {
       return { title, slug };
     }
   }
@@ -596,34 +596,34 @@ async function resolveUniqueJobCopyIdentity(
   throw new Error("JOB_COPY_IDENTITY_EXHAUSTED");
 }
 
-async function ensureQueuedJobStatus(
+async function ensureQueuedProjectStatus(
   tx: Prisma.TransactionClient,
-  job: Pick<QueuableJobRecord, "id" | "status">,
+  project: Pick<QueuableProjectRecord, "id" | "status">,
 ) {
-  if (job.status === JobStatus.queued || job.status === JobStatus.running) {
-    return job.status;
+  if (project.status === JobStatus.queued || project.status === JobStatus.running) {
+    return project.status;
   }
 
-  const updatedJob = await tx.completeJob.update({
-    where: { id: job.id },
+  const updatedProject = await tx.project.update({
+    where: { id: project.id },
     data: { status: JobStatus.queued },
     select: { status: true },
   });
 
-  return updatedJob.status;
+  return updatedProject.status;
 }
 
 async function createQueuedRunsForPositions(
   tx: Prisma.TransactionClient,
-  job: QueuableJobRecord,
-  positions: JobPositionRecord[],
+  project: QueuableProjectRecord,
+  sections: ProjectSectionRecord[],
   overrideBatchSize?: number,
 ) {
-  const positionIds = positions.map((position) => position.id);
+  const sectionIds = sections.map((section) => section.id);
   const latestRunIndexes = await tx.positionRun.groupBy({
-    by: ["completeJobPositionId"],
+    by: ["projectSectionId"],
     where: {
-      completeJobPositionId: { in: positionIds },
+      projectSectionId: { in: sectionIds },
     },
     _max: {
       runIndex: true,
@@ -632,21 +632,21 @@ async function createQueuedRunsForPositions(
 
   const latestRunIndexByPositionId = new Map<string, number>(
     latestRunIndexes.map((entry): [string, number] => [
-      entry.completeJobPositionId,
+      entry.projectSectionId,
       entry._max.runIndex ?? 0,
     ]),
   );
 
   const queuedRuns: Array<ReturnType<typeof serializeEnqueuedRun>> = [];
 
-  for (const position of positions) {
+  for (const section of sections) {
     const createdRun = await tx.positionRun.create({
       data: {
-        completeJobId: job.id,
-        completeJobPositionId: position.id,
-        runIndex: (latestRunIndexByPositionId.get(position.id) ?? 0) + 1,
+        projectId: project.id,
+        projectSectionId: section.id,
+        runIndex: (latestRunIndexByPositionId.get(section.id) ?? 0) + 1,
         status: "queued",
-        resolvedConfigSnapshot: buildResolvedConfigSnapshot(job, position, position.promptBlocks, overrideBatchSize),
+        resolvedConfigSnapshot: buildResolvedConfigSnapshot(project, section, section.promptBlocks, overrideBatchSize),
       },
       select: {
         id: true,
@@ -656,18 +656,18 @@ async function createQueuedRunsForPositions(
       },
     });
 
-    await tx.completeJobPosition.update({
-      where: { id: position.id },
+    await tx.projectSection.update({
+      where: { id: section.id },
       data: { latestRunId: createdRun.id },
     });
 
-    queuedRuns.push(serializeEnqueuedRun(position, createdRun));
+    queuedRuns.push(serializeEnqueuedRun(section, createdRun));
   }
 
   return queuedRuns;
 }
 
-export async function listJobs(filters: ListJobsFilters = {}) {
+export async function listProjects(filters: ListProjectsFilters = {}) {
   const search = filters.search?.trim();
   // SQLite LIKE is case-insensitive for ASCII by default;
   // PostgreSQL requires explicit mode: "insensitive".
@@ -676,7 +676,7 @@ export async function listJobs(filters: ListJobsFilters = {}) {
       ? { contains: value, mode: "insensitive" as const }
       : { contains: value };
 
-  const jobs = await db.completeJob.findMany({
+  const projects = await db.project.findMany({
     where: {
       ...(filters.status ? { status: filters.status } : {}),
       ...(search
@@ -692,7 +692,7 @@ export async function listJobs(filters: ListJobsFilters = {}) {
         : {}),
       ...(filters.enabledOnly
         ? {
-            positions: {
+            sections: {
               some: {
                 enabled: true,
               },
@@ -705,7 +705,7 @@ export async function listJobs(filters: ListJobsFilters = {}) {
       character: true,
       scenePreset: true,
       stylePreset: true,
-      positions: {
+      sections: {
         select: {
           id: true,
           enabled: true,
@@ -716,32 +716,32 @@ export async function listJobs(filters: ListJobsFilters = {}) {
     take: 50,
   });
 
-  const latestRunIds = jobs.flatMap((job) =>
-    job.positions
-      .map((position) => position.latestRunId)
+  const latestRunIds = projects.flatMap((project) =>
+    project.sections
+      .map((section) => section.latestRunId)
       .filter((runId): runId is string => runId !== null),
   );
 
   const latestRunsById = await getLatestRunsById(latestRunIds);
 
-  const serializedJobs = jobs.map((job) => {
-    const latestRun = job.positions
-      .map((position) => (position.latestRunId ? latestRunsById.get(position.latestRunId) ?? null : null))
+  const serializedProjects = projects.map((project) => {
+    const latestRun = project.sections
+      .map((section) => (section.latestRunId ? latestRunsById.get(section.latestRunId) ?? null : null))
       .filter((run): run is LatestRunRecord => run !== null)
       .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())[0] ?? null;
 
     const latestRunSummary = latestRun ? summarizeRunImages(latestRun.images) : null;
 
     return {
-      id: job.id,
-      title: job.title,
-      status: job.status,
-      updatedAt: job.updatedAt.toISOString(),
-      characterName: job.character.name,
-      sceneName: job.scenePreset?.name ?? "未设置",
-      styleName: job.stylePreset?.name ?? "未设置",
-      positionCount: job.positions.length,
-      enabledPositionCount: job.positions.filter((position) => position.enabled).length,
+      id: project.id,
+      title: project.title,
+      status: project.status,
+      updatedAt: project.updatedAt.toISOString(),
+      characterName: project.character.name,
+      sceneName: project.scenePreset?.name ?? "未设置",
+      styleName: project.stylePreset?.name ?? "未设置",
+      sectionCount: project.sections.length,
+      enabledPositionCount: project.sections.filter((section) => section.enabled).length,
       latestRunAt: latestRun?.createdAt.toISOString() ?? null,
       latestRunStatus: latestRun?.status ?? null,
       latestRunPendingCount: latestRunSummary?.pendingCount ?? 0,
@@ -750,23 +750,23 @@ export async function listJobs(filters: ListJobsFilters = {}) {
   });
 
   if (filters.hasPending) {
-    return serializedJobs.filter((job) => job.latestRunPendingCount > 0);
+    return serializedProjects.filter((project) => project.latestRunPendingCount > 0);
   }
 
-  return serializedJobs;
+  return serializedProjects;
 }
 
-export async function getJobDetail(jobId: string) {
-  const job = await db.completeJob.findUnique({
-    where: { id: jobId },
+export async function getProjectDetail(projectId: string) {
+  const project = await db.project.findUnique({
+    where: { id: projectId },
     include: {
       character: true,
       scenePreset: true,
       stylePreset: true,
       _count: {
-        select: { positions: true },
+        select: { sections: true },
       },
-      positions: {
+      sections: {
         where: { enabled: true },
         orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
         include: {
@@ -802,69 +802,69 @@ export async function getJobDetail(jobId: string) {
     },
   });
 
-  if (!job) {
+  if (!project) {
     throw new Error("JOB_NOT_FOUND");
   }
 
-  const latestRunIds = job.positions
-    .map((position) => position.latestRunId)
+  const latestRunIds = project.sections
+    .map((section) => section.latestRunId)
     .filter((runId): runId is string => runId !== null);
 
   const latestRunsById = await getLatestRunsById(latestRunIds);
 
   return {
-    id: job.id,
-    title: job.title,
-    slug: job.slug,
-    status: job.status,
-    createdAt: job.createdAt.toISOString(),
-    updatedAt: job.updatedAt.toISOString(),
-    notes: job.notes,
-    characterName: job.character.name,
-    sceneName: job.scenePreset?.name ?? "未设置",
-    styleName: job.stylePreset?.name ?? "未设置",
-    positionCount: job._count.positions,
-    enabledPositionCount: job.positions.length,
+    id: project.id,
+    title: project.title,
+    slug: project.slug,
+    status: project.status,
+    createdAt: project.createdAt.toISOString(),
+    updatedAt: project.updatedAt.toISOString(),
+    notes: project.notes,
+    characterName: project.character.name,
+    sceneName: project.scenePreset?.name ?? "未设置",
+    styleName: project.stylePreset?.name ?? "未设置",
+    sectionCount: project._count.sections,
+    enabledPositionCount: project.sections.length,
     promptOverview: {
-      characterPrompt: job.characterPrompt,
-      scenePrompt: job.scenePrompt,
-      stylePrompt: job.stylePrompt,
-      characterLoraPath: job.characterLoraPath,
-      jobLevelOverrides: job.jobLevelOverrides,
+      characterPrompt: project.characterPrompt,
+      scenePrompt: project.scenePrompt,
+      stylePrompt: project.stylePrompt,
+      characterLoraPath: project.characterLoraPath,
+      projectLevelOverrides: project.projectLevelOverrides,
     },
     character: {
-      id: job.character.id,
-      name: job.character.name,
-      slug: job.character.slug,
-      prompt: job.character.prompt,
-      loraPath: job.character.loraPath,
-      notes: job.character.notes,
+      id: project.character.id,
+      name: project.character.name,
+      slug: project.character.slug,
+      prompt: project.character.prompt,
+      loraPath: project.character.loraPath,
+      notes: project.character.notes,
     },
-    scenePreset: job.scenePreset
+    scenePreset: project.scenePreset
       ? {
-          id: job.scenePreset.id,
-          name: job.scenePreset.name,
-          slug: job.scenePreset.slug,
-          prompt: job.scenePreset.prompt,
-          notes: job.scenePreset.notes,
+          id: project.scenePreset.id,
+          name: project.scenePreset.name,
+          slug: project.scenePreset.slug,
+          prompt: project.scenePreset.prompt,
+          notes: project.scenePreset.notes,
         }
       : null,
-    stylePreset: job.stylePreset
+    stylePreset: project.stylePreset
       ? {
-          id: job.stylePreset.id,
-          name: job.stylePreset.name,
-          slug: job.stylePreset.slug,
-          prompt: job.stylePreset.prompt,
-          notes: job.stylePreset.notes,
+          id: project.stylePreset.id,
+          name: project.stylePreset.name,
+          slug: project.stylePreset.slug,
+          prompt: project.stylePreset.prompt,
+          notes: project.stylePreset.notes,
         }
       : null,
-    positions: job.positions.map((position) => serializeJobPosition(position, latestRunsById)),
+    sections: project.sections.map((section) => serializeProjectSection(section, latestRunsById)),
   };
 }
 
-export async function getJobAgentContext(jobId: string) {
-  const job = await db.completeJob.findUnique({
-    where: { id: jobId },
+export async function getProjectAgentContext(projectId: string) {
+  const project = await db.project.findUnique({
+    where: { id: projectId },
     select: {
       id: true,
       title: true,
@@ -877,7 +877,7 @@ export async function getJobAgentContext(jobId: string) {
       characterLoraPath: true,
       scenePrompt: true,
       stylePrompt: true,
-      jobLevelOverrides: true,
+      projectLevelOverrides: true,
       character: {
         select: {
           id: true,
@@ -900,9 +900,9 @@ export async function getJobAgentContext(jobId: string) {
         },
       },
       _count: {
-        select: { positions: true },
+        select: { sections: true },
       },
-      positions: {
+      sections: {
         where: { enabled: true },
         orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
         include: {
@@ -944,12 +944,12 @@ export async function getJobAgentContext(jobId: string) {
     },
   });
 
-  if (!job) {
+  if (!project) {
     throw new Error("JOB_NOT_FOUND");
   }
 
-  const latestRunIds = job.positions
-    .map((position) => position.latestRunId)
+  const latestRunIds = project.sections
+    .map((section) => section.latestRunId)
     .filter((runId): runId is string => runId !== null);
 
   const latestRunsById = await getLatestRunsById(latestRunIds);
@@ -962,8 +962,8 @@ export async function getJobAgentContext(jobId: string) {
   };
   let positionsWithLatestRunCount = 0;
 
-  const positions = job.positions.map((position) => {
-    const latestRun = resolveLatestRun(position, latestRunsById);
+  const sections = project.sections.map((section) => {
+    const latestRun = resolveLatestRun(section, latestRunsById);
 
     if (latestRun) {
       positionsWithLatestRunCount += 1;
@@ -978,78 +978,78 @@ export async function getJobAgentContext(jobId: string) {
     }
 
     return {
-      id: position.id,
-      sortOrder: position.sortOrder,
-      enabled: position.enabled,
-      latestRunId: position.latestRunId,
-      positionTemplateId: position.positionTemplateId,
-      name: position.name ?? position.positionTemplate?.name ?? null,
-      slug: position.positionTemplate?.slug ?? null,
+      id: section.id,
+      sortOrder: section.sortOrder,
+      enabled: section.enabled,
+      latestRunId: section.latestRunId,
+      positionTemplateId: section.positionTemplateId,
+      name: section.name ?? section.positionTemplate?.name ?? null,
+      slug: section.positionTemplate?.slug ?? null,
       latestRun: serializeLatestRun(latestRun),
-      promptBlocks: position.promptBlocks,
-      promptDraft: buildResolvedPromptDraft(job, position, position.promptBlocks),
-      resolvedConfig: buildResolvedConfigSnapshot(job, position, position.promptBlocks),
+      promptBlocks: section.promptBlocks,
+      promptDraft: buildResolvedPromptDraft(project, section, section.promptBlocks),
+      resolvedConfig: buildResolvedConfigSnapshot(project, section, section.promptBlocks),
     };
   });
 
   return {
-    job: {
-      id: job.id,
-      title: job.title,
-      slug: job.slug,
-      status: job.status,
-      createdAt: job.createdAt.toISOString(),
-      updatedAt: job.updatedAt.toISOString(),
-      notes: job.notes,
-      positionCount: job._count.positions,
-      enabledPositionCount: job.positions.length,
-      character: job.character,
-      scenePreset: job.scenePreset,
-      stylePreset: job.stylePreset,
+    project: {
+      id: project.id,
+      title: project.title,
+      slug: project.slug,
+      status: project.status,
+      createdAt: project.createdAt.toISOString(),
+      updatedAt: project.updatedAt.toISOString(),
+      notes: project.notes,
+      sectionCount: project._count.sections,
+      enabledPositionCount: project.sections.length,
+      character: project.character,
+      scenePreset: project.scenePreset,
+      stylePreset: project.stylePreset,
       promptOverview: {
-        characterPrompt: job.characterPrompt,
-        scenePrompt: job.scenePrompt,
-        stylePrompt: job.stylePrompt,
-        characterLoraPath: job.characterLoraPath,
-        jobLevelOverrides: job.jobLevelOverrides,
+        characterPrompt: project.characterPrompt,
+        scenePrompt: project.scenePrompt,
+        stylePrompt: project.stylePrompt,
+        characterLoraPath: project.characterLoraPath,
+        projectLevelOverrides: project.projectLevelOverrides,
       },
     },
     summary: {
       positionsWithLatestRunCount,
-      positionsWithoutRunsCount: job.positions.length - positionsWithLatestRunCount,
+      positionsWithoutRunsCount: project.sections.length - positionsWithLatestRunCount,
       latestRunStatusCounts,
       latestRunImageSummary,
     },
-    positions,
+    sections,
   };
 }
 
-export async function getJobPositionOwner(jobPositionId: string) {
-  const position = await db.completeJobPosition.findUnique({
-    where: { id: jobPositionId },
+export async function getProjectSectionOwner(sectionId: string) {
+  const section = await db.projectSection.findUnique({
+    where: { id: sectionId },
     select: {
       id: true,
-      completeJobId: true,
+      projectId: true,
       enabled: true,
     },
   });
 
-  if (!position) {
+  if (!section) {
     throw new Error("JOB_POSITION_NOT_FOUND");
   }
 
   return {
-    id: position.id,
-    jobId: position.completeJobId,
-    enabled: position.enabled,
+    id: section.id,
+    projectId: section.projectId,
+    enabled: section.enabled,
   };
 }
 
-export async function getJobPositionDetail(jobId: string, jobPositionId: string) {
-  const position = await db.completeJobPosition.findFirst({
+export async function getProjectSectionDetail(projectId: string, sectionId: string) {
+  const section = await db.projectSection.findFirst({
     where: {
-      id: jobPositionId,
-      completeJobId: jobId,
+      id: sectionId,
+      projectId: projectId,
     },
     include: {
       positionTemplate: true,
@@ -1082,18 +1082,18 @@ export async function getJobPositionDetail(jobId: string, jobPositionId: string)
     },
   });
 
-  if (!position) {
+  if (!section) {
     throw new Error("JOB_POSITION_NOT_FOUND");
   }
 
-  const latestRunIds = position.latestRunId ? [position.latestRunId] : [];
+  const latestRunIds = section.latestRunId ? [section.latestRunId] : [];
   const latestRunsById = await getLatestRunsById(latestRunIds);
 
-  return serializeJobPosition(position, latestRunsById);
+  return serializeProjectSection(section, latestRunsById);
 }
 
-export async function createJob(input: JobCreateInput) {
-  const jobId = await db.$transaction(async (tx: Prisma.TransactionClient) => {
+export async function createProject(input: ProjectCreateInput) {
+  const projectId = await db.$transaction(async (tx: Prisma.TransactionClient) => {
     const [character, scenePreset, stylePreset] = await Promise.all([
       tx.character.findUnique({
         where: { id: input.characterId },
@@ -1179,8 +1179,8 @@ export async function createJob(input: JobCreateInput) {
       }
     }
 
-    const slug = await resolveUniqueJobSlug(tx, input.title);
-    const createdJob = await tx.completeJob.create({
+    const slug = await resolveUniqueProjectSlug(tx, input.title);
+    const createdProject = await tx.project.create({
       data: {
         title: input.title,
         slug,
@@ -1195,7 +1195,7 @@ export async function createJob(input: JobCreateInput) {
         notes: input.notes,
         ...(orderedPositionTemplates.length > 0
           ? {
-              positions: {
+              sections: {
                 create: orderedPositionTemplates.map((pt, index) => ({
                   positionTemplateId: pt.id,
                   sortOrder: index + 1,
@@ -1207,7 +1207,7 @@ export async function createJob(input: JobCreateInput) {
       },
       select: {
         id: true,
-        positions: {
+        sections: {
           select: { id: true },
           orderBy: { sortOrder: "asc" },
         },
@@ -1215,15 +1215,15 @@ export async function createJob(input: JobCreateInput) {
     });
 
     // Generate initial PromptBlocks for each position (if any)
-    for (let i = 0; i < createdJob.positions.length; i++) {
-      const positionId = createdJob.positions[i].id;
+    for (let i = 0; i < createdProject.sections.length; i++) {
+      const sectionId = createdProject.sections[i].id;
       const pt = orderedPositionTemplates[i];
       let sortOrder = 0;
 
       // Character block
       await tx.promptBlock.create({
         data: {
-          completeJobPositionId: positionId,
+          projectSectionId: sectionId,
           type: "character",
           sourceId: character.id,
           label: character.name,
@@ -1237,7 +1237,7 @@ export async function createJob(input: JobCreateInput) {
       if (scenePreset) {
         await tx.promptBlock.create({
           data: {
-            completeJobPositionId: positionId,
+            projectSectionId: sectionId,
             type: "scene",
             sourceId: scenePreset.id,
             label: scenePreset.name,
@@ -1252,7 +1252,7 @@ export async function createJob(input: JobCreateInput) {
       if (stylePreset) {
         await tx.promptBlock.create({
           data: {
-            completeJobPositionId: positionId,
+            projectSectionId: sectionId,
             type: "style",
             sourceId: stylePreset.id,
             label: stylePreset.name,
@@ -1267,7 +1267,7 @@ export async function createJob(input: JobCreateInput) {
       if (pt) {
         await tx.promptBlock.create({
           data: {
-            completeJobPositionId: positionId,
+            projectSectionId: sectionId,
             type: "position",
             sourceId: pt.id,
             label: pt.name,
@@ -1279,26 +1279,26 @@ export async function createJob(input: JobCreateInput) {
       }
     }
 
-    return createdJob.id;
+    return createdProject.id;
   });
 
-  return getJobDetail(jobId);
+  return getProjectDetail(projectId);
 }
 
-export async function updateJob(jobId: string, input: JobUpdateInput) {
-  const job = await db.completeJob.findUnique({
-    where: { id: jobId },
+export async function updateProject(projectId: string, input: ProjectUpdateInput) {
+  const project = await db.project.findUnique({
+    where: { id: projectId },
     select: {
       id: true,
-      jobLevelOverrides: true,
+      projectLevelOverrides: true,
     },
   });
 
-  if (!job) {
+  if (!project) {
     throw new Error("JOB_NOT_FOUND");
   }
 
-  const data: Prisma.CompleteJobUpdateInput = {};
+  const data: Prisma.ProjectUpdateInput = {};
 
   if (input.characterPrompt !== undefined) {
     data.characterPrompt = input.characterPrompt;
@@ -1316,46 +1316,46 @@ export async function updateJob(jobId: string, input: JobUpdateInput) {
     data.characterLoraPath = input.characterLoraPath;
   }
 
-  const jobLevelOverrides = buildJobLevelOverridesUpdate(job.jobLevelOverrides, input);
-  if (jobLevelOverrides !== undefined) {
-    data.jobLevelOverrides = jobLevelOverrides;
+  const projectLevelOverrides = buildProjectLevelOverridesUpdate(project.projectLevelOverrides, input);
+  if (projectLevelOverrides !== undefined) {
+    data.projectLevelOverrides = projectLevelOverrides;
   }
 
-  await db.completeJob.update({
-    where: { id: jobId },
+  await db.project.update({
+    where: { id: projectId },
     data,
   });
 
-  return getJobDetail(jobId);
+  return getProjectDetail(projectId);
 }
 
-export async function updateJobPosition(
-  jobId: string,
-  jobPositionId: string,
-  input: JobPositionUpdateInput,
+export async function updateProjectSection(
+  projectId: string,
+  sectionId: string,
+  input: ProjectSectionUpdateInput,
 ) {
-  const job = await db.completeJob.findUnique({
-    where: { id: jobId },
+  const project = await db.project.findUnique({
+    where: { id: projectId },
     select: { id: true },
   });
 
-  if (!job) {
+  if (!project) {
     throw new Error("JOB_NOT_FOUND");
   }
 
-  const position = await db.completeJobPosition.findFirst({
+  const section = await db.projectSection.findFirst({
     where: {
-      id: jobPositionId,
-      completeJobId: jobId,
+      id: sectionId,
+      projectId: projectId,
     },
     select: { id: true },
   });
 
-  if (!position) {
+  if (!section) {
     throw new Error("JOB_POSITION_NOT_FOUND");
   }
 
-  const data: Prisma.CompleteJobPositionUpdateInput = {};
+  const data: Prisma.ProjectSectionUpdateInput = {};
 
   if (input.positivePrompt !== undefined) {
     data.positivePrompt = input.positivePrompt;
@@ -1395,20 +1395,20 @@ export async function updateJobPosition(
     data.upscaleFactor = input.upscaleFactor;
   }
 
-  await db.completeJobPosition.update({
-    where: { id: jobPositionId },
+  await db.projectSection.update({
+    where: { id: sectionId },
     data,
   });
 
-  return getJobPositionDetail(jobId, jobPositionId);
+  return getProjectSectionDetail(projectId, sectionId);
 }
 
-export async function copyJob(jobId: string) {
+export async function copyProject(projectId: string) {
   return db.$transaction(async (tx: Prisma.TransactionClient) => {
-    const job = await tx.completeJob.findUnique({
-      where: { id: jobId },
+    const project = await tx.project.findUnique({
+      where: { id: projectId },
       include: {
-        positions: {
+        sections: {
           orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
           select: {
             positionTemplateId: true,
@@ -1443,42 +1443,42 @@ export async function copyJob(jobId: string) {
       },
     });
 
-    if (!job) {
+    if (!project) {
       throw new Error("JOB_NOT_FOUND");
     }
 
-    const identity = await resolveUniqueJobCopyIdentity(tx, job);
-    const copiedJob = await tx.completeJob.create({
+    const identity = await resolveUniqueProjectCopyIdentity(tx, project);
+    const copiedProject = await tx.project.create({
       data: {
         title: identity.title,
         slug: identity.slug,
         status: JobStatus.draft,
-        characterId: job.characterId,
-        scenePresetId: job.scenePresetId,
-        stylePresetId: job.stylePresetId,
-        characterPrompt: job.characterPrompt,
-        characterLoraPath: job.characterLoraPath,
-        scenePrompt: job.scenePrompt,
-        stylePrompt: job.stylePrompt,
-        jobLevelOverrides: cloneJsonValueForCreate(job.jobLevelOverrides),
-        notes: job.notes,
-        positions: {
-          create: job.positions.map((position) => ({
-            positionTemplateId: position.positionTemplateId,
-            sortOrder: position.sortOrder,
-            enabled: position.enabled,
-            positivePrompt: position.positivePrompt,
-            negativePrompt: position.negativePrompt,
-            aspectRatio: position.aspectRatio,
-            batchSize: position.batchSize,
-            seedPolicy1: position.seedPolicy1,
-            seedPolicy2: position.seedPolicy2,
-            ksampler1: cloneJsonValueForCreate(position.ksampler1),
-            ksampler2: cloneJsonValueForCreate(position.ksampler2),
-            loraConfig: cloneJsonValueForCreate(position.loraConfig),
-            extraParams: cloneJsonValueForCreate(position.extraParams),
+        characterId: project.characterId,
+        scenePresetId: project.scenePresetId,
+        stylePresetId: project.stylePresetId,
+        characterPrompt: project.characterPrompt,
+        characterLoraPath: project.characterLoraPath,
+        scenePrompt: project.scenePrompt,
+        stylePrompt: project.stylePrompt,
+        projectLevelOverrides: cloneJsonValueForCreate(project.projectLevelOverrides),
+        notes: project.notes,
+        sections: {
+          create: project.sections.map((section) => ({
+            positionTemplateId: section.positionTemplateId,
+            sortOrder: section.sortOrder,
+            enabled: section.enabled,
+            positivePrompt: section.positivePrompt,
+            negativePrompt: section.negativePrompt,
+            aspectRatio: section.aspectRatio,
+            batchSize: section.batchSize,
+            seedPolicy1: section.seedPolicy1,
+            seedPolicy2: section.seedPolicy2,
+            ksampler1: cloneJsonValueForCreate(section.ksampler1),
+            ksampler2: cloneJsonValueForCreate(section.ksampler2),
+            loraConfig: cloneJsonValueForCreate(section.loraConfig),
+            extraParams: cloneJsonValueForCreate(section.extraParams),
             promptBlocks: {
-              create: position.promptBlocks.map((block) => ({
+              create: section.promptBlocks.map((block) => ({
                 type: block.type,
                 sourceId: block.sourceId,
                 label: block.label,
@@ -1496,27 +1496,27 @@ export async function copyJob(jobId: string) {
         slug: true,
         status: true,
         createdAt: true,
-        positions: {
+        sections: {
           select: { id: true },
         },
       },
     });
 
     return {
-      id: copiedJob.id,
-      title: copiedJob.title,
-      slug: copiedJob.slug,
-      status: copiedJob.status,
-      createdAt: copiedJob.createdAt.toISOString(),
-      positionCount: copiedJob.positions.length,
+      id: copiedProject.id,
+      title: copiedProject.title,
+      slug: copiedProject.slug,
+      status: copiedProject.status,
+      createdAt: copiedProject.createdAt.toISOString(),
+      sectionCount: copiedProject.sections.length,
     };
   });
 }
 
-export async function enqueueJobRuns(jobId: string, overrideBatchSize?: number) {
+export async function enqueueProjectRuns(projectId: string, overrideBatchSize?: number) {
   return db.$transaction(async (tx: Prisma.TransactionClient) => {
-    const job = await tx.completeJob.findUnique({
-      where: { id: jobId },
+    const project = await tx.project.findUnique({
+      where: { id: projectId },
       select: {
         id: true,
         title: true,
@@ -1526,7 +1526,7 @@ export async function enqueueJobRuns(jobId: string, overrideBatchSize?: number) 
         characterLoraPath: true,
         scenePrompt: true,
         stylePrompt: true,
-        jobLevelOverrides: true,
+        projectLevelOverrides: true,
         character: {
           select: {
             id: true,
@@ -1548,7 +1548,7 @@ export async function enqueueJobRuns(jobId: string, overrideBatchSize?: number) 
             slug: true,
           },
         },
-        positions: {
+        sections: {
           where: { enabled: true },
           orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
           include: {
@@ -1584,31 +1584,31 @@ export async function enqueueJobRuns(jobId: string, overrideBatchSize?: number) 
       },
     });
 
-    if (!job) {
+    if (!project) {
       throw new Error("JOB_NOT_FOUND");
     }
 
-    if (job.positions.length === 0) {
+    if (project.sections.length === 0) {
       throw new Error("JOB_HAS_NO_ENABLED_POSITIONS");
     }
 
-    const runs = await createQueuedRunsForPositions(tx, job, job.positions, overrideBatchSize);
-    const jobStatus = await ensureQueuedJobStatus(tx, job);
+    const runs = await createQueuedRunsForPositions(tx, project, project.sections, overrideBatchSize);
+    const projectStatus = await ensureQueuedProjectStatus(tx, project);
 
     return {
-      jobId: job.id,
-      jobTitle: job.title,
-      jobStatus,
+      projectId: project.id,
+      projectTitle: project.title,
+      projectStatus,
       queuedRunCount: runs.length,
       runs,
     };
   });
 }
 
-export async function enqueueJobPositionRun(jobId: string, jobPositionId: string, overrideBatchSize?: number) {
+export async function enqueueProjectSectionRun(projectId: string, sectionId: string, overrideBatchSize?: number) {
   return db.$transaction(async (tx: Prisma.TransactionClient) => {
-    const job = await tx.completeJob.findUnique({
-      where: { id: jobId },
+    const project = await tx.project.findUnique({
+      where: { id: projectId },
       select: {
         id: true,
         title: true,
@@ -1618,7 +1618,7 @@ export async function enqueueJobPositionRun(jobId: string, jobPositionId: string
         characterLoraPath: true,
         scenePrompt: true,
         stylePrompt: true,
-        jobLevelOverrides: true,
+        projectLevelOverrides: true,
         character: {
           select: {
             id: true,
@@ -1643,14 +1643,14 @@ export async function enqueueJobPositionRun(jobId: string, jobPositionId: string
       },
     });
 
-    if (!job) {
+    if (!project) {
       throw new Error("JOB_NOT_FOUND");
     }
 
-    const position = await tx.completeJobPosition.findFirst({
+    const section = await tx.projectSection.findFirst({
       where: {
-        id: jobPositionId,
-        completeJobId: jobId,
+        id: sectionId,
+        projectId: projectId,
       },
       include: {
         positionTemplate: true,
@@ -1683,28 +1683,28 @@ export async function enqueueJobPositionRun(jobId: string, jobPositionId: string
       },
     });
 
-    if (!position) {
+    if (!section) {
       throw new Error("JOB_POSITION_NOT_FOUND");
     }
 
-    if (!position.enabled) {
+    if (!section.enabled) {
       throw new Error("JOB_POSITION_DISABLED");
     }
 
-    const runs = await createQueuedRunsForPositions(tx, job, [position], overrideBatchSize);
-    const jobStatus = await ensureQueuedJobStatus(tx, job);
+    const runs = await createQueuedRunsForPositions(tx, project, [section], overrideBatchSize);
+    const projectStatus = await ensureQueuedProjectStatus(tx, project);
 
     return {
-      jobId: job.id,
-      jobTitle: job.title,
-      jobStatus,
+      projectId: project.id,
+      projectTitle: project.title,
+      projectStatus,
       queuedRunCount: runs.length,
       runs,
     };
   });
 }
 
-export async function getJobCreateOptions(): Promise<JobCreateOptions> {
+export async function getProjectCreateOptions(): Promise<ProjectCreateOptions> {
   const [characters, scenePresets, stylePresets, positionTemplates] = await Promise.all([
     db.character.findMany({
       where: { isActive: true },

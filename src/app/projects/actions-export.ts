@@ -16,18 +16,18 @@ type ExportResult = {
 };
 
 /**
- * Export all kept images from a job as JPG into a zip,
+ * Export all kept images from a project as JPG into a zip,
  * and all featured images into a pixiv/ folder.
  */
-export async function exportJobImages(jobId: string): Promise<ExportResult> {
-  // 1. Fetch job with positions (sorted) and kept images
-  const job = await prisma.completeJob.findUnique({
-    where: { id: jobId },
+export async function exportProjectImages(projectId: string): Promise<ExportResult> {
+  // 1. Fetch project with sections (sorted) and kept images
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
     select: {
       id: true,
       title: true,
       presetBindings: true,
-      positions: {
+      sections: {
         orderBy: { sortOrder: "asc" },
         include: {
           runs: {
@@ -49,14 +49,14 @@ export async function exportJobImages(jobId: string): Promise<ExportResult> {
     },
   });
 
-  if (!job) {
-    return { success: false, message: "任务不存在" };
+  if (!project) {
+    return { success: false, message: "项目不存在" };
   }
 
   // Resolve characterName from presetBindings for directory naming
   type PresetBindingJson = Array<{ categoryId: string; presetId: string }>;
-  const bindings = job.presetBindings as PresetBindingJson | null;
-  let characterName = job.title; // fallback to job title
+  const bindings = project.presetBindings as PresetBindingJson | null;
+  let characterName = project.title; // fallback to project title
   if (bindings && bindings.length > 0) {
     const presetIds = bindings.map((b) => b.presetId);
     const presets = await prisma.promptPreset.findMany({
@@ -74,10 +74,10 @@ export async function exportJobImages(jobId: string): Promise<ExportResult> {
   const pixivDir = join(exportDir, "pixiv");
   const tempJpgDir = join(exportDir, "_temp_jpg");
 
-  // 2. Collect images in position sort order
+  // 2. Collect images in section sort order
   const allKept: { filePath: string; featured: boolean }[] = [];
-  for (const position of job.positions) {
-    for (const run of position.runs) {
+  for (const section of project.sections) {
+    for (const run of section.runs) {
       for (const img of run.images) {
         allKept.push({ filePath: img.filePath, featured: img.featured });
       }

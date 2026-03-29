@@ -22,7 +22,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Layers, ImageIcon } from "lucide-react";
 import Image from "next/image";
 import { reorderSections } from "@/lib/actions";
-import { PositionRunButton } from "./job-detail-actions";
+import { SectionRunButton } from "./project-detail-actions";
 import { CopySectionButton, DeleteSectionButton } from "./section-actions";
 
 type Section = {
@@ -41,11 +41,11 @@ type Section = {
 };
 
 type SectionListProps = {
-  jobId: string;
+  projectId: string;
   sections: Section[];
 };
 
-export function SectionList({ jobId, sections: initialSections }: SectionListProps) {
+export function SectionList({ projectId, sections: initialSections }: SectionListProps) {
   const [sections, setSections] = useState(initialSections);
   const [isPending, startTransition] = useTransition();
   const dndId = useId();
@@ -79,7 +79,7 @@ export function SectionList({ jobId, sections: initialSections }: SectionListPro
     startTransition(async () => {
       try {
         await reorderSections(
-          jobId,
+          projectId,
           newSections.map((s) => s.id),
         );
       } catch (err) {
@@ -95,7 +95,7 @@ export function SectionList({ jobId, sections: initialSections }: SectionListPro
       <SortableContext items={sections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
         <div className={`space-y-3 ${isPending ? "opacity-60" : ""}`}>
           {sections.map((section, index) => (
-            <SortableSectionCard key={section.id} section={section} jobId={jobId} index={index} />
+            <SortableSectionCard key={section.id} section={section} projectId={projectId} index={index} />
           ))}
         </div>
       </SortableContext>
@@ -103,7 +103,7 @@ export function SectionList({ jobId, sections: initialSections }: SectionListPro
   );
 }
 
-function SortableSectionCard({ section, jobId, index }: { section: Section; jobId: string; index: number }) {
+function SortableSectionCard({ section, projectId, index }: { section: Section; projectId: string; index: number }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: section.id,
   });
@@ -133,7 +133,7 @@ function SortableSectionCard({ section, jobId, index }: { section: Section; jobI
 
         {/* 可点击进入编辑的区域 */}
         <Link
-          href={`/jobs/${jobId}/positions/${section.id}/blocks`}
+          href={`/projects/${projectId}/sections/${section.id}/blocks`}
           className="min-w-0 flex-1 cursor-pointer"
         >
           <div className="flex flex-wrap items-center gap-2">
@@ -175,7 +175,7 @@ function SortableSectionCard({ section, jobId, index }: { section: Section; jobI
             </span>
             {section.latestRunId && (
               <Link
-                href={`/jobs/${jobId}/positions/${section.id}/results`}
+                href={`/projects/${projectId}/sections/${section.id}/results`}
                 className="ml-auto text-sky-400 hover:text-sky-300"
                 onClick={(e) => e.stopPropagation()}
               >
@@ -232,7 +232,7 @@ function SortableSectionCard({ section, jobId, index }: { section: Section; jobI
         className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-white/5 pt-3"
         onClick={(e) => e.stopPropagation()}
       >
-        <PositionRunButton positionId={section.id} defaultBatchSize={section.batchSize} />
+        <SectionRunButton sectionId={section.id} defaultBatchSize={section.batchSize} />
         {/* 移动端：复制、删除按钮 */}
         <div className="flex items-center gap-2 sm:hidden">
           <CopySectionButton sectionId={section.id} />

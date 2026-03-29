@@ -1,18 +1,18 @@
 import { fail, ok } from "@/lib/api-response";
-import { getJobRevision } from "@/server/services/revision-service";
-import { mapJobError } from "@/server/services/job-service";
+import { getProjectRevision } from "@/server/services/revision-service";
+import { mapProjectError } from "@/server/services/project-service";
 
 type RouteContext = {
-  params: Promise<{ jobId: string; revisionNumber: string }>;
+  params: Promise<{ projectId: string; revisionNumber: string }>;
 };
 
 export async function GET(_request: Request, context: RouteContext) {
-  const { jobId, revisionNumber } = await context.params;
-  const normalizedJobId = jobId.trim();
+  const { projectId, revisionNumber } = await context.params;
+  const normalizedProjectId = projectId.trim();
   const parsedRevisionNumber = parseInt(revisionNumber, 10);
 
-  if (!normalizedJobId) {
-    return fail("jobId is required", 400);
+  if (!normalizedProjectId) {
+    return fail("projectId is required", 400);
   }
 
   if (isNaN(parsedRevisionNumber) || parsedRevisionNumber < 1) {
@@ -20,7 +20,7 @@ export async function GET(_request: Request, context: RouteContext) {
   }
 
   try {
-    const revision = await getJobRevision(normalizedJobId, parsedRevisionNumber);
+    const revision = await getProjectRevision(normalizedProjectId, parsedRevisionNumber);
 
     if (!revision) {
       return fail("Revision not found", 404);
@@ -28,7 +28,7 @@ export async function GET(_request: Request, context: RouteContext) {
 
     return ok(revision);
   } catch (error) {
-    const mapped = mapJobError(error);
+    const mapped = mapProjectError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }

@@ -10,7 +10,7 @@ datasource db {
 // Note: SQLite does not enforce enum values at the database level.
 // Prisma handles validation at the application layer.
 
-// ── Legacy tables (kept for migration, will be removed in Phase 7) ──
+// ── Legacy tables (kept for migration, will be removed later) ──
 
 model Character {
   id              String        @id @default(cuid())
@@ -24,7 +24,7 @@ model Character {
   isActive        Boolean       @default(true)
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
-  jobs            CompleteJob[]
+  projects        Project[]
 }
 
 model ScenePreset {
@@ -37,7 +37,7 @@ model ScenePreset {
   isActive        Boolean       @default(true)
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
-  jobs            CompleteJob[]
+  projects        Project[]
 }
 
 model StylePreset {
@@ -50,29 +50,29 @@ model StylePreset {
   isActive        Boolean       @default(true)
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
-  jobs            CompleteJob[]
+  projects        Project[]
 }
 
 model PositionTemplate {
-  id                  String                @id @default(cuid())
+  id                  String            @id @default(cuid())
   name                String
-  slug                String                @unique
+  slug                String            @unique
   prompt              String
   negativePrompt      String?
   lora1               Json?
   lora2               Json?
   defaultAspectRatio  String?
   defaultShortSidePx  Int?
-  defaultBatchSize    Int?                  @default(1)
+  defaultBatchSize    Int?              @default(1)
   defaultSeedPolicy1  String?
   defaultSeedPolicy2  String?
   defaultKsampler1    Json?
   defaultKsampler2    Json?
   defaultParams       Json?
-  enabled             Boolean               @default(true)
-  createdAt           DateTime              @default(now())
-  updatedAt           DateTime              @updatedAt
-  completeJobItems    CompleteJobPosition[]
+  enabled             Boolean           @default(true)
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  sections            ProjectSection[]
 }
 
 // ── New unified prompt system ──
@@ -113,7 +113,9 @@ model PromptPreset {
   @@index([categoryId, sortOrder])
 }
 
-model CompleteJob {
+// ── Core models ──
+
+model Project {
   id                    String                @id @default(cuid())
   title                 String
   slug                  String                @unique
@@ -125,25 +127,26 @@ model CompleteJob {
   characterLoraPath     String
   scenePrompt           String?
   stylePrompt           String?
-  presetBindings        Json?                 // NEW: [{ categoryId, presetId }]
-  jobLevelOverrides     Json?
+  presetBindings        Json?                 // [{ categoryId, presetId }]
+  projectLevelOverrides Json?                 @map("jobLevelOverrides")
   notes                 String?
   createdAt             DateTime              @default(now())
   updatedAt             DateTime              @updatedAt
   character             Character             @relation(fields: [characterId], references: [id], onDelete: Restrict)
   scenePreset           ScenePreset?          @relation(fields: [scenePresetId], references: [id], onDelete: SetNull)
   stylePreset           StylePreset?          @relation(fields: [stylePresetId], references: [id], onDelete: SetNull)
-  positions             CompleteJobPosition[]
+  sections              ProjectSection[]
   runs                  PositionRun[]
-  revisions             JobRevision[]
+  revisions             ProjectRevision[]
 
+  @@map("CompleteJob")
   @@index([status, updatedAt])
   @@index([characterId, updatedAt])
 }
 
-model CompleteJobPosition {
+model ProjectSection {
   id                    String                @id @default(cuid())
-  completeJobId         String
+  projectId             String                @map("completeJobId")
   positionTemplateId    String?
   name                  String?
   sortOrder             Int                   @default(0)
@@ -163,35 +166,36 @@ model CompleteJobPosition {
   latestRunId           String?
   createdAt             DateTime              @default(now())
   updatedAt             DateTime              @updatedAt
-  completeJob           CompleteJob           @relation(fields: [completeJobId], references: [id], onDelete: Cascade)
+  project               Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
   positionTemplate      PositionTemplate?     @relation(fields: [positionTemplateId], references: [id], onDelete: SetNull)
   runs                  PositionRun[]
   promptBlocks          PromptBlock[]
 
-  @@index([completeJobId, sortOrder])
+  @@map("CompleteJobPosition")
+  @@index([projectId, sortOrder], map: "CompleteJobPosition_completeJobId_sortOrder_idx")
 }
 
 model PromptBlock {
   id                    String                @id @default(cuid())
-  completeJobPositionId String
+  projectSectionId      String                @map("completeJobPositionId")
   type                  String                @default("custom")
   sourceId              String?
-  categoryId            String?               // NEW: FK to PromptCategory
+  categoryId            String?               // FK to PromptCategory
   label                 String
   positive              String
   negative              String?
   sortOrder             Int                   @default(0)
   createdAt             DateTime              @default(now())
   updatedAt             DateTime              @updatedAt
-  completeJobPosition   CompleteJobPosition   @relation(fields: [completeJobPositionId], references: [id], onDelete: Cascade)
+  projectSection        ProjectSection        @relation(fields: [projectSectionId], references: [id], onDelete: Cascade)
 
-  @@index([completeJobPositionId, sortOrder])
+  @@index([projectSectionId, sortOrder], map: "PromptBlock_completeJobPositionId_sortOrder_idx")
 }
 
 model PositionRun {
   id                    String                @id @default(cuid())
-  completeJobId         String
-  completeJobPositionId String
+  projectId             String                @map("completeJobId")
+  projectSectionId      String                @map("completeJobPositionId")
   runIndex              Int                   @default(1)
   status                String                @default("queued")
   resolvedConfigSnapshot Json
@@ -202,13 +206,13 @@ model PositionRun {
   finishedAt            DateTime?
   createdAt             DateTime              @default(now())
   updatedAt             DateTime              @updatedAt
-  completeJob           CompleteJob           @relation(fields: [completeJobId], references: [id], onDelete: Cascade)
-  completeJobPosition   CompleteJobPosition   @relation(fields: [completeJobPositionId], references: [id], onDelete: Cascade)
+  project               Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectSection        ProjectSection        @relation(fields: [projectSectionId], references: [id], onDelete: Cascade)
   images                ImageResult[]
 
   @@index([status, createdAt])
-  @@index([completeJobId, createdAt])
-  @@index([completeJobPositionId, createdAt])
+  @@index([projectId, createdAt], map: "PositionRun_completeJobId_createdAt_idx")
+  @@index([projectSectionId, createdAt], map: "PositionRun_completeJobPositionId_createdAt_idx")
 }
 
 model ImageResult {
@@ -260,17 +264,18 @@ model LoraAsset {
   updatedAt             DateTime    @updatedAt
 }
 
-model JobRevision {
+model ProjectRevision {
   id                    String      @id @default(cuid())
-  completeJobId         String
+  projectId             String      @map("completeJobId")
   revisionNumber        Int
   snapshot              Json
   createdAt             DateTime    @default(now())
   actorType             String      @default("user")
-  completeJob           CompleteJob @relation(fields: [completeJobId], references: [id], onDelete: Cascade)
+  project               Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
-  @@unique([completeJobId, revisionNumber])
-  @@index([completeJobId, createdAt])
+  @@map("JobRevision")
+  @@unique([projectId, revisionNumber], map: "JobRevision_completeJobId_revisionNumber_key")
+  @@index([projectId, createdAt], map: "JobRevision_completeJobId_createdAt_idx")
 }
 
 model AuditLog {

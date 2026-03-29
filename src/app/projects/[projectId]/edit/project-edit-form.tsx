@@ -3,25 +3,25 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown, Loader2, Save } from "lucide-react";
-import { updateJob, type UpdateJobInput } from "@/lib/actions";
-import type { JobEditData, JobFormCategory } from "@/lib/server-data";
+import { updateProject, type UpdateProjectInput } from "@/lib/actions";
+import type { ProjectEditData, ProjectFormCategory } from "@/lib/server-data";
 import { BatchSizeQuickFill } from "@/components/batch-size-quick-fill";
 
 type Props = {
-  job: JobEditData;
-  categories: JobFormCategory[];
+  project: ProjectEditData;
+  categories: ProjectFormCategory[];
   // Legacy props (kept so old callers don't break)
   characters?: unknown[];
   scenes?: unknown[];
   styles?: unknown[];
 };
 
-export function JobEditForm({ job, categories }: Props) {
+export function ProjectEditForm({ project, categories }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
-  const [title, setTitle] = useState(job.title);
-  const [notes, setNotes] = useState(job.notes ?? "");
+  const [title, setTitle] = useState(project.title);
+  const [notes, setNotes] = useState(project.notes ?? "");
 
   // Initialize selections from presetBindings or legacy fields
   const [selections, setSelections] = useState<Record<string, string>>(() => {
@@ -30,7 +30,7 @@ export function JobEditForm({ job, categories }: Props) {
       init[cat.id] = "";
     }
     // Fill from presetBindings
-    for (const binding of job.presetBindings) {
+    for (const binding of project.presetBindings) {
       if (init[binding.categoryId] !== undefined) {
         init[binding.categoryId] = binding.presetId;
       }
@@ -39,10 +39,10 @@ export function JobEditForm({ job, categories }: Props) {
   });
 
   // 小节默认值
-  const [defaultAspectRatio, setDefaultAspectRatio] = useState(job.defaultAspectRatio);
-  const [defaultShortSidePx, setDefaultShortSidePx] = useState(job.defaultShortSidePx.toString());
-  const [defaultBatchSize, setDefaultBatchSize] = useState(job.defaultBatchSize.toString());
-  const [defaultSeedPolicy, setDefaultSeedPolicy] = useState(job.defaultSeedPolicy1);
+  const [defaultAspectRatio, setDefaultAspectRatio] = useState(project.defaultAspectRatio);
+  const [defaultShortSidePx, setDefaultShortSidePx] = useState(project.defaultShortSidePx.toString());
+  const [defaultBatchSize, setDefaultBatchSize] = useState(project.defaultBatchSize.toString());
+  const [defaultSeedPolicy, setDefaultSeedPolicy] = useState(project.defaultSeedPolicy1);
 
   function setSelection(categoryId: string, presetId: string) {
     setSelections((prev) => ({ ...prev, [categoryId]: presetId }));
@@ -61,13 +61,13 @@ export function JobEditForm({ job, categories }: Props) {
       .filter(([, presetId]) => presetId)
       .map(([categoryId, presetId]) => ({ categoryId, presetId }));
 
-    const input: UpdateJobInput = {
-      jobId: job.id,
+    const input: UpdateProjectInput = {
+      projectId: project.id,
       title: title.trim(),
       presetBindings,
       notes: notes.trim() || null,
       // 小节默认值
-      jobLevelOverrides: {
+      projectLevelOverrides: {
         defaultAspectRatio,
         defaultShortSidePx: parseInt(defaultShortSidePx, 10) || 512,
         defaultBatchSize: parseInt(defaultBatchSize, 10) || 2,
@@ -76,8 +76,8 @@ export function JobEditForm({ job, categories }: Props) {
     };
 
     startTransition(async () => {
-      await updateJob(input);
-      router.push(`/jobs/${job.id}`);
+      await updateProject(input);
+      router.push(`/projects/${project.id}`);
     });
   }
 
@@ -102,7 +102,7 @@ export function JobEditForm({ job, categories }: Props) {
         <h3 className="text-xs font-medium uppercase tracking-wider text-zinc-500">基础信息</h3>
 
         <div className="space-y-2">
-          <label className="text-xs text-zinc-400">任务标题</label>
+          <label className="text-xs text-zinc-400">项目标题</label>
           <input
             type="text"
             value={title}

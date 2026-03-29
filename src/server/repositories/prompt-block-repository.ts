@@ -30,10 +30,10 @@ export type PromptBlockUpdateInput = {
 };
 
 export async function listPromptBlocks(
-  jobPositionId: string,
+  sectionId: string,
 ): Promise<PromptBlockRecord[]> {
   const blocks = await db.promptBlock.findMany({
-    where: { completeJobPositionId: jobPositionId },
+    where: { projectSectionId: sectionId },
     orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
     select: {
       id: true,
@@ -51,11 +51,11 @@ export async function listPromptBlocks(
 }
 
 export async function createPromptBlock(
-  jobPositionId: string,
+  sectionId: string,
   input: PromptBlockCreateInput,
 ): Promise<PromptBlockRecord> {
   const maxSortOrder = await db.promptBlock.aggregate({
-    where: { completeJobPositionId: jobPositionId },
+    where: { projectSectionId: sectionId },
     _max: { sortOrder: true },
   });
 
@@ -64,7 +64,7 @@ export async function createPromptBlock(
 
   return db.promptBlock.create({
     data: {
-      completeJobPositionId: jobPositionId,
+      projectSectionId: sectionId,
       type: input.type,
       sourceId: input.sourceId ?? null,
       categoryId: input.categoryId ?? null,
@@ -87,7 +87,7 @@ export async function createPromptBlock(
 }
 
 export async function batchCreatePromptBlocks(
-  jobPositionId: string,
+  sectionId: string,
   inputs: PromptBlockCreateInput[],
 ): Promise<PromptBlockRecord[]> {
   if (inputs.length === 0) return [];
@@ -96,7 +96,7 @@ export async function batchCreatePromptBlocks(
     inputs.map((input, index) =>
       db.promptBlock.create({
         data: {
-          completeJobPositionId: jobPositionId,
+          projectSectionId: sectionId,
           type: input.type,
           sourceId: input.sourceId ?? null,
           categoryId: input.categoryId ?? null,
@@ -169,7 +169,7 @@ export async function deletePromptBlock(blockId: string): Promise<void> {
 }
 
 export async function reorderPromptBlocks(
-  jobPositionId: string,
+  sectionId: string,
   blockIds: string[],
 ): Promise<PromptBlockRecord[]> {
   if (blockIds.length === 0) return [];
@@ -177,7 +177,7 @@ export async function reorderPromptBlocks(
   const existingBlocks = await db.promptBlock.findMany({
     where: {
       id: { in: blockIds },
-      completeJobPositionId: jobPositionId,
+      projectSectionId: sectionId,
     },
     select: { id: true },
   });

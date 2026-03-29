@@ -32,8 +32,8 @@ export async function GET() {
           select: {
             id: true,
             finishedAt: true,
-            completeJob: { select: { title: true } },
-            completeJobPosition: {
+            project: { select: { title: true } },
+            projectSection: {
               select: { positionTemplate: { select: { name: true } } },
             },
             _count: { select: { images: true } },
@@ -47,7 +47,7 @@ export async function GET() {
             id: true,
             finishedAt: true,
             errorMessage: true,
-            completeJob: { select: { title: true } },
+            project: { select: { title: true } },
           },
         }),
         pingComfyUI(),
@@ -64,14 +64,14 @@ export async function GET() {
       },
       recentDone: recentDone.map((r) => ({
         id: r.id,
-        jobTitle: r.completeJob.title,
-        positionName: r.completeJobPosition.positionTemplate?.name ?? null,
+        projectTitle: r.project.title,
+        sectionName: r.projectSection.positionTemplate?.name ?? null,
         imagesCount: r._count.images,
         finishedAt: r.finishedAt,
       })),
       recentFailed: recentFailed.map((r) => ({
         id: r.id,
-        jobTitle: r.completeJob.title,
+        projectTitle: r.project.title,
         error: r.errorMessage,
         finishedAt: r.finishedAt,
       })),

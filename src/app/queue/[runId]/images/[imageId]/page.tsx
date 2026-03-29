@@ -46,7 +46,7 @@ export default async function ReviewImagePage({ params }: { params: Promise<{ ru
           >
             {image.status}
           </span>
-          <span className="text-xs text-zinc-500">{group.characterName} · {group.positionName}</span>
+          <span className="text-xs text-zinc-500">{group.characterName} · {group.sectionName}</span>
         </div>
       </div>
 

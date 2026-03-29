@@ -2,22 +2,22 @@ import { Prisma } from "@/generated/prisma";
 import { ActorType } from "@/lib/db-enums";
 import { createLogger } from "@/lib/logger";
 import {
-  createJob as createJobInRepository,
-  copyJob as copyJobInRepository,
-  enqueueJobPositionRun as enqueueJobPositionRunInRepository,
-  enqueueJobRuns as enqueueJobRunsInRepository,
-  listJobs as listJobsInRepository,
-  updateJob as updateJobInRepository,
-  updateJobPosition as updateJobPositionInRepository,
-} from "@/server/repositories/job-repository";
+  createProject as createProjectInRepository,
+  copyProject as copyProjectInRepository,
+  enqueueProjectSectionRun as enqueueProjectSectionRunInRepository,
+  enqueueProjectRuns as enqueueProjectRunsInRepository,
+  listProjects as listProjectsInRepository,
+  updateProject as updateProjectInRepository,
+  updateProjectSection as updateProjectSectionInRepository,
+} from "@/server/repositories/project-repository";
 import { audit } from "@/server/services/audit-service";
 import { executeQueuedRuns } from "@/server/services/run-executor";
-import { createJobRevision } from "@/server/services/revision-service";
+import { createProjectRevision } from "@/server/services/revision-service";
 
-// Job service logger
-const log = createLogger({ module: "job-service" });
+// Project service logger
+const log = createLogger({ module: "project-service" });
 
-type CreateJobRequestBody = {
+type CreateProjectRequestBody = {
   title?: unknown;
   characterId?: unknown;
   scenePresetId?: unknown;
@@ -26,7 +26,7 @@ type CreateJobRequestBody = {
   notes?: unknown;
 };
 
-type UpdateJobRequestBody = {
+type UpdateProjectRequestBody = {
   characterPrompt?: unknown;
   scenePrompt?: unknown;
   stylePrompt?: unknown;
@@ -35,14 +35,14 @@ type UpdateJobRequestBody = {
   batchSize?: unknown;
 };
 
-type ListJobsQuery = {
+type ListProjectsQuery = {
   search?: unknown;
   status?: unknown;
   enabledOnly?: unknown;
   hasPending?: unknown;
 };
 
-type UpdateJobPositionRequestBody = {
+type UpdateProjectSectionRequestBody = {
   positivePrompt?: unknown;
   negativePrompt?: unknown;
   aspectRatio?: unknown;
@@ -55,7 +55,7 @@ type UpdateJobPositionRequestBody = {
   upscaleFactor?: unknown;
 };
 
-const JOB_CREATE_FIELDS = [
+const PROJECT_CREATE_FIELDS = [
   "title",
   "characterId",
   "scenePresetId",
@@ -64,7 +64,7 @@ const JOB_CREATE_FIELDS = [
   "notes",
 ] as const;
 
-const JOB_UPDATE_FIELDS = [
+const PROJECT_UPDATE_FIELDS = [
   "characterPrompt",
   "scenePrompt",
   "stylePrompt",
@@ -73,7 +73,7 @@ const JOB_UPDATE_FIELDS = [
   "batchSize",
 ] as const;
 
-const JOB_POSITION_UPDATE_FIELDS = [
+const PROJECT_SECTION_UPDATE_FIELDS = [
   "positivePrompt",
   "negativePrompt",
   "aspectRatio",
@@ -86,20 +86,20 @@ const JOB_POSITION_UPDATE_FIELDS = [
   "upscaleFactor",
 ] as const;
 
-class JobServiceError extends Error {
+class ProjectServiceError extends Error {
   constructor(
     message: string,
     readonly status: number,
     readonly details?: unknown,
   ) {
     super(message);
-    this.name = "JobServiceError";
+    this.name = "ProjectServiceError";
   }
 }
 
 function parsePatchRequestBody<T extends Record<string, unknown>>(body: unknown): T {
   if (!body || typeof body !== "object" || Array.isArray(body)) {
-    throw new JobServiceError("Request body must be an object", 400);
+    throw new ProjectServiceError("Request body must be an object", 400);
   }
 
   return body as T;
@@ -107,13 +107,13 @@ function parsePatchRequestBody<T extends Record<string, unknown>>(body: unknown)
 
 function normalizeRequiredStringField(value: unknown, fieldName: string) {
   if (typeof value !== "string") {
-    throw new JobServiceError(`${fieldName} is required`, 400);
+    throw new ProjectServiceError(`${fieldName} is required`, 400);
   }
 
   const normalizedValue = value.trim();
 
   if (!normalizedValue) {
-    throw new JobServiceError(`${fieldName} is required`, 400);
+    throw new ProjectServiceError(`${fieldName} is required`, 400);
   }
 
   return normalizedValue;
@@ -123,7 +123,7 @@ function normalizeRequiredId(value: string, fieldName: string) {
   const normalizedValue = value.trim();
 
   if (!normalizedValue) {
-    throw new JobServiceError(`${fieldName} is required`, 400);
+    throw new ProjectServiceError(`${fieldName} is required`, 400);
   }
 
   return normalizedValue;
@@ -136,7 +136,7 @@ function ensureSupportedFields(
   const unsupportedFields = Object.keys(body).filter((field) => !supportedFields.includes(field));
 
   if (unsupportedFields.length > 0) {
-    throw new JobServiceError("Unsupported fields in request body", 400, {
+    throw new ProjectServiceError("Unsupported fields in request body", 400, {
       unsupportedFields,
       supportedFields,
     });
@@ -149,7 +149,7 @@ function normalizeStringField(value: unknown, fieldName: string) {
   }
 
   if (typeof value !== "string") {
-    throw new JobServiceError(`${fieldName} must be a string`, 400);
+    throw new ProjectServiceError(`${fieldName} must be a string`, 400);
   }
 
   return value;
@@ -165,7 +165,7 @@ function normalizeNullableStringField(value: unknown, fieldName: string) {
   }
 
   if (typeof value !== "string") {
-    throw new JobServiceError(`${fieldName} must be a string or null`, 400);
+    throw new ProjectServiceError(`${fieldName} must be a string or null`, 400);
   }
 
   return value;
@@ -181,13 +181,13 @@ function normalizeNullableIdField(value: unknown, fieldName: string) {
   }
 
   if (typeof value !== "string") {
-    throw new JobServiceError(`${fieldName} must be a string or null`, 400);
+    throw new ProjectServiceError(`${fieldName} must be a string or null`, 400);
   }
 
   const normalizedValue = value.trim();
 
   if (!normalizedValue) {
-    throw new JobServiceError(`${fieldName} must not be empty`, 400);
+    throw new ProjectServiceError(`${fieldName} must not be empty`, 400);
   }
 
   return normalizedValue;
@@ -199,7 +199,7 @@ function normalizeNullableNotesField(value: unknown, fieldName: string) {
   }
 
   if (typeof value !== "string") {
-    throw new JobServiceError(`${fieldName} must be a string or null`, 400);
+    throw new ProjectServiceError(`${fieldName} must be a string or null`, 400);
   }
 
   const normalizedValue = value.trim();
@@ -212,7 +212,7 @@ function normalizePositionTemplateIds(value: unknown): string[] | undefined {
   }
 
   if (!Array.isArray(value)) {
-    throw new JobServiceError("positionTemplateIds must be an array", 400);
+    throw new ProjectServiceError("positionTemplateIds must be an array", 400);
   }
 
   if (value.length === 0) {
@@ -221,13 +221,13 @@ function normalizePositionTemplateIds(value: unknown): string[] | undefined {
 
   const normalizedIds = value.map((entry, index) => {
     if (typeof entry !== "string") {
-      throw new JobServiceError(`positionTemplateIds[${index}] must be a string`, 400);
+      throw new ProjectServiceError(`positionTemplateIds[${index}] must be a string`, 400);
     }
 
     const normalizedValue = entry.trim();
 
     if (!normalizedValue) {
-      throw new JobServiceError(`positionTemplateIds[${index}] must not be empty`, 400);
+      throw new ProjectServiceError(`positionTemplateIds[${index}] must not be empty`, 400);
     }
 
     return normalizedValue;
@@ -245,7 +245,7 @@ function normalizePositionTemplateIds(value: unknown): string[] | undefined {
   }
 
   if (duplicateIds.length > 0) {
-    throw new JobServiceError("positionTemplateIds must not contain duplicates", 400, {
+    throw new ProjectServiceError("positionTemplateIds must not contain duplicates", 400, {
       duplicatePositionTemplateIds: [...new Set(duplicateIds)],
     });
   }
@@ -259,22 +259,22 @@ function normalizeOptionalSearch(value: unknown) {
   }
 
   if (typeof value !== "string") {
-    throw new JobServiceError("search must be a string", 400);
+    throw new ProjectServiceError("search must be a string", 400);
   }
 
   const normalizedValue = value.trim();
   return normalizedValue ? normalizedValue : undefined;
 }
 
-const SUPPORTED_JOB_STATUSES = ["draft", "queued", "running", "partial_done", "done", "failed"] as const;
+const SUPPORTED_PROJECT_STATUSES = ["draft", "queued", "running", "partial_done", "done", "failed"] as const;
 
-function normalizeOptionalJobStatus(value: unknown) {
+function normalizeOptionalProjectStatus(value: unknown) {
   if (value === undefined) {
     return undefined;
   }
 
   if (typeof value !== "string") {
-    throw new JobServiceError("status must be a string", 400);
+    throw new ProjectServiceError("status must be a string", 400);
   }
 
   const normalizedValue = value.trim();
@@ -283,13 +283,13 @@ function normalizeOptionalJobStatus(value: unknown) {
     return undefined;
   }
 
-  if (!SUPPORTED_JOB_STATUSES.includes(normalizedValue as (typeof SUPPORTED_JOB_STATUSES)[number])) {
-    throw new JobServiceError("status must be a valid job status", 400, {
-      supportedStatuses: SUPPORTED_JOB_STATUSES,
+  if (!SUPPORTED_PROJECT_STATUSES.includes(normalizedValue as (typeof SUPPORTED_PROJECT_STATUSES)[number])) {
+    throw new ProjectServiceError("status must be a valid project status", 400, {
+      supportedStatuses: SUPPORTED_PROJECT_STATUSES,
     });
   }
 
-  return normalizedValue as (typeof SUPPORTED_JOB_STATUSES)[number];
+  return normalizedValue as (typeof SUPPORTED_PROJECT_STATUSES)[number];
 }
 
 function normalizeOptionalBoolean(value: unknown, fieldName: string) {
@@ -317,7 +317,7 @@ function normalizeOptionalBoolean(value: unknown, fieldName: string) {
     }
   }
 
-  throw new JobServiceError(`${fieldName} must be a boolean`, 400);
+  throw new ProjectServiceError(`${fieldName} must be a boolean`, 400);
 }
 
 function normalizeBatchSize(value: unknown, fieldName: string) {
@@ -330,7 +330,7 @@ function normalizeBatchSize(value: unknown, fieldName: string) {
   }
 
   if (typeof value !== "number" || !Number.isInteger(value) || value < 1) {
-    throw new JobServiceError(`${fieldName} must be a positive integer or null`, 400);
+    throw new ProjectServiceError(`${fieldName} must be a positive integer or null`, 400);
   }
 
   return value;
@@ -344,22 +344,22 @@ function ensureAtLeastOneField(
   const hasAtLeastOneField = Object.values(fields).some((value) => value !== undefined);
 
   if (!hasAtLeastOneField) {
-    throw new JobServiceError(message, 400, { supportedFields });
+    throw new ProjectServiceError(message, 400, { supportedFields });
   }
 }
 
-export async function listJobs(query: ListJobsQuery = {}) {
-  return listJobsInRepository({
+export async function listProjects(query: ListProjectsQuery = {}) {
+  return listProjectsInRepository({
     search: normalizeOptionalSearch(query.search),
-    status: normalizeOptionalJobStatus(query.status),
+    status: normalizeOptionalProjectStatus(query.status),
     enabledOnly: normalizeOptionalBoolean(query.enabledOnly, "enabledOnly"),
     hasPending: normalizeOptionalBoolean(query.hasPending, "hasPending"),
   });
 }
 
-export async function createJob(body: unknown, actorType: ActorType = ActorType.user) {
-  const parsedBody = parsePatchRequestBody<CreateJobRequestBody>(body);
-  ensureSupportedFields(parsedBody, JOB_CREATE_FIELDS);
+export async function createProject(body: unknown, actorType: ActorType = ActorType.user) {
+  const parsedBody = parsePatchRequestBody<CreateProjectRequestBody>(body);
+  ensureSupportedFields(parsedBody, PROJECT_CREATE_FIELDS);
 
   const input = {
     title: normalizeRequiredStringField(parsedBody.title, "title"),
@@ -370,18 +370,18 @@ export async function createJob(body: unknown, actorType: ActorType = ActorType.
     notes: normalizeNullableNotesField(parsedBody.notes, "notes"),
   };
 
-  log.info("Creating job", { title: input.title, characterId: input.characterId });
+  log.info("Creating project", { title: input.title, characterId: input.characterId });
 
-  const result = await createJobInRepository(input);
+  const result = await createProjectInRepository(input);
 
-  log.info("Job created", { jobId: result.id, title: input.title });
-  audit("CompleteJob", result.id, "create", { title: input.title }, actorType);
+  log.info("Project created", { projectId: result.id, title: input.title });
+  audit("Project", result.id, "create", { title: input.title }, actorType);
   return result;
 }
 
-export async function updateJob(jobId: string, body: unknown, actorType: ActorType = ActorType.user) {
-  const parsedBody = parsePatchRequestBody<UpdateJobRequestBody>(body);
-  ensureSupportedFields(parsedBody, JOB_UPDATE_FIELDS);
+export async function updateProject(projectId: string, body: unknown, actorType: ActorType = ActorType.user) {
+  const parsedBody = parsePatchRequestBody<UpdateProjectRequestBody>(body);
+  ensureSupportedFields(parsedBody, PROJECT_UPDATE_FIELDS);
 
   const input = {
     characterPrompt: normalizeStringField(parsedBody.characterPrompt, "characterPrompt"),
@@ -394,34 +394,34 @@ export async function updateJob(jobId: string, body: unknown, actorType: ActorTy
 
   ensureAtLeastOneField(
     input,
-    "At least one editable job field is required",
-    JOB_UPDATE_FIELDS,
+    "At least one editable project field is required",
+    PROJECT_UPDATE_FIELDS,
   );
 
-  const normalizedId = normalizeRequiredId(jobId, "jobId");
+  const normalizedId = normalizeRequiredId(projectId, "projectId");
 
   // Snapshot before update (best-effort, non-blocking)
-  await createJobRevision(normalizedId, actorType);
+  await createProjectRevision(normalizedId, actorType);
 
-  const result = await updateJobInRepository(normalizedId, input);
+  const result = await updateProjectInRepository(normalizedId, input);
 
   // Strip undefined values for clean audit payload
   const changedFields = Object.fromEntries(
     Object.entries(input).filter(([, v]) => v !== undefined),
   );
-  audit("CompleteJob", normalizedId, "update", changedFields, actorType);
+  audit("Project", normalizedId, "update", changedFields, actorType);
 
   return result;
 }
 
-export async function updateJobPosition(
-  jobId: string,
-  jobPositionId: string,
+export async function updateProjectSection(
+  projectId: string,
+  sectionId: string,
   body: unknown,
   actorType: ActorType = ActorType.user,
 ) {
-  const parsedBody = parsePatchRequestBody<UpdateJobPositionRequestBody>(body);
-  ensureSupportedFields(parsedBody, JOB_POSITION_UPDATE_FIELDS);
+  const parsedBody = parsePatchRequestBody<UpdateProjectSectionRequestBody>(body);
+  ensureSupportedFields(parsedBody, PROJECT_SECTION_UPDATE_FIELDS);
 
   const input = {
     positivePrompt: normalizeNullableStringField(parsedBody.positivePrompt, "positivePrompt"),
@@ -445,38 +445,38 @@ export async function updateJobPosition(
   ensureAtLeastOneField(
     input,
     "At least one editable position field is required",
-    JOB_POSITION_UPDATE_FIELDS,
+    PROJECT_SECTION_UPDATE_FIELDS,
   );
 
-  const normalizedJobId = normalizeRequiredId(jobId, "jobId");
-  const normalizedJobPositionId = normalizeRequiredId(jobPositionId, "jobPositionId");
+  const normalizedProjectId = normalizeRequiredId(projectId, "projectId");
+  const normalizedSectionId = normalizeRequiredId(sectionId, "sectionId");
 
   // Snapshot before update (best-effort, non-blocking)
-  await createJobRevision(normalizedJobId, actorType);
+  await createProjectRevision(normalizedProjectId, actorType);
 
-  const result = await updateJobPositionInRepository(
-    normalizedJobId,
-    normalizedJobPositionId,
+  const result = await updateProjectSectionInRepository(
+    normalizedProjectId,
+    normalizedSectionId,
     input,
   );
 
   const changedFields = Object.fromEntries(
     Object.entries(input).filter(([, v]) => v !== undefined),
   );
-  audit("CompleteJobPosition", normalizedJobPositionId, "update", changedFields, actorType);
+  audit("ProjectSection", normalizedSectionId, "update", changedFields, actorType);
 
   return result;
 }
 
-export async function enqueueJobRuns(jobId: string, overrideBatchSize?: number, actorType: ActorType = ActorType.user) {
-  const normalizedId = normalizeRequiredId(jobId, "jobId");
+export async function enqueueProjectRuns(projectId: string, overrideBatchSize?: number, actorType: ActorType = ActorType.user) {
+  const normalizedId = normalizeRequiredId(projectId, "projectId");
 
-  log.info("Enqueueing job runs", { jobId: normalizedId, overrideBatchSize });
+  log.info("Enqueueing project runs", { projectId: normalizedId, overrideBatchSize });
 
-  const result = await enqueueJobRunsInRepository(normalizedId, overrideBatchSize);
+  const result = await enqueueProjectRunsInRepository(normalizedId, overrideBatchSize);
 
-  log.info("Job runs enqueued", { jobId: normalizedId, queuedRunCount: result.queuedRunCount });
-  audit("CompleteJob", normalizedId, "enqueue", { queuedRunCount: result.queuedRunCount }, actorType);
+  log.info("Project runs enqueued", { projectId: normalizedId, queuedRunCount: result.queuedRunCount });
+  audit("Project", normalizedId, "enqueue", { queuedRunCount: result.queuedRunCount }, actorType);
 
   // Fire-and-forget: submit queued runs directly to ComfyUI
   executeQueuedRuns().catch(() => {});
@@ -484,31 +484,31 @@ export async function enqueueJobRuns(jobId: string, overrideBatchSize?: number, 
   return result;
 }
 
-export async function copyJob(jobId: string, actorType: ActorType = ActorType.user) {
-  const normalizedId = normalizeRequiredId(jobId, "jobId");
+export async function copyProject(projectId: string, actorType: ActorType = ActorType.user) {
+  const normalizedId = normalizeRequiredId(projectId, "projectId");
 
-  log.info("Copying job", { sourceJobId: normalizedId });
+  log.info("Copying project", { sourceProjectId: normalizedId });
 
-  const result = await copyJobInRepository(normalizedId);
+  const result = await copyProjectInRepository(normalizedId);
 
-  log.info("Job copied", { sourceJobId: normalizedId, newJobId: result.id });
-  audit("CompleteJob", result.id, "copy", { sourceJobId: normalizedId }, actorType);
+  log.info("Project copied", { sourceProjectId: normalizedId, newProjectId: result.id });
+  audit("Project", result.id, "copy", { sourceProjectId: normalizedId }, actorType);
   return result;
 }
 
-export async function enqueueJobPositionRun(
-  jobId: string,
-  jobPositionId: string,
+export async function enqueueProjectSectionRun(
+  projectId: string,
+  sectionId: string,
   overrideBatchSize?: number,
   actorType: ActorType = ActorType.user,
 ) {
-  const normalizedJobPositionId = normalizeRequiredId(jobPositionId, "jobPositionId");
-  const result = await enqueueJobPositionRunInRepository(
-    normalizeRequiredId(jobId, "jobId"),
-    normalizedJobPositionId,
+  const normalizedSectionId = normalizeRequiredId(sectionId, "sectionId");
+  const result = await enqueueProjectSectionRunInRepository(
+    normalizeRequiredId(projectId, "projectId"),
+    normalizedSectionId,
     overrideBatchSize,
   );
-  audit("CompleteJobPosition", normalizedJobPositionId, "enqueue", { jobId }, actorType);
+  audit("ProjectSection", normalizedSectionId, "enqueue", { projectId }, actorType);
 
   // Fire-and-forget: submit queued runs directly to ComfyUI
   executeQueuedRuns().catch(() => {});
@@ -516,9 +516,9 @@ export async function enqueueJobPositionRun(
   return result;
 }
 
-export function mapJobError(error: unknown) {
-  if (error instanceof JobServiceError) {
-    log.warn("Job service error", { message: error.message, status: error.status });
+export function mapProjectError(error: unknown) {
+  if (error instanceof ProjectServiceError) {
+    log.warn("Project service error", { message: error.message, status: error.status });
     return {
       message: error.message,
       status: error.status,
@@ -527,9 +527,9 @@ export function mapJobError(error: unknown) {
   }
 
   if (!(error instanceof Error)) {
-    log.error("Unexpected job error (non-Error)", error);
+    log.error("Unexpected project error (non-Error)", error);
     return {
-      message: "Unexpected job error",
+      message: "Unexpected project error",
       status: 500,
       details: String(error),
     };
@@ -543,20 +543,20 @@ export function mapJobError(error: unknown) {
     case "STYLE_PRESET_NOT_FOUND":
       return { message: "Style preset not found", status: 404 };
     case "JOB_NOT_FOUND":
-      return { message: "Job not found", status: 404 };
+      return { message: "Project not found", status: 404 };
     case "POSITION_TEMPLATE_NOT_FOUND":
       return { message: "Position template not found", status: 404 };
     case "POSITION_TEMPLATE_DISABLED":
       return { message: "Position template is disabled", status: 409 };
     case "JOB_POSITION_NOT_FOUND":
-      return { message: "Job position not found", status: 404 };
+      return { message: "Section not found", status: 404 };
     case "JOB_HAS_NO_ENABLED_POSITIONS":
-      return { message: "Job has no enabled positions to queue", status: 409 };
+      return { message: "Project has no enabled sections to queue", status: 409 };
     case "JOB_POSITION_DISABLED":
-      return { message: "Job position is disabled", status: 409 };
+      return { message: "Section is disabled", status: 409 };
     case "JOB_SLUG_EXHAUSTED":
     case "JOB_COPY_IDENTITY_EXHAUSTED":
-      return { message: "Unable to generate a unique job identity", status: 409 };
+      return { message: "Unable to generate a unique project identity", status: 409 };
     default:
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         log.error("Prisma error", error, { code: error.code });
@@ -575,9 +575,9 @@ export function mapJobError(error: unknown) {
         };
       }
 
-      log.error("Unexpected job error", error);
+      log.error("Unexpected project error", error);
       return {
-        message: "Unexpected job error",
+        message: "Unexpected project error",
         status: 500,
         details: error.message,
       };

@@ -7,15 +7,15 @@
  *
  * Usage:
  *   import { audit } from "@/server/services/audit-service";
- *   audit("CompleteJob", jobId, "create", { title }, "user");
+ *   audit("Project", projectId, "create", { title }, "user");
  */
 
 import { ActorType } from "@/lib/db-enums";
 import { prisma } from "@/lib/prisma";
 
 export type AuditEntityType =
-  | "CompleteJob"
-  | "CompleteJobPosition"
+  | "Project"
+  | "ProjectSection"
   | "PositionRun"
   | "ImageResult"
   | "LoraAsset"

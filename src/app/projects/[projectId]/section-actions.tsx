@@ -4,12 +4,12 @@ import { useTransition } from "react";
 import { Copy, Plus, Trash2 } from "lucide-react";
 import { addSection, copySection, deleteSection } from "@/lib/actions";
 
-export function AddSectionButton({ jobId }: { jobId: string }) {
+export function AddSectionButton({ projectId }: { projectId: string }) {
   const [isPending, startTransition] = useTransition();
 
   function handleAdd() {
     startTransition(async () => {
-      await addSection(jobId);
+      await addSection(projectId);
     });
   }
 

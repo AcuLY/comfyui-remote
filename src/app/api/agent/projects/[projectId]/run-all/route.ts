@@ -1,32 +1,32 @@
 import { ActorType } from "@/lib/db-enums";
 import { fail, ok } from "@/lib/api-response";
-import { getJobAgentContext } from "@/server/repositories/job-repository";
+import { getProjectAgentContext } from "@/server/repositories/project-repository";
 import {
-  enqueueJobRuns,
-  mapJobError,
-} from "@/server/services/job-service";
+  enqueueProjectRuns,
+  mapProjectError,
+} from "@/server/services/project-service";
 
 type RouteContext = {
-  params: Promise<{ jobId: string }>;
+  params: Promise<{ projectId: string }>;
 };
 
 export async function POST(_request: Request, context: RouteContext) {
-  const { jobId } = await context.params;
+  const { projectId } = await context.params;
 
   try {
-    const result = await enqueueJobRuns(jobId, undefined, ActorType.agent);
-    const contextData = await getJobAgentContext(jobId);
+    const result = await enqueueProjectRuns(projectId, undefined, ActorType.agent);
+    const contextData = await getProjectAgentContext(projectId);
 
     return ok(
       {
-        jobId,
+        projectId,
         result,
         context: contextData,
       },
       { status: 201 },
     );
   } catch (error) {
-    const mapped = mapJobError(error);
+    const mapped = mapProjectError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }

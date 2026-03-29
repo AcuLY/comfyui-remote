@@ -18,7 +18,7 @@ const settingsGroups = [
   {
     href: "/settings/logs",
     label: "后端日志",
-    description: "查看运行日志：任务执行、错误信息",
+    description: "查看运行日志：项目执行、错误信息",
     icon: ScrollText,
   },
 ];

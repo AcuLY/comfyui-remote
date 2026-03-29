@@ -2,11 +2,11 @@
 
 import { useState, useTransition } from "react";
 import { Play, Download, CheckCircle, XCircle } from "lucide-react";
-import { runJob, runPosition } from "@/lib/actions";
-import { exportJobImages } from "@/app/jobs/actions-export";
+import { runProject, runSection } from "@/lib/actions";
+import { exportProjectImages } from "@/app/projects/actions-export";
 import { BatchSizeQuickFill } from "@/components/batch-size-quick-fill";
 
-export function JobDetailActions({ jobId }: { jobId: string }) {
+export function ProjectDetailActions({ projectId }: { projectId: string }) {
   const [isPending, startTransition] = useTransition();
   const [batchSize, setBatchSize] = useState<string>("");
   const [exporting, setExporting] = useState(false);
@@ -16,7 +16,7 @@ export function JobDetailActions({ jobId }: { jobId: string }) {
     const parsed = batchSize.trim() ? parseInt(batchSize, 10) : undefined;
     const overrideBatchSize = parsed && Number.isInteger(parsed) && parsed >= 1 ? parsed : undefined;
     startTransition(async () => {
-      await runJob(jobId, overrideBatchSize);
+      await runProject(projectId, overrideBatchSize);
     });
   }
 
@@ -24,7 +24,7 @@ export function JobDetailActions({ jobId }: { jobId: string }) {
     setExporting(true);
     setExportMsg(null);
     try {
-      const result = await exportJobImages(jobId);
+      const result = await exportProjectImages(projectId);
       setExportMsg({ ok: result.success, text: result.message });
     } catch {
       setExportMsg({ ok: false, text: "导出失败" });
@@ -91,12 +91,12 @@ export function JobDetailActions({ jobId }: { jobId: string }) {
   );
 }
 
-export function PositionRunButton({ positionId, defaultBatchSize }: { positionId: string; defaultBatchSize?: number | null }) {
+export function SectionRunButton({ sectionId, defaultBatchSize }: { sectionId: string; defaultBatchSize?: number | null }) {
   const [isPending, startTransition] = useTransition();
   const [batchSize, setBatchSize] = useState<number>(defaultBatchSize ?? 2);
 
   function handleRun() {
-    startTransition(() => runPosition(positionId, batchSize));
+    startTransition(() => runSection(sectionId, batchSize));
   }
 
   return (

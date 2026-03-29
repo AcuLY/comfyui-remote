@@ -8,7 +8,7 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 
 export const metadata: Metadata = {
   title: "ComfyUI Manager",
-  description: "Mobile-first ComfyUI job, review, and asset manager.",
+  description: "Mobile-first ComfyUI project, review, and asset manager.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

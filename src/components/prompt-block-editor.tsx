@@ -35,10 +35,10 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import {
-  addPositionBlock,
-  updatePositionBlock,
-  deletePositionBlock,
-  reorderPositionBlocks,
+  addSectionBlock,
+  updateSectionBlock,
+  deleteSectionBlock,
+  reorderSectionBlocks,
   type PromptBlockData,
 } from "@/lib/actions";
 import type { LoraSource } from "@/lib/lora-types";
@@ -772,7 +772,7 @@ export function PromptBlockEditor({
       : { negative: editValue.trim() || null };
 
     startTransition(async () => {
-      const updated = await updatePositionBlock(editingId, update);
+      const updated = await updateSectionBlock(editingId, update);
       setBlocks((prev) => prev.map((b) => (b.id === editingId ? updated : b)));
       setEditingId(null);
       setEditValue("");
@@ -784,7 +784,7 @@ export function PromptBlockEditor({
   function handleDelete(blockId: string) {
     if (!confirm("确认删除此提示词块？")) return;
     startTransition(async () => {
-      await deletePositionBlock(blockId);
+      await deleteSectionBlock(blockId);
       setBlocks((prev) => prev.filter((b) => b.id !== blockId));
       if (editingId === blockId) cancelEdit();
     });
@@ -797,7 +797,7 @@ export function PromptBlockEditor({
     libraryItem?: LibraryItem,
   ) {
     startTransition(async () => {
-      const newBlock = await addPositionBlock(sectionId, {
+      const newBlock = await addSectionBlock(sectionId, {
         type: input.type,
         label: input.label,
         positive: input.positive,
@@ -837,7 +837,7 @@ export function PromptBlockEditor({
     setBlocks(nextBlocks);
 
     startTransition(async () => {
-      const reordered = await reorderPositionBlocks(sectionId, nextBlocks.map((b) => b.id));
+      const reordered = await reorderSectionBlocks(sectionId, nextBlocks.map((b) => b.id));
       setBlocks(reordered);
     });
   }

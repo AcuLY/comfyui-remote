@@ -2,7 +2,7 @@
  * Migration script: generate PromptBlocks for existing CompleteJobPositions
  * that don't have any blocks yet.
  *
- * Logic mirrors createJob() in job-repository.ts:
+ * Logic mirrors createProject() in project-repository.ts:
  *   1. Character block (always)
  *   2. Scene block (if scenePreset exists)
  *   3. Style block (if stylePreset exists)
@@ -44,13 +44,13 @@ async function main() {
   console.log(DRY_RUN ? "🔍 DRY RUN — no changes will be written." : "🚀 Migrating PromptBlocks for existing positions...");
 
   // Find all positions that have zero PromptBlocks
-  const positionsWithoutBlocks = await prisma.completeJobPosition.findMany({
+  const positionsWithoutBlocks = await prisma.projectSection.findMany({
     where: {
       promptBlocks: { none: {} },
     },
     select: {
       id: true,
-      completeJobId: true,
+      projectId: true,
       positionTemplateId: true,
       positivePrompt: true,
       negativePrompt: true,
@@ -68,8 +68,8 @@ async function main() {
 
   if (DRY_RUN) {
     for (const pos of positionsWithoutBlocks) {
-      const job = await prisma.completeJob.findUnique({
-        where: { id: pos.completeJobId },
+      const job = await prisma.project.findUnique({
+        where: { id: pos.projectId },
         select: {
           characterId: true,
           scenePresetId: true,
@@ -83,7 +83,7 @@ async function main() {
           })
         : null;
 
-      console.log(`   [DRY] Position ${pos.id}: job=${pos.completeJobId}, template=${pt?.name ?? "none"}, customPrompt=${pos.positivePrompt ? "yes" : "no"}`);
+      console.log(`   [DRY] Position ${pos.id}: job=${pos.projectId}, template=${pt?.name ?? "none"}, customPrompt=${pos.positivePrompt ? "yes" : "no"}`);
     }
     await prisma.$disconnect();
     return;
@@ -94,8 +94,8 @@ async function main() {
 
   for (const pos of positionsWithoutBlocks) {
     try {
-      const job = await prisma.completeJob.findUnique({
-        where: { id: pos.completeJobId },
+      const job = await prisma.project.findUnique({
+        where: { id: pos.projectId },
         select: {
           characterId: true,
           scenePresetId: true,
@@ -104,7 +104,7 @@ async function main() {
       });
 
       if (!job) {
-        console.warn(`   ⚠ Position ${pos.id}: job ${pos.completeJobId} not found, skipping.`);
+        console.warn(`   ⚠ Position ${pos.id}: job ${pos.projectId} not found, skipping.`);
         errorCount++;
         continue;
       }
@@ -207,7 +207,7 @@ async function main() {
       if (blocks.length > 0) {
         await prisma.promptBlock.createMany({
           data: blocks.map((block) => ({
-            completeJobPositionId: pos.id,
+            projectSectionId: pos.id,
             ...block,
           })),
         });

@@ -1,29 +1,29 @@
 import { fail, ok } from "@/lib/api-response";
-import { getJobDetail } from "@/server/repositories/job-repository";
-import { mapJobError, updateJob } from "@/server/services/job-service";
+import { getProjectDetail } from "@/server/repositories/project-repository";
+import { mapProjectError, updateProject } from "@/server/services/project-service";
 
 type RouteContext = {
-  params: Promise<{ jobId: string }>;
+  params: Promise<{ projectId: string }>;
 };
 
 export async function GET(_request: Request, context: RouteContext) {
-  const { jobId } = await context.params;
-  const normalizedJobId = jobId.trim();
+  const { projectId } = await context.params;
+  const normalizedProjectId = projectId.trim();
 
-  if (!normalizedJobId) {
-    return fail("jobId is required", 400);
+  if (!normalizedProjectId) {
+    return fail("projectId is required", 400);
   }
 
   try {
-    const data = await getJobDetail(normalizedJobId);
+    const data = await getProjectDetail(normalizedProjectId);
     return ok(data);
   } catch (error) {
-    if (error instanceof Error && error.message === "JOB_NOT_FOUND") {
-      return fail("Job not found", 404);
+    if (error instanceof Error && error.message === "PROJECT_NOT_FOUND") {
+      return fail("Project not found", 404);
     }
 
     return fail(
-      "Failed to load job detail",
+      "Failed to load project detail",
       500,
       error instanceof Error ? error.message : String(error),
     );
@@ -31,7 +31,7 @@ export async function GET(_request: Request, context: RouteContext) {
 }
 
 export async function PATCH(request: Request, context: RouteContext) {
-  const { jobId } = await context.params;
+  const { projectId } = await context.params;
 
   let body: unknown;
   try {
@@ -41,10 +41,10 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 
   try {
-    const data = await updateJob(jobId, body);
+    const data = await updateProject(projectId, body);
     return ok(data);
   } catch (error) {
-    const mapped = mapJobError(error);
+    const mapped = mapProjectError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }

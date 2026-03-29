@@ -20,7 +20,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       select: { id: true, featured: true },
     });
 
-    revalidatePath("/jobs", "layout");
+    revalidatePath("/projects", "layout");
 
     return ok(image);
   } catch (error) {

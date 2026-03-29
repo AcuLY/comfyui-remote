@@ -6,10 +6,10 @@ export async function listQueueRuns() {
   const runs = await db.positionRun.findMany({
     orderBy: { createdAt: "desc" },
     include: {
-      completeJob: {
+      project: {
         select: { id: true, title: true, presetBindings: true },
       },
-      completeJobPosition: { include: { positionTemplate: true } },
+      projectSection: { include: { positionTemplate: true } },
       images: true,
     },
     take: 50,
@@ -18,7 +18,7 @@ export async function listQueueRuns() {
   // Batch resolve preset names for characterName
   const allPresetIds = new Set<string>();
   for (const run of runs) {
-    const bindings = run.completeJob.presetBindings as PresetBindingJson | null;
+    const bindings = run.project.presetBindings as PresetBindingJson | null;
     if (bindings) for (const b of bindings) allPresetIds.add(b.presetId);
   }
 
@@ -32,7 +32,7 @@ export async function listQueueRuns() {
   }
 
   return runs.map((run) => {
-    const bindings = run.completeJob.presetBindings as PresetBindingJson | null;
+    const bindings = run.project.presetBindings as PresetBindingJson | null;
     let characterName = "—";
     if (bindings) {
       for (const b of bindings) {
@@ -43,8 +43,8 @@ export async function listQueueRuns() {
     return {
       id: run.id,
       characterName,
-      jobTitle: run.completeJob.title,
-      positionName: run.completeJobPosition.positionTemplate?.name ?? "Unknown",
+      projectTitle: run.project.title,
+      sectionName: run.projectSection.positionTemplate?.name ?? "Unknown",
       createdAt: run.createdAt,
       pendingCount: run.images.filter((image) => image.reviewStatus === "pending").length,
       totalCount: run.images.length,

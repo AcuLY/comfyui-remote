@@ -38,8 +38,8 @@ function composePositivePrompt(snapshot: NormalizedResolvedConfigSnapshot) {
     snapshot.character.prompt,
     snapshot.scene?.prompt,
     snapshot.style?.prompt,
-    snapshot.position.templatePrompt,
-    snapshot.position.positivePrompt,
+    snapshot.section.templatePrompt,
+    snapshot.section.positivePrompt,
   ]
     .filter((value): value is string => Boolean(value && value.trim()))
     .join(", ");
@@ -49,7 +49,7 @@ export function normalizeResolvedConfigSnapshot(
   snapshot: WorkerRunSnapshot["resolvedConfigSnapshot"],
 ): NormalizedResolvedConfigSnapshot {
   const root = asJsonObject(snapshot);
-  const job = asJsonObject(root?.job ?? null);
+  const project = asJsonObject(root?.project ?? null);
   const character = asJsonObject(root?.character ?? null);
   const scene = asJsonObject(root?.scene ?? null);
   const style = asJsonObject(root?.style ?? null);
@@ -68,10 +68,10 @@ export function normalizeResolvedConfigSnapshot(
   }
 
   return {
-    job: {
-      id: asString(job?.id),
-      title: asString(job?.title),
-      slug: asString(job?.slug),
+    project: {
+      id: asString(project?.id),
+      title: asString(project?.title),
+      slug: asString(project?.slug),
     },
     character: {
       id: asString(character?.id),
@@ -96,7 +96,7 @@ export function normalizeResolvedConfigSnapshot(
           prompt: asNullableString(style.prompt),
         }
       : null,
-    position: {
+    section: {
       id: asString(position?.id),
       templateId: asString(position?.templateId),
       sortOrder: asInteger(position?.sortOrder, 0),
@@ -134,7 +134,7 @@ export function buildComfyPromptDraft(run: WorkerRunSnapshot): ComfyPromptDraft 
 
   // Prefer composedPrompt from blocks (v0.2), fall back to legacy composition
   const positive = resolvedConfig.composedPrompt?.positive ?? composePositivePrompt(resolvedConfig);
-  const negative = resolvedConfig.composedPrompt?.negative ?? resolvedConfig.position.negativePrompt;
+  const negative = resolvedConfig.composedPrompt?.negative ?? resolvedConfig.section.negativePrompt;
 
   return {
     clientId: `run-${run.runId}`,
@@ -151,11 +151,11 @@ export function buildComfyPromptDraft(run: WorkerRunSnapshot): ComfyPromptDraft 
     metadata: {
       runId: run.runId,
       runIndex: run.runIndex,
-      jobId: resolvedConfig.job.id || run.job.id,
-      jobTitle: resolvedConfig.job.title || run.job.title,
-      positionId: resolvedConfig.position.id || run.position.id,
-      positionName: resolvedConfig.position.name || run.position.name,
-      positionSortOrder: resolvedConfig.position.sortOrder,
+      projectId: resolvedConfig.project.id || run.project.id,
+      projectTitle: resolvedConfig.project.title || run.project.title,
+      sectionId: resolvedConfig.section.id || run.section.id,
+      sectionName: resolvedConfig.section.name || run.section.name,
+      sectionSortOrder: resolvedConfig.section.sortOrder,
     },
   };
 }

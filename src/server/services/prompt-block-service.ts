@@ -62,12 +62,12 @@ function ensurePositiveInteger(value: unknown, fieldName: string): number | unde
   return value;
 }
 
-export async function getPromptBlocks(jobPositionId: string) {
-  return listPromptBlocks(jobPositionId);
+export async function getPromptBlocks(sectionId: string) {
+  return listPromptBlocks(sectionId);
 }
 
 export async function addPromptBlock(
-  jobPositionId: string,
+  sectionId: string,
   body: unknown,
   actorType: ActorType = ActorType.user,
 ) {
@@ -86,8 +86,8 @@ export async function addPromptBlock(
     sortOrder: ensurePositiveInteger(parsed.sortOrder, "sortOrder"),
   };
 
-  const result = await createPromptBlock(jobPositionId, input);
-  audit("PromptBlock", result.id, "create", { jobPositionId, type: input.type }, actorType);
+  const result = await createPromptBlock(sectionId, input);
+  audit("PromptBlock", result.id, "create", { sectionId, type: input.type }, actorType);
   return result;
 }
 
@@ -133,7 +133,7 @@ export async function removePromptBlock(
 }
 
 export async function setPromptBlockOrder(
-  jobPositionId: string,
+  sectionId: string,
   body: unknown,
   actorType: ActorType = ActorType.user,
 ) {
@@ -148,8 +148,8 @@ export async function setPromptBlockOrder(
   }
 
   const blockIds = body.map((id: unknown) => (id as string).trim());
-  const result = await reorderPromptBlocks(jobPositionId, blockIds);
-  audit("PromptBlock", jobPositionId, "reorder", { blockIds }, actorType);
+  const result = await reorderPromptBlocks(sectionId, blockIds);
+  audit("PromptBlock", sectionId, "reorder", { blockIds }, actorType);
   return result;
 }
 

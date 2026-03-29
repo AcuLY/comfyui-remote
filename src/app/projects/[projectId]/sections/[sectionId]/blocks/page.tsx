@@ -6,7 +6,7 @@ import { SectionCard } from "@/components/section-card";
 import { SectionEditor } from "@/components/section-editor";
 import { SectionParamsForm } from "./section-params-form";
 import { SectionNameEditor } from "./section-name-editor";
-import { PositionRunButton } from "@/app/jobs/[jobId]/job-detail-actions";
+import { SectionRunButton } from "@/app/projects/[projectId]/project-detail-actions";
 import type { PromptBlockData } from "@/lib/actions";
 import { getPromptLibraryV2 } from "@/lib/server-data";
 import { parsePositionLoraConfig, parseLoraBindings, generateLoraEntryId, serializePositionLoraConfig } from "@/lib/lora-types";
@@ -16,16 +16,16 @@ import { revalidatePath } from "next/cache";
 export default async function SectionEditPage({
   params,
 }: {
-  params: Promise<{ jobId: string; positionId: string }>;
+  params: Promise<{ projectId: string; sectionId: string }>;
 }) {
-  const { jobId, positionId } = await params;
+  const { projectId, sectionId } = await params;
 
   const [pos, libraryV2] = await Promise.all([
-    prisma.completeJobPosition.findUnique({
-      where: { id: positionId },
+    prisma.projectSection.findUnique({
+      where: { id: sectionId },
       include: {
         positionTemplate: true,
-        completeJob: true,
+        project: true,
         promptBlocks: {
           orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
           select: {
@@ -44,7 +44,7 @@ export default async function SectionEditPage({
     getPromptLibraryV2(),
   ]);
 
-  if (!pos || pos.completeJobId !== jobId) {
+  if (!pos || pos.projectId !== projectId) {
     notFound();
   }
 
@@ -78,18 +78,18 @@ export default async function SectionEditPage({
   // Parse existing LoRA config (v0.3: { characterLora, lora1, lora2 })
   const loraConfig = parsePositionLoraConfig(pos.loraConfig);
 
-  // Auto-populate characterLora from job's presetBindings if not yet present
-  if (pos.completeJob) {
-    const job = pos.completeJob;
+  // Auto-populate characterLora from project's presetBindings if not yet present
+  if (pos.project) {
+    const project = pos.project;
     let characterLoraChanged = false;
 
-    // Character's main loraPath (legacy field on job)
-    if (job.characterLoraPath) {
-      const exists = loraConfig.characterLora.some((e) => e.path === job.characterLoraPath);
+    // Character's main loraPath (legacy field on project)
+    if (project.characterLoraPath) {
+      const exists = loraConfig.characterLora.some((e) => e.path === project.characterLoraPath);
       if (!exists) {
         loraConfig.characterLora.push({
           id: generateLoraEntryId(),
-          path: job.characterLoraPath,
+          path: project.characterLoraPath,
           weight: 1.0,
           enabled: true,
           source: "character",
@@ -101,7 +101,7 @@ export default async function SectionEditPage({
 
     // Character's lora from presetBindings (PromptPreset.lora1)
     type PresetBindingJson = Array<{ categoryId: string; presetId: string }>;
-    const bindings = job.presetBindings as PresetBindingJson | null;
+    const bindings = project.presetBindings as PresetBindingJson | null;
     if (bindings && bindings.length > 0) {
       const presetIds = bindings.map((b) => b.presetId);
       const presets = await prisma.promptPreset.findMany({
@@ -132,8 +132,8 @@ export default async function SectionEditPage({
 
     // Persist if we added new character LoRAs
     if (characterLoraChanged) {
-      await prisma.completeJobPosition.update({
-        where: { id: positionId },
+      await prisma.projectSection.update({
+        where: { id: sectionId },
         data: {
           loraConfig: serializePositionLoraConfig(loraConfig),
         },
@@ -147,24 +147,24 @@ export default async function SectionEditPage({
     const { prisma } = await import("@/lib/prisma");
     const { serializePositionLoraConfig } = await import("@/lib/lora-types");
     
-    await prisma.completeJobPosition.update({
-      where: { id: positionId },
+    await prisma.projectSection.update({
+      where: { id: sectionId },
       data: {
         loraConfig: serializePositionLoraConfig(config),
       },
     });
     
-    revalidatePath(`/jobs/${jobId}/positions/${positionId}/blocks`);
+    revalidatePath(`/projects/${projectId}/sections/${sectionId}/blocks`);
   }
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <Link
-          href={`/jobs/${jobId}`}
+          href={`/projects/${projectId}`}
           className="inline-flex items-center gap-2 text-sm text-zinc-300"
         >
-          <ArrowLeft className="size-4" /> 返回任务详情
+          <ArrowLeft className="size-4" /> 返回项目详情
         </Link>
         <div className="flex items-center gap-2 text-zinc-400">
           <Layers className="size-4" />
@@ -176,21 +176,21 @@ export default async function SectionEditPage({
         title={
           <div className="flex items-center gap-3">
             <span>编辑小节 —</span>
-            <SectionNameEditor sectionId={positionId} initialName={sectionName} />
+            <SectionNameEditor sectionId={sectionId} initialName={sectionName} />
           </div>
         }
         subtitle="管理此小节的运行参数、提示词块和 LoRA 列表。导入词库时会自动添加关联的 LoRA。"
       >
         <div className="space-y-6">
           <SectionParamsForm
-            jobId={jobId}
-            positionId={positionId}
+            projectId={projectId}
+            sectionId={sectionId}
             initialParams={sectionParams}
           />
           <div className="border-t border-white/5 pt-4">
             <div className="mb-3 text-xs font-medium text-zinc-400">提示词块 & LoRA</div>
             <SectionEditor
-              positionId={positionId}
+              sectionId={sectionId}
               initialBlocks={initialBlocks}
               initialLoraConfig={loraConfig}
               libraryV2={libraryV2}
@@ -203,7 +203,7 @@ export default async function SectionEditPage({
       {/* 运行按钮 */}
       <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
         <div className="mb-2 text-xs font-medium text-zinc-400">运行此小节</div>
-        <PositionRunButton positionId={positionId} defaultBatchSize={sectionParams.batchSize} />
+        <SectionRunButton sectionId={sectionId} defaultBatchSize={sectionParams.batchSize} />
       </div>
     </div>
   );

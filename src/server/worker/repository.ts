@@ -5,14 +5,14 @@ import { env } from "@/lib/env";
 import { WorkerRunSnapshot } from "@/server/worker/types";
 
 const workerRunInclude = {
-  completeJob: {
+  project: {
     select: {
       id: true,
       title: true,
       slug: true,
     },
   },
-  completeJobPosition: {
+  projectSection: {
     select: {
       id: true,
       name: true,
@@ -50,31 +50,31 @@ function serializeWorkerRunSnapshot(run: WorkerRunRecord): WorkerRunSnapshot {
     runId: run.id,
     runIndex: run.runIndex,
     status: run.status,
-    workflowId: run.completeJob.slug,
+    workflowId: run.project.slug,
     comfyApiUrl: env.comfyApiUrl,
     outputDir: run.outputDir,
     resolvedConfigSnapshot: run.resolvedConfigSnapshot,
-    job: {
-      id: run.completeJob.id,
-      title: run.completeJob.title,
-      slug: run.completeJob.slug,
+    project: {
+      id: run.project.id,
+      title: run.project.title,
+      slug: run.project.slug,
     },
-    position: {
-      id: run.completeJobPosition.id,
-      name: run.completeJobPosition.name ?? run.completeJobPosition.positionTemplate?.name ?? `section_${run.completeJobPosition.sortOrder + 1}`,
-      slug: run.completeJobPosition.positionTemplate?.slug ?? `section_${run.completeJobPosition.sortOrder + 1}`,
+    section: {
+      id: run.projectSection.id,
+      name: run.projectSection.name ?? run.projectSection.positionTemplate?.name ?? `section_${run.projectSection.sortOrder + 1}`,
+      slug: run.projectSection.positionTemplate?.slug ?? `section_${run.projectSection.sortOrder + 1}`,
     },
   };
 }
 
-async function updateCompleteJobStatus(
+async function updateProjectStatus(
   tx: Prisma.TransactionClient,
-  jobId: string,
+  projectId: string,
 ) {
   const activeRuns = await tx.positionRun.groupBy({
     by: ["status"],
     where: {
-      completeJobId: jobId,
+      projectId: projectId,
       status: { in: [RunStatus.queued, RunStatus.running] },
     },
     _count: {
@@ -94,9 +94,9 @@ async function updateCompleteJobStatus(
     nextStatus = JobStatus.queued;
   } else {
     const latestRunIds = (
-      await tx.completeJobPosition.findMany({
+      await tx.projectSection.findMany({
         where: {
-          completeJobId: jobId,
+          projectId: projectId,
           enabled: true,
           latestRunId: { not: null },
         },
@@ -105,7 +105,7 @@ async function updateCompleteJobStatus(
         },
       })
     )
-      .map((position) => position.latestRunId)
+      .map((s) => s.latestRunId)
       .filter((runId): runId is string => runId !== null);
 
     if (latestRunIds.length > 0) {
@@ -135,13 +135,13 @@ async function updateCompleteJobStatus(
     }
   }
 
-  const updatedJob = await tx.completeJob.update({
-    where: { id: jobId },
+  const updatedProject = await tx.project.update({
+    where: { id: projectId },
     data: { status: nextStatus },
     select: { status: true },
   });
 
-  return updatedJob.status;
+  return updatedProject.status;
 }
 
 export async function listQueuedWorkerRuns(limit = 10): Promise<WorkerRunSnapshot[]> {
@@ -223,7 +223,7 @@ export async function completeWorkerRun(
         errorMessage: true,
         outputDir: true,
         comfyPromptId: true,
-        completeJobId: true,
+        projectId: true,
       },
     });
 
@@ -231,7 +231,7 @@ export async function completeWorkerRun(
       throw new Error("WORKER_RUN_NOT_FOUND");
     }
 
-    await updateCompleteJobStatus(tx, finalizedRun.completeJobId);
+    await updateProjectStatus(tx, finalizedRun.projectId);
 
     return {
       runId: finalizedRun.id,

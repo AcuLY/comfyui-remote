@@ -1,7 +1,7 @@
 /**
  * Workflow Prompt Builder (v0.3)
  *
- * Fills the standard `docs/workflow.api.json` template with per-position
+ * Fills the standard `docs/workflow.api.json` template with per-section
  * parameters (prompts, dimensions, LoRAs, KSampler settings, output path)
  * and returns a ready-to-submit ComfyUI API prompt graph.
  *
@@ -49,7 +49,7 @@ export type WorkflowBuildInput = {
   lora2List: LoraBinding[];
   ksampler1: KSamplerParams;
   ksampler2: KSamplerParams;
-  /** e.g. "MyJob/1.close_up_shot" */
+  /** e.g. "MyProject/1.close_up_shot" */
   outputPath: string;
 };
 
@@ -133,7 +133,7 @@ function resolveSeed(params: KSamplerParams): number {
 // ---------------------------------------------------------------------------
 
 /**
- * Fill the workflow template with position-specific parameters.
+ * Fill the workflow template with section-specific parameters.
  *
  * The caller must provide a deep-cloned `workflowTemplate` — this function
  * mutates it in-place and returns it.

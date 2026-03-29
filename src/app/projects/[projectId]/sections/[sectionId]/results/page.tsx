@@ -2,20 +2,20 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, AlertCircle } from "lucide-react";
 import { SectionCard } from "@/components/section-card";
-import { getPositionResults } from "@/lib/server-data";
+import { getSectionResults } from "@/lib/server-data";
 import { ResultsGrid } from "./results-grid";
 
 export const dynamic = "force-dynamic";
 
-export default async function PositionResultsPage({
+export default async function SectionResultsPage({
   params,
 }: {
-  params: Promise<{ jobId: string; positionId: string }>;
+  params: Promise<{ projectId: string; sectionId: string }>;
 }) {
-  const { jobId, positionId } = await params;
-  const data = await getPositionResults(positionId);
+  const { projectId, sectionId } = await params;
+  const data = await getSectionResults(sectionId);
 
-  if (!data || data.jobId !== jobId) {
+  if (!data || data.projectId !== projectId) {
     notFound();
   }
 
@@ -26,10 +26,10 @@ export default async function PositionResultsPage({
       {/* Header */}
       <div className="flex items-center justify-between gap-3">
         <Link
-          href={`/jobs/${jobId}`}
+          href={`/projects/${projectId}`}
           className="inline-flex items-center gap-2 text-sm text-zinc-300"
         >
-          <ArrowLeft className="size-4" /> 返回任务详情
+          <ArrowLeft className="size-4" /> 返回项目详情
         </Link>
         {data.totalPending > 0 && data.pendingRunId && (
           <Link
@@ -44,8 +44,8 @@ export default async function PositionResultsPage({
 
       {/* Title */}
       <SectionCard
-        title={`${data.positionName} — 结果`}
-        subtitle={`${data.jobTitle} · 共 ${data.runs.length} 次运行 · ${totalImages} 张图片`}
+        title={`${data.sectionName} — 结果`}
+        subtitle={`${data.projectTitle} · 共 ${data.runs.length} 次运行 · ${totalImages} 张图片`}
       >
         {data.runs.length === 0 ? (
           <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-8 text-center text-sm text-zinc-500">

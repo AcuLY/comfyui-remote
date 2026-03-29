@@ -43,7 +43,7 @@ async function getRunReviewBase(runId: string) {
       errorMessage: true,
       comfyPromptId: true,
       resolvedConfigSnapshot: true,
-      completeJob: {
+      project: {
         select: {
           id: true,
           title: true,
@@ -52,7 +52,7 @@ async function getRunReviewBase(runId: string) {
           presetBindings: true,
         },
       },
-      completeJobPosition: {
+      projectSection: {
         select: {
           id: true,
           sortOrder: true,
@@ -93,7 +93,7 @@ export async function getRunReviewGroup(runId: string) {
 
   // Resolve characterName from presetBindings
   type PresetBindingJson = Array<{ categoryId: string; presetId: string }>;
-  const bindings = run.completeJob.presetBindings as PresetBindingJson | null;
+  const bindings = run.project.presetBindings as PresetBindingJson | null;
   let characterName = "—";
   if (bindings && bindings.length > 0) {
     const presetIds = bindings.map((b) => b.presetId);
@@ -118,11 +118,11 @@ export async function getRunReviewGroup(runId: string) {
 
   return {
     id: run.id,
-    jobId: run.completeJob.id,
-    jobPositionId: run.completeJobPosition.id,
-    title: run.completeJob.title,
+    projectId: run.project.id,
+    sectionId: run.projectSection.id,
+    title: run.project.title,
     characterName,
-    positionName: run.completeJobPosition.positionTemplate?.name ?? "Unknown",
+    sectionName: run.projectSection.positionTemplate?.name ?? "Unknown",
     createdAt: run.createdAt,
     pendingCount: images.filter((image) => image.status === ReviewStatus.pending).length,
     totalCount: images.length,
@@ -135,7 +135,7 @@ export async function getRunAgentContext(runId: string) {
 
   // Resolve character info from presetBindings
   type PresetBindingJson = Array<{ categoryId: string; presetId: string }>;
-  const bindings = run.completeJob.presetBindings as PresetBindingJson | null;
+  const bindings = run.project.presetBindings as PresetBindingJson | null;
   let characterInfo: { id: string; name: string; slug: string } | null = null;
   if (bindings && bindings.length > 0) {
     const presetIds = bindings.map((b) => b.presetId);
@@ -178,17 +178,17 @@ export async function getRunAgentContext(runId: string) {
       comfyPromptId: run.comfyPromptId,
       resolvedConfigSnapshot: run.resolvedConfigSnapshot,
     },
-    job: {
-      id: run.completeJob.id,
-      title: run.completeJob.title,
-      slug: run.completeJob.slug,
-      status: run.completeJob.status,
+    project: {
+      id: run.project.id,
+      title: run.project.title,
+      slug: run.project.slug,
+      status: run.project.status,
       character: characterInfo,
     },
-    position: {
-      id: run.completeJobPosition.id,
-      sortOrder: run.completeJobPosition.sortOrder,
-      template: run.completeJobPosition.positionTemplate,
+    section: {
+      id: run.projectSection.id,
+      sortOrder: run.projectSection.sortOrder,
+      template: run.projectSection.positionTemplate,
     },
     summary: imageSummary,
     images: run.images.map((image, index) => ({
