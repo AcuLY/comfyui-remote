@@ -10,69 +10,7 @@ datasource db {
 // Note: SQLite does not enforce enum values at the database level.
 // Prisma handles validation at the application layer.
 
-// ── Legacy tables (kept for migration, will be removed later) ──
-
-model Character {
-  id              String        @id @default(cuid())
-  name            String
-  slug            String        @unique
-  prompt          String
-  negativePrompt  String?
-  loraPath        String
-  loraBindings    Json?
-  notes           String?
-  isActive        Boolean       @default(true)
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-}
-
-model ScenePreset {
-  id              String        @id @default(cuid())
-  name            String
-  slug            String        @unique
-  prompt          String
-  negativePrompt  String?
-  notes           String?
-  isActive        Boolean       @default(true)
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-}
-
-model StylePreset {
-  id              String        @id @default(cuid())
-  name            String
-  slug            String        @unique
-  prompt          String
-  negativePrompt  String?
-  notes           String?
-  isActive        Boolean       @default(true)
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-}
-
-model PositionTemplate {
-  id                  String            @id @default(cuid())
-  name                String
-  slug                String            @unique
-  prompt              String
-  negativePrompt      String?
-  lora1               Json?
-  lora2               Json?
-  defaultAspectRatio  String?
-  defaultShortSidePx  Int?
-  defaultBatchSize    Int?              @default(1)
-  defaultSeedPolicy1  String?
-  defaultSeedPolicy2  String?
-  defaultKsampler1    Json?
-  defaultKsampler2    Json?
-  defaultParams       Json?
-  enabled             Boolean           @default(true)
-  createdAt           DateTime          @default(now())
-  updatedAt           DateTime          @updatedAt
-  sections            ProjectSection[]
-}
-
-// ── New unified prompt system ──
+// ── Unified prompt system ──
 
 model PromptCategory {
   id                  String          @id @default(cuid())
@@ -118,7 +56,7 @@ model Project {
   slug                  String                @unique
   status                String                @default("draft")
   presetBindings        Json?                 // [{ categoryId, presetId }]
-  projectLevelOverrides Json?                 @map("jobLevelOverrides")
+  projectLevelOverrides Json?
   notes                 String?
   createdAt             DateTime              @default(now())
   updatedAt             DateTime              @updatedAt
@@ -126,14 +64,12 @@ model Project {
   runs                  PositionRun[]
   revisions             ProjectRevision[]
 
-  @@map("CompleteJob")
   @@index([status, updatedAt])
 }
 
 model ProjectSection {
   id                    String                @id @default(cuid())
-  projectId             String                @map("completeJobId")
-  positionTemplateId    String?
+  projectId             String
   name                  String?
   sortOrder             Int                   @default(0)
   enabled               Boolean               @default(true)
@@ -147,23 +83,21 @@ model ProjectSection {
   ksampler1             Json?
   ksampler2             Json?
   upscaleFactor         Float?
-  loraConfig            Json?
+  loraConfig            Json?                 // { lora1: LoraEntry[], lora2: LoraEntry[] }
   extraParams           Json?
   latestRunId           String?
   createdAt             DateTime              @default(now())
   updatedAt             DateTime              @updatedAt
   project               Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  positionTemplate      PositionTemplate?     @relation(fields: [positionTemplateId], references: [id], onDelete: SetNull)
   runs                  PositionRun[]
   promptBlocks          PromptBlock[]
 
-  @@map("CompleteJobPosition")
-  @@index([projectId, sortOrder], map: "CompleteJobPosition_completeJobId_sortOrder_idx")
+  @@index([projectId, sortOrder])
 }
 
 model PromptBlock {
   id                    String                @id @default(cuid())
-  projectSectionId      String                @map("completeJobPositionId")
+  projectSectionId      String
   type                  String                @default("custom")
   sourceId              String?
   categoryId            String?               // FK to PromptCategory
@@ -175,13 +109,13 @@ model PromptBlock {
   updatedAt             DateTime              @updatedAt
   projectSection        ProjectSection        @relation(fields: [projectSectionId], references: [id], onDelete: Cascade)
 
-  @@index([projectSectionId, sortOrder], map: "PromptBlock_completeJobPositionId_sortOrder_idx")
+  @@index([projectSectionId, sortOrder])
 }
 
 model PositionRun {
   id                    String                @id @default(cuid())
-  projectId             String                @map("completeJobId")
-  projectSectionId      String                @map("completeJobPositionId")
+  projectId             String
+  projectSectionId      String
   runIndex              Int                   @default(1)
   status                String                @default("queued")
   resolvedConfigSnapshot Json
@@ -197,8 +131,8 @@ model PositionRun {
   images                ImageResult[]
 
   @@index([status, createdAt])
-  @@index([projectId, createdAt], map: "PositionRun_completeJobId_createdAt_idx")
-  @@index([projectSectionId, createdAt], map: "PositionRun_completeJobPositionId_createdAt_idx")
+  @@index([projectId, createdAt])
+  @@index([projectSectionId, createdAt])
 }
 
 model ImageResult {
@@ -252,16 +186,15 @@ model LoraAsset {
 
 model ProjectRevision {
   id                    String      @id @default(cuid())
-  projectId             String      @map("completeJobId")
+  projectId             String
   revisionNumber        Int
   snapshot              Json
   createdAt             DateTime    @default(now())
   actorType             String      @default("user")
   project               Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
-  @@map("JobRevision")
-  @@unique([projectId, revisionNumber], map: "JobRevision_completeJobId_revisionNumber_key")
-  @@index([projectId, createdAt], map: "JobRevision_completeJobId_createdAt_idx")
+  @@unique([projectId, revisionNumber])
+  @@index([projectId, createdAt])
 }
 
 model AuditLog {

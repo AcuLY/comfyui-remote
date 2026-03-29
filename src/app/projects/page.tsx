@@ -28,7 +28,7 @@ export default async function ProjectsPage() {
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-semibold text-white">{project.title}</div>
-                  <div className="mt-1 text-xs text-zinc-400">{project.characterName} · {project.sceneName} · {project.styleName}</div>
+                  <div className="mt-1 text-xs text-zinc-400">{project.presetNames.join(" · ") || "无预设"}</div>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   <span className="rounded-full border border-white/10 px-2 py-1 text-[11px] text-zinc-300">{project.status}</span>

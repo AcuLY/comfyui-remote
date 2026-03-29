@@ -8,10 +8,6 @@ import type { ProjectFormCategory } from "@/lib/server-data";
 
 type Props = {
   categories: ProjectFormCategory[];
-  // Legacy props (kept for backward compat but unused in new form)
-  characters?: unknown[];
-  scenes?: unknown[];
-  styles?: unknown[];
 };
 
 export function ProjectForm({ categories }: Props) {

@@ -92,209 +92,15 @@ async function buildSeedImages(
   return entries;
 }
 
-/** Generate initial PromptBlocks for a section using preset/custom types. */
-async function generatePromptBlocks(
-  sectionId: string,
-  blocks: Array<{
-    type: "preset" | "custom";
-    label: string;
-    prompt: string;
-    negativePrompt?: string | null;
-    sourceId?: string;
-  }>,
-) {
-  for (let i = 0; i < blocks.length; i++) {
-    const block = blocks[i];
-    await prisma.promptBlock.create({
-      data: {
-        projectSectionId: sectionId,
-        type: block.type,
-        sourceId: block.sourceId ?? null,
-        label: block.label,
-        positive: block.prompt,
-        negative: block.negativePrompt ?? null,
-        sortOrder: i,
-      },
-    });
-  }
-}
-
 async function main() {
   console.log("🌱 Seeding database...");
 
   // Clean up previous seed data to avoid unique constraint conflicts.
-  // Order matters: trash records → image results → position runs → prompt blocks.
   await prisma.trashRecord.deleteMany({});
   await prisma.imageResult.deleteMany({});
   await prisma.positionRun.deleteMany({});
   await prisma.promptBlock.deleteMany({});
   console.log("   Cleaned old run / image / trash / prompt-block data.");
-
-  // --- PromptCategories & PromptPresets ---
-  const catCharacter = await prisma.promptCategory.upsert({
-    where: { slug: "character" },
-    update: {},
-    create: {
-      name: "角色",
-      slug: "character",
-      color: "sky",
-      icon: "User",
-      sortOrder: 0,
-    },
-  });
-
-  const catScene = await prisma.promptCategory.upsert({
-    where: { slug: "scene" },
-    update: {},
-    create: {
-      name: "场景",
-      slug: "scene",
-      color: "emerald",
-      icon: "MapPin",
-      sortOrder: 1,
-    },
-  });
-
-  const catStyle = await prisma.promptCategory.upsert({
-    where: { slug: "style" },
-    update: {},
-    create: {
-      name: "风格",
-      slug: "style",
-      color: "violet",
-      icon: "Palette",
-      sortOrder: 2,
-    },
-  });
-
-  const catPose = await prisma.promptCategory.upsert({
-    where: { slug: "pose" },
-    update: {},
-    create: {
-      name: "姿势",
-      slug: "pose",
-      color: "amber",
-      icon: "LayoutGrid",
-      sortOrder: 3,
-    },
-  });
-
-  const presetMiku = await prisma.promptPreset.upsert({
-    where: { id: "seed-preset-miku" },
-    update: {},
-    create: {
-      id: "seed-preset-miku",
-      categoryId: catCharacter.id,
-      name: "Nakano Miku",
-      prompt: "miku, long hair, calm expression, school uniform, headphones around neck",
-      negativePrompt: null,
-      sortOrder: 0,
-    },
-  });
-
-  const presetTangtang = await prisma.promptPreset.upsert({
-    where: { id: "seed-preset-tangtang" },
-    update: {},
-    create: {
-      id: "seed-preset-tangtang",
-      categoryId: catCharacter.id,
-      name: "Tangtang",
-      prompt: "tangtang, short hair, bright eyes, casual clothing, cheerful",
-      negativePrompt: null,
-      sortOrder: 1,
-    },
-  });
-
-  const presetParkBench = await prisma.promptPreset.upsert({
-    where: { id: "seed-preset-park-bench" },
-    update: {},
-    create: {
-      id: "seed-preset-park-bench",
-      categoryId: catScene.id,
-      name: "Park bench",
-      prompt: "park bench, spring afternoon, cherry blossoms, outdoor, natural sunlight",
-      negativePrompt: null,
-      sortOrder: 0,
-    },
-  });
-
-  const presetRiverside = await prisma.promptPreset.upsert({
-    where: { id: "seed-preset-riverside" },
-    update: {},
-    create: {
-      id: "seed-preset-riverside",
-      categoryId: catScene.id,
-      name: "Riverside",
-      prompt: "riverside, calm water, willow tree, warm sunset, serene atmosphere",
-      negativePrompt: null,
-      sortOrder: 1,
-    },
-  });
-
-  const presetSoftDaylight = await prisma.promptPreset.upsert({
-    where: { id: "seed-preset-soft-daylight" },
-    update: {},
-    create: {
-      id: "seed-preset-soft-daylight",
-      categoryId: catStyle.id,
-      name: "Soft daylight",
-      prompt: "soft daylight, anime cinematic, detailed shading, warm color palette, depth of field",
-      negativePrompt: null,
-      sortOrder: 0,
-    },
-  });
-
-  const presetAnimeCinematic = await prisma.promptPreset.upsert({
-    where: { id: "seed-preset-anime-cinematic" },
-    update: {},
-    create: {
-      id: "seed-preset-anime-cinematic",
-      categoryId: catStyle.id,
-      name: "Anime cinematic",
-      prompt: "anime cinematic, dramatic lighting, vivid colors, film grain, high contrast",
-      negativePrompt: null,
-      sortOrder: 1,
-    },
-  });
-
-  const presetStanding = await prisma.promptPreset.upsert({
-    where: { id: "seed-preset-standing" },
-    update: {},
-    create: {
-      id: "seed-preset-standing",
-      categoryId: catPose.id,
-      name: "Standing",
-      prompt: "standing pose, full body, looking at viewer, arms at sides",
-      negativePrompt: "bad anatomy, extra limbs, blurry",
-      sortOrder: 0,
-    },
-  });
-
-  const presetWatching = await prisma.promptPreset.upsert({
-    where: { id: "seed-preset-watching" },
-    update: {},
-    create: {
-      id: "seed-preset-watching",
-      categoryId: catPose.id,
-      name: "Watching",
-      prompt: "watching pose, upper body, looking away, thoughtful expression",
-      negativePrompt: "bad anatomy, extra limbs, blurry",
-      sortOrder: 1,
-    },
-  });
-
-  const presetBenchSit = await prisma.promptPreset.upsert({
-    where: { id: "seed-preset-bench-sit" },
-    update: {},
-    create: {
-      id: "seed-preset-bench-sit",
-      categoryId: catPose.id,
-      name: "Bench sit",
-      prompt: "sitting on bench, relaxed pose, legs crossed, upper body",
-      negativePrompt: "bad anatomy, extra limbs, blurry",
-      sortOrder: 2,
-    },
-  });
 
   // --- Projects ---
   const jobMiku = await prisma.project.upsert({
@@ -307,47 +113,6 @@ async function main() {
     },
   });
 
-  let mikuStanding = await prisma.projectSection.findFirst({
-    where: { projectId: jobMiku.id, sortOrder: 0 },
-  });
-  if (!mikuStanding) {
-    mikuStanding = await prisma.projectSection.create({
-      data: {
-        projectId: jobMiku.id,
-        sortOrder: 0,
-        batchSize: 8,
-        aspectRatio: "3:4",
-      },
-    });
-  }
-  await generatePromptBlocks(mikuStanding.id, [
-    { type: "preset", label: presetMiku.name, prompt: presetMiku.prompt, sourceId: presetMiku.id },
-    { type: "preset", label: presetParkBench.name, prompt: presetParkBench.prompt, sourceId: presetParkBench.id },
-    { type: "preset", label: presetSoftDaylight.name, prompt: presetSoftDaylight.prompt, sourceId: presetSoftDaylight.id },
-    { type: "preset", label: presetStanding.name, prompt: presetStanding.prompt, negativePrompt: presetStanding.negativePrompt, sourceId: presetStanding.id },
-  ]);
-
-  let mikuWatching = await prisma.projectSection.findFirst({
-    where: { projectId: jobMiku.id, sortOrder: 1 },
-  });
-  if (!mikuWatching) {
-    mikuWatching = await prisma.projectSection.create({
-      data: {
-        projectId: jobMiku.id,
-        sortOrder: 1,
-        batchSize: 8,
-        aspectRatio: "3:4",
-      },
-    });
-  }
-  await generatePromptBlocks(mikuWatching.id, [
-    { type: "preset", label: presetMiku.name, prompt: presetMiku.prompt, sourceId: presetMiku.id },
-    { type: "preset", label: presetParkBench.name, prompt: presetParkBench.prompt, sourceId: presetParkBench.id },
-    { type: "preset", label: presetSoftDaylight.name, prompt: presetSoftDaylight.prompt, sourceId: presetSoftDaylight.id },
-    { type: "preset", label: presetWatching.name, prompt: presetWatching.prompt, negativePrompt: presetWatching.negativePrompt, sourceId: presetWatching.id },
-  ]);
-
-  // --- Project: Tangtang park test ---
   const jobTangtang = await prisma.project.upsert({
     where: { slug: "tangtang-park-test" },
     update: {},
@@ -358,25 +123,84 @@ async function main() {
     },
   });
 
+  // --- Sections ---
+  let mikuStanding = await prisma.projectSection.findFirst({
+    where: { projectId: jobMiku.id, name: "Standing" },
+  });
+  if (!mikuStanding) {
+    mikuStanding = await prisma.projectSection.create({
+      data: {
+        projectId: jobMiku.id,
+        sortOrder: 0,
+        name: "Standing",
+        batchSize: 8,
+        aspectRatio: "3:4",
+      },
+    });
+  }
+
+  await prisma.promptBlock.create({
+    data: {
+      projectSectionId: mikuStanding.id,
+      type: "custom",
+      label: "Standing prompt",
+      positive: "standing pose, full body, looking at viewer, arms at sides",
+      negative: "bad anatomy, extra limbs, blurry",
+      sortOrder: 0,
+    },
+  });
+
+  let mikuWatching = await prisma.projectSection.findFirst({
+    where: { projectId: jobMiku.id, name: "Watching" },
+  });
+  if (!mikuWatching) {
+    mikuWatching = await prisma.projectSection.create({
+      data: {
+        projectId: jobMiku.id,
+        sortOrder: 1,
+        name: "Watching",
+        batchSize: 8,
+        aspectRatio: "3:4",
+      },
+    });
+  }
+
+  await prisma.promptBlock.create({
+    data: {
+      projectSectionId: mikuWatching.id,
+      type: "custom",
+      label: "Watching prompt",
+      positive: "watching pose, upper body, looking away, thoughtful expression",
+      negative: "bad anatomy, extra limbs, blurry",
+      sortOrder: 0,
+    },
+  });
+
   let tangtangBench = await prisma.projectSection.findFirst({
-    where: { projectId: jobTangtang.id, sortOrder: 0 },
+    where: { projectId: jobTangtang.id, name: "Bench sit" },
   });
   if (!tangtangBench) {
     tangtangBench = await prisma.projectSection.create({
       data: {
         projectId: jobTangtang.id,
         sortOrder: 0,
+        name: "Bench sit",
         batchSize: 6,
         aspectRatio: "3:4",
       },
     });
   }
-  await generatePromptBlocks(tangtangBench.id, [
-    { type: "preset", label: presetTangtang.name, prompt: presetTangtang.prompt, sourceId: presetTangtang.id },
-    { type: "preset", label: presetRiverside.name, prompt: presetRiverside.prompt, sourceId: presetRiverside.id },
-    { type: "preset", label: presetAnimeCinematic.name, prompt: presetAnimeCinematic.prompt, sourceId: presetAnimeCinematic.id },
-    { type: "preset", label: presetBenchSit.name, prompt: presetBenchSit.prompt, negativePrompt: presetBenchSit.negativePrompt, sourceId: presetBenchSit.id },
-  ]);
+
+  await prisma.promptBlock.create({
+    data: {
+      projectSectionId: tangtangBench.id,
+      type: "custom",
+      label: "Bench sit prompt",
+      positive: "sitting on bench, relaxed pose, legs crossed, upper body",
+      negative: "bad anatomy, extra limbs, blurry",
+      sortOrder: 0,
+    },
+  });
 
   // --- PositionRuns + ImageResults ---
   const mikuStandingImages = await buildSeedImages(
@@ -516,14 +340,12 @@ async function main() {
   }
 
   console.log("✅ Seed complete!");
-  console.log(`   Categories: ${catCharacter.name}, ${catScene.name}, ${catStyle.name}, ${catPose.name}`);
-  console.log(`   Presets: ${presetMiku.name}, ${presetTangtang.name}, ${presetParkBench.name}, ${presetRiverside.name}, ${presetSoftDaylight.name}, ${presetAnimeCinematic.name}, ${presetStanding.name}, ${presetWatching.name}, ${presetBenchSit.name}`);
   console.log(`   Jobs: ${jobMiku.title}, ${jobTangtang.title}`);
-  console.log(`   Sections: ${mikuStanding.id.split("-")[0]}..${mikuWatching.id.split("-")[0]}, ${tangtangBench.id.split("-")[0]}..`);
+  console.log(`   Sections: 3`);
   console.log(`   Runs: 3 (with 27 images total)`);
   console.log(`   Trash records: 2`);
   console.log(`   LoRA assets: 2`);
-  console.log(`   PromptBlocks: 4 per section (12 total)`);
+  console.log(`   PromptBlocks: 1 per section (3 total)`);
 
   await prisma.$disconnect();
 }

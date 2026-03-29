@@ -10,10 +10,6 @@ import { BatchSizeQuickFill } from "@/components/batch-size-quick-fill";
 type Props = {
   project: ProjectEditData;
   categories: ProjectFormCategory[];
-  // Legacy props (kept so old callers don't break)
-  characters?: unknown[];
-  scenes?: unknown[];
-  styles?: unknown[];
 };
 
 export function ProjectEditForm({ project, categories }: Props) {

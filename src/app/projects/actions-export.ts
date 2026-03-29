@@ -53,24 +53,21 @@ export async function exportProjectImages(projectId: string): Promise<ExportResu
     return { success: false, message: "项目不存在" };
   }
 
-  // Resolve characterName from presetBindings for directory naming
+  // Resolve export name from presetBindings for directory naming
   type PresetBindingJson = Array<{ categoryId: string; presetId: string }>;
   const bindings = project.presetBindings as PresetBindingJson | null;
-  let characterName = project.title; // fallback to project title
+  let exportName = project.title; // fallback to project title
   if (bindings && bindings.length > 0) {
     const presetIds = bindings.map((b) => b.presetId);
     const presets = await prisma.promptPreset.findMany({
       where: { id: { in: presetIds } },
-      select: { id: true, name: true, category: { select: { slug: true } } },
+      select: { id: true, name: true },
     });
-    for (const preset of presets) {
-      if (preset.category.slug === "character") {
-        characterName = preset.name;
-        break;
-      }
+    if (presets.length > 0) {
+      exportName = presets[0].name;
     }
   }
-  const exportDir = join(EXPORT_ROOT, characterName);
+  const exportDir = join(EXPORT_ROOT, exportName);
   const pixivDir = join(exportDir, "pixiv");
   const tempJpgDir = join(exportDir, "_temp_jpg");
 
@@ -100,7 +97,7 @@ export async function exportProjectImages(projectId: string): Promise<ExportResu
 
   for (const img of allKept) {
     const sourcePath = resolve(process.cwd(), img.filePath);
-    const jpgName = `${characterName}_${String(globalIndex).padStart(2, "0")}.jpg`;
+    const jpgName = `${exportName}_${String(globalIndex).padStart(2, "0")}.jpg`;
     const jpgPath = join(tempJpgDir, jpgName);
 
     try {
@@ -114,7 +111,7 @@ export async function exportProjectImages(projectId: string): Promise<ExportResu
 
     // 5. If featured, also write to pixiv/
     if (img.featured) {
-      const pixivName = `${characterName}_${String(pixivIndex).padStart(2, "0")}.jpg`;
+      const pixivName = `${exportName}_${String(pixivIndex).padStart(2, "0")}.jpg`;
       const pixivPath = join(pixivDir, pixivName);
       try {
         await sharp(sourcePath).jpeg({ quality: 90 }).toFile(pixivPath);
@@ -128,7 +125,7 @@ export async function exportProjectImages(projectId: string): Promise<ExportResu
   }
 
   // 6. Create zip from temp JPGs
-  const zipPath = join(exportDir, `${characterName}.zip`);
+  const zipPath = join(exportDir, `${exportName}.zip`);
   await createZip(tempJpgDir, zipPath);
 
   // 7. Clean up temp JPG directory
@@ -145,7 +142,7 @@ export async function exportProjectImages(projectId: string): Promise<ExportResu
 
   return {
     success: true,
-    message: `导出完成：${allKept.length} 张图片 → ${characterName}.zip${pixivIndex > 1 ? `，${pixivIndex - 1} 张精选 → pixiv/` : ""}`,
+    message: `导出完成：${allKept.length} 张图片 → ${exportName}.zip${pixivIndex > 1 ? `，${pixivIndex - 1} 张精选 → pixiv/` : ""}`,
     path: exportDir,
   };
 }

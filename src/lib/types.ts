@@ -2,7 +2,7 @@ export type ReviewStatus = "pending" | "kept" | "trashed";
 
 export type QueueRun = {
   id: string;
-  characterName: string;
+  presetNames: string[];
   projectTitle: string;
   sectionName: string;
   createdAt: string;
@@ -14,7 +14,7 @@ export type QueueRun = {
 
 export type RunningRun = {
   id: string;
-  characterName: string;
+  presetNames: string[];
   projectTitle: string;
   sectionName: string;
   startedAt: string;
@@ -23,7 +23,7 @@ export type RunningRun = {
 
 export type FailedRun = {
   id: string;
-  characterName: string;
+  presetNames: string[];
   projectTitle: string;
   sectionName: string;
   errorMessage: string | null;
@@ -42,7 +42,7 @@ export type ReviewGroup = {
   projectId?: string;
   projectSectionId?: string;
   title: string;
-  characterName: string;
+  presetNames: string[];
   sectionName: string;
   createdAt: string;
   pendingCount: number;
@@ -53,9 +53,7 @@ export type ReviewGroup = {
 export type ProjectCard = {
   id: string;
   title: string;
-  characterName: string;
-  sceneName: string;
-  styleName: string;
+  presetNames: string[];
   status: "draft" | "queued" | "running" | "partial_done" | "done" | "failed";
   updatedAt: string;
   sectionCount: number;

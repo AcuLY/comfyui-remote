@@ -19,7 +19,6 @@ const log = createLogger({ module: "project-service" });
 
 type CreateProjectRequestBody = {
   title?: unknown;
-  positionTemplateIds?: unknown;
   notes?: unknown;
 };
 
@@ -50,7 +49,6 @@ type UpdateProjectSectionRequestBody = {
 
 const PROJECT_CREATE_FIELDS = [
   "title",
-  "positionTemplateIds",
   "notes",
 ] as const;
 
@@ -192,53 +190,6 @@ function normalizeNullableNotesField(value: unknown, fieldName: string) {
   return normalizedValue ? normalizedValue : null;
 }
 
-function normalizePositionTemplateIds(value: unknown): string[] | undefined {
-  if (value === undefined || value === null) {
-    return undefined;
-  }
-
-  if (!Array.isArray(value)) {
-    throw new ProjectServiceError("positionTemplateIds must be an array", 400);
-  }
-
-  if (value.length === 0) {
-    return undefined;
-  }
-
-  const normalizedIds = value.map((entry, index) => {
-    if (typeof entry !== "string") {
-      throw new ProjectServiceError(`positionTemplateIds[${index}] must be a string`, 400);
-    }
-
-    const normalizedValue = entry.trim();
-
-    if (!normalizedValue) {
-      throw new ProjectServiceError(`positionTemplateIds[${index}] must not be empty`, 400);
-    }
-
-    return normalizedValue;
-  });
-  const seenIds = new Set<string>();
-  const duplicateIds: string[] = [];
-
-  for (const id of normalizedIds) {
-    if (seenIds.has(id)) {
-      duplicateIds.push(id);
-      continue;
-    }
-
-    seenIds.add(id);
-  }
-
-  if (duplicateIds.length > 0) {
-    throw new ProjectServiceError("positionTemplateIds must not contain duplicates", 400, {
-      duplicatePositionTemplateIds: [...new Set(duplicateIds)],
-    });
-  }
-
-  return normalizedIds;
-}
-
 function normalizeOptionalSearch(value: unknown) {
   if (value === undefined) {
     return undefined;
@@ -349,7 +300,6 @@ export async function createProject(body: unknown, actorType: ActorType = ActorT
 
   const input = {
     title: normalizeRequiredStringField(parsedBody.title, "title"),
-    positionTemplateIds: normalizePositionTemplateIds(parsedBody.positionTemplateIds),
     notes: normalizeNullableNotesField(parsedBody.notes, "notes"),
   };
 
@@ -517,10 +467,6 @@ export function mapProjectError(error: unknown) {
   switch (error.message) {
     case "JOB_NOT_FOUND":
       return { message: "Project not found", status: 404 };
-    case "POSITION_TEMPLATE_NOT_FOUND":
-      return { message: "Position template not found", status: 404 };
-    case "POSITION_TEMPLATE_DISABLED":
-      return { message: "Position template is disabled", status: 409 };
     case "JOB_POSITION_NOT_FOUND":
       return { message: "Section not found", status: 404 };
     case "JOB_HAS_NO_ENABLED_POSITIONS":

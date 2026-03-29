@@ -37,9 +37,9 @@ async function main() {
     },
   });
 
-  // --- Project Sections ---
+  // --- Sections ---
   let mikuStanding = await prisma.projectSection.findFirst({
-    where: { projectId: mikuJob.id, sortOrder: 1 },
+    where: { projectId: mikuJob.id, name: "Standing" },
   });
   if (!mikuStanding) {
     mikuStanding = await prisma.projectSection.create({
@@ -47,6 +47,7 @@ async function main() {
         projectId: mikuJob.id,
         sortOrder: 1,
         enabled: true,
+        name: "Standing",
         batchSize: 9,
         aspectRatio: "3:4",
         seedPolicy1: "random",
@@ -56,7 +57,7 @@ async function main() {
   }
 
   let mikuWatching = await prisma.projectSection.findFirst({
-    where: { projectId: mikuJob.id, sortOrder: 2 },
+    where: { projectId: mikuJob.id, name: "Watching" },
   });
   if (!mikuWatching) {
     mikuWatching = await prisma.projectSection.create({
@@ -64,6 +65,7 @@ async function main() {
         projectId: mikuJob.id,
         sortOrder: 2,
         enabled: true,
+        name: "Watching",
         batchSize: 9,
         aspectRatio: "3:4",
         seedPolicy1: "random",
@@ -73,7 +75,7 @@ async function main() {
   }
 
   let tangtangBench = await prisma.projectSection.findFirst({
-    where: { projectId: tangtangJob.id, sortOrder: 1 },
+    where: { projectId: tangtangJob.id, name: "Bench sit" },
   });
   if (!tangtangBench) {
     tangtangBench = await prisma.projectSection.create({
@@ -81,6 +83,7 @@ async function main() {
         projectId: tangtangJob.id,
         sortOrder: 1,
         enabled: true,
+        name: "Bench sit",
         batchSize: 9,
         aspectRatio: "3:4",
         seedPolicy1: "random",
@@ -89,7 +92,7 @@ async function main() {
     });
   }
 
-  // --- Position Runs ---
+  // --- Runs ---
   const standingRun = await prisma.positionRun.upsert({
     where: { id: "seed-run-miku-standing" },
     update: {
@@ -97,9 +100,7 @@ async function main() {
       projectSectionId: mikuStanding.id,
       runIndex: 1,
       status: "done",
-      resolvedConfigSnapshot: {
-        batchSize: 9,
-      },
+      resolvedConfigSnapshot: { batchSize: 9 },
       outputDir: "data/images/miku-spring-batch-a/standing/run-01/raw",
       startedAt: hoursAgo(3),
       finishedAt: hoursAgo(2.75),
@@ -110,9 +111,7 @@ async function main() {
       projectSectionId: mikuStanding.id,
       runIndex: 1,
       status: "done",
-      resolvedConfigSnapshot: {
-        batchSize: 9,
-      },
+      resolvedConfigSnapshot: { batchSize: 9 },
       outputDir: "data/images/miku-spring-batch-a/standing/run-01/raw",
       startedAt: hoursAgo(3),
       finishedAt: hoursAgo(2.75),
@@ -126,9 +125,7 @@ async function main() {
       projectSectionId: mikuWatching.id,
       runIndex: 2,
       status: "done",
-      resolvedConfigSnapshot: {
-        batchSize: 9,
-      },
+      resolvedConfigSnapshot: { batchSize: 9 },
       outputDir: "data/images/miku-spring-batch-a/watching/run-02/raw",
       startedAt: hoursAgo(4),
       finishedAt: hoursAgo(3.5),
@@ -139,9 +136,7 @@ async function main() {
       projectSectionId: mikuWatching.id,
       runIndex: 2,
       status: "done",
-      resolvedConfigSnapshot: {
-        batchSize: 9,
-      },
+      resolvedConfigSnapshot: { batchSize: 9 },
       outputDir: "data/images/miku-spring-batch-a/watching/run-02/raw",
       startedAt: hoursAgo(4),
       finishedAt: hoursAgo(3.5),
@@ -155,9 +150,7 @@ async function main() {
       projectSectionId: tangtangBench.id,
       runIndex: 1,
       status: "done",
-      resolvedConfigSnapshot: {
-        batchSize: 9,
-      },
+      resolvedConfigSnapshot: { batchSize: 9 },
       outputDir: "data/images/tangtang-park-test/bench-sit/run-01/raw",
       startedAt: hoursAgo(5),
       finishedAt: hoursAgo(4.5),
@@ -168,9 +161,7 @@ async function main() {
       projectSectionId: tangtangBench.id,
       runIndex: 1,
       status: "done",
-      resolvedConfigSnapshot: {
-        batchSize: 9,
-      },
+      resolvedConfigSnapshot: { batchSize: 9 },
       outputDir: "data/images/tangtang-park-test/bench-sit/run-01/raw",
       startedAt: hoursAgo(5),
       finishedAt: hoursAgo(4.5),
@@ -181,7 +172,7 @@ async function main() {
   await prisma.projectSection.update({ where: { id: mikuWatching.id }, data: { latestRunId: watchingRun.id } });
   await prisma.projectSection.update({ where: { id: tangtangBench.id }, data: { latestRunId: benchRun.id } });
 
-  // --- Image Results ---
+  // --- Images ---
   const seedImages = [
     ...Array.from({ length: 9 }, (_, index) => ({
       id: `seed-image-miku-standing-${index + 1}`,
@@ -226,7 +217,7 @@ async function main() {
     });
   }
 
-  // --- Trash Records ---
+  // --- Trash Record ---
   await prisma.trashRecord.upsert({
     where: { imageResultId: "seed-image-miku-standing-4" },
     update: {

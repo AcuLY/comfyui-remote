@@ -36,69 +36,7 @@ enum ActorType {
   agent
 }
 
-// ── Legacy tables (kept for migration, will be removed later) ──
-
-model Character {
-  id              String        @id @default(cuid())
-  name            String
-  slug            String        @unique
-  prompt          String        @db.Text
-  negativePrompt  String?       @db.Text
-  loraPath        String        // Primary LoRA path (for backward compatibility)
-  loraBindings    Json?         // Array of { path: string, weight: number, enabled: boolean }
-  notes           String?       @db.Text
-  isActive        Boolean       @default(true)
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-}
-
-model ScenePreset {
-  id              String        @id @default(cuid())
-  name            String
-  slug            String        @unique
-  prompt          String        @db.Text
-  negativePrompt  String?       @db.Text
-  notes           String?       @db.Text
-  isActive        Boolean       @default(true)
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-}
-
-model StylePreset {
-  id              String        @id @default(cuid())
-  name            String
-  slug            String        @unique
-  prompt          String        @db.Text
-  negativePrompt  String?       @db.Text
-  notes           String?       @db.Text
-  isActive        Boolean       @default(true)
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-}
-
-model PositionTemplate {
-  id                  String            @id @default(cuid())
-  name                String
-  slug                String            @unique
-  prompt              String            @db.Text
-  negativePrompt      String?           @db.Text
-  lora1               Json?             // Array<LoraBinding> — lora1 列表
-  lora2               Json?             // Array<LoraBinding> — lora2 列表
-  defaultAspectRatio  String?
-  defaultShortSidePx  Int?
-  defaultBatchSize    Int?              @default(1)
-  defaultSeedPolicy1  String?
-  defaultSeedPolicy2  String?
-  defaultKsampler1    Json?             // KSamplerParams for KSampler1
-  defaultKsampler2    Json?             // KSamplerParams for KSampler2
-  defaultParams       Json?
-  enabled             Boolean           @default(true)
-  createdAt           DateTime          @default(now())
-  updatedAt           DateTime          @updatedAt
-  sections            ProjectSection[]
-}
-
-// ── New unified prompt system ──
+// ── Unified prompt system ──
 
 model PromptCategory {
   id                  String          @id @default(cuid())
@@ -138,13 +76,18 @@ model PromptPreset {
 
 // ── Core models ──
 
+enum PromptBlockType {
+  custom
+  preset
+}
+
 model Project {
   id                    String                @id @default(cuid())
   title                 String
   slug                  String                @unique
   status                JobStatus             @default(draft)
   presetBindings        Json?                 // [{ categoryId, presetId }]
-  projectLevelOverrides Json?                @map("jobLevelOverrides")
+  projectLevelOverrides Json?
   notes                 String?               @db.Text
   createdAt             DateTime              @default(now())
   updatedAt             DateTime              @updatedAt
@@ -152,40 +95,12 @@ model Project {
   runs                  PositionRun[]
   revisions             ProjectRevision[]
 
-  @@map("CompleteJob")
   @@index([status, updatedAt])
-}
-
-enum PromptBlockType {
-  character
-  scene
-  style
-  position
-  custom
-  preset    // unified type for all category-based presets
-}
-
-model PromptBlock {
-  id                    String                @id @default(cuid())
-  projectSectionId      String                @map("completeJobPositionId")
-  type                  PromptBlockType
-  sourceId              String?
-  categoryId            String?               // FK to PromptCategory
-  label                 String
-  positive              String                @db.Text
-  negative              String?               @db.Text
-  sortOrder             Int                   @default(0)
-  createdAt             DateTime              @default(now())
-  updatedAt             DateTime              @updatedAt
-  projectSection        ProjectSection        @relation(fields: [projectSectionId], references: [id], onDelete: Cascade)
-
-  @@index([projectSectionId, sortOrder], map: "PromptBlock_completeJobPositionId_sortOrder_idx")
 }
 
 model ProjectSection {
   id                    String                @id @default(cuid())
-  projectId             String                @map("completeJobId")
-  positionTemplateId    String?
+  projectId             String
   name                  String?
   sortOrder             Int                   @default(0)
   enabled               Boolean               @default(true)
@@ -199,24 +114,39 @@ model ProjectSection {
   ksampler1             Json?                 // KSamplerParams for KSampler1
   ksampler2             Json?                 // KSamplerParams for KSampler2
   upscaleFactor         Float?                // 放大倍数：1/1.5/2/2.5/3，默认 2
-  loraConfig            Json?                 // { lora1, lora2 }
+  loraConfig            Json?                 // { lora1: LoraEntry[], lora2: LoraEntry[] }
   extraParams           Json?
   latestRunId           String?
   createdAt             DateTime              @default(now())
   updatedAt             DateTime              @updatedAt
   project               Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  positionTemplate      PositionTemplate?     @relation(fields: [positionTemplateId], references: [id], onDelete: SetNull)
   runs                  PositionRun[]
   promptBlocks          PromptBlock[]
 
-  @@map("CompleteJobPosition")
-  @@index([projectId, sortOrder], map: "CompleteJobPosition_completeJobId_sortOrder_idx")
+  @@index([projectId, sortOrder])
+}
+
+model PromptBlock {
+  id                    String                @id @default(cuid())
+  projectSectionId      String
+  type                  PromptBlockType
+  sourceId              String?
+  categoryId            String?               // FK to PromptCategory
+  label                 String
+  positive              String                @db.Text
+  negative              String?               @db.Text
+  sortOrder             Int                   @default(0)
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  projectSection        ProjectSection        @relation(fields: [projectSectionId], references: [id], onDelete: Cascade)
+
+  @@index([projectSectionId, sortOrder])
 }
 
 model PositionRun {
   id                    String                @id @default(cuid())
-  projectId             String                @map("completeJobId")
-  projectSectionId      String                @map("completeJobPositionId")
+  projectId             String
+  projectSectionId      String
   runIndex              Int                   @default(1)
   status                RunStatus             @default(queued)
   resolvedConfigSnapshot Json
@@ -232,8 +162,8 @@ model PositionRun {
   images                ImageResult[]
 
   @@index([status, createdAt])
-  @@index([projectId, createdAt], map: "PositionRun_completeJobId_createdAt_idx")
-  @@index([projectSectionId, createdAt], map: "PositionRun_completeJobPositionId_createdAt_idx")
+  @@index([projectId, createdAt])
+  @@index([projectSectionId, createdAt])
 }
 
 model ImageResult {
@@ -287,16 +217,15 @@ model LoraAsset {
 
 model ProjectRevision {
   id                    String      @id @default(cuid())
-  projectId             String      @map("completeJobId")
+  projectId             String
   revisionNumber        Int
   snapshot              Json
   createdAt             DateTime    @default(now())
   actorType             ActorType   @default(user)
   project               Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
-  @@map("JobRevision")
-  @@unique([projectId, revisionNumber], map: "JobRevision_completeJobId_revisionNumber_key")
-  @@index([projectId, createdAt], map: "JobRevision_completeJobId_createdAt_idx")
+  @@unique([projectId, revisionNumber])
+  @@index([projectId, createdAt])
 }
 
 model AuditLog {

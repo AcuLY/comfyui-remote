@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { PromptBlockEditor } from "@/components/prompt-block-editor";
 import { LoraListEditor } from "@/components/lora-list-editor";
 import type { PromptBlockData } from "@/lib/actions";
-import type { LoraEntry, LoraSource } from "@/lib/lora-types";
+import type { LoraEntry } from "@/lib/lora-types";
 import type { PromptLibraryV2 } from "@/components/prompt-block-editor";
 import {
   parseLoraBindings,
@@ -39,11 +39,9 @@ export function SectionEditor({
 
   // 当从词库导入时，自动添加关联的 LoRA
   function handleBlockImport(
-    sourceType: LoraSource | string,
-    sourceId: string,
+    _sourceType: string,
+    _sourceId: string,
     sourceName: string,
-    loraPath?: string | null,
-    loraBindings?: unknown,
     lora1Bindings?: unknown,
     lora2Bindings?: unknown,
   ) {
@@ -52,40 +50,6 @@ export function SectionEditor({
     let updatedLora1 = [...lora1];
     let updatedLora2 = [...lora2];
     let changed = false;
-
-    // Import loraBindings (legacy path) into lora1
-    if (loraPath) {
-      const exists = updatedLora1.some((e) => e.path === loraPath);
-      if (!exists) {
-        updatedLora1.push({
-          id: generateLoraEntryId(),
-          path: loraPath,
-          weight: 1.0,
-          enabled: true,
-          source: (sourceType === "character" || sourceType === "scene" || sourceType === "style" || sourceType === "position" || sourceType === "manual") ? sourceType as LoraSource : "manual",
-          sourceLabel,
-        });
-        changed = true;
-      }
-    }
-    if (loraBindings) {
-      const bindings = parseLoraBindings(loraBindings);
-      for (const binding of bindings) {
-        if (!binding.path) continue;
-        const exists = updatedLora1.some((e) => e.path === binding.path);
-        if (!exists) {
-          updatedLora1.push({
-            id: generateLoraEntryId(),
-            path: binding.path,
-            weight: binding.weight,
-            enabled: binding.enabled,
-            source: "manual",
-            sourceLabel,
-          });
-          changed = true;
-        }
-      }
-    }
 
     // Import lora1Bindings into lora1
     if (lora1Bindings) {

@@ -85,21 +85,18 @@ async function getRunReviewBase(runId: string) {
 export async function getRunReviewGroup(runId: string) {
   const run = await getRunReviewBase(runId);
 
-  // Resolve characterName from presetBindings
+  // Resolve preset names from presetBindings
   type PresetBindingJson = Array<{ categoryId: string; presetId: string }>;
   const bindings = run.project.presetBindings as PresetBindingJson | null;
-  let characterName = "—";
+  const presetNames: string[] = [];
   if (bindings && bindings.length > 0) {
     const presetIds = bindings.map((b) => b.presetId);
     const presets = await db.promptPreset.findMany({
       where: { id: { in: presetIds } },
-      select: { id: true, name: true, category: { select: { slug: true } } },
+      select: { id: true, name: true },
     });
     for (const preset of presets) {
-      if (preset.category.slug === "character") {
-        characterName = preset.name;
-        break;
-      }
+      presetNames.push(preset.name);
     }
   }
 
@@ -115,7 +112,7 @@ export async function getRunReviewGroup(runId: string) {
     projectId: run.project.id,
     sectionId: run.projectSection.id,
     title: run.project.title,
-    characterName,
+    presetNames,
     sectionName: run.projectSection.name ?? "Unknown",
     createdAt: run.createdAt,
     pendingCount: images.filter((image) => image.status === ReviewStatus.pending).length,
@@ -127,21 +124,18 @@ export async function getRunReviewGroup(runId: string) {
 export async function getRunAgentContext(runId: string) {
   const run = await getRunReviewBase(runId);
 
-  // Resolve character info from presetBindings
-  type PresetBindingJson = Array<{ categoryId: string; presetId: string }>;
-  const bindings = run.project.presetBindings as PresetBindingJson | null;
-  let characterInfo: { id: string; name: string; slug: string } | null = null;
-  if (bindings && bindings.length > 0) {
-    const presetIds = bindings.map((b) => b.presetId);
+  // Resolve preset info from presetBindings
+  type PresetBindingJson2 = Array<{ categoryId: string; presetId: string }>;
+  const bindings2 = run.project.presetBindings as PresetBindingJson2 | null;
+  const presetInfos: { id: string; name: string; slug: string }[] = [];
+  if (bindings2 && bindings2.length > 0) {
+    const presetIds = bindings2.map((b) => b.presetId);
     const presets = await db.promptPreset.findMany({
       where: { id: { in: presetIds } },
-      select: { id: true, name: true, slug: true, category: { select: { slug: true } } },
+      select: { id: true, name: true, slug: true },
     });
     for (const preset of presets) {
-      if (preset.category.slug === "character") {
-        characterInfo = { id: preset.id, name: preset.name, slug: preset.slug };
-        break;
-      }
+      presetInfos.push({ id: preset.id, name: preset.name, slug: preset.slug });
     }
   }
 
@@ -177,7 +171,7 @@ export async function getRunAgentContext(runId: string) {
       title: run.project.title,
       slug: run.project.slug,
       status: run.project.status,
-      character: characterInfo,
+      presets: presetInfos,
     },
     section: {
       id: run.projectSection.id,

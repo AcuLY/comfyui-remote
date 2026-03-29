@@ -26,7 +26,6 @@ const JOB_SNAPSHOT_SELECT = {
   sections: {
     select: {
       id: true,
-      positionTemplateId: true,
       sortOrder: true,
       enabled: true,
       positivePrompt: true,
