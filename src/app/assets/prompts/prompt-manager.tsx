@@ -294,7 +294,9 @@ function CategoryForm({
 }) {
   const [name, setName] = useState(category?.name ?? "");
   const [slug, setSlug] = useState(category?.slug ?? "");
-  const [hue, setHue] = useState(() => parseHue(category?.color ?? null));
+  const [hue, setHue] = useState(() =>
+    category ? parseHue(category.color) : Math.floor(Math.random() * 360),
+  );
 
   function handleNameChange(value: string) {
     setName(value);
