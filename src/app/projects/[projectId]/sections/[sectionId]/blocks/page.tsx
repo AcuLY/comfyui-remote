@@ -153,7 +153,7 @@ export default async function SectionEditPage({
     await prisma.projectSection.update({
       where: { id: sectionId },
       data: {
-        loraConfig: serializePositionLoraConfig({ characterLora: [], ...config }),
+        loraConfig: serializePositionLoraConfig(config),
       },
     });
 

@@ -24,7 +24,6 @@ model Character {
   isActive        Boolean       @default(true)
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
-  projects        Project[]
 }
 
 model ScenePreset {
@@ -37,7 +36,6 @@ model ScenePreset {
   isActive        Boolean       @default(true)
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
-  projects        Project[]
 }
 
 model StylePreset {
@@ -50,7 +48,6 @@ model StylePreset {
   isActive        Boolean       @default(true)
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
-  projects        Project[]
 }
 
 model PositionTemplate {
@@ -120,28 +117,17 @@ model Project {
   title                 String
   slug                  String                @unique
   status                String                @default("draft")
-  characterId           String
-  scenePresetId         String?
-  stylePresetId         String?
-  characterPrompt       String
-  characterLoraPath     String
-  scenePrompt           String?
-  stylePrompt           String?
   presetBindings        Json?                 // [{ categoryId, presetId }]
   projectLevelOverrides Json?                 @map("jobLevelOverrides")
   notes                 String?
   createdAt             DateTime              @default(now())
   updatedAt             DateTime              @updatedAt
-  character             Character             @relation(fields: [characterId], references: [id], onDelete: Restrict)
-  scenePreset           ScenePreset?          @relation(fields: [scenePresetId], references: [id], onDelete: SetNull)
-  stylePreset           StylePreset?          @relation(fields: [stylePresetId], references: [id], onDelete: SetNull)
   sections              ProjectSection[]
   runs                  PositionRun[]
   revisions             ProjectRevision[]
 
   @@map("CompleteJob")
   @@index([status, updatedAt])
-  @@index([characterId, updatedAt])
 }
 
 model ProjectSection {
