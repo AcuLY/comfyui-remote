@@ -19,8 +19,8 @@ export default async function SectionEditPage({ params }: { params: Promise<{ pr
     id: pos.id,
     name: pos.name || `小节 ${pos.sortOrder}`,
     batchSize: pos.batchSize,
+    upscaleFactor: pos.upscaleFactor,
     aspectRatio: pos.aspectRatio,
-    // v0.3: dual seedPolicy
     seedPolicy1: pos.seedPolicy1,
     seedPolicy2: pos.seedPolicy2,
     promptOverview: {

@@ -302,6 +302,7 @@ export type UpdateProjectInput = {
     defaultAspectRatio?: string;
     defaultShortSidePx?: number;
     defaultBatchSize?: number;
+    defaultUpscaleFactor?: number;
     defaultSeedPolicy1?: string;
     defaultSeedPolicy2?: string;
   };

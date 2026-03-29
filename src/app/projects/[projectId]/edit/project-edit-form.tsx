@@ -6,6 +6,7 @@ import { ChevronDown, Loader2, Save } from "lucide-react";
 import { updateProject, type UpdateProjectInput } from "@/lib/actions";
 import type { ProjectEditData, ProjectFormCategory } from "@/lib/server-data";
 import { BatchSizeQuickFill } from "@/components/batch-size-quick-fill";
+import { UpscaleFactorQuickFill } from "@/components/upscale-factor-quick-fill";
 
 type Props = {
   project: ProjectEditData;
@@ -38,6 +39,7 @@ export function ProjectEditForm({ project, categories }: Props) {
   const [defaultAspectRatio, setDefaultAspectRatio] = useState(project.defaultAspectRatio);
   const [defaultShortSidePx, setDefaultShortSidePx] = useState(project.defaultShortSidePx.toString());
   const [defaultBatchSize, setDefaultBatchSize] = useState(project.defaultBatchSize.toString());
+  const [defaultUpscaleFactor, setDefaultUpscaleFactor] = useState(project.defaultUpscaleFactor?.toString() ?? "2");
   const [defaultSeedPolicy, setDefaultSeedPolicy] = useState(project.defaultSeedPolicy1);
 
   function setSelection(categoryId: string, presetId: string) {
@@ -61,6 +63,7 @@ export function ProjectEditForm({ project, categories }: Props) {
         defaultAspectRatio,
         defaultShortSidePx: parseInt(defaultShortSidePx, 10) || 512,
         defaultBatchSize: parseInt(defaultBatchSize, 10) || 2,
+        defaultUpscaleFactor: parseFloat(defaultUpscaleFactor) || 2,
         defaultSeedPolicy1: defaultSeedPolicy,
       },
     };
@@ -194,6 +197,22 @@ export function ProjectEditForm({ project, categories }: Props) {
             <BatchSizeQuickFill
               onSelect={(val) => setDefaultBatchSize(String(val))}
               currentValue={defaultBatchSize ? parseInt(defaultBatchSize, 10) : null}
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-xs text-zinc-400">默认放大倍数</label>
+            <input
+              type="number"
+              min={1}
+              max={4}
+              step={0.5}
+              value={defaultUpscaleFactor}
+              onChange={(e) => setDefaultUpscaleFactor(e.target.value)}
+              className="input-number w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white outline-none focus:border-sky-500/40"
+            />
+            <UpscaleFactorQuickFill
+              onSelect={(val) => setDefaultUpscaleFactor(String(val))}
+              currentValue={defaultUpscaleFactor ? parseFloat(defaultUpscaleFactor) : null}
             />
           </div>
           <div className="space-y-2">

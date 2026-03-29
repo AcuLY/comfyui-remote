@@ -259,6 +259,7 @@ export type ProjectDetailSection = {
   id: string;
   name: string;
   batchSize: number | null;
+  upscaleFactor: number | null;
   aspectRatio: string | null;
   seedPolicy1: string | null;
   seedPolicy2: string | null;
@@ -593,6 +594,7 @@ export type ProjectEditData = {
   defaultAspectRatio: string;
   defaultShortSidePx: number;
   defaultBatchSize: number;
+  defaultUpscaleFactor: number;
   defaultSeedPolicy1: string;
   defaultSeedPolicy2: string;
 };
@@ -625,6 +627,7 @@ export async function getProjectEditData(projectId: string): Promise<ProjectEdit
     defaultAspectRatio?: string;
     defaultShortSidePx?: number;
     defaultBatchSize?: number;
+    defaultUpscaleFactor?: number;
     defaultSeedPolicy1?: string;
     defaultSeedPolicy2?: string;
   };
@@ -642,6 +645,7 @@ export async function getProjectEditData(projectId: string): Promise<ProjectEdit
     defaultAspectRatio: overrides.defaultAspectRatio ?? "2:3",
     defaultShortSidePx: overrides.defaultShortSidePx ?? 512,
     defaultBatchSize: overrides.defaultBatchSize ?? 2,
+    defaultUpscaleFactor: overrides.defaultUpscaleFactor ?? 2,
     defaultSeedPolicy1: overrides.defaultSeedPolicy1 ?? "random",
     defaultSeedPolicy2: overrides.defaultSeedPolicy2 ?? "random",
   };
