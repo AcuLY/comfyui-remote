@@ -55,14 +55,8 @@ async function getRunReviewBase(runId: string) {
       projectSection: {
         select: {
           id: true,
+          name: true,
           sortOrder: true,
-          positionTemplate: {
-            select: {
-              id: true,
-              name: true,
-              slug: true,
-            },
-          },
         },
       },
       images: {
@@ -122,7 +116,7 @@ export async function getRunReviewGroup(runId: string) {
     sectionId: run.projectSection.id,
     title: run.project.title,
     characterName,
-    sectionName: run.projectSection.positionTemplate?.name ?? "Unknown",
+    sectionName: run.projectSection.name ?? "Unknown",
     createdAt: run.createdAt,
     pendingCount: images.filter((image) => image.status === ReviewStatus.pending).length,
     totalCount: images.length,
@@ -188,7 +182,7 @@ export async function getRunAgentContext(runId: string) {
     section: {
       id: run.projectSection.id,
       sortOrder: run.projectSection.sortOrder,
-      template: run.projectSection.positionTemplate,
+      template: null,
     },
     summary: imageSummary,
     images: run.images.map((image, index) => ({

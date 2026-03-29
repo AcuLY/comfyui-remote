@@ -8,35 +8,29 @@ export default async function SectionEditPage({ params }: { params: Promise<{ pr
 
   const pos = await prisma.projectSection.findUnique({
     where: { id: sectionId },
-    include: { positionTemplate: true, project: true },
+    include: { project: true },
   });
 
   if (!pos || pos.projectId !== projectId) {
     notFound();
   }
 
-  if (!pos.positionTemplate) {
-    notFound();
-  }
-
   const section: ProjectDetailSection = {
     id: pos.id,
-    name: pos.positionTemplate.name,
-    batchSize: pos.batchSize ?? pos.positionTemplate.defaultBatchSize,
-    aspectRatio: pos.aspectRatio ?? pos.positionTemplate.defaultAspectRatio,
+    name: pos.name || `小节 ${pos.sortOrder}`,
+    batchSize: pos.batchSize,
+    aspectRatio: pos.aspectRatio,
     // v0.3: dual seedPolicy
-    seedPolicy1: pos.seedPolicy1 ?? pos.positionTemplate.defaultSeedPolicy1,
-    seedPolicy2: pos.seedPolicy2 ?? pos.positionTemplate.defaultSeedPolicy2,
+    seedPolicy1: pos.seedPolicy1,
+    seedPolicy2: pos.seedPolicy2,
     promptOverview: {
       positivePrompt: pos.positivePrompt ?? null,
-      negativePrompt: pos.negativePrompt ?? pos.positionTemplate.negativePrompt ?? null,
+      negativePrompt: pos.negativePrompt ?? null,
     },
   };
 
   const positivePrompt =
-    section.promptOverview.positivePrompt ??
-    pos.positionTemplate.prompt ??
-    "";
+    section.promptOverview.positivePrompt ?? "";
 
   return <SectionEditForm projectId={projectId} section={section} positivePrompt={positivePrompt} />;
 }

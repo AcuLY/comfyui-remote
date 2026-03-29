@@ -17,12 +17,6 @@ const workerRunInclude = {
       id: true,
       name: true,
       sortOrder: true,
-      positionTemplate: {
-        select: {
-          name: true,
-          slug: true,
-        },
-      },
     },
   },
 } satisfies Prisma.PositionRunInclude;
@@ -61,8 +55,8 @@ function serializeWorkerRunSnapshot(run: WorkerRunRecord): WorkerRunSnapshot {
     },
     section: {
       id: run.projectSection.id,
-      name: run.projectSection.name ?? run.projectSection.positionTemplate?.name ?? `section_${run.projectSection.sortOrder + 1}`,
-      slug: run.projectSection.positionTemplate?.slug ?? `section_${run.projectSection.sortOrder + 1}`,
+      name: run.projectSection.name ?? `section_${run.projectSection.sortOrder + 1}`,
+      slug: `section_${run.projectSection.sortOrder + 1}`,
     },
   };
 }

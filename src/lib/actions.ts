@@ -286,7 +286,6 @@ export type UpdateProjectInput = {
   presetBindings?: PresetBinding[];
   notes?: string | null;
   sections?: {
-    positionTemplateId: string;
     sortOrder: number;
     enabled: boolean;
     positivePrompt?: string | null;
@@ -330,7 +329,6 @@ export async function updateProject(input: UpdateProjectInput) {
     await prisma.projectSection.createMany({
       data: sections.map((pos) => ({
         projectId: projectId,
-        positionTemplateId: pos.positionTemplateId,
         sortOrder: pos.sortOrder,
         enabled: pos.enabled,
         positivePrompt: pos.positivePrompt ?? null,
@@ -730,7 +728,7 @@ export async function reorderSections(projectId: string, sectionIds: string[]): 
   // 1. 查询旧 sortOrder、name 和 project title（用于文件夹重命名）
   const sections = await prisma.projectSection.findMany({
     where: { id: { in: sectionIds } },
-    select: { id: true, sortOrder: true, name: true, positionTemplate: { select: { name: true } } },
+    select: { id: true, sortOrder: true, name: true },
   });
   const project = await prisma.project.findUnique({
     where: { id: projectId },
@@ -739,7 +737,7 @@ export async function reorderSections(projectId: string, sectionIds: string[]): 
 
   const oldSortMap = new Map(sections.map((s) => [s.id, {
     sortOrder: s.sortOrder,
-    name: s.name || s.positionTemplate?.name || "position",
+    name: s.name || "position",
   }]));
 
   // 2. 批量更新 sortOrder
@@ -780,7 +778,6 @@ export async function copySection(sectionId: string): Promise<string | null> {
   const newSection = await prisma.projectSection.create({
     data: {
       projectId: section.projectId,
-      positionTemplateId: section.positionTemplateId,
       sortOrder: count + 1,
       enabled: section.enabled,
       name: section.name ? `${section.name} (副本)` : null,

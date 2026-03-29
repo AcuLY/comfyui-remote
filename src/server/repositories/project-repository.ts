@@ -10,7 +10,6 @@ export type ProjectUpdateInput = {
 
 export type ProjectCreateInput = {
   title: string;
-  positionTemplateIds?: string[];
   notes: string | null;
 };
 
@@ -36,9 +35,7 @@ export type ListProjectsFilters = {
   hasPending?: boolean;
 };
 
-export type ProjectCreateOptions = {
-  positionTemplates: Array<{ id: string; name: string; slug: string; enabled: boolean }>;
-};
+export type ProjectCreateOptions = Record<string, never>;
 
 type LatestRunRecord = {
   id: string;
@@ -50,26 +47,6 @@ type LatestRunRecord = {
   outputDir: string | null;
   errorMessage: string | null;
   images: Array<{ reviewStatus: string }>;
-};
-
-type PositionTemplateRecord = {
-  name: string;
-  slug: string;
-  prompt: string;
-  negativePrompt: string | null;
-  // v0.3: lora1/lora2 replace loraBindings
-  lora1: Prisma.JsonValue | null;
-  lora2: Prisma.JsonValue | null;
-  defaultAspectRatio: string | null;
-  defaultShortSidePx: number | null;
-  defaultBatchSize: number | null;
-  // v0.3: dual seedPolicy
-  defaultSeedPolicy1: string | null;
-  defaultSeedPolicy2: string | null;
-  // v0.3: ksampler params
-  defaultKsampler1: Prisma.JsonValue | null;
-  defaultKsampler2: Prisma.JsonValue | null;
-  defaultParams: Prisma.JsonValue | null;
 };
 
 type PromptBlockSummaryRecord = {
@@ -87,22 +64,18 @@ type ProjectSectionRecord = {
   sortOrder: number;
   enabled: boolean;
   latestRunId: string | null;
-  positionTemplateId: string | null;
   positivePrompt: string | null;
   negativePrompt: string | null;
   aspectRatio: string | null;
   shortSidePx: number | null;
   batchSize: number | null;
-  // v0.3: dual seedPolicy
   seedPolicy1: string | null;
   seedPolicy2: string | null;
-  // v0.3: ksampler params
   ksampler1: Prisma.JsonValue | null;
   ksampler2: Prisma.JsonValue | null;
   upscaleFactor: number | null;
   loraConfig: Prisma.JsonValue | null;
   extraParams: Prisma.JsonValue | null;
-  positionTemplate: PositionTemplateRecord | null;
   runs: LatestRunRecord[];
   promptBlocks: PromptBlockSummaryRecord[];
 };
@@ -190,23 +163,20 @@ function serializeProjectSection(
     sortOrder: section.sortOrder,
     enabled: section.enabled,
     latestRunId: section.latestRunId,
-    positionTemplateId: section.positionTemplateId,
-    name: section.positionTemplate?.name ?? null,
-    slug: section.positionTemplate?.slug ?? null,
-    aspectRatio: section.aspectRatio ?? section.positionTemplate?.defaultAspectRatio ?? null,
-    batchSize: section.batchSize ?? section.positionTemplate?.defaultBatchSize ?? null,
-    // v0.3: dual seedPolicy
-    seedPolicy1: section.seedPolicy1 ?? section.positionTemplate?.defaultSeedPolicy1 ?? null,
-    seedPolicy2: section.seedPolicy2 ?? section.positionTemplate?.defaultSeedPolicy2 ?? null,
-    // v0.3: ksampler params
-    ksampler1: section.ksampler1 ?? section.positionTemplate?.defaultKsampler1 ?? null,
-    ksampler2: section.ksampler2 ?? section.positionTemplate?.defaultKsampler2 ?? null,
+    name: section.name ?? null,
+    slug: null,
+    aspectRatio: section.aspectRatio ?? null,
+    batchSize: section.batchSize ?? null,
+    seedPolicy1: section.seedPolicy1 ?? null,
+    seedPolicy2: section.seedPolicy2 ?? null,
+    ksampler1: section.ksampler1 ?? null,
+    ksampler2: section.ksampler2 ?? null,
     loraConfig: section.loraConfig,
     extraParams: section.extraParams,
     promptOverview: {
-      templatePrompt: section.positionTemplate?.prompt ?? null,
+      templatePrompt: null,
       positivePrompt: section.positivePrompt,
-      negativePrompt: section.negativePrompt ?? section.positionTemplate?.negativePrompt ?? null,
+      negativePrompt: section.negativePrompt ?? null,
     },
     latestRun: serializeLatestRun(resolveLatestRun(section, latestRunsById)),
   };
@@ -300,20 +270,6 @@ function resolveProjectOverrideInteger(
   return typeof value === "number" && Number.isInteger(value) ? value : null;
 }
 
-function mergeJsonObjects(
-  baseValue: Prisma.JsonValue | null,
-  overrideValue: Prisma.JsonValue | null,
-) {
-  const mergedValue = {
-    ...toInputJsonObject(baseValue),
-    ...toInputJsonObject(overrideValue),
-  };
-
-  return Object.keys(mergedValue).length > 0
-    ? (mergedValue as Prisma.InputJsonObject)
-    : null;
-}
-
 function buildResolvedConfigSnapshot(
   project: QueuableProjectRecord,
   section: ProjectSectionRecord,
@@ -331,24 +287,20 @@ function buildResolvedConfigSnapshot(
   const resolvedAspectRatio =
     section.aspectRatio ??
     resolveProjectOverrideString(projectLevelOverrides, "aspectRatio") ??
-    section.positionTemplate?.defaultAspectRatio ??
     null;
   const resolvedShortSidePx =
     section.shortSidePx ??
     resolveProjectOverrideInteger(projectLevelOverrides, "shortSidePx") ??
-    section.positionTemplate?.defaultShortSidePx ??
     null;
   const resolvedBatchSize =
     overrideBatchSize ??
     section.batchSize ??
     resolveProjectOverrideInteger(projectLevelOverrides, "batchSize") ??
-    section.positionTemplate?.defaultBatchSize ??
     null;
-  // v0.3: dual seedPolicy
   const resolvedSeedPolicy1 =
-    section.seedPolicy1 ?? section.positionTemplate?.defaultSeedPolicy1 ?? null;
+    section.seedPolicy1 ?? null;
   const resolvedSeedPolicy2 =
-    section.seedPolicy2 ?? section.positionTemplate?.defaultSeedPolicy2 ?? null;
+    section.seedPolicy2 ?? null;
 
   // Compose final prompt from blocks (v0.2) or legacy fallback
   const promptDraft = buildResolvedPromptDraft(project, section, blocks);
@@ -361,14 +313,13 @@ function buildResolvedConfigSnapshot(
     },
     section: {
       id: section.id,
-      templateId: section.positionTemplateId,
+      templateId: null,
       sortOrder: section.sortOrder,
-      name: section.name ?? section.positionTemplate?.name ?? `section_${section.sortOrder + 1}`,
-      slug: section.positionTemplate?.slug ?? `section_${section.sortOrder + 1}`,
-      templatePrompt: section.positionTemplate?.prompt ?? null,
+      name: section.name ?? `section_${section.sortOrder + 1}`,
+      slug: `section_${section.sortOrder + 1}`,
+      templatePrompt: null,
       positivePrompt: section.positivePrompt,
-      negativePrompt:
-        section.negativePrompt ?? section.positionTemplate?.negativePrompt ?? null,
+      negativePrompt: section.negativePrompt ?? null,
     },
     promptBlocks: blocks ?? null,
     // v0.4: presets array from blocks that have type=preset
@@ -392,14 +343,10 @@ function buildResolvedConfigSnapshot(
       seedPolicy2: resolvedSeedPolicy2,
       upscaleFactor: section.upscaleFactor ?? null,
     },
-    // v0.3: ksampler params
-    ksampler1: section.ksampler1 ?? section.positionTemplate?.defaultKsampler1 ?? null,
-    ksampler2: section.ksampler2 ?? section.positionTemplate?.defaultKsampler2 ?? null,
+    ksampler1: section.ksampler1 ?? null,
+    ksampler2: section.ksampler2 ?? null,
     loraConfig: section.loraConfig,
-    extraParams: mergeJsonObjects(
-      section.positionTemplate?.defaultParams ?? null,
-      section.extraParams,
-    ),
+    extraParams: section.extraParams ? (JSON.parse(JSON.stringify(section.extraParams)) as Prisma.InputJsonObject) : null,
   };
 }
 
@@ -407,7 +354,7 @@ function buildResolvedPromptDraft(
   _project: Pick<QueuableProjectRecord, "id">,
   section: Pick<
     ProjectSectionRecord,
-    "positivePrompt" | "negativePrompt" | "positionTemplate"
+    "positivePrompt" | "negativePrompt"
   >,
   blocks?: Array<{
     positive: string;
@@ -415,7 +362,7 @@ function buildResolvedPromptDraft(
   }>,
 ) {
   if (blocks && blocks.length > 0) {
-    // Block-based prompt composition (v0.2+)
+    // Block-based prompt composition
     const positiveParts = blocks
       .map((b) => b.positive)
       .filter((v): v is string => Boolean(v && v.trim()));
@@ -431,30 +378,24 @@ function buildResolvedPromptDraft(
 
   // Fallback: use section-level prompts only
   return {
-    positive: [
-      section.positionTemplate?.prompt,
-      section.positivePrompt,
-    ]
-      .filter((value): value is string => Boolean(value && value.trim()))
-      .join(", "),
-    negative: section.negativePrompt ?? section.positionTemplate?.negativePrompt ?? null,
+    positive: section.positivePrompt ?? "",
+    negative: section.negativePrompt ?? null,
   };
 }
 
 function serializeEnqueuedRun(
   section: Pick<
     ProjectSectionRecord,
-    "id" | "name" | "sortOrder" | "positionTemplateId" | "positionTemplate"
+    "id" | "name" | "sortOrder"
   >,
   run: EnqueuedRunRecord,
 ) {
   return {
     runId: run.id,
     sectionId: section.id,
-    positionTemplateId: section.positionTemplateId,
     sortOrder: section.sortOrder,
-    sectionName: section.name ?? section.positionTemplate?.name ?? `section_${section.sortOrder + 1}`,
-    sectionSlug: section.positionTemplate?.slug ?? `section_${section.sortOrder + 1}`,
+    sectionName: section.name ?? `section_${section.sortOrder + 1}`,
+    sectionSlug: `section_${section.sortOrder + 1}`,
     runIndex: run.runIndex,
     status: run.status,
     createdAt: run.createdAt.toISOString(),
@@ -700,7 +641,6 @@ export async function getProjectDetail(projectId: string) {
         where: { enabled: true },
         orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
         include: {
-          positionTemplate: true,
           promptBlocks: {
             orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
             select: {
@@ -778,7 +718,6 @@ export async function getProjectAgentContext(projectId: string) {
         where: { enabled: true },
         orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
         include: {
-          positionTemplate: true,
           promptBlocks: {
             orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
             select: {
@@ -854,9 +793,8 @@ export async function getProjectAgentContext(projectId: string) {
       sortOrder: section.sortOrder,
       enabled: section.enabled,
       latestRunId: section.latestRunId,
-      positionTemplateId: section.positionTemplateId,
-      name: section.name ?? section.positionTemplate?.name ?? null,
-      slug: section.positionTemplate?.slug ?? null,
+      name: section.name ?? null,
+      slug: null,
       latestRun: serializeLatestRun(latestRun),
       promptBlocks: section.promptBlocks,
       promptDraft: buildResolvedPromptDraft(project, section, section.promptBlocks),
@@ -917,7 +855,6 @@ export async function getProjectSectionDetail(projectId: string, sectionId: stri
       projectId: projectId,
     },
     include: {
-      positionTemplate: true,
       promptBlocks: {
         orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
         select: {
@@ -959,44 +896,6 @@ export async function getProjectSectionDetail(projectId: string, sectionId: stri
 
 export async function createProject(input: ProjectCreateInput) {
   const projectId = await db.$transaction(async (tx: Prisma.TransactionClient) => {
-    // Optionally resolve position templates
-    const positionTemplateIds = input.positionTemplateIds ?? [];
-    let orderedPositionTemplates: Array<{
-      id: string;
-      name: string;
-      enabled: boolean;
-      prompt: string;
-      negativePrompt: string | null;
-    }> = [];
-
-    if (positionTemplateIds.length > 0) {
-      const positionTemplates = await tx.positionTemplate.findMany({
-        where: { id: { in: positionTemplateIds } },
-        select: {
-          id: true,
-          name: true,
-          enabled: true,
-          prompt: true,
-          negativePrompt: true,
-        },
-      });
-
-      const positionTemplateById = new Map(
-        positionTemplates.map((pt): [string, typeof pt] => [pt.id, pt]),
-      );
-      orderedPositionTemplates = positionTemplateIds
-        .map((id) => positionTemplateById.get(id))
-        .filter((pt): pt is NonNullable<typeof pt> => !!pt);
-
-      if (orderedPositionTemplates.length !== positionTemplateIds.length) {
-        throw new Error("POSITION_TEMPLATE_NOT_FOUND");
-      }
-
-      if (orderedPositionTemplates.some((pt) => !pt.enabled)) {
-        throw new Error("POSITION_TEMPLATE_DISABLED");
-      }
-    }
-
     const slug = await resolveUniqueProjectSlug(tx, input.title);
     const createdProject = await tx.project.create({
       data: {
@@ -1004,47 +903,11 @@ export async function createProject(input: ProjectCreateInput) {
         slug,
         status: JobStatus.draft,
         notes: input.notes,
-        ...(orderedPositionTemplates.length > 0
-          ? {
-              sections: {
-                create: orderedPositionTemplates.map((pt, index) => ({
-                  positionTemplateId: pt.id,
-                  sortOrder: index + 1,
-                  enabled: true,
-                })),
-              },
-            }
-          : {}),
       },
       select: {
         id: true,
-        sections: {
-          select: { id: true },
-          orderBy: { sortOrder: "asc" },
-        },
       },
     });
-
-    // Generate initial PromptBlocks for each position (if any)
-    for (let i = 0; i < createdProject.sections.length; i++) {
-      const sectionId = createdProject.sections[i].id;
-      const pt = orderedPositionTemplates[i];
-
-      // Position block
-      if (pt) {
-        await tx.promptBlock.create({
-          data: {
-            projectSectionId: sectionId,
-            type: "position",
-            sourceId: pt.id,
-            label: pt.name,
-            positive: pt.prompt,
-            negative: pt.negativePrompt,
-            sortOrder: 0,
-          },
-        });
-      }
-    }
 
     return createdProject.id;
   });
@@ -1162,7 +1025,6 @@ export async function copyProject(projectId: string) {
         sections: {
           orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
           select: {
-            positionTemplateId: true,
             sortOrder: true,
             enabled: true,
             positivePrompt: true,
@@ -1209,7 +1071,6 @@ export async function copyProject(projectId: string) {
         presetBindings: cloneJsonValueForCreate(project.presetBindings),
         sections: {
           create: project.sections.map((section) => ({
-            positionTemplateId: section.positionTemplateId,
             sortOrder: section.sortOrder,
             enabled: section.enabled,
             positivePrompt: section.positivePrompt,
@@ -1272,7 +1133,6 @@ export async function enqueueProjectRuns(projectId: string, overrideBatchSize?: 
           where: { enabled: true },
           orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
           include: {
-            positionTemplate: true,
             promptBlocks: {
               orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
               select: {
@@ -1348,7 +1208,6 @@ export async function enqueueProjectSectionRun(projectId: string, sectionId: str
         projectId: projectId,
       },
       include: {
-        positionTemplate: true,
         promptBlocks: {
           orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
           select: {
@@ -1400,12 +1259,5 @@ export async function enqueueProjectSectionRun(projectId: string, sectionId: str
 }
 
 export async function getProjectCreateOptions(): Promise<ProjectCreateOptions> {
-  const positionTemplates = await db.positionTemplate.findMany({
-    orderBy: [{ name: "asc" }, { id: "asc" }],
-    select: { id: true, name: true, slug: true, enabled: true },
-  });
-
-  return {
-    positionTemplates,
-  };
+  return {};
 }

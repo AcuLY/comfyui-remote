@@ -34,7 +34,7 @@ export async function GET() {
             finishedAt: true,
             project: { select: { title: true } },
             projectSection: {
-              select: { positionTemplate: { select: { name: true } } },
+              select: { name: true, sortOrder: true },
             },
             _count: { select: { images: true } },
           },
@@ -65,7 +65,7 @@ export async function GET() {
       recentDone: recentDone.map((r) => ({
         id: r.id,
         projectTitle: r.project.title,
-        sectionName: r.projectSection.positionTemplate?.name ?? null,
+        sectionName: r.projectSection.name ?? `section_${r.projectSection.sortOrder + 1}`,
         imagesCount: r._count.images,
         finishedAt: r.finishedAt,
       })),

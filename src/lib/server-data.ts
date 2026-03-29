@@ -12,29 +12,23 @@ export type { ProjectCreateOptions } from "@/server/repositories/project-reposit
 
 type PresetBindingJson = Array<{ categoryId: string; presetId: string }>;
 
-async function batchResolvePresetNames(presetIds: string[]): Promise<Map<string, { name: string; categorySlug: string }>> {
+async function batchResolvePresetNames(presetIds: string[]): Promise<Map<string, { name: string }>> {
   if (presetIds.length === 0) return new Map();
   const presets = await prisma.promptPreset.findMany({
     where: { id: { in: presetIds } },
-    select: { id: true, name: true, category: { select: { slug: true } } },
+    select: { id: true, name: true },
   });
-  return new Map(presets.map((p) => [p.id, { name: p.name, categorySlug: p.category.slug }]));
+  return new Map(presets.map((p) => [p.id, { name: p.name }]));
 }
 
-function extractDisplayNames(
+function extractPresetNames(
   bindings: PresetBindingJson | null,
-  presetMap: Map<string, { name: string; categorySlug: string }>,
-): { characterName: string; sceneName: string; styleName: string } {
-  const result = { characterName: "—", sceneName: "—", styleName: "—" };
-  if (!bindings) return result;
-  for (const b of bindings) {
-    const preset = presetMap.get(b.presetId);
-    if (!preset) continue;
-    if (preset.categorySlug === "character") result.characterName = preset.name;
-    else if (preset.categorySlug === "scene") result.sceneName = preset.name;
-    else if (preset.categorySlug === "style") result.styleName = preset.name;
-  }
-  return result;
+  presetMap: Map<string, { name: string }>,
+): string[] {
+  if (!bindings) return [];
+  return bindings
+    .map((b) => presetMap.get(b.presetId)?.name)
+    .filter((n): n is string => !!n);
 }
 
 /** Collect all unique preset IDs from an array of presetBindings JSON values */
@@ -59,9 +53,7 @@ export async function getQueueRuns(): Promise<QueueRun[]> {
       project: {
         select: { id: true, title: true, presetBindings: true },
       },
-      projectSection: {
-        include: { positionTemplate: true },
-      },
+      projectSection: true,
       images: true,
     },
   });
@@ -73,14 +65,14 @@ export async function getQueueRuns(): Promise<QueueRun[]> {
 
   return runs
     .map((run) => {
-      const names = extractDisplayNames(run.project.presetBindings as PresetBindingJson | null, presetMap);
+      const presetNames = extractPresetNames(run.project.presetBindings as PresetBindingJson | null, presetMap);
       return {
         id: run.id,
-        characterName: names.characterName,
+        presetNames,
         projectTitle: run.project.title,
         sectionName:
           run.projectSection.name ??
-          run.projectSection.positionTemplate?.name ??
+          run.projectSection.name ??
           `section_${run.projectSection.sortOrder + 1}`,
         createdAt: formatDate(run.createdAt),
         finishedAt: run.finishedAt?.toISOString() ?? null,
@@ -104,7 +96,7 @@ export async function getRunningRuns(): Promise<RunningRun[]> {
       project: {
         select: { id: true, title: true, presetBindings: true },
       },
-      projectSection: { include: { positionTemplate: true } },
+      projectSection: true,
     },
   });
 
@@ -113,14 +105,13 @@ export async function getRunningRuns(): Promise<RunningRun[]> {
   );
 
   return runs.map((run) => {
-    const names = extractDisplayNames(run.project.presetBindings as PresetBindingJson | null, presetMap);
+    const presetNames = extractPresetNames(run.project.presetBindings as PresetBindingJson | null, presetMap);
     return {
       id: run.id,
-      characterName: names.characterName,
+      presetNames,
       projectTitle: run.project.title,
       sectionName:
         run.projectSection.name ??
-        run.projectSection.positionTemplate?.name ??
         `section_${run.projectSection.sortOrder + 1}`,
       startedAt: formatDate(run.createdAt),
       status: run.status as RunningRun["status"],
@@ -141,7 +132,7 @@ export async function getFailedRuns(): Promise<FailedRun[]> {
       project: {
         select: { id: true, title: true, presetBindings: true },
       },
-      projectSection: { include: { positionTemplate: true } },
+      projectSection: true,
     },
   });
 
@@ -150,14 +141,13 @@ export async function getFailedRuns(): Promise<FailedRun[]> {
   );
 
   return runs.map((run) => {
-    const names = extractDisplayNames(run.project.presetBindings as PresetBindingJson | null, presetMap);
+    const presetNames = extractPresetNames(run.project.presetBindings as PresetBindingJson | null, presetMap);
     return {
       id: run.id,
-      characterName: names.characterName,
+      presetNames,
       projectTitle: run.project.title,
       sectionName:
         run.projectSection.name ??
-        run.projectSection.positionTemplate?.name ??
         `section_${run.projectSection.sortOrder + 1}`,
       errorMessage: run.errorMessage,
       finishedAt: run.finishedAt?.toISOString() ?? null,
@@ -176,9 +166,7 @@ export async function getReviewGroup(runId: string): Promise<ReviewGroup | null>
       project: {
         select: { id: true, title: true, presetBindings: true },
       },
-      projectSection: {
-        include: { positionTemplate: true },
-      },
+      projectSection: true,
       images: {
         orderBy: { createdAt: "asc" },
       },
@@ -187,11 +175,11 @@ export async function getReviewGroup(runId: string): Promise<ReviewGroup | null>
 
   if (!run) return null;
 
-  // Resolve characterName from presetBindings
+  // Resolve preset names from presetBindings
   const presetMap = await batchResolvePresetNames(
     collectPresetIds([run.project.presetBindings]),
   );
-  const names = extractDisplayNames(run.project.presetBindings as PresetBindingJson | null, presetMap);
+  const presetNames = extractPresetNames(run.project.presetBindings as PresetBindingJson | null, presetMap);
 
   const images: ReviewImage[] = run.images.map((img, index) => ({
     id: img.id,
@@ -203,10 +191,9 @@ export async function getReviewGroup(runId: string): Promise<ReviewGroup | null>
   return {
     id: run.id,
     title: run.project.title,
-    characterName: names.characterName,
+    presetNames,
     sectionName:
       run.projectSection.name ??
-      run.projectSection.positionTemplate?.name ??
       `section_${run.projectSection.sortOrder + 1}`,
     createdAt: formatDate(run.createdAt),
     pendingCount: images.filter((img) => img.status === "pending").length,
@@ -251,13 +238,11 @@ export async function listProjects(): Promise<ProjectCard[]> {
   );
 
   return projects.map((project) => {
-    const names = extractDisplayNames(project.presetBindings as PresetBindingJson | null, presetMap);
+    const presetNames = extractPresetNames(project.presetBindings as PresetBindingJson | null, presetMap);
     return {
       id: project.id,
       title: project.title,
-      characterName: names.characterName,
-      sceneName: names.sceneName,
-      styleName: names.styleName,
+      presetNames,
       status: project.status as ProjectCard["status"],
       updatedAt: formatDate(project.updatedAt),
       sectionCount: project._count.sections,
@@ -286,9 +271,7 @@ export type ProjectDetailSection = {
 export type ProjectDetail = {
   id: string;
   title: string;
-  characterName: string;
-  sceneName: string;
-  styleName: string;
+  presetNames: string[];
   status: string;
   sections: {
     id: string;
@@ -318,7 +301,6 @@ export async function getProjectDetail(projectId: string): Promise<ProjectDetail
       sections: {
         orderBy: { sortOrder: "asc" },
         include: {
-          positionTemplate: true,
           runs: {
             orderBy: { createdAt: "desc" },
             take: 1,
@@ -351,14 +333,12 @@ export async function getProjectDetail(projectId: string): Promise<ProjectDetail
   const presetMap = await batchResolvePresetNames(
     collectPresetIds([project.presetBindings]),
   );
-  const names = extractDisplayNames(project.presetBindings as PresetBindingJson | null, presetMap);
+  const presetNames = extractPresetNames(project.presetBindings as PresetBindingJson | null, presetMap);
 
   return {
     id: project.id,
     title: project.title,
-    characterName: names.characterName,
-    sceneName: names.sceneName,
-    styleName: names.styleName,
+    presetNames,
     status: project.status,
     sections: project.sections.map((pos) => {
       const positiveBlockCount = pos.promptBlocks.filter((b) => b.positive?.trim()).length;
@@ -366,12 +346,11 @@ export async function getProjectDetail(projectId: string): Promise<ProjectDetail
       const latestRun = pos.runs[0] ?? null;
       return {
         id: pos.id,
-        name: pos.name || pos.positionTemplate?.name || `小节 ${pos.sortOrder}`,
-        batchSize: pos.batchSize ?? pos.positionTemplate?.defaultBatchSize ?? null,
-        aspectRatio: pos.aspectRatio ?? pos.positionTemplate?.defaultAspectRatio ?? null,
-        // v0.3: dual seedPolicy
-        seedPolicy1: pos.seedPolicy1 ?? pos.positionTemplate?.defaultSeedPolicy1 ?? null,
-        seedPolicy2: pos.seedPolicy2 ?? pos.positionTemplate?.defaultSeedPolicy2 ?? null,
+        name: pos.name || `小节 ${pos.sortOrder}`,
+        batchSize: pos.batchSize,
+        aspectRatio: pos.aspectRatio,
+        seedPolicy1: pos.seedPolicy1,
+        seedPolicy2: pos.seedPolicy2,
         latestRunStatus: latestRun?.status ?? null,
         latestRunId: latestRun?.id ?? null,
         promptBlockCount: pos.promptBlocks.length,
@@ -418,7 +397,6 @@ export async function getSectionResults(sectionId: string): Promise<SectionResul
   const pos = await prisma.projectSection.findUnique({
     where: { id: sectionId },
     include: {
-      positionTemplate: { select: { name: true } },
       project: { select: { id: true, title: true } },
       runs: {
         orderBy: { createdAt: "desc" },
@@ -474,7 +452,7 @@ export async function getSectionResults(sectionId: string): Promise<SectionResul
     projectId: pos.project.id,
     projectTitle: pos.project.title,
     sectionId: pos.id,
-    sectionName: pos.name || pos.positionTemplate?.name || `小节`,
+    sectionName: pos.name || `小节`,
     runs,
     pendingRunId,
     totalPending,
@@ -495,9 +473,7 @@ export async function getTrashItems(): Promise<TrashItem[]> {
           positionRun: {
             include: {
               project: true,
-              projectSection: {
-                include: { positionTemplate: true },
-              },
+              projectSection: true,
             },
           },
         },
@@ -510,7 +486,7 @@ export async function getTrashItems(): Promise<TrashItem[]> {
     return {
       id: rec.id,
       src: toImageUrl(rec.imageResult.thumbPath ?? rec.imageResult.filePath) ?? "",
-      title: `${run.project.title} / ${run.projectSection.positionTemplate?.name ?? "Unknown"}`,
+      title: `${run.project.title} / ${run.projectSection.name ?? "Unknown"}`,
       deletedAt: formatDate(rec.deletedAt),
       originalPath: rec.originalPath,
     };
@@ -604,7 +580,6 @@ export type ProjectEditData = {
   notes: string | null;
   sections: {
     id: string;
-    positionTemplateId: string | null;
     sortOrder: number;
     enabled: boolean;
     positivePrompt: string | null;
@@ -630,7 +605,6 @@ export async function getProjectEditData(projectId: string): Promise<ProjectEdit
         orderBy: { sortOrder: "asc" },
         select: {
           id: true,
-          positionTemplateId: true,
           sortOrder: true,
           enabled: true,
           positivePrompt: true,

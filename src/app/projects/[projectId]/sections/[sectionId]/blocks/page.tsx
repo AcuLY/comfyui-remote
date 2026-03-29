@@ -24,7 +24,6 @@ export default async function SectionEditPage({
     prisma.projectSection.findUnique({
       where: { id: sectionId },
       include: {
-        positionTemplate: true,
         project: {
           select: {
             presetBindings: true,
@@ -53,7 +52,7 @@ export default async function SectionEditPage({
   }
 
   const sectionName =
-    pos.name || pos.positionTemplate?.name || `小节 ${pos.sortOrder}`;
+    pos.name || `小节 ${pos.sortOrder}`;
 
   const initialBlocks: PromptBlockData[] = pos.promptBlocks.map((b) => ({
     id: b.id,
@@ -67,15 +66,15 @@ export default async function SectionEditPage({
   }));
 
   const sectionParams = {
-    batchSize: pos.batchSize ?? pos.positionTemplate?.defaultBatchSize ?? null,
-    aspectRatio: pos.aspectRatio ?? pos.positionTemplate?.defaultAspectRatio ?? null,
-    shortSidePx: pos.shortSidePx ?? pos.positionTemplate?.defaultShortSidePx ?? null,
+    batchSize: pos.batchSize ?? null,
+    aspectRatio: pos.aspectRatio ?? null,
+    shortSidePx: pos.shortSidePx ?? null,
     // v0.3: dual seedPolicy
-    seedPolicy1: pos.seedPolicy1 ?? pos.positionTemplate?.defaultSeedPolicy1 ?? null,
-    seedPolicy2: pos.seedPolicy2 ?? pos.positionTemplate?.defaultSeedPolicy2 ?? null,
+    seedPolicy1: pos.seedPolicy1 ?? null,
+    seedPolicy2: pos.seedPolicy2 ?? null,
     // v0.3: ksampler params
-    ksampler1: pos.ksampler1 ?? pos.positionTemplate?.defaultKsampler1 ?? null,
-    ksampler2: pos.ksampler2 ?? pos.positionTemplate?.defaultKsampler2 ?? null,
+    ksampler1: pos.ksampler1 ?? null,
+    ksampler2: pos.ksampler2 ?? null,
     upscaleFactor: pos.upscaleFactor ?? null,
   };
 
@@ -92,7 +91,7 @@ export default async function SectionEditPage({
       const presetIds = bindings.map((b) => b.presetId);
       const presets = await prisma.promptPreset.findMany({
         where: { id: { in: presetIds } },
-        select: { id: true, name: true, lora1: true, lora2: true, category: { select: { slug: true } } },
+        select: { id: true, name: true, lora1: true, lora2: true },
       });
       for (const preset of presets) {
         if (preset.lora1) {
@@ -106,7 +105,7 @@ export default async function SectionEditPage({
                 path: binding.path,
                 weight: binding.weight,
                 enabled: binding.enabled,
-                source: (preset.category.slug === "character" || preset.category.slug === "scene" || preset.category.slug === "style") ? preset.category.slug as "character" | "scene" | "style" : "manual",
+                source: "manual",
                 sourceLabel: `${preset.name}`,
               });
               loraChanged = true;
@@ -124,7 +123,7 @@ export default async function SectionEditPage({
                 path: binding.path,
                 weight: binding.weight,
                 enabled: binding.enabled,
-                source: (preset.category.slug === "character" || preset.category.slug === "scene" || preset.category.slug === "style") ? preset.category.slug as "character" | "scene" | "style" : "manual",
+                source: "manual",
                 sourceLabel: `${preset.name}`,
               });
               loraChanged = true;

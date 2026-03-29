@@ -5,10 +5,7 @@ import { LoraCascadePicker } from "@/components/lora-cascade-picker";
 import type { LoraEntry, LoraSource } from "@/lib/lora-types";
 
 const SOURCE_LABELS: Record<LoraSource, { label: string; color: string }> = {
-  character: { label: "角色", color: "bg-sky-500/20 text-sky-300 border-sky-500/30" },
-  scene: { label: "场景", color: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30" },
-  style: { label: "风格", color: "bg-violet-500/20 text-violet-300 border-violet-500/30" },
-  position: { label: "Position", color: "bg-amber-500/20 text-amber-300 border-amber-500/30" },
+  preset: { label: "模板", color: "bg-sky-500/20 text-sky-300 border-sky-500/30" },
   manual: { label: "自定义", color: "bg-rose-500/20 text-rose-300 border-rose-500/30" },
 };
 
