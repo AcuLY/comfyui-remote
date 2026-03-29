@@ -91,19 +91,26 @@ function resolveIcon(name: string | null | undefined): LucideIcon {
   return (name && ICON_MAP[name]) || Sparkles;
 }
 
-const COLOR_CLASS_MAP: Record<string, string> = {
-  sky: "border-sky-500/30 bg-sky-500/10 text-sky-300",
-  emerald: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300",
-  violet: "border-violet-500/30 bg-violet-500/10 text-violet-300",
-  amber: "border-amber-500/30 bg-amber-500/10 text-amber-300",
-  rose: "border-rose-500/30 bg-rose-500/10 text-rose-300",
-  cyan: "border-cyan-500/30 bg-cyan-500/10 text-cyan-300",
-  pink: "border-pink-500/30 bg-pink-500/10 text-pink-300",
-  orange: "border-orange-500/30 bg-orange-500/10 text-orange-300",
-};
+/** Parse HSL color string "H S% L%" → hue number. Supports legacy tailwind names. */
+function parseHue(color: string | null | undefined): number {
+  if (!color) return 0;
+  const match = color.match(/^(\d+)\s/);
+  if (match) return parseInt(match[1], 10);
+  const LEGACY: Record<string, number> = {
+    sky: 200, emerald: 160, violet: 270, amber: 38, rose: 350,
+    cyan: 185, pink: 330, orange: 25,
+  };
+  return LEGACY[color] ?? 0;
+}
 
-function getColorClasses(color: string | null | undefined): string {
-  return (color && COLOR_CLASS_MAP[color]) || "border-zinc-500/30 bg-zinc-500/10 text-zinc-300";
+/** Build inline style object for category-colored elements */
+function categoryStyle(color: string | null | undefined): React.CSSProperties {
+  const h = parseHue(color);
+  return {
+    borderColor: `hsl(${h} 70% 55% / 0.3)`,
+    backgroundColor: `hsl(${h} 70% 55% / 0.1)`,
+    color: `hsl(${h} 80% 72%)`,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -123,7 +130,10 @@ function TypeBadge({
     if (cat) {
       const Icon = resolveIcon(cat.icon);
       return (
-        <span className={`inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 text-[10px] font-medium ${getColorClasses(cat.color)}`}>
+        <span
+          className="inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 text-[10px] font-medium"
+          style={categoryStyle(cat.color)}
+        >
           <Icon className="size-3" />
           {cat.name}
         </span>

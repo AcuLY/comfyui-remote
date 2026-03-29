@@ -410,6 +410,11 @@ export async function createPromptCategory(input: PromptCategoryInput) {
     const maxOrder = await prisma.promptCategory.aggregate({ _max: { sortOrder: true } });
     input.sortOrder = (maxOrder._max.sortOrder ?? -1) + 1;
   }
+  // Auto-generate a random HSL color if not provided
+  if (!input.color) {
+    const hue = Math.floor(Math.random() * 360);
+    input.color = `${hue} 70% 55%`;
+  }
   const cat = await prisma.promptCategory.create({ data: input });
   revalidatePath("/assets/prompts");
   return cat;

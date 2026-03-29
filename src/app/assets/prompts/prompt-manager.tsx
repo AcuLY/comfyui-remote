@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   Plus,
@@ -214,40 +214,70 @@ export function PromptManager({
 // CategoryBadge
 // ---------------------------------------------------------------------------
 
-const COLOR_MAP: Record<string, string> = {
-  sky: "bg-sky-500",
-  emerald: "bg-emerald-500",
-  violet: "bg-violet-500",
-  amber: "bg-amber-500",
-  rose: "bg-rose-500",
-  cyan: "bg-cyan-500",
-  lime: "bg-lime-500",
-  orange: "bg-orange-500",
-  pink: "bg-pink-500",
-  teal: "bg-teal-500",
-};
+// ---------------------------------------------------------------------------
+// Color helpers — HSL-based
+// ---------------------------------------------------------------------------
+
+/** Parse "H S% L%" string into hue number. Falls back to 210 for legacy tailwind names. */
+function parseHue(color: string | null): number {
+  if (!color) return 210;
+  const match = color.match(/^(\d+)\s/);
+  if (match) return parseInt(match[1], 10);
+  // Legacy tailwind color name fallback
+  const LEGACY: Record<string, number> = {
+    sky: 200, emerald: 160, violet: 270, amber: 38, rose: 350,
+    cyan: 185, lime: 85, orange: 25, pink: 330, teal: 170,
+  };
+  return LEGACY[color] ?? 210;
+}
+
+function hslString(hue: number): string {
+  return `${hue} 70% 55%`;
+}
 
 function CategoryBadge({ color }: { color: string | null }) {
-  const cls = COLOR_MAP[color ?? ""] ?? "bg-zinc-500";
-  return <div className={`size-2.5 shrink-0 rounded-full ${cls}`} />;
+  const hue = parseHue(color);
+  return (
+    <div
+      className="size-2.5 shrink-0 rounded-full"
+      style={{ backgroundColor: `hsl(${hue} 70% 55%)` }}
+    />
+  );
+}
+
+// ---------------------------------------------------------------------------
+// HueSlider — simple hue picker
+// ---------------------------------------------------------------------------
+
+function HueSlider({ value, onChange }: { value: number; onChange: (hue: number) => void }) {
+  const handleChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => onChange(parseInt(e.target.value, 10)),
+    [onChange],
+  );
+  return (
+    <div className="flex items-center gap-2">
+      <div
+        className="size-6 shrink-0 rounded-lg"
+        style={{ backgroundColor: `hsl(${value} 70% 55%)` }}
+      />
+      <input
+        type="range"
+        min={0}
+        max={359}
+        value={value}
+        onChange={handleChange}
+        className="h-2 w-full cursor-pointer appearance-none rounded-full"
+        style={{
+          background: `linear-gradient(to right, ${Array.from({ length: 12 }, (_, i) => `hsl(${i * 30} 70% 55%)`).join(", ")})`,
+        }}
+      />
+    </div>
+  );
 }
 
 // ---------------------------------------------------------------------------
 // CategoryForm — create/edit category
 // ---------------------------------------------------------------------------
-
-const AVAILABLE_COLORS = [
-  { value: "sky", label: "天蓝" },
-  { value: "emerald", label: "翠绿" },
-  { value: "violet", label: "紫罗兰" },
-  { value: "amber", label: "琥珀" },
-  { value: "rose", label: "玫红" },
-  { value: "cyan", label: "青色" },
-  { value: "teal", label: "蓝绿" },
-  { value: "orange", label: "橙色" },
-  { value: "pink", label: "粉色" },
-  { value: "lime", label: "黄绿" },
-];
 
 function CategoryForm({
   category,
@@ -264,7 +294,7 @@ function CategoryForm({
 }) {
   const [name, setName] = useState(category?.name ?? "");
   const [slug, setSlug] = useState(category?.slug ?? "");
-  const [color, setColor] = useState(category?.color ?? "sky");
+  const [hue, setHue] = useState(() => parseHue(category?.color ?? null));
 
   function handleNameChange(value: string) {
     setName(value);
@@ -298,30 +328,12 @@ function CategoryForm({
         placeholder="slug"
         className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
       />
-      <div className="flex flex-wrap gap-1.5">
-        {AVAILABLE_COLORS.map((c) => (
-          <button
-            key={c.value}
-            type="button"
-            onClick={() => setColor(c.value)}
-            className={`rounded-lg px-2 py-1 text-[10px] transition ${
-              color === c.value
-                ? "ring-1 ring-white/30 bg-white/10 text-white"
-                : "text-zinc-500 hover:text-zinc-300"
-            }`}
-          >
-            <span className="inline-flex items-center gap-1">
-              <CategoryBadge color={c.value} />
-              {c.label}
-            </span>
-          </button>
-        ))}
-      </div>
+      <HueSlider value={hue} onChange={setHue} />
       <div className="flex gap-1.5">
         <button
           type="button"
           disabled={isPending || !name.trim() || !slug.trim()}
-          onClick={() => onSave({ name: name.trim(), slug: slug.trim(), color })}
+          onClick={() => onSave({ name: name.trim(), slug: slug.trim(), color: hslString(hue) })}
           className="inline-flex items-center gap-1 rounded-lg bg-sky-500/20 px-2 py-1 text-[11px] text-sky-300 hover:bg-sky-500/30 disabled:opacity-50"
         >
           {isPending ? (
