@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useCallback } from "react";
+import { useState, useEffect, useTransition, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -42,6 +42,17 @@ export function PromptManager({
   const [selectedCatId, setSelectedCatId] = useState<string | null>(
     initialCategories[0]?.id ?? null,
   );
+
+  // Sync with server data after router.refresh()
+  useEffect(() => {
+    setCategories(initialCategories);
+    // Keep selection if the category still exists, otherwise select first
+    setSelectedCatId((prev) =>
+      initialCategories.some((c) => c.id === prev)
+        ? prev
+        : initialCategories[0]?.id ?? null,
+    );
+  }, [initialCategories]);
   const [showCatForm, setShowCatForm] = useState(false);
   const [editingCatId, setEditingCatId] = useState<string | null>(null);
 
