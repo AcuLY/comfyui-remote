@@ -26,10 +26,6 @@ import {
   Trash2,
   X,
   Loader2,
-  User,
-  MapPin,
-  Palette,
-  LayoutGrid,
   Sparkles,
   BookOpen,
   type LucideIcon,
@@ -41,8 +37,6 @@ import {
   reorderSectionBlocks,
   type PromptBlockData,
 } from "@/lib/actions";
-import type { LoraSource } from "@/lib/lora-types";
-
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -52,8 +46,6 @@ type LibraryItem = {
   name: string;
   prompt: string;
   negativePrompt: string | null;
-  loraPath?: string | null;
-  loraBindings?: unknown;
   lora1?: unknown;
   lora2?: unknown;
 };
@@ -77,14 +69,6 @@ export type PromptLibraryV2 = {
   }>;
 };
 
-/** Legacy library type (backward compat) */
-type PromptLibraryLegacy = {
-  characters: LibraryItem[];
-  scenes: LibraryItem[];
-  styles: LibraryItem[];
-  sections: LibraryItem[];
-};
-
 /** Category config for dynamic badge rendering */
 type CategoryConfig = {
   id: string;
@@ -99,10 +83,6 @@ type CategoryConfig = {
 // ---------------------------------------------------------------------------
 
 const ICON_MAP: Record<string, LucideIcon> = {
-  User,
-  MapPin,
-  Palette,
-  LayoutGrid,
   Sparkles,
   BookOpen,
 };
@@ -126,16 +106,8 @@ function getColorClasses(color: string | null | undefined): string {
   return (color && COLOR_CLASS_MAP[color]) || "border-zinc-500/30 bg-zinc-500/10 text-zinc-300";
 }
 
-// Fallback for legacy block types
-const LEGACY_TYPE_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
-  character: { label: "角色", color: "sky", icon: "User" },
-  scene: { label: "场景", color: "emerald", icon: "MapPin" },
-  style: { label: "风格", color: "violet", icon: "Palette" },
-  position: { label: "Position", color: "amber", icon: "LayoutGrid" },
-};
-
 // ---------------------------------------------------------------------------
-// TypeBadge — dynamic, uses categoryId or falls back to legacy type
+// TypeBadge — dynamic, uses categoryId
 // ---------------------------------------------------------------------------
 
 function TypeBadge({
@@ -159,21 +131,7 @@ function TypeBadge({
     }
   }
 
-  // Legacy type fallback
-  if (block.type !== "preset" && block.type !== "custom") {
-    const legacy = LEGACY_TYPE_CONFIG[block.type];
-    if (legacy) {
-      const Icon = resolveIcon(legacy.icon);
-      return (
-        <span className={`inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 text-[10px] font-medium ${getColorClasses(legacy.color)}`}>
-          <Icon className="size-3" />
-          {legacy.label}
-        </span>
-      );
-    }
-  }
-
-  // Custom / unknown fallback
+  // Custom fallback
   if (block.type === "custom") {
     return (
       <span className="inline-flex items-center gap-1 rounded-lg border border-rose-500/30 bg-rose-500/10 px-2 py-0.5 text-[10px] font-medium text-rose-300">
@@ -649,22 +607,17 @@ function AddBlockForm({
 export function PromptBlockEditor({
   sectionId,
   initialBlocks,
-  library,
   libraryV2,
   onBlockImport,
 }: {
   sectionId: string;
   initialBlocks: PromptBlockData[];
-  /** @deprecated Use libraryV2 instead */
-  library?: PromptLibraryLegacy;
   /** V2 dynamic library from PromptCategory/PromptPreset */
   libraryV2?: PromptLibraryV2;
   onBlockImport?: (
-    sourceType: LoraSource | string,
+    sourceType: string,
     sourceId: string,
     sourceName: string,
-    loraPath?: string | null,
-    loraBindings?: unknown,
     lora1Bindings?: unknown,
     lora2Bindings?: unknown,
   ) => void;
@@ -676,78 +629,14 @@ export function PromptBlockEditor({
   const [addingColumn, setAddingColumn] = useState<"positive" | "negative" | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  // Build effective libraryV2 from legacy library if needed
-  const effectiveLibraryV2 = useMemo<PromptLibraryV2 | undefined>(() => {
-    if (libraryV2) return libraryV2;
-    if (!library) return undefined;
-    // Convert legacy library to V2 format
-    const categories: PromptLibraryV2["categories"] = [];
-    if (library.characters.length > 0) {
-      categories.push({
-        id: "__legacy_character",
-        name: "角色",
-        slug: "character",
-        color: "sky",
-        icon: "User",
-        presets: library.characters.map((c) => ({
-          id: c.id,
-          name: c.name,
-          prompt: c.prompt,
-          negativePrompt: c.negativePrompt,
-          lora1: c.loraBindings ?? (c.loraPath ? [{ path: c.loraPath, weight: 1, enabled: true }] : null),
-          lora2: null,
-        })),
-      });
-    }
-    if (library.scenes.length > 0) {
-      categories.push({
-        id: "__legacy_scene",
-        name: "场景",
-        slug: "scene",
-        color: "emerald",
-        icon: "MapPin",
-        presets: library.scenes.map((s) => ({
-          id: s.id, name: s.name, prompt: s.prompt, negativePrompt: s.negativePrompt, lora1: null, lora2: null,
-        })),
-      });
-    }
-    if (library.styles.length > 0) {
-      categories.push({
-        id: "__legacy_style",
-        name: "风格",
-        slug: "style",
-        color: "violet",
-        icon: "Palette",
-        presets: library.styles.map((s) => ({
-          id: s.id, name: s.name, prompt: s.prompt, negativePrompt: s.negativePrompt, lora1: null, lora2: null,
-        })),
-      });
-    }
-    if (library.sections.length > 0) {
-      categories.push({
-        id: "__legacy_position",
-        name: "镜位",
-        slug: "position",
-        color: "amber",
-        icon: "LayoutGrid",
-        presets: library.sections.map((p) => ({
-          id: p.id, name: p.name, prompt: p.prompt, negativePrompt: p.negativePrompt,
-          lora1: (p as { lora1?: unknown }).lora1 ?? null,
-          lora2: (p as { lora2?: unknown }).lora2 ?? null,
-        })),
-      });
-    }
-    return { categories };
-  }, [library, libraryV2]);
-
   // Build category map for TypeBadge
   const categoryMap = useMemo(() => {
     const map = new Map<string, CategoryConfig>();
-    for (const cat of effectiveLibraryV2?.categories ?? []) {
+    for (const cat of libraryV2?.categories ?? []) {
       map.set(cat.id, { id: cat.id, name: cat.name, slug: cat.slug, color: cat.color, icon: cat.icon });
     }
     return map;
-  }, [effectiveLibraryV2]);
+  }, [libraryV2]);
 
   // ---- Edit handlers ----
 
@@ -814,8 +703,6 @@ export function PromptBlockEditor({
           input.type === "preset" ? (input.categoryId ?? "preset") : input.type,
           input.sourceId,
           input.label,
-          libraryItem.loraPath,
-          libraryItem.loraBindings,
           libraryItem.lora1,
           libraryItem.lora2,
         );
@@ -895,7 +782,7 @@ export function PromptBlockEditor({
           onAdd={() => setAddingColumn("positive")}
           onCancelAdd={() => setAddingColumn(null)}
           onSubmitAdd={handleAdd}
-          libraryV2={effectiveLibraryV2}
+          libraryV2={libraryV2}
           categoryMap={categoryMap}
         />
         <BlockColumn
@@ -916,7 +803,7 @@ export function PromptBlockEditor({
           onAdd={() => setAddingColumn("negative")}
           onCancelAdd={() => setAddingColumn(null)}
           onSubmitAdd={handleAdd}
-          libraryV2={effectiveLibraryV2}
+          libraryV2={libraryV2}
           categoryMap={categoryMap}
         />
       </div>

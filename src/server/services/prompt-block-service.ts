@@ -44,7 +44,7 @@ function ensureString(value: unknown, fieldName: string): string {
 }
 
 function ensureValidBlockType(value: unknown): string {
-  const validTypes = ["character", "scene", "style", "position", "custom"];
+  const validTypes = ["preset", "custom"];
   if (typeof value !== "string" || !validTypes.includes(value)) {
     throw new PromptBlockServiceError(
       `type must be one of: ${validTypes.join(", ")}`,

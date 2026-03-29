@@ -19,10 +19,8 @@ export type AuditEntityType =
   | "PositionRun"
   | "ImageResult"
   | "LoraAsset"
-  | "Character"
-  | "ScenePreset"
-  | "StylePreset"
-  | "PositionTemplate"
+  | "PromptCategory"
+  | "PromptPreset"
   | "PromptBlock";
 
 export type AuditAction =

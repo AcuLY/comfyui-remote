@@ -1,12 +1,11 @@
 /**
  * LoRA Binding Types
  *
- * Used for storing LoRA configurations in presets (Character/Scene/Style/Position)
- * and in project sections (ProjectSection.loraConfig).
+ * Used for storing LoRA configurations in presets and project sections.
  */
 
 /** Source type for tracking where a LoRA came from */
-export type LoraSource = "character" | "scene" | "style" | "position" | "manual";
+export type LoraSource = "preset" | "manual";
 
 /** Individual LoRA binding configuration */
 export type LoraBinding = {
@@ -23,7 +22,7 @@ export type LoraEntry = LoraBinding & {
 };
 
 // ---------------------------------------------------------------------------
-// KSampler Parameters (v0.3)
+// KSampler Parameters
 // ---------------------------------------------------------------------------
 
 /** Seed policy for KSampler */
@@ -83,21 +82,15 @@ function isSeedPolicy(value: unknown): value is SeedPolicy {
 }
 
 // ---------------------------------------------------------------------------
-// LoRA Config (v0.3)
+// LoRA Config
 // ---------------------------------------------------------------------------
 
 /**
  * LoRA config structure stored in ProjectSection.loraConfig
- * v0.4: Simplified to lora1, lora2 only (characterLora merged into lora1)
  */
 export type PositionLoraConfig = {
   lora1: LoraEntry[];          // lora1 列表（可编辑，来自 preset 或手动添加）
   lora2: LoraEntry[];          // lora2 列表（可编辑，来自 preset 或手动添加）
-};
-
-/** @deprecated Use PositionLoraConfig instead */
-export type LegacyPositionLoraConfig = {
-  entries: LoraEntry[];
 };
 
 /**
@@ -123,8 +116,6 @@ export function parseLoraBindings(json: unknown): LoraBinding[] {
 
 /**
  * Parse PositionLoraConfig JSON from database
- * Supports v0.4 format (lora1/lora2), v0.3 format (characterLora/lora1/lora2), and legacy format (entries)
- * For backward compat: characterLora entries are prepended to lora1
  */
 export function parsePositionLoraConfig(json: unknown): PositionLoraConfig {
   if (!json || typeof json !== "object" || Array.isArray(json)) {
@@ -132,44 +123,9 @@ export function parsePositionLoraConfig(json: unknown): PositionLoraConfig {
   }
   const obj = json as Record<string, unknown>;
 
-  // v0.3 format with characterLora — merge into lora1
-  if ("characterLora" in obj) {
-    const characterLora = parseLoraEntryArray(obj.characterLora);
-    const lora1 = parseLoraEntryArray(obj.lora1);
-    return {
-      lora1: [...characterLora, ...lora1],
-      lora2: parseLoraEntryArray(obj.lora2),
-    };
-  }
-
-  // v0.4 format (lora1/lora2 only)
-  if ("lora1" in obj || "lora2" in obj) {
-    return {
-      lora1: parseLoraEntryArray(obj.lora1),
-      lora2: parseLoraEntryArray(obj.lora2),
-    };
-  }
-
-  // Legacy format: migrate entries to lora1
-  if ("entries" in obj && Array.isArray(obj.entries)) {
-    const entries = parseLoraEntryArray(obj.entries);
-    return { lora1: entries, lora2: [] };
-  }
-
-  return { lora1: [], lora2: [] };
-}
-
-/**
- * Parse legacy PositionLoraConfig JSON (for migration)
- * @deprecated Use parsePositionLoraConfig
- */
-export function parseLegacyPositionLoraConfig(json: unknown): LegacyPositionLoraConfig {
-  if (!json || typeof json !== "object" || Array.isArray(json)) {
-    return { entries: [] };
-  }
-  const obj = json as Record<string, unknown>;
   return {
-    entries: parseLoraEntryArray(obj.entries),
+    lora1: parseLoraEntryArray(obj.lora1),
+    lora2: parseLoraEntryArray(obj.lora2),
   };
 }
 

@@ -77,7 +77,7 @@ export function getMcpServer(): McpServer {
         "Use tools to list/update projects, trigger runs, review images, and manage prompt blocks.",
         "Use resources to read detailed context for projects, runs, workflows, revisions, and prompt blocks.",
         "Typical workflow: list_projects → get project context → update params → run → poll run context → review images.",
-        "Prompt blocks (v0.2): Each section's prompt is composed from ordered blocks (character/scene/style/position/custom).",
+        "Prompt blocks: Each section's prompt is composed from ordered blocks (preset/custom).",
         "Use list_prompt_blocks + add/update/remove/reorder to manage blocks via MCP.",
       ].join("\n"),
     },
@@ -252,14 +252,14 @@ export function getMcpServer(): McpServer {
 
   server.tool(
     "add_prompt_block",
-    "Add a new prompt block to a section. Use this to add custom prompt blocks or import from character/scene/style/position presets.",
+    "Add a new prompt block to a section. Use this to add custom prompt blocks or import from presets.",
     {
       sectionId: z.string().describe("The section ID to add the block to"),
-      type: z.enum(["character", "scene", "style", "position", "custom"]).describe("Block type"),
+      type: z.enum(["preset", "custom"]).describe("Block type"),
       label: z.string().describe("Display label for this block"),
       positive: z.string().describe("Positive prompt text"),
       negative: z.string().nullable().optional().describe("Negative prompt text (optional)"),
-      sourceId: z.string().nullable().optional().describe("Source entity ID (e.g. Character.id) if referencing a preset"),
+      sourceId: z.string().nullable().optional().describe("Source entity ID (e.g. PromptPreset.id) if referencing a preset"),
     },
     async ({ sectionId, type, label, positive, negative, sourceId }) => {
       try {

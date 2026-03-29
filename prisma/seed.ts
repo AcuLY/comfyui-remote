@@ -6,108 +6,7 @@ const now = new Date();
 const hoursAgo = (hours: number) => new Date(now.getTime() - hours * 60 * 60 * 1000);
 
 async function main() {
-  const [miku, tangtang] = await Promise.all([
-    prisma.character.upsert({
-      where: { slug: "nakano-miku" },
-      update: {
-        name: "Nakano Miku",
-        prompt: "nakano miku, quintuplets anime style, soft expression",
-        loraPath: "characters/miku-v3.safetensors",
-        notes: "Seed character for local review flow.",
-        isActive: true,
-      },
-      create: {
-        name: "Nakano Miku",
-        slug: "nakano-miku",
-        prompt: "nakano miku, quintuplets anime style, soft expression",
-        loraPath: "characters/miku-v3.safetensors",
-        notes: "Seed character for local review flow.",
-      },
-    }),
-    prisma.character.upsert({
-      where: { slug: "tangtang" },
-      update: {
-        name: "Tangtang",
-        prompt: "anime girl, brown hair, relaxed mood",
-        loraPath: "characters/tangtang-v1.safetensors",
-        notes: "Secondary seed character for local job list coverage.",
-        isActive: true,
-      },
-      create: {
-        name: "Tangtang",
-        slug: "tangtang",
-        prompt: "anime girl, brown hair, relaxed mood",
-        loraPath: "characters/tangtang-v1.safetensors",
-        notes: "Secondary seed character for local job list coverage.",
-      },
-    }),
-  ]);
-
-  const [parkBench, riverside, softDaylight, animeCinematic] = await Promise.all([
-    prisma.scenePreset.upsert({
-      where: { slug: "park-bench" },
-      update: { name: "Park bench", prompt: "park bench, spring trees, city park" },
-      create: { name: "Park bench", slug: "park-bench", prompt: "park bench, spring trees, city park" },
-    }),
-    prisma.scenePreset.upsert({
-      where: { slug: "riverside" },
-      update: { name: "Riverside", prompt: "riverside walkway, evening breeze" },
-      create: { name: "Riverside", slug: "riverside", prompt: "riverside walkway, evening breeze" },
-    }),
-    prisma.stylePreset.upsert({
-      where: { slug: "soft-daylight" },
-      update: { name: "Soft daylight", prompt: "soft daylight, clean anime shading" },
-      create: { name: "Soft daylight", slug: "soft-daylight", prompt: "soft daylight, clean anime shading" },
-    }),
-    prisma.stylePreset.upsert({
-      where: { slug: "anime-cinematic" },
-      update: { name: "Anime cinematic", prompt: "anime cinematic lighting, polished color grading" },
-      create: { name: "Anime cinematic", slug: "anime-cinematic", prompt: "anime cinematic lighting, polished color grading" },
-    }),
-  ]);
-
-  const [standingTemplate, watchingTemplate, benchSitTemplate] = await Promise.all([
-    prisma.positionTemplate.upsert({
-      where: { slug: "standing" },
-      update: { name: "Standing", prompt: "standing pose", defaultAspectRatio: "3:4", defaultBatchSize: 9 },
-      create: {
-        name: "Standing",
-        slug: "standing",
-        prompt: "standing pose",
-        negativePrompt: "low quality, bad anatomy",
-        defaultAspectRatio: "3:4",
-        defaultBatchSize: 9,
-        defaultSeedPolicy: "random",
-      },
-    }),
-    prisma.positionTemplate.upsert({
-      where: { slug: "watching" },
-      update: { name: "Watching", prompt: "looking at camera, upper body focus", defaultAspectRatio: "3:4", defaultBatchSize: 9 },
-      create: {
-        name: "Watching",
-        slug: "watching",
-        prompt: "looking at camera, upper body focus",
-        negativePrompt: "low quality, bad anatomy",
-        defaultAspectRatio: "3:4",
-        defaultBatchSize: 9,
-        defaultSeedPolicy: "random",
-      },
-    }),
-    prisma.positionTemplate.upsert({
-      where: { slug: "bench-sit" },
-      update: { name: "Bench sit", prompt: "sitting on bench, relaxed posture", defaultAspectRatio: "3:4", defaultBatchSize: 9 },
-      create: {
-        name: "Bench sit",
-        slug: "bench-sit",
-        prompt: "sitting on bench, relaxed posture",
-        negativePrompt: "low quality, bad anatomy",
-        defaultAspectRatio: "3:4",
-        defaultBatchSize: 9,
-        defaultSeedPolicy: "random",
-      },
-    }),
-  ]);
-
+  // --- Projects ---
   const mikuJob = await prisma.project.upsert({
     where: { slug: "miku-spring-batch-a" },
     update: {
@@ -138,14 +37,14 @@ async function main() {
     },
   });
 
-  const mikuStanding = await prisma.projectSection.findFirst({
-    where: { projectId: mikuJob.id, positionTemplateId: standingTemplate.id },
+  // --- Project Sections ---
+  let mikuStanding = await prisma.projectSection.findFirst({
+    where: { projectId: mikuJob.id, sortOrder: 1 },
   });
   if (!mikuStanding) {
-    await prisma.projectSection.create({
+    mikuStanding = await prisma.projectSection.create({
       data: {
         projectId: mikuJob.id,
-        positionTemplateId: standingTemplate.id,
         sortOrder: 1,
         enabled: true,
         batchSize: 9,
@@ -156,14 +55,13 @@ async function main() {
     });
   }
 
-  const mikuWatching = await prisma.projectSection.findFirst({
-    where: { projectId: mikuJob.id, positionTemplateId: watchingTemplate.id },
+  let mikuWatching = await prisma.projectSection.findFirst({
+    where: { projectId: mikuJob.id, sortOrder: 2 },
   });
   if (!mikuWatching) {
-    await prisma.projectSection.create({
+    mikuWatching = await prisma.projectSection.create({
       data: {
         projectId: mikuJob.id,
-        positionTemplateId: watchingTemplate.id,
         sortOrder: 2,
         enabled: true,
         batchSize: 9,
@@ -174,14 +72,13 @@ async function main() {
     });
   }
 
-  const tangtangBench = await prisma.projectSection.findFirst({
-    where: { projectId: tangtangJob.id, positionTemplateId: benchSitTemplate.id },
+  let tangtangBench = await prisma.projectSection.findFirst({
+    where: { projectId: tangtangJob.id, sortOrder: 1 },
   });
   if (!tangtangBench) {
-    await prisma.projectSection.create({
+    tangtangBench = await prisma.projectSection.create({
       data: {
         projectId: tangtangJob.id,
-        positionTemplateId: benchSitTemplate.id,
         sortOrder: 1,
         enabled: true,
         batchSize: 9,
@@ -192,6 +89,7 @@ async function main() {
     });
   }
 
+  // --- Position Runs ---
   const standingRun = await prisma.positionRun.upsert({
     where: { id: "seed-run-miku-standing" },
     update: {
@@ -200,10 +98,6 @@ async function main() {
       runIndex: 1,
       status: "done",
       resolvedConfigSnapshot: {
-        character: miku.name,
-        scene: parkBench.name,
-        style: softDaylight.name,
-        position: standingTemplate.name,
         batchSize: 9,
       },
       outputDir: "data/images/miku-spring-batch-a/standing/run-01/raw",
@@ -217,10 +111,6 @@ async function main() {
       runIndex: 1,
       status: "done",
       resolvedConfigSnapshot: {
-        character: miku.name,
-        scene: parkBench.name,
-        style: softDaylight.name,
-        position: standingTemplate.name,
         batchSize: 9,
       },
       outputDir: "data/images/miku-spring-batch-a/standing/run-01/raw",
@@ -237,10 +127,6 @@ async function main() {
       runIndex: 2,
       status: "done",
       resolvedConfigSnapshot: {
-        character: miku.name,
-        scene: parkBench.name,
-        style: softDaylight.name,
-        position: watchingTemplate.name,
         batchSize: 9,
       },
       outputDir: "data/images/miku-spring-batch-a/watching/run-02/raw",
@@ -254,10 +140,6 @@ async function main() {
       runIndex: 2,
       status: "done",
       resolvedConfigSnapshot: {
-        character: miku.name,
-        scene: parkBench.name,
-        style: softDaylight.name,
-        position: watchingTemplate.name,
         batchSize: 9,
       },
       outputDir: "data/images/miku-spring-batch-a/watching/run-02/raw",
@@ -274,10 +156,6 @@ async function main() {
       runIndex: 1,
       status: "done",
       resolvedConfigSnapshot: {
-        character: tangtang.name,
-        scene: riverside.name,
-        style: animeCinematic.name,
-        position: benchSitTemplate.name,
         batchSize: 9,
       },
       outputDir: "data/images/tangtang-park-test/bench-sit/run-01/raw",
@@ -291,10 +169,6 @@ async function main() {
       runIndex: 1,
       status: "done",
       resolvedConfigSnapshot: {
-        character: tangtang.name,
-        scene: riverside.name,
-        style: animeCinematic.name,
-        position: benchSitTemplate.name,
         batchSize: 9,
       },
       outputDir: "data/images/tangtang-park-test/bench-sit/run-01/raw",
@@ -307,6 +181,7 @@ async function main() {
   await prisma.projectSection.update({ where: { id: mikuWatching.id }, data: { latestRunId: watchingRun.id } });
   await prisma.projectSection.update({ where: { id: tangtangBench.id }, data: { latestRunId: benchRun.id } });
 
+  // --- Image Results ---
   const seedImages = [
     ...Array.from({ length: 9 }, (_, index) => ({
       id: `seed-image-miku-standing-${index + 1}`,
@@ -351,6 +226,7 @@ async function main() {
     });
   }
 
+  // --- Trash Records ---
   await prisma.trashRecord.upsert({
     where: { imageResultId: "seed-image-miku-standing-4" },
     update: {
@@ -372,6 +248,7 @@ async function main() {
     },
   });
 
+  // --- LoRA Assets ---
   await prisma.loraAsset.upsert({
     where: { absolutePath: "D:/ComfyUI/models/loras/characters/miku-v3.safetensors" },
     update: {
