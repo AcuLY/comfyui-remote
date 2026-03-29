@@ -3,10 +3,11 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useActionState } from "react";
 import { Loader2, ChevronDown } from "lucide-react";
+import { BatchSizeQuickFill } from "@/components/batch-size-quick-fill";
+import { UpscaleFactorQuickFill } from "@/components/upscale-factor-quick-fill";
 import { saveSectionEditAction } from "@/app/projects/actions";
 import { initialProjectSaveState } from "@/app/projects/action-types";
 import { AspectRatioPicker } from "@/components/aspect-ratio-picker";
-import { BatchSizeQuickFill } from "@/components/batch-size-quick-fill";
 import { Select } from "@/components/ui/select";
 import type { KSamplerParams } from "@/lib/lora-types";
 import { DEFAULT_KSAMPLER1, DEFAULT_KSAMPLER2 } from "@/lib/lora-types";
@@ -53,13 +54,6 @@ const SEED_OPTIONS = [
   { value: "increment", label: "递增 (increment)" },
 ];
 
-const UPSCALE_OPTIONS = [
-  { value: "1", label: "1x（无放大）" },
-  { value: "1.5", label: "1.5x" },
-  { value: "2", label: "2x（默认）" },
-  { value: "2.5", label: "2.5x" },
-  { value: "3", label: "3x" },
-];
 
 /** Debounce delay for auto-save (ms) */
 const AUTO_SAVE_DELAY = 600;
@@ -352,13 +346,25 @@ export function SectionParamsForm({ projectId, sectionId, initialParams }: Secti
 
           <div className="space-y-1.5">
             <div className="text-[11px] text-zinc-500">放大倍数</div>
-            <Select
+            <input
+              type="number"
+              min={1}
+              max={4}
+              step={0.5}
               value={upscaleFactor}
               onChange={(v) => {
-                setUpscaleFactor(v);
+                setUpscaleFactor(v.target.value);
                 setTimeout(scheduleAutoSave, 0);
               }}
-              options={UPSCALE_OPTIONS}
+              disabled={pending}
+              className="input-number w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-zinc-200 outline-none focus:border-sky-500/30 disabled:opacity-50"
+            />
+            <UpscaleFactorQuickFill
+              onSelect={(val) => {
+                setUpscaleFactor(String(val));
+                setTimeout(scheduleAutoSave, 0);
+              }}
+              currentValue={upscaleFactor ? parseFloat(upscaleFactor) : null}
               disabled={pending}
               size="sm"
             />

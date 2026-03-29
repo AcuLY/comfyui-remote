@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useCallback } from "react";
+import { useMemo, useCallback, useId } from "react";
 import { Plus, Trash2, GripVertical } from "lucide-react";
 import {
   DndContext,
@@ -199,6 +199,7 @@ export function LoraListEditor({
   disabled = false,
   readOnly = false,
 }: LoraListEditorProps) {
+  const dndId = useId();
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   );
@@ -265,7 +266,7 @@ export function LoraListEditor({
             暂无 LoRA，从词库导入或手动添加
           </div>
         ) : (
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <DndContext id={dndId} sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={ids} strategy={verticalListSortingStrategy}>
               <div className="space-y-2">
                 {entries.map((entry) => (

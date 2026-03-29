@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useId } from "react";
 import { Plus, Trash2, GripVertical } from "lucide-react";
 import {
   DndContext,
@@ -154,6 +154,7 @@ export function LoraBindingEditor({ bindings, onChange }: LoraBindingEditorProps
     bindings.map((b) => ({ ...b, _id: nextId() })),
   );
   const [weightInputs, setWeightInputs] = useState<Record<string, string>>({});
+  const dndId = useId();
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -235,7 +236,7 @@ export function LoraBindingEditor({ bindings, onChange }: LoraBindingEditorProps
             暂无绑定的 LoRA
           </div>
         ) : (
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <DndContext id={dndId} sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={ids} strategy={verticalListSortingStrategy}>
               <div className="space-y-2">
                 {items.map((item, index) => (
