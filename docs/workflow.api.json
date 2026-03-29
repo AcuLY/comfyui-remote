@@ -10,14 +10,14 @@
   },
   "3": {
     "inputs": {
-      "seed": 854083548914543,
+      "seed": 49599188716761,
       "steps": 30,
       "cfg": 4,
       "sampler_name": "euler_ancestral",
       "scheduler": "karras",
       "denoise": 1,
       "model": [
-        "524",
+        "522",
         0
       ],
       "positive": [
@@ -45,25 +45,13 @@
         0
       ],
       "clip": [
-        "524",
+        "522",
         1
       ]
     },
     "class_type": "CLIPTextEncode",
     "_meta": {
       "title": "CLIP Text Encode (Prompt)"
-    }
-  },
-  "9": {
-    "inputs": {
-      "images": [
-        "410",
-        0
-      ]
-    },
-    "class_type": "PreviewImage",
-    "_meta": {
-      "title": "Preview Image"
     }
   },
   "12": {
@@ -73,7 +61,7 @@
         0
       ],
       "clip": [
-        "524",
+        "522",
         1
       ]
     },
@@ -82,88 +70,18 @@
       "title": "CLIP Text Encode (Prompt)"
     }
   },
-  "24": {
-    "inputs": {
-      "PowerLoraLoaderHeaderWidget": {
-        "type": "PowerLoraLoaderHeaderWidget"
-      },
-      "lora_1": {
-        "on": true,
-        "lora": "artist\\trt_v0.3_noobai_cwhj.safetensors",
-        "strength": 0.9272888183593748
-      },
-      "lora_2": {
-        "on": true,
-        "lora": "artist\\rella.safetensors",
-        "strength": 0.3818115234375001
-      },
-      "➕ Add Lora": "",
-      "model": [
-        "36",
-        0
-      ],
-      "clip": [
-        "36",
-        1
-      ]
-    },
-    "class_type": "Power Lora Loader (rgthree)",
-    "_meta": {
-      "title": "Power Lora Loader (rgthree)"
-    }
-  },
-  "25": {
-    "inputs": {
-      "PowerLoraLoaderHeaderWidget": {
-        "type": "PowerLoraLoaderHeaderWidget"
-      },
-      "lora_4": {
-        "on": true,
-        "lora": "style\\lightingSlider.safetensors",
-        "strength": 0.3109118652343771
-      },
-      "lora_5": {
-        "on": true,
-        "lora": "environment\\2dRealPhoto_Background.safetensors",
-        "strength": 0.30909423828125016
-      },
-      "➕ Add Lora": "",
-      "model": [
-        "24",
-        0
-      ],
-      "clip": [
-        "24",
-        1
-      ]
-    },
-    "class_type": "Power Lora Loader (rgthree)",
-    "_meta": {
-      "title": "Power Lora Loader (rgthree)"
-    }
-  },
   "36": {
     "inputs": {
       "PowerLoraLoaderHeaderWidget": {
         "type": "PowerLoraLoaderHeaderWidget"
       },
-      "lora_1": {
-        "on": true,
-        "lora": "style\\Breast Size Slider - Illustrious - V2_alpha1.0_rank4_noxattn_last.safetensors",
-        "strength": -0.6000122070312499
-      },
-      "lora_2": {
-        "on": true,
-        "lora": "style\\eyelid_target.safetensors",
-        "strength": 1
-      },
       "➕ Add Lora": "",
       "model": [
-        "482",
+        "1",
         0
       ],
       "clip": [
-        "482",
+        "1",
         1
       ]
     },
@@ -217,14 +135,14 @@
   },
   "427": {
     "inputs": {
-      "seed": 584686411970599,
+      "seed": 736463954525772,
       "steps": 30,
       "cfg": 7,
       "sampler_name": "dpmpp_2m",
       "scheduler": "karras",
       "denoise": 0.6,
       "model": [
-        "25",
+        "36",
         0
       ],
       "positive": [
@@ -243,59 +161,6 @@
     "class_type": "KSampler",
     "_meta": {
       "title": "KSampler2"
-    }
-  },
-  "428": {
-    "inputs": {
-      "samples": [
-        "3",
-        0
-      ],
-      "vae": [
-        "1",
-        2
-      ]
-    },
-    "class_type": "VAEDecode",
-    "_meta": {
-      "title": "VAE Decode"
-    }
-  },
-  "429": {
-    "inputs": {
-      "images": [
-        "428",
-        0
-      ]
-    },
-    "class_type": "PreviewImage",
-    "_meta": {
-      "title": "Preview Image"
-    }
-  },
-  "482": {
-    "inputs": {
-      "PowerLoraLoaderHeaderWidget": {
-        "type": "PowerLoraLoaderHeaderWidget"
-      },
-      "lora_1": {
-        "on": true,
-        "lora": "character\\Kokoro-10.safetensors",
-        "strength": 0.9836322021484375
-      },
-      "➕ Add Lora": "",
-      "model": [
-        "1",
-        0
-      ],
-      "clip": [
-        "1",
-        1
-      ]
-    },
-    "class_type": "Power Lora Loader (rgthree)",
-    "_meta": {
-      "title": "character lora"
     }
   },
   "511": {
@@ -321,7 +186,7 @@
       "output_path": "",
       "filename_prefix": "",
       "filename_delimiter": "",
-      "filename_number_padding": 4,
+      "filename_number_padding": 2,
       "filename_number_start": "false",
       "extension": "png",
       "dpi": 300,
@@ -350,7 +215,7 @@
         0
       ],
       "clip": [
-        "25",
+        "36",
         1
       ]
     },
@@ -366,7 +231,7 @@
         0
       ],
       "clip": [
-        "25",
+        "36",
         1
       ]
     },
@@ -382,57 +247,17 @@
       },
       "➕ Add Lora": "",
       "model": [
-        "482",
+        "1",
         0
       ],
       "clip": [
-        "482",
+        "1",
         1
       ]
     },
     "class_type": "Power Lora Loader (rgthree)",
     "_meta": {
       "title": "lora 1"
-    }
-  },
-  "524": {
-    "inputs": {
-      "PowerLoraLoaderHeaderWidget": {
-        "type": "PowerLoraLoaderHeaderWidget"
-      },
-      "lora_1": {
-        "on": true,
-        "lora": "style\\cinematic feeling V5-000022.safetensors",
-        "strength": 0.6727233886718752
-      },
-      "lora_2": {
-        "on": true,
-        "lora": "style\\S1 Dramatic Lighting Illustrious_V2.safetensors",
-        "strength": 0.6127142333984374
-      },
-      "lora_3": {
-        "on": true,
-        "lora": "style\\Shaft_of_light_mood_art_dramatic_lighting.safetensors",
-        "strength": 0.236370849609375
-      },
-      "lora_4": {
-        "on": true,
-        "lora": "style\\lightingSlider.safetensors",
-        "strength": 0.20180847167968763
-      },
-      "➕ Add Lora": "",
-      "model": [
-        "522",
-        0
-      ],
-      "clip": [
-        "522",
-        1
-      ]
-    },
-    "class_type": "Power Lora Loader (rgthree)",
-    "_meta": {
-      "title": "Power Lora Loader (rgthree)"
     }
   }
 }
