@@ -2,7 +2,7 @@
  * LoRA Binding Types
  *
  * Used for storing LoRA configurations in presets (Character/Scene/Style/Position)
- * and in job positions (CompleteJobPosition.loraConfig).
+ * and in project sections (ProjectSection.loraConfig).
  */
 
 /** Source type for tracking where a LoRA came from */
@@ -15,7 +15,7 @@ export type LoraBinding = {
   enabled: boolean;
 };
 
-/** Extended LoRA entry with source tracking (used in job sections) */
+/** Extended LoRA entry with source tracking (used in project sections) */
 export type LoraEntry = LoraBinding & {
   id: string; // unique id for React key and operations
   source: LoraSource;
@@ -87,11 +87,11 @@ function isSeedPolicy(value: unknown): value is SeedPolicy {
 // ---------------------------------------------------------------------------
 
 /**
- * LoRA config structure stored in CompleteJobPosition.loraConfig
+ * LoRA config structure stored in ProjectSection.loraConfig
  * v0.3: Restructured to separate characterLora, lora1, lora2
  */
 export type PositionLoraConfig = {
-  characterLora: LoraEntry[];  // 从大任务角色带入（只读展示）
+  characterLora: LoraEntry[];  // 从项目角色带入（只读展示）
   lora1: LoraEntry[];          // lora1 列表（可编辑，来自 position template 或手动添加）
   lora2: LoraEntry[];          // lora2 列表（可编辑，来自 position template 或手动添加）
 };

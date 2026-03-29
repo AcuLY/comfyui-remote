@@ -3,8 +3,8 @@ export type ReviewStatus = "pending" | "kept" | "trashed";
 export type QueueRun = {
   id: string;
   characterName: string;
-  jobTitle: string;
-  positionName: string;
+  projectTitle: string;
+  sectionName: string;
   createdAt: string;
   finishedAt: string | null;
   pendingCount: number;
@@ -15,8 +15,8 @@ export type QueueRun = {
 export type RunningRun = {
   id: string;
   characterName: string;
-  jobTitle: string;
-  positionName: string;
+  projectTitle: string;
+  sectionName: string;
   startedAt: string;
   status: "queued" | "running";
 };
@@ -24,8 +24,8 @@ export type RunningRun = {
 export type FailedRun = {
   id: string;
   characterName: string;
-  jobTitle: string;
-  positionName: string;
+  projectTitle: string;
+  sectionName: string;
   errorMessage: string | null;
   finishedAt: string | null;
 };
@@ -39,18 +39,18 @@ export type ReviewImage = {
 
 export type ReviewGroup = {
   id: string;
-  jobId?: string;
-  jobPositionId?: string;
+  projectId?: string;
+  projectSectionId?: string;
   title: string;
   characterName: string;
-  positionName: string;
+  sectionName: string;
   createdAt: string;
   pendingCount: number;
   totalCount: number;
   images: ReviewImage[];
 };
 
-export type JobCard = {
+export type ProjectCard = {
   id: string;
   title: string;
   characterName: string;
@@ -58,8 +58,8 @@ export type JobCard = {
   styleName: string;
   status: "draft" | "queued" | "running" | "partial_done" | "done" | "failed";
   updatedAt: string;
-  positionCount: number;
-  enabledPositionCount?: number;
+  sectionCount: number;
+  enabledSectionCount?: number;
   latestRunAt?: string | null;
   latestRunStatus?: "queued" | "running" | "done" | "failed" | "cancelled" | null;
   latestRunPendingCount?: number;

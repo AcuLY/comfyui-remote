@@ -1,10 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { toImageUrl } from "@/lib/image-url";
-import type { QueueRun, RunningRun, FailedRun, ReviewGroup, ReviewImage, ReviewStatus, JobCard, TrashItem, LoraAsset } from "@/lib/types";
+import type { QueueRun, RunningRun, FailedRun, ReviewGroup, ReviewImage, ReviewStatus, ProjectCard, TrashItem, LoraAsset } from "@/lib/types";
 import { listWorkflowTemplateSummaries } from "@/server/services/workflow-template-service";
 
 // Re-export types used by frontend components (originally from backend branch)
-export type { JobCreateOptions } from "@/server/repositories/job-repository";
+export type { ProjectCreateOptions } from "@/server/repositories/project-repository";
 
 // ---------------------------------------------------------------------------
 // Preset binding helpers — resolve display names from presetBindings JSON
@@ -56,10 +56,10 @@ export async function getQueueRuns(): Promise<QueueRun[]> {
     where: { status: "done" },
     orderBy: { createdAt: "desc" },
     include: {
-      completeJob: {
+      project: {
         select: { id: true, title: true, presetBindings: true },
       },
-      completeJobPosition: {
+      projectSection: {
         include: { positionTemplate: true },
       },
       images: true,
@@ -68,20 +68,20 @@ export async function getQueueRuns(): Promise<QueueRun[]> {
 
   // Batch resolve preset names
   const presetMap = await batchResolvePresetNames(
-    collectPresetIds(runs.map((r) => r.completeJob.presetBindings)),
+    collectPresetIds(runs.map((r) => r.project.presetBindings)),
   );
 
   return runs
     .map((run) => {
-      const names = extractDisplayNames(run.completeJob.presetBindings as PresetBindingJson | null, presetMap);
+      const names = extractDisplayNames(run.project.presetBindings as PresetBindingJson | null, presetMap);
       return {
         id: run.id,
         characterName: names.characterName,
-        jobTitle: run.completeJob.title,
-        positionName:
-          run.completeJobPosition.name ??
-          run.completeJobPosition.positionTemplate?.name ??
-          `section_${run.completeJobPosition.sortOrder + 1}`,
+        projectTitle: run.project.title,
+        sectionName:
+          run.projectSection.name ??
+          run.projectSection.positionTemplate?.name ??
+          `section_${run.projectSection.sortOrder + 1}`,
         createdAt: formatDate(run.createdAt),
         finishedAt: run.finishedAt?.toISOString() ?? null,
         pendingCount: run.images.filter((img) => img.reviewStatus === "pending").length,
@@ -101,27 +101,27 @@ export async function getRunningRuns(): Promise<RunningRun[]> {
     where: { status: { in: ["queued", "running"] } },
     orderBy: { createdAt: "desc" },
     include: {
-      completeJob: {
+      project: {
         select: { id: true, title: true, presetBindings: true },
       },
-      completeJobPosition: { include: { positionTemplate: true } },
+      projectSection: { include: { positionTemplate: true } },
     },
   });
 
   const presetMap = await batchResolvePresetNames(
-    collectPresetIds(runs.map((r) => r.completeJob.presetBindings)),
+    collectPresetIds(runs.map((r) => r.project.presetBindings)),
   );
 
   return runs.map((run) => {
-    const names = extractDisplayNames(run.completeJob.presetBindings as PresetBindingJson | null, presetMap);
+    const names = extractDisplayNames(run.project.presetBindings as PresetBindingJson | null, presetMap);
     return {
       id: run.id,
       characterName: names.characterName,
-      jobTitle: run.completeJob.title,
-      positionName:
-        run.completeJobPosition.name ??
-        run.completeJobPosition.positionTemplate?.name ??
-        `section_${run.completeJobPosition.sortOrder + 1}`,
+      projectTitle: run.project.title,
+      sectionName:
+        run.projectSection.name ??
+        run.projectSection.positionTemplate?.name ??
+        `section_${run.projectSection.sortOrder + 1}`,
       startedAt: formatDate(run.createdAt),
       status: run.status as RunningRun["status"],
     };
@@ -138,27 +138,27 @@ export async function getFailedRuns(): Promise<FailedRun[]> {
     orderBy: { finishedAt: "desc" },
     take: 20,
     include: {
-      completeJob: {
+      project: {
         select: { id: true, title: true, presetBindings: true },
       },
-      completeJobPosition: { include: { positionTemplate: true } },
+      projectSection: { include: { positionTemplate: true } },
     },
   });
 
   const presetMap = await batchResolvePresetNames(
-    collectPresetIds(runs.map((r) => r.completeJob.presetBindings)),
+    collectPresetIds(runs.map((r) => r.project.presetBindings)),
   );
 
   return runs.map((run) => {
-    const names = extractDisplayNames(run.completeJob.presetBindings as PresetBindingJson | null, presetMap);
+    const names = extractDisplayNames(run.project.presetBindings as PresetBindingJson | null, presetMap);
     return {
       id: run.id,
       characterName: names.characterName,
-      jobTitle: run.completeJob.title,
-      positionName:
-        run.completeJobPosition.name ??
-        run.completeJobPosition.positionTemplate?.name ??
-        `section_${run.completeJobPosition.sortOrder + 1}`,
+      projectTitle: run.project.title,
+      sectionName:
+        run.projectSection.name ??
+        run.projectSection.positionTemplate?.name ??
+        `section_${run.projectSection.sortOrder + 1}`,
       errorMessage: run.errorMessage,
       finishedAt: run.finishedAt?.toISOString() ?? null,
     };
@@ -173,10 +173,10 @@ export async function getReviewGroup(runId: string): Promise<ReviewGroup | null>
   const run = await prisma.positionRun.findUnique({
     where: { id: runId },
     include: {
-      completeJob: {
+      project: {
         select: { id: true, title: true, presetBindings: true },
       },
-      completeJobPosition: {
+      projectSection: {
         include: { positionTemplate: true },
       },
       images: {
@@ -189,9 +189,9 @@ export async function getReviewGroup(runId: string): Promise<ReviewGroup | null>
 
   // Resolve characterName from presetBindings
   const presetMap = await batchResolvePresetNames(
-    collectPresetIds([run.completeJob.presetBindings]),
+    collectPresetIds([run.project.presetBindings]),
   );
-  const names = extractDisplayNames(run.completeJob.presetBindings as PresetBindingJson | null, presetMap);
+  const names = extractDisplayNames(run.project.presetBindings as PresetBindingJson | null, presetMap);
 
   const images: ReviewImage[] = run.images.map((img, index) => ({
     id: img.id,
@@ -202,12 +202,12 @@ export async function getReviewGroup(runId: string): Promise<ReviewGroup | null>
 
   return {
     id: run.id,
-    title: run.completeJob.title,
+    title: run.project.title,
     characterName: names.characterName,
-    positionName:
-      run.completeJobPosition.name ??
-      run.completeJobPosition.positionTemplate?.name ??
-      `section_${run.completeJobPosition.sortOrder + 1}`,
+    sectionName:
+      run.projectSection.name ??
+      run.projectSection.positionTemplate?.name ??
+      `section_${run.projectSection.sortOrder + 1}`,
     createdAt: formatDate(run.createdAt),
     pendingCount: images.filter((img) => img.status === "pending").length,
     totalCount: images.length,
@@ -229,11 +229,11 @@ export async function getReviewGroupIds(): Promise<string[]> {
 }
 
 // ---------------------------------------------------------------------------
-// Jobs — 大任务列表
+// Projects — 大项目列表
 // ---------------------------------------------------------------------------
 
-export async function getJobs(): Promise<JobCard[]> {
-  const jobs = await prisma.completeJob.findMany({
+export async function listProjects(): Promise<ProjectCard[]> {
+  const projects = await prisma.project.findMany({
     orderBy: { updatedAt: "desc" },
     select: {
       id: true,
@@ -241,36 +241,36 @@ export async function getJobs(): Promise<JobCard[]> {
       status: true,
       updatedAt: true,
       presetBindings: true,
-      _count: { select: { positions: true } },
+      _count: { select: { sections: true } },
     },
   });
 
   // Batch resolve preset names
   const presetMap = await batchResolvePresetNames(
-    collectPresetIds(jobs.map((j) => j.presetBindings)),
+    collectPresetIds(projects.map((j) => j.presetBindings)),
   );
 
-  return jobs.map((job) => {
-    const names = extractDisplayNames(job.presetBindings as PresetBindingJson | null, presetMap);
+  return projects.map((project) => {
+    const names = extractDisplayNames(project.presetBindings as PresetBindingJson | null, presetMap);
     return {
-      id: job.id,
-      title: job.title,
+      id: project.id,
+      title: project.title,
       characterName: names.characterName,
       sceneName: names.sceneName,
       styleName: names.styleName,
-      status: job.status as JobCard["status"],
-      updatedAt: formatDate(job.updatedAt),
-      positionCount: job._count.positions,
+      status: project.status as ProjectCard["status"],
+      updatedAt: formatDate(project.updatedAt),
+      sectionCount: project._count.sections,
     };
   });
 }
 
 // ---------------------------------------------------------------------------
-// Job Detail — 大任务详情 + positions
+// Project Detail — 大项目详情 + sections
 // ---------------------------------------------------------------------------
 
-/** Used by the frontend position-edit form */
-export type JobDetailPosition = {
+/** Used by the frontend section-edit form */
+export type ProjectDetailSection = {
   id: string;
   name: string;
   batchSize: number | null;
@@ -283,14 +283,14 @@ export type JobDetailPosition = {
   };
 };
 
-export type JobDetail = {
+export type ProjectDetail = {
   id: string;
   title: string;
   characterName: string;
   sceneName: string;
   styleName: string;
   status: string;
-  positions: {
+  sections: {
     id: string;
     name: string;
     batchSize: number | null;
@@ -307,15 +307,15 @@ export type JobDetail = {
   }[];
 };
 
-export async function getJobDetail(jobId: string): Promise<JobDetail | null> {
-  const job = await prisma.completeJob.findUnique({
-    where: { id: jobId },
+export async function getProjectDetail(projectId: string): Promise<ProjectDetail | null> {
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
     select: {
       id: true,
       title: true,
       status: true,
       presetBindings: true,
-      positions: {
+      sections: {
         orderBy: { sortOrder: "asc" },
         include: {
           positionTemplate: true,
@@ -345,22 +345,22 @@ export async function getJobDetail(jobId: string): Promise<JobDetail | null> {
     },
   });
 
-  if (!job) return null;
+  if (!project) return null;
 
   // Resolve display names from presetBindings
   const presetMap = await batchResolvePresetNames(
-    collectPresetIds([job.presetBindings]),
+    collectPresetIds([project.presetBindings]),
   );
-  const names = extractDisplayNames(job.presetBindings as PresetBindingJson | null, presetMap);
+  const names = extractDisplayNames(project.presetBindings as PresetBindingJson | null, presetMap);
 
   return {
-    id: job.id,
-    title: job.title,
+    id: project.id,
+    title: project.title,
     characterName: names.characterName,
     sceneName: names.sceneName,
     styleName: names.styleName,
-    status: job.status,
-    positions: job.positions.map((pos) => {
+    status: project.status,
+    sections: project.sections.map((pos) => {
       const positiveBlockCount = pos.promptBlocks.filter((b) => b.positive?.trim()).length;
       const negativeBlockCount = pos.promptBlocks.filter((b) => b.negative?.trim()).length;
       const latestRun = pos.runs[0] ?? null;
@@ -388,14 +388,14 @@ export async function getJobDetail(jobId: string): Promise<JobDetail | null> {
 }
 
 // ---------------------------------------------------------------------------
-// Position Results — 小节结果页
+// Section Results — 小节结果页
 // ---------------------------------------------------------------------------
 
-export type PositionResultsData = {
-  jobId: string;
-  jobTitle: string;
-  positionId: string;
-  positionName: string;
+export type SectionResultsData = {
+  projectId: string;
+  projectTitle: string;
+  sectionId: string;
+  sectionName: string;
   runs: {
     id: string;
     runIndex: number;
@@ -414,12 +414,12 @@ export type PositionResultsData = {
   totalPending: number;
 };
 
-export async function getPositionResults(positionId: string): Promise<PositionResultsData | null> {
-  const pos = await prisma.completeJobPosition.findUnique({
-    where: { id: positionId },
+export async function getSectionResults(sectionId: string): Promise<SectionResultsData | null> {
+  const pos = await prisma.projectSection.findUnique({
+    where: { id: sectionId },
     include: {
       positionTemplate: { select: { name: true } },
-      completeJob: { select: { id: true, title: true } },
+      project: { select: { id: true, title: true } },
       runs: {
         orderBy: { createdAt: "desc" },
         include: {
@@ -471,10 +471,10 @@ export async function getPositionResults(positionId: string): Promise<PositionRe
   });
 
   return {
-    jobId: pos.completeJob.id,
-    jobTitle: pos.completeJob.title,
-    positionId: pos.id,
-    positionName: pos.name || pos.positionTemplate?.name || `小节`,
+    projectId: pos.project.id,
+    projectTitle: pos.project.title,
+    sectionId: pos.id,
+    sectionName: pos.name || pos.positionTemplate?.name || `小节`,
     runs,
     pendingRunId,
     totalPending,
@@ -494,8 +494,8 @@ export async function getTrashItems(): Promise<TrashItem[]> {
         include: {
           positionRun: {
             include: {
-              completeJob: true,
-              completeJobPosition: {
+              project: true,
+              projectSection: {
                 include: { positionTemplate: true },
               },
             },
@@ -510,7 +510,7 @@ export async function getTrashItems(): Promise<TrashItem[]> {
     return {
       id: rec.id,
       src: toImageUrl(rec.imageResult.thumbPath ?? rec.imageResult.filePath) ?? "",
-      title: `${run.completeJob.title} / ${run.completeJobPosition.positionTemplate?.name ?? "Unknown"}`,
+      title: `${run.project.title} / ${run.projectSection.positionTemplate?.name ?? "Unknown"}`,
       deletedAt: formatDate(rec.deletedAt),
       originalPath: rec.originalPath,
     };
@@ -541,10 +541,10 @@ export async function getLoraAssets(): Promise<LoraAsset[]> {
 
 
 // ---------------------------------------------------------------------------
-// Job Form Options — 创建/编辑 Job 所需的下拉选项
+// Project Form Options — 创建/编辑 Project 所需的下拉选项
 // ---------------------------------------------------------------------------
 
-export type JobFormCategory = {
+export type ProjectFormCategory = {
   id: string;
   name: string;
   slug: string;
@@ -561,11 +561,11 @@ export type JobFormCategory = {
   }>;
 };
 
-export type JobFormOptions = {
-  categories: JobFormCategory[];
+export type ProjectFormOptions = {
+  categories: ProjectFormCategory[];
 };
 
-export async function getJobFormOptions(): Promise<JobFormOptions> {
+export async function getProjectFormOptions(): Promise<ProjectFormOptions> {
   const categories = await prisma.promptCategory.findMany({
     orderBy: { sortOrder: "asc" },
     include: {
@@ -591,18 +591,18 @@ export async function getJobFormOptions(): Promise<JobFormOptions> {
 }
 
 // ---------------------------------------------------------------------------
-// Job Edit Data — 编辑 Job 时加载完整数据
+// Project Edit Data — 编辑 Project 时加载完整数据
 // ---------------------------------------------------------------------------
 
 export type PresetBinding = { categoryId: string; presetId: string };
 
-export type JobEditData = {
+export type ProjectEditData = {
   id: string;
   title: string;
   slug: string;
   presetBindings: PresetBinding[];
   notes: string | null;
-  positions: {
+  sections: {
     id: string;
     positionTemplateId: string | null;
     sortOrder: number;
@@ -622,11 +622,11 @@ export type JobEditData = {
   defaultSeedPolicy2: string;
 };
 
-export async function getJobEditData(jobId: string): Promise<JobEditData | null> {
-  const job = await prisma.completeJob.findUnique({
-    where: { id: jobId },
+export async function getProjectEditData(projectId: string): Promise<ProjectEditData | null> {
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
     include: {
-      positions: {
+      sections: {
         orderBy: { sortOrder: "asc" },
         select: {
           id: true,
@@ -644,10 +644,10 @@ export async function getJobEditData(jobId: string): Promise<JobEditData | null>
     },
   });
 
-  if (!job) return null;
+  if (!project) return null;
 
-  // 解析 jobLevelOverrides
-  const overrides = (job.jobLevelOverrides ?? {}) as {
+  // 解析 projectLevelOverrides
+  const overrides = (project.projectLevelOverrides ?? {}) as {
     defaultAspectRatio?: string;
     defaultShortSidePx?: number;
     defaultBatchSize?: number;
@@ -656,12 +656,12 @@ export async function getJobEditData(jobId: string): Promise<JobEditData | null>
   };
 
   return {
-    id: job.id,
-    title: job.title,
-    slug: job.slug,
-    presetBindings: Array.isArray(job.presetBindings) ? (job.presetBindings as PresetBinding[]) : [],
-    notes: job.notes,
-    positions: job.positions.map((pos) => ({
+    id: project.id,
+    title: project.title,
+    slug: project.slug,
+    presetBindings: Array.isArray(project.presetBindings) ? (project.presetBindings as PresetBinding[]) : [],
+    notes: project.notes,
+    sections: project.sections.map((pos) => ({
       ...pos,
     })),
     // 小节默认值
@@ -835,19 +835,19 @@ export async function getPromptLibraryV2(): Promise<PromptLibraryV2> {
 }
 
 // ---------------------------------------------------------------------------
-// Job Revisions — 修订历史
+// Project Revisions — 修订历史
 // ---------------------------------------------------------------------------
 
-export type JobRevisionSummary = {
+export type ProjectRevisionSummary = {
   id: string;
   revisionNumber: number;
   actorType: string;
   createdAt: string;
 };
 
-export async function getJobRevisions(jobId: string): Promise<JobRevisionSummary[]> {
-  const revisions = await prisma.jobRevision.findMany({
-    where: { completeJobId: jobId },
+export async function getProjectRevisions(projectId: string): Promise<ProjectRevisionSummary[]> {
+  const revisions = await prisma.projectRevision.findMany({
+    where: { projectId: projectId },
     orderBy: { revisionNumber: "desc" },
     take: 20,
     select: {
@@ -867,10 +867,10 @@ export async function getJobRevisions(jobId: string): Promise<JobRevisionSummary
 }
 
 // ---------------------------------------------------------------------------
-// PromptBlocks — 某个 Position 的提示词块列表
+// PromptBlocks — 某个 Section 的提示词块列表
 // ---------------------------------------------------------------------------
 
-export type PositionBlockSummary = {
+export type SectionBlockSummary = {
   id: string;
   type: string;
   label: string;
@@ -879,11 +879,11 @@ export type PositionBlockSummary = {
   sortOrder: number;
 };
 
-export async function getPositionBlocks(
-  jobPositionId: string,
-): Promise<PositionBlockSummary[]> {
+export async function getSectionBlocks(
+  sectionId: string,
+): Promise<SectionBlockSummary[]> {
   const { listPromptBlocks } = await import("@/server/repositories/prompt-block-repository");
-  const blocks = await listPromptBlocks(jobPositionId);
+  const blocks = await listPromptBlocks(sectionId);
   return blocks.map((b) => ({
     id: b.id,
     type: b.type,

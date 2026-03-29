@@ -9,10 +9,10 @@ import {
 } from "@/server/services/image-file-service";
 import { saveUploadedLora } from "@/server/services/lora-upload-service";
 import {
-  enqueueJobRuns as enqueueJobRunsRepo,
-  enqueueJobPositionRun as enqueueJobPositionRunRepo,
-  copyJob as copyJobRepo,
-} from "@/server/repositories/job-repository";
+  enqueueProjectRuns as enqueueProjectRunsRepo,
+  enqueueProjectSectionRun as enqueueProjectSectionRunRepo,
+  copyProject as copyProjectRepo,
+} from "@/server/repositories/project-repository";
 import { executeQueuedRuns } from "@/server/services/run-executor";
 
 // ---------------------------------------------------------------------------
@@ -204,12 +204,12 @@ export async function restoreImage(trashRecordId: string) {
 }
 
 // ---------------------------------------------------------------------------
-// 运行整个大任务
+// 运行整个项目
 // ---------------------------------------------------------------------------
 
-export async function runJob(jobId: string, overrideBatchSize?: number | null) {
-  await enqueueJobRunsRepo(jobId, overrideBatchSize ?? undefined);
-  revalidatePath("/jobs");
+export async function runProject(projectId: string, overrideBatchSize?: number | null) {
+  await enqueueProjectRunsRepo(projectId, overrideBatchSize ?? undefined);
+  revalidatePath("/projects");
   revalidatePath("/queue");
 
   // Fire-and-forget: submit queued runs directly to ComfyUI
@@ -217,20 +217,20 @@ export async function runJob(jobId: string, overrideBatchSize?: number | null) {
 }
 
 // ---------------------------------------------------------------------------
-// 运行单个 Position
+// 运行单个 Section
 // ---------------------------------------------------------------------------
 
-export async function runPosition(jobPositionId: string, overrideBatchSize?: number | null) {
-  // 需要先拿到 jobId，因为 repository 函数需要它
-  const pos = await prisma.completeJobPosition.findUnique({
-    where: { id: jobPositionId },
-    select: { completeJobId: true },
+export async function runSection(sectionId: string, overrideBatchSize?: number | null) {
+  // 需要先拿到 projectId，因为 repository 函数需要它
+  const pos = await prisma.projectSection.findUnique({
+    where: { id: sectionId },
+    select: { projectId: true },
   });
 
   if (!pos) return;
 
-  await enqueueJobPositionRunRepo(pos.completeJobId, jobPositionId, overrideBatchSize ?? undefined);
-  revalidatePath("/jobs");
+  await enqueueProjectSectionRunRepo(pos.projectId, sectionId, overrideBatchSize ?? undefined);
+  revalidatePath("/projects");
   revalidatePath("/queue");
 
   // Fire-and-forget: submit queued runs directly to ComfyUI
@@ -238,12 +238,12 @@ export async function runPosition(jobPositionId: string, overrideBatchSize?: num
 }
 
 // ---------------------------------------------------------------------------
-// 创建大任务
+// 创建项目
 // ---------------------------------------------------------------------------
 
 export type PresetBinding = { categoryId: string; presetId: string };
 
-export type CreateJobInput = {
+export type CreateProjectInput = {
   title: string;
   presetBindings: PresetBinding[];
   notes: string | null;
@@ -257,7 +257,7 @@ export type CreateJobInput = {
   stylePrompt?: string | null;
 };
 
-export async function createJob(input: CreateJobInput): Promise<string> {
+export async function createProject(input: CreateProjectInput): Promise<string> {
   // 生成唯一 slug
   const baseSlug = input.title
     .toLowerCase()
@@ -266,7 +266,7 @@ export async function createJob(input: CreateJobInput): Promise<string> {
     || "untitled";
   let slug = baseSlug;
   let i = 1;
-  while (await prisma.completeJob.findUnique({ where: { slug } })) {
+  while (await prisma.project.findUnique({ where: { slug } })) {
     slug = `${baseSlug}-${i++}`;
   }
 
@@ -341,7 +341,7 @@ export async function createJob(input: CreateJobInput): Promise<string> {
     throw new Error("CHARACTER_REQUIRED: must select a preset from character category or provide characterId");
   }
 
-  const job = await prisma.completeJob.create({
+  const project = await prisma.project.create({
     data: {
       title: input.title,
       slug,
@@ -358,16 +358,16 @@ export async function createJob(input: CreateJobInput): Promise<string> {
     },
   });
 
-  revalidatePath("/jobs");
-  return job.id;
+  revalidatePath("/projects");
+  return project.id;
 }
 
 // ---------------------------------------------------------------------------
-// 更新大任务
+// 更新项目
 // ---------------------------------------------------------------------------
 
-export type UpdateJobInput = {
-  jobId: string;
+export type UpdateProjectInput = {
+  projectId: string;
   title?: string;
   presetBindings?: PresetBinding[];
   characterId?: string;
@@ -378,7 +378,7 @@ export type UpdateJobInput = {
   scenePrompt?: string | null;
   stylePrompt?: string | null;
   notes?: string | null;
-  positions?: {
+  sections?: {
     positionTemplateId: string;
     sortOrder: number;
     enabled: boolean;
@@ -392,7 +392,7 @@ export type UpdateJobInput = {
     ksampler2?: Record<string, unknown> | null;
   }[];
   // 小节默认值覆盖
-  jobLevelOverrides?: {
+  projectLevelOverrides?: {
     defaultAspectRatio?: string;
     defaultShortSidePx?: number;
     defaultBatchSize?: number;
@@ -401,8 +401,8 @@ export type UpdateJobInput = {
   };
 };
 
-export async function updateJob(input: UpdateJobInput) {
-  const { jobId, positions, jobLevelOverrides, presetBindings, ...jobData } = input;
+export async function updateProject(input: UpdateProjectInput) {
+  const { projectId, sections, projectLevelOverrides, presetBindings, ...projectData } = input;
 
   // If presetBindings provided, resolve legacy fields for backward compat
   const legacyUpdate: Record<string, unknown> = {};
@@ -419,7 +419,7 @@ export async function updateJob(input: UpdateJobInput) {
       if (!preset) continue;
 
       const catSlug = preset.category.slug;
-      if (catSlug === "character" && !jobData.characterId) {
+      if (catSlug === "character" && !projectData.characterId) {
         const legacyChar = await prisma.character.findFirst({
           where: { slug: preset.slug },
           select: { id: true, prompt: true, loraPath: true },
@@ -429,7 +429,7 @@ export async function updateJob(input: UpdateJobInput) {
           legacyUpdate.characterPrompt = legacyChar.prompt;
           legacyUpdate.characterLoraPath = legacyChar.loraPath;
         }
-      } else if (catSlug === "scene" && !jobData.scenePresetId) {
+      } else if (catSlug === "scene" && !projectData.scenePresetId) {
         const legacyScene = await prisma.scenePreset.findFirst({
           where: { slug: preset.slug },
           select: { id: true, prompt: true },
@@ -441,7 +441,7 @@ export async function updateJob(input: UpdateJobInput) {
           legacyUpdate.scenePresetId = null;
           legacyUpdate.scenePrompt = null;
         }
-      } else if (catSlug === "style" && !jobData.stylePresetId) {
+      } else if (catSlug === "style" && !projectData.stylePresetId) {
         const legacyStyle = await prisma.stylePreset.findFirst({
           where: { slug: preset.slug },
           select: { id: true, prompt: true },
@@ -457,26 +457,26 @@ export async function updateJob(input: UpdateJobInput) {
     }
   }
 
-  // 更新 job 基础字段（包括 jobLevelOverrides）
-  await prisma.completeJob.update({
-    where: { id: jobId },
+  // 更新 project 基础字段（包括 projectLevelOverrides）
+  await prisma.project.update({
+    where: { id: projectId },
     data: {
-      ...jobData,
+      ...projectData,
       ...legacyUpdate,
       ...(presetBindings !== undefined ? { presetBindings } : {}),
-      ...(jobLevelOverrides !== undefined ? { jobLevelOverrides } : {}),
+      ...(projectLevelOverrides !== undefined ? { projectLevelOverrides } : {}),
     },
   });
 
   // 如果传了 positions，删除旧的并重建
-  if (positions) {
-    await prisma.completeJobPosition.deleteMany({
-      where: { completeJobId: jobId },
+  if (sections) {
+    await prisma.projectSection.deleteMany({
+      where: { projectId: projectId },
     });
 
-    await prisma.completeJobPosition.createMany({
-      data: positions.map((pos) => ({
-        completeJobId: jobId,
+    await prisma.projectSection.createMany({
+      data: sections.map((pos) => ({
+        projectId: projectId,
         positionTemplateId: pos.positionTemplateId,
         sortOrder: pos.sortOrder,
         enabled: pos.enabled,
@@ -492,18 +492,18 @@ export async function updateJob(input: UpdateJobInput) {
     });
   }
 
-  revalidatePath("/jobs");
-  revalidatePath(`/jobs/${jobId}`);
+  revalidatePath("/projects");
+  revalidatePath(`/projects/${projectId}`);
 }
 
 // ---------------------------------------------------------------------------
-// 复制大任务
+// 复制项目
 // ---------------------------------------------------------------------------
 
-export async function copyJob(jobId: string): Promise<string | null> {
-  const newJob = await copyJobRepo(jobId);
-  revalidatePath("/jobs");
-  return newJob.id;
+export async function copyProject(projectId: string): Promise<string | null> {
+  const newProject = await copyProjectRepo(projectId);
+  revalidatePath("/projects");
+  return newProject.id;
 }
 
 // ---------------------------------------------------------------------------
@@ -625,7 +625,7 @@ export async function createPromptPreset(input: PromptPresetInput) {
     },
   });
   revalidatePath("/assets/prompts");
-  revalidatePath("/jobs/new");
+  revalidatePath("/projects/new");
   return preset;
 }
 
@@ -638,7 +638,7 @@ export async function updatePromptPreset(id: string, input: Partial<PromptPreset
 
   const preset = await prisma.promptPreset.update({ where: { id }, data });
   revalidatePath("/assets/prompts");
-  revalidatePath("/jobs/new");
+  revalidatePath("/projects/new");
   return preset;
 }
 
@@ -646,7 +646,7 @@ export async function deletePromptPreset(id: string) {
   // Soft delete: set isActive = false
   await prisma.promptPreset.update({ where: { id }, data: { isActive: false } });
   revalidatePath("/assets/prompts");
-  revalidatePath("/jobs/new");
+  revalidatePath("/projects/new");
 }
 
 export async function reorderPromptPresets(categoryId: string, ids: string[]) {
@@ -673,14 +673,14 @@ export type PromptBlockData = {
   sortOrder: number;
 };
 
-export async function listPositionBlocks(jobPositionId: string): Promise<PromptBlockData[]> {
+export async function listSectionBlocks(sectionId: string): Promise<PromptBlockData[]> {
   const { listPromptBlocks } = await import("@/server/repositories/prompt-block-repository");
-  const blocks = await listPromptBlocks(jobPositionId);
+  const blocks = await listPromptBlocks(sectionId);
   return blocks;
 }
 
-export async function addPositionBlock(
-  jobPositionId: string,
+export async function addSectionBlock(
+  sectionId: string,
   input: {
     type: string;
     label: string;
@@ -694,7 +694,7 @@ export async function addPositionBlock(
   const { PromptBlockType } = await import("@/generated/prisma");
   const { audit } = await import("@/server/services/audit-service");
 
-  const block = await createPromptBlock(jobPositionId, {
+  const block = await createPromptBlock(sectionId, {
     type: input.type as (typeof PromptBlockType)[keyof typeof PromptBlockType],
     sourceId: input.sourceId ?? null,
     categoryId: input.categoryId ?? null,
@@ -702,11 +702,11 @@ export async function addPositionBlock(
     positive: input.positive,
     negative: input.negative ?? null,
   });
-  audit("PromptBlock", block.id, "create", { jobPositionId, type: input.type }, "user" as const);
+  audit("PromptBlock", block.id, "create", { sectionId, type: input.type }, "user" as const);
   return block;
 }
 
-export async function updatePositionBlock(
+export async function updateSectionBlock(
   blockId: string,
   input: {
     label?: string;
@@ -722,7 +722,7 @@ export async function updatePositionBlock(
   return block;
 }
 
-export async function deletePositionBlock(blockId: string): Promise<void> {
+export async function deleteSectionBlock(blockId: string): Promise<void> {
   const { deletePromptBlock } = await import("@/server/repositories/prompt-block-repository");
   const { audit } = await import("@/server/services/audit-service");
 
@@ -730,15 +730,15 @@ export async function deletePositionBlock(blockId: string): Promise<void> {
   audit("PromptBlock", blockId, "delete", {}, "user" as const);
 }
 
-export async function reorderPositionBlocks(
-  jobPositionId: string,
+export async function reorderSectionBlocks(
+  sectionId: string,
   blockIds: string[],
 ): Promise<PromptBlockData[]> {
   const { reorderPromptBlocks } = await import("@/server/repositories/prompt-block-repository");
   const { audit } = await import("@/server/services/audit-service");
 
-  const reordered = await reorderPromptBlocks(jobPositionId, blockIds);
-  audit("PromptBlock", jobPositionId, "reorder", { blockIds }, "user" as const);
+  const reordered = await reorderPromptBlocks(sectionId, blockIds);
+  audit("PromptBlock", sectionId, "reorder", { blockIds }, "user" as const);
   return reordered;
 }
 
@@ -746,10 +746,10 @@ export async function reorderPositionBlocks(
 // 添加小节（Section）
 // ---------------------------------------------------------------------------
 
-export async function addSection(jobId: string, name?: string): Promise<string> {
-  // 获取大任务信息以创建初始 PromptBlocks
-  const job = await prisma.completeJob.findUnique({
-    where: { id: jobId },
+export async function addSection(projectId: string, name?: string): Promise<string> {
+  // 获取项目信息以创建初始 PromptBlocks
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
     select: {
       id: true,
       characterId: true,
@@ -759,8 +759,8 @@ export async function addSection(jobId: string, name?: string): Promise<string> 
       scenePrompt: true,
       stylePrompt: true,
       presetBindings: true,
-      // 读取大任务级别的默认值
-      jobLevelOverrides: true,
+      // 读取项目级别的默认值
+      projectLevelOverrides: true,
       character: {
         select: { id: true, name: true, prompt: true, negativePrompt: true },
       },
@@ -770,16 +770,16 @@ export async function addSection(jobId: string, name?: string): Promise<string> 
       stylePreset: {
         select: { id: true, name: true, prompt: true, negativePrompt: true },
       },
-      _count: { select: { positions: true } },
+      _count: { select: { sections: true } },
     },
   });
 
-  if (!job) throw new Error("JOB_NOT_FOUND");
+  if (!project) throw new Error("PROJECT_NOT_FOUND");
 
-  const sortOrder = job._count.positions + 1;
+  const sortOrder = project._count.sections + 1;
 
-  // 解析大任务级别的默认值覆盖
-  const overrides = (job.jobLevelOverrides ?? {}) as {
+  // 解析项目级别的默认值覆盖
+  const overrides = (project.projectLevelOverrides ?? {}) as {
     defaultAspectRatio?: string;
     defaultShortSidePx?: number;
     defaultBatchSize?: number;
@@ -795,10 +795,10 @@ export async function addSection(jobId: string, name?: string): Promise<string> 
   const defaultSeedPolicy1 = overrides.defaultSeedPolicy1 ?? "random";
   const defaultSeedPolicy2 = overrides.defaultSeedPolicy2 ?? "random";
 
-  // 创建小节（CompleteJobPosition）
-  const section = await prisma.completeJobPosition.create({
+  // 创建小节（ProjectSection）
+  const section = await prisma.projectSection.create({
     data: {
-      completeJobId: jobId,
+      projectId: projectId,
       sortOrder,
       enabled: true,
       name: name || null,
@@ -814,7 +814,7 @@ export async function addSection(jobId: string, name?: string): Promise<string> 
   let blockSortOrder = 0;
 
   // New path: use presetBindings if available
-  const bindings = Array.isArray(job.presetBindings) ? (job.presetBindings as PresetBinding[]) : [];
+  const bindings = Array.isArray(project.presetBindings) ? (project.presetBindings as PresetBinding[]) : [];
   if (bindings.length > 0) {
     // Resolve presets with category info, sorted by category sortOrder
     const presetIds = bindings.map((b) => b.presetId);
@@ -837,7 +837,7 @@ export async function addSection(jobId: string, name?: string): Promise<string> 
 
       await prisma.promptBlock.create({
         data: {
-          completeJobPositionId: section.id,
+          projectSectionId: section.id,
           type: "preset",
           sourceId: preset.id,
           categoryId: preset.categoryId,
@@ -852,46 +852,46 @@ export async function addSection(jobId: string, name?: string): Promise<string> 
     // Legacy path: use character/scene/style FKs
     await prisma.promptBlock.create({
       data: {
-        completeJobPositionId: section.id,
+        projectSectionId: section.id,
         type: "character",
-        sourceId: job.character.id,
-        label: job.character.name,
-        positive: job.character.prompt,
-        negative: job.character.negativePrompt,
+        sourceId: project.character.id,
+        label: project.character.name,
+        positive: project.character.prompt,
+        negative: project.character.negativePrompt,
         sortOrder: blockSortOrder++,
       },
     });
 
-    if (job.scenePreset) {
+    if (project.scenePreset) {
       await prisma.promptBlock.create({
         data: {
-          completeJobPositionId: section.id,
+          projectSectionId: section.id,
           type: "scene",
-          sourceId: job.scenePreset.id,
-          label: job.scenePreset.name,
-          positive: job.scenePreset.prompt,
-          negative: job.scenePreset.negativePrompt,
+          sourceId: project.scenePreset.id,
+          label: project.scenePreset.name,
+          positive: project.scenePreset.prompt,
+          negative: project.scenePreset.negativePrompt,
           sortOrder: blockSortOrder++,
         },
       });
     }
 
-    if (job.stylePreset) {
+    if (project.stylePreset) {
       await prisma.promptBlock.create({
         data: {
-          completeJobPositionId: section.id,
+          projectSectionId: section.id,
           type: "style",
-          sourceId: job.stylePreset.id,
-          label: job.stylePreset.name,
-          positive: job.stylePreset.prompt,
-          negative: job.stylePreset.negativePrompt,
+          sourceId: project.stylePreset.id,
+          label: project.stylePreset.name,
+          positive: project.stylePreset.prompt,
+          negative: project.stylePreset.negativePrompt,
           sortOrder: blockSortOrder++,
         },
       });
     }
   }
 
-  revalidatePath(`/jobs/${jobId}`);
+  revalidatePath(`/projects/${projectId}`);
   return section.id;
 }
 
@@ -900,29 +900,29 @@ export async function addSection(jobId: string, name?: string): Promise<string> 
 // ---------------------------------------------------------------------------
 
 export async function renameSection(sectionId: string, name: string): Promise<void> {
-  const section = await prisma.completeJobPosition.findUnique({
+  const section = await prisma.projectSection.findUnique({
     where: { id: sectionId },
-    select: { completeJobId: true },
+    select: { projectId: true },
   });
   if (!section) return;
 
-  await prisma.completeJobPosition.update({
+  await prisma.projectSection.update({
     where: { id: sectionId },
     data: { name: name.trim() || null },
   });
 
-  revalidatePath(`/jobs/${section.completeJobId}`);
+  revalidatePath(`/projects/${section.projectId}`);
 }
 
 // ---------------------------------------------------------------------------
 // 小节排序
 // ---------------------------------------------------------------------------
 
-export async function reorderSections(jobId: string, sectionIds: string[]): Promise<void> {
+export async function reorderSections(projectId: string, sectionIds: string[]): Promise<void> {
   // 0. 检查是否有正在执行的 run，避免重排序导致输出路径不一致
   const runningCount = await prisma.positionRun.count({
     where: {
-      completeJobId: jobId,
+      projectId: projectId,
       status: { in: ["queued", "running"] },
     },
   });
@@ -930,13 +930,13 @@ export async function reorderSections(jobId: string, sectionIds: string[]): Prom
     throw new Error("有正在执行或排队中的任务，请等待完成后再调整顺序");
   }
 
-  // 1. 查询旧 sortOrder、name 和 job title（用于文件夹重命名）
-  const sections = await prisma.completeJobPosition.findMany({
+  // 1. 查询旧 sortOrder、name 和 project title（用于文件夹重命名）
+  const sections = await prisma.projectSection.findMany({
     where: { id: { in: sectionIds } },
     select: { id: true, sortOrder: true, name: true, positionTemplate: { select: { name: true } } },
   });
-  const job = await prisma.completeJob.findUnique({
-    where: { id: jobId },
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
     select: { title: true },
   });
 
@@ -948,14 +948,14 @@ export async function reorderSections(jobId: string, sectionIds: string[]): Prom
   // 2. 批量更新 sortOrder
   await prisma.$transaction(
     sectionIds.map((id, index) =>
-      prisma.completeJobPosition.update({
+      prisma.projectSection.update({
         where: { id },
         data: { sortOrder: index + 1 },
       }),
     ),
   );
 
-  revalidatePath(`/jobs/${jobId}`);
+  revalidatePath(`/projects/${projectId}`);
 }
 
 // ---------------------------------------------------------------------------
@@ -963,7 +963,7 @@ export async function reorderSections(jobId: string, sectionIds: string[]): Prom
 // ---------------------------------------------------------------------------
 
 export async function copySection(sectionId: string): Promise<string | null> {
-  const section = await prisma.completeJobPosition.findUnique({
+  const section = await prisma.projectSection.findUnique({
     where: { id: sectionId },
     include: {
       promptBlocks: {
@@ -975,14 +975,14 @@ export async function copySection(sectionId: string): Promise<string | null> {
   if (!section) return null;
 
   // 获取当前任务的小节数量以确定新的 sortOrder
-  const count = await prisma.completeJobPosition.count({
-    where: { completeJobId: section.completeJobId },
+  const count = await prisma.projectSection.count({
+    where: { projectId: section.projectId },
   });
 
   // 创建新小节
-  const newSection = await prisma.completeJobPosition.create({
+  const newSection = await prisma.projectSection.create({
     data: {
-      completeJobId: section.completeJobId,
+      projectId: section.projectId,
       positionTemplateId: section.positionTemplateId,
       sortOrder: count + 1,
       enabled: section.enabled,
@@ -1007,7 +1007,7 @@ export async function copySection(sectionId: string): Promise<string | null> {
   if (section.promptBlocks.length > 0) {
     await prisma.promptBlock.createMany({
       data: section.promptBlocks.map((block) => ({
-        completeJobPositionId: newSection.id,
+        projectSectionId: newSection.id,
         type: block.type,
         sourceId: block.sourceId,
         label: block.label,
@@ -1018,7 +1018,7 @@ export async function copySection(sectionId: string): Promise<string | null> {
     });
   }
 
-  revalidatePath(`/jobs/${section.completeJobId}`);
+  revalidatePath(`/projects/${section.projectId}`);
   return newSection.id;
 }
 
@@ -1027,21 +1027,21 @@ export async function copySection(sectionId: string): Promise<string | null> {
 // ---------------------------------------------------------------------------
 
 export async function deleteSection(sectionId: string): Promise<void> {
-  const section = await prisma.completeJobPosition.findUnique({
+  const section = await prisma.projectSection.findUnique({
     where: { id: sectionId },
-    select: { completeJobId: true },
+    select: { projectId: true },
   });
   if (!section) return;
 
   // 先删除所有 PromptBlocks
   await prisma.promptBlock.deleteMany({
-    where: { completeJobPositionId: sectionId },
+    where: { projectSectionId: sectionId },
   });
 
   // 再删除小节
-  await prisma.completeJobPosition.delete({
+  await prisma.projectSection.delete({
     where: { id: sectionId },
   });
 
-  revalidatePath(`/jobs/${section.completeJobId}`);
+  revalidatePath(`/projects/${section.projectId}`);
 }
