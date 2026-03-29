@@ -82,7 +82,69 @@ export default async function SectionEditPage({
   // Parse existing LoRA config ({ lora1, lora2 })
   const loraConfig = parsePositionLoraConfig(pos.loraConfig);
 
-  // Server action to save LoRA config
+  // Unified: ALL presets' lora1 → section.lora1, lora2 → section.lora2
+  if (pos.project) {
+    let loraChanged = false;
+
+    type PresetBindingJson = Array<{ categoryId: string; presetId: string }>;
+    const bindings = pos.project.presetBindings as PresetBindingJson | null;
+    if (bindings && bindings.length > 0) {
+      const presetIds = bindings.map((b) => b.presetId);
+      const presets = await prisma.promptPreset.findMany({
+        where: { id: { in: presetIds } },
+        select: { id: true, name: true, lora1: true, lora2: true, category: { select: { slug: true } } },
+      });
+      for (const preset of presets) {
+        if (preset.lora1) {
+          const lora1Bindings = parseLoraBindings(preset.lora1);
+          for (const binding of lora1Bindings) {
+            if (!binding.path) continue;
+            const exists = loraConfig.lora1.some((e) => e.path === binding.path);
+            if (!exists) {
+              loraConfig.lora1.push({
+                id: generateLoraEntryId(),
+                path: binding.path,
+                weight: binding.weight,
+                enabled: binding.enabled,
+                source: (preset.category.slug === "character" || preset.category.slug === "scene" || preset.category.slug === "style") ? preset.category.slug as "character" | "scene" | "style" : "manual",
+                sourceLabel: `${preset.name}`,
+              });
+              loraChanged = true;
+            }
+          }
+        }
+        if (preset.lora2) {
+          const lora2Bindings = parseLoraBindings(preset.lora2);
+          for (const binding of lora2Bindings) {
+            if (!binding.path) continue;
+            const exists = loraConfig.lora2.some((e) => e.path === binding.path);
+            if (!exists) {
+              loraConfig.lora2.push({
+                id: generateLoraEntryId(),
+                path: binding.path,
+                weight: binding.weight,
+                enabled: binding.enabled,
+                source: (preset.category.slug === "character" || preset.category.slug === "scene" || preset.category.slug === "style") ? preset.category.slug as "character" | "scene" | "style" : "manual",
+                sourceLabel: `${preset.name}`,
+              });
+              loraChanged = true;
+            }
+          }
+        }
+      }
+    }
+
+    if (loraChanged) {
+      await prisma.projectSection.update({
+        where: { id: sectionId },
+        data: {
+          loraConfig: serializePositionLoraConfig(loraConfig),
+        },
+      });
+    }
+  }
+
+  // Server action to save LoRA config (2-partition: lora1, lora2)
   async function handleLoraChange(config: { lora1: LoraEntry[]; lora2: LoraEntry[] }) {
     "use server";
     const { prisma } = await import("@/lib/prisma");
@@ -91,7 +153,7 @@ export default async function SectionEditPage({
     await prisma.projectSection.update({
       where: { id: sectionId },
       data: {
-        loraConfig: serializePositionLoraConfig(config),
+        loraConfig: serializePositionLoraConfig({ characterLora: [], ...config }),
       },
     });
 

@@ -23,7 +23,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       <Link href="/projects" className="inline-flex items-center gap-2 text-sm text-zinc-400 transition hover:text-zinc-200">
         <ArrowLeft className="size-4" /> 返回项目列表
       </Link>
-      <SectionCard title={project.title} subtitle={`${project.characterName} · ${project.sceneName} · ${project.styleName}`}>
+      <SectionCard title={project.title} subtitle={[project.characterName, project.sceneName, project.styleName].filter(n => n !== "—").join(" · ") || "无预设"}>
         <ProjectDetailActions projectId={project.id} />
       </SectionCard>
 
@@ -31,7 +31,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         <div className="space-y-3 text-sm text-zinc-300">
           <div className="rounded-2xl bg-white/[0.03] p-3">
             <div className="text-xs text-zinc-500">预设</div>
-            <div className="mt-1">{project.characterName} · {project.sceneName} · {project.styleName}</div>
+            <div className="mt-1">{[project.characterName, project.sceneName, project.styleName].filter(n => n !== "—").join(" · ") || "无预设"}</div>
           </div>
           <Link
             href={`/projects/${projectId}/edit`}

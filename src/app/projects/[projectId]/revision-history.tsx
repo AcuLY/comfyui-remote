@@ -6,11 +6,6 @@ import type { ProjectRevisionSummary } from "@/lib/server-data";
 
 type RevisionSnapshot = {
   title?: string;
-  // Legacy fields (may exist in old snapshots)
-  characterPrompt?: string;
-  scenePrompt?: string | null;
-  stylePrompt?: string | null;
-  characterLoraPath?: string;
   sections?: Array<{
     id: string;
     positivePrompt?: string | null;
@@ -134,11 +129,7 @@ function RevisionItem({ revision, projectId }: { revision: ProjectRevisionSummar
           )}
           {!loading && snapshot && (
             <div className="space-y-2">
-              {/* Legacy fields from old snapshots - show conditionally */}
-              {snapshot.characterPrompt && <SnapshotField label="Character prompt (legacy)" value={snapshot.characterPrompt} />}
-              {snapshot.scenePrompt && <SnapshotField label="Scene prompt (legacy)" value={snapshot.scenePrompt} />}
-              {snapshot.stylePrompt && <SnapshotField label="Style prompt (legacy)" value={snapshot.stylePrompt} />}
-              {snapshot.characterLoraPath && <SnapshotField label="LoRA path (legacy)" value={snapshot.characterLoraPath} />}
+              <SnapshotField label="Title" value={snapshot.title} />
               {snapshot.sections && snapshot.sections.length > 0 && (
                 <div className="space-y-1.5">
                   <div className="text-[10px] font-medium text-zinc-500">Positions</div>
