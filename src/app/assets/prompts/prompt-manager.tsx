@@ -85,15 +85,23 @@ export function PromptManager({
 
             {/* Category list */}
             {categories.map((cat) => (
-              <button
+              <div
                 key={cat.id}
-                type="button"
+                role="button"
+                tabIndex={0}
                 onClick={() => {
                   setSelectedCatId(cat.id);
                   setShowCatForm(false);
                   setShowSortConfig(false);
                 }}
-                className={`flex w-full items-center gap-2 rounded-xl border p-2.5 text-left transition ${
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    setSelectedCatId(cat.id);
+                    setShowCatForm(false);
+                    setShowSortConfig(false);
+                  }
+                }}
+                className={`flex w-full items-center gap-2 rounded-xl border p-2.5 text-left transition cursor-pointer ${
                   selectedCatId === cat.id
                     ? "border-sky-500/30 bg-sky-500/10"
                     : "border-white/5 bg-white/[0.02] hover:border-white/10"
@@ -120,7 +128,7 @@ export function PromptManager({
                 >
                   <Pencil className="size-3" />
                 </button>
-              </button>
+              </div>
             ))}
 
             {/* Category create/edit form */}
