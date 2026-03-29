@@ -66,6 +66,24 @@ export async function GET(request: NextRequest) {
     // Recursive mode: return all files across all subdirectories (for search)
     if (recursive) {
       const files = await collectFilesRecursive(env.loraBaseDir, relativePath);
+
+      // Batch-fetch notes for all recursive files
+      const allAbsPaths = files.map((f) => path.resolve(env.loraBaseDir, f.path));
+      if (allAbsPaths.length > 0) {
+        const assets = await db.loraAsset.findMany({
+          where: { absolutePath: { in: allAbsPaths } },
+          select: { absolutePath: true, notes: true },
+        });
+        const notesMap = new Map(
+          assets.filter((a) => a.notes).map((a) => [a.absolutePath, a.notes!])
+        );
+        for (const file of files) {
+          const absPath = path.resolve(env.loraBaseDir, file.path);
+          const note = notesMap.get(absPath);
+          if (note) (file as Record<string, unknown>).notes = note;
+        }
+      }
+
       files.sort((a, b) => a.name.localeCompare(b.name));
       return ok({ currentPath: relativePath, parentPath: null, items: files });
     }

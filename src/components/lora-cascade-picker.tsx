@@ -12,6 +12,7 @@ type BrowseItem = {
   type: "directory" | "file";
   path: string;
   size?: number;
+  notes?: string;
 };
 
 type BrowseResult = {
@@ -73,7 +74,7 @@ function useLoraSearch() {
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return null; // null = not searching
-    return allFiles.filter((f) => f.name.toLowerCase().includes(q));
+    return allFiles.filter((f) => f.name.toLowerCase().includes(q) || (f.notes && f.notes.toLowerCase().includes(q)));
   }, [query, allFiles]);
 
   return { query, setQuery, results, searching, reset: () => { setQuery(""); } };
@@ -96,6 +97,7 @@ export function LoraCascadePicker({
   const [parentPath, setParentPath] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedNotes, setSelectedNotes] = useState<string | null>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const search = useLoraSearch();
@@ -151,6 +153,7 @@ export function LoraCascadePicker({
       fetchDir(item.path);
     } else {
       onChange(item.path);
+      setSelectedNotes(item.notes ?? null);
       setOpen(false);
     }
   }
@@ -179,7 +182,16 @@ export function LoraCascadePicker({
           displayValue ? "text-zinc-200" : "text-zinc-500"
         }`}
       >
-        <span className="flex-1 truncate">{displayValue ?? placeholder}</span>
+        <div className="flex-1 min-w-0">
+          {selectedNotes ? (
+            <>
+              <span className="block truncate">{selectedNotes}</span>
+              <span className="block truncate text-[10px] text-zinc-600">{displayValue}</span>
+            </>
+          ) : (
+            <span className="block truncate">{displayValue ?? placeholder}</span>
+          )}
+        </div>
         <ChevronRight className="size-3.5 shrink-0 text-zinc-500" />
       </button>
 
@@ -300,7 +312,14 @@ export function LoraCascadePicker({
                         >
                           <FileText className="size-4 shrink-0 text-zinc-500" />
                           <div className="flex-1 min-w-0">
-                            <div className="truncate text-xs">{item.name}</div>
+                            {item.notes ? (
+                              <>
+                                <div className="truncate text-xs">{item.notes}</div>
+                                <div className="truncate text-[10px] text-zinc-600">{item.name}</div>
+                              </>
+                            ) : (
+                              <div className="truncate text-xs">{item.name}</div>
+                            )}
                             <div className="truncate text-[10px] text-zinc-600">{dirHint}</div>
                           </div>
                           {item.size != null && (
@@ -346,7 +365,16 @@ export function LoraCascadePicker({
                         ) : (
                           <FileText className="size-4 shrink-0 text-zinc-500" />
                         )}
-                        <span className="flex-1 truncate text-xs">{item.name}</span>
+                        <div className="flex-1 min-w-0">
+                          {item.type === "file" && item.notes ? (
+                            <>
+                              <div className="truncate text-xs">{item.notes}</div>
+                              <div className="truncate text-[10px] text-zinc-600">{item.name}</div>
+                            </>
+                          ) : (
+                            <span className="truncate text-xs">{item.name}</span>
+                          )}
+                        </div>
                         {item.type === "file" && item.size != null && (
                           <span className="shrink-0 text-[10px] text-zinc-600">
                             {formatSize(item.size)}
