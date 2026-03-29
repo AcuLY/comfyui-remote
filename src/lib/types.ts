@@ -33,6 +33,7 @@ export type FailedRun = {
 export type ReviewImage = {
   id: string;
   src: string;
+  full: string;
   label: string;
   status: ReviewStatus;
 };

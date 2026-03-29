@@ -51,7 +51,8 @@ export default async function ReviewImagePage({ params }: { params: Promise<{ ru
       </div>
 
       <div className="overflow-hidden rounded-[28px] border border-white/10 bg-[var(--panel)] p-3">
-        <Image src={image.src} alt={image.id} width={1080} height={1440} className="h-auto w-full rounded-[22px] object-cover" unoptimized />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={image.full} alt={image.id} className="h-auto w-full rounded-[22px] object-cover" />
       </div>
 
       <ImageActions
