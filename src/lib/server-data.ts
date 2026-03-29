@@ -200,6 +200,7 @@ export async function getReviewGroup(runId: string): Promise<ReviewGroup | null>
     pendingCount: images.filter((img) => img.status === "pending").length,
     totalCount: images.length,
     images,
+    executionMeta: (run.executionMeta as Record<string, unknown>) ?? null,
   };
 }
 

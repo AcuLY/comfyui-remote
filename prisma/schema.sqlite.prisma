@@ -121,6 +121,7 @@ model PositionRun {
   status                String                @default("queued")
   resolvedConfigSnapshot Json
   comfyPromptId         String?
+  executionMeta         Json?
   outputDir             String?
   errorMessage          String?
   startedAt             DateTime?

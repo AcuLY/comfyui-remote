@@ -137,6 +137,7 @@ export async function executeQueuedRuns(): Promise<void> {
         await completeWorkerRun(run.runId, {
           status: RunStatus.done,
           comfyPromptId,
+          executionMeta: processResult.executionMeta,
           outputDir: persistedOutput.outputDir,
           images: persistedOutput.images,
         });

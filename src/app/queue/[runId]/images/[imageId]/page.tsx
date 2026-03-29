@@ -55,6 +55,27 @@ export default async function ReviewImagePage({ params }: { params: Promise<{ ru
         <img src={image.full} alt={image.id} className="h-auto w-full rounded-[22px] object-cover" />
       </div>
 
+      {/* Execution params */}
+      {group.executionMeta && (
+        <div className="flex flex-wrap gap-2 text-[10px] text-zinc-500">
+          {group.executionMeta.ks1Seed != null && (
+            <span className="rounded-lg border border-white/5 bg-white/[0.02] px-2 py-1">
+              Seed1: <span className="font-mono text-zinc-300">{String(group.executionMeta.ks1Seed)}</span>
+            </span>
+          )}
+          {group.executionMeta.ks2Seed != null && (
+            <span className="rounded-lg border border-white/5 bg-white/[0.02] px-2 py-1">
+              Seed2: <span className="font-mono text-zinc-300">{String(group.executionMeta.ks2Seed)}</span>
+            </span>
+          )}
+          {group.executionMeta.ks1Steps != null && (
+            <span className="rounded-lg border border-white/5 bg-white/[0.02] px-2 py-1">
+              steps {String(group.executionMeta.ks1Steps)} · cfg {String(group.executionMeta.ks1Cfg)} · {String(group.executionMeta.ks1Sampler)}
+            </span>
+          )}
+        </div>
+      )}
+
       <ImageActions
         imageId={imageId}
         runId={runId}

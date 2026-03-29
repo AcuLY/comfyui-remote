@@ -40,6 +40,8 @@ export type ComfyPromptExecutionResult = {
   comfyPromptId: string;
   outputDir: string | null;
   outputImages: ComfyPromptOutputImage[];
+  /** Execution metadata extracted from the submitted prompt (seeds, params) */
+  executionMeta: Record<string, unknown> | null;
 };
 
 export class ComfyPromptExecutionError extends Error {
@@ -193,6 +195,38 @@ function isHistoryComplete(entry: ComfyPromptHistoryEntry) {
   }
 
   return Boolean(entry.outputs && Object.keys(entry.outputs).length > 0);
+}
+
+/**
+ * Extract execution metadata (seeds, KSampler params) from the submitted prompt.
+ * KSampler nodes (3 = KS1, 427 = KS2) contain the actual seed values used.
+ */
+function extractExecutionMeta(apiPrompt: JsonRecord): Record<string, unknown> {
+  const meta: Record<string, unknown> = {};
+
+  // KSampler1 (node 3)
+  const ks1 = asRecord(asRecord(apiPrompt["3"])?.inputs);
+  if (ks1) {
+    meta.ks1Seed = typeof ks1.seed === "number" ? ks1.seed : null;
+    meta.ks1Steps = ks1.steps ?? null;
+    meta.ks1Cfg = ks1.cfg ?? null;
+    meta.ks1Sampler = ks1.sampler_name ?? null;
+    meta.ks1Scheduler = ks1.scheduler ?? null;
+    meta.ks1Denoise = ks1.denoise ?? null;
+  }
+
+  // KSampler2 (node 427) — only present when hires fix is active
+  const ks2 = asRecord(asRecord(apiPrompt["427"])?.inputs);
+  if (ks2) {
+    meta.ks2Seed = typeof ks2.seed === "number" ? ks2.seed : null;
+    meta.ks2Steps = ks2.steps ?? null;
+    meta.ks2Cfg = ks2.cfg ?? null;
+    meta.ks2Sampler = ks2.sampler_name ?? null;
+    meta.ks2Scheduler = ks2.scheduler ?? null;
+    meta.ks2Denoise = ks2.denoise ?? null;
+  }
+
+  return meta;
 }
 
 function extractOutputImages(entry: ComfyPromptHistoryEntry): ComfyPromptOutputImage[] {
@@ -612,6 +646,7 @@ export async function executeComfyPromptDraft(
   }
 
   const outputImages = extractOutputImages(historyEntry);
+  const executionMeta = extractExecutionMeta(validatedDraft.apiPrompt);
 
   timer.done({ comfyPromptId, imageCount: outputImages.length });
 
@@ -619,5 +654,6 @@ export async function executeComfyPromptDraft(
     comfyPromptId,
     outputDir: extractOutputDir(outputImages),
     outputImages,
+    executionMeta,
   };
 }

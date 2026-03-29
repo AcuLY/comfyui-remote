@@ -29,6 +29,7 @@ type CompleteWorkerRunInput = {
   status: "done" | "failed";
   errorMessage?: string | null;
   comfyPromptId?: string | null;
+  executionMeta?: Record<string, unknown> | null;
   outputDir?: string | null;
   images?: Array<{
     filePath: string;
@@ -168,6 +169,10 @@ export async function completeWorkerRun(
 
     if (input.comfyPromptId !== undefined) {
       data.comfyPromptId = input.comfyPromptId;
+    }
+
+    if (input.executionMeta !== undefined && input.executionMeta !== null) {
+      data.executionMeta = input.executionMeta as object;
     }
 
     if (input.outputDir !== undefined) {

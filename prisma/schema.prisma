@@ -152,6 +152,7 @@ model PositionRun {
   status                RunStatus             @default(queued)
   resolvedConfigSnapshot Json
   comfyPromptId         String?
+  executionMeta         Json?                 // { ks1Seed, ks2Seed, ks1Steps, ks1Cfg, ... }
   outputDir             String?
   errorMessage          String?               @db.Text
   startedAt             DateTime?

@@ -49,6 +49,7 @@ export type ReviewGroup = {
   pendingCount: number;
   totalCount: number;
   images: ReviewImage[];
+  executionMeta: Record<string, unknown> | null;
 };
 
 export type ProjectCard = {
