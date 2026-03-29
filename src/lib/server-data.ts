@@ -597,6 +597,8 @@ export type ProjectEditData = {
   defaultUpscaleFactor: number;
   defaultSeedPolicy1: string;
   defaultSeedPolicy2: string;
+  defaultKsampler1: Record<string, unknown>;
+  defaultKsampler2: Record<string, unknown>;
 };
 
 export async function getProjectEditData(projectId: string): Promise<ProjectEditData | null> {
@@ -630,6 +632,8 @@ export async function getProjectEditData(projectId: string): Promise<ProjectEdit
     defaultUpscaleFactor?: number;
     defaultSeedPolicy1?: string;
     defaultSeedPolicy2?: string;
+    defaultKsampler1?: Record<string, unknown>;
+    defaultKsampler2?: Record<string, unknown>;
   };
 
   return {
@@ -648,6 +652,8 @@ export async function getProjectEditData(projectId: string): Promise<ProjectEdit
     defaultUpscaleFactor: overrides.defaultUpscaleFactor ?? 2,
     defaultSeedPolicy1: overrides.defaultSeedPolicy1 ?? "random",
     defaultSeedPolicy2: overrides.defaultSeedPolicy2 ?? "random",
+    defaultKsampler1: overrides.defaultKsampler1 ?? {},
+    defaultKsampler2: overrides.defaultKsampler2 ?? {},
   };
 }
 

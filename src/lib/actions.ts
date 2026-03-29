@@ -305,6 +305,8 @@ export type UpdateProjectInput = {
     defaultUpscaleFactor?: number;
     defaultSeedPolicy1?: string;
     defaultSeedPolicy2?: string;
+    defaultKsampler1?: Record<string, unknown>;
+    defaultKsampler2?: Record<string, unknown>;
   };
 };
 
@@ -317,7 +319,7 @@ export async function updateProject(input: UpdateProjectInput) {
     data: {
       ...projectData,
       ...(presetBindings !== undefined ? { presetBindings } : {}),
-      ...(projectLevelOverrides !== undefined ? { projectLevelOverrides } : {}),
+      ...(projectLevelOverrides !== undefined ? { projectLevelOverrides: projectLevelOverrides as object } : {}),
     },
   });
 
@@ -649,17 +651,22 @@ export async function addSection(projectId: string, name?: string): Promise<stri
     defaultAspectRatio?: string;
     defaultShortSidePx?: number;
     defaultBatchSize?: number;
+    defaultUpscaleFactor?: number;
     defaultSeedPolicy1?: string;
     defaultSeedPolicy2?: string;
+    defaultKsampler1?: Record<string, unknown>;
+    defaultKsampler2?: Record<string, unknown>;
   };
 
-  // 默认值：2:3 竖图、短边 512、batch 2
+  // 默认值：2:3 竖图、短边 512、batch 2、放大 2
   const defaultAspectRatio = overrides.defaultAspectRatio ?? "2:3";
   const defaultShortSidePx = overrides.defaultShortSidePx ?? 512;
   const defaultBatchSize = overrides.defaultBatchSize ?? 2;
-  // v0.3: dual seedPolicy support
+  const defaultUpscaleFactor = overrides.defaultUpscaleFactor ?? 2;
   const defaultSeedPolicy1 = overrides.defaultSeedPolicy1 ?? "random";
   const defaultSeedPolicy2 = overrides.defaultSeedPolicy2 ?? "random";
+  const defaultKsampler1 = overrides.defaultKsampler1 ?? null;
+  const defaultKsampler2 = overrides.defaultKsampler2 ?? null;
 
   // 创建小节（ProjectSection）
   const section = await prisma.projectSection.create({
@@ -671,8 +678,11 @@ export async function addSection(projectId: string, name?: string): Promise<stri
       aspectRatio: defaultAspectRatio,
       shortSidePx: defaultShortSidePx,
       batchSize: defaultBatchSize,
+      upscaleFactor: defaultUpscaleFactor,
       seedPolicy1: defaultSeedPolicy1,
       seedPolicy2: defaultSeedPolicy2,
+      ksampler1: (defaultKsampler1 as object) ?? undefined,
+      ksampler2: (defaultKsampler2 as object) ?? undefined,
     },
   });
 
