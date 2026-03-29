@@ -445,6 +445,30 @@ export async function reorderPromptCategories(ids: string[]) {
   revalidatePath("/assets/prompts");
 }
 
+type SortDimension = "positivePromptOrder" | "negativePromptOrder" | "lora1Order" | "lora2Order";
+
+export async function updateCategorySortOrders(dimension: SortDimension, ids: string[]) {
+  const validDimensions: SortDimension[] = [
+    "positivePromptOrder",
+    "negativePromptOrder",
+    "lora1Order",
+    "lora2Order",
+  ];
+  if (!validDimensions.includes(dimension)) {
+    throw new Error(`Invalid dimension: ${dimension}`);
+  }
+  await prisma.$transaction(
+    ids.map((id, index) =>
+      prisma.promptCategory.update({
+        where: { id },
+        data: { [dimension]: index },
+      }),
+    ),
+  );
+  revalidatePath("/assets/prompts");
+  revalidatePath("/assets/prompts/sort-rules");
+}
+
 // ---------------------------------------------------------------------------
 // PromptPreset CRUD (unified prompt system)
 // ---------------------------------------------------------------------------

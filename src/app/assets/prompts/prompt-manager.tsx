@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   Plus,
   Trash2,
@@ -43,7 +44,6 @@ export function PromptManager({
   );
   const [showCatForm, setShowCatForm] = useState(false);
   const [editingCatId, setEditingCatId] = useState<string | null>(null);
-  const [showSortConfig, setShowSortConfig] = useState(false);
 
   const selectedCat = categories.find((c) => c.id === selectedCatId) ?? null;
 
@@ -62,14 +62,13 @@ export function PromptManager({
                 分类
               </span>
               <div className="flex gap-1">
-                <button
-                  type="button"
-                  onClick={() => setShowSortConfig(!showSortConfig)}
+                <Link
+                  href="/assets/prompts/sort-rules"
                   className="rounded p-1 text-zinc-500 hover:bg-white/[0.06] hover:text-white"
                   title="排序规则"
                 >
                   <Settings2 className="size-3.5" />
-                </button>
+                </Link>
                 <button
                   type="button"
                   onClick={() => {
@@ -92,13 +91,11 @@ export function PromptManager({
                 onClick={() => {
                   setSelectedCatId(cat.id);
                   setShowCatForm(false);
-                  setShowSortConfig(false);
                 }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     setSelectedCatId(cat.id);
                     setShowCatForm(false);
-                    setShowSortConfig(false);
                   }
                 }}
                 className={`flex w-full items-center gap-2 rounded-xl border p-2.5 text-left transition cursor-pointer ${
@@ -122,7 +119,6 @@ export function PromptManager({
                     e.stopPropagation();
                     setEditingCatId(cat.id);
                     setShowCatForm(true);
-                    setShowSortConfig(false);
                   }}
                   className="rounded p-1 text-zinc-600 hover:text-zinc-300"
                 >
@@ -180,23 +176,6 @@ export function PromptManager({
               />
             )}
 
-            {/* Sort order config */}
-            {showSortConfig && (
-              <SortOrderConfig
-                categories={categories}
-                onSave={(updates) => {
-                  startTransition(async () => {
-                    for (const u of updates) {
-                      await updatePromptCategory(u.id, u);
-                    }
-                    setShowSortConfig(false);
-                    refresh();
-                  });
-                }}
-                onCancel={() => setShowSortConfig(false)}
-                isPending={isPending}
-              />
-            )}
           </div>
 
           {/* Right panel: presets */}
@@ -374,120 +353,6 @@ function CategoryForm({
   );
 }
 
-// ---------------------------------------------------------------------------
-// SortOrderConfig — category sort order configuration
-// ---------------------------------------------------------------------------
-
-function SortOrderConfig({
-  categories,
-  onSave,
-  onCancel,
-  isPending,
-}: {
-  categories: PromptCategoryFull[];
-  onSave: (
-    updates: Array<{
-      id: string;
-      positivePromptOrder: number;
-      negativePromptOrder: number;
-      lora1Order: number;
-      lora2Order: number;
-    }>,
-  ) => void;
-  onCancel: () => void;
-  isPending: boolean;
-}) {
-  const [orders, setOrders] = useState(
-    categories.map((c) => ({
-      id: c.id,
-      name: c.name,
-      color: c.color,
-      positivePromptOrder: c.positivePromptOrder,
-      negativePromptOrder: c.negativePromptOrder,
-      lora1Order: c.lora1Order,
-      lora2Order: c.lora2Order,
-    })),
-  );
-
-  function updateOrder(
-    id: string,
-    field: "positivePromptOrder" | "negativePromptOrder" | "lora1Order" | "lora2Order",
-    value: number,
-  ) {
-    setOrders((prev) =>
-      prev.map((o) => (o.id === id ? { ...o, [field]: value } : o)),
-    );
-  }
-
-  return (
-    <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.03] p-3 space-y-3">
-      <div className="text-[11px] font-medium text-amber-300">
-        自动排序规则
-      </div>
-      <p className="text-[10px] text-zinc-500">
-        数字越小越靠前。导入 preset 时系统按此顺序插入 prompt block 和 LoRA。自定义项默认排最后。
-      </p>
-      <div className="space-y-2">
-        {orders.map((o) => (
-          <div key={o.id} className="rounded-lg border border-white/5 bg-white/[0.02] p-2">
-            <div className="flex items-center gap-1.5 mb-1.5">
-              <CategoryBadge color={o.color} />
-              <span className="text-[11px] font-medium text-zinc-300">
-                {o.name}
-              </span>
-            </div>
-            <div className="grid grid-cols-2 gap-1.5">
-              {(
-                [
-                  ["positivePromptOrder", "正面提示词"],
-                  ["negativePromptOrder", "负面提示词"],
-                  ["lora1Order", "LoRA 1"],
-                  ["lora2Order", "LoRA 2"],
-                ] as const
-              ).map(([field, label]) => (
-                <label key={field} className="flex items-center gap-1.5">
-                  <span className="text-[10px] text-zinc-500 w-16 shrink-0">
-                    {label}
-                  </span>
-                  <input
-                    type="number"
-                    value={o[field]}
-                    onChange={(e) =>
-                      updateOrder(o.id, field, parseInt(e.target.value, 10) || 0)
-                    }
-                    className="w-14 rounded border border-white/10 bg-white/[0.04] px-1.5 py-0.5 text-[11px] text-zinc-200 outline-none focus:border-sky-500/30"
-                  />
-                </label>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-      <div className="flex gap-1.5">
-        <button
-          type="button"
-          disabled={isPending}
-          onClick={() => onSave(orders)}
-          className="inline-flex items-center gap-1 rounded-lg bg-amber-500/20 px-2 py-1 text-[11px] text-amber-300 hover:bg-amber-500/30 disabled:opacity-50"
-        >
-          {isPending ? (
-            <Loader2 className="size-3 animate-spin" />
-          ) : (
-            <Save className="size-3" />
-          )}
-          保存
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-2 py-1 text-[11px] text-zinc-400 hover:bg-white/[0.06]"
-        >
-          <X className="size-3" /> 取消
-        </button>
-      </div>
-    </div>
-  );
-}
 
 // ---------------------------------------------------------------------------
 // PresetList — right panel showing presets within a category
