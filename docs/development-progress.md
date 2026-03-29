@@ -53,8 +53,8 @@ ComfyUI Remote — 移动优先的 ComfyUI 管理后台，覆盖：
 | `/api/projects/[projectId]` | GET/PATCH | 任务详情 / 更新 |
 | `/api/projects/[projectId]/copy` | POST | 复制任务 |
 | `/api/projects/[projectId]/run` | POST | 运行整个任务 |
-| `/api/projects/[projectId]/sections/[projectSectionId]` | PATCH | 更新 Section 配置 |
-| `/api/projects/[projectId]/sections/[projectSectionId]/run` | POST | 运行单个 Section |
+| `/api/projects/[projectId]/sections/[sectionId]` | PATCH | 更新 Section 配置 |
+| `/api/projects/[projectId]/sections/[sectionId]/run` | POST | 运行单个 Section |
 | `/api/projects/[projectId]/revisions` | GET | 修订历史列表 |
 | `/api/projects/[projectId]/revisions/[n]` | GET | 修订快照 |
 | `/api/queue` | GET | 审核队列 |
@@ -92,7 +92,7 @@ ComfyUI Remote — 移动优先的 ComfyUI 管理后台，覆盖：
 | `/api/agent/projects/[projectId]/context` | GET | Project 上下文 |
 | `/api/agent/projects/[projectId]/update` | PATCH | AI 更新 Project |
 | `/api/agent/projects/[projectId]/run-all` | POST | AI 触发全部运行 |
-| `/api/agent/sections/[projectSectionId]/run` | POST | AI 触发 Section 运行 |
+| `/api/agent/sections/[sectionId]/run` | POST | AI 触发 Section 运行 |
 | `/api/agent/runs/[runId]/context` | GET | Run 上下文 |
 | `/api/agent/runs/[runId]/review` | POST | AI 审图 |
 | `/api/mcp` | ALL | MCP Server |

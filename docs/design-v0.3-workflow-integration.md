@@ -149,7 +149,7 @@ Checkpoint(1)
 |------|---------|------|------|
 | output_path | 515 (Image Save) | `inputs.output_path` | `{项目名}/{序号}.{小节名}` |
 
-小节名中空格替换为下划线。例如：`"MyJob/1.close_up_shot"`
+小节名中空格替换为下划线。例如：`"MyProject/1.close_up_shot"`
 
 ### 3.8 Seed 策略
 

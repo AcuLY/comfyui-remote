@@ -89,7 +89,7 @@ curl -X POST http://localhost:3000/api/projects \
 curl -X POST http://localhost:3000/api/projects/<projectId>/run
 
 # 或运行单个 Section
-curl -X POST http://localhost:3000/api/projects/<projectId>/sections/<projectSectionId>/run
+curl -X POST http://localhost:3000/api/projects/<projectId>/sections/<sectionId>/run
 ```
 
 此时 SectionRun 状态变为 `queued`。

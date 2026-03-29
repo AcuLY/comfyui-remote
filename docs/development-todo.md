@@ -39,15 +39,6 @@ All planned features for v0.1 and v0.2 have been implemented:
 - [x] **LoRA 备注** — 数据库绑定文件的备注字段，文件移动时自动跟随
 - [x] **结果缩略图条** — Project 详情的小节列表直接展示最近运行图片
 
-## Completed (v0.6 — 实体重命名)
-
-- [x] CompleteJob → Project（项目）
-- [x] CompleteJobPosition → ProjectSection（小节）
-- [x] JobRevision → ProjectRevision
-- [x] URL 路径：/jobs → /projects、/positions → /sections
-- [x] Agent API + MCP Server 端点更新
-- [x] 文档全面更新术语
-
 ## Completed (v0.5 — 统一提示词分类系统)
 
 - [x] PromptCategory + PromptPreset schema
@@ -59,6 +50,15 @@ All planned features for v0.1 and v0.2 have been implemented:
 - [x] Pipeline snapshot presets 数组
 - [x] 删除旧 CRUD、旧 fetchers、旧设置页面
 - [x] 展示层 characterName 改为 presetBindings 解析
+
+## Completed (v0.6 — 实体重命名)
+
+- [x] CompleteJob → Project（项目）
+- [x] CompleteJobPosition → ProjectSection（小节）
+- [x] JobRevision → ProjectRevision
+- [x] URL 路径：/jobs → /projects、/positions → /sections
+- [x] Agent API + MCP Server 端点更新
+- [x] 文档全面更新术语
 
 ## Working Notes
 
