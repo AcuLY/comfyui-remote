@@ -29,13 +29,9 @@ export async function GET() {
           where: { status: "done" },
           orderBy: { finishedAt: "desc" },
           take: 5,
-          select: {
-            id: true,
-            finishedAt: true,
+          include: {
             project: { select: { title: true } },
-            projectSection: {
-              select: { name: true, sortOrder: true },
-            },
+            projectSection: { select: { name: true, sortOrder: true } },
             _count: { select: { images: true } },
           },
         }),
@@ -43,10 +39,7 @@ export async function GET() {
           where: { status: "failed" },
           orderBy: { finishedAt: "desc" },
           take: 5,
-          select: {
-            id: true,
-            finishedAt: true,
-            errorMessage: true,
+          include: {
             project: { select: { title: true } },
           },
         }),
