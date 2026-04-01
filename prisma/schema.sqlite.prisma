@@ -25,12 +25,29 @@ model PromptCategory {
   sortOrder           Int             @default(0)
   createdAt           DateTime        @default(now())
   updatedAt           DateTime        @updatedAt
-  presets             PromptPreset[]
+  presets             Preset[]
 }
 
-model PromptPreset {
+model Preset {
   id              String          @id @default(cuid())
   categoryId      String
+  name            String
+  slug            String
+  isActive        Boolean         @default(true)
+  sortOrder       Int             @default(0)
+  notes           String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  category        PromptCategory  @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  variants        PresetVariant[]
+
+  @@unique([categoryId, slug])
+  @@index([categoryId, sortOrder])
+}
+
+model PresetVariant {
+  id              String          @id @default(cuid())
+  presetId        String
   name            String
   slug            String
   prompt          String          // positive prompt
@@ -38,15 +55,14 @@ model PromptPreset {
   lora1           Json?           // Array<LoraBinding> — stage 1
   lora2           Json?           // Array<LoraBinding> — stage 2 (upscale)
   defaultParams   Json?           // generation param defaults (aspect, batch, ksampler, etc.)
-  notes           String?
-  isActive        Boolean         @default(true)
   sortOrder       Int             @default(0)
+  isActive        Boolean         @default(true)
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
-  category        PromptCategory  @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  preset          Preset          @relation(fields: [presetId], references: [id], onDelete: Cascade)
 
-  @@unique([categoryId, slug])
-  @@index([categoryId, sortOrder])
+  @@unique([presetId, slug])
+  @@index([presetId, sortOrder])
 }
 
 // ── Core models ──
@@ -56,7 +72,7 @@ model Project {
   title                 String
   slug                  String                @unique
   status                String                @default("draft")
-  presetBindings        Json?                 // [{ categoryId, presetId }]
+  presetBindings        Json?                 // [{ categoryId, presetId, variantId? }]
   projectLevelOverrides Json?
   notes                 String?
   createdAt             DateTime              @default(now())

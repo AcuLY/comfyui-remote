@@ -16,14 +16,17 @@ import {
 } from "lucide-react";
 import { SectionCard } from "@/components/section-card";
 import { LoraBindingEditor } from "@/components/lora-binding-editor";
-import type { PromptCategoryFull, PromptPresetItem } from "@/lib/server-data";
+import type { PromptCategoryFull, PresetItem } from "@/lib/server-data";
 import {
   createPromptCategory,
   updatePromptCategory,
   deletePromptCategory,
-  createPromptPreset,
-  updatePromptPreset,
-  deletePromptPreset,
+  createPreset,
+  updatePreset,
+  deletePreset,
+  createPresetVariant,
+  updatePresetVariant,
+  deletePresetVariant,
 } from "@/lib/actions";
 import { parseLoraBindings, serializeLoraBindings } from "@/lib/lora-types";
 
@@ -411,7 +414,7 @@ function PresetList({
           preset={null}
           onSave={(data) => {
             startTransition(async () => {
-              await createPromptPreset(data);
+              await createPreset(data);
               setIsCreating(false);
               onRefresh();
             });
@@ -435,7 +438,7 @@ function PresetList({
               preset={preset}
               onSave={(data) => {
                 startTransition(async () => {
-                  await updatePromptPreset(preset.id, data);
+                  await updatePreset(preset.id, data);
                   setEditingId(null);
                   onRefresh();
                 });
@@ -443,7 +446,7 @@ function PresetList({
               onDelete={() => {
                 if (!confirm("确认删除此模板？")) return;
                 startTransition(async () => {
-                  await deletePromptPreset(preset.id);
+                  await deletePreset(preset.id);
                   setEditingId(null);
                   onRefresh();
                 });
@@ -472,12 +475,10 @@ function PresetCard({
   preset,
   onEdit,
 }: {
-  preset: PromptPresetItem;
+  preset: PresetItem;
   onEdit: () => void;
 }) {
-  const lora1 = parseLoraBindings(preset.lora1);
-  const lora2 = parseLoraBindings(preset.lora2);
-  const loraCount = lora1.length + lora2.length;
+  const variantCount = preset.variantCount;
 
   return (
     <div
@@ -498,29 +499,40 @@ function PresetCard({
                 已禁用
               </span>
             )}
-            {loraCount > 0 && (
-              <span className="text-[9px] text-amber-400/60">
-                {loraCount} LoRA
+            {variantCount > 0 && (
+              <span className="text-[9px] text-sky-400/60">
+                {variantCount} 变体
               </span>
             )}
           </div>
           <div className="mt-1 text-[11px] text-zinc-500 line-clamp-2">
-            {preset.prompt.slice(0, 120)}
-            {preset.prompt.length > 120 ? "..." : ""}
+            {preset.notes?.slice(0, 120) || "无备注"}
+            {preset.notes && preset.notes.length > 120 ? "..." : ""}
           </div>
-          {preset.negativePrompt && (
-            <div className="mt-0.5 text-[10px] text-rose-400/40 truncate">
-              neg: {preset.negativePrompt.slice(0, 80)}
+          {variantCount > 0 && (
+            <div className="mt-1">
+              <button
+                type="button"
+                className="text-[10px] text-sky-400/60 hover:text-sky-300"
+                onClick={() => {
+                  // TODO: 打开变体管理界面
+                  console.log("管理变体:", preset.id);
+                }}
+              >
+                管理变体 →
+              </button>
             </div>
           )}
         </div>
-        <button
-          type="button"
-          onClick={onEdit}
-          className="rounded p-1.5 text-zinc-500 hover:bg-white/[0.06] hover:text-white"
-        >
-          <Pencil className="size-3.5" />
-        </button>
+        <div className="flex gap-1">
+          <button
+            type="button"
+            onClick={onEdit}
+            className="rounded p-1.5 text-zinc-500 hover:bg-white/[0.06] hover:text-white"
+          >
+            <Pencil className="size-3.5" />
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -539,15 +551,11 @@ function PresetForm({
   isPending,
 }: {
   categoryId: string;
-  preset: PromptPresetItem | null;
+  preset: PresetItem | null;
   onSave: (data: {
     categoryId: string;
     name: string;
     slug: string;
-    prompt: string;
-    negativePrompt?: string | null;
-    lora1?: unknown;
-    lora2?: unknown;
     notes?: string | null;
     isActive?: boolean;
   }) => void;
@@ -557,12 +565,6 @@ function PresetForm({
 }) {
   const [name, setName] = useState(preset?.name ?? "");
   const [slug, setSlug] = useState(preset?.slug ?? "");
-  const [prompt, setPrompt] = useState(preset?.prompt ?? "");
-  const [negativePrompt, setNegativePrompt] = useState(
-    preset?.negativePrompt ?? "",
-  );
-  const [lora1, setLora1] = useState(parseLoraBindings(preset?.lora1));
-  const [lora2, setLora2] = useState(parseLoraBindings(preset?.lora2));
   const [notes, setNotes] = useState(preset?.notes ?? "");
   const [isActive, setIsActive] = useState(preset?.isActive ?? true);
 
@@ -583,12 +585,8 @@ function PresetForm({
       categoryId,
       name: name.trim(),
       slug: slug.trim(),
-      prompt: prompt.trim(),
-      negativePrompt: negativePrompt.trim() || null,
-      lora1: serializeLoraBindings(lora1),
-      lora2: serializeLoraBindings(lora2),
       notes: notes.trim() || null,
-      isActive,
+      isActive: true,
     });
   }
 
@@ -621,37 +619,6 @@ function PresetForm({
         </label>
       </div>
 
-      <label className="block space-y-1">
-        <span className="text-[10px] text-zinc-500">正面提示词</span>
-        <textarea
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          rows={3}
-          placeholder="positive prompt..."
-          className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
-        />
-      </label>
-
-      <label className="block space-y-1">
-        <span className="text-[10px] text-zinc-500">负面提示词</span>
-        <textarea
-          value={negativePrompt}
-          onChange={(e) => setNegativePrompt(e.target.value)}
-          rows={2}
-          placeholder="negative prompt..."
-          className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
-        />
-      </label>
-
-      <div className="space-y-1">
-        <span className="text-[10px] text-zinc-500">LoRA 1（第一阶段）</span>
-        <LoraBindingEditor bindings={lora1} onChange={setLora1} />
-      </div>
-
-      <div className="space-y-1">
-        <span className="text-[10px] text-zinc-500">LoRA 2（高清修复）</span>
-        <LoraBindingEditor bindings={lora2} onChange={setLora2} />
-      </div>
 
       <label className="block space-y-1">
         <span className="text-[10px] text-zinc-500">备注</span>
@@ -677,7 +644,7 @@ function PresetForm({
       <div className="flex gap-1.5">
         <button
           type="button"
-          disabled={isPending || !name.trim() || !slug.trim() || !prompt.trim()}
+          disabled={isPending || !name.trim() || !slug.trim()}
           onClick={handleSubmit}
           className="inline-flex items-center gap-1 rounded-lg bg-sky-500/20 px-2 py-1 text-[11px] text-sky-300 hover:bg-sky-500/30 disabled:opacity-50"
         >

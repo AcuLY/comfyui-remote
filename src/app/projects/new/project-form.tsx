@@ -15,26 +15,30 @@ export function ProjectForm({ categories }: Props) {
   const [isPending, startTransition] = useTransition();
 
   const [title, setTitle] = useState("");
-  // categoryId → presetId (one per category, empty string = not selected)
-  const [selections, setSelections] = useState<Record<string, string>>(() => {
-    const init: Record<string, string> = {};
+  // categoryId → { presetId, variantId? } (one per category, empty string = not selected)
+  const [selections, setSelections] = useState<Record<string, { presetId: string; variantId?: string }>>(() => {
+    const init: Record<string, { presetId: string; variantId?: string }> = {};
     for (const cat of categories) {
-      init[cat.id] = "";
+      init[cat.id] = { presetId: "" };
     }
     return init;
   });
   const [notes, setNotes] = useState("");
 
-  function setSelection(categoryId: string, presetId: string) {
-    setSelections((prev) => ({ ...prev, [categoryId]: presetId }));
+  function setSelection(categoryId: string, presetId: string, variantId?: string) {
+    setSelections((prev) => ({ ...prev, [categoryId]: { presetId, variantId } }));
   }
 
   function handleSubmit() {
     if (!title.trim()) return;
 
     const presetBindings = Object.entries(selections)
-      .filter(([, presetId]) => presetId)
-      .map(([categoryId, presetId]) => ({ categoryId, presetId }));
+      .filter(([, selection]) => selection.presetId)
+      .map(([categoryId, selection]) => ({
+        categoryId,
+        presetId: selection.presetId,
+        variantId: selection.variantId
+      }));
 
     startTransition(async () => {
       const newProjectId = await createProject({
@@ -79,7 +83,7 @@ export function ProjectForm({ categories }: Props) {
         {categories.map((cat) => {
           const colorClass = CATEGORY_COLORS[cat.color ?? ""] ?? "border-white/10 focus:border-sky-500/40";
           const labelClass = CATEGORY_LABELS[cat.color ?? ""] ?? "text-zinc-400";
-          const selectedPreset = cat.presets.find((p) => p.id === selections[cat.id]);
+          const selectedPreset = cat.presets.find((p) => p.id === selections[cat.id]?.presetId);
 
           return (
             <div key={cat.id} className="space-y-2">
@@ -88,7 +92,7 @@ export function ProjectForm({ categories }: Props) {
               </label>
               <div className="relative">
                 <select
-                  value={selections[cat.id]}
+                  value={selections[cat.id]?.presetId || ""}
                   onChange={(e) => setSelection(cat.id, e.target.value)}
                   className={`w-full appearance-none rounded-2xl bg-white/[0.03] px-4 py-3 pr-10 text-sm text-white outline-none ${colorClass}`}
                 >
@@ -103,10 +107,31 @@ export function ProjectForm({ categories }: Props) {
                 </select>
                 <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-zinc-500" />
               </div>
+
+              {/* 变体选择器 */}
+              {selectedPreset && selectedPreset.variants.length > 0 && (
+                <div className="relative">
+                  <select
+                    value={selections[cat.id]?.variantId || ""}
+                    onChange={(e) => setSelection(cat.id, selectedPreset.id, e.target.value || undefined)}
+                    className="w-full appearance-none rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 pr-8 text-xs text-white outline-none focus:border-sky-500/30"
+                  >
+                    <option value="" className="bg-zinc-900">
+                      默认变体
+                    </option>
+                    {selectedPreset.variants.map((variant) => (
+                      <option key={variant.id} value={variant.id} className="bg-zinc-900">
+                        {variant.name}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-2 top-1/2 size-3 -translate-y-1/2 text-zinc-500" />
+                </div>
+              )}
+
               {selectedPreset && (
                 <div className="rounded-xl bg-white/[0.03] px-3 py-2 text-xs text-zinc-500">
-                  {selectedPreset.prompt.slice(0, 80)}
-                  {selectedPreset.prompt.length > 80 ? "..." : ""}
+                  {selectedPreset.variants.find(v => v.id === selections[cat.id]?.variantId)?.prompt || selectedPreset.variants[0]?.prompt || "无提示词"}
                 </div>
               )}
             </div>
