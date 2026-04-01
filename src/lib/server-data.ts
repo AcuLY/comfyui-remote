@@ -14,7 +14,7 @@ type PresetBindingJson = Array<{ categoryId: string; presetId: string }>;
 
 async function batchResolvePresetNames(presetIds: string[]): Promise<Map<string, { name: string }>> {
   if (presetIds.length === 0) return new Map();
-  const presets = await prisma.promptPreset.findMany({
+  const presets = await prisma.preset.findMany({
     where: { id: { in: presetIds } },
     select: { id: true, name: true },
   });
@@ -535,15 +535,22 @@ export type ProjectFormCategory = {
     id: string;
     name: string;
     slug: string;
-    prompt: string;
-    negativePrompt: string | null;
     isActive: boolean;
+    variants: Array<{
+      id: string;
+      name: string;
+      slug: string;
+      prompt: string;
+      negativePrompt: string | null;
+      isActive: boolean;
+    }>;
   }>;
 };
 
 export type ProjectFormOptions = {
   categories: ProjectFormCategory[];
 };
+
 
 export async function getProjectFormOptions(): Promise<ProjectFormOptions> {
   const categories = await prisma.promptCategory.findMany({
@@ -552,7 +559,13 @@ export async function getProjectFormOptions(): Promise<ProjectFormOptions> {
       presets: {
         where: { isActive: true },
         orderBy: { sortOrder: "asc" },
-        select: { id: true, name: true, slug: true, prompt: true, negativePrompt: true, isActive: true },
+        include: {
+          variants: {
+            where: { isActive: true },
+            orderBy: { sortOrder: "asc" },
+            select: { id: true, name: true, slug: true, prompt: true, negativePrompt: true, isActive: true },
+          },
+        },
       },
     },
   });
@@ -565,7 +578,13 @@ export async function getProjectFormOptions(): Promise<ProjectFormOptions> {
       icon: c.icon,
       color: c.color,
       sortOrder: c.sortOrder,
-      presets: c.presets,
+      presets: c.presets.map((p) => ({
+        id: p.id,
+        name: p.name,
+        slug: p.slug,
+        isActive: p.isActive,
+        variants: p.variants,
+      })),
     })),
   };
 }
@@ -574,7 +593,7 @@ export async function getProjectFormOptions(): Promise<ProjectFormOptions> {
 // Project Edit Data — 编辑 Project 时加载完整数据
 // ---------------------------------------------------------------------------
 
-export type PresetBinding = { categoryId: string; presetId: string };
+export type PresetBinding = { categoryId: string; presetId: string; variantId?: string };
 
 export type ProjectEditData = {
   id: string;
@@ -702,9 +721,20 @@ export async function getPromptCategories(): Promise<PromptCategoryItem[]> {
   }));
 }
 
-export type PromptPresetItem = {
+export type PresetItem = {
   id: string;
   categoryId: string;
+  name: string;
+  slug: string;
+  isActive: boolean;
+  sortOrder: number;
+  notes: string | null;
+  variantCount: number;
+};
+
+export type PresetVariantItem = {
+  id: string;
+  presetId: string;
   name: string;
   slug: string;
   prompt: string;
@@ -712,34 +742,34 @@ export type PromptPresetItem = {
   lora1: unknown;
   lora2: unknown;
   defaultParams: unknown;
-  notes: string | null;
-  isActive: boolean;
   sortOrder: number;
+  isActive: boolean;
 };
 
-export async function getPromptPresets(categoryId: string): Promise<PromptPresetItem[]> {
-  const presets = await prisma.promptPreset.findMany({
+export async function getPresets(categoryId: string): Promise<PresetItem[]> {
+  const presets = await prisma.preset.findMany({
     where: { categoryId },
     orderBy: { sortOrder: "asc" },
+    include: { _count: { select: { variants: true } } },
   });
   return presets.map((p) => ({
     id: p.id,
     categoryId: p.categoryId,
     name: p.name,
     slug: p.slug,
-    prompt: p.prompt,
-    negativePrompt: p.negativePrompt,
-    lora1: p.lora1,
-    lora2: p.lora2,
-    defaultParams: p.defaultParams,
-    notes: p.notes,
     isActive: p.isActive,
     sortOrder: p.sortOrder,
+    notes: p.notes,
+    variantCount: p._count.variants,
   }));
 }
 
 export type PromptCategoryFull = PromptCategoryItem & {
-  presets: PromptPresetItem[];
+  presets: PresetItem[];
+};
+
+export type PresetFull = PresetItem & {
+  variants: PresetVariantItem[];
 };
 
 export async function getPromptCategoriesWithPresets(): Promise<PromptCategoryFull[]> {
@@ -747,7 +777,10 @@ export async function getPromptCategoriesWithPresets(): Promise<PromptCategoryFu
     orderBy: { sortOrder: "asc" },
     include: {
       _count: { select: { presets: true } },
-      presets: { orderBy: { sortOrder: "asc" } },
+      presets: {
+        orderBy: { sortOrder: "asc" },
+        include: { _count: { select: { variants: true } } },
+      },
     },
   });
   return categories.map((c) => ({
@@ -767,14 +800,10 @@ export async function getPromptCategoriesWithPresets(): Promise<PromptCategoryFu
       categoryId: p.categoryId,
       name: p.name,
       slug: p.slug,
-      prompt: p.prompt,
-      negativePrompt: p.negativePrompt,
-      lora1: p.lora1,
-      lora2: p.lora2,
-      defaultParams: p.defaultParams,
-      notes: p.notes,
       isActive: p.isActive,
       sortOrder: p.sortOrder,
+      notes: p.notes,
+      variantCount: p._count.variants,
     })),
   }));
 }
@@ -790,10 +819,14 @@ export type PromptLibraryV2 = {
     presets: Array<{
       id: string;
       name: string;
-      prompt: string;
-      negativePrompt: string | null;
-      lora1: unknown;
-      lora2: unknown;
+      variants: Array<{
+        id: string;
+        name: string;
+        prompt: string;
+        negativePrompt: string | null;
+        lora1: unknown;
+        lora2: unknown;
+      }>;
     }>;
   }>;
 };
@@ -805,7 +838,15 @@ export async function getPromptLibraryV2(): Promise<PromptLibraryV2> {
       presets: {
         where: { isActive: true },
         orderBy: { sortOrder: "asc" },
-        select: { id: true, name: true, prompt: true, negativePrompt: true, lora1: true, lora2: true },
+        select: {
+          id: true,
+          name: true,
+          variants: {
+            where: { isActive: true },
+            orderBy: { sortOrder: "asc" },
+            select: { id: true, name: true, prompt: true, negativePrompt: true, lora1: true, lora2: true },
+          },
+        },
       },
     },
   });

@@ -59,7 +59,7 @@ export async function exportProjectImages(projectId: string): Promise<ExportResu
   let exportName = project.title; // fallback to project title
   if (bindings && bindings.length > 0) {
     const presetIds = bindings.map((b) => b.presetId);
-    const presets = await prisma.promptPreset.findMany({
+    const presets = await prisma.preset.findMany({
       where: { id: { in: presetIds } },
       select: { id: true, name: true },
     });

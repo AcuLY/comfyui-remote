@@ -241,7 +241,7 @@ export async function runSection(sectionId: string, overrideBatchSize?: number |
 // 创建项目
 // ---------------------------------------------------------------------------
 
-export type PresetBinding = { categoryId: string; presetId: string };
+export type PresetBinding = { categoryId: string; presetId: string; variantId?: string };
 
 export type CreateProjectInput = {
   title: string;
@@ -431,7 +431,7 @@ export async function updatePromptCategory(id: string, input: Partial<PromptCate
 
 export async function deletePromptCategory(id: string) {
   // Only allow deletion if no presets exist in this category
-  const count = await prisma.promptPreset.count({ where: { categoryId: id } });
+  const count = await prisma.preset.count({ where: { categoryId: id } });
   if (count > 0) {
     throw new Error(`分类下还有 ${count} 个模板，请先删除或移动它们`);
   }
@@ -473,11 +473,20 @@ export async function updateCategorySortOrders(dimension: SortDimension, ids: st
 }
 
 // ---------------------------------------------------------------------------
-// PromptPreset CRUD (unified prompt system)
+// Preset CRUD (unified prompt system with variants)
 // ---------------------------------------------------------------------------
 
-export type PromptPresetInput = {
+export type PresetInput = {
   categoryId: string;
+  name: string;
+  slug: string;
+  notes?: string | null;
+  isActive?: boolean;
+  sortOrder?: number;
+};
+
+export type PresetVariantInput = {
+  presetId: string;
   name: string;
   slug: string;
   prompt: string;
@@ -485,21 +494,36 @@ export type PromptPresetInput = {
   lora1?: unknown;
   lora2?: unknown;
   defaultParams?: unknown;
-  notes?: string | null;
   isActive?: boolean;
   sortOrder?: number;
 };
 
-export async function createPromptPreset(input: PromptPresetInput) {
+export async function createPreset(input: PresetInput) {
+  if (input.sortOrder === undefined) {
+    const maxOrder = await prisma.preset.aggregate({
+      where: { categoryId: input.categoryId },
+      _max: { sortOrder: true },
+    });
+    input.sortOrder = (maxOrder._max.sortOrder ?? -1) + 1;
+  }
+  const preset = await prisma.preset.create({
+    data: input,
+  });
+  revalidatePath("/assets/prompts");
+  revalidatePath("/projects/new");
+  return preset;
+}
+
+export async function createPresetVariant(input: PresetVariantInput) {
   const { lora1, lora2, defaultParams, ...rest } = input;
   if (rest.sortOrder === undefined) {
-    const maxOrder = await prisma.promptPreset.aggregate({
-      where: { categoryId: input.categoryId },
+    const maxOrder = await prisma.presetVariant.aggregate({
+      where: { presetId: input.presetId },
       _max: { sortOrder: true },
     });
     rest.sortOrder = (maxOrder._max.sortOrder ?? -1) + 1;
   }
-  const preset = await prisma.promptPreset.create({
+  const variant = await prisma.presetVariant.create({
     data: {
       ...rest,
       lora1: toJsonValue(lora1) ?? Prisma.DbNull,
@@ -509,33 +533,56 @@ export async function createPromptPreset(input: PromptPresetInput) {
   });
   revalidatePath("/assets/prompts");
   revalidatePath("/projects/new");
+  return variant;
+}
+
+export async function updatePreset(id: string, input: Partial<PresetInput>) {
+  const preset = await prisma.preset.update({ where: { id }, data: input });
+  revalidatePath("/assets/prompts");
+  revalidatePath("/projects/new");
   return preset;
 }
 
-export async function updatePromptPreset(id: string, input: Partial<PromptPresetInput>) {
+export async function updatePresetVariant(id: string, input: Partial<PresetVariantInput>) {
   const { lora1, lora2, defaultParams, ...rest } = input;
   const data: Record<string, unknown> = { ...rest };
   if (lora1 !== undefined) data.lora1 = toJsonValue(lora1) ?? Prisma.DbNull;
   if (lora2 !== undefined) data.lora2 = toJsonValue(lora2) ?? Prisma.DbNull;
   if (defaultParams !== undefined) data.defaultParams = toJsonValue(defaultParams) ?? Prisma.DbNull;
 
-  const preset = await prisma.promptPreset.update({ where: { id }, data });
+  const variant = await prisma.presetVariant.update({ where: { id }, data });
   revalidatePath("/assets/prompts");
   revalidatePath("/projects/new");
-  return preset;
+  return variant;
 }
 
-export async function deletePromptPreset(id: string) {
+export async function deletePreset(id: string) {
   // Soft delete: set isActive = false
-  await prisma.promptPreset.update({ where: { id }, data: { isActive: false } });
+  await prisma.preset.update({ where: { id }, data: { isActive: false } });
   revalidatePath("/assets/prompts");
   revalidatePath("/projects/new");
 }
 
-export async function reorderPromptPresets(categoryId: string, ids: string[]) {
+export async function deletePresetVariant(id: string) {
+  // Soft delete: set isActive = false
+  await prisma.presetVariant.update({ where: { id }, data: { isActive: false } });
+  revalidatePath("/assets/prompts");
+  revalidatePath("/projects/new");
+}
+
+export async function reorderPresets(categoryId: string, ids: string[]) {
   await prisma.$transaction(
     ids.map((id, index) =>
-      prisma.promptPreset.update({ where: { id }, data: { sortOrder: index } }),
+      prisma.preset.update({ where: { id }, data: { sortOrder: index } }),
+    ),
+  );
+  revalidatePath("/assets/prompts");
+}
+
+export async function reorderPresetVariants(presetId: string, ids: string[]) {
+  await prisma.$transaction(
+    ids.map((id, index) =>
+      prisma.presetVariant.update({ where: { id }, data: { sortOrder: index } }),
     ),
   );
   revalidatePath("/assets/prompts");
@@ -694,9 +741,12 @@ export async function addSection(projectId: string, name?: string): Promise<stri
   if (bindings.length > 0) {
     // Resolve presets with category info, sorted by category sortOrder
     const presetIds = bindings.map((b) => b.presetId);
-    const presets = await prisma.promptPreset.findMany({
+    const presets = await prisma.preset.findMany({
       where: { id: { in: presetIds } },
-      include: { category: true },
+      include: {
+        category: true,
+        variants: { where: { isActive: true }, orderBy: { sortOrder: "asc" } }
+      },
     });
     const presetMap = new Map(presets.map((p) => [p.id, p]));
 
@@ -711,18 +761,25 @@ export async function addSection(projectId: string, name?: string): Promise<stri
       const preset = presetMap.get(binding.presetId);
       if (!preset) continue;
 
-      await prisma.promptBlock.create({
-        data: {
-          projectSectionId: section.id,
-          type: "preset",
-          sourceId: preset.id,
-          categoryId: preset.categoryId,
-          label: preset.name,
-          positive: preset.prompt,
-          negative: preset.negativePrompt,
-          sortOrder: blockSortOrder++,
-        },
-      });
+      // 获取变体（如果指定了 variantId，否则使用第一个变体）
+      const variant = binding.variantId
+        ? preset.variants.find(v => v.id === binding.variantId)
+        : preset.variants[0];
+
+      if (variant) {
+        await prisma.promptBlock.create({
+          data: {
+            projectSectionId: section.id,
+            type: "preset",
+            sourceId: preset.id,
+            categoryId: preset.categoryId,
+            label: `${preset.name} - ${variant.name}`,
+            positive: variant.prompt,
+            negative: variant.negativePrompt,
+            sortOrder: blockSortOrder++,
+          },
+        });
+      }
     }
   }
 

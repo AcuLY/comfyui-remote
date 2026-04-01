@@ -61,10 +61,14 @@ export type PromptLibraryV2 = {
     presets: Array<{
       id: string;
       name: string;
-      prompt: string;
-      negativePrompt: string | null;
-      lora1: unknown;
-      lora2: unknown;
+      variants: Array<{
+        id: string;
+        name: string;
+        prompt: string;
+        negativePrompt: string | null;
+        lora1: unknown;
+        lora2: unknown;
+      }>;
     }>;
   }>;
 };
@@ -428,9 +432,9 @@ function AddBlockForm({
   const [selectedCatId, setSelectedCatId] = useState<string>("");
   const [selectedId, setSelectedId] = useState<string>("");
 
-  // Get categories that have presets
+  // Get categories that have presets with variants
   const categoriesWithPresets = useMemo(
-    () => (libraryV2?.categories ?? []).filter((c) => c.presets.length > 0),
+    () => (libraryV2?.categories ?? []).filter((c) => c.presets.some((p) => p.variants.length > 0)),
     [libraryV2],
   );
 
@@ -442,7 +446,19 @@ function AddBlockForm({
   }, [categoriesWithPresets, selectedCatId]);
 
   const selectedCategory = categoriesWithPresets.find((c) => c.id === selectedCatId);
-  const libraryItems = selectedCategory?.presets ?? [];
+  const libraryItems = useMemo(() => {
+    if (!selectedCategory) return [];
+    return selectedCategory.presets.flatMap((preset) =>
+      preset.variants.map((v) => ({
+        id: v.id,
+        name: preset.variants.length === 1 ? preset.name : `${preset.name} / ${v.name}`,
+        prompt: v.prompt,
+        negativePrompt: v.negativePrompt,
+        lora1: v.lora1,
+        lora2: v.lora2,
+      })),
+    );
+  }, [selectedCategory]);
 
   // Reset selection when switching category
   useEffect(() => {
@@ -560,7 +576,7 @@ function AddBlockForm({
                     : "text-zinc-500 hover:text-zinc-300"
                 }`}
               >
-                {cat.name} ({cat.presets.length})
+                {cat.name} ({cat.presets.reduce((n, p) => n + p.variants.length, 0)})
               </button>
             ))}
           </div>

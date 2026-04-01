@@ -91,7 +91,7 @@ export async function getRunReviewGroup(runId: string) {
   const presetNames: string[] = [];
   if (bindings && bindings.length > 0) {
     const presetIds = bindings.map((b) => b.presetId);
-    const presets = await db.promptPreset.findMany({
+    const presets = await db.preset.findMany({
       where: { id: { in: presetIds } },
       select: { id: true, name: true },
     });
@@ -130,7 +130,7 @@ export async function getRunAgentContext(runId: string) {
   const presetInfos: { id: string; name: string; slug: string }[] = [];
   if (bindings2 && bindings2.length > 0) {
     const presetIds = bindings2.map((b) => b.presetId);
-    const presets = await db.promptPreset.findMany({
+    const presets = await db.preset.findMany({
       where: { id: { in: presetIds } },
       select: { id: true, name: true, slug: true },
     });

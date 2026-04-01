@@ -89,13 +89,14 @@ export default async function SectionEditPage({
     const bindings = pos.project.presetBindings as PresetBindingJson | null;
     if (bindings && bindings.length > 0) {
       const presetIds = bindings.map((b) => b.presetId);
-      const presets = await prisma.promptPreset.findMany({
-        where: { id: { in: presetIds } },
-        select: { id: true, name: true, lora1: true, lora2: true },
+      const variants = await prisma.presetVariant.findMany({
+        where: { presetId: { in: presetIds } },
+        select: { id: true, name: true, lora1: true, lora2: true, preset: { select: { name: true } } },
       });
-      for (const preset of presets) {
-        if (preset.lora1) {
-          const lora1Bindings = parseLoraBindings(preset.lora1);
+      for (const variant of variants) {
+        const label = variant.preset.name;
+        if (variant.lora1) {
+          const lora1Bindings = parseLoraBindings(variant.lora1);
           for (const binding of lora1Bindings) {
             if (!binding.path) continue;
             const exists = loraConfig.lora1.some((e) => e.path === binding.path);
@@ -106,14 +107,14 @@ export default async function SectionEditPage({
                 weight: binding.weight,
                 enabled: binding.enabled,
                 source: "manual",
-                sourceLabel: `${preset.name}`,
+                sourceLabel: label,
               });
               loraChanged = true;
             }
           }
         }
-        if (preset.lora2) {
-          const lora2Bindings = parseLoraBindings(preset.lora2);
+        if (variant.lora2) {
+          const lora2Bindings = parseLoraBindings(variant.lora2);
           for (const binding of lora2Bindings) {
             if (!binding.path) continue;
             const exists = loraConfig.lora2.some((e) => e.path === binding.path);
@@ -124,7 +125,7 @@ export default async function SectionEditPage({
                 weight: binding.weight,
                 enabled: binding.enabled,
                 source: "manual",
-                sourceLabel: `${preset.name}`,
+                sourceLabel: label,
               });
               loraChanged = true;
             }

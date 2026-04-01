@@ -24,7 +24,7 @@ export async function listQueueRuns() {
 
   const presetMap = new Map<string, { name: string }>();
   if (allPresetIds.size > 0) {
-    const presets = await db.promptPreset.findMany({
+    const presets = await db.preset.findMany({
       where: { id: { in: [...allPresetIds] } },
       select: { id: true, name: true },
     });
