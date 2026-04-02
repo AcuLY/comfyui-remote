@@ -28,6 +28,9 @@ import {
   createPresetVariant,
   updatePresetVariant,
   deletePresetVariant,
+  getPresetUsage,
+  deletePresetCascade,
+  syncPresetToSections,
 } from "@/lib/actions";
 import { parseLoraBindings, serializeLoraBindings } from "@/lib/lora-types";
 
@@ -455,9 +458,18 @@ function PresetList({
                 });
               }}
               onDelete={() => {
-                if (!confirm("确认删除此预制？")) return;
                 startTransition(async () => {
-                  await deletePreset(preset.id);
+                  // Check usage before deleting
+                  const usage = await getPresetUsage(preset.id);
+                  let msg = "确认删除此预制？";
+                  if (usage.sections.length > 0) {
+                    const lines = usage.sections.map(
+                      (s) => `  · ${s.projectTitle} / ${s.sectionName} (${s.blockCount} 个提示词块)`,
+                    );
+                    msg = `以下小节使用了该预制：\n${lines.join("\n")}\n\n确认删除将同时移除这些小节中的相关提示词块和 LoRA。`;
+                  }
+                  if (!confirm(msg)) return;
+                  await deletePresetCascade(preset.id);
                   setEditingId(null);
                   onRefresh();
                 });
@@ -665,7 +677,7 @@ function PresetForm({
       isActive: true,
     });
 
-    // 2. For existing preset, save all variants
+    // 2. For existing preset, save all variants then sync to sections
     if (preset) {
       startVariantTransition(async () => {
         for (const v of variants) {
@@ -684,6 +696,8 @@ function PresetForm({
             await createPresetVariant(variantData);
           }
         }
+        // Sync updated content to all sections that imported this preset
+        await syncPresetToSections(preset.id);
       });
     }
   }
