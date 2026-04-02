@@ -646,6 +646,8 @@ export function PromptBlockEditor({
     sourceName: string,
     lora1Bindings?: unknown,
     lora2Bindings?: unknown,
+    categoryName?: string,
+    categoryColor?: string | null,
   ) => void;
 }) {
   const [blocks, setBlocks] = useState<PromptBlockData[]>(initialBlocks);
@@ -725,12 +727,18 @@ export function PromptBlockEditor({
 
       // Notify parent about imported LoRA if applicable
       if (onBlockImport && libraryItem && input.sourceId) {
+        // Find the category info for this preset
+        const cat = libraryV2?.categories.find((c) =>
+          c.presets.some((p) => p.id === input.sourceId),
+        );
         onBlockImport(
           input.type === "preset" ? (input.categoryId ?? "preset") : input.type,
           input.sourceId,
           input.label,
           libraryItem.lora1,
           libraryItem.lora2,
+          cat?.name,
+          cat?.color,
         );
       }
     });

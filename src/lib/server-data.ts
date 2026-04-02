@@ -704,7 +704,7 @@ export type PresetCategoryItem = {
 export async function getPresetCategories(): Promise<PresetCategoryItem[]> {
   const categories = await prisma.presetCategory.findMany({
     orderBy: { sortOrder: "asc" },
-    include: { _count: { select: { presets: true } } },
+    include: { _count: { select: { presets: { where: { isActive: true } } } } },
   });
   return categories.map((c) => ({
     id: c.id,
@@ -748,7 +748,7 @@ export type PresetVariantItem = {
 
 export async function getPresets(categoryId: string): Promise<PresetItem[]> {
   const presets = await prisma.preset.findMany({
-    where: { categoryId },
+    where: { categoryId, isActive: true },
     orderBy: { sortOrder: "asc" },
     include: { _count: { select: { variants: true } } },
   });
@@ -776,8 +776,9 @@ export async function getPresetCategoriesWithPresets(): Promise<PresetCategoryFu
   const categories = await prisma.presetCategory.findMany({
     orderBy: { sortOrder: "asc" },
     include: {
-      _count: { select: { presets: true } },
+      _count: { select: { presets: { where: { isActive: true } } } },
       presets: {
+        where: { isActive: true },
         orderBy: { sortOrder: "asc" },
         include: { _count: { select: { variants: true } } },
       },

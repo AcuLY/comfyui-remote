@@ -41,11 +41,13 @@ export function SectionEditor({
   function handleBlockImport(
     _sourceType: string,
     _sourceId: string,
-    sourceName: string,
+    _sourceName: string,
     lora1Bindings?: unknown,
     lora2Bindings?: unknown,
+    categoryName?: string,
+    categoryColor?: string | null,
   ) {
-    const sourceLabel = `${sourceName}`;
+    const sourceLabel = categoryName || "预制";
 
     let updatedLora1 = [...lora1];
     let updatedLora2 = [...lora2];
@@ -63,8 +65,9 @@ export function SectionEditor({
             path: binding.path,
             weight: binding.weight,
             enabled: binding.enabled,
-            source: "manual",
+            source: "preset",
             sourceLabel,
+            sourceColor: categoryColor ?? undefined,
           });
           changed = true;
         }
@@ -83,8 +86,9 @@ export function SectionEditor({
             path: binding.path,
             weight: binding.weight,
             enabled: binding.enabled,
-            source: "manual",
+            source: "preset",
             sourceLabel,
+            sourceColor: categoryColor ?? undefined,
           });
           changed = true;
         }

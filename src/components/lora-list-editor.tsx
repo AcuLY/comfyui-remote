@@ -33,7 +33,24 @@ type LoraListEditorProps = {
 };
 
 // ---------------------------------------------------------------------------
-// Sortable row
+// Color helpers for source tags
+// ---------------------------------------------------------------------------
+
+/** Parse HSL color string "H S% L%" → build inline style. Fallback for manual source. */
+function sourceTagStyle(color?: string | null): React.CSSProperties | undefined {
+  if (!color) return undefined;
+  const match = color.match(/^(\d+)\s/);
+  if (!match) return undefined;
+  const h = parseInt(match[1], 10);
+  return {
+    borderColor: `hsl(${h} 50% 55% / 0.3)`,
+    backgroundColor: `hsl(${h} 50% 55% / 0.1)`,
+    color: `hsl(${h} 80% 72%)`,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Sortable row — two-line layout
 // ---------------------------------------------------------------------------
 
 function SortableLoraRow({
@@ -63,126 +80,130 @@ function SortableLoraRow({
     opacity: isDragging ? 0.5 : 1,
   };
 
-  const sourceConfig = SOURCE_LABELS[entry.source] || SOURCE_LABELS.manual;
   const isManual = entry.source === "manual";
+  const displayName = entry.path ? (entry.path.split("/").pop() || entry.path) : "未选择";
+
+  // Tag style: use category color for preset source, fallback to rose for manual
+  const tagStyle = !isManual && entry.sourceColor
+    ? sourceTagStyle(entry.sourceColor)
+    : undefined;
+  const tagClassName = tagStyle
+    ? "inline-flex items-center rounded-lg border px-1.5 py-0.5 text-[9px] font-medium"
+    : `inline-flex items-center rounded-lg border px-1.5 py-0.5 text-[9px] font-medium ${SOURCE_LABELS[entry.source]?.color || SOURCE_LABELS.manual.color}`;
+  const tagLabel = !isManual && entry.sourceLabel
+    ? entry.sourceLabel
+    : SOURCE_LABELS[entry.source]?.label || "自定义";
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={`rounded-xl border p-2.5 transition ${
+      className={`rounded-xl border transition ${
         entry.enabled
           ? "border-white/10 bg-white/[0.02]"
           : "border-white/5 bg-white/[0.01] opacity-60"
       }`}
     >
-      <div className="flex items-center gap-2">
-        {/* Drag handle */}
+      <div className="flex items-stretch">
+        {/* Left: drag handle — spans full height */}
         {!readOnly && (
-          <button
-            type="button"
-            className="cursor-grab touch-none text-zinc-600 hover:text-zinc-400 active:cursor-grabbing"
-            {...attributes}
-            {...listeners}
-          >
-            <GripVertical className="size-3.5" />
-          </button>
+          <div className="flex items-center px-2 border-r border-white/5">
+            <button
+              type="button"
+              className="cursor-grab touch-none text-zinc-600 hover:text-zinc-400 active:cursor-grabbing"
+              {...attributes}
+              {...listeners}
+            >
+              <GripVertical className="size-3.5" />
+            </button>
+          </div>
         )}
 
-        {/* Enabled toggle */}
-        <button
-          type="button"
-          role="switch"
-          aria-checked={entry.enabled}
-          onClick={onToggle}
-          disabled={disabled}
-          className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer items-center rounded-full border transition-colors disabled:opacity-50 ${
-            entry.enabled
-              ? "border-sky-500/30 bg-sky-500"
-              : "border-white/10 bg-white/10"
-          }`}
-        >
-          <span
-            className={`pointer-events-none block size-3 rounded-full bg-white shadow transition-transform ${
-              entry.enabled ? "translate-x-3.5" : "translate-x-0.5"
-            }`}
-          />
-        </button>
+        {/* Center: two rows */}
+        <div className="flex-1 min-w-0 py-2 px-2.5 space-y-1.5">
+          {/* Row 1: name + source tag */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] font-medium text-zinc-300 truncate">
+              {displayName}
+            </span>
+            <span className={tagClassName} style={tagStyle}>
+              {tagLabel}
+            </span>
+          </div>
 
-        {/* Path: selector for manual, display for imported */}
-        <div className="flex-1 min-w-0">
-          {isManual ? (
-            <div className="flex items-center gap-1.5">
-              <div className="flex-1 min-w-0">
+          {/* Row 2: toggle + selector/path + weight controls */}
+          <div className="flex items-center gap-2">
+            {/* Enabled toggle */}
+            <button
+              type="button"
+              role="switch"
+              aria-checked={entry.enabled}
+              onClick={onToggle}
+              disabled={disabled}
+              className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer items-center rounded-full border transition-colors disabled:opacity-50 ${
+                entry.enabled
+                  ? "border-sky-500/30 bg-sky-500"
+                  : "border-white/10 bg-white/10"
+              }`}
+            >
+              <span
+                className={`pointer-events-none block size-3 rounded-full bg-white shadow transition-transform ${
+                  entry.enabled ? "translate-x-3.5" : "translate-x-0.5"
+                }`}
+              />
+            </button>
+
+            {/* Path: selector for manual, display for imported */}
+            <div className="flex-1 min-w-0">
+              {isManual ? (
                 <LoraCascadePicker
                   value={entry.path}
                   onChange={onPathChange}
                   disabled={disabled}
                 />
-              </div>
-              <span
-                className={`shrink-0 rounded-lg border px-1.5 py-0.5 text-[9px] font-medium ${sourceConfig.color}`}
-              >
-                {sourceConfig.label}
-              </span>
-            </div>
-          ) : (
-            <>
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs text-zinc-200 truncate">
-                  {entry.path ? (entry.path.split("/").pop() || entry.path) : "未选择"}
-                </span>
-                <span
-                  className={`shrink-0 rounded-lg border px-1.5 py-0.5 text-[9px] font-medium ${sourceConfig.color}`}
-                >
-                  {entry.sourceLabel || sourceConfig.label}
-                </span>
-              </div>
-              {entry.path && (
-                <div className="mt-0.5 text-[10px] text-zinc-600 truncate">
-                  {entry.path}
+              ) : (
+                <div className="text-[10px] text-zinc-500 truncate">
+                  {entry.path || "未选择"}
                 </div>
               )}
-            </>
-          )}
-        </div>
+            </div>
 
-        {/* Weight input + adjust buttons */}
-        <div className="flex items-center gap-1">
-          <div className="flex gap-0.5">
-            <button type="button" disabled={disabled} onClick={() => onWeightChange(String(entry.weight - 0.5))}
-              className="rounded px-1 py-0.5 text-[9px] text-zinc-600 hover:bg-white/[0.06] hover:text-zinc-300 disabled:opacity-50">-.5</button>
-            <button type="button" disabled={disabled} onClick={() => onWeightChange(String(entry.weight - 0.1))}
-              className="rounded px-1 py-0.5 text-[9px] text-zinc-600 hover:bg-white/[0.06] hover:text-zinc-300 disabled:opacity-50">-.1</button>
-          </div>
-          <input
-            type="number"
-            value={entry.weight}
-            onChange={(e) => onWeightChange(e.target.value)}
-            step="0.05"
-            min="-2"
-            max="2"
-            disabled={disabled}
-            className="input-number w-14 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-center text-xs text-zinc-200 outline-none focus:border-sky-500/30 disabled:opacity-50"
-          />
-          <div className="flex gap-0.5">
-            <button type="button" disabled={disabled} onClick={() => onWeightChange(String(entry.weight + 0.1))}
-              className="rounded px-1 py-0.5 text-[9px] text-zinc-600 hover:bg-white/[0.06] hover:text-zinc-300 disabled:opacity-50">+.1</button>
-            <button type="button" disabled={disabled} onClick={() => onWeightChange(String(entry.weight + 0.5))}
-              className="rounded px-1 py-0.5 text-[9px] text-zinc-600 hover:bg-white/[0.06] hover:text-zinc-300 disabled:opacity-50">+.5</button>
+            {/* Weight input + adjust buttons */}
+            <div className="flex items-center gap-0.5 shrink-0">
+              <button type="button" disabled={disabled} onClick={() => onWeightChange(String(entry.weight - 0.5))}
+                className="rounded px-1 py-0.5 text-[9px] text-zinc-600 hover:bg-white/[0.06] hover:text-zinc-300 disabled:opacity-50">-.5</button>
+              <button type="button" disabled={disabled} onClick={() => onWeightChange(String(entry.weight - 0.1))}
+                className="rounded px-1 py-0.5 text-[9px] text-zinc-600 hover:bg-white/[0.06] hover:text-zinc-300 disabled:opacity-50">-.1</button>
+              <input
+                type="number"
+                value={entry.weight}
+                onChange={(e) => onWeightChange(e.target.value)}
+                step="0.05"
+                min="-2"
+                max="2"
+                disabled={disabled}
+                className="input-number w-12 rounded-lg border border-white/10 bg-white/[0.04] px-1.5 py-0.5 text-center text-[11px] text-zinc-200 outline-none focus:border-sky-500/30 disabled:opacity-50"
+              />
+              <button type="button" disabled={disabled} onClick={() => onWeightChange(String(entry.weight + 0.1))}
+                className="rounded px-1 py-0.5 text-[9px] text-zinc-600 hover:bg-white/[0.06] hover:text-zinc-300 disabled:opacity-50">+.1</button>
+              <button type="button" disabled={disabled} onClick={() => onWeightChange(String(entry.weight + 0.5))}
+                className="rounded px-1 py-0.5 text-[9px] text-zinc-600 hover:bg-white/[0.06] hover:text-zinc-300 disabled:opacity-50">+.5</button>
+            </div>
           </div>
         </div>
 
-        {/* Remove button */}
+        {/* Right: delete button — spans full height */}
         {!readOnly && (
-          <button
-            type="button"
-            onClick={onRemove}
-            disabled={disabled}
-            className="rounded p-1 text-zinc-500 transition hover:bg-red-500/10 hover:text-red-400 disabled:opacity-50"
-          >
-            <Trash2 className="size-3.5" />
-          </button>
+          <div className="flex items-center px-2 border-l border-white/5">
+            <button
+              type="button"
+              onClick={onRemove}
+              disabled={disabled}
+              className="rounded p-1 text-zinc-500 transition hover:bg-red-500/10 hover:text-red-400 disabled:opacity-50"
+            >
+              <Trash2 className="size-3.5" />
+            </button>
+          </div>
         )}
       </div>
     </div>
