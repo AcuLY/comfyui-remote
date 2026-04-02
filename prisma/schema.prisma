@@ -149,6 +149,7 @@ model PromptBlock {
   type                  PromptBlockType
   sourceId              String?
   categoryId            String?               // FK to PresetCategory
+  bindingId             String?               // groups blocks+loras from same preset import
   label                 String
   positive              String                @db.Text
   negative              String?               @db.Text

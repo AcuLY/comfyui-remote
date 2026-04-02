@@ -1,11 +1,24 @@
 import { PromptBlockType } from "@/generated/prisma";
 import { db } from "@/lib/db";
 
+const BLOCK_SELECT = {
+  id: true,
+  type: true,
+  sourceId: true,
+  categoryId: true,
+  bindingId: true,
+  label: true,
+  positive: true,
+  negative: true,
+  sortOrder: true,
+} as const;
+
 export type PromptBlockRecord = {
   id: string;
   type: PromptBlockType;
   sourceId: string | null;
   categoryId: string | null;
+  bindingId: string | null;
   label: string;
   positive: string;
   negative: string | null;
@@ -16,6 +29,7 @@ export type PromptBlockCreateInput = {
   type: PromptBlockType;
   sourceId?: string | null;
   categoryId?: string | null;
+  bindingId?: string | null;
   label: string;
   positive: string;
   negative?: string | null;
@@ -35,16 +49,7 @@ export async function listPromptBlocks(
   const blocks = await db.promptBlock.findMany({
     where: { projectSectionId: sectionId },
     orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-    select: {
-      id: true,
-      type: true,
-      sourceId: true,
-      categoryId: true,
-      label: true,
-      positive: true,
-      negative: true,
-      sortOrder: true,
-    },
+    select: BLOCK_SELECT,
   });
 
   return blocks;
@@ -68,21 +73,13 @@ export async function createPromptBlock(
       type: input.type,
       sourceId: input.sourceId ?? null,
       categoryId: input.categoryId ?? null,
+      bindingId: input.bindingId ?? null,
       label: input.label,
       positive: input.positive,
       negative: input.negative ?? null,
       sortOrder,
     },
-    select: {
-      id: true,
-      type: true,
-      sourceId: true,
-      categoryId: true,
-      label: true,
-      positive: true,
-      negative: true,
-      sortOrder: true,
-    },
+    select: BLOCK_SELECT,
   });
 }
 
@@ -100,21 +97,13 @@ export async function batchCreatePromptBlocks(
           type: input.type,
           sourceId: input.sourceId ?? null,
           categoryId: input.categoryId ?? null,
+          bindingId: input.bindingId ?? null,
           label: input.label,
           positive: input.positive,
           negative: input.negative ?? null,
           sortOrder: input.sortOrder ?? index,
         },
-        select: {
-          id: true,
-          type: true,
-          sourceId: true,
-          categoryId: true,
-          label: true,
-          positive: true,
-          negative: true,
-          sortOrder: true,
-        },
+        select: BLOCK_SELECT,
       }),
     ),
   );
@@ -142,16 +131,7 @@ export async function updatePromptBlock(
   return db.promptBlock.update({
     where: { id: blockId },
     data,
-    select: {
-      id: true,
-      type: true,
-      sourceId: true,
-      categoryId: true,
-      label: true,
-      positive: true,
-      negative: true,
-      sortOrder: true,
-    },
+    select: BLOCK_SELECT,
   });
 }
 
@@ -166,6 +146,17 @@ export async function deletePromptBlock(blockId: string): Promise<void> {
   }
 
   await db.promptBlock.delete({ where: { id: blockId } });
+}
+
+/** Delete all prompt blocks with a given bindingId in a section */
+export async function deletePromptBlocksByBinding(
+  sectionId: string,
+  bindingId: string,
+): Promise<number> {
+  const result = await db.promptBlock.deleteMany({
+    where: { projectSectionId: sectionId, bindingId },
+  });
+  return result.count;
 }
 
 export async function reorderPromptBlocks(
@@ -194,16 +185,7 @@ export async function reorderPromptBlocks(
       db.promptBlock.update({
         where: { id: blockId },
         data: { sortOrder: index },
-        select: {
-          id: true,
-          type: true,
-          sourceId: true,
-          categoryId: true,
-          label: true,
-          positive: true,
-          negative: true,
-          sortOrder: true,
-        },
+        select: BLOCK_SELECT,
       }),
     ),
   );

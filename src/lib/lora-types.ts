@@ -21,6 +21,7 @@ export type LoraEntry = LoraBinding & {
   sourceLabel?: string; // category name e.g. "角色" or "场景"
   sourceColor?: string; // HSL color string e.g. "200 50% 55%"
   sourceName?: string;  // preset name e.g. "Miku" (displayed as row title)
+  bindingId?: string;   // groups loras from same preset import
 };
 
 // ---------------------------------------------------------------------------
@@ -175,6 +176,7 @@ export function serializeSectionLoraConfig(config: SectionLoraConfig): SectionLo
     sourceLabel: e.sourceLabel,
     sourceColor: e.sourceColor,
     sourceName: e.sourceName,
+    bindingId: e.bindingId,
   });
 
   return {

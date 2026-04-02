@@ -597,6 +597,7 @@ export type PromptBlockData = {
   type: string;
   sourceId: string | null;
   categoryId: string | null;
+  bindingId: string | null;
   label: string;
   positive: string;
   negative: string | null;
@@ -618,6 +619,7 @@ export async function addSectionBlock(
     negative?: string | null;
     sourceId?: string;
     categoryId?: string | null;
+    bindingId?: string | null;
   },
 ): Promise<PromptBlockData> {
   const { createPromptBlock } = await import("@/server/repositories/prompt-block-repository");
@@ -628,6 +630,7 @@ export async function addSectionBlock(
     type: input.type as (typeof PromptBlockType)[keyof typeof PromptBlockType],
     sourceId: input.sourceId ?? null,
     categoryId: input.categoryId ?? null,
+    bindingId: input.bindingId ?? null,
     label: input.label,
     positive: input.positive,
     negative: input.negative ?? null,
@@ -767,12 +770,16 @@ export async function addSection(projectId: string, name?: string): Promise<stri
         : preset.variants[0];
 
       if (variant) {
+        // Generate a bindingId to link this block with its LoRAs
+        const bindingId = `bind-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+
         await prisma.promptBlock.create({
           data: {
             projectSectionId: section.id,
             type: "preset",
             sourceId: preset.id,
             categoryId: preset.categoryId,
+            bindingId,
             label: `${preset.name} - ${variant.name}`,
             positive: variant.prompt,
             negative: variant.negativePrompt,

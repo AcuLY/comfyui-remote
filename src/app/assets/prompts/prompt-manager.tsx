@@ -496,44 +496,37 @@ function PresetCard({
   const loraCount = lora1.length + lora2.length;
 
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3 transition hover:border-white/15">
-      <div className="flex items-start gap-2">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-medium text-zinc-200">
-              {preset.name}
-            </span>
-            {variantCount > 0 && (
-              <span className="text-[9px] text-sky-400/60">
-                {variantCount} 变体
-              </span>
-            )}
-            {loraCount > 0 && (
-              <span className="text-[9px] text-amber-400/60">
-                {loraCount} LoRA
-              </span>
-            )}
-          </div>
-          {firstVariant && (
-            <div className="mt-1 text-[11px] text-zinc-500 line-clamp-2">
-              {firstVariant.prompt.slice(0, 120)}
-              {firstVariant.prompt.length > 120 ? "..." : ""}
-            </div>
-          )}
-          {!firstVariant && (
-            <div className="mt-1 text-[11px] text-zinc-600">
-              暂无变体
-            </div>
-          )}
-        </div>
-        <button
-          type="button"
-          onClick={onEdit}
-          className="rounded p-1.5 text-zinc-500 hover:bg-white/[0.06] hover:text-white"
-        >
-          <Pencil className="size-3.5" />
-        </button>
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onEdit}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onEdit(); }}
+      className="rounded-xl border border-white/10 bg-white/[0.03] p-3 transition hover:border-white/15 cursor-pointer"
+    >
+      <div className="flex items-center gap-2">
+        <span className="text-xs font-medium text-zinc-200">
+          {preset.name}
+        </span>
+        {variantCount > 0 && (
+          <span className="text-[9px] text-sky-400/60">
+            {variantCount} 变体
+          </span>
+        )}
+        {loraCount > 0 && (
+          <span className="text-[9px] text-amber-400/60">
+            {loraCount} LoRA
+          </span>
+        )}
       </div>
+      {firstVariant && (
+        <div className="mt-1 text-[11px] text-zinc-500 line-clamp-1">
+          {firstVariant.prompt.slice(0, 100)}
+          {firstVariant.prompt.length > 100 ? "..." : ""}
+        </div>
+      )}
+      {!firstVariant && (
+        <div className="mt-1 text-[11px] text-zinc-600">暂无变体</div>
+      )}
     </div>
   );
 }
@@ -741,28 +734,48 @@ function PresetForm({
 
       {/* ── Variant section ── */}
       <div className="border-t border-white/5 pt-3 space-y-2">
-        {/* Variant pagination header */}
+        {/* Variant header: pagination + add/delete */}
         <div className="flex items-center justify-between">
-          <span className="text-[10px] font-medium text-zinc-400">
-            变体 {currentIdx + 1} / {totalVariants}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-medium text-zinc-400">
+              变体 {currentIdx + 1} / {totalVariants}
+            </span>
+            <div className="flex items-center gap-0.5">
+              <button
+                type="button"
+                disabled={currentIdx === 0}
+                onClick={() => setCurrentIdx(currentIdx - 1)}
+                className="rounded p-0.5 text-zinc-500 hover:bg-white/[0.06] hover:text-white disabled:opacity-30"
+              >
+                <ChevronLeft className="size-3.5" />
+              </button>
+              <button
+                type="button"
+                disabled={currentIdx >= totalVariants - 1}
+                onClick={() => setCurrentIdx(currentIdx + 1)}
+                className="rounded p-0.5 text-zinc-500 hover:bg-white/[0.06] hover:text-white disabled:opacity-30"
+              >
+                <ChevronRight className="size-3.5" />
+              </button>
+            </div>
+          </div>
           <div className="flex items-center gap-1">
             <button
               type="button"
-              disabled={currentIdx === 0}
-              onClick={() => setCurrentIdx(currentIdx - 1)}
-              className="rounded p-0.5 text-zinc-500 hover:bg-white/[0.06] hover:text-white disabled:opacity-30"
+              onClick={addVariant}
+              className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-1.5 py-0.5 text-[10px] text-zinc-400 hover:bg-white/[0.06]"
             >
-              <ChevronLeft className="size-3.5" />
+              <Plus className="size-2.5" /> 添加
             </button>
-            <button
-              type="button"
-              disabled={currentIdx >= totalVariants - 1}
-              onClick={() => setCurrentIdx(currentIdx + 1)}
-              className="rounded p-0.5 text-zinc-500 hover:bg-white/[0.06] hover:text-white disabled:opacity-30"
-            >
-              <ChevronRight className="size-3.5" />
-            </button>
+            {totalVariants > 1 && (
+              <button
+                type="button"
+                onClick={removeCurrentVariant}
+                className="inline-flex items-center gap-1 rounded-lg bg-red-500/10 px-1.5 py-0.5 text-[10px] text-red-400 hover:bg-red-500/20"
+              >
+                <Trash2 className="size-2.5" /> 删除
+              </button>
+            )}
           </div>
         </div>
 
@@ -821,26 +834,6 @@ function PresetForm({
         <div className="space-y-1">
           <span className="text-[10px] text-zinc-500">LoRA 2（高清修复）</span>
           <LoraBindingEditor bindings={current.lora2} onChange={(v) => updateCurrentVariant({ lora2: v })} />
-        </div>
-
-        {/* Add / delete variant buttons */}
-        <div className="flex gap-1.5">
-          <button
-            type="button"
-            onClick={addVariant}
-            className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-2 py-1 text-[11px] text-zinc-400 hover:bg-white/[0.06]"
-          >
-            <Plus className="size-3" /> 添加变体
-          </button>
-          {totalVariants > 1 && (
-            <button
-              type="button"
-              onClick={removeCurrentVariant}
-              className="inline-flex items-center gap-1 rounded-lg bg-red-500/10 px-2 py-1 text-[11px] text-red-400 hover:bg-red-500/20"
-            >
-              <Trash2 className="size-3" /> 删除此变体
-            </button>
-          )}
         </div>
       </div>
 

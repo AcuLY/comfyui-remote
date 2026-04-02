@@ -118,6 +118,7 @@ model PromptBlock {
   type                  String                @default("custom")
   sourceId              String?
   categoryId            String?               // FK to PresetCategory
+  bindingId             String?               // groups blocks+loras from same preset import
   label                 String
   positive              String
   negative              String?
