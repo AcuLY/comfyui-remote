@@ -638,7 +638,7 @@ export function PromptBlockEditor({
 }: {
   sectionId: string;
   initialBlocks: PromptBlockData[];
-  /** V2 dynamic library from PresetCategory/PromptPreset */
+  /** V2 dynamic library from PresetCategory/Preset */
   libraryV2?: PromptLibraryV2;
   onBlockImport?: (
     sourceType: string,
