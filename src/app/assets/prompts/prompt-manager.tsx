@@ -16,11 +16,11 @@ import {
 } from "lucide-react";
 import { SectionCard } from "@/components/section-card";
 import { LoraBindingEditor } from "@/components/lora-binding-editor";
-import type { PromptCategoryFull, PresetItem } from "@/lib/server-data";
+import type { PresetCategoryFull, PresetItem } from "@/lib/server-data";
 import {
-  createPromptCategory,
-  updatePromptCategory,
-  deletePromptCategory,
+  createPresetCategory,
+  updatePresetCategory,
+  deletePresetCategory,
   createPreset,
   updatePreset,
   deletePreset,
@@ -37,7 +37,7 @@ import { parseLoraBindings, serializeLoraBindings } from "@/lib/lora-types";
 export function PromptManager({
   initialCategories,
 }: {
-  initialCategories: PromptCategoryFull[];
+  initialCategories: PresetCategoryFull[];
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -152,9 +152,9 @@ export function PromptManager({
                 onSave={(data) => {
                   startTransition(async () => {
                     if (editingCatId) {
-                      await updatePromptCategory(editingCatId, data);
+                      await updatePresetCategory(editingCatId, data);
                     } else {
-                      const cat = await createPromptCategory(data);
+                      const cat = await createPresetCategory(data);
                       setSelectedCatId(cat.id);
                     }
                     setShowCatForm(false);
@@ -168,7 +168,7 @@ export function PromptManager({
                         if (!confirm("确认删除此分类？")) return;
                         startTransition(async () => {
                           try {
-                            await deletePromptCategory(editingCatId);
+                            await deletePresetCategory(editingCatId);
                             if (selectedCatId === editingCatId) {
                               setSelectedCatId(categories[0]?.id ?? null);
                             }
@@ -287,7 +287,7 @@ function CategoryForm({
   onCancel,
   isPending,
 }: {
-  category: PromptCategoryFull | null;
+  category: PresetCategoryFull | null;
   onSave: (data: { name: string; slug: string; icon?: string; color?: string }) => void;
   onDelete?: () => void;
   onCancel: () => void;
@@ -376,7 +376,7 @@ function PresetList({
   category,
   onRefresh,
 }: {
-  category: PromptCategoryFull;
+  category: PresetCategoryFull;
   onRefresh: () => void;
 }) {
   const [isPending, startTransition] = useTransition();

@@ -16,10 +16,10 @@ import { prisma } from "@/lib/prisma";
 export type AuditEntityType =
   | "Project"
   | "ProjectSection"
-  | "PositionRun"
+  | "Run"
   | "ImageResult"
   | "LoraAsset"
-  | "PromptCategory"
+  | "PresetCategory"
   | "PromptPreset"
   | "PromptBlock";
 

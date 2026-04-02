@@ -46,7 +46,7 @@ function collectPresetIds(bindingsArray: (unknown)[]): string[] {
 // ---------------------------------------------------------------------------
 
 export async function getQueueRuns(): Promise<QueueRun[]> {
-  const runs = await prisma.positionRun.findMany({
+  const runs = await prisma.run.findMany({
     where: { status: "done" },
     orderBy: { createdAt: "desc" },
     include: {
@@ -89,7 +89,7 @@ export async function getQueueRuns(): Promise<QueueRun[]> {
 // ---------------------------------------------------------------------------
 
 export async function getRunningRuns(): Promise<RunningRun[]> {
-  const runs = await prisma.positionRun.findMany({
+  const runs = await prisma.run.findMany({
     where: { status: { in: ["queued", "running"] } },
     orderBy: { createdAt: "desc" },
     include: {
@@ -124,7 +124,7 @@ export async function getRunningRuns(): Promise<RunningRun[]> {
 // ---------------------------------------------------------------------------
 
 export async function getFailedRuns(): Promise<FailedRun[]> {
-  const runs = await prisma.positionRun.findMany({
+  const runs = await prisma.run.findMany({
     where: { status: "failed" },
     orderBy: { finishedAt: "desc" },
     take: 20,
@@ -160,7 +160,7 @@ export async function getFailedRuns(): Promise<FailedRun[]> {
 // ---------------------------------------------------------------------------
 
 export async function getReviewGroup(runId: string): Promise<ReviewGroup | null> {
-  const run = await prisma.positionRun.findUnique({
+  const run = await prisma.run.findUnique({
     where: { id: runId },
     include: {
       project: {
@@ -209,7 +209,7 @@ export async function getReviewGroup(runId: string): Promise<ReviewGroup | null>
 // ---------------------------------------------------------------------------
 
 export async function getReviewGroupIds(): Promise<string[]> {
-  const runs = await prisma.positionRun.findMany({
+  const runs = await prisma.run.findMany({
     where: { status: "done" },
     orderBy: { createdAt: "desc" },
     select: { id: true },
@@ -474,7 +474,7 @@ export async function getTrashItems(): Promise<TrashItem[]> {
     include: {
       imageResult: {
         include: {
-          positionRun: {
+          run: {
             include: {
               project: true,
               projectSection: true,
@@ -486,7 +486,7 @@ export async function getTrashItems(): Promise<TrashItem[]> {
   });
 
   return records.map((rec) => {
-    const run = rec.imageResult.positionRun;
+    const run = rec.imageResult.run;
     return {
       id: rec.id,
       src: toImageUrl(rec.imageResult.thumbPath ?? rec.imageResult.filePath) ?? "",
@@ -553,7 +553,7 @@ export type ProjectFormOptions = {
 
 
 export async function getProjectFormOptions(): Promise<ProjectFormOptions> {
-  const categories = await prisma.promptCategory.findMany({
+  const categories = await prisma.presetCategory.findMany({
     orderBy: { sortOrder: "asc" },
     include: {
       presets: {
@@ -687,7 +687,7 @@ export async function getWorkflowTemplateOptions() {
 // Prompt Categories & Presets — 统一提示词管理
 // ---------------------------------------------------------------------------
 
-export type PromptCategoryItem = {
+export type PresetCategoryItem = {
   id: string;
   name: string;
   slug: string;
@@ -701,8 +701,8 @@ export type PromptCategoryItem = {
   presetCount: number;
 };
 
-export async function getPromptCategories(): Promise<PromptCategoryItem[]> {
-  const categories = await prisma.promptCategory.findMany({
+export async function getPresetCategories(): Promise<PresetCategoryItem[]> {
+  const categories = await prisma.presetCategory.findMany({
     orderBy: { sortOrder: "asc" },
     include: { _count: { select: { presets: true } } },
   });
@@ -764,7 +764,7 @@ export async function getPresets(categoryId: string): Promise<PresetItem[]> {
   }));
 }
 
-export type PromptCategoryFull = PromptCategoryItem & {
+export type PresetCategoryFull = PresetCategoryItem & {
   presets: PresetItem[];
 };
 
@@ -772,8 +772,8 @@ export type PresetFull = PresetItem & {
   variants: PresetVariantItem[];
 };
 
-export async function getPromptCategoriesWithPresets(): Promise<PromptCategoryFull[]> {
-  const categories = await prisma.promptCategory.findMany({
+export async function getPresetCategoriesWithPresets(): Promise<PresetCategoryFull[]> {
+  const categories = await prisma.presetCategory.findMany({
     orderBy: { sortOrder: "asc" },
     include: {
       _count: { select: { presets: true } },
@@ -832,7 +832,7 @@ export type PromptLibraryV2 = {
 };
 
 export async function getPromptLibraryV2(): Promise<PromptLibraryV2> {
-  const categories = await prisma.promptCategory.findMany({
+  const categories = await prisma.presetCategory.findMany({
     orderBy: { sortOrder: "asc" },
     include: {
       presets: {

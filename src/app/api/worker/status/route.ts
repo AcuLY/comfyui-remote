@@ -23,9 +23,9 @@ export async function GET() {
   try {
     const [queuedCount, runningCount, recentDone, recentFailed, comfyReachable] =
       await Promise.all([
-        prisma.positionRun.count({ where: { status: "queued" } }),
-        prisma.positionRun.count({ where: { status: "running" } }),
-        prisma.positionRun.findMany({
+        prisma.run.count({ where: { status: "queued" } }),
+        prisma.run.count({ where: { status: "running" } }),
+        prisma.run.findMany({
           where: { status: "done" },
           orderBy: { finishedAt: "desc" },
           take: 5,
@@ -35,7 +35,7 @@ export async function GET() {
             _count: { select: { images: true } },
           },
         }),
-        prisma.positionRun.findMany({
+        prisma.run.findMany({
           where: { status: "failed" },
           orderBy: { finishedAt: "desc" },
           take: 5,

@@ -153,7 +153,7 @@ export function getMcpServer(): McpServer {
 
   server.tool(
     "run_all_sections",
-    "Trigger all enabled sections in a project to run. Creates queued PositionRun entries for the Worker to process.",
+    "Trigger all enabled sections in a project to run. Creates queued Run entries for the Worker to process.",
     {
       projectId: z.string().describe("The project ID to run all sections for"),
     },

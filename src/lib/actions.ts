@@ -392,10 +392,10 @@ function toJsonValue(value: unknown): Prisma.InputJsonValue | typeof Prisma.DbNu
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
-// PromptCategory CRUD (unified prompt system)
+// PresetCategory CRUD (unified prompt system)
 // ---------------------------------------------------------------------------
 
-export type PromptCategoryInput = {
+export type PresetCategoryInput = {
   name: string;
   slug: string;
   icon?: string | null;
@@ -407,10 +407,10 @@ export type PromptCategoryInput = {
   sortOrder?: number;
 };
 
-export async function createPromptCategory(input: PromptCategoryInput) {
+export async function createPresetCategory(input: PresetCategoryInput) {
   // Auto-assign sortOrder if not provided
   if (input.sortOrder === undefined) {
-    const maxOrder = await prisma.promptCategory.aggregate({ _max: { sortOrder: true } });
+    const maxOrder = await prisma.presetCategory.aggregate({ _max: { sortOrder: true } });
     input.sortOrder = (maxOrder._max.sortOrder ?? -1) + 1;
   }
   // Auto-generate a random HSL color if not provided
@@ -418,31 +418,31 @@ export async function createPromptCategory(input: PromptCategoryInput) {
     const hue = Math.floor(Math.random() * 360);
     input.color = `${hue} 50% 55%`;
   }
-  const cat = await prisma.promptCategory.create({ data: input });
+  const cat = await prisma.presetCategory.create({ data: input });
   revalidatePath("/assets/prompts");
   return cat;
 }
 
-export async function updatePromptCategory(id: string, input: Partial<PromptCategoryInput>) {
-  const cat = await prisma.promptCategory.update({ where: { id }, data: input });
+export async function updatePresetCategory(id: string, input: Partial<PresetCategoryInput>) {
+  const cat = await prisma.presetCategory.update({ where: { id }, data: input });
   revalidatePath("/assets/prompts");
   return cat;
 }
 
-export async function deletePromptCategory(id: string) {
+export async function deletePresetCategory(id: string) {
   // Only allow deletion if no presets exist in this category
   const count = await prisma.preset.count({ where: { categoryId: id } });
   if (count > 0) {
     throw new Error(`分类下还有 ${count} 个模板，请先删除或移动它们`);
   }
-  await prisma.promptCategory.delete({ where: { id } });
+  await prisma.presetCategory.delete({ where: { id } });
   revalidatePath("/assets/prompts");
 }
 
-export async function reorderPromptCategories(ids: string[]) {
+export async function reorderPresetCategories(ids: string[]) {
   await prisma.$transaction(
     ids.map((id, index) =>
-      prisma.promptCategory.update({ where: { id }, data: { sortOrder: index } }),
+      prisma.presetCategory.update({ where: { id }, data: { sortOrder: index } }),
     ),
   );
   revalidatePath("/assets/prompts");
@@ -462,7 +462,7 @@ export async function updateCategorySortOrders(dimension: SortDimension, ids: st
   }
   await prisma.$transaction(
     ids.map((id, index) =>
-      prisma.promptCategory.update({
+      prisma.presetCategory.update({
         where: { id },
         data: { [dimension]: index },
       }),
@@ -812,7 +812,7 @@ export async function renameSection(sectionId: string, name: string): Promise<vo
 
 export async function reorderSections(projectId: string, sectionIds: string[]): Promise<void> {
   // 0. 检查是否有正在执行的 run，避免重排序导致输出路径不一致
-  const runningCount = await prisma.positionRun.count({
+  const runningCount = await prisma.run.count({
     where: {
       projectId: projectId,
       status: { in: ["queued", "running"] },

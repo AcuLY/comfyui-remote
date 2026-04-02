@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 type PresetBindingJson = Array<{ categoryId: string; presetId: string }>;
 
 export async function listQueueRuns() {
-  const runs = await db.positionRun.findMany({
+  const runs = await db.run.findMany({
     orderBy: { createdAt: "desc" },
     include: {
       project: {

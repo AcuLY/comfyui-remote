@@ -30,7 +30,7 @@ type TrashPlan = ImagePathChangePlan & {
 };
 
 async function getRunReviewBase(runId: string) {
-  const run = await db.positionRun.findUnique({
+  const run = await db.run.findUnique({
     where: { id: runId },
     select: {
       id: true,
@@ -195,7 +195,7 @@ export async function getRunAgentContext(runId: string) {
 }
 
 async function ensureRunExists(runId: string) {
-  const run = await db.positionRun.findUnique({
+  const run = await db.run.findUnique({
     where: { id: runId },
     select: { id: true },
   });
@@ -209,7 +209,7 @@ async function getRunImages(runId: string, imageIds: string[]): Promise<Reviewab
   const images = await db.imageResult.findMany({
     where: {
       id: { in: imageIds },
-      positionRunId: runId,
+      runId: runId,
     },
     select: {
       id: true,

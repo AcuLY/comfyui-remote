@@ -19,9 +19,9 @@ const workerRunInclude = {
       sortOrder: true,
     },
   },
-} satisfies Prisma.PositionRunInclude;
+} satisfies Prisma.RunInclude;
 
-type WorkerRunRecord = Prisma.PositionRunGetPayload<{
+type WorkerRunRecord = Prisma.RunGetPayload<{
   include: typeof workerRunInclude;
 }>;
 
@@ -66,7 +66,7 @@ async function updateProjectStatus(
   tx: Prisma.TransactionClient,
   projectId: string,
 ) {
-  const activeRuns = await tx.positionRun.groupBy({
+  const activeRuns = await tx.run.groupBy({
     by: ["status"],
     where: {
       projectId: projectId,
@@ -104,7 +104,7 @@ async function updateProjectStatus(
       .filter((runId): runId is string => runId !== null);
 
     if (latestRunIds.length > 0) {
-      const latestRuns = await tx.positionRun.findMany({
+      const latestRuns = await tx.run.findMany({
         where: {
           id: { in: latestRunIds },
         },
@@ -140,7 +140,7 @@ async function updateProjectStatus(
 }
 
 export async function listQueuedWorkerRuns(limit = 10): Promise<WorkerRunSnapshot[]> {
-  const runs = await db.positionRun.findMany({
+  const runs = await db.run.findMany({
     where: {
       status: RunStatus.queued,
     },
@@ -158,7 +158,7 @@ export async function completeWorkerRun(
 ) {
   return db.$transaction(async (tx: Prisma.TransactionClient) => {
     const finishedAt = new Date();
-    const data: Prisma.PositionRunUpdateManyMutationInput = {
+    const data: Prisma.RunUpdateManyMutationInput = {
       status: input.status,
       finishedAt,
       errorMessage:
@@ -182,14 +182,14 @@ export async function completeWorkerRun(
     if (input.status === RunStatus.done && input.images !== undefined) {
       await tx.imageResult.deleteMany({
         where: {
-          positionRunId: runId,
+          runId: runId,
         },
       });
 
       if (input.images.length > 0) {
         await tx.imageResult.createMany({
           data: input.images.map((image) => ({
-            positionRunId: runId,
+            runId: runId,
             filePath: image.filePath,
             thumbPath: image.thumbPath,
             width: image.width,
@@ -200,7 +200,7 @@ export async function completeWorkerRun(
       }
     }
 
-    const completedRun = await tx.positionRun.updateMany({
+    const completedRun = await tx.run.updateMany({
       where: {
         id: runId,
         status: RunStatus.running,
@@ -212,7 +212,7 @@ export async function completeWorkerRun(
       throw new Error("WORKER_RUN_NOT_RUNNING");
     }
 
-    const finalizedRun = await tx.positionRun.findUnique({
+    const finalizedRun = await tx.run.findUnique({
       where: { id: runId },
       select: {
         id: true,

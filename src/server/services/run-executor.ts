@@ -1,7 +1,7 @@
 /**
  * Run Executor
  *
- * Processes queued PositionRuns by submitting them directly to ComfyUI.
+ * Processes queued Runs by submitting them directly to ComfyUI.
  * Replaces the old worker mechanism — since ComfyUI only runs one prompt
  * at a time and our backend is single-instance, we don't need a separate
  * worker process or claim-based concurrency control.
@@ -55,7 +55,7 @@ function extractFailedComfyPromptId(error: unknown) {
  */
 async function markRunning(runId: string, projectId: string) {
   const startedAt = new Date();
-  await db.positionRun.update({
+  await db.run.update({
     where: { id: runId },
     data: {
       status: RunStatus.running,
@@ -72,7 +72,7 @@ async function markRunning(runId: string, projectId: string) {
 }
 
 /**
- * Process all queued PositionRuns sequentially.
+ * Process all queued Runs sequentially.
  *
  * - Acquires a module-level lock so only one execution loop runs at a time.
  * - Each run is processed independently — one failure won't block others.
@@ -108,7 +108,7 @@ export async function executeQueuedRuns(): Promise<void> {
 
         runLog.info("Run started", { section: run.section.name });
 
-        audit("PositionRun", run.runId, "executor.start", {
+        audit("Run", run.runId, "executor.start", {
           projectId: run.project.id,
           sectionName: run.section.name,
         });
@@ -142,7 +142,7 @@ export async function executeQueuedRuns(): Promise<void> {
           images: persistedOutput.images,
         });
 
-        audit("PositionRun", run.runId, "executor.done", {
+        audit("Run", run.runId, "executor.done", {
           comfyPromptId,
           imageCount: persistedOutput.images.length,
         });
@@ -170,7 +170,7 @@ export async function executeQueuedRuns(): Promise<void> {
           outputDir: null,
         });
 
-        audit("PositionRun", run.runId, "executor.failed", {
+        audit("Run", run.runId, "executor.failed", {
           errorMessage,
           comfyPromptId,
         });
