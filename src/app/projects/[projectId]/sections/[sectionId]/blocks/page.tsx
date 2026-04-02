@@ -91,10 +91,20 @@ export default async function SectionEditPage({
       const presetIds = bindings.map((b) => b.presetId);
       const variants = await prisma.presetVariant.findMany({
         where: { presetId: { in: presetIds } },
-        select: { id: true, name: true, lora1: true, lora2: true, preset: { select: { name: true } } },
+        select: {
+          id: true, name: true, lora1: true, lora2: true,
+          preset: {
+            select: {
+              name: true,
+              category: { select: { name: true, color: true } },
+            },
+          },
+        },
       });
       for (const variant of variants) {
-        const label = variant.preset.name;
+        const categoryName = variant.preset.category.name;
+        const categoryColor = variant.preset.category.color;
+        const presetName = variant.preset.name;
         if (variant.lora1) {
           const lora1Bindings = parseLoraBindings(variant.lora1);
           for (const binding of lora1Bindings) {
@@ -106,8 +116,10 @@ export default async function SectionEditPage({
                 path: binding.path,
                 weight: binding.weight,
                 enabled: binding.enabled,
-                source: "manual",
-                sourceLabel: label,
+                source: "preset",
+                sourceLabel: categoryName,
+                sourceColor: categoryColor ?? undefined,
+                sourceName: presetName,
               });
               loraChanged = true;
             }
@@ -124,8 +136,10 @@ export default async function SectionEditPage({
                 path: binding.path,
                 weight: binding.weight,
                 enabled: binding.enabled,
-                source: "manual",
-                sourceLabel: label,
+                source: "preset",
+                sourceLabel: categoryName,
+                sourceColor: categoryColor ?? undefined,
+                sourceName: presetName,
               });
               loraChanged = true;
             }

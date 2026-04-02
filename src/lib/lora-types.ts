@@ -18,8 +18,9 @@ export type LoraBinding = {
 export type LoraEntry = LoraBinding & {
   id: string; // unique id for React key and operations
   source: LoraSource;
-  sourceLabel?: string; // e.g. "角色" or "场景"
+  sourceLabel?: string; // category name e.g. "角色" or "场景"
   sourceColor?: string; // HSL color string e.g. "200 50% 55%"
+  sourceName?: string;  // preset name e.g. "Miku" (displayed as row title)
 };
 
 // ---------------------------------------------------------------------------
@@ -173,6 +174,7 @@ export function serializeSectionLoraConfig(config: SectionLoraConfig): SectionLo
     source: e.source,
     sourceLabel: e.sourceLabel,
     sourceColor: e.sourceColor,
+    sourceName: e.sourceName,
   });
 
   return {

@@ -41,7 +41,7 @@ export function SectionEditor({
   function handleBlockImport(
     _sourceType: string,
     _sourceId: string,
-    _sourceName: string,
+    sourceName: string,
     lora1Bindings?: unknown,
     lora2Bindings?: unknown,
     categoryName?: string,
@@ -68,6 +68,7 @@ export function SectionEditor({
             source: "preset",
             sourceLabel,
             sourceColor: categoryColor ?? undefined,
+            sourceName,
           });
           changed = true;
         }
@@ -89,6 +90,7 @@ export function SectionEditor({
             source: "preset",
             sourceLabel,
             sourceColor: categoryColor ?? undefined,
+            sourceName,
           });
           changed = true;
         }

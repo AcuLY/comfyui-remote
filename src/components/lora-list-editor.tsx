@@ -81,7 +81,9 @@ function SortableLoraRow({
   };
 
   const isManual = entry.source === "manual";
-  const displayName = entry.path ? (entry.path.split("/").pop() || entry.path) : "未选择";
+  const fileName = entry.path ? (entry.path.split("/").pop() || entry.path) : "未选择";
+  // Row 1: show preset name for imported, file name for manual
+  const displayName = !isManual && entry.sourceName ? entry.sourceName : fileName;
 
   // Tag style: use category color for preset source, fallback to rose for manual
   const tagStyle = !isManual && entry.sourceColor
