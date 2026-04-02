@@ -765,7 +765,7 @@ export async function getPresets(categoryId: string): Promise<PresetItem[]> {
 }
 
 export type PresetCategoryFull = PresetCategoryItem & {
-  presets: PresetItem[];
+  presets: PresetFull[];
 };
 
 export type PresetFull = PresetItem & {
@@ -780,7 +780,13 @@ export async function getPresetCategoriesWithPresets(): Promise<PresetCategoryFu
       presets: {
         where: { isActive: true },
         orderBy: { sortOrder: "asc" },
-        include: { _count: { select: { variants: true } } },
+        include: {
+          _count: { select: { variants: true } },
+          variants: {
+            where: { isActive: true },
+            orderBy: { sortOrder: "asc" },
+          },
+        },
       },
     },
   });
@@ -805,6 +811,19 @@ export async function getPresetCategoriesWithPresets(): Promise<PresetCategoryFu
       sortOrder: p.sortOrder,
       notes: p.notes,
       variantCount: p._count.variants,
+      variants: p.variants.map((v) => ({
+        id: v.id,
+        presetId: v.presetId,
+        name: v.name,
+        slug: v.slug,
+        prompt: v.prompt,
+        negativePrompt: v.negativePrompt,
+        lora1: v.lora1,
+        lora2: v.lora2,
+        defaultParams: v.defaultParams,
+        sortOrder: v.sortOrder,
+        isActive: v.isActive,
+      })),
     })),
   }));
 }

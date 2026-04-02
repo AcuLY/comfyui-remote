@@ -13,10 +13,11 @@ import {
   Settings2,
   Loader2,
   ChevronRight,
+  ChevronLeft,
 } from "lucide-react";
 import { SectionCard } from "@/components/section-card";
 import { LoraBindingEditor } from "@/components/lora-binding-editor";
-import type { PresetCategoryFull, PresetItem } from "@/lib/server-data";
+import type { PresetCategoryFull, PresetFull, PresetVariantItem } from "@/lib/server-data";
 import {
   createPresetCategory,
   updatePresetCategory,
@@ -414,7 +415,17 @@ function PresetList({
           preset={null}
           onSave={(data) => {
             startTransition(async () => {
-              await createPreset(data);
+              const newPreset = await createPreset(data);
+              // For new presets, we need to create the default variant
+              // The form manages variants internally but can't save them without a preset ID
+              // So we create the preset first, then the form's handleSubmit won't re-save
+              // Instead we create a default variant here
+              await createPresetVariant({
+                presetId: newPreset.id,
+                name: "默认",
+                slug: "default",
+                prompt: "",
+              });
               setIsCreating(false);
               onRefresh();
             });
@@ -475,72 +486,71 @@ function PresetCard({
   preset,
   onEdit,
 }: {
-  preset: PresetItem;
+  preset: PresetFull;
   onEdit: () => void;
 }) {
   const variantCount = preset.variantCount;
+  const firstVariant = preset.variants[0];
+  const lora1 = firstVariant ? parseLoraBindings(firstVariant.lora1) : [];
+  const lora2 = firstVariant ? parseLoraBindings(firstVariant.lora2) : [];
+  const loraCount = lora1.length + lora2.length;
 
   return (
-    <div
-      className={`rounded-xl border p-3 transition hover:border-white/15 ${
-        preset.isActive
-          ? "border-white/10 bg-white/[0.03]"
-          : "border-white/5 bg-white/[0.01] opacity-50"
-      }`}
-    >
+    <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3 transition hover:border-white/15">
       <div className="flex items-start gap-2">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <span className="text-xs font-medium text-zinc-200">
               {preset.name}
             </span>
-            {!preset.isActive && (
-              <span className="text-[9px] text-zinc-500 border border-white/5 rounded px-1">
-                已禁用
-              </span>
-            )}
             {variantCount > 0 && (
               <span className="text-[9px] text-sky-400/60">
                 {variantCount} 变体
               </span>
             )}
+            {loraCount > 0 && (
+              <span className="text-[9px] text-amber-400/60">
+                {loraCount} LoRA
+              </span>
+            )}
           </div>
-          <div className="mt-1 text-[11px] text-zinc-500 line-clamp-2">
-            {preset.notes?.slice(0, 120) || "无备注"}
-            {preset.notes && preset.notes.length > 120 ? "..." : ""}
-          </div>
-          {variantCount > 0 && (
-            <div className="mt-1">
-              <button
-                type="button"
-                className="text-[10px] text-sky-400/60 hover:text-sky-300"
-                onClick={() => {
-                  // TODO: 打开变体管理界面
-                  console.log("管理变体:", preset.id);
-                }}
-              >
-                管理变体 →
-              </button>
+          {firstVariant && (
+            <div className="mt-1 text-[11px] text-zinc-500 line-clamp-2">
+              {firstVariant.prompt.slice(0, 120)}
+              {firstVariant.prompt.length > 120 ? "..." : ""}
+            </div>
+          )}
+          {!firstVariant && (
+            <div className="mt-1 text-[11px] text-zinc-600">
+              暂无变体
             </div>
           )}
         </div>
-        <div className="flex gap-1">
-          <button
-            type="button"
-            onClick={onEdit}
-            className="rounded p-1.5 text-zinc-500 hover:bg-white/[0.06] hover:text-white"
-          >
-            <Pencil className="size-3.5" />
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={onEdit}
+          className="rounded p-1.5 text-zinc-500 hover:bg-white/[0.06] hover:text-white"
+        >
+          <Pencil className="size-3.5" />
+        </button>
       </div>
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// PresetForm — create/edit form for a preset
+// PresetForm — create/edit form for a preset with inline variant editing
 // ---------------------------------------------------------------------------
+
+type VariantDraft = {
+  id?: string; // undefined = new variant
+  name: string;
+  slug: string;
+  prompt: string;
+  negativePrompt: string;
+  lora1: import("@/lib/lora-types").LoraBinding[];
+  lora2: import("@/lib/lora-types").LoraBinding[];
+};
 
 function PresetForm({
   categoryId,
@@ -551,7 +561,7 @@ function PresetForm({
   isPending,
 }: {
   categoryId: string;
-  preset: PresetItem | null;
+  preset: PresetFull | null;
   onSave: (data: {
     categoryId: string;
     name: string;
@@ -563,10 +573,34 @@ function PresetForm({
   onCancel: () => void;
   isPending: boolean;
 }) {
+  const router = useRouter();
+  const [, startVariantTransition] = useTransition();
+
+  // Preset-level fields
   const [name, setName] = useState(preset?.name ?? "");
   const [slug, setSlug] = useState(preset?.slug ?? "");
   const [notes, setNotes] = useState(preset?.notes ?? "");
-  const [isActive, setIsActive] = useState(preset?.isActive ?? true);
+
+  // Variant state
+  const [variants, setVariants] = useState<VariantDraft[]>(() => {
+    if (preset && preset.variants.length > 0) {
+      return preset.variants.map((v) => ({
+        id: v.id,
+        name: v.name,
+        slug: v.slug,
+        prompt: v.prompt,
+        negativePrompt: v.negativePrompt ?? "",
+        lora1: parseLoraBindings(v.lora1),
+        lora2: parseLoraBindings(v.lora2),
+      }));
+    }
+    // New preset: start with one empty variant
+    return [{ name: "默认", slug: "default", prompt: "", negativePrompt: "", lora1: [], lora2: [] }];
+  });
+  const [currentIdx, setCurrentIdx] = useState(0);
+
+  const current = variants[currentIdx];
+  const totalVariants = variants.length;
 
   function handleNameChange(value: string) {
     setName(value);
@@ -580,7 +614,56 @@ function PresetForm({
     }
   }
 
-  function handleSubmit() {
+  function handleVariantNameChange(value: string) {
+    const updated = [...variants];
+    updated[currentIdx] = { ...current, name: value };
+    // Auto-slug for variant
+    if (!current.id) {
+      updated[currentIdx].slug = value
+        .toLowerCase()
+        .replace(/[\s]+/g, "-")
+        .replace(/[^a-z0-9\u4e00-\u9fff-]/g, "") || "variant";
+    }
+    setVariants(updated);
+  }
+
+  function updateCurrentVariant(patch: Partial<VariantDraft>) {
+    const updated = [...variants];
+    updated[currentIdx] = { ...current, ...patch };
+    setVariants(updated);
+  }
+
+  function addVariant() {
+    const newIdx = variants.length;
+    setVariants([...variants, {
+      name: `变体 ${newIdx + 1}`,
+      slug: `variant-${newIdx + 1}`,
+      prompt: "",
+      negativePrompt: "",
+      lora1: [],
+      lora2: [],
+    }]);
+    setCurrentIdx(newIdx);
+  }
+
+  function removeCurrentVariant() {
+    if (totalVariants <= 1) return;
+    if (!confirm(`确认删除变体「${current.name}」？`)) return;
+
+    // If existing variant, call server delete
+    if (current.id) {
+      startVariantTransition(async () => {
+        await deletePresetVariant(current.id!);
+      });
+    }
+
+    const updated = variants.filter((_, i) => i !== currentIdx);
+    setVariants(updated);
+    setCurrentIdx(Math.min(currentIdx, updated.length - 1));
+  }
+
+  async function handleSubmit() {
+    // 1. Save preset (create or update)
     onSave({
       categoryId,
       name: name.trim(),
@@ -588,7 +671,32 @@ function PresetForm({
       notes: notes.trim() || null,
       isActive: true,
     });
+
+    // 2. For existing preset, save all variants
+    if (preset) {
+      startVariantTransition(async () => {
+        for (const v of variants) {
+          const variantData = {
+            presetId: preset.id,
+            name: v.name.trim(),
+            slug: v.slug.trim(),
+            prompt: v.prompt.trim(),
+            negativePrompt: v.negativePrompt.trim() || null,
+            lora1: serializeLoraBindings(v.lora1),
+            lora2: serializeLoraBindings(v.lora2),
+          };
+          if (v.id) {
+            await updatePresetVariant(v.id, variantData);
+          } else {
+            await createPresetVariant(variantData);
+          }
+        }
+      });
+    }
   }
+
+  // For new presets, variants are saved after the preset is created
+  // We need a post-save callback — handled by the parent's onSave flow
 
   return (
     <div className="rounded-xl border border-sky-500/20 bg-sky-500/[0.03] p-3 space-y-3">
@@ -596,9 +704,10 @@ function PresetForm({
         {preset ? "编辑预制" : "新建预制"}
       </div>
 
+      {/* Preset-level: name + slug */}
       <div className="grid grid-cols-2 gap-2">
         <label className="space-y-1">
-          <span className="text-[10px] text-zinc-500">名称</span>
+          <span className="text-[10px] text-zinc-500">预制名称</span>
           <input
             type="text"
             value={name}
@@ -619,7 +728,6 @@ function PresetForm({
         </label>
       </div>
 
-
       <label className="block space-y-1">
         <span className="text-[10px] text-zinc-500">备注</span>
         <textarea
@@ -631,17 +739,113 @@ function PresetForm({
         />
       </label>
 
-      <label className="flex items-center gap-2 text-xs text-zinc-400">
-        <input
-          type="checkbox"
-          checked={isActive}
-          onChange={(e) => setIsActive(e.target.checked)}
-          className="rounded border-white/20"
-        />
-        启用
-      </label>
+      {/* ── Variant section ── */}
+      <div className="border-t border-white/5 pt-3 space-y-2">
+        {/* Variant pagination header */}
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-medium text-zinc-400">
+            变体 {currentIdx + 1} / {totalVariants}
+          </span>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              disabled={currentIdx === 0}
+              onClick={() => setCurrentIdx(currentIdx - 1)}
+              className="rounded p-0.5 text-zinc-500 hover:bg-white/[0.06] hover:text-white disabled:opacity-30"
+            >
+              <ChevronLeft className="size-3.5" />
+            </button>
+            <button
+              type="button"
+              disabled={currentIdx >= totalVariants - 1}
+              onClick={() => setCurrentIdx(currentIdx + 1)}
+              className="rounded p-0.5 text-zinc-500 hover:bg-white/[0.06] hover:text-white disabled:opacity-30"
+            >
+              <ChevronRight className="size-3.5" />
+            </button>
+          </div>
+        </div>
 
-      <div className="flex gap-1.5">
+        {/* Variant name + slug */}
+        <div className="grid grid-cols-2 gap-2">
+          <label className="space-y-1">
+            <span className="text-[10px] text-zinc-500">变体名称</span>
+            <input
+              type="text"
+              value={current.name}
+              onChange={(e) => handleVariantNameChange(e.target.value)}
+              placeholder="变体名称"
+              className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
+            />
+          </label>
+          <label className="space-y-1">
+            <span className="text-[10px] text-zinc-500">变体 Slug</span>
+            <input
+              type="text"
+              value={current.slug}
+              onChange={(e) => updateCurrentVariant({ slug: e.target.value })}
+              placeholder="variant-slug"
+              className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
+            />
+          </label>
+        </div>
+
+        {/* Variant prompt fields */}
+        <label className="block space-y-1">
+          <span className="text-[10px] text-zinc-500">正面提示词</span>
+          <textarea
+            value={current.prompt}
+            onChange={(e) => updateCurrentVariant({ prompt: e.target.value })}
+            rows={3}
+            placeholder="positive prompt..."
+            className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
+          />
+        </label>
+
+        <label className="block space-y-1">
+          <span className="text-[10px] text-zinc-500">负面提示词</span>
+          <textarea
+            value={current.negativePrompt}
+            onChange={(e) => updateCurrentVariant({ negativePrompt: e.target.value })}
+            rows={2}
+            placeholder="negative prompt..."
+            className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
+          />
+        </label>
+
+        <div className="space-y-1">
+          <span className="text-[10px] text-zinc-500">LoRA 1（第一阶段）</span>
+          <LoraBindingEditor bindings={current.lora1} onChange={(v) => updateCurrentVariant({ lora1: v })} />
+        </div>
+
+        <div className="space-y-1">
+          <span className="text-[10px] text-zinc-500">LoRA 2（高清修复）</span>
+          <LoraBindingEditor bindings={current.lora2} onChange={(v) => updateCurrentVariant({ lora2: v })} />
+        </div>
+
+        {/* Add / delete variant buttons */}
+        <div className="flex gap-1.5">
+          <button
+            type="button"
+            onClick={addVariant}
+            className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-2 py-1 text-[11px] text-zinc-400 hover:bg-white/[0.06]"
+          >
+            <Plus className="size-3" /> 添加变体
+          </button>
+          {totalVariants > 1 && (
+            <button
+              type="button"
+              onClick={removeCurrentVariant}
+              className="inline-flex items-center gap-1 rounded-lg bg-red-500/10 px-2 py-1 text-[11px] text-red-400 hover:bg-red-500/20"
+            >
+              <Trash2 className="size-3" /> 删除此变体
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* ── Action buttons ── */}
+      <div className="flex gap-1.5 border-t border-white/5 pt-3">
         <button
           type="button"
           disabled={isPending || !name.trim() || !slug.trim()}
@@ -661,7 +865,7 @@ function PresetForm({
             onClick={onDelete}
             className="inline-flex items-center gap-1 rounded-lg bg-red-500/10 px-2 py-1 text-[11px] text-red-400 hover:bg-red-500/20"
           >
-            <Trash2 className="size-3" /> 删除
+            <Trash2 className="size-3" /> 删除预制
           </button>
         )}
         <button

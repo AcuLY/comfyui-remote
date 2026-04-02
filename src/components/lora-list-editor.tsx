@@ -155,19 +155,13 @@ function SortableLoraRow({
               />
             </button>
 
-            {/* Path: selector for manual, display for imported */}
+            {/* Path: always show selector for editing */}
             <div className="flex-1 min-w-0">
-              {isManual ? (
-                <LoraCascadePicker
-                  value={entry.path}
-                  onChange={onPathChange}
-                  disabled={disabled}
-                />
-              ) : (
-                <div className="text-[10px] text-zinc-500 truncate">
-                  {entry.path || "未选择"}
-                </div>
-              )}
+              <LoraCascadePicker
+                value={entry.path}
+                onChange={onPathChange}
+                disabled={disabled}
+              />
             </div>
 
             {/* Weight input + adjust buttons */}
