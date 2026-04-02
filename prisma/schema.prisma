@@ -36,14 +36,14 @@ enum ActorType {
   agent
 }
 
-// ── Unified prompt system ──
+// ── Preset system ──
 
-model PromptCategory {
+model PresetCategory {
   id                  String          @id @default(cuid())
   name                String          // e.g. "角色", "场景", "风格", "镜位"
   slug                String          @unique
   icon                String?         // lucide icon name for UI badge
-  color               String?         // tailwind color key: "sky", "emerald", "violet", "amber"
+  color               String?         // HSL color string
   positivePromptOrder Int             @default(0)
   negativePromptOrder Int             @default(0)
   lora1Order          Int             @default(0)
@@ -64,7 +64,7 @@ model Preset {
   notes           String?         @db.Text
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
-  category        PromptCategory  @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  category        PresetCategory  @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   variants        PresetVariant[]
 
   @@unique([categoryId, slug])
@@ -109,7 +109,7 @@ model Project {
   createdAt             DateTime              @default(now())
   updatedAt             DateTime              @updatedAt
   sections              ProjectSection[]
-  runs                  PositionRun[]
+  runs                  Run[]
   revisions             ProjectRevision[]
 
   @@index([status, updatedAt])
@@ -137,7 +137,7 @@ model ProjectSection {
   createdAt             DateTime              @default(now())
   updatedAt             DateTime              @updatedAt
   project               Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  runs                  PositionRun[]
+  runs                  Run[]
   promptBlocks          PromptBlock[]
 
   @@index([projectId, sortOrder])
@@ -148,7 +148,7 @@ model PromptBlock {
   projectSectionId      String
   type                  PromptBlockType
   sourceId              String?
-  categoryId            String?               // FK to PromptCategory
+  categoryId            String?               // FK to PresetCategory
   label                 String
   positive              String                @db.Text
   negative              String?               @db.Text
@@ -160,7 +160,7 @@ model PromptBlock {
   @@index([projectSectionId, sortOrder])
 }
 
-model PositionRun {
+model Run {
   id                    String                @id @default(cuid())
   projectId             String
   projectSectionId      String
@@ -186,7 +186,7 @@ model PositionRun {
 
 model ImageResult {
   id                    String          @id @default(cuid())
-  positionRunId         String
+  runId                 String
   filePath              String          @unique
   thumbPath             String?
   width                 Int?
@@ -197,11 +197,11 @@ model ImageResult {
   reviewedAt            DateTime?
   createdAt             DateTime        @default(now())
   updatedAt             DateTime        @updatedAt
-  positionRun           PositionRun     @relation(fields: [positionRunId], references: [id], onDelete: Cascade)
+  run                   Run             @relation(fields: [runId], references: [id], onDelete: Cascade)
   trashRecord           TrashRecord?
 
   @@index([reviewStatus, createdAt])
-  @@index([positionRunId, createdAt])
+  @@index([runId, createdAt])
 }
 
 model TrashRecord {

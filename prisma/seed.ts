@@ -93,7 +93,7 @@ async function main() {
   }
 
   // --- Runs ---
-  const standingRun = await prisma.positionRun.upsert({
+  const standingRun = await prisma.run.upsert({
     where: { id: "seed-run-miku-standing" },
     update: {
       projectId: mikuJob.id,
@@ -118,7 +118,7 @@ async function main() {
     },
   });
 
-  const watchingRun = await prisma.positionRun.upsert({
+  const watchingRun = await prisma.run.upsert({
     where: { id: "seed-run-miku-watching" },
     update: {
       projectId: mikuJob.id,
@@ -143,7 +143,7 @@ async function main() {
     },
   });
 
-  const benchRun = await prisma.positionRun.upsert({
+  const benchRun = await prisma.run.upsert({
     where: { id: "seed-run-tangtang-bench" },
     update: {
       projectId: tangtangJob.id,
@@ -176,7 +176,7 @@ async function main() {
   const seedImages = [
     ...Array.from({ length: 9 }, (_, index) => ({
       id: `seed-image-miku-standing-${index + 1}`,
-      positionRunId: standingRun.id,
+      runId: standingRun.id,
       filePath: `data/images/miku-spring-batch-a/standing/run-01/raw/${String(index + 1).padStart(2, "0")}.png`,
       thumbPath: `data/images/miku-spring-batch-a/standing/run-01/thumb/${String(index + 1).padStart(2, "0")}.jpg`,
       width: 900,
@@ -187,7 +187,7 @@ async function main() {
     })),
     ...Array.from({ length: 9 }, (_, index) => ({
       id: `seed-image-miku-watching-${index + 1}`,
-      positionRunId: watchingRun.id,
+      runId: watchingRun.id,
       filePath: `data/images/miku-spring-batch-a/watching/run-02/raw/${String(index + 1).padStart(2, "0")}.png`,
       thumbPath: `data/images/miku-spring-batch-a/watching/run-02/thumb/${String(index + 1).padStart(2, "0")}.jpg`,
       width: 900,
@@ -198,7 +198,7 @@ async function main() {
     })),
     ...Array.from({ length: 9 }, (_, index) => ({
       id: `seed-image-tangtang-bench-${index + 1}`,
-      positionRunId: benchRun.id,
+      runId: benchRun.id,
       filePath: `data/images/tangtang-park-test/bench-sit/run-01/raw/${String(index + 1).padStart(2, "0")}.png`,
       thumbPath: `data/images/tangtang-park-test/bench-sit/run-01/thumb/${String(index + 1).padStart(2, "0")}.jpg`,
       width: 900,
