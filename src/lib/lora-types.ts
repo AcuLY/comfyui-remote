@@ -88,7 +88,7 @@ function isSeedPolicy(value: unknown): value is SeedPolicy {
 /**
  * LoRA config structure stored in ProjectSection.loraConfig
  */
-export type PositionLoraConfig = {
+export type SectionLoraConfig = {
   lora1: LoraEntry[];          // lora1 列表（可编辑，来自 preset 或手动添加）
   lora2: LoraEntry[];          // lora2 列表（可编辑，来自 preset 或手动添加）
 };
@@ -115,9 +115,9 @@ export function parseLoraBindings(json: unknown): LoraBinding[] {
 }
 
 /**
- * Parse PositionLoraConfig JSON from database
+ * Parse SectionLoraConfig JSON from database
  */
-export function parsePositionLoraConfig(json: unknown): PositionLoraConfig {
+export function parseSectionLoraConfig(json: unknown): SectionLoraConfig {
   if (!json || typeof json !== "object" || Array.isArray(json)) {
     return { lora1: [], lora2: [] };
   }
@@ -161,9 +161,9 @@ export function serializeLoraBindings(bindings: LoraBinding[]): LoraBinding[] {
 }
 
 /**
- * Serialize PositionLoraConfig for database storage
+ * Serialize SectionLoraConfig for database storage
  */
-export function serializePositionLoraConfig(config: PositionLoraConfig): PositionLoraConfig {
+export function serializeSectionLoraConfig(config: SectionLoraConfig): SectionLoraConfig {
   const serializeEntry = (e: LoraEntry) => ({
     id: e.id,
     path: e.path,

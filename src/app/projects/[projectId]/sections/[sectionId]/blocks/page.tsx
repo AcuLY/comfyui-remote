@@ -9,7 +9,7 @@ import { SectionNameEditor } from "./section-name-editor";
 import { SectionRunButton } from "@/app/projects/[projectId]/project-detail-actions";
 import type { PromptBlockData } from "@/lib/actions";
 import { getPromptLibraryV2 } from "@/lib/server-data";
-import { parsePositionLoraConfig, serializePositionLoraConfig, generateLoraEntryId, parseLoraBindings } from "@/lib/lora-types";
+import { parseSectionLoraConfig, serializeSectionLoraConfig, generateLoraEntryId, parseLoraBindings } from "@/lib/lora-types";
 import type { LoraEntry } from "@/lib/lora-types";
 import { revalidatePath } from "next/cache";
 
@@ -79,7 +79,7 @@ export default async function SectionEditPage({
   };
 
   // Parse existing LoRA config ({ lora1, lora2 })
-  const loraConfig = parsePositionLoraConfig(pos.loraConfig);
+  const loraConfig = parseSectionLoraConfig(pos.loraConfig);
 
   // Unified: ALL presets' lora1 → section.lora1, lora2 → section.lora2
   if (pos.project) {
@@ -138,7 +138,7 @@ export default async function SectionEditPage({
       await prisma.projectSection.update({
         where: { id: sectionId },
         data: {
-          loraConfig: serializePositionLoraConfig(loraConfig),
+          loraConfig: serializeSectionLoraConfig(loraConfig),
         },
       });
     }
@@ -148,12 +148,12 @@ export default async function SectionEditPage({
   async function handleLoraChange(config: { lora1: LoraEntry[]; lora2: LoraEntry[] }) {
     "use server";
     const { prisma } = await import("@/lib/prisma");
-    const { serializePositionLoraConfig } = await import("@/lib/lora-types");
+    const { serializeSectionLoraConfig } = await import("@/lib/lora-types");
 
     await prisma.projectSection.update({
       where: { id: sectionId },
       data: {
-        loraConfig: serializePositionLoraConfig(config),
+        loraConfig: serializeSectionLoraConfig(config),
       },
     });
 

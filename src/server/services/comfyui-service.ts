@@ -5,7 +5,7 @@ import { resolveResolution } from "@/lib/aspect-ratio-utils";
 import {
   parseLoraBindings,
   parseKSamplerParams,
-  parsePositionLoraConfig,
+  parseSectionLoraConfig,
   DEFAULT_KSAMPLER1,
   DEFAULT_KSAMPLER2,
 } from "@/lib/lora-types";
@@ -445,7 +445,7 @@ async function resolveStandardWorkflowPrompt(
   const longSide = Math.max(width, height);
 
   const loraConfig = promptDraft.loraConfig
-    ? parsePositionLoraConfig(promptDraft.loraConfig)
+    ? parseSectionLoraConfig(promptDraft.loraConfig)
     : { lora1: [], lora2: [] };
 
   const ksampler1 = parseKSamplerParams(promptDraft.ksampler1, DEFAULT_KSAMPLER1);

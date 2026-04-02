@@ -187,7 +187,7 @@ async function getLatestRunsById(latestRunIds: string[]) {
     return new Map<string, LatestRunRecord>();
   }
 
-  const latestRuns = await db.positionRun.findMany({
+  const latestRuns = await db.run.findMany({
     where: {
       id: { in: latestRunIds },
     },
@@ -503,7 +503,7 @@ async function createQueuedRunsForPositions(
   overrideBatchSize?: number,
 ) {
   const sectionIds = sections.map((section) => section.id);
-  const latestRunIndexes = await tx.positionRun.groupBy({
+  const latestRunIndexes = await tx.run.groupBy({
     by: ["projectSectionId"],
     where: {
       projectSectionId: { in: sectionIds },
@@ -513,7 +513,7 @@ async function createQueuedRunsForPositions(
     },
   });
 
-  const latestRunIndexByPositionId = new Map<string, number>(
+  const latestRunIndexBySectionId = new Map<string, number>(
     latestRunIndexes.map((entry): [string, number] => [
       entry.projectSectionId,
       entry._max.runIndex ?? 0,
@@ -523,11 +523,11 @@ async function createQueuedRunsForPositions(
   const queuedRuns: Array<ReturnType<typeof serializeEnqueuedRun>> = [];
 
   for (const section of sections) {
-    const createdRun = await tx.positionRun.create({
+    const createdRun = await tx.run.create({
       data: {
         projectId: project.id,
         projectSectionId: section.id,
-        runIndex: (latestRunIndexByPositionId.get(section.id) ?? 0) + 1,
+        runIndex: (latestRunIndexBySectionId.get(section.id) ?? 0) + 1,
         status: "queued",
         resolvedConfigSnapshot: buildResolvedConfigSnapshot(project, section, section.promptBlocks, overrideBatchSize),
       },
@@ -615,7 +615,7 @@ export async function listProjects(filters: ListProjectsFilters = {}) {
       status: project.status,
       updatedAt: project.updatedAt.toISOString(),
       sectionCount: project.sections.length,
-      enabledPositionCount: project.sections.filter((section) => section.enabled).length,
+      enabledSectionCount: project.sections.filter((section) => section.enabled).length,
       latestRunAt: latestRun?.createdAt.toISOString() ?? null,
       latestRunStatus: latestRun?.status ?? null,
       latestRunPendingCount: latestRunSummary?.pendingCount ?? 0,
@@ -691,7 +691,7 @@ export async function getProjectDetail(projectId: string) {
     updatedAt: project.updatedAt.toISOString(),
     notes: project.notes,
     sectionCount: project._count.sections,
-    enabledPositionCount: project.sections.length,
+    enabledSectionCount: project.sections.length,
     promptOverview: {
       projectLevelOverrides: project.projectLevelOverrides,
     },
@@ -812,7 +812,7 @@ export async function getProjectAgentContext(projectId: string) {
       updatedAt: project.updatedAt.toISOString(),
       notes: project.notes,
       sectionCount: project._count.sections,
-      enabledPositionCount: project.sections.length,
+      enabledSectionCount: project.sections.length,
       promptOverview: {
         projectLevelOverrides: project.projectLevelOverrides,
       },
