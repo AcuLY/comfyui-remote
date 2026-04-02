@@ -531,7 +531,7 @@ function AddBlockForm({
                   : "text-zinc-500 hover:text-zinc-300"
               }`}
             >
-              从词库导入
+              从预制库导入
             </button>
           </div>
         )}
@@ -584,7 +584,7 @@ function AddBlockForm({
           {/* Preset list */}
           <div className="max-h-40 overflow-y-auto space-y-1">
             {libraryItems.length === 0 ? (
-              <div className="text-center text-[11px] text-zinc-600 py-2">该分类暂无词库</div>
+              <div className="text-center text-[11px] text-zinc-600 py-2">该分类暂无预制</div>
             ) : (
               libraryItems.map((item) => (
                 <button

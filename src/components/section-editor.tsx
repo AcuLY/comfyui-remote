@@ -37,7 +37,7 @@ export function SectionEditor({
   const [lora2, setLora2] = useState<LoraEntry[]>(initialLoraConfig.lora2);
   const [isPending, startTransition] = useTransition();
 
-  // 当从词库导入时，自动添加关联的 LoRA
+  // 当从预制库导入时，自动添加关联的 LoRA
   function handleBlockImport(
     _sourceType: string,
     _sourceId: string,

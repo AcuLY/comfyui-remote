@@ -21,7 +21,7 @@ import { LoraCascadePicker } from "@/components/lora-cascade-picker";
 import type { LoraEntry, LoraSource } from "@/lib/lora-types";
 
 const SOURCE_LABELS: Record<LoraSource, { label: string; color: string }> = {
-  preset: { label: "模板", color: "bg-sky-500/20 text-sky-300 border-sky-500/30" },
+  preset: { label: "预制", color: "bg-sky-500/20 text-sky-300 border-sky-500/30" },
   manual: { label: "自定义", color: "bg-rose-500/20 text-rose-300 border-rose-500/30" },
 };
 
@@ -263,7 +263,7 @@ export function LoraListEditor({
       <div className="space-y-2 rounded-xl border border-white/5 bg-white/[0.01] p-3">
         {entries.length === 0 ? (
           <div className="py-3 text-center text-[11px] text-zinc-600">
-            暂无 LoRA，从词库导入或手动添加
+            暂无 LoRA，从预制库导入或手动添加
           </div>
         ) : (
           <DndContext id={dndId} sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>

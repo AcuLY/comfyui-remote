@@ -26,7 +26,7 @@ const settingsGroups = [
 export default function SettingsPage() {
   return (
     <div className="space-y-4">
-      <SectionCard title="设置" subtitle="系统配置。提示词管理已移至底部导航「提示词」页面。">
+      <SectionCard title="设置" subtitle="系统配置。预制管理已移至底部导航「预制」页面。">
         <div className="space-y-2">
           {settingsGroups.map(({ href, label, description, icon: Icon }) => (
             <Link

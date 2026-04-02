@@ -13,7 +13,7 @@ export default async function NewProjectPage() {
         <ArrowLeft className="size-4" /> 返回项目
       </Link>
 
-      <SectionCard title="创建项目" subtitle="选择各分类的预设模板，创建后在详情页添加小节。">
+      <SectionCard title="创建项目" subtitle="选择各分类的预制，创建后在详情页添加小节。">
         <ProjectForm categories={options.categories} />
       </SectionCard>
     </div>

@@ -67,7 +67,7 @@ export function PromptManager({
 
   return (
     <div className="space-y-4">
-      <SectionCard title="提示词管理" subtitle="管理提示词分类和模板。每个分类下可创建多个模板，用于项目绑定和小节导入。">
+      <SectionCard title="预制管理" subtitle="管理预制分类和预制项。每个分类下可创建多个预制，用于项目绑定和小节导入。">
         <div className="flex flex-col gap-4 md:flex-row">
           {/* Left panel: categories */}
           <div className="w-full shrink-0 space-y-2 md:w-56">
@@ -124,7 +124,7 @@ export function PromptManager({
                     {cat.name}
                   </div>
                   <div className="text-[10px] text-zinc-500">
-                    {cat.presetCount} 个模板
+                    {cat.presetCount} 个预制
                   </div>
                 </div>
                 <button
@@ -392,7 +392,7 @@ function PresetList({
             {category.name}
           </span>
           <span className="text-[10px] text-zinc-500">
-            {category.presets.length} 个模板
+            {category.presets.length} 个预制
           </span>
         </div>
         <button
@@ -403,7 +403,7 @@ function PresetList({
           }}
           className="inline-flex items-center gap-1 rounded-lg bg-sky-500/10 px-2.5 py-1 text-[11px] text-sky-300 hover:bg-sky-500/20"
         >
-          <Plus className="size-3" /> 新建模板
+          <Plus className="size-3" /> 新建预制
         </button>
       </div>
 
@@ -427,7 +427,7 @@ function PresetList({
       {/* Preset cards */}
       {category.presets.length === 0 && !isCreating ? (
         <div className="flex h-32 items-center justify-center rounded-xl border border-dashed border-white/5 text-xs text-zinc-600">
-          暂无模板，点击「新建模板」开始
+          暂无预制，点击「新建预制」开始
         </div>
       ) : (
         category.presets.map((preset) =>
@@ -444,7 +444,7 @@ function PresetList({
                 });
               }}
               onDelete={() => {
-                if (!confirm("确认删除此模板？")) return;
+                if (!confirm("确认删除此预制？")) return;
                 startTransition(async () => {
                   await deletePreset(preset.id);
                   setEditingId(null);
@@ -593,7 +593,7 @@ function PresetForm({
   return (
     <div className="rounded-xl border border-sky-500/20 bg-sky-500/[0.03] p-3 space-y-3">
       <div className="text-[11px] font-medium text-sky-300">
-        {preset ? "编辑模板" : "新建模板"}
+        {preset ? "编辑预制" : "新建预制"}
       </div>
 
       <div className="grid grid-cols-2 gap-2">
@@ -603,7 +603,7 @@ function PresetForm({
             type="text"
             value={name}
             onChange={(e) => handleNameChange(e.target.value)}
-            placeholder="模板名称"
+            placeholder="预制名称"
             className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
           />
         </label>
