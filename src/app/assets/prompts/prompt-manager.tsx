@@ -416,19 +416,21 @@ function PresetList({
         <PresetForm
           categoryId={category.id}
           preset={null}
-          onSave={(data) => {
+          onSave={(data, variantDrafts) => {
             startTransition(async () => {
               const newPreset = await createPreset(data);
-              // For new presets, we need to create the default variant
-              // The form manages variants internally but can't save them without a preset ID
-              // So we create the preset first, then the form's handleSubmit won't re-save
-              // Instead we create a default variant here
-              await createPresetVariant({
-                presetId: newPreset.id,
-                name: "默认",
-                slug: "default",
-                prompt: "",
-              });
+              // Save all variant drafts from the form
+              for (const v of variantDrafts) {
+                await createPresetVariant({
+                  presetId: newPreset.id,
+                  name: v.name.trim(),
+                  slug: v.slug.trim(),
+                  prompt: v.prompt.trim(),
+                  negativePrompt: v.negativePrompt.trim() || null,
+                  lora1: serializeLoraBindings(v.lora1),
+                  lora2: serializeLoraBindings(v.lora2),
+                });
+              }
               setIsCreating(false);
               onRefresh();
             });
@@ -450,7 +452,7 @@ function PresetList({
               key={preset.id}
               categoryId={category.id}
               preset={preset}
-              onSave={(data) => {
+              onSave={(data, _variantDrafts) => {
                 startTransition(async () => {
                   await updatePreset(preset.id, data);
                   setEditingId(null);
@@ -573,7 +575,7 @@ function PresetForm({
     slug: string;
     notes?: string | null;
     isActive?: boolean;
-  }) => void;
+  }, variantDrafts: VariantDraft[]) => void;
   onDelete?: () => void;
   onCancel: () => void;
   isPending: boolean;
@@ -668,14 +670,14 @@ function PresetForm({
   }
 
   async function handleSubmit() {
-    // 1. Save preset (create or update)
+    // 1. Save preset (create or update) — pass variant drafts to parent
     onSave({
       categoryId,
       name: name.trim(),
       slug: slug.trim(),
       notes: notes.trim() || null,
       isActive: true,
-    });
+    }, variants);
 
     // 2. For existing preset, save all variants then sync to sections
     if (preset) {
