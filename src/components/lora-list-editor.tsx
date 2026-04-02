@@ -30,6 +30,8 @@ type LoraListEditorProps = {
   onChange: (entries: LoraEntry[]) => void;
   disabled?: boolean;
   readOnly?: boolean;
+  /** Preset binding info for delete protection */
+  presetBindings?: Array<{ bindingId: string; presetName: string; blockCount: number; loraCount: number }>;
 };
 
 // ---------------------------------------------------------------------------
@@ -215,6 +217,7 @@ export function LoraListEditor({
   onChange,
   disabled = false,
   readOnly = false,
+  presetBindings,
 }: LoraListEditorProps) {
   const dndId = useId();
   const sensors = useSensors(
@@ -235,6 +238,18 @@ export function LoraListEditor({
   }
 
   function handleRemove(id: string) {
+    const entry = entries.find((e) => e.id === id);
+    if (entry?.bindingId && presetBindings) {
+      const binding = presetBindings.find((b) => b.bindingId === entry.bindingId);
+      if (binding) {
+        if (!confirm(`此 LoRA 属于预制「${binding.presetName}」的绑定。\n删除将同时移除该绑定的所有 ${binding.blockCount} 个提示词块和 ${binding.loraCount} 个 LoRA。\n确认删除？`)) {
+          return;
+        }
+        // Remove all LoRAs with this bindingId
+        onChange(entries.filter((e) => e.bindingId !== entry.bindingId));
+        return;
+      }
+    }
     onChange(entries.filter((e) => e.id !== id));
   }
 

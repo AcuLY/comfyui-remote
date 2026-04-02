@@ -41,15 +41,6 @@ import {
 // Types
 // ---------------------------------------------------------------------------
 
-type LibraryItem = {
-  id: string;
-  name: string;
-  prompt: string;
-  negativePrompt: string | null;
-  lora1?: unknown;
-  lora2?: unknown;
-};
-
 /** V2 dynamic library: categories from DB */
 export type PromptLibraryV2 = {
   categories: Array<{
@@ -301,7 +292,7 @@ type BlockColumnProps = {
   isAdding: boolean;
   onAdd: () => void;
   onCancelAdd: () => void;
-  onSubmitAdd: (input: { type: string; label: string; positive: string; negative?: string | null; sourceId?: string; categoryId?: string | null }, item?: LibraryItem) => void;
+  onSubmitAdd: (input: { type: string; label: string; positive: string; negative?: string | null }) => void;
   libraryV2?: PromptLibraryV2;
   categoryMap: Map<string, CategoryConfig>;
 };
@@ -388,7 +379,6 @@ function BlockColumn({
             onAdd={onSubmitAdd}
             onCancel={onCancelAdd}
             isPending={isSaving}
-            libraryV2={libraryV2}
           />
         </div>
       ) : (
@@ -406,222 +396,51 @@ function BlockColumn({
 }
 
 // ---------------------------------------------------------------------------
-// AddBlockForm — dynamic categories from PromptLibraryV2
+// AddBlockForm — custom blocks only (preset import moved to SectionEditor)
 // ---------------------------------------------------------------------------
 
 type AddBlockFormProps = {
   polarity: "positive" | "negative";
-  onAdd: (input: { type: string; label: string; positive: string; negative?: string | null; sourceId?: string; categoryId?: string | null }, item?: LibraryItem) => void;
+  onAdd: (input: { type: string; label: string; positive: string; negative?: string | null }) => void;
   onCancel: () => void;
   isPending: boolean;
-  libraryV2?: PromptLibraryV2;
 };
 
-type AddMode = "custom" | "library";
+function AddBlockForm({ polarity, onAdd, onCancel, isPending }: AddBlockFormProps) {
+  const [text, setText] = useState("");
 
-function AddBlockForm({
-  polarity,
-  onAdd,
-  onCancel,
-  isPending,
-  libraryV2,
-}: AddBlockFormProps) {
-  const [mode, setMode] = useState<AddMode>("custom");
-  const [positive, setPositive] = useState("");
-  const [negative, setNegative] = useState("");
-  const [selectedCatId, setSelectedCatId] = useState<string>("");
-  const [selectedId, setSelectedId] = useState<string>("");
-
-  // Get categories that have presets with variants
-  const categoriesWithPresets = useMemo(
-    () => (libraryV2?.categories ?? []).filter((c) => c.presets.some((p) => p.variants.length > 0)),
-    [libraryV2],
-  );
-
-  // Auto-select first category
-  useEffect(() => {
-    if (categoriesWithPresets.length > 0 && !selectedCatId) {
-      setSelectedCatId(categoriesWithPresets[0].id);
-    }
-  }, [categoriesWithPresets, selectedCatId]);
-
-  const selectedCategory = categoriesWithPresets.find((c) => c.id === selectedCatId);
-  const libraryItems = useMemo(() => {
-    if (!selectedCategory) return [];
-    return selectedCategory.presets.flatMap((preset) =>
-      preset.variants.map((v) => ({
-        id: v.id,
-        name: preset.variants.length === 1 ? preset.name : `${preset.name} / ${v.name}`,
-        prompt: v.prompt,
-        negativePrompt: v.negativePrompt,
-        lora1: v.lora1,
-        lora2: v.lora2,
-      })),
-    );
-  }, [selectedCategory]);
-
-  // Reset selection when switching category
-  useEffect(() => {
-    setSelectedId("");
-  }, [selectedCatId]);
-
-  function handleSubmitCustom() {
-    const text = polarity === "positive" ? positive : negative;
+  function handleSubmit() {
     if (!text.trim()) return;
     onAdd({
       type: "custom",
       label: "自定义",
-      positive: polarity === "positive" ? positive.trim() : "",
-      negative: polarity === "negative" ? negative.trim() : null,
+      positive: polarity === "positive" ? text.trim() : "",
+      negative: polarity === "negative" ? text.trim() : null,
     });
   }
 
-  function handleSubmitLibrary() {
-    if (!selectedId || !selectedCategory) return;
-    const item = libraryItems.find((i) => i.id === selectedId);
-    if (!item) return;
-
-    onAdd(
-      {
-        type: "preset",
-        label: item.name,
-        positive: item.prompt,
-        negative: item.negativePrompt,
-        sourceId: item.id,
-        categoryId: selectedCategory.id,
-      },
-      {
-        id: item.id,
-        name: item.name,
-        prompt: item.prompt,
-        negativePrompt: item.negativePrompt,
-        lora1: item.lora1,
-        lora2: item.lora2,
-      },
-    );
-  }
-
-  const hasLibrary = categoriesWithPresets.length > 0;
-
   return (
     <div className="rounded-xl border border-sky-500/20 bg-sky-500/[0.03] p-3 space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="text-[11px] font-medium text-sky-300">
-          添加{polarity === "positive" ? "正面" : "负面"}提示词块
-        </div>
-        {hasLibrary && (
-          <div className="flex gap-1">
-            <button
-              type="button"
-              onClick={() => setMode("custom")}
-              className={`rounded-lg px-2 py-1 text-[10px] transition ${
-                mode === "custom"
-                  ? "bg-sky-500/20 text-sky-300"
-                  : "text-zinc-500 hover:text-zinc-300"
-              }`}
-            >
-              自定义
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode("library")}
-              className={`rounded-lg px-2 py-1 text-[10px] transition ${
-                mode === "library"
-                  ? "bg-sky-500/20 text-sky-300"
-                  : "text-zinc-500 hover:text-zinc-300"
-              }`}
-            >
-              从预制库导入
-            </button>
-          </div>
-        )}
+      <div className="text-[11px] font-medium text-sky-300">
+        添加{polarity === "positive" ? "正面" : "负面"}提示词块
       </div>
-
-      {mode === "custom" ? (
-        <>
-          <textarea
-            value={polarity === "positive" ? positive : negative}
-            onChange={(e) => polarity === "positive" ? setPositive(e.target.value) : setNegative(e.target.value)}
-            rows={2}
-            placeholder="提示词内容…"
-            className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30"
-          />
-          <div className="flex gap-1.5">
-            <button
-              type="button"
-              disabled={isPending || !(polarity === "positive" ? positive : negative).trim()}
-              onClick={handleSubmitCustom}
-              className="inline-flex items-center gap-1 rounded-lg bg-sky-500/20 px-2 py-1 text-[11px] text-sky-300 hover:bg-sky-500/30 disabled:opacity-50"
-            >
-              {isPending ? <Loader2 className="size-3 animate-spin" /> : <Plus className="size-3" />}
-              添加
-            </button>
-            <button type="button" onClick={onCancel} className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-2 py-1 text-[11px] text-zinc-400 hover:bg-white/[0.06]">
-              <X className="size-3" /> 取消
-            </button>
-          </div>
-        </>
-      ) : (
-        <>
-          {/* Dynamic category tabs */}
-          <div className="flex flex-wrap gap-1.5">
-            {categoriesWithPresets.map((cat) => (
-              <button
-                key={cat.id}
-                type="button"
-                onClick={() => setSelectedCatId(cat.id)}
-                className={`rounded-lg px-2 py-1 text-[10px] transition ${
-                  selectedCatId === cat.id
-                    ? "bg-white/10 text-white"
-                    : "text-zinc-500 hover:text-zinc-300"
-                }`}
-              >
-                {cat.name} ({cat.presets.reduce((n, p) => n + p.variants.length, 0)})
-              </button>
-            ))}
-          </div>
-
-          {/* Preset list */}
-          <div className="max-h-40 overflow-y-auto space-y-1">
-            {libraryItems.length === 0 ? (
-              <div className="text-center text-[11px] text-zinc-600 py-2">该分类暂无预制</div>
-            ) : (
-              libraryItems.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => setSelectedId(item.id)}
-                  className={`w-full rounded-lg border p-2 text-left transition ${
-                    selectedId === item.id
-                      ? "border-sky-500/30 bg-sky-500/10"
-                      : "border-white/5 bg-white/[0.02] hover:border-white/10"
-                  }`}
-                >
-                  <div className="text-[11px] font-medium text-zinc-200">{item.name}</div>
-                  <div className="mt-0.5 text-[10px] text-zinc-500 truncate">
-                    {item.prompt.slice(0, 50)}{item.prompt.length > 50 ? "..." : ""}
-                  </div>
-                </button>
-              ))
-            )}
-          </div>
-
-          <div className="flex gap-1.5">
-            <button
-              type="button"
-              disabled={isPending || !selectedId}
-              onClick={handleSubmitLibrary}
-              className="inline-flex items-center gap-1 rounded-lg bg-sky-500/20 px-2 py-1 text-[11px] text-sky-300 hover:bg-sky-500/30 disabled:opacity-50"
-            >
-              {isPending ? <Loader2 className="size-3 animate-spin" /> : <Plus className="size-3" />}
-              导入
-            </button>
-            <button type="button" onClick={onCancel} className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-2 py-1 text-[11px] text-zinc-400 hover:bg-white/[0.06]">
-              <X className="size-3" /> 取消
-            </button>
-          </div>
-        </>
-      )}
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        rows={2}
+        placeholder="提示词内容…"
+        className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30"
+      />
+      <div className="flex gap-1.5">
+        <button type="button" disabled={isPending || !text.trim()} onClick={handleSubmit}
+          className="inline-flex items-center gap-1 rounded-lg bg-sky-500/20 px-2 py-1 text-[11px] text-sky-300 hover:bg-sky-500/30 disabled:opacity-50">
+          {isPending ? <Loader2 className="size-3 animate-spin" /> : <Plus className="size-3" />} 添加
+        </button>
+        <button type="button" onClick={onCancel}
+          className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-2 py-1 text-[11px] text-zinc-400 hover:bg-white/[0.06]">
+          <X className="size-3" /> 取消
+        </button>
+      </div>
     </div>
   );
 }
@@ -634,23 +453,24 @@ export function PromptBlockEditor({
   sectionId,
   initialBlocks,
   libraryV2,
-  onBlockImport,
+  onDeleteConfirm,
+  onBlockDeleted,
 }: {
   sectionId: string;
   initialBlocks: PromptBlockData[];
   /** V2 dynamic library from PresetCategory/Preset */
   libraryV2?: PromptLibraryV2;
-  onBlockImport?: (
-    sourceType: string,
-    sourceId: string,
-    sourceName: string,
-    lora1Bindings?: unknown,
-    lora2Bindings?: unknown,
-    categoryName?: string,
-    categoryColor?: string | null,
-  ) => void;
+  /** Return false to cancel delete. Used for binding protection. */
+  onDeleteConfirm?: (blockId: string) => boolean;
+  /** Called after a block is deleted (for binding cascade). */
+  onBlockDeleted?: (blockId: string) => void;
 }) {
   const [blocks, setBlocks] = useState<PromptBlockData[]>(initialBlocks);
+
+  // Sync with parent state changes (e.g. after binding delete)
+  useEffect(() => {
+    setBlocks(initialBlocks);
+  }, [initialBlocks]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editColumn, setEditColumn] = useState<"positive" | "negative">("positive");
   const [editValue, setEditValue] = useState("");
@@ -699,10 +519,17 @@ export function PromptBlockEditor({
   // ---- Delete handler ----
 
   function handleDelete(blockId: string) {
-    if (!confirm("确认删除此提示词块？")) return;
+    // Check binding protection
+    if (onDeleteConfirm && !onDeleteConfirm(blockId)) return;
+    if (!onDeleteConfirm && !confirm("确认删除此提示词块？")) return;
+
     startTransition(async () => {
       await deleteSectionBlock(blockId);
-      setBlocks((prev) => prev.filter((b) => b.id !== blockId));
+      if (onBlockDeleted) {
+        onBlockDeleted(blockId);
+      } else {
+        setBlocks((prev) => prev.filter((b) => b.id !== blockId));
+      }
       if (editingId === blockId) cancelEdit();
     });
   }
@@ -711,7 +538,6 @@ export function PromptBlockEditor({
 
   function handleAdd(
     input: { type: string; label: string; positive: string; negative?: string | null; sourceId?: string; categoryId?: string | null },
-    libraryItem?: LibraryItem,
   ) {
     startTransition(async () => {
       const newBlock = await addSectionBlock(sectionId, {
@@ -724,23 +550,6 @@ export function PromptBlockEditor({
       });
       setBlocks((prev) => [...prev, newBlock]);
       setAddingColumn(null);
-
-      // Notify parent about imported LoRA if applicable
-      if (onBlockImport && libraryItem && input.sourceId) {
-        // Find the category info for this preset
-        const cat = libraryV2?.categories.find((c) =>
-          c.presets.some((p) => p.id === input.sourceId),
-        );
-        onBlockImport(
-          input.type === "preset" ? (input.categoryId ?? "preset") : input.type,
-          input.sourceId,
-          input.label,
-          libraryItem.lora1,
-          libraryItem.lora2,
-          cat?.name,
-          cat?.color,
-        );
-      }
     });
   }
 
