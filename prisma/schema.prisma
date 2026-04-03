@@ -81,6 +81,7 @@ model PresetVariant {
   lora1           Json?           // Array<LoraBinding> — stage 1
   lora2           Json?           // Array<LoraBinding> — stage 2 (upscale)
   defaultParams   Json?           // generation param defaults (aspect, batch, ksampler, etc.)
+  linkedVariants  Json?           // [{ presetId: string, variantId: string }] — linked variant refs
   sortOrder       Int             @default(0)
   isActive        Boolean         @default(true)
   createdAt       DateTime        @default(now())
@@ -89,6 +90,29 @@ model PresetVariant {
 
   @@unique([presetId, slug])
   @@index([presetId, sortOrder])
+}
+
+model PresetGroup {
+  id          String               @id @default(cuid())
+  name        String
+  slug        String               @unique
+  sortOrder   Int                  @default(0)
+  isActive    Boolean              @default(true)
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  members     PresetGroupMember[]
+}
+
+model PresetGroupMember {
+  id          String      @id @default(cuid())
+  groupId     String
+  presetId    String?     // reference a preset (+ optional variantId)
+  variantId   String?     // specific variant of the preset
+  subGroupId  String?     // or reference another group (mutually exclusive with presetId)
+  sortOrder   Int         @default(0)
+  group       PresetGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([groupId, sortOrder])
 }
 
 // ── Core models ──

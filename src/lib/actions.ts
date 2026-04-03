@@ -571,6 +571,76 @@ export async function deletePresetVariant(id: string) {
 }
 
 // ---------------------------------------------------------------------------
+// Variant content resolution (handles linkedVariants recursively)
+// ---------------------------------------------------------------------------
+
+export type ResolvedVariantContent = {
+  prompt: string;
+  negativePrompt: string | null;
+  lora1: Array<{ path: string; weight: number; enabled: boolean }>;
+  lora2: Array<{ path: string; weight: number; enabled: boolean }>;
+};
+
+/** Recursively resolve a variant's content including linked variants. */
+export async function resolveVariantContent(
+  variantId: string,
+  visited = new Set<string>(),
+): Promise<ResolvedVariantContent> {
+  const empty: ResolvedVariantContent = { prompt: "", negativePrompt: null, lora1: [], lora2: [] };
+  if (visited.has(variantId)) return empty;
+  visited.add(variantId);
+
+  const variant = await prisma.presetVariant.findUnique({ where: { id: variantId } });
+  if (!variant || !variant.isActive) return empty;
+
+  let prompt = variant.prompt;
+  let negativePrompt = variant.negativePrompt;
+
+  // Parse own LoRAs
+  const parseLora = (json: unknown): Array<{ path: string; weight: number; enabled: boolean }> => {
+    if (!json || !Array.isArray(json)) return [];
+    return json.filter(
+      (item): item is { path: string; weight: number; enabled: boolean } =>
+        typeof item === "object" && item !== null &&
+        typeof item.path === "string" &&
+        typeof item.weight === "number" &&
+        typeof item.enabled === "boolean",
+    );
+  };
+
+  const lora1 = parseLora(variant.lora1);
+  const lora2 = parseLora(variant.lora2);
+
+  // Resolve linked variants
+  const linked = Array.isArray(variant.linkedVariants)
+    ? (variant.linkedVariants as Array<{ presetId: string; variantId: string }>)
+    : [];
+
+  for (const ref of linked) {
+    const resolved = await resolveVariantContent(ref.variantId, visited);
+    if (resolved.prompt) prompt += "\n" + resolved.prompt;
+    if (resolved.negativePrompt) {
+      negativePrompt = negativePrompt
+        ? negativePrompt + "\n" + resolved.negativePrompt
+        : resolved.negativePrompt;
+    }
+    for (const l of resolved.lora1) {
+      if (!lora1.some((e) => e.path === l.path)) lora1.push(l);
+    }
+    for (const l of resolved.lora2) {
+      if (!lora2.some((e) => e.path === l.path)) lora2.push(l);
+    }
+  }
+
+  return { prompt, negativePrompt, lora1, lora2 };
+}
+
+/** Resolve variant content for frontend import (server action wrapper) */
+export async function resolveVariantForImport(variantId: string): Promise<ResolvedVariantContent> {
+  return resolveVariantContent(variantId);
+}
+
+// ---------------------------------------------------------------------------
 // Preset usage check + cascade operations
 // ---------------------------------------------------------------------------
 
@@ -691,7 +761,6 @@ export async function deletePresetCascade(presetId: string) {
 
 /** Sync preset variant content to all sections that imported it */
 export async function syncPresetToSections(presetId: string) {
-  // 1. Load preset with active variants
   const preset = await prisma.preset.findUnique({
     where: { id: presetId },
     include: {
@@ -702,43 +771,29 @@ export async function syncPresetToSections(presetId: string) {
   if (!preset || preset.variants.length === 0) return;
 
   const defaultVariant = preset.variants[0];
-
-  // 2. Find all blocks referencing this preset
   const blocks = await prisma.promptBlock.findMany({
     where: { sourceId: presetId },
     select: { id: true, bindingId: true, projectSectionId: true, label: true },
   });
-
   if (blocks.length === 0) return;
 
-  // 3. Update each block's prompt content
   for (const block of blocks) {
-    // Try to match variant by label, fallback to default
     let variant = defaultVariant;
     for (const v of preset.variants) {
       const expectedLabel = preset.variants.length === 1
-        ? preset.name
-        : `${preset.name} / ${v.name}`;
-      if (block.label === expectedLabel) {
-        variant = v;
-        break;
-      }
+        ? preset.name : `${preset.name} / ${v.name}`;
+      if (block.label === expectedLabel) { variant = v; break; }
     }
 
+    const resolved = await resolveVariantContent(variant.id);
     const label = preset.variants.length === 1
-      ? preset.name
-      : `${preset.name} / ${variant.name}`;
+      ? preset.name : `${preset.name} / ${variant.name}`;
 
     await prisma.promptBlock.update({
       where: { id: block.id },
-      data: {
-        label,
-        positive: variant.prompt,
-        negative: variant.negativePrompt,
-      },
+      data: { label, positive: resolved.prompt, negative: resolved.negativePrompt },
     });
 
-    // 4. Update LoRA in section's loraConfig if this block has a bindingId
     if (block.bindingId) {
       const section = await prisma.projectSection.findUnique({
         where: { id: block.projectSectionId },
@@ -751,47 +806,21 @@ export async function syncPresetToSections(presetId: string) {
         lora2?: Array<Record<string, unknown>>;
       };
       let changed = false;
-
-      // Parse variant LoRA bindings
-      const variantLora1 = Array.isArray(variant.lora1) ? (variant.lora1 as Array<{ path: string; weight: number; enabled: boolean }>) : [];
-      const variantLora2 = Array.isArray(variant.lora2) ? (variant.lora2 as Array<{ path: string; weight: number; enabled: boolean }>) : [];
-
-      // Replace LoRAs with this bindingId in lora1
+      const makeLora = (b: { path: string; weight: number; enabled: boolean }) => ({
+        id: `lora-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+        path: b.path, weight: b.weight, enabled: b.enabled,
+        source: "preset", sourceLabel: preset.category.name,
+        sourceColor: preset.category.color, sourceName: preset.name,
+        bindingId: block.bindingId,
+      });
       if (config.lora1) {
-        const otherLoras = config.lora1.filter((e) => e.bindingId !== block.bindingId);
-        const newLoras = variantLora1.map((b) => ({
-          id: `lora-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-          path: b.path,
-          weight: b.weight,
-          enabled: b.enabled,
-          source: "preset",
-          sourceLabel: preset.category.name,
-          sourceColor: preset.category.color,
-          sourceName: preset.name,
-          bindingId: block.bindingId,
-        }));
-        config.lora1 = [...otherLoras, ...newLoras];
+        config.lora1 = [...config.lora1.filter((e) => e.bindingId !== block.bindingId), ...resolved.lora1.map(makeLora)];
         changed = true;
       }
-
-      // Replace LoRAs with this bindingId in lora2
       if (config.lora2) {
-        const otherLoras = config.lora2.filter((e) => e.bindingId !== block.bindingId);
-        const newLoras = variantLora2.map((b) => ({
-          id: `lora-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-          path: b.path,
-          weight: b.weight,
-          enabled: b.enabled,
-          source: "preset",
-          sourceLabel: preset.category.name,
-          sourceColor: preset.category.color,
-          sourceName: preset.name,
-          bindingId: block.bindingId,
-        }));
-        config.lora2 = [...otherLoras, ...newLoras];
+        config.lora2 = [...config.lora2.filter((e) => e.bindingId !== block.bindingId), ...resolved.lora2.map(makeLora)];
         changed = true;
       }
-
       if (changed) {
         await prisma.projectSection.update({
           where: { id: block.projectSectionId },
@@ -800,7 +829,6 @@ export async function syncPresetToSections(presetId: string) {
       }
     }
   }
-
   revalidatePath("/projects");
 }
 
@@ -820,6 +848,86 @@ export async function reorderPresetVariants(presetId: string, ids: string[]) {
     ),
   );
   revalidatePath("/assets/prompts");
+}
+
+// ---------------------------------------------------------------------------
+// PresetGroup CRUD
+// ---------------------------------------------------------------------------
+
+export type PresetGroupInput = {
+  name: string;
+  slug: string;
+  sortOrder?: number;
+};
+
+export type PresetGroupMemberInput = {
+  groupId: string;
+  presetId?: string;
+  variantId?: string;
+  subGroupId?: string;
+};
+
+export async function createPresetGroup(input: PresetGroupInput) {
+  if (input.sortOrder === undefined) {
+    const maxOrder = await prisma.presetGroup.aggregate({ _max: { sortOrder: true } });
+    input.sortOrder = (maxOrder._max.sortOrder ?? -1) + 1;
+  }
+  const group = await prisma.presetGroup.create({ data: input });
+  revalidatePath("/assets/prompts");
+  return group;
+}
+
+export async function updatePresetGroup(id: string, input: Partial<PresetGroupInput>) {
+  const group = await prisma.presetGroup.update({ where: { id }, data: input });
+  revalidatePath("/assets/prompts");
+  return group;
+}
+
+export async function deletePresetGroup(id: string) {
+  await prisma.presetGroup.update({ where: { id }, data: { isActive: false } });
+  revalidatePath("/assets/prompts");
+}
+
+export async function addGroupMember(input: PresetGroupMemberInput) {
+  const maxOrder = await prisma.presetGroupMember.aggregate({
+    where: { groupId: input.groupId },
+    _max: { sortOrder: true },
+  });
+  const member = await prisma.presetGroupMember.create({
+    data: { ...input, sortOrder: (maxOrder._max.sortOrder ?? -1) + 1 },
+  });
+  revalidatePath("/assets/prompts");
+  return member;
+}
+
+export async function removeGroupMember(memberId: string) {
+  await prisma.presetGroupMember.delete({ where: { id: memberId } });
+  revalidatePath("/assets/prompts");
+}
+
+/** Recursively flatten a group into preset+variant pairs, preventing cycles. */
+export async function flattenGroup(
+  groupId: string,
+  visited = new Set<string>(),
+): Promise<Array<{ presetId: string; variantId?: string }>> {
+  if (visited.has(groupId)) return [];
+  visited.add(groupId);
+
+  const members = await prisma.presetGroupMember.findMany({
+    where: { groupId },
+    orderBy: { sortOrder: "asc" },
+  });
+
+  const result: Array<{ presetId: string; variantId?: string }> = [];
+  for (const m of members) {
+    if (m.subGroupId) {
+      const sub = await flattenGroup(m.subGroupId, visited);
+      result.push(...sub);
+    } else if (m.presetId) {
+      result.push({ presetId: m.presetId, variantId: m.variantId ?? undefined });
+    }
+  }
+  return result;
 }
 
 // ---------------------------------------------------------------------------
@@ -907,6 +1015,74 @@ export async function reorderSectionBlocks(
   const reordered = await reorderPromptBlocks(sectionId, blockIds);
   audit("PromptBlock", sectionId, "reorder", { blockIds }, "user" as const);
   return reordered;
+}
+
+// ---------------------------------------------------------------------------
+// Import preset to section (resolves linkedVariants server-side)
+// ---------------------------------------------------------------------------
+
+export type ImportPresetResult = {
+  block: PromptBlockData;
+  lora1: Array<{ id: string; path: string; weight: number; enabled: boolean; source: string; sourceLabel: string; sourceColor?: string; sourceName: string; bindingId: string }>;
+  lora2: Array<{ id: string; path: string; weight: number; enabled: boolean; source: string; sourceLabel: string; sourceColor?: string; sourceName: string; bindingId: string }>;
+};
+
+/** Import a preset variant into a section, resolving linkedVariants server-side */
+export async function importPresetToSection(
+  sectionId: string,
+  presetId: string,
+  variantId: string,
+): Promise<ImportPresetResult | null> {
+  const preset = await prisma.preset.findUnique({
+    where: { id: presetId },
+    include: {
+      category: { select: { id: true, name: true, color: true } },
+      variants: { where: { isActive: true }, orderBy: { sortOrder: "asc" } },
+    },
+  });
+  if (!preset) return null;
+
+  const variant = preset.variants.find((v) => v.id === variantId) ?? preset.variants[0];
+  if (!variant) return null;
+
+  // Resolve with linked variants
+  const resolved = await resolveVariantContent(variant.id);
+
+  const bindingId = `bind-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+  const label = preset.variants.length === 1
+    ? preset.name
+    : `${preset.name} / ${variant.name}`;
+
+  // Create prompt block
+  const { createPromptBlock } = await import("@/server/repositories/prompt-block-repository");
+  const block = await createPromptBlock(sectionId, {
+    type: "preset" as "custom" | "preset",
+    sourceId: presetId,
+    categoryId: preset.category.id,
+    bindingId,
+    label,
+    positive: resolved.prompt,
+    negative: resolved.negativePrompt,
+  });
+
+  // Build LoRA entries
+  const makeLora = (b: { path: string; weight: number; enabled: boolean }) => ({
+    id: `lora-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+    path: b.path,
+    weight: b.weight,
+    enabled: b.enabled,
+    source: "preset" as const,
+    sourceLabel: preset.category.name,
+    sourceColor: preset.category.color ?? undefined,
+    sourceName: preset.name,
+    bindingId,
+  });
+
+  return {
+    block,
+    lora1: resolved.lora1.map(makeLora),
+    lora2: resolved.lora2.map(makeLora),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -1004,6 +1180,9 @@ export async function addSection(projectId: string, name?: string): Promise<stri
         : preset.variants[0];
 
       if (variant) {
+        // Resolve with linked variants
+        const resolved = await resolveVariantContent(variant.id);
+
         // Generate a bindingId to link this block with its LoRAs
         const bindingId = `bind-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 
@@ -1014,9 +1193,9 @@ export async function addSection(projectId: string, name?: string): Promise<stri
             sourceId: preset.id,
             categoryId: preset.categoryId,
             bindingId,
-            label: `${preset.name} - ${variant.name}`,
-            positive: variant.prompt,
-            negative: variant.negativePrompt,
+            label: `${preset.name} / ${variant.name}`,
+            positive: resolved.prompt,
+            negative: resolved.negativePrompt,
             sortOrder: blockSortOrder++,
           },
         });

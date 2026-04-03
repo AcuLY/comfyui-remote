@@ -732,6 +732,8 @@ export type PresetItem = {
   variantCount: number;
 };
 
+export type LinkedVariantRef = { presetId: string; variantId: string };
+
 export type PresetVariantItem = {
   id: string;
   presetId: string;
@@ -742,6 +744,7 @@ export type PresetVariantItem = {
   lora1: unknown;
   lora2: unknown;
   defaultParams: unknown;
+  linkedVariants: LinkedVariantRef[];
   sortOrder: number;
   isActive: boolean;
 };
@@ -821,6 +824,7 @@ export async function getPresetCategoriesWithPresets(): Promise<PresetCategoryFu
         lora1: v.lora1,
         lora2: v.lora2,
         defaultParams: v.defaultParams,
+        linkedVariants: (Array.isArray(v.linkedVariants) ? v.linkedVariants : []) as LinkedVariantRef[],
         sortOrder: v.sortOrder,
         isActive: v.isActive,
       })),
@@ -846,30 +850,85 @@ export type PromptLibraryV2 = {
         negativePrompt: string | null;
         lora1: unknown;
         lora2: unknown;
+        linkedVariants: unknown;
       }>;
+    }>;
+  }>;
+  groups: Array<{
+    id: string;
+    name: string;
+    slug: string;
+    members: Array<{
+      id: string;
+      presetId: string | null;
+      variantId: string | null;
+      subGroupId: string | null;
+      presetName?: string;
+      variantName?: string;
+      subGroupName?: string;
     }>;
   }>;
 };
 
 export async function getPromptLibraryV2(): Promise<PromptLibraryV2> {
-  const categories = await prisma.presetCategory.findMany({
-    orderBy: { sortOrder: "asc" },
-    include: {
-      presets: {
-        where: { isActive: true },
-        orderBy: { sortOrder: "asc" },
-        select: {
-          id: true,
-          name: true,
-          variants: {
-            where: { isActive: true },
-            orderBy: { sortOrder: "asc" },
-            select: { id: true, name: true, prompt: true, negativePrompt: true, lora1: true, lora2: true },
+  const [categories, groups] = await Promise.all([
+    prisma.presetCategory.findMany({
+      orderBy: { sortOrder: "asc" },
+      include: {
+        presets: {
+          where: { isActive: true },
+          orderBy: { sortOrder: "asc" },
+          select: {
+            id: true,
+            name: true,
+            variants: {
+              where: { isActive: true },
+              orderBy: { sortOrder: "asc" },
+              select: { id: true, name: true, prompt: true, negativePrompt: true, lora1: true, lora2: true, linkedVariants: true },
+            },
           },
         },
       },
-    },
-  });
+    }),
+    prisma.presetGroup.findMany({
+      where: { isActive: true },
+      orderBy: { sortOrder: "asc" },
+      include: {
+        members: {
+          orderBy: { sortOrder: "asc" },
+        },
+      },
+    }),
+  ]);
+
+  // Resolve member display names
+  const allPresetIds = new Set<string>();
+  const allVariantIds = new Set<string>();
+  const allGroupIds = new Set<string>();
+  for (const g of groups) {
+    for (const m of g.members) {
+      if (m.presetId) allPresetIds.add(m.presetId);
+      if (m.variantId) allVariantIds.add(m.variantId);
+      if (m.subGroupId) allGroupIds.add(m.subGroupId);
+    }
+  }
+
+  const [presetNames, variantNames, groupNames] = await Promise.all([
+    allPresetIds.size > 0
+      ? prisma.preset.findMany({ where: { id: { in: [...allPresetIds] } }, select: { id: true, name: true } })
+      : [],
+    allVariantIds.size > 0
+      ? prisma.presetVariant.findMany({ where: { id: { in: [...allVariantIds] } }, select: { id: true, name: true } })
+      : [],
+    allGroupIds.size > 0
+      ? prisma.presetGroup.findMany({ where: { id: { in: [...allGroupIds] } }, select: { id: true, name: true } })
+      : [],
+  ]);
+
+  const presetNameMap = new Map(presetNames.map((p) => [p.id, p.name]));
+  const variantNameMap = new Map(variantNames.map((v) => [v.id, v.name]));
+  const groupNameMap = new Map(groupNames.map((g) => [g.id, g.name]));
+
   return {
     categories: categories.map((c) => ({
       id: c.id,
@@ -878,6 +937,20 @@ export async function getPromptLibraryV2(): Promise<PromptLibraryV2> {
       color: c.color,
       icon: c.icon,
       presets: c.presets,
+    })),
+    groups: groups.map((g) => ({
+      id: g.id,
+      name: g.name,
+      slug: g.slug,
+      members: g.members.map((m) => ({
+        id: m.id,
+        presetId: m.presetId,
+        variantId: m.variantId,
+        subGroupId: m.subGroupId,
+        presetName: m.presetId ? presetNameMap.get(m.presetId) : undefined,
+        variantName: m.variantId ? variantNameMap.get(m.variantId) : undefined,
+        subGroupName: m.subGroupId ? groupNameMap.get(m.subGroupId) : undefined,
+      })),
     })),
   };
 }

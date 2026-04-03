@@ -549,6 +549,8 @@ function PresetCard({
 // PresetForm — create/edit form for a preset with inline variant editing
 // ---------------------------------------------------------------------------
 
+type LinkedVariantRef = { presetId: string; variantId: string };
+
 type VariantDraft = {
   id?: string; // undefined = new variant
   name: string;
@@ -557,6 +559,7 @@ type VariantDraft = {
   negativePrompt: string;
   lora1: import("@/lib/lora-types").LoraBinding[];
   lora2: import("@/lib/lora-types").LoraBinding[];
+  linkedVariants: LinkedVariantRef[];
 };
 
 function PresetForm({

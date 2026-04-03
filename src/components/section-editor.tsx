@@ -6,15 +6,11 @@ import { PromptBlockEditor } from "@/components/prompt-block-editor";
 import { LoraListEditor } from "@/components/lora-list-editor";
 import type { PromptBlockData } from "@/lib/actions";
 import {
-  addSectionBlock,
   deleteSectionBlock,
+  importPresetToSection,
 } from "@/lib/actions";
 import type { LoraEntry } from "@/lib/lora-types";
 import type { PromptLibraryV2 } from "@/components/prompt-block-editor";
-import {
-  parseLoraBindings,
-  generateLoraEntryId,
-} from "@/lib/lora-types";
 
 /** 2-partition LoRA config (lora1 + lora2 only) */
 type LoraConfig2 = {
@@ -81,76 +77,38 @@ export function SectionEditor({
     return [...map.values()];
   }, [blocks, lora1, lora2]);
 
-  // ── Import a preset (creates blocks + loras with shared bindingId) ──
+  // ── Import a preset (server-side resolution of linkedVariants) ──
   function handlePresetImport(
     presetId: string,
-    presetName: string,
-    variantName: string,
-    prompt: string,
-    negativePrompt: string | null,
-    lora1Bindings: unknown,
-    lora2Bindings: unknown,
-    categoryId: string,
-    categoryName: string,
-    categoryColor: string | null,
+    _presetName: string,
+    variantId: string,
+    _variantName: string,
+    _prompt: string,
+    _negativePrompt: string | null,
+    _lora1Bindings: unknown,
+    _lora2Bindings: unknown,
+    _categoryId: string,
+    _categoryName: string,
+    _categoryColor: string | null,
   ) {
-    const bindingId = `bind-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-    const label = variantName ? `${presetName} / ${variantName}` : presetName;
-
     startTransition(async () => {
-      // 1. Create prompt block
-      const newBlock = await addSectionBlock(sectionId, {
-        type: "preset",
-        label,
-        positive: prompt,
-        negative: negativePrompt,
-        sourceId: presetId,
-        categoryId,
-        bindingId,
-      });
-      setBlocks((prev) => [...prev, newBlock]);
+      const result = await importPresetToSection(sectionId, presetId, variantId);
+      if (!result) return;
 
-      // 2. Add LoRAs
+      setBlocks((prev) => [...prev, result.block]);
+
+      // Add LoRAs
       let updatedLora1 = [...lora1];
       let updatedLora2 = [...lora2];
       let loraChanged = false;
 
-      const sourceLabel = categoryName;
-      if (lora1Bindings) {
-        const bindings = parseLoraBindings(lora1Bindings);
-        for (const binding of bindings) {
-          if (!binding.path) continue;
-          updatedLora1.push({
-            id: generateLoraEntryId(),
-            path: binding.path,
-            weight: binding.weight,
-            enabled: binding.enabled,
-            source: "preset",
-            sourceLabel,
-            sourceColor: categoryColor ?? undefined,
-            sourceName: presetName,
-            bindingId,
-          });
-          loraChanged = true;
-        }
+      for (const l of result.lora1) {
+        updatedLora1.push({ ...l, source: "preset" as const });
+        loraChanged = true;
       }
-      if (lora2Bindings) {
-        const bindings = parseLoraBindings(lora2Bindings);
-        for (const binding of bindings) {
-          if (!binding.path) continue;
-          updatedLora2.push({
-            id: generateLoraEntryId(),
-            path: binding.path,
-            weight: binding.weight,
-            enabled: binding.enabled,
-            source: "preset",
-            sourceLabel,
-            sourceColor: categoryColor ?? undefined,
-            sourceName: presetName,
-            bindingId,
-          });
-          loraChanged = true;
-        }
+      for (const l of result.lora2) {
+        updatedLora2.push({ ...l, source: "preset" as const });
+        loraChanged = true;
       }
 
       if (loraChanged) {
@@ -362,6 +320,7 @@ function ImportPresetPanel({
   onImport: (
     presetId: string,
     presetName: string,
+    variantId: string,
     variantName: string,
     prompt: string,
     negativePrompt: string | null,
@@ -440,6 +399,7 @@ function ImportPresetPanel({
                 onImport(
                   item.presetId,
                   item.presetName,
+                  item.variantId,
                   item.variantName,
                   item.prompt,
                   item.negativePrompt,
