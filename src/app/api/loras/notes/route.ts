@@ -27,17 +27,19 @@ export async function GET(request: NextRequest) {
 
   const assets = await db.loraAsset.findMany({
     where: { absolutePath: { in: absolutePaths } },
-    select: { absolutePath: true, notes: true },
+    select: { absolutePath: true, notes: true, triggerWords: true },
   });
 
-  // Build map: relativePath → notes
-  const result: Record<string, string> = {};
+  // Build map: relativePath → { notes, triggerWords }
+  const result: Record<string, { notes?: string; triggerWords?: string }> = {};
   for (const asset of assets) {
-    if (asset.notes) {
+    if (asset.notes || asset.triggerWords) {
       const rp = path
         .relative(env.loraBaseDir, asset.absolutePath)
         .replace(/\\/g, "/");
-      result[rp] = asset.notes;
+      result[rp] = {};
+      if (asset.notes) result[rp].notes = asset.notes;
+      if (asset.triggerWords) result[rp].triggerWords = asset.triggerWords;
     }
   }
 
@@ -57,7 +59,7 @@ export async function PUT(request: NextRequest) {
     return fail("LORA_BASE_DIR is not configured.", 500);
   }
 
-  let body: { path?: string; notes?: string };
+  let body: { path?: string; notes?: string; triggerWords?: string };
   try {
     body = await request.json();
   } catch {
@@ -66,6 +68,7 @@ export async function PUT(request: NextRequest) {
 
   const relativePath = body.path;
   const notes = body.notes ?? "";
+  const triggerWords = body.triggerWords ?? "";
 
   if (typeof relativePath !== "string" || !relativePath.trim()) {
     return fail("path is required", 400);
@@ -88,7 +91,7 @@ export async function PUT(request: NextRequest) {
   // Upsert: update if exists, create if not
   const asset = await db.loraAsset.upsert({
     where: { absolutePath },
-    update: { notes },
+    update: { notes, triggerWords },
     create: {
       name,
       category,
@@ -96,8 +99,9 @@ export async function PUT(request: NextRequest) {
       absolutePath,
       relativePath: relativePath.replace(/\\/g, "/"),
       notes,
+      triggerWords,
     },
   });
 
-  return ok({ id: asset.id, notes: asset.notes });
+  return ok({ id: asset.id, notes: asset.notes, triggerWords: asset.triggerWords });
 }

@@ -72,15 +72,20 @@ export async function GET(request: NextRequest) {
       if (allAbsPaths.length > 0) {
         const assets = await db.loraAsset.findMany({
           where: { absolutePath: { in: allAbsPaths } },
-          select: { absolutePath: true, notes: true },
+          select: { absolutePath: true, notes: true, triggerWords: true },
         });
         const notesMap = new Map(
           assets.filter((a) => a.notes).map((a) => [a.absolutePath, a.notes!])
+        );
+        const triggerMap = new Map(
+          assets.filter((a) => a.triggerWords).map((a) => [a.absolutePath, a.triggerWords!])
         );
         for (const file of files) {
           const absPath = path.resolve(env.loraBaseDir, file.path);
           const note = notesMap.get(absPath);
           if (note) (file as Record<string, unknown>).notes = note;
+          const tw = triggerMap.get(absPath);
+          if (tw) (file as Record<string, unknown>).triggerWords = tw;
         }
       }
 
@@ -125,20 +130,25 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Batch-fetch notes from DB for all files in this directory
+    // Batch-fetch notes + triggerWords from DB for all files in this directory
     if (fileAbsolutePaths.length > 0) {
       const assets = await db.loraAsset.findMany({
         where: { absolutePath: { in: fileAbsolutePaths } },
-        select: { absolutePath: true, notes: true },
+        select: { absolutePath: true, notes: true, triggerWords: true },
       });
       const notesMap = new Map(
         assets.filter((a) => a.notes).map((a) => [a.absolutePath, a.notes!])
+      );
+      const triggerMap = new Map(
+        assets.filter((a) => a.triggerWords).map((a) => [a.absolutePath, a.triggerWords!])
       );
       for (const item of items) {
         if (item.type === "file") {
           const absPath = path.resolve(env.loraBaseDir, item.path);
           const note = notesMap.get(absPath);
           if (note) item.notes = note;
+          const tw = triggerMap.get(absPath);
+          if (tw) (item as Record<string, unknown>).triggerWords = tw;
         }
       }
     }

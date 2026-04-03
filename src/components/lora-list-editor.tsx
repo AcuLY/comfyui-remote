@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useCallback, useId } from "react";
-import { Plus, Trash2, GripVertical } from "lucide-react";
+import { useMemo, useCallback, useId, useState } from "react";
+import { Plus, Trash2, GripVertical, Zap } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -33,6 +33,63 @@ type LoraListEditorProps = {
   /** Preset binding info for delete protection */
   presetBindings?: Array<{ bindingId: string; presetName: string; blockCount: number; loraCount: number }>;
 };
+
+// ---------------------------------------------------------------------------
+// TriggerWordHint — shows trigger words on hover/click
+// ---------------------------------------------------------------------------
+
+function TriggerWordHint({ loraPath }: { loraPath: string }) {
+  const [triggerWords, setTriggerWords] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [show, setShow] = useState(false);
+
+  async function fetchTriggerWords() {
+    if (triggerWords !== null || loading) {
+      setShow(!show);
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/loras/notes?paths=${encodeURIComponent(loraPath)}`);
+      const json = await res.json();
+      const data = json.data?.[loraPath];
+      setTriggerWords(data?.triggerWords || "");
+      setShow(true);
+    } catch {
+      setTriggerWords("");
+      setShow(true);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (!loraPath) return null;
+
+  return (
+    <span className="relative inline-flex">
+      <button
+        type="button"
+        onClick={fetchTriggerWords}
+        onMouseEnter={() => { if (triggerWords !== null && triggerWords) setShow(true); }}
+        onMouseLeave={() => setShow(false)}
+        className="rounded p-0.5 text-amber-400/40 hover:text-amber-400/80 transition"
+        title="触发词"
+      >
+        <Zap className="size-3" />
+      </button>
+      {show && triggerWords && (
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 z-50 max-w-52 rounded-lg border border-amber-500/20 bg-zinc-900 px-2.5 py-1.5 text-[10px] text-amber-300 shadow-lg whitespace-pre-wrap">
+          {triggerWords}
+        </div>
+      )}
+      {show && triggerWords === "" && (
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 z-50 rounded-lg border border-white/10 bg-zinc-900 px-2.5 py-1.5 text-[10px] text-zinc-500 shadow-lg">
+          未设置触发词
+        </div>
+      )}
+    </span>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Color helpers for source tags
@@ -125,7 +182,7 @@ function SortableLoraRow({
 
         {/* Center: two rows */}
         <div className="flex-1 min-w-0 py-2 px-2.5 space-y-1.5">
-          {/* Row 1: name + source tag */}
+          {/* Row 1: name + source tag + trigger hint */}
           <div className="flex items-center gap-1.5">
             <span className="text-[11px] font-medium text-zinc-300 truncate">
               {displayName}
@@ -133,6 +190,7 @@ function SortableLoraRow({
             <span className={tagClassName} style={tagStyle}>
               {tagLabel}
             </span>
+            <TriggerWordHint loraPath={entry.path} />
           </div>
 
           {/* Row 2: toggle + selector/path + weight controls */}

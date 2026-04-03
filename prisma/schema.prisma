@@ -230,6 +230,7 @@ model LoraAsset {
   size                  BigInt?
   source                String?
   notes                 String?     @db.Text
+  triggerWords          String?     @db.Text  // trigger words for this LoRA
   uploadedAt            DateTime    @default(now())
   updatedAt             DateTime    @updatedAt
 }

@@ -13,6 +13,7 @@ import {
   FolderOpen,
   MessageSquare,
   Check,
+  Zap,
 } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -25,6 +26,7 @@ type BrowseItem = {
   path: string;
   size?: number;
   notes?: string;
+  triggerWords?: string;
 };
 
 type BrowseResult = {
@@ -221,6 +223,7 @@ export function LoraFileManager() {
   // Notes editing state
   const [editingNotesPath, setEditingNotesPath] = useState<string | null>(null);
   const [editingNotesText, setEditingNotesText] = useState("");
+  const [editingTriggerText, setEditingTriggerText] = useState("");
   const [savingNotes, setSavingNotes] = useState(false);
   const notesInputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -335,6 +338,7 @@ export function LoraFileManager() {
     }
     setEditingNotesPath(item.path);
     setEditingNotesText(item.notes ?? "");
+    setEditingTriggerText(item.triggerWords ?? "");
     // Focus the textarea after render
     setTimeout(() => notesInputRef.current?.focus(), 50);
   }
@@ -346,14 +350,14 @@ export function LoraFileManager() {
       const res = await fetch("/api/loras/notes", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path: editingNotesPath, notes: editingNotesText }),
+        body: JSON.stringify({ path: editingNotesPath, notes: editingNotesText, triggerWords: editingTriggerText }),
       });
       if (res.ok) {
         // Update local state
         setItems((prev) =>
           prev.map((item) =>
             item.path === editingNotesPath
-              ? { ...item, notes: editingNotesText || undefined }
+              ? { ...item, notes: editingNotesText || undefined, triggerWords: editingTriggerText || undefined }
               : item
           )
         );
@@ -459,6 +463,11 @@ export function LoraFileManager() {
                           {item.notes}
                         </span>
                       )}
+                      {item.triggerWords && editingNotesPath !== item.path && (
+                        <span className="block truncate text-[10px] text-amber-400/50 mt-0.5">
+                          <Zap className="inline size-2.5 mr-0.5" />{item.triggerWords}
+                        </span>
+                      )}
                     </div>
                     {item.size != null && (
                       <span className="shrink-0 text-[10px] text-zinc-600">
@@ -493,39 +502,54 @@ export function LoraFileManager() {
                 )}
               </div>
 
-              {/* Notes editor (inline, below the file row) */}
+              {/* Notes & trigger words editor (inline, below the file row) */}
               {editingNotesPath === item.path && (
-                <div className="ml-10 mr-3 mb-1 flex items-start gap-2">
-                  <textarea
-                    ref={notesInputRef}
-                    value={editingNotesText}
-                    onChange={(e) => setEditingNotesText(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault();
-                        handleSaveNotes();
-                      }
-                      if (e.key === "Escape") {
-                        setEditingNotesPath(null);
-                      }
-                    }}
-                    placeholder="添加备注…"
-                    rows={2}
-                    className="flex-1 resize-none rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1.5 text-xs text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleSaveNotes}
-                    disabled={savingNotes}
-                    className="shrink-0 rounded-lg bg-sky-500/10 p-1.5 text-sky-400 transition hover:bg-sky-500/20 disabled:opacity-50"
-                    title="保存 (Enter)"
-                  >
-                    {savingNotes ? (
-                      <Loader2 className="size-3.5 animate-spin" />
-                    ) : (
-                      <Check className="size-3.5" />
-                    )}
-                  </button>
+                <div className="ml-10 mr-3 mb-1 space-y-1.5">
+                  <div className="flex items-start gap-2">
+                    <div className="flex-1 space-y-1.5">
+                      <textarea
+                        ref={notesInputRef}
+                        value={editingNotesText}
+                        onChange={(e) => setEditingNotesText(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Escape") setEditingNotesPath(null);
+                        }}
+                        placeholder="别名/备注…"
+                        rows={1}
+                        className="w-full resize-none rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1.5 text-xs text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30"
+                      />
+                      <div className="flex items-center gap-1.5">
+                        <Zap className="size-3 shrink-0 text-amber-400/50" />
+                        <input
+                          type="text"
+                          value={editingTriggerText}
+                          onChange={(e) => setEditingTriggerText(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              handleSaveNotes();
+                            }
+                            if (e.key === "Escape") setEditingNotesPath(null);
+                          }}
+                          placeholder="触发词…"
+                          className="flex-1 rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1.5 text-xs text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-amber-500/30"
+                        />
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleSaveNotes}
+                      disabled={savingNotes}
+                      className="shrink-0 rounded-lg bg-sky-500/10 p-1.5 text-sky-400 transition hover:bg-sky-500/20 disabled:opacity-50"
+                      title="保存"
+                    >
+                      {savingNotes ? (
+                        <Loader2 className="size-3.5 animate-spin" />
+                      ) : (
+                        <Check className="size-3.5" />
+                      )}
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { ChevronRight, Folder, FileText, X, ChevronLeft, Search } from "lucide-react";
+import { ChevronRight, Folder, FileText, X, ChevronLeft, Search, Zap } from "lucide-react";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -13,6 +13,7 @@ type BrowseItem = {
   path: string;
   size?: number;
   notes?: string;
+  triggerWords?: string;
 };
 
 type BrowseResult = {
@@ -98,6 +99,7 @@ export function LoraCascadePicker({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedNotes, setSelectedNotes] = useState<string | null>(null);
+  const [selectedTrigger, setSelectedTrigger] = useState<string | null>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const search = useLoraSearch();
@@ -154,6 +156,7 @@ export function LoraCascadePicker({
     } else {
       onChange(item.path);
       setSelectedNotes(item.notes ?? null);
+      setSelectedTrigger(item.triggerWords ?? null);
       setOpen(false);
     }
   }
@@ -192,6 +195,11 @@ export function LoraCascadePicker({
             <span className="block truncate">{displayValue ?? placeholder}</span>
           )}
         </div>
+        {selectedTrigger && (
+          <span className="shrink-0 text-amber-400/50" title={`触发词: ${selectedTrigger}`}>
+            <Zap className="size-3" />
+          </span>
+        )}
         <ChevronRight className="size-3.5 shrink-0 text-zinc-500" />
       </button>
 
@@ -321,6 +329,11 @@ export function LoraCascadePicker({
                               <div className="truncate text-xs">{item.name}</div>
                             )}
                             <div className="truncate text-[10px] text-zinc-600">{dirHint}</div>
+                            {item.triggerWords && (
+                              <div className="truncate text-[10px] text-amber-400/50 flex items-center gap-0.5 mt-0.5">
+                                <Zap className="size-2.5 shrink-0" />{item.triggerWords}
+                              </div>
+                            )}
                           </div>
                           {item.size != null && (
                             <span className="shrink-0 text-[10px] text-zinc-600">
@@ -373,6 +386,11 @@ export function LoraCascadePicker({
                             </>
                           ) : (
                             <span className="truncate text-xs">{item.name}</span>
+                          )}
+                          {item.type === "file" && item.triggerWords && (
+                            <div className="truncate text-[10px] text-amber-400/50 flex items-center gap-0.5 mt-0.5">
+                              <Zap className="size-2.5 shrink-0" />{item.triggerWords}
+                            </div>
                           )}
                         </div>
                         {item.type === "file" && item.size != null && (
