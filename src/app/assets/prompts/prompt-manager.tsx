@@ -1,8 +1,25 @@
 "use client";
 
-import { useState, useEffect, useTransition, useCallback, useMemo } from "react";
+import { useState, useEffect, useTransition, useCallback, useMemo, useId } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import {
   Plus,
   Trash2,
@@ -33,17 +50,23 @@ import {
   getPresetUsage,
   deletePresetCascade,
   syncPresetToSections,
+  reorderPresetCategories,
+  reorderPresets,
   createPresetGroup,
   updatePresetGroup,
   deletePresetGroup,
   addGroupMember,
   removeGroupMember,
+  reorderPresetGroups,
+  reorderGroupMembers,
 } from "@/lib/actions";
 import { parseLoraBindings, serializeLoraBindings } from "@/lib/lora-types";
 
 // ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
+
+type PresetTab = "presets" | "groups";
 
 export function PromptManager({
   initialCategories,
@@ -56,6 +79,7 @@ export function PromptManager({
   const [isPending, startTransition] = useTransition();
   const [categories, setCategories] = useState(initialCategories);
   const [groups, setGroups] = useState(initialGroups);
+  const [activeTab, setActiveTab] = useState<PresetTab>("presets");
   const [selectedCatId, setSelectedCatId] = useState<string | null>(
     initialCategories[0]?.id ?? null,
   );
@@ -76,160 +100,272 @@ export function PromptManager({
 
   const selectedCat = categories.find((c) => c.id === selectedCatId) ?? null;
 
+  const catDndId = useId();
+  const catSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
   function refresh() {
     startTransition(() => router.refresh());
   }
 
+  function handleCatDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = categories.findIndex((c) => c.id === active.id);
+    const newIndex = categories.findIndex((c) => c.id === over.id);
+    const reordered = arrayMove(categories, oldIndex, newIndex);
+    setCategories(reordered);
+    startTransition(async () => {
+      await reorderPresetCategories(reordered.map((c) => c.id));
+    });
+  }
+
+  const totalPresets = categories.reduce((sum, c) => sum + c.presetCount, 0);
+
   return (
     <div className="space-y-4">
-      <SectionCard title="预制管理" subtitle="管理预制分类和预制项。每个分类下可创建多个预制，用于项目绑定和小节导入。">
-        <div className="flex flex-col gap-4 md:flex-row">
-          {/* Left panel: categories */}
-          <div className="w-full shrink-0 space-y-2 md:w-56">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">
-                分类
-              </span>
-              <div className="flex gap-1">
-                <Link
-                  href="/assets/prompts/sort-rules"
-                  className="rounded p-1 text-zinc-500 hover:bg-white/[0.06] hover:text-white"
-                  title="排序规则"
+      {/* Tab bar */}
+      <div className="flex items-center gap-1 rounded-2xl border border-white/10 bg-white/[0.03] p-1">
+        {([
+          { key: "presets" as const, label: "预制", badge: totalPresets },
+          { key: "groups" as const, label: "预制组", badge: groups.length },
+        ]).map((tab) => {
+          const isActive = activeTab === tab.key;
+          return (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm transition ${
+                isActive
+                  ? "bg-sky-500/20 text-sky-300"
+                  : "text-zinc-400 hover:bg-white/[0.06] hover:text-zinc-200"
+              }`}
+            >
+              {tab.label}
+              {tab.badge > 0 && (
+                <span
+                  className={`rounded-full px-1.5 py-0.5 text-[11px] font-medium ${
+                    isActive
+                      ? "bg-sky-500/30 text-sky-200"
+                      : "bg-white/10 text-zinc-500"
+                  }`}
                 >
-                  <Settings2 className="size-3.5" />
-                </Link>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowCatForm(true);
+                  {tab.badge}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Presets tab */}
+      {activeTab === "presets" && (
+        <SectionCard title="预制管理" subtitle="管理预制分类和预制项。每个分类下可创建多个预制，用于项目绑定和小节导入。">
+          <div className="flex flex-col gap-4 md:flex-row">
+            {/* Left panel: sortable categories */}
+            <div className="w-full shrink-0 space-y-2 md:w-56">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">
+                  分类
+                </span>
+                <div className="flex gap-1">
+                  <Link
+                    href="/assets/prompts/sort-rules"
+                    className="rounded p-1 text-zinc-500 hover:bg-white/[0.06] hover:text-white"
+                    title="排序规则"
+                  >
+                    <Settings2 className="size-3.5" />
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCatForm(true);
+                      setEditingCatId(null);
+                    }}
+                    className="rounded p-1 text-zinc-500 hover:bg-white/[0.06] hover:text-white"
+                  >
+                    <Plus className="size-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Sortable category list */}
+              <DndContext
+                id={catDndId}
+                sensors={catSensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleCatDragEnd}
+              >
+                <SortableContext
+                  items={categories.map((c) => c.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  {categories.map((cat) => (
+                    <SortableCategoryItem
+                      key={cat.id}
+                      cat={cat}
+                      isSelected={selectedCatId === cat.id}
+                      onSelect={() => {
+                        setSelectedCatId(cat.id);
+                        setShowCatForm(false);
+                      }}
+                      onEdit={() => {
+                        setEditingCatId(cat.id);
+                        setShowCatForm(true);
+                      }}
+                    />
+                  ))}
+                </SortableContext>
+              </DndContext>
+
+              {/* Category create/edit form */}
+              {showCatForm && (
+                <CategoryForm
+                  category={
+                    editingCatId
+                      ? categories.find((c) => c.id === editingCatId) ?? null
+                      : null
+                  }
+                  onSave={(data) => {
+                    startTransition(async () => {
+                      if (editingCatId) {
+                        await updatePresetCategory(editingCatId, data);
+                      } else {
+                        const cat = await createPresetCategory(data);
+                        setSelectedCatId(cat.id);
+                      }
+                      setShowCatForm(false);
+                      setEditingCatId(null);
+                      refresh();
+                    });
+                  }}
+                  onDelete={
+                    editingCatId
+                      ? () => {
+                          if (!confirm("确认删除此分类？")) return;
+                          startTransition(async () => {
+                            try {
+                              await deletePresetCategory(editingCatId);
+                              if (selectedCatId === editingCatId) {
+                                setSelectedCatId(categories[0]?.id ?? null);
+                              }
+                            } catch (e: unknown) {
+                              alert(e instanceof Error ? e.message : "删除失败");
+                            }
+                            setShowCatForm(false);
+                            setEditingCatId(null);
+                            refresh();
+                          });
+                        }
+                      : undefined
+                  }
+                  onCancel={() => {
+                    setShowCatForm(false);
                     setEditingCatId(null);
                   }}
-                  className="rounded p-1 text-zinc-500 hover:bg-white/[0.06] hover:text-white"
-                >
-                  <Plus className="size-3.5" />
-                </button>
-              </div>
+                  isPending={isPending}
+                />
+              )}
+
             </div>
 
-            {/* Category list */}
-            {categories.map((cat) => (
-              <div
-                key={cat.id}
-                role="button"
-                tabIndex={0}
-                onClick={() => {
-                  setSelectedCatId(cat.id);
-                  setShowCatForm(false);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    setSelectedCatId(cat.id);
-                    setShowCatForm(false);
-                  }
-                }}
-                className={`flex w-full items-center gap-2 rounded-xl border p-2.5 text-left transition cursor-pointer ${
-                  selectedCatId === cat.id
-                    ? "border-sky-500/30 bg-sky-500/10"
-                    : "border-white/5 bg-white/[0.02] hover:border-white/10"
-                }`}
-              >
-                <CategoryBadge color={cat.color} />
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs font-medium text-zinc-200 truncate">
-                    {cat.name}
-                  </div>
-                  <div className="text-[10px] text-zinc-500">
-                    {cat.presetCount} 个预制
-                  </div>
+            {/* Right panel: presets */}
+            <div className="flex-1 min-w-0">
+              {selectedCat ? (
+                <PresetList
+                  category={selectedCat}
+                  onRefresh={refresh}
+                  allCategories={categories}
+                />
+              ) : (
+                <div className="flex h-40 items-center justify-center text-xs text-zinc-500">
+                  选择或创建一个分类
                 </div>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setEditingCatId(cat.id);
-                    setShowCatForm(true);
-                  }}
-                  className="rounded p-1 text-zinc-600 hover:text-zinc-300"
-                >
-                  <Pencil className="size-3" />
-                </button>
-              </div>
-            ))}
-
-            {/* Category create/edit form */}
-            {showCatForm && (
-              <CategoryForm
-                category={
-                  editingCatId
-                    ? categories.find((c) => c.id === editingCatId) ?? null
-                    : null
-                }
-                onSave={(data) => {
-                  startTransition(async () => {
-                    if (editingCatId) {
-                      await updatePresetCategory(editingCatId, data);
-                    } else {
-                      const cat = await createPresetCategory(data);
-                      setSelectedCatId(cat.id);
-                    }
-                    setShowCatForm(false);
-                    setEditingCatId(null);
-                    refresh();
-                  });
-                }}
-                onDelete={
-                  editingCatId
-                    ? () => {
-                        if (!confirm("确认删除此分类？")) return;
-                        startTransition(async () => {
-                          try {
-                            await deletePresetCategory(editingCatId);
-                            if (selectedCatId === editingCatId) {
-                              setSelectedCatId(categories[0]?.id ?? null);
-                            }
-                          } catch (e: unknown) {
-                            alert(e instanceof Error ? e.message : "删除失败");
-                          }
-                          setShowCatForm(false);
-                          setEditingCatId(null);
-                          refresh();
-                        });
-                      }
-                    : undefined
-                }
-                onCancel={() => {
-                  setShowCatForm(false);
-                  setEditingCatId(null);
-                }}
-                isPending={isPending}
-              />
-            )}
-
+              )}
+            </div>
           </div>
+        </SectionCard>
+      )}
 
-          {/* Right panel: presets */}
-          <div className="flex-1 min-w-0">
-            {selectedCat ? (
-              <PresetList
-                category={selectedCat}
-                onRefresh={refresh}
-                allCategories={categories}
-              />
-            ) : (
-              <div className="flex h-40 items-center justify-center text-xs text-zinc-500">
-                选择或创建一个分类
-              </div>
-            )}
-          </div>
+      {/* Groups tab */}
+      {activeTab === "groups" && (
+        <GroupManager
+          groups={groups}
+          categories={categories}
+          onRefresh={refresh}
+        />
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// SortableCategoryItem
+// ---------------------------------------------------------------------------
+
+function SortableCategoryItem({
+  cat,
+  isSelected,
+  onSelect,
+  onEdit,
+}: {
+  cat: PresetCategoryFull;
+  isSelected: boolean;
+  onSelect: () => void;
+  onEdit: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: cat.id });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      role="button"
+      tabIndex={0}
+      onClick={onSelect}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") onSelect();
+      }}
+      className={`flex w-full items-center gap-1.5 rounded-xl border p-2.5 text-left transition cursor-pointer ${
+        isSelected
+          ? "border-sky-500/30 bg-sky-500/10"
+          : "border-white/5 bg-white/[0.02] hover:border-white/10"
+      }`}
+    >
+      <button
+        type="button"
+        className="cursor-grab touch-none text-zinc-600 hover:text-zinc-400"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="size-3" />
+      </button>
+      <CategoryBadge color={cat.color} />
+      <div className="flex-1 min-w-0">
+        <div className="text-xs font-medium text-zinc-200 truncate">
+          {cat.name}
         </div>
-      </SectionCard>
-
-      {/* Preset Group management */}
-      <GroupManager
-        groups={groups}
-        categories={categories}
-        onRefresh={refresh}
-      />
+        <div className="text-[10px] text-zinc-500">
+          {cat.presetCount} 个预制
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onEdit();
+        }}
+        className="rounded p-1 text-zinc-600 hover:text-zinc-300"
+      >
+        <Pencil className="size-3" />
+      </button>
     </div>
   );
 }
@@ -407,6 +543,29 @@ function PresetList({
   const [isPending, startTransition] = useTransition();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [presets, setPresets] = useState(category.presets);
+  const dndId = useId();
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  // Sync presets when category changes
+  useEffect(() => {
+    setPresets(category.presets);
+  }, [category.presets]);
+
+  function handlePresetDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = presets.findIndex((p) => p.id === active.id);
+    const newIndex = presets.findIndex((p) => p.id === over.id);
+    const reordered = arrayMove(presets, oldIndex, newIndex);
+    setPresets(reordered);
+    startTransition(async () => {
+      await reorderPresets(category.id, reordered.map((p) => p.id));
+    });
+  }
 
   return (
     <div className="space-y-3">
@@ -417,7 +576,7 @@ function PresetList({
             {category.name}
           </span>
           <span className="text-[10px] text-zinc-500">
-            {category.presets.length} 个预制
+            {presets.length} 个预制
           </span>
         </div>
         <button
@@ -463,70 +622,89 @@ function PresetList({
         />
       )}
 
-      {/* Preset cards */}
-      {category.presets.length === 0 && !isCreating ? (
+      {/* Sortable preset cards */}
+      {presets.length === 0 && !isCreating ? (
         <div className="flex h-32 items-center justify-center rounded-xl border border-dashed border-white/5 text-xs text-zinc-600">
           暂无预制，点击「新建预制」开始
         </div>
       ) : (
-        category.presets.map((preset) =>
-          editingId === preset.id ? (
-            <PresetForm
-              key={preset.id}
-              categoryId={category.id}
-              preset={preset}
-              allCategories={allCategories}
-              onSave={(data, _variantDrafts) => {
-                startTransition(async () => {
-                  await updatePreset(preset.id, data);
-                  setEditingId(null);
-                  onRefresh();
-                });
-              }}
-              onDelete={() => {
-                startTransition(async () => {
-                  // Check usage before deleting
-                  const usage = await getPresetUsage(preset.id);
-                  let msg = "确认删除此预制？";
-                  if (usage.sections.length > 0) {
-                    const lines = usage.sections.map(
-                      (s) => `  · ${s.projectTitle} / ${s.sectionName} (${s.blockCount} 个提示词块)`,
-                    );
-                    msg = `以下小节使用了该预制：\n${lines.join("\n")}\n\n确认删除将同时移除这些小节中的相关提示词块和 LoRA。`;
-                  }
-                  if (!confirm(msg)) return;
-                  await deletePresetCascade(preset.id);
-                  setEditingId(null);
-                  onRefresh();
-                });
-              }}
-              onCancel={() => setEditingId(null)}
-              isPending={isPending}
-            />
-          ) : (
-            <PresetCard
-              key={preset.id}
-              preset={preset}
-              onEdit={() => setEditingId(preset.id)}
-            />
-          ),
-        )
+        <DndContext
+          id={dndId}
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handlePresetDragEnd}
+        >
+          <SortableContext
+            items={presets.map((p) => p.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            {presets.map((preset) =>
+              editingId === preset.id ? (
+                <PresetForm
+                  key={preset.id}
+                  categoryId={category.id}
+                  preset={preset}
+                  allCategories={allCategories}
+                  onSave={(data, _variantDrafts) => {
+                    startTransition(async () => {
+                      await updatePreset(preset.id, data);
+                      setEditingId(null);
+                      onRefresh();
+                    });
+                  }}
+                  onDelete={() => {
+                    startTransition(async () => {
+                      // Check usage before deleting
+                      const usage = await getPresetUsage(preset.id);
+                      let msg = "确认删除此预制？";
+                      if (usage.sections.length > 0) {
+                        const lines = usage.sections.map(
+                          (s) => `  · ${s.projectTitle} / ${s.sectionName} (${s.blockCount} 个提示词块)`,
+                        );
+                        msg = `以下小节使用了该预制：\n${lines.join("\n")}\n\n确认删除将同时移除这些小节中的相关提示词块和 LoRA。`;
+                      }
+                      if (!confirm(msg)) return;
+                      await deletePresetCascade(preset.id);
+                      setEditingId(null);
+                      onRefresh();
+                    });
+                  }}
+                  onCancel={() => setEditingId(null)}
+                  isPending={isPending}
+                />
+              ) : (
+                <SortablePresetCard
+                  key={preset.id}
+                  preset={preset}
+                  onEdit={() => setEditingId(preset.id)}
+                />
+              ),
+            )}
+          </SortableContext>
+        </DndContext>
       )}
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// PresetCard — compact display of a preset
+// SortablePresetCard — draggable preset card
 // ---------------------------------------------------------------------------
 
-function PresetCard({
+function SortablePresetCard({
   preset,
   onEdit,
 }: {
   preset: PresetFull;
   onEdit: () => void;
 }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: preset.id });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
   const variantCount = preset.variantCount;
   const firstVariant = preset.variants[0];
   const lora1 = firstVariant ? parseLoraBindings(firstVariant.lora1) : [];
@@ -535,36 +713,49 @@ function PresetCard({
 
   return (
     <div
+      ref={setNodeRef}
+      style={style}
       role="button"
       tabIndex={0}
       onClick={onEdit}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onEdit(); }}
-      className="rounded-xl border border-white/10 bg-white/[0.03] p-3 transition hover:border-white/15 cursor-pointer"
+      className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-3 transition hover:border-white/15 cursor-pointer"
     >
-      <div className="flex items-center gap-2">
-        <span className="text-xs font-medium text-zinc-200">
-          {preset.name}
-        </span>
-        {variantCount > 0 && (
-          <span className="text-[9px] text-sky-400/60">
-            {variantCount} 变体
+      <button
+        type="button"
+        className="cursor-grab touch-none text-zinc-600 hover:text-zinc-400"
+        onClick={(e) => e.stopPropagation()}
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="size-3.5" />
+      </button>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-zinc-200">
+            {preset.name}
           </span>
+          {variantCount > 0 && (
+            <span className="text-[9px] text-sky-400/60">
+              {variantCount} 变体
+            </span>
+          )}
+          {loraCount > 0 && (
+            <span className="text-[9px] text-amber-400/60">
+              {loraCount} LoRA
+            </span>
+          )}
+        </div>
+        {firstVariant && (
+          <div className="mt-1 text-[11px] text-zinc-500 line-clamp-1">
+            {firstVariant.prompt.slice(0, 100)}
+            {firstVariant.prompt.length > 100 ? "..." : ""}
+          </div>
         )}
-        {loraCount > 0 && (
-          <span className="text-[9px] text-amber-400/60">
-            {loraCount} LoRA
-          </span>
+        {!firstVariant && (
+          <div className="mt-1 text-[11px] text-zinc-600">暂无变体</div>
         )}
       </div>
-      {firstVariant && (
-        <div className="mt-1 text-[11px] text-zinc-500 line-clamp-1">
-          {firstVariant.prompt.slice(0, 100)}
-          {firstVariant.prompt.length > 100 ? "..." : ""}
-        </div>
-      )}
-      {!firstVariant && (
-        <div className="mt-1 text-[11px] text-zinc-600">暂无变体</div>
-      )}
     </div>
   );
 }
@@ -1161,7 +1352,7 @@ function PresetForm({
 // ---------------------------------------------------------------------------
 
 function GroupManager({
-  groups,
+  groups: initialGroups,
   categories,
   onRefresh,
 }: {
@@ -1172,6 +1363,28 @@ function GroupManager({
   const [isPending, startTransition] = useTransition();
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [groups, setGroups] = useState(initialGroups);
+  const dndId = useId();
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  useEffect(() => {
+    setGroups(initialGroups);
+  }, [initialGroups]);
+
+  function handleGroupDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = groups.findIndex((g) => g.id === active.id);
+    const newIndex = groups.findIndex((g) => g.id === over.id);
+    const reordered = arrayMove(groups, oldIndex, newIndex);
+    setGroups(reordered);
+    startTransition(async () => {
+      await reorderPresetGroups(reordered.map((g) => g.id));
+    });
+  }
 
   return (
     <SectionCard title="预制组" subtitle="将多个预制组合为一组，导入时一次性添加所有成员。">
@@ -1182,22 +1395,34 @@ function GroupManager({
           </div>
         )}
 
-        {groups.map((group) => (
-          <GroupCard
-            key={group.id}
-            group={group}
-            categories={categories}
-            groups={groups}
-            isEditing={editingGroupId === group.id}
-            onEdit={() => setEditingGroupId(editingGroupId === group.id ? null : group.id)}
-            onRefresh={() => {
-              setEditingGroupId(null);
-              onRefresh();
-            }}
-            isPending={isPending}
-            startTransition={startTransition}
-          />
-        ))}
+        <DndContext
+          id={dndId}
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleGroupDragEnd}
+        >
+          <SortableContext
+            items={groups.map((g) => g.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            {groups.map((group) => (
+              <SortableGroupCard
+                key={group.id}
+                group={group}
+                categories={categories}
+                groups={groups}
+                isEditing={editingGroupId === group.id}
+                onEdit={() => setEditingGroupId(editingGroupId === group.id ? null : group.id)}
+                onRefresh={() => {
+                  setEditingGroupId(null);
+                  onRefresh();
+                }}
+                isPending={isPending}
+                startTransition={startTransition}
+              />
+            ))}
+          </SortableContext>
+        </DndContext>
 
         {showCreateForm && (
           <GroupCreateForm
@@ -1228,10 +1453,10 @@ function GroupManager({
 }
 
 // ---------------------------------------------------------------------------
-// GroupCard
+// SortableGroupCard
 // ---------------------------------------------------------------------------
 
-function GroupCard({
+function SortableGroupCard({
   group,
   categories,
   groups,
@@ -1250,20 +1475,59 @@ function GroupCard({
   isPending: boolean;
   startTransition: React.TransitionStartFunction;
 }) {
+  const { attributes, listeners, setNodeRef, transform, transition: dndTransition, isDragging } = useSortable({ id: group.id });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition: dndTransition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  const [members, setMembers] = useState(group.members);
+  const memberDndId = useId();
+  const memberSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  useEffect(() => {
+    setMembers(group.members);
+  }, [group.members]);
+
+  function handleMemberDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = members.findIndex((m) => m.id === active.id);
+    const newIndex = members.findIndex((m) => m.id === over.id);
+    const reordered = arrayMove(members, oldIndex, newIndex);
+    setMembers(reordered);
+    startTransition(async () => {
+      await reorderGroupMembers(group.id, reordered.map((m) => m.id));
+    });
+  }
+
   return (
-    <div className="rounded-xl border border-white/5 bg-white/[0.02]">
+    <div ref={setNodeRef} style={style} className="rounded-xl border border-white/5 bg-white/[0.02]">
       <div
         role="button"
         tabIndex={0}
         onClick={onEdit}
         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onEdit(); }}
-        className="flex cursor-pointer items-center gap-3 px-3 py-2.5 transition hover:bg-white/[0.03]"
+        className="flex cursor-pointer items-center gap-2 px-3 py-2.5 transition hover:bg-white/[0.03]"
       >
+        <button
+          type="button"
+          className="cursor-grab touch-none text-zinc-600 hover:text-zinc-400"
+          onClick={(e) => e.stopPropagation()}
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className="size-3.5" />
+        </button>
         <FolderOpen className="size-4 shrink-0 text-amber-400/70" />
         <div className="flex-1 min-w-0">
           <div className="text-xs font-medium text-zinc-200">{group.name}</div>
           <div className="text-[10px] text-zinc-500">
-            {group.members.length} 个成员 · {group.slug}
+            {members.length} 个成员 · {group.slug}
           </div>
         </div>
         <ChevronDown className={`size-3.5 text-zinc-500 transition ${isEditing ? "rotate-180" : ""}`} />
@@ -1291,41 +1555,34 @@ function GroupCard({
 
           <div className="space-y-1.5">
             <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">成员</span>
-            {group.members.length === 0 && (
+            {members.length === 0 && (
               <div className="text-[10px] text-zinc-600 py-1">暂无成员</div>
             )}
-            {group.members.map((m) => (
-              <div key={m.id} className="flex items-center gap-2 rounded-lg border border-white/5 bg-white/[0.02] px-2.5 py-1.5">
-                <div className="flex-1 min-w-0 text-xs text-zinc-300">
-                  {m.subGroupId ? (
-                    <span className="text-amber-400/80">
-                      <FolderOpen className="mr-1 inline size-3" />
-                      {m.subGroupName ?? m.subGroupId}
-                    </span>
-                  ) : (
-                    <>
-                      {m.presetName ?? m.presetId}
-                      {m.variantName && (
-                        <span className="text-zinc-500"> / {m.variantName}</span>
-                      )}
-                    </>
-                  )}
-                </div>
-                <button
-                  type="button"
-                  disabled={isPending}
-                  onClick={() => {
-                    startTransition(async () => {
-                      await removeGroupMember(m.id);
-                      onRefresh();
-                    });
-                  }}
-                  className="rounded p-0.5 text-zinc-600 hover:text-red-400 disabled:opacity-50"
-                >
-                  <X className="size-3" />
-                </button>
-              </div>
-            ))}
+            <DndContext
+              id={memberDndId}
+              sensors={memberSensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleMemberDragEnd}
+            >
+              <SortableContext
+                items={members.map((m) => m.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                {members.map((m) => (
+                  <SortableGroupMemberItem
+                    key={m.id}
+                    member={m}
+                    isPending={isPending}
+                    onRemove={() => {
+                      startTransition(async () => {
+                        await removeGroupMember(m.id);
+                        onRefresh();
+                      });
+                    }}
+                  />
+                ))}
+              </SortableContext>
+            </DndContext>
           </div>
 
           <AddGroupMemberForm
@@ -1342,6 +1599,69 @@ function GroupCard({
           />
         </div>
       )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// SortableGroupMemberItem
+// ---------------------------------------------------------------------------
+
+type GroupMemberDisplay = PresetGroupItem["members"][number];
+
+function SortableGroupMemberItem({
+  member,
+  isPending,
+  onRemove,
+}: {
+  member: GroupMemberDisplay;
+  isPending: boolean;
+  onRemove: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: member.id });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center gap-2 rounded-lg border border-white/5 bg-white/[0.02] px-2.5 py-1.5"
+    >
+      <button
+        type="button"
+        className="cursor-grab touch-none text-zinc-600 hover:text-zinc-400"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="size-3" />
+      </button>
+      <div className="flex-1 min-w-0 text-xs text-zinc-300">
+        {member.subGroupId ? (
+          <span className="text-amber-400/80">
+            <FolderOpen className="mr-1 inline size-3" />
+            {member.subGroupName ?? member.subGroupId}
+          </span>
+        ) : (
+          <>
+            {member.presetName ?? member.presetId}
+            {member.variantName && (
+              <span className="text-zinc-500"> / {member.variantName}</span>
+            )}
+          </>
+        )}
+      </div>
+      <button
+        type="button"
+        disabled={isPending}
+        onClick={onRemove}
+        className="rounded p-0.5 text-zinc-600 hover:text-red-400 disabled:opacity-50"
+      >
+        <X className="size-3" />
+      </button>
     </div>
   );
 }

@@ -908,6 +908,24 @@ export async function removeGroupMember(memberId: string) {
   revalidatePath("/assets/prompts");
 }
 
+export async function reorderPresetGroups(ids: string[]) {
+  await prisma.$transaction(
+    ids.map((id, index) =>
+      prisma.presetGroup.update({ where: { id }, data: { sortOrder: index } }),
+    ),
+  );
+  revalidatePath("/assets/prompts");
+}
+
+export async function reorderGroupMembers(groupId: string, ids: string[]) {
+  await prisma.$transaction(
+    ids.map((id, index) =>
+      prisma.presetGroupMember.update({ where: { id }, data: { sortOrder: index } }),
+    ),
+  );
+  revalidatePath("/assets/prompts");
+}
+
 /** Recursively flatten a group into preset+variant pairs, preventing cycles. */
 export async function flattenGroup(
   groupId: string,
