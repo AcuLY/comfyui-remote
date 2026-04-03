@@ -826,6 +826,14 @@ function PresetForm({
           </label>
         </div>
 
+        {/* Linked variants */}
+        <LinkedVariantsEditor
+          linkedVariants={current.linkedVariants}
+          onChange={(lv) => updateCurrentVariant({ linkedVariants: lv })}
+          currentPresetId={preset?.id}
+          allCategories={initialCategories}
+        />
+
         {/* Variant prompt fields */}
         <label className="block space-y-1">
           <span className="text-[10px] text-zinc-500">正面提示词</span>

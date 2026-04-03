@@ -494,6 +494,7 @@ export type PresetVariantInput = {
   lora1?: unknown;
   lora2?: unknown;
   defaultParams?: unknown;
+  linkedVariants?: unknown;
   isActive?: boolean;
   sortOrder?: number;
 };
@@ -515,7 +516,7 @@ export async function createPreset(input: PresetInput) {
 }
 
 export async function createPresetVariant(input: PresetVariantInput) {
-  const { lora1, lora2, defaultParams, ...rest } = input;
+  const { lora1, lora2, defaultParams, linkedVariants, ...rest } = input;
   if (rest.sortOrder === undefined) {
     const maxOrder = await prisma.presetVariant.aggregate({
       where: { presetId: input.presetId },
@@ -529,6 +530,7 @@ export async function createPresetVariant(input: PresetVariantInput) {
       lora1: toJsonValue(lora1) ?? Prisma.DbNull,
       lora2: toJsonValue(lora2) ?? Prisma.DbNull,
       defaultParams: toJsonValue(defaultParams) ?? Prisma.DbNull,
+      linkedVariants: toJsonValue(linkedVariants) ?? Prisma.DbNull,
     },
   });
   revalidatePath("/assets/prompts");
@@ -544,11 +546,12 @@ export async function updatePreset(id: string, input: Partial<PresetInput>) {
 }
 
 export async function updatePresetVariant(id: string, input: Partial<PresetVariantInput>) {
-  const { lora1, lora2, defaultParams, ...rest } = input;
+  const { lora1, lora2, defaultParams, linkedVariants, ...rest } = input;
   const data: Record<string, unknown> = { ...rest };
   if (lora1 !== undefined) data.lora1 = toJsonValue(lora1) ?? Prisma.DbNull;
   if (lora2 !== undefined) data.lora2 = toJsonValue(lora2) ?? Prisma.DbNull;
   if (defaultParams !== undefined) data.defaultParams = toJsonValue(defaultParams) ?? Prisma.DbNull;
+  if (linkedVariants !== undefined) data.linkedVariants = toJsonValue(linkedVariants) ?? Prisma.DbNull;
 
   const variant = await prisma.presetVariant.update({ where: { id }, data });
   revalidatePath("/assets/prompts");
