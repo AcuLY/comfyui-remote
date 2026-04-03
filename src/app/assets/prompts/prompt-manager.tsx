@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition, useCallback } from "react";
+import { useState, useEffect, useTransition, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -202,6 +202,7 @@ export function PromptManager({
               <PresetList
                 category={selectedCat}
                 onRefresh={refresh}
+                allCategories={categories}
               />
             ) : (
               <div className="flex h-40 items-center justify-center text-xs text-zinc-500">
@@ -379,9 +380,11 @@ function CategoryForm({
 function PresetList({
   category,
   onRefresh,
+  allCategories,
 }: {
   category: PresetCategoryFull;
   onRefresh: () => void;
+  allCategories: PresetCategoryFull[];
 }) {
   const [isPending, startTransition] = useTransition();
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -416,6 +419,7 @@ function PresetList({
         <PresetForm
           categoryId={category.id}
           preset={null}
+          allCategories={allCategories}
           onSave={(data, variantDrafts) => {
             startTransition(async () => {
               const newPreset = await createPreset(data);
@@ -453,6 +457,7 @@ function PresetList({
               key={preset.id}
               categoryId={category.id}
               preset={preset}
+              allCategories={allCategories}
               onSave={(data, _variantDrafts) => {
                 startTransition(async () => {
                   await updatePreset(preset.id, data);
@@ -547,10 +552,141 @@ function PresetCard({
 }
 
 // ---------------------------------------------------------------------------
-// PresetForm — create/edit form for a preset with inline variant editing
+// LinkedVariantsEditor — select linked variants from other presets
 // ---------------------------------------------------------------------------
 
 type LinkedVariantRef = { presetId: string; variantId: string };
+
+function LinkedVariantsEditor({
+  linkedVariants,
+  onChange,
+  currentPresetId,
+  allCategories,
+}: {
+  linkedVariants: LinkedVariantRef[];
+  onChange: (lv: LinkedVariantRef[]) => void;
+  currentPresetId?: string;
+  allCategories: PresetCategoryFull[];
+}) {
+  const [showPicker, setShowPicker] = useState(false);
+
+  // Build a flat list of all variants from other presets (exclude current preset)
+  const availableItems = useMemo(() => {
+    const items: Array<{
+      presetId: string;
+      presetName: string;
+      variantId: string;
+      variantName: string;
+      categoryName: string;
+      displayName: string;
+    }> = [];
+    for (const cat of allCategories) {
+      for (const preset of cat.presets) {
+        if (preset.id === currentPresetId) continue; // exclude self
+        for (const v of preset.variants) {
+          items.push({
+            presetId: preset.id,
+            variantId: v.id,
+            presetName: preset.name,
+            variantName: v.name,
+            categoryName: cat.name,
+            displayName: preset.variants.length === 1
+              ? `${cat.name} / ${preset.name}`
+              : `${cat.name} / ${preset.name} / ${v.name}`,
+          });
+        }
+      }
+    }
+    return items;
+  }, [allCategories, currentPresetId]);
+
+  // Resolve display names for current linked variants
+  const linkedDisplay = linkedVariants.map((ref) => {
+    const item = availableItems.find((a) => a.variantId === ref.variantId);
+    return {
+      ...ref,
+      displayName: item?.displayName ?? `未知变体 (${ref.variantId.slice(0, 8)}...)`,
+    };
+  });
+
+  function handleAdd(variantId: string) {
+    const item = availableItems.find((a) => a.variantId === variantId);
+    if (!item) return;
+    if (linkedVariants.some((lv) => lv.variantId === variantId)) return; // already linked
+    onChange([...linkedVariants, { presetId: item.presetId, variantId }]);
+    setShowPicker(false);
+  }
+
+  function handleRemove(variantId: string) {
+    onChange(linkedVariants.filter((lv) => lv.variantId !== variantId));
+  }
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] text-zinc-500">关联变体</span>
+        <button
+          type="button"
+          onClick={() => setShowPicker(!showPicker)}
+          className="inline-flex items-center gap-0.5 text-[10px] text-sky-400/70 hover:text-sky-300"
+        >
+          <Plus className="size-2.5" /> 添加
+        </button>
+      </div>
+
+      {/* Current linked variants */}
+      {linkedDisplay.length > 0 && (
+        <div className="space-y-1">
+          {linkedDisplay.map((item) => (
+            <div
+              key={item.variantId}
+              className="flex items-center justify-between rounded-lg border border-white/5 bg-white/[0.02] px-2 py-1"
+            >
+              <span className="text-[10px] text-zinc-300 truncate">{item.displayName}</span>
+              <button
+                type="button"
+                onClick={() => handleRemove(item.variantId)}
+                className="rounded p-0.5 text-zinc-600 hover:text-red-400"
+              >
+                <X className="size-2.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {linkedVariants.length === 0 && !showPicker && (
+        <div className="text-[10px] text-zinc-600">无关联变体</div>
+      )}
+
+      {/* Picker dropdown */}
+      {showPicker && (
+        <div className="max-h-32 overflow-y-auto rounded-lg border border-sky-500/20 bg-zinc-900 p-1 space-y-0.5">
+          {availableItems.length === 0 ? (
+            <div className="py-2 text-center text-[10px] text-zinc-600">无可选变体</div>
+          ) : (
+            availableItems
+              .filter((a) => !linkedVariants.some((lv) => lv.variantId === a.variantId))
+              .map((item) => (
+                <button
+                  key={item.variantId}
+                  type="button"
+                  onClick={() => handleAdd(item.variantId)}
+                  className="w-full rounded px-2 py-1 text-left text-[10px] text-zinc-300 hover:bg-white/[0.06]"
+                >
+                  {item.displayName}
+                </button>
+              ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// PresetForm — create/edit form for a preset with inline variant editing
+// ---------------------------------------------------------------------------
 
 type VariantDraft = {
   id?: string; // undefined = new variant
@@ -570,6 +706,7 @@ function PresetForm({
   onDelete,
   onCancel,
   isPending,
+  allCategories,
 }: {
   categoryId: string;
   preset: PresetFull | null;
@@ -583,6 +720,7 @@ function PresetForm({
   onDelete?: () => void;
   onCancel: () => void;
   isPending: boolean;
+  allCategories: PresetCategoryFull[];
 }) {
   const router = useRouter();
   const [, startVariantTransition] = useTransition();
@@ -831,7 +969,7 @@ function PresetForm({
           linkedVariants={current.linkedVariants}
           onChange={(lv) => updateCurrentVariant({ linkedVariants: lv })}
           currentPresetId={preset?.id}
-          allCategories={initialCategories}
+          allCategories={allCategories}
         />
 
         {/* Variant prompt fields */}
