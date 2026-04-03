@@ -58,7 +58,7 @@ export function SectionEditForm({ projectId, section, positivePrompt }: SectionE
         {pending ? "保存中..." : state.message}
       </p>
 
-      <SectionCard title="提示词" subtitle="清空字段将回退到模板默认值">
+      <SectionCard title="提示词" subtitle="清空字段将回退到预制默认值">
         <div className="space-y-3">
           <label className="block space-y-1">
             <span className="text-xs text-zinc-500">正向提示词</span>
@@ -162,7 +162,7 @@ export function SectionEditForm({ projectId, section, positivePrompt }: SectionE
         href={`/projects/${projectId}/sections/${section.id}/blocks`}
         className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-zinc-200 transition hover:bg-white/[0.08]"
       >
-        <Layers className="size-4" /> 管理提示词块
+        <Layers className="size-4" /> 管理预制 & 提示词
       </Link>
     </form>
   );

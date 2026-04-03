@@ -259,7 +259,7 @@ export function getMcpServer(): McpServer {
       label: z.string().describe("Display label for this block"),
       positive: z.string().describe("Positive prompt text"),
       negative: z.string().nullable().optional().describe("Negative prompt text (optional)"),
-      sourceId: z.string().nullable().optional().describe("Source entity ID (e.g. PromptPreset.id) if referencing a preset"),
+      sourceId: z.string().nullable().optional().describe("Source entity ID (e.g. Preset.id) if referencing a preset"),
     },
     async ({ sectionId, type, label, positive, negative, sourceId }) => {
       try {

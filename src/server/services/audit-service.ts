@@ -20,8 +20,10 @@ export type AuditEntityType =
   | "ImageResult"
   | "LoraAsset"
   | "PresetCategory"
-  | "PromptPreset"
-  | "PromptBlock";
+  | "Preset"
+  | "PresetVariant"
+  | "PromptBlock"
+  | "PresetGroup";
 
 export type AuditAction =
   | "create"

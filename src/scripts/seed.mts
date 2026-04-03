@@ -98,7 +98,7 @@ async function main() {
   // Clean up previous seed data to avoid unique constraint conflicts.
   await prisma.trashRecord.deleteMany({});
   await prisma.imageResult.deleteMany({});
-  await prisma.positionRun.deleteMany({});
+  await prisma.run.deleteMany({});
   await prisma.promptBlock.deleteMany({});
   console.log("   Cleaned old run / image / trash / prompt-block data.");
 
@@ -202,13 +202,13 @@ async function main() {
     },
   });
 
-  // --- PositionRuns + ImageResults ---
+  // --- Runs + ImageResults ---
   const mikuStandingImages = await buildSeedImages(
     "miku-spring-batch-a", "standing", 1, 9,
     (i) => i < 2 ? "kept" : "pending",
   );
 
-  const runMikuStanding = await prisma.positionRun.create({
+  const runMikuStanding = await prisma.run.create({
     data: {
       projectId: jobMiku.id,
       projectSectionId: mikuStanding.id,
@@ -228,7 +228,7 @@ async function main() {
     (i) => i < 4 ? "pending" : "kept",
   );
 
-  await prisma.positionRun.create({
+  await prisma.run.create({
     data: {
       projectId: jobMiku.id,
       projectSectionId: mikuWatching.id,
@@ -248,7 +248,7 @@ async function main() {
     () => "pending",
   );
 
-  const runTangtangBench = await prisma.positionRun.create({
+  const runTangtangBench = await prisma.run.create({
     data: {
       projectId: jobTangtang.id,
       projectSectionId: tangtangBench.id,
@@ -292,7 +292,7 @@ async function main() {
 
   // --- Trash Records ---
   const mikuStandingDbImages = await prisma.imageResult.findMany({
-    where: { positionRunId: runMikuStanding.id },
+    where: { runId: runMikuStanding.id },
     orderBy: { createdAt: "asc" },
   });
 
@@ -316,7 +316,7 @@ async function main() {
   }
 
   const tangtangBenchDbImages = await prisma.imageResult.findMany({
-    where: { positionRunId: runTangtangBench.id },
+    where: { runId: runTangtangBench.id },
     orderBy: { createdAt: "asc" },
   });
 

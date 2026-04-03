@@ -516,7 +516,7 @@ export async function getLoraAssets(): Promise<LoraAsset[]> {
 }
 
 // ---------------------------------------------------------------------------
-// Prompt Library — 词库（用于添加提示词块时选择）
+// Prompt Library — 预制库（用于导入预制时选择）
 // ---------------------------------------------------------------------------
 
 
@@ -684,7 +684,7 @@ export async function getWorkflowTemplateOptions() {
 }
 
 // ---------------------------------------------------------------------------
-// Prompt Categories & Presets — 统一提示词管理
+// Preset Categories & Presets — 预制管理
 // ---------------------------------------------------------------------------
 
 export type PresetCategoryItem = {

@@ -433,7 +433,7 @@ export async function deletePresetCategory(id: string) {
   // Only allow deletion if no presets exist in this category
   const count = await prisma.preset.count({ where: { categoryId: id } });
   if (count > 0) {
-    throw new Error(`分类下还有 ${count} 个模板，请先删除或移动它们`);
+    throw new Error(`分类下还有 ${count} 个预制，请先删除或移动它们`);
   }
   await prisma.presetCategory.delete({ where: { id } });
   revalidatePath("/assets/prompts");
