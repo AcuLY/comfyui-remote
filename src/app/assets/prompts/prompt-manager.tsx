@@ -429,6 +429,7 @@ function PresetList({
                   negativePrompt: v.negativePrompt.trim() || null,
                   lora1: serializeLoraBindings(v.lora1),
                   lora2: serializeLoraBindings(v.lora2),
+                  linkedVariants: v.linkedVariants.length > 0 ? v.linkedVariants : undefined,
                 });
               }
               setIsCreating(false);
@@ -602,10 +603,11 @@ function PresetForm({
         negativePrompt: v.negativePrompt ?? "",
         lora1: parseLoraBindings(v.lora1),
         lora2: parseLoraBindings(v.lora2),
+        linkedVariants: v.linkedVariants ?? [],
       }));
     }
     // New preset: start with one empty variant
-    return [{ name: "默认", slug: "default", prompt: "", negativePrompt: "", lora1: [], lora2: [] }];
+    return [{ name: "默认", slug: "default", prompt: "", negativePrompt: "", lora1: [], lora2: [], linkedVariants: [] }];
   });
   const [currentIdx, setCurrentIdx] = useState(0);
 
@@ -652,6 +654,7 @@ function PresetForm({
       negativePrompt: "",
       lora1: [],
       lora2: [],
+      linkedVariants: [],
     }]);
     setCurrentIdx(newIdx);
   }
@@ -694,6 +697,7 @@ function PresetForm({
             negativePrompt: v.negativePrompt.trim() || null,
             lora1: serializeLoraBindings(v.lora1),
             lora2: serializeLoraBindings(v.lora2),
+            linkedVariants: v.linkedVariants.length > 0 ? v.linkedVariants : undefined,
           };
           if (v.id) {
             await updatePresetVariant(v.id, variantData);
