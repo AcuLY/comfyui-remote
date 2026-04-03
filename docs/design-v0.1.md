@@ -1,5 +1,7 @@
 # ComfyUI Manager 设计文档 v0.1
 
+> ⚠️ **本文档描述的是 v0.1 初始设计，已严重过时。** 当前实现使用 PresetCategory/Preset/PresetVariant 替代了 Character/ScenePreset/StylePreset，PositionRun 已改名为 Run，LoRA 改为二分区（lora1/lora2）。请以 Prisma schema 和代码为准。
+
 > **注意**: 本文档描述的是 v0.1 原始设计。v0.5 已将 Character / ScenePreset / StylePreset / PositionTemplate
 > 替换为统一的 PromptCategory + PromptPreset 系统。旧模型仅保留在 schema 中用于数据兼容，应用层已不再直接查询。
 > 详见 `development-progress.md` 和 `development-todo.md`。

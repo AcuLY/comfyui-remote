@@ -71,8 +71,7 @@ curl -X POST http://localhost:3000/api/projects \
   -H 'Content-Type: application/json' \
   -d '{
     "title": "Test Project",
-    "characterId": "<character-id>",
-    "positionTemplateIds": ["<position-template-id>"]
+    "presetBindings": [{ "categoryId": "<category-id>", "presetId": "<preset-id>" }]
   }'
 ```
 
@@ -193,7 +192,6 @@ data/
 │           └── 01.png
 └── assets/
     └── loras/
-        ├── characters/
         ├── styles/
         ├── poses/
         └── misc/

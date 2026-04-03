@@ -106,7 +106,7 @@ ComfyUI Remote — 移动优先的 ComfyUI 管理后台，覆盖：
 - 全部文档同步更新术语
 
 ### v0.5 — 统一提示词分类系统
-- 新增 PromptCategory + PromptPreset 通用模型，替代硬编码的 Character/Scene/Style/PositionTemplate
+- 新增 PresetCategory + Preset + PresetVariant 通用模型，替代硬编码的 Character/Scene/Style/PositionTemplate
 - 新增提示词管理页 `/assets/prompts`（分类 + 预设 CRUD，拖拽排序）
 - 任务创建/编辑表单改为动态分类选择器 + presetBindings
 - addSection 按分类排序自动生成 PromptBlock
@@ -124,7 +124,7 @@ ComfyUI Remote — 移动优先的 ComfyUI 管理后台，覆盖：
 - 结果缩略图条（Project 详情小节列表展示最近图片）
 
 ### v0.3 — Workflow 集成
-- LoRA 分区管理（characterLora / lora1 / lora2 三栏编辑）
+- LoRA 分区管理（lora1 / lora2 二分区编辑）
 - 双 KSampler 参数（可折叠面板，含 steps/cfg/sampler/scheduler/denoise/seed）
 - 标准 workflow.api.json 填充器
 - Prisma schema 适配 + Worker 集成

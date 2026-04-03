@@ -124,7 +124,7 @@ Checkpoint(1)
 
 ## 4. 数据模型
 
-### 4.1 PromptPreset
+### 4.1 Preset + PresetVariant
 
 统一的提示词预设，每个预设包含：
 - `prompt` / `negativePrompt`：正/负提示词
