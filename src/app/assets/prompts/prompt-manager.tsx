@@ -14,10 +14,12 @@ import {
   Loader2,
   ChevronRight,
   ChevronLeft,
+  FolderOpen,
+  ChevronDown,
 } from "lucide-react";
 import { SectionCard } from "@/components/section-card";
 import { LoraBindingEditor } from "@/components/lora-binding-editor";
-import type { PresetCategoryFull, PresetFull, PresetVariantItem } from "@/lib/server-data";
+import type { PresetCategoryFull, PresetFull, PresetVariantItem, PresetGroupItem } from "@/lib/server-data";
 import {
   createPresetCategory,
   updatePresetCategory,
@@ -31,6 +33,11 @@ import {
   getPresetUsage,
   deletePresetCascade,
   syncPresetToSections,
+  createPresetGroup,
+  updatePresetGroup,
+  deletePresetGroup,
+  addGroupMember,
+  removeGroupMember,
 } from "@/lib/actions";
 import { parseLoraBindings, serializeLoraBindings } from "@/lib/lora-types";
 
@@ -40,12 +47,15 @@ import { parseLoraBindings, serializeLoraBindings } from "@/lib/lora-types";
 
 export function PromptManager({
   initialCategories,
+  initialGroups,
 }: {
   initialCategories: PresetCategoryFull[];
+  initialGroups: PresetGroupItem[];
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [categories, setCategories] = useState(initialCategories);
+  const [groups, setGroups] = useState(initialGroups);
   const [selectedCatId, setSelectedCatId] = useState<string | null>(
     initialCategories[0]?.id ?? null,
   );
@@ -53,13 +63,14 @@ export function PromptManager({
   // Sync with server data after router.refresh()
   useEffect(() => {
     setCategories(initialCategories);
+    setGroups(initialGroups);
     // Keep selection if the category still exists, otherwise select first
     setSelectedCatId((prev) =>
       initialCategories.some((c) => c.id === prev)
         ? prev
         : initialCategories[0]?.id ?? null,
     );
-  }, [initialCategories]);
+  }, [initialCategories, initialGroups]);
   const [showCatForm, setShowCatForm] = useState(false);
   const [editingCatId, setEditingCatId] = useState<string | null>(null);
 
@@ -212,6 +223,13 @@ export function PromptManager({
           </div>
         </div>
       </SectionCard>
+
+      {/* Preset Group management */}
+      <GroupManager
+        groups={groups}
+        categories={categories}
+        onRefresh={refresh}
+      />
     </div>
   );
 }
@@ -569,9 +587,22 @@ function LinkedVariantsEditor({
   allCategories: PresetCategoryFull[];
 }) {
   const [showPicker, setShowPicker] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCatId, setSelectedCatId] = useState("");
+  const [selectedPresetId, setSelectedPresetId] = useState("");
 
-  // Build a flat list of all variants from other presets (exclude current preset)
-  const availableItems = useMemo(() => {
+  // Build structured data excluding current preset
+  const categoriesFiltered = useMemo(() => {
+    return allCategories
+      .map((cat) => ({
+        ...cat,
+        presets: cat.presets.filter((p) => p.id !== currentPresetId),
+      }))
+      .filter((cat) => cat.presets.length > 0);
+  }, [allCategories, currentPresetId]);
+
+  // Flat list for search
+  const allItems = useMemo(() => {
     const items: Array<{
       presetId: string;
       presetName: string;
@@ -580,9 +611,8 @@ function LinkedVariantsEditor({
       categoryName: string;
       displayName: string;
     }> = [];
-    for (const cat of allCategories) {
+    for (const cat of categoriesFiltered) {
       for (const preset of cat.presets) {
-        if (preset.id === currentPresetId) continue; // exclude self
         for (const v of preset.variants) {
           items.push({
             presetId: preset.id,
@@ -598,23 +628,43 @@ function LinkedVariantsEditor({
       }
     }
     return items;
-  }, [allCategories, currentPresetId]);
+  }, [categoriesFiltered]);
+
+  // Search results
+  const searchResults = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    const q = searchQuery.toLowerCase();
+    return allItems
+      .filter((item) =>
+        !linkedVariants.some((lv) => lv.variantId === item.variantId) &&
+        (item.displayName.toLowerCase().includes(q) ||
+         item.presetName.toLowerCase().includes(q) ||
+         item.variantName.toLowerCase().includes(q) ||
+         item.categoryName.toLowerCase().includes(q))
+      )
+      .slice(0, 10);
+  }, [searchQuery, allItems, linkedVariants]);
+
+  // Cascade selections
+  const selectedCat = categoriesFiltered.find((c) => c.id === selectedCatId);
+  const selectedPreset = selectedCat?.presets.find((p) => p.id === selectedPresetId);
+  const availableVariants = selectedPreset?.variants.filter(
+    (v) => !linkedVariants.some((lv) => lv.variantId === v.id),
+  ) ?? [];
 
   // Resolve display names for current linked variants
   const linkedDisplay = linkedVariants.map((ref) => {
-    const item = availableItems.find((a) => a.variantId === ref.variantId);
+    const item = allItems.find((a) => a.variantId === ref.variantId);
     return {
       ...ref,
       displayName: item?.displayName ?? `未知变体 (${ref.variantId.slice(0, 8)}...)`,
     };
   });
 
-  function handleAdd(variantId: string) {
-    const item = availableItems.find((a) => a.variantId === variantId);
-    if (!item) return;
-    if (linkedVariants.some((lv) => lv.variantId === variantId)) return; // already linked
-    onChange([...linkedVariants, { presetId: item.presetId, variantId }]);
-    setShowPicker(false);
+  function handleAdd(presetId: string, variantId: string) {
+    if (linkedVariants.some((lv) => lv.variantId === variantId)) return;
+    onChange([...linkedVariants, { presetId, variantId }]);
+    setSelectedPresetId("");
   }
 
   function handleRemove(variantId: string) {
@@ -627,7 +677,7 @@ function LinkedVariantsEditor({
         <span className="text-[10px] text-zinc-500">关联变体</span>
         <button
           type="button"
-          onClick={() => setShowPicker(!showPicker)}
+          onClick={() => { setShowPicker(!showPicker); setSearchQuery(""); }}
           className="inline-flex items-center gap-0.5 text-[10px] text-sky-400/70 hover:text-sky-300"
         >
           <Plus className="size-2.5" /> 添加
@@ -659,24 +709,88 @@ function LinkedVariantsEditor({
         <div className="text-[10px] text-zinc-600">无关联变体</div>
       )}
 
-      {/* Picker dropdown */}
+      {/* Picker */}
       {showPicker && (
-        <div className="max-h-32 overflow-y-auto rounded-lg border border-sky-500/20 bg-zinc-900 p-1 space-y-0.5">
-          {availableItems.length === 0 ? (
-            <div className="py-2 text-center text-[10px] text-zinc-600">无可选变体</div>
+        <div className="rounded-lg border border-sky-500/20 bg-zinc-900 p-2 space-y-2">
+          {/* Search */}
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="搜索变体..."
+            className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-[10px] text-zinc-200 outline-none focus:border-sky-500/30 placeholder:text-zinc-600"
+          />
+
+          {/* Search results */}
+          {searchQuery.trim() ? (
+            <div className="max-h-28 overflow-y-auto space-y-0.5">
+              {searchResults.length === 0 ? (
+                <div className="py-1.5 text-center text-[10px] text-zinc-600">无匹配结果</div>
+              ) : (
+                searchResults.map((item) => (
+                  <button
+                    key={item.variantId}
+                    type="button"
+                    onClick={() => handleAdd(item.presetId, item.variantId)}
+                    className="w-full rounded px-2 py-1 text-left text-[10px] text-zinc-300 hover:bg-white/[0.06]"
+                  >
+                    {item.displayName}
+                  </button>
+                ))
+              )}
+            </div>
           ) : (
-            availableItems
-              .filter((a) => !linkedVariants.some((lv) => lv.variantId === a.variantId))
-              .map((item) => (
-                <button
-                  key={item.variantId}
-                  type="button"
-                  onClick={() => handleAdd(item.variantId)}
-                  className="w-full rounded px-2 py-1 text-left text-[10px] text-zinc-300 hover:bg-white/[0.06]"
+            /* Three-level cascade */
+            <div className="space-y-1.5">
+              {/* Level 1: Category */}
+              <select
+                value={selectedCatId}
+                onChange={(e) => { setSelectedCatId(e.target.value); setSelectedPresetId(""); }}
+                className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-[10px] text-zinc-200 outline-none"
+              >
+                <option value="">选择分类...</option>
+                {categoriesFiltered.map((cat) => (
+                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                ))}
+              </select>
+
+              {/* Level 2: Preset */}
+              {selectedCat && (
+                <select
+                  value={selectedPresetId}
+                  onChange={(e) => setSelectedPresetId(e.target.value)}
+                  className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-[10px] text-zinc-200 outline-none"
                 >
-                  {item.displayName}
-                </button>
-              ))
+                  <option value="">选择预制...</option>
+                  {selectedCat.presets.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              )}
+
+              {/* Level 3: Variant list */}
+              {selectedPreset && (
+                <div className="max-h-24 overflow-y-auto space-y-0.5">
+                  {availableVariants.length === 0 ? (
+                    <div className="py-1.5 text-center text-[10px] text-zinc-600">无可选变体</div>
+                  ) : (
+                    availableVariants.map((v) => (
+                      <button
+                        key={v.id}
+                        type="button"
+                        onClick={() => handleAdd(selectedPreset.id, v.id)}
+                        className="w-full rounded px-2 py-1 text-left text-[10px] text-zinc-300 hover:bg-white/[0.06]"
+                      >
+                        {v.name}
+                        <span className="ml-1 text-zinc-600 truncate">
+                          {v.prompt.slice(0, 40)}{v.prompt.length > 40 ? "..." : ""}
+                        </span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
           )}
         </div>
       )}
@@ -1038,6 +1152,450 @@ function PresetForm({
           <X className="size-3" /> 取消
         </button>
       </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// GroupManager — 预制组管理
+// ---------------------------------------------------------------------------
+
+function GroupManager({
+  groups,
+  categories,
+  onRefresh,
+}: {
+  groups: PresetGroupItem[];
+  categories: PresetCategoryFull[];
+  onRefresh: () => void;
+}) {
+  const [isPending, startTransition] = useTransition();
+  const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+
+  return (
+    <SectionCard title="预制组" subtitle="将多个预制组合为一组，导入时一次性添加所有成员。">
+      <div className="space-y-3">
+        {groups.length === 0 && !showCreateForm && (
+          <div className="flex h-20 items-center justify-center text-xs text-zinc-500">
+            暂无预制组
+          </div>
+        )}
+
+        {groups.map((group) => (
+          <GroupCard
+            key={group.id}
+            group={group}
+            categories={categories}
+            groups={groups}
+            isEditing={editingGroupId === group.id}
+            onEdit={() => setEditingGroupId(editingGroupId === group.id ? null : group.id)}
+            onRefresh={() => {
+              setEditingGroupId(null);
+              onRefresh();
+            }}
+            isPending={isPending}
+            startTransition={startTransition}
+          />
+        ))}
+
+        {showCreateForm && (
+          <GroupCreateForm
+            onSave={(data) => {
+              startTransition(async () => {
+                await createPresetGroup(data);
+                setShowCreateForm(false);
+                onRefresh();
+              });
+            }}
+            onCancel={() => setShowCreateForm(false)}
+            isPending={isPending}
+          />
+        )}
+
+        {!showCreateForm && (
+          <button
+            type="button"
+            onClick={() => setShowCreateForm(true)}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-dashed border-white/10 px-3 py-2 text-xs text-zinc-400 hover:border-white/20 hover:text-zinc-200"
+          >
+            <Plus className="size-3.5" /> 新建预制组
+          </button>
+        )}
+      </div>
+    </SectionCard>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// GroupCard
+// ---------------------------------------------------------------------------
+
+function GroupCard({
+  group,
+  categories,
+  groups,
+  isEditing,
+  onEdit,
+  onRefresh,
+  isPending,
+  startTransition,
+}: {
+  group: PresetGroupItem;
+  categories: PresetCategoryFull[];
+  groups: PresetGroupItem[];
+  isEditing: boolean;
+  onEdit: () => void;
+  onRefresh: () => void;
+  isPending: boolean;
+  startTransition: React.TransitionStartFunction;
+}) {
+  return (
+    <div className="rounded-xl border border-white/5 bg-white/[0.02]">
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={onEdit}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onEdit(); }}
+        className="flex cursor-pointer items-center gap-3 px-3 py-2.5 transition hover:bg-white/[0.03]"
+      >
+        <FolderOpen className="size-4 shrink-0 text-amber-400/70" />
+        <div className="flex-1 min-w-0">
+          <div className="text-xs font-medium text-zinc-200">{group.name}</div>
+          <div className="text-[10px] text-zinc-500">
+            {group.members.length} 个成员 · {group.slug}
+          </div>
+        </div>
+        <ChevronDown className={`size-3.5 text-zinc-500 transition ${isEditing ? "rotate-180" : ""}`} />
+      </div>
+
+      {isEditing && (
+        <div className="border-t border-white/5 px-3 py-3 space-y-3">
+          <GroupInlineEditor
+            group={group}
+            onSave={(data) => {
+              startTransition(async () => {
+                await updatePresetGroup(group.id, data);
+                onRefresh();
+              });
+            }}
+            onDelete={() => {
+              if (!confirm(`确认删除预制组「${group.name}」？`)) return;
+              startTransition(async () => {
+                await deletePresetGroup(group.id);
+                onRefresh();
+              });
+            }}
+            isPending={isPending}
+          />
+
+          <div className="space-y-1.5">
+            <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">成员</span>
+            {group.members.length === 0 && (
+              <div className="text-[10px] text-zinc-600 py-1">暂无成员</div>
+            )}
+            {group.members.map((m) => (
+              <div key={m.id} className="flex items-center gap-2 rounded-lg border border-white/5 bg-white/[0.02] px-2.5 py-1.5">
+                <div className="flex-1 min-w-0 text-xs text-zinc-300">
+                  {m.subGroupId ? (
+                    <span className="text-amber-400/80">
+                      <FolderOpen className="mr-1 inline size-3" />
+                      {m.subGroupName ?? m.subGroupId}
+                    </span>
+                  ) : (
+                    <>
+                      {m.presetName ?? m.presetId}
+                      {m.variantName && (
+                        <span className="text-zinc-500"> / {m.variantName}</span>
+                      )}
+                    </>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  disabled={isPending}
+                  onClick={() => {
+                    startTransition(async () => {
+                      await removeGroupMember(m.id);
+                      onRefresh();
+                    });
+                  }}
+                  className="rounded p-0.5 text-zinc-600 hover:text-red-400 disabled:opacity-50"
+                >
+                  <X className="size-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <AddGroupMemberForm
+            groupId={group.id}
+            categories={categories}
+            groups={groups.filter((g) => g.id !== group.id)}
+            onAdd={(input) => {
+              startTransition(async () => {
+                await addGroupMember(input);
+                onRefresh();
+              });
+            }}
+            isPending={isPending}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// GroupCreateForm
+// ---------------------------------------------------------------------------
+
+function GroupCreateForm({
+  onSave,
+  onCancel,
+  isPending,
+}: {
+  onSave: (data: { name: string; slug: string }) => void;
+  onCancel: () => void;
+  isPending: boolean;
+}) {
+  const [name, setName] = useState("");
+  const [slug, setSlug] = useState("");
+
+  return (
+    <div className="rounded-xl border border-sky-500/20 bg-sky-500/[0.04] p-3 space-y-2">
+      <div className="grid grid-cols-2 gap-2">
+        <label className="space-y-1">
+          <span className="text-[10px] text-zinc-500">组名</span>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => {
+              setName(e.target.value);
+              if (!slug || slug === toSlug(name)) setSlug(toSlug(e.target.value));
+            }}
+            placeholder="如：基础组合"
+            className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
+          />
+        </label>
+        <label className="space-y-1">
+          <span className="text-[10px] text-zinc-500">Slug</span>
+          <input
+            type="text"
+            value={slug}
+            onChange={(e) => setSlug(e.target.value)}
+            placeholder="basic-combo"
+            className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
+          />
+        </label>
+      </div>
+      <div className="flex gap-1.5">
+        <button
+          type="button"
+          disabled={isPending || !name.trim() || !slug.trim()}
+          onClick={() => onSave({ name: name.trim(), slug: slug.trim() })}
+          className="inline-flex items-center gap-1 rounded-lg bg-sky-500/20 px-2 py-1 text-[11px] text-sky-300 hover:bg-sky-500/30 disabled:opacity-50"
+        >
+          <Save className="size-3" /> 创建
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-2 py-1 text-[11px] text-zinc-400 hover:bg-white/[0.06]"
+        >
+          <X className="size-3" /> 取消
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** Simple slug generator */
+function toSlug(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9\u4e00-\u9fff]+/g, "-").replace(/^-|-$/g, "");
+}
+
+// ---------------------------------------------------------------------------
+// GroupInlineEditor
+// ---------------------------------------------------------------------------
+
+function GroupInlineEditor({
+  group,
+  onSave,
+  onDelete,
+  isPending,
+}: {
+  group: PresetGroupItem;
+  onSave: (data: { name: string; slug: string }) => void;
+  onDelete: () => void;
+  isPending: boolean;
+}) {
+  const [name, setName] = useState(group.name);
+  const [slug, setSlug] = useState(group.slug);
+  const dirty = name !== group.name || slug !== group.slug;
+
+  return (
+    <div className="flex items-end gap-2">
+      <label className="flex-1 space-y-1">
+        <span className="text-[10px] text-zinc-500">组名</span>
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
+        />
+      </label>
+      <label className="flex-1 space-y-1">
+        <span className="text-[10px] text-zinc-500">Slug</span>
+        <input
+          type="text"
+          value={slug}
+          onChange={(e) => setSlug(e.target.value)}
+          className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
+        />
+      </label>
+      {dirty && (
+        <button
+          type="button"
+          disabled={isPending || !name.trim() || !slug.trim()}
+          onClick={() => onSave({ name: name.trim(), slug: slug.trim() })}
+          className="rounded-lg bg-sky-500/20 p-1.5 text-sky-300 hover:bg-sky-500/30 disabled:opacity-50"
+        >
+          <Save className="size-3.5" />
+        </button>
+      )}
+      <button
+        type="button"
+        onClick={onDelete}
+        className="rounded-lg bg-red-500/10 p-1.5 text-red-400 hover:bg-red-500/20"
+      >
+        <Trash2 className="size-3.5" />
+      </button>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// AddGroupMemberForm
+// ---------------------------------------------------------------------------
+
+function AddGroupMemberForm({
+  groupId,
+  categories,
+  groups,
+  onAdd,
+  isPending,
+}: {
+  groupId: string;
+  categories: PresetCategoryFull[];
+  groups: PresetGroupItem[];
+  onAdd: (input: { groupId: string; presetId?: string; variantId?: string; subGroupId?: string }) => void;
+  isPending: boolean;
+}) {
+  const [mode, setMode] = useState<"preset" | "group">("preset");
+  const [selCatId, setSelCatId] = useState<string>("");
+  const [selPresetId, setSelPresetId] = useState<string>("");
+  const [selVariantId, setSelVariantId] = useState<string>("");
+  const [selGroupId, setSelGroupId] = useState<string>("");
+
+  const selCat = categories.find((c) => c.id === selCatId);
+  const selPreset = selCat?.presets.find((p) => p.id === selPresetId);
+
+  useEffect(() => { setSelPresetId(""); setSelVariantId(""); }, [selCatId]);
+  useEffect(() => { setSelVariantId(""); }, [selPresetId]);
+
+  const canAdd = mode === "group" ? !!selGroupId : !!selPresetId;
+
+  function handleAdd() {
+    if (mode === "group" && selGroupId) {
+      onAdd({ groupId, subGroupId: selGroupId });
+      setSelGroupId("");
+    } else if (selPresetId) {
+      onAdd({
+        groupId,
+        presetId: selPresetId,
+        variantId: selVariantId || undefined,
+      });
+      setSelVariantId("");
+    }
+  }
+
+  const selectClass = "w-full appearance-none rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 pr-7 text-xs text-zinc-200 outline-none focus:border-sky-500/30";
+
+  return (
+    <div className="space-y-2 rounded-lg border border-dashed border-white/10 p-2">
+      <div className="flex items-center gap-2">
+        <span className="text-[10px] text-zinc-500">添加成员:</span>
+        <div className="flex gap-1">
+          <button
+            type="button"
+            onClick={() => setMode("preset")}
+            className={`rounded px-2 py-0.5 text-[10px] ${mode === "preset" ? "bg-sky-500/20 text-sky-300" : "text-zinc-500 hover:text-zinc-300"}`}
+          >
+            预制
+          </button>
+          {groups.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setMode("group")}
+              className={`rounded px-2 py-0.5 text-[10px] ${mode === "group" ? "bg-amber-500/20 text-amber-300" : "text-zinc-500 hover:text-zinc-300"}`}
+            >
+              子组
+            </button>
+          )}
+        </div>
+      </div>
+
+      {mode === "preset" ? (
+        <div className="grid grid-cols-3 gap-1.5">
+          <div className="relative">
+            <select value={selCatId} onChange={(e) => setSelCatId(e.target.value)} className={selectClass}>
+              <option value="">分类...</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id} className="bg-zinc-900">{c.name}</option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 size-3 -translate-y-1/2 text-zinc-500" />
+          </div>
+          <div className="relative">
+            <select value={selPresetId} onChange={(e) => setSelPresetId(e.target.value)} disabled={!selCatId} className={selectClass}>
+              <option value="">预制...</option>
+              {selCat?.presets.map((p) => (
+                <option key={p.id} value={p.id} className="bg-zinc-900">{p.name}</option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 size-3 -translate-y-1/2 text-zinc-500" />
+          </div>
+          <div className="relative">
+            <select value={selVariantId} onChange={(e) => setSelVariantId(e.target.value)} disabled={!selPresetId} className={selectClass}>
+              <option value="">变体 (可选)...</option>
+              {selPreset?.variants.map((v) => (
+                <option key={v.id} value={v.id} className="bg-zinc-900">{v.name}</option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 size-3 -translate-y-1/2 text-zinc-500" />
+          </div>
+        </div>
+      ) : (
+        <div className="relative">
+          <select value={selGroupId} onChange={(e) => setSelGroupId(e.target.value)} className={selectClass}>
+            <option value="">选择子组...</option>
+            {groups.map((g) => (
+              <option key={g.id} value={g.id} className="bg-zinc-900">{g.name}</option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-2 top-1/2 size-3 -translate-y-1/2 text-zinc-500" />
+        </div>
+      )}
+
+      <button
+        type="button"
+        disabled={isPending || !canAdd}
+        onClick={handleAdd}
+        className="inline-flex items-center gap-1 rounded-lg bg-white/[0.06] px-2 py-1 text-[10px] text-zinc-300 hover:bg-white/[0.1] disabled:opacity-40"
+      >
+        <Plus className="size-3" /> 添加
+      </button>
     </div>
   );
 }

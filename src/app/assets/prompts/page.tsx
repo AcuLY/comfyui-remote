@@ -1,8 +1,11 @@
-import { getPresetCategoriesWithPresets } from "@/lib/server-data";
+import { getPresetCategoriesWithPresets, getPresetGroups } from "@/lib/server-data";
 import { PromptManager } from "./prompt-manager";
 
 export default async function PromptsPage() {
-  const categories = await getPresetCategoriesWithPresets();
+  const [categories, groups] = await Promise.all([
+    getPresetCategoriesWithPresets(),
+    getPresetGroups(),
+  ]);
 
-  return <PromptManager initialCategories={categories} />;
+  return <PromptManager initialCategories={categories} initialGroups={groups} />;
 }
