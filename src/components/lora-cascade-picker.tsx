@@ -103,6 +103,23 @@ export function LoraCascadePicker({
   const backdropRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const search = useLoraSearch();
+  const initialFetched = useRef(false);
+
+  // Fetch notes + triggerWords for the initial value
+  useEffect(() => {
+    if (!value || initialFetched.current) return;
+    initialFetched.current = true;
+    fetch(`/api/loras/notes?paths=${encodeURIComponent(value)}`)
+      .then((r) => r.json())
+      .then((json) => {
+        const data = json.data?.[value];
+        if (data) {
+          if (data.notes) setSelectedNotes(data.notes);
+          if (data.triggerWords) setSelectedTrigger(data.triggerWords);
+        }
+      })
+      .catch(() => {});
+  }, [value]);
 
   const fetchDir = useCallback(async (dirPath: string) => {
     setLoading(true);
