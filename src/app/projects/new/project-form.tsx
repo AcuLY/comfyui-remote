@@ -26,6 +26,14 @@ export function ProjectForm({ categories }: Props) {
   const [notes, setNotes] = useState("");
 
   function setSelection(categoryId: string, presetId: string, variantId?: string) {
+    // Auto-select first variant when choosing a preset
+    if (presetId && !variantId) {
+      const cat = categories.find((c) => c.id === categoryId);
+      const preset = cat?.presets.find((p) => p.id === presetId);
+      if (preset && preset.variants.length > 0) {
+        variantId = preset.variants[0].id;
+      }
+    }
     setSelections((prev) => ({ ...prev, [categoryId]: { presetId, variantId } }));
   }
 
@@ -108,17 +116,14 @@ export function ProjectForm({ categories }: Props) {
                 <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-zinc-500" />
               </div>
 
-              {/* 变体选择器 */}
-              {selectedPreset && selectedPreset.variants.length > 0 && (
+              {/* 变体选择器（仅多变体时显示） */}
+              {selectedPreset && selectedPreset.variants.length > 1 && (
                 <div className="relative">
                   <select
                     value={selections[cat.id]?.variantId || ""}
                     onChange={(e) => setSelection(cat.id, selectedPreset.id, e.target.value || undefined)}
                     className="w-full appearance-none rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 pr-8 text-xs text-white outline-none focus:border-sky-500/30"
                   >
-                    <option value="" className="bg-zinc-900">
-                      默认变体
-                    </option>
                     {selectedPreset.variants.map((variant) => (
                       <option key={variant.id} value={variant.id} className="bg-zinc-900">
                         {variant.name}
