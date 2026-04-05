@@ -24,7 +24,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         <ArrowLeft className="size-4" /> 返回项目列表
       </Link>
       <SectionCard title={project.title} subtitle={project.presetNames.join(" · ") || "无预设"}>
-        <ProjectDetailActions projectId={project.id} />
+        <ProjectDetailActions projectId={project.id} projectTitle={project.title} />
       </SectionCard>
 
       <SectionCard title="参数概览" subtitle="结果侧与项目侧都默认编辑当前项目配置。">

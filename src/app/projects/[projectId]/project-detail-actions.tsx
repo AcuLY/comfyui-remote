@@ -1,13 +1,15 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Play, Download, CheckCircle, XCircle } from "lucide-react";
-import { runProject, runSection } from "@/lib/actions";
+import { useRouter } from "next/navigation";
+import { Play, Download, CheckCircle, XCircle, Trash2 } from "lucide-react";
+import { runProject, runSection, deleteProject } from "@/lib/actions";
 import { exportProjectImages } from "@/app/projects/actions-export";
 import { BatchSizeQuickFill } from "@/components/batch-size-quick-fill";
 
-export function ProjectDetailActions({ projectId }: { projectId: string }) {
+export function ProjectDetailActions({ projectId, projectTitle }: { projectId: string; projectTitle?: string }) {
   const [isPending, startTransition] = useTransition();
+  const router = useRouter();
   const [batchSize, setBatchSize] = useState<string>("");
   const [exporting, setExporting] = useState(false);
   const [exportMsg, setExportMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -87,6 +89,20 @@ export function ProjectDetailActions({ projectId }: { projectId: string }) {
           <span>{exportMsg.text}</span>
         </div>
       )}
+      <button
+        disabled={isPending}
+        onClick={() => {
+          const name = projectTitle || "此项目";
+          if (!confirm(`确认删除「${name}」？\n\n此操作将同时删除所有小节、运行记录和图片数据，不可撤销。`)) return;
+          startTransition(async () => {
+            await deleteProject(projectId);
+            router.push("/projects");
+          });
+        }}
+        className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-red-400 transition hover:bg-red-500/20 disabled:opacity-50"
+      >
+        <Trash2 className="size-4" /> {isPending ? "删除中…" : "删除项目"}
+      </button>
     </div>
   );
 }

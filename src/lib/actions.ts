@@ -1377,3 +1377,20 @@ export async function deleteSection(sectionId: string): Promise<void> {
 
   revalidatePath(`/projects/${section.projectId}`);
 }
+
+// ---------------------------------------------------------------------------
+// 删除项目（级联删除所有小节、提示词块、运行记录、图片记录）
+// ---------------------------------------------------------------------------
+
+export async function deleteProject(projectId: string): Promise<void> {
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: { id: true, title: true },
+  });
+  if (!project) return;
+
+  // Prisma onDelete: Cascade handles sections, runs, blocks, images
+  await prisma.project.delete({ where: { id: projectId } });
+
+  revalidatePath("/projects");
+}
