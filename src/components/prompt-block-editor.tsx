@@ -49,6 +49,9 @@ export type PromptLibraryV2 = {
     slug: string;
     color: string | null;
     icon: string | null;
+    positivePromptOrder?: number;
+    lora1Order?: number;
+    lora2Order?: number;
     presets: Array<{
       id: string;
       name: string;

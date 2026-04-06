@@ -95,19 +95,47 @@ export function SectionEditor({
       const result = await importPresetToSection(sectionId, presetId, variantId);
       if (!result) return;
 
-      setBlocks((prev) => [...prev, result.block]);
+      // Insert block at the correct position (server already set sortOrder)
+      setBlocks((prev) => {
+        const updated = [...prev, result.block];
+        updated.sort((a, b) => a.sortOrder - b.sortOrder);
+        return updated;
+      });
 
-      // Add LoRAs
+      // Insert LoRAs at correct position based on category lora1Order/lora2Order
       let updatedLora1 = [...lora1];
       let updatedLora2 = [...lora2];
       let loraChanged = false;
 
-      for (const l of result.lora1) {
-        updatedLora1.push({ ...l, source: "preset" as const });
+      if (result.lora1.length > 0) {
+        // Find insertion index by category lora1Order
+        const myOrder = result.categoryOrders.lora1Order;
+        let insertIdx = updatedLora1.length;
+        for (let i = 0; i < updatedLora1.length; i++) {
+          const entry = updatedLora1[i];
+          // Compare by looking up source category order from libraryV2
+          const entryCatOrder = getCategoryLoraOrder(entry, "lora1");
+          if (entryCatOrder > myOrder) {
+            insertIdx = i;
+            break;
+          }
+        }
+        updatedLora1.splice(insertIdx, 0, ...result.lora1.map((l) => ({ ...l, source: "preset" as const })));
         loraChanged = true;
       }
-      for (const l of result.lora2) {
-        updatedLora2.push({ ...l, source: "preset" as const });
+
+      if (result.lora2.length > 0) {
+        const myOrder = result.categoryOrders.lora2Order;
+        let insertIdx = updatedLora2.length;
+        for (let i = 0; i < updatedLora2.length; i++) {
+          const entry = updatedLora2[i];
+          const entryCatOrder = getCategoryLoraOrder(entry, "lora2");
+          if (entryCatOrder > myOrder) {
+            insertIdx = i;
+            break;
+          }
+        }
+        updatedLora2.splice(insertIdx, 0, ...result.lora2.map((l) => ({ ...l, source: "preset" as const })));
         loraChanged = true;
       }
 
@@ -119,6 +147,15 @@ export function SectionEditor({
 
       setShowImportPanel(false);
     });
+  }
+
+  /** Look up a LoRA entry's category order from libraryV2 data */
+  function getCategoryLoraOrder(entry: LoraEntry, dimension: "lora1" | "lora2"): number {
+    if (!libraryV2 || entry.source !== "preset") return 999;
+    // Find category by sourceLabel (category name)
+    const cat = libraryV2.categories.find((c) => c.name === entry.sourceLabel);
+    if (!cat) return 999;
+    return dimension === "lora1" ? (cat.lora1Order ?? 999) : (cat.lora2Order ?? 999);
   }
 
   // ── Delete an entire preset binding ──

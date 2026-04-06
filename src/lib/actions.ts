@@ -1046,6 +1046,7 @@ export type ImportPresetResult = {
   block: PromptBlockData;
   lora1: Array<{ id: string; path: string; weight: number; enabled: boolean; source: string; sourceLabel: string; sourceColor?: string; sourceName: string; bindingId: string }>;
   lora2: Array<{ id: string; path: string; weight: number; enabled: boolean; source: string; sourceLabel: string; sourceColor?: string; sourceName: string; bindingId: string }>;
+  categoryOrders: { positivePromptOrder: number; lora1Order: number; lora2Order: number };
 };
 
 /** Import a preset variant into a section, resolving linkedVariants server-side */
@@ -1057,7 +1058,7 @@ export async function importPresetToSection(
   const preset = await prisma.preset.findUnique({
     where: { id: presetId },
     include: {
-      category: { select: { id: true, name: true, color: true } },
+      category: { select: { id: true, name: true, color: true, positivePromptOrder: true, lora1Order: true, lora2Order: true } },
       variants: { where: { isActive: true }, orderBy: { sortOrder: "asc" } },
     },
   });
@@ -1074,7 +1075,47 @@ export async function importPresetToSection(
     ? preset.name
     : `${preset.name} / ${variant.name}`;
 
-  // Create prompt block
+  // --- Compute insertion sortOrder based on category positivePromptOrder ---
+  // 1. Get all existing blocks with their category's positivePromptOrder
+  const existingBlocks = await prisma.promptBlock.findMany({
+    where: { projectSectionId: sectionId },
+    select: { id: true, sortOrder: true, categoryId: true },
+    orderBy: { sortOrder: "asc" },
+  });
+
+  const myOrder = preset.category.positivePromptOrder;
+
+  // Look up category orders for existing blocks
+  const existingCategoryIds = [...new Set(existingBlocks.map((b) => b.categoryId).filter(Boolean))] as string[];
+  const catOrders = await prisma.presetCategory.findMany({
+    where: { id: { in: existingCategoryIds } },
+    select: { id: true, positivePromptOrder: true },
+  });
+  const catOrderMap = new Map(catOrders.map((c) => [c.id, c.positivePromptOrder]));
+
+  // Find insertion index: after last block whose category positivePromptOrder <= myOrder
+  let insertAfterIndex = -1;
+  for (let i = 0; i < existingBlocks.length; i++) {
+    const catId = existingBlocks[i].categoryId;
+    const order = catId ? (catOrderMap.get(catId) ?? 999) : 999;
+    if (order <= myOrder) insertAfterIndex = i;
+  }
+
+  // Shift blocks after insertion point
+  const insertSortOrder = insertAfterIndex >= 0
+    ? existingBlocks[insertAfterIndex].sortOrder + 1
+    : 0;
+
+  // Bump all blocks at or after insertSortOrder
+  await prisma.promptBlock.updateMany({
+    where: {
+      projectSectionId: sectionId,
+      sortOrder: { gte: insertSortOrder },
+    },
+    data: { sortOrder: { increment: 1 } },
+  });
+
+  // Create prompt block at the correct position
   const { createPromptBlock } = await import("@/server/repositories/prompt-block-repository");
   const block = await createPromptBlock(sectionId, {
     type: "preset" as "custom" | "preset",
@@ -1084,6 +1125,7 @@ export async function importPresetToSection(
     label,
     positive: resolved.prompt,
     negative: resolved.negativePrompt,
+    sortOrder: insertSortOrder,
   });
 
   // Build LoRA entries
@@ -1103,6 +1145,11 @@ export async function importPresetToSection(
     block,
     lora1: resolved.lora1.map(makeLora),
     lora2: resolved.lora2.map(makeLora),
+    categoryOrders: {
+      positivePromptOrder: myOrder,
+      lora1Order: preset.category.lora1Order,
+      lora2Order: preset.category.lora2Order,
+    },
   };
 }
 

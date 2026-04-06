@@ -840,6 +840,9 @@ export type PromptLibraryV2 = {
     slug: string;
     color: string | null;
     icon: string | null;
+    positivePromptOrder?: number;
+    lora1Order?: number;
+    lora2Order?: number;
     presets: Array<{
       id: string;
       name: string;
@@ -936,6 +939,9 @@ export async function getPromptLibraryV2(): Promise<PromptLibraryV2> {
       slug: c.slug,
       color: c.color,
       icon: c.icon,
+      positivePromptOrder: c.positivePromptOrder,
+      lora1Order: c.lora1Order,
+      lora2Order: c.lora2Order,
       presets: c.presets,
     })),
     groups: groups.map((g) => ({
