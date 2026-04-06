@@ -49,6 +49,7 @@ export type PromptLibraryV2 = {
     slug: string;
     color: string | null;
     icon: string | null;
+    type?: string; // "preset" | "group"
     positivePromptOrder?: number;
     lora1Order?: number;
     lora2Order?: number;
@@ -62,6 +63,20 @@ export type PromptLibraryV2 = {
         negativePrompt: string | null;
         lora1: unknown;
         lora2: unknown;
+      }>;
+    }>;
+    groups?: Array<{
+      id: string;
+      name: string;
+      slug: string;
+      members: Array<{
+        id: string;
+        presetId: string | null;
+        variantId: string | null;
+        subGroupId: string | null;
+        presetName?: string;
+        variantName?: string;
+        subGroupName?: string;
       }>;
     }>;
   }>;

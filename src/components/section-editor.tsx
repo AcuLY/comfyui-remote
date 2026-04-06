@@ -8,6 +8,7 @@ import type { PromptBlockData } from "@/lib/actions";
 import {
   deleteSectionBlock,
   importPresetToSection,
+  flattenGroup,
 } from "@/lib/actions";
 import type { LoraEntry } from "@/lib/lora-types";
 import type { PromptLibraryV2 } from "@/components/prompt-block-editor";
@@ -149,6 +150,61 @@ export function SectionEditor({
     });
   }
 
+  // ── Import a preset group (flatten → import each member) ──
+  function handleGroupImport(groupId: string) {
+    startTransition(async () => {
+      const members = await flattenGroup(groupId);
+      const newBlocks: PromptBlockData[] = [];
+      const newLora1: typeof lora1 = [];
+      const newLora2: typeof lora2 = [];
+
+      for (const m of members) {
+        if (!m.presetId) continue;
+        // Use default variant if none specified
+        let variantId = m.variantId;
+        if (!variantId) {
+          for (const cat of libraryV2?.categories ?? []) {
+            const preset = cat.presets.find((p) => p.id === m.presetId);
+            if (preset && preset.variants.length > 0) {
+              variantId = preset.variants[0].id;
+              break;
+            }
+          }
+        }
+        if (!variantId) continue;
+
+        const result = await importPresetToSection(sectionId, m.presetId, variantId);
+        if (!result) continue;
+
+        newBlocks.push(result.block);
+        if (result.lora1.length > 0) {
+          newLora1.push(...result.lora1.map((l) => ({ ...l, source: "preset" as const })));
+        }
+        if (result.lora2.length > 0) {
+          newLora2.push(...result.lora2.map((l) => ({ ...l, source: "preset" as const })));
+        }
+      }
+
+      if (newBlocks.length > 0) {
+        setBlocks((prev) => {
+          const updated = [...prev, ...newBlocks];
+          updated.sort((a, b) => a.sortOrder - b.sortOrder);
+          return updated;
+        });
+      }
+
+      if (newLora1.length > 0 || newLora2.length > 0) {
+        const updatedLora1 = [...lora1, ...newLora1];
+        const updatedLora2 = [...lora2, ...newLora2];
+        setLora1(updatedLora1);
+        setLora2(updatedLora2);
+        await onLoraChange({ lora1: updatedLora1, lora2: updatedLora2 });
+      }
+
+      setShowImportPanel(false);
+    });
+  }
+
   /** Look up a LoRA entry's category order from libraryV2 data */
   function getCategoryLoraOrder(entry: LoraEntry, dimension: "lora1" | "lora2"): number {
     if (!libraryV2 || entry.source !== "preset") return 999;
@@ -234,9 +290,13 @@ export function SectionEditor({
     });
   }
 
-  // Get categories for import panel
-  const categoriesWithPresets = useMemo(
-    () => (libraryV2?.categories ?? []).filter((c) => c.presets.some((p) => p.variants.length > 0)),
+  // Get categories for import panel (preset cats with variants + group cats with groups)
+  const categoriesForImport = useMemo(
+    () => (libraryV2?.categories ?? []).filter((c) =>
+      c.type === "group"
+        ? (c.groups ?? []).length > 0
+        : c.presets.some((p) => p.variants.length > 0)
+    ),
     [libraryV2],
   );
 
@@ -299,8 +359,9 @@ export function SectionEditor({
         {/* Import panel */}
         {showImportPanel && (
           <ImportPresetPanel
-            categories={categoriesWithPresets}
+            categories={categoriesForImport}
             onImport={handlePresetImport}
+            onImportGroup={handleGroupImport}
             onClose={() => setShowImportPanel(false)}
             isPending={isPending}
           />
@@ -342,7 +403,7 @@ export function SectionEditor({
 }
 
 // ---------------------------------------------------------------------------
-// ImportPresetPanel — select a preset+variant to import
+// ImportPresetPanel — select a preset+variant or a group to import
 // ---------------------------------------------------------------------------
 
 type ImportCategory = PromptLibraryV2["categories"][number];
@@ -350,6 +411,7 @@ type ImportCategory = PromptLibraryV2["categories"][number];
 function ImportPresetPanel({
   categories,
   onImport,
+  onImportGroup,
   onClose,
   isPending,
 }: {
@@ -367,14 +429,17 @@ function ImportPresetPanel({
     categoryName: string,
     categoryColor: string | null,
   ) => void;
+  onImportGroup: (groupId: string) => void;
   onClose: () => void;
   isPending: boolean;
 }) {
   const [selectedCatId, setSelectedCatId] = useState(categories[0]?.id ?? "");
   const selectedCat = categories.find((c) => c.id === selectedCatId);
 
-  const items = useMemo(() => {
-    if (!selectedCat) return [];
+  const isGroupCat = selectedCat?.type === "group";
+
+  const presetItems = useMemo(() => {
+    if (!selectedCat || isGroupCat) return [];
     return selectedCat.presets.flatMap((preset) =>
       preset.variants.map((v) => ({
         presetId: preset.id,
@@ -388,7 +453,7 @@ function ImportPresetPanel({
         lora2: v.lora2,
       })),
     );
-  }, [selectedCat]);
+  }, [selectedCat, isGroupCat]);
 
   return (
     <div className="rounded-xl border border-sky-500/20 bg-sky-500/[0.03] p-3 space-y-2">
@@ -410,51 +475,85 @@ function ImportPresetPanel({
             key={cat.id}
             type="button"
             onClick={() => setSelectedCatId(cat.id)}
-            className={`rounded-lg px-2 py-1 text-[10px] transition ${
+            className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] transition ${
               selectedCatId === cat.id
                 ? "bg-white/10 text-white"
                 : "text-zinc-500 hover:text-zinc-300"
             }`}
           >
             {cat.name}
+            {cat.type === "group" && (
+              <span className="rounded bg-amber-500/20 px-1 py-px text-[9px] text-amber-300">组</span>
+            )}
           </button>
         ))}
       </div>
 
-      {/* Preset/variant list */}
+      {/* Content: presets or groups depending on category type */}
       <div className="max-h-40 overflow-y-auto space-y-1">
-        {items.length === 0 ? (
-          <div className="py-2 text-center text-[10px] text-zinc-600">暂无可导入的预制</div>
+        {isGroupCat ? (
+          // Group category — show groups to import
+          (selectedCat.groups ?? []).length === 0 ? (
+            <div className="py-2 text-center text-[10px] text-zinc-600">暂无可导入的预制组</div>
+          ) : (
+            (selectedCat.groups ?? []).map((group) => (
+              <button
+                key={group.id}
+                type="button"
+                disabled={isPending}
+                onClick={() => onImportGroup(group.id)}
+                className="w-full rounded-lg border border-white/5 bg-white/[0.02] p-2 text-left transition hover:border-white/10 disabled:opacity-50"
+              >
+                <div className="flex items-center gap-1.5">
+                  <span className="rounded bg-amber-500/15 px-1 py-px text-[9px] text-amber-400">组</span>
+                  <span className="text-[11px] font-medium text-zinc-200">{group.name}</span>
+                </div>
+                <div className="mt-0.5 text-[10px] text-zinc-500">
+                  {group.members.length} 个成员：
+                  {group.members
+                    .slice(0, 3)
+                    .map((m) => m.subGroupName ?? m.presetName ?? "?")
+                    .join("、")}
+                  {group.members.length > 3 ? "…" : ""}
+                </div>
+              </button>
+            ))
+          )
         ) : (
-          items.map((item) => (
-            <button
-              key={`${item.presetId}-${item.variantId}`}
-              type="button"
-              disabled={isPending}
-              onClick={() => {
-                if (!selectedCat) return;
-                onImport(
-                  item.presetId,
-                  item.presetName,
-                  item.variantId,
-                  item.variantName,
-                  item.prompt,
-                  item.negativePrompt,
-                  item.lora1,
-                  item.lora2,
-                  selectedCat.id,
-                  selectedCat.name,
-                  selectedCat.color,
-                );
-              }}
-              className="w-full rounded-lg border border-white/5 bg-white/[0.02] p-2 text-left transition hover:border-white/10 disabled:opacity-50"
-            >
-              <div className="text-[11px] font-medium text-zinc-200">{item.displayName}</div>
-              <div className="mt-0.5 text-[10px] text-zinc-500 truncate">
-                {item.prompt.slice(0, 60)}{item.prompt.length > 60 ? "..." : ""}
-              </div>
-            </button>
-          ))
+          // Preset category — show preset/variant list
+          presetItems.length === 0 ? (
+            <div className="py-2 text-center text-[10px] text-zinc-600">暂无可导入的预制</div>
+          ) : (
+            presetItems.map((item) => (
+              <button
+                key={`${item.presetId}-${item.variantId}`}
+                type="button"
+                disabled={isPending}
+                onClick={() => {
+                  if (!selectedCat) return;
+                  onImport(
+                    item.presetId,
+                    item.presetName,
+                    item.variantId,
+                    item.variantName,
+                    item.prompt,
+                    item.negativePrompt,
+                    item.lora1,
+                    item.lora2,
+                    selectedCat.id,
+                    selectedCat.name,
+                    selectedCat.color,
+                  );
+                }}
+                className="w-full rounded-lg border border-white/5 bg-white/[0.02] p-2 text-left transition hover:border-white/10 disabled:opacity-50"
+              >
+                <div className="text-[11px] font-medium text-zinc-200">{item.displayName}</div>
+                <div className="mt-0.5 text-[10px] text-zinc-500 truncate">
+                  {item.prompt.slice(0, 60)}{item.prompt.length > 60 ? "..." : ""}
+                </div>
+              </button>
+            ))
+          )
         )}
       </div>
     </div>

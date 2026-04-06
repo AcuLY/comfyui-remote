@@ -912,6 +912,7 @@ export type PromptLibraryV2 = {
     slug: string;
     color: string | null;
     icon: string | null;
+    type: string; // "preset" | "group"
     positivePromptOrder?: number;
     lora1Order?: number;
     lora2Order?: number;
@@ -928,63 +929,61 @@ export type PromptLibraryV2 = {
         linkedVariants: unknown;
       }>;
     }>;
-  }>;
-  groups: Array<{
-    id: string;
-    name: string;
-    slug: string;
-    members: Array<{
+    groups: Array<{
       id: string;
-      presetId: string | null;
-      variantId: string | null;
-      subGroupId: string | null;
-      presetName?: string;
-      variantName?: string;
-      subGroupName?: string;
+      name: string;
+      slug: string;
+      members: Array<{
+        id: string;
+        presetId: string | null;
+        variantId: string | null;
+        subGroupId: string | null;
+        presetName?: string;
+        variantName?: string;
+        subGroupName?: string;
+      }>;
     }>;
   }>;
 };
 
 export async function getPromptLibraryV2(): Promise<PromptLibraryV2> {
-  const [categories, groups] = await Promise.all([
-    prisma.presetCategory.findMany({
-      orderBy: { sortOrder: "asc" },
-      include: {
-        presets: {
-          where: { isActive: true },
-          orderBy: { sortOrder: "asc" },
-          select: {
-            id: true,
-            name: true,
-            variants: {
-              where: { isActive: true },
-              orderBy: { sortOrder: "asc" },
-              select: { id: true, name: true, prompt: true, negativePrompt: true, lora1: true, lora2: true, linkedVariants: true },
-            },
+  const categories = await prisma.presetCategory.findMany({
+    orderBy: { sortOrder: "asc" },
+    include: {
+      presets: {
+        where: { isActive: true },
+        orderBy: { sortOrder: "asc" },
+        select: {
+          id: true,
+          name: true,
+          variants: {
+            where: { isActive: true },
+            orderBy: { sortOrder: "asc" },
+            select: { id: true, name: true, prompt: true, negativePrompt: true, lora1: true, lora2: true, linkedVariants: true },
           },
         },
       },
-    }),
-    prisma.presetGroup.findMany({
-      where: { isActive: true },
-      orderBy: { sortOrder: "asc" },
-      include: {
-        members: {
-          orderBy: { sortOrder: "asc" },
+      groups: {
+        where: { isActive: true },
+        orderBy: { sortOrder: "asc" },
+        include: {
+          members: { orderBy: { sortOrder: "asc" } },
         },
       },
-    }),
-  ]);
+    },
+  });
 
-  // Resolve member display names
+  // Resolve member display names for groups
   const allPresetIds = new Set<string>();
   const allVariantIds = new Set<string>();
-  const allGroupIds = new Set<string>();
-  for (const g of groups) {
-    for (const m of g.members) {
-      if (m.presetId) allPresetIds.add(m.presetId);
-      if (m.variantId) allVariantIds.add(m.variantId);
-      if (m.subGroupId) allGroupIds.add(m.subGroupId);
+  const allSubGroupIds = new Set<string>();
+  for (const c of categories) {
+    for (const g of c.groups) {
+      for (const m of g.members) {
+        if (m.presetId) allPresetIds.add(m.presetId);
+        if (m.variantId) allVariantIds.add(m.variantId);
+        if (m.subGroupId) allSubGroupIds.add(m.subGroupId);
+      }
     }
   }
 
@@ -995,8 +994,8 @@ export async function getPromptLibraryV2(): Promise<PromptLibraryV2> {
     allVariantIds.size > 0
       ? prisma.presetVariant.findMany({ where: { id: { in: [...allVariantIds] } }, select: { id: true, name: true } })
       : [],
-    allGroupIds.size > 0
-      ? prisma.presetGroup.findMany({ where: { id: { in: [...allGroupIds] } }, select: { id: true, name: true } })
+    allSubGroupIds.size > 0
+      ? prisma.presetGroup.findMany({ where: { id: { in: [...allSubGroupIds] } }, select: { id: true, name: true } })
       : [],
   ]);
 
@@ -1011,23 +1010,24 @@ export async function getPromptLibraryV2(): Promise<PromptLibraryV2> {
       slug: c.slug,
       color: c.color,
       icon: c.icon,
+      type: c.type,
       positivePromptOrder: c.positivePromptOrder,
       lora1Order: c.lora1Order,
       lora2Order: c.lora2Order,
       presets: c.presets,
-    })),
-    groups: groups.map((g) => ({
-      id: g.id,
-      name: g.name,
-      slug: g.slug,
-      members: g.members.map((m) => ({
-        id: m.id,
-        presetId: m.presetId,
-        variantId: m.variantId,
-        subGroupId: m.subGroupId,
-        presetName: m.presetId ? presetNameMap.get(m.presetId) : undefined,
-        variantName: m.variantId ? variantNameMap.get(m.variantId) : undefined,
-        subGroupName: m.subGroupId ? groupNameMap.get(m.subGroupId) : undefined,
+      groups: c.groups.map((g) => ({
+        id: g.id,
+        name: g.name,
+        slug: g.slug,
+        members: g.members.map((m) => ({
+          id: m.id,
+          presetId: m.presetId,
+          variantId: m.variantId,
+          subGroupId: m.subGroupId,
+          presetName: m.presetId ? presetNameMap.get(m.presetId) : undefined,
+          variantName: m.variantId ? variantNameMap.get(m.variantId) : undefined,
+          subGroupName: m.subGroupId ? groupNameMap.get(m.subGroupId) : undefined,
+        })),
       })),
     })),
   };
