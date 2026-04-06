@@ -147,7 +147,8 @@ model PromptBlock {
   id                    String                @id @default(cuid())
   projectSectionId      String
   type                  String                @default("custom")
-  sourceId              String?
+  sourceId              String?               // FK to Preset (when type="preset")
+  variantId             String?               // FK to PresetVariant (current variant)
   categoryId            String?               // FK to PresetCategory
   bindingId             String?               // groups blocks+loras from same preset import
   label                 String

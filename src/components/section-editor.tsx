@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition, useMemo } from "react";
-import { Plus, Trash2, Package } from "lucide-react";
+import { Plus, Trash2, Package, ChevronDown } from "lucide-react";
 import { PromptBlockEditor } from "@/components/prompt-block-editor";
 import { LoraListEditor } from "@/components/lora-list-editor";
 import type { PromptBlockData } from "@/lib/actions";
@@ -9,6 +9,7 @@ import {
   deleteSectionBlock,
   importPresetToSection,
   flattenGroup,
+  switchBindingVariant,
 } from "@/lib/actions";
 import type { LoraEntry } from "@/lib/lora-types";
 import type { PromptLibraryV2 } from "@/components/prompt-block-editor";
@@ -23,9 +24,12 @@ type LoraConfig2 = {
 type PresetBindingInfo = {
   bindingId: string;
   presetName: string;  // from block label
+  sourceId: string | null;  // preset ID
+  variantId: string | null;  // current variant ID
   categoryName?: string;
   blockCount: number;
   loraCount: number;
+  availableVariants: Array<{ id: string; name: string }>;  // from library data
 };
 
 type SectionEditorProps = {
@@ -58,11 +62,25 @@ export function SectionEditor({
         if (existing) {
           existing.blockCount++;
         } else {
+          // Look up available variants from library data
+          let availableVariants: Array<{ id: string; name: string }> = [];
+          if (b.sourceId && libraryV2) {
+            for (const cat of libraryV2.categories) {
+              const preset = cat.presets.find((p) => p.id === b.sourceId);
+              if (preset) {
+                availableVariants = preset.variants.map((v) => ({ id: v.id, name: v.name }));
+                break;
+              }
+            }
+          }
           map.set(b.bindingId, {
             bindingId: b.bindingId,
             presetName: b.label,
+            sourceId: b.sourceId,
+            variantId: b.variantId,
             blockCount: 1,
             loraCount: 0,
+            availableVariants,
           });
         }
       }
@@ -76,7 +94,33 @@ export function SectionEditor({
       }
     }
     return [...map.values()];
-  }, [blocks, lora1, lora2]);
+  }, [blocks, lora1, lora2, libraryV2]);
+
+  // ── Switch variant for an imported preset ──
+  function handleSwitchVariant(bindingId: string, newVariantId: string) {
+    startTransition(async () => {
+      const result = await switchBindingVariant(sectionId, bindingId, newVariantId);
+      if (!result) return;
+
+      // Update the block in state
+      setBlocks((prev) =>
+        prev.map((b) => (b.bindingId === bindingId ? { ...b, ...result.block } : b)),
+      );
+
+      // Replace LoRAs for this bindingId
+      const updatedLora1 = [
+        ...lora1.filter((e) => e.bindingId !== bindingId),
+        ...result.lora1.map((l) => ({ ...l, source: "preset" as const })),
+      ];
+      const updatedLora2 = [
+        ...lora2.filter((e) => e.bindingId !== bindingId),
+        ...result.lora2.map((l) => ({ ...l, source: "preset" as const })),
+      ];
+      setLora1(updatedLora1);
+      setLora2(updatedLora2);
+      await onLoraChange({ lora1: updatedLora1, lora2: updatedLora2 });
+    });
+  }
 
   // ── Import a preset (server-side resolution of linkedVariants) ──
   function handlePresetImport(
@@ -333,6 +377,26 @@ export function SectionEditor({
               >
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="text-[11px] text-zinc-300 truncate">{binding.presetName}</span>
+                  {/* Variant switcher — show only if preset has multiple variants */}
+                  {binding.availableVariants.length > 1 && (
+                    <div className="relative">
+                      <select
+                        value={binding.variantId ?? ""}
+                        onChange={(e) => {
+                          if (e.target.value && e.target.value !== binding.variantId) {
+                            handleSwitchVariant(binding.bindingId, e.target.value);
+                          }
+                        }}
+                        disabled={isPending}
+                        className="appearance-none rounded border border-white/10 bg-white/[0.04] py-0.5 pl-1.5 pr-5 text-[10px] text-zinc-300 outline-none focus:border-sky-500/30 disabled:opacity-50"
+                      >
+                        {binding.availableVariants.map((v) => (
+                          <option key={v.id} value={v.id} className="bg-zinc-900">{v.name}</option>
+                        ))}
+                      </select>
+                      <ChevronDown className="pointer-events-none absolute right-1 top-1/2 size-2.5 -translate-y-1/2 text-zinc-500" />
+                    </div>
+                  )}
                   <span className="text-[9px] text-zinc-500">
                     {binding.blockCount} 块 · {binding.loraCount} LoRA
                   </span>
