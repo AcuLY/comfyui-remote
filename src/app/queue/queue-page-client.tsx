@@ -3,11 +3,12 @@
 import { useState, useEffect, useTransition, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronRight, Clock3, Eye, Sparkles, Loader2, RefreshCw, CheckCircle2, AlertTriangle } from "lucide-react";
+import { ChevronRight, Clock3, Eye, Sparkles, Loader2, RefreshCw, CheckCircle2, AlertTriangle, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/page-header";
 import { SectionCard } from "@/components/section-card";
 import { StatChip } from "@/components/stat-chip";
+import { cancelRun } from "@/lib/actions";
 import type { QueueRun, RunningRun, FailedRun } from "@/lib/types";
 
 export type QueueTabKey = "pending" | "running" | "failed";
@@ -225,11 +226,33 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns, initialF
                     {run.status === "running" ? "运行中" : "排队中"}
                   </span>
                 </div>
-                <div className="mt-3 flex gap-3 text-xs text-zinc-400">
-                  <div className="rounded-xl bg-white/[0.03] px-3 py-2">
-                    <Clock3 className="mb-1 size-3.5" />
-                    {run.startedAt}
+                <div className="mt-3 flex items-center justify-between">
+                  <div className="flex gap-3 text-xs text-zinc-400">
+                    <div className="rounded-xl bg-white/[0.03] px-3 py-2">
+                      <Clock3 className="mb-1 size-3.5" />
+                      {run.startedAt}
+                    </div>
                   </div>
+                  <button
+                    type="button"
+                    disabled={isPending}
+                    onClick={() => {
+                      if (!confirm(`确认取消任务「${run.projectTitle} / ${run.sectionName}」？`)) return;
+                      startTransition(async () => {
+                        const result = await cancelRun(run.id);
+                        if (result.ok) {
+                          toast.success("任务已取消");
+                          // Remove from local state immediately
+                          setRunningRuns((prev) => prev.filter((r) => r.id !== run.id));
+                        } else {
+                          toast.error(result.error ?? "取消失败");
+                        }
+                      });
+                    }}
+                    className="inline-flex items-center gap-1 rounded-lg border border-red-500/20 bg-red-500/10 px-2.5 py-1.5 text-[11px] text-red-400 hover:bg-red-500/20 disabled:opacity-50"
+                  >
+                    <XCircle className="size-3" /> 取消
+                  </button>
                 </div>
               </div>
             ))}

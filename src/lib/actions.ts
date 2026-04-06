@@ -1280,6 +1280,68 @@ export async function switchBindingVariant(
 }
 
 // ---------------------------------------------------------------------------
+// 取消任务（Run）
+// ---------------------------------------------------------------------------
+
+export async function cancelRun(runId: string): Promise<{ ok: boolean; error?: string }> {
+  const run = await prisma.run.findUnique({
+    where: { id: runId },
+    select: { id: true, status: true, projectId: true },
+  });
+  if (!run) return { ok: false, error: "任务不存在" };
+  if (run.status !== "queued" && run.status !== "running") {
+    return { ok: false, error: `任务状态为「${run.status}」，无法取消` };
+  }
+
+  await prisma.run.update({
+    where: { id: runId },
+    data: {
+      status: "cancelled",
+      finishedAt: new Date(),
+      errorMessage: "用户取消",
+    },
+  });
+
+  // Recalculate project status
+  const activeRuns = await prisma.run.count({
+    where: { projectId: run.projectId, status: { in: ["queued", "running"] } },
+  });
+  if (activeRuns === 0) {
+    // No more active runs — reset project to draft
+    await prisma.project.update({
+      where: { id: run.projectId },
+      data: { status: "draft" },
+    });
+  }
+
+  revalidatePath("/queue");
+  revalidatePath(`/projects/${run.projectId}`);
+  return { ok: true };
+}
+
+/** Cancel all queued/running runs for a project */
+export async function cancelProjectRuns(projectId: string): Promise<number> {
+  const result = await prisma.run.updateMany({
+    where: {
+      projectId,
+      status: { in: ["queued", "running"] },
+    },
+    data: {
+      status: "cancelled",
+      finishedAt: new Date(),
+      errorMessage: "用户取消",
+    },
+  });
+  await prisma.project.update({
+    where: { id: projectId },
+    data: { status: "draft" },
+  });
+  revalidatePath("/queue");
+  revalidatePath(`/projects/${projectId}`);
+  return result.count;
+}
+
+// ---------------------------------------------------------------------------
 // 添加小节（Section）
 // ---------------------------------------------------------------------------
 
