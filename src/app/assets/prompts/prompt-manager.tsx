@@ -1090,14 +1090,15 @@ function PresetForm({
 
   function addVariant() {
     const newIdx = variants.length;
+    const prev = variants[variants.length - 1];
     setVariants([...variants, {
       name: `变体 ${newIdx + 1}`,
       slug: `variant-${newIdx + 1}`,
-      prompt: "",
-      negativePrompt: "",
-      lora1: [],
-      lora2: [],
-      linkedVariants: [],
+      prompt: prev?.prompt ?? "",
+      negativePrompt: prev?.negativePrompt ?? "",
+      lora1: prev?.lora1 ? [...prev.lora1] : [],
+      lora2: prev?.lora2 ? [...prev.lora2] : [],
+      linkedVariants: prev?.linkedVariants ? [...prev.linkedVariants] : [],
     }]);
     setCurrentIdx(newIdx);
   }
@@ -1829,6 +1830,8 @@ function AddGroupMemberForm({
         presetId: selPresetId,
         variantId: selVariantId || undefined,
       });
+      setSelCatId("");
+      setSelPresetId("");
       setSelVariantId("");
     }
   }
