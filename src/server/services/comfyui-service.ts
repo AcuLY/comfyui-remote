@@ -54,7 +54,7 @@ export class ComfyPromptExecutionError extends Error {
   }
 }
 
-type ValidatedComfyPromptDraft = {
+export type ValidatedComfyPromptDraft = {
   apiUrl: string;
   apiPrompt: JsonRecord;
   extraData: JsonRecord;
@@ -201,7 +201,7 @@ function isHistoryComplete(entry: ComfyPromptHistoryEntry) {
  * Extract execution metadata (seeds, KSampler params) from the submitted prompt.
  * KSampler nodes (3 = KS1, 427 = KS2) contain the actual seed values used.
  */
-function extractExecutionMeta(apiPrompt: JsonRecord): Record<string, unknown> {
+export function extractExecutionMeta(apiPrompt: JsonRecord): Record<string, unknown> {
   const meta: Record<string, unknown> = {};
 
   // KSampler1 (node 3)
@@ -229,7 +229,7 @@ function extractExecutionMeta(apiPrompt: JsonRecord): Record<string, unknown> {
   return meta;
 }
 
-function extractOutputImages(entry: ComfyPromptHistoryEntry): ComfyPromptOutputImage[] {
+export function extractOutputImages(entry: ComfyPromptHistoryEntry): ComfyPromptOutputImage[] {
   if (!entry.outputs) {
     return [];
   }
@@ -274,7 +274,7 @@ function extractOutputImages(entry: ComfyPromptHistoryEntry): ComfyPromptOutputI
   return images;
 }
 
-function extractOutputDir(images: ComfyPromptOutputImage[]) {
+export function extractOutputDir(images: ComfyPromptOutputImage[]) {
   if (images.length === 0) {
     return null;
   }
@@ -477,7 +477,7 @@ async function resolveStandardWorkflowPrompt(
   return buildWorkflowPrompt(buildInput);
 }
 
-async function validateComfyPromptDraft(
+export async function validateComfyPromptDraft(
   apiUrl: string,
   promptDraft: ComfyPromptDraft,
 ): Promise<ValidatedComfyPromptDraft> {
@@ -535,7 +535,7 @@ async function validateComfyPromptDraft(
   };
 }
 
-async function submitComfyPrompt(
+export async function submitComfyPrompt(
   validatedDraft: ValidatedComfyPromptDraft,
   promptDraft: ComfyPromptDraft,
 ) {
@@ -571,7 +571,7 @@ async function submitComfyPrompt(
   return promptId;
 }
 
-async function pollComfyPromptHistory(
+export async function pollComfyPromptHistory(
   apiUrl: string,
   promptId: string,
 ): Promise<ComfyPromptHistoryEntry> {
@@ -656,4 +656,39 @@ export async function executeComfyPromptDraft(
     outputImages,
     executionMeta,
   };
+}
+
+// ---------------------------------------------------------------------------
+// ComfyUI queue management
+// ---------------------------------------------------------------------------
+
+/**
+ * Delete specific prompts from ComfyUI's queue.
+ * POST /queue with { delete: [promptId, ...] }
+ */
+export async function deleteComfyQueueItems(
+  apiUrl: string,
+  promptIds: string[],
+): Promise<void> {
+  const url = `${normalizeApiUrl(apiUrl)}/queue`;
+  await fetchJson(
+    url,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ delete: promptIds }),
+    },
+    "ComfyUI queue delete",
+  );
+  log.info("Deleted prompts from ComfyUI queue", { promptIds });
+}
+
+/**
+ * Interrupt the currently executing prompt in ComfyUI.
+ * POST /interrupt
+ */
+export async function interruptComfyPrompt(apiUrl: string): Promise<void> {
+  const url = `${normalizeApiUrl(apiUrl)}/interrupt`;
+  await fetchJson(url, { method: "POST" }, "ComfyUI interrupt");
+  log.info("Sent interrupt to ComfyUI");
 }

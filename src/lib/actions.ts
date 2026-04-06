@@ -14,6 +14,11 @@ import {
   copyProject as copyProjectRepo,
 } from "@/server/repositories/project-repository";
 import { executeQueuedRuns } from "@/server/services/run-executor";
+import {
+  deleteComfyQueueItems,
+  interruptComfyPrompt,
+} from "@/server/services/comfyui-service";
+import { env } from "@/lib/env";
 
 // ---------------------------------------------------------------------------
 // 审核操作：保留图片
@@ -1286,11 +1291,27 @@ export async function switchBindingVariant(
 export async function cancelRun(runId: string): Promise<{ ok: boolean; error?: string }> {
   const run = await prisma.run.findUnique({
     where: { id: runId },
-    select: { id: true, status: true, projectId: true },
+    select: { id: true, status: true, projectId: true, comfyPromptId: true },
   });
   if (!run) return { ok: false, error: "任务不存在" };
   if (run.status !== "queued" && run.status !== "running") {
     return { ok: false, error: `任务状态为「${run.status}」，无法取消` };
+  }
+
+  // Notify ComfyUI to cancel/interrupt
+  if (run.comfyPromptId) {
+    try {
+      if (run.status === "running") {
+        // Currently executing — interrupt it
+        await interruptComfyPrompt(env.comfyApiUrl);
+      } else {
+        // Queued in ComfyUI — remove from queue
+        await deleteComfyQueueItems(env.comfyApiUrl, [run.comfyPromptId]);
+      }
+    } catch (e) {
+      // Best-effort: still mark as cancelled in DB even if ComfyUI call fails
+      console.warn("Failed to cancel in ComfyUI:", e);
+    }
   }
 
   await prisma.run.update({
@@ -1307,7 +1328,6 @@ export async function cancelRun(runId: string): Promise<{ ok: boolean; error?: s
     where: { projectId: run.projectId, status: { in: ["queued", "running"] } },
   });
   if (activeRuns === 0) {
-    // No more active runs — reset project to draft
     await prisma.project.update({
       where: { id: run.projectId },
       data: { status: "draft" },
@@ -1321,6 +1341,32 @@ export async function cancelRun(runId: string): Promise<{ ok: boolean; error?: s
 
 /** Cancel all queued/running runs for a project */
 export async function cancelProjectRuns(projectId: string): Promise<number> {
+  // Find all active runs with comfyPromptIds to cancel in ComfyUI
+  const activeRuns = await prisma.run.findMany({
+    where: {
+      projectId,
+      status: { in: ["queued", "running"] },
+    },
+    select: { id: true, status: true, comfyPromptId: true },
+  });
+
+  // Notify ComfyUI for each run that has a comfyPromptId
+  const queuedPromptIds = activeRuns
+    .filter((r) => r.status === "queued" && r.comfyPromptId)
+    .map((r) => r.comfyPromptId!);
+  const hasRunning = activeRuns.some((r) => r.status === "running" && r.comfyPromptId);
+
+  try {
+    if (queuedPromptIds.length > 0) {
+      await deleteComfyQueueItems(env.comfyApiUrl, queuedPromptIds);
+    }
+    if (hasRunning) {
+      await interruptComfyPrompt(env.comfyApiUrl);
+    }
+  } catch (e) {
+    console.warn("Failed to cancel in ComfyUI:", e);
+  }
+
   const result = await prisma.run.updateMany({
     where: {
       projectId,

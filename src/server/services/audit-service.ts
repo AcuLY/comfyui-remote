@@ -41,6 +41,7 @@ export type AuditAction =
   | "worker.done"
   | "worker.failed"
   | "executor.start"
+  | "executor.submitted"
   | "executor.done"
   | "executor.failed";
 
