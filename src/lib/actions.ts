@@ -635,10 +635,10 @@ export async function resolveVariantContent(
 
   for (const ref of linked) {
     const resolved = await resolveVariantContent(ref.variantId, visited);
-    if (resolved.prompt) prompt += "\n" + resolved.prompt;
+    if (resolved.prompt) prompt += ", " + resolved.prompt;
     if (resolved.negativePrompt) {
       negativePrompt = negativePrompt
-        ? negativePrompt + "\n" + resolved.negativePrompt
+        ? negativePrompt + ", " + resolved.negativePrompt
         : resolved.negativePrompt;
     }
     for (const l of resolved.lora1) {
