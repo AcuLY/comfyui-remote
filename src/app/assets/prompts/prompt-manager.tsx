@@ -638,7 +638,7 @@ function PresetList({
                           negativePrompt: v.negativePrompt.trim() || null,
                           lora1: serializeLoraBindings(v.lora1),
                           lora2: serializeLoraBindings(v.lora2),
-                          linkedVariants: v.linkedVariants.length > 0 ? v.linkedVariants : null,
+                          linkedVariants: v.linkedVariants,
                         };
                         if (v.id) {
                           await updatePresetVariant(v.id, variantData);

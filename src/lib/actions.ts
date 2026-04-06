@@ -535,7 +535,9 @@ export async function createPresetVariant(input: PresetVariantInput) {
       lora1: toJsonValue(lora1) ?? Prisma.DbNull,
       lora2: toJsonValue(lora2) ?? Prisma.DbNull,
       defaultParams: toJsonValue(defaultParams) ?? Prisma.DbNull,
-      linkedVariants: toJsonValue(linkedVariants) ?? Prisma.DbNull,
+      linkedVariants: (Array.isArray(linkedVariants) && linkedVariants.length > 0)
+        ? (toJsonValue(linkedVariants) ?? Prisma.DbNull)
+        : Prisma.DbNull,
     },
   });
   revalidatePath("/assets/prompts");
@@ -551,12 +553,19 @@ export async function updatePreset(id: string, input: Partial<PresetInput>) {
 }
 
 export async function updatePresetVariant(id: string, input: Partial<PresetVariantInput>) {
-  const { lora1, lora2, defaultParams, linkedVariants, ...rest } = input;
+  const { presetId: _pid, lora1, lora2, defaultParams, linkedVariants, ...rest } = input;
   const data: Record<string, unknown> = { ...rest };
   if (lora1 !== undefined) data.lora1 = toJsonValue(lora1) ?? Prisma.DbNull;
   if (lora2 !== undefined) data.lora2 = toJsonValue(lora2) ?? Prisma.DbNull;
   if (defaultParams !== undefined) data.defaultParams = toJsonValue(defaultParams) ?? Prisma.DbNull;
-  if (linkedVariants !== undefined) data.linkedVariants = toJsonValue(linkedVariants) ?? Prisma.DbNull;
+  if (linkedVariants !== undefined) {
+    // Empty array → store as DbNull; non-empty → store as JSON array
+    if (Array.isArray(linkedVariants) && linkedVariants.length === 0) {
+      data.linkedVariants = Prisma.DbNull;
+    } else {
+      data.linkedVariants = toJsonValue(linkedVariants) ?? Prisma.DbNull;
+    }
+  }
 
   const variant = await prisma.presetVariant.update({ where: { id }, data });
   revalidatePath("/assets/prompts");
