@@ -23,9 +23,11 @@ model PresetCategory {
   lora1Order          Int             @default(0)
   lora2Order          Int             @default(0)
   sortOrder           Int             @default(0)
+  type                String          @default("preset") // "preset" | "group"
   createdAt           DateTime        @default(now())
   updatedAt           DateTime        @updatedAt
   presets             Preset[]
+  groups              PresetGroup[]
 }
 
 model Preset {
@@ -68,13 +70,18 @@ model PresetVariant {
 
 model PresetGroup {
   id          String               @id @default(cuid())
+  categoryId  String
   name        String
-  slug        String               @unique
+  slug        String
   sortOrder   Int                  @default(0)
   isActive    Boolean              @default(true)
   createdAt   DateTime             @default(now())
   updatedAt   DateTime             @updatedAt
+  category    PresetCategory       @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   members     PresetGroupMember[]
+
+  @@unique([categoryId, slug])
+  @@index([categoryId, sortOrder])
 }
 
 model PresetGroupMember {

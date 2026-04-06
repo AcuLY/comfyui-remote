@@ -693,18 +693,27 @@ export type PresetCategoryItem = {
   slug: string;
   icon: string | null;
   color: string | null;
+  type: string; // "preset" | "group"
   positivePromptOrder: number;
   negativePromptOrder: number;
   lora1Order: number;
   lora2Order: number;
   sortOrder: number;
   presetCount: number;
+  groupCount: number;
 };
 
 export async function getPresetCategories(): Promise<PresetCategoryItem[]> {
   const categories = await prisma.presetCategory.findMany({
     orderBy: { sortOrder: "asc" },
-    include: { _count: { select: { presets: { where: { isActive: true } } } } },
+    include: {
+      _count: {
+        select: {
+          presets: { where: { isActive: true } },
+          groups: { where: { isActive: true } },
+        },
+      },
+    },
   });
   return categories.map((c) => ({
     id: c.id,
@@ -712,12 +721,14 @@ export async function getPresetCategories(): Promise<PresetCategoryItem[]> {
     slug: c.slug,
     icon: c.icon,
     color: c.color,
+    type: c.type,
     positivePromptOrder: c.positivePromptOrder,
     negativePromptOrder: c.negativePromptOrder,
     lora1Order: c.lora1Order,
     lora2Order: c.lora2Order,
     sortOrder: c.sortOrder,
     presetCount: c._count.presets,
+    groupCount: c._count.groups,
   }));
 }
 
@@ -769,6 +780,7 @@ export async function getPresets(categoryId: string): Promise<PresetItem[]> {
 
 export type PresetCategoryFull = PresetCategoryItem & {
   presets: PresetFull[];
+  groups: PresetGroupItem[];
 };
 
 export type PresetFull = PresetItem & {
@@ -779,7 +791,12 @@ export async function getPresetCategoriesWithPresets(): Promise<PresetCategoryFu
   const categories = await prisma.presetCategory.findMany({
     orderBy: { sortOrder: "asc" },
     include: {
-      _count: { select: { presets: { where: { isActive: true } } } },
+      _count: {
+        select: {
+          presets: { where: { isActive: true } },
+          groups: { where: { isActive: true } },
+        },
+      },
       presets: {
         where: { isActive: true },
         orderBy: { sortOrder: "asc" },
@@ -791,20 +808,58 @@ export async function getPresetCategoriesWithPresets(): Promise<PresetCategoryFu
           },
         },
       },
+      groups: {
+        where: { isActive: true },
+        orderBy: { sortOrder: "asc" },
+        include: {
+          members: { orderBy: { sortOrder: "asc" } },
+        },
+      },
     },
   });
+
+  // Resolve display names for group members (batch)
+  const allPresetIds = new Set<string>();
+  const allVariantIds = new Set<string>();
+  const allGroupIds = new Set<string>();
+  for (const c of categories) {
+    for (const g of c.groups) {
+      for (const m of g.members) {
+        if (m.presetId) allPresetIds.add(m.presetId);
+        if (m.variantId) allVariantIds.add(m.variantId);
+        if (m.subGroupId) allGroupIds.add(m.subGroupId);
+      }
+    }
+  }
+  const [presetNames, variantNames, groupNames] = await Promise.all([
+    allPresetIds.size > 0
+      ? prisma.preset.findMany({ where: { id: { in: [...allPresetIds] } }, select: { id: true, name: true } })
+      : [],
+    allVariantIds.size > 0
+      ? prisma.presetVariant.findMany({ where: { id: { in: [...allVariantIds] } }, select: { id: true, name: true } })
+      : [],
+    allGroupIds.size > 0
+      ? prisma.presetGroup.findMany({ where: { id: { in: [...allGroupIds] } }, select: { id: true, name: true } })
+      : [],
+  ]);
+  const pMap = new Map(presetNames.map((p) => [p.id, p.name]));
+  const vMap = new Map(variantNames.map((v) => [v.id, v.name]));
+  const gMap = new Map(groupNames.map((g) => [g.id, g.name]));
+
   return categories.map((c) => ({
     id: c.id,
     name: c.name,
     slug: c.slug,
     icon: c.icon,
     color: c.color,
+    type: c.type,
     positivePromptOrder: c.positivePromptOrder,
     negativePromptOrder: c.negativePromptOrder,
     lora1Order: c.lora1Order,
     lora2Order: c.lora2Order,
     sortOrder: c.sortOrder,
     presetCount: c._count.presets,
+    groupCount: c._count.groups,
     presets: c.presets.map((p) => ({
       id: p.id,
       categoryId: p.categoryId,
@@ -827,6 +882,23 @@ export async function getPresetCategoriesWithPresets(): Promise<PresetCategoryFu
         linkedVariants: (Array.isArray(v.linkedVariants) ? v.linkedVariants : []) as LinkedVariantRef[],
         sortOrder: v.sortOrder,
         isActive: v.isActive,
+      })),
+    })),
+    groups: c.groups.map((g) => ({
+      id: g.id,
+      categoryId: g.categoryId,
+      name: g.name,
+      slug: g.slug,
+      sortOrder: g.sortOrder,
+      members: g.members.map((m) => ({
+        id: m.id,
+        presetId: m.presetId,
+        variantId: m.variantId,
+        subGroupId: m.subGroupId,
+        sortOrder: m.sortOrder,
+        presetName: m.presetId ? pMap.get(m.presetId) : undefined,
+        variantName: m.variantId ? vMap.get(m.variantId) : undefined,
+        subGroupName: m.subGroupId ? gMap.get(m.subGroupId) : undefined,
       })),
     })),
   }));
@@ -967,6 +1039,7 @@ export async function getPromptLibraryV2(): Promise<PromptLibraryV2> {
 
 export type PresetGroupItem = {
   id: string;
+  categoryId: string;
   name: string;
   slug: string;
   sortOrder: number;
@@ -1023,6 +1096,7 @@ export async function getPresetGroups(): Promise<PresetGroupItem[]> {
 
   return groups.map((g) => ({
     id: g.id,
+    categoryId: g.categoryId,
     name: g.name,
     slug: g.slug,
     sortOrder: g.sortOrder,

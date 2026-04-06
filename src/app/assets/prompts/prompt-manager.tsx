@@ -66,20 +66,14 @@ import { parseLoraBindings, serializeLoraBindings } from "@/lib/lora-types";
 // Main component
 // ---------------------------------------------------------------------------
 
-type PresetTab = "presets" | "groups";
-
 export function PromptManager({
   initialCategories,
-  initialGroups,
 }: {
   initialCategories: PresetCategoryFull[];
-  initialGroups: PresetGroupItem[];
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [categories, setCategories] = useState(initialCategories);
-  const [groups, setGroups] = useState(initialGroups);
-  const [activeTab, setActiveTab] = useState<PresetTab>("presets");
   const [selectedCatId, setSelectedCatId] = useState<string | null>(
     initialCategories[0]?.id ?? null,
   );
@@ -87,14 +81,13 @@ export function PromptManager({
   // Sync with server data after router.refresh()
   useEffect(() => {
     setCategories(initialCategories);
-    setGroups(initialGroups);
     // Keep selection if the category still exists, otherwise select first
     setSelectedCatId((prev) =>
       initialCategories.some((c) => c.id === prev)
         ? prev
         : initialCategories[0]?.id ?? null,
     );
-  }, [initialCategories, initialGroups]);
+  }, [initialCategories]);
   const [showCatForm, setShowCatForm] = useState(false);
   const [editingCatId, setEditingCatId] = useState<string | null>(null);
 
@@ -122,181 +115,141 @@ export function PromptManager({
     });
   }
 
-  const totalPresets = categories.reduce((sum, c) => sum + c.presetCount, 0);
-
   return (
     <div className="space-y-4">
-      {/* Tab bar */}
-      <div className="flex items-center gap-1 rounded-2xl border border-white/10 bg-white/[0.03] p-1">
-        {([
-          { key: "presets" as const, label: "预制", badge: totalPresets },
-          { key: "groups" as const, label: "预制组", badge: groups.length },
-        ]).map((tab) => {
-          const isActive = activeTab === tab.key;
-          return (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm transition ${
-                isActive
-                  ? "bg-sky-500/20 text-sky-300"
-                  : "text-zinc-400 hover:bg-white/[0.06] hover:text-zinc-200"
-              }`}
-            >
-              {tab.label}
-              {tab.badge > 0 && (
-                <span
-                  className={`rounded-full px-1.5 py-0.5 text-[11px] font-medium ${
-                    isActive
-                      ? "bg-sky-500/30 text-sky-200"
-                      : "bg-white/10 text-zinc-500"
-                  }`}
+      <SectionCard title="预制管理" subtitle="管理预制分类和预制项。每个分类下可创建多个预制或预制组。">
+        <div className="flex flex-col gap-4 md:flex-row">
+          {/* Left panel: sortable categories */}
+          <div className="w-full shrink-0 space-y-2 md:w-56">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">
+                分类
+              </span>
+              <div className="flex gap-1">
+                <Link
+                  href="/assets/prompts/sort-rules"
+                  className="rounded p-1 text-zinc-500 hover:bg-white/[0.06] hover:text-white"
+                  title="排序规则"
                 >
-                  {tab.badge}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Presets tab */}
-      {activeTab === "presets" && (
-        <SectionCard title="预制管理" subtitle="管理预制分类和预制项。每个分类下可创建多个预制，用于项目绑定和小节导入。">
-          <div className="flex flex-col gap-4 md:flex-row">
-            {/* Left panel: sortable categories */}
-            <div className="w-full shrink-0 space-y-2 md:w-56">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">
-                  分类
-                </span>
-                <div className="flex gap-1">
-                  <Link
-                    href="/assets/prompts/sort-rules"
-                    className="rounded p-1 text-zinc-500 hover:bg-white/[0.06] hover:text-white"
-                    title="排序规则"
-                  >
-                    <Settings2 className="size-3.5" />
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowCatForm(true);
-                      setEditingCatId(null);
-                    }}
-                    className="rounded p-1 text-zinc-500 hover:bg-white/[0.06] hover:text-white"
-                  >
-                    <Plus className="size-3.5" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Sortable category list */}
-              <DndContext
-                id={catDndId}
-                sensors={catSensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleCatDragEnd}
-              >
-                <SortableContext
-                  items={categories.map((c) => c.id)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  {categories.map((cat) => (
-                    <SortableCategoryItem
-                      key={cat.id}
-                      cat={cat}
-                      isSelected={selectedCatId === cat.id}
-                      onSelect={() => {
-                        setSelectedCatId(cat.id);
-                        setShowCatForm(false);
-                      }}
-                      onEdit={() => {
-                        setEditingCatId(cat.id);
-                        setShowCatForm(true);
-                      }}
-                    />
-                  ))}
-                </SortableContext>
-              </DndContext>
-
-              {/* Category create/edit form */}
-              {showCatForm && (
-                <CategoryForm
-                  category={
-                    editingCatId
-                      ? categories.find((c) => c.id === editingCatId) ?? null
-                      : null
-                  }
-                  onSave={(data) => {
-                    startTransition(async () => {
-                      if (editingCatId) {
-                        await updatePresetCategory(editingCatId, data);
-                      } else {
-                        const cat = await createPresetCategory(data);
-                        setSelectedCatId(cat.id);
-                      }
-                      setShowCatForm(false);
-                      setEditingCatId(null);
-                      refresh();
-                    });
-                  }}
-                  onDelete={
-                    editingCatId
-                      ? () => {
-                          if (!confirm("确认删除此分类？")) return;
-                          startTransition(async () => {
-                            try {
-                              await deletePresetCategory(editingCatId);
-                              if (selectedCatId === editingCatId) {
-                                setSelectedCatId(categories[0]?.id ?? null);
-                              }
-                            } catch (e: unknown) {
-                              alert(e instanceof Error ? e.message : "删除失败");
-                            }
-                            setShowCatForm(false);
-                            setEditingCatId(null);
-                            refresh();
-                          });
-                        }
-                      : undefined
-                  }
-                  onCancel={() => {
-                    setShowCatForm(false);
+                  <Settings2 className="size-3.5" />
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCatForm(true);
                     setEditingCatId(null);
                   }}
-                  isPending={isPending}
-                />
-              )}
-
+                  className="rounded p-1 text-zinc-500 hover:bg-white/[0.06] hover:text-white"
+                >
+                  <Plus className="size-3.5" />
+                </button>
+              </div>
             </div>
 
-            {/* Right panel: presets */}
-            <div className="flex-1 min-w-0">
-              {selectedCat ? (
+            {/* Sortable category list */}
+            <DndContext
+              id={catDndId}
+              sensors={catSensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleCatDragEnd}
+            >
+              <SortableContext
+                items={categories.map((c) => c.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                {categories.map((cat) => (
+                  <SortableCategoryItem
+                    key={cat.id}
+                    cat={cat}
+                    isSelected={selectedCatId === cat.id}
+                    onSelect={() => {
+                      setSelectedCatId(cat.id);
+                      setShowCatForm(false);
+                    }}
+                    onEdit={() => {
+                      setEditingCatId(cat.id);
+                      setShowCatForm(true);
+                    }}
+                  />
+                ))}
+              </SortableContext>
+            </DndContext>
+
+            {/* Category create/edit form */}
+            {showCatForm && (
+              <CategoryForm
+                category={
+                  editingCatId
+                    ? categories.find((c) => c.id === editingCatId) ?? null
+                    : null
+                }
+                onSave={(data) => {
+                  startTransition(async () => {
+                    if (editingCatId) {
+                      await updatePresetCategory(editingCatId, data);
+                    } else {
+                      const cat = await createPresetCategory(data);
+                      setSelectedCatId(cat.id);
+                    }
+                    setShowCatForm(false);
+                    setEditingCatId(null);
+                    refresh();
+                  });
+                }}
+                onDelete={
+                  editingCatId
+                    ? () => {
+                        if (!confirm("确认删除此分类？")) return;
+                        startTransition(async () => {
+                          try {
+                            await deletePresetCategory(editingCatId);
+                            if (selectedCatId === editingCatId) {
+                              setSelectedCatId(categories[0]?.id ?? null);
+                            }
+                          } catch (e: unknown) {
+                            alert(e instanceof Error ? e.message : "删除失败");
+                          }
+                          setShowCatForm(false);
+                          setEditingCatId(null);
+                          refresh();
+                        });
+                      }
+                    : undefined
+                }
+                onCancel={() => {
+                  setShowCatForm(false);
+                  setEditingCatId(null);
+                }}
+                isPending={isPending}
+              />
+            )}
+
+          </div>
+
+          {/* Right panel: presets or groups based on category type */}
+          <div className="flex-1 min-w-0">
+            {selectedCat ? (
+              selectedCat.type === "group" ? (
+                <GroupList
+                  category={selectedCat}
+                  allCategories={categories}
+                  onRefresh={refresh}
+                />
+              ) : (
                 <PresetList
                   category={selectedCat}
                   onRefresh={refresh}
                   allCategories={categories}
                 />
-              ) : (
-                <div className="flex h-40 items-center justify-center text-xs text-zinc-500">
-                  选择或创建一个分类
-                </div>
-              )}
-            </div>
+              )
+            ) : (
+              <div className="flex h-40 items-center justify-center text-xs text-zinc-500">
+                选择或创建一个分类
+              </div>
+            )}
           </div>
-        </SectionCard>
-      )}
-
-      {/* Groups tab */}
-      {activeTab === "groups" && (
-        <GroupManager
-          groups={groups}
-          categories={categories}
-          onRefresh={refresh}
-        />
-      )}
+        </div>
+      </SectionCard>
     </div>
   );
 }
@@ -349,11 +302,14 @@ function SortableCategoryItem({
       </button>
       <CategoryBadge color={cat.color} />
       <div className="flex-1 min-w-0">
-        <div className="text-xs font-medium text-zinc-200 truncate">
+        <div className="flex items-center gap-1.5 text-xs font-medium text-zinc-200 truncate">
           {cat.name}
+          {cat.type === "group" && (
+            <span className="rounded bg-amber-500/20 px-1 py-0.5 text-[9px] font-semibold text-amber-300/80">组</span>
+          )}
         </div>
         <div className="text-[10px] text-zinc-500">
-          {cat.presetCount} 个预制
+          {cat.type === "group" ? `${cat.groupCount} 个预制组` : `${cat.presetCount} 个预制`}
         </div>
       </div>
       <button
@@ -447,13 +403,14 @@ function CategoryForm({
   isPending,
 }: {
   category: PresetCategoryFull | null;
-  onSave: (data: { name: string; slug: string; icon?: string; color?: string }) => void;
+  onSave: (data: { name: string; slug: string; icon?: string; color?: string; type?: string }) => void;
   onDelete?: () => void;
   onCancel: () => void;
   isPending: boolean;
 }) {
   const [name, setName] = useState(category?.name ?? "");
   const [slug, setSlug] = useState(category?.slug ?? "");
+  const [catType, setCatType] = useState<string>(category?.type ?? "preset");
   const [hue, setHue] = useState(() =>
     category ? parseHue(category.color) : Math.floor(Math.random() * 360),
   );
@@ -476,6 +433,29 @@ function CategoryForm({
       <div className="text-[11px] font-medium text-sky-300">
         {category ? "编辑分类" : "新建分类"}
       </div>
+
+      {/* Type toggle — only editable for new categories */}
+      <div className="flex items-center gap-1">
+        <span className="text-[10px] text-zinc-500 mr-1">类型:</span>
+        {(["preset", "group"] as const).map((t) => (
+          <button
+            key={t}
+            type="button"
+            disabled={!!category} // Can't change type of existing category
+            onClick={() => setCatType(t)}
+            className={`rounded px-2 py-0.5 text-[10px] transition ${
+              catType === t
+                ? t === "group"
+                  ? "bg-amber-500/20 text-amber-300"
+                  : "bg-sky-500/20 text-sky-300"
+                : "text-zinc-500 hover:text-zinc-300 disabled:opacity-40"
+            }`}
+          >
+            {t === "preset" ? "预制" : "预制组"}
+          </button>
+        ))}
+      </div>
+
       <input
         type="text"
         value={name}
@@ -495,7 +475,7 @@ function CategoryForm({
         <button
           type="button"
           disabled={isPending || !name.trim() || !slug.trim()}
-          onClick={() => onSave({ name: name.trim(), slug: slug.trim(), color: hslString(hue) })}
+          onClick={() => onSave({ name: name.trim(), slug: slug.trim(), color: hslString(hue), type: category ? undefined : catType })}
           className="inline-flex items-center gap-1 rounded-lg bg-sky-500/20 px-2 py-1 text-[11px] text-sky-300 hover:bg-sky-500/30 disabled:opacity-50"
         >
           {isPending ? (
@@ -1346,19 +1326,19 @@ function PresetForm({
 // GroupManager — 预制组管理
 // ---------------------------------------------------------------------------
 
-function GroupManager({
-  groups: initialGroups,
-  categories,
+function GroupList({
+  category,
+  allCategories,
   onRefresh,
 }: {
-  groups: PresetGroupItem[];
-  categories: PresetCategoryFull[];
+  category: PresetCategoryFull;
+  allCategories: PresetCategoryFull[];
   onRefresh: () => void;
 }) {
   const [isPending, startTransition] = useTransition();
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [groups, setGroups] = useState(initialGroups);
+  const [groups, setGroups] = useState(category.groups);
   const dndId = useId();
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -1366,8 +1346,8 @@ function GroupManager({
   );
 
   useEffect(() => {
-    setGroups(initialGroups);
-  }, [initialGroups]);
+    setGroups(category.groups);
+  }, [category.groups]);
 
   function handleGroupDragEnd(event: DragEndEvent) {
     const { active, over } = event;
@@ -1381,69 +1361,79 @@ function GroupManager({
     });
   }
 
+  // Collect all groups across all "group" categories for sub-group selection
+  const allGroups = allCategories.flatMap((c) => c.groups);
+
   return (
-    <SectionCard title="预制组" subtitle="将多个预制组合为一组，导入时一次性添加所有成员。">
-      <div className="space-y-3">
-        {groups.length === 0 && !showCreateForm && (
-          <div className="flex h-20 items-center justify-center text-xs text-zinc-500">
-            暂无预制组
-          </div>
-        )}
-
-        <DndContext
-          id={dndId}
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleGroupDragEnd}
-        >
-          <SortableContext
-            items={groups.map((g) => g.id)}
-            strategy={verticalListSortingStrategy}
-          >
-            {groups.map((group) => (
-              <SortableGroupCard
-                key={group.id}
-                group={group}
-                categories={categories}
-                groups={groups}
-                isEditing={editingGroupId === group.id}
-                onEdit={() => setEditingGroupId(editingGroupId === group.id ? null : group.id)}
-                onRefresh={() => {
-                  setEditingGroupId(null);
-                  onRefresh();
-                }}
-                isPending={isPending}
-                startTransition={startTransition}
-              />
-            ))}
-          </SortableContext>
-        </DndContext>
-
-        {showCreateForm && (
-          <GroupCreateForm
-            onSave={(data) => {
-              startTransition(async () => {
-                await createPresetGroup(data);
-                setShowCreateForm(false);
-                onRefresh();
-              });
-            }}
-            onCancel={() => setShowCreateForm(false)}
-            isPending={isPending}
-          />
-        )}
-
-        {!showCreateForm && (
-          <button
-            type="button"
-            onClick={() => setShowCreateForm(true)}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-dashed border-white/10 px-3 py-2 text-xs text-zinc-400 hover:border-white/20 hover:text-zinc-200"
-          >
-            <Plus className="size-3.5" /> 新建预制组
-          </button>
-        )}
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium text-zinc-300">
+          {category.name}
+          <span className="ml-1.5 text-zinc-500">· {groups.length} 个预制组</span>
+        </span>
       </div>
-    </SectionCard>
+
+      {groups.length === 0 && !showCreateForm && (
+        <div className="flex h-20 items-center justify-center text-xs text-zinc-500">
+          暂无预制组
+        </div>
+      )}
+
+      <DndContext
+        id={dndId}
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleGroupDragEnd}
+      >
+        <SortableContext
+          items={groups.map((g) => g.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          {groups.map((group) => (
+            <SortableGroupCard
+              key={group.id}
+              group={group}
+              categories={allCategories}
+              groups={allGroups}
+              isEditing={editingGroupId === group.id}
+              onEdit={() => setEditingGroupId(editingGroupId === group.id ? null : group.id)}
+              onRefresh={onRefresh}
+              onGroupDeleted={() => {
+                setEditingGroupId(null);
+                onRefresh();
+              }}
+              isPending={isPending}
+              startTransition={startTransition}
+            />
+          ))}
+        </SortableContext>
+      </DndContext>
+
+      {showCreateForm && (
+        <GroupCreateForm
+          categoryId={category.id}
+          onSave={(data) => {
+            startTransition(async () => {
+              await createPresetGroup(data);
+              setShowCreateForm(false);
+              onRefresh();
+            });
+          }}
+          onCancel={() => setShowCreateForm(false)}
+          isPending={isPending}
+        />
+      )}
+
+      {!showCreateForm && (
+        <button
+          type="button"
+          onClick={() => setShowCreateForm(true)}
+          className="inline-flex items-center gap-1.5 rounded-xl border border-dashed border-white/10 px-3 py-2 text-xs text-zinc-400 hover:border-white/20 hover:text-zinc-200"
+        >
+          <Plus className="size-3.5" /> 新建预制组
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -1458,6 +1448,7 @@ function SortableGroupCard({
   isEditing,
   onEdit,
   onRefresh,
+  onGroupDeleted,
   isPending,
   startTransition,
 }: {
@@ -1467,6 +1458,7 @@ function SortableGroupCard({
   isEditing: boolean;
   onEdit: () => void;
   onRefresh: () => void;
+  onGroupDeleted: () => void;
   isPending: boolean;
   startTransition: React.TransitionStartFunction;
 }) {
@@ -1542,7 +1534,7 @@ function SortableGroupCard({
               if (!confirm(`确认删除预制组「${group.name}」？`)) return;
               startTransition(async () => {
                 await deletePresetGroup(group.id);
-                onRefresh();
+                onGroupDeleted();
               });
             }}
             isPending={isPending}
@@ -1666,11 +1658,13 @@ function SortableGroupMemberItem({
 // ---------------------------------------------------------------------------
 
 function GroupCreateForm({
+  categoryId,
   onSave,
   onCancel,
   isPending,
 }: {
-  onSave: (data: { name: string; slug: string }) => void;
+  categoryId: string;
+  onSave: (data: { categoryId: string; name: string; slug: string }) => void;
   onCancel: () => void;
   isPending: boolean;
 }) {
@@ -1708,7 +1702,7 @@ function GroupCreateForm({
         <button
           type="button"
           disabled={isPending || !name.trim() || !slug.trim()}
-          onClick={() => onSave({ name: name.trim(), slug: slug.trim() })}
+          onClick={() => onSave({ categoryId, name: name.trim(), slug: slug.trim() })}
           className="inline-flex items-center gap-1 rounded-lg bg-sky-500/20 px-2 py-1 text-[11px] text-sky-300 hover:bg-sky-500/30 disabled:opacity-50"
         >
           <Save className="size-3" /> 创建
@@ -1817,7 +1811,11 @@ function AddGroupMemberForm({
   const selPreset = selCat?.presets.find((p) => p.id === selPresetId);
 
   useEffect(() => { setSelPresetId(""); setSelVariantId(""); }, [selCatId]);
-  useEffect(() => { setSelVariantId(""); }, [selPresetId]);
+  useEffect(() => {
+    // Auto-select first variant (usually "默认") when a preset is chosen
+    const preset = categories.find((c) => c.id === selCatId)?.presets.find((p) => p.id === selPresetId);
+    setSelVariantId(preset?.variants[0]?.id ?? "");
+  }, [selPresetId, selCatId, categories]);
 
   const canAdd = mode === "group" ? !!selGroupId : !!selPresetId;
 
@@ -1866,7 +1864,7 @@ function AddGroupMemberForm({
           <div className="relative">
             <select value={selCatId} onChange={(e) => setSelCatId(e.target.value)} className={selectClass}>
               <option value="">分类...</option>
-              {categories.map((c) => (
+              {categories.filter((c) => c.type === "preset").map((c) => (
                 <option key={c.id} value={c.id} className="bg-zinc-900">{c.name}</option>
               ))}
             </select>

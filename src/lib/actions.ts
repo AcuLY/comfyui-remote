@@ -400,6 +400,7 @@ export type PresetCategoryInput = {
   slug: string;
   icon?: string | null;
   color?: string | null;
+  type?: string; // "preset" | "group"
   positivePromptOrder?: number;
   negativePromptOrder?: number;
   lora1Order?: number;
@@ -430,10 +431,14 @@ export async function updatePresetCategory(id: string, input: Partial<PresetCate
 }
 
 export async function deletePresetCategory(id: string) {
-  // Only allow deletion if no presets exist in this category
-  const count = await prisma.preset.count({ where: { categoryId: id } });
-  if (count > 0) {
-    throw new Error(`分类下还有 ${count} 个预制，请先删除或移动它们`);
+  // Only allow deletion if no presets or groups exist in this category
+  const presetCount = await prisma.preset.count({ where: { categoryId: id } });
+  if (presetCount > 0) {
+    throw new Error(`分类下还有 ${presetCount} 个预制，请先删除或移动它们`);
+  }
+  const groupCount = await prisma.presetGroup.count({ where: { categoryId: id } });
+  if (groupCount > 0) {
+    throw new Error(`分类下还有 ${groupCount} 个预制组，请先删除或移动它们`);
   }
   await prisma.presetCategory.delete({ where: { id } });
   revalidatePath("/assets/prompts");
@@ -858,6 +863,7 @@ export async function reorderPresetVariants(presetId: string, ids: string[]) {
 // ---------------------------------------------------------------------------
 
 export type PresetGroupInput = {
+  categoryId: string;
   name: string;
   slug: string;
   sortOrder?: number;
@@ -872,7 +878,10 @@ export type PresetGroupMemberInput = {
 
 export async function createPresetGroup(input: PresetGroupInput) {
   if (input.sortOrder === undefined) {
-    const maxOrder = await prisma.presetGroup.aggregate({ _max: { sortOrder: true } });
+    const maxOrder = await prisma.presetGroup.aggregate({
+      where: { categoryId: input.categoryId },
+      _max: { sortOrder: true },
+    });
     input.sortOrder = (maxOrder._max.sortOrder ?? -1) + 1;
   }
   const group = await prisma.presetGroup.create({ data: input });
