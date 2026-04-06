@@ -645,9 +645,29 @@ function PresetList({
                   categoryId={category.id}
                   preset={preset}
                   allCategories={allCategories}
-                  onSave={(data, _variantDrafts) => {
+                  onSave={(data, variantDrafts) => {
                     startTransition(async () => {
                       await updatePreset(preset.id, data);
+                      // Save all variant drafts
+                      for (const v of variantDrafts) {
+                        const variantData = {
+                          presetId: preset.id,
+                          name: v.name.trim(),
+                          slug: v.slug.trim(),
+                          prompt: v.prompt.trim(),
+                          negativePrompt: v.negativePrompt.trim() || null,
+                          lora1: serializeLoraBindings(v.lora1),
+                          lora2: serializeLoraBindings(v.lora2),
+                          linkedVariants: v.linkedVariants.length > 0 ? v.linkedVariants : undefined,
+                        };
+                        if (v.id) {
+                          await updatePresetVariant(v.id, variantData);
+                        } else {
+                          await createPresetVariant(variantData);
+                        }
+                      }
+                      // Sync updated content (including linked variants) to all sections
+                      await syncPresetToSections(preset.id);
                       setEditingId(null);
                       onRefresh();
                     });
@@ -1119,7 +1139,7 @@ function PresetForm({
   }
 
   async function handleSubmit() {
-    // 1. Save preset (create or update) — pass variant drafts to parent
+    // Pass preset data + variant drafts to parent for saving
     onSave({
       categoryId,
       name: name.trim(),
@@ -1127,31 +1147,6 @@ function PresetForm({
       notes: notes.trim() || null,
       isActive: true,
     }, variants);
-
-    // 2. For existing preset, save all variants then sync to sections
-    if (preset) {
-      startVariantTransition(async () => {
-        for (const v of variants) {
-          const variantData = {
-            presetId: preset.id,
-            name: v.name.trim(),
-            slug: v.slug.trim(),
-            prompt: v.prompt.trim(),
-            negativePrompt: v.negativePrompt.trim() || null,
-            lora1: serializeLoraBindings(v.lora1),
-            lora2: serializeLoraBindings(v.lora2),
-            linkedVariants: v.linkedVariants.length > 0 ? v.linkedVariants : undefined,
-          };
-          if (v.id) {
-            await updatePresetVariant(v.id, variantData);
-          } else {
-            await createPresetVariant(variantData);
-          }
-        }
-        // Sync updated content to all sections that imported this preset
-        await syncPresetToSections(preset.id);
-      });
-    }
   }
 
   // For new presets, variants are saved after the preset is created
