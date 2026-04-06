@@ -182,6 +182,7 @@ model PromptBlock {
   variantId             String?               // FK to PresetVariant (current variant)
   categoryId            String?               // FK to PresetCategory
   bindingId             String?               // groups blocks+loras from same preset import
+  groupBindingId        String?               // groups all bindings from same group import
   label                 String
   positive              String                @db.Text
   negative              String?               @db.Text

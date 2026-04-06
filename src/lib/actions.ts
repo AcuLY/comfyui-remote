@@ -979,6 +979,7 @@ export type PromptBlockData = {
   variantId: string | null;
   categoryId: string | null;
   bindingId: string | null;
+  groupBindingId: string | null;
   label: string;
   positive: string;
   negative: string | null;
@@ -1062,8 +1063,8 @@ export async function reorderSectionBlocks(
 
 export type ImportPresetResult = {
   block: PromptBlockData;
-  lora1: Array<{ id: string; path: string; weight: number; enabled: boolean; source: string; sourceLabel: string; sourceColor?: string; sourceName: string; bindingId: string }>;
-  lora2: Array<{ id: string; path: string; weight: number; enabled: boolean; source: string; sourceLabel: string; sourceColor?: string; sourceName: string; bindingId: string }>;
+  lora1: Array<{ id: string; path: string; weight: number; enabled: boolean; source: string; sourceLabel: string; sourceColor?: string; sourceName: string; bindingId: string; groupBindingId?: string }>;
+  lora2: Array<{ id: string; path: string; weight: number; enabled: boolean; source: string; sourceLabel: string; sourceColor?: string; sourceName: string; bindingId: string; groupBindingId?: string }>;
   categoryOrders: { positivePromptOrder: number; lora1Order: number; lora2Order: number };
 };
 
@@ -1072,6 +1073,7 @@ export async function importPresetToSection(
   sectionId: string,
   presetId: string,
   variantId: string,
+  groupBindingId?: string,
 ): Promise<ImportPresetResult | null> {
   const preset = await prisma.preset.findUnique({
     where: { id: presetId },
@@ -1141,6 +1143,7 @@ export async function importPresetToSection(
     variantId: variant.id,
     categoryId: preset.category.id,
     bindingId,
+    groupBindingId: groupBindingId ?? null,
     label,
     positive: resolved.prompt,
     negative: resolved.negativePrompt,
@@ -1158,6 +1161,7 @@ export async function importPresetToSection(
     sourceColor: preset.category.color ?? undefined,
     sourceName: preset.name,
     bindingId,
+    groupBindingId: groupBindingId ?? undefined,
   });
 
   return {

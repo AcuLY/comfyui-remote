@@ -22,6 +22,7 @@ export type LoraEntry = LoraBinding & {
   sourceColor?: string; // HSL color string e.g. "200 50% 55%"
   sourceName?: string;  // preset name e.g. "Miku" (displayed as row title)
   bindingId?: string;   // groups loras from same preset import
+  groupBindingId?: string; // groups all loras from same group import
 };
 
 // ---------------------------------------------------------------------------

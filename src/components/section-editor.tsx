@@ -27,6 +27,8 @@ type PresetBindingInfo = {
   sourceId: string | null;  // preset ID
   variantId: string | null;  // current variant ID
   categoryName?: string;
+  categoryColor?: string;
+  groupBindingId: string | null;
   blockCount: number;
   loraCount: number;
   availableVariants: Array<{ id: string; name: string }>;  // from library data
@@ -62,13 +64,17 @@ export function SectionEditor({
         if (existing) {
           existing.blockCount++;
         } else {
-          // Look up available variants from library data
+          // Look up available variants and category info from library data
           let availableVariants: Array<{ id: string; name: string }> = [];
+          let categoryName: string | undefined;
+          let categoryColor: string | undefined;
           if (b.sourceId && libraryV2) {
             for (const cat of libraryV2.categories) {
               const preset = cat.presets.find((p) => p.id === b.sourceId);
               if (preset) {
                 availableVariants = preset.variants.map((v) => ({ id: v.id, name: v.name }));
+                categoryName = cat.name;
+                categoryColor = cat.color ?? undefined;
                 break;
               }
             }
@@ -78,6 +84,9 @@ export function SectionEditor({
             presetName: b.label,
             sourceId: b.sourceId,
             variantId: b.variantId,
+            categoryName,
+            categoryColor,
+            groupBindingId: b.groupBindingId,
             blockCount: 1,
             loraCount: 0,
             availableVariants,
@@ -198,9 +207,11 @@ export function SectionEditor({
   function handleGroupImport(groupId: string) {
     startTransition(async () => {
       const members = await flattenGroup(groupId);
+      const groupBid = `grp-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
       const newBlocks: PromptBlockData[] = [];
-      const newLora1: typeof lora1 = [];
-      const newLora2: typeof lora2 = [];
+      let updatedLora1 = [...lora1];
+      let updatedLora2 = [...lora2];
+      let loraChanged = false;
 
       for (const m of members) {
         if (!m.presetId) continue;
@@ -217,15 +228,31 @@ export function SectionEditor({
         }
         if (!variantId) continue;
 
-        const result = await importPresetToSection(sectionId, m.presetId, variantId);
+        const result = await importPresetToSection(sectionId, m.presetId, variantId, groupBid);
         if (!result) continue;
 
         newBlocks.push(result.block);
+
+        // Insert LoRAs at correct position based on category order
         if (result.lora1.length > 0) {
-          newLora1.push(...result.lora1.map((l) => ({ ...l, source: "preset" as const })));
+          const myOrder = result.categoryOrders.lora1Order;
+          let insertIdx = updatedLora1.length;
+          for (let i = 0; i < updatedLora1.length; i++) {
+            const entryCatOrder = getCategoryLoraOrder(updatedLora1[i], "lora1");
+            if (entryCatOrder > myOrder) { insertIdx = i; break; }
+          }
+          updatedLora1.splice(insertIdx, 0, ...result.lora1.map((l) => ({ ...l, source: "preset" as const })));
+          loraChanged = true;
         }
         if (result.lora2.length > 0) {
-          newLora2.push(...result.lora2.map((l) => ({ ...l, source: "preset" as const })));
+          const myOrder = result.categoryOrders.lora2Order;
+          let insertIdx = updatedLora2.length;
+          for (let i = 0; i < updatedLora2.length; i++) {
+            const entryCatOrder = getCategoryLoraOrder(updatedLora2[i], "lora2");
+            if (entryCatOrder > myOrder) { insertIdx = i; break; }
+          }
+          updatedLora2.splice(insertIdx, 0, ...result.lora2.map((l) => ({ ...l, source: "preset" as const })));
+          loraChanged = true;
         }
       }
 
@@ -237,9 +264,7 @@ export function SectionEditor({
         });
       }
 
-      if (newLora1.length > 0 || newLora2.length > 0) {
-        const updatedLora1 = [...lora1, ...newLora1];
-        const updatedLora2 = [...lora2, ...newLora2];
+      if (loraChanged) {
         setLora1(updatedLora1);
         setLora2(updatedLora2);
         await onLoraChange({ lora1: updatedLora1, lora2: updatedLora2 });
@@ -258,27 +283,58 @@ export function SectionEditor({
     return dimension === "lora1" ? (cat.lora1Order ?? 999) : (cat.lora2Order ?? 999);
   }
 
-  // ── Delete an entire preset binding ──
+  // ── Delete an entire preset binding (and cascade to group if part of one) ──
   function handleDeleteBinding(bindingId: string) {
     const info = presetBindings.find((b) => b.bindingId === bindingId);
     if (!info) return;
-    if (!confirm(`删除「${info.presetName}」的绑定？将同时删除 ${info.blockCount} 个提示词块和 ${info.loraCount} 个 LoRA。`)) return;
 
-    startTransition(async () => {
-      // Delete prompt blocks with this bindingId
-      const blocksToDelete = blocks.filter((b) => b.bindingId === bindingId);
-      for (const b of blocksToDelete) {
-        await deleteSectionBlock(b.id);
-      }
-      setBlocks((prev) => prev.filter((b) => b.bindingId !== bindingId));
+    // Check if this binding is part of a group import
+    const block = blocks.find((b) => b.bindingId === bindingId);
+    const groupBid = block?.groupBindingId;
 
-      // Remove LoRAs with this bindingId
-      const updatedLora1 = lora1.filter((e) => e.bindingId !== bindingId);
-      const updatedLora2 = lora2.filter((e) => e.bindingId !== bindingId);
-      setLora1(updatedLora1);
-      setLora2(updatedLora2);
-      await onLoraChange({ lora1: updatedLora1, lora2: updatedLora2 });
-    });
+    if (groupBid) {
+      // Collect all bindings in the same group
+      const groupBindingIds = new Set(
+        blocks.filter((b) => b.groupBindingId === groupBid).map((b) => b.bindingId).filter(Boolean) as string[],
+      );
+      const groupNames = presetBindings
+        .filter((b) => groupBindingIds.has(b.bindingId))
+        .map((b) => b.presetName);
+
+      if (!confirm(`此预制属于预制组导入。删除将同时移除整组内容：\n${groupNames.map(n => `  · ${n}`).join("\n")}\n\n确认删除？`)) return;
+
+      startTransition(async () => {
+        // Delete all blocks in the group
+        const blocksToDelete = blocks.filter((b) => b.groupBindingId === groupBid);
+        for (const b of blocksToDelete) {
+          await deleteSectionBlock(b.id);
+        }
+        setBlocks((prev) => prev.filter((b) => b.groupBindingId !== groupBid));
+
+        // Remove all LoRAs in the group
+        const updatedLora1 = lora1.filter((e) => !e.groupBindingId || e.groupBindingId !== groupBid);
+        const updatedLora2 = lora2.filter((e) => !e.groupBindingId || e.groupBindingId !== groupBid);
+        setLora1(updatedLora1);
+        setLora2(updatedLora2);
+        await onLoraChange({ lora1: updatedLora1, lora2: updatedLora2 });
+      });
+    } else {
+      if (!confirm(`删除「${info.presetName}」的绑定？将同时删除 ${info.blockCount} 个提示词块和 ${info.loraCount} 个 LoRA。`)) return;
+
+      startTransition(async () => {
+        const blocksToDelete = blocks.filter((b) => b.bindingId === bindingId);
+        for (const b of blocksToDelete) {
+          await deleteSectionBlock(b.id);
+        }
+        setBlocks((prev) => prev.filter((b) => b.bindingId !== bindingId));
+
+        const updatedLora1 = lora1.filter((e) => e.bindingId !== bindingId);
+        const updatedLora2 = lora2.filter((e) => e.bindingId !== bindingId);
+        setLora1(updatedLora1);
+        setLora2(updatedLora2);
+        await onLoraChange({ lora1: updatedLora1, lora2: updatedLora2 });
+      });
+    }
   }
 
   // ── Delete a single block with binding protection ──
@@ -286,6 +342,17 @@ export function SectionEditor({
     const block = blocks.find((b) => b.id === blockId);
     if (!block) return true; // allow delete
     if (block.bindingId) {
+      const groupBid = block.groupBindingId;
+      if (groupBid) {
+        // Part of a group import — confirm group-level delete
+        const groupBindingIds = new Set(
+          blocks.filter((b) => b.groupBindingId === groupBid).map((b) => b.bindingId).filter(Boolean) as string[],
+        );
+        const groupNames = presetBindings
+          .filter((b) => groupBindingIds.has(b.bindingId))
+          .map((b) => b.presetName);
+        return confirm(`此提示词块属于预制组导入。删除将同时移除整组内容：\n${groupNames.map(n => `  · ${n}`).join("\n")}\n\n确认删除？`);
+      }
       const info = presetBindings.find((b) => b.bindingId === block.bindingId);
       if (info) {
         return confirm(
@@ -296,24 +363,41 @@ export function SectionEditor({
     return true; // no binding, allow delete
   }
 
-  // When a block delete is confirmed and it has a bindingId, delete the entire binding
+  // When a block delete is confirmed and it has a bindingId, delete the entire binding (or group)
   function handleBlockDeleted(blockId: string) {
     const block = blocks.find((b) => b.id === blockId);
     if (block?.bindingId) {
-      // Also remove all other blocks and LoRAs with the same bindingId
-      const bid = block.bindingId;
-      startTransition(async () => {
-        const otherBlocks = blocks.filter((b) => b.bindingId === bid && b.id !== blockId);
-        for (const b of otherBlocks) {
-          await deleteSectionBlock(b.id);
-        }
-        setBlocks((prev) => prev.filter((b) => b.bindingId !== bid));
-        const updatedLora1 = lora1.filter((e) => e.bindingId !== bid);
-        const updatedLora2 = lora2.filter((e) => e.bindingId !== bid);
-        setLora1(updatedLora1);
-        setLora2(updatedLora2);
-        await onLoraChange({ lora1: updatedLora1, lora2: updatedLora2 });
-      });
+      const groupBid = block.groupBindingId;
+      if (groupBid) {
+        // Delete entire group
+        startTransition(async () => {
+          const blocksToDelete = blocks.filter((b) => b.groupBindingId === groupBid && b.id !== blockId);
+          for (const b of blocksToDelete) {
+            await deleteSectionBlock(b.id);
+          }
+          setBlocks((prev) => prev.filter((b) => b.groupBindingId !== groupBid));
+          const updatedLora1 = lora1.filter((e) => !e.groupBindingId || e.groupBindingId !== groupBid);
+          const updatedLora2 = lora2.filter((e) => !e.groupBindingId || e.groupBindingId !== groupBid);
+          setLora1(updatedLora1);
+          setLora2(updatedLora2);
+          await onLoraChange({ lora1: updatedLora1, lora2: updatedLora2 });
+        });
+      } else {
+        // Delete single binding
+        const bid = block.bindingId;
+        startTransition(async () => {
+          const otherBlocks = blocks.filter((b) => b.bindingId === bid && b.id !== blockId);
+          for (const b of otherBlocks) {
+            await deleteSectionBlock(b.id);
+          }
+          setBlocks((prev) => prev.filter((b) => b.bindingId !== bid));
+          const updatedLora1 = lora1.filter((e) => e.bindingId !== bid);
+          const updatedLora2 = lora2.filter((e) => e.bindingId !== bid);
+          setLora1(updatedLora1);
+          setLora2(updatedLora2);
+          await onLoraChange({ lora1: updatedLora1, lora2: updatedLora2 });
+        });
+      }
     } else {
       setBlocks((prev) => prev.filter((b) => b.id !== blockId));
     }
@@ -376,6 +460,25 @@ export function SectionEditor({
                 className="flex items-center justify-between rounded-lg border border-white/5 bg-white/[0.02] px-3 py-1.5"
               >
                 <div className="flex items-center gap-2 min-w-0">
+                  {/* Category tag */}
+                  {binding.categoryName && (
+                    <span
+                      className="shrink-0 rounded px-1.5 py-0.5 text-[9px] font-medium"
+                      style={binding.categoryColor ? {
+                        backgroundColor: `hsl(${binding.categoryColor} / 0.15)`,
+                        color: `hsl(${binding.categoryColor})`,
+                      } : {
+                        backgroundColor: "rgba(255,255,255,0.06)",
+                        color: "#a1a1aa",
+                      }}
+                    >
+                      {binding.categoryName}
+                    </span>
+                  )}
+                  {/* Group indicator */}
+                  {binding.groupBindingId && (
+                    <span className="shrink-0 rounded bg-amber-500/15 px-1 py-px text-[8px] text-amber-400">组</span>
+                  )}
                   <span className="text-[11px] text-zinc-300 truncate">{binding.presetName}</span>
                   {/* Variant switcher — show only if preset has multiple variants */}
                   {binding.availableVariants.length > 1 && (

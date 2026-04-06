@@ -8,6 +8,7 @@ const BLOCK_SELECT = {
   variantId: true,
   categoryId: true,
   bindingId: true,
+  groupBindingId: true,
   label: true,
   positive: true,
   negative: true,
@@ -21,6 +22,7 @@ export type PromptBlockRecord = {
   variantId: string | null;
   categoryId: string | null;
   bindingId: string | null;
+  groupBindingId: string | null;
   label: string;
   positive: string;
   negative: string | null;
@@ -33,6 +35,7 @@ export type PromptBlockCreateInput = {
   variantId?: string | null;
   categoryId?: string | null;
   bindingId?: string | null;
+  groupBindingId?: string | null;
   label: string;
   positive: string;
   negative?: string | null;
@@ -78,6 +81,7 @@ export async function createPromptBlock(
       variantId: input.variantId ?? null,
       categoryId: input.categoryId ?? null,
       bindingId: input.bindingId ?? null,
+      groupBindingId: input.groupBindingId ?? null,
       label: input.label,
       positive: input.positive,
       negative: input.negative ?? null,
@@ -103,6 +107,7 @@ export async function batchCreatePromptBlocks(
           variantId: input.variantId ?? null,
           categoryId: input.categoryId ?? null,
           bindingId: input.bindingId ?? null,
+          groupBindingId: input.groupBindingId ?? null,
           label: input.label,
           positive: input.positive,
           negative: input.negative ?? null,
