@@ -34,6 +34,8 @@ const log = createLogger({ module: "run-executor" });
 
 /** Module-level lock to prevent concurrent executions. */
 let running = false;
+/** Flag set when a new run is enqueued while executor is busy. */
+let pendingRerun = false;
 
 function formatError(error: unknown) {
   if (error instanceof Error) {
@@ -80,11 +82,14 @@ async function markRunning(runId: string, projectId: string) {
  */
 export async function executeQueuedRuns(): Promise<void> {
   if (running) {
-    log.debug("Execution already in progress, skipping");
+    // Signal that we need to re-check after current execution finishes
+    pendingRerun = true;
+    log.debug("Execution already in progress, will re-check when done");
     return;
   }
 
   running = true;
+  pendingRerun = false;
 
   try {
     assertEnv();
@@ -99,6 +104,15 @@ export async function executeQueuedRuns(): Promise<void> {
     log.info("Processing queued runs", { count: queuedRuns.length });
 
     for (const run of queuedRuns) {
+      // Check if this run was cancelled while waiting in queue
+      const currentRun = await db.run.findUnique({
+        where: { id: run.runId },
+        select: { status: true },
+      });
+      if (!currentRun || currentRun.status === "cancelled") {
+        log.info("Run was cancelled, skipping", { runId: run.runId });
+        continue;
+      }
       const runLog = log.child({ runId: run.runId, projectId: run.project.id });
       const runTimer = runLog.startTimer("process-run");
       let comfyPromptId: string | null = null;
@@ -180,5 +194,12 @@ export async function executeQueuedRuns(): Promise<void> {
     }
   } finally {
     running = false;
+    // If new runs were enqueued while we were busy, process them
+    if (pendingRerun) {
+      pendingRerun = false;
+      log.debug("Re-checking queue after pending signal");
+      // Use setImmediate-style defer to avoid deep recursion
+      setTimeout(() => executeQueuedRuns().catch(() => {}), 0);
+    }
   }
 }
