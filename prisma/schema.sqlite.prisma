@@ -172,6 +172,7 @@ model Run {
   resolvedConfigSnapshot Json
   comfyPromptId         String?
   executionMeta         Json?
+  submittedPrompt       Json?               // Full submitted ComfyUI workflow JSON
   outputDir             String?
   errorMessage          String?
   startedAt             DateTime?

@@ -201,7 +201,10 @@ function isHistoryComplete(entry: ComfyPromptHistoryEntry) {
  * Extract execution metadata (seeds, KSampler params) from the submitted prompt.
  * KSampler nodes (3 = KS1, 427 = KS2) contain the actual seed values used.
  */
-export function extractExecutionMeta(apiPrompt: JsonRecord): Record<string, unknown> {
+export function extractExecutionMeta(
+  apiPrompt: JsonRecord,
+  promptDraft?: ComfyPromptDraft,
+): Record<string, unknown> {
   const meta: Record<string, unknown> = {};
 
   // KSampler1 (node 3)
@@ -224,6 +227,29 @@ export function extractExecutionMeta(apiPrompt: JsonRecord): Record<string, unkn
     meta.ks2Sampler = ks2.sampler_name ?? null;
     meta.ks2Scheduler = ks2.scheduler ?? null;
     meta.ks2Denoise = ks2.denoise ?? null;
+  }
+
+  // Extended section-level params from promptDraft
+  if (promptDraft) {
+    meta.positivePrompt = promptDraft.prompt.positive || null;
+    meta.negativePrompt = promptDraft.prompt.negative || null;
+    meta.aspectRatio = promptDraft.parameters.aspectRatio ?? null;
+    meta.shortSidePx = promptDraft.parameters.shortSidePx ?? null;
+    meta.batchSize = promptDraft.parameters.batchSize ?? null;
+    meta.upscaleFactor = promptDraft.parameters.upscaleFactor ?? null;
+    meta.workflowId = promptDraft.workflowId ?? null;
+    // LoRA summary (paths + weights)
+    const loraConfig = promptDraft.loraConfig as Record<string, unknown> | null;
+    if (loraConfig) {
+      const summarizeLoras = (arr: unknown) => {
+        if (!Array.isArray(arr)) return null;
+        return arr
+          .filter((e): e is Record<string, unknown> => !!e && typeof e === "object")
+          .map((e) => ({ path: e.path, weight: e.weight, enabled: e.enabled }));
+      };
+      meta.lora1 = summarizeLoras(loraConfig.lora1);
+      meta.lora2 = summarizeLoras(loraConfig.lora2);
+    }
   }
 
   return meta;

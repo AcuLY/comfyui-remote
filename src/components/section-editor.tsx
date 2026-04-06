@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition, useMemo } from "react";
-import { Plus, Trash2, Package, ChevronDown } from "lucide-react";
+import { Plus, Trash2, Package, ChevronDown, ClipboardCopy } from "lucide-react";
 import { PromptBlockEditor } from "@/components/prompt-block-editor";
 import { LoraListEditor } from "@/components/lora-list-editor";
 import type { PromptBlockData } from "@/lib/actions";
@@ -40,6 +40,7 @@ type SectionEditorProps = {
   initialLoraConfig: LoraConfig2;
   libraryV2?: PromptLibraryV2;
   onLoraChange: (config: LoraConfig2) => Promise<void>;
+  onRename?: (name: string) => void;
 };
 
 export function SectionEditor({
@@ -48,6 +49,7 @@ export function SectionEditor({
   initialLoraConfig,
   libraryV2,
   onLoraChange,
+  onRename,
 }: SectionEditorProps) {
   const [blocks, setBlocks] = useState<PromptBlockData[]>(initialBlocks);
   const [lora1, setLora1] = useState<LoraEntry[]>(initialLoraConfig.lora1);
@@ -504,14 +506,26 @@ export function SectionEditor({
                     {binding.blockCount} 块 · {binding.loraCount} LoRA
                   </span>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleDeleteBinding(binding.bindingId)}
-                  disabled={isPending}
-                  className="rounded p-1 text-zinc-600 hover:bg-red-500/10 hover:text-red-400 disabled:opacity-50"
-                >
-                  <Trash2 className="size-3" />
-                </button>
+                <div className="flex items-center gap-0.5 shrink-0">
+                  {onRename && (
+                    <button
+                      type="button"
+                      onClick={() => onRename(binding.presetName)}
+                      title="用预制名作为小节名"
+                      className="rounded p-1 text-zinc-600 hover:bg-sky-500/10 hover:text-sky-400"
+                    >
+                      <ClipboardCopy className="size-3" />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteBinding(binding.bindingId)}
+                    disabled={isPending}
+                    className="rounded p-1 text-zinc-600 hover:bg-red-500/10 hover:text-red-400 disabled:opacity-50"
+                  >
+                    <Trash2 className="size-3" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>

@@ -35,7 +35,7 @@ import {
   completeWorkerRun,
 } from "@/server/worker/repository";
 import { db } from "@/lib/db";
-import type { WorkerRunSnapshot } from "@/server/worker/types";
+import type { WorkerRunSnapshot, ComfyPromptDraft } from "@/server/worker/types";
 
 const log = createLogger({ module: "run-executor" });
 
@@ -79,6 +79,7 @@ type SubmittedRun = {
   run: WorkerRunSnapshot;
   comfyPromptId: string;
   validatedDraft: ValidatedComfyPromptDraft;
+  promptDraft: ComfyPromptDraft;
 };
 
 /**
@@ -149,7 +150,7 @@ export async function executeQueuedRuns(): Promise<void> {
           comfyPromptId,
         });
 
-        submitted.push({ run, comfyPromptId, validatedDraft });
+        submitted.push({ run, comfyPromptId, validatedDraft, promptDraft });
       } catch (error) {
         // Submit failed — mark this run as failed, continue with others
         const comfyPromptId = extractFailedComfyPromptId(error);
@@ -182,7 +183,7 @@ export async function executeQueuedRuns(): Promise<void> {
 
     // ── Phase 2: Wait for all in parallel ──
     await Promise.allSettled(
-      submitted.map(async ({ run, comfyPromptId, validatedDraft }) => {
+      submitted.map(async ({ run, comfyPromptId, validatedDraft, promptDraft }) => {
         const runLog = log.child({ runId: run.runId, comfyPromptId });
         const runTimer = runLog.startTimer("process-run");
 
@@ -197,7 +198,7 @@ export async function executeQueuedRuns(): Promise<void> {
           });
 
           const outputImages = extractOutputImages(historyEntry);
-          const executionMeta = extractExecutionMeta(validatedDraft.apiPrompt);
+          const executionMeta = extractExecutionMeta(validatedDraft.apiPrompt, promptDraft);
 
           const persistedOutput = await persistComfyOutputImages(
             run,
@@ -209,6 +210,7 @@ export async function executeQueuedRuns(): Promise<void> {
             status: RunStatus.done,
             comfyPromptId,
             executionMeta,
+            submittedPrompt: validatedDraft.apiPrompt,
             outputDir: persistedOutput.outputDir,
             images: persistedOutput.images,
           });

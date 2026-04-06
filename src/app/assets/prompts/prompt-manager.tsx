@@ -33,6 +33,7 @@ import {
   ChevronLeft,
   FolderOpen,
   ChevronDown,
+  ClipboardCopy,
 } from "lucide-react";
 import { SectionCard } from "@/components/section-card";
 import { LoraBindingEditor } from "@/components/lora-binding-editor";
@@ -1413,9 +1414,14 @@ function GroupList({
       {showCreateForm && (
         <GroupCreateForm
           categoryId={category.id}
-          onSave={(data) => {
+          allCategories={allCategories}
+          allGroups={groups}
+          onSave={(data, members) => {
             startTransition(async () => {
-              await createPresetGroup(data);
+              const group = await createPresetGroup(data);
+              for (const m of members) {
+                await addGroupMember({ groupId: group.id, ...m });
+              }
               setShowCreateForm(false);
               onRefresh();
             });
@@ -1663,19 +1669,89 @@ function GroupCreateForm({
   onSave,
   onCancel,
   isPending,
+  allCategories,
+  allGroups,
 }: {
   categoryId: string;
-  onSave: (data: { categoryId: string; name: string; slug: string }) => void;
+  onSave: (data: { categoryId: string; name: string; slug: string }, members: Array<{ presetId?: string; variantId?: string; subGroupId?: string }>) => void;
   onCancel: () => void;
   isPending: boolean;
+  allCategories: PresetCategoryFull[];
+  allGroups: PresetGroupItem[];
 }) {
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
 
+  // Inline member drafts (not yet persisted)
+  type MemberDraft = { presetId?: string; variantId?: string; subGroupId?: string; displayName: string };
+  const [members, setMembers] = useState<MemberDraft[]>([]);
+
+  // Member add form state
+  const [mode, setMode] = useState<"preset" | "group">("preset");
+  const [selCatId, setSelCatId] = useState<string>("");
+  const [selPresetId, setSelPresetId] = useState<string>("");
+  const [selVariantId, setSelVariantId] = useState<string>("");
+  const [selGroupId, setSelGroupId] = useState<string>("");
+
+  // Only show preset-type categories for member selection
+  const presetCategories = allCategories.filter((c) => c.type === "preset");
+  const selCat = presetCategories.find((c) => c.id === selCatId);
+  const selPreset = selCat?.presets.find((p) => p.id === selPresetId);
+
+  // Auto-select default variant when preset changes
+  useEffect(() => {
+    if (selPreset && selPreset.variants.length > 0) {
+      setSelVariantId(selPreset.variants[0].id);
+    } else {
+      setSelVariantId("");
+    }
+  }, [selPresetId, selPreset]);
+
+  useEffect(() => { setSelPresetId(""); }, [selCatId]);
+
+  function addMember() {
+    if (mode === "group" && selGroupId) {
+      const g = allGroups.find((g) => g.id === selGroupId);
+      setMembers([...members, { subGroupId: selGroupId, displayName: g?.name ?? selGroupId }]);
+      setSelGroupId("");
+    } else if (selPresetId) {
+      const p = selPreset;
+      const v = p?.variants.find((v) => v.id === selVariantId);
+      const displayName = v && p?.variants.length !== 1
+        ? `${p?.name} / ${v.name}` : p?.name ?? selPresetId;
+      setMembers([...members, {
+        presetId: selPresetId,
+        variantId: selVariantId || undefined,
+        displayName,
+      }]);
+      setSelCatId("");
+      setSelPresetId("");
+      setSelVariantId("");
+    }
+  }
+
+  function removeMember(idx: number) {
+    setMembers(members.filter((_, i) => i !== idx));
+  }
+
+  function applyMemberNames() {
+    const joined = members.map((m) => m.displayName).join(" + ");
+    setName(joined);
+    if (!slug || slug === toSlug(name)) setSlug(toSlug(joined));
+  }
+
+  const canAddMember = mode === "group" ? !!selGroupId : !!selPresetId;
+  const canCreate = !!name.trim() && !!slug.trim() && members.length > 0;
+
+  const selectClass = "w-full appearance-none rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 pr-7 text-xs text-zinc-200 outline-none focus:border-sky-500/30";
+
   return (
-    <div className="rounded-xl border border-sky-500/20 bg-sky-500/[0.04] p-3 space-y-2">
-      <div className="grid grid-cols-2 gap-2">
-        <label className="space-y-1">
+    <div className="rounded-xl border border-sky-500/20 bg-sky-500/[0.04] p-3 space-y-3">
+      <div className="text-[11px] font-medium text-sky-300">新建预制组</div>
+
+      {/* Name + Slug */}
+      <div className="flex gap-2 items-end">
+        <label className="flex-1 space-y-1">
           <span className="text-[10px] text-zinc-500">组名</span>
           <input
             type="text"
@@ -1688,7 +1764,7 @@ function GroupCreateForm({
             className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
           />
         </label>
-        <label className="space-y-1">
+        <label className="flex-1 space-y-1">
           <span className="text-[10px] text-zinc-500">Slug</span>
           <input
             type="text"
@@ -1698,12 +1774,129 @@ function GroupCreateForm({
             className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
           />
         </label>
+        {members.length > 0 && (
+          <button
+            type="button"
+            onClick={applyMemberNames}
+            title="用成员名拼接为组名"
+            className="shrink-0 rounded-lg border border-white/10 p-1.5 text-zinc-400 hover:bg-white/[0.06] hover:text-zinc-200"
+          >
+            <ClipboardCopy className="size-3.5" />
+          </button>
+        )}
       </div>
+
+      {/* Member list */}
+      {members.length > 0 && (
+        <div className="space-y-1">
+          <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">成员 ({members.length})</span>
+          {members.map((m, i) => (
+            <div key={i} className="flex items-center gap-2 rounded-lg border border-white/5 bg-white/[0.02] px-2.5 py-1.5">
+              <div className="flex-1 min-w-0 text-xs text-zinc-300">
+                {m.subGroupId ? (
+                  <span className="text-amber-400/80">
+                    <FolderOpen className="mr-1 inline size-3" />
+                    {m.displayName}
+                  </span>
+                ) : m.displayName}
+              </div>
+              <button
+                type="button"
+                onClick={() => removeMember(i)}
+                className="rounded p-0.5 text-zinc-600 hover:text-red-400"
+              >
+                <X className="size-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Add member inline */}
+      <div className="space-y-2 rounded-lg border border-dashed border-white/10 p-2">
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-zinc-500">添加成员:</span>
+          <div className="flex gap-1">
+            <button
+              type="button"
+              onClick={() => setMode("preset")}
+              className={`rounded px-2 py-0.5 text-[10px] ${mode === "preset" ? "bg-sky-500/20 text-sky-300" : "text-zinc-500 hover:text-zinc-300"}`}
+            >
+              预制
+            </button>
+            {allGroups.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setMode("group")}
+                className={`rounded px-2 py-0.5 text-[10px] ${mode === "group" ? "bg-amber-500/20 text-amber-300" : "text-zinc-500 hover:text-zinc-300"}`}
+              >
+                子组
+              </button>
+            )}
+          </div>
+        </div>
+
+        {mode === "preset" ? (
+          <div className="grid grid-cols-3 gap-1.5">
+            <div className="relative">
+              <select value={selCatId} onChange={(e) => setSelCatId(e.target.value)} className={selectClass}>
+                <option value="">分类...</option>
+                {presetCategories.map((c) => (
+                  <option key={c.id} value={c.id} className="bg-zinc-900">{c.name}</option>
+                ))}
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-2 top-1/2 size-3 -translate-y-1/2 text-zinc-500" />
+            </div>
+            <div className="relative">
+              <select value={selPresetId} onChange={(e) => setSelPresetId(e.target.value)} disabled={!selCatId} className={selectClass}>
+                <option value="">预制...</option>
+                {selCat?.presets.map((p) => (
+                  <option key={p.id} value={p.id} className="bg-zinc-900">{p.name}</option>
+                ))}
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-2 top-1/2 size-3 -translate-y-1/2 text-zinc-500" />
+            </div>
+            <div className="relative">
+              <select value={selVariantId} onChange={(e) => setSelVariantId(e.target.value)} disabled={!selPresetId} className={selectClass}>
+                <option value="">变体...</option>
+                {selPreset?.variants.map((v) => (
+                  <option key={v.id} value={v.id} className="bg-zinc-900">{v.name}</option>
+                ))}
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-2 top-1/2 size-3 -translate-y-1/2 text-zinc-500" />
+            </div>
+          </div>
+        ) : (
+          <div className="relative">
+            <select value={selGroupId} onChange={(e) => setSelGroupId(e.target.value)} className={selectClass}>
+              <option value="">选择子组...</option>
+              {allGroups.map((g) => (
+                <option key={g.id} value={g.id} className="bg-zinc-900">{g.name}</option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 size-3 -translate-y-1/2 text-zinc-500" />
+          </div>
+        )}
+
+        <button
+          type="button"
+          disabled={!canAddMember}
+          onClick={addMember}
+          className="inline-flex items-center gap-1 rounded-lg bg-white/[0.06] px-2 py-1 text-[10px] text-zinc-300 hover:bg-white/[0.1] disabled:opacity-40"
+        >
+          <Plus className="size-3" /> 添加
+        </button>
+      </div>
+
+      {/* Actions */}
       <div className="flex gap-1.5">
         <button
           type="button"
-          disabled={isPending || !name.trim() || !slug.trim()}
-          onClick={() => onSave({ categoryId, name: name.trim(), slug: slug.trim() })}
+          disabled={isPending || !canCreate}
+          onClick={() => onSave(
+            { categoryId, name: name.trim(), slug: slug.trim() },
+            members.map((m) => ({ presetId: m.presetId, variantId: m.variantId, subGroupId: m.subGroupId })),
+          )}
           className="inline-flex items-center gap-1 rounded-lg bg-sky-500/20 px-2 py-1 text-[11px] text-sky-300 hover:bg-sky-500/30 disabled:opacity-50"
         >
           <Save className="size-3" /> 创建

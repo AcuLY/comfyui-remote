@@ -218,6 +218,11 @@ export default async function SectionEditPage({
               initialLoraConfig={loraConfig}
               libraryV2={libraryV2}
               onLoraChange={handleLoraChange}
+              onRename={async (name: string) => {
+                "use server";
+                const { renameSection } = await import("@/lib/actions");
+                await renameSection(sectionId, name);
+              }}
             />
           </div>
         </div>

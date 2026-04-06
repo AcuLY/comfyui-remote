@@ -30,6 +30,7 @@ type CompleteWorkerRunInput = {
   errorMessage?: string | null;
   comfyPromptId?: string | null;
   executionMeta?: Record<string, unknown> | null;
+  submittedPrompt?: Record<string, unknown> | null;
   outputDir?: string | null;
   images?: Array<{
     filePath: string;
@@ -173,6 +174,10 @@ export async function completeWorkerRun(
 
     if (input.executionMeta !== undefined && input.executionMeta !== null) {
       data.executionMeta = input.executionMeta as object;
+    }
+
+    if (input.submittedPrompt !== undefined && input.submittedPrompt !== null) {
+      data.submittedPrompt = input.submittedPrompt as object;
     }
 
     if (input.outputDir !== undefined) {
