@@ -37,7 +37,7 @@ import {
 } from "lucide-react";
 import { SectionCard } from "@/components/section-card";
 import { LoraBindingEditor } from "@/components/lora-binding-editor";
-import type { PresetCategoryFull, PresetFull, PresetVariantItem, PresetGroupItem } from "@/lib/server-data";
+import type { PresetCategoryFull, PresetFull, PresetVariantItem, PresetGroupItem, SlotTemplateDef, FolderItem } from "@/lib/server-data";
 import {
   createPresetCategory,
   updatePresetCategory,
@@ -184,6 +184,7 @@ export function PromptManager({
                     ? categories.find((c) => c.id === editingCatId) ?? null
                     : null
                 }
+                allCategories={categories}
                 onSave={(data) => {
                   startTransition(async () => {
                     if (editingCatId) {
@@ -398,13 +399,15 @@ function HueSlider({ value, onChange }: { value: number; onChange: (hue: number)
 
 function CategoryForm({
   category,
+  allCategories,
   onSave,
   onDelete,
   onCancel,
   isPending,
 }: {
   category: PresetCategoryFull | null;
-  onSave: (data: { name: string; slug: string; icon?: string; color?: string; type?: string }) => void;
+  allCategories: PresetCategoryFull[];
+  onSave: (data: { name: string; slug: string; icon?: string; color?: string; type?: string; slotTemplate?: SlotTemplateDef[] | null }) => void;
   onDelete?: () => void;
   onCancel: () => void;
   isPending: boolean;
@@ -415,11 +418,14 @@ function CategoryForm({
   const [hue, setHue] = useState(() =>
     category ? parseHue(category.color) : Math.floor(Math.random() * 360),
   );
+  const [slots, setSlots] = useState<SlotTemplateDef[]>(category?.slotTemplate ?? []);
+
+  // Preset-type categories available as slot sources
+  const presetCategories = allCategories.filter((c) => c.type === "preset");
 
   function handleNameChange(value: string) {
     setName(value);
     if (!category) {
-      // Auto-generate slug from name for new categories
       setSlug(
         value
           .toLowerCase()
@@ -428,6 +434,27 @@ function CategoryForm({
       );
     }
   }
+
+  function addSlot() {
+    if (presetCategories.length === 0) return;
+    // Default to first preset category not yet used
+    const unused = presetCategories.find((c) => !slots.some((s) => s.categoryId === c.id));
+    const catId = unused?.id ?? presetCategories[0].id;
+    setSlots([...slots, { categoryId: catId }]);
+  }
+
+  function removeSlot(idx: number) {
+    setSlots(slots.filter((_, i) => i !== idx));
+  }
+
+  function updateSlotCategory(idx: number, categoryId: string) {
+    const updated = [...slots];
+    const cat = presetCategories.find((c) => c.id === categoryId);
+    updated[idx] = { categoryId, label: cat?.name };
+    setSlots(updated);
+  }
+
+  const selectClass = "w-full appearance-none rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 pr-7 text-xs text-zinc-200 outline-none focus:border-sky-500/30";
 
   return (
     <div className="rounded-xl border border-sky-500/20 bg-sky-500/[0.03] p-3 space-y-2">
@@ -472,11 +499,77 @@ function CategoryForm({
         className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
       />
       <HueSlider value={hue} onChange={setHue} />
+
+      {/* Slot template editor — only for group-type categories */}
+      {catType === "group" && (
+        <div className="space-y-1.5 rounded-lg border border-amber-500/10 bg-amber-500/[0.02] p-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-medium text-amber-400/80">默认槽位</span>
+            <button
+              type="button"
+              onClick={addSlot}
+              disabled={presetCategories.length === 0}
+              className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] text-amber-400 hover:bg-amber-500/10 disabled:opacity-40"
+            >
+              <Plus className="size-2.5" /> 添加
+            </button>
+          </div>
+          {slots.length === 0 && (
+            <div className="text-[10px] text-zinc-600 py-0.5">无默认槽位，新建预制组时成员列表为空</div>
+          )}
+          {slots.map((slot, idx) => {
+            const slotCat = presetCategories.find((c) => c.id === slot.categoryId);
+            return (
+              <div key={idx} className="flex items-center gap-1.5">
+                <span className="text-[9px] text-zinc-500 w-4 shrink-0 text-right">{idx + 1}</span>
+                <CategoryBadge color={slotCat?.color ?? null} />
+                <div className="relative flex-1">
+                  <select
+                    value={slot.categoryId}
+                    onChange={(e) => updateSlotCategory(idx, e.target.value)}
+                    className={selectClass}
+                  >
+                    {presetCategories.map((c) => (
+                      <option key={c.id} value={c.id} className="bg-zinc-900">{c.name}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-2 top-1/2 size-3 -translate-y-1/2 text-zinc-500" />
+                </div>
+                <input
+                  type="text"
+                  value={slot.label ?? ""}
+                  onChange={(e) => {
+                    const updated = [...slots];
+                    updated[idx] = { ...slot, label: e.target.value || undefined };
+                    setSlots(updated);
+                  }}
+                  placeholder={slotCat?.name ?? "标签"}
+                  className="w-20 rounded-lg border border-white/10 bg-white/[0.04] px-1.5 py-1 text-[10px] text-zinc-300 outline-none focus:border-sky-500/30 placeholder:text-zinc-600"
+                />
+                <button
+                  type="button"
+                  onClick={() => removeSlot(idx)}
+                  className="rounded p-0.5 text-zinc-600 hover:text-red-400"
+                >
+                  <X className="size-3" />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       <div className="flex gap-1.5">
         <button
           type="button"
           disabled={isPending || !name.trim() || !slug.trim()}
-          onClick={() => onSave({ name: name.trim(), slug: slug.trim(), color: hslString(hue), type: category ? undefined : catType })}
+          onClick={() => onSave({
+            name: name.trim(),
+            slug: slug.trim(),
+            color: hslString(hue),
+            type: category ? undefined : catType,
+            slotTemplate: catType === "group" ? slots : undefined,
+          })}
           className="inline-flex items-center gap-1 rounded-lg bg-sky-500/20 px-2 py-1 text-[11px] text-sky-300 hover:bg-sky-500/30 disabled:opacity-50"
         >
           {isPending ? (
@@ -1414,6 +1507,7 @@ function GroupList({
       {showCreateForm && (
         <GroupCreateForm
           categoryId={category.id}
+          slotTemplate={category.slotTemplate}
           allCategories={allCategories}
           allGroups={groups}
           onSave={(data, members) => {
@@ -1666,6 +1760,7 @@ function SortableGroupMemberItem({
 
 function GroupCreateForm({
   categoryId,
+  slotTemplate,
   onSave,
   onCancel,
   isPending,
@@ -1673,7 +1768,8 @@ function GroupCreateForm({
   allGroups,
 }: {
   categoryId: string;
-  onSave: (data: { categoryId: string; name: string; slug: string }, members: Array<{ presetId?: string; variantId?: string; subGroupId?: string }>) => void;
+  slotTemplate: SlotTemplateDef[];
+  onSave: (data: { categoryId: string; name: string; slug: string }, members: Array<{ presetId?: string; variantId?: string; subGroupId?: string; slotCategoryId?: string }>) => void;
   onCancel: () => void;
   isPending: boolean;
   allCategories: PresetCategoryFull[];
@@ -1683,8 +1779,17 @@ function GroupCreateForm({
   const [slug, setSlug] = useState("");
 
   // Inline member drafts (not yet persisted)
-  type MemberDraft = { presetId?: string; variantId?: string; subGroupId?: string; displayName: string };
-  const [members, setMembers] = useState<MemberDraft[]>([]);
+  type MemberDraft = { presetId?: string; variantId?: string; subGroupId?: string; slotCategoryId?: string; displayName: string };
+  // Initialize from slot template: each slot becomes an empty member with locked category
+  const [members, setMembers] = useState<MemberDraft[]>(() =>
+    slotTemplate.map((slot) => {
+      const cat = allCategories.find((c) => c.id === slot.categoryId);
+      return {
+        slotCategoryId: slot.categoryId,
+        displayName: slot.label ?? cat?.name ?? "未选择",
+      };
+    }),
+  );
 
   // Member add form state
   const [mode, setMode] = useState<"preset" | "group">("preset");
@@ -1741,7 +1846,9 @@ function GroupCreateForm({
   }
 
   const canAddMember = mode === "group" ? !!selGroupId : !!selPresetId;
-  const canCreate = !!name.trim() && !!slug.trim() && members.length > 0;
+  // Allow creating with just slot members (even if no preset selected yet) or with manually added members
+  const hasAnyMember = members.length > 0;
+  const canCreate = !!name.trim() && !!slug.trim() && hasAnyMember;
 
   const selectClass = "w-full appearance-none rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 pr-7 text-xs text-zinc-200 outline-none focus:border-sky-500/30";
 
@@ -1790,25 +1897,102 @@ function GroupCreateForm({
       {members.length > 0 && (
         <div className="space-y-1">
           <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">成员 ({members.length})</span>
-          {members.map((m, i) => (
-            <div key={i} className="flex items-center gap-2 rounded-lg border border-white/5 bg-white/[0.02] px-2.5 py-1.5">
-              <div className="flex-1 min-w-0 text-xs text-zinc-300">
-                {m.subGroupId ? (
-                  <span className="text-amber-400/80">
-                    <FolderOpen className="mr-1 inline size-3" />
-                    {m.displayName}
+          {members.map((m, i) => {
+            // Slot member: show category badge + inline preset/variant selector
+            if (m.slotCategoryId) {
+              const slotCat = presetCategories.find((c) => c.id === m.slotCategoryId);
+              return (
+                <div key={i} className="flex items-center gap-1.5 rounded-lg border border-amber-500/10 bg-amber-500/[0.02] px-2 py-1.5">
+                  <span
+                    className="shrink-0 rounded px-1.5 py-0.5 text-[9px] font-medium"
+                    style={slotCat?.color ? {
+                      backgroundColor: `hsl(${slotCat.color} / 0.15)`,
+                      color: `hsl(${slotCat.color})`,
+                    } : { backgroundColor: "rgba(255,255,255,0.06)", color: "#a1a1aa" }}
+                  >
+                    {slotCat?.name ?? "?"}
                   </span>
-                ) : m.displayName}
+                  <div className="relative flex-1 min-w-0">
+                    <select
+                      value={m.presetId ?? ""}
+                      onChange={(e) => {
+                        const preset = slotCat?.presets.find((p) => p.id === e.target.value);
+                        const defaultVariant = preset?.variants[0];
+                        const updated = [...members];
+                        updated[i] = {
+                          ...m,
+                          presetId: e.target.value || undefined,
+                          variantId: defaultVariant?.id,
+                          displayName: preset?.name ?? m.displayName,
+                        };
+                        setMembers(updated);
+                      }}
+                      className={selectClass}
+                    >
+                      <option value="" className="bg-zinc-900">选择预制...</option>
+                      {slotCat?.presets.map((p) => (
+                        <option key={p.id} value={p.id} className="bg-zinc-900">{p.name}</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute right-2 top-1/2 size-3 -translate-y-1/2 text-zinc-500" />
+                  </div>
+                  {m.presetId && (() => {
+                    const preset = slotCat?.presets.find((p) => p.id === m.presetId);
+                    return preset && preset.variants.length > 1 ? (
+                      <div className="relative shrink-0">
+                        <select
+                          value={m.variantId ?? ""}
+                          onChange={(e) => {
+                            const v = preset.variants.find((v) => v.id === e.target.value);
+                            const updated = [...members];
+                            updated[i] = {
+                              ...m,
+                              variantId: e.target.value || undefined,
+                              displayName: v ? `${preset.name} / ${v.name}` : preset.name,
+                            };
+                            setMembers(updated);
+                          }}
+                          className={selectClass}
+                        >
+                          {preset.variants.map((v) => (
+                            <option key={v.id} value={v.id} className="bg-zinc-900">{v.name}</option>
+                          ))}
+                        </select>
+                        <ChevronDown className="pointer-events-none absolute right-2 top-1/2 size-3 -translate-y-1/2 text-zinc-500" />
+                      </div>
+                    ) : null;
+                  })()}
+                  <button
+                    type="button"
+                    onClick={() => removeMember(i)}
+                    className="rounded p-0.5 text-zinc-600 hover:text-red-400"
+                  >
+                    <X className="size-3" />
+                  </button>
+                </div>
+              );
+            }
+            // Regular member
+            return (
+              <div key={i} className="flex items-center gap-2 rounded-lg border border-white/5 bg-white/[0.02] px-2.5 py-1.5">
+                <div className="flex-1 min-w-0 text-xs text-zinc-300">
+                  {m.subGroupId ? (
+                    <span className="text-amber-400/80">
+                      <FolderOpen className="mr-1 inline size-3" />
+                      {m.displayName}
+                    </span>
+                  ) : m.displayName}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => removeMember(i)}
+                  className="rounded p-0.5 text-zinc-600 hover:text-red-400"
+                >
+                  <X className="size-3" />
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => removeMember(i)}
-                className="rounded p-0.5 text-zinc-600 hover:text-red-400"
-              >
-                <X className="size-3" />
-              </button>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -1895,7 +2079,7 @@ function GroupCreateForm({
           disabled={isPending || !canCreate}
           onClick={() => onSave(
             { categoryId, name: name.trim(), slug: slug.trim() },
-            members.map((m) => ({ presetId: m.presetId, variantId: m.variantId, subGroupId: m.subGroupId })),
+            members.map((m) => ({ presetId: m.presetId, variantId: m.variantId, subGroupId: m.subGroupId, slotCategoryId: m.slotCategoryId })),
           )}
           className="inline-flex items-center gap-1 rounded-lg bg-sky-500/20 px-2 py-1 text-[11px] text-sky-300 hover:bg-sky-500/30 disabled:opacity-50"
         >
