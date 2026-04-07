@@ -206,6 +206,14 @@ export async function executeQueuedRuns(): Promise<void> {
             outputImages,
           );
 
+          // Save workflow JSON alongside images
+          if (persistedOutput.outputDir && validatedDraft) {
+            const fs = await import("fs/promises");
+            const path = await import("path");
+            const workflowPath = path.join(persistedOutput.outputDir, "workflow.json");
+            await fs.writeFile(workflowPath, JSON.stringify(validatedDraft.apiPrompt, null, 2), "utf-8");
+          }
+
           await completeWorkerRun(run.runId, {
             status: RunStatus.done,
             comfyPromptId,

@@ -37,6 +37,8 @@ import {
   FolderInput,
   ChevronDown,
   ClipboardCopy,
+  CheckSquare,
+  Square,
 } from "lucide-react";
 import { SectionCard } from "@/components/section-card";
 import { LoraBindingEditor } from "@/components/lora-binding-editor";
@@ -780,6 +782,77 @@ function countFolderItems(
 }
 
 // ---------------------------------------------------------------------------
+// BatchActionBar — floating bar for multi-select batch actions
+// ---------------------------------------------------------------------------
+
+function BatchActionBar({
+  selectedCount,
+  totalCount,
+  folders,
+  onMoveToFolder,
+  onSelectAll,
+  onClearSelection,
+}: {
+  selectedCount: number;
+  totalCount: number;
+  folders: FolderItem[];
+  onMoveToFolder: (folderId: string | null) => void;
+  onSelectAll: () => void;
+  onClearSelection: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const options = useMemo(() => buildFolderOptions(folders), [folders]);
+
+  if (selectedCount === 0) return null;
+
+  return (
+    <div className="flex items-center gap-2 rounded-lg bg-sky-500/10 border border-sky-500/20 px-3 py-1.5">
+      <span className="text-[11px] text-sky-300 font-medium">已选 {selectedCount} 项</span>
+      {folders.length > 0 && (
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setOpen(!open)}
+            className="inline-flex items-center gap-1 rounded bg-sky-500/20 px-2 py-0.5 text-[10px] text-sky-300 hover:bg-sky-500/30"
+          >
+            <FolderInput className="size-3" /> 移至文件夹
+          </button>
+          {open && (
+            <div className="absolute left-0 top-full z-50 mt-1 max-h-48 w-44 overflow-auto rounded-lg border border-white/10 bg-zinc-900 py-1 shadow-xl">
+              {options.map((opt) => (
+                <button
+                  key={opt.id ?? "__root"}
+                  type="button"
+                  onClick={() => { onMoveToFolder(opt.id); setOpen(false); }}
+                  className="block w-full px-3 py-1 text-left text-[11px] text-zinc-300 hover:bg-white/[0.06]"
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+      <button
+        type="button"
+        onClick={selectedCount === totalCount ? onClearSelection : onSelectAll}
+        className="rounded bg-white/[0.06] px-2 py-0.5 text-[10px] text-zinc-400 hover:bg-white/[0.1] hover:text-zinc-300"
+      >
+        {selectedCount === totalCount ? "取消选择" : "全选"}
+      </button>
+      <button
+        type="button"
+        onClick={onClearSelection}
+        className="rounded p-0.5 text-zinc-500 hover:text-zinc-300"
+        title="取消选择"
+      >
+        <X className="size-3" />
+      </button>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // PresetList — right panel showing presets within a category
 // ---------------------------------------------------------------------------
 
@@ -799,6 +872,7 @@ function PresetList({
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const dndId = useId();
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -813,11 +887,40 @@ function PresetList({
   // Reset folder when category changes
   useEffect(() => {
     setCurrentFolderId(null);
+    setSelectedIds(new Set());
   }, [category.id]);
 
   // Filter presets and folders for current folder level
   const visiblePresets = presets.filter((p) => (p.folderId ?? null) === currentFolderId);
   const visibleFolders = category.folders.filter((f) => (f.parentId ?? null) === currentFolderId);
+
+  // Clear selection when navigating folders
+  const navigateFolder = useCallback((folderId: string | null) => {
+    setCurrentFolderId(folderId);
+    setSelectedIds(new Set());
+  }, []);
+
+  // Toggle selection
+  const togglePresetSelection = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  // Batch move handler
+  const handleBatchMove = useCallback((folderId: string | null) => {
+    const ids = Array.from(selectedIds);
+    startTransition(async () => {
+      for (const id of ids) {
+        await moveToFolder("preset", id, folderId);
+      }
+      setSelectedIds(new Set());
+      onRefresh();
+    });
+  }, [selectedIds, onRefresh, startTransition]);
 
   // Breadcrumb path
   const breadcrumb = useMemo(() => {
@@ -893,7 +996,17 @@ function PresetList({
       </div>
 
       {/* Breadcrumb */}
-      <FolderBreadcrumb breadcrumb={breadcrumb} onNavigate={setCurrentFolderId} />
+      <FolderBreadcrumb breadcrumb={breadcrumb} onNavigate={navigateFolder} />
+
+      {/* Batch action bar */}
+      <BatchActionBar
+        selectedCount={selectedIds.size}
+        totalCount={visiblePresets.length}
+        folders={category.folders}
+        onMoveToFolder={handleBatchMove}
+        onSelectAll={() => setSelectedIds(new Set(visiblePresets.map((p) => p.id)))}
+        onClearSelection={() => setSelectedIds(new Set())}
+      />
 
       {/* Create folder inline */}
       {isCreatingFolder && (
@@ -1058,6 +1171,8 @@ function PresetList({
                       onRefresh();
                     });
                   }}
+                  isSelected={selectedIds.has(preset.id)}
+                  onToggleSelect={() => togglePresetSelection(preset.id)}
                 />
               ),
             )}
@@ -1077,11 +1192,15 @@ function SortablePresetCard({
   folders,
   onEdit,
   onMoveToFolder,
+  isSelected,
+  onToggleSelect,
 }: {
   preset: PresetFull;
   folders: FolderItem[];
   onEdit: () => void;
   onMoveToFolder: (folderId: string | null) => void;
+  isSelected: boolean;
+  onToggleSelect: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: preset.id });
   const style: React.CSSProperties = {
@@ -1106,6 +1225,13 @@ function SortablePresetCard({
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onEdit(); }}
       className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-3 transition hover:border-white/15 cursor-pointer"
     >
+      <button
+        type="button"
+        className="shrink-0 text-zinc-600 hover:text-sky-400"
+        onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}
+      >
+        {isSelected ? <CheckSquare className="size-3.5 text-sky-400" /> : <Square className="size-3.5" />}
+      </button>
       <button
         type="button"
         className="cursor-grab touch-none text-zinc-600 hover:text-zinc-400"
@@ -1733,6 +1859,7 @@ function GroupList({
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
+  const [selectedGroupIds, setSelectedGroupIds] = useState<Set<string>>(new Set());
   const dndId = useId();
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -1746,11 +1873,40 @@ function GroupList({
   // Reset folder when category changes
   useEffect(() => {
     setCurrentFolderId(null);
+    setSelectedGroupIds(new Set());
   }, [category.id]);
 
   // Filter groups and folders for current folder level
   const visibleGroups = groups.filter((g) => (g.folderId ?? null) === currentFolderId);
   const visibleFolders = category.folders.filter((f) => (f.parentId ?? null) === currentFolderId);
+
+  // Clear selection when navigating folders
+  const navigateGroupFolder = useCallback((folderId: string | null) => {
+    setCurrentFolderId(folderId);
+    setSelectedGroupIds(new Set());
+  }, []);
+
+  // Toggle selection
+  const toggleGroupSelection = useCallback((id: string) => {
+    setSelectedGroupIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  // Batch move handler
+  const handleGroupBatchMove = useCallback((folderId: string | null) => {
+    const ids = Array.from(selectedGroupIds);
+    startTransition(async () => {
+      for (const id of ids) {
+        await moveToFolder("group", id, folderId);
+      }
+      setSelectedGroupIds(new Set());
+      onRefresh();
+    });
+  }, [selectedGroupIds, onRefresh, startTransition]);
 
   // Breadcrumb path
   const breadcrumb = useMemo(() => {
@@ -1811,7 +1967,17 @@ function GroupList({
       </div>
 
       {/* Breadcrumb */}
-      <FolderBreadcrumb breadcrumb={breadcrumb} onNavigate={setCurrentFolderId} />
+      <FolderBreadcrumb breadcrumb={breadcrumb} onNavigate={navigateGroupFolder} />
+
+      {/* Batch action bar */}
+      <BatchActionBar
+        selectedCount={selectedGroupIds.size}
+        totalCount={visibleGroups.length}
+        folders={category.folders}
+        onMoveToFolder={handleGroupBatchMove}
+        onSelectAll={() => setSelectedGroupIds(new Set(visibleGroups.map((g) => g.id)))}
+        onClearSelection={() => setSelectedGroupIds(new Set())}
+      />
 
       {/* Create folder inline */}
       {isCreatingFolder && (
@@ -1841,7 +2007,7 @@ function GroupList({
           key={folder.id}
           folder={folder}
           itemCount={countFolderItems(folder.id, category.folders, [], groups)}
-          onEnter={() => setCurrentFolderId(folder.id)}
+          onEnter={() => navigateGroupFolder(folder.id)}
           onRename={(newName) => {
             startTransition(async () => {
               await renamePresetFolder(folder.id, newName);
@@ -1901,6 +2067,8 @@ function GroupList({
               }}
               isPending={isPending}
               startTransition={startTransition}
+              isSelected={selectedGroupIds.has(group.id)}
+              onToggleSelect={() => toggleGroupSelection(group.id)}
             />
           ))}
         </SortableContext>
@@ -1956,6 +2124,8 @@ function SortableGroupCard({
   onMoveToFolder,
   isPending,
   startTransition,
+  isSelected,
+  onToggleSelect,
 }: {
   group: PresetGroupItem;
   categories: PresetCategoryFull[];
@@ -1968,6 +2138,8 @@ function SortableGroupCard({
   onMoveToFolder: (folderId: string | null) => void;
   isPending: boolean;
   startTransition: React.TransitionStartFunction;
+  isSelected: boolean;
+  onToggleSelect: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition: dndTransition, isDragging } = useSortable({ id: group.id });
   const style: React.CSSProperties = {
@@ -2008,6 +2180,13 @@ function SortableGroupCard({
         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onEdit(); }}
         className="flex cursor-pointer items-center gap-2 px-3 py-2.5 transition hover:bg-white/[0.03]"
       >
+        <button
+          type="button"
+          className="shrink-0 text-zinc-600 hover:text-sky-400"
+          onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}
+        >
+          {isSelected ? <CheckSquare className="size-3.5 text-sky-400" /> : <Square className="size-3.5" />}
+        </button>
         <button
           type="button"
           className="cursor-grab touch-none text-zinc-600 hover:text-zinc-400"
