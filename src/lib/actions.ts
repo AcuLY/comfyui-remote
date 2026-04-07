@@ -406,6 +406,7 @@ export type PresetCategoryInput = {
   icon?: string | null;
   color?: string | null;
   type?: string; // "preset" | "group"
+  slotTemplate?: Array<{ categoryId: string; label?: string }> | null;
   positivePromptOrder?: number;
   negativePromptOrder?: number;
   lora1Order?: number;
@@ -424,13 +425,23 @@ export async function createPresetCategory(input: PresetCategoryInput) {
     const hue = Math.floor(Math.random() * 360);
     input.color = `${hue} 50% 55%`;
   }
-  const cat = await prisma.presetCategory.create({ data: input });
+  const { slotTemplate, ...rest } = input;
+  const data = { ...rest } as Record<string, unknown>;
+  if (slotTemplate !== undefined) {
+    data.slotTemplate = slotTemplate != null ? (slotTemplate as unknown as Prisma.InputJsonValue) : Prisma.DbNull;
+  }
+  const cat = await prisma.presetCategory.create({ data: data as any }); // eslint-disable-line @typescript-eslint/no-explicit-any
   revalidatePath("/assets/prompts");
   return cat;
 }
 
 export async function updatePresetCategory(id: string, input: Partial<PresetCategoryInput>) {
-  const cat = await prisma.presetCategory.update({ where: { id }, data: input });
+  const { slotTemplate, ...rest } = input;
+  const data = { ...rest } as Record<string, unknown>;
+  if (slotTemplate !== undefined) {
+    data.slotTemplate = slotTemplate != null ? (slotTemplate as unknown as Prisma.InputJsonValue) : Prisma.DbNull;
+  }
+  const cat = await prisma.presetCategory.update({ where: { id }, data: data as any }); // eslint-disable-line @typescript-eslint/no-explicit-any
   revalidatePath("/assets/prompts");
   return cat;
 }
@@ -896,6 +907,7 @@ export type PresetGroupMemberInput = {
   presetId?: string;
   variantId?: string;
   subGroupId?: string;
+  slotCategoryId?: string;
 };
 
 export async function createPresetGroup(input: PresetGroupInput) {
@@ -954,6 +966,91 @@ export async function reorderGroupMembers(groupId: string, ids: string[]) {
       prisma.presetGroupMember.update({ where: { id }, data: { sortOrder: index } }),
     ),
   );
+  revalidatePath("/assets/prompts");
+}
+
+// ---------------------------------------------------------------------------
+// PresetFolder CRUD
+// ---------------------------------------------------------------------------
+
+export async function createPresetFolder(
+  categoryId: string,
+  parentId: string | null,
+  name: string,
+) {
+  const maxSort = await prisma.presetFolder.aggregate({
+    where: { categoryId, parentId: parentId ?? undefined },
+    _max: { sortOrder: true },
+  });
+  const folder = await prisma.presetFolder.create({
+    data: {
+      categoryId,
+      parentId,
+      name,
+      sortOrder: (maxSort._max.sortOrder ?? -1) + 1,
+    },
+  });
+  revalidatePath("/assets/prompts");
+  return folder;
+}
+
+export async function renamePresetFolder(id: string, name: string) {
+  await prisma.presetFolder.update({ where: { id }, data: { name } });
+  revalidatePath("/assets/prompts");
+}
+
+export async function deletePresetFolder(id: string) {
+  // Only allow deleting empty folders (no children, no presets, no groups)
+  const [childCount, presetCount, groupCount] = await Promise.all([
+    prisma.presetFolder.count({ where: { parentId: id } }),
+    prisma.preset.count({ where: { folderId: id } }),
+    prisma.presetGroup.count({ where: { folderId: id } }),
+  ]);
+  if (childCount + presetCount + groupCount > 0) {
+    throw new Error(`文件夹不为空，包含 ${childCount} 个子文件夹、${presetCount} 个预制、${groupCount} 个预制组`);
+  }
+  await prisma.presetFolder.delete({ where: { id } });
+  revalidatePath("/assets/prompts");
+}
+
+export async function moveToFolder(
+  type: "preset" | "group",
+  id: string,
+  folderId: string | null,
+) {
+  if (type === "preset") {
+    await prisma.preset.update({ where: { id }, data: { folderId } });
+  } else {
+    await prisma.presetGroup.update({ where: { id }, data: { folderId } });
+  }
+  revalidatePath("/assets/prompts");
+}
+
+export async function reorderPresetFolders(
+  categoryId: string,
+  parentId: string | null,
+  ids: string[],
+) {
+  await prisma.$transaction(
+    ids.map((id, index) =>
+      prisma.presetFolder.update({ where: { id }, data: { sortOrder: index } }),
+    ),
+  );
+  revalidatePath("/assets/prompts");
+}
+
+// ---------------------------------------------------------------------------
+// Category slot template
+// ---------------------------------------------------------------------------
+
+export async function updateCategorySlotTemplate(
+  categoryId: string,
+  slotTemplate: Array<{ categoryId: string; label?: string }>,
+) {
+  await prisma.presetCategory.update({
+    where: { id: categoryId },
+    data: { slotTemplate: slotTemplate as Prisma.InputJsonValue },
+  });
   revalidatePath("/assets/prompts");
 }
 

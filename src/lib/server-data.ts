@@ -687,6 +687,8 @@ export async function getWorkflowTemplateOptions() {
 // Preset Categories & Presets — 预制管理
 // ---------------------------------------------------------------------------
 
+export type SlotTemplateDef = { categoryId: string; label?: string };
+
 export type PresetCategoryItem = {
   id: string;
   name: string;
@@ -694,6 +696,7 @@ export type PresetCategoryItem = {
   icon: string | null;
   color: string | null;
   type: string; // "preset" | "group"
+  slotTemplate: SlotTemplateDef[];
   positivePromptOrder: number;
   negativePromptOrder: number;
   lora1Order: number;
@@ -722,6 +725,7 @@ export async function getPresetCategories(): Promise<PresetCategoryItem[]> {
     icon: c.icon,
     color: c.color,
     type: c.type,
+    slotTemplate: (Array.isArray(c.slotTemplate) ? c.slotTemplate : []) as SlotTemplateDef[],
     positivePromptOrder: c.positivePromptOrder,
     negativePromptOrder: c.negativePromptOrder,
     lora1Order: c.lora1Order,
@@ -740,6 +744,7 @@ export type PresetItem = {
   isActive: boolean;
   sortOrder: number;
   notes: string | null;
+  folderId: string | null;
   variantCount: number;
 };
 
@@ -774,13 +779,22 @@ export async function getPresets(categoryId: string): Promise<PresetItem[]> {
     isActive: p.isActive,
     sortOrder: p.sortOrder,
     notes: p.notes,
+    folderId: p.folderId,
     variantCount: p._count.variants,
   }));
 }
 
+export type FolderItem = {
+  id: string;
+  name: string;
+  parentId: string | null;
+  sortOrder: number;
+};
+
 export type PresetCategoryFull = PresetCategoryItem & {
   presets: PresetFull[];
   groups: PresetGroupItem[];
+  folders: FolderItem[];
 };
 
 export type PresetFull = PresetItem & {
@@ -814,6 +828,9 @@ export async function getPresetCategoriesWithPresets(): Promise<PresetCategoryFu
         include: {
           members: { orderBy: { sortOrder: "asc" } },
         },
+      },
+      folders: {
+        orderBy: { sortOrder: "asc" },
       },
     },
   });
@@ -853,6 +870,7 @@ export async function getPresetCategoriesWithPresets(): Promise<PresetCategoryFu
     icon: c.icon,
     color: c.color,
     type: c.type,
+    slotTemplate: (Array.isArray(c.slotTemplate) ? c.slotTemplate : []) as SlotTemplateDef[],
     positivePromptOrder: c.positivePromptOrder,
     negativePromptOrder: c.negativePromptOrder,
     lora1Order: c.lora1Order,
@@ -868,6 +886,7 @@ export async function getPresetCategoriesWithPresets(): Promise<PresetCategoryFu
       isActive: p.isActive,
       sortOrder: p.sortOrder,
       notes: p.notes,
+      folderId: p.folderId,
       variantCount: p._count.variants,
       variants: p.variants.map((v) => ({
         id: v.id,
@@ -890,16 +909,24 @@ export async function getPresetCategoriesWithPresets(): Promise<PresetCategoryFu
       name: g.name,
       slug: g.slug,
       sortOrder: g.sortOrder,
+      folderId: g.folderId,
       members: g.members.map((m) => ({
         id: m.id,
         presetId: m.presetId,
         variantId: m.variantId,
         subGroupId: m.subGroupId,
+        slotCategoryId: m.slotCategoryId,
         sortOrder: m.sortOrder,
         presetName: m.presetId ? pMap.get(m.presetId) : undefined,
         variantName: m.variantId ? vMap.get(m.variantId) : undefined,
         subGroupName: m.subGroupId ? gMap.get(m.subGroupId) : undefined,
       })),
+    })),
+    folders: c.folders.map((f) => ({
+      id: f.id,
+      name: f.name,
+      parentId: f.parentId,
+      sortOrder: f.sortOrder,
     })),
   }));
 }
@@ -1043,11 +1070,13 @@ export type PresetGroupItem = {
   name: string;
   slug: string;
   sortOrder: number;
+  folderId: string | null;
   members: Array<{
     id: string;
     presetId: string | null;
     variantId: string | null;
     subGroupId: string | null;
+    slotCategoryId: string | null;
     sortOrder: number;
     presetName?: string;
     variantName?: string;
@@ -1100,11 +1129,13 @@ export async function getPresetGroups(): Promise<PresetGroupItem[]> {
     name: g.name,
     slug: g.slug,
     sortOrder: g.sortOrder,
+    folderId: g.folderId,
     members: g.members.map((m) => ({
       id: m.id,
       presetId: m.presetId,
       variantId: m.variantId,
       subGroupId: m.subGroupId,
+      slotCategoryId: m.slotCategoryId,
       sortOrder: m.sortOrder,
       presetName: m.presetId ? pMap.get(m.presetId) : undefined,
       variantName: m.variantId ? vMap.get(m.variantId) : undefined,

@@ -50,10 +50,12 @@ model PresetCategory {
   lora2Order          Int             @default(0)
   sortOrder           Int             @default(0)
   type                String          @default("preset") // "preset" | "group"
+  slotTemplate        Json?           // type=group: [{ categoryId: string, label?: string }]
   createdAt           DateTime        @default(now())
   updatedAt           DateTime        @updatedAt
   presets             Preset[]
   groups              PresetGroup[]
+  folders             PresetFolder[]
 }
 
 model Preset {
@@ -64,9 +66,11 @@ model Preset {
   isActive        Boolean         @default(true)
   sortOrder       Int             @default(0)
   notes           String?         @db.Text
+  folderId        String?
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
   category        PresetCategory  @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  folder          PresetFolder?   @relation(fields: [folderId], references: [id], onDelete: SetNull)
   variants        PresetVariant[]
 
   @@unique([categoryId, slug])
@@ -101,9 +105,11 @@ model PresetGroup {
   slug        String
   sortOrder   Int                  @default(0)
   isActive    Boolean              @default(true)
+  folderId    String?
   createdAt   DateTime             @default(now())
   updatedAt   DateTime             @updatedAt
   category    PresetCategory       @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  folder      PresetFolder?        @relation(fields: [folderId], references: [id], onDelete: SetNull)
   members     PresetGroupMember[]
 
   @@unique([categoryId, slug])
@@ -111,15 +117,33 @@ model PresetGroup {
 }
 
 model PresetGroupMember {
-  id          String      @id @default(cuid())
-  groupId     String
-  presetId    String?     // reference a preset (+ optional variantId)
-  variantId   String?     // specific variant of the preset
-  subGroupId  String?     // or reference another group (mutually exclusive with presetId)
-  sortOrder   Int         @default(0)
-  group       PresetGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  id              String      @id @default(cuid())
+  groupId         String
+  presetId        String?     // reference a preset (+ optional variantId)
+  variantId       String?     // specific variant of the preset
+  subGroupId      String?     // or reference another group (mutually exclusive with presetId)
+  slotCategoryId  String?     // if from slot template, locks to this category
+  sortOrder       Int         @default(0)
+  group           PresetGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
 
   @@index([groupId, sortOrder])
+}
+
+model PresetFolder {
+  id          String         @id @default(cuid())
+  categoryId  String
+  parentId    String?
+  name        String
+  sortOrder   Int            @default(0)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  category    PresetCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  parent      PresetFolder?  @relation("FolderTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children    PresetFolder[] @relation("FolderTree")
+  presets     Preset[]
+  groups      PresetGroup[]
+
+  @@index([categoryId, parentId, sortOrder])
 }
 
 // ── Core models ──
