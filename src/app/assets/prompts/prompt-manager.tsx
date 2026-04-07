@@ -69,6 +69,7 @@ import {
   renamePresetFolder,
   deletePresetFolder,
   moveToFolder,
+  reorderPresetFolders,
 } from "@/lib/actions";
 import { parseLoraBindings, serializeLoraBindings } from "@/lib/lora-types";
 
@@ -713,6 +714,42 @@ function FolderRow({
   );
 }
 
+// ---------------------------------------------------------------------------
+// SortableFolderRow — draggable wrapper for FolderRow
+// ---------------------------------------------------------------------------
+
+function SortableFolderRow(props: {
+  folder: FolderItem;
+  itemCount: number;
+  onEnter: () => void;
+  onRename: (name: string) => void;
+  onDelete: () => void;
+  isPending: boolean;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: props.folder.id });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="flex items-center gap-1">
+      <button
+        type="button"
+        className="cursor-grab touch-none p-1 text-zinc-600 hover:text-zinc-400"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="size-3" />
+      </button>
+      <div className="flex-1 min-w-0">
+        <FolderRow {...props} />
+      </div>
+    </div>
+  );
+}
+
 /** Flatten folders into indented options for a move-to-folder dropdown */
 function buildFolderOptions(folders: FolderItem[], parentId: string | null = null, depth = 0): Array<{ id: string | null; label: string }> {
   const opts: Array<{ id: string | null; label: string }> = [];
@@ -951,6 +988,26 @@ function PresetList({
     });
   }
 
+  const folderDndId = useId();
+  const folderSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  function handleFolderDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const items = visibleFolders;
+    const oldIndex = items.findIndex((f) => f.id === active.id);
+    const newIndex = items.findIndex((f) => f.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const reordered = arrayMove(items, oldIndex, newIndex);
+    startTransition(async () => {
+      await reorderPresetFolders(category.id, currentFolderId, reordered.map((f) => f.id));
+      onRefresh();
+    });
+  }
+
   async function handleCreateFolder() {
     if (!newFolderName.trim()) return;
     startTransition(async () => {
@@ -1031,32 +1088,44 @@ function PresetList({
       )}
 
       {/* Folder items */}
-      {visibleFolders.map((folder) => (
-        <FolderRow
-          key={folder.id}
-          folder={folder}
-          itemCount={countFolderItems(folder.id, category.folders, presets)}
-          onEnter={() => setCurrentFolderId(folder.id)}
-          onRename={(newName) => {
-            startTransition(async () => {
-              await renamePresetFolder(folder.id, newName);
-              onRefresh();
-            });
-          }}
-          onDelete={() => {
-            if (!confirm(`确认删除文件夹「${folder.name}」？`)) return;
-            startTransition(async () => {
-              try {
-                await deletePresetFolder(folder.id);
-                onRefresh();
-              } catch (e: unknown) {
-                alert(e instanceof Error ? e.message : "删除失败");
-              }
-            });
-          }}
-          isPending={isPending}
-        />
-      ))}
+      <DndContext
+        id={folderDndId}
+        sensors={folderSensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleFolderDragEnd}
+      >
+        <SortableContext
+          items={visibleFolders.map((f) => f.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          {visibleFolders.map((folder) => (
+            <SortableFolderRow
+              key={folder.id}
+              folder={folder}
+              itemCount={countFolderItems(folder.id, category.folders, presets)}
+              onEnter={() => setCurrentFolderId(folder.id)}
+              onRename={(newName) => {
+                startTransition(async () => {
+                  await renamePresetFolder(folder.id, newName);
+                  onRefresh();
+                });
+              }}
+              onDelete={() => {
+                if (!confirm(`确认删除文件夹「${folder.name}」？`)) return;
+                startTransition(async () => {
+                  try {
+                    await deletePresetFolder(folder.id);
+                    onRefresh();
+                  } catch (e: unknown) {
+                    alert(e instanceof Error ? e.message : "删除失败");
+                  }
+                });
+              }}
+              isPending={isPending}
+            />
+          ))}
+        </SortableContext>
+      </DndContext>
 
       {/* Create form */}
       {isCreating && (
@@ -1296,6 +1365,7 @@ function LinkedVariantsEditor({
   const [showPicker, setShowPicker] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCatId, setSelectedCatId] = useState("");
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [selectedPresetId, setSelectedPresetId] = useState("");
 
   // Build structured data excluding current preset
@@ -1354,7 +1424,12 @@ function LinkedVariantsEditor({
 
   // Cascade selections
   const selectedCat = categoriesFiltered.find((c) => c.id === selectedCatId);
-  const selectedPreset = selectedCat?.presets.find((p) => p.id === selectedPresetId);
+  const catFolders = selectedCat?.folders ?? [];
+  const hasFolders = catFolders.length > 0;
+  const filteredPresets = hasFolders && selectedFolderId !== null
+    ? (selectedCat?.presets ?? []).filter((p) => p.folderId === selectedFolderId)
+    : selectedCat?.presets ?? [];
+  const selectedPreset = filteredPresets.find((p) => p.id === selectedPresetId) ?? selectedCat?.presets.find((p) => p.id === selectedPresetId);
   const availableVariants = selectedPreset?.variants.filter(
     (v) => !linkedVariants.some((lv) => lv.variantId === v.id),
   ) ?? [];
@@ -1452,7 +1527,7 @@ function LinkedVariantsEditor({
               {/* Level 1: Category */}
               <select
                 value={selectedCatId}
-                onChange={(e) => { setSelectedCatId(e.target.value); setSelectedPresetId(""); }}
+                onChange={(e) => { setSelectedCatId(e.target.value); setSelectedFolderId(null); setSelectedPresetId(""); }}
                 className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-[10px] text-zinc-200 outline-none"
               >
                 <option value="">选择分类...</option>
@@ -1460,6 +1535,20 @@ function LinkedVariantsEditor({
                   <option key={cat.id} value={cat.id}>{cat.name}</option>
                 ))}
               </select>
+
+              {/* Folder filter (only if category has folders) */}
+              {selectedCat && hasFolders && (
+                <select
+                  value={selectedFolderId ?? "__all__"}
+                  onChange={(e) => { setSelectedFolderId(e.target.value === "__all__" ? null : e.target.value); setSelectedPresetId(""); }}
+                  className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-[10px] text-zinc-200 outline-none"
+                >
+                  <option value="__all__">全部</option>
+                  {catFolders.map((f) => (
+                    <option key={f.id} value={f.id}>📁 {f.name}</option>
+                  ))}
+                </select>
+              )}
 
               {/* Level 2: Preset */}
               {selectedCat && (
@@ -1469,7 +1558,7 @@ function LinkedVariantsEditor({
                   className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-[10px] text-zinc-200 outline-none"
                 >
                   <option value="">选择预制...</option>
-                  {selectedCat.presets.map((p) => (
+                  {filteredPresets.map((p) => (
                     <option key={p.id} value={p.id}>{p.name}</option>
                   ))}
                 </select>
@@ -1936,6 +2025,26 @@ function GroupList({
     });
   }
 
+  const folderDndId = useId();
+  const folderSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  function handleFolderDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const items = visibleFolders;
+    const oldIndex = items.findIndex((f) => f.id === active.id);
+    const newIndex = items.findIndex((f) => f.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const reordered = arrayMove(items, oldIndex, newIndex);
+    startTransition(async () => {
+      await reorderPresetFolders(category.id, currentFolderId, reordered.map((f) => f.id));
+      onRefresh();
+    });
+  }
+
   async function handleCreateFolder() {
     if (!newFolderName.trim()) return;
     startTransition(async () => {
@@ -2002,32 +2111,44 @@ function GroupList({
       )}
 
       {/* Folder items */}
-      {visibleFolders.map((folder) => (
-        <FolderRow
-          key={folder.id}
-          folder={folder}
-          itemCount={countFolderItems(folder.id, category.folders, [], groups)}
-          onEnter={() => navigateGroupFolder(folder.id)}
-          onRename={(newName) => {
-            startTransition(async () => {
-              await renamePresetFolder(folder.id, newName);
-              onRefresh();
-            });
-          }}
-          onDelete={() => {
-            if (!confirm(`确认删除文件夹「${folder.name}」？`)) return;
-            startTransition(async () => {
-              try {
-                await deletePresetFolder(folder.id);
-                onRefresh();
-              } catch (e: unknown) {
-                alert(e instanceof Error ? e.message : "删除失败");
-              }
-            });
-          }}
-          isPending={isPending}
-        />
-      ))}
+      <DndContext
+        id={folderDndId}
+        sensors={folderSensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleFolderDragEnd}
+      >
+        <SortableContext
+          items={visibleFolders.map((f) => f.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          {visibleFolders.map((folder) => (
+            <SortableFolderRow
+              key={folder.id}
+              folder={folder}
+              itemCount={countFolderItems(folder.id, category.folders, [], groups)}
+              onEnter={() => navigateGroupFolder(folder.id)}
+              onRename={(newName) => {
+                startTransition(async () => {
+                  await renamePresetFolder(folder.id, newName);
+                  onRefresh();
+                });
+              }}
+              onDelete={() => {
+                if (!confirm(`确认删除文件夹「${folder.name}」？`)) return;
+                startTransition(async () => {
+                  try {
+                    await deletePresetFolder(folder.id);
+                    onRefresh();
+                  } catch (e: unknown) {
+                    alert(e instanceof Error ? e.message : "删除失败");
+                  }
+                });
+              }}
+              isPending={isPending}
+            />
+          ))}
+        </SortableContext>
+      </DndContext>
 
       {visibleGroups.length === 0 && visibleFolders.length === 0 && !showCreateForm && (
         <div className="flex h-20 items-center justify-center text-xs text-zinc-500">
@@ -2771,14 +2892,21 @@ function AddGroupMemberForm({
 }) {
   const [mode, setMode] = useState<"preset" | "group">("preset");
   const [selCatId, setSelCatId] = useState<string>("");
+  const [selFolderId, setSelFolderId] = useState<string | null>(null);
   const [selPresetId, setSelPresetId] = useState<string>("");
   const [selVariantId, setSelVariantId] = useState<string>("");
   const [selGroupId, setSelGroupId] = useState<string>("");
 
   const selCat = categories.find((c) => c.id === selCatId);
-  const selPreset = selCat?.presets.find((p) => p.id === selPresetId);
+  const catFolders = selCat?.folders ?? [];
+  const hasFolders = catFolders.length > 0;
+  const filteredPresets = hasFolders && selFolderId !== null
+    ? (selCat?.presets ?? []).filter((p) => p.folderId === selFolderId)
+    : selCat?.presets ?? [];
+  const selPreset = filteredPresets.find((p) => p.id === selPresetId) ?? selCat?.presets.find((p) => p.id === selPresetId);
 
-  useEffect(() => { setSelPresetId(""); setSelVariantId(""); }, [selCatId]);
+  useEffect(() => { setSelFolderId(null); setSelPresetId(""); setSelVariantId(""); }, [selCatId]);
+  useEffect(() => { setSelPresetId(""); setSelVariantId(""); }, [selFolderId]);
   useEffect(() => {
     // Auto-select first variant (usually "默认") when a preset is chosen
     const preset = categories.find((c) => c.id === selCatId)?.presets.find((p) => p.id === selPresetId);

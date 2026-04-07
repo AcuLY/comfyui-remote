@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ChevronLeft, ChevronRight, Ellipsis } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Download, Ellipsis } from "lucide-react";
 import { SectionCard } from "@/components/section-card";
 import { getReviewGroup, getReviewGroupIds } from "@/lib/server-data";
 import { ReviewGrid } from "./review-grid";
@@ -79,9 +79,18 @@ export default async function ReviewGroupPage({ params }: { params: Promise<{ ru
         <Link href="/queue" className="inline-flex items-center gap-2 text-sm text-zinc-300">
           <ArrowLeft className="size-4" /> 返回队列
         </Link>
-        <button className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-2 text-xs text-zinc-300">
-          <Ellipsis className="size-4" /> 参数编辑
-        </button>
+        <div className="flex items-center gap-2">
+          <a
+            href={`/api/runs/${runId}/workflow`}
+            download
+            className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-2 text-xs text-zinc-300"
+          >
+            <Download className="size-4" /> 下载工作流
+          </a>
+          <button className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-2 text-xs text-zinc-300">
+            <Ellipsis className="size-4" /> 参数编辑
+          </button>
+        </div>
       </div>
 
       <SectionCard title={group.title} subtitle={`${group.presetNames.join(" · ") || group.sectionName} · ${group.createdAt}`}>
