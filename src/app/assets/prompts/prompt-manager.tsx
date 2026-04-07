@@ -2505,6 +2505,7 @@ function GroupCreateForm({
   // Member add form state
   const [mode, setMode] = useState<"preset" | "group">("preset");
   const [selCatId, setSelCatId] = useState<string>("");
+  const [selFolderId, setSelFolderId] = useState<string | null>(null);
   const [selPresetId, setSelPresetId] = useState<string>("");
   const [selVariantId, setSelVariantId] = useState<string>("");
   const [selGroupId, setSelGroupId] = useState<string>("");
@@ -2512,7 +2513,13 @@ function GroupCreateForm({
   // Only show preset-type categories for member selection
   const presetCategories = allCategories.filter((c) => c.type === "preset");
   const selCat = presetCategories.find((c) => c.id === selCatId);
-  const selPreset = selCat?.presets.find((p) => p.id === selPresetId);
+  const catFoldersInline = selCat?.folders ?? [];
+  const hasFoldersInline = catFoldersInline.length > 0;
+  const filteredPresetsInline = hasFoldersInline && selFolderId !== null
+    ? (selCat?.presets ?? []).filter((p) => p.folderId === selFolderId)
+    : selCat?.presets ?? [];
+  const selPreset = filteredPresetsInline.find((p) => p.id === selPresetId)
+    ?? selCat?.presets.find((p) => p.id === selPresetId);
 
   // Auto-select default variant when preset changes
   useEffect(() => {
@@ -2523,7 +2530,8 @@ function GroupCreateForm({
     }
   }, [selPresetId, selPreset]);
 
-  useEffect(() => { setSelPresetId(""); }, [selCatId]);
+  useEffect(() => { setSelFolderId(null); setSelPresetId(""); }, [selCatId]);
+  useEffect(() => { setSelPresetId(""); }, [selFolderId]);
 
   function addMember() {
     if (mode === "group" && selGroupId) {
@@ -2732,34 +2740,51 @@ function GroupCreateForm({
         </div>
 
         {mode === "preset" ? (
-          <div className="grid grid-cols-3 gap-1.5">
-            <div className="relative">
-              <select value={selCatId} onChange={(e) => setSelCatId(e.target.value)} className={selectClass}>
-                <option value="">分类...</option>
-                {presetCategories.map((c) => (
-                  <option key={c.id} value={c.id} className="bg-zinc-900">{c.name}</option>
-                ))}
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-2 top-1/2 size-3 -translate-y-1/2 text-zinc-500" />
+          <div className="space-y-1.5">
+            <div className="grid grid-cols-3 gap-1.5">
+              <div className="relative">
+                <select value={selCatId} onChange={(e) => setSelCatId(e.target.value)} className={selectClass}>
+                  <option value="">分类...</option>
+                  {presetCategories.map((c) => (
+                    <option key={c.id} value={c.id} className="bg-zinc-900">{c.name}</option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 size-3 -translate-y-1/2 text-zinc-500" />
+              </div>
+              <div className="relative">
+                <select value={selPresetId} onChange={(e) => setSelPresetId(e.target.value)} disabled={!selCatId} className={selectClass}>
+                  <option value="">预制...</option>
+                  {filteredPresetsInline.map((p) => (
+                    <option key={p.id} value={p.id} className="bg-zinc-900">{p.name}</option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 size-3 -translate-y-1/2 text-zinc-500" />
+              </div>
+              <div className="relative">
+                <select value={selVariantId} onChange={(e) => setSelVariantId(e.target.value)} disabled={!selPresetId} className={selectClass}>
+                  <option value="">变体...</option>
+                  {selPreset?.variants.map((v) => (
+                    <option key={v.id} value={v.id} className="bg-zinc-900">{v.name}</option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 size-3 -translate-y-1/2 text-zinc-500" />
+              </div>
             </div>
-            <div className="relative">
-              <select value={selPresetId} onChange={(e) => setSelPresetId(e.target.value)} disabled={!selCatId} className={selectClass}>
-                <option value="">预制...</option>
-                {selCat?.presets.map((p) => (
-                  <option key={p.id} value={p.id} className="bg-zinc-900">{p.name}</option>
-                ))}
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-2 top-1/2 size-3 -translate-y-1/2 text-zinc-500" />
-            </div>
-            <div className="relative">
-              <select value={selVariantId} onChange={(e) => setSelVariantId(e.target.value)} disabled={!selPresetId} className={selectClass}>
-                <option value="">变体...</option>
-                {selPreset?.variants.map((v) => (
-                  <option key={v.id} value={v.id} className="bg-zinc-900">{v.name}</option>
-                ))}
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-2 top-1/2 size-3 -translate-y-1/2 text-zinc-500" />
-            </div>
+            {hasFoldersInline && selCatId && (
+              <div className="relative">
+                <select
+                  value={selFolderId ?? "__all__"}
+                  onChange={(e) => setSelFolderId(e.target.value === "__all__" ? null : e.target.value)}
+                  className={selectClass}
+                >
+                  <option value="__all__">全部</option>
+                  {catFoldersInline.map((f) => (
+                    <option key={f.id} value={f.id} className="bg-zinc-900">📁 {f.name}</option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 size-3 -translate-y-1/2 text-zinc-500" />
+              </div>
+            )}
           </div>
         ) : (
           <div className="relative">
