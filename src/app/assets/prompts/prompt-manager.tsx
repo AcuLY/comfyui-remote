@@ -1948,20 +1948,24 @@ function SortableGroupCard({
   group,
   categories,
   groups,
+  folders,
   isEditing,
   onEdit,
   onRefresh,
   onGroupDeleted,
+  onMoveToFolder,
   isPending,
   startTransition,
 }: {
   group: PresetGroupItem;
   categories: PresetCategoryFull[];
   groups: PresetGroupItem[];
+  folders: FolderItem[];
   isEditing: boolean;
   onEdit: () => void;
   onRefresh: () => void;
   onGroupDeleted: () => void;
+  onMoveToFolder: (folderId: string | null) => void;
   isPending: boolean;
   startTransition: React.TransitionStartFunction;
 }) {
@@ -2020,6 +2024,11 @@ function SortableGroupCard({
             {members.length} 个成员 · {group.slug}
           </div>
         </div>
+        <MoveToFolderButton
+          currentFolderId={group.folderId}
+          folders={folders}
+          onMove={onMoveToFolder}
+        />
         <ChevronDown className={`size-3.5 text-zinc-500 transition ${isEditing ? "rotate-180" : ""}`} />
       </div>
 
