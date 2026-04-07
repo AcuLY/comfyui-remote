@@ -32,6 +32,9 @@ import {
   ChevronRight,
   ChevronLeft,
   FolderOpen,
+  FolderPlus,
+  Folder,
+  FolderInput,
   ChevronDown,
   ClipboardCopy,
 } from "lucide-react";
@@ -60,6 +63,10 @@ import {
   removeGroupMember,
   reorderPresetGroups,
   reorderGroupMembers,
+  createPresetFolder,
+  renamePresetFolder,
+  deletePresetFolder,
+  moveToFolder,
 } from "@/lib/actions";
 import { parseLoraBindings, serializeLoraBindings } from "@/lib/lora-types";
 
@@ -602,6 +609,177 @@ function CategoryForm({
 
 
 // ---------------------------------------------------------------------------
+// Shared folder UI helpers
+// ---------------------------------------------------------------------------
+
+function FolderBreadcrumb({
+  breadcrumb,
+  onNavigate,
+}: {
+  breadcrumb: FolderItem[];
+  onNavigate: (folderId: string | null) => void;
+}) {
+  return (
+    <div className="flex items-center gap-1 text-[11px] text-zinc-500 flex-wrap">
+      <button
+        type="button"
+        onClick={() => onNavigate(null)}
+        disabled={breadcrumb.length === 0}
+        className={breadcrumb.length === 0 ? "text-zinc-400" : "text-sky-400 hover:underline"}
+      >
+        根目录
+      </button>
+      {breadcrumb.map((f) => (
+        <span key={f.id} className="flex items-center gap-1">
+          <ChevronRight className="size-3 text-zinc-600" />
+          <button
+            type="button"
+            onClick={() => onNavigate(f.id)}
+            className={f.id === breadcrumb[breadcrumb.length - 1]?.id ? "text-zinc-400" : "text-sky-400 hover:underline"}
+            disabled={f.id === breadcrumb[breadcrumb.length - 1]?.id}
+          >
+            {f.name}
+          </button>
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function FolderRow({
+  folder,
+  itemCount,
+  onEnter,
+  onRename,
+  onDelete,
+  isPending,
+}: {
+  folder: FolderItem;
+  itemCount: number;
+  onEnter: () => void;
+  onRename: (name: string) => void;
+  onDelete: () => void;
+  isPending: boolean;
+}) {
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [name, setName] = useState(folder.name);
+
+  return (
+    <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-2.5 transition hover:border-white/15">
+      <button type="button" onClick={onEnter} className="flex flex-1 items-center gap-2 min-w-0 text-left">
+        <Folder className="size-4 shrink-0 text-amber-400/70" />
+        {isRenaming ? (
+          <input
+            autoFocus
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onBlur={() => { onRename(name.trim()); setIsRenaming(false); }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") { onRename(name.trim()); setIsRenaming(false); }
+              if (e.key === "Escape") { setName(folder.name); setIsRenaming(false); }
+            }}
+            onClick={(e) => e.stopPropagation()}
+            className="flex-1 bg-transparent text-xs text-zinc-200 outline-none border-b border-sky-500/40"
+          />
+        ) : (
+          <span className="text-xs text-zinc-200">{folder.name}</span>
+        )}
+        <span className="text-[10px] text-zinc-500 shrink-0">{itemCount} 项</span>
+      </button>
+      <div className="flex gap-1 shrink-0">
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); setIsRenaming(true); }}
+          className="rounded p-1 text-zinc-500 hover:bg-white/[0.06] hover:text-zinc-300"
+          title="重命名"
+        >
+          <Pencil className="size-3" />
+        </button>
+        {itemCount === 0 && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onDelete(); }}
+            disabled={isPending}
+            className="rounded p-1 text-zinc-500 hover:bg-red-500/10 hover:text-red-400"
+            title="删除空文件夹"
+          >
+            <Trash2 className="size-3" />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** Flatten folders into indented options for a move-to-folder dropdown */
+function buildFolderOptions(folders: FolderItem[], parentId: string | null = null, depth = 0): Array<{ id: string | null; label: string }> {
+  const opts: Array<{ id: string | null; label: string }> = [];
+  if (depth === 0) opts.push({ id: null, label: "根目录" });
+  const children = folders.filter((f) => (f.parentId ?? null) === parentId).sort((a, b) => a.sortOrder - b.sortOrder);
+  for (const child of children) {
+    opts.push({ id: child.id, label: "\u00A0\u00A0".repeat(depth + 1) + child.name });
+    opts.push(...buildFolderOptions(folders, child.id, depth + 1));
+  }
+  return opts;
+}
+
+function MoveToFolderButton({
+  currentFolderId,
+  folders,
+  onMove,
+}: {
+  currentFolderId: string | null;
+  folders: FolderItem[];
+  onMove: (folderId: string | null) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const options = useMemo(() => buildFolderOptions(folders), [folders]);
+
+  if (folders.length === 0) return null;
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
+        className="rounded p-1 text-zinc-500 hover:bg-white/[0.06] hover:text-zinc-300"
+        title="移动到文件夹"
+      >
+        <FolderInput className="size-3" />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full z-50 mt-1 max-h-48 w-44 overflow-auto rounded-lg border border-white/10 bg-zinc-900 py-1 shadow-xl">
+          {options.map((opt) => (
+            <button
+              key={opt.id ?? "__root"}
+              type="button"
+              disabled={opt.id === currentFolderId}
+              onClick={(e) => { e.stopPropagation(); onMove(opt.id); setOpen(false); }}
+              className={`block w-full px-3 py-1 text-left text-[11px] hover:bg-white/[0.06] ${opt.id === currentFolderId ? "text-zinc-600" : "text-zinc-300"}`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Count items inside a folder (direct children: presets/groups + subfolders) */
+function countFolderItems(
+  folderId: string,
+  folders: FolderItem[],
+  presets: { folderId: string | null }[],
+  groups?: { folderId: string | null }[],
+): number {
+  const subFolders = folders.filter((f) => f.parentId === folderId).length;
+  const p = presets.filter((x) => x.folderId === folderId).length;
+  const g = groups ? groups.filter((x) => x.folderId === folderId).length : 0;
+  return subFolders + p + g;
+}
+
+// ---------------------------------------------------------------------------
 // PresetList — right panel showing presets within a category
 // ---------------------------------------------------------------------------
 
@@ -618,6 +796,9 @@ function PresetList({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [presets, setPresets] = useState(category.presets);
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+  const [isCreatingFolder, setIsCreatingFolder] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
   const dndId = useId();
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -629,15 +810,51 @@ function PresetList({
     setPresets(category.presets);
   }, [category.presets]);
 
+  // Reset folder when category changes
+  useEffect(() => {
+    setCurrentFolderId(null);
+  }, [category.id]);
+
+  // Filter presets and folders for current folder level
+  const visiblePresets = presets.filter((p) => (p.folderId ?? null) === currentFolderId);
+  const visibleFolders = category.folders.filter((f) => (f.parentId ?? null) === currentFolderId);
+
+  // Breadcrumb path
+  const breadcrumb = useMemo(() => {
+    const path: FolderItem[] = [];
+    let fid = currentFolderId;
+    while (fid) {
+      const folder = category.folders.find((f) => f.id === fid);
+      if (!folder) break;
+      path.unshift(folder);
+      fid = folder.parentId;
+    }
+    return path;
+  }, [currentFolderId, category.folders]);
+
   function handlePresetDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-    const oldIndex = presets.findIndex((p) => p.id === active.id);
-    const newIndex = presets.findIndex((p) => p.id === over.id);
-    const reordered = arrayMove(presets, oldIndex, newIndex);
-    setPresets(reordered);
+    const items = visiblePresets;
+    const oldIndex = items.findIndex((p) => p.id === active.id);
+    const newIndex = items.findIndex((p) => p.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const reordered = arrayMove(items, oldIndex, newIndex);
+    // Update the full presets array
+    const otherPresets = presets.filter((p) => (p.folderId ?? null) !== currentFolderId);
+    setPresets([...otherPresets, ...reordered]);
     startTransition(async () => {
       await reorderPresets(category.id, reordered.map((p) => p.id));
+    });
+  }
+
+  async function handleCreateFolder() {
+    if (!newFolderName.trim()) return;
+    startTransition(async () => {
+      await createPresetFolder(category.id, currentFolderId, newFolderName.trim());
+      setNewFolderName("");
+      setIsCreatingFolder(false);
+      onRefresh();
     });
   }
 
@@ -653,17 +870,80 @@ function PresetList({
             {presets.length} 个预制
           </span>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            setIsCreating(true);
-            setEditingId(null);
-          }}
-          className="inline-flex items-center gap-1 rounded-lg bg-sky-500/10 px-2.5 py-1 text-[11px] text-sky-300 hover:bg-sky-500/20"
-        >
-          <Plus className="size-3" /> 新建预制
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setIsCreatingFolder(true)}
+            className="inline-flex items-center gap-1 rounded-lg bg-white/[0.04] px-2 py-1 text-[11px] text-zinc-400 hover:bg-white/[0.08]"
+            title="新建文件夹"
+          >
+            <FolderPlus className="size-3" />
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setIsCreating(true);
+              setEditingId(null);
+            }}
+            className="inline-flex items-center gap-1 rounded-lg bg-sky-500/10 px-2.5 py-1 text-[11px] text-sky-300 hover:bg-sky-500/20"
+          >
+            <Plus className="size-3" /> 新建预制
+          </button>
+        </div>
       </div>
+
+      {/* Breadcrumb */}
+      <FolderBreadcrumb breadcrumb={breadcrumb} onNavigate={setCurrentFolderId} />
+
+      {/* Create folder inline */}
+      {isCreatingFolder && (
+        <div className="flex items-center gap-2">
+          <Folder className="size-3.5 text-amber-400/60" />
+          <input
+            type="text"
+            value={newFolderName}
+            onChange={(e) => setNewFolderName(e.target.value)}
+            placeholder="文件夹名称"
+            onKeyDown={(e) => { if (e.key === "Enter") handleCreateFolder(); if (e.key === "Escape") { setIsCreatingFolder(false); setNewFolderName(""); } }}
+            className="flex-1 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
+            autoFocus
+          />
+          <button type="button" onClick={handleCreateFolder} disabled={isPending || !newFolderName.trim()} className="rounded-lg bg-sky-500/20 px-2 py-1 text-[10px] text-sky-300 hover:bg-sky-500/30 disabled:opacity-50">
+            <Save className="size-3" />
+          </button>
+          <button type="button" onClick={() => { setIsCreatingFolder(false); setNewFolderName(""); }} className="rounded-lg border border-white/10 px-2 py-1 text-[10px] text-zinc-400 hover:bg-white/[0.06]">
+            <X className="size-3" />
+          </button>
+        </div>
+      )}
+
+      {/* Folder items */}
+      {visibleFolders.map((folder) => (
+        <FolderRow
+          key={folder.id}
+          folder={folder}
+          itemCount={countFolderItems(folder.id, category.folders, presets)}
+          onEnter={() => setCurrentFolderId(folder.id)}
+          onRename={(newName) => {
+            startTransition(async () => {
+              await renamePresetFolder(folder.id, newName);
+              onRefresh();
+            });
+          }}
+          onDelete={() => {
+            if (!confirm(`确认删除文件夹「${folder.name}」？`)) return;
+            startTransition(async () => {
+              try {
+                await deletePresetFolder(folder.id);
+                onRefresh();
+              } catch (e: unknown) {
+                alert(e instanceof Error ? e.message : "删除失败");
+              }
+            });
+          }}
+          isPending={isPending}
+        />
+      ))}
 
       {/* Create form */}
       {isCreating && (
@@ -697,9 +977,9 @@ function PresetList({
       )}
 
       {/* Sortable preset cards */}
-      {presets.length === 0 && !isCreating ? (
+      {visiblePresets.length === 0 && visibleFolders.length === 0 && !isCreating ? (
         <div className="flex h-32 items-center justify-center rounded-xl border border-dashed border-white/5 text-xs text-zinc-600">
-          暂无预制，点击「新建预制」开始
+          {currentFolderId ? "此文件夹为空" : "暂无预制，点击「新建预制」开始"}
         </div>
       ) : (
         <DndContext
@@ -709,10 +989,10 @@ function PresetList({
           onDragEnd={handlePresetDragEnd}
         >
           <SortableContext
-            items={presets.map((p) => p.id)}
+            items={visiblePresets.map((p) => p.id)}
             strategy={verticalListSortingStrategy}
           >
-            {presets.map((preset) =>
+            {visiblePresets.map((preset) =>
               editingId === preset.id ? (
                 <PresetForm
                   key={preset.id}
@@ -770,7 +1050,14 @@ function PresetList({
                 <SortablePresetCard
                   key={preset.id}
                   preset={preset}
+                  folders={category.folders}
                   onEdit={() => setEditingId(preset.id)}
+                  onMoveToFolder={(folderId) => {
+                    startTransition(async () => {
+                      await moveToFolder("preset", preset.id, folderId);
+                      onRefresh();
+                    });
+                  }}
                 />
               ),
             )}
@@ -787,10 +1074,14 @@ function PresetList({
 
 function SortablePresetCard({
   preset,
+  folders,
   onEdit,
+  onMoveToFolder,
 }: {
   preset: PresetFull;
+  folders: FolderItem[];
   onEdit: () => void;
+  onMoveToFolder: (folderId: string | null) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: preset.id });
   const style: React.CSSProperties = {
@@ -850,6 +1141,11 @@ function SortablePresetCard({
           <div className="mt-1 text-[11px] text-zinc-600">暂无变体</div>
         )}
       </div>
+      <MoveToFolderButton
+        currentFolderId={preset.folderId}
+        folders={folders}
+        onMove={onMoveToFolder}
+      />
     </div>
   );
 }
@@ -1434,6 +1730,9 @@ function GroupList({
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [groups, setGroups] = useState(category.groups);
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+  const [isCreatingFolder, setIsCreatingFolder] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
   const dndId = useId();
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -1444,15 +1743,50 @@ function GroupList({
     setGroups(category.groups);
   }, [category.groups]);
 
+  // Reset folder when category changes
+  useEffect(() => {
+    setCurrentFolderId(null);
+  }, [category.id]);
+
+  // Filter groups and folders for current folder level
+  const visibleGroups = groups.filter((g) => (g.folderId ?? null) === currentFolderId);
+  const visibleFolders = category.folders.filter((f) => (f.parentId ?? null) === currentFolderId);
+
+  // Breadcrumb path
+  const breadcrumb = useMemo(() => {
+    const path: FolderItem[] = [];
+    let fid = currentFolderId;
+    while (fid) {
+      const folder = category.folders.find((f) => f.id === fid);
+      if (!folder) break;
+      path.unshift(folder);
+      fid = folder.parentId;
+    }
+    return path;
+  }, [currentFolderId, category.folders]);
+
   function handleGroupDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-    const oldIndex = groups.findIndex((g) => g.id === active.id);
-    const newIndex = groups.findIndex((g) => g.id === over.id);
-    const reordered = arrayMove(groups, oldIndex, newIndex);
-    setGroups(reordered);
+    const items = visibleGroups;
+    const oldIndex = items.findIndex((g) => g.id === active.id);
+    const newIndex = items.findIndex((g) => g.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const reordered = arrayMove(items, oldIndex, newIndex);
+    const otherGroups = groups.filter((g) => (g.folderId ?? null) !== currentFolderId);
+    setGroups([...otherGroups, ...reordered]);
     startTransition(async () => {
       await reorderPresetGroups(reordered.map((g) => g.id));
+    });
+  }
+
+  async function handleCreateFolder() {
+    if (!newFolderName.trim()) return;
+    startTransition(async () => {
+      await createPresetFolder(category.id, currentFolderId, newFolderName.trim());
+      setNewFolderName("");
+      setIsCreatingFolder(false);
+      onRefresh();
     });
   }
 
@@ -1466,11 +1800,72 @@ function GroupList({
           {category.name}
           <span className="ml-1.5 text-zinc-500">· {groups.length} 个预制组</span>
         </span>
+        <button
+          type="button"
+          onClick={() => setIsCreatingFolder(true)}
+          className="inline-flex items-center gap-1 rounded-lg bg-white/[0.04] px-2 py-1 text-[11px] text-zinc-400 hover:bg-white/[0.08]"
+          title="新建文件夹"
+        >
+          <FolderPlus className="size-3" />
+        </button>
       </div>
 
-      {groups.length === 0 && !showCreateForm && (
+      {/* Breadcrumb */}
+      <FolderBreadcrumb breadcrumb={breadcrumb} onNavigate={setCurrentFolderId} />
+
+      {/* Create folder inline */}
+      {isCreatingFolder && (
+        <div className="flex items-center gap-2">
+          <Folder className="size-3.5 text-amber-400/60" />
+          <input
+            type="text"
+            value={newFolderName}
+            onChange={(e) => setNewFolderName(e.target.value)}
+            placeholder="文件夹名称"
+            onKeyDown={(e) => { if (e.key === "Enter") handleCreateFolder(); if (e.key === "Escape") { setIsCreatingFolder(false); setNewFolderName(""); } }}
+            className="flex-1 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
+            autoFocus
+          />
+          <button type="button" onClick={handleCreateFolder} disabled={isPending || !newFolderName.trim()} className="rounded-lg bg-sky-500/20 px-2 py-1 text-[10px] text-sky-300 hover:bg-sky-500/30 disabled:opacity-50">
+            <Save className="size-3" />
+          </button>
+          <button type="button" onClick={() => { setIsCreatingFolder(false); setNewFolderName(""); }} className="rounded-lg border border-white/10 px-2 py-1 text-[10px] text-zinc-400 hover:bg-white/[0.06]">
+            <X className="size-3" />
+          </button>
+        </div>
+      )}
+
+      {/* Folder items */}
+      {visibleFolders.map((folder) => (
+        <FolderRow
+          key={folder.id}
+          folder={folder}
+          itemCount={countFolderItems(folder.id, category.folders, [], groups)}
+          onEnter={() => setCurrentFolderId(folder.id)}
+          onRename={(newName) => {
+            startTransition(async () => {
+              await renamePresetFolder(folder.id, newName);
+              onRefresh();
+            });
+          }}
+          onDelete={() => {
+            if (!confirm(`确认删除文件夹「${folder.name}」？`)) return;
+            startTransition(async () => {
+              try {
+                await deletePresetFolder(folder.id);
+                onRefresh();
+              } catch (e: unknown) {
+                alert(e instanceof Error ? e.message : "删除失败");
+              }
+            });
+          }}
+          isPending={isPending}
+        />
+      ))}
+
+      {visibleGroups.length === 0 && visibleFolders.length === 0 && !showCreateForm && (
         <div className="flex h-20 items-center justify-center text-xs text-zinc-500">
-          暂无预制组
+          {currentFolderId ? "此文件夹为空" : "暂无预制组"}
         </div>
       )}
 
@@ -1481,21 +1876,28 @@ function GroupList({
         onDragEnd={handleGroupDragEnd}
       >
         <SortableContext
-          items={groups.map((g) => g.id)}
+          items={visibleGroups.map((g) => g.id)}
           strategy={verticalListSortingStrategy}
         >
-          {groups.map((group) => (
+          {visibleGroups.map((group) => (
             <SortableGroupCard
               key={group.id}
               group={group}
               categories={allCategories}
               groups={allGroups}
+              folders={category.folders}
               isEditing={editingGroupId === group.id}
               onEdit={() => setEditingGroupId(editingGroupId === group.id ? null : group.id)}
               onRefresh={onRefresh}
               onGroupDeleted={() => {
                 setEditingGroupId(null);
                 onRefresh();
+              }}
+              onMoveToFolder={(folderId) => {
+                startTransition(async () => {
+                  await moveToFolder("group", group.id, folderId);
+                  onRefresh();
+                });
               }}
               isPending={isPending}
               startTransition={startTransition}
