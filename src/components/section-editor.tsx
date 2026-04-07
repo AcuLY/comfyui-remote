@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useTransition, useMemo } from "react";
-import { Plus, Trash2, Package, ChevronDown, ClipboardCopy } from "lucide-react";
+import { useState, useTransition, useMemo, useEffect } from "react";
+import { Plus, Trash2, Package, ChevronDown, ClipboardCopy, Folder, ChevronLeft } from "lucide-react";
 import { PromptBlockEditor } from "@/components/prompt-block-editor";
 import { LoraListEditor } from "@/components/lora-list-editor";
 import type { PromptBlockData } from "@/lib/actions";
@@ -615,26 +615,59 @@ function ImportPresetPanel({
   isPending: boolean;
 }) {
   const [selectedCatId, setSelectedCatId] = useState(categories[0]?.id ?? "");
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const selectedCat = categories.find((c) => c.id === selectedCatId);
+
+  // Reset folder when category changes
+  useEffect(() => {
+    setCurrentFolderId(null);
+  }, [selectedCatId]);
 
   const isGroupCat = selectedCat?.type === "group";
 
+  // Subfolders of current folder
+  const subFolders = useMemo(() => {
+    if (!selectedCat?.folders) return [];
+    return selectedCat.folders.filter((f) => f.parentId === currentFolderId);
+  }, [selectedCat, currentFolderId]);
+
+  // Get folder name for breadcrumb
+  const currentFolderName = useMemo(() => {
+    if (!currentFolderId || !selectedCat?.folders) return null;
+    return selectedCat.folders.find((f) => f.id === currentFolderId)?.name ?? null;
+  }, [currentFolderId, selectedCat]);
+
+  // Get parent folder id for "go back"
+  const parentFolderId = useMemo(() => {
+    if (!currentFolderId || !selectedCat?.folders) return null;
+    const folder = selectedCat.folders.find((f) => f.id === currentFolderId);
+    return folder?.parentId ?? null;
+  }, [currentFolderId, selectedCat]);
+
   const presetItems = useMemo(() => {
     if (!selectedCat || isGroupCat) return [];
-    return selectedCat.presets.flatMap((preset) =>
-      preset.variants.map((v) => ({
-        presetId: preset.id,
-        presetName: preset.name,
-        variantId: v.id,
-        variantName: preset.variants.length === 1 ? "" : v.name,
-        displayName: preset.variants.length === 1 ? preset.name : `${preset.name} / ${v.name}`,
-        prompt: v.prompt,
-        negativePrompt: v.negativePrompt,
-        lora1: v.lora1,
-        lora2: v.lora2,
-      })),
-    );
-  }, [selectedCat, isGroupCat]);
+    return selectedCat.presets
+      .filter((preset) => preset.folderId === currentFolderId)
+      .flatMap((preset) =>
+        preset.variants.map((v) => ({
+          presetId: preset.id,
+          presetName: preset.name,
+          variantId: v.id,
+          variantName: preset.variants.length === 1 ? "" : v.name,
+          displayName: preset.variants.length === 1 ? preset.name : `${preset.name} / ${v.name}`,
+          prompt: v.prompt,
+          negativePrompt: v.negativePrompt,
+          lora1: v.lora1,
+          lora2: v.lora2,
+        })),
+      );
+  }, [selectedCat, isGroupCat, currentFolderId]);
+
+  // Groups filtered by folder
+  const filteredGroups = useMemo(() => {
+    if (!selectedCat || !isGroupCat) return [];
+    return (selectedCat.groups ?? []).filter((g) => (g.folderId ?? null) === currentFolderId);
+  }, [selectedCat, isGroupCat, currentFolderId]);
 
   return (
     <div className="rounded-xl border border-sky-500/20 bg-sky-500/[0.03] p-3 space-y-2">
@@ -672,12 +705,37 @@ function ImportPresetPanel({
 
       {/* Content: presets or groups depending on category type */}
       <div className="max-h-40 overflow-y-auto space-y-1">
+        {/* Breadcrumb / back button */}
+        {currentFolderId !== null && (
+          <button
+            type="button"
+            onClick={() => setCurrentFolderId(parentFolderId)}
+            className="flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] text-sky-400/70 hover:text-sky-300 hover:bg-white/[0.04] w-full text-left"
+          >
+            <ChevronLeft className="size-3" />
+            ← 返回上级{currentFolderName ? ` (${currentFolderName})` : ""}
+          </button>
+        )}
+
+        {/* Subfolders */}
+        {subFolders.map((folder) => (
+          <button
+            key={folder.id}
+            type="button"
+            onClick={() => setCurrentFolderId(folder.id)}
+            className="w-full rounded-lg border border-white/5 bg-white/[0.02] p-2 text-left transition hover:border-white/10 flex items-center gap-1.5"
+          >
+            <Folder className="size-3.5 text-amber-400/70" />
+            <span className="text-[11px] font-medium text-zinc-200">{folder.name}</span>
+          </button>
+        ))}
+
         {isGroupCat ? (
           // Group category — show groups to import
-          (selectedCat.groups ?? []).length === 0 ? (
+          filteredGroups.length === 0 && subFolders.length === 0 ? (
             <div className="py-2 text-center text-[10px] text-zinc-600">暂无可导入的预制组</div>
           ) : (
-            (selectedCat.groups ?? []).map((group) => (
+            filteredGroups.map((group) => (
               <button
                 key={group.id}
                 type="button"
@@ -702,7 +760,7 @@ function ImportPresetPanel({
           )
         ) : (
           // Preset category — show preset/variant list
-          presetItems.length === 0 ? (
+          presetItems.length === 0 && subFolders.length === 0 ? (
             <div className="py-2 text-center text-[10px] text-zinc-600">暂无可导入的预制</div>
           ) : (
             presetItems.map((item) => (

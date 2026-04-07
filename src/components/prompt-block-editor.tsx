@@ -53,9 +53,11 @@ export type PromptLibraryV2 = {
     positivePromptOrder?: number;
     lora1Order?: number;
     lora2Order?: number;
+    folders?: Array<{ id: string; name: string; parentId: string | null; sortOrder: number }>;
     presets: Array<{
       id: string;
       name: string;
+      folderId?: string | null;
       variants: Array<{
         id: string;
         name: string;
@@ -69,6 +71,7 @@ export type PromptLibraryV2 = {
       id: string;
       name: string;
       slug: string;
+      folderId?: string | null;
       members: Array<{
         id: string;
         presetId: string | null;

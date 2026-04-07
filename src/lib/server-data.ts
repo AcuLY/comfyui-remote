@@ -943,9 +943,11 @@ export type PromptLibraryV2 = {
     positivePromptOrder?: number;
     lora1Order?: number;
     lora2Order?: number;
+    folders: Array<{ id: string; name: string; parentId: string | null; sortOrder: number }>;
     presets: Array<{
       id: string;
       name: string;
+      folderId: string | null;
       variants: Array<{
         id: string;
         name: string;
@@ -960,6 +962,7 @@ export type PromptLibraryV2 = {
       id: string;
       name: string;
       slug: string;
+      folderId: string | null;
       members: Array<{
         id: string;
         presetId: string | null;
@@ -977,12 +980,17 @@ export async function getPromptLibraryV2(): Promise<PromptLibraryV2> {
   const categories = await prisma.presetCategory.findMany({
     orderBy: { sortOrder: "asc" },
     include: {
+      folders: {
+        orderBy: { sortOrder: "asc" },
+        select: { id: true, name: true, parentId: true, sortOrder: true },
+      },
       presets: {
         where: { isActive: true },
         orderBy: { sortOrder: "asc" },
         select: {
           id: true,
           name: true,
+          folderId: true,
           variants: {
             where: { isActive: true },
             orderBy: { sortOrder: "asc" },
@@ -1041,11 +1049,23 @@ export async function getPromptLibraryV2(): Promise<PromptLibraryV2> {
       positivePromptOrder: c.positivePromptOrder,
       lora1Order: c.lora1Order,
       lora2Order: c.lora2Order,
-      presets: c.presets,
+      folders: c.folders.map((f) => ({
+        id: f.id,
+        name: f.name,
+        parentId: f.parentId,
+        sortOrder: f.sortOrder,
+      })),
+      presets: c.presets.map((p) => ({
+        id: p.id,
+        name: p.name,
+        folderId: p.folderId,
+        variants: p.variants,
+      })),
       groups: c.groups.map((g) => ({
         id: g.id,
         name: g.name,
         slug: g.slug,
+        folderId: g.folderId,
         members: g.members.map((m) => ({
           id: m.id,
           presetId: m.presetId,
