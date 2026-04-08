@@ -1,0 +1,189 @@
+═══════════════════════════════════════════════════════════════════════════════
+ASPECTRATIO INJECTION - COMPLETE BUG INVESTIGATION TRACE
+═══════════════════════════════════════════════════════════════════════════════
+
+1. DATABASE SCHEMA
+   ├─ File: /prisma/schema.prisma:181
+   └─ Model: ProjectSection.aspectRatio (String?)
+     ├─ Stores: "1:1", "2:3", "3:4", "9:16", "3:2", "4:3", "16:9"
+     └─ Also Related: shortSidePx, batchSize, upscaleFactor
+
+2. UI INPUT LAYER
+   ├─ File: src/app/projects/[projectId]/sections/[sectionId]/edit/section-edit-form.tsx:87-104
+   ├─ Component: <select name="aspectRatio">
+   └─ Options: 1:1, 2:3, 3:4, 9:16, 3:2, 4:3, 16:9 (with Chinese labels)
+
+3. DATABASE PERSISTENCE
+   ├─ File: src/app/projects/actions.ts
+   └─ Function: saveSectionEditAction (receives form data, saves to ProjectSection)
+
+4. ASPECT RATIO DEFINITION & RESOLUTION ⭐ KEY FILE
+   ├─ File: src/lib/aspect-ratio-utils.ts:12-87
+   ├─ Exported Constant: ASPECT_RATIOS (Record with width/height/ratios)
+   ├─ Exported Function: resolveResolution(aspectRatio, shortSidePx)
+   │  ├─ Input: aspectRatio string ("3:4") + optional override (shortSidePx)
+   │  ├─ Logic: 
+   │  │  1. Look up entry in ASPECT_RATIOS (default: "3:4")
+   │  │  2. If shortSidePx provided, calculate from ratio
+   │  │  3. Round to multiple of 8 (latent alignment)
+   │  └─ Output: { width: number, height: number }
+   └─ Default Ratio: "3:4" (Line 25)
+
+   ASPECT RATIO MAPPINGS:
+   ├─ "1:1"  → {width: 1024, height: 1024}
+   ├─ "2:3"  → {width: 832,  height: 1216}
+   ├─ "3:4"  → {width: 896,  height: 1152}
+   ├─ "9:16" → {width: 768,  height: 1344}
+   ├─ "3:2"  → {width: 1216, height: 832}
+   ├─ "4:3"  → {width: 1152, height: 896}
+   └─ "16:9" → {width: 1344, height: 768}
+
+5. QUEUE TIME - CONFIG SNAPSHOT BUILDING
+   ├─ File: src/server/repositories/project-repository.ts:273-351
+   ├─ Function: buildResolvedConfigSnapshot()
+   │  ├─ Reads: ProjectSection.aspectRatio (precedence 1) or project-level override (2) or null (3)
+   │  ├─ Reads: ProjectSection.shortSidePx (same precedence)
+   │  └─ Creates: resolvedConfigSnapshot (JSON) with parameters.aspectRatio + parameters.shortSidePx
+   └─ Stored In: Run.resolvedConfigSnapshot (Prisma.JsonValue)
+
+6. WORKER PIPELINE - SNAPSHOT TO DRAFT
+   ├─ File: src/server/worker/repository.ts:143-154
+   ├─ Function: listQueuedWorkerRuns() → listMany Run records with status="queued"
+   ├─ Function: serializeWorkerRunSnapshot() → extracts resolvedConfigSnapshot from Run
+   └─ Type: WorkerRunSnapshot (carries resolvedConfigSnapshot)
+
+7. PAYLOAD BUILDER
+   ├─ File: src/server/worker/payload-builder.ts:103-132
+   ├─ Function: buildComfyPromptDraft(run: WorkerRunSnapshot)
+   │  ├─ Calls: normalizeResolvedConfigSnapshot()
+   │  └─ Returns: ComfyPromptDraft with parameters.aspectRatio intact
+   └─ Type: ComfyPromptDraft.parameters.aspectRatio (string | null)
+
+8. RUN EXECUTOR - DISPATCH
+   ├─ File: src/server/services/run-executor.ts:128-134
+   └─ Flow: buildComfyPromptDraft() → validateComfyPromptDraft() → submitComfyPrompt()
+
+9. ASPECT RATIO → WIDTH/HEIGHT CONVERSION ⭐ KEY FILE
+   ├─ File: src/server/services/comfyui-service.ts:454-504
+   ├─ Function: resolveStandardWorkflowPrompt(promptDraft)
+   │  ├─ Line 465-468: Calls resolveResolution(aspectRatio, shortSidePx)
+   │  ├─ Line 470-471: Normalizes to shortSide/longSide
+   │  └─ Line 487-501: Passes to buildWorkflowPrompt() with pixel values
+   └─ Output: pixel dimensions ready for workflow
+
+10. WORKFLOW TEMPLATE FILLING ⭐ KEY FILE
+    ├─ File: src/server/services/workflow-prompt-builder.ts:137-200
+    ├─ Function: buildWorkflowPrompt(input: WorkflowBuildInput)
+    │  ├─ Input includes: shortSidePx, longSidePx, batchSize, upscaleFactor
+    │  ├─ Line 143-144: Node 511 (Positive Prompt) ← positivePrompt
+    │  ├─ Line 144: Node 513 (Negative Prompt) ← negativePrompt
+    │  ├─ Line 147-150: Node 407 (EmptyLatentImage) ← width/height FROM ASPECT RATIO ✓
+    │  ├─ Line 161-163: Node 425 (LatentUpscale) ← upscaled dimensions
+    │  ├─ Line 167: Node 522 (LoRA 1)
+    │  ├─ Line 171: Node 36 (LoRA 2)
+    │  ├─ Line 177-182: Node 3 (KSampler1) ← seed, steps, cfg, sampler, scheduler, denoise
+    │  ├─ Line 187-194: Node 427 (KSampler2) ← same params
+    │  └─ Line 197: Node 515 (Image Save) ← output_path
+    └─ Returns: Mutated workflow template with all parameters filled
+
+11. COMFYUI WORKFLOW TEMPLATE
+    ├─ File: docs/workflow.api.json
+    └─ Key Nodes:
+       ├─ Node 1: CheckpointLoaderSimple
+       ├─ Node 3: KSampler (reads latent from 407)
+       ├─ Node 407: EmptyLatentImage ← width/height FROM ASPECT RATIO ✓
+       │           (produces latent for initial sampling)
+       ├─ Node 425: LatentUpscale (upscales latent before KSampler2)
+       ├─ Node 427: KSampler2 (refines upscaled latent)
+       ├─ Node 511: Text Multiline (positive prompt)
+       ├─ Node 513: Text Multiline (negative prompt)
+       ├─ Node 515: Image Save (output location)
+       ├─ Node 522: Power Lora Loader (LoRA stage 1)
+       └─ Node 36: Power Lora Loader (LoRA stage 2)
+
+12. COMFYUI SUBMISSION
+    ├─ File: src/server/services/comfyui-service.ts:564-598
+    ├─ Function: submitComfyPrompt(validatedDraft, promptDraft)
+    └─ POST /prompt with:
+       ├─ prompt: fully resolved workflow JSON (dimensions injected)
+       ├─ client_id: run-{runId}
+       └─ extra_data: metadata, prompt, parameters
+
+═══════════════════════════════════════════════════════════════════════════════
+EXAMPLE TRACE: User selects "3:4" aspect ratio
+═══════════════════════════════════════════════════════════════════════════════
+
+1. UI Form: <select name="aspectRatio">
+   → User selects option value="3:4"
+
+2. Save Action: saveSectionEditAction(formData)
+   → formData.aspectRatio = "3:4"
+   → SAVE: ProjectSection.aspectRatio = "3:4"
+
+3. Queue Run:
+   → buildResolvedConfigSnapshot(project, section)
+   → section.aspectRatio = "3:4"
+   → Create Run with resolvedConfigSnapshot:
+      { parameters: { aspectRatio: "3:4", shortSidePx: null, ... } }
+
+4. Worker Picks Up Run:
+   → listQueuedWorkerRuns()
+   → buildComfyPromptDraft(run)
+   → ComfyPromptDraft.parameters.aspectRatio = "3:4"
+
+5. Execute Run:
+   → validateComfyPromptDraft(apiUrl, promptDraft)
+   → resolveStandardWorkflowPrompt(promptDraft)
+   → resolveResolution("3:4", null)
+      ├─ ASPECT_RATIOS["3:4"] = {width: 896, height: 1152, ratioW: 3, ratioH: 4}
+      └─ RETURNS: {width: 896, height: 1152}
+
+6. Build Workflow:
+   → buildWorkflowPrompt({
+       shortSidePx: 896,
+       longSidePx: 1152,
+       batchSize: 1,
+       upscaleFactor: 2,
+       ...
+     })
+   → Node 407 (EmptyLatentImage): {width: 896, height: 1152, batch_size: 1}
+   → Node 425 (LatentUpscale): {width: 1792, height: 2304, ...}
+
+7. Submit to ComfyUI:
+   POST /prompt {
+     prompt: {
+       "407": {"inputs": {"width": 896, "height": 1152, "batch_size": 1}},
+       "425": {"inputs": {"width": 1792, "height": 2304, ...}},
+       ... all other nodes ...
+     }
+   }
+
+═══════════════════════════════════════════════════════════════════════════════
+CRITICAL SECTIONS FOR BUG INVESTIGATION
+═══════════════════════════════════════════════════════════════════════════════
+
+IF ASPECT RATIO NOT APPEARING IN UI:
+└─ Check: src/app/projects/.../section-edit-form.tsx:90 (name="aspectRatio")
+
+IF ASPECT RATIO NOT SAVING TO DB:
+├─ Check: src/app/projects/actions.ts (saveSectionEditAction)
+└─ Check: prisma/schema.prisma:181 (ProjectSection.aspectRatio)
+
+IF ASPECT RATIO NOT READING FROM DB:
+├─ Check: src/server/repositories/project-repository.ts:287-290 (resolution logic)
+└─ Check: src/server/worker/repository.ts:52 (serializeWorkerRunSnapshot)
+
+IF ASPECT RATIO NOT CONVERTING TO PIXELS:
+├─ Check: src/lib/aspect-ratio-utils.ts:42-68 (resolveResolution)
+├─ Check: src/server/services/comfyui-service.ts:465-468 (conversion call)
+└─ Check: Verify ASPECT_RATIOS constant (src/lib/aspect-ratio-utils.ts:12-23)
+
+IF PIXELS NOT INJECTED INTO WORKFLOW:
+├─ Check: src/server/services/workflow-prompt-builder.ts:147-150 (Node 407)
+├─ Check: src/server/services/workflow-prompt-builder.ts:161-163 (Node 425)
+└─ Check: buildWorkflowPrompt input has shortSidePx/longSidePx
+
+IF WORKFLOW NOT SUBMITTED:
+└─ Check: src/server/services/comfyui-service.ts:564-598 (submitComfyPrompt)
+
+═══════════════════════════════════════════════════════════════════════════════

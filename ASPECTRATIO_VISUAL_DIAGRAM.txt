@@ -1,0 +1,381 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                   ASPECTRATIO INJECTION FLOW DIAGRAM                         ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ PHASE 1: USER INTERFACE                                                     │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  /projects/[projectId]/sections/[sectionId]/edit                           │
+│  section-edit-form.tsx (Lines 87-104)                                      │
+│                                                                             │
+│  ┌──────────────────────────────────┐                                      │
+│  │ <select name="aspectRatio">      │                                      │
+│  │  ✓ 1:1   (方形)                  │                                      │
+│  │  ✓ 2:3   (竖图)                  │                                      │
+│  │  ✓ 3:4   (竖图) ← DEFAULT        │                                      │
+│  │  ✓ 9:16  (竖图)                  │                                      │
+│  │  ✓ 3:2   (横图)                  │                                      │
+│  │  ✓ 4:3   (横图)                  │                                      │
+│  │  ✓ 16:9  (横图)                  │                                      │
+│  └──────────────────────────────────┘                                      │
+│              │                                                             │
+│              │ Form Submit (saveSectionEditAction)                         │
+│              ▼                                                             │
+│       src/app/projects/actions.ts                                          │
+│                                                                             │
+│  User selects: "3:4"                                                       │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ PHASE 2: DATABASE PERSISTENCE                                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  DATABASE: comfyui_remote                                                  │
+│  │                                                                         │
+│  └─ ProjectSection Table                                                   │
+│     │                                                                       │
+│     └─ Record: id=sec_123, projectId, aspectRatio="3:4", shortSidePx, ... │
+│                                    │                                        │
+│                                    ├─ aspectRatio (String?)                 │
+│                                    ├─ shortSidePx (Int?)                    │
+│                                    ├─ batchSize (Int?)                      │
+│                                    ├─ upscaleFactor (Float?)                │
+│                                    ├─ seedPolicy1 (String?)                 │
+│                                    ├─ seedPolicy2 (String?)                 │
+│                                    └─ ksampler1/2, loraConfig, ...          │
+│                                                                             │
+│  ✓ Saved to: ProjectSection (prisma/schema.prisma:181)                     │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    │ User clicks "Run" / "Queue"
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ PHASE 3: RUN QUEUEING - CONFIG SNAPSHOT BUILDING                           │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  src/server/repositories/project-repository.ts:532                         │
+│                                                                             │
+│  buildResolvedConfigSnapshot(project, section)                             │
+│  │                                                                          │
+│  ├─ Read: section.aspectRatio = "3:4"                                      │
+│  ├─ Read: section.shortSidePx = null (or user override)                   │
+│  ├─ Resolve: aspectRatio = "3:4" (from section, or project override)       │
+│  │                                                                          │
+│  └─ Return: resolvedConfigSnapshot = {                                     │
+│       project: { id, title, slug },                                        │
+│       section: { id, sortOrder, name, ... },                               │
+│       parameters: {                                                        │
+│         aspectRatio: "3:4",           ← STORED                            │
+│         shortSidePx: null,            ← STORED                            │
+│         batchSize: 1,                 ← STORED                            │
+│         upscaleFactor: 2,             ← STORED                            │
+│         seedPolicy1: "random",        ← STORED                            │
+│         ...                                                                │
+│       },                                                                   │
+│       ksampler1, ksampler2, loraConfig, ...                                │
+│     }                                                                       │
+│                                                                             │
+│  ✓ Stored in: Run.resolvedConfigSnapshot (Prisma.Json)                    │
+│                                                                             │
+│  Run Record Created:                                                       │
+│  {                                                                         │
+│    id: run_456,                                                             │
+│    projectId, projectSectionId,                                            │
+│    status: "queued",                                                       │
+│    resolvedConfigSnapshot: { ... }                                         │
+│  }                                                                         │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    │ Worker polls: listQueuedWorkerRuns()
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ PHASE 4: WORKER FETCHES RUN                                                │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  src/server/worker/repository.ts:143-154                                   │
+│                                                                             │
+│  listQueuedWorkerRuns()                                                    │
+│  │                                                                          │
+│  ├─ Query: Run where status="queued"                                       │
+│  │                                                                          │
+│  └─ serializeWorkerRunSnapshot(run)                                        │
+│     └─ Return: WorkerRunSnapshot {                                         │
+│          runId: "run_456",                                                  │
+│          resolvedConfigSnapshot: { ... } ← FROM DATABASE                  │
+│        }                                                                    │
+│                                                                             │
+│  ✓ Type: src/server/worker/types.ts:NormalizedResolvedConfigSnapshot      │
+│    - parameters.aspectRatio: "3:4"                                         │
+│    - parameters.shortSidePx: null                                          │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ PHASE 5: BUILD COMFY PROMPT DRAFT                                          │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  src/server/worker/payload-builder.ts:103-132                              │
+│                                                                             │
+│  buildComfyPromptDraft(run: WorkerRunSnapshot)                             │
+│  │                                                                          │
+│  ├─ Normalize: resolvedConfig = normalizeResolvedConfigSnapshot(run...)    │
+│  │                                                                          │
+│  └─ Return: ComfyPromptDraft {                                             │
+│       clientId: "run-456",                                                  │
+│       workflowId: "project_slug",                                           │
+│       prompt: {                                                             │
+│         positive: "...",                                                    │
+│         negative: "..."                                                     │
+│       },                                                                   │
+│       parameters: {                                                        │
+│         aspectRatio: "3:4",           ← PASSED THROUGH                    │
+│         shortSidePx: null,            ← PASSED THROUGH                    │
+│         batchSize: 1,                 ← PASSED THROUGH                    │
+│         upscaleFactor: 2,             ← PASSED THROUGH                    │
+│         ...                                                                │
+│       },                                                                   │
+│       ksampler1, ksampler2, loraConfig, ...                                │
+│       metadata: { runId, runIndex, projectId, sectionId, ... }             │
+│     }                                                                       │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    │ run-executor.ts:128-134
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ PHASE 6: VALIDATE & CONVERT ASPECT RATIO → WIDTH/HEIGHT ⭐ KEY STEP       │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  src/server/services/comfyui-service.ts:454-504                            │
+│                                                                             │
+│  validateComfyPromptDraft(apiUrl, promptDraft)                             │
+│  │                                                                          │
+│  └─ resolveStandardWorkflowPrompt(promptDraft)                             │
+│     │                                                                       │
+│     ├─ Load: workflow template (docs/workflow.api.json)                   │
+│     │                                                                       │
+│     ├─ Convert: resolveResolution(aspectRatio="3:4", shortSidePx=null)   │
+│     │           (src/lib/aspect-ratio-utils.ts:42-68)                     │
+│     │                                                                       │
+│     │   ASPECT_RATIOS["3:4"] = {width: 896, height: 1152, ...}            │
+│     │   Since shortSidePx=null, use defaults:                              │
+│     │   RESULT: { width: 896, height: 1152 }                              │
+│     │                                                                       │
+│     ├─ Normalize: shortSide = 896, longSide = 1152                        │
+│     │                                                                       │
+│     └─ Call: buildWorkflowPrompt({                                         │
+│          workflowTemplate: cloned,                                          │
+│          positivePrompt: "...",                                             │
+│          negativePrompt: "...",                                             │
+│          shortSidePx: 896,        ← PIXEL VALUE FROM ASPECT RATIO       │
+│          longSidePx: 1152,        ← PIXEL VALUE FROM ASPECT RATIO       │
+│          batchSize: 1,                                                     │
+│          upscaleFactor: 2,                                                 │
+│          ...                                                               │
+│        })                                                                   │
+│                                                                             │
+│  ✓ Aspect Ratio String → Pixel Dimensions Conversion Complete             │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ PHASE 7: WORKFLOW TEMPLATE FILLING - INJECT WIDTH/HEIGHT ⭐ KEY STEP      │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  src/server/services/workflow-prompt-builder.ts:137-200                    │
+│                                                                             │
+│  buildWorkflowPrompt(input: WorkflowBuildInput)                            │
+│  │                                                                          │
+│  ├─ Input.shortSidePx = 896                                                │
+│  ├─ Input.longSidePx = 1152                                                │
+│  ├─ Input.batchSize = 1                                                    │
+│  ├─ Input.upscaleFactor = 2                                                │
+│  │                                                                          │
+│  └─ Fill Workflow Template:                                                │
+│                                                                             │
+│     Node 407 (EmptyLatentImage):                                            │
+│     ┌────────────────────────────────────┐                                │
+│     │ inputs: {                          │                                │
+│     │   width: 896,           ← FROM ASPECT RATIO ✓           │          │
+│     │   height: 1152,         ← FROM ASPECT RATIO ✓           │          │
+│     │   batch_size: 1                   │                                │
+│     │ }                                  │                                │
+│     └────────────────────────────────────┘                                │
+│                                                                             │
+│     Node 425 (LatentUpscale):                                               │
+│     ┌────────────────────────────────────┐                                │
+│     │ inputs: {                          │                                │
+│     │   upscale_method: "bilinear",     │                                │
+│     │   width: 1792,          ← 896 * 2 (UPSCALED)       │          │
+│     │   height: 2304,         ← 1152 * 2 (UPSCALED)      │          │
+│     │   crop: "disabled",                │                                │
+│     │   samples: ["3", 0]                │                                │
+│     │ }                                  │                                │
+│     └────────────────────────────────────┘                                │
+│                                                                             │
+│     Node 511 (Positive Prompt):                                             │
+│     ┌────────────────────────────────────┐                                │
+│     │ inputs: {                          │                                │
+│     │   text: "user's positive prompt"  │                                │
+│     │ }                                  │                                │
+│     └────────────────────────────────────┘                                │
+│                                                                             │
+│     Node 513 (Negative Prompt):                                             │
+│     ┌────────────────────────────────────┐                                │
+│     │ inputs: {                          │                                │
+│     │   text: "user's negative prompt"  │                                │
+│     │ }                                  │                                │
+│     └────────────────────────────────────┘                                │
+│                                                                             │
+│     Node 3 (KSampler1):                                                     │
+│     ├─ seed, steps, cfg, sampler_name, scheduler, denoise                  │
+│                                                                             │
+│     Node 427 (KSampler2):                                                   │
+│     ├─ seed, steps, cfg, sampler_name, scheduler, denoise                  │
+│                                                                             │
+│     Node 515 (Image Save):                                                  │
+│     ├─ output_path, filename_prefix                                        │
+│                                                                             │
+│  ✓ Return: Fully filled workflow template JSON                            │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    │ run-executor.ts:134
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ PHASE 8: SUBMIT TO COMFYUI                                                 │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  src/server/services/comfyui-service.ts:564-598                            │
+│                                                                             │
+│  submitComfyPrompt(validatedDraft, promptDraft)                            │
+│  │                                                                          │
+│  └─ POST /prompt                                                           │
+│     │                                                                       │
+│     └─ Payload: {                                                          │
+│          prompt: {                                                         │
+│            "407": {                                                        │
+│              "inputs": {                                                   │
+│                "width": 896,         ← ASPECT RATIO ✓                     │
+│                "height": 1152,       ← ASPECT RATIO ✓                     │
+│                "batch_size": 1                                             │
+│              }                                                             │
+│            },                                                              │
+│            "425": {                                                        │
+│              "inputs": {                                                   │
+│                "width": 1792,        ← UPSCALED                            │
+│                "height": 2304,       ← UPSCALED                            │
+│              }                                                             │
+│            },                                                              │
+│            "511": { "inputs": { "text": "..." } },                         │
+│            "513": { "inputs": { "text": "..." } },                         │
+│            "3": { ... KSampler1 ... },                                     │
+│            "427": { ... KSampler2 ... },                                   │
+│            ... all other nodes ...                                         │
+│          },                                                                │
+│          client_id: "run-456",                                             │
+│          extra_data: { ... }                                               │
+│        }                                                                   │
+│                                                                             │
+│  ✓ Response: { prompt_id: "uuid" }                                        │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    │ ComfyUI processes the prompt
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ PHASE 9: COMFYUI EXECUTION                                                 │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ComfyUI Server (External)                                                 │
+│  │                                                                          │
+│  ├─ Node 1: Load checkpoint                                                │
+│  ├─ Node 407: Generate empty latent with dimensions (896×1152)            │
+│  ├─ Node 511/513: Process positive/negative prompts                        │
+│  ├─ Node 522: Apply LoRA Stage 1                                           │
+│  ├─ Node 3: KSampler with latent (896×1152)                               │
+│  ├─ Node 425: Upscale latent to (1792×2304)                               │
+│  ├─ Node 36: Apply LoRA Stage 2                                            │
+│  ├─ Node 427: KSampler with upscaled latent (1792×2304)                   │
+│  ├─ Node 410: VAE Decode (converts latent → pixel image)                  │
+│  ├─ Node 515: Save image to output directory                               │
+│  │                                                                          │
+│  └─ ✓ Output Image Generated at 1792×2304 pixels (3:4 ratio, 2x upscale)  │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                         KEY DATA TRANSFORMATIONS                            ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+ASPECT RATIO STRING → PIXEL DIMENSIONS
+
+  Input: aspectRatio = "3:4", shortSidePx = null
+         
+  Lookup: ASPECT_RATIOS["3:4"] = {
+            width: 896,
+            height: 1152,
+            ratioW: 3,
+            ratioH: 4
+          }
+  
+  Output: { width: 896, height: 1152 }
+  
+  Then normalized for template:
+    shortSide = min(896, 1152) = 896
+    longSide = max(896, 1152) = 1152
+
+
+DIMENSIONS → WORKFLOW NODES
+
+  Node 407 (EmptyLatentImage):
+    width: 896, height: 1152, batch_size: 1
+    → Generates 1×1152×896 latent tensor
+
+  Node 425 (LatentUpscale):
+    width: 1792, height: 2304
+    → Upscales latent to 1×2304×1792
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                     ASPECT RATIO REFERENCE TABLE                            ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┌──────┬────────┬────────┬─────────┬────────┐
+│ Ratio│ Width  │ Height │ Label   │ Type   │
+├──────┼────────┼────────┼─────────┼────────┤
+│ 1:1  │ 1024   │ 1024   │ 方形    │ Square │
+│ 2:3  │ 832    │ 1216   │ 竖图    │ Portrait
+│ 3:4  │ 896    │ 1152   │ 竖图    │ Portrait
+│ 9:16 │ 768    │ 1344   │ 竖图    │ Portrait
+│ 3:2  │ 1216   │ 832    │ 横图    │ Landscape
+│ 4:3  │ 1152   │ 896    │ 横图    │ Landscape
+│ 16:9 │ 1344   │ 768    │ 横图    │ Landscape
+└──────┴────────┴────────┴─────────┴────────┘
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                         DEBUGGING CHECKLIST                                 ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Check points in order:
+
+  1. UI Form: aspectRatio <select> → name="aspectRatio"?
+  2. Form Submit: saveSectionEditAction receives aspectRatio?
+  3. Database: ProjectSection.aspectRatio = "3:4"?
+  4. Queuing: buildResolvedConfigSnapshot reads section.aspectRatio?
+  5. Run Record: resolvedConfigSnapshot.parameters.aspectRatio = "3:4"?
+  6. Draft Building: buildComfyPromptDraft passes through parameters?
+  7. Validation: resolveResolution("3:4", null) → {896, 1152}?
+  8. Workflow Fill: buildWorkflowPrompt sets node 407 width/height?
+  9. Submission: submitComfyPrompt sends correct JSON to ComfyUI?
+  10. ComfyUI: Node 407 receives width=896, height=1152?
+
