@@ -118,18 +118,23 @@ export function SectionEditor({
         prev.map((b) => (b.bindingId === bindingId ? { ...b, ...result.block } : b)),
       );
 
-      // Replace LoRAs for this bindingId
-      const updatedLora1 = [
-        ...lora1.filter((e) => e.bindingId !== bindingId),
-        ...result.lora1.map((l) => ({ ...l, source: "preset" as const })),
-      ];
-      const updatedLora2 = [
-        ...lora2.filter((e) => e.bindingId !== bindingId),
-        ...result.lora2.map((l) => ({ ...l, source: "preset" as const })),
-      ];
-      setLora1(updatedLora1);
-      setLora2(updatedLora2);
-      await onLoraChange({ lora1: updatedLora1, lora2: updatedLora2 });
+      // Replace LoRAs for this bindingId at the same position
+      const newL1 = result.lora1.map((l) => ({ ...l, source: "preset" as const }));
+      const newL2 = result.lora2.map((l) => ({ ...l, source: "preset" as const }));
+
+      const idx1 = lora1.findIndex((e) => e.bindingId === bindingId);
+      const filtered1 = lora1.filter((e) => e.bindingId !== bindingId);
+      const insertAt1 = idx1 >= 0 ? Math.min(idx1, filtered1.length) : filtered1.length;
+      filtered1.splice(insertAt1, 0, ...newL1);
+
+      const idx2 = lora2.findIndex((e) => e.bindingId === bindingId);
+      const filtered2 = lora2.filter((e) => e.bindingId !== bindingId);
+      const insertAt2 = idx2 >= 0 ? Math.min(idx2, filtered2.length) : filtered2.length;
+      filtered2.splice(insertAt2, 0, ...newL2);
+
+      setLora1(filtered1);
+      setLora2(filtered2);
+      await onLoraChange({ lora1: filtered1, lora2: filtered2 });
     });
   }
 

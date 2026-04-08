@@ -1397,10 +1397,18 @@ export async function switchBindingVariant(
       lora2?: Array<Record<string, unknown>>;
     };
     if (config.lora1) {
-      config.lora1 = [...config.lora1.filter((e) => e.bindingId !== bindingId), ...newLora1];
+      const idx = config.lora1.findIndex((e) => e.bindingId === bindingId);
+      const filtered = config.lora1.filter((e) => e.bindingId !== bindingId);
+      const insertAt = idx >= 0 ? Math.min(idx, filtered.length) : filtered.length;
+      filtered.splice(insertAt, 0, ...newLora1);
+      config.lora1 = filtered;
     }
     if (config.lora2) {
-      config.lora2 = [...config.lora2.filter((e) => e.bindingId !== bindingId), ...newLora2];
+      const idx = config.lora2.findIndex((e) => e.bindingId === bindingId);
+      const filtered = config.lora2.filter((e) => e.bindingId !== bindingId);
+      const insertAt = idx >= 0 ? Math.min(idx, filtered.length) : filtered.length;
+      filtered.splice(insertAt, 0, ...newLora2);
+      config.lora2 = filtered;
     }
     await prisma.projectSection.update({
       where: { id: sectionId },
