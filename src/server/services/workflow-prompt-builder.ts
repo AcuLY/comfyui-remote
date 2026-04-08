@@ -32,10 +32,10 @@ export type WorkflowBuildInput = {
   workflowTemplate: Record<string, unknown>;
   positivePrompt: string;
   negativePrompt: string;
-  /** Short side pixels (width for portrait, height for landscape) */
-  shortSidePx: number;
-  /** Long side pixels */
-  longSidePx: number;
+  /** Image width in pixels */
+  width: number;
+  /** Image height in pixels */
+  height: number;
   batchSize: number;
   /** Upscale factor for LatentUpscale (default 2) */
   upscaleFactor?: number;
@@ -145,8 +145,8 @@ export function buildWorkflowPrompt(input: WorkflowBuildInput): Record<string, u
 
   // 2. Image dimensions — node 407 (Empty Latent Image)
   const latent = nodeInputs(wf, "407");
-  latent.width = input.shortSidePx;
-  latent.height = input.longSidePx;
+  latent.width = input.width;
+  latent.height = input.height;
   latent.batch_size = input.batchSize;
 
   if (skipHiresFix) {
@@ -159,8 +159,8 @@ export function buildWorkflowPrompt(input: WorkflowBuildInput): Record<string, u
   } else {
     // 3. Upscale dimensions — node 425 (Upscale Latent)
     const upscaleInputs = nodeInputs(wf, "425");
-    upscaleInputs.width = input.shortSidePx * upscale;
-    upscaleInputs.height = input.longSidePx * upscale;
+    upscaleInputs.width = input.width * upscale;
+    upscaleInputs.height = input.height * upscale;
   }
 
   // 4. LoRA 1 — node 522 (checkpoint → 522 → KS1)

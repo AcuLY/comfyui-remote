@@ -466,9 +466,6 @@ async function resolveStandardWorkflowPrompt(
     promptDraft.parameters.aspectRatio,
     promptDraft.parameters.shortSidePx,
   );
-  // For the workflow template, width = short side, height = long side (portrait default)
-  const shortSide = Math.min(width, height);
-  const longSide = Math.max(width, height);
 
   const loraConfig = promptDraft.loraConfig
     ? parseSectionLoraConfig(promptDraft.loraConfig)
@@ -489,8 +486,8 @@ async function resolveStandardWorkflowPrompt(
     positivePrompt: promptDraft.prompt.positive,
     negativePrompt:
       promptDraft.prompt.negative ?? "",
-    shortSidePx: shortSide,
-    longSidePx: longSide,
+    width,
+    height,
     batchSize: promptDraft.parameters.batchSize ?? 1,
     upscaleFactor: promptDraft.parameters.upscaleFactor ?? 2,
     lora1List: toBindings(loraConfig.lora1),
