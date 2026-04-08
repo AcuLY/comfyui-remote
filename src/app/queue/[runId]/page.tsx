@@ -75,7 +75,7 @@ export default async function ReviewGroupPage({ params }: { params: Promise<{ ru
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <Link href="/queue" className="inline-flex items-center gap-2 text-sm text-zinc-300">
           <ArrowLeft className="size-4" /> 返回队列
         </Link>
