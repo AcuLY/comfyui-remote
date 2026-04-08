@@ -112,15 +112,17 @@ function fillPowerLoraLoader(
 /** Resolve seed from KSamplerParams and optional run context. */
 function resolveSeed(params: KSamplerParams): number {
   const policy = params.seedPolicy ?? "random";
+  // ComfyUI seeds must fit within a safe integer range.
+  // Use 2^32 - 1 (4294967295) as upper bound for maximum compatibility.
+  const MAX_SEED = 4294967295;
   switch (policy) {
     case "fixed":
       return 42;
     case "increment":
-      // For now, use random — actual increment requires runIndex context
-      return Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
+      return Math.floor(Math.random() * MAX_SEED);
     case "random":
     default:
-      return Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
+      return Math.floor(Math.random() * MAX_SEED);
   }
 }
 
@@ -158,9 +160,10 @@ export function buildWorkflowPrompt(input: WorkflowBuildInput): Record<string, u
     nodeInputs(wf, "410").samples = ["3", 0];
   } else {
     // 3. Upscale dimensions — node 425 (Upscale Latent)
+    // Round to nearest multiple of 8 for latent alignment
     const upscaleInputs = nodeInputs(wf, "425");
-    upscaleInputs.width = input.width * upscale;
-    upscaleInputs.height = input.height * upscale;
+    upscaleInputs.width = Math.round((input.width * upscale) / 8) * 8;
+    upscaleInputs.height = Math.round((input.height * upscale) / 8) * 8;
   }
 
   // 4. LoRA 1 — node 522 (checkpoint → 522 → KS1)

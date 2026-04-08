@@ -27,7 +27,7 @@ function resolveSeed(draft: ComfyPromptDraft): number {
 
   return seedPolicy === "fixed"
     ? 42
-    : Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
+    : Math.floor(Math.random() * 4294967295);
 }
 
 // ---------------------------------------------------------------------------
