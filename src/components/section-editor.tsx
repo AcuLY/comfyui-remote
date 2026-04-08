@@ -151,9 +151,14 @@ export function SectionEditor({
       const result = await importPresetToSection(sectionId, presetId, variantId);
       if (!result) return;
 
-      // Insert block at the correct position (server already set sortOrder)
+      // Insert block at the correct position (server already bumped sortOrders via updateMany)
       setBlocks((prev) => {
-        const updated = [...prev, result.block];
+        const updated = prev.map((b) =>
+          b.sortOrder >= result.block.sortOrder
+            ? { ...b, sortOrder: b.sortOrder + 1 }
+            : b,
+        );
+        updated.push(result.block);
         updated.sort((a, b) => a.sortOrder - b.sortOrder);
         return updated;
       });
@@ -260,7 +265,17 @@ export function SectionEditor({
 
       if (newBlocks.length > 0) {
         setBlocks((prev) => {
-          const updated = [...prev, ...newBlocks];
+          // Server already bumped sortOrders for each insertion; rebuild local state
+          // by collecting all sortOrders used by new blocks and incrementing old blocks accordingly
+          const newSortOrders = newBlocks.map((b) => b.sortOrder).sort((a, b) => a - b);
+          const updated = prev.map((b) => {
+            let bump = 0;
+            for (const ns of newSortOrders) {
+              if (b.sortOrder >= ns - bump) bump++;
+            }
+            return bump > 0 ? { ...b, sortOrder: b.sortOrder + bump } : b;
+          });
+          updated.push(...newBlocks);
           updated.sort((a, b) => a.sortOrder - b.sortOrder);
           return updated;
         });
