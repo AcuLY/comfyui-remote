@@ -528,9 +528,26 @@ export async function createPreset(input: PresetInput) {
     });
     input.sortOrder = (maxOrder._max.sortOrder ?? -1) + 1;
   }
-  const preset = await prisma.preset.create({
-    data: input,
+
+  // Check for soft-deleted preset with same slug in same category
+  const existing = await prisma.preset.findUnique({
+    where: {
+      categoryId_slug: { categoryId: input.categoryId, slug: input.slug },
+    },
   });
+
+  let preset;
+  if (existing && !existing.isActive) {
+    // Reactivate and update the soft-deleted record, clearing old variants
+    await prisma.presetVariant.deleteMany({ where: { presetId: existing.id } });
+    preset = await prisma.preset.update({
+      where: { id: existing.id },
+      data: { ...input, isActive: true },
+    });
+  } else {
+    preset = await prisma.preset.create({ data: input });
+  }
+
   revalidatePath("/assets/prompts");
   revalidatePath("/projects/new");
   return preset;
@@ -918,7 +935,26 @@ export async function createPresetGroup(input: PresetGroupInput) {
     });
     input.sortOrder = (maxOrder._max.sortOrder ?? -1) + 1;
   }
-  const group = await prisma.presetGroup.create({ data: input });
+
+  // Check for soft-deleted group with same slug in same category
+  const existing = await prisma.presetGroup.findUnique({
+    where: {
+      categoryId_slug: { categoryId: input.categoryId, slug: input.slug },
+    },
+  });
+
+  let group;
+  if (existing && !existing.isActive) {
+    // Reactivate and update the soft-deleted record, clearing old members
+    await prisma.presetGroupMember.deleteMany({ where: { groupId: existing.id } });
+    group = await prisma.presetGroup.update({
+      where: { id: existing.id },
+      data: { ...input, isActive: true },
+    });
+  } else {
+    group = await prisma.presetGroup.create({ data: input });
+  }
+
   revalidatePath("/assets/prompts");
   return group;
 }
