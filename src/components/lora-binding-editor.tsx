@@ -72,49 +72,85 @@ function SortableRow({
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-2 rounded-lg border border-white/5 bg-white/[0.02] p-2"
+      className="rounded-lg border border-white/5 bg-white/[0.02] p-2"
     >
-      {/* Drag handle */}
-      <button
-        type="button"
-        className="cursor-grab touch-none text-zinc-600 hover:text-zinc-400 active:cursor-grabbing"
-        {...attributes}
-        {...listeners}
-      >
-        <GripVertical className="size-3.5" />
-      </button>
+      {/* Row 1: drag handle + toggle + path picker (+ weight & delete on desktop) */}
+      <div className="flex items-center gap-2">
+        {/* Drag handle */}
+        <button
+          type="button"
+          className="cursor-grab touch-none text-zinc-600 hover:text-zinc-400 active:cursor-grabbing"
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className="size-3.5" />
+        </button>
 
-      {/* Enabled toggle */}
-      <button
-        type="button"
-        role="switch"
-        aria-checked={item.enabled}
-        onClick={onToggle}
-        className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer items-center rounded-full border transition-colors ${
-          item.enabled
-            ? "border-sky-500/30 bg-sky-500"
-            : "border-white/10 bg-white/10"
-        }`}
-      >
-        <span
-          className={`pointer-events-none block size-3 rounded-full bg-white shadow transition-transform ${
-            item.enabled ? "translate-x-3.5" : "translate-x-0.5"
+        {/* Enabled toggle */}
+        <button
+          type="button"
+          role="switch"
+          aria-checked={item.enabled}
+          onClick={onToggle}
+          className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer items-center rounded-full border transition-colors ${
+            item.enabled
+              ? "border-sky-500/30 bg-sky-500"
+              : "border-white/10 bg-white/10"
           }`}
-        />
-      </button>
+        >
+          <span
+            className={`pointer-events-none block size-3 rounded-full bg-white shadow transition-transform ${
+              item.enabled ? "translate-x-3.5" : "translate-x-0.5"
+            }`}
+          />
+        </button>
 
-      {/* Path picker */}
-      <div className="flex-1 min-w-0">
-        <LoraCascadePicker value={item.path} onChange={onPathChange} />
+        {/* Path picker */}
+        <div className="flex-1 min-w-0">
+          <LoraCascadePicker value={item.path} onChange={onPathChange} />
+        </div>
+
+        {/* Weight input + adjust buttons (desktop only) */}
+        <div className="hidden items-center gap-1 sm:flex">
+          <div className="flex gap-0.5">
+            <button type="button" onClick={() => onWeightAdjust(-0.5)}
+              className="rounded px-1 py-0.5 text-[9px] text-zinc-600 hover:bg-white/[0.06] hover:text-zinc-300">-.5</button>
+            <button type="button" onClick={() => onWeightAdjust(-0.1)}
+              className="rounded px-1 py-0.5 text-[9px] text-zinc-600 hover:bg-white/[0.06] hover:text-zinc-300">-.1</button>
+          </div>
+          <input
+            type="text"
+            inputMode="decimal"
+            value={weightDisplay}
+            onChange={(e) => onWeightInput(e.target.value)}
+            onBlur={onWeightBlur}
+            className="w-14 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-center text-xs text-zinc-200 outline-none focus:border-sky-500/30"
+          />
+          <div className="flex gap-0.5">
+            <button type="button" onClick={() => onWeightAdjust(0.1)}
+              className="rounded px-1 py-0.5 text-[9px] text-zinc-600 hover:bg-white/[0.06] hover:text-zinc-300">+.1</button>
+            <button type="button" onClick={() => onWeightAdjust(0.5)}
+              className="rounded px-1 py-0.5 text-[9px] text-zinc-600 hover:bg-white/[0.06] hover:text-zinc-300">+.5</button>
+          </div>
+        </div>
+
+        {/* Remove (desktop only) */}
+        <button
+          type="button"
+          onClick={onRemove}
+          className="hidden rounded p-1 text-zinc-500 transition hover:bg-red-500/10 hover:text-red-400 sm:block"
+        >
+          <Trash2 className="size-3.5" />
+        </button>
       </div>
 
-      {/* Weight input + adjust buttons */}
-      <div className="flex items-center gap-1">
+      {/* Row 2: weight controls + delete (mobile only) */}
+      <div className="mt-1.5 flex items-center gap-1 pl-[3.25rem] sm:hidden">
         <div className="flex gap-0.5">
           <button type="button" onClick={() => onWeightAdjust(-0.5)}
-            className="rounded px-1 py-0.5 text-[9px] text-zinc-600 hover:bg-white/[0.06] hover:text-zinc-300">-.5</button>
+            className="rounded px-1.5 py-0.5 text-[10px] text-zinc-600 hover:bg-white/[0.06] hover:text-zinc-300">-.5</button>
           <button type="button" onClick={() => onWeightAdjust(-0.1)}
-            className="rounded px-1 py-0.5 text-[9px] text-zinc-600 hover:bg-white/[0.06] hover:text-zinc-300">-.1</button>
+            className="rounded px-1.5 py-0.5 text-[10px] text-zinc-600 hover:bg-white/[0.06] hover:text-zinc-300">-.1</button>
         </div>
         <input
           type="text"
@@ -126,20 +162,18 @@ function SortableRow({
         />
         <div className="flex gap-0.5">
           <button type="button" onClick={() => onWeightAdjust(0.1)}
-            className="rounded px-1 py-0.5 text-[9px] text-zinc-600 hover:bg-white/[0.06] hover:text-zinc-300">+.1</button>
+            className="rounded px-1.5 py-0.5 text-[10px] text-zinc-600 hover:bg-white/[0.06] hover:text-zinc-300">+.1</button>
           <button type="button" onClick={() => onWeightAdjust(0.5)}
-            className="rounded px-1 py-0.5 text-[9px] text-zinc-600 hover:bg-white/[0.06] hover:text-zinc-300">+.5</button>
+            className="rounded px-1.5 py-0.5 text-[10px] text-zinc-600 hover:bg-white/[0.06] hover:text-zinc-300">+.5</button>
         </div>
+        <button
+          type="button"
+          onClick={onRemove}
+          className="ml-auto rounded p-1 text-zinc-500 transition hover:bg-red-500/10 hover:text-red-400"
+        >
+          <Trash2 className="size-3.5" />
+        </button>
       </div>
-
-      {/* Remove */}
-      <button
-        type="button"
-        onClick={onRemove}
-        className="rounded p-1 text-zinc-500 transition hover:bg-red-500/10 hover:text-red-400"
-      >
-        <Trash2 className="size-3.5" />
-      </button>
     </div>
   );
 }
