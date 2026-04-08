@@ -98,7 +98,7 @@ export default async function SectionEditPage({
       const variants = await prisma.presetVariant.findMany({
         where: { presetId: { in: presetIds } },
         select: {
-          id: true, name: true, lora1: true, lora2: true,
+          id: true, name: true, presetId: true, lora1: true, lora2: true,
           preset: {
             select: {
               name: true,
@@ -107,10 +107,38 @@ export default async function SectionEditPage({
           },
         },
       });
+
+      // Build a lookup: presetId → bindingId from the section's prompt blocks
+      const blockBindingMap = new Map<string, string>();
+      for (const block of pos.promptBlocks) {
+        if (block.sourceId && block.bindingId) {
+          blockBindingMap.set(block.sourceId, block.bindingId);
+        }
+      }
+
+      // Build a lookup: presetId → { categoryName, presetName, lora paths }
+      // so we can backfill bindingId on existing entries that lack one
+      const presetLoraPathMap = new Map<string, Set<string>>();
+      for (const variant of variants) {
+        const paths = presetLoraPathMap.get(variant.presetId) ?? new Set<string>();
+        if (variant.lora1) {
+          for (const b of parseLoraBindings(variant.lora1)) {
+            if (b.path) paths.add(b.path);
+          }
+        }
+        if (variant.lora2) {
+          for (const b of parseLoraBindings(variant.lora2)) {
+            if (b.path) paths.add(b.path);
+          }
+        }
+        presetLoraPathMap.set(variant.presetId, paths);
+      }
+
       for (const variant of variants) {
         const categoryName = variant.preset.category.name;
         const categoryColor = variant.preset.category.color;
         const presetName = variant.preset.name;
+        const bindingId = blockBindingMap.get(variant.presetId);
         if (variant.lora1) {
           const lora1Bindings = parseLoraBindings(variant.lora1);
           for (const binding of lora1Bindings) {
@@ -126,6 +154,7 @@ export default async function SectionEditPage({
                 sourceLabel: categoryName,
                 sourceColor: categoryColor ?? undefined,
                 sourceName: presetName,
+                bindingId,
               });
               loraChanged = true;
             }
@@ -146,9 +175,29 @@ export default async function SectionEditPage({
                 sourceLabel: categoryName,
                 sourceColor: categoryColor ?? undefined,
                 sourceName: presetName,
+                bindingId,
               });
               loraChanged = true;
             }
+          }
+        }
+      }
+
+      // Backfill: add bindingId to existing entries that are missing one
+      // by matching their path + sourceName against known presets
+      for (const [presetId, paths] of presetLoraPathMap) {
+        const bindingId = blockBindingMap.get(presetId);
+        if (!bindingId) continue;
+        for (const entry of loraConfig.lora1) {
+          if (!entry.bindingId && entry.source === "preset" && paths.has(entry.path)) {
+            entry.bindingId = bindingId;
+            loraChanged = true;
+          }
+        }
+        for (const entry of loraConfig.lora2) {
+          if (!entry.bindingId && entry.source === "preset" && paths.has(entry.path)) {
+            entry.bindingId = bindingId;
+            loraChanged = true;
           }
         }
       }

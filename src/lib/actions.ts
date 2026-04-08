@@ -1605,6 +1605,8 @@ export async function addSection(projectId: string, name?: string): Promise<stri
       return catA - catB;
     });
 
+    const loraConfig: { lora1: Array<Record<string, unknown>>; lora2: Array<Record<string, unknown>> } = { lora1: [], lora2: [] };
+
     for (const binding of sortedBindings) {
       const preset = presetMap.get(binding.presetId);
       if (!preset) continue;
@@ -1635,7 +1637,38 @@ export async function addSection(projectId: string, name?: string): Promise<stri
             sortOrder: blockSortOrder++,
           },
         });
+
+        // Also write LoRAs to loraConfig with bindingId
+        const makeLora = (b: { path: string; weight: number; enabled: boolean }) => ({
+          id: `lora-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+          path: b.path,
+          weight: b.weight,
+          enabled: b.enabled,
+          source: "preset",
+          sourceLabel: preset.category?.name,
+          sourceColor: preset.category?.color,
+          sourceName: preset.name,
+          bindingId,
+        });
+        for (const l of resolved.lora1) {
+          if (!loraConfig.lora1.some((e) => e.path === l.path)) {
+            loraConfig.lora1.push(makeLora(l));
+          }
+        }
+        for (const l of resolved.lora2) {
+          if (!loraConfig.lora2.some((e) => e.path === l.path)) {
+            loraConfig.lora2.push(makeLora(l));
+          }
+        }
       }
+    }
+
+    // Persist the composed loraConfig
+    if (loraConfig.lora1.length > 0 || loraConfig.lora2.length > 0) {
+      await prisma.projectSection.update({
+        where: { id: section.id },
+        data: { loraConfig: loraConfig as Prisma.InputJsonValue },
+      });
     }
   }
 
