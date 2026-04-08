@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useEffect, useId } from "react";
+import { useState, useTransition, useEffect, useId, useRef, useCallback } from "react";
 import Link from "next/link";
 import {
   DndContext,
@@ -19,7 +19,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Layers, ImageIcon } from "lucide-react";
+import { GripVertical, Layers, ImageIcon, LayoutList, LayoutGrid } from "lucide-react";
 import Image from "next/image";
 import { reorderSections } from "@/lib/actions";
 import { SectionRunButton } from "./project-detail-actions";
@@ -45,10 +45,35 @@ type SectionListProps = {
   sections: Section[];
 };
 
+// ---------------------------------------------------------------------------
+// Status dot color helper
+// ---------------------------------------------------------------------------
+
+function statusDotClass(status: string | null): string {
+  if (!status || status === "未运行") return "bg-zinc-500";
+  if (status === "completed" || status === "成功") return "bg-emerald-400";
+  if (status === "running" || status === "运行中") return "bg-amber-400 animate-pulse";
+  if (status === "failed" || status === "失败") return "bg-red-400";
+  return "bg-zinc-500";
+}
+
+// ---------------------------------------------------------------------------
+// Main list
+// ---------------------------------------------------------------------------
+
 export function SectionList({ projectId, sections: initialSections }: SectionListProps) {
   const [sections, setSections] = useState(initialSections);
   const [isPending, startTransition] = useTransition();
+  const [compact, setCompact] = useState(false);
   const dndId = useId();
+
+  // Ref map: section id → DOM node, for scroll anchoring
+  const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+
+  const setCardRef = useCallback((id: string, el: HTMLDivElement | null) => {
+    if (el) cardRefs.current.set(id, el);
+    else cardRefs.current.delete(id);
+  }, []);
 
   // 当 props 更新时同步 state（例如添加/删除小节后）
   useEffect(() => {
@@ -75,7 +100,6 @@ export function SectionList({ projectId, sections: initialSections }: SectionLis
     const newSections = arrayMove(sections, oldIndex, newIndex);
     setSections(newSections);
 
-    // 服务端更新排序
     startTransition(async () => {
       try {
         await reorderSections(
@@ -83,27 +107,116 @@ export function SectionList({ projectId, sections: initialSections }: SectionLis
           newSections.map((s) => s.id),
         );
       } catch (err) {
-        // 回滚乐观更新
         setSections(oldSections);
         alert(err instanceof Error ? err.message : "排序失败");
       }
     });
   }
 
+  // -----------------------------------------------------------------------
+  // Toggle with scroll anchoring
+  // -----------------------------------------------------------------------
+
+  function findAnchorId(): string | null {
+    const viewportCenter = window.innerHeight / 2;
+    let bestId: string | null = null;
+    let bestDist = Infinity;
+    for (const [id, el] of cardRefs.current) {
+      const rect = el.getBoundingClientRect();
+      const cardCenter = rect.top + rect.height / 2;
+      const dist = Math.abs(cardCenter - viewportCenter);
+      if (dist < bestDist) {
+        bestDist = dist;
+        bestId = id;
+      }
+    }
+    return bestId;
+  }
+
+  function handleToggle() {
+    const anchorId = findAnchorId();
+    setCompact((prev) => !prev);
+
+    // After React re-renders, scroll the anchor card into view
+    if (anchorId) {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          const el = cardRefs.current.get(anchorId);
+          if (el) {
+            el.scrollIntoView({ block: "center", behavior: "instant" });
+          }
+        });
+      });
+    }
+  }
+
   return (
-    <DndContext id={dndId} sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-      <SortableContext items={sections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
-        <div className={`space-y-3 ${isPending ? "opacity-60" : ""}`}>
-          {sections.map((section, index) => (
-            <SortableSectionCard key={section.id} section={section} projectId={projectId} index={index} />
-          ))}
-        </div>
-      </SortableContext>
-    </DndContext>
+    <>
+      <DndContext id={dndId} sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={sections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
+          <div className={`${compact ? "space-y-1.5" : "space-y-3"} ${isPending ? "opacity-60" : ""}`}>
+            {sections.map((section, index) =>
+              compact ? (
+                <SortableCompactCard
+                  key={section.id}
+                  section={section}
+                  projectId={projectId}
+                  index={index}
+                  setCardRef={setCardRef}
+                />
+              ) : (
+                <SortableSectionCard
+                  key={section.id}
+                  section={section}
+                  projectId={projectId}
+                  index={index}
+                  setCardRef={setCardRef}
+                />
+              ),
+            )}
+          </div>
+        </SortableContext>
+      </DndContext>
+
+      {/* Floating toggle button — only show when there are enough sections */}
+      {sections.length > 3 && (
+        <button
+          type="button"
+          onClick={handleToggle}
+          className="fixed bottom-6 right-6 z-40 flex items-center gap-2 rounded-full border border-white/10 bg-zinc-900/90 px-4 py-2.5 text-xs font-medium text-zinc-200 shadow-lg backdrop-blur transition hover:bg-zinc-800 active:scale-95"
+        >
+          {compact ? (
+            <>
+              <LayoutGrid className="size-4" />
+              展开视图
+            </>
+          ) : (
+            <>
+              <LayoutList className="size-4" />
+              紧凑视图
+            </>
+          )}
+        </button>
+      )}
+    </>
   );
 }
 
-function SortableSectionCard({ section, projectId, index }: { section: Section; projectId: string; index: number }) {
+// ---------------------------------------------------------------------------
+// Compact card (slim single-line row)
+// ---------------------------------------------------------------------------
+
+function SortableCompactCard({
+  section,
+  projectId,
+  index,
+  setCardRef,
+}: {
+  section: Section;
+  projectId: string;
+  index: number;
+  setCardRef: (id: string, el: HTMLDivElement | null) => void;
+}) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: section.id,
   });
@@ -116,7 +229,80 @@ function SortableSectionCard({ section, projectId, index }: { section: Section; 
 
   return (
     <div
-      ref={setNodeRef}
+      ref={(el) => {
+        setNodeRef(el);
+        setCardRef(section.id, el);
+      }}
+      style={style}
+      className={`group flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 ${isDragging ? "shadow-lg ring-2 ring-sky-500/30" : ""}`}
+    >
+      {/* Drag handle */}
+      <button
+        {...attributes}
+        {...listeners}
+        className="cursor-grab touch-none rounded p-0.5 text-zinc-600 transition hover:bg-white/10 hover:text-zinc-400 active:cursor-grabbing"
+      >
+        <GripVertical className="size-3.5" />
+      </button>
+
+      {/* Clickable area → section detail */}
+      <Link
+        href={`/projects/${projectId}/sections/${section.id}/blocks`}
+        className="flex min-w-0 flex-1 items-center gap-2"
+      >
+        <span className="shrink-0 text-xs font-semibold text-white">
+          {index + 1}. {section.name}
+        </span>
+        <span className="hidden items-center gap-1.5 text-[10px] text-zinc-500 sm:flex">
+          {section.aspectRatio && <span>{section.aspectRatio}</span>}
+          {section.batchSize != null && <span>· b{section.batchSize}</span>}
+        </span>
+      </Link>
+
+      {/* Status + image count */}
+      <div className="flex shrink-0 items-center gap-2">
+        {section.latestImages.length > 0 && (
+          <span className="text-[10px] text-zinc-500">
+            {section.latestImages.length}张
+          </span>
+        )}
+        <span className={`size-2 rounded-full ${statusDotClass(section.latestRunStatus)}`} />
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Full expanded card (original)
+// ---------------------------------------------------------------------------
+
+function SortableSectionCard({
+  section,
+  projectId,
+  index,
+  setCardRef,
+}: {
+  section: Section;
+  projectId: string;
+  index: number;
+  setCardRef: (id: string, el: HTMLDivElement | null) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: section.id,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : undefined,
+  };
+
+  return (
+    <div
+      ref={(el) => {
+        setNodeRef(el);
+        setCardRef(section.id, el);
+      }}
       style={style}
       className={`rounded-2xl border border-white/10 bg-white/[0.03] p-4 ${isDragging ? "shadow-lg ring-2 ring-sky-500/30" : ""}`}
     >
