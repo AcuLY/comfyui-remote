@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition, useMemo, useEffect } from "react";
-import { Plus, Trash2, Package, ChevronDown, ClipboardCopy, Folder, ChevronLeft } from "lucide-react";
+import { Plus, Trash2, Package, ChevronDown, ClipboardCopy, Folder, ChevronLeft, Search, X } from "lucide-react";
 import { PromptBlockEditor } from "@/components/prompt-block-editor";
 import { LoraListEditor } from "@/components/lora-list-editor";
 import type { PromptBlockData } from "@/lib/actions";
@@ -616,11 +616,13 @@ function ImportPresetPanel({
 }) {
   const [selectedCatId, setSelectedCatId] = useState(categories[0]?.id ?? "");
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const selectedCat = categories.find((c) => c.id === selectedCatId);
 
-  // Reset folder when category changes
+  // Reset folder and search when category changes
   useEffect(() => {
     setCurrentFolderId(null);
+    setSearchQuery("");
   }, [selectedCatId]);
 
   const isGroupCat = selectedCat?.type === "group";
@@ -646,8 +648,11 @@ function ImportPresetPanel({
 
   const presetItems = useMemo(() => {
     if (!selectedCat || isGroupCat) return [];
-    return selectedCat.presets
-      .filter((preset) => preset.folderId === currentFolderId)
+    const q = searchQuery.trim().toLowerCase();
+    const presetsInScope = q
+      ? selectedCat.presets.filter((p) => p.name.toLowerCase().includes(q))
+      : selectedCat.presets.filter((preset) => preset.folderId === currentFolderId);
+    return presetsInScope
       .flatMap((preset) =>
         preset.variants.map((v) => ({
           presetId: preset.id,
@@ -661,13 +666,17 @@ function ImportPresetPanel({
           lora2: v.lora2,
         })),
       );
-  }, [selectedCat, isGroupCat, currentFolderId]);
+  }, [selectedCat, isGroupCat, currentFolderId, searchQuery]);
 
-  // Groups filtered by folder
+  // Groups filtered by folder and search
   const filteredGroups = useMemo(() => {
     if (!selectedCat || !isGroupCat) return [];
+    const q = searchQuery.trim().toLowerCase();
+    if (q) {
+      return (selectedCat.groups ?? []).filter((g) => g.name.toLowerCase().includes(q));
+    }
     return (selectedCat.groups ?? []).filter((g) => (g.folderId ?? null) === currentFolderId);
-  }, [selectedCat, isGroupCat, currentFolderId]);
+  }, [selectedCat, isGroupCat, currentFolderId, searchQuery]);
 
   return (
     <div className="rounded-xl border border-sky-500/20 bg-sky-500/[0.03] p-3 space-y-2">
@@ -703,10 +712,27 @@ function ImportPresetPanel({
         ))}
       </div>
 
+      {/* Search */}
+      <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1">
+        <Search className="size-3 shrink-0 text-zinc-500" />
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="搜索预制…"
+          className="flex-1 bg-transparent text-[10px] text-zinc-200 outline-none placeholder:text-zinc-600"
+        />
+        {searchQuery && (
+          <button type="button" onClick={() => setSearchQuery("")} className="shrink-0 text-zinc-500 hover:text-zinc-300">
+            <X className="size-3" />
+          </button>
+        )}
+      </div>
+
       {/* Content: presets or groups depending on category type */}
       <div className="max-h-40 overflow-y-auto space-y-1">
-        {/* Breadcrumb / back button */}
-        {currentFolderId !== null && (
+        {/* Breadcrumb / back button (hidden during search) */}
+        {!searchQuery.trim() && currentFolderId !== null && (
           <button
             type="button"
             onClick={() => setCurrentFolderId(parentFolderId)}
@@ -717,8 +743,8 @@ function ImportPresetPanel({
           </button>
         )}
 
-        {/* Subfolders */}
-        {subFolders.map((folder) => (
+        {/* Subfolders (hidden during search) */}
+        {!searchQuery.trim() && subFolders.map((folder) => (
           <button
             key={folder.id}
             type="button"

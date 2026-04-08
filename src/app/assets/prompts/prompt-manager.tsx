@@ -72,6 +72,7 @@ import {
   reorderPresetFolders,
 } from "@/lib/actions";
 import { parseLoraBindings, serializeLoraBindings } from "@/lib/lora-types";
+import { PresetCascadePicker } from "@/components/preset-cascade-picker";
 
 // ---------------------------------------------------------------------------
 // Main component
@@ -1363,12 +1364,8 @@ function LinkedVariantsEditor({
   allCategories: PresetCategoryFull[];
 }) {
   const [showPicker, setShowPicker] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCatId, setSelectedCatId] = useState("");
-  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
-  const [selectedPresetId, setSelectedPresetId] = useState("");
 
-  // Build structured data excluding current preset
+  // Build filtered categories excluding current preset
   const categoriesFiltered = useMemo(() => {
     return allCategories
       .map((cat) => ({
@@ -1378,7 +1375,7 @@ function LinkedVariantsEditor({
       .filter((cat) => cat.presets.length > 0);
   }, [allCategories, currentPresetId]);
 
-  // Flat list for search
+  // Flat list for display name resolution
   const allItems = useMemo(() => {
     const items: Array<{
       presetId: string;
@@ -1407,33 +1404,6 @@ function LinkedVariantsEditor({
     return items;
   }, [categoriesFiltered]);
 
-  // Search results
-  const searchResults = useMemo(() => {
-    if (!searchQuery.trim()) return [];
-    const q = searchQuery.toLowerCase();
-    return allItems
-      .filter((item) =>
-        !linkedVariants.some((lv) => lv.variantId === item.variantId) &&
-        (item.displayName.toLowerCase().includes(q) ||
-         item.presetName.toLowerCase().includes(q) ||
-         item.variantName.toLowerCase().includes(q) ||
-         item.categoryName.toLowerCase().includes(q))
-      )
-      .slice(0, 10);
-  }, [searchQuery, allItems, linkedVariants]);
-
-  // Cascade selections
-  const selectedCat = categoriesFiltered.find((c) => c.id === selectedCatId);
-  const catFolders = selectedCat?.folders ?? [];
-  const hasFolders = catFolders.length > 0;
-  const filteredPresets = hasFolders && selectedFolderId !== null
-    ? (selectedCat?.presets ?? []).filter((p) => p.folderId === selectedFolderId)
-    : selectedCat?.presets ?? [];
-  const selectedPreset = filteredPresets.find((p) => p.id === selectedPresetId) ?? selectedCat?.presets.find((p) => p.id === selectedPresetId);
-  const availableVariants = selectedPreset?.variants.filter(
-    (v) => !linkedVariants.some((lv) => lv.variantId === v.id),
-  ) ?? [];
-
   // Resolve display names for current linked variants
   const linkedDisplay = linkedVariants.map((ref) => {
     const item = allItems.find((a) => a.variantId === ref.variantId);
@@ -1443,15 +1413,25 @@ function LinkedVariantsEditor({
     };
   });
 
-  function handleAdd(presetId: string, variantId: string) {
-    if (linkedVariants.some((lv) => lv.variantId === variantId)) return;
-    onChange([...linkedVariants, { presetId, variantId }]);
-    setSelectedPresetId("");
+  function handleAdd(val: { presetId: string; variantId: string }) {
+    if (linkedVariants.some((lv) => lv.variantId === val.variantId)) return;
+    onChange([...linkedVariants, { presetId: val.presetId, variantId: val.variantId }]);
   }
 
   function handleRemove(variantId: string) {
     onChange(linkedVariants.filter((lv) => lv.variantId !== variantId));
   }
+
+  // Filter out already-linked variants from picker categories
+  const pickerCategories = useMemo(() => {
+    return categoriesFiltered.map((cat) => ({
+      ...cat,
+      presets: cat.presets.map((p) => ({
+        ...p,
+        variants: p.variants.filter((v) => !linkedVariants.some((lv) => lv.variantId === v.id)),
+      })).filter((p) => p.variants.length > 0),
+    })).filter((cat) => cat.presets.length > 0);
+  }, [categoriesFiltered, linkedVariants]);
 
   return (
     <div className="space-y-1.5">
@@ -1459,7 +1439,7 @@ function LinkedVariantsEditor({
         <span className="text-[10px] text-zinc-500">关联变体</span>
         <button
           type="button"
-          onClick={() => { setShowPicker(!showPicker); setSearchQuery(""); }}
+          onClick={() => setShowPicker(!showPicker)}
           className="inline-flex items-center gap-0.5 text-[10px] text-sky-400/70 hover:text-sky-300"
         >
           <Plus className="size-2.5" /> 添加
@@ -1493,102 +1473,15 @@ function LinkedVariantsEditor({
 
       {/* Picker */}
       {showPicker && (
-        <div className="rounded-lg border border-sky-500/20 bg-zinc-900 p-2 space-y-2">
-          {/* Search */}
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="搜索变体..."
-            className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-[10px] text-zinc-200 outline-none focus:border-sky-500/30 placeholder:text-zinc-600"
-          />
-
-          {/* Search results */}
-          {searchQuery.trim() ? (
-            <div className="max-h-28 overflow-y-auto space-y-0.5">
-              {searchResults.length === 0 ? (
-                <div className="py-1.5 text-center text-[10px] text-zinc-600">无匹配结果</div>
-              ) : (
-                searchResults.map((item) => (
-                  <button
-                    key={item.variantId}
-                    type="button"
-                    onClick={() => handleAdd(item.presetId, item.variantId)}
-                    className="w-full rounded px-2 py-1 text-left text-[10px] text-zinc-300 hover:bg-white/[0.06]"
-                  >
-                    {item.displayName}
-                  </button>
-                ))
-              )}
-            </div>
-          ) : (
-            /* Three-level cascade */
-            <div className="space-y-1.5">
-              {/* Level 1: Category */}
-              <select
-                value={selectedCatId}
-                onChange={(e) => { setSelectedCatId(e.target.value); setSelectedFolderId(null); setSelectedPresetId(""); }}
-                className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-[10px] text-zinc-200 outline-none"
-              >
-                <option value="">选择分类...</option>
-                {categoriesFiltered.map((cat) => (
-                  <option key={cat.id} value={cat.id}>{cat.name}</option>
-                ))}
-              </select>
-
-              {/* Folder filter (only if category has folders) */}
-              {selectedCat && hasFolders && (
-                <select
-                  value={selectedFolderId ?? "__all__"}
-                  onChange={(e) => { setSelectedFolderId(e.target.value === "__all__" ? null : e.target.value); setSelectedPresetId(""); }}
-                  className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-[10px] text-zinc-200 outline-none"
-                >
-                  <option value="__all__">全部</option>
-                  {catFolders.map((f) => (
-                    <option key={f.id} value={f.id}>📁 {f.name}</option>
-                  ))}
-                </select>
-              )}
-
-              {/* Level 2: Preset */}
-              {selectedCat && (
-                <select
-                  value={selectedPresetId}
-                  onChange={(e) => setSelectedPresetId(e.target.value)}
-                  className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-[10px] text-zinc-200 outline-none"
-                >
-                  <option value="">选择预制...</option>
-                  {filteredPresets.map((p) => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
-                  ))}
-                </select>
-              )}
-
-              {/* Level 3: Variant list */}
-              {selectedPreset && (
-                <div className="max-h-24 overflow-y-auto space-y-0.5">
-                  {availableVariants.length === 0 ? (
-                    <div className="py-1.5 text-center text-[10px] text-zinc-600">无可选变体</div>
-                  ) : (
-                    availableVariants.map((v) => (
-                      <button
-                        key={v.id}
-                        type="button"
-                        onClick={() => handleAdd(selectedPreset.id, v.id)}
-                        className="w-full rounded px-2 py-1 text-left text-[10px] text-zinc-300 hover:bg-white/[0.06]"
-                      >
-                        {v.name}
-                        <span className="ml-1 text-zinc-600 truncate">
-                          {v.prompt.slice(0, 40)}{v.prompt.length > 40 ? "..." : ""}
-                        </span>
-                      </button>
-                    ))
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+        <PresetCascadePicker
+          categories={pickerCategories}
+          value={null}
+          onChange={(val) => {
+            if (val) handleAdd({ presetId: val.presetId, variantId: val.variantId });
+          }}
+          placeholder="选择关联变体…"
+          presetCategoriesOnly
+        />
       )}
     </div>
   );
@@ -2492,6 +2385,7 @@ function GroupCreateForm({
   // Inline member drafts (not yet persisted)
   type MemberDraft = { presetId?: string; variantId?: string; subGroupId?: string; slotCategoryId?: string; displayName: string };
   // Initialize from slot template: each slot becomes an empty member with locked category
+  const presetCategories = allCategories.filter((c) => c.type === "preset");
   const [members, setMembers] = useState<MemberDraft[]>(() =>
     slotTemplate.map((slot) => {
       const cat = allCategories.find((c) => c.id === slot.categoryId);
@@ -2504,53 +2398,34 @@ function GroupCreateForm({
 
   // Member add form state
   const [mode, setMode] = useState<"preset" | "group">("preset");
-  const [selCatId, setSelCatId] = useState<string>("");
-  const [selFolderId, setSelFolderId] = useState<string | null>(null);
-  const [selPresetId, setSelPresetId] = useState<string>("");
-  const [selVariantId, setSelVariantId] = useState<string>("");
+  const [pickerValue, setPickerValue] = useState<{ presetId: string; variantId: string } | null>(null);
   const [selGroupId, setSelGroupId] = useState<string>("");
-
-  // Only show preset-type categories for member selection
-  const presetCategories = allCategories.filter((c) => c.type === "preset");
-  const selCat = presetCategories.find((c) => c.id === selCatId);
-  const catFoldersInline = selCat?.folders ?? [];
-  const hasFoldersInline = catFoldersInline.length > 0;
-  const filteredPresetsInline = hasFoldersInline && selFolderId !== null
-    ? (selCat?.presets ?? []).filter((p) => p.folderId === selFolderId)
-    : selCat?.presets ?? [];
-  const selPreset = filteredPresetsInline.find((p) => p.id === selPresetId)
-    ?? selCat?.presets.find((p) => p.id === selPresetId);
-
-  // Auto-select default variant when preset changes
-  useEffect(() => {
-    if (selPreset && selPreset.variants.length > 0) {
-      setSelVariantId(selPreset.variants[0].id);
-    } else {
-      setSelVariantId("");
-    }
-  }, [selPresetId, selPreset]);
-
-  useEffect(() => { setSelFolderId(null); setSelPresetId(""); }, [selCatId]);
-  useEffect(() => { setSelPresetId(""); }, [selFolderId]);
 
   function addMember() {
     if (mode === "group" && selGroupId) {
       const g = allGroups.find((g) => g.id === selGroupId);
       setMembers([...members, { subGroupId: selGroupId, displayName: g?.name ?? selGroupId }]);
       setSelGroupId("");
-    } else if (selPresetId) {
-      const p = selPreset;
-      const v = p?.variants.find((v) => v.id === selVariantId);
-      const displayName = v && p?.variants.length !== 1
-        ? `${p?.name} / ${v.name}` : p?.name ?? selPresetId;
+    } else if (pickerValue) {
+      // Resolve names from categories
+      let presetName = pickerValue.presetId;
+      let variantName = "";
+      for (const cat of allCategories) {
+        const p = cat.presets.find((px) => px.id === pickerValue.presetId);
+        if (p) {
+          presetName = p.name;
+          const v = p.variants.find((vx) => vx.id === pickerValue.variantId);
+          variantName = v?.name ?? "";
+          if (p.variants.length > 1 && variantName) presetName = `${p.name} / ${variantName}`;
+          break;
+        }
+      }
       setMembers([...members, {
-        presetId: selPresetId,
-        variantId: selVariantId || undefined,
-        displayName,
+        presetId: pickerValue.presetId,
+        variantId: pickerValue.variantId || undefined,
+        displayName: presetName,
       }]);
-      setSelCatId("");
-      setSelPresetId("");
-      setSelVariantId("");
+      setPickerValue(null);
     }
   }
 
@@ -2559,12 +2434,13 @@ function GroupCreateForm({
   }
 
   function applyMemberNames() {
-    const joined = members.map((m) => m.displayName).join(" + ");
+    const slugParts = members.map((m) => toSlug(m.displayName));
+    const joined = slugParts.join("-");
     setName(joined);
-    if (!slug || slug === toSlug(name)) setSlug(toSlug(joined));
+    setSlug(joined);
   }
 
-  const canAddMember = mode === "group" ? !!selGroupId : !!selPresetId;
+  const canAddMember = mode === "group" ? !!selGroupId : !!pickerValue;
   // Allow creating with just slot members (even if no preset selected yet) or with manually added members
   const hasAnyMember = members.length > 0;
   const canCreate = !!name.trim() && !!slug.trim() && hasAnyMember;
@@ -2617,7 +2493,7 @@ function GroupCreateForm({
         <div className="space-y-1">
           <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">成员 ({members.length})</span>
           {members.map((m, i) => {
-            // Slot member: show category badge + inline preset/variant selector
+            // Slot member: show category badge + PresetCascadePicker locked to category
             if (m.slotCategoryId) {
               const slotCat = presetCategories.find((c) => c.id === m.slotCategoryId);
               return (
@@ -2631,56 +2507,24 @@ function GroupCreateForm({
                   >
                     {slotCat?.name ?? "?"}
                   </span>
-                  <div className="relative flex-1 min-w-0">
-                    <select
-                      value={m.presetId ?? ""}
-                      onChange={(e) => {
-                        const preset = slotCat?.presets.find((p) => p.id === e.target.value);
-                        const defaultVariant = preset?.variants[0];
+                  <div className="flex-1 min-w-0">
+                    <PresetCascadePicker
+                      categories={allCategories}
+                      value={m.presetId && m.variantId ? { presetId: m.presetId, variantId: m.variantId } : null}
+                      onChange={(val) => {
                         const updated = [...members];
                         updated[i] = {
                           ...m,
-                          presetId: e.target.value || undefined,
-                          variantId: defaultVariant?.id,
-                          displayName: preset?.name ?? m.displayName,
+                          presetId: val?.presetId,
+                          variantId: val?.variantId,
+                          displayName: val?.presetName ?? m.displayName,
                         };
                         setMembers(updated);
                       }}
-                      className={selectClass}
-                    >
-                      <option value="" className="bg-zinc-900">选择预制...</option>
-                      {slotCat?.presets.map((p) => (
-                        <option key={p.id} value={p.id} className="bg-zinc-900">{p.name}</option>
-                      ))}
-                    </select>
-                    <ChevronDown className="pointer-events-none absolute right-2 top-1/2 size-3 -translate-y-1/2 text-zinc-500" />
+                      lockedCategoryId={m.slotCategoryId}
+                      placeholder="选择预制…"
+                    />
                   </div>
-                  {m.presetId && (() => {
-                    const preset = slotCat?.presets.find((p) => p.id === m.presetId);
-                    return preset && preset.variants.length > 1 ? (
-                      <div className="relative shrink-0">
-                        <select
-                          value={m.variantId ?? ""}
-                          onChange={(e) => {
-                            const v = preset.variants.find((v) => v.id === e.target.value);
-                            const updated = [...members];
-                            updated[i] = {
-                              ...m,
-                              variantId: e.target.value || undefined,
-                              displayName: v ? `${preset.name} / ${v.name}` : preset.name,
-                            };
-                            setMembers(updated);
-                          }}
-                          className={selectClass}
-                        >
-                          {preset.variants.map((v) => (
-                            <option key={v.id} value={v.id} className="bg-zinc-900">{v.name}</option>
-                          ))}
-                        </select>
-                        <ChevronDown className="pointer-events-none absolute right-2 top-1/2 size-3 -translate-y-1/2 text-zinc-500" />
-                      </div>
-                    ) : null;
-                  })()}
                   <button
                     type="button"
                     onClick={() => removeMember(i)}
@@ -2740,52 +2584,13 @@ function GroupCreateForm({
         </div>
 
         {mode === "preset" ? (
-          <div className="space-y-1.5">
-            <div className="grid grid-cols-3 gap-1.5">
-              <div className="relative">
-                <select value={selCatId} onChange={(e) => setSelCatId(e.target.value)} className={selectClass}>
-                  <option value="">分类...</option>
-                  {presetCategories.map((c) => (
-                    <option key={c.id} value={c.id} className="bg-zinc-900">{c.name}</option>
-                  ))}
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 size-3 -translate-y-1/2 text-zinc-500" />
-              </div>
-              <div className="relative">
-                <select value={selPresetId} onChange={(e) => setSelPresetId(e.target.value)} disabled={!selCatId} className={selectClass}>
-                  <option value="">预制...</option>
-                  {filteredPresetsInline.map((p) => (
-                    <option key={p.id} value={p.id} className="bg-zinc-900">{p.name}</option>
-                  ))}
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 size-3 -translate-y-1/2 text-zinc-500" />
-              </div>
-              <div className="relative">
-                <select value={selVariantId} onChange={(e) => setSelVariantId(e.target.value)} disabled={!selPresetId} className={selectClass}>
-                  <option value="">变体...</option>
-                  {selPreset?.variants.map((v) => (
-                    <option key={v.id} value={v.id} className="bg-zinc-900">{v.name}</option>
-                  ))}
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 size-3 -translate-y-1/2 text-zinc-500" />
-              </div>
-            </div>
-            {hasFoldersInline && selCatId && (
-              <div className="relative">
-                <select
-                  value={selFolderId ?? "__all__"}
-                  onChange={(e) => setSelFolderId(e.target.value === "__all__" ? null : e.target.value)}
-                  className={selectClass}
-                >
-                  <option value="__all__">全部</option>
-                  {catFoldersInline.map((f) => (
-                    <option key={f.id} value={f.id} className="bg-zinc-900">📁 {f.name}</option>
-                  ))}
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 size-3 -translate-y-1/2 text-zinc-500" />
-              </div>
-            )}
-          </div>
+          <PresetCascadePicker
+            categories={allCategories}
+            value={pickerValue}
+            onChange={(val) => setPickerValue(val ? { presetId: val.presetId, variantId: val.variantId } : null)}
+            placeholder="选择预制…"
+            presetCategoriesOnly
+          />
         ) : (
           <div className="relative">
             <select value={selGroupId} onChange={(e) => setSelGroupId(e.target.value)} className={selectClass}>
@@ -2916,44 +2721,22 @@ function AddGroupMemberForm({
   isPending: boolean;
 }) {
   const [mode, setMode] = useState<"preset" | "group">("preset");
-  const [selCatId, setSelCatId] = useState<string>("");
-  const [selFolderId, setSelFolderId] = useState<string | null>(null);
-  const [selPresetId, setSelPresetId] = useState<string>("");
-  const [selVariantId, setSelVariantId] = useState<string>("");
+  const [pickerValue, setPickerValue] = useState<{ presetId: string; variantId: string } | null>(null);
   const [selGroupId, setSelGroupId] = useState<string>("");
 
-  const selCat = categories.find((c) => c.id === selCatId);
-  const catFolders = selCat?.folders ?? [];
-  const hasFolders = catFolders.length > 0;
-  const filteredPresets = hasFolders && selFolderId !== null
-    ? (selCat?.presets ?? []).filter((p) => p.folderId === selFolderId)
-    : selCat?.presets ?? [];
-  const selPreset = filteredPresets.find((p) => p.id === selPresetId) ?? selCat?.presets.find((p) => p.id === selPresetId);
-
-  useEffect(() => { setSelFolderId(null); setSelPresetId(""); setSelVariantId(""); }, [selCatId]);
-  useEffect(() => { setSelPresetId(""); setSelVariantId(""); }, [selFolderId]);
-  useEffect(() => {
-    // Auto-select first variant (usually "默认") when a preset is chosen
-    const preset = categories.find((c) => c.id === selCatId)?.presets.find((p) => p.id === selPresetId);
-    setSelVariantId(preset?.variants[0]?.id ?? "");
-  }, [selPresetId, selCatId, categories]);
-
-  const canAdd = mode === "group" ? !!selGroupId : !!selPresetId;
+  const canAdd = mode === "group" ? !!selGroupId : !!pickerValue;
 
   function handleAdd() {
     if (mode === "group" && selGroupId) {
       onAdd({ groupId, subGroupId: selGroupId });
       setSelGroupId("");
-    } else if (selPresetId) {
+    } else if (pickerValue) {
       onAdd({
         groupId,
-        presetId: selPresetId,
-        variantId: selVariantId || undefined,
+        presetId: pickerValue.presetId,
+        variantId: pickerValue.variantId,
       });
-      setSelCatId("");
-      setSelFolderId(null);
-      setSelPresetId("");
-      setSelVariantId("");
+      setPickerValue(null);
     }
   }
 
@@ -2984,52 +2767,13 @@ function AddGroupMemberForm({
       </div>
 
       {mode === "preset" ? (
-        <div className="space-y-1.5">
-          <div className="grid grid-cols-3 gap-1.5">
-            <div className="relative">
-              <select value={selCatId} onChange={(e) => setSelCatId(e.target.value)} className={selectClass}>
-                <option value="">分类...</option>
-                {categories.filter((c) => c.type === "preset").map((c) => (
-                  <option key={c.id} value={c.id} className="bg-zinc-900">{c.name}</option>
-                ))}
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-2 top-1/2 size-3 -translate-y-1/2 text-zinc-500" />
-            </div>
-            <div className="relative">
-              <select value={selPresetId} onChange={(e) => setSelPresetId(e.target.value)} disabled={!selCatId} className={selectClass}>
-                <option value="">预制...</option>
-                {filteredPresets.map((p) => (
-                  <option key={p.id} value={p.id} className="bg-zinc-900">{p.name}</option>
-                ))}
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-2 top-1/2 size-3 -translate-y-1/2 text-zinc-500" />
-            </div>
-            <div className="relative">
-              <select value={selVariantId} onChange={(e) => setSelVariantId(e.target.value)} disabled={!selPresetId} className={selectClass}>
-                <option value="">变体 (可选)...</option>
-                {selPreset?.variants.map((v) => (
-                  <option key={v.id} value={v.id} className="bg-zinc-900">{v.name}</option>
-                ))}
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-2 top-1/2 size-3 -translate-y-1/2 text-zinc-500" />
-            </div>
-          </div>
-          {hasFolders && selCatId && (
-            <div className="relative">
-              <select
-                value={selFolderId ?? "__all__"}
-                onChange={(e) => setSelFolderId(e.target.value === "__all__" ? null : e.target.value)}
-                className={selectClass}
-              >
-                <option value="__all__">全部</option>
-                {catFolders.map((f) => (
-                  <option key={f.id} value={f.id} className="bg-zinc-900">📁 {f.name}</option>
-                ))}
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-2 top-1/2 size-3 -translate-y-1/2 text-zinc-500" />
-            </div>
-          )}
-        </div>
+        <PresetCascadePicker
+          categories={categories}
+          value={pickerValue}
+          onChange={(val) => setPickerValue(val ? { presetId: val.presetId, variantId: val.variantId } : null)}
+          placeholder="选择预制…"
+          presetCategoriesOnly
+        />
       ) : (
         <div className="relative">
           <select value={selGroupId} onChange={(e) => setSelGroupId(e.target.value)} className={selectClass}>
