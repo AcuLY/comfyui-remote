@@ -240,11 +240,15 @@ class ComfyProcessManager {
         stdio: ["ignore", "pipe", "pipe"],
         // Force UTF-8 encoding for child process to handle emoji and unicode chars
         // This prevents UnicodeEncodeError on Windows (GBK) when custom nodes output emoji
+        // TQDM_DISABLE prevents tqdm from writing progress bars through the pipe,
+        // which causes OSError [Errno 22] on Windows when colorama tries to write
+        // terminal escape sequences to a non-TTY pipe.
         env: {
           ...process.env,
           PYTHONIOENCODING: "utf-8",
           PYTHONLEGACYWINDOWSSTDIO: "0",
           PYTHONUTF8: "1",
+          TQDM_DISABLE: "1",
         },
       });
 
