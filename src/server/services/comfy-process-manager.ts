@@ -495,6 +495,34 @@ class ComfyProcessManager {
     }
   }
 
+  /**
+   * Manually trigger a health check and return the result.
+   * Unlike the periodic check this always runs immediately.
+   */
+  async probeHealth(): Promise<{ ok: boolean; latencyMs: number; error?: string }> {
+    const start = Date.now();
+    try {
+      const res = await fetch(`${env.comfyApiUrl}/system_stats`, {
+        signal: AbortSignal.timeout(5000),
+      });
+      const latencyMs = Date.now() - start;
+      if (res.ok) {
+        // Update internal state as if a periodic check succeeded
+        this.lastHealthCheck = new Date().toISOString();
+        this.lastHealthOk = true;
+        this.consecutiveHealthFailures = 0;
+        if (this.state === "starting" || this.state === "unhealthy" || this.state === "restarting") {
+          this.log("[health] Manual probe: ComfyUI is responsive ✓");
+          this.setState("running");
+        }
+        return { ok: true, latencyMs };
+      }
+      return { ok: false, latencyMs, error: `HTTP ${res.status}` };
+    } catch (err) {
+      return { ok: false, latencyMs: Date.now() - start, error: String(err) };
+    }
+  }
+
   private async performHealthCheck() {
     const now = new Date().toISOString();
     this.lastHealthCheck = now;

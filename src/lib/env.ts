@@ -42,8 +42,8 @@ export const env = {
   comfyHealthIntervalMs: readPositiveIntegerEnv("COMFY_HEALTH_INTERVAL_MS", 10_000),
   comfyMaxRestarts: readPositiveIntegerEnv("COMFY_MAX_RESTARTS", 3),
   comfyRestartWindowMs: readPositiveIntegerEnv("COMFY_RESTART_WINDOW_MS", 300_000),
-  /** Grace period after spawn before health failures count (default 120s) */
-  comfyStartupGraceMs: readPositiveIntegerEnv("COMFY_STARTUP_GRACE_MS", 120_000),
+  /** Grace period after spawn before health failures count (default 300s) */
+  comfyStartupGraceMs: readPositiveIntegerEnv("COMFY_STARTUP_GRACE_MS", 300_000),
 
   // 日志配置
   logLevel: (process.env.LOG_LEVEL ?? "info").toLowerCase() as "debug" | "info" | "warn" | "error",

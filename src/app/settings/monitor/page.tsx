@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Play, Square, RotateCw, RefreshCw } from "lucide-react";
+import { ArrowLeft, Play, Square, RotateCw, RefreshCw, HeartPulse } from "lucide-react";
 import { SectionCard } from "@/components/section-card";
 import { StatChip } from "@/components/stat-chip";
 
@@ -187,6 +187,8 @@ export default function MonitorPage() {
   const [status, setStatus] = useState<ComfyStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionPending, setActionPending] = useState(false);
+  const [probePending, setProbePending] = useState(false);
+  const [probeResult, setProbeResult] = useState<{ ok: boolean; latencyMs: number; error?: string } | null>(null);
   const logContainerRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
 
@@ -236,6 +238,25 @@ export default function MonitorPage() {
       // Silently fail, next poll will show state
     } finally {
       setActionPending(false);
+    }
+  }, [fetchStatus]);
+
+  // Health probe
+  const probeHealth = useCallback(async () => {
+    setProbePending(true);
+    setProbeResult(null);
+    try {
+      const res = await fetch("/api/comfy/health-probe", { method: "POST" });
+      const json = await res.json();
+      if (json.ok) {
+        setProbeResult(json.data);
+        // Refresh status since probe may have updated state
+        await fetchStatus();
+      }
+    } catch {
+      setProbeResult({ ok: false, latencyMs: 0, error: "Request failed" });
+    } finally {
+      setProbePending(false);
     }
   }, [fetchStatus]);
 
@@ -341,6 +362,29 @@ export default function MonitorPage() {
               icon={RotateCw}
               label="重启"
             />
+            <ActionButton
+              onClick={probeHealth}
+              disabled={probePending}
+              icon={HeartPulse}
+              label={probePending ? "探测中..." : "健康探测"}
+            />
+          </div>
+        )}
+        {!status.managedMode && (
+          <div className="mt-4 flex flex-wrap gap-2">
+            <ActionButton
+              onClick={probeHealth}
+              disabled={probePending}
+              icon={HeartPulse}
+              label={probePending ? "探测中..." : "健康探测"}
+            />
+          </div>
+        )}
+        {probeResult && (
+          <div className={`mt-2 rounded-lg border p-2 text-xs ${probeResult.ok ? "border-emerald-500/20 bg-emerald-500/5 text-emerald-300" : "border-red-500/20 bg-red-500/5 text-red-300"}`}>
+            {probeResult.ok
+              ? `ComfyUI 响应正常 (${probeResult.latencyMs}ms)`
+              : `ComfyUI 不可达: ${probeResult.error} (${probeResult.latencyMs}ms)`}
           </div>
         )}
       </SectionCard>
