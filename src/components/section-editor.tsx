@@ -509,7 +509,7 @@ export function SectionEditor({
 
         {/* Binding cards */}
         {presetBindings.length > 0 && (
-          <div className="space-y-1">
+          <div className="grid grid-cols-1 gap-1 lg:grid-cols-2">
             {presetBindings.map((binding) => (
               <div
                 key={binding.bindingId}
@@ -625,7 +625,7 @@ export function SectionEditor({
       />
 
       {/* ── LoRA lists ── */}
-      <div className="border-t border-white/5 pt-4 space-y-4">
+      <div className="border-t border-white/5 pt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
         <div>
           <div className="mb-2 text-xs font-medium text-zinc-400">LoRA 1</div>
           <LoraListEditor

@@ -154,7 +154,7 @@ export function SectionList({ projectId, sections: initialSections }: SectionLis
     <>
       <DndContext id={dndId} sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={sections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
-          <div className={`${compact ? "space-y-1.5" : "space-y-3"} ${isPending ? "opacity-60" : ""}`}>
+          <div className={`${compact ? "grid grid-cols-1 gap-1.5 lg:grid-cols-2" : "grid grid-cols-1 gap-3 lg:grid-cols-2"} ${isPending ? "opacity-60" : ""}`}>
             {sections.map((section, index) =>
               compact ? (
                 <SortableCompactCard
@@ -234,7 +234,7 @@ function SortableCompactCard({
         setCardRef(section.id, el);
       }}
       style={style}
-      className={`group flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 ${isDragging ? "shadow-lg ring-2 ring-sky-500/30" : ""}`}
+      className={`group flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 lg:max-w-xl ${isDragging ? "shadow-lg ring-2 ring-sky-500/30" : ""}`}
     >
       {/* Drag handle */}
       <button
@@ -304,7 +304,7 @@ function SortableSectionCard({
         setCardRef(section.id, el);
       }}
       style={style}
-      className={`rounded-2xl border border-white/10 bg-white/[0.03] p-4 ${isDragging ? "shadow-lg ring-2 ring-sky-500/30" : ""}`}
+      className={`rounded-2xl border border-white/10 bg-white/[0.03] p-4 lg:max-w-xl ${isDragging ? "shadow-lg ring-2 ring-sky-500/30" : ""}`}
     >
       {/* 主内容区：拖动手柄 + 信息 */}
       <div className="flex items-start gap-3">

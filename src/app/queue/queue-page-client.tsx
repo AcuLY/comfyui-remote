@@ -155,9 +155,9 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns, initialF
           </SectionCard>
 
           <SectionCard title="最新结果组" subtitle="点进某一组后，用宫格勾选批量保留/删除。">
-            <div className="space-y-3">
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
               {queueRuns.length === 0 && (
-                <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6 text-center text-sm text-zinc-500">
+                <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6 text-center text-sm text-zinc-500 lg:col-span-2">
                   暂无待审核项
                 </div>
               )}
@@ -165,7 +165,7 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns, initialF
                 <Link
                   key={run.id}
                   href={`/queue/${run.id}`}
-                  className="block rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition hover:bg-white/[0.06]"
+                  className="block rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition hover:bg-white/[0.06] lg:max-w-xl"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -201,16 +201,16 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns, initialF
       {/* Running tab */}
       {activeTab === "running" && (
         <SectionCard title="运行中" subtitle="自动每 5 秒刷新。">
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
             {runningRuns.length === 0 && (
-              <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6 text-center text-sm text-zinc-500">
+              <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6 text-center text-sm text-zinc-500 lg:col-span-2">
                 暂无运行中的项目
               </div>
             )}
             {runningRuns.map((run) => (
               <div
                 key={run.id}
-                className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"
+                className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 lg:max-w-xl"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -263,16 +263,16 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns, initialF
       {/* Failed tab */}
       {activeTab === "failed" && (
         <SectionCard title="失败记录" subtitle="最近 20 条失败记录。">
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
             {failedRuns.length === 0 && (
-              <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6 text-center text-sm text-zinc-500">
+              <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6 text-center text-sm text-zinc-500 lg:col-span-2">
                 暂无失败记录
               </div>
             )}
             {failedRuns.map((run) => (
               <div
                 key={run.id}
-                className="rounded-2xl border border-red-500/10 bg-red-500/[0.03] p-4"
+                className="rounded-2xl border border-red-500/10 bg-red-500/[0.03] p-4 lg:max-w-xl"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
