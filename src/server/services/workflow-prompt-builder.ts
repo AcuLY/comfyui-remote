@@ -197,7 +197,8 @@ export function buildWorkflowPrompt(input: WorkflowBuildInput): Record<string, u
   }
 
   // 9. Output path — node 515 (Image Save)
-  nodeInputs(wf, "515").output_path = input.outputPath;
+  // Normalize path to Unix-style separators for ComfyUI API (prevent [Errno 22] on Windows)
+  nodeInputs(wf, "515").output_path = input.outputPath.replace(/\\/g, "/");
 
   return wf;
 }
