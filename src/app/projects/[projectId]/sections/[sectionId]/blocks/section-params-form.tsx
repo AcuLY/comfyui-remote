@@ -307,7 +307,7 @@ export function SectionParamsForm({ projectId, sectionId, initialParams }: Secti
           )}
         </div>
 
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
           <div className="space-y-1.5">
             <div className="text-[11px] text-zinc-500">画幅比例</div>
             <AspectRatioPicker
@@ -374,27 +374,29 @@ export function SectionParamsForm({ projectId, sectionId, initialParams }: Secti
               </p>
             )}
           </div>
+        </div>
 
           {/* KSampler panels */}
-          <KSamplerPanel
-            label="KSampler1（第一阶段）"
-            subtitle={`steps ${ks1.steps ?? DEFAULT_KSAMPLER1.steps} · cfg ${ks1.cfg ?? DEFAULT_KSAMPLER1.cfg} · ${ks1.sampler_name ?? DEFAULT_KSAMPLER1.sampler_name}`}
-            params={ks1}
-            defaults={DEFAULT_KSAMPLER1}
-            onChange={setKs1}
-            onFieldBlur={scheduleAutoSave}
-            disabled={pending}
-          />
-          <KSamplerPanel
-            label="KSampler2（高清修复）"
-            subtitle={upscaleFactor === "1" ? "1x 模式下不使用" : `steps ${ks2.steps ?? DEFAULT_KSAMPLER2.steps} · cfg ${ks2.cfg ?? DEFAULT_KSAMPLER2.cfg} · ${ks2.sampler_name ?? DEFAULT_KSAMPLER2.sampler_name}`}
-            params={ks2}
-            defaults={DEFAULT_KSAMPLER2}
-            onChange={setKs2}
-            onFieldBlur={scheduleAutoSave}
-            disabled={pending || upscaleFactor === "1"}
-          />
-        </div>
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+            <KSamplerPanel
+              label="KSampler1（第一阶段）"
+              subtitle={`steps ${ks1.steps ?? DEFAULT_KSAMPLER1.steps} · cfg ${ks1.cfg ?? DEFAULT_KSAMPLER1.cfg} · ${ks1.sampler_name ?? DEFAULT_KSAMPLER1.sampler_name}`}
+              params={ks1}
+              defaults={DEFAULT_KSAMPLER1}
+              onChange={setKs1}
+              onFieldBlur={scheduleAutoSave}
+              disabled={pending}
+            />
+            <KSamplerPanel
+              label="KSampler2（高清修复）"
+              subtitle={upscaleFactor === "1" ? "1x 模式下不使用" : `steps ${ks2.steps ?? DEFAULT_KSAMPLER2.steps} · cfg ${ks2.cfg ?? DEFAULT_KSAMPLER2.cfg} · ${ks2.sampler_name ?? DEFAULT_KSAMPLER2.sampler_name}`}
+              params={ks2}
+              defaults={DEFAULT_KSAMPLER2}
+              onChange={setKs2}
+              onFieldBlur={scheduleAutoSave}
+              disabled={pending || upscaleFactor === "1"}
+            />
+          </div>
 
         {state.status === "error" && (
           <p className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-1.5 text-[11px] leading-5 text-rose-200">

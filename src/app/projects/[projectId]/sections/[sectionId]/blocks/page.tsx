@@ -252,6 +252,7 @@ export default async function SectionEditPage({
           </div>
         }
         subtitle="管理此小节的运行参数、提示词块和 LoRA 列表。导入预制库时会自动添加关联的 LoRA。"
+        actions={<SectionRunButton sectionId={sectionId} defaultBatchSize={sectionParams.batchSize} />}
       >
         <div className="space-y-6">
           <SectionParamsForm
@@ -276,12 +277,6 @@ export default async function SectionEditPage({
           </div>
         </div>
       </SectionCard>
-
-      {/* 运行按钮 */}
-      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-        <div className="mb-2 text-xs font-medium text-zinc-400">运行此小节</div>
-        <SectionRunButton sectionId={sectionId} defaultBatchSize={sectionParams.batchSize} />
-      </div>
     </div>
   );
 }
