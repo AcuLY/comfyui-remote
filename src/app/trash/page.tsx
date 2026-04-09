@@ -23,7 +23,7 @@ export default async function TrashPage() {
         </SectionCard>
       ) : (
         <SectionCard title="已删除图片" subtitle="点击恢复按钮将图片移回原路径。">
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
             {items.map((item) => (
               <div
                 key={item.id}

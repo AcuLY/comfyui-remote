@@ -148,7 +148,7 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns, initialF
       {activeTab === "pending" && (
         <>
           <SectionCard title="队列概览" subtitle="审核通过后会从待审核列表中消失。">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
               <StatChip label="待审核图片" value={pendingTotal} tone="accent" />
               <StatChip label="待处理组数" value={runTotal} tone="warn" />
             </div>
@@ -174,7 +174,7 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns, initialF
                     </div>
                     <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-[11px] text-emerald-300">{run.status}</span>
                   </div>
-                  <div className="mt-3 grid grid-cols-3 gap-2 text-xs text-zinc-400">
+                  <div className="mt-3 grid grid-cols-3 gap-2 text-xs text-zinc-400 lg:grid-cols-6">
                     <div className="rounded-xl bg-white/[0.03] px-3 py-2">
                       <CheckCircle2 className="mb-1 size-3.5" />
                       {formatTimeAgo(run.finishedAt) ?? run.createdAt}

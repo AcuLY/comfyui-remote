@@ -94,7 +94,7 @@ export default async function ReviewGroupPage({ params }: { params: Promise<{ ru
       </div>
 
       <SectionCard title={group.title} subtitle={`${group.presetNames.join(" · ") || group.sectionName} · ${group.createdAt}`}>
-        <div className="grid grid-cols-3 gap-2 text-center text-xs">
+        <div className="grid grid-cols-3 gap-2 text-center text-xs lg:grid-cols-6">
           <div className="rounded-2xl bg-white/[0.03] px-3 py-3 text-zinc-400">待审核<br /><span className="text-base font-semibold text-white">{group.pendingCount}</span></div>
           <div className="rounded-2xl bg-white/[0.03] px-3 py-3 text-zinc-400">总张数<br /><span className="text-base font-semibold text-white">{group.totalCount}</span></div>
           <div className="rounded-2xl bg-white/[0.03] px-3 py-3 text-zinc-400">单页上限<br /><span className="text-base font-semibold text-white">9</span></div>

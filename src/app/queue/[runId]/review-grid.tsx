@@ -122,7 +122,7 @@ export function ReviewGrid({
       </div>
 
       {/* 宫格 */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-3 lg:grid-cols-4 xl:grid-cols-5">
         {images.map((image) => {
           const isSelected = selected.has(image.id);
           return (

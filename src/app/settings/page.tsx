@@ -27,7 +27,7 @@ export default function SettingsPage() {
   return (
     <div className="space-y-4">
       <SectionCard title="设置" subtitle="系统配置。预制管理已移至底部导航「预制」页面。">
-        <div className="space-y-2">
+        <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
           {settingsGroups.map(({ href, label, description, icon: Icon }) => (
             <Link
               key={href}

@@ -18,7 +18,7 @@ export default async function ProjectsPage() {
         </Link>
       </div>
       <SectionCard title="项目" subtitle="点击卡片进入详情页，在详情页中编辑参数和管理小节。">
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
           {projects.map((project) => (
             <Link
               key={project.id}
