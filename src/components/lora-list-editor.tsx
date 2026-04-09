@@ -197,7 +197,7 @@ function SortableLoraRow({
             <TriggerWordHint loraPath={entry.path} />
           </div>
 
-          {/* Row 2: toggle + selector/path + weight controls */}
+          {/* Row 2: toggle + weight controls (mobile: selector on row 3) */}
           <div className="flex items-center gap-2">
             {/* Enabled toggle */}
             <button
@@ -219,8 +219,8 @@ function SortableLoraRow({
               />
             </button>
 
-            {/* Path: always show selector for editing */}
-            <div className="flex-1 min-w-0">
+            {/* Path: desktop only (inline) */}
+            <div className="hidden flex-1 min-w-0 sm:block">
               <LoraCascadePicker
                 value={entry.path}
                 onChange={onPathChange}
@@ -229,7 +229,7 @@ function SortableLoraRow({
             </div>
 
             {/* Weight input + adjust buttons */}
-            <div className="flex items-center gap-0.5 shrink-0">
+            <div className="flex items-center gap-0.5 shrink-0 ml-auto">
               <button type="button" disabled={disabled} onClick={() => onWeightChange(String(entry.weight - 0.5))}
                 className="rounded px-1 py-0.5 text-[9px] text-zinc-600 hover:bg-white/[0.06] hover:text-zinc-300 disabled:opacity-50">-.5</button>
               <button type="button" disabled={disabled} onClick={() => onWeightChange(String(entry.weight - 0.1))}
@@ -249,6 +249,15 @@ function SortableLoraRow({
               <button type="button" disabled={disabled} onClick={() => onWeightChange(String(entry.weight + 0.5))}
                 className="rounded px-1 py-0.5 text-[9px] text-zinc-600 hover:bg-white/[0.06] hover:text-zinc-300 disabled:opacity-50">+.5</button>
             </div>
+          </div>
+
+          {/* Row 3: selector on own line (mobile only) */}
+          <div className="sm:hidden">
+            <LoraCascadePicker
+              value={entry.path}
+              onChange={onPathChange}
+              disabled={disabled}
+            />
           </div>
         </div>
 
