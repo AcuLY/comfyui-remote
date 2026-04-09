@@ -243,12 +243,15 @@ class ComfyProcessManager {
         // TQDM_DISABLE prevents tqdm from writing progress bars through the pipe,
         // which causes OSError [Errno 22] on Windows when colorama tries to write
         // terminal escape sequences to a non-TTY pipe.
+        // NO_COLOR disables colorama and other color libraries entirely on Windows,
+        // preventing escape sequence flush failures in ComfyUI's custom logger.
         env: {
           ...process.env,
           PYTHONIOENCODING: "utf-8",
           PYTHONLEGACYWINDOWSSTDIO: "0",
           PYTHONUTF8: "1",
           TQDM_DISABLE: "1",
+          NO_COLOR: "1",
         },
       });
 
