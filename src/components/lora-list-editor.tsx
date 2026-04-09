@@ -186,7 +186,7 @@ function SortableLoraRow({
 
         {/* Center: two rows */}
         <div className="flex-1 min-w-0 py-2 px-2.5 space-y-1.5">
-          {/* Row 1: name + source tag + trigger hint */}
+          {/* Row 1: name + source tag + trigger hint + delete buttons */}
           <div className="flex items-center gap-1.5">
             <span className="text-[11px] font-medium text-zinc-300 truncate">
               {displayName}
@@ -195,6 +195,30 @@ function SortableLoraRow({
               {tagLabel}
             </span>
             <TriggerWordHint loraPath={entry.path} />
+            {!readOnly && (
+              <div className="ml-auto flex items-center gap-0.5 shrink-0">
+                {onStandaloneRemove && (
+                  <button
+                    type="button"
+                    onClick={onStandaloneRemove}
+                    disabled={disabled}
+                    title="独立删除（仅此 LoRA）"
+                    className="rounded p-1 text-zinc-500 transition hover:bg-amber-500/10 hover:text-amber-400 disabled:opacity-50"
+                  >
+                    <Unlink className="size-3" />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={onRemove}
+                  disabled={disabled}
+                  title="级联删除（含绑定）"
+                  className="rounded p-1 text-zinc-500 transition hover:bg-red-500/10 hover:text-red-400 disabled:opacity-50"
+                >
+                  <Trash2 className="size-3" />
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Row 2: toggle + weight controls (mobile: selector on row 3) */}
@@ -260,32 +284,6 @@ function SortableLoraRow({
             />
           </div>
         </div>
-
-        {/* Right: delete button — spans full height */}
-        {!readOnly && (
-          <div className="flex items-center gap-0.5 px-2 border-l border-white/5">
-            {onStandaloneRemove && (
-              <button
-                type="button"
-                onClick={onStandaloneRemove}
-                disabled={disabled}
-                title="独立删除（仅此 LoRA）"
-                className="rounded p-1 text-zinc-500 transition hover:bg-amber-500/10 hover:text-amber-400 disabled:opacity-50"
-              >
-                <Unlink className="size-3.5" />
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={onRemove}
-              disabled={disabled}
-              title="级联删除（含绑定）"
-              className="rounded p-1 text-zinc-500 transition hover:bg-red-500/10 hover:text-red-400 disabled:opacity-50"
-            >
-              <Trash2 className="size-3.5" />
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );
