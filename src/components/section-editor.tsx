@@ -333,9 +333,9 @@ export function SectionEditor({
         }
         setBlocks((prev) => prev.filter((b) => b.groupBindingId !== groupBid));
 
-        // Remove all LoRAs in the group
-        const updatedLora1 = lora1.filter((e) => !e.groupBindingId || e.groupBindingId !== groupBid);
-        const updatedLora2 = lora2.filter((e) => !e.groupBindingId || e.groupBindingId !== groupBid);
+        // Remove all LoRAs whose bindingId belongs to this group
+        const updatedLora1 = lora1.filter((e) => !e.bindingId || !groupBindingIds.has(e.bindingId));
+        const updatedLora2 = lora2.filter((e) => !e.bindingId || !groupBindingIds.has(e.bindingId));
         setLora1(updatedLora1);
         setLora2(updatedLora2);
         await onLoraChange({ lora1: updatedLora1, lora2: updatedLora2 });
@@ -414,14 +414,17 @@ export function SectionEditor({
       const groupBid = block.groupBindingId;
       if (groupBid) {
         // Delete entire group
+        const groupBindingIds = new Set(
+          blocks.filter((b) => b.groupBindingId === groupBid).map((b) => b.bindingId).filter(Boolean) as string[],
+        );
         startTransition(async () => {
           const blocksToDelete = blocks.filter((b) => b.groupBindingId === groupBid && b.id !== blockId);
           for (const b of blocksToDelete) {
             await deleteSectionBlock(b.id);
           }
           setBlocks((prev) => prev.filter((b) => b.groupBindingId !== groupBid));
-          const updatedLora1 = lora1.filter((e) => !e.groupBindingId || e.groupBindingId !== groupBid);
-          const updatedLora2 = lora2.filter((e) => !e.groupBindingId || e.groupBindingId !== groupBid);
+          const updatedLora1 = lora1.filter((e) => !e.bindingId || !groupBindingIds.has(e.bindingId));
+          const updatedLora2 = lora2.filter((e) => !e.bindingId || !groupBindingIds.has(e.bindingId));
           setLora1(updatedLora1);
           setLora2(updatedLora2);
           await onLoraChange({ lora1: updatedLora1, lora2: updatedLora2 });
