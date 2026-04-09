@@ -1,0 +1,279 @@
+╔════════════════════════════════════════════════════════════════════════════════╗
+║                   LAYOUT STRUCTURE VISUAL GUIDE                                ║
+║                     ComfyUI Remote Project                                     ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+═════════════════════════════════════════════════════════════════════════════════
+ CONTAINER HIERARCHY (Size & Spacing)
+═════════════════════════════════════════════════════════════════════════════════
+
+┌─ PAGE LEVEL (space-y-4 = 16px gaps) ─────────────────────────────────────────┐
+│                                                                               │
+│  ┌─ MAJOR SECTION (SectionCard component)                                    │
+│  │  • border-white/10, rounded-2xl, bg-white/[0.03], p-4 (16px)             │
+│  │                                                                            │
+│  │  ┌─ CARD CONTENT (space-y-3 = 12px gaps) ──────────────────────────────┐ │
+│  │  │                                                                     │ │
+│  │  │  ┌─ LIST ITEMS (space-y-1 to space-y-3 = 4px to 12px) ───────────┐ │ │
+│  │  │  │  • border-white/5, rounded-lg, bg-white/[0.02], px-3 py-1.5  │ │ │
+│  │  │  │  • Compact row styling                                        │ │ │
+│  │  │  └─────────────────────────────────────────────────────────────┘ │ │
+│  │  │                                                                     │ │
+│  │  └─────────────────────────────────────────────────────────────────────┘ │
+│  │                                                                            │
+│  └─ /SectionCard ───────────────────────────────────────────────────────────┘
+│                                                                               │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+
+═════════════════════════════════════════════════════════════════════════════════
+ CARD STRUCTURES (Most Common)
+═════════════════════════════════════════════════════════════════════════════════
+
+┌─ MAIN CARD ───────────────────────────────────────────────────────────────────┐
+│ rounded-2xl border border-white/10 bg-white/[0.03] p-4                        │
+│                                                                                │
+│  16px padding on all sides                                                   │
+│  1px subtle white border (10% opacity)                                       │
+│  Very light white background (3% opacity)                                    │
+│  16px border radius                                                           │
+│                                                                                │
+│  Used for: Project cards, section cards, main content areas                 │
+└────────────────────────────────────────────────────────────────────────────────┘
+
+┌─ SECONDARY CARD ──────────────────────────────────────────────────────────────┐
+│ rounded-lg border border-white/5 bg-white/[0.02] px-3 py-1.5                 │
+│                                                                                │
+│  12px horizontal, 6px vertical padding                                       │
+│  Subtler border (5% opacity) and background (2% opacity)                     │
+│  8px border radius (smaller than main card)                                  │
+│                                                                                │
+│  Used for: List items, binding rows, compact sections                       │
+└────────────────────────────────────────────────────────────────────────────────┘
+
+┌─ ACCENT PANEL ────────────────────────────────────────────────────────────────┐
+│ rounded-xl border border-sky-500/20 bg-sky-500/[0.03] p-3 space-y-2           │
+│                                                                                │
+│  12px padding                                                                │
+│  Sky-blue themed border & background (low opacity)                          │
+│  12px border radius                                                           │
+│  12px vertical spacing inside                                                │
+│                                                                                │
+│  Used for: Import panels, notification areas, special sections              │
+└────────────────────────────────────────────────────────────────────────────────┘
+
+┌─ EMPTY STATE ─────────────────────────────────────────────────────────────────┐
+│ rounded-2xl border border-dashed border-white/10 p-6 text-center              │
+│                                                                                │
+│  24px padding (more spacious than filled cards)                              │
+│  Dashed border for visual distinction                                        │
+│  Centered text                                                                │
+│                                                                                │
+│  Used for: Empty project lists, no results, placeholder areas               │
+└────────────────────────────────────────────────────────────────────────────────┘
+
+
+═════════════════════════════════════════════════════════════════════════════════
+ FLEX LAYOUTS (Common Patterns)
+═════════════════════════════════════════════════════════════════════════════════
+
+┌─ SPACE BETWEEN PATTERN ───────────────────────────────────────────────────────┐
+│ <div className="flex items-center justify-between gap-3">                     │
+│                                                                                │
+│  LEFT ITEM  ─────────────────────── SPACE ─────────────────────  RIGHT ITEM  │
+│                                                                                │
+│  • items-center: Vertically centered                                         │
+│  • justify-between: Max spacing between items                                │
+│  • gap-3: 12px gap (fallback if not enough space)                           │
+│                                                                                │
+│  Used for: Header rows, card headers with actions                           │
+└────────────────────────────────────────────────────────────────────────────────┘
+
+┌─ ROW WITH FLEX-1 PATTERN ────────────────────────────────────────────────────┐
+│ <div className="flex items-center gap-2">                                    │
+│   <div>Fixed Width</div>                                                    │
+│   <div className="min-w-0 flex-1">Takes Remaining Space</div>               │
+│   <div className="shrink-0">Won't Shrink</div>                              │
+│ </div>                                                                       │
+│                                                                                │
+│  • min-w-0: Allows text truncation in flex-1 content                        │
+│  • flex-1: Fills available space                                            │
+│  • shrink-0: Action buttons/icons stay fixed size                           │
+│                                                                                │
+│  Used for: List items with actions, card rows with title+buttons            │
+└────────────────────────────────────────────────────────────────────────────────┘
+
+┌─ RESPONSIVE COLUMN/ROW PATTERN ──────────────────────────────────────────────┐
+│ <div className="flex flex-col gap-4 md:flex-row">                            │
+│                                                                                │
+│  Mobile:                      Desktop (md:768px+):                           │
+│  ┌─ Panel 1 ──┐               ┌─ Panel 1 ──┬─ Panel 2 ──┐                  │
+│  ├─ Panel 2 ──┤         ──→    │            │            │                  │
+│  └─ Panel 3 ──┘               └────────────┴────────────┘                   │
+│                                                                                │
+│  gap-4: 16px spacing between panels                                         │
+│  flex-col: Stack vertically on mobile                                       │
+│  md:flex-row: Side-by-side on desktop                                       │
+│                                                                                │
+│  Used for: Two-column layouts (Prompt Manager)                              │
+└────────────────────────────────────────────────────────────────────────────────┘
+
+
+═════════════════════════════════════════════════════════════════════════════════
+ SPACING VALUES QUICK REFERENCE
+═════════════════════════════════════════════════════════════════════════════════
+
+VERTICAL SPACING (gap-y, space-y):
+┌─────────────────────────────────────────────┐
+│ gap-1 / space-y-1   =   4px (very compact) │
+│ gap-1.5 / space-y-1.5 =  6px (thumbnails) │
+│ gap-2 / space-y-2   =   8px (normal)       │
+│ gap-3 / space-y-3   =  12px (comfortable)  │
+│ gap-4 / space-y-4   =  16px (spacious)     │
+│ gap-6 / space-y-6   =  24px (separator)    │
+└─────────────────────────────────────────────┘
+
+PADDING:
+┌─────────────────────────────────────────────┐
+│ p-1              =   4px all sides          │
+│ p-2              =   8px all sides          │
+│ p-3              =  12px all sides          │
+│ p-4              =  16px all sides          │
+│ px-2 py-1        =   8px x, 4px y           │
+│ px-3 py-1.5      =  12px x, 6px y          │
+│ px-4 py-2        =  16px x, 8px y          │
+└─────────────────────────────────────────────┘
+
+MARGINS:
+┌─────────────────────────────────────────────┐
+│ mt-3 (margin-top)       =  12px             │
+│ mb-2 (margin-bottom)    =   8px             │
+│ border-t pt-3           =  12px space after │
+└─────────────────────────────────────────────┘
+
+
+═════════════════════════════════════════════════════════════════════════════════
+ BORDER STYLES & OPACITY
+═════════════════════════════════════════════════════════════════════════════════
+
+BORDER OPACITY (on white):
+  border-white/5    = 5% opacity  (very subtle)
+  border-white/10   = 10% opacity (standard)
+  border-white/20   = 20% opacity (prominent)
+
+BACKGROUND OPACITY (on white):
+  bg-white/[0.02]   = 2% opacity  (barely visible)
+  bg-white/[0.03]   = 3% opacity  (standard card)
+  bg-white/[0.04]   = 4% opacity  (input fields)
+  bg-white/[0.06]   = 6% opacity  (hover state)
+
+ACCENT COLORS (Sky Blue):
+  bg-sky-500/10     = 10% opacity background
+  border-sky-500/20 = 20% opacity border
+  text-sky-300      = Text color for accent
+
+
+BORDER RADIUS:
+  rounded-lg   =  8px (small elements)
+  rounded-xl   = 12px (standard)
+  rounded-2xl  = 16px (main cards)
+  rounded-full = circle (buttons)
+
+
+═════════════════════════════════════════════════════════════════════════════════
+ TYPICAL COMPONENT TEMPLATES
+═════════════════════════════════════════════════════════════════════════════════
+
+┌─ PROJECT/SECTION CARD TEMPLATE ───────────────────────────────────────────────┐
+│                                                                                │
+│ <div className="space-y-4">                          ← Page root              │
+│   <SectionCard title="Title" subtitle="Subtitle">   ← Wrapper                │
+│     <div className="space-y-3">                      ← Content (12px gaps)    │
+│       <div className="rounded-2xl border             ← Main card              │
+│            border-white/10 bg-white/[0.03] p-4">   │                        │
+│         <div className="flex items-center           ← Header row              │
+│              justify-between gap-3">                │                        │
+│           <div>Left Content</div>                    │ Left                   │
+│           <div>Right Actions</div>                   │ Right                  │
+│         </div>                                       │                        │
+│         <div className="mt-3 text-sm">              ← Metadata               │
+│           Additional info                           │                        │
+│         </div>                                       │                        │
+│       </div>                                         │                        │
+│     </div>                                           ↑ Repeat for each item   │
+│   </SectionCard>                                                              │
+│ </div>                                                                         │
+│                                                                                │
+└────────────────────────────────────────────────────────────────────────────────┘
+
+┌─ LIST ITEM TEMPLATE ──────────────────────────────────────────────────────────┐
+│                                                                                │
+│ <div className="rounded-lg border border-white/5                              │
+│      bg-white/[0.02] px-3 py-1.5">                                            │
+│   <div className="flex items-center                                           │
+│        justify-between gap-2">                                                │
+│     <div className="flex items-center                                         │
+│          gap-2 min-w-0">                                                      │
+│       <Icon className="shrink-0 size-3" />          ← Fixed icon              │
+│       <span className="truncate">Text Content</span> ← Truncated text         │
+│     </div>                                                                     │
+│     <div className="flex items-center                                         │
+│          gap-0.5 shrink-0">                                                   │
+│       <Button>Action 1</Button>                     ← Action buttons           │
+│       <Button>Action 2</Button>                     ← Won't shrink            │
+│     </div>                                                                     │
+│   </div>                                                                       │
+│ </div>                                                                         │
+│                                                                                │
+└────────────────────────────────────────────────────────────────────────────────┘
+
+┌─ BUTTON TEMPLATES ────────────────────────────────────────────────────────────┐
+│                                                                                │
+│ PRIMARY (Accent):                                                            │
+│ className="inline-flex items-center gap-2 rounded-lg                         │
+│            bg-sky-500/10 px-2 py-1 text-sky-300                              │
+│            hover:bg-sky-500/20"                                              │
+│                                                                                │
+│ SECONDARY (Icon):                                                            │
+│ className="rounded p-1 text-zinc-500                                         │
+│            hover:bg-white/10 hover:text-white"                               │
+│                                                                                │
+│ DESTRUCTIVE (Delete):                                                        │
+│ className="rounded p-1 text-zinc-600                                         │
+│            hover:bg-red-500/10 hover:text-red-400"                           │
+│                                                                                │
+└────────────────────────────────────────────────────────────────────────────────┘
+
+
+═════════════════════════════════════════════════════════════════════════════════
+ DESIGN PRINCIPLES SUMMARY
+═════════════════════════════════════════════════════════════════════════════════
+
+✓ CONSISTENCY
+  - All main cards use: rounded-2xl border-white/10 bg-white/[0.03] p-4
+  - All secondary cards use: rounded-lg border-white/5 bg-white/[0.02]
+  - Creates predictable visual patterns across the app
+
+✓ HIERARCHY
+  Page (space-y-4) → Section (space-y-3) → List Items (space-y-1/2)
+  Larger gaps = more importance
+  
+✓ OPACITY OVER COLOR
+  Uses white/zinc with opacity layers instead of hard colors
+  Creates a cohesive, minimal aesthetic
+  
+✓ ACCENT HIGHLIGHTING
+  Sky blue (sky-500) used only for important actions
+  Helps users identify interactive elements
+  
+✓ RESPONSIVE MOBILE-FIRST
+  Default layout works on mobile
+  Enhanced with md: prefixes for desktop
+  
+✓ VISUAL FEEDBACK
+  - Hover states: bg opacity increases, borders darken
+  - Active states: scale-95 for button click feedback
+  - Disabled states: opacity-50 for pending operations
+  - Drag states: shadow-lg ring-2 for visual confirmation
+
+═════════════════════════════════════════════════════════════════════════════════

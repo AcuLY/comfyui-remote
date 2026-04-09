@@ -1,0 +1,250 @@
+╔════════════════════════════════════════════════════════════════════════════════╗
+║                   LAYOUT & DISPLAY ANALYSIS - DOCUMENTATION                   ║
+║                         ComfyUI Remote Image Queue                             ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+📁 CREATED DOCUMENTATION FILES
+═══════════════════════════════════════════════════════════════════════════════
+
+1. 📄 LAYOUT_ANALYSIS.md (649 lines) ⭐️ MAIN DOCUMENT
+   ├─ Complete page hierarchy & app shell structure
+   ├─ Queue list page layout with card system
+   ├─ Review group page (multi-image view)
+   ├─ ReviewGrid component (3-column image gallery) - MAIN FOCUS
+   ├─ Single image view page structure
+   ├─ Grid & column patterns summary table
+   ├─ Responsive behavior notes (mobile-first)
+   └─ Color & visual system documentation
+
+2. 📄 LAYOUT_VISUAL_GUIDE.md (285 lines)
+   ├─ ASCII box diagrams of layouts
+   ├─ Visual representation of page hierarchy
+   ├─ Image grid structure (3 columns)
+   ├─ Single image view layout
+   ├─ Responsive strategy recommendations
+   ├─ CSS classes reference quick lookup
+   └─ Component nesting depth tree
+
+3. 📄 QUICK_REFERENCE.md (339 lines) ⚡️ COPY-PASTE READY
+   ├─ File locations & purposes
+   ├─ Key JSX patterns to copy (7 templates)
+   ├─ Tailwind classes quick lookup
+   ├─ Image grid deep dive with full code
+   ├─ Common patterns & templates
+   ├─ Responsive considerations
+   ├─ State management patterns
+   └─ Element overlay positioning
+
+═══════════════════════════════════════════════════════════════════════════════
+
+🎯 KEY FINDINGS
+═══════════════════════════════════════════════════════════════════════════════
+
+MAIN LAYOUT STRUCTURE:
+  ┌─ AppShell (max-w-6xl container with header/nav)
+  ├─ Header: fixed at top with logo
+  ├─ Main: flex-1 overflow-y-auto, gap-4 between sections
+  ├─ Footer: fixed bottom nav (6-column grid)
+  └─ Page content: space-y-4 (16px gaps)
+
+QUEUE LIST PAGE (/queue):
+  • Layout: space-y-4 (vertical stack)
+  • Queue items: space-y-3 (vertical cards)
+  • Inside each card: flex + grid-cols-3 for stats
+  • Currently: 1 column (not responsive)
+
+REVIEW GROUP PAGE (/queue/[runId]):
+  • Layout: space-y-4 (vertical sections)
+  • Image grid: grid-cols-3 gap-3 ⭐️ PRIMARY LAYOUT
+  • 3 columns, 12px gaps
+  • Aspect ratio: aspect-[3/4] (portrait)
+  • Hover effects: scale-[1.02]
+  • Selection state: border-sky-400/50 + ring-2
+
+SINGLE IMAGE PAGE (/queue/[runId]/images/[imageId]):
+  • Full-width single column
+  • Image container: rounded-[28px], bg-[var(--panel)]
+  • Inner image: rounded-[22px], aspect-auto, w-full
+  • Params: flex flex-wrap gap-2 (wrapped flow)
+
+═══════════════════════════════════════════════════════════════════════════════
+
+🎨 GRID PATTERNS USED
+═══════════════════════════════════════════════════════════════════════════════
+
+| Container               | Columns | Gap | Use Case                    |
+|-------------------------|---------|-----|---------------------------|
+| Queue list              | 1       | 12px| Vertical stack of cards   |
+| Stats/chips             | 2       | 12px| Pairs of metrics          |
+| IMAGE GRID (ReviewGrid) | 3       | 12px| 🎨 Main gallery display   |
+| Metadata KSamplers      | 2       | 8px | Configuration pairs       |
+| Buttons                 | 2       | 12px| Action button pairs       |
+| Bottom nav              | 6       | 4px | Navigation icons          |
+
+RESPONSIVE STATUS:
+  ⚠️  NO responsive breakpoints currently in use
+  ✅ Mobile-first design (all layouts work on small screens)
+  💡 Could add: sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 for images
+
+═══════════════════════════════════════════════════════════════════════════════
+
+🔍 IMAGE GRID DEEP DIVE (Most Important Section)
+═══════════════════════════════════════════════════════════════════════════════
+
+FILE: src/app/queue/[runId]/review-grid.tsx
+
+Container:
+  <div className="grid grid-cols-3 gap-3">  <!-- 3 columns, 12px gap -->
+
+Per-Image Card Structure:
+  ┌─────────────────────────────────────┐
+  │ ☑ IMG_001              (top-left)   │
+  │                                     │
+  │ [Image 3:4 aspect ratio]            │
+  │                                     │
+  │ pending status      [查看→] link    │ (bottom)
+  └─────────────────────────────────────┘
+
+Key Classes:
+  • Container: grid grid-cols-3 gap-3
+  • Item: relative overflow-hidden rounded-2xl border transition
+  • Image: aspect-[3/4] w-full object-cover group-hover:scale-[1.02]
+  • Selection: border-sky-400/50 ring-2 ring-sky-400/30
+  • Checkbox: absolute left-2 top-2 z-10
+  • Bottom overlay: absolute inset-x-0 bottom-0 with gradient
+
+Interactions:
+  ✓ Click checkbox to select/deselect
+  ✓ Click image to toggle selection
+  ✓ Click "查看" link to open full image view
+  ✓ Batch keep/delete buttons apply to selected
+  ✓ "Handle remaining" buttons for remaining pending images
+
+═══════════════════════════════════════════════════════════════════════════════
+
+📋 COMPONENT FILE MAP
+═══════════════════════════════════════════════════════════════════════════════
+
+src/app/queue/
+├── page.tsx                              (server-side wrapper)
+├── queue-page-client.tsx                 (client - tabs, list, stats)
+└── [runId]/
+    ├── page.tsx                          (server-side - single group)
+    ├── review-grid.tsx                   ⭐️ MAIN IMAGE GRID
+    └── images/[imageId]/
+        ├── page.tsx                      (server-side - full image view)
+        └── review-image-actions.tsx      (keep/trash form)
+
+src/components/
+├── app-shell.tsx                         (main layout wrapper)
+├── section-card.tsx                      (card container)
+├── page-header.tsx                       (page title section)
+└── stat-chip.tsx                         (stat display)
+
+═══════════════════════════════════════════════════════════════════════════════
+
+🎭 TAILWIND CLASS CHEATSHEET
+═══════════════════════════════════════════════════════════════════════════════
+
+SPACING:
+  gap-1 = 4px,  gap-2 = 8px,  gap-3 = 12px,  gap-4 = 16px
+  space-y-3 = 12px between children (vertical)
+  space-y-4 = 16px between children (vertical)
+
+BORDERS:
+  border-white/10 = default,  border-white/5 = subtle
+
+COLORS (Status Badges):
+  pending:  border-white/10 bg-black/30
+  kept:     border-emerald-500/30 bg-emerald-500/20 text-emerald-300
+  trashed:  border-rose-500/30 bg-rose-500/20 text-rose-300
+
+COLORS (Buttons):
+  Keep:     border-emerald-500/20 bg-emerald-500/10
+  Delete:   border-rose-500/20 bg-rose-500/10
+  Select:   border-sky-400 bg-sky-500
+
+ROUNDED CORNERS:
+  rounded-lg = 8px
+  rounded-xl = 12px
+  rounded-2xl = 16px
+  rounded-3xl = 24px
+  rounded-[28px] = 28px (custom)
+
+═══════════════════════════════════════════════════════════════════════════════
+
+💡 COPY-PASTE READY CODE
+═══════════════════════════════════════════════════════════════════════════════
+
+See QUICK_REFERENCE.md for:
+  1. Main container template
+  2. Section card pattern
+  3. 2-column grid
+  4. 3-COLUMN IMAGE GRID (full code with all overlays)
+  5. Button grid pattern
+  6. Vertical card stack
+  7. Status badge conditional logic
+
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ DOCUMENTATION COMPLETENESS
+═══════════════════════════════════════════════════════════════════════════════
+
+Pages Documented:
+  ✅ /queue                              (Queue list)
+  ✅ /queue/[runId]                      (Review group)
+  ✅ /queue/[runId]/images/[imageId]    (Full image)
+
+Layouts Analyzed:
+  ✅ App shell & header/nav structure
+  ✅ Page hierarchy & containers
+  ✅ Grid systems (1-col, 2-col, 3-col, 6-col)
+  ✅ Image gallery (main 3-column grid)
+  ✅ Card structures & patterns
+  ✅ Overlays & absolute positioning
+  ✅ Color system & themes
+  ✅ Spacing & gaps
+
+Code Examples:
+  ✅ JSX structure with className strings
+  ✅ Component nesting
+  ✅ State management patterns
+  ✅ Event handlers
+  ✅ Conditional rendering
+
+═══════════════════════════════════════════════════════════════════════════════
+
+🎯 NEXT STEPS
+═══════════════════════════════════════════════════════════════════════════════
+
+To modify layouts:
+  1. Reference QUICK_REFERENCE.md for copy-paste patterns
+  2. Use LAYOUT_ANALYSIS.md for detailed structure
+  3. Use LAYOUT_VISUAL_GUIDE.md for visual understanding
+  4. Check src/app/queue/[runId]/review-grid.tsx for main image grid
+
+To add responsive design:
+  • Add sm: md: lg: prefixes to grid-cols classes
+  • Test on mobile/tablet/desktop
+  • Reference responsive examples in QUICK_REFERENCE.md
+
+To modify colors/styling:
+  • See "Color Coding System" in LAYOUT_VISUAL_GUIDE.md
+  • Keep consistency with existing themes
+  • Use Tailwind color system (emerald, rose, sky)
+
+═══════════════════════════════════════════════════════════════════════════════
+
+📊 FILE SIZES & DETAIL LEVELS
+═══════════════════════════════════════════════════════════════════════════════
+
+LAYOUT_ANALYSIS.md      (649 lines) - Complete detailed analysis
+LAYOUT_VISUAL_GUIDE.md  (285 lines) - ASCII diagrams & visual reference
+QUICK_REFERENCE.md      (339 lines) - Copy-paste ready code & patterns
+
+Total: 1,273 lines of layout documentation
+
+═══════════════════════════════════════════════════════════════════════════════
+
+Generated: 2026-04-09
+Last Updated: ComfyUI Remote Layout Analysis Complete ✅

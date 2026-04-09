@@ -167,7 +167,7 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns, initialF
                   href={`/queue/${run.id}`}
                   className="block rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition hover:bg-white/[0.06] lg:max-w-xl"
                 >
-                  <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center justify-between gap-3">
                     <div>
                       <div className="text-sm font-semibold text-white">{run.projectTitle}</div>
                       <div className="mt-1 text-xs text-zinc-400">{run.presetNames.join(" · ") || run.sectionName}</div>
@@ -212,7 +212,7 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns, initialF
                 key={run.id}
                 className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 lg:max-w-xl"
               >
-                <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center justify-between gap-3">
                   <div>
                     <div className="text-sm font-semibold text-white">{run.projectTitle}</div>
                     <div className="mt-1 text-xs text-zinc-400">{run.presetNames.join(" · ") || run.sectionName}</div>
@@ -274,7 +274,7 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns, initialF
                 key={run.id}
                 className="rounded-2xl border border-red-500/10 bg-red-500/[0.03] p-4 lg:max-w-xl"
               >
-                <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center justify-between gap-3">
                   <div>
                     <div className="text-sm font-semibold text-white">{run.projectTitle}</div>
                     <div className="mt-1 text-xs text-zinc-400">{run.presetNames.join(" · ") || run.sectionName}</div>

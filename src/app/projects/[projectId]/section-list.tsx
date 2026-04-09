@@ -307,7 +307,7 @@ function SortableSectionCard({
       className={`rounded-2xl border border-white/10 bg-white/[0.03] p-4 lg:max-w-xl ${isDragging ? "shadow-lg ring-2 ring-sky-500/30" : ""}`}
     >
       {/* 主内容区：拖动手柄 + 信息 */}
-      <div className="flex items-start gap-3">
+      <div className="flex items-center gap-3">
         {/* 拖动手柄 */}
         <button
           {...attributes}
