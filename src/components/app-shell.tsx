@@ -17,8 +17,9 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="flex h-full flex-col">
       <Toaster
         theme="dark"
-        position="top-center"
+        position="top-right"
         toastOptions={{
+          duration: 3000,
           style: { background: "rgba(24,24,27,0.95)", border: "1px solid rgba(255,255,255,0.1)", color: "#e4e4e7" },
         }}
       />

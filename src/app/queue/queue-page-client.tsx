@@ -56,12 +56,27 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns, initialF
   // Track known failed run IDs for toast diff
   const knownFailedIdsRef = useRef<Set<string>>(new Set((initialFailedRuns ?? []).map((r) => r.id)));
 
+  // Track known completed run IDs for success toast
+  const knownDoneIdsRef = useRef<Set<string>>(new Set((initialQueueRuns ?? []).map((r) => r.id)));
+
   const refresh = useCallback(() => {
     startTransition(async () => {
       const res = await fetch("/api/queue-data");
       if (!res.ok) return;
       const data = await res.json();
-      setQueueRuns(data.queueRuns ?? []);
+
+      const newDone: QueueRun[] = data.queueRuns ?? [];
+      // Show toast for newly completed runs
+      for (const run of newDone) {
+        if (!knownDoneIdsRef.current.has(run.id)) {
+          toast.success(`${run.projectTitle} / ${run.sectionName} 完成`, {
+            description: `生成了 ${run.totalCount} 张图片`,
+          });
+        }
+      }
+      knownDoneIdsRef.current = new Set(newDone.map((r) => r.id));
+      setQueueRuns(newDone);
+
       setRunningRuns(data.runningRuns ?? []);
 
       const newFailed: FailedRun[] = data.failedRuns ?? [];
