@@ -103,7 +103,7 @@ function fillPowerLoraLoader(
     const b = enabledBindings[i];
     inputs[`lora_${i + 1}`] = {
       on: true,
-      lora: b.path,
+      lora: b.path.replace(/\\/g, "/"),
       strength: b.weight,
     };
   }

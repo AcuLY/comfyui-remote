@@ -163,6 +163,18 @@ function extractHistoryFailureMessage(entry: ComfyPromptHistoryEntry) {
           ? String(payload.node_id)
           : null;
 
+      // Log full traceback for debugging (helps diagnose OSError on Windows)
+      const traceback = typeof payload?.exception_traceback === "string"
+        ? payload.exception_traceback
+        : null;
+      if (traceback) {
+        console.error(`[comfyui] execution_error traceback for node ${nodeId}:\n${traceback}`);
+      }
+      // Also log full payload for opaque errors like OSError [Errno 22]
+      if (exceptionMessage?.includes("Invalid argument") || exceptionMessage?.includes("Errno 22")) {
+        console.error(`[comfyui] execution_error full payload for node ${nodeId}:`, JSON.stringify(payload, null, 2));
+      }
+
       const details = [exceptionType, exceptionMessage, nodeId ? `node ${nodeId}` : null].filter(
         (value): value is string => Boolean(value),
       );
