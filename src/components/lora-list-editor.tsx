@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useCallback, useId, useState } from "react";
-import { Plus, Trash2, GripVertical, Zap } from "lucide-react";
+import { Plus, Trash2, Unlink, GripVertical, Zap } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -32,6 +32,8 @@ type LoraListEditorProps = {
   readOnly?: boolean;
   /** Preset binding info for delete protection */
   presetBindings?: Array<{ bindingId: string; presetName: string; blockCount: number; loraCount: number }>;
+  /** Show standalone delete (Unlink) button alongside cascade delete */
+  enableStandaloneDelete?: boolean;
 };
 
 // ---------------------------------------------------------------------------
@@ -120,6 +122,7 @@ function SortableLoraRow({
   onPathChange,
   onWeightChange,
   onRemove,
+  onStandaloneRemove,
 }: {
   entry: LoraEntry;
   disabled: boolean;
@@ -128,6 +131,7 @@ function SortableLoraRow({
   onPathChange: (path: string) => void;
   onWeightChange: (value: string) => void;
   onRemove: () => void;
+  onStandaloneRemove?: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: entry.id,
@@ -250,11 +254,23 @@ function SortableLoraRow({
 
         {/* Right: delete button — spans full height */}
         {!readOnly && (
-          <div className="flex items-center px-2 border-l border-white/5">
+          <div className="flex items-center gap-0.5 px-2 border-l border-white/5">
+            {onStandaloneRemove && (
+              <button
+                type="button"
+                onClick={onStandaloneRemove}
+                disabled={disabled}
+                title="独立删除（仅此 LoRA）"
+                className="rounded p-1 text-zinc-500 transition hover:bg-amber-500/10 hover:text-amber-400 disabled:opacity-50"
+              >
+                <Unlink className="size-3.5" />
+              </button>
+            )}
             <button
               type="button"
               onClick={onRemove}
               disabled={disabled}
+              title="级联删除（含绑定）"
               className="rounded p-1 text-zinc-500 transition hover:bg-red-500/10 hover:text-red-400 disabled:opacity-50"
             >
               <Trash2 className="size-3.5" />
@@ -276,6 +292,7 @@ export function LoraListEditor({
   disabled = false,
   readOnly = false,
   presetBindings,
+  enableStandaloneDelete = false,
 }: LoraListEditorProps) {
   const dndId = useId();
   const sensors = useSensors(
@@ -308,6 +325,11 @@ export function LoraListEditor({
         return;
       }
     }
+    onChange(entries.filter((e) => e.id !== id));
+  }
+
+  function handleStandaloneRemove(id: string) {
+    if (!confirm("独立删除此 LoRA？不影响同绑定的其他块和 LoRA。")) return;
     onChange(entries.filter((e) => e.id !== id));
   }
 
@@ -369,6 +391,7 @@ export function LoraListEditor({
                     onPathChange={(v) => handleUpdate(entry.id, { path: v })}
                     onWeightChange={(v) => handleWeightChange(entry.id, v)}
                     onRemove={() => handleRemove(entry.id)}
+                    onStandaloneRemove={enableStandaloneDelete && entry.bindingId ? () => handleStandaloneRemove(entry.id) : undefined}
                   />
                 ))}
               </div>

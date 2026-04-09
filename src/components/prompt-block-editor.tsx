@@ -24,6 +24,7 @@ import {
   Pencil,
   Save,
   Trash2,
+  Unlink,
   X,
   Loader2,
   Sparkles,
@@ -189,6 +190,7 @@ type SortableBlockCardProps = {
   onCancelEdit: () => void;
   onSaveEdit: () => void;
   onDelete: () => void;
+  onStandaloneDelete?: () => void;
   isSaving: boolean;
   categoryMap: Map<string, CategoryConfig>;
 };
@@ -203,6 +205,7 @@ function SortableBlockCard({
   onCancelEdit,
   onSaveEdit,
   onDelete,
+  onStandaloneDelete,
   isSaving,
   categoryMap,
 }: SortableBlockCardProps) {
@@ -254,7 +257,12 @@ function SortableBlockCard({
               <Pencil className="size-3" />
             </button>
           )}
-          <button type="button" onClick={onDelete} className="rounded p-1 text-zinc-500 hover:bg-red-500/10 hover:text-red-400">
+          {onStandaloneDelete && block.bindingId && (
+            <button type="button" onClick={onStandaloneDelete} title="独立删除（仅此块）" className="rounded p-1 text-zinc-500 hover:bg-amber-500/10 hover:text-amber-400">
+              <Unlink className="size-3" />
+            </button>
+          )}
+          <button type="button" onClick={onDelete} title="级联删除（含绑定）" className="rounded p-1 text-zinc-500 hover:bg-red-500/10 hover:text-red-400">
             <Trash2 className="size-3" />
           </button>
         </div>
@@ -308,6 +316,7 @@ type BlockColumnProps = {
   onCancelEdit: () => void;
   onSaveEdit: () => void;
   onDelete: (blockId: string) => void;
+  onStandaloneDelete?: (blockId: string) => void;
   onDragEnd: (event: DragEndEvent) => void;
   isSaving: boolean;
   isAdding: boolean;
@@ -330,6 +339,7 @@ function BlockColumn({
   onCancelEdit,
   onSaveEdit,
   onDelete,
+  onStandaloneDelete,
   onDragEnd,
   isSaving,
   isAdding,
@@ -373,6 +383,7 @@ function BlockColumn({
             onCancelEdit={onCancelEdit}
             onSaveEdit={onSaveEdit}
             onDelete={() => onDelete(block.id)}
+            onStandaloneDelete={onStandaloneDelete ? () => onStandaloneDelete(block.id) : undefined}
             isSaving={isSaving}
             categoryMap={categoryMap}
           />
@@ -476,6 +487,8 @@ export function PromptBlockEditor({
   libraryV2,
   onDeleteConfirm,
   onBlockDeleted,
+  onStandaloneDeleteConfirm,
+  onStandaloneBlockDeleted,
 }: {
   sectionId: string;
   initialBlocks: PromptBlockData[];
@@ -485,6 +498,10 @@ export function PromptBlockEditor({
   onDeleteConfirm?: (blockId: string) => boolean;
   /** Called after a block is deleted (for binding cascade). */
   onBlockDeleted?: (blockId: string) => void;
+  /** Return false to cancel standalone delete. */
+  onStandaloneDeleteConfirm?: (blockId: string) => boolean;
+  /** Called after a block is standalone-deleted (no cascade). */
+  onStandaloneBlockDeleted?: (blockId: string) => void;
 }) {
   const [blocks, setBlocks] = useState<PromptBlockData[]>(initialBlocks);
 
@@ -548,6 +565,21 @@ export function PromptBlockEditor({
       await deleteSectionBlock(blockId);
       if (onBlockDeleted) {
         onBlockDeleted(blockId);
+      } else {
+        setBlocks((prev) => prev.filter((b) => b.id !== blockId));
+      }
+      if (editingId === blockId) cancelEdit();
+    });
+  }
+
+  function handleStandaloneDelete(blockId: string) {
+    if (onStandaloneDeleteConfirm && !onStandaloneDeleteConfirm(blockId)) return;
+    if (!onStandaloneDeleteConfirm && !confirm("独立删除此提示词块？")) return;
+
+    startTransition(async () => {
+      await deleteSectionBlock(blockId);
+      if (onStandaloneBlockDeleted) {
+        onStandaloneBlockDeleted(blockId);
       } else {
         setBlocks((prev) => prev.filter((b) => b.id !== blockId));
       }
@@ -640,6 +672,7 @@ export function PromptBlockEditor({
           onCancelEdit={cancelEdit}
           onSaveEdit={saveEdit}
           onDelete={handleDelete}
+          onStandaloneDelete={onStandaloneBlockDeleted ? handleStandaloneDelete : undefined}
           onDragEnd={handleDragEnd}
           isSaving={isPending}
           isAdding={addingColumn === "positive"}
@@ -661,6 +694,7 @@ export function PromptBlockEditor({
           onCancelEdit={cancelEdit}
           onSaveEdit={saveEdit}
           onDelete={handleDelete}
+          onStandaloneDelete={onStandaloneBlockDeleted ? handleStandaloneDelete : undefined}
           onDragEnd={handleDragEnd}
           isSaving={isPending}
           isAdding={addingColumn === "negative"}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition, useMemo, useEffect } from "react";
-import { Plus, Trash2, Package, ChevronDown, ClipboardCopy, Folder, ChevronLeft, Search, X } from "lucide-react";
+import { Plus, Trash2, Unlink, Package, ChevronDown, ClipboardCopy, Folder, ChevronLeft, Search, X } from "lucide-react";
 import { PromptBlockEditor } from "@/components/prompt-block-editor";
 import { LoraListEditor } from "@/components/lora-list-editor";
 import type { PromptBlockData } from "@/lib/actions";
@@ -359,6 +359,28 @@ export function SectionEditor({
     }
   }
 
+  // ── Standalone delete: remove only this binding's blocks/LoRAs, keep group siblings ──
+  function handleStandaloneDeleteBinding(bindingId: string) {
+    const info = presetBindings.find((b) => b.bindingId === bindingId);
+    if (!info) return;
+
+    if (!confirm(`独立删除「${info.presetName}」？仅删除该预制的 ${info.blockCount} 个提示词块和 ${info.loraCount} 个 LoRA，不影响同组其他预制。`)) return;
+
+    startTransition(async () => {
+      const blocksToDelete = blocks.filter((b) => b.bindingId === bindingId);
+      for (const b of blocksToDelete) {
+        await deleteSectionBlock(b.id);
+      }
+      setBlocks((prev) => prev.filter((b) => b.bindingId !== bindingId));
+
+      const updatedLora1 = lora1.filter((e) => e.bindingId !== bindingId);
+      const updatedLora2 = lora2.filter((e) => e.bindingId !== bindingId);
+      setLora1(updatedLora1);
+      setLora2(updatedLora2);
+      await onLoraChange({ lora1: updatedLora1, lora2: updatedLora2 });
+    });
+  }
+
   // ── Delete a single block with binding protection ──
   function handleDeleteBlock(blockId: string): boolean {
     const block = blocks.find((b) => b.id === blockId);
@@ -423,6 +445,15 @@ export function SectionEditor({
     } else {
       setBlocks((prev) => prev.filter((b) => b.id !== blockId));
     }
+  }
+
+  // ── Standalone block delete: just this one block, no cascade ──
+  function handleStandaloneDeleteBlock(blockId: string): boolean {
+    return confirm("独立删除此提示词块？不影响同绑定的其他块和 LoRA。");
+  }
+
+  function handleStandaloneBlockDeleted(blockId: string) {
+    setBlocks((prev) => prev.filter((b) => b.id !== blockId));
   }
 
   // ── LoRA delete with binding protection ──
@@ -539,8 +570,18 @@ export function SectionEditor({
                   )}
                   <button
                     type="button"
+                    onClick={() => handleStandaloneDeleteBinding(binding.bindingId)}
+                    disabled={isPending}
+                    title="独立删除（仅此预制）"
+                    className="rounded p-1 text-zinc-600 hover:bg-amber-500/10 hover:text-amber-400 disabled:opacity-50"
+                  >
+                    <Unlink className="size-3" />
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => handleDeleteBinding(binding.bindingId)}
                     disabled={isPending}
+                    title="级联删除（含同组预制）"
                     className="rounded p-1 text-zinc-600 hover:bg-red-500/10 hover:text-red-400 disabled:opacity-50"
                   >
                     <Trash2 className="size-3" />
@@ -576,6 +617,8 @@ export function SectionEditor({
         libraryV2={libraryV2}
         onDeleteConfirm={handleDeleteBlock}
         onBlockDeleted={handleBlockDeleted}
+        onStandaloneDeleteConfirm={handleStandaloneDeleteBlock}
+        onStandaloneBlockDeleted={handleStandaloneBlockDeleted}
       />
 
       {/* ── LoRA lists ── */}
@@ -587,6 +630,7 @@ export function SectionEditor({
             onChange={handleLora1Change}
             disabled={isPending}
             presetBindings={presetBindings}
+            enableStandaloneDelete
           />
         </div>
         <div>
@@ -596,6 +640,7 @@ export function SectionEditor({
             onChange={handleLora2Change}
             disabled={isPending}
             presetBindings={presetBindings}
+            enableStandaloneDelete
           />
         </div>
       </div>
