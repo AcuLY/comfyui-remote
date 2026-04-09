@@ -234,7 +234,7 @@ function SortableCompactCard({
         setCardRef(section.id, el);
       }}
       style={style}
-      className={`group flex items-center gap-2 w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 lg:max-w-xl ${isDragging ? "shadow-lg ring-2 ring-sky-500/30" : ""}`}
+      className={`group flex items-center gap-2 w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 lg:max-w-lg ${isDragging ? "shadow-lg ring-2 ring-sky-500/30" : ""}`}
     >
       {/* Drag handle */}
       <button
@@ -304,7 +304,7 @@ function SortableSectionCard({
         setCardRef(section.id, el);
       }}
       style={style}
-      className={`w-full rounded-2xl border border-white/10 bg-white/[0.03] p-4 lg:max-w-xl ${isDragging ? "shadow-lg ring-2 ring-sky-500/30" : ""}`}
+      className={`w-full rounded-xl border border-white/10 bg-white/[0.03] p-3.5 lg:max-w-lg ${isDragging ? "shadow-lg ring-2 ring-sky-500/30" : ""}`}
     >
       {/* 主内容区：拖动手柄 + 信息 */}
       <div className="flex items-center gap-3">

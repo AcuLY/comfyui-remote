@@ -19,26 +19,26 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   if (!project) notFound();
 
   return (
-    <div className="space-y-4">
-      <Link href="/projects" className="inline-flex items-center gap-2 text-sm text-zinc-400 transition hover:text-zinc-200">
-        <ArrowLeft className="size-4" /> 返回项目列表
+    <div className="space-y-3">
+      <Link href="/projects" className="inline-flex items-center gap-1.5 text-xs text-zinc-400 transition hover:text-zinc-200">
+        <ArrowLeft className="size-3.5" /> 返回项目列表
       </Link>
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         <SectionCard title={project.title} subtitle={project.presetNames.join(" · ") || "无预设"}>
           <ProjectDetailActions projectId={project.id} projectTitle={project.title} />
         </SectionCard>
 
         <SectionCard title="参数概览" subtitle="结果侧与项目侧都默认编辑当前项目配置。">
-          <div className="space-y-3 text-sm text-zinc-300">
-            <div className="rounded-2xl bg-white/[0.03] p-3">
+          <div className="space-y-2 text-sm text-zinc-300">
+            <div className="rounded-xl bg-white/[0.03] p-2.5">
               <div className="text-xs text-zinc-500">预设</div>
-              <div className="mt-1">{project.presetNames.join(" · ") || "无预设"}</div>
+              <div className="mt-0.5">{project.presetNames.join(" · ") || "无预设"}</div>
             </div>
             <Link
               href={`/projects/${projectId}/edit`}
-              className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-zinc-200 transition hover:bg-white/[0.08]"
+              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-zinc-200 transition hover:bg-white/[0.08]"
             >
-              <SlidersHorizontal className="size-4" /> 编辑当前项目参数
+              <SlidersHorizontal className="size-3.5" /> 编辑当前项目参数
             </Link>
           </div>
         </SectionCard>

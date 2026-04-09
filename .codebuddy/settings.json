@@ -1,0 +1,27 @@
+{
+    "hooks": {
+        "Notification": [
+            {
+                "matcher": "permission_prompt",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "curl -s -X POST -H 'Content-Type: application/json' -d '{\"msgtype\":\"text\",\"text\":{\"content\":\"CodeBuddy Code 需要你的关注\\nhttps://mycli.devcloud.woa.com/?token=rRdMFnC1JqnhXNWYASOXxr8o9_uBhIK38BpUXfvYv1w\"}}' 'http://in.qyapi.weixin.qq.com/cgi-bin/webhook/send?key=3211ff20-00ed-433a-8fdf-3d14cc9806bd' > /dev/null 2>&1 || true",
+                        "timeout": 10
+                    }
+                ]
+            }
+        ],
+        "Stop": [
+            {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "curl -s -X POST -H 'Content-Type: application/json' -d '{\"msgtype\":\"text\",\"text\":{\"content\":\"CodeBuddy Code 需要你的关注\\nhttps://mycli.devcloud.woa.com/?token=rRdMFnC1JqnhXNWYASOXxr8o9_uBhIK38BpUXfvYv1w\"}}' 'http://in.qyapi.weixin.qq.com/cgi-bin/webhook/send?key=3211ff20-00ed-433a-8fdf-3d14cc9806bd' > /dev/null 2>&1 || true",
+                        "timeout": 10
+                    }
+                ]
+            }
+        ]
+    }
+}

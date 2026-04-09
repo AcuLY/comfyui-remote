@@ -24,7 +24,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         }}
       />
       <header className="shrink-0 border-b border-white/10 bg-[var(--panel)]/90 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 lg:max-w-[1400px] xl:max-w-[1600px]">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-2.5">
           <Link href="/queue" className="flex items-center gap-2 text-sm font-semibold text-white">
             <Boxes className="size-4 text-sky-400" />
             ComfyUI Manager
@@ -33,10 +33,10 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </header>
       <main className="min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-4 pb-24 lg:max-w-[1400px] xl:max-w-[1600px]">{children}</div>
+        <div className="mx-auto flex max-w-5xl flex-col gap-3 px-4 py-3 pb-24">{children}</div>
       </main>
       <nav className="shrink-0 border-t border-white/10 bg-[var(--panel)]/95 backdrop-blur">
-        <div className="mx-auto grid max-w-6xl grid-cols-6 gap-1 px-2 py-2 lg:max-w-[1400px] xl:max-w-[1600px]">
+        <div className="mx-auto grid max-w-5xl grid-cols-6 gap-1 px-2 py-2">
           {navItems.map(({ href, label, icon: Icon }) => (
             <Link
               key={href}
