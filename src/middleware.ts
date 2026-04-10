@@ -38,8 +38,8 @@ export function middleware(request: NextRequest) {
 
   const cookieToken = request.cookies.get(AUTH_COOKIE_NAME)?.value;
 
-  // Check cookie value with timing-safe comparison
-  if (!cookieToken || !timingSafeEqual(cookieToken, authToken)) {
+  // Check cookie value
+  if (!cookieToken || cookieToken !== authToken) {
     // API routes get 401 JSON
     if (pathname.startsWith("/api/")) {
       return NextResponse.json(
@@ -66,20 +66,3 @@ export const config = {
   ],
 };
 
-/**
- * Timing-safe string comparison to prevent timing attacks.
- * Falls back to regular comparison if lengths differ.
- */
-function timingSafeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  const encoder = new TextEncoder();
-  const aBuf = encoder.encode(a);
-  const bBuf = encoder.encode(b);
-  if (aBuf.byteLength !== bBuf.byteLength) return false;
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (crypto.subtle as any).timingSafeEqual(aBuf, bBuf) as boolean;
-  } catch {
-    return false;
-  }
-}
