@@ -75,10 +75,10 @@ function timingSafeEqual(a: string, b: string): boolean {
   const encoder = new TextEncoder();
   const aBuf = encoder.encode(a);
   const bBuf = encoder.encode(b);
-  // crypto.subtle.timingSafeEqual requires same-length buffers
   if (aBuf.byteLength !== bBuf.byteLength) return false;
   try {
-    return crypto.subtle.timingSafeEqual(aBuf, bBuf);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (crypto.subtle as any).timingSafeEqual(aBuf, bBuf) as boolean;
   } catch {
     return false;
   }
