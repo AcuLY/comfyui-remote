@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (token !== authToken) {
-    return NextResponse.json({ error: "Invalid token", debug_env_length: authToken?.length ?? -1 }, { status: 401 });
+    return NextResponse.json({ error: "Invalid token" }, { status: 401 });
   }
 
   // Set cookie and redirect
