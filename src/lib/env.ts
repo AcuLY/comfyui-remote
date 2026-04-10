@@ -52,6 +52,9 @@ export const env = {
   logFilePath: process.env.LOG_FILE_PATH ?? "logs/app.log",
   logMaxFileSize: readPositiveIntegerEnv("LOG_MAX_FILE_SIZE", 10 * 1024 * 1024), // 10MB
   logMaxFiles: readPositiveIntegerEnv("LOG_MAX_FILES", 5),
+
+  // Auth
+  authToken: process.env.AUTH_TOKEN ?? "",
 };
 
 export function assertEnv() {
