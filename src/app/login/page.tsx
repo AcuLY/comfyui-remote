@@ -1,11 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Boxes, KeyRound } from "lucide-react";
 
 export default function LoginPage() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const from = searchParams.get("from") ?? "/queue";
 
@@ -33,8 +32,7 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (res.ok && data.ok) {
-        router.push(from);
-        router.refresh();
+        window.location.href = from;
       } else {
         setError(data.error ?? "Invalid token");
       }
