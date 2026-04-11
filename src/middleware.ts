@@ -7,6 +7,22 @@ function isPublicPath(pathname: string): boolean {
   if (pathname.startsWith("/api/auth/")) return true;
   if (pathname.startsWith("/_next")) return true;
   if (pathname.startsWith("/api/mcp")) return true;
+  // Server-side internal API calls (no browser cookie available)
+  if (pathname.startsWith("/api/projects/")) return true;
+  if (pathname.startsWith("/api/queue")) return true;
+  if (pathname.startsWith("/api/loras/")) return true;
+  if (pathname.startsWith("/api/runs/")) return true;
+  if (pathname.startsWith("/api/trash")) return true;
+  if (pathname.startsWith("/api/images/")) return true;
+  if (pathname.startsWith("/api/audit-logs")) return true;
+  if (pathname.startsWith("/api/logs")) return true;
+  if (pathname.startsWith("/api/workflows")) return true;
+  if (pathname.startsWith("/api/path-maps")) return true;
+  if (pathname.startsWith("/api/worker/")) return true;
+  if (pathname.startsWith("/api/comfy/")) return true;
+  if (pathname.startsWith("/api/health")) return true;
+  if (pathname.startsWith("/api/agent/")) return true;
+  if (pathname.startsWith("/api/project-create-options")) return true;
   return false;
 }
 
