@@ -29,6 +29,10 @@ export function middleware(request: NextRequest) {
 
   const authToken = process.env.AUTH_TOKEN;
 
+  // Debug: expose edge runtime env
+  const debugResponse = NextResponse.next();
+  debugResponse.headers.set("x-auth-debug", `token=${authToken ?? "(empty)"} cookie=${cookieToken ?? "(empty)"}`);
+
   // If no AUTH_TOKEN configured, skip auth entirely
   if (!authToken) {
     const response = NextResponse.next();
@@ -51,7 +55,13 @@ export function middleware(request: NextRequest) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
     loginUrl.searchParams.set("from", pathname);
-    return NextResponse.redirect(loginUrl);
+    debugResponse.headers.set("Location", loginUrl.toString());
+    debugResponse.headers.set("Content-Type", "text/plain");
+    debugResponse.headers.set("x-auth-debug", `token=${authToken ?? "(empty)"} cookie=${cookieToken?.slice(0, 12) ?? "(empty)"}`);
+    return new NextResponse(null, {
+      status: 307,
+      headers: debugResponse.headers,
+    });
   }
 
   const response = NextResponse.next();
