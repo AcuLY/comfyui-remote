@@ -40,8 +40,6 @@ export function middleware(request: NextRequest) {
 
   // Check cookie value
   if (!cookieToken || cookieToken !== authToken) {
-    // Debug: log cookie presence
-    console.log("[auth-middleware] cookie value:", cookieToken ? `"${cookieToken.length > 8 ? cookieToken.slice(0, 8) + '...'}"` : "(empty)", "expected:", authToken ? `${authToken.length} chars` : "(empty)", "path:", pathname);
     // API routes get 401 JSON
     if (pathname.startsWith("/api/")) {
       return NextResponse.json(
