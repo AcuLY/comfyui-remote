@@ -56,6 +56,8 @@ export function middleware(request: NextRequest) {
 
   const response = NextResponse.next();
   response.headers.set("x-pathname", pathname);
+  // Debug: expose env info (remove after debugging)
+  response.headers.set("x-auth-debug", `env_len=${authToken?.length ?? 0}`);
   return response;
 }
 
