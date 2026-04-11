@@ -19,15 +19,7 @@ export function middleware(request: NextRequest) {
     return response;
   }
 
-  // If AUTH_TOKEN not configured, skip auth entirely
-  if (!process.env.AUTH_TOKEN) {
-    const response = NextResponse.next();
-    response.headers.set("x-pathname", pathname);
-    return response;
-  }
-
-  // Only check that cookie exists (actual token validation done by /api/auth/verify)
-  // Edge Runtime may not have access to process.env.AUTH_TOKEN reliably
+  // Only check cookie existence (actual token validation by /api/auth/verify)
   const hasCookie = request.cookies.has(AUTH_COOKIE_NAME);
 
   if (!hasCookie) {
