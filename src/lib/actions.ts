@@ -1786,6 +1786,7 @@ export async function copySection(sectionId: string): Promise<string | null> {
       // v0.3: ksampler params
       ksampler1: section.ksampler1 ?? undefined,
       ksampler2: section.ksampler2 ?? undefined,
+      upscaleFactor: section.upscaleFactor ?? undefined,
       loraConfig: section.loraConfig ?? undefined,
       extraParams: section.extraParams ?? undefined,
     },
@@ -1798,6 +1799,10 @@ export async function copySection(sectionId: string): Promise<string | null> {
         projectSectionId: newSection.id,
         type: block.type,
         sourceId: block.sourceId,
+        variantId: block.variantId,
+        categoryId: block.categoryId,
+        bindingId: block.bindingId,
+        groupBindingId: block.groupBindingId,
         label: block.label,
         positive: block.positive,
         negative: block.negative,
