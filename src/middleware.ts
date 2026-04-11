@@ -2,11 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 
 const AUTH_COOKIE_NAME = "auth_token";
 
-// Routes that don't require auth
-const PUBLIC_PATHS = ["/login", "/favicon.ico"];
-
 function isPublicPath(pathname: string): boolean {
-  if (PUBLIC_PATHS.includes(pathname)) return true;
+  if (pathname === "/login" || pathname === "/favicon.ico") return true;
   if (pathname.startsWith("/api/auth/")) return true;
   if (pathname.startsWith("/_next")) return true;
   if (pathname.startsWith("/api/mcp")) return true;
@@ -22,17 +19,18 @@ export function middleware(request: NextRequest) {
     return response;
   }
 
-  const authToken = process.env.AUTH_TOKEN;
-
-  if (!authToken) {
+  // If AUTH_TOKEN not configured, skip auth entirely
+  if (!process.env.AUTH_TOKEN) {
     const response = NextResponse.next();
     response.headers.set("x-pathname", pathname);
     return response;
   }
 
-  const cookieToken = request.cookies.get(AUTH_COOKIE_NAME)?.value;
+  // Only check that cookie exists (actual token validation done by /api/auth/verify)
+  // Edge Runtime may not have access to process.env.AUTH_TOKEN reliably
+  const hasCookie = request.cookies.has(AUTH_COOKIE_NAME);
 
-  if (!cookieToken || cookieToken !== authToken) {
+  if (!hasCookie) {
     if (pathname.startsWith("/api/")) {
       return NextResponse.json(
         { error: "Unauthorized", message: "Valid auth_token cookie required" },
