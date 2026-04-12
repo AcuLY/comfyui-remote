@@ -185,9 +185,9 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns, initialF
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <div className="text-sm font-semibold text-white">{run.projectTitle}</div>
-                      <div className="mt-1 text-xs text-zinc-400">{run.presetNames.join(" · ") || run.sectionName}</div>
-                    </div>
-                    <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-[11px] text-emerald-300">{run.status}</span>
+                    <div className="mt-1 text-xs text-zinc-400">{run.sectionName}{run.presetNames.length > 0 ? ` · ${run.presetNames.join(" · ")}` : ""}</div>
+                  </div>
+                  <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-[11px] text-emerald-300">{run.status}</span>
                   </div>
                   <div className="mt-3 grid grid-cols-3 gap-2 text-xs text-zinc-400 lg:grid-cols-6">
                     <div className="rounded-xl bg-white/[0.03] px-3 py-2">
@@ -230,7 +230,7 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns, initialF
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <div className="text-sm font-semibold text-white">{run.projectTitle}</div>
-                    <div className="mt-1 text-xs text-zinc-400">{run.presetNames.join(" · ") || run.sectionName}</div>
+                    <div className="mt-1 text-xs text-zinc-400">{run.sectionName}{run.presetNames.length > 0 ? ` · ${run.presetNames.join(" · ")}` : ""}</div>
                   </div>
                   <span className={`rounded-full border px-2 py-1 text-[11px] ${
                     run.status === "running"
@@ -292,7 +292,7 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns, initialF
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <div className="text-sm font-semibold text-white">{run.projectTitle}</div>
-                    <div className="mt-1 text-xs text-zinc-400">{run.presetNames.join(" · ") || run.sectionName}</div>
+                    <div className="mt-1 text-xs text-zinc-400">{run.sectionName}{run.presetNames.length > 0 ? ` · ${run.presetNames.join(" · ")}` : ""}</div>
                   </div>
                   <span className="rounded-full border border-red-500/20 bg-red-500/10 px-2 py-1 text-[11px] text-red-300">
                     <AlertTriangle className="mr-1 inline size-3" />

@@ -798,7 +798,7 @@ function ImportPresetPanel({
       </div>
 
       {/* Content: presets or groups depending on category type */}
-      <div className="max-h-40 overflow-y-auto space-y-1">
+      <div className="max-h-64 overflow-y-auto space-y-1">
         {/* Breadcrumb / back button (hidden during search) */}
         {!searchQuery.trim() && currentFolderId !== null && (
           <button
