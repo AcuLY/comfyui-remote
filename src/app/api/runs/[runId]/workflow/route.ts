@@ -14,12 +14,13 @@ export async function GET(
     return NextResponse.json({ error: "No workflow data" }, { status: 404 });
   }
   const rawName = run.projectSection?.name ?? runId;
+  // RFC 5987: filename* for UTF-8 names; filename must be ASCII-only
+  const asciiName = `workflow-${runId}.json`;
   const encodedName = encodeURIComponent(rawName);
-  const filename = `workflow-${rawName}.json`;
   return new NextResponse(JSON.stringify(run.submittedPrompt, null, 2), {
     headers: {
       "Content-Type": "application/json",
-      "Content-Disposition": `attachment; filename="${filename}"; filename*=UTF-8''${encodedName}.json`,
+      "Content-Disposition": `attachment; filename="${asciiName}"; filename*=UTF-8''${encodedName}.json`,
     },
   });
 }
