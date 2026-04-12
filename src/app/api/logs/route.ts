@@ -148,6 +148,52 @@ function getLogFilePaths(): string[] {
   return paths;
 }
 
+/**
+ * Read the server.log file (npm start stdout/stderr redirect).
+ * Tries common locations for the redirected output.
+ */
+function getConsoleLogs(linesParam: string | null) {
+  const maxLines = Math.min(
+    linesParam ? parseInt(linesParam, 10) || 200 : 200,
+    MAX_LINES,
+  );
+
+  const candidates = [
+    process.cwd() + "/server.log",
+    process.cwd() + "/logs/server.log",
+  ];
+
+  for (const filePath of candidates) {
+    try {
+      if (!fs.existsSync(filePath)) continue;
+      const content = fs.readFileSync(filePath, "utf-8");
+      const allLines = content.split("\n").filter((l) => l.trim());
+      const entries = allLines
+        .slice(-maxLines)
+        .map((line) => ({
+          timestamp: new Date().toISOString(),
+          level: "info" as LogLevel,
+          message: line,
+          raw: line,
+        }));
+      return ok({
+        source: "console",
+        file: filePath,
+        entries,
+      });
+    } catch {
+      continue;
+    }
+  }
+
+  return ok({
+    source: "console",
+    file: null,
+    entries: [],
+    message: "server.log not found. Ensure the app is started with output redirected (e.g. npm run start > server.log 2>&1).",
+  });
+}
+
 export async function GET(request: NextRequest) {
   const log = createRequestLogger(request, "logs-api");
 
@@ -157,6 +203,12 @@ export async function GET(request: NextRequest) {
   const levelParam = url.searchParams.get("level");
   const moduleParam = url.searchParams.get("module");
   const sinceParam = url.searchParams.get("since");
+  const sourceParam = url.searchParams.get("source");
+
+  // Console log source: read server.log (npm start stdout/stderr redirect)
+  if (sourceParam === "console") {
+    return getConsoleLogs(linesParam);
+  }
 
   // Validate lines
   let lines = DEFAULT_LINES;

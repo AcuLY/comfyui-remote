@@ -75,13 +75,18 @@ export default function LogsPage() {
   const [moduleFilter, setModuleFilter] = useState("");
   const [levelFilter, setLevelFilter] = useState("");
   const [autoScroll, setAutoScroll] = useState(true);
+  const [logSource, setLogSource] = useState<"app" | "console">("app");
   const logContainerRef = useRef<HTMLDivElement>(null);
 
   const fetchLogs = useCallback(async () => {
     try {
       const params = new URLSearchParams({ lines: "300" });
-      if (moduleFilter) params.set("module", moduleFilter);
-      if (levelFilter) params.set("level", levelFilter);
+      if (logSource === "console") {
+        params.set("source", "console");
+      } else {
+        if (moduleFilter) params.set("module", moduleFilter);
+        if (levelFilter) params.set("level", levelFilter);
+      }
       const res = await fetch(`/api/logs?${params.toString()}`);
       if (!res.ok) return;
       const json = await res.json();
@@ -93,7 +98,7 @@ export default function LogsPage() {
     } finally {
       setLoading(false);
     }
-  }, [moduleFilter, levelFilter]);
+  }, [moduleFilter, levelFilter, logSource]);
 
   useEffect(() => {
     fetchLogs();
@@ -137,7 +142,28 @@ export default function LogsPage() {
           </button>
         }
       >
-        {/* Filters */}
+        {/* Source tabs */}
+        <div className="mb-3 flex items-center gap-1 rounded-xl border border-white/10 bg-white/[0.03] p-1">
+          {([
+            { key: "app" as const, label: "应用日志" },
+            { key: "console" as const, label: "控制台输出" },
+          ]).map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setLogSource(tab.key)}
+              className={`rounded-lg px-3 py-1.5 text-xs transition ${
+                logSource === tab.key
+                  ? "bg-sky-500/20 text-sky-300"
+                  : "text-zinc-400 hover:bg-white/[0.06] hover:text-zinc-200"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Filters (only for app logs) */}
+        {logSource === "app" && (
         <div className="mb-3 flex flex-wrap gap-2">
           <select
             value={moduleFilter}
@@ -162,11 +188,12 @@ export default function LogsPage() {
             ))}
           </select>
         </div>
+        )}
 
         {/* Log viewer */}
         {logs.length === 0 ? (
           <p className="text-xs text-zinc-600 py-4 text-center">
-            {loading ? "加载中..." : "暂无日志 (需要启用 LOG_ENABLE_FILE=true)"}
+            {loading ? "加载中..." : logSource === "console" ? "未找到 server.log（需要用 npm run start > server.log 2>&1 启动）" : "暂无日志 (需要启用 LOG_ENABLE_FILE=true)"}
           </p>
         ) : (
           <div
@@ -174,27 +201,33 @@ export default function LogsPage() {
             onScroll={handleLogScroll}
             className="max-h-[70vh] overflow-y-auto rounded-xl border border-white/5 bg-black/30 p-3 font-mono text-[11px] leading-5"
           >
-            {logs.map((entry, i) => (
-              <div key={i} className={levelColor(entry.level)}>
+            {logs.map((entry, i) => {
+              // For console logs, detect error lines by keywords
+              const isConsoleError = logSource === "console" && (
+                /error|Error|ERRNO|TypeError|failed/i.test(entry.message)
+              );
+              return (
+              <div key={i} className={isConsoleError ? "text-red-400/80" : levelColor(entry.level)}>
                 <span className="text-zinc-600">{formatTimestamp(entry.timestamp)}</span>
                 {" "}
-                <span className={`font-semibold ${levelColor(entry.level)}`}>
-                  {entry.level.toUpperCase().padEnd(5)}
+                <span className={`font-semibold ${isConsoleError ? "text-red-400/80" : levelColor(entry.level)}`}>
+                  {(isConsoleError ? "ERROR" : entry.level.toUpperCase()).padEnd(5)}
                 </span>
                 {" "}
                 {entry.context?.module ? (
                   <span className="text-sky-400/70">[{String(entry.context.module)}]</span>
                 ) : null}
                 {" "}
-                <span>{entry.message}</span>
-                <span className="text-zinc-600">{formatContext(entry)}</span>
-                {entry.error && (
+                <span className="whitespace-pre-wrap break-all">{entry.message}</span>
+                {!logSource && <span className="text-zinc-600">{formatContext(entry)}</span>}
+                {!logSource && entry.error && (
                   <div className="ml-4 text-red-400/60">
                     {entry.error.name}: {entry.error.message}
                   </div>
                 )}
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </SectionCard>
