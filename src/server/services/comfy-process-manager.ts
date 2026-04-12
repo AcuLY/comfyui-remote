@@ -221,6 +221,11 @@ class ComfyProcessManager {
   // -------------------------------------------------------------------------
 
   private async spawnProcess(): Promise<{ ok: boolean; message: string }> {
+    if (this.state === "stopped") {
+      this.log("[manager] spawnProcess cancelled: process is stopped");
+      return { ok: false, message: "Process is stopped" };
+    }
+
     this.setState("starting");
     this.errorMessage = null;
 
@@ -634,6 +639,11 @@ class ComfyProcessManager {
 
     // Small delay before restart
     setTimeout(() => {
+      // Don't restart if user has stopped the process in the meantime
+      if (this.state === "stopped") {
+        this.log("[manager] Auto-restart cancelled: process was stopped");
+        return;
+      }
       this.spawnProcess().catch((err) => {
         this.log(`[manager] Restart failed: ${String(err)}`);
       });
