@@ -47,6 +47,8 @@ export type WorkflowBuildInput = {
   ksampler2: KSamplerParams;
   /** e.g. "MyProject/1.close_up_shot" */
   outputPath: string;
+  /** Run ID used as unique filename_prefix to avoid collisions */
+  runId?: string;
 };
 
 // ---------------------------------------------------------------------------
@@ -199,6 +201,8 @@ export function buildWorkflowPrompt(input: WorkflowBuildInput): Record<string, u
   // 9. Output path — node 515 (Image Save)
   // Normalize path to Unix-style separators for ComfyUI API (prevent [Errno 22] on Windows)
   nodeInputs(wf, "515").output_path = input.outputPath.replace(/\\/g, "/");
+  // Use a unique filename_prefix to avoid collisions with manual ComfyUI runs
+  nodeInputs(wf, "515").filename_prefix = input.runId ?? "";
 
   return wf;
 }

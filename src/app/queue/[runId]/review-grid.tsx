@@ -1,12 +1,12 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Check, ChevronRight, Expand, Trash2 } from "lucide-react";
 import { keepImages, trashImages } from "@/lib/actions";
 import type { ReviewImage } from "@/lib/types";
+import { ImageLightbox } from "./image-lightbox";
 
 type LastAction = "keep" | "trash";
 
@@ -24,6 +24,7 @@ export function ReviewGrid({
   const [isPending, startTransition] = useTransition();
   /** Tracks the last bulk action so we can offer the complementary "handle rest" button. */
   const [lastAction, setLastAction] = useState<LastAction | null>(null);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   function toggleSelect(id: string) {
     setSelected((prev) => {
@@ -166,17 +167,20 @@ export function ReviewGrid({
                 >
                   {image.status}
                 </span>
-                <Link
-                  href={`/queue/${runId}/images/${image.id}`}
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setLightboxSrc(image.full); }}
                   className="inline-flex items-center gap-1 text-zinc-200 hover:text-white"
                 >
                   <Expand className="size-3" /> 查看
-                </Link>
+                </button>
               </div>
             </div>
           );
         })}
       </div>
+
+      <ImageLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />
 
       {/* 操作按钮 */}
       <div className="mt-4 grid grid-cols-2 gap-3">

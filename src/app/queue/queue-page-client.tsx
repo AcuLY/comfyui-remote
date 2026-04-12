@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useTransition, useCallback, useRef } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { ChevronRight, Clock3, Eye, Sparkles, Loader2, RefreshCw, CheckCircle2, AlertTriangle, XCircle } from "lucide-react";
 import { toast } from "sonner";
@@ -182,25 +183,40 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns, initialF
                   href={`/queue/${run.id}`}
                   className="block w-full rounded-xl border border-white/10 bg-white/[0.03] p-3 transition hover:bg-white/[0.06] lg:max-w-lg"
                 >
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <div className="text-sm font-semibold text-white">{run.projectTitle}</div>
-                    <div className="mt-1 text-xs text-zinc-400">{run.sectionName}{run.presetNames.length > 0 ? ` · ${run.presetNames.join(" · ")}` : ""}</div>
-                  </div>
-                  <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-[11px] text-emerald-300">{run.status}</span>
-                  </div>
-                  <div className="mt-3 grid grid-cols-3 gap-2 text-xs text-zinc-400 lg:grid-cols-6">
-                    <div className="rounded-xl bg-white/[0.03] px-3 py-2">
-                      <CheckCircle2 className="mb-1 size-3.5" />
-                      {formatTimeAgo(run.finishedAt) ?? run.createdAt}
-                    </div>
-                    <div className="rounded-xl bg-white/[0.03] px-3 py-2">
-                      <Eye className="mb-1 size-3.5" />
-                      待审核 {run.pendingCount}
-                    </div>
-                    <div className="rounded-xl bg-white/[0.03] px-3 py-2">
-                      <Sparkles className="mb-1 size-3.5" />
-                      共 {run.totalCount} 张
+                  <div className="flex items-start gap-3">
+                    {run.thumbnailUrl && (
+                      <div className="relative h-16 w-12 flex-shrink-0 overflow-hidden rounded-lg bg-white/[0.05]">
+                        <Image
+                          src={run.thumbnailUrl}
+                          alt=""
+                          fill
+                          className="object-cover"
+                          unoptimized
+                        />
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-semibold text-white">{run.projectTitle}</div>
+                          <div className="mt-1 truncate text-xs text-zinc-400">{run.sectionName}{run.presetNames.length > 0 ? ` · ${run.presetNames.join(" · ")}` : ""}</div>
+                        </div>
+                        <span className="flex-shrink-0 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-[11px] text-emerald-300">{run.status}</span>
+                      </div>
+                      <div className="mt-3 grid grid-cols-3 gap-2 text-xs text-zinc-400 lg:grid-cols-6">
+                        <div className="rounded-xl bg-white/[0.03] px-3 py-2">
+                          <CheckCircle2 className="mb-1 size-3.5" />
+                          {formatTimeAgo(run.finishedAt) ?? run.createdAt}
+                        </div>
+                        <div className="rounded-xl bg-white/[0.03] px-3 py-2">
+                          <Eye className="mb-1 size-3.5" />
+                          待审核 {run.pendingCount}
+                        </div>
+                        <div className="rounded-xl bg-white/[0.03] px-3 py-2">
+                          <Sparkles className="mb-1 size-3.5" />
+                          共 {run.totalCount} 张
+                        </div>
+                      </div>
                     </div>
                   </div>
                   <div className="mt-3 flex items-center justify-end text-xs text-sky-300">

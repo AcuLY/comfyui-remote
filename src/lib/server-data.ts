@@ -66,6 +66,11 @@ export async function getQueueRuns(): Promise<QueueRun[]> {
   return runs
     .map((run) => {
       const presetNames = extractPresetNames(run.project.presetBindings as PresetBindingJson | null, presetMap);
+      // Extract thumbnail from first image
+      const firstImage = run.images[0] ?? null;
+      const thumbnailUrl = firstImage
+        ? (toImageUrl(firstImage.thumbPath ?? firstImage.filePath) ?? null)
+        : null;
       return {
         id: run.id,
         presetNames,
@@ -79,6 +84,7 @@ export async function getQueueRuns(): Promise<QueueRun[]> {
         pendingCount: run.images.filter((img) => img.reviewStatus === "pending").length,
         totalCount: run.images.length,
         status: run.status as QueueRun["status"],
+        thumbnailUrl,
       };
     })
     .filter((run) => run.pendingCount > 0);

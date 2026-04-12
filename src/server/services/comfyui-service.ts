@@ -507,6 +507,7 @@ async function resolveStandardWorkflowPrompt(
     ksampler1,
     ksampler2,
     outputPath: `${promptDraft.metadata.projectTitle}/${sortOrder}.${sectionSlug}`,
+    runId: promptDraft.metadata.runId,
   };
 
   return buildWorkflowPrompt(buildInput);
