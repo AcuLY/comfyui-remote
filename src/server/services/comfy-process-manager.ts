@@ -529,9 +529,30 @@ class ComfyProcessManager {
         }
         return { ok: true, latencyMs };
       }
+      // Update internal state as if a periodic check failed
+      this.lastHealthCheck = new Date().toISOString();
+      this.lastHealthOk = false;
+      this.consecutiveHealthFailures += 1;
+      if (this.state === "running") {
+        this.log(`[health] Manual probe: HTTP ${res.status} (${this.consecutiveHealthFailures} consecutive failures)`);
+        if (this.consecutiveHealthFailures >= ComfyProcessManager.UNHEALTHY_THRESHOLD) {
+          this.setState("unhealthy");
+        }
+      }
       return { ok: false, latencyMs, error: `HTTP ${res.status}` };
     } catch (err) {
-      return { ok: false, latencyMs: Date.now() - start, error: String(err) };
+      const latencyMs = Date.now() - start;
+      // Update internal state as if a periodic check failed
+      this.lastHealthCheck = new Date().toISOString();
+      this.lastHealthOk = false;
+      this.consecutiveHealthFailures += 1;
+      if (this.state === "running") {
+        this.log(`[health] Manual probe: ComfyUI is unreachable (${this.consecutiveHealthFailures} consecutive failures)`);
+        if (this.consecutiveHealthFailures >= ComfyProcessManager.UNHEALTHY_THRESHOLD) {
+          this.setState("unhealthy");
+        }
+      }
+      return { ok: false, latencyMs, error: String(err) };
     }
   }
 
