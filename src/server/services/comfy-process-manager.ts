@@ -221,11 +221,6 @@ class ComfyProcessManager {
   // -------------------------------------------------------------------------
 
   private async spawnProcess(): Promise<{ ok: boolean; message: string }> {
-    if (this.state === "stopped") {
-      this.log("[manager] spawnProcess cancelled: process is stopped");
-      return { ok: false, message: "Process is stopped" };
-    }
-
     this.setState("starting");
     this.errorMessage = null;
 
