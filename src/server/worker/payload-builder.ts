@@ -39,7 +39,7 @@ function composePositivePrompt(snapshot: NormalizedResolvedConfigSnapshot) {
     snapshot.section.positivePrompt,
   ]
     .filter((value): value is string => Boolean(value && value.trim()))
-    .join(", ");
+    .join(" BREAK ");
 }
 
 export function normalizeResolvedConfigSnapshot(

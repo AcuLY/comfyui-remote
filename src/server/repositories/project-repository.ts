@@ -371,8 +371,8 @@ function buildResolvedPromptDraft(
       .filter((v): v is string => Boolean(v && v.trim()));
 
     return {
-      positive: positiveParts.join(", "),
-      negative: negativeParts.length > 0 ? negativeParts.join(", ") : null,
+      positive: positiveParts.join(" BREAK "),
+      negative: negativeParts.length > 0 ? negativeParts.join(" BREAK ") : null,
     };
   }
 
