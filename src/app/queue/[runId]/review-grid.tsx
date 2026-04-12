@@ -6,7 +6,7 @@ import { useState, useTransition } from "react";
 import { Check, ChevronRight, Expand, Trash2 } from "lucide-react";
 import { keepImages, trashImages } from "@/lib/actions";
 import type { ReviewImage } from "@/lib/types";
-import { ImageLightbox, useLightboxHover } from "./image-lightbox";
+import { ImageLightbox, useLightbox } from "./image-lightbox";
 
 type LastAction = "keep" | "trash";
 
@@ -24,7 +24,7 @@ export function ReviewGrid({
   const [isPending, startTransition] = useTransition();
   /** Tracks the last bulk action so we can offer the complementary "handle rest" button. */
   const [lastAction, setLastAction] = useState<LastAction | null>(null);
-  const { lightboxSrc, handleMouseEnter, handleMouseLeave, handleClick, closeLightbox } = useLightboxHover();
+  const { src: lightboxSrc, visible: lightboxVisible, open: openLightbox, close: closeLightbox } = useLightbox();
 
   function toggleSelect(id: string) {
     setSelected((prev) => {
@@ -130,8 +130,6 @@ export function ReviewGrid({
             <div
               key={image.id}
               className={`group relative overflow-hidden rounded-2xl border bg-[var(--panel-soft)] transition ${isSelected ? "border-sky-400/50 ring-2 ring-sky-400/30" : "border-white/10"}`}
-              onMouseEnter={() => handleMouseEnter(image.full)}
-              onMouseLeave={handleMouseLeave}
             >
               <div className="absolute left-2 top-2 z-10 flex items-center gap-2">
                 <button
@@ -171,7 +169,8 @@ export function ReviewGrid({
                 </span>
                 <button
                   type="button"
-                  onClick={(e) => { e.stopPropagation(); handleClick(image.full); }}
+                  onClick={(e) => { e.stopPropagation(); openLightbox(image.full); }}
+                  onMouseEnter={() => openLightbox(image.full)}
                   className="inline-flex items-center gap-1 text-zinc-200 hover:text-white"
                 >
                   <Expand className="size-3" /> 查看
@@ -182,7 +181,7 @@ export function ReviewGrid({
         })}
       </div>
 
-      <ImageLightbox src={lightboxSrc} onClose={closeLightbox} />
+      <ImageLightbox src={lightboxSrc} visible={lightboxVisible} onClose={closeLightbox} />
 
       {/* 操作按钮 */}
       <div className="mt-4 grid grid-cols-2 gap-3">

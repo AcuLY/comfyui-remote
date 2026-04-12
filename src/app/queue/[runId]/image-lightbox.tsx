@@ -1,16 +1,17 @@
 "use client";
 
-import { useEffect, useCallback, useRef, useState } from "react";
-import Image from "next/image";
+import { useEffect, useCallback, useState } from "react";
 
 export function ImageLightbox({
   src,
   alt,
   onClose,
+  visible,
 }: {
   src: string | null;
   alt?: string;
   onClose?: () => void;
+  visible: boolean;
 }) {
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -29,30 +30,33 @@ export function ImageLightbox({
     };
   }, [src, handleKeyDown]);
 
-  if (!src) return null;
-
   return (
-    // Backdrop: fully opaque black, clicking here closes
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black"
-      onClick={onClose}
+      className={`fixed inset-0 z-50 flex items-center justify-center transition-opacity duration-200 ${
+        visible ? "opacity-100" : "pointer-events-none opacity-0"
+      }`}
     >
-      {/* Inner container: semi-transparent, clicking here also closes.
-          This is the "black bar" area caused by image aspect ratio. */}
+      {/* Backdrop: fully opaque */}
+      <div className="absolute inset-0 bg-black" onClick={onClose} />
+      {/* Semi-transparent zone (black bars from aspect ratio) */}
       <div
         className="absolute inset-0 flex items-center justify-center bg-black/60"
         onClick={onClose}
       >
-        {/* Image wrapper: click stops propagation so image area doesn't close */}
+        {/* Image container: keeps lightbox open while mouse is here */}
         <div
-          className="relative max-h-[90vh] max-w-[90vw]"
+          className={`relative max-h-[90vh] max-w-[90vw] rounded-lg shadow-2xl transition-all duration-200 ${
+            visible ? "scale-100 opacity-100" : "scale-95 opacity-0"
+          }`}
           onClick={(e) => e.stopPropagation()}
+          onMouseLeave={onClose}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={src}
+            src={src ?? ""}
             alt={alt ?? "Preview"}
-            className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain"
+            className="max-h-[90vh] max-w-[90vw] rounded-lg"
+            draggable={false}
           />
         </div>
       </div>
@@ -61,57 +65,26 @@ export function ImageLightbox({
 }
 
 /**
- * A hook that returns hover state for the lightbox trigger.
- * On desktop: hover opens, mouse leave closes.
- * On mobile (touch): tap opens, tap outside closes.
+ * Lightbox state hook.
+ * - open(src): programmatically open
+ * - close(): programmatically close
+ * - visible: whether lightbox is currently shown (for transition)
  */
-export function useLightboxHover() {
-  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
-  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+export function useLightbox() {
+  const [src, setSrc] = useState<string | null>(null);
+  const [visible, setVisible] = useState(false);
 
-  const openLightbox = useCallback((src: string) => {
-    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
-    setLightboxSrc(src);
+  const open = useCallback((imageSrc: string) => {
+    setSrc(imageSrc);
+    // Delay visible for enter transition
+    requestAnimationFrame(() => setVisible(true));
   }, []);
 
-  const closeLightbox = useCallback(() => {
-    setLightboxSrc(null);
+  const close = useCallback(() => {
+    setVisible(false);
+    // Wait for exit transition before clearing src
+    setTimeout(() => setSrc(null), 200);
   }, []);
 
-  const handleMouseEnter = useCallback(
-    (src: string) => {
-      // Only use hover on devices with fine pointer (desktop)
-      if (window.matchMedia("(hover: hover)").matches) {
-        openLightbox(src);
-      }
-    },
-    [openLightbox],
-  );
-
-  const handleMouseLeave = useCallback(() => {
-    if (window.matchMedia("(hover: hover)").matches) {
-      // Small delay to avoid flicker when moving between elements
-      hoverTimerRef.current = setTimeout(() => {
-        closeLightbox();
-      }, 150);
-    }
-  }, [closeLightbox]);
-
-  const handleClick = useCallback(
-    (src: string) => {
-      // On touch devices, toggle
-      if (!window.matchMedia("(hover: hover)").matches) {
-        setLightboxSrc((prev) => (prev === src ? null : src));
-      }
-    },
-    [],
-  );
-
-  useEffect(() => {
-    return () => {
-      if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
-    };
-  }, []);
-
-  return { lightboxSrc, handleMouseEnter, handleMouseLeave, handleClick, closeLightbox };
+  return { src, visible, open, close };
 }
