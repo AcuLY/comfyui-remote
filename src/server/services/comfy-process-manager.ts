@@ -314,27 +314,40 @@ class ComfyProcessManager {
   private killProcess() {
     if (!this.process) return;
 
-    this.log("[manager] Sending SIGTERM...");
+    const pid = this.process.pid;
+    this.log(`[manager] Killing process tree (pid=${pid})...`);
     this.setState("stopped");
 
     try {
-      this.process.kill("SIGTERM");
+      if (process.platform === "win32") {
+        // On Windows with shell:true, SIGTERM only kills cmd.exe, not the Python child.
+        // Use taskkill /T to kill the entire process tree.
+        const { execSync } = require("child_process") as typeof import("child_process");
+        try {
+          execSync(`taskkill /T /F /PID ${pid}`, { stdio: "ignore" });
+          this.log(`[manager] taskkill /T /F /PID ${pid} succeeded`);
+        } catch {
+          // Process may already be dead
+          this.log(`[manager] taskkill failed (process may already be dead)`);
+        }
+      } else {
+        this.process.kill("SIGTERM");
+        // Force kill after 5 seconds if still alive
+        const child = this.process;
+        setTimeout(() => {
+          try {
+            if (child && !child.killed) {
+              this.log("[manager] Force killing with SIGKILL...");
+              child.kill("SIGKILL");
+            }
+          } catch {
+            // Ignore
+          }
+        }, 5000);
+      }
     } catch {
       // Process may already be dead
     }
-
-    // Force kill after 5 seconds if still alive
-    const child = this.process;
-    setTimeout(() => {
-      try {
-        if (child && !child.killed) {
-          this.log("[manager] Force killing with SIGKILL...");
-          child.kill("SIGKILL");
-        }
-      } catch {
-        // Ignore
-      }
-    }, 5000);
   }
 
   /**
