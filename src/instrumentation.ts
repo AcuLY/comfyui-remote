@@ -6,8 +6,6 @@
  * in "running" state from a previous server session crash.
  */
 
-import { db } from "@/lib/db";
-
 const ORPHANED_RUN_THRESHOLD_MS = 30 * 60 * 1000; // 30 minutes
 
 export async function register() {
@@ -31,6 +29,7 @@ export async function register() {
  */
 async function cleanupOrphanedRuns() {
   try {
+    const { db } = await import("@/lib/db");
     const cutoff = new Date(Date.now() - ORPHANED_RUN_THRESHOLD_MS);
 
     const result = await db.run.updateMany({
