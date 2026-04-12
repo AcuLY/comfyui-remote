@@ -518,8 +518,8 @@ class ComfyProcessManager {
         this.lastHealthCheck = new Date().toISOString();
         this.lastHealthOk = true;
         this.consecutiveHealthFailures = 0;
-        if (this.state === "starting" || this.state === "unhealthy" || this.state === "restarting") {
-          this.log("[health] Manual probe: ComfyUI is responsive ✓");
+        if (this.state !== "running") {
+          this.log(`[health] Manual probe: ComfyUI is responsive ✓, transitioning from ${this.state} → running`);
           this.setState("running");
         }
         return { ok: true, latencyMs };
