@@ -499,6 +499,7 @@ export async function updateCategorySortOrders(dimension: SortDimension, ids: st
 
 export type PresetInput = {
   categoryId: string;
+  folderId?: string | null;
   name: string;
   slug: string;
   notes?: string | null;

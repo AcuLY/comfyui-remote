@@ -1132,6 +1132,7 @@ function PresetList({
       {isCreating && (
         <PresetForm
           categoryId={category.id}
+          folderId={currentFolderId}
           preset={null}
           allCategories={allCategories}
           onSave={(data, variantDrafts) => {
@@ -1555,6 +1556,7 @@ type VariantDraft = {
 
 function PresetForm({
   categoryId,
+  folderId,
   preset,
   onSave,
   onDelete,
@@ -1563,9 +1565,11 @@ function PresetForm({
   allCategories,
 }: {
   categoryId: string;
+  folderId?: string | null;
   preset: PresetFull | null;
   onSave: (data: {
     categoryId: string;
+    folderId?: string | null;
     name: string;
     slug: string;
     notes?: string | null;
@@ -1714,6 +1718,7 @@ function PresetForm({
     // Pass preset data + variant drafts to parent for saving
     onSave({
       categoryId,
+      folderId,
       name: name.trim(),
       slug: slug.trim(),
       notes: notes.trim() || null,
