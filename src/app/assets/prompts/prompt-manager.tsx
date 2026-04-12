@@ -29,13 +29,12 @@ import {
   Pencil,
   Settings2,
   Loader2,
-  ChevronRight,
-  ChevronLeft,
   FolderOpen,
   FolderPlus,
   Folder,
   FolderInput,
   ChevronDown,
+  ChevronRight,
   ClipboardCopy,
   CheckSquare,
   Square,
@@ -70,6 +69,7 @@ import {
   deletePresetFolder,
   moveToFolder,
   reorderPresetFolders,
+  reorderPresetVariants,
 } from "@/lib/actions";
 import { parseLoraBindings, serializeLoraBindings } from "@/lib/lora-types";
 import { PresetCascadePicker } from "@/components/preset-cascade-picker";
@@ -1488,6 +1488,57 @@ function LinkedVariantsEditor({
 }
 
 // ---------------------------------------------------------------------------
+// SortableVariantBar — draggable bar for a single variant in PresetForm
+// ---------------------------------------------------------------------------
+
+function SortableVariantBar({
+  sortId,
+  name,
+  isSelected,
+  onSelect,
+}: {
+  sortId: string;
+  name: string;
+  isSelected: boolean;
+  onSelect: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: sortId });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      role="button"
+      tabIndex={0}
+      onClick={onSelect}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") onSelect();
+      }}
+      className={`flex items-center gap-1.5 rounded-lg border p-2 cursor-pointer transition ${
+        isSelected
+          ? "border-sky-500/30 bg-sky-500/10"
+          : "border-white/5 bg-white/[0.02] hover:border-white/10"
+      }`}
+    >
+      <button
+        type="button"
+        className="cursor-grab touch-none text-zinc-600 hover:text-zinc-400"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="size-3" />
+      </button>
+      <div className="flex-1 min-w-0 truncate text-xs text-zinc-300">{name || "未命名变体"}</div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // PresetForm — create/edit form for a preset with inline variant editing
 // ---------------------------------------------------------------------------
 
@@ -1552,6 +1603,15 @@ function PresetForm({
   });
   const [currentIdx, setCurrentIdx] = useState(0);
 
+  // DnD for variant reordering
+  const dndId = useId();
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+  );
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  const variantIds = useMemo(() => variants.map((_, i) => `variant-sort-${i}`), [variants]);
   const current = variants[currentIdx];
   const totalVariants = variants.length;
 
@@ -1617,6 +1677,39 @@ function PresetForm({
     setCurrentIdx(Math.min(currentIdx, updated.length - 1));
   }
 
+  function handleVariantDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIdx = variantIds.indexOf(active.id as string);
+    const newIdx = variantIds.indexOf(over.id as string);
+    if (oldIdx === -1 || newIdx === -1) return;
+
+    const reordered = arrayMove(variants, oldIdx, newIdx);
+    setVariants(reordered);
+
+    // Follow the selected variant if it moved
+    if (oldIdx === currentIdx) {
+      setCurrentIdx(newIdx);
+    } else if (oldIdx < currentIdx && newIdx >= currentIdx) {
+      setCurrentIdx(currentIdx - 1);
+    } else if (oldIdx > currentIdx && newIdx <= currentIdx) {
+      setCurrentIdx(currentIdx + 1);
+    }
+
+    // Persist order for existing variants with real DB ids
+    if (preset) {
+      const idsWithOrder = reordered
+        .filter((v) => v.id)
+        .map((v) => v.id!);
+      if (idsWithOrder.length > 0) {
+        startVariantTransition(async () => {
+          await reorderPresetVariants(preset.id, idsWithOrder);
+        });
+      }
+    }
+  }
+
   async function handleSubmit() {
     // Pass preset data + variant drafts to parent for saving
     onSave({
@@ -1674,50 +1767,60 @@ function PresetForm({
 
       {/* ── Variant section ── */}
       <div className="border-t border-white/5 pt-3 space-y-2">
-        {/* Variant header: pagination + add/delete */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-medium text-zinc-400">
-              变体 {currentIdx + 1} / {totalVariants}
-            </span>
-            <div className="flex items-center gap-0.5">
-              <button
-                type="button"
-                disabled={currentIdx === 0}
-                onClick={() => setCurrentIdx(currentIdx - 1)}
-                className="rounded p-0.5 text-zinc-500 hover:bg-white/[0.06] hover:text-white disabled:opacity-30"
+        {/* Sortable variant list */}
+        <div className="space-y-1">
+          {mounted ? (
+            <DndContext
+              id={dndId}
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleVariantDragEnd}
+            >
+              <SortableContext items={variantIds} strategy={verticalListSortingStrategy}>
+                {variants.map((v, i) => (
+                  <SortableVariantBar
+                    key={variantIds[i]}
+                    sortId={variantIds[i]}
+                    name={v.name}
+                    isSelected={i === currentIdx}
+                    onSelect={() => setCurrentIdx(i)}
+                  />
+                ))}
+              </SortableContext>
+            </DndContext>
+          ) : (
+            variants.map((v, i) => (
+              <div
+                key={i}
+                className="flex items-center gap-1.5 rounded-lg border border-white/5 bg-white/[0.02] p-2"
               >
-                <ChevronLeft className="size-3.5" />
-              </button>
-              <button
-                type="button"
-                disabled={currentIdx >= totalVariants - 1}
-                onClick={() => setCurrentIdx(currentIdx + 1)}
-                className="rounded p-0.5 text-zinc-500 hover:bg-white/[0.06] hover:text-white disabled:opacity-30"
-              >
-                <ChevronRight className="size-3.5" />
-              </button>
-            </div>
-          </div>
-          <div className="flex items-center gap-1">
+                <GripVertical className="size-3 text-zinc-600" />
+                <div className="flex-1 min-w-0 truncate text-xs text-zinc-300">{v.name || "未命名变体"}</div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Add / Delete buttons */}
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={addVariant}
+            className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-1.5 py-0.5 text-[10px] text-zinc-400 hover:bg-white/[0.06]"
+          >
+            <Plus className="size-2.5" /> 添加
+          </button>
+          {totalVariants > 1 && (
             <button
               type="button"
-              onClick={addVariant}
-              className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-1.5 py-0.5 text-[10px] text-zinc-400 hover:bg-white/[0.06]"
+              onClick={removeCurrentVariant}
+              className="inline-flex items-center gap-1 rounded-lg bg-red-500/10 px-1.5 py-0.5 text-[10px] text-red-400 hover:bg-red-500/20"
             >
-              <Plus className="size-2.5" /> 添加
+              <Trash2 className="size-2.5" /> 删除
             </button>
-            {totalVariants > 1 && (
-              <button
-                type="button"
-                onClick={removeCurrentVariant}
-                className="inline-flex items-center gap-1 rounded-lg bg-red-500/10 px-1.5 py-0.5 text-[10px] text-red-400 hover:bg-red-500/20"
-              >
-                <Trash2 className="size-2.5" /> 删除
-              </button>
-            )}
-          </div>
+          )}
         </div>
+
 
         {/* Variant name + slug */}
         <div className="grid grid-cols-2 gap-2">
