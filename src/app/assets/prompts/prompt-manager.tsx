@@ -2199,6 +2199,7 @@ function GroupList({
       {showCreateForm && (
         <GroupCreateForm
           categoryId={category.id}
+          folderId={currentFolderId}
           slotTemplate={category.slotTemplate}
           allCategories={allCategories}
           allGroups={groups}
@@ -2472,6 +2473,7 @@ function SortableGroupMemberItem({
 
 function GroupCreateForm({
   categoryId,
+  folderId,
   slotTemplate,
   onSave,
   onCancel,
@@ -2480,8 +2482,9 @@ function GroupCreateForm({
   allGroups,
 }: {
   categoryId: string;
+  folderId?: string | null;
   slotTemplate: SlotTemplateDef[];
-  onSave: (data: { categoryId: string; name: string; slug: string }, members: Array<{ presetId?: string; variantId?: string; subGroupId?: string; slotCategoryId?: string }>) => void;
+  onSave: (data: { categoryId: string; folderId?: string | null; name: string; slug: string }, members: Array<{ presetId?: string; variantId?: string; subGroupId?: string; slotCategoryId?: string }>) => void;
   onCancel: () => void;
   isPending: boolean;
   allCategories: PresetCategoryFull[];
@@ -2727,7 +2730,7 @@ function GroupCreateForm({
           type="button"
           disabled={isPending || !canCreate}
           onClick={() => onSave(
-            { categoryId, name: name.trim(), slug: slug.trim() },
+            { categoryId, folderId, name: name.trim(), slug: slug.trim() },
             members.map((m) => ({ presetId: m.presetId, variantId: m.variantId, subGroupId: m.subGroupId, slotCategoryId: m.slotCategoryId })),
           )}
           className="inline-flex items-center gap-1 rounded-lg bg-sky-500/20 px-2 py-1 text-[11px] text-sky-300 hover:bg-sky-500/30 disabled:opacity-50"

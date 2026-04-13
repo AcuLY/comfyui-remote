@@ -915,6 +915,7 @@ export async function reorderPresetVariants(presetId: string, ids: string[]) {
 
 export type PresetGroupInput = {
   categoryId: string;
+  folderId?: string | null;
   name: string;
   slug: string;
   sortOrder?: number;
