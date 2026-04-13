@@ -144,14 +144,14 @@ export function ReviewGrid({
               </div>
               <button
                 onClick={() => toggleSelect(image.id)}
-                className="block w-full"
+                className="flex h-40 items-center justify-center bg-[var(--panel-soft)]"
               >
                 <Image
                   src={image.src}
                   alt={image.id}
                   width={400}
                   height={560}
-                  className="aspect-[3/4] w-full object-cover transition group-hover:scale-[1.02]"
+                  className="h-40 w-auto object-contain"
                   unoptimized
                 />
               </button>

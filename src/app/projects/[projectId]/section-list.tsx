@@ -375,7 +375,7 @@ function SortableSectionCard({
                 key={img.id}
                 href={section.latestRunId ? `/queue/${section.latestRunId}` : "#"}
                 onClick={(e) => e.stopPropagation()}
-                className={`relative shrink-0 overflow-hidden rounded-lg border transition hover:border-sky-500/40 ${
+                className={`flex h-[72px] w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg border transition hover:border-sky-500/40 ${
                   img.status === "kept"
                     ? "border-emerald-500/30"
                     : img.status === "trashed"
@@ -387,8 +387,8 @@ function SortableSectionCard({
                   src={img.src}
                   alt=""
                   width={56}
-                  height={80}
-                  className="h-[80px] w-[56px] object-cover"
+                  height={72}
+                  className="h-[72px] w-auto object-contain"
                   unoptimized
                 />
                 {img.status === "kept" && (

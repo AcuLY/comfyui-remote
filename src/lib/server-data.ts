@@ -189,7 +189,7 @@ export async function getReviewGroup(runId: string): Promise<ReviewGroup | null>
   const images: ReviewImage[] = run.images.map((img, index) => ({
     id: img.id,
     src: toImageUrl(img.thumbPath ?? img.filePath) ?? "",
-    full: toImageUrl(img.filePath) ?? "",
+    full: (toImageUrl(img.filePath) ?? "") + "?q=80",
     label: `${index + 1}`.padStart(2, "0"),
     status: img.reviewStatus as ReviewImage["status"],
   }));
@@ -436,7 +436,7 @@ export async function getSectionResults(sectionId: string): Promise<SectionResul
       .map((img) => ({
         id: img.id,
         src: toImageUrl(img.thumbPath ?? img.filePath) ?? "",
-        full: toImageUrl(img.filePath) ?? "",
+        full: (toImageUrl(img.filePath) ?? "") + "?q=80",
         status: img.reviewStatus as ReviewStatus,
         featured: img.featured,
       }));

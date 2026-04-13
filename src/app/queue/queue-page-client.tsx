@@ -194,13 +194,13 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns, initialF
                   {run.thumbnailUrls.length > 0 && (
                     <div className="mt-2.5 flex gap-1.5 overflow-x-auto scrollbar-none">
                       {run.thumbnailUrls.map((src, i) => (
-                        <div key={i} className="relative shrink-0 overflow-hidden rounded-lg border border-white/10">
+                        <div key={i} className="flex h-[72px] w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-white/10 bg-[var(--panel-soft)]">
                           <Image
                             src={src}
                             alt=""
                             width={56}
-                            height={80}
-                            className="h-[80px] w-[56px] object-cover"
+                            height={72}
+                            className="h-[72px] w-auto object-contain"
                             unoptimized
                           />
                         </div>
