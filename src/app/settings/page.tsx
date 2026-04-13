@@ -27,12 +27,12 @@ export default function SettingsPage() {
   return (
     <div className="space-y-4">
       <SectionCard title="设置" subtitle="系统配置。预制管理已移至底部导航「预制」页面。">
-        <div className="grid grid-cols-1 gap-2 justify-items-center lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-2 justify-items-center md:grid-cols-2">
           {settingsGroups.map(({ href, label, description, icon: Icon }) => (
             <Link
               key={href}
               href={href}
-              className="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3 transition hover:bg-white/[0.06] lg:max-w-lg"
+              className="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3 transition hover:bg-white/[0.06] md:max-w-[500px]"
             >
               <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-white/[0.06]">
                 <Icon className="size-4 text-sky-400" />

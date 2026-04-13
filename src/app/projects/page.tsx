@@ -18,12 +18,12 @@ export default async function ProjectsPage() {
         </Link>
       </div>
       <SectionCard title="项目" subtitle="点击卡片进入详情页，在详情页中编辑参数和管理小节。">
-        <div className="grid grid-cols-1 gap-2.5 justify-items-center lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-2.5 justify-items-center md:grid-cols-2">
           {projects.map((project) => (
             <Link
               key={project.id}
               href={`/projects/${project.id}`}
-              className="block w-full rounded-xl border border-white/10 bg-white/[0.03] p-3 transition hover:border-white/20 hover:bg-white/[0.06] lg:max-w-lg"
+              className="block w-full rounded-xl border border-white/10 bg-white/[0.03] p-3 transition hover:border-white/20 hover:bg-white/[0.06] md:max-w-[500px]"
             >
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0 flex-1">
