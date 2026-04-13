@@ -35,14 +35,15 @@ export function ImageLightbox({
       className={`fixed inset-0 z-50 flex items-center justify-center transition-opacity duration-200 ${
         visible ? "opacity-100" : "pointer-events-none opacity-0"
       }`}
+      onClick={(e) => {
+        e.preventDefault();
+        onClose?.();
+      }}
     >
       {/* Backdrop: fully opaque */}
-      <div className="absolute inset-0 bg-black" onClick={onClose} />
+      <div className="absolute inset-0 bg-black" />
       {/* Semi-transparent zone (black bars from aspect ratio) */}
-      <div
-        className="absolute inset-0 flex items-center justify-center bg-black/60"
-        onClick={onClose}
-      >
+      <div className="absolute inset-0 flex items-center justify-center bg-black/60">
         {/* Image container: keeps lightbox open while mouse is here */}
         <div
           className={`relative max-h-[90vh] max-w-[90vw] rounded-lg shadow-2xl transition-all duration-200 ${
