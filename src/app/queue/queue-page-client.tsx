@@ -4,7 +4,7 @@ import { useState, useEffect, useTransition, useCallback, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { ChevronRight, Clock3, Eye, Sparkles, Loader2, RefreshCw, CheckCircle2, AlertTriangle, XCircle } from "lucide-react";
+import { ChevronRight, Clock3, Loader2, RefreshCw, AlertTriangle, XCircle, ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/page-header";
 import { SectionCard } from "@/components/section-card";
@@ -183,44 +183,39 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns, initialF
                   href={`/queue/${run.id}`}
                   className="block w-full rounded-xl border border-white/10 bg-white/[0.03] p-3 transition hover:bg-white/[0.06] md:max-w-[500px]"
                 >
-                  <div className="flex items-start gap-3">
-                    {run.thumbnailUrl && (
-                      <div className="relative h-16 w-12 flex-shrink-0 overflow-hidden rounded-lg bg-white/[0.05]">
-                        <Image
-                          src={run.thumbnailUrl}
-                          alt=""
-                          fill
-                          className="object-cover"
-                          unoptimized
-                        />
-                      </div>
-                    )}
+                  <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="truncate text-sm font-semibold text-white">{run.projectTitle}</div>
-                          <div className="mt-1 truncate text-xs text-zinc-400">{run.sectionName}{run.presetNames.length > 0 ? ` · ${run.presetNames.join(" · ")}` : ""}</div>
-                        </div>
-                        <span className="flex-shrink-0 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-[11px] text-emerald-300">{run.status}</span>
-                      </div>
-                      <div className="mt-3 grid grid-cols-3 gap-2 text-xs text-zinc-400 lg:grid-cols-6">
-                        <div className="rounded-xl bg-white/[0.03] px-3 py-2">
-                          <CheckCircle2 className="mb-1 size-3.5" />
-                          {formatTimeAgo(run.finishedAt) ?? run.createdAt}
-                        </div>
-                        <div className="rounded-xl bg-white/[0.03] px-3 py-2">
-                          <Eye className="mb-1 size-3.5" />
-                          待审核 {run.pendingCount}
-                        </div>
-                        <div className="rounded-xl bg-white/[0.03] px-3 py-2">
-                          <Sparkles className="mb-1 size-3.5" />
-                          共 {run.totalCount} 张
-                        </div>
-                      </div>
+                      <div className="truncate text-sm font-semibold text-white">{run.projectTitle}</div>
+                      <div className="mt-0.5 truncate text-xs text-zinc-400">{run.sectionName}{run.presetNames.length > 0 ? ` · ${run.presetNames.join(" · ")}` : ""}</div>
                     </div>
+                    <span className="shrink-0 text-[11px] text-zinc-500">{formatTimeAgo(run.finishedAt) ?? run.createdAt}</span>
                   </div>
-                  <div className="mt-3 flex items-center justify-end text-xs text-sky-300">
-                    打开宫格 <ChevronRight className="ml-1 size-3.5" />
+
+                  {run.thumbnailUrls.length > 0 && (
+                    <div className="mt-2.5 flex gap-1.5 overflow-x-auto scrollbar-none">
+                      {run.thumbnailUrls.map((src, i) => (
+                        <div key={i} className="relative shrink-0 overflow-hidden rounded-lg border border-white/10">
+                          <Image
+                            src={src}
+                            alt=""
+                            width={56}
+                            height={80}
+                            className="h-[80px] w-[56px] object-cover"
+                            unoptimized
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="mt-2.5 flex items-center justify-between text-[11px] text-zinc-500">
+                    <span className="flex items-center gap-1">
+                      <ImageIcon className="size-3" />
+                      共 {run.totalCount} 张{run.pendingCount < run.totalCount && ` · ${run.pendingCount} 待审`}
+                    </span>
+                    <span className="flex items-center text-sky-300">
+                      查看宫格 <ChevronRight className="size-3" />
+                    </span>
                   </div>
                 </Link>
               ))}

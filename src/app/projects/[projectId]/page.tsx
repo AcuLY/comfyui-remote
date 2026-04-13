@@ -23,12 +23,12 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       <Link href="/projects" className="inline-flex items-center gap-1.5 text-xs text-zinc-400 transition hover:text-zinc-200">
         <ArrowLeft className="size-3.5" /> 返回项目列表
       </Link>
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-        <SectionCard title={project.title} subtitle={project.presetNames.join(" · ") || "无预设"}>
+      <div className="grid grid-cols-1 gap-3 justify-items-center md:grid-cols-2">
+        <SectionCard title={project.title} subtitle={project.presetNames.join(" · ") || "无预设"} className="w-full md:max-w-[500px]">
           <ProjectDetailActions projectId={project.id} projectTitle={project.title} />
         </SectionCard>
 
-        <SectionCard title="参数概览" subtitle="结果侧与项目侧都默认编辑当前项目配置。">
+        <SectionCard title="参数概览" subtitle="结果侧与项目侧都默认编辑当前项目配置。" className="w-full md:max-w-[500px]">
           <div className="space-y-2 text-sm text-zinc-300">
             <div className="rounded-xl bg-white/[0.03] p-2.5">
               <div className="text-xs text-zinc-500">预设</div>

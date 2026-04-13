@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 
-export function SectionCard({ title, subtitle, actions, children }: { title: ReactNode; subtitle?: string; actions?: ReactNode; children: ReactNode }) {
+export function SectionCard({ title, subtitle, actions, children, className }: { title: ReactNode; subtitle?: string; actions?: ReactNode; children: ReactNode; className?: string }) {
   return (
-    <section className="rounded-2xl border border-white/10 bg-[var(--panel)] p-3.5 shadow-[0_10px_30px_rgba(0,0,0,0.25)] lg:p-4">
+    <section className={`rounded-2xl border border-white/10 bg-[var(--panel)] p-3.5 shadow-[0_10px_30px_rgba(0,0,0,0.25)] lg:p-4${className ? ` ${className}` : ""}`}>
       <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className="text-sm font-semibold text-white">{title}</h2>

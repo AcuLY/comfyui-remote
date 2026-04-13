@@ -10,7 +10,7 @@ export type QueueRun = {
   pendingCount: number;
   totalCount: number;
   status: "queued" | "running" | "done" | "failed";
-  thumbnailUrl: string | null;
+  thumbnailUrls: string[];
 };
 
 export type RunningRun = {
