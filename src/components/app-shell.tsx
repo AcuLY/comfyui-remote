@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Boxes, FolderOpen, Images, Settings, Trash2, Upload, BookOpen } from "lucide-react";
 import { Toaster } from "sonner";
 import type { ReactNode } from "react";
+import { ScrollRestorer } from "./scroll-restorer";
 
 const navItems = [
   { href: "/queue", label: "待审核", icon: Images },
@@ -33,7 +34,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </header>
       <main className="min-h-0 flex-1 overflow-y-auto">
+        <ScrollRestorer>
         <div className="mx-auto flex max-w-5xl flex-col gap-3 px-4 py-3 pb-24">{children}</div>
+      </ScrollRestorer>
       </main>
       <nav className="shrink-0 border-t border-white/10 bg-[var(--panel)]/95 backdrop-blur">
         <div className="mx-auto grid max-w-5xl grid-cols-6 gap-1 px-2 py-2">
