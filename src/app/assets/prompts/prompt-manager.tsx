@@ -2272,7 +2272,48 @@ function SortableGroupCard({
   };
 
   const [members, setMembers] = useState(group.members);
+  const [expandedPreviewIds, setExpandedPreviewIds] = useState<Set<string>>(new Set());
   const memberDndId = useId();
+
+  // Build variant lookup from all categories
+  const variantMap = useMemo(() => {
+    const map = new Map<string, PresetVariantItem>();
+    for (const cat of categories) {
+      for (const preset of cat.presets) {
+        for (const v of preset.variants) {
+          map.set(v.id, v);
+        }
+      }
+    }
+    return map;
+  }, [categories]);
+
+  const presetVariantsMap = useMemo(() => {
+    const map = new Map<string, PresetVariantItem[]>();
+    for (const cat of categories) {
+      for (const preset of cat.presets) {
+        if (preset.variants.length > 0) map.set(preset.id, preset.variants);
+      }
+    }
+    return map;
+  }, [categories]);
+
+  // Resolve a member's variant data
+  function getMemberVariant(member: GroupMemberDisplay): PresetVariantItem | null {
+    if (member.subGroupId) return null;
+    if (member.variantId) return variantMap.get(member.variantId) ?? null;
+    const variants = member.presetId ? presetVariantsMap.get(member.presetId) : null;
+    return variants?.[0] ?? null;
+  }
+
+  function togglePreview(id: string) {
+    setExpandedPreviewIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
   const memberSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -2398,6 +2439,75 @@ function SortableGroupCard({
             }}
             isPending={isPending}
           />
+
+          {/* Combined preview */}
+          {members.length > 0 && (
+            <details className="group/details">
+              <summary className="cursor-pointer select-none text-[10px] font-medium uppercase tracking-wider text-zinc-500 hover:text-zinc-300">
+                组合预览
+              </summary>
+              <div className="mt-2 space-y-2 pl-1">
+                {members.map((m) => {
+                  if (m.subGroupId) {
+                    return (
+                      <div key={m.id} className="flex items-center gap-1.5 text-[10px] text-amber-400/80">
+                        <FolderOpen className="size-3 shrink-0" />
+                        {m.subGroupName ?? m.subGroupId}
+                        <span className="text-zinc-600">（子组）</span>
+                      </div>
+                    );
+                  }
+                  const variant = getMemberVariant(m);
+                  const isExpanded = expandedPreviewIds.has(m.id);
+                  if (!variant) return null;
+                  const loras = [...(variant.lora1 as Array<{ path: string; weight: number; enabled: boolean }> ?? []), ...(variant.lora2 as Array<{ path: string; weight: number; enabled: boolean }> ?? [])].filter((l) => l.enabled);
+                  return (
+                    <div key={m.id} className="rounded-lg border border-white/5 bg-white/[0.02]">
+                      <button
+                        type="button"
+                        onClick={() => togglePreview(m.id)}
+                        className="flex w-full items-center gap-2 px-2.5 py-2 text-left text-xs transition hover:bg-white/[0.03]"
+                      >
+                        <ChevronRight className={`size-3 shrink-0 text-zinc-600 transition-transform ${isExpanded ? "rotate-90" : ""}`} />
+                        <span className="min-w-0 flex-1 truncate text-zinc-300">
+                          {m.presetName ?? "?"}{m.variantName ? ` / ${m.variantName}` : ""}
+                        </span>
+                        {loras.length > 0 && (
+                          <span className="shrink-0 text-[10px] text-zinc-600">{loras.length} LoRA</span>
+                        )}
+                      </button>
+                      {isExpanded && (
+                        <div className="border-t border-white/5 px-2.5 py-2 space-y-2 text-[11px]">
+                          {variant.prompt && (
+                            <div>
+                              <div className="mb-1 text-[10px] font-medium text-zinc-500">正面提示词</div>
+                              <pre className="whitespace-pre-wrap break-words text-zinc-400">{variant.prompt}</pre>
+                            </div>
+                          )}
+                          {variant.negativePrompt && (
+                            <div>
+                              <div className="mb-1 text-[10px] font-medium text-zinc-500">负面提示词</div>
+                              <pre className="whitespace-pre-wrap break-words text-zinc-400">{variant.negativePrompt}</pre>
+                            </div>
+                          )}
+                          {loras.length > 0 && (
+                            <div>
+                              <div className="mb-1 text-[10px] font-medium text-zinc-500">LoRA</div>
+                              <div className="space-y-0.5 text-zinc-500">
+                                {loras.map((l, i) => (
+                                  <div key={i}>{l.path.split(/[/\\]/).pop()} <span className="text-zinc-600">{l.weight}</span></div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </details>
+          )}
         </div>
       )}
     </div>
