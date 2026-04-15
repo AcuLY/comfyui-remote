@@ -102,6 +102,7 @@ export function PromptManager({
   }, [initialCategories]);
   const [showCatForm, setShowCatForm] = useState(false);
   const [editingCatId, setEditingCatId] = useState<string | null>(null);
+  const [autoEditPresetId, setAutoEditPresetId] = useState<string | null>(null);
 
   const selectedCat = categories.find((c) => c.id === selectedCatId) ?? null;
 
@@ -247,12 +248,24 @@ export function PromptManager({
                   category={selectedCat}
                   allCategories={categories}
                   onRefresh={refresh}
+                  onNavigateToPreset={(presetId) => {
+                    // Find the preset's category and switch to it
+                    for (const cat of categories) {
+                      if (cat.presets.some((p) => p.id === presetId)) {
+                        setSelectedCatId(cat.id);
+                        setAutoEditPresetId(presetId);
+                        break;
+                      }
+                    }
+                  }}
                 />
               ) : (
                 <PresetList
                   category={selectedCat}
                   onRefresh={refresh}
                   allCategories={categories}
+                  autoEditPresetId={autoEditPresetId}
+                  onAutoEditConsumed={() => setAutoEditPresetId(null)}
                 />
               )
             ) : (
@@ -898,10 +911,14 @@ function PresetList({
   category,
   onRefresh,
   allCategories,
+  autoEditPresetId,
+  onAutoEditConsumed,
 }: {
   category: PresetCategoryFull;
   onRefresh: () => void;
   allCategories: PresetCategoryFull[];
+  autoEditPresetId: string | null;
+  onAutoEditConsumed: () => void;
 }) {
   const [isPending, startTransition] = useTransition();
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -921,6 +938,14 @@ function PresetList({
   useEffect(() => {
     setPresets(category.presets);
   }, [category.presets]);
+
+  // Auto-expand preset when navigating from group
+  useEffect(() => {
+    if (autoEditPresetId && category.presets.some((p) => p.id === autoEditPresetId)) {
+      setEditingId(autoEditPresetId);
+      onAutoEditConsumed();
+    }
+  }, [autoEditPresetId, category.presets, onAutoEditConsumed]);
 
   // Reset folder when category changes
   useEffect(() => {
@@ -1937,10 +1962,12 @@ function GroupList({
   category,
   allCategories,
   onRefresh,
+  onNavigateToPreset,
 }: {
   category: PresetCategoryFull;
   allCategories: PresetCategoryFull[];
   onRefresh: () => void;
+  onNavigateToPreset: (presetId: string) => void;
 }) {
   const [isPending, startTransition] = useTransition();
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
@@ -2191,6 +2218,7 @@ function GroupList({
               startTransition={startTransition}
               isSelected={selectedGroupIds.has(group.id)}
               onToggleSelect={() => toggleGroupSelection(group.id)}
+              onNavigateToPreset={onNavigateToPreset}
             />
           ))}
         </SortableContext>
@@ -2249,6 +2277,7 @@ function SortableGroupCard({
   startTransition,
   isSelected,
   onToggleSelect,
+  onNavigateToPreset,
 }: {
   group: PresetGroupItem;
   categories: PresetCategoryFull[];
@@ -2263,6 +2292,7 @@ function SortableGroupCard({
   startTransition: React.TransitionStartFunction;
   isSelected: boolean;
   onToggleSelect: () => void;
+  onNavigateToPreset: (presetId: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition: dndTransition, isDragging } = useSortable({ id: group.id });
   const style: React.CSSProperties = {
@@ -2410,19 +2440,29 @@ function SortableGroupCard({
                 items={members.map((m) => m.id)}
                 strategy={verticalListSortingStrategy}
               >
-                {members.map((m) => (
-                  <SortableGroupMemberItem
-                    key={m.id}
-                    member={m}
-                    isPending={isPending}
-                    onRemove={() => {
-                      startTransition(async () => {
-                        await removeGroupMember(m.id);
-                        onRefresh();
-                      });
-                    }}
-                  />
-                ))}
+                {members.map((m) => {
+                  const variant = m.subGroupId ? null : getMemberVariant(m);
+                  const isExpanded = expandedPreviewIds.has(m.id);
+                  return (
+                    <SortableGroupMemberItem
+                      key={m.id}
+                      member={m}
+                      variant={variant}
+                      isExpanded={isExpanded}
+                      onToggle={() => togglePreview(m.id)}
+                      isPending={isPending}
+                      onRemove={() => {
+                        startTransition(async () => {
+                          await removeGroupMember(m.id);
+                          onRefresh();
+                        });
+                      }}
+                      onNavigate={() => {
+                        if (m.presetId) onNavigateToPreset(m.presetId);
+                      }}
+                    />
+                  );
+                })}
               </SortableContext>
             </DndContext>
           </div>
@@ -2439,75 +2479,6 @@ function SortableGroupCard({
             }}
             isPending={isPending}
           />
-
-          {/* Combined preview */}
-          {members.length > 0 && (
-            <details className="group/details">
-              <summary className="cursor-pointer select-none text-[10px] font-medium uppercase tracking-wider text-zinc-500 hover:text-zinc-300">
-                组合预览
-              </summary>
-              <div className="mt-2 space-y-2 pl-1">
-                {members.map((m) => {
-                  if (m.subGroupId) {
-                    return (
-                      <div key={m.id} className="flex items-center gap-1.5 text-[10px] text-amber-400/80">
-                        <FolderOpen className="size-3 shrink-0" />
-                        {m.subGroupName ?? m.subGroupId}
-                        <span className="text-zinc-600">（子组）</span>
-                      </div>
-                    );
-                  }
-                  const variant = getMemberVariant(m);
-                  const isExpanded = expandedPreviewIds.has(m.id);
-                  if (!variant) return null;
-                  const loras = [...(variant.lora1 as Array<{ path: string; weight: number; enabled: boolean }> ?? []), ...(variant.lora2 as Array<{ path: string; weight: number; enabled: boolean }> ?? [])].filter((l) => l.enabled);
-                  return (
-                    <div key={m.id} className="rounded-lg border border-white/5 bg-white/[0.02]">
-                      <button
-                        type="button"
-                        onClick={() => togglePreview(m.id)}
-                        className="flex w-full items-center gap-2 px-2.5 py-2 text-left text-xs transition hover:bg-white/[0.03]"
-                      >
-                        <ChevronRight className={`size-3 shrink-0 text-zinc-600 transition-transform ${isExpanded ? "rotate-90" : ""}`} />
-                        <span className="min-w-0 flex-1 truncate text-zinc-300">
-                          {m.presetName ?? "?"}{m.variantName ? ` / ${m.variantName}` : ""}
-                        </span>
-                        {loras.length > 0 && (
-                          <span className="shrink-0 text-[10px] text-zinc-600">{loras.length} LoRA</span>
-                        )}
-                      </button>
-                      {isExpanded && (
-                        <div className="border-t border-white/5 px-2.5 py-2 space-y-2 text-[11px]">
-                          {variant.prompt && (
-                            <div>
-                              <div className="mb-1 text-[10px] font-medium text-zinc-500">正面提示词</div>
-                              <pre className="whitespace-pre-wrap break-words text-zinc-400">{variant.prompt}</pre>
-                            </div>
-                          )}
-                          {variant.negativePrompt && (
-                            <div>
-                              <div className="mb-1 text-[10px] font-medium text-zinc-500">负面提示词</div>
-                              <pre className="whitespace-pre-wrap break-words text-zinc-400">{variant.negativePrompt}</pre>
-                            </div>
-                          )}
-                          {loras.length > 0 && (
-                            <div>
-                              <div className="mb-1 text-[10px] font-medium text-zinc-500">LoRA</div>
-                              <div className="space-y-0.5 text-zinc-500">
-                                {loras.map((l, i) => (
-                                  <div key={i}>{l.path.split(/[/\\]/).pop()} <span className="text-zinc-600">{l.weight}</span></div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </details>
-          )}
         </div>
       )}
     </div>
@@ -2522,12 +2493,20 @@ type GroupMemberDisplay = PresetGroupItem["members"][number];
 
 function SortableGroupMemberItem({
   member,
+  variant,
+  isExpanded,
+  onToggle,
   isPending,
   onRemove,
+  onNavigate,
 }: {
   member: GroupMemberDisplay;
+  variant: PresetVariantItem | null;
+  isExpanded: boolean;
+  onToggle: () => void;
   isPending: boolean;
   onRemove: () => void;
+  onNavigate?: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: member.id });
   const style: React.CSSProperties = {
@@ -2536,43 +2515,98 @@ function SortableGroupMemberItem({
     opacity: isDragging ? 0.5 : 1,
   };
 
+  const loras = variant
+    ? [...(variant.lora1 as Array<{ path: string; weight: number; enabled: boolean }> ?? []), ...(variant.lora2 as Array<{ path: string; weight: number; enabled: boolean }> ?? [])].filter((l) => l.enabled)
+    : [];
+
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-2 rounded-lg border border-white/5 bg-white/[0.02] px-2.5 py-1.5"
+      className={`rounded-lg border border-white/5 bg-white/[0.02] ${isExpanded ? "border-white/10" : ""}`}
     >
-      <button
-        type="button"
-        className="cursor-grab touch-none text-zinc-600 hover:text-zinc-400"
-        {...attributes}
-        {...listeners}
-      >
-        <GripVertical className="size-3" />
-      </button>
-      <div className="flex-1 min-w-0 text-xs text-zinc-300">
-        {member.subGroupId ? (
-          <span className="text-amber-400/80">
-            <FolderOpen className="mr-1 inline size-3" />
-            {member.subGroupName ?? member.subGroupId}
-          </span>
-        ) : (
-          <>
-            {member.presetName ?? member.presetId}
-            {member.variantName && (
-              <span className="text-zinc-500"> / {member.variantName}</span>
+      <div className="flex items-center gap-2 px-2.5 py-1.5">
+        <button
+          type="button"
+          className="cursor-grab touch-none text-zinc-600 hover:text-zinc-400"
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className="size-3" />
+        </button>
+        <button
+          type="button"
+          onClick={onToggle}
+          className="flex min-w-0 flex-1 items-center gap-1 text-left"
+        >
+          <ChevronRight className={`size-3 shrink-0 text-zinc-600 transition-transform ${isExpanded ? "rotate-90" : ""}`} />
+          <div className="min-w-0 text-xs">
+            {member.subGroupId ? (
+              <span className="text-amber-400/80">
+                <FolderOpen className="mr-1 inline size-3" />
+                {member.subGroupName ?? member.subGroupId}
+              </span>
+            ) : (
+              <>
+                <span className="text-zinc-300">{member.presetName ?? "?"}</span>
+                {member.variantName && (
+                  <span className="text-zinc-500"> / {member.variantName}</span>
+                )}
+              </>
             )}
-          </>
-        )}
+          </div>
+          {loras.length > 0 && !member.subGroupId && (
+            <span className="shrink-0 text-[10px] text-zinc-600">{loras.length} LoRA</span>
+          )}
+          {onNavigate && !member.subGroupId && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onNavigate(); }}
+              className="shrink-0 rounded p-0.5 text-zinc-600 hover:text-sky-400"
+              title="跳转到预制编辑"
+            >
+              <ChevronRight className="size-3" />
+            </button>
+          )}
+        </button>
+        <button
+          type="button"
+          disabled={isPending}
+          onClick={(e) => { e.stopPropagation(); onRemove(); }}
+          className="rounded p-0.5 text-zinc-600 hover:text-red-400 disabled:opacity-50"
+        >
+          <X className="size-3" />
+        </button>
       </div>
-      <button
-        type="button"
-        disabled={isPending}
-        onClick={onRemove}
-        className="rounded p-0.5 text-zinc-600 hover:text-red-400 disabled:opacity-50"
-      >
-        <X className="size-3" />
-      </button>
+      {isExpanded && variant && (
+        <div className="border-t border-white/5 px-2.5 py-2 space-y-2 text-[11px]">
+          {variant.prompt && (
+            <div>
+              <div className="mb-1 text-[10px] font-medium text-zinc-500">正面提示词</div>
+              <pre className="whitespace-pre-wrap break-words text-zinc-400">{variant.prompt}</pre>
+            </div>
+          )}
+          {variant.negativePrompt && (
+            <div>
+              <div className="mb-1 text-[10px] font-medium text-zinc-500">负面提示词</div>
+              <pre className="whitespace-pre-wrap break-words text-zinc-400">{variant.negativePrompt}</pre>
+            </div>
+          )}
+          {loras.length > 0 && (
+            <div>
+              <div className="mb-1 text-[10px] font-medium text-zinc-500">LoRA</div>
+              <div className="space-y-0.5 text-zinc-500">
+                {loras.map((l, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <span className="truncate">{l.path.split(/[/\\]/).pop()}</span>
+                    <span className="shrink-0 text-zinc-600">{l.weight}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
