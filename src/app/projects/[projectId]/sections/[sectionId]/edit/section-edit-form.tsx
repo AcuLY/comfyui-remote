@@ -36,7 +36,7 @@ export function SectionEditForm({ projectId, section, positivePrompt }: SectionE
       <input type="hidden" name="sectionId" value={section.id} />
 
       <div className="flex items-center justify-between gap-3">
-        <Link href={`/projects/${projectId}#section-${sectionId}`} className="inline-flex items-center gap-2 text-sm text-zinc-300">
+        <Link href={`/projects/${projectId}#section-${section.id}`} className="inline-flex items-center gap-2 text-sm text-zinc-300">
           <ArrowLeft className="size-4" /> 返回项目详情
         </Link>
         <button
