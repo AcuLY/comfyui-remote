@@ -27,6 +27,7 @@ export type FailedRun = {
   presetNames: string[];
   projectTitle: string;
   sectionName: string;
+  sectionId: string;
   errorMessage: string | null;
   finishedAt: string | null;
 };

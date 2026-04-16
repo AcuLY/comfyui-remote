@@ -4,12 +4,12 @@ import { useState, useEffect, useTransition, useCallback, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { ChevronRight, Clock3, Loader2, RefreshCw, AlertTriangle, XCircle, ImageIcon } from "lucide-react";
+import { RotateCw, ChevronRight, Clock3, Loader2, RefreshCw, AlertTriangle, XCircle, ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/page-header";
 import { SectionCard } from "@/components/section-card";
 import { StatChip } from "@/components/stat-chip";
-import { cancelRun } from "@/lib/actions";
+import { cancelRun, runSection } from "@/lib/actions";
 import type { QueueRun, RunningRun, FailedRun } from "@/lib/types";
 
 export type QueueTabKey = "pending" | "running" | "failed";
@@ -103,6 +103,18 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns, initialF
     return () => clearInterval(timer);
   }, [refresh]);
 
+  // Scroll to card when arriving via hash fragment (e.g. back navigation from /queue/:runId)
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash) {
+      const id = hash.slice(1);
+      const el = document.getElementById(id);
+      if (el) {
+        el.scrollIntoView({ block: "center", behavior: "instant" });
+      }
+    }
+  }, []);
+
   const pendingTotal = queueRuns.reduce((sum, run) => sum + run.pendingCount, 0);
   const runTotal = queueRuns.length;
   const runningCount = runningRuns.length;
@@ -180,6 +192,7 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns, initialF
               {queueRuns.map((run) => (
                 <Link
                   key={run.id}
+                  id={`run-${run.id}`}
                   href={`/queue/${run.id}`}
                   className="block w-full rounded-xl border border-white/10 bg-white/[0.03] p-3 transition hover:bg-white/[0.06] md:max-w-[500px]"
                 >
@@ -236,6 +249,7 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns, initialF
             {runningRuns.map((run) => (
               <div
                 key={run.id}
+                id={`run-${run.id}`}
                 className="w-full rounded-xl border border-white/10 bg-white/[0.03] p-3 md:max-w-[500px]"
               >
                 <div className="flex items-center justify-between gap-3">
@@ -298,6 +312,7 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns, initialF
             {failedRuns.map((run) => (
               <div
                 key={run.id}
+                id={`run-${run.id}`}
                 className="w-full rounded-xl border border-red-500/10 bg-red-500/[0.03] p-3 md:max-w-[500px]"
               >
                 <div className="flex items-center justify-between gap-3">
@@ -315,8 +330,25 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns, initialF
                     {run.errorMessage}
                   </div>
                 )}
-                <div className="mt-2 text-xs text-zinc-500">
-                  {formatTimeAgo(run.finishedAt) ?? ""}
+                <div className="mt-2 flex items-center justify-between">
+                  <span className="text-xs text-zinc-500">
+                    {formatTimeAgo(run.finishedAt) ?? ""}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={isPending}
+                    onClick={() => {
+                      startTransition(async () => {
+                        await runSection(run.sectionId);
+                        toast.success(`已重新提交「${run.sectionName}」`);
+                        refresh();
+                      });
+                    }}
+                    className="inline-flex items-center gap-1 rounded px-2 py-1 text-[11px] text-sky-300 hover:bg-sky-500/10 disabled:opacity-50"
+                  >
+                    <RotateCw className="size-3" />
+                    重试
+                  </button>
                 </div>
               </div>
             ))}

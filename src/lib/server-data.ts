@@ -154,6 +154,7 @@ export async function getFailedRuns(): Promise<FailedRun[]> {
       sectionName:
         run.projectSection.name ??
         `section_${run.projectSection.sortOrder + 1}`,
+      sectionId: run.projectSection.id,
       errorMessage: run.errorMessage,
       finishedAt: run.finishedAt?.toISOString() ?? null,
     };
