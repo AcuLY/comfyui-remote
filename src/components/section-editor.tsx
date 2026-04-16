@@ -86,7 +86,7 @@ export function SectionEditor({
           let groupName: string | undefined;
           if (b.sourceId && libraryV2) {
             for (const cat of libraryV2.categories) {
-              for (const g of cat.groups) {
+              for (const g of cat.groups ?? []) {
                 if (g.members.some((m) => m.presetId === b.sourceId)) {
                   groupName = g.name;
                   break;
