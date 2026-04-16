@@ -65,6 +65,18 @@ export function SectionList({ projectId, sections: initialSections }: SectionLis
   const [sections, setSections] = useState(initialSections);
   const [isPending, startTransition] = useTransition();
   const [compact, setCompact] = useState(false);
+
+  // Scroll to section card when arriving via hash fragment (e.g. from back navigation)
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash) {
+      const id = hash.slice(1);
+      const el = document.getElementById(id);
+      if (el) {
+        el.scrollIntoView({ block: "center", behavior: "instant" });
+      }
+    }
+  }, []);
   const dndId = useId();
 
   // Ref map: section id → DOM node, for scroll anchoring
@@ -234,6 +246,7 @@ function SortableCompactCard({
         setCardRef(section.id, el);
       }}
       style={style}
+      id={`section-${section.id}`}
       className={`group flex items-center gap-2 w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 md:max-w-[500px] ${isDragging ? "shadow-lg ring-2 ring-sky-500/30" : ""}`}
     >
       {/* Drag handle */}
@@ -304,6 +317,7 @@ function SortableSectionCard({
         setCardRef(section.id, el);
       }}
       style={style}
+      id={`section-${section.id}`}
       className={`w-full rounded-xl border border-white/10 bg-white/[0.03] p-3.5 md:max-w-[500px] ${isDragging ? "shadow-lg ring-2 ring-sky-500/30" : ""}`}
     >
       {/* 主内容区：拖动手柄 + 信息 */}

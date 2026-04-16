@@ -26,7 +26,7 @@ export default async function SectionResultsPage({
       {/* Header */}
       <div className="flex items-center justify-between gap-3">
         <Link
-          href={`/projects/${projectId}`}
+          href={`/projects/${projectId}#section-${sectionId}`}
           className="inline-flex items-center gap-2 text-sm text-zinc-300"
         >
           <ArrowLeft className="size-4" /> 返回项目详情
