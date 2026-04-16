@@ -24,6 +24,7 @@ type LoraConfig2 = {
 type PresetBindingInfo = {
   bindingId: string;
   presetName: string;  // from block label
+  groupName: string | undefined;  // group name if preset belongs to a group
   sourceId: string | null;  // preset ID
   variantId: string | null;  // current variant ID
   categoryName?: string;
@@ -81,9 +82,23 @@ export function SectionEditor({
               }
             }
           }
+          // Look up group name if preset belongs to a group
+          let groupName: string | undefined;
+          if (b.sourceId && libraryV2) {
+            for (const cat of libraryV2.categories) {
+              for (const g of cat.groups) {
+                if (g.members.some((m) => m.presetId === b.sourceId)) {
+                  groupName = g.name;
+                  break;
+                }
+              }
+              if (groupName) break;
+            }
+          }
           map.set(b.bindingId, {
             bindingId: b.bindingId,
             presetName: b.label,
+            groupName,
             sourceId: b.sourceId,
             variantId: b.variantId,
             categoryName,
@@ -564,7 +579,7 @@ export function SectionEditor({
                   {onRename && (
                     <button
                       type="button"
-                      onClick={() => onRename(binding.presetName)}
+                      onClick={() => onRename(binding.groupName ?? binding.presetName)}
                       title="用预制名作为小节名"
                       className="rounded p-1 text-zinc-600 hover:bg-sky-500/10 hover:text-sky-400"
                     >
