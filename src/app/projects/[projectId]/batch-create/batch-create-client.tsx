@@ -218,6 +218,13 @@ export function BatchCreateClient({
       const newItems: ImportItem[] = [];
       const groupBindingId = `grp-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 
+      // Look up the group name directly from the group that was clicked
+      let resolvedGroupName: string | undefined;
+      for (const cat of library.categories) {
+        const g = (cat.groups ?? []).find((gg) => gg.id === groupId);
+        if (g) { resolvedGroupName = g.name; break; }
+      }
+
       for (const m of members) {
         if (importList.some((item) => item.presetId === m.presetId)) continue;
         // Find preset info
@@ -245,7 +252,7 @@ export function BatchCreateClient({
           variantId,
           groupBindingId,
           label: variantName ? `${presetName} / ${variantName}` : presetName,
-          groupName: getGroupName(m.presetId),
+          groupName: resolvedGroupName,
           categoryId,
           folderId,
           variants,
@@ -259,7 +266,15 @@ export function BatchCreateClient({
   );
 
   const removeImportItem = useCallback((key: string) => {
-    setImportList((prev) => prev.filter((item) => item.key !== key));
+    setImportList((prev) => {
+      const item = prev.find((i) => i.key === key);
+      if (!item) return prev;
+      // If part of a group, remove all members with same groupBindingId
+      if (item.groupBindingId) {
+        return prev.filter((i) => i.groupBindingId !== item.groupBindingId);
+      }
+      return prev.filter((i) => i.key !== key);
+    });
   }, []);
 
   const updateImportVariant = useCallback((key: string, newVariantId: string) => {
@@ -277,7 +292,14 @@ export function BatchCreateClient({
     (key: string) => {
       const item = importList.find((i) => i.key === key);
       if (!item) return;
-      setSectionName(item.groupName ?? item.label.split(" / ")[0]);
+      // If part of a group, concatenate all group member names
+      if (item.groupBindingId) {
+        const groupMembers = importList.filter((i) => i.groupBindingId === item.groupBindingId);
+        const names = groupMembers.map((m) => m.label.split(" / ")[0]);
+        setSectionName(names.join(" · "));
+      } else {
+        setSectionName(item.label.split(" / ")[0]);
+      }
     },
     [importList],
   );
