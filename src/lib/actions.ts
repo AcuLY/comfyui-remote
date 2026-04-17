@@ -1717,7 +1717,7 @@ export async function createSectionFromTemplate(
   // 2. 覆盖项目级绑定的变体
   if (bindingVariantOverrides.length > 0) {
     const blocks = await prisma.promptBlock.findMany({
-      where: { sectionId, type: "preset" },
+      where: { projectSectionId: sectionId, type: "preset" },
       select: { id: true, bindingId: true, sourceId: true },
     });
 
