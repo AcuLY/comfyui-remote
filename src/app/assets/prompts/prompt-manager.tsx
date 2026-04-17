@@ -1474,16 +1474,7 @@ function LinkedVariantsEditor({
 
   return (
     <div className="space-y-1.5">
-      <div className="flex items-center justify-between">
-        <span className="text-[10px] text-zinc-500">关联变体</span>
-        <button
-          type="button"
-          onClick={() => setShowPicker(!showPicker)}
-          className="inline-flex items-center gap-0.5 text-[10px] text-sky-400/70 hover:text-sky-300"
-        >
-          <Plus className="size-2.5" /> 添加
-        </button>
-      </div>
+      <span className="text-[11px] font-medium text-zinc-400">关联变体</span>
 
       {/* Current linked variants */}
       {linkedDisplay.length > 0 && (
@@ -1496,50 +1487,50 @@ function LinkedVariantsEditor({
                 key={item.variantId}
                 className="rounded-lg border border-white/5 bg-white/[0.02]"
               >
-                <div className="flex items-center justify-between px-2 py-1">
+                <div className="flex items-center justify-between px-2.5 py-1.5">
                   <button
                     type="button"
                     onClick={() => setExpandedId(isExpanded ? null : item.variantId)}
-                    className="flex items-center gap-1 min-w-0 flex-1 text-left"
+                    className="flex items-center gap-1.5 min-w-0 flex-1 text-left"
                   >
                     {hasContent && (
-                      <ChevronDown className={`size-2.5 shrink-0 text-zinc-500 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                      <ChevronDown className={`size-3 shrink-0 text-zinc-500 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
                     )}
-                    <span className="text-[10px] text-zinc-300 truncate">{item.displayName}</span>
+                    <span className="text-xs text-zinc-300 truncate">{item.displayName}</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => handleRemove(item.variantId)}
                     className="rounded p-0.5 text-zinc-600 hover:text-red-400"
                   >
-                    <X className="size-2.5" />
+                    <X className="size-3" />
                   </button>
                 </div>
                 {/* Expanded preview: prompt + LoRA */}
                 {isExpanded && hasContent && (
-                  <div className="space-y-1 border-t border-white/5 px-2 py-1.5">
+                  <div className="space-y-1.5 border-t border-white/5 px-2.5 py-2">
                     {item.prompt && (
                       <div>
-                        <span className="text-[9px] text-zinc-600">正面提示词</span>
-                        <div className="mt-0.5 rounded bg-black/20 px-1.5 py-1 text-[10px] text-zinc-400 whitespace-pre-wrap break-all max-h-20 overflow-y-auto">
+                        <span className="text-[10px] text-zinc-600">正面提示词</span>
+                        <div className="mt-0.5 rounded bg-black/20 px-2 py-1.5 text-xs text-zinc-400 whitespace-pre-wrap break-all max-h-24 overflow-y-auto">
                           {item.prompt}
                         </div>
                       </div>
                     )}
                     {item.negativePrompt && (
                       <div>
-                        <span className="text-[9px] text-zinc-600">负面提示词</span>
-                        <div className="mt-0.5 rounded bg-black/20 px-1.5 py-1 text-[10px] text-zinc-400 whitespace-pre-wrap break-all max-h-20 overflow-y-auto">
+                        <span className="text-[10px] text-zinc-600">负面提示词</span>
+                        <div className="mt-0.5 rounded bg-black/20 px-2 py-1.5 text-xs text-zinc-400 whitespace-pre-wrap break-all max-h-24 overflow-y-auto">
                           {item.negativePrompt}
                         </div>
                       </div>
                     )}
                     {item.lora1.length > 0 && (
                       <div>
-                        <span className="text-[9px] text-zinc-600">LoRA 1</span>
+                        <span className="text-[10px] text-zinc-600">LoRA 1</span>
                         <div className="mt-0.5 space-y-0.5">
                           {item.lora1.map((l, i) => (
-                            <div key={i} className="flex items-center gap-1 text-[10px] text-zinc-500">
+                            <div key={i} className="flex items-center gap-1.5 text-xs text-zinc-500">
                               <span className="truncate">{l.path.split(/[\\/]/).pop()}</span>
                               <span className="shrink-0 text-zinc-600">{l.weight}</span>
                             </div>
@@ -1549,10 +1540,10 @@ function LinkedVariantsEditor({
                     )}
                     {item.lora2.length > 0 && (
                       <div>
-                        <span className="text-[9px] text-zinc-600">LoRA 2</span>
+                        <span className="text-[10px] text-zinc-600">LoRA 2</span>
                         <div className="mt-0.5 space-y-0.5">
                           {item.lora2.map((l, i) => (
-                            <div key={i} className="flex items-center gap-1 text-[10px] text-zinc-500">
+                            <div key={i} className="flex items-center gap-1.5 text-xs text-zinc-500">
                               <span className="truncate">{l.path.split(/[\\/]/).pop()}</span>
                               <span className="shrink-0 text-zinc-600">{l.weight}</span>
                             </div>
@@ -1569,11 +1560,11 @@ function LinkedVariantsEditor({
       )}
 
       {linkedVariants.length === 0 && !showPicker && (
-        <div className="text-[10px] text-zinc-600">无关联变体</div>
+        <div className="text-xs text-zinc-600">无关联变体</div>
       )}
 
-      {/* Picker */}
-      {showPicker && (
+      {/* Full-width add button / picker */}
+      {showPicker ? (
         <PresetCascadePicker
           categories={pickerCategories}
           value={null}
@@ -1583,6 +1574,14 @@ function LinkedVariantsEditor({
           placeholder="选择关联变体…"
           presetCategoriesOnly
         />
+      ) : (
+        <button
+          type="button"
+          onClick={() => setShowPicker(true)}
+          className="w-full rounded-lg border border-dashed border-white/10 px-2 py-1.5 text-xs text-zinc-500 hover:border-white/20 hover:text-zinc-300 transition"
+        >
+          <Plus className="size-3 inline-block mr-1 -mt-0.5" />添加关联变体
+        </button>
       )}
     </div>
   );
@@ -1870,6 +1869,14 @@ function PresetForm({
         />
       </label>
 
+      {/* Linked variants (preset-level, below notes, above variant list) */}
+      <LinkedVariantsEditor
+        linkedVariants={current.linkedVariants}
+        onChange={(lv) => updateCurrentVariant({ linkedVariants: lv })}
+        currentPresetId={preset?.id}
+        allCategories={allCategories}
+      />
+
       {/* ── Variant section ── */}
       <div className="border-t border-white/5 pt-3 space-y-2">
         {/* Sortable variant list */}
@@ -1907,21 +1914,21 @@ function PresetForm({
         </div>
 
         {/* Add / Delete buttons */}
-        <div className="flex items-center gap-1">
+        <div className="space-y-1">
           <button
             type="button"
             onClick={addVariant}
-            className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-1.5 py-0.5 text-[10px] text-zinc-400 hover:bg-white/[0.06]"
+            className="w-full rounded-lg border border-dashed border-white/10 px-2 py-1.5 text-xs text-zinc-500 hover:border-white/20 hover:text-zinc-300 transition"
           >
-            <Plus className="size-2.5" /> 添加
+            <Plus className="size-3 inline-block mr-1 -mt-0.5" />添加变体
           </button>
           {totalVariants > 1 && (
             <button
               type="button"
               onClick={removeCurrentVariant}
-              className="inline-flex items-center gap-1 rounded-lg bg-red-500/10 px-1.5 py-0.5 text-[10px] text-red-400 hover:bg-red-500/20"
+              className="w-full rounded-lg bg-red-500/10 px-2 py-1.5 text-xs text-red-400 hover:bg-red-500/20 transition"
             >
-              <Trash2 className="size-2.5" /> 删除
+              <Trash2 className="size-3 inline-block mr-1 -mt-0.5" />删除变体
             </button>
           )}
         </div>
@@ -1983,14 +1990,6 @@ function PresetForm({
           <span className="text-[10px] text-zinc-500">LoRA 2（高清修复）</span>
           <LoraBindingEditor bindings={current.lora2} onChange={(v) => updateCurrentVariant({ lora2: v })} />
         </div>
-
-        {/* Linked variants (after LoRA, before save) */}
-        <LinkedVariantsEditor
-          linkedVariants={current.linkedVariants}
-          onChange={(lv) => updateCurrentVariant({ linkedVariants: lv })}
-          currentPresetId={preset?.id}
-          allCategories={allCategories}
-        />
       </div>
 
       {/* ── Action buttons ── */}
