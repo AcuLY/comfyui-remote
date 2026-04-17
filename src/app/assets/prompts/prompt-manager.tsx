@@ -34,6 +34,7 @@ import {
   Folder,
   FolderInput,
   ChevronDown,
+  ChevronUp,
   ChevronRight,
   ClipboardCopy,
   CheckSquare,
@@ -1830,8 +1831,18 @@ function PresetForm({
 
   return (
     <div className="rounded-xl border border-sky-500/20 bg-sky-500/[0.03] p-3 space-y-3">
-      <div className="text-[11px] font-medium text-sky-300">
-        {preset ? "编辑预制" : "新建预制"}
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] font-medium text-sky-300">
+          {preset ? "编辑预制" : "新建预制"}
+        </span>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="text-zinc-600 hover:text-zinc-300 transition"
+          title="收起"
+        >
+          <ChevronUp className="size-3.5" />
+        </button>
       </div>
 
       {/* Preset-level: name + slug */}
