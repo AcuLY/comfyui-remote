@@ -29,6 +29,8 @@ type LoraCascadePickerProps = {
   placeholder?: string;
   /** Size variant for trigger button */
   size?: "sm" | "md";
+  /** Auto-open dropdown on mount */
+  autoFocus?: boolean;
 };
 
 // ---------------------------------------------------------------------------
@@ -91,8 +93,9 @@ export function LoraCascadePicker({
   disabled = false,
   placeholder = "选择 LoRA…",
   size = "sm",
+  autoFocus = false,
 }: LoraCascadePickerProps) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(autoFocus);
   const [browsePath, setBrowsePath] = useState("");
   const [items, setItems] = useState<BrowseItem[]>([]);
   const [parentPath, setParentPath] = useState<string | null>(null);

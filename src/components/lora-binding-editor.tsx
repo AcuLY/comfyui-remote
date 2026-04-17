@@ -107,7 +107,7 @@ function SortableRow({
 
         {/* Path picker */}
         <div className="flex-1 min-w-0">
-          <LoraCascadePicker value={item.path} onChange={onPathChange} />
+          <LoraCascadePicker value={item.path} onChange={onPathChange} autoFocus={!item.path} />
         </div>
 
         {/* Weight input + adjust buttons (desktop only) */}
