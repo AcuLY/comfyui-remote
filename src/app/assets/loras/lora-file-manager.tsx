@@ -15,6 +15,7 @@ import {
   Check,
   Zap,
 } from "lucide-react";
+import { toast } from "sonner";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -353,7 +354,6 @@ export function LoraFileManager() {
         body: JSON.stringify({ path: editingNotesPath, notes: editingNotesText, triggerWords: editingTriggerText }),
       });
       if (res.ok) {
-        // Update local state
         setItems((prev) =>
           prev.map((item) =>
             item.path === editingNotesPath
@@ -362,7 +362,13 @@ export function LoraFileManager() {
           )
         );
         setEditingNotesPath(null);
+        toast.success("备注已保存");
+      } else {
+        const data = await res.json().catch(() => null);
+        toast.error(data?.error || "保存失败");
       }
+    } catch {
+      toast.error("保存失败");
     } finally {
       setSavingNotes(false);
     }

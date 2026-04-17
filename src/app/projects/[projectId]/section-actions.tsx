@@ -3,13 +3,19 @@
 import { useTransition } from "react";
 import { Copy, Plus, Trash2 } from "lucide-react";
 import { addSection, copySection, deleteSection } from "@/lib/actions";
+import { toast } from "sonner";
 
 export function AddSectionButton({ projectId }: { projectId: string }) {
   const [isPending, startTransition] = useTransition();
 
   function handleAdd() {
     startTransition(async () => {
-      await addSection(projectId);
+      try {
+        await addSection(projectId);
+        toast.success("小节已添加");
+      } catch (e: unknown) {
+        toast.error(e instanceof Error ? e.message : "添加失败");
+      }
     });
   }
 
@@ -29,7 +35,12 @@ export function CopySectionButton({ sectionId }: { sectionId: string }) {
 
   function handleCopy() {
     startTransition(async () => {
-      await copySection(sectionId);
+      try {
+        await copySection(sectionId);
+        toast.success("小节已复制");
+      } catch (e: unknown) {
+        toast.error(e instanceof Error ? e.message : "复制失败");
+      }
     });
   }
 
@@ -50,7 +61,12 @@ export function DeleteSectionButton({ sectionId, sectionName }: { sectionId: str
   function handleDelete() {
     if (!confirm(`确定要删除小节"${sectionName}"吗？此操作不可撤销。`)) return;
     startTransition(async () => {
-      await deleteSection(sectionId);
+      try {
+        await deleteSection(sectionId);
+        toast.success("小节已删除");
+      } catch (e: unknown) {
+        toast.error(e instanceof Error ? e.message : "删除失败");
+      }
     });
   }
 

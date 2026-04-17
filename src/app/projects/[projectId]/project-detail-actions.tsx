@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Play, Download, CheckCircle, XCircle, Trash2 } from "lucide-react";
 import { runProject, runSection, deleteProject } from "@/lib/actions";
+import { toast } from "sonner";
 import { exportProjectImages } from "@/app/projects/actions-export";
 import { BatchSizeQuickFill } from "@/components/batch-size-quick-fill";
 
@@ -18,7 +19,12 @@ export function ProjectDetailActions({ projectId, projectTitle }: { projectId: s
     const parsed = batchSize.trim() ? parseInt(batchSize, 10) : undefined;
     const overrideBatchSize = parsed && Number.isInteger(parsed) && parsed >= 1 ? parsed : undefined;
     startTransition(async () => {
-      await runProject(projectId, overrideBatchSize);
+      try {
+        await runProject(projectId, overrideBatchSize);
+        toast.success("已提交运行");
+      } catch (e: unknown) {
+        toast.error(e instanceof Error ? e.message : "运行失败");
+      }
     });
   }
 
@@ -95,8 +101,13 @@ export function ProjectDetailActions({ projectId, projectTitle }: { projectId: s
           const name = projectTitle || "此项目";
           if (!confirm(`确认删除「${name}」？\n\n此操作将同时删除所有小节、运行记录和图片数据，不可撤销。`)) return;
           startTransition(async () => {
-            await deleteProject(projectId);
-            router.push("/projects");
+            try {
+              await deleteProject(projectId);
+              toast.success("项目已删除");
+              router.push("/projects");
+            } catch (e: unknown) {
+              toast.error(e instanceof Error ? e.message : "删除失败");
+            }
           });
         }}
         className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-red-400 transition hover:bg-red-500/20 disabled:opacity-50"
@@ -112,7 +123,14 @@ export function SectionRunButton({ sectionId, defaultBatchSize }: { sectionId: s
   const [batchSize, setBatchSize] = useState<number>(defaultBatchSize ?? 2);
 
   function handleRun() {
-    startTransition(() => runSection(sectionId, batchSize));
+    startTransition(async () => {
+      try {
+        await runSection(sectionId, batchSize);
+        toast.success("已提交运行");
+      } catch (e: unknown) {
+        toast.error(e instanceof Error ? e.message : "运行失败");
+      }
+    });
   }
 
   return (

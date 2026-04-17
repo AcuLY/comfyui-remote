@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown, Loader2, Save } from "lucide-react";
 import { updateProject, type UpdateProjectInput } from "@/lib/actions";
+import { toast } from "sonner";
 import type { ProjectEditData, ProjectFormCategory } from "@/lib/server-data";
 import { BatchSizeQuickFill } from "@/components/batch-size-quick-fill";
 import { UpscaleFactorQuickFill } from "@/components/upscale-factor-quick-fill";
@@ -92,8 +93,13 @@ export function ProjectEditForm({ project, categories }: Props) {
     };
 
     startTransition(async () => {
-      await updateProject(input);
-      router.push(`/projects/${project.id}`);
+      try {
+        await updateProject(input);
+        toast.success("项目已保存");
+        router.push(`/projects/${project.id}`);
+      } catch (e: unknown) {
+        toast.error(e instanceof Error ? e.message : "保存失败");
+      }
     });
   }
 

@@ -74,6 +74,7 @@ import {
 } from "@/lib/actions";
 import { parseLoraBindings, serializeLoraBindings } from "@/lib/lora-types";
 import { PresetCascadePicker } from "@/components/preset-cascade-picker";
+import { toast } from "sonner";
 
 // ---------------------------------------------------------------------------
 // Main component
@@ -202,9 +203,11 @@ export function PromptManager({
                   startTransition(async () => {
                     if (editingCatId) {
                       await updatePresetCategory(editingCatId, data);
+                      toast.success("分类已保存");
                     } else {
                       const cat = await createPresetCategory(data);
                       setSelectedCatId(cat.id);
+                      toast.success("分类已创建");
                     }
                     setShowCatForm(false);
                     setEditingCatId(null);
@@ -218,11 +221,12 @@ export function PromptManager({
                         startTransition(async () => {
                           try {
                             await deletePresetCategory(editingCatId);
+                            toast.success("分类已删除");
                             if (selectedCatId === editingCatId) {
                               setSelectedCatId(categories[0]?.id ?? null);
                             }
                           } catch (e: unknown) {
-                            alert(e instanceof Error ? e.message : "删除失败");
+                            toast.error(e instanceof Error ? e.message : "删除失败");
                           }
                           setShowCatForm(false);
                           setEditingCatId(null);
@@ -978,11 +982,16 @@ function PresetList({
   const handleBatchMove = useCallback((folderId: string | null) => {
     const ids = Array.from(selectedIds);
     startTransition(async () => {
-      for (const id of ids) {
-        await moveToFolder("preset", id, folderId);
+      try {
+        for (const id of ids) {
+          await moveToFolder("preset", id, folderId);
+        }
+        setSelectedIds(new Set());
+        toast.success(`已移动 ${ids.length} 个预制`);
+        onRefresh();
+      } catch (e: unknown) {
+        toast.error(e instanceof Error ? e.message : "移动失败");
       }
-      setSelectedIds(new Set());
-      onRefresh();
     });
   }, [selectedIds, onRefresh, startTransition]);
 
@@ -1038,10 +1047,15 @@ function PresetList({
   async function handleCreateFolder() {
     if (!newFolderName.trim()) return;
     startTransition(async () => {
-      await createPresetFolder(category.id, currentFolderId, newFolderName.trim());
-      setNewFolderName("");
-      setIsCreatingFolder(false);
-      onRefresh();
+      try {
+        await createPresetFolder(category.id, currentFolderId, newFolderName.trim());
+        toast.success("文件夹已创建");
+        setNewFolderName("");
+        setIsCreatingFolder(false);
+        onRefresh();
+      } catch (e: unknown) {
+        toast.error(e instanceof Error ? e.message : "创建文件夹失败");
+      }
     });
   }
 
@@ -1133,8 +1147,13 @@ function PresetList({
               onEnter={() => setCurrentFolderId(folder.id)}
               onRename={(newName) => {
                 startTransition(async () => {
-                  await renamePresetFolder(folder.id, newName);
-                  onRefresh();
+                  try {
+                    await renamePresetFolder(folder.id, newName);
+                    toast.success("文件夹已重命名");
+                    onRefresh();
+                  } catch (e: unknown) {
+                    toast.error(e instanceof Error ? e.message : "重命名失败");
+                  }
                 });
               }}
               onDelete={() => {
@@ -1142,9 +1161,10 @@ function PresetList({
                 startTransition(async () => {
                   try {
                     await deletePresetFolder(folder.id);
+                    toast.success("文件夹已删除");
                     onRefresh();
                   } catch (e: unknown) {
-                    alert(e instanceof Error ? e.message : "删除失败");
+                    toast.error(e instanceof Error ? e.message : "删除失败");
                   }
                 });
               }}
@@ -1163,22 +1183,27 @@ function PresetList({
           allCategories={allCategories}
           onSave={(data, variantDrafts) => {
             startTransition(async () => {
-              const newPreset = await createPreset(data);
-              // Save all variant drafts from the form
-              for (const v of variantDrafts) {
-                await createPresetVariant({
-                  presetId: newPreset.id,
-                  name: v.name.trim(),
-                  slug: v.slug.trim(),
-                  prompt: v.prompt.trim(),
-                  negativePrompt: v.negativePrompt.trim() || null,
-                  lora1: serializeLoraBindings(v.lora1),
-                  lora2: serializeLoraBindings(v.lora2),
-                  linkedVariants: v.linkedVariants.length > 0 ? v.linkedVariants : null,
-                });
+              try {
+                const newPreset = await createPreset(data);
+                // Save all variant drafts from the form
+                for (const v of variantDrafts) {
+                  await createPresetVariant({
+                    presetId: newPreset.id,
+                    name: v.name.trim(),
+                    slug: v.slug.trim(),
+                    prompt: v.prompt.trim(),
+                    negativePrompt: v.negativePrompt.trim() || null,
+                    lora1: serializeLoraBindings(v.lora1),
+                    lora2: serializeLoraBindings(v.lora2),
+                    linkedVariants: v.linkedVariants.length > 0 ? v.linkedVariants : null,
+                  });
+                }
+                toast.success("预制已创建");
+                setIsCreating(false);
+                onRefresh();
+              } catch (e: unknown) {
+                toast.error(e instanceof Error ? e.message : "创建失败");
               }
-              setIsCreating(false);
-              onRefresh();
             });
           }}
           onCancel={() => setIsCreating(false)}
@@ -1210,8 +1235,13 @@ function PresetList({
                 onEdit={() => setEditingId(editingId === preset.id ? null : preset.id)}
                 onMoveToFolder={(folderId) => {
                   startTransition(async () => {
-                    await moveToFolder("preset", preset.id, folderId);
-                    onRefresh();
+                    try {
+                      await moveToFolder("preset", preset.id, folderId);
+                      toast.success("已移至目标文件夹");
+                      onRefresh();
+                    } catch (e: unknown) {
+                      toast.error(e instanceof Error ? e.message : "移动失败");
+                    }
                   });
                 }}
                 isSelected={selectedIds.has(preset.id)}
@@ -1222,46 +1252,56 @@ function PresetList({
                   allCategories,
                   onSave: (data, variantDrafts) => {
                     startTransition(async () => {
-                      await updatePreset(preset.id, data);
-                      // Save all variant drafts
-                      for (const v of variantDrafts) {
-                        const variantData = {
-                          presetId: preset.id,
-                          name: v.name.trim(),
-                          slug: v.slug.trim(),
-                          prompt: v.prompt.trim(),
-                          negativePrompt: v.negativePrompt.trim() || null,
-                          lora1: serializeLoraBindings(v.lora1),
-                          lora2: serializeLoraBindings(v.lora2),
-                          linkedVariants: v.linkedVariants,
-                        };
-                        if (v.id) {
-                          await updatePresetVariant(v.id, variantData);
-                        } else {
-                          await createPresetVariant(variantData);
+                      try {
+                        await updatePreset(preset.id, data);
+                        // Save all variant drafts
+                        for (const v of variantDrafts) {
+                          const variantData = {
+                            presetId: preset.id,
+                            name: v.name.trim(),
+                            slug: v.slug.trim(),
+                            prompt: v.prompt.trim(),
+                            negativePrompt: v.negativePrompt.trim() || null,
+                            lora1: serializeLoraBindings(v.lora1),
+                            lora2: serializeLoraBindings(v.lora2),
+                            linkedVariants: v.linkedVariants,
+                          };
+                          if (v.id) {
+                            await updatePresetVariant(v.id, variantData);
+                          } else {
+                            await createPresetVariant(variantData);
+                          }
                         }
+                        // Sync updated content (including linked variants) to all sections
+                        await syncPresetToSections(preset.id);
+                        toast.success("预制已保存");
+                        setEditingId(null);
+                        onRefresh();
+                      } catch (e: unknown) {
+                        toast.error(e instanceof Error ? e.message : "保存失败");
                       }
-                      // Sync updated content (including linked variants) to all sections
-                      await syncPresetToSections(preset.id);
-                      setEditingId(null);
-                      onRefresh();
                     });
                   },
                   onDelete: () => {
                     startTransition(async () => {
-                      // Check usage before deleting
-                      const usage = await getPresetUsage(preset.id);
-                      let msg = "确认删除此预制？";
-                      if (usage.sections.length > 0) {
-                        const lines = usage.sections.map(
-                          (s) => `  · ${s.projectTitle} / ${s.sectionName} (${s.blockCount} 个提示词块)`,
-                        );
-                        msg = `以下小节使用了该预制：\n${lines.join("\n")}\n\n确认删除将同时移除这些小节中的相关提示词块和 LoRA。`;
+                      try {
+                        // Check usage before deleting
+                        const usage = await getPresetUsage(preset.id);
+                        let msg = "确认删除此预制？";
+                        if (usage.sections.length > 0) {
+                          const lines = usage.sections.map(
+                            (s) => `  · ${s.projectTitle} / ${s.sectionName} (${s.blockCount} 个提示词块)`,
+                          );
+                          msg = `以下小节使用了该预制：\n${lines.join("\n")}\n\n确认删除将同时移除这些小节中的相关提示词块和 LoRA。`;
+                        }
+                        if (!confirm(msg)) return;
+                        await deletePresetCascade(preset.id);
+                        toast.success("预制已删除");
+                        setEditingId(null);
+                        onRefresh();
+                      } catch (e: unknown) {
+                        toast.error(e instanceof Error ? e.message : "删除失败");
                       }
-                      if (!confirm(msg)) return;
-                      await deletePresetCascade(preset.id);
-                      setEditingId(null);
-                      onRefresh();
                     });
                   },
                   onCancel: () => setEditingId(null),
@@ -1784,7 +1824,12 @@ function PresetForm({
     // If existing variant, call server delete
     if (current.id) {
       startVariantTransition(async () => {
-        await deletePresetVariant(current.id!);
+        try {
+          await deletePresetVariant(current.id!);
+          toast.success("变体已删除");
+        } catch (e: unknown) {
+          toast.error(e instanceof Error ? e.message : "删除变体失败");
+        }
       });
     }
 
@@ -2123,11 +2168,16 @@ function GroupList({
   const handleGroupBatchMove = useCallback((folderId: string | null) => {
     const ids = Array.from(selectedGroupIds);
     startTransition(async () => {
-      for (const id of ids) {
-        await moveToFolder("group", id, folderId);
+      try {
+        for (const id of ids) {
+          await moveToFolder("group", id, folderId);
+        }
+        setSelectedGroupIds(new Set());
+        toast.success(`已移动 ${ids.length} 个预制组`);
+        onRefresh();
+      } catch (e: unknown) {
+        toast.error(e instanceof Error ? e.message : "移动失败");
       }
-      setSelectedGroupIds(new Set());
-      onRefresh();
     });
   }, [selectedGroupIds, onRefresh, startTransition]);
 
@@ -2182,10 +2232,15 @@ function GroupList({
   async function handleCreateFolder() {
     if (!newFolderName.trim()) return;
     startTransition(async () => {
-      await createPresetFolder(category.id, currentFolderId, newFolderName.trim());
-      setNewFolderName("");
-      setIsCreatingFolder(false);
-      onRefresh();
+      try {
+        await createPresetFolder(category.id, currentFolderId, newFolderName.trim());
+        toast.success("文件夹已创建");
+        setNewFolderName("");
+        setIsCreatingFolder(false);
+        onRefresh();
+      } catch (e: unknown) {
+        toast.error(e instanceof Error ? e.message : "创建文件夹失败");
+      }
     });
   }
 
@@ -2263,8 +2318,13 @@ function GroupList({
               onEnter={() => navigateGroupFolder(folder.id)}
               onRename={(newName) => {
                 startTransition(async () => {
-                  await renamePresetFolder(folder.id, newName);
-                  onRefresh();
+                  try {
+                    await renamePresetFolder(folder.id, newName);
+                    toast.success("文件夹已重命名");
+                    onRefresh();
+                  } catch (e: unknown) {
+                    toast.error(e instanceof Error ? e.message : "重命名失败");
+                  }
                 });
               }}
               onDelete={() => {
@@ -2272,9 +2332,10 @@ function GroupList({
                 startTransition(async () => {
                   try {
                     await deletePresetFolder(folder.id);
+                    toast.success("文件夹已删除");
                     onRefresh();
                   } catch (e: unknown) {
-                    alert(e instanceof Error ? e.message : "删除失败");
+                    toast.error(e instanceof Error ? e.message : "删除失败");
                   }
                 });
               }}
@@ -2316,8 +2377,13 @@ function GroupList({
               }}
               onMoveToFolder={(folderId) => {
                 startTransition(async () => {
-                  await moveToFolder("group", group.id, folderId);
-                  onRefresh();
+                  try {
+                    await moveToFolder("group", group.id, folderId);
+                    toast.success("已移至目标文件夹");
+                    onRefresh();
+                  } catch (e: unknown) {
+                    toast.error(e instanceof Error ? e.message : "移动失败");
+                  }
                 });
               }}
               isPending={isPending}
@@ -2339,12 +2405,17 @@ function GroupList({
           allGroups={groups}
           onSave={(data, members) => {
             startTransition(async () => {
-              const group = await createPresetGroup(data);
-              for (const m of members) {
-                await addGroupMember({ groupId: group.id, ...m });
+              try {
+                const group = await createPresetGroup(data);
+                for (const m of members) {
+                  await addGroupMember({ groupId: group.id, ...m });
+                }
+                toast.success("预制组已创建");
+                setShowCreateForm(false);
+                onRefresh();
+              } catch (e: unknown) {
+                toast.error(e instanceof Error ? e.message : "创建失败");
               }
-              setShowCreateForm(false);
-              onRefresh();
             });
           }}
           onCancel={() => setShowCreateForm(false)}
@@ -2517,15 +2588,25 @@ function SortableGroupCard({
             group={group}
             onSave={(data) => {
               startTransition(async () => {
-                await updatePresetGroup(group.id, data);
-                onRefresh();
+                try {
+                  await updatePresetGroup(group.id, data);
+                  toast.success("预制组已保存");
+                  onRefresh();
+                } catch (e: unknown) {
+                  toast.error(e instanceof Error ? e.message : "保存失败");
+                }
               });
             }}
             onDelete={() => {
               if (!confirm(`确认删除预制组「${group.name}」？`)) return;
               startTransition(async () => {
-                await deletePresetGroup(group.id);
-                onGroupDeleted();
+                try {
+                  await deletePresetGroup(group.id);
+                  toast.success("预制组已删除");
+                  onGroupDeleted();
+                } catch (e: unknown) {
+                  toast.error(e instanceof Error ? e.message : "删除失败");
+                }
               });
             }}
             isPending={isPending}
@@ -2559,8 +2640,13 @@ function SortableGroupCard({
                       isPending={isPending}
                       onRemove={() => {
                         startTransition(async () => {
-                          await removeGroupMember(m.id);
-                          onRefresh();
+                          try {
+                            await removeGroupMember(m.id);
+                            toast.success("成员已移除");
+                            onRefresh();
+                          } catch (e: unknown) {
+                            toast.error(e instanceof Error ? e.message : "移除成员失败");
+                          }
                         });
                       }}
                       onNavigate={() => {
@@ -2579,8 +2665,13 @@ function SortableGroupCard({
             groups={groups.filter((g) => g.id !== group.id)}
             onAdd={(input) => {
               startTransition(async () => {
-                await addGroupMember(input);
-                onRefresh();
+                try {
+                  await addGroupMember(input);
+                  toast.success("成员已添加");
+                  onRefresh();
+                } catch (e: unknown) {
+                  toast.error(e instanceof Error ? e.message : "添加成员失败");
+                }
               });
             }}
             isPending={isPending}

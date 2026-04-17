@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Copy, Play, Pencil, Trash2 } from "lucide-react";
 import { runProject, copyProject, deleteProject } from "@/lib/actions";
+import { toast } from "sonner";
 
 export function ProjectActions({ projectId, projectTitle }: { projectId: string; projectTitle?: string }) {
   const [isPending, startTransition] = useTransition();
@@ -12,15 +13,25 @@ export function ProjectActions({ projectId, projectTitle }: { projectId: string;
 
   function handleRun() {
     startTransition(async () => {
-      await runProject(projectId);
+      try {
+        await runProject(projectId);
+        toast.success("已提交运行");
+      } catch (e: unknown) {
+        toast.error(e instanceof Error ? e.message : "运行失败");
+      }
     });
   }
 
   function handleCopy() {
     startTransition(async () => {
-      const newId = await copyProject(projectId);
-      if (newId) {
-        router.push(`/projects/${newId}`);
+      try {
+        const newId = await copyProject(projectId);
+        if (newId) {
+          toast.success("项目已复制");
+          router.push(`/projects/${newId}`);
+        }
+      } catch (e: unknown) {
+        toast.error(e instanceof Error ? e.message : "复制失败");
       }
     });
   }
@@ -29,8 +40,13 @@ export function ProjectActions({ projectId, projectTitle }: { projectId: string;
     const name = projectTitle || "此项目";
     if (!confirm(`确认删除「${name}」？\n\n此操作将同时删除所有小节、运行记录和图片数据，不可撤销。`)) return;
     startTransition(async () => {
-      await deleteProject(projectId);
-      router.push("/projects");
+      try {
+        await deleteProject(projectId);
+        toast.success("项目已删除");
+        router.push("/projects");
+      } catch (e: unknown) {
+        toast.error(e instanceof Error ? e.message : "删除失败");
+      }
     });
   }
 

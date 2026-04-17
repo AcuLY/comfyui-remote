@@ -22,6 +22,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Layers, ImageIcon, LayoutList, LayoutGrid } from "lucide-react";
 import Image from "next/image";
 import { reorderSections } from "@/lib/actions";
+import { toast } from "sonner";
 import { SectionRunButton } from "./project-detail-actions";
 import { CopySectionButton, DeleteSectionButton } from "./section-actions";
 
@@ -120,7 +121,7 @@ export function SectionList({ projectId, sections: initialSections }: SectionLis
         );
       } catch (err) {
         setSections(oldSections);
-        alert(err instanceof Error ? err.message : "排序失败");
+        toast.error(err instanceof Error ? err.message : "排序失败");
       }
     });
   }

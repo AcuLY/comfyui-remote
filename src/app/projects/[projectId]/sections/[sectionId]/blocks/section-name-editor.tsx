@@ -3,6 +3,7 @@
 import { useState, useTransition, useRef, useEffect } from "react";
 import { Pencil, Check, X } from "lucide-react";
 import { renameSection } from "@/lib/actions";
+import { toast } from "sonner";
 
 export function SectionNameEditor({
   sectionId,
@@ -30,8 +31,13 @@ export function SectionNameEditor({
     }
 
     startTransition(async () => {
-      await renameSection(sectionId, name.trim());
-      setIsEditing(false);
+      try {
+        await renameSection(sectionId, name.trim());
+        toast.success("小节已重命名");
+        setIsEditing(false);
+      } catch (e: unknown) {
+        toast.error(e instanceof Error ? e.message : "重命名失败");
+      }
     });
   }
 

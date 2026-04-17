@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown, Loader2, Plus } from "lucide-react";
 import { createProject } from "@/lib/actions";
+import { toast } from "sonner";
 import type { ProjectFormCategory } from "@/lib/server-data";
 
 type Props = {
@@ -49,12 +50,17 @@ export function ProjectForm({ categories }: Props) {
       }));
 
     startTransition(async () => {
-      const newProjectId = await createProject({
-        title: title.trim(),
-        presetBindings,
-        notes: notes.trim() || null,
-      });
-      router.push(`/projects/${newProjectId}`);
+      try {
+        const newProjectId = await createProject({
+          title: title.trim(),
+          presetBindings,
+          notes: notes.trim() || null,
+        });
+        toast.success("项目已创建");
+        router.push(`/projects/${newProjectId}`);
+      } catch (e: unknown) {
+        toast.error(e instanceof Error ? e.message : "创建失败");
+      }
     });
   }
 
