@@ -1878,10 +1878,10 @@ function PresetForm({
       />
 
       {/* ── Variant section ── */}
-      <div className="space-y-1.5">
+      <div className="border-t border-white/5 pt-3 space-y-1.5">
         <span className="text-[11px] font-medium text-zinc-500">变体列表</span>
       </div>
-      <div className="border-t border-white/5 pt-3 space-y-2">
+      <div className="space-y-2">
         {/* Sortable variant list */}
         <div className="space-y-1">
           {mounted ? (
