@@ -42,6 +42,8 @@ type PresetCascadePickerProps = {
   lockedCategoryId?: string;
   /** Filter to only show preset-type categories */
   presetCategoriesOnly?: boolean;
+  /** If true, the picker modal opens automatically on mount */
+  defaultOpen?: boolean;
 };
 
 // ---------------------------------------------------------------------------
@@ -56,8 +58,9 @@ export function PresetCascadePicker({
   disabled = false,
   lockedCategoryId,
   presetCategoriesOnly = false,
+  defaultOpen = false,
 }: PresetCascadePickerProps) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen ?? false);
   const [selectedCatId, setSelectedCatId] = useState<string>("");
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");

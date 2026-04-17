@@ -1202,14 +1202,25 @@ function PresetList({
             items={visiblePresets.map((p) => p.id)}
             strategy={verticalListSortingStrategy}
           >
-            {visiblePresets.map((preset) =>
-              editingId === preset.id ? (
-                <PresetForm
-                  key={preset.id}
-                  categoryId={category.id}
-                  preset={preset}
-                  allCategories={allCategories}
-                  onSave={(data, variantDrafts) => {
+            {visiblePresets.map((preset) => (
+              <SortablePresetCard
+                key={preset.id}
+                preset={preset}
+                folders={category.folders}
+                onEdit={() => setEditingId(editingId === preset.id ? null : preset.id)}
+                onMoveToFolder={(folderId) => {
+                  startTransition(async () => {
+                    await moveToFolder("preset", preset.id, folderId);
+                    onRefresh();
+                  });
+                }}
+                isSelected={selectedIds.has(preset.id)}
+                onToggleSelect={() => togglePresetSelection(preset.id)}
+                isEditing={editingId === preset.id}
+                presetFormProps={{
+                  categoryId: category.id,
+                  allCategories,
+                  onSave: (data, variantDrafts) => {
                     startTransition(async () => {
                       await updatePreset(preset.id, data);
                       // Save all variant drafts
@@ -1235,8 +1246,8 @@ function PresetList({
                       setEditingId(null);
                       onRefresh();
                     });
-                  }}
-                  onDelete={() => {
+                  },
+                  onDelete: () => {
                     startTransition(async () => {
                       // Check usage before deleting
                       const usage = await getPresetUsage(preset.id);
@@ -1252,27 +1263,12 @@ function PresetList({
                       setEditingId(null);
                       onRefresh();
                     });
-                  }}
-                  onCancel={() => setEditingId(null)}
-                  isPending={isPending}
-                />
-              ) : (
-                <SortablePresetCard
-                  key={preset.id}
-                  preset={preset}
-                  folders={category.folders}
-                  onEdit={() => setEditingId(preset.id)}
-                  onMoveToFolder={(folderId) => {
-                    startTransition(async () => {
-                      await moveToFolder("preset", preset.id, folderId);
-                      onRefresh();
-                    });
-                  }}
-                  isSelected={selectedIds.has(preset.id)}
-                  onToggleSelect={() => togglePresetSelection(preset.id)}
-                />
-              ),
-            )}
+                  },
+                  onCancel: () => setEditingId(null),
+                  isPending,
+                }}
+              />
+            ))}
           </SortableContext>
         </DndContext>
       )}
@@ -1291,6 +1287,8 @@ function SortablePresetCard({
   onMoveToFolder,
   isSelected,
   onToggleSelect,
+  isEditing,
+  presetFormProps,
 }: {
   preset: PresetFull;
   folders: FolderItem[];
@@ -1298,6 +1296,22 @@ function SortablePresetCard({
   onMoveToFolder: (folderId: string | null) => void;
   isSelected: boolean;
   onToggleSelect: () => void;
+  isEditing: boolean;
+  presetFormProps?: {
+    categoryId: string;
+    allCategories: PresetCategoryFull[];
+    onSave: (data: {
+      categoryId: string;
+      folderId?: string | null;
+      name: string;
+      slug: string;
+      notes?: string | null;
+      isActive?: boolean;
+    }, variantDrafts: VariantDraft[]) => void;
+    onDelete: () => void;
+    onCancel: () => void;
+    isPending: boolean;
+  };
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: preset.id });
   const style: React.CSSProperties = {
@@ -1307,68 +1321,62 @@ function SortablePresetCard({
   };
 
   const variantCount = preset.variantCount;
-  const firstVariant = preset.variants[0];
-  const lora1 = firstVariant ? parseLoraBindings(firstVariant.lora1) : [];
-  const lora2 = firstVariant ? parseLoraBindings(firstVariant.lora2) : [];
+  const lora1 = preset.variants[0] ? parseLoraBindings(preset.variants[0].lora1) : [];
+  const lora2 = preset.variants[0] ? parseLoraBindings(preset.variants[0].lora2) : [];
   const loraCount = lora1.length + lora2.length;
 
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      role="button"
-      tabIndex={0}
-      onClick={onEdit}
-      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onEdit(); }}
-      className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-3 transition hover:border-white/15 cursor-pointer"
-    >
-      <button
-        type="button"
-        className="shrink-0 text-zinc-600 hover:text-sky-400"
-        onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}
+    <div ref={setNodeRef} style={style} className="rounded-xl border border-white/5 bg-white/[0.02]">
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={onEdit}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onEdit(); }}
+        className="flex cursor-pointer items-center gap-2 px-3 py-2.5 transition hover:bg-white/[0.03]"
       >
-        {isSelected ? <CheckSquare className="size-3.5 text-sky-400" /> : <Square className="size-3.5" />}
-      </button>
-      <button
-        type="button"
-        className="cursor-grab touch-none text-zinc-600 hover:text-zinc-400"
-        onClick={(e) => e.stopPropagation()}
-        {...attributes}
-        {...listeners}
-      >
-        <GripVertical className="size-3.5" />
-      </button>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-medium text-zinc-200">
-            {preset.name}
-          </span>
-          {variantCount > 0 && (
-            <span className="text-[9px] text-sky-400/60">
-              {variantCount} 变体
-            </span>
-          )}
-          {loraCount > 0 && (
-            <span className="text-[9px] text-amber-400/60">
-              {loraCount} LoRA
-            </span>
-          )}
-        </div>
-        {firstVariant && (
-          <div className="mt-1 text-[11px] text-zinc-500 line-clamp-1">
-            {firstVariant.prompt.slice(0, 100)}
-            {firstVariant.prompt.length > 100 ? "..." : ""}
+        <button
+          type="button"
+          className="shrink-0 text-zinc-600 hover:text-sky-400"
+          onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}
+        >
+          {isSelected ? <CheckSquare className="size-3.5 text-sky-400" /> : <Square className="size-3.5" />}
+        </button>
+        <button
+          type="button"
+          className="cursor-grab touch-none text-zinc-600 hover:text-zinc-400"
+          onClick={(e) => e.stopPropagation()}
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className="size-3.5" />
+        </button>
+        <div className="flex-1 min-w-0">
+          <div className="text-xs font-medium text-zinc-200">{preset.name}</div>
+          <div className="text-[10px] text-zinc-500">
+            {variantCount > 0 ? `${variantCount} 变体` : "暂无变体"}
+            {loraCount > 0 && <span> · {loraCount} LoRA</span>}
           </div>
-        )}
-        {!firstVariant && (
-          <div className="mt-1 text-[11px] text-zinc-600">暂无变体</div>
-        )}
+        </div>
+        <MoveToFolderButton
+          currentFolderId={preset.folderId}
+          folders={folders}
+          onMove={onMoveToFolder}
+        />
+        <ChevronDown className={`size-3.5 text-zinc-500 transition ${isEditing ? "rotate-180" : ""}`} />
       </div>
-      <MoveToFolderButton
-        currentFolderId={preset.folderId}
-        folders={folders}
-        onMove={onMoveToFolder}
-      />
+
+      {isEditing && presetFormProps && (
+        <PresetForm
+          categoryId={presetFormProps.categoryId}
+          preset={preset}
+          allCategories={presetFormProps.allCategories}
+          onSave={presetFormProps.onSave}
+          onDelete={presetFormProps.onDelete}
+          onCancel={presetFormProps.onCancel}
+          isPending={presetFormProps.isPending}
+          embedded
+        />
+      )}
     </div>
   );
 }
@@ -1574,6 +1582,7 @@ function LinkedVariantsEditor({
           }}
           placeholder="选择关联变体…"
           presetCategoriesOnly
+          defaultOpen
         />
       ) : (
         <button
@@ -1663,6 +1672,7 @@ function PresetForm({
   onCancel,
   isPending,
   allCategories,
+  embedded = false,
 }: {
   categoryId: string;
   folderId?: string | null;
@@ -1679,6 +1689,8 @@ function PresetForm({
   onCancel: () => void;
   isPending: boolean;
   allCategories: PresetCategoryFull[];
+  /** When true, renders without outer container (for inline accordion use) */
+  embedded?: boolean;
 }) {
   const router = useRouter();
   const [, startVariantTransition] = useTransition();
@@ -1829,19 +1841,8 @@ function PresetForm({
   // For new presets, variants are saved after the preset is created
   // We need a post-save callback — handled by the parent's onSave flow
 
-  return (
-    <div className="rounded-xl border border-sky-500/20 bg-sky-500/[0.03] p-3 space-y-3">
-      <button
-        type="button"
-        onClick={onCancel}
-        className="flex w-full items-center justify-between cursor-pointer rounded -mx-1 px-1 py-0.5 text-left hover:bg-white/[0.04] transition"
-      >
-        <span className="text-[11px] font-medium text-sky-300">
-          {preset ? "编辑预制" : "新建预制"}
-        </span>
-        <ChevronUp className="size-3.5 text-zinc-600" />
-      </button>
-
+  const formContent = (
+    <div className={embedded ? "border-t border-white/5 px-3 py-3 space-y-3" : "p-3 space-y-3"}>
       {/* Preset-level: name + slug */}
       <div className="grid grid-cols-2 gap-2">
         <label className="space-y-1">
@@ -2035,6 +2036,26 @@ function PresetForm({
           <X className="size-3" /> 取消
         </button>
       </div>
+    </div>
+  );
+
+  if (embedded) {
+    return <>{formContent}</>;
+  }
+
+  return (
+    <div className="rounded-xl border border-sky-500/20 bg-sky-500/[0.03] space-y-3">
+      <button
+        type="button"
+        onClick={onCancel}
+        className="flex w-full items-center justify-between cursor-pointer rounded -mx-1 px-1 py-0.5 text-left hover:bg-white/[0.04] transition"
+      >
+        <span className="text-[11px] font-medium text-sky-300">
+          {preset ? "编辑预制" : "新建预制"}
+        </span>
+        <ChevronUp className="size-3.5 text-zinc-600" />
+      </button>
+      {formContent}
     </div>
   );
 }
