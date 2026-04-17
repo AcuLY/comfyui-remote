@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, SlidersHorizontal } from "lucide-react";
+import { ArrowLeft, Plus, SlidersHorizontal } from "lucide-react";
 import { notFound } from "next/navigation";
 import { SectionCard } from "@/components/section-card";
 import { getProjectDetail, getProjectRevisions } from "@/lib/server-data";
@@ -54,6 +54,12 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
             <SectionList projectId={project.id} sections={project.sections} />
           )}
           <AddSectionButton projectId={project.id} />
+          <Link
+            href={`/projects/${project.id}/batch-create`}
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-sky-500/20 bg-sky-500/[0.03] px-3 py-3 text-xs text-sky-400 transition hover:bg-sky-500/[0.08]"
+          >
+            <Plus className="size-3.5" /> 批量创建小节
+          </Link>
         </div>
       </SectionCard>
 

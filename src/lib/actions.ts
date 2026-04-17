@@ -1687,6 +1687,70 @@ export async function addSection(projectId: string, name?: string): Promise<stri
 }
 
 // ---------------------------------------------------------------------------
+// 批量创建小节：按模板创建（含额外导入 + 变体覆盖 + 画幅配置）
+// ---------------------------------------------------------------------------
+
+export type CreateSectionFromTemplateInput = {
+  projectId: string;
+  name?: string;
+  aspectRatio?: string;
+  shortSidePx?: number;
+  extraImports: Array<{
+    presetId: string;
+    variantId: string;
+    groupBindingId?: string;
+  }>;
+  bindingVariantOverrides: Array<{
+    presetId: string;
+    variantId: string;
+  }>;
+};
+
+export async function createSectionFromTemplate(
+  input: CreateSectionFromTemplateInput,
+): Promise<string> {
+  const { projectId, name, aspectRatio, shortSidePx, extraImports, bindingVariantOverrides } = input;
+
+  // 1. 创建小节（自动导入项目级绑定）
+  const sectionId = await addSection(projectId, name);
+
+  // 2. 覆盖项目级绑定的变体
+  if (bindingVariantOverrides.length > 0) {
+    const blocks = await prisma.promptBlock.findMany({
+      where: { sectionId, type: "preset" },
+      select: { id: true, bindingId: true, sourceId: true },
+    });
+
+    for (const override of bindingVariantOverrides) {
+      // 找到 sourceId 匹配的 binding
+      const block = blocks.find((b) => b.sourceId === override.presetId);
+      if (block?.bindingId) {
+        await switchBindingVariant(sectionId, block.bindingId, override.variantId);
+      }
+    }
+  }
+
+  // 3. 导入额外预制
+  for (const imp of extraImports) {
+    await importPresetToSection(sectionId, imp.presetId, imp.variantId, imp.groupBindingId);
+  }
+
+  // 4. 更新画幅配置
+  if (aspectRatio || shortSidePx) {
+    await prisma.projectSection.update({
+      where: { id: sectionId },
+      data: {
+        ...(aspectRatio ? { aspectRatio } : {}),
+        ...(shortSidePx ? { shortSidePx } : {}),
+      },
+    });
+    revalidatePath(`/projects/${projectId}`);
+  }
+
+  return sectionId;
+}
+
+// ---------------------------------------------------------------------------
 // 重命名小节
 // ---------------------------------------------------------------------------
 
