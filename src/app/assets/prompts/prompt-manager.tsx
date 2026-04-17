@@ -1390,6 +1390,7 @@ function LinkedVariantsEditor({
   allCategories: PresetCategoryFull[];
 }) {
   const [showPicker, setShowPicker] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   // Build filtered categories excluding current preset
   const categoriesFiltered = useMemo(() => {
@@ -1401,7 +1402,7 @@ function LinkedVariantsEditor({
       .filter((cat) => cat.presets.length > 0);
   }, [allCategories, currentPresetId]);
 
-  // Flat list for display name resolution
+  // Flat list with full variant data for display name + content resolution
   const allItems = useMemo(() => {
     const items: Array<{
       presetId: string;
@@ -1410,6 +1411,10 @@ function LinkedVariantsEditor({
       variantName: string;
       categoryName: string;
       displayName: string;
+      prompt: string;
+      negativePrompt: string | null;
+      lora1: ReturnType<typeof parseLoraBindings>;
+      lora2: ReturnType<typeof parseLoraBindings>;
     }> = [];
     for (const cat of categoriesFiltered) {
       for (const preset of cat.presets) {
@@ -1423,6 +1428,10 @@ function LinkedVariantsEditor({
             displayName: preset.variants.length === 1
               ? `${cat.name} / ${preset.name}`
               : `${cat.name} / ${preset.name} / ${v.name}`,
+            prompt: v.prompt ?? "",
+            negativePrompt: v.negativePrompt,
+            lora1: parseLoraBindings(v.lora1),
+            lora2: parseLoraBindings(v.lora2),
           });
         }
       }
@@ -1430,12 +1439,16 @@ function LinkedVariantsEditor({
     return items;
   }, [categoriesFiltered]);
 
-  // Resolve display names for current linked variants
+  // Resolve display + content for current linked variants
   const linkedDisplay = linkedVariants.map((ref) => {
     const item = allItems.find((a) => a.variantId === ref.variantId);
     return {
       ...ref,
       displayName: item?.displayName ?? `未知变体 (${ref.variantId.slice(0, 8)}...)`,
+      prompt: item?.prompt ?? "",
+      negativePrompt: item?.negativePrompt,
+      lora1: item?.lora1 ?? [],
+      lora2: item?.lora2 ?? [],
     };
   });
 
@@ -1475,21 +1488,83 @@ function LinkedVariantsEditor({
       {/* Current linked variants */}
       {linkedDisplay.length > 0 && (
         <div className="space-y-1">
-          {linkedDisplay.map((item) => (
-            <div
-              key={item.variantId}
-              className="flex items-center justify-between rounded-lg border border-white/5 bg-white/[0.02] px-2 py-1"
-            >
-              <span className="text-[10px] text-zinc-300 truncate">{item.displayName}</span>
-              <button
-                type="button"
-                onClick={() => handleRemove(item.variantId)}
-                className="rounded p-0.5 text-zinc-600 hover:text-red-400"
+          {linkedDisplay.map((item) => {
+            const isExpanded = expandedId === item.variantId;
+            const hasContent = item.prompt || item.negativePrompt || item.lora1.length > 0 || item.lora2.length > 0;
+            return (
+              <div
+                key={item.variantId}
+                className="rounded-lg border border-white/5 bg-white/[0.02]"
               >
-                <X className="size-2.5" />
-              </button>
-            </div>
-          ))}
+                <div className="flex items-center justify-between px-2 py-1">
+                  <button
+                    type="button"
+                    onClick={() => setExpandedId(isExpanded ? null : item.variantId)}
+                    className="flex items-center gap-1 min-w-0 flex-1 text-left"
+                  >
+                    {hasContent && (
+                      <ChevronDown className={`size-2.5 shrink-0 text-zinc-500 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                    )}
+                    <span className="text-[10px] text-zinc-300 truncate">{item.displayName}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleRemove(item.variantId)}
+                    className="rounded p-0.5 text-zinc-600 hover:text-red-400"
+                  >
+                    <X className="size-2.5" />
+                  </button>
+                </div>
+                {/* Expanded preview: prompt + LoRA */}
+                {isExpanded && hasContent && (
+                  <div className="space-y-1 border-t border-white/5 px-2 py-1.5">
+                    {item.prompt && (
+                      <div>
+                        <span className="text-[9px] text-zinc-600">正面提示词</span>
+                        <div className="mt-0.5 rounded bg-black/20 px-1.5 py-1 text-[10px] text-zinc-400 whitespace-pre-wrap break-all max-h-20 overflow-y-auto">
+                          {item.prompt}
+                        </div>
+                      </div>
+                    )}
+                    {item.negativePrompt && (
+                      <div>
+                        <span className="text-[9px] text-zinc-600">负面提示词</span>
+                        <div className="mt-0.5 rounded bg-black/20 px-1.5 py-1 text-[10px] text-zinc-400 whitespace-pre-wrap break-all max-h-20 overflow-y-auto">
+                          {item.negativePrompt}
+                        </div>
+                      </div>
+                    )}
+                    {item.lora1.length > 0 && (
+                      <div>
+                        <span className="text-[9px] text-zinc-600">LoRA 1</span>
+                        <div className="mt-0.5 space-y-0.5">
+                          {item.lora1.map((l, i) => (
+                            <div key={i} className="flex items-center gap-1 text-[10px] text-zinc-500">
+                              <span className="truncate">{l.path.split(/[\\/]/).pop()}</span>
+                              <span className="shrink-0 text-zinc-600">{l.weight}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {item.lora2.length > 0 && (
+                      <div>
+                        <span className="text-[9px] text-zinc-600">LoRA 2</span>
+                        <div className="mt-0.5 space-y-0.5">
+                          {item.lora2.map((l, i) => (
+                            <div key={i} className="flex items-center gap-1 text-[10px] text-zinc-500">
+                              <span className="truncate">{l.path.split(/[\\/]/).pop()}</span>
+                              <span className="shrink-0 text-zinc-600">{l.weight}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -1876,14 +1951,6 @@ function PresetForm({
           </label>
         </div>
 
-        {/* Linked variants */}
-        <LinkedVariantsEditor
-          linkedVariants={current.linkedVariants}
-          onChange={(lv) => updateCurrentVariant({ linkedVariants: lv })}
-          currentPresetId={preset?.id}
-          allCategories={allCategories}
-        />
-
         {/* Variant prompt fields */}
         <label className="block space-y-1">
           <span className="text-[10px] text-zinc-500">正面提示词</span>
@@ -1916,6 +1983,14 @@ function PresetForm({
           <span className="text-[10px] text-zinc-500">LoRA 2（高清修复）</span>
           <LoraBindingEditor bindings={current.lora2} onChange={(v) => updateCurrentVariant({ lora2: v })} />
         </div>
+
+        {/* Linked variants (after LoRA, before save) */}
+        <LinkedVariantsEditor
+          linkedVariants={current.linkedVariants}
+          onChange={(lv) => updateCurrentVariant({ linkedVariants: lv })}
+          currentPresetId={preset?.id}
+          allCategories={allCategories}
+        />
       </div>
 
       {/* ── Action buttons ── */}
