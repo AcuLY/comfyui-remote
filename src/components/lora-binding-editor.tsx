@@ -72,7 +72,7 @@ function SortableRow({
     <div
       ref={setNodeRef}
       style={style}
-      className="rounded-lg border border-white/5 bg-white/[0.02] p-2"
+      className="flex items-center gap-2 py-1.5"
     >
       {/* Row 1: drag handle + toggle + path picker (+ weight & delete on desktop) */}
       <div className="flex items-center gap-2">
@@ -262,9 +262,9 @@ export function LoraBindingEditor({ bindings, onChange }: LoraBindingEditorProps
 
   return (
     <div className="space-y-2">
-      <div className="text-xs text-zinc-500 mb-1">LoRA 绑定</div>
+      <div className="text-xs font-medium text-zinc-500 mb-1">LoRA 绑定</div>
 
-      <div className="space-y-2 rounded-lg border border-white/5 bg-white/[0.01] p-2">
+      <div className="space-y-1">
         {items.length === 0 ? (
           <div className="py-2 text-center text-[11px] text-zinc-600">
             暂无绑定的 LoRA

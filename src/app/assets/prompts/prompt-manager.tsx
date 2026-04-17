@@ -1985,12 +1985,12 @@ function PresetForm({
         </label>
 
         <div className="space-y-1">
-          <span className="text-[10px] text-zinc-500">LoRA 1（第一阶段）</span>
+          <span className="text-[11px] font-medium text-zinc-500">LoRA 1（第一阶段）</span>
           <LoraBindingEditor bindings={current.lora1} onChange={(v) => updateCurrentVariant({ lora1: v })} />
         </div>
 
         <div className="space-y-1">
-          <span className="text-[10px] text-zinc-500">LoRA 2（高清修复）</span>
+          <span className="text-[11px] font-medium text-zinc-500">LoRA 2（高清修复）</span>
           <LoraBindingEditor bindings={current.lora2} onChange={(v) => updateCurrentVariant({ lora2: v })} />
         </div>
       </div>
