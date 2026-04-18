@@ -236,9 +236,10 @@ export function BatchCreateClient({
 
       // Look up the group name directly from the group that was clicked
       let resolvedGroupName: string | undefined;
+      let groupCategoryId = "";
       for (const cat of library.categories) {
         const g = (cat.groups ?? []).find((gg) => gg.id === groupId);
-        if (g) { resolvedGroupName = g.name; break; }
+        if (g) { resolvedGroupName = g.name; groupCategoryId = cat.id; break; }
       }
 
       for (const m of members) {
@@ -279,6 +280,69 @@ export function BatchCreateClient({
       }
     },
     [importList, library],
+  );
+
+  const overrideAddGroup = useCallback(
+    async (groupId: string) => {
+      const members = await flattenGroup(groupId);
+      const newItems: ImportItem[] = [];
+      const groupBindingId = `grp-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+
+      // Look up the group name and category
+      let resolvedGroupName: string | undefined;
+      let groupCategoryId = "";
+      for (const cat of library.categories) {
+        const g = (cat.groups ?? []).find((gg) => gg.id === groupId);
+        if (g) { resolvedGroupName = g.name; groupCategoryId = cat.id; break; }
+      }
+
+      // Build new items
+      for (const m of members) {
+        let presetName = "";
+        let folderId: string | null = null;
+        let categoryId = "";
+        let variantId = m.variantId ?? "";
+        let variants: Array<{ id: string; name: string }> = [];
+        for (const cat of library.categories) {
+          const preset = cat.presets.find((p) => p.id === m.presetId);
+          if (preset) {
+            presetName = preset.name;
+            folderId = preset.folderId ?? null;
+            categoryId = cat.id;
+            variants = preset.variants.map((v) => ({ id: v.id, name: v.name }));
+            if (!variantId && preset.variants.length > 0) variantId = preset.variants[0].id;
+            break;
+          }
+        }
+        if (!presetName) continue;
+        const variantName = variants.length > 1 ? variants.find((v) => v.id === variantId)?.name ?? "" : "";
+        newItems.push({
+          key: `imp-${m.presetId}`,
+          presetId: m.presetId,
+          variantId,
+          groupBindingId,
+          label: variantName ? `${presetName} / ${variantName}` : presetName,
+          groupName: resolvedGroupName,
+          categoryId,
+          folderId,
+          variants,
+        });
+      }
+
+      // Clear same-category items, keep only new group items
+      setImportList(newItems);
+      // Clear binding overrides for the group's category
+      setBindingOverrides((prev) => {
+        const catPresetIds = new Set(projectBindingInfos.filter((b) => b.categoryId === groupCategoryId).map((b) => b.presetId));
+        const next = { ...prev };
+        for (const pid of catPresetIds) delete next[pid];
+        return next;
+      });
+      // Fill section name with group name
+      if (resolvedGroupName) setSectionName(resolvedGroupName);
+      toast.success(`已覆盖 ${resolvedGroupName}`);
+    },
+    [library, projectBindingInfos],
   );
 
   const removeImportItem = useCallback((key: string) => {
@@ -449,7 +513,10 @@ export function BatchCreateClient({
               filteredGroups.length === 0 && subFolders.length === 0 ? (
                 <div className="py-2 text-center text-[10px] text-zinc-600">暂无可导入的预制组</div>
               ) : (
-                filteredGroups.map((group) => (
+                filteredGroups.map((group) => {
+                  const hasGroupCategoryItems = importList.some((i) => i.categoryId === selectedCat!.id)
+                    || projectBindingInfos.some((b) => b.categoryId === selectedCat!.id);
+                  return (
                   <button
                     key={group.id}
                     type="button"
@@ -461,13 +528,29 @@ export function BatchCreateClient({
                         <span className="rounded bg-amber-500/15 px-1 py-px text-[9px] text-amber-400">组</span>
                         <span className="text-[11px] font-medium text-zinc-200">{group.name}</span>
                       </div>
-                      <Plus className="size-3 text-zinc-600" />
+                      <div className="flex items-center gap-1">
+                        {hasGroupCategoryItems && (
+                          <span
+                            role="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              overrideAddGroup(group.id);
+                            }}
+                            className="inline-flex items-center gap-0.5 rounded px-1 py-px text-[9px] text-amber-400/80 hover:bg-amber-500/10 transition"
+                            title="覆盖添加：清除同分类预制，只保留此组"
+                          >
+                            <Replace className="size-2.5" />
+                          </span>
+                        )}
+                        <Plus className="size-3 text-zinc-600" />
+                      </div>
                     </div>
                     <div className="mt-0.5 text-[10px] text-zinc-500">
                       {group.members.length} 个成员
                     </div>
                   </button>
-                ))
+                  );
+                })
               )
             ) : (
               presetItems.length === 0 && subFolders.length === 0 ? (
