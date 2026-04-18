@@ -4,7 +4,7 @@ import { useState, useTransition, useMemo, useEffect, useCallback } from "react"
 import Link from "next/link";
 import {
   ArrowLeft, Plus, X, ChevronDown, ChevronLeft, Search,
-  Folder, RotateCw, ClipboardCopy, Check, Package,
+  Folder, RotateCw, ClipboardCopy, Check, Package, Replace,
 } from "lucide-react";
 import { toast } from "sonner";
 import { createSectionFromTemplate, flattenGroup } from "@/lib/actions";
@@ -210,6 +210,37 @@ export function BatchCreateClient({
       ]);
     },
     [importList, getGroupName],
+  );
+
+  const overrideAddPreset = useCallback(
+    (presetId: string, presetName: string, variantId: string, variantName: string, folderId: string | null, categoryId: string, variants: Array<{ id: string; name: string }>) => {
+      const label = variantName ? `${presetName} / ${variantName}` : presetName;
+      // Remove all imports from the same category
+      setImportList((prev) => [
+        ...prev.filter((i) => i.categoryId !== categoryId),
+        {
+          key: `imp-${presetId}`,
+          presetId,
+          variantId,
+          label,
+          groupName: getGroupName(presetId),
+          categoryId,
+          folderId,
+          variants,
+        },
+      ]);
+      // Remove binding overrides for presets in the same category
+      setBindingOverrides((prev) => {
+        const catPresetIds = new Set(projectBindingInfos.filter((b) => b.categoryId === categoryId).map((b) => b.presetId));
+        const next = { ...prev };
+        for (const pid of catPresetIds) delete next[pid];
+        return next;
+      });
+      // Fill section name
+      setSectionName(presetName);
+      toast.success(`已覆盖 ${presetName}`);
+    },
+    [getGroupName, projectBindingInfos],
   );
 
   const addGroupToImportList = useCallback(
@@ -456,6 +487,8 @@ export function BatchCreateClient({
               ) : (
                 presetItems.map((item) => {
                   const inList = isPresetInList(item.presetId);
+                  const hasCategoryItems = importList.some((i) => i.categoryId === selectedCat!.id)
+                    || projectBindingInfos.some((b) => b.categoryId === selectedCat!.id);
                   return (
                     <button
                       key={`${item.presetId}-${item.variantId}`}
@@ -478,7 +511,25 @@ export function BatchCreateClient({
                         {inList ? (
                           <Check className="size-3 shrink-0 text-sky-400" />
                         ) : (
-                          <Plus className="size-3 shrink-0 text-zinc-600" />
+                          <div className="flex items-center gap-1">
+                            {hasCategoryItems && (
+                              <span
+                                role="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  overrideAddPreset(
+                                    item.presetId, item.presetName, item.variantId,
+                                    item.variantName, item.folderId, selectedCat!.id, item.variants,
+                                  );
+                                }}
+                                className="inline-flex items-center gap-0.5 rounded px-1 py-px text-[9px] text-amber-400/80 hover:bg-amber-500/10 transition"
+                                title="覆盖添加：清除同分类预制，只保留此预制"
+                              >
+                                <Replace className="size-2.5" />
+                              </span>
+                            )}
+                            <Plus className="size-3 shrink-0 text-zinc-600" />
+                          </div>
                         )}
                       </div>
                     </button>

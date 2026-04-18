@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Layers } from "lucide-react";
+import { ArrowLeft, Layers, ChevronLeft, ChevronRight } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { SectionCard } from "@/components/section-card";
 import { SectionEditor } from "@/components/section-editor";
@@ -20,7 +20,7 @@ export default async function SectionEditPage({
 }) {
   const { projectId, sectionId } = await params;
 
-  const [pos, libraryV2] = await Promise.all([
+  const [pos, libraryV2, siblingSections] = await Promise.all([
     prisma.projectSection.findUnique({
       where: { id: sectionId },
       include: {
@@ -48,11 +48,20 @@ export default async function SectionEditPage({
       },
     }),
     getPromptLibraryV2(),
+    prisma.projectSection.findMany({
+      where: { projectId },
+      orderBy: { sortOrder: "asc" },
+      select: { id: true },
+    }),
   ]);
 
   if (!pos || pos.projectId !== projectId) {
     notFound();
   }
+
+  const sectionIdx = siblingSections.findIndex((s) => s.id === sectionId);
+  const prevSection = sectionIdx > 0 ? siblingSections[sectionIdx - 1] : null;
+  const nextSection = sectionIdx < siblingSections.length - 1 ? siblingSections[sectionIdx + 1] : null;
 
   const sectionName =
     pos.name || `小节 ${pos.sortOrder}`;
@@ -238,9 +247,35 @@ export default async function SectionEditPage({
         >
           <ArrowLeft className="size-4" /> 返回项目详情
         </Link>
-        <div className="flex items-center gap-2 text-zinc-400">
-          <Layers className="size-4" />
-          <span className="text-xs">{initialBlocks.length} 个提示词块</span>
+        <div className="flex items-center gap-2">
+          {prevSection ? (
+            <Link
+              href={`/projects/${projectId}/sections/${prevSection.id}/blocks`}
+              className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-zinc-300 transition hover:bg-white/[0.08]"
+            >
+              <ChevronLeft className="size-3" /> 上一节
+            </Link>
+          ) : (
+            <span className="inline-flex items-center gap-1 rounded-lg border border-white/5 px-2 py-1 text-xs text-zinc-600">
+              <ChevronLeft className="size-3" /> 上一节
+            </span>
+          )}
+          <div className="flex items-center gap-2 text-zinc-400">
+            <Layers className="size-4" />
+            <span className="text-xs">{initialBlocks.length} 个提示词块</span>
+          </div>
+          {nextSection ? (
+            <Link
+              href={`/projects/${projectId}/sections/${nextSection.id}/blocks`}
+              className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-zinc-300 transition hover:bg-white/[0.08]"
+            >
+              下一节 <ChevronRight className="size-3" />
+            </Link>
+          ) : (
+            <span className="inline-flex items-center gap-1 rounded-lg border border-white/5 px-2 py-1 text-xs text-zinc-600">
+              下一节 <ChevronRight className="size-3" />
+            </span>
+          )}
         </div>
       </div>
 
