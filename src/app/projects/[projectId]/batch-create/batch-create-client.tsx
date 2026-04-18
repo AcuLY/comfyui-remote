@@ -514,8 +514,9 @@ export function BatchCreateClient({
                 <div className="py-2 text-center text-[10px] text-zinc-600">暂无可导入的预制组</div>
               ) : (
                 filteredGroups.map((group) => {
-                  const hasGroupCategoryItems = importList.some((i) => i.categoryId === selectedCat!.id)
-                    || projectBindingInfos.some((b) => b.categoryId === selectedCat!.id);
+                  // For group categories, members' categoryId is the preset's actual category,
+                  // not the group category. So check broadly or always show the override button.
+                  const hasItems = importList.length > 0 || projectBindingInfos.length > 0;
                   return (
                   <button
                     key={group.id}
@@ -529,7 +530,7 @@ export function BatchCreateClient({
                         <span className="text-[11px] font-medium text-zinc-200">{group.name}</span>
                       </div>
                       <div className="flex items-center gap-1">
-                        {hasGroupCategoryItems && (
+                        {hasItems && (
                           <span
                             role="button"
                             onClick={(e) => {
