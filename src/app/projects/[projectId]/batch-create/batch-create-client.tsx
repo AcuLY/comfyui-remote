@@ -159,19 +159,6 @@ export function BatchCreateClient({
     });
   }, [presetBindings, library]);
 
-  // --- Helpers: group name lookup ---
-  const getGroupName = useCallback(
-    (presetId: string): string | undefined => {
-      for (const cat of library.categories) {
-        for (const g of cat.groups ?? []) {
-          if (g.members.some((m) => m.presetId === presetId)) return g.name;
-        }
-      }
-      return undefined;
-    },
-    [library],
-  );
-
   // --- Helpers: navigate browser to a preset's location ---
   const navigateToPreset = useCallback(
     (presetId: string, categoryId?: string) => {
@@ -202,14 +189,13 @@ export function BatchCreateClient({
           presetId,
           variantId,
           label: variantName ? `${presetName} / ${variantName}` : presetName,
-          groupName: getGroupName(presetId),
           categoryId,
           folderId,
           variants,
         },
       ]);
     },
-    [importList, getGroupName],
+    [importList],
   );
 
   const overrideAddPreset = useCallback(
@@ -223,7 +209,6 @@ export function BatchCreateClient({
           presetId,
           variantId,
           label,
-          groupName: getGroupName(presetId),
           categoryId,
           folderId,
           variants,
@@ -240,7 +225,7 @@ export function BatchCreateClient({
       setSectionName(presetName);
       toast.success(`已覆盖 ${presetName}`);
     },
-    [getGroupName, projectBindingInfos],
+    [projectBindingInfos],
   );
 
   const addGroupToImportList = useCallback(
@@ -293,7 +278,7 @@ export function BatchCreateClient({
         setImportList((prev) => [...prev, ...newItems]);
       }
     },
-    [importList, library, getGroupName],
+    [importList, library],
   );
 
   const removeImportItem = useCallback((key: string) => {
@@ -323,8 +308,11 @@ export function BatchCreateClient({
     (key: string) => {
       const item = importList.find((i) => i.key === key);
       if (!item) return;
-      // If part of a group, concatenate all group member names
-      if (item.groupBindingId) {
+      // If part of a group, use the group name
+      if (item.groupBindingId && item.groupName) {
+        setSectionName(item.groupName);
+      } else if (item.groupBindingId) {
+        // Fallback: concatenate all group member names
         const groupMembers = importList.filter((i) => i.groupBindingId === item.groupBindingId);
         const names = groupMembers.map((m) => m.label.split(" / ")[0]);
         setSectionName(names.join(" · "));
