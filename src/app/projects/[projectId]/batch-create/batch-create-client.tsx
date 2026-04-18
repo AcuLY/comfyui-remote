@@ -239,7 +239,7 @@ export function BatchCreateClient({
       let groupCategoryId = "";
       for (const cat of library.categories) {
         const g = (cat.groups ?? []).find((gg) => gg.id === groupId);
-        if (g) { resolvedGroupName = g.name; groupCategoryId = cat.id; break; }
+        if (g) { resolvedGroupName = g.name; break; }
       }
 
       for (const m of members) {
@@ -288,12 +288,11 @@ export function BatchCreateClient({
       const newItems: ImportItem[] = [];
       const groupBindingId = `grp-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 
-      // Look up the group name and category
+      // Look up the group name
       let resolvedGroupName: string | undefined;
-      let groupCategoryId = "";
       for (const cat of library.categories) {
         const g = (cat.groups ?? []).find((gg) => gg.id === groupId);
-        if (g) { resolvedGroupName = g.name; groupCategoryId = cat.id; break; }
+        if (g) { resolvedGroupName = g.name; break; }
       }
 
       // Build new items
@@ -329,11 +328,21 @@ export function BatchCreateClient({
         });
       }
 
-      // Clear same-category items, keep only new group items
-      setImportList(newItems);
-      // Clear binding overrides for the group's category
+      // Collect all category IDs that the group's members belong to
+      const groupMemberCatIds = new Set(newItems.map((i) => i.categoryId));
+
+      // Clear same-category items, keep other categories and new group items
+      setImportList((prev) => [
+        ...prev.filter((i) => !groupMemberCatIds.has(i.categoryId)),
+        ...newItems,
+      ]);
+      // Clear binding overrides for categories that group members belong to
       setBindingOverrides((prev) => {
-        const catPresetIds = new Set(projectBindingInfos.filter((b) => b.categoryId === groupCategoryId).map((b) => b.presetId));
+        const catPresetIds = new Set(
+          projectBindingInfos
+            .filter((b) => groupMemberCatIds.has(b.categoryId))
+            .map((b) => b.presetId),
+        );
         const next = { ...prev };
         for (const pid of catPresetIds) delete next[pid];
         return next;
