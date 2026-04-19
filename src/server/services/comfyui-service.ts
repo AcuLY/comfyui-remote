@@ -607,39 +607,139 @@ export async function submitComfyPrompt(
   return promptId;
 }
 
+/**
+ * Check whether a prompt is still in ComfyUI's execution queue
+ * (either currently running or pending).
+ */
+async function isPromptInComfyQueue(
+  apiUrl: string,
+  promptId: string,
+): Promise<boolean> {
+  try {
+    const payload = await fetchJson(
+      `${apiUrl}/queue`,
+      { method: "GET" },
+      "ComfyUI queue status check",
+    );
+    const queue = asRecord(payload);
+    if (!queue) return false;
+
+    const running = Array.isArray(queue.queue_running) ? queue.queue_running : [];
+    const pending = Array.isArray(queue.queue_pending) ? queue.queue_pending : [];
+
+    return [...running, ...pending].some(
+      (item) => asRecord(item)?.prompt_id === promptId,
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Poll ComfyUI history for a specific prompt, with queue-aware timeout extension.
+ *
+ * When the base polling attempts are exhausted, checks whether the prompt is
+ * still in ComfyUI's queue. If so, extends the polling window. This prevents
+ * false timeouts when many tasks are submitted and ComfyUI processes them
+ * sequentially — later prompts may not start within the initial timeout.
+ */
 export async function pollComfyPromptHistory(
   apiUrl: string,
   promptId: string,
 ): Promise<ComfyPromptHistoryEntry> {
-  for (let attempt = 1; attempt <= env.comfyHistoryMaxAttempts; attempt += 1) {
-    const payload = await fetchJson(
-      `${apiUrl}/history/${encodeURIComponent(promptId)}`,
-      {
-        method: "GET",
-      },
-      `ComfyUI history poll for prompt ${promptId}`,
-    );
-    const historyEntry = extractHistoryEntry(payload, promptId);
+  const batchAttempts = env.comfyHistoryMaxAttempts;
+  const maxExtensions = 60; // Each extension adds another full batch of attempts
+  const startTime = Date.now();
+  let totalAttempts = 0;
 
-    if (historyEntry) {
-      const failureMessage = extractHistoryFailureMessage(historyEntry);
+  for (let extension = 0; extension <= maxExtensions; extension++) {
+    for (let i = 0; i < batchAttempts; i++) {
+      totalAttempts++;
 
-      if (failureMessage) {
-        throw new Error(failureMessage);
+      let payload: unknown;
+      try {
+        payload = await fetchJson(
+          `${apiUrl}/history/${encodeURIComponent(promptId)}`,
+          { method: "GET" },
+          `ComfyUI history poll for prompt ${promptId}`,
+        );
+      } catch (fetchError) {
+        // Network error or request timeout — retry instead of failing the run
+        log.warn("History poll request failed, retrying", {
+          promptId,
+          attempt: totalAttempts,
+          error: fetchError instanceof Error ? fetchError.message : String(fetchError),
+        });
+        if (i < batchAttempts - 1) {
+          await sleep(env.comfyHistoryPollIntervalMs);
+        }
+        continue;
       }
 
-      if (isHistoryComplete(historyEntry)) {
-        return historyEntry;
+      const historyEntry = extractHistoryEntry(payload, promptId);
+
+      if (historyEntry) {
+        const failureMessage = extractHistoryFailureMessage(historyEntry);
+
+        if (failureMessage) {
+          throw new Error(failureMessage);
+        }
+
+        if (isHistoryComplete(historyEntry)) {
+          log.debug("Prompt history complete", {
+            promptId,
+            totalAttempts,
+            elapsedMs: Date.now() - startTime,
+          });
+          return historyEntry;
+        }
+      }
+
+      if (i < batchAttempts - 1) {
+        await sleep(env.comfyHistoryPollIntervalMs);
       }
     }
 
-    if (attempt < env.comfyHistoryMaxAttempts) {
-      await sleep(env.comfyHistoryPollIntervalMs);
+    // Base batch exhausted — check ComfyUI queue before giving up
+    if (extension < maxExtensions) {
+      try {
+        const inQueue = await isPromptInComfyQueue(apiUrl, promptId);
+        if (inQueue) {
+          log.info("Prompt still in ComfyUI queue, extending poll window", {
+            promptId,
+            totalAttempts,
+            elapsedMs: Date.now() - startTime,
+            extension: extension + 1,
+          });
+          continue; // Start next batch of attempts
+        }
+
+        // Not in queue and no history — prompt was lost or ComfyUI cleared it
+        throw new Error(
+          `Timed out waiting for ComfyUI history for prompt ${promptId} after ${totalAttempts} attempts — prompt no longer in ComfyUI queue`,
+        );
+      } catch (queueCheckError) {
+        // Re-throw our own timeout errors
+        if (
+          queueCheckError instanceof Error &&
+          queueCheckError.message.includes("no longer in ComfyUI queue")
+        ) {
+          throw queueCheckError;
+        }
+        // Queue check itself failed (network error) — don't give up, try another batch
+        log.warn("Queue status check failed, continuing to poll", {
+          promptId,
+          error:
+            queueCheckError instanceof Error
+              ? queueCheckError.message
+              : String(queueCheckError),
+        });
+      }
     }
   }
 
   throw new Error(
-    `Timed out waiting for ComfyUI history for prompt ${promptId} after ${env.comfyHistoryMaxAttempts} attempts`,
+    `Timed out waiting for ComfyUI history for prompt ${promptId} after ${totalAttempts} attempts (max extensions reached)`,
   );
 }
 
