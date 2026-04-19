@@ -627,11 +627,25 @@ async function isPromptInComfyQueue(
     const running = Array.isArray(queue.queue_running) ? queue.queue_running : [];
     const pending = Array.isArray(queue.queue_pending) ? queue.queue_pending : [];
 
-    return [...running, ...pending].some(
-      (item) => asRecord(item)?.prompt_id === promptId,
-    );
-  } catch {
-    return false;
+    // ComfyUI queue items are arrays (tuples): [number, prompt_id, prompt, extra_data, outputs]
+    // prompt_id is at index 1. Handle both array format and hypothetical object format.
+    const matchesPromptId = (item: unknown): boolean => {
+      if (Array.isArray(item) && item.length > 1) {
+        return item[1] === promptId;
+      }
+      return asRecord(item)?.prompt_id === promptId;
+    };
+
+    return [...running, ...pending].some(matchesPromptId);
+  } catch (error) {
+    // Network error during queue check — don't silently fail, log and continue
+    log.warn("Queue status check failed, assuming prompt may still be queued", {
+      promptId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    // Return true to be safe — if we can't verify, assume prompt is still in queue
+    // rather than causing a false-negative timeout
+    return true;
   }
 }
 
