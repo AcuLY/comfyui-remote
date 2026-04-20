@@ -32,11 +32,22 @@ export async function keepImages(imageIds: string[]) {
     select: {
       id: true,
       filePath: true,
+      run: { select: { projectSectionId: true, projectSection: { select: { projectId: true } } } },
       trashRecord: {
         select: { originalPath: true, restoredAt: true },
       },
     },
   });
+
+  // 收集需要 revalidate 的 section results 路径
+  const sectionPaths = new Set<string>();
+  for (const img of images) {
+    if (img.run) {
+      sectionPaths.add(
+        `/projects/${img.run.projectSection.projectId}/sections/${img.run.projectSectionId}/results`,
+      );
+    }
+  }
 
   const now = new Date();
 
@@ -80,6 +91,7 @@ export async function keepImages(imageIds: string[]) {
     }),
   ]);
 
+  for (const p of sectionPaths) revalidatePath(p);
   revalidatePath("/queue");
 }
 
@@ -95,11 +107,22 @@ export async function trashImages(imageIds: string[]) {
     select: {
       id: true,
       filePath: true,
+      run: { select: { projectSectionId: true, projectSection: { select: { projectId: true } } } },
       trashRecord: {
         select: { originalPath: true, restoredAt: true, trashPath: true },
       },
     },
   });
+
+  // 收集需要 revalidate 的 section results 路径
+  const sectionPaths = new Set<string>();
+  for (const img of images) {
+    if (img.run) {
+      sectionPaths.add(
+        `/projects/${img.run.projectSection.projectId}/sections/${img.run.projectSectionId}/results`,
+      );
+    }
+  }
 
   const now = new Date();
 
@@ -157,6 +180,7 @@ export async function trashImages(imageIds: string[]) {
     ),
   ]);
 
+  for (const p of sectionPaths) revalidatePath(p);
   revalidatePath("/queue");
   revalidatePath("/trash");
 }
