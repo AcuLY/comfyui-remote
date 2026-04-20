@@ -44,8 +44,8 @@ export default async function SectionResultsPage({
 
       {/* Title */}
       <SectionCard
-        title={`${data.sectionName} — 结果`}
-        subtitle={`${data.projectTitle} · 共 ${data.runs.length} 次运行 · ${totalImages} 张图片`}
+        title={`${data.sectionName} — 审核`}
+        subtitle={`${data.projectTitle} · ${data.runs.length} 次运行 · ${totalImages} 张图片${data.totalPending > 0 ? ` · ${data.totalPending} 张待审` : ""}`}
       >
         {data.runs.length === 0 ? (
           <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-8 text-center text-sm text-zinc-500">
