@@ -255,6 +255,7 @@ function SectionEditor({
 }) {
   const aspectRatio = section.aspectRatio || "2:3";
   const res = resolveResolution(aspectRatio, section.shortSidePx ?? 512);
+  const resDisplay = `${res.width}x${res.height}`;
 
   return (
     <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
@@ -302,8 +303,8 @@ function SectionEditor({
             onChange={(e) => {
               const ratio = e.target.value;
               const px = section.shortSidePx ?? 512;
-              const [w, h] = resolveResolution(ratio, px).split("x").map(Number);
-              const newShortSide = Math.min(w, h);
+              const res = resolveResolution(ratio, px);
+              const newShortSide = Math.min(res.width, res.height);
               onUpdate({ aspectRatio: ratio, shortSidePx: newShortSide });
             }}
             className="mt-0.5 w-full rounded-lg border border-white/10 bg-black/20 px-2 py-1.5 text-xs text-white outline-none"
@@ -385,7 +386,7 @@ function SectionEditor({
         <div className="col-span-2">
           <label className="text-[10px] text-zinc-500">分辨率</label>
           <div className="mt-0.5 rounded-lg border border-white/5 bg-white/[0.02] px-2.5 py-1.5 text-xs text-zinc-400">
-            {res}
+            {resDisplay}
           </div>
         </div>
       </div>
