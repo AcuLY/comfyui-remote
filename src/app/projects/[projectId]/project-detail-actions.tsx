@@ -2,8 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Play, Download, CheckCircle, XCircle, Trash2 } from "lucide-react";
-import { runProject, runSection, deleteProject } from "@/lib/actions";
+import { Play, Download, CheckCircle, XCircle, Trash2, Save } from "lucide-react";
+import { runProject, runSection, deleteProject, saveProjectAsTemplate } from "@/lib/actions";
 import { toast } from "sonner";
 import { exportProjectImages } from "@/app/projects/actions-export";
 import { BatchSizeQuickFill } from "@/components/batch-size-quick-fill";
@@ -78,6 +78,24 @@ export function ProjectDetailActions({ projectId, projectTitle }: { projectId: s
         className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-emerald-300 transition hover:bg-emerald-500/20 disabled:opacity-50"
       >
         <Download className="size-4" /> {exporting ? "导出中…" : "图片整合"}
+      </button>
+      <button
+        onClick={() => {
+          const name = prompt("模板名称：", projectTitle || "");
+          if (!name) return;
+          startTransition(async () => {
+            try {
+              await saveProjectAsTemplate(projectId, name);
+              toast.success(`已保存为模板「${name}」`);
+            } catch (e: unknown) {
+              toast.error(e instanceof Error ? e.message : "保存失败");
+            }
+          });
+        }}
+        disabled={isPending}
+        className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-amber-300 transition hover:bg-amber-500/20 disabled:opacity-50"
+      >
+        <Save className="size-4" /> {isPending ? "保存中…" : "保存为模板"}
       </button>
       {exportMsg && (
         <div

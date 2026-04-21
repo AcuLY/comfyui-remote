@@ -1945,3 +1945,270 @@ export async function deleteProject(projectId: string): Promise<void> {
 
   revalidatePath("/projects");
 }
+
+// ---------------------------------------------------------------------------
+// Project Template CRUD
+// ---------------------------------------------------------------------------
+
+import type { ProjectTemplateSectionData } from "@/lib/server-data";
+
+export type CreateProjectTemplateInput = {
+  name: string;
+  description?: string | null;
+  sections: ProjectTemplateSectionData[];
+};
+
+export async function createProjectTemplate(
+  input: CreateProjectTemplateInput,
+): Promise<string> {
+  const template = await prisma.projectTemplate.create({
+    data: {
+      name: input.name,
+      description: input.description ?? null,
+      sections: {
+        create: input.sections.map((s, index) => ({
+          sortOrder: s.sortOrder ?? index,
+          name: s.name,
+          aspectRatio: s.aspectRatio,
+          shortSidePx: s.shortSidePx,
+          batchSize: s.batchSize,
+          seedPolicy1: s.seedPolicy1,
+          seedPolicy2: s.seedPolicy2,
+          ksampler1: s.ksampler1 ? toJsonValue(s.ksampler1) : undefined,
+          ksampler2: s.ksampler2 ? toJsonValue(s.ksampler2) : undefined,
+          upscaleFactor: s.upscaleFactor,
+          loraConfig: s.loraConfig ? toJsonValue(s.loraConfig) : undefined,
+          extraParams: s.extraParams ? toJsonValue(s.extraParams) : undefined,
+          promptBlocks:
+            s.promptBlocks.length > 0 ? toJsonValue(s.promptBlocks) : undefined,
+        })),
+      },
+    },
+  });
+  revalidatePath("/settings/templates");
+  return template.id;
+}
+
+export type UpdateProjectTemplateInput = {
+  id: string;
+  name?: string;
+  description?: string | null;
+  sections?: ProjectTemplateSectionData[];
+};
+
+export async function updateProjectTemplate(
+  input: UpdateProjectTemplateInput,
+): Promise<void> {
+  const { id, sections, ...rest } = input;
+
+  await prisma.$transaction(async (tx) => {
+    await tx.projectTemplate.update({
+      where: { id },
+      data: {
+        ...(rest.name !== undefined ? { name: rest.name } : {}),
+        ...(rest.description !== undefined ? { description: rest.description } : {}),
+      },
+    });
+
+    if (sections) {
+      await tx.projectTemplateSection.deleteMany({
+        where: { projectTemplateId: id },
+      });
+      if (sections.length > 0) {
+        await tx.projectTemplateSection.createMany({
+          data: sections.map((s, index) => ({
+            projectTemplateId: id,
+            sortOrder: s.sortOrder ?? index,
+            name: s.name,
+            aspectRatio: s.aspectRatio,
+            shortSidePx: s.shortSidePx,
+            batchSize: s.batchSize,
+            seedPolicy1: s.seedPolicy1,
+            seedPolicy2: s.seedPolicy2,
+            ksampler1: s.ksampler1
+              ? (JSON.parse(JSON.stringify(s.ksampler1)) as Prisma.InputJsonValue)
+              : undefined,
+            ksampler2: s.ksampler2
+              ? (JSON.parse(JSON.stringify(s.ksampler2)) as Prisma.InputJsonValue)
+              : undefined,
+            upscaleFactor: s.upscaleFactor,
+            loraConfig: s.loraConfig
+              ? (JSON.parse(JSON.stringify(s.loraConfig)) as Prisma.InputJsonValue)
+              : undefined,
+            extraParams: s.extraParams
+              ? (JSON.parse(JSON.stringify(s.extraParams)) as Prisma.InputJsonValue)
+              : undefined,
+            promptBlocks:
+              s.promptBlocks.length > 0
+                ? (JSON.parse(JSON.stringify(s.promptBlocks)) as Prisma.InputJsonValue)
+                : undefined,
+          })),
+        });
+      }
+    }
+  });
+
+  revalidatePath("/settings/templates");
+  revalidatePath(`/settings/templates/${id}/edit`);
+}
+
+export async function deleteProjectTemplate(
+  templateId: string,
+): Promise<void> {
+  await prisma.projectTemplate.delete({ where: { id: templateId } });
+  revalidatePath("/settings/templates");
+}
+
+export async function getTemplateOptionsForClient(): Promise<
+  Array<{ id: string; name: string; sectionCount: number }>
+> {
+  const templates = await prisma.projectTemplate.findMany({
+    orderBy: { updatedAt: "desc" },
+    select: { id: true, name: true, _count: { select: { sections: true } } },
+  });
+  return templates.map((t) => ({
+    id: t.id,
+    name: t.name,
+    sectionCount: t._count.sections,
+  }));
+}
+
+// ---------------------------------------------------------------------------
+// Import Template into Project
+// ---------------------------------------------------------------------------
+
+export async function importTemplateToProject(
+  projectId: string,
+  templateId: string,
+): Promise<number> {
+  const template = await prisma.projectTemplate.findUnique({
+    where: { id: templateId },
+    include: { sections: { orderBy: { sortOrder: "asc" } } },
+  });
+  if (!template) throw new Error("TEMPLATE_NOT_FOUND");
+
+  const currentSectionCount = await prisma.projectSection.count({
+    where: { projectId },
+  });
+
+  await prisma.$transaction(async (tx) => {
+    for (let i = 0; i < template.sections.length; i++) {
+      const ts = template.sections[i];
+
+      await tx.projectSection.create({
+        data: {
+          projectId,
+          sortOrder: currentSectionCount + i + 1,
+          enabled: true,
+          name: ts.name,
+          aspectRatio: ts.aspectRatio,
+          shortSidePx: ts.shortSidePx,
+          batchSize: ts.batchSize,
+          seedPolicy1: ts.seedPolicy1,
+          seedPolicy2: ts.seedPolicy2,
+          ksampler1: ts.ksampler1 ?? undefined,
+          ksampler2: ts.ksampler2 ?? undefined,
+          upscaleFactor: ts.upscaleFactor,
+          loraConfig: ts.loraConfig ?? undefined,
+          extraParams: ts.extraParams ?? undefined,
+          positivePrompt: composeFromTemplateBlocks(ts.promptBlocks, "positive"),
+          negativePrompt: composeFromTemplateBlocks(ts.promptBlocks, "negative"),
+          promptBlocks: { create: parseTemplatePromptBlocks(ts.promptBlocks) },
+        },
+      });
+    }
+  });
+
+  revalidatePath(`/projects/${projectId}`);
+  return template.sections.length;
+}
+
+function composeFromTemplateBlocks(
+  blocksJson: unknown,
+  field: "positive" | "negative",
+): string | undefined {
+  if (!blocksJson || !Array.isArray(blocksJson)) return undefined;
+  const parts = blocksJson
+    .map((b) => (field === "positive" ? b.positive : b.negative))
+    .filter((v): v is string => Boolean(v && typeof v === "string" && v.trim()));
+  return parts.length > 0 ? parts.join(" BREAK ") : undefined;
+}
+
+function parseTemplatePromptBlocks(
+  blocksJson: unknown,
+): Array<{
+  type: "custom";
+  label: string;
+  positive: string;
+  negative: string | null;
+  sortOrder: number;
+}> {
+  if (!blocksJson || !Array.isArray(blocksJson)) return [];
+  return blocksJson
+    .filter(
+      (b) => b && typeof b === "object" && typeof b.positive === "string",
+    )
+    .map((b, index) => ({
+      type: "custom" as const,
+      label: b.label || `Block ${index + 1}`,
+      positive: b.positive,
+      negative: b.negative ?? null,
+      sortOrder: b.sortOrder ?? index,
+    }));
+}
+
+// ---------------------------------------------------------------------------
+// Save Project as Template
+// ---------------------------------------------------------------------------
+
+export async function saveProjectAsTemplate(
+  projectId: string,
+  templateName: string,
+  templateDescription?: string | null,
+): Promise<string> {
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    include: {
+      sections: {
+        orderBy: { sortOrder: "asc" },
+        include: {
+          promptBlocks: {
+            orderBy: { sortOrder: "asc" },
+            select: { label: true, positive: true, negative: true, sortOrder: true },
+          },
+        },
+      },
+    },
+  });
+  if (!project) throw new Error("PROJECT_NOT_FOUND");
+
+  const template = await prisma.projectTemplate.create({
+    data: {
+      name: templateName,
+      description: templateDescription ?? null,
+      sections: {
+        create: project.sections.map((section) => ({
+          sortOrder: section.sortOrder,
+          name: section.name,
+          aspectRatio: section.aspectRatio,
+          shortSidePx: section.shortSidePx,
+          batchSize: section.batchSize,
+          seedPolicy1: section.seedPolicy1,
+          seedPolicy2: section.seedPolicy2,
+          ksampler1: section.ksampler1 ?? undefined,
+          ksampler2: section.ksampler2 ?? undefined,
+          upscaleFactor: section.upscaleFactor ?? undefined,
+          loraConfig: section.loraConfig ?? undefined,
+          extraParams: section.extraParams ?? undefined,
+          promptBlocks:
+            section.promptBlocks.length > 0
+              ? JSON.parse(JSON.stringify(section.promptBlocks))
+              : undefined,
+        })),
+      },
+    },
+  });
+
+  revalidatePath("/settings/templates");
+  return template.id;
+}

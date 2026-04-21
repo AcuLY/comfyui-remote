@@ -146,6 +146,40 @@ model PresetFolder {
   @@index([categoryId, parentId, sortOrder])
 }
 
+// ── Project Templates ──
+
+model ProjectTemplate {
+  id          String                  @id @default(cuid())
+  name        String
+  description String?                 @db.Text
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+  sections    ProjectTemplateSection[]
+
+  @@index([createdAt])
+}
+
+model ProjectTemplateSection {
+  id                String            @id @default(cuid())
+  projectTemplateId String
+  sortOrder         Int               @default(0)
+  name              String?
+  aspectRatio       String?
+  shortSidePx       Int?
+  batchSize         Int?
+  seedPolicy1       String?
+  seedPolicy2       String?
+  ksampler1         Json?             // KSamplerParams for KSampler1
+  ksampler2         Json?             // KSamplerParams for KSampler2
+  upscaleFactor     Float?
+  loraConfig        Json?             // { lora1: LoraEntry[], lora2: LoraEntry[] }
+  extraParams       Json?
+  promptBlocks      Json?             // Array<{ label, positive, negative?, sortOrder }>
+  projectTemplate    ProjectTemplate  @relation(fields: [projectTemplateId], references: [id], onDelete: Cascade)
+
+  @@index([projectTemplateId, sortOrder])
+}
+
 // ── Core models ──
 
 enum PromptBlockType {

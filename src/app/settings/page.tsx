@@ -1,8 +1,14 @@
 import Link from "next/link";
 import { SectionCard } from "@/components/section-card";
-import { Workflow, HeartPulse, ScrollText } from "lucide-react";
+import { Workflow, HeartPulse, ScrollText, LayoutTemplate } from "lucide-react";
 
 const settingsGroups = [
+  {
+    href: "/settings/templates",
+    label: "项目模板",
+    description: "管理可复用的小节模板，批量导入到项目中",
+    icon: LayoutTemplate,
+  },
   {
     href: "/settings/workflows",
     label: "Workflow 模板",
