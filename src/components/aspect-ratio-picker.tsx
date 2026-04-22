@@ -67,6 +67,7 @@ export function AspectRatioPicker({
   defaultShortSidePx,
   disabled,
   onChange,
+  onValueChange,
 }: {
   name: string;
   shortSidePxName?: string;
@@ -75,6 +76,8 @@ export function AspectRatioPicker({
   disabled?: boolean;
   /** Called when aspect ratio or short-side px changes (for auto-save) */
   onChange?: () => void;
+  /** Called with the new values when they change (for controlled usage outside forms) */
+  onValueChange?: (aspectRatio: string, shortSidePx: number | null) => void;
 }) {
   const [selected, setSelected] = useState(defaultValue ?? "");
   const [shortSidePx, setShortSidePx] = useState<string>(
@@ -119,8 +122,11 @@ export function AspectRatioPicker({
                     type="button"
                     disabled={disabled}
                     onClick={() => {
-                      setSelected(isSelected ? "" : opt.value);
+                      const next = isSelected ? "" : opt.value;
+                      setSelected(next);
                       onChange?.();
+                      const px = shortSidePx ? parseInt(shortSidePx, 10) : null;
+                      onValueChange?.(next, px && px > 0 ? px : null);
                     }}
                     title={`${opt.label} (${opt.width}×${opt.height})`}
                     className={`flex flex-col items-center gap-1 rounded-lg px-2 py-1.5 text-[10px] transition ${
@@ -156,7 +162,11 @@ export function AspectRatioPicker({
             disabled={disabled}
             value={shortSidePx}
             onChange={(e) => setShortSidePx(e.target.value)}
-            onBlur={() => onChange?.()}
+            onBlur={(ev) => {
+              onChange?.();
+              const px = ev.target.value ? parseInt(ev.target.value, 10) : null;
+              onValueChange?.(selected, px && px > 0 ? px : null);
+            }}
             placeholder={builtinShort ? String(builtinShort) : "1024"}
             className="input-number w-20 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30 disabled:opacity-70"
           />

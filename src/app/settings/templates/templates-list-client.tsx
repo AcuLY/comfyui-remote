@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
-import { Trash2, Edit, Layers } from "lucide-react";
+import { Trash2, Layers } from "lucide-react";
 import { deleteProjectTemplate } from "@/lib/actions";
 import { toast } from "sonner";
 import type { ProjectTemplateListItem } from "@/lib/server-data";
@@ -22,7 +22,7 @@ export function TemplatesListClient({
   }
 
   return (
-    <div className="space-y-2">
+    <div className="grid grid-cols-1 gap-3 justify-items-center md:grid-cols-2">
       {templates.map((t) => (
         <TemplateCard key={t.id} template={t} onDeleted={() => router.refresh()} />
       ))}
@@ -53,7 +53,10 @@ function TemplateCard({
   }
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+    <Link
+      href={`/settings/templates/${template.id}/edit`}
+      className="group w-full rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition hover:border-white/20 hover:bg-white/[0.05] md:max-w-[500px]"
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
@@ -73,23 +76,18 @@ function TemplateCard({
             <span>更新于 {template.updatedAt}</span>
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-1.5">
-          <Link
-            href={`/settings/templates/${template.id}/edit`}
-            className="inline-flex items-center gap-1 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-zinc-400 transition hover:bg-white/[0.08]"
-          >
-            <Edit className="size-3" /> 编辑
-          </Link>
-          <button
-            disabled={isPending}
-            onClick={handleDelete}
-            className="inline-flex items-center gap-1 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-zinc-500 transition hover:border-rose-500/20 hover:bg-rose-500/10 hover:text-rose-300 disabled:opacity-50"
-          >
-            <Trash2 className="size-3" />
-            {isPending ? "删除中…" : ""}
-          </button>
-        </div>
+        <button
+          disabled={isPending}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handleDelete();
+          }}
+          className="shrink-0 rounded-xl border border-white/10 bg-white/[0.04] px-2.5 py-2 text-xs text-zinc-500 transition hover:border-rose-500/20 hover:bg-rose-500/10 hover:text-rose-300 disabled:opacity-50"
+        >
+          <Trash2 className="size-3" />
+        </button>
       </div>
-    </div>
+    </Link>
   );
 }
