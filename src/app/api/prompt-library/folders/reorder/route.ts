@@ -5,14 +5,14 @@ import { reorderPresetFolders } from "@/lib/actions";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { categoryId, ids } = body;
+    const { categoryId, parentId, ids } = body;
     if (!categoryId || typeof categoryId !== "string") {
       return fail("categoryId is required", 400);
     }
     if (!Array.isArray(ids) || ids.some((id: unknown) => typeof id !== "string")) {
       return fail("ids must be a string array", 400);
     }
-    await reorderPresetFolders(categoryId, ids);
+    await reorderPresetFolders(categoryId, parentId ?? null, ids);
     return ok({ success: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
