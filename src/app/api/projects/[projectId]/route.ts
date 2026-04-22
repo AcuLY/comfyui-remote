@@ -1,4 +1,5 @@
 import { fail, ok } from "@/lib/api-response";
+import { deleteProject } from "@/lib/actions";
 import { getProjectDetail } from "@/server/repositories/project-repository";
 import { mapProjectError, updateProject } from "@/server/services/project-service";
 
@@ -46,5 +47,19 @@ export async function PATCH(request: Request, context: RouteContext) {
   } catch (error) {
     const mapped = mapProjectError(error);
     return fail(mapped.message, mapped.status, mapped.details);
+  }
+}
+
+export async function DELETE(_request: Request, context: RouteContext) {
+  const { projectId } = await context.params;
+
+  try {
+    await deleteProject(projectId);
+    return ok({ success: true });
+  } catch (error) {
+    return fail(
+      error instanceof Error ? error.message : "Failed to delete project",
+      500,
+    );
   }
 }

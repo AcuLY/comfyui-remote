@@ -1,4 +1,5 @@
 import { fail, ok } from "@/lib/api-response";
+import { deleteSection } from "@/lib/actions";
 import { mapProjectError, updateProjectSection } from "@/server/services/project-service";
 
 type RouteContext = {
@@ -21,5 +22,16 @@ export async function PATCH(request: Request, context: RouteContext) {
   } catch (error) {
     const mapped = mapProjectError(error);
     return fail(mapped.message, mapped.status, mapped.details);
+  }
+}
+
+export async function DELETE(_request: Request, context: RouteContext) {
+  const { sectionId } = await context.params;
+
+  try {
+    await deleteSection(sectionId);
+    return ok({ success: true });
+  } catch (error) {
+    return fail(error instanceof Error ? error.message : "Failed to delete section", 500);
   }
 }
