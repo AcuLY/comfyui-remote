@@ -36,6 +36,7 @@ import {
 } from "@/server/worker/repository";
 import { db } from "@/lib/db";
 import type { WorkerRunSnapshot, ComfyPromptDraft } from "@/server/worker/types";
+import { waitForPromptToStart } from "@/server/services/comfyui-service";
 
 const log = createLogger({ module: "run-executor" });
 
@@ -169,6 +170,26 @@ export async function executeQueuedRuns(): Promise<void> {
         const runTimer = runLog.startTimer("process-run");
 
         try {
+          // Wait for ComfyUI to actually start executing this prompt
+          // (prompt leaves the queue = execution started)
+          const started = await waitForPromptToStart(
+            validatedDraft.apiUrl,
+            comfyPromptId,
+            { pollIntervalMs: 2000 },
+          );
+
+          if (started) {
+            // Mark as running only when ComfyUI actually begins execution
+            await db.run.update({
+              where: { id: run.runId },
+              data: {
+                status: RunStatus.running,
+                startedAt: new Date(),
+              },
+            });
+            runLog.info("ComfyUI started executing prompt");
+          }
+
           const historyEntry = await pollComfyPromptHistory(
             validatedDraft.apiUrl,
             comfyPromptId,

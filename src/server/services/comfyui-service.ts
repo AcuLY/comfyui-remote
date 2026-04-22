@@ -650,6 +650,50 @@ async function isPromptInComfyQueue(
 }
 
 /**
+ * Poll ComfyUI queue until the prompt is no longer queued (meaning execution
+ * has started), or until the prompt appears in history (meaning it completed
+ * extremely quickly). Returns true if the prompt left the queue, false if
+ * it was found directly in history.
+ */
+export async function waitForPromptToStart(
+  apiUrl: string,
+  promptId: string,
+  opts?: { pollIntervalMs?: number; maxAttempts?: number },
+): Promise<boolean> {
+  const pollIntervalMs = opts?.pollIntervalMs ?? 1000;
+  const maxAttempts = opts?.maxAttempts ?? 3600; // ~1 hour default
+
+  for (let i = 0; i < maxAttempts; i++) {
+    // Fast path: if history already exists, prompt completed before we noticed
+    try {
+      const payload = await fetchJson(
+        `${apiUrl}/history/${encodeURIComponent(promptId)}`,
+        { method: "GET" },
+        `ComfyUI history check for prompt ${promptId}`,
+      );
+      const historyEntry = extractHistoryEntry(payload, promptId);
+      if (historyEntry && isHistoryComplete(historyEntry)) {
+        return false; // Already done, no "running" phase observed
+      }
+    } catch {
+      // History not found yet, continue checking queue
+    }
+
+    // Check queue
+    const inQueue = await isPromptInComfyQueue(apiUrl, promptId);
+    if (!inQueue) {
+      return true; // Left the queue = execution started
+    }
+
+    await sleep(pollIntervalMs);
+  }
+
+  throw new Error(
+    `Timed out waiting for prompt ${promptId} to start execution after ${maxAttempts} queue checks`,
+  );
+}
+
+/**
  * Poll ComfyUI history for a specific prompt, with queue-aware timeout extension.
  *
  * When the base polling attempts are exhausted, checks whether the prompt is
