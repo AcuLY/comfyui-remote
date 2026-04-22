@@ -289,7 +289,7 @@ function SectionEditor({
     categoryColor: string | null,
   ) {
     importPresets([
-      { presetId, presetName, variantId, variantName, prompt, negativePrompt, lora1, lora2, categoryId, categoryName, categoryColor },
+      { presetName, prompt, negativePrompt, lora1, lora2, categoryId, categoryName, categoryColor },
     ]);
   }
 
