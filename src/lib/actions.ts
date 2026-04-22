@@ -2080,9 +2080,43 @@ export async function importTemplateToProject(
     where: { projectId },
   });
 
+  // Fetch categories for LoRA sorting by category order
+  const categories = await prisma.presetCategory.findMany({
+    select: { name: true, lora1Order: true, lora2Order: true },
+  });
+  const catOrderMap = new Map(
+    categories.map((c) => [c.name, { lora1Order: c.lora1Order, lora2Order: c.lora2Order }]),
+  );
+
+  function sortLoraEntries(
+    entries: unknown,
+    dimension: "lora1" | "lora2",
+  ): Array<Record<string, unknown>> {
+    if (!Array.isArray(entries)) return [];
+    return [...entries]
+      .filter((e): e is Record<string, unknown> => typeof e === "object" && e !== null)
+      .sort((a, b) => {
+        const aLabel = a.sourceLabel as string;
+        const bLabel = b.sourceLabel as string;
+        const key = dimension === "lora1" ? "lora1Order" : "lora2Order";
+        const aOrder = catOrderMap.get(aLabel)?.[key] ?? 999;
+        const bOrder = catOrderMap.get(bLabel)?.[key] ?? 999;
+        return aOrder - bOrder;
+      });
+  }
+
   await prisma.$transaction(async (tx) => {
     for (let i = 0; i < template.sections.length; i++) {
       const ts = template.sections[i];
+
+      const loraConfig = ts.loraConfig as Record<string, unknown> | null;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const sortedLoraConfig = loraConfig
+        ? ({
+            lora1: sortLoraEntries(loraConfig.lora1, "lora1"),
+            lora2: sortLoraEntries(loraConfig.lora2, "lora2"),
+          } as any)
+        : undefined;
 
       await tx.projectSection.create({
         data: {
@@ -2098,7 +2132,7 @@ export async function importTemplateToProject(
           ksampler1: ts.ksampler1 ?? undefined,
           ksampler2: ts.ksampler2 ?? undefined,
           upscaleFactor: ts.upscaleFactor,
-          loraConfig: ts.loraConfig ?? undefined,
+          loraConfig: sortedLoraConfig ?? undefined,
           extraParams: ts.extraParams ?? undefined,
           positivePrompt: composeFromTemplateBlocks(ts.promptBlocks, "positive"),
           negativePrompt: composeFromTemplateBlocks(ts.promptBlocks, "negative"),
@@ -2126,11 +2160,16 @@ function composeFromTemplateBlocks(
 function parseTemplatePromptBlocks(
   blocksJson: unknown,
 ): Array<{
-  type: "custom";
+  type: "custom" | "preset";
   label: string;
   positive: string;
   negative: string | null;
   sortOrder: number;
+  sourceId: string | null;
+  variantId: string | null;
+  categoryId: string | null;
+  bindingId: string | null;
+  groupBindingId: string | null;
 }> {
   if (!blocksJson || !Array.isArray(blocksJson)) return [];
   return blocksJson
@@ -2138,11 +2177,16 @@ function parseTemplatePromptBlocks(
       (b) => b && typeof b === "object" && typeof b.positive === "string",
     )
     .map((b, index) => ({
-      type: "custom" as const,
+      type: b.type === "preset" ? "preset" : "custom",
       label: b.label || `Block ${index + 1}`,
       positive: b.positive,
       negative: b.negative ?? null,
       sortOrder: b.sortOrder ?? index,
+      sourceId: b.sourceId ?? null,
+      variantId: b.variantId ?? null,
+      categoryId: b.categoryId ?? null,
+      bindingId: b.bindingId ?? null,
+      groupBindingId: b.groupBindingId ?? null,
     }));
 }
 
@@ -2169,6 +2213,7 @@ export async function saveProjectAsTemplate(
               variantId: true,
               categoryId: true,
               bindingId: true,
+              groupBindingId: true,
               label: true,
               positive: true,
               negative: true,
@@ -2181,78 +2226,37 @@ export async function saveProjectAsTemplate(
   });
   if (!project) throw new Error("PROJECT_NOT_FOUND");
 
-  // Collect project-level preset IDs from presetBindings
-  const bindings = (project.presetBindings ?? []) as Array<{ presetId: string }>;
-  const projectPresetIds = new Set(bindings.map((b) => b.presetId));
-
-  // Collect bindingIds of project-level blocks (for LoRA filtering)
-  const projectBindingIds = new Set<string>();
-  for (const section of project.sections) {
-    for (const block of section.promptBlocks) {
-      if (block.type === "preset" && block.sourceId && projectPresetIds.has(block.sourceId) && block.bindingId) {
-        projectBindingIds.add(block.bindingId);
-      }
-    }
-  }
-
   const template = await prisma.projectTemplate.create({
     data: {
       name: templateName,
       description: templateDescription ?? null,
       sections: {
-        create: project.sections.map((section) => {
-          // Filter out project-level prompt blocks, keep section-level imports + custom blocks
-          const filteredBlocks = section.promptBlocks
-            .filter((block) => {
-              // Keep custom blocks
-              if (block.type === "custom") return true;
-              // Keep preset blocks that are NOT from project-level bindings
-              if (block.sourceId && projectPresetIds.has(block.sourceId)) return false;
-              return true;
-            })
-            .map((block, index) => ({
-              label: block.label,
-              positive: block.positive,
-              negative: block.negative,
-              sortOrder: index,
-              categoryId: block.categoryId,
-            }));
-
-          // Filter out LoRA entries from project-level bindings
-          let loraConfig = section.loraConfig as Record<string, unknown> | null;
-          if (loraConfig && projectBindingIds.size > 0) {
-            const parsed = loraConfig as { lora1: unknown[]; lora2: unknown[] };
-            const filterLora = (entries: unknown[]) =>
-              (Array.isArray(entries) ? entries : []).filter((e) => {
-                if (typeof e !== "object" || e === null) return true;
-                const entry = e as Record<string, unknown>;
-                // Keep entries whose bindingId is NOT a project-level binding
-                if (entry.bindingId && projectBindingIds.has(entry.bindingId as string)) return false;
-                return true;
-              });
-            loraConfig = { lora1: filterLora(parsed.lora1), lora2: filterLora(parsed.lora2) };
-            // Drop if both arrays are empty
-            const l1 = (loraConfig as { lora1: unknown[]; lora2: unknown[] }).lora1;
-            const l2 = (loraConfig as { lora1: unknown[]; lora2: unknown[] }).lora2;
-            if (l1.length === 0 && l2.length === 0) loraConfig = null;
-          }
-
-          return {
-            sortOrder: section.sortOrder,
-            name: section.name,
-            aspectRatio: section.aspectRatio,
-            shortSidePx: section.shortSidePx,
-            batchSize: section.batchSize,
-            seedPolicy1: section.seedPolicy1,
-            seedPolicy2: section.seedPolicy2,
-            ksampler1: section.ksampler1 ?? undefined,
-            ksampler2: section.ksampler2 ?? undefined,
-            upscaleFactor: section.upscaleFactor ?? undefined,
-            loraConfig: loraConfig ?? undefined,
-            extraParams: section.extraParams ?? undefined,
-            promptBlocks: filteredBlocks.length > 0 ? filteredBlocks : undefined,
-          };
-        }),
+        create: project.sections.map((section) => ({
+          sortOrder: section.sortOrder,
+          name: section.name,
+          aspectRatio: section.aspectRatio,
+          shortSidePx: section.shortSidePx,
+          batchSize: section.batchSize,
+          seedPolicy1: section.seedPolicy1,
+          seedPolicy2: section.seedPolicy2,
+          ksampler1: section.ksampler1 ?? undefined,
+          ksampler2: section.ksampler2 ?? undefined,
+          upscaleFactor: section.upscaleFactor ?? undefined,
+          loraConfig: section.loraConfig ?? undefined,
+          extraParams: section.extraParams ?? undefined,
+          promptBlocks: section.promptBlocks.map((block) => ({
+            type: block.type,
+            sourceId: block.sourceId,
+            variantId: block.variantId,
+            categoryId: block.categoryId,
+            bindingId: block.bindingId,
+            groupBindingId: block.groupBindingId,
+            label: block.label,
+            positive: block.positive,
+            negative: block.negative,
+            sortOrder: block.sortOrder,
+          })),
+        })),
       },
     },
   });

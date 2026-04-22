@@ -1174,7 +1174,12 @@ export type ProjectTemplateSectionData = {
     positive: string;
     negative?: string | null;
     sortOrder: number;
+    type?: string | null;
+    sourceId?: string | null;
+    variantId?: string | null;
     categoryId?: string | null;
+    bindingId?: string | null;
+    groupBindingId?: string | null;
   }>;
 };
 
