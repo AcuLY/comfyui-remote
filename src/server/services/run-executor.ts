@@ -11,7 +11,7 @@
  * Cancellation is handled externally via deleteComfyQueueItems / interruptComfyPrompt.
  */
 
-import { RunStatus, JobStatus } from "@/lib/db-enums";
+import { RunStatus } from "@/lib/db-enums";
 import { assertEnv } from "@/lib/env";
 import { createLogger } from "@/lib/logger";
 import {
@@ -57,24 +57,6 @@ function extractFailedComfyPromptId(error: unknown) {
 /**
  * Transition a queued run to running status.
  */
-async function markRunning(runId: string, projectId: string) {
-  const startedAt = new Date();
-  await db.run.update({
-    where: { id: runId },
-    data: {
-      status: RunStatus.running,
-      startedAt,
-      finishedAt: null,
-      errorMessage: null,
-    },
-  });
-  await db.project.update({
-    where: { id: projectId },
-    data: { status: JobStatus.running },
-  });
-  return startedAt;
-}
-
 type SubmittedRun = {
   run: WorkerRunSnapshot;
   comfyPromptId: string;
@@ -124,8 +106,6 @@ export async function executeQueuedRuns(): Promise<void> {
       }
 
       try {
-        await markRunning(run.runId, run.project.id);
-
         const promptDraft = buildComfyPromptDraft(run);
         const validatedDraft = await validateComfyPromptDraft(
           run.comfyApiUrl,
@@ -134,6 +114,7 @@ export async function executeQueuedRuns(): Promise<void> {
         const comfyPromptId = await submitComfyPrompt(validatedDraft, promptDraft);
 
         // Store comfyPromptId immediately so cancellation can find it
+        // Status remains "queued" until ComfyUI actually completes
         await db.run.update({
           where: { id: run.runId },
           data: { comfyPromptId },
