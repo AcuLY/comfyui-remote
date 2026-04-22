@@ -30,13 +30,10 @@ ComfyUI Remote — 移动优先的 ComfyUI 管理后台，覆盖：
 | `/` → 重定向到 `/queue` | ✅ |
 | `/queue` | ✅ 真实数据 |
 | `/queue/[runId]` | ✅ 多选审核 + 快捷操作 |
-| `/queue/[runId]/images/[imageId]` | ✅ 单图审核 + 快捷操作 |
 | `/projects` | ✅ 创建/编辑/复制/运行 |
 | `/projects/new` | ✅ 动态分类选择器 + presetBindings |
 | `/projects/[projectId]` | ✅ 详情 + 修订历史 + 缩略图条 + 图片整合导出 |
 | `/projects/[projectId]/edit` | ✅ 参数编辑 |
-| `/projects/[projectId]/sections/[sectionId]/edit` | ✅ Section 编辑（KSampler1/2 + LoRA 三栏） |
-| `/projects/[projectId]/sections/[sectionId]/blocks` | ✅ 提示词块编辑器 |
 | `/projects/[projectId]/sections/[sectionId]/results` | ✅ 结果 Gallery（Lightbox + 精选标记） |
 | `/trash` | ✅ 恢复按钮 |
 | `/assets/loras` | ✅ 文件管理器（浏览 / 上传 / 移动 / 备注） |
@@ -81,16 +78,14 @@ ComfyUI Remote — 移动优先的 ComfyUI 管理后台，覆盖：
 **Worker API**
 | 路径 | 方法 | 说明 |
 |------|------|------|
-| `/api/worker/process` | POST | Worker 处理 |
 | `/api/worker/status` | GET | Worker 状态 |
-| `/api/local/worker/pass` | POST | 本地手动触发 |
 
 **Agent API**
 | 路径 | 方法 | 说明 |
 |------|------|------|
 | `/api/agent/projects` | GET | Project 列表（搜索/筛选） |
 | `/api/agent/projects/[projectId]/context` | GET | Project 上下文 |
-| `/api/agent/projects/[projectId]/update` | PATCH | AI 更新 Project |
+| `/api/agent/projects/[projectId]/update` | POST | AI 更新 Project |
 | `/api/agent/projects/[projectId]/run-all` | POST | AI 触发全部运行 |
 | `/api/agent/sections/[sectionId]/run` | POST | AI 触发 Section 运行 |
 | `/api/agent/runs/[runId]/context` | GET | Run 上下文 |
@@ -106,7 +101,7 @@ ComfyUI Remote — 移动优先的 ComfyUI 管理后台，覆盖：
 - 全部文档同步更新术语
 
 ### v0.5 — 统一提示词分类系统
-- 新增 PresetCategory + Preset + PresetVariant 通用模型，替代硬编码的 Character/Scene/Style/PositionTemplate
+- 新增 PresetCategory + Preset + PresetVariant + PresetGroup 通用模型，替代硬编码的 Character/Scene/Style/PositionTemplate
 - 新增提示词管理页 `/assets/prompts`（分类 + 预设 CRUD，拖拽排序）
 - 任务创建/编辑表单改为动态分类选择器 + presetBindings
 - addSection 按分类排序自动生成 PromptBlock

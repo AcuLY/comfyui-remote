@@ -431,7 +431,7 @@ Workflow 模板定义在 `config/workflows/*.json` 中，每个文件包含：
 - **variables**：可替换变量（如 `positivePrompt`、`width`、`seed` 等）
 - **prompt**：ComfyUI API 节点图（含 `{{variable}}` 占位符）
 
-当 `PositionTemplate.defaultParams` 或 `ProjectSection.extraParams` 中包含 `workflowTemplateId` 字段时，Worker 会自动从 `config/workflows/` 加载对应模板并替换变量。
+当 `ProjectSection.extraParams` 中包含 `workflowTemplateId` 字段时，Worker 会自动从 `config/workflows/` 加载对应模板并替换变量。
 
 ### Prompt 解析优先级
 
@@ -450,17 +450,7 @@ Workflow 模板定义在 `config/workflows/*.json` 中，每个文件包含：
 
 ## 触发 Worker 执行
 
-Worker 不会自动轮询。需要在 Run 入队后手动触发：
-
-```bash
-# 本地开发
-curl -X POST "http://localhost:3000/api/local/worker/pass?limit=5"
-
-# 或使用旧版兼容接口
-curl -X POST "http://localhost:3000/api/worker/process?limit=5"
-```
-
-Worker 会扫描所有 `queued` 状态的 Run 并执行。
+Worker 会自动轮询并处理 `queued` 状态的 Run。
 
 ---
 

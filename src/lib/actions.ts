@@ -710,11 +710,6 @@ export async function resolveVariantContent(
   return { prompt, negativePrompt, lora1, lora2 };
 }
 
-/** Resolve variant content for frontend import (server action wrapper) */
-export async function resolveVariantForImport(variantId: string): Promise<ResolvedVariantContent> {
-  return resolveVariantContent(variantId);
-}
-
 // ---------------------------------------------------------------------------
 // Preset usage check + cascade operations
 // ---------------------------------------------------------------------------
@@ -1158,12 +1153,6 @@ export type PromptBlockData = {
   negative: string | null;
   sortOrder: number;
 };
-
-export async function listSectionBlocks(sectionId: string): Promise<PromptBlockData[]> {
-  const { listPromptBlocks } = await import("@/server/repositories/prompt-block-repository");
-  const blocks = await listPromptBlocks(sectionId);
-  return blocks;
-}
 
 export async function addSectionBlock(
   sectionId: string,

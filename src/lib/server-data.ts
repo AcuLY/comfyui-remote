@@ -507,20 +507,6 @@ export async function getTrashItems(): Promise<TrashItem[]> {
 // LoRA Assets
 // ---------------------------------------------------------------------------
 
-export async function getLoraAssets(): Promise<LoraAsset[]> {
-  const assets = await prisma.loraAsset.findMany({
-    orderBy: { uploadedAt: "desc" },
-  });
-
-  return assets.map((asset) => ({
-    id: asset.id,
-    name: asset.name,
-    category: asset.category,
-    relativePath: asset.relativePath,
-    uploadedAt: formatDate(asset.uploadedAt),
-  }));
-}
-
 // ---------------------------------------------------------------------------
 // Prompt Library — 预制库（用于导入预制时选择）
 // ---------------------------------------------------------------------------
@@ -712,36 +698,6 @@ export type PresetCategoryItem = {
   groupCount: number;
 };
 
-export async function getPresetCategories(): Promise<PresetCategoryItem[]> {
-  const categories = await prisma.presetCategory.findMany({
-    orderBy: { sortOrder: "asc" },
-    include: {
-      _count: {
-        select: {
-          presets: { where: { isActive: true } },
-          groups: { where: { isActive: true } },
-        },
-      },
-    },
-  });
-  return categories.map((c) => ({
-    id: c.id,
-    name: c.name,
-    slug: c.slug,
-    icon: c.icon,
-    color: c.color,
-    type: c.type,
-    slotTemplate: (Array.isArray(c.slotTemplate) ? c.slotTemplate : []) as SlotTemplateDef[],
-    positivePromptOrder: c.positivePromptOrder,
-    negativePromptOrder: c.negativePromptOrder,
-    lora1Order: c.lora1Order,
-    lora2Order: c.lora2Order,
-    sortOrder: c.sortOrder,
-    presetCount: c._count.presets,
-    groupCount: c._count.groups,
-  }));
-}
-
 export type PresetItem = {
   id: string;
   categoryId: string;
@@ -770,25 +726,6 @@ export type PresetVariantItem = {
   sortOrder: number;
   isActive: boolean;
 };
-
-export async function getPresets(categoryId: string): Promise<PresetItem[]> {
-  const presets = await prisma.preset.findMany({
-    where: { categoryId, isActive: true },
-    orderBy: { sortOrder: "asc" },
-    include: { _count: { select: { variants: true } } },
-  });
-  return presets.map((p) => ({
-    id: p.id,
-    categoryId: p.categoryId,
-    name: p.name,
-    slug: p.slug,
-    isActive: p.isActive,
-    sortOrder: p.sortOrder,
-    notes: p.notes,
-    folderId: p.folderId,
-    variantCount: p._count.variants,
-  }));
-}
 
 export type FolderItem = {
   id: string;
@@ -1215,21 +1152,6 @@ export type SectionBlockSummary = {
   sortOrder: number;
 };
 
-export async function getSectionBlocks(
-  sectionId: string,
-): Promise<SectionBlockSummary[]> {
-  const { listPromptBlocks } = await import("@/server/repositories/prompt-block-repository");
-  const blocks = await listPromptBlocks(sectionId);
-  return blocks.map((b) => ({
-    id: b.id,
-    type: b.type,
-    label: b.label,
-    positive: b.positive,
-    negative: b.negative,
-    sortOrder: b.sortOrder,
-  }));
-}
-
 // ---------------------------------------------------------------------------
 // Project Templates
 // ---------------------------------------------------------------------------
@@ -1316,24 +1238,6 @@ export async function getProjectTemplateDetail(
       promptBlocks: (Array.isArray(s.promptBlocks) ? s.promptBlocks : []) as ProjectTemplateSectionData["promptBlocks"],
     })),
   };
-}
-
-export type ProjectTemplateOption = {
-  id: string;
-  name: string;
-  sectionCount: number;
-};
-
-export async function getProjectTemplateOptions(): Promise<ProjectTemplateOption[]> {
-  const templates = await prisma.projectTemplate.findMany({
-    orderBy: { updatedAt: "desc" },
-    select: { id: true, name: true, _count: { select: { sections: true } } },
-  });
-  return templates.map((t) => ({
-    id: t.id,
-    name: t.name,
-    sectionCount: t._count.sections,
-  }));
 }
 
 // ---------------------------------------------------------------------------

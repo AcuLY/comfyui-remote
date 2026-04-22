@@ -101,17 +101,7 @@ DB_PROVIDER=sqlite DATABASE_URL="file:./data/comfyui.db" npm run dev
 
 ### 触发 Worker
 
-Worker 不是长驻进程，需要通过 HTTP 调用触发：
-
-```bash
-# 方式一：localhost 专用端点
-curl -X POST "http://localhost:3000/api/local/worker/pass?limit=1"
-
-# 方式二：通用端点（同样有 localhost 安全检查）
-curl -X POST "http://localhost:3000/api/worker/process"
-```
-
-Worker 会 claim 队列中的 Run → 向 ComfyUI 提交 prompt → 轮询结果 → 下载图片 → 生成缩略图 → 落库。
+Worker 不是长驻进程，需要通过 HTTP 调用触发。推荐使用 Worker 自动轮询模式（在设置页开启），或通过 Agent API 触发运行。
 
 ### 数据库命令
 
@@ -133,18 +123,17 @@ npm run db:bootstrap:sqlite
 |------|------|------|
 | 审核队列 | `/queue` | 待审核 Run 列表，按时间倒序 |
 | 宫格审图 | `/queue/:runId` | 多选 + 批量保留 / 删除 + 处理剩余跳转下一组 |
-| 单张查看 | `/queue/:runId/images/:imageId` | 大图 + 左右切换 + 处理剩余跳转下一组 |
 | Project 列表 | `/projects` | 创建 / 编辑 / 复制 / 运行 |
 | 创建 Project | `/projects/new` | 选择各提示词分类的预设模板 |
 | Project 详情 | `/projects/:projectId` | Section 列表 + 缩略图条 + 运行 + 图片整合导出 |
 | Project 编辑 | `/projects/:projectId/edit` | 参数编辑表单 |
-| Section 编辑 | `/projects/:projectId/sections/:sectionId/edit` | LoRA 三栏 + KSampler1/2 参数 |
-| 提示词块 | `/projects/:projectId/sections/:sectionId/blocks` | Prompt Block 编辑器 |
+| Section 编辑 | `/projects/:projectId/sections/:sectionId` | 运行参数 + Prompt Block + LoRA 编辑 |
 | 结果 Gallery | `/projects/:projectId/sections/:sectionId/results` | 全部运行结果 + Lightbox + 精选标记 |
 | 回收站 | `/trash` | 已删除图片 + 恢复按钮 |
 | LoRA 管理 | `/assets/loras` | 文件管理器：浏览 / 上传 / 移动 / 备注 |
 | 提示词管理 | `/assets/prompts` | 提示词分类与预设管理 |
 | 设置首页 | `/settings` | 各管理入口 |
+| 模板管理 | `/settings/templates` | 项目模板列表 + 创建 / 编辑 |
 | Workflow 管理 | `/settings/workflows` | 模板列表 + 从 ComfyUI JSON 导入 |
 
 ## 🤖 AI 集成
@@ -179,7 +168,7 @@ npm run db:bootstrap:sqlite
 }
 ```
 
-**6 个 Tools**：`list_projects` · `update_project` · `update_project_section` · `run_all_sections` · `run_section` · `review_images`
+**11 个 Tools**：`list_projects` · `update_project` · `update_project_section` · `run_all_sections` · `run_section` · `review_images` · `list_section_blocks` · `add_section_block` · `update_section_block` · `remove_section_block` · `reorder_section_blocks`
 
 **6 个 Resources**（`comfyui://` URI scheme）：Project 上下文 · Run 上下文 · Workflow 模板列表 / 详情 · 修订历史列表 / 快照
 
@@ -217,8 +206,8 @@ comfyui-remote/
 │   └── migrate-presets.ts      #   旧数据迁移脚本（Character/Scene/Style → PromptPreset）
 ├── src/
 │   ├── app/                    # Next.js App Router
-│   │   ├── (pages)             #   17 个页面
-│   │   └── api/                #   38+ 个 API 路由
+│   │   ├── (pages)             #   20+ 个页面
+│   │   └── api/                #   50+ 个 API 路由
 │   ├── components/             # 通用 UI 组件
 │   │   ├── lora-cascade-picker.tsx  # LoRA 级联目录选择器
 │   │   ├── lora-list-editor.tsx     # LoRA 列表编辑器

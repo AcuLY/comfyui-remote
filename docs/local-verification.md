@@ -91,19 +91,14 @@ curl -X POST http://localhost:3000/api/projects/<projectId>/run
 curl -X POST http://localhost:3000/api/projects/<projectId>/sections/<sectionId>/run
 ```
 
-此时 SectionRun 状态变为 `queued`。
+此时 Run 状态变为 `queued`。
 
-## Step 6: 触发 Worker
+## Step 6: Worker 执行
 
 ⚠️ **确保 ComfyUI 已启动且可访问**（`COMFY_API_URL` 指向的地址可达）。
 
-```bash
-# 手动触发 worker pass（处理 1 个 queued run）
-curl -X POST "http://localhost:3000/api/local/worker/pass?limit=1"
-```
-
-Worker 会执行以下流程：
-1. claim 一个 `queued` 的 SectionRun
+Worker 会自动轮询并处理 `queued` 状态的 Run。Worker 会执行以下流程：
+1. claim 一个 `queued` 的 Run
 2. 规范化配置快照
 3. 构建 ComfyUI prompt draft
 4. 提交到 ComfyUI `/prompt` 接口
@@ -111,7 +106,7 @@ Worker 会执行以下流程：
 6. 下载/复制输出图片到 `data/images/<project>/<section>/run-XX/raw/`
 7. 使用 sharp 生成缩略图到 `data/images/<project>/<section>/run-XX/thumb/`
 8. 写入 ImageResult 记录
-9. 标记 SectionRun 为 `done`
+9. 标记 Run 为 `done`
 
 成功响应示例：
 
@@ -128,7 +123,7 @@ Worker 会执行以下流程：
 
 ## Step 7: 审图
 
-1. 回到首页 `/queue`，可以看到刚完成的 SectionRun
+1. 回到首页 `/queue`，可以看到刚完成的 Run
 2. 点击进入宫格审核页
 3. 多选图片，点击 ✅ 保留 或 🗑 删除
 4. 被删除的图片会移入 `data/images/.trash/` 目录
