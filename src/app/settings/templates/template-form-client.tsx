@@ -288,18 +288,29 @@ function SectionEditor({
     categoryName: string,
     categoryColor: string | null,
   ) {
-    // 1. Add prompt block
-    const newBlock: TemplateBlockData = {
-      label: presetName,
-      positive: prompt,
-      negative: negativePrompt,
-      sortOrder: (section.promptBlocks || []).length,
-      categoryId,
-    };
-    const updatedBlocks = [...(section.promptBlocks || []), newBlock];
+    importPresets([
+      { presetId, presetName, variantId, variantName, prompt, negativePrompt, lora1, lora2, categoryId, categoryName, categoryColor },
+    ]);
+  }
 
-    // 2. Add LoRA entries from variant
-    const parseLoraEntries = (arr: unknown, stage: "lora1" | "lora2"): LoraEntry[] => {
+  /** Import multiple presets at once — avoids stale closure state */
+  function importPresets(
+    items: Array<{
+      presetName: string;
+      prompt: string;
+      negativePrompt: string | null;
+      lora1: unknown;
+      lora2: unknown;
+      categoryId: string;
+      categoryName: string;
+      categoryColor: string | null;
+    }>,
+  ) {
+    const currentBlocks = [...(section.promptBlocks || [])];
+    const currentLora1 = [...loraConfig.lora1];
+    const currentLora2 = [...loraConfig.lora2];
+
+    const parseLoraEntries = (arr: unknown, categoryName: string, categoryColor: string | null, presetName: string): LoraEntry[] => {
       if (!Array.isArray(arr)) return [];
       return arr
         .filter((e): e is Record<string, unknown> => typeof e === "object" && e !== null && typeof e.path === "string")
@@ -315,35 +326,51 @@ function SectionEditor({
         }));
     };
 
-    const lora1Entries = parseLoraEntries(lora1, "lora1");
-    const lora2Entries = parseLoraEntries(lora2, "lora2");
-
-    const updatedLoraConfig = {
-      lora1: [...loraConfig.lora1, ...lora1Entries],
-      lora2: [...loraConfig.lora2, ...lora2Entries],
-    };
+    for (const item of items) {
+      currentBlocks.push({
+        label: item.presetName,
+        positive: item.prompt,
+        negative: item.negativePrompt,
+        sortOrder: currentBlocks.length,
+        categoryId: item.categoryId,
+      });
+      currentLora1.push(...parseLoraEntries(item.lora1, item.categoryName, item.categoryColor, item.presetName));
+      currentLora2.push(...parseLoraEntries(item.lora2, item.categoryName, item.categoryColor, item.presetName));
+    }
 
     onUpdate({
-      promptBlocks: updatedBlocks,
-      loraConfig: updatedLoraConfig,
+      promptBlocks: currentBlocks,
+      loraConfig: { lora1: currentLora1, lora2: currentLora2 },
     });
 
-    toast.success(`已导入「${presetName}」`);
+    if (items.length === 1) {
+      toast.success(`已导入「${items[0].presetName}」`);
+    } else {
+      toast.success(`已导入 ${items.length} 个预制`);
+    }
   }
 
   function handleImportGroup(groupId: string) {
-    // Resolve group members from library data
-    // Groups can contain members from different categories, so search globally
     const allCategories = library?.categories ?? [];
 
     for (const cat of allCategories) {
       const group = (cat.groups ?? []).find((g) => g.id === groupId);
       if (!group) continue;
 
+      const items: Array<{
+        presetName: string;
+        prompt: string;
+        negativePrompt: string | null;
+        lora1: unknown;
+        lora2: unknown;
+        categoryId: string;
+        categoryName: string;
+        categoryColor: string | null;
+      }> = [];
+
       for (const member of group.members) {
         if (!member.presetId) continue;
 
-        // Search for the preset across ALL categories (members can be cross-category)
         let foundPreset: { preset: typeof cat.presets[number]; cat: typeof cat } | null = null;
         for (const c of allCategories) {
           const p = c.presets.find((pr) => pr.id === member.presetId);
@@ -356,21 +383,21 @@ function SectionEditor({
           : foundPreset.preset.variants[0];
         if (!variant) continue;
 
-        handleImportPreset(
-          foundPreset.preset.id,
-          foundPreset.preset.name,
-          variant.id,
-          foundPreset.preset.variants.length === 1 ? "" : variant.name,
-          variant.prompt,
-          variant.negativePrompt,
-          variant.lora1,
-          variant.lora2,
-          foundPreset.cat.id,
-          foundPreset.cat.name,
-          foundPreset.cat.color,
-        );
+        items.push({
+          presetName: foundPreset.preset.name,
+          prompt: variant.prompt,
+          negativePrompt: variant.negativePrompt,
+          lora1: variant.lora1,
+          lora2: variant.lora2,
+          categoryId: foundPreset.cat.id,
+          categoryName: foundPreset.cat.name,
+          categoryColor: foundPreset.cat.color,
+        });
       }
-      toast.success(`已导入组「${group.name}」`);
+
+      if (items.length > 0) {
+        importPresets(items);
+      }
       return;
     }
     toast.error("未找到预制组");
