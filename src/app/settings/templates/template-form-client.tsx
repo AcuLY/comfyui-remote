@@ -8,7 +8,6 @@ import { toast } from "sonner";
 import {
   createProjectTemplate,
   updateProjectTemplate,
-  flattenGroup,
 } from "@/lib/actions";
 import { ASPECT_RATIOS, resolveResolution } from "@/lib/aspect-ratio-utils";
 import { generateLoraEntryId, type LoraEntry } from "@/lib/lora-types";
@@ -332,33 +331,40 @@ function SectionEditor({
     toast.success(`已导入「${presetName}」`);
   }
 
-  async function handleImportGroup(groupId: string) {
-    try {
-      const result = await flattenGroup(groupId);
-      if (!result || result.length === 0) {
-        toast.error("组内无成员");
-        return;
-      }
-      // Import all group members
-      for (const member of result) {
+  function handleImportGroup(groupId: string) {
+    // Resolve group members from library data
+    for (const cat of library?.categories ?? []) {
+      const group = (cat.groups ?? []).find((g) => g.id === groupId);
+      if (!group) continue;
+
+      for (const member of group.members) {
+        if (!member.presetId) continue;
+        // Find the preset and variant in the category
+        const preset = cat.presets.find((p) => p.id === member.presetId);
+        if (!preset) continue;
+        const variant = member.variantId
+          ? preset.variants.find((v) => v.id === member.variantId)
+          : preset.variants[0];
+        if (!variant) continue;
+
         handleImportPreset(
-          member.presetId,
-          member.presetName,
-          member.variantId,
-          member.variantName,
-          member.prompt,
-          member.negativePrompt,
-          member.lora1,
-          member.lora2,
-          member.categoryId,
-          member.categoryName,
-          member.categoryColor,
+          preset.id,
+          preset.name,
+          variant.id,
+          preset.variants.length === 1 ? "" : variant.name,
+          variant.prompt,
+          variant.negativePrompt,
+          variant.lora1,
+          variant.lora2,
+          cat.id,
+          cat.name,
+          cat.color,
         );
       }
-      toast.success(`已导入 ${result.length} 个预制`);
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "导入组失败");
+      toast.success(`已导入组「${group.name}」`);
+      return;
     }
+    toast.error("未找到预制组");
   }
 
   return (
