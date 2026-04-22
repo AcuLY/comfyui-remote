@@ -810,7 +810,7 @@ export function BatchCreateClient({
             {createdSections.map((s) => (
               <Link
                 key={s.id}
-                href={`/projects/${projectId}/sections/${s.id}/blocks`}
+                href={`/projects/${projectId}/sections/${s.id}`}
                 className="inline-flex items-center gap-1 rounded-lg border border-white/5 bg-white/[0.02] px-2 py-1 text-[10px] text-zinc-300 hover:border-white/10 transition"
               >
                 <span>{s.name}</span>

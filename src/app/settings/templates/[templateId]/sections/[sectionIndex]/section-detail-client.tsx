@@ -123,10 +123,10 @@ export function TemplateSectionDetailClient({
 
   // ── Navigation ──
 
-  const basePath = `/settings/templates/${templateId}`;
+  const basePath = `/settings/templates/${templateId}/edit`;
 
   function navigateToSection(index: number) {
-    router.push(`${basePath}/sections/${index}`);
+    router.push(`/settings/templates/${templateId}/sections/${index}`);
   }
 
   // ── LoRA change handlers ──

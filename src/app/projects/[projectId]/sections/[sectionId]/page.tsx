@@ -235,7 +235,7 @@ export default async function SectionEditPage({
       },
     });
 
-    revalidatePath(`/projects/${projectId}/sections/${sectionId}/blocks`);
+    revalidatePath(`/projects/${projectId}/sections/${sectionId}`);
   }
 
   return (
@@ -250,7 +250,7 @@ export default async function SectionEditPage({
         <div className="flex items-center gap-2">
           {prevSection ? (
             <Link
-              href={`/projects/${projectId}/sections/${prevSection.id}/blocks`}
+              href={`/projects/${projectId}/sections/${prevSection.id}`}
               className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-zinc-300 transition hover:bg-white/[0.08]"
             >
               <ChevronLeft className="size-3" /> 上一节
@@ -266,7 +266,7 @@ export default async function SectionEditPage({
           </div>
           {nextSection ? (
             <Link
-              href={`/projects/${projectId}/sections/${nextSection.id}/blocks`}
+              href={`/projects/${projectId}/sections/${nextSection.id}`}
               className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-zinc-300 transition hover:bg-white/[0.08]"
             >
               下一节 <ChevronRight className="size-3" />

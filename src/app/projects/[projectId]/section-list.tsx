@@ -261,7 +261,7 @@ function SortableCompactCard({
 
       {/* Clickable area → section detail */}
       <Link
-        href={`/projects/${projectId}/sections/${section.id}/blocks`}
+        href={`/projects/${projectId}/sections/${section.id}`}
         className="flex min-w-0 flex-1 items-center gap-2"
       >
         <span className="shrink-0 text-xs font-semibold text-white">
@@ -334,7 +334,7 @@ function SortableSectionCard({
 
         {/* 可点击进入编辑的区域 */}
         <Link
-          href={`/projects/${projectId}/sections/${section.id}/blocks`}
+          href={`/projects/${projectId}/sections/${section.id}`}
           className="min-w-0 flex-1 cursor-pointer"
         >
           <div className="flex flex-wrap items-center gap-2">
