@@ -670,9 +670,9 @@ export function SectionEditor({
 // ImportPresetPanel — select a preset+variant or a group to import
 // ---------------------------------------------------------------------------
 
-type ImportCategory = PromptLibraryV2["categories"][number];
+export type ImportCategory = PromptLibraryV2["categories"][number];
 
-function ImportPresetPanel({
+export function ImportPresetPanel({
   categories,
   onImport,
   onImportGroup,

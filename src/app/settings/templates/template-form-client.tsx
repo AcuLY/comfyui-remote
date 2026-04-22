@@ -1,37 +1,55 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Plus, Trash2, GripVertical, Save, X } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, GripVertical, Save, Download } from "lucide-react";
 import { toast } from "sonner";
 import {
   createProjectTemplate,
   updateProjectTemplate,
+  flattenGroup,
 } from "@/lib/actions";
 import { ASPECT_RATIOS, resolveResolution } from "@/lib/aspect-ratio-utils";
-import { generateLoraEntryId } from "@/lib/lora-types";
+import { generateLoraEntryId, type LoraEntry } from "@/lib/lora-types";
 import type { ProjectTemplateSectionData } from "@/lib/server-data";
+import { ImportPresetPanel, type ImportCategory } from "@/components/section-editor";
+import { LoraListEditor } from "@/components/lora-list-editor";
+import { TemplatePromptBlockEditor, type TemplateBlockData } from "@/components/template-prompt-block-editor";
+import type { PromptLibraryV2 } from "@/components/prompt-block-editor";
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
 type Props = {
   templateId?: string;
   initialName?: string;
   initialDescription?: string | null;
   initialSections?: ProjectTemplateSectionData[];
+  library?: PromptLibraryV2;
 };
 
 const RATIO_OPTIONS = Object.keys(ASPECT_RATIOS);
 
-type BlockData = ProjectTemplateSectionData["promptBlocks"][number];
-type LoraEntryData = { id: string; path: string; weight: number; enabled: boolean; source: string; sourceLabel?: string; sourceColor?: string; sourceName?: string };
+type CategoryConfig = {
+  id: string;
+  name: string;
+  slug: string;
+  color: string | null;
+  icon: string | null;
+};
 
-type LoraConfigData = { lora1: LoraEntryData[]; lora2: LoraEntryData[] };
+// ---------------------------------------------------------------------------
+// TemplateFormClient
+// ---------------------------------------------------------------------------
 
 export function TemplateFormClient({
   templateId,
   initialName = "",
   initialDescription = null,
   initialSections = [],
+  library,
 }: Props) {
   const router = useRouter();
   const [name, setName] = useState(initialName);
@@ -40,6 +58,16 @@ export function TemplateFormClient({
   const [isPending, startTransition] = useTransition();
 
   const isEdit = !!templateId;
+
+  const categoryMap = useMemo(() => {
+    const map = new Map<string, CategoryConfig>();
+    for (const cat of library?.categories ?? []) {
+      map.set(cat.id, { id: cat.id, name: cat.name, slug: cat.slug, color: cat.color, icon: cat.icon });
+    }
+    return map;
+  }, [library]);
+
+  const importCategories: ImportCategory[] = library?.categories ?? [];
 
   // ── Section management ──
 
@@ -69,9 +97,7 @@ export function TemplateFormClient({
   }
 
   function updateSection(index: number, patch: Partial<ProjectTemplateSectionData>) {
-    setSections((prev) =>
-      prev.map((s, i) => (i === index ? { ...s, ...patch } : s)),
-    );
+    setSections((prev) => prev.map((s, i) => (i === index ? { ...s, ...patch } : s)));
   }
 
   function moveSection(index: number, direction: -1 | 1) {
@@ -82,74 +108,6 @@ export function TemplateFormClient({
       [next[index], next[target]] = [next[target], next[index]];
       return next.map((s, i) => ({ ...s, sortOrder: i }));
     });
-  }
-
-  // ── Prompt block management ──
-
-  function addBlock(sectionIndex: number) {
-    setSections((prev) =>
-      prev.map((s, i) => {
-        if (i !== sectionIndex) return s;
-        const blocks: BlockData[] = [...(s.promptBlocks || []), { label: "", positive: "", negative: null, sortOrder: (s.promptBlocks || []).length }];
-        return { ...s, promptBlocks: blocks };
-      }),
-    );
-  }
-
-  function removeBlock(sectionIndex: number, blockIndex: number) {
-    setSections((prev) =>
-      prev.map((s, i) => {
-        if (i !== sectionIndex) return s;
-        const blocks = (s.promptBlocks || []).filter((_, bi) => bi !== blockIndex).map((b, bi) => ({ ...b, sortOrder: bi }));
-        return { ...s, promptBlocks: blocks };
-      }),
-    );
-  }
-
-  function updateBlock(sectionIndex: number, blockIndex: number, patch: Partial<BlockData>) {
-    setSections((prev) =>
-      prev.map((s, i) => {
-        if (i !== sectionIndex) return s;
-        const blocks = (s.promptBlocks || []).map((b, bi) => (bi === blockIndex ? { ...b, ...patch } : b));
-        return { ...s, promptBlocks: blocks };
-      }),
-    );
-  }
-
-  // ── LoRA management ──
-
-  function addLora(sectionIndex: number, stage: "lora1" | "lora2") {
-    setSections((prev) =>
-      prev.map((s, i) => {
-        if (i !== sectionIndex) return s;
-        const config: LoraConfigData = (s.loraConfig as LoraConfigData) || { lora1: [], lora2: [] };
-        const entry: LoraEntryData = { id: generateLoraEntryId(), path: "", weight: 1.0, enabled: true, source: "manual" as const };
-        return { ...s, loraConfig: { ...config, [stage]: [...config[stage], entry] } };
-      }),
-    );
-  }
-
-  function removeLora(sectionIndex: number, stage: "lora1" | "lora2", loraId: string) {
-    setSections((prev) =>
-      prev.map((s, i) => {
-        if (i !== sectionIndex) return s;
-        const config: LoraConfigData = (s.loraConfig as LoraConfigData) || { lora1: [], lora2: [] };
-        return { ...s, loraConfig: { ...config, [stage]: config[stage].filter((l) => l.id !== loraId) } };
-      }),
-    );
-  }
-
-  function updateLora(sectionIndex: number, stage: "lora1" | "lora2", loraId: string, patch: Partial<LoraEntryData>) {
-    setSections((prev) =>
-      prev.map((s, i) => {
-        if (i !== sectionIndex) return s;
-        const config: LoraConfigData = (s.loraConfig as LoraConfigData) || { lora1: [], lora2: [] };
-        return {
-          ...s,
-          loraConfig: { ...config, [stage]: config[stage].map((l) => (l.id === loraId ? { ...l, ...patch } : l)) },
-        };
-      }),
-    );
   }
 
   // ── Save ──
@@ -244,15 +202,12 @@ export function TemplateFormClient({
             section={section}
             isFirst={si === 0}
             isLast={si === sections.length - 1}
+            categoryMap={categoryMap}
+            importCategories={importCategories}
+            library={library}
             onUpdate={(patch) => updateSection(si, patch)}
             onRemove={() => removeSection(si)}
             onMove={(dir) => moveSection(si, dir)}
-            onAddBlock={() => addBlock(si)}
-            onRemoveBlock={(bi) => removeBlock(si, bi)}
-            onUpdateBlock={(bi, patch) => updateBlock(si, bi, patch)}
-            onAddLora={(stage) => addLora(si, stage)}
-            onRemoveLora={(stage, loraId) => removeLora(si, stage, loraId)}
-            onUpdateLora={(stage, loraId, patch) => updateLora(si, stage, loraId, patch)}
           />
         ))}
       </div>
@@ -278,34 +233,133 @@ function SectionEditor({
   section,
   isFirst,
   isLast,
+  categoryMap,
+  importCategories,
+  library,
   onUpdate,
   onRemove,
   onMove,
-  onAddBlock,
-  onRemoveBlock,
-  onUpdateBlock,
-  onAddLora,
-  onRemoveLora,
-  onUpdateLora,
 }: {
   index: number;
   section: ProjectTemplateSectionData;
   isFirst: boolean;
   isLast: boolean;
+  categoryMap: Map<string, CategoryConfig>;
+  importCategories: ImportCategory[];
+  library?: PromptLibraryV2;
   onUpdate: (patch: Partial<ProjectTemplateSectionData>) => void;
   onRemove: () => void;
   onMove: (direction: -1 | 1) => void;
-  onAddBlock: () => void;
-  onRemoveBlock: (blockIndex: number) => void;
-  onUpdateBlock: (blockIndex: number, patch: Partial<BlockData>) => void;
-  onAddLora: (stage: "lora1" | "lora2") => void;
-  onRemoveLora: (stage: "lora1" | "lora2", loraId: string) => void;
-  onUpdateLora: (stage: "lora1" | "lora2", loraId: string, patch: Partial<LoraEntryData>) => void;
 }) {
+  const [showImport, setShowImport] = useState(false);
   const aspectRatio = section.aspectRatio || "2:3";
   const res = resolveResolution(aspectRatio, section.shortSidePx ?? 512);
   const resDisplay = `${res.width}x${res.height}`;
-  const loraConfig = (section.loraConfig as LoraConfigData) || { lora1: [], lora2: [] };
+
+  const loraConfig = (section.loraConfig as { lora1: LoraEntry[]; lora2: LoraEntry[] }) || { lora1: [], lora2: [] };
+
+  // ── Prompt blocks change handler ──
+
+  function handleBlocksChange(blocks: TemplateBlockData[]) {
+    onUpdate({ promptBlocks: blocks });
+  }
+
+  // ── LoRA change handlers ──
+
+  function handleLora1Change(entries: LoraEntry[]) {
+    onUpdate({ loraConfig: { ...loraConfig, lora1: entries } });
+  }
+
+  function handleLora2Change(entries: LoraEntry[]) {
+    onUpdate({ loraConfig: { ...loraConfig, lora2: entries } });
+  }
+
+  // ── Preset import handler ──
+
+  function handleImportPreset(
+    presetId: string,
+    presetName: string,
+    variantId: string,
+    variantName: string,
+    prompt: string,
+    negativePrompt: string | null,
+    lora1: unknown,
+    lora2: unknown,
+    categoryId: string,
+    categoryName: string,
+    categoryColor: string | null,
+  ) {
+    // 1. Add prompt block
+    const newBlock: TemplateBlockData = {
+      label: presetName,
+      positive: prompt,
+      negative: negativePrompt,
+      sortOrder: (section.promptBlocks || []).length,
+      categoryId,
+    };
+    const updatedBlocks = [...(section.promptBlocks || []), newBlock];
+
+    // 2. Add LoRA entries from variant
+    const parseLoraEntries = (arr: unknown, stage: "lora1" | "lora2"): LoraEntry[] => {
+      if (!Array.isArray(arr)) return [];
+      return arr
+        .filter((e): e is Record<string, unknown> => typeof e === "object" && e !== null && typeof e.path === "string")
+        .map((e) => ({
+          id: generateLoraEntryId(),
+          path: e.path as string,
+          weight: typeof e.weight === "number" ? Math.round(e.weight * 100) / 100 : 1,
+          enabled: typeof e.enabled === "boolean" ? e.enabled : true,
+          source: "preset" as const,
+          sourceLabel: categoryName,
+          sourceColor: categoryColor ?? undefined,
+          sourceName: presetName,
+        }));
+    };
+
+    const lora1Entries = parseLoraEntries(lora1, "lora1");
+    const lora2Entries = parseLoraEntries(lora2, "lora2");
+
+    const updatedLoraConfig = {
+      lora1: [...loraConfig.lora1, ...lora1Entries],
+      lora2: [...loraConfig.lora2, ...lora2Entries],
+    };
+
+    onUpdate({
+      promptBlocks: updatedBlocks,
+      loraConfig: updatedLoraConfig,
+    });
+
+    toast.success(`已导入「${presetName}」`);
+  }
+
+  async function handleImportGroup(groupId: string) {
+    try {
+      const result = await flattenGroup(groupId);
+      if (!result || result.length === 0) {
+        toast.error("组内无成员");
+        return;
+      }
+      // Import all group members
+      for (const member of result) {
+        handleImportPreset(
+          member.presetId,
+          member.presetName,
+          member.variantId,
+          member.variantName,
+          member.prompt,
+          member.negativePrompt,
+          member.lora1,
+          member.lora2,
+          member.categoryId,
+          member.categoryName,
+          member.categoryColor,
+        );
+      }
+      toast.success(`已导入 ${result.length} 个预制`);
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "导入组失败");
+    }
+  }
 
   return (
     <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
@@ -354,30 +408,15 @@ function SectionEditor({
         </div>
         <div>
           <label className="text-[10px] text-zinc-500">短边 px</label>
-          <input
-            type="number"
-            value={section.shortSidePx ?? 512}
-            onChange={(e) => onUpdate({ shortSidePx: parseInt(e.target.value, 10) || 512 })}
-            className="mt-0.5 w-full rounded-lg border border-white/10 bg-black/20 px-2 py-1.5 text-xs text-white outline-none"
-          />
+          <input type="number" value={section.shortSidePx ?? 512} onChange={(e) => onUpdate({ shortSidePx: parseInt(e.target.value, 10) || 512 })} className="mt-0.5 w-full rounded-lg border border-white/10 bg-black/20 px-2 py-1.5 text-xs text-white outline-none" />
         </div>
         <div>
           <label className="text-[10px] text-zinc-500">Batch Size</label>
-          <input
-            type="number"
-            min={1}
-            value={section.batchSize ?? 2}
-            onChange={(e) => onUpdate({ batchSize: parseInt(e.target.value, 10) || 2 })}
-            className="mt-0.5 w-full rounded-lg border border-white/10 bg-black/20 px-2 py-1.5 text-xs text-white outline-none"
-          />
+          <input type="number" min={1} value={section.batchSize ?? 2} onChange={(e) => onUpdate({ batchSize: parseInt(e.target.value, 10) || 2 })} className="mt-0.5 w-full rounded-lg border border-white/10 bg-black/20 px-2 py-1.5 text-xs text-white outline-none" />
         </div>
         <div>
           <label className="text-[10px] text-zinc-500">放大倍数</label>
-          <select
-            value={section.upscaleFactor ?? 2}
-            onChange={(e) => onUpdate({ upscaleFactor: parseFloat(e.target.value) })}
-            className="mt-0.5 w-full rounded-lg border border-white/10 bg-black/20 px-2 py-1.5 text-xs text-white outline-none"
-          >
+          <select value={section.upscaleFactor ?? 2} onChange={(e) => onUpdate({ upscaleFactor: parseFloat(e.target.value) })} className="mt-0.5 w-full rounded-lg border border-white/10 bg-black/20 px-2 py-1.5 text-xs text-white outline-none">
             <option value={1}>1 (跳过)</option>
             <option value={1.5}>1.5x</option>
             <option value={2}>2x</option>
@@ -387,11 +426,7 @@ function SectionEditor({
         </div>
         <div>
           <label className="text-[10px] text-zinc-500">种子策略 1</label>
-          <select
-            value={section.seedPolicy1 ?? "random"}
-            onChange={(e) => onUpdate({ seedPolicy1: e.target.value })}
-            className="mt-0.5 w-full rounded-lg border border-white/10 bg-black/20 px-2 py-1.5 text-xs text-white outline-none"
-          >
+          <select value={section.seedPolicy1 ?? "random"} onChange={(e) => onUpdate({ seedPolicy1: e.target.value })} className="mt-0.5 w-full rounded-lg border border-white/10 bg-black/20 px-2 py-1.5 text-xs text-white outline-none">
             <option value="random">随机</option>
             <option value="fixed">固定</option>
             <option value="increment">递增</option>
@@ -399,11 +434,7 @@ function SectionEditor({
         </div>
         <div>
           <label className="text-[10px] text-zinc-500">种子策略 2</label>
-          <select
-            value={section.seedPolicy2 ?? "random"}
-            onChange={(e) => onUpdate({ seedPolicy2: e.target.value })}
-            className="mt-0.5 w-full rounded-lg border border-white/10 bg-black/20 px-2 py-1.5 text-xs text-white outline-none"
-          >
+          <select value={section.seedPolicy2 ?? "random"} onChange={(e) => onUpdate({ seedPolicy2: e.target.value })} className="mt-0.5 w-full rounded-lg border border-white/10 bg-black/20 px-2 py-1.5 text-xs text-white outline-none">
             <option value="random">随机</option>
             <option value="fixed">固定</option>
             <option value="increment">递增</option>
@@ -411,9 +442,7 @@ function SectionEditor({
         </div>
         <div className="col-span-2">
           <label className="text-[10px] text-zinc-500">分辨率</label>
-          <div className="mt-0.5 rounded-lg border border-white/5 bg-white/[0.02] px-2.5 py-1.5 text-xs text-zinc-400">
-            {resDisplay}
-          </div>
+          <div className="mt-0.5 rounded-lg border border-white/5 bg-white/[0.02] px-2.5 py-1.5 text-xs text-zinc-400">{resDisplay}</div>
         </div>
       </div>
 
@@ -421,138 +450,49 @@ function SectionEditor({
       <KSamplerEditor label="KSampler 1" value={section.ksampler1} onChange={(v) => onUpdate({ ksampler1: v })} />
       <KSamplerEditor label="KSampler 2" value={section.ksampler2} onChange={(v) => onUpdate({ ksampler2: v })} />
 
-      {/* Prompt blocks — two-column positive/negative */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <span className="text-[10px] text-zinc-500">提示词 ({(section.promptBlocks || []).length})</span>
-          <button onClick={onAddBlock} className="text-[10px] text-zinc-500 hover:text-sky-400 transition">
-            + 添加
-          </button>
-        </div>
-        {(section.promptBlocks || []).length === 0 && (
-          <div className="rounded-lg border border-dashed border-white/5 p-4 text-center text-[10px] text-zinc-600">
-            点击上方添加提示词块
-          </div>
-        )}
-        {(section.promptBlocks || []).map((block, bi) => (
-          <div key={bi} className="rounded-lg border border-white/5 bg-white/[0.02] p-2 space-y-1.5">
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                value={block.label}
-                onChange={(e) => onUpdateBlock(bi, { label: e.target.value })}
-                placeholder="标签（如角色名）"
-                className="min-w-0 flex-1 rounded border border-white/10 bg-black/20 px-2 py-1 text-[11px] text-white outline-none placeholder:text-zinc-600"
-              />
-              <button onClick={() => onRemoveBlock(bi)} className="shrink-0 text-zinc-600 hover:text-rose-400 transition">
-                <X className="size-3" />
-              </button>
-            </div>
-            <div className="grid grid-cols-2 gap-1.5">
-              <div>
-                <span className="text-[9px] text-zinc-600">正面</span>
-                <textarea
-                  value={block.positive}
-                  onChange={(e) => onUpdateBlock(bi, { positive: e.target.value })}
-                  placeholder="正面提示词"
-                  rows={3}
-                  className="mt-0.5 w-full resize-none rounded border border-white/10 bg-black/20 px-2 py-1 text-[11px] text-white outline-none placeholder:text-zinc-600"
-                />
-              </div>
-              <div>
-                <span className="text-[9px] text-zinc-600">负面</span>
-                <textarea
-                  value={block.negative ?? ""}
-                  onChange={(e) => onUpdateBlock(bi, { negative: e.target.value || null })}
-                  placeholder="负面提示词（可选）"
-                  rows={3}
-                  className="mt-0.5 w-full resize-none rounded border border-white/10 bg-black/20 px-2 py-1 text-[11px] text-white outline-none placeholder:text-zinc-600"
-                />
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* LoRA config */}
-      <LoraEditor
-        loraConfig={loraConfig}
-        onAdd={onAddLora}
-        onRemove={onRemoveLora}
-        onUpdate={onUpdateLora}
-      />
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// LoRA Editor
-// ---------------------------------------------------------------------------
-
-function LoraEditor({
-  loraConfig,
-  onAdd,
-  onRemove,
-  onUpdate,
-}: {
-  loraConfig: LoraConfigData;
-  onAdd: (stage: "lora1" | "lora2") => void;
-  onRemove: (stage: "lora1" | "lora2", loraId: string) => void;
-  onUpdate: (stage: "lora1" | "lora2", loraId: string, patch: Partial<LoraEntryData>) => void;
-}) {
-  return (
-    <div className="space-y-2">
-      <span className="text-[10px] text-zinc-500">LoRA 配置</span>
-      {(["lora1", "lora2"] as const).map((stage) => (
-        <div key={stage} className="rounded-lg border border-white/5 bg-white/[0.02] p-2 space-y-1.5">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-medium text-zinc-400">{stage === "lora1" ? "LoRA 1" : "LoRA 2"}</span>
+      {/* Import preset button */}
+      {importCategories.length > 0 && (
+        <>
+          {showImport ? (
+            <ImportPresetPanel
+              categories={importCategories}
+              onImport={handleImportPreset}
+              onImportGroup={handleImportGroup}
+              onClose={() => setShowImport(false)}
+              isPending={false}
+            />
+          ) : (
             <button
-              onClick={() => onAdd(stage)}
-              className="text-[10px] text-zinc-600 hover:text-sky-400 transition"
+              onClick={() => setShowImport(true)}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-sky-500/20 bg-sky-500/[0.03] px-3 py-2 text-xs text-sky-400 transition hover:bg-sky-500/[0.08]"
             >
-              + 添加
+              <Download className="size-3.5" /> 导入预制
             </button>
-          </div>
-          {loraConfig[stage].length === 0 && (
-            <div className="px-1 py-2 text-center text-[10px] text-zinc-600">无</div>
           )}
-          {loraConfig[stage].map((lora) => (
-            <div key={lora.id} className="flex items-center gap-1.5 rounded border border-white/5 bg-black/20 px-2 py-1.5">
-              <input
-                type="text"
-                value={lora.path}
-                onChange={(e) => onUpdate(stage, lora.id, { path: e.target.value })}
-                placeholder="LoRA 路径"
-                className="min-w-0 flex-1 rounded border border-white/10 bg-black/20 px-1.5 py-1 text-[10px] text-white outline-none placeholder:text-zinc-700"
-              />
-              <label className="flex shrink-0 items-center gap-0.5 text-[10px] text-zinc-500">
-                <input
-                  type="number"
-                  step={0.1}
-                  min={0}
-                  max={2}
-                  value={lora.weight}
-                  onChange={(e) => onUpdate(stage, lora.id, { weight: parseFloat(e.target.value) || 0 })}
-                  className="w-12 rounded border border-white/10 bg-black/20 px-1 py-1 text-center text-[10px] text-white outline-none"
-                />
-              </label>
-              <button
-                onClick={() => onUpdate(stage, lora.id, { enabled: !lora.enabled })}
-                className={`shrink-0 rounded px-1.5 py-1 text-[9px] ${lora.enabled ? "bg-sky-500/20 text-sky-300" : "bg-white/5 text-zinc-600"}`}
-              >
-                {lora.enabled ? "ON" : "OFF"}
-              </button>
-              <button
-                onClick={() => onRemove(stage, lora.id)}
-                className="shrink-0 text-zinc-600 hover:text-rose-400 transition"
-              >
-                <X className="size-2.5" />
-              </button>
-            </div>
-          ))}
+        </>
+      )}
+
+      {/* Prompt blocks — uses TemplatePromptBlockEditor */}
+      <TemplatePromptBlockEditor
+        blocks={section.promptBlocks || []}
+        onChange={handleBlocksChange}
+        categoryMap={categoryMap}
+      />
+
+      {/* LoRA config — uses LoraListEditor */}
+      <div className="space-y-2">
+        <span className="text-xs font-medium text-zinc-400">LoRA 配置</span>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div>
+            <div className="mb-1.5 text-[11px] font-medium text-sky-400">LoRA 1</div>
+            <LoraListEditor entries={loraConfig.lora1} onChange={handleLora1Change} />
+          </div>
+          <div>
+            <div className="mb-1.5 text-[11px] font-medium text-violet-400">LoRA 2</div>
+            <LoraListEditor entries={loraConfig.lora2} onChange={handleLora2Change} />
+          </div>
         </div>
-      ))}
+      </div>
     </div>
   );
 }
@@ -576,10 +516,7 @@ function KSamplerEditor({
   if (!isOpen) {
     return (
       <button
-        onClick={() => {
-          setText(value ? JSON.stringify(value, null, 2) : "");
-          setIsOpen(true);
-        }}
+        onClick={() => { setText(value ? JSON.stringify(value, null, 2) : ""); setIsOpen(true); }}
         className="w-full rounded-lg border border-white/5 bg-white/[0.02] px-3 py-1.5 text-left text-[11px] text-zinc-500 transition hover:bg-white/[0.04]"
       >
         {label}: {value ? "已配置" : "使用默认"}
@@ -592,42 +529,12 @@ function KSamplerEditor({
       <div className="flex items-center justify-between">
         <span className="text-[10px] text-zinc-500">{label}</span>
         <div className="flex gap-1">
-          <button
-            onClick={() => {
-              try {
-                const parsed = JSON.parse(text);
-                onChange(parsed);
-                toast.success("已应用");
-              } catch {
-                toast.error("JSON 格式错误");
-              }
-            }}
-            className="rounded px-2 py-0.5 text-[10px] text-sky-400 hover:bg-sky-500/10 transition"
-          >
-            应用
-          </button>
-          <button
-            onClick={() => {
-              onChange(null);
-              setText("");
-              setIsOpen(false);
-            }}
-            className="rounded px-2 py-0.5 text-[10px] text-zinc-500 hover:bg-white/[0.04] transition"
-          >
-            重置
-          </button>
-          <button onClick={() => setIsOpen(false)} className="text-[10px] text-zinc-600 hover:text-zinc-400 transition">
-            收起
-          </button>
+          <button onClick={() => { try { onChange(JSON.parse(text)); toast.success("已应用"); } catch { toast.error("JSON 格式错误"); } }} className="rounded px-2 py-0.5 text-[10px] text-sky-400 hover:bg-sky-500/10 transition">应用</button>
+          <button onClick={() => { onChange(null); setText(""); setIsOpen(false); }} className="rounded px-2 py-0.5 text-[10px] text-zinc-500 hover:bg-white/[0.04] transition">重置</button>
+          <button onClick={() => setIsOpen(false)} className="text-[10px] text-zinc-600 hover:text-zinc-400 transition">收起</button>
         </div>
       </div>
-      <textarea
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        rows={4}
-        className="w-full resize-y rounded-lg border border-white/10 bg-black/20 px-3 py-2 font-mono text-[11px] text-white outline-none placeholder:text-zinc-600"
-        placeholder='{"steps": 30, "cfg": 7, ...}'
-      />
+      <textarea value={text} onChange={(e) => setText(e.target.value)} rows={4} className="w-full resize-y rounded-lg border border-white/10 bg-black/20 px-3 py-2 font-mono text-[11px] text-white outline-none placeholder:text-zinc-600" placeholder='{"steps": 30, "cfg": 7, ...}' />
     </div>
   );
 }

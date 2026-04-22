@@ -1252,6 +1252,7 @@ export type ProjectTemplateSectionData = {
     positive: string;
     negative?: string | null;
     sortOrder: number;
+    categoryId?: string | null;
   }>;
 };
 

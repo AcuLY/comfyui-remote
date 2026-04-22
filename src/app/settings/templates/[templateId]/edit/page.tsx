@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getProjectTemplateDetail } from "@/lib/server-data";
+import { getProjectTemplateDetail, getPromptLibraryV2 } from "@/lib/server-data";
 import { TemplateFormClient } from "../../template-form-client";
 
 export default async function EditTemplatePage({
@@ -8,7 +8,10 @@ export default async function EditTemplatePage({
   params: Promise<{ templateId: string }>;
 }) {
   const { templateId } = await params;
-  const template = await getProjectTemplateDetail(templateId);
+  const [template, library] = await Promise.all([
+    getProjectTemplateDetail(templateId),
+    getPromptLibraryV2(),
+  ]);
   if (!template) notFound();
 
   return (
@@ -17,6 +20,7 @@ export default async function EditTemplatePage({
       initialName={template.name}
       initialDescription={template.description}
       initialSections={template.sections}
+      library={library}
     />
   );
 }
