@@ -1,27 +1,29 @@
-import { NextRequest } from "next/server";
-import { ok, fail } from "@/lib/api-response";
+import { fail, ok } from "@/lib/api-response";
 import { moveToFolder } from "@/lib/actions";
 
 type RouteContext = {
   params: Promise<{ folderId: string }>;
 };
 
-export async function POST(request: NextRequest, context: RouteContext) {
+export async function POST(request: Request, context: RouteContext) {
   const { folderId } = await context.params;
 
+  let body;
+  try { body = await request.json(); } catch { return fail("Invalid JSON body", 400); }
+
+  const type = body?.type;
+  if (type !== "preset" && type !== "group") {
+    return fail("type must be 'preset' or 'group'", 400);
+  }
+  const id = body?.id;
+  if (!id || typeof id !== "string") {
+    return fail("id is required", 400);
+  }
+
   try {
-    const body = await request.json();
-    const { ids, categoryId } = body;
-    if (!Array.isArray(ids) || ids.some((id: unknown) => typeof id !== "string")) {
-      return fail("ids must be a string array", 400);
-    }
-    if (!categoryId || typeof categoryId !== "string") {
-      return fail("categoryId is required", 400);
-    }
-    await moveToFolder(ids, folderId, categoryId);
+    await moveToFolder(type, id, folderId || null);
     return ok({ success: true });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return fail(message, 400);
+  } catch (e: unknown) {
+    return fail(e instanceof Error ? e.message : "Unknown error", 500);
   }
 }
