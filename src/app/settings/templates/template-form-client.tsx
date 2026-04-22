@@ -333,32 +333,41 @@ function SectionEditor({
 
   function handleImportGroup(groupId: string) {
     // Resolve group members from library data
-    for (const cat of library?.categories ?? []) {
+    // Groups can contain members from different categories, so search globally
+    const allCategories = library?.categories ?? [];
+
+    for (const cat of allCategories) {
       const group = (cat.groups ?? []).find((g) => g.id === groupId);
       if (!group) continue;
 
       for (const member of group.members) {
         if (!member.presetId) continue;
-        // Find the preset and variant in the category
-        const preset = cat.presets.find((p) => p.id === member.presetId);
-        if (!preset) continue;
+
+        // Search for the preset across ALL categories (members can be cross-category)
+        let foundPreset: { preset: typeof cat.presets[number]; cat: typeof cat } | null = null;
+        for (const c of allCategories) {
+          const p = c.presets.find((pr) => pr.id === member.presetId);
+          if (p) { foundPreset = { preset: p, cat: c }; break; }
+        }
+        if (!foundPreset) continue;
+
         const variant = member.variantId
-          ? preset.variants.find((v) => v.id === member.variantId)
-          : preset.variants[0];
+          ? foundPreset.preset.variants.find((v) => v.id === member.variantId)
+          : foundPreset.preset.variants[0];
         if (!variant) continue;
 
         handleImportPreset(
-          preset.id,
-          preset.name,
+          foundPreset.preset.id,
+          foundPreset.preset.name,
           variant.id,
-          preset.variants.length === 1 ? "" : variant.name,
+          foundPreset.preset.variants.length === 1 ? "" : variant.name,
           variant.prompt,
           variant.negativePrompt,
           variant.lora1,
           variant.lora2,
-          cat.id,
-          cat.name,
-          cat.color,
+          foundPreset.cat.id,
+          foundPreset.cat.name,
+          foundPreset.cat.color,
         );
       }
       toast.success(`已导入组「${group.name}」`);
