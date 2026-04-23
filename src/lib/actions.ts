@@ -2391,24 +2391,23 @@ export async function saveProjectAsTemplate(
       description: templateDescription ?? null,
       sections: {
         create: project.sections.map((section) => {
-          // Only keep custom (user-authored) blocks — preset blocks will be
-          // re-generated from the target project's presetBindings on import.
-          const customBlocks = section.promptBlocks
-            .filter((block) => block.type === "custom")
-            .map((block) => ({
-              label: block.label,
-              positive: block.positive,
-              negative: block.negative,
-              sortOrder: block.sortOrder,
-            }));
+          // Save ALL prompt blocks as text-only (strip preset references).
+          // On import, preset blocks will be regenerated from target project's bindings,
+          // and template blocks will be appended as custom blocks.
+          const templateBlocks = section.promptBlocks.map((block) => ({
+            label: block.label,
+            positive: block.positive,
+            negative: block.negative,
+            sortOrder: block.sortOrder,
+          }));
 
-          // Only keep lora entries that are NOT from presets (manual/custom ones).
-          // Preset loras will be re-generated from target project's bindings.
+          // Save ALL lora entries, stripping preset source info.
+          // On import, preset loras will be deduplicated against target project's bindings.
           const loraCfg = section.loraConfig as Record<string, unknown> | null;
-          const filterManual = (arr: unknown) => {
+          const stripPresetRefs = (arr: unknown) => {
             if (!Array.isArray(arr)) return [];
             return arr
-              .filter((e): e is Record<string, unknown> => typeof e === "object" && e !== null && e.source !== "preset")
+              .filter((e): e is Record<string, unknown> => typeof e === "object" && e !== null)
               .map((e) => ({
                 id: e.id,
                 path: e.path,
@@ -2417,7 +2416,7 @@ export async function saveProjectAsTemplate(
               }));
           };
           const templateLoraConfig = loraCfg
-            ? { lora1: filterManual(loraCfg.lora1), lora2: filterManual(loraCfg.lora2) }
+            ? { lora1: stripPresetRefs(loraCfg.lora1), lora2: stripPresetRefs(loraCfg.lora2) }
             : null;
 
           return {
@@ -2435,7 +2434,7 @@ export async function saveProjectAsTemplate(
               ? templateLoraConfig
               : undefined,
             extraParams: section.extraParams ?? undefined,
-            promptBlocks: customBlocks.length > 0 ? customBlocks : undefined,
+            promptBlocks: templateBlocks.length > 0 ? templateBlocks : undefined,
           };
         }),
       },
