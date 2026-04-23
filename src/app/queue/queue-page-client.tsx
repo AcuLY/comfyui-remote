@@ -4,12 +4,12 @@ import { useState, useEffect, useTransition, useCallback, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { RotateCw, ChevronRight, Clock3, Loader2, RefreshCw, AlertTriangle, XCircle, ImageIcon } from "lucide-react";
+import { RotateCw, ChevronRight, Clock3, Loader2, RefreshCw, AlertTriangle, XCircle, ImageIcon, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/page-header";
 import { SectionCard } from "@/components/section-card";
 import { StatChip } from "@/components/stat-chip";
-import { cancelRun, runSection } from "@/lib/actions";
+import { cancelRun, runSection, clearRuns } from "@/lib/actions";
 import type { QueueRun, RunningRun, FailedRun } from "@/lib/types";
 
 export type QueueTabKey = "pending" | "running" | "failed";
@@ -162,6 +162,27 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns, initialF
           );
         })}
         <div className="flex-1" />
+        <button
+          onClick={() => {
+            if (!confirm("确定要清空所有已完成、失败和已取消的运行记录吗？此操作不可撤销。")) return;
+            startTransition(async () => {
+              const result = await clearRuns();
+              if (result.ok) {
+                toast.success(`已清空 ${result.count} 条运行记录`);
+                setQueueRuns([]);
+                setFailedRuns([]);
+                router.refresh();
+              } else {
+                toast.error(result.error ?? "清空失败");
+              }
+            });
+          }}
+          disabled={isPending}
+          className="mr-1 inline-flex items-center gap-1 rounded-xl border border-red-500/20 bg-red-500/10 px-2.5 py-1.5 text-[11px] text-red-400 transition hover:bg-red-500/20 disabled:opacity-50"
+          title="清空记录"
+        >
+          <Trash2 className="size-3.5" /> 清空
+        </button>
         <button
           onClick={refresh}
           disabled={isPending}

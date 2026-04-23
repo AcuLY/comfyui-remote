@@ -1544,6 +1544,23 @@ export async function cancelProjectRuns(projectId: string): Promise<number> {
 }
 
 // ---------------------------------------------------------------------------
+// 一键清空运行记录（删除 done / failed / cancelled 状态的 Run）
+// ---------------------------------------------------------------------------
+
+export async function clearRuns(): Promise<{ ok: boolean; count: number; error?: string }> {
+  try {
+    const result = await prisma.run.deleteMany({
+      where: { status: { in: ["done", "failed", "cancelled"] } },
+    });
+    revalidatePath("/queue");
+    return { ok: true, count: result.count };
+  } catch (e) {
+    console.error("Failed to clear runs:", e);
+    return { ok: false, count: 0, error: "清空失败" };
+  }
+}
+
+// ---------------------------------------------------------------------------
 // 添加小节（Section）
 // ---------------------------------------------------------------------------
 
@@ -2171,14 +2188,6 @@ export async function importTemplateToProject(
         },
       });
     }
-
-    // Restore project-level preset bindings
-    if (template.presetBindings) {
-      await tx.project.update({
-        where: { id: projectId },
-        data: { presetBindings: template.presetBindings as Prisma.InputJsonValue },
-      });
-    }
   });
 
   revalidatePath(`/projects/${projectId}`);
@@ -2269,7 +2278,6 @@ export async function saveProjectAsTemplate(
     data: {
       name: templateName,
       description: templateDescription ?? null,
-      presetBindings: project.presetBindings ?? undefined,
       sections: {
         create: project.sections.map((section) => ({
           sortOrder: section.sortOrder,
