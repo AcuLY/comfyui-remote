@@ -149,12 +149,13 @@ model PresetFolder {
 // ── Project Templates ──
 
 model ProjectTemplate {
-  id          String                  @id @default(cuid())
-  name        String
-  description String?                 @db.Text
-  createdAt   DateTime                @default(now())
-  updatedAt   DateTime                @updatedAt
-  sections    ProjectTemplateSection[]
+  id             String                  @id @default(cuid())
+  name           String
+  description    String?                 @db.Text
+  presetBindings Json?                    // [{ categoryId, presetId, variantId? }] — project-level preset bindings
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+  sections       ProjectTemplateSection[]
 
   @@index([createdAt])
 }

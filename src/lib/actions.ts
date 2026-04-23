@@ -2170,6 +2170,14 @@ export async function importTemplateToProject(
         },
       });
     }
+
+    // Restore project-level preset bindings
+    if (template.presetBindings) {
+      await tx.project.update({
+        where: { id: projectId },
+        data: { presetBindings: template.presetBindings as Prisma.InputJsonValue },
+      });
+    }
   });
 
   revalidatePath(`/projects/${projectId}`);
@@ -2260,6 +2268,7 @@ export async function saveProjectAsTemplate(
     data: {
       name: templateName,
       description: templateDescription ?? null,
+      presetBindings: project.presetBindings ?? undefined,
       sections: {
         create: project.sections.map((section) => ({
           sortOrder: section.sortOrder,
