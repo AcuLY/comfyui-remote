@@ -2123,8 +2123,37 @@ export async function importTemplateToProject(
   });
   if (!template) throw new Error("TEMPLATE_NOT_FOUND");
 
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: { presetBindings: true, projectLevelOverrides: true },
+  });
+  if (!project) throw new Error("PROJECT_NOT_FOUND");
+
   const currentSectionCount = await prisma.projectSection.count({
     where: { projectId },
+  });
+
+  // Resolve project presetBindings (same logic as addSection)
+  const bindings = Array.isArray(project.presetBindings)
+    ? (project.presetBindings as PresetBinding[])
+    : [];
+
+  const presets = bindings.length > 0
+    ? await prisma.preset.findMany({
+        where: { id: { in: bindings.map((b) => b.presetId) } },
+        include: {
+          category: true,
+          variants: { where: { isActive: true }, orderBy: { sortOrder: "asc" } },
+        },
+      })
+    : [];
+  const presetMap = new Map(presets.map((p) => [p.id, p]));
+
+  // Sort bindings by category positivePromptOrder
+  const sortedBindings = [...bindings].sort((a, b) => {
+    const catA = presetMap.get(a.presetId)?.category.positivePromptOrder ?? 999;
+    const catB = presetMap.get(b.presetId)?.category.positivePromptOrder ?? 999;
+    return catA - catB;
   });
 
   // Fetch categories for LoRA sorting by category order
@@ -2135,43 +2164,17 @@ export async function importTemplateToProject(
     categories.map((c) => [c.name, { lora1Order: c.lora1Order, lora2Order: c.lora2Order }]),
   );
 
-  function sortLoraEntries(
-    entries: unknown,
-    dimension: "lora1" | "lora2",
-  ): Array<Record<string, unknown>> {
-    if (!Array.isArray(entries)) return [];
-    return [...entries]
-      .filter((e): e is Record<string, unknown> => typeof e === "object" && e !== null)
-      .sort((a, b) => {
-        const aLabel = a.sourceLabel as string;
-        const bLabel = b.sourceLabel as string;
-        const key = dimension === "lora1" ? "lora1Order" : "lora2Order";
-        const aOrder = catOrderMap.get(aLabel)?.[key] ?? 999;
-        const bOrder = catOrderMap.get(bLabel)?.[key] ?? 999;
-        return aOrder - bOrder;
-      });
-  }
-
   await prisma.$transaction(async (tx) => {
     for (let i = 0; i < template.sections.length; i++) {
       const ts = template.sections[i];
 
-      const loraConfig = ts.loraConfig as Record<string, unknown> | null;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const sortedLoraConfig = loraConfig
-        ? ({
-            lora1: sortLoraEntries(loraConfig.lora1, "lora1"),
-            lora2: sortLoraEntries(loraConfig.lora2, "lora2"),
-          } as any)
-        : undefined;
-
-      await tx.projectSection.create({
+      // 1. Create section with basic params (no promptBlocks/loraConfig yet)
+      const section = await tx.projectSection.create({
         data: {
           projectId,
           sortOrder: currentSectionCount + i + 1,
           enabled: true,
           name: ts.name,
-          // Only set params if template has values (null means "not set" → use project defaults)
           ...(ts.aspectRatio ? { aspectRatio: ts.aspectRatio } : {}),
           ...(ts.shortSidePx ? { shortSidePx: ts.shortSidePx } : {}),
           ...(ts.batchSize ? { batchSize: ts.batchSize } : {}),
@@ -2180,11 +2183,163 @@ export async function importTemplateToProject(
           ...(ts.ksampler1 ? { ksampler1: ts.ksampler1 } : {}),
           ...(ts.ksampler2 ? { ksampler2: ts.ksampler2 } : {}),
           ...(ts.upscaleFactor ? { upscaleFactor: ts.upscaleFactor } : {}),
-          loraConfig: sortedLoraConfig ?? undefined,
           extraParams: ts.extraParams ?? undefined,
-          positivePrompt: composeFromTemplateBlocks(ts.promptBlocks, "positive"),
-          negativePrompt: composeFromTemplateBlocks(ts.promptBlocks, "negative"),
-          promptBlocks: { create: parseTemplatePromptBlocks(ts.promptBlocks) },
+        },
+      });
+
+      // 2. Generate preset-type promptBlocks + loraConfig from target project's presetBindings
+      let blockSortOrder = 0;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const loraConfig: { lora1: any[]; lora2: any[] } = { lora1: [], lora2: [] };
+      const positiveParts: string[] = [];
+      const negativeParts: string[] = [];
+
+      for (const binding of sortedBindings) {
+        const preset = presetMap.get(binding.presetId);
+        if (!preset) continue;
+
+        const variant = binding.variantId
+          ? preset.variants.find((v) => v.id === binding.variantId)
+          : preset.variants[0];
+        if (!variant) continue;
+
+        const resolved = await resolveVariantContent(variant.id);
+        const bindingId = `bind-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+
+        // Create preset-type prompt block
+        await tx.promptBlock.create({
+          data: {
+            projectSectionId: section.id,
+            type: "preset",
+            sourceId: preset.id,
+            variantId: variant.id,
+            categoryId: preset.categoryId,
+            bindingId,
+            label: preset.variants.length === 1
+              ? preset.name
+              : `${preset.name} / ${variant.name}`,
+            positive: resolved.prompt,
+            negative: resolved.negativePrompt,
+            sortOrder: blockSortOrder++,
+          },
+        });
+
+        if (resolved.prompt?.trim()) positiveParts.push(resolved.prompt.trim());
+        if (resolved.negativePrompt?.trim()) negativeParts.push(resolved.negativePrompt.trim());
+
+        // Build LoRA entries with preset source
+        const makeLora = (b: { path: string; weight: number; enabled: boolean }) => ({
+          id: `lora-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+          path: b.path,
+          weight: b.weight,
+          enabled: b.enabled,
+          source: "preset",
+          sourceLabel: preset.category?.name,
+          sourceColor: preset.category?.color,
+          sourceName: preset.name,
+          bindingId,
+        });
+        for (const l of resolved.lora1) {
+          if (!loraConfig.lora1.some((e) => e.path === l.path)) {
+            loraConfig.lora1.push(makeLora(l));
+          }
+        }
+        for (const l of resolved.lora2) {
+          if (!loraConfig.lora2.some((e) => e.path === l.path)) {
+            loraConfig.lora2.push(makeLora(l));
+          }
+        }
+      }
+
+      // 3. Append custom blocks from template
+      const tplBlocks = ts.promptBlocks;
+      if (Array.isArray(tplBlocks)) {
+        for (const rawBlock of tplBlocks) {
+          if (!rawBlock || typeof rawBlock !== "object") continue;
+          const block = rawBlock as Record<string, unknown>;
+          const positive = typeof block.positive === "string" ? block.positive : "";
+          if (!positive.trim()) continue;
+
+          await tx.promptBlock.create({
+            data: {
+              projectSectionId: section.id,
+              type: "custom",
+              sourceId: null,
+              variantId: null,
+              categoryId: null,
+              bindingId: null,
+              groupBindingId: null,
+              label: (typeof block.label === "string" ? block.label : null) || `Block ${blockSortOrder + 1}`,
+              positive,
+              negative: typeof block.negative === "string" ? block.negative : null,
+              sortOrder: blockSortOrder++,
+            },
+          });
+
+          if (positive.trim()) positiveParts.push(positive.trim());
+          if (typeof block.negative === "string" && block.negative.trim()) {
+            negativeParts.push(block.negative.trim());
+          }
+        }
+      }
+
+      // 4. Append manual loras from template (deduplicate by path)
+      const tplLoraConfig = ts.loraConfig as Record<string, unknown> | null;
+      if (tplLoraConfig) {
+        const appendManual = (arr: unknown, dimension: "lora1" | "lora2") => {
+          if (!Array.isArray(arr)) return;
+          for (const entry of arr) {
+            if (typeof entry !== "object" || entry === null) continue;
+            const e = entry as Record<string, unknown>;
+            const path = typeof e.path === "string" ? e.path : "";
+            if (!path) continue;
+            // Skip if already present from preset
+            if (loraConfig[dimension].some((existing) => existing.path === path)) continue;
+
+            // Sort by category order
+            const label = typeof e.sourceLabel === "string" ? e.sourceLabel : "";
+            const order = catOrderMap.get(label)?.[dimension === "lora1" ? "lora1Order" : "lora2Order"] ?? 999;
+
+            loraConfig[dimension].push({
+              id: e.id ?? `lora-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+              path,
+              weight: e.weight ?? 1,
+              enabled: e.enabled ?? true,
+              source: "manual",
+              _sortOrder: order,
+            });
+          }
+        };
+        appendManual(tplLoraConfig.lora1, "lora1");
+        appendManual(tplLoraConfig.lora2, "lora2");
+
+        // Sort lora entries by category order
+        for (const dim of ["lora1", "lora2"] as const) {
+          loraConfig[dim].sort((a, b) => {
+            const aOrder = a.source === "preset"
+              ? (catOrderMap.get(a.sourceLabel)?.[dim === "lora1" ? "lora1Order" : "lora2Order"] ?? 999)
+              : (a._sortOrder ?? 999);
+            const bOrder = b.source === "preset"
+              ? (catOrderMap.get(b.sourceLabel)?.[dim === "lora1" ? "lora1Order" : "lora2Order"] ?? 999)
+              : (b._sortOrder ?? 999);
+            return aOrder - bOrder;
+          });
+          // Remove internal _sortOrder field
+          for (const entry of loraConfig[dim]) {
+            delete entry._sortOrder;
+          }
+        }
+      }
+
+      // 5. Update section with composed loraConfig and prompt strings
+      await tx.projectSection.update({
+        where: { id: section.id },
+        data: {
+          positivePrompt: positiveParts.length > 0 ? positiveParts.join(" BREAK ") : undefined,
+          negativePrompt: negativeParts.length > 0 ? negativeParts.join(" BREAK ") : undefined,
+          loraConfig: (loraConfig.lora1.length > 0 || loraConfig.lora2.length > 0)
+            ? (loraConfig as Prisma.InputJsonValue)
+            : undefined,
         },
       });
     }
@@ -2192,73 +2347,6 @@ export async function importTemplateToProject(
 
   revalidatePath(`/projects/${projectId}`);
   return template.sections.length;
-}
-
-function stripLoraPresetRefs(loraConfig: unknown): unknown {
-  if (!loraConfig || typeof loraConfig !== "object") return loraConfig;
-  const obj = loraConfig as Record<string, unknown>;
-  const strip = (arr: unknown) => {
-    if (!Array.isArray(arr)) return arr;
-    return arr.map((e) => {
-      if (typeof e !== "object" || e === null) return e;
-      const entry = e as Record<string, unknown>;
-      return {
-        id: entry.id,
-        path: entry.path,
-        weight: entry.weight,
-        enabled: entry.enabled,
-        source: "custom",
-      };
-    });
-  };
-  return {
-    lora1: strip(obj.lora1),
-    lora2: strip(obj.lora2),
-  };
-}
-
-function composeFromTemplateBlocks(
-  blocksJson: unknown,
-  field: "positive" | "negative",
-): string | undefined {
-  if (!blocksJson || !Array.isArray(blocksJson)) return undefined;
-  const parts = blocksJson
-    .map((b) => (field === "positive" ? b.positive : b.negative))
-    .filter((v): v is string => Boolean(v && typeof v === "string" && v.trim()));
-  return parts.length > 0 ? parts.join(" BREAK ") : undefined;
-}
-
-function parseTemplatePromptBlocks(
-  blocksJson: unknown,
-): Array<{
-  type: "custom" | "preset";
-  label: string;
-  positive: string;
-  negative: string | null;
-  sortOrder: number;
-  sourceId: string | null;
-  variantId: string | null;
-  categoryId: string | null;
-  bindingId: string | null;
-  groupBindingId: string | null;
-}> {
-  if (!blocksJson || !Array.isArray(blocksJson)) return [];
-  return blocksJson
-    .filter(
-      (b) => b && typeof b === "object" && typeof b.positive === "string",
-    )
-    .map((b, index) => ({
-      type: b.type === "preset" ? "preset" : "custom",
-      label: b.label || `Block ${index + 1}`,
-      positive: b.positive,
-      negative: b.negative ?? null,
-      sortOrder: b.sortOrder ?? index,
-      sourceId: b.sourceId ?? null,
-      variantId: b.variantId ?? null,
-      categoryId: b.categoryId ?? null,
-      bindingId: b.bindingId ?? null,
-      groupBindingId: b.groupBindingId ?? null,
-    }));
 }
 
 // ---------------------------------------------------------------------------
@@ -2302,28 +2390,54 @@ export async function saveProjectAsTemplate(
       name: templateName,
       description: templateDescription ?? null,
       sections: {
-        create: project.sections.map((section) => ({
-          sortOrder: section.sortOrder,
-          name: section.name,
-          aspectRatio: section.aspectRatio,
-          shortSidePx: section.shortSidePx,
-          batchSize: section.batchSize,
-          seedPolicy1: section.seedPolicy1,
-          seedPolicy2: section.seedPolicy2,
-          ksampler1: section.ksampler1 ?? undefined,
-          ksampler2: section.ksampler2 ?? undefined,
-          upscaleFactor: section.upscaleFactor ?? undefined,
-          loraConfig: stripLoraPresetRefs(section.loraConfig) ?? undefined,
-          extraParams: section.extraParams ?? undefined,
-          // Strip preset refs from blocks — template should be text-only
-          promptBlocks: section.promptBlocks.map((block) => ({
-            type: "custom",
-            label: block.label,
-            positive: block.positive,
-            negative: block.negative,
-            sortOrder: block.sortOrder,
-          })),
-        })),
+        create: project.sections.map((section) => {
+          // Only keep custom (user-authored) blocks — preset blocks will be
+          // re-generated from the target project's presetBindings on import.
+          const customBlocks = section.promptBlocks
+            .filter((block) => block.type === "custom")
+            .map((block) => ({
+              label: block.label,
+              positive: block.positive,
+              negative: block.negative,
+              sortOrder: block.sortOrder,
+            }));
+
+          // Only keep lora entries that are NOT from presets (manual/custom ones).
+          // Preset loras will be re-generated from target project's bindings.
+          const loraCfg = section.loraConfig as Record<string, unknown> | null;
+          const filterManual = (arr: unknown) => {
+            if (!Array.isArray(arr)) return [];
+            return arr
+              .filter((e): e is Record<string, unknown> => typeof e === "object" && e !== null && e.source !== "preset")
+              .map((e) => ({
+                id: e.id,
+                path: e.path,
+                weight: e.weight,
+                enabled: e.enabled,
+              }));
+          };
+          const templateLoraConfig = loraCfg
+            ? { lora1: filterManual(loraCfg.lora1), lora2: filterManual(loraCfg.lora2) }
+            : null;
+
+          return {
+            sortOrder: section.sortOrder,
+            name: section.name,
+            aspectRatio: section.aspectRatio,
+            shortSidePx: section.shortSidePx,
+            batchSize: section.batchSize,
+            seedPolicy1: section.seedPolicy1,
+            seedPolicy2: section.seedPolicy2,
+            ksampler1: section.ksampler1 ?? undefined,
+            ksampler2: section.ksampler2 ?? undefined,
+            upscaleFactor: section.upscaleFactor ?? undefined,
+            loraConfig: (templateLoraConfig && (templateLoraConfig.lora1.length > 0 || templateLoraConfig.lora2.length > 0))
+              ? templateLoraConfig
+              : undefined,
+            extraParams: section.extraParams ?? undefined,
+            promptBlocks: customBlocks.length > 0 ? customBlocks : undefined,
+          };
+        }),
       },
     },
   });
