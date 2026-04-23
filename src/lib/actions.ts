@@ -2194,6 +2194,29 @@ export async function importTemplateToProject(
   return template.sections.length;
 }
 
+function stripLoraPresetRefs(loraConfig: unknown): unknown {
+  if (!loraConfig || typeof loraConfig !== "object") return loraConfig;
+  const obj = loraConfig as Record<string, unknown>;
+  const strip = (arr: unknown) => {
+    if (!Array.isArray(arr)) return arr;
+    return arr.map((e) => {
+      if (typeof e !== "object" || e === null) return e;
+      const entry = e as Record<string, unknown>;
+      return {
+        id: entry.id,
+        path: entry.path,
+        weight: entry.weight,
+        enabled: entry.enabled,
+        source: "custom",
+      };
+    });
+  };
+  return {
+    lora1: strip(obj.lora1),
+    lora2: strip(obj.lora2),
+  };
+}
+
 function composeFromTemplateBlocks(
   blocksJson: unknown,
   field: "positive" | "negative",
@@ -2290,15 +2313,11 @@ export async function saveProjectAsTemplate(
           ksampler1: section.ksampler1 ?? undefined,
           ksampler2: section.ksampler2 ?? undefined,
           upscaleFactor: section.upscaleFactor ?? undefined,
-          loraConfig: section.loraConfig ?? undefined,
+          loraConfig: stripLoraPresetRefs(section.loraConfig) ?? undefined,
           extraParams: section.extraParams ?? undefined,
+          // Strip preset refs from blocks — template should be text-only
           promptBlocks: section.promptBlocks.map((block) => ({
-            type: block.type,
-            sourceId: block.sourceId,
-            variantId: block.variantId,
-            categoryId: block.categoryId,
-            bindingId: block.bindingId,
-            groupBindingId: block.groupBindingId,
+            type: "custom",
             label: block.label,
             positive: block.positive,
             negative: block.negative,
