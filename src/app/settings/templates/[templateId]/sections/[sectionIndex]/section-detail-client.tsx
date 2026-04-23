@@ -173,34 +173,43 @@ export function TemplateSectionDetailClient({
       categoryName: string;
       categoryColor: string | null;
     }>,
+    groupBindingId?: string,
   ) {
     const currentBlocks = [...promptBlocks];
     const currentLora1 = [...loraConfig.lora1];
     const currentLora2 = [...loraConfig.lora2];
 
-    const parseLoraEntries = (arr: unknown, categoryName: string, categoryColor: string | null, presetName: string): LoraEntry[] => {
-      if (!Array.isArray(arr)) return [];
-      return arr
-        .filter((e): e is Record<string, unknown> => typeof e === "object" && e !== null && typeof e.path === "string")
-        .map((e) => ({
-          id: generateLoraEntryId(),
-          path: e.path as string,
-          weight: typeof e.weight === "number" ? Math.round(e.weight * 100) / 100 : 1,
-          enabled: typeof e.enabled === "boolean" ? e.enabled : true,
-          source: "preset" as const,
-          sourceLabel: categoryName,
-          sourceColor: categoryColor ?? undefined,
-          sourceName: presetName,
-        }));
-    };
-
     for (const item of items) {
+      // Generate a bindingId for this preset import
+      const bindingId = `bind-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+
+      const parseLoraEntries = (arr: unknown, categoryName: string, categoryColor: string | null, presetName: string): LoraEntry[] => {
+        if (!Array.isArray(arr)) return [];
+        return arr
+          .filter((e): e is Record<string, unknown> => typeof e === "object" && e !== null && typeof e.path === "string")
+          .map((e) => ({
+            id: generateLoraEntryId(),
+            path: e.path as string,
+            weight: typeof e.weight === "number" ? Math.round(e.weight * 100) / 100 : 1,
+            enabled: typeof e.enabled === "boolean" ? e.enabled : true,
+            source: "preset" as const,
+            sourceLabel: categoryName,
+            sourceColor: categoryColor ?? undefined,
+            sourceName: presetName,
+            bindingId,
+            groupBindingId,
+          }));
+      };
+
       currentBlocks.push({
         label: item.presetName,
         positive: item.prompt,
         negative: item.negativePrompt,
         sortOrder: currentBlocks.length,
+        type: "preset",
         categoryId: item.categoryId,
+        bindingId,
+        groupBindingId,
       });
       currentLora1.push(...parseLoraEntries(item.lora1, item.categoryName, item.categoryColor, item.presetName));
       currentLora2.push(...parseLoraEntries(item.lora2, item.categoryName, item.categoryColor, item.presetName));
@@ -262,7 +271,9 @@ export function TemplateSectionDetailClient({
       }
 
       if (items.length > 0) {
-        importPresets(items);
+        // Generate a groupBindingId for all presets in this group
+        const groupBindingId = `group-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+        importPresets(items, groupBindingId);
       }
       return;
     }

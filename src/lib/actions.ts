@@ -2251,28 +2251,53 @@ export async function importTemplateToProject(
         }
       }
 
-      // 3. Append blocks from template (preserve categoryId for tag display)
+      // 3. Append blocks from template (preserve categoryId, bindingId, groupBindingId)
       const tplBlocks = ts.promptBlocks;
       if (Array.isArray(tplBlocks)) {
+        // Build mapping for bindingIds (old -> new) to preserve group relationships
+        const bindingIdMap = new Map<string, string>();
+        const groupBindingIdMap = new Map<string, string>();
+        
+        // First pass: generate new bindingIds
+        for (const rawBlock of tplBlocks) {
+          if (!rawBlock || typeof rawBlock !== "object") continue;
+          const block = rawBlock as Record<string, unknown>;
+          
+          if (block.type === "preset") {
+            if (typeof block.bindingId === "string" && !bindingIdMap.has(block.bindingId)) {
+              bindingIdMap.set(block.bindingId, `bind-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`);
+            }
+            if (typeof block.groupBindingId === "string" && !groupBindingIdMap.has(block.groupBindingId)) {
+              groupBindingIdMap.set(block.groupBindingId, `group-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`);
+            }
+          }
+        }
+
+        // Second pass: create blocks
         for (const rawBlock of tplBlocks) {
           if (!rawBlock || typeof rawBlock !== "object") continue;
           const block = rawBlock as Record<string, unknown>;
           const positive = typeof block.positive === "string" ? block.positive : "";
           if (!positive.trim()) continue;
 
-          // Preserve categoryId for tag display, but type is always "custom"
-          // (template blocks are not linked to presets)
+          const blockType = block.type === "preset" ? "preset" : "custom";
           const categoryId = typeof block.categoryId === "string" ? block.categoryId : null;
+          
+          // Map bindingIds for preset blocks
+          const oldBindingId = typeof block.bindingId === "string" ? block.bindingId : null;
+          const oldGroupBindingId = typeof block.groupBindingId === "string" ? block.groupBindingId : null;
+          const newBindingId = oldBindingId ? (bindingIdMap.get(oldBindingId) ?? null) : null;
+          const newGroupBindingId = oldGroupBindingId ? (groupBindingIdMap.get(oldGroupBindingId) ?? null) : null;
 
           await tx.promptBlock.create({
             data: {
               projectSectionId: section.id,
-              type: "custom",
-              sourceId: null,
+              type: blockType,
+              sourceId: null, // Template blocks are not linked to source presets
               variantId: null,
               categoryId,
-              bindingId: null,
-              groupBindingId: null,
+              bindingId: newBindingId,
+              groupBindingId: newGroupBindingId,
               label: (typeof block.label === "string" ? block.label : null) || `Block ${blockSortOrder + 1}`,
               positive,
               negative: typeof block.negative === "string" ? block.negative : null,
@@ -2287,9 +2312,31 @@ export async function importTemplateToProject(
         }
       }
 
-      // 4. Append loras from template (preserve source attribution for tag display)
+      // 4. Append loras from template (preserve source attribution and bindingIds)
       const tplLoraConfig = ts.loraConfig as Record<string, unknown> | null;
       if (tplLoraConfig) {
+        // Build same bindingId mapping from loras
+        const loraBindingIdMap = new Map<string, string>();
+        const loraGroupBindingIdMap = new Map<string, string>();
+        
+        const buildLoraBindingMaps = (arr: unknown) => {
+          if (!Array.isArray(arr)) return;
+          for (const e of arr) {
+            if (typeof e !== "object" || e === null) continue;
+            const entry = e as Record<string, unknown>;
+            if (entry.source === "preset") {
+              if (typeof entry.bindingId === "string" && !loraBindingIdMap.has(entry.bindingId)) {
+                loraBindingIdMap.set(entry.bindingId, `bind-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`);
+              }
+              if (typeof entry.groupBindingId === "string" && !loraGroupBindingIdMap.has(entry.groupBindingId)) {
+                loraGroupBindingIdMap.set(entry.groupBindingId, `group-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`);
+              }
+            }
+          }
+        };
+        buildLoraBindingMaps(tplLoraConfig.lora1);
+        buildLoraBindingMaps(tplLoraConfig.lora2);
+
         const appendTemplateLoras = (arr: unknown, dimension: "lora1" | "lora2") => {
           if (!Array.isArray(arr)) return;
           for (const entry of arr) {
@@ -2300,11 +2347,16 @@ export async function importTemplateToProject(
             // Skip if already present from preset (deduplicate by path)
             if (loraConfig[dimension].some((existing) => existing.path === path)) continue;
 
-            // Preserve source attribution for tag display
             const source = typeof e.source === "string" && e.source === "preset" ? "preset" : "manual";
             const sourceLabel = typeof e.sourceLabel === "string" ? e.sourceLabel : undefined;
             const sourceColor = typeof e.sourceColor === "string" ? e.sourceColor : undefined;
             const sourceName = typeof e.sourceName === "string" ? e.sourceName : undefined;
+
+            // Map bindingIds for preset loras
+            const oldBindingId = typeof e.bindingId === "string" ? e.bindingId : undefined;
+            const oldGroupBindingId = typeof e.groupBindingId === "string" ? e.groupBindingId : undefined;
+            const newBindingId = oldBindingId ? (loraBindingIdMap.get(oldBindingId) ?? undefined) : undefined;
+            const newGroupBindingId = oldGroupBindingId ? (loraGroupBindingIdMap.get(oldGroupBindingId) ?? undefined) : undefined;
 
             // Sort by category order
             const order = catOrderMap.get(sourceLabel ?? "")?.[dimension === "lora1" ? "lora1Order" : "lora2Order"] ?? 999;
@@ -2318,6 +2370,8 @@ export async function importTemplateToProject(
               sourceLabel,
               sourceColor,
               sourceName,
+              bindingId: newBindingId,
+              groupBindingId: newGroupBindingId,
               _sortOrder: order,
             });
           }
@@ -2372,7 +2426,8 @@ export async function saveProjectAsTemplate(
 ): Promise<string> {
   const project = await prisma.project.findUnique({
     where: { id: projectId },
-    include: {
+    select: {
+      presetBindings: true,
       sections: {
         orderBy: { sortOrder: "asc" },
         include: {
@@ -2397,30 +2452,87 @@ export async function saveProjectAsTemplate(
   });
   if (!project) throw new Error("PROJECT_NOT_FOUND");
 
+  // Get project-level presetIds (these should NOT be saved to template)
+  const projectPresetIds = new Set<string>();
+  if (Array.isArray(project.presetBindings)) {
+    for (const binding of project.presetBindings as PresetBinding[]) {
+      projectPresetIds.add(binding.presetId);
+    }
+  }
+
   const template = await prisma.projectTemplate.create({
     data: {
       name: templateName,
       description: templateDescription ?? null,
       sections: {
         create: project.sections.map((section) => {
-          // Save prompt blocks with type and categoryId for tag display.
-          // Strip sourceId, variantId, bindingId, groupBindingId (runtime references).
-          const templateBlocks = section.promptBlocks.map((block) => ({
-            type: block.type,
-            label: block.label,
-            positive: block.positive,
-            negative: block.negative,
-            sortOrder: block.sortOrder,
-            categoryId: block.categoryId,
-          }));
+          // Filter out blocks from project-level bindings, keep section-level imports
+          // For section-level imports, preserve bindingId/groupBindingId for group relationship
+          const templateBlocks = section.promptBlocks
+            .filter((block) => {
+              // Keep custom blocks
+              if (block.type === "custom") return true;
+              // For preset blocks: only keep if NOT from project-level binding
+              if (block.sourceId && projectPresetIds.has(block.sourceId)) return false;
+              return true;
+            })
+            .map((block) => ({
+              type: block.type,
+              label: block.label,
+              positive: block.positive,
+              negative: block.negative,
+              sortOrder: block.sortOrder,
+              categoryId: block.categoryId,
+              // Preserve bindingId and groupBindingId for section-level imports
+              bindingId: block.type === "preset" ? block.bindingId : undefined,
+              groupBindingId: block.type === "preset" ? block.groupBindingId : undefined,
+            }));
 
-          // Save lora entries with source attribution for tag display.
-          // Strip bindingId, groupBindingId (runtime references).
+          // Filter out loras from project-level bindings, keep section-level imports
           const loraCfg = section.loraConfig as Record<string, unknown> | null;
-          const stripBindingRefs = (arr: unknown) => {
+          const filterSectionLoras = (arr: unknown) => {
             if (!Array.isArray(arr)) return [];
             return arr
               .filter((e): e is Record<string, unknown> => typeof e === "object" && e !== null)
+              .filter((e) => {
+                // Keep manual loras
+                if (e.source !== "preset") return true;
+                // For preset loras: check if from project-level binding
+                // Loras from project-level bindings don't have bindingId that matches section-level imports
+                // But we need another way to identify them...
+                // Actually, loras from project-level bindings also have bindingId.
+                // We need to check if the bindingId corresponds to a project-level preset.
+                // But we don't have sourceId on loras...
+                // 
+                // Alternative: check sourceName against project presetIds by looking up preset names.
+                // But that's complex. Let me think...
+                //
+                // Simpler approach: loras from project-level bindings have the same bindingId
+                // as prompt blocks from project-level bindings. So if we filter those blocks,
+                // we should also filter loras with matching bindingIds.
+                return true; // Keep for now, will filter below
+              });
+          };
+          
+          // Get bindingIds from project-level blocks (to filter loras)
+          const projectLevelBindingIds = new Set<string>();
+          for (const block of section.promptBlocks) {
+            if (block.type === "preset" && block.sourceId && projectPresetIds.has(block.sourceId) && block.bindingId) {
+              projectLevelBindingIds.add(block.bindingId);
+            }
+          }
+
+          const filterLorasByBinding = (arr: unknown) => {
+            if (!Array.isArray(arr)) return [];
+            return arr
+              .filter((e): e is Record<string, unknown> => typeof e === "object" && e !== null)
+              .filter((e) => {
+                // Keep manual loras
+                if (e.source !== "preset") return true;
+                // Filter out loras from project-level bindings
+                if (e.bindingId && projectLevelBindingIds.has(e.bindingId as string)) return false;
+                return true;
+              })
               .map((e) => ({
                 id: e.id,
                 path: e.path,
@@ -2430,10 +2542,14 @@ export async function saveProjectAsTemplate(
                 sourceLabel: e.sourceLabel,
                 sourceColor: e.sourceColor,
                 sourceName: e.sourceName,
+                // Preserve bindingId and groupBindingId for section-level imports
+                bindingId: e.source === "preset" ? e.bindingId : undefined,
+                groupBindingId: e.source === "preset" ? e.groupBindingId : undefined,
               }));
           };
+          
           const templateLoraConfig = loraCfg
-            ? { lora1: stripBindingRefs(loraCfg.lora1), lora2: stripBindingRefs(loraCfg.lora2) }
+            ? { lora1: filterLorasByBinding(loraCfg.lora1), lora2: filterLorasByBinding(loraCfg.lora2) }
             : null;
 
           return {
