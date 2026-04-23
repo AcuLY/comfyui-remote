@@ -2125,7 +2125,7 @@ export async function importTemplateToProject(
 
   const project = await prisma.project.findUnique({
     where: { id: projectId },
-    select: { presetBindings: true, projectLevelOverrides: true },
+    select: { presetBindings: true },
   });
   if (!project) throw new Error("PROJECT_NOT_FOUND");
 
@@ -2133,11 +2133,12 @@ export async function importTemplateToProject(
     where: { projectId },
   });
 
-  // Resolve project presetBindings (same logic as addSection)
+  // Resolve project presetBindings
   const bindings = Array.isArray(project.presetBindings)
     ? (project.presetBindings as PresetBinding[])
     : [];
 
+  // Fetch presets for project bindings
   const presets = bindings.length > 0
     ? await prisma.preset.findMany({
         where: { id: { in: bindings.map((b) => b.presetId) } },
@@ -2149,26 +2150,18 @@ export async function importTemplateToProject(
     : [];
   const presetMap = new Map(presets.map((p) => [p.id, p]));
 
-  // Sort bindings by category positivePromptOrder
-  const sortedBindings = [...bindings].sort((a, b) => {
-    const catA = presetMap.get(a.presetId)?.category.positivePromptOrder ?? 999;
-    const catB = presetMap.get(b.presetId)?.category.positivePromptOrder ?? 999;
-    return catA - catB;
+  // Fetch all categories for order lookup
+  const allCategories = await prisma.presetCategory.findMany({
+    select: { id: true, name: true, positivePromptOrder: true, lora1Order: true, lora2Order: true },
   });
-
-  // Fetch categories for LoRA sorting by category order
-  const categories = await prisma.presetCategory.findMany({
-    select: { name: true, lora1Order: true, lora2Order: true },
-  });
-  const catOrderMap = new Map(
-    categories.map((c) => [c.name, { lora1Order: c.lora1Order, lora2Order: c.lora2Order }]),
-  );
+  const catByIdMap = new Map(allCategories.map((c) => [c.id, c]));
+  const catByNameMap = new Map(allCategories.map((c) => [c.name, c]));
 
   await prisma.$transaction(async (tx) => {
     for (let i = 0; i < template.sections.length; i++) {
       const ts = template.sections[i];
 
-      // 1. Create section with basic params (no promptBlocks/loraConfig yet)
+      // 1. Create section with basic params
       const section = await tx.projectSection.create({
         data: {
           projectId,
@@ -2187,14 +2180,24 @@ export async function importTemplateToProject(
         },
       });
 
-      // 2. Generate preset-type promptBlocks + loraConfig from target project's presetBindings
-      let blockSortOrder = 0;
+      // 2. Collect all blocks (from project bindings + from template)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const loraConfig: { lora1: any[]; lora2: any[] } = { lora1: [], lora2: [] };
-      const positiveParts: string[] = [];
-      const negativeParts: string[] = [];
+      const allBlocks: Array<{
+        type: "preset" | "custom";
+        sourceId: string | null;
+        variantId: string | null;
+        categoryId: string | null;
+        bindingId: string | null;
+        groupBindingId: string | null;
+        label: string;
+        positive: string;
+        negative: string | null;
+        positivePromptOrder: number;
+        loras: { lora1: any[]; lora2: any[] };
+      }> = [];
 
-      for (const binding of sortedBindings) {
+      // 2a. Add blocks from project bindings
+      for (const binding of bindings) {
         const preset = presetMap.get(binding.presetId);
         if (!preset) continue;
 
@@ -2206,63 +2209,49 @@ export async function importTemplateToProject(
         const resolved = await resolveVariantContent(variant.id);
         const bindingId = `bind-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 
-        // Create preset-type prompt block
-        await tx.promptBlock.create({
-          data: {
-            projectSectionId: section.id,
-            type: "preset",
-            sourceId: preset.id,
-            variantId: variant.id,
-            categoryId: preset.categoryId,
-            bindingId,
-            label: preset.variants.length === 1
-              ? preset.name
-              : `${preset.name} / ${variant.name}`,
-            positive: resolved.prompt,
-            negative: resolved.negativePrompt,
-            sortOrder: blockSortOrder++,
-          },
-        });
+        const catOrder = preset.category?.positivePromptOrder ?? 999;
 
-        if (resolved.prompt?.trim()) positiveParts.push(resolved.prompt.trim());
-        if (resolved.negativePrompt?.trim()) negativeParts.push(resolved.negativePrompt.trim());
-
-        // Build LoRA entries with preset source
         const makeLora = (b: { path: string; weight: number; enabled: boolean }) => ({
           id: `lora-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
           path: b.path,
           weight: b.weight,
           enabled: b.enabled,
-          source: "preset",
+          source: "preset" as const,
           sourceLabel: preset.category?.name,
           sourceColor: preset.category?.color,
           sourceName: preset.name,
           bindingId,
         });
-        for (const l of resolved.lora1) {
-          if (!loraConfig.lora1.some((e) => e.path === l.path)) {
-            loraConfig.lora1.push(makeLora(l));
-          }
-        }
-        for (const l of resolved.lora2) {
-          if (!loraConfig.lora2.some((e) => e.path === l.path)) {
-            loraConfig.lora2.push(makeLora(l));
-          }
-        }
+
+        allBlocks.push({
+          type: "preset",
+          sourceId: preset.id,
+          variantId: variant.id,
+          categoryId: preset.categoryId,
+          bindingId,
+          groupBindingId: null,
+          label: preset.variants.length === 1 ? preset.name : `${preset.name} / ${variant.name}`,
+          positive: resolved.prompt,
+          negative: resolved.negativePrompt,
+          positivePromptOrder: catOrder,
+          loras: {
+            lora1: resolved.lora1.map(makeLora),
+            lora2: resolved.lora2.map(makeLora),
+          },
+        });
       }
 
-      // 3. Append blocks from template (preserve categoryId, bindingId, groupBindingId)
+      // 2b. Add blocks from template
       const tplBlocks = ts.promptBlocks;
       if (Array.isArray(tplBlocks)) {
-        // Build mapping for bindingIds (old -> new) to preserve group relationships
+        // Build mapping for bindingIds (old -> new)
         const bindingIdMap = new Map<string, string>();
         const groupBindingIdMap = new Map<string, string>();
-        
-        // First pass: generate new bindingIds
+
         for (const rawBlock of tplBlocks) {
           if (!rawBlock || typeof rawBlock !== "object") continue;
           const block = rawBlock as Record<string, unknown>;
-          
+
           if (block.type === "preset") {
             if (typeof block.bindingId === "string" && !bindingIdMap.has(block.bindingId)) {
               bindingIdMap.set(block.bindingId, `bind-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`);
@@ -2273,7 +2262,6 @@ export async function importTemplateToProject(
           }
         }
 
-        // Second pass: create blocks
         for (const rawBlock of tplBlocks) {
           if (!rawBlock || typeof rawBlock !== "object") continue;
           const block = rawBlock as Record<string, unknown>;
@@ -2282,43 +2270,83 @@ export async function importTemplateToProject(
 
           const blockType = block.type === "preset" ? "preset" : "custom";
           const categoryId = typeof block.categoryId === "string" ? block.categoryId : null;
-          
-          // Map bindingIds for preset blocks
+          const catOrder = categoryId ? (catByIdMap.get(categoryId)?.positivePromptOrder ?? 999) : 999;
+
           const oldBindingId = typeof block.bindingId === "string" ? block.bindingId : null;
           const oldGroupBindingId = typeof block.groupBindingId === "string" ? block.groupBindingId : null;
           const newBindingId = oldBindingId ? (bindingIdMap.get(oldBindingId) ?? null) : null;
           const newGroupBindingId = oldGroupBindingId ? (groupBindingIdMap.get(oldGroupBindingId) ?? null) : null;
 
-          await tx.promptBlock.create({
-            data: {
-              projectSectionId: section.id,
-              type: blockType,
-              sourceId: null, // Template blocks are not linked to source presets
-              variantId: null,
-              categoryId,
-              bindingId: newBindingId,
-              groupBindingId: newGroupBindingId,
-              label: (typeof block.label === "string" ? block.label : null) || `Block ${blockSortOrder + 1}`,
-              positive,
-              negative: typeof block.negative === "string" ? block.negative : null,
-              sortOrder: blockSortOrder++,
-            },
-          });
+          // Collect loras for this block (will be merged later)
+          const blockLoras: { lora1: any[]; lora2: any[] } = { lora1: [], lora2: [] };
 
-          if (positive.trim()) positiveParts.push(positive.trim());
-          if (typeof block.negative === "string" && block.negative.trim()) {
-            negativeParts.push(block.negative.trim());
+          allBlocks.push({
+            type: blockType,
+            sourceId: null,
+            variantId: null,
+            categoryId,
+            bindingId: newBindingId,
+            groupBindingId: newGroupBindingId,
+            label: (typeof block.label === "string" ? block.label : null) || `Block ${allBlocks.length + 1}`,
+            positive,
+            negative: typeof block.negative === "string" ? block.negative : null,
+            positivePromptOrder: catOrder,
+            loras: blockLoras, // Template blocks don't carry loras directly; loras are in loraConfig
+          });
+        }
+      }
+
+      // 3. Sort all blocks by positivePromptOrder
+      allBlocks.sort((a, b) => a.positivePromptOrder - b.positivePromptOrder);
+
+      // 4. Create blocks in sorted order
+      const positiveParts: string[] = [];
+      const negativeParts: string[] = [];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const loraConfig: { lora1: any[]; lora2: any[] } = { lora1: [], lora2: [] };
+
+      for (let sortOrder = 0; sortOrder < allBlocks.length; sortOrder++) {
+        const block = allBlocks[sortOrder];
+
+        await tx.promptBlock.create({
+          data: {
+            projectSectionId: section.id,
+            type: block.type,
+            sourceId: block.sourceId,
+            variantId: block.variantId,
+            categoryId: block.categoryId,
+            bindingId: block.bindingId,
+            groupBindingId: block.groupBindingId,
+            label: block.label,
+            positive: block.positive,
+            negative: block.negative,
+            sortOrder,
+          },
+        });
+
+        if (block.positive?.trim()) positiveParts.push(block.positive.trim());
+        if (block.negative?.trim()) negativeParts.push(block.negative.trim());
+
+        // Add loras from this block (deduplicate by path)
+        for (const l of block.loras.lora1) {
+          if (!loraConfig.lora1.some((e) => e.path === l.path)) {
+            loraConfig.lora1.push(l);
+          }
+        }
+        for (const l of block.loras.lora2) {
+          if (!loraConfig.lora2.some((e) => e.path === l.path)) {
+            loraConfig.lora2.push(l);
           }
         }
       }
 
-      // 4. Append loras from template (preserve source attribution and bindingIds)
+      // 5. Add loras from template loraConfig (not associated with specific blocks)
       const tplLoraConfig = ts.loraConfig as Record<string, unknown> | null;
       if (tplLoraConfig) {
-        // Build same bindingId mapping from loras
+        // Build bindingId mapping for template loras
         const loraBindingIdMap = new Map<string, string>();
         const loraGroupBindingIdMap = new Map<string, string>();
-        
+
         const buildLoraBindingMaps = (arr: unknown) => {
           if (!Array.isArray(arr)) return;
           for (const e of arr) {
@@ -2344,7 +2372,6 @@ export async function importTemplateToProject(
             const e = entry as Record<string, unknown>;
             const path = typeof e.path === "string" ? e.path : "";
             if (!path) continue;
-            // Skip if already present from preset (deduplicate by path)
             if (loraConfig[dimension].some((existing) => existing.path === path)) continue;
 
             const source = typeof e.source === "string" && e.source === "preset" ? "preset" : "manual";
@@ -2352,14 +2379,10 @@ export async function importTemplateToProject(
             const sourceColor = typeof e.sourceColor === "string" ? e.sourceColor : undefined;
             const sourceName = typeof e.sourceName === "string" ? e.sourceName : undefined;
 
-            // Map bindingIds for preset loras
             const oldBindingId = typeof e.bindingId === "string" ? e.bindingId : undefined;
             const oldGroupBindingId = typeof e.groupBindingId === "string" ? e.groupBindingId : undefined;
             const newBindingId = oldBindingId ? (loraBindingIdMap.get(oldBindingId) ?? undefined) : undefined;
             const newGroupBindingId = oldGroupBindingId ? (loraGroupBindingIdMap.get(oldGroupBindingId) ?? undefined) : undefined;
-
-            // Sort by category order
-            const order = catOrderMap.get(sourceLabel ?? "")?.[dimension === "lora1" ? "lora1Order" : "lora2Order"] ?? 999;
 
             loraConfig[dimension].push({
               id: e.id ?? `lora-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
@@ -2372,32 +2395,28 @@ export async function importTemplateToProject(
               sourceName,
               bindingId: newBindingId,
               groupBindingId: newGroupBindingId,
-              _sortOrder: order,
             });
           }
         };
         appendTemplateLoras(tplLoraConfig.lora1, "lora1");
         appendTemplateLoras(tplLoraConfig.lora2, "lora2");
-
-        // Sort lora entries by category order
-        for (const dim of ["lora1", "lora2"] as const) {
-          loraConfig[dim].sort((a, b) => {
-            const aOrder = a.source === "preset"
-              ? (catOrderMap.get(a.sourceLabel)?.[dim === "lora1" ? "lora1Order" : "lora2Order"] ?? 999)
-              : (a._sortOrder ?? 999);
-            const bOrder = b.source === "preset"
-              ? (catOrderMap.get(b.sourceLabel)?.[dim === "lora1" ? "lora1Order" : "lora2Order"] ?? 999)
-              : (b._sortOrder ?? 999);
-            return aOrder - bOrder;
-          });
-          // Remove internal _sortOrder field
-          for (const entry of loraConfig[dim]) {
-            delete entry._sortOrder;
-          }
-        }
       }
 
-      // 5. Update section with composed loraConfig and prompt strings
+      // 6. Sort loras by category order
+      for (const dim of ["lora1", "lora2"] as const) {
+        const orderKey = dim === "lora1" ? "lora1Order" : "lora2Order";
+        loraConfig[dim].sort((a, b) => {
+          const aOrder = a.source === "preset" && a.sourceLabel
+            ? (catByNameMap.get(a.sourceLabel)?.[orderKey] ?? 999)
+            : 999;
+          const bOrder = b.source === "preset" && b.sourceLabel
+            ? (catByNameMap.get(b.sourceLabel)?.[orderKey] ?? 999)
+            : 999;
+          return aOrder - bOrder;
+        });
+      }
+
+      // 7. Update section with composed prompts and loraConfig
       await tx.projectSection.update({
         where: { id: section.id },
         data: {
