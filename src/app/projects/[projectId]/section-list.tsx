@@ -19,9 +19,9 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Layers, ImageIcon, LayoutList, LayoutGrid } from "lucide-react";
+import { GripVertical, Layers, ImageIcon, LayoutList, LayoutGrid, CheckSquare, Square, Trash2 } from "lucide-react";
 import Image from "next/image";
-import { reorderSections } from "@/lib/actions";
+import { reorderSections, deleteSections } from "@/lib/actions";
 import { toast } from "sonner";
 import { SectionRunButton } from "./project-detail-actions";
 import { CopySectionButton, DeleteSectionButton } from "./section-actions";
@@ -66,6 +66,8 @@ export function SectionList({ projectId, sections: initialSections }: SectionLis
   const [sections, setSections] = useState(initialSections);
   const [isPending, startTransition] = useTransition();
   const [compact, setCompact] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Scroll to section card when arriving via hash fragment (e.g. from back navigation)
   useEffect(() => {
@@ -148,6 +150,7 @@ export function SectionList({ projectId, sections: initialSections }: SectionLis
 
   function handleToggle() {
     const anchorId = findAnchorId();
+    setSelectedIds(new Set());
     setCompact((prev) => !prev);
 
     // After React re-renders, scroll the anchor card into view
@@ -163,10 +166,76 @@ export function SectionList({ projectId, sections: initialSections }: SectionLis
     }
   }
 
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function selectAll() {
+    setSelectedIds(new Set(sections.map((s) => s.id)));
+  }
+
+  function deselectAll() {
+    setSelectedIds(new Set());
+  }
+
+  function handleBatchDelete() {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`确定要删除选中的 ${selectedIds.size} 个小节吗？此操作不可撤销。`)) return;
+    setIsDeleting(true);
+    startTransition(async () => {
+      try {
+        await deleteSections([...selectedIds]);
+        setSelectedIds(new Set());
+        toast.success(`已删除 ${selectedIds.size} 个小节`);
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "删除失败");
+      } finally {
+        setIsDeleting(false);
+      }
+    });
+  }
+
   return (
     <>
       <DndContext id={dndId} sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={sections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
+          {compact && sections.length > 0 && (
+            <div className="mb-2 flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={selectedIds.size === sections.length ? deselectAll : selectAll}
+                  className="flex items-center gap-1.5 text-xs text-zinc-400 transition hover:text-white"
+                >
+                  {selectedIds.size === sections.length ? (
+                    <CheckSquare className="size-3.5 text-sky-400" />
+                  ) : (
+                    <Square className="size-3.5" />
+                  )}
+                  {selectedIds.size === sections.length ? "取消全选" : "全选"}
+                </button>
+                {selectedIds.size > 0 && (
+                  <span className="text-xs text-zinc-500">已选 {selectedIds.size} 项</span>
+                )}
+              </div>
+              {selectedIds.size > 0 && (
+                <button
+                  type="button"
+                  disabled={isDeleting}
+                  onClick={handleBatchDelete}
+                  className="flex items-center gap-1.5 rounded-lg border border-rose-500/20 bg-rose-500/10 px-3 py-1.5 text-xs text-rose-300 transition hover:bg-rose-500/20 disabled:opacity-50"
+                >
+                  <Trash2 className="size-3.5" />
+                  {isDeleting ? "删除中…" : "删除"}
+                </button>
+              )}
+            </div>
+          )}
           <div className={`${compact ? "grid grid-cols-1 gap-1.5 justify-items-center md:grid-cols-2" : "grid grid-cols-1 gap-3 justify-items-center md:grid-cols-2"} ${isPending ? "opacity-60" : ""}`}>
             {sections.map((section, index) =>
               compact ? (
@@ -176,6 +245,8 @@ export function SectionList({ projectId, sections: initialSections }: SectionLis
                   projectId={projectId}
                   index={index}
                   setCardRef={setCardRef}
+                  isSelected={selectedIds.has(section.id)}
+                  onToggleSelect={toggleSelect}
                 />
               ) : (
                 <SortableSectionCard
@@ -224,11 +295,15 @@ function SortableCompactCard({
   projectId,
   index,
   setCardRef,
+  isSelected,
+  onToggleSelect,
 }: {
   section: Section;
   projectId: string;
   index: number;
   setCardRef: (id: string, el: HTMLDivElement | null) => void;
+  isSelected: boolean;
+  onToggleSelect: (id: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: section.id,
@@ -248,8 +323,25 @@ function SortableCompactCard({
       }}
       style={style}
       id={`section-${section.id}`}
-      className={`group flex items-center gap-2 w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 md:max-w-[500px] ${isDragging ? "shadow-lg ring-2 ring-sky-500/30" : ""}`}
+      className={`group flex items-center gap-2 w-full rounded-xl border bg-white/[0.03] px-3 py-2.5 md:max-w-[500px] ${isDragging ? "shadow-lg ring-2 ring-sky-500/30" : ""} ${isSelected ? "border-sky-500/40 ring-1 ring-sky-500/20" : "border-white/10"}`}
     >
+      {/* Selection checkbox */}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onToggleSelect(section.id);
+        }}
+        className="shrink-0 rounded p-0.5 text-zinc-600 transition hover:bg-white/10 hover:text-zinc-400"
+      >
+        {isSelected ? (
+          <CheckSquare className="size-3.5 text-sky-400" />
+        ) : (
+          <Square className="size-3.5" />
+        )}
+      </button>
+
       {/* Drag handle */}
       <button
         {...attributes}

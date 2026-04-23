@@ -1919,6 +1919,36 @@ export async function deleteSection(sectionId: string): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// 批量删除小节
+// ---------------------------------------------------------------------------
+
+export async function deleteSections(sectionIds: string[]): Promise<void> {
+  if (sectionIds.length === 0) return;
+
+  // Get projectIds for revalidation
+  const sections = await prisma.projectSection.findMany({
+    where: { id: { in: sectionIds } },
+    select: { id: true, projectId: true },
+  });
+
+  // Delete all PromptBlocks for these sections
+  await prisma.promptBlock.deleteMany({
+    where: { projectSectionId: { in: sectionIds } },
+  });
+
+  // Delete the sections
+  await prisma.projectSection.deleteMany({
+    where: { id: { in: sectionIds } },
+  });
+
+  // Revalidate unique project paths
+  const uniqueProjectIds = [...new Set(sections.map((s) => s.projectId))];
+  for (const projectId of uniqueProjectIds) {
+    revalidatePath(`/projects/${projectId}`);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // 删除项目（级联删除所有小节、提示词块、运行记录、图片记录）
 // ---------------------------------------------------------------------------
 
