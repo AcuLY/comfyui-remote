@@ -2251,7 +2251,7 @@ export async function importTemplateToProject(
         }
       }
 
-      // 3. Append custom blocks from template
+      // 3. Append blocks from template (preserve categoryId for tag display)
       const tplBlocks = ts.promptBlocks;
       if (Array.isArray(tplBlocks)) {
         for (const rawBlock of tplBlocks) {
@@ -2260,13 +2260,17 @@ export async function importTemplateToProject(
           const positive = typeof block.positive === "string" ? block.positive : "";
           if (!positive.trim()) continue;
 
+          // Preserve categoryId for tag display, but type is always "custom"
+          // (template blocks are not linked to presets)
+          const categoryId = typeof block.categoryId === "string" ? block.categoryId : null;
+
           await tx.promptBlock.create({
             data: {
               projectSectionId: section.id,
               type: "custom",
               sourceId: null,
               variantId: null,
-              categoryId: null,
+              categoryId,
               bindingId: null,
               groupBindingId: null,
               label: (typeof block.label === "string" ? block.label : null) || `Block ${blockSortOrder + 1}`,
@@ -2283,35 +2287,43 @@ export async function importTemplateToProject(
         }
       }
 
-      // 4. Append manual loras from template (deduplicate by path)
+      // 4. Append loras from template (preserve source attribution for tag display)
       const tplLoraConfig = ts.loraConfig as Record<string, unknown> | null;
       if (tplLoraConfig) {
-        const appendManual = (arr: unknown, dimension: "lora1" | "lora2") => {
+        const appendTemplateLoras = (arr: unknown, dimension: "lora1" | "lora2") => {
           if (!Array.isArray(arr)) return;
           for (const entry of arr) {
             if (typeof entry !== "object" || entry === null) continue;
             const e = entry as Record<string, unknown>;
             const path = typeof e.path === "string" ? e.path : "";
             if (!path) continue;
-            // Skip if already present from preset
+            // Skip if already present from preset (deduplicate by path)
             if (loraConfig[dimension].some((existing) => existing.path === path)) continue;
 
+            // Preserve source attribution for tag display
+            const source = typeof e.source === "string" && e.source === "preset" ? "preset" : "manual";
+            const sourceLabel = typeof e.sourceLabel === "string" ? e.sourceLabel : undefined;
+            const sourceColor = typeof e.sourceColor === "string" ? e.sourceColor : undefined;
+            const sourceName = typeof e.sourceName === "string" ? e.sourceName : undefined;
+
             // Sort by category order
-            const label = typeof e.sourceLabel === "string" ? e.sourceLabel : "";
-            const order = catOrderMap.get(label)?.[dimension === "lora1" ? "lora1Order" : "lora2Order"] ?? 999;
+            const order = catOrderMap.get(sourceLabel ?? "")?.[dimension === "lora1" ? "lora1Order" : "lora2Order"] ?? 999;
 
             loraConfig[dimension].push({
               id: e.id ?? `lora-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
               path,
-              weight: e.weight ?? 1,
-              enabled: e.enabled ?? true,
-              source: "manual",
+              weight: typeof e.weight === "number" ? e.weight : 1,
+              enabled: typeof e.enabled === "boolean" ? e.enabled : true,
+              source,
+              sourceLabel,
+              sourceColor,
+              sourceName,
               _sortOrder: order,
             });
           }
         };
-        appendManual(tplLoraConfig.lora1, "lora1");
-        appendManual(tplLoraConfig.lora2, "lora2");
+        appendTemplateLoras(tplLoraConfig.lora1, "lora1");
+        appendTemplateLoras(tplLoraConfig.lora2, "lora2");
 
         // Sort lora entries by category order
         for (const dim of ["lora1", "lora2"] as const) {
@@ -2391,20 +2403,21 @@ export async function saveProjectAsTemplate(
       description: templateDescription ?? null,
       sections: {
         create: project.sections.map((section) => {
-          // Save ALL prompt blocks as text-only (strip preset references).
-          // On import, preset blocks will be regenerated from target project's bindings,
-          // and template blocks will be appended as custom blocks.
+          // Save prompt blocks with type and categoryId for tag display.
+          // Strip sourceId, variantId, bindingId, groupBindingId (runtime references).
           const templateBlocks = section.promptBlocks.map((block) => ({
+            type: block.type,
             label: block.label,
             positive: block.positive,
             negative: block.negative,
             sortOrder: block.sortOrder,
+            categoryId: block.categoryId,
           }));
 
-          // Save ALL lora entries, stripping preset source info.
-          // On import, preset loras will be deduplicated against target project's bindings.
+          // Save lora entries with source attribution for tag display.
+          // Strip bindingId, groupBindingId (runtime references).
           const loraCfg = section.loraConfig as Record<string, unknown> | null;
-          const stripPresetRefs = (arr: unknown) => {
+          const stripBindingRefs = (arr: unknown) => {
             if (!Array.isArray(arr)) return [];
             return arr
               .filter((e): e is Record<string, unknown> => typeof e === "object" && e !== null)
@@ -2413,10 +2426,14 @@ export async function saveProjectAsTemplate(
                 path: e.path,
                 weight: e.weight,
                 enabled: e.enabled,
+                source: e.source,
+                sourceLabel: e.sourceLabel,
+                sourceColor: e.sourceColor,
+                sourceName: e.sourceName,
               }));
           };
           const templateLoraConfig = loraCfg
-            ? { lora1: stripPresetRefs(loraCfg.lora1), lora2: stripPresetRefs(loraCfg.lora2) }
+            ? { lora1: stripBindingRefs(loraCfg.lora1), lora2: stripBindingRefs(loraCfg.lora2) }
             : null;
 
           return {
