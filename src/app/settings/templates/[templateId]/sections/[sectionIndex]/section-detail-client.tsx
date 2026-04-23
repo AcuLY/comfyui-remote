@@ -3,7 +3,7 @@
 import { useState, useTransition, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ChevronLeft, ChevronRight, Save, Download } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Save, Download, X } from "lucide-react";
 import { toast } from "sonner";
 import { updateProjectTemplate } from "@/lib/actions";
 import { AspectRatioPicker } from "@/components/aspect-ratio-picker";
@@ -54,17 +54,20 @@ export function TemplateSectionDetailClient({
   const [isPending, startTransition] = useTransition();
 
   // ── Local state for the section ──
+  // For template sections, null means "not set" (will not override on import)
   const [name, setName] = useState(initialSection.name ?? "");
-  const [aspectRatio, setAspectRatio] = useState(initialSection.aspectRatio ?? "2:3");
-  const [shortSidePx, setShortSidePx] = useState<number | null>(initialSection.shortSidePx ?? 512);
-  const [batchSize, setBatchSize] = useState<string>(initialSection.batchSize?.toString() ?? "");
-  const [upscaleFactor, setUpscaleFactor] = useState<string>(String(initialSection.upscaleFactor ?? 2));
-  const [ks1, setKs1] = useState<KSamplerParams>(() =>
-    parseInitialKSampler(initialSection.ksampler1, DEFAULT_KSAMPLER1),
-  );
-  const [ks2, setKs2] = useState<KSamplerParams>(() =>
-    parseInitialKSampler(initialSection.ksampler2, DEFAULT_KSAMPLER2),
-  );
+  const [aspectRatio, setAspectRatio] = useState<string | null>(initialSection.aspectRatio ?? null);
+  const [shortSidePx, setShortSidePx] = useState<number | null>(initialSection.shortSidePx ?? null);
+  const [batchSize, setBatchSize] = useState<string | null>(initialSection.batchSize?.toString() ?? null);
+  const [upscaleFactor, setUpscaleFactor] = useState<string | null>(initialSection.upscaleFactor?.toString() ?? null);
+  const [ks1, setKs1] = useState<KSamplerParams | null>(() => {
+    if (!initialSection.ksampler1) return null;
+    return parseInitialKSampler(initialSection.ksampler1, DEFAULT_KSAMPLER1);
+  });
+  const [ks2, setKs2] = useState<KSamplerParams | null>(() => {
+    if (!initialSection.ksampler2) return null;
+    return parseInitialKSampler(initialSection.ksampler2, DEFAULT_KSAMPLER2);
+  });
   const [promptBlocks, setPromptBlocks] = useState<TemplateBlockData[]>(
     initialSection.promptBlocks || [],
   );
@@ -89,14 +92,14 @@ export function TemplateSectionDetailClient({
     return {
       sortOrder: sectionIndex,
       name: name.trim() || null,
-      aspectRatio,
+      aspectRatio, // null means not set
       shortSidePx,
       batchSize: batchSize ? parseInt(batchSize, 10) : null,
-      seedPolicy1: ks1.seedPolicy ?? "random",
-      seedPolicy2: ks2.seedPolicy ?? "random",
-      ksampler1: ks1 as unknown as Record<string, unknown>,
-      ksampler2: ks2 as unknown as Record<string, unknown>,
-      upscaleFactor: upscaleFactor ? parseFloat(upscaleFactor) : 2,
+      seedPolicy1: ks1?.seedPolicy ?? null,
+      seedPolicy2: ks2?.seedPolicy ?? null,
+      ksampler1: ks1 as unknown as Record<string, unknown> | null,
+      ksampler2: ks2 as unknown as Record<string, unknown> | null,
+      upscaleFactor: upscaleFactor ? parseFloat(upscaleFactor) : null,
       loraConfig: loraConfig as unknown as Record<string, unknown>,
       extraParams: initialSection.extraParams,
       promptBlocks,
@@ -316,89 +319,207 @@ export function TemplateSectionDetailClient({
 
       {/* Run params — same layout as blocks page */}
       <div className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-        <div className="text-xs font-medium text-zinc-400">运行参数</div>
+        <div className="flex items-center justify-between">
+          <div className="text-xs font-medium text-zinc-400">运行参数</div>
+          <div className="text-[10px] text-zinc-500">空值参数在导入时不会覆盖项目设置</div>
+        </div>
 
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
           <div className="space-y-1.5">
-            <div className="text-[11px] text-zinc-500">画幅比例</div>
-            <AspectRatioPicker
-              name="aspectRatio"
-              defaultValue={aspectRatio}
-              defaultShortSidePx={shortSidePx}
-              disabled={isPending}
-              onChange={() => {}}
-              onValueChange={(ratio, px) => {
-                setAspectRatio(ratio || "2:3");
-                setShortSidePx(px);
-              }}
-            />
+            <div className="flex items-center justify-between">
+              <div className="text-[11px] text-zinc-500">画幅比例</div>
+              {aspectRatio !== null && (
+                <button
+                  type="button"
+                  onClick={() => { setAspectRatio(null); setShortSidePx(null); }}
+                  className="text-[10px] text-zinc-500 hover:text-zinc-300"
+                >
+                  清除
+                </button>
+              )}
+            </div>
+            {aspectRatio === null ? (
+              <button
+                type="button"
+                onClick={() => { setAspectRatio("2:3"); setShortSidePx(512); }}
+                className="w-full rounded-xl border border-dashed border-white/10 bg-white/[0.02] px-2.5 py-2 text-xs text-zinc-500 transition hover:bg-white/[0.04] hover:text-zinc-300"
+              >
+                点击设置
+              </button>
+            ) : (
+              <AspectRatioPicker
+                name="aspectRatio"
+                defaultValue={aspectRatio}
+                defaultShortSidePx={shortSidePx}
+                disabled={isPending}
+                onChange={() => {}}
+                onValueChange={(ratio, px) => {
+                  setAspectRatio(ratio || "2:3");
+                  setShortSidePx(px);
+                }}
+              />
+            )}
           </div>
 
           <div className="space-y-1.5">
-            <div className="text-[11px] text-zinc-500">Batch Size</div>
-            <input
-              type="number"
-              min={1}
-              disabled={isPending}
-              value={batchSize}
-              onChange={(e) => setBatchSize(e.target.value)}
-              placeholder="默认"
-              className={inputCls}
-            />
-            <BatchSizeQuickFill
-              onSelect={(val) => setBatchSize(String(val))}
-              currentValue={batchSize ? parseInt(batchSize, 10) : null}
-              disabled={isPending}
-              size="sm"
-            />
+            <div className="flex items-center justify-between">
+              <div className="text-[11px] text-zinc-500">Batch Size</div>
+              {batchSize !== null && (
+                <button
+                  type="button"
+                  onClick={() => setBatchSize(null)}
+                  className="text-[10px] text-zinc-500 hover:text-zinc-300"
+                >
+                  清除
+                </button>
+              )}
+            </div>
+            {batchSize === null ? (
+              <button
+                type="button"
+                onClick={() => setBatchSize("")}
+                className="w-full rounded-xl border border-dashed border-white/10 bg-white/[0.02] px-2.5 py-2 text-xs text-zinc-500 transition hover:bg-white/[0.04] hover:text-zinc-300"
+              >
+                点击设置
+              </button>
+            ) : (
+              <>
+                <input
+                  type="number"
+                  min={1}
+                  disabled={isPending}
+                  value={batchSize}
+                  onChange={(e) => setBatchSize(e.target.value || null)}
+                  placeholder="不设置"
+                  className={inputCls}
+                />
+                <BatchSizeQuickFill
+                  onSelect={(val) => setBatchSize(String(val))}
+                  currentValue={batchSize ? parseInt(batchSize, 10) : null}
+                  disabled={isPending}
+                  size="sm"
+                />
+              </>
+            )}
           </div>
 
           <div className="space-y-1.5">
-            <div className="text-[11px] text-zinc-500">放大倍数</div>
-            <input
-              type="number"
-              min={1}
-              max={4}
-              step={0.5}
-              value={upscaleFactor}
-              onChange={(v) => setUpscaleFactor(v.target.value)}
-              disabled={isPending}
-              className={inputCls}
-            />
-            <UpscaleFactorQuickFill
-              onSelect={(val) => setUpscaleFactor(String(val))}
-              currentValue={upscaleFactor ? parseFloat(upscaleFactor) : null}
-              disabled={isPending}
-              size="sm"
-            />
-            {upscaleFactor === "1" && (
-              <p className="text-[10px] text-amber-400/70">
-                1x 模式将跳过 Upscale Latent 和 KSampler2（无高清修复）
-              </p>
+            <div className="flex items-center justify-between">
+              <div className="text-[11px] text-zinc-500">放大倍数</div>
+              {upscaleFactor !== null && (
+                <button
+                  type="button"
+                  onClick={() => setUpscaleFactor(null)}
+                  className="text-[10px] text-zinc-500 hover:text-zinc-300"
+                >
+                  清除
+                </button>
+              )}
+            </div>
+            {upscaleFactor === null ? (
+              <button
+                type="button"
+                onClick={() => setUpscaleFactor("2")}
+                className="w-full rounded-xl border border-dashed border-white/10 bg-white/[0.02] px-2.5 py-2 text-xs text-zinc-500 transition hover:bg-white/[0.04] hover:text-zinc-300"
+              >
+                点击设置
+              </button>
+            ) : (
+              <>
+                <input
+                  type="number"
+                  min={1}
+                  max={4}
+                  step={0.5}
+                  value={upscaleFactor}
+                  onChange={(v) => setUpscaleFactor(v.target.value || null)}
+                  disabled={isPending}
+                  className={inputCls}
+                />
+                <UpscaleFactorQuickFill
+                  onSelect={(val) => setUpscaleFactor(String(val))}
+                  currentValue={upscaleFactor ? parseFloat(upscaleFactor) : null}
+                  disabled={isPending}
+                  size="sm"
+                />
+                {upscaleFactor === "1" && (
+                  <p className="text-[10px] text-amber-400/70">
+                    1x 模式将跳过 Upscale Latent 和 KSampler2（无高清修复）
+                  </p>
+                )}
+              </>
             )}
           </div>
         </div>
 
         {/* KSampler panels */}
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-          <KSamplerPanel
-            label="KSampler1（第一阶段）"
-            subtitle={`steps ${ks1.steps ?? DEFAULT_KSAMPLER1.steps} · cfg ${ks1.cfg ?? DEFAULT_KSAMPLER1.cfg} · ${ks1.sampler_name ?? DEFAULT_KSAMPLER1.sampler_name}`}
-            params={ks1}
-            defaults={DEFAULT_KSAMPLER1}
-            onChange={setKs1}
-            onFieldBlur={() => {}}
-            disabled={isPending}
-          />
-          <KSamplerPanel
-            label="KSampler2（高清修复）"
-            subtitle={upscaleFactor === "1" ? "1x 模式下不使用" : `steps ${ks2.steps ?? DEFAULT_KSAMPLER2.steps} · cfg ${ks2.cfg ?? DEFAULT_KSAMPLER2.cfg} · ${ks2.sampler_name ?? DEFAULT_KSAMPLER2.sampler_name}`}
-            params={ks2}
-            defaults={DEFAULT_KSAMPLER2}
-            onChange={setKs2}
-            onFieldBlur={() => {}}
-            disabled={isPending || upscaleFactor === "1"}
-          />
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <div className="text-[11px] text-zinc-500">KSampler1（第一阶段）</div>
+              {ks1 !== null && (
+                <button
+                  type="button"
+                  onClick={() => setKs1(null)}
+                  className="text-[10px] text-zinc-500 hover:text-zinc-300"
+                >
+                  清除
+                </button>
+              )}
+            </div>
+            {ks1 === null ? (
+              <button
+                type="button"
+                onClick={() => setKs1({ ...DEFAULT_KSAMPLER1 })}
+                className="w-full rounded-xl border border-dashed border-white/10 bg-white/[0.02] px-3 py-3 text-xs text-zinc-500 transition hover:bg-white/[0.04] hover:text-zinc-300"
+              >
+                点击设置
+              </button>
+            ) : (
+              <KSamplerPanel
+                label=""
+                subtitle={`steps ${ks1.steps ?? DEFAULT_KSAMPLER1.steps} · cfg ${ks1.cfg ?? DEFAULT_KSAMPLER1.cfg} · ${ks1.sampler_name ?? DEFAULT_KSAMPLER1.sampler_name}`}
+                params={ks1}
+                defaults={DEFAULT_KSAMPLER1}
+                onChange={setKs1}
+                onFieldBlur={() => {}}
+                disabled={isPending}
+              />
+            )}
+          </div>
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <div className="text-[11px] text-zinc-500">KSampler2（高清修复）</div>
+              {ks2 !== null && (
+                <button
+                  type="button"
+                  onClick={() => setKs2(null)}
+                  className="text-[10px] text-zinc-500 hover:text-zinc-300"
+                >
+                  清除
+                </button>
+              )}
+            </div>
+            {ks2 === null ? (
+              <button
+                type="button"
+                onClick={() => setKs2({ ...DEFAULT_KSAMPLER2 })}
+                className="w-full rounded-xl border border-dashed border-white/10 bg-white/[0.02] px-3 py-3 text-xs text-zinc-500 transition hover:bg-white/[0.04] hover:text-zinc-300"
+              >
+                点击设置
+              </button>
+            ) : (
+              <KSamplerPanel
+                label=""
+                subtitle={upscaleFactor === "1" ? "1x 模式下不使用" : `steps ${ks2.steps ?? DEFAULT_KSAMPLER2.steps} · cfg ${ks2.cfg ?? DEFAULT_KSAMPLER2.cfg} · ${ks2.sampler_name ?? DEFAULT_KSAMPLER2.sampler_name}`}
+                params={ks2}
+                defaults={DEFAULT_KSAMPLER2}
+                onChange={setKs2}
+                onFieldBlur={() => {}}
+                disabled={isPending || upscaleFactor === "1"}
+              />
+            )}
+          </div>
         </div>
       </div>
 
