@@ -82,6 +82,14 @@ export function SectionEditor({
               }
             }
           }
+          // Fallback: look up category info by categoryId (for template-imported blocks without sourceId)
+          if (!categoryName && b.categoryId && libraryV2) {
+            const cat = libraryV2.categories.find((c) => c.id === b.categoryId);
+            if (cat) {
+              categoryName = cat.name;
+              categoryColor = cat.color ?? undefined;
+            }
+          }
           // Look up group name if preset belongs to a group
           let groupName: string | undefined;
           if (b.sourceId && libraryV2) {
