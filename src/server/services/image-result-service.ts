@@ -139,11 +139,25 @@ function resolveTargetExtension(outputImage: ComfyPromptOutputImage) {
  * Atomic write: write to a temp file first, then rename to the target.
  * Prevents partial reads when the file is being served concurrently
  * by the /api/images/ route.
+ * On Windows, rename cannot overwrite an existing file, so we delete first.
  */
 async function atomicWriteFile(targetPath: string, data: Buffer) {
   const tempPath = targetPath + ".tmp";
   await writeFile(tempPath, data);
-  await rename(tempPath, targetPath);
+
+  // On Windows, rename cannot overwrite an existing file.
+  // We need to delete the target first, with retry on EBUSY/EPERM.
+  try {
+    await retryOnEBUSY(() => unlink(targetPath));
+  } catch (error) {
+    // Ignore ENOENT (file doesn't exist) — that's fine
+    if (!(error instanceof Error) || (error as NodeJS.ErrnoException).code !== "ENOENT") {
+      throw error;
+    }
+  }
+
+  // Now rename the temp file to target, with retry on EBUSY/EPERM
+  await retryOnEBUSY(() => rename(tempPath, targetPath));
 }
 
 async function downloadOutputImage(
