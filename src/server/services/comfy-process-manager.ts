@@ -11,6 +11,7 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { execSync } from "node:child_process";
 import { env } from "@/lib/env";
+import { applyComfyPatches } from "@/server/services/comfy-patch-manager";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -161,6 +162,14 @@ class ComfyProcessManager {
     this.maxRestartsReached = false;
     this.errorMessage = null;
     this.externallyStarted = false;
+
+    // Apply patches to ComfyUI custom nodes before launching
+    try {
+      await applyComfyPatches();
+    } catch (err) {
+      this.log(`[manager] Patch application warning: ${err instanceof Error ? err.message : String(err)}`);
+    }
+
     return this.spawnProcess();
   }
 

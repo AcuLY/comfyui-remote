@@ -607,14 +607,17 @@ export async function submitComfyPrompt(
   return promptId;
 }
 
+type ComfyQueuePosition = "running" | "pending" | "not_found";
+
 /**
- * Check whether a prompt is still in ComfyUI's execution queue
- * (either currently running or pending).
+ * Check where a prompt sits in ComfyUI's queue.
+ * Returns "running" if currently executing, "pending" if waiting,
+ * or "not_found" if not in either queue.
  */
-async function isPromptInComfyQueue(
+async function getComfyQueuePosition(
   apiUrl: string,
   promptId: string,
-): Promise<boolean> {
+): Promise<ComfyQueuePosition> {
   try {
     const payload = await fetchJson(
       `${apiUrl}/queue`,
@@ -622,7 +625,7 @@ async function isPromptInComfyQueue(
       "ComfyUI queue status check",
     );
     const queue = asRecord(payload);
-    if (!queue) return false;
+    if (!queue) return "not_found";
 
     const running = Array.isArray(queue.queue_running) ? queue.queue_running : [];
     const pending = Array.isArray(queue.queue_pending) ? queue.queue_pending : [];
@@ -636,24 +639,35 @@ async function isPromptInComfyQueue(
       return asRecord(item)?.prompt_id === promptId;
     };
 
-    return [...running, ...pending].some(matchesPromptId);
+    if (running.some(matchesPromptId)) return "running";
+    if (pending.some(matchesPromptId)) return "pending";
+    return "not_found";
   } catch (error) {
-    // Network error during queue check — don't silently fail, log and continue
     log.warn("Queue status check failed, assuming prompt may still be queued", {
       promptId,
       error: error instanceof Error ? error.message : String(error),
     });
-    // Return true to be safe — if we can't verify, assume prompt is still in queue
-    // rather than causing a false-negative timeout
-    return true;
+    // Return pending to be safe — if we can't verify, assume prompt is still in queue
+    return "pending";
   }
 }
 
 /**
- * Poll ComfyUI queue until the prompt is no longer queued (meaning execution
- * has started), or until the prompt appears in history (meaning it completed
- * extremely quickly). Returns true if the prompt left the queue, false if
- * it was found directly in history.
+ * Check whether a prompt is still in ComfyUI's execution queue
+ * (either currently running or pending).
+ */
+async function isPromptInComfyQueue(
+  apiUrl: string,
+  promptId: string,
+): Promise<boolean> {
+  const position = await getComfyQueuePosition(apiUrl, promptId);
+  return position !== "not_found";
+}
+
+/**
+ * Poll ComfyUI queue until the prompt starts executing (enters queue_running)
+ * or completes. Returns true if the prompt entered the running state,
+ * false if it was found directly in history (completed before we noticed).
  */
 export async function waitForPromptToStart(
   apiUrl: string,
@@ -679,11 +693,31 @@ export async function waitForPromptToStart(
       // History not found yet, continue checking queue
     }
 
-    // Check queue
-    const inQueue = await isPromptInComfyQueue(apiUrl, promptId);
-    if (!inQueue) {
-      return true; // Left the queue = execution started
+    // Check queue position — distinguish running from pending
+    const position = await getComfyQueuePosition(apiUrl, promptId);
+    if (position === "running") {
+      return true; // ComfyUI is actively executing this prompt
     }
+    if (position === "not_found") {
+      // Not in queue and no history — might have just finished, check history once more
+      try {
+        const payload = await fetchJson(
+          `${apiUrl}/history/${encodeURIComponent(promptId)}`,
+          { method: "GET" },
+          `ComfyUI history re-check for prompt ${promptId}`,
+        );
+        const historyEntry = extractHistoryEntry(payload, promptId);
+        if (historyEntry && isHistoryComplete(historyEntry)) {
+          return false;
+        }
+      } catch {
+        // still no history
+      }
+      // Prompt disappeared — might be between queue removal and history write
+      // Treat as started since it left the queue
+      return true;
+    }
+    // position === "pending" — still waiting in ComfyUI's queue
 
     await sleep(pollIntervalMs);
   }
