@@ -223,17 +223,27 @@ export async function pollRunCompletion(runId: string): Promise<void> {
       const errorMessage = formatError(error);
       runLog.error("Run failed", error, { comfyPromptId });
 
+      // Check if the run was already completed (e.g. completeWorkerRun succeeded
+      // but a later step like audit threw). If so, do NOT delete images.
+      const currentRun = await db.run.findUnique({
+        where: { id: runId },
+        select: { status: true },
+      });
+
+      if (currentRun?.status === "done") {
+        runLog.warn("Error after run was already marked done — keeping images", {
+          error: errorMessage,
+        });
+        runTimer.done({ status: "done" });
+        return;
+      }
+
       try {
         await removeManagedRunOutput(run);
       } catch (cleanupError) {
         runLog.warn("Cleanup failed", { error: formatError(cleanupError) });
       }
 
-      // Check if it was cancelled (interrupt → execution_interrupted)
-      const currentRun = await db.run.findUnique({
-        where: { id: runId },
-        select: { status: true },
-      });
       if (currentRun?.status === "cancelled") {
         runLog.info("Run was cancelled during execution");
         runTimer.done({ status: "cancelled" });
