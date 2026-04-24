@@ -514,7 +514,7 @@ export async function createPresetCategory(input: PresetCategoryInput) {
     data.slotTemplate = slotTemplate != null ? (slotTemplate as unknown as Prisma.InputJsonValue) : Prisma.DbNull;
   }
   const cat = await prisma.presetCategory.create({ data: data as any }); // eslint-disable-line @typescript-eslint/no-explicit-any
-  revalidatePath("/assets/prompts");
+  revalidatePath("/assets/presets");
   return cat;
 }
 
@@ -525,7 +525,7 @@ export async function updatePresetCategory(id: string, input: Partial<PresetCate
     data.slotTemplate = slotTemplate != null ? (slotTemplate as unknown as Prisma.InputJsonValue) : Prisma.DbNull;
   }
   const cat = await prisma.presetCategory.update({ where: { id }, data: data as any }); // eslint-disable-line @typescript-eslint/no-explicit-any
-  revalidatePath("/assets/prompts");
+  revalidatePath("/assets/presets");
   return cat;
 }
 
@@ -540,7 +540,7 @@ export async function deletePresetCategory(id: string) {
     throw new Error(`分类下还有 ${groupCount} 个预制组，请先删除或移动它们`);
   }
   await prisma.presetCategory.delete({ where: { id } });
-  revalidatePath("/assets/prompts");
+  revalidatePath("/assets/presets");
 }
 
 export async function reorderPresetCategories(ids: string[]) {
@@ -549,7 +549,7 @@ export async function reorderPresetCategories(ids: string[]) {
       prisma.presetCategory.update({ where: { id }, data: { sortOrder: index } }),
     ),
   );
-  revalidatePath("/assets/prompts");
+  revalidatePath("/assets/presets");
 }
 
 type SortDimension = "positivePromptOrder" | "negativePromptOrder" | "lora1Order" | "lora2Order";
@@ -572,8 +572,8 @@ export async function updateCategorySortOrders(dimension: SortDimension, ids: st
       }),
     ),
   );
-  revalidatePath("/assets/prompts");
-  revalidatePath("/assets/prompts/sort-rules");
+  revalidatePath("/assets/presets");
+  revalidatePath("/assets/presets/sort-rules");
 }
 
 // ---------------------------------------------------------------------------
@@ -632,7 +632,7 @@ export async function createPreset(input: PresetInput) {
     preset = await prisma.preset.create({ data: input });
   }
 
-  revalidatePath("/assets/prompts");
+  revalidatePath("/assets/presets");
   revalidatePath("/projects/new");
   return preset;
 }
@@ -657,14 +657,14 @@ export async function createPresetVariant(input: PresetVariantInput) {
         : Prisma.DbNull,
     },
   });
-  revalidatePath("/assets/prompts");
+  revalidatePath("/assets/presets");
   revalidatePath("/projects/new");
   return variant;
 }
 
 export async function updatePreset(id: string, input: Partial<PresetInput>) {
   const preset = await prisma.preset.update({ where: { id }, data: input });
-  revalidatePath("/assets/prompts");
+  revalidatePath("/assets/presets");
   revalidatePath("/projects/new");
   return preset;
 }
@@ -685,7 +685,7 @@ export async function updatePresetVariant(id: string, input: Partial<PresetVaria
   }
 
   const variant = await prisma.presetVariant.update({ where: { id }, data });
-  revalidatePath("/assets/prompts");
+  revalidatePath("/assets/presets");
   revalidatePath("/projects/new");
   return variant;
 }
@@ -693,14 +693,14 @@ export async function updatePresetVariant(id: string, input: Partial<PresetVaria
 export async function deletePreset(id: string) {
   // Soft delete: set isActive = false
   await prisma.preset.update({ where: { id }, data: { isActive: false } });
-  revalidatePath("/assets/prompts");
+  revalidatePath("/assets/presets");
   revalidatePath("/projects/new");
 }
 
 export async function deletePresetVariant(id: string) {
   // Soft delete: set isActive = false
   await prisma.presetVariant.update({ where: { id }, data: { isActive: false } });
-  revalidatePath("/assets/prompts");
+  revalidatePath("/assets/presets");
   revalidatePath("/projects/new");
 }
 
@@ -884,7 +884,7 @@ export async function deletePresetCascade(presetId: string) {
   // 5. Soft delete the preset
   await prisma.preset.update({ where: { id: presetId }, data: { isActive: false } });
 
-  revalidatePath("/assets/prompts");
+  revalidatePath("/assets/presets");
   revalidatePath("/projects");
 }
 
@@ -975,7 +975,7 @@ export async function reorderPresets(categoryId: string, ids: string[]) {
       prisma.preset.update({ where: { id }, data: { sortOrder: index } }),
     ),
   );
-  revalidatePath("/assets/prompts");
+  revalidatePath("/assets/presets");
 }
 
 export async function reorderPresetVariants(presetId: string, ids: string[]) {
@@ -984,7 +984,7 @@ export async function reorderPresetVariants(presetId: string, ids: string[]) {
       prisma.presetVariant.update({ where: { id }, data: { sortOrder: index } }),
     ),
   );
-  revalidatePath("/assets/prompts");
+  revalidatePath("/assets/presets");
 }
 
 // ---------------------------------------------------------------------------
@@ -1035,19 +1035,19 @@ export async function createPresetGroup(input: PresetGroupInput) {
     group = await prisma.presetGroup.create({ data: input });
   }
 
-  revalidatePath("/assets/prompts");
+  revalidatePath("/assets/presets");
   return group;
 }
 
 export async function updatePresetGroup(id: string, input: Partial<PresetGroupInput>) {
   const group = await prisma.presetGroup.update({ where: { id }, data: input });
-  revalidatePath("/assets/prompts");
+  revalidatePath("/assets/presets");
   return group;
 }
 
 export async function deletePresetGroup(id: string) {
   await prisma.presetGroup.update({ where: { id }, data: { isActive: false } });
-  revalidatePath("/assets/prompts");
+  revalidatePath("/assets/presets");
 }
 
 export async function addGroupMember(input: PresetGroupMemberInput) {
@@ -1058,13 +1058,13 @@ export async function addGroupMember(input: PresetGroupMemberInput) {
   const member = await prisma.presetGroupMember.create({
     data: { ...input, sortOrder: (maxOrder._max.sortOrder ?? -1) + 1 },
   });
-  revalidatePath("/assets/prompts");
+  revalidatePath("/assets/presets");
   return member;
 }
 
 export async function removeGroupMember(memberId: string) {
   await prisma.presetGroupMember.delete({ where: { id: memberId } });
-  revalidatePath("/assets/prompts");
+  revalidatePath("/assets/presets");
 }
 
 export async function reorderPresetGroups(ids: string[]) {
@@ -1073,7 +1073,7 @@ export async function reorderPresetGroups(ids: string[]) {
       prisma.presetGroup.update({ where: { id }, data: { sortOrder: index } }),
     ),
   );
-  revalidatePath("/assets/prompts");
+  revalidatePath("/assets/presets");
 }
 
 export async function reorderGroupMembers(groupId: string, ids: string[]) {
@@ -1082,7 +1082,7 @@ export async function reorderGroupMembers(groupId: string, ids: string[]) {
       prisma.presetGroupMember.update({ where: { id }, data: { sortOrder: index } }),
     ),
   );
-  revalidatePath("/assets/prompts");
+  revalidatePath("/assets/presets");
 }
 
 // ---------------------------------------------------------------------------
@@ -1106,13 +1106,13 @@ export async function createPresetFolder(
       sortOrder: (maxSort._max.sortOrder ?? -1) + 1,
     },
   });
-  revalidatePath("/assets/prompts");
+  revalidatePath("/assets/presets");
   return folder;
 }
 
 export async function renamePresetFolder(id: string, name: string) {
   await prisma.presetFolder.update({ where: { id }, data: { name } });
-  revalidatePath("/assets/prompts");
+  revalidatePath("/assets/presets");
 }
 
 export async function deletePresetFolder(id: string) {
@@ -1126,7 +1126,7 @@ export async function deletePresetFolder(id: string) {
     throw new Error(`文件夹不为空，包含 ${childCount} 个子文件夹、${presetCount} 个预制、${groupCount} 个预制组`);
   }
   await prisma.presetFolder.delete({ where: { id } });
-  revalidatePath("/assets/prompts");
+  revalidatePath("/assets/presets");
 }
 
 export async function moveToFolder(
@@ -1139,7 +1139,7 @@ export async function moveToFolder(
   } else {
     await prisma.presetGroup.update({ where: { id }, data: { folderId } });
   }
-  revalidatePath("/assets/prompts");
+  revalidatePath("/assets/presets");
 }
 
 export async function reorderPresetFolders(
@@ -1152,7 +1152,7 @@ export async function reorderPresetFolders(
       prisma.presetFolder.update({ where: { id }, data: { sortOrder: index } }),
     ),
   );
-  revalidatePath("/assets/prompts");
+  revalidatePath("/assets/presets");
 }
 
 // ---------------------------------------------------------------------------
@@ -1167,7 +1167,7 @@ export async function updateCategorySlotTemplate(
     where: { id: categoryId },
     data: { slotTemplate: slotTemplate as Prisma.InputJsonValue },
   });
-  revalidatePath("/assets/prompts");
+  revalidatePath("/assets/presets");
 }
 
 /** Recursively flatten a group into preset+variant pairs, preventing cycles. */
@@ -2080,7 +2080,7 @@ export async function createProjectTemplate(
       },
     },
   });
-  revalidatePath("/settings/templates");
+  revalidatePath("/assets/templates");
   return template.id;
 }
 
@@ -2143,15 +2143,15 @@ export async function updateProjectTemplate(
     }
   });
 
-  revalidatePath("/settings/templates");
-  revalidatePath(`/settings/templates/${id}/edit`);
+  revalidatePath("/assets/templates");
+  revalidatePath(`/assets/templates/${id}/edit`);
 }
 
 export async function deleteProjectTemplate(
   templateId: string,
 ): Promise<void> {
   await prisma.projectTemplate.delete({ where: { id: templateId } });
-  revalidatePath("/settings/templates");
+  revalidatePath("/assets/templates");
 }
 
 export async function getTemplateOptionsForClient(): Promise<
@@ -2652,6 +2652,6 @@ export async function saveProjectAsTemplate(
     },
   });
 
-  revalidatePath("/settings/templates");
+  revalidatePath("/assets/templates");
   return template.id;
 }

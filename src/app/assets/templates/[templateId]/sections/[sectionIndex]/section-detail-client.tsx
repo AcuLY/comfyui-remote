@@ -15,7 +15,7 @@ import { LoraListEditor } from "@/components/lora-list-editor";
 import { TemplatePromptBlockEditor, type TemplateBlockData } from "@/components/template-prompt-block-editor";
 import { generateLoraEntryId, type LoraEntry, DEFAULT_KSAMPLER1, DEFAULT_KSAMPLER2, type KSamplerParams } from "@/lib/lora-types";
 import type { ProjectTemplateSectionData } from "@/lib/server-data";
-import type { PromptLibraryV2 } from "@/components/prompt-block-editor";
+import type { PresetLibraryV2 } from "@/components/prompt-block-editor";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -35,7 +35,7 @@ type Props = {
   totalSections: number;
   section: ProjectTemplateSectionData;
   allSections: ProjectTemplateSectionData[];
-  library?: PromptLibraryV2;
+  library?: PresetLibraryV2;
 };
 
 // ---------------------------------------------------------------------------
@@ -90,6 +90,7 @@ export function TemplateSectionDetailClient({
 
   function buildUpdatedSection(): ProjectTemplateSectionData {
     return {
+      id: initialSection.id,
       sortOrder: sectionIndex,
       name: name.trim() || null,
       aspectRatio, // null means not set
@@ -126,10 +127,10 @@ export function TemplateSectionDetailClient({
 
   // ── Navigation ──
 
-  const basePath = `/settings/templates/${templateId}/edit`;
+  const basePath = `/assets/templates/${templateId}/edit`;
 
   function navigateToSection(index: number) {
-    router.push(`/settings/templates/${templateId}/sections/${index}`);
+    router.push(`/assets/templates/${templateId}/sections/${index}`);
   }
 
   // ── LoRA change handlers ──

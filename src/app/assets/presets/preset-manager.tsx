@@ -80,7 +80,7 @@ import { toast } from "sonner";
 // Main component
 // ---------------------------------------------------------------------------
 
-export function PromptManager({
+export function PresetManager({
   initialCategories,
 }: {
   initialCategories: PresetCategoryFull[];
@@ -142,7 +142,7 @@ export function PromptManager({
               </span>
               <div className="flex gap-1">
                 <Link
-                  href="/assets/prompts/sort-rules"
+                  href="/assets/presets/sort-rules"
                   className="rounded p-1 text-zinc-500 hover:bg-white/[0.06] hover:text-white"
                   title="排序规则"
                 >

@@ -32,10 +32,6 @@ import {
   getProjectRevision,
 } from "@/server/services/revision-service";
 import {
-  listWorkflowTemplateSummaries,
-  getWorkflowTemplate,
-} from "@/server/services/workflow-template-service";
-import {
   addPromptBlock,
   editPromptBlock,
   removePromptBlock,
@@ -355,49 +351,6 @@ export function getMcpServer(): McpServer {
     { description: "Full context for a run including all images and review status" },
     async (uri, vars) => {
       const data = await getRunAgentContext(str(vars.runId));
-      return {
-        contents: [{
-          uri: uri.href,
-          mimeType: "application/json",
-          text: JSON.stringify(data, null, 2),
-        }],
-      };
-    },
-  );
-
-  // Static resource: Workflow templates list
-  server.resource(
-    "workflow-templates",
-    "comfyui://workflows",
-    { description: "List of all available workflow templates" },
-    async (uri) => {
-      const data = await listWorkflowTemplateSummaries();
-      return {
-        contents: [{
-          uri: uri.href,
-          mimeType: "application/json",
-          text: JSON.stringify(data, null, 2),
-        }],
-      };
-    },
-  );
-
-  // Dynamic resource: Workflow template detail
-  server.resource(
-    "workflow-template",
-    new ResourceTemplate("comfyui://workflows/{templateId}", { list: undefined }),
-    { description: "Complete workflow template with variable definitions and node graph" },
-    async (uri, vars) => {
-      const data = await getWorkflowTemplate(str(vars.templateId));
-      if (!data) {
-        return {
-          contents: [{
-            uri: uri.href,
-            mimeType: "application/json",
-            text: JSON.stringify({ error: "Workflow template not found" }),
-          }],
-        };
-      }
       return {
         contents: [{
           uri: uri.href,

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Boxes, FolderOpen, Images, Settings, Trash2, Upload, BookOpen } from "lucide-react";
+import { Boxes, FolderOpen, Images, Settings, Trash2, Upload, BookOpen, LayoutTemplate } from "lucide-react";
 import { Toaster } from "sonner";
 import type { ReactNode } from "react";
 
@@ -7,7 +7,8 @@ const navItems = [
   { href: "/queue", label: "待审核", icon: Images },
   { href: "/projects", label: "项目", icon: FolderOpen },
   { href: "/trash", label: "回收站", icon: Trash2 },
-  { href: "/assets/prompts", label: "预制", icon: BookOpen },
+  { href: "/assets/presets", label: "预制", icon: BookOpen },
+  { href: "/assets/templates", label: "模板", icon: LayoutTemplate },
   { href: "/assets/loras", label: "LoRA", icon: Upload },
   { href: "/settings", label: "设置", icon: Settings },
 ];

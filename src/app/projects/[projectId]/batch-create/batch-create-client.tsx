@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { createSectionFromTemplate, flattenGroup } from "@/lib/actions";
-import type { PromptLibraryV2 } from "@/components/prompt-block-editor";
+import type { PresetLibraryV2 } from "@/components/prompt-block-editor";
 import { ASPECT_RATIOS, resolveResolution } from "@/lib/aspect-ratio-utils";
 
 // ---------------------------------------------------------------------------
@@ -56,7 +56,7 @@ type Props = {
   presetBindings: PresetBinding[];
   defaultAspectRatio: string;
   defaultShortSidePx: number;
-  library: PromptLibraryV2;
+  library: PresetLibraryV2;
 };
 
 export function BatchCreateClient({

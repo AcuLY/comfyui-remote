@@ -14,10 +14,6 @@ import {
   buildWorkflowPrompt,
   type WorkflowBuildInput,
 } from "@/server/services/workflow-prompt-builder";
-import {
-  getWorkflowTemplate,
-  resolveWorkflowTemplate,
-} from "@/server/services/workflow-template-service";
 import { ComfyPromptDraft } from "@/server/worker/types";
 
 // ComfyUI service logger
@@ -379,60 +375,6 @@ async function fetchJson(
   }
 }
 
-async function resolveApiPromptFromWorkflowTemplate(
-  extraParams: JsonRecord | null,
-  promptDraft: ComfyPromptDraft,
-): Promise<JsonRecord | null> {
-  const templateId =
-    typeof extraParams?.workflowTemplateId === "string"
-      ? extraParams.workflowTemplateId.trim()
-      : null;
-
-  if (!templateId) {
-    return null;
-  }
-
-  const template = await getWorkflowTemplate(templateId);
-
-  if (!template) {
-    throw new Error(
-      `Workflow template "${templateId}" not found in config/workflows/`,
-    );
-  }
-
-  // Build variable overrides from the prompt draft
-  const resolution = resolveResolution(
-    promptDraft.parameters.aspectRatio,
-    promptDraft.parameters.shortSidePx,
-  );
-  const seed =
-    promptDraft.parameters.seedPolicy === "fixed"
-      ? 42
-      : Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
-
-  const overrides: Record<string, string | number> = {
-    positivePrompt: promptDraft.prompt.positive,
-    negativePrompt:
-      promptDraft.prompt.negative ?? "",
-    width: resolution.width,
-    height: resolution.height,
-    batchSize: promptDraft.parameters.batchSize ?? 1,
-    seed,
-  };
-
-  // Allow extraParams to override any template variable
-  if (extraParams) {
-    for (const key of Object.keys(template.variables)) {
-      const overrideValue = extraParams[key];
-
-      if (typeof overrideValue === "string" || typeof overrideValue === "number") {
-        overrides[key] = overrideValue;
-      }
-    }
-  }
-
-  return resolveWorkflowTemplate(template, overrides);
-}
 
 // ---------------------------------------------------------------------------
 // Priority 3: Standard workflow.api.json via workflow-prompt-builder (v0.3)
@@ -533,24 +475,15 @@ export async function validateComfyPromptDraft(
   ]);
 
   // Priority: 1) explicit comfyPrompt in extraParams
-  //           2) workflowTemplateId → resolve from config/workflows/
-  //           3) standard workflow.api.json (v0.3, when ksampler1/2 present)
-  //           4) built-in SDXL txt2img fallback
+  //           2) standard workflow.api.json (v0.3)
+  //           3) built-in SDXL txt2img fallback
   let apiPrompt: JsonRecord;
 
   if (customApiPrompt && Object.keys(customApiPrompt).length > 0) {
     apiPrompt = customApiPrompt;
   } else {
-    const templatePrompt = await resolveApiPromptFromWorkflowTemplate(
-      extraParams,
-      promptDraft,
-    );
-    if (templatePrompt) {
-      apiPrompt = templatePrompt;
-    } else {
-      const standardPrompt = await resolveStandardWorkflowPrompt(promptDraft);
-      apiPrompt = standardPrompt ?? buildFallbackPromptNodes(promptDraft);
-    }
+    const standardPrompt = await resolveStandardWorkflowPrompt(promptDraft);
+    apiPrompt = standardPrompt ?? buildFallbackPromptNodes(promptDraft);
   }
 
   const extraData = {

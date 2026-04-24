@@ -43,7 +43,7 @@ import {
 // ---------------------------------------------------------------------------
 
 /** V2 dynamic library: categories from DB */
-export type PromptLibraryV2 = {
+export type PresetLibraryV2 = {
   categories: Array<{
     id: string;
     name: string;
@@ -323,7 +323,7 @@ type BlockColumnProps = {
   onAdd: () => void;
   onCancelAdd: () => void;
   onSubmitAdd: (input: { type: string; label: string; positive: string; negative?: string | null }) => void;
-  libraryV2?: PromptLibraryV2;
+  libraryV2?: PresetLibraryV2;
   categoryMap: Map<string, CategoryConfig>;
 };
 
@@ -493,7 +493,7 @@ export function PromptBlockEditor({
   sectionId: string;
   initialBlocks: PromptBlockData[];
   /** V2 dynamic library from PresetCategory/Preset */
-  libraryV2?: PromptLibraryV2;
+  libraryV2?: PresetLibraryV2;
   /** Return false to cancel delete. Used for binding protection. */
   onDeleteConfirm?: (blockId: string) => boolean;
   /** Called after a block is deleted (for binding cascade). */

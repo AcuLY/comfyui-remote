@@ -12,7 +12,7 @@ import {
   switchBindingVariant,
 } from "@/lib/actions";
 import type { LoraEntry } from "@/lib/lora-types";
-import type { PromptLibraryV2 } from "@/components/prompt-block-editor";
+import type { PresetLibraryV2 } from "@/components/prompt-block-editor";
 
 /** 2-partition LoRA config (lora1 + lora2 only) */
 type LoraConfig2 = {
@@ -39,7 +39,7 @@ type SectionEditorProps = {
   sectionId: string;
   initialBlocks: PromptBlockData[];
   initialLoraConfig: LoraConfig2;
-  libraryV2?: PromptLibraryV2;
+  libraryV2?: PresetLibraryV2;
   onLoraChange: (config: LoraConfig2) => Promise<void>;
   onRename?: (name: string) => void;
 };
@@ -678,7 +678,7 @@ export function SectionEditor({
 // ImportPresetPanel — select a preset+variant or a group to import
 // ---------------------------------------------------------------------------
 
-export type ImportCategory = PromptLibraryV2["categories"][number];
+export type ImportCategory = PresetLibraryV2["categories"][number];
 
 export function ImportPresetPanel({
   categories,

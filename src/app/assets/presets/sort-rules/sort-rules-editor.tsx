@@ -228,7 +228,7 @@ export function SortRulesEditor({ categories }: { categories: CategoryData[] }) 
       {/* Header */}
       <div className="flex items-center gap-3">
         <Link
-          href="/assets/prompts"
+          href="/assets/presets"
           className="rounded-xl p-2 text-zinc-500 transition hover:bg-white/5 hover:text-zinc-300"
         >
           <ArrowLeft className="size-4" />

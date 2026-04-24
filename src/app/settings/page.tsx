@@ -1,20 +1,8 @@
 import Link from "next/link";
 import { SectionCard } from "@/components/section-card";
-import { Workflow, HeartPulse, ScrollText, LayoutTemplate } from "lucide-react";
+import { HeartPulse, ScrollText } from "lucide-react";
 
 const settingsGroups = [
-  {
-    href: "/settings/templates",
-    label: "项目模板",
-    description: "管理可复用的小节模板，批量导入到项目中",
-    icon: LayoutTemplate,
-  },
-  {
-    href: "/settings/workflows",
-    label: "Workflow 模板",
-    description: "查看和导入 ComfyUI Workflow 模板",
-    icon: Workflow,
-  },
   {
     href: "/settings/monitor",
     label: "ComfyUI 监控",
@@ -32,7 +20,7 @@ const settingsGroups = [
 export default function SettingsPage() {
   return (
     <div className="space-y-4">
-      <SectionCard title="设置" subtitle="系统配置。预制管理已移至底部导航「预制」页面。">
+      <SectionCard title="设置" subtitle="系统配置。预制管理在「预制」页面，项目模板在「模板」页面。">
         <div className="grid grid-cols-1 gap-2 justify-items-center md:grid-cols-2">
           {settingsGroups.map(({ href, label, description, icon: Icon }) => (
             <Link

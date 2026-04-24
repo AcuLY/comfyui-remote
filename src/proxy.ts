@@ -16,7 +16,6 @@ function isPublicPath(pathname: string): boolean {
   if (pathname.startsWith("/api/images/")) return true;
   if (pathname.startsWith("/api/audit-logs")) return true;
   if (pathname.startsWith("/api/logs")) return true;
-  if (pathname.startsWith("/api/workflows")) return true;
   if (pathname.startsWith("/api/path-maps")) return true;
   if (pathname.startsWith("/api/worker/")) return true;
   if (pathname.startsWith("/api/comfy/")) return true;

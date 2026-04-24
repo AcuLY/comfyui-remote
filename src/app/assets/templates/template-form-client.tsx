@@ -1,17 +1,34 @@
 "use client";
 
-import { useState, useTransition, useMemo } from "react";
+import { useState, useTransition, useMemo, useId } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Plus, Trash2, GripVertical, Save } from "lucide-react";
 import { toast } from "sonner";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import {
   createProjectTemplate,
   updateProjectTemplate,
 } from "@/lib/actions";
 import { resolveResolution } from "@/lib/aspect-ratio-utils";
 import type { ProjectTemplateSectionData } from "@/lib/server-data";
-import { generateLoraEntryId, type LoraEntry } from "@/lib/lora-types";
+import { type LoraEntry } from "@/lib/lora-types";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -41,6 +58,12 @@ export function TemplateFormClient({
   const [isPending, startTransition] = useTransition();
 
   const isEdit = !!templateId;
+  const dndId = useId();
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
 
   // ── Section management ──
 
@@ -48,6 +71,7 @@ export function TemplateFormClient({
     setSections((prev) => [
       ...prev,
       {
+        id: `new-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
         sortOrder: prev.length,
         name: null,
         aspectRatio: "2:3",
@@ -65,17 +89,20 @@ export function TemplateFormClient({
     ]);
   }
 
-  function removeSection(index: number) {
-    setSections((prev) => prev.filter((_, i) => i !== index).map((s, i) => ({ ...s, sortOrder: i })));
+  function removeSection(id: string) {
+    setSections((prev) => prev.filter((s) => s.id !== id).map((s, i) => ({ ...s, sortOrder: i })));
   }
 
-  function moveSection(index: number, direction: -1 | 1) {
-    const target = index + direction;
-    if (target < 0 || target >= sections.length) return;
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
     setSections((prev) => {
-      const next = [...prev];
-      [next[index], next[target]] = [next[target], next[index]];
-      return next.map((s, i) => ({ ...s, sortOrder: i }));
+      const oldIndex = prev.findIndex((s) => s.id === active.id);
+      const newIndex = prev.findIndex((s) => s.id === over.id);
+      if (oldIndex === -1 || newIndex === -1) return prev;
+      const moved = arrayMove(prev, oldIndex, newIndex);
+      return moved.map((s, i) => ({ ...s, sortOrder: i }));
     });
   }
 
@@ -103,7 +130,7 @@ export function TemplateFormClient({
             sections,
           });
           toast.success("模板已创建");
-          router.push(`/settings/templates/${id}/edit`);
+          router.push(`/assets/templates/${id}/edit`);
         }
       } catch (e: unknown) {
         toast.error(e instanceof Error ? e.message : "保存失败");
@@ -114,7 +141,7 @@ export function TemplateFormClient({
   return (
     <div className="space-y-4">
       <Link
-        href="/settings/templates"
+        href="/assets/templates"
         className="inline-flex items-center gap-2 text-sm text-zinc-400 transition hover:text-zinc-200"
       >
         <ArrowLeft className="size-4" /> 返回模板列表
@@ -144,7 +171,7 @@ export function TemplateFormClient({
         </div>
       </div>
 
-      {/* Sections list — two-column grid */}
+      {/* Sections list — sortable with dnd-kit */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-zinc-300">
@@ -164,20 +191,21 @@ export function TemplateFormClient({
           </div>
         )}
 
-        <div className="grid grid-cols-1 gap-3 justify-items-center md:grid-cols-2">
-          {sections.map((section, si) => (
-            <SectionSummaryCard
-              key={si}
-              index={si}
-              section={section}
-              templateId={templateId}
-              isFirst={si === 0}
-              isLast={si === sections.length - 1}
-              onRemove={() => removeSection(si)}
-              onMove={(dir) => moveSection(si, dir)}
-            />
-          ))}
-        </div>
+        <DndContext id={dndId} sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={sections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
+            <div className="grid grid-cols-1 gap-3 justify-items-center md:grid-cols-2">
+              {sections.map((section, si) => (
+                <SortableSectionCard
+                  key={section.id}
+                  section={section}
+                  index={si}
+                  templateId={templateId}
+                  onRemove={() => removeSection(section.id)}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
       </div>
 
       {/* Save button */}
@@ -193,26 +221,30 @@ export function TemplateFormClient({
 }
 
 // ---------------------------------------------------------------------------
-// Section Summary Card — compact card showing key info, click to edit
+// SortableSectionCard — drag-and-drop card with dnd-kit
 // ---------------------------------------------------------------------------
 
-function SectionSummaryCard({
-  index,
+function SortableSectionCard({
   section,
+  index,
   templateId,
-  isFirst,
-  isLast,
   onRemove,
-  onMove,
 }: {
-  index: number;
   section: ProjectTemplateSectionData;
+  index: number;
   templateId?: string;
-  isFirst: boolean;
-  isLast: boolean;
   onRemove: () => void;
-  onMove: (direction: -1 | 1) => void;
 }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: section.id,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
   const aspectRatio = section.aspectRatio || "2:3";
   const res = resolveResolution(aspectRatio, section.shortSidePx ?? 512);
   const resDisplay = `${res.width}x${res.height}`;
@@ -223,7 +255,7 @@ function SectionSummaryCard({
 
   // If no templateId yet (new template), can't navigate — card not clickable
   const href = templateId
-    ? `/settings/templates/${templateId}/sections/${index}`
+    ? `/assets/templates/${templateId}/sections/${index}`
     : null;
 
   const CardWrapper = href
@@ -236,17 +268,17 @@ function SectionSummaryCard({
 
   return (
     <CardWrapper>
-      <div className={`w-full rounded-xl border border-white/10 bg-white/[0.03] p-3.5 md:max-w-[500px] transition ${href ? "hover:border-white/20 hover:bg-white/[0.05] cursor-pointer" : ""}`}>
+      <div ref={setNodeRef} style={style} className={`w-full rounded-xl border border-white/10 bg-white/[0.03] p-3.5 md:max-w-[500px] transition ${isDragging ? "z-10 shadow-lg" : ""} ${href ? "hover:border-white/20 hover:bg-white/[0.05] cursor-pointer" : ""}`}>
         {/* Header */}
         <div className="flex items-center gap-2">
-          <div className="flex flex-col gap-0.5 text-zinc-600">
-            <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); onMove(-1); }} disabled={isFirst} className="disabled:opacity-20 hover:text-zinc-400 transition">
-              <GripVertical className="size-3 -scale-y-100" />
-            </button>
-            <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); onMove(1); }} disabled={isLast} className="disabled:opacity-20 hover:text-zinc-400 transition">
-              <GripVertical className="size-3" />
-            </button>
-          </div>
+          <button
+            {...attributes}
+            {...listeners}
+            className="cursor-grab text-zinc-600 hover:text-zinc-400 active:cursor-grabbing touch-none"
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          >
+            <GripVertical className="size-4" />
+          </button>
           <span className="shrink-0 text-xs text-zinc-500">#{index + 1}</span>
           <span className="min-w-0 flex-1 truncate text-sm font-medium text-white">
             {section.name || "未命名小节"}

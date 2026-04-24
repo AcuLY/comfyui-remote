@@ -1,4 +1,4 @@
-import { getPromptLibraryV2, getProjectEditData } from "@/lib/server-data";
+import { getPresetLibraryV2, getProjectEditData } from "@/lib/server-data";
 import { BatchCreateClient } from "./batch-create-client";
 
 export default async function BatchCreatePage({
@@ -8,7 +8,7 @@ export default async function BatchCreatePage({
 }) {
   const { projectId } = await params;
   const [library, project] = await Promise.all([
-    getPromptLibraryV2(),
+    getPresetLibraryV2(),
     getProjectEditData(projectId),
   ]);
 

@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getProjectTemplateDetail, getPromptLibraryV2 } from "@/lib/server-data";
+import { getProjectTemplateDetail, getPresetLibraryV2 } from "@/lib/server-data";
 import { TemplateSectionDetailClient } from "./section-detail-client";
 
 export default async function TemplateSectionPage({
@@ -13,7 +13,7 @@ export default async function TemplateSectionPage({
 
   const [template, library] = await Promise.all([
     getProjectTemplateDetail(templateId),
-    getPromptLibraryV2(),
+    getPresetLibraryV2(),
   ]);
   if (!template) notFound();
   if (index >= template.sections.length) notFound();

@@ -1,7 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { toImageUrl } from "@/lib/image-url";
 import type { QueueRun, RunningRun, FailedRun, ReviewGroup, ReviewImage, ReviewStatus, ProjectCard, TrashItem, LoraAsset } from "@/lib/types";
-import { listWorkflowTemplateSummaries } from "@/server/services/workflow-template-service";
 
 // Re-export types used by frontend components (originally from backend branch)
 export type { ProjectCreateOptions } from "@/server/repositories/project-repository";
@@ -673,9 +672,6 @@ export async function getProjectEditData(projectId: string): Promise<ProjectEdit
   };
 }
 
-export async function getWorkflowTemplateOptions() {
-  return listWorkflowTemplateSummaries();
-}
 
 // ---------------------------------------------------------------------------
 // Preset Categories & Presets — 预制管理
@@ -877,7 +873,7 @@ export async function getPresetCategoriesWithPresets(): Promise<PresetCategoryFu
 }
 
 /** V2 prompt library: dynamic categories for the block editor import panel */
-export type PromptLibraryV2 = {
+export type PresetLibraryV2 = {
   categories: Array<{
     id: string;
     name: string;
@@ -921,7 +917,7 @@ export type PromptLibraryV2 = {
   }>;
 };
 
-export async function getPromptLibraryV2(): Promise<PromptLibraryV2> {
+export async function getPresetLibraryV2(): Promise<PresetLibraryV2> {
   const categories = await prisma.presetCategory.findMany({
     orderBy: { sortOrder: "asc" },
     include: {
@@ -1159,6 +1155,7 @@ export type SectionBlockSummary = {
 // ---------------------------------------------------------------------------
 
 export type ProjectTemplateSectionData = {
+  id: string;
   sortOrder: number;
   name: string | null;
   aspectRatio: string | null;
@@ -1230,6 +1227,7 @@ export async function getProjectTemplateDetail(
     name: template.name,
     description: template.description,
     sections: template.sections.map((s) => ({
+      id: s.id,
       sortOrder: s.sortOrder,
       name: s.name,
       aspectRatio: s.aspectRatio,

@@ -8,7 +8,7 @@ import { SectionParamsForm } from "./section-params-form";
 import { SectionNameEditor } from "./section-name-editor";
 import { SectionRunButton } from "@/app/projects/[projectId]/project-detail-actions";
 import type { PromptBlockData } from "@/lib/actions";
-import { getPromptLibraryV2 } from "@/lib/server-data";
+import { getPresetLibraryV2 } from "@/lib/server-data";
 import { parseSectionLoraConfig, serializeSectionLoraConfig, generateLoraEntryId, parseLoraBindings } from "@/lib/lora-types";
 import type { LoraEntry } from "@/lib/lora-types";
 import { revalidatePath } from "next/cache";
@@ -47,7 +47,7 @@ export default async function SectionEditPage({
         },
       },
     }),
-    getPromptLibraryV2(),
+    getPresetLibraryV2(),
     prisma.projectSection.findMany({
       where: { projectId },
       orderBy: { sortOrder: "asc" },
