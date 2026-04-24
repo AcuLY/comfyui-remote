@@ -285,9 +285,14 @@ export async function recoverStaleRuns(): Promise<void> {
 
   if (staleRuns.length === 0) return;
 
-  log.info("Recovering stale runs", { count: staleRuns.length });
+  // Filter out runs that already have an active polling loop
+  const needsRecovery = staleRuns.filter((r) => !activePolls.has(r.id));
 
-  for (const run of staleRuns) {
+  if (needsRecovery.length === 0) return;
+
+  log.info("Recovering stale runs", { count: needsRecovery.length });
+
+  for (const run of needsRecovery) {
     pollRunCompletion(run.id).catch(() => {});
   }
 }
