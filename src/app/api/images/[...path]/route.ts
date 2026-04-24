@@ -38,6 +38,12 @@ export async function GET(
     return NextResponse.json({ error: "Invalid path" }, { status: 400 });
   }
 
+  // Reject temp files (used during atomic writes)
+  const lastSegment = segments[segments.length - 1];
+  if (lastSegment.endsWith(".tmp")) {
+    return NextResponse.json({ error: "File not found" }, { status: 404 });
+  }
+
   const ext = path.extname(joined).toLowerCase();
   if (!ALLOWED_EXTENSIONS.has(ext)) {
     return NextResponse.json({ error: "Unsupported file type" }, { status: 400 });
