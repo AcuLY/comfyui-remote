@@ -4,15 +4,15 @@ import { useState, useEffect, useTransition, useCallback, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { RotateCw, ChevronRight, Clock3, Loader2, RefreshCw, AlertTriangle, XCircle, ImageIcon, Trash2 } from "lucide-react";
+import { RotateCw, ChevronRight, Clock3, Loader2, RefreshCw, AlertTriangle, XCircle, ImageIcon, Trash2, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/page-header";
 import { SectionCard } from "@/components/section-card";
 import { StatChip } from "@/components/stat-chip";
-import { cancelRun, runSection, clearRuns } from "@/lib/actions";
-import type { QueueRun, RunningRun, FailedRun } from "@/lib/types";
+import { cancelRun, runSection, clearRuns, restoreImage } from "@/lib/actions";
+import type { QueueRun, RunningRun, FailedRun, TrashItem } from "@/lib/types";
 
-export type QueueTabKey = "pending" | "running" | "failed";
+export type QueueTabKey = "pending" | "running" | "failed" | "trash";
 
 type TabDef = { key: QueueTabKey; label: string };
 
@@ -20,6 +20,7 @@ const TABS: TabDef[] = [
   { key: "pending", label: "待审核" },
   { key: "running", label: "运行中" },
   { key: "failed", label: "失败" },
+  { key: "trash", label: "回收站" },
 ];
 
 const POLL_INTERVAL_MS = 5_000;
@@ -44,13 +45,15 @@ type Props = {
   initialQueueRuns: QueueRun[];
   initialRunningRuns: RunningRun[];
   initialFailedRuns?: FailedRun[];
+  initialTrashItems?: TrashItem[];
 };
 
-export function QueuePageClient({ initialQueueRuns, initialRunningRuns, initialFailedRuns }: Props) {
+export function QueuePageClient({ initialQueueRuns, initialRunningRuns, initialFailedRuns, initialTrashItems }: Props) {
   const [activeTab, setActiveTab] = useState<QueueTabKey>("pending");
   const [queueRuns, setQueueRuns] = useState<QueueRun[]>(initialQueueRuns);
   const [runningRuns, setRunningRuns] = useState<RunningRun[]>(initialRunningRuns);
   const [failedRuns, setFailedRuns] = useState<FailedRun[]>(initialFailedRuns ?? []);
+  const [trashItems, setTrashItems] = useState<TrashItem[]>(initialTrashItems ?? []);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
@@ -119,6 +122,15 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns, initialF
   const runTotal = queueRuns.length;
   const runningCount = runningRuns.length;
   const failedCount = failedRuns.length;
+  const trashCount = trashItems.length;
+
+  function handleRestore(trashRecordId: string) {
+    startTransition(async () => {
+      await restoreImage(trashRecordId);
+      setTrashItems((prev) => prev.filter((item) => item.id !== trashRecordId));
+      toast.success("图片已恢复");
+    });
+  }
 
   return (
     <div className="space-y-4">
@@ -131,7 +143,8 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns, initialF
           const badge =
             tab.key === "pending" ? pendingTotal :
             tab.key === "running" ? runningCount :
-            failedCount;
+            tab.key === "failed" ? failedCount :
+            trashCount;
           return (
             <button
               key={tab.key}
@@ -140,7 +153,9 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns, initialF
                 isActive
                   ? tab.key === "failed"
                     ? "bg-red-500/20 text-red-300"
-                    : "bg-sky-500/20 text-sky-300"
+                    : tab.key === "trash"
+                      ? "bg-amber-500/20 text-amber-300"
+                      : "bg-sky-500/20 text-sky-300"
                   : "text-zinc-400 hover:bg-white/[0.06] hover:text-zinc-200"
               }`}
             >
@@ -151,7 +166,9 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns, initialF
                     isActive
                       ? tab.key === "failed"
                         ? "bg-red-500/30 text-red-200"
-                        : "bg-sky-500/30 text-sky-200"
+                        : tab.key === "trash"
+                          ? "bg-amber-500/30 text-amber-200"
+                          : "bg-sky-500/30 text-sky-200"
                       : "bg-white/10 text-zinc-500"
                   }`}
                 >
@@ -375,6 +392,66 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns, initialF
             ))}
           </div>
         </SectionCard>
+      )}
+
+      {/* Trash tab */}
+      {activeTab === "trash" && (
+        <>
+          <SectionCard title="回收站" subtitle="已删除的图片可在此恢复到原位置。">
+            <div className="grid grid-cols-2 gap-3">
+              <StatChip label="已删除图片" value={trashCount} tone="warn" />
+            </div>
+          </SectionCard>
+
+          {trashCount === 0 ? (
+            <SectionCard title="无回收记录" subtitle="暂无已删除的图片。">
+              <div className="py-8 text-center text-sm text-zinc-500">
+                回收站为空
+              </div>
+            </SectionCard>
+          ) : (
+            <SectionCard title="已删除图片" subtitle="点击恢复按钮将图片移回原路径。">
+              <div className="grid grid-cols-1 gap-2.5 justify-items-center md:grid-cols-2">
+                {trashItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-2.5 md:max-w-[500px]"
+                  >
+                    <div className="relative size-16 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-[var(--panel-soft)]">
+                      <Image
+                        src={item.src ?? "/placeholder.svg"}
+                        alt={item.id}
+                        width={128}
+                        height={128}
+                        className="size-full object-cover"
+                        unoptimized
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-medium text-white">
+                        {item.title}
+                      </div>
+                      <div className="mt-1 text-xs text-zinc-500">
+                        删除于 {item.deletedAt}
+                      </div>
+                      <div className="mt-0.5 truncate text-[11px] text-zinc-600">
+                        {item.originalPath}
+                      </div>
+                    </div>
+                    <button
+                      disabled={isPending}
+                      onClick={() => handleRestore(item.id)}
+                      className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-xs font-medium text-emerald-300 transition hover:bg-emerald-500/20 disabled:opacity-50"
+                    >
+                      <RotateCcw className={`size-3.5 ${isPending ? "animate-spin" : ""}`} />
+                      恢复
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </SectionCard>
+          )}
+        </>
       )}
     </div>
   );

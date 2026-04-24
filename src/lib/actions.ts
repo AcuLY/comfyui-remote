@@ -183,7 +183,6 @@ export async function trashImages(imageIds: string[]) {
 
   for (const p of sectionPaths) revalidatePath(p);
   revalidatePath("/queue");
-  revalidatePath("/trash");
 }
 
 // ---------------------------------------------------------------------------
@@ -229,7 +228,6 @@ export async function restoreImage(trashRecordId: string) {
     }),
   ]);
 
-  revalidatePath("/trash");
   revalidatePath("/queue");
 }
 

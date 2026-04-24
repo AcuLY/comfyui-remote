@@ -2,12 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FolderOpen, Images, Trash2, Upload } from "lucide-react";
+import { FolderOpen, Images, Upload } from "lucide-react";
 
 const navItems = [
   { href: "/queue", label: "待审核", icon: Images },
   { href: "/projects", label: "项目", icon: FolderOpen },
-  { href: "/trash", label: "回收站", icon: Trash2 },
   { href: "/assets/loras", label: "LoRA", icon: Upload },
 ];
 
@@ -16,7 +15,7 @@ export function BottomNav() {
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-[var(--panel)]/95 backdrop-blur">
-      <div className="mx-auto grid max-w-6xl grid-cols-4 gap-1 px-2 py-2">
+      <div className="mx-auto grid max-w-6xl grid-cols-3 gap-1 px-2 py-2">
         {navItems.map(({ href, label, icon: Icon }) => {
           const active = pathname === href || pathname.startsWith(`${href}/`);
 
