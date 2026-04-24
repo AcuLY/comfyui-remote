@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useTransition, useMemo, useEffect } from "react";
-import { Plus, Trash2, Unlink, Package, ChevronDown, ClipboardCopy, Folder, ChevronLeft, Search, X } from "lucide-react";
+import Link from "next/link";
+import { Plus, Trash2, Unlink, Package, ChevronDown, ClipboardCopy, Folder, ChevronLeft, Search, X, ExternalLink } from "lucide-react";
 import { PromptBlockEditor } from "@/components/prompt-block-editor";
 import { LoraListEditor } from "@/components/lora-list-editor";
 import type { PromptBlockData } from "@/lib/actions";
@@ -559,6 +560,16 @@ export function SectionEditor({
                     <span className="shrink-0 rounded bg-amber-500/15 px-1 py-px text-[8px] text-amber-400">组</span>
                   )}
                   <span className="text-[11px] text-zinc-300 truncate">{binding.presetName}</span>
+                  {binding.sourceId && (
+                    <Link
+                      href={`/assets/presets#preset-${binding.sourceId}`}
+                      target="_blank"
+                      className="shrink-0 rounded p-0.5 text-zinc-500 hover:bg-white/5 hover:text-sky-400"
+                      title="在预制管理中打开"
+                    >
+                      <ExternalLink className="size-3" />
+                    </Link>
+                  )}
                   {/* Variant switcher — show only if preset has multiple variants */}
                   {binding.availableVariants.length > 1 && (
                     <div className="relative">

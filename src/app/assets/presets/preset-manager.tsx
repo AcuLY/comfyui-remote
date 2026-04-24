@@ -106,6 +106,24 @@ export function PresetManager({
   const [editingCatId, setEditingCatId] = useState<string | null>(null);
   const [autoEditPresetId, setAutoEditPresetId] = useState<string | null>(null);
 
+  // Handle URL hash navigation (e.g., #preset-{presetId})
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash.startsWith("#preset-")) {
+      const presetId = hash.slice(8); // Remove "#preset-" prefix
+      // Find the category containing this preset
+      for (const cat of initialCategories) {
+        if (cat.presets.some((p) => p.id === presetId)) {
+          setSelectedCatId(cat.id);
+          setAutoEditPresetId(presetId);
+          // Clear the hash after handling
+          window.history.replaceState(null, "", window.location.pathname);
+          break;
+        }
+      }
+    }
+  }, [initialCategories]);
+
   const selectedCat = categories.find((c) => c.id === selectedCatId) ?? null;
 
   const catDndId = useId();
