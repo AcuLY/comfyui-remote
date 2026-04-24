@@ -197,6 +197,8 @@ export async function getReviewGroup(runId: string): Promise<ReviewGroup | null>
 
   return {
     id: run.id,
+    projectId: run.project.id,
+    projectSectionId: run.projectSection.id,
     title: run.project.title,
     presetNames,
     sectionName:

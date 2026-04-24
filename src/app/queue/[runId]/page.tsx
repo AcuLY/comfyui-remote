@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ChevronLeft, ChevronRight, Download, Ellipsis } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Download, Ellipsis, ExternalLink } from "lucide-react";
 import { SectionCard } from "@/components/section-card";
 import { getReviewGroup, getReviewGroupIds } from "@/lib/server-data";
 import { ReviewGrid } from "./review-grid";
@@ -167,6 +167,14 @@ export default async function ReviewGroupPage({ params }: { params: Promise<{ ru
           <ArrowLeft className="size-4" /> 返回队列
         </Link>
         <div className="flex items-center gap-2">
+          {group.projectId && group.projectSectionId && (
+            <Link
+              href={`/projects/${group.projectId}/sections/${group.projectSectionId}`}
+              className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-2 text-xs text-zinc-300"
+            >
+              <ExternalLink className="size-3.5" /> 跳转小节
+            </Link>
+          )}
           <a
             href={`/api/runs/${runId}/workflow`}
             download
