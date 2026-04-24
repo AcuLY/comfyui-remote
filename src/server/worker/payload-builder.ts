@@ -47,7 +47,7 @@ export function normalizeResolvedConfigSnapshot(
 ): NormalizedResolvedConfigSnapshot {
   const root = asJsonObject(snapshot);
   const project = asJsonObject(root?.project ?? null);
-  const position = asJsonObject(root?.position ?? null);
+  const section = asJsonObject(root?.section ?? null);
   const parameters = asJsonObject(root?.parameters ?? null);
   const composedPrompt = asJsonObject(root?.composedPrompt ?? null);
 
@@ -68,14 +68,14 @@ export function normalizeResolvedConfigSnapshot(
       slug: asString(project?.slug),
     },
     section: {
-      id: asString(position?.id),
-      templateId: asString(position?.templateId),
-      sortOrder: asInteger(position?.sortOrder, 0),
-      name: asString(position?.name),
-      slug: asString(position?.slug),
-      templatePrompt: asString(position?.templatePrompt),
-      positivePrompt: asNullableString(position?.positivePrompt),
-      negativePrompt: asNullableString(position?.negativePrompt),
+      id: asString(section?.id),
+      templateId: asString(section?.templateId),
+      sortOrder: asInteger(section?.sortOrder, 0),
+      name: asString(section?.name),
+      slug: asString(section?.slug),
+      templatePrompt: asString(section?.templatePrompt),
+      positivePrompt: asNullableString(section?.positivePrompt),
+      negativePrompt: asNullableString(section?.negativePrompt),
     },
     promptBlocks,
     composedPrompt: composedPrompt

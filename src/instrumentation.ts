@@ -3,7 +3,9 @@
  *
  * Used to initialize the ComfyUI process manager for health monitoring
  * and optional auto-start. Also cleans up orphaned runs that were left
- * in "running" state from a previous server session crash.
+ * in "running" state from a previous server session crash, and recovers
+ * active runs that still have a comfyPromptId (in ComfyUI's queue or
+ * currently executing).
  */
 
 const ORPHANED_RUN_THRESHOLD_MS = 30 * 60 * 1000; // 30 minutes
@@ -13,6 +15,13 @@ export async function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {
     // Clean up orphaned runs before starting process manager
     await cleanupOrphanedRuns();
+
+    // Recover active runs that were submitted to ComfyUI but the server
+    // restarted before they completed — resume polling for them.
+    const { recoverStaleRuns } = await import(
+      "@/server/services/run-executor"
+    );
+    recoverStaleRuns().catch(() => {});
 
     const { getComfyProcessManager } = await import(
       "@/server/services/comfy-process-manager"

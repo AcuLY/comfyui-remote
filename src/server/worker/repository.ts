@@ -153,6 +153,15 @@ export async function listQueuedWorkerRuns(limit = 10): Promise<WorkerRunSnapsho
   return runs.map(serializeWorkerRunSnapshot);
 }
 
+export async function getWorkerRun(runId: string): Promise<WorkerRunSnapshot | null> {
+  const run = await db.run.findUnique({
+    where: { id: runId },
+    include: workerRunInclude,
+  });
+
+  return run ? serializeWorkerRunSnapshot(run) : null;
+}
+
 export async function completeWorkerRun(
   runId: string,
   input: CompleteWorkerRunInput,
@@ -208,7 +217,7 @@ export async function completeWorkerRun(
     const completedRun = await tx.run.updateMany({
       where: {
         id: runId,
-        status: RunStatus.running,
+        status: { in: [RunStatus.running, RunStatus.queued] },
       },
       data,
     });

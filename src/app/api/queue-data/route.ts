@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getQueueRuns, getRunningRuns, getFailedRuns } from "@/lib/server-data";
-import { executeQueuedRuns } from "@/server/services/run-executor";
+import { recoverStaleRuns } from "@/server/services/run-executor";
 
 export async function GET() {
   const [queueRuns, runningRuns, failedRuns] = await Promise.all([
@@ -9,9 +9,10 @@ export async function GET() {
     getFailedRuns(),
   ]);
 
-  // Auto-trigger executor if there are queued runs but none running
-  if (queueRuns.length > 0 && runningRuns.length === 0) {
-    executeQueuedRuns().catch(() => {});
+  // Auto-recover: if there are active runs (queued/running) that may not
+  // be polled (e.g. after server restart), resume polling for them.
+  if (runningRuns.length > 0) {
+    recoverStaleRuns().catch(() => {});
   }
 
   return NextResponse.json({ queueRuns, runningRuns, failedRuns });

@@ -1,12 +1,11 @@
 /**
- * Run Executor — Parallel Submission Model
+ * Run Executor — Submit-then-Poll Model
  *
- * Submits all queued runs to ComfyUI at once, letting ComfyUI's native queue
- * handle ordering. Then waits for all submitted prompts in parallel.
- *
- * - Phase 1: Validate + submit each run via POST /prompt → store comfyPromptId
- * - Phase 2: Poll /history for all submitted prompts concurrently
- * - Each prompt that completes gets its images persisted + DB status updated
+ * Submission happens synchronously in the server action (runProject/runSection).
+ * This module handles:
+ * - submitRunToComfyUI(): validates and submits a single run to ComfyUI
+ * - pollRunCompletion(): polls ComfyUI for a submitted run's execution and completion
+ * - recoverStaleRuns(): recovers runs left in queued/running state after server restart
  *
  * Cancellation is handled externally via deleteComfyQueueItems / interruptComfyPrompt.
  */
@@ -21,7 +20,6 @@ import {
   pollComfyPromptHistory,
   extractOutputImages,
   extractExecutionMeta,
-  extractOutputDir,
   type ValidatedComfyPromptDraft,
 } from "@/server/services/comfyui-service";
 import {
@@ -31,7 +29,6 @@ import {
 import { audit } from "@/server/services/audit-service";
 import { buildComfyPromptDraft } from "@/server/worker/payload-builder";
 import {
-  listQueuedWorkerRuns,
   completeWorkerRun,
 } from "@/server/worker/repository";
 import { db } from "@/lib/db";
@@ -40,241 +37,257 @@ import { waitForPromptToStart } from "@/server/services/comfyui-service";
 
 const log = createLogger({ module: "run-executor" });
 
-/** Module-level lock to prevent concurrent execution loops. */
-let running = false;
-/** Flag set when a new run is enqueued while executor is busy. */
-let pendingRerun = false;
-
 function formatError(error: unknown) {
   if (error instanceof Error) return error.message;
   return String(error);
 }
 
-function extractFailedComfyPromptId(error: unknown) {
-  if (error instanceof ComfyPromptExecutionError) return error.comfyPromptId;
-  return null;
-}
+// ─── Submit ────────────────────────────────────────────────────────────────
 
-/**
- * Transition a queued run to running status.
- */
-type SubmittedRun = {
-  run: WorkerRunSnapshot;
+export type SubmitResult = {
   comfyPromptId: string;
   validatedDraft: ValidatedComfyPromptDraft;
   promptDraft: ComfyPromptDraft;
 };
 
 /**
- * Process all queued Runs: batch-submit to ComfyUI, then wait in parallel.
+ * Validate and submit a single run to ComfyUI.
+ * Called synchronously from the server action before creating the Run record.
+ * Throws on failure — caller should NOT create a Run record if this fails.
  */
-export async function executeQueuedRuns(): Promise<void> {
-  if (running) {
-    pendingRerun = true;
-    log.debug("Execution already in progress, will re-check when done");
+export async function submitRunToComfyUI(run: WorkerRunSnapshot): Promise<SubmitResult> {
+  assertEnv();
+
+  const promptDraft = buildComfyPromptDraft(run);
+  const validatedDraft = await validateComfyPromptDraft(
+    run.comfyApiUrl,
+    promptDraft,
+  );
+  const comfyPromptId = await submitComfyPrompt(validatedDraft, promptDraft);
+
+  const runLog = log.child({ runId: run.runId, projectId: run.project.id });
+  runLog.info("Submitted to ComfyUI queue", {
+    comfyPromptId,
+    section: run.section.name,
+  });
+
+  audit("Run", run.runId, "executor.submitted", {
+    projectId: run.project.id,
+    sectionName: run.section.name,
+    comfyPromptId,
+  });
+
+  return { comfyPromptId, validatedDraft, promptDraft };
+}
+
+// ─── Poll ──────────────────────────────────────────────────────────────────
+
+/** Track active polling loops to prevent duplicates for the same run. */
+const activePolls = new Set<string>();
+
+/**
+ * Poll a submitted run until it completes.
+ * The Run must already exist in DB with status="queued" and a comfyPromptId.
+ * Fire-and-forget from the server action after creating the Run record.
+ */
+export async function pollRunCompletion(runId: string): Promise<void> {
+  if (activePolls.has(runId)) {
+    log.debug("Poll already active for run", { runId });
     return;
   }
-
-  running = true;
-  pendingRerun = false;
+  activePolls.add(runId);
 
   try {
-    assertEnv();
-
-    const queuedRuns = await listQueuedWorkerRuns(100);
-
-    if (queuedRuns.length === 0) {
-      log.debug("No queued runs to process");
-      return;
-    }
-
-    log.info("Processing queued runs", { count: queuedRuns.length });
-
-    // ── Phase 1: Submit all to ComfyUI ──
-    const submitted: SubmittedRun[] = [];
-
-    for (const run of queuedRuns) {
-      const runLog = log.child({ runId: run.runId, projectId: run.project.id });
-
-      // Check if cancelled while waiting
-      const currentRun = await db.run.findUnique({
-        where: { id: run.runId },
-        select: { status: true },
-      });
-      if (!currentRun || currentRun.status === "cancelled") {
-        runLog.info("Run was cancelled, skipping");
-        continue;
-      }
-
-      try {
-        const promptDraft = buildComfyPromptDraft(run);
-        const validatedDraft = await validateComfyPromptDraft(
-          run.comfyApiUrl,
-          promptDraft,
-        );
-        const comfyPromptId = await submitComfyPrompt(validatedDraft, promptDraft);
-
-        // Store comfyPromptId immediately so cancellation can find it
-        // Status remains "queued" until ComfyUI actually completes
-        await db.run.update({
-          where: { id: run.runId },
-          data: { comfyPromptId },
-        });
-
-        runLog.info("Submitted to ComfyUI queue", {
-          comfyPromptId,
-          section: run.section.name,
-        });
-
-        audit("Run", run.runId, "executor.submitted", {
-          projectId: run.project.id,
-          sectionName: run.section.name,
-          comfyPromptId,
-        });
-
-        submitted.push({ run, comfyPromptId, validatedDraft, promptDraft });
-      } catch (error) {
-        // Submit failed — mark this run as failed, continue with others
-        const comfyPromptId = extractFailedComfyPromptId(error);
-        const errorMessage = formatError(error);
-        runLog.error("Submit failed", error, { comfyPromptId });
-
-        await completeWorkerRun(run.runId, {
-          status: RunStatus.failed,
-          errorMessage,
-          comfyPromptId,
-          outputDir: null,
-        });
-
-        audit("Run", run.runId, "executor.failed", {
-          errorMessage,
-          comfyPromptId,
-          phase: "submit",
-        });
-      }
-    }
-
-    if (submitted.length === 0) {
-      log.debug("No runs submitted successfully");
-      return;
-    }
-
-    log.info("All runs submitted, waiting for completion", {
-      count: submitted.length,
+    const runRecord = await db.run.findUnique({
+      where: { id: runId },
+      select: {
+        id: true,
+        status: true,
+        comfyPromptId: true,
+        resolvedConfigSnapshot: true,
+        outputDir: true,
+        runIndex: true,
+        project: {
+          select: { id: true, title: true, slug: true },
+        },
+        projectSection: {
+          select: { id: true, name: true, sortOrder: true },
+        },
+      },
     });
 
-    // ── Phase 2: Wait for all in parallel ──
-    await Promise.allSettled(
-      submitted.map(async ({ run, comfyPromptId, validatedDraft, promptDraft }) => {
-        const runLog = log.child({ runId: run.runId, comfyPromptId });
-        const runTimer = runLog.startTimer("process-run");
-
-        try {
-          // Wait for ComfyUI to actually start executing this prompt
-          // (prompt leaves the queue = execution started)
-          const started = await waitForPromptToStart(
-            validatedDraft.apiUrl,
-            comfyPromptId,
-            { pollIntervalMs: 2000 },
-          );
-
-          if (started) {
-            // Mark as running only when ComfyUI actually begins execution
-            await db.run.update({
-              where: { id: run.runId },
-              data: {
-                status: RunStatus.running,
-                startedAt: new Date(),
-              },
-            });
-            runLog.info("ComfyUI started executing prompt");
-          }
-
-          const historyEntry = await pollComfyPromptHistory(
-            validatedDraft.apiUrl,
-            comfyPromptId,
-          );
-
-          runLog.debug("ComfyUI prompt completed", {
-            imageCount: extractOutputImages(historyEntry).length,
-          });
-
-          const outputImages = extractOutputImages(historyEntry);
-          const executionMeta = extractExecutionMeta(validatedDraft.apiPrompt, promptDraft);
-
-          const persistedOutput = await persistComfyOutputImages(
-            run,
-            run.comfyApiUrl,
-            outputImages,
-          );
-
-          // Save workflow JSON alongside images
-          if (persistedOutput.outputDir && validatedDraft) {
-            const fs = await import("fs/promises");
-            const path = await import("path");
-            const workflowPath = path.join(persistedOutput.outputDir, "workflow.json");
-            await fs.writeFile(workflowPath, JSON.stringify(validatedDraft.apiPrompt, null, 2), "utf-8");
-          }
-
-          await completeWorkerRun(run.runId, {
-            status: RunStatus.done,
-            comfyPromptId,
-            executionMeta,
-            submittedPrompt: validatedDraft.apiPrompt,
-            outputDir: persistedOutput.outputDir,
-            images: persistedOutput.images,
-          });
-
-          audit("Run", run.runId, "executor.done", {
-            comfyPromptId,
-            imageCount: persistedOutput.images.length,
-          });
-
-          runTimer.done({ status: "done", imageCount: persistedOutput.images.length });
-        } catch (error) {
-          const errorMessage = formatError(error);
-          runLog.error("Run failed", error, { comfyPromptId });
-
-          try {
-            await removeManagedRunOutput(run);
-          } catch (cleanupError) {
-            runLog.warn("Cleanup failed", { error: formatError(cleanupError) });
-          }
-
-          // Check if it was cancelled (interrupt → execution_interrupted)
-          const currentRun = await db.run.findUnique({
-            where: { id: run.runId },
-            select: { status: true },
-          });
-          if (currentRun?.status === "cancelled") {
-            runLog.info("Run was cancelled during execution");
-            runTimer.done({ status: "cancelled" });
-            return;
-          }
-
-          await completeWorkerRun(run.runId, {
-            status: RunStatus.failed,
-            errorMessage,
-            comfyPromptId,
-            outputDir: null,
-          });
-
-          audit("Run", run.runId, "executor.failed", {
-            errorMessage,
-            comfyPromptId,
-            phase: "execution",
-          });
-
-          runTimer.done({ status: "failed", error: errorMessage });
-        }
-      }),
-    );
-  } finally {
-    running = false;
-    if (pendingRerun) {
-      pendingRerun = false;
-      log.debug("Re-checking queue after pending signal");
-      setTimeout(() => executeQueuedRuns().catch(() => {}), 0);
+    if (!runRecord || !runRecord.comfyPromptId) {
+      log.warn("Run not found or missing comfyPromptId, skipping poll", { runId });
+      return;
     }
+
+    if (runRecord.status !== "queued" && runRecord.status !== "running") {
+      log.debug("Run is no longer active, skipping poll", { runId, status: runRecord.status });
+      return;
+    }
+
+    // Reconstruct WorkerRunSnapshot for the helper functions
+    const run: WorkerRunSnapshot = {
+      runId: runRecord.id,
+      runIndex: runRecord.runIndex,
+      status: runRecord.status as RunStatus,
+      workflowId: runRecord.project.slug,
+      comfyApiUrl: process.env.COMFY_API_URL ?? "http://127.0.0.1:8188",
+      outputDir: runRecord.outputDir,
+      resolvedConfigSnapshot: runRecord.resolvedConfigSnapshot,
+      project: {
+        id: runRecord.project.id,
+        title: runRecord.project.title,
+        slug: runRecord.project.slug,
+      },
+      section: {
+        id: runRecord.projectSection.id,
+        name: runRecord.projectSection.name ?? `section_${runRecord.projectSection.sortOrder + 1}`,
+        slug: `section_${runRecord.projectSection.sortOrder + 1}`,
+      },
+    };
+
+    const comfyPromptId = runRecord.comfyPromptId;
+    const runLog = log.child({ runId, comfyPromptId });
+    const runTimer = runLog.startTimer("process-run");
+
+    // We need the validatedDraft for extractExecutionMeta — rebuild it
+    const promptDraft = buildComfyPromptDraft(run);
+    const validatedDraft = await validateComfyPromptDraft(
+      run.comfyApiUrl,
+      promptDraft,
+    );
+
+    try {
+      // Wait for ComfyUI to actually start executing this prompt
+      const started = await waitForPromptToStart(
+        validatedDraft.apiUrl,
+        comfyPromptId,
+        { pollIntervalMs: 2000 },
+      );
+
+      if (started) {
+        // Mark as running only when ComfyUI actually begins execution
+        await db.run.update({
+          where: { id: runId },
+          data: {
+            status: RunStatus.running,
+            startedAt: new Date(),
+          },
+        });
+        runLog.info("ComfyUI started executing prompt");
+      }
+
+      const historyEntry = await pollComfyPromptHistory(
+        validatedDraft.apiUrl,
+        comfyPromptId,
+      );
+
+      runLog.debug("ComfyUI prompt completed", {
+        imageCount: extractOutputImages(historyEntry).length,
+      });
+
+      const outputImages = extractOutputImages(historyEntry);
+      const executionMeta = extractExecutionMeta(validatedDraft.apiPrompt, promptDraft);
+
+      const persistedOutput = await persistComfyOutputImages(
+        run,
+        run.comfyApiUrl,
+        outputImages,
+      );
+
+      // Save workflow JSON alongside images
+      if (persistedOutput.outputDir && validatedDraft) {
+        const fs = await import("fs/promises");
+        const path = await import("path");
+        const workflowPath = path.join(persistedOutput.outputDir, "workflow.json");
+        await fs.writeFile(workflowPath, JSON.stringify(validatedDraft.apiPrompt, null, 2), "utf-8");
+      }
+
+      await completeWorkerRun(runId, {
+        status: RunStatus.done,
+        comfyPromptId,
+        executionMeta,
+        submittedPrompt: validatedDraft.apiPrompt,
+        outputDir: persistedOutput.outputDir,
+        images: persistedOutput.images,
+      });
+
+      audit("Run", runId, "executor.done", {
+        comfyPromptId,
+        imageCount: persistedOutput.images.length,
+      });
+
+      runTimer.done({ status: "done", imageCount: persistedOutput.images.length });
+    } catch (error) {
+      const errorMessage = formatError(error);
+      runLog.error("Run failed", error, { comfyPromptId });
+
+      try {
+        await removeManagedRunOutput(run);
+      } catch (cleanupError) {
+        runLog.warn("Cleanup failed", { error: formatError(cleanupError) });
+      }
+
+      // Check if it was cancelled (interrupt → execution_interrupted)
+      const currentRun = await db.run.findUnique({
+        where: { id: runId },
+        select: { status: true },
+      });
+      if (currentRun?.status === "cancelled") {
+        runLog.info("Run was cancelled during execution");
+        runTimer.done({ status: "cancelled" });
+        return;
+      }
+
+      await completeWorkerRun(runId, {
+        status: RunStatus.failed,
+        errorMessage,
+        comfyPromptId,
+        outputDir: null,
+      });
+
+      audit("Run", runId, "executor.failed", {
+        errorMessage,
+        comfyPromptId,
+        phase: "execution",
+      });
+
+      runTimer.done({ status: "failed", error: errorMessage });
+    }
+  } finally {
+    activePolls.delete(runId);
+  }
+}
+
+// ─── Recovery ──────────────────────────────────────────────────────────────
+
+/**
+ * Recover runs that are in ComfyUI's queue or currently executing but not
+ * being polled (e.g. after server restart).
+ *
+ * Called from /api/queue-data and instrumentation.ts.
+ */
+export async function recoverStaleRuns(): Promise<void> {
+  try {
+    assertEnv();
+  } catch {
+    return; // env not configured, skip
+  }
+
+  const staleRuns = await db.run.findMany({
+    where: {
+      status: { in: [RunStatus.queued, RunStatus.running] },
+      comfyPromptId: { not: null },
+    },
+    select: { id: true },
+  });
+
+  if (staleRuns.length === 0) return;
+
+  log.info("Recovering stale runs", { count: staleRuns.length });
+
+  for (const run of staleRuns) {
+    pollRunCompletion(run.id).catch(() => {});
   }
 }

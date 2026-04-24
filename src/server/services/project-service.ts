@@ -11,7 +11,8 @@ import {
   updateProjectSection as updateProjectSectionInRepository,
 } from "@/server/repositories/project-repository";
 import { audit } from "@/server/services/audit-service";
-import { executeQueuedRuns } from "@/server/services/run-executor";
+import { submitRunToComfyUI, pollRunCompletion } from "@/server/services/run-executor";
+import { getWorkerRun } from "@/server/worker/repository";
 import { createProjectRevision } from "@/server/services/revision-service";
 
 // Project service logger
@@ -407,8 +408,31 @@ export async function enqueueProjectRuns(projectId: string, overrideBatchSize?: 
   log.info("Project runs enqueued", { projectId: normalizedId, queuedRunCount: result.queuedRunCount });
   audit("Project", normalizedId, "enqueue", { queuedRunCount: result.queuedRunCount }, actorType);
 
-  // Fire-and-forget: submit queued runs directly to ComfyUI
-  executeQueuedRuns().catch(() => {});
+  // Submit each run to ComfyUI synchronously
+  let allFailed = true;
+  const { prisma } = await import("@/lib/prisma");
+
+  for (const enqueuedRun of result.runs) {
+    const run = await getWorkerRun(enqueuedRun.runId);
+    if (!run) continue;
+
+    try {
+      const { comfyPromptId } = await submitRunToComfyUI(run);
+      await prisma.run.update({
+        where: { id: run.runId },
+        data: { comfyPromptId },
+      });
+      pollRunCompletion(run.runId).catch(() => {});
+      allFailed = false;
+    } catch (error) {
+      log.error(`Failed to submit run ${run.runId} to ComfyUI`, error);
+      await prisma.run.delete({ where: { id: run.runId } }).catch(() => {});
+    }
+  }
+
+  if (allFailed && result.runs.length > 0) {
+    throw new Error("无法连接到 ComfyUI，请检查服务是否运行");
+  }
 
   return result;
 }
@@ -432,15 +456,34 @@ export async function enqueueProjectSectionRun(
   actorType: ActorType = ActorType.user,
 ) {
   const normalizedSectionId = normalizeRequiredId(sectionId, "sectionId");
+  const normalizedProjectId = normalizeRequiredId(projectId, "projectId");
   const result = await enqueueProjectSectionRunInRepository(
-    normalizeRequiredId(projectId, "projectId"),
+    normalizedProjectId,
     normalizedSectionId,
     overrideBatchSize,
   );
-  audit("ProjectSection", normalizedSectionId, "enqueue", { projectId }, actorType);
+  audit("ProjectSection", normalizedSectionId, "enqueue", { projectId: normalizedProjectId }, actorType);
 
-  // Fire-and-forget: submit queued runs directly to ComfyUI
-  executeQueuedRuns().catch(() => {});
+  // Submit to ComfyUI synchronously
+  const { prisma } = await import("@/lib/prisma");
+
+  for (const enqueuedRun of result.runs) {
+    const run = await getWorkerRun(enqueuedRun.runId);
+    if (!run) continue;
+
+    try {
+      const { comfyPromptId } = await submitRunToComfyUI(run);
+      await prisma.run.update({
+        where: { id: run.runId },
+        data: { comfyPromptId },
+      });
+      pollRunCompletion(run.runId).catch(() => {});
+    } catch (error) {
+      log.error(`Failed to submit run ${run.runId} to ComfyUI`, error);
+      await prisma.run.delete({ where: { id: run.runId } }).catch(() => {});
+      throw new Error("无法连接到 ComfyUI，请检查服务是否运行");
+    }
+  }
 
   return result;
 }

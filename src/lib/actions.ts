@@ -13,7 +13,8 @@ import {
   enqueueProjectSectionRun as enqueueProjectSectionRunRepo,
   copyProject as copyProjectRepo,
 } from "@/server/repositories/project-repository";
-import { executeQueuedRuns } from "@/server/services/run-executor";
+import { submitRunToComfyUI, pollRunCompletion } from "@/server/services/run-executor";
+import { getWorkerRun } from "@/server/worker/repository";
 import {
   deleteComfyQueueItems,
   interruptComfyPrompt,
@@ -237,12 +238,47 @@ export async function restoreImage(trashRecordId: string) {
 // ---------------------------------------------------------------------------
 
 export async function runProject(projectId: string, overrideBatchSize?: number | null) {
-  await enqueueProjectRunsRepo(projectId, overrideBatchSize ?? undefined);
+  // 1. Create Run records with status="queued" (no comfyPromptId yet)
+  const result = await enqueueProjectRunsRepo(projectId, overrideBatchSize ?? undefined);
+
+  // 2. Submit each created run to ComfyUI synchronously
+  let allFailed = true;
+
+  for (const enqueuedRun of result.runs) {
+    const run = await getWorkerRun(enqueuedRun.runId);
+    if (!run) continue;
+
+    try {
+      const { comfyPromptId } = await submitRunToComfyUI(run);
+      // Store comfyPromptId — now "queued" means "in ComfyUI's queue"
+      await prisma.run.update({
+        where: { id: run.runId },
+        data: { comfyPromptId },
+      });
+      // Fire-and-forget: poll for completion
+      pollRunCompletion(run.runId).catch(() => {});
+      allFailed = false;
+    } catch (error) {
+      // ComfyUI submission failed — delete the Run record
+      console.error(`Failed to submit run ${run.runId} to ComfyUI:`, error);
+      await prisma.run.delete({ where: { id: run.runId } }).catch(() => {});
+    }
+  }
+
+  // If all runs were deleted, reset project status from "queued" back to "draft"
+  if (allFailed && result.runs.length > 0) {
+    await prisma.project.update({
+      where: { id: projectId },
+      data: { status: "draft" },
+    }).catch(() => {});
+  }
+
   revalidatePath("/projects");
   revalidatePath("/queue");
 
-  // Fire-and-forget: submit queued runs directly to ComfyUI
-  executeQueuedRuns().catch(() => {});
+  if (allFailed && result.runs.length > 0) {
+    throw new Error("无法连接到 ComfyUI，请检查服务是否运行");
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -258,12 +294,35 @@ export async function runSection(sectionId: string, overrideBatchSize?: number |
 
   if (!pos) return;
 
-  await enqueueProjectSectionRunRepo(pos.projectId, sectionId, overrideBatchSize ?? undefined);
+  // 1. Create Run record with status="queued" (no comfyPromptId yet)
+  const result = await enqueueProjectSectionRunRepo(pos.projectId, sectionId, overrideBatchSize ?? undefined);
+
+  // 2. Submit to ComfyUI synchronously
+  for (const enqueuedRun of result.runs) {
+    const run = await getWorkerRun(enqueuedRun.runId);
+    if (!run) continue;
+
+    try {
+      const { comfyPromptId } = await submitRunToComfyUI(run);
+      await prisma.run.update({
+        where: { id: run.runId },
+        data: { comfyPromptId },
+      });
+      pollRunCompletion(run.runId).catch(() => {});
+    } catch (error) {
+      console.error(`Failed to submit run ${run.runId} to ComfyUI:`, error);
+      await prisma.run.delete({ where: { id: run.runId } }).catch(() => {});
+      // Reset project status from "queued" back since the run was deleted
+      await prisma.project.update({
+        where: { id: pos.projectId },
+        data: { status: "draft" },
+      }).catch(() => {});
+      throw new Error("无法连接到 ComfyUI，请检查服务是否运行");
+    }
+  }
+
   revalidatePath("/projects");
   revalidatePath("/queue");
-
-  // Fire-and-forget: submit queued runs directly to ComfyUI
-  executeQueuedRuns().catch(() => {});
 }
 
 // ---------------------------------------------------------------------------
