@@ -272,6 +272,9 @@ export async function pollRunCompletion(runId: string): Promise<void> {
 
 // ─── Recovery ──────────────────────────────────────────────────────────────
 
+/** Track if recovery is already in progress to prevent concurrent execution. */
+let recoveryInProgress = false;
+
 /**
  * Recover runs that are in ComfyUI's queue or currently executing but not
  * being polled (e.g. after server restart).
@@ -279,30 +282,41 @@ export async function pollRunCompletion(runId: string): Promise<void> {
  * Called from /api/queue-data and instrumentation.ts.
  */
 export async function recoverStaleRuns(): Promise<void> {
-  try {
-    assertEnv();
-  } catch {
-    return; // env not configured, skip
+  // Prevent concurrent recovery attempts
+  if (recoveryInProgress) {
+    log.debug("Recovery already in progress, skipping");
+    return;
   }
+  recoveryInProgress = true;
 
-  const staleRuns = await db.run.findMany({
-    where: {
-      status: { in: [RunStatus.queued, RunStatus.running] },
-      comfyPromptId: { not: null },
-    },
-    select: { id: true },
-  });
+  try {
+    try {
+      assertEnv();
+    } catch {
+      return; // env not configured, skip
+    }
 
-  if (staleRuns.length === 0) return;
+    const staleRuns = await db.run.findMany({
+      where: {
+        status: { in: [RunStatus.queued, RunStatus.running] },
+        comfyPromptId: { not: null },
+      },
+      select: { id: true },
+    });
 
-  // Filter out runs that already have an active polling loop
-  const needsRecovery = staleRuns.filter((r) => !activePolls.has(r.id));
+    if (staleRuns.length === 0) return;
 
-  if (needsRecovery.length === 0) return;
+    // Filter out runs that already have an active polling loop
+    const needsRecovery = staleRuns.filter((r) => !activePolls.has(r.id));
 
-  log.info("Recovering stale runs", { count: needsRecovery.length });
+    if (needsRecovery.length === 0) return;
 
-  for (const run of needsRecovery) {
-    pollRunCompletion(run.id).catch(() => {});
+    log.info("Recovering stale runs", { count: needsRecovery.length });
+
+    for (const run of needsRecovery) {
+      pollRunCompletion(run.id).catch(() => {});
+    }
+  } finally {
+    recoveryInProgress = false;
   }
 }

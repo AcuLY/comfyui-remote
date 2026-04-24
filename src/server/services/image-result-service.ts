@@ -258,6 +258,7 @@ async function createThumbnailAndReadDimensions(
 /**
  * Clean up leftover files in a directory that are not in the keep set.
  * Used after writing new images to remove stale files from a previous run.
+ * NOTE: .tmp files are preserved to avoid conflicts with concurrent atomic writes.
  */
 async function cleanupStaleFiles(dirPath: string, keepFiles: Set<string>) {
   const { readdir } = await import("node:fs/promises");
@@ -269,6 +270,10 @@ async function cleanupStaleFiles(dirPath: string, keepFiles: Set<string>) {
   }
 
   for (const entry of entries) {
+    // Skip .tmp files - they may be part of an in-progress atomic write
+    if (entry.endsWith(".tmp")) {
+      continue;
+    }
     if (!keepFiles.has(entry)) {
       const entryPath = join(dirPath, entry);
       await retryOnEBUSY(() => unlink(entryPath)).catch(() => {
