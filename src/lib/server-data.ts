@@ -117,7 +117,7 @@ export async function getRunningRuns(): Promise<RunningRun[]> {
       sectionName:
         run.projectSection.name ??
         `section_${run.projectSection.sortOrder + 1}`,
-      startedAt: formatDate(run.createdAt),
+      startedAt: formatDate(run.startedAt ?? run.createdAt),
       status: run.status as RunningRun["status"],
     };
   });

@@ -297,14 +297,16 @@ class ComfyProcessManager {
           `[manager] Process exited (code=${code ?? "null"}, signal=${signal ?? "null"})`,
         );
 
-        if (this.state !== "stopped") {
+        if (this.state !== "stopped" && this.state !== "restarting") {
           this.errorMessage = `Process exited unexpectedly (code=${code ?? "null"})`;
           this.setState("error");
         }
 
         this.process = null;
         this.startedAt = null;
-        this.handleProcessExit();
+        if (this.state !== "restarting") {
+          this.handleProcessExit();
+        }
       });
 
       // Start health check loop
@@ -320,12 +322,12 @@ class ComfyProcessManager {
     }
   }
 
-  private killProcess() {
+  private killProcess(nextState: ComfyProcessState = "stopped") {
     if (!this.process) return;
 
     const pid = this.process.pid;
     this.log(`[manager] Killing process tree (pid=${pid})...`);
-    this.setState("stopped");
+    this.setState(nextState);
 
     try {
       if (process.platform === "win32") {
@@ -676,11 +678,16 @@ class ComfyProcessManager {
     );
 
     // Small delay before restart
-    setTimeout(() => {
+    setTimeout(async () => {
       // Don't restart if user has stopped the process in the meantime
       if (this.state === "stopped") {
         this.log("[manager] Auto-restart cancelled: process was stopped");
         return;
+      }
+      if (this.process) {
+        this.log("[manager] Terminating existing process before auto-restart...");
+        this.killProcess("restarting");
+        await sleep(1000);
       }
       this.spawnProcess().catch((err) => {
         this.log(`[manager] Restart failed: ${String(err)}`);

@@ -20,6 +20,7 @@ import {
   pollComfyPromptHistory,
   extractOutputImages,
   extractExecutionMeta,
+  getComfyQueuePosition,
   type ValidatedComfyPromptDraft,
 } from "@/server/services/comfyui-service";
 import {
@@ -98,20 +99,6 @@ export async function pollRunCompletion(runId: string): Promise<void> {
   activePolls.add(runId);
 
   try {
-    // Use database as the source of truth to prevent concurrent processing.
-    // Try to transition from "queued" to "running" atomically.
-    // If another process already started, this will return count=0.
-    const transitionResult = await db.run.updateMany({
-      where: {
-        id: runId,
-        status: RunStatus.queued,
-      },
-      data: {
-        status: RunStatus.running,
-        startedAt: new Date(),
-      },
-    });
-
     const runRecord = await db.run.findUnique({
       where: { id: runId },
       select: {
@@ -135,20 +122,9 @@ export async function pollRunCompletion(runId: string): Promise<void> {
       return;
     }
 
-    // If we didn't transition but the run is still active, another process
-    // is handling it - let that process continue.
-    if (transitionResult.count === 0) {
-      if (runRecord.status === "running") {
-        log.debug("Run is already being processed by another instance", { runId });
-        return;
-      }
-      if (runRecord.status !== "queued") {
-        log.debug("Run is no longer active, skipping poll", { runId, status: runRecord.status });
-        return;
-      }
-      // Race condition: status is queued but our transition failed.
-      // This shouldn't happen, but if it does, continue processing.
-      log.warn("Unexpected state: run is queued but transition failed", { runId });
+    if (runRecord.status !== RunStatus.queued && runRecord.status !== RunStatus.running) {
+      log.debug("Run is no longer active, skipping poll", { runId, status: runRecord.status });
+      return;
     }
 
     // Reconstruct WorkerRunSnapshot for the helper functions
@@ -184,18 +160,51 @@ export async function pollRunCompletion(runId: string): Promise<void> {
     );
 
     try {
-      // Wait for ComfyUI to actually start executing this prompt
-      const started = await waitForPromptToStart(
-        validatedDraft.apiUrl,
-        comfyPromptId,
-        { pollIntervalMs: 2000 },
-      );
-
-      if (!started) {
-        throw new Error("ComfyUI did not start executing prompt within timeout");
+      // Keep DB status aligned with ComfyUI's real queue state. A submitted
+      // prompt is still "queued" until ComfyUI moves it into queue_running.
+      if (runRecord.status === RunStatus.running) {
+        const position = await getComfyQueuePosition(validatedDraft.apiUrl, comfyPromptId);
+        if (position === "pending") {
+          await db.run.updateMany({
+            where: { id: runId, status: RunStatus.running },
+            data: { status: RunStatus.queued, startedAt: null },
+          });
+          runRecord.status = RunStatus.queued;
+        }
       }
 
-      runLog.info("ComfyUI started executing prompt");
+      if (runRecord.status === RunStatus.queued) {
+        const started = await waitForPromptToStart(
+          validatedDraft.apiUrl,
+          comfyPromptId,
+          { pollIntervalMs: 2000 },
+        );
+
+        if (started) {
+          const transitionResult = await db.run.updateMany({
+            where: { id: runId, status: RunStatus.queued },
+            data: { status: RunStatus.running, startedAt: new Date() },
+          });
+
+          if (transitionResult.count === 0) {
+            const currentRun = await db.run.findUnique({
+              where: { id: runId },
+              select: { status: true },
+            });
+            if (currentRun?.status !== RunStatus.running) {
+              runLog.info("Run changed state before execution started, skipping poll", {
+                status: currentRun?.status,
+              });
+              runTimer.done({ status: currentRun?.status ?? "missing" });
+              return;
+            }
+          }
+
+          runLog.info("ComfyUI started executing prompt");
+        } else {
+          runLog.info("ComfyUI prompt completed before running state was observed");
+        }
+      }
 
       const historyEntry = await pollComfyPromptHistory(
         validatedDraft.apiUrl,

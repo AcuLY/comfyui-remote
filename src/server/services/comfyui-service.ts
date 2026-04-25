@@ -540,14 +540,14 @@ export async function submitComfyPrompt(
   return promptId;
 }
 
-type ComfyQueuePosition = "running" | "pending" | "not_found";
+export type ComfyQueuePosition = "running" | "pending" | "not_found";
 
 /**
  * Check where a prompt sits in ComfyUI's queue.
  * Returns "running" if currently executing, "pending" if waiting,
  * or "not_found" if not in either queue.
  */
-async function getComfyQueuePosition(
+export async function getComfyQueuePosition(
   apiUrl: string,
   promptId: string,
 ): Promise<ComfyQueuePosition> {

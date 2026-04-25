@@ -17,6 +17,7 @@ import { submitRunToComfyUI, pollRunCompletion } from "@/server/services/run-exe
 import { getWorkerRun } from "@/server/worker/repository";
 import {
   deleteComfyQueueItems,
+  getComfyQueuePosition,
   interruptComfyPrompt,
 } from "@/server/services/comfyui-service";
 import { env } from "@/lib/env";
@@ -1511,14 +1512,14 @@ export async function cancelRun(runId: string): Promise<{ ok: boolean; error?: s
     return { ok: false, error: `任务状态为「${run.status}」，无法取消` };
   }
 
-  // Notify ComfyUI to cancel/interrupt
+  // Use ComfyUI's real queue state. /interrupt is global, so only call it
+  // when this prompt is actually in queue_running.
   if (run.comfyPromptId) {
     try {
-      if (run.status === "running") {
-        // Currently executing — interrupt it
+      const position = await getComfyQueuePosition(env.comfyApiUrl, run.comfyPromptId);
+      if (position === "running") {
         await interruptComfyPrompt(env.comfyApiUrl);
-      } else {
-        // Queued in ComfyUI — remove from queue
+      } else if (position === "pending") {
         await deleteComfyQueueItems(env.comfyApiUrl, [run.comfyPromptId]);
       }
     } catch (e) {
@@ -1563,17 +1564,26 @@ export async function cancelProjectRuns(projectId: string): Promise<number> {
     select: { id: true, status: true, comfyPromptId: true },
   });
 
-  // Notify ComfyUI for each run that has a comfyPromptId
-  const queuedPromptIds = activeRuns
-    .filter((r) => r.status === "queued" && r.comfyPromptId)
-    .map((r) => r.comfyPromptId!);
-  const hasRunning = activeRuns.some((r) => r.status === "running" && r.comfyPromptId);
+  const promptIdsToDelete: string[] = [];
+  let shouldInterrupt = false;
 
+  // Only interrupt the prompt that ComfyUI is actually executing. Pending
+  // prompts should be deleted from the queue instead.
   try {
-    if (queuedPromptIds.length > 0) {
-      await deleteComfyQueueItems(env.comfyApiUrl, queuedPromptIds);
+    for (const run of activeRuns) {
+      if (!run.comfyPromptId) continue;
+      const position = await getComfyQueuePosition(env.comfyApiUrl, run.comfyPromptId);
+      if (position === "running") {
+        shouldInterrupt = true;
+      } else if (position === "pending") {
+        promptIdsToDelete.push(run.comfyPromptId);
+      }
     }
-    if (hasRunning) {
+
+    if (promptIdsToDelete.length > 0) {
+      await deleteComfyQueueItems(env.comfyApiUrl, promptIdsToDelete);
+    }
+    if (shouldInterrupt) {
       await interruptComfyPrompt(env.comfyApiUrl);
     }
   } catch (e) {
