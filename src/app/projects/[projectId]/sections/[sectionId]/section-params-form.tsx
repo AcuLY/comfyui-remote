@@ -115,8 +115,10 @@ export function SectionParamsForm({ projectId, sectionId, initialParams }: Secti
               min={1}
               disabled={pending}
               value={batchSize}
-              onChange={(e) => setBatchSize(e.target.value)}
-              onBlur={scheduleAutoSave}
+              onChange={(e) => {
+                setBatchSize(e.target.value);
+                scheduleAutoSave();
+              }}
               placeholder="默认"
               className="input-number w-full rounded-xl border border-white/10 bg-white/[0.04] px-2.5 py-2 text-xs text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30 disabled:opacity-70"
             />

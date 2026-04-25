@@ -308,6 +308,7 @@ export async function getProjectDetail(projectId: string): Promise<ProjectDetail
       title: true,
       status: true,
       presetBindings: true,
+      projectLevelOverrides: true,
       sections: {
         orderBy: { sortOrder: "asc" },
         include: {
@@ -345,6 +346,14 @@ export async function getProjectDetail(projectId: string): Promise<ProjectDetail
     collectPresetIds([project.presetBindings]),
   );
   const presetNames = extractPresetNames(project.presetBindings as PresetBindingJson | null, presetMap);
+  const projectLevelOverrides = (project.projectLevelOverrides ?? {}) as {
+    defaultBatchSize?: number;
+    batchSize?: number;
+  };
+  const projectDefaultBatchSize =
+    projectLevelOverrides.defaultBatchSize ??
+    projectLevelOverrides.batchSize ??
+    null;
 
   return {
     id: project.id,
@@ -358,7 +367,7 @@ export async function getProjectDetail(projectId: string): Promise<ProjectDetail
       return {
         id: pos.id,
         name: pos.name || `小节 ${pos.sortOrder}`,
-        batchSize: pos.batchSize,
+        batchSize: pos.batchSize ?? projectDefaultBatchSize,
         aspectRatio: pos.aspectRatio,
         seedPolicy1: pos.seedPolicy1,
         seedPolicy2: pos.seedPolicy2,

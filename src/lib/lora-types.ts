@@ -178,6 +178,7 @@ export function serializeSectionLoraConfig(config: SectionLoraConfig): SectionLo
     sourceColor: e.sourceColor,
     sourceName: e.sourceName,
     bindingId: e.bindingId,
+    groupBindingId: e.groupBindingId,
   });
 
   return {

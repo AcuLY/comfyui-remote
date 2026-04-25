@@ -21,6 +21,11 @@ import {
   interruptComfyPrompt,
 } from "@/server/services/comfyui-service";
 import { env } from "@/lib/env";
+import {
+  parseSectionLoraConfig,
+  serializeSectionLoraConfig,
+  type LoraEntry,
+} from "@/lib/lora-types";
 
 // ---------------------------------------------------------------------------
 // 审核操作：保留图片
@@ -1050,6 +1055,7 @@ export async function deletePresetGroup(id: string) {
 }
 
 export async function addGroupMember(input: PresetGroupMemberInput) {
+  const previousMembers = await resolveConcreteGroupMembers(input.groupId);
   const maxOrder = await prisma.presetGroupMember.aggregate({
     where: { groupId: input.groupId },
     _max: { sortOrder: true },
@@ -1057,12 +1063,20 @@ export async function addGroupMember(input: PresetGroupMemberInput) {
   const member = await prisma.presetGroupMember.create({
     data: { ...input, sortOrder: (maxOrder._max.sortOrder ?? -1) + 1 },
   });
+  await syncPresetGroupInstances(input.groupId, previousMembers);
   revalidatePath("/assets/presets");
   return member;
 }
 
 export async function removeGroupMember(memberId: string) {
+  const existing = await prisma.presetGroupMember.findUnique({
+    where: { id: memberId },
+    select: { groupId: true },
+  });
+  if (!existing) return;
+  const previousMembers = await resolveConcreteGroupMembers(existing.groupId);
   await prisma.presetGroupMember.delete({ where: { id: memberId } });
+  await syncPresetGroupInstances(existing.groupId, previousMembers);
   revalidatePath("/assets/presets");
 }
 
@@ -1076,11 +1090,13 @@ export async function reorderPresetGroups(ids: string[]) {
 }
 
 export async function reorderGroupMembers(groupId: string, ids: string[]) {
+  const previousMembers = await resolveConcreteGroupMembers(groupId);
   await prisma.$transaction(
     ids.map((id, index) =>
       prisma.presetGroupMember.update({ where: { id }, data: { sortOrder: index } }),
     ),
   );
+  await syncPresetGroupInstances(groupId, previousMembers);
   revalidatePath("/assets/presets");
 }
 
@@ -1192,6 +1208,259 @@ export async function flattenGroup(
     }
   }
   return result;
+}
+
+type ConcreteGroupMember = {
+  presetId: string;
+  variantId: string;
+  categoryId: string;
+  label: string;
+  positive: string;
+  negative: string | null;
+  presetName: string;
+  categoryName: string;
+  categoryColor?: string;
+  lora1: Array<{ path: string; weight: number; enabled: boolean }>;
+  lora2: Array<{ path: string; weight: number; enabled: boolean }>;
+};
+
+async function resolveConcreteGroupMembers(groupId: string): Promise<ConcreteGroupMember[]> {
+  const members = await flattenGroup(groupId);
+  const concreteMembers: ConcreteGroupMember[] = [];
+
+  for (const member of members) {
+    const preset = await prisma.preset.findUnique({
+      where: { id: member.presetId },
+      include: {
+        category: { select: { id: true, name: true, color: true } },
+        variants: { where: { isActive: true }, orderBy: { sortOrder: "asc" } },
+      },
+    });
+    if (!preset) continue;
+
+    const variant = member.variantId
+      ? preset.variants.find((v) => v.id === member.variantId)
+      : preset.variants[0];
+    if (!variant) continue;
+
+    const resolved = await resolveVariantContent(variant.id);
+    concreteMembers.push({
+      presetId: preset.id,
+      variantId: variant.id,
+      categoryId: preset.category.id,
+      label: preset.variants.length === 1 ? preset.name : `${preset.name} / ${variant.name}`,
+      positive: resolved.prompt,
+      negative: resolved.negativePrompt,
+      presetName: preset.name,
+      categoryName: preset.category.name,
+      categoryColor: preset.category.color ?? undefined,
+      lora1: resolved.lora1,
+      lora2: resolved.lora2,
+    });
+  }
+
+  return concreteMembers;
+}
+
+function groupMemberSignature(members: Array<{ presetId: string; variantId: string }>) {
+  return members.map((m) => `${m.presetId}:${m.variantId}`).join("|");
+}
+
+function createBindingId() {
+  return `bind-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function createLoraEntryId() {
+  return `lora-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function makePresetLoraEntry(
+  binding: { path: string; weight: number; enabled: boolean },
+  member: ConcreteGroupMember,
+  bindingId: string,
+  groupBindingId: string,
+): LoraEntry {
+  return {
+    id: createLoraEntryId(),
+    path: binding.path,
+    weight: binding.weight,
+    enabled: binding.enabled,
+    source: "preset",
+    sourceLabel: member.categoryName,
+    sourceColor: member.categoryColor,
+    sourceName: member.presetName,
+    bindingId,
+    groupBindingId,
+  };
+}
+
+async function syncPresetGroupInstances(
+  groupId: string,
+  previousMembers: ConcreteGroupMember[],
+) {
+  const nextMembers = await resolveConcreteGroupMembers(groupId);
+  const previousSignature = groupMemberSignature(previousMembers);
+  const nextSignature = groupMemberSignature(nextMembers);
+
+  if (previousSignature === nextSignature) return;
+  if (!previousSignature && nextMembers.length === 0) return;
+
+  const groupBindingPrefix = `grp:${groupId}:`;
+  const sections = await prisma.projectSection.findMany({
+    where: {
+      promptBlocks: {
+        some: { groupBindingId: { not: null } },
+      },
+    },
+    select: {
+      id: true,
+      projectId: true,
+      loraConfig: true,
+      promptBlocks: {
+        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+        select: {
+          id: true,
+          type: true,
+          sourceId: true,
+          variantId: true,
+          categoryId: true,
+          bindingId: true,
+          groupBindingId: true,
+          label: true,
+          positive: true,
+          negative: true,
+          sortOrder: true,
+          createdAt: true,
+        },
+      },
+    },
+  });
+
+  const touchedProjectIds = new Set<string>();
+
+  for (const section of sections) {
+    const blocksByGroup = new Map<string, typeof section.promptBlocks>();
+    for (const block of section.promptBlocks) {
+      if (!block.groupBindingId) continue;
+      const groupBlocks = blocksByGroup.get(block.groupBindingId) ?? [];
+      groupBlocks.push(block);
+      blocksByGroup.set(block.groupBindingId, groupBlocks);
+    }
+
+    for (const [groupBindingId, groupBlocks] of blocksByGroup) {
+      const currentSignature = groupMemberSignature(
+        groupBlocks
+          .filter((block) => block.type === "preset" && block.sourceId && block.variantId)
+          .map((block) => ({
+            presetId: block.sourceId as string,
+            variantId: block.variantId as string,
+          })),
+      );
+      const isTrackedGroup = groupBindingId.startsWith(groupBindingPrefix);
+      const isLegacyMatch = Boolean(previousSignature && currentSignature === previousSignature);
+      if (!isTrackedGroup && !isLegacyMatch) continue;
+
+      const oldBindingIds = new Set(
+        groupBlocks.map((block) => block.bindingId).filter((id): id is string => Boolean(id)),
+      );
+      const nextBindingIds = nextMembers.map(() => createBindingId());
+
+      await prisma.$transaction(async (tx) => {
+        await tx.promptBlock.deleteMany({
+          where: {
+            projectSectionId: section.id,
+            groupBindingId,
+          },
+        });
+
+        let nextSortOrder = 0;
+        const createBlocks: Prisma.PromptBlockCreateManyInput[] = [];
+        let insertedGroup = false;
+
+        for (const block of section.promptBlocks) {
+          if (block.groupBindingId === groupBindingId) {
+            if (!insertedGroup) {
+              nextMembers.forEach((member, index) => {
+                createBlocks.push({
+                  projectSectionId: section.id,
+                  type: "preset",
+                  sourceId: member.presetId,
+                  variantId: member.variantId,
+                  categoryId: member.categoryId,
+                  bindingId: nextBindingIds[index],
+                  groupBindingId,
+                  label: member.label,
+                  positive: member.positive,
+                  negative: member.negative,
+                  sortOrder: nextSortOrder,
+                });
+                nextSortOrder += 1;
+              });
+              insertedGroup = true;
+            }
+            continue;
+          }
+
+          if (block.sortOrder !== nextSortOrder) {
+            await tx.promptBlock.update({
+              where: { id: block.id },
+              data: { sortOrder: nextSortOrder },
+            });
+          }
+          nextSortOrder += 1;
+        }
+
+        if (createBlocks.length > 0) {
+          await tx.promptBlock.createMany({ data: createBlocks });
+        }
+
+        const loraConfig = parseSectionLoraConfig(section.loraConfig);
+        const shouldRemoveLora = (entry: LoraEntry) =>
+          (entry.bindingId ? oldBindingIds.has(entry.bindingId) : false) ||
+          entry.groupBindingId === groupBindingId;
+
+        const replaceLoras = (
+          existing: LoraEntry[],
+          nextEntries: LoraEntry[],
+        ) => {
+          const insertAt = existing.findIndex(shouldRemoveLora);
+          const filtered = existing.filter((entry) => !shouldRemoveLora(entry));
+          filtered.splice(insertAt >= 0 ? insertAt : filtered.length, 0, ...nextEntries);
+          return filtered;
+        };
+
+        const nextLora1 = nextMembers.flatMap((member, index) =>
+          member.lora1.map((binding) =>
+            makePresetLoraEntry(binding, member, nextBindingIds[index], groupBindingId),
+          ),
+        );
+        const nextLora2 = nextMembers.flatMap((member, index) =>
+          member.lora2.map((binding) =>
+            makePresetLoraEntry(binding, member, nextBindingIds[index], groupBindingId),
+          ),
+        );
+
+        await tx.projectSection.update({
+          where: { id: section.id },
+          data: {
+            loraConfig: serializeSectionLoraConfig({
+              lora1: replaceLoras(loraConfig.lora1, nextLora1),
+              lora2: replaceLoras(loraConfig.lora2, nextLora2),
+            }) as Prisma.InputJsonValue,
+          },
+        });
+      });
+
+      touchedProjectIds.add(section.projectId);
+    }
+  }
+
+  if (touchedProjectIds.size > 0) {
+    revalidatePath("/projects");
+    for (const projectId of touchedProjectIds) {
+      revalidatePath(`/projects/${projectId}`);
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1440,7 +1709,7 @@ export async function switchBindingVariant(
       positive: resolved.prompt,
       negative: resolved.negativePrompt,
     },
-    select: { id: true, type: true, sourceId: true, variantId: true, categoryId: true, bindingId: true, label: true, positive: true, negative: true, sortOrder: true },
+    select: { id: true, type: true, sourceId: true, variantId: true, categoryId: true, bindingId: true, groupBindingId: true, label: true, positive: true, negative: true, sortOrder: true },
   });
 
   // Update LoRAs in section loraConfig
@@ -1459,6 +1728,7 @@ export async function switchBindingVariant(
     sourceColor: preset.category.color ?? undefined,
     sourceName: preset.name,
     bindingId,
+    groupBindingId: block.groupBindingId ?? undefined,
   });
 
   const newLora1 = resolved.lora1.map(makeLora);

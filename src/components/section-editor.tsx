@@ -262,7 +262,7 @@ export function SectionEditor({
   function handleGroupImport(groupId: string) {
     startTransition(async () => {
       const members = await flattenGroup(groupId);
-      const groupBid = `grp-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+      const groupBid = `grp:${groupId}:${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
       const newBlocks: PromptBlockData[] = [];
       let updatedLora1 = [...lora1];
       let updatedLora2 = [...lora2];

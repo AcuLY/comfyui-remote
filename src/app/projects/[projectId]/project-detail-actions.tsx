@@ -136,14 +136,22 @@ export function ProjectDetailActions({ projectId, projectTitle }: { projectId: s
   );
 }
 
-export function SectionRunButton({ sectionId, defaultBatchSize }: { sectionId: string; defaultBatchSize?: number | null }) {
+export function SectionRunButton({
+  sectionId,
+  defaultBatchSize,
+  showBatchOverride = true,
+}: {
+  sectionId: string;
+  defaultBatchSize?: number | null;
+  showBatchOverride?: boolean;
+}) {
   const [isPending, startTransition] = useTransition();
   const [batchSize, setBatchSize] = useState<number>(defaultBatchSize ?? 2);
 
   function handleRun() {
     startTransition(async () => {
       try {
-        await runSection(sectionId, batchSize);
+        await runSection(sectionId, showBatchOverride ? batchSize : undefined);
         toast.success("已提交运行");
       } catch (e: unknown) {
         toast.error(e instanceof Error ? e.message : "运行失败");
@@ -153,12 +161,14 @@ export function SectionRunButton({ sectionId, defaultBatchSize }: { sectionId: s
 
   return (
     <div className="flex items-center gap-2">
-      <BatchSizeQuickFill
-        onSelect={(val) => setBatchSize(val)}
-        currentValue={batchSize}
-        disabled={isPending}
-        size="sm"
-      />
+      {showBatchOverride && (
+        <BatchSizeQuickFill
+          onSelect={(val) => setBatchSize(val)}
+          currentValue={batchSize}
+          disabled={isPending}
+          size="sm"
+        />
+      )}
       <button
         disabled={isPending}
         onClick={handleRun}

@@ -236,16 +236,18 @@ function buildProjectLevelOverridesUpdate(
   if (input.aspectRatio !== undefined) {
     if (input.aspectRatio === null) {
       delete nextOverrides.aspectRatio;
+      delete nextOverrides.defaultAspectRatio;
     } else {
-      nextOverrides.aspectRatio = input.aspectRatio;
+      nextOverrides.defaultAspectRatio = input.aspectRatio;
     }
   }
 
   if (input.batchSize !== undefined) {
     if (input.batchSize === null) {
       delete nextOverrides.batchSize;
+      delete nextOverrides.defaultBatchSize;
     } else {
-      nextOverrides.batchSize = input.batchSize;
+      nextOverrides.defaultBatchSize = input.batchSize;
     }
   }
 
@@ -286,6 +288,7 @@ function buildResolvedConfigSnapshot(
   const projectLevelOverrides = toInputJsonObject(project.projectLevelOverrides);
   const resolvedAspectRatio =
     section.aspectRatio ??
+    resolveProjectOverrideString(projectLevelOverrides, "defaultAspectRatio") ??
     resolveProjectOverrideString(projectLevelOverrides, "aspectRatio") ??
     null;
   const resolvedShortSidePx =
@@ -295,6 +298,7 @@ function buildResolvedConfigSnapshot(
   const resolvedBatchSize =
     overrideBatchSize ??
     section.batchSize ??
+    resolveProjectOverrideInteger(projectLevelOverrides, "defaultBatchSize") ??
     resolveProjectOverrideInteger(projectLevelOverrides, "batchSize") ??
     null;
   const resolvedSeedPolicy1 =

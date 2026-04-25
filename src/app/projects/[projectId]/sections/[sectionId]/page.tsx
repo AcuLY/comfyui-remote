@@ -287,7 +287,7 @@ export default async function SectionEditPage({
           </div>
         }
         subtitle="管理此小节的运行参数、提示词块和 LoRA 列表。导入预制库时会自动添加关联的 LoRA。"
-        actions={<SectionRunButton sectionId={sectionId} defaultBatchSize={sectionParams.batchSize} />}
+        actions={<SectionRunButton sectionId={sectionId} defaultBatchSize={sectionParams.batchSize} showBatchOverride={false} />}
       >
         <div className="space-y-6">
           <SectionParamsForm
