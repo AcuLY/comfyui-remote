@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Layers, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, Layers, ChevronLeft, ChevronRight, ImageIcon } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { SectionCard } from "@/components/section-card";
 import { SectionEditor } from "@/components/section-editor";
@@ -287,7 +287,17 @@ export default async function SectionEditPage({
           </div>
         }
         subtitle="管理此小节的运行参数、提示词块和 LoRA 列表。导入预制库时会自动添加关联的 LoRA。"
-        actions={<SectionRunButton projectId={projectId} sectionId={sectionId} defaultBatchSize={sectionParams.batchSize} showBatchOverride={false} />}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href={`/projects/${projectId}/sections/${sectionId}/results`}
+              className="inline-flex items-center gap-1 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
+            >
+              <ImageIcon className="size-3.5" /> 查看结果
+            </Link>
+            <SectionRunButton projectId={projectId} sectionId={sectionId} defaultBatchSize={sectionParams.batchSize} showBatchOverride={false} />
+          </div>
+        }
       >
         <div className="space-y-6">
           <SectionParamsForm
