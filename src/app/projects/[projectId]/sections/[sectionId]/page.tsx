@@ -14,6 +14,7 @@ import type { LoraEntry } from "@/lib/lora-types";
 import { revalidatePath } from "next/cache";
 import { getSectionChangeHistory } from "@/server/services/section-change-history-service";
 import { SectionChangeHistory } from "./section-change-history";
+import { SectionSwitchNavigation } from "./section-switch-navigation";
 
 export default async function SectionEditPage({
   params,
@@ -257,6 +258,12 @@ export default async function SectionEditPage({
 
   return (
     <div className="space-y-4">
+      <SectionSwitchNavigation
+        projectId={projectId}
+        sectionId={sectionId}
+        prevSectionId={prevSection?.id ?? null}
+        nextSectionId={nextSection?.id ?? null}
+      />
       <div className="flex items-center justify-between gap-3">
         <Link
           href={`/projects/${projectId}#section-${sectionId}`}
@@ -274,12 +281,12 @@ export default async function SectionEditPage({
           {prevSection ? (
             <Link
               href={`/projects/${projectId}/sections/${prevSection.id}`}
-              className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-zinc-300 transition hover:bg-white/[0.08]"
+              className="hidden"
             >
               <ChevronLeft className="size-3" /> 上一节
             </Link>
           ) : (
-            <span className="inline-flex items-center gap-1 rounded-lg border border-white/5 px-2 py-1 text-xs text-zinc-600">
+            <span className="hidden">
               <ChevronLeft className="size-3" /> 上一节
             </span>
           )}
@@ -290,12 +297,12 @@ export default async function SectionEditPage({
           {nextSection ? (
             <Link
               href={`/projects/${projectId}/sections/${nextSection.id}`}
-              className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-zinc-300 transition hover:bg-white/[0.08]"
+              className="hidden"
             >
               下一节 <ChevronRight className="size-3" />
             </Link>
           ) : (
-            <span className="inline-flex items-center gap-1 rounded-lg border border-white/5 px-2 py-1 text-xs text-zinc-600">
+            <span className="hidden">
               下一节 <ChevronRight className="size-3" />
             </span>
           )}
