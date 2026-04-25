@@ -25,7 +25,7 @@ type LoraConfig2 = {
 type PresetBindingInfo = {
   bindingId: string;
   presetName: string;  // from block label
-  groupName: string | undefined;  // group name if preset belongs to a group
+  groupName: string | undefined;  // names of presets imported in the same group instance
   sourceId: string | null;  // preset ID
   variantId: string | null;  // current variant ID
   categoryName?: string;
@@ -62,6 +62,37 @@ export function SectionEditor({
   // Derive preset binding list from blocks + loras
   const presetBindings = useMemo(() => {
     const map = new Map<string, PresetBindingInfo>();
+    const groupNamesByBindingId = new Map<string, string>();
+    const blocksByGroupBindingId = new Map<string, PromptBlockData[]>();
+
+    for (const b of blocks) {
+      if (b.bindingId && b.groupBindingId && b.type === "preset") {
+        const groupBlocks = blocksByGroupBindingId.get(b.groupBindingId) ?? [];
+        groupBlocks.push(b);
+        blocksByGroupBindingId.set(b.groupBindingId, groupBlocks);
+      }
+    }
+
+    for (const groupBlocks of blocksByGroupBindingId.values()) {
+      const seenBindingIds = new Set<string>();
+      const names = [...groupBlocks]
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+        .filter((b) => {
+          if (!b.bindingId || seenBindingIds.has(b.bindingId)) return false;
+          seenBindingIds.add(b.bindingId);
+          return true;
+        })
+        .map((b) => b.label.trim())
+        .filter(Boolean);
+      const groupName = names.join(" · ");
+
+      if (groupName) {
+        for (const b of groupBlocks) {
+          if (b.bindingId) groupNamesByBindingId.set(b.bindingId, groupName);
+        }
+      }
+    }
+
     for (const b of blocks) {
       if (b.bindingId && b.type === "preset") {
         const existing = map.get(b.bindingId);
@@ -91,19 +122,7 @@ export function SectionEditor({
               categoryColor = cat.color ?? undefined;
             }
           }
-          // Look up group name if preset belongs to a group
-          let groupName: string | undefined;
-          if (b.sourceId && libraryV2) {
-            for (const cat of libraryV2.categories) {
-              for (const g of cat.groups ?? []) {
-                if (g.members.some((m) => m.presetId === b.sourceId)) {
-                  groupName = g.name;
-                  break;
-                }
-              }
-              if (groupName) break;
-            }
-          }
+          const groupName = groupNamesByBindingId.get(b.bindingId);
           map.set(b.bindingId, {
             bindingId: b.bindingId,
             presetName: b.label,
