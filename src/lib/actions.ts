@@ -787,6 +787,25 @@ export type PresetUsageInfo = {
   totalBlocks: number;
 };
 
+type SectionLoraJsonEntry = Record<string, unknown>;
+
+function sortSectionLoraEntriesByCategoryOrder(
+  entries: SectionLoraJsonEntry[],
+  orderKey: "lora1Order" | "lora2Order",
+  categoryOrderByName: Map<string, { lora1Order: number; lora2Order: number }>,
+) {
+  return entries
+    .map((entry, index) => ({ entry, index }))
+    .sort((a, b) => {
+      const getOrder = (entry: SectionLoraJsonEntry) => {
+        if (entry.source !== "preset" || typeof entry.sourceLabel !== "string") return 999;
+        return categoryOrderByName.get(entry.sourceLabel)?.[orderKey] ?? 999;
+      };
+      return getOrder(a.entry) - getOrder(b.entry) || a.index - b.index;
+    })
+    .map(({ entry }) => entry);
+}
+
 /** Check which sections reference a given preset via PromptBlock.sourceId */
 export async function getPresetUsage(presetId: string): Promise<PresetUsageInfo> {
   const blocks = await prisma.promptBlock.findMany({
@@ -897,7 +916,7 @@ export async function syncPresetToSections(presetId: string) {
   const preset = await prisma.preset.findUnique({
     where: { id: presetId },
     include: {
-      category: { select: { name: true, color: true } },
+      category: { select: { name: true, color: true, lora1Order: true, lora2Order: true } },
       variants: { where: { isActive: true }, orderBy: { sortOrder: "asc" } },
     },
   });
@@ -909,6 +928,16 @@ export async function syncPresetToSections(presetId: string) {
     select: { id: true, variantId: true, bindingId: true, projectSectionId: true, label: true },
   });
   if (blocks.length === 0) return;
+
+  const categories = await prisma.presetCategory.findMany({
+    select: { name: true, lora1Order: true, lora2Order: true },
+  });
+  const categoryOrderByName = new Map(
+    categories.map((category) => [
+      category.name,
+      { lora1Order: category.lora1Order, lora2Order: category.lora2Order },
+    ]),
+  );
 
   for (const block of blocks) {
     // Determine which variant this block uses
@@ -943,8 +972,8 @@ export async function syncPresetToSections(presetId: string) {
       if (!section?.loraConfig) continue;
 
       const config = section.loraConfig as {
-        lora1?: Array<Record<string, unknown>>;
-        lora2?: Array<Record<string, unknown>>;
+        lora1?: SectionLoraJsonEntry[];
+        lora2?: SectionLoraJsonEntry[];
       };
       let changed = false;
       const makeLora = (b: { path: string; weight: number; enabled: boolean }) => ({
@@ -954,12 +983,20 @@ export async function syncPresetToSections(presetId: string) {
         sourceColor: preset.category.color, sourceName: preset.name,
         bindingId: block.bindingId,
       });
-      if (config.lora1) {
-        config.lora1 = [...config.lora1.filter((e) => e.bindingId !== block.bindingId), ...resolved.lora1.map(makeLora)];
+      if (Array.isArray(config.lora1)) {
+        config.lora1 = sortSectionLoraEntriesByCategoryOrder(
+          [...config.lora1.filter((e) => e.bindingId !== block.bindingId), ...resolved.lora1.map(makeLora)],
+          "lora1Order",
+          categoryOrderByName,
+        );
         changed = true;
       }
-      if (config.lora2) {
-        config.lora2 = [...config.lora2.filter((e) => e.bindingId !== block.bindingId), ...resolved.lora2.map(makeLora)];
+      if (Array.isArray(config.lora2)) {
+        config.lora2 = sortSectionLoraEntriesByCategoryOrder(
+          [...config.lora2.filter((e) => e.bindingId !== block.bindingId), ...resolved.lora2.map(makeLora)],
+          "lora2Order",
+          categoryOrderByName,
+        );
         changed = true;
       }
       if (changed) {
