@@ -196,8 +196,22 @@ model ProjectSection {
   project               Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
   runs                  Run[]
   promptBlocks          PromptBlock[]
+  changeLogs            SectionChangeLog[]
 
   @@index([projectId, sortOrder])
+}
+
+model SectionChangeLog {
+  id                    String                @id @default(cuid())
+  projectSectionId      String
+  dimension             String                // "runParams" | "prompt" | "lora"
+  title                 String
+  before                Json?
+  after                 Json?
+  createdAt             DateTime              @default(now())
+  projectSection        ProjectSection        @relation(fields: [projectSectionId], references: [id], onDelete: Cascade)
+
+  @@index([projectSectionId, dimension, createdAt])
 }
 
 model PromptBlock {
