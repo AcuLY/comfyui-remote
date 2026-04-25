@@ -248,6 +248,12 @@ export default async function SectionEditPage({
           <ArrowLeft className="size-4" /> 返回项目详情
         </Link>
         <div className="flex items-center gap-2">
+          <Link
+            href={`/projects/${projectId}/sections/${sectionId}/results`}
+            className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
+          >
+            <ImageIcon className="size-3" /> 查看结果
+          </Link>
           {prevSection ? (
             <Link
               href={`/projects/${projectId}/sections/${prevSection.id}`}
@@ -288,15 +294,7 @@ export default async function SectionEditPage({
         }
         subtitle="管理此小节的运行参数、提示词块和 LoRA 列表。导入预制库时会自动添加关联的 LoRA。"
         actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <Link
-              href={`/projects/${projectId}/sections/${sectionId}/results`}
-              className="inline-flex items-center gap-1 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
-            >
-              <ImageIcon className="size-3.5" /> 查看结果
-            </Link>
-            <SectionRunButton projectId={projectId} sectionId={sectionId} defaultBatchSize={sectionParams.batchSize} showBatchOverride={false} />
-          </div>
+          <SectionRunButton projectId={projectId} sectionId={sectionId} defaultBatchSize={sectionParams.batchSize} showBatchOverride={false} />
         }
       >
         <div className="space-y-6">
