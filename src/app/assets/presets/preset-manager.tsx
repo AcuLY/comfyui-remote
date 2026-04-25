@@ -1905,7 +1905,7 @@ function PresetForm({
   // We need a post-save callback — handled by the parent's onSave flow
 
   const formContent = (
-    <div className={embedded ? "border-t border-white/5 px-3 py-3 space-y-3" : "p-3 space-y-3"}>
+    <div className="border-t border-white/5 px-3 py-3 space-y-3">
       {/* Preset-level: name + slug */}
       <div className="grid grid-cols-2 gap-2">
         <label className="space-y-1">
@@ -2107,16 +2107,22 @@ function PresetForm({
   }
 
   return (
-    <div className="rounded-xl border border-sky-500/20 bg-sky-500/[0.03] space-y-3">
+    <div className="rounded-xl border border-white/5 bg-white/[0.02]">
       <button
         type="button"
         onClick={onCancel}
-        className="flex w-full items-center justify-between cursor-pointer rounded -mx-1 px-1 py-0.5 text-left hover:bg-white/[0.04] transition"
+        className="flex w-full cursor-pointer items-center gap-2 px-3 py-2.5 text-left transition hover:bg-white/[0.03]"
       >
-        <span className="text-[11px] font-medium text-sky-300">
-          {preset ? "编辑预制" : "新建预制"}
-        </span>
-        <ChevronUp className="size-3.5 text-zinc-600" />
+        <Plus className="size-3.5 shrink-0 text-sky-400/80" />
+        <div className="flex-1 min-w-0">
+          <div className="text-xs font-medium text-zinc-200">
+            {preset ? "编辑预制" : "新建预制"}
+          </div>
+          <div className="text-[10px] text-zinc-500">
+            {preset ? preset.slug : "填写名称、变体与 LoRA"}
+          </div>
+        </div>
+        <ChevronUp className="size-3.5 text-zinc-500" />
       </button>
       {formContent}
     </div>
@@ -2918,8 +2924,23 @@ function GroupCreateForm({
   const selectClass = "w-full appearance-none rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 pr-7 text-xs text-zinc-200 outline-none focus:border-sky-500/30";
 
   return (
-    <div className="rounded-xl border border-sky-500/20 bg-sky-500/[0.04] p-3 space-y-3">
-      <div className="text-[11px] font-medium text-sky-300">新建预制组</div>
+    <div className="rounded-xl border border-white/5 bg-white/[0.02]">
+      <button
+        type="button"
+        onClick={onCancel}
+        className="flex w-full cursor-pointer items-center gap-2 px-3 py-2.5 text-left transition hover:bg-white/[0.03]"
+      >
+        <FolderOpen className="size-4 shrink-0 text-amber-400/70" />
+        <div className="flex-1 min-w-0">
+          <div className="text-xs font-medium text-zinc-200">新建预制组</div>
+          <div className="text-[10px] text-zinc-500">
+            {members.length} 个成员 · {slug || "slug"}
+          </div>
+        </div>
+        <ChevronUp className="size-3.5 text-zinc-500" />
+      </button>
+
+      <div className="border-t border-white/5 px-3 py-3 space-y-3">
 
       {/* Name + Slug */}
       <div className="flex gap-2 items-end">
@@ -3103,6 +3124,7 @@ function GroupCreateForm({
         >
           <X className="size-3" /> 取消
         </button>
+      </div>
       </div>
     </div>
   );
