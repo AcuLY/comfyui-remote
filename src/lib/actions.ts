@@ -2140,7 +2140,11 @@ export async function renameSection(sectionId: string, name: string): Promise<vo
 // 小节排序
 // ---------------------------------------------------------------------------
 
-export async function reorderSections(projectId: string, sectionIds: string[]): Promise<void> {
+export type ReorderSectionsResult =
+  | { ok: true }
+  | { ok: false; message: string };
+
+export async function reorderSections(projectId: string, sectionIds: string[]): Promise<ReorderSectionsResult> {
   // 0. 检查是否有正在执行的 run，避免重排序导致输出路径不一致
   const runningCount = await prisma.run.count({
     where: {
@@ -2149,7 +2153,7 @@ export async function reorderSections(projectId: string, sectionIds: string[]): 
     },
   });
   if (runningCount > 0) {
-    throw new Error("有正在执行或排队中的任务，请等待完成后再调整顺序");
+    return { ok: false, message: "有正在执行或排队中的任务，请等待完成后再调整顺序" };
   }
 
   // 1. 查询旧 sortOrder、name 和 project title（用于文件夹重命名）
@@ -2178,6 +2182,7 @@ export async function reorderSections(projectId: string, sectionIds: string[]): 
   );
 
   revalidatePath(`/projects/${projectId}`);
+  return { ok: true };
 }
 
 // ---------------------------------------------------------------------------

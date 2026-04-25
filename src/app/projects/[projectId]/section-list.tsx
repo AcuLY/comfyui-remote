@@ -117,10 +117,14 @@ export function SectionList({ projectId, sections: initialSections }: SectionLis
 
     startTransition(async () => {
       try {
-        await reorderSections(
+        const result = await reorderSections(
           projectId,
           newSections.map((s) => s.id),
         );
+        if (!result.ok) {
+          setSections(oldSections);
+          toast.error(result.message);
+        }
       } catch (err) {
         setSections(oldSections);
         toast.error(err instanceof Error ? err.message : "排序失败");

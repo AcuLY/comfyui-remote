@@ -21,7 +21,10 @@ export async function POST(request: Request, context: RouteContext) {
   }
 
   try {
-    await reorderSections(projectId, sectionIds as string[]);
+    const result = await reorderSections(projectId, sectionIds as string[]);
+    if (!result.ok) {
+      return fail(result.message, 409);
+    }
     return ok({ success: true });
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Failed to reorder sections", 500);
