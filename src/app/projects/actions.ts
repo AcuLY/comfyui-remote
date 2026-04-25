@@ -95,8 +95,10 @@ export async function saveSectionEditAction(
     return sectionId.error;
   }
 
-  const batchSize = getPositiveInteger(formData, "batchSize", "Batch size");
-  if ("error" in batchSize) {
+  const batchSize = formData.has("batchSize")
+    ? getPositiveInteger(formData, "batchSize", "Batch size")
+    : undefined;
+  if (batchSize && "error" in batchSize) {
     return batchSize.error;
   }
 
@@ -121,10 +123,13 @@ export async function saveSectionEditAction(
     negativePrompt: getNullableString(formData, "negativePrompt"),
     aspectRatio: getNullableString(formData, "aspectRatio"),
     shortSidePx: shortSidePx.value,
-    batchSize: batchSize.value,
     seedPolicy1,
     seedPolicy2,
   };
+
+  if (batchSize) {
+    payload.batchSize = batchSize.value;
+  }
 
   if (ksampler1 !== undefined) {
     payload.ksampler1 = ksampler1;

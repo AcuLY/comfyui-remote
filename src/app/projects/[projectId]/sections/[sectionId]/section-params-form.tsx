@@ -3,7 +3,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useActionState } from "react";
 import { Loader2 } from "lucide-react";
-import { BatchSizeQuickFill } from "@/components/batch-size-quick-fill";
 import { UpscaleFactorQuickFill } from "@/components/upscale-factor-quick-fill";
 import { saveSectionEditAction } from "@/app/projects/actions";
 import { initialProjectSaveState } from "@/app/projects/action-types";
@@ -40,7 +39,6 @@ type SectionParamsFormProps = {
 
 export function SectionParamsForm({ projectId, sectionId, initialParams }: SectionParamsFormProps) {
   const [state, formAction, pending] = useActionState(saveSectionEditAction, initialProjectSaveState);
-  const [batchSize, setBatchSize] = useState<string>(initialParams.batchSize?.toString() ?? "");
   const formRef = useRef<HTMLFormElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -95,7 +93,7 @@ export function SectionParamsForm({ projectId, sectionId, initialParams }: Secti
           )}
         </div>
 
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
           <div className="space-y-1.5">
             <div className="text-[11px] text-zinc-500">画幅比例</div>
             <AspectRatioPicker
@@ -104,33 +102,6 @@ export function SectionParamsForm({ projectId, sectionId, initialParams }: Secti
               defaultShortSidePx={initialParams.shortSidePx}
               disabled={pending}
               onChange={scheduleAutoSave}
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <div className="text-[11px] text-zinc-500">Batch Size</div>
-            <input
-              name="batchSize"
-              type="number"
-              min={1}
-              disabled={pending}
-              value={batchSize}
-              onChange={(e) => {
-                setBatchSize(e.target.value);
-                scheduleAutoSave();
-              }}
-              placeholder="默认"
-              className="input-number w-full rounded-xl border border-white/10 bg-white/[0.04] px-2.5 py-2 text-xs text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30 disabled:opacity-70"
-            />
-            <BatchSizeQuickFill
-              onSelect={(val) => {
-                setBatchSize(String(val));
-                // Schedule save after state update
-                setTimeout(scheduleAutoSave, 0);
-              }}
-              currentValue={batchSize ? parseInt(batchSize, 10) : null}
-              disabled={pending}
-              size="sm"
             />
           </div>
 
