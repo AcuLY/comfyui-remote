@@ -12,6 +12,8 @@ import { getPresetLibraryV2 } from "@/lib/server-data";
 import { parseSectionLoraConfig, serializeSectionLoraConfig, generateLoraEntryId, parseLoraBindings } from "@/lib/lora-types";
 import type { LoraEntry } from "@/lib/lora-types";
 import { revalidatePath } from "next/cache";
+import { getSectionChangeHistory } from "@/server/services/section-change-history-service";
+import { SectionChangeHistory } from "./section-change-history";
 
 export default async function SectionEditPage({
   params,
@@ -227,16 +229,31 @@ export default async function SectionEditPage({
     "use server";
     const { prisma } = await import("@/lib/prisma");
     const { serializeSectionLoraConfig } = await import("@/lib/lora-types");
+    const { recordSectionChange } = await import("@/server/services/section-change-history-service");
+    const before = await prisma.projectSection.findUnique({
+      where: { id: sectionId },
+      select: { loraConfig: true },
+    });
+    const nextConfig = serializeSectionLoraConfig(config);
 
     await prisma.projectSection.update({
       where: { id: sectionId },
       data: {
-        loraConfig: serializeSectionLoraConfig(config),
+        loraConfig: nextConfig,
       },
+    });
+    await recordSectionChange({
+      sectionId,
+      dimension: "lora",
+      title: "更新 LoRA 配置",
+      before: before?.loraConfig ?? null,
+      after: nextConfig,
     });
 
     revalidatePath(`/projects/${projectId}/sections/${sectionId}`);
   }
+
+  const changeHistory = await getSectionChangeHistory(sectionId);
 
   return (
     <div className="space-y-4">
@@ -320,6 +337,7 @@ export default async function SectionEditPage({
           </div>
         </div>
       </SectionCard>
+      <SectionChangeHistory history={changeHistory} />
     </div>
   );
 }

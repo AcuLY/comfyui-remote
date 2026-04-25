@@ -14,6 +14,8 @@ import { audit } from "@/server/services/audit-service";
 import { submitRunToComfyUI, pollRunCompletion } from "@/server/services/run-executor";
 import { getWorkerRun } from "@/server/worker/repository";
 import { createProjectRevision } from "@/server/services/revision-service";
+import { prisma } from "@/lib/prisma";
+import { recordSectionChange } from "@/server/services/section-change-history-service";
 
 // Project service logger
 const log = createLogger({ module: "project-service" });
@@ -70,6 +72,28 @@ const PROJECT_SECTION_UPDATE_FIELDS = [
   "ksampler2",
   "upscaleFactor",
 ] as const;
+
+const SECTION_RUN_PARAM_FIELDS = [
+  "aspectRatio",
+  "shortSidePx",
+  "batchSize",
+  "seedPolicy1",
+  "seedPolicy2",
+  "ksampler1",
+  "ksampler2",
+  "upscaleFactor",
+] as const;
+
+const SECTION_RUN_PARAM_SELECT = {
+  aspectRatio: true,
+  shortSidePx: true,
+  batchSize: true,
+  seedPolicy1: true,
+  seedPolicy2: true,
+  ksampler1: true,
+  ksampler2: true,
+  upscaleFactor: true,
+} as const;
 
 class ProjectServiceError extends Error {
   constructor(
@@ -380,6 +404,13 @@ export async function updateProjectSection(
 
   const normalizedProjectId = normalizeRequiredId(projectId, "projectId");
   const normalizedSectionId = normalizeRequiredId(sectionId, "sectionId");
+  const shouldRecordRunParams = SECTION_RUN_PARAM_FIELDS.some((field) => input[field] !== undefined);
+  const beforeRunParams = shouldRecordRunParams
+    ? await prisma.projectSection.findFirst({
+        where: { id: normalizedSectionId, projectId: normalizedProjectId },
+        select: SECTION_RUN_PARAM_SELECT,
+      })
+    : null;
 
   // Snapshot before update (best-effort, non-blocking)
   await createProjectRevision(normalizedProjectId, actorType);
@@ -394,6 +425,20 @@ export async function updateProjectSection(
     Object.entries(input).filter(([, v]) => v !== undefined),
   );
   audit("ProjectSection", normalizedSectionId, "update", changedFields, actorType);
+
+  if (beforeRunParams) {
+    const afterRunParams = await prisma.projectSection.findUnique({
+      where: { id: normalizedSectionId },
+      select: SECTION_RUN_PARAM_SELECT,
+    });
+    await recordSectionChange({
+      sectionId: normalizedSectionId,
+      dimension: "runParams",
+      title: "更新运行参数",
+      before: beforeRunParams,
+      after: afterRunParams,
+    });
+  }
 
   return result;
 }

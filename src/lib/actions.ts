@@ -21,6 +21,7 @@ import {
   interruptComfyPrompt,
 } from "@/server/services/comfyui-service";
 import { env } from "@/lib/env";
+import { recordSectionChange } from "@/server/services/section-change-history-service";
 import {
   parseSectionLoraConfig,
   serializeSectionLoraConfig,
@@ -925,7 +926,17 @@ export async function syncPresetToSections(presetId: string) {
   const defaultVariant = preset.variants[0];
   const blocks = await prisma.promptBlock.findMany({
     where: { sourceId: presetId },
-    select: { id: true, variantId: true, bindingId: true, projectSectionId: true, label: true },
+    select: {
+      id: true,
+      variantId: true,
+      bindingId: true,
+      groupBindingId: true,
+      projectSectionId: true,
+      label: true,
+      positive: true,
+      negative: true,
+      sortOrder: true,
+    },
   });
   if (blocks.length === 0) return;
 
@@ -959,9 +970,25 @@ export async function syncPresetToSections(presetId: string) {
     const label = preset.variants.length === 1
       ? preset.name : `${preset.name} / ${variant.name}`;
 
-    await prisma.promptBlock.update({
+    const updatedBlock = await prisma.promptBlock.update({
       where: { id: block.id },
       data: { label, positive: resolved.prompt, negative: resolved.negativePrompt },
+      select: { id: true, label: true, positive: true, negative: true, sortOrder: true, bindingId: true, groupBindingId: true },
+    });
+    await recordSectionChange({
+      sectionId: block.projectSectionId,
+      dimension: "prompt",
+      title: `同步预制提示词：${label}`,
+      before: {
+        id: block.id,
+        label: block.label,
+        positive: block.positive,
+        negative: block.negative,
+        sortOrder: block.sortOrder,
+        bindingId: block.bindingId,
+        groupBindingId: block.groupBindingId,
+      },
+      after: updatedBlock,
     });
 
     if (block.bindingId) {
@@ -1003,6 +1030,13 @@ export async function syncPresetToSections(presetId: string) {
         await prisma.projectSection.update({
           where: { id: block.projectSectionId },
           data: { loraConfig: config as Prisma.InputJsonValue },
+        });
+        await recordSectionChange({
+          sectionId: block.projectSectionId,
+          dimension: "lora",
+          title: `同步预制 LoRA：${label}`,
+          before: section.loraConfig,
+          after: config,
         });
       }
     }
@@ -1544,6 +1578,13 @@ export async function addSectionBlock(
     negative: input.negative ?? null,
   });
   audit("PromptBlock", block.id, "create", { sectionId, type: input.type }, "user" as const);
+  await recordSectionChange({
+    sectionId,
+    dimension: "prompt",
+    title: `添加提示词块：${block.label}`,
+    before: null,
+    after: block,
+  });
   return block;
 }
 
@@ -1558,8 +1599,35 @@ export async function updateSectionBlock(
   const { updatePromptBlock } = await import("@/server/repositories/prompt-block-repository");
   const { audit } = await import("@/server/services/audit-service");
 
+  const before = await prisma.promptBlock.findUnique({
+    where: { id: blockId },
+    select: {
+      id: true,
+      projectSectionId: true,
+      type: true,
+      sourceId: true,
+      variantId: true,
+      categoryId: true,
+      bindingId: true,
+      groupBindingId: true,
+      label: true,
+      positive: true,
+      negative: true,
+      sortOrder: true,
+    },
+  });
   const block = await updatePromptBlock(blockId, input);
   audit("PromptBlock", blockId, "update", Object.fromEntries(Object.entries(input)), "user" as const);
+  if (before) {
+    const { projectSectionId, ...beforeForLog } = before;
+    await recordSectionChange({
+      sectionId: projectSectionId,
+      dimension: "prompt",
+      title: `编辑提示词块：${before.label}`,
+      before: beforeForLog,
+      after: block,
+    });
+  }
   return block;
 }
 
@@ -1567,8 +1635,34 @@ export async function deleteSectionBlock(blockId: string): Promise<void> {
   const { deletePromptBlock } = await import("@/server/repositories/prompt-block-repository");
   const { audit } = await import("@/server/services/audit-service");
 
+  const before = await prisma.promptBlock.findUnique({
+    where: { id: blockId },
+    select: {
+      id: true,
+      projectSectionId: true,
+      type: true,
+      sourceId: true,
+      variantId: true,
+      categoryId: true,
+      bindingId: true,
+      groupBindingId: true,
+      label: true,
+      positive: true,
+      negative: true,
+      sortOrder: true,
+    },
+  });
   await deletePromptBlock(blockId);
   audit("PromptBlock", blockId, "delete", {}, "user" as const);
+  if (before) {
+    await recordSectionChange({
+      sectionId: before.projectSectionId,
+      dimension: "prompt",
+      title: `删除提示词块：${before.label}`,
+      before,
+      after: null,
+    });
+  }
 }
 
 export async function reorderSectionBlocks(
@@ -1578,8 +1672,20 @@ export async function reorderSectionBlocks(
   const { reorderPromptBlocks } = await import("@/server/repositories/prompt-block-repository");
   const { audit } = await import("@/server/services/audit-service");
 
+  const before = await prisma.promptBlock.findMany({
+    where: { projectSectionId: sectionId },
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+    select: { id: true, label: true, sortOrder: true },
+  });
   const reordered = await reorderPromptBlocks(sectionId, blockIds);
   audit("PromptBlock", sectionId, "reorder", { blockIds }, "user" as const);
+  await recordSectionChange({
+    sectionId,
+    dimension: "prompt",
+    title: "调整提示词块顺序",
+    before,
+    after: reordered.map((block) => ({ id: block.id, label: block.label, sortOrder: block.sortOrder })),
+  });
   return reordered;
 }
 
@@ -1675,6 +1781,13 @@ export async function importPresetToSection(
     negative: resolved.negativePrompt,
     sortOrder: insertSortOrder,
   });
+  await recordSectionChange({
+    sectionId,
+    dimension: "prompt",
+    title: `导入预制：${label}`,
+    before: null,
+    after: block,
+  });
 
   // Build LoRA entries
   const makeLora = (b: { path: string; weight: number; enabled: boolean }) => ({
@@ -1716,6 +1829,19 @@ export async function switchBindingVariant(
     where: { projectSectionId: sectionId, bindingId },
   });
   if (!block || !block.sourceId) return null;
+  const beforeBlock = {
+    id: block.id,
+    type: block.type,
+    sourceId: block.sourceId,
+    variantId: block.variantId,
+    categoryId: block.categoryId,
+    bindingId: block.bindingId,
+    groupBindingId: block.groupBindingId,
+    label: block.label,
+    positive: block.positive,
+    negative: block.negative,
+    sortOrder: block.sortOrder,
+  };
 
   // Get preset + category info
   const preset = await prisma.preset.findUnique({
@@ -1748,12 +1874,20 @@ export async function switchBindingVariant(
     },
     select: { id: true, type: true, sourceId: true, variantId: true, categoryId: true, bindingId: true, groupBindingId: true, label: true, positive: true, negative: true, sortOrder: true },
   });
+  await recordSectionChange({
+    sectionId,
+    dimension: "prompt",
+    title: `切换预制变体：${label}`,
+    before: beforeBlock,
+    after: updatedBlock,
+  });
 
   // Update LoRAs in section loraConfig
   const section = await prisma.projectSection.findUnique({
     where: { id: sectionId },
     select: { loraConfig: true },
   });
+  const beforeLoraConfig = section?.loraConfig ?? null;
 
   const makeLora = (b: { path: string; weight: number; enabled: boolean }) => ({
     id: `lora-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
@@ -1793,6 +1927,13 @@ export async function switchBindingVariant(
     await prisma.projectSection.update({
       where: { id: sectionId },
       data: { loraConfig: config as Prisma.InputJsonValue },
+    });
+    await recordSectionChange({
+      sectionId,
+      dimension: "lora",
+      title: `切换预制 LoRA：${label}`,
+      before: beforeLoraConfig,
+      after: config,
     });
   }
 
