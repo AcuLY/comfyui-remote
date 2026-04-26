@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { mkdir, rename, rm, unlink, writeFile } from "node:fs/promises";
 import { extname, join, posix, resolve } from "node:path";
 
@@ -116,7 +117,8 @@ function normalizeApiUrl(apiUrl: string) {
 function resolveManagedRunOutputPaths(run: WorkerRunSnapshot): ManagedRunOutputPaths {
   const projectSegment = sanitizePathSegment(run.project.slug, run.project.id);
   const sectionSegment = sanitizePathSegment(run.section.slug, run.section.id);
-  const runSegment = `run-${String(run.runIndex).padStart(2, "0")}`;
+  const runIdSegment = sanitizePathSegment(run.runId, "run");
+  const runSegment = `run-${String(run.runIndex).padStart(2, "0")}-${runIdSegment}`;
   const absoluteRunDir = resolve(process.cwd(), "data", "images", projectSegment, sectionSegment, runSegment);
   const absoluteOutputDir = join(absoluteRunDir, "raw");
   const absoluteThumbDir = join(absoluteRunDir, "thumb");
@@ -142,7 +144,7 @@ function resolveTargetExtension(outputImage: ComfyPromptOutputImage) {
  * On Windows, rename cannot overwrite an existing file, so we delete first.
  */
 async function atomicWriteFile(targetPath: string, data: Buffer) {
-  const tempPath = targetPath + ".tmp";
+  const tempPath = `${targetPath}.${randomUUID()}.tmp`;
   await writeFile(tempPath, data);
 
   // On Windows, rename cannot overwrite an existing file.
@@ -157,7 +159,12 @@ async function atomicWriteFile(targetPath: string, data: Buffer) {
   }
 
   // Now rename the temp file to target, with retry on EBUSY/EPERM
-  await retryOnEBUSY(() => rename(tempPath, targetPath));
+  try {
+    await retryOnEBUSY(() => rename(tempPath, targetPath));
+  } catch (error) {
+    await unlink(tempPath).catch(() => {});
+    throw error;
+  }
 }
 
 async function downloadOutputImage(

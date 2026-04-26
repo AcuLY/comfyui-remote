@@ -193,6 +193,18 @@ export async function completeWorkerRun(
       data.outputDir = input.outputDir;
     }
 
+    const completedRun = await tx.run.updateMany({
+      where: {
+        id: runId,
+        status: { in: [RunStatus.running, RunStatus.queued] },
+      },
+      data,
+    });
+
+    if (completedRun.count === 0) {
+      throw new Error("WORKER_RUN_NOT_RUNNING");
+    }
+
     if (input.status === RunStatus.done && input.images !== undefined) {
       await tx.imageResult.deleteMany({
         where: {
@@ -212,18 +224,6 @@ export async function completeWorkerRun(
           })),
         });
       }
-    }
-
-    const completedRun = await tx.run.updateMany({
-      where: {
-        id: runId,
-        status: { in: [RunStatus.running, RunStatus.queued] },
-      },
-      data,
-    });
-
-    if (completedRun.count === 0) {
-      throw new Error("WORKER_RUN_NOT_RUNNING");
     }
 
     const finalizedRun = await tx.run.findUnique({
