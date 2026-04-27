@@ -265,7 +265,7 @@ export default async function SectionEditPage({
   const changeHistory = await getSectionChangeHistory(sectionId);
 
   return (
-    <div className="grid w-full grid-cols-[3.25rem_minmax(0,1fr)_3.25rem] xl:grid-cols-[5rem_minmax(0,1fr)_5rem]">
+    <div className="grid w-full grid-cols-[0_minmax(0,1fr)_0] sm:grid-cols-[3.25rem_minmax(0,1fr)_3.25rem] xl:grid-cols-[5rem_minmax(0,1fr)_5rem]">
       <SectionSwitchNavigation
         projectId={projectId}
         sectionId={sectionId}
@@ -343,7 +343,9 @@ export default async function SectionEditPage({
         }
         subtitle="管理此小节的运行参数、提示词块和 LoRA 列表。导入预制库时会自动添加关联的 LoRA。"
         actions={
-          <SectionRunButton projectId={projectId} sectionId={sectionId} defaultBatchSize={sectionParams.batchSize} showBatchOverride={false} />
+          <div className="w-full">
+            <SectionRunButton projectId={projectId} sectionId={sectionId} defaultBatchSize={sectionParams.batchSize} showBatchOverride={false} />
+          </div>
         }
       >
         <div className="space-y-6">

@@ -252,9 +252,10 @@ export function SectionRunButton({
       <button
         disabled={isPending || (!showBatchOverride && !canSaveBatchSize)}
         onClick={handleRun}
-        className="inline-flex items-center gap-1 rounded-xl border border-sky-500/20 bg-sky-500/10 px-3 py-2 text-xs text-sky-300 transition hover:bg-sky-500/20 disabled:opacity-50"
+        className="inline-flex items-center justify-center rounded-lg border border-sky-500/20 bg-sky-500/10 p-1.5 text-sky-300 transition hover:bg-sky-500/20 disabled:opacity-50"
+        title={isPending ? "提交中…" : "运行本节"}
       >
-        <Play className="size-3.5" /> {isPending ? "提交中…" : "运行本节"}
+        <Play className="size-3.5" />
       </button>
     </div>
   );

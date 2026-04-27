@@ -109,7 +109,7 @@ export function SectionSwitchNavigation({
 
   return (
     <>
-      <div className="col-start-1 row-start-1 min-w-0 border-r border-white/5 bg-black/10">
+      <div className="col-start-1 row-start-1 min-w-0 border-r border-white/5 bg-black/10 hidden sm:block">
         <button
           type="button"
           onClick={() => navigate(prevHref)}
@@ -120,7 +120,7 @@ export function SectionSwitchNavigation({
           <ChevronLeft className="size-6 xl:size-7" />
         </button>
       </div>
-      <div className="col-start-3 row-start-1 min-w-0 border-l border-white/5 bg-black/10">
+      <div className="col-start-3 row-start-1 min-w-0 border-l border-white/5 bg-black/10 hidden sm:block">
         <button
           type="button"
           onClick={() => navigate(nextHref)}
