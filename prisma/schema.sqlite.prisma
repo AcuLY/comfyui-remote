@@ -95,7 +95,7 @@ model PresetGroup {
 model PresetChangeLog {
   id        String   @id @default(cuid())
   presetId  String
-  dimension String   // "meta" | "variants"
+  dimension String   // "variants" | "content"
   title     String
   before    Json?
   after     Json?
@@ -195,8 +195,6 @@ model Project {
   updatedAt             DateTime              @updatedAt
   sections              ProjectSection[]
   runs                  Run[]
-  revisions             ProjectRevision[]
-
   @@index([status, updatedAt])
 }
 
@@ -335,19 +333,6 @@ model LoraAsset {
   triggerWords          String?     // trigger words for this LoRA
   uploadedAt            DateTime    @default(now())
   updatedAt             DateTime    @updatedAt
-}
-
-model ProjectRevision {
-  id                    String      @id @default(cuid())
-  projectId             String
-  revisionNumber        Int
-  snapshot              Json
-  createdAt             DateTime    @default(now())
-  actorType             String      @default("user")
-  project               Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
-
-  @@unique([projectId, revisionNumber])
-  @@index([projectId, createdAt])
 }
 
 model AuditLog {

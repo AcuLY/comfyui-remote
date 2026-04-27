@@ -13,7 +13,6 @@ import {
 import { audit } from "@/server/services/audit-service";
 import { submitRunToComfyUI, pollRunCompletion } from "@/server/services/run-executor";
 import { getWorkerRun } from "@/server/worker/repository";
-import { createProjectRevision } from "@/server/services/revision-service";
 import { prisma } from "@/lib/prisma";
 import { recordSectionChange } from "@/server/services/section-change-history-service";
 
@@ -354,9 +353,6 @@ export async function updateProject(projectId: string, body: unknown, actorType:
 
   const normalizedId = normalizeRequiredId(projectId, "projectId");
 
-  // Snapshot before update (best-effort, non-blocking)
-  await createProjectRevision(normalizedId, actorType);
-
   const result = await updateProjectInRepository(normalizedId, input);
 
   // Strip undefined values for clean audit payload
@@ -411,9 +407,6 @@ export async function updateProjectSection(
         select: SECTION_RUN_PARAM_SELECT,
       })
     : null;
-
-  // Snapshot before update (best-effort, non-blocking)
-  await createProjectRevision(normalizedProjectId, actorType);
 
   const result = await updateProjectSectionInRepository(
     normalizedProjectId,

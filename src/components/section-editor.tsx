@@ -530,7 +530,7 @@ export function SectionEditor({
   return (
     <div className="space-y-4">
       {/* ── Preset binding list ── */}
-      <div className="space-y-2">
+      <div id="section-presets" className="scroll-mt-16 space-y-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-xs text-zinc-400">
             <Package className="size-3.5" />
@@ -667,18 +667,20 @@ export function SectionEditor({
       </div>
 
       {/* ── Prompt blocks ── */}
-      <PromptBlockEditor
-        sectionId={sectionId}
-        initialBlocks={blocks}
-        libraryV2={libraryV2}
-        onDeleteConfirm={handleDeleteBlock}
-        onBlockDeleted={handleBlockDeleted}
-        onStandaloneDeleteConfirm={handleStandaloneDeleteBlock}
-        onStandaloneBlockDeleted={handleStandaloneBlockDeleted}
-      />
+      <div id="section-prompts" className="scroll-mt-16">
+        <PromptBlockEditor
+          sectionId={sectionId}
+          initialBlocks={blocks}
+          libraryV2={libraryV2}
+          onDeleteConfirm={handleDeleteBlock}
+          onBlockDeleted={handleBlockDeleted}
+          onStandaloneDeleteConfirm={handleStandaloneDeleteBlock}
+          onStandaloneBlockDeleted={handleStandaloneBlockDeleted}
+        />
+      </div>
 
       {/* ── LoRA lists ── */}
-      <div className="border-t border-white/5 pt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <div id="section-loras" className="scroll-mt-16 border-t border-white/5 pt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
         <div>
           <div className="mb-2 text-xs font-medium text-zinc-400">LoRA 1</div>
           <LoraListEditor

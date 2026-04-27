@@ -1139,39 +1139,7 @@ export async function getPresetGroups(): Promise<PresetGroupItem[]> {
 }
 
 // ---------------------------------------------------------------------------
-// Project Revisions — 修订历史
-// ---------------------------------------------------------------------------
-
-export type ProjectRevisionSummary = {
-  id: string;
-  revisionNumber: number;
-  actorType: string;
-  createdAt: string;
-};
-
-export async function getProjectRevisions(projectId: string): Promise<ProjectRevisionSummary[]> {
-  const revisions = await prisma.projectRevision.findMany({
-    where: { projectId: projectId },
-    orderBy: { revisionNumber: "desc" },
-    take: 20,
-    select: {
-      id: true,
-      revisionNumber: true,
-      actorType: true,
-      createdAt: true,
-    },
-  });
-
-  return revisions.map((rev) => ({
-    id: rev.id,
-    revisionNumber: rev.revisionNumber,
-    actorType: rev.actorType,
-    createdAt: formatDate(rev.createdAt),
-  }));
-}
-
-// ---------------------------------------------------------------------------
-// PromptBlocks — 某个 Section 的提示词块列表
+// PromptBlocks – 某个 Section 的提示词块列表
 // ---------------------------------------------------------------------------
 
 export type SectionBlockSummary = {

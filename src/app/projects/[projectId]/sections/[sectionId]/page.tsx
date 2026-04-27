@@ -16,6 +16,14 @@ import { getSectionChangeHistory } from "@/server/services/section-change-histor
 import { SectionChangeHistory } from "./section-change-history";
 import { SectionSwitchNavigation } from "./section-switch-navigation";
 
+const SECTION_STEPS = [
+  { id: "section-params", label: "参数" },
+  { id: "section-presets", label: "预制" },
+  { id: "section-prompts", label: "提示词" },
+  { id: "section-loras", label: "LoRA" },
+  { id: "section-history", label: "变更记录" },
+];
+
 export default async function SectionEditPage({
   params,
 }: {
@@ -257,7 +265,7 @@ export default async function SectionEditPage({
   const changeHistory = await getSectionChangeHistory(sectionId);
 
   return (
-    <div className="-mx-4 grid min-w-[760px] grid-cols-[3.25rem_minmax(0,1fr)_3.25rem] sm:-mx-6 lg:-mx-8 xl:grid-cols-[5rem_minmax(0,1fr)_5rem]">
+    <div className="grid w-full grid-cols-[3.25rem_minmax(0,1fr)_3.25rem] xl:grid-cols-[5rem_minmax(0,1fr)_5rem]">
       <SectionSwitchNavigation
         projectId={projectId}
         sectionId={sectionId}
@@ -265,6 +273,22 @@ export default async function SectionEditPage({
         nextSectionId={nextSection?.id ?? null}
       />
       <div className="col-start-2 min-w-0 space-y-4 px-3 sm:px-4 lg:px-6">
+      <nav className="sticky top-0 z-20 border-b border-white/10 bg-[var(--bg)]/95 py-2 backdrop-blur">
+        <div className="grid grid-cols-5 overflow-hidden rounded-full border border-white/10 bg-white/[0.03]">
+          {SECTION_STEPS.map((step, index) => (
+            <a
+              key={step.id}
+              href={`#${step.id}`}
+              className="relative flex min-w-0 items-center justify-center px-2 py-2 text-[11px] text-zinc-400 transition hover:bg-white/[0.06] hover:text-zinc-100"
+            >
+              <span className="mr-1.5 flex size-4 shrink-0 items-center justify-center rounded-full bg-white/10 text-[10px] text-zinc-300">
+                {index + 1}
+              </span>
+              <span className="truncate">{step.label}</span>
+            </a>
+          ))}
+        </div>
+      </nav>
       <div className="flex items-center justify-between gap-3">
         <Link
           href={`/projects/${projectId}#section-${sectionId}`}
@@ -323,13 +347,14 @@ export default async function SectionEditPage({
         }
       >
         <div className="space-y-6">
-          <SectionParamsForm
-            projectId={projectId}
-            sectionId={sectionId}
-            initialParams={sectionParams}
-          />
+          <div id="section-params" className="scroll-mt-16">
+            <SectionParamsForm
+              projectId={projectId}
+              sectionId={sectionId}
+              initialParams={sectionParams}
+            />
+          </div>
           <div className="border-t border-white/5 pt-4">
-            <div className="mb-3 text-xs font-medium text-zinc-400">提示词块 & LoRA</div>
             <SectionEditor
               sectionId={sectionId}
               initialBlocks={initialBlocks}
@@ -345,7 +370,9 @@ export default async function SectionEditPage({
           </div>
         </div>
       </SectionCard>
-      <SectionChangeHistory history={changeHistory} />
+      <div id="section-history" className="scroll-mt-16">
+        <SectionChangeHistory history={changeHistory} />
+      </div>
       </div>
     </div>
   );

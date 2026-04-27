@@ -39,6 +39,7 @@ import {
   ClipboardCopy,
   CheckSquare,
   Square,
+  ExternalLink,
 } from "lucide-react";
 import { SectionCard } from "@/components/section-card";
 import { LoraBindingEditor } from "@/components/lora-binding-editor";
@@ -61,7 +62,6 @@ import {
   deletePresetCategory,
   createPreset,
   updatePreset,
-  deletePreset,
   createPresetVariant,
   updatePresetVariant,
   deletePresetVariant,
@@ -101,11 +101,11 @@ type ChangeHistoryTabs<Dimension extends string> = Array<{
 }>;
 
 const PRESET_HISTORY_TABS: ChangeHistoryTabs<PresetChangeDimension> = [
-  { key: "meta", label: "基础信息" },
-  { key: "variants", label: "变体" },
+  { key: "variants", label: "关联变体" },
+  { key: "content", label: "提示词/LoRA" },
 ];
 
-const GROUP_HISTORY_TABS: ChangeHistoryTabs<PresetGroupChangeDimension> = [
+export const GROUP_HISTORY_TABS: ChangeHistoryTabs<PresetGroupChangeDimension> = [
   { key: "meta", label: "基础信息" },
   { key: "members", label: "成员" },
 ];
@@ -130,7 +130,11 @@ function stringifyHistoryValue(value: unknown) {
 function historySummary(entry: PresetHistoryEntry<string>) {
   if (entry.dimension === "variants") {
     const after = entry.after && typeof entry.after === "object" ? entry.after as Record<string, unknown> : null;
-    return after?.name ? `变体：${String(after.name)}` : "变体内容已更新";
+    return after?.name ? `变体：${String(after.name)}` : "关联变体已更新";
+  }
+  if (entry.dimension === "content") {
+    const after = entry.after && typeof entry.after === "object" ? entry.after as Record<string, unknown> : null;
+    return after?.name ? `变体：${String(after.name)}` : "提示词与 LoRA 已更新";
   }
   if (entry.dimension === "members") {
     const beforeCount = Array.isArray(entry.before) ? entry.before.length : 0;
@@ -141,7 +145,7 @@ function historySummary(entry: PresetHistoryEntry<string>) {
   return after?.name ? `名称：${String(after.name)}` : "基础信息已更新";
 }
 
-function PresetChangeHistoryPanel<Dimension extends string>({
+export function PresetChangeHistoryPanel<Dimension extends string>({
   history,
   tabs,
 }: {
@@ -1680,6 +1684,14 @@ function SortablePresetCard({
         >
           <GripVertical className="size-3.5" />
         </button>
+        <Link
+          href={`/assets/presets/${preset.id}`}
+          onClick={(e) => e.stopPropagation()}
+          className="shrink-0 rounded p-0.5 text-zinc-600 transition hover:bg-white/[0.06] hover:text-sky-400"
+          title="打开预制编辑页"
+        >
+          <ExternalLink className="size-3.5" />
+        </Link>
         <div className="flex-1 min-w-0">
           <div className="text-xs font-medium text-zinc-200">{preset.name}</div>
           <div className="text-[10px] text-zinc-500">
@@ -1984,7 +1996,7 @@ function SortableVariantBar({
 // PresetForm — create/edit form for a preset with inline variant editing
 // ---------------------------------------------------------------------------
 
-type VariantDraft = {
+export type VariantDraft = {
   id?: string; // undefined = new variant
   name: string;
   slug: string;
@@ -1995,7 +2007,7 @@ type VariantDraft = {
   linkedVariants: LinkedVariantRef[];
 };
 
-function PresetForm({
+export function PresetForm({
   categoryId,
   folderId,
   preset,
@@ -2899,6 +2911,14 @@ function SortableGroupCard({
           <GripVertical className="size-3.5" />
         </button>
         <FolderOpen className="size-4 shrink-0 text-amber-400/70" />
+        <Link
+          href={`/assets/preset-groups/${group.id}`}
+          onClick={(e) => e.stopPropagation()}
+          className="shrink-0 rounded p-0.5 text-zinc-600 transition hover:bg-white/[0.06] hover:text-sky-400"
+          title="打开预制组编辑页"
+        >
+          <ExternalLink className="size-3.5" />
+        </Link>
         <div className="flex-1 min-w-0">
           <div className="text-xs font-medium text-zinc-200">{group.name}</div>
           <div className="text-[10px] text-zinc-500">
@@ -3511,7 +3531,7 @@ function GroupInlineEditor({
 // AddGroupMemberForm
 // ---------------------------------------------------------------------------
 
-function AddGroupMemberForm({
+export function AddGroupMemberForm({
   groupId,
   categories,
   groups,

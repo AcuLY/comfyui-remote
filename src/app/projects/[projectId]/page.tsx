@@ -2,20 +2,16 @@ import Link from "next/link";
 import { ArrowLeft, Plus, SlidersHorizontal } from "lucide-react";
 import { notFound } from "next/navigation";
 import { SectionCard } from "@/components/section-card";
-import { getProjectDetail, getProjectRevisions } from "@/lib/server-data";
+import { getProjectDetail } from "@/lib/server-data";
 import { ProjectDetailActions } from "./project-detail-actions";
 import { AddSectionButton, ImportTemplateButton } from "./section-actions";
-import { RevisionHistory } from "./revision-history";
 import { SectionList } from "./section-list";
 
 export const dynamic = "force-dynamic";
 
 export default async function ProjectDetailPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
-  const [project, revisions] = await Promise.all([
-    getProjectDetail(projectId),
-    getProjectRevisions(projectId),
-  ]);
+  const project = await getProjectDetail(projectId);
   if (!project) notFound();
 
   return (
@@ -23,12 +19,8 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       <Link href="/projects" className="inline-flex items-center gap-1.5 text-xs text-zinc-400 transition hover:text-zinc-200">
         <ArrowLeft className="size-3.5" /> 返回项目列表
       </Link>
-      <div className="grid grid-cols-1 gap-3 justify-items-center md:grid-cols-2">
-        <SectionCard title={project.title} subtitle={project.presetNames.join(" · ") || "无预设"} className="w-full md:max-w-[500px]">
-          <ProjectDetailActions projectId={project.id} projectTitle={project.title} />
-        </SectionCard>
-
-        <SectionCard title="参数概览" subtitle="结果侧与项目侧都默认编辑当前项目配置。" className="w-full md:max-w-[500px]">
+      <SectionCard title={project.title} subtitle="项目操作与参数概览">
+        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
           <div className="space-y-2 text-sm text-zinc-300">
             <div className="rounded-xl bg-white/[0.03] p-2.5">
               <div className="text-xs text-zinc-500">预设</div>
@@ -41,8 +33,9 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
               <SlidersHorizontal className="size-3.5" /> 编辑当前项目参数
             </Link>
           </div>
-        </SectionCard>
-      </div>
+          <ProjectDetailActions projectId={project.id} projectTitle={project.title} />
+        </div>
+      </SectionCard>
 
       <SectionCard title="小节列表" subtitle="拖动排序、点击名称重命名。每个小节对应一次完整生图的参数集合，可独立运行。">
         <div className="space-y-3">
@@ -62,10 +55,6 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
             <Plus className="size-3.5" /> 批量创建小节
           </Link>
         </div>
-      </SectionCard>
-
-      <SectionCard title="修订历史" subtitle="每次编辑参数前自动保存快照，点击展开查看。">
-        <RevisionHistory revisions={revisions} projectId={project.id} />
       </SectionCard>
     </div>
   );

@@ -613,47 +613,41 @@ export type PresetVariantInput = {
   sortOrder?: number;
 };
 
-function presetMetaSnapshot(preset: {
+function presetVariantRosterSnapshot(variant: {
   name: string;
   slug: string;
-  notes: string | null;
-  folderId: string | null;
-  isActive: boolean;
-  sortOrder: number;
-}) {
-  return {
-    name: preset.name,
-    slug: preset.slug,
-    notes: preset.notes,
-    folderId: preset.folderId,
-    isActive: preset.isActive,
-    sortOrder: preset.sortOrder,
-  };
-}
-
-function presetVariantSnapshot(variant: {
-  name: string;
-  slug: string;
-  prompt: string;
-  negativePrompt: string | null;
-  lora1: unknown;
-  lora2: unknown;
-  defaultParams: unknown;
-  linkedVariants: unknown;
   sortOrder: number;
   isActive: boolean;
 }) {
   return {
     name: variant.name,
     slug: variant.slug,
+    sortOrder: variant.sortOrder,
+    isActive: variant.isActive,
+  };
+}
+
+function presetVariantLinkedSnapshot(variant: {
+  linkedVariants: unknown;
+}) {
+  return {
+    linkedVariants: variant.linkedVariants,
+  };
+}
+
+function presetVariantContentSnapshot(variant: {
+  name: string;
+  prompt: string;
+  negativePrompt: string | null;
+  lora1: unknown;
+  lora2: unknown;
+}) {
+  return {
+    name: variant.name,
     prompt: variant.prompt,
     negativePrompt: variant.negativePrompt,
     lora1: variant.lora1,
     lora2: variant.lora2,
-    defaultParams: variant.defaultParams,
-    linkedVariants: variant.linkedVariants,
-    sortOrder: variant.sortOrder,
-    isActive: variant.isActive,
   };
 }
 
@@ -717,14 +711,6 @@ export async function createPreset(input: PresetInput) {
     preset = await prisma.preset.create({ data: input });
   }
 
-  await recordPresetChange({
-    presetId: preset.id,
-    dimension: "meta",
-    title: existing && !existing.isActive ? "恢复预制" : "创建预制",
-    before: null,
-    after: presetMetaSnapshot(preset),
-  });
-
   revalidatePath("/assets/presets");
   revalidatePath("/projects/new");
   return preset;
@@ -755,7 +741,7 @@ export async function createPresetVariant(input: PresetVariantInput) {
     dimension: "variants",
     title: `创建变体：${variant.name}`,
     before: null,
-    after: presetVariantSnapshot(variant),
+    after: presetVariantRosterSnapshot(variant),
   });
   revalidatePath("/assets/presets");
   revalidatePath("/projects/new");
@@ -763,17 +749,7 @@ export async function createPresetVariant(input: PresetVariantInput) {
 }
 
 export async function updatePreset(id: string, input: Partial<PresetInput>) {
-  const before = await prisma.preset.findUnique({ where: { id } });
   const preset = await prisma.preset.update({ where: { id }, data: input });
-  if (before) {
-    await recordPresetChange({
-      presetId: id,
-      dimension: "meta",
-      title: "更新预制信息",
-      before: presetMetaSnapshot(before),
-      after: presetMetaSnapshot(preset),
-    });
-  }
   revalidatePath("/assets/presets");
   revalidatePath("/projects/new");
   return preset;
@@ -800,9 +776,16 @@ export async function updatePresetVariant(id: string, input: Partial<PresetVaria
     await recordPresetChange({
       presetId: variant.presetId,
       dimension: "variants",
-      title: `更新变体：${variant.name}`,
-      before: presetVariantSnapshot(before),
-      after: presetVariantSnapshot(variant),
+      title: `更新关联变体：${variant.name}`,
+      before: presetVariantLinkedSnapshot(before),
+      after: presetVariantLinkedSnapshot(variant),
+    });
+    await recordPresetChange({
+      presetId: variant.presetId,
+      dimension: "content",
+      title: `更新提示词与 LoRA：${variant.name}`,
+      before: presetVariantContentSnapshot(before),
+      after: presetVariantContentSnapshot(variant),
     });
   }
   revalidatePath("/assets/presets");
@@ -812,17 +795,7 @@ export async function updatePresetVariant(id: string, input: Partial<PresetVaria
 
 export async function deletePreset(id: string) {
   // Soft delete: set isActive = false
-  const before = await prisma.preset.findUnique({ where: { id } });
-  const preset = await prisma.preset.update({ where: { id }, data: { isActive: false } });
-  if (before) {
-    await recordPresetChange({
-      presetId: id,
-      dimension: "meta",
-      title: "删除预制",
-      before: presetMetaSnapshot(before),
-      after: presetMetaSnapshot(preset),
-    });
-  }
+  await prisma.preset.update({ where: { id }, data: { isActive: false } });
   revalidatePath("/assets/presets");
   revalidatePath("/projects/new");
 }
@@ -836,8 +809,8 @@ export async function deletePresetVariant(id: string) {
       presetId: variant.presetId,
       dimension: "variants",
       title: `删除变体：${variant.name}`,
-      before: presetVariantSnapshot(before),
-      after: presetVariantSnapshot(variant),
+      before: presetVariantRosterSnapshot(before),
+      after: presetVariantRosterSnapshot(variant),
     });
   }
   revalidatePath("/assets/presets");

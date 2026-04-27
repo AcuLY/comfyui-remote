@@ -14,9 +14,9 @@ import {
 import {
   arrayMove,
   SortableContext,
+  rectSortingStrategy,
   sortableKeyboardCoordinates,
   useSortable,
-  verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
@@ -307,9 +307,9 @@ export function SectionList({ projectId, sections: initialSections }: SectionLis
   }
 
   return (
-    <div className="grid grid-cols-1 gap-3 lg:grid-cols-[12rem_minmax(0,1fr)] xl:grid-cols-[13.5rem_minmax(0,1fr)]">
+    <div className="grid grid-cols-[8.5rem_minmax(0,1fr)] gap-3 sm:grid-cols-[10rem_minmax(0,1fr)] lg:grid-cols-[12rem_minmax(0,1fr)] xl:grid-cols-[13.5rem_minmax(0,1fr)]">
       {sections.length > 0 && (
-        <aside className="hidden min-w-0 border-r border-white/5 bg-black/10 pr-3 lg:block">
+        <aside className="min-w-0 border-r border-white/5 bg-black/10 pr-2 sm:pr-3">
           <div className="sticky top-4 space-y-3">
             <button
               type="button"
@@ -340,7 +340,7 @@ export function SectionList({ projectId, sections: initialSections }: SectionLis
                       key={section.id}
                       type="button"
                       onClick={() => scrollToSection(section.id)}
-                      className="flex w-full items-start gap-2 px-2 py-1.5 text-left text-[11px] text-zinc-400 transition hover:bg-white/[0.06] hover:text-zinc-100"
+                    className="flex w-full items-start gap-1.5 px-1.5 py-1.5 text-left text-[11px] text-zinc-400 transition hover:bg-white/[0.06] hover:text-zinc-100 sm:gap-2 sm:px-2"
                       title={`${index + 1}. ${section.name}`}
                     >
                       <span className="w-6 shrink-0 text-right text-zinc-600">{index + 1}</span>
@@ -356,7 +356,7 @@ export function SectionList({ projectId, sections: initialSections }: SectionLis
 
       <div className="min-w-0">
         <DndContext id={dndId} sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <SortableContext items={sections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
+          <SortableContext items={sections.map((s) => s.id)} strategy={rectSortingStrategy}>
             {compact && sections.length > 0 && (
               <div className="mb-2 flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
                 <div className="flex items-center gap-3">

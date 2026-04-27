@@ -28,10 +28,6 @@ import {
   getProjectAgentContext,
 } from "@/server/repositories/project-repository";
 import {
-  listProjectRevisions,
-  getProjectRevision,
-} from "@/server/services/revision-service";
-import {
   addPromptBlock,
   editPromptBlock,
   removePromptBlock,
@@ -71,7 +67,7 @@ export function getMcpServer(): McpServer {
       instructions: [
         "ComfyUI Remote MCP Server — manage AI image generation projects.",
         "Use tools to list/update projects, trigger runs, review images, and manage prompt blocks.",
-        "Use resources to read detailed context for projects, runs, workflows, revisions, and prompt blocks.",
+        "Use resources to read detailed context for projects, runs, workflows, and prompt blocks.",
         "Typical workflow: list_projects → get project context → update params → run → poll run context → review images.",
         "Prompt blocks: Each section's prompt is composed from ordered blocks (preset/custom).",
         "Use list_prompt_blocks + add/update/remove/reorder to manage blocks via MCP.",
@@ -104,7 +100,7 @@ export function getMcpServer(): McpServer {
 
   server.tool(
     "update_project",
-    "Update a project's parameters (aspectRatio, batchSize). Creates a revision snapshot before updating.",
+    "Update a project's parameters (aspectRatio, batchSize).",
     {
       projectId: z.string().describe("The project ID to update"),
       aspectRatio: z.string().nullable().optional().describe("Aspect ratio (e.g. '3:4', '1:1')"),
@@ -351,49 +347,6 @@ export function getMcpServer(): McpServer {
     { description: "Full context for a run including all images and review status" },
     async (uri, vars) => {
       const data = await getRunAgentContext(str(vars.runId));
-      return {
-        contents: [{
-          uri: uri.href,
-          mimeType: "application/json",
-          text: JSON.stringify(data, null, 2),
-        }],
-      };
-    },
-  );
-
-  // Dynamic resource: Project revisions
-  server.resource(
-    "project-revisions",
-    new ResourceTemplate("comfyui://projects/{projectId}/revisions", { list: undefined }),
-    { description: "Revision history for a project (newest first)" },
-    async (uri, vars) => {
-      const data = await listProjectRevisions(str(vars.projectId));
-      return {
-        contents: [{
-          uri: uri.href,
-          mimeType: "application/json",
-          text: JSON.stringify(data, null, 2),
-        }],
-      };
-    },
-  );
-
-  // Dynamic resource: Single revision snapshot
-  server.resource(
-    "project-revision",
-    new ResourceTemplate("comfyui://projects/{projectId}/revisions/{revisionNumber}", { list: undefined }),
-    { description: "Complete snapshot of a project at a specific revision number" },
-    async (uri, vars) => {
-      const data = await getProjectRevision(str(vars.projectId), parseInt(str(vars.revisionNumber), 10));
-      if (!data) {
-        return {
-          contents: [{
-            uri: uri.href,
-            mimeType: "application/json",
-            text: JSON.stringify({ error: "Revision not found" }),
-          }],
-        };
-      }
       return {
         contents: [{
           uri: uri.href,

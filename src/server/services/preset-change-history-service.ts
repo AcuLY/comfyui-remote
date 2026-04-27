@@ -1,7 +1,7 @@
 import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 
-export type PresetChangeDimension = "meta" | "variants";
+export type PresetChangeDimension = "variants" | "content";
 export type PresetGroupChangeDimension = "meta" | "members";
 
 export type PresetHistoryEntry<Dimension extends string> = {
@@ -15,7 +15,7 @@ export type PresetHistoryEntry<Dimension extends string> = {
 
 const HISTORY_LIMIT_PER_DIMENSION = 10;
 
-const PRESET_DIMENSIONS: PresetChangeDimension[] = ["meta", "variants"];
+const PRESET_DIMENSIONS: PresetChangeDimension[] = ["variants", "content"];
 const GROUP_DIMENSIONS: PresetGroupChangeDimension[] = ["meta", "members"];
 
 function cloneForJson(value: unknown): unknown {
@@ -116,8 +116,8 @@ export function groupPresetHistory(
   }>,
 ) {
   const history: Record<PresetChangeDimension, PresetHistoryEntry<PresetChangeDimension>[]> = {
-    meta: [],
     variants: [],
+    content: [],
   };
 
   for (const entry of entries) {
