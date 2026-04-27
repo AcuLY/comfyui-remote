@@ -569,13 +569,13 @@ function SortableSectionCard({
           href={`/projects/${projectId}/sections/${section.id}`}
           className="min-w-0 flex-1 cursor-pointer"
         >
-          <span className="text-sm font-medium text-white line-clamp-2">
+          <span className="text-xs font-medium text-white line-clamp-2 sm:text-sm">
             {index + 1}. {section.name}
           </span>
         </Link>
 
-        {/* 桌面端：复制、删除按钮（紧凑） */}
-        <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+        {/* 复制、删除按钮 */}
+        <div className="flex shrink-0 items-center gap-1.5" onClick={(e) => e.stopPropagation()}>>
           <CopySectionButton sectionId={section.id} />
           <DeleteSectionButton sectionId={section.id} sectionName={section.name} />
         </div>
