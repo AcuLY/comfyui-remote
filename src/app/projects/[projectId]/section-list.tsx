@@ -19,7 +19,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Layers, ImageIcon, LayoutList, LayoutGrid, CheckSquare, Square, Trash2 } from "lucide-react";
+import { GripVertical, ImageIcon, LayoutList, LayoutGrid, CheckSquare, Square, Trash2 } from "lucide-react";
 import Image from "next/image";
 import { reorderSections, deleteSections } from "@/lib/actions";
 import { toast } from "sonner";
@@ -363,10 +363,6 @@ function SortableCompactCard({
         <span className="shrink-0 text-xs font-semibold text-white">
           {index + 1}. {section.name}
         </span>
-        <span className="hidden items-center gap-1.5 text-[10px] text-zinc-500 sm:flex">
-          {section.aspectRatio && <span>{section.aspectRatio}</span>}
-          {section.batchSize != null && <span>· b{section.batchSize}</span>}
-        </span>
       </Link>
 
       {/* Status + image count */}
@@ -437,16 +433,6 @@ function SortableSectionCard({
             <span className="text-sm font-semibold text-white">
               {index + 1}. {section.name}
             </span>
-            {section.promptBlockCount > 0 && (
-              <span className="inline-flex items-center gap-1 rounded-full border border-white/10 px-2 py-0.5 text-[10px] text-zinc-400">
-                <Layers className="size-3" />
-                正 {section.positiveBlockCount} · 负 {section.negativeBlockCount}
-              </span>
-            )}
-          </div>
-          <div className="mt-1 text-xs text-zinc-400">
-            batch {section.batchSize ?? "—"} · {section.aspectRatio ?? "—"} · seed{" "}
-            {section.seedPolicy1 ?? "—"} · {section.latestRunStatus ?? "未运行"}
           </div>
         </Link>
 
