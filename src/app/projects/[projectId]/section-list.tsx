@@ -325,14 +325,12 @@ export function SectionList({ projectId, sections: initialSections }: SectionLis
               title={compact ? "展开视图" : "紧凑视图"}
             >
               {compact ? <LayoutGrid className="size-4 shrink-0" /> : <LayoutList className="size-4 shrink-0" />}
-              {!anchorNavCollapsed && (
-                <span className="min-w-0 flex-1 truncate">{compact ? "展开视图" : "紧凑视图"}</span>
-              )}
+              <span className="min-w-0 flex-1 truncate hidden sm:inline">{compact ? "展开视图" : "紧凑视图"}</span>
             </button>
             <div className="space-y-2">
               <div className={`flex items-center gap-2 ${anchorNavCollapsed ? "justify-center px-1" : "justify-between px-2"}`}>
                 {!anchorNavCollapsed && (
-                  <div className="min-w-0 truncate text-xs font-medium text-zinc-200">小节导航</div>
+                  <div className="min-w-0 truncate text-xs font-medium text-zinc-200 hidden sm:block">小节导航</div>
                 )}
                 <button
                   type="button"
@@ -351,7 +349,7 @@ export function SectionList({ projectId, sections: initialSections }: SectionLis
                       key={section.id}
                       type="button"
                       onClick={() => scrollToSection(section.id)}
-                    className="flex w-full items-start gap-1 py-1 text-left text-[11px] text-zinc-400 transition hover:bg-white/[0.06] hover:text-zinc-100"
+                    className="flex w-full items-start gap-1 py-1 pl-1 text-left text-[11px] text-zinc-400 transition hover:bg-white/[0.06] hover:text-zinc-100"
                       title={`${index + 1}. ${section.name}`}
                     >
                       <span className="w-4 shrink-0 text-right text-zinc-600">{index + 1}</span>
