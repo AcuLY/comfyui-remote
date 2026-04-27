@@ -575,7 +575,7 @@ function SortableSectionCard({
         </Link>
 
         {/* 桌面端：复制、删除按钮（紧凑） */}
-        <div className="hidden items-center gap-1.5 sm:flex" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
           <CopySectionButton sectionId={section.id} />
           <DeleteSectionButton sectionId={section.id} sectionName={section.name} />
         </div>
@@ -654,11 +654,6 @@ function SortableSectionCard({
         onClick={(e) => e.stopPropagation()}
       >
         <SectionRunButton sectionId={section.id} defaultBatchSize={section.batchSize} />
-        {/* 移动端：复制、删除按钮 */}
-        <div className="flex items-center gap-2 sm:hidden">
-          <CopySectionButton sectionId={section.id} />
-          <DeleteSectionButton sectionId={section.id} sectionName={section.name} />
-        </div>
       </div>
     </div>
   );

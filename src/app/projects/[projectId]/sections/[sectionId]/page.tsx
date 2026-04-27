@@ -265,14 +265,14 @@ export default async function SectionEditPage({
   const changeHistory = await getSectionChangeHistory(sectionId);
 
   return (
-    <div className="grid w-full grid-cols-[0_minmax(0,1fr)_0] sm:grid-cols-[3.25rem_minmax(0,1fr)_3.25rem] xl:grid-cols-[5rem_minmax(0,1fr)_5rem]">
+    <div className="-mx-4 grid w-[calc(100%+2rem)] grid-cols-[0_minmax(0,1fr)_0] sm:grid-cols-[3.25rem_minmax(0,1fr)_3.25rem] xl:grid-cols-[5rem_minmax(0,1fr)_5rem]">
       <SectionSwitchNavigation
         projectId={projectId}
         sectionId={sectionId}
         prevSectionId={prevSection?.id ?? null}
         nextSectionId={nextSection?.id ?? null}
       />
-      <div className="col-start-2 min-w-0 space-y-4 px-3 sm:px-4 lg:px-6">
+      <div className="col-start-2 min-w-0 space-y-4 px-2 sm:px-0">
       <nav className="sticky top-0 z-20 border-b border-white/10 bg-[var(--bg)]/95 py-2 backdrop-blur">
         <div className="grid grid-cols-5 overflow-hidden rounded-full border border-white/10 bg-white/[0.03]">
           {SECTION_STEPS.map((step, index) => (
