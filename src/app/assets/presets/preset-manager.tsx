@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useTransition, useCallback, useMemo, useId } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   DndContext,
@@ -76,6 +76,36 @@ import { parseLoraBindings, serializeLoraBindings } from "@/lib/lora-types";
 import { PresetCascadePicker } from "@/components/preset-cascade-picker";
 import { toast } from "sonner";
 
+type PresetQueryPatch = {
+  category?: string | null;
+  folder?: string | null;
+  preset?: string | null;
+  variant?: string | null;
+};
+
+function findPresetCategory(
+  categories: PresetCategoryFull[],
+  presetId: string | null,
+) {
+  if (!presetId) {
+    return null;
+  }
+
+  return categories.find((cat) => cat.presets.some((preset) => preset.id === presetId)) ?? null;
+}
+
+function resolveQueryCategoryId(
+  categories: PresetCategoryFull[],
+  categoryId: string | null,
+  presetId: string | null,
+) {
+  if (categoryId && categories.some((cat) => cat.id === categoryId)) {
+    return categoryId;
+  }
+
+  return findPresetCategory(categories, presetId)?.id ?? null;
+}
+
 // ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
@@ -86,22 +116,41 @@ export function PresetManager({
   initialCategories: PresetCategoryFull[];
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
+  const queryCategoryId = searchParams.get("category");
+  const queryFolderId = searchParams.get("folder");
+  const queryPresetId = searchParams.get("preset");
+  const queryVariantId = searchParams.get("variant");
+  const initialSelectedCatId =
+    resolveQueryCategoryId(initialCategories, queryCategoryId, queryPresetId) ??
+    initialCategories[0]?.id ??
+    null;
   const [categories, setCategories] = useState(initialCategories);
   const [selectedCatId, setSelectedCatId] = useState<string | null>(
-    initialCategories[0]?.id ?? null,
+    initialSelectedCatId,
   );
 
   // Sync with server data after router.refresh()
   useEffect(() => {
     setCategories(initialCategories);
     // Keep selection if the category still exists, otherwise select first
-    setSelectedCatId((prev) =>
-      initialCategories.some((c) => c.id === prev)
+    setSelectedCatId((prev) => {
+      const querySelection = resolveQueryCategoryId(
+        initialCategories,
+        queryCategoryId,
+        queryPresetId,
+      );
+
+      if (querySelection) {
+        return querySelection;
+      }
+
+      return initialCategories.some((c) => c.id === prev)
         ? prev
-        : initialCategories[0]?.id ?? null,
-    );
-  }, [initialCategories]);
+        : initialCategories[0]?.id ?? null;
+    });
+  }, [initialCategories, queryCategoryId, queryPresetId]);
   const [showCatForm, setShowCatForm] = useState(false);
   const [editingCatId, setEditingCatId] = useState<string | null>(null);
   const [autoEditPresetId, setAutoEditPresetId] = useState<string | null>(null);
@@ -135,6 +184,25 @@ export function PresetManager({
   function refresh() {
     startTransition(() => router.refresh());
   }
+
+  const replacePresetQuery = useCallback((patch: PresetQueryPatch) => {
+    const params = new URLSearchParams(searchParams.toString());
+
+    for (const [key, value] of Object.entries(patch)) {
+      if (value === undefined) {
+        continue;
+      }
+
+      if (value) {
+        params.set(key, value);
+      } else {
+        params.delete(key);
+      }
+    }
+
+    const query = params.toString();
+    router.replace(`/assets/presets${query ? `?${query}` : ""}`, { scroll: false });
+  }, [router, searchParams]);
 
   function handleCatDragEnd(event: DragEndEvent) {
     const { active, over } = event;
@@ -198,6 +266,12 @@ export function PresetManager({
                     onSelect={() => {
                       setSelectedCatId(cat.id);
                       setShowCatForm(false);
+                      replacePresetQuery({
+                        category: cat.id,
+                        folder: null,
+                        preset: null,
+                        variant: null,
+                      });
                     }}
                     onEdit={() => {
                       setEditingCatId(cat.id);
@@ -274,9 +348,16 @@ export function PresetManager({
                   onNavigateToPreset={(presetId) => {
                     // Find the preset's category and switch to it
                     for (const cat of categories) {
-                      if (cat.presets.some((p) => p.id === presetId)) {
+                      const preset = cat.presets.find((p) => p.id === presetId);
+                      if (preset) {
                         setSelectedCatId(cat.id);
                         setAutoEditPresetId(presetId);
+                        replacePresetQuery({
+                          category: cat.id,
+                          folder: preset.folderId ?? null,
+                          preset: preset.id,
+                          variant: preset.variants[0]?.id ?? null,
+                        });
                         break;
                       }
                     }
@@ -288,7 +369,11 @@ export function PresetManager({
                   onRefresh={refresh}
                   allCategories={categories}
                   autoEditPresetId={autoEditPresetId}
+                  queryFolderId={queryFolderId}
+                  queryPresetId={queryPresetId}
+                  queryVariantId={queryVariantId}
                   onAutoEditConsumed={() => setAutoEditPresetId(null)}
+                  onViewChange={(patch) => replacePresetQuery({ category: selectedCat.id, ...patch })}
                 />
               )
             ) : (
@@ -935,13 +1020,21 @@ function PresetList({
   onRefresh,
   allCategories,
   autoEditPresetId,
+  queryFolderId,
+  queryPresetId,
+  queryVariantId,
   onAutoEditConsumed,
+  onViewChange,
 }: {
   category: PresetCategoryFull;
   onRefresh: () => void;
   allCategories: PresetCategoryFull[];
   autoEditPresetId: string | null;
+  queryFolderId: string | null;
+  queryPresetId: string | null;
+  queryVariantId: string | null;
   onAutoEditConsumed: () => void;
+  onViewChange: (patch: Omit<PresetQueryPatch, "category">) => void;
 }) {
   const [isPending, startTransition] = useTransition();
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -956,6 +1049,19 @@ function PresetList({
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
+  const queryPreset = useMemo(
+    () => category.presets.find((preset) => preset.id === queryPresetId) ?? null,
+    [category.presets, queryPresetId],
+  );
+  const resolvedQueryFolderId = useMemo(() => {
+    if (queryPreset) {
+      return queryPreset.folderId ?? null;
+    }
+
+    return queryFolderId && category.folders.some((folder) => folder.id === queryFolderId)
+      ? queryFolderId
+      : null;
+  }, [category.folders, queryFolderId, queryPreset]);
 
   // Sync presets when category changes
   useEffect(() => {
@@ -966,15 +1072,23 @@ function PresetList({
   useEffect(() => {
     if (autoEditPresetId && category.presets.some((p) => p.id === autoEditPresetId)) {
       setEditingId(autoEditPresetId);
+      const preset = category.presets.find((p) => p.id === autoEditPresetId);
+      setCurrentFolderId(preset?.folderId ?? null);
       onAutoEditConsumed();
     }
   }, [autoEditPresetId, category.presets, onAutoEditConsumed]);
 
-  // Reset folder when category changes
+  // Restore folder and expanded preset from URL query state.
   useEffect(() => {
-    setCurrentFolderId(null);
+    setCurrentFolderId(resolvedQueryFolderId);
     setSelectedIds(new Set());
-  }, [category.id]);
+
+    if (queryPreset) {
+      setEditingId(queryPreset.id);
+    } else if (queryPresetId) {
+      setEditingId(null);
+    }
+  }, [category.id, queryPreset, queryPresetId, resolvedQueryFolderId]);
 
   // Filter presets and folders for current folder level
   const visiblePresets = presets.filter((p) => (p.folderId ?? null) === currentFolderId);
@@ -983,8 +1097,10 @@ function PresetList({
   // Clear selection when navigating folders
   const navigateFolder = useCallback((folderId: string | null) => {
     setCurrentFolderId(folderId);
+    setEditingId(null);
     setSelectedIds(new Set());
-  }, []);
+    onViewChange({ folder: folderId, preset: null, variant: null });
+  }, [onViewChange]);
 
   // Toggle selection
   const togglePresetSelection = useCallback((id: string) => {
@@ -1103,6 +1219,7 @@ function PresetList({
             onClick={() => {
               setIsCreating(true);
               setEditingId(null);
+              onViewChange({ folder: currentFolderId, preset: null, variant: null });
             }}
             className="inline-flex items-center gap-1 rounded-lg bg-sky-500/10 px-2.5 py-1 text-[11px] text-sky-300 hover:bg-sky-500/20"
           >
@@ -1162,7 +1279,7 @@ function PresetList({
               key={folder.id}
               folder={folder}
               itemCount={countFolderItems(folder.id, category.folders, presets)}
-              onEnter={() => setCurrentFolderId(folder.id)}
+              onEnter={() => navigateFolder(folder.id)}
               onRename={(newName) => {
                 startTransition(async () => {
                   try {
@@ -1250,7 +1367,15 @@ function PresetList({
                 key={preset.id}
                 preset={preset}
                 folders={category.folders}
-                onEdit={() => setEditingId(editingId === preset.id ? null : preset.id)}
+                onEdit={() => {
+                  const nextEditingId = editingId === preset.id ? null : preset.id;
+                  setEditingId(nextEditingId);
+                  onViewChange({
+                    folder: preset.folderId ?? null,
+                    preset: nextEditingId,
+                    variant: nextEditingId ? preset.variants[0]?.id ?? null : null,
+                  });
+                }}
                 onMoveToFolder={(folderId) => {
                   startTransition(async () => {
                     try {
@@ -1294,6 +1419,7 @@ function PresetList({
                         await syncPresetToSections(preset.id);
                         toast.success("预制已保存");
                         setEditingId(null);
+                        onViewChange({ folder: currentFolderId, preset: null, variant: null });
                         onRefresh();
                       } catch (e: unknown) {
                         toast.error(e instanceof Error ? e.message : "保存失败");
@@ -1316,14 +1442,26 @@ function PresetList({
                         await deletePresetCascade(preset.id);
                         toast.success("预制已删除");
                         setEditingId(null);
+                        onViewChange({ folder: currentFolderId, preset: null, variant: null });
                         onRefresh();
                       } catch (e: unknown) {
                         toast.error(e instanceof Error ? e.message : "删除失败");
                       }
                     });
                   },
-                  onCancel: () => setEditingId(null),
+                  onCancel: () => {
+                    setEditingId(null);
+                    onViewChange({ folder: currentFolderId, preset: null, variant: null });
+                  },
                   isPending,
+                  activeVariantId: queryPresetId === preset.id ? queryVariantId : null,
+                  onVariantChange: (variantId) => {
+                    onViewChange({
+                      folder: preset.folderId ?? null,
+                      preset: preset.id,
+                      variant: variantId,
+                    });
+                  },
                 }}
               />
             ))}
@@ -1369,6 +1507,8 @@ function SortablePresetCard({
     onDelete: () => void;
     onCancel: () => void;
     isPending: boolean;
+    activeVariantId?: string | null;
+    onVariantChange?: (variantId: string | null) => void;
   };
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: preset.id });
@@ -1432,6 +1572,8 @@ function SortablePresetCard({
           onDelete={presetFormProps.onDelete}
           onCancel={presetFormProps.onCancel}
           isPending={presetFormProps.isPending}
+          activeVariantId={presetFormProps.activeVariantId}
+          onVariantChange={presetFormProps.onVariantChange}
           embedded
         />
       )}
@@ -1730,6 +1872,8 @@ function PresetForm({
   onCancel,
   isPending,
   allCategories,
+  activeVariantId,
+  onVariantChange,
   embedded = false,
 }: {
   categoryId: string;
@@ -1747,6 +1891,8 @@ function PresetForm({
   onCancel: () => void;
   isPending: boolean;
   allCategories: PresetCategoryFull[];
+  activeVariantId?: string | null;
+  onVariantChange?: (variantId: string | null) => void;
   /** When true, renders without outer container (for inline accordion use) */
   embedded?: boolean;
 }) {
@@ -1788,6 +1934,22 @@ function PresetForm({
   const variantIds = useMemo(() => variants.map((_, i) => `variant-sort-${i}`), [variants]);
   const current = variants[currentIdx];
   const totalVariants = variants.length;
+
+  useEffect(() => {
+    if (!activeVariantId) {
+      return;
+    }
+
+    const nextIdx = variants.findIndex((variant) => variant.id === activeVariantId);
+    if (nextIdx >= 0) {
+      setCurrentIdx(nextIdx);
+    }
+  }, [activeVariantId, variants]);
+
+  function selectVariant(index: number) {
+    setCurrentIdx(index);
+    onVariantChange?.(variants[index]?.id ?? null);
+  }
 
   function handleNameChange(value: string) {
     setName(value);
@@ -1833,6 +1995,7 @@ function PresetForm({
       linkedVariants: prev?.linkedVariants ? [...prev.linkedVariants] : [],
     }]);
     setCurrentIdx(newIdx);
+    onVariantChange?.(null);
   }
 
   function removeCurrentVariant() {
@@ -1852,8 +2015,10 @@ function PresetForm({
     }
 
     const updated = variants.filter((_, i) => i !== currentIdx);
+    const nextIdx = Math.min(currentIdx, updated.length - 1);
     setVariants(updated);
-    setCurrentIdx(Math.min(currentIdx, updated.length - 1));
+    setCurrentIdx(nextIdx);
+    onVariantChange?.(updated[nextIdx]?.id ?? null);
   }
 
   function handleVariantDragEnd(event: DragEndEvent) {
@@ -1870,10 +2035,13 @@ function PresetForm({
     // Follow the selected variant if it moved
     if (oldIdx === currentIdx) {
       setCurrentIdx(newIdx);
+      onVariantChange?.(reordered[newIdx]?.id ?? null);
     } else if (oldIdx < currentIdx && newIdx >= currentIdx) {
       setCurrentIdx(currentIdx - 1);
+      onVariantChange?.(reordered[currentIdx - 1]?.id ?? null);
     } else if (oldIdx > currentIdx && newIdx <= currentIdx) {
       setCurrentIdx(currentIdx + 1);
+      onVariantChange?.(reordered[currentIdx + 1]?.id ?? null);
     }
 
     // Persist order for existing variants with real DB ids
@@ -1970,7 +2138,7 @@ function PresetForm({
                     sortId={variantIds[i]}
                     name={v.name}
                     isSelected={i === currentIdx}
-                    onSelect={() => setCurrentIdx(i)}
+                    onSelect={() => selectVariant(i)}
                   />
                 ))}
               </SortableContext>
