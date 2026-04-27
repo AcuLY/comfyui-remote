@@ -24,14 +24,16 @@ export function ImageLightbox({
   const shieldTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (!src) return;
+    if (!visible) return;
+
+    const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     document.addEventListener("keydown", handleKeyDown);
     return () => {
-      document.body.style.overflow = "";
+      document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [src, handleKeyDown]);
+  }, [visible, handleKeyDown]);
 
   const handleClose = useCallback(() => {
     onClose?.();

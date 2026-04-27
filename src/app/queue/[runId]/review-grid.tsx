@@ -11,11 +11,9 @@ import { ImageLightbox, useLightbox } from "./image-lightbox";
 type LastAction = "keep" | "trash";
 
 export function ReviewGrid({
-  runId,
   images,
   nextRunId,
 }: {
-  runId: string;
   images: ReviewImage[];
   nextRunId: string | null;
 }) {
@@ -170,7 +168,6 @@ export function ReviewGrid({
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); openLightbox(image.full); }}
-                  onMouseEnter={() => openLightbox(image.full)}
                   className="inline-flex items-center gap-1 text-zinc-200 hover:text-white"
                 >
                   <Expand className="size-3" /> 查看
