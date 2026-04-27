@@ -39,7 +39,6 @@ import {
   ClipboardCopy,
   CheckSquare,
   Square,
-  ExternalLink,
 } from "lucide-react";
 import { SectionCard } from "@/components/section-card";
 import { LoraBindingEditor } from "@/components/lora-binding-editor";
@@ -352,7 +351,7 @@ export function PresetManager({
       <SectionCard title="预制管理" subtitle="管理预制分类和预制项。每个分类下可创建多个预制或预制组。">
         <div className="flex flex-col gap-4 md:flex-row">
           {/* Left panel: sortable categories */}
-          <div className="w-full shrink-0 space-y-2 md:w-56">
+          <div className="w-full shrink-0 space-y-2 md:w-40 md:sticky md:top-3 md:self-start">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">
                 分类
@@ -1471,6 +1470,28 @@ function PresetList({
                 isSelected={selectedIds.has(preset.id)}
                 onToggleSelect={() => togglePresetSelection(preset.id)}
                 isEditing={editingId === preset.id}
+                onDelete={() => {
+                  startTransition(async () => {
+                    try {
+                      const usage = await getPresetUsage(preset.id);
+                      let msg = "确认删除此预制？";
+                      if (usage.sections.length > 0) {
+                        const lines = usage.sections.map(
+                          (s) => `  · ${s.projectTitle} / ${s.sectionName} (${s.blockCount} 个提示词块)`,
+                        );
+                        msg = `以下小节使用了该预制：\n${lines.join("\n")}\n\n确认删除将同时移除这些小节中的相关提示词块和 LoRA。`;
+                      }
+                      if (!confirm(msg)) return;
+                      await deletePresetCascade(preset.id);
+                      toast.success("预制已删除");
+                      setEditingId(null);
+                      onViewChange({ folder: currentFolderId, preset: null, variant: null });
+                      onRefresh();
+                    } catch (e: unknown) {
+                      toast.error(e instanceof Error ? e.message : "删除失败");
+                    }
+                  });
+                }}
                 presetFormProps={{
                   categoryId: category.id,
                   allCategories,
@@ -1504,29 +1525,6 @@ function PresetList({
                         onRefresh();
                       } catch (e: unknown) {
                         toast.error(e instanceof Error ? e.message : "保存失败");
-                      }
-                    });
-                  },
-                  onDelete: () => {
-                    startTransition(async () => {
-                      try {
-                        // Check usage before deleting
-                        const usage = await getPresetUsage(preset.id);
-                        let msg = "确认删除此预制？";
-                        if (usage.sections.length > 0) {
-                          const lines = usage.sections.map(
-                            (s) => `  · ${s.projectTitle} / ${s.sectionName} (${s.blockCount} 个提示词块)`,
-                          );
-                          msg = `以下小节使用了该预制：\n${lines.join("\n")}\n\n确认删除将同时移除这些小节中的相关提示词块和 LoRA。`;
-                        }
-                        if (!confirm(msg)) return;
-                        await deletePresetCascade(preset.id);
-                        toast.success("预制已删除");
-                        setEditingId(null);
-                        onViewChange({ folder: currentFolderId, preset: null, variant: null });
-                        onRefresh();
-                      } catch (e: unknown) {
-                        toast.error(e instanceof Error ? e.message : "删除失败");
                       }
                     });
                   },
@@ -1565,6 +1563,7 @@ function SortablePresetCard({
   onToggleSelect,
   isEditing,
   presetFormProps,
+  onDelete,
 }: {
   preset: PresetFull;
   folders: FolderItem[];
@@ -1583,12 +1582,12 @@ function SortablePresetCard({
       notes?: string | null;
       isActive?: boolean;
     }, variantDrafts: VariantDraft[]) => void;
-    onDelete: () => void;
     onCancel: () => void;
     isPending: boolean;
     activeVariantId?: string | null;
     onVariantChange?: (variantId: string | null) => void;
   };
+  onDelete?: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: preset.id });
   const style: React.CSSProperties = {
@@ -1604,47 +1603,51 @@ function SortablePresetCard({
 
   return (
     <div ref={setNodeRef} style={style} className="rounded-xl border border-white/5 bg-white/[0.02]">
-      <div className="flex items-center gap-2 px-3 py-2.5 transition hover:bg-white/[0.03]">
+      <Link
+        href={`/assets/presets/${preset.id}`}
+        className="flex items-center gap-2 px-3 py-2.5 transition hover:bg-white/[0.03]"
+      >
         <button
           type="button"
           className="shrink-0 text-zinc-600 hover:text-sky-400"
-          onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleSelect(); }}
         >
           {isSelected ? <CheckSquare className="size-3.5 text-sky-400" /> : <Square className="size-3.5" />}
         </button>
         <button
           type="button"
           className="cursor-grab touch-none text-zinc-600 hover:text-zinc-400"
-          onClick={(e) => e.stopPropagation()}
+          onClick={(e) => e.preventDefault()}
           {...attributes}
           {...listeners}
         >
           <GripVertical className="size-3.5" />
         </button>
-        <Link
-          href={`/assets/presets/${preset.id}`}
-          onClick={(e) => e.stopPropagation()}
-          className="shrink-0 rounded p-0.5 text-zinc-600 transition hover:bg-white/[0.06] hover:text-sky-400"
-          title="打开预制编辑页"
-        >
-          <ExternalLink className="size-3.5" />
-        </Link>
-        <Link
-          href={`/assets/presets/${preset.id}`}
-          className="min-w-0 flex-1 rounded outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50"
-        >
+        <div className="min-w-0 flex-1">
           <div className="text-xs font-medium text-zinc-200">{preset.name}</div>
           <div className="text-[10px] text-zinc-500">
             {variantCount > 0 ? `${variantCount} 变体` : "暂无变体"}
             {loraCount > 0 && <span> · {loraCount} LoRA</span>}
           </div>
-        </Link>
-        <MoveToFolderButton
-          currentFolderId={preset.folderId}
-          folders={folders}
-          onMove={onMoveToFolder}
-        />
-      </div>
+        </div>
+        <span onClick={(e) => e.preventDefault()}>
+          <MoveToFolderButton
+            currentFolderId={preset.folderId}
+            folders={folders}
+            onMove={onMoveToFolder}
+          />
+        </span>
+        {onDelete && (
+          <button
+            type="button"
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete(); }}
+            className="shrink-0 rounded p-1 text-zinc-600 transition hover:bg-red-500/10 hover:text-red-400"
+            title="删除预制"
+          >
+            <Trash2 className="size-3.5" />
+          </button>
+        )}
+      </Link>
     </div>
   );
 }
@@ -1936,7 +1939,6 @@ export function PresetForm({
   folderId,
   preset,
   onSave,
-  onDelete,
   onCancel,
   isPending,
   allCategories,
@@ -1955,7 +1957,6 @@ export function PresetForm({
     notes?: string | null;
     isActive?: boolean;
   }, variantDrafts: VariantDraft[]) => void;
-  onDelete?: () => void;
   onCancel: () => void;
   isPending: boolean;
   allCategories: PresetCategoryFull[];
@@ -2137,6 +2138,11 @@ export function PresetForm({
     }, variants);
   }
 
+  function handleAutoSave() {
+    if (isPending) return;
+    handleSubmit();
+  }
+
   // For new presets, variants are saved after the preset is created
   // We need a post-save callback — handled by the parent's onSave flow
 
@@ -2150,6 +2156,7 @@ export function PresetForm({
             type="text"
             value={name}
             onChange={(e) => handleNameChange(e.target.value)}
+            onBlur={handleAutoSave}
             placeholder="预制名称"
             className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
           />
@@ -2160,6 +2167,7 @@ export function PresetForm({
             type="text"
             value={slug}
             onChange={(e) => setSlug(e.target.value)}
+            onBlur={handleAutoSave}
             placeholder="slug"
             className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
           />
@@ -2171,6 +2179,7 @@ export function PresetForm({
         <textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
+          onBlur={handleAutoSave}
           rows={1}
           placeholder="可选备注..."
           className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
@@ -2253,6 +2262,7 @@ export function PresetForm({
               type="text"
               value={current.name}
               onChange={(e) => handleVariantNameChange(e.target.value)}
+              onBlur={handleAutoSave}
               placeholder="变体名称"
               className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
             />
@@ -2263,6 +2273,7 @@ export function PresetForm({
               type="text"
               value={current.slug}
               onChange={(e) => updateCurrentVariant({ slug: e.target.value })}
+              onBlur={handleAutoSave}
               placeholder="variant-slug"
               className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
             />
@@ -2275,6 +2286,7 @@ export function PresetForm({
           <textarea
             value={current.prompt}
             onChange={(e) => updateCurrentVariant({ prompt: e.target.value })}
+            onBlur={handleAutoSave}
             rows={3}
             placeholder="positive prompt..."
             className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
@@ -2286,6 +2298,7 @@ export function PresetForm({
           <textarea
             value={current.negativePrompt}
             onChange={(e) => updateCurrentVariant({ negativePrompt: e.target.value })}
+            onBlur={handleAutoSave}
             rows={2}
             placeholder="negative prompt..."
             className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
@@ -2309,39 +2322,6 @@ export function PresetForm({
           tabs={PRESET_HISTORY_TABS}
         />
       )}
-
-      {/* ── Action buttons ── */}
-      <div className="flex gap-1.5 border-t border-white/5 pt-3">
-        <button
-          type="button"
-          disabled={isPending || !name.trim() || !slug.trim()}
-          onClick={handleSubmit}
-          className="inline-flex items-center gap-1 rounded-lg bg-sky-500/20 px-2 py-1 text-[11px] text-sky-300 hover:bg-sky-500/30 disabled:opacity-50"
-        >
-          {isPending ? (
-            <Loader2 className="size-3 animate-spin" />
-          ) : (
-            <Save className="size-3" />
-          )}
-          保存
-        </button>
-        {onDelete && (
-          <button
-            type="button"
-            onClick={onDelete}
-            className="inline-flex items-center gap-1 rounded-lg bg-red-500/10 px-2 py-1 text-[11px] text-red-400 hover:bg-red-500/20"
-          >
-            <Trash2 className="size-3" /> 删除预制
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={onCancel}
-          className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-2 py-1 text-[11px] text-zinc-400 hover:bg-white/[0.06]"
-        >
-          <X className="size-3" /> 取消
-        </button>
-      </div>
     </div>
   );
 
@@ -2520,14 +2500,25 @@ function GroupList({
           {category.name}
           <span className="ml-1.5 text-zinc-500">· {groups.length} 个预制组</span>
         </span>
-        <button
-          type="button"
-          onClick={() => setIsCreatingFolder(true)}
-          className="inline-flex items-center gap-1 rounded-lg bg-white/[0.04] px-2 py-1 text-[11px] text-zinc-400 hover:bg-white/[0.08]"
-          title="新建文件夹"
-        >
-          <FolderPlus className="size-3" />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setIsCreatingFolder(true)}
+            className="inline-flex items-center gap-1 rounded-lg bg-white/[0.04] px-2 py-1 text-[11px] text-zinc-400 hover:bg-white/[0.08]"
+            title="新建文件夹"
+          >
+            <FolderPlus className="size-3" />
+          </button>
+          {!showCreateForm && (
+            <button
+              type="button"
+              onClick={() => setShowCreateForm(true)}
+              className="inline-flex items-center gap-1 rounded-lg bg-sky-500/10 px-2.5 py-1 text-[11px] text-sky-300 hover:bg-sky-500/20"
+            >
+              <Plus className="size-3" /> 新建预制组
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Breadcrumb */}
@@ -2688,16 +2679,6 @@ function GroupList({
           isPending={isPending}
         />
       )}
-
-      {!showCreateForm && (
-        <button
-          type="button"
-          onClick={() => setShowCreateForm(true)}
-          className="inline-flex items-center gap-1.5 rounded-xl border border-dashed border-white/10 px-3 py-2 text-xs text-zinc-400 hover:border-white/20 hover:text-zinc-200"
-        >
-          <Plus className="size-3.5" /> 新建预制组
-        </button>
-      )}
     </div>
   );
 }
@@ -2810,47 +2791,40 @@ function SortableGroupCard({
 
   return (
     <div ref={setNodeRef} style={style} className="rounded-xl border border-white/5 bg-white/[0.02]">
-      <div className="flex items-center gap-2 px-3 py-2.5 transition hover:bg-white/[0.03]">
+      <Link
+        href={`/assets/preset-groups/${group.id}`}
+        className="flex items-center gap-2 px-3 py-2.5 transition hover:bg-white/[0.03]"
+      >
         <button
           type="button"
           className="shrink-0 text-zinc-600 hover:text-sky-400"
-          onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleSelect(); }}
         >
           {isSelected ? <CheckSquare className="size-3.5 text-sky-400" /> : <Square className="size-3.5" />}
         </button>
         <button
           type="button"
           className="cursor-grab touch-none text-zinc-600 hover:text-zinc-400"
-          onClick={(e) => e.stopPropagation()}
+          onClick={(e) => e.preventDefault()}
           {...attributes}
           {...listeners}
         >
           <GripVertical className="size-3.5" />
         </button>
-        <FolderOpen className="size-4 shrink-0 text-amber-400/70" />
-        <Link
-          href={`/assets/preset-groups/${group.id}`}
-          onClick={(e) => e.stopPropagation()}
-          className="shrink-0 rounded p-0.5 text-zinc-600 transition hover:bg-white/[0.06] hover:text-sky-400"
-          title="打开预制组编辑页"
-        >
-          <ExternalLink className="size-3.5" />
-        </Link>
-        <Link
-          href={`/assets/preset-groups/${group.id}`}
-          className="min-w-0 flex-1 rounded outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50"
-        >
+        <div className="min-w-0 flex-1">
           <div className="text-xs font-medium text-zinc-200">{group.name}</div>
           <div className="text-[10px] text-zinc-500">
             {members.length} 个成员 · {group.slug}
           </div>
-        </Link>
-        <MoveToFolderButton
-          currentFolderId={group.folderId}
-          folders={folders}
-          onMove={onMoveToFolder}
-        />
-      </div>
+        </div>
+        <span onClick={(e) => e.preventDefault()}>
+          <MoveToFolderButton
+            currentFolderId={group.folderId}
+            folders={folders}
+            onMove={onMoveToFolder}
+          />
+        </span>
+      </Link>
 
       {isEditing && (
         <div className="border-t border-white/5 px-3 py-3 space-y-3">
@@ -3015,7 +2989,6 @@ function SortableGroupMemberItem({
           <div className="min-w-0 text-xs">
             {member.subGroupId ? (
               <span className="text-amber-400/80">
-                <FolderOpen className="mr-1 inline size-3" />
                 {member.subGroupName ?? member.subGroupId}
               </span>
             ) : (

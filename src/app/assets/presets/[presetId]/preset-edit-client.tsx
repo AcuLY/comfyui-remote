@@ -8,8 +8,6 @@ import { SectionCard } from "@/components/section-card";
 import type { PresetCategoryFull, PresetFull } from "@/lib/server-data";
 import {
   createPresetVariant,
-  deletePresetCascade,
-  getPresetUsage,
   syncPresetToSections,
   updatePreset,
   updatePresetVariant,
@@ -89,33 +87,8 @@ export function PresetEditClient({
     });
   }
 
-  function deletePreset() {
-    startTransition(async () => {
-      try {
-        const usage = await getPresetUsage(preset.id);
-        let message = `确认删除预制「${preset.name}」？`;
-        if (usage.sections.length > 0) {
-          const lines = usage.sections.map(
-            (section) => `  - ${section.projectTitle} / ${section.sectionName} (${section.blockCount} 个提示词块)`,
-          );
-          message = `以下小节使用了该预制：\n${lines.join("\n")}\n\n确认删除将同时移除这些小节中的相关提示词块和 LoRA。`;
-        }
-
-        if (!confirm(message)) {
-          return;
-        }
-
-        await deletePresetCascade(preset.id);
-        toast.success("预制已删除");
-        router.push(`/assets/presets?category=${category.id}`);
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : "删除失败");
-      }
-    });
-  }
-
   return (
-    <div className="space-y-3">
+    <div className="mx-auto max-w-3xl space-y-3">
       <Link href={backHref} className="inline-flex items-center gap-1.5 text-xs text-zinc-400 transition hover:text-zinc-200">
         <ArrowLeft className="size-3.5" /> 返回预制列表
       </Link>
@@ -126,7 +99,6 @@ export function PresetEditClient({
           preset={preset}
           allCategories={categories}
           onSave={savePreset}
-          onDelete={deletePreset}
           onCancel={() => router.push(backHref)}
           isPending={isPending}
         />
