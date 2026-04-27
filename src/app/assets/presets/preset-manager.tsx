@@ -18,6 +18,7 @@ import {
   sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
+  rectSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
@@ -347,11 +348,11 @@ export function PresetManager({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="mx-auto max-w-4xl space-y-4">
       <SectionCard title="预制管理" subtitle="管理预制分类和预制项。每个分类下可创建多个预制或预制组。">
-        <div className="flex flex-col gap-4 md:flex-row">
+        <div className="flex flex-col gap-4 sm:flex-row">
           {/* Left panel: sortable categories */}
-          <div className="w-full shrink-0 space-y-2 md:w-40 md:sticky md:top-3 md:self-start">
+          <div className="w-full shrink-0 space-y-2 sm:w-40 sm:sticky sm:top-3 sm:self-start">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">
                 分类
@@ -1449,8 +1450,9 @@ function PresetList({
         >
           <SortableContext
             items={visiblePresets.map((p) => p.id)}
-            strategy={verticalListSortingStrategy}
+            strategy={rectSortingStrategy}
           >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             {visiblePresets.map((preset) => (
               <SortablePresetCard
                 key={preset.id}
@@ -1544,6 +1546,7 @@ function PresetList({
                 }}
               />
             ))}
+            </div>
           </SortableContext>
         </DndContext>
       )}
