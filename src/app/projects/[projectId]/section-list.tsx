@@ -344,7 +344,7 @@ export function SectionList({ projectId, sections: initialSections }: SectionLis
                 </button>
               </div>
               {!anchorNavCollapsed && (
-                <div className="max-h-[calc(100dvh-12rem)] overflow-y-auto">
+                <div className="app-scrollbar max-h-[calc(100dvh-12rem)] overflow-y-auto">
                   {sections.map((section, index) => (
                     <button
                       key={section.id}

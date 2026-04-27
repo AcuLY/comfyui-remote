@@ -34,23 +34,29 @@ body {
 
 /* 自定义滚动条样式（用于内部可滚动容器） */
 /* Firefox */
-* {
+:where(html, body, *, .app-scrollbar) {
   scrollbar-width: thin;
   scrollbar-color: rgba(113, 113, 122, 0.7) rgba(255, 255, 255, 0.03);
 }
 
 /* WebKit (Chrome/Safari/Edge) */
-*::-webkit-scrollbar {
+::-webkit-scrollbar,
+*::-webkit-scrollbar,
+.app-scrollbar::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
-*::-webkit-scrollbar-track {
+::-webkit-scrollbar-track,
+*::-webkit-scrollbar-track,
+.app-scrollbar::-webkit-scrollbar-track {
   background: rgba(255, 255, 255, 0.025);
   border-radius: 999px;
 }
 
-*::-webkit-scrollbar-thumb {
+::-webkit-scrollbar-thumb,
+*::-webkit-scrollbar-thumb,
+.app-scrollbar::-webkit-scrollbar-thumb {
   min-height: 2rem;
   border: 2px solid transparent;
   border-radius: 999px;
@@ -58,12 +64,16 @@ body {
   background-clip: padding-box;
 }
 
-*::-webkit-scrollbar-thumb:hover {
+::-webkit-scrollbar-thumb:hover,
+*::-webkit-scrollbar-thumb:hover,
+.app-scrollbar::-webkit-scrollbar-thumb:hover {
   background: rgba(161, 161, 170, 0.82);
   background-clip: padding-box;
 }
 
-*::-webkit-scrollbar-corner {
+::-webkit-scrollbar-corner,
+*::-webkit-scrollbar-corner,
+.app-scrollbar::-webkit-scrollbar-corner {
   background: transparent;
 }
 
@@ -72,6 +82,8 @@ body {
 }
 
 .scrollbar-none::-webkit-scrollbar {
+  width: 0;
+  height: 0;
   display: none;
 }
 
