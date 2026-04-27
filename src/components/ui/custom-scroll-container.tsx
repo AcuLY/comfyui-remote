@@ -20,34 +20,38 @@ export function CustomScrollContainer({
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
+  const thumbRef = useRef<HTMLDivElement>(null);
 
-  const [thumbH, setThumbH] = useState(0);
-  const [thumbY, setThumbY] = useState(0);
+  const [showTrack, setShowTrack] = useState(false);
   const [visible, setVisible] = useState(false);
   const [dragging, setDragging] = useState(false);
 
   const hideTimerRef = useRef<number>(0);
 
-  // ── Thumb geometry ──────────────────────────────────────────────────
+  // ── Thumb geometry (direct DOM writes, no re-render) ──────────────
 
   const updateThumb = useCallback(() => {
     const el = containerRef.current;
-    if (!el) return;
+    const thumb = thumbRef.current;
+    if (!el || !thumb) return;
 
     const { scrollHeight, clientHeight, scrollTop } = el;
     if (scrollHeight <= clientHeight) {
-      setThumbH(0);
+      thumb.style.height = "0px";
+      setShowTrack(false);
       return;
     }
 
-    const trackH = clientHeight;
     const ratio = clientHeight / scrollHeight;
-    const tH = Math.max(ratio * trackH, MIN_THUMB_PX);
-    setThumbH(tH);
+    const tH = Math.max(ratio * clientHeight, MIN_THUMB_PX);
+    thumb.style.height = `${tH}px`;
 
     const maxScroll = scrollHeight - clientHeight;
-    const maxThumbY = trackH - tH;
-    setThumbY(maxScroll > 0 ? (scrollTop / maxScroll) * maxThumbY : 0);
+    const maxThumbY = clientHeight - tH;
+    const tY = maxScroll > 0 ? (scrollTop / maxScroll) * maxThumbY : 0;
+    thumb.style.transform = `translateY(${tY}px)`;
+
+    setShowTrack(true);
   }, []);
 
   // ── Visibility ──────────────────────────────────────────────────────
@@ -162,8 +166,6 @@ export function CustomScrollContainer({
 
   // ── Render ──────────────────────────────────────────────────────────
 
-  const showTrack = thumbH > 0;
-
   return (
     <As
       {...rest}
@@ -185,6 +187,7 @@ export function CustomScrollContainer({
           }}
         >
           <div
+            ref={thumbRef}
             onPointerDown={handleThumbPointerDown}
             onPointerMove={handleThumbPointerMove}
             onPointerUp={handleThumbPointerUp}
@@ -193,8 +196,8 @@ export function CustomScrollContainer({
               position: "absolute",
               right: 2,
               width: 6,
-              height: thumbH,
-              transform: `translateY(${thumbY}px)`,
+              height: 0,
+              transform: "translateY(0px)",
               background: "rgba(113, 113, 122, 0.72)",
               transition: dragging ? "none" : "transform 80ms ease-out, background 150ms ease",
               cursor: "grab",
