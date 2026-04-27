@@ -109,42 +109,26 @@ export function SectionSwitchNavigation({
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => navigate(prevHref)}
-        disabled={!prevHref}
-        aria-label="Previous section"
-        className="fixed left-0 top-0 z-30 hidden h-dvh w-14 items-center justify-center border-r border-white/5 bg-black/10 text-zinc-500 opacity-50 backdrop-blur-sm transition hover:bg-sky-500/10 hover:text-sky-200 hover:opacity-100 disabled:pointer-events-none disabled:opacity-10 lg:flex xl:w-20"
-      >
-        <ChevronLeft className="size-7" />
-      </button>
-      <button
-        type="button"
-        onClick={() => navigate(nextHref)}
-        disabled={!nextHref}
-        aria-label="Next section"
-        className="fixed right-0 top-0 z-30 hidden h-dvh w-14 items-center justify-center border-l border-white/5 bg-black/10 text-zinc-500 opacity-50 backdrop-blur-sm transition hover:bg-sky-500/10 hover:text-sky-200 hover:opacity-100 disabled:pointer-events-none disabled:opacity-10 lg:flex xl:w-20"
-      >
-        <ChevronRight className="size-7" />
-      </button>
-      <div className="fixed bottom-5 left-1/2 z-40 flex -translate-x-1/2 items-center gap-3 rounded-full border border-white/10 bg-zinc-950/90 p-1.5 shadow-lg backdrop-blur lg:hidden">
+      <div className="col-start-1 row-start-1 min-w-0 border-r border-white/5 bg-black/10">
         <button
           type="button"
           onClick={() => navigate(prevHref)}
           disabled={!prevHref}
           aria-label="Previous section"
-          className="flex size-10 items-center justify-center rounded-full text-zinc-300 transition hover:bg-white/10 hover:text-white disabled:pointer-events-none disabled:opacity-25"
+          className="sticky top-0 flex h-dvh w-full items-center justify-center text-zinc-500 opacity-60 transition hover:bg-sky-500/10 hover:text-sky-200 hover:opacity-100 disabled:pointer-events-none disabled:opacity-15"
         >
-          <ChevronLeft className="size-5" />
+          <ChevronLeft className="size-6 xl:size-7" />
         </button>
+      </div>
+      <div className="col-start-3 row-start-1 min-w-0 border-l border-white/5 bg-black/10">
         <button
           type="button"
           onClick={() => navigate(nextHref)}
           disabled={!nextHref}
           aria-label="Next section"
-          className="flex size-10 items-center justify-center rounded-full text-zinc-300 transition hover:bg-white/10 hover:text-white disabled:pointer-events-none disabled:opacity-25"
+          className="sticky top-0 flex h-dvh w-full items-center justify-center text-zinc-500 opacity-60 transition hover:bg-sky-500/10 hover:text-sky-200 hover:opacity-100 disabled:pointer-events-none disabled:opacity-15"
         >
-          <ChevronRight className="size-5" />
+          <ChevronRight className="size-6 xl:size-7" />
         </button>
       </div>
     </>

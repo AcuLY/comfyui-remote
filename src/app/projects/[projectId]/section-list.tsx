@@ -307,133 +307,115 @@ export function SectionList({ projectId, sections: initialSections }: SectionLis
   }
 
   return (
-    <>
+    <div className="grid grid-cols-1 gap-3 lg:grid-cols-[12rem_minmax(0,1fr)] xl:grid-cols-[13.5rem_minmax(0,1fr)]">
       {sections.length > 0 && (
-        <aside className="fixed right-4 top-24 z-30 hidden max-h-[calc(100dvh-8rem)] xl:block">
-          {anchorNavCollapsed ? (
+        <aside className="hidden min-w-0 border-r border-white/5 bg-black/10 pr-3 lg:block">
+          <div className="sticky top-4 space-y-3">
             <button
               type="button"
-              onClick={() => setAnchorNavCollapsed(false)}
-              className="flex size-10 items-center justify-center rounded-full border border-white/10 bg-zinc-900/90 text-zinc-300 shadow-lg backdrop-blur transition hover:bg-zinc-800 hover:text-white"
-              title="展开小节导航"
-              aria-label="展开小节导航"
+              onClick={handleToggle}
+              className="flex w-full items-center gap-2 border-b border-white/10 px-2 pb-3 pt-1 text-left text-xs text-zinc-300 transition hover:text-white"
+              title={compact ? "展开视图" : "紧凑视图"}
             >
-              <ChevronLeft className="size-4" />
+              {compact ? <LayoutGrid className="size-4 shrink-0" /> : <LayoutList className="size-4 shrink-0" />}
+              <span className="min-w-0 flex-1 truncate">{compact ? "展开视图" : "紧凑视图"}</span>
             </button>
-          ) : (
-            <div className="flex w-56 flex-col overflow-hidden rounded-xl border border-white/10 bg-zinc-950/90 shadow-xl backdrop-blur">
-              <div className="flex items-center justify-between gap-2 border-b border-white/10 px-3 py-2">
-                <div className="min-w-0 text-xs font-medium text-zinc-200">小节导航</div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2 px-2">
+                <div className="min-w-0 truncate text-xs font-medium text-zinc-200">小节导航</div>
                 <button
                   type="button"
-                  onClick={() => setAnchorNavCollapsed(true)}
+                  onClick={() => setAnchorNavCollapsed((prev) => !prev)}
                   className="rounded p-1 text-zinc-500 transition hover:bg-white/10 hover:text-zinc-200"
-                  title="收起小节导航"
-                  aria-label="收起小节导航"
+                  title={anchorNavCollapsed ? "展开小节导航" : "收起小节导航"}
+                  aria-label={anchorNavCollapsed ? "展开小节导航" : "收起小节导航"}
                 >
-                  <ChevronRight className="size-3.5" />
+                  {anchorNavCollapsed ? <ChevronRight className="size-3.5" /> : <ChevronLeft className="size-3.5" />}
                 </button>
               </div>
-              <div className="max-h-[calc(100dvh-11.5rem)] overflow-y-auto p-1.5">
-                {sections.map((section, index) => (
-                  <button
-                    key={section.id}
-                    type="button"
-                    onClick={() => scrollToSection(section.id)}
-                    className="flex w-full items-start gap-2 rounded-lg px-2 py-1.5 text-left text-[11px] text-zinc-400 transition hover:bg-white/[0.06] hover:text-zinc-100"
-                    title={`${index + 1}. ${section.name}`}
-                  >
-                    <span className="w-6 shrink-0 text-right text-zinc-600">{index + 1}</span>
-                    <span className="min-w-0 flex-1 truncate">{section.name}</span>
-                  </button>
-                ))}
-              </div>
+              {!anchorNavCollapsed && (
+                <div className="max-h-[calc(100dvh-12rem)] overflow-y-auto">
+                  {sections.map((section, index) => (
+                    <button
+                      key={section.id}
+                      type="button"
+                      onClick={() => scrollToSection(section.id)}
+                      className="flex w-full items-start gap-2 px-2 py-1.5 text-left text-[11px] text-zinc-400 transition hover:bg-white/[0.06] hover:text-zinc-100"
+                      title={`${index + 1}. ${section.name}`}
+                    >
+                      <span className="w-6 shrink-0 text-right text-zinc-600">{index + 1}</span>
+                      <span className="min-w-0 flex-1 truncate">{section.name}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </aside>
       )}
 
-      <DndContext id={dndId} sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <SortableContext items={sections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
-          {compact && sections.length > 0 && (
-            <div className="mb-2 flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={selectedIds.size === sections.length ? deselectAll : selectAll}
-                  className="flex items-center gap-1.5 text-xs text-zinc-400 transition hover:text-white"
-                >
-                  {selectedIds.size === sections.length ? (
-                    <CheckSquare className="size-3.5 text-sky-400" />
-                  ) : (
-                    <Square className="size-3.5" />
+      <div className="min-w-0">
+        <DndContext id={dndId} sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={sections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
+            {compact && sections.length > 0 && (
+              <div className="mb-2 flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={selectedIds.size === sections.length ? deselectAll : selectAll}
+                    className="flex items-center gap-1.5 text-xs text-zinc-400 transition hover:text-white"
+                  >
+                    {selectedIds.size === sections.length ? (
+                      <CheckSquare className="size-3.5 text-sky-400" />
+                    ) : (
+                      <Square className="size-3.5" />
+                    )}
+                    {selectedIds.size === sections.length ? "取消全选" : "全选"}
+                  </button>
+                  {selectedIds.size > 0 && (
+                    <span className="text-xs text-zinc-500">已选 {selectedIds.size} 项</span>
                   )}
-                  {selectedIds.size === sections.length ? "取消全选" : "全选"}
-                </button>
+                </div>
                 {selectedIds.size > 0 && (
-                  <span className="text-xs text-zinc-500">已选 {selectedIds.size} 项</span>
+                  <button
+                    type="button"
+                    disabled={isDeleting}
+                    onClick={handleBatchDelete}
+                    className="flex items-center gap-1.5 rounded-lg border border-rose-500/20 bg-rose-500/10 px-3 py-1.5 text-xs text-rose-300 transition hover:bg-rose-500/20 disabled:opacity-50"
+                  >
+                    <Trash2 className="size-3.5" />
+                    {isDeleting ? "删除中…" : "删除"}
+                  </button>
                 )}
               </div>
-              {selectedIds.size > 0 && (
-                <button
-                  type="button"
-                  disabled={isDeleting}
-                  onClick={handleBatchDelete}
-                  className="flex items-center gap-1.5 rounded-lg border border-rose-500/20 bg-rose-500/10 px-3 py-1.5 text-xs text-rose-300 transition hover:bg-rose-500/20 disabled:opacity-50"
-                >
-                  <Trash2 className="size-3.5" />
-                  {isDeleting ? "删除中…" : "删除"}
-                </button>
+            )}
+            <div className={`${compact ? "grid grid-cols-1 gap-1.5 justify-items-center md:grid-cols-2" : "grid grid-cols-1 gap-3 justify-items-center md:grid-cols-2"} ${isPending ? "opacity-60" : ""}`}>
+              {sections.map((section, index) =>
+                compact ? (
+                  <SortableCompactCard
+                    key={section.id}
+                    section={section}
+                    projectId={projectId}
+                    index={index}
+                    setCardRef={setCardRef}
+                    isSelected={selectedIds.has(section.id)}
+                    onToggleSelect={toggleSelect}
+                  />
+                ) : (
+                  <SortableSectionCard
+                    key={section.id}
+                    section={section}
+                    projectId={projectId}
+                    index={index}
+                    setCardRef={setCardRef}
+                  />
+                ),
               )}
             </div>
-          )}
-          <div className={`${compact ? "grid grid-cols-1 gap-1.5 justify-items-center md:grid-cols-2" : "grid grid-cols-1 gap-3 justify-items-center md:grid-cols-2"} ${isPending ? "opacity-60" : ""}`}>
-            {sections.map((section, index) =>
-              compact ? (
-                <SortableCompactCard
-                  key={section.id}
-                  section={section}
-                  projectId={projectId}
-                  index={index}
-                  setCardRef={setCardRef}
-                  isSelected={selectedIds.has(section.id)}
-                  onToggleSelect={toggleSelect}
-                />
-              ) : (
-                <SortableSectionCard
-                  key={section.id}
-                  section={section}
-                  projectId={projectId}
-                  index={index}
-                  setCardRef={setCardRef}
-                />
-              ),
-            )}
-          </div>
-        </SortableContext>
-      </DndContext>
-
-      {/* Floating toggle button — only show when there are enough sections */}
-      {sections.length > 3 && (
-        <button
-          type="button"
-          onClick={handleToggle}
-          className="fixed bottom-6 right-6 z-40 flex items-center gap-2 rounded-full border border-white/10 bg-zinc-900/90 px-4 py-2.5 text-xs font-medium text-zinc-200 shadow-lg backdrop-blur transition hover:bg-zinc-800 active:scale-95"
-        >
-          {compact ? (
-            <>
-              <LayoutGrid className="size-4" />
-              展开视图
-            </>
-          ) : (
-            <>
-              <LayoutList className="size-4" />
-              紧凑视图
-            </>
-          )}
-        </button>
-      )}
-    </>
+          </SortableContext>
+        </DndContext>
+      </div>
+    </div>
   );
 }
 

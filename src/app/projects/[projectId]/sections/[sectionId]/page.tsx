@@ -257,13 +257,14 @@ export default async function SectionEditPage({
   const changeHistory = await getSectionChangeHistory(sectionId);
 
   return (
-    <div className="space-y-4">
+    <div className="-mx-4 grid min-w-[760px] grid-cols-[3.25rem_minmax(0,1fr)_3.25rem] sm:-mx-6 lg:-mx-8 xl:grid-cols-[5rem_minmax(0,1fr)_5rem]">
       <SectionSwitchNavigation
         projectId={projectId}
         sectionId={sectionId}
         prevSectionId={prevSection?.id ?? null}
         nextSectionId={nextSection?.id ?? null}
       />
+      <div className="col-start-2 min-w-0 space-y-4 px-3 sm:px-4 lg:px-6">
       <div className="flex items-center justify-between gap-3">
         <Link
           href={`/projects/${projectId}#section-${sectionId}`}
@@ -345,6 +346,7 @@ export default async function SectionEditPage({
         </div>
       </SectionCard>
       <SectionChangeHistory history={changeHistory} />
+      </div>
     </div>
   );
 }
