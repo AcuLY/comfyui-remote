@@ -48,9 +48,9 @@ export function CopySectionButton({ sectionId }: { sectionId: string }) {
     <button
       disabled={isPending}
       onClick={handleCopy}
-      className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-zinc-400 transition hover:bg-white/[0.08] disabled:opacity-50"
+      className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-[11px] text-zinc-400 transition hover:bg-white/[0.08] disabled:opacity-50"
     >
-      <Copy className="size-3.5" /> {isPending ? "复制中…" : "复制"}
+      <Copy className="size-3" /> {isPending ? "复制中…" : "复制"}
     </button>
   );
 }
@@ -74,9 +74,9 @@ export function DeleteSectionButton({ sectionId, sectionName }: { sectionId: str
     <button
       disabled={isPending}
       onClick={handleDelete}
-      className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-zinc-500 transition hover:border-rose-500/20 hover:bg-rose-500/10 hover:text-rose-300 disabled:opacity-50"
+      className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-[11px] text-zinc-500 transition hover:border-rose-500/20 hover:bg-rose-500/10 hover:text-rose-300 disabled:opacity-50"
     >
-      <Trash2 className="size-3.5" /> {isPending ? "删除中…" : "删除"}
+      <Trash2 className="size-3" /> {isPending ? "删除中…" : "删除"}
     </button>
   );
 }

@@ -312,11 +312,11 @@ export function SectionList({ projectId, sections: initialSections }: SectionLis
       className={
         anchorNavCollapsed
           ? "grid grid-cols-[3rem_minmax(0,1fr)] gap-3 sm:grid-cols-[3.25rem_minmax(0,1fr)]"
-          : "grid grid-cols-[6rem_minmax(0,1fr)] gap-3 sm:grid-cols-[10rem_minmax(0,1fr)] lg:grid-cols-[12rem_minmax(0,1fr)] xl:grid-cols-[13.5rem_minmax(0,1fr)]"
+          : "grid grid-cols-[5rem_minmax(0,1fr)] gap-3 sm:grid-cols-[8rem_minmax(0,1fr)] lg:grid-cols-[9.5rem_minmax(0,1fr)] xl:grid-cols-[11rem_minmax(0,1fr)]"
       }
     >
       {sections.length > 0 && (
-        <aside className={`min-w-0 border-r border-white/5 bg-black/10 ${anchorNavCollapsed ? "pr-1" : "pr-2 sm:pr-3"}`}>
+        undefined
           <div className="sticky top-4 space-y-3">
             <button
               type="button"
@@ -351,10 +351,10 @@ export function SectionList({ projectId, sections: initialSections }: SectionLis
                       key={section.id}
                       type="button"
                       onClick={() => scrollToSection(section.id)}
-                    className="flex w-full items-start gap-1 px-0.5 py-1.5 text-left text-[11px] text-zinc-400 transition hover:bg-white/[0.06] hover:text-zinc-100 sm:gap-2 sm:px-2"
+                    className="flex w-full items-start gap-1 py-1 text-left text-[11px] text-zinc-400 transition hover:bg-white/[0.06] hover:text-zinc-100"
                       title={`${index + 1}. ${section.name}`}
                     >
-                      <span className="w-5 shrink-0 text-right text-zinc-600">{index + 1}</span>
+                      <span className="w-4 shrink-0 text-right text-zinc-600">{index + 1}</span>
                       <span className="min-w-0 flex-1 truncate">{section.name}</span>
                     </button>
                   ))}
@@ -551,7 +551,7 @@ function SortableSectionCard({
       }}
       style={style}
       id={`section-${section.id}`}
-      className={`w-full rounded-xl border border-white/10 bg-white/[0.03] p-3.5 md:max-w-[500px] ${isDragging ? "shadow-lg ring-2 ring-sky-500/30" : ""}`}
+      className={`w-full rounded-xl border border-white/10 bg-white/[0.03] p-2.5 md:max-w-[500px] ${isDragging ? "shadow-lg ring-2 ring-sky-500/30" : ""}`}
     >
       {/* 主内容区：拖动手柄 + 信息 */}
       <div className="flex items-center gap-3">
@@ -570,14 +570,14 @@ function SortableSectionCard({
           className="min-w-0 flex-1 cursor-pointer"
         >
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-semibold text-white">
+            <span className="text-xs font-medium text-white">
               {index + 1}. {section.name}
             </span>
           </div>
         </Link>
 
         {/* 桌面端：复制、删除按钮（紧凑） */}
-        <div className="hidden items-center gap-2 sm:flex" onClick={(e) => e.stopPropagation()}>
+        <div className="hidden items-center gap-1.5 sm:flex" onClick={(e) => e.stopPropagation()}>
           <CopySectionButton sectionId={section.id} />
           <DeleteSectionButton sectionId={section.id} sectionName={section.name} />
         </div>
