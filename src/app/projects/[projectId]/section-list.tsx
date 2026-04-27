@@ -316,7 +316,7 @@ export function SectionList({ projectId, sections: initialSections }: SectionLis
       }
     >
       {sections.length > 0 && (
-        undefined
+        <aside className={`min-w-0 border-r border-white/5 bg-black/10 ${anchorNavCollapsed ? "pr-1" : "pr-1"}`}>
           <div className="sticky top-4 space-y-3">
             <button
               type="button"
