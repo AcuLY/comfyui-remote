@@ -569,11 +569,9 @@ function SortableSectionCard({
           href={`/projects/${projectId}/sections/${section.id}`}
           className="min-w-0 flex-1 cursor-pointer"
         >
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-medium text-white">
-              {index + 1}. {section.name}
-            </span>
-          </div>
+          <span className="text-sm font-medium text-white line-clamp-2">
+            {index + 1}. {section.name}
+          </span>
         </Link>
 
         {/* 桌面端：复制、删除按钮（紧凑） */}
