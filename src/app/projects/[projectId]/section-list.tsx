@@ -575,7 +575,7 @@ function SortableSectionCard({
         </Link>
 
         {/* 复制、删除按钮 */}
-        <div className="flex shrink-0 items-center gap-1.5" onClick={(e) => e.stopPropagation()}>>
+        <div className="flex shrink-0 items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
           <CopySectionButton sectionId={section.id} />
           <DeleteSectionButton sectionId={section.id} sectionName={section.name} />
         </div>
