@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { headers } from "next/headers";
 import { AppShell } from "@/components/app-shell";
@@ -19,6 +19,10 @@ const geistMono = localFont({
 export const metadata: Metadata = {
   title: "ComfyUI Manager",
   description: "Mobile-first ComfyUI project, review, and asset manager.",
+};
+
+export const viewport: Viewport = {
+  viewportFit: "cover",
 };
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

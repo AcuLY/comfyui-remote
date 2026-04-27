@@ -5,7 +5,7 @@ import { CustomScrollContainer } from "@/components/ui/custom-scroll-container";
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex min-h-[100dvh] flex-col">
       <Toaster
         theme="dark"
         position="top-right"
@@ -15,7 +15,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         }}
       />
       <CustomScrollContainer as="main" id="app-main-scroll" className="min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto flex max-w-5xl flex-col gap-3 px-0 py-3 pb-24 sm:px-4">{children}</div>
+        <div className="mx-auto flex max-w-5xl flex-col gap-3 px-4 py-3 pb-24">{children}</div>
       </CustomScrollContainer>
       <PersistentBottomNav />
     </div>

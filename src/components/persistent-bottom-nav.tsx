@@ -131,7 +131,7 @@ export function PersistentBottomNav() {
   }, [currentUrl]);
 
   return (
-    <nav className="shrink-0 border-t border-white/10 bg-[var(--panel)]/95 backdrop-blur">
+    <nav className="shrink-0 border-t border-white/10 bg-[var(--panel)]/95 backdrop-blur pb-[env(safe-area-inset-bottom)]">
       <div className="mx-auto grid max-w-5xl grid-cols-6 gap-1 px-2 py-2">
         {navItems.map(({ href, label, icon: Icon }) => {
           const active = pathname === href || pathname.startsWith(`${href}/`);
