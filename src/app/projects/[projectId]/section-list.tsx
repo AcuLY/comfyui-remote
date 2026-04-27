@@ -312,7 +312,7 @@ export function SectionList({ projectId, sections: initialSections }: SectionLis
       className={
         anchorNavCollapsed
           ? "grid grid-cols-[3rem_minmax(0,1fr)] gap-3 sm:grid-cols-[3.25rem_minmax(0,1fr)]"
-          : "grid grid-cols-[8.5rem_minmax(0,1fr)] gap-3 sm:grid-cols-[10rem_minmax(0,1fr)] lg:grid-cols-[12rem_minmax(0,1fr)] xl:grid-cols-[13.5rem_minmax(0,1fr)]"
+          : "grid grid-cols-[6rem_minmax(0,1fr)] gap-3 sm:grid-cols-[10rem_minmax(0,1fr)] lg:grid-cols-[12rem_minmax(0,1fr)] xl:grid-cols-[13.5rem_minmax(0,1fr)]"
       }
     >
       {sections.length > 0 && (
@@ -351,10 +351,10 @@ export function SectionList({ projectId, sections: initialSections }: SectionLis
                       key={section.id}
                       type="button"
                       onClick={() => scrollToSection(section.id)}
-                    className="flex w-full items-start gap-1.5 px-1.5 py-1.5 text-left text-[11px] text-zinc-400 transition hover:bg-white/[0.06] hover:text-zinc-100 sm:gap-2 sm:px-2"
+                    className="flex w-full items-start gap-1 px-0.5 py-1.5 text-left text-[11px] text-zinc-400 transition hover:bg-white/[0.06] hover:text-zinc-100 sm:gap-2 sm:px-2"
                       title={`${index + 1}. ${section.name}`}
                     >
-                      <span className="w-6 shrink-0 text-right text-zinc-600">{index + 1}</span>
+                      <span className="w-5 shrink-0 text-right text-zinc-600">{index + 1}</span>
                       <span className="min-w-0 flex-1 truncate">{section.name}</span>
                     </button>
                   ))}
