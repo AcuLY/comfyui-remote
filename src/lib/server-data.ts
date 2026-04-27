@@ -1,6 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import { toImageUrl } from "@/lib/image-url";
 import type { QueueRun, RunningRun, FailedRun, ReviewGroup, ReviewImage, ReviewStatus, ProjectCard, TrashItem, LoraAsset } from "@/lib/types";
+import {
+  groupPresetGroupHistory,
+  groupPresetHistory,
+  type PresetChangeDimension,
+  type PresetGroupChangeDimension,
+  type PresetHistoryEntry,
+} from "@/server/services/preset-change-history-service";
 
 // Re-export types used by frontend components (originally from backend branch)
 export type { ProjectCreateOptions } from "@/server/repositories/project-repository";
@@ -749,6 +756,7 @@ export type PresetCategoryFull = PresetCategoryItem & {
 
 export type PresetFull = PresetItem & {
   variants: PresetVariantItem[];
+  changeHistory: Record<PresetChangeDimension, PresetHistoryEntry<PresetChangeDimension>[]>;
 };
 
 export async function getPresetCategoriesWithPresets(): Promise<PresetCategoryFull[]> {
@@ -770,6 +778,10 @@ export async function getPresetCategoriesWithPresets(): Promise<PresetCategoryFu
             where: { isActive: true },
             orderBy: { sortOrder: "asc" },
           },
+          changeLogs: {
+            orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+            take: 20,
+          },
         },
       },
       groups: {
@@ -777,6 +789,10 @@ export async function getPresetCategoriesWithPresets(): Promise<PresetCategoryFu
         orderBy: { sortOrder: "asc" },
         include: {
           members: { orderBy: { sortOrder: "asc" } },
+          changeLogs: {
+            orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+            take: 20,
+          },
         },
       },
       folders: {
@@ -838,6 +854,7 @@ export async function getPresetCategoriesWithPresets(): Promise<PresetCategoryFu
       notes: p.notes,
       folderId: p.folderId,
       variantCount: p._count.variants,
+      changeHistory: groupPresetHistory(p.changeLogs),
       variants: p.variants.map((v) => ({
         id: v.id,
         presetId: v.presetId,
@@ -860,6 +877,7 @@ export async function getPresetCategoriesWithPresets(): Promise<PresetCategoryFu
       slug: g.slug,
       sortOrder: g.sortOrder,
       folderId: g.folderId,
+      changeHistory: groupPresetGroupHistory(g.changeLogs),
       members: g.members.map((m) => ({
         id: m.id,
         presetId: m.presetId,
@@ -1041,6 +1059,7 @@ export type PresetGroupItem = {
   slug: string;
   sortOrder: number;
   folderId: string | null;
+  changeHistory: Record<PresetGroupChangeDimension, PresetHistoryEntry<PresetGroupChangeDimension>[]>;
   members: Array<{
     id: string;
     presetId: string | null;
@@ -1061,6 +1080,10 @@ export async function getPresetGroups(): Promise<PresetGroupItem[]> {
     include: {
       members: {
         orderBy: { sortOrder: "asc" },
+      },
+      changeLogs: {
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        take: 20,
       },
     },
   });
@@ -1100,6 +1123,7 @@ export async function getPresetGroups(): Promise<PresetGroupItem[]> {
     slug: g.slug,
     sortOrder: g.sortOrder,
     folderId: g.folderId,
+    changeHistory: groupPresetGroupHistory(g.changeLogs),
     members: g.members.map((m) => ({
       id: m.id,
       presetId: m.presetId,

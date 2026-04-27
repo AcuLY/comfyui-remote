@@ -46,6 +46,7 @@ model Preset {
   category        PresetCategory  @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   folder          PresetFolder?   @relation(fields: [folderId], references: [id], onDelete: SetNull)
   variants        PresetVariant[]
+  changeLogs      PresetChangeLog[]
 
   @@unique([categoryId, slug])
   @@index([categoryId, sortOrder])
@@ -85,9 +86,36 @@ model PresetGroup {
   category    PresetCategory       @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   folder      PresetFolder?        @relation(fields: [folderId], references: [id], onDelete: SetNull)
   members     PresetGroupMember[]
+  changeLogs  PresetGroupChangeLog[]
 
   @@unique([categoryId, slug])
   @@index([categoryId, sortOrder])
+}
+
+model PresetChangeLog {
+  id        String   @id @default(cuid())
+  presetId  String
+  dimension String   // "meta" | "variants"
+  title     String
+  before    Json?
+  after     Json?
+  createdAt DateTime @default(now())
+  preset    Preset   @relation(fields: [presetId], references: [id], onDelete: Cascade)
+
+  @@index([presetId, dimension, createdAt])
+}
+
+model PresetGroupChangeLog {
+  id            String      @id @default(cuid())
+  presetGroupId String
+  dimension     String      // "meta" | "members"
+  title         String
+  before        Json?
+  after         Json?
+  createdAt     DateTime    @default(now())
+  presetGroup   PresetGroup @relation(fields: [presetGroupId], references: [id], onDelete: Cascade)
+
+  @@index([presetGroupId, dimension, createdAt])
 }
 
 model PresetGroupMember {

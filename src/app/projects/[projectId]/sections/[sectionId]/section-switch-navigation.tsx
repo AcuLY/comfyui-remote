@@ -127,6 +127,26 @@ export function SectionSwitchNavigation({
       >
         <ChevronRight className="size-7" />
       </button>
+      <div className="fixed bottom-5 left-1/2 z-40 flex -translate-x-1/2 items-center gap-3 rounded-full border border-white/10 bg-zinc-950/90 p-1.5 shadow-lg backdrop-blur lg:hidden">
+        <button
+          type="button"
+          onClick={() => navigate(prevHref)}
+          disabled={!prevHref}
+          aria-label="Previous section"
+          className="flex size-10 items-center justify-center rounded-full text-zinc-300 transition hover:bg-white/10 hover:text-white disabled:pointer-events-none disabled:opacity-25"
+        >
+          <ChevronLeft className="size-5" />
+        </button>
+        <button
+          type="button"
+          onClick={() => navigate(nextHref)}
+          disabled={!nextHref}
+          aria-label="Next section"
+          className="flex size-10 items-center justify-center rounded-full text-zinc-300 transition hover:bg-white/10 hover:text-white disabled:pointer-events-none disabled:opacity-25"
+        >
+          <ChevronRight className="size-5" />
+        </button>
+      </div>
     </>
   );
 }

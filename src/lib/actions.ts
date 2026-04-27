@@ -23,6 +23,10 @@ import {
 import { env } from "@/lib/env";
 import { recordSectionChange } from "@/server/services/section-change-history-service";
 import {
+  recordPresetChange,
+  recordPresetGroupChange,
+} from "@/server/services/preset-change-history-service";
+import {
   parseSectionLoraConfig,
   serializeSectionLoraConfig,
   type LoraEntry,
@@ -609,6 +613,82 @@ export type PresetVariantInput = {
   sortOrder?: number;
 };
 
+function presetMetaSnapshot(preset: {
+  name: string;
+  slug: string;
+  notes: string | null;
+  folderId: string | null;
+  isActive: boolean;
+  sortOrder: number;
+}) {
+  return {
+    name: preset.name,
+    slug: preset.slug,
+    notes: preset.notes,
+    folderId: preset.folderId,
+    isActive: preset.isActive,
+    sortOrder: preset.sortOrder,
+  };
+}
+
+function presetVariantSnapshot(variant: {
+  name: string;
+  slug: string;
+  prompt: string;
+  negativePrompt: string | null;
+  lora1: unknown;
+  lora2: unknown;
+  defaultParams: unknown;
+  linkedVariants: unknown;
+  sortOrder: number;
+  isActive: boolean;
+}) {
+  return {
+    name: variant.name,
+    slug: variant.slug,
+    prompt: variant.prompt,
+    negativePrompt: variant.negativePrompt,
+    lora1: variant.lora1,
+    lora2: variant.lora2,
+    defaultParams: variant.defaultParams,
+    linkedVariants: variant.linkedVariants,
+    sortOrder: variant.sortOrder,
+    isActive: variant.isActive,
+  };
+}
+
+function groupMetaSnapshot(group: {
+  name: string;
+  slug: string;
+  folderId: string | null;
+  isActive: boolean;
+  sortOrder: number;
+}) {
+  return {
+    name: group.name,
+    slug: group.slug,
+    folderId: group.folderId,
+    isActive: group.isActive,
+    sortOrder: group.sortOrder,
+  };
+}
+
+async function groupMembersSnapshot(groupId: string) {
+  const members = await prisma.presetGroupMember.findMany({
+    where: { groupId },
+    orderBy: { sortOrder: "asc" },
+    select: {
+      id: true,
+      presetId: true,
+      variantId: true,
+      subGroupId: true,
+      slotCategoryId: true,
+      sortOrder: true,
+    },
+  });
+  return members;
+}
+
 export async function createPreset(input: PresetInput) {
   if (input.sortOrder === undefined) {
     const maxOrder = await prisma.preset.aggregate({
@@ -637,6 +717,14 @@ export async function createPreset(input: PresetInput) {
     preset = await prisma.preset.create({ data: input });
   }
 
+  await recordPresetChange({
+    presetId: preset.id,
+    dimension: "meta",
+    title: existing && !existing.isActive ? "恢复预制" : "创建预制",
+    before: null,
+    after: presetMetaSnapshot(preset),
+  });
+
   revalidatePath("/assets/presets");
   revalidatePath("/projects/new");
   return preset;
@@ -662,19 +750,37 @@ export async function createPresetVariant(input: PresetVariantInput) {
         : Prisma.DbNull,
     },
   });
+  await recordPresetChange({
+    presetId: variant.presetId,
+    dimension: "variants",
+    title: `创建变体：${variant.name}`,
+    before: null,
+    after: presetVariantSnapshot(variant),
+  });
   revalidatePath("/assets/presets");
   revalidatePath("/projects/new");
   return variant;
 }
 
 export async function updatePreset(id: string, input: Partial<PresetInput>) {
+  const before = await prisma.preset.findUnique({ where: { id } });
   const preset = await prisma.preset.update({ where: { id }, data: input });
+  if (before) {
+    await recordPresetChange({
+      presetId: id,
+      dimension: "meta",
+      title: "更新预制信息",
+      before: presetMetaSnapshot(before),
+      after: presetMetaSnapshot(preset),
+    });
+  }
   revalidatePath("/assets/presets");
   revalidatePath("/projects/new");
   return preset;
 }
 
 export async function updatePresetVariant(id: string, input: Partial<PresetVariantInput>) {
+  const before = await prisma.presetVariant.findUnique({ where: { id } });
   const { presetId: _pid, lora1, lora2, defaultParams, linkedVariants, ...rest } = input;
   const data: Record<string, unknown> = { ...rest };
   if (lora1 !== undefined) data.lora1 = toJsonValue(lora1) ?? Prisma.DbNull;
@@ -690,6 +796,15 @@ export async function updatePresetVariant(id: string, input: Partial<PresetVaria
   }
 
   const variant = await prisma.presetVariant.update({ where: { id }, data });
+  if (before) {
+    await recordPresetChange({
+      presetId: variant.presetId,
+      dimension: "variants",
+      title: `更新变体：${variant.name}`,
+      before: presetVariantSnapshot(before),
+      after: presetVariantSnapshot(variant),
+    });
+  }
   revalidatePath("/assets/presets");
   revalidatePath("/projects/new");
   return variant;
@@ -697,14 +812,34 @@ export async function updatePresetVariant(id: string, input: Partial<PresetVaria
 
 export async function deletePreset(id: string) {
   // Soft delete: set isActive = false
-  await prisma.preset.update({ where: { id }, data: { isActive: false } });
+  const before = await prisma.preset.findUnique({ where: { id } });
+  const preset = await prisma.preset.update({ where: { id }, data: { isActive: false } });
+  if (before) {
+    await recordPresetChange({
+      presetId: id,
+      dimension: "meta",
+      title: "删除预制",
+      before: presetMetaSnapshot(before),
+      after: presetMetaSnapshot(preset),
+    });
+  }
   revalidatePath("/assets/presets");
   revalidatePath("/projects/new");
 }
 
 export async function deletePresetVariant(id: string) {
   // Soft delete: set isActive = false
-  await prisma.presetVariant.update({ where: { id }, data: { isActive: false } });
+  const before = await prisma.presetVariant.findUnique({ where: { id } });
+  const variant = await prisma.presetVariant.update({ where: { id }, data: { isActive: false } });
+  if (before) {
+    await recordPresetChange({
+      presetId: variant.presetId,
+      dimension: "variants",
+      title: `删除变体：${variant.name}`,
+      before: presetVariantSnapshot(before),
+      after: presetVariantSnapshot(variant),
+    });
+  }
   revalidatePath("/assets/presets");
   revalidatePath("/projects/new");
 }
@@ -1054,11 +1189,28 @@ export async function reorderPresets(categoryId: string, ids: string[]) {
 }
 
 export async function reorderPresetVariants(presetId: string, ids: string[]) {
+  const before = await prisma.presetVariant.findMany({
+    where: { presetId, id: { in: ids } },
+    orderBy: { sortOrder: "asc" },
+    select: { id: true, name: true, sortOrder: true },
+  });
   await prisma.$transaction(
     ids.map((id, index) =>
       prisma.presetVariant.update({ where: { id }, data: { sortOrder: index } }),
     ),
   );
+  const after = await prisma.presetVariant.findMany({
+    where: { presetId, id: { in: ids } },
+    orderBy: { sortOrder: "asc" },
+    select: { id: true, name: true, sortOrder: true },
+  });
+  await recordPresetChange({
+    presetId,
+    dimension: "variants",
+    title: "调整变体顺序",
+    before,
+    after,
+  });
   revalidatePath("/assets/presets");
 }
 
@@ -1110,29 +1262,66 @@ export async function createPresetGroup(input: PresetGroupInput) {
     group = await prisma.presetGroup.create({ data: input });
   }
 
+  await recordPresetGroupChange({
+    groupId: group.id,
+    dimension: "meta",
+    title: existing && !existing.isActive ? "恢复预制组" : "创建预制组",
+    before: null,
+    after: groupMetaSnapshot(group),
+  });
+
   revalidatePath("/assets/presets");
   return group;
 }
 
 export async function updatePresetGroup(id: string, input: Partial<PresetGroupInput>) {
+  const before = await prisma.presetGroup.findUnique({ where: { id } });
   const group = await prisma.presetGroup.update({ where: { id }, data: input });
+  if (before) {
+    await recordPresetGroupChange({
+      groupId: id,
+      dimension: "meta",
+      title: "更新预制组信息",
+      before: groupMetaSnapshot(before),
+      after: groupMetaSnapshot(group),
+    });
+  }
   revalidatePath("/assets/presets");
   return group;
 }
 
 export async function deletePresetGroup(id: string) {
-  await prisma.presetGroup.update({ where: { id }, data: { isActive: false } });
+  const before = await prisma.presetGroup.findUnique({ where: { id } });
+  const group = await prisma.presetGroup.update({ where: { id }, data: { isActive: false } });
+  if (before) {
+    await recordPresetGroupChange({
+      groupId: id,
+      dimension: "meta",
+      title: "删除预制组",
+      before: groupMetaSnapshot(before),
+      after: groupMetaSnapshot(group),
+    });
+  }
   revalidatePath("/assets/presets");
 }
 
 export async function addGroupMember(input: PresetGroupMemberInput) {
   const previousMembers = await resolveConcreteGroupMembers(input.groupId);
+  const before = await groupMembersSnapshot(input.groupId);
   const maxOrder = await prisma.presetGroupMember.aggregate({
     where: { groupId: input.groupId },
     _max: { sortOrder: true },
   });
   const member = await prisma.presetGroupMember.create({
     data: { ...input, sortOrder: (maxOrder._max.sortOrder ?? -1) + 1 },
+  });
+  const after = await groupMembersSnapshot(input.groupId);
+  await recordPresetGroupChange({
+    groupId: input.groupId,
+    dimension: "members",
+    title: "添加预制组成员",
+    before,
+    after,
   });
   await syncPresetGroupInstances(input.groupId, previousMembers);
   revalidatePath("/assets/presets");
@@ -1146,7 +1335,16 @@ export async function removeGroupMember(memberId: string) {
   });
   if (!existing) return;
   const previousMembers = await resolveConcreteGroupMembers(existing.groupId);
+  const before = await groupMembersSnapshot(existing.groupId);
   await prisma.presetGroupMember.delete({ where: { id: memberId } });
+  const after = await groupMembersSnapshot(existing.groupId);
+  await recordPresetGroupChange({
+    groupId: existing.groupId,
+    dimension: "members",
+    title: "移除预制组成员",
+    before,
+    after,
+  });
   await syncPresetGroupInstances(existing.groupId, previousMembers);
   revalidatePath("/assets/presets");
 }
@@ -1162,11 +1360,20 @@ export async function reorderPresetGroups(ids: string[]) {
 
 export async function reorderGroupMembers(groupId: string, ids: string[]) {
   const previousMembers = await resolveConcreteGroupMembers(groupId);
+  const before = await groupMembersSnapshot(groupId);
   await prisma.$transaction(
     ids.map((id, index) =>
       prisma.presetGroupMember.update({ where: { id }, data: { sortOrder: index } }),
     ),
   );
+  const after = await groupMembersSnapshot(groupId);
+  await recordPresetGroupChange({
+    groupId,
+    dimension: "members",
+    title: "调整成员顺序",
+    before,
+    after,
+  });
   await syncPresetGroupInstances(groupId, previousMembers);
   revalidatePath("/assets/presets");
 }

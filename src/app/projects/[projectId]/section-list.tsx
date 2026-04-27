@@ -19,7 +19,17 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, ImageIcon, LayoutList, LayoutGrid, CheckSquare, Square, Trash2 } from "lucide-react";
+import {
+  GripVertical,
+  ImageIcon,
+  LayoutList,
+  LayoutGrid,
+  CheckSquare,
+  Square,
+  Trash2,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import Image from "next/image";
 import { reorderSections, deleteSections } from "@/lib/actions";
 import { toast } from "sonner";
@@ -76,6 +86,7 @@ export function SectionList({ projectId, sections: initialSections }: SectionLis
   const [compact, setCompact] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
+  const [anchorNavCollapsed, setAnchorNavCollapsed] = useState(false);
 
   // Scroll to section card when arriving via hash fragment (e.g. from back navigation)
   useEffect(() => {
@@ -173,6 +184,13 @@ export function SectionList({ projectId, sections: initialSections }: SectionLis
     if (el) cardRefs.current.set(id, el);
     else cardRefs.current.delete(id);
   }, []);
+
+  function scrollToSection(id: string) {
+    const element = cardRefs.current.get(id) ?? document.getElementById(`section-${id}`);
+    if (!element) return;
+    element.scrollIntoView({ block: "start", behavior: "smooth" });
+    window.history.replaceState(null, "", `#section-${id}`);
+  }
 
   // 当 props 更新时同步 state（例如添加/删除小节后）
   useEffect(() => {
@@ -290,6 +308,51 @@ export function SectionList({ projectId, sections: initialSections }: SectionLis
 
   return (
     <>
+      {sections.length > 0 && (
+        <aside className="fixed right-4 top-24 z-30 hidden max-h-[calc(100dvh-8rem)] xl:block">
+          {anchorNavCollapsed ? (
+            <button
+              type="button"
+              onClick={() => setAnchorNavCollapsed(false)}
+              className="flex size-10 items-center justify-center rounded-full border border-white/10 bg-zinc-900/90 text-zinc-300 shadow-lg backdrop-blur transition hover:bg-zinc-800 hover:text-white"
+              title="展开小节导航"
+              aria-label="展开小节导航"
+            >
+              <ChevronLeft className="size-4" />
+            </button>
+          ) : (
+            <div className="flex w-56 flex-col overflow-hidden rounded-xl border border-white/10 bg-zinc-950/90 shadow-xl backdrop-blur">
+              <div className="flex items-center justify-between gap-2 border-b border-white/10 px-3 py-2">
+                <div className="min-w-0 text-xs font-medium text-zinc-200">小节导航</div>
+                <button
+                  type="button"
+                  onClick={() => setAnchorNavCollapsed(true)}
+                  className="rounded p-1 text-zinc-500 transition hover:bg-white/10 hover:text-zinc-200"
+                  title="收起小节导航"
+                  aria-label="收起小节导航"
+                >
+                  <ChevronRight className="size-3.5" />
+                </button>
+              </div>
+              <div className="max-h-[calc(100dvh-11.5rem)] overflow-y-auto p-1.5">
+                {sections.map((section, index) => (
+                  <button
+                    key={section.id}
+                    type="button"
+                    onClick={() => scrollToSection(section.id)}
+                    className="flex w-full items-start gap-2 rounded-lg px-2 py-1.5 text-left text-[11px] text-zinc-400 transition hover:bg-white/[0.06] hover:text-zinc-100"
+                    title={`${index + 1}. ${section.name}`}
+                  >
+                    <span className="w-6 shrink-0 text-right text-zinc-600">{index + 1}</span>
+                    <span className="min-w-0 flex-1 truncate">{section.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </aside>
+      )}
+
       <DndContext id={dndId} sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={sections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
           {compact && sections.length > 0 && (
