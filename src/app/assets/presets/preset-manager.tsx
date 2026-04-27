@@ -289,25 +289,20 @@ export function PresetManager({
   }, [initialCategories, queryCategoryId, queryPresetId]);
   const [showCatForm, setShowCatForm] = useState(false);
   const [editingCatId, setEditingCatId] = useState<string | null>(null);
-  const [autoEditPresetId, setAutoEditPresetId] = useState<string | null>(null);
 
   // Handle URL hash navigation (e.g., #preset-{presetId})
   useEffect(() => {
     const hash = window.location.hash;
     if (hash.startsWith("#preset-")) {
       const presetId = hash.slice(8); // Remove "#preset-" prefix
-      // Find the category containing this preset
       for (const cat of initialCategories) {
         if (cat.presets.some((p) => p.id === presetId)) {
-          setSelectedCatId(cat.id);
-          setAutoEditPresetId(presetId);
-          // Clear the hash after handling
-          window.history.replaceState(null, "", window.location.pathname);
+          router.replace(`/assets/presets/${presetId}`);
           break;
         }
       }
     }
-  }, [initialCategories]);
+  }, [initialCategories, router]);
 
   const selectedCat = categories.find((c) => c.id === selectedCatId) ?? null;
 
@@ -481,34 +476,15 @@ export function PresetManager({
                   category={selectedCat}
                   allCategories={categories}
                   onRefresh={refresh}
-                  onNavigateToPreset={(presetId) => {
-                    // Find the preset's category and switch to it
-                    for (const cat of categories) {
-                      const preset = cat.presets.find((p) => p.id === presetId);
-                      if (preset) {
-                        setSelectedCatId(cat.id);
-                        setAutoEditPresetId(presetId);
-                        replacePresetQuery({
-                          category: cat.id,
-                          folder: preset.folderId ?? null,
-                          preset: preset.id,
-                          variant: preset.variants[0]?.id ?? null,
-                        });
-                        break;
-                      }
-                    }
-                  }}
                 />
               ) : (
                 <PresetList
                   category={selectedCat}
                   onRefresh={refresh}
                   allCategories={categories}
-                  autoEditPresetId={autoEditPresetId}
                   queryFolderId={queryFolderId}
                   queryPresetId={queryPresetId}
                   queryVariantId={queryVariantId}
-                  onAutoEditConsumed={() => setAutoEditPresetId(null)}
                   onViewChange={(patch) => replacePresetQuery({ category: selectedCat.id, ...patch })}
                 />
               )
@@ -1155,21 +1131,17 @@ function PresetList({
   category,
   onRefresh,
   allCategories,
-  autoEditPresetId,
   queryFolderId,
   queryPresetId,
   queryVariantId,
-  onAutoEditConsumed,
   onViewChange,
 }: {
   category: PresetCategoryFull;
   onRefresh: () => void;
   allCategories: PresetCategoryFull[];
-  autoEditPresetId: string | null;
   queryFolderId: string | null;
   queryPresetId: string | null;
   queryVariantId: string | null;
-  onAutoEditConsumed: () => void;
   onViewChange: (patch: Omit<PresetQueryPatch, "category">) => void;
 }) {
   const [isPending, startTransition] = useTransition();
@@ -1204,27 +1176,11 @@ function PresetList({
     setPresets(category.presets);
   }, [category.presets]);
 
-  // Auto-expand preset when navigating from group
-  useEffect(() => {
-    if (autoEditPresetId && category.presets.some((p) => p.id === autoEditPresetId)) {
-      setEditingId(autoEditPresetId);
-      const preset = category.presets.find((p) => p.id === autoEditPresetId);
-      setCurrentFolderId(preset?.folderId ?? null);
-      onAutoEditConsumed();
-    }
-  }, [autoEditPresetId, category.presets, onAutoEditConsumed]);
-
-  // Restore folder and expanded preset from URL query state.
+  // Restore folder from URL query state.
   useEffect(() => {
     setCurrentFolderId(resolvedQueryFolderId);
     setSelectedIds(new Set());
-
-    if (queryPreset) {
-      setEditingId(queryPreset.id);
-    } else if (queryPresetId) {
-      setEditingId(null);
-    }
-  }, [category.id, queryPreset, queryPresetId, resolvedQueryFolderId]);
+  }, [category.id, resolvedQueryFolderId]);
 
   // Filter presets and folders for current folder level
   const visiblePresets = presets.filter((p) => (p.folderId ?? null) === currentFolderId);
@@ -1233,7 +1189,6 @@ function PresetList({
   // Clear selection when navigating folders
   const navigateFolder = useCallback((folderId: string | null) => {
     setCurrentFolderId(folderId);
-    setEditingId(null);
     setSelectedIds(new Set());
     onViewChange({ folder: folderId, preset: null, variant: null });
   }, [onViewChange]);
@@ -1354,7 +1309,6 @@ function PresetList({
             type="button"
             onClick={() => {
               setIsCreating(true);
-              setEditingId(null);
               onViewChange({ folder: currentFolderId, preset: null, variant: null });
             }}
             className="inline-flex items-center gap-1 rounded-lg bg-sky-500/10 px-2.5 py-1 text-[11px] text-sky-300 hover:bg-sky-500/20"
@@ -1503,15 +1457,6 @@ function PresetList({
                 key={preset.id}
                 preset={preset}
                 folders={category.folders}
-                onEdit={() => {
-                  const nextEditingId = editingId === preset.id ? null : preset.id;
-                  setEditingId(nextEditingId);
-                  onViewChange({
-                    folder: preset.folderId ?? null,
-                    preset: nextEditingId,
-                    variant: nextEditingId ? preset.variants[0]?.id ?? null : null,
-                  });
-                }}
                 onMoveToFolder={(folderId) => {
                   startTransition(async () => {
                     try {
@@ -1615,7 +1560,6 @@ function PresetList({
 function SortablePresetCard({
   preset,
   folders,
-  onEdit,
   onMoveToFolder,
   isSelected,
   onToggleSelect,
@@ -1624,7 +1568,6 @@ function SortablePresetCard({
 }: {
   preset: PresetFull;
   folders: FolderItem[];
-  onEdit: () => void;
   onMoveToFolder: (folderId: string | null) => void;
   isSelected: boolean;
   onToggleSelect: () => void;
@@ -1661,13 +1604,7 @@ function SortablePresetCard({
 
   return (
     <div ref={setNodeRef} style={style} className="rounded-xl border border-white/5 bg-white/[0.02]">
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={onEdit}
-        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onEdit(); }}
-        className="flex cursor-pointer items-center gap-2 px-3 py-2.5 transition hover:bg-white/[0.03]"
-      >
+      <div className="flex items-center gap-2 px-3 py-2.5 transition hover:bg-white/[0.03]">
         <button
           type="button"
           className="shrink-0 text-zinc-600 hover:text-sky-400"
@@ -1692,35 +1629,22 @@ function SortablePresetCard({
         >
           <ExternalLink className="size-3.5" />
         </Link>
-        <div className="flex-1 min-w-0">
+        <Link
+          href={`/assets/presets/${preset.id}`}
+          className="min-w-0 flex-1 rounded outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50"
+        >
           <div className="text-xs font-medium text-zinc-200">{preset.name}</div>
           <div className="text-[10px] text-zinc-500">
             {variantCount > 0 ? `${variantCount} 变体` : "暂无变体"}
             {loraCount > 0 && <span> · {loraCount} LoRA</span>}
           </div>
-        </div>
+        </Link>
         <MoveToFolderButton
           currentFolderId={preset.folderId}
           folders={folders}
           onMove={onMoveToFolder}
         />
-        <ChevronDown className={`size-3.5 text-zinc-500 transition ${isEditing ? "rotate-180" : ""}`} />
       </div>
-
-      {isEditing && presetFormProps && (
-        <PresetForm
-          categoryId={presetFormProps.categoryId}
-          preset={preset}
-          allCategories={presetFormProps.allCategories}
-          onSave={presetFormProps.onSave}
-          onDelete={presetFormProps.onDelete}
-          onCancel={presetFormProps.onCancel}
-          isPending={presetFormProps.isPending}
-          activeVariantId={presetFormProps.activeVariantId}
-          onVariantChange={presetFormProps.onVariantChange}
-          embedded
-        />
-      )}
     </div>
   );
 }
@@ -2433,7 +2357,7 @@ export function PresetForm({
         className="flex w-full cursor-pointer items-center gap-2 px-3 py-2.5 text-left transition hover:bg-white/[0.03]"
       >
         <Plus className="size-3.5 shrink-0 text-sky-400/80" />
-        <div className="flex-1 min-w-0">
+        <div className="min-w-0 flex-1">
           <div className="text-xs font-medium text-zinc-200">
             {preset ? "编辑预制" : "新建预制"}
           </div>
@@ -2456,13 +2380,12 @@ function GroupList({
   category,
   allCategories,
   onRefresh,
-  onNavigateToPreset,
 }: {
   category: PresetCategoryFull;
   allCategories: PresetCategoryFull[];
   onRefresh: () => void;
-  onNavigateToPreset: (presetId: string) => void;
 }) {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -2733,7 +2656,7 @@ function GroupList({
               startTransition={startTransition}
               isSelected={selectedGroupIds.has(group.id)}
               onToggleSelect={() => toggleGroupSelection(group.id)}
-              onNavigateToPreset={onNavigateToPreset}
+              onNavigateToPreset={(presetId) => router.push(`/assets/presets/${presetId}`)}
             />
           ))}
         </SortableContext>
@@ -2887,13 +2810,7 @@ function SortableGroupCard({
 
   return (
     <div ref={setNodeRef} style={style} className="rounded-xl border border-white/5 bg-white/[0.02]">
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={onEdit}
-        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onEdit(); }}
-        className="flex cursor-pointer items-center gap-2 px-3 py-2.5 transition hover:bg-white/[0.03]"
-      >
+      <div className="flex items-center gap-2 px-3 py-2.5 transition hover:bg-white/[0.03]">
         <button
           type="button"
           className="shrink-0 text-zinc-600 hover:text-sky-400"
@@ -2919,18 +2836,20 @@ function SortableGroupCard({
         >
           <ExternalLink className="size-3.5" />
         </Link>
-        <div className="flex-1 min-w-0">
+        <Link
+          href={`/assets/preset-groups/${group.id}`}
+          className="min-w-0 flex-1 rounded outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50"
+        >
           <div className="text-xs font-medium text-zinc-200">{group.name}</div>
           <div className="text-[10px] text-zinc-500">
             {members.length} 个成员 · {group.slug}
           </div>
-        </div>
+        </Link>
         <MoveToFolderButton
           currentFolderId={group.folderId}
           folders={folders}
           onMove={onMoveToFolder}
         />
-        <ChevronDown className={`size-3.5 text-zinc-500 transition ${isEditing ? "rotate-180" : ""}`} />
       </div>
 
       {isEditing && (
