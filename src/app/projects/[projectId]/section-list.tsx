@@ -46,6 +46,14 @@ type SectionListProps = {
   sections: Section[];
 };
 
+const MAIN_SCROLL_ID = "app-main-scroll";
+const PROJECT_SECTION_ANCHOR_PREFIX = "comfyui-manager:project-section-anchor:";
+
+type StoredSectionAnchor = {
+  sectionId: string;
+  offsetTop: number;
+};
+
 // ---------------------------------------------------------------------------
 // Status dot color helper
 // ---------------------------------------------------------------------------
@@ -80,6 +88,82 @@ export function SectionList({ projectId, sections: initialSections }: SectionLis
       }
     }
   }, []);
+
+  // Preserve the top visible section on project detail pages. This is more
+  // stable than raw scrollTop when thumbnails or card heights change.
+  useEffect(() => {
+    if (window.location.hash) {
+      return;
+    }
+
+    const scrollElement = document.getElementById(MAIN_SCROLL_ID);
+    if (!scrollElement) {
+      return;
+    }
+
+    const storageKey = `${PROJECT_SECTION_ANCHOR_PREFIX}${projectId}`;
+
+    const saveAnchor = () => {
+      const containerRect = scrollElement.getBoundingClientRect();
+      let bestAnchor: StoredSectionAnchor | null = null;
+
+      for (const [sectionId, element] of cardRefs.current) {
+        const rect = element.getBoundingClientRect();
+        const isVisible = rect.bottom > containerRect.top && rect.top < containerRect.bottom;
+
+        if (!isVisible) {
+          continue;
+        }
+
+        if (!bestAnchor || rect.top < containerRect.top + bestAnchor.offsetTop) {
+          bestAnchor = {
+            sectionId,
+            offsetTop: rect.top - containerRect.top,
+          };
+        }
+      }
+
+      if (bestAnchor) {
+        window.sessionStorage.setItem(storageKey, JSON.stringify(bestAnchor));
+      }
+    };
+
+    const restoreAnchor = () => {
+      const rawAnchor = window.sessionStorage.getItem(storageKey);
+      if (!rawAnchor) {
+        return;
+      }
+
+      let anchor: StoredSectionAnchor | null = null;
+      try {
+        anchor = JSON.parse(rawAnchor) as StoredSectionAnchor;
+      } catch {
+        window.sessionStorage.removeItem(storageKey);
+        return;
+      }
+
+      const element = cardRefs.current.get(anchor.sectionId);
+      if (!element) {
+        return;
+      }
+
+      const containerRect = scrollElement.getBoundingClientRect();
+      const elementRect = element.getBoundingClientRect();
+      scrollElement.scrollTop += elementRect.top - containerRect.top - anchor.offsetTop;
+    };
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(restoreAnchor);
+    });
+
+    scrollElement.addEventListener("scroll", saveAnchor, { passive: true });
+
+    return () => {
+      saveAnchor();
+      scrollElement.removeEventListener("scroll", saveAnchor);
+    };
+  }, [projectId, sections]);
+
   const dndId = useId();
 
   // Ref map: section id → DOM node, for scroll anchoring
