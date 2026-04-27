@@ -33,6 +33,7 @@ import {
 import Image from "next/image";
 import { reorderSections, deleteSections } from "@/lib/actions";
 import { toast } from "sonner";
+import { CustomScrollContainer } from "@/components/ui/custom-scroll-container";
 import { SectionRunButton } from "./project-detail-actions";
 import { CopySectionButton, DeleteSectionButton } from "./section-actions";
 
@@ -344,7 +345,7 @@ export function SectionList({ projectId, sections: initialSections }: SectionLis
                 </button>
               </div>
               {!anchorNavCollapsed && (
-                <div className="app-scrollbar max-h-[calc(100dvh-12rem)] overflow-y-auto">
+                <CustomScrollContainer className="max-h-[calc(100dvh-12rem)] overflow-y-auto">
                   {sections.map((section, index) => (
                     <button
                       key={section.id}
@@ -357,7 +358,7 @@ export function SectionList({ projectId, sections: initialSections }: SectionLis
                       <span className="min-w-0 flex-1 truncate">{section.name}</span>
                     </button>
                   ))}
-                </div>
+                </CustomScrollContainer>
               )}
             </div>
           </div>

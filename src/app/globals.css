@@ -32,31 +32,38 @@ body {
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }
 
-/* 自定义滚动条样式（用于内部可滚动容器） */
-/* Firefox */
-:where(html, body, *, .app-scrollbar) {
+/* 自定义滚动条样式 */
+/* Firefox (非 CustomScrollContainer 的容器) */
+:where(html, body, *) {
   scrollbar-width: thin;
   scrollbar-color: rgba(113, 113, 122, 0.7) rgba(255, 255, 255, 0.03);
 }
 
-/* WebKit (Chrome/Safari/Edge) */
+/* CustomScrollContainer 隐藏原生滚动条，使用 JS 渲染的自定义滚动条 */
+.custom-scroll-container {
+  scrollbar-width: none;
+}
+.custom-scroll-container::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+/* WebKit (Chrome/Safari/Edge — 非 CustomScrollContainer 的容器) */
 ::-webkit-scrollbar,
-*::-webkit-scrollbar,
-.app-scrollbar::-webkit-scrollbar {
+*::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 ::-webkit-scrollbar-track,
-*::-webkit-scrollbar-track,
-.app-scrollbar::-webkit-scrollbar-track {
+*::-webkit-scrollbar-track {
   background: rgba(255, 255, 255, 0.025);
   border-radius: 999px;
 }
 
 ::-webkit-scrollbar-thumb,
-*::-webkit-scrollbar-thumb,
-.app-scrollbar::-webkit-scrollbar-thumb {
+*::-webkit-scrollbar-thumb {
   min-height: 2rem;
   border: 2px solid transparent;
   border-radius: 999px;
@@ -65,15 +72,13 @@ body {
 }
 
 ::-webkit-scrollbar-thumb:hover,
-*::-webkit-scrollbar-thumb:hover,
-.app-scrollbar::-webkit-scrollbar-thumb:hover {
+*::-webkit-scrollbar-thumb:hover {
   background: rgba(161, 161, 170, 0.82);
   background-clip: padding-box;
 }
 
 ::-webkit-scrollbar-corner,
-*::-webkit-scrollbar-corner,
-.app-scrollbar::-webkit-scrollbar-corner {
+*::-webkit-scrollbar-corner {
   background: transparent;
 }
 
