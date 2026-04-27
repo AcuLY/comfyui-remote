@@ -5,7 +5,7 @@ import { CustomScrollContainer } from "@/components/ui/custom-scroll-container";
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
-    <div className="flex min-h-[100dvh] flex-col">
+    <div className="flex h-[100dvh] flex-col overflow-hidden">
       <Toaster
         theme="dark"
         position="top-right"
