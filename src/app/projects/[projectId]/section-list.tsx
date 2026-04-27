@@ -570,7 +570,7 @@ function SortableSectionCard({
           className="min-w-0 flex-1 cursor-pointer"
         >
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-medium text-white">
+            <span className="text-[11px] font-medium text-white">
               {index + 1}. {section.name}
             </span>
           </div>
