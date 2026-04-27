@@ -307,22 +307,32 @@ export function SectionList({ projectId, sections: initialSections }: SectionLis
   }
 
   return (
-    <div className="grid grid-cols-[8.5rem_minmax(0,1fr)] gap-3 sm:grid-cols-[10rem_minmax(0,1fr)] lg:grid-cols-[12rem_minmax(0,1fr)] xl:grid-cols-[13.5rem_minmax(0,1fr)]">
+    <div
+      className={
+        anchorNavCollapsed
+          ? "grid grid-cols-[3rem_minmax(0,1fr)] gap-3 sm:grid-cols-[3.25rem_minmax(0,1fr)]"
+          : "grid grid-cols-[8.5rem_minmax(0,1fr)] gap-3 sm:grid-cols-[10rem_minmax(0,1fr)] lg:grid-cols-[12rem_minmax(0,1fr)] xl:grid-cols-[13.5rem_minmax(0,1fr)]"
+      }
+    >
       {sections.length > 0 && (
-        <aside className="min-w-0 border-r border-white/5 bg-black/10 pr-2 sm:pr-3">
+        <aside className={`min-w-0 border-r border-white/5 bg-black/10 ${anchorNavCollapsed ? "pr-1" : "pr-2 sm:pr-3"}`}>
           <div className="sticky top-4 space-y-3">
             <button
               type="button"
               onClick={handleToggle}
-              className="flex w-full items-center gap-2 border-b border-white/10 px-2 pb-3 pt-1 text-left text-xs text-zinc-300 transition hover:text-white"
+              className={`flex w-full items-center gap-2 border-b border-white/10 pb-3 pt-1 text-left text-xs text-zinc-300 transition hover:text-white ${anchorNavCollapsed ? "justify-center px-1" : "px-2"}`}
               title={compact ? "展开视图" : "紧凑视图"}
             >
               {compact ? <LayoutGrid className="size-4 shrink-0" /> : <LayoutList className="size-4 shrink-0" />}
-              <span className="min-w-0 flex-1 truncate">{compact ? "展开视图" : "紧凑视图"}</span>
+              {!anchorNavCollapsed && (
+                <span className="min-w-0 flex-1 truncate">{compact ? "展开视图" : "紧凑视图"}</span>
+              )}
             </button>
             <div className="space-y-2">
-              <div className="flex items-center justify-between gap-2 px-2">
-                <div className="min-w-0 truncate text-xs font-medium text-zinc-200">小节导航</div>
+              <div className={`flex items-center gap-2 ${anchorNavCollapsed ? "justify-center px-1" : "justify-between px-2"}`}>
+                {!anchorNavCollapsed && (
+                  <div className="min-w-0 truncate text-xs font-medium text-zinc-200">小节导航</div>
+                )}
                 <button
                   type="button"
                   onClick={() => setAnchorNavCollapsed((prev) => !prev)}

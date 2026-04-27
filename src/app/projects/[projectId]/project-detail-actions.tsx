@@ -43,10 +43,12 @@ export function ProjectDetailActions({ projectId, projectTitle }: { projectId: s
 
   const parsedBatchSize = batchSize.trim() ? parseInt(batchSize, 10) : null;
 
+  const actionButtonClass = "inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-xl border px-2.5 text-xs transition disabled:opacity-50";
+
   return (
-    <div className="space-y-3 text-sm">
-      <div className="space-y-2">
-        <label className="flex items-center gap-2 text-xs text-zinc-400">
+    <div className="space-y-2 text-xs">
+      <div className="space-y-1.5">
+        <label className="flex flex-wrap items-center gap-1.5 text-[11px] text-zinc-400">
           Batch Size 覆盖
           <input
             type="number"
@@ -54,7 +56,7 @@ export function ProjectDetailActions({ projectId, projectTitle }: { projectId: s
             placeholder="留空使用各小节设定"
             value={batchSize}
             onChange={(e) => setBatchSize(e.target.value)}
-            className="input-number w-40 rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-600"
+            className="input-number h-8 w-36 rounded-lg border border-white/10 bg-black/20 px-2.5 text-xs text-white outline-none placeholder:text-zinc-600"
           />
         </label>
         <BatchSizeQuickFill
@@ -65,41 +67,62 @@ export function ProjectDetailActions({ projectId, projectTitle }: { projectId: s
           onClear={() => setBatchSize("")}
         />
       </div>
-      <button
-        disabled={isPending}
-        onClick={handleRun}
-        className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-sky-500/20 bg-sky-500/10 px-4 py-3 text-sky-300 transition hover:bg-sky-500/20 disabled:opacity-50"
-      >
-        <Play className="size-4" /> {isPending ? "提交中…" : "运行整组"}
-      </button>
-      <button
-        disabled={exporting}
-        onClick={handleExport}
-        className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-emerald-300 transition hover:bg-emerald-500/20 disabled:opacity-50"
-      >
-        <Download className="size-4" /> {exporting ? "导出中…" : "图片整合"}
-      </button>
-      <button
-        onClick={() => {
-          const name = prompt("模板名称：", projectTitle || "");
-          if (!name) return;
-          startTransition(async () => {
-            try {
-              await saveProjectAsTemplate(projectId, name);
-              toast.success(`已保存为模板「${name}」`);
-            } catch (e: unknown) {
-              toast.error(e instanceof Error ? e.message : "保存失败");
-            }
-          });
-        }}
-        disabled={isPending}
-        className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-amber-300 transition hover:bg-amber-500/20 disabled:opacity-50"
-      >
-        <Save className="size-4" /> {isPending ? "保存中…" : "保存为模板"}
-      </button>
+      <div className="grid grid-cols-2 gap-1.5">
+        <button
+          disabled={isPending}
+          onClick={handleRun}
+          className={`${actionButtonClass} border-sky-500/20 bg-sky-500/10 text-sky-300 hover:bg-sky-500/20`}
+        >
+          <Play className="size-3.5" /> {isPending ? "提交中…" : "运行整组"}
+        </button>
+        <button
+          disabled={exporting}
+          onClick={handleExport}
+          className={`${actionButtonClass} border-emerald-500/20 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20`}
+        >
+          <Download className="size-3.5" /> {exporting ? "导出中…" : "图片整合"}
+        </button>
+        <button
+          onClick={() => {
+            const name = prompt("模板名称：", projectTitle || "");
+            if (!name) return;
+            startTransition(async () => {
+              try {
+                await saveProjectAsTemplate(projectId, name);
+                toast.success(`已保存为模板「${name}」`);
+              } catch (e: unknown) {
+                toast.error(e instanceof Error ? e.message : "保存失败");
+              }
+            });
+          }}
+          disabled={isPending}
+          className={`${actionButtonClass} border-amber-500/20 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20`}
+        >
+          <Save className="size-3.5" /> {isPending ? "保存中…" : "保存为模板"}
+        </button>
+        <button
+          disabled={isPending}
+          onClick={() => {
+            const name = projectTitle || "此项目";
+            if (!confirm(`确认删除「${name}」？\n\n此操作将同时删除所有小节、运行记录和图片数据，不可撤销。`)) return;
+            startTransition(async () => {
+              try {
+                await deleteProject(projectId);
+                toast.success("项目已删除");
+                router.push("/projects");
+              } catch (e: unknown) {
+                toast.error(e instanceof Error ? e.message : "删除失败");
+              }
+            });
+          }}
+          className={`${actionButtonClass} border-red-500/20 bg-red-500/10 text-red-400 hover:bg-red-500/20`}
+        >
+          <Trash2 className="size-3.5" /> {isPending ? "删除中…" : "删除项目"}
+        </button>
+      </div>
       {exportMsg && (
         <div
-          className={`flex items-start gap-2 rounded-2xl border px-3 py-2.5 text-xs ${
+          className={`flex items-start gap-2 rounded-xl border px-2.5 py-2 text-[11px] ${
             exportMsg.ok
               ? "border-emerald-500/20 bg-emerald-500/5 text-emerald-300"
               : "border-rose-500/20 bg-rose-500/5 text-rose-300"
@@ -113,25 +136,6 @@ export function ProjectDetailActions({ projectId, projectTitle }: { projectId: s
           <span>{exportMsg.text}</span>
         </div>
       )}
-      <button
-        disabled={isPending}
-        onClick={() => {
-          const name = projectTitle || "此项目";
-          if (!confirm(`确认删除「${name}」？\n\n此操作将同时删除所有小节、运行记录和图片数据，不可撤销。`)) return;
-          startTransition(async () => {
-            try {
-              await deleteProject(projectId);
-              toast.success("项目已删除");
-              router.push("/projects");
-            } catch (e: unknown) {
-              toast.error(e instanceof Error ? e.message : "删除失败");
-            }
-          });
-        }}
-        className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-red-400 transition hover:bg-red-500/20 disabled:opacity-50"
-      >
-        <Trash2 className="size-4" /> {isPending ? "删除中…" : "删除项目"}
-      </button>
     </div>
   );
 }

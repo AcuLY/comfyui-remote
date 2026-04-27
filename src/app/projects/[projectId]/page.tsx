@@ -19,16 +19,16 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       <Link href="/projects" className="inline-flex items-center gap-1.5 text-xs text-zinc-400 transition hover:text-zinc-200">
         <ArrowLeft className="size-3.5" /> 返回项目列表
       </Link>
-      <SectionCard title={project.title} subtitle="项目操作与参数概览">
-        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
+      <SectionCard title={project.title} subtitle="项目操作与参数概览" className="!p-3 lg:!p-3">
+        <div className="grid gap-2.5 md:grid-cols-[minmax(0,1fr)_minmax(20rem,24rem)] md:items-start">
           <div className="space-y-2 text-sm text-zinc-300">
-            <div className="rounded-xl bg-white/[0.03] p-2.5">
+            <div className="rounded-lg bg-white/[0.03] px-2.5 py-2">
               <div className="text-xs text-zinc-500">预设</div>
-              <div className="mt-0.5">{project.presetNames.join(" · ") || "无预设"}</div>
+              <div className="mt-0.5 truncate text-xs">{project.presetNames.join(" · ") || "无预设"}</div>
             </div>
             <Link
               href={`/projects/${projectId}/edit`}
-              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-zinc-200 transition hover:bg-white/[0.08]"
+              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-2.5 text-xs text-zinc-200 transition hover:bg-white/[0.08]"
             >
               <SlidersHorizontal className="size-3.5" /> 编辑当前项目参数
             </Link>
