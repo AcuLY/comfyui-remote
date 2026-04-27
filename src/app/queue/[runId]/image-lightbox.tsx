@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useCallback, useState, useRef } from "react";
 
 export function ImageLightbox({
@@ -57,13 +58,19 @@ export function ImageLightbox({
       <div className="absolute inset-0 bg-black" />
       {/* Semi-transparent zone (black bars from aspect ratio) */}
       <div className="absolute inset-0 flex items-center justify-center bg-black/60">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={src ?? ""}
-          alt={alt ?? "Preview"}
-          className="max-h-[90vh] max-w-[90vw] rounded-lg shadow-2xl"
-          draggable={false}
-        />
+        {src ? (
+          <div className="relative h-[90vh] w-[90vw]">
+            <Image
+              src={src}
+              alt={alt ?? "Preview"}
+              fill
+              sizes="90vw"
+              className="object-contain drop-shadow-2xl"
+              draggable={false}
+              unoptimized
+            />
+          </div>
+        ) : null}
       </div>
     </div>
   );
