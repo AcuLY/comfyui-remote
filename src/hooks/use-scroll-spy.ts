@@ -28,26 +28,94 @@ export function useScrollSpy(
     const rootMargin = options?.rootMargin ?? "-0% 0% -75% 0%";
     const threshold = options?.threshold ?? 0;
     const root = options?.root ?? (options?.rootSelector ? document.querySelector(options.rootSelector) : null);
-    const observers: IntersectionObserver[] = [];
+    const sectionElements = ids
+      .map((id) => ({
+        id,
+        element: document.getElementById(`section-${id}`),
+      }))
+      .filter((item): item is { id: string; element: HTMLElement } => item.element instanceof HTMLElement);
 
-    for (const id of ids) {
-      const el = document.getElementById(`section-${id}`);
-      if (!el) continue;
-
-      const observer = new IntersectionObserver(
-        ([entry]) => {
-          if (entry.isIntersecting) {
-            setActiveId(id);
-          }
-        },
-        { rootMargin, threshold, root }
-      );
-      observer.observe(el);
-      observers.push(observer);
+    if (sectionElements.length === 0) {
+      setActiveId(null);
+      return;
     }
 
+    let frameId: number | null = null;
+
+    const getRootBounds = () => {
+      if (root) {
+        const rect = root.getBoundingClientRect();
+        return {
+          top: rect.top,
+          height: rect.height,
+        };
+      }
+
+      return {
+        top: 0,
+        height: window.innerHeight,
+      };
+    };
+
+    const updateActiveSection = () => {
+      frameId = null;
+
+      const { top, height } = getRootBounds();
+      const triggerY = top + height * 0.25;
+      let bestId = sectionElements[0]?.id ?? null;
+      let bestDistance = Number.POSITIVE_INFINITY;
+
+      for (const { id, element } of sectionElements) {
+        const rect = element.getBoundingClientRect();
+        const intersectsViewport = rect.bottom >= top && rect.top <= top + height;
+        const containsTrigger = rect.top <= triggerY && rect.bottom >= triggerY;
+        const distance = rect.top <= triggerY ? triggerY - rect.top : rect.top - triggerY;
+
+        if (containsTrigger) {
+          bestId = id;
+          break;
+        }
+
+        if (!intersectsViewport && rect.top > triggerY && bestDistance !== Number.POSITIVE_INFINITY) {
+          continue;
+        }
+
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          bestId = id;
+        }
+      }
+
+      setActiveId((current) => (current === bestId ? current : bestId));
+    };
+
+    const scheduleUpdate = () => {
+      if (frameId !== null) return;
+      frameId = window.requestAnimationFrame(updateActiveSection);
+    };
+
+    const observer = new IntersectionObserver(scheduleUpdate, {
+      rootMargin,
+      threshold,
+      root,
+    });
+
+    for (const { element } of sectionElements) {
+      observer.observe(element);
+    }
+
+    const scrollTarget: Element | Window = root ?? window;
+    scrollTarget.addEventListener("scroll", scheduleUpdate, { passive: true });
+    window.addEventListener("resize", scheduleUpdate);
+    scheduleUpdate();
+
     return () => {
-      for (const obs of observers) obs.disconnect();
+      observer.disconnect();
+      scrollTarget.removeEventListener("scroll", scheduleUpdate);
+      window.removeEventListener("resize", scheduleUpdate);
+      if (frameId !== null) {
+        window.cancelAnimationFrame(frameId);
+      }
     };
   }, [ids, options?.rootMargin, options?.threshold, options?.root, options?.rootSelector]);
 

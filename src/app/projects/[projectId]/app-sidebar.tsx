@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useCallback, useEffect } from "react";
+import { useState, useTransition, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -17,7 +17,6 @@ import { toast } from "sonner";
 import { runProject, deleteProject, saveProjectAsTemplate } from "@/lib/actions";
 import { exportProjectImages } from "@/app/projects/actions-export";
 import { BatchSizeQuickFill } from "@/components/batch-size-quick-fill";
-import { useScrollSpy } from "@/hooks/use-scroll-spy";
 import {
   Sidebar,
   SidebarContent,
@@ -55,7 +54,26 @@ type AppSidebarProps = {
   sections: Section[];
   compact: boolean;
   onToggleCompact: () => void;
+  activeSectionId: string | null;
+  onNavigateToSection: (id: string) => void;
 };
+
+function clampScrollTop(value: number, element: HTMLElement) {
+  const max = Math.max(0, element.scrollHeight - element.clientHeight);
+  return Math.min(Math.max(0, value), max);
+}
+
+function getScrollProgress(element: HTMLElement) {
+  const max = element.scrollHeight - element.clientHeight;
+  if (max <= 0) return 0;
+  return element.scrollTop / max;
+}
+
+function findNavItem(container: HTMLElement, sectionId: string) {
+  return Array.from(container.querySelectorAll<HTMLElement>("[data-nav-section-id]")).find(
+    (item) => item.dataset.navSectionId === sectionId,
+  );
+}
 
 export function AppSidebar({
   projectId,
@@ -63,31 +81,114 @@ export function AppSidebar({
   sections,
   compact,
   onToggleCompact,
+  activeSectionId,
+  onNavigateToSection,
 }: AppSidebarProps) {
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
   const [batchSize, setBatchSize] = useState<string>("");
   const [exporting, setExporting] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
-  const { state: sidebarState } = useSidebar();
+  const sectionNavRef = useRef<HTMLDivElement>(null);
+  const syncLockRef = useRef<"main" | "sidebar" | null>(null);
+  const syncUnlockTimerRef = useRef<number | null>(null);
+  const { state: sidebarState, isMobile, setOpenMobile } = useSidebar();
 
-  const activeSectionId = useScrollSpy(sections.map((s) => s.id), {
-    rootSelector: '[data-slot="sidebar-inset"]',
-  });
+  const runWithSyncLock = useCallback((source: "main" | "sidebar", callback: () => void, duration = 180) => {
+    syncLockRef.current = source;
+    callback();
 
-  // Auto-scroll sidebar to keep the active section nav item visible
+    if (syncUnlockTimerRef.current !== null) {
+      window.clearTimeout(syncUnlockTimerRef.current);
+    }
+
+    syncUnlockTimerRef.current = window.setTimeout(() => {
+      syncLockRef.current = null;
+      syncUnlockTimerRef.current = null;
+    }, duration);
+  }, []);
+
+  useEffect(() => {
+    const mainScroller = document.querySelector<HTMLElement>('[data-slot="sidebar-inset"]');
+    const sectionNav = sectionNavRef.current;
+    if (!mainScroller || !sectionNav) return;
+
+    let mainFrame: number | null = null;
+    let sidebarFrame: number | null = null;
+
+    const syncFromMain = () => {
+      mainFrame = null;
+      if (syncLockRef.current === "sidebar") return;
+
+      const progress = getScrollProgress(mainScroller);
+      const targetTop = progress * Math.max(0, sectionNav.scrollHeight - sectionNav.clientHeight);
+      runWithSyncLock("main", () => {
+        sectionNav.scrollTo({ top: clampScrollTop(targetTop, sectionNav), behavior: "instant" });
+      });
+    };
+
+    const syncFromSidebar = () => {
+      sidebarFrame = null;
+      if (syncLockRef.current === "main") return;
+
+      const progress = getScrollProgress(sectionNav);
+      const targetTop = progress * Math.max(0, mainScroller.scrollHeight - mainScroller.clientHeight);
+      runWithSyncLock("sidebar", () => {
+        mainScroller.scrollTo({ top: clampScrollTop(targetTop, mainScroller), behavior: "instant" });
+      });
+    };
+
+    const handleMainScroll = () => {
+      if (mainFrame !== null) return;
+      mainFrame = window.requestAnimationFrame(syncFromMain);
+    };
+
+    const handleSidebarScroll = () => {
+      if (sidebarFrame !== null) return;
+      sidebarFrame = window.requestAnimationFrame(syncFromSidebar);
+    };
+
+    mainScroller.addEventListener("scroll", handleMainScroll, { passive: true });
+    sectionNav.addEventListener("scroll", handleSidebarScroll, { passive: true });
+    handleMainScroll();
+
+    return () => {
+      mainScroller.removeEventListener("scroll", handleMainScroll);
+      sectionNav.removeEventListener("scroll", handleSidebarScroll);
+
+      if (mainFrame !== null) window.cancelAnimationFrame(mainFrame);
+      if (sidebarFrame !== null) window.cancelAnimationFrame(sidebarFrame);
+      if (syncUnlockTimerRef.current !== null) {
+        window.clearTimeout(syncUnlockTimerRef.current);
+        syncUnlockTimerRef.current = null;
+      }
+    };
+  }, [sections.length, runWithSyncLock]);
+
+  // Auto-scroll sidebar to keep the active section nav item centered.
   useEffect(() => {
     if (!activeSectionId) return;
-    const sidebarContent = document.querySelector('[data-slot="sidebar-content"]');
-    if (!sidebarContent) return;
-    const btn = sidebarContent.querySelector(`[data-nav-section-id="${activeSectionId}"]`);
-    if (!btn) return;
-    const containerRect = sidebarContent.getBoundingClientRect();
-    const btnRect = btn.getBoundingClientRect();
-    if (btnRect.top < containerRect.top || btnRect.bottom > containerRect.bottom) {
-      btn.scrollIntoView({ block: "nearest", behavior: "smooth" });
-    }
-  }, [activeSectionId]);
+    const sectionNav = sectionNavRef.current;
+    if (!sectionNav) return;
+
+    const navItem = findNavItem(sectionNav, activeSectionId);
+    if (!navItem) return;
+
+    const containerRect = sectionNav.getBoundingClientRect();
+    const itemRect = navItem.getBoundingClientRect();
+    const targetTop =
+      sectionNav.scrollTop +
+      itemRect.top -
+      containerRect.top -
+      (containerRect.height - itemRect.height) / 2;
+
+    runWithSyncLock("main", () => {
+      sectionNav.scrollTo({
+        top: clampScrollTop(targetTop, sectionNav),
+        behavior: "smooth",
+      });
+    }, 700);
+  }, [activeSectionId, runWithSyncLock]);
 
   const parsedBatchSize = batchSize.trim() ? parseInt(batchSize, 10) : null;
 
@@ -145,21 +246,6 @@ export function AppSidebar({
     });
   }
 
-  function scrollToSection(id: string) {
-    const element = document.getElementById(`section-${id}`);
-    if (!element) return;
-    // Find the scrollable SidebarInset container
-    const inset = document.querySelector('[data-slot="sidebar-inset"]');
-    if (inset) {
-      const y = element.getBoundingClientRect().top - inset.getBoundingClientRect().top + inset.scrollTop - 16;
-      inset.scrollTo({ top: y, behavior: "smooth" });
-    } else {
-      const y = element.getBoundingClientRect().top + window.scrollY - 16;
-      window.scrollTo({ top: y, behavior: "smooth" });
-    }
-    window.history.replaceState(null, "", `#section-${id}`);
-  }
-
   const isExpanded = sidebarState === "expanded";
 
   return (
@@ -181,7 +267,8 @@ export function AppSidebar({
 
       <SidebarSeparator />
 
-      <SidebarContent>
+      <SidebarContent className="overflow-hidden">
+        <div className="shrink-0">
         {/* ── 操作 ── */}
         <SidebarGroup>
           <SidebarGroupLabel>操作</SidebarGroupLabel>
@@ -287,19 +374,28 @@ export function AppSidebar({
         </SidebarGroup>
 
         <SidebarSeparator />
+        </div>
 
         {/* ── 小节 ── */}
         {sections.length > 0 && (
-          <SidebarGroup>
+          <SidebarGroup className="min-h-0 flex-1">
             <SidebarGroupLabel>小节</SidebarGroupLabel>
-            <SidebarGroupContent>
+            <SidebarGroupContent className="flex min-h-0 flex-1 overflow-hidden">
+              <div
+                ref={sectionNavRef}
+                data-section-nav-scroll
+                className="min-h-0 flex-1 overflow-y-auto pr-1"
+              >
               <SidebarMenu>
                 {sections.map((section, index) => (
                   <SidebarMenuItem key={section.id} data-nav-section-id={section.id}>
                     <SidebarMenuButton
                       tooltip={`${index + 1}. ${section.name}`}
                       isActive={activeSectionId === section.id}
-                      onClick={() => scrollToSection(section.id)}
+                      onClick={() => {
+                        onNavigateToSection(section.id);
+                        if (isMobile) setOpenMobile(false);
+                      }}
                       className={
                         activeSectionId === section.id
                           ? "text-sky-300"
@@ -314,6 +410,7 @@ export function AppSidebar({
                   </SidebarMenuItem>
                 ))}
               </SidebarMenu>
+              </div>
             </SidebarGroupContent>
           </SidebarGroup>
         )}
