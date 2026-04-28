@@ -3,7 +3,6 @@
 import { Toaster } from "sonner";
 import type { ReactNode } from "react";
 import { PersistentBottomNav } from "@/components/persistent-bottom-nav";
-import { ClickToSource } from "@/components/click-to-source";
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
@@ -12,7 +11,6 @@ export function AppShell({ children }: { children: ReactNode }) {
         {children}
       </main>
       <PersistentBottomNav />
-      <ClickToSource />
       <Toaster
         theme="dark"
         position="top-right"
