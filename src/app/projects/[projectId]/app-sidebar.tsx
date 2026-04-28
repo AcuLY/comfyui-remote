@@ -403,7 +403,7 @@ export function AppSidebar({
                       <span className="flex size-4 shrink-0 items-center justify-center text-[11px] text-zinc-500">
                         {index + 1}
                       </span>
-                      <span className="line-clamp-2 whitespace-normal text-xs">{section.name}</span>
+                      <span className="line-clamp-2 !whitespace-normal text-xs">{section.name}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}

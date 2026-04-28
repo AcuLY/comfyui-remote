@@ -34,7 +34,7 @@ export function BatchSizeQuickFill({
   const iconSize = size === "sm" ? "size-2.5" : "size-3";
 
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex flex-wrap items-center gap-1">
       {QUICK_VALUES.map((val) => {
         const isActive = currentValue === val;
         return (

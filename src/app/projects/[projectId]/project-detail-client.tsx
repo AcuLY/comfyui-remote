@@ -218,7 +218,7 @@ export function ProjectDetailClient({ projectId, projectTitle, sections }: Proje
           <div className="flex items-center gap-2">
             <SidebarTrigger className="-ml-1 hidden md:inline-flex" />
             <div className="flex-1" />
-            <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-3 sm:gap-2" style={{ maxWidth: "28rem" }}>
+            <div className="grid w-full grid-cols-1 gap-1.5 sm:w-auto sm:grid-cols-3 sm:gap-2" style={{ maxWidth: "28rem" }}>
               <AddSectionButton projectId={projectId} />
               <ImportTemplateButton projectId={projectId} />
               <Link
