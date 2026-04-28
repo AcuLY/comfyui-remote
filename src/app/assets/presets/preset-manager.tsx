@@ -600,7 +600,7 @@ function PresetList({
           items={visibleFolders.map((f) => f.id)}
           strategy={verticalListSortingStrategy}
         >
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(14rem,1fr))] gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {visibleFolders.map((folder) => (
             <SortableFolderRow
               key={folder.id}
