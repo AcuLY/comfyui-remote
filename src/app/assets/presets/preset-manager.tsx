@@ -62,7 +62,7 @@ import { parseLoraBindings, serializeLoraBindings } from "@/lib/lora-types";
 import { toast } from "sonner";
 import type { PresetQueryPatch, VariantDraft } from "./preset-types";
 export { GROUP_HISTORY_TABS } from "./preset-types";
-export { AddGroupMemberForm } from "./group-components";
+export { AddGroupMemberForm } from "./add-group-member-form";
 export { PresetChangeHistoryPanel } from "./change-history-panel";
 import { SortableCategoryItem, CategoryForm, CategoryBadge } from "./category-components";
 import { FolderBreadcrumb, BatchActionBar, MoveToFolderButton, SortableFolderRow, countFolderItems } from "./folder-components";

@@ -12,7 +12,9 @@ import {
   removeGroupMember,
   updatePresetGroup,
 } from "@/lib/actions";
-import { AddGroupMemberForm, GROUP_HISTORY_TABS, PresetChangeHistoryPanel } from "../../presets/preset-manager";
+import { AddGroupMemberForm } from "../../presets/add-group-member-form";
+import { PresetChangeHistoryPanel } from "../../presets/change-history-panel";
+import { GROUP_HISTORY_TABS } from "../../presets/preset-types";
 import { parseLoraBindings } from "@/lib/lora-types";
 import { toast } from "sonner";
 
