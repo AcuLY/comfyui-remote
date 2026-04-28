@@ -143,7 +143,7 @@ export function SortableFolderRow(props: {
   };
 
   return (
-    <div ref={setNodeRef} style={style} className="flex items-center gap-1">
+    <div ref={setNodeRef} style={style} className="flex items-center gap-1 w-full">
       <button
         type="button"
         className="cursor-grab touch-none p-1 text-zinc-600 hover:text-zinc-400 shrink-0"
