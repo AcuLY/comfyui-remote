@@ -119,13 +119,13 @@ export function SectionList({ projectId, sections: initialSections }: SectionLis
 
   // Track which section is currently at the top of the viewport
   useEffect(() => {
-    const scrollElement = document.getElementById(MAIN_SCROLL_ID);
-    if (!scrollElement) return;
+    const scrollEl = document.getElementById(MAIN_SCROLL_ID);
+    if (!scrollEl) return;
 
     let ticking = false;
 
     function updateActiveSection() {
-      const containerRect = scrollElement.getBoundingClientRect();
+      const containerRect = scrollEl.getBoundingClientRect();
       const triggerLine = containerRect.top + containerRect.height * 0.25;
       let bestId: string | null = null;
       let bestTop = -Infinity;
@@ -166,8 +166,8 @@ export function SectionList({ projectId, sections: initialSections }: SectionLis
     // Initial check
     updateActiveSection();
 
-    scrollElement.addEventListener("scroll", onScroll, { passive: true });
-    return () => scrollElement.removeEventListener("scroll", onScroll);
+    scrollEl.addEventListener("scroll", onScroll, { passive: true });
+    return () => scrollEl.removeEventListener("scroll", onScroll);
   }, [sections]);
 
   // Auto-scroll nav to keep the active item visible
