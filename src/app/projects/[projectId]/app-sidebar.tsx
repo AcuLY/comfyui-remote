@@ -4,6 +4,7 @@ import { useState, useTransition, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  ArrowLeft,
   Play,
   SlidersHorizontal,
   Download,
@@ -247,22 +248,20 @@ export function AppSidebar({
 
   return (
     <Sidebar collapsible="icon" mobileBehavior="sidebar" className="border-r border-white/5">
-      <SidebarHeader className="px-3 py-3">
+      <SidebarHeader className="gap-1 px-4 py-3 group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:px-2">
         <Link
           href="/projects"
-          className="flex items-center gap-1.5 text-[11px] text-zinc-400 transition hover:text-zinc-200 group-data-[collapsible=icon]:justify-center"
+          className="inline-flex items-center gap-1.5 text-xs text-zinc-400 transition hover:text-zinc-200 group-data-[collapsible=icon]:justify-center"
         >
-          <span className="text-base leading-none">&larr;</span>
+          <ArrowLeft className="size-3.5" />
           {isExpanded && <span>返回项目列表</span>}
         </Link>
         {isExpanded && (
-          <h1 className="mt-1 truncate text-sm font-semibold text-zinc-100">
+          <h1 className="truncate text-sm font-semibold text-zinc-100">
             {projectTitle}
           </h1>
         )}
       </SidebarHeader>
-
-      <SidebarSeparator />
 
       <SidebarContent ref={sidebarContentRef} className="overflow-x-hidden">
         {/* ── 操作 ── */}
