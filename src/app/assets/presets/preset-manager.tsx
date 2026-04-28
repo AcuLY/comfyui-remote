@@ -186,8 +186,9 @@ export function PresetManager({
     }
 
     const query = params.toString();
-    router.replace(`/assets/presets${query ? `?${query}` : ""}`, { scroll: false });
-  }, [router, searchParams]);
+    const url = `/assets/presets${query ? `?${query}` : ""}`;
+    window.history.replaceState(null, "", url);
+  }, [searchParams]);
 
   function handleCatDragEnd(event: DragEndEvent) {
     const { active, over } = event;
