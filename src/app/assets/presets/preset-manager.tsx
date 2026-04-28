@@ -688,7 +688,7 @@ function PresetList({
             items={visiblePresets.map((p) => p.id)}
             strategy={rectSortingStrategy}
           >
-            <div className="grid grid-cols-[repeat(auto-fit,minmax(18rem,1fr))] gap-2">
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(16rem,1fr))] gap-2">
             {visiblePresets.map((preset) => (
               <SortablePresetCard
                 key={preset.id}
