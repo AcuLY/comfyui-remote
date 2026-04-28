@@ -33,13 +33,20 @@ function nextId() {
   return `lb-${++_idCounter}-${Math.random().toString(36).slice(2, 6)}`;
 }
 
+function stripInternalId(item: BindingWithId): LoraBinding {
+  return {
+    path: item.path,
+    weight: item.weight,
+    enabled: item.enabled,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Sortable row
 // ---------------------------------------------------------------------------
 
 function SortableRow({
   item,
-  index,
   weightDisplay,
   onToggle,
   onPathChange,
@@ -49,7 +56,6 @@ function SortableRow({
   onRemove,
 }: {
   item: BindingWithId;
-  index: number;
   weightDisplay: string;
   onToggle: () => void;
   onPathChange: (path: string) => void;
@@ -72,10 +78,10 @@ function SortableRow({
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-2 py-1.5"
+      className="flex min-w-0 flex-col gap-1.5 py-1.5 sm:flex-row sm:items-center sm:gap-2"
     >
       {/* Row 1: drag handle + toggle + path picker (+ weight & delete on desktop) */}
-      <div className="flex items-center gap-2">
+      <div className="flex w-full min-w-0 items-center gap-2">
         {/* Drag handle */}
         <button
           type="button"
@@ -106,7 +112,7 @@ function SortableRow({
         </button>
 
         {/* Path picker */}
-        <div className="flex-1 min-w-0">
+        <div className="min-w-0 flex-1">
           <LoraCascadePicker value={item.path} onChange={onPathChange} autoFocus={!item.path} />
         </div>
 
@@ -145,7 +151,7 @@ function SortableRow({
       </div>
 
       {/* Row 2: weight controls + delete (mobile only) */}
-      <div className="mt-1.5 flex items-center gap-1 pl-[3.25rem] sm:hidden">
+      <div className="flex w-full min-w-0 items-center gap-1 pl-[3.25rem] sm:hidden">
         <div className="flex gap-0.5">
           <button type="button" onClick={() => onWeightAdjust(-0.5)}
             className="rounded px-1.5 py-0.5 text-[10px] text-zinc-600 hover:bg-white/[0.06] hover:text-zinc-300">-.5</button>
@@ -200,7 +206,7 @@ export function LoraBindingEditor({ bindings, onChange }: LoraBindingEditorProps
   const emit = useCallback(
     (next: BindingWithId[]) => {
       setItems(next);
-      onChange(next.map(({ _id, ...rest }) => rest));
+      onChange(next.map(stripInternalId));
     },
     [onChange],
   );
@@ -273,11 +279,10 @@ export function LoraBindingEditor({ bindings, onChange }: LoraBindingEditorProps
           <DndContext id={dndId} sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={ids} strategy={verticalListSortingStrategy}>
               <div className="space-y-2">
-                {items.map((item, index) => (
+                {items.map((item) => (
                   <SortableRow
                     key={item._id}
                     item={item}
-                    index={index}
                     weightDisplay={getWeightDisplay(item)}
                     onToggle={() => handleUpdate(item._id, { enabled: !item.enabled })}
                     onPathChange={(v) => handleUpdate(item._id, { path: v })}

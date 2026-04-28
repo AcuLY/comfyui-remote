@@ -87,7 +87,7 @@ export function PresetEditClient({
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-3">
+    <div className="mx-auto w-full min-w-0 max-w-4xl space-y-3">
       <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => router.push(backHref)} className="inline-flex items-center gap-1.5 text-xs text-zinc-400 transition hover:text-zinc-200">
         <ArrowLeft className="size-3.5" /> 返回预制列表
       </button>

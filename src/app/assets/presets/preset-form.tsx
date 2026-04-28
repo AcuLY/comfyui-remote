@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition, useMemo, useId } from "react";
+import { useState, useEffect, useTransition, useMemo, useId, useSyncExternalStore } from "react";
 import {
   DndContext,
   closestCenter,
@@ -373,8 +373,11 @@ export function PresetForm({
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   );
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
 
   const variantIds = useMemo(() => variants.map((_, i) => `variant-sort-${i}`), [variants]);
   const current = variants[currentIdx];
@@ -387,7 +390,7 @@ export function PresetForm({
 
     const nextIdx = variants.findIndex((variant) => variant.id === activeVariantId);
     if (nextIdx >= 0) {
-      setCurrentIdx(nextIdx);
+      queueMicrotask(() => setCurrentIdx(nextIdx));
     }
   }, [activeVariantId, variants]);
 
@@ -523,9 +526,9 @@ export function PresetForm({
   // We need a post-save callback — handled by the parent's onSave flow
 
   const formContent = (
-    <div className="border-t border-white/5 px-3 py-3 space-y-3">
+    <div className="min-w-0 space-y-3 border-t border-white/5 px-3 py-3">
       {/* Preset-level: name + slug */}
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <label className="space-y-1">
           <span className="text-[10px] text-zinc-500">预制名称</span>
           <input
@@ -631,7 +634,7 @@ export function PresetForm({
 
 
         {/* Variant name + slug */}
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <label className="space-y-1">
             <span className="text-[10px] text-zinc-500">变体名称</span>
             <input
@@ -706,7 +709,7 @@ export function PresetForm({
   }
 
   return (
-    <div className="rounded-xl border border-white/5 bg-white/[0.02]">
+    <div className="min-w-0 rounded-xl border border-white/5 bg-white/[0.02]">
       <button
         type="button"
         onClick={onCancel}
