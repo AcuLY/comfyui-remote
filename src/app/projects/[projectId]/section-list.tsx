@@ -94,8 +94,13 @@ export function SectionList({ projectId, sections: initialSections }: SectionLis
     if (hash) {
       const id = hash.slice(1);
       const el = document.getElementById(id);
-      if (el) {
-        el.scrollIntoView({ block: "center", behavior: "instant" });
+      const scrollElement = document.getElementById(MAIN_SCROLL_ID);
+      if (el && scrollElement) {
+        const containerRect = scrollElement.getBoundingClientRect();
+        const elementRect = el.getBoundingClientRect();
+        scrollElement.scrollTop += elementRect.top - containerRect.top - containerRect.height / 3;
+        // Clean hash so it doesn't interfere with sessionStorage anchor restore
+        window.history.replaceState(null, "", window.location.pathname + window.location.search);
       }
     }
   }, []);
@@ -316,7 +321,7 @@ export function SectionList({ projectId, sections: initialSections }: SectionLis
     >
       {sections.length > 0 && (
         <aside className={`min-w-0 border-r border-white/5 bg-black/10 ${anchorNavCollapsed ? "pr-0" : "pr-1"}`}>
-          <div className="sticky top-4 space-y-3">
+          <div className="sticky top-4 space-y-3 max-h-[calc(100dvh-2rem)] overflow-y-auto scrollbar-none">
             <button
               type="button"
               onClick={handleToggle}
