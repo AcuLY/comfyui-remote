@@ -339,7 +339,7 @@ export function GroupList({
           items={visibleGroups.map((g) => g.id)}
           strategy={rectSortingStrategy}
         >
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(14rem,1fr))] gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {visibleGroups.map((group) => (
             <SortableGroupCard
               key={group.id}
