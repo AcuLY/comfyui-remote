@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { isScrollableElement } from "@/lib/scroll-container";
 
 /**
  * Tracks which element is currently active in the scroll container
@@ -27,7 +28,14 @@ export function useScrollSpy(
   useEffect(() => {
     const rootMargin = options?.rootMargin ?? "-0% 0% -75% 0%";
     const threshold = options?.threshold ?? 0;
-    const root = options?.root ?? (options?.rootSelector ? document.querySelector(options.rootSelector) : null);
+    const selectedRoot = options?.rootSelector
+      ? document.querySelector(options.rootSelector)
+      : null;
+    const root = options?.root ?? (
+      selectedRoot instanceof HTMLElement && isScrollableElement(selectedRoot)
+        ? selectedRoot
+        : null
+    );
     const sectionElements = ids
       .map((id) => ({
         id,

@@ -18,6 +18,13 @@ import { runProject, deleteProject, saveProjectAsTemplate } from "@/lib/actions"
 import { exportProjectImages } from "@/app/projects/actions-export";
 import { BatchSizeQuickFill } from "@/components/batch-size-quick-fill";
 import {
+  addScrollListener,
+  getMaxScrollTop,
+  getPreferredScrollContainer,
+  getScrollProgress,
+  scrollContainerTo,
+} from "@/lib/scroll-container";
+import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
@@ -57,17 +64,6 @@ type AppSidebarProps = {
   activeSectionId: string | null;
   onNavigateToSection: (id: string) => void;
 };
-
-function clampScrollTop(value: number, element: HTMLElement) {
-  const max = Math.max(0, element.scrollHeight - element.clientHeight);
-  return Math.min(Math.max(0, value), max);
-}
-
-function getScrollProgress(element: HTMLElement) {
-  const max = element.scrollHeight - element.clientHeight;
-  if (max <= 0) return 0;
-  return element.scrollTop / max;
-}
 
 function findNavItem(container: HTMLElement, sectionId: string) {
   return Array.from(container.querySelectorAll<HTMLElement>("[data-nav-section-id]")).find(
@@ -109,9 +105,9 @@ export function AppSidebar({
   }, []);
 
   useEffect(() => {
-    const mainScroller = document.querySelector<HTMLElement>('[data-slot="sidebar-inset"]');
+    const mainScroller = getPreferredScrollContainer('[data-slot="sidebar-inset"]');
     const sidebarScroller = sidebarContentRef.current;
-    if (!mainScroller || !sidebarScroller) return;
+    if (!sidebarScroller) return;
 
     let mainFrame: number | null = null;
     let sidebarFrame: number | null = null;
@@ -121,9 +117,9 @@ export function AppSidebar({
       if (syncLockRef.current === "sidebar") return;
 
       const progress = getScrollProgress(mainScroller);
-      const targetTop = progress * Math.max(0, sidebarScroller.scrollHeight - sidebarScroller.clientHeight);
+      const targetTop = progress * getMaxScrollTop(sidebarScroller);
       runWithSyncLock("main", () => {
-        sidebarScroller.scrollTo({ top: clampScrollTop(targetTop, sidebarScroller), behavior: "instant" });
+        scrollContainerTo(sidebarScroller, targetTop, "instant");
       });
     };
 
@@ -132,9 +128,9 @@ export function AppSidebar({
       if (syncLockRef.current === "main") return;
 
       const progress = getScrollProgress(sidebarScroller);
-      const targetTop = progress * Math.max(0, mainScroller.scrollHeight - mainScroller.clientHeight);
+      const targetTop = progress * getMaxScrollTop(mainScroller);
       runWithSyncLock("sidebar", () => {
-        mainScroller.scrollTo({ top: clampScrollTop(targetTop, mainScroller), behavior: "instant" });
+        scrollContainerTo(mainScroller, targetTop, "instant");
       });
     };
 
@@ -148,13 +144,13 @@ export function AppSidebar({
       sidebarFrame = window.requestAnimationFrame(syncFromSidebar);
     };
 
-    mainScroller.addEventListener("scroll", handleMainScroll, { passive: true });
-    sidebarScroller.addEventListener("scroll", handleSidebarScroll, { passive: true });
+    const removeMainScrollListener = addScrollListener(mainScroller, handleMainScroll, { passive: true });
+    const removeSidebarScrollListener = addScrollListener(sidebarScroller, handleSidebarScroll, { passive: true });
     handleMainScroll();
 
     return () => {
-      mainScroller.removeEventListener("scroll", handleMainScroll);
-      sidebarScroller.removeEventListener("scroll", handleSidebarScroll);
+      removeMainScrollListener();
+      removeSidebarScrollListener();
 
       if (mainFrame !== null) window.cancelAnimationFrame(mainFrame);
       if (sidebarFrame !== null) window.cancelAnimationFrame(sidebarFrame);
@@ -187,10 +183,7 @@ export function AppSidebar({
       (containerRect.height - itemRect.height) / 2;
 
     runWithSyncLock("main", () => {
-      sidebarScroller.scrollTo({
-        top: clampScrollTop(targetTop, sidebarScroller),
-        behavior: "smooth",
-      });
+      scrollContainerTo(sidebarScroller, targetTop, "smooth");
     }, 700);
   }, [activeSectionId, runWithSyncLock]);
 

@@ -6,6 +6,7 @@ import { Plus } from "lucide-react";
 
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { useScrollSpy } from "@/hooks/use-scroll-spy";
+import { getPreferredScrollContainer } from "@/lib/scroll-container";
 import { AddSectionButton, ImportTemplateButton } from "./section-actions";
 import { AppSidebar } from "./app-sidebar";
 import { SectionCards, type Section } from "./section-cards";
@@ -25,9 +26,7 @@ type StoredSectionAnchor = {
 
 /** Get the scroll container — SidebarInset if it has overflow, else window */
 function getScrollContainer(): Element | Window {
-  const inset = document.querySelector('[data-slot="sidebar-inset"]');
-  if (inset && getComputedStyle(inset).overflowY !== "visible") return inset;
-  return window;
+  return getPreferredScrollContainer('[data-slot="sidebar-inset"]');
 }
 
 export function ProjectDetailClient({ projectId, projectTitle, sections }: ProjectDetailClientProps) {
