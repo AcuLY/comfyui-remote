@@ -26,7 +26,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         </div>
       </SectionCard>
 
-      <SectionCard title="小节列表">
+      <SectionCard title="小节列表" className="!overflow-visible">
         <div className="space-y-3">
           <div className="grid gap-2 sm:grid-cols-3">
             <AddSectionButton projectId={project.id} />

@@ -321,7 +321,8 @@ export function SectionList({ projectId, sections: initialSections }: SectionLis
     >
       {sections.length > 0 && (
         <aside className={`min-w-0 border-r border-white/5 bg-black/10 ${anchorNavCollapsed ? "pr-0" : "pr-1"}`}>
-          <div className="sticky top-4 space-y-3 max-h-[calc(100dvh-2rem)] overflow-y-auto scrollbar-none">
+          <div className="sticky top-4">
+            <div className="space-y-3 max-h-[calc(100dvh-2rem)] overflow-y-auto scrollbar-none">
             <button
               type="button"
               onClick={handleToggle}
@@ -361,6 +362,7 @@ export function SectionList({ projectId, sections: initialSections }: SectionLis
                   ))}
                 </div>
               )}
+            </div>
             </div>
           </div>
         </aside>
