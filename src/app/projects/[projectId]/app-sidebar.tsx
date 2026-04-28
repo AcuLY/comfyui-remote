@@ -264,7 +264,7 @@ export function AppSidebar({
 
       <SidebarSeparator />
 
-      <SidebarContent ref={sidebarContentRef}>
+      <SidebarContent ref={sidebarContentRef} className="overflow-x-hidden">
         {/* ── 操作 ── */}
         <SidebarGroup>
           <SidebarGroupLabel>操作</SidebarGroupLabel>
@@ -374,7 +374,16 @@ export function AppSidebar({
         {/* ── 小节 ── */}
         {sections.length > 0 && (
           <SidebarGroup>
-            <SidebarGroupLabel>小节</SidebarGroupLabel>
+            <SidebarGroupLabel className="justify-between pr-1">
+              <span>小节</span>
+              <button
+                onClick={onToggleCompact}
+                className="text-zinc-500 hover:text-zinc-300 transition"
+                title={compact ? "展开视图" : "紧凑视图"}
+              >
+                {compact ? <LayoutGrid className="size-3.5" /> : <LayoutList className="size-3.5" />}
+              </button>
+            </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 {sections.map((section, index) => (
@@ -404,24 +413,7 @@ export function AppSidebar({
         )}
       </SidebarContent>
 
-      <SidebarSeparator />
-
-      <SidebarFooter className="px-2 py-2">
-        <SidebarMenuButton
-          tooltip={compact ? "展开视图" : "紧凑视图"}
-          onClick={onToggleCompact}
-          className="text-zinc-400 hover:text-zinc-200"
-        >
-          {compact ? (
-            <LayoutGrid className="size-4" />
-          ) : (
-            <LayoutList className="size-4" />
-          )}
-          {isExpanded && (
-            <span className="text-xs">{compact ? "展开视图" : "紧凑视图"}</span>
-          )}
-        </SidebarMenuButton>
-      </SidebarFooter>
+      <SidebarFooter className="px-3 py-3" />
 
       <SidebarRail />
     </Sidebar>
