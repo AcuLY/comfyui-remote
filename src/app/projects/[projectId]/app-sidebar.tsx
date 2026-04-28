@@ -89,10 +89,10 @@ export function AppSidebar({
   const [batchSize, setBatchSize] = useState<string>("");
   const [exporting, setExporting] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
-  const sectionNavRef = useRef<HTMLDivElement>(null);
+  const sidebarContentRef = useRef<HTMLDivElement>(null);
   const syncLockRef = useRef<"main" | "sidebar" | null>(null);
   const syncUnlockTimerRef = useRef<number | null>(null);
-  const { state: sidebarState, isMobile, setOpenMobile } = useSidebar();
+  const { state: sidebarState } = useSidebar();
 
   const runWithSyncLock = useCallback((source: "main" | "sidebar", callback: () => void, duration = 180) => {
     syncLockRef.current = source;
@@ -110,8 +110,8 @@ export function AppSidebar({
 
   useEffect(() => {
     const mainScroller = document.querySelector<HTMLElement>('[data-slot="sidebar-inset"]');
-    const sectionNav = sectionNavRef.current;
-    if (!mainScroller || !sectionNav) return;
+    const sidebarScroller = sidebarContentRef.current;
+    if (!mainScroller || !sidebarScroller) return;
 
     let mainFrame: number | null = null;
     let sidebarFrame: number | null = null;
@@ -121,9 +121,9 @@ export function AppSidebar({
       if (syncLockRef.current === "sidebar") return;
 
       const progress = getScrollProgress(mainScroller);
-      const targetTop = progress * Math.max(0, sectionNav.scrollHeight - sectionNav.clientHeight);
+      const targetTop = progress * Math.max(0, sidebarScroller.scrollHeight - sidebarScroller.clientHeight);
       runWithSyncLock("main", () => {
-        sectionNav.scrollTo({ top: clampScrollTop(targetTop, sectionNav), behavior: "instant" });
+        sidebarScroller.scrollTo({ top: clampScrollTop(targetTop, sidebarScroller), behavior: "instant" });
       });
     };
 
@@ -131,7 +131,7 @@ export function AppSidebar({
       sidebarFrame = null;
       if (syncLockRef.current === "main") return;
 
-      const progress = getScrollProgress(sectionNav);
+      const progress = getScrollProgress(sidebarScroller);
       const targetTop = progress * Math.max(0, mainScroller.scrollHeight - mainScroller.clientHeight);
       runWithSyncLock("sidebar", () => {
         mainScroller.scrollTo({ top: clampScrollTop(targetTop, mainScroller), behavior: "instant" });
@@ -149,12 +149,12 @@ export function AppSidebar({
     };
 
     mainScroller.addEventListener("scroll", handleMainScroll, { passive: true });
-    sectionNav.addEventListener("scroll", handleSidebarScroll, { passive: true });
+    sidebarScroller.addEventListener("scroll", handleSidebarScroll, { passive: true });
     handleMainScroll();
 
     return () => {
       mainScroller.removeEventListener("scroll", handleMainScroll);
-      sectionNav.removeEventListener("scroll", handleSidebarScroll);
+      sidebarScroller.removeEventListener("scroll", handleSidebarScroll);
 
       if (mainFrame !== null) window.cancelAnimationFrame(mainFrame);
       if (sidebarFrame !== null) window.cancelAnimationFrame(sidebarFrame);
@@ -168,23 +168,27 @@ export function AppSidebar({
   // Auto-scroll sidebar to keep the active section nav item centered.
   useEffect(() => {
     if (!activeSectionId) return;
-    const sectionNav = sectionNavRef.current;
-    if (!sectionNav) return;
+    const sidebarScroller = sidebarContentRef.current;
+    if (!sidebarScroller) return;
 
-    const navItem = findNavItem(sectionNav, activeSectionId);
+    const navItem = findNavItem(sidebarScroller, activeSectionId);
     if (!navItem) return;
 
-    const containerRect = sectionNav.getBoundingClientRect();
+    const containerRect = sidebarScroller.getBoundingClientRect();
     const itemRect = navItem.getBoundingClientRect();
+    const isVisible = itemRect.top >= containerRect.top && itemRect.bottom <= containerRect.bottom;
+
+    if (isVisible) return;
+
     const targetTop =
-      sectionNav.scrollTop +
+      sidebarScroller.scrollTop +
       itemRect.top -
       containerRect.top -
       (containerRect.height - itemRect.height) / 2;
 
     runWithSyncLock("main", () => {
-      sectionNav.scrollTo({
-        top: clampScrollTop(targetTop, sectionNav),
+      sidebarScroller.scrollTo({
+        top: clampScrollTop(targetTop, sidebarScroller),
         behavior: "smooth",
       });
     }, 700);
@@ -249,7 +253,7 @@ export function AppSidebar({
   const isExpanded = sidebarState === "expanded";
 
   return (
-    <Sidebar collapsible="icon" className="border-r border-white/5">
+    <Sidebar collapsible="icon" mobileBehavior="sidebar" className="border-r border-white/5">
       <SidebarHeader className="px-3 py-3">
         <Link
           href="/projects"
@@ -267,8 +271,7 @@ export function AppSidebar({
 
       <SidebarSeparator />
 
-      <SidebarContent className="overflow-hidden">
-        <div className="shrink-0">
+      <SidebarContent ref={sidebarContentRef}>
         {/* ── 操作 ── */}
         <SidebarGroup>
           <SidebarGroupLabel>操作</SidebarGroupLabel>
@@ -374,18 +377,12 @@ export function AppSidebar({
         </SidebarGroup>
 
         <SidebarSeparator />
-        </div>
 
         {/* ── 小节 ── */}
         {sections.length > 0 && (
-          <SidebarGroup className="min-h-0 flex-1">
+          <SidebarGroup>
             <SidebarGroupLabel>小节</SidebarGroupLabel>
-            <SidebarGroupContent className="flex min-h-0 flex-1 overflow-hidden">
-              <div
-                ref={sectionNavRef}
-                data-section-nav-scroll
-                className="min-h-0 flex-1 overflow-y-auto pr-1"
-              >
+            <SidebarGroupContent>
               <SidebarMenu>
                 {sections.map((section, index) => (
                   <SidebarMenuItem key={section.id} data-nav-section-id={section.id}>
@@ -394,7 +391,6 @@ export function AppSidebar({
                       isActive={activeSectionId === section.id}
                       onClick={() => {
                         onNavigateToSection(section.id);
-                        if (isMobile) setOpenMobile(false);
                       }}
                       className={
                         activeSectionId === section.id
@@ -410,7 +406,6 @@ export function AppSidebar({
                   </SidebarMenuItem>
                 ))}
               </SidebarMenu>
-              </div>
             </SidebarGroupContent>
           </SidebarGroup>
         )}

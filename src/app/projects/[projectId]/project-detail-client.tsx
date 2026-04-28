@@ -215,12 +215,6 @@ export function ProjectDetailClient({ projectId, projectTitle, sections }: Proje
 
       <SidebarInset className="flex-1 overflow-auto">
         <div className="mx-auto flex max-w-5xl flex-col gap-3 px-4 py-4 pb-24 sm:px-6">
-          <MobileSectionNavigator
-            sections={sections}
-            activeSectionId={activeSectionId}
-            onNavigateToSection={scrollToSection}
-          />
-
           {/* Toolbar */}
           <div className="flex items-center gap-2">
             <SidebarTrigger className="-ml-1 hidden md:inline-flex" />
@@ -253,72 +247,5 @@ export function ProjectDetailClient({ projectId, projectTitle, sections }: Proje
         </div>
       </SidebarInset>
     </SidebarProvider>
-  );
-}
-
-function MobileSectionNavigator({
-  sections,
-  activeSectionId,
-  onNavigateToSection,
-}: {
-  sections: Section[];
-  activeSectionId: string | null;
-  onNavigateToSection: (id: string) => void;
-}) {
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!activeSectionId) return;
-
-    const container = scrollContainerRef.current;
-    const activeButton = container?.querySelector<HTMLElement>(
-      `[data-mobile-nav-section-id="${activeSectionId}"]`,
-    );
-
-    if (!container || !activeButton) return;
-
-    const containerRect = container.getBoundingClientRect();
-    const buttonRect = activeButton.getBoundingClientRect();
-    const targetLeft =
-      container.scrollLeft +
-      buttonRect.left -
-      containerRect.left -
-      (containerRect.width - buttonRect.width) / 2;
-
-    container.scrollTo({
-      left: Math.max(0, targetLeft),
-      behavior: "smooth",
-    });
-  }, [activeSectionId]);
-
-  if (sections.length === 0) return null;
-
-  return (
-    <div className="sticky top-0 z-20 -mx-4 -mt-4 border-b border-white/10 bg-background/95 px-4 py-2 backdrop-blur md:hidden">
-      <div className="flex items-center gap-2">
-        <SidebarTrigger className="shrink-0" />
-        <div
-          ref={scrollContainerRef}
-          className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto scrollbar-none"
-        >
-          {sections.map((section, index) => (
-            <button
-              key={section.id}
-              type="button"
-              data-mobile-nav-section-id={section.id}
-              onClick={() => onNavigateToSection(section.id)}
-              className={`flex h-8 max-w-32 shrink-0 items-center gap-1 rounded-md border px-2 text-xs transition ${
-                activeSectionId === section.id
-                  ? "border-sky-500/40 bg-sky-500/15 text-sky-200"
-                  : "border-white/10 bg-white/[0.04] text-zinc-400 hover:bg-white/[0.08] hover:text-zinc-200"
-              }`}
-            >
-              <span className="text-[11px] text-zinc-500">{index + 1}</span>
-              <span className="truncate">{section.name}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
   );
 }
