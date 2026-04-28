@@ -23,7 +23,7 @@ export function AddSectionButton({ projectId }: { projectId: string }) {
     <button
       disabled={isPending}
       onClick={handleAdd}
-      className="inline-flex w-full items-center justify-center gap-1.5 rounded-2xl border border-dashed border-white/10 bg-white/[0.02] px-2 py-2 text-[11px] text-zinc-400 transition hover:border-sky-500/30 hover:bg-sky-500/5 hover:text-sky-300 disabled:opacity-50 sm:gap-2 sm:px-4 sm:py-3 sm:text-sm"
+      className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-white/10 bg-white/[0.02] px-2 py-2 text-[11px] text-zinc-400 transition hover:border-sky-500/30 hover:bg-sky-500/5 hover:text-sky-300 disabled:opacity-50 sm:gap-2 sm:px-3 sm:py-3 sm:text-xs"
     >
       <Plus className="size-3.5" /> {isPending ? "添加中…" : "添加小节"}
     </button>
