@@ -272,15 +272,6 @@ export function AppSidebar({
             <SidebarMenu>
               {/* 运行整组 */}
               <SidebarMenuItem>
-                <SidebarMenuButton
-                  tooltip="运行整组"
-                  onClick={handleRun}
-                  disabled={isPending}
-                  className="text-sky-300 hover:bg-sky-500/10 hover:text-sky-200 text-[11px] sm:text-sm"
-                >
-                  <Play className="size-4" />
-                  <span className="text-[11px] sm:inherit">{isPending ? "提交中…" : "运行整组"}</span>
-                </SidebarMenuButton>
                 {isExpanded && (
                   <div className="px-1 pb-0.5">
                     <BatchSizeQuickFill
@@ -293,6 +284,15 @@ export function AppSidebar({
                     />
                   </div>
                 )}
+                <SidebarMenuButton
+                  tooltip="运行整组"
+                  onClick={handleRun}
+                  disabled={isPending}
+                  className="text-sky-300 hover:bg-sky-500/10 hover:text-sky-200 text-[11px] sm:text-sm"
+                >
+                  <Play className="size-4" />
+                  <span className="text-[11px] sm:inherit">{isPending ? "提交中…" : "运行整组"}</span>
+                </SidebarMenuButton>
               </SidebarMenuItem>
 
               {/* 编辑项目参数 */}
