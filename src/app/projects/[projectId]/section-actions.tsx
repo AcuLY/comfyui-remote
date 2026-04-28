@@ -23,9 +23,9 @@ export function AddSectionButton({ projectId }: { projectId: string }) {
     <button
       disabled={isPending}
       onClick={handleAdd}
-      className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-zinc-400 transition hover:border-sky-500/30 hover:bg-sky-500/5 hover:text-sky-300 disabled:opacity-50"
+      className="inline-flex w-full items-center justify-center gap-1.5 rounded-2xl border border-dashed border-white/10 bg-white/[0.02] px-2 py-2 text-[11px] text-zinc-400 transition hover:border-sky-500/30 hover:bg-sky-500/5 hover:text-sky-300 disabled:opacity-50 sm:gap-2 sm:px-4 sm:py-3 sm:text-sm"
     >
-      <Plus className="size-4" /> {isPending ? "添加中…" : "添加小节"}
+      <Plus className="size-3.5" /> {isPending ? "添加中…" : "添加小节"}
     </button>
   );
 }
@@ -113,7 +113,7 @@ export function ImportTemplateButton({ projectId }: { projectId: string }) {
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-emerald-500/20 bg-emerald-500/[0.03] px-3 py-3 text-xs text-emerald-400 transition hover:bg-emerald-500/[0.08]"
+        className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-emerald-500/20 bg-emerald-500/[0.03] px-2 py-2 text-[11px] text-emerald-400 transition hover:bg-emerald-500/[0.08] sm:gap-2 sm:px-3 sm:py-3 sm:text-xs"
       >
         <Download className="size-3.5" /> 导入模板
       </button>

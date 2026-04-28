@@ -218,12 +218,12 @@ export function ProjectDetailClient({ projectId, projectTitle, sections }: Proje
           <div className="flex items-center gap-2">
             <SidebarTrigger className="-ml-1 hidden md:inline-flex" />
             <div className="flex-1" />
-            <div className="grid grid-cols-3 gap-2" style={{ maxWidth: "28rem" }}>
+            <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-3 sm:gap-2" style={{ maxWidth: "28rem" }}>
               <AddSectionButton projectId={projectId} />
               <ImportTemplateButton projectId={projectId} />
               <Link
                 href={`/projects/${projectId}/batch-create`}
-                className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-sky-500/20 bg-sky-500/[0.03] px-3 py-3 text-xs text-sky-400 transition hover:bg-sky-500/[0.08]"
+                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-sky-500/20 bg-sky-500/[0.03] px-2 py-2 text-[11px] text-sky-400 transition hover:bg-sky-500/[0.08] sm:gap-2 sm:px-3 sm:py-3 sm:text-xs"
               >
                 <Plus className="size-3.5" /> 批量创建
               </Link>
