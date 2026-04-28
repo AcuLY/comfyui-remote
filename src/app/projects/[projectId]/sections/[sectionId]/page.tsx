@@ -2,7 +2,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ImageIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import { prisma } from "@/lib/prisma";
-import { SectionCard } from "@/components/section-card";
 import { SectionEditor } from "@/components/section-editor";
 import { SectionParamsForm } from "./section-params-form";
 import { SectionNameEditor } from "./section-name-editor";
@@ -14,14 +13,6 @@ import type { LoraEntry } from "@/lib/lora-types";
 import { revalidatePath } from "next/cache";
 import { getSectionChangeHistory } from "@/server/services/section-change-history-service";
 import { SectionChangeHistory } from "./section-change-history";
-
-const SECTION_STEPS = [
-  { id: "section-params", label: "参数" },
-  { id: "section-presets", label: "预制" },
-  { id: "section-prompts", label: "提示词" },
-  { id: "section-loras", label: "LoRA" },
-  { id: "section-history", label: "变更记录" },
-];
 
 export default async function SectionEditPage({
   params,
@@ -266,104 +257,88 @@ export default async function SectionEditPage({
   return (
     <div className="space-y-4">
       <div className="min-w-0">
-      <div className="sticky top-0 z-20 border-b border-white/10 bg-[var(--bg)]/95 py-2 backdrop-blur space-y-2">
-        <div className="flex items-center justify-between gap-3">
-          <Link
-            href={`/projects/${projectId}#section-${sectionId}`}
-            scroll={false}
-            className="inline-flex items-center gap-2 text-sm text-zinc-300"
-          >
-            <ArrowLeft className="size-4" /> 返回
-          </Link>
-          <div className="flex items-center gap-1.5">
-            {prevSection ? (
+        <div className="sticky top-0 z-20 -mx-5 border-b border-white/10 bg-[var(--bg)]/95 px-5 py-2.5 backdrop-blur sm:-mx-6 sm:px-6">
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between gap-2">
               <Link
-                href={`/projects/${projectId}/sections/${prevSection.id}`}
-                className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
+                href={`/projects/${projectId}#section-${sectionId}`}
+                scroll={false}
+                className="inline-flex items-center gap-2 text-sm text-zinc-300"
               >
-                <ChevronLeft className="size-3" /> 上一节
+                <ArrowLeft className="size-4" /> 返回
               </Link>
-            ) : (
-              <span className="inline-flex items-center gap-1 rounded-lg border border-white/5 px-2 py-1 text-xs text-zinc-600">
-                <ChevronLeft className="size-3" /> 上一节
-              </span>
-            )}
-            {nextSection ? (
-              <Link
-                href={`/projects/${projectId}/sections/${nextSection.id}`}
-                className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
-              >
-                下一节 <ChevronRight className="size-3" />
-              </Link>
-            ) : (
-              <span className="inline-flex items-center gap-1 rounded-lg border border-white/5 px-2 py-1 text-xs text-zinc-600">
-                下一节 <ChevronRight className="size-3" />
-              </span>
-            )}
-            <Link
-              href={`/projects/${projectId}/sections/${sectionId}/results`}
-              className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
-            >
-              <ImageIcon className="size-3" /> 查看结果
-            </Link>
+              <div className="flex min-w-0 items-center gap-1.5">
+                {prevSection ? (
+                  <Link
+                    href={`/projects/${projectId}/sections/${prevSection.id}`}
+                    className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
+                  >
+                    <ChevronLeft className="size-3" /> 上一节
+                  </Link>
+                ) : (
+                  <span className="inline-flex items-center gap-1 rounded-lg border border-white/5 px-2 py-1 text-xs text-zinc-600">
+                    <ChevronLeft className="size-3" /> 上一节
+                  </span>
+                )}
+                {nextSection ? (
+                  <Link
+                    href={`/projects/${projectId}/sections/${nextSection.id}`}
+                    className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
+                  >
+                    下一节 <ChevronRight className="size-3" />
+                  </Link>
+                ) : (
+                  <span className="inline-flex items-center gap-1 rounded-lg border border-white/5 px-2 py-1 text-xs text-zinc-600">
+                    下一节 <ChevronRight className="size-3" />
+                  </span>
+                )}
+                <Link
+                  href={`/projects/${projectId}/sections/${sectionId}/results`}
+                  className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
+                >
+                  <ImageIcon className="size-3" /> 查看结果
+                </Link>
+              </div>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <SectionNameEditor sectionId={sectionId} initialName={sectionName} />
+              </div>
+              <div className="w-full sm:w-auto">
+                <SectionRunButton projectId={projectId} sectionId={sectionId} defaultBatchSize={sectionParams.batchSize} showBatchOverride={false} />
+              </div>
+            </div>
           </div>
         </div>
-        <div className="grid grid-cols-5 overflow-hidden rounded-full border border-white/10 bg-white/[0.03]">
-          {SECTION_STEPS.map((step, index) => (
-            <a
-              key={step.id}
-              href={`#${step.id}`}
-              className="relative flex min-w-0 items-center justify-center px-2 py-2 text-[11px] text-zinc-400 transition hover:bg-white/[0.06] hover:text-zinc-100"
-            >
-              <span className="mr-1.5 flex size-4 shrink-0 items-center justify-center rounded-full bg-white/10 text-[10px] text-zinc-300">
-                {index + 1}
-              </span>
-              <span className="truncate">{step.label}</span>
-            </a>
-          ))}
-        </div>
-      </div>
 
-      <SectionCard
-        title={
-          <div className="flex items-center gap-3">
-            <span>编辑小节 —</span>
-            <SectionNameEditor sectionId={sectionId} initialName={sectionName} />
+        <section className="-mx-4 w-full min-w-0 rounded-2xl border border-white/10 bg-[var(--panel)] p-3.5 shadow-[0_10px_30px_rgba(0,0,0,0.25)] sm:mx-0 lg:p-4">
+          <div className="space-y-6">
+            <div id="section-params" className="scroll-mt-24">
+              <SectionParamsForm
+                projectId={projectId}
+                sectionId={sectionId}
+                initialParams={sectionParams}
+              />
+            </div>
+            <div className="border-t border-white/5 pt-4">
+              <SectionEditor
+                sectionId={sectionId}
+                initialBlocks={initialBlocks}
+                initialLoraConfig={loraConfig}
+                libraryV2={libraryV2}
+                onLoraChange={handleLoraChange}
+                onRename={async (name: string) => {
+                  "use server";
+                  const { renameSection } = await import("@/lib/actions");
+                  await renameSection(sectionId, name);
+                }}
+              />
+            </div>
           </div>
-        }
-        actions={
-          <div className="w-full sm:ml-auto sm:w-auto">
-            <SectionRunButton projectId={projectId} sectionId={sectionId} defaultBatchSize={sectionParams.batchSize} showBatchOverride={false} />
-          </div>
-        }
-      >
-        <div className="space-y-6">
-          <div id="section-params" className="scroll-mt-16">
-            <SectionParamsForm
-              projectId={projectId}
-              sectionId={sectionId}
-              initialParams={sectionParams}
-            />
-          </div>
-          <div className="border-t border-white/5 pt-4">
-            <SectionEditor
-              sectionId={sectionId}
-              initialBlocks={initialBlocks}
-              initialLoraConfig={loraConfig}
-              libraryV2={libraryV2}
-              onLoraChange={handleLoraChange}
-              onRename={async (name: string) => {
-                "use server";
-                const { renameSection } = await import("@/lib/actions");
-                await renameSection(sectionId, name);
-              }}
-            />
-          </div>
+        </section>
+        <div id="section-history" className="scroll-mt-24">
+          <SectionChangeHistory history={changeHistory} />
         </div>
-      </SectionCard>
-      <div id="section-history" className="scroll-mt-16">
-        <SectionChangeHistory history={changeHistory} />
-      </div>
       </div>
     </div>
   );
