@@ -87,7 +87,7 @@ export function SectionRunButton({
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+    <div className="flex flex-col items-end gap-1.5">
       {showBatchOverride && (
         <BatchSizeQuickFill
           onSelect={(val) => setBatchSizeValue(String(val))}

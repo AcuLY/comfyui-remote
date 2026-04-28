@@ -276,13 +276,13 @@ export function AppSidebar({
                   tooltip="运行整组"
                   onClick={handleRun}
                   disabled={isPending}
-                  className="text-sky-300 hover:bg-sky-500/10 hover:text-sky-200"
+                  className="text-sky-300 hover:bg-sky-500/10 hover:text-sky-200 text-[11px] sm:text-sm"
                 >
                   <Play className="size-4" />
-                  <span>{isPending ? "提交中…" : "运行整组"}</span>
+                  <span className="text-[11px] sm:inherit">{isPending ? "提交中…" : "运行整组"}</span>
                 </SidebarMenuButton>
                 {isExpanded && (
-                  <div className="ml-2 mt-1 px-2 pb-1">
+                  <div className="px-1 pb-0.5">
                     <BatchSizeQuickFill
                       onSelect={(val) => setBatchSize(String(val))}
                       currentValue={parsedBatchSize}
@@ -302,7 +302,7 @@ export function AppSidebar({
                   tooltip="编辑项目参数"
                 >
                   <SlidersHorizontal className="size-4" />
-                  <span>编辑项目参数</span>
+                  <span className="text-[11px] sm:inherit">编辑项目参数</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
@@ -312,10 +312,10 @@ export function AppSidebar({
                   tooltip="图片整合"
                   onClick={handleExport}
                   disabled={exporting}
-                  className="text-emerald-300 hover:bg-emerald-500/10 hover:text-emerald-200"
+                  className="text-emerald-300 hover:bg-emerald-500/10 hover:text-emerald-200 text-[11px] sm:text-sm"
                 >
                   <Download className="size-4" />
-                  <span>{exporting ? "导出中…" : "图片整合"}</span>
+                  <span className="text-[11px] sm:inherit">{exporting ? "导出中…" : "图片整合"}</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
@@ -325,10 +325,10 @@ export function AppSidebar({
                   tooltip="保存为模板"
                   onClick={handleSaveTemplate}
                   disabled={isPending}
-                  className="text-amber-300 hover:bg-amber-500/10 hover:text-amber-200"
+                  className="text-amber-300 hover:bg-amber-500/10 hover:text-amber-200 text-[11px] sm:text-sm"
                 >
                   <Save className="size-4" />
-                  <span>{isPending ? "保存中…" : "保存为模板"}</span>
+                  <span className="text-[11px] sm:inherit">{isPending ? "保存中…" : "保存为模板"}</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
@@ -340,15 +340,15 @@ export function AppSidebar({
                   disabled={isPending}
                   className={
                     deleteConfirm
-                      ? "bg-red-500/15 text-red-300 hover:bg-red-500/25"
-                      : "text-red-400 hover:bg-red-500/10 hover:text-red-300"
+                      ? "bg-red-500/15 text-red-300 hover:bg-red-500/25 text-[11px] sm:text-sm"
+                      : "text-red-400 hover:bg-red-500/10 hover:text-red-300 text-[11px] sm:text-sm"
                   }
                 >
                   <Trash2 className="size-4" />
-                  <span>{deleteConfirm ? "确认删除？" : "删除项目"}</span>
+                  <span className="text-[11px] sm:inherit">{deleteConfirm ? "确认删除？" : "删除项目"}</span>
                 </SidebarMenuButton>
                 {deleteConfirm && isExpanded && (
-                  <div className="ml-2 mt-1 flex gap-1.5 px-2 pb-1">
+                  <div className="flex gap-1.5 px-1 pb-0.5">
                     <button
                       onClick={handleDelete}
                       disabled={isPending}

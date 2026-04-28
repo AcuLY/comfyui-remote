@@ -290,7 +290,7 @@ function SortableCompactCard({
         href={`/projects/${projectId}/sections/${section.id}`}
         className="flex min-w-0 flex-1 items-center gap-2"
       >
-        <span className="shrink-0 text-xs font-semibold text-white">
+        <span className="min-w-0 text-xs font-semibold text-white line-clamp-2">
           {index + 1}. {section.name}
         </span>
       </Link>
@@ -435,7 +435,7 @@ function SortableSectionCard({
       )}
 
       <div
-        className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-white/5 pt-3"
+        className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-white/5 pt-2"
         onClick={(e) => e.stopPropagation()}
       >
         <SectionRunButton sectionId={section.id} defaultBatchSize={section.batchSize} />
