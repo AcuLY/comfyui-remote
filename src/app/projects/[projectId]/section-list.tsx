@@ -87,23 +87,104 @@ export function SectionList({ projectId, sections: initialSections }: SectionLis
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
   const [anchorNavCollapsed, setAnchorNavCollapsed] = useState(false);
+  const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
+
+  // Ref for the nav scroll container (the overflow-y-auto div)
+  const navScrollRef = useRef<HTMLDivElement>(null);
+  // Ref map: section id → nav button DOM node, for auto-scrolling nav
+  const navButtonRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
 
   // Scroll to section card when arriving via hash fragment (e.g. from back navigation)
   useEffect(() => {
     const hash = window.location.hash;
-    if (hash) {
-      const id = hash.slice(1);
-      const el = document.getElementById(id);
-      const scrollElement = document.getElementById(MAIN_SCROLL_ID);
-      if (el && scrollElement) {
-        const containerRect = scrollElement.getBoundingClientRect();
-        const elementRect = el.getBoundingClientRect();
-        scrollElement.scrollTop += elementRect.top - containerRect.top - containerRect.height / 3;
-        // Clean hash so it doesn't interfere with sessionStorage anchor restore
-        window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    if (!hash) return;
+
+    const id = hash.slice(1);
+
+    // Use double-rAF to ensure layout is settled before measuring positions
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const el = document.getElementById(id);
+        const scrollElement = document.getElementById(MAIN_SCROLL_ID);
+        if (el && scrollElement) {
+          const containerRect = scrollElement.getBoundingClientRect();
+          const elementRect = el.getBoundingClientRect();
+          scrollElement.scrollTop += elementRect.top - containerRect.top - containerRect.height / 3;
+          // Clean hash so it doesn't interfere with sessionStorage anchor restore
+          window.history.replaceState(null, "", window.location.pathname + window.location.search);
+        }
+      });
+    });
+  }, []);
+
+  // Track which section is currently at the top of the viewport
+  useEffect(() => {
+    const scrollElement = document.getElementById(MAIN_SCROLL_ID);
+    if (!scrollElement) return;
+
+    let ticking = false;
+
+    function updateActiveSection() {
+      const containerRect = scrollElement.getBoundingClientRect();
+      const triggerLine = containerRect.top + containerRect.height * 0.25;
+      let bestId: string | null = null;
+      let bestTop = -Infinity;
+
+      for (const [sectionId, element] of cardRefs.current) {
+        const rect = element.getBoundingClientRect();
+        // Find the section whose top is closest to (but above or at) the trigger line
+        if (rect.top <= triggerLine && rect.top > bestTop) {
+          bestTop = rect.top;
+          bestId = sectionId;
+        }
+      }
+
+      // If no section top is above the trigger line, pick the first visible one
+      if (!bestId) {
+        for (const [sectionId, element] of cardRefs.current) {
+          const rect = element.getBoundingClientRect();
+          if (rect.bottom > containerRect.top && rect.top < containerRect.bottom) {
+            bestId = sectionId;
+            break;
+          }
+        }
+      }
+
+      if (bestId) {
+        setActiveSectionId(bestId);
+      }
+      ticking = false;
+    }
+
+    function onScroll() {
+      if (!ticking) {
+        ticking = true;
+        requestAnimationFrame(updateActiveSection);
       }
     }
-  }, []);
+
+    // Initial check
+    updateActiveSection();
+
+    scrollElement.addEventListener("scroll", onScroll, { passive: true });
+    return () => scrollElement.removeEventListener("scroll", onScroll);
+  }, [sections]);
+
+  // Auto-scroll nav to keep the active item visible
+  useEffect(() => {
+    if (!activeSectionId) return;
+    const navBtn = navButtonRefs.current.get(activeSectionId);
+    const navContainer = navScrollRef.current;
+    if (!navBtn || !navContainer) return;
+
+    const containerRect = navContainer.getBoundingClientRect();
+    const btnRect = navBtn.getBoundingClientRect();
+
+    // If button is outside the visible area, scroll it into view
+    if (btnRect.top < containerRect.top || btnRect.bottom > containerRect.bottom) {
+      navBtn.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+  }, [activeSectionId]);
 
   // Preserve the top visible section on project detail pages. This is more
   // stable than raw scrollTop when thumbnails or card heights change.
@@ -192,8 +273,14 @@ export function SectionList({ projectId, sections: initialSections }: SectionLis
 
   function scrollToSection(id: string) {
     const element = cardRefs.current.get(id) ?? document.getElementById(`section-${id}`);
-    if (!element) return;
-    element.scrollIntoView({ block: "start", behavior: "smooth" });
+    const scrollElement = document.getElementById(MAIN_SCROLL_ID);
+    if (!element || !scrollElement) return;
+    const containerRect = scrollElement.getBoundingClientRect();
+    const elementRect = element.getBoundingClientRect();
+    scrollElement.scrollTo({
+      top: scrollElement.scrollTop + elementRect.top - containerRect.top - 16,
+      behavior: "smooth",
+    });
     window.history.replaceState(null, "", `#section-${id}`);
   }
 
@@ -269,8 +356,11 @@ export function SectionList({ projectId, sections: initialSections }: SectionLis
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           const el = cardRefs.current.get(anchorId);
-          if (el) {
-            el.scrollIntoView({ block: "center", behavior: "instant" });
+          const scrollElement = document.getElementById(MAIN_SCROLL_ID);
+          if (el && scrollElement) {
+            const containerRect = scrollElement.getBoundingClientRect();
+            const elementRect = el.getBoundingClientRect();
+            scrollElement.scrollTop += elementRect.top - containerRect.top - containerRect.height / 2;
           }
         });
       });
@@ -322,7 +412,7 @@ export function SectionList({ projectId, sections: initialSections }: SectionLis
       {sections.length > 0 && (
         <aside className={`min-w-0 border-r border-white/5 bg-black/10 ${anchorNavCollapsed ? "pr-0" : "pr-1"}`}>
           <div className="sticky top-4">
-            <div className="space-y-3 max-h-[calc(100dvh-2rem)] overflow-y-auto scrollbar-none">
+            <div ref={navScrollRef} className="space-y-3 max-h-[calc(100dvh-2rem)] overflow-y-auto scrollbar-none">
             <button
               type="button"
               onClick={handleToggle}
@@ -348,18 +438,25 @@ export function SectionList({ projectId, sections: initialSections }: SectionLis
               </div>
               {!anchorNavCollapsed && (
                 <div>
-                  {sections.map((section, index) => (
-                    <button
-                      key={section.id}
-                      type="button"
-                      onClick={() => scrollToSection(section.id)}
-                    className="flex w-full items-start gap-0.5 py-1 pl-0 text-left text-[11px] text-zinc-400 transition hover:bg-white/[0.06] hover:text-zinc-100"
-                      title={`${index + 1}. ${section.name}`}
-                    >
-                      <span className="w-3.5 shrink-0 text-right text-zinc-600">{index + 1}</span>
-                      <span className="line-clamp-2 min-w-0 flex-1 break-words leading-4">{section.name}</span>
-                    </button>
-                  ))}
+                  {sections.map((section, index) => {
+                    const isActive = activeSectionId === section.id;
+                    return (
+                      <button
+                        key={section.id}
+                        ref={(el) => {
+                          if (el) navButtonRefs.current.set(section.id, el);
+                          else navButtonRefs.current.delete(section.id);
+                        }}
+                        type="button"
+                        onClick={() => scrollToSection(section.id)}
+                        className={`flex w-full items-start gap-0.5 py-1 pl-0 text-left text-[11px] transition ${isActive ? "text-sky-300 bg-white/[0.04]" : "text-zinc-400 hover:bg-white/[0.06] hover:text-zinc-100"}`}
+                        title={`${index + 1}. ${section.name}`}
+                      >
+                        <span className={`w-3.5 shrink-0 text-right ${isActive ? "text-sky-400" : "text-zinc-600"}`}>{index + 1}</span>
+                        <span className="line-clamp-2 min-w-0 flex-1 break-words leading-4">{section.name}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>
