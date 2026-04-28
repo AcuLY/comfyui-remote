@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Layers, ChevronLeft, ChevronRight, ImageIcon } from "lucide-react";
+import { ArrowLeft, ImageIcon } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { SectionCard } from "@/components/section-card";
 import { SectionEditor } from "@/components/section-editor";
@@ -273,7 +273,24 @@ export default async function SectionEditPage({
         nextSectionId={nextSection?.id ?? null}
       />
       <div className="col-start-2 min-w-0 space-y-4 px-2 sm:px-0">
-      <nav className="sticky top-0 z-20 border-b border-white/10 bg-[var(--bg)]/95 py-2 backdrop-blur">
+      <div className="sticky top-0 z-20 border-b border-white/10 bg-[var(--bg)]/95 py-2 backdrop-blur space-y-2">
+        <div className="flex items-center justify-between gap-3">
+          <Link
+            href={`/projects/${projectId}#section-${sectionId}`}
+            scroll={false}
+            className="inline-flex items-center gap-2 text-sm text-zinc-300"
+          >
+            <ArrowLeft className="size-4" /> 返回项目详情
+          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href={`/projects/${projectId}/sections/${sectionId}/results`}
+              className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
+            >
+              <ImageIcon className="size-3" /> 查看结果
+            </Link>
+          </div>
+        </div>
         <div className="grid grid-cols-5 overflow-hidden rounded-full border border-white/10 bg-white/[0.03]">
           {SECTION_STEPS.map((step, index) => (
             <a
@@ -287,51 +304,6 @@ export default async function SectionEditPage({
               <span className="truncate">{step.label}</span>
             </a>
           ))}
-        </div>
-      </nav>
-      <div className="flex items-center justify-between gap-3">
-        <Link
-          href={`/projects/${projectId}#section-${sectionId}`}
-          scroll={false}
-          className="inline-flex items-center gap-2 text-sm text-zinc-300"
-        >
-          <ArrowLeft className="size-4" /> 返回项目详情
-        </Link>
-        <div className="flex items-center gap-2">
-          <Link
-            href={`/projects/${projectId}/sections/${sectionId}/results`}
-            className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
-          >
-            <ImageIcon className="size-3" /> 查看结果
-          </Link>
-          {prevSection ? (
-            <Link
-              href={`/projects/${projectId}/sections/${prevSection.id}`}
-              className="hidden"
-            >
-              <ChevronLeft className="size-3" /> 上一节
-            </Link>
-          ) : (
-            <span className="hidden">
-              <ChevronLeft className="size-3" /> 上一节
-            </span>
-          )}
-          <div className="flex items-center gap-2 text-zinc-400">
-            <Layers className="size-4" />
-            <span className="text-xs">{initialBlocks.length} 个提示词块</span>
-          </div>
-          {nextSection ? (
-            <Link
-              href={`/projects/${projectId}/sections/${nextSection.id}`}
-              className="hidden"
-            >
-              下一节 <ChevronRight className="size-3" />
-            </Link>
-          ) : (
-            <span className="hidden">
-              下一节 <ChevronRight className="size-3" />
-            </span>
-          )}
         </div>
       </div>
 

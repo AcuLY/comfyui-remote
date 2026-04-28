@@ -385,7 +385,7 @@ export function AppSidebar({
               </button>
             </SidebarGroupLabel>
             <SidebarGroupContent>
-              <SidebarMenu>
+              <SidebarMenu className="gap-1">
                 {sections.map((section, index) => (
                   <SidebarMenuItem key={section.id} data-nav-section-id={section.id}>
                     <SidebarMenuButton
