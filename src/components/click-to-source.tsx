@@ -4,12 +4,22 @@ import { useEffect, useRef } from "react";
 
 type ReactFiber = {
   _debugOwner?: ReactFiber | null;
+  _debugInfo?: unknown[] | null;
   _debugSource?: {
     columnNumber?: number;
     fileName?: string;
     lineNumber?: number;
   } | null;
+  _debugStack?: unknown;
 };
+
+type ReactSource = {
+  columnNumber: number;
+  fileName: string;
+  lineNumber: number;
+};
+
+const PROJECT_ROOT = "D:/Luca/Code/MyProject/comfyui-manager";
 
 function isMarkableElement(element: Element): element is HTMLElement | SVGElement {
   return element instanceof HTMLElement || element instanceof SVGElement;
@@ -40,17 +50,65 @@ function getReactFiberForElement(element: Element): ReactFiber | null {
   return null;
 }
 
-function getSourceForFiber(fiber: ReactFiber | null) {
+function normalizeSource(value: unknown): ReactSource | null {
+  if (!value || typeof value !== "object") return null;
+  const candidate = value as {
+    columnNumber?: unknown;
+    fileName?: unknown;
+    lineNumber?: unknown;
+  };
+
+  if (typeof candidate.fileName !== "string") return null;
+  return {
+    columnNumber: typeof candidate.columnNumber === "number" ? candidate.columnNumber : 1,
+    fileName: candidate.fileName,
+    lineNumber: typeof candidate.lineNumber === "number" ? candidate.lineNumber : 1,
+  };
+}
+
+function parseSourceFromStack(value: unknown): ReactSource | null {
+  if (!(value instanceof Error) || !value.stack) return null;
+
+  const lines = value.stack.split("\n");
+  for (const line of lines) {
+    const match = line.match(/\(?((?:webpack-internal:\/\/\/|file:\/\/\/|https?:\/\/|\[project\]\/|[A-Za-z]:[\\/]).+?):(\d+):(\d+)\)?$/);
+    if (!match) continue;
+    return {
+      columnNumber: Number(match[3]),
+      fileName: match[1],
+      lineNumber: Number(match[2]),
+    };
+  }
+
+  return null;
+}
+
+function getSourceFromDebugInfo(debugInfo: unknown[] | null | undefined): ReactSource | null {
+  if (!debugInfo) return null;
+  for (let index = debugInfo.length - 1; index >= 0; index--) {
+    const entry = debugInfo[index];
+    const direct = normalizeSource(entry);
+    if (direct) return direct;
+
+    if (entry && typeof entry === "object") {
+      const record = entry as Record<string, unknown>;
+      const nested = normalizeSource(record.source) ?? normalizeSource(record.debugSource) ?? parseSourceFromStack(record.stack);
+      if (nested) return nested;
+    }
+  }
+  return null;
+}
+
+function getSourceForFiber(fiber: ReactFiber | null): ReactSource | null {
   let current = fiber;
   while (current) {
-    const source = current._debugSource;
-    if (source?.fileName) {
-      return {
-        columnNumber: source.columnNumber ?? 1,
-        fileName: source.fileName,
-        lineNumber: source.lineNumber ?? 1,
-      };
-    }
+    const source =
+      normalizeSource(current._debugSource) ??
+      normalizeSource(current._debugStack) ??
+      parseSourceFromStack(current._debugStack) ??
+      getSourceFromDebugInfo(current._debugInfo);
+    if (source) return source;
+
     current = current._debugOwner ?? null;
   }
   return null;
@@ -66,8 +124,11 @@ function getSourceForElement(element: Element | null) {
   return null;
 }
 
-function toEditorUrl(source: { columnNumber: number; fileName: string; lineNumber: number }) {
-  const path = `${source.fileName}:${source.lineNumber}:${source.columnNumber}`;
+function toEditorUrl(source: ReactSource) {
+  const fileName = source.fileName.startsWith("[project]/")
+    ? `${PROJECT_ROOT}/${source.fileName.slice("[project]/".length)}`
+    : source.fileName;
+  const path = `${fileName}:${source.lineNumber}:${source.columnNumber}`;
   return path.startsWith("/") ? `vscode://file${path}` : `vscode://file/${path}`;
 }
 
