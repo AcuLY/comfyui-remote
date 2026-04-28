@@ -22,6 +22,13 @@ type StoredSectionAnchor = {
   offsetTop: number;
 };
 
+/** Get the scroll container — SidebarInset if it has overflow, else window */
+function getScrollContainer(): Element | Window {
+  const inset = document.querySelector('[data-slot="sidebar-inset"]');
+  if (inset && getComputedStyle(inset).overflowY !== "visible") return inset;
+  return window;
+}
+
 export function ProjectDetailClient({ projectId, projectTitle, sections }: ProjectDetailClientProps) {
   const [compact, setCompact] = useState(false);
 
@@ -35,7 +42,9 @@ export function ProjectDetailClient({ projectId, projectTitle, sections }: Proje
 
   // Toggle compact with scroll anchoring
   function findAnchorId(): string | null {
-    const viewportCenter = window.innerHeight / 2;
+    const container = getScrollContainer();
+    const viewportHeight = container instanceof Window ? window.innerHeight : container.clientHeight;
+    const viewportCenter = (container instanceof Window ? 0 : container.getBoundingClientRect().top) + viewportHeight / 2;
     let bestId: string | null = null;
     let bestDist = Infinity;
     for (const [id, el] of cardRefs.current) {
@@ -58,9 +67,14 @@ export function ProjectDetailClient({ projectId, projectTitle, sections }: Proje
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           const el = cardRefs.current.get(anchorId);
-          if (el) {
+          if (!el) return;
+          const container = getScrollContainer();
+          if (container instanceof Window) {
             const y = el.getBoundingClientRect().top + window.scrollY - window.innerHeight / 2;
             window.scrollTo({ top: y, behavior: "instant" });
+          } else {
+            const y = el.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop - container.clientHeight / 2;
+            container.scrollTo({ top: y, behavior: "instant" });
           }
         });
       });
@@ -77,11 +91,16 @@ export function ProjectDetailClient({ projectId, projectTitle, sections }: Proje
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         const el = document.getElementById(id);
-        if (el) {
+        if (!el) return;
+        const container = getScrollContainer();
+        if (container instanceof Window) {
           const y = el.getBoundingClientRect().top + window.scrollY - window.innerHeight / 3;
           window.scrollTo({ top: y, behavior: "instant" });
-          window.history.replaceState(null, "", window.location.pathname + window.location.search);
+        } else {
+          const y = el.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop - container.clientHeight / 3;
+          container.scrollTo({ top: y, behavior: "instant" });
         }
+        window.history.replaceState(null, "", window.location.pathname + window.location.search);
       });
     });
   }, []);
@@ -94,10 +113,13 @@ export function ProjectDetailClient({ projectId, projectTitle, sections }: Proje
 
     const saveAnchor = () => {
       let bestAnchor: StoredSectionAnchor | null = null;
+      const container = getScrollContainer();
+      const containerTop = container instanceof Window ? 0 : container.getBoundingClientRect().top;
+      const containerHeight = container instanceof Window ? window.innerHeight : container.clientHeight;
 
       for (const [sectionId, element] of cardRefs.current) {
         const rect = element.getBoundingClientRect();
-        const isVisible = rect.bottom > 0 && rect.top < window.innerHeight;
+        const isVisible = rect.bottom > containerTop && rect.top < containerTop + containerHeight;
 
         if (!isVisible) continue;
 
@@ -129,19 +151,26 @@ export function ProjectDetailClient({ projectId, projectTitle, sections }: Proje
       const element = cardRefs.current.get(anchor.sectionId);
       if (!element) return;
 
-      const y = element.getBoundingClientRect().top + window.scrollY - anchor.offsetTop;
-      window.scrollTo({ top: y, behavior: "instant" });
+      const container = getScrollContainer();
+      if (container instanceof Window) {
+        const y = element.getBoundingClientRect().top + window.scrollY - anchor.offsetTop;
+        window.scrollTo({ top: y, behavior: "instant" });
+      } else {
+        const y = element.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop - anchor.offsetTop;
+        container.scrollTo({ top: y, behavior: "instant" });
+      }
     };
 
     requestAnimationFrame(() => {
       requestAnimationFrame(restoreAnchor);
     });
 
-    window.addEventListener("scroll", saveAnchor, { passive: true });
+    const container = getScrollContainer();
+    container.addEventListener("scroll", saveAnchor, { passive: true });
 
     return () => {
       saveAnchor();
-      window.removeEventListener("scroll", saveAnchor);
+      container.removeEventListener("scroll", saveAnchor);
     };
   }, [projectId]);
 

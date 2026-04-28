@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useRef, useCallback } from "react";
+import { useState, useTransition, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -71,7 +71,23 @@ export function AppSidebar({
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const { state: sidebarState } = useSidebar();
 
-  const activeSectionId = useScrollSpy(sections.map((s) => s.id));
+  const activeSectionId = useScrollSpy(sections.map((s) => s.id), {
+    rootSelector: '[data-slot="sidebar-inset"]',
+  });
+
+  // Auto-scroll sidebar to keep the active section nav item visible
+  useEffect(() => {
+    if (!activeSectionId) return;
+    const sidebarContent = document.querySelector('[data-slot="sidebar-content"]');
+    if (!sidebarContent) return;
+    const btn = sidebarContent.querySelector(`[data-nav-section-id="${activeSectionId}"]`);
+    if (!btn) return;
+    const containerRect = sidebarContent.getBoundingClientRect();
+    const btnRect = btn.getBoundingClientRect();
+    if (btnRect.top < containerRect.top || btnRect.bottom > containerRect.bottom) {
+      btn.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+  }, [activeSectionId]);
 
   const parsedBatchSize = batchSize.trim() ? parseInt(batchSize, 10) : null;
 
@@ -132,8 +148,15 @@ export function AppSidebar({
   function scrollToSection(id: string) {
     const element = document.getElementById(`section-${id}`);
     if (!element) return;
-    const y = element.getBoundingClientRect().top + window.scrollY - 16;
-    window.scrollTo({ top: y, behavior: "smooth" });
+    // Find the scrollable SidebarInset container
+    const inset = document.querySelector('[data-slot="sidebar-inset"]');
+    if (inset) {
+      const y = element.getBoundingClientRect().top - inset.getBoundingClientRect().top + inset.scrollTop - 16;
+      inset.scrollTo({ top: y, behavior: "smooth" });
+    } else {
+      const y = element.getBoundingClientRect().top + window.scrollY - 16;
+      window.scrollTo({ top: y, behavior: "smooth" });
+    }
     window.history.replaceState(null, "", `#section-${id}`);
   }
 
@@ -272,7 +295,7 @@ export function AppSidebar({
             <SidebarGroupContent>
               <SidebarMenu>
                 {sections.map((section, index) => (
-                  <SidebarMenuItem key={section.id}>
+                  <SidebarMenuItem key={section.id} data-nav-section-id={section.id}>
                     <SidebarMenuButton
                       tooltip={`${index + 1}. ${section.name}`}
                       isActive={activeSectionId === section.id}
