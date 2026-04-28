@@ -1,0 +1,199 @@
+"use client";
+
+import { useState, useEffect, useRef, useCallback } from "react";
+import Link from "next/link";
+import { Plus } from "lucide-react";
+
+import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
+import { AddSectionButton, ImportTemplateButton } from "./section-actions";
+import { AppSidebar } from "./app-sidebar";
+import { SectionCards, type Section } from "./section-cards";
+
+type ProjectDetailClientProps = {
+  projectId: string;
+  projectTitle: string;
+  sections: Section[];
+};
+
+const PROJECT_SECTION_ANCHOR_PREFIX = "comfyui-manager:project-section-anchor:";
+
+type StoredSectionAnchor = {
+  sectionId: string;
+  offsetTop: number;
+};
+
+export function ProjectDetailClient({ projectId, projectTitle, sections }: ProjectDetailClientProps) {
+  const [compact, setCompact] = useState(false);
+
+  // Ref map: section id → DOM node, for scroll anchoring
+  const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+
+  const setCardRef = useCallback((id: string, el: HTMLDivElement | null) => {
+    if (el) cardRefs.current.set(id, el);
+    else cardRefs.current.delete(id);
+  }, []);
+
+  // Toggle compact with scroll anchoring
+  function findAnchorId(): string | null {
+    const viewportCenter = window.innerHeight / 2;
+    let bestId: string | null = null;
+    let bestDist = Infinity;
+    for (const [id, el] of cardRefs.current) {
+      const rect = el.getBoundingClientRect();
+      const cardCenter = rect.top + rect.height / 2;
+      const dist = Math.abs(cardCenter - viewportCenter);
+      if (dist < bestDist) {
+        bestDist = dist;
+        bestId = id;
+      }
+    }
+    return bestId;
+  }
+
+  function handleToggleCompact() {
+    const anchorId = findAnchorId();
+    setCompact((prev) => !prev);
+
+    if (anchorId) {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          const el = cardRefs.current.get(anchorId);
+          if (el) {
+            const y = el.getBoundingClientRect().top + window.scrollY - window.innerHeight / 2;
+            window.scrollTo({ top: y, behavior: "instant" });
+          }
+        });
+      });
+    }
+  }
+
+  // Scroll to section card when arriving via hash fragment
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (!hash) return;
+
+    const id = hash.slice(1);
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const el = document.getElementById(id);
+        if (el) {
+          const y = el.getBoundingClientRect().top + window.scrollY - window.innerHeight / 3;
+          window.scrollTo({ top: y, behavior: "instant" });
+          window.history.replaceState(null, "", window.location.pathname + window.location.search);
+        }
+      });
+    });
+  }, []);
+
+  // Preserve the top visible section on project detail pages
+  useEffect(() => {
+    if (window.location.hash) return;
+
+    const anchorStorageKey = `${PROJECT_SECTION_ANCHOR_PREFIX}${projectId}`;
+
+    const saveAnchor = () => {
+      let bestAnchor: StoredSectionAnchor | null = null;
+
+      for (const [sectionId, element] of cardRefs.current) {
+        const rect = element.getBoundingClientRect();
+        const isVisible = rect.bottom > 0 && rect.top < window.innerHeight;
+
+        if (!isVisible) continue;
+
+        if (!bestAnchor || rect.top < bestAnchor.offsetTop) {
+          bestAnchor = {
+            sectionId,
+            offsetTop: rect.top,
+          };
+        }
+      }
+
+      if (bestAnchor) {
+        window.sessionStorage.setItem(anchorStorageKey, JSON.stringify(bestAnchor));
+      }
+    };
+
+    const restoreAnchor = () => {
+      const rawAnchor = window.sessionStorage.getItem(anchorStorageKey);
+      if (!rawAnchor) return;
+
+      let anchor: StoredSectionAnchor | null = null;
+      try {
+        anchor = JSON.parse(rawAnchor) as StoredSectionAnchor;
+      } catch {
+        window.sessionStorage.removeItem(anchorStorageKey);
+        return;
+      }
+
+      const element = cardRefs.current.get(anchor.sectionId);
+      if (!element) return;
+
+      const y = element.getBoundingClientRect().top + window.scrollY - anchor.offsetTop;
+      window.scrollTo({ top: y, behavior: "instant" });
+    };
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(restoreAnchor);
+    });
+
+    window.addEventListener("scroll", saveAnchor, { passive: true });
+
+    return () => {
+      saveAnchor();
+      window.removeEventListener("scroll", saveAnchor);
+    };
+  }, [projectId]);
+
+  return (
+    <SidebarProvider
+      style={{
+        "--sidebar-width": "14rem",
+        "--sidebar-width-icon": "3rem",
+      } as React.CSSProperties}
+      className="min-h-0 -mx-5 w-[calc(100%+2.5rem)] sm:-mx-6 sm:w-[calc(100%+3rem)]"
+    >
+      <AppSidebar
+        projectId={projectId}
+        projectTitle={projectTitle}
+        sections={sections}
+        compact={compact}
+        onToggleCompact={handleToggleCompact}
+      />
+
+      <SidebarInset className="flex-1 overflow-auto">
+        <div className="mx-auto flex max-w-5xl flex-col gap-3 px-4 py-4 pb-24 sm:px-6">
+          {/* Toolbar */}
+          <div className="flex items-center gap-2">
+            <SidebarTrigger className="-ml-1" />
+            <div className="flex-1" />
+            <div className="grid grid-cols-3 gap-2" style={{ maxWidth: "28rem" }}>
+              <AddSectionButton projectId={projectId} />
+              <ImportTemplateButton projectId={projectId} />
+              <Link
+                href={`/projects/${projectId}/batch-create`}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-sky-500/20 bg-sky-500/[0.03] px-3 py-3 text-xs text-sky-400 transition hover:bg-sky-500/[0.08]"
+              >
+                <Plus className="size-3.5" /> 批量创建
+              </Link>
+            </div>
+          </div>
+
+          {/* Section cards or empty state */}
+          {sections.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-white/10 p-6 text-center text-sm text-zinc-500">
+              暂无小节，点击上方按钮添加
+            </div>
+          ) : (
+            <SectionCards
+              projectId={projectId}
+              sections={sections}
+              compact={compact}
+              setCardRef={setCardRef}
+            />
+          )}
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
+  );
+}
