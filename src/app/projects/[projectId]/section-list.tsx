@@ -125,6 +125,7 @@ export function SectionList({ projectId, sections: initialSections }: SectionLis
     let ticking = false;
 
     function updateActiveSection() {
+      if (!scrollEl) return;
       const containerRect = scrollEl.getBoundingClientRect();
       const triggerLine = containerRect.top + containerRect.height * 0.25;
       let bestId: string | null = null;
