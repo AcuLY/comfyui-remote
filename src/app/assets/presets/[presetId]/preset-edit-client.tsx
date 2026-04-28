@@ -13,7 +13,7 @@ import {
   updatePresetVariant,
 } from "@/lib/actions";
 import { serializeLoraBindings } from "@/lib/lora-types";
-import { PresetForm, type VariantDraft } from "../preset-manager";
+import { PresetForm, type VariantDraft } from "../preset-form";
 import { toast } from "sonner";
 
 function listUrl(category: PresetCategoryFull, preset: PresetFull) {
