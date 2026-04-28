@@ -1,14 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Play, Download, CheckCircle, XCircle, Trash2, Save } from "lucide-react";
+import { Play, Download, CheckCircle, XCircle, Trash2, Save, SlidersHorizontal } from "lucide-react";
 import { runProject, runSection, deleteProject, saveProjectAsTemplate } from "@/lib/actions";
 import { toast } from "sonner";
 import { exportProjectImages } from "@/app/projects/actions-export";
 import { BatchSizeQuickFill } from "@/components/batch-size-quick-fill";
 
-export function ProjectDetailActions({ projectId, projectTitle }: { projectId: string; projectTitle?: string }) {
+export function ProjectDetailActions({ projectId, projectTitle, editHref }: { projectId: string; projectTitle?: string; editHref: string }) {
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
   const [batchSize, setBatchSize] = useState<string>("");
@@ -47,18 +48,7 @@ export function ProjectDetailActions({ projectId, projectTitle }: { projectId: s
 
   return (
     <div className="space-y-2 text-xs">
-      <div className="space-y-1.5">
-        <label className="flex flex-wrap items-center gap-1.5 text-[11px] text-zinc-400">
-          Batch Size 覆盖
-          <input
-            type="number"
-            min={1}
-            placeholder="留空使用各小节设定"
-            value={batchSize}
-            onChange={(e) => setBatchSize(e.target.value)}
-            className="input-number h-8 w-36 rounded-lg border border-white/10 bg-black/20 px-2.5 text-xs text-white outline-none placeholder:text-zinc-600"
-          />
-        </label>
+      <div className="flex flex-wrap items-center gap-2">
         <BatchSizeQuickFill
           onSelect={(val) => setBatchSize(String(val))}
           currentValue={parsedBatchSize}
@@ -66,15 +56,21 @@ export function ProjectDetailActions({ projectId, projectTitle }: { projectId: s
           showClear
           onClear={() => setBatchSize("")}
         />
-      </div>
-      <div className="grid grid-cols-2 gap-1.5">
         <button
           disabled={isPending}
           onClick={handleRun}
-          className={`${actionButtonClass} border-sky-500/20 bg-sky-500/10 text-sky-300 hover:bg-sky-500/20`}
+          className={`${actionButtonClass} w-auto flex-1 border-sky-500/20 bg-sky-500/10 text-sky-300 hover:bg-sky-500/20 sm:min-w-32`}
         >
           <Play className="size-3.5" /> {isPending ? "提交中…" : "运行整组"}
         </button>
+      </div>
+      <div className="grid grid-cols-2 gap-1.5">
+        <Link
+          href={editHref}
+          className={`${actionButtonClass} border-white/10 bg-white/[0.04] text-zinc-200 hover:bg-white/[0.08]`}
+        >
+          <SlidersHorizontal className="size-3.5" /> 编辑项目参数
+        </Link>
         <button
           disabled={exporting}
           onClick={handleExport}
@@ -221,7 +217,7 @@ export function SectionRunButton({
   }
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2 sm:justify-end">
       {showBatchOverride && (
         <BatchSizeQuickFill
           onSelect={(val) => setBatchSizeValue(String(val))}
@@ -231,7 +227,7 @@ export function SectionRunButton({
         />
       )}
       {!showBatchOverride && (
-        <div className="flex items-center gap-1.5">
+        <div className="flex min-w-max items-center gap-1.5">
           <span className="text-[10px] text-zinc-500">Batch</span>
           <input
             type="number"
@@ -252,7 +248,7 @@ export function SectionRunButton({
       <button
         disabled={isPending || (!showBatchOverride && !canSaveBatchSize)}
         onClick={handleRun}
-        className="inline-flex items-center justify-center rounded-lg border border-sky-500/20 bg-sky-500/10 px-2 py-0.5 text-sky-300 transition hover:bg-sky-500/20 disabled:opacity-50"
+        className="inline-flex items-center justify-center rounded-md border border-sky-500/20 bg-sky-500/10 px-2 py-1 text-sky-300 transition hover:bg-sky-500/20 disabled:opacity-50"
         title={isPending ? "提交中…" : "运行本节"}
       >
         <Play className="size-3" />

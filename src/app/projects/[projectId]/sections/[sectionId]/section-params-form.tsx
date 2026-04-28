@@ -93,7 +93,7 @@ export function SectionParamsForm({ projectId, sectionId, initialParams }: Secti
           )}
         </div>
 
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,auto)_minmax(10rem,15rem)] md:items-end md:justify-start">
           <div className="space-y-1.5">
             <div className="text-[11px] text-zinc-500">画幅比例</div>
             <AspectRatioPicker
@@ -105,7 +105,7 @@ export function SectionParamsForm({ projectId, sectionId, initialParams }: Secti
             />
           </div>
 
-          <div className="space-y-1.5">
+          <div className="max-w-[15rem] space-y-1.5">
             <div className="text-[11px] text-zinc-500">放大倍数</div>
             <input
               type="number"

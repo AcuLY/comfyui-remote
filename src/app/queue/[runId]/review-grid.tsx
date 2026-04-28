@@ -121,13 +121,13 @@ export function ReviewGrid({
       </div>
 
       {/* 宫格 */}
-      <div className="grid grid-cols-3 gap-3 lg:grid-cols-4 xl:grid-cols-5">
+      <div className="flex flex-wrap gap-3">
         {images.map((image) => {
           const isSelected = selected.has(image.id);
           return (
             <div
               key={image.id}
-              className={`group relative overflow-hidden rounded-2xl border bg-[var(--panel-soft)] transition ${isSelected ? "border-sky-400/50 ring-2 ring-sky-400/30" : "border-white/10"}`}
+              className={`group relative w-fit max-w-full overflow-hidden rounded-2xl border bg-[var(--panel-soft)] transition ${isSelected ? "border-sky-400/50 ring-2 ring-sky-400/30" : "border-white/10"}`}
             >
               <div className="absolute left-2 top-2 z-10 flex items-center gap-2">
                 <button
@@ -142,14 +142,14 @@ export function ReviewGrid({
               </div>
               <button
                 onClick={() => toggleSelect(image.id)}
-                className="flex h-40 items-center justify-center bg-[var(--panel-soft)]"
+                className="block h-40 max-w-full bg-[var(--panel-soft)]"
               >
                 <Image
                   src={image.src}
                   alt={image.id}
                   width={400}
                   height={560}
-                  className="h-40 w-auto object-contain"
+                  className="h-40 w-auto max-w-full object-contain"
                   unoptimized
                 />
               </button>

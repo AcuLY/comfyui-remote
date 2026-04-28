@@ -109,7 +109,7 @@ export function SectionSwitchNavigation({
 
   return (
     <>
-      <div className="col-start-1 row-start-1 min-w-0 border-r border-white/5 bg-black/10 hidden sm:block">
+      <div className="col-start-1 row-start-1 min-w-0 border-r border-white/5 bg-transparent hidden sm:block">
         <button
           type="button"
           onClick={() => navigate(prevHref)}

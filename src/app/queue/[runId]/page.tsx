@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ChevronLeft, ChevronRight, Download, Ellipsis, ExternalLink } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Download, ExternalLink, Images } from "lucide-react";
 import { SectionCard } from "@/components/section-card";
 import { getReviewGroup, getReviewGroupIds } from "@/lib/server-data";
 import { ReviewGrid } from "./review-grid";
@@ -175,6 +175,14 @@ export default async function ReviewGroupPage({ params }: { params: Promise<{ ru
               <ExternalLink className="size-3.5" /> 跳转小节
             </Link>
           )}
+          {group.projectId && group.projectSectionId && (
+            <Link
+              href={`/projects/${group.projectId}/sections/${group.projectSectionId}/results`}
+              className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-2 text-xs text-zinc-300"
+            >
+              <Images className="size-3.5" /> 查看结果
+            </Link>
+          )}
           <a
             href={`/api/runs/${runId}/workflow`}
             download
@@ -182,27 +190,20 @@ export default async function ReviewGroupPage({ params }: { params: Promise<{ ru
           >
             <Download className="size-4" /> 下载工作流
           </a>
-          <button className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-2 text-xs text-zinc-300">
-            <Ellipsis className="size-4" /> 参数编辑
-          </button>
         </div>
       </div>
 
       <SectionCard title={group.title} subtitle={`${group.presetNames.join(" · ") || group.sectionName} · ${group.createdAt}`}>
-        <div className="grid grid-cols-3 gap-2 text-center text-xs lg:grid-cols-6">
-          <div className="rounded-2xl bg-white/[0.03] px-3 py-3 text-zinc-400">待审核<br /><span className="text-base font-semibold text-white">{group.pendingCount}</span></div>
-          <div className="rounded-2xl bg-white/[0.03] px-3 py-3 text-zinc-400">总张数<br /><span className="text-base font-semibold text-white">{group.totalCount}</span></div>
-          <div className="rounded-2xl bg-white/[0.03] px-3 py-3 text-zinc-400">单页上限<br /><span className="text-base font-semibold text-white">9</span></div>
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-zinc-500">
+          <span>待审核<strong className="ml-1.5 text-sm font-semibold text-white">{group.pendingCount}</strong></span>
+          <span>总张数<strong className="ml-1.5 text-sm font-semibold text-white">{group.totalCount}</strong></span>
         </div>
         {group.executionMeta && (
           <ExecutionMetaDisplay meta={group.executionMeta} />
         )}
       </SectionCard>
 
-      <SectionCard
-        title="宫格审核"
-        subtitle="多选后批量保留或删除，点图片放大查看。"
-      >
+      <SectionCard title="宫格审核">
         <ReviewGrid images={group.images} nextRunId={nextId} />
       </SectionCard>
 

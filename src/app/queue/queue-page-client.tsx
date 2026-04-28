@@ -137,7 +137,7 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns, initialF
       <PageHeader title="待审核队列" description="默认按最新 Section Run 倒序显示，先处理最新的一组。" />
 
       {/* Tab bar */}
-      <div className="flex items-center gap-1 rounded-2xl border border-white/10 bg-white/[0.03] p-1">
+      <div className="flex items-stretch gap-1 rounded-2xl border border-white/10 bg-white/[0.03] p-1">
         {TABS.map((tab) => {
           const isActive = activeTab === tab.key;
           const badge =
@@ -149,7 +149,7 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns, initialF
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm transition ${
+              className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-[11px] leading-tight transition sm:flex-none sm:flex-row sm:gap-2 sm:px-4 sm:text-sm ${
                 isActive
                   ? tab.key === "failed"
                     ? "bg-red-500/20 text-red-300"
@@ -162,7 +162,7 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns, initialF
               {tab.label}
               {badge > 0 && (
                 <span
-                  className={`rounded-full px-1.5 py-0.5 text-[11px] font-medium ${
+                  className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium leading-none sm:text-[11px] ${
                     isActive
                       ? tab.key === "failed"
                         ? "bg-red-500/30 text-red-200"
@@ -195,7 +195,7 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns, initialF
             });
           }}
           disabled={isPending}
-          className="mr-1 inline-flex items-center gap-1 rounded-xl border border-red-500/20 bg-red-500/10 px-2.5 py-1.5 text-[11px] text-red-400 transition hover:bg-red-500/20 disabled:opacity-50"
+          className="mr-1 inline-flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl border border-red-500/20 bg-red-500/10 px-2 py-1.5 text-[10px] leading-tight text-red-400 transition hover:bg-red-500/20 disabled:opacity-50 sm:flex-row sm:px-2.5 sm:text-[11px]"
           title="清空记录"
         >
           <Trash2 className="size-3.5" /> 清空
@@ -213,14 +213,14 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns, initialF
       {/* Pending tab */}
       {activeTab === "pending" && (
         <>
-          <SectionCard title="队列概览" subtitle="审核通过后会从待审核列表中消失。">
+          <SectionCard title="队列概览">
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
               <StatChip label="待审核图片" value={pendingTotal} tone="accent" />
               <StatChip label="待处理组数" value={runTotal} tone="warn" />
             </div>
           </SectionCard>
 
-          <SectionCard title="最新结果组" subtitle="点进某一组后，用宫格勾选批量保留/删除。">
+          <SectionCard title="最新结果组">
             <div className="grid grid-cols-1 gap-2.5 justify-items-center md:grid-cols-2">
               {queueRuns.length === 0 && (
                 <div className="w-full rounded-xl border border-white/10 bg-white/[0.02] p-5 text-center text-sm text-zinc-500 md:col-span-2">

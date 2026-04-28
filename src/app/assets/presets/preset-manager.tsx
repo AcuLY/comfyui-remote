@@ -348,11 +348,11 @@ export function PresetManager({
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-4">
+    <div className="max-w-5xl space-y-4">
       <SectionCard title="预制管理" subtitle="管理预制分类和预制项。每个分类下可创建多个预制或预制组。">
         <div className="flex gap-4">
           {/* Left panel: sortable categories */}
-          <div className="w-28 shrink-0 space-y-2 sticky top-3 self-start sm:w-40">
+          <div className="w-44 shrink-0 space-y-2 sticky top-3 self-start sm:w-60">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">
                 分类
@@ -389,14 +389,17 @@ export function PresetManager({
                 items={categories.map((c) => c.id)}
                 strategy={verticalListSortingStrategy}
               >
-                {categories.map((cat) => (
+                {categories.map((cat) => {
+                  const isEditing = showCatForm && editingCatId === cat.id;
+                  return (
                   <SortableCategoryItem
                     key={cat.id}
                     cat={cat}
                     isSelected={selectedCatId === cat.id}
+                    isExpanded={isEditing}
                     onSelect={() => {
                       setSelectedCatId(cat.id);
-                      setShowCatForm(false);
+                      if (!isEditing) setShowCatForm(false);
                       replacePresetQuery({
                         category: cat.id,
                         folder: null,
@@ -405,62 +408,64 @@ export function PresetManager({
                       });
                     }}
                     onEdit={() => {
-                      setEditingCatId(cat.id);
-                      setShowCatForm(true);
+                      setSelectedCatId(cat.id);
+                      setEditingCatId(isEditing ? null : cat.id);
+                      setShowCatForm(!isEditing);
                     }}
-                  />
-                ))}
+                    onDelete={() => {
+                      if (!confirm("确认删除此分类？")) return;
+                      startTransition(async () => {
+                        try {
+                          await deletePresetCategory(cat.id);
+                          toast.success("分类已删除");
+                          if (selectedCatId === cat.id) {
+                            setSelectedCatId(categories.find((candidate) => candidate.id !== cat.id)?.id ?? null);
+                          }
+                        } catch (e: unknown) {
+                          toast.error(e instanceof Error ? e.message : "删除失败");
+                        }
+                        if (editingCatId === cat.id) {
+                          setShowCatForm(false);
+                          setEditingCatId(null);
+                        }
+                        refresh();
+                      });
+                    }}
+                  >
+                    {isEditing && (
+                      <CategoryForm
+                        category={cat}
+                        allCategories={categories}
+                        onSave={(data) => {
+                          startTransition(async () => {
+                            await updatePresetCategory(cat.id, data);
+                            toast.success("分类已保存");
+                            refresh();
+                          });
+                        }}
+                        isPending={isPending}
+                      />
+                    )}
+                  </SortableCategoryItem>
+                  );
+                })}
               </SortableContext>
             </DndContext>
 
             {/* Category create/edit form */}
-            {showCatForm && (
+            {showCatForm && !editingCatId && (
               <CategoryForm
-                category={
-                  editingCatId
-                    ? categories.find((c) => c.id === editingCatId) ?? null
-                    : null
-                }
+                category={null}
                 allCategories={categories}
                 onSave={(data) => {
                   startTransition(async () => {
-                    if (editingCatId) {
-                      await updatePresetCategory(editingCatId, data);
-                      toast.success("分类已保存");
-                    } else {
-                      const cat = await createPresetCategory(data);
-                      setSelectedCatId(cat.id);
-                      toast.success("分类已创建");
-                    }
+                    const cat = await createPresetCategory(data);
+                    setSelectedCatId(cat.id);
+                    toast.success("分类已创建");
                     setShowCatForm(false);
                     setEditingCatId(null);
                     refresh();
                   });
-                }}
-                onDelete={
-                  editingCatId
-                    ? () => {
-                        if (!confirm("确认删除此分类？")) return;
-                        startTransition(async () => {
-                          try {
-                            await deletePresetCategory(editingCatId);
-                            toast.success("分类已删除");
-                            if (selectedCatId === editingCatId) {
-                              setSelectedCatId(categories[0]?.id ?? null);
-                            }
-                          } catch (e: unknown) {
-                            toast.error(e instanceof Error ? e.message : "删除失败");
-                          }
-                          setShowCatForm(false);
-                          setEditingCatId(null);
-                          refresh();
-                        });
-                      }
-                    : undefined
-                }
-                onCancel={() => {
-                  setShowCatForm(false);
-                  setEditingCatId(null);
                 }}
                 isPending={isPending}
               />
@@ -507,13 +512,19 @@ export function PresetManager({
 function SortableCategoryItem({
   cat,
   isSelected,
+  isExpanded,
   onSelect,
   onEdit,
+  onDelete,
+  children,
 }: {
   cat: PresetCategoryFull;
   isSelected: boolean;
+  isExpanded?: boolean;
   onSelect: () => void;
   onEdit: () => void;
+  onDelete: () => void;
+  children?: React.ReactNode;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: cat.id });
   const style: React.CSSProperties = {
@@ -526,48 +537,69 @@ function SortableCategoryItem({
     <div
       ref={setNodeRef}
       style={style}
+      className={`rounded-xl border transition ${
+        isExpanded
+          ? "border-sky-500/30 bg-zinc-950/80"
+          : isSelected
+            ? "border-sky-500/30 bg-sky-500/10"
+            : "border-white/5 bg-white/[0.02] hover:border-white/10"
+      }`}
+    >
+      <div
       role="button"
       tabIndex={0}
       onClick={onSelect}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") onSelect();
       }}
-      className={`flex w-full items-center gap-1.5 rounded-xl border p-2.5 text-left transition cursor-pointer ${
-        isSelected
-          ? "border-sky-500/30 bg-sky-500/10"
-          : "border-white/5 bg-white/[0.02] hover:border-white/10"
-      }`}
-    >
-      <button
-        type="button"
-        className="cursor-grab touch-none text-zinc-600 hover:text-zinc-400"
-        {...attributes}
-        {...listeners}
+        className="flex w-full cursor-pointer items-center gap-1.5 p-2.5 text-left"
       >
-        <GripVertical className="size-3" />
-      </button>
-      <CategoryBadge color={cat.color} />
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5 text-xs font-medium text-zinc-200 truncate">
-          {cat.name}
-          {cat.type === "group" && (
-            <span className="rounded bg-amber-500/20 px-1 py-0.5 text-[9px] font-semibold text-amber-300/80">组</span>
-          )}
+        <button
+          type="button"
+          className="cursor-grab touch-none text-zinc-600 hover:text-zinc-400"
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className="size-3" />
+        </button>
+        <CategoryBadge color={cat.color} />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5 truncate text-xs font-medium text-zinc-200">
+            {cat.name}
+            {cat.type === "group" && (
+              <span className="rounded bg-amber-500/20 px-1 py-0.5 text-[9px] font-semibold text-amber-300/80">组</span>
+            )}
+          </div>
+          <div className="text-[10px] text-zinc-500">
+            {cat.type === "group" ? `${cat.groupCount} 个预制组` : `${cat.presetCount} 个预制`}
+          </div>
         </div>
-        <div className="text-[10px] text-zinc-500">
-          {cat.type === "group" ? `${cat.groupCount} 个预制组` : `${cat.presetCount} 个预制`}
+        <div className="flex shrink-0 items-center gap-0.5">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit();
+            }}
+            className="rounded p-1 text-zinc-600 hover:text-zinc-300"
+            title={isExpanded ? "收起分类" : "编辑分类"}
+          >
+            <Pencil className="size-3" />
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+            className="rounded p-1 text-zinc-600 hover:text-red-400"
+            title="删除分类"
+          >
+            <Trash2 className="size-3" />
+          </button>
         </div>
       </div>
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onEdit();
-        }}
-        className="rounded p-1 text-zinc-600 hover:text-zinc-300"
-      >
-        <Pencil className="size-3" />
-      </button>
+      {children}
     </div>
   );
 }
@@ -611,7 +643,7 @@ function CategoryBadge({ color }: { color: string | null }) {
 // HueSlider — simple hue picker
 // ---------------------------------------------------------------------------
 
-function HueSlider({ value, onChange }: { value: number; onChange: (hue: number) => void }) {
+function HueSlider({ value, onChange, onBlur }: { value: number; onChange: (hue: number) => void; onBlur?: () => void }) {
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => onChange(parseInt(e.target.value, 10)),
     [onChange],
@@ -628,6 +660,7 @@ function HueSlider({ value, onChange }: { value: number; onChange: (hue: number)
         max={359}
         value={value}
         onChange={handleChange}
+        onBlur={onBlur}
         className="h-2 w-full cursor-pointer appearance-none rounded-full"
         style={{
           background: `linear-gradient(to right, ${Array.from({ length: 12 }, (_, i) => `hsl(${i * 30} 50% 55%)`).join(", ")})`,
@@ -645,15 +678,11 @@ function CategoryForm({
   category,
   allCategories,
   onSave,
-  onDelete,
-  onCancel,
   isPending,
 }: {
   category: PresetCategoryFull | null;
   allCategories: PresetCategoryFull[];
   onSave: (data: { name: string; slug: string; icon?: string; color?: string; type?: string; slotTemplate?: SlotTemplateDef[] | null }) => void;
-  onDelete?: () => void;
-  onCancel: () => void;
   isPending: boolean;
 }) {
   const [name, setName] = useState(category?.name ?? "");
@@ -684,11 +713,15 @@ function CategoryForm({
     // Default to first preset category not yet used
     const unused = presetCategories.find((c) => !slots.some((s) => s.categoryId === c.id));
     const catId = unused?.id ?? presetCategories[0].id;
-    setSlots([...slots, { categoryId: catId }]);
+    const nextSlots = [...slots, { categoryId: catId }];
+    setSlots(nextSlots);
+    handleSave(nextSlots);
   }
 
   function removeSlot(idx: number) {
-    setSlots(slots.filter((_, i) => i !== idx));
+    const nextSlots = slots.filter((_, i) => i !== idx);
+    setSlots(nextSlots);
+    handleSave(nextSlots);
   }
 
   function updateSlotCategory(idx: number, categoryId: string) {
@@ -696,19 +729,30 @@ function CategoryForm({
     const cat = presetCategories.find((c) => c.id === categoryId);
     updated[idx] = { categoryId, label: cat?.name };
     setSlots(updated);
+    handleSave(updated);
+  }
+
+  function handleSave(nextSlots = slots) {
+    if (isPending || !name.trim() || !slug.trim()) return;
+    onSave({
+      name: name.trim(),
+      slug: slug.trim(),
+      color: hslString(hue),
+      type: category ? undefined : catType,
+      slotTemplate: catType === "group" ? nextSlots : undefined,
+    });
   }
 
   const selectClass = "w-full appearance-none rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 pr-7 text-xs text-zinc-200 outline-none focus:border-sky-500/30";
 
   return (
-    <div className="rounded-xl border border-sky-500/20 bg-sky-500/[0.03] p-3 space-y-2">
+    <div className="space-y-2 border-t border-white/10 bg-zinc-950/80 p-3">
       <div className="text-[11px] font-medium text-sky-300">
         {category ? "编辑分类" : "新建分类"}
       </div>
 
       {/* Type toggle — only editable for new categories */}
       <div className="flex items-center gap-1">
-        <span className="text-[10px] text-zinc-500 mr-1">类型:</span>
         {(["preset", "group"] as const).map((t) => (
           <button
             key={t}
@@ -732,6 +776,7 @@ function CategoryForm({
         type="text"
         value={name}
         onChange={(e) => handleNameChange(e.target.value)}
+        onBlur={() => handleSave()}
         placeholder="分类名称"
         className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
       />
@@ -739,14 +784,21 @@ function CategoryForm({
         type="text"
         value={slug}
         onChange={(e) => setSlug(e.target.value)}
+        onBlur={() => handleSave()}
         placeholder="slug"
         className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
       />
-      <HueSlider value={hue} onChange={setHue} />
+      <HueSlider
+        value={hue}
+        onChange={(value) => {
+          setHue(value);
+        }}
+        onBlur={handleSave}
+      />
 
       {/* Slot template editor — only for group-type categories */}
       {catType === "group" && (
-        <div className="space-y-1.5 rounded-lg border border-amber-500/10 bg-amber-500/[0.02] p-2">
+        <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-medium text-amber-400/80">默认槽位</span>
             <button
@@ -759,7 +811,7 @@ function CategoryForm({
             </button>
           </div>
           {slots.length === 0 && (
-            <div className="text-[10px] text-zinc-600 py-0.5">无默认槽位，新建预制组时成员列表为空</div>
+            <div className="py-0.5 text-[10px] text-zinc-600">无默认槽位，新建预制组时成员列表为空</div>
           )}
           {slots.map((slot, idx) => {
             const slotCat = presetCategories.find((c) => c.id === slot.categoryId);
@@ -771,6 +823,7 @@ function CategoryForm({
                   <select
                     value={slot.categoryId}
                     onChange={(e) => updateSlotCategory(idx, e.target.value)}
+                    onBlur={() => handleSave()}
                     className={selectClass}
                   >
                     {presetCategories.map((c) => (
@@ -787,8 +840,9 @@ function CategoryForm({
                     updated[idx] = { ...slot, label: e.target.value || undefined };
                     setSlots(updated);
                   }}
+                  onBlur={() => handleSave()}
                   placeholder={slotCat?.name ?? "标签"}
-                  className="w-20 rounded-lg border border-white/10 bg-white/[0.04] px-1.5 py-1 text-[10px] text-zinc-300 outline-none focus:border-sky-500/30 placeholder:text-zinc-600"
+                  className="w-24 rounded-lg border border-white/10 bg-white/[0.04] px-1.5 py-1 text-[10px] text-zinc-300 outline-none focus:border-sky-500/30 placeholder:text-zinc-600"
                 />
                 <button
                   type="button"
@@ -802,44 +856,12 @@ function CategoryForm({
           })}
         </div>
       )}
-
-      <div className="flex gap-1.5">
-        <button
-          type="button"
-          disabled={isPending || !name.trim() || !slug.trim()}
-          onClick={() => onSave({
-            name: name.trim(),
-            slug: slug.trim(),
-            color: hslString(hue),
-            type: category ? undefined : catType,
-            slotTemplate: catType === "group" ? slots : undefined,
-          })}
-          className="inline-flex items-center gap-1 rounded-lg bg-sky-500/20 px-2 py-1 text-[11px] text-sky-300 hover:bg-sky-500/30 disabled:opacity-50"
-        >
-          {isPending ? (
-            <Loader2 className="size-3 animate-spin" />
-          ) : (
-            <Save className="size-3" />
-          )}
-          保存
-        </button>
-        {onDelete && (
-          <button
-            type="button"
-            onClick={onDelete}
-            className="inline-flex items-center gap-1 rounded-lg bg-red-500/10 px-2 py-1 text-[11px] text-red-400 hover:bg-red-500/20"
-          >
-            <Trash2 className="size-3" /> 删除
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={onCancel}
-          className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-2 py-1 text-[11px] text-zinc-400 hover:bg-white/[0.06]"
-        >
-          <X className="size-3" /> 取消
-        </button>
-      </div>
+      {isPending && (
+        <div className="inline-flex items-center gap-1 text-[10px] text-zinc-500">
+          <Loader2 className="size-3 animate-spin" />
+          保存中
+        </div>
+      )}
     </div>
   );
 }
@@ -2619,9 +2641,10 @@ function GroupList({
       >
         <SortableContext
           items={visibleGroups.map((g) => g.id)}
-          strategy={verticalListSortingStrategy}
+          strategy={rectSortingStrategy}
         >
-          {visibleGroups.map((group) => (
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(20rem,1fr))] gap-2">
+            {visibleGroups.map((group) => (
             <SortableGroupCard
               key={group.id}
               group={group}
@@ -2652,7 +2675,8 @@ function GroupList({
               onToggleSelect={() => toggleGroupSelection(group.id)}
               onNavigateToPreset={(presetId) => router.push(`/assets/presets/${presetId}`)}
             />
-          ))}
+            ))}
+          </div>
         </SortableContext>
       </DndContext>
 

@@ -33,7 +33,6 @@ import {
 import Image from "next/image";
 import { reorderSections, deleteSections } from "@/lib/actions";
 import { toast } from "sonner";
-import { CustomScrollContainer } from "@/components/ui/custom-scroll-container";
 import { SectionRunButton } from "./project-detail-actions";
 import { CopySectionButton, DeleteSectionButton } from "./section-actions";
 
@@ -311,24 +310,23 @@ export function SectionList({ projectId, sections: initialSections }: SectionLis
     <div
       className={
         anchorNavCollapsed
-          ? "grid grid-cols-[3rem_minmax(0,1fr)] gap-3 sm:grid-cols-[3.25rem_minmax(0,1fr)]"
+          ? "grid grid-cols-[2rem_minmax(0,1fr)] gap-1.5 sm:grid-cols-[2.5rem_minmax(0,1fr)] sm:gap-2"
           : "grid grid-cols-[5rem_minmax(0,1fr)] gap-3 sm:grid-cols-[8rem_minmax(0,1fr)] lg:grid-cols-[9.5rem_minmax(0,1fr)] xl:grid-cols-[11rem_minmax(0,1fr)]"
       }
     >
       {sections.length > 0 && (
-        <aside className={`min-w-0 border-r border-white/5 bg-black/10 ${anchorNavCollapsed ? "pr-1" : "pr-1"}`}>
+        <aside className={`min-w-0 border-r border-white/5 bg-black/10 ${anchorNavCollapsed ? "pr-0" : "pr-1"}`}>
           <div className="sticky top-4 space-y-3">
             <button
               type="button"
               onClick={handleToggle}
-              className={`flex w-full items-center gap-2 border-b border-white/10 pb-3 pt-1 text-left text-xs text-zinc-300 transition hover:text-white ${anchorNavCollapsed ? "justify-center px-1" : "px-2"}`}
+              className={`flex w-full items-center gap-2 border-b border-white/10 pb-3 pt-1 text-left text-xs text-zinc-300 transition hover:text-white ${anchorNavCollapsed ? "justify-center px-0" : "px-2"}`}
               title={compact ? "展开视图" : "紧凑视图"}
             >
               {compact ? <LayoutGrid className="size-4 shrink-0" /> : <LayoutList className="size-4 shrink-0" />}
-              <span className="min-w-0 flex-1 truncate hidden sm:inline">{compact ? "展开视图" : "紧凑视图"}</span>
             </button>
             <div className="space-y-2">
-              <div className={`flex items-center gap-2 ${anchorNavCollapsed ? "justify-center px-1" : "justify-between px-2"}`}>
+              <div className={`flex items-center gap-2 ${anchorNavCollapsed ? "justify-center px-0" : "justify-between px-2"}`}>
                 {!anchorNavCollapsed && (
                   <div className="min-w-0 truncate text-xs font-medium text-zinc-200 hidden sm:block">小节导航</div>
                 )}
@@ -343,20 +341,20 @@ export function SectionList({ projectId, sections: initialSections }: SectionLis
                 </button>
               </div>
               {!anchorNavCollapsed && (
-                <CustomScrollContainer className="max-h-[calc(100dvh-12rem)] overflow-y-auto">
+                <div>
                   {sections.map((section, index) => (
                     <button
                       key={section.id}
                       type="button"
                       onClick={() => scrollToSection(section.id)}
-                    className="flex w-full items-start gap-1 py-1 pl-1 text-left text-[11px] text-zinc-400 transition hover:bg-white/[0.06] hover:text-zinc-100"
+                    className="flex w-full items-start gap-0.5 py-1 pl-0 text-left text-[11px] text-zinc-400 transition hover:bg-white/[0.06] hover:text-zinc-100"
                       title={`${index + 1}. ${section.name}`}
                     >
-                      <span className="w-4 shrink-0 text-right text-zinc-600">{index + 1}</span>
-                      <span className="min-w-0 flex-1 truncate">{section.name}</span>
+                      <span className="w-3.5 shrink-0 text-right text-zinc-600">{index + 1}</span>
+                      <span className="line-clamp-2 min-w-0 flex-1 break-words leading-4">{section.name}</span>
                     </button>
                   ))}
-                </CustomScrollContainer>
+                </div>
               )}
             </div>
           </div>

@@ -151,31 +151,60 @@ export function AspectRatioPicker({
       </div>
 
       {/* Short side px input - 始终显示 */}
-      <div className="flex items-center gap-3">
-        <label className="flex items-center gap-1.5 text-[11px] text-zinc-500">
-          短边像素
-          <input
-            type="number"
-            min={256}
-            max={4096}
-            step={8}
-            disabled={disabled}
-            value={shortSidePx}
-            onChange={(e) => setShortSidePx(e.target.value)}
-            onBlur={(ev) => {
-              onChange?.();
-              const px = ev.target.value ? parseInt(ev.target.value, 10) : null;
-              onValueChange?.(selected, px && px > 0 ? px : null);
-            }}
-            placeholder={builtinShort ? String(builtinShort) : "1024"}
-            className="input-number w-20 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30 disabled:opacity-70"
-          />
-        </label>
-        {selected && resolved && (
-          <div className="text-[10px] text-zinc-500">
-            → {resolved.width}×{resolved.height} px
-          </div>
-        )}
+      <div className="max-w-[15rem] space-y-1.5">
+        <div className="flex items-center justify-between gap-2">
+          <label htmlFor="short-side-px" className="text-[11px] text-zinc-500">
+            短边像素
+          </label>
+          {selected && resolved && (
+            <div className="text-[10px] text-zinc-500">
+              {resolved.width}×{resolved.height} px
+            </div>
+          )}
+        </div>
+        <input
+          id="short-side-px"
+          type="number"
+          min={256}
+          max={4096}
+          step={8}
+          disabled={disabled}
+          value={shortSidePx}
+          onChange={(e) => setShortSidePx(e.target.value)}
+          onBlur={(ev) => {
+            onChange?.();
+            const px = ev.target.value ? parseInt(ev.target.value, 10) : null;
+            onValueChange?.(selected, px && px > 0 ? px : null);
+          }}
+          placeholder={builtinShort ? String(builtinShort) : "1024"}
+          className="input-number w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30 disabled:opacity-70"
+        />
+        <div className="flex items-center gap-1">
+          {[256, 512, 1024].map((value) => {
+            const isActive = parseInt(shortSidePx, 10) === value;
+            return (
+              <button
+                key={value}
+                type="button"
+                disabled={disabled}
+                onClick={() => {
+                  setShortSidePx(String(value));
+                  setTimeout(() => {
+                    onChange?.();
+                    onValueChange?.(selected, value);
+                  }, 0);
+                }}
+                className={`rounded-md border px-1.5 py-0.5 text-[10px] transition disabled:cursor-not-allowed disabled:opacity-50 ${
+                  isActive
+                    ? "border-sky-500/40 bg-sky-500/15 text-sky-300"
+                    : "border-white/10 bg-white/[0.03] text-zinc-500 hover:bg-white/[0.08] hover:text-zinc-300"
+                }`}
+              >
+                {value}
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
