@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ImageIcon } from "lucide-react";
+import { ArrowLeft, ImageIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { SectionCard } from "@/components/section-card";
 import { SectionEditor } from "@/components/section-editor";
@@ -14,7 +14,6 @@ import type { LoraEntry } from "@/lib/lora-types";
 import { revalidatePath } from "next/cache";
 import { getSectionChangeHistory } from "@/server/services/section-change-history-service";
 import { SectionChangeHistory } from "./section-change-history";
-import { SectionSwitchNavigation } from "./section-switch-navigation";
 
 const SECTION_STEPS = [
   { id: "section-params", label: "参数" },
@@ -265,14 +264,8 @@ export default async function SectionEditPage({
   const changeHistory = await getSectionChangeHistory(sectionId);
 
   return (
-    <div className="-mx-4 grid w-[calc(100%+2rem)] grid-cols-[0_minmax(0,1fr)_0] sm:grid-cols-[3.25rem_minmax(0,1fr)_3.25rem] xl:grid-cols-[5rem_minmax(0,1fr)_5rem]">
-      <SectionSwitchNavigation
-        projectId={projectId}
-        sectionId={sectionId}
-        prevSectionId={prevSection?.id ?? null}
-        nextSectionId={nextSection?.id ?? null}
-      />
-      <div className="col-start-2 min-w-0 space-y-4 px-2 sm:px-0">
+    <div className="space-y-4">
+      <div className="min-w-0">
       <div className="sticky top-0 z-20 border-b border-white/10 bg-[var(--bg)]/95 py-2 backdrop-blur space-y-2">
         <div className="flex items-center justify-between gap-3">
           <Link
@@ -280,9 +273,33 @@ export default async function SectionEditPage({
             scroll={false}
             className="inline-flex items-center gap-2 text-sm text-zinc-300"
           >
-            <ArrowLeft className="size-4" /> 返回项目详情
+            <ArrowLeft className="size-4" /> 返回
           </Link>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
+            {prevSection ? (
+              <Link
+                href={`/projects/${projectId}/sections/${prevSection.id}`}
+                className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
+              >
+                <ChevronLeft className="size-3" /> 上一节
+              </Link>
+            ) : (
+              <span className="inline-flex items-center gap-1 rounded-lg border border-white/5 px-2 py-1 text-xs text-zinc-600">
+                <ChevronLeft className="size-3" /> 上一节
+              </span>
+            )}
+            {nextSection ? (
+              <Link
+                href={`/projects/${projectId}/sections/${nextSection.id}`}
+                className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
+              >
+                下一节 <ChevronRight className="size-3" />
+              </Link>
+            ) : (
+              <span className="inline-flex items-center gap-1 rounded-lg border border-white/5 px-2 py-1 text-xs text-zinc-600">
+                下一节 <ChevronRight className="size-3" />
+              </span>
+            )}
             <Link
               href={`/projects/${projectId}/sections/${sectionId}/results`}
               className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"

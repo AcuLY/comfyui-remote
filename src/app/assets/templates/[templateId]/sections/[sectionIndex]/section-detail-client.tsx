@@ -465,7 +465,7 @@ export function TemplateSectionDetailClient({
         </div>
 
         {/* KSampler panels */}
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <div className="text-[11px] text-zinc-500">KSampler1（第一阶段）</div>

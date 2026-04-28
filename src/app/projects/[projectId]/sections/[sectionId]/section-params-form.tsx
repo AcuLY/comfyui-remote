@@ -138,7 +138,7 @@ export function SectionParamsForm({ projectId, sectionId, initialParams }: Secti
         </div>
 
           {/* KSampler panels */}
-          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <KSamplerPanel
               label="KSampler1（第一阶段）"
               subtitle={`steps ${ks1.steps ?? DEFAULT_KSAMPLER1.steps} · cfg ${ks1.cfg ?? DEFAULT_KSAMPLER1.cfg} · ${ks1.sampler_name ?? DEFAULT_KSAMPLER1.sampler_name}`}
