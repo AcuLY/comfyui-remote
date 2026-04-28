@@ -2,7 +2,6 @@
 
 import { useState, useTransition, useId, useRef, useCallback } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import {
   DndContext,
   closestCenter,
@@ -396,7 +395,7 @@ function SortableSectionCard({
                 key={img.id}
                 href={section.latestRunId ? `/queue/${section.latestRunId}` : "#"}
                 onClick={(e) => e.stopPropagation()}
-                className={`flex h-[72px] w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg border transition hover:border-sky-500/40 ${
+                className={`flex h-[72px] shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-[var(--panel-soft)] transition hover:border-sky-500/40 ${
                   img.status === "kept"
                     ? "border-emerald-500/30"
                     : img.status === "trashed"
@@ -404,13 +403,10 @@ function SortableSectionCard({
                       : "border-white/10"
                 }`}
               >
-                <Image
+                <img
                   src={img.src}
                   alt=""
-                  width={56}
-                  height={72}
-                  className="h-[72px] w-auto object-contain"
-                  unoptimized
+                  className="h-full w-auto object-contain"
                 />
                 {img.status === "kept" && (
                   <div className="absolute bottom-0 left-0 right-0 bg-emerald-500/80 py-px text-center text-[8px] text-white">

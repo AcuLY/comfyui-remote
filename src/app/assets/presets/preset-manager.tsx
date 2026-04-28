@@ -207,7 +207,7 @@ export function PresetManager({
       <SectionCard title="预制管理" subtitle="管理预制分类和预制项。每个分类下可创建多个预制或预制组。">
         <div className="flex gap-4">
           {/* Left panel: sortable categories */}
-          <div className="w-44 shrink-0 space-y-2 sticky top-3 self-start sm:w-60">
+          <div className="w-36 shrink-0 space-y-2 sticky top-3 self-start sm:w-60">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">
                 分类

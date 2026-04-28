@@ -248,7 +248,7 @@ export function AppSidebar({
 
   return (
     <Sidebar collapsible="icon" mobileBehavior="sidebar" className="border-r border-white/5">
-      <SidebarHeader className="gap-1 px-4 py-3 group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:px-2">
+      <SidebarHeader className="gap-1.5 px-3.5 py-3 group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:px-2">
         <Link
           href="/projects"
           className="inline-flex items-center gap-1.5 text-xs text-zinc-400 transition hover:text-zinc-200 group-data-[collapsible=icon]:justify-center"
@@ -257,7 +257,7 @@ export function AppSidebar({
           {isExpanded && <span>返回项目列表</span>}
         </Link>
         {isExpanded && (
-          <h1 className="truncate text-sm font-semibold text-zinc-100">
+          <h1 className="truncate px-0.5 text-[13px] font-semibold leading-5 text-zinc-100">
             {projectTitle}
           </h1>
         )}

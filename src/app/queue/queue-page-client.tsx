@@ -237,7 +237,7 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns, initialF
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-sm font-semibold text-white">{run.projectTitle}</div>
-                      <div className="mt-0.5 truncate text-xs text-zinc-400">{run.sectionName}{run.presetNames.length > 0 ? ` · ${run.presetNames.join(" · ")}` : ""}</div>
+                      <div className="mt-0.5 truncate text-xs text-zinc-400">{run.projectTitle}：{run.sectionName}</div>
                     </div>
                     <span className="shrink-0 text-[11px] text-zinc-500">{formatTimeAgo(run.finishedAt) ?? run.createdAt}</span>
                   </div>
@@ -245,14 +245,11 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns, initialF
                   {run.thumbnailUrls.length > 0 && (
                     <div className="mt-2.5 flex gap-1.5 overflow-x-auto scrollbar-none">
                       {run.thumbnailUrls.map((src, i) => (
-                        <div key={i} className="flex h-[72px] w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-white/10 bg-[var(--panel-soft)]">
-                          <Image
+                        <div key={i} className="flex h-[72px] shrink-0 items-center justify-center overflow-hidden rounded-lg border border-white/10 bg-[var(--panel-soft)]">
+                          <img
                             src={src}
                             alt=""
-                            width={56}
-                            height={72}
-                            className="h-[72px] w-auto object-contain"
-                            unoptimized
+                            className="h-full w-auto object-contain"
                           />
                         </div>
                       ))}
@@ -293,7 +290,7 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns, initialF
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <div className="text-sm font-semibold text-white">{run.projectTitle}</div>
-                    <div className="mt-1 text-xs text-zinc-400">{run.sectionName}{run.presetNames.length > 0 ? ` · ${run.presetNames.join(" · ")}` : ""}</div>
+                    <div className="mt-1 text-xs text-zinc-400">{run.projectTitle}：{run.sectionName}</div>
                   </div>
                   <span className={`rounded-full border px-2 py-1 text-[11px] ${
                     run.status === "running"
@@ -356,7 +353,7 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns, initialF
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <div className="text-sm font-semibold text-white">{run.projectTitle}</div>
-                    <div className="mt-1 text-xs text-zinc-400">{run.sectionName}{run.presetNames.length > 0 ? ` · ${run.presetNames.join(" · ")}` : ""}</div>
+                    <div className="mt-1 text-xs text-zinc-400">{run.projectTitle}：{run.sectionName}</div>
                   </div>
                   <span className="rounded-full border border-red-500/20 bg-red-500/10 px-2 py-1 text-[11px] text-red-300">
                     <AlertTriangle className="mr-1 inline size-3" />

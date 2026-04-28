@@ -169,9 +169,11 @@ export function CategoryForm({
 
   return (
     <div className="space-y-2 border-t border-white/10 bg-zinc-950/80 p-3">
-      <div className="text-[11px] font-medium text-sky-300">
-        {category ? "编辑分类" : "新建分类"}
-      </div>
+      {!category && (
+        <div className="text-[11px] font-medium text-sky-300">
+          新建分类
+        </div>
+      )}
 
       {/* Type toggle — only editable for new categories */}
       <div className="flex items-center gap-1">
@@ -239,8 +241,6 @@ export function CategoryForm({
             const slotCat = presetCategories.find((c) => c.id === slot.categoryId);
             return (
               <div key={idx} className="flex items-center gap-1.5">
-                <span className="text-[9px] text-zinc-500 w-4 shrink-0 text-right">{idx + 1}</span>
-                <CategoryBadge color={slotCat?.color ?? null} />
                 <div className="relative flex-1">
                   <select
                     value={slot.categoryId}
@@ -365,7 +365,7 @@ export function SortableCategoryItem({
               onEdit();
             }}
             className="rounded p-1 text-zinc-600 hover:text-zinc-300"
-            title={isExpanded ? "收起分类" : "编辑分类"}
+            title={isExpanded ? "收起" : "编辑"}
           >
             <Pencil className="size-3" />
           </button>
