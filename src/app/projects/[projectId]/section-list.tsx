@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useEffect, useId, useRef, useCallback } from "react";
 import Link from "next/link";
+import { useScrollSpy } from "@/hooks/use-scroll-spy";
 import {
   DndContext,
   closestCenter,
@@ -56,7 +57,6 @@ type SectionListProps = {
   sections: Section[];
 };
 
-const MAIN_SCROLL_ID = "app-main-scroll";
 const PROJECT_SECTION_ANCHOR_PREFIX = "comfyui-manager:project-section-anchor:";
 
 type StoredSectionAnchor = {
@@ -87,7 +87,9 @@ export function SectionList({ projectId, sections: initialSections }: SectionLis
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
   const [anchorNavCollapsed, setAnchorNavCollapsed] = useState(false);
-  const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
+
+  // Scroll spy: tracks which section is currently at the top 25% of viewport
+  const activeSectionId = useScrollSpy(sections.map((s) => s.id));
 
   // Ref for the nav scroll container (the overflow-y-auto div)
   const navScrollRef = useRef<HTMLDivElement>(null);
@@ -105,71 +107,15 @@ export function SectionList({ projectId, sections: initialSections }: SectionLis
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         const el = document.getElementById(id);
-        const scrollElement = document.getElementById(MAIN_SCROLL_ID);
-        if (el && scrollElement) {
-          const containerRect = scrollElement.getBoundingClientRect();
-          const elementRect = el.getBoundingClientRect();
-          scrollElement.scrollTop += elementRect.top - containerRect.top - containerRect.height / 3;
+        if (el) {
+          const y = el.getBoundingClientRect().top + window.scrollY - window.innerHeight / 3;
+          window.scrollTo({ top: y, behavior: "instant" });
           // Clean hash so it doesn't interfere with sessionStorage anchor restore
           window.history.replaceState(null, "", window.location.pathname + window.location.search);
         }
       });
     });
   }, []);
-
-  // Track which section is currently at the top of the viewport
-  useEffect(() => {
-    const scrollEl = document.getElementById(MAIN_SCROLL_ID);
-    if (!scrollEl) return;
-
-    let ticking = false;
-
-    function updateActiveSection() {
-      if (!scrollEl) return;
-      const containerRect = scrollEl.getBoundingClientRect();
-      const triggerLine = containerRect.top + containerRect.height * 0.25;
-      let bestId: string | null = null;
-      let bestTop = -Infinity;
-
-      for (const [sectionId, element] of cardRefs.current) {
-        const rect = element.getBoundingClientRect();
-        // Find the section whose top is closest to (but above or at) the trigger line
-        if (rect.top <= triggerLine && rect.top > bestTop) {
-          bestTop = rect.top;
-          bestId = sectionId;
-        }
-      }
-
-      // If no section top is above the trigger line, pick the first visible one
-      if (!bestId) {
-        for (const [sectionId, element] of cardRefs.current) {
-          const rect = element.getBoundingClientRect();
-          if (rect.bottom > containerRect.top && rect.top < containerRect.bottom) {
-            bestId = sectionId;
-            break;
-          }
-        }
-      }
-
-      if (bestId) {
-        setActiveSectionId(bestId);
-      }
-      ticking = false;
-    }
-
-    function onScroll() {
-      if (!ticking) {
-        ticking = true;
-        requestAnimationFrame(updateActiveSection);
-      }
-    }
-
-    // Initial check
-    updateActiveSection();
-
-    scrollEl.addEventListener("scroll", onScroll, { passive: true });
-    return () => scrollEl.removeEventListener("scroll", onScroll);
-  }, [sections]);
 
   // Auto-scroll nav to keep the active item visible
   useEffect(() => {
@@ -194,40 +140,34 @@ export function SectionList({ projectId, sections: initialSections }: SectionLis
       return;
     }
 
-    const scrollElement = document.getElementById(MAIN_SCROLL_ID);
-    if (!scrollElement) {
-      return;
-    }
-
-    const storageKey = `${PROJECT_SECTION_ANCHOR_PREFIX}${projectId}`;
+    const anchorStorageKey = `${PROJECT_SECTION_ANCHOR_PREFIX}${projectId}`;
 
     const saveAnchor = () => {
-      const containerRect = scrollElement.getBoundingClientRect();
       let bestAnchor: StoredSectionAnchor | null = null;
 
       for (const [sectionId, element] of cardRefs.current) {
         const rect = element.getBoundingClientRect();
-        const isVisible = rect.bottom > containerRect.top && rect.top < containerRect.bottom;
+        const isVisible = rect.bottom > 0 && rect.top < window.innerHeight;
 
         if (!isVisible) {
           continue;
         }
 
-        if (!bestAnchor || rect.top < containerRect.top + bestAnchor.offsetTop) {
+        if (!bestAnchor || rect.top < bestAnchor.offsetTop) {
           bestAnchor = {
             sectionId,
-            offsetTop: rect.top - containerRect.top,
+            offsetTop: rect.top,
           };
         }
       }
 
       if (bestAnchor) {
-        window.sessionStorage.setItem(storageKey, JSON.stringify(bestAnchor));
+        window.sessionStorage.setItem(anchorStorageKey, JSON.stringify(bestAnchor));
       }
     };
 
     const restoreAnchor = () => {
-      const rawAnchor = window.sessionStorage.getItem(storageKey);
+      const rawAnchor = window.sessionStorage.getItem(anchorStorageKey);
       if (!rawAnchor) {
         return;
       }
@@ -236,7 +176,7 @@ export function SectionList({ projectId, sections: initialSections }: SectionLis
       try {
         anchor = JSON.parse(rawAnchor) as StoredSectionAnchor;
       } catch {
-        window.sessionStorage.removeItem(storageKey);
+        window.sessionStorage.removeItem(anchorStorageKey);
         return;
       }
 
@@ -245,20 +185,19 @@ export function SectionList({ projectId, sections: initialSections }: SectionLis
         return;
       }
 
-      const containerRect = scrollElement.getBoundingClientRect();
-      const elementRect = element.getBoundingClientRect();
-      scrollElement.scrollTop += elementRect.top - containerRect.top - anchor.offsetTop;
+      const y = element.getBoundingClientRect().top + window.scrollY - anchor.offsetTop;
+      window.scrollTo({ top: y, behavior: "instant" });
     };
 
     requestAnimationFrame(() => {
       requestAnimationFrame(restoreAnchor);
     });
 
-    scrollElement.addEventListener("scroll", saveAnchor, { passive: true });
+    window.addEventListener("scroll", saveAnchor, { passive: true });
 
     return () => {
       saveAnchor();
-      scrollElement.removeEventListener("scroll", saveAnchor);
+      window.removeEventListener("scroll", saveAnchor);
     };
   }, [projectId, sections]);
 
@@ -274,14 +213,9 @@ export function SectionList({ projectId, sections: initialSections }: SectionLis
 
   function scrollToSection(id: string) {
     const element = cardRefs.current.get(id) ?? document.getElementById(`section-${id}`);
-    const scrollElement = document.getElementById(MAIN_SCROLL_ID);
-    if (!element || !scrollElement) return;
-    const containerRect = scrollElement.getBoundingClientRect();
-    const elementRect = element.getBoundingClientRect();
-    scrollElement.scrollTo({
-      top: scrollElement.scrollTop + elementRect.top - containerRect.top - 16,
-      behavior: "smooth",
-    });
+    if (!element) return;
+    const y = element.getBoundingClientRect().top + window.scrollY - 16;
+    window.scrollTo({ top: y, behavior: "smooth" });
     window.history.replaceState(null, "", `#section-${id}`);
   }
 
@@ -357,11 +291,9 @@ export function SectionList({ projectId, sections: initialSections }: SectionLis
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           const el = cardRefs.current.get(anchorId);
-          const scrollElement = document.getElementById(MAIN_SCROLL_ID);
-          if (el && scrollElement) {
-            const containerRect = scrollElement.getBoundingClientRect();
-            const elementRect = el.getBoundingClientRect();
-            scrollElement.scrollTop += elementRect.top - containerRect.top - containerRect.height / 2;
+          if (el) {
+            const y = el.getBoundingClientRect().top + window.scrollY - window.innerHeight / 2;
+            window.scrollTo({ top: y, behavior: "instant" });
           }
         });
       });
@@ -413,7 +345,7 @@ export function SectionList({ projectId, sections: initialSections }: SectionLis
       {sections.length > 0 && (
         <aside className={`min-w-0 border-r border-white/5 bg-black/10 ${anchorNavCollapsed ? "pr-0" : "pr-1"}`}>
           <div className="sticky top-4">
-            <div ref={navScrollRef} className="space-y-3 max-h-[calc(100dvh-2rem)] overflow-y-auto scrollbar-none">
+            <div ref={navScrollRef} className="space-y-3 max-h-[calc(100dvh-6rem)] overflow-y-auto scrollbar-none">
             <button
               type="button"
               onClick={handleToggle}

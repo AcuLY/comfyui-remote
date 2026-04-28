@@ -33,8 +33,8 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   const content = isLoginPage ? children : <AppShell>{children}</AppShell>;
 
   return (
-    <html lang="zh-CN" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
-      <body className="h-full bg-[var(--bg)] text-[var(--fg)]">
+    <html lang="zh-CN" className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body className="bg-[var(--bg)] text-[var(--fg)]">
         {content}
       </body>
     </html>

@@ -19,37 +19,23 @@
 }
 
 html {
-  height: 100%;
-  overflow: hidden;
   background: var(--bg);
 }
 
 body {
-  height: 100%;
-  overflow: hidden;
   background: radial-gradient(circle at top, #18181b 0%, var(--bg) 45%);
   color: var(--fg);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }
 
 /* 自定义滚动条样式 */
-/* Firefox (非 CustomScrollContainer 的容器) */
+/* Firefox */
 :where(html, body, *) {
   scrollbar-width: thin;
   scrollbar-color: rgba(113, 113, 122, 0.7) rgba(255, 255, 255, 0.03);
 }
 
-/* CustomScrollContainer 隐藏原生滚动条，使用 JS 渲染的自定义滚动条 */
-.custom-scroll-container {
-  scrollbar-width: none;
-}
-.custom-scroll-container::-webkit-scrollbar {
-  width: 0;
-  height: 0;
-  display: none;
-}
-
-/* WebKit (Chrome/Safari/Edge — 非 CustomScrollContainer 的容器) */
+/* WebKit (Chrome/Safari/Edge) */
 ::-webkit-scrollbar,
 *::-webkit-scrollbar {
   width: 8px;

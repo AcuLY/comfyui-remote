@@ -30,7 +30,6 @@ const navItems: NavItem[] = [
 
 const LAST_ROUTE_PREFIX = "comfyui-manager:last-route:";
 const SCROLL_PREFIX = "comfyui-manager:scroll:";
-const MAIN_SCROLL_ID = "app-main-scroll";
 
 function storageKey(prefix: string, value: string) {
   return `${prefix}${value}`;
@@ -104,34 +103,29 @@ export function PersistentBottomNav() {
   }, [currentUrl, pathname]);
 
   useEffect(() => {
-    const scrollElement = document.getElementById(MAIN_SCROLL_ID);
-    if (!scrollElement) {
-      return;
-    }
-
     const scrollKey = storageKey(SCROLL_PREFIX, currentUrl);
     const savedScrollTop = window.sessionStorage.getItem(scrollKey);
 
     if (savedScrollTop !== null) {
       requestAnimationFrame(() => {
-        scrollElement.scrollTop = Number(savedScrollTop) || 0;
+        window.scrollTo({ top: Number(savedScrollTop) || 0, behavior: "instant" });
       });
     }
 
     const saveScroll = () => {
-      window.sessionStorage.setItem(scrollKey, String(scrollElement.scrollTop));
+      window.sessionStorage.setItem(scrollKey, String(window.scrollY));
     };
 
-    scrollElement.addEventListener("scroll", saveScroll, { passive: true });
+    window.addEventListener("scroll", saveScroll, { passive: true });
 
     return () => {
       saveScroll();
-      scrollElement.removeEventListener("scroll", saveScroll);
+      window.removeEventListener("scroll", saveScroll);
     };
   }, [currentUrl]);
 
   return (
-    <nav className="shrink-0 border-t border-white/10 bg-[var(--panel)]/95 backdrop-blur pb-[env(safe-area-inset-bottom)]">
+    <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[var(--panel)]/95 backdrop-blur pb-[env(safe-area-inset-bottom)]">
       <div className="mx-auto grid max-w-5xl grid-cols-6 gap-1 px-2 py-2">
         {navItems.map(({ href, label, icon: Icon }) => {
           const active = pathname === href || pathname.startsWith(`${href}/`);
