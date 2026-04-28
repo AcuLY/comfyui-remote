@@ -146,13 +146,13 @@ export function SortableFolderRow(props: {
     <div ref={setNodeRef} style={style} className="flex items-center gap-1">
       <button
         type="button"
-        className="cursor-grab touch-none p-1 text-zinc-600 hover:text-zinc-400"
+        className="cursor-grab touch-none p-1 text-zinc-600 hover:text-zinc-400 shrink-0"
         {...attributes}
         {...listeners}
       >
         <GripVertical className="size-3" />
       </button>
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 overflow-hidden">
         <FolderRow {...props} />
       </div>
     </div>
