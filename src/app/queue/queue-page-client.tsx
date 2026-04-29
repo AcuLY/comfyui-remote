@@ -316,9 +316,9 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
                     <Link
                       href={pageHref(Math.max(1, queuePagination.page - 1))}
                       prefetch={false}
-                      className={`inline-flex size-7 items-center justify-center rounded-md border border-white/10 bg-white/[0.03] text-zinc-300 transition hover:bg-white/[0.06] sm:size-8 sm:rounded-lg ${queuePagination.page <= 1 ? "pointer-events-none opacity-40" : ""}`}
+                      className={`inline-flex size-6 items-center justify-center rounded-md border border-white/10 bg-white/[0.03] text-zinc-300 transition hover:bg-white/[0.06] sm:size-7 ${queuePagination.page <= 1 ? "pointer-events-none opacity-40" : ""}`}
                     >
-                      <ChevronLeft className="size-3.5 sm:size-4" />
+                      <ChevronLeft className="size-3 sm:size-3.5" />
                     </Link>
                     {visiblePages.map((page, index) => {
                       const prev = visiblePages[index - 1];
@@ -329,7 +329,7 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
                           <Link
                             href={pageHref(page)}
                             prefetch={false}
-                            className={`inline-flex size-7 items-center justify-center rounded-md border text-[11px] transition sm:size-8 sm:rounded-lg sm:text-xs ${
+                            className={`inline-flex size-6 items-center justify-center rounded-md border text-[10px] transition sm:size-7 sm:text-[11px] ${
                               page === queuePagination.page
                                 ? "border-sky-500/30 bg-sky-500/20 text-sky-200"
                                 : "border-white/10 bg-white/[0.03] text-zinc-300 hover:bg-white/[0.06]"
@@ -343,9 +343,9 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
                     <Link
                       href={pageHref(Math.min(queuePagination.totalPages, queuePagination.page + 1))}
                       prefetch={false}
-                      className={`inline-flex size-7 items-center justify-center rounded-md border border-white/10 bg-white/[0.03] text-zinc-300 transition hover:bg-white/[0.06] sm:size-8 sm:rounded-lg ${queuePagination.page >= queuePagination.totalPages ? "pointer-events-none opacity-40" : ""}`}
+                      className={`inline-flex size-6 items-center justify-center rounded-md border border-white/10 bg-white/[0.03] text-zinc-300 transition hover:bg-white/[0.06] sm:size-7 ${queuePagination.page >= queuePagination.totalPages ? "pointer-events-none opacity-40" : ""}`}
                     >
-                      <ChevronRight className="size-3.5 sm:size-4" />
+                      <ChevronRight className="size-3 sm:size-3.5" />
                     </Link>
                   </div>
                 )}
