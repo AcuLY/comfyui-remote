@@ -302,34 +302,34 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
               ))}
             </div>
             {queuePagination.totalItems > 0 && (
-              <div className="mt-4 flex flex-col gap-2 border-t border-white/[0.06] pt-3 text-xs text-zinc-500 sm:flex-row sm:items-center sm:justify-between">
-                <div>
+              <div className="mt-3 flex flex-col gap-2 border-t border-white/[0.06] pt-2.5 text-[11px] text-zinc-500 sm:mt-4 sm:flex-row sm:items-center sm:justify-between sm:pt-3 sm:text-xs">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                   {queuePagination.startItem}-{queuePagination.endItem} / {queuePagination.totalItems}
                   {queuePagination.staleImageCount > 0 && (
-                    <span className="ml-2 text-amber-400/80">
+                    <span className="text-amber-400/80">
                       {queuePagination.staleImageCount} stale images hidden
                     </span>
                   )}
                 </div>
                 {queuePagination.totalPages > 1 && (
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-0.5 sm:gap-1">
                     <Link
                       href={pageHref(Math.max(1, queuePagination.page - 1))}
                       prefetch={false}
-                      className={`inline-flex size-8 items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] text-zinc-300 transition hover:bg-white/[0.06] ${queuePagination.page <= 1 ? "pointer-events-none opacity-40" : ""}`}
+                      className={`inline-flex size-7 items-center justify-center rounded-md border border-white/10 bg-white/[0.03] text-zinc-300 transition hover:bg-white/[0.06] sm:size-8 sm:rounded-lg ${queuePagination.page <= 1 ? "pointer-events-none opacity-40" : ""}`}
                     >
-                      <ChevronLeft className="size-4" />
+                      <ChevronLeft className="size-3.5 sm:size-4" />
                     </Link>
                     {visiblePages.map((page, index) => {
                       const prev = visiblePages[index - 1];
                       const showGap = prev !== undefined && page - prev > 1;
                       return (
-                        <div key={page} className="flex items-center gap-1">
-                          {showGap && <span className="px-1 text-zinc-600">...</span>}
+                        <div key={page} className="flex items-center gap-0.5 sm:gap-1">
+                          {showGap && <span className="px-0.5 text-[10px] text-zinc-600 sm:px-1 sm:text-xs">...</span>}
                           <Link
                             href={pageHref(page)}
                             prefetch={false}
-                            className={`inline-flex size-8 items-center justify-center rounded-lg border text-xs transition ${
+                            className={`inline-flex size-7 items-center justify-center rounded-md border text-[11px] transition sm:size-8 sm:rounded-lg sm:text-xs ${
                               page === queuePagination.page
                                 ? "border-sky-500/30 bg-sky-500/20 text-sky-200"
                                 : "border-white/10 bg-white/[0.03] text-zinc-300 hover:bg-white/[0.06]"
@@ -343,9 +343,9 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
                     <Link
                       href={pageHref(Math.min(queuePagination.totalPages, queuePagination.page + 1))}
                       prefetch={false}
-                      className={`inline-flex size-8 items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] text-zinc-300 transition hover:bg-white/[0.06] ${queuePagination.page >= queuePagination.totalPages ? "pointer-events-none opacity-40" : ""}`}
+                      className={`inline-flex size-7 items-center justify-center rounded-md border border-white/10 bg-white/[0.03] text-zinc-300 transition hover:bg-white/[0.06] sm:size-8 sm:rounded-lg ${queuePagination.page >= queuePagination.totalPages ? "pointer-events-none opacity-40" : ""}`}
                     >
-                      <ChevronRight className="size-4" />
+                      <ChevronRight className="size-3.5 sm:size-4" />
                     </Link>
                   </div>
                 )}
