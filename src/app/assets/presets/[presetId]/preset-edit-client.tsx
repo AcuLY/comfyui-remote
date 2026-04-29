@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { ArrowLeft } from "lucide-react";
-import { SectionCard } from "@/components/section-card";
 import type { PresetCategoryFull, PresetFull } from "@/lib/server-data";
 import {
   createPresetVariant,
@@ -87,21 +86,24 @@ export function PresetEditClient({
   }
 
   return (
-    <div className="mx-auto w-full min-w-0 max-w-4xl space-y-3">
+    <div className="w-full min-w-0 space-y-4">
       <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => router.push(backHref)} className="inline-flex items-center gap-1.5 text-xs text-zinc-400 transition hover:text-zinc-200">
         <ArrowLeft className="size-3.5" /> 返回预制列表
       </button>
-      <SectionCard title={preset.name} subtitle={`${category.name} / ${preset.slug}`}>
-        <PresetForm
-          categoryId={category.id}
-          folderId={preset.folderId}
-          preset={preset}
-          allCategories={categories}
-          onSave={savePreset}
-          onCancel={() => router.push(backHref)}
-          isPending={isPending}
-        />
-      </SectionCard>
+      <div>
+        <h1 className="text-lg font-semibold text-white">{preset.name}</h1>
+        <p className="mt-1 text-sm text-zinc-400">{category.name} / {preset.slug}</p>
+      </div>
+      <PresetForm
+        categoryId={category.id}
+        folderId={preset.folderId}
+        preset={preset}
+        allCategories={categories}
+        onSave={savePreset}
+        onCancel={() => router.push(backHref)}
+        isPending={isPending}
+        embedded
+      />
     </div>
   );
 }

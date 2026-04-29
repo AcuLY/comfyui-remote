@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { ArrowLeft, Save, Trash2, X } from "lucide-react";
-import { SectionCard } from "@/components/section-card";
 import type { PresetCategoryFull, PresetGroupItem, PresetVariantItem } from "@/lib/server-data";
 import {
   addGroupMember,
@@ -123,178 +122,180 @@ export function PresetGroupEditClient({
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-3">
+    <div className="space-y-4">
       <Link href={backHref} className="inline-flex items-center gap-1.5 text-xs text-zinc-400 transition hover:text-zinc-200">
         <ArrowLeft className="size-3.5" /> 返回预制列表
       </Link>
-      <SectionCard title={group.name} subtitle={`预制组 / ${group.slug}`}>
-        <div className="space-y-4">
-          <div className="grid gap-3 md:grid-cols-2">
-            <label className="space-y-1.5">
-              <span className="text-[10px] text-zinc-500">名称</span>
-              <input
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-zinc-200 outline-none focus:border-sky-500/30"
-              />
-            </label>
-            <label className="space-y-1.5">
-              <span className="text-[10px] text-zinc-500">Slug</span>
-              <input
-                value={slug}
-                onChange={(event) => setSlug(event.target.value)}
-                className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-zinc-200 outline-none focus:border-sky-500/30"
-              />
-            </label>
-          </div>
+      <div>
+        <h1 className="text-lg font-semibold text-white">{group.name}</h1>
+        <p className="mt-1 text-sm text-zinc-400">预制组 / {group.slug}</p>
+      </div>
+      <div className="space-y-4">
+        <div className="grid gap-3 border-t border-white/5 pt-3 md:grid-cols-2">
+          <label className="space-y-1.5">
+            <span className="text-[10px] text-zinc-500">名称</span>
+            <input
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-zinc-200 outline-none focus:border-sky-500/30"
+            />
+          </label>
+          <label className="space-y-1.5">
+            <span className="text-[10px] text-zinc-500">Slug</span>
+            <input
+              value={slug}
+              onChange={(event) => setSlug(event.target.value)}
+              className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-zinc-200 outline-none focus:border-sky-500/30"
+            />
+          </label>
+        </div>
 
-          <div className="space-y-2 rounded-xl border border-white/10 bg-black/10 p-3">
-            <div className="text-xs font-medium text-zinc-200">成员</div>
-            {group.members.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-white/10 py-5 text-center text-[11px] text-zinc-600">
-                暂无成员
-              </div>
-            ) : (
-              <div className="space-y-1.5">
-                {group.members.map((member) => {
-                  const presetHref = member.presetId ? `/assets/presets/${member.presetId}` : null;
-                  const inner = (
-                    <>
-                      <div className="min-w-0">
-                        <div className="truncate text-xs text-zinc-200">
-                          {member.subGroupName ?? member.presetName ?? "未知成员"}
-                        </div>
-                        <div className="truncate text-[10px] text-zinc-500">
-                          {member.subGroupName ? "子组" : member.variantName ? `变体：${member.variantName}` : "默认变体"}
-                        </div>
+        <div className="space-y-2 rounded-xl border border-white/10 bg-black/10 p-3">
+          <div className="text-xs font-medium text-zinc-200">成员</div>
+          {group.members.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-white/10 py-5 text-center text-[11px] text-zinc-600">
+              暂无成员
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              {group.members.map((member) => {
+                const presetHref = member.presetId ? `/assets/presets/${member.presetId}` : null;
+                const inner = (
+                  <>
+                    <div className="min-w-0">
+                      <div className="truncate text-xs text-zinc-200">
+                        {member.subGroupName ?? member.presetName ?? "未知成员"}
                       </div>
-                      <button
-                        type="button"
-                        disabled={isPending}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          startTransition(async () => {
-                            await removeGroupMember(member.id);
-                            toast.success("成员已移除");
-                            router.refresh();
-                          });
-                        }}
-                        className="rounded p-1 text-zinc-500 transition hover:bg-red-500/10 hover:text-red-400 disabled:opacity-50"
-                      >
-                        <X className="size-3.5" />
-                      </button>
-                    </>
-                  );
-                  return presetHref ? (
-                    <Link
-                      key={member.id}
-                      href={presetHref}
-                      className="flex items-center justify-between gap-2 rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2 transition hover:bg-white/[0.04] hover:border-white/10"
+                      <div className="truncate text-[10px] text-zinc-500">
+                        {member.subGroupName ? "子组" : member.variantName ? `变体：${member.variantName}` : "默认变体"}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={isPending}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        startTransition(async () => {
+                          await removeGroupMember(member.id);
+                          toast.success("成员已移除");
+                          router.refresh();
+                        });
+                      }}
+                      className="rounded p-1 text-zinc-500 transition hover:bg-red-500/10 hover:text-red-400 disabled:opacity-50"
                     >
-                      {inner}
-                    </Link>
-                  ) : (
-                    <div
-                      key={member.id}
-                      className="flex items-center justify-between gap-2 rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2"
-                    >
-                      {inner}
+                      <X className="size-3.5" />
+                    </button>
+                  </>
+                );
+                return presetHref ? (
+                  <Link
+                    key={member.id}
+                    href={presetHref}
+                    className="flex items-center justify-between gap-2 rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2 transition hover:bg-white/[0.04] hover:border-white/10"
+                  >
+                    {inner}
+                  </Link>
+                ) : (
+                  <div
+                    key={member.id}
+                    className="flex items-center justify-between gap-2 rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2"
+                  >
+                    {inner}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          <AddGroupMemberForm
+            groupId={group.id}
+            categories={categories}
+            groups={selectableGroups}
+            onAdd={(input) => {
+              startTransition(async () => {
+                await addGroupMember(input);
+                toast.success("成员已添加");
+                router.refresh();
+              });
+            }}
+            isPending={isPending}
+          />
+        </div>
+
+        {/* Read-only preview card */}
+        {previewGroups.length > 0 && (
+          <div className="space-y-2 rounded-xl border border-white/10 bg-black/10 p-3">
+            <div className="text-xs font-medium text-zinc-200">预览</div>
+            {previewGroups.map((pg) => (
+              <div key={pg.category?.id ?? "__unknown__"} className="space-y-2">
+                {pg.category && previewGroups.length > 1 && (
+                  <div className="text-[10px] font-medium text-zinc-500">{pg.category.name}</div>
+                )}
+                {pg.entries.map(({ member, variant }) => {
+                  if (!variant) return null;
+                  const loras = [
+                    ...parseLoraBindings(variant.lora1),
+                    ...parseLoraBindings(variant.lora2),
+                  ].filter((l) => l.enabled);
+                  return (
+                    <div key={member.id} className="rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2 space-y-1.5">
+                      <div className="text-[11px] font-medium text-zinc-300">
+                        {member.presetName ?? "未知"}
+                        {member.variantName && <span className="text-zinc-500"> / {member.variantName}</span>}
+                      </div>
+                      {variant.prompt && (
+                        <div>
+                          <div className="mb-0.5 text-[10px] font-medium text-zinc-500">正面提示词</div>
+                          <pre className="whitespace-pre-wrap break-words text-[11px] text-zinc-400">{variant.prompt}</pre>
+                        </div>
+                      )}
+                      {variant.negativePrompt && (
+                        <div>
+                          <div className="mb-0.5 text-[10px] font-medium text-zinc-500">负面提示词</div>
+                          <pre className="whitespace-pre-wrap break-words text-[11px] text-zinc-400">{variant.negativePrompt}</pre>
+                        </div>
+                      )}
+                      {loras.length > 0 && (
+                        <div>
+                          <div className="mb-0.5 text-[10px] font-medium text-zinc-500">LoRA</div>
+                          <div className="space-y-0.5 text-[11px] text-zinc-500">
+                            {loras.map((l, i) => (
+                              <div key={i} className="flex items-center gap-2">
+                                <span className="truncate">{l.path.split(/[/\\]/).pop()}</span>
+                                <span className="shrink-0 text-zinc-600">{l.weight}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
               </div>
-            )}
-            <AddGroupMemberForm
-              groupId={group.id}
-              categories={categories}
-              groups={selectableGroups}
-              onAdd={(input) => {
-                startTransition(async () => {
-                  await addGroupMember(input);
-                  toast.success("成员已添加");
-                  router.refresh();
-                });
-              }}
-              isPending={isPending}
-            />
+            ))}
           </div>
+        )}
 
-          {/* Read-only preview card */}
-          {previewGroups.length > 0 && (
-            <div className="space-y-2 rounded-xl border border-white/10 bg-black/10 p-3">
-              <div className="text-xs font-medium text-zinc-200">预览</div>
-              {previewGroups.map((pg) => (
-                <div key={pg.category?.id ?? "__unknown__"} className="space-y-2">
-                  {pg.category && previewGroups.length > 1 && (
-                    <div className="text-[10px] font-medium text-zinc-500">{pg.category.name}</div>
-                  )}
-                  {pg.entries.map(({ member, variant }) => {
-                    if (!variant) return null;
-                    const loras = [
-                      ...parseLoraBindings(variant.lora1),
-                      ...parseLoraBindings(variant.lora2),
-                    ].filter((l) => l.enabled);
-                    return (
-                      <div key={member.id} className="rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2 space-y-1.5">
-                        <div className="text-[11px] font-medium text-zinc-300">
-                          {member.presetName ?? "未知"}
-                          {member.variantName && <span className="text-zinc-500"> / {member.variantName}</span>}
-                        </div>
-                        {variant.prompt && (
-                          <div>
-                            <div className="mb-0.5 text-[10px] font-medium text-zinc-500">正面提示词</div>
-                            <pre className="whitespace-pre-wrap break-words text-[11px] text-zinc-400">{variant.prompt}</pre>
-                          </div>
-                        )}
-                        {variant.negativePrompt && (
-                          <div>
-                            <div className="mb-0.5 text-[10px] font-medium text-zinc-500">负面提示词</div>
-                            <pre className="whitespace-pre-wrap break-words text-[11px] text-zinc-400">{variant.negativePrompt}</pre>
-                          </div>
-                        )}
-                        {loras.length > 0 && (
-                          <div>
-                            <div className="mb-0.5 text-[10px] font-medium text-zinc-500">LoRA</div>
-                            <div className="space-y-0.5 text-[11px] text-zinc-500">
-                              {loras.map((l, i) => (
-                                <div key={i} className="flex items-center gap-2">
-                                  <span className="truncate">{l.path.split(/[/\\]/).pop()}</span>
-                                  <span className="shrink-0 text-zinc-600">{l.weight}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
-          )}
+        <PresetChangeHistoryPanel history={group.changeHistory} tabs={GROUP_HISTORY_TABS} />
 
-          <PresetChangeHistoryPanel history={group.changeHistory} tabs={GROUP_HISTORY_TABS} />
-
-          <div className="flex flex-wrap gap-2 border-t border-white/5 pt-3">
-            <button
-              type="button"
-              disabled={isPending || !name.trim() || !slug.trim()}
-              onClick={saveGroup}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-sky-500/20 px-3 py-2 text-xs text-sky-300 transition hover:bg-sky-500/30 disabled:opacity-50"
-            >
-              <Save className="size-3.5" /> 保存
-            </button>
-            <button
-              type="button"
-              onClick={removeGroup}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-400 transition hover:bg-red-500/20"
-            >
-              <Trash2 className="size-3.5" /> 删除
-            </button>
-          </div>
+        <div className="flex flex-wrap gap-2 border-t border-white/5 pt-3">
+          <button
+            type="button"
+            disabled={isPending || !name.trim() || !slug.trim()}
+            onClick={saveGroup}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-sky-500/20 px-3 py-2 text-xs text-sky-300 transition hover:bg-sky-500/30 disabled:opacity-50"
+          >
+            <Save className="size-3.5" /> 保存
+          </button>
+          <button
+            type="button"
+            onClick={removeGroup}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-400 transition hover:bg-red-500/20"
+          >
+            <Trash2 className="size-3.5" /> 删除
+          </button>
         </div>
-      </SectionCard>
+      </div>
     </div>
   );
 }
