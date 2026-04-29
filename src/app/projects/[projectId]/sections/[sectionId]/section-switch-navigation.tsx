@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import type { MouseEvent, ReactNode } from "react";
 import { useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -19,12 +21,92 @@ function storageKey(projectId: string) {
   return `section-switch-scroll:${projectId}`;
 }
 
+function readCurrentScrollTop() {
+  return window.scrollY;
+}
+
+function saveSectionSwitchScroll(projectId: string) {
+  window.sessionStorage.setItem(
+    storageKey(projectId),
+    JSON.stringify({ y: readCurrentScrollTop(), at: Date.now() }),
+  );
+}
+
+function restoreSectionSwitchScroll(projectId: string) {
+  const key = storageKey(projectId);
+  const raw = window.sessionStorage.getItem(key);
+  if (!raw) return;
+
+  try {
+    const parsed = JSON.parse(raw) as { y?: number; at?: number };
+    window.sessionStorage.removeItem(key);
+    if (
+      typeof parsed.y === "number" &&
+      typeof parsed.at === "number" &&
+      Date.now() - parsed.at < RESTORE_TTL_MS
+    ) {
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: parsed.y, left: 0, behavior: "instant" });
+      });
+    }
+  } catch {
+    window.sessionStorage.removeItem(key);
+  }
+}
+
 function shouldIgnoreSwipeTarget(target: EventTarget | null) {
   if (!(target instanceof HTMLElement)) return false;
   return Boolean(
     target.closest(
       "a,button,input,textarea,select,[contenteditable='true'],[data-no-section-swipe='true']",
     ),
+  );
+}
+
+export function SectionSwitchScrollRestorer({
+  projectId,
+  sectionId,
+}: {
+  projectId: string;
+  sectionId: string;
+}) {
+  useEffect(() => {
+    restoreSectionSwitchScroll(projectId);
+  }, [projectId, sectionId]);
+
+  return null;
+}
+
+export function SectionSwitchHeaderLink({
+  projectId,
+  href,
+  className,
+  children,
+}: {
+  projectId: string;
+  href: string;
+  className: string;
+  children: ReactNode;
+}) {
+  function handleClick(event: MouseEvent<HTMLAnchorElement>) {
+    if (
+      event.defaultPrevented ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.altKey ||
+      event.ctrlKey ||
+      event.shiftKey
+    ) {
+      return;
+    }
+
+    saveSectionSwitchScroll(projectId);
+  }
+
+  return (
+    <Link href={href} scroll={false} onClick={handleClick} className={className}>
+      {children}
+    </Link>
   );
 }
 
@@ -40,32 +122,13 @@ export function SectionSwitchNavigation({
   const nextHref = nextSectionId ? `/projects/${projectId}/sections/${nextSectionId}` : null;
 
   useEffect(() => {
-    const raw = window.sessionStorage.getItem(storageKey(projectId));
-    if (!raw) return;
-
-    try {
-      const parsed = JSON.parse(raw) as { y?: number; at?: number };
-      if (
-        typeof parsed.y === "number" &&
-        typeof parsed.at === "number" &&
-        Date.now() - parsed.at < RESTORE_TTL_MS
-      ) {
-        requestAnimationFrame(() => {
-          window.scrollTo({ top: parsed.y, left: 0, behavior: "instant" });
-        });
-      }
-    } catch {
-      window.sessionStorage.removeItem(storageKey(projectId));
-    }
+    restoreSectionSwitchScroll(projectId);
   }, [projectId, sectionId]);
 
   const navigate = useCallback(
     (href: string | null) => {
       if (!href) return;
-      window.sessionStorage.setItem(
-        storageKey(projectId),
-        JSON.stringify({ y: window.scrollY, at: Date.now() }),
-      );
+      saveSectionSwitchScroll(projectId);
       router.push(href, { scroll: false });
     },
     [projectId, router],
