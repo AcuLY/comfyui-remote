@@ -200,7 +200,7 @@ export function ProjectDetailClient({ projectId, projectTitle, sections }: Proje
         "--sidebar-width": "14rem",
         "--sidebar-width-icon": "3rem",
       } as React.CSSProperties}
-      className="-mx-5 -mt-4 min-h-[calc(100dvh-5rem)] w-[calc(100%+2.5rem)] bg-[var(--bg)] sm:-mx-6 sm:w-[calc(100%+3rem)]"
+      className="-mx-5 min-h-[calc(100dvh-5rem)] w-[calc(100%+2.5rem)] bg-[var(--bg)] sm:-mx-6 sm:w-[calc(100%+3rem)]"
     >
       <AppSidebar
         projectId={projectId}
@@ -213,7 +213,7 @@ export function ProjectDetailClient({ projectId, projectTitle, sections }: Proje
       />
 
       <SidebarInset className="flex-1 overflow-auto bg-[var(--bg)]">
-        <div className="-mt-4 mx-auto flex max-w-5xl flex-col gap-3 px-4 pb-24 pt-0 sm:px-6">
+        <div className="mx-auto flex max-w-5xl flex-col gap-3 px-4 pb-24 pt-4 sm:px-6">
           {/* Toolbar */}
           <div className="sticky top-0 z-20 -mx-4 flex items-center gap-2 border-b border-white/[0.06] bg-[var(--bg)] px-4 py-2 sm:-mx-6 sm:px-6">
             <SidebarTrigger className="-ml-1 hidden md:inline-flex" />
