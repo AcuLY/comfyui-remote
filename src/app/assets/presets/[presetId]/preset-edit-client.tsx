@@ -5,10 +5,10 @@ import { useTransition } from "react";
 import { ArrowLeft } from "lucide-react";
 import type { PresetCategoryFull, PresetFull } from "@/lib/server-data";
 import {
-  createPresetVariant,
   syncPresetToSections,
   updatePreset,
   updatePresetVariant,
+  upsertPresetVariantBySlug,
 } from "@/lib/actions";
 import { serializeLoraBindings } from "@/lib/lora-types";
 import { PresetForm, type VariantDraft } from "../preset-form";
@@ -73,7 +73,7 @@ export function PresetEditClient({
           if (draft.id) {
             await updatePresetVariant(draft.id, variantData);
           } else {
-            await createPresetVariant(variantData);
+            await upsertPresetVariantBySlug(variantData);
           }
         }
         await syncPresetToSections(preset.id);

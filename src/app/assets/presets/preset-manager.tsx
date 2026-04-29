@@ -44,6 +44,7 @@ import {
   updatePreset,
   createPresetVariant,
   updatePresetVariant,
+  upsertPresetVariantBySlug,
   getPresetUsage,
   deletePresetCascade,
   syncPresetToSections,
@@ -755,7 +756,7 @@ function PresetList({
                           if (v.id) {
                             await updatePresetVariant(v.id, variantData);
                           } else {
-                            await createPresetVariant(variantData);
+                            await upsertPresetVariantBySlug(variantData);
                           }
                         }
                         // Sync updated content (including linked variants) to all sections

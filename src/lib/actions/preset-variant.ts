@@ -152,6 +152,54 @@ export async function createPresetVariant(input: PresetVariantInput) {
   return variant;
 }
 
+export async function upsertPresetVariantBySlug(input: PresetVariantInput) {
+  const existing = await prisma.presetVariant.findUnique({
+    where: {
+      presetId_slug: {
+        presetId: input.presetId,
+        slug: input.slug,
+      },
+    },
+  });
+
+  if (!existing) {
+    return createPresetVariant(input);
+  }
+
+  const { presetId: _pid, lora1, lora2, defaultParams, linkedVariants, ...rest } = input;
+  const data: Record<string, unknown> = { ...rest, isActive: true };
+  if (lora1 !== undefined) data.lora1 = toJsonValue(lora1) ?? Prisma.DbNull;
+  if (lora2 !== undefined) data.lora2 = toJsonValue(lora2) ?? Prisma.DbNull;
+  if (defaultParams !== undefined) data.defaultParams = toJsonValue(defaultParams) ?? Prisma.DbNull;
+  if (linkedVariants !== undefined) {
+    data.linkedVariants = Array.isArray(linkedVariants) && linkedVariants.length === 0
+      ? Prisma.DbNull
+      : toJsonValue(linkedVariants) ?? Prisma.DbNull;
+  }
+
+  const variant = await prisma.presetVariant.update({
+    where: { id: existing.id },
+    data,
+  });
+  await recordPresetChange({
+    presetId: variant.presetId,
+    dimension: "variants",
+    title: `更新关联变体：${variant.name}`,
+    before: presetVariantLinkedSnapshot(existing),
+    after: presetVariantLinkedSnapshot(variant),
+  });
+  await recordPresetChange({
+    presetId: variant.presetId,
+    dimension: "content",
+    title: `更新提示词与 LoRA：${variant.name}`,
+    before: presetVariantContentSnapshot(existing),
+    after: presetVariantContentSnapshot(variant),
+  });
+  revalidatePath("/assets/presets");
+  revalidatePath("/projects/new");
+  return variant;
+}
+
 export async function updatePreset(id: string, input: Partial<PresetInput>) {
   const preset = await prisma.preset.update({ where: { id }, data: input });
   revalidatePath("/assets/presets");
