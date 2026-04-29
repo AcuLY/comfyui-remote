@@ -424,10 +424,28 @@ export function PresetForm({
     setVariants(updated);
   }
 
-  function updateCurrentVariant(patch: Partial<VariantDraft>) {
+  function buildPresetData() {
+    return {
+      categoryId,
+      folderId,
+      name: name.trim(),
+      slug: slug.trim(),
+      notes: notes.trim() || null,
+      isActive: true,
+    };
+  }
+
+  function saveDrafts(nextVariants: VariantDraft[] = variants) {
+    onSave(buildPresetData(), nextVariants);
+  }
+
+  function updateCurrentVariant(patch: Partial<VariantDraft>, options?: { autoSave?: boolean }) {
     const updated = [...variants];
     updated[currentIdx] = { ...current, ...patch };
     setVariants(updated);
+    if (options?.autoSave && !isPending) {
+      saveDrafts(updated);
+    }
   }
 
   function addVariant() {
@@ -507,14 +525,7 @@ export function PresetForm({
 
   async function handleSubmit() {
     // Pass preset data + variant drafts to parent for saving
-    onSave({
-      categoryId,
-      folderId,
-      name: name.trim(),
-      slug: slug.trim(),
-      notes: notes.trim() || null,
-      isActive: true,
-    }, variants);
+    saveDrafts(variants);
   }
 
   function handleAutoSave() {
@@ -653,7 +664,7 @@ export function PresetForm({
 
         <LinkedVariantsEditor
           linkedVariants={current.linkedVariants}
-          onChange={(lv) => updateCurrentVariant({ linkedVariants: lv })}
+          onChange={(lv) => updateCurrentVariant({ linkedVariants: lv }, { autoSave: true })}
           currentPresetId={preset?.id}
           allCategories={allCategories}
         />
