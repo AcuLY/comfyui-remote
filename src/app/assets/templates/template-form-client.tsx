@@ -67,26 +67,54 @@ export function TemplateFormClient({
 
   // ── Section management ──
 
+  function createDefaultSection(index: number): ProjectTemplateSectionData {
+    return {
+      id: `new-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+      sortOrder: index,
+      name: null,
+      aspectRatio: "2:3",
+      shortSidePx: 512,
+      batchSize: 2,
+      seedPolicy1: "random",
+      seedPolicy2: "random",
+      ksampler1: null,
+      ksampler2: null,
+      upscaleFactor: 2,
+      loraConfig: { lora1: [], lora2: [] },
+      extraParams: null,
+      promptBlocks: [],
+    };
+  }
+
   function addSection() {
-    setSections((prev) => [
-      ...prev,
-      {
-        id: `new-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-        sortOrder: prev.length,
-        name: null,
-        aspectRatio: "2:3",
-        shortSidePx: 512,
-        batchSize: 2,
-        seedPolicy1: "random",
-        seedPolicy2: "random",
-        ksampler1: null,
-        ksampler2: null,
-        upscaleFactor: 2,
-        loraConfig: { lora1: [], lora2: [] },
-        extraParams: null,
-        promptBlocks: [],
-      },
-    ]);
+    if (isEdit && !name.trim()) {
+      toast.error("请输入模板名称");
+      return;
+    }
+
+    const nextSection = createDefaultSection(sections.length);
+    const nextSections = [...sections, nextSection];
+    setSections(nextSections);
+
+    if (!isEdit) {
+      return;
+    }
+
+    startTransition(async () => {
+      try {
+        await updateProjectTemplate({
+          id: templateId,
+          name: name.trim(),
+          description: description.trim() || null,
+          sections: nextSections,
+        });
+        toast.success("小节已添加");
+        router.push(`/assets/templates/${templateId}/sections/${nextSections.length - 1}`);
+      } catch (e: unknown) {
+        setSections(sections);
+        toast.error(e instanceof Error ? e.message : "添加小节失败");
+      }
+    });
   }
 
   function removeSection(id: string) {
@@ -178,8 +206,10 @@ export function TemplateFormClient({
             小节配置 ({sections.length})
           </span>
           <button
+            type="button"
+            disabled={isPending}
             onClick={addSection}
-            className="inline-flex items-center gap-1 rounded-xl border border-dashed border-white/10 bg-white/[0.02] px-3 py-1.5 text-xs text-zinc-400 transition hover:border-sky-500/30 hover:text-sky-300"
+            className="inline-flex items-center gap-1 rounded-xl border border-dashed border-white/10 bg-white/[0.02] px-3 py-1.5 text-xs text-zinc-400 transition hover:border-sky-500/30 hover:text-sky-300 disabled:opacity-50"
           >
             <Plus className="size-3" /> 添加小节
           </button>
@@ -253,8 +283,9 @@ function SortableSectionCard({
   const loraCount = loraConfig.lora1.length + loraConfig.lora2.length;
   const blockCount = (section.promptBlocks || []).length;
 
-  // If no templateId yet (new template), can't navigate — card not clickable
-  const href = templateId
+  // If no templateId yet (new template) or the section is not persisted yet,
+  // do not expose a route that the server cannot resolve.
+  const href = templateId && !section.id.startsWith("new-")
     ? `/assets/templates/${templateId}/sections/${index}`
     : null;
 
