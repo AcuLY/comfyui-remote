@@ -3,7 +3,7 @@
 import { useState, useTransition, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ChevronLeft, ChevronRight, Save, Download, X } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, Save, Download, Package, Trash2, Unlink, ClipboardCopy, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { updateProjectTemplate } from "@/lib/actions";
 import { AspectRatioPicker } from "@/components/aspect-ratio-picker";
@@ -27,6 +27,33 @@ type CategoryConfig = {
   slug: string;
   color: string | null;
   icon: string | null;
+};
+
+type PresetBindingInfo = {
+  bindingId: string;
+  presetName: string;
+  groupName: string | undefined;
+  sourceId: string | null;
+  variantId: string | null;
+  categoryName?: string;
+  categoryColor?: string;
+  groupBindingId: string | null;
+  blockCount: number;
+  loraCount: number;
+  availableVariants: Array<{ id: string; name: string }>;
+};
+
+type PresetImportItem = {
+  presetId: string;
+  presetName: string;
+  variantId: string;
+  prompt: string;
+  negativePrompt: string | null;
+  lora1: unknown;
+  lora2: unknown;
+  categoryId: string;
+  categoryName: string;
+  categoryColor: string | null;
 };
 
 type Props = {
@@ -84,7 +111,100 @@ export function TemplateSectionDetailClient({
     return map;
   }, [library]);
 
-  const importCategories: ImportCategory[] = library?.categories ?? [];
+  const importCategories: ImportCategory[] = useMemo(
+    () => (library?.categories ?? []).filter((cat) =>
+      cat.type === "group"
+        ? (cat.groups ?? []).length > 0
+        : cat.presets.some((preset) => preset.variants.length > 0),
+    ),
+    [library],
+  );
+
+  const presetBindings = useMemo<PresetBindingInfo[]>(() => {
+    const map = new Map<string, PresetBindingInfo>();
+    const groupNamesByBindingId = new Map<string, string>();
+    const blocksByGroupBindingId = new Map<string, TemplateBlockData[]>();
+
+    for (const block of promptBlocks) {
+      if (block.bindingId && block.groupBindingId && block.type === "preset") {
+        const groupBlocks = blocksByGroupBindingId.get(block.groupBindingId) ?? [];
+        groupBlocks.push(block);
+        blocksByGroupBindingId.set(block.groupBindingId, groupBlocks);
+      }
+    }
+
+    for (const groupBlocks of blocksByGroupBindingId.values()) {
+      const seenBindingIds = new Set<string>();
+      const names = [...groupBlocks]
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+        .filter((block) => {
+          if (!block.bindingId || seenBindingIds.has(block.bindingId)) return false;
+          seenBindingIds.add(block.bindingId);
+          return true;
+        })
+        .map((block) => block.label.trim())
+        .filter(Boolean);
+      const groupName = names.join(" · ");
+      if (groupName) {
+        for (const block of groupBlocks) {
+          if (block.bindingId) groupNamesByBindingId.set(block.bindingId, groupName);
+        }
+      }
+    }
+
+    for (const block of promptBlocks) {
+      if (!block.bindingId || block.type !== "preset") continue;
+      const existing = map.get(block.bindingId);
+      if (existing) {
+        existing.blockCount++;
+        continue;
+      }
+
+      let availableVariants: Array<{ id: string; name: string }> = [];
+      let categoryName: string | undefined;
+      let categoryColor: string | undefined;
+      if (library) {
+        for (const cat of library.categories) {
+          const preset = block.sourceId ? cat.presets.find((item) => item.id === block.sourceId) : undefined;
+          if (preset) {
+            availableVariants = preset.variants.map((variant) => ({ id: variant.id, name: variant.name }));
+            categoryName = cat.name;
+            categoryColor = cat.color ?? undefined;
+            break;
+          }
+        }
+        if (!categoryName && block.categoryId) {
+          const cat = library.categories.find((item) => item.id === block.categoryId);
+          if (cat) {
+            categoryName = cat.name;
+            categoryColor = cat.color ?? undefined;
+          }
+        }
+      }
+
+      map.set(block.bindingId, {
+        bindingId: block.bindingId,
+        presetName: block.label,
+        groupName: groupNamesByBindingId.get(block.bindingId),
+        sourceId: block.sourceId ?? null,
+        variantId: block.variantId ?? null,
+        categoryName,
+        categoryColor,
+        groupBindingId: block.groupBindingId ?? null,
+        blockCount: 1,
+        loraCount: 0,
+        availableVariants,
+      });
+    }
+
+    for (const entry of [...loraConfig.lora1, ...loraConfig.lora2]) {
+      if (!entry.bindingId) continue;
+      const existing = map.get(entry.bindingId);
+      if (existing) existing.loraCount++;
+    }
+
+    return [...map.values()];
+  }, [promptBlocks, loraConfig, library]);
 
   // ── Save ──
 
@@ -145,6 +265,40 @@ export function TemplateSectionDetailClient({
 
   // ── Preset import handler ──
 
+  function findPresetVariant(presetId: string, variantId: string) {
+    for (const cat of library?.categories ?? []) {
+      const preset = cat.presets.find((item) => item.id === presetId);
+      if (!preset) continue;
+      const variant = preset.variants.find((item) => item.id === variantId);
+      if (!variant) return null;
+      return { cat, preset, variant };
+    }
+    return null;
+  }
+
+  function parseLoraEntries(
+    arr: unknown,
+    item: PresetImportItem,
+    bindingId: string,
+    groupBindingId?: string,
+  ): LoraEntry[] {
+    if (!Array.isArray(arr)) return [];
+    return arr
+      .filter((entry): entry is Record<string, unknown> => typeof entry === "object" && entry !== null && typeof entry.path === "string")
+      .map((entry) => ({
+        id: generateLoraEntryId(),
+        path: entry.path as string,
+        weight: typeof entry.weight === "number" ? Math.round(entry.weight * 100) / 100 : 1,
+        enabled: typeof entry.enabled === "boolean" ? entry.enabled : true,
+        source: "preset" as const,
+        sourceLabel: item.categoryName,
+        sourceColor: item.categoryColor ?? undefined,
+        sourceName: item.presetName,
+        bindingId,
+        groupBindingId,
+      }));
+  }
+
   function handleImportPreset(
     presetId: string,
     presetName: string,
@@ -159,23 +313,11 @@ export function TemplateSectionDetailClient({
     categoryColor: string | null,
   ) {
     importPresets([
-      { presetName, prompt, negativePrompt, lora1, lora2, categoryId, categoryName, categoryColor },
+      { presetId, presetName, variantId, prompt, negativePrompt, lora1, lora2, categoryId, categoryName, categoryColor },
     ]);
   }
 
-  function importPresets(
-    items: Array<{
-      presetName: string;
-      prompt: string;
-      negativePrompt: string | null;
-      lora1: unknown;
-      lora2: unknown;
-      categoryId: string;
-      categoryName: string;
-      categoryColor: string | null;
-    }>,
-    groupBindingId?: string,
-  ) {
+  function importPresets(items: PresetImportItem[], groupBindingId?: string) {
     const currentBlocks = [...promptBlocks];
     const currentLora1 = [...loraConfig.lora1];
     const currentLora2 = [...loraConfig.lora2];
@@ -184,40 +326,25 @@ export function TemplateSectionDetailClient({
       // Generate a bindingId for this preset import
       const bindingId = `bind-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 
-      const parseLoraEntries = (arr: unknown, categoryName: string, categoryColor: string | null, presetName: string): LoraEntry[] => {
-        if (!Array.isArray(arr)) return [];
-        return arr
-          .filter((e): e is Record<string, unknown> => typeof e === "object" && e !== null && typeof e.path === "string")
-          .map((e) => ({
-            id: generateLoraEntryId(),
-            path: e.path as string,
-            weight: typeof e.weight === "number" ? Math.round(e.weight * 100) / 100 : 1,
-            enabled: typeof e.enabled === "boolean" ? e.enabled : true,
-            source: "preset" as const,
-            sourceLabel: categoryName,
-            sourceColor: categoryColor ?? undefined,
-            sourceName: presetName,
-            bindingId,
-            groupBindingId,
-          }));
-      };
-
       currentBlocks.push({
         label: item.presetName,
         positive: item.prompt,
         negative: item.negativePrompt,
         sortOrder: currentBlocks.length,
         type: "preset",
+        sourceId: item.presetId,
+        variantId: item.variantId,
         categoryId: item.categoryId,
         bindingId,
         groupBindingId,
       });
-      currentLora1.push(...parseLoraEntries(item.lora1, item.categoryName, item.categoryColor, item.presetName));
-      currentLora2.push(...parseLoraEntries(item.lora2, item.categoryName, item.categoryColor, item.presetName));
+      currentLora1.push(...parseLoraEntries(item.lora1, item, bindingId, groupBindingId));
+      currentLora2.push(...parseLoraEntries(item.lora2, item, bindingId, groupBindingId));
     }
 
     setPromptBlocks(currentBlocks);
     setLoraConfig({ lora1: currentLora1, lora2: currentLora2 });
+    setShowImport(false);
 
     if (items.length === 1) {
       toast.success(`已导入「${items[0].presetName}」`);
@@ -233,16 +360,7 @@ export function TemplateSectionDetailClient({
       const group = (cat.groups ?? []).find((g) => g.id === groupId);
       if (!group) continue;
 
-      const items: Array<{
-        presetName: string;
-        prompt: string;
-        negativePrompt: string | null;
-        lora1: unknown;
-        lora2: unknown;
-        categoryId: string;
-        categoryName: string;
-        categoryColor: string | null;
-      }> = [];
+      const items: PresetImportItem[] = [];
 
       for (const member of group.members) {
         if (!member.presetId) continue;
@@ -260,7 +378,9 @@ export function TemplateSectionDetailClient({
         if (!variant) continue;
 
         items.push({
+          presetId: foundPreset.preset.id,
           presetName: foundPreset.preset.name,
+          variantId: variant.id,
           prompt: variant.prompt,
           negativePrompt: variant.negativePrompt,
           lora1: variant.lora1,
@@ -282,6 +402,85 @@ export function TemplateSectionDetailClient({
   }
 
   // ── Render ──
+
+  function handleSwitchVariant(bindingId: string, newVariantId: string) {
+    const binding = presetBindings.find((item) => item.bindingId === bindingId);
+    if (!binding?.sourceId) return;
+    const found = findPresetVariant(binding.sourceId, newVariantId);
+    if (!found) return;
+
+    const item: PresetImportItem = {
+      presetId: found.preset.id,
+      presetName: found.preset.name,
+      variantId: found.variant.id,
+      prompt: found.variant.prompt,
+      negativePrompt: found.variant.negativePrompt,
+      lora1: found.variant.lora1,
+      lora2: found.variant.lora2,
+      categoryId: found.cat.id,
+      categoryName: found.cat.name,
+      categoryColor: found.cat.color,
+    };
+
+    const groupBindingId = binding.groupBindingId ?? undefined;
+    setPromptBlocks((prev) =>
+      prev.map((block) =>
+        block.bindingId === bindingId
+          ? {
+              ...block,
+              label: item.presetName,
+              positive: item.prompt,
+              negative: item.negativePrompt,
+              sourceId: item.presetId,
+              variantId: item.variantId,
+              categoryId: item.categoryId,
+            }
+          : block,
+      ),
+    );
+
+    const nextLora1 = loraConfig.lora1.filter((entry) => entry.bindingId !== bindingId);
+    const nextLora2 = loraConfig.lora2.filter((entry) => entry.bindingId !== bindingId);
+    nextLora1.push(...parseLoraEntries(item.lora1, item, bindingId, groupBindingId));
+    nextLora2.push(...parseLoraEntries(item.lora2, item, bindingId, groupBindingId));
+    setLoraConfig({ lora1: nextLora1, lora2: nextLora2 });
+  }
+
+  function handleDeleteBinding(bindingId: string) {
+    const binding = presetBindings.find((item) => item.bindingId === bindingId);
+    if (!binding) return;
+
+    const bindingIds = new Set<string>([bindingId]);
+    if (binding.groupBindingId) {
+      for (const block of promptBlocks) {
+        if (block.groupBindingId === binding.groupBindingId && block.bindingId) {
+          bindingIds.add(block.bindingId);
+        }
+      }
+    }
+
+    setPromptBlocks((prev) =>
+      prev
+        .filter((block) => !block.bindingId || !bindingIds.has(block.bindingId))
+        .map((block, index) => ({ ...block, sortOrder: index })),
+    );
+    setLoraConfig({
+      lora1: loraConfig.lora1.filter((entry) => !entry.bindingId || !bindingIds.has(entry.bindingId)),
+      lora2: loraConfig.lora2.filter((entry) => !entry.bindingId || !bindingIds.has(entry.bindingId)),
+    });
+  }
+
+  function handleStandaloneDeleteBinding(bindingId: string) {
+    setPromptBlocks((prev) =>
+      prev
+        .filter((block) => block.bindingId !== bindingId)
+        .map((block, index) => ({ ...block, sortOrder: index })),
+    );
+    setLoraConfig({
+      lora1: loraConfig.lora1.filter((entry) => entry.bindingId !== bindingId),
+      lora2: loraConfig.lora2.filter((entry) => entry.bindingId !== bindingId),
+    });
+  }
 
   const inputCls =
     "input-number w-full rounded-xl border border-white/10 bg-white/[0.04] px-2.5 py-2 text-xs text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30 disabled:opacity-70";
@@ -535,8 +734,141 @@ export function TemplateSectionDetailClient({
         </div>
       </div>
 
+      {/* Preset binding list */}
+      <div className="space-y-2 border-t border-white/5 pt-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-xs text-zinc-400">
+            <Package className="size-3.5" />
+            <span>已导入预制</span>
+            {presetBindings.length > 0 && (
+              <span className="rounded bg-sky-500/20 px-1.5 py-0.5 text-[10px] text-sky-300">
+                {presetBindings.length}
+              </span>
+            )}
+          </div>
+          {importCategories.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowImport(!showImport)}
+              disabled={isPending}
+              className="inline-flex items-center gap-1 rounded-lg bg-sky-500/10 px-2 py-1 text-[10px] text-sky-300 transition hover:bg-sky-500/20 disabled:opacity-50"
+            >
+              <Download className="size-3" /> 导入预制
+            </button>
+          )}
+        </div>
+
+        {presetBindings.length > 0 ? (
+          <div className="grid grid-cols-1 gap-1 lg:grid-cols-2">
+            {presetBindings.map((binding) => (
+              <div
+                key={binding.bindingId}
+                className="flex items-center justify-between rounded-lg border border-white/5 bg-white/[0.02] px-3 py-1.5"
+              >
+                <div className="flex min-w-0 items-center gap-2">
+                  {binding.categoryName && (
+                    <span
+                      className="shrink-0 rounded px-1.5 py-0.5 text-[9px] font-medium"
+                      style={binding.categoryColor ? {
+                        backgroundColor: `hsl(${binding.categoryColor} / 0.15)`,
+                        color: `hsl(${binding.categoryColor})`,
+                      } : {
+                        backgroundColor: "rgba(255,255,255,0.06)",
+                        color: "#a1a1aa",
+                      }}
+                    >
+                      {binding.categoryName}
+                    </span>
+                  )}
+                  {binding.groupBindingId && (
+                    <span className="shrink-0 rounded bg-amber-500/15 px-1 py-px text-[8px] text-amber-400">组</span>
+                  )}
+                  <span className="truncate text-[11px] text-zinc-300">{binding.presetName}</span>
+                  {binding.sourceId && (
+                    <Link
+                      href={`/assets/presets/${binding.sourceId}`}
+                      target="_blank"
+                      className="shrink-0 rounded p-0.5 text-zinc-500 hover:bg-white/5 hover:text-sky-400"
+                      title="在预制详情中打开"
+                    >
+                      <ExternalLink className="size-3" />
+                    </Link>
+                  )}
+                  {binding.availableVariants.length > 1 && (
+                    <div className="relative">
+                      <select
+                        value={binding.variantId ?? ""}
+                        onChange={(event) => {
+                          if (event.target.value && event.target.value !== binding.variantId) {
+                            handleSwitchVariant(binding.bindingId, event.target.value);
+                          }
+                        }}
+                        disabled={isPending}
+                        className="appearance-none rounded border border-white/10 bg-white/[0.04] py-0.5 pl-1.5 pr-5 text-[10px] text-zinc-300 outline-none focus:border-sky-500/30 disabled:opacity-50"
+                      >
+                        {binding.availableVariants.map((variant) => (
+                          <option key={variant.id} value={variant.id} className="bg-zinc-900">
+                            {variant.name}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="pointer-events-none absolute right-1 top-1/2 size-2.5 -translate-y-1/2 text-zinc-500" />
+                    </div>
+                  )}
+                  <span className="text-[9px] text-zinc-500">
+                    {binding.blockCount} 块 · {binding.loraCount} LoRA
+                  </span>
+                </div>
+                <div className="flex shrink-0 items-center gap-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setName(binding.groupName ?? binding.presetName)}
+                    title="用预制名作为小节名"
+                    className="rounded p-1 text-zinc-600 hover:bg-sky-500/10 hover:text-sky-400"
+                  >
+                    <ClipboardCopy className="size-3" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleStandaloneDeleteBinding(binding.bindingId)}
+                    disabled={isPending}
+                    title="独立删除（仅此预制）"
+                    className="rounded p-1 text-zinc-600 hover:bg-amber-500/10 hover:text-amber-400 disabled:opacity-50"
+                  >
+                    <Unlink className="size-3" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteBinding(binding.bindingId)}
+                    disabled={isPending}
+                    title="级联删除（含同组预制）"
+                    className="rounded p-1 text-zinc-600 hover:bg-red-500/10 hover:text-red-400 disabled:opacity-50"
+                  >
+                    <Trash2 className="size-3" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : !showImport ? (
+          <div className="rounded-lg border border-dashed border-white/5 px-3 py-2 text-center text-[10px] text-zinc-600">
+            暂无导入的预制
+          </div>
+        ) : null}
+
+        {showImport && (
+          <ImportPresetPanel
+            categories={importCategories}
+            onImport={handleImportPreset}
+            onImportGroup={handleImportGroup}
+            onClose={() => setShowImport(false)}
+            isPending={isPending}
+          />
+        )}
+      </div>
+
       {/* Import preset */}
-      {importCategories.length > 0 && (
+      {false && importCategories.length > 0 && (
         <div className="border-t border-white/5 pt-3">
           {showImport ? (
             <ImportPresetPanel
@@ -573,11 +905,21 @@ export function TemplateSectionDetailClient({
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
             <div className="mb-1.5 text-[11px] font-medium text-sky-400">LoRA 1</div>
-            <LoraListEditor entries={loraConfig.lora1} onChange={handleLora1Change} />
+            <LoraListEditor
+              entries={loraConfig.lora1}
+              onChange={handleLora1Change}
+              presetBindings={presetBindings}
+              enableStandaloneDelete
+            />
           </div>
           <div>
             <div className="mb-1.5 text-[11px] font-medium text-violet-400">LoRA 2</div>
-            <LoraListEditor entries={loraConfig.lora2} onChange={handleLora2Change} />
+            <LoraListEditor
+              entries={loraConfig.lora2}
+              onChange={handleLora2Change}
+              presetBindings={presetBindings}
+              enableStandaloneDelete
+            />
           </div>
         </div>
       </div>
