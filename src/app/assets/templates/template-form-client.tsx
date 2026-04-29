@@ -139,7 +139,7 @@ export function TemplateFormClient({
   }
 
   return (
-    <div className="w-full max-w-4xl min-w-0 space-y-4">
+    <div className="mx-auto w-full max-w-3xl min-w-0 space-y-4">
       <Link
         href="/assets/templates"
         className="inline-flex items-center gap-2 text-sm text-zinc-400 transition hover:text-zinc-200"
