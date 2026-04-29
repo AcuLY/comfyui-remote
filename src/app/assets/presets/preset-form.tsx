@@ -13,7 +13,7 @@ import {
   arrayMove,
   SortableContext,
   useSortable,
-  verticalListSortingStrategy,
+  rectSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
@@ -286,7 +286,7 @@ function SortableVariantBar({
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") onSelect();
       }}
-      className={`flex items-center gap-1.5 rounded-lg border p-2 cursor-pointer transition ${
+      className={`flex min-w-0 items-center gap-1.5 rounded-lg border p-2 cursor-pointer transition ${
         isSelected
           ? "border-sky-500/30 bg-sky-500/10"
           : "border-white/5 bg-white/[0.02] hover:border-white/10"
@@ -571,7 +571,7 @@ export function PresetForm({
       </div>
       <div className="space-y-2">
         {/* Sortable variant list */}
-        <div className="space-y-1">
+        <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
           {mounted ? (
             <DndContext
               id={dndId}
@@ -579,7 +579,7 @@ export function PresetForm({
               collisionDetection={closestCenter}
               onDragEnd={handleVariantDragEnd}
             >
-              <SortableContext items={variantIds} strategy={verticalListSortingStrategy}>
+              <SortableContext items={variantIds} strategy={rectSortingStrategy}>
                 {variants.map((v, i) => (
                   <SortableVariantBar
                     key={variantIds[i]}
@@ -595,7 +595,7 @@ export function PresetForm({
             variants.map((v, i) => (
               <div
                 key={i}
-                className="flex items-center gap-1.5 rounded-lg border border-white/5 bg-white/[0.02] p-2"
+                className="flex min-w-0 items-center gap-1.5 rounded-lg border border-white/5 bg-white/[0.02] p-2"
               >
                 <GripVertical className="size-3 text-zinc-600" />
                 <div className="flex-1 min-w-0 truncate text-xs text-zinc-300">{v.name || "未命名变体"}</div>
