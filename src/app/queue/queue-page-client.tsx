@@ -305,11 +305,6 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
               <div className="mt-3 flex flex-col gap-2 border-t border-white/[0.06] pt-2.5 text-[11px] text-zinc-500 sm:mt-4 sm:flex-row sm:items-center sm:justify-between sm:pt-3 sm:text-xs">
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                   {queuePagination.startItem}-{queuePagination.endItem} / {queuePagination.totalItems}
-                  {queuePagination.staleImageCount > 0 && (
-                    <span className="text-amber-400/80">
-                      {queuePagination.staleImageCount} stale images hidden
-                    </span>
-                  )}
                 </div>
                 {queuePagination.totalPages > 1 && (
                   <div className="flex items-center gap-0.5 sm:gap-1">
