@@ -2,6 +2,31 @@ import { NextRequest, NextResponse } from "next/server";
 
 const AUTH_COOKIE_NAME = "auth_token";
 
+function getHeaderToken(request: NextRequest) {
+  const authorization = request.headers.get("authorization")?.trim();
+  if (authorization?.toLowerCase().startsWith("bearer ")) {
+    const bearerToken = authorization.slice("bearer ".length).trim();
+    if (bearerToken) {
+      return bearerToken;
+    }
+  }
+
+  return (
+    request.headers.get("x-api-token")?.trim() ||
+    request.headers.get("x-auth-token")?.trim() ||
+    null
+  );
+}
+
+function hasValidHeaderToken(request: NextRequest) {
+  const authToken = process.env.AUTH_TOKEN;
+  if (!authToken) {
+    return false;
+  }
+
+  return getHeaderToken(request) === authToken;
+}
+
 function isPublicPath(pathname: string): boolean {
   if (pathname === "/login" || pathname === "/favicon.ico") return true;
   if (pathname.startsWith("/api/auth/")) return true;
@@ -27,6 +52,13 @@ function isPublicPath(pathname: string): boolean {
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  if (pathname.startsWith("/api/") && hasValidHeaderToken(request)) {
+    const response = NextResponse.next();
+    response.headers.set("x-pathname", pathname);
+    response.headers.set("x-auth-mode", "header-token");
+    return response;
+  }
 
   if (isPublicPath(pathname)) {
     const response = NextResponse.next();
