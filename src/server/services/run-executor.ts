@@ -37,10 +37,48 @@ import type { WorkerRunSnapshot, ComfyPromptDraft } from "@/server/worker/types"
 import { waitForPromptToStart } from "@/server/services/comfyui-service";
 
 const log = createLogger({ module: "run-executor" });
+const FINALIZING_OUTPUT_DIR_PREFIX = "__finalizing__:";
+const FINALIZING_CLAIM_TTL_MS = 30 * 60 * 1000;
 
 function formatError(error: unknown) {
   if (error instanceof Error) return error.message;
   return String(error);
+}
+
+function createFinalizingMarker() {
+  return `${FINALIZING_OUTPUT_DIR_PREFIX}${Date.now()}`;
+}
+
+function parseFinalizingMarker(outputDir: string | null) {
+  if (!outputDir?.startsWith(FINALIZING_OUTPUT_DIR_PREFIX)) {
+    return null;
+  }
+
+  const timestamp = Number(outputDir.slice(FINALIZING_OUTPUT_DIR_PREFIX.length));
+  return Number.isFinite(timestamp) ? timestamp : 0;
+}
+
+async function claimRunFinalization(
+  runId: string,
+  currentOutputDir: string | null,
+): Promise<boolean> {
+  const markerTimestamp = parseFinalizingMarker(currentOutputDir);
+  if (markerTimestamp !== null && Date.now() - markerTimestamp < FINALIZING_CLAIM_TTL_MS) {
+    return false;
+  }
+
+  const claim = await db.run.updateMany({
+    where: {
+      id: runId,
+      status: { in: [RunStatus.queued, RunStatus.running] },
+      outputDir: currentOutputDir,
+    },
+    data: {
+      outputDir: createFinalizingMarker(),
+    },
+  });
+
+  return claim.count === 1;
 }
 
 // ─── Submit ────────────────────────────────────────────────────────────────
@@ -217,6 +255,13 @@ export async function pollRunCompletion(runId: string): Promise<void> {
 
       const outputImages = extractOutputImages(historyEntry);
       const executionMeta = extractExecutionMeta(validatedDraft.apiPrompt, promptDraft);
+      const claimedFinalization = await claimRunFinalization(runId, runRecord.outputDir);
+
+      if (!claimedFinalization) {
+        runLog.info("Run finalization is already claimed elsewhere, skipping duplicate poll");
+        runTimer.done({ status: "duplicate-finalizer" });
+        return;
+      }
 
       const persistedOutput = await persistComfyOutputImages(
         run,
