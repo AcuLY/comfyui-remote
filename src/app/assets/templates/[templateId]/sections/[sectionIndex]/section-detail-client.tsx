@@ -35,11 +35,13 @@ type PresetBindingInfo = {
   groupName: string | undefined;
   sourceId: string | null;
   variantId: string | null;
+  categoryId: string | null;
   categoryName?: string;
   categoryColor?: string;
   groupBindingId: string | null;
   blockCount: number;
   loraCount: number;
+  sortOrder: number;
   availableVariants: Array<{ id: string; name: string }>;
 };
 
@@ -124,6 +126,11 @@ export function TemplateSectionDetailClient({
     const map = new Map<string, PresetBindingInfo>();
     const groupNamesByBindingId = new Map<string, string>();
     const blocksByGroupBindingId = new Map<string, TemplateBlockData[]>();
+    const categoryOrderById = new Map<string, number>();
+
+    (library?.categories ?? []).forEach((cat, index) => {
+      categoryOrderById.set(cat.id, cat.positivePromptOrder ?? index);
+    });
 
     for (const block of promptBlocks) {
       if (block.bindingId && block.groupBindingId && block.type === "preset") {
@@ -188,11 +195,13 @@ export function TemplateSectionDetailClient({
         groupName: groupNamesByBindingId.get(block.bindingId),
         sourceId: block.sourceId ?? null,
         variantId: block.variantId ?? null,
+        categoryId: block.categoryId ?? null,
         categoryName,
         categoryColor,
         groupBindingId: block.groupBindingId ?? null,
         blockCount: 1,
         loraCount: 0,
+        sortOrder: block.sortOrder,
         availableVariants,
       });
     }
@@ -203,7 +212,12 @@ export function TemplateSectionDetailClient({
       if (existing) existing.loraCount++;
     }
 
-    return [...map.values()];
+    return [...map.values()].sort((a, b) => {
+      const orderA = a.categoryId ? (categoryOrderById.get(a.categoryId) ?? 999) : 999;
+      const orderB = b.categoryId ? (categoryOrderById.get(b.categoryId) ?? 999) : 999;
+      if (orderA !== orderB) return orderA - orderB;
+      return a.sortOrder - b.sortOrder;
+    });
   }, [promptBlocks, loraConfig, library]);
 
   // ── Save ──
@@ -299,6 +313,12 @@ export function TemplateSectionDetailClient({
       }));
   }
 
+  function getPresetCategoryOrder(categoryId: string): number {
+    const categoryIndex = library?.categories.findIndex((cat) => cat.id === categoryId) ?? -1;
+    const category = categoryIndex >= 0 ? library?.categories[categoryIndex] : undefined;
+    return category?.positivePromptOrder ?? (categoryIndex >= 0 ? categoryIndex : 999);
+  }
+
   function handleImportPreset(
     presetId: string,
     presetName: string,
@@ -318,11 +338,20 @@ export function TemplateSectionDetailClient({
   }
 
   function importPresets(items: PresetImportItem[], groupBindingId?: string) {
+    const orderedItems = items
+      .map((item, index) => ({ item, index }))
+      .sort((a, b) => {
+        const orderA = getPresetCategoryOrder(a.item.categoryId);
+        const orderB = getPresetCategoryOrder(b.item.categoryId);
+        if (orderA !== orderB) return orderA - orderB;
+        return a.index - b.index;
+      })
+      .map(({ item }) => item);
     const currentBlocks = [...promptBlocks];
     const currentLora1 = [...loraConfig.lora1];
     const currentLora2 = [...loraConfig.lora2];
 
-    for (const item of items) {
+    for (const item of orderedItems) {
       // Generate a bindingId for this preset import
       const bindingId = `bind-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 
