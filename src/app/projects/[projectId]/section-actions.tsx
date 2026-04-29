@@ -156,12 +156,12 @@ export function ImportTemplateButton({ projectId }: { projectId: string }) {
 
       {isOpen && (
         <>
-          <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm" onClick={closeDialog} />
+          <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm" onClick={closeDialog} />
           <div
             role="dialog"
             aria-modal="true"
             aria-label="导入模板"
-            className="fixed left-1/2 top-1/2 z-50 w-[min(calc(100vw-2rem),26rem)] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-white/10 bg-zinc-950 p-3 shadow-2xl"
+            className="fixed left-1/2 top-1/2 z-[110] w-[min(calc(100vw-2rem),26rem)] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-white/10 bg-zinc-950 p-3 shadow-2xl"
           >
             <div className="mb-3 flex items-center justify-between gap-3">
               <div className="min-w-0">
