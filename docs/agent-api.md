@@ -17,7 +17,8 @@ or:
 { "ok": false, "error": { "message": "Error message", "details": {} } }
 ```
 
-- `src/proxy.ts` currently treats `/api/projects`, `/api/queue`, `/api/runs`, `/api/images`, `/api/trash`, `/api/loras`, `/api/comfy`, `/api/agent`, `/api/mcp`, `/api/health`, logs, audit logs, worker status, and path maps as public API paths. Browser page routes still require the `auth_token` cookie.
+- Agents should send the browser `auth_token` cookie when available. `src/proxy.ts` has an allowlist for several API namespaces, but root collection routes such as `GET/POST /api/projects` may still require the cookie.
+- Public allowlisted namespaces include `/api/agent`, `/api/queue`, `/api/runs`, `/api/images`, `/api/trash`, `/api/loras/`, `/api/comfy`, `/api/mcp`, `/api/health`, logs, audit logs, worker status, path maps, and nested `/api/projects/:projectId/...` routes.
 - ComfyUI process write controls (`/api/comfy/start`, `/api/comfy/stop`, `/api/comfy/restart`) are limited to localhost by the route handler.
 - The UI may still call server actions directly, but the user-facing backend operations have HTTP equivalents listed below.
 
