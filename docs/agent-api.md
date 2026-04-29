@@ -2,6 +2,44 @@
 
 This document is for automation agents that need to operate ComfyUI Manager through HTTP instead of Next.js server actions.
 
+## Project Overview
+
+ComfyUI Manager is a Next.js application that manages repeatable ComfyUI image-generation work. The app is organized around projects, reusable templates, a preset library, LoRA assets, a run queue, and review workflows for generated images. Agents normally use it to create or update projects, assemble prompt content from presets, run sections through ComfyUI, inspect queued/running/completed jobs, and keep or trash generated images.
+
+Core workflow:
+
+1. Create or find a project.
+2. Add project sections directly, import a project template, or copy existing sections.
+3. Add prompt blocks manually or import presets/preset groups from the preset library.
+4. Adjust section runtime parameters such as aspect ratio, batch size, KSampler settings, upscale factor, seed policies, and LoRA configuration.
+5. Run one section or all enabled sections.
+6. Review generated image results, marking images as kept, trashed, restored, or featured.
+
+Core terms:
+
+- **Project**: A generation workspace. A project owns ordered sections, project-level metadata, runs, and generated image results.
+- **Section**: One ordered generation unit inside a project. A section has runtime parameters, prompt blocks, LoRA configuration, enabled state, and its own run history.
+- **Project Template**: A reusable ordered list of template sections. Templates can be imported into projects and can carry prompt blocks, preset bindings, LoRAs, and optional runtime defaults.
+- **Preset Library**: The reusable prompt/LoRA library. It contains categories, folders, presets, variants, and preset groups.
+- **Preset**: A named reusable prompt asset, usually under a category such as character, style, people, pose, place, or expression.
+- **Variant**: A selectable version of a preset. Variants carry positive prompt text, optional negative prompt text, LoRA entries, default params, and linked variants.
+- **Preset Group**: A reusable bundle of presets/variants that can be imported together. Imported group members share a `groupBindingId`.
+- **Prompt Block**: A positive/negative prompt fragment stored on a project section. Blocks may be `custom` or `preset` sourced. Preset-sourced blocks keep `sourceId`, `variantId`, `categoryId`, `bindingId`, and optional `groupBindingId`.
+- **Binding**: The stable relationship between an imported preset and the section content it created. `bindingId` links prompt blocks and LoRA entries that came from the same imported preset. Agents should use bindings when switching variants or deleting imported content.
+- **LoRA Config**: Section-level LoRA lists split into `lora1` and `lora2`. Preset-imported LoRAs can also carry binding metadata so they stay associated with their prompt blocks.
+- **Run**: One execution record for a section. Runs move through states such as queued, running, done, failed, and cancelled, and can expose the submitted workflow JSON.
+- **Queue**: The operational view of pending/running/completed runs. Clearing active queue items cancels queued/running work; clearing finished queue items deletes finished/failed/cancelled run records.
+- **Image Result**: A generated image attached to a run. Images can be kept, trashed, restored, or marked featured.
+- **ComfyUI**: The external generation engine. This app manages ComfyUI process status, submits workflows, downloads outputs, and stores generated files.
+
+Agent guidance:
+
+- Prefer stable IDs over names when mutating data. Names are useful for search and matching, but IDs should be used once discovered.
+- Use dry-run endpoints where available before bulk-changing sections, variants, or template imports.
+- Preserve `bindingId`, `groupBindingId`, `sourceId`, `variantId`, and `categoryId` when editing preset-sourced content so future variant switching and cascade deletion continue to work.
+- Category order matters for prompt and LoRA composition; imported presets and groups should keep the library/category ordering when possible.
+- Use `/api/agent/**` endpoints for high-level context and batch operations, then fall back to lower-level project/template/preset routes for specific edits.
+
 ## Conventions
 
 - Base URL: `https://comfy.bgmss.fun` in production, or the local Next.js origin during development.
