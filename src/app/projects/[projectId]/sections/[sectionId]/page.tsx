@@ -255,9 +255,9 @@ export default async function SectionEditPage({
   const changeHistory = await getSectionChangeHistory(sectionId);
 
   return (
-    <div className="space-y-4">
-      <div className="min-w-0">
-        <div className="sticky top-0 z-20 -mx-5 border-b border-white/10 bg-[var(--bg)]/95 px-5 py-2.5 backdrop-blur sm:-mx-6 sm:px-6">
+    <div className="-mx-5 -mt-4 min-h-[calc(100dvh-5rem)] bg-[var(--panel)] px-5 pt-4 sm:-mx-6 sm:px-6">
+      <div className="min-w-0 space-y-4">
+        <div className="sticky top-0 z-20 -mx-5 -mt-4 border-b border-white/[0.08] bg-[var(--panel)]/95 px-5 pb-3 pt-4 shadow-[0_14px_30px_rgba(0,0,0,0.22)] backdrop-blur sm:-mx-6 sm:px-6">
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between gap-2">
               <Link
@@ -311,7 +311,7 @@ export default async function SectionEditPage({
           </div>
         </div>
 
-        <section className="-mx-4 w-full min-w-0 rounded-2xl border border-white/10 bg-[var(--panel)] p-3.5 shadow-[0_10px_30px_rgba(0,0,0,0.25)] sm:mx-0 lg:p-4">
+        <section className="w-full min-w-0">
           <div className="space-y-6">
             <div id="section-params" className="scroll-mt-24">
               <SectionParamsForm

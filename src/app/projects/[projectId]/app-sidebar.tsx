@@ -257,9 +257,11 @@ export function AppSidebar({
           {isExpanded && <span>返回项目列表</span>}
         </Link>
         {isExpanded && (
-          <h1 className="truncate px-0.5 text-[13px] font-semibold leading-5 text-zinc-100">
-            {projectTitle}
-          </h1>
+          <div className="mt-1 rounded-xl border border-sky-500/15 bg-sky-500/[0.06] px-3 py-2 shadow-inner shadow-sky-500/5">
+            <h1 className="truncate text-[15px] font-semibold leading-5 text-sky-50">
+              {projectTitle}
+            </h1>
+          </div>
         )}
       </SidebarHeader>
 
@@ -272,7 +274,7 @@ export function AppSidebar({
               {/* 运行整组 */}
               <SidebarMenuItem>
                 {isExpanded && (
-                  <div className="px-1 pb-0.5">
+                  <div className="px-1 pb-0.5 mx-1 my-2">
                     <BatchSizeQuickFill
                       onSelect={(val) => setBatchSize(String(val))}
                       currentValue={parsedBatchSize}
@@ -384,7 +386,7 @@ export function AppSidebar({
               </button>
             </SidebarGroupLabel>
             <SidebarGroupContent>
-              <SidebarMenu className="gap-1">
+              <SidebarMenu className="gap-2 md:gap-1">
                 {sections.map((section, index) => (
                   <SidebarMenuItem key={section.id} data-nav-section-id={section.id}>
                     <SidebarMenuButton
@@ -395,8 +397,8 @@ export function AppSidebar({
                       }}
                       className={
                         activeSectionId === section.id
-                          ? "text-sky-300"
-                          : ""
+                          ? "h-auto min-h-10 py-2 text-sky-300 md:min-h-8"
+                          : "h-auto min-h-10 py-2 md:min-h-8"
                       }
                     >
                       <span className="flex size-4 shrink-0 items-center justify-center text-[11px] text-zinc-500">
