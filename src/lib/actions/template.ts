@@ -123,6 +123,41 @@ export async function deleteProjectTemplate(
   revalidatePath("/assets/templates");
 }
 
+export async function copyProjectTemplateSection(sectionId: string): Promise<string | null> {
+  const section = await prisma.projectTemplateSection.findUnique({
+    where: { id: sectionId },
+  });
+
+  if (!section) return null;
+
+  const count = await prisma.projectTemplateSection.count({
+    where: { projectTemplateId: section.projectTemplateId },
+  });
+
+  const copied = await prisma.projectTemplateSection.create({
+    data: {
+      projectTemplateId: section.projectTemplateId,
+      sortOrder: count,
+      name: section.name ? `${section.name} (副本)` : null,
+      aspectRatio: section.aspectRatio,
+      shortSidePx: section.shortSidePx,
+      batchSize: section.batchSize,
+      seedPolicy1: section.seedPolicy1,
+      seedPolicy2: section.seedPolicy2,
+      ksampler1: section.ksampler1 ?? undefined,
+      ksampler2: section.ksampler2 ?? undefined,
+      upscaleFactor: section.upscaleFactor ?? undefined,
+      loraConfig: section.loraConfig ?? undefined,
+      extraParams: section.extraParams ?? undefined,
+      promptBlocks: section.promptBlocks ?? undefined,
+    },
+  });
+
+  revalidatePath("/assets/templates");
+  revalidatePath(`/assets/templates/${section.projectTemplateId}/edit`);
+  return copied.id;
+}
+
 export async function getTemplateOptionsForClient(): Promise<
   Array<{ id: string; name: string; sectionCount: number }>
 > {

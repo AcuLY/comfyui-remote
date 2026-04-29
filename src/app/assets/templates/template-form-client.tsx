@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useTransition, useMemo, useId } from "react";
+import { useId, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Plus, Trash2, GripVertical, Save } from "lucide-react";
+import { ArrowLeft, Copy, Plus, Trash2, GripVertical, Save } from "lucide-react";
 import { toast } from "sonner";
 import {
   DndContext,
@@ -23,6 +23,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
+  copyProjectTemplateSection,
   createProjectTemplate,
   updateProjectTemplate,
 } from "@/lib/actions";
@@ -56,6 +57,10 @@ export function TemplateFormClient({
   const [description, setDescription] = useState(initialDescription ?? "");
   const [sections, setSections] = useState<ProjectTemplateSectionData[]>(initialSections);
   const [isPending, startTransition] = useTransition();
+  const savedMetaRef = useRef({
+    name: initialName.trim(),
+    description: initialDescription ?? "",
+  });
 
   const isEdit = !!templateId;
   const dndId = useId();
@@ -118,23 +123,109 @@ export function TemplateFormClient({
   }
 
   function removeSection(id: string) {
-    setSections((prev) => prev.filter((s) => s.id !== id).map((s, i) => ({ ...s, sortOrder: i })));
+    const nextSections = sections.filter((s) => s.id !== id).map((s, i) => ({ ...s, sortOrder: i }));
+    const previousSections = sections;
+    setSections(nextSections);
+
+    if (!isEdit) return;
+    saveSections(nextSections, "小节已删除", () => setSections(previousSections));
+  }
+
+  function copySection(section: ProjectTemplateSectionData) {
+    if (!isEdit || section.id.startsWith("new-")) return;
+
+    startTransition(async () => {
+      try {
+        const copiedId = await copyProjectTemplateSection(section.id);
+        if (!copiedId) throw new Error("小节不存在");
+        const copiedSection: ProjectTemplateSectionData = {
+          ...section,
+          id: copiedId,
+          sortOrder: sections.length,
+          name: section.name ? `${section.name} (副本)` : null,
+        };
+        setSections((prev) => [...prev, copiedSection]);
+        toast.success("小节已复制");
+      } catch (e: unknown) {
+        toast.error(e instanceof Error ? e.message : "复制失败");
+      }
+    });
   }
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
-    setSections((prev) => {
-      const oldIndex = prev.findIndex((s) => s.id === active.id);
-      const newIndex = prev.findIndex((s) => s.id === over.id);
-      if (oldIndex === -1 || newIndex === -1) return prev;
-      const moved = arrayMove(prev, oldIndex, newIndex);
-      return moved.map((s, i) => ({ ...s, sortOrder: i }));
-    });
+    const oldIndex = sections.findIndex((s) => s.id === active.id);
+    const newIndex = sections.findIndex((s) => s.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const nextSections = arrayMove(sections, oldIndex, newIndex).map((s, i) => ({ ...s, sortOrder: i }));
+    const previousSections = sections;
+    setSections(nextSections);
+
+    if (isEdit) {
+      saveSections(nextSections, "小节顺序已保存", () => setSections(previousSections));
+    }
   }
 
   // ── Save ──
+
+  function saveSections(nextSections: ProjectTemplateSectionData[], successMessage: string, rollback?: () => void) {
+    if (!isEdit) return;
+    if (!name.trim()) {
+      toast.error("请输入模板名称");
+      rollback?.();
+      return;
+    }
+
+    startTransition(async () => {
+      try {
+        await updateProjectTemplate({
+          id: templateId,
+          name: name.trim(),
+          description: description.trim() || null,
+          sections: nextSections,
+        });
+        toast.success(successMessage);
+        router.refresh();
+      } catch (e: unknown) {
+        rollback?.();
+        toast.error(e instanceof Error ? e.message : "保存失败");
+      }
+    });
+  }
+
+  function handleMetaBlur() {
+    if (!isEdit) return;
+    const nextName = name.trim();
+    const nextDescription = description.trim();
+    if (!nextName) {
+      toast.error("请输入模板名称");
+      return;
+    }
+
+    if (
+      savedMetaRef.current.name === nextName &&
+      savedMetaRef.current.description === nextDescription
+    ) {
+      return;
+    }
+
+    startTransition(async () => {
+      try {
+        await updateProjectTemplate({
+          id: templateId,
+          name: nextName,
+          description: nextDescription || null,
+        });
+        savedMetaRef.current = { name: nextName, description: nextDescription };
+        toast.success("模板已保存");
+      } catch (e: unknown) {
+        toast.error(e instanceof Error ? e.message : "保存失败");
+      }
+    });
+  }
 
   function handleSave() {
     if (!name.trim()) {
@@ -183,6 +274,7 @@ export function TemplateFormClient({
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
+            onBlur={handleMetaBlur}
             placeholder="例如：4 宫格角色展示"
             className="mt-1 w-full rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-2 text-sm text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30"
           />
@@ -192,6 +284,7 @@ export function TemplateFormClient({
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
+            onBlur={handleMetaBlur}
             placeholder="模板用途说明"
             rows={2}
             className="mt-1 w-full resize-none rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-2 text-sm text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30"
@@ -231,6 +324,7 @@ export function TemplateFormClient({
                   index={si}
                   templateId={templateId}
                   onRemove={() => removeSection(section.id)}
+                  onCopy={() => copySection(section)}
                 />
               ))}
             </div>
@@ -238,14 +332,15 @@ export function TemplateFormClient({
         </DndContext>
       </div>
 
-      {/* Save button */}
-      <button
-        disabled={isPending || !name.trim()}
-        onClick={handleSave}
-        className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-sky-500/20 bg-sky-500/10 px-3 py-2.5 text-sm font-medium text-sky-300 transition hover:bg-sky-500/20 disabled:opacity-50"
-      >
-        <Save className="size-4" /> {isPending ? "保存中…" : isEdit ? "更新模板" : "创建模板"}
-      </button>
+      {!isEdit && (
+        <button
+          disabled={isPending || !name.trim()}
+          onClick={handleSave}
+          className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-sky-500/20 bg-sky-500/10 px-3 py-2.5 text-sm font-medium text-sky-300 transition hover:bg-sky-500/20 disabled:opacity-50"
+        >
+          <Save className="size-4" /> {isPending ? "保存中…" : "创建模板"}
+        </button>
+      )}
     </div>
   );
 }
@@ -259,11 +354,13 @@ function SortableSectionCard({
   index,
   templateId,
   onRemove,
+  onCopy,
 }: {
   section: ProjectTemplateSectionData;
   index: number;
   templateId?: string;
   onRemove: () => void;
+  onCopy: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: section.id,
@@ -314,6 +411,14 @@ function SortableSectionCard({
           <span className="min-w-0 flex-1 truncate text-sm font-medium text-white">
             {section.name || "未命名小节"}
           </span>
+          <button
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onCopy(); }}
+            disabled={!href}
+            title="复制小节"
+            className="shrink-0 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-500 transition hover:border-sky-500/20 hover:bg-sky-500/10 hover:text-sky-300 disabled:opacity-40"
+          >
+            <Copy className="size-3" />
+          </button>
           <button
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); onRemove(); }}
             className="shrink-0 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-500 transition hover:border-rose-500/20 hover:bg-rose-500/10 hover:text-rose-300"

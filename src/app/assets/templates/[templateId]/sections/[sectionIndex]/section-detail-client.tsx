@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useTransition, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, Save, Download, Package, Trash2, Unlink, ClipboardCopy, ExternalLink } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, Download, Package, Trash2, Unlink, ClipboardCopy, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { updateProjectTemplate } from "@/lib/actions";
 import { AspectRatioPicker } from "@/components/aspect-ratio-picker";
@@ -16,6 +16,8 @@ import { TemplatePromptBlockEditor, type TemplateBlockData } from "@/components/
 import { generateLoraEntryId, type LoraEntry, DEFAULT_KSAMPLER1, DEFAULT_KSAMPLER2, type KSamplerParams } from "@/lib/lora-types";
 import type { ProjectTemplateSectionData } from "@/lib/server-data";
 import type { PresetLibraryV2 } from "@/components/prompt-block-editor";
+
+const AUTO_SAVE_DELAY = 600;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -104,6 +106,8 @@ export function TemplateSectionDetailClient({
     (initialSection.loraConfig as { lora1: LoraEntry[]; lora2: LoraEntry[] }) || { lora1: [], lora2: [] },
   );
   const [showImport, setShowImport] = useState(false);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveRef = useRef<() => void>(() => {});
 
   const categoryMap = useMemo(() => {
     const map = new Map<string, CategoryConfig>();
@@ -222,7 +226,7 @@ export function TemplateSectionDetailClient({
 
   // ── Save ──
 
-  function buildUpdatedSection(): ProjectTemplateSectionData {
+  const buildUpdatedSection = useCallback((): ProjectTemplateSectionData => {
     return {
       id: initialSection.id,
       sortOrder: sectionIndex,
@@ -239,9 +243,22 @@ export function TemplateSectionDetailClient({
       extraParams: initialSection.extraParams,
       promptBlocks,
     };
-  }
+  }, [
+    aspectRatio,
+    batchSize,
+    initialSection.extraParams,
+    initialSection.id,
+    ks1,
+    ks2,
+    loraConfig,
+    name,
+    promptBlocks,
+    sectionIndex,
+    shortSidePx,
+    upscaleFactor,
+  ]);
 
-  function handleSave() {
+  const saveCurrentSection = useCallback(() => {
     startTransition(async () => {
       try {
         const updated = buildUpdatedSection();
@@ -252,12 +269,40 @@ export function TemplateSectionDetailClient({
           id: templateId,
           sections: newSections,
         });
-        toast.success("小节已保存");
       } catch (e: unknown) {
         toast.error(e instanceof Error ? e.message : "保存失败");
       }
     });
-  }
+  }, [allSections, buildUpdatedSection, sectionIndex, templateId]);
+
+  useEffect(() => {
+    saveRef.current = saveCurrentSection;
+  }, [saveCurrentSection]);
+
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, []);
+
+  const scheduleSave = useCallback(() => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      saveRef.current();
+    }, AUTO_SAVE_DELAY);
+  }, []);
+
+  const saveOnBlur = useCallback(() => {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+    saveRef.current();
+  }, []);
+
+  const scheduleSaveAfterState = useCallback(() => {
+    setTimeout(scheduleSave, 0);
+  }, [scheduleSave]);
 
   // ── Navigation ──
 
@@ -271,10 +316,12 @@ export function TemplateSectionDetailClient({
 
   function handleLora1Change(entries: LoraEntry[]) {
     setLoraConfig((prev) => ({ ...prev, lora1: entries }));
+    scheduleSaveAfterState();
   }
 
   function handleLora2Change(entries: LoraEntry[]) {
     setLoraConfig((prev) => ({ ...prev, lora2: entries }));
+    scheduleSaveAfterState();
   }
 
   // ── Preset import handler ──
@@ -374,6 +421,7 @@ export function TemplateSectionDetailClient({
     setPromptBlocks(currentBlocks);
     setLoraConfig({ lora1: currentLora1, lora2: currentLora2 });
     setShowImport(false);
+    scheduleSaveAfterState();
 
     if (items.length === 1) {
       toast.success(`已导入「${items[0].presetName}」`);
@@ -473,6 +521,7 @@ export function TemplateSectionDetailClient({
     nextLora1.push(...parseLoraEntries(item.lora1, item, bindingId, groupBindingId));
     nextLora2.push(...parseLoraEntries(item.lora2, item, bindingId, groupBindingId));
     setLoraConfig({ lora1: nextLora1, lora2: nextLora2 });
+    scheduleSaveAfterState();
   }
 
   function handleDeleteBinding(bindingId: string) {
@@ -497,6 +546,7 @@ export function TemplateSectionDetailClient({
       lora1: loraConfig.lora1.filter((entry) => !entry.bindingId || !bindingIds.has(entry.bindingId)),
       lora2: loraConfig.lora2.filter((entry) => !entry.bindingId || !bindingIds.has(entry.bindingId)),
     });
+    scheduleSaveAfterState();
   }
 
   function handleStandaloneDeleteBinding(bindingId: string) {
@@ -509,6 +559,7 @@ export function TemplateSectionDetailClient({
       lora1: loraConfig.lora1.filter((entry) => entry.bindingId !== bindingId),
       lora2: loraConfig.lora2.filter((entry) => entry.bindingId !== bindingId),
     });
+    scheduleSaveAfterState();
   }
 
   const inputCls =
@@ -552,6 +603,7 @@ export function TemplateSectionDetailClient({
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
+          onBlur={saveOnBlur}
           placeholder="小节名称"
           className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-2 text-sm text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30"
         />
@@ -571,7 +623,7 @@ export function TemplateSectionDetailClient({
               {aspectRatio !== null && (
                 <button
                   type="button"
-                  onClick={() => { setAspectRatio(null); setShortSidePx(null); }}
+                  onClick={() => { setAspectRatio(null); setShortSidePx(null); scheduleSaveAfterState(); }}
                   className="text-[10px] text-zinc-500 hover:text-zinc-300"
                 >
                   清除
@@ -581,7 +633,7 @@ export function TemplateSectionDetailClient({
             {aspectRatio === null ? (
               <button
                 type="button"
-                onClick={() => { setAspectRatio("2:3"); setShortSidePx(512); }}
+                onClick={() => { setAspectRatio("2:3"); setShortSidePx(512); scheduleSaveAfterState(); }}
                 className="w-full rounded-xl border border-dashed border-white/10 bg-white/[0.02] px-2.5 py-2 text-xs text-zinc-500 transition hover:bg-white/[0.04] hover:text-zinc-300"
               >
                 点击设置
@@ -592,10 +644,11 @@ export function TemplateSectionDetailClient({
                 defaultValue={aspectRatio}
                 defaultShortSidePx={shortSidePx}
                 disabled={isPending}
-                onChange={() => {}}
+                onChange={saveOnBlur}
                 onValueChange={(ratio, px) => {
                   setAspectRatio(ratio || "2:3");
                   setShortSidePx(px);
+                  scheduleSaveAfterState();
                 }}
               />
             )}
@@ -607,7 +660,7 @@ export function TemplateSectionDetailClient({
               {batchSize !== null && (
                 <button
                   type="button"
-                  onClick={() => setBatchSize(null)}
+                  onClick={() => { setBatchSize(null); scheduleSaveAfterState(); }}
                   className="text-[10px] text-zinc-500 hover:text-zinc-300"
                 >
                   清除
@@ -617,7 +670,7 @@ export function TemplateSectionDetailClient({
             {batchSize === null ? (
               <button
                 type="button"
-                onClick={() => setBatchSize("")}
+                onClick={() => { setBatchSize(""); scheduleSaveAfterState(); }}
                 className="w-full rounded-xl border border-dashed border-white/10 bg-white/[0.02] px-2.5 py-2 text-xs text-zinc-500 transition hover:bg-white/[0.04] hover:text-zinc-300"
               >
                 点击设置
@@ -630,11 +683,12 @@ export function TemplateSectionDetailClient({
                   disabled={isPending}
                   value={batchSize}
                   onChange={(e) => setBatchSize(e.target.value || null)}
+                  onBlur={saveOnBlur}
                   placeholder="不设置"
                   className={inputCls}
                 />
                 <BatchSizeQuickFill
-                  onSelect={(val) => setBatchSize(String(val))}
+                  onSelect={(val) => { setBatchSize(String(val)); scheduleSaveAfterState(); }}
                   currentValue={batchSize ? parseInt(batchSize, 10) : null}
                   disabled={isPending}
                   size="sm"
@@ -649,7 +703,7 @@ export function TemplateSectionDetailClient({
               {upscaleFactor !== null && (
                 <button
                   type="button"
-                  onClick={() => setUpscaleFactor(null)}
+                  onClick={() => { setUpscaleFactor(null); scheduleSaveAfterState(); }}
                   className="text-[10px] text-zinc-500 hover:text-zinc-300"
                 >
                   清除
@@ -659,7 +713,7 @@ export function TemplateSectionDetailClient({
             {upscaleFactor === null ? (
               <button
                 type="button"
-                onClick={() => setUpscaleFactor("2")}
+                onClick={() => { setUpscaleFactor("2"); scheduleSaveAfterState(); }}
                 className="w-full rounded-xl border border-dashed border-white/10 bg-white/[0.02] px-2.5 py-2 text-xs text-zinc-500 transition hover:bg-white/[0.04] hover:text-zinc-300"
               >
                 点击设置
@@ -673,11 +727,12 @@ export function TemplateSectionDetailClient({
                   step={0.5}
                   value={upscaleFactor}
                   onChange={(v) => setUpscaleFactor(v.target.value || null)}
+                  onBlur={saveOnBlur}
                   disabled={isPending}
                   className={inputCls}
                 />
                 <UpscaleFactorQuickFill
-                  onSelect={(val) => setUpscaleFactor(String(val))}
+                  onSelect={(val) => { setUpscaleFactor(String(val)); scheduleSaveAfterState(); }}
                   currentValue={upscaleFactor ? parseFloat(upscaleFactor) : null}
                   disabled={isPending}
                   size="sm"
@@ -700,7 +755,7 @@ export function TemplateSectionDetailClient({
               {ks1 !== null && (
                 <button
                   type="button"
-                  onClick={() => setKs1(null)}
+                  onClick={() => { setKs1(null); scheduleSaveAfterState(); }}
                   className="text-[10px] text-zinc-500 hover:text-zinc-300"
                 >
                   清除
@@ -710,7 +765,7 @@ export function TemplateSectionDetailClient({
             {ks1 === null ? (
               <button
                 type="button"
-                onClick={() => setKs1({ ...DEFAULT_KSAMPLER1 })}
+                onClick={() => { setKs1({ ...DEFAULT_KSAMPLER1 }); scheduleSaveAfterState(); }}
                 className="w-full rounded-xl border border-dashed border-white/10 bg-white/[0.02] px-3 py-3 text-xs text-zinc-500 transition hover:bg-white/[0.04] hover:text-zinc-300"
               >
                 点击设置
@@ -722,7 +777,7 @@ export function TemplateSectionDetailClient({
                 params={ks1}
                 defaults={DEFAULT_KSAMPLER1}
                 onChange={setKs1}
-                onFieldBlur={() => {}}
+                onFieldBlur={saveOnBlur}
                 disabled={isPending}
               />
             )}
@@ -733,7 +788,7 @@ export function TemplateSectionDetailClient({
               {ks2 !== null && (
                 <button
                   type="button"
-                  onClick={() => setKs2(null)}
+                  onClick={() => { setKs2(null); scheduleSaveAfterState(); }}
                   className="text-[10px] text-zinc-500 hover:text-zinc-300"
                 >
                   清除
@@ -743,7 +798,7 @@ export function TemplateSectionDetailClient({
             {ks2 === null ? (
               <button
                 type="button"
-                onClick={() => setKs2({ ...DEFAULT_KSAMPLER2 })}
+                onClick={() => { setKs2({ ...DEFAULT_KSAMPLER2 }); scheduleSaveAfterState(); }}
                 className="w-full rounded-xl border border-dashed border-white/10 bg-white/[0.02] px-3 py-3 text-xs text-zinc-500 transition hover:bg-white/[0.04] hover:text-zinc-300"
               >
                 点击设置
@@ -755,7 +810,7 @@ export function TemplateSectionDetailClient({
                 params={ks2}
                 defaults={DEFAULT_KSAMPLER2}
                 onChange={setKs2}
-                onFieldBlur={() => {}}
+                onFieldBlur={saveOnBlur}
                 disabled={isPending || upscaleFactor === "1"}
               />
             )}
@@ -851,7 +906,7 @@ export function TemplateSectionDetailClient({
                 <div className="flex shrink-0 items-center gap-0.5">
                   <button
                     type="button"
-                    onClick={() => setName(binding.groupName ?? binding.presetName)}
+                    onClick={() => { setName(binding.groupName ?? binding.presetName); scheduleSaveAfterState(); }}
                     title="用预制名作为小节名"
                     className="rounded p-1 text-zinc-600 hover:bg-sky-500/10 hover:text-sky-400"
                   >
@@ -923,7 +978,10 @@ export function TemplateSectionDetailClient({
         <div className="text-xs font-medium text-zinc-400">Prompt Blocks</div>
         <TemplatePromptBlockEditor
           blocks={promptBlocks}
-          onChange={setPromptBlocks}
+          onChange={(nextBlocks) => {
+            setPromptBlocks(nextBlocks);
+            scheduleSaveAfterState();
+          }}
           categoryMap={categoryMap}
         />
       </div>
@@ -953,14 +1011,11 @@ export function TemplateSectionDetailClient({
         </div>
       </div>
 
-      {/* Save button */}
-      <button
-        disabled={isPending}
-        onClick={handleSave}
-        className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-sky-500/20 bg-sky-500/10 px-3 py-2.5 text-sm font-medium text-sky-300 transition hover:bg-sky-500/20 disabled:opacity-50"
-      >
-        <Save className="size-4" /> {isPending ? "保存中…" : "保存小节"}
-      </button>
+      {isPending && (
+        <div className="rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2 text-center text-[11px] text-zinc-500">
+          保存中…
+        </div>
+      )}
     </div>
   );
 }
