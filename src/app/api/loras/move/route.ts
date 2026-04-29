@@ -31,10 +31,10 @@ export async function POST(request: Request) {
     return fail("targetDir is required", 400);
   }
 
-  const absoluteSource = path.resolve(env.loraBaseDir, sourcePath);
-  const absoluteTargetDir = path.resolve(env.loraBaseDir, targetDir || ".");
+  const absoluteSource = path.resolve(env.loraBaseDir, /* turbopackIgnore: true */ sourcePath);
+  const absoluteTargetDir = path.resolve(env.loraBaseDir, /* turbopackIgnore: true */ targetDir || ".");
   const fileName = path.basename(absoluteSource);
-  const absoluteTarget = path.join(absoluteTargetDir, fileName);
+  const absoluteTarget = `${absoluteTargetDir}${path.sep}${fileName}`;
 
   // Security checks
   if (!isWithinBase(env.loraBaseDir, absoluteSource)) {

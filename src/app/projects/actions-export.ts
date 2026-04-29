@@ -96,7 +96,7 @@ export async function exportProjectImages(projectId: string): Promise<ExportResu
   let pixivIndex = 1;
 
   for (const img of allKept) {
-    const sourcePath = resolve(process.cwd(), img.filePath);
+    const sourcePath = resolve(/* turbopackIgnore: true */ process.cwd(), img.filePath);
     const jpgName = `${exportName}_${String(globalIndex).padStart(2, "0")}.jpg`;
     const jpgPath = join(tempJpgDir, jpgName);
 

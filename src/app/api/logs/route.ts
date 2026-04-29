@@ -16,8 +16,9 @@
 import { NextRequest } from "next/server";
 import { ok, fail } from "@/lib/api-response";
 import { env } from "@/lib/env";
-import { createRequestLogger, type LogLevel } from "@/lib/logger";
+import type { LogLevel } from "@/lib/logger";
 import * as fs from "node:fs";
+import path from "node:path";
 import * as readline from "node:readline";
 
 type LogEntry = {
@@ -40,6 +41,11 @@ type ParsedLogEntry = LogEntry & {
 const LOG_LEVELS: LogLevel[] = ["debug", "info", "warn", "error"];
 const MAX_LINES = 1000;
 const DEFAULT_LINES = 100;
+const LOG_DIR = path.join(/* turbopackIgnore: true */ process.cwd(), "logs");
+const CONSOLE_LOG_CANDIDATES = [
+  path.join(/* turbopackIgnore: true */ process.cwd(), "server.log"),
+  path.join(LOG_DIR, "server.log"),
+];
 
 function parseLogLine(line: string): ParsedLogEntry | null {
   if (!line.trim()) return null;
@@ -103,11 +109,11 @@ async function readLogFile(
 ): Promise<ParsedLogEntry[]> {
   const { lines, minLevel, module, since } = options;
 
-  if (!fs.existsSync(filePath)) {
+  if (!fs.existsSync(/* turbopackIgnore: true */ filePath)) {
     return [];
   }
 
-  const fileStream = fs.createReadStream(filePath, { encoding: "utf8" });
+  const fileStream = fs.createReadStream(/* turbopackIgnore: true */ filePath, { encoding: "utf8" });
   const rl = readline.createInterface({
     input: fileStream,
     crlfDelay: Infinity,
@@ -129,18 +135,19 @@ async function readLogFile(
 }
 
 function getLogFilePaths(): string[] {
-  const basePath = env.logFilePath;
+  const configuredLogName = path.basename(env.logFilePath || "app.log");
+  const basePath = path.join(LOG_DIR, configuredLogName);
   const paths: string[] = [];
 
   // Current log file
-  if (fs.existsSync(basePath)) {
+  if (fs.existsSync(/* turbopackIgnore: true */ basePath)) {
     paths.push(basePath);
   }
 
   // Rotated files (newest first)
   for (let i = 1; i <= env.logMaxFiles; i++) {
     const rotatedPath = `${basePath}.${i}`;
-    if (fs.existsSync(rotatedPath)) {
+    if (fs.existsSync(/* turbopackIgnore: true */ rotatedPath)) {
       paths.push(rotatedPath);
     }
   }
@@ -158,15 +165,10 @@ function getConsoleLogs(linesParam: string | null) {
     MAX_LINES,
   );
 
-  const candidates = [
-    process.cwd() + "/server.log",
-    process.cwd() + "/logs/server.log",
-  ];
-
-  for (const filePath of candidates) {
+  for (const filePath of CONSOLE_LOG_CANDIDATES) {
     try {
-      if (!fs.existsSync(filePath)) continue;
-      const content = fs.readFileSync(filePath, "utf-8");
+      if (!fs.existsSync(/* turbopackIgnore: true */ filePath)) continue;
+      const content = fs.readFileSync(/* turbopackIgnore: true */ filePath, "utf-8");
       const allLines = content.split("\n").filter((l) => l.trim());
       const entries = allLines
         .slice(-maxLines)
@@ -195,8 +197,6 @@ function getConsoleLogs(linesParam: string | null) {
 }
 
 export async function GET(request: NextRequest) {
-  const log = createRequestLogger(request, "logs-api");
-
   // Parse query parameters
   const url = new URL(request.url);
   const linesParam = url.searchParams.get("lines");
@@ -242,7 +242,6 @@ export async function GET(request: NextRequest) {
 
   // Check if file logging is enabled
   if (!env.logEnableFile) {
-    log.debug("Log file access attempted but file logging is disabled");
     return ok({
       enabled: false,
       message: "File logging is not enabled. Set LOG_ENABLE_FILE=true to enable.",
@@ -275,8 +274,6 @@ export async function GET(request: NextRequest) {
       since,
     });
 
-    log.debug("Logs retrieved", { count: entries.length, files: logFiles.length });
-
     return ok({
       enabled: true,
       entries,
@@ -290,7 +287,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    log.error("Failed to read log files", error);
+    console.error("Failed to read log files", error);
     return fail(`Failed to read logs: ${message}`, 500);
   }
 }

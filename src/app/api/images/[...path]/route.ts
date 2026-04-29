@@ -11,16 +11,28 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { readFile, stat } from "fs/promises";
 import path from "path";
 import sharp from "sharp";
 
 const OUTPUT_BASE =
   process.env.OUTPUT_BASE_PATH ??
   path.join(/* turbopackIgnore: true */ process.cwd(), "data/images");
+const RESOLVED_OUTPUT_BASE = path.resolve(OUTPUT_BASE);
 
 // Allowed extensions to prevent arbitrary file access
 const ALLOWED_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".webp", ".gif"]);
+const FS_PROMISES_MODULE = "node:fs/promises";
+
+function isSafePathSegment(segment: string) {
+  return (
+    segment !== "" &&
+    segment !== "." &&
+    segment !== ".." &&
+    !segment.includes("/") &&
+    !segment.includes("\\") &&
+    !segment.includes(":")
+  );
+}
 
 export async function GET(
   request: NextRequest,
@@ -32,11 +44,11 @@ export async function GET(
     return NextResponse.json({ error: "No path specified" }, { status: 400 });
   }
 
-  // Sanitize: reject path traversal
-  const joined = segments.join("/");
-  if (joined.includes("..") || joined.startsWith("/")) {
+  // Sanitize: reject path traversal and encoded path separators.
+  if (!segments.every(isSafePathSegment)) {
     return NextResponse.json({ error: "Invalid path" }, { status: 400 });
   }
+  const joined = segments.join("/");
 
   // Reject temp files (used during atomic writes)
   const lastSegment = segments[segments.length - 1];
@@ -49,15 +61,13 @@ export async function GET(
     return NextResponse.json({ error: "Unsupported file type" }, { status: 400 });
   }
 
-  const filePath = path.join(OUTPUT_BASE, joined);
-
-  // Ensure the resolved path is still inside OUTPUT_BASE
-  const resolved = path.resolve(filePath);
-  if (!resolved.startsWith(path.resolve(OUTPUT_BASE))) {
+  const resolved = `${RESOLVED_OUTPUT_BASE}${path.sep}${segments.join(path.sep)}`;
+  if (!resolved.startsWith(RESOLVED_OUTPUT_BASE + path.sep)) {
     return NextResponse.json({ error: "Access denied" }, { status: 403 });
   }
 
   try {
+    const { readFile, stat } = await import(FS_PROMISES_MODULE);
     const fileStat = await stat(resolved);
     if (!fileStat.isFile()) {
       return NextResponse.json({ error: "Not a file" }, { status: 404 });
