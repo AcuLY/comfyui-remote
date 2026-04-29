@@ -1,535 +1,304 @@
-# Agent API 使用说明
+# Agent HTTP API
 
-ComfyUI Remote 提供一套专为 AI Agent / 自动化脚本设计的 HTTP API，用于：
-- 获取 Project 和 Run 的完整上下文（含参数、prompt、结果摘要）
-- 修改 Project 和 Section 参数
-- 触发单个 Section 运行
-- 批量审核图片（保留 / 删除）
+This document is for automation agents that need to operate ComfyUI Manager through HTTP instead of Next.js server actions.
 
-所有端点前缀为 `/api/agent/`，返回统一的 JSON 格式。
+## Conventions
 
----
+- Base URL: `https://comfy.bgmss.fun` in production, or the local Next.js origin during development.
+- Most endpoints return:
 
-## 通用响应格式
+```json
+{ "ok": true, "data": {} }
+```
 
-### 成功
+or:
+
+```json
+{ "ok": false, "error": { "message": "Error message", "details": {} } }
+```
+
+- `src/proxy.ts` currently treats `/api/projects`, `/api/queue`, `/api/runs`, `/api/images`, `/api/trash`, `/api/loras`, `/api/comfy`, `/api/agent`, `/api/mcp`, `/api/health`, logs, audit logs, worker status, and path maps as public API paths. Browser page routes still require the `auth_token` cookie.
+- ComfyUI process write controls (`/api/comfy/start`, `/api/comfy/stop`, `/api/comfy/restart`) are limited to localhost by the route handler.
+- The UI may still call server actions directly, but the user-facing backend operations have HTTP equivalents listed below.
+
+## Coverage Check
+
+| User operation | HTTP interface |
+| --- | --- |
+| Create, list, read, update, delete projects | `GET/POST /api/projects`, `GET/PATCH/DELETE /api/projects/:projectId` |
+| Copy project | `POST /api/projects/:projectId/copy` |
+| Run all project sections | `POST /api/projects/:projectId/run` |
+| Cancel active project runs | `POST /api/projects/:projectId/cancel-runs` |
+| Export kept project images | `POST /api/projects/:projectId/export` |
+| Save project as template | `POST /api/projects/:projectId/save-as-template` |
+| Add, update, rename, delete sections | `POST /api/projects/:projectId/sections`, `PATCH/DELETE /api/projects/:projectId/sections/:sectionId` |
+| Batch delete sections | `POST /api/projects/:projectId/sections/batch-delete` |
+| Reorder sections | `POST /api/projects/:projectId/sections/reorder` |
+| Copy section | `POST /api/projects/:projectId/sections/:sectionId/copy` |
+| Create section from template | `POST /api/projects/:projectId/sections/:sectionId/create-from-template` |
+| Run one section | `POST /api/projects/:projectId/sections/:sectionId/run` |
+| Import preset into section | `POST /api/projects/:projectId/sections/:sectionId/import-preset` |
+| Switch a section binding variant | `POST /api/projects/:projectId/sections/:sectionId/switch-variant` |
+| Manage prompt blocks | `GET/POST /api/projects/:projectId/sections/:sectionId/blocks`, `PATCH/DELETE /api/projects/:projectId/sections/:sectionId/blocks/:blockId` |
+| List queue and clear finished runs | `GET /api/queue`, `POST /api/queue/clear` |
+| Cancel a run | `POST /api/runs/:runId/cancel` |
+| Read run detail and workflow | `GET /api/runs/:runId`, `GET /api/runs/:runId/workflow` |
+| Keep or trash generated images | `POST /api/runs/:runId/review/keep`, `POST /api/runs/:runId/review/trash` |
+| Restore trashed images | `POST /api/images/:imageId/restore` |
+| Toggle featured image | `POST /api/images/:imageId/featured` |
+| Read image files | `GET /api/images/:path...` |
+| Manage templates | `GET/POST /api/templates`, `GET/PATCH/DELETE /api/templates/:templateId`, `POST /api/templates/:templateId/import` |
+| Manage preset library | `/api/preset-library/**` endpoints listed below |
+| Upload/list/move/annotate LoRAs | `GET/POST /api/loras`, `GET /api/loras/browse`, `POST /api/loras/move`, `GET/PUT /api/loras/notes` |
+| Read logs, audit logs, health, worker status | `GET /api/logs`, `GET /api/audit-logs`, `GET /api/health`, `GET /api/worker/status` |
+| MCP automation | `GET/POST/DELETE /api/mcp` |
+
+No remaining user-facing backend operation gap is known after adding `queue/clear`, section `batch-delete`, project `export`, and `name/loraConfig` support on section PATCH.
+
+## Projects
+
+### `GET /api/projects`
+
+Query parameters:
+
+- `search?: string`
+- `status?: "draft" | "queued" | "running" | "partial_done" | "done" | "failed"`
+- `enabledOnly?: boolean`
+- `hasPending?: boolean`
+
+Returns the project list.
+
+### `POST /api/projects`
+
+Body:
+
+```json
+{ "title": "Project title", "notes": "optional notes" }
+```
+
+Creates a project and returns the created record.
+
+### `GET /api/projects/:projectId`
+
+Returns project detail with sections, runs, and image summaries.
+
+### `PATCH /api/projects/:projectId`
+
+Body supports:
+
+```json
+{ "aspectRatio": "2:3", "batchSize": 2 }
+```
+
+Use `null` to clear nullable fields where supported.
+
+### `DELETE /api/projects/:projectId`
+
+Deletes the project and cascaded data.
+
+### Project Commands
+
+| Method | Path | Body | Result |
+| --- | --- | --- | --- |
+| `POST` | `/api/projects/:projectId/copy` | none | creates a copied project |
+| `POST` | `/api/projects/:projectId/run` | `{ "overrideBatchSize": 4 }` optional | enqueues and submits all enabled sections |
+| `POST` | `/api/projects/:projectId/cancel-runs` | none | cancels queued/running runs for the project |
+| `POST` | `/api/projects/:projectId/export` | none | exports kept images into `data/export` |
+| `POST` | `/api/projects/:projectId/save-as-template` | template metadata | saves the current project as a reusable template |
+
+## Sections
+
+### `POST /api/projects/:projectId/sections`
+
+Body:
+
+```json
+{ "name": "Section name" }
+```
+
+Creates a section and returns `{ "id": "..." }`.
+
+### `PATCH /api/projects/:projectId/sections/:sectionId`
+
+Body supports:
 
 ```json
 {
-  "ok": true,
-  "data": { ... }
+  "name": "Section name",
+  "positivePrompt": "positive prompt override",
+  "negativePrompt": "negative prompt override",
+  "aspectRatio": "2:3",
+  "shortSidePx": 768,
+  "batchSize": 2,
+  "seedPolicy1": "random",
+  "seedPolicy2": "fixed",
+  "ksampler1": { "steps": 30, "cfg": 7 },
+  "ksampler2": { "steps": 20, "cfg": 6 },
+  "upscaleFactor": 2,
+  "loraConfig": { "lora1": [], "lora2": [] }
 }
 ```
 
-### 失败
+All fields are optional, but at least one supported field must be present.
+
+### Section Commands
+
+| Method | Path | Body | Result |
+| --- | --- | --- | --- |
+| `DELETE` | `/api/projects/:projectId/sections/:sectionId` | none | deletes one section |
+| `POST` | `/api/projects/:projectId/sections/batch-delete` | `{ "sectionIds": ["..."] }` | deletes multiple sections in the project |
+| `POST` | `/api/projects/:projectId/sections/reorder` | `{ "sectionIds": ["id1", "id2"] }` | updates section order |
+| `POST` | `/api/projects/:projectId/sections/:sectionId/copy` | none | copies a section |
+| `POST` | `/api/projects/:projectId/sections/:sectionId/run` | `{ "overrideBatchSize": 2 }` optional | enqueues and submits one section |
+| `POST` | `/api/projects/:projectId/sections/:sectionId/create-from-template` | template section creation payload | creates a section from a project template section |
+| `POST` | `/api/projects/:projectId/sections/:sectionId/import-preset` | `{ "presetId": "...", "variantId": "...", "groupBindingId": "..." }` | imports a preset block into the section |
+| `POST` | `/api/projects/:projectId/sections/:sectionId/switch-variant` | `{ "bindingId": "...", "newVariantId": "..." }` | switches the preset variant for an existing binding |
+
+## Prompt Blocks
+
+### `GET /api/projects/:projectId/sections/:sectionId/blocks`
+
+Lists prompt blocks for a section.
+
+### `POST /api/projects/:projectId/sections/:sectionId/blocks`
+
+Creates a prompt block when the body is an object. Reorders blocks when the body is an array of block IDs.
+
+Typical create body:
 
 ```json
 {
-  "ok": false,
-  "error": {
-    "message": "Human-readable error message",
-    "details": { ... }
-  }
+  "type": "custom",
+  "label": "Lighting",
+  "positive": "soft light",
+  "negative": "overexposed",
+  "sortOrder": 10
 }
 ```
 
----
-
-## 端点概览
-
-| 方法 | 路径 | 描述 |
-|------|------|------|
-| GET | `/api/agent/projects` | 列出所有 Project（支持搜索/筛选） |
-| GET | `/api/agent/projects/:projectId/context` | 获取 Project 完整上下文 |
-| POST | `/api/agent/projects/:projectId/update` | 批量修改 Project 和 Section 参数 |
-| POST | `/api/agent/projects/:projectId/run-all` | 触发所有 enabled Section 运行 |
-| POST | `/api/agent/sections/:sectionId/run` | 触发单个 Section 运行 |
-| GET | `/api/agent/runs/:runId/context` | 获取 Run 结果上下文 |
-| POST | `/api/agent/runs/:runId/review` | 批量审核图片 |
-| GET | `/api/workflows` | 列出 Workflow 模板 |
-| GET | `/api/workflows/:templateId` | 获取 Workflow 模板详情 |
-| ALL | `/api/mcp` | MCP Server（Streamable HTTP） |
-
----
-
-## 1. GET `/api/agent/projects`
-
-列出所有 Project。支持可选的搜索和筛选参数。
-
-### Query 参数
-
-| 参数 | 类型 | 描述 |
-|------|------|------|
-| `search` | string | 按标题或角色名搜索 |
-| `status` | string | 按状态筛选（`draft` / `queued` / `running` / `partial_done` / `done` / `failed`） |
-| `hasPending` | string | 筛选含待审核图片的 Project（`true` / `false`） |
-
-### 响应
-
-返回 Project 列表（简要信息）。
-
----
-
-## 2. GET `/api/agent/projects/:projectId/context`
-
-获取一个 Project 的完整上下文信息，包含所有 Section 的当前参数、最新 Run 状态、图片审核摘要等。
-
-### 响应示例
-
-```json
-{
-  "ok": true,
-  "data": {
-    "project": {
-      "id": "clxxx...",
-      "title": "Anya Beach Scene",
-      "slug": "anya-beach-scene",
-      "status": "done",
-      "notes": null,
-      "sectionCount": 3,
-      "enabledSectionCount": 3,
-      "presetBindings": [
-        { "categoryId": "cat1", "presetId": "preset1", "variantId": "var1" },
-        { "categoryId": "cat2", "presetId": "preset2" }
-      ],
-      "presetNames": ["Anya (Default)", "Beach"],
-      "promptOverview": {
-        "positivePrompt": "1girl, anya forger, pink hair, beach, ocean, sunset...",
-        "negativePrompt": "bad anatomy, extra limbs, blurry",
-        "projectLevelOverrides": { "aspectRatio": "3:4", "batchSize": 4 }
-      }
-    },
-    "summary": {
-      "sectionsWithLatestRunCount": 3,
-      "sectionsWithoutRunsCount": 0,
-      "latestRunStatusCounts": { "done": 3 },
-      "latestRunImageSummary": {
-        "totalCount": 12,
-        "pendingCount": 8,
-        "keptCount": 3,
-        "trashedCount": 1
-      }
-    },
-    "sections": [
-      {
-        "id": "clyyy...",
-        "sortOrder": 1,
-        "enabled": true,
-        "name": "Standing",
-        "slug": "standing",
-        "latestRun": {
-          "id": "clzzz...",
-          "runIndex": 2,
-          "status": "done",
-          "totalCount": 4,
-          "pendingCount": 3,
-          "keptCount": 1,
-          "trashedCount": 0
-        },
-        "promptDraft": {
-          "positive": "1girl, anya forger, pink hair, beach, ocean, sunset, photorealistic, 8k, standing pose",
-          "negative": "bad anatomy, extra limbs, blurry"
-        },
-        "resolvedConfig": { "...完整参数快照..." }
-      }
-    ]
-  }
-}
-```
-
----
-
-## 3. POST `/api/agent/projects/:projectId/update`
-
-批量修改 Project 级别参数和 Section 级别参数。支持在一次请求中同时修改多个 Section。
-
-### 请求体
-
-```json
-{
-  "project": {
-    "presetBindings": [
-      { "categoryId": "cat1", "presetId": "preset1", "variantId": "var1" },
-      { "categoryId": "cat2", "presetId": "preset2" }
-    ],
-    "aspectRatio": "3:4",
-    "batchSize": 4
-  },
-  "sections": [
-    {
-      "sectionId": "clyyy...",
-      "positivePrompt": "smiling, happy expression",
-      "negativePrompt": "sad, angry",
-      "aspectRatio": "1:1",
-      "batchSize": 2,
-      "seedPolicy": "random"
-    }
-  ]
-}
-```
-
-### Project 支持的字段
-
-| 字段 | 类型 | 描述 |
-|------|------|------|
-| `presetBindings` | array | 预制绑定数组 `[{ categoryId, presetId, variantId? }]` |
-| `aspectRatio` | string \| null | 画幅比例（如 `"3:4"`、`"1:1"`） |
-| `batchSize` | number \| null | 每次生成图片数 |
-
-### Section 支持的字段
-
-| 字段 | 类型 | 描述 |
-|------|------|------|
-| `sectionId` | string | **必填**，Section ID |
-| `positivePrompt` | string \| null | 正向提示词覆盖 |
-| `negativePrompt` | string \| null | 负向提示词覆盖 |
-| `aspectRatio` | string \| null | 画幅覆盖 |
-| `batchSize` | number \| null | 批量大小覆盖 |
-| `seedPolicy` | string \| null | Seed 策略（`"random"` 或 `"fixed"`） |
-
-### 响应
-
-返回更新后的 Project 上下文（与 `/context` 端点格式相同）。
-
----
-
-## 4. POST `/api/agent/projects/:projectId/run-all`
-
-触发 Project 中所有 enabled 的 Section 运行，为每个 Section 创建排队的 Run。
-
-### 请求体
-
-无需请求体。
-
-### 响应
-
-```json
-{
-  "ok": true,
-  "data": {
-    "projectId": "clxxx...",
-    "result": {
-      "projectId": "clxxx...",
-      "projectTitle": "Anya Beach Scene",
-      "projectStatus": "queued",
-      "queuedRunCount": 3,
-      "runs": [...]
-    },
-    "context": { "...更新后的 Project 上下文..." }
-  }
-}
-```
-
----
-
-## 5. POST `/api/agent/sections/:sectionId/run`
-
-为指定 Section 创建一个新的排队 Run。Worker 会自动消费并执行。
-
-### 请求体
-
-无需请求体。
-
-### 响应示例
-
-```json
-{
-  "ok": true,
-  "data": {
-    "projectId": "clxxx...",
-    "sectionId": "clyyy...",
-    "result": {
-      "projectId": "clxxx...",
-      "projectTitle": "Anya Beach Scene",
-      "projectStatus": "queued",
-      "queuedRunCount": 1,
-      "runs": [
-        {
-          "runId": "clnew...",
-          "runIndex": 3,
-          "status": "queued",
-          "createdAt": "2025-03-24T10:00:00.000Z"
-        }
-      ]
-    },
-    "context": { "...更新后的 Project 上下文..." }
-  }
-}
-```
-
----
-
-## 6. GET `/api/agent/runs/:runId/context`
-
-获取单个 Run 的完整上下文，包含所有图片结果和审核状态。
-
-### 响应示例
-
-```json
-{
-  "ok": true,
-  "data": {
-    "run": {
-      "id": "clzzz...",
-      "runIndex": 2,
-      "status": "done",
-      "startedAt": "2025-03-24T10:01:00.000Z",
-      "finishedAt": "2025-03-24T10:02:30.000Z",
-      "outputDir": "/data/images/anya-beach-scene/standing"
-    },
-    "images": [
-      {
-        "id": "climg1...",
-        "filePath": "/data/images/.../raw/output_0001.png",
-        "thumbPath": "/data/images/.../thumb/output_0001.webp",
-        "reviewStatus": "pending",
-        "width": 896,
-        "height": 1152
-      }
-    ],
-    "summary": {
-      "totalCount": 4,
-      "pendingCount": 3,
-      "keptCount": 1,
-      "trashedCount": 0
-    }
-  }
-}
-```
-
----
-
-## 7. POST `/api/agent/runs/:runId/review`
-
-批量审核图片。可以选择保留（keep）或删除到回收站（trash）。
-
-### 请求体
-
-```json
-{
-  "action": "keep",
-  "imageIds": ["climg1...", "climg3..."]
-}
-```
-
-或：
-
-```json
-{
-  "action": "trash",
-  "imageIds": ["climg2...", "climg4..."],
-  "reason": "blurry faces"
-}
-```
-
-### 参数说明
-
-| 字段 | 类型 | 描述 |
-|------|------|------|
-| `action` | string | **必填**，`"keep"` 或 `"trash"` |
-| `imageIds` | string[] | **必填**，要操作的图片 ID 列表 |
-| `reason` | string | 可选，仅 trash 时使用，记录删除原因 |
-
-### 响应
-
-```json
-{
-  "ok": true,
-  "data": {
-    "action": "keep",
-    "result": { "updatedCount": 2 },
-    "context": { "...更新后的 Run 上下文..." }
-  }
-}
-```
-
----
-
-## 8. GET `/api/workflows`
-
-列出所有可用的 Workflow 模板摘要。
-
-### 响应示例
-
-```json
-{
-  "ok": true,
-  "data": [
-    {
-      "id": "sdxl-txt2img",
-      "name": "SDXL Text-to-Image",
-      "description": "Basic SDXL txt2img workflow with optional LoRA support.",
-      "version": "1.0.0",
-      "builtIn": true,
-      "variableCount": 11,
-      "nodeCount": 7
-    },
-    {
-      "id": "sdxl-txt2img-hires",
-      "name": "SDXL Text-to-Image + HiRes Fix",
-      "description": "SDXL txt2img with a second KSampler pass for higher resolution.",
-      "version": "1.0.0",
-      "builtIn": false,
-      "variableCount": 12,
-      "nodeCount": 10
-    }
-  ]
-}
-```
-
----
-
-## 9. GET `/api/workflows/:templateId`
-
-获取单个 Workflow 模板的完整信息，包括变量定义和节点图。
-
-### 响应
-
-返回完整的 `WorkflowTemplate` 对象，包含 `variables` 和 `prompt` 字段。
-
----
-
-## 典型 Agent 工作流
-
-### 场景 1：自动调参 + 重跑
-
-```
-1. GET /api/agent/projects/:projectId/context          # 获取当前参数和结果
-2. POST /api/agent/projects/:projectId/update          # 修改 prompt 或参数
-3. POST /api/agent/sections/:sectionId/run             # 触发重跑
-4. (等待 Worker 完成...)
-5. GET /api/agent/runs/:runId/context           # 获取新结果
-6. POST /api/agent/runs/:runId/review           # 审核图片
-```
-
-### 场景 2：批量审核
-
-```
-1. GET /api/agent/projects/:projectId/context           # 获取所有 Section 的图片摘要
-2. 遍历有 pendingCount > 0 的 Section
-3. GET /api/agent/runs/:runId/context            # 获取图片列表
-4. POST /api/agent/runs/:runId/review            # keep 好的，trash 差的
-```
-
-### 场景 3：使用自定义 Workflow 模板
-
-```
-1. GET /api/workflows                             # 列出可用模板
-2. POST /api/agent/projects/:projectId/update             # 通过 Section 的 extraParams 设置 workflowTemplateId
-3. POST /api/agent/sections/:sectionId/run               # 运行（Worker 会自动加载对应模板）
-```
-
----
-
-## Workflow 模板系统
-
-Workflow 模板定义在 `config/workflows/*.json` 中，每个文件包含：
-
-- **id**：唯一标识符
-- **name**：显示名称
-- **description**：描述
-- **variables**：可替换变量（如 `positivePrompt`、`width`、`seed` 等）
-- **prompt**：ComfyUI API 节点图（含 `{{variable}}` 占位符）
-
-当 `ProjectSection.extraParams` 中包含 `workflowTemplateId` 字段时，Worker 会自动从 `config/workflows/` 加载对应模板并替换变量。
-
-### Prompt 解析优先级
-
-1. `extraParams.comfyPrompt` / `workflowApiPrompt` / `apiPrompt`（完整自定义节点图）
-2. `extraParams.workflowTemplateId`（从模板文件加载）
-3. 内置 SDXL txt2img fallback（无需任何配置）
-
-### 添加新模板
-
-1. 将 ComfyUI workflow 导出为 API 格式（在 ComfyUI 中使用 "Save (API Format)"）
-2. 创建 `config/workflows/your-template.json`，添加 `id`、`name`、`variables` 等元数据
-3. 在节点图中用 `{{variable}}` 替换需要动态替换的值
-4. 在 Section 模板设置中选择新 workflow
-
----
-
-## 触发 Worker 执行
-
-Worker 会自动轮询并处理 `queued` 状态的 Run。
-
----
-
-## MCP Server（Model Context Protocol）
-
-ComfyUI Remote 内置 MCP Server，端点为 `POST /api/mcp`（Streamable HTTP transport）。任何支持 MCP 的客户端（Claude Desktop、Cursor 等）都可以直接连接使用。
-
-### 配置方法
-
-在 MCP 客户端配置中添加：
-
-```json
-{
-  "mcpServers": {
-    "comfyui-remote": {
-      "url": "http://localhost:3000/api/mcp"
-    }
-  }
-}
-```
-
-### 可用 Tools
-
-| Tool 名称 | 描述 |
-|-----------|------|
-| `list_projects` | 列出所有 Project（支持搜索/状态筛选） |
-| `update_project` | 修改 Project 参数（prompt、LoRA、画幅、批量） |
-| `update_project_section` | 修改 Project 中特定 Section 的参数 |
-| `run_all_sections` | 触发 Project 中所有 enabled Section 运行 |
-| `run_section` | 触发单个 Section 运行 |
-| `review_images` | 批量审核图片（keep / trash） |
-| `list_prompt_blocks` | 列出 Section 的所有提示词块 |
-| `add_prompt_block` | 添加新的提示词块（角色/场景/风格/Section/自定义） |
-| `update_prompt_block` | 修改提示词块内容（标签/正面/负面） |
-| `remove_prompt_block` | 删除提示词块 |
-| `reorder_prompt_blocks` | 重排序提示词块 |
-
-### 可用 Resources
-
-| URI 模式 | 描述 |
-|----------|------|
-| `comfyui://projects/{projectId}/context` | Project 完整上下文（含 Section 的 promptBlocks 和 promptDraft） |
-| `comfyui://runs/{runId}/context` | Run 结果上下文 |
-| `comfyui://workflows` | Workflow 模板列表 |
-| `comfyui://workflows/{templateId}` | 模板详情 |
-| `comfyui://projects/{projectId}/revisions` | 修订历史列表 |
-| `comfyui://projects/{projectId}/revisions/{n}` | 修订快照 |
-| `comfyui://sections/{sectionId}/blocks` | Section 的提示词块列表 |
-
-### MCP Agent 典型工作流
-
-```
-1. 调用 list_projects → 发现可操作的 Project
-2. 读取 comfyui://projects/{id}/context → 了解当前参数和结果（含 promptBlocks）
-3. 调用 update_project → 优化提示词（或使用 prompt block tools 精细控制）
-4. 调用 run_all_sections → 触发运行
-5. （等待 Worker 完成...）
-6. 读取 comfyui://runs/{id}/context → 查看生成结果
-7. 调用 review_images → 保留好的、删除差的
-```
-
-### Prompt Block 管理工作流（v0.2）
-
-```
-1. 调用 list_prompt_blocks(sectionId) → 查看当前块
-2. 调用 add_prompt_block → 添加自定义提示词块
-3. 调用 update_prompt_block → 修改某个块的内容
-4. 调用 reorder_prompt_blocks → 调整块的顺序
-5. 调用 remove_prompt_block → 删除不需要的块
-```
-
-### 迁移说明
-
-对于在 v0.2 之前创建的 Project（Section 没有 PromptBlocks），Worker 会自动回退到旧的提示词拼接逻辑。可以通过以下方式迁移：
-
-```bash
-# 查看哪些 Section 没有 PromptBlocks
-DRY_RUN=1 npx tsx src/scripts/migrate-prompt-blocks.mts
-
-# 执行迁移
-npx tsx src/scripts/migrate-prompt-blocks.mts
-```
+### `PATCH /api/projects/:projectId/sections/:sectionId/blocks/:blockId`
+
+Updates one prompt block.
+
+### `DELETE /api/projects/:projectId/sections/:sectionId/blocks/:blockId`
+
+Deletes one prompt block.
+
+## Runs, Queue, And Review
+
+| Method | Path | Body | Result |
+| --- | --- | --- | --- |
+| `GET` | `/api/queue` | none | queue summary |
+| `GET` | `/api/queue-data` | none | queue page data; this route is a response-shape exception and may return raw JSON |
+| `POST` | `/api/queue/clear` | none | deletes finished, failed, and cancelled run records |
+| `GET` | `/api/runs/:runId` | none | run detail |
+| `GET` | `/api/runs/:runId/workflow` | none | workflow data for the run |
+| `POST` | `/api/runs/:runId/cancel` | none | cancels a queued/running run |
+| `POST` | `/api/runs/:runId/review/keep` | `{ "imageIds": ["..."] }` | marks images kept |
+| `POST` | `/api/runs/:runId/review/trash` | `{ "imageIds": ["..."], "reason": "optional" }` | trashes images |
+| `GET` | `/api/trash` | none | lists trashed images |
+| `POST` | `/api/images/:imageId/restore` | none | restores one trashed image |
+| `POST` | `/api/images/:imageId/featured` | `{ "featured": true }` | toggles featured flag |
+| `GET` | `/api/images/:path...` | none | serves image files |
+
+## Templates
+
+| Method | Path | Body | Result |
+| --- | --- | --- | --- |
+| `GET` | `/api/templates` | none | lists project templates |
+| `POST` | `/api/templates` | template payload | creates a template |
+| `GET` | `/api/templates/:templateId` | none | reads template detail |
+| `PATCH` | `/api/templates/:templateId` | template patch payload | updates a template |
+| `DELETE` | `/api/templates/:templateId` | none | deletes a template |
+| `POST` | `/api/templates/:templateId/import` | `{ "projectId": "..." }` and options | imports a template into a project |
+
+Template payloads follow `src/lib/actions/template.ts`: `name`, `description`, and `sections`.
+
+## Preset Library
+
+### Categories
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `POST` | `/api/preset-library/categories` | create category |
+| `PATCH/DELETE` | `/api/preset-library/categories/:categoryId` | update or delete category |
+| `POST` | `/api/preset-library/categories/reorder` | reorder categories |
+| `POST` | `/api/preset-library/categories/:categoryId/sort-orders` | update category sort order dimensions |
+| `POST` | `/api/preset-library/categories/:categoryId/slot-template` | update slot template |
+| `POST` | `/api/preset-library/categories/:categoryId/groups/reorder` | reorder groups in a category |
+
+### Folders
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `POST` | `/api/preset-library/folders` | create folder |
+| `PATCH/DELETE` | `/api/preset-library/folders/:folderId` | rename or delete folder |
+| `POST` | `/api/preset-library/folders/:folderId/move` | move presets/groups into a folder |
+| `POST` | `/api/preset-library/folders/reorder` | reorder folders |
+
+### Groups And Members
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `POST` | `/api/preset-library/groups` | create group |
+| `PATCH/DELETE` | `/api/preset-library/groups/:groupId` | update or delete group |
+| `POST` | `/api/preset-library/groups/:groupId/flatten` | flatten a group |
+| `POST` | `/api/preset-library/groups/:groupId/members` | add group member |
+| `DELETE` | `/api/preset-library/groups/:groupId/members/:memberId` | remove group member |
+| `POST` | `/api/preset-library/groups/:groupId/members/reorder` | reorder members |
+
+### Presets And Variants
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `POST` | `/api/preset-library/presets` | create preset |
+| `PATCH/DELETE` | `/api/preset-library/presets/:presetId` | update or delete preset |
+| `POST` | `/api/preset-library/presets/reorder` | reorder presets |
+| `POST` | `/api/preset-library/presets/:presetId/cascade` | cascade delete/update behavior |
+| `POST` | `/api/preset-library/presets/:presetId/sync` | sync preset edits to sections |
+| `GET` | `/api/preset-library/presets/:presetId/usage` | read preset usage |
+| `POST` | `/api/preset-library/presets/:presetId/variants` | create variant |
+| `POST` | `/api/preset-library/presets/:presetId/variants/reorder` | reorder variants |
+| `PATCH/DELETE` | `/api/preset-library/variants/:variantId` | update or delete variant |
+
+## LoRA Assets
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/api/loras` | list registered LoRA files |
+| `POST` | `/api/loras` | upload a LoRA file with multipart form data |
+| `GET` | `/api/loras/browse` | browse LoRA directories |
+| `POST` | `/api/loras/move` | move a LoRA file |
+| `GET/PUT` | `/api/loras/notes` | read or update notes |
+
+## ComfyUI And System
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/api/health` | application health |
+| `GET` | `/api/comfy/status` | ComfyUI process/status snapshot |
+| `POST` | `/api/comfy/health-probe` | active ComfyUI health probe |
+| `POST` | `/api/comfy/start` | start ComfyUI, localhost only |
+| `POST` | `/api/comfy/stop` | stop ComfyUI, localhost only |
+| `POST` | `/api/comfy/restart` | restart ComfyUI, localhost only |
+| `GET` | `/api/worker/status` | worker status |
+| `GET` | `/api/logs` | application logs |
+| `GET` | `/api/audit-logs` | audit logs |
+| `GET` | `/api/path-maps` | configured path mappings |
+| `GET/POST/DELETE` | `/api/mcp` | MCP streamable HTTP endpoint |
+
+## Agent-Specific Endpoints
+
+The `/api/agent/**` endpoints provide higher-level project/run context and review workflows for agents:
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/api/agent/projects` | list projects with agent-friendly filters |
+| `GET` | `/api/agent/projects/:projectId/context` | full project context |
+| `POST` | `/api/agent/projects/:projectId/update` | batch update project and sections |
+| `POST` | `/api/agent/projects/:projectId/run-all` | run all enabled sections |
+| `POST` | `/api/agent/sections/:sectionId/run` | run one section |
+| `GET` | `/api/agent/runs/:runId/context` | full run context |
+| `POST` | `/api/agent/runs/:runId/review` | batch keep/trash images |
+
+Use these endpoints when an agent needs a compact context-first workflow. Use the lower-level endpoints above when an operation is not exposed by `/api/agent/**`.

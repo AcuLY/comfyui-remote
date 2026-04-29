@@ -13,6 +13,7 @@ export type ProjectCreateInput = {
 };
 
 export type ProjectSectionUpdateInput = {
+  name?: string | null;
   positivePrompt?: string | null;
   negativePrompt?: string | null;
   aspectRatio?: string | null;
@@ -25,6 +26,7 @@ export type ProjectSectionUpdateInput = {
   ksampler1?: Record<string, unknown> | null;
   ksampler2?: Record<string, unknown> | null;
   upscaleFactor?: number | null;
+  loraConfig?: Record<string, unknown> | null;
 };
 
 export type ListProjectsFilters = {

@@ -15,8 +15,8 @@ export default async function EditProjectPage({ params }: { params: Promise<{ pr
   if (!project) notFound();
 
   return (
-    <div className="space-y-4">
-      <Link href={`/projects/${projectId}`} className="inline-flex items-center gap-2 text-sm text-zinc-300">
+    <div className="w-full max-w-4xl min-w-0 space-y-4">
+      <Link href={`/projects/${projectId}`} className="inline-flex items-center gap-1.5 text-xs text-zinc-400 transition hover:text-zinc-200">
         <ArrowLeft className="size-4" /> 返回详情
       </Link>
 

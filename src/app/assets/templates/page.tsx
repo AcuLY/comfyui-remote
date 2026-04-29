@@ -13,7 +13,7 @@ export default async function TemplatesPage() {
         <div className="space-y-3">
           <Link
             href="/assets/templates/new"
-            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-zinc-400 transition hover:border-sky-500/30 hover:bg-sky-500/5 hover:text-sky-300"
+            className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-white/10 bg-white/[0.02] px-3 py-2.5 text-sm text-zinc-400 transition hover:border-sky-500/30 hover:bg-sky-500/5 hover:text-sky-300"
           >
             <Plus className="size-4" /> 新建模板
           </Link>

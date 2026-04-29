@@ -452,6 +452,10 @@ export async function updateProjectSection(
 
   const data: Prisma.ProjectSectionUpdateInput = {};
 
+  if (input.name !== undefined) {
+    data.name = input.name;
+  }
+
   if (input.positivePrompt !== undefined) {
     data.positivePrompt = input.positivePrompt;
   }
@@ -488,6 +492,12 @@ export async function updateProjectSection(
   }
   if (input.upscaleFactor !== undefined) {
     data.upscaleFactor = input.upscaleFactor;
+  }
+
+  if (input.loraConfig !== undefined) {
+    data.loraConfig = input.loraConfig
+      ? (JSON.parse(JSON.stringify(input.loraConfig)) as Prisma.InputJsonValue)
+      : Prisma.DbNull;
   }
 
   await db.projectSection.update({

@@ -117,11 +117,11 @@ export function ProjectEditForm({ project, categories }: Props) {
     amber: "text-amber-400",
   };
 
-  const selectClass = "w-full appearance-none rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 pr-10 text-sm text-white outline-none focus:border-sky-500/40";
-  const inputClass = "input-number w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white outline-none focus:border-sky-500/40";
+  const selectClass = "w-full appearance-none rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-2 pr-9 text-sm text-zinc-200 outline-none focus:border-sky-500/30";
+  const inputClass = "input-number w-full rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-2 text-sm text-zinc-200 outline-none focus:border-sky-500/30";
 
   return (
-    <div className="space-y-5">
+    <div className="w-full min-w-0 space-y-4">
       {/* 基础信息 */}
       <div className="space-y-3">
         <h3 className="text-xs font-medium uppercase tracking-wider text-zinc-500">基础信息</h3>
@@ -132,12 +132,12 @@ export function ProjectEditForm({ project, categories }: Props) {
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-sky-500/40"
+            className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-2 text-sm text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30"
           />
         </div>
 
         {/* Dynamic category selectors */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {categories.map((cat) => {
             const colorClass = CATEGORY_COLORS[cat.color ?? ""] ?? "border-white/10 focus:border-sky-500/40";
             const labelClass = CATEGORY_LABELS[cat.color ?? ""] ?? "text-zinc-400";
@@ -148,7 +148,7 @@ export function ProjectEditForm({ project, categories }: Props) {
                   <select
                     value={selections[cat.id]}
                     onChange={(e) => setSelection(cat.id, e.target.value)}
-                    className={`w-full appearance-none rounded-2xl bg-white/[0.03] px-4 py-3 pr-10 text-sm text-white outline-none ${colorClass}`}
+                    className={`w-full appearance-none rounded-lg bg-white/[0.04] px-2.5 py-2 pr-9 text-sm text-zinc-200 outline-none ${colorClass}`}
                   >
                     <option value="" className="bg-zinc-900">不选择{cat.name}</option>
                     {cat.presets.map((preset) => (
@@ -168,7 +168,7 @@ export function ProjectEditForm({ project, categories }: Props) {
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             rows={2}
-            className="w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-sky-500/40"
+            className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-2 text-sm text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30"
           />
         </div>
       </div>
@@ -178,7 +178,7 @@ export function ProjectEditForm({ project, categories }: Props) {
         <h3 className="text-xs font-medium uppercase tracking-wider text-zinc-500">新建小节默认值</h3>
         <p className="text-[11px] text-zinc-500">创建新小节时自动应用这些默认值</p>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="space-y-2">
             <label className="text-xs text-zinc-400">默认画幅</label>
             <div className="relative">
@@ -226,9 +226,9 @@ export function ProjectEditForm({ project, categories }: Props) {
         <h3 className="text-xs font-medium uppercase tracking-wider text-zinc-500">KSampler 默认参数</h3>
         <p className="text-[11px] text-zinc-500">创建新小节时自动应用的采样器参数</p>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
           {/* KSampler1 */}
-          <div className="rounded-2xl border border-white/5 bg-white/[0.01] p-3 space-y-2">
+          <div className="space-y-2 rounded-lg border border-white/5 bg-white/[0.02] p-3">
             <div className="text-xs font-medium text-zinc-300">KSampler1（第一阶段）</div>
             <div className="grid grid-cols-2 gap-2">
               <label className="space-y-1">
@@ -274,7 +274,7 @@ export function ProjectEditForm({ project, categories }: Props) {
           </div>
 
           {/* KSampler2 */}
-          <div className="rounded-2xl border border-white/5 bg-white/[0.01] p-3 space-y-2">
+          <div className="space-y-2 rounded-lg border border-white/5 bg-white/[0.02] p-3">
             <div className="text-xs font-medium text-zinc-300">KSampler2（高清修复）</div>
             <div className="grid grid-cols-2 gap-2">
               <label className="space-y-1">
@@ -326,7 +326,7 @@ export function ProjectEditForm({ project, categories }: Props) {
         type="button"
         onClick={handleSubmit}
         disabled={isPending || !title.trim()}
-        className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-sky-500/20 bg-sky-500/10 px-4 py-3 text-sm font-medium text-sky-300 transition hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+        className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-sky-500/20 bg-sky-500/10 px-3 py-2.5 text-sm font-medium text-sky-300 transition hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-40"
       >
         {isPending ? (
           <><Loader2 className="size-4 animate-spin" /> 保存中...</>

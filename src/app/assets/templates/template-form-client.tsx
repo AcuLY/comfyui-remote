@@ -139,7 +139,7 @@ export function TemplateFormClient({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="w-full max-w-4xl min-w-0 space-y-4">
       <Link
         href="/assets/templates"
         className="inline-flex items-center gap-2 text-sm text-zinc-400 transition hover:text-zinc-200"
@@ -148,7 +148,7 @@ export function TemplateFormClient({
       </Link>
 
       {/* Template metadata */}
-      <div className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+      <div className="space-y-3 border-t border-white/5 pt-3">
         <div>
           <label className="text-xs text-zinc-500">模板名称</label>
           <input
@@ -156,7 +156,7 @@ export function TemplateFormClient({
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="例如：4 宫格角色展示"
-            className="mt-1 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-600"
+            className="mt-1 w-full rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-2 text-sm text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30"
           />
         </div>
         <div>
@@ -166,7 +166,7 @@ export function TemplateFormClient({
             onChange={(e) => setDescription(e.target.value)}
             placeholder="模板用途说明"
             rows={2}
-            className="mt-1 w-full resize-none rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-600"
+            className="mt-1 w-full resize-none rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-2 text-sm text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30"
           />
         </div>
       </div>
@@ -186,7 +186,7 @@ export function TemplateFormClient({
         </div>
 
         {sections.length === 0 && (
-          <div className="rounded-2xl border border-dashed border-white/10 p-6 text-center text-xs text-zinc-500">
+          <div className="rounded-lg border border-dashed border-white/10 p-4 text-center text-xs text-zinc-500">
             暂无小节，点击上方按钮添加
           </div>
         )}
@@ -212,7 +212,7 @@ export function TemplateFormClient({
       <button
         disabled={isPending || !name.trim()}
         onClick={handleSave}
-        className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-sky-500/20 bg-sky-500/10 px-4 py-3 text-sm font-medium text-sky-300 transition hover:bg-sky-500/20 disabled:opacity-50"
+        className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-sky-500/20 bg-sky-500/10 px-3 py-2.5 text-sm font-medium text-sky-300 transition hover:bg-sky-500/20 disabled:opacity-50"
       >
         <Save className="size-4" /> {isPending ? "保存中…" : isEdit ? "更新模板" : "创建模板"}
       </button>
@@ -268,7 +268,7 @@ function SortableSectionCard({
 
   return (
     <CardWrapper>
-      <div ref={setNodeRef} style={style} className={`w-full rounded-xl border border-white/10 bg-white/[0.03] p-3.5 md:max-w-[500px] transition ${isDragging ? "z-10 shadow-lg" : ""} ${href ? "hover:border-white/20 hover:bg-white/[0.05] cursor-pointer" : ""}`}>
+      <div ref={setNodeRef} style={style} className={`w-full rounded-lg border border-white/10 bg-white/[0.02] p-3 md:max-w-[500px] transition ${isDragging ? "z-10 shadow-lg" : ""} ${href ? "hover:border-white/20 hover:bg-white/[0.04] cursor-pointer" : ""}`}>
         {/* Header */}
         <div className="flex items-center gap-2">
           <button

@@ -55,7 +55,7 @@ function TemplateCard({
   return (
     <Link
       href={`/assets/templates/${template.id}/edit`}
-      className="group w-full rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition hover:border-white/20 hover:bg-white/[0.05] md:max-w-[500px]"
+      className="group w-full rounded-lg border border-white/10 bg-white/[0.02] p-3 transition hover:border-white/20 hover:bg-white/[0.04] md:max-w-[500px]"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">

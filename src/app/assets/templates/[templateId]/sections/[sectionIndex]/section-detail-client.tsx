@@ -287,7 +287,7 @@ export function TemplateSectionDetailClient({
     "input-number w-full rounded-xl border border-white/10 bg-white/[0.04] px-2.5 py-2 text-xs text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30 disabled:opacity-70";
 
   return (
-    <div className="space-y-4">
+    <div className="w-full max-w-4xl min-w-0 space-y-4">
       {/* Navigation bar */}
       <div className="flex items-center justify-between">
         <Link
@@ -318,19 +318,19 @@ export function TemplateSectionDetailClient({
       </div>
 
       {/* Section name */}
-      <div className="space-y-2 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+      <div className="space-y-2 border-t border-white/5 pt-3">
         <label className="text-xs text-zinc-500">小节名称</label>
         <input
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="小节名称"
-          className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-600"
+          className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-2 text-sm text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30"
         />
       </div>
 
       {/* Run params — same layout as blocks page */}
-      <div className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+      <div className="space-y-3 border-t border-white/5 pt-3">
         <div className="flex items-center justify-between">
           <div className="text-xs font-medium text-zinc-400">运行参数</div>
           <div className="text-[10px] text-zinc-500">空值参数在导入时不会覆盖项目设置</div>
@@ -537,7 +537,7 @@ export function TemplateSectionDetailClient({
 
       {/* Import preset */}
       {importCategories.length > 0 && (
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+        <div className="border-t border-white/5 pt-3">
           {showImport ? (
             <ImportPresetPanel
               categories={importCategories}
@@ -558,7 +558,7 @@ export function TemplateSectionDetailClient({
       )}
 
       {/* Prompt blocks */}
-      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
+      <div className="space-y-3 border-t border-white/5 pt-3">
         <div className="text-xs font-medium text-zinc-400">Prompt Blocks</div>
         <TemplatePromptBlockEditor
           blocks={promptBlocks}
@@ -568,7 +568,7 @@ export function TemplateSectionDetailClient({
       </div>
 
       {/* LoRA config */}
-      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
+      <div className="space-y-3 border-t border-white/5 pt-3">
         <div className="text-xs font-medium text-zinc-400">LoRA 配置</div>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
@@ -586,7 +586,7 @@ export function TemplateSectionDetailClient({
       <button
         disabled={isPending}
         onClick={handleSave}
-        className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-sky-500/20 bg-sky-500/10 px-4 py-3 text-sm font-medium text-sky-300 transition hover:bg-sky-500/20 disabled:opacity-50"
+        className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-sky-500/20 bg-sky-500/10 px-3 py-2.5 text-sm font-medium text-sky-300 transition hover:bg-sky-500/20 disabled:opacity-50"
       >
         <Save className="size-4" /> {isPending ? "保存中…" : "保存小节"}
       </button>

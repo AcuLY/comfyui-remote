@@ -37,6 +37,7 @@ type ListProjectsQuery = {
 };
 
 type UpdateProjectSectionRequestBody = {
+  name?: unknown;
   positivePrompt?: unknown;
   negativePrompt?: unknown;
   aspectRatio?: unknown;
@@ -47,6 +48,7 @@ type UpdateProjectSectionRequestBody = {
   ksampler1?: unknown;
   ksampler2?: unknown;
   upscaleFactor?: unknown;
+  loraConfig?: unknown;
 };
 
 const PROJECT_CREATE_FIELDS = [
@@ -60,6 +62,7 @@ const PROJECT_UPDATE_FIELDS = [
 ] as const;
 
 const PROJECT_SECTION_UPDATE_FIELDS = [
+  "name",
   "positivePrompt",
   "negativePrompt",
   "aspectRatio",
@@ -70,6 +73,7 @@ const PROJECT_SECTION_UPDATE_FIELDS = [
   "ksampler1",
   "ksampler2",
   "upscaleFactor",
+  "loraConfig",
 ] as const;
 
 const SECTION_RUN_PARAM_FIELDS = [
@@ -81,6 +85,7 @@ const SECTION_RUN_PARAM_FIELDS = [
   "ksampler1",
   "ksampler2",
   "upscaleFactor",
+  "loraConfig",
 ] as const;
 
 const SECTION_RUN_PARAM_SELECT = {
@@ -92,6 +97,7 @@ const SECTION_RUN_PARAM_SELECT = {
   ksampler1: true,
   ksampler2: true,
   upscaleFactor: true,
+  loraConfig: true,
 } as const;
 
 class ProjectServiceError extends Error {
@@ -177,6 +183,22 @@ function normalizeNullableStringField(value: unknown, fieldName: string) {
   }
 
   return value;
+}
+
+function normalizeNullableObjectField(value: unknown, fieldName: string) {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (value === null) {
+    return null;
+  }
+
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new ProjectServiceError(`${fieldName} must be an object or null`, 400);
+  }
+
+  return value as Record<string, unknown>;
 }
 
 function normalizeNullableIdField(value: unknown, fieldName: string) {
@@ -374,6 +396,7 @@ export async function updateProjectSection(
   ensureSupportedFields(parsedBody, PROJECT_SECTION_UPDATE_FIELDS);
 
   const input = {
+    name: normalizeNullableStringField(parsedBody.name, "name"),
     positivePrompt: normalizeNullableStringField(parsedBody.positivePrompt, "positivePrompt"),
     negativePrompt: normalizeNullableStringField(parsedBody.negativePrompt, "negativePrompt"),
     aspectRatio: normalizeNullableStringField(parsedBody.aspectRatio, "aspectRatio"),
@@ -390,6 +413,7 @@ export async function updateProjectSection(
     upscaleFactor: parsedBody.upscaleFactor !== undefined
       ? (typeof parsedBody.upscaleFactor === "number" && Number.isFinite(parsedBody.upscaleFactor) ? parsedBody.upscaleFactor : null)
       : undefined,
+    loraConfig: normalizeNullableObjectField(parsedBody.loraConfig, "loraConfig"),
   };
 
   ensureAtLeastOneField(
