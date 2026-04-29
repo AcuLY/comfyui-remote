@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ImageIcon, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, ImageIcon, ChevronLeft, ChevronRight, Download } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { SectionEditor } from "@/components/section-editor";
 import { SectionParamsForm } from "./section-params-form";
@@ -29,6 +29,7 @@ export default async function SectionEditPage({
         project: {
           select: {
             presetBindings: true,
+            checkpointName: true,
           },
         },
         promptBlocks: {
@@ -93,6 +94,8 @@ export default async function SectionEditPage({
     ksampler1: pos.ksampler1 ?? null,
     ksampler2: pos.ksampler2 ?? null,
     upscaleFactor: pos.upscaleFactor ?? null,
+    checkpointName: pos.checkpointName ?? null,
+    projectCheckpointName: pos.project.checkpointName ?? null,
   };
 
   // Parse existing LoRA config ({ lora1, lora2 })
@@ -296,6 +299,13 @@ export default async function SectionEditPage({
                     下一节 <ChevronRight className="size-3" />
                   </span>
                 )}
+                <Link
+                  href={`/api/projects/${projectId}/section-workflow/${sectionId}`}
+                  download
+                  className="inline-flex items-center gap-1 rounded-lg border border-sky-500/20 bg-sky-500/[0.08] px-2 py-1 text-xs text-sky-200 transition hover:bg-sky-500/15 hover:text-sky-100"
+                >
+                  <Download className="size-3" /> 下载 workflow
+                </Link>
                 <Link
                   href={`/projects/${projectId}/sections/${sectionId}/results`}
                   className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"

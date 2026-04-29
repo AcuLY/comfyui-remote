@@ -109,6 +109,9 @@ export async function saveSectionEditAction(
 
   const ksampler1 = getNullableJsonObject(formData, "ksampler1");
   const ksampler2 = getNullableJsonObject(formData, "ksampler2");
+  const checkpointName = formData.has("checkpointName")
+    ? getNullableString(formData, "checkpointName")
+    : undefined;
 
   // Parse upscaleFactor (float)
   const upscaleRaw = formData.get("upscaleFactor");
@@ -126,6 +129,10 @@ export async function saveSectionEditAction(
     seedPolicy1,
     seedPolicy2,
   };
+
+  if (checkpointName !== undefined) {
+    payload.checkpointName = checkpointName;
+  }
 
   if (batchSize) {
     payload.batchSize = batchSize.value;

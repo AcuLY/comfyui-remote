@@ -12,11 +12,12 @@
 
 import { ComfyPromptDraft } from "@/server/worker/types";
 import { resolveResolution } from "@/lib/aspect-ratio-utils";
+import { DEFAULT_CHECKPOINT_NAME } from "@/lib/model-constants";
 
 type JsonRecord = Record<string, unknown>;
 
 const DEFAULT_CHECKPOINT =
-  process.env.COMFYUI_CHECKPOINT ?? "sd_xl_base_1.0.safetensors";
+  process.env.COMFYUI_CHECKPOINT ?? DEFAULT_CHECKPOINT_NAME;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -50,6 +51,8 @@ export function buildFallbackPromptNodes(draft: ComfyPromptDraft): JsonRecord {
   const positivePrompt = draft.prompt.positive;
   const negativePrompt =
     draft.prompt.negative ?? "";
+  const checkpointName =
+    draft.checkpointName ?? draft.parameters.checkpointName ?? DEFAULT_CHECKPOINT;
 
   const seed = resolveSeed(draft);
 
@@ -59,7 +62,7 @@ export function buildFallbackPromptNodes(draft: ComfyPromptDraft): JsonRecord {
   nodes["1"] = {
     class_type: "CheckpointLoaderSimple",
     inputs: {
-      ckpt_name: DEFAULT_CHECKPOINT,
+      ckpt_name: checkpointName,
     },
     _meta: { title: "Load Checkpoint" },
   };

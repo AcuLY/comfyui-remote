@@ -10,6 +10,7 @@ import { AspectRatioPicker } from "@/components/aspect-ratio-picker";
 import { KSamplerPanel, parseInitialKSampler } from "@/components/ksampler-panel";
 import type { KSamplerParams } from "@/lib/lora-types";
 import { DEFAULT_KSAMPLER1, DEFAULT_KSAMPLER2 } from "@/lib/lora-types";
+import { CheckpointCascadePicker } from "@/components/checkpoint-cascade-picker";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -34,6 +35,8 @@ type SectionParamsFormProps = {
     ksampler1: unknown;
     ksampler2: unknown;
     upscaleFactor: number | null;
+    checkpointName: string | null;
+    projectCheckpointName: string | null;
   };
 };
 
@@ -51,6 +54,7 @@ export function SectionParamsForm({ projectId, sectionId, initialParams }: Secti
   const [upscaleFactor, setUpscaleFactor] = useState<string>(
     String(initialParams.upscaleFactor ?? 2),
   );
+  const [checkpointName, setCheckpointName] = useState(initialParams.checkpointName ?? "");
 
   // Auto-save: debounced form submit
   const scheduleAutoSave = useCallback(() => {
@@ -78,6 +82,7 @@ export function SectionParamsForm({ projectId, sectionId, initialParams }: Secti
       <input type="hidden" name="ksampler1" value={JSON.stringify(ks1)} />
       <input type="hidden" name="ksampler2" value={JSON.stringify(ks2)} />
       <input type="hidden" name="upscaleFactor" value={upscaleFactor} />
+      <input type="hidden" name="checkpointName" value={checkpointName} />
 
       <div className="space-y-3">
         <div className="flex items-center justify-between">
@@ -90,6 +95,37 @@ export function SectionParamsForm({ projectId, sectionId, initialParams }: Secti
           )}
           {!pending && state.status === "success" && (
             <span className="text-[11px] text-emerald-400/70">已保存</span>
+          )}
+        </div>
+
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <div className="text-[11px] text-zinc-500">Checkpoint</div>
+            {checkpointName && (
+              <button
+                type="button"
+                onClick={() => {
+                  setCheckpointName("");
+                  setTimeout(scheduleAutoSave, 0);
+                }}
+                disabled={pending}
+                className="text-[10px] text-zinc-500 hover:text-zinc-300 disabled:opacity-50"
+              >
+                继承项目
+              </button>
+            )}
+          </div>
+          <CheckpointCascadePicker
+            value={checkpointName || initialParams.projectCheckpointName || ""}
+            onChange={(value) => {
+              setCheckpointName(value);
+              setTimeout(scheduleAutoSave, 0);
+            }}
+            disabled={pending}
+            placeholder={initialParams.projectCheckpointName ? `继承项目：${initialParams.projectCheckpointName}` : "选择 checkpoint…"}
+          />
+          {!checkpointName && initialParams.projectCheckpointName && (
+            <p className="text-[10px] text-zinc-600">当前继承项目 checkpoint</p>
           )}
         </div>
 

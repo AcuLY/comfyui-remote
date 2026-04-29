@@ -85,6 +85,7 @@ export function TemplateFormClient({
       ksampler1: null,
       ksampler2: null,
       upscaleFactor: 2,
+      checkpointName: null,
       loraConfig: { lora1: [], lora2: [] },
       extraParams: null,
       promptBlocks: [],
@@ -379,6 +380,7 @@ function SortableSectionCard({
   const loraConfig = (section.loraConfig as { lora1: LoraEntry[]; lora2: LoraEntry[] }) || { lora1: [], lora2: [] };
   const loraCount = loraConfig.lora1.length + loraConfig.lora2.length;
   const blockCount = (section.promptBlocks || []).length;
+  const checkpointLabel = section.checkpointName ? section.checkpointName.split("/").pop() : null;
 
   // If no templateId yet (new template) or the section is not persisted yet,
   // do not expose a route that the server cannot resolve.
@@ -433,6 +435,7 @@ function SortableSectionCard({
           <span>{resDisplay}</span>
           <span>batch {section.batchSize ?? "—"}</span>
           <span>{section.upscaleFactor ?? 2}x</span>
+          {checkpointLabel && <span className="max-w-full truncate">ckpt {checkpointLabel}</span>}
         </div>
         <div className="mt-1 flex gap-3 text-[11px] text-zinc-500">
           {blockCount > 0 && <span>{blockCount} 个 prompt</span>}

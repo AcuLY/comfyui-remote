@@ -4,11 +4,11 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
   BookOpen,
+  Database,
   FolderOpen,
   Images,
   LayoutTemplate,
   Settings,
-  Upload,
   type LucideIcon,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -24,7 +24,7 @@ const navItems: NavItem[] = [
   { href: "/projects", label: "项目", icon: FolderOpen },
   { href: "/assets/presets", label: "预制", icon: BookOpen },
   { href: "/assets/templates", label: "模板", icon: LayoutTemplate },
-  { href: "/assets/loras", label: "LoRA", icon: Upload },
+  { href: "/assets/models", label: "模型", icon: Database },
   { href: "/settings", label: "设置", icon: Settings },
 ];
 

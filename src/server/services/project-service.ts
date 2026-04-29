@@ -21,12 +21,14 @@ const log = createLogger({ module: "project-service" });
 
 type CreateProjectRequestBody = {
   title?: unknown;
+  checkpointName?: unknown;
   notes?: unknown;
 };
 
 type UpdateProjectRequestBody = {
   aspectRatio?: unknown;
   batchSize?: unknown;
+  checkpointName?: unknown;
 };
 
 type ListProjectsQuery = {
@@ -49,17 +51,20 @@ type UpdateProjectSectionRequestBody = {
   ksampler1?: unknown;
   ksampler2?: unknown;
   upscaleFactor?: unknown;
+  checkpointName?: unknown;
   loraConfig?: unknown;
 };
 
 const PROJECT_CREATE_FIELDS = [
   "title",
+  "checkpointName",
   "notes",
 ] as const;
 
 const PROJECT_UPDATE_FIELDS = [
   "aspectRatio",
   "batchSize",
+  "checkpointName",
 ] as const;
 
 const PROJECT_SECTION_UPDATE_FIELDS = [
@@ -74,6 +79,7 @@ const PROJECT_SECTION_UPDATE_FIELDS = [
   "ksampler1",
   "ksampler2",
   "upscaleFactor",
+  "checkpointName",
   "loraConfig",
 ] as const;
 
@@ -86,6 +92,7 @@ const SECTION_RUN_PARAM_FIELDS = [
   "ksampler1",
   "ksampler2",
   "upscaleFactor",
+  "checkpointName",
   "loraConfig",
 ] as const;
 
@@ -99,6 +106,7 @@ const SECTION_RUN_PARAM_SELECT = {
   ksampler2: true,
   upscaleFactor: true,
   loraConfig: true,
+  checkpointName: true,
 } as const;
 
 class ProjectServiceError extends Error {
@@ -348,6 +356,7 @@ export async function createProject(body: unknown, actorType: ActorType = ActorT
 
   const input = {
     title: normalizeRequiredStringField(parsedBody.title, "title"),
+    checkpointName: normalizeRequiredStringField(parsedBody.checkpointName, "checkpointName"),
     notes: normalizeNullableNotesField(parsedBody.notes, "notes"),
   };
 
@@ -367,6 +376,7 @@ export async function updateProject(projectId: string, body: unknown, actorType:
   const input = {
     aspectRatio: normalizeNullableStringField(parsedBody.aspectRatio, "aspectRatio"),
     batchSize: normalizeBatchSize(parsedBody.batchSize, "batchSize"),
+    checkpointName: normalizeNullableStringField(parsedBody.checkpointName, "checkpointName"),
   };
 
   ensureAtLeastOneField(
@@ -415,6 +425,7 @@ export async function updateProjectSection(
     upscaleFactor: parsedBody.upscaleFactor !== undefined
       ? (typeof parsedBody.upscaleFactor === "number" && Number.isFinite(parsedBody.upscaleFactor) ? parsedBody.upscaleFactor : null)
       : undefined,
+    checkpointName: normalizeNullableStringField(parsedBody.checkpointName, "checkpointName"),
     loraConfig: normalizeNullableObjectField(parsedBody.loraConfig, "loraConfig"),
   };
 

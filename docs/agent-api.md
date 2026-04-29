@@ -57,7 +57,7 @@ or:
 
 - Agents can authenticate API requests with the configured `AUTH_TOKEN` in either `Authorization: Bearer <token>` or `x-api-token: <token>`. The proxy accepts this header-token mode for `/api/**` routes and skips the browser cookie check.
 - Agents can also send the browser `auth_token` cookie when available. `src/proxy.ts` has an allowlist for several API namespaces, but root collection routes such as `GET/POST /api/projects` require either the cookie or the header token.
-- Public allowlisted namespaces include `/api/agent`, `/api/queue`, `/api/runs`, `/api/images`, `/api/trash`, `/api/loras/`, `/api/comfy`, `/api/mcp`, `/api/health`, logs, audit logs, worker status, path maps, and nested `/api/projects/:projectId/...` routes.
+- Public allowlisted namespaces include `/api/agent`, `/api/queue`, `/api/runs`, `/api/images`, `/api/trash`, `/api/models`, `/api/loras`, `/api/comfy`, `/api/mcp`, `/api/health`, logs, audit logs, worker status, path maps, and nested `/api/projects/:projectId/...` routes.
 - ComfyUI process write controls (`/api/comfy/start`, `/api/comfy/stop`, `/api/comfy/restart`) are limited to localhost by the route handler.
 - The UI may still call server actions directly, but the user-facing backend operations have HTTP equivalents listed below.
 
@@ -92,7 +92,7 @@ or:
 | Manage templates | `GET/POST /api/templates`, `GET/PATCH/DELETE /api/templates/:templateId`, `POST /api/templates/:templateId/import` |
 | Manage preset library | `/api/preset-library/**` endpoints listed below |
 | Search preset library for agent use | `GET /api/presets`, `GET /api/preset-library/presets`, `GET /api/preset-library/presets/:presetId` |
-| Upload/list/move/annotate LoRAs | `GET/POST /api/loras`, `GET /api/loras/browse`, `POST /api/loras/move`, `GET/PUT /api/loras/notes` |
+| Upload/list/move/annotate models | `GET/POST /api/models?kind=lora|checkpoint`, `GET /api/models/browse`, `POST /api/models/move`, `GET/PUT /api/models/notes` |
 | Read logs, audit logs, health, worker status | `GET /api/logs`, `GET /api/audit-logs`, `GET /api/health`, `GET /api/worker/status` |
 | MCP automation | `GET/POST/DELETE /api/mcp` |
 
@@ -311,15 +311,15 @@ Template payloads follow `src/lib/actions/template.ts`: `name`, `description`, a
 | `POST` | `/api/preset-library/presets/:presetId/variants/reorder` | reorder variants |
 | `PATCH/DELETE` | `/api/preset-library/variants/:variantId` | update or delete variant |
 
-## LoRA Assets
+## Model Assets
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| `GET` | `/api/loras` | list registered LoRA files |
-| `POST` | `/api/loras` | upload a LoRA file with multipart form data |
-| `GET` | `/api/loras/browse` | browse LoRA directories |
-| `POST` | `/api/loras/move` | move a LoRA file |
-| `GET/PUT` | `/api/loras/notes` | read or update notes |
+| `GET` | `/api/models?kind=lora\|checkpoint` | list registered model files |
+| `POST` | `/api/models?kind=lora\|checkpoint` | upload a model file with multipart form data |
+| `GET` | `/api/models/browse?kind=lora\|checkpoint` | browse model directories |
+| `POST` | `/api/models/move?kind=lora\|checkpoint` | move a model file |
+| `GET/PUT` | `/api/models/notes?kind=lora\|checkpoint` | read or update notes |
 
 ## ComfyUI And System
 

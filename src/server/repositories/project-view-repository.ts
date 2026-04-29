@@ -377,6 +377,7 @@ export type ProjectEditData = {
   id: string;
   title: string;
   slug: string;
+  checkpointName: string | null;
   presetBindings: PresetBinding[];
   notes: string | null;
   sections: {
@@ -440,6 +441,7 @@ export async function getProjectEditData(projectId: string): Promise<ProjectEdit
     id: project.id,
     title: project.title,
     slug: project.slug,
+    checkpointName: project.checkpointName,
     presetBindings: Array.isArray(project.presetBindings) ? (project.presetBindings as PresetBinding[]) : [],
     notes: project.notes,
     sections: project.sections.map((pos) => ({

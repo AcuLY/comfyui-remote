@@ -1,11 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/prisma";
-import { saveUploadedLora } from "@/server/services/lora-upload-service";
+import { saveUploadedModelFile } from "@/server/services/model-asset-service";
 
 // ---------------------------------------------------------------------------
-// LoRA 上传 — 委托给 lora-upload-service（统一使用 LORA_BASE_DIR）
+// LoRA 上传 — 委托给模型资产服务（统一使用 MODEL_BASE_DIR/loras）
 // ---------------------------------------------------------------------------
 
 export async function uploadLora(formData: FormData) {
@@ -16,7 +15,7 @@ export async function uploadLora(formData: FormData) {
     throw new Error("请选择文件");
   }
 
-  await saveUploadedLora(file, category);
+  await saveUploadedModelFile("lora", file, category);
 
-  revalidatePath("/assets/loras");
+  revalidatePath("/assets/models");
 }

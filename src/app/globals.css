@@ -2,23 +2,79 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-:root {
+/* 浅色模式 */
+:root[data-theme="light"] {
+  --bg: #f5f7fa;
+  --fg: #1a1a1a;
+  --panel: #ffffff;
+  --panel-soft: #e8ecf1;
+
+  /* shadcn light theme */
+  --background: oklch(0.98 0 0);
+  --foreground: oklch(0.15 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.15 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.15 0 0);
+
+  /* 主色调 - 青绿色 */
+  --primary: oklch(0.6 0.15 165);
+  --primary-foreground: oklch(0.985 0 0);
+
+  /* 次要色 - 淡粉色 */
+  --secondary: oklch(0.65 0.12 340);
+  --secondary-foreground: oklch(0.985 0 0);
+
+  --muted: oklch(0.96 0 0);
+  --muted-foreground: oklch(0.45 0 0);
+  --accent: oklch(0.96 0 0);
+  --accent-foreground: oklch(0.15 0 0);
+  --destructive: oklch(0.55 0.22 25);
+  --border: oklch(0 0 0 / 8%);
+  --input: oklch(0 0 0 / 10%);
+  --ring: oklch(0.6 0.15 165);
+  --chart-1: oklch(0.6 0.15 165);
+  --chart-2: oklch(0.65 0.12 340);
+  --chart-3: oklch(0.5 0.15 220);
+  --chart-4: oklch(0.55 0.12 280);
+  --chart-5: oklch(0.45 0.1 140);
+  --radius: 0.75rem;
+
+  /* Sidebar */
+  --sidebar: oklch(0.98 0 0);
+  --sidebar-foreground: oklch(0.15 0 0);
+  --sidebar-primary: oklch(0.6 0.15 165);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.96 0 0);
+  --sidebar-accent-foreground: oklch(0.15 0 0);
+  --sidebar-border: oklch(0 0 0 / 8%);
+  --sidebar-ring: oklch(0.6 0.15 165);
+}
+
+/* 深色模式（默认） */
+:root,
+:root[data-theme="dark"] {
   --bg: #09090b;
   --fg: #f4f4f5;
   --panel: #111217;
   --panel-soft: #171923;
 
-  /* shadcn dark theme — always-on dark, no toggle */
+  /* shadcn dark theme */
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
+
+  /* 主色调 - 青绿色（深色模式下更亮） */
+  --primary: oklch(0.7 0.15 165);
+  --primary-foreground: oklch(0.985 0 0);
+
+  /* 次要色 - 淡粉色（深色模式下更亮） */
+  --secondary: oklch(0.75 0.12 340);
   --secondary-foreground: oklch(0.985 0 0);
+
   --muted: oklch(0.269 0 0);
   --muted-foreground: oklch(0.708 0 0);
   --accent: oklch(0.269 0 0);
@@ -26,23 +82,23 @@
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
+  --ring: oklch(0.7 0.15 165);
+  --chart-1: oklch(0.7 0.15 165);
+  --chart-2: oklch(0.75 0.12 340);
+  --chart-3: oklch(0.6 0.15 220);
+  --chart-4: oklch(0.65 0.12 280);
+  --chart-5: oklch(0.55 0.1 140);
+  --radius: 0.75rem;
 
-  /* Sidebar — dark zinc theme matching project palette */
+  /* Sidebar */
   --sidebar: oklch(0.16 0 0);
   --sidebar-foreground: oklch(0.95 0 0);
-  --sidebar-primary: oklch(0.65 0.18 250);
+  --sidebar-primary: oklch(0.7 0.15 165);
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-accent: oklch(0.22 0 0);
   --sidebar-accent-foreground: oklch(0.95 0 0);
   --sidebar-border: oklch(1 0 0 / 8%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar-ring: oklch(0.7 0.15 165);
 }
 
 @theme inline {
@@ -98,9 +154,19 @@ html {
 }
 
 body {
-  background: radial-gradient(circle at top, #18181b 0%, var(--bg) 45%);
   color: var(--fg);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+/* 深色模式背景渐变 */
+:root[data-theme="dark"] body {
+  background: radial-gradient(circle at top, #18181b 0%, var(--bg) 45%);
+}
+
+/* 浅色模式背景渐变 */
+:root[data-theme="light"] body {
+  background: radial-gradient(circle at top, #e8ecf1 0%, var(--bg) 45%);
 }
 
 /* 自定义滚动条样式 */

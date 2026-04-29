@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FolderOpen, Images, Upload } from "lucide-react";
+import { Database, FolderOpen, Images } from "lucide-react";
 
 const navItems = [
   { href: "/queue", label: "待审核", icon: Images },
   { href: "/projects", label: "项目", icon: FolderOpen },
-  { href: "/assets/loras", label: "LoRA", icon: Upload },
+  { href: "/assets/models", label: "模型", icon: Database },
 ];
 
 export function BottomNav() {

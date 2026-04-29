@@ -17,6 +17,7 @@ export type ProjectTemplateSectionData = {
   ksampler1: Record<string, unknown> | null;
   ksampler2: Record<string, unknown> | null;
   upscaleFactor: number | null;
+  checkpointName: string | null;
   loraConfig: Record<string, unknown> | null;
   extraParams: Record<string, unknown> | null;
   promptBlocks: Array<{
@@ -91,6 +92,7 @@ export async function getProjectTemplateDetail(
       ksampler1: s.ksampler1 as Record<string, unknown> | null,
       ksampler2: s.ksampler2 as Record<string, unknown> | null,
       upscaleFactor: s.upscaleFactor,
+      checkpointName: s.checkpointName,
       loraConfig: s.loraConfig as Record<string, unknown> | null,
       extraParams: s.extraParams as Record<string, unknown> | null,
       promptBlocks: (Array.isArray(s.promptBlocks) ? s.promptBlocks : []) as ProjectTemplateSectionData["promptBlocks"],

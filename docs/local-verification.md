@@ -30,12 +30,12 @@ cp .env.example .env
 DATABASE_URL="postgresql://postgres:postgres@localhost:5432/comfyui_manager"
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
 COMFY_API_URL="http://127.0.0.1:8188"
-LORA_BASE_DIR="/path/to/ComfyUI/models/loras"
+MODEL_BASE_DIR="/path/to/ComfyUI/models"
 IMAGE_BASE_DIR="/path/to/ComfyUI/output"
 ```
 
 - `COMFY_API_URL`：你的 ComfyUI API 地址
-- `LORA_BASE_DIR`：ComfyUI 的 LoRA 模型目录（用于上传 LoRA）
+- `MODEL_BASE_DIR`：ComfyUI 的模型目录，用于推导 `loras` 和 `checkpoints` 子目录
 - `IMAGE_BASE_DIR`：ComfyUI 的 output 目录（Worker 会先尝试从这里本地复制图片，失败后通过 HTTP 下载）
 
 ## Step 2: 初始化数据库

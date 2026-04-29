@@ -53,7 +53,9 @@ export type NormalizedResolvedConfigSnapshot = {
     seedPolicy1: string | null;
     seedPolicy2: string | null;
     upscaleFactor: number | null;
+    checkpointName: string | null;
   };
+  checkpointName: string | null;
   /** v0.3: KSampler1 parameters (第一阶段) */
   ksampler1: Prisma.JsonObject | null;
   /** v0.3: KSampler2 parameters (高清修复阶段) */
@@ -79,7 +81,9 @@ export type ComfyPromptDraft = {
     seedPolicy1: string | null;
     seedPolicy2: string | null;
     upscaleFactor: number | null;
+    checkpointName: string | null;
   };
+  checkpointName: string | null;
   /** v0.3: KSampler1 parameters (第一阶段) */
   ksampler1: Prisma.JsonObject | null;
   /** v0.3: KSampler2 parameters (高清修复阶段) */

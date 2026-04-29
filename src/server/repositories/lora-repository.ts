@@ -23,6 +23,7 @@ function serializeLoraAsset(asset: {
 
 export async function listLoraAssets() {
   const assets = await db.loraAsset.findMany({
+    where: { modelType: "lora" },
     orderBy: { uploadedAt: "desc" },
     take: 100,
   });

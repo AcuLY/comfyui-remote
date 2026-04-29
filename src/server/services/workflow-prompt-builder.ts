@@ -39,6 +39,8 @@ export type WorkflowBuildInput = {
   batchSize: number;
   /** Upscale factor for LatentUpscale (default 2) */
   upscaleFactor?: number;
+  /** Checkpoint filename for node 1 (CheckpointLoaderSimple) */
+  checkpointName?: string | null;
   /** LoRA 1 list (fills node 522 → KS1) */
   lora1List: LoraBinding[];
   /** LoRA 2 list (fills node 36 → KS2) */
@@ -142,6 +144,10 @@ export function buildWorkflowPrompt(input: WorkflowBuildInput): Record<string, u
   const wf = input.workflowTemplate;
   const upscale = input.upscaleFactor ?? 2;
   const skipHiresFix = upscale === 1;
+
+  if (input.checkpointName?.trim()) {
+    nodeInputs(wf, "1").ckpt_name = input.checkpointName.trim();
+  }
 
   // 1. Prompts — nodes 511, 513
   nodeInputs(wf, "511").text = input.positivePrompt;

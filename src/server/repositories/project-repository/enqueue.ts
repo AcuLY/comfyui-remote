@@ -1,8 +1,6 @@
 import { Prisma } from "@/generated/prisma";
 import { db } from "@/lib/db";
 import {
-  type QueuableProjectRecord,
-  type ProjectSectionRecord,
   ensureQueuedProjectStatus,
   createQueuedRunsForPositions,
 } from "./helpers";
@@ -17,6 +15,7 @@ export async function enqueueProjectRuns(projectId: string, overrideBatchSize?: 
         slug: true,
         status: true,
         projectLevelOverrides: true,
+        checkpointName: true,
         sections: {
           where: { enabled: true },
           orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
@@ -83,6 +82,7 @@ export async function enqueueProjectSectionRun(projectId: string, sectionId: str
         slug: true,
         status: true,
         projectLevelOverrides: true,
+        checkpointName: true,
       },
     });
 

@@ -94,7 +94,7 @@ DB_PROVIDER=sqlite DATABASE_URL="file:./data/comfyui.db" npm run dev
 | `DATABASE_URL` | 是 | — | `file:./data/comfyui.db` | 数据库连接字符串 |
 | `COMFY_API_URL` | 否 | `http://127.0.0.1:8188` | `http://127.0.0.1:8188` | ComfyUI API 地址 |
 | `IMAGE_BASE_DIR` | 否 | — | `D:\ComfyUI\output` | ComfyUI 的默认输出目录。Worker 会从此目录本地复制生成的图片到 `data/images/`；不填则通过 HTTP 下载 |
-| `LORA_BASE_DIR` | 否 | — | `D:\ComfyUI\models\loras` | LoRA 文件根目录（用于文件管理器浏览） |
+| `MODEL_BASE_DIR` | 否 | — | `D:\ComfyUI\models` | ComfyUI 模型根目录，用于推导 `loras` 和 `checkpoints` 子目录 |
 | `LOG_LEVEL` | 否 | `info` | `info` | 日志级别：`debug` / `info` / `warn` / `error` |
 | `LOG_FORMAT` | 否 | `pretty` | `pretty` | 输出格式：`pretty` / `json` |
 | `LOG_ENABLE_FILE` | 否 | `false` | `false` | 是否写入日志文件 |
@@ -191,7 +191,7 @@ comfyui-remote/
 ├── data/                       # 运行时数据（git ignored）
 │   ├── images/                 #   管理的图片文件
 │   ├── export/                 #   图片整合导出输出
-│   └── loras/                  #   LoRA 文件（由 LORA_BASE_DIR 指定）
+│   └── models/                 #   模型文件（由 MODEL_BASE_DIR 指定，包含 loras/ 和 checkpoints/）
 ├── docs/                       # 文档
 │   ├── design-v0.1.md          #   产品与架构设计
 │   ├── design-v0.3-*.md        #   v0.3 Workflow 集成设计

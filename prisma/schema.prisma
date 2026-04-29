@@ -201,6 +201,7 @@ model ProjectTemplateSection {
   ksampler1         Json?             // KSamplerParams for KSampler1
   ksampler2         Json?             // KSamplerParams for KSampler2
   upscaleFactor     Float?
+  checkpointName    String?
   loraConfig        Json?             // { lora1: LoraEntry[], lora2: LoraEntry[] }
   extraParams       Json?
   promptBlocks      Json?             // Array<{ label, positive, negative?, sortOrder }>
@@ -222,6 +223,7 @@ model Project {
   slug                  String                @unique
   status                JobStatus             @default(draft)
   presetBindings        Json?                 // [{ categoryId, presetId, variantId? }]
+  checkpointName        String?
   projectLevelOverrides Json?
   notes                 String?               @db.Text
   createdAt             DateTime              @default(now())
@@ -247,6 +249,7 @@ model ProjectSection {
   ksampler1             Json?                 // KSamplerParams for KSampler1
   ksampler2             Json?                 // KSamplerParams for KSampler2
   upscaleFactor         Float?                // 放大倍数：1/1.5/2/2.5/3，默认 2
+  checkpointName        String?
   loraConfig            Json?                 // { lora1: LoraEntry[], lora2: LoraEntry[] }
   extraParams           Json?
   latestRunId           String?
@@ -356,6 +359,7 @@ model TrashRecord {
 model LoraAsset {
   id                    String      @id @default(cuid())
   name                  String
+  modelType             String      @default("lora")
   category              String
   fileName              String
   absolutePath          String      @unique

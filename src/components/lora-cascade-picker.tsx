@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { ChevronRight, Folder, FileText, X, ChevronLeft, Search, Zap } from "lucide-react";
+import type { ModelKind } from "@/lib/model-constants";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -25,6 +26,7 @@ type BrowseResult = {
 type LoraCascadePickerProps = {
   value: string;
   onChange: (path: string) => void;
+  kind?: ModelKind;
   disabled?: boolean;
   placeholder?: string;
   /** Size variant for trigger button */
@@ -53,7 +55,17 @@ function pathSegments(p: string): string[] {
 // Shared search hook — recursively search all lora files
 // ---------------------------------------------------------------------------
 
-function useLoraSearch() {
+function buildModelUrl(endpoint: string, kind: ModelKind, params?: URLSearchParams) {
+  const query = params ?? new URLSearchParams();
+  query.set("kind", kind);
+  return `/api/models/${endpoint}?${query.toString()}`;
+}
+
+function modelLabel(kind: ModelKind) {
+  return kind === "checkpoint" ? "checkpoint" : "LoRA";
+}
+
+function useLoraSearch(kind: ModelKind) {
   const [query, setQuery] = useState("");
   const [allFiles, setAllFiles] = useState<BrowseItem[]>([]);
   const [searching, setSearching] = useState(false);
@@ -63,16 +75,29 @@ function useLoraSearch() {
   useEffect(() => {
     if (!query.trim() || loaded.current) return;
     loaded.current = true;
-    setSearching(true);
-    fetch("/api/loras/browse?recursive=true")
-      .then((r) => r.json())
-      .then((json) => {
+
+    let cancelled = false;
+    async function loadFiles() {
+      setSearching(true);
+      const params = new URLSearchParams({ recursive: "true" });
+      try {
+        const res = await fetch(buildModelUrl("browse", kind, params));
+        const json = await res.json();
+        if (cancelled) return;
         const data: BrowseResult = json.data;
         setAllFiles(data.items.filter((i) => i.type === "file"));
-      })
-      .catch(() => {})
-      .finally(() => setSearching(false));
-  }, [query]);
+      } catch {
+        // Search is best-effort; the picker can still browse folders.
+      } finally {
+        if (!cancelled) setSearching(false);
+      }
+    }
+
+    void loadFiles();
+    return () => {
+      cancelled = true;
+    };
+  }, [kind, query]);
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -90,8 +115,9 @@ function useLoraSearch() {
 export function LoraCascadePicker({
   value,
   onChange,
+  kind = "lora",
   disabled = false,
-  placeholder = "选择 LoRA…",
+  placeholder,
   size = "sm",
   autoFocus = false,
 }: LoraCascadePickerProps) {
@@ -105,24 +131,27 @@ export function LoraCascadePicker({
   const [selectedTrigger, setSelectedTrigger] = useState<string | null>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const search = useLoraSearch();
-  const initialFetched = useRef(false);
+  const search = useLoraSearch(kind);
+  const label = modelLabel(kind);
+  const resolvedPlaceholder = placeholder ?? `选择 ${label}…`;
 
-  // Fetch notes + triggerWords for the initial value
+  // Fetch notes + triggerWords for the current value
   useEffect(() => {
-    if (!value || initialFetched.current) return;
-    initialFetched.current = true;
-    fetch(`/api/loras/notes?paths=${encodeURIComponent(value)}`)
+    setSelectedNotes(null);
+    setSelectedTrigger(null);
+    if (!value) return;
+    const params = new URLSearchParams({ paths: value });
+    fetch(buildModelUrl("notes", kind, params))
       .then((r) => r.json())
       .then((json) => {
         const data = json.data?.[value];
         if (data) {
           if (data.notes) setSelectedNotes(data.notes);
-          if (data.triggerWords) setSelectedTrigger(data.triggerWords);
+          if (kind === "lora" && data.triggerWords) setSelectedTrigger(data.triggerWords);
         }
       })
       .catch(() => {});
-  }, [value]);
+  }, [kind, value]);
 
   const fetchDir = useCallback(async (dirPath: string) => {
     setLoading(true);
@@ -130,7 +159,7 @@ export function LoraCascadePicker({
     try {
       const params = new URLSearchParams();
       if (dirPath) params.set("path", dirPath);
-      const res = await fetch(`/api/loras/browse?${params.toString()}`);
+      const res = await fetch(buildModelUrl("browse", kind, params));
       if (!res.ok) {
         const body = await res.json().catch(() => null);
         throw new Error(body?.error?.message ?? `HTTP ${res.status}`);
@@ -145,7 +174,7 @@ export function LoraCascadePicker({
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [kind]);
 
   // Fetch on open
   useEffect(() => {
@@ -176,7 +205,7 @@ export function LoraCascadePicker({
     } else {
       onChange(item.path);
       setSelectedNotes(item.notes ?? null);
-      setSelectedTrigger(item.triggerWords ?? null);
+      setSelectedTrigger(kind === "lora" ? (item.triggerWords ?? null) : null);
       setOpen(false);
     }
   }
@@ -212,10 +241,10 @@ export function LoraCascadePicker({
               <span className="block truncate text-[10px] text-zinc-600">{displayValue}</span>
             </>
           ) : (
-            <span className="block truncate">{displayValue ?? placeholder}</span>
+            <span className="block truncate">{displayValue ?? resolvedPlaceholder}</span>
           )}
         </div>
-        {selectedTrigger && (
+        {kind === "lora" && selectedTrigger && (
           <span className="shrink-0 text-amber-400/50" title={`触发词: ${selectedTrigger}`}>
             <Zap className="size-3" />
           </span>
@@ -242,7 +271,7 @@ export function LoraCascadePicker({
                   type="text"
                   value={search.query}
                   onChange={(e) => search.setQuery(e.target.value)}
-                  placeholder="搜索 LoRA 文件…"
+                  placeholder={`搜索 ${label} 文件…`}
                   className="flex-1 bg-transparent text-xs text-zinc-200 outline-none placeholder:text-zinc-600"
                 />
                 {search.query && (
@@ -275,7 +304,7 @@ export function LoraCascadePicker({
                     onClick={() => handleBreadcrumbClick("")}
                     className="shrink-0 text-sky-400 transition hover:text-sky-300"
                   >
-                    LoRA
+                    {label}
                   </button>
                   {segments.map((seg, i) => {
                     const segPath = segments.slice(0, i + 1).join("/");
@@ -319,7 +348,7 @@ export function LoraCascadePicker({
                   </div>
                 ) : search.results!.length === 0 ? (
                   <div className="flex items-center justify-center py-12 text-xs text-zinc-600">
-                    未找到匹配的 LoRA 文件
+                    未找到匹配的 {label} 文件
                   </div>
                 ) : (
                   <div className="space-y-1">
@@ -349,7 +378,7 @@ export function LoraCascadePicker({
                               <div className="truncate text-xs">{item.name}</div>
                             )}
                             <div className="truncate text-[10px] text-zinc-600">{dirHint}</div>
-                            {item.triggerWords && (
+                            {kind === "lora" && item.triggerWords && (
                               <div className="truncate text-[10px] text-amber-400/50 flex items-center gap-0.5 mt-0.5">
                                 <Zap className="size-2.5 shrink-0" />{item.triggerWords}
                               </div>
@@ -407,7 +436,7 @@ export function LoraCascadePicker({
                           ) : (
                             <span className="truncate text-xs">{item.name}</span>
                           )}
-                          {item.type === "file" && item.triggerWords && (
+                          {kind === "lora" && item.type === "file" && item.triggerWords && (
                             <div className="truncate text-[10px] text-amber-400/50 flex items-center gap-0.5 mt-0.5">
                               <Zap className="size-2.5 shrink-0" />{item.triggerWords}
                             </div>
@@ -455,7 +484,7 @@ export function LoraDirPicker({ onSelect, onCancel }: LoraDirPickerProps) {
     try {
       const params = new URLSearchParams();
       if (dirPath) params.set("path", dirPath);
-      const res = await fetch(`/api/loras/browse?${params.toString()}`);
+      const res = await fetch(buildModelUrl("browse", "lora", params));
       const data: BrowseResult = (await res.json()).data;
       setBrowsePath(data.currentPath);
       setParentPath(data.parentPath);

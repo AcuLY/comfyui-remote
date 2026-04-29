@@ -5,10 +5,12 @@ import { db } from "@/lib/db";
 export type ProjectUpdateInput = {
   aspectRatio?: string | null;
   batchSize?: number | null;
+  checkpointName?: string | null;
 };
 
 export type ProjectCreateInput = {
   title: string;
+  checkpointName: string;
   notes: string | null;
 };
 
@@ -26,6 +28,7 @@ export type ProjectSectionUpdateInput = {
   ksampler1?: Record<string, unknown> | null;
   ksampler2?: Record<string, unknown> | null;
   upscaleFactor?: number | null;
+  checkpointName?: string | null;
   loraConfig?: Record<string, unknown> | null;
 };
 
@@ -76,6 +79,7 @@ export type ProjectSectionRecord = {
   ksampler1: Prisma.JsonValue | null;
   ksampler2: Prisma.JsonValue | null;
   upscaleFactor: number | null;
+  checkpointName: string | null;
   loraConfig: Prisma.JsonValue | null;
   extraParams: Prisma.JsonValue | null;
   runs: LatestRunRecord[];
@@ -88,6 +92,7 @@ export type QueuableProjectRecord = {
   slug: string;
   status: string;
   projectLevelOverrides: Prisma.JsonValue | null;
+  checkpointName: string | null;
 };
 
 export type EnqueuedRunRecord = {
@@ -173,6 +178,7 @@ export function serializeProjectSection(
     seedPolicy2: section.seedPolicy2 ?? null,
     ksampler1: section.ksampler1 ?? null,
     ksampler2: section.ksampler2 ?? null,
+    checkpointName: section.checkpointName,
     loraConfig: section.loraConfig,
     extraParams: section.extraParams,
     promptOverview: {
@@ -307,6 +313,10 @@ export function buildResolvedConfigSnapshot(
     section.seedPolicy1 ?? null;
   const resolvedSeedPolicy2 =
     section.seedPolicy2 ?? null;
+  const resolvedCheckpointName =
+    section.checkpointName ??
+    project.checkpointName ??
+    null;
 
   // Compose final prompt from blocks (v0.2) or legacy fallback
   const promptDraft = buildResolvedPromptDraft(project, section, blocks);
@@ -348,7 +358,9 @@ export function buildResolvedConfigSnapshot(
       seedPolicy1: resolvedSeedPolicy1,
       seedPolicy2: resolvedSeedPolicy2,
       upscaleFactor: section.upscaleFactor ?? null,
+      checkpointName: resolvedCheckpointName,
     },
+    checkpointName: resolvedCheckpointName,
     ksampler1: section.ksampler1 ?? null,
     ksampler2: section.ksampler2 ?? null,
     loraConfig: section.loraConfig,

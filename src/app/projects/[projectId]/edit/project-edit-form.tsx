@@ -9,6 +9,8 @@ import type { ProjectEditData, ProjectFormCategory } from "@/lib/server-data";
 import { BatchSizeQuickFill } from "@/components/batch-size-quick-fill";
 import { UpscaleFactorQuickFill } from "@/components/upscale-factor-quick-fill";
 import { DEFAULT_KSAMPLER1, DEFAULT_KSAMPLER2 } from "@/lib/lora-types";
+import { CheckpointCascadePicker } from "@/components/checkpoint-cascade-picker";
+import { DEFAULT_CHECKPOINT_NAME } from "@/lib/model-constants";
 
 type Props = {
   project: ProjectEditData;
@@ -20,6 +22,7 @@ export function ProjectEditForm({ project, categories }: Props) {
   const [isPending, startTransition] = useTransition();
 
   const [title, setTitle] = useState(project.title);
+  const [checkpointName, setCheckpointName] = useState(project.checkpointName ?? DEFAULT_CHECKPOINT_NAME);
   const [notes, setNotes] = useState(project.notes ?? "");
 
   // Initialize selections from presetBindings
@@ -58,7 +61,7 @@ export function ProjectEditForm({ project, categories }: Props) {
   }
 
   function handleSubmit() {
-    if (!title.trim()) return;
+    if (!title.trim() || !checkpointName.trim()) return;
 
     const presetBindings = Object.entries(selections)
       .filter(([, presetId]) => presetId)
@@ -67,6 +70,7 @@ export function ProjectEditForm({ project, categories }: Props) {
     const input: UpdateProjectInput = {
       projectId: project.id,
       title: title.trim(),
+      checkpointName: checkpointName.trim(),
       presetBindings,
       notes: notes.trim() || null,
       projectLevelOverrides: {
@@ -133,6 +137,15 @@ export function ProjectEditForm({ project, categories }: Props) {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-2 text-sm text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-xs text-zinc-400">Checkpoint</label>
+          <CheckpointCascadePicker
+            value={checkpointName}
+            onChange={setCheckpointName}
+            size="md"
           />
         </div>
 
@@ -325,7 +338,7 @@ export function ProjectEditForm({ project, categories }: Props) {
       <button
         type="button"
         onClick={handleSubmit}
-        disabled={isPending || !title.trim()}
+        disabled={isPending || !title.trim() || !checkpointName.trim()}
         className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-sky-500/20 bg-sky-500/10 px-3 py-2.5 text-sm font-medium text-sky-300 transition hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-40"
       >
         {isPending ? (

@@ -5,7 +5,7 @@ import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import type { ProjectTemplateSectionData } from "@/lib/server-data";
 import { resolveVariantContent } from "./preset-variant";
-import { sortSectionLoraEntriesByCategoryOrder, createBindingId, createLoraEntryId, toJsonValue } from "./_helpers";
+import { createBindingId, createLoraEntryId, toJsonValue } from "./_helpers";
 import type { PresetBinding } from "./project";
 
 // ---------------------------------------------------------------------------
@@ -23,6 +23,19 @@ export type UpdateProjectTemplateInput = {
   name?: string;
   description?: string | null;
   sections?: ProjectTemplateSectionData[];
+};
+
+type ImportLoraEntry = {
+  id: string;
+  path: string;
+  weight: number;
+  enabled: boolean;
+  source: "preset" | "manual";
+  sourceLabel?: string;
+  sourceColor?: string;
+  sourceName?: string;
+  bindingId?: string;
+  groupBindingId?: string;
 };
 
 // ---------------------------------------------------------------------------
@@ -48,6 +61,7 @@ export async function createProjectTemplate(
           ksampler1: s.ksampler1 ? toJsonValue(s.ksampler1) : undefined,
           ksampler2: s.ksampler2 ? toJsonValue(s.ksampler2) : undefined,
           upscaleFactor: s.upscaleFactor,
+          checkpointName: s.checkpointName,
           loraConfig: s.loraConfig ? toJsonValue(s.loraConfig) : undefined,
           extraParams: s.extraParams ? toJsonValue(s.extraParams) : undefined,
           promptBlocks:
@@ -96,6 +110,7 @@ export async function updateProjectTemplate(
               ? (JSON.parse(JSON.stringify(s.ksampler2)) as Prisma.InputJsonValue)
               : undefined,
             upscaleFactor: s.upscaleFactor,
+            checkpointName: s.checkpointName,
             loraConfig: s.loraConfig
               ? (JSON.parse(JSON.stringify(s.loraConfig)) as Prisma.InputJsonValue)
               : undefined,
@@ -147,6 +162,7 @@ export async function copyProjectTemplateSection(sectionId: string): Promise<str
       ksampler1: section.ksampler1 ?? undefined,
       ksampler2: section.ksampler2 ?? undefined,
       upscaleFactor: section.upscaleFactor ?? undefined,
+      checkpointName: section.checkpointName,
       loraConfig: section.loraConfig ?? undefined,
       extraParams: section.extraParams ?? undefined,
       promptBlocks: section.promptBlocks ?? undefined,
@@ -227,6 +243,7 @@ export async function importTemplateToProject(
     where: { id: projectId },
     select: {
       presetBindings: true,
+      checkpointName: true,
       sections: {
         orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
         select: { id: true, name: true, sortOrder: true },
@@ -341,12 +358,12 @@ export async function importTemplateToProject(
           ...(ts.ksampler1 ? { ksampler1: ts.ksampler1 } : {}),
           ...(ts.ksampler2 ? { ksampler2: ts.ksampler2 } : {}),
           ...(ts.upscaleFactor ? { upscaleFactor: ts.upscaleFactor } : {}),
+          ...(ts.checkpointName ? { checkpointName: ts.checkpointName } : {}),
           extraParams: ts.extraParams ?? undefined,
         },
       });
 
       // 2. Collect all blocks (from project bindings + from template)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const allBlocks: Array<{
         type: "preset" | "custom";
         sourceId: string | null;
@@ -358,7 +375,7 @@ export async function importTemplateToProject(
         positive: string;
         negative: string | null;
         positivePromptOrder: number;
-        loras: { lora1: any[]; lora2: any[] };
+        loras: { lora1: ImportLoraEntry[]; lora2: ImportLoraEntry[] };
       }> = [];
 
       // 2a. Add blocks from project bindings
@@ -383,7 +400,7 @@ export async function importTemplateToProject(
           enabled: b.enabled,
           source: "preset" as const,
           sourceLabel: preset.category?.name,
-          sourceColor: preset.category?.color,
+          sourceColor: preset.category?.color ?? undefined,
           sourceName: preset.name,
           bindingId,
         });
@@ -443,7 +460,7 @@ export async function importTemplateToProject(
           const newGroupBindingId = oldGroupBindingId ? (groupBindingIdMap.get(oldGroupBindingId) ?? null) : null;
 
           // Collect loras for this block (will be merged later)
-          const blockLoras: { lora1: any[]; lora2: any[] } = { lora1: [], lora2: [] };
+          const blockLoras: { lora1: ImportLoraEntry[]; lora2: ImportLoraEntry[] } = { lora1: [], lora2: [] };
 
           allBlocks.push({
             type: blockType,
@@ -467,8 +484,7 @@ export async function importTemplateToProject(
       // 4. Create blocks in sorted order
       const positiveParts: string[] = [];
       const negativeParts: string[] = [];
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const loraConfig: { lora1: any[]; lora2: any[] } = { lora1: [], lora2: [] };
+      const loraConfig: { lora1: ImportLoraEntry[]; lora2: ImportLoraEntry[] } = { lora1: [], lora2: [] };
 
       for (let sortOrder = 0; sortOrder < allBlocks.length; sortOrder++) {
         const block = allBlocks[sortOrder];
@@ -550,7 +566,7 @@ export async function importTemplateToProject(
             const newGroupBindingId = oldGroupBindingId ? (loraGroupBindingIdMap.get(oldGroupBindingId) ?? undefined) : undefined;
 
             loraConfig[dimension].push({
-              id: e.id ?? createLoraEntryId(),
+              id: typeof e.id === "string" ? e.id : createLoraEntryId(),
               path,
               weight: typeof e.weight === "number" ? e.weight : 1,
               enabled: typeof e.enabled === "boolean" ? e.enabled : true,
@@ -615,6 +631,7 @@ export async function saveProjectAsTemplate(
     where: { id: projectId },
     select: {
       presetBindings: true,
+      checkpointName: true,
       sections: {
         orderBy: { sortOrder: "asc" },
         include: {
@@ -727,6 +744,9 @@ export async function saveProjectAsTemplate(
             ksampler1: section.ksampler1 ?? undefined,
             ksampler2: section.ksampler2 ?? undefined,
             upscaleFactor: section.upscaleFactor ?? undefined,
+            checkpointName: section.checkpointName && section.checkpointName !== project.checkpointName
+              ? section.checkpointName
+              : undefined,
             loraConfig: (templateLoraConfig && (templateLoraConfig.lora1.length > 0 || templateLoraConfig.lora2.length > 0))
               ? templateLoraConfig
               : undefined,

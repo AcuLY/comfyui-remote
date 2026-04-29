@@ -10,6 +10,7 @@ import { AspectRatioPicker } from "@/components/aspect-ratio-picker";
 import { BatchSizeQuickFill } from "@/components/batch-size-quick-fill";
 import { UpscaleFactorQuickFill } from "@/components/upscale-factor-quick-fill";
 import { KSamplerPanel, parseInitialKSampler } from "@/components/ksampler-panel";
+import { CheckpointCascadePicker } from "@/components/checkpoint-cascade-picker";
 import { ImportPresetPanel, type ImportCategory } from "@/components/section-editor";
 import { LoraListEditor } from "@/components/lora-list-editor";
 import { TemplatePromptBlockEditor, type TemplateBlockData } from "@/components/template-prompt-block-editor";
@@ -91,6 +92,7 @@ export function TemplateSectionDetailClient({
   const [shortSidePx, setShortSidePx] = useState<number | null>(initialSection.shortSidePx ?? null);
   const [batchSize, setBatchSize] = useState<string | null>(initialSection.batchSize?.toString() ?? null);
   const [upscaleFactor, setUpscaleFactor] = useState<string | null>(initialSection.upscaleFactor?.toString() ?? null);
+  const [checkpointName, setCheckpointName] = useState<string | null>(initialSection.checkpointName ?? null);
   const [ks1, setKs1] = useState<KSamplerParams | null>(() => {
     if (!initialSection.ksampler1) return null;
     return parseInitialKSampler(initialSection.ksampler1, DEFAULT_KSAMPLER1);
@@ -239,6 +241,7 @@ export function TemplateSectionDetailClient({
       ksampler1: ks1 as unknown as Record<string, unknown> | null,
       ksampler2: ks2 as unknown as Record<string, unknown> | null,
       upscaleFactor: upscaleFactor ? parseFloat(upscaleFactor) : null,
+      checkpointName: checkpointName?.trim() ? checkpointName.trim() : null,
       loraConfig: loraConfig as unknown as Record<string, unknown>,
       extraParams: initialSection.extraParams,
       promptBlocks,
@@ -252,6 +255,7 @@ export function TemplateSectionDetailClient({
     ks2,
     loraConfig,
     name,
+    checkpointName,
     promptBlocks,
     sectionIndex,
     shortSidePx,
@@ -614,6 +618,44 @@ export function TemplateSectionDetailClient({
         <div className="flex items-center justify-between">
           <div className="text-xs font-medium text-zinc-400">运行参数</div>
           <div className="text-[10px] text-zinc-500">空值参数在导入时不会覆盖项目设置</div>
+        </div>
+
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <div className="text-[11px] text-zinc-500">Checkpoint</div>
+            {checkpointName !== null && (
+              <button
+                type="button"
+                onClick={() => {
+                  setCheckpointName(null);
+                  scheduleSaveAfterState();
+                }}
+                className="text-[10px] text-zinc-500 hover:text-zinc-300"
+              >
+                清除
+              </button>
+            )}
+          </div>
+          {checkpointName === null ? (
+            <button
+              type="button"
+              onClick={() => {
+                setCheckpointName("");
+              }}
+              className="w-full rounded-xl border border-dashed border-white/10 bg-white/[0.02] px-2.5 py-2 text-xs text-zinc-500 transition hover:bg-white/[0.04] hover:text-zinc-300"
+            >
+              点击设置
+            </button>
+          ) : (
+            <CheckpointCascadePicker
+              value={checkpointName}
+              onChange={(value) => {
+                setCheckpointName(value);
+                scheduleSaveAfterState();
+              }}
+              disabled={isPending}
+            />
+          )}
         </div>
 
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">

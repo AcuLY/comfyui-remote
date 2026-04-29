@@ -36,7 +36,7 @@ ComfyUI Remote — 移动优先的 ComfyUI 管理后台，覆盖：
 | `/projects/[projectId]/edit` | ✅ 参数编辑 |
 | `/projects/[projectId]/sections/[sectionId]/results` | ✅ 结果 Gallery（Lightbox + 精选标记） |
 | `/trash` | ✅ 恢复按钮 |
-| `/assets/loras` | ✅ 文件管理器（浏览 / 上传 / 移动 / 备注） |
+| `/assets/models` | ✅ 模型文件管理器（checkpoints / LoRA 浏览、上传、移动、备注） |
 | `/assets/prompts` | ✅ 提示词分类与预设管理（CRUD + 拖拽排序） |
 | `/settings` | ✅ 设置首页 |
 | `/settings/workflows` | ✅ 模板列表 + 导入 |
@@ -62,10 +62,10 @@ ComfyUI Remote — 移动优先的 ComfyUI 管理后台，覆盖：
 | `/api/images/[imageId]/featured` | POST | 切换精选状态 |
 | `/api/images/[...path]` | GET | 图片文件代理 |
 | `/api/trash` | GET | 回收站列表 |
-| `/api/loras` | GET/POST | LoRA 列表 / 上传（支持 targetDir） |
-| `/api/loras/browse` | GET | LoRA 目录浏览（文件系统扫描） |
-| `/api/loras/move` | POST | LoRA 文件移动 |
-| `/api/loras/notes` | PUT | LoRA 文件备注（upsert） |
+| `/api/models` | GET/POST | 模型列表 / 上传（支持 kind、targetDir） |
+| `/api/models/browse` | GET | 模型目录浏览（LoRA / checkpoint） |
+| `/api/models/move` | POST | 模型文件移动 |
+| `/api/models/notes` | GET/PUT | 模型备注（checkpoint 仅备注，LoRA 含触发词） |
 | `/api/project-create-options` | GET | 创建任务选项 |
 | `/api/path-maps` | GET | 路径映射 |
 | `/api/audit-logs` | GET | 审计日志 |

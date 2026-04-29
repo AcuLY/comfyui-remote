@@ -3,7 +3,6 @@
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
-import { recordSectionChange } from "@/server/services/section-change-history-service";
 import type { PresetBinding } from "./project";
 import { resolveVariantContent } from "./preset-variant";
 import { createBindingId, createLoraEntryId } from "./_helpers";
@@ -273,22 +272,7 @@ export async function reorderSections(projectId: string, sectionIds: string[]): 
     return { ok: false, message: "有正在执行或排队中的任务，请等待完成后再调整顺序" };
   }
 
-  // 1. 查询旧 sortOrder、name 和 project title（用于文件夹重命名）
-  const sections = await prisma.projectSection.findMany({
-    where: { id: { in: sectionIds } },
-    select: { id: true, sortOrder: true, name: true },
-  });
-  const project = await prisma.project.findUnique({
-    where: { id: projectId },
-    select: { title: true },
-  });
-
-  const oldSortMap = new Map(sections.map((s) => [s.id, {
-    sortOrder: s.sortOrder,
-    name: s.name || "position",
-  }]));
-
-  // 2. 批量更新 sortOrder
+  // 1. 批量更新 sortOrder
   await prisma.$transaction(
     sectionIds.map((id, index) =>
       prisma.projectSection.update({
@@ -335,6 +319,7 @@ export async function copySection(sectionId: string): Promise<string | null> {
       aspectRatio: section.aspectRatio,
       shortSidePx: section.shortSidePx,
       batchSize: section.batchSize,
+      checkpointName: section.checkpointName,
       // v0.3: dual seedPolicy
       seedPolicy1: section.seedPolicy1,
       seedPolicy2: section.seedPolicy2,

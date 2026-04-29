@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
+import { DEFAULT_CHECKPOINT_NAME } from "@/lib/model-constants";
 import { copyProject as copyProjectRepo } from "@/server/repositories/project-repository";
 
 // ---------------------------------------------------------------------------
@@ -13,6 +14,7 @@ export type PresetBinding = { categoryId: string; presetId: string; variantId?: 
 
 export type CreateProjectInput = {
   title: string;
+  checkpointName: string;
   presetBindings: PresetBinding[];
   notes: string | null;
 };
@@ -20,6 +22,7 @@ export type CreateProjectInput = {
 export type UpdateProjectInput = {
   projectId: string;
   title?: string;
+  checkpointName?: string | null;
   presetBindings?: PresetBinding[];
   notes?: string | null;
   sections?: {
@@ -52,6 +55,8 @@ export type UpdateProjectInput = {
 // ---------------------------------------------------------------------------
 
 export async function createProject(input: CreateProjectInput): Promise<string> {
+  const checkpointName = input.checkpointName.trim() || DEFAULT_CHECKPOINT_NAME;
+
   // 生成唯一 slug
   const baseSlug = input.title
     .toLowerCase()
@@ -69,6 +74,7 @@ export async function createProject(input: CreateProjectInput): Promise<string> 
       title: input.title,
       slug,
       status: "draft",
+      checkpointName,
       presetBindings: input.presetBindings.length > 0 ? input.presetBindings : undefined,
       notes: input.notes,
     },

@@ -52,7 +52,8 @@ function TriggerWordHint({ loraPath }: { loraPath: string }) {
     }
     setLoading(true);
     try {
-      const res = await fetch(`/api/loras/notes?paths=${encodeURIComponent(loraPath)}`);
+      const params = new URLSearchParams({ kind: "lora", paths: loraPath });
+      const res = await fetch(`/api/models/notes?${params.toString()}`);
       const json = await res.json();
       const data = json.data?.[loraPath];
       setTriggerWords(data?.triggerWords || "");

@@ -9,7 +9,6 @@ import {
   type ListProjectsFilters,
   type ProjectCreateOptions,
   type LatestRunRecord,
-  type QueuableProjectRecord,
   getLatestRunsById,
   summarizeRunImages,
   serializeLatestRun,
@@ -194,6 +193,7 @@ export async function getProjectAgentContext(projectId: string) {
       createdAt: true,
       updatedAt: true,
       projectLevelOverrides: true,
+      checkpointName: true,
       _count: {
         select: { sections: true },
       },
@@ -397,6 +397,7 @@ export async function createProject(input: ProjectCreateInput) {
         title: input.title,
         slug,
         status: JobStatus.draft,
+        checkpointName: input.checkpointName,
         notes: input.notes,
       },
       select: {
@@ -415,6 +416,7 @@ export async function updateProject(projectId: string, input: ProjectUpdateInput
     where: { id: projectId },
     select: {
       id: true,
+      checkpointName: true,
       projectLevelOverrides: true,
     },
   });
@@ -428,6 +430,9 @@ export async function updateProject(projectId: string, input: ProjectUpdateInput
   const projectLevelOverrides = buildProjectLevelOverridesUpdate(project.projectLevelOverrides, input);
   if (projectLevelOverrides !== undefined) {
     data.projectLevelOverrides = projectLevelOverrides;
+  }
+  if (input.checkpointName !== undefined) {
+    data.checkpointName = input.checkpointName;
   }
 
   await db.project.update({
@@ -508,6 +513,10 @@ export async function updateProjectSection(
     data.upscaleFactor = input.upscaleFactor;
   }
 
+  if (input.checkpointName !== undefined) {
+    data.checkpointName = input.checkpointName;
+  }
+
   if (input.loraConfig !== undefined) {
     data.loraConfig = input.loraConfig
       ? (JSON.parse(JSON.stringify(input.loraConfig)) as Prisma.InputJsonValue)
@@ -543,6 +552,7 @@ export async function copyProject(projectId: string) {
             ksampler1: true,
             ksampler2: true,
             upscaleFactor: true,
+            checkpointName: true,
             loraConfig: true,
             extraParams: true,
             promptBlocks: {
@@ -572,6 +582,7 @@ export async function copyProject(projectId: string) {
         slug: identity.slug,
         status: JobStatus.draft,
         projectLevelOverrides: cloneJsonValueForCreate(project.projectLevelOverrides),
+        checkpointName: project.checkpointName,
         notes: project.notes,
         presetBindings: cloneJsonValueForCreate(project.presetBindings),
         sections: {
@@ -586,6 +597,7 @@ export async function copyProject(projectId: string) {
             seedPolicy2: section.seedPolicy2,
             ksampler1: cloneJsonValueForCreate(section.ksampler1),
             ksampler2: cloneJsonValueForCreate(section.ksampler2),
+            checkpointName: section.checkpointName,
             loraConfig: cloneJsonValueForCreate(section.loraConfig),
             extraParams: cloneJsonValueForCreate(section.extraParams),
             promptBlocks: {

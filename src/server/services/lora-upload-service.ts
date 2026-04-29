@@ -27,11 +27,11 @@ function isWithinBase(baseDir: string, targetPath: string): boolean {
 /**
  * Save an uploaded LoRA file to disk and create a DB record.
  * @param file - The uploaded file
- * @param targetDir - Relative directory within LORA_BASE_DIR (e.g. "characters/miku" or "")
+ * @param targetDir - Relative directory within MODEL_BASE_DIR/loras (e.g. "characters/miku" or "")
  */
 export async function saveUploadedLora(file: File, targetDir: string) {
   if (!env.loraBaseDir) {
-    throw new LoraUploadError("LORA_BASE_DIR is not configured.", 500);
+    throw new LoraUploadError("MODEL_BASE_DIR is not configured.", 500);
   }
 
   // Sanitize targetDir: allow empty (root), but prevent traversal
@@ -55,6 +55,7 @@ export async function saveUploadedLora(file: File, targetDir: string) {
 
   const record = await db.loraAsset.create({
     data: {
+      modelType: "lora",
       name: safeName,
       category: normalizedDir || ".",
       fileName: safeName,

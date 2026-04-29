@@ -6,6 +6,8 @@ import { ChevronDown, Loader2, Plus } from "lucide-react";
 import { createProject } from "@/lib/actions";
 import { toast } from "sonner";
 import type { ProjectFormCategory } from "@/lib/server-data";
+import { CheckpointCascadePicker } from "@/components/checkpoint-cascade-picker";
+import { DEFAULT_CHECKPOINT_NAME } from "@/lib/model-constants";
 
 type Props = {
   categories: ProjectFormCategory[];
@@ -16,6 +18,7 @@ export function ProjectForm({ categories }: Props) {
   const [isPending, startTransition] = useTransition();
 
   const [title, setTitle] = useState("");
+  const [checkpointName, setCheckpointName] = useState(DEFAULT_CHECKPOINT_NAME);
   // categoryId → { presetId, variantId? } (one per category, empty string = not selected)
   const [selections, setSelections] = useState<Record<string, { presetId: string; variantId?: string }>>(() => {
     const init: Record<string, { presetId: string; variantId?: string }> = {};
@@ -39,7 +42,7 @@ export function ProjectForm({ categories }: Props) {
   }
 
   function handleSubmit() {
-    if (!title.trim()) return;
+    if (!title.trim() || !checkpointName.trim()) return;
 
     const presetBindings = Object.entries(selections)
       .filter(([, selection]) => selection.presetId)
@@ -53,6 +56,7 @@ export function ProjectForm({ categories }: Props) {
       try {
         const newProjectId = await createProject({
           title: title.trim(),
+          checkpointName: checkpointName.trim(),
           presetBindings,
           notes: notes.trim() || null,
         });
@@ -89,6 +93,15 @@ export function ProjectForm({ categories }: Props) {
           onChange={(e) => setTitle(e.target.value)}
           placeholder="例：Miku spring batch B"
           className="w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-sky-500/40"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <label className="text-xs text-zinc-400">Checkpoint *</label>
+        <CheckpointCascadePicker
+          value={checkpointName}
+          onChange={setCheckpointName}
+          size="md"
         />
       </div>
 
@@ -168,7 +181,7 @@ export function ProjectForm({ categories }: Props) {
       <button
         type="button"
         onClick={handleSubmit}
-        disabled={isPending || !title.trim()}
+        disabled={isPending || !title.trim() || !checkpointName.trim()}
         className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-sky-500/20 bg-sky-500/10 px-4 py-3 text-sm font-medium text-sky-300 transition hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-40"
       >
         {isPending ? (

@@ -3,7 +3,6 @@ import { env } from "@/lib/env";
 import { createLogger } from "@/lib/logger";
 import { resolveResolution } from "@/lib/aspect-ratio-utils";
 import {
-  parseLoraBindings,
   parseKSamplerParams,
   parseSectionLoraConfig,
   DEFAULT_KSAMPLER1,
@@ -245,6 +244,7 @@ export function extractExecutionMeta(
     meta.shortSidePx = promptDraft.parameters.shortSidePx ?? null;
     meta.batchSize = promptDraft.parameters.batchSize ?? null;
     meta.upscaleFactor = promptDraft.parameters.upscaleFactor ?? null;
+    meta.checkpointName = promptDraft.checkpointName ?? promptDraft.parameters.checkpointName ?? null;
     meta.workflowId = promptDraft.workflowId ?? null;
     // LoRA summary (paths + weights)
     const loraConfig = promptDraft.loraConfig as Record<string, unknown> | null;
@@ -401,14 +401,14 @@ async function loadStandardWorkflowTemplate(): Promise<JsonRecord> {
  * so that all runs use the fully-mapped template with proper LoRA/KSampler support.
  * The fallback builder is kept as a last resort if the template file is missing.
  */
-function shouldUseStandardWorkflow(_draft: ComfyPromptDraft): boolean {
+function shouldUseStandardWorkflow(): boolean {
   return true;
 }
 
 async function resolveStandardWorkflowPrompt(
   promptDraft: ComfyPromptDraft,
 ): Promise<JsonRecord | null> {
-  if (!shouldUseStandardWorkflow(promptDraft)) {
+  if (!shouldUseStandardWorkflow()) {
     return null;
   }
 
@@ -444,6 +444,7 @@ async function resolveStandardWorkflowPrompt(
     height,
     batchSize: promptDraft.parameters.batchSize ?? 1,
     upscaleFactor: promptDraft.parameters.upscaleFactor ?? 2,
+    checkpointName: promptDraft.checkpointName ?? promptDraft.parameters.checkpointName ?? null,
     lora1List: toBindings(loraConfig.lora1),
     lora2List: toBindings(loraConfig.lora2),
     ksampler1,
@@ -807,7 +808,7 @@ export async function executeComfyPromptDraft(
   }
 
   const outputImages = extractOutputImages(historyEntry);
-  const executionMeta = extractExecutionMeta(validatedDraft.apiPrompt);
+  const executionMeta = extractExecutionMeta(validatedDraft.apiPrompt, promptDraft);
 
   timer.done({ comfyPromptId, imageCount: outputImages.length });
 

@@ -1,3 +1,5 @@
+import path from "node:path";
+
 function readPositiveIntegerEnv(name: string, fallback: number) {
   const rawValue = process.env[name];
 
@@ -32,7 +34,13 @@ export const env = {
   comfyRequestTimeoutMs: readPositiveIntegerEnv("COMFY_REQUEST_TIMEOUT_MS", 10_000),
   comfyHistoryPollIntervalMs: readPositiveIntegerEnv("COMFY_HISTORY_POLL_INTERVAL_MS", 2_000),
   comfyHistoryMaxAttempts: readPositiveIntegerEnv("COMFY_HISTORY_MAX_ATTEMPTS", 300),
-  loraBaseDir: process.env.LORA_BASE_DIR ?? "",
+  modelBaseDir: process.env.MODEL_BASE_DIR ?? "",
+  loraBaseDir: process.env.MODEL_BASE_DIR
+    ? path.join(process.env.MODEL_BASE_DIR, "loras")
+    : "",
+  checkpointBaseDir: process.env.MODEL_BASE_DIR
+    ? path.join(process.env.MODEL_BASE_DIR, "checkpoints")
+    : "",
 
   // ComfyUI 进程管理
   comfyLaunchCmd: process.env.COMFY_LAUNCH_CMD ?? "",
