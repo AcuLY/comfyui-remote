@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { ChangeDiffView } from "@/components/change-diff-view";
 import type { SectionChangeDimension } from "@/server/services/section-change-history-service";
 
 type SectionChangeHistoryEntry = {
@@ -82,17 +83,6 @@ function Summary({ entry }: { entry: SectionChangeHistoryEntry }) {
   return <div className="truncate text-[11px] text-zinc-500">{params || "运行参数已更新"}</div>;
 }
 
-function JsonBlock({ label, value }: { label: string; value: unknown }) {
-  return (
-    <div className="min-w-0 flex-1">
-      <div className="mb-1 text-[10px] font-medium text-zinc-500">{label}</div>
-      <pre className="max-h-52 overflow-auto rounded-lg border border-white/5 bg-black/20 p-2 text-[10px] leading-4 text-zinc-400">
-        {stringifyCompact(value)}
-      </pre>
-    </div>
-  );
-}
-
 export function SectionChangeHistory({ history }: SectionChangeHistoryProps) {
   const [activeTab, setActiveTab] = useState<SectionChangeDimension>("runParams");
   const entries = history[activeTab] ?? [];
@@ -144,9 +134,8 @@ export function SectionChangeHistory({ history }: SectionChangeHistoryProps) {
                   <div className="shrink-0 text-[10px] text-zinc-600">{formatDate(entry.createdAt)}</div>
                 </div>
               </summary>
-              <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
-                <JsonBlock label="变更前" value={entry.before} />
-                <JsonBlock label="变更后" value={entry.after} />
+              <div className="mt-3">
+                <ChangeDiffView before={entry.before} after={entry.after} />
               </div>
             </details>
           ))}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ChangeDiffView } from "@/components/change-diff-view";
 import type {
   PresetHistoryEntry,
 } from "@/server/services/preset-change-history-service";
@@ -14,13 +15,6 @@ function formatHistoryDate(value: string) {
     minute: "2-digit",
     second: "2-digit",
   }).format(new Date(value));
-}
-
-function stringifyHistoryValue(value: unknown) {
-  if (value === null || value === undefined) return "空";
-  if (typeof value === "string") return value || "空";
-  if (typeof value === "number" || typeof value === "boolean") return String(value);
-  return JSON.stringify(value, null, 2);
 }
 
 function historySummary(entry: PresetHistoryEntry<string>) {
@@ -93,19 +87,8 @@ export function PresetChangeHistoryPanel<Dimension extends string>({
                   <div className="shrink-0 text-[10px] text-zinc-600">{formatHistoryDate(entry.createdAt)}</div>
                 </div>
               </summary>
-              <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-2">
-                <div className="min-w-0">
-                  <div className="mb-1 text-[10px] font-medium text-zinc-500">变更前</div>
-                  <pre className="max-h-48 overflow-auto rounded-lg border border-white/5 bg-black/20 p-2 text-[10px] leading-4 text-zinc-400">
-                    {stringifyHistoryValue(entry.before)}
-                  </pre>
-                </div>
-                <div className="min-w-0">
-                  <div className="mb-1 text-[10px] font-medium text-zinc-500">变更后</div>
-                  <pre className="max-h-48 overflow-auto rounded-lg border border-white/5 bg-black/20 p-2 text-[10px] leading-4 text-zinc-400">
-                    {stringifyHistoryValue(entry.after)}
-                  </pre>
-                </div>
+              <div className="mt-2">
+                <ChangeDiffView before={entry.before} after={entry.after} />
               </div>
             </details>
           ))}
