@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { PageHeader } from "@/components/page-header";
 import { SectionCard } from "@/components/section-card";
 import { StatChip } from "@/components/stat-chip";
-import { cancelRun, runSection, clearRuns, restoreImage } from "@/lib/actions";
+import { cancelRun, runSection, clearRuns, clearActiveRuns, restoreImage } from "@/lib/actions";
 import type { QueuePagination, QueueRun, RunningRun, FailedRun, TrashItem } from "@/lib/types";
 
 export type QueueTabKey = "pending" | "running" | "failed" | "trash";
@@ -153,6 +153,19 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
       await restoreImage(trashRecordId);
       setTrashItems((prev) => prev.filter((item) => item.id !== trashRecordId));
       toast.success("图片已恢复");
+    });
+  }
+
+  function handleClearActiveRuns() {
+    startTransition(async () => {
+      const result = await clearActiveRuns();
+      if (result.ok) {
+        toast.success(`已清空 ${result.count} 个运行中任务`);
+        setRunningRuns([]);
+        router.refresh();
+      } else {
+        toast.error(result.error ?? "清空运行中队列失败");
+      }
     });
   }
 
@@ -353,6 +366,16 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
       {/* Running tab */}
       {activeTab === "running" && (
         <SectionCard title="运行中" subtitle="自动每 5 秒刷新。">
+          <div className="mb-3 flex justify-end">
+            <button
+              type="button"
+              disabled={isPending || runningRuns.length === 0}
+              onClick={handleClearActiveRuns}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-1.5 text-[11px] text-red-400 transition hover:bg-red-500/20 disabled:opacity-40"
+            >
+              <Trash2 className="size-3.5" /> 清空运行中队列
+            </button>
+          </div>
           <div className="grid grid-cols-1 gap-2.5 justify-items-center md:grid-cols-2">
             {runningRuns.length === 0 && (
               <div className="w-full rounded-xl border border-white/10 bg-white/[0.02] p-5 text-center text-sm text-zinc-500 md:col-span-2">
@@ -390,7 +413,6 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
                     type="button"
                     disabled={isPending}
                     onClick={() => {
-                      if (!confirm(`确认取消任务「${run.projectTitle} / ${run.sectionName}」？`)) return;
                       startTransition(async () => {
                         const result = await cancelRun(run.id);
                         if (result.ok) {

@@ -2,9 +2,12 @@ import { fail, ok } from "@/lib/api-response";
 import { createProjectTemplate } from "@/lib/actions";
 import { listProjectTemplates } from "@/lib/server-data";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const templates = await listProjectTemplates();
+    const url = new URL(request.url);
+    const templates = await listProjectTemplates({
+      name: url.searchParams.get("name") ?? undefined,
+    });
     return ok(templates);
   } catch (e: unknown) {
     return fail(e instanceof Error ? e.message : "Unknown error", 500);

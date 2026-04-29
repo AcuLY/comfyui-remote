@@ -1,6 +1,5 @@
 import { NextRequest } from "next/server";
 import { ok, fail } from "@/lib/api-response";
-import { createPreset } from "@/lib/actions";
 import { listPresets, parsePresetQuery } from "@/server/services/preset-query-service";
 
 export async function GET(request: NextRequest) {
@@ -10,16 +9,5 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     return fail(message, 500);
-  }
-}
-
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const result = await createPreset(body);
-    return ok(result);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return fail(message, 400);
   }
 }

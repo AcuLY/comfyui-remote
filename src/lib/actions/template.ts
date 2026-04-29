@@ -141,10 +141,47 @@ export async function getTemplateOptionsForClient(): Promise<
 // Import Template into Project
 // ---------------------------------------------------------------------------
 
+export type TemplateImportDuplicatePolicy = "skip" | "replace" | "append" | "error";
+
+export type TemplateImportOptions = {
+  dryRun?: boolean;
+  onExistingSections?: TemplateImportDuplicatePolicy;
+};
+
+export type TemplateImportPlanItem = {
+  templateSectionId: string;
+  templateSectionName: string | null;
+  sortOrder: number;
+  action: "import" | "skip" | "error";
+  reason?: string;
+};
+
+export type TemplateImportResult = {
+  dryRun: boolean;
+  onExistingSections: TemplateImportDuplicatePolicy;
+  importedCount: number;
+  skippedCount: number;
+  replacedExistingCount: number;
+  sections: TemplateImportPlanItem[];
+};
+
 export async function importTemplateToProject(
   projectId: string,
   templateId: string,
-): Promise<number> {
+): Promise<number>;
+export async function importTemplateToProject(
+  projectId: string,
+  templateId: string,
+  options: TemplateImportOptions,
+): Promise<TemplateImportResult>;
+export async function importTemplateToProject(
+  projectId: string,
+  templateId: string,
+  options?: TemplateImportOptions,
+): Promise<number | TemplateImportResult> {
+  const onExistingSections = options?.onExistingSections ?? "append";
+  const dryRun = options?.dryRun ?? false;
+
   const template = await prisma.projectTemplate.findUnique({
     where: { id: templateId },
     include: { sections: { orderBy: { sortOrder: "asc" } } },
@@ -153,13 +190,72 @@ export async function importTemplateToProject(
 
   const project = await prisma.project.findUnique({
     where: { id: projectId },
-    select: { presetBindings: true },
+    select: {
+      presetBindings: true,
+      sections: {
+        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+        select: { id: true, name: true, sortOrder: true },
+      },
+    },
   });
   if (!project) throw new Error("PROJECT_NOT_FOUND");
 
-  const currentSectionCount = await prisma.projectSection.count({
-    where: { projectId },
+  const currentSectionCount = project.sections.length;
+  const existingSectionNames = new Set(
+    project.sections
+      .map((section) => section.name?.trim().toLocaleLowerCase())
+      .filter((name): name is string => Boolean(name)),
+  );
+  const plan: TemplateImportPlanItem[] = template.sections.map((section) => {
+    const sectionName = section.name?.trim().toLocaleLowerCase();
+    const hasDuplicate = Boolean(sectionName && existingSectionNames.has(sectionName));
+
+    if (hasDuplicate && onExistingSections === "skip") {
+      return {
+        templateSectionId: section.id,
+        templateSectionName: section.name,
+        sortOrder: section.sortOrder,
+        action: "skip",
+        reason: "Section name already exists in project",
+      };
+    }
+
+    if (hasDuplicate && onExistingSections === "error") {
+      return {
+        templateSectionId: section.id,
+        templateSectionName: section.name,
+        sortOrder: section.sortOrder,
+        action: "error",
+        reason: "Section name already exists in project",
+      };
+    }
+
+    return {
+      templateSectionId: section.id,
+      templateSectionName: section.name,
+      sortOrder: section.sortOrder,
+      action: "import",
+    };
   });
+  const erroredSections = plan.filter((item) => item.action === "error");
+  const sectionsToImport = template.sections.filter((section) =>
+    plan.some((item) => item.templateSectionId === section.id && item.action === "import"),
+  );
+  const plannedResult: TemplateImportResult = {
+    dryRun,
+    onExistingSections,
+    importedCount: sectionsToImport.length,
+    skippedCount: plan.filter((item) => item.action === "skip").length,
+    replacedExistingCount: onExistingSections === "replace" ? currentSectionCount : 0,
+    sections: plan,
+  };
+
+  if (dryRun) {
+    return plannedResult;
+  }
+  if (erroredSections.length > 0) {
+    throw new Error("TEMPLATE_IMPORT_DUPLICATE_SECTIONS");
+  }
 
   // Resolve project presetBindings
   const bindings = Array.isArray(project.presetBindings)
@@ -186,14 +282,20 @@ export async function importTemplateToProject(
   const catByNameMap = new Map(allCategories.map((c) => [c.name, c]));
 
   await prisma.$transaction(async (tx) => {
-    for (let i = 0; i < template.sections.length; i++) {
-      const ts = template.sections[i];
+    if (onExistingSections === "replace") {
+      await tx.projectSection.deleteMany({ where: { projectId } });
+    }
+
+    const sortOrderBase = onExistingSections === "replace" ? 0 : currentSectionCount;
+
+    for (let i = 0; i < sectionsToImport.length; i++) {
+      const ts = sectionsToImport[i];
 
       // 1. Create section with basic params
       const section = await tx.projectSection.create({
         data: {
           projectId,
-          sortOrder: currentSectionCount + i + 1,
+          sortOrder: sortOrderBase + i + 1,
           enabled: true,
           name: ts.name,
           ...(ts.aspectRatio ? { aspectRatio: ts.aspectRatio } : {}),
@@ -459,7 +561,10 @@ export async function importTemplateToProject(
   });
 
   revalidatePath(`/projects/${projectId}`);
-  return template.sections.length;
+  if (!options) {
+    return sectionsToImport.length;
+  }
+  return plannedResult;
 }
 
 // ---------------------------------------------------------------------------

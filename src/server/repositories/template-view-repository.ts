@@ -42,8 +42,10 @@ export type ProjectTemplateListItem = {
   updatedAt: string;
 };
 
-export async function listProjectTemplates(): Promise<ProjectTemplateListItem[]> {
+export async function listProjectTemplates(filters: { name?: string } = {}): Promise<ProjectTemplateListItem[]> {
+  const name = filters.name?.trim();
   const templates = await prisma.projectTemplate.findMany({
+    where: name ? { name: { contains: name } } : undefined,
     orderBy: { updatedAt: "desc" },
     include: { _count: { select: { sections: true } } },
   });

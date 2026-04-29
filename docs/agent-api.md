@@ -41,8 +41,10 @@ or:
 | Run one section | `POST /api/projects/:projectId/sections/:sectionId/run` |
 | Import preset into section | `POST /api/projects/:projectId/sections/:sectionId/import-preset` |
 | Switch a section binding variant | `POST /api/projects/:projectId/sections/:sectionId/switch-variant` |
+| Batch switch section binding variants | `POST /api/agent/projects/:projectId/switch-variants` |
+| Sync preset variants from a reference project | `POST /api/agent/projects/:projectId/sync-preset-variants` |
 | Manage prompt blocks | `GET/POST /api/projects/:projectId/sections/:sectionId/blocks`, `PATCH/DELETE /api/projects/:projectId/sections/:sectionId/blocks/:blockId` |
-| List queue and clear finished runs | `GET /api/queue`, `POST /api/queue/clear` |
+| List queue, clear finished runs, clear active queue | `GET /api/queue`, `POST /api/queue/clear`, `POST /api/queue/clear-active` |
 | Cancel a run | `POST /api/runs/:runId/cancel` |
 | Read run detail and workflow | `GET /api/runs/:runId`, `GET /api/runs/:runId/workflow` |
 | Keep or trash generated images | `POST /api/runs/:runId/review/keep`, `POST /api/runs/:runId/review/trash` |
@@ -51,11 +53,12 @@ or:
 | Read image files | `GET /api/images/:path...` |
 | Manage templates | `GET/POST /api/templates`, `GET/PATCH/DELETE /api/templates/:templateId`, `POST /api/templates/:templateId/import` |
 | Manage preset library | `/api/preset-library/**` endpoints listed below |
+| Search preset library for agent use | `GET /api/presets`, `GET /api/preset-library/presets`, `GET /api/preset-library/presets/:presetId` |
 | Upload/list/move/annotate LoRAs | `GET/POST /api/loras`, `GET /api/loras/browse`, `POST /api/loras/move`, `GET/PUT /api/loras/notes` |
 | Read logs, audit logs, health, worker status | `GET /api/logs`, `GET /api/audit-logs`, `GET /api/health`, `GET /api/worker/status` |
 | MCP automation | `GET/POST/DELETE /api/mcp` |
 
-No remaining user-facing backend operation gap is known after adding `queue/clear`, section `batch-delete`, project `export`, and `name/loraConfig` support on section PATCH.
+No remaining user-facing backend operation gap is known after adding `queue/clear`, `queue/clear-active`, section `batch-delete`, project `export`, template import options, preset lookup, batch variant switching, and `name/loraConfig` support on section PATCH.
 
 ## Projects
 
@@ -64,6 +67,7 @@ No remaining user-facing backend operation gap is known after adding `queue/clea
 Query parameters:
 
 - `search?: string`
+- `title?: string`
 - `status?: "draft" | "queued" | "running" | "partial_done" | "done" | "failed"`
 - `enabledOnly?: boolean`
 - `hasPending?: boolean`
@@ -193,6 +197,7 @@ Deletes one prompt block.
 | `GET` | `/api/queue` | none | queue summary |
 | `GET` | `/api/queue-data` | none | queue page data; this route is a response-shape exception and may return raw JSON |
 | `POST` | `/api/queue/clear` | none | deletes finished, failed, and cancelled run records |
+| `POST` | `/api/queue/clear-active` | none | cancels queued/running runs and clears matching ComfyUI queue entries |
 | `GET` | `/api/runs/:runId` | none | run detail |
 | `GET` | `/api/runs/:runId/workflow` | none | workflow data for the run |
 | `POST` | `/api/runs/:runId/cancel` | none | cancels a queued/running run |
@@ -207,14 +212,16 @@ Deletes one prompt block.
 
 | Method | Path | Body | Result |
 | --- | --- | --- | --- |
-| `GET` | `/api/templates` | none | lists project templates |
+| `GET` | `/api/templates?name=full` | none | lists project templates, optionally filtered by name |
 | `POST` | `/api/templates` | template payload | creates a template |
 | `GET` | `/api/templates/:templateId` | none | reads template detail |
 | `PATCH` | `/api/templates/:templateId` | template patch payload | updates a template |
 | `DELETE` | `/api/templates/:templateId` | none | deletes a template |
-| `POST` | `/api/templates/:templateId/import` | `{ "projectId": "..." }` and options | imports a template into a project |
+| `POST` | `/api/templates/:templateId/import` | `{ "projectId": "...", "dryRun": true, "onExistingSections": "skip" }` | imports or previews a template import |
 
 Template payloads follow `src/lib/actions/template.ts`: `name`, `description`, and `sections`.
+
+`onExistingSections` supports `skip`, `replace`, `append`, and `error`. A dry run returns the section import plan without changing the project.
 
 ## Preset Library
 
@@ -253,6 +260,9 @@ Template payloads follow `src/lib/actions/template.ts`: `name`, `description`, a
 
 | Method | Path | Purpose |
 | --- | --- | --- |
+| `GET` | `/api/preset-library/presets?name=达妮娅&category=角色&slug=...` | list presets with variants; filters support `name`, `slug`, `category`, `categoryId`, and `includeInactive=true` |
+| `GET` | `/api/presets?name=洛茜&category=角色` | alias for preset lookup with variants |
+| `GET` | `/api/preset-library/presets/:presetId` | read one preset with variants |
 | `POST` | `/api/preset-library/presets` | create preset |
 | `PATCH/DELETE` | `/api/preset-library/presets/:presetId` | update or delete preset |
 | `POST` | `/api/preset-library/presets/reorder` | reorder presets |
@@ -299,8 +309,41 @@ The `/api/agent/**` endpoints provide higher-level project/run context and revie
 | `GET` | `/api/agent/projects/:projectId/context` | full project context |
 | `POST` | `/api/agent/projects/:projectId/update` | batch update project and sections |
 | `POST` | `/api/agent/projects/:projectId/run-all` | run all enabled sections |
+| `POST` | `/api/agent/projects/:projectId/switch-variants` | batch switch preset binding variants |
+| `POST` | `/api/agent/projects/:projectId/sync-preset-variants` | dry-run or execute variant sync from a reference project |
 | `POST` | `/api/agent/sections/:sectionId/run` | run one section |
 | `GET` | `/api/agent/runs/:runId/context` | full run context |
 | `POST` | `/api/agent/runs/:runId/review` | batch keep/trash images |
 
 Use these endpoints when an agent needs a compact context-first workflow. Use the lower-level endpoints above when an operation is not exposed by `/api/agent/**`.
+
+### Batch Variant Switch
+
+`POST /api/agent/projects/:projectId/switch-variants`
+
+```json
+{
+  "updates": [
+    { "sectionId": "...", "bindingId": "...", "newVariantId": "..." }
+  ]
+}
+```
+
+Returns per-item success or failure results without aborting the whole batch for one bad item.
+
+### Sync Preset Variants
+
+`POST /api/agent/projects/:targetProjectId/sync-preset-variants`
+
+```json
+{
+  "sourceProjectId": "...",
+  "sourcePresetName": "达妮娅",
+  "targetPresetName": "洛茜",
+  "matchSectionsBy": "name",
+  "matchVariantsBy": "name",
+  "dryRun": true
+}
+```
+
+Use `dryRun: true` first to inspect the plan, then `dryRun: false` to execute the planned switches.

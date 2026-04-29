@@ -32,6 +32,7 @@ export type ProjectSectionUpdateInput = {
 export type ListProjectsFilters = {
   status?: JobStatus;
   search?: string;
+  title?: string;
   enabledOnly?: boolean;
   hasPending?: boolean;
 };

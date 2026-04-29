@@ -7,6 +7,7 @@ export async function GET(request: Request) {
   try {
     const data = await listProjects({
       search: searchParams.get("search") ?? undefined,
+      title: searchParams.get("title") ?? undefined,
       status: searchParams.get("status") ?? undefined,
       hasPending: searchParams.get("hasPending") ?? undefined,
     });

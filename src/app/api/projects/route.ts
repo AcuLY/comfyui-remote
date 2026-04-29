@@ -6,6 +6,7 @@ export async function GET(request: NextRequest) {
   try {
     const data = await listProjects({
       search: request.nextUrl.searchParams.get("search") ?? undefined,
+      title: request.nextUrl.searchParams.get("title") ?? undefined,
       status: request.nextUrl.searchParams.get("status") ?? undefined,
       enabledOnly: request.nextUrl.searchParams.get("enabledOnly") ?? undefined,
       hasPending: request.nextUrl.searchParams.get("hasPending") ?? undefined,

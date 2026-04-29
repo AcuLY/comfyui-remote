@@ -219,6 +219,64 @@ export async function cancelProjectRuns(projectId: string): Promise<number> {
   return result.count;
 }
 
+/** Cancel all queued/running runs across projects. */
+export async function clearActiveRuns(): Promise<{ ok: boolean; count: number; error?: string }> {
+  try {
+    const activeRuns = await prisma.run.findMany({
+      where: { status: { in: ["queued", "running"] } },
+      select: { id: true, projectId: true, comfyPromptId: true },
+    });
+
+    const promptIdsToDelete: string[] = [];
+    let shouldInterrupt = false;
+
+    try {
+      for (const run of activeRuns) {
+        if (!run.comfyPromptId) continue;
+        const position = await getComfyQueuePosition(env.comfyApiUrl, run.comfyPromptId);
+        if (position === "running") {
+          shouldInterrupt = true;
+        } else if (position === "pending") {
+          promptIdsToDelete.push(run.comfyPromptId);
+        }
+      }
+
+      if (promptIdsToDelete.length > 0) {
+        await deleteComfyQueueItems(env.comfyApiUrl, promptIdsToDelete);
+      }
+      if (shouldInterrupt) {
+        await interruptComfyPrompt(env.comfyApiUrl);
+      }
+    } catch (e) {
+      console.warn("Failed to clear active ComfyUI queue:", e);
+    }
+
+    const result = await prisma.run.updateMany({
+      where: { status: { in: ["queued", "running"] } },
+      data: {
+        status: "cancelled",
+        finishedAt: new Date(),
+        errorMessage: "用户取消",
+      },
+    });
+
+    const projectIds = [...new Set(activeRuns.map((run) => run.projectId))];
+    if (projectIds.length > 0) {
+      await prisma.project.updateMany({
+        where: { id: { in: projectIds } },
+        data: { status: "draft" },
+      });
+    }
+
+    revalidatePath("/queue");
+    revalidatePath("/projects");
+    return { ok: true, count: result.count };
+  } catch (e) {
+    console.error("Failed to clear active runs:", e);
+    return { ok: false, count: 0, error: "清空运行中队列失败" };
+  }
+}
+
 // ---------------------------------------------------------------------------
 // 一键清空运行记录（删除 done / failed / cancelled 状态的 Run）
 // ---------------------------------------------------------------------------

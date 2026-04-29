@@ -31,6 +31,7 @@ type UpdateProjectRequestBody = {
 
 type ListProjectsQuery = {
   search?: unknown;
+  title?: unknown;
   status?: unknown;
   enabledOnly?: unknown;
   hasPending?: unknown;
@@ -334,6 +335,7 @@ function ensureAtLeastOneField(
 export async function listProjects(query: ListProjectsQuery = {}) {
   return listProjectsInRepository({
     search: normalizeOptionalSearch(query.search),
+    title: normalizeOptionalSearch(query.title),
     status: normalizeOptionalProjectStatus(query.status),
     enabledOnly: normalizeOptionalBoolean(query.enabledOnly, "enabledOnly"),
     hasPending: normalizeOptionalBoolean(query.hasPending, "hasPending"),

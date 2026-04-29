@@ -33,6 +33,7 @@ export { enqueueProjectRuns, enqueueProjectSectionRun } from "./project-reposito
 
 export async function listProjects(filters: ListProjectsFilters = {}) {
   const search = filters.search?.trim();
+  const title = filters.title?.trim();
   // SQLite LIKE is case-insensitive for ASCII by default;
   // PostgreSQL requires explicit mode: "insensitive".
   const ciContains = (value: string) =>
@@ -51,6 +52,7 @@ export async function listProjects(filters: ListProjectsFilters = {}) {
             ],
           }
         : {}),
+      ...(title ? { title: ciContains(title) } : {}),
       ...(filters.enabledOnly
         ? {
             sections: {
@@ -205,7 +207,10 @@ export async function getProjectAgentContext(projectId: string) {
               id: true,
               type: true,
               sourceId: true,
+              variantId: true,
               categoryId: true,
+              bindingId: true,
+              groupBindingId: true,
               label: true,
               positive: true,
               negative: true,
@@ -339,8 +344,17 @@ export async function getProjectSectionDetail(projectId: string, sectionId: stri
       promptBlocks: {
         orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
         select: {
+          id: true,
+          type: true,
+          sourceId: true,
+          variantId: true,
+          categoryId: true,
+          bindingId: true,
+          groupBindingId: true,
+          label: true,
           positive: true,
           negative: true,
+          sortOrder: true,
         },
       },
       runs: {
