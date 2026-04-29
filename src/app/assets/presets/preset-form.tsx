@@ -565,14 +565,6 @@ export function PresetForm({
         />
       </label>
 
-      {/* Linked variants (preset-level, below notes, above variant list) */}
-      <LinkedVariantsEditor
-        linkedVariants={current.linkedVariants}
-        onChange={(lv) => updateCurrentVariant({ linkedVariants: lv })}
-        currentPresetId={preset?.id}
-        allCategories={allCategories}
-      />
-
       {/* ── Variant section ── */}
       <div className="border-t border-white/5 pt-3 space-y-1.5">
         <span className="text-[11px] font-medium text-zinc-500">变体列表</span>
@@ -658,6 +650,13 @@ export function PresetForm({
             />
           </label>
         </div>
+
+        <LinkedVariantsEditor
+          linkedVariants={current.linkedVariants}
+          onChange={(lv) => updateCurrentVariant({ linkedVariants: lv })}
+          currentPresetId={preset?.id}
+          allCategories={allCategories}
+        />
 
         {/* Variant prompt fields */}
         <label className="block space-y-1">
