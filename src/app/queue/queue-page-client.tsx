@@ -4,13 +4,13 @@ import { useState, useEffect, useTransition, useCallback, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { RotateCw, ChevronRight, Clock3, Loader2, RefreshCw, AlertTriangle, XCircle, ImageIcon, Trash2, RotateCcw } from "lucide-react";
+import { RotateCw, ChevronLeft, ChevronRight, Clock3, Loader2, RefreshCw, AlertTriangle, XCircle, ImageIcon, Trash2, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/page-header";
 import { SectionCard } from "@/components/section-card";
 import { StatChip } from "@/components/stat-chip";
 import { cancelRun, runSection, clearRuns, restoreImage } from "@/lib/actions";
-import type { QueueRun, RunningRun, FailedRun, TrashItem } from "@/lib/types";
+import type { QueuePagination, QueueRun, RunningRun, FailedRun, TrashItem } from "@/lib/types";
 
 export type QueueTabKey = "pending" | "running" | "failed" | "trash";
 
@@ -43,14 +43,16 @@ function formatTimeAgo(isoString: string | null): string | null {
 
 type Props = {
   initialQueueRuns: QueueRun[];
+  initialQueuePagination: QueuePagination;
   initialRunningRuns: RunningRun[];
   initialFailedRuns?: FailedRun[];
   initialTrashItems?: TrashItem[];
 };
 
-export function QueuePageClient({ initialQueueRuns, initialRunningRuns, initialFailedRuns, initialTrashItems }: Props) {
+export function QueuePageClient({ initialQueueRuns, initialQueuePagination, initialRunningRuns, initialFailedRuns, initialTrashItems }: Props) {
   const [activeTab, setActiveTab] = useState<QueueTabKey>("pending");
   const [queueRuns, setQueueRuns] = useState<QueueRun[]>(initialQueueRuns);
+  const [queuePagination, setQueuePagination] = useState<QueuePagination>(initialQueuePagination);
   const [runningRuns, setRunningRuns] = useState<RunningRun[]>(initialRunningRuns);
   const [failedRuns, setFailedRuns] = useState<FailedRun[]>(initialFailedRuns ?? []);
   const [trashItems, setTrashItems] = useState<TrashItem[]>(initialTrashItems ?? []);
@@ -63,9 +65,18 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns, initialF
   // Track known completed run IDs for success toast
   const knownDoneIdsRef = useRef<Set<string>>(new Set((initialQueueRuns ?? []).map((r) => r.id)));
 
+  useEffect(() => {
+    setQueueRuns(initialQueueRuns);
+    setQueuePagination(initialQueuePagination);
+  }, [initialQueueRuns, initialQueuePagination]);
+
   const refresh = useCallback(() => {
     startTransition(async () => {
-      const res = await fetch("/api/queue-data");
+      const params = new URLSearchParams({
+        page: String(queuePagination.page),
+        pageSize: String(queuePagination.pageSize),
+      });
+      const res = await fetch(`/api/queue-data?${params.toString()}`);
       if (!res.ok) return;
       const data = await res.json();
 
@@ -80,6 +91,9 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns, initialF
       }
       knownDoneIdsRef.current = new Set(newDone.map((r) => r.id));
       setQueueRuns(newDone);
+      if (data.queuePagination) {
+        setQueuePagination(data.queuePagination);
+      }
 
       setRunningRuns(data.runningRuns ?? []);
 
@@ -98,7 +112,7 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns, initialF
 
       router.refresh();
     });
-  }, [router]);
+  }, [queuePagination.page, queuePagination.pageSize, router]);
 
   // Auto-poll
   useEffect(() => {
@@ -118,11 +132,21 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns, initialF
     }
   }, []);
 
-  const pendingTotal = queueRuns.reduce((sum, run) => sum + run.pendingCount, 0);
-  const runTotal = queueRuns.length;
+  const pendingTotal = queuePagination.totalPendingImages;
+  const runTotal = queuePagination.totalItems;
   const runningCount = runningRuns.length;
   const failedCount = failedRuns.length;
   const trashCount = trashItems.length;
+  const visiblePages = Array.from(
+    new Set([
+      1,
+      queuePagination.page - 1,
+      queuePagination.page,
+      queuePagination.page + 1,
+      queuePagination.totalPages,
+    ]),
+  ).filter((page) => page >= 1 && page <= queuePagination.totalPages);
+  const pageHref = (page: number) => (page <= 1 ? "/queue" : `/queue?page=${page}`);
 
   function handleRestore(trashRecordId: string) {
     startTransition(async () => {
@@ -187,6 +211,15 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns, initialF
               if (result.ok) {
                 toast.success(`已清空 ${result.count} 条运行记录`);
                 setQueueRuns([]);
+                setQueuePagination((prev) => ({
+                  ...prev,
+                  page: 1,
+                  totalItems: 0,
+                  totalPages: 1,
+                  startItem: 0,
+                  endItem: 0,
+                  totalPendingImages: 0,
+                }));
                 setFailedRuns([]);
                 router.refresh();
               } else {
@@ -268,6 +301,56 @@ export function QueuePageClient({ initialQueueRuns, initialRunningRuns, initialF
                 </Link>
               ))}
             </div>
+            {queuePagination.totalItems > 0 && (
+              <div className="mt-4 flex flex-col gap-2 border-t border-white/[0.06] pt-3 text-xs text-zinc-500 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  {queuePagination.startItem}-{queuePagination.endItem} / {queuePagination.totalItems}
+                  {queuePagination.staleImageCount > 0 && (
+                    <span className="ml-2 text-amber-400/80">
+                      {queuePagination.staleImageCount} stale images hidden
+                    </span>
+                  )}
+                </div>
+                {queuePagination.totalPages > 1 && (
+                  <div className="flex items-center gap-1">
+                    <Link
+                      href={pageHref(Math.max(1, queuePagination.page - 1))}
+                      prefetch={false}
+                      className={`inline-flex size-8 items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] text-zinc-300 transition hover:bg-white/[0.06] ${queuePagination.page <= 1 ? "pointer-events-none opacity-40" : ""}`}
+                    >
+                      <ChevronLeft className="size-4" />
+                    </Link>
+                    {visiblePages.map((page, index) => {
+                      const prev = visiblePages[index - 1];
+                      const showGap = prev !== undefined && page - prev > 1;
+                      return (
+                        <div key={page} className="flex items-center gap-1">
+                          {showGap && <span className="px-1 text-zinc-600">...</span>}
+                          <Link
+                            href={pageHref(page)}
+                            prefetch={false}
+                            className={`inline-flex size-8 items-center justify-center rounded-lg border text-xs transition ${
+                              page === queuePagination.page
+                                ? "border-sky-500/30 bg-sky-500/20 text-sky-200"
+                                : "border-white/10 bg-white/[0.03] text-zinc-300 hover:bg-white/[0.06]"
+                            }`}
+                          >
+                            {page}
+                          </Link>
+                        </div>
+                      );
+                    })}
+                    <Link
+                      href={pageHref(Math.min(queuePagination.totalPages, queuePagination.page + 1))}
+                      prefetch={false}
+                      className={`inline-flex size-8 items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] text-zinc-300 transition hover:bg-white/[0.06] ${queuePagination.page >= queuePagination.totalPages ? "pointer-events-none opacity-40" : ""}`}
+                    >
+                      <ChevronRight className="size-4" />
+                    </Link>
+                  </div>
+                )}
+              </div>
+            )}
           </SectionCard>
         </>
       )}

@@ -1,10 +1,19 @@
 import { NextResponse } from "next/server";
-import { getQueueRuns, getRunningRuns, getFailedRuns } from "@/lib/server-data";
+import type { NextRequest } from "next/server";
+import { getQueueRunsPage, getRunningRuns, getFailedRuns } from "@/lib/server-data";
 import { recoverStaleRuns } from "@/server/services/run-executor";
 
-export async function GET() {
-  const [queueRuns, runningRuns, failedRuns] = await Promise.all([
-    getQueueRuns(),
+function readPositiveInteger(value: string | null) {
+  if (!value) return undefined;
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined;
+}
+
+export async function GET(request: NextRequest) {
+  const page = readPositiveInteger(request.nextUrl.searchParams.get("page"));
+  const pageSize = readPositiveInteger(request.nextUrl.searchParams.get("pageSize"));
+  const [queuePage, runningRuns, failedRuns] = await Promise.all([
+    getQueueRunsPage({ page, pageSize }),
     getRunningRuns(),
     getFailedRuns(),
   ]);
@@ -15,5 +24,10 @@ export async function GET() {
     recoverStaleRuns().catch(() => {});
   }
 
-  return NextResponse.json({ queueRuns, runningRuns, failedRuns });
+  return NextResponse.json({
+    queueRuns: queuePage.runs,
+    queuePagination: queuePage.pagination,
+    runningRuns,
+    failedRuns,
+  });
 }

@@ -1,5 +1,5 @@
 // Queue & run data
-export { getQueueRuns, getRunningRuns, getFailedRuns, getReviewGroup, getReviewGroupIds } from "@/server/repositories/queue-data-repository";
+export { getQueueRuns, getQueueRunsPage, getRunningRuns, getFailedRuns, getReviewGroup, getReviewGroupIds } from "@/server/repositories/queue-data-repository";
 
 // Project view data
 export { listProjects, getProjectDetail, getSectionResults, getTrashItems, getProjectFormOptions, getProjectEditData } from "@/server/repositories/project-view-repository";

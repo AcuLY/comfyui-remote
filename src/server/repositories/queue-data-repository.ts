@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { toImageUrl } from "@/lib/image-url";
-import type { QueueRun, RunningRun, FailedRun, ReviewGroup, ReviewImage, ReviewStatus } from "@/lib/types";
+import fs from "node:fs";
+import path from "node:path";
+import type { QueuePagination, QueueRun, RunningRun, FailedRun, ReviewGroup, ReviewImage, ReviewStatus } from "@/lib/types";
 
 // ---------------------------------------------------------------------------
 // Preset binding helpers — resolve display names from presetBindings JSON
@@ -41,6 +43,83 @@ export function collectPresetIds(bindingsArray: (unknown)[]): string[] {
 // Helpers
 // ---------------------------------------------------------------------------
 
+const DEFAULT_QUEUE_PAGE_SIZE = 12;
+const LEGACY_QUEUE_PAGE_SIZE = 50;
+const MAX_QUEUE_PAGE_SIZE = 48;
+const DATA_IMAGES_PREFIX = "data/images/";
+
+type QueuePageOptions = {
+  page?: number;
+  pageSize?: number;
+};
+
+type ImageRecord = {
+  id: string;
+  filePath: string;
+  thumbPath: string | null;
+  reviewStatus: string;
+  createdAt: Date;
+};
+
+type AvailableImage = ImageRecord & {
+  displayPath: string;
+};
+
+function normalizePositiveInteger(value: number | undefined, fallback: number): number {
+  if (typeof value !== "number" || !Number.isInteger(value) || value < 1) {
+    return fallback;
+  }
+  return value;
+}
+
+function normalizeQueuePageOptions(options: QueuePageOptions = {}) {
+  return {
+    page: normalizePositiveInteger(options.page, 1),
+    pageSize: Math.min(
+      normalizePositiveInteger(options.pageSize, DEFAULT_QUEUE_PAGE_SIZE),
+      MAX_QUEUE_PAGE_SIZE,
+    ),
+  };
+}
+
+function resolveManagedImagePath(relativePath: string) {
+  const normalized = relativePath.replace(/\\/g, "/");
+  const stripped = normalized.startsWith(DATA_IMAGES_PREFIX)
+    ? normalized.slice(DATA_IMAGES_PREFIX.length)
+    : normalized;
+  const segments = stripped.split("/").filter(Boolean);
+
+  if (
+    segments.length === 0 ||
+    segments.some((segment) => segment === "." || segment === ".." || segment.includes(":"))
+  ) {
+    return null;
+  }
+
+  return path.join(
+    /* turbopackIgnore: true */ process.cwd(),
+    "data",
+    "images",
+    ...segments,
+  );
+}
+
+function imageFileExists(relativePath: string | null | undefined) {
+  if (!relativePath) return false;
+  const resolved = resolveManagedImagePath(relativePath);
+  return Boolean(resolved && fs.existsSync(/* turbopackIgnore: true */ resolved));
+}
+
+function toAvailableImage(image: ImageRecord): AvailableImage | null {
+  if (imageFileExists(image.thumbPath)) {
+    return { ...image, displayPath: image.thumbPath! };
+  }
+  if (imageFileExists(image.filePath)) {
+    return { ...image, displayPath: image.filePath };
+  }
+  return null;
+}
+
 export function formatDate(date: Date): string {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, "0");
@@ -50,52 +129,104 @@ export function formatDate(date: Date): string {
   return `${y}-${m}-${d} ${h}:${min}`;
 }
 
-// ---------------------------------------------------------------------------
-// Queue — 待审核队列
-// ---------------------------------------------------------------------------
-
-export async function getQueueRuns(): Promise<QueueRun[]> {
+async function loadVisibleQueueRuns(): Promise<{
+  runs: QueueRun[];
+  staleImageCount: number;
+  totalPendingImages: number;
+}> {
   const runs = await prisma.run.findMany({
-    where: { status: "done" },
+    where: {
+      status: "done",
+      images: { some: { reviewStatus: "pending" } },
+    },
     orderBy: { createdAt: "desc" },
     include: {
       project: {
         select: { id: true, title: true, presetBindings: true },
       },
       projectSection: true,
-      images: true,
+      images: {
+        orderBy: { createdAt: "asc" },
+      },
     },
   });
 
-  // Batch resolve preset names
   const presetMap = await batchResolvePresetNames(
     collectPresetIds(runs.map((r) => r.project.presetBindings)),
   );
 
-  return runs
-    .map((run) => {
-      const presetNames = extractPresetNames(run.project.presetBindings as PresetBindingJson | null, presetMap);
-      // Extract thumbnails from images (up to 8)
-      const thumbnailUrls = run.images.slice(0, 8).map((img) =>
-        toImageUrl(img.thumbPath ?? img.filePath) ?? "",
-      ).filter(Boolean);
-      return {
-        id: run.id,
-        presetNames,
-        projectTitle: run.project.title,
-        sectionName:
-          run.projectSection.name ??
-          run.projectSection.name ??
-          `section_${run.projectSection.sortOrder + 1}`,
-        createdAt: formatDate(run.createdAt),
-        finishedAt: run.finishedAt?.toISOString() ?? null,
-        pendingCount: run.images.filter((img) => img.reviewStatus === "pending").length,
-        totalCount: run.images.length,
-        status: run.status as QueueRun["status"],
-        thumbnailUrls,
-      };
-    })
-    .filter((run) => run.pendingCount > 0);
+  let staleImageCount = 0;
+  let totalPendingImages = 0;
+  const visibleRuns: QueueRun[] = [];
+
+  for (const run of runs) {
+    const availableImages = run.images
+      .map((image) => toAvailableImage(image))
+      .filter((image): image is AvailableImage => Boolean(image));
+    staleImageCount += run.images.length - availableImages.length;
+
+    const pendingImages = availableImages.filter((img) => img.reviewStatus === "pending");
+    if (pendingImages.length === 0) continue;
+
+    totalPendingImages += pendingImages.length;
+    const presetNames = extractPresetNames(run.project.presetBindings as PresetBindingJson | null, presetMap);
+
+    visibleRuns.push({
+      id: run.id,
+      presetNames,
+      projectTitle: run.project.title,
+      sectionName:
+        run.projectSection.name ??
+        `section_${run.projectSection.sortOrder + 1}`,
+      createdAt: formatDate(run.createdAt),
+      finishedAt: run.finishedAt?.toISOString() ?? null,
+      pendingCount: pendingImages.length,
+      totalCount: availableImages.length,
+      status: run.status as QueueRun["status"],
+      thumbnailUrls: availableImages
+        .slice(0, 8)
+        .map((img) => toImageUrl(img.displayPath) ?? "")
+        .filter(Boolean),
+    });
+  }
+
+  return { runs: visibleRuns, staleImageCount, totalPendingImages };
+}
+
+// ---------------------------------------------------------------------------
+// Queue — 待审核队列
+// ---------------------------------------------------------------------------
+
+export async function getQueueRuns(): Promise<QueueRun[]> {
+  const { runs } = await getQueueRunsPage({ page: 1, pageSize: LEGACY_QUEUE_PAGE_SIZE });
+  return runs;
+}
+
+export async function getQueueRunsPage(options: QueuePageOptions = {}): Promise<{
+  runs: QueueRun[];
+  pagination: QueuePagination;
+}> {
+  const { page, pageSize } = normalizeQueuePageOptions(options);
+  const { runs, staleImageCount, totalPendingImages } = await loadVisibleQueueRuns();
+  const totalItems = runs.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const startIndex = (safePage - 1) * pageSize;
+  const pagedRuns = runs.slice(startIndex, startIndex + pageSize);
+
+  return {
+    runs: pagedRuns,
+    pagination: {
+      page: safePage,
+      pageSize,
+      totalItems,
+      totalPages,
+      startItem: totalItems === 0 ? 0 : startIndex + 1,
+      endItem: Math.min(startIndex + pageSize, totalItems),
+      totalPendingImages,
+      staleImageCount,
+    },
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -196,12 +327,16 @@ export async function getReviewGroup(runId: string): Promise<ReviewGroup | null>
   );
   const presetNames = extractPresetNames(run.project.presetBindings as PresetBindingJson | null, presetMap);
 
-  const images: ReviewImage[] = run.images.map((img, index) => ({
+  const availableImages = run.images
+    .map((image) => toAvailableImage(image))
+    .filter((image): image is AvailableImage => Boolean(image));
+
+  const images: ReviewImage[] = availableImages.map((img, index) => ({
     id: img.id,
-    src: toImageUrl(img.thumbPath ?? img.filePath) ?? "",
+    src: toImageUrl(img.displayPath) ?? "",
     full: (toImageUrl(img.filePath) ?? "") + "?q=80",
     label: `${index + 1}`.padStart(2, "0"),
-    status: img.reviewStatus as ReviewImage["status"],
+    status: img.reviewStatus as ReviewStatus,
   }));
 
   return {
@@ -226,10 +361,6 @@ export async function getReviewGroup(runId: string): Promise<ReviewGroup | null>
 // ---------------------------------------------------------------------------
 
 export async function getReviewGroupIds(): Promise<string[]> {
-  const runs = await prisma.run.findMany({
-    where: { status: "done" },
-    orderBy: { createdAt: "desc" },
-    select: { id: true },
-  });
-  return runs.map((r) => r.id);
+  const { runs } = await loadVisibleQueueRuns();
+  return runs.map((run) => run.id);
 }

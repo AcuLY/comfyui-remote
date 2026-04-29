@@ -13,6 +13,17 @@ export type QueueRun = {
   thumbnailUrls: string[];
 };
 
+export type QueuePagination = {
+  page: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+  startItem: number;
+  endItem: number;
+  totalPendingImages: number;
+  staleImageCount: number;
+};
+
 export type RunningRun = {
   id: string;
   presetNames: string[];
