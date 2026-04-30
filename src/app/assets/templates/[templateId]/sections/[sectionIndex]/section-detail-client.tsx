@@ -95,6 +95,7 @@ export function TemplateSectionDetailClient({
   // ── Local state for the section ──
   // For template sections, null means "not set" (will not override on import)
   const [name, setName] = useState(initialSection.name ?? "");
+  const [notes, setNotes] = useState(initialSection.notes ?? "");
   const [aspectRatio, setAspectRatio] = useState<string | null>(initialSection.aspectRatio ?? null);
   const [shortSidePx, setShortSidePx] = useState<number | null>(initialSection.shortSidePx ?? null);
   const [batchSize, setBatchSize] = useState<string | null>(initialSection.batchSize?.toString() ?? null);
@@ -253,6 +254,7 @@ export function TemplateSectionDetailClient({
       id: initialSection.id,
       sortOrder: sectionIndex,
       name: name.trim() || null,
+      notes: notes.trim() || null,
       aspectRatio, // null means not set
       shortSidePx,
       batchSize: batchSize ? parseInt(batchSize, 10) : null,
@@ -275,6 +277,7 @@ export function TemplateSectionDetailClient({
     ks2,
     loraConfig,
     name,
+    notes,
     checkpointName,
     promptBlocks,
     sectionIndex,
@@ -660,7 +663,19 @@ export function TemplateSectionDetailClient({
         />
       </div>
 
-      {/* Run params — same layout as blocks page */}
+      <div className="space-y-2 border-t border-white/5 pt-3">
+        <label className="text-xs text-zinc-500">备注</label>
+        <textarea
+          value={notes}
+          onChange={(event) => setNotes(event.target.value)}
+          onBlur={saveOnBlur}
+          placeholder="给这个模板小节添加备注"
+          rows={3}
+          className="min-h-20 w-full resize-y rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-2 text-sm leading-5 text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30"
+        />
+      </div>
+
+      {/* Run params – same layout as blocks page */}
       <div className="space-y-3 border-t border-white/5 pt-3">
         <div className="flex items-center justify-between">
           <div className="text-xs font-medium text-zinc-400">运行参数</div>

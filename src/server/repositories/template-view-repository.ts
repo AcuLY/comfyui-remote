@@ -9,6 +9,7 @@ export type ProjectTemplateSectionData = {
   id: string;
   sortOrder: number;
   name: string | null;
+  notes: string | null;
   aspectRatio: string | null;
   shortSidePx: number | null;
   batchSize: number | null;
@@ -84,6 +85,7 @@ export async function getProjectTemplateDetail(
       id: s.id,
       sortOrder: s.sortOrder,
       name: s.name,
+      notes: s.notes,
       aspectRatio: s.aspectRatio,
       shortSidePx: s.shortSidePx,
       batchSize: s.batchSize,

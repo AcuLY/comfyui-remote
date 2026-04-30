@@ -165,11 +165,13 @@ function ResultImageCard({
   image,
   onOpen,
   onToggleFeatured,
+  onToggleFeatured2,
   disabled,
 }: {
   image: ProjectResultsImageWithRun;
   onOpen: (imageId: string) => void;
   onToggleFeatured: (imageId: string, featured: boolean) => void;
+  onToggleFeatured2: (imageId: string, featured2: boolean) => void;
   disabled: boolean;
 }) {
   const aspectRatio =
@@ -204,30 +206,52 @@ function ResultImageCard({
         />
       </button>
 
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={(event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          onToggleFeatured(image.id, !image.featured);
-        }}
-        className={`absolute right-1.5 top-1.5 inline-flex size-7 items-center justify-center rounded-full border backdrop-blur transition disabled:opacity-50 ${
-          image.featured
-            ? "border-amber-300/40 bg-amber-400/25 text-amber-200"
-            : "border-white/15 bg-black/40 text-white/70 hover:bg-white/15 hover:text-amber-200"
-        }`}
-        title={image.featured ? "取消精选" : "标记为精选"}
-      >
-        <Star
-          className="size-3.5"
-          fill={image.featured ? "currentColor" : "none"}
-        />
-      </button>
+      <div className="absolute right-1.5 top-1.5 flex items-center gap-1">
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            onToggleFeatured2(image.id, !image.featured2);
+          }}
+          className={`inline-flex size-7 items-center justify-center rounded-full border text-[10px] font-semibold backdrop-blur transition disabled:opacity-50 ${
+            image.featured2
+              ? "border-cyan-300/40 bg-cyan-400/25 text-cyan-100"
+              : "border-white/15 bg-black/40 text-white/70 hover:bg-white/15 hover:text-cyan-200"
+          }`}
+          title={image.featured2 ? "取消精选2" : "标记为精选2"}
+        >
+          2
+        </button>
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            onToggleFeatured(image.id, !image.featured);
+          }}
+          className={`inline-flex size-7 items-center justify-center rounded-full border backdrop-blur transition disabled:opacity-50 ${
+            image.featured
+              ? "border-amber-300/40 bg-amber-400/25 text-amber-200"
+              : "border-white/15 bg-black/40 text-white/70 hover:bg-white/15 hover:text-amber-200"
+          }`}
+          title={image.featured ? "取消精选" : "标记为精选"}
+        >
+          <Star
+            className="size-3.5"
+            fill={image.featured ? "currentColor" : "none"}
+          />
+        </button>
+      </div>
 
       <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 bg-black/45 px-2 py-1 text-[10px] text-zinc-200 opacity-90">
         <span>Run #{image.runIndex}</span>
-        {image.featured && <span className="text-amber-200">精选</span>}
+        <span className="flex items-center gap-1">
+          {image.featured && <span className="text-amber-200">精选</span>}
+          {image.featured2 && <span className="text-cyan-200">精选2</span>}
+        </span>
       </div>
     </div>
   );
@@ -237,6 +261,7 @@ function SectionResultsBlock({
   projectId,
   section,
   onToggleFeatured,
+  onToggleFeatured2,
   onOpenImage,
   togglingImageId,
   isExpanded,
@@ -246,6 +271,7 @@ function SectionResultsBlock({
   projectId: string;
   section: ProjectResultsSection;
   onToggleFeatured: (imageId: string, featured: boolean) => void;
+  onToggleFeatured2: (imageId: string, featured2: boolean) => void;
   onOpenImage: (imageId: string) => void;
   togglingImageId: string | null;
   isExpanded: boolean;
@@ -287,6 +313,11 @@ function SectionResultsBlock({
                 {section.featuredCount} 精选
               </span>
             )}
+            {section.featured2Count > 0 && (
+              <span className="text-cyan-300">
+                {section.featured2Count} 精选2
+              </span>
+            )}
           </div>
         </div>
         <Link
@@ -311,6 +342,7 @@ function SectionResultsBlock({
                 image={image}
                 onOpen={onOpenImage}
                 onToggleFeatured={onToggleFeatured}
+                onToggleFeatured2={onToggleFeatured2}
                 disabled={togglingImageId === image.id}
               />
             ))}
@@ -385,6 +417,10 @@ export function ProjectResultsClient({
   );
   const totalFeatured = sections.reduce(
     (sum, section) => sum + section.featuredCount,
+    0,
+  );
+  const totalFeatured2 = sections.reduce(
+    (sum, section) => sum + section.featured2Count,
     0,
   );
 
@@ -477,6 +513,33 @@ export function ProjectResultsClient({
     );
   }, []);
 
+  const setImageFeatured2 = useCallback((imageId: string, featured2: boolean) => {
+    setSections((currentSections) =>
+      currentSections.map((section) => {
+        let sectionChanged = false;
+        const runs = section.runs.map((run) => {
+          let runChanged = false;
+          const images = run.images.map((image) => {
+            if (image.id !== imageId) return image;
+            sectionChanged = true;
+            runChanged = true;
+            return { ...image, featured2 };
+          });
+          return runChanged ? { ...run, images } : run;
+        });
+
+        if (!sectionChanged) return section;
+
+        const featured2Count = runs.reduce(
+          (sum, run) =>
+            sum + run.images.filter((image) => image.featured2).length,
+          0,
+        );
+        return { ...section, runs, featured2Count };
+      }),
+    );
+  }, []);
+
   const handleToggleFeatured = useCallback(
     (imageId: string, featured: boolean) => {
       if (togglingImageId) return;
@@ -511,6 +574,40 @@ export function ProjectResultsClient({
     [setImageFeatured, togglingImageId],
   );
 
+  const handleToggleFeatured2 = useCallback(
+    (imageId: string, featured2: boolean) => {
+      if (togglingImageId) return;
+      setTogglingImageId(imageId);
+      setImageFeatured2(imageId, featured2);
+
+      startTransition(async () => {
+        try {
+          const response = await fetch(
+            `/api/images/${encodeURIComponent(imageId)}/featured2`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ featured2 }),
+            },
+          );
+          const result = (await response.json().catch(() => null)) as {
+            ok?: boolean;
+            error?: { message?: string };
+          } | null;
+          if (!response.ok || result?.ok === false) {
+            throw new Error(result?.error?.message ?? "更新精选2失败");
+          }
+        } catch (error) {
+          setImageFeatured2(imageId, !featured2);
+          toast.error(error instanceof Error ? error.message : "更新精选2失败");
+        } finally {
+          setTogglingImageId(null);
+        }
+      });
+    },
+    [setImageFeatured2, togglingImageId],
+  );
+
   return (
     <SidebarProvider
       style={
@@ -543,6 +640,7 @@ export function ProjectResultsClient({
               <span>{sections.length} 小节</span>
               <span>{totalImages} 张图片</span>
               <span>{totalFeatured} 精选</span>
+              <span>{totalFeatured2} 精选2</span>
             </div>
           </div>
 
@@ -557,6 +655,7 @@ export function ProjectResultsClient({
                 projectId={project.id}
                 section={section}
                 onToggleFeatured={handleToggleFeatured}
+                onToggleFeatured2={handleToggleFeatured2}
                 onOpenImage={openLightbox}
                 togglingImageId={togglingImageId}
                 isExpanded={expandedSectionIds.has(section.id)}
@@ -573,6 +672,22 @@ export function ProjectResultsClient({
           onClick={closeLightbox}
         >
           <div className="absolute right-4 top-4 z-10 flex items-center gap-2">
+            <button
+              type="button"
+              disabled={togglingImageId === lightboxImage.id}
+              onClick={(event) => {
+                event.stopPropagation();
+                handleToggleFeatured2(lightboxImage.id, !lightboxImage.featured2);
+              }}
+              className={`rounded-full px-3 py-2 text-sm font-semibold transition disabled:opacity-50 ${
+                lightboxImage.featured2
+                  ? "bg-cyan-500/30 text-cyan-200 hover:bg-cyan-500/40"
+                  : "bg-white/10 text-white/70 hover:bg-white/20 hover:text-cyan-100"
+              }`}
+              title={lightboxImage.featured2 ? "取消精选2" : "标记精选2"}
+            >
+              2
+            </button>
             <button
               type="button"
               disabled={togglingImageId === lightboxImage.id}

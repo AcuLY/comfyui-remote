@@ -165,6 +165,7 @@ model ProjectTemplateSection {
   projectTemplateId String
   sortOrder         Int               @default(0)
   name              String?
+  notes             String?
   aspectRatio       String?
   shortSidePx       Int?
   batchSize         Int?
@@ -298,6 +299,7 @@ model ImageResult {
   fileSize              BigInt?
   reviewStatus          String          @default("pending")
   featured              Boolean         @default(false)
+  featured2             Boolean         @default(false)
   reviewedAt            DateTime?
   createdAt             DateTime        @default(now())
   updatedAt             DateTime        @updatedAt

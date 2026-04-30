@@ -32,6 +32,7 @@ export async function exportProjectImages(projectId: string): Promise<ExportProj
                   id: true,
                   filePath: true,
                   featured: true,
+                  featured2: true,
                 },
               },
             },
@@ -49,13 +50,14 @@ export async function exportProjectImages(projectId: string): Promise<ExportProj
 
   const exportDir = join(EXPORT_ROOT, exportName);
   const pixivDir = join(exportDir, "pixiv");
+  const previewDir = join(exportDir, "preview");
   const tempJpgDir = join(exportDir, "_temp_jpg");
 
-  const allKept: { filePath: string; featured: boolean }[] = [];
+  const allKept: { filePath: string; featured: boolean; featured2: boolean }[] = [];
   for (const section of project.sections) {
     for (const run of section.runs) {
       for (const image of run.images) {
-        allKept.push({ filePath: image.filePath, featured: image.featured });
+        allKept.push({ filePath: image.filePath, featured: image.featured, featured2: image.featured2 });
       }
     }
   }
@@ -67,10 +69,12 @@ export async function exportProjectImages(projectId: string): Promise<ExportProj
   await rm(exportDir, { recursive: true, force: true });
   await mkdir(tempJpgDir, { recursive: true });
   await mkdir(pixivDir, { recursive: true });
+  await mkdir(previewDir, { recursive: true });
 
   const jpgFiles: string[] = [];
   let globalIndex = 1;
   let pixivIndex = 1;
+  let previewIndex = 1;
 
   for (const image of allKept) {
     const sourcePath = resolve(/* turbopackIgnore: true */ process.cwd(), image.filePath);
@@ -97,6 +101,17 @@ export async function exportProjectImages(projectId: string): Promise<ExportProj
       pixivIndex++;
     }
 
+    if (image.featured2) {
+      const previewName = `${exportName}_${String(previewIndex).padStart(2, "0")}.jpg`;
+      const previewPath = join(previewDir, previewName);
+      try {
+        await sharp(sourcePath).jpeg({ quality: 90 }).toFile(previewPath);
+      } catch (error) {
+        console.error(`Failed to convert preview image ${sourcePath}:`, error);
+      }
+      previewIndex++;
+    }
+
     globalIndex++;
   }
 
@@ -112,10 +127,14 @@ export async function exportProjectImages(projectId: string): Promise<ExportProj
   if (pixivFiles.length === 0) {
     await rm(pixivDir, { recursive: true, force: true });
   }
+  const previewFiles = await readdir(previewDir).catch(() => []);
+  if (previewFiles.length === 0) {
+    await rm(previewDir, { recursive: true, force: true });
+  }
 
   return {
     success: true,
-    message: `Exported ${allKept.length} kept images to ${exportName}.zip${pixivIndex > 1 ? ` and ${pixivIndex - 1} featured images to pixiv/` : ""}`,
+    message: `Exported ${allKept.length} kept images to ${exportName}.zip${pixivIndex > 1 ? `, ${pixivIndex - 1} featured images to pixiv/` : ""}${previewIndex > 1 ? `, and ${previewIndex - 1} featured2 images to preview/` : ""}`,
     path: exportDir,
   };
 }

@@ -271,6 +271,7 @@ export type SectionResultsData = {
       full: string;
       status: ReviewStatus;
       featured: boolean;
+      featured2: boolean;
     }[];
   }[];
   totalPending: number;
@@ -289,6 +290,7 @@ export type ProjectResultsData = {
     imageCount: number;
     pendingCount: number;
     featuredCount: number;
+    featured2Count: number;
     runs: {
       id: string;
       runIndex: number;
@@ -300,6 +302,7 @@ export type ProjectResultsData = {
         full: string;
         status: ReviewStatus;
         featured: boolean;
+        featured2: boolean;
         width: number | null;
         height: number | null;
       }[];
@@ -323,6 +326,7 @@ export async function getSectionResults(sectionId: string): Promise<SectionResul
               filePath: true,
               reviewStatus: true,
               featured: true,
+              featured2: true,
             },
           },
         },
@@ -364,6 +368,7 @@ export async function getSectionResults(sectionId: string): Promise<SectionResul
         full: (toImageUrl(img.filePath) ?? "") + "?q=80",
         status: img.reviewStatus as ReviewStatus,
         featured: img.featured,
+        featured2: img.featured2,
       }));
 
     const runPending = images.filter((img) => img.status === "pending").length;
@@ -418,6 +423,7 @@ export async function getProjectResults(projectId: string): Promise<ProjectResul
                     filePath: true,
                     reviewStatus: true,
                     featured: true,
+                    featured2: true,
                     width: true,
                     height: true,
                   },
@@ -452,6 +458,7 @@ export async function getProjectResults(projectId: string): Promise<ProjectResul
       let imageCount = 0;
       let pendingCount = 0;
       let featuredCount = 0;
+      let featured2Count = 0;
 
       const runs = section.runs.map((run) => {
         const images = run.images
@@ -460,6 +467,7 @@ export async function getProjectResults(projectId: string): Promise<ProjectResul
             imageCount += 1;
             if (img.reviewStatus === "pending") pendingCount += 1;
             if (img.featured) featuredCount += 1;
+            if (img.featured2) featured2Count += 1;
 
             return {
               id: img.id,
@@ -467,6 +475,7 @@ export async function getProjectResults(projectId: string): Promise<ProjectResul
               full: (toImageUrl(img.filePath) ?? "") + "?q=80",
               status: img.reviewStatus as ReviewStatus,
               featured: img.featured,
+              featured2: img.featured2,
               width: img.width,
               height: img.height,
             };
@@ -489,6 +498,7 @@ export async function getProjectResults(projectId: string): Promise<ProjectResul
         imageCount,
         pendingCount,
         featuredCount,
+        featured2Count,
         runs,
       };
     }),

@@ -204,6 +204,7 @@ export function TemplateFormClient({
       id: `new-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
       sortOrder: index,
       name: null,
+      notes: null,
       aspectRatio: "2:3",
       shortSidePx: 512,
       batchSize: 2,
@@ -628,6 +629,12 @@ function SortableSectionCard({
           <Trash2 className="size-3" />
         </button>
       </div>
+
+      {section.notes?.trim() && (
+        <div className="mt-2 line-clamp-2 rounded-md border border-white/5 bg-white/[0.025] px-2 py-1.5 text-[11px] leading-4 text-zinc-400">
+          {section.notes}
+        </div>
+      )}
 
       {/* Summary metadata */}
       <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-zinc-400">

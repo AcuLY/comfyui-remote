@@ -27,6 +27,7 @@ type RunData = {
     full: string;
     status: string;
     featured: boolean;
+    featured2: boolean;
   }[];
 };
 export function ResultsGrid({ runs }: { runs: RunData[] }) {
@@ -70,7 +71,7 @@ export function ResultsGrid({ runs }: { runs: RunData[] }) {
 
   return (
     <ResultsGalleryProvider allImages={allImages}>
-      {({ openLightbox, isFeatured }) => (
+      {({ openLightbox, isFeatured, isFeatured2 }) => (
         <div className="space-y-6">
           {/* Image grid by run */}
           {runs.map((run) => {
@@ -134,6 +135,7 @@ export function ResultsGrid({ runs }: { runs: RunData[] }) {
                         (a) => a.id === img.id
                       );
                       const featured = isFeatured(img.id);
+                      const featured2 = isFeatured2(img.id);
                       const isSelected = selected.has(img.id);
                       return (
                         <div
@@ -159,10 +161,17 @@ export function ResultsGrid({ runs }: { runs: RunData[] }) {
                             <Check className="size-3" />
                           </button>
 
-                          {/* Featured star */}
-                          {featured && (
-                            <div className="absolute right-1.5 top-1.5">
-                              <Star className="size-3.5 fill-amber-400 text-amber-400 drop-shadow" />
+                          {/* Featured markers */}
+                          {(featured || featured2) && (
+                            <div className="absolute right-1.5 top-1.5 flex items-center gap-1">
+                              {featured && (
+                                <Star className="size-3.5 fill-amber-400 text-amber-400 drop-shadow" />
+                              )}
+                              {featured2 && (
+                                <span className="rounded bg-cyan-400/90 px-1 py-0.5 text-[8px] font-semibold leading-none text-zinc-950 shadow">
+                                  2
+                                </span>
+                              )}
                             </div>
                           )}
 

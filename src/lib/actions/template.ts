@@ -79,6 +79,7 @@ export async function createProjectTemplate(
         create: input.sections.map((s, index) => ({
           sortOrder: s.sortOrder ?? index,
           name: s.name,
+          notes: s.notes,
           aspectRatio: s.aspectRatio,
           shortSidePx: s.shortSidePx,
           batchSize: s.batchSize,
@@ -124,6 +125,7 @@ export async function updateProjectTemplate(
             projectTemplateId: id,
             sortOrder: s.sortOrder ?? index,
             name: s.name,
+            notes: s.notes,
             aspectRatio: s.aspectRatio,
             shortSidePx: s.shortSidePx,
             batchSize: s.batchSize,
@@ -180,6 +182,7 @@ export async function copyProjectTemplateSection(sectionId: string): Promise<str
       projectTemplateId: section.projectTemplateId,
       sortOrder: count,
       name: section.name ? `${section.name} (副本)` : null,
+      notes: section.notes,
       aspectRatio: section.aspectRatio,
       shortSidePx: section.shortSidePx,
       batchSize: section.batchSize,
@@ -828,6 +831,7 @@ export async function saveProjectAsTemplate(
           return {
             sortOrder: section.sortOrder,
             name: section.name,
+            notes: null,
             aspectRatio: section.aspectRatio,
             shortSidePx: section.shortSidePx,
             batchSize: section.batchSize,
