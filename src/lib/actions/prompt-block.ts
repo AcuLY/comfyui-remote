@@ -3,9 +3,18 @@
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
+import {
+  parseSectionLoraConfig,
+  serializeSectionLoraConfig,
+  type LoraEntry,
+} from "@/lib/lora-types";
 import { recordSectionChange } from "@/server/services/section-change-history-service";
 import { resolveVariantContent } from "./preset-variant";
-import { createBindingId, createLoraEntryId } from "./_helpers";
+import {
+  createBindingId,
+  createLoraEntryId,
+  sortSectionLoraEntriesByCategoryOrder,
+} from "./_helpers";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -27,10 +36,60 @@ export type PromptBlockData = {
 
 export type ImportPresetResult = {
   block: PromptBlockData;
-  lora1: Array<{ id: string; path: string; weight: number; enabled: boolean; source: string; sourceLabel: string; sourceColor?: string; sourceName: string; bindingId: string; groupBindingId?: string }>;
-  lora2: Array<{ id: string; path: string; weight: number; enabled: boolean; source: string; sourceLabel: string; sourceColor?: string; sourceName: string; bindingId: string; groupBindingId?: string }>;
+  lora1: LoraEntry[];
+  lora2: LoraEntry[];
   categoryOrders: { positivePromptOrder: number; lora1Order: number; lora2Order: number };
 };
+
+async function getCategoryOrderByName() {
+  const categories = await prisma.presetCategory.findMany({
+    select: { name: true, lora1Order: true, lora2Order: true },
+  });
+  return new Map(categories.map((category) => [category.name, category]));
+}
+
+async function persistImportedLoras(
+  sectionId: string,
+  lora1: LoraEntry[],
+  lora2: LoraEntry[],
+  title: string,
+) {
+  if (lora1.length === 0 && lora2.length === 0) return;
+
+  const section = await prisma.projectSection.findUnique({
+    where: { id: sectionId },
+    select: { loraConfig: true },
+  });
+  if (!section) return;
+
+  const before = section.loraConfig ?? null;
+  const categoryOrderByName = await getCategoryOrderByName();
+  const current = parseSectionLoraConfig(section.loraConfig);
+  const next = serializeSectionLoraConfig({
+    lora1: sortSectionLoraEntriesByCategoryOrder(
+      [...current.lora1, ...lora1],
+      "lora1Order",
+      categoryOrderByName,
+    ),
+    lora2: sortSectionLoraEntriesByCategoryOrder(
+      [...current.lora2, ...lora2],
+      "lora2Order",
+      categoryOrderByName,
+    ),
+  });
+
+  await prisma.projectSection.update({
+    where: { id: sectionId },
+    data: { loraConfig: next as Prisma.InputJsonValue },
+  });
+  await recordSectionChange({
+    sectionId,
+    dimension: "lora",
+    title,
+    before,
+    after: next,
+  });
+}
 
 // ---------------------------------------------------------------------------
 // Prompt Block CRUD
@@ -267,7 +326,7 @@ export async function importPresetToSection(
   });
 
   // Build LoRA entries
-  const makeLora = (b: { path: string; weight: number; enabled: boolean }) => ({
+  const makeLora = (b: { path: string; weight: number; enabled: boolean }): LoraEntry => ({
     id: createLoraEntryId(),
     path: b.path,
     weight: b.weight,
@@ -280,10 +339,20 @@ export async function importPresetToSection(
     groupBindingId: groupBindingId ?? undefined,
   });
 
+  const lora1 = resolved.lora1.map(makeLora);
+  const lora2 = resolved.lora2.map(makeLora);
+
+  await persistImportedLoras(
+    sectionId,
+    lora1,
+    lora2,
+    `Import preset LoRA: ${label}`,
+  );
+
   return {
     block,
-    lora1: resolved.lora1.map(makeLora),
-    lora2: resolved.lora2.map(makeLora),
+    lora1,
+    lora2,
     categoryOrders: {
       positivePromptOrder: myOrder,
       lora1Order: preset.category.lora1Order,
@@ -382,11 +451,9 @@ export async function switchBindingVariant(
   const newLora1 = resolved.lora1.map(makeLora);
   const newLora2 = resolved.lora2.map(makeLora);
 
-  if (section?.loraConfig) {
-    const config = section.loraConfig as {
-      lora1?: Array<Record<string, unknown>>;
-      lora2?: Array<Record<string, unknown>>;
-    };
+  {
+    const categoryOrderByName = await getCategoryOrderByName();
+    const config = parseSectionLoraConfig(section?.loraConfig);
     if (config.lora1) {
       const idx = config.lora1.findIndex((e) => e.bindingId === bindingId);
       const filtered = config.lora1.filter((e) => e.bindingId !== bindingId);
@@ -401,16 +468,28 @@ export async function switchBindingVariant(
       filtered.splice(insertAt, 0, ...newLora2);
       config.lora2 = filtered;
     }
+    config.lora1 = sortSectionLoraEntriesByCategoryOrder(
+      config.lora1,
+      "lora1Order",
+      categoryOrderByName,
+    );
+    config.lora2 = sortSectionLoraEntriesByCategoryOrder(
+      config.lora2,
+      "lora2Order",
+      categoryOrderByName,
+    );
+    const nextConfig = serializeSectionLoraConfig(config);
+
     await prisma.projectSection.update({
       where: { id: sectionId },
-      data: { loraConfig: config as Prisma.InputJsonValue },
+      data: { loraConfig: nextConfig as Prisma.InputJsonValue },
     });
     await recordSectionChange({
       sectionId,
       dimension: "lora",
       title: `切换预制 LoRA：${label}`,
       before: beforeLoraConfig,
-      after: config,
+      after: nextConfig,
     });
   }
 

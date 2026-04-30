@@ -4,6 +4,14 @@
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
 <!-- END:nextjs-agent-rules -->
 
+<!-- BEGIN:auth-debug-rules -->
+# UI auth for local verification
+
+When UI verification needs an authenticated session, read the login token from
+the project-root `.env` file and use it to log in. Do not hard-code the token,
+print it in logs, or commit token values.
+<!-- END:auth-debug-rules -->
+
 <!-- BEGIN:deploy-rules -->
 # 部署流程
 

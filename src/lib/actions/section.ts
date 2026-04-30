@@ -5,7 +5,11 @@ import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import type { PresetBinding } from "./project";
 import { resolveVariantContent } from "./preset-variant";
-import { createBindingId, createLoraEntryId } from "./_helpers";
+import {
+  createBindingId,
+  createLoraEntryId,
+  sortSectionLoraEntriesByCategoryOrder,
+} from "./_helpers";
 import { importPresetToSection } from "./prompt-block";
 import { switchBindingVariant } from "./prompt-block";
 
@@ -175,6 +179,26 @@ export async function addSection(projectId: string, name?: string): Promise<stri
         }
       }
     }
+
+    const categoryOrderByName = new Map(
+      presets.map((preset) => [
+        preset.category.name,
+        {
+          lora1Order: preset.category.lora1Order,
+          lora2Order: preset.category.lora2Order,
+        },
+      ]),
+    );
+    loraConfig.lora1 = sortSectionLoraEntriesByCategoryOrder(
+      loraConfig.lora1,
+      "lora1Order",
+      categoryOrderByName,
+    );
+    loraConfig.lora2 = sortSectionLoraEntriesByCategoryOrder(
+      loraConfig.lora2,
+      "lora2Order",
+      categoryOrderByName,
+    );
 
     // Persist the composed loraConfig
     if (loraConfig.lora1.length > 0 || loraConfig.lora2.length > 0) {

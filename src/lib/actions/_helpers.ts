@@ -15,10 +15,13 @@ export function toJsonValue(value: unknown): Prisma.InputJsonValue | typeof Pris
 // LoRA 排序辅助
 // ---------------------------------------------------------------------------
 
-type SectionLoraJsonEntry = Record<string, unknown>;
+type SectionLoraJsonEntry = {
+  source?: unknown;
+  sourceLabel?: unknown;
+};
 
-export function sortSectionLoraEntriesByCategoryOrder(
-  entries: SectionLoraJsonEntry[],
+export function sortSectionLoraEntriesByCategoryOrder<T extends SectionLoraJsonEntry>(
+  entries: T[],
   orderKey: "lora1Order" | "lora2Order",
   categoryOrderByName: Map<string, { lora1Order: number; lora2Order: number }>,
 ) {

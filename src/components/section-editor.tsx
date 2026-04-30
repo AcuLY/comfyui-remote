@@ -251,7 +251,6 @@ export function SectionEditor({
       if (loraChanged) {
         setLora1(updatedLora1);
         setLora2(updatedLora2);
-        await onLoraChange({ lora1: updatedLora1, lora2: updatedLora2 });
       }
 
       setShowImportPanel(false);
@@ -332,7 +331,6 @@ export function SectionEditor({
       if (loraChanged) {
         setLora1(updatedLora1);
         setLora2(updatedLora2);
-        await onLoraChange({ lora1: updatedLora1, lora2: updatedLora2 });
       }
 
       setShowImportPanel(false);
