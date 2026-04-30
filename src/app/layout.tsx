@@ -35,8 +35,9 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   const headersList = await headers();
   const pathname = headersList.get("x-pathname") ?? "/";
   const isLoginPage = pathname === "/login";
+  const isDesignDemoPage = pathname === "/design-demos" || pathname.startsWith("/design-demos/");
 
-  const content = isLoginPage ? children : <AppShell>{children}</AppShell>;
+  const content = isLoginPage || isDesignDemoPage ? children : <AppShell>{children}</AppShell>;
 
   return (
     <html
