@@ -19,7 +19,6 @@ export async function exportProjectImages(projectId: string): Promise<ExportProj
     select: {
       id: true,
       title: true,
-      presetBindings: true,
       sections: {
         orderBy: { sortOrder: "asc" },
         include: {
@@ -46,18 +45,7 @@ export async function exportProjectImages(projectId: string): Promise<ExportProj
     return { success: false, message: "Project not found" };
   }
 
-  type PresetBindingJson = Array<{ categoryId: string; presetId: string }>;
-  const bindings = project.presetBindings as PresetBindingJson | null;
-  let exportName = project.title;
-  if (bindings && bindings.length > 0) {
-    const presets = await prisma.preset.findMany({
-      where: { id: { in: bindings.map((binding) => binding.presetId) } },
-      select: { id: true, name: true },
-    });
-    if (presets.length > 0) {
-      exportName = presets[0].name;
-    }
-  }
+  const exportName = project.title;
 
   const exportDir = join(EXPORT_ROOT, exportName);
   const pixivDir = join(exportDir, "pixiv");
