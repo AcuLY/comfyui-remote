@@ -295,6 +295,8 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
                           <img
                             src={src}
                             alt=""
+                            loading="lazy"
+                            decoding="async"
                             className="h-full w-auto object-contain"
                           />
                         </div>

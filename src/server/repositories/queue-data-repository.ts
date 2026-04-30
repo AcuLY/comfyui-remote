@@ -129,16 +129,89 @@ export function formatDate(date: Date): string {
   return `${y}-${m}-${d} ${h}:${min}`;
 }
 
+const VISIBLE_QUEUE_RUN_WHERE = {
+  status: "done",
+  images: { some: { reviewStatus: "pending" } },
+} as const;
+
+function serializeQueueRun(
+  run: Awaited<ReturnType<typeof loadVisibleQueueRunPage>>["runs"][number],
+  presetMap: Map<string, { name: string }>,
+) {
+  const availableImages = run.images
+    .map((image) => toAvailableImage(image))
+    .filter((image): image is AvailableImage => Boolean(image));
+
+  const pendingImages = availableImages.filter((img) => img.reviewStatus === "pending");
+  if (pendingImages.length === 0) return null;
+
+  const presetNames = extractPresetNames(run.project.presetBindings as PresetBindingJson | null, presetMap);
+
+  return {
+    id: run.id,
+    presetNames,
+    projectTitle: run.project.title,
+    sectionName:
+      run.projectSection.name ??
+      `section_${run.projectSection.sortOrder + 1}`,
+    createdAt: formatDate(run.createdAt),
+    finishedAt: run.finishedAt?.toISOString() ?? null,
+    pendingCount: pendingImages.length,
+    totalCount: availableImages.length,
+    status: run.status as QueueRun["status"],
+    staleImageCount: run.images.length - availableImages.length,
+    thumbnailUrls: availableImages
+      .slice(0, 8)
+      .map((img) => toImageUrl(img.displayPath) ?? "")
+      .filter(Boolean),
+  };
+}
+
+async function loadVisibleQueueRunPage(page: number, pageSize: number) {
+  const totalItemsPromise = prisma.run.count({
+    where: VISIBLE_QUEUE_RUN_WHERE,
+  });
+
+  const totalPendingImagesPromise = prisma.imageResult.count({
+    where: {
+      reviewStatus: "pending",
+      run: { status: "done" },
+    },
+  });
+
+  const totalItems = await totalItemsPromise;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const startIndex = (safePage - 1) * pageSize;
+
+  const runs = await prisma.run.findMany({
+    where: VISIBLE_QUEUE_RUN_WHERE,
+    orderBy: { createdAt: "desc" },
+    skip: startIndex,
+    take: pageSize,
+    include: {
+      project: {
+        select: { id: true, title: true, presetBindings: true },
+      },
+      projectSection: true,
+      images: {
+        orderBy: { createdAt: "asc" },
+      },
+    },
+  });
+
+  const totalPendingImages = await totalPendingImagesPromise;
+
+  return { runs, totalItems, totalPages, safePage, startIndex, totalPendingImages };
+}
+
 async function loadVisibleQueueRuns(): Promise<{
   runs: QueueRun[];
   staleImageCount: number;
   totalPendingImages: number;
 }> {
   const runs = await prisma.run.findMany({
-    where: {
-      status: "done",
-      images: { some: { reviewStatus: "pending" } },
-    },
+    where: VISIBLE_QUEUE_RUN_WHERE,
     orderBy: { createdAt: "desc" },
     include: {
       project: {
@@ -160,33 +233,21 @@ async function loadVisibleQueueRuns(): Promise<{
   const visibleRuns: QueueRun[] = [];
 
   for (const run of runs) {
-    const availableImages = run.images
-      .map((image) => toAvailableImage(image))
-      .filter((image): image is AvailableImage => Boolean(image));
-    staleImageCount += run.images.length - availableImages.length;
-
-    const pendingImages = availableImages.filter((img) => img.reviewStatus === "pending");
-    if (pendingImages.length === 0) continue;
-
-    totalPendingImages += pendingImages.length;
-    const presetNames = extractPresetNames(run.project.presetBindings as PresetBindingJson | null, presetMap);
-
+    const serialized = serializeQueueRun(run, presetMap);
+    if (!serialized) continue;
+    staleImageCount += serialized.staleImageCount;
+    totalPendingImages += serialized.pendingCount;
     visibleRuns.push({
-      id: run.id,
-      presetNames,
-      projectTitle: run.project.title,
-      sectionName:
-        run.projectSection.name ??
-        `section_${run.projectSection.sortOrder + 1}`,
-      createdAt: formatDate(run.createdAt),
-      finishedAt: run.finishedAt?.toISOString() ?? null,
-      pendingCount: pendingImages.length,
-      totalCount: availableImages.length,
-      status: run.status as QueueRun["status"],
-      thumbnailUrls: availableImages
-        .slice(0, 8)
-        .map((img) => toImageUrl(img.displayPath) ?? "")
-        .filter(Boolean),
+      id: serialized.id,
+      presetNames: serialized.presetNames,
+      projectTitle: serialized.projectTitle,
+      sectionName: serialized.sectionName,
+      createdAt: serialized.createdAt,
+      finishedAt: serialized.finishedAt,
+      pendingCount: serialized.pendingCount,
+      totalCount: serialized.totalCount,
+      status: serialized.status,
+      thumbnailUrls: serialized.thumbnailUrls,
     });
   }
 
@@ -207,12 +268,34 @@ export async function getQueueRunsPage(options: QueuePageOptions = {}): Promise<
   pagination: QueuePagination;
 }> {
   const { page, pageSize } = normalizeQueuePageOptions(options);
-  const { runs, staleImageCount, totalPendingImages } = await loadVisibleQueueRuns();
-  const totalItems = runs.length;
-  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
-  const safePage = Math.min(page, totalPages);
-  const startIndex = (safePage - 1) * pageSize;
-  const pagedRuns = runs.slice(startIndex, startIndex + pageSize);
+  const { runs, totalItems, totalPages, safePage, startIndex, totalPendingImages } =
+    await loadVisibleQueueRunPage(page, pageSize);
+  const presetMap = await batchResolvePresetNames(
+    collectPresetIds(runs.map((r) => r.project.presetBindings)),
+  );
+  let staleImageCount = 0;
+  const pagedRuns: QueueRun[] = [];
+
+  for (const run of runs) {
+    const serialized = serializeQueueRun(run, presetMap);
+    if (!serialized) {
+      staleImageCount += run.images.length;
+      continue;
+    }
+    staleImageCount += serialized.staleImageCount;
+    pagedRuns.push({
+      id: serialized.id,
+      presetNames: serialized.presetNames,
+      projectTitle: serialized.projectTitle,
+      sectionName: serialized.sectionName,
+      createdAt: serialized.createdAt,
+      finishedAt: serialized.finishedAt,
+      pendingCount: serialized.pendingCount,
+      totalCount: serialized.totalCount,
+      status: serialized.status,
+      thumbnailUrls: serialized.thumbnailUrls,
+    });
+  }
 
   return {
     runs: pagedRuns,
@@ -361,6 +444,10 @@ export async function getReviewGroup(runId: string): Promise<ReviewGroup | null>
 // ---------------------------------------------------------------------------
 
 export async function getReviewGroupIds(): Promise<string[]> {
-  const { runs } = await loadVisibleQueueRuns();
+  const runs = await prisma.run.findMany({
+    where: VISIBLE_QUEUE_RUN_WHERE,
+    orderBy: { createdAt: "desc" },
+    select: { id: true },
+  });
   return runs.map((run) => run.id);
 }
