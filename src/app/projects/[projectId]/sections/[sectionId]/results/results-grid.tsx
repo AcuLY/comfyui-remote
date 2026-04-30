@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { Check, ClipboardCheck, Trash2 } from "lucide-react";
+import { Check, CheckSquare, ClipboardCheck, Square, Trash2 } from "lucide-react";
 import { Star } from "lucide-react";
 import { keepImages, trashImages } from "@/lib/actions";
 import { ResultsGalleryProvider } from "./results-gallery";
@@ -52,7 +52,21 @@ export function ResultsGrid({ runs }: { runs: RunData[] }) {
     });
   }
 
-
+  function toggleRunSelect(imageIds: string[]) {
+    if (imageIds.length === 0) return;
+    setSelected((prev) => {
+      const allSelected = imageIds.every((id) => prev.has(id));
+      const next = new Set(prev);
+      for (const id of imageIds) {
+        if (allSelected) {
+          next.delete(id);
+        } else {
+          next.add(id);
+        }
+      }
+      return next;
+    });
+  }
 
   return (
     <ResultsGalleryProvider allImages={allImages}>
@@ -61,8 +75,10 @@ export function ResultsGrid({ runs }: { runs: RunData[] }) {
           {/* Image grid by run */}
           {runs.map((run) => {
             const runPendingImages = run.images.filter((img) => img.status === "pending");
+            const runImageIds = run.images.map((img) => img.id);
             const runSelectedIds = run.images.filter((img) => selected.has(img.id)).map((img) => img.id);
             const runSelectedCount = runSelectedIds.length;
+            const isRunFullySelected = runImageIds.length > 0 && runImageIds.every((id) => selected.has(id));
 
             return (
               <div key={run.id}>
@@ -85,6 +101,16 @@ export function ResultsGrid({ runs }: { runs: RunData[] }) {
                     <span className="ml-auto text-[10px] text-amber-400">
                       {runPendingImages.length} 张待审
                     </span>
+                  )}
+                  {run.images.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => toggleRunSelect(runImageIds)}
+                      className={`${runPendingImages.length > 0 ? "" : "ml-auto"} inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-[10px] text-zinc-300 transition hover:bg-white/[0.08] hover:text-white`}
+                    >
+                      {isRunFullySelected ? <CheckSquare className="size-3" /> : <Square className="size-3" />}
+                      {isRunFullySelected ? "取消全选" : "全选"}
+                    </button>
                   )}
                   <Link
                     href={`/queue/${run.id}`}

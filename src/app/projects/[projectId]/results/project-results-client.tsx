@@ -45,7 +45,7 @@ type ProjectResultsSection = ProjectResultsData["sections"][number];
 type ProjectResultsRun = ProjectResultsSection["runs"][number];
 type ProjectResultsImage = ProjectResultsRun["images"][number];
 
-const COLLAPSED_IMAGE_COUNT = 24;
+const COLLAPSED_ROW_COUNT = 2;
 
 type ProjectResultsImageWithRun = ProjectResultsImage & {
   runIndex: number;
@@ -339,6 +339,7 @@ function SectionResultsBlock({
   togglingImageId,
   isExpanded,
   onToggleExpanded,
+  collapsedImageCount,
 }: {
   projectId: string;
   section: ProjectResultsSection;
@@ -346,6 +347,7 @@ function SectionResultsBlock({
   togglingImageId: string | null;
   isExpanded: boolean;
   onToggleExpanded: (sectionId: string) => void;
+  collapsedImageCount: number;
 }) {
   const images = section.runs.flatMap((run) =>
     run.images.map((image) => ({
@@ -353,8 +355,8 @@ function SectionResultsBlock({
       runIndex: run.runIndex,
     })),
   );
-  const shouldCollapse = images.length > COLLAPSED_IMAGE_COUNT;
-  const visibleImages = shouldCollapse && !isExpanded ? images.slice(0, COLLAPSED_IMAGE_COUNT) : images;
+  const shouldCollapse = images.length > collapsedImageCount;
+  const visibleImages = shouldCollapse && !isExpanded ? images.slice(0, collapsedImageCount) : images;
 
   return (
     <section id={`section-${section.id}`} className="scroll-mt-4 rounded-xl border border-white/10 bg-white/[0.025] p-3">
@@ -407,7 +409,7 @@ function SectionResultsBlock({
               ) : (
                 <>
                   <ChevronDown className="size-3.5" />
-                  显示全部（剩余 {images.length - COLLAPSED_IMAGE_COUNT} 张）
+                  显示全部（剩余 {images.length - collapsedImageCount} 张）
                 </>
               )}
             </button>
@@ -421,6 +423,7 @@ function SectionResultsBlock({
 export function ProjectResultsClient({ project }: { project: ProjectResultsData }) {
   const [sections, setSections] = useState(project.sections);
   const [expandedSectionIds, setExpandedSectionIds] = useState<Set<string>>(new Set());
+  const [collapsedImageCount, setCollapsedImageCount] = useState(2 * COLLAPSED_ROW_COUNT);
   const [togglingImageId, setTogglingImageId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
   const sectionIds = useMemo(() => sections.map((section) => section.id), [sections]);
@@ -430,6 +433,23 @@ export function ProjectResultsClient({ project }: { project: ProjectResultsData 
 
   const totalImages = sections.reduce((sum, section) => sum + section.imageCount, 0);
   const totalFeatured = sections.reduce((sum, section) => sum + section.featuredCount, 0);
+
+  useEffect(() => {
+    const getColumnCount = () => {
+      if (window.matchMedia("(min-width: 1280px)").matches) return 5;
+      if (window.matchMedia("(min-width: 1024px)").matches) return 4;
+      if (window.matchMedia("(min-width: 640px)").matches) return 3;
+      return 2;
+    };
+
+    const syncCollapsedImageCount = () => {
+      setCollapsedImageCount(getColumnCount() * COLLAPSED_ROW_COUNT);
+    };
+
+    syncCollapsedImageCount();
+    window.addEventListener("resize", syncCollapsedImageCount);
+    return () => window.removeEventListener("resize", syncCollapsedImageCount);
+  }, []);
 
   const toggleExpandedSection = useCallback((sectionId: string) => {
     setExpandedSectionIds((current) => {
@@ -539,6 +559,7 @@ export function ProjectResultsClient({ project }: { project: ProjectResultsData 
                 togglingImageId={togglingImageId}
                 isExpanded={expandedSectionIds.has(section.id)}
                 onToggleExpanded={toggleExpandedSection}
+                collapsedImageCount={collapsedImageCount}
               />
             ))
           )}
