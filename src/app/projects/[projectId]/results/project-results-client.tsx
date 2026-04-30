@@ -1,0 +1,409 @@
+"use client";
+
+import { useCallback, useMemo, useState, useTransition } from "react";
+import Link from "next/link";
+import {
+  ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
+  ClipboardCheck,
+  ImageIcon,
+  Star,
+} from "lucide-react";
+import { toast } from "sonner";
+
+import type { ProjectResultsData } from "@/lib/server-data";
+import { useScrollSpy } from "@/hooks/use-scroll-spy";
+import { getPreferredScrollContainer } from "@/lib/scroll-container";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarRail,
+  SidebarTrigger,
+  useSidebar,
+} from "@/components/ui/sidebar";
+
+type ProjectResultsSection = ProjectResultsData["sections"][number];
+type ProjectResultsRun = ProjectResultsSection["runs"][number];
+type ProjectResultsImage = ProjectResultsRun["images"][number];
+
+const RUN_STATUS_BADGE: Record<string, string> = {
+  done: "border-emerald-500/20 bg-emerald-500/10 text-emerald-300",
+  running: "border-amber-500/20 bg-amber-500/10 text-amber-300",
+  queued: "border-zinc-500/20 bg-zinc-500/10 text-zinc-400",
+  failed: "border-rose-500/20 bg-rose-500/10 text-rose-300",
+};
+
+function scrollToSection(sectionId: string) {
+  const element = document.getElementById(`section-${sectionId}`);
+  if (!element) return;
+
+  const container = getPreferredScrollContainer('[data-slot="sidebar-inset"]');
+  if (container instanceof Window) {
+    const y = element.getBoundingClientRect().top + window.scrollY - 16;
+    window.scrollTo({ top: y, behavior: "smooth" });
+  } else {
+    const y = element.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop - 16;
+    container.scrollTo({ top: y, behavior: "smooth" });
+  }
+}
+
+function ProjectResultsSidebar({
+  project,
+  activeSectionId,
+}: {
+  project: ProjectResultsData;
+  activeSectionId: string | null;
+}) {
+  const { state: sidebarState } = useSidebar();
+  const isExpanded = sidebarState === "expanded";
+
+  return (
+    <Sidebar collapsible="icon" mobileBehavior="sidebar" className="border-r border-white/5">
+      <SidebarHeader className="gap-1.5 px-3.5 py-3 group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:px-2">
+        <Link
+          href={`/projects/${project.id}`}
+          className="inline-flex items-center gap-1.5 text-xs text-zinc-400 transition hover:text-zinc-200 group-data-[collapsible=icon]:justify-center"
+        >
+          <ArrowLeft className="size-3.5" />
+          {isExpanded && <span>返回项目详情</span>}
+        </Link>
+        {isExpanded && (
+          <div className="mt-1 space-y-2 rounded-xl border border-sky-500/15 bg-sky-500/[0.06] px-3 py-2 shadow-inner shadow-sky-500/5">
+            <p className="text-[10px] text-sky-300/70">项目结果</p>
+            <h1 className="truncate text-[15px] font-semibold leading-5 text-sky-50">{project.title}</h1>
+            <div className="grid grid-cols-2 gap-1.5">
+              {project.previousProject ? (
+                <Link
+                  href={`/projects/${project.previousProject.id}/results`}
+                  title={project.previousProject.title}
+                  className="inline-flex min-w-0 items-center justify-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-[11px] text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
+                >
+                  <ChevronLeft className="size-3 shrink-0" />
+                  <span className="truncate">上一个</span>
+                </Link>
+              ) : (
+                <span className="inline-flex items-center justify-center gap-1 rounded-lg border border-white/5 px-2 py-1 text-[11px] text-zinc-600">
+                  <ChevronLeft className="size-3" />
+                  上一个
+                </span>
+              )}
+              {project.nextProject ? (
+                <Link
+                  href={`/projects/${project.nextProject.id}/results`}
+                  title={project.nextProject.title}
+                  className="inline-flex min-w-0 items-center justify-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-[11px] text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
+                >
+                  <span className="truncate">下一个</span>
+                  <ChevronRight className="size-3 shrink-0" />
+                </Link>
+              ) : (
+                <span className="inline-flex items-center justify-center gap-1 rounded-lg border border-white/5 px-2 py-1 text-[11px] text-zinc-600">
+                  下一个
+                  <ChevronRight className="size-3" />
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+      </SidebarHeader>
+
+      <SidebarContent className="overflow-x-hidden">
+        <SidebarGroup>
+          <SidebarGroupLabel>小节结果</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu className="gap-1">
+              {project.sections.map((section, index) => (
+                <SidebarMenuItem key={section.id} className="flex items-center gap-1">
+                  <SidebarMenuButton
+                    tooltip={`${index + 1}. ${section.name}`}
+                    isActive={activeSectionId === section.id}
+                    onClick={() => scrollToSection(section.id)}
+                    className="h-auto min-h-9 flex-1 py-2"
+                  >
+                    <span className="flex size-4 shrink-0 items-center justify-center text-[11px] text-zinc-500">
+                      {index + 1}
+                    </span>
+                    <span className="line-clamp-2 !whitespace-normal text-xs">{section.name}</span>
+                  </SidebarMenuButton>
+                  {isExpanded && (
+                    <Link
+                      href={`/projects/${project.id}/sections/${section.id}/results`}
+                      className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-zinc-500 transition hover:bg-white/10 hover:text-sky-300"
+                      title="小节审核"
+                    >
+                      <ClipboardCheck className="size-3.5" />
+                    </Link>
+                  )}
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+
+      <SidebarFooter className="px-3 py-3" />
+      <SidebarRail />
+    </Sidebar>
+  );
+}
+
+function StatusPill({ status }: { status: string }) {
+  return (
+    <span className={`rounded-full border px-2 py-0.5 text-[10px] ${RUN_STATUS_BADGE[status] ?? RUN_STATUS_BADGE.queued}`}>
+      {status}
+    </span>
+  );
+}
+
+function ResultImageCard({
+  image,
+  onToggleFeatured,
+  disabled,
+}: {
+  image: ProjectResultsImage;
+  onToggleFeatured: (imageId: string, featured: boolean) => void;
+  disabled: boolean;
+}) {
+  return (
+    <div
+      className={`group relative flex h-44 items-center justify-center overflow-hidden rounded-xl border bg-white/[0.03] transition hover:border-sky-500/40 ${
+        image.status === "kept"
+          ? "border-emerald-500/30"
+          : image.status === "pending"
+            ? "border-amber-500/20"
+            : "border-white/10"
+      }`}
+    >
+      <a
+        href={image.full}
+        target="_blank"
+        rel="noreferrer"
+        className="flex size-full items-center justify-center"
+        title="打开原图"
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={image.src}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          className="max-h-full max-w-full object-contain"
+        />
+      </a>
+
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          onToggleFeatured(image.id, !image.featured);
+        }}
+        className={`absolute right-1.5 top-1.5 inline-flex size-7 items-center justify-center rounded-full border backdrop-blur transition disabled:opacity-50 ${
+          image.featured
+            ? "border-amber-300/40 bg-amber-400/25 text-amber-200"
+            : "border-white/15 bg-black/40 text-white/70 hover:bg-white/15 hover:text-amber-200"
+        }`}
+        title={image.featured ? "取消精选" : "标记为精选"}
+      >
+        <Star className="size-3.5" fill={image.featured ? "currentColor" : "none"} />
+      </button>
+
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 bg-black/45 px-2 py-1 text-[10px] text-zinc-200 opacity-90">
+        <span>{image.status}</span>
+        {image.featured && <span className="text-amber-200">精选</span>}
+      </div>
+    </div>
+  );
+}
+
+function SectionResultsBlock({
+  projectId,
+  section,
+  onToggleFeatured,
+  togglingImageId,
+}: {
+  projectId: string;
+  section: ProjectResultsSection;
+  onToggleFeatured: (imageId: string, featured: boolean) => void;
+  togglingImageId: string | null;
+}) {
+  return (
+    <section id={`section-${section.id}`} className="scroll-mt-4 rounded-xl border border-white/10 bg-white/[0.025] p-3">
+      <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="line-clamp-2 text-sm font-semibold text-white">{section.name}</h2>
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-zinc-500">
+            <span>{section.runCount} 次运行</span>
+            <span>{section.imageCount} 张图片</span>
+            {section.pendingCount > 0 && <span className="text-amber-400">{section.pendingCount} 待审</span>}
+            {section.featuredCount > 0 && <span className="text-amber-300">{section.featuredCount} 精选</span>}
+          </div>
+        </div>
+        <Link
+          href={`/projects/${projectId}/sections/${section.id}/results`}
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-sky-500/20 bg-sky-500/10 px-3 py-1.5 text-xs text-sky-300 transition hover:bg-sky-500/20"
+        >
+          <ClipboardCheck className="size-3.5" />
+          小节审核
+        </Link>
+      </div>
+
+      {section.imageCount === 0 ? (
+        <div className="flex items-center justify-center rounded-xl border border-dashed border-white/5 bg-white/[0.01] py-8 text-xs text-zinc-600">
+          暂无结果
+        </div>
+      ) : (
+        <div className="space-y-5">
+          {section.runs.map((run) =>
+            run.images.length > 0 ? (
+              <div key={run.id}>
+                <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
+                  <span className="font-medium text-zinc-300">Run #{run.runIndex}</span>
+                  <span className="text-[10px] text-zinc-500">{run.createdAt}</span>
+                  <StatusPill status={run.status} />
+                </div>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                  {run.images.map((image) => (
+                    <ResultImageCard
+                      key={image.id}
+                      image={image}
+                      onToggleFeatured={onToggleFeatured}
+                      disabled={togglingImageId === image.id}
+                    />
+                  ))}
+                </div>
+              </div>
+            ) : null,
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
+export function ProjectResultsClient({ project }: { project: ProjectResultsData }) {
+  const [sections, setSections] = useState(project.sections);
+  const [togglingImageId, setTogglingImageId] = useState<string | null>(null);
+  const [, startTransition] = useTransition();
+  const sectionIds = useMemo(() => sections.map((section) => section.id), [sections]);
+  const activeSectionId = useScrollSpy(sectionIds, {
+    rootSelector: '[data-slot="sidebar-inset"]',
+  });
+
+  const totalImages = sections.reduce((sum, section) => sum + section.imageCount, 0);
+  const totalFeatured = sections.reduce((sum, section) => sum + section.featuredCount, 0);
+
+  const setImageFeatured = useCallback((imageId: string, featured: boolean) => {
+    setSections((currentSections) =>
+      currentSections.map((section) => {
+        let sectionChanged = false;
+        const runs = section.runs.map((run) => {
+          let runChanged = false;
+          const images = run.images.map((image) => {
+            if (image.id !== imageId) return image;
+            sectionChanged = true;
+            runChanged = true;
+            return { ...image, featured };
+          });
+          return runChanged ? { ...run, images } : run;
+        });
+
+        if (!sectionChanged) return section;
+
+        const featuredCount = runs.reduce(
+          (sum, run) => sum + run.images.filter((image) => image.featured).length,
+          0,
+        );
+        return { ...section, runs, featuredCount };
+      }),
+    );
+  }, []);
+
+  const handleToggleFeatured = useCallback((imageId: string, featured: boolean) => {
+    if (togglingImageId) return;
+    setTogglingImageId(imageId);
+    setImageFeatured(imageId, featured);
+
+    startTransition(async () => {
+      try {
+        const response = await fetch(`/api/images/${encodeURIComponent(imageId)}/featured`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ featured }),
+        });
+        const result = await response.json().catch(() => null) as { ok?: boolean; error?: { message?: string } } | null;
+        if (!response.ok || result?.ok === false) {
+          throw new Error(result?.error?.message ?? "更新精选失败");
+        }
+      } catch (error) {
+        setImageFeatured(imageId, !featured);
+        toast.error(error instanceof Error ? error.message : "更新精选失败");
+      } finally {
+        setTogglingImageId(null);
+      }
+    });
+  }, [setImageFeatured, togglingImageId]);
+
+  return (
+    <SidebarProvider
+      style={{
+        "--sidebar-width": "14rem",
+        "--sidebar-width-icon": "3rem",
+      } as React.CSSProperties}
+      className="-mx-5 min-h-[calc(100dvh-5rem)] w-[calc(100%+2.5rem)] bg-transparent sm:-mx-6 sm:w-[calc(100%+3rem)]"
+    >
+      <ProjectResultsSidebar
+        project={{ ...project, sections }}
+        activeSectionId={activeSectionId}
+      />
+
+      <SidebarInset className="flex-1 overflow-auto bg-transparent">
+        <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 pb-24 pt-4 sm:px-6">
+          <div className="sticky top-0 z-20 -mx-4 flex items-center gap-2 border-b border-white/[0.06] bg-[var(--bg)]/80 px-4 py-2 backdrop-blur sm:-mx-6 sm:px-6">
+            <SidebarTrigger className="-ml-1 hidden md:inline-flex" />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 text-xs text-zinc-500">
+                <ImageIcon className="size-3.5" />
+                <span>项目结果</span>
+              </div>
+              <h1 className="truncate text-sm font-semibold text-white">{project.title}</h1>
+            </div>
+            <div className="hidden shrink-0 items-center gap-2 text-[11px] text-zinc-500 sm:flex">
+              <span>{sections.length} 小节</span>
+              <span>{totalImages} 张图片</span>
+              <span>{totalFeatured} 精选</span>
+            </div>
+          </div>
+
+          {sections.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-white/10 p-8 text-center text-sm text-zinc-500">
+              暂无小节
+            </div>
+          ) : (
+            sections.map((section) => (
+              <SectionResultsBlock
+                key={section.id}
+                projectId={project.id}
+                section={section}
+                onToggleFeatured={handleToggleFeatured}
+                togglingImageId={togglingImageId}
+              />
+            ))
+          )}
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
+  );
+}

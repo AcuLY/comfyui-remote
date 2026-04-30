@@ -276,6 +276,37 @@ export type SectionResultsData = {
   totalPending: number;
 };
 
+export type ProjectResultsData = {
+  id: string;
+  title: string;
+  previousProject: { id: string; title: string } | null;
+  nextProject: { id: string; title: string } | null;
+  sections: {
+    id: string;
+    name: string;
+    sortOrder: number;
+    runCount: number;
+    imageCount: number;
+    pendingCount: number;
+    featuredCount: number;
+    runs: {
+      id: string;
+      runIndex: number;
+      status: string;
+      createdAt: string;
+      images: {
+        id: string;
+        src: string;
+        full: string;
+        status: ReviewStatus;
+        featured: boolean;
+        width: number | null;
+        height: number | null;
+      }[];
+    }[];
+  }[];
+};
+
 export async function getSectionResults(sectionId: string): Promise<SectionResultsData | null> {
   const pos = await prisma.projectSection.findUnique({
     where: { id: sectionId },
@@ -339,6 +370,111 @@ export async function getSectionResults(sectionId: string): Promise<SectionResul
     runs,
     pendingRunId,
     totalPending,
+  };
+}
+
+export async function getProjectResults(projectId: string): Promise<ProjectResultsData | null> {
+  const [project, projectNavItems] = await Promise.all([
+    prisma.project.findUnique({
+      where: { id: projectId },
+      select: {
+        id: true,
+        title: true,
+        sections: {
+          orderBy: { sortOrder: "asc" },
+          select: {
+            id: true,
+            name: true,
+            sortOrder: true,
+            runs: {
+              orderBy: { createdAt: "desc" },
+              select: {
+                id: true,
+                runIndex: true,
+                status: true,
+                createdAt: true,
+                images: {
+                  orderBy: { createdAt: "asc" },
+                  select: {
+                    id: true,
+                    thumbPath: true,
+                    filePath: true,
+                    reviewStatus: true,
+                    featured: true,
+                    width: true,
+                    height: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    }),
+    prisma.project.findMany({
+      orderBy: [{ updatedAt: "desc" }, { title: "asc" }],
+      select: { id: true, title: true },
+    }),
+  ]);
+
+  if (!project) return null;
+
+  const projectIndex = projectNavItems.findIndex((item) => item.id === project.id);
+  const previousProject = projectIndex > 0 ? projectNavItems[projectIndex - 1] : null;
+  const nextProject =
+    projectIndex >= 0 && projectIndex < projectNavItems.length - 1
+      ? projectNavItems[projectIndex + 1]
+      : null;
+
+  return {
+    id: project.id,
+    title: project.title,
+    previousProject,
+    nextProject,
+    sections: project.sections.map((section) => {
+      let imageCount = 0;
+      let pendingCount = 0;
+      let featuredCount = 0;
+
+      const runs = section.runs.map((run) => {
+        const images = run.images
+          .filter((img) => img.reviewStatus !== "trashed")
+          .map((img) => {
+            imageCount += 1;
+            if (img.reviewStatus === "pending") pendingCount += 1;
+            if (img.featured) featuredCount += 1;
+
+            return {
+              id: img.id,
+              src: toImageUrl(img.thumbPath ?? img.filePath) ?? "",
+              full: (toImageUrl(img.filePath) ?? "") + "?q=80",
+              status: img.reviewStatus as ReviewStatus,
+              featured: img.featured,
+              width: img.width,
+              height: img.height,
+            };
+          });
+
+        return {
+          id: run.id,
+          runIndex: run.runIndex,
+          status: run.status,
+          createdAt: formatDate(run.createdAt),
+          images,
+        };
+      });
+
+      return {
+        id: section.id,
+        name: section.name || `小节 ${section.sortOrder}`,
+        sortOrder: section.sortOrder,
+        runCount: runs.length,
+        imageCount,
+        pendingCount,
+        featuredCount,
+        runs,
+      };
+    }),
   };
 }
 

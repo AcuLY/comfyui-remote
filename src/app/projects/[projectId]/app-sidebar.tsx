@@ -14,6 +14,7 @@ import {
   LayoutGrid,
   ChevronLeft,
   ChevronRight,
+  ImageIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -340,6 +341,17 @@ export function AppSidebar({
                 >
                   <SlidersHorizontal className="size-4" />
                   <span className="text-[11px] sm:inherit">编辑项目参数</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  render={<Link href={`/projects/${projectId}/results`} />}
+                  tooltip="项目结果"
+                  className="text-violet-300 hover:bg-violet-500/10 hover:text-violet-200 text-[11px] sm:text-sm"
+                >
+                  <ImageIcon className="size-4" />
+                  <span className="text-[11px] sm:inherit">项目结果</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
