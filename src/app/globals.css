@@ -228,6 +228,35 @@ button {
   cursor: pointer;
 }
 
+:root[data-sfw-mode="on"] img[src*="/api/images/"],
+:root[data-sfw-mode="on"] img[src*="%2Fapi%2Fimages%2F"],
+:root[data-sfw-mode="on"] img[srcset*="/api/images/"],
+:root[data-sfw-mode="on"] img[srcset*="%2Fapi%2Fimages%2F"] {
+  filter: blur(18px);
+  transform: scale(1.02);
+  transition: filter 160ms ease, transform 160ms ease;
+  will-change: filter;
+}
+
+:root[data-sfw-mode="on"] img[data-sfw-revealed="true"] {
+  filter: blur(0);
+  transform: scale(1);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  :root[data-sfw-mode="on"] img[src*="/api/images/"]:hover,
+  :root[data-sfw-mode="on"] img[src*="%2Fapi%2Fimages%2F"]:hover,
+  :root[data-sfw-mode="on"] img[srcset*="/api/images/"]:hover,
+  :root[data-sfw-mode="on"] img[srcset*="%2Fapi%2Fimages%2F"]:hover,
+  :root[data-sfw-mode="on"] img[src*="/api/images/"]:focus-visible,
+  :root[data-sfw-mode="on"] img[src*="%2Fapi%2Fimages%2F"]:focus-visible,
+  :root[data-sfw-mode="on"] img[srcset*="/api/images/"]:focus-visible,
+  :root[data-sfw-mode="on"] img[srcset*="%2Fapi%2Fimages%2F"]:focus-visible {
+    filter: blur(0);
+    transform: scale(1);
+  }
+}
+
 /* 隐藏 number input 的原生增减按钮 */
 .input-number::-webkit-outer-spin-button,
 .input-number::-webkit-inner-spin-button {

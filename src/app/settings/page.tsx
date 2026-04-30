@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { SectionCard } from "@/components/section-card";
+import { SfwModeToggle } from "@/components/sfw-mode-toggle";
 import { HeartPulse, ScrollText } from "lucide-react";
 
 const settingsGroups = [
@@ -21,6 +22,9 @@ export default function SettingsPage() {
   return (
     <div className="space-y-4">
       <SectionCard title="设置" subtitle="系统配置。预制管理在「预制」页面，项目模板在「模板」页面。">
+        <div className="mb-2 grid grid-cols-1 justify-items-center">
+          <SfwModeToggle />
+        </div>
         <div className="grid grid-cols-1 gap-2 justify-items-center md:grid-cols-2">
           {settingsGroups.map(({ href, label, description, icon: Icon }) => (
             <Link

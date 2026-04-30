@@ -3,10 +3,12 @@
 import { Toaster } from "sonner";
 import type { ReactNode } from "react";
 import { PersistentBottomNav } from "@/components/persistent-bottom-nav";
+import { SfwModeProvider } from "@/components/sfw-mode-provider";
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
     <>
+      <SfwModeProvider />
       <main className="mx-auto flex max-w-5xl flex-col gap-3 px-5 py-4 pb-24 sm:px-6">
         {children}
       </main>
