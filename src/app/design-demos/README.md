@@ -38,3 +38,15 @@ The same prefix rule applies to all existing pages:
 - `/design-demos/settings/logs`
 - `/design-demos/settings/monitor`
 - `/design-demos/login`
+
+## Page-Internal Switching
+
+The shell also covers non-routing UI states that the real pages expose:
+
+- Queue tabs: pending, running, failed, trash.
+- Result/review filters: all, pending, kept, featured.
+- Section/template editor tabs: params, prompt, LoRA, history, import preset.
+- Asset manager views: file list, directory browser, notes/move.
+- Preset library views: category tabs plus presets, groups, folders, batch selection.
+- Preset/group/template history tabs with diff placeholders.
+- Logs source and level tabs.

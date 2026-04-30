@@ -95,6 +95,14 @@ type Match = {
 };
 
 type DemoTheme = "dark" | "light";
+type QueueDemoTab = "pending" | "running" | "failed" | "trash";
+type AssetDemoView = "files" | "browser" | "notes";
+type ResultDemoFilter = "all" | "pending" | "kept" | "featured";
+type SectionEditorDemoTab = "params" | "prompt" | "lora" | "history" | "import";
+type PresetDetailDemoTab = "metadata" | "variants" | "content" | "history";
+type PresetLibraryDemoTab = "presets" | "groups" | "folders" | "batch";
+type TemplateDemoTab = "metadata" | "sections" | "history";
+type LogDemoSource = "app" | "console";
 
 type RouteDef = {
   key: RouteKey;
@@ -471,6 +479,34 @@ function SelectLike({ label, value }: { label: string; value: string }) {
   );
 }
 
+function DemoTabs<T extends string>({
+  tabs,
+  value,
+  onChange,
+}: {
+  tabs: Array<{ key: T; label: string; count?: number }>;
+  value: T;
+  onChange: (next: T) => void;
+}) {
+  return (
+    <div className={s.tabs} role="tablist">
+      {tabs.map((tab) => (
+        <button
+          aria-selected={value === tab.key}
+          className={cx(s.tab, value === tab.key && s.tabActive)}
+          key={tab.key}
+          onClick={() => onChange(tab.key)}
+          role="tab"
+          type="button"
+        >
+          {tab.label}
+          {tab.count !== undefined ? <span className={s.navCount}>{tab.count}</span> : null}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function SwitchRow({ title, subtitle }: { title: string; subtitle: string }) {
   return (
     <div className={s.switchRow}>
@@ -481,6 +517,48 @@ function SwitchRow({ title, subtitle }: { title: string; subtitle: string }) {
       <span className={s.switch} />
     </div>
   );
+}
+
+function filterImages(images: DemoImage[], filter: ResultDemoFilter) {
+  if (filter === "pending") return images.filter((image) => image.status === "pending");
+  if (filter === "kept") return images.filter((image) => image.status === "kept");
+  if (filter === "featured") return images.filter((image) => image.featured || image.featured2);
+  return images;
+}
+
+function HistoryPanel({
+  title,
+  tabs,
+}: {
+  title: string;
+  tabs: Array<{ key: string; label: string; summary: string }>;
+}) {
+  const [activeTab, setActiveTab] = useState(tabs[0]?.key ?? "");
+  const active = tabs.find((tab) => tab.key === activeTab) ?? tabs[0];
+
+  return (
+    <Panel title={title} subtitle="按维度切换变更记录，保留空状态和 diff 预览占位。">
+      <div className={s.grid}>
+        <DemoTabs tabs={tabs.map((tab) => ({ key: tab.key, label: tab.label, count: 3 }))} value={activeTab} onChange={setActiveTab} />
+        <div className={s.grid}>
+          {[0, 1, 2].map((index) => (
+            <details className={s.card} key={`${active?.key}-${index}`} open={index === 0}>
+              <summary className={s.cardTitle}>{active?.label ?? "历史"} #{index + 1}</summary>
+              <div className={cx(s.small, s.muted)}>{active?.summary ?? "当前维度暂无记录。"}</div>
+              <pre className={s.codeBlock}>{JSON.stringify({
+                before: { value: index === 0 ? "old" : "previous" },
+                after: { value: index === 0 ? "new" : "current" },
+              }, null, 2)}</pre>
+            </details>
+          ))}
+        </div>
+      </div>
+    </Panel>
+  );
+}
+
+function EmptyRows({ label }: { label: string }) {
+  return <div className={s.empty}>{label}</div>;
 }
 
 function RouteTable({ data }: { data: DemoData }) {
@@ -603,6 +681,8 @@ function QueuePage({ data }: { data: DemoData }) {
   const running = data.runs.filter((run) => ["queued", "running"].includes(run.status));
   const failed = data.runs.filter((run) => run.status === "failed");
   const reviewable = data.runs.filter((run) => run.images.length > 0);
+  const trashImages = data.images.filter((image) => image.status === "trashed");
+  const [activeTab, setActiveTab] = useState<QueueDemoTab>("pending");
   return (
     <div className={s.page}>
       <PageHeader
@@ -612,7 +692,17 @@ function QueuePage({ data }: { data: DemoData }) {
         actions={<Button tone="primary" icon={Play}>继续处理</Button>}
       />
       <Metrics data={data} />
-      <div className={s.twoCol}>
+      <DemoTabs
+        tabs={[
+          { key: "pending", label: "待审核", count: reviewable.reduce((sum, run) => sum + run.pendingCount, 0) },
+          { key: "running", label: "运行中", count: running.length },
+          { key: "failed", label: "失败", count: failed.length },
+          { key: "trash", label: "回收站", count: trashImages.length },
+        ]}
+        value={activeTab}
+        onChange={setActiveTab}
+      />
+      {activeTab === "pending" ? (
         <Panel title="待审核运行" subtitle="卡片保持为导航入口，点击进入审核宫格。">
           <div className={s.grid}>
             {reviewable.slice(0, 8).map((run) => (
@@ -634,17 +724,25 @@ function QueuePage({ data }: { data: DemoData }) {
             ))}
           </div>
         </Panel>
-        <div className={s.grid}>
-          <RunList title="运行中" runs={running} empty="当前没有运行中的任务" />
-          <RunList title="最近失败" runs={failed} empty="当前没有失败任务" />
-          <Panel title="回收站" subtitle="保留恢复操作的位置。">
-            <div className={s.toolbar}>
-              <Button icon={Archive}>查看回收站</Button>
-              <Button tone="danger" icon={Trash2}>清空已选</Button>
+      ) : activeTab === "running" ? (
+        <RunList title="运行中" runs={running} empty="当前没有运行中或排队中的任务" />
+      ) : activeTab === "failed" ? (
+        <RunList title="最近失败" runs={failed} empty="当前没有失败任务" />
+      ) : (
+        <Panel title="回收站" subtitle="真实页面在这里恢复已删除图片；demo 使用图片数据保留操作位置。">
+          {trashImages.length ? (
+            <ImageGrid images={trashImages} />
+          ) : (
+            <div className={s.grid}>
+              <EmptyRows label="当前 mock 数据中没有回收站图片" />
+              <div className={s.toolbar}>
+                <Button icon={Archive}>恢复所选</Button>
+                <Button tone="danger" icon={Trash2}>清空已选</Button>
+              </div>
             </div>
-          </Panel>
-        </div>
-      </div>
+          )}
+        </Panel>
+      )}
     </div>
   );
 }
@@ -672,7 +770,9 @@ function RunList({ title, runs, empty }: { title: string; runs: DemoRun[]; empty
 }
 
 function ReviewPage({ run }: { run: DemoRun | undefined }) {
+  const [filter, setFilter] = useState<ResultDemoFilter>("all");
   if (!run) return <EmptyPage title="没有可审核运行" />;
+  const images = filterImages(run.images, filter);
   return (
     <div className={s.page}>
       <PageHeader
@@ -687,8 +787,18 @@ function ReviewPage({ run }: { run: DemoRun | undefined }) {
           </>
         }
       />
+      <DemoTabs
+        tabs={[
+          { key: "all", label: "全部", count: run.images.length },
+          { key: "pending", label: "待审", count: run.images.filter((image) => image.status === "pending").length },
+          { key: "kept", label: "已保留", count: run.images.filter((image) => image.status === "kept").length },
+          { key: "featured", label: "精选", count: run.images.filter((image) => image.featured || image.featured2).length },
+        ]}
+        value={filter}
+        onChange={setFilter}
+      />
       <Panel title="图片宫格" subtitle={`${run.pendingCount} 张待审 / ${run.imageCount} 张总图`}>
-        <ImageGrid images={run.images} />
+        <ImageGrid images={images} />
       </Panel>
       <Panel title="底部操作栏空壳">
         <div className={s.toolbar}>
@@ -830,7 +940,9 @@ function ProjectFormPage({ project, mode }: { project?: DemoProject; mode: "new"
 }
 
 function ProjectResultsPage({ project }: { project: DemoProject | undefined }) {
+  const [filter, setFilter] = useState<ResultDemoFilter>("all");
   if (!project) return <EmptyPage title="没有项目结果" />;
+  const projectImages = project.sections.flatMap((section) => section.images);
   return (
     <div className={s.page}>
       <PageHeader
@@ -839,9 +951,19 @@ function ProjectResultsPage({ project }: { project: DemoProject | undefined }) {
         subtitle="项目级结果页按小节聚合运行历史，保留精选、二次精选和待审状态。"
         actions={<ButtonLink href={`/projects/${project.id}`} icon={FolderTree}>返回项目</ButtonLink>}
       />
+      <DemoTabs
+        tabs={[
+          { key: "all", label: "全部", count: projectImages.length },
+          { key: "pending", label: "待审", count: projectImages.filter((image) => image.status === "pending").length },
+          { key: "kept", label: "已保留", count: projectImages.filter((image) => image.status === "kept").length },
+          { key: "featured", label: "精选", count: projectImages.filter((image) => image.featured || image.featured2).length },
+        ]}
+        value={filter}
+        onChange={setFilter}
+      />
       {project.sections.map((section) => (
-        <Panel key={section.id} title={section.name} subtitle={`${section.images.length} 张缩略图`}>
-          <ImageGrid images={section.images} />
+        <Panel key={section.id} title={section.name} subtitle={`${filterImages(section.images, filter).length} / ${section.images.length} 张缩略图`}>
+          <ImageGrid images={filterImages(section.images, filter)} />
         </Panel>
       ))}
     </div>
@@ -889,6 +1011,7 @@ function BatchCreatePage({ project }: { project: DemoProject | undefined }) {
 }
 
 function SectionEditorPage({ project, section }: { project: DemoProject | undefined; section: DemoSection | undefined }) {
+  const [activeTab, setActiveTab] = useState<SectionEditorDemoTab>("params");
   if (!project || !section) return <EmptyPage title="没有小节数据" />;
   return (
     <div className={s.page}>
@@ -907,6 +1030,18 @@ function SectionEditorPage({ project, section }: { project: DemoProject | undefi
       <div className={s.splitEditor}>
         <SectionRail project={project} activeSection={section} />
         <div className={s.grid}>
+          <DemoTabs
+            tabs={[
+              { key: "params", label: "运行参数" },
+              { key: "prompt", label: "Prompt" },
+              { key: "lora", label: "LoRA" },
+              { key: "history", label: "历史" },
+              { key: "import", label: "导入预设" },
+            ]}
+            value={activeTab}
+            onChange={setActiveTab}
+          />
+          {activeTab === "params" ? (
           <Panel title="运行参数">
             <div className={s.fieldGrid}>
               <Field label="小节名" value={section.name} />
@@ -917,18 +1052,48 @@ function SectionEditorPage({ project, section }: { project: DemoProject | undefi
               <SelectLike label="Seed 2" value={section.seedPolicy2} />
             </div>
           </Panel>
+          ) : activeTab === "prompt" ? (
           <Panel title="Prompt Blocks" actions={<Button icon={Plus}>添加 Block</Button>}>
             <div className={s.grid}>
               <TextAreaField label="正向提示词" value={section.positivePrompt} />
               <TextAreaField label="反向提示词" value={section.negativePrompt} />
             </div>
           </Panel>
+          ) : activeTab === "lora" ? (
           <Panel title="LoRA 配置">
             <div className={s.fieldGrid}>
               <SelectLike label="阶段 1 LoRA" value={`${section.loraCount || 2} 个绑定`} />
               <SelectLike label="阶段 2 LoRA" value="继承阶段 1" />
             </div>
           </Panel>
+          ) : activeTab === "history" ? (
+            <HistoryPanel
+              title="小节变更历史"
+              tabs={[
+                { key: "runParams", label: "运行参数", summary: "比例、短边、批量数和 seed 策略的前后对比。" },
+                { key: "prompt", label: "Prompt", summary: "Prompt Block 增删、排序和文本内容的前后对比。" },
+                { key: "lora", label: "LoRA", summary: "LoRA 阶段绑定、权重和触发词变更的前后对比。" },
+              ]}
+            />
+          ) : (
+            <Panel title="导入预设" subtitle="真实页面里这是分类 tab、文件夹、搜索、预设和预设组选取面板。">
+              <div className={s.grid}>
+                <DemoTabs
+                  tabs={[
+                    { key: "preset", label: "预设分类", count: 4 },
+                    { key: "group", label: "预设组", count: 2 },
+                    { key: "recent", label: "最近使用", count: 6 },
+                  ]}
+                  value="preset"
+                  onChange={() => undefined}
+                />
+                <div className={s.fieldGrid}>
+                  <Field label="搜索" value="按预设名或文件夹过滤" />
+                  <SelectLike label="导入方式" value="追加 Prompt Block + LoRA" />
+                </div>
+              </div>
+            </Panel>
+          )}
         </div>
       </div>
     </div>
@@ -936,7 +1101,9 @@ function SectionEditorPage({ project, section }: { project: DemoProject | undefi
 }
 
 function SectionResultsPage({ project, section }: { project: DemoProject | undefined; section: DemoSection | undefined }) {
+  const [filter, setFilter] = useState<ResultDemoFilter>("all");
   if (!project || !section) return <EmptyPage title="没有小节结果" />;
+  const images = filterImages(section.images, filter);
   return (
     <div className={s.page}>
       <PageHeader
@@ -945,8 +1112,18 @@ function SectionResultsPage({ project, section }: { project: DemoProject | undef
         subtitle="小节结果页保留按 run 分组、lightbox 入口、精选和审核状态。"
         actions={<ButtonLink href={`/projects/${project.id}/sections/${rawSectionId(section)}`} icon={SlidersHorizontal}>编辑小节</ButtonLink>}
       />
-      <Panel title="结果 Gallery" subtitle={`${section.images.length} 张 mock 图片`}>
-        <ImageGrid images={section.images} />
+      <DemoTabs
+        tabs={[
+          { key: "all", label: "全部", count: section.images.length },
+          { key: "pending", label: "待审", count: section.images.filter((image) => image.status === "pending").length },
+          { key: "kept", label: "已保留", count: section.images.filter((image) => image.status === "kept").length },
+          { key: "featured", label: "精选", count: section.images.filter((image) => image.featured || image.featured2).length },
+        ]}
+        value={filter}
+        onChange={setFilter}
+      />
+      <Panel title="结果 Gallery" subtitle={`${images.length} / ${section.images.length} 张 mock 图片`}>
+        <ImageGrid images={images} />
       </Panel>
     </div>
   );
@@ -985,6 +1162,7 @@ function AssetTable({ assets, empty }: { assets: DemoAsset[]; empty: string }) {
 }
 
 function ModelsPage({ data }: { data: DemoData }) {
+  const [view, setView] = useState<AssetDemoView>("files");
   return (
     <div className={s.page}>
       <PageHeader
@@ -992,6 +1170,15 @@ function ModelsPage({ data }: { data: DemoData }) {
         title="模型文件管理"
         subtitle="模型页保留路径浏览、文件表格、移动、备注和刷新动作。"
         actions={<Button icon={Search}>扫描模型目录</Button>}
+      />
+      <DemoTabs
+        tabs={[
+          { key: "files", label: "文件表格", count: data.models.length },
+          { key: "browser", label: "目录浏览", count: 4 },
+          { key: "notes", label: "备注/移动" },
+        ]}
+        value={view}
+        onChange={setView}
       />
       <div className={s.twoCol}>
         <Panel title="目录树">
@@ -1004,15 +1191,43 @@ function ModelsPage({ data }: { data: DemoData }) {
             ))}
           </div>
         </Panel>
-        <Panel title="文件列表" subtitle={`${data.models.length} 个 mock 条目`}>
-          <AssetTable assets={data.models} empty="SQLite 中暂无模型资产记录" />
-        </Panel>
+        {view === "files" ? (
+          <Panel title="文件列表" subtitle={`${data.models.length} 个 mock 条目`}>
+            <AssetTable assets={data.models} empty="SQLite 中暂无模型资产记录" />
+          </Panel>
+        ) : view === "browser" ? (
+          <Panel title="目录浏览" subtitle="保留进入子目录、返回上级和空目录状态。">
+            <div className={s.grid}>
+              {["checkpoints/base", "checkpoints/realistic", "vae", "controlnet"].map((item) => (
+                <div className={s.switchRow} key={item}>
+                  <div className={s.switchText}>
+                    <strong>{item}</strong>
+                    <span>{data.source.modelBaseLabel}</span>
+                  </div>
+                  <span className={s.badge}>folder</span>
+                </div>
+              ))}
+            </div>
+          </Panel>
+        ) : (
+          <Panel title="备注与移动">
+            <div className={s.grid}>
+              <SelectLike label="目标目录" value="checkpoints/archive" />
+              <TextAreaField label="备注" value="模型来源、推荐用途和迁移记录。" />
+              <div className={s.toolbar}>
+                <Button icon={Save}>保存备注</Button>
+                <Button icon={FolderTree}>移动文件</Button>
+              </div>
+            </div>
+          </Panel>
+        )}
       </div>
     </div>
   );
 }
 
 function LorasPage({ data }: { data: DemoData }) {
+  const [view, setView] = useState<AssetDemoView>("files");
   return (
     <div className={s.page}>
       <PageHeader
@@ -1020,6 +1235,15 @@ function LorasPage({ data }: { data: DemoData }) {
         title="LoRA 管理"
         subtitle="LoRA 页覆盖上传、触发词、备注、分类和文件移动。"
         actions={<Button tone="primary" icon={Upload}>上传 LoRA</Button>}
+      />
+      <DemoTabs
+        tabs={[
+          { key: "files", label: "LoRA 列表", count: data.loras.length },
+          { key: "browser", label: "目录浏览", count: 3 },
+          { key: "notes", label: "触发词/备注" },
+        ]}
+        value={view}
+        onChange={setView}
       />
       <div className={s.twoCol}>
         <Panel title="上传表单">
@@ -1030,9 +1254,36 @@ function LorasPage({ data }: { data: DemoData }) {
             <TextAreaField label="备注" value="模型来源、建议权重和训练说明。" />
           </div>
         </Panel>
-        <Panel title="LoRA 列表">
-          <AssetTable assets={data.loras} empty="SQLite 中暂无 LoRA 资产记录" />
-        </Panel>
+        {view === "files" ? (
+          <Panel title="LoRA 列表">
+            <AssetTable assets={data.loras} empty="SQLite 中暂无 LoRA 资产记录" />
+          </Panel>
+        ) : view === "browser" ? (
+          <Panel title="目录浏览">
+            <div className={s.grid}>
+              {["characters", "style", "poses"].map((item) => (
+                <div className={s.switchRow} key={item}>
+                  <div className={s.switchText}>
+                    <strong>{item}</strong>
+                    <span>展开、返回上级、只显示目录的浏览状态。</span>
+                  </div>
+                  <span className={s.badge}>folder</span>
+                </div>
+              ))}
+            </div>
+          </Panel>
+        ) : (
+          <Panel title="触发词与备注">
+            <div className={s.grid}>
+              <Field label="触发词" value="trigger words" />
+              <TextAreaField label="备注" value="训练来源、推荐权重、搭配预设和风险提示。" />
+              <div className={s.toolbar}>
+                <Button icon={Save}>保存</Button>
+                <Button icon={FolderTree}>移动分类</Button>
+              </div>
+            </div>
+          </Panel>
+        )}
       </div>
     </div>
   );
@@ -1040,6 +1291,7 @@ function LorasPage({ data }: { data: DemoData }) {
 
 function PresetsPage({ data }: { data: DemoData }) {
   const [categoryId, setCategoryId] = useState(data.categories[0]?.id ?? "");
+  const [view, setView] = useState<PresetLibraryDemoTab>("presets");
   const category = data.categories.find((item) => item.id === categoryId) ?? data.categories[0];
   return (
     <div className={s.page}>
@@ -1063,30 +1315,69 @@ function PresetsPage({ data }: { data: DemoData }) {
           ))}
         </div>
       </div>
-      {category ? <PresetCategoryView category={category} /> : <EmptyPage title="没有预设分类" />}
+      {category ? (
+        <>
+          <DemoTabs
+            tabs={[
+              { key: "presets", label: "预设", count: category.presets.length },
+              { key: "groups", label: "预设组", count: category.groups.length },
+              { key: "folders", label: "文件夹" },
+              { key: "batch", label: "批量选择" },
+            ]}
+            value={view}
+            onChange={setView}
+          />
+          <PresetCategoryView category={category} view={view} />
+        </>
+      ) : <EmptyPage title="没有预设分类" />}
     </div>
   );
 }
 
-function PresetCategoryView({ category }: { category: DemoCategory }) {
-  return (
-    <div className={s.twoCol}>
-      <Panel title={`${category.name} / 预设`} subtitle={`${category.presetCount} 个预设`}>
+function PresetCategoryView({ category, view }: { category: DemoCategory; view: PresetLibraryDemoTab }) {
+  if (view === "folders") {
+    return (
+      <Panel title={`${category.name} / 文件夹`} subtitle="真实页面中分类下的文件夹可创建、重命名、排序、移动条目。">
         <div className={s.grid}>
-          {category.presets.map((preset) => (
-            <article className={s.card} key={preset.id}>
-              <div className={s.cardHeader}>
-                <div className={s.cardTitle}>
-                  <Link href={demoHref(`/assets/presets/${preset.id}`)}>{preset.name}</Link>
-                  <div className={cx(s.small, s.muted)}>{preset.slug}</div>
-                </div>
-                <span className={s.badge}>{preset.variantCount} variants</span>
+          {["root", "characters", "lighting", "style"].map((folder, index) => (
+            <div className={s.switchRow} key={folder}>
+              <div className={s.switchText}>
+                <strong>{folder}</strong>
+                <span>{index === 0 ? "根目录" : `${category.name} 子目录`}</span>
               </div>
-              <div className={cx(s.small, s.muted)}>{preset.notes || preset.variants[0]?.prompt || "无备注"}</div>
-            </article>
+              <span className={s.badge}>{index + 1}</span>
+            </div>
           ))}
         </div>
       </Panel>
+    );
+  }
+
+  if (view === "batch") {
+    return (
+      <Panel title={`${category.name} / 批量选择`} subtitle="保留多选、移动到文件夹和批量删除的操作区。">
+        <div className={s.grid}>
+          {[...category.presets, ...category.groups].slice(0, 8).map((item, index) => (
+            <div className={s.switchRow} key={item.id}>
+              <div className={s.switchText}>
+                <strong>{item.name}</strong>
+                <span>{item.slug}</span>
+              </div>
+              <span className={s.badge}>{index % 2 === 0 ? "selected" : "idle"}</span>
+            </div>
+          ))}
+          <div className={s.toolbar}>
+            <Button icon={Check}>全选</Button>
+            <Button icon={FolderTree}>移动到文件夹</Button>
+            <Button tone="danger" icon={Trash2}>删除已选</Button>
+          </div>
+        </div>
+      </Panel>
+    );
+  }
+
+  if (view === "groups") {
+    return (
       <Panel title={`${category.name} / 预设组`} subtitle={`${category.groupCount} 个组`}>
         <div className={s.grid}>
           {category.groups.map((group) => (
@@ -1102,11 +1393,31 @@ function PresetCategoryView({ category }: { category: DemoCategory }) {
           ))}
         </div>
       </Panel>
-    </div>
+    );
+  }
+
+  return (
+    <Panel title={`${category.name} / 预设`} subtitle={`${category.presetCount} 个预设`}>
+        <div className={s.grid}>
+          {category.presets.map((preset) => (
+            <article className={s.card} key={preset.id}>
+              <div className={s.cardHeader}>
+                <div className={s.cardTitle}>
+                  <Link href={demoHref(`/assets/presets/${preset.id}`)}>{preset.name}</Link>
+                  <div className={cx(s.small, s.muted)}>{preset.slug}</div>
+                </div>
+                <span className={s.badge}>{preset.variantCount} variants</span>
+              </div>
+              <div className={cx(s.small, s.muted)}>{preset.notes || preset.variants[0]?.prompt || "无备注"}</div>
+            </article>
+          ))}
+        </div>
+    </Panel>
   );
 }
 
 function PresetEditPage({ preset }: { preset: DemoPreset | undefined }) {
+  const [activeTab, setActiveTab] = useState<PresetDetailDemoTab>("metadata");
   if (!preset) return <EmptyPage title="没有预设数据" />;
   return (
     <div className={s.page}>
@@ -1116,7 +1427,17 @@ function PresetEditPage({ preset }: { preset: DemoPreset | undefined }) {
         subtitle="预设详情页覆盖 metadata、变体管理、prompt 编辑和变更历史。"
         actions={<Button tone="primary" icon={Save}>保存变体</Button>}
       />
-      <div className={s.twoCol}>
+      <DemoTabs
+        tabs={[
+          { key: "metadata", label: "基础信息" },
+          { key: "variants", label: "变体", count: preset.variants.length },
+          { key: "content", label: "Prompt / LoRA" },
+          { key: "history", label: "变更历史" },
+        ]}
+        value={activeTab}
+        onChange={setActiveTab}
+      />
+      {activeTab === "metadata" ? (
         <Panel title="基础信息">
           <div className={s.grid}>
             <Field label="名称" value={preset.name} />
@@ -1124,6 +1445,7 @@ function PresetEditPage({ preset }: { preset: DemoPreset | undefined }) {
             <TextAreaField label="备注" value={preset.notes || "预设说明和迁移备注。"} />
           </div>
         </Panel>
+      ) : activeTab === "variants" ? (
         <Panel title="变体列表" actions={<Button icon={Plus}>添加变体</Button>}>
           <div className={s.grid}>
             {preset.variants.map((variant) => (
@@ -1137,12 +1459,30 @@ function PresetEditPage({ preset }: { preset: DemoPreset | undefined }) {
             ))}
           </div>
         </Panel>
-      </div>
+      ) : activeTab === "content" ? (
+        <Panel title="Prompt / LoRA 内容">
+          <div className={s.grid}>
+            <TextAreaField label="正向 Prompt" value={preset.variants[0]?.prompt ?? "positive prompt"} />
+            <TextAreaField label="反向 Prompt" value={preset.variants[0]?.negativePrompt ?? "negative prompt"} />
+            <SelectLike label="LoRA 绑定" value="阶段 1 / 阶段 2 绑定占位" />
+          </div>
+        </Panel>
+      ) : (
+        <HistoryPanel
+          title="预设变更历史"
+          tabs={[
+            { key: "metadata", label: "基础", summary: "名称、slug、备注的前后对比。" },
+            { key: "variants", label: "变体", summary: "变体增删、重命名和排序的前后对比。" },
+            { key: "content", label: "内容", summary: "Prompt、negative prompt 和 LoRA 绑定的前后对比。" },
+          ]}
+        />
+      )}
     </div>
   );
 }
 
 function PresetGroupPage({ group }: { group: DemoPresetGroup | undefined }) {
+  const [activeTab, setActiveTab] = useState<"members" | "flatten" | "history">("members");
   if (!group) return <EmptyPage title="没有预设组数据" />;
   return (
     <div className={s.page}>
@@ -1152,6 +1492,16 @@ function PresetGroupPage({ group }: { group: DemoPresetGroup | undefined }) {
         subtitle="预设组详情页覆盖槽位、成员排序、嵌套组和 flatten 预览。"
         actions={<Button tone="primary" icon={Save}>保存组</Button>}
       />
+      <DemoTabs
+        tabs={[
+          { key: "members", label: "成员编排", count: group.memberCount },
+          { key: "flatten", label: "Flatten 预览" },
+          { key: "history", label: "变更历史" },
+        ]}
+        value={activeTab}
+        onChange={setActiveTab}
+      />
+      {activeTab === "members" ? (
       <div className={s.twoCol}>
         <Panel title="组信息">
           <div className={s.fieldGrid}>
@@ -1175,6 +1525,29 @@ function PresetGroupPage({ group }: { group: DemoPresetGroup | undefined }) {
           </div>
         </Panel>
       </div>
+      ) : activeTab === "flatten" ? (
+        <Panel title="Flatten 预览" subtitle="嵌套组会展开为可执行的预设/变体序列。">
+          <div className={s.grid}>
+            {Array.from({ length: Math.max(group.memberCount, 3) }, (_, index) => (
+              <div className={s.switchRow} key={index}>
+                <div className={s.switchText}>
+                  <strong>{index + 1}. {group.members[index] ?? "继承成员"}</strong>
+                  <span>Prompt block + LoRA 绑定输出预览。</span>
+                </div>
+                <StatusBadge status="ready" label="ready" />
+              </div>
+            ))}
+          </div>
+        </Panel>
+      ) : (
+        <HistoryPanel
+          title="预设组变更历史"
+          tabs={[
+            { key: "metadata", label: "基础", summary: "组名、slug 和分类变化。" },
+            { key: "members", label: "成员", summary: "成员增删、排序和嵌套组变化。" },
+          ]}
+        />
+      )}
     </div>
   );
 }
@@ -1255,6 +1628,7 @@ function TemplatesPage({ data }: { data: DemoData }) {
 }
 
 function TemplateFormPage({ template, mode }: { template?: DemoTemplate; mode: "new" | "edit" }) {
+  const [activeTab, setActiveTab] = useState<TemplateDemoTab>("metadata");
   return (
     <div className={s.page}>
       <PageHeader
@@ -1263,13 +1637,23 @@ function TemplateFormPage({ template, mode }: { template?: DemoTemplate; mode: "
         subtitle="模板编辑沿用项目小节模型：metadata blur 保存，section 独立进入编辑页。"
         actions={<Button tone="primary" icon={Save}>{mode === "new" ? "创建模板" : "保存变更"}</Button>}
       />
-      <div className={s.twoCol}>
+      <DemoTabs
+        tabs={[
+          { key: "metadata", label: "模板信息" },
+          { key: "sections", label: "小节", count: template?.sections.length ?? 0 },
+          { key: "history", label: "变更历史" },
+        ]}
+        value={activeTab}
+        onChange={setActiveTab}
+      />
+      {activeTab === "metadata" ? (
         <Panel title="模板信息">
           <div className={s.grid}>
             <Field label="名称" value={template?.name ?? "新模板"} />
             <TextAreaField label="描述" value={template?.description || "模板用途、默认预设绑定和生成流程。"} />
           </div>
         </Panel>
+      ) : activeTab === "sections" ? (
         <Panel title="模板小节" actions={<Button icon={Plus}>添加小节</Button>}>
           <div className={s.grid}>
             {(template?.sections ?? []).map((section, index) => (
@@ -1280,12 +1664,21 @@ function TemplateFormPage({ template, mode }: { template?: DemoTemplate; mode: "
             ))}
           </div>
         </Panel>
-      </div>
+      ) : (
+        <HistoryPanel
+          title="模板变更历史"
+          tabs={[
+            { key: "metadata", label: "模板信息", summary: "名称和描述的 autosave 记录。" },
+            { key: "sections", label: "小节", summary: "模板小节增删、复制和排序记录。" },
+          ]}
+        />
+      )}
     </div>
   );
 }
 
 function TemplateSectionPage({ template, sectionIndex }: { template: DemoTemplate | undefined; sectionIndex: string | undefined }) {
+  const [activeTab, setActiveTab] = useState<SectionEditorDemoTab>("params");
   const index = Number(sectionIndex ?? "0");
   const section = template?.sections[Number.isFinite(index) ? index : 0] ?? template?.sections[0];
   if (!template || !section) return <EmptyPage title="没有模板小节" />;
@@ -1302,7 +1695,18 @@ function TemplateSectionPage({ template, sectionIndex }: { template: DemoTemplat
           </>
         }
       />
-      <div className={s.twoCol}>
+      <DemoTabs
+        tabs={[
+          { key: "params", label: "参数" },
+          { key: "prompt", label: "Prompt" },
+          { key: "lora", label: "LoRA" },
+          { key: "history", label: "历史" },
+          { key: "import", label: "导入预设" },
+        ]}
+        value={activeTab}
+        onChange={setActiveTab}
+      />
+      {activeTab === "params" ? (
         <Panel title="小节参数">
           <div className={s.fieldGrid}>
             <Field label="名称" value={section.name} />
@@ -1311,10 +1715,34 @@ function TemplateSectionPage({ template, sectionIndex }: { template: DemoTemplat
             <SelectLike label="Seed 策略" value="random / reuse" />
           </div>
         </Panel>
+      ) : activeTab === "prompt" ? (
         <Panel title="Prompt 模板">
           <TextAreaField label="备注 / Prompt" value={section.notes || "模板 prompt block 摘要。"} />
         </Panel>
-      </div>
+      ) : activeTab === "lora" ? (
+        <Panel title="LoRA 模板">
+          <div className={s.fieldGrid}>
+            <SelectLike label="阶段 1" value="模板绑定槽位" />
+            <SelectLike label="阶段 2" value="继承或覆盖" />
+          </div>
+        </Panel>
+      ) : activeTab === "history" ? (
+        <HistoryPanel
+          title="模板小节历史"
+          tabs={[
+            { key: "runParams", label: "参数", summary: "比例、batch 和 seed 策略变化。" },
+            { key: "prompt", label: "Prompt", summary: "Prompt 模板和备注变化。" },
+            { key: "lora", label: "LoRA", summary: "模板 LoRA 绑定变化。" },
+          ]}
+        />
+      ) : (
+        <Panel title="导入预设">
+          <div className={s.fieldGrid}>
+            <SelectLike label="分类" value="角色 / 风格 / 组合" />
+            <Field label="搜索" value="按预设或变体名过滤" />
+          </div>
+        </Panel>
+      )}
     </div>
   );
 }
@@ -1355,6 +1783,20 @@ function SettingsPage({ data }: { data: DemoData }) {
 }
 
 function LogsPage({ data }: { data: DemoData }) {
+  const [source, setSource] = useState<LogDemoSource>("app");
+  const [level, setLevel] = useState<"all" | "info" | "warn" | "error">("all");
+  const consoleRows = [
+    { id: "console-1", createdAt: "server.log", entityType: "next", action: "ready", actorType: "console" },
+    { id: "console-2", createdAt: "server.log", entityType: "worker", action: "heartbeat", actorType: "console" },
+    { id: "console-3", createdAt: "server.log", entityType: "comfy", action: "probe", actorType: "console" },
+  ];
+  const auditRows = data.auditLogs.length ? data.auditLogs : [
+    { id: "audit-1", createdAt: "mock", entityType: "Run", action: "created", actorType: "system" },
+    { id: "audit-2", createdAt: "mock", entityType: "ImageResult", action: "reviewed", actorType: "user" },
+    { id: "audit-3", createdAt: "mock", entityType: "ProjectSection", action: "updated", actorType: "user" },
+  ];
+  const rows = source === "console" ? consoleRows : auditRows;
+  const visibleRows = level === "all" ? rows : rows.filter((row) => row.action.includes(level) || row.entityType.toLowerCase().includes(level));
   return (
     <div className={s.page}>
       <PageHeader
@@ -1363,6 +1805,26 @@ function LogsPage({ data }: { data: DemoData }) {
         subtitle="日志页覆盖过滤、级别、实体、动作和实时刷新状态。"
         actions={<Button icon={Search}>刷新</Button>}
       />
+      <DemoTabs
+        tabs={[
+          { key: "app", label: "应用日志", count: auditRows.length },
+          { key: "console", label: "控制台输出", count: consoleRows.length },
+        ]}
+        value={source}
+        onChange={setSource}
+      />
+      <div className={s.toolbar}>
+        <DemoTabs
+          tabs={[
+            { key: "all", label: "全部" },
+            { key: "info", label: "INFO" },
+            { key: "warn", label: "WARN" },
+            { key: "error", label: "ERROR" },
+          ]}
+          value={level}
+          onChange={setLevel}
+        />
+      </div>
       <Panel title="审计日志">
         <div className={s.tableWrap}>
           <table className={s.table}>
@@ -1376,7 +1838,7 @@ function LogsPage({ data }: { data: DemoData }) {
               </tr>
             </thead>
             <tbody>
-              {data.auditLogs.map((log) => (
+              {visibleRows.map((log) => (
                 <tr key={log.id}>
                   <td>{log.createdAt}</td>
                   <td>{log.entityType}</td>
