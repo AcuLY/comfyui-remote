@@ -26,12 +26,18 @@ export default async function ProjectsPage() {
               className="block w-full rounded-xl border border-white/10 bg-white/[0.03] p-3 transition hover:border-white/20 hover:bg-white/[0.06] md:max-w-[500px]"
             >
               {project.latestImages && project.latestImages.length > 0 ? (
-                <div className="mb-3 overflow-hidden rounded-lg border border-white/10 bg-[var(--panel-soft)]">
-                  <div className="flex h-24 gap-1.5 overflow-hidden p-1.5">
-                    {project.latestImages.slice(0, 4).map((img) => (
+                <div className="mb-3 border-b border-white/5 pb-3">
+                  <div className="mb-1.5 flex items-center gap-1.5 text-[10px] text-zinc-500">
+                    <ImageIcon className="size-3" />
+                    <span>
+                      最近结果 · {project.latestImageCount ?? project.latestImages.length} 张
+                    </span>
+                  </div>
+                  <div className="flex gap-1.5 overflow-x-auto scrollbar-none">
+                    {project.latestImages.slice(0, 6).map((img) => (
                       <div
                         key={img.id}
-                        className={`relative min-w-0 flex-1 overflow-hidden rounded-md border bg-black/20 ${
+                        className={`flex h-[72px] shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-[var(--panel-soft)] ${
                           img.status === "kept"
                             ? "border-emerald-500/30"
                             : img.status === "trashed"
@@ -45,13 +51,13 @@ export default async function ProjectsPage() {
                           loading="lazy"
                           decoding="async"
                           draggable={false}
-                          className="h-full w-full object-cover"
+                          className="h-full w-auto object-contain"
                         />
                       </div>
                     ))}
-                    {(project.latestImageCount ?? 0) > 4 && (
-                      <div className="flex w-12 shrink-0 items-center justify-center rounded-md border border-white/10 bg-white/[0.04] text-[11px] text-zinc-400">
-                        +{(project.latestImageCount ?? 0) - 4}
+                    {(project.latestImageCount ?? 0) > 6 && (
+                      <div className="flex shrink-0 items-center justify-center rounded-lg border border-white/5 bg-white/[0.02] px-3 text-[10px] text-zinc-500">
+                        +{(project.latestImageCount ?? 0) - 6}
                       </div>
                     )}
                   </div>

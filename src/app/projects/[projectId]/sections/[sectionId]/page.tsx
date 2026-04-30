@@ -330,19 +330,6 @@ export default async function SectionEditPage({
                     下一节 <ChevronRight className="size-3" />
                   </span>
                 )}
-                <Link
-                  href={`/api/projects/${projectId}/section-workflow/${sectionId}`}
-                  download
-                  className="inline-flex items-center gap-1 rounded-lg border border-sky-500/20 bg-sky-500/[0.08] px-2 py-1 text-xs text-sky-200 transition hover:bg-sky-500/15 hover:text-sky-100"
-                >
-                  <Download className="size-3" /> 下载 workflow
-                </Link>
-                <Link
-                  href={`/projects/${projectId}/sections/${sectionId}/results`}
-                  className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
-                >
-                  <ImageIcon className="size-3" /> 查看结果
-                </Link>
               </div>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -363,14 +350,23 @@ export default async function SectionEditPage({
               最近结果
               {latestRun ? ` · Run #${latestRun.runIndex} · ${latestRun._count.images} 张` : ""}
             </span>
-            {latestRun && (
+            <div className="ml-auto flex shrink-0 items-center gap-1.5">
+              {latestRun && (
+                <Link
+                  href={`/projects/${projectId}/sections/${sectionId}/results`}
+                  className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
+                >
+                  <ImageIcon className="size-3" /> 查看全部
+                </Link>
+              )}
               <Link
-                href={`/projects/${projectId}/sections/${sectionId}/results`}
-                className="ml-auto text-sky-400 transition hover:text-sky-300"
+                href={`/api/projects/${projectId}/section-workflow/${sectionId}`}
+                download
+                className="inline-flex items-center gap-1 rounded-lg border border-sky-500/20 bg-sky-500/[0.08] px-2 py-1 text-xs text-sky-200 transition hover:bg-sky-500/15 hover:text-sky-100"
               >
-                查看全部
+                <Download className="size-3" /> 下载 workflow
               </Link>
-            )}
+            </div>
           </div>
           {latestResultImages.length > 0 ? (
             <div className="flex h-24 gap-1.5 overflow-x-auto scrollbar-none sm:h-28">
