@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ImageIcon, ChevronLeft, ChevronRight, Download } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import { toImageUrl } from "@/lib/image-url";
 import { SectionEditor } from "@/components/section-editor";
 import { SectionParamsForm } from "./section-params-form";
 import { SectionNameEditor } from "./section-name-editor";
@@ -48,6 +49,30 @@ export default async function SectionEditPage({
             sortOrder: true,
           },
         },
+        runs: {
+          where: { status: "done" },
+          orderBy: { createdAt: "desc" },
+          take: 1,
+          select: {
+            id: true,
+            runIndex: true,
+            images: {
+              orderBy: { createdAt: "asc" },
+              take: 8,
+              select: {
+                id: true,
+                thumbPath: true,
+                filePath: true,
+                reviewStatus: true,
+              },
+            },
+            _count: {
+              select: {
+                images: true,
+              },
+            },
+          },
+        },
       },
     }),
     getPresetLibraryV2(),
@@ -68,6 +93,12 @@ export default async function SectionEditPage({
 
   const sectionName =
     pos.name || `小节 ${pos.sortOrder}`;
+  const latestRun = pos.runs[0] ?? null;
+  const latestResultImages = (latestRun?.images ?? []).map((img) => ({
+    id: img.id,
+    src: toImageUrl(img.thumbPath ?? img.filePath) ?? "",
+    status: img.reviewStatus,
+  }));
 
   const initialBlocks: PromptBlockData[] = pos.promptBlocks.map((b) => ({
     id: b.id,
@@ -323,6 +354,62 @@ export default async function SectionEditPage({
               </div>
             </div>
           </div>
+        </div>
+
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+          <div className="mb-2 flex items-center gap-2 text-xs text-zinc-400">
+            <ImageIcon className="size-3.5" />
+            <span>
+              最近结果
+              {latestRun ? ` · Run #${latestRun.runIndex} · ${latestRun._count.images} 张` : ""}
+            </span>
+            {latestRun && (
+              <Link
+                href={`/projects/${projectId}/sections/${sectionId}/results`}
+                className="ml-auto text-sky-400 transition hover:text-sky-300"
+              >
+                查看全部
+              </Link>
+            )}
+          </div>
+          {latestResultImages.length > 0 ? (
+            <div className="flex h-24 gap-1.5 overflow-x-auto scrollbar-none sm:h-28">
+              {latestResultImages.map((img) => (
+                <Link
+                  key={img.id}
+                  href={`/projects/${projectId}/sections/${sectionId}/results`}
+                  className={`relative h-full w-20 shrink-0 overflow-hidden rounded-lg border bg-[var(--panel-soft)] transition hover:border-sky-500/40 sm:w-24 ${
+                    img.status === "kept"
+                      ? "border-emerald-500/30"
+                      : img.status === "trashed"
+                        ? "border-rose-500/20 opacity-45"
+                        : "border-white/10"
+                  }`}
+                >
+                  <img
+                    src={img.src}
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                    draggable={false}
+                    className="h-full w-full object-cover"
+                  />
+                </Link>
+              ))}
+              {(latestRun?._count.images ?? 0) > latestResultImages.length && (
+                <Link
+                  href={`/projects/${projectId}/sections/${sectionId}/results`}
+                  className="flex h-full w-16 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-xs text-zinc-400 transition hover:border-sky-500/30 hover:text-zinc-200"
+                >
+                  +{(latestRun?._count.images ?? 0) - latestResultImages.length}
+                </Link>
+              )}
+            </div>
+          ) : (
+            <div className="flex h-20 items-center justify-center rounded-lg border border-dashed border-white/10 bg-white/[0.02] text-xs text-zinc-600">
+              暂无最近结果
+            </div>
+          )}
         </div>
 
         <section className="w-full min-w-0">

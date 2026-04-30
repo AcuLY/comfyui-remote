@@ -13,6 +13,8 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     <ProjectDetailClient
       projectId={project.id}
       projectTitle={project.title}
+      previousProject={project.previousProject}
+      nextProject={project.nextProject}
       sections={project.sections}
     />
   );

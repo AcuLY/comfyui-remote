@@ -12,6 +12,8 @@ import {
   Trash2,
   LayoutList,
   LayoutGrid,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -59,6 +61,8 @@ type Section = {
 type AppSidebarProps = {
   projectId: string;
   projectTitle: string;
+  previousProject: { id: string; title: string } | null;
+  nextProject: { id: string; title: string } | null;
   sections: Section[];
   compact: boolean;
   onToggleCompact: () => void;
@@ -75,6 +79,8 @@ function findNavItem(container: HTMLElement, sectionId: string) {
 export function AppSidebar({
   projectId,
   projectTitle,
+  previousProject,
+  nextProject,
   sections,
   compact,
   onToggleCompact,
@@ -257,10 +263,40 @@ export function AppSidebar({
           {isExpanded && <span>返回项目列表</span>}
         </Link>
         {isExpanded && (
-          <div className="mt-1 rounded-xl border border-sky-500/15 bg-sky-500/[0.06] px-3 py-2 shadow-inner shadow-sky-500/5">
-            <h1 className="truncate text-[15px] font-semibold leading-5 text-sky-50">
-              {projectTitle}
-            </h1>
+          <div className="mt-1 space-y-2 rounded-xl border border-sky-500/15 bg-sky-500/[0.06] px-3 py-2 shadow-inner shadow-sky-500/5">
+            <h1 className="truncate text-[15px] font-semibold leading-5 text-sky-50">{projectTitle}</h1>
+            <div className="grid grid-cols-2 gap-1.5">
+              {previousProject ? (
+                <Link
+                  href={`/projects/${previousProject.id}`}
+                  title={previousProject.title}
+                  className="inline-flex min-w-0 items-center justify-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-[11px] text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
+                >
+                  <ChevronLeft className="size-3 shrink-0" />
+                  <span className="truncate">上一个</span>
+                </Link>
+              ) : (
+                <span className="inline-flex items-center justify-center gap-1 rounded-lg border border-white/5 px-2 py-1 text-[11px] text-zinc-600">
+                  <ChevronLeft className="size-3" />
+                  上一个
+                </span>
+              )}
+              {nextProject ? (
+                <Link
+                  href={`/projects/${nextProject.id}`}
+                  title={nextProject.title}
+                  className="inline-flex min-w-0 items-center justify-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-[11px] text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
+                >
+                  <span className="truncate">下一个</span>
+                  <ChevronRight className="size-3 shrink-0" />
+                </Link>
+              ) : (
+                <span className="inline-flex items-center justify-center gap-1 rounded-lg border border-white/5 px-2 py-1 text-[11px] text-zinc-600">
+                  下一个
+                  <ChevronRight className="size-3" />
+                </span>
+              )}
+            </div>
           </div>
         )}
       </SidebarHeader>

@@ -22,6 +22,31 @@ export async function listProjects(): Promise<ProjectCard[]> {
       status: true,
       updatedAt: true,
       presetBindings: true,
+      runs: {
+        where: { status: "done" },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: {
+          id: true,
+          status: true,
+          createdAt: true,
+          images: {
+            orderBy: { createdAt: "asc" },
+            take: 6,
+            select: {
+              id: true,
+              thumbPath: true,
+              filePath: true,
+              reviewStatus: true,
+            },
+          },
+          _count: {
+            select: {
+              images: true,
+            },
+          },
+        },
+      },
       _count: { select: { sections: true } },
     },
   });
@@ -33,6 +58,7 @@ export async function listProjects(): Promise<ProjectCard[]> {
 
   return projects.map((project) => {
     const presetNames = extractPresetNames(project.presetBindings as PresetBindingJson | null, presetMap);
+    const latestRun = project.runs[0] ?? null;
     return {
       id: project.id,
       title: project.title,
@@ -40,6 +66,15 @@ export async function listProjects(): Promise<ProjectCard[]> {
       status: project.status as ProjectCard["status"],
       updatedAt: formatDate(project.updatedAt),
       sectionCount: project._count.sections,
+      latestRunId: latestRun?.id ?? null,
+      latestRunAt: latestRun ? formatDate(latestRun.createdAt) : null,
+      latestRunStatus: latestRun?.status as ProjectCard["latestRunStatus"],
+      latestImages: (latestRun?.images ?? []).map((img) => ({
+        id: img.id,
+        src: toImageUrl(img.thumbPath ?? img.filePath) ?? "",
+        status: img.reviewStatus as ReviewStatus,
+      })),
+      latestImageCount: latestRun?._count.images ?? 0,
     };
   });
 }
@@ -68,6 +103,8 @@ export type ProjectDetail = {
   title: string;
   presetNames: string[];
   status: string;
+  previousProject: { id: string; title: string } | null;
+  nextProject: { id: string; title: string } | null;
   sections: {
     id: string;
     name: string;
@@ -88,49 +125,55 @@ export type ProjectDetail = {
 };
 
 export async function getProjectDetail(projectId: string): Promise<ProjectDetail | null> {
-  const project = await prisma.project.findUnique({
-    where: { id: projectId },
-    select: {
-      id: true,
-      title: true,
-      status: true,
-      presetBindings: true,
-      projectLevelOverrides: true,
-      sections: {
-        orderBy: { sortOrder: "asc" },
-        include: {
-          runs: {
-            where: { status: "done" },
-            orderBy: { createdAt: "desc" },
-            take: 1,
-            select: {
-              id: true,
-              status: true,
-              images: {
-                orderBy: { createdAt: "asc" },
-                take: 8,
-                select: {
-                  id: true,
-                  thumbPath: true,
-                  filePath: true,
-                  reviewStatus: true,
+  const [project, projectNavItems] = await Promise.all([
+    prisma.project.findUnique({
+      where: { id: projectId },
+      select: {
+        id: true,
+        title: true,
+        status: true,
+        presetBindings: true,
+        projectLevelOverrides: true,
+        sections: {
+          orderBy: { sortOrder: "asc" },
+          include: {
+            runs: {
+              where: { status: "done" },
+              orderBy: { createdAt: "desc" },
+              take: 1,
+              select: {
+                id: true,
+                status: true,
+                images: {
+                  orderBy: { createdAt: "asc" },
+                  take: 8,
+                  select: {
+                    id: true,
+                    thumbPath: true,
+                    filePath: true,
+                    reviewStatus: true,
+                  },
                 },
-              },
-              _count: {
-                select: {
-                  images: true,
+                _count: {
+                  select: {
+                    images: true,
+                  },
                 },
               },
             },
-          },
-          promptBlocks: {
-            orderBy: { sortOrder: "asc" },
-            select: { id: true, positive: true, negative: true },
+            promptBlocks: {
+              orderBy: { sortOrder: "asc" },
+              select: { id: true, positive: true, negative: true },
+            },
           },
         },
       },
-    },
-  });
+    }),
+    prisma.project.findMany({
+      orderBy: [{ updatedAt: "desc" }, { title: "asc" }],
+      select: { id: true, title: true },
+    }),
+  ]);
 
   if (!project) return null;
 
@@ -164,12 +207,20 @@ export async function getProjectDetail(projectId: string): Promise<ProjectDetail
     projectLevelOverrides.defaultBatchSize ??
     projectLevelOverrides.batchSize ??
     null;
+  const projectIndex = projectNavItems.findIndex((item) => item.id === project.id);
+  const previousProject = projectIndex > 0 ? projectNavItems[projectIndex - 1] : null;
+  const nextProject =
+    projectIndex >= 0 && projectIndex < projectNavItems.length - 1
+      ? projectNavItems[projectIndex + 1]
+      : null;
 
   return {
     id: project.id,
     title: project.title,
     presetNames,
     status: project.status,
+    previousProject,
+    nextProject,
     sections: project.sections.map((pos) => {
       const positiveBlockCount = pos.promptBlocks.filter((b) => b.positive?.trim()).length;
       const negativeBlockCount = pos.promptBlocks.filter((b) => b.negative?.trim()).length;

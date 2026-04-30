@@ -14,6 +14,8 @@ import { SectionCards, type Section } from "./section-cards";
 type ProjectDetailClientProps = {
   projectId: string;
   projectTitle: string;
+  previousProject: { id: string; title: string } | null;
+  nextProject: { id: string; title: string } | null;
   sections: Section[];
 };
 
@@ -29,7 +31,13 @@ function getScrollContainer(): Element | Window {
   return getPreferredScrollContainer('[data-slot="sidebar-inset"]');
 }
 
-export function ProjectDetailClient({ projectId, projectTitle, sections }: ProjectDetailClientProps) {
+export function ProjectDetailClient({
+  projectId,
+  projectTitle,
+  previousProject,
+  nextProject,
+  sections,
+}: ProjectDetailClientProps) {
   const [compact, setCompact] = useState(false);
   const sectionIds = useMemo(() => sections.map((section) => section.id), [sections]);
   const activeSectionId = useScrollSpy(sectionIds, {
@@ -205,6 +213,8 @@ export function ProjectDetailClient({ projectId, projectTitle, sections }: Proje
       <AppSidebar
         projectId={projectId}
         projectTitle={projectTitle}
+        previousProject={previousProject}
+        nextProject={nextProject}
         sections={sections}
         compact={compact}
         onToggleCompact={handleToggleCompact}

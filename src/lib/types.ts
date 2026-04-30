@@ -77,6 +77,9 @@ export type ProjectCard = {
   latestRunStatus?: "queued" | "running" | "done" | "failed" | "cancelled" | null;
   latestRunPendingCount?: number;
   latestRunTotalCount?: number;
+  latestRunId?: string | null;
+  latestImages?: { id: string; src: string; status: ReviewStatus }[];
+  latestImageCount?: number;
 };
 
 export type TrashItem = {
