@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, AlertCircle } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import { SectionCard } from "@/components/section-card";
 import { getSectionResults } from "@/lib/server-data";
 import { ResultsGrid } from "./results-grid";
@@ -32,15 +32,38 @@ export default async function SectionResultsPage({
         >
           <ArrowLeft className="size-4" /> 返回项目详情
         </Link>
-        {data.totalPending > 0 && data.pendingRunId && (
-          <Link
-            href={`/queue/${data.pendingRunId}`}
-            className="inline-flex items-center gap-2 rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-300 transition hover:bg-amber-500/20"
-          >
-            <AlertCircle className="size-3.5" />
-            跳转至审核 ({data.totalPending} 张待审)
-          </Link>
-        )}
+        <div className="flex items-center gap-2">
+          {data.previousSection ? (
+            <Link
+              href={`/projects/${projectId}/sections/${data.previousSection.id}/results`}
+              title={data.previousSection.name}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
+            >
+              <ChevronLeft className="size-3.5" />
+              上一节
+            </Link>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 rounded-xl border border-white/5 px-3 py-2 text-xs text-zinc-600">
+              <ChevronLeft className="size-3.5" />
+              上一节
+            </span>
+          )}
+          {data.nextSection ? (
+            <Link
+              href={`/projects/${projectId}/sections/${data.nextSection.id}/results`}
+              title={data.nextSection.name}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
+            >
+              下一节
+              <ChevronRight className="size-3.5" />
+            </Link>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 rounded-xl border border-white/5 px-3 py-2 text-xs text-zinc-600">
+              下一节
+              <ChevronRight className="size-3.5" />
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Title */}

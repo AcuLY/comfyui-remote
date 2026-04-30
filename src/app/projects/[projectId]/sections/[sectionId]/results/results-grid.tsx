@@ -1,9 +1,10 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { Check, Trash2 } from "lucide-react";
+import { Check, ClipboardCheck, Trash2 } from "lucide-react";
 import { Star } from "lucide-react";
 import { keepImages, trashImages } from "@/lib/actions";
 import { ResultsGalleryProvider } from "./results-gallery";
@@ -85,6 +86,14 @@ export function ResultsGrid({ runs }: { runs: RunData[] }) {
                       {runPendingImages.length} 张待审
                     </span>
                   )}
+                  <Link
+                    href={`/queue/${run.id}`}
+                    className="inline-flex items-center gap-1 rounded-lg border border-sky-500/20 bg-sky-500/10 px-2 py-1 text-[10px] text-sky-300 transition hover:bg-sky-500/20"
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <ClipboardCheck className="size-3" />
+                    跳转至审核
+                  </Link>
                 </div>
 
                 {/* Image grid */}

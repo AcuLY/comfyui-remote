@@ -1,11 +1,13 @@
 "use client";
 
-import { useCallback, useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
   ClipboardCheck,
   ImageIcon,
   Star,
@@ -14,7 +16,13 @@ import { toast } from "sonner";
 
 import type { ProjectResultsData } from "@/lib/server-data";
 import { useScrollSpy } from "@/hooks/use-scroll-spy";
-import { getPreferredScrollContainer } from "@/lib/scroll-container";
+import {
+  addScrollListener,
+  getMaxScrollTop,
+  getPreferredScrollContainer,
+  getScrollProgress,
+  scrollContainerTo,
+} from "@/lib/scroll-container";
 import {
   Sidebar,
   SidebarContent,
@@ -37,11 +45,10 @@ type ProjectResultsSection = ProjectResultsData["sections"][number];
 type ProjectResultsRun = ProjectResultsSection["runs"][number];
 type ProjectResultsImage = ProjectResultsRun["images"][number];
 
-const RUN_STATUS_BADGE: Record<string, string> = {
-  done: "border-emerald-500/20 bg-emerald-500/10 text-emerald-300",
-  running: "border-amber-500/20 bg-amber-500/10 text-amber-300",
-  queued: "border-zinc-500/20 bg-zinc-500/10 text-zinc-400",
-  failed: "border-rose-500/20 bg-rose-500/10 text-rose-300",
+const COLLAPSED_IMAGE_COUNT = 24;
+
+type ProjectResultsImageWithRun = ProjectResultsImage & {
+  runIndex: number;
 };
 
 function scrollToSection(sectionId: string) {
@@ -58,6 +65,12 @@ function scrollToSection(sectionId: string) {
   }
 }
 
+function findNavItem(container: HTMLElement, sectionId: string) {
+  return Array.from(container.querySelectorAll<HTMLElement>("[data-nav-section-id]")).find(
+    (item) => item.dataset.navSectionId === sectionId,
+  );
+}
+
 function ProjectResultsSidebar({
   project,
   activeSectionId,
@@ -67,6 +80,105 @@ function ProjectResultsSidebar({
 }) {
   const { state: sidebarState } = useSidebar();
   const isExpanded = sidebarState === "expanded";
+  const sidebarContentRef = useRef<HTMLDivElement>(null);
+  const syncLockRef = useRef<"main" | "sidebar" | null>(null);
+  const syncUnlockTimerRef = useRef<number | null>(null);
+
+  const runWithSyncLock = useCallback((source: "main" | "sidebar", callback: () => void, duration = 180) => {
+    syncLockRef.current = source;
+    callback();
+
+    if (syncUnlockTimerRef.current !== null) {
+      window.clearTimeout(syncUnlockTimerRef.current);
+    }
+
+    syncUnlockTimerRef.current = window.setTimeout(() => {
+      syncLockRef.current = null;
+      syncUnlockTimerRef.current = null;
+    }, duration);
+  }, []);
+
+  useEffect(() => {
+    const mainScroller = getPreferredScrollContainer('[data-slot="sidebar-inset"]');
+    const sidebarScroller = sidebarContentRef.current;
+    if (!sidebarScroller) return;
+
+    let mainFrame: number | null = null;
+    let sidebarFrame: number | null = null;
+
+    const syncFromMain = () => {
+      mainFrame = null;
+      if (syncLockRef.current === "sidebar") return;
+
+      const progress = getScrollProgress(mainScroller);
+      const targetTop = progress * getMaxScrollTop(sidebarScroller);
+      runWithSyncLock("main", () => {
+        scrollContainerTo(sidebarScroller, targetTop, "instant");
+      });
+    };
+
+    const syncFromSidebar = () => {
+      sidebarFrame = null;
+      if (syncLockRef.current === "main") return;
+
+      const progress = getScrollProgress(sidebarScroller);
+      const targetTop = progress * getMaxScrollTop(mainScroller);
+      runWithSyncLock("sidebar", () => {
+        scrollContainerTo(mainScroller, targetTop, "instant");
+      });
+    };
+
+    const handleMainScroll = () => {
+      if (mainFrame !== null) return;
+      mainFrame = window.requestAnimationFrame(syncFromMain);
+    };
+
+    const handleSidebarScroll = () => {
+      if (sidebarFrame !== null) return;
+      sidebarFrame = window.requestAnimationFrame(syncFromSidebar);
+    };
+
+    const removeMainScrollListener = addScrollListener(mainScroller, handleMainScroll, { passive: true });
+    const removeSidebarScrollListener = addScrollListener(sidebarScroller, handleSidebarScroll, { passive: true });
+    handleMainScroll();
+
+    return () => {
+      removeMainScrollListener();
+      removeSidebarScrollListener();
+
+      if (mainFrame !== null) window.cancelAnimationFrame(mainFrame);
+      if (sidebarFrame !== null) window.cancelAnimationFrame(sidebarFrame);
+      if (syncUnlockTimerRef.current !== null) {
+        window.clearTimeout(syncUnlockTimerRef.current);
+        syncUnlockTimerRef.current = null;
+      }
+    };
+  }, [project.sections.length, runWithSyncLock]);
+
+  useEffect(() => {
+    if (!activeSectionId) return;
+    const sidebarScroller = sidebarContentRef.current;
+    if (!sidebarScroller) return;
+
+    const navItem = findNavItem(sidebarScroller, activeSectionId);
+    if (!navItem) return;
+
+    const containerRect = sidebarScroller.getBoundingClientRect();
+    const itemRect = navItem.getBoundingClientRect();
+    const isVisible = itemRect.top >= containerRect.top && itemRect.bottom <= containerRect.bottom;
+
+    if (isVisible) return;
+
+    const targetTop =
+      sidebarScroller.scrollTop +
+      itemRect.top -
+      containerRect.top -
+      (containerRect.height - itemRect.height) / 2;
+
+    runWithSyncLock("main", () => {
+      scrollContainerTo(sidebarScroller, targetTop, "smooth");
+    }, 700);
+  }, [activeSectionId, runWithSyncLock]);
 
   return (
     <Sidebar collapsible="icon" mobileBehavior="sidebar" className="border-r border-white/5">
@@ -118,13 +230,13 @@ function ProjectResultsSidebar({
         )}
       </SidebarHeader>
 
-      <SidebarContent className="overflow-x-hidden">
+      <SidebarContent ref={sidebarContentRef} className="overflow-x-hidden">
         <SidebarGroup>
           <SidebarGroupLabel>小节结果</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu className="gap-1">
               {project.sections.map((section, index) => (
-                <SidebarMenuItem key={section.id} className="flex items-center gap-1">
+                <SidebarMenuItem key={section.id} className="flex items-center gap-1" data-nav-section-id={section.id}>
                   <SidebarMenuButton
                     tooltip={`${index + 1}. ${section.name}`}
                     isActive={activeSectionId === section.id}
@@ -158,20 +270,12 @@ function ProjectResultsSidebar({
   );
 }
 
-function StatusPill({ status }: { status: string }) {
-  return (
-    <span className={`rounded-full border px-2 py-0.5 text-[10px] ${RUN_STATUS_BADGE[status] ?? RUN_STATUS_BADGE.queued}`}>
-      {status}
-    </span>
-  );
-}
-
 function ResultImageCard({
   image,
   onToggleFeatured,
   disabled,
 }: {
-  image: ProjectResultsImage;
+  image: ProjectResultsImageWithRun;
   onToggleFeatured: (imageId: string, featured: boolean) => void;
   disabled: boolean;
 }) {
@@ -221,7 +325,7 @@ function ResultImageCard({
       </button>
 
       <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 bg-black/45 px-2 py-1 text-[10px] text-zinc-200 opacity-90">
-        <span>{image.status}</span>
+        <span>Run #{image.runIndex}</span>
         {image.featured && <span className="text-amber-200">精选</span>}
       </div>
     </div>
@@ -233,12 +337,25 @@ function SectionResultsBlock({
   section,
   onToggleFeatured,
   togglingImageId,
+  isExpanded,
+  onToggleExpanded,
 }: {
   projectId: string;
   section: ProjectResultsSection;
   onToggleFeatured: (imageId: string, featured: boolean) => void;
   togglingImageId: string | null;
+  isExpanded: boolean;
+  onToggleExpanded: (sectionId: string) => void;
 }) {
+  const images = section.runs.flatMap((run) =>
+    run.images.map((image) => ({
+      ...image,
+      runIndex: run.runIndex,
+    })),
+  );
+  const shouldCollapse = images.length > COLLAPSED_IMAGE_COUNT;
+  const visibleImages = shouldCollapse && !isExpanded ? images.slice(0, COLLAPSED_IMAGE_COUNT) : images;
+
   return (
     <section id={`section-${section.id}`} className="scroll-mt-4 rounded-xl border border-white/10 bg-white/[0.025] p-3">
       <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
@@ -265,27 +382,35 @@ function SectionResultsBlock({
           暂无结果
         </div>
       ) : (
-        <div className="space-y-5">
-          {section.runs.map((run) =>
-            run.images.length > 0 ? (
-              <div key={run.id}>
-                <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
-                  <span className="font-medium text-zinc-300">Run #{run.runIndex}</span>
-                  <span className="text-[10px] text-zinc-500">{run.createdAt}</span>
-                  <StatusPill status={run.status} />
-                </div>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                  {run.images.map((image) => (
-                    <ResultImageCard
-                      key={image.id}
-                      image={image}
-                      onToggleFeatured={onToggleFeatured}
-                      disabled={togglingImageId === image.id}
-                    />
-                  ))}
-                </div>
-              </div>
-            ) : null,
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            {visibleImages.map((image) => (
+              <ResultImageCard
+                key={image.id}
+                image={image}
+                onToggleFeatured={onToggleFeatured}
+                disabled={togglingImageId === image.id}
+              />
+            ))}
+          </div>
+          {shouldCollapse && (
+            <button
+              type="button"
+              onClick={() => onToggleExpanded(section.id)}
+              className="mx-auto flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
+            >
+              {isExpanded ? (
+                <>
+                  <ChevronUp className="size-3.5" />
+                  收起
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="size-3.5" />
+                  显示全部（剩余 {images.length - COLLAPSED_IMAGE_COUNT} 张）
+                </>
+              )}
+            </button>
           )}
         </div>
       )}
@@ -295,6 +420,7 @@ function SectionResultsBlock({
 
 export function ProjectResultsClient({ project }: { project: ProjectResultsData }) {
   const [sections, setSections] = useState(project.sections);
+  const [expandedSectionIds, setExpandedSectionIds] = useState<Set<string>>(new Set());
   const [togglingImageId, setTogglingImageId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
   const sectionIds = useMemo(() => sections.map((section) => section.id), [sections]);
@@ -304,6 +430,18 @@ export function ProjectResultsClient({ project }: { project: ProjectResultsData 
 
   const totalImages = sections.reduce((sum, section) => sum + section.imageCount, 0);
   const totalFeatured = sections.reduce((sum, section) => sum + section.featuredCount, 0);
+
+  const toggleExpandedSection = useCallback((sectionId: string) => {
+    setExpandedSectionIds((current) => {
+      const next = new Set(current);
+      if (next.has(sectionId)) {
+        next.delete(sectionId);
+      } else {
+        next.add(sectionId);
+      }
+      return next;
+    });
+  }, []);
 
   const setImageFeatured = useCallback((imageId: string, featured: boolean) => {
     setSections((currentSections) =>
@@ -399,6 +537,8 @@ export function ProjectResultsClient({ project }: { project: ProjectResultsData 
                 section={section}
                 onToggleFeatured={handleToggleFeatured}
                 togglingImageId={togglingImageId}
+                isExpanded={expandedSectionIds.has(section.id)}
+                onToggleExpanded={toggleExpandedSection}
               />
             ))
           )}

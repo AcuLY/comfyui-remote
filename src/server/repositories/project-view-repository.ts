@@ -258,6 +258,8 @@ export type SectionResultsData = {
   projectTitle: string;
   sectionId: string;
   sectionName: string;
+  previousSection: { id: string; name: string } | null;
+  nextSection: { id: string; name: string } | null;
   runs: {
     id: string;
     runIndex: number;
@@ -271,8 +273,6 @@ export type SectionResultsData = {
       featured: boolean;
     }[];
   }[];
-  /** 最新有 pending 图片的 run id（用于「跳转至审核」按钮） */
-  pendingRunId: string | null;
   totalPending: number;
 };
 
@@ -332,7 +332,27 @@ export async function getSectionResults(sectionId: string): Promise<SectionResul
 
   if (!pos) return null;
 
-  let pendingRunId: string | null = null;
+  const projectSections = await prisma.projectSection.findMany({
+    where: { projectId: pos.project.id },
+    orderBy: { sortOrder: "asc" },
+    select: { id: true, name: true, sortOrder: true },
+  });
+  const currentIndex = projectSections.findIndex((section) => section.id === pos.id);
+  const previousSection =
+    currentIndex > 0
+      ? {
+          id: projectSections[currentIndex - 1].id,
+          name: projectSections[currentIndex - 1].name || `小节 ${projectSections[currentIndex - 1].sortOrder}`,
+        }
+      : null;
+  const nextSection =
+    currentIndex >= 0 && currentIndex < projectSections.length - 1
+      ? {
+          id: projectSections[currentIndex + 1].id,
+          name: projectSections[currentIndex + 1].name || `小节 ${projectSections[currentIndex + 1].sortOrder}`,
+        }
+      : null;
+
   let totalPending = 0;
 
   const runs = pos.runs.map((run) => {
@@ -349,10 +369,6 @@ export async function getSectionResults(sectionId: string): Promise<SectionResul
     const runPending = images.filter((img) => img.status === "pending").length;
     totalPending += runPending;
 
-    if (runPending > 0 && !pendingRunId) {
-      pendingRunId = run.id;
-    }
-
     return {
       id: run.id,
       runIndex: run.runIndex,
@@ -367,8 +383,9 @@ export async function getSectionResults(sectionId: string): Promise<SectionResul
     projectTitle: pos.project.title,
     sectionId: pos.id,
     sectionName: pos.name || `小节`,
+    previousSection,
+    nextSection,
     runs,
-    pendingRunId,
     totalPending,
   };
 }
