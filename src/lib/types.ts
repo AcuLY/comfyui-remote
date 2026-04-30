@@ -49,6 +49,8 @@ export type ReviewImage = {
   full: string;
   label: string;
   status: ReviewStatus;
+  featured: boolean;
+  featured2: boolean;
 };
 
 export type ReviewGroup = {

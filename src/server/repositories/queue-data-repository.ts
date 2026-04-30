@@ -58,6 +58,8 @@ type ImageRecord = {
   filePath: string;
   thumbPath: string | null;
   reviewStatus: string;
+  featured: boolean;
+  featured2: boolean;
   createdAt: Date;
 };
 
@@ -420,6 +422,8 @@ export async function getReviewGroup(runId: string): Promise<ReviewGroup | null>
     full: (toImageUrl(img.filePath) ?? "") + "?q=80",
     label: `${index + 1}`.padStart(2, "0"),
     status: img.reviewStatus as ReviewStatus,
+    featured: img.featured,
+    featured2: img.featured2,
   }));
 
   return {

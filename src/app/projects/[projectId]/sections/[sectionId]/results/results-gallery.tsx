@@ -248,7 +248,7 @@ export function ResultsGalleryProvider({
             </button>
           </div>
 
-          <div className="grid min-h-0 flex-1 grid-cols-[3rem_minmax(0,1fr)_3rem] sm:grid-cols-[4.5rem_minmax(0,1fr)_4.5rem]">
+          <div className="grid h-[calc(100dvh-8.5rem)] min-h-0 flex-1 grid-cols-[3rem_minmax(0,1fr)_3rem] sm:grid-cols-[4.5rem_minmax(0,1fr)_4.5rem]">
             <button
               type="button"
               disabled={allImages.length <= 1}
@@ -268,7 +268,7 @@ export function ResultsGalleryProvider({
             >
               {!imageLoaded && (
                 <div className="absolute inset-3 flex items-center justify-center">
-                  <div className="h-full max-h-[72dvh] w-full max-w-5xl animate-pulse rounded-lg bg-white/[0.08]" />
+                  <div className="h-full max-h-[calc(100dvh-11rem)] w-full max-w-5xl animate-pulse rounded-lg bg-white/[0.08]" />
                 </div>
               )}
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -278,7 +278,7 @@ export function ResultsGalleryProvider({
                 alt=""
                 onLoad={() => setImageLoaded(true)}
                 onError={() => setImageLoaded(true)}
-                className={`max-h-full max-w-full rounded-lg object-contain transition-opacity duration-150 ${
+                className={`max-h-[calc(100dvh-11rem)] max-w-full rounded-lg object-contain transition-opacity duration-150 ${
                   imageLoaded ? "opacity-100" : "opacity-0"
                 }`}
               />

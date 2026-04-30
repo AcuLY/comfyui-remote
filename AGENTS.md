@@ -34,6 +34,7 @@ print it in logs, or commit token values.
      Where-Object { $_.CommandLine -like '*D:\Luca\Code\MyProject\comfyui-manager*' -and $_.CommandLine -like '*next*start*' }
    $targets | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -Confirm:$false }
    ```
+   - 如果当前项目目录下已经有通过 `npm run dev` / `next dev` 启动的开发服务，不要停止或重启它；开发服务由正在调试的人手动管理。只有检测到当前项目目录下的 `next start` 生产服务时，才按上面的过滤条件停止并重启。
    - 如果当前已经在 `mypc` 本机工作，必须用 PowerShell 的隐藏窗口后台静默启动，不要弹出额外终端窗口：
      ```powershell
      Start-Process -FilePath "cmd.exe" -ArgumentList "/c cd /d D:\Luca\Code\MyProject\comfyui-manager && npx next start > server.log 2>&1" -WindowStyle Hidden
