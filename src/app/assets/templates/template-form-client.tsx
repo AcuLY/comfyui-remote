@@ -1,9 +1,25 @@
 "use client";
 
-import { useId, useRef, useState, useTransition } from "react";
+import {
+  useCallback,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+  type CSSProperties,
+} from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Copy, Plus, Trash2, GripVertical, Save } from "lucide-react";
+import {
+  ArrowLeft,
+  Copy,
+  ExternalLink,
+  Plus,
+  Trash2,
+  GripVertical,
+  Save,
+} from "lucide-react";
 import { toast } from "sonner";
 import {
   DndContext,
@@ -28,6 +44,23 @@ import {
   updateProjectTemplate,
 } from "@/lib/actions";
 import { resolveResolution } from "@/lib/aspect-ratio-utils";
+import { getPreferredScrollContainer } from "@/lib/scroll-container";
+import {
+  SidebarSectionNav,
+  useSyncedSidebarContent,
+} from "@/components/section-sidebar-nav";
+import { useScrollSpy } from "@/hooks/use-scroll-spy";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarInset,
+  SidebarProvider,
+  SidebarRail,
+  SidebarTrigger,
+  useSidebar,
+} from "@/components/ui/sidebar";
 import type { ProjectTemplateSectionData } from "@/lib/server-data";
 import { type LoraEntry } from "@/lib/lora-types";
 import { DEFAULT_CHECKPOINT_NAME } from "@/lib/model-constants";
@@ -43,6 +76,101 @@ type Props = {
   initialSections?: ProjectTemplateSectionData[];
 };
 
+function scrollToTemplateSection(sectionId: string) {
+  const element = document.getElementById(`section-${sectionId}`);
+  if (!element) return;
+
+  const container = getPreferredScrollContainer('[data-slot="sidebar-inset"]');
+  if (container instanceof Window) {
+    const y = element.getBoundingClientRect().top + window.scrollY - 16;
+    window.scrollTo({ top: y, behavior: "smooth" });
+  } else {
+    const y =
+      element.getBoundingClientRect().top -
+      container.getBoundingClientRect().top +
+      container.scrollTop -
+      16;
+    container.scrollTo({ top: y, behavior: "smooth" });
+  }
+}
+
+function TemplateSectionsSidebar({
+  templateId,
+  templateName,
+  sections,
+  activeSectionId,
+  onNavigateToSection,
+}: {
+  templateId: string;
+  templateName: string;
+  sections: ProjectTemplateSectionData[];
+  activeSectionId: string | null;
+  onNavigateToSection: (id: string) => void;
+}) {
+  const { state: sidebarState } = useSidebar();
+  const isExpanded = sidebarState === "expanded";
+  const sidebarContentRef = useSyncedSidebarContent({
+    activeSectionId,
+    itemCount: sections.length,
+  });
+  const navSections = sections.map((section, index) => ({
+    id: section.id,
+    name: section.name || `小节 ${index + 1}`,
+  }));
+
+  return (
+    <Sidebar
+      collapsible="icon"
+      mobileBehavior="sidebar"
+      className="border-r border-white/5"
+    >
+      <SidebarHeader className="gap-1.5 px-3.5 py-3 group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:px-2">
+        <Link
+          href="/assets/templates"
+          className="inline-flex items-center gap-1.5 text-xs text-zinc-400 transition hover:text-zinc-200 group-data-[collapsible=icon]:justify-center"
+        >
+          <ArrowLeft className="size-3.5" />
+          {isExpanded && <span>返回模板列表</span>}
+        </Link>
+        {isExpanded && (
+          <div className="mt-1 space-y-1 rounded-xl border border-sky-500/15 bg-sky-500/[0.06] px-3 py-2 shadow-inner shadow-sky-500/5">
+            <p className="text-[10px] text-sky-300/70">模板小节</p>
+            <h1 className="truncate text-[15px] font-semibold leading-5 text-sky-50">
+              {templateName || "未命名模板"}
+            </h1>
+          </div>
+        )}
+      </SidebarHeader>
+
+      <SidebarContent ref={sidebarContentRef} className="overflow-x-hidden">
+        <SidebarSectionNav
+          label="小节配置"
+          sections={navSections}
+          activeSectionId={activeSectionId}
+          onNavigateToSection={onNavigateToSection}
+          menuClassName="gap-1"
+          buttonClassName="min-h-9"
+          renderTrailing={(section, index) =>
+            isExpanded && !section.id.startsWith("new-") ? (
+              <Link
+                href={`/assets/templates/${templateId}/sections/${index}`}
+                className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-zinc-500 transition hover:bg-white/10 hover:text-sky-300"
+                title="编辑小节"
+              >
+                <ExternalLink className="size-3.5" />
+              </Link>
+            ) : null
+          }
+          itemClassName="flex items-center gap-1"
+        />
+      </SidebarContent>
+
+      <SidebarFooter className="px-3 py-3" />
+      <SidebarRail />
+    </Sidebar>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // TemplateFormClient
 // ---------------------------------------------------------------------------
@@ -56,7 +184,8 @@ export function TemplateFormClient({
   const router = useRouter();
   const [name, setName] = useState(initialName);
   const [description, setDescription] = useState(initialDescription ?? "");
-  const [sections, setSections] = useState<ProjectTemplateSectionData[]>(initialSections);
+  const [sections, setSections] =
+    useState<ProjectTemplateSectionData[]>(initialSections);
   const [isPending, startTransition] = useTransition();
   const savedMetaRef = useRef({
     name: initialName.trim(),
@@ -65,10 +194,22 @@ export function TemplateFormClient({
 
   const isEdit = !!templateId;
   const dndId = useId();
+  const sectionIds = useMemo(
+    () => sections.map((section) => section.id),
+    [sections],
+  );
+  const activeSectionId = useScrollSpy(sectionIds, {
+    rootSelector: '[data-slot="sidebar-inset"]',
+  });
+  const scrollToSection = useCallback((sectionId: string) => {
+    scrollToTemplateSection(sectionId);
+  }, []);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
   );
 
   // ── Section management ──
@@ -116,7 +257,9 @@ export function TemplateFormClient({
           sections: nextSections,
         });
         toast.success("小节已添加");
-        router.push(`/assets/templates/${templateId}/sections/${nextSections.length - 1}`);
+        router.push(
+          `/assets/templates/${templateId}/sections/${nextSections.length - 1}`,
+        );
       } catch (e: unknown) {
         setSections(sections);
         toast.error(e instanceof Error ? e.message : "添加小节失败");
@@ -125,12 +268,16 @@ export function TemplateFormClient({
   }
 
   function removeSection(id: string) {
-    const nextSections = sections.filter((s) => s.id !== id).map((s, i) => ({ ...s, sortOrder: i }));
+    const nextSections = sections
+      .filter((s) => s.id !== id)
+      .map((s, i) => ({ ...s, sortOrder: i }));
     const previousSections = sections;
     setSections(nextSections);
 
     if (!isEdit) return;
-    saveSections(nextSections, "小节已删除", () => setSections(previousSections));
+    saveSections(nextSections, "小节已删除", () =>
+      setSections(previousSections),
+    );
   }
 
   function copySection(section: ProjectTemplateSectionData) {
@@ -162,18 +309,26 @@ export function TemplateFormClient({
     const newIndex = sections.findIndex((s) => s.id === over.id);
     if (oldIndex === -1 || newIndex === -1) return;
 
-    const nextSections = arrayMove(sections, oldIndex, newIndex).map((s, i) => ({ ...s, sortOrder: i }));
+    const nextSections = arrayMove(sections, oldIndex, newIndex).map(
+      (s, i) => ({ ...s, sortOrder: i }),
+    );
     const previousSections = sections;
     setSections(nextSections);
 
     if (isEdit) {
-      saveSections(nextSections, "小节顺序已保存", () => setSections(previousSections));
+      saveSections(nextSections, "小节顺序已保存", () =>
+        setSections(previousSections),
+      );
     }
   }
 
   // ── Save ──
 
-  function saveSections(nextSections: ProjectTemplateSectionData[], successMessage: string, rollback?: () => void) {
+  function saveSections(
+    nextSections: ProjectTemplateSectionData[],
+    successMessage: string,
+    rollback?: () => void,
+  ) {
     if (!isEdit) return;
     if (!name.trim()) {
       toast.error("请输入模板名称");
@@ -259,14 +414,19 @@ export function TemplateFormClient({
     });
   }
 
-  return (
+  const renderForm = (withSidebarTrigger = false) => (
     <div className="mx-auto w-full max-w-3xl min-w-0 space-y-4">
-      <Link
-        href="/assets/templates"
-        className="inline-flex items-center gap-2 text-sm text-zinc-400 transition hover:text-zinc-200"
-      >
-        <ArrowLeft className="size-4" /> 返回模板列表
-      </Link>
+      <div className="flex items-center gap-2">
+        {withSidebarTrigger && (
+          <SidebarTrigger className="-ml-1 hidden md:inline-flex" />
+        )}
+        <Link
+          href="/assets/templates"
+          className="inline-flex items-center gap-2 text-sm text-zinc-400 transition hover:text-zinc-200"
+        >
+          <ArrowLeft className="size-4" /> 返回模板列表
+        </Link>
+      </div>
 
       {/* Template metadata */}
       <div className="space-y-3 border-t border-white/5 pt-3">
@@ -316,8 +476,16 @@ export function TemplateFormClient({
           </div>
         )}
 
-        <DndContext id={dndId} sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <SortableContext items={sections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
+        <DndContext
+          id={dndId}
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={sections.map((s) => s.id)}
+            strategy={verticalListSortingStrategy}
+          >
             <div className="grid grid-cols-1 gap-3 justify-items-center md:grid-cols-2">
               {sections.map((section, si) => (
                 <SortableSectionCard
@@ -345,6 +513,33 @@ export function TemplateFormClient({
       )}
     </div>
   );
+
+  if (!isEdit || !templateId) {
+    return renderForm();
+  }
+
+  return (
+    <SidebarProvider
+      style={
+        {
+          "--sidebar-width": "14rem",
+          "--sidebar-width-icon": "3rem",
+        } as CSSProperties
+      }
+      className="-mx-5 min-h-[calc(100dvh-5rem)] w-[calc(100%+2.5rem)] bg-transparent sm:-mx-6 sm:w-[calc(100%+3rem)]"
+    >
+      <TemplateSectionsSidebar
+        templateId={templateId}
+        templateName={name}
+        sections={sections}
+        activeSectionId={activeSectionId}
+        onNavigateToSection={scrollToSection}
+      />
+      <SidebarInset className="flex-1 overflow-auto bg-transparent">
+        <div className="px-4 pb-24 pt-4 sm:px-6">{renderForm(true)}</div>
+      </SidebarInset>
+    </SidebarProvider>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -364,7 +559,14 @@ function SortableSectionCard({
   onRemove: () => void;
   onCopy: () => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
     id: section.id,
   });
 
@@ -378,72 +580,94 @@ function SortableSectionCard({
   const res = resolveResolution(aspectRatio, section.shortSidePx ?? 512);
   const resDisplay = `${res.width}x${res.height}`;
 
-  const loraConfig = (section.loraConfig as { lora1: LoraEntry[]; lora2: LoraEntry[] }) || { lora1: [], lora2: [] };
+  const loraConfig = (section.loraConfig as {
+    lora1: LoraEntry[];
+    lora2: LoraEntry[];
+  }) || { lora1: [], lora2: [] };
   const loraCount = loraConfig.lora1.length + loraConfig.lora2.length;
   const blockCount = (section.promptBlocks || []).length;
-  const checkpointLabel = section.checkpointName ? section.checkpointName.split("/").pop() : null;
+  const checkpointLabel = section.checkpointName
+    ? section.checkpointName.split("/").pop()
+    : null;
 
   // If no templateId yet (new template) or the section is not persisted yet,
   // do not expose a route that the server cannot resolve.
-  const href = templateId && !section.id.startsWith("new-")
-    ? `/assets/templates/${templateId}/sections/${index}`
-    : null;
+  const href =
+    templateId && !section.id.startsWith("new-")
+      ? `/assets/templates/${templateId}/sections/${index}`
+      : null;
 
-  const CardWrapper = href
-    ? ({ children }: { children: React.ReactNode }) => (
-        <Link href={href} className="contents">
-          {children}
-        </Link>
-      )
-    : ({ children }: { children: React.ReactNode }) => <>{children}</>;
-
-  return (
-    <CardWrapper>
-      <div ref={setNodeRef} style={style} className={`w-full rounded-lg border border-white/10 bg-white/[0.02] p-3 md:max-w-[500px] transition ${isDragging ? "z-10 shadow-lg" : ""} ${href ? "hover:border-white/20 hover:bg-white/[0.04] cursor-pointer" : ""}`}>
-        {/* Header */}
-        <div className="flex items-center gap-2">
-          <button
-            {...attributes}
-            {...listeners}
-            className="cursor-grab text-zinc-600 hover:text-zinc-400 active:cursor-grabbing touch-none"
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          >
-            <GripVertical className="size-4" />
-          </button>
-          <span className="shrink-0 text-xs text-zinc-500">#{index + 1}</span>
-          <span className="min-w-0 flex-1 truncate text-sm font-medium text-white">
-            {section.name || "未命名小节"}
-          </span>
-          <button
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onCopy(); }}
-            disabled={!href}
-            title="复制小节"
-            className="shrink-0 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-500 transition hover:border-sky-500/20 hover:bg-sky-500/10 hover:text-sky-300 disabled:opacity-40"
-          >
-            <Copy className="size-3" />
-          </button>
-          <button
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onRemove(); }}
-            className="shrink-0 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-500 transition hover:border-rose-500/20 hover:bg-rose-500/10 hover:text-rose-300"
-          >
-            <Trash2 className="size-3" />
-          </button>
-        </div>
-
-        {/* Summary metadata */}
-        <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-zinc-400">
-          <span>{aspectRatio}</span>
-          <span>{resDisplay}</span>
-          <span>batch {section.batchSize ?? "—"}</span>
-          <span>{section.upscaleFactor ?? 2}x</span>
-          {checkpointLabel && <span className="max-w-full truncate">ckpt {checkpointLabel}</span>}
-        </div>
-        <div className="mt-1 flex gap-3 text-[11px] text-zinc-500">
-          {blockCount > 0 && <span>{blockCount} 个 prompt</span>}
-          {loraCount > 0 && <span>{loraCount} 个 LoRA</span>}
-          {blockCount === 0 && loraCount === 0 && <span>未配置内容</span>}
-        </div>
+  const card = (
+    <div
+      id={`section-${section.id}`}
+      ref={setNodeRef}
+      style={style}
+      className={`w-full rounded-lg border border-white/10 bg-white/[0.02] p-3 md:max-w-[500px] transition ${isDragging ? "z-10 shadow-lg" : ""} ${href ? "hover:border-white/20 hover:bg-white/[0.04] cursor-pointer" : ""}`}
+    >
+      {/* Header */}
+      <div className="flex items-center gap-2">
+        <button
+          {...attributes}
+          {...listeners}
+          className="cursor-grab text-zinc-600 hover:text-zinc-400 active:cursor-grabbing touch-none"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+        >
+          <GripVertical className="size-4" />
+        </button>
+        <span className="shrink-0 text-xs text-zinc-500">#{index + 1}</span>
+        <span className="min-w-0 flex-1 truncate text-sm font-medium text-white">
+          {section.name || "未命名小节"}
+        </span>
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onCopy();
+          }}
+          disabled={!href}
+          title="复制小节"
+          className="shrink-0 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-500 transition hover:border-sky-500/20 hover:bg-sky-500/10 hover:text-sky-300 disabled:opacity-40"
+        >
+          <Copy className="size-3" />
+        </button>
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onRemove();
+          }}
+          className="shrink-0 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-500 transition hover:border-rose-500/20 hover:bg-rose-500/10 hover:text-rose-300"
+        >
+          <Trash2 className="size-3" />
+        </button>
       </div>
-    </CardWrapper>
+
+      {/* Summary metadata */}
+      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-zinc-400">
+        <span>{aspectRatio}</span>
+        <span>{resDisplay}</span>
+        <span>batch {section.batchSize ?? "—"}</span>
+        <span>{section.upscaleFactor ?? 2}x</span>
+        {checkpointLabel && (
+          <span className="max-w-full truncate">ckpt {checkpointLabel}</span>
+        )}
+      </div>
+      <div className="mt-1 flex gap-3 text-[11px] text-zinc-500">
+        {blockCount > 0 && <span>{blockCount} 个 prompt</span>}
+        {loraCount > 0 && <span>{loraCount} 个 LoRA</span>}
+        {blockCount === 0 && loraCount === 0 && <span>未配置内容</span>}
+      </div>
+    </div>
+  );
+
+  return href ? (
+    <Link href={href} className="contents">
+      {card}
+    </Link>
+  ) : (
+    card
   );
 }

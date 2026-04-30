@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useEffect, useRef, useCallback } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -18,16 +18,17 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { runProject, deleteProject, saveProjectAsTemplate } from "@/lib/actions";
+import {
+  runProject,
+  deleteProject,
+  saveProjectAsTemplate,
+} from "@/lib/actions";
 import { exportProjectImages } from "@/app/projects/actions-export";
 import { BatchSizeQuickFill } from "@/components/batch-size-quick-fill";
 import {
-  addScrollListener,
-  getMaxScrollTop,
-  getPreferredScrollContainer,
-  getScrollProgress,
-  scrollContainerTo,
-} from "@/lib/scroll-container";
+  SidebarSectionNav,
+  useSyncedSidebarContent,
+} from "@/components/section-sidebar-nav";
 import {
   Sidebar,
   SidebarContent,
@@ -71,12 +72,6 @@ type AppSidebarProps = {
   onNavigateToSection: (id: string) => void;
 };
 
-function findNavItem(container: HTMLElement, sectionId: string) {
-  return Array.from(container.querySelectorAll<HTMLElement>("[data-nav-section-id]")).find(
-    (item) => item.dataset.navSectionId === sectionId,
-  );
-}
-
 export function AppSidebar({
   projectId,
   projectTitle,
@@ -93,113 +88,18 @@ export function AppSidebar({
   const [batchSize, setBatchSize] = useState<string>("");
   const [exporting, setExporting] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
-  const sidebarContentRef = useRef<HTMLDivElement>(null);
-  const syncLockRef = useRef<"main" | "sidebar" | null>(null);
-  const syncUnlockTimerRef = useRef<number | null>(null);
   const { state: sidebarState } = useSidebar();
-
-  const runWithSyncLock = useCallback((source: "main" | "sidebar", callback: () => void, duration = 180) => {
-    syncLockRef.current = source;
-    callback();
-
-    if (syncUnlockTimerRef.current !== null) {
-      window.clearTimeout(syncUnlockTimerRef.current);
-    }
-
-    syncUnlockTimerRef.current = window.setTimeout(() => {
-      syncLockRef.current = null;
-      syncUnlockTimerRef.current = null;
-    }, duration);
-  }, []);
-
-  useEffect(() => {
-    const mainScroller = getPreferredScrollContainer('[data-slot="sidebar-inset"]');
-    const sidebarScroller = sidebarContentRef.current;
-    if (!sidebarScroller) return;
-
-    let mainFrame: number | null = null;
-    let sidebarFrame: number | null = null;
-
-    const syncFromMain = () => {
-      mainFrame = null;
-      if (syncLockRef.current === "sidebar") return;
-
-      const progress = getScrollProgress(mainScroller);
-      const targetTop = progress * getMaxScrollTop(sidebarScroller);
-      runWithSyncLock("main", () => {
-        scrollContainerTo(sidebarScroller, targetTop, "instant");
-      });
-    };
-
-    const syncFromSidebar = () => {
-      sidebarFrame = null;
-      if (syncLockRef.current === "main") return;
-
-      const progress = getScrollProgress(sidebarScroller);
-      const targetTop = progress * getMaxScrollTop(mainScroller);
-      runWithSyncLock("sidebar", () => {
-        scrollContainerTo(mainScroller, targetTop, "instant");
-      });
-    };
-
-    const handleMainScroll = () => {
-      if (mainFrame !== null) return;
-      mainFrame = window.requestAnimationFrame(syncFromMain);
-    };
-
-    const handleSidebarScroll = () => {
-      if (sidebarFrame !== null) return;
-      sidebarFrame = window.requestAnimationFrame(syncFromSidebar);
-    };
-
-    const removeMainScrollListener = addScrollListener(mainScroller, handleMainScroll, { passive: true });
-    const removeSidebarScrollListener = addScrollListener(sidebarScroller, handleSidebarScroll, { passive: true });
-    handleMainScroll();
-
-    return () => {
-      removeMainScrollListener();
-      removeSidebarScrollListener();
-
-      if (mainFrame !== null) window.cancelAnimationFrame(mainFrame);
-      if (sidebarFrame !== null) window.cancelAnimationFrame(sidebarFrame);
-      if (syncUnlockTimerRef.current !== null) {
-        window.clearTimeout(syncUnlockTimerRef.current);
-        syncUnlockTimerRef.current = null;
-      }
-    };
-  }, [sections.length, runWithSyncLock]);
-
-  // Auto-scroll sidebar to keep the active section nav item centered.
-  useEffect(() => {
-    if (!activeSectionId) return;
-    const sidebarScroller = sidebarContentRef.current;
-    if (!sidebarScroller) return;
-
-    const navItem = findNavItem(sidebarScroller, activeSectionId);
-    if (!navItem) return;
-
-    const containerRect = sidebarScroller.getBoundingClientRect();
-    const itemRect = navItem.getBoundingClientRect();
-    const isVisible = itemRect.top >= containerRect.top && itemRect.bottom <= containerRect.bottom;
-
-    if (isVisible) return;
-
-    const targetTop =
-      sidebarScroller.scrollTop +
-      itemRect.top -
-      containerRect.top -
-      (containerRect.height - itemRect.height) / 2;
-
-    runWithSyncLock("main", () => {
-      scrollContainerTo(sidebarScroller, targetTop, "smooth");
-    }, 700);
-  }, [activeSectionId, runWithSyncLock]);
+  const sidebarContentRef = useSyncedSidebarContent({
+    activeSectionId,
+    itemCount: sections.length,
+  });
 
   const parsedBatchSize = batchSize.trim() ? parseInt(batchSize, 10) : null;
 
   function handleRun() {
     const parsed = batchSize.trim() ? parseInt(batchSize, 10) : undefined;
-    const overrideBatchSize = parsed && Number.isInteger(parsed) && parsed >= 1 ? parsed : undefined;
+    const overrideBatchSize =
+      parsed && Number.isInteger(parsed) && parsed >= 1 ? parsed : undefined;
     startTransition(async () => {
       try {
         await runProject(projectId, overrideBatchSize);
@@ -254,7 +154,11 @@ export function AppSidebar({
   const isExpanded = sidebarState === "expanded";
 
   return (
-    <Sidebar collapsible="icon" mobileBehavior="sidebar" className="border-r border-white/5">
+    <Sidebar
+      collapsible="icon"
+      mobileBehavior="sidebar"
+      className="border-r border-white/5"
+    >
       <SidebarHeader className="gap-1.5 px-3.5 py-3 group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:px-2">
         <Link
           href="/projects"
@@ -265,7 +169,9 @@ export function AppSidebar({
         </Link>
         {isExpanded && (
           <div className="mt-1 space-y-2 rounded-xl border border-sky-500/15 bg-sky-500/[0.06] px-3 py-2 shadow-inner shadow-sky-500/5">
-            <h1 className="truncate text-[15px] font-semibold leading-5 text-sky-50">{projectTitle}</h1>
+            <h1 className="truncate text-[15px] font-semibold leading-5 text-sky-50">
+              {projectTitle}
+            </h1>
             <div className="grid grid-cols-2 gap-1.5">
               {previousProject ? (
                 <Link
@@ -329,7 +235,9 @@ export function AppSidebar({
                   className="text-sky-300 hover:bg-sky-500/10 hover:text-sky-200 text-[11px] sm:text-sm"
                 >
                   <Play className="size-4" />
-                  <span className="text-[11px] sm:inherit">{isPending ? "提交中…" : "运行整组"}</span>
+                  <span className="text-[11px] sm:inherit">
+                    {isPending ? "提交中…" : "运行整组"}
+                  </span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
@@ -364,7 +272,9 @@ export function AppSidebar({
                   className="text-emerald-300 hover:bg-emerald-500/10 hover:text-emerald-200 text-[11px] sm:text-sm"
                 >
                   <Download className="size-4" />
-                  <span className="text-[11px] sm:inherit">{exporting ? "导出中…" : "图片整合"}</span>
+                  <span className="text-[11px] sm:inherit">
+                    {exporting ? "导出中…" : "图片整合"}
+                  </span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
@@ -377,7 +287,9 @@ export function AppSidebar({
                   className="text-amber-300 hover:bg-amber-500/10 hover:text-amber-200 text-[11px] sm:text-sm"
                 >
                   <Save className="size-4" />
-                  <span className="text-[11px] sm:inherit">{isPending ? "保存中…" : "保存为模板"}</span>
+                  <span className="text-[11px] sm:inherit">
+                    {isPending ? "保存中…" : "保存为模板"}
+                  </span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
@@ -394,7 +306,9 @@ export function AppSidebar({
                   }
                 >
                   <Trash2 className="size-4" />
-                  <span className="text-[11px] sm:inherit">{deleteConfirm ? "确认删除？" : "删除项目"}</span>
+                  <span className="text-[11px] sm:inherit">
+                    {deleteConfirm ? "确认删除？" : "删除项目"}
+                  </span>
                 </SidebarMenuButton>
                 {deleteConfirm && isExpanded && (
                   <div className="flex gap-1.5 px-1 pb-0.5">
@@ -420,46 +334,31 @@ export function AppSidebar({
 
         <SidebarSeparator />
 
-        {/* ── 小节 ── */}
-        {sections.length > 0 && (
-          <SidebarGroup>
-            <SidebarGroupLabel className="justify-between pr-1">
-              <span>小节</span>
-              <button
-                onClick={onToggleCompact}
-                className="text-zinc-500 hover:text-zinc-300 transition"
-                title={compact ? "展开视图" : "紧凑视图"}
-              >
-                {compact ? <LayoutGrid className="size-3.5" /> : <LayoutList className="size-3.5" />}
-              </button>
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu className="gap-2 md:gap-1">
-                {sections.map((section, index) => (
-                  <SidebarMenuItem key={section.id} data-nav-section-id={section.id}>
-                    <SidebarMenuButton
-                      tooltip={`${index + 1}. ${section.name}`}
-                      isActive={activeSectionId === section.id}
-                      onClick={() => {
-                        onNavigateToSection(section.id);
-                      }}
-                      className={
-                        activeSectionId === section.id
-                          ? "h-auto min-h-10 py-2 text-sky-300 md:min-h-8"
-                          : "h-auto min-h-10 py-2 md:min-h-8"
-                      }
-                    >
-                      <span className="flex size-4 shrink-0 items-center justify-center text-[11px] text-zinc-500">
-                        {index + 1}
-                      </span>
-                      <span className="line-clamp-2 !whitespace-normal text-xs">{section.name}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
+        <SidebarSectionNav
+          label="小节"
+          sections={sections}
+          activeSectionId={activeSectionId}
+          onNavigateToSection={onNavigateToSection}
+          menuClassName="gap-2 md:gap-1"
+          labelAction={
+            <button
+              onClick={onToggleCompact}
+              className="text-zinc-500 hover:text-zinc-300 transition"
+              title={compact ? "展开视图" : "紧凑视图"}
+            >
+              {compact ? (
+                <LayoutGrid className="size-3.5" />
+              ) : (
+                <LayoutList className="size-3.5" />
+              )}
+            </button>
+          }
+          buttonClassName={(_, __, isActive) =>
+            isActive
+              ? "min-h-10 text-sky-300 md:min-h-8"
+              : "min-h-10 md:min-h-8"
+          }
+        />
       </SidebarContent>
 
       <SidebarFooter className="px-3 py-3" />
