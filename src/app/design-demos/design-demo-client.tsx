@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Activity,
   Archive,
@@ -38,6 +38,7 @@ import {
   Shuffle,
   SlidersHorizontal,
   Sparkles,
+  Sun,
   Tags,
   Trash2,
   Upload,
@@ -93,6 +94,8 @@ type Match = {
   route: string;
 };
 
+type DemoTheme = "dark" | "light";
+
 type RouteDef = {
   key: RouteKey;
   pattern: string;
@@ -140,6 +143,8 @@ const NAV_LINKS: Array<{ href: string; label: string; group: string; icon: Route
   { href: "/settings", label: "设置", group: "设置", icon: Settings },
   { href: "/login", label: "登录", group: "系统", icon: Lock },
 ];
+
+const DESIGN_DEMO_THEME_STORAGE_KEY = "comfyui-manager:design-demo-theme";
 
 function cx(...names: Array<string | false | null | undefined>) {
   return names.filter(Boolean).join(" ");
@@ -303,10 +308,24 @@ function ButtonLink({
   );
 }
 
-function Button({ children, tone = "default", icon: Icon }: { children: React.ReactNode; tone?: "default" | "primary" | "pink" | "danger"; icon?: RouteDef["icon"] }) {
+function Button({
+  children,
+  tone = "default",
+  icon: Icon,
+  onClick,
+  pressed,
+}: {
+  children: React.ReactNode;
+  tone?: "default" | "primary" | "pink" | "danger";
+  icon?: RouteDef["icon"];
+  onClick?: () => void;
+  pressed?: boolean;
+}) {
   return (
     <button
       type="button"
+      onClick={onClick}
+      aria-pressed={pressed}
       className={cx(
         s.button,
         tone === "primary" && s.buttonPrimary,
@@ -1598,12 +1617,39 @@ export function DesignDemoApp({
 }) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [theme, setTheme] = useState<DemoTheme>("dark");
   const currentRoute = productRouteFromPathname(pathname, initialRouteSegments);
   const match = matchRoute(currentRoute);
   const title = routeTitle(match.key);
+  const isLightTheme = theme === "light";
+  const ThemeIcon = isLightTheme ? Sun : Moon;
+
+  useEffect(() => {
+    const frameId = window.requestAnimationFrame(() => {
+      const storedTheme = window.localStorage.getItem(DESIGN_DEMO_THEME_STORAGE_KEY);
+      if (storedTheme === "light" || storedTheme === "dark") {
+        setTheme(storedTheme);
+        return;
+      }
+
+      if (window.matchMedia("(prefers-color-scheme: light)").matches) {
+        setTheme("light");
+      }
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, []);
+
+  function toggleTheme() {
+    setTheme((currentTheme) => {
+      const nextTheme = currentTheme === "dark" ? "light" : "dark";
+      window.localStorage.setItem(DESIGN_DEMO_THEME_STORAGE_KEY, nextTheme);
+      return nextTheme;
+    });
+  }
 
   return (
-    <div className={s.shell}>
+    <div className={cx(s.shell, isLightTheme && s.shellLight)} data-theme={theme}>
       <div className={s.workspace}>
         <Sidebar data={data} currentRoute={currentRoute} open={menuOpen} onClose={() => setMenuOpen(false)} />
         <main className={s.main}>
@@ -1618,7 +1664,9 @@ export function DesignDemoApp({
               <span className={s.routeBadge}>{demoHref(currentRoute)}</span>
             </div>
             <div className={s.topActions}>
-              <Button icon={Moon}>主题</Button>
+              <Button icon={ThemeIcon} onClick={toggleTheme} pressed={isLightTheme}>
+                {isLightTheme ? "亮色" : "暗色"}
+              </Button>
               <Button icon={Search}>搜索</Button>
               <Button tone="primary" icon={Wand2}>Mock</Button>
             </div>

@@ -20,14 +20,75 @@
   --demo-red-soft: rgba(251, 113, 133, 0.12);
   --demo-radius: 8px;
   --demo-shadow: 0 18px 60px rgba(0, 0, 0, 0.35);
+  --demo-bg-wash: linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 22rem);
+  --demo-bg-glow-a: radial-gradient(circle at 18% -10%, rgba(52, 211, 153, 0.1), transparent 28rem);
+  --demo-bg-glow-b: radial-gradient(circle at 84% 4%, rgba(249, 168, 212, 0.08), transparent 26rem);
+  --demo-sidebar-bg: rgba(10, 11, 13, 0.86);
+  --demo-topbar-bg: rgba(8, 9, 11, 0.82);
+  --demo-surface: rgba(255, 255, 255, 0.045);
+  --demo-surface-soft: rgba(255, 255, 255, 0.035);
+  --demo-surface-hover: rgba(255, 255, 255, 0.06);
+  --demo-control-hover: rgba(255, 255, 255, 0.075);
+  --demo-selected: rgba(255, 255, 255, 0.08);
+  --demo-field-bg: rgba(0, 0, 0, 0.24);
+  --demo-code-bg: rgba(0, 0, 0, 0.28);
+  --demo-code-text: #d4d4d8;
+  --demo-inset-highlight: rgba(255, 255, 255, 0.04);
+  --demo-thumb-start: rgba(255, 255, 255, 0.08);
+  --demo-thumb-end: rgba(255, 255, 255, 0.015);
+  --demo-image-label-border: rgba(255, 255, 255, 0.14);
+  --demo-image-label-bg: rgba(0, 0, 0, 0.52);
+  --demo-image-label-text: #ffffff;
   min-height: 100vh;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 22rem),
-    radial-gradient(circle at 18% -10%, rgba(52, 211, 153, 0.1), transparent 28rem),
-    radial-gradient(circle at 84% 4%, rgba(249, 168, 212, 0.08), transparent 26rem),
+    var(--demo-bg-wash),
+    var(--demo-bg-glow-a),
+    var(--demo-bg-glow-b),
     var(--demo-bg);
   color: var(--demo-text);
   text-wrap: pretty;
+}
+
+.shellLight {
+  --demo-bg: #f7f9fb;
+  --demo-panel: #ffffff;
+  --demo-panel-2: #eef2f5;
+  --demo-panel-3: #e4eaf0;
+  --demo-text: #16181d;
+  --demo-muted: #59616d;
+  --demo-faint: #7f8792;
+  --demo-border: rgba(19, 24, 32, 0.1);
+  --demo-border-strong: rgba(19, 24, 32, 0.18);
+  --demo-green: #047857;
+  --demo-green-soft: rgba(4, 120, 87, 0.1);
+  --demo-pink: #be185d;
+  --demo-pink-soft: rgba(190, 24, 93, 0.09);
+  --demo-amber: #a16207;
+  --demo-amber-soft: rgba(161, 98, 7, 0.1);
+  --demo-sky: #0369a1;
+  --demo-sky-soft: rgba(3, 105, 161, 0.1);
+  --demo-red: #be123c;
+  --demo-red-soft: rgba(190, 18, 60, 0.1);
+  --demo-shadow: 0 18px 60px rgba(15, 23, 42, 0.12);
+  --demo-bg-wash: linear-gradient(180deg, rgba(255, 255, 255, 0.86), transparent 22rem);
+  --demo-bg-glow-a: radial-gradient(circle at 18% -10%, rgba(4, 120, 87, 0.1), transparent 28rem);
+  --demo-bg-glow-b: radial-gradient(circle at 84% 4%, rgba(190, 24, 93, 0.075), transparent 26rem);
+  --demo-sidebar-bg: rgba(255, 255, 255, 0.86);
+  --demo-topbar-bg: rgba(247, 249, 251, 0.84);
+  --demo-surface: rgba(255, 255, 255, 0.78);
+  --demo-surface-soft: rgba(255, 255, 255, 0.66);
+  --demo-surface-hover: rgba(255, 255, 255, 0.92);
+  --demo-control-hover: rgba(19, 24, 32, 0.055);
+  --demo-selected: rgba(19, 24, 32, 0.07);
+  --demo-field-bg: rgba(255, 255, 255, 0.72);
+  --demo-code-bg: rgba(15, 23, 42, 0.055);
+  --demo-code-text: #263241;
+  --demo-inset-highlight: rgba(255, 255, 255, 0.86);
+  --demo-thumb-start: rgba(15, 23, 42, 0.08);
+  --demo-thumb-end: rgba(15, 23, 42, 0.018);
+  --demo-image-label-border: rgba(255, 255, 255, 0.45);
+  --demo-image-label-bg: rgba(15, 23, 42, 0.58);
+  --demo-image-label-text: #ffffff;
 }
 
 .shell * {
@@ -46,7 +107,7 @@
   height: 100vh;
   overflow-y: auto;
   border-right: 1px solid var(--demo-border);
-  background: rgba(10, 11, 13, 0.86);
+  background: var(--demo-sidebar-bg);
   backdrop-filter: blur(18px);
   padding: 18px;
 }
@@ -98,7 +159,7 @@
   padding: 10px;
   border: 1px solid var(--demo-border);
   border-radius: var(--demo-radius);
-  background: rgba(255, 255, 255, 0.035);
+  background: var(--demo-surface-soft);
 }
 
 .sourceRow {
@@ -149,7 +210,7 @@
 .navLink:hover,
 .navLink:focus-visible {
   border-color: var(--demo-border);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--demo-surface-soft);
   color: var(--demo-text);
   outline: none;
 }
@@ -193,7 +254,7 @@
   gap: 16px;
   margin: -18px -18px 18px;
   border-bottom: 1px solid var(--demo-border);
-  background: rgba(8, 9, 11, 0.82);
+  background: var(--demo-topbar-bg);
   backdrop-filter: blur(18px);
   padding: 14px 18px;
 }
@@ -220,7 +281,7 @@
   gap: 6px;
   border: 1px solid var(--demo-border);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.035);
+  background: var(--demo-surface-soft);
   color: var(--demo-muted);
   font-family: var(--font-geist-mono), ui-monospace, monospace;
   font-size: 11px;
@@ -310,8 +371,8 @@
 .card {
   border: 1px solid var(--demo-border);
   border-radius: var(--demo-radius);
-  background: rgba(255, 255, 255, 0.045);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  background: var(--demo-surface);
+  box-shadow: 0 1px 0 var(--demo-inset-highlight) inset;
 }
 
 .panel {
@@ -379,7 +440,7 @@
 
 .card:hover {
   border-color: var(--demo-border-strong);
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--demo-surface-hover);
   transform: translateY(-1px);
 }
 
@@ -423,7 +484,7 @@
   gap: 7px;
   border: 1px solid var(--demo-border);
   border-radius: var(--demo-radius);
-  background: rgba(255, 255, 255, 0.045);
+  background: var(--demo-surface);
   color: var(--demo-text);
   cursor: pointer;
   font: inherit;
@@ -437,7 +498,7 @@
 .button:hover,
 .button:focus-visible {
   border-color: var(--demo-border-strong);
-  background: rgba(255, 255, 255, 0.075);
+  background: var(--demo-control-hover);
   outline: none;
 }
 
@@ -472,7 +533,7 @@
   gap: 5px;
   border: 1px solid var(--demo-border);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.035);
+  background: var(--demo-surface-soft);
   color: var(--demo-muted);
   font-size: 11px;
   font-weight: 650;
@@ -528,7 +589,7 @@
   border: 1px solid var(--demo-border);
   border-radius: 7px;
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.015)),
+    linear-gradient(135deg, var(--demo-thumb-start), var(--demo-thumb-end)),
     var(--demo-panel-2);
   color: var(--demo-faint);
   font-size: 11px;
@@ -581,10 +642,10 @@
 }
 
 .imageTileLabel {
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid var(--demo-image-label-border);
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.52);
-  color: white;
+  background: var(--demo-image-label-bg);
+  color: var(--demo-image-label-text);
   font-family: var(--font-geist-mono), ui-monospace, monospace;
   font-size: 10px;
   padding: 3px 7px;
@@ -615,7 +676,7 @@
   width: 100%;
   border: 1px solid var(--demo-border);
   border-radius: var(--demo-radius);
-  background: rgba(0, 0, 0, 0.24);
+  background: var(--demo-field-bg);
   color: var(--demo-text);
   font: inherit;
   font-size: 13px;
@@ -693,7 +754,7 @@
   gap: 4px;
   border: 1px solid var(--demo-border);
   border-radius: var(--demo-radius);
-  background: rgba(255, 255, 255, 0.035);
+  background: var(--demo-surface-soft);
   padding: 4px;
 }
 
@@ -713,7 +774,7 @@
 
 .segmentActive,
 .tabActive {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--demo-selected);
   color: var(--demo-text);
 }
 
@@ -767,7 +828,7 @@
   gap: 5px;
   border: 1px solid var(--demo-border);
   border-radius: var(--demo-radius);
-  background: rgba(255, 255, 255, 0.035);
+  background: var(--demo-surface-soft);
   color: inherit;
   padding: 10px;
   text-decoration: none;
@@ -782,8 +843,8 @@
   overflow: auto;
   border: 1px solid var(--demo-border);
   border-radius: var(--demo-radius);
-  background: rgba(0, 0, 0, 0.28);
-  color: #d4d4d8;
+  background: var(--demo-code-bg);
+  color: var(--demo-code-text);
   font-family: var(--font-geist-mono), ui-monospace, monospace;
   font-size: 12px;
   line-height: 1.6;
