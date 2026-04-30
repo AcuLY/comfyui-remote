@@ -117,7 +117,11 @@ Returns the project list.
 Body:
 
 ```json
-{ "title": "Project title", "notes": "optional notes" }
+{
+  "title": "Project title",
+  "checkpointName": "oneObsession_v19Atypical.safetensors",
+  "notes": "optional notes"
+}
 ```
 
 Creates a project and returns the created record.
@@ -131,7 +135,11 @@ Returns project detail with sections, runs, and image summaries.
 Body supports:
 
 ```json
-{ "aspectRatio": "2:3", "batchSize": 2 }
+{
+  "aspectRatio": "2:3",
+  "batchSize": 2,
+  "checkpointName": "oneObsession_v19Atypical.safetensors"
+}
 ```
 
 Use `null` to clear nullable fields where supported.
@@ -179,11 +187,12 @@ Body supports:
   "ksampler1": { "steps": 30, "cfg": 7 },
   "ksampler2": { "steps": 20, "cfg": 6 },
   "upscaleFactor": 2,
+  "checkpointName": "oneObsession_v19Atypical.safetensors",
   "loraConfig": { "lora1": [], "lora2": [] }
 }
 ```
 
-All fields are optional, but at least one supported field must be present.
+All fields are optional, but at least one supported field must be present. For generation, the effective checkpoint resolves as `section.checkpointName ?? project.checkpointName`.
 
 ### Section Commands
 
@@ -259,6 +268,27 @@ Deletes one prompt block.
 
 Template payloads follow `src/lib/actions/template.ts`: `name`, `description`, and `sections`.
 
+Template section objects support the same optional runtime defaults as project sections:
+
+```json
+{
+  "name": "Template section",
+  "aspectRatio": "2:3",
+  "shortSidePx": 768,
+  "batchSize": 2,
+  "seedPolicy1": "random",
+  "seedPolicy2": "fixed",
+  "ksampler1": { "steps": 30, "cfg": 7 },
+  "ksampler2": { "steps": 20, "cfg": 6 },
+  "upscaleFactor": 2,
+  "checkpointName": "oneObsession_v19Atypical.safetensors",
+  "loraConfig": { "lora1": [], "lora2": [] },
+  "promptBlocks": []
+}
+```
+
+`checkpointName` may be `null` on a template section to avoid overriding the target project during import. When a template section has a checkpoint, import writes it to the created project section.
+
 `onExistingSections` supports `skip`, `replace`, `append`, and `error`. A dry run returns the section import plan without changing the project.
 
 ## Preset Library
@@ -320,6 +350,8 @@ Template payloads follow `src/lib/actions/template.ts`: `name`, `description`, a
 | `GET` | `/api/models/browse?kind=lora\|checkpoint` | browse model directories |
 | `POST` | `/api/models/move?kind=lora\|checkpoint` | move a model file |
 | `GET/PUT` | `/api/models/notes?kind=lora\|checkpoint` | read or update notes |
+
+`kind=checkpoint` is rooted at `MODEL_BASE_DIR/checkpoints`, only exposes `.safetensors` files, and stores notes only. `kind=lora` is rooted at `MODEL_BASE_DIR/loras` and supports notes plus trigger words.
 
 ## ComfyUI And System
 

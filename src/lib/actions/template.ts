@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import type { ProjectTemplateSectionData } from "@/lib/server-data";
+import { DEFAULT_CHECKPOINT_NAME } from "@/lib/model-constants";
 import { resolveVariantContent } from "./preset-variant";
 import { createBindingId, createLoraEntryId, toJsonValue } from "./_helpers";
 import type { PresetBinding } from "./project";
@@ -744,9 +745,7 @@ export async function saveProjectAsTemplate(
             ksampler1: section.ksampler1 ?? undefined,
             ksampler2: section.ksampler2 ?? undefined,
             upscaleFactor: section.upscaleFactor ?? undefined,
-            checkpointName: section.checkpointName && section.checkpointName !== project.checkpointName
-              ? section.checkpointName
-              : undefined,
+            checkpointName: section.checkpointName ?? project.checkpointName ?? DEFAULT_CHECKPOINT_NAME,
             loraConfig: (templateLoraConfig && (templateLoraConfig.lora1.length > 0 || templateLoraConfig.lora2.length > 0))
               ? templateLoraConfig
               : undefined,

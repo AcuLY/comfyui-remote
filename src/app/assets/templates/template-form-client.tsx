@@ -30,6 +30,7 @@ import {
 import { resolveResolution } from "@/lib/aspect-ratio-utils";
 import type { ProjectTemplateSectionData } from "@/lib/server-data";
 import { type LoraEntry } from "@/lib/lora-types";
+import { DEFAULT_CHECKPOINT_NAME } from "@/lib/model-constants";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -85,7 +86,7 @@ export function TemplateFormClient({
       ksampler1: null,
       ksampler2: null,
       upscaleFactor: 2,
-      checkpointName: null,
+      checkpointName: DEFAULT_CHECKPOINT_NAME,
       loraConfig: { lora1: [], lora2: [] },
       extraParams: null,
       promptBlocks: [],
