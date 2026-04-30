@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { Check, ChevronRight, Expand, Trash2 } from "lucide-react";
+import { Check, ChevronRight, Trash2 } from "lucide-react";
 import { keepImages, trashImages } from "@/lib/actions";
 import type { ReviewImage } from "@/lib/types";
 import { ImageLightbox, useLightbox } from "./image-lightbox";
@@ -141,7 +141,7 @@ export function ReviewGrid({
                 </span>
               </div>
               <button
-                onClick={() => toggleSelect(image.id)}
+                onClick={() => openLightbox(image.full)}
                 className="block h-40 max-w-full bg-[var(--panel-soft)]"
               >
                 <Image
@@ -153,7 +153,7 @@ export function ReviewGrid({
                   unoptimized
                 />
               </button>
-              <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-gradient-to-t from-black/80 to-transparent px-2 pb-2 pt-8 text-[10px] text-white">
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-between bg-gradient-to-t from-black/80 to-transparent px-2 pb-2 pt-8 text-[10px] text-white">
                 <span
                   className={`rounded-full border px-2 py-0.5 ${
                     image.status === "kept"
@@ -165,13 +165,6 @@ export function ReviewGrid({
                 >
                   {image.status}
                 </span>
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); openLightbox(image.full); }}
-                  className="inline-flex items-center gap-1 text-zinc-200 hover:text-white"
-                >
-                  <Expand className="size-3" /> 查看
-                </button>
               </div>
             </div>
           );

@@ -51,7 +51,7 @@ export function ImageLightbox({
 
   return (
     <div
-      className={`fixed inset-0 z-50 flex items-center justify-center transition-opacity duration-200 ${
+      className={`fixed inset-0 z-[100] flex items-center justify-center transition-opacity duration-200 ${
         visible ? "opacity-100" : "pointer-events-none opacity-0"
       }`}
       onClick={handleClose}
@@ -61,13 +61,13 @@ export function ImageLightbox({
       {/* Semi-transparent zone (black bars from aspect ratio) */}
       <div className="absolute inset-0 flex items-center justify-center bg-black/60">
         {src ? (
-          <div className="relative h-[90vh] w-[90vw]">
+          <div className="relative h-[100dvh] w-[100dvw] p-3 sm:p-4">
             <Image
               src={src}
               alt={alt ?? "Preview"}
               fill
-              sizes="90vw"
-              className="object-contain drop-shadow-2xl"
+              sizes="100vw"
+              className="object-contain p-2 drop-shadow-2xl sm:p-4"
               draggable={false}
               unoptimized
             />

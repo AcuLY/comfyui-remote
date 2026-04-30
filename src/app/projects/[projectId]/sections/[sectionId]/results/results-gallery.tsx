@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useCallback, useEffect, type ReactNode } from "react";
-import Image from "next/image";
 import { X, ChevronLeft, ChevronRight, Star } from "lucide-react";
 
 type GalleryImage = {
@@ -110,7 +109,7 @@ export function ResultsGalleryProvider({
 
       {open && current && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-3 backdrop-blur-sm sm:p-4"
           onClick={() => setOpen(false)}
         >
           {/* Top-right: featured + close */}
@@ -173,14 +172,14 @@ export function ResultsGalleryProvider({
 
           {/* Image */}
           <div
-            className="relative max-h-[85vh] max-w-[90vw]"
+            className="relative flex h-[100dvh] w-[100dvw] items-center justify-center px-2 py-16 sm:px-12"
             onClick={(e) => e.stopPropagation()}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={current.full}
               alt=""
-              className="max-h-[85vh] max-w-[90vw] rounded-lg object-contain"
+              className="max-h-full max-w-full rounded-lg object-contain"
             />
           </div>
 
