@@ -177,7 +177,7 @@ function ResultImageCard({
 }) {
   return (
     <div
-      className={`group relative flex h-44 items-center justify-center overflow-hidden rounded-xl border bg-white/[0.03] transition hover:border-sky-500/40 ${
+      className={`group relative flex h-32 items-center justify-center overflow-hidden rounded-lg border bg-white/[0.03] transition hover:border-sky-500/40 sm:h-36 ${
         image.status === "kept"
           ? "border-emerald-500/30"
           : image.status === "pending"
@@ -300,7 +300,7 @@ function SectionResultsBlock({
         </div>
       ) : (
         <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
             {visibleImages.map((image) => (
               <ResultImageCard
                 key={image.id}
@@ -368,10 +368,10 @@ export function ProjectResultsClient({
 
   useEffect(() => {
     const getColumnCount = () => {
-      if (window.matchMedia("(min-width: 1280px)").matches) return 5;
-      if (window.matchMedia("(min-width: 1024px)").matches) return 4;
-      if (window.matchMedia("(min-width: 640px)").matches) return 3;
-      return 2;
+      if (window.matchMedia("(min-width: 1280px)").matches) return 6;
+      if (window.matchMedia("(min-width: 1024px)").matches) return 5;
+      if (window.matchMedia("(min-width: 640px)").matches) return 4;
+      return 3;
     };
 
     const syncCollapsedImageCount = () => {

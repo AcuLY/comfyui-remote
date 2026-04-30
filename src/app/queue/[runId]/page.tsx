@@ -22,6 +22,7 @@ function ExecutionMetaDisplay({ meta }: { meta: Record<string, unknown> }) {
   const shortSidePx = meta.shortSidePx as number | null | undefined;
   const batchSize = meta.batchSize as number | null | undefined;
   const upscaleFactor = meta.upscaleFactor as number | null | undefined;
+  const checkpointName = meta.checkpointName as string | null | undefined;
   const workflowId = meta.workflowId as string | null | undefined;
   const lora1 = meta.lora1 as Array<{ path: string; weight: number; enabled: boolean }> | null | undefined;
   const lora2 = meta.lora2 as Array<{ path: string; weight: number; enabled: boolean }> | null | undefined;
@@ -91,6 +92,11 @@ function ExecutionMetaDisplay({ meta }: { meta: Record<string, unknown> }) {
         {upscaleFactor != null && (
           <span className={pill}>
             upscale <span className="font-mono text-zinc-300">{upscaleFactor}x</span>
+          </span>
+        )}
+        {checkpointName && (
+          <span className={pill}>
+            checkpoint <span className="font-mono text-zinc-300">{checkpointName}</span>
           </span>
         )}
         {workflowId && (
