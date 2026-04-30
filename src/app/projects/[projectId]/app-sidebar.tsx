@@ -176,31 +176,37 @@ export function AppSidebar({
               {previousProject ? (
                 <Link
                   href={`/projects/${previousProject.id}`}
-                  title={previousProject.title}
-                  className="inline-flex min-w-0 items-center justify-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-[11px] text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
+                  title={`上一个项目：${previousProject.title}`}
+                  aria-label={`上一个项目：${previousProject.title}`}
+                  className="inline-flex h-8 min-w-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
                 >
-                  <ChevronLeft className="size-3 shrink-0" />
-                  <span className="truncate">上一个</span>
+                  <ChevronLeft className="size-4 shrink-0" />
                 </Link>
               ) : (
-                <span className="inline-flex items-center justify-center gap-1 rounded-lg border border-white/5 px-2 py-1 text-[11px] text-zinc-600">
-                  <ChevronLeft className="size-3" />
-                  上一个
+                <span
+                  title="没有上一个项目"
+                  aria-label="没有上一个项目"
+                  className="inline-flex h-8 items-center justify-center rounded-lg border border-white/5 text-zinc-600"
+                >
+                  <ChevronLeft className="size-4" />
                 </span>
               )}
               {nextProject ? (
                 <Link
                   href={`/projects/${nextProject.id}`}
-                  title={nextProject.title}
-                  className="inline-flex min-w-0 items-center justify-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-[11px] text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
+                  title={`下一个项目：${nextProject.title}`}
+                  aria-label={`下一个项目：${nextProject.title}`}
+                  className="inline-flex h-8 min-w-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
                 >
-                  <span className="truncate">下一个</span>
-                  <ChevronRight className="size-3 shrink-0" />
+                  <ChevronRight className="size-4 shrink-0" />
                 </Link>
               ) : (
-                <span className="inline-flex items-center justify-center gap-1 rounded-lg border border-white/5 px-2 py-1 text-[11px] text-zinc-600">
-                  下一个
-                  <ChevronRight className="size-3" />
+                <span
+                  title="没有下一个项目"
+                  aria-label="没有下一个项目"
+                  className="inline-flex h-8 items-center justify-center rounded-lg border border-white/5 text-zinc-600"
+                >
+                  <ChevronRight className="size-4" />
                 </span>
               )}
             </div>

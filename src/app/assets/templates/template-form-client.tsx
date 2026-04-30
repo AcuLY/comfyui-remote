@@ -14,7 +14,6 @@ import Link from "next/link";
 import {
   ArrowLeft,
   Copy,
-  ExternalLink,
   Plus,
   Trash2,
   GripVertical,
@@ -95,13 +94,11 @@ function scrollToTemplateSection(sectionId: string) {
 }
 
 function TemplateSectionsSidebar({
-  templateId,
   templateName,
   sections,
   activeSectionId,
   onNavigateToSection,
 }: {
-  templateId: string;
   templateName: string;
   sections: ProjectTemplateSectionData[];
   activeSectionId: string | null;
@@ -150,18 +147,6 @@ function TemplateSectionsSidebar({
           onNavigateToSection={onNavigateToSection}
           menuClassName="gap-1"
           buttonClassName="min-h-9"
-          renderTrailing={(section, index) =>
-            isExpanded && !section.id.startsWith("new-") ? (
-              <Link
-                href={`/assets/templates/${templateId}/sections/${index}`}
-                className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-zinc-500 transition hover:bg-white/10 hover:text-sky-300"
-                title="编辑小节"
-              >
-                <ExternalLink className="size-3.5" />
-              </Link>
-            ) : null
-          }
-          itemClassName="flex items-center gap-1"
         />
       </SidebarContent>
 
@@ -529,7 +514,6 @@ export function TemplateFormClient({
       className="-mx-5 min-h-[calc(100dvh-5rem)] w-[calc(100%+2.5rem)] bg-transparent sm:-mx-6 sm:w-[calc(100%+3rem)]"
     >
       <TemplateSectionsSidebar
-        templateId={templateId}
         templateName={name}
         sections={sections}
         activeSectionId={activeSectionId}

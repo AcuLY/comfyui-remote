@@ -105,31 +105,37 @@ function ProjectResultsSidebar({
               {project.previousProject ? (
                 <Link
                   href={`/projects/${project.previousProject.id}/results`}
-                  title={project.previousProject.title}
-                  className="inline-flex min-w-0 items-center justify-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-[11px] text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
+                  title={`上一个项目：${project.previousProject.title}`}
+                  aria-label={`上一个项目：${project.previousProject.title}`}
+                  className="inline-flex h-8 min-w-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
                 >
-                  <ChevronLeft className="size-3 shrink-0" />
-                  <span className="truncate">上一个</span>
+                  <ChevronLeft className="size-4 shrink-0" />
                 </Link>
               ) : (
-                <span className="inline-flex items-center justify-center gap-1 rounded-lg border border-white/5 px-2 py-1 text-[11px] text-zinc-600">
-                  <ChevronLeft className="size-3" />
-                  上一个
+                <span
+                  title="没有上一个项目"
+                  aria-label="没有上一个项目"
+                  className="inline-flex h-8 items-center justify-center rounded-lg border border-white/5 text-zinc-600"
+                >
+                  <ChevronLeft className="size-4" />
                 </span>
               )}
               {project.nextProject ? (
                 <Link
                   href={`/projects/${project.nextProject.id}/results`}
-                  title={project.nextProject.title}
-                  className="inline-flex min-w-0 items-center justify-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-[11px] text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
+                  title={`下一个项目：${project.nextProject.title}`}
+                  aria-label={`下一个项目：${project.nextProject.title}`}
+                  className="inline-flex h-8 min-w-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
                 >
-                  <span className="truncate">下一个</span>
-                  <ChevronRight className="size-3 shrink-0" />
+                  <ChevronRight className="size-4 shrink-0" />
                 </Link>
               ) : (
-                <span className="inline-flex items-center justify-center gap-1 rounded-lg border border-white/5 px-2 py-1 text-[11px] text-zinc-600">
-                  下一个
-                  <ChevronRight className="size-3" />
+                <span
+                  title="没有下一个项目"
+                  aria-label="没有下一个项目"
+                  className="inline-flex h-8 items-center justify-center rounded-lg border border-white/5 text-zinc-600"
+                >
+                  <ChevronRight className="size-4" />
                 </span>
               )}
             </div>
@@ -144,19 +150,7 @@ function ProjectResultsSidebar({
           activeSectionId={activeSectionId}
           onNavigateToSection={scrollToSection}
           menuClassName="gap-1"
-          itemClassName="flex items-center gap-1"
-          buttonClassName="min-h-9 flex-1"
-          renderTrailing={(section) =>
-            isExpanded ? (
-              <Link
-                href={`/projects/${project.id}/sections/${section.id}/results`}
-                className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-zinc-500 transition hover:bg-white/10 hover:text-sky-300"
-                title="小节审核"
-              >
-                <ClipboardCheck className="size-3.5" />
-              </Link>
-            ) : null
-          }
+          buttonClassName="min-h-9"
         />
       </SidebarContent>
 

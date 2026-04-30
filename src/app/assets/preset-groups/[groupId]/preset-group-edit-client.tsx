@@ -17,11 +17,17 @@ import { GROUP_HISTORY_TABS } from "../../presets/preset-types";
 import { parseLoraBindings } from "@/lib/lora-types";
 import { toast } from "sonner";
 
-function groupListUrl(categoryId: string, groupId: string) {
-  const params = new URLSearchParams({
-    category: categoryId,
-    preset: groupId,
-  });
+function groupListUrl(categoryId: string, groupId?: string | null, folderId?: string | null) {
+  const params = new URLSearchParams({ category: categoryId });
+
+  if (groupId) {
+    params.set("preset", groupId);
+  }
+
+  if (folderId) {
+    params.set("folder", folderId);
+  }
+
   return `/assets/presets?${params.toString()}`;
 }
 
@@ -40,7 +46,7 @@ export function PresetGroupEditClient({
   const [isPending, startTransition] = useTransition();
   const [name, setName] = useState(group.name);
   const [slug, setSlug] = useState(group.slug);
-  const backHref = groupListUrl(categoryId, group.id);
+  const backHref = groupListUrl(categoryId, group.id, group.folderId);
   const selectableGroups = groups.filter((item) => item.id !== group.id);
 
   // Build variant lookup for preview card
@@ -114,7 +120,7 @@ export function PresetGroupEditClient({
       try {
         await deletePresetGroup(group.id);
         toast.success("预制组已删除");
-        router.push(`/assets/presets?category=${categoryId}`);
+        router.push(groupListUrl(categoryId, null, group.folderId));
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "删除失败");
       }
