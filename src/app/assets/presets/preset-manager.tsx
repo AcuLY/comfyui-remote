@@ -269,6 +269,14 @@ export function PresetManager({
                       setShowCatForm(!isEditing);
                     }}
                     onDelete={() => {
+                      if (cat.type === "group" && cat.groupCount > 0) {
+                        toast.error(`分类下还有 ${cat.groupCount} 个预制组，请先删除或移动它们`);
+                        return;
+                      }
+                      if (cat.type !== "group" && cat.presetCount > 0) {
+                        toast.error(`分类下还有 ${cat.presetCount} 个预制，请先删除或移动它们`);
+                        return;
+                      }
                       if (!confirm("确认删除此分类？")) return;
                       startTransition(async () => {
                         try {
