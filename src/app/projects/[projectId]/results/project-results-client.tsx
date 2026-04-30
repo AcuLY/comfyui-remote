@@ -175,9 +175,15 @@ function ResultImageCard({
   onToggleFeatured: (imageId: string, featured: boolean) => void;
   disabled: boolean;
 }) {
+  const aspectRatio =
+    image.width && image.height && image.width > 0 && image.height > 0
+      ? `${image.width} / ${image.height}`
+      : "1 / 1";
+
   return (
     <div
-      className={`group relative flex h-32 items-center justify-center overflow-hidden rounded-lg border bg-white/[0.03] transition hover:border-sky-500/40 sm:h-36 ${
+      style={{ aspectRatio }}
+      className={`group relative flex w-full items-center justify-center overflow-hidden rounded-lg border bg-white/[0.03] transition hover:border-sky-500/40 ${
         image.status === "kept"
           ? "border-emerald-500/30"
           : image.status === "pending"
@@ -300,7 +306,7 @@ function SectionResultsBlock({
         </div>
       ) : (
         <div className="space-y-3">
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(7rem,1fr))] items-start gap-2">
             {visibleImages.map((image) => (
               <ResultImageCard
                 key={image.id}
