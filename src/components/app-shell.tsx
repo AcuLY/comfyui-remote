@@ -16,9 +16,13 @@ export function AppShell({ children }: { children: ReactNode }) {
       <Toaster
         theme="dark"
         position="top-right"
+        closeButton
+        visibleToasts={3}
         toastOptions={{
           duration: 3000,
           style: { background: "rgba(24,24,27,0.95)", border: "1px solid rgba(255,255,255,0.1)", color: "#e4e4e7" },
+          closeButton: true,
+          closeButtonAriaLabel: "关闭通知",
         }}
       />
     </>
