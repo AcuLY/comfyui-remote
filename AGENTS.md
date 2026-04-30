@@ -27,6 +27,7 @@ print it in logs, or commit token values.
    Remove-Item -Recurse -Force .next -ErrorAction SilentlyContinue
    ```
    然后执行 `npx next build` 构建项目。
+   - 如果当前项目目录下已经有通过 `npm run dev` / `next dev` 启动的开发服务，不要清理 `.next` 缓存目录；清理会破坏正在运行的 dev 服务缓存并导致 500。此时跳过 `.next` 清理，并优先使用当前 dev 服务做验证。
 5. 部署完成后必须访问网站验证，确保没有 500 或资源加载错误，直到所有请求正常。
 5. 重启服务时，不要执行 `Stop-Process -Name node -Force`，因为这会误杀当前终端里的 CodeBuddy/Codex 进程。只停止当前项目目录下的 `next start` 进程，然后再启动服务：
    ```powershell
