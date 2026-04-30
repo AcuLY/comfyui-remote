@@ -44,6 +44,8 @@ export type Section = {
   positiveBlockCount: number;
   negativeBlockCount: number;
   latestImages: { id: string; src: string; status: string }[];
+  latestImageCount: number;
+  pendingImageCount: number;
 };
 
 type SectionCardsProps = {
@@ -297,7 +299,7 @@ function SortableCompactCard({
       <div className="flex shrink-0 items-center gap-2">
         {section.latestImages.length > 0 && (
           <span className="text-[10px] text-zinc-500">
-            {section.latestImages.length}张
+            {section.latestImageCount}张
           </span>
         )}
         <span className={`size-2 rounded-full ${statusDotClass(section.latestRunStatus)}`} />
@@ -372,10 +374,10 @@ function SortableSectionCard({
           <div className="mb-1.5 flex items-center gap-1.5 text-[10px] text-zinc-500">
             <ImageIcon className="size-3" />
             <span>
-              最近结果 · {section.latestImages.length} 张
-              {section.latestImages.some((img) => img.status === "pending") && (
+              最近结果 · {section.latestImageCount} 张
+              {section.pendingImageCount > 0 && (
                 <span className="ml-1 text-amber-400">
-                  ({section.latestImages.filter((img) => img.status === "pending").length} 待审)
+                  ({section.pendingImageCount} 待审)
                 </span>
               )}
             </span>
@@ -406,6 +408,8 @@ function SortableSectionCard({
                 <img
                   src={img.src}
                   alt=""
+                  loading="lazy"
+                  decoding="async"
                   className="h-full w-auto object-contain"
                 />
                 {img.status === "kept" && (
@@ -415,9 +419,9 @@ function SortableSectionCard({
                 )}
               </Link>
             ))}
-            {section.latestImages.length > 8 && (
+            {section.latestImageCount > 8 && (
               <div className="flex shrink-0 items-center justify-center rounded-lg border border-white/5 bg-white/[0.02] px-3 text-[10px] text-zinc-500">
-                +{section.latestImages.length - 8}
+                +{section.latestImageCount - 8}
               </div>
             )}
           </div>

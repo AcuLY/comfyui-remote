@@ -82,6 +82,8 @@ export type ProjectDetail = {
     negativeBlockCount: number;
     /** Thumbnail images from the latest completed run */
     latestImages: { id: string; src: string; status: string }[];
+    latestImageCount: number;
+    pendingImageCount: number;
   }[];
 };
 
@@ -106,11 +108,17 @@ export async function getProjectDetail(projectId: string): Promise<ProjectDetail
               status: true,
               images: {
                 orderBy: { createdAt: "asc" },
+                take: 8,
                 select: {
                   id: true,
                   thumbPath: true,
                   filePath: true,
                   reviewStatus: true,
+                },
+              },
+              _count: {
+                select: {
+                  images: true,
                 },
               },
             },
@@ -125,6 +133,23 @@ export async function getProjectDetail(projectId: string): Promise<ProjectDetail
   });
 
   if (!project) return null;
+
+  const latestRunIds = project.sections
+    .map((pos) => pos.runs[0]?.id)
+    .filter((id): id is string => Boolean(id));
+  const pendingCounts = latestRunIds.length
+    ? await prisma.imageResult.groupBy({
+        by: ["runId"],
+        where: {
+          runId: { in: latestRunIds },
+          reviewStatus: "pending",
+        },
+        _count: { _all: true },
+      })
+    : [];
+  const pendingCountByRunId = new Map(
+    pendingCounts.map((row) => [row.runId, row._count._all]),
+  );
 
   // Resolve display names from presetBindings
   const presetMap = await batchResolvePresetNames(
@@ -166,6 +191,8 @@ export async function getProjectDetail(projectId: string): Promise<ProjectDetail
           src: toImageUrl(img.thumbPath ?? img.filePath) ?? "",
           status: img.reviewStatus,
         })),
+        latestImageCount: latestRun?._count.images ?? 0,
+        pendingImageCount: latestRun ? (pendingCountByRunId.get(latestRun.id) ?? 0) : 0,
       };
     }),
   };
