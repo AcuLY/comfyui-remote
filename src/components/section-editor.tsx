@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useMemo, useEffect } from "react";
+import { useState, useTransition, useMemo } from "react";
 import Link from "next/link";
 import { Plus, Trash2, Unlink, Package, ChevronDown, ClipboardCopy, Folder, ChevronLeft, Search, X, ExternalLink } from "lucide-react";
 import { PromptBlockEditor } from "@/components/prompt-block-editor";
@@ -28,6 +28,7 @@ type PresetBindingInfo = {
   groupName: string | undefined;  // names of presets imported in the same group instance
   sourceId: string | null;  // preset ID
   variantId: string | null;  // current variant ID
+  categoryId: string | null;
   categoryName?: string;
   categoryColor?: string;
   groupBindingId: string | null;
@@ -103,9 +104,22 @@ export function SectionEditor({
           let availableVariants: Array<{ id: string; name: string }> = [];
           let categoryName: string | undefined;
           let categoryColor: string | undefined;
-          if (b.sourceId && libraryV2) {
+          let sourceId = b.sourceId;
+          let variantId = b.variantId;
+          if (!sourceId && b.categoryId && libraryV2) {
+            const cat = libraryV2.categories.find((c) => c.id === b.categoryId);
+            const preset = cat?.presets.find((p) => b.label === p.name || b.label.startsWith(`${p.name} /`));
+            if (preset) {
+              sourceId = preset.id;
+              const variantName = b.label.startsWith(`${preset.name} /`)
+                ? b.label.slice(preset.name.length + 3)
+                : "";
+              variantId = preset.variants.find((v) => v.name === variantName)?.id ?? variantId;
+            }
+          }
+          if (sourceId && libraryV2) {
             for (const cat of libraryV2.categories) {
-              const preset = cat.presets.find((p) => p.id === b.sourceId);
+              const preset = cat.presets.find((p) => p.id === sourceId);
               if (preset) {
                 availableVariants = preset.variants.map((v) => ({ id: v.id, name: v.name }));
                 categoryName = cat.name;
@@ -127,8 +141,9 @@ export function SectionEditor({
             bindingId: b.bindingId,
             presetName: b.label,
             groupName,
-            sourceId: b.sourceId,
-            variantId: b.variantId,
+            sourceId,
+            variantId,
+            categoryId: b.categoryId,
             categoryName,
             categoryColor,
             groupBindingId: b.groupBindingId,
@@ -212,8 +227,8 @@ export function SectionEditor({
       });
 
       // Insert LoRAs at correct position based on category lora1Order/lora2Order
-      let updatedLora1 = [...lora1];
-      let updatedLora2 = [...lora2];
+      const updatedLora1 = [...lora1];
+      const updatedLora2 = [...lora2];
       let loraChanged = false;
 
       if (result.lora1.length > 0) {
@@ -263,8 +278,8 @@ export function SectionEditor({
       const members = await flattenGroup(groupId);
       const groupBid = `grp:${groupId}:${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
       const newBlocks: PromptBlockData[] = [];
-      let updatedLora1 = [...lora1];
-      let updatedLora2 = [...lora2];
+      const updatedLora1 = [...lora1];
+      const updatedLora2 = [...lora2];
       let loraChanged = false;
 
       for (const m of members) {
@@ -344,6 +359,21 @@ export function SectionEditor({
     const cat = libraryV2.categories.find((c) => c.name === entry.sourceLabel);
     if (!cat) return 999;
     return dimension === "lora1" ? (cat.lora1Order ?? 999) : (cat.lora2Order ?? 999);
+  }
+
+  function getPresetManagerHref(binding: PresetBindingInfo): string {
+    const params = new URLSearchParams();
+    if (binding.categoryId) params.set("category", binding.categoryId);
+    if (binding.sourceId) params.set("preset", binding.sourceId);
+    if (binding.variantId) params.set("variant", binding.variantId);
+
+    const preset = libraryV2?.categories
+      .find((cat) => cat.id === binding.categoryId)
+      ?.presets.find((item) => item.id === binding.sourceId);
+    if (preset?.folderId) params.set("folder", preset.folderId);
+
+    const query = params.toString();
+    return query ? `/assets/presets?${query}` : "/assets/presets";
   }
 
   // ── Delete an entire preset binding (and cascade to group if part of one) ──
@@ -579,7 +609,7 @@ export function SectionEditor({
                   <span className="text-[11px] text-zinc-300 truncate">{binding.presetName}</span>
                   {binding.sourceId && (
                     <Link
-                      href={`/assets/presets#preset-${binding.sourceId}`}
+                      href={getPresetManagerHref(binding)}
                       target="_blank"
                       className="shrink-0 rounded p-0.5 text-zinc-500 hover:bg-white/5 hover:text-sky-400"
                       title="在预制管理中打开"
@@ -740,12 +770,6 @@ export function ImportPresetPanel({
   const [searchQuery, setSearchQuery] = useState("");
   const selectedCat = categories.find((c) => c.id === selectedCatId);
 
-  // Reset folder and search when category changes
-  useEffect(() => {
-    setCurrentFolderId(null);
-    setSearchQuery("");
-  }, [selectedCatId]);
-
   const isGroupCat = selectedCat?.type === "group";
 
   // Subfolders of current folder
@@ -818,7 +842,11 @@ export function ImportPresetPanel({
           <button
             key={cat.id}
             type="button"
-            onClick={() => setSelectedCatId(cat.id)}
+            onClick={() => {
+              setSelectedCatId(cat.id);
+              setCurrentFolderId(null);
+              setSearchQuery("");
+            }}
             className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] transition ${
               selectedCatId === cat.id
                 ? "bg-white/10 text-white"

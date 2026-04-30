@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ChevronRight, ImageIcon, Plus } from "lucide-react";
 import { SectionCard } from "@/components/section-card";
 import { listProjects } from "@/lib/server-data";
+import { ProjectDeleteButton } from "./project-delete-button";
 
 export default async function ProjectsPage() {
   const projects = await listProjects();
@@ -20,11 +21,12 @@ export default async function ProjectsPage() {
       <SectionCard title="项目" subtitle="点击卡片进入详情页，在详情页中编辑参数和管理小节。">
         <div className="grid grid-cols-1 gap-2.5 justify-items-center md:grid-cols-2">
           {projects.map((project) => (
-            <Link
+            <article
               key={project.id}
-              href={`/projects/${project.id}`}
-              className="block w-full rounded-xl border border-white/10 bg-white/[0.03] p-3 transition hover:border-white/20 hover:bg-white/[0.06] md:max-w-[500px]"
+              className="relative w-full rounded-xl border border-white/10 bg-white/[0.03] transition hover:border-white/20 hover:bg-white/[0.06] md:max-w-[500px]"
             >
+              <ProjectDeleteButton projectId={project.id} projectTitle={project.title} />
+              <Link href={`/projects/${project.id}`} className="block p-3 pr-12">
               {project.latestImages && project.latestImages.length > 0 ? (
                 <div className="mb-3 border-b border-white/5 pb-3">
                   <div className="mb-1.5 flex items-center gap-1.5 text-[10px] text-zinc-500">
@@ -82,7 +84,8 @@ export default async function ProjectsPage() {
                 最近更新：{project.updatedAt} · {project.sectionCount} 个小节
                 {project.latestRunAt ? ` · 最近运行：${project.latestRunAt}` : ""}
               </div>
-            </Link>
+              </Link>
+            </article>
           ))}
         </div>
       </SectionCard>

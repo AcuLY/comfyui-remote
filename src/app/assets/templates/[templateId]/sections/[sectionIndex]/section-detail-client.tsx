@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, Download, Package, Trash2, Unlink, ClipboardCopy, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
-import { updateProjectTemplate } from "@/lib/actions";
+import { resolveTemplatePresetImports, updateProjectTemplate } from "@/lib/actions";
 import { AspectRatioPicker } from "@/components/aspect-ratio-picker";
 import { BatchSizeQuickFill } from "@/components/batch-size-quick-fill";
 import { UpscaleFactorQuickFill } from "@/components/upscale-factor-quick-fill";
@@ -52,13 +52,20 @@ type PresetImportItem = {
   presetId: string;
   presetName: string;
   variantId: string;
+  variantName: string;
+  label: string;
   prompt: string;
   negativePrompt: string | null;
-  lora1: unknown;
-  lora2: unknown;
+  lora1: Array<{ path: string; weight: number; enabled: boolean }>;
+  lora2: Array<{ path: string; weight: number; enabled: boolean }>;
   categoryId: string;
   categoryName: string;
   categoryColor: string | null;
+  categoryOrders: {
+    positivePromptOrder: number;
+    lora1Order: number;
+    lora2Order: number;
+  };
 };
 
 type Props = {
@@ -176,9 +183,22 @@ export function TemplateSectionDetailClient({
       let availableVariants: Array<{ id: string; name: string }> = [];
       let categoryName: string | undefined;
       let categoryColor: string | undefined;
+      let sourceId = block.sourceId ?? null;
+      let variantId = block.variantId ?? null;
       if (library) {
+        if (!sourceId && block.categoryId) {
+          const cat = library.categories.find((item) => item.id === block.categoryId);
+          const preset = cat?.presets.find((item) => block.label === item.name || block.label.startsWith(`${item.name} /`));
+          if (preset) {
+            sourceId = preset.id;
+            const variantName = block.label.startsWith(`${preset.name} /`)
+              ? block.label.slice(preset.name.length + 3)
+              : "";
+            variantId = preset.variants.find((item) => item.name === variantName)?.id ?? variantId;
+          }
+        }
         for (const cat of library.categories) {
-          const preset = block.sourceId ? cat.presets.find((item) => item.id === block.sourceId) : undefined;
+          const preset = sourceId ? cat.presets.find((item) => item.id === sourceId) : undefined;
           if (preset) {
             availableVariants = preset.variants.map((variant) => ({ id: variant.id, name: variant.name }));
             categoryName = cat.name;
@@ -199,8 +219,8 @@ export function TemplateSectionDetailClient({
         bindingId: block.bindingId,
         presetName: block.label,
         groupName: groupNamesByBindingId.get(block.bindingId),
-        sourceId: block.sourceId ?? null,
-        variantId: block.variantId ?? null,
+        sourceId,
+        variantId,
         categoryId: block.categoryId ?? null,
         categoryName,
         categoryColor,
@@ -330,17 +350,6 @@ export function TemplateSectionDetailClient({
 
   // ── Preset import handler ──
 
-  function findPresetVariant(presetId: string, variantId: string) {
-    for (const cat of library?.categories ?? []) {
-      const preset = cat.presets.find((item) => item.id === presetId);
-      if (!preset) continue;
-      const variant = preset.variants.find((item) => item.id === variantId);
-      if (!variant) return null;
-      return { cat, preset, variant };
-    }
-    return null;
-  }
-
   function parseLoraEntries(
     arr: unknown,
     item: PresetImportItem,
@@ -370,6 +379,35 @@ export function TemplateSectionDetailClient({
     return category?.positivePromptOrder ?? (categoryIndex >= 0 ? categoryIndex : 999);
   }
 
+  function getLoraCategoryOrder(entry: LoraEntry, dimension: "lora1" | "lora2"): number {
+    if (entry.source !== "preset" || !entry.sourceLabel) return 999;
+    const category = library?.categories.find((cat) => cat.name === entry.sourceLabel);
+    if (!category) return 999;
+    return dimension === "lora1" ? (category.lora1Order ?? 999) : (category.lora2Order ?? 999);
+  }
+
+  function sortLoraEntries(entries: LoraEntry[], dimension: "lora1" | "lora2") {
+    return entries
+      .map((entry, index) => ({ entry, index }))
+      .sort((a, b) => getLoraCategoryOrder(a.entry, dimension) - getLoraCategoryOrder(b.entry, dimension) || a.index - b.index)
+      .map(({ entry }) => entry);
+  }
+
+  function getPresetManagerHref(binding: PresetBindingInfo): string {
+    const params = new URLSearchParams();
+    if (binding.categoryId) params.set("category", binding.categoryId);
+    if (binding.sourceId) params.set("preset", binding.sourceId);
+    if (binding.variantId) params.set("variant", binding.variantId);
+
+    const preset = library?.categories
+      .find((cat) => cat.id === binding.categoryId)
+      ?.presets.find((item) => item.id === binding.sourceId);
+    if (preset?.folderId) params.set("folder", preset.folderId);
+
+    const query = params.toString();
+    return query ? `/assets/presets?${query}` : "/assets/presets";
+  }
+
   function handleImportPreset(
     presetId: string,
     presetName: string,
@@ -383,9 +421,20 @@ export function TemplateSectionDetailClient({
     categoryName: string,
     categoryColor: string | null,
   ) {
-    importPresets([
-      { presetId, presetName, variantId, prompt, negativePrompt, lora1, lora2, categoryId, categoryName, categoryColor },
-    ]);
+    void presetName;
+    void variantName;
+    void prompt;
+    void negativePrompt;
+    void lora1;
+    void lora2;
+    void categoryId;
+    void categoryName;
+    void categoryColor;
+
+    startTransition(async () => {
+      const [item] = await resolveTemplatePresetImports([{ presetId, variantId }]);
+      if (item) importPresets([item]);
+    });
   }
 
   function importPresets(items: PresetImportItem[], groupBindingId?: string) {
@@ -407,7 +456,7 @@ export function TemplateSectionDetailClient({
       const bindingId = `bind-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 
       currentBlocks.push({
-        label: item.presetName,
+        label: item.label,
         positive: item.prompt,
         negative: item.negativePrompt,
         sortOrder: currentBlocks.length,
@@ -422,8 +471,20 @@ export function TemplateSectionDetailClient({
       currentLora2.push(...parseLoraEntries(item.lora2, item, bindingId, groupBindingId));
     }
 
-    setPromptBlocks(currentBlocks);
-    setLoraConfig({ lora1: currentLora1, lora2: currentLora2 });
+    const sortedBlocks = currentBlocks
+      .map((block, index) => ({
+        block,
+        index,
+        order: block.categoryId ? getPresetCategoryOrder(block.categoryId) : 999,
+      }))
+      .sort((a, b) => a.order - b.order || a.index - b.index)
+      .map(({ block }, index) => ({ ...block, sortOrder: index }));
+
+    setPromptBlocks(sortedBlocks);
+    setLoraConfig({
+      lora1: sortLoraEntries(currentLora1, "lora1"),
+      lora2: sortLoraEntries(currentLora2, "lora2"),
+    });
     setShowImport(false);
     scheduleSaveAfterState();
 
@@ -441,15 +502,15 @@ export function TemplateSectionDetailClient({
       const group = (cat.groups ?? []).find((g) => g.id === groupId);
       if (!group) continue;
 
-      const items: PresetImportItem[] = [];
+      const inputs: Array<{ presetId: string; variantId: string | null }> = [];
 
       for (const member of group.members) {
         if (!member.presetId) continue;
 
-        let foundPreset: { preset: typeof cat.presets[number]; cat: typeof cat } | null = null;
+        let foundPreset: { preset: typeof cat.presets[number] } | null = null;
         for (const c of allCategories) {
           const p = c.presets.find((pr) => pr.id === member.presetId);
-          if (p) { foundPreset = { preset: p, cat: c }; break; }
+          if (p) { foundPreset = { preset: p }; break; }
         }
         if (!foundPreset) continue;
 
@@ -458,24 +519,16 @@ export function TemplateSectionDetailClient({
           : foundPreset.preset.variants[0];
         if (!variant) continue;
 
-        items.push({
-          presetId: foundPreset.preset.id,
-          presetName: foundPreset.preset.name,
-          variantId: variant.id,
-          prompt: variant.prompt,
-          negativePrompt: variant.negativePrompt,
-          lora1: variant.lora1,
-          lora2: variant.lora2,
-          categoryId: foundPreset.cat.id,
-          categoryName: foundPreset.cat.name,
-          categoryColor: foundPreset.cat.color,
-        });
+        inputs.push({ presetId: foundPreset.preset.id, variantId: variant.id });
       }
 
-      if (items.length > 0) {
+      if (inputs.length > 0) {
         // Generate a groupBindingId for all presets in this group
         const groupBindingId = `group-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-        importPresets(items, groupBindingId);
+        startTransition(async () => {
+          const items = await resolveTemplatePresetImports(inputs);
+          importPresets(items, groupBindingId);
+        });
       }
       return;
     }
@@ -487,45 +540,39 @@ export function TemplateSectionDetailClient({
   function handleSwitchVariant(bindingId: string, newVariantId: string) {
     const binding = presetBindings.find((item) => item.bindingId === bindingId);
     if (!binding?.sourceId) return;
-    const found = findPresetVariant(binding.sourceId, newVariantId);
-    if (!found) return;
+    startTransition(async () => {
+      const [item] = await resolveTemplatePresetImports([
+        { presetId: binding.sourceId!, variantId: newVariantId },
+      ]);
+      if (!item) return;
 
-    const item: PresetImportItem = {
-      presetId: found.preset.id,
-      presetName: found.preset.name,
-      variantId: found.variant.id,
-      prompt: found.variant.prompt,
-      negativePrompt: found.variant.negativePrompt,
-      lora1: found.variant.lora1,
-      lora2: found.variant.lora2,
-      categoryId: found.cat.id,
-      categoryName: found.cat.name,
-      categoryColor: found.cat.color,
-    };
+      const groupBindingId = binding.groupBindingId ?? undefined;
+      setPromptBlocks((prev) =>
+        prev.map((block) =>
+          block.bindingId === bindingId
+            ? {
+                ...block,
+                label: item.label,
+                positive: item.prompt,
+                negative: item.negativePrompt,
+                sourceId: item.presetId,
+                variantId: item.variantId,
+                categoryId: item.categoryId,
+              }
+            : block,
+        ),
+      );
 
-    const groupBindingId = binding.groupBindingId ?? undefined;
-    setPromptBlocks((prev) =>
-      prev.map((block) =>
-        block.bindingId === bindingId
-          ? {
-              ...block,
-              label: item.presetName,
-              positive: item.prompt,
-              negative: item.negativePrompt,
-              sourceId: item.presetId,
-              variantId: item.variantId,
-              categoryId: item.categoryId,
-            }
-          : block,
-      ),
-    );
-
-    const nextLora1 = loraConfig.lora1.filter((entry) => entry.bindingId !== bindingId);
-    const nextLora2 = loraConfig.lora2.filter((entry) => entry.bindingId !== bindingId);
-    nextLora1.push(...parseLoraEntries(item.lora1, item, bindingId, groupBindingId));
-    nextLora2.push(...parseLoraEntries(item.lora2, item, bindingId, groupBindingId));
-    setLoraConfig({ lora1: nextLora1, lora2: nextLora2 });
-    scheduleSaveAfterState();
+      const nextLora1 = loraConfig.lora1.filter((entry) => entry.bindingId !== bindingId);
+      const nextLora2 = loraConfig.lora2.filter((entry) => entry.bindingId !== bindingId);
+      nextLora1.push(...parseLoraEntries(item.lora1, item, bindingId, groupBindingId));
+      nextLora2.push(...parseLoraEntries(item.lora2, item, bindingId, groupBindingId));
+      setLoraConfig({
+        lora1: sortLoraEntries(nextLora1, "lora1"),
+        lora2: sortLoraEntries(nextLora2, "lora2"),
+      });
+      scheduleSaveAfterState();
+    });
   }
 
   function handleDeleteBinding(bindingId: string) {
@@ -912,7 +959,7 @@ export function TemplateSectionDetailClient({
                   <span className="truncate text-[11px] text-zinc-300">{binding.presetName}</span>
                   {binding.sourceId && (
                     <Link
-                      href={`/assets/presets/${binding.sourceId}`}
+                      href={getPresetManagerHref(binding)}
                       target="_blank"
                       className="shrink-0 rounded p-0.5 text-zinc-500 hover:bg-white/5 hover:text-sky-400"
                       title="在预制详情中打开"

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Copy, Download, Plus, Trash2, X } from "lucide-react";
 import {
   addSection,
@@ -12,12 +13,14 @@ import {
 import { toast } from "sonner";
 
 export function AddSectionButton({ projectId }: { projectId: string }) {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
   function handleAdd() {
     startTransition(async () => {
       try {
         await addSection(projectId);
+        router.refresh();
         toast.success("小节已添加");
       } catch (error: unknown) {
         toast.error(error instanceof Error ? error.message : "添加失败");
@@ -38,12 +41,14 @@ export function AddSectionButton({ projectId }: { projectId: string }) {
 }
 
 export function CopySectionButton({ sectionId }: { sectionId: string }) {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
   function handleCopy() {
     startTransition(async () => {
       try {
         await copySection(sectionId);
+        router.refresh();
         toast.success("小节已复制");
       } catch (error: unknown) {
         toast.error(error instanceof Error ? error.message : "复制失败");
@@ -67,10 +72,13 @@ export function CopySectionButton({ sectionId }: { sectionId: string }) {
 export function DeleteSectionButton({
   sectionId,
   sectionName,
+  onDeleted,
 }: {
   sectionId: string;
   sectionName: string;
+  onDeleted?: (sectionId: string) => void;
 }) {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
   function handleDelete() {
@@ -79,6 +87,8 @@ export function DeleteSectionButton({
     startTransition(async () => {
       try {
         await deleteSection(sectionId);
+        onDeleted?.(sectionId);
+        router.refresh();
         toast.success("小节已删除");
       } catch (error: unknown) {
         toast.error(error instanceof Error ? error.message : "删除失败");
@@ -100,6 +110,7 @@ export function DeleteSectionButton({
 }
 
 export function ImportTemplateButton({ projectId }: { projectId: string }) {
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [templates, setTemplates] = useState<Array<{ id: string; name: string; sectionCount: number }>>([]);
   const [selectedId, setSelectedId] = useState("");
@@ -138,6 +149,7 @@ export function ImportTemplateButton({ projectId }: { projectId: string }) {
         toast.success(`已导入 ${count} 个小节`);
         setIsOpen(false);
         setSelectedId("");
+        router.refresh();
       } catch (error: unknown) {
         toast.error(error instanceof Error ? error.message : "导入失败");
       }
@@ -161,7 +173,7 @@ export function ImportTemplateButton({ projectId }: { projectId: string }) {
             role="dialog"
             aria-modal="true"
             aria-label="导入模板"
-            className="fixed left-1/2 top-1/2 z-[110] w-[min(calc(100vw-2rem),26rem)] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-white/10 bg-zinc-950 p-3 shadow-2xl"
+            className="fixed left-1/2 top-[50dvh] z-[110] max-h-[calc(100dvh-2rem)] w-[min(calc(100vw-2rem),26rem)] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-xl border border-white/10 bg-zinc-950 p-3 shadow-2xl"
           >
             <div className="mb-3 flex items-center justify-between gap-3">
               <div className="min-w-0">

@@ -17,6 +17,7 @@ import {
   ClipboardCheck,
   ImageIcon,
   Star,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -162,10 +163,12 @@ function ProjectResultsSidebar({
 
 function ResultImageCard({
   image,
+  onOpen,
   onToggleFeatured,
   disabled,
 }: {
   image: ProjectResultsImageWithRun;
+  onOpen: (imageId: string) => void;
   onToggleFeatured: (imageId: string, featured: boolean) => void;
   disabled: boolean;
 }) {
@@ -185,12 +188,11 @@ function ResultImageCard({
             : "border-white/10"
       }`}
     >
-      <a
-        href={image.full}
-        target="_blank"
-        rel="noreferrer"
+      <button
+        type="button"
         className="flex size-full items-center justify-center"
-        title="打开原图"
+        title="放大预览"
+        onClick={() => onOpen(image.id)}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -200,7 +202,7 @@ function ResultImageCard({
           decoding="async"
           className="max-h-full max-w-full object-contain"
         />
-      </a>
+      </button>
 
       <button
         type="button"
@@ -235,6 +237,7 @@ function SectionResultsBlock({
   projectId,
   section,
   onToggleFeatured,
+  onOpenImage,
   togglingImageId,
   isExpanded,
   onToggleExpanded,
@@ -243,6 +246,7 @@ function SectionResultsBlock({
   projectId: string;
   section: ProjectResultsSection;
   onToggleFeatured: (imageId: string, featured: boolean) => void;
+  onOpenImage: (imageId: string) => void;
   togglingImageId: string | null;
   isExpanded: boolean;
   onToggleExpanded: (sectionId: string) => void;
@@ -305,6 +309,7 @@ function SectionResultsBlock({
               <ResultImageCard
                 key={image.id}
                 image={image}
+                onOpen={onOpenImage}
                 onToggleFeatured={onToggleFeatured}
                 disabled={togglingImageId === image.id}
               />
@@ -348,6 +353,7 @@ export function ProjectResultsClient({
     2 * COLLAPSED_ROW_COUNT,
   );
   const [togglingImageId, setTogglingImageId] = useState<string | null>(null);
+  const [lightboxImageId, setLightboxImageId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
   const sectionIds = useMemo(
     () => sections.map((section) => section.id),
@@ -356,6 +362,22 @@ export function ProjectResultsClient({
   const activeSectionId = useScrollSpy(sectionIds, {
     rootSelector: '[data-slot="sidebar-inset"]',
   });
+  const allImages = useMemo(
+    () =>
+      sections.flatMap((section) =>
+        section.runs.flatMap((run) =>
+          run.images.map((image) => ({
+            ...image,
+            runIndex: run.runIndex,
+          })),
+        ),
+      ),
+    [sections],
+  );
+  const lightboxIndex = lightboxImageId
+    ? allImages.findIndex((image) => image.id === lightboxImageId)
+    : -1;
+  const lightboxImage = lightboxIndex >= 0 ? allImages[lightboxIndex] : null;
 
   const totalImages = sections.reduce(
     (sum, section) => sum + section.imageCount,
@@ -382,6 +404,39 @@ export function ProjectResultsClient({
     window.addEventListener("resize", syncCollapsedImageCount);
     return () => window.removeEventListener("resize", syncCollapsedImageCount);
   }, []);
+
+  const openLightbox = useCallback((imageId: string) => {
+    setLightboxImageId(imageId);
+  }, []);
+
+  const closeLightbox = useCallback(() => {
+    setLightboxImageId(null);
+  }, []);
+
+  const goLightboxPrev = useCallback(() => {
+    if (allImages.length === 0 || lightboxIndex < 0) return;
+    const nextIndex = lightboxIndex > 0 ? lightboxIndex - 1 : allImages.length - 1;
+    setLightboxImageId(allImages[nextIndex].id);
+  }, [allImages, lightboxIndex]);
+
+  const goLightboxNext = useCallback(() => {
+    if (allImages.length === 0 || lightboxIndex < 0) return;
+    const nextIndex = lightboxIndex < allImages.length - 1 ? lightboxIndex + 1 : 0;
+    setLightboxImageId(allImages[nextIndex].id);
+  }, [allImages, lightboxIndex]);
+
+  useEffect(() => {
+    if (!lightboxImage) return;
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") closeLightbox();
+      if (event.key === "ArrowLeft") goLightboxPrev();
+      if (event.key === "ArrowRight") goLightboxNext();
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [closeLightbox, goLightboxNext, goLightboxPrev, lightboxImage]);
 
   const toggleExpandedSection = useCallback((sectionId: string) => {
     setExpandedSectionIds((current) => {
@@ -502,6 +557,7 @@ export function ProjectResultsClient({
                 projectId={project.id}
                 section={section}
                 onToggleFeatured={handleToggleFeatured}
+                onOpenImage={openLightbox}
                 togglingImageId={togglingImageId}
                 isExpanded={expandedSectionIds.has(section.id)}
                 onToggleExpanded={toggleExpandedSection}
@@ -511,6 +567,86 @@ export function ProjectResultsClient({
           )}
         </div>
       </SidebarInset>
+      {lightboxImage && (
+        <div
+          className="fixed inset-0 z-[140] flex items-center justify-center bg-black/90 p-3 backdrop-blur-sm sm:p-4"
+          onClick={closeLightbox}
+        >
+          <div className="absolute right-4 top-4 z-10 flex items-center gap-2">
+            <button
+              type="button"
+              disabled={togglingImageId === lightboxImage.id}
+              onClick={(event) => {
+                event.stopPropagation();
+                handleToggleFeatured(lightboxImage.id, !lightboxImage.featured);
+              }}
+              className={`rounded-full p-2 transition disabled:opacity-50 ${
+                lightboxImage.featured
+                  ? "bg-amber-500/30 text-amber-300 hover:bg-amber-500/40"
+                  : "bg-white/10 text-white/70 hover:bg-white/20"
+              }`}
+              title={lightboxImage.featured ? "取消精选" : "标记精选"}
+            >
+              <Star
+                className="size-5"
+                fill={lightboxImage.featured ? "currentColor" : "none"}
+              />
+            </button>
+            <button
+              type="button"
+              className="rounded-full bg-white/10 p-2 text-white transition hover:bg-white/20"
+              onClick={closeLightbox}
+              title="关闭"
+            >
+              <X className="size-5" />
+            </button>
+          </div>
+
+          <div className="absolute left-4 top-4 z-10 rounded-full bg-white/10 px-3 py-1.5 text-xs text-zinc-300">
+            Run #{lightboxImage.runIndex} · {lightboxIndex + 1}/{allImages.length}
+          </div>
+
+          {allImages.length > 1 && (
+            <button
+              type="button"
+              className="absolute left-3 z-10 rounded-full bg-white/10 p-2 text-white transition hover:bg-white/20"
+              onClick={(event) => {
+                event.stopPropagation();
+                goLightboxPrev();
+              }}
+              title="上一张"
+            >
+              <ChevronLeft className="size-6" />
+            </button>
+          )}
+
+          <div
+            className="relative flex h-[100dvh] w-[100dvw] items-center justify-center px-2 py-16 sm:px-12"
+            onClick={(event) => event.stopPropagation()}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={lightboxImage.full}
+              alt=""
+              className="max-h-full max-w-full rounded-lg object-contain"
+            />
+          </div>
+
+          {allImages.length > 1 && (
+            <button
+              type="button"
+              className="absolute right-3 z-10 rounded-full bg-white/10 p-2 text-white transition hover:bg-white/20"
+              onClick={(event) => {
+                event.stopPropagation();
+                goLightboxNext();
+              }}
+              title="下一张"
+            >
+              <ChevronRight className="size-6" />
+            </button>
+          )}
+        </div>
+      )}
     </SidebarProvider>
   );
 }

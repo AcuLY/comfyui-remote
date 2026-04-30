@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useTransition, useId, useRef, useCallback } from "react";
+import { useEffect, useState, useTransition, useId } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   DndContext,
   closestCenter,
@@ -64,20 +65,20 @@ function statusDotClass(status: string | null): string {
 }
 
 export function SectionCards({ projectId, sections: initialSections, compact, setCardRef }: SectionCardsProps) {
+  const router = useRouter();
   const [sections, setSections] = useState(initialSections);
   const [isPending, startTransition] = useTransition();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
   const dndId = useId();
 
-  // Sync with props
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const syncEffect = useCallback(() => setSections(initialSections), [initialSections]);
-
-  // When props update, sync state
-  if (sections !== initialSections) {
-    // Use a simple check — we'll handle this via effect below
-  }
+  useEffect(() => {
+    setSections(initialSections);
+    setSelectedIds((prev) => {
+      const visibleIds = new Set(initialSections.map((section) => section.id));
+      return new Set([...prev].filter((id) => visibleIds.has(id)));
+    });
+  }, [initialSections]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -136,11 +137,14 @@ export function SectionCards({ projectId, sections: initialSections, compact, se
   function handleBatchDelete() {
     if (selectedIds.size === 0) return;
     if (!confirm(`确定要删除选中的 ${selectedIds.size} 个小节吗？此操作不可撤销。`)) return;
+    const idsToDelete = [...selectedIds];
     setIsDeleting(true);
     startTransition(async () => {
       try {
-        await deleteSections([...selectedIds]);
+        await deleteSections(idsToDelete);
+        setSections((prev) => prev.filter((section) => !idsToDelete.includes(section.id)));
         setSelectedIds(new Set());
+        router.refresh();
         toast.success(`已删除 ${selectedIds.size} 个小节`);
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "删除失败");
@@ -212,6 +216,9 @@ export function SectionCards({ projectId, sections: initialSections, compact, se
                   projectId={projectId}
                   index={index}
                   setCardRef={setCardRef}
+                  onDeleted={(deletedId) =>
+                    setSections((prev) => prev.filter((item) => item.id !== deletedId))
+                  }
                 />
               ),
             )}
@@ -317,11 +324,13 @@ function SortableSectionCard({
   projectId,
   index,
   setCardRef,
+  onDeleted,
 }: {
   section: Section;
   projectId: string;
   index: number;
   setCardRef: (id: string, el: HTMLDivElement | null) => void;
+  onDeleted: (sectionId: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: section.id,
@@ -365,7 +374,11 @@ function SortableSectionCard({
 
         <div className="flex shrink-0 items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
           <CopySectionButton sectionId={section.id} />
-          <DeleteSectionButton sectionId={section.id} sectionName={section.name} />
+          <DeleteSectionButton
+            sectionId={section.id}
+            sectionName={section.name}
+            onDeleted={onDeleted}
+          />
         </div>
       </div>
 

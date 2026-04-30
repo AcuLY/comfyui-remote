@@ -39,6 +39,31 @@ type ImportLoraEntry = {
   groupBindingId?: string;
 };
 
+export type TemplatePresetImportInput = {
+  presetId: string;
+  variantId?: string | null;
+};
+
+export type TemplateResolvedPresetImport = {
+  presetId: string;
+  presetName: string;
+  variantId: string;
+  variantName: string;
+  label: string;
+  prompt: string;
+  negativePrompt: string | null;
+  lora1: Array<{ path: string; weight: number; enabled: boolean }>;
+  lora2: Array<{ path: string; weight: number; enabled: boolean }>;
+  categoryId: string;
+  categoryName: string;
+  categoryColor: string | null;
+  categoryOrders: {
+    positivePromptOrder: number;
+    lora1Order: number;
+    lora2Order: number;
+  };
+};
+
 // ---------------------------------------------------------------------------
 // Project Template CRUD
 // ---------------------------------------------------------------------------
@@ -187,6 +212,65 @@ export async function getTemplateOptionsForClient(): Promise<
     name: t.name,
     sectionCount: t._count.sections,
   }));
+}
+
+export async function resolveTemplatePresetImports(
+  inputs: TemplatePresetImportInput[],
+): Promise<TemplateResolvedPresetImport[]> {
+  const presetIds = [...new Set(inputs.map((input) => input.presetId))];
+  if (presetIds.length === 0) return [];
+
+  const presets = await prisma.preset.findMany({
+    where: { id: { in: presetIds } },
+    include: {
+      category: {
+        select: {
+          id: true,
+          name: true,
+          color: true,
+          positivePromptOrder: true,
+          lora1Order: true,
+          lora2Order: true,
+        },
+      },
+      variants: { where: { isActive: true }, orderBy: { sortOrder: "asc" } },
+    },
+  });
+  const presetMap = new Map(presets.map((preset) => [preset.id, preset]));
+  const resolvedItems: TemplateResolvedPresetImport[] = [];
+
+  for (const input of inputs) {
+    const preset = presetMap.get(input.presetId);
+    if (!preset) continue;
+
+    const variant = input.variantId
+      ? preset.variants.find((item) => item.id === input.variantId)
+      : preset.variants[0];
+    if (!variant) continue;
+
+    const resolved = await resolveVariantContent(variant.id);
+    resolvedItems.push({
+      presetId: preset.id,
+      presetName: preset.name,
+      variantId: variant.id,
+      variantName: variant.name,
+      label: preset.variants.length === 1 ? preset.name : `${preset.name} / ${variant.name}`,
+      prompt: resolved.prompt,
+      negativePrompt: resolved.negativePrompt,
+      lora1: resolved.lora1,
+      lora2: resolved.lora2,
+      categoryId: preset.category.id,
+      categoryName: preset.category.name,
+      categoryColor: preset.category.color,
+      categoryOrders: {
+        positivePromptOrder: preset.category.positivePromptOrder,
+        lora1Order: preset.category.lora1Order,
+        lora2Order: preset.category.lora2Order,
+      },
+    });
+  }
+
+  return resolvedItems;
 }
 
 // ---------------------------------------------------------------------------
@@ -364,6 +448,9 @@ export async function importTemplateToProject(
         },
       });
 
+      const templateBindingIdMap = new Map<string, string>();
+      const templateGroupBindingIdMap = new Map<string, string>();
+
       // 2. Collect all blocks (from project bindings + from template)
       const allBlocks: Array<{
         type: "preset" | "custom";
@@ -428,8 +515,8 @@ export async function importTemplateToProject(
       const tplBlocks = ts.promptBlocks;
       if (Array.isArray(tplBlocks)) {
         // Build mapping for bindingIds (old -> new)
-        const bindingIdMap = new Map<string, string>();
-        const groupBindingIdMap = new Map<string, string>();
+        const bindingIdMap = templateBindingIdMap;
+        const groupBindingIdMap = templateGroupBindingIdMap;
 
         for (const rawBlock of tplBlocks) {
           if (!rawBlock || typeof rawBlock !== "object") continue;
@@ -453,6 +540,8 @@ export async function importTemplateToProject(
 
           const blockType = block.type === "preset" ? "preset" : "custom";
           const categoryId = typeof block.categoryId === "string" ? block.categoryId : null;
+          const sourceId = blockType === "preset" && typeof block.sourceId === "string" ? block.sourceId : null;
+          const variantId = blockType === "preset" && typeof block.variantId === "string" ? block.variantId : null;
           const catOrder = categoryId ? (catByIdMap.get(categoryId)?.positivePromptOrder ?? 999) : 999;
 
           const oldBindingId = typeof block.bindingId === "string" ? block.bindingId : null;
@@ -465,8 +554,8 @@ export async function importTemplateToProject(
 
           allBlocks.push({
             type: blockType,
-            sourceId: null,
-            variantId: null,
+            sourceId,
+            variantId,
             categoryId,
             bindingId: newBindingId,
             groupBindingId: newGroupBindingId,
@@ -526,8 +615,8 @@ export async function importTemplateToProject(
       const tplLoraConfig = ts.loraConfig as Record<string, unknown> | null;
       if (tplLoraConfig) {
         // Build bindingId mapping for template loras
-        const loraBindingIdMap = new Map<string, string>();
-        const loraGroupBindingIdMap = new Map<string, string>();
+        const loraBindingIdMap = templateBindingIdMap;
+        const loraGroupBindingIdMap = templateGroupBindingIdMap;
 
         const buildLoraBindingMaps = (arr: unknown) => {
           if (!Array.isArray(arr)) return;
@@ -688,7 +777,9 @@ export async function saveProjectAsTemplate(
               negative: block.negative,
               sortOrder: block.sortOrder,
               categoryId: block.categoryId,
-              // Preserve bindingId and groupBindingId for section-level imports
+              // Preserve preset identity and binding ids for section-level imports
+              sourceId: block.type === "preset" ? block.sourceId : undefined,
+              variantId: block.type === "preset" ? block.variantId : undefined,
               bindingId: block.type === "preset" ? block.bindingId : undefined,
               groupBindingId: block.type === "preset" ? block.groupBindingId : undefined,
             }));

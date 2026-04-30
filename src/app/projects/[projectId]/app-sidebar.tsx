@@ -2,14 +2,12 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   Play,
   SlidersHorizontal,
   Download,
   Save,
-  Trash2,
   LayoutList,
   LayoutGrid,
   ChevronLeft,
@@ -20,7 +18,6 @@ import { toast } from "sonner";
 
 import {
   runProject,
-  deleteProject,
   saveProjectAsTemplate,
 } from "@/lib/actions";
 import { exportProjectImages } from "@/app/projects/actions-export";
@@ -84,10 +81,8 @@ export function AppSidebar({
   onNavigateToSection,
 }: AppSidebarProps) {
   const [isPending, startTransition] = useTransition();
-  const router = useRouter();
   const [batchSize, setBatchSize] = useState<string>("");
   const [exporting, setExporting] = useState(false);
-  const [deleteConfirm, setDeleteConfirm] = useState(false);
   const { state: sidebarState } = useSidebar();
   const sidebarContentRef = useSyncedSidebarContent({
     activeSectionId,
@@ -131,22 +126,6 @@ export function AppSidebar({
         toast.success(`已保存为模板「${name}」`);
       } catch (e: unknown) {
         toast.error(e instanceof Error ? e.message : "保存失败");
-      }
-    });
-  }
-
-  function handleDelete() {
-    if (!deleteConfirm) {
-      setDeleteConfirm(true);
-      return;
-    }
-    startTransition(async () => {
-      try {
-        await deleteProject(projectId);
-        toast.success("项目已删除");
-        router.push("/projects");
-      } catch (e: unknown) {
-        toast.error(e instanceof Error ? e.message : "删除失败");
       }
     });
   }
@@ -297,42 +276,6 @@ export function AppSidebar({
                     {isPending ? "保存中…" : "保存为模板"}
                   </span>
                 </SidebarMenuButton>
-              </SidebarMenuItem>
-
-              {/* 删除项目 */}
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  tooltip="删除项目"
-                  onClick={handleDelete}
-                  disabled={isPending}
-                  className={
-                    deleteConfirm
-                      ? "bg-red-500/15 text-red-300 hover:bg-red-500/25 text-[11px] sm:text-sm"
-                      : "text-red-400 hover:bg-red-500/10 hover:text-red-300 text-[11px] sm:text-sm"
-                  }
-                >
-                  <Trash2 className="size-4" />
-                  <span className="text-[11px] sm:inherit">
-                    {deleteConfirm ? "确认删除？" : "删除项目"}
-                  </span>
-                </SidebarMenuButton>
-                {deleteConfirm && isExpanded && (
-                  <div className="flex gap-1.5 px-1 pb-0.5">
-                    <button
-                      onClick={handleDelete}
-                      disabled={isPending}
-                      className="rounded-md border border-red-500/30 bg-red-500/15 px-2 py-0.5 text-[11px] text-red-300 transition hover:bg-red-500/25 disabled:opacity-50"
-                    >
-                      {isPending ? "删除中…" : "确认"}
-                    </button>
-                    <button
-                      onClick={() => setDeleteConfirm(false)}
-                      className="rounded-md border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[11px] text-zinc-400 transition hover:bg-white/[0.08]"
-                    >
-                      取消
-                    </button>
-                  </div>
-                )}
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
