@@ -202,7 +202,7 @@
 
 .brandName {
   display: grid;
-  gap: 2px;
+  gap: 4px;
   min-width: 0;
 }
 
@@ -845,7 +845,7 @@
 
 .switchText {
   display: grid;
-  gap: 2px;
+  gap: 4px;
 }
 
 .switchText strong {
@@ -892,6 +892,9 @@
 
 .segment,
 .tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   min-height: 30px;
   border: 0;
   border-radius: 6px;
@@ -1221,7 +1224,7 @@
     min-width: 0;
     min-height: 50px;
     place-items: center;
-    gap: 2px;
+    gap: 4px;
     border: 1px solid transparent;
     border-radius: 14px;
     background: transparent;
