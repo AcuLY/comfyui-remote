@@ -24,7 +24,6 @@ export default async function TemplateSectionPage({
       sectionIndex={index}
       totalSections={template.sections.length}
       section={template.sections[index]}
-      allSections={template.sections}
       library={library}
     />
   );

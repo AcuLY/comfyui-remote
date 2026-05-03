@@ -26,6 +26,12 @@ export type UpdateProjectTemplateInput = {
   sections?: ProjectTemplateSectionData[];
 };
 
+export type UpdateProjectTemplateSectionInput = {
+  templateId: string;
+  sectionId: string;
+  section: ProjectTemplateSectionData;
+};
+
 type ImportLoraEntry = {
   id: string;
   path: string;
@@ -37,6 +43,16 @@ type ImportLoraEntry = {
   sourceName?: string;
   bindingId?: string;
   groupBindingId?: string;
+};
+
+type TemplateSectionJsonBlock = {
+  type?: string | null;
+  sourceId?: string | null;
+  variantId?: string | null;
+  categoryId?: string | null;
+  bindingId?: string | null;
+  groupBindingId?: string | null;
+  sortOrder: number;
 };
 
 export type TemplatePresetImportInput = {
@@ -67,6 +83,74 @@ export type TemplateResolvedPresetImport = {
 // ---------------------------------------------------------------------------
 // Project Template CRUD
 // ---------------------------------------------------------------------------
+
+function toNullableJsonValue(value: unknown): Prisma.InputJsonValue | typeof Prisma.DbNull {
+  if (value === null || value === undefined) return Prisma.DbNull;
+  return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
+}
+
+function buildTemplateSectionUpdateData(section: ProjectTemplateSectionData) {
+  return {
+    name: section.name,
+    notes: section.notes,
+    aspectRatio: section.aspectRatio,
+    shortSidePx: section.shortSidePx,
+    batchSize: section.batchSize,
+    seedPolicy1: section.seedPolicy1,
+    seedPolicy2: section.seedPolicy2,
+    ksampler1: toNullableJsonValue(section.ksampler1),
+    ksampler2: toNullableJsonValue(section.ksampler2),
+    upscaleFactor: section.upscaleFactor,
+    checkpointName: section.checkpointName,
+    loraConfig: toNullableJsonValue(section.loraConfig),
+    extraParams: toNullableJsonValue(section.extraParams),
+    promptBlocks:
+      section.promptBlocks.length > 0
+        ? toNullableJsonValue(section.promptBlocks)
+        : Prisma.DbNull,
+  };
+}
+
+function hasEquivalentTemplateLoraEntry(
+  entries: ImportLoraEntry[],
+  candidate: ImportLoraEntry,
+) {
+  const isBoundCandidate = Boolean(candidate.bindingId || candidate.groupBindingId);
+  return entries.some((existing) => {
+    if (existing.path !== candidate.path) return false;
+    if (!isBoundCandidate) return true;
+    return (
+      existing.bindingId === candidate.bindingId &&
+      existing.groupBindingId === candidate.groupBindingId
+    );
+  });
+}
+
+function findProjectLevelTemplateBindings(
+  blocks: TemplateSectionJsonBlock[],
+  projectBindings: PresetBinding[],
+) {
+  const projectLevelBlockIndexes = new Set<number>();
+  const projectLevelBindingIds = new Set<string>();
+
+  for (const binding of projectBindings) {
+    const blockIndex = blocks.findIndex(
+      (block, index) =>
+        !projectLevelBlockIndexes.has(index) &&
+        block.type === "preset" &&
+        !block.groupBindingId &&
+        block.sourceId === binding.presetId &&
+        (!binding.categoryId || block.categoryId === binding.categoryId),
+    );
+
+    if (blockIndex < 0) continue;
+    projectLevelBlockIndexes.add(blockIndex);
+    const bindingId = blocks[blockIndex].bindingId;
+    if (bindingId) projectLevelBindingIds.add(bindingId);
+  }
+
+  return { projectLevelBlockIndexes, projectLevelBindingIds };
+}
 
 export async function createProjectTemplate(
   input: CreateProjectTemplateInput,
@@ -157,6 +241,29 @@ export async function updateProjectTemplate(
 
   revalidatePath("/assets/templates");
   revalidatePath(`/assets/templates/${id}/edit`);
+}
+
+export async function updateProjectTemplateSection(
+  input: UpdateProjectTemplateSectionInput,
+): Promise<void> {
+  const existing = await prisma.projectTemplateSection.findFirst({
+    where: {
+      id: input.sectionId,
+      projectTemplateId: input.templateId,
+    },
+    select: { id: true, sortOrder: true },
+  });
+
+  if (!existing) throw new Error("TEMPLATE_SECTION_NOT_FOUND");
+
+  await prisma.projectTemplateSection.update({
+    where: { id: input.sectionId },
+    data: buildTemplateSectionUpdateData(input.section),
+  });
+
+  revalidatePath("/assets/templates");
+  revalidatePath(`/assets/templates/${input.templateId}/edit`);
+  revalidatePath(`/assets/templates/${input.templateId}/sections/${existing.sortOrder}`);
 }
 
 export async function deleteProjectTemplate(
@@ -646,7 +753,6 @@ export async function importTemplateToProject(
             const e = entry as Record<string, unknown>;
             const path = typeof e.path === "string" ? e.path : "";
             if (!path) continue;
-            if (loraConfig[dimension].some((existing) => existing.path === path)) continue;
 
             const source = typeof e.source === "string" && e.source === "preset" ? "preset" : "manual";
             const sourceLabel = typeof e.sourceLabel === "string" ? e.sourceLabel : undefined;
@@ -658,7 +764,7 @@ export async function importTemplateToProject(
             const newBindingId = oldBindingId ? (loraBindingIdMap.get(oldBindingId) ?? undefined) : undefined;
             const newGroupBindingId = oldGroupBindingId ? (loraGroupBindingIdMap.get(oldGroupBindingId) ?? undefined) : undefined;
 
-            loraConfig[dimension].push({
+            const nextEntry: ImportLoraEntry = {
               id: typeof e.id === "string" ? e.id : createLoraEntryId(),
               path,
               weight: typeof e.weight === "number" ? e.weight : 1,
@@ -669,7 +775,9 @@ export async function importTemplateToProject(
               sourceName,
               bindingId: newBindingId,
               groupBindingId: newGroupBindingId,
-            });
+            };
+            if (hasEquivalentTemplateLoraEntry(loraConfig[dimension], nextEntry)) continue;
+            loraConfig[dimension].push(nextEntry);
           }
         };
         appendTemplateLoras(tplLoraConfig.lora1, "lora1");
@@ -749,13 +857,9 @@ export async function saveProjectAsTemplate(
   });
   if (!project) throw new Error("PROJECT_NOT_FOUND");
 
-  // Get project-level presetIds (these should NOT be saved to template)
-  const projectPresetIds = new Set<string>();
-  if (Array.isArray(project.presetBindings)) {
-    for (const binding of project.presetBindings as PresetBinding[]) {
-      projectPresetIds.add(binding.presetId);
-    }
-  }
+  const projectBindings = Array.isArray(project.presetBindings)
+    ? (project.presetBindings as PresetBinding[])
+    : [];
 
   const template = await prisma.projectTemplate.create({
     data: {
@@ -763,23 +867,17 @@ export async function saveProjectAsTemplate(
       description: templateDescription ?? null,
       sections: {
         create: project.sections.map((section) => {
-          const isProjectLevelPresetBlock = (block: {
-            type: string;
-            sourceId: string | null;
-            groupBindingId: string | null;
-          }) =>
-            block.type === "preset" &&
-            !block.groupBindingId &&
-            Boolean(block.sourceId && projectPresetIds.has(block.sourceId));
+          const { projectLevelBlockIndexes, projectLevelBindingIds } =
+            findProjectLevelTemplateBindings(section.promptBlocks, projectBindings);
 
           // Filter out blocks from project-level bindings, keep section-level imports
           // For section-level imports, preserve bindingId/groupBindingId for group relationship
           const templateBlocks = section.promptBlocks
-            .filter((block) => {
+            .filter((block, index) => {
               // Keep custom blocks
               if (block.type === "custom") return true;
-              // For preset blocks: only keep if NOT from project-level binding
-              if (isProjectLevelPresetBlock(block)) return false;
+              // For preset blocks: only drop the concrete block matched to a project-level binding.
+              if (projectLevelBlockIndexes.has(index)) return false;
               return true;
             })
             .map((block) => ({
@@ -798,14 +896,6 @@ export async function saveProjectAsTemplate(
 
           // Filter out loras from project-level bindings, keep section-level imports
           const loraCfg = section.loraConfig as Record<string, unknown> | null;
-
-          // Get bindingIds from project-level blocks (to filter loras)
-          const projectLevelBindingIds = new Set<string>();
-          for (const block of section.promptBlocks) {
-            if (isProjectLevelPresetBlock(block) && block.bindingId) {
-              projectLevelBindingIds.add(block.bindingId);
-            }
-          }
 
           const filterLorasByBinding = (arr: unknown) => {
             if (!Array.isArray(arr)) return [];

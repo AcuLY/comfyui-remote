@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, Download, Package, Trash2, Unlink, ClipboardCopy, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
-import { resolveTemplatePresetImports, updateProjectTemplate } from "@/lib/actions";
+import { flattenGroup, resolveTemplatePresetImports, updateProjectTemplateSection } from "@/lib/actions";
 import { AspectRatioPicker } from "@/components/aspect-ratio-picker";
 import { BatchSizeQuickFill } from "@/components/batch-size-quick-fill";
 import { UpscaleFactorQuickFill } from "@/components/upscale-factor-quick-fill";
@@ -73,7 +73,6 @@ type Props = {
   sectionIndex: number;
   totalSections: number;
   section: ProjectTemplateSectionData;
-  allSections: ProjectTemplateSectionData[];
   library?: PresetLibraryV2;
 };
 
@@ -86,7 +85,6 @@ export function TemplateSectionDetailClient({
   sectionIndex,
   totalSections,
   section: initialSection,
-  allSections,
   library,
 }: Props) {
   const router = useRouter();
@@ -289,18 +287,16 @@ export function TemplateSectionDetailClient({
     startTransition(async () => {
       try {
         const updated = buildUpdatedSection();
-        const newSections = allSections.map((s, i) =>
-          i === sectionIndex ? updated : s,
-        );
-        await updateProjectTemplate({
-          id: templateId,
-          sections: newSections,
+        await updateProjectTemplateSection({
+          templateId,
+          sectionId: initialSection.id,
+          section: updated,
         });
       } catch (e: unknown) {
         toast.error(e instanceof Error ? e.message : "保存失败");
       }
     });
-  }, [allSections, buildUpdatedSection, sectionIndex, templateId]);
+  }, [buildUpdatedSection, initialSection.id, templateId]);
 
   useEffect(() => {
     saveRef.current = saveCurrentSection;
@@ -499,43 +495,30 @@ export function TemplateSectionDetailClient({
   }
 
   function handleImportGroup(groupId: string) {
-    const allCategories = library?.categories ?? [];
-
-    for (const cat of allCategories) {
-      const group = (cat.groups ?? []).find((g) => g.id === groupId);
-      if (!group) continue;
-
-      const inputs: Array<{ presetId: string; variantId: string | null }> = [];
-
-      for (const member of group.members) {
-        if (!member.presetId) continue;
-
-        let foundPreset: { preset: typeof cat.presets[number] } | null = null;
-        for (const c of allCategories) {
-          const p = c.presets.find((pr) => pr.id === member.presetId);
-          if (p) { foundPreset = { preset: p }; break; }
+    startTransition(async () => {
+      const members = await flattenGroup(groupId);
+      const inputs = members.flatMap((member) => {
+        for (const cat of library?.categories ?? []) {
+          const preset = cat.presets.find((item) => item.id === member.presetId);
+          if (!preset) continue;
+          const variant = member.variantId
+            ? preset.variants.find((item) => item.id === member.variantId)
+            : preset.variants[0];
+          return variant ? [{ presetId: preset.id, variantId: variant.id }] : [];
         }
-        if (!foundPreset) continue;
+        return [];
+      });
 
-        const variant = member.variantId
-          ? foundPreset.preset.variants.find((v) => v.id === member.variantId)
-          : foundPreset.preset.variants[0];
-        if (!variant) continue;
-
-        inputs.push({ presetId: foundPreset.preset.id, variantId: variant.id });
+      if (inputs.length === 0) {
+        toast.error("未找到预制组");
+        return;
       }
 
-      if (inputs.length > 0) {
-        // Generate a groupBindingId for all presets in this group
-        const groupBindingId = `group-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-        startTransition(async () => {
-          const items = await resolveTemplatePresetImports(inputs);
-          importPresets(items, groupBindingId);
-        });
-      }
-      return;
-    }
-    toast.error("未找到预制组");
+      // Generate a groupBindingId for all presets in this group
+      const groupBindingId = `group-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+      const items = await resolveTemplatePresetImports(inputs);
+      importPresets(items, groupBindingId);
+    });
   }
 
   // ── Render ──
