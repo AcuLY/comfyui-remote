@@ -4,8 +4,16 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { Check, CheckSquare, ClipboardCheck, Square, Trash2 } from "lucide-react";
-import { Star } from "lucide-react";
+import {
+  Check,
+  CheckSquare,
+  ClipboardCheck,
+  Eye,
+  ImageIcon,
+  Square,
+  Star,
+  Trash2,
+} from "lucide-react";
 import { keepImages, trashImages } from "@/lib/actions";
 import { ResultsGalleryProvider } from "./results-gallery";
 
@@ -28,6 +36,7 @@ type RunData = {
     status: string;
     featured: boolean;
     featured2: boolean;
+    cover: boolean;
   }[];
 };
 export function ResultsGrid({ runs }: { runs: RunData[] }) {
@@ -71,7 +80,7 @@ export function ResultsGrid({ runs }: { runs: RunData[] }) {
 
   return (
     <ResultsGalleryProvider allImages={allImages}>
-      {({ openLightbox, isFeatured, isFeatured2 }) => (
+      {({ openLightbox, isFeatured, isFeatured2, isCover }) => (
         <div className="space-y-6">
           {/* Image grid by run */}
           {runs.map((run) => {
@@ -136,6 +145,7 @@ export function ResultsGrid({ runs }: { runs: RunData[] }) {
                       );
                       const featured = isFeatured(img.id);
                       const featured2 = isFeatured2(img.id);
+                      const cover = isCover(img.id);
                       const isSelected = selected.has(img.id);
                       return (
                         <div
@@ -162,15 +172,16 @@ export function ResultsGrid({ runs }: { runs: RunData[] }) {
                           </button>
 
                           {/* Featured markers */}
-                          {(featured || featured2) && (
+                          {(featured || featured2 || cover) && (
                             <div className="absolute right-1.5 top-1.5 flex items-center gap-1">
                               {featured && (
                                 <Star className="size-3.5 fill-amber-400 text-amber-400 drop-shadow" />
                               )}
                               {featured2 && (
-                                <span className="rounded bg-cyan-400/90 px-1 py-0.5 text-[8px] font-semibold leading-none text-zinc-950 shadow">
-                                  2
-                                </span>
+                                <Eye className="size-3.5 rounded-full bg-cyan-400/90 p-0.5 text-zinc-950 shadow" />
+                              )}
+                              {cover && (
+                                <ImageIcon className="size-3.5 rounded-full bg-violet-400/90 p-0.5 text-zinc-950 shadow" />
                               )}
                             </div>
                           )}

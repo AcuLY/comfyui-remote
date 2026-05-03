@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
-import { Check, ChevronLeft, ChevronRight, Star, Trash2, X } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Eye, ImageIcon, Star, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { keepImages, trashImages } from "@/lib/actions";
 
@@ -19,10 +19,11 @@ type GalleryImage = {
   status: string;
   featured: boolean;
   featured2: boolean;
+  cover: boolean;
   runIndex: number;
 };
 
-type MarkerField = "featured" | "featured2";
+type MarkerField = "featured" | "featured2" | "cover";
 type ReviewAction = "keep" | "trash";
 
 export function ResultsGalleryProvider({
@@ -34,13 +35,14 @@ export function ResultsGalleryProvider({
     openLightbox: (index: number) => void;
     isFeatured: (imageId: string) => boolean;
     isFeatured2: (imageId: string) => boolean;
+    isCover: (imageId: string) => boolean;
   }) => ReactNode;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [allImages, setAllImages] = useState(initialImages);
-  const [imageLoaded, setImageLoaded] = useState(false);
+  const [loadedImageId, setLoadedImageId] = useState<string | null>(null);
   const [togglingMarker, setTogglingMarker] = useState<MarkerField | null>(null);
   const [reviewingAction, setReviewingAction] = useState<ReviewAction | null>(null);
   const [, startTransition] = useTransition();
@@ -50,12 +52,8 @@ export function ResultsGalleryProvider({
   }, [initialImages]);
 
   const current = allImages[currentIndex];
+  const imageLoaded = current ? loadedImageId === current.id : false;
   const busy = Boolean(togglingMarker || reviewingAction);
-
-  useEffect(() => {
-    if (!open) return;
-    setImageLoaded(false);
-  }, [current?.id, open]);
 
   useEffect(() => {
     if (open && allImages.length === 0) setOpen(false);
@@ -75,9 +73,15 @@ export function ResultsGalleryProvider({
   const setImageMarker = useCallback(
     (imageId: string, field: MarkerField, value: boolean) => {
       setAllImages((prev) =>
-        prev.map((image) =>
-          image.id === imageId ? { ...image, [field]: value } : image,
-        ),
+        prev.map((image) => {
+          if (field === "cover") {
+            return {
+              ...image,
+              cover: image.id === imageId ? value : value ? false : image.cover,
+            };
+          }
+          return image.id === imageId ? { ...image, [field]: value } : image;
+        }),
       );
     },
     [],
@@ -86,12 +90,18 @@ export function ResultsGalleryProvider({
   const toggleMarker = useCallback(
     (field: MarkerField) => {
       if (!current || busy) return;
+      if (field === "cover" && current.cover) return;
 
-      const nextValue = !current[field];
-      const endpoint = field === "featured" ? "featured" : "featured2";
-      const body = field === "featured"
-        ? { featured: nextValue }
-        : { featured2: nextValue };
+      const nextValue = field === "cover" ? true : !current[field];
+      const endpoint =
+        field === "featured" ? "featured" : field === "featured2" ? "featured2" : "cover";
+      const body =
+        field === "featured"
+          ? { featured: nextValue }
+          : field === "featured2"
+            ? { featured2: nextValue }
+            : { cover: true };
+      const previousImages = allImages;
 
       setTogglingMarker(field);
       setImageMarker(current.id, field, nextValue);
@@ -117,14 +127,18 @@ export function ResultsGalleryProvider({
 
           router.refresh();
         } catch (error) {
-          setImageMarker(current.id, field, !nextValue);
+          if (field === "cover") {
+            setAllImages(previousImages);
+          } else {
+            setImageMarker(current.id, field, !nextValue);
+          }
           toast.error(error instanceof Error ? error.message : "更新标记失败");
         } finally {
           setTogglingMarker(null);
         }
       });
     },
-    [busy, current, router, setImageMarker],
+    [allImages, busy, current, router, setImageMarker],
   );
 
   const reviewCurrent = useCallback(
@@ -173,6 +187,7 @@ export function ResultsGalleryProvider({
       if (event.key === "ArrowRight" && allImages.length > 1) goNext();
       if (event.key === "f" || event.key === "F") toggleMarker("featured");
       if (event.key === "2") toggleMarker("featured2");
+      if (event.key === "c" || event.key === "C") toggleMarker("cover");
       if (event.key === "k" || event.key === "K") reviewCurrent("keep");
       if (event.key === "Delete" || event.key === "Backspace") reviewCurrent("trash");
     };
@@ -199,9 +214,14 @@ export function ResultsGalleryProvider({
     [allImages],
   );
 
+  const isCover = useCallback(
+    (imageId: string) => allImages.find((img) => img.id === imageId)?.cover ?? false,
+    [allImages],
+  );
+
   return (
     <>
-      {children({ openLightbox, isFeatured, isFeatured2 })}
+      {children({ openLightbox, isFeatured, isFeatured2, isCover })}
 
       {open && current && (
         <div
@@ -225,12 +245,17 @@ export function ResultsGalleryProvider({
               )}
               {current.featured && (
                 <span className="rounded bg-amber-400/80 px-1.5 py-0.5 text-[10px] text-white">
-                  精选
+                  p站
                 </span>
               )}
               {current.featured2 && (
                 <span className="rounded bg-cyan-400/80 px-1.5 py-0.5 text-[10px] text-white">
-                  精选2
+                  预览
+                </span>
+              )}
+              {current.cover && (
+                <span className="rounded bg-violet-400/80 px-1.5 py-0.5 text-[10px] text-white">
+                  封面
                 </span>
               )}
             </div>
@@ -276,8 +301,8 @@ export function ResultsGalleryProvider({
                 key={current.id}
                 src={current.full}
                 alt=""
-                onLoad={() => setImageLoaded(true)}
-                onError={() => setImageLoaded(true)}
+                onLoad={() => setLoadedImageId(current.id)}
+                onError={() => setLoadedImageId(current.id)}
                 className={`max-h-[calc(100dvh-11rem)] max-w-full rounded-lg object-contain transition-opacity duration-150 ${
                   imageLoaded ? "opacity-100" : "opacity-0"
                 }`}
@@ -299,7 +324,7 @@ export function ResultsGalleryProvider({
           </div>
 
           <div
-            className="z-10 grid grid-cols-2 gap-2 border-t border-white/10 bg-black/50 p-3 sm:grid-cols-4 sm:px-4"
+            className="z-10 grid grid-cols-2 gap-2 border-t border-white/10 bg-black/50 p-3 sm:grid-cols-5 sm:px-4"
             onClick={(event) => event.stopPropagation()}
           >
             <button
@@ -334,7 +359,7 @@ export function ResultsGalleryProvider({
                 className="size-4"
                 fill={current.featured ? "currentColor" : "none"}
               />
-              {current.featured ? "取消精选" : "精选"}
+              {current.featured ? "取消p站" : "p站"}
             </button>
             <button
               type="button"
@@ -346,11 +371,21 @@ export function ResultsGalleryProvider({
                   : "border-white/15 bg-white/10 text-white/80 hover:bg-white/15 hover:text-cyan-100"
               }`}
             >
-              <Star
-                className="size-4"
-                fill={current.featured2 ? "currentColor" : "none"}
-              />
-              {current.featured2 ? "取消精选2" : "精选2"}
+              <Eye className="size-4" />
+              {current.featured2 ? "取消预览" : "预览"}
+            </button>
+            <button
+              type="button"
+              disabled={busy || current.cover}
+              onClick={() => toggleMarker("cover")}
+              className={`inline-flex h-11 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-medium transition disabled:opacity-45 ${
+                current.cover
+                  ? "border-violet-300/35 bg-violet-400/25 text-violet-100"
+                  : "border-white/15 bg-white/10 text-white/80 hover:bg-white/15 hover:text-violet-100"
+              }`}
+            >
+              <ImageIcon className="size-4" />
+              {current.cover ? "封面" : "设为封面"}
             </button>
           </div>
         </div>

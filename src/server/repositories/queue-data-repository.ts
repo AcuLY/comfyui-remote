@@ -193,7 +193,7 @@ async function loadVisibleQueueRunPage(page: number, pageSize: number) {
     take: pageSize,
     include: {
       project: {
-        select: { id: true, title: true, presetBindings: true },
+        select: { id: true, title: true, coverImageId: true, presetBindings: true },
       },
       projectSection: true,
       images: {
@@ -217,7 +217,7 @@ async function loadVisibleQueueRuns(): Promise<{
     orderBy: { createdAt: "desc" },
     include: {
       project: {
-        select: { id: true, title: true, presetBindings: true },
+        select: { id: true, title: true, coverImageId: true, presetBindings: true },
       },
       projectSection: true,
       images: {
@@ -324,7 +324,7 @@ export async function getRunningRuns(): Promise<RunningRun[]> {
     orderBy: { createdAt: "desc" },
     include: {
       project: {
-        select: { id: true, title: true, presetBindings: true },
+        select: { id: true, title: true, coverImageId: true, presetBindings: true },
       },
       projectSection: true,
     },
@@ -395,7 +395,7 @@ export async function getReviewGroup(runId: string): Promise<ReviewGroup | null>
     where: { id: runId },
     include: {
       project: {
-        select: { id: true, title: true, presetBindings: true },
+        select: { id: true, title: true, coverImageId: true, presetBindings: true },
       },
       projectSection: true,
       images: {
@@ -424,6 +424,7 @@ export async function getReviewGroup(runId: string): Promise<ReviewGroup | null>
     status: img.reviewStatus as ReviewStatus,
     featured: img.featured,
     featured2: img.featured2,
+    cover: img.id === run.project.coverImageId,
   }));
 
   return {

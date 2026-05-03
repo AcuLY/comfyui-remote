@@ -3,14 +3,14 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, useTransition } from "react";
-import { Check, ChevronRight, Star, Trash2 } from "lucide-react";
+import { Check, ChevronRight, Eye, ImageIcon, Star, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { keepImages, trashImages } from "@/lib/actions";
 import type { ReviewImage } from "@/lib/types";
 import { ImageLightbox } from "./image-lightbox";
 
 type LastAction = "keep" | "trash";
-type MarkerField = "featured" | "featured2";
+type MarkerField = "featured" | "featured2" | "cover";
 
 export function ReviewGrid({
   images,
@@ -170,9 +170,15 @@ export function ReviewGrid({
   const setImageMarker = useCallback(
     (imageId: string, field: MarkerField, value: boolean) => {
       setReviewImages((prev) =>
-        prev.map((image) =>
-          image.id === imageId ? { ...image, [field]: value } : image,
-        ),
+        prev.map((image) => {
+          if (field === "cover") {
+            return {
+              ...image,
+              cover: image.id === imageId ? value : value ? false : image.cover,
+            };
+          }
+          return image.id === imageId ? { ...image, [field]: value } : image;
+        }),
       );
     },
     [],
@@ -181,13 +187,19 @@ export function ReviewGrid({
   const toggleLightboxMarker = useCallback(
     (field: MarkerField) => {
       if (!lightboxImage || lightboxBusy) return;
+      if (field === "cover" && lightboxImage.cover) return;
 
       const imageId = lightboxImage.id;
-      const nextValue = !lightboxImage[field];
-      const endpoint = field === "featured" ? "featured" : "featured2";
-      const body = field === "featured"
-        ? { featured: nextValue }
-        : { featured2: nextValue };
+      const nextValue = field === "cover" ? true : !lightboxImage[field];
+      const endpoint =
+        field === "featured" ? "featured" : field === "featured2" ? "featured2" : "cover";
+      const body =
+        field === "featured"
+          ? { featured: nextValue }
+          : field === "featured2"
+            ? { featured2: nextValue }
+            : { cover: true };
+      const previousImages = reviewImages;
 
       setTogglingMarker(field);
       setImageMarker(imageId, field, nextValue);
@@ -213,14 +225,18 @@ export function ReviewGrid({
 
           router.refresh();
         } catch (error) {
-          setImageMarker(imageId, field, !nextValue);
+          if (field === "cover") {
+            setReviewImages(previousImages);
+          } else {
+            setImageMarker(imageId, field, !nextValue);
+          }
           toast.error(error instanceof Error ? error.message : "更新标记失败");
         } finally {
           setTogglingMarker(null);
         }
       });
     },
-    [lightboxBusy, lightboxImage, router, setImageMarker],
+    [lightboxBusy, lightboxImage, reviewImages, router, setImageMarker],
   );
 
   const reviewLightboxImage = useCallback(
@@ -306,15 +322,16 @@ export function ReviewGrid({
                 </span>
               </div>
 
-              {(image.featured || image.featured2) && (
+              {(image.featured || image.featured2 || image.cover) && (
                 <div className="pointer-events-none absolute right-2 top-2 z-10 flex items-center gap-1">
                   {image.featured && (
                     <Star className="size-4 fill-amber-400 text-amber-400 drop-shadow" />
                   )}
                   {image.featured2 && (
-                    <span className="rounded bg-cyan-400/90 px-1.5 py-0.5 text-[9px] font-semibold leading-none text-zinc-950 shadow">
-                      2
-                    </span>
+                    <Eye className="size-4 rounded-full bg-cyan-400/90 p-0.5 text-zinc-950 shadow" />
+                  )}
+                  {image.cover && (
+                    <ImageIcon className="size-4 rounded-full bg-violet-400/90 p-0.5 text-zinc-950 shadow" />
                   )}
                 </div>
               )}

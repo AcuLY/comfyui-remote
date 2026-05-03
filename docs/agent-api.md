@@ -13,7 +13,7 @@ Core workflow:
 3. Add prompt blocks manually or import presets/preset groups from the preset library.
 4. Adjust section runtime parameters such as aspect ratio, batch size, KSampler settings, upscale factor, seed policies, and LoRA configuration.
 5. Run one section or all enabled sections.
-6. Review generated image results, marking images as kept, trashed, restored, or featured.
+6. Review generated image results, marking images as kept, trashed, restored, p站, 预览, or project cover.
 
 Core terms:
 
@@ -29,7 +29,7 @@ Core terms:
 - **LoRA Config**: Section-level LoRA lists split into `lora1` and `lora2`. Preset-imported LoRAs can also carry binding metadata so they stay associated with their prompt blocks.
 - **Run**: One execution record for a section. Runs move through states such as queued, running, done, failed, and cancelled, and can expose the submitted workflow JSON.
 - **Queue**: The operational view of pending/running/completed runs. Clearing active queue items cancels queued/running work; clearing finished queue items deletes finished/failed/cancelled run records.
-- **Image Result**: A generated image attached to a run. Images can be kept, trashed, restored, or marked featured.
+- **Image Result**: A generated image attached to a run. Images can be kept, trashed, restored, marked for p站, marked for 预览, or selected as the project cover.
 - **ComfyUI**: The external generation engine. This app manages ComfyUI process status, submits workflows, downloads outputs, and stores generated files.
 
 Agent guidance:
@@ -87,7 +87,9 @@ or:
 | Read run detail and workflow | `GET /api/runs/:runId`, `GET /api/runs/:runId/workflow` |
 | Keep or trash generated images | `POST /api/runs/:runId/review/keep`, `POST /api/runs/:runId/review/trash` |
 | Restore trashed images | `POST /api/images/:imageId/restore` |
-| Toggle featured image | `POST /api/images/:imageId/featured` |
+| Toggle p站 image | `POST /api/images/:imageId/featured` |
+| Toggle 预览 image | `POST /api/images/:imageId/featured2` |
+| Set project cover image | `POST /api/images/:imageId/cover` |
 | Read image files | `GET /api/images/:path...` |
 | Manage templates | `GET/POST /api/templates`, `GET/PATCH/DELETE /api/templates/:templateId`, `POST /api/templates/:templateId/import` |
 | Manage preset library | `/api/preset-library/**` endpoints listed below |
@@ -155,7 +157,7 @@ Deletes the project and cascaded data.
 | `POST` | `/api/projects/:projectId/copy` | none | creates a copied project |
 | `POST` | `/api/projects/:projectId/run` | `{ "overrideBatchSize": 4 }` optional | enqueues and submits all enabled sections |
 | `POST` | `/api/projects/:projectId/cancel-runs` | none | cancels queued/running runs for the project |
-| `POST` | `/api/projects/:projectId/export` | none | exports kept images into `data/export` |
+| `POST` | `/api/projects/:projectId/export` | none | requires a project cover, exports kept images into `data/export`, writes `cover.jpg`, writes p站 images to `pixiv/`, and writes 预览 images to `preview/` |
 | `POST` | `/api/projects/:projectId/save-as-template` | template metadata | saves the current project as a reusable template |
 
 ## Sections
@@ -252,7 +254,9 @@ Deletes one prompt block.
 | `POST` | `/api/runs/:runId/review/trash` | `{ "imageIds": ["..."], "reason": "optional" }` | trashes images |
 | `GET` | `/api/trash` | none | lists trashed images |
 | `POST` | `/api/images/:imageId/restore` | none | restores one trashed image |
-| `POST` | `/api/images/:imageId/featured` | `{ "featured": true }` | toggles featured flag |
+| `POST` | `/api/images/:imageId/featured` | `{ "featured": true }` | toggles p站 flag |
+| `POST` | `/api/images/:imageId/featured2` | `{ "featured2": true }` | toggles 预览 flag |
+| `POST` | `/api/images/:imageId/cover` | `{ "cover": true }` | sets the image as the project cover; selecting another image replaces the existing cover |
 | `GET` | `/api/images/:path...` | none | serves image files |
 
 ## Templates

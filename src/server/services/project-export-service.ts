@@ -1,5 +1,5 @@
 import { createWriteStream } from "node:fs";
-import { mkdir, readdir, rm, unlink } from "node:fs/promises";
+import { access, mkdir, readdir, rm, unlink } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import archiver from "archiver";
 import sharp from "sharp";
@@ -19,6 +19,7 @@ export async function exportProjectImages(projectId: string): Promise<ExportProj
     select: {
       id: true,
       title: true,
+      coverImageId: true,
       sections: {
         orderBy: { sortOrder: "asc" },
         include: {
@@ -48,6 +49,30 @@ export async function exportProjectImages(projectId: string): Promise<ExportProj
 
   const exportName = project.title;
 
+  if (!project.coverImageId) {
+    return { success: false, message: "请先选择封面后再做图片整合" };
+  }
+
+  const coverImage = await prisma.imageResult.findFirst({
+    where: {
+      id: project.coverImageId,
+      reviewStatus: { not: "trashed" },
+      run: { projectId: project.id },
+    },
+    select: { filePath: true },
+  });
+
+  if (!coverImage) {
+    return { success: false, message: "封面图片不存在或已被删除，请重新选择封面" };
+  }
+
+  const coverSourcePath = resolve(/* turbopackIgnore: true */ process.cwd(), coverImage.filePath);
+  try {
+    await access(coverSourcePath);
+  } catch {
+    return { success: false, message: "封面图片文件不存在，请重新选择封面" };
+  }
+
   const exportDir = join(EXPORT_ROOT, exportName);
   const pixivDir = join(exportDir, "pixiv");
   const previewDir = join(exportDir, "preview");
@@ -70,6 +95,14 @@ export async function exportProjectImages(projectId: string): Promise<ExportProj
   await mkdir(tempJpgDir, { recursive: true });
   await mkdir(pixivDir, { recursive: true });
   await mkdir(previewDir, { recursive: true });
+
+  try {
+    await sharp(coverSourcePath).jpeg({ quality: 90 }).toFile(join(exportDir, "cover.jpg"));
+  } catch (error) {
+    console.error(`Failed to convert cover image ${coverSourcePath}:`, error);
+    await rm(exportDir, { recursive: true, force: true });
+    return { success: false, message: "封面图片转换失败，请检查封面图片文件" };
+  }
 
   const jpgFiles: string[] = [];
   let globalIndex = 1;
@@ -134,7 +167,7 @@ export async function exportProjectImages(projectId: string): Promise<ExportProj
 
   return {
     success: true,
-    message: `Exported ${allKept.length} kept images to ${exportName}.zip${pixivIndex > 1 ? `, ${pixivIndex - 1} featured images to pixiv/` : ""}${previewIndex > 1 ? `, and ${previewIndex - 1} featured2 images to preview/` : ""}`,
+    message: `图片整合完成：${allKept.length} 张保留图打包为 ${exportName}.zip，封面已输出 cover.jpg${pixivIndex > 1 ? `，${pixivIndex - 1} 张 p站图输出到 pixiv/` : ""}${previewIndex > 1 ? `，${previewIndex - 1} 张预览图输出到 preview/` : ""}`,
     path: exportDir,
   };
 }

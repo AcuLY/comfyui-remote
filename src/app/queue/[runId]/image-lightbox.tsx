@@ -5,6 +5,8 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  Eye,
+  ImageIcon,
   Star,
   Trash2,
   X,
@@ -12,7 +14,7 @@ import {
 import type { ReviewImage } from "@/lib/types";
 
 type ReviewAction = "keep" | "trash";
-type MarkerField = "featured" | "featured2";
+type MarkerField = "featured" | "featured2" | "cover";
 
 export function ImageLightbox({
   image,
@@ -39,7 +41,7 @@ export function ImageLightbox({
   onReview: (action: ReviewAction) => void;
   onToggleMarker: (field: MarkerField) => void;
 }) {
-  const [imageLoaded, setImageLoaded] = useState(false);
+  const [loadedImageId, setLoadedImageId] = useState<string | null>(null);
   const shieldTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleClose = useCallback(() => {
@@ -53,11 +55,6 @@ export function ImageLightbox({
 
   useEffect(() => {
     if (!visible) return;
-    setImageLoaded(false);
-  }, [image?.id, visible]);
-
-  useEffect(() => {
-    if (!visible) return;
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -68,6 +65,7 @@ export function ImageLightbox({
       if (event.key === "ArrowRight" && imageCount > 1) onNext();
       if (event.key === "f" || event.key === "F") onToggleMarker("featured");
       if (event.key === "2") onToggleMarker("featured2");
+      if (event.key === "c" || event.key === "C") onToggleMarker("cover");
       if (event.key === "k" || event.key === "K") onReview("keep");
       if (event.key === "Delete" || event.key === "Backspace") onReview("trash");
     };
@@ -94,6 +92,8 @@ export function ImageLightbox({
   if (!visible || !image) {
     return null;
   }
+
+  const imageLoaded = loadedImageId === image.id;
 
   return (
     <div
@@ -122,12 +122,17 @@ export function ImageLightbox({
           )}
           {image.featured && (
             <span className="rounded bg-amber-400/80 px-1.5 py-0.5 text-[10px] text-white">
-              精选
+              p站
             </span>
           )}
           {image.featured2 && (
             <span className="rounded bg-cyan-400/80 px-1.5 py-0.5 text-[10px] text-white">
-              精选2
+              预览
+            </span>
+          )}
+          {image.cover && (
+            <span className="rounded bg-violet-400/80 px-1.5 py-0.5 text-[10px] text-white">
+              封面
             </span>
           )}
         </div>
@@ -173,8 +178,8 @@ export function ImageLightbox({
             key={image.id}
             src={image.full}
             alt={image.id}
-            onLoad={() => setImageLoaded(true)}
-            onError={() => setImageLoaded(true)}
+            onLoad={() => setLoadedImageId(image.id)}
+            onError={() => setLoadedImageId(image.id)}
             draggable={false}
             className={`max-h-[calc(100dvh-11rem)] max-w-full rounded-lg object-contain drop-shadow-2xl transition-opacity duration-150 ${
               imageLoaded ? "opacity-100" : "opacity-0"
@@ -197,7 +202,7 @@ export function ImageLightbox({
       </div>
 
       <div
-        className="z-10 grid grid-cols-2 gap-2 border-t border-white/10 bg-black/50 p-3 sm:grid-cols-4 sm:px-4"
+        className="z-10 grid grid-cols-2 gap-2 border-t border-white/10 bg-black/50 p-3 sm:grid-cols-5 sm:px-4"
         onClick={(event) => event.stopPropagation()}
       >
         <button
@@ -229,7 +234,7 @@ export function ImageLightbox({
           }`}
         >
           <Star className="size-4" fill={image.featured ? "currentColor" : "none"} />
-          {image.featured ? "取消精选" : "精选"}
+          {image.featured ? "取消p站" : "p站"}
         </button>
         <button
           type="button"
@@ -241,8 +246,21 @@ export function ImageLightbox({
               : "border-white/15 bg-white/10 text-white/80 hover:bg-white/15 hover:text-cyan-100"
           }`}
         >
-          <Star className="size-4" fill={image.featured2 ? "currentColor" : "none"} />
-          {image.featured2 ? "取消精选2" : "精选2"}
+          <Eye className="size-4" />
+          {image.featured2 ? "取消预览" : "预览"}
+        </button>
+        <button
+          type="button"
+          disabled={busy || image.cover}
+          onClick={() => onToggleMarker("cover")}
+          className={`inline-flex h-11 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-medium transition disabled:opacity-45 ${
+            image.cover
+              ? "border-violet-300/35 bg-violet-400/25 text-violet-100"
+              : "border-white/15 bg-white/10 text-white/80 hover:bg-white/15 hover:text-violet-100"
+          }`}
+        >
+          <ImageIcon className="size-4" />
+          {image.cover ? "封面" : "设为封面"}
         </button>
       </div>
     </div>

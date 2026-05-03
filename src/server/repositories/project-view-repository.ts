@@ -272,6 +272,7 @@ export type SectionResultsData = {
       status: ReviewStatus;
       featured: boolean;
       featured2: boolean;
+      cover: boolean;
     }[];
   }[];
   totalPending: number;
@@ -303,6 +304,7 @@ export type ProjectResultsData = {
         status: ReviewStatus;
         featured: boolean;
         featured2: boolean;
+        cover: boolean;
         width: number | null;
         height: number | null;
       }[];
@@ -314,7 +316,7 @@ export async function getSectionResults(sectionId: string): Promise<SectionResul
   const pos = await prisma.projectSection.findUnique({
     where: { id: sectionId },
     include: {
-      project: { select: { id: true, title: true } },
+      project: { select: { id: true, title: true, coverImageId: true } },
       runs: {
         orderBy: { createdAt: "desc" },
         include: {
@@ -369,6 +371,7 @@ export async function getSectionResults(sectionId: string): Promise<SectionResul
         status: img.reviewStatus as ReviewStatus,
         featured: img.featured,
         featured2: img.featured2,
+        cover: img.id === pos.project.coverImageId,
       }));
 
     const runPending = images.filter((img) => img.status === "pending").length;
@@ -402,6 +405,7 @@ export async function getProjectResults(projectId: string): Promise<ProjectResul
       select: {
         id: true,
         title: true,
+        coverImageId: true,
         sections: {
           orderBy: { sortOrder: "asc" },
           select: {
@@ -476,6 +480,7 @@ export async function getProjectResults(projectId: string): Promise<ProjectResul
               status: img.reviewStatus as ReviewStatus,
               featured: img.featured,
               featured2: img.featured2,
+              cover: img.id === project.coverImageId,
               width: img.width,
               height: img.height,
             };

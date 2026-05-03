@@ -190,6 +190,7 @@ model Project {
   title                 String
   slug                  String                @unique
   status                String                @default("draft")
+  coverImageId          String?
   presetBindings        Json?                 // [{ categoryId, presetId, variantId? }]
   checkpointName        String?
   projectLevelOverrides Json?
@@ -199,6 +200,7 @@ model Project {
   sections              ProjectSection[]
   runs                  Run[]
   @@index([status, updatedAt])
+  @@index([coverImageId])
 }
 
 model ProjectSection {

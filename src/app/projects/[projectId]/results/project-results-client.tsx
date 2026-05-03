@@ -15,6 +15,7 @@ import {
   ChevronRight,
   ChevronUp,
   ClipboardCheck,
+  Eye,
   ImageIcon,
   Star,
   X,
@@ -166,12 +167,14 @@ function ResultImageCard({
   onOpen,
   onToggleFeatured,
   onToggleFeatured2,
+  onSetCover,
   disabled,
 }: {
   image: ProjectResultsImageWithRun;
   onOpen: (imageId: string) => void;
   onToggleFeatured: (imageId: string, featured: boolean) => void;
   onToggleFeatured2: (imageId: string, featured2: boolean) => void;
+  onSetCover: (imageId: string) => void;
   disabled: boolean;
 }) {
   const aspectRatio =
@@ -209,6 +212,23 @@ function ResultImageCard({
       <div className="absolute right-1.5 top-1.5 flex items-center gap-1">
         <button
           type="button"
+          disabled={disabled || image.cover}
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            onSetCover(image.id);
+          }}
+          className={`inline-flex size-7 items-center justify-center rounded-full border backdrop-blur transition disabled:opacity-50 ${
+            image.cover
+              ? "border-violet-300/40 bg-violet-400/25 text-violet-100"
+              : "border-white/15 bg-black/40 text-white/70 hover:bg-white/15 hover:text-violet-200"
+          }`}
+          title={image.cover ? "当前封面" : "设为封面"}
+        >
+          <ImageIcon className="size-3.5" />
+        </button>
+        <button
+          type="button"
           disabled={disabled}
           onClick={(event) => {
             event.preventDefault();
@@ -220,9 +240,9 @@ function ResultImageCard({
               ? "border-cyan-300/40 bg-cyan-400/25 text-cyan-100"
               : "border-white/15 bg-black/40 text-white/70 hover:bg-white/15 hover:text-cyan-200"
           }`}
-          title={image.featured2 ? "取消精选2" : "标记为精选2"}
+          title={image.featured2 ? "取消预览" : "标记为预览"}
         >
-          2
+          <Eye className="size-3.5" />
         </button>
         <button
           type="button"
@@ -237,7 +257,7 @@ function ResultImageCard({
               ? "border-amber-300/40 bg-amber-400/25 text-amber-200"
               : "border-white/15 bg-black/40 text-white/70 hover:bg-white/15 hover:text-amber-200"
           }`}
-          title={image.featured ? "取消精选" : "标记为精选"}
+          title={image.featured ? "取消p站" : "标记为p站"}
         >
           <Star
             className="size-3.5"
@@ -249,8 +269,9 @@ function ResultImageCard({
       <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 bg-black/45 px-2 py-1 text-[10px] text-zinc-200 opacity-90">
         <span>Run #{image.runIndex}</span>
         <span className="flex items-center gap-1">
-          {image.featured && <span className="text-amber-200">精选</span>}
-          {image.featured2 && <span className="text-cyan-200">精选2</span>}
+          {image.featured && <span className="text-amber-200">p站</span>}
+          {image.featured2 && <span className="text-cyan-200">预览</span>}
+          {image.cover && <span className="text-violet-200">封面</span>}
         </span>
       </div>
     </div>
@@ -262,6 +283,7 @@ function SectionResultsBlock({
   section,
   onToggleFeatured,
   onToggleFeatured2,
+  onSetCover,
   onOpenImage,
   togglingImageId,
   isExpanded,
@@ -272,6 +294,7 @@ function SectionResultsBlock({
   section: ProjectResultsSection;
   onToggleFeatured: (imageId: string, featured: boolean) => void;
   onToggleFeatured2: (imageId: string, featured2: boolean) => void;
+  onSetCover: (imageId: string) => void;
   onOpenImage: (imageId: string) => void;
   togglingImageId: string | null;
   isExpanded: boolean;
@@ -289,6 +312,7 @@ function SectionResultsBlock({
     shouldCollapse && !isExpanded
       ? images.slice(0, collapsedImageCount)
       : images;
+  const hasCover = images.some((image) => image.cover);
 
   return (
     <section
@@ -310,12 +334,17 @@ function SectionResultsBlock({
             )}
             {section.featuredCount > 0 && (
               <span className="text-amber-300">
-                {section.featuredCount} 精选
+                {section.featuredCount} p站
               </span>
             )}
             {section.featured2Count > 0 && (
               <span className="text-cyan-300">
-                {section.featured2Count} 精选2
+                {section.featured2Count} 预览
+              </span>
+            )}
+            {hasCover && (
+              <span className="text-violet-300">
+                封面
               </span>
             )}
           </div>
@@ -343,6 +372,7 @@ function SectionResultsBlock({
                 onOpen={onOpenImage}
                 onToggleFeatured={onToggleFeatured}
                 onToggleFeatured2={onToggleFeatured2}
+                onSetCover={onSetCover}
                 disabled={togglingImageId === image.id}
               />
             ))}
@@ -423,6 +453,7 @@ export function ProjectResultsClient({
     (sum, section) => sum + section.featured2Count,
     0,
   );
+  const hasCover = allImages.some((image) => image.cover);
 
   useEffect(() => {
     const getColumnCount = () => {
@@ -540,6 +571,21 @@ export function ProjectResultsClient({
     );
   }, []);
 
+  const setImageCover = useCallback((imageId: string) => {
+    setSections((currentSections) =>
+      currentSections.map((section) => ({
+        ...section,
+        runs: section.runs.map((run) => ({
+          ...run,
+          images: run.images.map((image) => ({
+            ...image,
+            cover: image.id === imageId,
+          })),
+        })),
+      })),
+    );
+  }, []);
+
   const handleToggleFeatured = useCallback(
     (imageId: string, featured: boolean) => {
       if (togglingImageId) return;
@@ -561,11 +607,11 @@ export function ProjectResultsClient({
             error?: { message?: string };
           } | null;
           if (!response.ok || result?.ok === false) {
-            throw new Error(result?.error?.message ?? "更新精选失败");
+            throw new Error(result?.error?.message ?? "更新p站标记失败");
           }
         } catch (error) {
           setImageFeatured(imageId, !featured);
-          toast.error(error instanceof Error ? error.message : "更新精选失败");
+          toast.error(error instanceof Error ? error.message : "更新p站标记失败");
         } finally {
           setTogglingImageId(null);
         }
@@ -595,17 +641,55 @@ export function ProjectResultsClient({
             error?: { message?: string };
           } | null;
           if (!response.ok || result?.ok === false) {
-            throw new Error(result?.error?.message ?? "更新精选2失败");
+            throw new Error(result?.error?.message ?? "更新预览标记失败");
           }
         } catch (error) {
           setImageFeatured2(imageId, !featured2);
-          toast.error(error instanceof Error ? error.message : "更新精选2失败");
+          toast.error(error instanceof Error ? error.message : "更新预览标记失败");
         } finally {
           setTogglingImageId(null);
         }
       });
     },
     [setImageFeatured2, togglingImageId],
+  );
+
+  const handleSetCover = useCallback(
+    (imageId: string) => {
+      if (togglingImageId || allImages.find((image) => image.id === imageId)?.cover) {
+        return;
+      }
+
+      const previousSections = sections;
+      setTogglingImageId(imageId);
+      setImageCover(imageId);
+
+      startTransition(async () => {
+        try {
+          const response = await fetch(
+            `/api/images/${encodeURIComponent(imageId)}/cover`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ cover: true }),
+            },
+          );
+          const result = (await response.json().catch(() => null)) as {
+            ok?: boolean;
+            error?: { message?: string };
+          } | null;
+          if (!response.ok || result?.ok === false) {
+            throw new Error(result?.error?.message ?? "更新封面失败");
+          }
+        } catch (error) {
+          setSections(previousSections);
+          toast.error(error instanceof Error ? error.message : "更新封面失败");
+        } finally {
+          setTogglingImageId(null);
+        }
+      });
+    },
+    [allImages, sections, setImageCover, togglingImageId],
   );
 
   return (
@@ -639,8 +723,9 @@ export function ProjectResultsClient({
             <div className="hidden shrink-0 items-center gap-2 text-[11px] text-zinc-500 sm:flex">
               <span>{sections.length} 小节</span>
               <span>{totalImages} 张图片</span>
-              <span>{totalFeatured} 精选</span>
-              <span>{totalFeatured2} 精选2</span>
+              <span>{totalFeatured} p站</span>
+              <span>{totalFeatured2} 预览</span>
+              {hasCover && <span>已设封面</span>}
             </div>
           </div>
 
@@ -656,6 +741,7 @@ export function ProjectResultsClient({
                 section={section}
                 onToggleFeatured={handleToggleFeatured}
                 onToggleFeatured2={handleToggleFeatured2}
+                onSetCover={handleSetCover}
                 onOpenImage={openLightbox}
                 togglingImageId={togglingImageId}
                 isExpanded={expandedSectionIds.has(section.id)}
@@ -674,6 +760,22 @@ export function ProjectResultsClient({
           <div className="absolute right-4 top-4 z-10 flex items-center gap-2">
             <button
               type="button"
+              disabled={togglingImageId === lightboxImage.id || lightboxImage.cover}
+              onClick={(event) => {
+                event.stopPropagation();
+                handleSetCover(lightboxImage.id);
+              }}
+              className={`rounded-full p-2 transition disabled:opacity-50 ${
+                lightboxImage.cover
+                  ? "bg-violet-500/30 text-violet-200"
+                  : "bg-white/10 text-white/70 hover:bg-white/20 hover:text-violet-100"
+              }`}
+              title={lightboxImage.cover ? "当前封面" : "设为封面"}
+            >
+              <ImageIcon className="size-5" />
+            </button>
+            <button
+              type="button"
               disabled={togglingImageId === lightboxImage.id}
               onClick={(event) => {
                 event.stopPropagation();
@@ -684,9 +786,9 @@ export function ProjectResultsClient({
                   ? "bg-cyan-500/30 text-cyan-200 hover:bg-cyan-500/40"
                   : "bg-white/10 text-white/70 hover:bg-white/20 hover:text-cyan-100"
               }`}
-              title={lightboxImage.featured2 ? "取消精选2" : "标记精选2"}
+              title={lightboxImage.featured2 ? "取消预览" : "标记预览"}
             >
-              2
+              <Eye className="size-5" />
             </button>
             <button
               type="button"
@@ -700,7 +802,7 @@ export function ProjectResultsClient({
                   ? "bg-amber-500/30 text-amber-300 hover:bg-amber-500/40"
                   : "bg-white/10 text-white/70 hover:bg-white/20"
               }`}
-              title={lightboxImage.featured ? "取消精选" : "标记精选"}
+              title={lightboxImage.featured ? "取消p站" : "标记p站"}
             >
               <Star
                 className="size-5"
