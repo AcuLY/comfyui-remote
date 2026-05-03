@@ -763,6 +763,15 @@ export async function saveProjectAsTemplate(
       description: templateDescription ?? null,
       sections: {
         create: project.sections.map((section) => {
+          const isProjectLevelPresetBlock = (block: {
+            type: string;
+            sourceId: string | null;
+            groupBindingId: string | null;
+          }) =>
+            block.type === "preset" &&
+            !block.groupBindingId &&
+            Boolean(block.sourceId && projectPresetIds.has(block.sourceId));
+
           // Filter out blocks from project-level bindings, keep section-level imports
           // For section-level imports, preserve bindingId/groupBindingId for group relationship
           const templateBlocks = section.promptBlocks
@@ -770,7 +779,7 @@ export async function saveProjectAsTemplate(
               // Keep custom blocks
               if (block.type === "custom") return true;
               // For preset blocks: only keep if NOT from project-level binding
-              if (block.sourceId && projectPresetIds.has(block.sourceId)) return false;
+              if (isProjectLevelPresetBlock(block)) return false;
               return true;
             })
             .map((block) => ({
@@ -793,7 +802,7 @@ export async function saveProjectAsTemplate(
           // Get bindingIds from project-level blocks (to filter loras)
           const projectLevelBindingIds = new Set<string>();
           for (const block of section.promptBlocks) {
-            if (block.type === "preset" && block.sourceId && projectPresetIds.has(block.sourceId) && block.bindingId) {
+            if (isProjectLevelPresetBlock(block) && block.bindingId) {
               projectLevelBindingIds.add(block.bindingId);
             }
           }
@@ -805,6 +814,8 @@ export async function saveProjectAsTemplate(
               .filter((e) => {
                 // Keep manual loras
                 if (e.source !== "preset") return true;
+                // Preset-group members are section-level imports and must remain in templates.
+                if (e.groupBindingId) return true;
                 // Filter out loras from project-level bindings
                 if (e.bindingId && projectLevelBindingIds.has(e.bindingId as string)) return false;
                 return true;
