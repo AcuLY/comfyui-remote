@@ -410,6 +410,10 @@ function metaText(meta: Record<string, unknown>, key: string, fallback = "未记
   return String(value);
 }
 
+function promptTextWithBreakLines(value: string) {
+  return value.replace(/\s*BREAK\s*/g, "\n").trim();
+}
+
 function loraName(path: string) {
   return path.split(/[/\\]/).pop() ?? path;
 }
@@ -470,6 +474,8 @@ function ReviewExecutionMeta({ meta }: { meta: Record<string, unknown> }) {
   const lora2 = loraEntries(meta.lora2);
   const positivePrompt = metaText(meta, "positivePrompt", "");
   const negativePrompt = metaText(meta, "negativePrompt", "");
+  const positivePromptText = positivePrompt ? promptTextWithBreakLines(positivePrompt) : "";
+  const negativePromptText = negativePrompt ? promptTextWithBreakLines(negativePrompt) : "";
 
   return (
     <div className={s.reviewMetaBody}>
@@ -506,11 +512,11 @@ function ReviewExecutionMeta({ meta }: { meta: Record<string, unknown> }) {
       <div className={s.reviewPromptGrid}>
         <div>
           <em>Prompt<span>{positivePrompt ? `${positivePrompt.length.toLocaleString()} chars` : "空"}</span></em>
-          <pre>{positivePrompt || "未记录"}</pre>
+          <pre>{positivePromptText || "未记录"}</pre>
         </div>
         <div>
           <em>Negative<span>{negativePrompt ? `${negativePrompt.length.toLocaleString()} chars` : "空"}</span></em>
-          <pre>{negativePrompt || "未记录"}</pre>
+          <pre>{negativePromptText || "未记录"}</pre>
         </div>
       </div>
     </div>
@@ -581,7 +587,6 @@ export function ReviewPage({ data, run }: { data: DemoData; run: DemoRun | undef
         actions={
           <>
             {sectionPath ? <ButtonLink href={sectionPath} icon={ExternalLink}>跳转至小节</ButtonLink> : null}
-            {sectionPath ? <ButtonLink href={`${sectionPath}/results`} icon={ImageIcon}>查看结果</ButtonLink> : null}
             <a className={s.button} href={`/api/runs/${run.id}/workflow`} download>
               <Download className="size-4" />
               下载工作流文件

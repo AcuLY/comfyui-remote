@@ -58,6 +58,7 @@ import type {
 } from "./design-demo-data";
 import s from "./design-demo.module.css";
 import { QueuePage, ReviewPage } from "./runs-page";
+import { SectionEditorPage as SectionEditorPageV2 } from "./section-editor-page";
 import { DesignDemoShell } from "./design-demo-shell";
 import {
   Button,
@@ -988,6 +989,8 @@ function BatchCreatePage({ project, data }: { project: DemoProject | undefined; 
   );
 }
 
+// Kept while the routed section editor is being migrated into section-editor-page.tsx.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function SectionEditorPage({ project, section }: { project: DemoProject | undefined; section: DemoSection | undefined }) {
   if (!project || !section) return <EmptyPage title="没有小节数据" />;
   const sectionIndex = project.sections.findIndex((item) => item.id === section.id);
@@ -1018,25 +1021,22 @@ function SectionEditorPage({ project, section }: { project: DemoProject | undefi
       />
       <ProjectSectionShell project={project} activeSection={section} mode="editor">
         <div className={s.editorSurface}>
-          <div className={s.editorStickyHeader}>
-            <div className={s.editorIdentity}>
-              <span>#{String(sectionIndex + 1).padStart(2, "0")}</span>
-              <strong>{section.name}</strong>
-              <em>{section.aspectRatio} · 批量 {section.batchSize} · {section.shortSidePx}px</em>
+          {previousSection || nextSection ? (
+            <div className={cx(s.editorStickyHeader, s.editorNavHeader)}>
+              <div className={s.toolbar}>
+                {previousSection ? (
+                  <ButtonLink href={`/projects/${project.id}/sections/${rawSectionId(previousSection)}`} tone="subtle" icon={ArrowLeft}>
+                    上一节
+                  </ButtonLink>
+                ) : null}
+                {nextSection ? (
+                  <ButtonLink href={`/projects/${project.id}/sections/${rawSectionId(nextSection)}`} tone="subtle" icon={ArrowRight}>
+                    下一节
+                  </ButtonLink>
+                ) : null}
+              </div>
             </div>
-            <div className={s.toolbar}>
-              {previousSection ? (
-                <ButtonLink href={`/projects/${project.id}/sections/${rawSectionId(previousSection)}`} tone="subtle" icon={ArrowLeft}>
-                  上一节
-                </ButtonLink>
-              ) : null}
-              {nextSection ? (
-                <ButtonLink href={`/projects/${project.id}/sections/${rawSectionId(nextSection)}`} tone="subtle" icon={ArrowRight}>
-                  下一节
-                </ButtonLink>
-              ) : null}
-            </div>
-          </div>
+          ) : null}
 
           <section className={s.editorBlock}>
             <div className={s.editorBlockHeader}>
@@ -3451,7 +3451,7 @@ function CurrentPage({ match, data }: { match: Match; data: DemoData }) {
     case "project-batch":
       return <BatchCreatePage project={project} data={data} />;
     case "section-editor":
-      return <SectionEditorPage project={project} section={section} />;
+      return <SectionEditorPageV2 data={data} project={project} section={section} />;
     case "section-results":
       return <SectionResultsPage project={project} section={section} />;
     case "models":
