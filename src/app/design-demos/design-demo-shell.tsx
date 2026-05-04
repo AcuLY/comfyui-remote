@@ -101,38 +101,38 @@ function Sidebar({
               </Link>
             );
           })}
+          {group === "系统" ? (
+            <div className={s.sidebarTools} aria-label="全局工具">
+              <button
+                className={cx(s.sidebarToggle, isDarkTheme && s.sidebarToggleActive)}
+                type="button"
+                role="switch"
+                aria-checked={isDarkTheme}
+                onClick={onToggleTheme}
+              >
+                <Moon className="size-4" />
+                <span>暗色</span>
+                <span className={s.sidebarToggleSwitch} aria-hidden="true">
+                  <span />
+                </span>
+              </button>
+              <button
+                className={cx(s.sidebarToggle, sfwMode && s.sidebarToggleActive)}
+                type="button"
+                role="switch"
+                aria-checked={sfwMode}
+                onClick={onToggleSfwMode}
+              >
+                <EyeOff className="size-4" />
+                <span>SFW</span>
+                <span className={s.sidebarToggleSwitch} aria-hidden="true">
+                  <span />
+                </span>
+              </button>
+            </div>
+          ) : null}
         </nav>
       ))}
-      <div className={s.sidebarFooter}>
-        <div className={s.sidebarTools} aria-label="全局工具">
-          <button
-            className={cx(s.sidebarToggle, isDarkTheme && s.sidebarToggleActive)}
-            type="button"
-            role="switch"
-            aria-checked={isDarkTheme}
-            onClick={onToggleTheme}
-          >
-            <Moon className="size-4" />
-            <span>暗色</span>
-            <span className={s.sidebarToggleSwitch} aria-hidden="true">
-              <span />
-            </span>
-          </button>
-          <button
-            className={cx(s.sidebarToggle, sfwMode && s.sidebarToggleActive)}
-            type="button"
-            role="switch"
-            aria-checked={sfwMode}
-            onClick={onToggleSfwMode}
-          >
-            <EyeOff className="size-4" />
-            <span>SFW</span>
-            <span className={s.sidebarToggleSwitch} aria-hidden="true">
-              <span />
-            </span>
-          </button>
-        </div>
-      </div>
     </aside>
   );
 }
