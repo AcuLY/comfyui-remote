@@ -32,9 +32,31 @@ export type DemoSection = {
   positivePrompt: string;
   negativePrompt: string;
   checkpointName: string;
+  projectCheckpointName?: string | null;
+  upscaleFactor: number;
+  ksampler1: {
+    steps: number;
+    cfg: number;
+    sampler_name: string;
+    scheduler: string;
+  };
+  ksampler2: {
+    steps: number;
+    cfg: number;
+    sampler_name: string;
+    scheduler: string;
+  };
   promptBlockCount: number;
   loraCount: number;
   images: DemoImage[];
+  changeHistory?: Array<{
+    id: string;
+    timestamp: string;
+    dimension: string;
+    title: string;
+    before: string | null;
+    after: string | null;
+  }>;
 };
 
 export type DemoProject = {
@@ -410,9 +432,41 @@ function fallbackData(warning: string | null): DemoData {
     positivePrompt: "cinematic portrait, soft lighting, refined detail",
     negativePrompt: "low quality, blurry, extra fingers",
     checkpointName: "default-checkpoint.safetensors",
+    projectCheckpointName: "default-checkpoint.safetensors",
+    upscaleFactor: 2,
+    ksampler1: {
+      steps: 28,
+      cfg: 7,
+      sampler_name: "euler_ancestral",
+      scheduler: "normal",
+    },
+    ksampler2: {
+      steps: 18,
+      cfg: 5.5,
+      sampler_name: "dpmpp_2m_sde",
+      scheduler: "karras",
+    },
     promptBlockCount: 4 + index,
     loraCount: 2,
     images: demoImages.slice(index * 4, index * 4 + 6),
+    changeHistory: [
+      {
+        id: `change-${index}-1`,
+        timestamp: shortDate(new Date(Date.now() - 3600000).toISOString()),
+        dimension: "params",
+        title: "更新运行参数",
+        before: JSON.stringify({ batchSize: 2, upscaleFactor: 1.5 }),
+        after: JSON.stringify({ batchSize: index === 2 ? 4 : 2, upscaleFactor: 2 }),
+      },
+      {
+        id: `change-${index}-2`,
+        timestamp: shortDate(new Date(Date.now() - 7200000).toISOString()),
+        dimension: "lora",
+        title: "更新 LoRA 配置",
+        before: JSON.stringify({ lora1: [], lora2: [] }),
+        after: JSON.stringify({ lora1: [{ path: "character.safetensors", weight: 0.8 }], lora2: [] }),
+      },
+    ],
   }));
 
   const envAssets = modelAssetsFromEnv();
@@ -695,6 +749,7 @@ export async function loadDesignDemoData(): Promise<DemoData> {
             `select
                id, projectId, name, sortOrder, enabled, aspectRatio, batchSize, shortSidePx,
                seedPolicy1, seedPolicy2, positivePrompt, negativePrompt, checkpointName, loraConfig,
+               upscaleFactor, ksampler1, ksampler2,
                (select count(*) from PromptBlock b where b.projectSectionId = ProjectSection.id) as promptBlockCount
              from ProjectSection
              where projectId in (${projectIds.map(() => "?").join(",")})
@@ -706,6 +761,8 @@ export async function loadDesignDemoData(): Promise<DemoData> {
     const sections: DemoSection[] = sectionRows.map((row): DemoSection => {
       const loraConfig = parseJson<{ lora1?: unknown[]; lora2?: unknown[] }>(row.loraConfig, {});
       const rawId = text(row.id);
+      const ksampler1 = parseJson<{ steps?: number; cfg?: number; sampler_name?: string; scheduler?: string }>(row.ksampler1, {});
+      const ksampler2 = parseJson<{ steps?: number; cfg?: number; sampler_name?: string; scheduler?: string }>(row.ksampler2, {});
       return {
         id: `${text(row.projectId)}:${rawId}`,
         name: text(row.name, `小节 ${int(row.sortOrder) + 1}`),
@@ -719,6 +776,20 @@ export async function loadDesignDemoData(): Promise<DemoData> {
         positivePrompt: text(row.positivePrompt, "由 Prompt Block 组合生成"),
         negativePrompt: text(row.negativePrompt, "low quality, bad anatomy"),
         checkpointName: text(row.checkpointName, "继承项目设置"),
+        projectCheckpointName: null,
+        upscaleFactor: int(row.upscaleFactor, 2),
+        ksampler1: {
+          steps: int(ksampler1.steps, 28),
+          cfg: Number(ksampler1.cfg ?? 7),
+          sampler_name: text(ksampler1.sampler_name, "euler_ancestral"),
+          scheduler: text(ksampler1.scheduler, "normal"),
+        },
+        ksampler2: {
+          steps: int(ksampler2.steps, 18),
+          cfg: Number(ksampler2.cfg ?? 5.5),
+          sampler_name: text(ksampler2.sampler_name, "dpmpp_2m_sde"),
+          scheduler: text(ksampler2.scheduler, "karras"),
+        },
         promptBlockCount: int(row.promptBlockCount),
         loraCount: (Array.isArray(loraConfig.lora1) ? loraConfig.lora1.length : 0) + (Array.isArray(loraConfig.lora2) ? loraConfig.lora2.length : 0),
         images: [],

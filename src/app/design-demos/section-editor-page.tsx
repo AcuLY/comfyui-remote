@@ -5,7 +5,6 @@
 import Link from "next/link";
 import { useState } from "react";
 import {
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Copy,
@@ -13,29 +12,30 @@ import {
   ImageIcon,
   Play,
   Plus,
-  Save,
   Sparkles,
   Trash2,
-  Wand2,
+  ChevronDown,
 } from "lucide-react";
 
 import type { DemoData, DemoProject, DemoSection } from "./design-demo-data";
 import { demoHref, rawSectionId } from "./design-demo-utils";
-import { Button, ButtonLink, PageHeader } from "./design-demo-ui";
+import { Button } from "./design-demo-ui";
+import {
+  SectionNameEditor,
+  CheckpointPicker,
+  KSamplerPanel,
+  UpscaleFactorField,
+  PresetImportModal,
+  VariantSwitcher,
+  LoraEntryRow,
+  ChangeHistoryItem,
+} from "./section-editor-components";
 import s from "./design-demo.module.css";
 
 type SectionEditorPageProps = {
   data: DemoData;
   project: DemoProject | undefined;
   section: DemoSection | undefined;
-};
-
-type ParamField = {
-  id: string;
-  label: string;
-  value: string;
-  type: "text" | "select" | "number";
-  options?: Array<{ value: string; label: string }>;
 };
 
 type PromptBlock = {
@@ -46,6 +46,8 @@ type PromptBlock = {
   positive: string;
   negative: string;
   variantCount: number;
+  currentVariantId: string;
+  variants: Array<{ id: string; name: string }>;
 };
 
 type LoraEntry = {
@@ -57,76 +59,6 @@ type LoraEntry = {
   sourceColor: string;
 };
 
-function buildMockParams(section: DemoSection | undefined): ParamField[] {
-  if (!section) return [];
-
-  return [
-    {
-      id: "sectionName",
-      label: "小节名",
-      value: section.name,
-      type: "text",
-    },
-    {
-      id: "aspectRatio",
-      label: "比例",
-      value: section.aspectRatio || "2:3",
-      type: "select",
-      options: [
-        { value: "1:1", label: "1:1" },
-        { value: "2:3", label: "2:3" },
-        { value: "3:2", label: "3:2" },
-        { value: "3:4", label: "3:4" },
-        { value: "4:3", label: "4:3" },
-        { value: "9:16", label: "9:16" },
-        { value: "16:9", label: "16:9" },
-      ],
-    },
-    {
-      id: "shortSidePx",
-      label: "短边像素",
-      value: String(section.shortSidePx || 512),
-      type: "number",
-    },
-    {
-      id: "batchSize",
-      label: "批量数",
-      value: String(section.batchSize || 2),
-      type: "number",
-    },
-    {
-      id: "seed1",
-      label: "Seed 1",
-      value: "random",
-      type: "select",
-      options: [
-        { value: "random", label: "random" },
-        { value: "fixed", label: "fixed" },
-      ],
-    },
-    {
-      id: "seed2",
-      label: "Seed 2",
-      value: "random",
-      type: "select",
-      options: [
-        { value: "random", label: "random" },
-        { value: "fixed", label: "fixed" },
-      ],
-    },
-    {
-      id: "checkpoint",
-      label: "Checkpoint",
-      value: section.checkpointName || "oneObsession_v19Atypical.safetensors",
-      type: "select",
-      options: [
-        { value: "oneObsession_v19Atypical.safetensors", label: "oneObsession_v19Atypical.safetensors" },
-        { value: "realisticVision_v60B1.safetensors", label: "realisticVision_v60B1.safetensors" },
-      ],
-    },
-  ];
-}
-
 function buildMockPromptBlocks(): PromptBlock[] {
   return [
     {
@@ -137,15 +69,26 @@ function buildMockPromptBlocks(): PromptBlock[] {
       positive: "1girl, danya, solo, standing, hands behind back",
       negative: "",
       variantCount: 3,
+      currentVariantId: "variant-1",
+      variants: [
+        { id: "variant-1", name: "默认" },
+        { id: "variant-2", name: "柔和光线" },
+        { id: "variant-3", name: "电影感" },
+      ],
     },
     {
       id: "block-2",
-      label: "室内 / 温暖光线",
+      label: "室内",
       categoryName: "场景",
       categoryColor: "280 65% 60%",
       positive: "indoors, warm lighting, soft shadows",
       negative: "outdoors, harsh light",
       variantCount: 2,
+      currentVariantId: "variant-4",
+      variants: [
+        { id: "variant-4", name: "温暖光线" },
+        { id: "variant-5", name: "冷色调" },
+      ],
     },
   ];
 }
@@ -183,63 +126,35 @@ function buildMockLoraEntries(): { lora1: LoraEntry[]; lora2: LoraEntry[] } {
   };
 }
 
-function ParamFieldRow({ field, onChange }: { field: ParamField; onChange: (value: string) => void }) {
-  return (
-    <div className={s.sectionParamRow}>
-      <label className={s.sectionParamLabel}>{field.label}</label>
-      {field.type === "select" ? (
-        <select
-          className={s.sectionParamSelect}
-          value={field.value}
-          onChange={(e) => onChange(e.target.value)}
-        >
-          {field.options?.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-      ) : field.type === "number" ? (
-        <input
-          type="number"
-          className={s.sectionParamInput}
-          value={field.value}
-          onChange={(e) => onChange(e.target.value)}
-        />
-      ) : (
-        <input
-          type="text"
-          className={s.sectionParamInput}
-          value={field.value}
-          onChange={(e) => onChange(e.target.value)}
-        />
-      )}
-    </div>
-  );
-}
-
 function PromptBlockCard({ block }: { block: PromptBlock }) {
   const [expanded, setExpanded] = useState(false);
 
   return (
     <div className={s.promptBlockCard} data-expanded={expanded ? "true" : "false"}>
-      <button
-        type="button"
-        className={s.promptBlockHeader}
-        onClick={() => setExpanded(!expanded)}
-      >
-        <div className={s.promptBlockMeta}>
-          <span
-            className={s.promptBlockCategory}
-            style={{ "--category-color": `hsl(${block.categoryColor})` } as React.CSSProperties}
-          >
-            {block.categoryName}
-          </span>
-          <strong className={s.promptBlockLabel}>{block.label}</strong>
-          <span className={s.promptBlockVariants}>{block.variantCount} variants</span>
-        </div>
-        <ChevronDown className={s.promptBlockChevron} />
-      </button>
+      <div className={s.promptBlockHeader}>
+        <button
+          type="button"
+          className={s.promptBlockHeaderButton}
+          onClick={() => setExpanded(!expanded)}
+        >
+          <div className={s.promptBlockMeta}>
+            <span
+              className={s.promptBlockCategory}
+              style={{ "--category-color": `hsl(${block.categoryColor})` } as React.CSSProperties}
+            >
+              {block.categoryName}
+            </span>
+            <strong className={s.promptBlockLabel}>{block.label}</strong>
+            <span className={s.promptBlockVariants}>{block.variantCount} variants</span>
+          </div>
+          <ChevronDown className={s.promptBlockChevron} />
+        </button>
+        <VariantSwitcher
+          variants={block.variants}
+          currentVariantId={block.currentVariantId}
+          onChange={(variantId) => console.log("Switch to variant:", variantId)}
+        />
+      </div>
       {expanded && (
         <div className={s.promptBlockBody}>
           <div className={s.promptBlockField}>
@@ -264,10 +179,6 @@ function PromptBlockCard({ block }: { block: PromptBlock }) {
           )}
           <div className={s.promptBlockActions}>
             <button type="button" className={s.promptBlockActionButton}>
-              <Wand2 className="size-3.5" />
-              切换 Variant
-            </button>
-            <button type="button" className={s.promptBlockActionButton}>
               <Trash2 className="size-3.5" />
               移除
             </button>
@@ -278,48 +189,39 @@ function PromptBlockCard({ block }: { block: PromptBlock }) {
   );
 }
 
-function LoraEntryRow({ entry }: { entry: LoraEntry }) {
-  return (
-    <div className={s.loraEntryRow} data-enabled={entry.enabled ? "true" : "false"}>
-      <div className={s.loraEntryMain}>
-        <span
-          className={s.loraEntrySource}
-          style={{ "--source-color": `hsl(${entry.sourceColor})` } as React.CSSProperties}
-        >
-          {entry.source}
-        </span>
-        <strong className={s.loraEntryName}>{entry.name}</strong>
-      </div>
-      <input
-        type="text"
-        className={s.loraEntryWeight}
-        value={entry.weight}
-        readOnly
-      />
-      <button type="button" className={s.loraEntryToggle} aria-label="切换启用">
-        <div className={s.loraEntryToggleTrack}>
-          <div className={s.loraEntryToggleThumb} />
-        </div>
-      </button>
-    </div>
+export function SectionEditorPage({ data, project, section }: SectionEditorPageProps) {
+  const [sectionName, setSectionName] = useState(section?.name || "");
+  const [aspectRatio, setAspectRatio] = useState(section?.aspectRatio || "2:3");
+  const [shortSidePx, setShortSidePx] = useState(String(section?.shortSidePx || 768));
+  const [batchSize, setBatchSize] = useState(String(section?.batchSize || 2));
+  const [seedPolicy1, setSeedPolicy1] = useState(section?.seedPolicy1 || "random");
+  const [seedPolicy2, setSeedPolicy2] = useState(section?.seedPolicy2 || "random");
+  const [checkpointName, setCheckpointName] = useState(section?.checkpointName || "");
+  const [upscaleFactor, setUpscaleFactor] = useState(String(section?.upscaleFactor || 2));
+  const [ksampler1, setKsampler1] = useState(
+    section?.ksampler1 || { steps: 28, cfg: 7, sampler_name: "euler_ancestral", scheduler: "normal" }
   );
-}
-
-export function SectionEditorPage({ project, section }: SectionEditorPageProps) {
-  const [params, setParams] = useState(buildMockParams(section));
+  const [ksampler2, setKsampler2] = useState(
+    section?.ksampler2 || { steps: 18, cfg: 5.5, sampler_name: "dpmpp_2m_sde", scheduler: "karras" }
+  );
   const [promptBlocks] = useState(buildMockPromptBlocks());
-  const [loraConfig] = useState(buildMockLoraEntries());
+  const [loraConfig, setLoraConfig] = useState(buildMockLoraEntries());
+  const [showImportModal, setShowImportModal] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
 
   if (!project || !section) {
     return (
       <div className={s.page}>
-        <PageHeader
-          back={{ href: "/projects", label: "返回项目" }}
-          eyebrow="小节"
-          title="未找到小节"
-          subtitle="请从项目列表选择有效的小节。"
-        />
+        <div className={s.pageHeader}>
+          <Link href="/design-demos/projects" className={s.pageBackLink}>
+            <ChevronLeft className="size-4" />
+            返回项目
+          </Link>
+          <div className={s.pageTitleBlock}>
+            <span className={s.eyebrow}>小节</span>
+            <h1 className={s.pageTitle}>未找到小节</h1>
+          </div>
+        </div>
       </div>
     );
   }
@@ -328,33 +230,56 @@ export function SectionEditorPage({ project, section }: SectionEditorPageProps) 
   const prevSection = sectionIdx > 0 ? project.sections[sectionIdx - 1] : null;
   const nextSection = sectionIdx < project.sections.length - 1 ? project.sections[sectionIdx + 1] : null;
 
-  const handleParamChange = (fieldId: string, value: string) => {
-    setParams((current) =>
-      current.map((field) => (field.id === fieldId ? { ...field, value } : field))
-    );
-    setSaveStatus("saving");
-    setTimeout(() => setSaveStatus("saved"), 800);
-    setTimeout(() => setSaveStatus("idle"), 2000);
-  };
+  const checkpointOptions = [
+    "oneObsession_v19Atypical.safetensors",
+    "realisticVision_v60B1.safetensors",
+    "dreamshaper_8.safetensors",
+  ];
+
+  const presetCategories = data.categories.map((cat) => ({
+    id: cat.id,
+    name: cat.name,
+    color: cat.color,
+    presets: cat.presets.map((preset) => ({
+      id: preset.id,
+      name: preset.name,
+      variantCount: preset.variantCount,
+    })),
+  }));
 
   return (
     <div className={s.page}>
-      <PageHeader
-        back={{ href: `/projects/${project.id}`, label: "返回项目" }}
-        eyebrow="小节"
-        title={section.name}
-        subtitle="维护参数表单、Prompt Block、LoRA 配置、运行和复制动作。"
-        actions={
-          <>
-            <Button tone="primary" icon={Play} feedback={{ title: "运行任务已加入队列", detail: section.name }}>
-              运行小节
-            </Button>
-            <Button icon={Copy} feedback={{ title: "小节已复制", detail: "新小节已创建" }}>
-              复制小节
-            </Button>
-          </>
-        }
-      />
+      {/* Page Header */}
+      <div className={s.pageHeader}>
+        <div className={s.pageTitleBlock}>
+          <Link
+            href={demoHref(`/projects/${project.id}`)}
+            className={s.pageBackLink}
+          >
+            <ChevronLeft className="size-4" />
+            返回项目
+          </Link>
+          <span className={s.eyebrow}>小节</span>
+          <SectionNameEditor
+            initialName={section.name}
+            onChange={(name) => {
+              setSectionName(name);
+              setSaveStatus("saving");
+              setTimeout(() => setSaveStatus("saved"), 800);
+              setTimeout(() => setSaveStatus("idle"), 2000);
+            }}
+          />
+          <div className={s.pageSubtitle}>
+            维护参数表单、Prompt Block、LoRA 配置、运行和复制动作。
+          </div>
+        </div>
+        <div className={s.toolbar}>
+          <Button tone="primary" icon={Play}>
+            运行小节
+          </Button>
+          <Button icon={Copy}>复制小节</Button>
+        </div>
+      </div>
 
       {/* Section Navigation */}
       <div className={s.sectionNav}>
@@ -378,16 +303,20 @@ export function SectionEditorPage({ project, section }: SectionEditorPageProps) 
             </div>
           </div>
         )}
-        <ButtonLink href={`/projects/${project.id}/sections/${rawSectionId(section)}/results`} icon={ImageIcon}>
+        <Link
+          href={demoHref(`/projects/${project.id}/sections/${rawSectionId(section)}/results`)}
+          className={s.button}
+        >
+          <ImageIcon className="size-4" />
           结果
-        </ButtonLink>
+        </Link>
         <Link
           href={`/api/projects/${project.id}/section-workflow/${rawSectionId(section)}`}
           download
           className={s.button}
         >
           <Download className="size-4" />
-          下一节
+          下载 workflow
         </Link>
         {nextSection ? (
           <Link
@@ -421,7 +350,6 @@ export function SectionEditorPage({ project, section }: SectionEditorPageProps) 
           </div>
           {saveStatus === "saving" && (
             <span className={s.sectionSaveStatus} data-status="saving">
-              <Save className="size-3.5" />
               保存中…
             </span>
           )}
@@ -468,27 +396,109 @@ export function SectionEditorPage({ project, section }: SectionEditorPageProps) 
           </div>
         </div>
         <div className={s.sectionParamsGrid}>
-          {params.map((field) => (
-            <ParamFieldRow
-              key={field.id}
-              field={field}
-              onChange={(value) => handleParamChange(field.id, value)}
+          {/* Aspect Ratio */}
+          <div className={s.sectionParamRow}>
+            <label className={s.sectionParamLabel}>比例</label>
+            <select
+              className={s.sectionParamSelect}
+              value={aspectRatio}
+              onChange={(e) => setAspectRatio(e.target.value)}
+            >
+              <option value="1:1">1:1</option>
+              <option value="2:3">2:3</option>
+              <option value="3:2">3:2</option>
+              <option value="3:4">3:4</option>
+              <option value="4:3">4:3</option>
+              <option value="9:16">9:16</option>
+              <option value="16:9">16:9</option>
+            </select>
+          </div>
+
+          {/* Short Side Pixels */}
+          <div className={s.sectionParamRow}>
+            <label className={s.sectionParamLabel}>短边像素</label>
+            <input
+              type="number"
+              className={s.sectionParamInput}
+              value={shortSidePx}
+              onChange={(e) => setShortSidePx(e.target.value)}
             />
-          ))}
+          </div>
+
+          {/* Batch Size */}
+          <div className={s.sectionParamRow}>
+            <label className={s.sectionParamLabel}>批量数</label>
+            <input
+              type="number"
+              className={s.sectionParamInput}
+              value={batchSize}
+              onChange={(e) => setBatchSize(e.target.value)}
+            />
+          </div>
+
+          {/* Seed 1 */}
+          <div className={s.sectionParamRow}>
+            <label className={s.sectionParamLabel}>SEED 1</label>
+            <select
+              className={s.sectionParamSelect}
+              value={seedPolicy1}
+              onChange={(e) => setSeedPolicy1(e.target.value)}
+            >
+              <option value="random">random</option>
+              <option value="fixed">fixed</option>
+            </select>
+          </div>
+
+          {/* Seed 2 */}
+          <div className={s.sectionParamRow}>
+            <label className={s.sectionParamLabel}>SEED 2</label>
+            <select
+              className={s.sectionParamSelect}
+              value={seedPolicy2}
+              onChange={(e) => setSeedPolicy2(e.target.value)}
+            >
+              <option value="random">random</option>
+              <option value="fixed">fixed</option>
+            </select>
+          </div>
+
+          {/* Checkpoint */}
+          <div className={s.sectionParamRow} style={{ gridColumn: "1 / -1" }}>
+            <label className={s.sectionParamLabel}>Checkpoint</label>
+            <CheckpointPicker
+              value={checkpointName}
+              projectCheckpoint={section.projectCheckpointName}
+              options={checkpointOptions}
+              onChange={setCheckpointName}
+            />
+          </div>
+
+          {/* Upscale Factor */}
+          <div className={s.sectionParamRow} style={{ gridColumn: "1 / -1" }}>
+            <label className={s.sectionParamLabel}>放大倍数</label>
+            <UpscaleFactorField value={upscaleFactor} onChange={setUpscaleFactor} />
+          </div>
         </div>
-        <div className={s.sectionParamsSummary}>
-          <span className={s.sectionParamChip}>KSampler 1: 28 steps · CFG 7</span>
-          <span className={s.sectionParamChip}>KSampler 2: 18 steps · CFG 5.5</span>
-          <span className={s.sectionParamChip}>当前批量总成本: 1 / 2 / 4</span>
-          <button type="button" className={s.sectionParamExpandLink}>
-            校验 <ChevronDown className="size-3" />
-          </button>
-          <button type="button" className={s.sectionParamExpandLink}>
-            上次保存 <ChevronDown className="size-3" />
-          </button>
-          <button type="button" className={s.sectionParamExpandLink}>
-            校验 <ChevronDown className="size-3" />
-          </button>
+
+        {/* KSampler Panels */}
+        <div className={s.sectionParamsGrid} style={{ marginTop: "16px" }}>
+          <KSamplerPanel
+            label="KSampler 1"
+            subtitle={`${ksampler1.steps} steps · CFG ${ksampler1.cfg} · ${ksampler1.sampler_name}`}
+            params={ksampler1}
+            onChange={setKsampler1}
+          />
+          <KSamplerPanel
+            label="KSampler 2"
+            subtitle={
+              upscaleFactor === "1"
+                ? "1x 模式下不使用"
+                : `${ksampler2.steps} steps · CFG ${ksampler2.cfg} · ${ksampler2.sampler_name}`
+            }
+            params={ksampler2}
+            onChange={setKsampler2}
+            disabled={upscaleFactor === "1"}
+          />
         </div>
       </section>
 
@@ -499,7 +509,7 @@ export function SectionEditorPage({ project, section }: SectionEditorPageProps) 
             <strong>预设绑定</strong>
             <span>切换 variant 会同步 prompt block 与 LoRA 绑定。</span>
           </div>
-          <Button icon={Plus} tone="subtle">
+          <Button icon={Plus} tone="subtle" onClick={() => setShowImportModal(true)}>
             导入预设
           </Button>
         </div>
@@ -523,10 +533,39 @@ export function SectionEditorPage({ project, section }: SectionEditorPageProps) 
             <div className={s.loraPartitionHeader}>
               <em>LoRA1</em>
               <span>{loraConfig.lora1.length} 项</span>
+              <button type="button" className={s.iconMiniButton}>
+                <Plus className="size-3.5" />
+              </button>
             </div>
             <div className={s.loraEntryList}>
               {loraConfig.lora1.map((entry) => (
-                <LoraEntryRow key={entry.id} entry={entry} />
+                <LoraEntryRow
+                  key={entry.id}
+                  entry={entry}
+                  onWeightChange={(weight) => {
+                    setLoraConfig({
+                      ...loraConfig,
+                      lora1: loraConfig.lora1.map((e) =>
+                        e.id === entry.id ? { ...e, weight } : e
+                      ),
+                    });
+                  }}
+                  onToggle={() => {
+                    setLoraConfig({
+                      ...loraConfig,
+                      lora1: loraConfig.lora1.map((e) =>
+                        e.id === entry.id ? { ...e, enabled: !e.enabled } : e
+                      ),
+                    });
+                  }}
+                  onRemove={() => {
+                    setLoraConfig({
+                      ...loraConfig,
+                      lora1: loraConfig.lora1.filter((e) => e.id !== entry.id),
+                    });
+                  }}
+                  draggable
+                />
               ))}
             </div>
           </div>
@@ -534,15 +573,73 @@ export function SectionEditorPage({ project, section }: SectionEditorPageProps) 
             <div className={s.loraPartitionHeader}>
               <em>LoRA2</em>
               <span>{loraConfig.lora2.length} 项</span>
+              <button type="button" className={s.iconMiniButton}>
+                <Plus className="size-3.5" />
+              </button>
             </div>
             <div className={s.loraEntryList}>
               {loraConfig.lora2.map((entry) => (
-                <LoraEntryRow key={entry.id} entry={entry} />
+                <LoraEntryRow
+                  key={entry.id}
+                  entry={entry}
+                  onWeightChange={(weight) => {
+                    setLoraConfig({
+                      ...loraConfig,
+                      lora2: loraConfig.lora2.map((e) =>
+                        e.id === entry.id ? { ...e, weight } : e
+                      ),
+                    });
+                  }}
+                  onToggle={() => {
+                    setLoraConfig({
+                      ...loraConfig,
+                      lora2: loraConfig.lora2.map((e) =>
+                        e.id === entry.id ? { ...e, enabled: !e.enabled } : e
+                      ),
+                    });
+                  }}
+                  onRemove={() => {
+                    setLoraConfig({
+                      ...loraConfig,
+                      lora2: loraConfig.lora2.filter((e) => e.id !== entry.id),
+                    });
+                  }}
+                  draggable
+                />
               ))}
             </div>
           </div>
         </div>
       </section>
+
+      {/* Change History */}
+      {section.changeHistory && section.changeHistory.length > 0 && (
+        <section className={s.sectionHistoryPanel}>
+          <div className={s.sectionPanelHeader}>
+            <div>
+              <strong>变更历史</strong>
+              <span>记录小节参数和配置的修改历史。</span>
+            </div>
+          </div>
+          <div className={s.changeHistoryTimeline}>
+            {section.changeHistory.map((change) => (
+              <ChangeHistoryItem key={change.id} change={change} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Preset Import Modal */}
+      {showImportModal && (
+        <PresetImportModal
+          categories={presetCategories}
+          onImport={(presetId) => {
+            console.log("Import preset:", presetId);
+            setShowImportModal(false);
+          }}
+          onClose={() => setShowImportModal(false)}
+        />
+      )}
     </div>
   );
 }
