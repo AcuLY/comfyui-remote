@@ -19,6 +19,7 @@ import { DemoFeedbackProvider } from "./design-demo-ui";
 import {
   DESIGN_DEMO_SFW_STORAGE_KEY,
   DESIGN_DEMO_THEME_STORAGE_KEY,
+  MOBILE_NAV_LINKS,
   NAV_LINKS,
   applyDesignDemoSfwMode,
   cx,
@@ -131,6 +132,48 @@ function Sidebar({
         </nav>
       ))}
     </aside>
+  );
+}
+
+function MobileBottomNav({
+  data,
+  currentRoute,
+  moreOpen,
+  onMore,
+}: {
+  data: DemoData;
+  currentRoute: string;
+  moreOpen: boolean;
+  onMore: () => void;
+}) {
+  return (
+    <nav className={s.mobileBottomNav} aria-label="移动端主导航">
+      {MOBILE_NAV_LINKS.map((link) => {
+        const Icon = link.icon;
+        const active = isNavActive(currentRoute, link.href, link.activePrefix);
+        return (
+          <Link
+            className={cx(s.mobileBottomItem, active && s.mobileBottomItemActive)}
+            href={demoHref(link.href)}
+            key={link.href}
+          >
+            <Icon className="size-4" />
+            <span>{link.label}</span>
+            {link.count ? <em>{link.count(data)}</em> : null}
+          </Link>
+        );
+      })}
+      <button
+        className={cx(s.mobileBottomItem, moreOpen && s.mobileBottomItemActive)}
+        type="button"
+        onClick={onMore}
+        aria-expanded={moreOpen}
+        aria-label="打开更多页面"
+      >
+        <MoreHorizontal className="size-4" />
+        <span>更多</span>
+      </button>
+    </nav>
   );
 }
 
@@ -323,6 +366,15 @@ export function DesignDemoShell({
             {children}
           </main>
         </div>
+        <MobileBottomNav
+          data={data}
+          currentRoute={currentRoute}
+          moreOpen={menuOpen}
+          onMore={() => {
+            setMenuOpen((open) => !open);
+            setToolsOpen(false);
+          }}
+        />
       </div>
     </DemoFeedbackProvider>
   );
