@@ -162,7 +162,6 @@
 .operationStateStrip,
 .queueSurface,
 .reviewSurface,
-.reviewTile,
 .railItem,
 .railHeading,
 .projectActionStrip,
@@ -1710,13 +1709,41 @@
 
 .reviewSurface {
   display: grid;
-  gap: 10px;
+  gap: 0;
   min-width: 0;
   border: 1px solid var(--demo-glass-border);
   border-radius: var(--demo-radius);
   background: var(--demo-glass-bg);
   box-shadow: none;
-  padding: 12px;
+  overflow: hidden;
+}
+
+.reviewSurfaceTabs {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--demo-border);
+}
+
+.reviewSurfaceTabs > .tabs {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+}
+
+.reviewSurface > .reviewImageGrid {
+  padding: 12px 14px;
+}
+
+.reviewSurface > .reviewBulkBar {
+  border-top: 1px solid var(--demo-border);
+  padding: 10px 14px;
 }
 
 .queueSurfaceHeader {
@@ -1970,8 +1997,7 @@
   align-items: flex-start;
   border-top: 0;
   border-bottom: 1px solid var(--demo-border);
-  padding-top: 0;
-  padding-bottom: 10px;
+  padding: 10px 14px;
 }
 
 .reviewMetaSurface {
@@ -2385,66 +2411,82 @@
 
 .reviewTile {
   position: relative;
-  display: grid;
-  gap: 8px;
+  display: block;
   min-width: 0;
-  overflow: hidden;
-  border: 1px solid var(--demo-border);
-  border-radius: var(--demo-radius);
-  background: var(--demo-field-bg);
-  padding: 10px;
+  border-radius: 8px;
 }
 
-.reviewTileSelected {
-  border-color: rgba(0, 217, 146, 0.42);
-  background: var(--demo-panel);
-  box-shadow: 0 0 0 1px rgba(0, 217, 146, 0.14) inset;
+.reviewTileSelected .reviewImageButton {
+  border-color: rgba(0, 217, 146, 0.62);
+  box-shadow: 0 0 0 1px rgba(0, 217, 146, 0.42);
 }
 
 .reviewSelectButton {
   position: absolute;
-  top: 13px;
-  left: 13px;
+  top: 8px;
+  left: 8px;
   z-index: 2;
   display: inline-flex;
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--demo-image-label-border);
-  border-radius: 7px;
-  background: var(--demo-image-label-bg);
-  color: var(--demo-green);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 6px;
+  background: rgba(15, 18, 22, 0.55);
+  color: #ffffff;
   cursor: pointer;
   padding: 0;
+  backdrop-filter: blur(8px) saturate(150%);
+  opacity: 0;
+  transition: opacity 140ms ease, background-color 140ms ease, border-color 140ms ease;
+}
+
+.reviewTile:hover .reviewSelectButton,
+.reviewTile:focus-within .reviewSelectButton,
+.reviewTileSelected .reviewSelectButton {
+  opacity: 1;
+}
+
+.reviewTileSelected .reviewSelectButton {
+  background: var(--demo-green);
+  border-color: var(--demo-green);
+  color: #04111c;
 }
 
 .reviewMarkers {
   position: absolute;
-  top: 13px;
-  right: 13px;
+  top: 8px;
+  right: 8px;
   z-index: 2;
   display: flex;
   gap: 4px;
 }
 
 .reviewMarkers span {
-  border: 1px solid rgba(0, 217, 146, 0.26);
+  border: 1px solid rgba(0, 217, 146, 0.32);
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.52);
+  background: rgba(15, 18, 22, 0.62);
   color: var(--demo-green);
   font-size: 9px;
-  padding: 3px 6px;
+  font-weight: 620;
+  letter-spacing: 0.04em;
+  padding: 2px 7px;
+  backdrop-filter: blur(6px);
 }
 
 .reviewImageButton {
+  position: relative;
+  width: 100%;
+  display: block;
   aspect-ratio: 3 / 4;
   overflow: hidden;
   border: 1px solid var(--demo-border);
-  border-radius: 7px;
+  border-radius: 8px;
   background: var(--demo-panel-2);
   cursor: pointer;
   padding: 0;
+  transition: border-color 140ms ease, box-shadow 140ms ease;
 }
 
 .reviewImageButton:hover,
@@ -2453,21 +2495,21 @@
   outline: none;
 }
 
-.reviewTileFooter {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
+.reviewTileStatus {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  z-index: 2;
+  pointer-events: none;
 }
 
-.reviewTileFooter > span:first-child {
-  overflow: hidden;
-  color: var(--demo-muted);
-  font-family: var(--font-geist-mono), ui-monospace, monospace;
-  font-size: 10px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.reviewTileStatus > .status {
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(15, 18, 22, 0.62);
+  backdrop-filter: blur(6px);
+  font-size: 9.5px;
+  letter-spacing: 0.02em;
+  padding: 3px 8px;
 }
 
 .fieldGrid {
