@@ -7,8 +7,8 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export const metadata: Metadata = {
-  title: "Design Demos - ComfyUI Manager",
-  description: "Routable frontend shell demos for ComfyUI Manager.",
+  title: "ComfyUI Manager",
+  description: "ComfyUI Manager frontend workspace.",
 };
 
 export default async function DesignDemosPage({

@@ -14,6 +14,7 @@ export type DemoImage = {
   status: "pending" | "kept" | "trashed";
   featured: boolean;
   featured2: boolean;
+  cover: boolean;
   width: number | null;
   height: number | null;
 };
@@ -64,6 +65,7 @@ export type DemoRun = {
   errorMessage: string | null;
   imageCount: number;
   pendingCount: number;
+  executionMeta: Record<string, unknown> | null;
   images: DemoImage[];
 };
 
@@ -78,6 +80,7 @@ export type DemoPresetVariant = {
 export type DemoPreset = {
   id: string;
   categoryId: string;
+  folderId: string | null;
   name: string;
   slug: string;
   notes: string;
@@ -88,10 +91,19 @@ export type DemoPreset = {
 export type DemoPresetGroup = {
   id: string;
   categoryId: string;
+  folderId: string | null;
   name: string;
   slug: string;
   memberCount: number;
   members: string[];
+};
+
+export type DemoPresetFolder = {
+  id: string;
+  categoryId: string;
+  name: string;
+  parentId: string | null;
+  sortOrder: number;
 };
 
 export type DemoCategory = {
@@ -102,6 +114,7 @@ export type DemoCategory = {
   color: string | null;
   presetCount: number;
   groupCount: number;
+  folders: DemoPresetFolder[];
   presets: DemoPreset[];
   groups: DemoPresetGroup[];
 };
@@ -262,6 +275,7 @@ function imageFromRow(row: SqlRow, index: number): DemoImage | null {
     status: status === "kept" || status === "trashed" ? status : "pending",
     featured: bool(row.featured),
     featured2: bool(row.featured2),
+    cover: bool(row.cover),
     width: row.width === null || row.width === undefined ? null : int(row.width),
     height: row.height === null || row.height === undefined ? null : int(row.height),
   };
@@ -306,6 +320,7 @@ function fallbackImages(): DemoImage[] {
         status: "pending" as const,
         featured: index % 7 === 0,
         featured2: index % 11 === 0,
+        cover: index === 0,
         width: null,
         height: null,
       };
@@ -377,6 +392,7 @@ function fallbackData(warning: string | null): DemoData {
         status: "pending" as const,
         featured: index === 0,
         featured2: false,
+        cover: index === 0,
         width: null,
         height: null,
       }));
@@ -393,7 +409,7 @@ function fallbackData(warning: string | null): DemoData {
     seedPolicy2: "reuse",
     positivePrompt: "cinematic portrait, soft lighting, refined detail",
     negativePrompt: "low quality, blurry, extra fingers",
-    checkpointName: "mock-checkpoint.safetensors",
+    checkpointName: "default-checkpoint.safetensors",
     promptBlockCount: 4 + index,
     loraCount: 2,
     images: demoImages.slice(index * 4, index * 4 + 6),
@@ -404,11 +420,11 @@ function fallbackData(warning: string | null): DemoData {
     {
       id: "project-demo",
       title: "示例图像项目",
-      slug: "demo-project",
+      slug: "sample-project",
       status: "active",
       updatedAt: shortDate(new Date().toISOString()),
-      notes: "用于设计 demo 的默认项目。",
-      checkpointName: "mock-checkpoint.safetensors",
+      notes: "默认项目会在本地数据不可用时展示基础工作流。",
+      checkpointName: "default-checkpoint.safetensors",
       presetNames: ["角色", "场景", "风格"],
       sectionCount: sections.length,
       sections,
@@ -431,6 +447,28 @@ function fallbackData(warning: string | null): DemoData {
       errorMessage: null,
       imageCount: demoImages.length,
       pendingCount: demoImages.filter((image) => image.status === "pending").length,
+      executionMeta: {
+        ks1Seed: 304179226,
+        ks1Steps: 24,
+        ks1Cfg: 6.5,
+        ks1Sampler: "euler_ancestral",
+        ks1Denoise: 1,
+        ks2Seed: 918204733,
+        ks2Steps: 18,
+        ks2Cfg: 5.5,
+        ks2Sampler: "dpmpp_2m_sde",
+        ks2Denoise: 0.35,
+        aspectRatio: sections[0].aspectRatio,
+        shortSidePx: sections[0].shortSidePx,
+        batchSize: sections[0].batchSize,
+        upscaleFactor: 2,
+        checkpointName: sections[0].checkpointName,
+        workflowId: projects[0].slug,
+        lora1: [{ path: "characters/default-character.safetensors", weight: 0.75, enabled: true }],
+        lora2: [{ path: "detail/refiner.safetensors", weight: 0.45, enabled: true }],
+        positivePrompt: sections[0].positivePrompt,
+        negativePrompt: sections[0].negativePrompt,
+      },
       images: demoImages,
     },
   ];
@@ -457,10 +495,15 @@ function fallbackData(warning: string | null): DemoData {
         color: "#34d399",
         presetCount: 2,
         groupCount: 1,
+        folders: [
+          { id: "folder-demo-root-a", categoryId: "category-demo", name: "角色核心", parentId: null, sortOrder: 0 },
+          { id: "folder-demo-root-b", categoryId: "category-demo", name: "风格补充", parentId: null, sortOrder: 1 },
+        ],
         presets: [
           {
             id: "preset-demo",
             categoryId: "category-demo",
+            folderId: "folder-demo-root-a",
             name: "默认角色",
             slug: "default-character",
             notes: "Fallback preset",
@@ -487,6 +530,7 @@ function fallbackData(warning: string | null): DemoData {
           {
             id: "group-demo",
             categoryId: "category-demo",
+            folderId: null,
             name: "角色组合",
             slug: "character-group",
             memberCount: 2,
@@ -582,9 +626,11 @@ export async function loadDesignDemoData(): Promise<DemoData> {
       .prepare(
         `select
            i.id, i.filePath, i.thumbPath, i.width, i.height, i.reviewStatus, i.featured, i.featured2,
+           case when i.id = p.coverImageId then 1 else 0 end as cover,
            r.id as runId, r.projectId, r.projectSectionId
          from ImageResult i
          join Run r on r.id = i.runId
+         left join Project p on p.id = r.projectId
          where i.reviewStatus != 'trashed'
          order by datetime(i.createdAt) desc
          limit 160`,
@@ -690,7 +736,7 @@ export async function loadDesignDemoData(): Promise<DemoData> {
     const runs = (db
       .prepare(
         `select
-           r.id, r.projectId, r.projectSectionId, r.status, r.runIndex, r.createdAt, r.startedAt, r.finishedAt, r.errorMessage,
+           r.id, r.projectId, r.projectSectionId, r.status, r.runIndex, r.createdAt, r.startedAt, r.finishedAt, r.errorMessage, r.executionMeta,
            p.title as projectTitle, s.name as sectionName,
            count(i.id) as imageCount,
            sum(case when i.reviewStatus = 'pending' then 1 else 0 end) as pendingCount
@@ -718,6 +764,7 @@ export async function loadDesignDemoData(): Promise<DemoData> {
         errorMessage: text(row.errorMessage) || null,
         imageCount: int(row.imageCount),
         pendingCount: int(row.pendingCount),
+        executionMeta: parseJson<Record<string, unknown> | null>(row.executionMeta, null),
         images: runImages.length ? runImages : placeholders(8, fallback),
       } satisfies DemoRun;
     });
@@ -743,10 +790,30 @@ export async function loadDesignDemoData(): Promise<DemoData> {
       });
     }
 
+    const foldersByCategory = new Map<string, DemoPresetFolder[]>();
+    for (const row of db
+      .prepare(
+        `select id, categoryId, name, parentId, sortOrder
+         from PresetFolder
+         order by categoryId asc, parentId asc, sortOrder asc
+         limit 160`,
+      )
+      .all() as SqlRow[]) {
+      const categoryId = text(row.categoryId);
+      if (!foldersByCategory.has(categoryId)) foldersByCategory.set(categoryId, []);
+      foldersByCategory.get(categoryId)!.push({
+        id: text(row.id),
+        categoryId,
+        name: text(row.name),
+        parentId: row.parentId === null ? null : text(row.parentId),
+        sortOrder: int(row.sortOrder),
+      });
+    }
+
     const presetsByCategory = new Map<string, DemoPreset[]>();
     for (const row of db
       .prepare(
-        `select id, categoryId, name, slug, notes
+        `select id, categoryId, folderId, name, slug, notes
          from Preset
          where isActive = 1
          order by categoryId asc, sortOrder asc
@@ -759,6 +826,7 @@ export async function loadDesignDemoData(): Promise<DemoData> {
       presetsByCategory.get(categoryId)!.push({
         id: text(row.id),
         categoryId,
+        folderId: row.folderId === null ? null : text(row.folderId),
         name: text(row.name),
         slug: text(row.slug),
         notes: text(row.notes),
@@ -771,7 +839,7 @@ export async function loadDesignDemoData(): Promise<DemoData> {
     for (const row of db
       .prepare(
         `select
-           g.id, g.categoryId, g.name, g.slug,
+           g.id, g.categoryId, g.folderId, g.name, g.slug,
            count(m.id) as memberCount
          from PresetGroup g
          left join PresetGroupMember m on m.groupId = g.id
@@ -786,6 +854,7 @@ export async function loadDesignDemoData(): Promise<DemoData> {
       groupsByCategory.get(categoryId)!.push({
         id: text(row.id),
         categoryId,
+        folderId: row.folderId === null ? null : text(row.folderId),
         name: text(row.name),
         slug: text(row.slug),
         memberCount: int(row.memberCount),
@@ -804,6 +873,7 @@ export async function loadDesignDemoData(): Promise<DemoData> {
       const categoryId = text(row.id);
       const presets = presetsByCategory.get(categoryId) ?? [];
       const groups = groupsByCategory.get(categoryId) ?? [];
+      const folders = foldersByCategory.get(categoryId) ?? [];
       return {
         id: categoryId,
         name: text(row.name),
@@ -812,6 +882,7 @@ export async function loadDesignDemoData(): Promise<DemoData> {
         color: row.color === null ? null : text(row.color),
         presetCount: presets.length,
         groupCount: groups.length,
+        folders,
         presets: presets.slice(0, 10),
         groups: groups.slice(0, 10),
       } satisfies DemoCategory;
@@ -927,6 +998,6 @@ export async function loadDesignDemoData(): Promise<DemoData> {
       images: fallback,
     };
   } catch (error) {
-    return fallbackData(error instanceof Error ? error.message : "读取 SQLite mock 数据失败。");
+    return fallbackData(error instanceof Error ? error.message : "读取本地 SQLite 数据失败。");
   }
 }
