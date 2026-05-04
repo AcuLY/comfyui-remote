@@ -147,7 +147,6 @@
 
 .sidebar,
 .sourceCard,
-.sidebarTools,
 .routeBadge,
 .contentRow,
 .templateListItem,
@@ -344,8 +343,8 @@
 
 .sidebarTools {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  grid-template-columns: 1fr;
+  gap: 6px;
 }
 
 .brand > .sidebarTools {
@@ -354,6 +353,7 @@
 
 .sidebarFooter {
   display: grid;
+  margin-bottom: 48px;
   margin-top: auto;
   padding-top: 20px;
 }
@@ -364,9 +364,14 @@
   box-shadow: none;
 }
 
-.sidebarFooter .sidebarToggle:not(.sidebarToggleActive) {
-  border-color: transparent;
-  background: transparent;
+.sidebarFooter .sidebarToggle {
+  grid-template-columns: 18px minmax(0, 1fr) 30px;
+  gap: 8px;
+  min-height: 36px;
+  border-radius: var(--demo-radius);
+  background: var(--demo-glass-soft);
+  font-size: 12px;
+  padding: 8px 12px;
 }
 
 .sidebarFooter .sidebarToggle:not(.sidebarToggleActive):hover,
@@ -6025,6 +6030,10 @@
     justify-items: stretch;
   }
 
+  .sidebar .sidebarFooter .sidebarTools {
+    grid-template-columns: 1fr;
+  }
+
   .sidebarCollapsed.sidebar .sidebarTools {
     grid-template-columns: 1fr;
     justify-items: center;
@@ -6042,6 +6051,15 @@
     display: none;
   }
 
+  .sidebar .sidebarFooter .sidebarToggle {
+    grid-template-columns: 18px minmax(0, 1fr) 30px;
+    padding-inline: 12px;
+  }
+
+  .sidebar .sidebarFooter .sidebarToggle > span:not(.sidebarToggleSwitch) {
+    display: block;
+  }
+
   .sidebar .sidebarToggleSwitch {
     display: inline-flex;
   }
@@ -6056,6 +6074,15 @@
 
   .sidebarCollapsed.sidebar .sidebarToggleSwitch {
     display: none;
+  }
+
+  .sidebarCollapsed.sidebar .sidebarFooter .sidebarToggle > span:not(.sidebarToggleSwitch) {
+    display: none;
+  }
+
+  .sidebarCollapsed.sidebar .sidebarFooter .sidebarToggle {
+    grid-template-columns: 1fr;
+    padding-inline: 0;
   }
 
   .modelInspector {
@@ -6133,6 +6160,15 @@
 
   .sidebar .sidebarToggleSwitch {
     display: none;
+  }
+
+  .sidebar .sidebarFooter .sidebarToggle > span:not(.sidebarToggleSwitch) {
+    display: none;
+  }
+
+  .sidebar .sidebarFooter .sidebarToggle {
+    grid-template-columns: 1fr;
+    padding-inline: 0;
   }
 
   .sidebar .navLink {
@@ -6319,14 +6355,19 @@
 
   .sidebar {
     position: fixed;
-    inset: 0 auto 0 0;
+    inset: 60px auto calc(96px + env(safe-area-inset-bottom)) 0;
     z-index: 40;
     width: min(86vw, 320px);
     max-width: calc(100vw - 32px);
-    height: 100dvh;
+    height: auto;
+    max-height: calc(100dvh - 156px - env(safe-area-inset-bottom));
     box-shadow: 22px 0 70px rgba(0, 0, 0, 0.32);
     transform: translateX(-104%);
     transition: 180ms ease;
+  }
+
+  .sidebarFooter {
+    margin-bottom: 0;
   }
 
   .sidebar .brandName {
@@ -6357,6 +6398,10 @@
 
   .sidebar .sidebarTools {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sidebar .sidebarFooter .sidebarTools {
+    grid-template-columns: 1fr;
   }
 
   .sidebar .sidebarToggle {

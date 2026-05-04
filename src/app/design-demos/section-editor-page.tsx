@@ -190,7 +190,7 @@ function PromptBlockCard({ block }: { block: PromptBlock }) {
 }
 
 export function SectionEditorPage({ data, project, section }: SectionEditorPageProps) {
-  const [sectionName, setSectionName] = useState(section?.name || "");
+  const [, setSectionName] = useState(section?.name || "");
   const [aspectRatio, setAspectRatio] = useState(section?.aspectRatio || "2:3");
   const [shortSidePx, setShortSidePx] = useState(String(section?.shortSidePx || 768));
   const [batchSize, setBatchSize] = useState(String(section?.batchSize || 2));

@@ -7,7 +7,6 @@ import {
   AlertCircle,
   GripVertical,
   X,
-  Search,
   Wand2,
 } from "lucide-react";
 

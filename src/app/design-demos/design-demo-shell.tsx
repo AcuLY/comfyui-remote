@@ -81,6 +81,29 @@ function Sidebar({
             <X className="size-4" />
           </button>
         </div>
+      </div>
+      {grouped.map(([group, links]) => (
+        <nav className={s.navSection} key={group}>
+          <div className={s.navTitle}>{group}</div>
+          {links.map((link) => {
+            const Icon = link.icon;
+            const active = isNavActive(currentRoute, link.href, link.activePrefix);
+            return (
+              <Link
+                className={cx(s.navLink, active && s.navLinkActive)}
+                href={demoHref(link.href)}
+                key={link.href}
+                onClick={onClose}
+              >
+                <Icon className="size-4" />
+                <span>{link.label}</span>
+                {link.count ? <em className={s.navCount}>{link.count(data)}</em> : null}
+              </Link>
+            );
+          })}
+        </nav>
+      ))}
+      <div className={s.sidebarFooter}>
         <div className={s.sidebarTools} aria-label="全局工具">
           <button
             className={cx(s.sidebarToggle, isDarkTheme && s.sidebarToggleActive)}
@@ -110,27 +133,6 @@ function Sidebar({
           </button>
         </div>
       </div>
-      {grouped.map(([group, links]) => (
-        <nav className={s.navSection} key={group}>
-          <div className={s.navTitle}>{group}</div>
-          {links.map((link) => {
-            const Icon = link.icon;
-            const active = isNavActive(currentRoute, link.href, link.activePrefix);
-            return (
-              <Link
-                className={cx(s.navLink, active && s.navLinkActive)}
-                href={demoHref(link.href)}
-                key={link.href}
-                onClick={onClose}
-              >
-                <Icon className="size-4" />
-                <span>{link.label}</span>
-                {link.count ? <em className={s.navCount}>{link.count(data)}</em> : null}
-              </Link>
-            );
-          })}
-        </nav>
-      ))}
     </aside>
   );
 }
