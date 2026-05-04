@@ -7,6 +7,7 @@ import {
   ArrowLeft,
   ArrowRight,
   EyeOff,
+  Menu,
   Moon,
   MoreHorizontal,
   X,
@@ -18,7 +19,6 @@ import { DemoFeedbackProvider } from "./design-demo-ui";
 import {
   DESIGN_DEMO_SFW_STORAGE_KEY,
   DESIGN_DEMO_THEME_STORAGE_KEY,
-  MOBILE_NAV_LINKS,
   NAV_LINKS,
   applyDesignDemoSfwMode,
   cx,
@@ -134,45 +134,80 @@ function Sidebar({
   );
 }
 
-function MobileBottomNav({
-  data,
-  currentRoute,
-  moreOpen,
-  onMore,
+function MobileTopbar({
+  activeLabel,
+  menuOpen,
+  onOpenMenu,
+  toolsOpen,
+  onToggleTools,
+  theme,
+  onToggleTheme,
+  sfwMode,
+  onToggleSfwMode,
 }: {
-  data: DemoData;
-  currentRoute: string;
-  moreOpen: boolean;
-  onMore: () => void;
+  activeLabel: string;
+  menuOpen: boolean;
+  onOpenMenu: () => void;
+  toolsOpen: boolean;
+  onToggleTools: () => void;
+  theme: DemoTheme;
+  onToggleTheme: () => void;
+  sfwMode: boolean;
+  onToggleSfwMode: () => void;
 }) {
+  const isDarkTheme = theme === "dark";
+
   return (
-    <nav className={s.mobileBottomNav} aria-label="移动端主导航">
-      {MOBILE_NAV_LINKS.map((link) => {
-        const Icon = link.icon;
-        const active = isNavActive(currentRoute, link.href, link.activePrefix);
-        return (
-          <Link
-            className={cx(s.mobileBottomItem, active && s.mobileBottomItemActive)}
-            href={demoHref(link.href)}
-            key={link.href}
-          >
-            <Icon className="size-4" />
-            <span>{link.label}</span>
-            {link.count ? <em>{link.count(data)}</em> : null}
-          </Link>
-        );
-      })}
+    <div className={s.mobileTopbar}>
       <button
-        className={cx(s.mobileBottomItem, moreOpen && s.mobileBottomItemActive)}
+        className={cx(s.button, s.iconButton, s.mobileTopbarButton)}
         type="button"
-        onClick={onMore}
-        aria-expanded={moreOpen}
-        aria-label="打开更多页面"
+        onClick={onOpenMenu}
+        aria-expanded={menuOpen}
+        aria-label="打开导航菜单"
       >
-        <MoreHorizontal className="size-4" />
-        <span>更多</span>
+        <Menu className="size-4" />
       </button>
-    </nav>
+      <div className={s.mobileTopbarTitle}>
+        <strong>{activeLabel}</strong>
+        <span>ComfyUI Manager</span>
+      </div>
+      <div className={s.mobileTopbarTools}>
+        <button
+          className={cx(s.button, s.iconButton, s.mobileTopbarButton)}
+          type="button"
+          onClick={onToggleTools}
+          aria-expanded={toolsOpen}
+          aria-label="打开显示设置"
+        >
+          <MoreHorizontal className="size-4" />
+        </button>
+        {toolsOpen ? (
+          <div className={s.mobileToolsMenu} role="menu" aria-label="显示设置">
+            <button
+              className={cx(s.mobileToolsItem, isDarkTheme && s.mobileToolsItemActive)}
+              type="button"
+              role="menuitemcheckbox"
+              aria-checked={isDarkTheme}
+              onClick={onToggleTheme}
+            >
+              <Moon className="size-4" />
+              <span>暗色模式</span>
+            </button>
+            <button
+              className={cx(s.mobileToolsItem, sfwMode && s.mobileToolsItemActive)}
+              type="button"
+              role="menuitemcheckbox"
+              aria-checked={sfwMode}
+              onClick={onToggleSfwMode}
+            >
+              <EyeOff className="size-4" />
+              <span>SFW 模式</span>
+            </button>
+          </div>
+        ) : null}
+      </div>
+    </div>
   );
 }
 
@@ -186,10 +221,15 @@ export function DesignDemoShell({
   data: DemoData;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [toolsOpen, setToolsOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [theme, setTheme] = useState<DemoTheme>("light");
   const [sfwMode, setSfwMode] = useState(false);
   const isLightTheme = theme === "light";
+  const activeNav = useMemo(
+    () => NAV_LINKS.find((link) => isNavActive(currentRoute, link.href, link.activePrefix)) ?? NAV_LINKS[0],
+    [currentRoute],
+  );
 
   useEffect(() => {
     const frameId = window.requestAnimationFrame(() => {
@@ -208,6 +248,19 @@ export function DesignDemoShell({
 
     return () => window.cancelAnimationFrame(frameId);
   }, []);
+
+  useEffect(() => {
+    if (!menuOpen && !toolsOpen) return;
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      setMenuOpen(false);
+      setToolsOpen(false);
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [menuOpen, toolsOpen]);
 
   function toggleTheme() {
     setTheme((currentTheme) => {
@@ -228,6 +281,31 @@ export function DesignDemoShell({
   return (
     <DemoFeedbackProvider>
       <div className={cx(s.shell, isLightTheme && s.shellLight)} data-theme={theme}>
+        <MobileTopbar
+          activeLabel={activeNav?.label ?? "工作台"}
+          menuOpen={menuOpen}
+          onOpenMenu={() => {
+            setMenuOpen(true);
+            setToolsOpen(false);
+          }}
+          toolsOpen={toolsOpen}
+          onToggleTools={() => {
+            setToolsOpen((open) => !open);
+            setMenuOpen(false);
+          }}
+          theme={theme}
+          onToggleTheme={toggleTheme}
+          sfwMode={sfwMode}
+          onToggleSfwMode={toggleSfwMode}
+        />
+        {menuOpen ? (
+          <button
+            className={s.mobileNavBackdrop}
+            type="button"
+            onClick={() => setMenuOpen(false)}
+            aria-label="关闭导航菜单"
+          />
+        ) : null}
         <div className={cx(s.workspace, sidebarCollapsed && s.workspaceCollapsed)}>
           <Sidebar
             collapsed={sidebarCollapsed && !menuOpen}
@@ -245,12 +323,6 @@ export function DesignDemoShell({
             {children}
           </main>
         </div>
-        <MobileBottomNav
-          data={data}
-          currentRoute={currentRoute}
-          moreOpen={menuOpen}
-          onMore={() => setMenuOpen((open) => !open)}
-        />
       </div>
     </DemoFeedbackProvider>
   );

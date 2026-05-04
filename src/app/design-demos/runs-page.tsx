@@ -141,6 +141,7 @@ export function QueuePage({ data }: { data: DemoData }) {
   const [activeTab, setActiveTab] = useState<QueueDemoTab>("pending");
   const totalPending = reviewRows.reduce((sum, row) => sum + row.pendingCount, 0);
   const pageSize = 8;
+  const visibleReviewEnd = Math.min(pageSize, reviewRows.length);
   const totalPages = Math.max(1, Math.ceil(reviewRows.length / pageSize));
   return (
     <div className={s.page}>
@@ -207,7 +208,8 @@ export function QueuePage({ data }: { data: DemoData }) {
               {reviewRows.length === 0 ? <EmptyRows label="当前没有待审核任务" /> : null}
             </div>
             <div className={s.queuePager}>
-              <span>显示 1-{Math.min(pageSize, reviewRows.length)} · 共 {reviewRows.length} 组</span>
+              <span className={s.pagerInfoFull}>显示 1-{visibleReviewEnd} · 共 {reviewRows.length} 组</span>
+              <span className={s.pagerInfoCompact}>1-{visibleReviewEnd} / {reviewRows.length}</span>
               <DemoPager currentPage={1} totalPages={totalPages} />
             </div>
           </section>
@@ -610,4 +612,3 @@ export function ReviewPage({ data, run }: { data: DemoData; run: DemoRun | undef
     </div>
   );
 }
-

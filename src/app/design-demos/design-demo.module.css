@@ -173,6 +173,8 @@
 .modelInspector,
 .modelMoveSheet,
 .routeLoadingPanel,
+.mobileTopbar,
+.mobileToolsMenu,
 .mobileBottomNav {
   -webkit-backdrop-filter: var(--demo-glass-blur);
   backdrop-filter: var(--demo-glass-blur);
@@ -1570,8 +1572,8 @@
 
 .imageGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 16px;
 }
 
 .imageTile {
@@ -1730,7 +1732,8 @@
 .reviewSurfaceTabs > .tabs {
   flex: 1;
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
   border: 0;
   background: transparent;
   padding: 0;
@@ -1944,6 +1947,10 @@
 
 .queuePager {
   padding: 10px 14px;
+}
+
+.pagerInfoCompact {
+  display: none;
 }
 
 .queuePager span,
@@ -2405,8 +2412,8 @@
 
 .reviewImageGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 16px;
 }
 
 .reviewTile {
@@ -2612,21 +2619,29 @@
 .segmented,
 .tabs {
   display: inline-flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   min-width: 0;
   max-width: 100%;
   align-items: center;
   gap: 4px;
+  overflow-x: auto;
+  overflow-y: hidden;
   border: 1px solid var(--demo-border);
   border-radius: var(--demo-radius);
   background: var(--demo-panel);
   padding: 4px;
+  scrollbar-width: none;
+}
+
+.tabs::-webkit-scrollbar {
+  display: none;
 }
 
 .segment,
 .tab {
   display: inline-flex;
-  min-width: 0;
+  flex: 0 0 auto;
+  min-width: max-content;
   max-width: 100%;
   align-items: center;
   gap: 6px;
@@ -2644,8 +2659,7 @@
   padding: 7px 12px;
   text-decoration: none;
   text-overflow: ellipsis;
-  text-wrap: pretty;
-  white-space: normal;
+  white-space: nowrap;
   overflow-wrap: anywhere;
 }
 
@@ -5794,12 +5808,90 @@
   display: none;
 }
 
+.mobileTopbar,
+.mobileNavBackdrop,
+.mobileToolsMenu {
+  display: none;
+}
+
+.mobileTopbarTools {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.mobileTopbarTitle {
+  display: grid;
+  min-width: 0;
+  flex: 1 1 auto;
+  gap: 2px;
+}
+
+.mobileTopbarTitle strong,
+.mobileTopbarTitle span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobileTopbarTitle strong {
+  color: var(--demo-text);
+  font-size: 13px;
+  font-weight: 640;
+}
+
+.mobileTopbarTitle span {
+  color: var(--demo-muted);
+  font-size: 10px;
+}
+
+.mobileToolsItem {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--demo-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 560;
+  padding: 8px 10px;
+  text-align: left;
+  transition: 150ms ease;
+}
+
+.mobileToolsItem:hover,
+.mobileToolsItem:focus-visible,
+.mobileToolsItemActive {
+  border-color: var(--demo-glass-accent-border);
+  background: var(--demo-selected);
+  color: var(--demo-green);
+  outline: none;
+}
+
 .mobileBottomNav {
   display: none;
 }
 
 .shell:has(.lightboxOverlay) .mobileBottomNav {
   display: none;
+}
+
+@media (min-width: 1024px) and (max-width: 1439px) {
+  .imageGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  .reviewImageGrid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 14px;
+  }
 }
 
 @media (max-width: 1180px) {
@@ -5811,7 +5903,6 @@
     grid-template-columns: 76px minmax(0, 1fr);
   }
 
-  .metricGrid,
   .threeCol {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -5843,10 +5934,37 @@
 
 }
 
-@media (max-width: 1080px) {
+@media (min-width: 640px) and (max-width: 1023px) {
   .workspace,
   .workspaceCollapsed {
     grid-template-columns: 76px minmax(0, 1fr);
+  }
+
+  .metricGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .metric {
+    border-right: 1px solid var(--demo-border);
+    border-bottom: 1px solid var(--demo-border);
+  }
+
+  .metric:nth-child(2n) {
+    border-right: 0;
+  }
+
+  .metric:nth-last-child(-n + 2) {
+    border-bottom: 0;
+  }
+
+  .imageGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .reviewImageGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
   }
 
   .sidebar {
@@ -5999,7 +6117,67 @@
   }
 }
 
-@media (max-width: 820px) {
+@media (max-width: 639px) {
+  .mobileTopbar {
+    position: sticky;
+    top: 0;
+    z-index: 34;
+    display: flex;
+    min-height: 60px;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid var(--demo-border);
+    background: var(--demo-topbar-bg);
+    padding: 8px 12px;
+  }
+
+  .mobileTopbarButton {
+    width: 44px;
+    min-height: 44px;
+    flex: 0 0 auto;
+  }
+
+  .button {
+    min-height: 44px;
+  }
+
+  .iconButton,
+  .iconMiniButton {
+    width: 44px;
+    height: 44px;
+  }
+
+  .tab,
+  .mobileToolsItem {
+    min-height: 44px;
+  }
+
+  .mobileToolsMenu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 50;
+    display: grid;
+    width: min(220px, calc(100vw - 24px));
+    gap: 4px;
+    border: 1px solid var(--demo-border);
+    border-radius: var(--demo-radius);
+    background: var(--demo-glass-bg);
+    box-shadow: var(--demo-glass-shadow);
+    padding: 6px;
+  }
+
+  .mobileNavBackdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 39;
+    display: block;
+    border: 0;
+    background: rgba(0, 0, 0, 0.42);
+    cursor: pointer;
+    padding: 0;
+  }
+
   .workspace {
     display: block;
     height: auto;
@@ -6011,7 +6189,10 @@
     position: fixed;
     inset: 0 auto 0 0;
     z-index: 40;
-    width: min(82vw, 320px);
+    width: min(86vw, 320px);
+    max-width: calc(100vw - 32px);
+    height: 100dvh;
+    box-shadow: 22px 0 70px rgba(0, 0, 0, 0.32);
     transform: translateX(-104%);
     transition: 180ms ease;
   }
@@ -6074,7 +6255,7 @@
     height: auto;
     min-height: 100vh;
     overflow: visible;
-    padding: 16px 16px calc(100px + env(safe-area-inset-bottom));
+    padding: 14px 12px calc(24px + env(safe-area-inset-bottom));
   }
 
   .toastStack {
@@ -6086,14 +6267,15 @@
   }
 
   .pageHeader {
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: end;
+    grid-template-columns: 1fr;
+    align-items: start;
     gap: 10px 12px;
   }
 
   .pageHeader > .toolbar {
-    max-width: min(42vw, 220px);
-    justify-content: flex-end;
+    width: 100%;
+    max-width: 100%;
+    justify-content: flex-start;
   }
 
   .threeCol,
@@ -6102,23 +6284,19 @@
   }
 
   .metricGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr;
     gap: 0;
   }
 
   .metric {
     min-height: 66px;
     gap: 5px;
-    border-right: 1px solid var(--demo-border);
+    border-right: 0;
     border-bottom: 1px solid var(--demo-border);
     padding: 10px;
   }
 
-  .metric:nth-child(2n) {
-    border-right: 0;
-  }
-
-  .metric:nth-last-child(-n + 2) {
+  .metric:last-child {
     border-bottom: 0;
   }
 
@@ -6222,9 +6400,33 @@
     flex-direction: column;
   }
 
+  .queueTabsBar {
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .queueTabsBar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .queueTabsBar .tabs {
+    width: max-content;
+    min-width: 100%;
+  }
+
+  .queueTabsBar .tab {
+    flex: 0 0 auto;
+    min-width: max-content;
+    min-height: 44px;
+    padding-inline: 14px;
+  }
+
   .queueRunRow {
     grid-template-columns: 1fr;
     align-items: start;
+    gap: 10px;
+    min-height: 0;
+    padding: 14px;
   }
 
   .queueRunRowSelectable {
@@ -6239,6 +6441,17 @@
 
   .queueRunRow > .status {
     justify-self: start;
+    min-height: 30px;
+  }
+
+  .queueRunMain {
+    gap: 5px;
+  }
+
+  .queueRunMain strong,
+  .queueRunMain span {
+    line-height: 1.35;
+    white-space: normal;
   }
 
   .reviewMetaHeader {
@@ -6283,15 +6496,83 @@
   }
 
   .queueRunMeta {
+    max-width: 100%;
+    flex-wrap: nowrap;
     justify-content: flex-start;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+  }
+
+  .queueRunMeta::-webkit-scrollbar {
+    display: none;
+  }
+
+  .queueRunMeta .badge {
+    flex: 0 0 auto;
+    min-height: 28px;
   }
 
   .queueThumbs {
-    overflow-x: auto;
+    display: grid;
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    overflow: visible;
+  }
+
+  .queueThumbs span {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1 / 1;
+  }
+
+  .imageGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
   }
 
   .reviewImageGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .reviewSelectButton {
+    width: 44px;
+    height: 44px;
+    opacity: 1;
+  }
+
+  .reviewMarkers {
+    max-width: calc(100% - 58px);
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .queuePager {
+    gap: 12px;
+  }
+
+  .pagerControls {
+    order: 1;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .pagerInfoFull {
+    display: none;
+  }
+
+  .pagerInfoCompact {
+    order: 2;
+    display: inline-flex;
+    justify-content: center;
+  }
+
+  .pagerButton {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
   }
 
   .reviewBulkBar .toolbar,
