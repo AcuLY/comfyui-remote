@@ -49,6 +49,19 @@ export type DemoSection = {
   promptBlockCount: number;
   loraCount: number;
   images: DemoImage[];
+  latestRunIndex?: number;
+  presetBindings?: Array<{
+    id: string;
+    kind: "preset" | "group";
+    categoryId: string;
+    categoryName: string;
+    categoryColor: string | null;
+    name: string;
+    variantId?: string;
+    variantName?: string;
+    blockCount: number;
+    loraCount: number;
+  }>;
   changeHistory?: Array<{
     id: string;
     timestamp: string;
@@ -56,6 +69,7 @@ export type DemoSection = {
     title: string;
     before: string | null;
     after: string | null;
+    diff?: Array<{ field: string; before: string; after: string }>;
   }>;
 };
 
@@ -449,6 +463,31 @@ function fallbackData(warning: string | null): DemoData {
     promptBlockCount: 4 + index,
     loraCount: 2,
     images: demoImages.slice(index * 4, index * 4 + 6),
+    latestRunIndex: 12 + index,
+    presetBindings: [
+      {
+        id: `binding-${index}-1`,
+        kind: "preset",
+        categoryId: "category-character",
+        categoryName: "角色",
+        categoryColor: "158 100% 43%",
+        name: index === 0 ? "达妮娅" : index === 1 ? "莉娜" : "塞西尔",
+        variantId: `variant-${index}-default`,
+        variantName: "默认",
+        blockCount: 2,
+        loraCount: 1,
+      },
+      {
+        id: `binding-${index}-2`,
+        kind: "group",
+        categoryId: "category-scene",
+        categoryName: "场景",
+        categoryColor: "280 65% 60%",
+        name: index === 1 ? "户外光线组" : "室内灯光组",
+        blockCount: 2,
+        loraCount: 1,
+      },
+    ],
     changeHistory: [
       {
         id: `change-${index}-1`,
@@ -457,6 +496,10 @@ function fallbackData(warning: string | null): DemoData {
         title: "更新运行参数",
         before: JSON.stringify({ batchSize: 2, upscaleFactor: 1.5 }),
         after: JSON.stringify({ batchSize: index === 2 ? 4 : 2, upscaleFactor: 2 }),
+        diff: [
+          { field: "batchSize", before: "2", after: String(index === 2 ? 4 : 2) },
+          { field: "upscaleFactor", before: "1.5", after: "2" },
+        ],
       },
       {
         id: `change-${index}-2`,
@@ -465,6 +508,25 @@ function fallbackData(warning: string | null): DemoData {
         title: "更新 LoRA 配置",
         before: JSON.stringify({ lora1: [], lora2: [] }),
         after: JSON.stringify({ lora1: [{ path: "character.safetensors", weight: 0.8 }], lora2: [] }),
+        diff: [
+          { field: "lora1[0].path", before: "—", after: "character.safetensors" },
+          { field: "lora1[0].weight", before: "—", after: "0.8" },
+        ],
+      },
+      {
+        id: `change-${index}-3`,
+        timestamp: shortDate(new Date(Date.now() - 10800000).toISOString()),
+        dimension: "prompt",
+        title: "调整正向提示词",
+        before: JSON.stringify({ positive: "cinematic portrait" }),
+        after: JSON.stringify({ positive: "cinematic portrait, soft lighting, refined detail" }),
+        diff: [
+          {
+            field: "block[0].positive",
+            before: "cinematic portrait",
+            after: "cinematic portrait, soft lighting, refined detail",
+          },
+        ],
       },
     ],
   }));
