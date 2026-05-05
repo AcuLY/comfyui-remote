@@ -31,6 +31,16 @@ export type RunningRun = {
   sectionName: string;
   startedAt: string;
   status: "queued" | "running";
+  progress: {
+    percent: number;
+    currentStep: number;
+    totalSteps: number;
+    elapsed: string | null;
+    remaining: string | null;
+    rate: string | null;
+    stage: number;
+    updatedAt: string | null;
+  } | null;
 };
 
 export type FailedRun = {

@@ -3,6 +3,7 @@ import { toImageUrl } from "@/lib/image-url";
 import fs from "node:fs";
 import path from "node:path";
 import type { QueuePagination, QueueRun, RunningRun, FailedRun, ReviewGroup, ReviewImage, ReviewStatus } from "@/lib/types";
+import { getLatestComfyLogProgress } from "@/server/services/comfy-progress-service";
 
 // ---------------------------------------------------------------------------
 // Preset binding helpers — resolve display names from presetBindings JSON
@@ -333,6 +334,10 @@ export async function getRunningRuns(): Promise<RunningRun[]> {
   const presetMap = await batchResolvePresetNames(
     collectPresetIds(runs.map((r) => r.project.presetBindings)),
   );
+  const activeRunningRun = runs.find((run) => run.status === "running");
+  const activeProgress = activeRunningRun
+    ? getLatestComfyLogProgress(activeRunningRun.startedAt ?? activeRunningRun.createdAt)
+    : null;
 
   return runs.map((run) => {
     const presetNames = extractPresetNames(run.project.presetBindings as PresetBindingJson | null, presetMap);
@@ -345,6 +350,19 @@ export async function getRunningRuns(): Promise<RunningRun[]> {
         `section_${run.projectSection.sortOrder + 1}`,
       startedAt: formatDate(run.startedAt ?? run.createdAt),
       status: run.status as RunningRun["status"],
+      progress:
+        run.id === activeRunningRun?.id && activeProgress
+          ? {
+              percent: activeProgress.percent,
+              currentStep: activeProgress.currentStep,
+              totalSteps: activeProgress.totalSteps,
+              elapsed: activeProgress.elapsed,
+              remaining: activeProgress.remaining,
+              rate: activeProgress.rate,
+              stage: activeProgress.stage,
+              updatedAt: activeProgress.updatedAt,
+            }
+          : null,
     };
   });
 }

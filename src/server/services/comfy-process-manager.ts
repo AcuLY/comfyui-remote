@@ -269,7 +269,7 @@ class ComfyProcessManager {
       this.spawnedAt = Date.now();
 
       child.stdout?.on("data", (data: Buffer) => {
-        for (const line of data.toString("utf8").split("\n")) {
+        for (const line of data.toString("utf8").split(/\r|\n/)) {
           if (line.trim()) {
             this.log(`[stdout] ${line}`);
           }
@@ -277,7 +277,7 @@ class ComfyProcessManager {
       });
 
       child.stderr?.on("data", (data: Buffer) => {
-        for (const line of data.toString("utf8").split("\n")) {
+        for (const line of data.toString("utf8").split(/\r|\n/)) {
           if (line.trim()) {
             this.log(`[stderr] ${line}`);
           }
@@ -333,7 +333,6 @@ class ComfyProcessManager {
       if (process.platform === "win32") {
         // On Windows with shell:true, SIGTERM only kills cmd.exe, not the Python child.
         // Use taskkill /T to kill the entire process tree.
-        const { execSync } = require("child_process") as typeof import("child_process");
         try {
           execSync(`taskkill /T /F /PID ${pid}`, { stdio: "ignore" });
           this.log(`[manager] taskkill /T /F /PID ${pid} succeeded`);
