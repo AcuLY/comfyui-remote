@@ -1,0 +1,23 @@
+/* 细体 - 用于副标题或装饰 */
+@font-face {
+  font-family: 'AlibabaPuHuiTi';
+  src: url('./fonts/AlibabaPuHuiTi-3-35-Thin.woff2') format('woff2');
+  font-weight: 300;
+  font-display: swap;
+}
+
+/* 常规体 - 用于正文、表格、菜单 */
+@font-face {
+  font-family: 'AlibabaPuHuiTi';
+  src: url('./fonts/AlibabaPuHuiTi-3-55-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+}
+
+/* 粗体 - 用于大标题、关键数值 */
+@font-face {
+  font-family: 'AlibabaPuHuiTi';
+  src: url('./fonts/AlibabaPuHuiTi-3-85-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-display: swap;
+}

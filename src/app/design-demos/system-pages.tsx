@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Activity, ArrowRight, ClipboardList, Gauge, History, Home, Lock, Monitor, Play, Search, X } from "lucide-react";
+import { Activity, ArrowRight, ClipboardList, Gauge, History, Home, Lock, Monitor, Play, Search, Type, X } from "lucide-react";
 
 import type { DemoData } from "./design-demo-data";
 import s from "./design-demo.module.css";
@@ -19,6 +19,7 @@ export function SettingsPage({ data }: { data: DemoData }) {
       />
       <div className={s.settingsLinkList}>
         {[
+          { title: "字体对比", href: "/settings/fonts", icon: Type, meta: "MiSans、HarmonyOS、Alibaba、LXGW、Noto 基线" },
           { title: "ComfyUI 监控", href: "/settings/monitor", icon: Monitor, meta: "进程状态、健康检查、启停控制" },
           { title: "后端日志", href: "/settings/logs", icon: History, meta: `${data.auditLogs.length} 条记录 · 项目执行与错误信息` },
         ].map((item) => (

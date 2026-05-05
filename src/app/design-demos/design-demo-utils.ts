@@ -20,6 +20,7 @@ import {
   SlidersHorizontal,
   Sparkles,
   Tags,
+  Type,
   Wand2,
 } from "lucide-react";
 
@@ -66,6 +67,7 @@ export type RouteKey =
   | "template-edit"
   | "template-section"
   | "settings"
+  | "fonts"
   | "logs"
   | "monitor"
   | "not-found";
@@ -166,6 +168,7 @@ export const ROUTES: RouteDef[] = [
   { key: "template-section", pattern: "/templates/:templateId/sections/:sectionIndex", title: "模板小节", group: "模板", icon: ListChecks },
   { key: "template-edit", pattern: "/templates/:templateId/edit", title: "编辑模板", group: "模板", icon: Edit3 },
   { key: "templates", pattern: "/templates", title: "模板列表", group: "模板", icon: FileText },
+  { key: "fonts", pattern: "/settings/fonts", title: "字体对比", group: "设置", icon: Type },
   { key: "logs", pattern: "/settings/logs", title: "日志", group: "设置", icon: History },
   { key: "monitor", pattern: "/settings/monitor", title: "Worker 监控", group: "设置", icon: Monitor },
   { key: "settings", pattern: "/settings", title: "设置", group: "设置", icon: Settings },
