@@ -77,7 +77,7 @@ or:
 | Copy section | `POST /api/projects/:projectId/sections/:sectionId/copy` |
 | Create section from template | `POST /api/projects/:projectId/sections/:sectionId/create-from-template` |
 | Run one section | `POST /api/projects/:projectId/sections/:sectionId/run` |
-| Import preset into section | `POST /api/projects/:projectId/sections/:sectionId/import-preset` |
+| Import/remove preset in section | `POST/DELETE /api/projects/:projectId/sections/:sectionId/import-preset` |
 | Switch a section binding variant | `POST /api/projects/:projectId/sections/:sectionId/switch-variant` |
 | Batch switch section binding variants | `POST /api/agent/projects/:projectId/switch-variants` |
 | Sync preset variants from a reference project | `POST /api/agent/projects/:projectId/sync-preset-variants` |
@@ -98,7 +98,7 @@ or:
 | Read logs, audit logs, health, worker status | `GET /api/logs`, `GET /api/audit-logs`, `GET /api/health`, `GET /api/worker/status` |
 | MCP automation | `GET/POST/DELETE /api/mcp` |
 
-No remaining user-facing backend operation gap is known after adding `queue/clear`, `queue/clear-active`, section `batch-delete`, project `export`, template import options, preset lookup, batch variant switching, and `name/loraConfig` support on section PATCH.
+No remaining user-facing backend operation gap is known after adding `queue/clear`, `queue/clear-active`, section `batch-delete`, project `export`, template import options, preset import/removal, preset lookup, batch variant switching, and `name/loraConfig` support on section PATCH.
 
 ## Projects
 
@@ -207,6 +207,7 @@ All fields are optional, but at least one supported field must be present. For g
 | `POST` | `/api/projects/:projectId/sections/:sectionId/run` | `{ "overrideBatchSize": 2 }` optional | enqueues and submits one section |
 | `POST` | `/api/projects/:projectId/sections/:sectionId/create-from-template` | template section creation payload | creates a section from a project template section |
 | `POST` | `/api/projects/:projectId/sections/:sectionId/import-preset` | `{ "presetId": "...", "variantId": "...", "groupBindingId": "..." }` | imports a preset block into the section |
+| `DELETE` | `/api/projects/:projectId/sections/:sectionId/import-preset` | `{ "bindingId": "..." }` | removes an imported preset binding and matching preset LoRA entries |
 | `POST` | `/api/projects/:projectId/sections/:sectionId/switch-variant` | `{ "bindingId": "...", "newVariantId": "..." }` | switches the preset variant for an existing binding |
 
 ## Prompt Blocks

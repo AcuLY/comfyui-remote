@@ -5,6 +5,7 @@ import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import {
   parseSectionLoraConfig,
+  removeLoraEntriesByBinding,
   serializeSectionLoraConfig,
   type LoraEntry,
 } from "@/lib/lora-types";
@@ -359,6 +360,54 @@ export async function importPresetToSection(
       lora2Order: preset.category.lora2Order,
     },
   };
+}
+
+export async function removeImportedPresetFromSection(
+  sectionId: string,
+  bindingId: string,
+): Promise<{ deletedBlocks: number; removedLoras: { lora1: number; lora2: number } } | null> {
+  const blocks = await prisma.promptBlock.findMany({
+    where: { projectSectionId: sectionId, bindingId },
+    select: { id: true, label: true, sourceId: true },
+  });
+  if (blocks.length === 0 || blocks.every((block) => !block.sourceId)) return null;
+
+  const section = await prisma.projectSection.findUnique({
+    where: { id: sectionId },
+    select: { loraConfig: true },
+  });
+  const beforeLoraConfig = section?.loraConfig ?? null;
+  const parsed = parseSectionLoraConfig(section?.loraConfig);
+  const { config, removed } = removeLoraEntriesByBinding(parsed, bindingId);
+  const nextConfig = serializeSectionLoraConfig(config);
+
+  await prisma.$transaction([
+    prisma.promptBlock.deleteMany({ where: { projectSectionId: sectionId, bindingId } }),
+    prisma.projectSection.update({
+      where: { id: sectionId },
+      data: { loraConfig: nextConfig as Prisma.InputJsonValue },
+    }),
+  ]);
+
+  await recordSectionChange({
+    sectionId,
+    dimension: "prompt",
+    title: `删除导入预制：${blocks.map((block) => block.label).join(", ")}`,
+    before: blocks,
+    after: null,
+  });
+  if (removed.lora1 > 0 || removed.lora2 > 0) {
+    await recordSectionChange({
+      sectionId,
+      dimension: "lora",
+      title: "删除导入预制 LoRA",
+      before: beforeLoraConfig,
+      after: nextConfig,
+    });
+  }
+  revalidatePath("/projects");
+
+  return { deletedBlocks: blocks.length, removedLoras: removed };
 }
 
 // ---------------------------------------------------------------------------

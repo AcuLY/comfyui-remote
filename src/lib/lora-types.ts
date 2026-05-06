@@ -187,6 +187,22 @@ export function serializeSectionLoraConfig(config: SectionLoraConfig): SectionLo
   };
 }
 
+export function removeLoraEntriesByBinding(
+  config: SectionLoraConfig,
+  bindingId: string,
+): { config: SectionLoraConfig; removed: { lora1: number; lora2: number } } {
+  const lora1 = config.lora1.filter((entry) => entry.bindingId !== bindingId);
+  const lora2 = config.lora2.filter((entry) => entry.bindingId !== bindingId);
+
+  return {
+    config: { lora1, lora2 },
+    removed: {
+      lora1: config.lora1.length - lora1.length,
+      lora2: config.lora2.length - lora2.length,
+    },
+  };
+}
+
 /**
  * Generate unique ID for LoRA entry
  */
