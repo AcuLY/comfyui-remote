@@ -370,7 +370,7 @@ export async function removeImportedPresetFromSection(
     where: { projectSectionId: sectionId, bindingId },
     select: { id: true, label: true, sourceId: true },
   });
-  if (blocks.length === 0 || blocks.every((block) => !block.sourceId)) return null;
+  if (blocks.length === 0) return null;
 
   const section = await prisma.projectSection.findUnique({
     where: { id: sectionId },
