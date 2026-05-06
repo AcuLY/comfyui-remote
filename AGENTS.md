@@ -7,9 +7,9 @@ This version has breaking changes — APIs, conventions, and file structure may 
 <!-- BEGIN:auth-debug-rules -->
 # UI auth for local verification
 
-When UI verification needs an authenticated session, read the login token from
-the project-root `.env` file and use it to log in. Do not hard-code the token,
-print it in logs, or commit token values.
+When UI verification redirects to `/login` or otherwise needs an authenticated
+session, read the login token from the project-root `.env` file and use it to
+log in. Do not hard-code the token, print it in logs, or commit token values.
 <!-- END:auth-debug-rules -->
 
 <!-- BEGIN:deploy-rules -->
@@ -21,15 +21,16 @@ print it in logs, or commit token values.
 2. 判断当前执行环境：
    - 如果当前已经在 `mypc` 这台 Windows 设备，且仓库目录是 `D:\Luca\Code\MyProject\comfyui-manager`，不要 SSH，直接在当前目录继续执行后续步骤。
    - 如果当前不在 `mypc`，必须 SSH 到 `mypc`，在 `D:\Luca\Code\MyProject\comfyui-manager` 目录下 `git pull` 后继续执行后续步骤。
-3. 如果 Prisma schema 有变更：`$env:DB_PROVIDER="postgresql"; npx prisma generate` + `npx prisma db push`。
-4. 构建前先清理 `.next` 缓存目录，否则增量 build 可能产生过期的 static chunk（浏览器请求旧 chunk hash 时返回 500）：
+3. 在准备构建、清理 `.next`、停止或重启服务前，必须先检查当前队列/运行任务状态；如果发现仍有 queued/running 任务，立刻停止后续部署动作，仅保留第 1 步的提交和推送结果，不要清理 `.next`、不要构建、不要停止或重启现有服务，并在回复里说明因为队列中仍有任务而延后部署。
+4. 如果 Prisma schema 有变更：`$env:DB_PROVIDER="postgresql"; npx prisma generate` + `npx prisma db push`。
+5. 构建前先清理 `.next` 缓存目录，否则增量 build 可能产生过期的 static chunk（浏览器请求旧 chunk hash 时返回 500）：
    ```powershell
    Remove-Item -Recurse -Force .next -ErrorAction SilentlyContinue
    ```
    然后执行 `npx next build` 构建项目。
    - 如果当前项目目录下已经有通过 `npm run dev` / `next dev` 启动的开发服务，不要清理 `.next` 缓存目录；清理会破坏正在运行的 dev 服务缓存并导致 500。此时跳过 `.next` 清理，并优先使用当前 dev 服务做验证。
-5. 部署完成后必须访问网站验证，确保没有 500 或资源加载错误，直到所有请求正常。
-5. 重启服务时，不要执行 `Stop-Process -Name node -Force`，因为这会误杀当前终端里的 CodeBuddy/Codex 进程。只停止当前项目目录下的 `next start` 进程，然后再启动服务：
+6. 部署完成后必须访问网站验证，确保没有 500 或资源加载错误，直到所有请求正常。
+7. 重启服务时，不要执行 `Stop-Process -Name node -Force`，因为这会误杀当前终端里的 CodeBuddy/Codex 进程。只停止当前项目目录下的 `next start` 进程，然后再启动服务：
    ```powershell
    $targets = Get-CimInstance Win32_Process -Filter "Name = 'node.exe'" |
      Where-Object { $_.CommandLine -like '*D:\Luca\Code\MyProject\comfyui-manager*' -and $_.CommandLine -like '*next*start*' }
@@ -45,5 +46,5 @@ print it in logs, or commit token values.
      wmic process call create "cmd /c cd /d D:\Luca\Code\MyProject\comfyui-manager && npx next start > server.log 2>&1"
      ```
    - 注意：`wmic` 不继承 PATH，必须用 `npx next start` 而非 `next start`；同时不要按进程名批量杀掉所有 `node.exe`。
-6. 部署后验证网站可访问性（用 WebFetch 访问 `https://comfy.bgmss.fun/`），确认无 500 错误。
+8. 部署后验证网站可访问性（用 WebFetch 访问 `https://comfy.bgmss.fun/`），确认无 500 错误。
 <!-- END:deploy-rules -->
