@@ -538,10 +538,84 @@ export async function submitComfyPrompt(
     throw new Error("ComfyUI prompt submit did not return prompt_id");
   }
 
+  // A just-submitted prompt can be missing from a stale shared queue snapshot.
+  comfyQueueSnapshotCache = null;
+
   return promptId;
 }
 
 export type ComfyQueuePosition = "running" | "pending" | "not_found";
+
+type ComfyQueueSnapshot = {
+  runningPromptIds: Set<string>;
+  pendingPromptIds: Set<string>;
+};
+
+type ComfyQueueSnapshotCache = {
+  apiUrl: string;
+  expiresAt: number;
+  promise: Promise<ComfyQueueSnapshot>;
+};
+
+let comfyQueueSnapshotCache: ComfyQueueSnapshotCache | null = null;
+
+function extractQueuePromptId(item: unknown): string | null {
+  // ComfyUI queue items are arrays (tuples): [number, prompt_id, prompt, extra_data, outputs].
+  // Keep object support for wrappers that normalize queue payloads.
+  if (Array.isArray(item) && item.length > 1) {
+    return typeof item[1] === "string" ? item[1] : null;
+  }
+
+  const promptId = asRecord(item)?.prompt_id;
+  return typeof promptId === "string" ? promptId : null;
+}
+
+async function fetchComfyQueueSnapshot(apiUrl: string): Promise<ComfyQueueSnapshot> {
+  const payload = await fetchJson(
+    `${apiUrl}/queue`,
+    { method: "GET" },
+    "ComfyUI queue status check",
+  );
+  const queue = asRecord(payload);
+  const running = Array.isArray(queue?.queue_running) ? queue.queue_running : [];
+  const pending = Array.isArray(queue?.queue_pending) ? queue.queue_pending : [];
+
+  return {
+    runningPromptIds: new Set(
+      running.map(extractQueuePromptId).filter((id): id is string => Boolean(id)),
+    ),
+    pendingPromptIds: new Set(
+      pending.map(extractQueuePromptId).filter((id): id is string => Boolean(id)),
+    ),
+  };
+}
+
+async function getComfyQueueSnapshot(apiUrl: string): Promise<ComfyQueueSnapshot> {
+  const now = Date.now();
+  if (
+    comfyQueueSnapshotCache &&
+    comfyQueueSnapshotCache.apiUrl === apiUrl &&
+    comfyQueueSnapshotCache.expiresAt > now
+  ) {
+    return comfyQueueSnapshotCache.promise;
+  }
+
+  const promise = fetchComfyQueueSnapshot(apiUrl);
+  comfyQueueSnapshotCache = {
+    apiUrl,
+    expiresAt: now + env.comfyQueueSnapshotCacheMs,
+    promise,
+  };
+
+  try {
+    return await promise;
+  } catch (error) {
+    if (comfyQueueSnapshotCache?.promise === promise) {
+      comfyQueueSnapshotCache = null;
+    }
+    throw error;
+  }
+}
 
 /**
  * Check where a prompt sits in ComfyUI's queue.
@@ -553,28 +627,10 @@ export async function getComfyQueuePosition(
   promptId: string,
 ): Promise<ComfyQueuePosition> {
   try {
-    const payload = await fetchJson(
-      `${apiUrl}/queue`,
-      { method: "GET" },
-      "ComfyUI queue status check",
-    );
-    const queue = asRecord(payload);
-    if (!queue) return "not_found";
+    const queue = await getComfyQueueSnapshot(apiUrl);
 
-    const running = Array.isArray(queue.queue_running) ? queue.queue_running : [];
-    const pending = Array.isArray(queue.queue_pending) ? queue.queue_pending : [];
-
-    // ComfyUI queue items are arrays (tuples): [number, prompt_id, prompt, extra_data, outputs]
-    // prompt_id is at index 1. Handle both array format and hypothetical object format.
-    const matchesPromptId = (item: unknown): boolean => {
-      if (Array.isArray(item) && item.length > 1) {
-        return item[1] === promptId;
-      }
-      return asRecord(item)?.prompt_id === promptId;
-    };
-
-    if (running.some(matchesPromptId)) return "running";
-    if (pending.some(matchesPromptId)) return "pending";
+    if (queue.runningPromptIds.has(promptId)) return "running";
+    if (queue.pendingPromptIds.has(promptId)) return "pending";
     return "not_found";
   } catch (error) {
     log.warn("Queue status check failed, assuming prompt may still be queued", {
@@ -601,7 +657,7 @@ async function isPromptInComfyQueue(
 /**
  * Poll ComfyUI queue until the prompt starts executing (enters queue_running)
  * or completes. Returns true if the prompt entered the running state,
- * false if it was found directly in history (completed before we noticed).
+ * false if it was found in history after leaving the queue.
  */
 export async function waitForPromptToStart(
   apiUrl: string,
@@ -609,25 +665,11 @@ export async function waitForPromptToStart(
   opts?: { pollIntervalMs?: number; maxAttempts?: number },
 ): Promise<boolean> {
   const pollIntervalMs = opts?.pollIntervalMs ?? 1000;
-  const maxAttempts = opts?.maxAttempts ?? 3600; // ~1 hour default
+  const maxAttempts = opts?.maxAttempts ?? 21_600; // 12 hours at the worker's 2s interval
 
   for (let i = 0; i < maxAttempts; i++) {
-    // Fast path: if history already exists, prompt completed before we noticed
-    try {
-      const payload = await fetchJson(
-        `${apiUrl}/history/${encodeURIComponent(promptId)}`,
-        { method: "GET" },
-        `ComfyUI history check for prompt ${promptId}`,
-      );
-      const historyEntry = extractHistoryEntry(payload, promptId);
-      if (historyEntry && isHistoryComplete(historyEntry)) {
-        return false; // Already done, no "running" phase observed
-      }
-    } catch {
-      // History not found yet, continue checking queue
-    }
-
-    // Check queue position — distinguish running from pending
+    // Check queue first; only hit /history after the prompt leaves both
+    // pending and running queues.
     const position = await getComfyQueuePosition(apiUrl, promptId);
     if (position === "running") {
       return true; // ComfyUI is actively executing this prompt
