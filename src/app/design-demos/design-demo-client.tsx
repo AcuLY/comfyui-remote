@@ -12,7 +12,6 @@ import { SectionResultsPage } from "./section-results-page";
 import { QueuePage, ReviewPage } from "./runs-page";
 import { SectionEditorPage as SectionEditorPageV2 } from "./section-editor-page";
 import { SettingsPage, LogsPage, MonitorPage, LoginPage, NotFoundPage } from "./system-pages";
-import { FontComparePage } from "./font-compare-page";
 import { TemplatesPage, TemplateFormPage, TemplateSectionPage } from "./template-pages";
 import { findCategory, findGroup, findPreset, findProject, findRun, findSection, findTemplate, matchRoute, productRouteFromPathname } from "./design-demo-utils";
 import type { Match } from "./design-demo-utils";
@@ -71,8 +70,6 @@ function CurrentPage({ match, data }: { match: Match; data: DemoData }) {
       return <TemplateSectionPage template={template} sectionIndex={match.params.sectionIndex} />;
     case "settings":
       return <SettingsPage data={data} />;
-    case "fonts":
-      return <FontComparePage />;
     case "logs":
       return <LogsPage data={data} />;
     case "monitor":

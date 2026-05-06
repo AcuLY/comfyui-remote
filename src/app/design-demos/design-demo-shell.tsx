@@ -14,13 +14,6 @@ import {
 } from "lucide-react";
 
 import type { DemoData } from "./design-demo-data";
-import {
-  DEFAULT_DESIGN_DEMO_FONT_KEY,
-  DESIGN_DEMO_FONT_EVENT,
-  DESIGN_DEMO_FONT_STORAGE_KEY,
-  resolveDemoFontKey,
-} from "./design-demo-fonts";
-import type { DemoFontKey } from "./design-demo-fonts";
 import s from "./design-demo.module.css";
 import { DemoFeedbackProvider } from "./design-demo-ui";
 import {
@@ -277,7 +270,6 @@ export function DesignDemoShell({
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [theme, setTheme] = useState<DemoTheme>("light");
   const [sfwMode, setSfwMode] = useState(false);
-  const [demoFont, setDemoFont] = useState<DemoFontKey>(DEFAULT_DESIGN_DEMO_FONT_KEY);
   const isLightTheme = theme === "light";
   const activeNav = useMemo(
     () => NAV_LINKS.find((link) => isNavActive(currentRoute, link.href, link.activePrefix)) ?? NAV_LINKS[0],
@@ -288,7 +280,6 @@ export function DesignDemoShell({
     const frameId = window.requestAnimationFrame(() => {
       const storedTheme = window.localStorage.getItem(DESIGN_DEMO_THEME_STORAGE_KEY);
       setSfwMode(isSfwEnabledValue(window.localStorage.getItem(DESIGN_DEMO_SFW_STORAGE_KEY)));
-      setDemoFont(resolveDemoFontKey(window.localStorage.getItem(DESIGN_DEMO_FONT_STORAGE_KEY)));
 
       if (storedTheme === "light" || storedTheme === "dark") {
         setTheme(storedTheme);
@@ -301,18 +292,6 @@ export function DesignDemoShell({
     });
 
     return () => window.cancelAnimationFrame(frameId);
-  }, []);
-
-  useEffect(() => {
-    function handleFontChange(event: Event) {
-      const detail = event instanceof CustomEvent && typeof event.detail === "string"
-        ? event.detail
-        : window.localStorage.getItem(DESIGN_DEMO_FONT_STORAGE_KEY);
-      setDemoFont(resolveDemoFontKey(detail));
-    }
-
-    window.addEventListener(DESIGN_DEMO_FONT_EVENT, handleFontChange);
-    return () => window.removeEventListener(DESIGN_DEMO_FONT_EVENT, handleFontChange);
   }, []);
 
   useEffect(() => {
@@ -346,7 +325,7 @@ export function DesignDemoShell({
 
   return (
     <DemoFeedbackProvider>
-      <div className={cx(s.shell, isLightTheme && s.shellLight)} data-demo-font={demoFont} data-theme={theme}>
+      <div className={cx(s.shell, isLightTheme && s.shellLight)} data-demo-font="harmonyos" data-theme={theme}>
         <MobileTopbar
           activeLabel={activeNav?.label ?? "工作台"}
           menuOpen={menuOpen}
