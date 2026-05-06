@@ -3,7 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
+import { parseSectionLoraConfig, serializeSectionLoraConfig } from "@/lib/lora-types";
 import { recordPresetChange } from "@/server/services/preset-change-history-service";
+import { recordSectionChange } from "@/server/services/section-change-history-service";
 import { toJsonValue } from "./_helpers";
 
 // ---------------------------------------------------------------------------
@@ -81,6 +83,129 @@ function presetVariantContentSnapshot(variant: {
     lora1: variant.lora1,
     lora2: variant.lora2,
   };
+}
+
+async function syncPresetMetadataToImportedSections(presetId: string) {
+  const preset = await prisma.preset.findUnique({
+    where: { id: presetId },
+    include: {
+      category: { select: { id: true, name: true, color: true } },
+      variants: { where: { isActive: true }, orderBy: { sortOrder: "asc" } },
+    },
+  });
+  if (!preset) return;
+
+  const defaultVariant = preset.variants[0] ?? null;
+  const blocks = await prisma.promptBlock.findMany({
+    where: { sourceId: presetId },
+    select: {
+      id: true,
+      projectSectionId: true,
+      variantId: true,
+      categoryId: true,
+      bindingId: true,
+      groupBindingId: true,
+      label: true,
+      positive: true,
+      negative: true,
+      sortOrder: true,
+    },
+  });
+  if (blocks.length === 0) return;
+
+  const bindingIdsBySection = new Map<string, Set<string>>();
+
+  for (const block of blocks) {
+    const variant = block.variantId
+      ? (preset.variants.find((item) => item.id === block.variantId) ?? defaultVariant)
+      : defaultVariant;
+    const nextLabel = preset.variants.length <= 1 || !variant
+      ? preset.name
+      : `${preset.name} / ${variant.name}`;
+
+    if (block.bindingId) {
+      const sectionBindingIds = bindingIdsBySection.get(block.projectSectionId) ?? new Set<string>();
+      sectionBindingIds.add(block.bindingId);
+      bindingIdsBySection.set(block.projectSectionId, sectionBindingIds);
+    }
+
+    if (block.label === nextLabel && block.categoryId === preset.categoryId) continue;
+
+    const before = {
+      id: block.id,
+      label: block.label,
+      categoryId: block.categoryId,
+      bindingId: block.bindingId,
+      groupBindingId: block.groupBindingId,
+      sortOrder: block.sortOrder,
+    };
+    const updatedBlock = await prisma.promptBlock.update({
+      where: { id: block.id },
+      data: { label: nextLabel, categoryId: preset.categoryId },
+      select: {
+        id: true,
+        label: true,
+        categoryId: true,
+        bindingId: true,
+        groupBindingId: true,
+        sortOrder: true,
+      },
+    });
+    await recordSectionChange({
+      sectionId: block.projectSectionId,
+      dimension: "prompt",
+      title: `Sync preset metadata: ${nextLabel}`,
+      before,
+      after: updatedBlock,
+    });
+  }
+
+  for (const [sectionId, bindingIds] of bindingIdsBySection) {
+    const section = await prisma.projectSection.findUnique({
+      where: { id: sectionId },
+      select: { loraConfig: true },
+    });
+    if (!section?.loraConfig) continue;
+
+    const before = section.loraConfig;
+    const config = parseSectionLoraConfig(section.loraConfig);
+    let changed = false;
+    const updateEntry = <T extends { bindingId?: string; source?: string; sourceName?: string; sourceLabel?: string; sourceColor?: string }>(entry: T) => {
+      if (entry.source !== "preset" || !entry.bindingId || !bindingIds.has(entry.bindingId)) return entry;
+      if (
+        entry.sourceName === preset.name &&
+        entry.sourceLabel === preset.category.name &&
+        entry.sourceColor === (preset.category.color ?? undefined)
+      ) {
+        return entry;
+      }
+      changed = true;
+      return {
+        ...entry,
+        sourceName: preset.name,
+        sourceLabel: preset.category.name,
+        sourceColor: preset.category.color ?? undefined,
+      };
+    };
+
+    config.lora1 = config.lora1.map(updateEntry);
+    config.lora2 = config.lora2.map(updateEntry);
+
+    if (!changed) continue;
+
+    const nextConfig = serializeSectionLoraConfig(config);
+    await prisma.projectSection.update({
+      where: { id: sectionId },
+      data: { loraConfig: nextConfig as Prisma.InputJsonValue },
+    });
+    await recordSectionChange({
+      sectionId,
+      dimension: "lora",
+      title: `Sync preset metadata: ${preset.name}`,
+      before,
+      after: nextConfig,
+    });
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -202,6 +327,14 @@ export async function upsertPresetVariantBySlug(input: PresetVariantInput) {
 
 export async function updatePreset(id: string, input: Partial<PresetInput>) {
   const preset = await prisma.preset.update({ where: { id }, data: input });
+  if (
+    input.name !== undefined ||
+    input.slug !== undefined ||
+    input.categoryId !== undefined
+  ) {
+    await syncPresetMetadataToImportedSections(id);
+    revalidatePath("/projects");
+  }
   revalidatePath("/assets/presets");
   revalidatePath("/projects/new");
   return preset;
