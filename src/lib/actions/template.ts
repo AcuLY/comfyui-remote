@@ -560,6 +560,7 @@ export async function importTemplateToProject(
 
       const templateBindingIdMap = new Map<string, string>();
       const templateGroupBindingIdMap = new Map<string, string>();
+      const resolvedTemplatePresetBindingIds = new Set<string>();
 
       // 2. Collect all blocks (from project bindings + from template)
       const allBlocks: Array<{
@@ -646,21 +647,74 @@ export async function importTemplateToProject(
           if (!rawBlock || typeof rawBlock !== "object") continue;
           const block = rawBlock as Record<string, unknown>;
           const positive = typeof block.positive === "string" ? block.positive : "";
-          if (!positive.trim()) continue;
 
           const blockType = block.type === "preset" ? "preset" : "custom";
-          const categoryId = typeof block.categoryId === "string" ? block.categoryId : null;
+          let categoryId = typeof block.categoryId === "string" ? block.categoryId : null;
           const sourceId = blockType === "preset" && typeof block.sourceId === "string" ? block.sourceId : null;
-          const variantId = blockType === "preset" && typeof block.variantId === "string" ? block.variantId : null;
-          const catOrder = categoryId ? (catByIdMap.get(categoryId)?.positivePromptOrder ?? 999) : 999;
+          let variantId = blockType === "preset" && typeof block.variantId === "string" ? block.variantId : null;
+          let catOrder = categoryId ? (catByIdMap.get(categoryId)?.positivePromptOrder ?? 999) : 999;
 
           const oldBindingId = typeof block.bindingId === "string" ? block.bindingId : null;
           const oldGroupBindingId = typeof block.groupBindingId === "string" ? block.groupBindingId : null;
-          const newBindingId = oldBindingId ? (bindingIdMap.get(oldBindingId) ?? null) : null;
+          const newBindingId = oldBindingId ? (bindingIdMap.get(oldBindingId) ?? null) : (sourceId ? createBindingId() : null);
           const newGroupBindingId = oldGroupBindingId ? (groupBindingIdMap.get(oldGroupBindingId) ?? null) : null;
 
           // Collect loras for this block (will be merged later)
           const blockLoras: { lora1: ImportLoraEntry[]; lora2: ImportLoraEntry[] } = { lora1: [], lora2: [] };
+          let label = (typeof block.label === "string" ? block.label : null) || `Block ${allBlocks.length + 1}`;
+          let nextPositive = positive;
+          let nextNegative = typeof block.negative === "string" ? block.negative : null;
+
+          if (sourceId) {
+            const preset = await tx.preset.findUnique({
+              where: { id: sourceId },
+              include: {
+                category: {
+                  select: {
+                    id: true,
+                    name: true,
+                    color: true,
+                    positivePromptOrder: true,
+                  },
+                },
+                variants: { where: { isActive: true }, orderBy: { sortOrder: "asc" } },
+              },
+            });
+            const variant = preset
+              ? (variantId
+                  ? (preset.variants.find((item) => item.id === variantId) ?? preset.variants[0])
+                  : preset.variants[0])
+              : null;
+
+            if (preset && variant && newBindingId) {
+              const resolved = await resolveVariantContent(variant.id);
+              variantId = variant.id;
+              categoryId = preset.category.id;
+              catOrder = preset.category.positivePromptOrder;
+              label = preset.variants.length === 1 ? preset.name : `${preset.name} / ${variant.name}`;
+              nextPositive = resolved.prompt;
+              nextNegative = resolved.negativePrompt;
+              if (oldBindingId) resolvedTemplatePresetBindingIds.add(oldBindingId);
+
+              const makeLora = (entry: { path: string; weight: number; enabled: boolean }): ImportLoraEntry => ({
+                id: createLoraEntryId(),
+                path: entry.path,
+                weight: entry.weight,
+                enabled: entry.enabled,
+                source: "preset",
+                sourceLabel: preset.category.name,
+                sourceColor: preset.category.color ?? undefined,
+                sourceName: preset.name,
+                bindingId: newBindingId,
+                groupBindingId: newGroupBindingId ?? undefined,
+              });
+
+              blockLoras.lora1.push(...resolved.lora1.map(makeLora));
+              blockLoras.lora2.push(...resolved.lora2.map(makeLora));
+            }
+          }
+
+          if (!nextPositive.trim()) continue;
 
           allBlocks.push({
             type: blockType,
@@ -669,11 +723,11 @@ export async function importTemplateToProject(
             categoryId,
             bindingId: newBindingId,
             groupBindingId: newGroupBindingId,
-            label: (typeof block.label === "string" ? block.label : null) || `Block ${allBlocks.length + 1}`,
-            positive,
-            negative: typeof block.negative === "string" ? block.negative : null,
+            label,
+            positive: nextPositive,
+            negative: nextNegative,
             positivePromptOrder: catOrder,
-            loras: blockLoras, // Template blocks don't carry loras directly; loras are in loraConfig
+            loras: blockLoras,
           });
         }
       }
@@ -708,16 +762,14 @@ export async function importTemplateToProject(
         if (block.positive?.trim()) positiveParts.push(block.positive.trim());
         if (block.negative?.trim()) negativeParts.push(block.negative.trim());
 
-        // Add loras from this block (deduplicate by path)
+        // Add loras from this block while preserving distinct preset bindings.
         for (const l of block.loras.lora1) {
-          if (!loraConfig.lora1.some((e) => e.path === l.path)) {
-            loraConfig.lora1.push(l);
-          }
+          if (hasEquivalentTemplateLoraEntry(loraConfig.lora1, l)) continue;
+          loraConfig.lora1.push(l);
         }
         for (const l of block.loras.lora2) {
-          if (!loraConfig.lora2.some((e) => e.path === l.path)) {
-            loraConfig.lora2.push(l);
-          }
+          if (hasEquivalentTemplateLoraEntry(loraConfig.lora2, l)) continue;
+          loraConfig.lora2.push(l);
         }
       }
 
@@ -761,6 +813,7 @@ export async function importTemplateToProject(
 
             const oldBindingId = typeof e.bindingId === "string" ? e.bindingId : undefined;
             const oldGroupBindingId = typeof e.groupBindingId === "string" ? e.groupBindingId : undefined;
+            if (oldBindingId && resolvedTemplatePresetBindingIds.has(oldBindingId)) continue;
             const newBindingId = oldBindingId ? (loraBindingIdMap.get(oldBindingId) ?? undefined) : undefined;
             const newGroupBindingId = oldGroupBindingId ? (loraGroupBindingIdMap.get(oldGroupBindingId) ?? undefined) : undefined;
 

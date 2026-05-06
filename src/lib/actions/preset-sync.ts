@@ -152,6 +152,7 @@ export async function syncPresetToSections(presetId: string) {
       bindingId: true,
       groupBindingId: true,
       projectSectionId: true,
+      projectSection: { select: { projectId: true } },
       label: true,
       positive: true,
       negative: true,
@@ -169,6 +170,11 @@ export async function syncPresetToSections(presetId: string) {
       { lora1Order: category.lora1Order, lora2Order: category.lora2Order },
     ]),
   );
+
+  const affectedSections = new Map<string, string>();
+  for (const block of blocks) {
+    affectedSections.set(block.projectSectionId, block.projectSection.projectId);
+  }
 
   for (const block of blocks) {
     // Determine which variant this block uses
@@ -229,6 +235,7 @@ export async function syncPresetToSections(presetId: string) {
         source: "preset", sourceLabel: preset.category.name,
         sourceColor: preset.category.color, sourceName: preset.name,
         bindingId: block.bindingId,
+        groupBindingId: block.groupBindingId ?? undefined,
       });
       if (Array.isArray(config.lora1)) {
         config.lora1 = sortSectionLoraEntriesByCategoryOrder(
@@ -260,6 +267,30 @@ export async function syncPresetToSections(presetId: string) {
         });
       }
     }
+  }
+  for (const [sectionId, projectId] of affectedSections) {
+    const sectionBlocks = await prisma.promptBlock.findMany({
+      where: { projectSectionId: sectionId },
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+      select: { positive: true, negative: true },
+    });
+    const positiveParts = sectionBlocks
+      .map((block) => block.positive)
+      .filter((value): value is string => Boolean(value && value.trim()));
+    const negativeParts = sectionBlocks
+      .map((block) => block.negative)
+      .filter((value): value is string => Boolean(value && value.trim()));
+
+    await prisma.projectSection.update({
+      where: { id: sectionId },
+      data: {
+        positivePrompt: positiveParts.join(" BREAK "),
+        negativePrompt: negativeParts.length > 0 ? negativeParts.join(" BREAK ") : null,
+      },
+    });
+
+    revalidatePath(`/projects/${projectId}`);
+    revalidatePath(`/projects/${projectId}/sections/${sectionId}`);
   }
   revalidatePath("/projects");
 }
