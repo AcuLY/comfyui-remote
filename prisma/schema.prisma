@@ -87,7 +87,6 @@ model PresetVariant {
   negativePrompt  String?         @db.Text
   lora1           Json?           // Array<LoraBinding> — stage 1
   lora2           Json?           // Array<LoraBinding> — stage 2 (upscale)
-  defaultParams   Json?           // generation param defaults (aspect, batch, ksampler, etc.)
   linkedVariants  Json?           // [{ presetId: string, variantId: string }] — linked variant refs
   sortOrder       Int             @default(0)
   isActive        Boolean         @default(true)

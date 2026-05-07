@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
+import { parseSectionLoraConfig, serializeSectionLoraConfig } from "@/lib/lora-types";
+import { detachAllPresetLoraEntries } from "@/lib/preset-binding-utils";
 import type { PresetBinding } from "./project";
 import { resolveVariantContent } from "./preset-variant";
 import {
@@ -351,7 +353,9 @@ export async function copySection(sectionId: string): Promise<string | null> {
       ksampler1: section.ksampler1 ?? undefined,
       ksampler2: section.ksampler2 ?? undefined,
       upscaleFactor: section.upscaleFactor ?? undefined,
-      loraConfig: section.loraConfig ?? undefined,
+      loraConfig: section.loraConfig
+        ? (serializeSectionLoraConfig(detachAllPresetLoraEntries(parseSectionLoraConfig(section.loraConfig))) as Prisma.InputJsonValue)
+        : undefined,
       extraParams: section.extraParams ?? undefined,
     },
   });
@@ -361,12 +365,12 @@ export async function copySection(sectionId: string): Promise<string | null> {
     await prisma.promptBlock.createMany({
       data: section.promptBlocks.map((block) => ({
         projectSectionId: newSection.id,
-        type: block.type,
-        sourceId: block.sourceId,
-        variantId: block.variantId,
-        categoryId: block.categoryId,
-        bindingId: block.bindingId,
-        groupBindingId: block.groupBindingId,
+        type: "custom",
+        sourceId: null,
+        variantId: null,
+        categoryId: null,
+        bindingId: null,
+        groupBindingId: null,
         label: block.label,
         positive: block.positive,
         negative: block.negative,

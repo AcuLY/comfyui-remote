@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import {
   DndContext,
   closestCenter,
@@ -27,7 +27,6 @@ import {
   X,
   Sparkles,
   BookOpen,
-  type LucideIcon,
 } from "lucide-react";
 import type { ProjectTemplateSectionData } from "@/lib/server-data";
 
@@ -48,15 +47,6 @@ type CategoryConfig = {
 // ---------------------------------------------------------------------------
 // Icon / Color resolution (shared with prompt-block-editor)
 // ---------------------------------------------------------------------------
-
-const ICON_MAP: Record<string, LucideIcon> = {
-  Sparkles,
-  BookOpen,
-};
-
-function resolveIcon(name: string | null | undefined): LucideIcon {
-  return (name && ICON_MAP[name]) || Sparkles;
-}
 
 function parseHue(color: string | null | undefined): number {
   if (!color) return 0;
@@ -94,13 +84,12 @@ function TypeBadge({
   if (categoryId) {
     const cat = categoryMap.get(categoryId);
     if (cat) {
-      const Icon = resolveIcon(cat.icon);
       return (
         <span
           className="inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 text-[10px] font-medium"
           style={categoryStyle(cat.color)}
         >
-          <Icon className="size-3" />
+          {cat.icon === "BookOpen" ? <BookOpen className="size-3" /> : <Sparkles className="size-3" />}
           {cat.name}
         </span>
       );
@@ -127,8 +116,6 @@ function TypeBadge({
 // ---------------------------------------------------------------------------
 // SortableBlockCard
 // ---------------------------------------------------------------------------
-
-let blockIdCounter = 0;
 
 function SortableBlockCard({
   blockId,
@@ -182,7 +169,11 @@ function SortableBlockCard({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
             <span className="truncate text-[11px] font-medium text-zinc-300">{block.label || "未命名"}</span>
-            <TypeBadge categoryId={(block as TemplateBlockData & { categoryId?: string }).categoryId} categoryMap={categoryMap} isCustom={!block.label || block.label === "自定义"} />
+            <TypeBadge
+              categoryId={(block as TemplateBlockData & { categoryId?: string }).categoryId}
+              categoryMap={categoryMap}
+              isCustom={block.type !== "preset" || !block.sourceId}
+            />
           </div>
           {!isEditing && (
             <div className="mt-0.5 truncate text-[11px] text-zinc-500">
@@ -238,10 +229,11 @@ function SortableBlockCard({
 type Props = {
   blocks: TemplateBlockData[];
   onChange: (blocks: TemplateBlockData[]) => void;
+  onDetachBinding?: (bindingId: string) => void;
   categoryMap: Map<string, CategoryConfig>;
 };
 
-export function TemplatePromptBlockEditor({ blocks, onChange, categoryMap }: Props) {
+export function TemplatePromptBlockEditor({ blocks, onChange, onDetachBinding, categoryMap }: Props) {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editColumn, setEditColumn] = useState<"positive" | "negative">("positive");
   const [editValue, setEditValue] = useState("");
@@ -276,11 +268,23 @@ export function TemplatePromptBlockEditor({ blocks, onChange, categoryMap }: Pro
   function saveEdit() {
     if (editingIndex === null) return;
     const block = blocks[editingIndex];
+    const shouldDetach = block.type === "preset" || Boolean(block.sourceId || block.bindingId);
     const updated = editColumn === "positive"
       ? { ...block, positive: editValue.trim() }
       : { ...block, negative: editValue.trim() || null };
     const next = [...blocks];
-    next[editingIndex] = updated;
+    next[editingIndex] = shouldDetach
+      ? {
+          ...updated,
+          type: "custom",
+          sourceId: null,
+          variantId: null,
+          categoryId: null,
+          bindingId: null,
+          groupBindingId: null,
+        }
+      : updated;
+    if (shouldDetach && block.bindingId) onDetachBinding?.(block.bindingId);
     onChange(next);
     setEditingIndex(null);
     setEditValue("");

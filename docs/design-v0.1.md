@@ -71,7 +71,6 @@
 - defaultAspectRatio
 - defaultBatchSize
 - defaultSeedPolicy
-- defaultParams（json）
 - enabled
 
 ### 5. Project (CompleteJob)

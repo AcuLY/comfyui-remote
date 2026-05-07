@@ -1,6 +1,8 @@
 import { Prisma } from "@/generated/prisma";
 import { JobStatus } from "@/lib/db-enums";
 import { db } from "@/lib/db";
+import { parseSectionLoraConfig, serializeSectionLoraConfig } from "@/lib/lora-types";
+import { detachAllPresetLoraEntries } from "@/lib/preset-binding-utils";
 import { detectProvider } from "@/lib/prisma";
 import {
   type ProjectUpdateInput,
@@ -584,7 +586,7 @@ export async function copyProject(projectId: string) {
         projectLevelOverrides: cloneJsonValueForCreate(project.projectLevelOverrides),
         checkpointName: project.checkpointName,
         notes: project.notes,
-        presetBindings: cloneJsonValueForCreate(project.presetBindings),
+        presetBindings: Prisma.DbNull,
         sections: {
           create: project.sections.map((section) => ({
             sortOrder: section.sortOrder,
@@ -598,12 +600,14 @@ export async function copyProject(projectId: string) {
             ksampler1: cloneJsonValueForCreate(section.ksampler1),
             ksampler2: cloneJsonValueForCreate(section.ksampler2),
             checkpointName: section.checkpointName,
-            loraConfig: cloneJsonValueForCreate(section.loraConfig),
+            loraConfig: section.loraConfig
+              ? (serializeSectionLoraConfig(detachAllPresetLoraEntries(parseSectionLoraConfig(section.loraConfig))) as Prisma.InputJsonValue)
+              : Prisma.DbNull,
             extraParams: cloneJsonValueForCreate(section.extraParams),
             promptBlocks: {
               create: section.promptBlocks.map((block) => ({
-                type: block.type,
-                sourceId: block.sourceId,
+                type: "custom",
+                sourceId: null,
                 label: block.label,
                 positive: block.positive,
                 negative: block.negative,

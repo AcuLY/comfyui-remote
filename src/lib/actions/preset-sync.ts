@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
+import { getDetachedPresetPaths } from "@/lib/preset-binding-utils";
 import { recordSectionChange } from "@/server/services/section-change-history-service";
 import { sortSectionLoraEntriesByCategoryOrder } from "./_helpers";
 import { resolveVariantContent } from "./preset-variant";
@@ -22,21 +23,6 @@ export type PresetUsageInfo = {
 };
 
 type SectionLoraJsonEntry = Record<string, unknown>;
-
-function getDetachedPresetPaths(entries: SectionLoraJsonEntry[] | undefined, bindingId: string | null) {
-  const paths = new Set<string>();
-  if (!bindingId || !Array.isArray(entries)) return paths;
-
-  for (const entry of entries) {
-    if (entry.detachedBindingId !== bindingId) continue;
-    const originalPath = typeof entry.detachedPresetPath === "string" ? entry.detachedPresetPath : null;
-    const currentPath = typeof entry.path === "string" ? entry.path : null;
-    const path = originalPath ?? currentPath;
-    if (path) paths.add(path);
-  }
-
-  return paths;
-}
 
 // ---------------------------------------------------------------------------
 // Preset usage check + cascade operations

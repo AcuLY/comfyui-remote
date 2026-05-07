@@ -347,6 +347,30 @@ export function TemplateSectionDetailClient({
     scheduleSaveAfterState();
   }
 
+  function detachLoraEntryFromBinding(entry: LoraEntry, bindingId: string): LoraEntry {
+    if (entry.bindingId !== bindingId) return entry;
+    return {
+      ...entry,
+      source: "manual",
+      sourceLabel: undefined,
+      sourceColor: undefined,
+      sourceName: undefined,
+      detachedBindingId: entry.detachedBindingId ?? entry.bindingId,
+      detachedGroupBindingId: entry.detachedGroupBindingId ?? entry.groupBindingId,
+      detachedPresetPath: entry.detachedPresetPath ?? entry.path,
+      bindingId: undefined,
+      groupBindingId: undefined,
+    };
+  }
+
+  function detachLorasForPromptBinding(bindingId: string) {
+    setLoraConfig((prev) => ({
+      lora1: prev.lora1.map((entry) => detachLoraEntryFromBinding(entry, bindingId)),
+      lora2: prev.lora2.map((entry) => detachLoraEntryFromBinding(entry, bindingId)),
+    }));
+    scheduleSaveAfterState();
+  }
+
   // ── Preset import handler ──
 
   function parseLoraEntries(
@@ -1069,6 +1093,7 @@ export function TemplateSectionDetailClient({
             setPromptBlocks(nextBlocks);
             scheduleSaveAfterState();
           }}
+          onDetachBinding={detachLorasForPromptBinding}
           categoryMap={categoryMap}
         />
       </div>

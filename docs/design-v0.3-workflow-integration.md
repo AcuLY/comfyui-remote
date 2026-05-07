@@ -129,7 +129,6 @@ Checkpoint(1)
 统一的提示词预设，每个预设包含：
 - `prompt` / `negativePrompt`：正/负提示词
 - `lora1` / `lora2`：LoRA 绑定列表
-- `defaultParams`：JSON 扩展参数
 
 ### 4.2 ProjectSection LoRA 配置
 

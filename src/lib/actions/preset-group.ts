@@ -9,6 +9,7 @@ import {
   serializeSectionLoraConfig,
   type LoraEntry,
 } from "@/lib/lora-types";
+import { getDetachedGroupPresetPaths } from "@/lib/preset-binding-utils";
 import {
   createBindingId,
   makePresetLoraEntry,
@@ -249,13 +250,15 @@ async function syncPresetGroupInstances(
           return filtered;
         };
 
+        const detachedLora1Paths = getDetachedGroupPresetPaths(loraConfig.lora1, groupBindingId);
+        const detachedLora2Paths = getDetachedGroupPresetPaths(loraConfig.lora2, groupBindingId);
         const nextLora1 = nextMembers.flatMap((member, index) =>
-          member.lora1.map((binding) =>
+          member.lora1.filter((binding) => !detachedLora1Paths.has(binding.path)).map((binding) =>
             makePresetLoraEntry(binding, member, nextBindingIds[index], groupBindingId),
           ),
         );
         const nextLora2 = nextMembers.flatMap((member, index) =>
-          member.lora2.map((binding) =>
+          member.lora2.filter((binding) => !detachedLora2Paths.has(binding.path)).map((binding) =>
             makePresetLoraEntry(binding, member, nextBindingIds[index], groupBindingId),
           ),
         );

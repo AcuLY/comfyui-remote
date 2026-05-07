@@ -22,7 +22,7 @@ Core terms:
 - **Project Template**: A reusable ordered list of template sections. Templates can be imported into projects and can carry prompt blocks, preset bindings, LoRAs, and optional runtime defaults.
 - **Preset Library**: The reusable prompt/LoRA library. It contains categories, folders, presets, variants, and preset groups.
 - **Preset**: A named reusable prompt asset, usually under a category such as character, style, people, pose, place, or expression.
-- **Variant**: A selectable version of a preset. Variants carry positive prompt text, optional negative prompt text, LoRA entries, default params, and linked variants.
+- **Variant**: A selectable version of a preset. Variants carry positive prompt text, optional negative prompt text, LoRA entries, and linked variants.
 - **Preset Group**: A reusable bundle of presets/variants that can be imported together. Imported group members share a `groupBindingId`.
 - **Prompt Block**: A positive/negative prompt fragment stored on a project section. Blocks may be `custom` or `preset` sourced. Preset-sourced blocks keep `sourceId`, `variantId`, `categoryId`, `bindingId`, and optional `groupBindingId`.
 - **Binding**: The stable relationship between an imported preset and the section content it created. `bindingId` links prompt blocks and LoRA entries that came from the same imported preset. Agents should use bindings when switching variants or deleting imported content.
@@ -36,7 +36,7 @@ Agent guidance:
 
 - Prefer stable IDs over names when mutating data. Names are useful for search and matching, but IDs should be used once discovered.
 - Use dry-run endpoints where available before bulk-changing sections, variants, or template imports.
-- Preserve `bindingId`, `groupBindingId`, `sourceId`, `variantId`, and `categoryId` when editing preset-sourced content so future variant switching and cascade deletion continue to work.
+- Editing a preset-sourced prompt or LoRA turns that item into custom content. Clear preset identity metadata on locally customized content so future preset or project-level binding updates do not overwrite it.
 - Category order matters for prompt and LoRA composition; imported presets and groups should keep the library/category ordering when possible.
 - Use `/api/agent/**` endpoints for high-level context and batch operations, then fall back to lower-level project/template/preset routes for specific edits.
 
@@ -251,7 +251,7 @@ Preset-sourced create bodies should preserve identity metadata:
 
 ### `PATCH /api/projects/:projectId/sections/:sectionId/blocks/:blockId`
 
-Updates one prompt block. Supported fields are `type`, `sourceId`, `variantId`, `categoryId`, `bindingId`, `groupBindingId`, `label`, `positive`, `negative`, and `sortOrder`. Keep preset identity fields intact when editing preset-sourced blocks.
+Updates one prompt block. Supported fields are `type`, `sourceId`, `variantId`, `categoryId`, `bindingId`, `groupBindingId`, `label`, `positive`, `negative`, and `sortOrder`. User/API content edits to preset-sourced blocks detach the block by converting it to `custom` and clearing preset identity fields; MCP agent tool behavior is intentionally unchanged for now.
 
 ### `DELETE /api/projects/:projectId/sections/:sectionId/blocks/:blockId`
 

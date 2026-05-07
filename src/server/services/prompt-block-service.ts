@@ -10,6 +10,7 @@ import {
 import { audit } from "@/server/services/audit-service";
 import { ActorType } from "@/lib/db-enums";
 import { prisma } from "@/lib/prisma";
+import { detachSectionLorasFromPresetBinding } from "@/lib/preset-binding-utils";
 
 class PromptBlockServiceError extends Error {
   constructor(
@@ -204,19 +205,45 @@ export async function editPromptBlock(
   if (parsed.negative !== undefined) input.negative = ensureNullableString(parsed.negative, "negative");
   if (parsed.sortOrder !== undefined) input.sortOrder = ensurePositiveInteger(parsed.sortOrder, "sortOrder");
 
+  const hasContentWrite =
+    input.label !== undefined ||
+    input.positive !== undefined ||
+    input.negative !== undefined;
+  const shouldAutoDetachContent = hasContentWrite && actorType !== ActorType.agent;
+
   if (
     input.type !== undefined ||
     input.sourceId !== undefined ||
     input.variantId !== undefined ||
     input.categoryId !== undefined ||
     input.bindingId !== undefined ||
-    input.groupBindingId !== undefined
+    input.groupBindingId !== undefined ||
+    shouldAutoDetachContent
   ) {
     const current = await prisma.promptBlock.findUnique({
       where: { id: blockId },
-      select: { type: true, sourceId: true, variantId: true, categoryId: true, bindingId: true, groupBindingId: true },
+      select: {
+        projectSectionId: true,
+        type: true,
+        sourceId: true,
+        variantId: true,
+        categoryId: true,
+        bindingId: true,
+        groupBindingId: true,
+      },
     });
     if (!current) throw new Error("PROMPT_BLOCK_NOT_FOUND");
+    const shouldDetachFromPreset =
+      shouldAutoDetachContent &&
+      (current.type === "preset" || Boolean(current.sourceId || current.bindingId));
+    if (shouldDetachFromPreset) {
+      input.type = "custom";
+      input.sourceId = null;
+      input.variantId = null;
+      input.categoryId = null;
+      input.bindingId = null;
+      input.groupBindingId = null;
+    }
     validatePresetIdentity({
       type: input.type ?? current.type,
       sourceId: input.sourceId !== undefined ? input.sourceId : current.sourceId,
@@ -225,6 +252,9 @@ export async function editPromptBlock(
       bindingId: input.bindingId !== undefined ? input.bindingId : current.bindingId,
       groupBindingId: input.groupBindingId !== undefined ? input.groupBindingId : current.groupBindingId,
     });
+    if (shouldDetachFromPreset && current.bindingId) {
+      await detachSectionLorasFromPresetBinding(current.projectSectionId, current.bindingId);
+    }
   }
 
   const result = await updatePromptBlock(blockId, input);

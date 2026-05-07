@@ -30,7 +30,6 @@ export type PresetVariantInput = {
   negativePrompt?: string | null;
   lora1?: unknown;
   lora2?: unknown;
-  defaultParams?: unknown;
   linkedVariants?: unknown;
   isActive?: boolean;
   sortOrder?: number;
@@ -246,7 +245,7 @@ export async function createPreset(input: PresetInput) {
 }
 
 export async function createPresetVariant(input: PresetVariantInput) {
-  const { lora1, lora2, defaultParams, linkedVariants, ...rest } = input;
+  const { lora1, lora2, linkedVariants, ...rest } = input;
   if (rest.sortOrder === undefined) {
     const maxOrder = await prisma.presetVariant.aggregate({
       where: { presetId: input.presetId },
@@ -259,7 +258,6 @@ export async function createPresetVariant(input: PresetVariantInput) {
       ...rest,
       lora1: toJsonValue(lora1) ?? Prisma.DbNull,
       lora2: toJsonValue(lora2) ?? Prisma.DbNull,
-      defaultParams: toJsonValue(defaultParams) ?? Prisma.DbNull,
       linkedVariants: (Array.isArray(linkedVariants) && linkedVariants.length > 0)
         ? (toJsonValue(linkedVariants) ?? Prisma.DbNull)
         : Prisma.DbNull,
@@ -291,11 +289,11 @@ export async function upsertPresetVariantBySlug(input: PresetVariantInput) {
     return createPresetVariant(input);
   }
 
-  const { presetId: _pid, lora1, lora2, defaultParams, linkedVariants, ...rest } = input;
+  const { lora1, lora2, linkedVariants, ...rest } = input;
   const data: Record<string, unknown> = { ...rest, isActive: true };
+  delete data.presetId;
   if (lora1 !== undefined) data.lora1 = toJsonValue(lora1) ?? Prisma.DbNull;
   if (lora2 !== undefined) data.lora2 = toJsonValue(lora2) ?? Prisma.DbNull;
-  if (defaultParams !== undefined) data.defaultParams = toJsonValue(defaultParams) ?? Prisma.DbNull;
   if (linkedVariants !== undefined) {
     data.linkedVariants = Array.isArray(linkedVariants) && linkedVariants.length === 0
       ? Prisma.DbNull
@@ -342,11 +340,11 @@ export async function updatePreset(id: string, input: Partial<PresetInput>) {
 
 export async function updatePresetVariant(id: string, input: Partial<PresetVariantInput>) {
   const before = await prisma.presetVariant.findUnique({ where: { id } });
-  const { presetId: _pid, lora1, lora2, defaultParams, linkedVariants, ...rest } = input;
+  const { lora1, lora2, linkedVariants, ...rest } = input;
   const data: Record<string, unknown> = { ...rest };
+  delete data.presetId;
   if (lora1 !== undefined) data.lora1 = toJsonValue(lora1) ?? Prisma.DbNull;
   if (lora2 !== undefined) data.lora2 = toJsonValue(lora2) ?? Prisma.DbNull;
-  if (defaultParams !== undefined) data.defaultParams = toJsonValue(defaultParams) ?? Prisma.DbNull;
   if (linkedVariants !== undefined) {
     // Empty array → store as DbNull; non-empty → store as JSON array
     if (Array.isArray(linkedVariants) && linkedVariants.length === 0) {

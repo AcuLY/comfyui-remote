@@ -53,7 +53,6 @@ export type PresetVariantItem = {
   negativePrompt: string | null;
   lora1: unknown;
   lora2: unknown;
-  defaultParams: unknown;
   linkedVariants: LinkedVariantRef[];
   sortOrder: number;
   isActive: boolean;
@@ -189,7 +188,6 @@ export async function getPresetCategoriesWithPresets(): Promise<PresetCategoryFu
         negativePrompt: v.negativePrompt,
         lora1: v.lora1,
         lora2: v.lora2,
-        defaultParams: v.defaultParams,
         linkedVariants: (Array.isArray(v.linkedVariants) ? v.linkedVariants : []) as LinkedVariantRef[],
         sortOrder: v.sortOrder,
         isActive: v.isActive,

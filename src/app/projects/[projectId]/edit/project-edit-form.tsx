@@ -26,11 +26,13 @@ export function ProjectEditForm({ project, categories }: Props) {
   const [notes, setNotes] = useState(project.notes ?? "");
 
   // Initialize selections from presetBindings
-  const [selections, setSelections] = useState<Record<string, string>>(() => {
-    const init: Record<string, string> = {};
-    for (const cat of categories) init[cat.id] = "";
+  const [selections, setSelections] = useState<Record<string, { presetId: string; variantId?: string }>>(() => {
+    const init: Record<string, { presetId: string; variantId?: string }> = {};
+    for (const cat of categories) init[cat.id] = { presetId: "" };
     for (const binding of project.presetBindings) {
-      if (init[binding.categoryId] !== undefined) init[binding.categoryId] = binding.presetId;
+      if (init[binding.categoryId] !== undefined) {
+        init[binding.categoryId] = { presetId: binding.presetId, variantId: binding.variantId };
+      }
     }
     return init;
   });
@@ -56,16 +58,27 @@ export function ProjectEditForm({ project, categories }: Props) {
   const [ks2Scheduler, setKs2Scheduler] = useState(ks2Init.scheduler ?? DEFAULT_KSAMPLER2.scheduler);
   const [ks2Denoise, setKs2Denoise] = useState(String(ks2Init.denoise ?? DEFAULT_KSAMPLER2.denoise));
 
-  function setSelection(categoryId: string, presetId: string) {
-    setSelections((prev) => ({ ...prev, [categoryId]: presetId }));
+  function setSelection(categoryId: string, presetId: string, variantId?: string) {
+    let nextVariantId = variantId;
+    if (presetId && !nextVariantId) {
+      const preset = categories
+        .find((cat) => cat.id === categoryId)
+        ?.presets.find((item) => item.id === presetId);
+      nextVariantId = preset?.variants[0]?.id;
+    }
+    setSelections((prev) => ({ ...prev, [categoryId]: { presetId, variantId: nextVariantId } }));
   }
 
   function handleSubmit() {
     if (!title.trim() || !checkpointName.trim()) return;
 
     const presetBindings = Object.entries(selections)
-      .filter(([, presetId]) => presetId)
-      .map(([categoryId, presetId]) => ({ categoryId, presetId }));
+      .filter(([, selection]) => selection.presetId)
+      .map(([categoryId, selection]) => ({
+        categoryId,
+        presetId: selection.presetId,
+        variantId: selection.variantId,
+      }));
 
     const input: UpdateProjectInput = {
       projectId: project.id,
@@ -154,12 +167,13 @@ export function ProjectEditForm({ project, categories }: Props) {
           {categories.map((cat) => {
             const colorClass = CATEGORY_COLORS[cat.color ?? ""] ?? "border-white/10 focus:border-sky-500/40";
             const labelClass = CATEGORY_LABELS[cat.color ?? ""] ?? "text-zinc-400";
+            const selectedPreset = cat.presets.find((preset) => preset.id === selections[cat.id]?.presetId);
             return (
               <div key={cat.id} className="space-y-2">
                 <label className={`text-xs ${labelClass}`}>{cat.name}（可选）</label>
                 <div className="relative">
                   <select
-                    value={selections[cat.id]}
+                    value={selections[cat.id]?.presetId ?? ""}
                     onChange={(e) => setSelection(cat.id, e.target.value)}
                     className={`w-full appearance-none rounded-lg bg-white/[0.04] px-2.5 py-2 pr-9 text-sm text-zinc-200 outline-none ${colorClass}`}
                   >
@@ -170,6 +184,20 @@ export function ProjectEditForm({ project, categories }: Props) {
                   </select>
                   <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-zinc-500" />
                 </div>
+                {selectedPreset && selectedPreset.variants.length > 1 && (
+                  <div className="relative">
+                    <select
+                      value={selections[cat.id]?.variantId ?? selectedPreset.variants[0]?.id ?? ""}
+                      onChange={(e) => setSelection(cat.id, selectedPreset.id, e.target.value)}
+                      className={`w-full appearance-none rounded-lg bg-white/[0.04] px-2.5 py-2 pr-9 text-xs text-zinc-300 outline-none ${colorClass}`}
+                    >
+                      {selectedPreset.variants.map((variant) => (
+                        <option key={variant.id} value={variant.id} className="bg-zinc-900">{variant.name}</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-zinc-500" />
+                  </div>
+                )}
               </div>
             );
           })}

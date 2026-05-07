@@ -9,6 +9,7 @@ import {
   serializeSectionLoraConfig,
   type LoraEntry,
 } from "@/lib/lora-types";
+import { detachSectionLorasFromPresetBinding, getDetachedPresetPaths } from "@/lib/preset-binding-utils";
 import { recordSectionChange } from "@/server/services/section-change-history-service";
 import { resolveVariantContent } from "./preset-variant";
 import {
@@ -92,52 +93,6 @@ async function persistImportedLoras(
   });
 }
 
-async function detachSectionLorasFromPresetBinding(sectionId: string, bindingId: string) {
-  const section = await prisma.projectSection.findUnique({
-    where: { id: sectionId },
-    select: { loraConfig: true },
-  });
-  if (!section?.loraConfig) return;
-
-  const before = section.loraConfig;
-  const current = parseSectionLoraConfig(section.loraConfig);
-  let changed = false;
-  const detachEntry = (entry: LoraEntry): LoraEntry => {
-    if (entry.bindingId !== bindingId) return entry;
-    changed = true;
-    return {
-      ...entry,
-      source: "manual",
-      sourceLabel: undefined,
-      sourceColor: undefined,
-      sourceName: undefined,
-      detachedBindingId: entry.detachedBindingId ?? entry.bindingId,
-      detachedGroupBindingId: entry.detachedGroupBindingId ?? entry.groupBindingId,
-      detachedPresetPath: entry.detachedPresetPath ?? entry.path,
-      bindingId: undefined,
-      groupBindingId: undefined,
-    };
-  };
-
-  const next = serializeSectionLoraConfig({
-    lora1: current.lora1.map(detachEntry),
-    lora2: current.lora2.map(detachEntry),
-  });
-  if (!changed) return;
-
-  await prisma.projectSection.update({
-    where: { id: sectionId },
-    data: { loraConfig: next as Prisma.InputJsonValue },
-  });
-  await recordSectionChange({
-    sectionId,
-    dimension: "lora",
-    title: "Detach preset LoRA after prompt customization",
-    before,
-    after: next,
-  });
-}
-
 // ---------------------------------------------------------------------------
 // Prompt Block CRUD
 // ---------------------------------------------------------------------------
@@ -155,11 +110,10 @@ export async function addSectionBlock(
   },
 ): Promise<PromptBlockData> {
   const { createPromptBlock } = await import("@/server/repositories/prompt-block-repository");
-  const { PromptBlockType } = await import("@/generated/prisma");
   const { audit } = await import("@/server/services/audit-service");
 
   const block = await createPromptBlock(sectionId, {
-    type: input.type as (typeof PromptBlockType)[keyof typeof PromptBlockType],
+    type: input.type as "custom" | "preset",
     sourceId: input.sourceId ?? null,
     categoryId: input.categoryId ?? null,
     bindingId: input.bindingId ?? null,
@@ -558,13 +512,22 @@ export async function switchBindingVariant(
     bindingId,
     groupBindingId: block.groupBindingId ?? undefined,
   });
-
-  const newLora1 = resolved.lora1.map(makeLora);
-  const newLora2 = resolved.lora2.map(makeLora);
+  let persistedLora1: ImportPresetResult["lora1"] = [];
+  let persistedLora2: ImportPresetResult["lora2"] = [];
 
   {
     const categoryOrderByName = await getCategoryOrderByName();
     const config = parseSectionLoraConfig(section?.loraConfig);
+    const detachedLora1Paths = getDetachedPresetPaths(config.lora1, bindingId);
+    const detachedLora2Paths = getDetachedPresetPaths(config.lora2, bindingId);
+    const newLora1 = resolved.lora1
+      .filter((entry) => !detachedLora1Paths.has(entry.path))
+      .map(makeLora);
+    const newLora2 = resolved.lora2
+      .filter((entry) => !detachedLora2Paths.has(entry.path))
+      .map(makeLora);
+    persistedLora1 = newLora1;
+    persistedLora2 = newLora2;
     if (config.lora1) {
       const idx = config.lora1.findIndex((e) => e.bindingId === bindingId);
       const filtered = config.lora1.filter((e) => e.bindingId !== bindingId);
@@ -608,7 +571,7 @@ export async function switchBindingVariant(
 
   return {
     block: updatedBlock as PromptBlockData,
-    lora1: newLora1,
-    lora2: newLora2,
+    lora1: persistedLora1,
+    lora2: persistedLora2,
   };
 }

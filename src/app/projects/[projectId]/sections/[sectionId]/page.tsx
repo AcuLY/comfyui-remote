@@ -11,6 +11,7 @@ import type { PromptBlockData } from "@/lib/actions";
 import { getPresetLibraryV2 } from "@/lib/server-data";
 import { parseSectionLoraConfig, serializeSectionLoraConfig, generateLoraEntryId, parseLoraBindings } from "@/lib/lora-types";
 import type { LoraEntry } from "@/lib/lora-types";
+import { getDetachedPresetPaths } from "@/lib/preset-binding-utils";
 import { revalidatePath } from "next/cache";
 import { getSectionChangeHistory } from "@/server/services/section-change-history-service";
 import { SectionChangeHistory } from "./section-change-history";
@@ -186,8 +187,10 @@ export default async function SectionEditPage({
         const bindingId = blockBindingMap.get(variant.presetId);
         if (variant.lora1) {
           const lora1Bindings = parseLoraBindings(variant.lora1);
+          const detachedPaths = getDetachedPresetPaths(loraConfig.lora1, bindingId ?? null);
           for (const binding of lora1Bindings) {
             if (!binding.path) continue;
+            if (detachedPaths.has(binding.path)) continue;
             const exists = loraConfig.lora1.some((e) => e.path === binding.path);
             if (!exists) {
               loraConfig.lora1.push({
@@ -207,8 +210,10 @@ export default async function SectionEditPage({
         }
         if (variant.lora2) {
           const lora2Bindings = parseLoraBindings(variant.lora2);
+          const detachedPaths = getDetachedPresetPaths(loraConfig.lora2, bindingId ?? null);
           for (const binding of lora2Bindings) {
             if (!binding.path) continue;
+            if (detachedPaths.has(binding.path)) continue;
             const exists = loraConfig.lora2.some((e) => e.path === binding.path);
             if (!exists) {
               loraConfig.lora2.push({
