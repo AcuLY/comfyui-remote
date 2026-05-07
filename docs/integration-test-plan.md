@@ -127,6 +127,16 @@
 | SECT-014 | 小节 enabled 切换 | enabled 字段正确更新 |
 | SECT-015 | 删除小节 | 级联删除 promptBlocks；级联删除 changeLogs |
 
+### 3.6 小节生命周期
+
+| 用例 ID | 用例描述 | 验证点 |
+|---------|---------|---------|
+| SECT-016 | 添加小节（addSection） | 根据项目 presetBindings 自动创建预设块；loraConfig 正确初始化；默认参数正确 |
+| SECT-017 | 复制小节（copySection） | 复制所有 promptBlocks（保留 sourceId/variantId/bindingId）；复制 loraConfig；新的 sortOrder |
+| SECT-018 | 小节排序（reorderSections） | sortOrder 更新；**有运行任务时拒绝排序**（返回错误） |
+| SECT-019 | 批量删除小节（deleteSections） | 级联删除所有 sections 的 promptBlocks；级联删除 sections |
+| SECT-020 | 批量创建小节（createSectionFromTemplate） | 创建小节 + 覆盖变体 + 导入额外预设；正确设置 aspectRatio/shortSidePx |
+
 ---
 
 ## 模块 4：任务执行（`/queue/*`）
