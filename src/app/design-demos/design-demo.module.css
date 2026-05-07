@@ -817,7 +817,7 @@
 
 .metricGrid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0;
   overflow: hidden;
   border: 1px solid var(--demo-glass-border);
@@ -6476,23 +6476,6 @@
     grid-template-columns: 76px minmax(0, 1fr);
   }
 
-  .metricGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .metric {
-    border-right: 1px solid var(--demo-border);
-    border-bottom: 1px solid var(--demo-border);
-  }
-
-  .metric:nth-child(2n) {
-    border-right: 0;
-  }
-
-  .metric:nth-last-child(-n + 2) {
-    border-bottom: 0;
-  }
-
   .imageGrid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 12px;
@@ -6948,7 +6931,7 @@
   }
 
   .metricGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 0;
   }
 
@@ -6961,10 +6944,14 @@
   }
 
   .metric:nth-child(2n) {
+    border-right: 1px solid var(--demo-border);
+  }
+
+  .metric:nth-child(3n) {
     border-right: 0;
   }
 
-  .metric:nth-last-child(-n + 2) {
+  .metric:nth-last-child(-n + 3) {
     border-bottom: 0;
   }
 

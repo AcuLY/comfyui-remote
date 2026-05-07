@@ -6,7 +6,6 @@ import Link from "next/link";
 import { useState } from "react";
 import {
   AlertTriangle,
-  Archive,
   ArrowLeft,
   ArrowRight,
   CheckSquare,
@@ -20,7 +19,7 @@ import {
   X,
 } from "lucide-react";
 
-import type { DemoData, DemoImage, DemoRun } from "./design-demo-data";
+import type { DemoData, DemoRun } from "./design-demo-data";
 import { cx, demoHref, filterImages, findProject, findSection, rawSectionId } from "./design-demo-utils";
 import type { QueueDemoTab, ResultDemoFilter } from "./design-demo-utils";
 import {
@@ -29,7 +28,6 @@ import {
   DemoTabs,
   EmptyPage,
   EmptyRows,
-  ImageGrid,
   MetricCard,
   PageHeader,
   ReviewImageBoard,
@@ -155,35 +153,22 @@ function buildQueueStatusRuns(runs: DemoRun[], mode: "running" | "failed") {
   }));
 }
 
-function buildQueueTrashImages(images: DemoImage[]) {
-  const trashed = images.filter((image) => image.status === "trashed");
-  if (trashed.length > 0) return trashed;
-  return images.slice(-8).map((image, index) => ({
-    ...image,
-    id: `trash-${image.id}-${index}`,
-    status: "trashed" as const,
-  }));
-}
-
 function QueueMetrics({
   pendingImages,
   reviewGroups,
   runningCount,
   failedCount,
-  trashCount,
 }: {
   pendingImages: number;
   reviewGroups: number;
   runningCount: number;
   failedCount: number;
-  trashCount: number;
 }) {
   return (
     <div className={s.metricGrid}>
       <MetricCard icon={ImageIcon} label="待审图片" value={pendingImages} meta={`${reviewGroups} 个结果组`} />
       <MetricCard icon={Clock3} label="运行中" value={runningCount} meta="生成队列" />
       <MetricCard icon={AlertTriangle} label="失败" value={failedCount} meta="可重试任务" />
-      <MetricCard icon={Archive} label="回收站" value={trashCount} meta="已删除图片" />
     </div>
   );
 }
@@ -260,7 +245,6 @@ export function QueuePage({ data }: { data: DemoData }) {
   const running = buildQueueStatusRuns(data.runs, "running");
   const currentRunningRuns = buildCurrentRunningRuns(running);
   const failed = buildQueueStatusRuns(data.runs, "failed");
-  const trashImages = buildQueueTrashImages(data.images);
   const [activeTab, setActiveTab] = useState<QueueDemoTab>("pending");
   const totalPending = reviewRows.reduce((sum, row) => sum + row.pendingCount, 0);
   const pageSize = 8;
@@ -271,14 +255,13 @@ export function QueuePage({ data }: { data: DemoData }) {
       <PageHeader
         eyebrow="任务"
         title="任务工作台"
-        subtitle="按状态处理待审图片、运行中任务、失败记录和回收站图片。"
+        subtitle="按状态处理待审图片、运行中任务和失败记录。"
       />
       <QueueMetrics
         pendingImages={totalPending}
         reviewGroups={reviewRows.length}
         runningCount={running.length}
         failedCount={failed.length}
-        trashCount={trashImages.length}
       />
       <CurrentRunningProgressCard runs={currentRunningRuns} />
       <div className={s.queueSurfaceStack}>
@@ -288,7 +271,6 @@ export function QueuePage({ data }: { data: DemoData }) {
               { key: "pending", label: "待审核", count: totalPending },
               { key: "running", label: "队列", count: running.length },
               { key: "failed", label: "失败", count: failed.length },
-              { key: "trash", label: "回收站", count: trashImages.length },
             ]}
             value={activeTab}
             onChange={setActiveTab}
@@ -341,25 +323,7 @@ export function QueuePage({ data }: { data: DemoData }) {
           <RunList title="运行中" runs={running} empty="当前没有运行中或排队中的任务" mode="running" />
         ) : activeTab === "failed" ? (
           <RunList title="最近失败" runs={failed} empty="当前没有失败任务" mode="failed" />
-        ) : (
-          <section className={s.queueSurface}>
-            <div className={s.queueSurfaceHeader}>
-              <div>
-                <strong>回收站</strong>
-                <em>{trashImages.length} 张已删除图片</em>
-              </div>
-              <div className={s.toolbar}>
-                <Button icon={Archive} feedback={{ title: "恢复操作已加入队列", detail: `${trashImages.length} 张图片` }}>恢复所选</Button>
-                <Button tone="danger" icon={Trash2} feedback={{ tone: "warning", title: "清空图片需要确认", detail: `${trashImages.length} 张图片` }}>清空已选</Button>
-              </div>
-            </div>
-            {trashImages.length ? (
-              <ImageGrid images={trashImages} showStatus={false} selectable />
-            ) : (
-              <EmptyRows label="当前没有回收站图片" />
-            )}
-          </section>
-        )}
+        ) : null}
       </div>
     </div>
   );

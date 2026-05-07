@@ -50,7 +50,7 @@ The design shell also normalizes the old product paths: `/queue/**` is shown as 
 
 The shell also covers non-routing UI states that the real pages expose:
 
-- Run tabs: pending, running, failed, trash, including row lists, page-number pagination, and trash recovery actions.
+- Run tabs: pending, running, and failed, including row lists, page-number pagination, and retry/delete feedback. Deleted image review lives in section run results.
 - Result/review filters: all, pending, kept, featured, including selectable grids, batch actions, undo affordance, lightbox preview, and keyboard image navigation.
 - Project workflow states: section rail sync, compact section list, batch selection, project/result card toggle, section result collapse, project action strip, run-group results, and image lightbox.
 - Project batch-create states: preset/group browser, category switcher, folder breadcrumb, search, import list, variant override, section sizing, and recent-created links.

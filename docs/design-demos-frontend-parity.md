@@ -39,7 +39,7 @@
 | --- | --- | --- | --- | --- |
 | `/` | `/design-demos` | 静态对齐 | 进入任务工作台语义。 | 真实根路由跳转。 |
 | `/login` | `/design-demos/login` | 静态对齐 | token 输入、状态条、登录/清除反馈。 | 真实认证提交。 |
-| `/queue` | `/design-demos/runs` | 静态对齐 | pending/running/failed/trash、行式列表、页码分页、恢复/重试/删除反馈。 | 真实轮询和提交。 |
+| `/queue` | `/design-demos/runs` | 静态对齐 | pending/running/failed、行式列表、页码分页、重试/删除反馈。删除图片入口迁移至小节运行结果。 | 真实轮询和提交。 |
 | `/queue/[runId]` | `/design-demos/runs/[runId]` | 静态对齐 | 审核宫格、筛选、多选、保留/精选/废弃、撤销、lightbox 和键盘切图。 | 真实审核提交和跳转下一组。 |
 | `/projects` | `/design-demos/projects` | 静态对齐 | 行式项目列表、缩略图、状态、更新时间、窄屏布局。 | 删除确认和真实 pending。 |
 | `/projects/new` | `/design-demos/projects/new` | 静态对齐 | 新建表单壳、基础字段、主要动作反馈。 | checkpoint cascade、绑定选择和提交。 |

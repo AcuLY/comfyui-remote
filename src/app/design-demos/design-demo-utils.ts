@@ -78,7 +78,7 @@ export type Match = {
 };
 
 export type DemoTheme = "dark" | "light";
-export type QueueDemoTab = "pending" | "running" | "failed" | "trash";
+export type QueueDemoTab = "pending" | "running" | "failed";
 export type ModelKind = "lora" | "checkpoint";
 export type ModelBrowserState = "ready" | "loading" | "error" | "empty";
 export type ResultDemoFilter = "all" | "pending" | "kept" | "pstation" | "preview" | "cover";
