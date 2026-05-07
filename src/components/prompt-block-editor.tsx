@@ -29,7 +29,6 @@ import {
   Loader2,
   Sparkles,
   BookOpen,
-  type LucideIcon,
 } from "lucide-react";
 import {
   addSectionBlock,
@@ -99,13 +98,20 @@ type CategoryConfig = {
 // Icon / Color resolution
 // ---------------------------------------------------------------------------
 
-const ICON_MAP: Record<string, LucideIcon> = {
-  Sparkles,
-  BookOpen,
-};
-
-function resolveIcon(name: string | null | undefined): LucideIcon {
-  return (name && ICON_MAP[name]) || Sparkles;
+function CategoryIcon({
+  name,
+  className,
+}: {
+  name: string | null | undefined;
+  className?: string;
+}) {
+  switch (name) {
+    case "BookOpen":
+      return <BookOpen className={className} />;
+    case "Sparkles":
+    default:
+      return <Sparkles className={className} />;
+  }
 }
 
 /** Parse HSL color string "H S% L%" → hue number. Supports legacy tailwind names. */
@@ -145,13 +151,12 @@ function TypeBadge({
   if (block.categoryId) {
     const cat = categoryMap.get(block.categoryId);
     if (cat) {
-      const Icon = resolveIcon(cat.icon);
       return (
         <span
           className="inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 text-[10px] font-medium"
           style={categoryStyle(cat.color)}
         >
-          <Icon className="size-3" />
+          <CategoryIcon name={cat.icon} className="size-3" />
           {cat.name}
         </span>
       );
@@ -214,7 +219,10 @@ function SortableBlockCard({
   });
 
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setMounted(true));
+    return () => cancelAnimationFrame(frame);
+  }, []);
 
   const style = mounted
     ? {
@@ -355,7 +363,10 @@ function BlockColumn({
   );
 
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setMounted(true));
+    return () => cancelAnimationFrame(frame);
+  }, []);
 
   const visibleBlocks = blocks.filter((b) => {
     const text = column === "positive" ? b.positive : (b.negative ?? "");
@@ -489,6 +500,8 @@ export function PromptBlockEditor({
   onBlockDeleted,
   onStandaloneDeleteConfirm,
   onStandaloneBlockDeleted,
+  onBlockUpdated,
+  onBindingDetached,
 }: {
   sectionId: string;
   initialBlocks: PromptBlockData[];
@@ -502,6 +515,10 @@ export function PromptBlockEditor({
   onStandaloneDeleteConfirm?: (blockId: string) => boolean;
   /** Called after a block is standalone-deleted (no cascade). */
   onStandaloneBlockDeleted?: (blockId: string) => void;
+  /** Called after a block is edited so the parent binding state stays current. */
+  onBlockUpdated?: (block: PromptBlockData) => void;
+  /** Called when editing a preset block turns that binding into custom content. */
+  onBindingDetached?: (bindingId: string) => void;
 }) {
   const [blocks, setBlocks] = useState<PromptBlockData[]>(initialBlocks);
 
@@ -549,6 +566,10 @@ export function PromptBlockEditor({
     startTransition(async () => {
       const updated = await updateSectionBlock(editingId, update);
       setBlocks((prev) => prev.map((b) => (b.id === editingId ? updated : b)));
+      onBlockUpdated?.(updated);
+      if (block.bindingId && !updated.bindingId) {
+        onBindingDetached?.(block.bindingId);
+      }
       setEditingId(null);
       setEditValue("");
     });

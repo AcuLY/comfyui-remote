@@ -341,9 +341,25 @@ export function LoraListEditor({
     onChange(entries.filter((e) => e.id !== id));
   }
 
+  function detachFromPreset(entry: LoraEntry): LoraEntry {
+    if (entry.source !== "preset" && !entry.bindingId && !entry.groupBindingId) return entry;
+    return {
+      ...entry,
+      source: "manual",
+      sourceLabel: undefined,
+      sourceColor: undefined,
+      sourceName: undefined,
+      detachedBindingId: entry.detachedBindingId ?? entry.bindingId,
+      detachedGroupBindingId: entry.detachedGroupBindingId ?? entry.groupBindingId,
+      detachedPresetPath: entry.detachedPresetPath ?? entry.path,
+      bindingId: undefined,
+      groupBindingId: undefined,
+    };
+  }
+
   function handleUpdate(id: string, updates: Partial<LoraEntry>) {
     onChange(
-      entries.map((e) => (e.id === id ? { ...e, ...updates } : e)),
+      entries.map((e) => (e.id === id ? detachFromPreset({ ...e, ...updates }) : e)),
     );
   }
 

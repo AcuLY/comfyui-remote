@@ -23,6 +23,21 @@ export type PresetUsageInfo = {
 
 type SectionLoraJsonEntry = Record<string, unknown>;
 
+function getDetachedPresetPaths(entries: SectionLoraJsonEntry[] | undefined, bindingId: string | null) {
+  const paths = new Set<string>();
+  if (!bindingId || !Array.isArray(entries)) return paths;
+
+  for (const entry of entries) {
+    if (entry.detachedBindingId !== bindingId) continue;
+    const originalPath = typeof entry.detachedPresetPath === "string" ? entry.detachedPresetPath : null;
+    const currentPath = typeof entry.path === "string" ? entry.path : null;
+    const path = originalPath ?? currentPath;
+    if (path) paths.add(path);
+  }
+
+  return paths;
+}
+
 // ---------------------------------------------------------------------------
 // Preset usage check + cascade operations
 // ---------------------------------------------------------------------------
@@ -238,16 +253,24 @@ export async function syncPresetToSections(presetId: string) {
         groupBindingId: block.groupBindingId ?? undefined,
       });
       if (Array.isArray(config.lora1)) {
+        const detachedPaths = getDetachedPresetPaths(config.lora1, block.bindingId);
+        const nextPresetLoras = resolved.lora1
+          .filter((entry) => !detachedPaths.has(entry.path))
+          .map(makeLora);
         config.lora1 = sortSectionLoraEntriesByCategoryOrder(
-          [...config.lora1.filter((e) => e.bindingId !== block.bindingId), ...resolved.lora1.map(makeLora)],
+          [...config.lora1.filter((e) => e.bindingId !== block.bindingId), ...nextPresetLoras],
           "lora1Order",
           categoryOrderByName,
         );
         changed = true;
       }
       if (Array.isArray(config.lora2)) {
+        const detachedPaths = getDetachedPresetPaths(config.lora2, block.bindingId);
+        const nextPresetLoras = resolved.lora2
+          .filter((entry) => !detachedPaths.has(entry.path))
+          .map(makeLora);
         config.lora2 = sortSectionLoraEntriesByCategoryOrder(
-          [...config.lora2.filter((e) => e.bindingId !== block.bindingId), ...resolved.lora2.map(makeLora)],
+          [...config.lora2.filter((e) => e.bindingId !== block.bindingId), ...nextPresetLoras],
           "lora2Order",
           categoryOrderByName,
         );

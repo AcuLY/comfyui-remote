@@ -23,6 +23,9 @@ export type LoraEntry = LoraBinding & {
   sourceName?: string;  // preset name e.g. "Miku" (displayed as row title)
   bindingId?: string;   // groups loras from same preset import
   groupBindingId?: string; // groups all loras from same group import
+  detachedBindingId?: string; // original preset binding after local customization
+  detachedGroupBindingId?: string; // original preset-group binding after local customization
+  detachedPresetPath?: string; // original preset LoRA path used to suppress future resync
 };
 
 // ---------------------------------------------------------------------------
@@ -179,6 +182,9 @@ export function serializeSectionLoraConfig(config: SectionLoraConfig): SectionLo
     sourceName: e.sourceName,
     bindingId: e.bindingId,
     groupBindingId: e.groupBindingId,
+    detachedBindingId: e.detachedBindingId,
+    detachedGroupBindingId: e.detachedGroupBindingId,
+    detachedPresetPath: e.detachedPresetPath,
   });
 
   return {

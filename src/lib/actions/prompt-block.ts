@@ -92,6 +92,52 @@ async function persistImportedLoras(
   });
 }
 
+async function detachSectionLorasFromPresetBinding(sectionId: string, bindingId: string) {
+  const section = await prisma.projectSection.findUnique({
+    where: { id: sectionId },
+    select: { loraConfig: true },
+  });
+  if (!section?.loraConfig) return;
+
+  const before = section.loraConfig;
+  const current = parseSectionLoraConfig(section.loraConfig);
+  let changed = false;
+  const detachEntry = (entry: LoraEntry): LoraEntry => {
+    if (entry.bindingId !== bindingId) return entry;
+    changed = true;
+    return {
+      ...entry,
+      source: "manual",
+      sourceLabel: undefined,
+      sourceColor: undefined,
+      sourceName: undefined,
+      detachedBindingId: entry.detachedBindingId ?? entry.bindingId,
+      detachedGroupBindingId: entry.detachedGroupBindingId ?? entry.groupBindingId,
+      detachedPresetPath: entry.detachedPresetPath ?? entry.path,
+      bindingId: undefined,
+      groupBindingId: undefined,
+    };
+  };
+
+  const next = serializeSectionLoraConfig({
+    lora1: current.lora1.map(detachEntry),
+    lora2: current.lora2.map(detachEntry),
+  });
+  if (!changed) return;
+
+  await prisma.projectSection.update({
+    where: { id: sectionId },
+    data: { loraConfig: next as Prisma.InputJsonValue },
+  });
+  await recordSectionChange({
+    sectionId,
+    dimension: "lora",
+    title: "Detach preset LoRA after prompt customization",
+    before,
+    after: next,
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Prompt Block CRUD
 // ---------------------------------------------------------------------------
@@ -160,7 +206,20 @@ export async function updateSectionBlock(
       sortOrder: true,
     },
   });
-  const block = await updatePromptBlock(blockId, input);
+  const shouldDetachFromPreset = before?.type === "preset" || Boolean(before?.sourceId || before?.bindingId);
+  const block = await updatePromptBlock(blockId, {
+    ...input,
+    ...(shouldDetachFromPreset
+      ? {
+          type: "custom",
+          sourceId: null,
+          variantId: null,
+          categoryId: null,
+          bindingId: null,
+          groupBindingId: null,
+        }
+      : {}),
+  });
   audit("PromptBlock", blockId, "update", Object.fromEntries(Object.entries(input)), "user" as const);
   if (before) {
     const { projectSectionId, ...beforeForLog } = before;
@@ -171,6 +230,9 @@ export async function updateSectionBlock(
       before: beforeForLog,
       after: block,
     });
+    if (shouldDetachFromPreset && before.bindingId) {
+      await detachSectionLorasFromPresetBinding(projectSectionId, before.bindingId);
+    }
   }
   return block;
 }

@@ -545,6 +545,27 @@ export function SectionEditor({
     });
   }
 
+  function detachLoraEntryFromBinding(entry: LoraEntry, bindingId: string): LoraEntry {
+    if (entry.bindingId !== bindingId) return entry;
+    return {
+      ...entry,
+      source: "manual",
+      sourceLabel: undefined,
+      sourceColor: undefined,
+      sourceName: undefined,
+      detachedBindingId: entry.detachedBindingId ?? entry.bindingId,
+      detachedGroupBindingId: entry.detachedGroupBindingId ?? entry.groupBindingId,
+      detachedPresetPath: entry.detachedPresetPath ?? entry.path,
+      bindingId: undefined,
+      groupBindingId: undefined,
+    };
+  }
+
+  function handleBindingDetached(bindingId: string) {
+    setLora1((prev) => prev.map((entry) => detachLoraEntryFromBinding(entry, bindingId)));
+    setLora2((prev) => prev.map((entry) => detachLoraEntryFromBinding(entry, bindingId)));
+  }
+
   // Get categories for import panel (preset cats with variants + group cats with groups)
   const categoriesForImport = useMemo(
     () => (libraryV2?.categories ?? []).filter((c) =>
@@ -704,6 +725,10 @@ export function SectionEditor({
           onBlockDeleted={handleBlockDeleted}
           onStandaloneDeleteConfirm={handleStandaloneDeleteBlock}
           onStandaloneBlockDeleted={handleStandaloneBlockDeleted}
+          onBlockUpdated={(updatedBlock) => {
+            setBlocks((prev) => prev.map((block) => (block.id === updatedBlock.id ? updatedBlock : block)));
+          }}
+          onBindingDetached={handleBindingDetached}
         />
       </div>
 
