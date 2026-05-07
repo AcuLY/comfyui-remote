@@ -19,8 +19,9 @@ log in. Do not hard-code the token, print it in logs, or commit token values.
 
 1. `git add` + `git commit` + `git push`（提交并推送到远程）。
 2. 判断当前执行环境：
+   - 如果当前机器的当前项目目录下已经有通过 `npm run dev` / `next dev` 或 `npm run start` / `next start` 启动的服务，无论是开发服务还是生产服务，都不要 SSH 到 `mypc`；直接在当前目录继续执行后续检查、验证或必要的本机服务处理。
    - 如果当前已经在 `mypc` 这台 Windows 设备，且仓库目录是 `D:\Luca\Code\MyProject\comfyui-manager`，不要 SSH，直接在当前目录继续执行后续步骤。
-   - 如果当前不在 `mypc`，必须 SSH 到 `mypc`，在 `D:\Luca\Code\MyProject\comfyui-manager` 目录下 `git pull` 后继续执行后续步骤。
+   - 如果当前不在 `mypc`，且当前项目目录下没有正在运行的本项目 dev/start 服务，才 SSH 到 `mypc`，在 `D:\Luca\Code\MyProject\comfyui-manager` 目录下 `git pull` 后继续执行后续步骤。
 3. 在准备构建、清理 `.next`、停止或重启服务前，必须先检查当前队列/运行任务状态；如果发现仍有 queued/running 任务，立刻停止后续部署动作，仅保留第 1 步的提交和推送结果，不要清理 `.next`、不要构建、不要停止或重启现有服务，并在回复里说明因为队列中仍有任务而延后部署。
 4. 如果 Prisma schema 有变更：`$env:DB_PROVIDER="postgresql"; npx prisma generate` + `npx prisma db push`。
 5. 构建前先清理 `.next` 缓存目录，否则增量 build 可能产生过期的 static chunk（浏览器请求旧 chunk hash 时返回 500）：
