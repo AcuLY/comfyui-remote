@@ -195,10 +195,9 @@ function CurrentRunningProgressCard({ runs }: { runs: DemoCurrentRun[] }) {
     <section className={s.currentRunSurface} aria-label="当前运行中">
       <div className={s.currentRunHeader}>
         <div>
-          <span>当前运行中</span>
+          <span><Clock3 className={s.icon} />当前运行中</span>
           <strong>{runs.length} 个任务</strong>
         </div>
-        <StatusBadge status="running" label="运行中" />
       </div>
       <div className={s.currentRunList}>
         {runs.map(({ run, progress }) => {
