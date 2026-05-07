@@ -1,10 +1,8 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element -- Local design shell previews use direct API image URLs. */
-
 import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
-import { ChevronLeft, Plus, Star, Trash2, X, Check, Image as ImageIcon } from "lucide-react";
+import { ChevronLeft, Plus, Star, Trash2, Check, Image as ImageIcon } from "lucide-react";
 
 import type { DemoData, DemoImage, DemoProject, DemoSection } from "./design-demo-data";
 import { cx, demoHref, rawSectionId } from "./design-demo-utils";
@@ -46,7 +44,7 @@ import {
   initialPromptBlocks,
   mockVariants,
 } from "./section-editor-page-data";
-import { ImageThumbMedium } from "./design-demo-ui";
+import { ImagePreviewLarge, ImageThumbMedium } from "./design-demo-ui";
 
 type SectionEditorPageProps = {
   data: DemoData;
@@ -1032,19 +1030,9 @@ function SectionEditorInner({
       ) : null}
 
       {lightboxImage ? (
-        <div className={s.lightbox} role="dialog" aria-modal>
-          <div className={s.lightboxInner}>
-            <button
-              type="button"
-              className={s.lightboxClose}
-              onClick={() => setLightboxImageId(null)}
-              aria-label="关闭"
-            >
-              <X className="size-4" />
-            </button>
-            <img src={lightboxImage.full || lightboxImage.src} alt="" className={s.lightboxImg} />
-            <div className={s.lightboxBar}>
-              <strong>#{lightboxImage.label}</strong>
+        <ImagePreviewLarge
+          actions={(
+            <>
               <button
                 type="button"
                 className={s.btnGhost}
@@ -1054,8 +1042,11 @@ function SectionEditorInner({
                     lightboxImage.status === "kept" ? "pending" : "kept",
                   )
                 }
+                aria-label="保留"
+                title="保留"
               >
-                <Check className="size-4" /> 保留
+                <Check className="size-4" />
+                保留
               </button>
               <button
                 type="button"
@@ -1066,19 +1057,28 @@ function SectionEditorInner({
                     lightboxImage.status === "trashed" ? "pending" : "trashed",
                   )
                 }
+                aria-label="删除"
+                title="删除"
               >
-                <Trash2 className="size-4" /> 删除
+                <Trash2 className="size-4" />
+                删除
               </button>
               <button
                 type="button"
                 className={s.btnGhost}
                 onClick={() => toggleFeatured(lightboxImage.id)}
+                aria-label="精选"
+                title="精选"
               >
-                <Star className="size-4" /> 精选
+                <Star className="size-4" />
+                精选
               </button>
-            </div>
-          </div>
-        </div>
+            </>
+          )}
+          image={lightboxImage}
+          onClose={() => setLightboxImageId(null)}
+          title={`#${lightboxImage.label}`}
+        />
       ) : null}
     </div>
   );

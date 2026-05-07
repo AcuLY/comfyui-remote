@@ -244,6 +244,38 @@ export function ImageThumbMedium({
   );
 }
 
+export function ImagePreviewFrame({
+  image,
+  onOpen,
+  priority = false,
+}: {
+  image: DemoImage;
+  onOpen?: () => void;
+  priority?: boolean;
+}) {
+  const content = image.full || image.src ? (
+    <img
+      src={image.full || image.src}
+      alt=""
+      className={s.imageFill}
+      fetchPriority={priority ? "high" : "auto"}
+      loading="eager"
+    />
+  ) : (
+    <ImageIcon className="size-8" />
+  );
+
+  if (onOpen) {
+    return (
+      <button className={s.imagePreviewFrame} type="button" onClick={onOpen} aria-label="Open image preview">
+        {content}
+      </button>
+    );
+  }
+
+  return <div className={s.imagePreviewFrame}>{content}</div>;
+}
+
 export function ImagePreviewLarge({
   actions,
   image,
@@ -270,7 +302,7 @@ export function ImagePreviewLarge({
           </button>
         </div>
         <div className={s.lightboxImage}>
-          {image.full || image.src ? <img src={image.full || image.src} alt="" className={s.imageFill} loading="eager" /> : null}
+          <ImagePreviewFrame image={image} priority />
         </div>
         {actions ? <div className={s.lightboxActions}>{actions}</div> : null}
       </div>

@@ -1,13 +1,12 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element -- Local design shell previews use direct API image URLs. */
-
 import { useMemo, useState } from "react";
 import { Check, Eye, Star, Trash2 } from "lucide-react";
 
 import type { DemoData, DemoImage } from "./design-demo-data";
 import {
   Button,
+  ImagePreviewFrame,
   ImagePreviewLarge,
   ImageThumbMedium,
   ImageThumbSmall,
@@ -151,7 +150,13 @@ export function ImageStatePage({ data }: { data: DemoData }) {
             </div>
           </div>
           <div className={s.imageStatePreview}>
-            {activeImage ? <img src={activeImage.full || activeImage.src} alt="" /> : null}
+            {activeImage ? (
+              <ImagePreviewFrame
+                image={activeImage}
+                onOpen={() => setLightboxImage(activeImage)}
+                priority
+              />
+            ) : null}
           </div>
           <div className={s.toolbar}>
             <Button icon={Eye} onClick={() => setLightboxImage(activeImage ?? images[0] ?? null)}>打开预览</Button>
