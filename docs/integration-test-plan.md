@@ -30,6 +30,9 @@
 | PROJ-005 | 更新项目 title | slug **不随** title 自动更新（需验证当前行为是否符合预期） |
 | PROJ-006 | 更新 checkpointName | checkpointName 正确更新 |
 | PROJ-007 | 更新 presetBindings | presetBindings JSON 正确更新；**同步所有小节**：删除小节中旧的项目绑定预设块（sourceId 不在新 presetBindings 中的），添加新预设块（sourceId 在新 presetBindings 中但小节还没有的） |
+| PROJ-007a | 更新 presetBindings：删除绑定 | 新 presetBindings 缺少某个 presetId 时，所有小节中 sourceId=该 presetId 的 PromptBlock 被删除；对应 LoRA 从 loraConfig 移除 |
+| PROJ-007b | 更新 presetBindings：添加绑定 | 新 presetBindings 新增 presetId 时，所有小节中添加该预设的 PromptBlock（调用 importPresetToSection 逻辑） |
+| PROJ-007c | 更新 presetBindings：切换变体 | presetBindings 中某个 preset 的 variantId 变化时，小节中对应 PromptBlock 切换变体（调用 switchBindingVariant 逻辑） |
 | PROJ-008 | 更新 projectLevelOverrides | projectLevelOverrides JSON 正确存储；**已有小节的参数不跟随改变**（覆盖仅在下发运行时生效） |
 
 ### 1.3 复制项目
