@@ -1876,6 +1876,8 @@
 
 .currentRunTitleBlock {
   display: grid;
+  align-content: center;
+  align-self: stretch;
   min-width: 0;
   gap: 4px;
 }
@@ -7160,7 +7162,13 @@
   }
 
   .queueRunRowSelectable {
+    align-items: center;
     grid-template-columns: 28px minmax(0, 1fr) auto;
+  }
+
+  .queueRunRowSelectable .queueRowCheck,
+  .queueRunRowSelectable .queueRunMain {
+    align-self: center;
   }
 
   .queueRunRowSelectable .toolbar {
