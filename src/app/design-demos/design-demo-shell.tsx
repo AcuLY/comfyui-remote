@@ -4,8 +4,6 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import {
-  ArrowLeft,
-  ArrowRight,
   Eye,
   EyeOff,
   Menu,
@@ -55,7 +53,6 @@ function Sidebar({
 }) {
   const isLightTheme = theme === "light";
   const isDarkTheme = !isLightTheme;
-  const CollapseIcon = open ? ArrowLeft : collapsed ? ArrowRight : ArrowLeft;
   const ThemeIcon = isDarkTheme ? Sun : Moon;
   const SfwIcon = sfwMode ? EyeOff : Eye;
   const grouped = useMemo(() => {
@@ -77,7 +74,7 @@ function Sidebar({
             onClick={open ? onClose : onToggleCollapsed}
             aria-label={open || !collapsed ? "收起侧边栏" : "展开侧边栏"}
           >
-            <CollapseIcon className="size-4" />
+            <Menu className="size-4" />
           </button>
           <div className={cx(s.toolbar, s.brandIdentity)}>
             <div className={s.brandName}>
