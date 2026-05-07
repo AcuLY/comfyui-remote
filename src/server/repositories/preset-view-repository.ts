@@ -477,7 +477,7 @@ export async function getPresetFolders(filters: {
       ...(filters.categoryId ? { categoryId: filters.categoryId } : {}),
       ...(filters.parentId !== undefined ? { parentId: filters.parentId } : {}),
     },
-    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+    orderBy: { sortOrder: "asc" },
     include: {
       _count: {
         select: {
