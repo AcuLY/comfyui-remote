@@ -31,17 +31,11 @@ import {
   MetricCard,
   PageHeader,
   ReviewImageBoard,
-  StatusBadge,
 } from "./design-demo-ui";
 import s from "./design-demo.module.css";
 type QueueReviewRow = {
   run: DemoRun;
   pendingCount: number;
-  keptCount: number;
-  featuredCount: number;
-  trashedCount: number;
-  status: "pending" | "kept" | "featured" | "trashed";
-  statusLabel: string;
 };
 
 type DemoRunProgress = {
@@ -67,37 +61,10 @@ function buildQueueReviewRows(runs: DemoRun[]): QueueReviewRow[] {
     const imageTotal = Math.max(run.imageCount, run.images.length, 1);
     const actualPending = run.pendingCount;
     const pendingCount = actualPending > 0 ? actualPending : needsPendingMock ? Math.min(imageTotal, 1 + (index % 3)) : 0;
-    const actualKept = run.images.filter((image) => image.status === "kept").length;
-    const actualFeatured = run.images.filter((image) => image.featured || image.featured2).length;
-    const actualTrashed = run.images.filter((image) => image.status === "trashed").length;
-    const keptCount = Math.max(actualKept, Math.max(0, Math.min(imageTotal - pendingCount, Math.ceil(imageTotal / 2))));
-    const featuredCount = Math.max(actualFeatured, keptCount > 1 ? Math.min(2, keptCount - 1) : 0);
-    const trashedCount = Math.max(actualTrashed, index % 5 === 0 ? 1 : 0);
-    const status =
-      pendingCount > 0
-        ? "pending"
-        : featuredCount > 0
-          ? "featured"
-          : keptCount > 0
-            ? "kept"
-            : "trashed";
-    const statusLabel =
-      status === "pending"
-        ? "待审"
-        : status === "featured"
-          ? "p站/预览"
-          : status === "kept"
-            ? "保留"
-            : "删除";
 
     return {
       run,
       pendingCount,
-      keptCount,
-      featuredCount,
-      trashedCount,
-      status,
-      statusLabel,
     };
   });
 }
@@ -206,7 +173,7 @@ function CurrentRunningProgressCard({ runs }: { runs: DemoCurrentRun[] }) {
             <article className={s.currentRunItem} key={run.id}>
               <div className={s.currentRunTitleBlock}>
                 <strong>{run.projectTitle} · {run.sectionName}</strong>
-                <span>run {run.runIndex} · 开始于 {run.startedAt ?? run.createdAt}</span>
+                <span>run {run.runIndex} · 创建于 {run.createdAt}</span>
               </div>
               <div className={s.currentRunProgressBlock}>
                 <div className={s.currentRunProgressTop}>
@@ -302,13 +269,6 @@ export function QueuePage({ data }: { data: DemoData }) {
                       </span>
                     ))}
                   </div>
-                  <div className={s.queueRunMeta}>
-                    <span className={s.badge}>{row.pendingCount} 待审</span>
-                    <span className={s.badge}>{row.keptCount} 保留</span>
-                    <span className={s.badge}>{row.featuredCount} p站/预览</span>
-                    <span className={s.badge}>{row.trashedCount} 删除</span>
-                  </div>
-                  <StatusBadge status={row.status} label={row.statusLabel} />
                 </Link>
               ))}
               {reviewRows.length === 0 ? <EmptyRows label="当前没有待审核任务" /> : null}
@@ -414,14 +374,11 @@ export function RunList({ title, runs, empty, mode }: { title: string; runs: Dem
                 <div className={s.queueRunMain}>
                   <strong>{run.projectTitle}</strong>
                   <span>{run.sectionName} · run {run.runIndex}</span>
-                  <span className={s.queueRunDate}>{mode === "running" ? "开始于" : "失败于"} {run.startedAt ?? run.createdAt}</span>
+                  <span className={s.queueRunDate}>
+                    {mode === "running" ? "创建于" : "失败于"} {mode === "running" ? run.createdAt : run.startedAt ?? run.createdAt}
+                  </span>
                   {mode === "failed" ? <span className={s.queueRunError}>原因：{run.errorMessage ?? "ComfyUI 返回空结果或连接超时"}</span> : null}
                 </div>
-                <div className={s.queueRunMeta}>
-                  <span className={s.badge}>run {run.runIndex}</span>
-                  <span className={s.badge}>{run.imageCount} 图</span>
-                </div>
-                <StatusBadge status={run.status} />
                 <div className={s.toolbar} onClick={(event) => event.stopPropagation()}>
                   {mode === "running" ? (
                     <Button tone="danger" icon={X} feedback={{ tone: "warning", title: "取消任务已排队", detail: run.sectionName }}>取消</Button>

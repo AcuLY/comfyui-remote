@@ -2131,6 +2131,16 @@
   font-style: normal;
 }
 
+.queueSurfaceHeader > .toolbar .button {
+  min-height: 34px;
+  flex: 0 0 auto;
+  gap: 5px;
+  border-radius: 8px;
+  font-size: 12px;
+  padding: 5px 10px;
+  white-space: nowrap;
+}
+
 .queueRunList {
   display: grid;
   gap: 0;
@@ -2139,7 +2149,7 @@
 
 .queueRunRow {
   display: grid;
-  grid-template-columns: minmax(160px, 1fr) minmax(180px, 260px) auto auto;
+  grid-template-columns: minmax(180px, 0.72fr) minmax(220px, 1fr);
   align-items: center;
   gap: 10px;
   min-width: 0;
@@ -2161,12 +2171,13 @@
   outline: none;
 }
 
+.queueRunRow > .queueRunMeta,
 .queueRunRow > .status {
-  justify-self: end;
+  display: none;
 }
 
 .queueRunRowSelectable {
-  grid-template-columns: 28px minmax(160px, 1fr) auto auto auto;
+  grid-template-columns: 28px minmax(180px, 1fr) auto;
   cursor: pointer;
 }
 
@@ -2245,6 +2256,19 @@
   overflow-wrap: anywhere;
 }
 
+.queueRunRowSelectable > .toolbar {
+  justify-self: end;
+}
+
+.queueRunRowSelectable > .toolbar .button {
+  min-height: 34px;
+  gap: 5px;
+  border-radius: 8px;
+  font-size: 12px;
+  padding: 5px 10px;
+  white-space: nowrap;
+}
+
 .queueThumbs {
   display: flex;
   min-width: 0;
@@ -2269,13 +2293,6 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-}
-
-.queueRunMeta {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 5px;
 }
 
 .queuePager,
@@ -7075,13 +7092,7 @@
   }
 
   .queueSurfaceHeader > .toolbar .button {
-    min-height: 32px;
-    flex: 0 0 auto;
-    gap: 5px;
-    border-radius: 8px;
     font-size: 11px;
-    padding: 5px 8px;
-    white-space: nowrap;
   }
 
   .currentRunHeader {
@@ -7149,41 +7160,27 @@
   }
 
   .queueRunRowSelectable {
-    grid-template-columns: 28px minmax(0, 1fr);
-  }
-
-  .queueRunRowSelectable .queueRunMeta,
-  .queueRunRowSelectable .status,
-  .queueRunRowSelectable .toolbar {
-    grid-column: 2;
-  }
-
-  .queueRunRowSelectable .queueRunMeta,
-  .queueRunRowSelectable .status {
-    display: none;
+    grid-template-columns: 28px minmax(0, 1fr) auto;
   }
 
   .queueRunRowSelectable .toolbar {
-    margin-top: 2px;
+    grid-column: 3;
+    grid-row: 1 / span 2;
+  }
+
+  .queueRunRowSelectable .toolbar {
+    align-self: center;
+    justify-self: end;
+    margin-top: 0;
   }
 
   .queueRunRowSelectable .toolbar .button {
-    min-height: 36px;
+    min-height: 34px;
     gap: 5px;
     border-radius: 8px;
-    font-size: 12px;
-    padding: 5px 10px;
+    font-size: 11px;
+    padding: 5px 9px;
     white-space: nowrap;
-  }
-
-  .queueRunRow > .status {
-    justify-self: start;
-    min-height: 30px;
-  }
-
-  .queueRunRow:not(.queueRunRowSelectable) > .status,
-  .queueRunRow:not(.queueRunRowSelectable) > .queueRunMeta {
-    display: none;
   }
 
   .queueRunMain {
@@ -7235,24 +7232,6 @@
   .reviewSamplerGrid,
   .reviewLoraGrid {
     grid-template-columns: 1fr;
-  }
-
-  .queueRunMeta {
-    max-width: 100%;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    overflow-x: auto;
-    padding-bottom: 2px;
-    scrollbar-width: none;
-  }
-
-  .queueRunMeta::-webkit-scrollbar {
-    display: none;
-  }
-
-  .queueRunMeta .badge {
-    flex: 0 0 auto;
-    min-height: 28px;
   }
 
   .queueThumbs {
