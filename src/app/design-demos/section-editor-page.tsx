@@ -15,6 +15,7 @@ import {
   type PromptBlockRowData,
   type LoraRowData,
   type HistoryDiffChange,
+  type PresetImportSelection,
   SectionHeader,
   SectionTabs,
   SpecSection,
@@ -113,6 +114,7 @@ function SectionEditorInner({
   // Preset bindings
   const [bindings, setBindings] = useState<PresetBinding[]>(() => buildBindings(section, project));
   const [importOpen, setImportOpen] = useState(false);
+  const [importSelection, setImportSelection] = useState<PresetImportSelection | null>(null);
 
   // Prompt blocks
   const [promptBlocks, setPromptBlocks] = useState<PromptBlockRowData[]>(initialPromptBlocks);
@@ -147,16 +149,6 @@ function SectionEditorInner({
       ? project.sections[sectionIdx + 1]
       : null;
 
-  // Tabs and counts
-  const tabs: Array<{ value: SectionTabValue; label: string; count?: number }> = [
-    { value: "params", label: "Comfy 参数" },
-    { value: "presets", label: "预制", count: bindings.length },
-    { value: "prompts", label: "提示词块", count: promptBlocks.length },
-    { value: "lora", label: "LoRA", count: lora1.length + lora2.length },
-    { value: "history", label: "变更记录", count: (section.changeHistory ?? []).length },
-    { value: "results", label: "运行结果", count: images.length },
-  ];
-
   // Build preset import data
   const importCategories: ImportCategory[] = data.categories.map((cat) => ({
     id: cat.id,
@@ -174,32 +166,179 @@ function SectionEditorInner({
     })),
   }));
 
-  // Compiled prompt preview data — sorts by category then bindings order
-  const compiledPositive = useMemo(() => {
-    return promptBlocks
-      .filter((b) => b.positive.trim().length > 0)
-      .map((b) => ({
-        presetName: b.presetName,
-        variantName: b.variantName,
-        categoryName: b.categoryName,
-        text: b.positive,
-      }));
-  }, [promptBlocks]);
-  const compiledNegative = useMemo(() => {
-    return promptBlocks
-      .filter((b) => b.negative.trim().length > 0)
-      .map((b) => ({
-        presetName: b.presetName,
-        variantName: b.variantName,
-        categoryName: b.categoryName,
-        text: b.negative,
-      }));
+  const commitPresetImport = useCallback(
+    (selection: PresetImportSelection) => {
+      const cat = importCategories.find((c) => c.id === selection.categoryId);
+      if (!cat) return;
+
+      if (selection.type === "preset") {
+        const preset = cat.presets.find((p) => p.id === selection.id);
+        if (!preset) return;
+        setBindings((prev) => [
+          ...prev,
+          {
+            id: `binding-${Date.now()}`,
+            kind: "preset",
+            scope: "section",
+            categoryId: cat.id,
+            categoryName: cat.name,
+            categoryColor: cat.color,
+            name: preset.name,
+            variantId: "v-default",
+            variantName: "默认",
+            blockCount: 1,
+            loraCount: 1,
+            variants: mockVariants(),
+            detailHref: demoHref(`/presets/${preset.id}`),
+          },
+        ]);
+      } else {
+        const group = cat.groups?.find((g) => g.id === selection.id);
+        if (!group) return;
+        setBindings((prev) => [
+          ...prev,
+          {
+            id: `binding-${Date.now()}`,
+            kind: "group",
+            scope: "section",
+            categoryId: cat.id,
+            categoryName: cat.name,
+            categoryColor: cat.color,
+            name: group.name,
+            blockCount: group.memberCount * 2,
+            loraCount: group.memberCount,
+            members: Array.from({ length: group.memberCount }).map((_, i) => ({
+              id: `m-${Date.now()}-${i}`,
+              presetName: `${group.name} 成员 ${i + 1}`,
+              variantName: "默认",
+              variants: mockVariants(),
+              detailHref: demoHref(`/presets/${group.id}`),
+            })),
+          },
+        ]);
+      }
+
+      flashSave();
+    },
+    [flashSave, importCategories],
+  );
+
+  // Compiled prompt preview data — grouped by preset, preserving preset order.
+  const compiledPromptGroups = useMemo(() => {
+    const groups = new Map<
+      string,
+      {
+        id: string;
+        presetName?: string;
+        variantName?: string;
+        categoryName: string;
+        positive: string[];
+        negative: string[];
+      }
+    >();
+
+    for (const block of promptBlocks) {
+      const positive = block.positive.trim();
+      const negative = block.negative.trim();
+      if (!positive && !negative) continue;
+
+      const groupName = block.presetName ?? block.label ?? block.categoryName;
+      const key = `${groupName}::${block.variantName ?? ""}`;
+      const group =
+        groups.get(key) ??
+        {
+          id: key,
+          presetName: block.presetName ?? block.label,
+          variantName: block.variantName,
+          categoryName: block.categoryName,
+          positive: [],
+          negative: [],
+        };
+
+      if (positive) group.positive.push(positive);
+      if (negative) group.negative.push(negative);
+      groups.set(key, group);
+    }
+
+    return Array.from(groups.values());
   }, [promptBlocks]);
 
   // History
   const history: HistoryDiffChange[] = useMemo(() => {
-    return (section.changeHistory ?? []).map((c) => ({ ...c }));
-  }, [section.changeHistory]);
+    if (section.changeHistory?.length) {
+      return section.changeHistory.map((c) => ({ ...c }));
+    }
+
+    return [
+      {
+        id: `${section.id}-change-params`,
+        timestamp: "2 小时前",
+        dimension: "params",
+        title: "更新运行参数",
+        before: JSON.stringify({ batchSize: 2, shortSidePx: 512, upscaleFactor: 1.5 }),
+        after: JSON.stringify({
+          batchSize: section.batchSize,
+          shortSidePx: section.shortSidePx,
+          upscaleFactor: section.upscaleFactor,
+        }),
+        diff: [
+          { field: "batchSize", before: "2", after: String(section.batchSize) },
+          { field: "shortSidePx", before: "512", after: String(section.shortSidePx) },
+          { field: "upscaleFactor", before: "1.5", after: String(section.upscaleFactor) },
+        ],
+      },
+      {
+        id: `${section.id}-change-preset`,
+        timestamp: "昨天",
+        dimension: "preset",
+        title: "导入小节预制",
+        before: null,
+        after: JSON.stringify({ bindings: bindings.slice(0, 2).map((b) => b.name) }),
+        diff: [
+          {
+            field: "presetBindings",
+            before: "—",
+            after: bindings.slice(0, 2).map((b) => b.name).join("、") || "默认预制",
+          },
+        ],
+      },
+      {
+        id: `${section.id}-change-prompt`,
+        timestamp: "昨天",
+        dimension: "prompt",
+        title: "调整提示词块",
+        before: JSON.stringify({ positive: "1girl, solo" }),
+        after: JSON.stringify({ positive: promptBlocks[0]?.positive ?? "1girl, solo" }),
+        diff: [
+          {
+            field: "promptBlocks[0].positive",
+            before: "1girl, solo",
+            after: promptBlocks[0]?.positive || "1girl, solo",
+          },
+        ],
+      },
+      {
+        id: `${section.id}-change-lora`,
+        timestamp: "2 天前",
+        dimension: "lora",
+        title: "更新 LoRA 权重",
+        before: JSON.stringify({ lora1: [] }),
+        after: JSON.stringify({ lora1: lora1.map((item) => ({ path: item.filePath, weight: item.weight })) }),
+        diff: [
+          {
+            field: "lora1[0].path",
+            before: "—",
+            after: lora1[0]?.filePath || lora1[0]?.fileName || "未选择",
+          },
+          {
+            field: "lora1[0].weight",
+            before: "—",
+            after: String(lora1[0]?.weight ?? 0.5),
+          },
+        ],
+      },
+    ];
+  }, [bindings, lora1, promptBlocks, section]);
 
   const filteredHistory = useMemo(() => {
     if (historyDim === "all") return history;
@@ -211,6 +350,16 @@ function SectionEditorInner({
     for (const c of history) counts[c.dimension] = (counts[c.dimension] ?? 0) + 1;
     return counts;
   }, [history]);
+
+  // Tabs and counts
+  const tabs: Array<{ value: SectionTabValue; label: string; count?: number }> = [
+    { value: "params", label: "Comfy 参数" },
+    { value: "presets", label: "预制", count: bindings.length },
+    { value: "prompts", label: "提示词块", count: promptBlocks.length },
+    { value: "lora", label: "LoRA", count: lora1.length + lora2.length },
+    { value: "history", label: "变更记录", count: history.length },
+    { value: "results", label: "运行结果", count: images.length },
+  ];
 
   // Results grouped by run
   const runs = useMemo(() => groupImagesByRun(images, section.latestRunIndex), [images, section.latestRunIndex]);
@@ -384,71 +533,52 @@ function SectionEditorInner({
               <span>{bindings.length} 项（含项目级与小节级）</span>
             </div>
             <div className={s.tabPanelSpacer} />
-            <button
-              type="button"
-              className={s.btnPrimary}
-              onClick={() => setImportOpen((v) => !v)}
-            >
-              <Plus className="size-4" />
-              导入预制
-            </button>
+            <div className={s.importHeaderActions}>
+              {importOpen ? (
+                <>
+                  <button
+                    type="button"
+                    className={s.btnGhost}
+                    onClick={() => {
+                      setImportOpen(false);
+                      setImportSelection(null);
+                    }}
+                  >
+                    收起
+                  </button>
+                  <button
+                    type="button"
+                    className={s.btnPrimary}
+                    disabled={!importSelection}
+                    onClick={() => {
+                      if (!importSelection) return;
+                      commitPresetImport(importSelection);
+                      setImportSelection(null);
+                      setImportOpen(false);
+                    }}
+                  >
+                    <Check className="size-4" />
+                    确认
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  className={s.btnPrimary}
+                  onClick={() => setImportOpen(true)}
+                >
+                  <Plus className="size-4" />
+                  导入预制
+                </button>
+              )}
+            </div>
           </div>
 
           <PresetImportInline
             open={importOpen}
             categories={importCategories}
-            onClose={() => setImportOpen(false)}
-            onImport={(type, id, categoryId) => {
-              const cat = importCategories.find((c) => c.id === categoryId);
-              if (!cat) return;
-              if (type === "preset") {
-                const preset = cat.presets.find((p) => p.id === id);
-                if (!preset) return;
-                setBindings((prev) => [
-                  ...prev,
-                  {
-                    id: `binding-${Date.now()}`,
-                    kind: "preset",
-                    scope: "section",
-                    categoryId: cat.id,
-                    categoryName: cat.name,
-                    categoryColor: cat.color,
-                    name: preset.name,
-                    variantId: "v-default",
-                    variantName: "默认",
-                    blockCount: 1,
-                    loraCount: 1,
-                    variants: mockVariants(),
-                    detailHref: demoHref(`/presets/${preset.id}`),
-                  },
-                ]);
-              } else {
-                const group = cat.groups?.find((g) => g.id === id);
-                if (!group) return;
-                setBindings((prev) => [
-                  ...prev,
-                  {
-                    id: `binding-${Date.now()}`,
-                    kind: "group",
-                    scope: "section",
-                    categoryId: cat.id,
-                    categoryName: cat.name,
-                    categoryColor: cat.color,
-                    name: group.name,
-                    blockCount: group.memberCount * 2,
-                    loraCount: group.memberCount,
-                    members: Array.from({ length: group.memberCount }).map((_, i) => ({
-                      id: `m-${Date.now()}-${i}`,
-                      presetName: `${group.name} 成员 ${i + 1}`,
-                      variantName: "默认",
-                      variants: mockVariants(),
-                      detailHref: demoHref(`/presets/${group.id}`),
-                    })),
-                  },
-                ]);
-              }
-              flashSave();
-            }}
+            selected={importSelection}
+            onSelect={setImportSelection}
           />
 
           {bindings.length === 0 ? (
@@ -519,117 +649,109 @@ function SectionEditorInner({
       ) : null}
 
       {tab === "prompts" ? (
-        <div className={s.sectionTabBodyPlain}>
-          <div className={s.sectionTabBody}>
-            <div className={s.tabPanelHeader}>
-              <div className={s.tabPanelTitle}>
-                <h3>提示词块</h3>
-                <span>{promptBlocks.length} 块 · 支持拖动排序</span>
+        <div className={cx(s.sectionTabBody, s.promptTabBody)}>
+          <div className={s.tabPanelHeader}>
+            <div className={s.tabPanelTitle}>
+              <h3>提示词块</h3>
+              <span>{promptBlocks.length} 块 · 支持拖动排序</span>
+            </div>
+          </div>
+          <div className={s.promptTwoColumn}>
+            <div>
+              <div className={s.pbColumnHead}>
+                <h4>正向</h4>
+              </div>
+              <div className={s.pbList}>
+                {promptBlocks.map((block) => (
+                  <PromptBlockRow
+                    key={`pos-${block.id}`}
+                    block={block}
+                    expanded={expandedBlockId === block.id}
+                    onToggle={() =>
+                      setExpandedBlockId((id) => (id === block.id ? null : block.id))
+                    }
+                    onLabelChange={(v) => {
+                      setPromptBlocks((prev) =>
+                        prev.map((b) => (b.id === block.id ? { ...b, label: v } : b)),
+                      );
+                      flashSave();
+                    }}
+                    onPositiveChange={(v) => {
+                      setPromptBlocks((prev) =>
+                        prev.map((b) => (b.id === block.id ? { ...b, positive: v } : b)),
+                      );
+                      flashSave();
+                    }}
+                    onNegativeChange={(v) => {
+                      setPromptBlocks((prev) =>
+                        prev.map((b) => (b.id === block.id ? { ...b, negative: v } : b)),
+                      );
+                      flashSave();
+                    }}
+                    onUnlink={() => {
+                      setPromptBlocks((prev) =>
+                        prev.map((b) =>
+                          b.id === block.id
+                            ? { ...b, kind: "manual", presetName: undefined, variantName: undefined }
+                            : b,
+                        ),
+                      );
+                      flashSave();
+                    }}
+                    onDelete={() => {
+                      setPromptBlocks((prev) => prev.filter((b) => b.id !== block.id));
+                      flashSave();
+                    }}
+                  />
+                ))}
               </div>
             </div>
-            <div className={s.promptTwoColumn}>
-              <div>
-                <div className={s.pbColumnHead}>
-                  <h4>正向</h4>
-                  <span>{promptBlocks.filter((b) => b.positive.trim()).length} 块有内容</span>
-                </div>
-                <div className={s.pbList}>
-                  {promptBlocks.map((block) => (
+            <div>
+              <div className={s.pbColumnHead}>
+                <h4>负向</h4>
+              </div>
+              <div className={s.pbList}>
+                {promptBlocks
+                  .filter((b) => b.negative.trim().length > 0)
+                  .map((block) => (
                     <PromptBlockRow
-                      key={`pos-${block.id}`}
-                      block={block}
-                      expanded={expandedBlockId === block.id}
+                      key={`neg-${block.id}`}
+                      block={{ ...block, positive: block.negative, negative: "" }}
+                      expanded={false}
                       onToggle={() =>
                         setExpandedBlockId((id) => (id === block.id ? null : block.id))
                       }
-                      onLabelChange={(v) => {
-                        setPromptBlocks((prev) =>
-                          prev.map((b) => (b.id === block.id ? { ...b, label: v } : b)),
-                        );
-                        flashSave();
-                      }}
-                      onPositiveChange={(v) => {
-                        setPromptBlocks((prev) =>
-                          prev.map((b) => (b.id === block.id ? { ...b, positive: v } : b)),
-                        );
-                        flashSave();
-                      }}
-                      onNegativeChange={(v) => {
-                        setPromptBlocks((prev) =>
-                          prev.map((b) => (b.id === block.id ? { ...b, negative: v } : b)),
-                        );
-                        flashSave();
-                      }}
-                      onUnlink={() => {
-                        setPromptBlocks((prev) =>
-                          prev.map((b) =>
-                            b.id === block.id
-                              ? { ...b, kind: "manual", presetName: undefined, variantName: undefined }
-                              : b,
-                          ),
-                        );
-                        flashSave();
-                      }}
-                      onDelete={() => {
-                        setPromptBlocks((prev) => prev.filter((b) => b.id !== block.id));
-                        flashSave();
-                      }}
                     />
                   ))}
-                </div>
               </div>
-              <div>
-                <div className={s.pbColumnHead}>
-                  <h4>负向</h4>
-                  <span>{promptBlocks.filter((b) => b.negative.trim()).length} 块有内容</span>
-                </div>
-                <div className={s.pbList}>
-                  {promptBlocks
-                    .filter((b) => b.negative.trim().length > 0)
-                    .map((block) => (
-                      <PromptBlockRow
-                        key={`neg-${block.id}`}
-                        block={{ ...block, positive: block.negative, negative: "" }}
-                        expanded={false}
-                        onToggle={() =>
-                          setExpandedBlockId((id) => (id === block.id ? null : block.id))
-                        }
-                      />
-                    ))}
-                </div>
-              </div>
-            </div>
-            <div className={s.addRow}>
-              <button
-                type="button"
-                onClick={() => {
-                  const id = `block-${Date.now()}`;
-                  setPromptBlocks((prev) => [
-                    ...prev,
-                    {
-                      id,
-                      label: "新 Block",
-                      categoryName: "自定义",
-                      categoryColor: "220 10% 60%",
-                      positive: "",
-                      negative: "",
-                      kind: "manual",
-                    },
-                  ]);
-                  setExpandedBlockId(id);
-                  flashSave();
-                }}
-              >
-                <Plus className="size-4" />
-                新增自定义 Block
-              </button>
             </div>
           </div>
-
-          <CompiledPromptPreview
-            positive={compiledPositive}
-            negative={compiledNegative}
-          />
+          <div className={s.addRow}>
+            <button
+              type="button"
+              onClick={() => {
+                const id = `block-${Date.now()}`;
+                setPromptBlocks((prev) => [
+                  ...prev,
+                  {
+                    id,
+                    label: "新 Block",
+                    categoryName: "自定义",
+                    categoryColor: "220 10% 60%",
+                    positive: "",
+                    negative: "",
+                    kind: "manual",
+                  },
+                ]);
+                setExpandedBlockId(id);
+                flashSave();
+              }}
+            >
+              <Plus className="size-4" />
+              新增自定义 Block
+            </button>
+          </div>
+          <CompiledPromptPreview groups={compiledPromptGroups} />
         </div>
       ) : null}
 
@@ -865,6 +987,20 @@ function SectionEditorInner({
                         data-review={reviewRing(img.status)}
                         data-featured={img.featured ? "true" : "false"}
                       >
+                        <button
+                          type="button"
+                          className={s.resultThumbCheckbox}
+                          role="checkbox"
+                          aria-checked={img.status === "kept"}
+                          aria-label={img.status === "kept" ? "取消保留" : "勾选保留"}
+                          data-checked={img.status === "kept"}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            markStatus(img.id, img.status === "kept" ? "pending" : "kept");
+                          }}
+                        >
+                          {img.status === "kept" ? <Check className="size-3.5" /> : null}
+                        </button>
                         <button
                           type="button"
                           onClick={() => setLightboxImageId(img.id)}

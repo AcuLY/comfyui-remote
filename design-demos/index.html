@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>设计 Demo 索引 - ComfyUI Manager</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="design-system.css">
+  <style>
+    .hero {
+      text-align: center;
+      margin-bottom: 64px;
+    }
+
+    .hero h1 {
+      font-size: 48px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      color: var(--text-primary);
+      margin-bottom: 16px;
+    }
+
+    .hero p {
+      font-size: 18px;
+      color: var(--text-secondary);
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .section-title {
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 24px;
+      letter-spacing: -0.02em;
+    }
+
+    .demo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+      margin-bottom: 64px;
+    }
+
+    .demo-card {
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-xl);
+      padding: 24px;
+      text-decoration: none;
+      display: block;
+      transition: all var(--transition-base) var(--ease);
+    }
+
+    .demo-card:hover {
+      transform: translateY(-2px);
+      border-color: var(--accent-primary);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .demo-card h3 {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+      letter-spacing: -0.01em;
+    }
+
+    .demo-card p {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: 12px;
+    }
+
+    .demo-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      background: var(--accent-primary-light);
+      color: var(--accent-primary);
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .demo-badge.v1 {
+      background: var(--accent-secondary-light);
+      color: var(--accent-secondary);
+    }
+
+    .info-box {
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-xl);
+      padding: 24px;
+      margin-bottom: 48px;
+    }
+
+    .info-box h2 {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 12px;
+    }
+
+    .info-box ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    .info-box li {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+      padding-left: 20px;
+      position: relative;
+    }
+
+    .info-box li::before {
+      content: '✓';
+      position: absolute;
+      left: 0;
+      color: var(--accent-primary);
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 64px; padding: 16px 0;">
+      <div style="font-size: 18px; font-weight: 600; color: var(--text-primary); letter-spacing: -0.02em;">ComfyUI Manager</div>
+      <button class="theme-toggle" id="theme-toggle" aria-label="切换主题" style="width: 40px; height: 40px; background: var(--glass-bg); backdrop-filter: blur(20px); border: 1px solid var(--glass-border); border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s ease;">
+        <svg class="sun-icon" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: var(--text-primary);">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
+        </svg>
+        <svg class="moon-icon" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: var(--text-primary); display: none;">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+        </svg>
+      </button>
+    </header>
+
+    <div class="hero">
+      <h1>设计 Demo 索引</h1>
+      <p>ComfyUI Manager 前端设计系统演示页面</p>
+    </div>
+
+    <div class="info-box">
+      <h2>设计特点</h2>
+      <ul>
+        <li>黑白基调 + 青绿色（#10b981）+ 淡粉色（#f472b6）强调</li>
+        <li>简化的 hover 效果：轻微上移 + 边框变色 + 轻微阴影</li>
+        <li>深色/浅色模式切换（点击右上角图标）</li>
+        <li>毛玻璃效果（backdrop-filter: blur(20px)）</li>
+        <li>柔和动画（0.2s - 0.3s 过渡）</li>
+        <li>响应式设计（桌面优先，移动端适配）</li>
+      </ul>
+    </div>
+
+    <h2 class="section-title">V2 版本（推荐）- 简化 Hover 效果</h2>
+    <div class="demo-grid">
+      <a href="v2-projects-page.html" class="demo-card">
+        <h3>项目列表</h3>
+        <p>项目卡片网格布局，状态标签和标签系统</p>
+        <span class="demo-badge">V2</span>
+      </a>
+
+      <a href="v2-queue-page.html" class="demo-card">
+        <h3>审核队列</h3>
+        <p>统计卡片 + 队列列表（带缩略图条）</p>
+        <span class="demo-badge">V2</span>
+      </a>
+
+      <a href="v2-review-page.html" class="demo-card">
+        <h3>宫格审图</h3>
+        <p>图片网格 + 选择交互 + 底部操作栏</p>
+        <span class="demo-badge">V2</span>
+      </a>
+    </div>
+
+    <h2 class="section-title">V1 版本 - 原始设计</h2>
+    <div class="demo-grid">
+      <a href="demo-projects-page.html" class="demo-card">
+        <h3>项目列表</h3>
+        <p>带顶部渐变装饰条的卡片设计</p>
+        <span class="demo-badge v1">V1</span>
+      </a>
+
+      <a href="demo-queue-page.html" class="demo-card">
+        <h3>审核队列</h3>
+        <p>带顶部渐变装饰条的队列列表</p>
+        <span class="demo-badge v1">V1</span>
+      </a>
+
+      <a href="demo-review-page.html" class="demo-card">
+        <h3>宫格审图</h3>
+        <p>完整的图片选择和操作功能</p>
+        <span class="demo-badge v1">V1</span>
+      </a>
+
+      <a href="demo-settings-page.html" class="demo-card">
+        <h3>设置页</h3>
+        <p>快捷入口卡片 + 设置项列表</p>
+        <span class="demo-badge v1">V1</span>
+      </a>
+    </div>
+
+    <h2 class="section-title">初始 Demo</h2>
+    <div class="demo-grid">
+      <a href="demo-1-soft-gradient.html" class="demo-card">
+        <h3>Demo 1: Soft Gradient</h3>
+        <p>柔和渐变风格，毛玻璃效果，动态背景</p>
+        <span class="demo-badge v1">初始</span>
+      </a>
+
+      <a href="demo-2-minimal-contrast.html" class="demo-card">
+        <h3>Demo 2: Minimal Contrast</h3>
+        <p>极简对比风格，纯白背景，强对比</p>
+        <span class="demo-badge v1">初始</span>
+      </a>
+
+      <a href="demo-3-claude-inspired.html" class="demo-card">
+        <h3>Demo 3: Claude Inspired</h3>
+        <p>Claude 暖色风格，米黄色背景</p>
+        <span class="demo-badge v1">初始</span>
+      </a>
+    </div>
+
+    <div class="info-box">
+      <h2>文档</h2>
+      <ul>
+        <li><a href="../docs/frontend-design-guide.md" style="color: var(--accent-primary); text-decoration: none;">前端设计规范文档</a></li>
+        <li><a href="pages-checklist.md" style="color: var(--accent-primary); text-decoration: none;">页面清单</a></li>
+        <li><a href="design-system.css" style="color: var(--accent-primary); text-decoration: none;">设计系统 CSS</a></li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    const themeToggle = document.getElementById('theme-toggle');
+    const html = document.documentElement;
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    html.setAttribute('data-theme', savedTheme);
+
+    const sunIcon = document.querySelector('.sun-icon');
+    const moonIcon = document.querySelector('.moon-icon');
+
+    function updateIcons() {
+      const theme = html.getAttribute('data-theme');
+      if (theme === 'dark') {
+        sunIcon.style.display = 'none';
+        moonIcon.style.display = 'block';
+      } else {
+        sunIcon.style.display = 'block';
+        moonIcon.style.display = 'none';
+      }
+    }
+
+    updateIcons();
+
+    themeToggle.addEventListener('click', () => {
+      const currentTheme = html.getAttribute('data-theme');
+      const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+      html.setAttribute('data-theme', newTheme);
+      localStorage.setItem('theme', newTheme);
+      updateIcons();
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>项目列表 - ComfyUI Manager</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="design-system.css">
+  <style>
+    /* 页面特定样式 */
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 32px;
+    }
+
+    .page-title {
+      font-size: 32px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      color: var(--text-primary);
+    }
+
+    .project-grid {
+      display: grid;
+      gap: 20px;
+      /* 桌面端：3列 */
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .project-card {
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-xl);
+      padding: 24px;
+      cursor: pointer;
+      transition: all var(--transition-base) var(--ease);
+      text-decoration: none;
+      display: block;
+    }
+
+    /* 简化的 hover：轻微上移 + 边框变色 + 轻微阴影 */
+    .project-card:hover {
+      transform: translateY(-2px);
+      border-color: var(--accent-primary);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .project-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      margin-bottom: 12px;
+    }
+
+    .project-card h3 {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text-primary);
+      letter-spacing: -0.01em;
+      margin-bottom: 8px;
+    }
+
+    .project-status {
+      padding: 4px 10px;
+      background: var(--accent-primary-light);
+      color: var(--accent-primary);
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      flex-shrink: 0;
+    }
+
+    .project-meta {
+      font-size: 13px;
+      color: var(--text-tertiary);
+      margin-bottom: 16px;
+    }
+
+    .project-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    /* 平板：2列 */
+    @media (max-width: 1024px) {
+      .project-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    /* 移动端：1列 */
+    @media (max-width: 640px) {
+      .page-title {
+        font-size: 24px;
+      }
+
+      .project-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+      }
+
+      .btn-primary {
+        width: 100%;
+        justify-content: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 48px; padding: 16px 0;">
+      <div style="font-size: 18px; font-weight: 600; color: var(--text-primary); letter-spacing: -0.02em;">ComfyUI Manager</div>
+      <button class="theme-toggle" id="theme-toggle" aria-label="切换主题" style="width: 40px; height: 40px; background: var(--glass-bg); backdrop-filter: blur(20px); border: 1px solid var(--glass-border); border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s ease;">
+        <svg class="sun-icon" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: var(--text-primary);">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
+        </svg>
+        <svg class="moon-icon" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: var(--text-primary); display: none;">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+        </svg>
+      </button>
+    </header>
+
+    <div class="page-header">
+      <h1 class="page-title">项目</h1>
+      <a href="/projects/new" class="btn btn-primary">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 3v10M3 8h10"/>
+        </svg>
+        创建新项目
+      </a>
+    </div>
+
+    <div class="project-grid">
+      <a href="/projects/1" class="project-card">
+        <div class="project-header">
+          <div>
+            <h3>角色立绘 - 幻想风格</h3>
+            <div class="project-meta">最近更新：2小时前 · 3 个小节</div>
+          </div>
+          <span class="project-status">进行中</span>
+        </div>
+        <div class="project-tags">
+          <span class="tag">角色</span>
+          <span class="tag-secondary">SDXL</span>
+          <span class="tag">HiRes Fix</span>
+        </div>
+      </a>
+
+      <a href="/projects/2" class="project-card">
+        <div class="project-header">
+          <div>
+            <h3>场景概念设计</h3>
+            <div class="project-meta">最近更新：5小时前 · 5 个小节</div>
+          </div>
+          <span class="project-status">已完成</span>
+        </div>
+        <div class="project-tags">
+          <span class="tag">场景</span>
+          <span class="tag-secondary">自定义模板</span>
+        </div>
+      </a>
+
+      <a href="/projects/3" class="project-card">
+        <div class="project-header">
+          <div>
+            <h3>产品渲染测试</h3>
+            <div class="project-meta">最近更新：1天前 · 2 个小节</div>
+          </div>
+          <span class="project-status">已完成</span>
+        </div>
+        <div class="project-tags">
+          <span class="tag">产品</span>
+          <span class="tag-secondary">SDXL</span>
+        </div>
+      </a>
+
+      <a href="/projects/4" class="project-card">
+        <div class="project-header">
+          <div>
+            <h3>风格实验 - 水彩</h3>
+            <div class="project-meta">最近更新：3天前 · 1 个小节</div>
+          </div>
+          <span class="project-status">草稿</span>
+        </div>
+        <div class="project-tags">
+          <span class="tag">风格</span>
+          <span class="tag-secondary">实验</span>
+        </div>
+      </a>
+
+      <a href="/projects/5" class="project-card">
+        <div class="project-header">
+          <div>
+            <h3>人物肖像 - 写实</h3>
+            <div class="project-meta">最近更新：1周前 · 4 个小节</div>
+          </div>
+          <span class="project-status">已完成</span>
+        </div>
+        <div class="project-tags">
+          <span class="tag">人物</span>
+          <span class="tag-secondary">写实</span>
+          <span class="tag">HiRes Fix</span>
+        </div>
+      </a>
+
+      <a href="/projects/6" class="project-card">
+        <div class="project-header">
+          <div>
+            <h3>建筑外观设计</h3>
+            <div class="project-meta">最近更新：2周前 · 6 个小节</div>
+          </div>
+          <span class="project-status">已归档</span>
+        </div>
+        <div class="project-tags">
+          <span class="tag">建筑</span>
+          <span class="tag-secondary">SDXL</span>
+        </div>
+      </a>
+    </div>
+  </div>
+
+  <script>
+    const themeToggle = document.getElementById('theme-toggle');
+    const html = document.documentElement;
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    html.setAttribute('data-theme', savedTheme);
+
+    const sunIcon = document.querySelector('.sun-icon');
+    const moonIcon = document.querySelector('.moon-icon');
+
+    function updateIcons() {
+      const theme = html.getAttribute('data-theme');
+      if (theme === 'dark') {
+        sunIcon.style.display = 'none';
+        moonIcon.style.display = 'block';
+      } else {
+        sunIcon.style.display = 'block';
+        moonIcon.style.display = 'none';
+      }
+    }
+
+    updateIcons();
+
+    themeToggle.addEventListener('click', () => {
+      const currentTheme = html.getAttribute('data-theme');
+      const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+      html.setAttribute('data-theme', newTheme);
+      localStorage.setItem('theme', newTheme);
+      updateIcons();
+    });
+  </script>
+</body>
+</html>

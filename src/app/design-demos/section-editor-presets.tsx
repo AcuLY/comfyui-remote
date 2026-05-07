@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import type * as React from "react";
-import { ChevronDown, Check, Search, Trash2, Unlink, ExternalLink, Copy as CopyIcon } from "lucide-react";
+import { ChevronDown, Search, Trash2, Unlink, ExternalLink, Copy as CopyIcon } from "lucide-react";
 
 import s from "./design-demo.module.css";
 import { cx } from "./design-demo-utils";
@@ -57,15 +57,15 @@ export function PresetBindingRow({
   return (
     <div className={s.bindRow} data-expanded={expanded}>
       <div className={s.bindRowMain}>
-        <span
-          className={s.bindCategory}
-          style={{ "--cat": color } as React.CSSProperties}
-        >
-          {binding.categoryName}
-        </span>
         <div className={s.bindNameWrap}>
           <span className={s.bindName}>
             {binding.name}
+            <span
+              className={s.bindCategory}
+              style={{ "--cat": color } as React.CSSProperties}
+            >
+              {binding.categoryName}
+            </span>
             {isGroup ? <span className={s.bindGroupChip}>组</span> : null}
             {binding.scope === "project" ? (
               <span className={s.bindScopeChip}>项目</span>
@@ -191,20 +191,22 @@ export type ImportCategory = {
   groups?: Array<{ id: string; name: string; memberCount: number }>;
 };
 
+export type PresetImportSelection = {
+  type: "preset" | "group";
+  id: string;
+  categoryId: string;
+};
+
 export function PresetImportInline({
   open,
   categories,
-  onImport,
-  onClose,
+  selected,
+  onSelect,
 }: {
   open: boolean;
   categories: ImportCategory[];
-  onImport: (
-    type: "preset" | "group",
-    presetOrGroupId: string,
-    categoryId: string,
-  ) => void;
-  onClose: () => void;
+  selected: PresetImportSelection | null;
+  onSelect: (selection: PresetImportSelection | null) => void;
 }) {
   return (
     <div className={cx(s.importInline, open && s.importInlineOpen)}>
@@ -212,8 +214,8 @@ export function PresetImportInline({
         <PresetImportInlineBody
           key={open ? "open" : "closed"}
           categories={categories}
-          onImport={onImport}
-          onClose={onClose}
+          selected={selected}
+          onSelect={onSelect}
         />
       ) : null}
     </div>
@@ -222,22 +224,15 @@ export function PresetImportInline({
 
 function PresetImportInlineBody({
   categories,
-  onImport,
-  onClose,
+  selected,
+  onSelect,
 }: {
   categories: ImportCategory[];
-  onImport: (
-    type: "preset" | "group",
-    presetOrGroupId: string,
-    categoryId: string,
-  ) => void;
-  onClose: () => void;
+  selected: PresetImportSelection | null;
+  onSelect: (selection: PresetImportSelection | null) => void;
 }) {
   const [q, setQ] = useState("");
   const [activeCat, setActiveCat] = useState<string | null>(null);
-  const [selected, setSelected] = useState<{ type: "preset" | "group"; id: string; categoryId: string } | null>(
-    null,
-  );
 
   const filtered = categories
     .filter((c) => !activeCat || c.id === activeCat)
@@ -311,7 +306,7 @@ function PresetImportInlineBody({
                       key={`g-${g.id}`}
                       type="button"
                       className={cx(s.importItem, isSel && s.importItemSel)}
-                      onClick={() => setSelected({ type: "group", id: g.id, categoryId: c.id })}
+                      onClick={() => onSelect({ type: "group", id: g.id, categoryId: c.id })}
                     >
                       <span className={s.importItemTop}>
                         <span className={s.importItemBadge}>组</span>
@@ -328,7 +323,7 @@ function PresetImportInlineBody({
                       key={`p-${p.id}`}
                       type="button"
                       className={cx(s.importItem, isSel && s.importItemSel)}
-                      onClick={() => setSelected({ type: "preset", id: p.id, categoryId: c.id })}
+                      onClick={() => onSelect({ type: "preset", id: p.id, categoryId: c.id })}
                     >
                       <span className={s.importItemTop}>
                         <span className={s.importItemName}>{p.name}</span>
@@ -343,25 +338,6 @@ function PresetImportInlineBody({
         )}
       </div>
 
-      <div className={s.importFooter}>
-        <button type="button" className={s.btnGhost} onClick={onClose}>
-          取消
-        </button>
-        <button
-          type="button"
-          className={s.btnPrimary}
-          disabled={!selected}
-          onClick={() => {
-            if (selected) {
-              onImport(selected.type, selected.id, selected.categoryId);
-              onClose();
-            }
-          }}
-        >
-          <Check className="size-4" />
-          导入
-        </button>
-      </div>
     </>
   );
 }

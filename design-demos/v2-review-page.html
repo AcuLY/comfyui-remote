@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>宫格审图 - ComfyUI Manager</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="design-system.css">
+  <style>
+    .back-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      border-radius: 10px;
+      color: var(--text-primary);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all var(--transition-base) var(--ease);
+    }
+
+    .back-button:hover {
+      transform: translateY(-1px);
+      border-color: var(--accent-primary);
+    }
+
+    .info-card {
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-xl);
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+
+    .info-card h2 {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+      letter-spacing: -0.01em;
+    }
+
+    .info-meta {
+      font-size: 13px;
+      color: var(--text-tertiary);
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+
+    .info-stats {
+      display: flex;
+      gap: 24px;
+      font-size: 14px;
+    }
+
+    .info-stats span {
+      color: var(--text-secondary);
+    }
+
+    .info-stats strong {
+      color: var(--accent-primary);
+      font-weight: 600;
+      margin-left: 6px;
+    }
+
+    .image-grid {
+      display: grid;
+      gap: 12px;
+      margin-bottom: 24px;
+      /* 桌面端：6列 */
+      grid-template-columns: repeat(6, 1fr);
+    }
+
+    .image-item {
+      aspect-ratio: 1;
+      background: linear-gradient(135deg, var(--accent-primary-light), var(--accent-secondary-light));
+      border-radius: var(--radius-lg);
+      position: relative;
+      overflow: hidden;
+      cursor: pointer;
+      transition: all var(--transition-base) var(--ease);
+      border: 3px solid transparent;
+    }
+
+    .image-item:hover {
+      transform: scale(1.03);
+      border-color: var(--border-secondary);
+    }
+
+    .image-item.selected {
+      border-color: var(--accent-primary);
+    }
+
+    .image-item.selected::after {
+      content: '✓';
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      width: 32px;
+      height: 32px;
+      background: var(--accent-primary);
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      font-weight: 700;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .action-bar {
+      position: sticky;
+      bottom: 24px;
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-xl);
+      padding: 20px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      box-shadow: var(--shadow-md);
+    }
+
+    .selection-info {
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    .selection-info strong {
+      color: var(--accent-primary);
+      font-weight: 600;
+      margin: 0 4px;
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 12px;
+    }
+
+    /* 大屏：5列 */
+    @media (min-width: 1400px) {
+      .image-grid {
+        grid-template-columns: repeat(6, 1fr);
+      }
+    }
+
+    /* 桌面：4列 */
+    @media (max-width: 1399px) {
+      .image-grid {
+        grid-template-columns: repeat(4, 1fr);
+      }
+    }
+
+    /* 平板：3列 */
+    @media (max-width: 1024px) {
+      .image-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    /* 移动端：2列 */
+    @media (max-width: 640px) {
+      .image-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .action-bar {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .action-buttons {
+        flex-direction: column;
+      }
+
+      .btn {
+        justify-content: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container" style="max-width: 1400px;">
+    <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; padding: 16px 0;">
+      <a href="/queue" class="back-button">
+        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+        </svg>
+        返回队列
+      </a>
+      <button class="theme-toggle" id="theme-toggle" aria-label="切换主题" style="width: 40px; height: 40px; background: var(--glass-bg); backdrop-filter: blur(20px); border: 1px solid var(--glass-border); border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s ease;">
+        <svg class="sun-icon" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: var(--text-primary);">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
+        </svg>
+        <svg class="moon-icon" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: var(--text-primary); display: none;">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+        </svg>
+      </button>
+    </header>
+
+    <div class="info-card">
+      <h2>角色立绘 - 幻想风格 / 小节 1</h2>
+      <div class="info-meta">
+        <span>2小时前</span>
+        <span>•</span>
+        <span>SDXL</span>
+        <span>•</span>
+        <span>HiRes Fix 2x</span>
+        <span>•</span>
+        <span>1024x1024</span>
+      </div>
+      <div class="info-stats">
+        <span>待审核<strong>12</strong></span>
+        <span>总张数<strong>16</strong></span>
+      </div>
+    </div>
+
+    <div class="image-grid" id="image-grid">
+      <div class="image-item" data-id="1"></div>
+      <div class="image-item" data-id="2"></div>
+      <div class="image-item" data-id="3"></div>
+      <div class="image-item" data-id="4"></div>
+      <div class="image-item" data-id="5"></div>
+      <div class="image-item" data-id="6"></div>
+      <div class="image-item" data-id="7"></div>
+      <div class="image-item" data-id="8"></div>
+      <div class="image-item" data-id="9"></div>
+      <div class="image-item" data-id="10"></div>
+      <div class="image-item" data-id="11"></div>
+      <div class="image-item" data-id="12"></div>
+      <div class="image-item" data-id="13"></div>
+      <div class="image-item" data-id="14"></div>
+      <div class="image-item" data-id="15"></div>
+      <div class="image-item" data-id="16"></div>
+    </div>
+
+    <div class="action-bar">
+      <div class="selection-info">
+        已选择<strong id="selected-count">0</strong>张图片
+      </div>
+      <div class="action-buttons">
+        <button class="btn btn-secondary" id="select-all">全选</button>
+        <button class="btn btn-secondary" id="delete-selected" style="background: var(--accent-secondary-light); color: var(--accent-secondary); border: none;">删除选中</button>
+        <button class="btn btn-primary" id="keep-selected">保留选中</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 主题切换
+    const themeToggle = document.getElementById('theme-toggle');
+    const html = document.documentElement;
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    html.setAttribute('data-theme', savedTheme);
+
+    const sunIcon = document.querySelector('.sun-icon');
+    const moonIcon = document.querySelector('.moon-icon');
+
+    function updateIcons() {
+      const theme = html.getAttribute('data-theme');
+      if (theme === 'dark') {
+        sunIcon.style.display = 'none';
+        moonIcon.style.display = 'block';
+      } else {
+        sunIcon.style.display = 'block';
+        moonIcon.style.display = 'none';
+      }
+    }
+
+    updateIcons();
+
+    themeToggle.addEventListener('click', () => {
+      const currentTheme = html.getAttribute('data-theme');
+      const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+      html.setAttribute('data-theme', newTheme);
+      localStorage.setItem('theme', newTheme);
+      updateIcons();
+    });
+
+    // 图片选择逻辑
+    const imageGrid = document.getElementById('image-grid');
+    const selectedCountEl = document.getElementById('selected-count');
+    const selectAllBtn = document.getElementById('select-all');
+    const deleteBtn = document.getElementById('delete-selected');
+    const keepBtn = document.getElementById('keep-selected');
+
+    let selectedImages = new Set();
+
+    imageGrid.addEventListener('click', (e) => {
+      const item = e.target.closest('.image-item');
+      if (!item) return;
+
+      const id = item.dataset.id;
+      if (selectedImages.has(id)) {
+        selectedImages.delete(id);
+        item.classList.remove('selected');
+      } else {
+        selectedImages.add(id);
+        item.classList.add('selected');
+      }
+      updateSelectedCount();
+    });
+
+    selectAllBtn.addEventListener('click', () => {
+      const allItems = imageGrid.querySelectorAll('.image-item');
+      if (selectedImages.size === allItems.length) {
+        selectedImages.clear();
+        allItems.forEach(item => item.classList.remove('selected'));
+        selectAllBtn.textContent = '全选';
+      } else {
+        allItems.forEach(item => {
+          selectedImages.add(item.dataset.id);
+          item.classList.add('selected');
+        });
+        selectAllBtn.textContent = '取消全选';
+      }
+      updateSelectedCount();
+    });
+
+    deleteBtn.addEventListener('click', () => {
+      if (selectedImages.size === 0) {
+        alert('请先选择要删除的图片');
+        return;
+      }
+      if (confirm(`确定要删除选中的 ${selectedImages.size} 张图片吗？`)) {
+        selectedImages.forEach(id => {
+          const item = imageGrid.querySelector(`[data-id="${id}"]`);
+          if (item) item.remove();
+        });
+        selectedImages.clear();
+        updateSelectedCount();
+      }
+    });
+
+    keepBtn.addEventListener('click', () => {
+      if (selectedImages.size === 0) {
+        alert('请先选择要保留的图片');
+        return;
+      }
+      if (confirm(`确定要保留选中的 ${selectedImages.size} 张图片，并删除其他图片吗？`)) {
+        const allItems = imageGrid.querySelectorAll('.image-item');
+        allItems.forEach(item => {
+          if (!selectedImages.has(item.dataset.id)) {
+            item.remove();
+          }
+        });
+        selectedImages.clear();
+        imageGrid.querySelectorAll('.image-item').forEach(item => {
+          item.classList.remove('selected');
+        });
+        updateSelectedCount();
+      }
+    });
+
+    function updateSelectedCount() {
+      selectedCountEl.textContent = selectedImages.size;
+      const allItems = imageGrid.querySelectorAll('.image-item');
+      selectAllBtn.textContent = selectedImages.size === allItems.length ? '取消全选' : '全选';
+    }
+  </script>
+</body>
+</html>

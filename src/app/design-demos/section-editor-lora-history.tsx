@@ -48,7 +48,7 @@ export function LoraRow({
   };
 
   return (
-    <div className={s.loraRow} data-enabled={entry.enabled}>
+    <div className={cx(s.loraRow, s.sectionLoraRow)} data-enabled={entry.enabled}>
       <div className={s.loraRowGrip} aria-label="拖拽排序">
         <GripVertical className="size-4" />
       </div>

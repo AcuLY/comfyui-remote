@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 
 import type { DemoData } from "./design-demo-data";
 import { DesignDemoShell } from "./design-demo-shell";
-import { ModelsPage, LorasPage } from "./model-pages";
+import { ModelsPage } from "./model-pages";
 import { PresetsPage, PresetCategoryFormPage, PresetEditPage, PresetGroupPage, SortRulesPage } from "./preset-pages";
 import { BatchCreatePage } from "./batch-create-page";
 import { RootPage, ProjectsPage, ProjectDetailPage, ProjectFormPage } from "./project-pages";
@@ -45,9 +45,9 @@ function CurrentPage({ match, data }: { match: Match; data: DemoData }) {
     case "section-results":
       return <SectionResultsPage project={project} section={section} />;
     case "models":
-      return <ModelsPage data={data} />;
+      return <ModelsPage />;
     case "loras":
-      return <LorasPage data={data} />;
+      return <ModelsPage />;
     case "presets":
       return <PresetsPage data={data} />;
     case "preset-category-new":

@@ -401,6 +401,18 @@ export function ImageGrid({
               ) : null}
             </div>
             <div className={s.lightboxActions}>
+              <Button icon={Check} feedback={{ title: "图片已加入保留队列", detail: activeImage.label }}>
+                保留
+              </Button>
+              <Button tone="pink" icon={Star} feedback={{ title: "图片已加入精选队列", detail: activeImage.label }}>
+                精选
+              </Button>
+              <Button tone="pink" icon={Eye} feedback={{ title: "图片已加入预览队列", detail: activeImage.label }}>
+                预览
+              </Button>
+              <Button tone="danger" icon={Trash2} feedback={{ tone: "warning", title: "图片已加入删除队列", detail: activeImage.label }}>
+                删除
+              </Button>
               <Button
                 tone="subtle"
                 icon={ArrowLeft}
@@ -539,6 +551,18 @@ export function ReviewImageBoard({ images }: { images: DemoImage[] }) {
               {activeImage.src ? <img src={activeImage.src} alt="" className={s.imageFill} loading="eager" /> : null}
             </div>
             <div className={s.lightboxActions}>
+              <Button icon={Check} feedback={{ title: "图片已加入保留队列", detail: activeImage.label }}>
+                保留
+              </Button>
+              <Button tone="pink" icon={Star} feedback={{ title: "图片已加入精选队列", detail: activeImage.label }}>
+                精选
+              </Button>
+              <Button tone="pink" icon={Eye} feedback={{ title: "图片已加入预览队列", detail: activeImage.label }}>
+                预览
+              </Button>
+              <Button tone="danger" icon={Trash2} feedback={{ tone: "warning", title: "图片已加入删除队列", detail: activeImage.label }}>
+                删除
+              </Button>
               <Button tone="subtle" icon={ArrowLeft} onClick={() => setActiveIndex((current) => (current === null ? 0 : (current + images.length - 1) % images.length))}>
                 上一张
               </Button>

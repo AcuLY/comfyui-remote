@@ -8,6 +8,8 @@ import s from "./design-demo.module.css";
 import { cx } from "./design-demo-utils";
 export type SaveStatus = "idle" | "saving" | "saved";
 
+const BATCH_SIZE_OPTIONS = [1, 2, 4, 8, 16] as const;
+
 // ============================================================================
 // Section Name Editor — click-to-edit, debounced save
 // ============================================================================
@@ -220,26 +222,22 @@ export function SectionHeader(props: HeaderProps) {
 
         <div className={s.sectionRunDock}>
           <div className={s.sectionRunStepper} role="group" aria-label="批量数">
-            <button
-              type="button"
-              className={s.sectionRunStep}
-              onClick={() => onBatchSizeChange(Math.max(1, batchSize - 1))}
-              aria-label="减少批量"
-            >
-              −
-            </button>
-            <span className={s.sectionRunCount}>
-              <b>×{batchSize}</b>
-              <em>批量</em>
-            </span>
-            <button
-              type="button"
-              className={s.sectionRunStep}
-              onClick={() => onBatchSizeChange(Math.min(16, batchSize + 1))}
-              aria-label="增加批量"
-            >
-              +
-            </button>
+            {BATCH_SIZE_OPTIONS.map((size) => (
+              <button
+                key={size}
+                type="button"
+                className={cx(
+                  s.sectionRunBatchOption,
+                  batchSize === size && s.sectionRunBatchOptionActive,
+                )}
+                onClick={() => onBatchSizeChange(size)}
+                aria-pressed={batchSize === size}
+                aria-label={`批量 ${size}`}
+              >
+                {size}
+              </button>
+            ))}
+            <span className={s.sectionRunBatchLabel}>批量</span>
           </div>
           <button type="button" className={s.sectionRunButton} onClick={onRun}>
             <RunIcon />

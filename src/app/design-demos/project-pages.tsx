@@ -3,12 +3,12 @@
 import Link from "next/link";
 import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
 import type * as React from "react";
-import { Archive, ArrowLeft, ArrowRight, Check, CheckSquare, ChevronDown, ChevronUp, Copy, Download, Edit3, Eye, GripVertical, ImageIcon, ListChecks, Play, Plus, Rows3, Save, SlidersHorizontal, Square, Star, Trash2 } from "lucide-react";
+import { Archive, ArrowLeft, ArrowRight, Check, CheckSquare, ChevronDown, ChevronUp, Copy, Download, Edit3, Eye, GripVertical, ImageIcon, ListChecks, Play, Plus, Rows3, Save, Square, Star, Trash2 } from "lucide-react";
 
 import type { DemoData, DemoImage, DemoProject, DemoSection } from "./design-demo-data";
 import s from "./design-demo.module.css";
 import { Button, ButtonLink, DemoTabs, EmptyPage, Field, ImageGrid, ImageStrip, OperationStateStrip, PageHeader, Panel, SelectLike, StatusBadge, SwitchRow, TextAreaField } from "./design-demo-ui";
-import { compactFileName, cx, demoHref, filterImages, projectPresetSummary, rawSectionId, sectionAnchorId, sectionRunStatus, selectionToggleLabel } from "./design-demo-utils";
+import { compactFileName, cx, demoHref, filterImages, projectPresetSummary, rawSectionId, sectionAnchorId, sectionRunStatus } from "./design-demo-utils";
 import type { ProjectCardView, ResultDemoFilter, SectionNavMode } from "./design-demo-utils";
 import { QueuePage } from "./runs-page";
 export function RootPage({ data }: { data: DemoData }) {
@@ -62,7 +62,7 @@ export function ProjectDetailPage({
   const sections = project.sections;
   const projectImages = sections.flatMap((section) => section.images);
   const isResultView = initialView === "results";
-  const allSelected = selectedIds.size === sections.length && sections.length > 0;
+  const sectionSummary = `${project.sectionCount} 个小节 · ${selectedIds.size ? `${selectedIds.size} 个已选` : "未选择小节"}`;
 
   function toggleSectionSelection(sectionId: string) {
     setSelectedIds((current) => {
@@ -71,14 +71,6 @@ export function ProjectDetailPage({
       else next.add(sectionId);
       return next;
     });
-  }
-
-  function toggleAllSections() {
-    setSelectedIds((current) => (
-      current.size === sections.length
-        ? new Set()
-        : new Set(sections.map((section) => section.id))
-    ));
   }
 
   function toggleCollapsed(sectionId: string) {
@@ -92,33 +84,26 @@ export function ProjectDetailPage({
 
   return (
     <div className={s.page}>
-      <PageHeader
-        back={{ href: "/projects", label: "返回项目列表" }}
-        eyebrow="项目"
-        title={project.title}
-        subtitle={project.notes || `${project.sectionCount} 个小节`}
-        actions={
-          <>
-            <ButtonLink href={`/projects/${project.id}/edit`} icon={Edit3}>编辑</ButtonLink>
-            <ButtonLink href={`/projects/${project.id}/batch-create`} tone="primary" icon={Rows3}>批量创建</ButtonLink>
-          </>
-        }
+      <ProjectDetailHeader
+        isResultView={isResultView}
+        project={project}
+        subtitle={project.notes ? `${project.notes} · ${sectionSummary}` : sectionSummary}
+        view={initialView}
       />
-      {!isResultView ? <ProjectActionStrip project={project} selectedCount={selectedIds.size} /> : null}
-      <ProjectSectionShell project={project} mode={isResultView ? "project-results" : "detail"}>
+      <ProjectSectionShell
+        compact={compact}
+        onToggleCompact={() => setCompact((value) => !value)}
+        project={project}
+        mode={isResultView ? "project-results" : "detail"}
+      >
         <div className={s.sectionContentGrid}>
-          <div className={s.projectSectionToolbar}>
-            <div>
-              <strong>{isResultView ? "小节结果" : "小节配置"}</strong>
-              <span>
-                {isResultView
-                  ? `${projectImages.length} 张图片 · ${projectImages.filter((image) => image.status === "pending").length} 张待审`
-                  : `${sections.length} 个小节 · ${selectedIds.size} 个已选`}
-              </span>
-            </div>
-            <div className={s.toolbar}>
-              <ProjectViewToggle projectId={project.id} value={initialView} />
-              {isResultView ? (
+          {isResultView ? (
+            <div className={s.projectSectionToolbar}>
+              <div>
+                <strong>小节结果</strong>
+                <span>{projectImages.length} 张图片 · {projectImages.filter((image) => image.status === "pending").length} 张待审</span>
+              </div>
+              <div className={s.toolbar}>
                 <DemoTabs
                   tabs={[
                     { key: "all", label: "全部", count: projectImages.length },
@@ -131,24 +116,9 @@ export function ProjectDetailPage({
                   value={filter}
                   onChange={setFilter}
                 />
-              ) : (
-                <>
-                  <Button tone="subtle" pressed={allSelected} onClick={toggleAllSections} icon={allSelected ? CheckSquare : Square}>
-                    {selectionToggleLabel(selectedIds.size, sections.length)}
-                  </Button>
-                  <Button tone="subtle" pressed={compact} onClick={() => setCompact((value) => !value)} icon={ListChecks}>
-                    {compact ? "标准" : "紧凑"}
-                  </Button>
-                  {selectedIds.size > 0 ? (
-                    <>
-                      <Button icon={Play} feedback={{ title: "批量运行已加入任务", detail: `${selectedIds.size} 个小节` }}>批量运行</Button>
-                      <Button tone="danger" icon={Trash2} feedback={{ tone: "warning", title: "批量删除需要确认", detail: `${selectedIds.size} 个小节` }}>批量删除</Button>
-                    </>
-                  ) : null}
-                </>
-              )}
+              </div>
             </div>
-          </div>
+          ) : null}
           <div className={cx(s.sectionCardList, compact && !isResultView && s.sectionCardListCompact)}>
             {sections.map((section, index) => (
               isResultView ? (
@@ -158,9 +128,7 @@ export function ProjectDetailPage({
                   index={index}
                   key={section.id}
                   onToggleCollapsed={() => toggleCollapsed(section.id)}
-                  project={project}
                   section={section}
-                  totalCount={section.images.length}
                 />
               ) : (
                 <ProjectSectionCard
@@ -178,6 +146,56 @@ export function ProjectDetailPage({
         </div>
       </ProjectSectionShell>
     </div>
+  );
+}
+
+function ProjectDetailHeader({
+  isResultView,
+  project,
+  subtitle,
+  view,
+}: {
+  isResultView: boolean;
+  project: DemoProject;
+  subtitle: string;
+  view: ProjectCardView;
+}) {
+  const [batchSize, setBatchSize] = useState(2);
+
+  return (
+    <header className={s.projectDetailHeader}>
+      <div className={s.projectHeaderTop}>
+        <div className={s.pageTitleBlock}>
+          <ButtonLink href="/projects" tone="subtle" icon={ArrowLeft} className={s.pageBackLink}>
+            返回项目列表
+          </ButtonLink>
+          <span className={s.eyebrow}>项目</span>
+          <div className={s.projectTitleRow}>
+            <h1 className={s.pageTitle}>{project.title}</h1>
+            <ButtonLink href={`/projects/${project.id}/edit`} icon={Edit3} className={s.projectTitleEdit}>编辑</ButtonLink>
+          </div>
+          <div className={s.pageSubtitle}>{subtitle}</div>
+        </div>
+        <div className={s.projectHeaderControls}>
+          <ProjectViewToggle projectId={project.id} value={view} />
+        </div>
+      </div>
+      {!isResultView ? (
+        <div className={s.projectCommandBar} role="toolbar" aria-label="项目命令">
+          <div className={s.projectCommandSecondary}>
+            <ButtonLink href={`/projects/${project.id}/batch-create`} tone="primary" icon={Rows3}>批量创建</ButtonLink>
+            <Button icon={Download} feedback={{ title: "导入模板面板已准备" }}>导入模板</Button>
+            <Button icon={ImageIcon} feedback={{ title: "图片整合已加入导出队列" }}>图片整合</Button>
+            <Button icon={Save} feedback={{ title: "已保存为项目模板", detail: "使用当前小节结构和参数。" }}>保存模板</Button>
+          </div>
+          <div className={s.projectRunCluster} role="group" aria-label="整组运行">
+            <span>批量张数</span>
+            <BatchSizeSelector value={batchSize} onChange={setBatchSize} compact />
+            <Button icon={Play} feedback={{ title: "整组运行已加入任务", detail: `${project.sectionCount} 个小节 · batch ${batchSize}` }}>整组运行</Button>
+          </div>
+        </div>
+      ) : null}
+    </header>
   );
 }
 
@@ -202,35 +220,28 @@ function ProjectViewToggle({ projectId, value }: { projectId: string; value: Pro
   );
 }
 
-function ProjectActionStrip({ project, selectedCount }: { project: DemoProject; selectedCount: number }) {
+function BatchSizeSelector({
+  value,
+  onChange,
+  compact = false,
+}: {
+  value: number;
+  onChange: (value: number) => void;
+  compact?: boolean;
+}) {
   return (
-    <section className={s.projectActionStrip} aria-label="项目操作">
-      <div className={s.projectActionMain}>
-        <div>
-          <strong>项目操作</strong>
-          <span>{project.sectionCount} 小节 · {selectedCount ? `${selectedCount} 个已选` : "未选择小节"}</span>
-        </div>
-        <div className={s.batchQuickFill} aria-label="批量张数快捷值">
-          <span>批量张数</span>
-          {[1, 2, 4, 8, 16].map((value) => (
-            <button type="button" key={value}>{value}</button>
-          ))}
-        </div>
-      </div>
-      <div className={s.projectActionButtons}>
-        <Button icon={Play} feedback={{ title: "整组运行已加入任务", detail: `${project.sectionCount} 个小节` }}>整组运行</Button>
-        <Button icon={Download} feedback={{ title: "导入模板面板已准备" }}>导入模板</Button>
-        <Button icon={ImageIcon} feedback={{ title: "图片整合已加入导出队列" }}>图片整合</Button>
-        <Button icon={Save} feedback={{ title: "已保存为项目模板", detail: "使用当前小节结构和参数。" }}>保存模板</Button>
-      </div>
-      <OperationStateStrip
-        items={[
-          { label: "保存队列", value: "空", tone: "success" },
-          { label: "排序", value: "释放后保存", tone: "info" },
-          { label: "错误", value: "0", tone: "success" },
-        ]}
-      />
-    </section>
+    <div className={cx(s.batchSizeSelector, compact && s.batchSizeSelectorCompact)} aria-label="批量张数">
+      {[1, 2, 4, 8, 16].map((option) => (
+        <button
+          aria-pressed={value === option}
+          key={option}
+          onClick={() => onChange(option)}
+          type="button"
+        >
+          {option}
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -250,8 +261,8 @@ function ProjectSectionCard({
   onToggleSelection: () => void;
 }) {
   const runStatus = sectionRunStatus(section, index);
-  const pendingCount = section.images.filter((image) => image.status === "pending").length;
-  const featuredCount = section.images.filter((image) => image.featured || image.featured2).length;
+  const defaultBatchSize = [1, 2, 4, 8, 16].includes(section.batchSize) ? section.batchSize : 2;
+  const [batchSize, setBatchSize] = useState(defaultBatchSize);
 
   return (
     <article
@@ -278,25 +289,21 @@ function ProjectSectionCard({
                 <span>{String(index + 1).padStart(2, "0")}</span>
                 <strong>{section.name}</strong>
               </div>
-              <p>{section.aspectRatio} · 批量 {section.batchSize} · {section.shortSidePx}px · {section.promptBlockCount} 块</p>
             </div>
             <StatusBadge status={runStatus.status} label={runStatus.label} />
           </div>
-          <div className={s.sectionCardBody}>
-            {!compact ? <ImageStrip images={section.images} wide /> : null}
-            <div className={s.sectionMetaGrid}>
-              <span>{section.loraCount} LoRA</span>
-              <span>{section.seedPolicy1} / {section.seedPolicy2}</span>
-              <span>{pendingCount} 待审</span>
-              <span>{featuredCount} p站/预览</span>
+          {!compact ? (
+            <div className={s.sectionCardBody}>
+              <ImageStrip images={section.images} wide />
             </div>
-          </div>
+          ) : null}
         </Link>
       </div>
       <div className={s.sectionCardActions}>
-        <Button icon={Play} feedback={{ title: "小节运行已加入任务", detail: section.name }}>运行</Button>
-        <ButtonLink href={`/projects/${project.id}/sections/${rawSectionId(section)}`} icon={SlidersHorizontal}>编辑</ButtonLink>
-        <ButtonLink href={`/projects/${project.id}/sections/${rawSectionId(section)}/results`} icon={ImageIcon}>结果</ButtonLink>
+        <div className={s.sectionRunControl}>
+          <Button icon={Play} feedback={{ title: "小节运行已加入任务", detail: `${section.name} · batch ${batchSize}` }}>运行</Button>
+          <BatchSizeSelector value={batchSize} onChange={setBatchSize} />
+        </div>
         <Button tone="subtle" icon={Copy} feedback={{ title: "小节已复制", detail: section.name }}>复制</Button>
         <Button tone="danger" icon={Trash2} feedback={{ tone: "warning", title: "删除小节需要确认", detail: section.name }}>删除</Button>
       </div>
@@ -316,11 +323,15 @@ export function ProjectSectionShell({
   activeSection,
   mode,
   children,
+  compact,
+  onToggleCompact,
 }: {
   project: DemoProject;
   activeSection?: DemoSection;
   mode: SectionNavMode;
   children: React.ReactNode;
+  compact?: boolean;
+  onToggleCompact?: () => void;
 }) {
   const defaultActiveSectionId = activeSection?.id ?? project.sections[0]?.id ?? null;
   const [activeSectionState, setActiveSectionState] = useState({
@@ -417,8 +428,10 @@ export function ProjectSectionShell({
         ref={railRef}
         project={project}
         activeSectionId={displayedActiveSectionId}
+        compact={compact}
         mode={mode}
         onNavigateSection={handleNavigateSection}
+        onToggleCompact={onToggleCompact}
       />
     </div>
   );
@@ -428,41 +441,57 @@ const SectionRail = forwardRef<HTMLElement, {
   project: DemoProject;
   activeSection?: DemoSection;
   activeSectionId?: string | null;
+  compact?: boolean;
   mode?: SectionNavMode;
   onNavigateSection?: (section: DemoSection) => void;
+  onToggleCompact?: () => void;
 }>(function SectionRail(
   {
     project,
     activeSection,
     activeSectionId,
+    compact,
     mode = "editor",
     onNavigateSection,
+    onToggleCompact,
   },
   ref,
 ) {
   const resolvedActiveId = activeSectionId ?? activeSection?.id ?? project.sections[0]?.id ?? null;
+  const showCompactToggle = mode === "detail" && onToggleCompact;
+  const showReviewCounts = mode === "project-results" || mode === "section-results";
   return (
     <nav className={s.sectionRail} ref={ref} aria-label="小节导航">
       <div className={s.railHeading}>
-        <strong>小节导航</strong>
-        <span>{project.sections.length} 小节</span>
+        <div>
+          <strong>小节导航</strong>
+          <span>{project.sections.length} 小节</span>
+        </div>
+        {showCompactToggle ? (
+          <Button tone="subtle" pressed={compact} onClick={onToggleCompact} icon={ListChecks}>
+            {compact ? "标准" : "紧凑"}
+          </Button>
+        ) : null}
       </div>
-      {project.sections.map((section) => (
-        <Link
-          className={cx(s.railItem, resolvedActiveId === section.id && s.railItemActive)}
-          href={sectionNavHref(project, section, mode)}
-          key={section.id}
-          onClick={(event) => {
-            if (mode === "detail" || mode === "project-results") {
-              event.preventDefault();
-            }
-            onNavigateSection?.(section);
-          }}
-        >
-          <strong>{section.name}</strong>
-          <span className={cx(s.small, s.muted)}>批量 {section.batchSize}</span>
-        </Link>
-      ))}
+      {project.sections.map((section) => {
+        const pendingCount = section.images.filter((image) => image.status === "pending").length;
+        return (
+          <Link
+            className={cx(s.railItem, resolvedActiveId === section.id && s.railItemActive)}
+            href={sectionNavHref(project, section, mode)}
+            key={section.id}
+            onClick={(event) => {
+              if (mode === "detail" || mode === "project-results") {
+                event.preventDefault();
+              }
+              onNavigateSection?.(section);
+            }}
+          >
+            <strong>{section.name}</strong>
+            {showReviewCounts ? <span className={s.small}>待审核 {pendingCount}</span> : null}
+          </Link>
+        );
+      })}
     </nav>
   );
 });
@@ -509,17 +538,13 @@ function ProjectSectionResultCard({
   images,
   index,
   onToggleCollapsed,
-  project,
   section,
-  totalCount,
 }: {
   collapsed: boolean;
   images: DemoImage[];
   index: number;
   onToggleCollapsed: () => void;
-  project: DemoProject;
   section: DemoSection;
-  totalCount: number;
 }) {
   const visibleImages = collapsed ? images.slice(0, 4) : images;
   const pendingCount = images.filter((image) => image.status === "pending").length;
@@ -535,7 +560,6 @@ function ProjectSectionResultCard({
             <span>{String(index + 1).padStart(2, "0")}</span>
             <strong>{section.name}</strong>
           </div>
-          <span>{images.length} / {totalCount} 张 · {section.aspectRatio} · 批量 {section.batchSize}</span>
         </div>
         <div className={s.resultSectionActions}>
           <span className={s.badge}>{pendingCount} 待审</span>
@@ -555,7 +579,6 @@ function ProjectSectionResultCard({
         <Button tone="pink" icon={Eye} feedback={{ title: "本节图片已加入预览标记队列" }}>预览</Button>
         <Button tone="danger" icon={Trash2} feedback={{ tone: "warning", title: "本节图片已加入删除队列" }}>删除</Button>
         <Button tone="subtle" icon={Archive} feedback={{ tone: "info", title: "最近结果操作已撤销" }}>撤销</Button>
-        <ButtonLink href={`/projects/${project.id}/sections/${rawSectionId(section)}/results`} tone="subtle" icon={ImageIcon}>小节结果</ButtonLink>
       </div>
       <ImageGrid images={visibleImages} />
     </section>

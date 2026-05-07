@@ -4,6 +4,7 @@ import type * as React from "react";
 import { GripVertical, Trash2, Unlink } from "lucide-react";
 
 import s from "./design-demo.module.css";
+import { cx } from "./design-demo-utils";
 import { parseHue } from "./section-editor-shared";
 export type PromptBlockRowData = {
   id: string;
@@ -144,43 +145,59 @@ function firstLine(text: string): string {
 // Compiled prompt preview
 // ============================================================================
 
-export function CompiledPromptPreview({
-  positive,
-  negative,
-}: {
-  positive: Array<{ presetName?: string; variantName?: string; categoryName: string; text: string }>;
-  negative: Array<{ presetName?: string; variantName?: string; categoryName: string; text: string }>;
-}) {
-  const renderLine = (
-    items: Array<{ presetName?: string; variantName?: string; categoryName: string; text: string }>,
-    sign: "+" | "−",
-  ) => {
-    if (items.length === 0) return <em className={s.compiledEmpty}>无</em>;
-    return items
-      .map((part, idx) => (
+export type CompiledPromptGroup = {
+  id: string;
+  presetName?: string;
+  variantName?: string;
+  categoryName: string;
+  positive: string[];
+  negative: string[];
+};
+
+export function CompiledPromptPreview({ groups }: { groups: CompiledPromptGroup[] }) {
+  const renderLine = (items: string[], sign: "+" | "−") => {
+    return [
+      <span key="sign" className={s.compiledSign}>
+        {sign}
+      </span>,
+      items.length === 0 ? (
+        <em key="empty" className={s.compiledEmpty}>无</em>
+      ) : null,
+      ...items.map((text, idx) => (
         <span key={idx} className={s.compiledChunk}>
-          <span className={s.compiledTag}>
-            [{part.presetName ?? part.categoryName}
-            {part.variantName ? ` / ${part.variantName}` : ""}]
-          </span>
-          <code>{part.text}</code>
+          {idx > 0 ? <span className={s.compiledSep}>，</span> : null}
+          <code>{text}</code>
         </span>
-      ))
-      .reduce<React.ReactNode[]>((acc, node, idx) => {
-        if (idx > 0) acc.push(<span key={`sep-${idx}`} className={s.compiledSep}>，</span>);
-        acc.push(node);
-        return acc;
-      }, [<span key="sign" className={s.compiledSign}>{sign}</span>]);
+      )),
+    ];
   };
 
   return (
     <div className={s.compiledPanel}>
       <header>
         <h4>合成后的提示词</h4>
-        <p>按预制分类与预制顺序拼接，预览供复核。</p>
+        <p>按预制分隔，逐项显示正向与负向内容。</p>
       </header>
-      <pre className={s.compiledLine}>{renderLine(positive, "+")}</pre>
-      <pre className={s.compiledLine}>{renderLine(negative, "−")}</pre>
+      <div className={s.compiledGroupList}>
+        {groups.length === 0 ? (
+          <div className={s.compiledGroupEmpty}>暂无提示词内容</div>
+        ) : (
+          groups.map((group) => (
+            <section className={s.compiledGroup} key={group.id}>
+              <div className={s.compiledGroupHead}>
+                <span className={s.compiledGroupTitle}>
+                  {group.presetName ?? group.categoryName}
+                </span>
+                {group.variantName ? (
+                  <span className={s.compiledGroupVariant}>{group.variantName}</span>
+                ) : null}
+              </div>
+              <pre className={cx(s.compiledLine, s.compiledLinePositive)}>{renderLine(group.positive, "+")}</pre>
+              <pre className={cx(s.compiledLine, s.compiledLineNegative)}>{renderLine(group.negative, "−")}</pre>
+            </section>
+          ))
+        )}
+      </div>
     </div>
   );
 }

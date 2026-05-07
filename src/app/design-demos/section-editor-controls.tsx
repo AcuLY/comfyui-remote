@@ -20,7 +20,11 @@ export function SectionTabs({
   onChange: (value: SectionTabValue) => void;
 }) {
   return (
-    <div className={s.sectionTabs} role="tablist">
+    <div
+      className={s.sectionTabs}
+      data-panel="surface"
+      role="tablist"
+    >
       {tabs.map((tab) => (
         <button
           key={tab.value}
