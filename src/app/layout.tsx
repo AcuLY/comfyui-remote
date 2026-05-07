@@ -6,7 +6,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
 import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
-import { SFW_MODE_ATTRIBUTE, SFW_MODE_STORAGE_KEY } from "@/lib/sfw-mode";
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
@@ -47,11 +46,6 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
       className={cn("antialiased", geistSans.variable, geistMono.variable, "font-sans", geist.variable)}
     >
       <body className="bg-[var(--bg)] text-[var(--fg)]">
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `try{document.documentElement.setAttribute(${JSON.stringify(SFW_MODE_ATTRIBUTE)},localStorage.getItem(${JSON.stringify(SFW_MODE_STORAGE_KEY)})==="on"?"on":"off")}catch(e){document.documentElement.setAttribute(${JSON.stringify(SFW_MODE_ATTRIBUTE)},"off")}`,
-          }}
-        />
         <TooltipProvider>{content}</TooltipProvider>
       </body>
     </html>
