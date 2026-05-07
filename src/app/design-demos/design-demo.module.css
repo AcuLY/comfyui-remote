@@ -1812,6 +1812,138 @@
   gap: 0;
 }
 
+.currentRunSurface {
+  display: grid;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--demo-glass-border);
+  border-radius: var(--demo-radius);
+  background: var(--demo-glass-bg);
+  box-shadow: var(--demo-glass-shadow);
+}
+
+.currentRunHeader {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--demo-border);
+  padding: 10px 14px;
+}
+
+.currentRunHeader > div {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 9px;
+}
+
+.currentRunHeader span {
+  color: var(--demo-text);
+  font-size: 13px;
+  font-weight: 620;
+}
+
+.currentRunHeader strong {
+  color: var(--demo-muted);
+  font-size: 11px;
+  font-weight: 520;
+}
+
+.currentRunList {
+  display: grid;
+  min-width: 0;
+}
+
+.currentRunItem {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.42fr) minmax(260px, 1fr);
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+  padding: 13px 14px 14px;
+}
+
+.currentRunTitleBlock {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.currentRunTitleBlock strong {
+  overflow: hidden;
+  color: var(--demo-text);
+  font-size: 13px;
+  font-weight: 560;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.currentRunTitleBlock span {
+  overflow: hidden;
+  color: var(--demo-muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.currentRunProgressBlock {
+  display: grid;
+  min-width: 0;
+  gap: 7px;
+}
+
+.currentRunProgressTop {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--demo-muted);
+  font-size: 11px;
+}
+
+.currentRunProgressTop span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.currentRunProgressTop strong {
+  flex: 0 0 auto;
+  color: var(--demo-green);
+  font-family: var(--demo-font-mono);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.currentRunProgressTrack {
+  height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--demo-field-bg);
+}
+
+.currentRunProgressFill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--demo-green), var(--demo-sky));
+  transition: width 500ms ease;
+}
+
+.currentRunMeta {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  color: var(--demo-faint);
+  font-family: var(--demo-font-mono);
+  font-size: 10px;
+}
+
 .queueTabsBar {
   min-width: 0;
   overflow: hidden;
@@ -6633,6 +6765,7 @@
     max-height: 100dvh;
     background: var(--demo-bg);
     box-shadow: none;
+    padding-bottom: calc(112px + env(safe-area-inset-bottom));
     pointer-events: none;
     transform: translateX(-104%);
     transition: 180ms ease;
@@ -6704,7 +6837,7 @@
     height: auto;
     min-height: 100vh;
     overflow: visible;
-    padding: 14px 12px calc(24px + env(safe-area-inset-bottom));
+    padding: 14px 12px calc(112px + env(safe-area-inset-bottom));
   }
 
   .toastStack {
@@ -6951,6 +7084,41 @@
     font-size: 11px;
     padding: 5px 8px;
     white-space: nowrap;
+  }
+
+  .currentRunHeader {
+    padding: 9px 12px;
+  }
+
+  .currentRunHeader > div {
+    gap: 7px;
+  }
+
+  .currentRunHeader span {
+    font-size: 12px;
+  }
+
+  .currentRunHeader strong {
+    font-size: 10px;
+  }
+
+  .currentRunItem {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 10px 12px 12px;
+  }
+
+  .currentRunTitleBlock {
+    gap: 3px;
+  }
+
+  .currentRunProgressBlock {
+    gap: 6px;
+  }
+
+  .currentRunMeta {
+    gap: 5px 9px;
+    font-size: 9px;
   }
 
   .queueTabsBar {
@@ -7616,34 +7784,34 @@
 
   .mobileBottomNav {
     position: fixed;
-    right: 10px;
-    bottom: 10px;
-    left: 10px;
+    right: 8px;
+    bottom: 8px;
+    left: 8px;
     z-index: 35;
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 6px;
+    gap: 5px;
     border: 1px solid var(--demo-border);
     border-radius: 8px;
     background: var(--demo-mobile-nav-bg);
-    padding: 10px 10px calc(10px + env(safe-area-inset-bottom));
+    padding: 7px 8px calc(7px + env(safe-area-inset-bottom));
   }
 
   .mobileBottomItem {
     position: relative;
     display: grid;
     min-width: 0;
-    min-height: 58px;
+    min-height: 48px;
     place-items: center;
-    gap: 4px;
+    gap: 2px;
     border: 1px solid transparent;
     border-radius: 6px;
     background: transparent;
     color: var(--demo-muted);
     font: inherit;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
-    padding: 7px 10px;
+    padding: 5px 8px;
     text-decoration: none;
     transition: 160ms ease;
   }
@@ -7659,8 +7827,8 @@
 
   .mobileBottomItem em {
     position: absolute;
-    top: 5px;
-    right: 12px;
+    top: 4px;
+    right: 10px;
     min-width: 16px;
     border-radius: 999px;
     background: var(--demo-panel-2);

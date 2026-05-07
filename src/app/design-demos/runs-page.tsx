@@ -46,6 +46,21 @@ type QueueReviewRow = {
   statusLabel: string;
 };
 
+type DemoRunProgress = {
+  percent: number;
+  currentStep: number;
+  totalSteps: number;
+  elapsed: string | null;
+  remaining: string | null;
+  rate: string | null;
+  stage: number;
+};
+
+type DemoCurrentRun = {
+  run: DemoRun;
+  progress: DemoRunProgress;
+};
+
 function buildQueueReviewRows(runs: DemoRun[]): QueueReviewRow[] {
   const sourceRuns = runs.filter((run) => run.images.length > 0);
   const needsPendingMock = sourceRuns.length > 0 && sourceRuns.every((run) => run.pendingCount === 0);
@@ -87,6 +102,45 @@ function buildQueueReviewRows(runs: DemoRun[]): QueueReviewRow[] {
       statusLabel,
     };
   });
+}
+
+function numericMeta(meta: Record<string, unknown> | null, key: string, fallback: number) {
+  const value = meta?.[key];
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return fallback;
+}
+
+function buildDemoRunProgress(run: DemoRun, index: number): DemoRunProgress {
+  const stageOneSteps = Math.max(1, Math.round(numericMeta(run.executionMeta, "ks1Steps", 28)));
+  const stageTwoSteps = Math.max(0, Math.round(numericMeta(run.executionMeta, "ks2Steps", 0)));
+  const hasStageTwo = stageTwoSteps > 0;
+  const totalSteps = hasStageTwo ? stageOneSteps + stageTwoSteps : stageOneSteps;
+  const percent = Math.min(94, 48 + ((run.runIndex * 13 + index * 17) % 40));
+  const currentStep = Math.max(1, Math.min(totalSteps, Math.round((totalSteps * percent) / 100)));
+
+  return {
+    percent,
+    currentStep,
+    totalSteps,
+    elapsed: "02:14",
+    remaining: "00:56",
+    rate: "1.8s/it",
+    stage: hasStageTwo && currentStep > stageOneSteps ? 2 : 1,
+  };
+}
+
+function buildCurrentRunningRuns(runs: DemoRun[]): DemoCurrentRun[] {
+  return runs
+    .filter((run) => run.status === "running")
+    .slice(0, 1)
+    .map((run, index) => ({
+      run,
+      progress: buildDemoRunProgress(run, index),
+    }));
 }
 
 function buildQueueStatusRuns(runs: DemoRun[], mode: "running" | "failed") {
@@ -134,9 +188,71 @@ function QueueMetrics({
   );
 }
 
+function CurrentRunningProgressCard({ runs }: { runs: DemoCurrentRun[] }) {
+  if (runs.length === 0) return null;
+
+  return (
+    <section className={s.currentRunSurface} aria-label="当前运行中">
+      <div className={s.currentRunHeader}>
+        <div>
+          <span>当前运行中</span>
+          <strong>{runs.length} 个任务</strong>
+        </div>
+        <StatusBadge status="running" label="运行中" />
+      </div>
+      <div className={s.currentRunList}>
+        {runs.map(({ run, progress }) => {
+          const percent = Math.round(Math.max(0, Math.min(100, progress.percent)));
+          const statusText =
+            progress.percent >= 100
+              ? "采样完成，正在收尾"
+              : `采样 ${progress.currentStep}/${progress.totalSteps}`;
+          const metaItems = [
+            progress.elapsed ? `已用 ${progress.elapsed}` : null,
+            progress.remaining ? `剩余 ${progress.remaining}` : null,
+            progress.rate,
+            progress.stage > 1 ? `阶段 ${progress.stage}` : null,
+          ].filter((item): item is string => Boolean(item));
+
+          return (
+            <article className={s.currentRunItem} key={run.id}>
+              <div className={s.currentRunTitleBlock}>
+                <strong>{run.projectTitle} · {run.sectionName}</strong>
+                <span>run {run.runIndex} · 开始于 {run.startedAt ?? run.createdAt}</span>
+              </div>
+              <div className={s.currentRunProgressBlock}>
+                <div className={s.currentRunProgressTop}>
+                  <span>{statusText}</span>
+                  <strong>{percent}%</strong>
+                </div>
+                <div
+                  className={s.currentRunProgressTrack}
+                  role="progressbar"
+                  aria-label="ComfyUI 采样进度"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={percent}
+                >
+                  <span className={s.currentRunProgressFill} style={{ width: `${percent}%` }} />
+                </div>
+                <div className={s.currentRunMeta}>
+                  {metaItems.map((item) => (
+                    <span key={item}>{item}</span>
+                  ))}
+                </div>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 export function QueuePage({ data }: { data: DemoData }) {
   const reviewRows = buildQueueReviewRows(data.runs);
   const running = buildQueueStatusRuns(data.runs, "running");
+  const currentRunningRuns = buildCurrentRunningRuns(running);
   const failed = buildQueueStatusRuns(data.runs, "failed");
   const trashImages = buildQueueTrashImages(data.images);
   const [activeTab, setActiveTab] = useState<QueueDemoTab>("pending");
@@ -158,6 +274,7 @@ export function QueuePage({ data }: { data: DemoData }) {
         failedCount={failed.length}
         trashCount={trashImages.length}
       />
+      <CurrentRunningProgressCard runs={currentRunningRuns} />
       <div className={s.queueSurfaceStack}>
         <div className={s.queueTabsBar}>
           <DemoTabs
