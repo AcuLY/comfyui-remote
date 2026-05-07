@@ -6,8 +6,27 @@ export { listProjects, getProjectDetail, getProjectResults, getSectionResults, g
 export type { ProjectDetailSection, ProjectDetail, ProjectResultsData, SectionResultsData, ProjectFormCategory, ProjectFormOptions, PresetBinding, ProjectEditData, SectionBlockSummary } from "@/server/repositories/project-view-repository";
 
 // Preset view data
-export { getPresetCategoriesWithPresets, getPresetLibraryV2, getPresetGroups } from "@/server/repositories/preset-view-repository";
-export type { SlotTemplateDef, PresetCategoryItem, PresetItem, LinkedVariantRef, PresetVariantItem, FolderItem, PresetCategoryFull, PresetFull, PresetLibraryV2, PresetGroupItem } from "@/server/repositories/preset-view-repository";
+export {
+  getPresetCategoriesWithPresets,
+  getPresetLibraryV2,
+  getPresetGroups,
+  getPresetGroup,
+  getPresetFolders,
+  getPresetFolder,
+} from "@/server/repositories/preset-view-repository";
+export type {
+  SlotTemplateDef,
+  PresetCategoryItem,
+  PresetItem,
+  LinkedVariantRef,
+  PresetVariantItem,
+  FolderItem,
+  PresetFolderItem,
+  PresetCategoryFull,
+  PresetFull,
+  PresetLibraryV2,
+  PresetGroupItem,
+} from "@/server/repositories/preset-view-repository";
 
 // Template view data
 export { listProjectTemplates, getProjectTemplateDetail } from "@/server/repositories/template-view-repository";

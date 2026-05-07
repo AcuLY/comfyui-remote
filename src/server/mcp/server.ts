@@ -252,10 +252,18 @@ export function getMcpServer(): McpServer {
       positive: z.string().describe("Positive prompt text"),
       negative: z.string().nullable().optional().describe("Negative prompt text (optional)"),
       sourceId: z.string().nullable().optional().describe("Source entity ID (e.g. Preset.id) if referencing a preset"),
+      variantId: z.string().nullable().optional().describe("PresetVariant.id for preset-sourced blocks"),
+      categoryId: z.string().nullable().optional().describe("PresetCategory.id for preset-sourced blocks"),
+      bindingId: z.string().nullable().optional().describe("Stable binding ID linking the block to imported LoRAs"),
+      groupBindingId: z.string().nullable().optional().describe("Optional preset-group binding ID"),
     },
-    async ({ sectionId, type, label, positive, negative, sourceId }) => {
+    async ({ sectionId, type, label, positive, negative, sourceId, variantId, categoryId, bindingId, groupBindingId }) => {
       try {
-        const block = await addPromptBlock(sectionId, { type, label, positive, negative, sourceId }, ActorType.agent);
+        const block = await addPromptBlock(
+          sectionId,
+          { type, label, positive, negative, sourceId, variantId, categoryId, bindingId, groupBindingId },
+          ActorType.agent,
+        );
         return { content: [{ type: "text", text: JSON.stringify(block, null, 2) }] };
       } catch (error) {
         const mapped = mapPromptBlockError(error);
@@ -266,16 +274,23 @@ export function getMcpServer(): McpServer {
 
   server.tool(
     "update_prompt_block",
-    "Update an existing prompt block's label, positive, or negative prompt content.",
+    "Update an existing prompt block's label, positive, negative, sort order, or preset identity metadata.",
     {
       blockId: z.string().describe("The block ID to update"),
+      type: z.enum(["preset", "custom"]).optional().describe("Block type"),
+      sourceId: z.string().nullable().optional().describe("Source Preset.id for preset-sourced blocks"),
+      variantId: z.string().nullable().optional().describe("Source PresetVariant.id for preset-sourced blocks"),
+      categoryId: z.string().nullable().optional().describe("Source PresetCategory.id for preset-sourced blocks"),
+      bindingId: z.string().nullable().optional().describe("Stable binding ID for imported preset content"),
+      groupBindingId: z.string().nullable().optional().describe("Optional preset-group binding ID"),
       label: z.string().optional().describe("New display label"),
       positive: z.string().optional().describe("New positive prompt text"),
       negative: z.string().nullable().optional().describe("New negative prompt text (null to clear)"),
+      sortOrder: z.number().optional().describe("Non-negative integer sort order"),
     },
-    async ({ blockId, label, positive, negative }) => {
+    async ({ blockId, ...patch }) => {
       try {
-        const block = await editPromptBlock(blockId, { label, positive, negative }, ActorType.agent);
+        const block = await editPromptBlock(blockId, patch, ActorType.agent);
         return { content: [{ type: "text", text: JSON.stringify(block, null, 2) }] };
       } catch (error) {
         const mapped = mapPromptBlockError(error);

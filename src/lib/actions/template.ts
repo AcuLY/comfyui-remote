@@ -32,6 +32,11 @@ export type UpdateProjectTemplateSectionInput = {
   section: ProjectTemplateSectionData;
 };
 
+export type DeleteProjectTemplateSectionInput = {
+  templateId: string;
+  sectionId: string;
+};
+
 type ImportLoraEntry = {
   id: string;
   path: string;
@@ -264,6 +269,36 @@ export async function updateProjectTemplateSection(
   revalidatePath("/assets/templates");
   revalidatePath(`/assets/templates/${input.templateId}/edit`);
   revalidatePath(`/assets/templates/${input.templateId}/sections/${existing.sortOrder}`);
+}
+
+export async function deleteProjectTemplateSection(
+  input: DeleteProjectTemplateSectionInput,
+): Promise<void> {
+  const existing = await prisma.projectTemplateSection.findFirst({
+    where: {
+      id: input.sectionId,
+      projectTemplateId: input.templateId,
+    },
+    select: { id: true, sortOrder: true },
+  });
+
+  if (!existing) throw new Error("TEMPLATE_SECTION_NOT_FOUND");
+
+  await prisma.$transaction(async (tx) => {
+    await tx.projectTemplateSection.delete({
+      where: { id: input.sectionId },
+    });
+    await tx.projectTemplateSection.updateMany({
+      where: {
+        projectTemplateId: input.templateId,
+        sortOrder: { gt: existing.sortOrder },
+      },
+      data: { sortOrder: { decrement: 1 } },
+    });
+  });
+
+  revalidatePath("/assets/templates");
+  revalidatePath(`/assets/templates/${input.templateId}/edit`);
 }
 
 export async function deleteProjectTemplate(

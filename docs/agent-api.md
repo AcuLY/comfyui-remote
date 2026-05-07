@@ -91,14 +91,14 @@ or:
 | Toggle 预览 image | `POST /api/images/:imageId/featured2` |
 | Set project cover image | `POST /api/images/:imageId/cover` |
 | Read image files | `GET /api/images/:path...` |
-| Manage templates | `GET/POST /api/templates`, `GET/PATCH/DELETE /api/templates/:templateId`, `POST /api/templates/:templateId/import` |
+| Manage templates | `GET/POST /api/templates`, `GET/PATCH/DELETE /api/templates/:templateId`, `GET/PATCH/DELETE /api/templates/:templateId/sections/:sectionId`, `POST /api/templates/:templateId/sections/:sectionId/copy`, `POST /api/templates/:templateId/import` |
 | Manage preset library | `/api/preset-library/**` endpoints listed below |
 | Search preset library for agent use | `GET /api/presets`, `GET /api/preset-library/presets`, `GET /api/preset-library/presets/:presetId` |
 | Upload/list/move/annotate models | `GET/POST /api/models?kind=lora|checkpoint`, `GET /api/models/browse`, `POST /api/models/move`, `GET/PUT /api/models/notes` |
 | Read logs, audit logs, health, worker status | `GET /api/logs`, `GET /api/audit-logs`, `GET /api/health`, `GET /api/worker/status` |
 | MCP automation | `GET/POST/DELETE /api/mcp` |
 
-No remaining user-facing backend operation gap is known after adding `queue/clear`, `queue/clear-active`, section `batch-delete`, project `export`, template import options, preset import/removal, preset lookup, batch variant switching, and `name/loraConfig` support on section PATCH.
+No remaining user-facing backend operation gap is known after adding `queue/clear`, `queue/clear-active`, section `batch-delete`, project `export`, template import options, template section CRUD, preset import/removal, preset lookup, preset library category/folder/group reads, batch variant switching, and `name/loraConfig` support on section PATCH.
 
 ## Projects
 
@@ -232,9 +232,26 @@ Typical create body:
 }
 ```
 
+Preset-sourced create bodies should preserve identity metadata:
+
+```json
+{
+  "type": "preset",
+  "sourceId": "preset-id",
+  "variantId": "variant-id",
+  "categoryId": "category-id",
+  "bindingId": "binding-id",
+  "groupBindingId": "optional-group-binding-id",
+  "label": "Preset label",
+  "positive": "prompt from preset",
+  "negative": null,
+  "sortOrder": 10
+}
+```
+
 ### `PATCH /api/projects/:projectId/sections/:sectionId/blocks/:blockId`
 
-Updates one prompt block.
+Updates one prompt block. Supported fields are `type`, `sourceId`, `variantId`, `categoryId`, `bindingId`, `groupBindingId`, `label`, `positive`, `negative`, and `sortOrder`. Keep preset identity fields intact when editing preset-sourced blocks.
 
 ### `DELETE /api/projects/:projectId/sections/:sectionId/blocks/:blockId`
 
@@ -269,6 +286,10 @@ Deletes one prompt block.
 | `GET` | `/api/templates/:templateId` | none | reads template detail |
 | `PATCH` | `/api/templates/:templateId` | template patch payload | updates a template |
 | `DELETE` | `/api/templates/:templateId` | none | deletes a template |
+| `GET` | `/api/templates/:templateId/sections/:sectionId` | none | reads one template section |
+| `PATCH` | `/api/templates/:templateId/sections/:sectionId` | section patch or `{ "section": { ... } }` | updates one template section without replacing sibling sections |
+| `DELETE` | `/api/templates/:templateId/sections/:sectionId` | none | deletes one template section and compacts following sort orders |
+| `POST` | `/api/templates/:templateId/sections/:sectionId/copy` | none | copies one template section |
 | `POST` | `/api/templates/:templateId/import` | `{ "projectId": "...", "dryRun": true, "onExistingSections": "skip" }` | imports or previews a template import |
 
 Template payloads follow `src/lib/actions/template.ts`: `name`, `description`, and `sections`.
@@ -302,17 +323,21 @@ Template section objects support the same optional runtime defaults as project s
 
 | Method | Path | Purpose |
 | --- | --- | --- |
+| `GET` | `/api/preset-library/categories` | list categories with active presets, active groups, folders, variants, and recent change history |
+| `GET` | `/api/preset-library/categories/:categoryId` | read one category with active presets, active groups, folders, variants, and recent change history |
 | `POST` | `/api/preset-library/categories` | create category |
 | `PATCH/DELETE` | `/api/preset-library/categories/:categoryId` | update or delete category |
 | `POST` | `/api/preset-library/categories/reorder` | reorder categories |
-| `POST` | `/api/preset-library/categories/:categoryId/sort-orders` | update category sort order dimensions |
-| `POST` | `/api/preset-library/categories/:categoryId/slot-template` | update slot template |
+| `PATCH` | `/api/preset-library/categories/:categoryId/sort-orders` | update category sort order dimensions |
+| `PATCH` | `/api/preset-library/categories/:categoryId/slot-template` | update slot template |
 | `POST` | `/api/preset-library/categories/:categoryId/groups/reorder` | reorder groups in a category |
 
 ### Folders
 
 | Method | Path | Purpose |
 | --- | --- | --- |
+| `GET` | `/api/preset-library/folders?categoryId=...&parentId=...` | list folders, optionally filtered by category or parent folder |
+| `GET` | `/api/preset-library/folders/:folderId` | read one folder with child/preset/group counts |
 | `POST` | `/api/preset-library/folders` | create folder |
 | `PATCH/DELETE` | `/api/preset-library/folders/:folderId` | rename or delete folder |
 | `POST` | `/api/preset-library/folders/:folderId/move` | move presets/groups into a folder |
@@ -322,6 +347,8 @@ Template section objects support the same optional runtime defaults as project s
 
 | Method | Path | Purpose |
 | --- | --- | --- |
+| `GET` | `/api/preset-library/groups` | list active groups with ordered members and display names |
+| `GET` | `/api/preset-library/groups/:groupId` | read one active group with ordered members and display names |
 | `POST` | `/api/preset-library/groups` | create group |
 | `PATCH/DELETE` | `/api/preset-library/groups/:groupId` | update or delete group |
 | `POST` | `/api/preset-library/groups/:groupId/flatten` | flatten a group |

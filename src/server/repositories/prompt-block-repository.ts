@@ -43,6 +43,12 @@ export type PromptBlockCreateInput = {
 };
 
 export type PromptBlockUpdateInput = {
+  type?: PromptBlockType;
+  sourceId?: string | null;
+  variantId?: string | null;
+  categoryId?: string | null;
+  bindingId?: string | null;
+  groupBindingId?: string | null;
   label?: string;
   positive?: string;
   negative?: string | null;
@@ -133,6 +139,12 @@ export async function updatePromptBlock(
   }
 
   const data: Record<string, unknown> = {};
+  if (input.type !== undefined) data.type = input.type;
+  if (input.sourceId !== undefined) data.sourceId = input.sourceId;
+  if (input.variantId !== undefined) data.variantId = input.variantId;
+  if (input.categoryId !== undefined) data.categoryId = input.categoryId;
+  if (input.bindingId !== undefined) data.bindingId = input.bindingId;
+  if (input.groupBindingId !== undefined) data.groupBindingId = input.groupBindingId;
   if (input.label !== undefined) data.label = input.label;
   if (input.positive !== undefined) data.positive = input.positive;
   if (input.negative !== undefined) data.negative = input.negative;

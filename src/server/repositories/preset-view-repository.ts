@@ -66,6 +66,13 @@ export type FolderItem = {
   sortOrder: number;
 };
 
+export type PresetFolderItem = FolderItem & {
+  categoryId: string;
+  presetCount: number;
+  groupCount: number;
+  childCount: number;
+};
+
 export type PresetCategoryFull = PresetCategoryItem & {
   presets: PresetFull[];
   groups: PresetGroupItem[];
@@ -454,4 +461,69 @@ export async function getPresetGroups(): Promise<PresetGroupItem[]> {
       subGroupName: m.subGroupId ? gMap.get(m.subGroupId) : undefined,
     })),
   }));
+}
+
+export async function getPresetGroup(groupId: string): Promise<PresetGroupItem | null> {
+  const groups = await getPresetGroups();
+  return groups.find((group) => group.id === groupId) ?? null;
+}
+
+export async function getPresetFolders(filters: {
+  categoryId?: string;
+  parentId?: string | null;
+} = {}): Promise<PresetFolderItem[]> {
+  const folders = await prisma.presetFolder.findMany({
+    where: {
+      ...(filters.categoryId ? { categoryId: filters.categoryId } : {}),
+      ...(filters.parentId !== undefined ? { parentId: filters.parentId } : {}),
+    },
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+    include: {
+      _count: {
+        select: {
+          presets: true,
+          groups: true,
+          children: true,
+        },
+      },
+    },
+  });
+
+  return folders.map((folder) => ({
+    id: folder.id,
+    categoryId: folder.categoryId,
+    name: folder.name,
+    parentId: folder.parentId,
+    sortOrder: folder.sortOrder,
+    presetCount: folder._count.presets,
+    groupCount: folder._count.groups,
+    childCount: folder._count.children,
+  }));
+}
+
+export async function getPresetFolder(folderId: string): Promise<PresetFolderItem | null> {
+  const folder = await prisma.presetFolder.findUnique({
+    where: { id: folderId },
+    include: {
+      _count: {
+        select: {
+          presets: true,
+          groups: true,
+          children: true,
+        },
+      },
+    },
+  });
+  if (!folder) return null;
+
+  return {
+    id: folder.id,
+    categoryId: folder.categoryId,
+    name: folder.name,
+    parentId: folder.parentId,
+    sortOrder: folder.sortOrder,
+    presetCount: folder._count.presets,
+    groupCount: folder._count.groups,
+    childCount: folder._count.children,
+  };
 }

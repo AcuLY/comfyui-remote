@@ -1,12 +1,17 @@
 import { fail, ok } from "@/lib/api-response";
-import { editPromptBlock, removePromptBlock, mapPromptBlockError } from "@/server/services/prompt-block-service";
+import {
+  assertPromptBlockBelongsToSection,
+  editPromptBlock,
+  removePromptBlock,
+  mapPromptBlockError,
+} from "@/server/services/prompt-block-service";
 
 type RouteContext = {
   params: Promise<{ projectId: string; sectionId: string; blockId: string }>;
 };
 
 export async function PATCH(request: Request, context: RouteContext) {
-  const { blockId } = await context.params;
+  const { projectId, sectionId, blockId } = await context.params;
 
   let body: unknown;
   try {
@@ -16,6 +21,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 
   try {
+    await assertPromptBlockBelongsToSection(projectId, sectionId, blockId);
     const block = await editPromptBlock(blockId, body);
     return ok(block);
   } catch (error) {
@@ -25,9 +31,10 @@ export async function PATCH(request: Request, context: RouteContext) {
 }
 
 export async function DELETE(_request: Request, context: RouteContext) {
-  const { blockId } = await context.params;
+  const { projectId, sectionId, blockId } = await context.params;
 
   try {
+    await assertPromptBlockBelongsToSection(projectId, sectionId, blockId);
     await removePromptBlock(blockId);
     return ok({ success: true });
   } catch (error) {
