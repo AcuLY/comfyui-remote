@@ -195,13 +195,17 @@ function CurrentRunningProgressCard({ runs }: { runs: DemoCurrentRun[] }) {
     <section className={s.currentRunSurface} aria-label="当前运行中">
       <div className={s.currentRunHeader}>
         <div>
-          <span><Clock3 className={s.icon} />当前运行中</span>
+          <span>
+            <Clock3 className={s.icon} />
+            当前运行中
+          </span>
           <strong>{runs.length} 个任务</strong>
         </div>
       </div>
       <div className={s.currentRunList}>
         {runs.map(({ run, progress }) => {
           const percent = Math.round(Math.max(0, Math.min(100, progress.percent)));
+          const gradientSize = `${10000 / Math.max(percent, 1)}% 100%`;
           const statusText =
             progress.percent >= 100
               ? "采样完成，正在收尾"
@@ -232,7 +236,10 @@ function CurrentRunningProgressCard({ runs }: { runs: DemoCurrentRun[] }) {
                   aria-valuemax={100}
                   aria-valuenow={percent}
                 >
-                  <span className={s.currentRunProgressFill} style={{ width: `${percent}%` }} />
+                  <span
+                    className={s.currentRunProgressFill}
+                    style={{ width: `${percent}%`, backgroundSize: gradientSize }}
+                  />
                 </div>
                 <div className={s.currentRunMeta}>
                   {metaItems.map((item) => (
@@ -279,7 +286,7 @@ export function QueuePage({ data }: { data: DemoData }) {
           <DemoTabs
             tabs={[
               { key: "pending", label: "待审核", count: totalPending },
-              { key: "running", label: "运行中", count: running.length },
+              { key: "running", label: "队列", count: running.length },
               { key: "failed", label: "失败", count: failed.length },
               { key: "trash", label: "回收站", count: trashImages.length },
             ]}
