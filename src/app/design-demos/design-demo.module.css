@@ -7171,6 +7171,24 @@
     grid-column: 2;
   }
 
+  .queueRunRowSelectable .queueRunMeta,
+  .queueRunRowSelectable .status {
+    display: none;
+  }
+
+  .queueRunRowSelectable .toolbar {
+    margin-top: 2px;
+  }
+
+  .queueRunRowSelectable .toolbar .button {
+    min-height: 36px;
+    gap: 5px;
+    border-radius: 8px;
+    font-size: 12px;
+    padding: 5px 10px;
+    white-space: nowrap;
+  }
+
   .queueRunRow > .status {
     justify-self: start;
     min-height: 30px;
