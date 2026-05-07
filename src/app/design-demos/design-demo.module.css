@@ -1878,50 +1878,6 @@
   backdrop-filter: blur(8px);
 }
 
-.imageStateGrid {
-  display: grid;
-  grid-template-columns: minmax(0, 0.68fr) minmax(0, 1.32fr);
-  gap: 14px;
-}
-
-.imageStateSurface {
-  display: grid;
-  min-width: 0;
-  align-content: start;
-  gap: 12px;
-  border: 1px solid var(--demo-border);
-  border-radius: calc(var(--demo-radius) + 2px);
-  background: var(--demo-glass-bg);
-  padding: 14px;
-}
-
-.imageStateSurface:nth-child(2) {
-  grid-row: span 2;
-}
-
-.imageStateSmallRow {
-  display: flex;
-  min-width: 0;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.imageStateMediumGrid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.imageStatePreview {
-  display: grid;
-  min-height: 260px;
-  place-items: center;
-  overflow: hidden;
-  border: 1px solid var(--demo-border);
-  border-radius: 8px;
-  background: var(--demo-panel-2);
-}
-
 .imagePreviewFrame {
   display: grid;
   width: 100%;
@@ -1941,10 +1897,6 @@ button.imagePreviewFrame {
 
 .imagePreviewFrame .imageFill {
   object-fit: contain;
-}
-
-.imageStatePreview .imagePreviewFrame {
-  max-height: 360px;
 }
 
 .thumb {
@@ -7521,18 +7473,6 @@ button.imagePreviewFrame {
   .reviewImageGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
-  }
-
-  .imageStateGrid {
-    grid-template-columns: 1fr;
-  }
-
-  .imageStateSurface:nth-child(2) {
-    grid-row: auto;
-  }
-
-  .imageStateMediumGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .reviewSelectButton {

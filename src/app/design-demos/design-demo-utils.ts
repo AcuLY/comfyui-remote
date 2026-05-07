@@ -45,7 +45,6 @@ export type RouteKey =
   | "login"
   | "queue"
   | "queue-review"
-  | "image-states"
   | "projects"
   | "project-new"
   | "project-detail"
@@ -146,7 +145,6 @@ export type NavLinkDef = {
 
 export const ROUTES: RouteDef[] = [
   { key: "root", pattern: "/", title: "任务", group: "核心", icon: Home },
-  { key: "image-states", pattern: "/image-states", title: "图片展示状态", group: "Demo", icon: ImageIcon },
   { key: "queue-review", pattern: "/runs/:runId", title: "审核宫格", group: "核心", icon: Grid3X3 },
   { key: "queue", pattern: "/runs", title: "任务", group: "核心", icon: ClipboardList },
   { key: "project-new", pattern: "/projects/new", title: "新建项目", group: "项目", icon: Plus },
