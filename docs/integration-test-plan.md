@@ -29,9 +29,8 @@
 |---------|---------|---------|
 | PROJ-005 | 更新项目 title | slug **不随** title 自动更新（需验证当前行为是否符合预期） |
 | PROJ-006 | 更新 checkpointName | checkpointName 正确更新 |
-| PROJ-007 | 更新 presetBindings | presetBindings JSON 正确更新 |
-| PROJ-008 | 更新 projectLevelOverrides | projectLevelOverrides JSON 正确存储（defaultAspectRatio/defaultBatchSize 等） |
-| PROJ-009 | 传入 sections 数组 | **删除**所有旧 sections 后**重建**（验证 deleteMany + createMany 行为） |
+| PROJ-007 | 更新 presetBindings | presetBindings JSON 正确更新；**同步所有小节**：删除小节中旧的项目绑定预设块（sourceId 不在新 presetBindings 中的），添加新预设块（sourceId 在新 presetBindings 中但小节还没有的） |
+| PROJ-008 | 更新 projectLevelOverrides | projectLevelOverrides JSON 正确存储；**已有小节的参数不跟随改变**（覆盖仅在下发运行时生效） |
 
 ### 1.3 复制项目
 
