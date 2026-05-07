@@ -92,7 +92,8 @@ function buildQueueReviewRows(runs: DemoRun[]): QueueReviewRow[] {
 function buildQueueStatusRuns(runs: DemoRun[], mode: "running" | "failed") {
   const filtered = runs.filter((run) => (mode === "running" ? ["queued", "running"].includes(run.status) : run.status === "failed"));
   if (filtered.length > 0) return filtered;
-  const fallback = runs.filter((run) => run.images.length > 0).slice(mode === "running" ? 0 : 4, mode === "running" ? 4 : 8);
+  const mockSource = runs.filter((run) => run.images.length > 0);
+  const fallback = mode === "running" ? mockSource.slice(0, 4) : mockSource.slice(0, 3);
   return fallback.map((run, index) => ({
     ...run,
     status: mode === "running" ? (index % 2 === 0 ? "running" : "queued") : "failed",

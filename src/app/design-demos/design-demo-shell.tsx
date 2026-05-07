@@ -4,13 +4,12 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import {
-  ArrowLeft,
-  ArrowRight,
+  Eye,
   EyeOff,
   Menu,
   Moon,
   MoreHorizontal,
-  X,
+  Sun,
 } from "lucide-react";
 
 import type { DemoData } from "./design-demo-data";
@@ -54,7 +53,8 @@ function Sidebar({
 }) {
   const isLightTheme = theme === "light";
   const isDarkTheme = !isLightTheme;
-  const CollapseIcon = collapsed ? ArrowRight : ArrowLeft;
+  const ThemeIcon = isDarkTheme ? Sun : Moon;
+  const SfwIcon = sfwMode ? EyeOff : Eye;
   const grouped = useMemo(() => {
     const map = new Map<string, typeof NAV_LINKS>();
     for (const link of NAV_LINKS) {
@@ -68,8 +68,13 @@ function Sidebar({
     <aside className={cx(s.sidebar, collapsed && s.sidebarCollapsed, open && s.sidebarOpen)}>
       <div className={s.brand}>
         <div className={s.brandTop}>
-          <button className={cx(s.button, s.iconButton, s.sidebarCollapseButton)} type="button" onClick={onToggleCollapsed} aria-label={collapsed ? "展开侧边栏" : "收起侧边栏"}>
-            <CollapseIcon className="size-4" />
+          <button
+            className={cx(s.button, s.iconButton, s.sidebarCollapseButton)}
+            type="button"
+            onClick={open ? onClose : onToggleCollapsed}
+            aria-label={open || !collapsed ? "收起侧边栏" : "展开侧边栏"}
+          >
+            <Menu className="size-4" />
           </button>
           <div className={cx(s.toolbar, s.brandIdentity)}>
             <div className={s.brandName}>
@@ -77,9 +82,6 @@ function Sidebar({
               <span>创作工作台</span>
             </div>
           </div>
-          <button className={cx(s.button, s.iconButton, s.mobileMenuButton)} type="button" onClick={onClose} aria-label="关闭菜单">
-            <X className="size-4" />
-          </button>
         </div>
       </div>
       {grouped.map(([group, links]) => (
@@ -110,7 +112,7 @@ function Sidebar({
                 aria-checked={isDarkTheme}
                 onClick={onToggleTheme}
               >
-                <Moon className="size-4" />
+                <ThemeIcon className="size-4" />
                 <span>暗色</span>
                 <span className={s.sidebarToggleSwitch} aria-hidden="true">
                   <span />
@@ -123,7 +125,7 @@ function Sidebar({
                 aria-checked={sfwMode}
                 onClick={onToggleSfwMode}
               >
-                <EyeOff className="size-4" />
+                <SfwIcon className="size-4" />
                 <span>SFW</span>
                 <span className={s.sidebarToggleSwitch} aria-hidden="true">
                   <span />
@@ -201,6 +203,8 @@ function MobileTopbar({
   onToggleSfwMode: () => void;
 }) {
   const isDarkTheme = theme === "dark";
+  const ThemeIcon = isDarkTheme ? Sun : Moon;
+  const SfwIcon = sfwMode ? EyeOff : Eye;
 
   return (
     <div className={s.mobileTopbar}>
@@ -236,7 +240,7 @@ function MobileTopbar({
               aria-checked={isDarkTheme}
               onClick={onToggleTheme}
             >
-              <Moon className="size-4" />
+              <ThemeIcon className="size-4" />
               <span>暗色模式</span>
             </button>
             <button
@@ -246,7 +250,7 @@ function MobileTopbar({
               aria-checked={sfwMode}
               onClick={onToggleSfwMode}
             >
-              <EyeOff className="size-4" />
+              <SfwIcon className="size-4" />
               <span>SFW 模式</span>
             </button>
           </div>
@@ -279,6 +283,7 @@ export function DesignDemoShell({
   useEffect(() => {
     const frameId = window.requestAnimationFrame(() => {
       const storedTheme = window.localStorage.getItem(DESIGN_DEMO_THEME_STORAGE_KEY);
+      setSidebarCollapsed(window.matchMedia("(min-width: 640px) and (max-width: 1023px)").matches);
       setSfwMode(isSfwEnabledValue(window.localStorage.getItem(DESIGN_DEMO_SFW_STORAGE_KEY)));
 
       if (storedTheme === "light" || storedTheme === "dark") {

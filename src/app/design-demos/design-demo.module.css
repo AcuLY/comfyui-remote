@@ -242,7 +242,7 @@
 }
 
 .sidebarCollapsed .brandTop > .toolbar {
-  justify-content: center;
+  display: none;
 }
 
 .sidebarCollapsed .sidebarTools {
@@ -250,7 +250,8 @@
 }
 
 .sidebarCollapsed .sidebarToggle {
-  width: 36px;
+  width: 100%;
+  min-height: 36px;
   font-size: 0;
   grid-template-columns: 1fr;
   justify-items: center;
@@ -274,6 +275,10 @@
 
 .sidebarCollapseButton {
   display: inline-flex;
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  flex: 0 0 44px;
 }
 
 .brand {
@@ -6320,7 +6325,10 @@
 }
 
 @media (min-width: 640px) and (max-width: 1023px) {
-  .workspace,
+  .workspace {
+    grid-template-columns: 230px minmax(0, 1fr);
+  }
+
   .workspaceCollapsed {
     grid-template-columns: 76px minmax(0, 1fr);
   }
@@ -6356,48 +6364,65 @@
     padding-inline: 10px;
   }
 
-  .sidebar .brandName,
-  .sidebar .sourceCard,
-  .sidebar .navTitle,
-  .sidebar .navLink span,
-  .sidebar .navCount {
+  .sidebarCollapsed.sidebar .brandName,
+  .sidebarCollapsed.sidebar .sourceCard,
+  .sidebarCollapsed.sidebar .navTitle,
+  .sidebarCollapsed.sidebar .navLink span,
+  .sidebarCollapsed.sidebar .navCount {
     display: none;
   }
 
-  .sidebar .brandTop {
+  .sidebarCollapsed.sidebar .brandTop {
     justify-content: center;
   }
 
-  .sidebar .brandTop > .toolbar {
-    justify-content: center;
+  .sidebarCollapsed.sidebar .brandTop > .toolbar {
+    display: none;
   }
 
   .sidebar .sidebarTools {
     grid-template-columns: 1fr;
+    justify-items: stretch;
+  }
+
+  .sidebarCollapsed.sidebar .sidebarTools {
     justify-items: center;
   }
 
   .sidebar .sidebarToggle {
-    width: 40px;
-    min-height: 40px;
+    width: auto;
+    min-height: 36px;
+    font-size: 12px;
+    grid-template-columns: 18px minmax(0, 1fr) 30px;
+    justify-items: stretch;
+    padding: 8px 12px;
+  }
+
+  .sidebarCollapsed.sidebar .sidebarToggle {
+    width: 100%;
+    min-height: 36px;
     font-size: 0;
     grid-template-columns: 1fr;
     justify-items: center;
     padding-inline: 0;
   }
 
-  .sidebar .sidebarToggleSwitch {
+  .sidebarCollapsed.sidebar .sidebarToggleSwitch {
     display: none;
   }
 
-  .sidebar .navLink {
+  .sidebarCollapsed.sidebar .sidebarToggle > span:not(.sidebarToggleSwitch) {
+    display: none;
+  }
+
+  .sidebarCollapsed.sidebar .navLink {
     grid-template-columns: 1fr;
     justify-items: center;
     padding-inline: 0;
   }
 
   .sidebarCollapseButton {
-    display: none;
+    display: inline-flex;
   }
 
   .projectListCard {
@@ -6606,9 +6631,12 @@
     max-width: calc(100vw - 32px);
     height: 100dvh;
     max-height: 100dvh;
-    box-shadow: 22px 0 70px rgba(0, 0, 0, 0.32);
+    background: var(--demo-bg);
+    box-shadow: none;
+    pointer-events: none;
     transform: translateX(-104%);
     transition: 180ms ease;
+    visibility: hidden;
   }
 
   .sidebar .brandName {
@@ -6658,15 +6686,18 @@
   }
 
   .sidebarCollapseButton {
-    display: none;
+    display: inline-flex;
   }
 
   .sidebarOpen {
+    box-shadow: 22px 0 70px rgba(0, 0, 0, 0.32);
+    pointer-events: auto;
     transform: translateX(0);
+    visibility: visible;
   }
 
   .mobileMenuButton {
-    display: inline-flex;
+    display: none;
   }
 
   .main {
@@ -6773,33 +6804,38 @@
   }
 
   .metricGrid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0;
   }
 
   .metric {
-    min-height: 66px;
+    min-height: 58px;
     gap: 5px;
-    border-right: 0;
+    border-right: 1px solid var(--demo-border);
     border-bottom: 1px solid var(--demo-border);
-    padding: 10px;
+    padding: 8px 10px;
   }
 
-  .metric:last-child {
+  .metric:nth-child(2n) {
+    border-right: 0;
+  }
+
+  .metric:nth-last-child(-n + 2) {
     border-bottom: 0;
   }
 
   .metricLabel {
-    font-size: 11px;
+    gap: 6px;
+    font-size: 10px;
   }
 
   .metricValue {
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 640;
   }
 
   .metricMeta {
-    font-size: 10px;
+    font-size: 9px;
   }
 
   .projectListGrid {
@@ -6881,12 +6917,40 @@
     justify-self: start;
   }
 
-  .queueSurfaceHeader,
   .queuePager,
   .reviewControlStrip,
   .reviewBulkBar {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .queueSurfaceHeader {
+    align-items: center;
+    flex-direction: row;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  .queueSurfaceHeader > div:first-child {
+    flex: 1 1 auto;
+  }
+
+  .queueSurfaceHeader > .toolbar {
+    width: auto;
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+    gap: 6px;
+    justify-content: flex-end;
+  }
+
+  .queueSurfaceHeader > .toolbar .button {
+    min-height: 32px;
+    flex: 0 0 auto;
+    gap: 5px;
+    border-radius: 8px;
+    font-size: 11px;
+    padding: 5px 8px;
+    white-space: nowrap;
   }
 
   .queueTabsBar {
@@ -6915,7 +6979,7 @@
     align-items: start;
     gap: 10px;
     min-height: 0;
-    padding: 14px;
+    padding: 12px;
   }
 
   .queueRunRowSelectable {
@@ -6931,6 +6995,11 @@
   .queueRunRow > .status {
     justify-self: start;
     min-height: 30px;
+  }
+
+  .queueRunRow:not(.queueRunRowSelectable) > .status,
+  .queueRunRow:not(.queueRunRowSelectable) > .queueRunMeta {
+    display: none;
   }
 
   .queueRunMain {
@@ -7003,17 +7072,16 @@
   }
 
   .queueThumbs {
-    display: grid;
-    width: 100%;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-    overflow: visible;
+    display: flex;
+    width: auto;
+    gap: 6px;
+    overflow: hidden;
   }
 
   .queueThumbs span {
-    width: 100%;
-    height: auto;
-    aspect-ratio: 1 / 1;
+    width: 42px;
+    height: 52px;
+    aspect-ratio: auto;
   }
 
   .imageGrid {
