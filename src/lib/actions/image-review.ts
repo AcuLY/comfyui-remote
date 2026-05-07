@@ -7,6 +7,20 @@ import {
   buildManagedTrashPath,
   moveManagedImageFile,
 } from "@/server/services/image-file-service";
+import { listSectionTrashItems } from "@/server/repositories/trash-repository";
+
+// ---------------------------------------------------------------------------
+// 查询小节回收站
+// ---------------------------------------------------------------------------
+
+export async function getSectionTrashItems(sectionId: string) {
+  const normalizedSectionId = sectionId.trim();
+  if (!normalizedSectionId) {
+    throw new Error("SECTION_ID_REQUIRED");
+  }
+
+  return listSectionTrashItems(normalizedSectionId);
+}
 
 // ---------------------------------------------------------------------------
 // 审核操作：保留图片

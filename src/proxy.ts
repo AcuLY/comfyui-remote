@@ -34,11 +34,11 @@ function isPublicPath(pathname: string): boolean {
   if (pathname.startsWith("/api/mcp")) return true;
   // Server-side internal API calls (no browser cookie available)
   if (pathname.startsWith("/api/projects/")) return true;
+  if (pathname.startsWith("/api/sections/")) return true;
   if (pathname.startsWith("/api/queue")) return true;
   if (pathname === "/api/loras" || pathname.startsWith("/api/loras/")) return true;
   if (pathname === "/api/models" || pathname.startsWith("/api/models/")) return true;
   if (pathname.startsWith("/api/runs/")) return true;
-  if (pathname.startsWith("/api/trash")) return true;
   if (pathname.startsWith("/api/images/")) return true;
   if (pathname.startsWith("/api/audit-logs")) return true;
   if (pathname.startsWith("/api/logs")) return true;

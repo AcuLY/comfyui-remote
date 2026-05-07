@@ -97,10 +97,16 @@ export type ProjectCard = {
 
 export type TrashItem = {
   id: string;
+  imageResultId: string;
   src?: string;
   title: string;
   deletedAt: string;
   originalPath: string;
+  projectId: string;
+  projectTitle: string;
+  sectionId: string;
+  sectionName: string;
+  sectionSortOrder: number;
 };
 
 export type LoraAsset = {

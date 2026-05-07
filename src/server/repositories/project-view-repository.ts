@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { toImageUrl } from "@/lib/image-url";
-import type { ProjectCard, TrashItem, ReviewStatus } from "@/lib/types";
+import type { ProjectCard, ReviewStatus } from "@/lib/types";
 import {
   batchResolvePresetNames,
   extractPresetNames,
@@ -508,40 +508,6 @@ export async function getProjectResults(projectId: string): Promise<ProjectResul
       };
     }),
   };
-}
-
-// ---------------------------------------------------------------------------
-// Trash — 回收站
-// ---------------------------------------------------------------------------
-
-export async function getTrashItems(): Promise<TrashItem[]> {
-  const records = await prisma.trashRecord.findMany({
-    where: { restoredAt: null },
-    orderBy: { deletedAt: "desc" },
-    include: {
-      imageResult: {
-        include: {
-          run: {
-            include: {
-              project: true,
-              projectSection: true,
-            },
-          },
-        },
-      },
-    },
-  });
-
-  return records.map((rec) => {
-    const run = rec.imageResult.run;
-    return {
-      id: rec.id,
-      src: toImageUrl(rec.imageResult.thumbPath ?? rec.imageResult.filePath) ?? "",
-      title: `${run.project.title} / ${run.projectSection.name ?? "Unknown"}`,
-      deletedAt: formatDate(rec.deletedAt),
-      originalPath: rec.originalPath,
-    };
-  });
 }
 
 // ---------------------------------------------------------------------------
