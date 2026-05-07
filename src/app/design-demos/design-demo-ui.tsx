@@ -145,6 +145,139 @@ export function StatusBadge({ status, label }: { status: string; label?: string 
   return <span className={cx(s.status, statusTone(status))}>{label ?? statusLabel(status)}</span>;
 }
 
+function imageTagLabels(image: DemoImage) {
+  return [
+    image.featured ? "p站" : null,
+    image.featured2 ? "预览" : null,
+    image.cover ? "封面" : null,
+  ].filter((item): item is string => Boolean(item));
+}
+
+function imageReviewLabel(status: DemoImage["status"]) {
+  if (status === "pending") return "待审";
+  if (status === "kept") return "保留";
+  return "删除";
+}
+
+export function ImageThumbSmall({
+  image,
+  priority = false,
+  wide = false,
+}: {
+  image: DemoImage;
+  priority?: boolean;
+  wide?: boolean;
+}) {
+  return (
+    <span className={cx(s.imageThumbSmall, wide && s.imageThumbSmallWide)}>
+      {image.src ? (
+        <img
+          src={image.src}
+          alt=""
+          fetchPriority={priority ? "high" : "auto"}
+          loading="eager"
+        />
+      ) : (
+        <ImageIcon className="size-5" />
+      )}
+    </span>
+  );
+}
+
+export function ImageThumbMedium({
+  actionSlot,
+  image,
+  onOpen,
+  onSelect,
+  priority = false,
+  selectable = false,
+  selected = false,
+  showStatus = true,
+  tags = imageTagLabels(image),
+}: {
+  actionSlot?: React.ReactNode;
+  image: DemoImage;
+  onOpen?: () => void;
+  onSelect?: () => void;
+  priority?: boolean;
+  selectable?: boolean;
+  selected?: boolean;
+  showStatus?: boolean;
+  tags?: string[];
+}) {
+  return (
+    <article className={cx(s.imageThumbMedium, selected && s.imageThumbMediumSelected)}>
+      {selectable ? (
+        <button
+          className={s.imageThumbSelect}
+          type="button"
+          onClick={onSelect}
+          aria-pressed={selected}
+          aria-label={selected ? "取消选择" : "选择图片"}
+        >
+          {selected ? <Check className={s.icon} /> : <Square className={s.icon} />}
+        </button>
+      ) : null}
+      {tags.length > 0 ? (
+        <div className={s.imageThumbTags}>
+          {tags.map((tag) => <span key={tag}>{tag}</span>)}
+        </div>
+      ) : null}
+      <button className={s.imageThumbImageButton} type="button" onClick={onOpen} aria-label="查看图片">
+        {image.src ? (
+          <img
+            src={image.src}
+            alt=""
+            fetchPriority={priority ? "high" : "auto"}
+            loading="eager"
+          />
+        ) : (
+          <ImageIcon className="size-6" />
+        )}
+      </button>
+      <div className={s.imageThumbOverlay}>
+        <span className={s.imageThumbLabel}>{image.label}</span>
+        {showStatus ? <StatusBadge status={image.status} label={imageReviewLabel(image.status)} /> : null}
+      </div>
+      {actionSlot ? <div className={s.imageThumbActions}>{actionSlot}</div> : null}
+    </article>
+  );
+}
+
+export function ImagePreviewLarge({
+  actions,
+  image,
+  meta,
+  onClose,
+  title,
+}: {
+  actions?: React.ReactNode;
+  image: DemoImage;
+  meta?: string;
+  onClose: () => void;
+  title?: string;
+}) {
+  return (
+    <div className={s.lightboxOverlay} role="dialog" aria-modal="true" aria-label="图片预览">
+      <div className={s.lightboxPanel}>
+        <div className={s.lightboxChrome}>
+          <div>
+            <strong>{title ?? image.label}</strong>
+            {meta ? <span>{meta}</span> : null}
+          </div>
+          <button className={s.iconMiniButton} type="button" onClick={onClose} aria-label="关闭预览">
+            <X className={s.icon} />
+          </button>
+        </div>
+        <div className={s.lightboxImage}>
+          {image.full || image.src ? <img src={image.full || image.src} alt="" className={s.imageFill} loading="eager" /> : null}
+        </div>
+        {actions ? <div className={s.lightboxActions}>{actions}</div> : null}
+      </div>
+    </div>
+  );
+}
+
 export function ButtonLink({
   href,
   children,
@@ -299,19 +432,7 @@ export function ImageStrip({ images, wide = false }: { images: DemoImage[]; wide
   return (
     <div className={s.imageStrip}>
       {images.slice(0, 10).map((image, index) => (
-        <div className={cx(s.thumb, wide && s.thumbWide)} key={`${image.id}-${index}`}>
-          {image.src ? (
-            <img
-              src={image.src}
-              alt=""
-              className={s.imageFill}
-              fetchPriority={index === 0 ? "high" : "auto"}
-              loading="eager"
-            />
-          ) : (
-            <ImageIcon className="size-5" />
-          )}
-        </div>
+        <ImageThumbSmall image={image} key={`${image.id}-${index}`} priority={index === 0} wide={wide} />
       ))}
     </div>
   );
@@ -355,52 +476,24 @@ export function ImageGrid({
     <>
       <div className={s.imageGrid}>
         {images.map((image, index) => (
-          <button className={s.imageTile} key={`${image.id}-${index}`} type="button" onClick={() => setActiveIndex(index)}>
-            {selectable ? (
-              <span className={s.imageTileCheck} aria-hidden="true">
-                <Square className={s.icon} />
-              </span>
-            ) : null}
-            {image.src ? (
-              <img
-                src={image.src}
-                alt=""
-                className={s.imageFill}
-                fetchPriority={index === 0 ? "high" : "auto"}
-                loading="eager"
-              />
-            ) : null}
-            <div className={s.imageTileBar}>
-              <span className={s.imageTileLabel}>{image.label}</span>
-              {showStatus ? <StatusBadge status={image.status} /> : null}
-            </div>
-          </button>
+          <ImageThumbMedium
+            image={image}
+            key={`${image.id}-${index}`}
+            onOpen={() => setActiveIndex(index)}
+            priority={index === 0}
+            selectable={selectable}
+            showStatus={showStatus}
+            tags={[]}
+          />
         ))}
       </div>
       {activeImage && portalTarget ? createPortal(
-        <div className={s.lightboxOverlay} role="dialog" aria-modal="true" aria-label="图片预览">
-          <div className={s.lightboxPanel}>
-            <div className={s.lightboxChrome}>
-              <div>
-                <strong>{activeImage.label}</strong>
-                <span>{activeIndex! + 1} / {images.length}</span>
-              </div>
-              <button className={s.iconMiniButton} type="button" onClick={() => setActiveIndex(null)} aria-label="关闭预览">
-                <X className={s.icon} />
-              </button>
-            </div>
-            <div className={s.lightboxImage}>
-              {activeImage.src ? (
-                <img
-                  src={activeImage.src}
-                  alt=""
-                  className={s.imageFill}
-                  fetchPriority="high"
-                  loading="eager"
-                />
-              ) : null}
-            </div>
-            <div className={s.lightboxActions}>
+        <ImagePreviewLarge
+          image={activeImage}
+          meta={`${activeIndex! + 1} / ${images.length}`}
+          onClose={() => setActiveIndex(null)}
+          actions={(
+            <>
               <Button icon={Check} feedback={{ title: "图片已加入保留队列", detail: activeImage.label }}>
                 保留
               </Button>
@@ -428,9 +521,9 @@ export function ImageGrid({
                 下一张
               </Button>
               <Button tone="subtle" icon={Archive} feedback={{ tone: "info", title: "最近操作已撤销" }}>撤销</Button>
-            </div>
-          </div>
-        </div>,
+            </>
+          )}
+        />,
         portalTarget,
       ) : null}
     </>
@@ -499,26 +592,15 @@ export function ReviewImageBoard({ images }: { images: DemoImage[] }) {
           const selected = selectedIds.has(image.id);
           const hasStatusOverlay = image.status === "kept" || image.status === "trashed";
           return (
-            <article className={cx(s.reviewTile, selected && s.reviewTileSelected)} key={`${image.id}-${index}`}>
-              <button className={s.reviewSelectButton} type="button" onClick={() => toggleImage(image.id)} aria-pressed={selected} aria-label={selected ? "取消选择" : "选择图片"}>
-                {selected ? <Check className={s.icon} /> : null}
-              </button>
-              {(image.featured || image.featured2 || image.cover) ? (
-                <div className={s.reviewMarkers}>
-                  {image.featured ? <span>p站</span> : null}
-                  {image.featured2 ? <span>预览</span> : null}
-                  {image.cover ? <span>封面</span> : null}
-                </div>
-              ) : null}
-              <button className={s.reviewImageButton} type="button" onClick={() => setActiveIndex(index)}>
-                {image.src ? <img src={image.src} alt="" className={s.imageFill} loading="eager" /> : null}
-                {hasStatusOverlay ? (
-                  <span className={s.reviewTileStatus} data-status={image.status}>
-                    <StatusBadge status={image.status} />
-                  </span>
-                ) : null}
-              </button>
-            </article>
+            <ImageThumbMedium
+              image={image}
+              key={`${image.id}-${index}`}
+              onOpen={() => setActiveIndex(index)}
+              onSelect={() => toggleImage(image.id)}
+              selectable
+              selected={selected}
+              showStatus={hasStatusOverlay}
+            />
           );
         })}
       </div>
@@ -536,21 +618,12 @@ export function ReviewImageBoard({ images }: { images: DemoImage[] }) {
       </div>
 
       {activeImage && portalTarget ? createPortal(
-        <div className={s.lightboxOverlay} role="dialog" aria-modal="true" aria-label="审核图片预览">
-          <div className={s.lightboxPanel}>
-            <div className={s.lightboxChrome}>
-              <div>
-                <strong>{activeImage.label}</strong>
-                <span>{activeIndex! + 1} / {images.length} · {activeImage.status}</span>
-              </div>
-              <button className={s.iconMiniButton} type="button" onClick={() => setActiveIndex(null)} aria-label="关闭预览">
-                <X className={s.icon} />
-              </button>
-            </div>
-            <div className={s.lightboxImage}>
-              {activeImage.src ? <img src={activeImage.src} alt="" className={s.imageFill} loading="eager" /> : null}
-            </div>
-            <div className={s.lightboxActions}>
+        <ImagePreviewLarge
+          image={activeImage}
+          meta={`${activeIndex! + 1} / ${images.length} · ${activeImage.status}`}
+          onClose={() => setActiveIndex(null)}
+          actions={(
+            <>
               <Button icon={Check} feedback={{ title: "图片已加入保留队列", detail: activeImage.label }}>
                 保留
               </Button>
@@ -570,9 +643,9 @@ export function ReviewImageBoard({ images }: { images: DemoImage[] }) {
                 下一张
               </Button>
               <Button tone="subtle" icon={Archive} feedback={{ tone: "info", title: "最近操作已撤销" }}>撤销</Button>
-            </div>
-          </div>
-        </div>,
+            </>
+          )}
+        />,
         portalTarget,
       ) : null}
     </>

@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 
 import type { DemoData } from "./design-demo-data";
 import { DesignDemoShell } from "./design-demo-shell";
+import { ImageStatePage } from "./image-state-page";
 import { ModelsPage } from "./model-pages";
 import { PresetsPage, PresetCategoryFormPage, PresetEditPage, PresetGroupPage, SortRulesPage } from "./preset-pages";
 import { BatchCreatePage } from "./batch-create-page";
@@ -28,6 +29,8 @@ function CurrentPage({ match, data }: { match: Match; data: DemoData }) {
       return <QueuePage data={data} />;
     case "queue-review":
       return <ReviewPage data={data} run={findRun(data, match.params.runId)} />;
+    case "image-states":
+      return <ImageStatePage data={data} />;
     case "projects":
       return <ProjectsPage data={data} />;
     case "project-new":

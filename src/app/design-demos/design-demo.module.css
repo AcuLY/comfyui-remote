@@ -1199,10 +1199,10 @@
   overflow: hidden;
 }
 
-.projectListCard .thumb {
+.projectListCard .thumb,
+.projectListCard .imageThumbSmall {
   min-width: 44px;
   width: 44px;
-  height: 58px;
 }
 
 .projectListCard .cardHeader {
@@ -1691,6 +1691,242 @@
   gap: 6px;
   overflow-x: auto;
   padding-bottom: 1px;
+}
+
+.imageThumbSmall {
+  position: relative;
+  display: inline-flex;
+  width: 64px;
+  aspect-ratio: 2 / 3;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid var(--demo-border);
+  border-radius: 7px;
+  background: var(--demo-panel-2);
+  color: var(--demo-faint);
+}
+
+.imageThumbSmallWide {
+  width: 72px;
+}
+
+.imageThumbSmall img,
+.imageThumbMedium img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.imageThumbMedium {
+  position: relative;
+  display: block;
+  min-width: 0;
+  aspect-ratio: 2 / 3;
+  overflow: hidden;
+  border: 1px solid var(--demo-border);
+  border-radius: 8px;
+  background: var(--demo-panel-2);
+  color: inherit;
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    transform 140ms ease,
+    opacity 140ms ease;
+}
+
+.imageThumbMedium:hover,
+.imageThumbMedium:focus-within {
+  border-color: var(--demo-glass-accent-border);
+}
+
+.imageThumbMediumSelected {
+  border-color: rgba(0, 217, 146, 0.62);
+  box-shadow: 0 0 0 1px rgba(0, 217, 146, 0.42);
+}
+
+.imageThumbSelect {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 3;
+  display: inline-flex;
+  width: 26px;
+  height: 26px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.36);
+  border-radius: 7px;
+  background: rgba(6, 12, 18, 0.5);
+  color: #ffffff;
+  cursor: pointer;
+  padding: 0;
+  -webkit-backdrop-filter: blur(10px) saturate(135%);
+  backdrop-filter: blur(10px) saturate(135%);
+  opacity: 0;
+  transition: opacity 140ms ease, background-color 140ms ease, border-color 140ms ease;
+}
+
+.imageThumbMedium:hover .imageThumbSelect,
+.imageThumbMedium:focus-within .imageThumbSelect,
+.imageThumbMediumSelected .imageThumbSelect {
+  opacity: 1;
+}
+
+.imageThumbMediumSelected .imageThumbSelect {
+  border-color: var(--demo-green);
+  background: var(--demo-green);
+  color: #04111c;
+}
+
+.imageThumbTags {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  display: flex;
+  max-width: calc(100% - 46px);
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: flex-end;
+}
+
+.imageThumbTags span {
+  border: 1px solid rgba(0, 217, 146, 0.32);
+  border-radius: 999px;
+  background: rgba(15, 18, 22, 0.62);
+  color: var(--demo-green);
+  font-size: 9px;
+  font-weight: 620;
+  line-height: 1;
+  padding: 4px 7px;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+.imageThumbImageButton {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: var(--demo-faint);
+  cursor: zoom-in;
+  padding: 0;
+}
+
+.imageThumbImageButton:focus-visible {
+  outline: none;
+}
+
+.imageThumbOverlay {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  left: 6px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.imageThumbLabel {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--demo-image-label-border);
+  border-radius: 999px;
+  background: var(--demo-image-label-bg);
+  color: var(--demo-image-label-text);
+  font-size: 10px;
+  line-height: 1;
+  padding: 5px 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.imageThumbActions {
+  position: absolute;
+  z-index: 3;
+  right: 6px;
+  bottom: 38px;
+  left: 6px;
+  display: inline-flex;
+  gap: 5px;
+  justify-content: center;
+  opacity: 0;
+  transform: translateY(5px);
+  transition: opacity 140ms ease, transform 140ms ease;
+}
+
+.imageThumbMedium:hover .imageThumbActions,
+.imageThumbMedium:focus-within .imageThumbActions {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.imageThumbActions .iconMiniButton {
+  width: 28px;
+  height: 28px;
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(0, 0, 0, 0.52);
+  color: #ffffff;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+.imageStateGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.68fr) minmax(0, 1.32fr);
+  gap: 14px;
+}
+
+.imageStateSurface {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: 12px;
+  border: 1px solid var(--demo-border);
+  border-radius: calc(var(--demo-radius) + 2px);
+  background: var(--demo-glass-bg);
+  padding: 14px;
+}
+
+.imageStateSurface:nth-child(2) {
+  grid-row: span 2;
+}
+
+.imageStateSmallRow {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.imageStateMediumGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.imageStatePreview {
+  display: grid;
+  min-height: 260px;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--demo-border);
+  border-radius: 8px;
+  background: var(--demo-panel-2);
+}
+
+.imageStatePreview img {
+  display: block;
+  max-width: 100%;
+  max-height: 360px;
+  object-fit: contain;
 }
 
 .thumb {
@@ -2282,10 +2518,10 @@
   overflow: hidden;
 }
 
-.queueThumbs span {
+.queueThumbs span,
+.queueThumbs .imageThumbSmall {
   display: inline-flex;
   width: 42px;
-  height: 52px;
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
@@ -2295,7 +2531,8 @@
   background: var(--demo-panel-2);
 }
 
-.queueThumbs img {
+.queueThumbs img,
+.queueThumbs .imageThumbSmall img {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -7005,10 +7242,10 @@
     max-width: 112px;
   }
 
-  .projectListCard .thumb {
+  .projectListCard .thumb,
+  .projectListCard .imageThumbSmall {
     min-width: 32px;
     width: 32px;
-    height: 44px;
   }
 
   .projectListCard .projectCardStats,
@@ -7253,10 +7490,9 @@
     overflow: hidden;
   }
 
-  .queueThumbs span {
+  .queueThumbs span,
+  .queueThumbs .imageThumbSmall {
     width: 42px;
-    height: 52px;
-    aspect-ratio: auto;
   }
 
   .imageGrid {
@@ -7269,7 +7505,25 @@
     gap: 10px;
   }
 
+  .imageStateGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .imageStateSurface:nth-child(2) {
+    grid-row: auto;
+  }
+
+  .imageStateMediumGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .reviewSelectButton {
+    width: 44px;
+    height: 44px;
+    opacity: 1;
+  }
+
+  .imageThumbSelect {
     width: 44px;
     height: 44px;
     opacity: 1;

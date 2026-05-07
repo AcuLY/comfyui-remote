@@ -46,6 +46,7 @@ import {
   initialPromptBlocks,
   mockVariants,
 } from "./section-editor-page-data";
+import { ImageThumbMedium } from "./design-demo-ui";
 
 type SectionEditorPageProps = {
   data: DemoData;
@@ -366,8 +367,6 @@ function SectionEditorInner({
 
   const keptCount = images.filter((i) => i.status === "kept").length;
   const pendingCount = images.filter((i) => i.status === "pending").length;
-
-  const reviewRing = (status: DemoImage["status"]) => status;
 
   const filteredImageIds = useMemo(() => {
     return new Set(
@@ -981,47 +980,14 @@ function SectionEditorInner({
                   {run.images
                     .filter((img) => filteredImageIds.has(img.id))
                     .map((img) => (
-                      <div
-                        key={img.id}
-                        className={s.resultThumb}
-                        data-review={reviewRing(img.status)}
-                        data-featured={img.featured ? "true" : "false"}
-                      >
-                        <button
-                          type="button"
-                          className={s.resultThumbCheckbox}
-                          role="checkbox"
-                          aria-checked={img.status === "kept"}
-                          aria-label={img.status === "kept" ? "取消保留" : "勾选保留"}
-                          data-checked={img.status === "kept"}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            markStatus(img.id, img.status === "kept" ? "pending" : "kept");
-                          }}
-                        >
-                          {img.status === "kept" ? <Check className="size-3.5" /> : null}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setLightboxImageId(img.id)}
-                          aria-label="放大查看"
-                          style={{
-                            position: "absolute",
-                            inset: 0,
-                            background: "transparent",
-                            border: 0,
-                            cursor: "zoom-in",
-                          }}
-                        />
-                        <img src={img.src || img.full} alt="" loading="lazy" draggable={false} />
-                        <div className={s.resultThumbActions}>
+                      <ImageThumbMedium
+                        actionSlot={(
+                          <>
                           <button
                             type="button"
                             className={s.resultThumbAction}
                             data-tone="keep"
-                            onClick={() =>
-                              markStatus(img.id, img.status === "kept" ? "pending" : "kept")
-                            }
+                            onClick={() => markStatus(img.id, img.status === "kept" ? "pending" : "kept")}
                             aria-label="保留"
                             title="保留"
                           >
@@ -1031,12 +997,7 @@ function SectionEditorInner({
                             type="button"
                             className={s.resultThumbAction}
                             data-tone="trash"
-                            onClick={() =>
-                              markStatus(
-                                img.id,
-                                img.status === "trashed" ? "pending" : "trashed",
-                              )
-                            }
+                            onClick={() => markStatus(img.id, img.status === "trashed" ? "pending" : "trashed")}
                             aria-label="删除"
                             title="删除"
                           >
@@ -1052,8 +1013,16 @@ function SectionEditorInner({
                           >
                             <Star className="size-3.5" />
                           </button>
-                        </div>
-                      </div>
+                          </>
+                        )}
+                        image={img}
+                        key={img.id}
+                        onOpen={() => setLightboxImageId(img.id)}
+                        onSelect={() => markStatus(img.id, img.status === "kept" ? "pending" : "kept")}
+                        selectable
+                        selected={img.status === "kept"}
+                        showStatus={img.status !== "pending"}
+                      />
                     ))}
                 </div>
               </div>

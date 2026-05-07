@@ -1,7 +1,5 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element -- Local design shell previews use direct API image URLs. */
-
 import Link from "next/link";
 import { useState } from "react";
 import {
@@ -28,6 +26,7 @@ import {
   DemoTabs,
   EmptyPage,
   EmptyRows,
+  ImageThumbSmall,
   MetricCard,
   PageHeader,
   ReviewImageBoard,
@@ -264,9 +263,7 @@ export function QueuePage({ data }: { data: DemoData }) {
                   </div>
                   <div className={s.queueThumbs}>
                     {row.run.images.slice(0, 5).map((image, index) => (
-                      <span key={`${image.id}-${index}`}>
-                        {image.src ? <img src={image.src} alt="" loading="eager" /> : <ImageIcon className={s.icon} />}
-                      </span>
+                      <ImageThumbSmall image={image} key={`${image.id}-${index}`} />
                     ))}
                   </div>
                 </Link>
