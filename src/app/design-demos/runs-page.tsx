@@ -133,8 +133,8 @@ function QueueMetrics({
 }) {
   return (
     <div className={s.metricGrid}>
-      <MetricCard icon={ImageIcon} label="待审图片" value={pendingImages} meta={`${reviewGroups} 个结果组`} />
-      <MetricCard icon={Clock3} label="运行中" value={runningCount} meta="生成队列" />
+      <MetricCard icon={ImageIcon} label="待审" value={pendingImages} meta={`${reviewGroups} 个结果组`} />
+      <MetricCard icon={Clock3} label="队列" value={runningCount} meta="生成队列" />
       <MetricCard icon={AlertTriangle} label="失败" value={failedCount} meta="可重试任务" />
     </div>
   );
