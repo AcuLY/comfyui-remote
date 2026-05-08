@@ -9,6 +9,7 @@ import {
   CheckSquare,
   ChevronDown,
   Clock3,
+  Copy,
   Download,
   ExternalLink,
   ImageIcon,
@@ -35,6 +36,13 @@ import s from "./design-demo.module.css";
 type QueueReviewRow = {
   run: DemoRun;
   pendingCount: number;
+};
+
+type QueueProjectGroup<T> = {
+  id: string;
+  title: string;
+  latestCreatedAt: string;
+  rows: T[];
 };
 
 type DemoRunProgress = {
@@ -117,6 +125,50 @@ function buildQueueStatusRuns(runs: DemoRun[], mode: "running" | "failed") {
     status: mode === "running" ? (index % 2 === 0 ? "running" : "queued") : "failed",
     errorMessage: mode === "failed" ? run.errorMessage ?? "ComfyUI 返回空结果或连接超时" : run.errorMessage,
   }));
+}
+
+function queueDateValue(value: string | null | undefined) {
+  if (!value) return 0;
+  const parsed = Date.parse(value.replace(" ", "T"));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function groupRowsByProject<T extends { run: DemoRun }>(rows: T[]): QueueProjectGroup<T>[] {
+  const groups = new Map<string, QueueProjectGroup<T>>();
+
+  rows.forEach((row) => {
+    const key = row.run.projectId || row.run.projectTitle;
+    const existing = groups.get(key);
+    if (existing) {
+      existing.rows.push(row);
+      if (queueDateValue(row.run.createdAt) > queueDateValue(existing.latestCreatedAt)) {
+        existing.latestCreatedAt = row.run.createdAt;
+      }
+      return;
+    }
+
+    groups.set(key, {
+      id: key,
+      title: row.run.projectTitle,
+      latestCreatedAt: row.run.createdAt,
+      rows: [row],
+    });
+  });
+
+  return Array.from(groups.values())
+    .map((group) => ({
+      ...group,
+      rows: [...group.rows].sort((a, b) => queueDateValue(b.run.createdAt) - queueDateValue(a.run.createdAt)),
+    }))
+    .sort((a, b) => queueDateValue(b.latestCreatedAt) - queueDateValue(a.latestCreatedAt));
+}
+
+function groupRunsByProject(runs: DemoRun[]) {
+  return groupRowsByProject(runs.map((run) => ({ run })));
+}
+
+function groupCollapsedKey(tab: QueueDemoTab, groupId: string) {
+  return `${tab}:${groupId}`;
 }
 
 function QueueMetrics({
@@ -212,10 +264,22 @@ export function QueuePage({ data }: { data: DemoData }) {
   const currentRunningRuns = buildCurrentRunningRuns(running);
   const failed = buildQueueStatusRuns(data.runs, "failed");
   const [activeTab, setActiveTab] = useState<QueueDemoTab>("pending");
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const reviewGroups = groupRowsByProject(reviewRows);
   const totalPending = reviewRows.reduce((sum, row) => sum + row.pendingCount, 0);
   const pageSize = 8;
-  const visibleReviewEnd = Math.min(pageSize, reviewRows.length);
-  const totalPages = Math.max(1, Math.ceil(reviewRows.length / pageSize));
+  const totalPages = Math.max(1, Math.ceil(reviewGroups.length / pageSize));
+
+  function toggleGroup(tab: QueueDemoTab, groupId: string) {
+    const key = groupCollapsedKey(tab, groupId);
+    setCollapsedGroups((current) => {
+      const next = new Set(current);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
   return (
     <div className={s.page}>
       <PageHeader
@@ -247,47 +311,98 @@ export function QueuePage({ data }: { data: DemoData }) {
             <div className={s.queueSurfaceHeader}>
               <div>
                 <strong>最新结果组</strong>
-                <em>{reviewRows.length} 组 · {totalPending} 张待审</em>
+                <em>{reviewGroups.length} 个项目 · {reviewRows.length} 组 · {totalPending} 张待审</em>
             </div>
             <div className={s.toolbar}>
                 <Button tone="danger" icon={Trash2} feedback={{ tone: "warning", title: "已清理完成、失败和取消记录" }}>清理记录</Button>
             </div>
           </div>
             <div className={s.queueRunList}>
-              {reviewRows.slice(0, pageSize).map((row) => (
-                <Link className={s.queueRunRow} href={demoHref(`/runs/${row.run.id}`)} key={row.run.id}>
-                  <div className={s.queueRunMain}>
-                    <strong>{row.run.projectTitle}</strong>
-                    <span>{row.run.sectionName} · run {row.run.runIndex}</span>
-                    <span className={s.queueRunDate}>生成于 {row.run.createdAt}</span>
-                  </div>
-                  <div className={s.queueThumbs}>
-                    {row.run.images.slice(0, 5).map((image, index) => (
-                      <ImageThumbSmall image={image} key={`${image.id}-${index}`} />
-                    ))}
-                  </div>
-                </Link>
-              ))}
+              {reviewGroups.slice(0, pageSize).map((group) => {
+                const collapsed = collapsedGroups.has(groupCollapsedKey("pending", group.id));
+                const pendingInGroup = group.rows.reduce((sum, row) => sum + row.pendingCount, 0);
+                return (
+                  <section className={s.queueProjectGroup} key={group.id}>
+                    <button
+                      className={s.queueProjectHeader}
+                      type="button"
+                      onClick={() => toggleGroup("pending", group.id)}
+                      aria-expanded={!collapsed}
+                    >
+                      <ChevronDown className={cx(s.icon, collapsed && s.queueProjectChevronCollapsed)} />
+                      <span>{group.title}</span>
+                      <em>{group.rows.length} 组 · {pendingInGroup} 张待审 · 最新 {group.latestCreatedAt}</em>
+                    </button>
+                    {collapsed ? null : (
+                      <div className={s.queueProjectRows}>
+                        {group.rows.map((row) => (
+                          <Link className={s.queueRunRow} href={demoHref(`/runs/${row.run.id}`)} key={row.run.id}>
+                            <div className={s.queueRunMain}>
+                              <strong>{row.run.sectionName}</strong>
+                              <span>run {row.run.runIndex}</span>
+                              <span className={s.queueRunDate}>生成于 {row.run.createdAt}</span>
+                            </div>
+                            <div className={s.queueThumbs}>
+                              {row.run.images.slice(0, 5).map((image, index) => (
+                                <ImageThumbSmall image={image} key={`${image.id}-${index}`} />
+                              ))}
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                  </section>
+                );
+              })}
               {reviewRows.length === 0 ? <EmptyRows label="当前没有待审核任务" /> : null}
             </div>
             <div className={s.queuePager}>
-              <span className={s.pagerInfoFull}>显示 1-{visibleReviewEnd} · 共 {reviewRows.length} 组</span>
-              <span className={s.pagerInfoCompact}>1-{visibleReviewEnd} / {reviewRows.length}</span>
+              <span className={s.pagerInfoFull}>显示 1-{Math.min(pageSize, reviewGroups.length)} · 共 {reviewGroups.length} 个项目 / {reviewRows.length} 组</span>
+              <span className={s.pagerInfoCompact}>1-{Math.min(pageSize, reviewGroups.length)} / {reviewGroups.length}</span>
               <DemoPager currentPage={1} totalPages={totalPages} />
             </div>
           </section>
         ) : activeTab === "running" ? (
-          <RunList title="运行中" runs={running} empty="当前没有运行中或排队中的任务" mode="running" />
+          <RunList
+            title="运行中"
+            runs={running}
+            empty="当前没有运行中或排队中的任务"
+            mode="running"
+            collapsedGroups={collapsedGroups}
+            onToggleGroup={(groupId) => toggleGroup("running", groupId)}
+          />
         ) : activeTab === "failed" ? (
-          <RunList title="最近失败" runs={failed} empty="当前没有失败任务" mode="failed" />
+          <RunList
+            title="最近失败"
+            runs={failed}
+            empty="当前没有失败任务"
+            mode="failed"
+            collapsedGroups={collapsedGroups}
+            onToggleGroup={(groupId) => toggleGroup("failed", groupId)}
+          />
         ) : null}
       </div>
     </div>
   );
 }
 
-export function RunList({ title, runs, empty, mode }: { title: string; runs: DemoRun[]; empty: string; mode: "running" | "failed" }) {
-  const visibleRuns = runs.slice(0, 8);
+export function RunList({
+  title,
+  runs,
+  empty,
+  mode,
+  collapsedGroups,
+  onToggleGroup,
+}: {
+  title: string;
+  runs: DemoRun[];
+  empty: string;
+  mode: "running" | "failed";
+  collapsedGroups: Set<string>;
+  onToggleGroup: (groupId: string) => void;
+}) {
+  const groups = groupRunsByProject(runs);
+  const visibleRuns = groups.flatMap((group) => group.rows.map((row) => row.run)).slice(0, 8);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const selectedVisibleCount = visibleRuns.filter((run) => selectedIds.has(run.id)).length;
   const allVisibleSelected = visibleRuns.length > 0 && selectedVisibleCount === visibleRuns.length;
@@ -312,12 +427,33 @@ export function RunList({ title, runs, empty, mode }: { title: string; runs: Dem
     });
   }
 
+  async function copyErrorMessage(errorMessage: string) {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(errorMessage);
+        return;
+      }
+    } catch {
+      // Fall back to the selection API below when clipboard permissions are unavailable.
+    }
+
+    const textarea = document.createElement("textarea");
+    textarea.value = errorMessage;
+    textarea.setAttribute("readonly", "");
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.append(textarea);
+    textarea.select();
+    document.execCommand("copy");
+    textarea.remove();
+  }
+
   return (
     <section className={s.queueSurface}>
       <div className={s.queueSurfaceHeader}>
         <div>
           <strong>{title}</strong>
-          <em>{runs.length} 条记录{selectedVisibleCount > 0 ? ` · 已选 ${selectedVisibleCount}` : ""}</em>
+          <em>{groups.length} 个项目 · {runs.length} 条记录{selectedVisibleCount > 0 ? ` · 已选 ${selectedVisibleCount}` : ""}</em>
         </div>
         <div className={s.toolbar}>
           <Button icon={CheckSquare} onClick={toggleVisibleRuns} disabled={visibleRuns.length === 0}>
@@ -348,42 +484,84 @@ export function RunList({ title, runs, empty, mode }: { title: string; runs: Dem
         <div className={s.empty}>{empty}</div>
       ) : (
         <div className={s.queueRunList}>
-          {visibleRuns.map((run) => {
-            const selected = selectedIds.has(run.id);
+          {groups.map((group) => {
+            const collapsed = collapsedGroups.has(groupCollapsedKey(mode, group.id));
+            const selectedInGroup = group.rows.filter(({ run }) => selectedIds.has(run.id)).length;
             return (
-              <div
-                aria-checked={selected}
-                className={cx(s.queueRunRow, s.queueRunRowSelectable, selected && s.queueRunRowSelected)}
-                key={run.id}
-                onClick={() => toggleRun(run.id)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    toggleRun(run.id);
-                  }
-                }}
-                role="checkbox"
-                tabIndex={0}
-              >
-                <span className={s.queueRowCheck} aria-hidden="true">
-                  {selected ? <CheckSquare className={s.icon} /> : <Square className={s.icon} />}
-                </span>
-                <div className={s.queueRunMain}>
-                  <strong>{run.projectTitle}</strong>
-                  <span>{run.sectionName} · run {run.runIndex}</span>
-                  <span className={s.queueRunDate}>
-                    {mode === "running" ? "创建于" : "失败于"} {mode === "running" ? run.createdAt : run.startedAt ?? run.createdAt}
-                  </span>
-                  {mode === "failed" ? <span className={s.queueRunError}>原因：{run.errorMessage ?? "ComfyUI 返回空结果或连接超时"}</span> : null}
-                </div>
-                <div className={s.toolbar} onClick={(event) => event.stopPropagation()}>
-                  {mode === "running" ? (
-                    <Button tone="danger" icon={X} feedback={{ tone: "warning", title: "取消任务已排队", detail: run.sectionName }}>取消</Button>
-                  ) : (
-                    <Button tone="primary" icon={ArrowRight} feedback={{ title: "重试已排队", detail: run.sectionName }}>重试</Button>
-                  )}
-                </div>
-              </div>
+              <section className={s.queueProjectGroup} key={group.id}>
+                <button
+                  className={s.queueProjectHeader}
+                  type="button"
+                  onClick={() => onToggleGroup(group.id)}
+                  aria-expanded={!collapsed}
+                >
+                  <ChevronDown className={cx(s.icon, collapsed && s.queueProjectChevronCollapsed)} />
+                  <span>{group.title}</span>
+                  <em>{group.rows.length} 条记录{selectedInGroup > 0 ? ` · 已选 ${selectedInGroup}` : ""} · 最新 {group.latestCreatedAt}</em>
+                </button>
+                {collapsed ? null : (
+                  <div className={s.queueProjectRows}>
+                    {group.rows.map(({ run }) => {
+                      const selected = selectedIds.has(run.id);
+                      const errorMessage = run.errorMessage ?? "ComfyUI 返回空结果或连接超时";
+                      return (
+                        <div
+                          aria-checked={selected}
+                          className={cx(s.queueRunRow, s.queueRunRowSelectable, selected && s.queueRunRowSelected)}
+                          key={run.id}
+                          onClick={() => toggleRun(run.id)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter" || event.key === " ") {
+                              event.preventDefault();
+                              toggleRun(run.id);
+                            }
+                          }}
+                          role="checkbox"
+                          tabIndex={0}
+                        >
+                          <span className={s.queueRowCheck} aria-hidden="true">
+                            {selected ? <CheckSquare className={s.icon} /> : <Square className={s.icon} />}
+                          </span>
+                          <div className={s.queueRunMain}>
+                            <strong>{run.sectionName}</strong>
+                            <span>run {run.runIndex}</span>
+                            <span className={s.queueRunDate}>
+                              {mode === "running" ? "创建于" : "失败于"} {mode === "running" ? run.createdAt : run.startedAt ?? run.createdAt}
+                            </span>
+                            {mode === "failed" ? (
+                              <span className={s.queueRunError}>
+                                原因：{errorMessage}
+                                <span
+                                  className={s.queueRunErrorAction}
+                                  onClick={(event) => event.stopPropagation()}
+                                  onKeyDown={(event) => event.stopPropagation()}
+                                >
+                                  <Button
+                                    tone="subtle"
+                                    icon={Copy}
+                                    className={s.queueRunErrorCopy}
+                                    onClick={() => copyErrorMessage(errorMessage)}
+                                    feedback={{ title: "报错已复制", detail: errorMessage }}
+                                  >
+                                    复制
+                                  </Button>
+                                </span>
+                              </span>
+                            ) : null}
+                          </div>
+                          <div className={s.toolbar} onClick={(event) => event.stopPropagation()}>
+                            {mode === "running" ? (
+                              <Button tone="danger" icon={X} feedback={{ tone: "warning", title: "取消任务已排队", detail: run.sectionName }}>取消</Button>
+                            ) : (
+                              <Button tone="primary" icon={ArrowRight} feedback={{ title: "重试已排队", detail: run.sectionName }}>重试</Button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </section>
             );
           })}
         </div>

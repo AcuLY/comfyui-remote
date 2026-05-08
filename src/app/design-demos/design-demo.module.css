@@ -2050,7 +2050,7 @@ button.imagePreviewFrame {
   align-items: center;
   gap: 7px;
   color: var(--demo-muted);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 400;
   line-height: 1;
 }
@@ -2359,6 +2359,74 @@ button.imagePreviewFrame {
   min-width: 0;
 }
 
+.queueProjectGroup {
+  display: grid;
+  min-width: 0;
+  border-bottom: 1px solid var(--demo-border);
+}
+
+.queueProjectGroup:last-child {
+  border-bottom: 0;
+}
+
+.queueProjectHeader {
+  display: grid;
+  grid-template-columns: 18px minmax(140px, 0.42fr) minmax(180px, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  border: 0;
+  border-bottom: 1px solid var(--demo-border);
+  background: color-mix(in srgb, var(--demo-field-bg) 58%, transparent);
+  color: inherit;
+  cursor: pointer;
+  padding: 9px 14px;
+  text-align: left;
+  transition: background-color 140ms ease;
+}
+
+.queueProjectHeader:hover,
+.queueProjectHeader:focus-visible {
+  background: var(--demo-field-bg);
+  outline: none;
+}
+
+.queueProjectHeader .icon {
+  width: 15px;
+  height: 15px;
+  color: var(--demo-muted);
+  transition: transform 140ms ease;
+}
+
+.queueProjectChevronCollapsed {
+  transform: rotate(-90deg);
+}
+
+.queueProjectHeader span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--demo-text);
+  font-size: 12px;
+  font-weight: 580;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.queueProjectHeader em {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--demo-muted);
+  font-size: 10px;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.queueProjectRows {
+  display: grid;
+  min-width: 0;
+}
+
 .queueRunRow {
   display: grid;
   grid-template-columns: minmax(180px, 0.72fr) minmax(220px, 1fr);
@@ -2425,6 +2493,10 @@ button.imagePreviewFrame {
   border-bottom: 0;
 }
 
+.queueProjectRows .queueRunRow:last-child {
+  border-bottom: 0;
+}
+
 .queueRunMain {
   display: grid;
   min-width: 0;
@@ -2455,6 +2527,7 @@ button.imagePreviewFrame {
 .queueRunMain .queueRunError {
   display: inline-flex;
   align-items: center;
+  gap: 8px;
   min-width: 0;
   max-width: 100%;
   border: 1px solid rgba(251, 86, 91, 0.26);
@@ -2466,6 +2539,34 @@ button.imagePreviewFrame {
   padding: 4px 8px;
   white-space: normal;
   overflow-wrap: anywhere;
+}
+
+.queueRunErrorAction {
+  flex: 0 0 auto;
+}
+
+.queueRunErrorCopy {
+  min-height: 22px;
+  gap: 4px;
+  border-color: rgba(251, 86, 91, 0.2);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.46);
+  color: var(--demo-red);
+  font-size: 10px;
+  line-height: 1;
+  padding: 2px 7px;
+}
+
+.queueRunErrorCopy:hover,
+.queueRunErrorCopy:focus-visible {
+  border-color: rgba(251, 86, 91, 0.34);
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--demo-red);
+}
+
+.queueRunErrorCopy svg {
+  width: 12px;
+  height: 12px;
 }
 
 .queueRunRowSelectable > .toolbar {
@@ -2987,8 +3088,10 @@ button.imagePreviewFrame {
 
 .reviewImageGrid {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 180px));
+  gap: 14px;
+  align-items: start;
+  justify-content: start;
 }
 
 .reviewTile {
@@ -7370,6 +7473,17 @@ button.imagePreviewFrame {
     gap: 10px;
     min-height: 0;
     padding: 12px;
+  }
+
+  .queueProjectHeader {
+    grid-template-columns: 18px minmax(0, 1fr);
+    gap: 7px;
+    padding: 9px 12px;
+  }
+
+  .queueProjectHeader em {
+    grid-column: 2;
+    white-space: normal;
   }
 
   .queueRunRowSelectable {
