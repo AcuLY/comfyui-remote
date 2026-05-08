@@ -613,6 +613,8 @@ function mergeExecutionMeta(run: DemoRun, section: NonNullable<ReturnType<typeof
     batchSize: section.batchSize,
     checkpointName: section.checkpointName,
     workflowId: run.id,
+    lora1: section.lora1 ?? [],
+    lora2: section.lora2 ?? [],
     positivePrompt: section.positivePrompt,
     negativePrompt: section.negativePrompt,
   };
@@ -644,7 +646,13 @@ function loraEntries(value: unknown) {
     .map((entry, index) => {
       if (!entry || typeof entry !== "object") return null;
       const raw = entry as Record<string, unknown>;
-      const path = typeof raw.path === "string" ? raw.path : "";
+      const path = typeof raw.path === "string"
+        ? raw.path
+        : typeof raw.filePath === "string"
+          ? raw.filePath
+          : typeof raw.fileName === "string"
+            ? raw.fileName
+            : "";
       if (!path) return null;
       const weight = raw.weight === null || raw.weight === undefined ? "未设权重" : String(raw.weight);
       const enabled = raw.enabled !== false;
@@ -709,25 +717,23 @@ function ReviewExecutionMeta({ meta }: { meta: Record<string, unknown> }) {
         <MetaStat label="Workflow" value={metaText(meta, "workflowId")} />
       </div>
 
-      {(lora1.length > 0 || lora2.length > 0) ? (
-        <div className={s.reviewLoraGrid}>
-          {[["LoRA1", lora1] as const, ["LoRA2", lora2] as const].map(([label, entries]) => (
-            <div key={label} className={s.reviewLoraColumn}>
-              <em>{label}<span>{entries.length}</span></em>
-              {entries.length > 0 ? (
-                <ul>
-                  {entries.map((entry) => (
-                    <li key={entry.id} data-disabled={!entry.enabled}>
-                      <span title={entry.name}>{entry.name}</span>
-                      <strong>{entry.weight}</strong>
-                    </li>
-                  ))}
-                </ul>
-              ) : <p>未记录</p>}
-            </div>
-          ))}
-        </div>
-      ) : null}
+      <div className={s.reviewLoraGrid}>
+        {[["LoRA1", lora1] as const, ["LoRA2", lora2] as const].map(([label, entries]) => (
+          <div key={label} className={s.reviewLoraColumn}>
+            <em>{label}<span>{entries.length}</span></em>
+            {entries.length > 0 ? (
+              <ul>
+                {entries.map((entry) => (
+                  <li key={entry.id} data-disabled={!entry.enabled}>
+                    <span title={entry.name}>{entry.name}</span>
+                    <strong>{entry.weight}</strong>
+                  </li>
+                ))}
+              </ul>
+            ) : <p>未记录</p>}
+          </div>
+        ))}
+      </div>
 
       <div className={s.reviewPromptGrid}>
         <div>
@@ -800,10 +806,11 @@ export function ReviewPage({ data, run }: { data: DemoData; run: DemoRun | undef
   return (
     <div className={s.page}>
       <PageHeader
+        className={s.reviewPageHeader}
         back={{ href: "/runs", label: "返回任务" }}
         eyebrow="审核"
         title={`${run.projectTitle} / ${run.sectionName}`}
-        subtitle={`${run.pendingCount} 张待审 / ${run.imageCount} 张总图，按筛选结果进行批量处理。`}
+        subtitle={project?.notes || undefined}
         actions={
           <>
             {sectionPath ? <ButtonLink href={sectionPath} icon={ExternalLink}>跳转至小节</ButtonLink> : null}

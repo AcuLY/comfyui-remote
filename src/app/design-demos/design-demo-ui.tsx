@@ -557,15 +557,17 @@ export function PageHeader({
   title,
   subtitle,
   actions,
+  className,
 }: {
   back?: { href: string; label: string };
   eyebrow: string;
   title: string;
-  subtitle: string;
+  subtitle?: string;
   actions?: React.ReactNode;
+  className?: string;
 }) {
   return (
-    <header className={s.pageHeader}>
+    <header className={cx(s.pageHeader, className)}>
       <div className={s.pageTitleBlock}>
         {back ? (
           <ButtonLink href={back.href} tone="subtle" icon={ArrowLeft} className={s.pageBackLink}>
@@ -574,7 +576,7 @@ export function PageHeader({
         ) : null}
         <span className={s.eyebrow}>{eyebrow}</span>
         <h1 className={s.pageTitle}>{title}</h1>
-        <div className={s.pageSubtitle}>{subtitle}</div>
+        {subtitle ? <div className={s.pageSubtitle}>{subtitle}</div> : null}
       </div>
       {actions ? <div className={s.toolbar}>{actions}</div> : null}
     </header>
@@ -752,12 +754,22 @@ export function ReviewImageBoard({ images }: { images: DemoImage[] }) {
           <strong>{selectedCount > 0 ? `已选 ${selectedCount} 张` : "未选择图片"}</strong>
           <span>{pendingIds.length} 张待审 · {images.length} 张当前可见</span>
         </div>
-        <div className={s.toolbar}>
-          <Button icon={CheckSquare} onClick={() => setSelectedIds(selectedCount === images.length ? new Set() : new Set(images.map((image) => image.id)))}>
-            {selectedCount === images.length ? "取消全选" : "全选"}
-          </Button>
-          <Button icon={Square} onClick={() => setSelectedIds(new Set(pendingIds))}>只选待审</Button>
-          <Button tone="subtle" icon={X} onClick={() => setSelectedIds(new Set())} disabled={selectedCount === 0}>取消选择</Button>
+        <div className={s.reviewActionPanel}>
+          <div className={s.reviewSelectActions}>
+            <Button icon={CheckSquare} onClick={() => setSelectedIds(selectedCount === images.length ? new Set() : new Set(images.map((image) => image.id)))}>
+              {selectedCount === images.length ? "取消全选" : "全选"}
+            </Button>
+            <Button icon={Square} onClick={() => setSelectedIds(new Set(pendingIds))}>只选待审</Button>
+            <Button tone="subtle" icon={X} onClick={() => setSelectedIds(new Set())} disabled={selectedCount === 0}>取消选择</Button>
+          </div>
+          <div className={s.reviewBulkActions}>
+            <Button tone="primary" icon={Check} className={s.reviewActionKeep} disabled={selectedCount === 0} feedback={{ title: "已加入保留队列", detail: `${selectedCount} 张图片` }}>保留</Button>
+            <Button tone="pink" icon={Star} className={s.reviewActionFeatured} disabled={selectedCount === 0} feedback={{ title: "已加入 p站 标记队列", detail: `${selectedCount} 张图片` }}>p站</Button>
+            <Button tone="pink" icon={Eye} className={s.reviewActionFeatured} disabled={selectedCount === 0} feedback={{ title: "已加入预览标记队列", detail: `${selectedCount} 张图片` }}>预览</Button>
+            <Button tone="subtle" icon={ImageIcon} className={s.reviewActionCover} disabled={selectedCount !== 1} feedback={{ title: "已设为封面", detail: "1 张图片" }}>封面</Button>
+            <Button tone="danger" icon={Trash2} className={s.reviewActionDelete} disabled={selectedCount === 0} feedback={{ tone: "warning", title: "已加入删除队列", detail: `${selectedCount} 张图片` }}>删除</Button>
+            <Button tone="subtle" icon={Archive} className={s.reviewActionUndo} feedback={{ tone: "info", title: "最近操作已撤销" }}>撤销最近操作</Button>
+          </div>
         </div>
       </div>
 
@@ -777,18 +789,6 @@ export function ReviewImageBoard({ images }: { images: DemoImage[] }) {
             />
           );
         })}
-      </div>
-
-      <div className={s.reviewBulkBar}>
-        <span>{selectedCount > 0 ? `${selectedCount} 张图片等待处理` : "选择图片后批量处理"}</span>
-        <div className={s.toolbar}>
-          <Button tone="primary" icon={Check} className={s.reviewActionKeep} disabled={selectedCount === 0} feedback={{ title: "已加入保留队列", detail: `${selectedCount} 张图片` }}>保留</Button>
-          <Button tone="pink" icon={Star} className={s.reviewActionFeatured} disabled={selectedCount === 0} feedback={{ title: "已加入 p站 标记队列", detail: `${selectedCount} 张图片` }}>p站</Button>
-          <Button tone="pink" icon={Eye} className={s.reviewActionFeatured} disabled={selectedCount === 0} feedback={{ title: "已加入预览标记队列", detail: `${selectedCount} 张图片` }}>预览</Button>
-          <Button tone="subtle" icon={ImageIcon} className={s.reviewActionCover} disabled={selectedCount !== 1} feedback={{ title: "已设为封面", detail: "1 张图片" }}>封面</Button>
-          <Button tone="danger" icon={Trash2} className={s.reviewActionDelete} disabled={selectedCount === 0} feedback={{ tone: "warning", title: "已加入删除队列", detail: `${selectedCount} 张图片` }}>删除</Button>
-          <Button tone="subtle" icon={Archive} className={s.reviewActionUndo} feedback={{ tone: "info", title: "最近操作已撤销" }}>撤销最近操作</Button>
-        </div>
       </div>
 
       {activeImage && portalTarget ? createPortal(

@@ -48,6 +48,8 @@ export type DemoSection = {
   };
   promptBlockCount: number;
   loraCount: number;
+  lora1?: unknown[];
+  lora2?: unknown[];
   images: DemoImage[];
   latestRunIndex?: number;
   presetBindings?: Array<{
@@ -854,6 +856,8 @@ export async function loadDesignDemoData(): Promise<DemoData> {
         },
         promptBlockCount: int(row.promptBlockCount),
         loraCount: (Array.isArray(loraConfig.lora1) ? loraConfig.lora1.length : 0) + (Array.isArray(loraConfig.lora2) ? loraConfig.lora2.length : 0),
+        lora1: Array.isArray(loraConfig.lora1) ? loraConfig.lora1 : [],
+        lora2: Array.isArray(loraConfig.lora2) ? loraConfig.lora2 : [],
         images: [],
       } satisfies DemoSection;
     });

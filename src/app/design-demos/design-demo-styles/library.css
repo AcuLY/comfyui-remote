@@ -1818,13 +1818,48 @@
     white-space: normal;
   }
 
+  .reviewPageHeader {
+    position: relative;
+  }
+
+  .reviewPageHeader > .pageTitleBlock {
+    padding-right: 92px;
+  }
+
+  .reviewPageHeader > .toolbar {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: auto;
+    max-width: none;
+    flex-wrap: nowrap;
+    gap: 6px;
+    justify-content: flex-end;
+  }
+
+  .reviewPageHeader > .toolbar .button {
+    width: 38px;
+    height: 38px;
+    min-height: 38px;
+    padding: 0;
+    gap: 0;
+    border-radius: 10px;
+    font-size: 0;
+  }
+
+  .reviewPageHeader > .toolbar .button svg {
+    width: 16px;
+    height: 16px;
+  }
+
   .reviewMetaHeader {
-    align-items: flex-start;
-    flex-wrap: wrap;
+    align-items: center;
+    flex-wrap: nowrap;
+    min-height: 58px;
   }
 
   .reviewMetaChevron {
-    margin-left: 0;
+    margin-left: auto;
   }
 
   .reviewMetaSummary {
@@ -1857,6 +1892,11 @@
   .reviewSamplerGrid,
   .reviewLoraGrid {
     grid-template-columns: 1fr;
+  }
+
+  .reviewMetaBody {
+    gap: 10px;
+    padding: 10px 12px 12px;
   }
 
   .queueThumbs {
@@ -1932,14 +1972,22 @@
     min-width: 44px;
   }
 
-  .reviewBulkBar .toolbar,
-  .reviewControlStrip .toolbar {
-    justify-content: stretch;
+  .reviewControlStrip {
+    grid-template-columns: 1fr;
   }
 
-  .reviewBulkBar .button,
+  .reviewSelectActions,
+  .reviewBulkActions {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+  }
+
   .reviewControlStrip .button {
-    flex: 1 1 44%;
+    min-height: 34px;
+    padding: 6px 8px;
+    border-radius: 8px;
+    font-size: 11px;
+    white-space: nowrap;
   }
 
   .templateListItem,

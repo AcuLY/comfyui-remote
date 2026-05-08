@@ -627,8 +627,7 @@
   display: none;
 }
 
-.queuePager span,
-.reviewBulkBar > span {
+.queuePager span {
   color: var(--demo-muted);
   font-size: 11px;
 }
@@ -675,10 +674,43 @@
 }
 
 .reviewControlStrip {
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: minmax(118px, 150px) minmax(0, 1fr);
+  align-items: stretch;
+  gap: 12px;
   border-top: 0;
   border-bottom: 1px solid var(--demo-border);
-  padding: 10px 14px;
+  padding: 12px 14px;
+}
+
+.reviewActionPanel {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+}
+
+.reviewSelectActions,
+.reviewBulkActions {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+}
+
+.reviewSelectActions {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.reviewBulkActions {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.reviewSelectActions .button,
+.reviewBulkActions .button {
+  width: 100%;
+  min-height: 34px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  white-space: nowrap;
 }
 
 .reviewMetaSurface {
@@ -771,6 +803,7 @@
 }
 
 .reviewMetaSurface[data-open="true"] .reviewMetaSummary {
+  display: none;
   opacity: 0;
   pointer-events: none;
 }
