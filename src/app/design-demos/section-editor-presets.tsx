@@ -5,7 +5,7 @@ import { useState } from "react";
 import type * as React from "react";
 import { ChevronDown, Search, Trash2, Unlink, ExternalLink, Copy as CopyIcon } from "lucide-react";
 
-import s from "./design-demo.module.css";
+import s from "./design-demo-styles";
 import { cx } from "./design-demo-utils";
 import { parseHue } from "./section-editor-shared";
 import { VariantSwitcher } from "./section-editor-controls";

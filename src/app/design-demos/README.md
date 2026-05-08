@@ -11,7 +11,8 @@ This directory implements the routable `/design-demos` frontend shell.
 - `design-demo-ui.tsx`: reusable UI primitives, feedback toasts, image grids, and shared lightbox behavior.
 - `design-demo-utils.ts`: route mapping, shared types, navigation metadata, and browser-safe data helpers.
 - `runs-page.tsx`: task workbench and run review pages.
-- `design-demo.module.css`: local design tokens and component styles for the demo.
+- `design-demo-styles/`: route-level CSS split by shell, queue/review, projects, library, section editor, and model browser surfaces.
+- `design-demo-styles.ts`: class-name bridge used by components so existing `s.foo` references map to the global route CSS classes.
 
 ## Route Mapping
 

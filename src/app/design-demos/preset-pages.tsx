@@ -5,7 +5,7 @@ import { useState } from "react";
 import { ArrowLeft, ArrowRight, Check, CheckSquare, Edit3, FolderTree, GripVertical, History, Plus, Save, Search, Shuffle, Square, Trash2, X } from "lucide-react";
 
 import type { DemoCategory, DemoData, DemoPreset, DemoPresetGroup } from "./design-demo-data";
-import s from "./design-demo.module.css";
+import s from "./design-demo-styles";
 import { Button, ButtonLink, EmptyPage, Field, OperationStateStrip, PageHeader, SelectLike, StatusBadge, TextAreaField } from "./design-demo-ui";
 import { categoryColorValue, categoryHueValue, categoryItemCount, categorySlotPreview, categoryTypeLabel, cx, demoHref, firstCategory, presetFolderBreadcrumb, presetFolderChildren, presetFolderItemCount, presetFolderOptions, presetLibraryItems } from "./design-demo-utils";
 import type { DemoButtonFeedback, PresetLibraryItem, SortRuleDimensionKey } from "./design-demo-utils";

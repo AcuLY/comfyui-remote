@@ -5,7 +5,7 @@ import { useState } from "react";
 import { Activity, ArrowRight, ClipboardList, Gauge, History, Home, Lock, Monitor, Play, Search, X } from "lucide-react";
 
 import type { DemoData } from "./design-demo-data";
-import s from "./design-demo.module.css";
+import s from "./design-demo-styles";
 import { Button, ButtonLink, DemoTabs, Field, OperationStateStrip, PageHeader, Panel, RouteTable, StatusBadge } from "./design-demo-ui";
 import { cx, demoHref } from "./design-demo-utils";
 import type { LogDemoSource } from "./design-demo-utils";

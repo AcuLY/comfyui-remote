@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Archive, Check, ChevronDown, ChevronUp, Eye, SlidersHorizontal, Square, Star, Trash2 } from "lucide-react";
 
 import type { DemoProject, DemoSection } from "./design-demo-data";
-import s from "./design-demo.module.css";
+import s from "./design-demo-styles";
 import { Button, ButtonLink, DemoTabs, EmptyPage, ImageGrid, PageHeader } from "./design-demo-ui";
 import { filterImages, rawSectionId, resultRunGroups, sectionAnchorId } from "./design-demo-utils";
 import type { ResultDemoFilter } from "./design-demo-utils";

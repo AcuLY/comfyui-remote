@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import type * as React from "react";
 import { ChevronDown, AlertCircle, Wand2 } from "lucide-react";
 
-import s from "./design-demo.module.css";
+import s from "./design-demo-styles";
 import { cx } from "./design-demo-utils";
 export type SectionTabValue = "params" | "presets" | "prompts" | "lora" | "history" | "results";
 

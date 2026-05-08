@@ -33,7 +33,7 @@ import {
   type KSamplerFull,
   type ImportCategory,
 } from "./section-editor-components";
-import s from "./design-demo.module.css";
+import s from "./design-demo-styles";
 import { LoraColumn } from "./section-editor-lora-column";
 import {
   CHECKPOINT_OPTIONS,

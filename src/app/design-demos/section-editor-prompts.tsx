@@ -3,7 +3,7 @@
 import type * as React from "react";
 import { GripVertical, Trash2, Unlink } from "lucide-react";
 
-import s from "./design-demo.module.css";
+import s from "./design-demo-styles";
 import { cx } from "./design-demo-utils";
 import { parseHue } from "./section-editor-shared";
 export type PromptBlockRowData = {

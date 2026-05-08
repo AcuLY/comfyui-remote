@@ -5,7 +5,7 @@ import { useState } from "react";
 import { ArrowLeft, Boxes, FolderTree, Plus, Search, Wand2, X } from "lucide-react";
 
 import type { DemoData, DemoProject } from "./design-demo-data";
-import s from "./design-demo.module.css";
+import s from "./design-demo-styles";
 import { Button, EmptyPage, PageHeader, StatusBadge } from "./design-demo-ui";
 import { batchImportFromGroup, batchImportFromPreset, batchItemKey, categoryColorValue, categoryTypeLabel, cx, demoHref, presetFolderBreadcrumb, presetFolderChildren, presetFolderItemCount, projectBatchBindings, rawSectionId } from "./design-demo-utils";
 import type { BatchImportItem } from "./design-demo-utils";

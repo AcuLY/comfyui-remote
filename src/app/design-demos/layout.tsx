@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import localFont from "next/font/local";
 import "./fonts/font-options.css";
+import "./design-demo-styles/index.css";
 
 const mapleMono = localFont({
   src: [

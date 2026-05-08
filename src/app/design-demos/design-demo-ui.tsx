@@ -23,7 +23,7 @@ import {
 import type { DemoData, DemoImage } from "./design-demo-data";
 import { cx, demoHref, sampleRouteInventory } from "./design-demo-utils";
 import type { DemoButtonFeedback, DemoToast, DemoToastTone, RouteIcon } from "./design-demo-utils";
-import s from "./design-demo.module.css";
+import s from "./design-demo-styles";
 
 const DemoFeedbackContext = createContext<{
   pushToast: (toast: Omit<DemoToast, "id">) => void;

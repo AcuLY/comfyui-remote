@@ -6,7 +6,7 @@ import {
   MoreVertical, Edit2, Trash2, Move, X, Check,
   Folder, ArrowLeft, Plus
 } from 'lucide-react';
-import styles from './design-demo.module.css';
+import styles from './design-demo-styles';
 
 interface FileItem {
   id: string;

@@ -32,7 +32,7 @@ import {
   PageHeader,
   ReviewImageBoard,
 } from "./design-demo-ui";
-import s from "./design-demo.module.css";
+import s from "./design-demo-styles";
 type QueueReviewRow = {
   run: DemoRun;
   pendingCount: number;

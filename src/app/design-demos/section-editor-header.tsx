@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { ChevronLeft, ChevronRight, Pencil, Check, ExternalLink } from "lucide-react";
 
-import s from "./design-demo.module.css";
+import s from "./design-demo-styles";
 import { cx } from "./design-demo-utils";
 export type SaveStatus = "idle" | "saving" | "saved";
 
