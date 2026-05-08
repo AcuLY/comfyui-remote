@@ -27,8 +27,25 @@ Reference baseline: the `/design-demos/runs/[runId]` review page. If this docume
 - Secondary text: `#59616d`
 - Tertiary text: `#7f8792`
 - Border: `rgba(19, 24, 32, 0.075-0.18)`
+- Border strong: `rgba(19, 24, 32, 0.18)`
 - Primary green: `#047857` for text on light surfaces, with `rgba(4, 120, 87, 0.10)` backgrounds.
 - Secondary rose: `#f472b6` / `rgba(244, 114, 182, 0.08)` for non-primary categories.
+- Amber (warning): `#a16207` / `rgba(161, 98, 7, 0.10)` — used for warning states such as pager info.
+- Sky (cover marker): `#0369a1` / `rgba(3, 105, 161, 0.10)` — used for cover/front-page markers.
+- Red (danger): `#be123c` / `rgba(190, 18, 60, 0.10)` — used for destructive actions and error states.
+- Panel-2: `rgba(238, 242, 245, 0.78)` — nested panel / alternate surface.
+- Panel-3: `rgba(228, 234, 240, 0.74)` — deeper nested panel.
+- Surface (generic): `rgba(255, 255, 255, 0.78)` — generic surface variant.
+- Surface soft: `rgba(255, 255, 255, 0.66)` — low-emphasis surface.
+- Surface hover: `rgba(255, 255, 255, 0.92)` — surface hover state.
+- Field background: `rgba(255, 255, 255, 0.72)` — input / field background.
+- Code background: `rgba(15, 23, 42, 0.055)` — code block background (e.g. logs page).
+- Code text: `#263241` — code block text color.
+- Image label border: `rgba(255, 255, 255, 0.45)` — border for image status labels.
+- Image label background: `rgba(15, 23, 42, 0.58)` — background for image status labels.
+- Image label text: `#ffffff`
+- Lightbox image background: `#ffffff` — background behind the image inside the lightbox.
+- Lightbox image border: `rgba(15, 23, 42, 0.12)` — border of the image container in the lightbox.
 
 ### Dark Theme
 
@@ -39,8 +56,25 @@ Reference baseline: the `/design-demos/runs/[runId]` review page. If this docume
 - Secondary text: `#a1a1aa`
 - Tertiary text: `#71717a`
 - Border: `rgba(255, 255, 255, 0.08-0.14)`
+- Border strong: `rgba(255, 255, 255, 0.14)`
 - Primary green: `#34d399`
 - Secondary rose: `#f9a8d4`
+- Amber (warning): `#fbbf24` / `rgba(251, 191, 36, 0.12)` — used for warning states.
+- Sky (cover marker): `#93c5fd` / `rgba(147, 197, 253, 0.12)` — used for cover/front-page markers.
+- Red (danger): `#fb565b` / `rgba(251, 86, 91, 0.12)` — used for destructive actions and error states.
+- Panel-2: `rgba(39, 39, 42, 0.72)` — nested panel / alternate surface.
+- Panel-3: `rgba(63, 63, 70, 0.58)` — deeper nested panel.
+- Surface (generic): `rgba(24, 24, 27, 0.76)` — generic surface variant.
+- Surface soft: `rgba(24, 24, 27, 0.52)` — low-emphasis surface.
+- Surface hover: `rgba(39, 39, 42, 0.82)` — surface hover state.
+- Field background: `rgba(255, 255, 255, 0.055)` — input / field background.
+- Code background: `rgba(0, 0, 0, 0.24)` — code block background (e.g. logs page).
+- Code text: `#d4d4d8` — code block text color.
+- Image label border: `rgba(255, 255, 255, 0.14)` — border for image status labels.
+- Image label background: `rgba(0, 0, 0, 0.52)` — background for image status labels.
+- Image label text: `#ffffff`
+- Lightbox image background: `#050507` — background behind the image inside the lightbox.
+- Lightbox image border: `rgba(255, 255, 255, 0.16)` — border of the image container in the lightbox.
 
 Dark mode exists for operator comfort. It should preserve the light-mode hierarchy and information density; do not turn it into a terminal, cyber, or high-glow style.
 
@@ -71,6 +105,11 @@ For review pages, the main surface should stay readable as one work area: header
 ## 4. Typography
 
 - Use the app's existing sans stack. Do not add a new web font for the routed shell.
+- Demo pages use an explicit font stack defined via CSS variables:
+  - `--demo-font-cjk: "HarmonyOS Sans SC"` — CJK glyphs (优先)
+  - `--demo-font-geist: "geistSans"` — Latin / UI letters
+  - `--demo-font-sans: var(--demo-font-geist), var(--demo-font-cjk), system-ui, sans-serif` — final sans stack
+  - `--demo-font-mono: var(--font-demo-maple-mono), "Cascadia Code", ui-monospace, monospace` — monospace stack for code/logs
 - Page titles: 18-24px, 560-620 weight. Avoid oversized hero typography inside tools.
 - Panel and row titles: 12-14px, 540-600 weight.
 - Metadata and helper text: 10-12px, normal or medium weight.
