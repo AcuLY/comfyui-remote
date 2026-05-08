@@ -831,6 +831,7 @@ function SortablePresetCard({
       name: string;
       slug: string;
       notes?: string | null;
+      civitaiLinks?: string[] | null;
       isActive?: boolean;
     }, variantDrafts: VariantDraft[]) => void;
     onCancel: () => void;

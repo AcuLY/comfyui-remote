@@ -52,6 +52,7 @@ export function PresetEditClient({
       name: string;
       slug: string;
       notes?: string | null;
+      civitaiLinks?: string[] | null;
       isActive?: boolean;
     },
     variantDrafts: VariantDraft[],

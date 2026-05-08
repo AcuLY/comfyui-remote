@@ -38,6 +38,7 @@ export type PresetItem = {
   isActive: boolean;
   sortOrder: number;
   notes: string | null;
+  civitaiLinks: string[];
   folderId: string | null;
   variantCount: number;
 };
@@ -82,6 +83,12 @@ export type PresetFull = PresetItem & {
   variants: PresetVariantItem[];
   changeHistory: Record<PresetChangeDimension, PresetHistoryEntry<PresetChangeDimension>[]>;
 };
+
+function normalizeCivitaiLinks(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0)
+    : [];
+}
 
 export async function getPresetCategoriesWithPresets(): Promise<PresetCategoryFull[]> {
   const categories = await prisma.presetCategory.findMany({
@@ -176,6 +183,7 @@ export async function getPresetCategoriesWithPresets(): Promise<PresetCategoryFu
       isActive: p.isActive,
       sortOrder: p.sortOrder,
       notes: p.notes,
+      civitaiLinks: normalizeCivitaiLinks(p.civitaiLinks),
       folderId: p.folderId,
       variantCount: p._count.variants,
       changeHistory: groupPresetHistory(p.changeLogs),

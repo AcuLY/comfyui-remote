@@ -18,6 +18,7 @@ export type PresetInput = {
   name: string;
   slug: string;
   notes?: string | null;
+  civitaiLinks?: string[] | null;
   isActive?: boolean;
   sortOrder?: number;
 };
@@ -45,6 +46,45 @@ export type ResolvedVariantContent = {
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
+
+function normalizeCivitaiLinks(value: unknown) {
+  if (value == null) return null;
+  if (!Array.isArray(value)) {
+    throw new Error("civitaiLinks must be an array");
+  }
+
+  const links = [
+    ...new Set(
+      value
+        .filter((entry): entry is string => typeof entry === "string")
+        .map((entry) => entry.trim())
+        .filter(Boolean),
+    ),
+  ];
+
+  for (const link of links) {
+    let parsed: URL;
+    try {
+      parsed = new URL(link);
+    } catch {
+      throw new Error(`Invalid Civitai URL: ${link}`);
+    }
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      throw new Error(`Invalid Civitai URL protocol: ${link}`);
+    }
+  }
+
+  return links.length > 0 ? links : null;
+}
+
+function presetData(input: PresetInput | Partial<PresetInput>) {
+  const { civitaiLinks, ...rest } = input;
+  const data: Record<string, unknown> = { ...rest };
+  if (civitaiLinks !== undefined) {
+    data.civitaiLinks = normalizeCivitaiLinks(civitaiLinks) ?? Prisma.DbNull;
+  }
+  return data;
+}
 
 function presetVariantRosterSnapshot(variant: {
   name: string;
@@ -233,10 +273,10 @@ export async function createPreset(input: PresetInput) {
     await prisma.presetVariant.deleteMany({ where: { presetId: existing.id } });
     preset = await prisma.preset.update({
       where: { id: existing.id },
-      data: { ...input, isActive: true },
+      data: { ...presetData(input), isActive: true },
     });
   } else {
-    preset = await prisma.preset.create({ data: input });
+    preset = await prisma.preset.create({ data: presetData(input) as Prisma.PresetCreateInput });
   }
 
   revalidatePath("/assets/presets");
@@ -324,7 +364,7 @@ export async function upsertPresetVariantBySlug(input: PresetVariantInput) {
 }
 
 export async function updatePreset(id: string, input: Partial<PresetInput>) {
-  const preset = await prisma.preset.update({ where: { id }, data: input });
+  const preset = await prisma.preset.update({ where: { id }, data: presetData(input) });
   if (
     input.name !== undefined ||
     input.slug !== undefined ||

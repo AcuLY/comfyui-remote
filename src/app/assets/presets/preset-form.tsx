@@ -23,6 +23,7 @@ import {
   GripVertical,
   ChevronUp,
   ChevronDown,
+  ExternalLink,
 } from "lucide-react";
 import { LoraBindingEditor } from "@/components/lora-binding-editor";
 import { PresetCascadePicker } from "@/components/preset-cascade-picker";
@@ -332,6 +333,7 @@ export function PresetForm({
     name: string;
     slug: string;
     notes?: string | null;
+    civitaiLinks?: string[] | null;
     isActive?: boolean;
   }, variantDrafts: VariantDraft[]) => void;
   onCancel: () => void;
@@ -348,6 +350,8 @@ export function PresetForm({
   const [name, setName] = useState(preset?.name ?? "");
   const [slug, setSlug] = useState(preset?.slug ?? "");
   const [notes, setNotes] = useState(preset?.notes ?? "");
+  const [civitaiLinks, setCivitaiLinks] = useState<string[]>(preset?.civitaiLinks ?? []);
+  const [newCivitaiLink, setNewCivitaiLink] = useState("");
 
   // Variant state
   const [variants, setVariants] = useState<VariantDraft[]>(() => {
@@ -424,19 +428,60 @@ export function PresetForm({
     setVariants(updated);
   }
 
-  function buildPresetData() {
+  function buildPresetData(nextCivitaiLinks = civitaiLinks) {
     return {
       categoryId,
       folderId,
       name: name.trim(),
       slug: slug.trim(),
       notes: notes.trim() || null,
+      civitaiLinks: nextCivitaiLinks,
       isActive: true,
     };
   }
 
-  function saveDrafts(nextVariants: VariantDraft[] = variants) {
-    onSave(buildPresetData(), nextVariants);
+  function saveDrafts(nextVariants: VariantDraft[] = variants, nextCivitaiLinks = civitaiLinks) {
+    onSave(buildPresetData(nextCivitaiLinks), nextVariants);
+  }
+
+  function normalizeCivitaiLink(value: string) {
+    const normalized = value.trim();
+    if (!normalized) return null;
+
+    let url: URL;
+    try {
+      url = new URL(normalized);
+    } catch {
+      toast.error("请输入完整链接，例如 https://civitai.com/models/...");
+      return null;
+    }
+
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+      toast.error("链接只支持 http 或 https");
+      return null;
+    }
+
+    return url.toString();
+  }
+
+  function addCivitaiLink() {
+    const link = normalizeCivitaiLink(newCivitaiLink);
+    if (!link) return;
+    if (civitaiLinks.includes(link)) {
+      setNewCivitaiLink("");
+      return;
+    }
+
+    const nextLinks = [...civitaiLinks, link];
+    setCivitaiLinks(nextLinks);
+    setNewCivitaiLink("");
+    if (!isPending) saveDrafts(variants, nextLinks);
+  }
+
+  function removeCivitaiLink(link: string) {
+    const nextLinks = civitaiLinks.filter((item) => item !== link);
+    setCivitaiLinks(nextLinks);
+    if (!isPending) saveDrafts(variants, nextLinks);
   }
 
   function updateCurrentVariant(patch: Partial<VariantDraft>, options?: { autoSave?: boolean }) {
@@ -575,6 +620,61 @@ export function PresetForm({
           className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
         />
       </label>
+
+      <div className="space-y-1.5">
+        <span className="text-[10px] text-zinc-500">Civitai 链接</span>
+        {civitaiLinks.length > 0 && (
+          <div className="space-y-1">
+            {civitaiLinks.map((link) => (
+              <div
+                key={link}
+                className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1.5"
+              >
+                <a
+                  href={link}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex min-w-0 flex-1 items-center gap-1.5 text-xs text-sky-300 transition hover:text-sky-200"
+                >
+                  <ExternalLink className="size-3 shrink-0" />
+                  <span className="truncate">{link}</span>
+                </a>
+                <button
+                  type="button"
+                  onClick={() => removeCivitaiLink(link)}
+                  className="shrink-0 rounded p-0.5 text-zinc-600 transition hover:bg-red-500/10 hover:text-red-400"
+                  title="移除链接"
+                >
+                  <X className="size-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="flex gap-1.5">
+          <input
+            type="url"
+            value={newCivitaiLink}
+            onChange={(e) => setNewCivitaiLink(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                addCivitaiLink();
+              }
+            }}
+            placeholder="https://civitai.com/models/..."
+            className="min-w-0 flex-1 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
+          />
+          <button
+            type="button"
+            onClick={addCivitaiLink}
+            disabled={!newCivitaiLink.trim() || isPending}
+            className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-sky-500/20 bg-sky-500/10 px-2.5 py-1.5 text-xs text-sky-300 transition hover:bg-sky-500/20 disabled:opacity-40"
+          >
+            <Plus className="size-3" /> 添加
+          </button>
+        </div>
+      </div>
 
       {/* ── Variant section ── */}
       <div className="border-t border-white/5 pt-3 space-y-1.5">

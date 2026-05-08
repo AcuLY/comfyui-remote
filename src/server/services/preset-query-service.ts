@@ -18,6 +18,12 @@ function normalizeBoolean(value?: string | null) {
   return value === "true" || value === "1";
 }
 
+function normalizeCivitaiLinks(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0)
+    : [];
+}
+
 export function parsePresetQuery(searchParams: URLSearchParams): PresetQueryFilters {
   return {
     name: searchParams.get("name") ?? undefined,
@@ -91,6 +97,7 @@ export async function listPresets(filters: PresetQueryFilters = {}) {
     name: preset.name,
     slug: preset.slug,
     notes: preset.notes,
+    civitaiLinks: normalizeCivitaiLinks(preset.civitaiLinks),
     folderId: preset.folderId,
     sortOrder: preset.sortOrder,
     isActive: preset.isActive,
@@ -144,6 +151,7 @@ export async function getPresetById(presetId: string, includeInactive = false) {
     name: preset.name,
     slug: preset.slug,
     notes: preset.notes,
+    civitaiLinks: normalizeCivitaiLinks(preset.civitaiLinks),
     folderId: preset.folderId,
     sortOrder: preset.sortOrder,
     isActive: preset.isActive,

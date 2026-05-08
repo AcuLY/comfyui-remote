@@ -66,6 +66,7 @@ model Preset {
   isActive        Boolean         @default(true)
   sortOrder       Int             @default(0)
   notes           String?         @db.Text
+  civitaiLinks    Json?           // string[] — external Civitai model/version URLs
   folderId        String?
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
