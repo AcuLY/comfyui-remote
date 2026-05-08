@@ -27,6 +27,12 @@
 | `/design-demos/projects/:projectId/sections/:sectionId` | 小节编辑页的 `运行结果` tab。 | 从 `section.images` 派生的本地 `images` state，按 run 分组。 | `SectionEditorPage` -> run group `ImageThumbMedium` -> `ImagePreviewLarge` | 中图支持勾选、保留/删除状态和快速操作槽位；点击打开大图，并按当前筛选结果上一张/下一张。 |
 | `/design-demos/projects/:projectId/sections/:sectionId/results` | 独立小节结果页，按 run 分组。 | `filterImages(group.images, filter)` | `SectionResultsPage` -> `ResultRunPanel` -> `ImageGrid` -> `ImageThumbMedium` -> `ImagePreviewLarge` | run 面板内的中图结果网格；点击打开大图弹窗。 |
 
+## 临时调节页面
+
+| 路由 | 页面 / 面板 | 图片来源 | 组件路径 | 显示说明 |
+| --- | --- | --- | --- | --- |
+| `/design-demos/image-size-tuner` | 临时图片尺寸调节器。 | 页面内置 SVG 示例图。 | `ImageSizeTunerPage` -> `ImageThumbSmall` / `ImageThumbMedium` -> `ImagePreviewLarge` | 仅用于校准桌面端和移动端小图/中图尺寸；确认数值并写回正式样式后应删除。 |
+
 ## 当前不显示生成图片的 demo 页面
 
 以下已挂路由的 demo 页面当前不渲染生成结果图片：

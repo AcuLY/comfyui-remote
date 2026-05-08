@@ -46,6 +46,7 @@ The design shell also normalizes the old product paths: `/queue/**` is shown as 
 - `/design-demos/settings`
 - `/design-demos/settings/logs`
 - `/design-demos/settings/monitor`
+- `/design-demos/image-size-tuner`
 - `/design-demos/login`
 
 ## Page-Internal Switching
