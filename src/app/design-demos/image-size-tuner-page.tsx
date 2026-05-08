@@ -119,6 +119,8 @@ export function ImageSizeTunerPage() {
   const [previewImage, setPreviewImage] = useState<DemoImage | null>(null);
   const portraitImage = sampleImages[2];
   const landscapeImage = sampleImages[3];
+  const largePreviewImages = [portraitImage, landscapeImage];
+  const activeLargeIndex = previewImage ? largePreviewImages.findIndex((image) => image.id === previewImage.id) : -1;
 
   return (
     <div className={s.page}>
@@ -187,6 +189,8 @@ export function ImageSizeTunerPage() {
           actions={<LargePreviewActions />}
           image={previewImage}
           meta={`${previewImage.width} x ${previewImage.height}px`}
+          onNext={activeLargeIndex >= 0 ? () => setPreviewImage(largePreviewImages[(activeLargeIndex + 1) % largePreviewImages.length]) : undefined}
+          onPrevious={activeLargeIndex >= 0 ? () => setPreviewImage(largePreviewImages[(activeLargeIndex + largePreviewImages.length - 1) % largePreviewImages.length]) : undefined}
           onClose={() => setPreviewImage(null)}
           title={previewImage.label}
         />

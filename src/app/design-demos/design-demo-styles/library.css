@@ -2347,10 +2347,18 @@
     min-height: 0;
   }
 
-  .lightboxActions {
+  .lightboxFooter,
+  .lightboxActions,
+  .lightboxNavigation {
     justify-content: stretch;
   }
 
+  .lightboxFooter {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .lightboxFooter .button,
   .lightboxActions .button {
     flex: 1 1 42%;
   }

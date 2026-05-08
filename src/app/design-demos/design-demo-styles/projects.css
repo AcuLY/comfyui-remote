@@ -1626,11 +1626,17 @@
 }
 
 .lightboxChrome,
+.lightboxFooter,
+.lightboxNavigation,
 .lightboxActions {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
+}
+
+.lightboxChrome,
+.lightboxFooter {
+  justify-content: space-between;
 }
 
 .lightboxChrome div {
@@ -1662,13 +1668,27 @@
   object-fit: contain;
 }
 
+.lightboxFooter {
+  min-width: 0;
+  border-top: 1px solid var(--demo-border);
+  padding-top: 10px;
+}
+
+.lightboxNavigation,
 .lightboxActions {
   flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-end;
   gap: 6px;
 }
 
+.lightboxActions {
+  justify-content: flex-end;
+}
+
+.lightboxNavigation {
+  justify-content: flex-start;
+}
+
+.lightboxFooter .button,
 .lightboxActions .button {
   min-height: 34px;
   border-color: var(--demo-border);

@@ -3,6 +3,7 @@
 /* eslint-disable @next/next/no-img-element -- Local design shell previews use direct API image URLs. */
 
 import Link from "next/link";
+import type { CSSProperties } from "react";
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -258,6 +259,7 @@ export function ImagePreviewFrame({
   const [view, setView] = useState({ scale: 1, x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const frameRef = useRef<HTMLDivElement | null>(null);
+  const imageRef = useRef<HTMLImageElement | null>(null);
   const dragRef = useRef<{
     originX: number;
     originY: number;
@@ -265,6 +267,30 @@ export function ImagePreviewFrame({
     startX: number;
     startY: number;
   } | null>(null);
+
+  const panBounds = useCallback((scale: number) => {
+    const frame = frameRef.current;
+    const imageNode = imageRef.current;
+    if (!frame || !imageNode) return { x: 0, y: 0 };
+    const frameWidth = frame.clientWidth;
+    const frameHeight = frame.clientHeight;
+    const imageWidth = imageNode.offsetWidth;
+    const imageHeight = imageNode.offsetHeight;
+    return {
+      x: Math.max(0, (imageWidth * scale - frameWidth) / 2),
+      y: Math.max(0, (imageHeight * scale - frameHeight) / 2),
+    };
+  }, []);
+
+  const clampView = useCallback((next: { scale: number; x: number; y: number }) => {
+    if (next.scale <= 1) return { scale: 1, x: 0, y: 0 };
+    const bounds = panBounds(next.scale);
+    return {
+      scale: next.scale,
+      x: Math.min(bounds.x, Math.max(-bounds.x, next.x)),
+      y: Math.min(bounds.y, Math.max(-bounds.y, next.y)),
+    };
+  }, [panBounds]);
 
   useEffect(() => {
     const node = frameRef.current;
@@ -275,21 +301,20 @@ export function ImagePreviewFrame({
       const direction = event.deltaY > 0 ? -1 : 1;
       setView((current) => {
         const nextScale = Math.min(5, Math.max(1, Number((current.scale + direction * 0.18).toFixed(2))));
-        if (nextScale === 1) return { scale: 1, x: 0, y: 0 };
-        return { ...current, scale: nextScale };
+        return clampView({ ...current, scale: nextScale });
       });
     }
 
     node.addEventListener("wheel", handleNativeWheel, { passive: false });
     return () => node.removeEventListener("wheel", handleNativeWheel);
-  }, [interactive]);
+  }, [clampView, interactive]);
 
   function resetView() {
     setView({ scale: 1, x: 0, y: 0 });
   }
 
   function handlePointerDown(event: React.PointerEvent<HTMLDivElement>) {
-    if (!interactive || event.button !== 0) return;
+    if (!interactive || view.scale <= 1 || event.button !== 0) return;
     event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
     setIsDragging(true);
@@ -305,8 +330,8 @@ export function ImagePreviewFrame({
   function handlePointerMove(event: React.PointerEvent<HTMLDivElement>) {
     const drag = dragRef.current;
     if (!interactive || !drag || drag.pointerId !== event.pointerId) return;
-    setView((current) => ({
-      ...current,
+    setView((current) => clampView({
+      scale: current.scale,
       x: drag.originX + event.clientX - drag.startX,
       y: drag.originY + event.clientY - drag.startY,
     }));
@@ -322,6 +347,19 @@ export function ImagePreviewFrame({
     }
   }
 
+  const isLandscapeImage = image.width !== null && image.height !== null
+    ? image.width >= image.height
+    : false;
+  const interactiveImageStyle: CSSProperties | undefined = interactive
+    ? {
+        height: isLandscapeImage ? "auto" : "100%",
+        left: `calc(50% + ${view.x}px)`,
+        top: `calc(50% + ${view.y}px)`,
+        transform: `translate(-50%, -50%) scale(${view.scale})`,
+        width: isLandscapeImage ? "100%" : "auto",
+      }
+    : undefined;
+
   const content = image.full || image.src ? (
     <img
       src={image.full || image.src}
@@ -330,7 +368,8 @@ export function ImagePreviewFrame({
       fetchPriority={priority ? "high" : "auto"}
       loading="eager"
       draggable={false}
-      style={interactive ? { transform: `translate3d(${view.x}px, ${view.y}px, 0) scale(${view.scale})` } : undefined}
+      ref={imageRef}
+      style={interactiveImageStyle}
     />
   ) : (
     <ImageIcon className="size-8" />
@@ -346,7 +385,12 @@ export function ImagePreviewFrame({
 
   return (
     <div
-      className={cx(s.imagePreviewFrame, interactive && s.imagePreviewFrameInteractive, isDragging && s.imagePreviewFrameDragging)}
+      className={cx(
+        s.imagePreviewFrame,
+        interactive && s.imagePreviewFrameInteractive,
+        interactive && view.scale > 1 && s.imagePreviewFrameZoomed,
+        isDragging && s.imagePreviewFrameDragging,
+      )}
       onDoubleClick={interactive ? resetView : undefined}
       onPointerCancel={interactive ? handlePointerUp : undefined}
       onPointerDown={interactive ? handlePointerDown : undefined}
@@ -364,14 +408,25 @@ export function ImagePreviewLarge({
   image,
   meta,
   onClose,
+  onNext,
+  onPrevious,
+  nextDisabled = false,
+  previousDisabled = false,
   title,
 }: {
   actions?: React.ReactNode;
   image: DemoImage;
   meta?: string;
   onClose: () => void;
+  onNext?: () => void;
+  onPrevious?: () => void;
+  nextDisabled?: boolean;
+  previousDisabled?: boolean;
   title?: string;
 }) {
+  const hasNavigation = Boolean(onPrevious || onNext);
+  const hasFooter = hasNavigation || Boolean(actions);
+
   return (
     <div className={s.lightboxOverlay} role="dialog" aria-modal="true" aria-label="图片预览">
       <div className={s.lightboxPanel}>
@@ -387,7 +442,21 @@ export function ImagePreviewLarge({
         <div className={s.lightboxImage}>
           <ImagePreviewFrame image={image} interactive key={image.id} priority />
         </div>
-        {actions ? <div className={s.lightboxActions}>{actions}</div> : null}
+        {hasFooter ? (
+          <div className={s.lightboxFooter}>
+            {hasNavigation ? (
+              <div className={s.lightboxNavigation}>
+                <Button tone="subtle" icon={ArrowLeft} onClick={onPrevious} disabled={!onPrevious || previousDisabled}>
+                  上一张
+                </Button>
+                <Button tone="subtle" icon={ArrowRight} onClick={onNext} disabled={!onNext || nextDisabled}>
+                  下一张
+                </Button>
+              </div>
+            ) : null}
+            {actions ? <div className={s.lightboxActions}>{actions}</div> : null}
+          </div>
+        ) : null}
       </div>
     </div>
   );
@@ -607,6 +676,10 @@ export function ImageGrid({
           image={activeImage}
           meta={`${activeIndex! + 1} / ${images.length}`}
           onClose={() => setActiveIndex(null)}
+          onNext={() => setActiveIndex((current) => (current === null ? 0 : Math.min(current + 1, images.length - 1)))}
+          onPrevious={() => setActiveIndex((current) => (current === null ? 0 : Math.max(current - 1, 0)))}
+          nextDisabled={activeIndex === images.length - 1}
+          previousDisabled={activeIndex === 0}
           actions={(
             <>
               <Button icon={Check} feedback={{ title: "图片已加入保留队列", detail: activeImage.label }}>
@@ -620,20 +693,6 @@ export function ImageGrid({
               </Button>
               <Button tone="danger" icon={Trash2} feedback={{ tone: "warning", title: "图片已加入删除队列", detail: activeImage.label }}>
                 删除
-              </Button>
-              <Button
-                tone="subtle"
-                icon={ArrowLeft}
-                onClick={() => setActiveIndex((current) => (current === null ? 0 : Math.max(current - 1, 0)))}
-              >
-                上一张
-              </Button>
-              <Button
-                tone="subtle"
-                icon={ArrowRight}
-                onClick={() => setActiveIndex((current) => (current === null ? 0 : Math.min(current + 1, images.length - 1)))}
-              >
-                下一张
               </Button>
               <Button tone="subtle" icon={Archive} feedback={{ tone: "info", title: "最近操作已撤销" }}>撤销</Button>
             </>
@@ -737,6 +796,8 @@ export function ReviewImageBoard({ images }: { images: DemoImage[] }) {
           image={activeImage}
           meta={`${activeIndex! + 1} / ${images.length} · ${activeImage.status}`}
           onClose={() => setActiveIndex(null)}
+          onNext={() => setActiveIndex((current) => (current === null ? 0 : (current + 1) % images.length))}
+          onPrevious={() => setActiveIndex((current) => (current === null ? 0 : (current + images.length - 1) % images.length))}
           actions={(
             <>
               <Button icon={Check} feedback={{ title: "图片已加入保留队列", detail: activeImage.label }}>
@@ -750,12 +811,6 @@ export function ReviewImageBoard({ images }: { images: DemoImage[] }) {
               </Button>
               <Button tone="danger" icon={Trash2} feedback={{ tone: "warning", title: "图片已加入删除队列", detail: activeImage.label }}>
                 删除
-              </Button>
-              <Button tone="subtle" icon={ArrowLeft} onClick={() => setActiveIndex((current) => (current === null ? 0 : (current + images.length - 1) % images.length))}>
-                上一张
-              </Button>
-              <Button tone="subtle" icon={ArrowRight} onClick={() => setActiveIndex((current) => (current === null ? 0 : (current + 1) % images.length))}>
-                下一张
               </Button>
               <Button tone="subtle" icon={Archive} feedback={{ tone: "info", title: "最近操作已撤销" }}>撤销</Button>
             </>
