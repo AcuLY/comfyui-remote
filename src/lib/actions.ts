@@ -1,5 +1,6 @@
 export * from "./actions/image-review";
 export * from "./actions/project";
+export * from "./actions/project-folder";
 export * from "./actions/run";
 export * from "./actions/preset-category";
 export * from "./actions/preset-variant";

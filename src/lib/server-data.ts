@@ -2,7 +2,7 @@
 export { getQueueRuns, getQueueRunsPage, getRunningRuns, getFailedRuns, getReviewGroup, getReviewGroupIds } from "@/server/repositories/queue-data-repository";
 
 // Project view data
-export { listProjects, getProjectDetail, getProjectResults, getSectionResults, getProjectFormOptions, getProjectEditData } from "@/server/repositories/project-view-repository";
+export { listProjects, listProjectFolders, getProjectDetail, getProjectResults, getSectionResults, getProjectFormOptions, getProjectEditData } from "@/server/repositories/project-view-repository";
 export type { ProjectDetailSection, ProjectDetail, ProjectResultsData, SectionResultsData, ProjectFormCategory, ProjectFormOptions, PresetBinding, ProjectEditData, SectionBlockSummary } from "@/server/repositories/project-view-repository";
 export { listSectionTrashItems as getSectionTrashItems } from "@/server/repositories/trash-repository";
 

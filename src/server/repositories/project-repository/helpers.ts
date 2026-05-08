@@ -12,6 +12,7 @@ export type ProjectCreateInput = {
   title: string;
   checkpointName: string;
   notes: string | null;
+  folderId?: string | null;
 };
 
 export type ProjectSectionUpdateInput = {

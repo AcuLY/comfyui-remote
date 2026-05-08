@@ -11,9 +11,10 @@ import { DEFAULT_CHECKPOINT_NAME } from "@/lib/model-constants";
 
 type Props = {
   categories: ProjectFormCategory[];
+  folderId?: string | null;
 };
 
-export function ProjectForm({ categories }: Props) {
+export function ProjectForm({ categories, folderId = null }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -57,6 +58,7 @@ export function ProjectForm({ categories }: Props) {
         const newProjectId = await createProject({
           title: title.trim(),
           checkpointName: checkpointName.trim(),
+          folderId,
           presetBindings,
           notes: notes.trim() || null,
         });

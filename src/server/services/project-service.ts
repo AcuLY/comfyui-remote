@@ -22,6 +22,7 @@ const log = createLogger({ module: "project-service" });
 type CreateProjectRequestBody = {
   title?: unknown;
   checkpointName?: unknown;
+  folderId?: unknown;
   notes?: unknown;
 };
 
@@ -58,6 +59,7 @@ type UpdateProjectSectionRequestBody = {
 const PROJECT_CREATE_FIELDS = [
   "title",
   "checkpointName",
+  "folderId",
   "notes",
 ] as const;
 
@@ -357,6 +359,7 @@ export async function createProject(body: unknown, actorType: ActorType = ActorT
   const input = {
     title: normalizeRequiredStringField(parsedBody.title, "title"),
     checkpointName: normalizeRequiredStringField(parsedBody.checkpointName, "checkpointName"),
+    folderId: normalizeNullableIdField(parsedBody.folderId, "folderId"),
     notes: normalizeNullableNotesField(parsedBody.notes, "notes"),
   };
 

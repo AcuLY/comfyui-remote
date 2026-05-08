@@ -4,7 +4,12 @@ import { SectionCard } from "@/components/section-card";
 import { getProjectFormOptions } from "@/lib/server-data";
 import { ProjectForm } from "./project-form";
 
-export default async function NewProjectPage() {
+export default async function NewProjectPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ folder?: string }>;
+}) {
+  const { folder } = await searchParams;
   const options = await getProjectFormOptions();
 
   return (
@@ -14,7 +19,7 @@ export default async function NewProjectPage() {
       </Link>
 
       <SectionCard title="创建项目" subtitle="选择各分类的预制，创建后在详情页添加小节。">
-        <ProjectForm categories={options.categories} />
+        <ProjectForm categories={options.categories} folderId={folder ?? null} />
       </SectionCard>
     </div>
   );

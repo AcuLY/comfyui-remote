@@ -9,9 +9,11 @@ import { deleteProject } from "@/lib/actions";
 export function ProjectDeleteButton({
   projectId,
   projectTitle,
+  className,
 }: {
   projectId: string;
   projectTitle: string;
+  className?: string;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -37,7 +39,7 @@ export function ProjectDeleteButton({
       type="button"
       disabled={isPending}
       onClick={handleDelete}
-      className="absolute right-2 top-2 z-10 inline-flex size-8 items-center justify-center rounded-lg border border-rose-500/20 bg-zinc-950/85 text-rose-300 shadow-sm transition hover:bg-rose-500/15 disabled:opacity-50"
+      className={className ?? "absolute right-2 top-2 z-10 inline-flex size-8 items-center justify-center rounded-lg border border-rose-500/20 bg-zinc-950/85 text-rose-300 shadow-sm transition hover:bg-rose-500/15 disabled:opacity-50"}
       title="删除项目"
       aria-label={`删除项目：${projectTitle}`}
     >

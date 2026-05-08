@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { toImageUrl } from "@/lib/image-url";
-import type { ProjectCard, ReviewStatus } from "@/lib/types";
+import type { ProjectCard, ProjectFolderItem, ReviewStatus } from "@/lib/types";
 import {
   batchResolvePresetNames,
   extractPresetNames,
@@ -19,6 +19,7 @@ export async function listProjects(): Promise<ProjectCard[]> {
     select: {
       id: true,
       title: true,
+      folderId: true,
       status: true,
       updatedAt: true,
       presetBindings: true,
@@ -62,6 +63,7 @@ export async function listProjects(): Promise<ProjectCard[]> {
     return {
       id: project.id,
       title: project.title,
+      folderId: project.folderId,
       presetNames,
       status: project.status as ProjectCard["status"],
       updatedAt: formatDate(project.updatedAt),
@@ -77,6 +79,33 @@ export async function listProjects(): Promise<ProjectCard[]> {
       latestImageCount: latestRun?._count.images ?? 0,
     };
   });
+}
+
+export async function listProjectFolders(): Promise<ProjectFolderItem[]> {
+  const folders = await prisma.projectFolder.findMany({
+    orderBy: [{ parentId: "asc" }, { sortOrder: "asc" }, { createdAt: "asc" }],
+    select: {
+      id: true,
+      name: true,
+      parentId: true,
+      sortOrder: true,
+      _count: {
+        select: {
+          projects: true,
+          children: true,
+        },
+      },
+    },
+  });
+
+  return folders.map((folder) => ({
+    id: folder.id,
+    name: folder.name,
+    parentId: folder.parentId,
+    sortOrder: folder.sortOrder,
+    projectCount: folder._count.projects,
+    childCount: folder._count.children,
+  }));
 }
 
 // ---------------------------------------------------------------------------

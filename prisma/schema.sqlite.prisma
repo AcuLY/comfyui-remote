@@ -191,16 +191,31 @@ model Project {
   slug                  String                @unique
   status                String                @default("draft")
   coverImageId          String?
+  folderId              String?
   presetBindings        Json?                 // [{ categoryId, presetId, variantId? }]
   checkpointName        String?
   projectLevelOverrides Json?
   notes                 String?
   createdAt             DateTime              @default(now())
   updatedAt             DateTime              @updatedAt
+  folder                ProjectFolder?        @relation(fields: [folderId], references: [id], onDelete: SetNull)
   sections              ProjectSection[]
   runs                  Run[]
   @@index([status, updatedAt])
   @@index([coverImageId])
+  @@index([folderId])
+}
+
+model ProjectFolder {
+  id          String          @id @default(cuid())
+  parentId    String?
+  name        String
+  sortOrder   Int             @default(0)
+  parent      ProjectFolder?  @relation("ProjectFolderTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children    ProjectFolder[] @relation("ProjectFolderTree")
+  projects    Project[]
+
+  @@index([parentId, sortOrder])
 }
 
 model ProjectSection {

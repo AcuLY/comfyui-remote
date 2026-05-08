@@ -81,6 +81,7 @@ export type ReviewGroup = {
 export type ProjectCard = {
   id: string;
   title: string;
+  folderId: string | null;
   presetNames: string[];
   status: "draft" | "queued" | "running" | "partial_done" | "done" | "failed";
   updatedAt: string;
@@ -93,6 +94,15 @@ export type ProjectCard = {
   latestRunId?: string | null;
   latestImages?: { id: string; src: string; status: ReviewStatus }[];
   latestImageCount?: number;
+};
+
+export type ProjectFolderItem = {
+  id: string;
+  name: string;
+  parentId: string | null;
+  sortOrder: number;
+  projectCount: number;
+  childCount: number;
 };
 
 export type TrashItem = {
