@@ -228,6 +228,10 @@
   overflow: hidden;
 }
 
+.reviewSurface:has(.imageListMediumActionPanel) {
+  overflow: visible;
+}
+
 .reviewSurfaceTabs {
   display: flex;
   align-items: center;

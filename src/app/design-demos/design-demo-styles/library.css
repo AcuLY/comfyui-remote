@@ -2007,7 +2007,8 @@
   .reviewBulkActions,
   .imageListMediumActionPanel {
     position: sticky;
-    top: 72px;
+    top: 68px;
+    z-index: 6;
     grid-template-columns: 1fr;
     width: 38px;
     gap: 6px;
