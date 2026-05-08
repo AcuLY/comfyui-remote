@@ -1691,13 +1691,35 @@
   color: var(--demo-red);
 }
 
+.imageListSmallFrame {
+  position: relative;
+  max-width: 100%;
+  min-width: 0;
+}
+
 .imageListSmall,
 .imageStrip {
   display: flex;
+  width: 100%;
   max-width: 100%;
   gap: 6px;
   overflow-x: auto;
   padding-bottom: 1px;
+}
+
+.imageListSmallFrame[data-overflow-left="true"] > .imageListSmall {
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 18px, #000 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 18px, #000 100%);
+}
+
+.imageListSmallFrame[data-overflow-right="true"] > .imageListSmall {
+  -webkit-mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 18px), transparent 100%);
+  mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 18px), transparent 100%);
+}
+
+.imageListSmallFrame[data-overflow-left="true"][data-overflow-right="true"] > .imageListSmall {
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 18px, #000 calc(100% - 18px), transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 18px, #000 calc(100% - 18px), transparent 100%);
 }
 
 .imageThumbSmall {
@@ -2125,6 +2147,13 @@ button.imagePreviewFrame {
 .imageListDemoHeader span {
   color: var(--demo-muted);
   font-size: 12px;
+}
+
+.imageListDemoNarrow {
+  display: grid;
+  width: min(100%, 356px);
+  min-width: 0;
+  gap: 14px;
 }
 
 .imageTile {

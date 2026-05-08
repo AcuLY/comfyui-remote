@@ -1972,8 +1972,9 @@
     min-width: 44px;
   }
 
-  .reviewControlStrip {
-    grid-template-columns: minmax(0, 1fr) 42px;
+  .reviewControlStrip,
+  .imageListMedium {
+    grid-template-columns: 1fr;
     gap: 8px;
     padding: 10px;
   }
@@ -1998,10 +1999,17 @@
     gap: 6px;
   }
 
-  .reviewBulkActions,
-  .imageListMediumActionPanel {
+  .reviewBulkActions {
     grid-template-columns: 1fr;
     width: 42px;
+    gap: 6px;
+  }
+
+  .imageListMediumActionPanel {
+    position: static;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
     gap: 6px;
   }
 
@@ -2013,14 +2021,22 @@
     white-space: nowrap;
   }
 
-  .reviewBulkActions .button,
-  .imageListMediumActionPanel .button {
+  .reviewBulkActions .button {
     width: 42px;
     height: 38px;
     min-height: 38px;
     padding: 0;
     gap: 0;
     font-size: 0;
+  }
+
+  .imageListMediumActionPanel .button {
+    width: 100%;
+    height: 38px;
+    min-height: 38px;
+    padding: 0 8px;
+    gap: 4px;
+    font-size: 11px;
   }
 
   .reviewBulkActions .button svg,

@@ -163,6 +163,53 @@ export function ImageListComponentsPage({ data }: { data: DemoData }) {
         </ImageListMedium>
       </section>
 
+      <section className={s.imageListDemoSurface}>
+        <div className={s.imageListDemoHeader}>
+          <strong>窄屏容器模拟</strong>
+          <span>检查小图边缘渐隐和中图单列适配</span>
+        </div>
+        <div className={s.imageListDemoNarrow}>
+          <ImageListSmall images={images} limit={10} />
+          <ImageListMedium
+            maxHeight={318}
+            summary={<strong>{selectedCount > 0 ? `已选 ${selectedCount} 张` : "未选择图片"}</strong>}
+            selectPanel={(
+              <>
+                <Button icon={CheckSquare} onClick={() => setSelectedIds(new Set(images.map((image) => image.id)))}>
+                  全选
+                </Button>
+                <Button icon={Square} onClick={() => setSelectedIds(new Set(images.filter((image) => image.status === "pending").map((image) => image.id)))}>
+                  待审
+                </Button>
+                <Button tone="subtle" icon={X} onClick={() => setSelectedIds(new Set())} disabled={selectedCount === 0}>
+                  清空
+                </Button>
+              </>
+            )}
+            actionPanel={(
+              <>
+                <Button icon={Check} disabled={selectedCount === 0}>保留</Button>
+                <Button tone="pink" icon={Star} disabled={selectedCount === 0}>精选</Button>
+                <Button tone="danger" icon={Trash2} disabled={selectedCount === 0}>删除</Button>
+              </>
+            )}
+          >
+            {images.slice(0, 8).map((image, index) => (
+              <ImageThumbMedium
+                actionSlot={<ThumbActionSlot />}
+                image={image}
+                key={`${image.id}-narrow-${index}`}
+                onOpen={() => setPreviewIndex(index)}
+                onSelect={() => toggleImage(image.id)}
+                selectable
+                selected={selectedIds.has(image.id)}
+                showStatus={image.status !== "pending"}
+              />
+            ))}
+          </ImageListMedium>
+        </div>
+      </section>
+
       {previewImage ? (
         <ImagePreviewLarge
           actions={(
