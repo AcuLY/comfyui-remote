@@ -1414,6 +1414,7 @@
   border-color: var(--demo-glass-accent-border);
   background: var(--demo-glass-hover);
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
   outline: none;
 }
 
@@ -1548,6 +1549,7 @@
   border-color: var(--demo-glass-accent-border);
   background: color-mix(in srgb, var(--demo-green-soft) 78%, var(--demo-glass-hover));
   color: var(--demo-green);
+  transform: translateY(-1px);
 }
 
 .buttonSubtle {
@@ -1578,6 +1580,7 @@
   border-color: rgba(249, 168, 212, 0.38);
   background: color-mix(in srgb, var(--demo-pink-soft) 82%, var(--demo-glass-soft));
   color: var(--demo-pink);
+  transform: translateY(-1px);
 }
 
 .buttonDanger {
@@ -1591,6 +1594,7 @@
   border-color: rgba(251, 113, 133, 0.42);
   background: color-mix(in srgb, var(--demo-red-soft) 78%, var(--demo-glass-hover));
   color: var(--demo-red);
+  transform: translateY(-1px);
 }
 
 .iconButton {
@@ -1773,6 +1777,7 @@
 .imageThumbMedium:hover,
 .imageThumbMedium:focus-within {
   border-color: var(--demo-glass-accent-border);
+  transform: translateY(-1px);
 }
 
 .imageThumbMediumSelected {
