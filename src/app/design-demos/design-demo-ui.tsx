@@ -245,7 +245,7 @@ export function ImageThumbMedium({
   );
 }
 
-export function ImagePreviewFrame({
+function ImagePreviewFrame({
   image,
   interactive = false,
   onOpen,

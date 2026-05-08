@@ -1888,9 +1888,16 @@
   }
 
   .imageThumbSelect {
+    opacity: 1;
+  }
+
+  .imageThumbActions {
+    display: none;
+  }
+
+  .imageThumbActions .iconMiniButton {
     width: 44px;
     height: 44px;
-    opacity: 1;
   }
 
   .reviewMarkers {

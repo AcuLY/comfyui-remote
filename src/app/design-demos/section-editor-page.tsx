@@ -366,21 +366,21 @@ function SectionEditorInner({
   const keptCount = images.filter((i) => i.status === "kept").length;
   const pendingCount = images.filter((i) => i.status === "pending").length;
 
-  const filteredImageIds = useMemo(() => {
-    return new Set(
-      images
-        .filter((img) => {
-          if (resultsFilter === "all") return true;
-          if (resultsFilter === "featured") return img.featured;
-          return img.status === resultsFilter;
-        })
-        .map((img) => img.id),
-    );
+  const filteredImages = useMemo(() => {
+    return images.filter((img) => {
+      if (resultsFilter === "all") return true;
+      if (resultsFilter === "featured") return img.featured;
+      return img.status === resultsFilter;
+    });
   }, [images, resultsFilter]);
+  const filteredImageIds = useMemo(() => new Set(filteredImages.map((img) => img.id)), [filteredImages]);
 
   const lightboxImage = lightboxImageId
     ? images.find((i) => i.id === lightboxImageId) ?? null
     : null;
+  const lightboxImageIndex = lightboxImage
+    ? filteredImages.findIndex((image) => image.id === lightboxImage.id)
+    : -1;
 
   const markStatus = (imageId: string, status: DemoImage["status"]) => {
     setImages((prev) => prev.map((img) => (img.id === imageId ? { ...img, status } : img)));
@@ -1076,6 +1076,9 @@ function SectionEditorInner({
             </>
           )}
           image={lightboxImage}
+          meta={lightboxImageIndex >= 0 ? `${lightboxImageIndex + 1} / ${filteredImages.length}` : undefined}
+          onNext={lightboxImageIndex >= 0 ? () => setLightboxImageId(filteredImages[(lightboxImageIndex + 1) % filteredImages.length]?.id ?? null) : undefined}
+          onPrevious={lightboxImageIndex >= 0 ? () => setLightboxImageId(filteredImages[(lightboxImageIndex + filteredImages.length - 1) % filteredImages.length]?.id ?? null) : undefined}
           onClose={() => setLightboxImageId(null)}
           title={`#${lightboxImage.label}`}
         />

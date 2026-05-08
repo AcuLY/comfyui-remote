@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Check, Eye, ImageIcon, Star, Trash2 } from "lucide-react";
 
 import type { DemoImage } from "./design-demo-data";
-import { Button, ImagePreviewFrame, ImagePreviewLarge, ImageThumbMedium, ImageThumbSmall, PageHeader } from "./design-demo-ui";
+import { Button, ImagePreviewLarge, ImageThumbMedium, ImageThumbSmall, PageHeader } from "./design-demo-ui";
 import s from "./design-demo-styles";
 
 function svgImageDataUri(label: string, hue: number, width: number, height: number) {
@@ -119,8 +119,8 @@ export function ImageSizeTunerPage() {
   const [previewImage, setPreviewImage] = useState<DemoImage | null>(null);
   const portraitImage = sampleImages[2];
   const landscapeImage = sampleImages[3];
-  const largePreviewImages = [portraitImage, landscapeImage];
-  const activeLargeIndex = previewImage ? largePreviewImages.findIndex((image) => image.id === previewImage.id) : -1;
+  const previewImages = [sampleImages[1], portraitImage, landscapeImage];
+  const activePreviewIndex = previewImage ? previewImages.findIndex((image) => image.id === previewImage.id) : -1;
 
   return (
     <div className={s.page}>
@@ -170,15 +170,17 @@ export function ImageSizeTunerPage() {
           <article className={s.imageSizeTunerCard} key={image.id}>
             <div className={s.imageSizeTunerCardHeader}>
               <strong>{image.label}</strong>
-              <span>{image.width} x {image.height}px · contain + wheel zoom + drag</span>
+              <span>{image.width} x {image.height}px · 点击中图打开大图</span>
             </div>
-            <div className={s.imageSizeTunerLargePreview}>
-              <ImagePreviewFrame image={image} interactive priority={image.id === portraitImage.id} />
-            </div>
-            <div className={s.toolbar}>
-              <Button tone="subtle" onClick={() => setPreviewImage(image)}>
-                打开放大层
-              </Button>
+            <div className={s.imageSizeTunerMediumPreview}>
+              <ImageThumbMedium
+                actionSlot={<ThumbActionSlot />}
+                image={image}
+                onOpen={() => setPreviewImage(image)}
+                onSelect={() => undefined}
+                selectable
+                tags={image.id === portraitImage.id ? ["竖图"] : ["横图"]}
+              />
             </div>
           </article>
         ))}
@@ -189,8 +191,8 @@ export function ImageSizeTunerPage() {
           actions={<LargePreviewActions />}
           image={previewImage}
           meta={`${previewImage.width} x ${previewImage.height}px`}
-          onNext={activeLargeIndex >= 0 ? () => setPreviewImage(largePreviewImages[(activeLargeIndex + 1) % largePreviewImages.length]) : undefined}
-          onPrevious={activeLargeIndex >= 0 ? () => setPreviewImage(largePreviewImages[(activeLargeIndex + largePreviewImages.length - 1) % largePreviewImages.length]) : undefined}
+          onNext={activePreviewIndex >= 0 ? () => setPreviewImage(previewImages[(activePreviewIndex + 1) % previewImages.length]) : undefined}
+          onPrevious={activePreviewIndex >= 0 ? () => setPreviewImage(previewImages[(activePreviewIndex + previewImages.length - 1) % previewImages.length]) : undefined}
           onClose={() => setPreviewImage(null)}
           title={previewImage.label}
         />
