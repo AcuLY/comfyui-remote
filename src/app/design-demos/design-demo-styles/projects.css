@@ -1659,9 +1659,9 @@
   position: relative;
   min-height: 0;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  border: 1px solid var(--demo-lightbox-image-border);
   border-radius: 7px;
-  background: #050507;
+  background: var(--demo-lightbox-image-bg);
 }
 
 .lightboxImage .imageFill {

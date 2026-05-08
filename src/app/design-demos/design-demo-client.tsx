@@ -9,7 +9,6 @@ import { PresetsPage, PresetCategoryFormPage, PresetEditPage, PresetGroupPage, S
 import { BatchCreatePage } from "./batch-create-page";
 import { RootPage, ProjectsPage, ProjectDetailPage, ProjectFormPage } from "./project-pages";
 import { SectionResultsPage } from "./section-results-page";
-import { ImageSizeTunerPage } from "./image-size-tuner-page";
 import { QueuePage, ReviewPage } from "./runs-page";
 import { SectionEditorPage as SectionEditorPageV2 } from "./section-editor-page";
 import { SettingsPage, LogsPage, MonitorPage, LoginPage, NotFoundPage } from "./system-pages";
@@ -75,8 +74,6 @@ function CurrentPage({ match, data }: { match: Match; data: DemoData }) {
       return <LogsPage data={data} />;
     case "monitor":
       return <MonitorPage data={data} />;
-    case "image-size-tuner":
-      return <ImageSizeTunerPage />;
     case "login":
       return <LoginPage />;
     default:
