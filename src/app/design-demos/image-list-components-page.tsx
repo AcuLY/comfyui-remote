@@ -166,7 +166,7 @@ export function ImageListComponentsPage({ data }: { data: DemoData }) {
       <section className={s.imageListDemoSurface}>
         <div className={s.imageListDemoHeader}>
           <strong>窄屏容器模拟</strong>
-          <span>检查小图边缘渐隐和中图单列适配</span>
+          <span>检查小图边缘渐隐和中图右侧固定操作列</span>
         </div>
         <div className={s.imageListDemoNarrow}>
           <ImageListSmall images={images} limit={10} />
