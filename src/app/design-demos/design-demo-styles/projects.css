@@ -223,6 +223,7 @@
 .projectRailActions button:focus-visible {
   border-color: var(--demo-glass-accent-border);
   color: var(--demo-text);
+  transform: translateY(-1px);
   outline: none;
 }
 
@@ -825,6 +826,7 @@
 
 .sectionCard:hover {
   border-color: var(--demo-glass-accent-border);
+  transform: translateY(-1px);
 }
 
 .sectionCardSelected {
