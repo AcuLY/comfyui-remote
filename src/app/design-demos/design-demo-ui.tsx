@@ -751,45 +751,44 @@ export function ReviewImageBoard({ images }: { images: DemoImage[] }) {
   return (
     <>
       <div className={s.reviewControlStrip}>
-        <div>
-          <strong>{selectedCount > 0 ? `已选 ${selectedCount} 张` : "未选择图片"}</strong>
-          <span>{pendingIds.length} 张待审 · {images.length} 张当前可见</span>
-        </div>
-        <div className={s.reviewActionPanel}>
-          <div className={s.reviewSelectActions}>
-            <Button icon={CheckSquare} onClick={() => setSelectedIds(selectedCount === images.length ? new Set() : new Set(images.map((image) => image.id)))}>
-              {selectedCount === images.length ? "取消全选" : "全选"}
-            </Button>
-            <Button icon={Square} onClick={() => setSelectedIds(new Set(pendingIds))}>只选待审</Button>
-            <Button tone="subtle" icon={X} onClick={() => setSelectedIds(new Set())} disabled={selectedCount === 0}>取消选择</Button>
+        <div className={s.reviewListPane}>
+          <div className={s.reviewListHeader}>
+            <strong>{selectedCount > 0 ? `已选 ${selectedCount} 张` : "未选择图片"}</strong>
+            <div className={s.reviewSelectActions}>
+              <Button icon={CheckSquare} onClick={() => setSelectedIds(selectedCount === images.length ? new Set() : new Set(images.map((image) => image.id)))}>
+                {selectedCount === images.length ? "取消全选" : "全选"}
+              </Button>
+              <Button icon={Square} onClick={() => setSelectedIds(new Set(pendingIds))}>只选待审</Button>
+              <Button tone="subtle" icon={X} onClick={() => setSelectedIds(new Set())} disabled={selectedCount === 0}>取消选择</Button>
+            </div>
           </div>
-          <div className={s.reviewBulkActions}>
-            <Button tone="primary" icon={Check} className={s.reviewActionKeep} disabled={selectedCount === 0} feedback={{ title: "已加入保留队列", detail: `${selectedCount} 张图片` }}>保留</Button>
-            <Button tone="pink" icon={Star} className={s.reviewActionFeatured} disabled={selectedCount === 0} feedback={{ title: "已加入 p站 标记队列", detail: `${selectedCount} 张图片` }}>p站</Button>
-            <Button tone="pink" icon={Eye} className={s.reviewActionFeatured} disabled={selectedCount === 0} feedback={{ title: "已加入预览标记队列", detail: `${selectedCount} 张图片` }}>预览</Button>
-            <Button tone="subtle" icon={ImageIcon} className={s.reviewActionCover} disabled={selectedCount !== 1} feedback={{ title: "已设为封面", detail: "1 张图片" }}>封面</Button>
-            <Button tone="danger" icon={Trash2} className={s.reviewActionDelete} disabled={selectedCount === 0} feedback={{ tone: "warning", title: "已加入删除队列", detail: `${selectedCount} 张图片` }}>删除</Button>
-            <Button tone="subtle" icon={Archive} className={s.reviewActionUndo} feedback={{ tone: "info", title: "最近操作已撤销" }}>撤销最近操作</Button>
-          </div>
-        </div>
-      </div>
 
-      <div className={s.reviewImageGrid}>
-        {images.map((image, index) => {
-          const selected = selectedIds.has(image.id);
-          const hasStatusOverlay = image.status === "kept" || image.status === "trashed";
-          return (
-            <ImageThumbMedium
-              image={image}
-              key={`${image.id}-${index}`}
-              onOpen={() => setActiveIndex(index)}
-              onSelect={() => toggleImage(image.id)}
-              selectable
-              selected={selected}
-              showStatus={hasStatusOverlay}
-            />
-          );
-        })}
+          <div className={s.reviewImageGrid}>
+            {images.map((image, index) => {
+              const selected = selectedIds.has(image.id);
+              const hasStatusOverlay = image.status === "kept" || image.status === "trashed";
+              return (
+                <ImageThumbMedium
+                  image={image}
+                  key={`${image.id}-${index}`}
+                  onOpen={() => setActiveIndex(index)}
+                  onSelect={() => toggleImage(image.id)}
+                  selectable
+                  selected={selected}
+                  showStatus={hasStatusOverlay}
+                />
+              );
+            })}
+          </div>
+        </div>
+        <div className={s.reviewBulkActions}>
+          <Button tone="primary" icon={Check} className={s.reviewActionKeep} disabled={selectedCount === 0} feedback={{ title: "已加入保留队列", detail: `${selectedCount} 张图片` }}>保留</Button>
+          <Button tone="pink" icon={Star} className={s.reviewActionFeatured} disabled={selectedCount === 0} feedback={{ title: "已加入 p站 标记队列", detail: `${selectedCount} 张图片` }}>p站</Button>
+          <Button tone="pink" icon={Eye} className={s.reviewActionFeatured} disabled={selectedCount === 0} feedback={{ title: "已加入预览标记队列", detail: `${selectedCount} 张图片` }}>预览</Button>
+          <Button tone="subtle" icon={ImageIcon} className={s.reviewActionCover} disabled={selectedCount !== 1} feedback={{ title: "已设为封面", detail: "1 张图片" }}>封面</Button>
+          <Button tone="danger" icon={Trash2} className={s.reviewActionDelete} disabled={selectedCount === 0} feedback={{ tone: "warning", title: "已加入删除队列", detail: `${selectedCount} 张图片` }}>删除</Button>
+          <Button tone="subtle" icon={Archive} className={s.reviewActionUndo} feedback={{ tone: "info", title: "最近操作已撤销" }}>撤销最近操作</Button>
+        </div>
       </div>
 
       {activeImage && portalTarget ? createPortal(

@@ -675,33 +675,42 @@
 
 .reviewControlStrip {
   display: grid;
-  grid-template-columns: minmax(118px, 150px) minmax(0, 1fr);
-  align-items: stretch;
-  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) 154px;
+  align-items: start;
+  gap: 14px;
   border-top: 0;
-  border-bottom: 1px solid var(--demo-border);
-  padding: 12px 14px;
+  border-bottom: 0;
+  padding: 14px;
 }
 
-.reviewActionPanel {
+.reviewListPane {
   display: grid;
   min-width: 0;
-  gap: 8px;
+  gap: 12px;
 }
 
-.reviewSelectActions,
-.reviewBulkActions {
+.reviewListHeader {
   display: grid;
+  grid-template-columns: minmax(86px, auto) minmax(0, 1fr);
+  align-items: center;
   min-width: 0;
-  gap: 8px;
+  gap: 10px;
 }
 
 .reviewSelectActions {
+  display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  min-width: 0;
+  gap: 8px;
 }
 
 .reviewBulkActions {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  position: sticky;
+  top: 14px;
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+  align-self: start;
 }
 
 .reviewSelectActions .button,
@@ -711,6 +720,10 @@
   padding: 6px 8px;
   border-radius: 8px;
   white-space: nowrap;
+}
+
+.reviewListPane > .reviewImageGrid {
+  padding: 0;
 }
 
 .reviewMetaSurface {
