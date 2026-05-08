@@ -266,6 +266,7 @@
   border-color: var(--demo-glass-accent-border);
   background: color-mix(in srgb, var(--demo-green-soft) 84%, var(--demo-glass-soft));
   color: var(--demo-green);
+  transform: translateY(-1px);
 }
 
 .reviewActionFeatured:hover,
@@ -273,6 +274,7 @@
   border-color: rgba(249, 168, 212, 0.42);
   background: color-mix(in srgb, var(--demo-pink-soft) 86%, var(--demo-glass-soft));
   color: var(--demo-pink);
+  transform: translateY(-1px);
 }
 
 .reviewActionCover {
@@ -286,6 +288,7 @@
   border-color: rgba(147, 197, 253, 0.46);
   background: color-mix(in srgb, var(--demo-sky-soft) 84%, var(--demo-glass-soft));
   color: var(--demo-sky);
+  transform: translateY(-1px);
 }
 
 .reviewActionDelete:hover,
@@ -293,6 +296,7 @@
   border-color: rgba(251, 113, 133, 0.42);
   background: color-mix(in srgb, var(--demo-red-soft) 82%, var(--demo-glass-soft));
   color: var(--demo-red);
+  transform: translateY(-1px);
 }
 
 .reviewActionUndo {
@@ -306,6 +310,7 @@
   border-color: var(--demo-border-strong);
   background: var(--demo-control-hover);
   color: var(--demo-text);
+  transform: translateY(-1px);
 }
 
 .queueSurfaceHeader {
@@ -664,6 +669,7 @@
   border-color: var(--demo-glass-accent-border);
   background: var(--demo-selected);
   color: var(--demo-green);
+  transform: translateY(-1px);
   outline: none;
 }
 
