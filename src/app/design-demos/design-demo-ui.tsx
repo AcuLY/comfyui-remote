@@ -236,10 +236,11 @@ export function ImageThumbMedium({
           <ImageIcon className="size-6" />
         )}
       </button>
-      <div className={s.imageThumbOverlay}>
-        <span className={s.imageThumbLabel}>{image.label}</span>
-        {showStatus ? <StatusBadge status={image.status} label={imageReviewLabel(image.status)} /> : null}
-      </div>
+      {showStatus ? (
+        <div className={s.imageThumbOverlay}>
+          <StatusBadge status={image.status} label={imageReviewLabel(image.status)} />
+        </div>
+      ) : null}
       {actionSlot ? <div className={s.imageThumbActions}>{actionSlot}</div> : null}
     </article>
   );

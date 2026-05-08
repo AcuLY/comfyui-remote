@@ -24,7 +24,6 @@
 | 勾选按钮 | `selectable`、`selected`、`onSelect` | 左上角 `imageThumbSelect` | `selectable` 为 true 时显示。桌面端 hover/focus 才出现；移动端常驻。`selected` 时显示勾选图标和选中边框。 |
 | 审核状态 tag | `showStatus` + `image.status` | 底部叠层右侧 `StatusBadge` | `pending` 显示“待审”，`kept` 显示“保留”，`trashed` 显示“删除”。各页面可通过 `showStatus` 控制是否显示。 |
 | 图片语义 tag | `tags` 或默认 `imageTagLabels(image)` | 右上角 `imageThumbTags` | 默认根据 `featured`/`featured2`/`cover` 显示“p站”“预览”“封面”；页面也可以传空数组隐藏。 |
-| 图片标题 | `image.label` | 底部叠层左侧 `imageThumbLabel` | 单行省略，用于标识当前图片或示例名。 |
 | 快速操作槽 | `actionSlot` | 中下部 `imageThumbActions` | 可放“保留”“删除”“精选”等小按钮。桌面端 hover/focus 出现；移动端隐藏。 |
 | 状态样式 | `selected`、hover/focus | 卡片边框和阴影 | 选中态使用绿色描边；hover/focus 提升边框强调。 |
 
