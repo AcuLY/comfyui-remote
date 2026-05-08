@@ -2198,6 +2198,7 @@ button.imagePreviewFrame {
 .imageTile:hover,
 .imageTile:focus-visible {
   border-color: var(--demo-glass-accent-border);
+  transform: translateY(-1px);
   outline: none;
 }
 
