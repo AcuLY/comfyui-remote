@@ -20,6 +20,7 @@ export type PresetBinding = { categoryId: string; presetId: string; variantId?: 
 export type CreateProjectInput = {
   title: string;
   checkpointName: string;
+  folderId?: string | null;
   presetBindings: PresetBinding[];
   notes: string | null;
 };
@@ -79,6 +80,7 @@ export async function createProject(input: CreateProjectInput): Promise<string> 
       title: input.title,
       slug,
       status: "draft",
+      folderId: input.folderId ?? null,
       checkpointName,
       presetBindings: input.presetBindings.length > 0 ? input.presetBindings : undefined,
       notes: input.notes,
