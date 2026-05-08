@@ -1608,13 +1608,15 @@
   display: grid;
   place-items: center;
   background: rgba(5, 5, 7, 0.82);
-  padding: 22px;
+  padding: 14px;
 }
 
 .lightboxPanel {
   display: grid;
-  width: min(920px, 100%);
-  max-height: min(760px, calc(100vh - 44px));
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  width: calc(100vw - 28px);
+  height: calc(100vh - 28px);
+  max-height: none;
   gap: 10px;
   border: 1px solid var(--demo-border-strong);
   border-radius: var(--demo-radius);
@@ -1649,7 +1651,7 @@
 
 .lightboxImage {
   position: relative;
-  min-height: min(62vh, 540px);
+  min-height: 0;
   overflow: hidden;
   border: 1px solid var(--demo-border);
   border-radius: 7px;

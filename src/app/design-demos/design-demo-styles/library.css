@@ -994,12 +994,12 @@
 
 @media (min-width: 1024px) and (max-width: 1439px) {
   .imageGrid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fill, 160px);
     gap: 14px;
   }
 
   .reviewImageGrid {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fill, 160px);
     gap: 14px;
   }
 }
@@ -1102,12 +1102,12 @@
   }
 
   .imageGrid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fill, 160px);
     gap: 12px;
   }
 
   .reviewImageGrid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fill, 160px);
     gap: 12px;
   }
 
@@ -1609,8 +1609,8 @@
 
   .projectListCard .thumb,
   .projectListCard .imageThumbSmall {
-    min-width: 32px;
-    width: 32px;
+    min-width: 80px;
+    width: 80px;
   }
 
   .projectListCard .projectCardStats,
@@ -1868,16 +1868,16 @@
 
   .queueThumbs span,
   .queueThumbs .imageThumbSmall {
-    width: 42px;
+    width: 80px;
   }
 
   .imageGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fill, 160px);
     gap: 10px;
   }
 
   .reviewImageGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fill, 160px);
     gap: 10px;
   }
 
@@ -2334,15 +2334,17 @@
   }
 
   .lightboxOverlay {
-    padding: 12px;
+    padding: 8px;
   }
 
   .lightboxPanel {
-    max-height: calc(100vh - 24px - env(safe-area-inset-bottom));
+    width: calc(100vw - 16px);
+    height: calc(100vh - 16px - env(safe-area-inset-bottom));
+    max-height: none;
   }
 
   .lightboxImage {
-    min-height: 52vh;
+    min-height: 0;
   }
 
   .lightboxActions {

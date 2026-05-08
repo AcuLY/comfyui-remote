@@ -590,7 +590,7 @@
 .queueThumbs span,
 .queueThumbs .imageThumbSmall {
   display: inline-flex;
-  width: 42px;
+  width: 80px;
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
@@ -1086,7 +1086,7 @@
 
 .reviewImageGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 180px));
+  grid-template-columns: repeat(auto-fill, 160px);
   gap: 14px;
   align-items: start;
   justify-content: start;

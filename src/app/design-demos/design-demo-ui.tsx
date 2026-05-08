@@ -3,7 +3,7 @@
 /* eslint-disable @next/next/no-img-element -- Local design shell previews use direct API image URLs. */
 
 import Link from "next/link";
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   Activity,
@@ -246,20 +246,91 @@ export function ImageThumbMedium({
 
 export function ImagePreviewFrame({
   image,
+  interactive = false,
   onOpen,
   priority = false,
 }: {
   image: DemoImage;
+  interactive?: boolean;
   onOpen?: () => void;
   priority?: boolean;
 }) {
+  const [view, setView] = useState({ scale: 1, x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const frameRef = useRef<HTMLDivElement | null>(null);
+  const dragRef = useRef<{
+    originX: number;
+    originY: number;
+    pointerId: number;
+    startX: number;
+    startY: number;
+  } | null>(null);
+
+  useEffect(() => {
+    const node = frameRef.current;
+    if (!interactive || !node) return;
+
+    function handleNativeWheel(event: WheelEvent) {
+      event.preventDefault();
+      const direction = event.deltaY > 0 ? -1 : 1;
+      setView((current) => {
+        const nextScale = Math.min(5, Math.max(1, Number((current.scale + direction * 0.18).toFixed(2))));
+        if (nextScale === 1) return { scale: 1, x: 0, y: 0 };
+        return { ...current, scale: nextScale };
+      });
+    }
+
+    node.addEventListener("wheel", handleNativeWheel, { passive: false });
+    return () => node.removeEventListener("wheel", handleNativeWheel);
+  }, [interactive]);
+
+  function resetView() {
+    setView({ scale: 1, x: 0, y: 0 });
+  }
+
+  function handlePointerDown(event: React.PointerEvent<HTMLDivElement>) {
+    if (!interactive || event.button !== 0) return;
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setIsDragging(true);
+    dragRef.current = {
+      originX: view.x,
+      originY: view.y,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+    };
+  }
+
+  function handlePointerMove(event: React.PointerEvent<HTMLDivElement>) {
+    const drag = dragRef.current;
+    if (!interactive || !drag || drag.pointerId !== event.pointerId) return;
+    setView((current) => ({
+      ...current,
+      x: drag.originX + event.clientX - drag.startX,
+      y: drag.originY + event.clientY - drag.startY,
+    }));
+  }
+
+  function handlePointerUp(event: React.PointerEvent<HTMLDivElement>) {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    dragRef.current = null;
+    setIsDragging(false);
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  }
+
   const content = image.full || image.src ? (
     <img
       src={image.full || image.src}
       alt=""
-      className={s.imageFill}
+      className={cx(s.imageFill, interactive && s.imagePreviewInteractiveImage)}
       fetchPriority={priority ? "high" : "auto"}
       loading="eager"
+      draggable={false}
+      style={interactive ? { transform: `translate3d(${view.x}px, ${view.y}px, 0) scale(${view.scale})` } : undefined}
     />
   ) : (
     <ImageIcon className="size-8" />
@@ -273,7 +344,19 @@ export function ImagePreviewFrame({
     );
   }
 
-  return <div className={s.imagePreviewFrame}>{content}</div>;
+  return (
+    <div
+      className={cx(s.imagePreviewFrame, interactive && s.imagePreviewFrameInteractive, isDragging && s.imagePreviewFrameDragging)}
+      onDoubleClick={interactive ? resetView : undefined}
+      onPointerCancel={interactive ? handlePointerUp : undefined}
+      onPointerDown={interactive ? handlePointerDown : undefined}
+      onPointerMove={interactive ? handlePointerMove : undefined}
+      onPointerUp={interactive ? handlePointerUp : undefined}
+      ref={frameRef}
+    >
+      {content}
+    </div>
+  );
 }
 
 export function ImagePreviewLarge({
@@ -302,7 +385,7 @@ export function ImagePreviewLarge({
           </button>
         </div>
         <div className={s.lightboxImage}>
-          <ImagePreviewFrame image={image} priority />
+          <ImagePreviewFrame image={image} interactive key={image.id} priority />
         </div>
         {actions ? <div className={s.lightboxActions}>{actions}</div> : null}
       </div>
