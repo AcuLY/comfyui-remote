@@ -205,40 +205,44 @@ export async function updateProjectTemplate(
     });
 
     if (sections) {
+      const incomingSectionIds = sections
+        .map((section) => section.id)
+        .filter((sectionId) => sectionId && !sectionId.startsWith("new-"));
+
       await tx.projectTemplateSection.deleteMany({
-        where: { projectTemplateId: id },
+        where: {
+          projectTemplateId: id,
+          ...(incomingSectionIds.length > 0
+            ? { id: { notIn: incomingSectionIds } }
+            : {}),
+        },
       });
-      if (sections.length > 0) {
-        await tx.projectTemplateSection.createMany({
-          data: sections.map((s, index) => ({
+
+      for (const [index, section] of sections.entries()) {
+        const data = {
+          ...buildTemplateSectionUpdateData({
+            ...section,
+            sortOrder: section.sortOrder ?? index,
+          }),
+          sortOrder: section.sortOrder ?? index,
+        };
+
+        if (section.id && !section.id.startsWith("new-")) {
+          const updated = await tx.projectTemplateSection.updateMany({
+            where: {
+              id: section.id,
+              projectTemplateId: id,
+            },
+            data,
+          });
+          if (updated.count > 0) continue;
+        }
+
+        await tx.projectTemplateSection.create({
+          data: {
             projectTemplateId: id,
-            sortOrder: s.sortOrder ?? index,
-            name: s.name,
-            notes: s.notes,
-            aspectRatio: s.aspectRatio,
-            shortSidePx: s.shortSidePx,
-            batchSize: s.batchSize,
-            seedPolicy1: s.seedPolicy1,
-            seedPolicy2: s.seedPolicy2,
-            ksampler1: s.ksampler1
-              ? (JSON.parse(JSON.stringify(s.ksampler1)) as Prisma.InputJsonValue)
-              : undefined,
-            ksampler2: s.ksampler2
-              ? (JSON.parse(JSON.stringify(s.ksampler2)) as Prisma.InputJsonValue)
-              : undefined,
-            upscaleFactor: s.upscaleFactor,
-            checkpointName: s.checkpointName,
-            loraConfig: s.loraConfig
-              ? (JSON.parse(JSON.stringify(s.loraConfig)) as Prisma.InputJsonValue)
-              : undefined,
-            extraParams: s.extraParams
-              ? (JSON.parse(JSON.stringify(s.extraParams)) as Prisma.InputJsonValue)
-              : undefined,
-            promptBlocks:
-              s.promptBlocks.length > 0
-                ? (JSON.parse(JSON.stringify(s.promptBlocks)) as Prisma.InputJsonValue)
-                : undefined,
-          })),
+            ...data,
+          },
         });
       }
     }
