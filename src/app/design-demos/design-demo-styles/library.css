@@ -1329,6 +1329,14 @@
     min-height: 44px;
   }
 
+  .desktopOnlyText {
+    display: none;
+  }
+
+  .mobileOnlyText {
+    display: inline;
+  }
+
   .iconButton,
   .iconMiniButton {
     width: 44px;
@@ -2012,6 +2020,21 @@
     grid-template-columns: 1fr;
     width: 38px;
     gap: 6px;
+  }
+
+  .reviewControlStrip .imageListMediumActionPanel {
+    position: fixed;
+    top: 76px;
+    right: calc(10px + env(safe-area-inset-right));
+    z-index: 36;
+    max-height: calc(100dvh - 168px - env(safe-area-inset-bottom));
+    overflow-y: auto;
+    border: 1px solid var(--demo-border);
+    border-radius: 10px;
+    background: var(--demo-glass-bg);
+    padding: 4px;
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    backdrop-filter: blur(14px) saturate(140%);
   }
 
   .reviewControlStrip .button,

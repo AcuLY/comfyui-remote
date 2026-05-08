@@ -847,6 +847,8 @@ export function ReviewImageBoard({ images }: { images: DemoImage[] }) {
   const visibleIds = new Set(images.map((image) => image.id));
   const selectedVisibleIds = new Set([...selectedIds].filter((id) => visibleIds.has(id)));
   const selectedCount = selectedVisibleIds.size;
+  const allSelected = images.length > 0 && selectedCount === images.length;
+  const pendingOnlySelected = pendingIds.length > 0 && selectedCount === pendingIds.length && pendingIds.every((id) => selectedVisibleIds.has(id));
   const portalTarget = activeImage && typeof document !== "undefined"
     ? document.querySelector<HTMLElement>(`.${s.shell}`) ?? document.body
     : null;
@@ -888,10 +890,13 @@ export function ReviewImageBoard({ images }: { images: DemoImage[] }) {
         summary={<strong>{selectedCount > 0 ? `已选 ${selectedCount} 张` : "未选择图片"}</strong>}
         selectPanel={(
           <>
-            <Button icon={CheckSquare} onClick={() => setSelectedIds(selectedCount === images.length ? new Set() : new Set(images.map((image) => image.id)))}>
-              {selectedCount === images.length ? "取消全选" : "全选"}
+            <Button icon={CheckSquare} pressed={allSelected} onClick={() => setSelectedIds(allSelected ? new Set() : new Set(images.map((image) => image.id)))}>
+              {allSelected ? "取消全选" : "全选"}
             </Button>
-            <Button icon={Square} onClick={() => setSelectedIds(new Set(pendingIds))}>只选待审</Button>
+            <Button icon={Square} pressed={pendingOnlySelected} onClick={() => setSelectedIds(new Set(pendingIds))}>
+              <span className={s.desktopOnlyText}>只选待审</span>
+              <span className={s.mobileOnlyText}>待审</span>
+            </Button>
             <Button tone="subtle" icon={X} onClick={() => setSelectedIds(new Set())} disabled={selectedCount === 0}>取消选择</Button>
           </>
         )}
