@@ -723,6 +723,7 @@
 }
 
 .reviewListPane > .reviewImageGrid {
+  margin-top: 10px;
   padding: 0;
 }
 

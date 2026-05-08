@@ -1973,13 +1973,31 @@
   }
 
   .reviewControlStrip {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) 42px;
+    gap: 8px;
+    padding: 10px;
   }
 
-  .reviewSelectActions,
-  .reviewBulkActions {
+  .reviewListPane {
+    gap: 10px;
+  }
+
+  .reviewListHeader {
+    grid-template-columns: 1fr;
+    align-items: start;
+    gap: 8px;
+  }
+
+  .reviewSelectActions {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     width: 100%;
+    gap: 6px;
+  }
+
+  .reviewBulkActions {
+    grid-template-columns: 1fr;
+    width: 42px;
+    gap: 6px;
   }
 
   .reviewControlStrip .button {
@@ -1988,6 +2006,20 @@
     border-radius: 8px;
     font-size: 11px;
     white-space: nowrap;
+  }
+
+  .reviewBulkActions .button {
+    width: 42px;
+    height: 38px;
+    min-height: 38px;
+    padding: 0;
+    gap: 0;
+    font-size: 0;
+  }
+
+  .reviewBulkActions .button svg {
+    width: 17px;
+    height: 17px;
   }
 
   .templateListItem,
