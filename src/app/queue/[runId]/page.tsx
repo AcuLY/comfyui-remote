@@ -24,8 +24,12 @@ function ExecutionMetaDisplay({ meta }: { meta: Record<string, unknown> }) {
   const upscaleFactor = meta.upscaleFactor as number | null | undefined;
   const checkpointName = meta.checkpointName as string | null | undefined;
   const workflowId = meta.workflowId as string | null | undefined;
-  const lora1 = meta.lora1 as Array<{ path: string; weight: number; enabled: boolean }> | null | undefined;
-  const lora2 = meta.lora2 as Array<{ path: string; weight: number; enabled: boolean }> | null | undefined;
+  const lora1Meta = meta.lora1 as Array<{ path: string; weight: number; enabled: boolean }> | null | undefined;
+  const lora2Meta = meta.lora2 as Array<{ path: string; weight: number; enabled: boolean }> | null | undefined;
+  const activeLoras = (entries: typeof lora1Meta) =>
+    (entries ?? []).filter((entry) => entry.enabled && entry.path);
+  const lora1 = activeLoras(lora1Meta);
+  const lora2 = activeLoras(lora2Meta);
   const positivePrompt = meta.positivePrompt as string | null | undefined;
   const negativePrompt = meta.negativePrompt as string | null | undefined;
 
@@ -114,7 +118,7 @@ function ExecutionMetaDisplay({ meta }: { meta: Record<string, unknown> }) {
               <span className="text-zinc-600">LoRA1:</span>
               {lora1.map((l, i) => (
                 <span key={i} className="rounded border border-white/5 bg-white/[0.02] px-1.5 py-0.5">
-                  {loraName(l.path)} {l.weight}{l.enabled ? "" : " (disabled)"}
+                  {loraName(l.path)} {l.weight}
                 </span>
               ))}
             </div>
@@ -124,7 +128,7 @@ function ExecutionMetaDisplay({ meta }: { meta: Record<string, unknown> }) {
               <span className="text-zinc-600">LoRA2:</span>
               {lora2.map((l, i) => (
                 <span key={i} className="rounded border border-white/5 bg-white/[0.02] px-1.5 py-0.5">
-                  {loraName(l.path)} {l.weight}{l.enabled ? "" : " (disabled)"}
+                  {loraName(l.path)} {l.weight}
                 </span>
               ))}
             </div>

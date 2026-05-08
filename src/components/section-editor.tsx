@@ -12,7 +12,7 @@ import {
   flattenGroup,
   switchBindingVariant,
 } from "@/lib/actions";
-import type { LoraEntry } from "@/lib/lora-types";
+import { isSuppressedLoraEntry, type LoraEntry } from "@/lib/lora-types";
 import type { PresetLibraryV2 } from "@/components/prompt-block-editor";
 
 /** 2-partition LoRA config (lora1 + lora2 only) */
@@ -155,6 +155,7 @@ export function SectionEditor({
       }
     }
     for (const e of [...lora1, ...lora2]) {
+      if (isSuppressedLoraEntry(e)) continue;
       if (e.bindingId) {
         const existing = map.get(e.bindingId);
         if (existing) {

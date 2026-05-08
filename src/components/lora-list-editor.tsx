@@ -18,7 +18,12 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { LoraCascadePicker } from "@/components/lora-cascade-picker";
-import type { LoraEntry, LoraSource } from "@/lib/lora-types";
+import {
+  isSuppressedLoraEntry,
+  suppressPresetLoraEntry,
+  type LoraEntry,
+  type LoraSource,
+} from "@/lib/lora-types";
 
 const SOURCE_LABELS: Record<LoraSource, { label: string; color: string }> = {
   preset: { label: "预制", color: "bg-sky-500/20 text-sky-300 border-sky-500/30" },
@@ -307,7 +312,11 @@ export function LoraListEditor({
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   );
 
-  const ids = useMemo(() => entries.map((e) => e.id), [entries]);
+  const displayEntries = useMemo(
+    () => entries.filter((entry) => !isSuppressedLoraEntry(entry)),
+    [entries],
+  );
+  const ids = useMemo(() => displayEntries.map((e) => e.id), [displayEntries]);
 
   function handleAdd() {
     const newEntry: LoraEntry = {
@@ -328,16 +337,25 @@ export function LoraListEditor({
         if (!confirm(`此 LoRA 属于预制「${binding.presetName}」的绑定。\n删除将同时移除该绑定的所有 ${binding.blockCount} 个提示词块和 ${binding.loraCount} 个 LoRA。\n确认删除？`)) {
           return;
         }
-        // Remove all LoRAs with this bindingId
-        onChange(entries.filter((e) => e.bindingId !== entry.bindingId));
+        // Keep tombstones so preset sync does not re-add deleted LoRAs.
+        onChange(entries.map((e) => (e.bindingId === entry.bindingId ? suppressPresetLoraEntry(e) : e)));
         return;
       }
+    }
+    if (entry && (entry.source === "preset" || entry.bindingId || entry.groupBindingId)) {
+      onChange(entries.map((e) => (e.id === id ? suppressPresetLoraEntry(e) : e)));
+      return;
     }
     onChange(entries.filter((e) => e.id !== id));
   }
 
   function handleStandaloneRemove(id: string) {
     if (!confirm("独立删除此 LoRA？不影响同绑定的其他块和 LoRA。")) return;
+    const entry = entries.find((e) => e.id === id);
+    if (entry && (entry.source === "preset" || entry.bindingId || entry.groupBindingId)) {
+      onChange(entries.map((e) => (e.id === id ? suppressPresetLoraEntry(e) : e)));
+      return;
+    }
     onChange(entries.filter((e) => e.id !== id));
   }
 
@@ -378,26 +396,27 @@ export function LoraListEditor({
       if (!over || active.id === over.id) return;
       const oldIndex = ids.indexOf(active.id as string);
       const newIndex = ids.indexOf(over.id as string);
-      onChange(arrayMove(entries, oldIndex, newIndex));
+      const suppressedEntries = entries.filter(isSuppressedLoraEntry);
+      onChange([...arrayMove(displayEntries, oldIndex, newIndex), ...suppressedEntries]);
     },
-    [ids, entries, onChange],
+    [ids, displayEntries, entries, onChange],
   );
 
-  const enabledCount = entries.filter((e) => e.enabled).length;
+  const enabledCount = displayEntries.filter((e) => e.enabled).length;
 
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2 text-xs text-zinc-400">
         <span>LoRA 列表</span>
-        {entries.length > 0 && (
+        {displayEntries.length > 0 && (
           <span className="rounded bg-sky-500/20 px-1.5 py-0.5 text-[10px] text-sky-300">
-            {enabledCount}/{entries.length}
+            {enabledCount}/{displayEntries.length}
           </span>
         )}
       </div>
 
       <div className="space-y-2 rounded-xl border border-white/5 bg-white/[0.01] p-3">
-        {entries.length === 0 ? (
+        {displayEntries.length === 0 ? (
           <div className="py-3 text-center text-[11px] text-zinc-600">
             暂无 LoRA，从预制库导入或手动添加
           </div>
@@ -405,7 +424,7 @@ export function LoraListEditor({
           <DndContext id={dndId} sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={ids} strategy={verticalListSortingStrategy}>
               <div className="space-y-2">
-                {entries.map((entry) => (
+                {displayEntries.map((entry) => (
                   <SortableLoraRow
                     key={entry.id}
                     entry={entry}

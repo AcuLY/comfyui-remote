@@ -253,6 +253,7 @@ export function extractExecutionMeta(
         if (!Array.isArray(arr)) return null;
         return arr
           .filter((e): e is Record<string, unknown> => !!e && typeof e === "object")
+          .filter((e) => e.enabled === true && e.suppressed !== true && typeof e.path === "string" && e.path.trim() !== "")
           .map((e) => ({ path: e.path, weight: e.weight, enabled: e.enabled }));
       };
       meta.lora1 = summarizeLoras(loraConfig.lora1);

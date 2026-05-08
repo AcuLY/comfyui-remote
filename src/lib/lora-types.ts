@@ -26,6 +26,7 @@ export type LoraEntry = LoraBinding & {
   detachedBindingId?: string; // original preset binding after local customization
   detachedGroupBindingId?: string; // original preset-group binding after local customization
   detachedPresetPath?: string; // original preset LoRA path used to suppress future resync
+  suppressed?: boolean; // hidden tombstone for a deleted preset LoRA
 };
 
 // ---------------------------------------------------------------------------
@@ -185,11 +186,33 @@ export function serializeSectionLoraConfig(config: SectionLoraConfig): SectionLo
     detachedBindingId: e.detachedBindingId,
     detachedGroupBindingId: e.detachedGroupBindingId,
     detachedPresetPath: e.detachedPresetPath,
+    suppressed: e.suppressed === true ? true : undefined,
   });
 
   return {
     lora1: config.lora1.map(serializeEntry),
     lora2: config.lora2.map(serializeEntry),
+  };
+}
+
+export function isSuppressedLoraEntry(entry: Pick<LoraEntry, "suppressed">): boolean {
+  return entry.suppressed === true;
+}
+
+export function suppressPresetLoraEntry(entry: LoraEntry): LoraEntry {
+  return {
+    ...entry,
+    enabled: false,
+    source: "manual",
+    sourceLabel: undefined,
+    sourceColor: undefined,
+    sourceName: undefined,
+    detachedBindingId: entry.detachedBindingId ?? entry.bindingId,
+    detachedGroupBindingId: entry.detachedGroupBindingId ?? entry.groupBindingId,
+    detachedPresetPath: entry.detachedPresetPath ?? entry.path,
+    bindingId: undefined,
+    groupBindingId: undefined,
+    suppressed: true,
   };
 }
 

@@ -89,17 +89,15 @@ function fillPowerLoraLoader(
 ): void {
   const enabledBindings = bindings.filter((b) => b.enabled);
 
-  // Only clear and replace existing lora_N entries when we have new bindings.
-  // If the list is empty, keep template defaults untouched.
-  if (enabledBindings.length === 0) {
-    return;
-  }
-
   // Remove all existing lora_N entries
   for (const key of Object.keys(inputs)) {
     if (/^lora_\d+$/.test(key)) {
       delete inputs[key];
     }
+  }
+
+  if (enabledBindings.length === 0) {
+    return;
   }
 
   // Fill with new bindings
