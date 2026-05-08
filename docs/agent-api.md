@@ -373,6 +373,40 @@ Template section objects support the same optional runtime defaults as project s
 | `POST` | `/api/preset-library/presets/:presetId/variants/reorder` | reorder variants |
 | `PATCH/DELETE` | `/api/preset-library/variants/:variantId` | update or delete variant |
 
+Preset create/update bodies support preset metadata only. `civitaiLinks` is available on presets, not preset groups. It accepts an array of `http`/`https` URLs; empty strings are ignored, duplicates are removed, and an empty array is stored as no links.
+
+```json
+{
+  "categoryId": "category-id",
+  "folderId": null,
+  "name": "Preset name",
+  "slug": "preset-slug",
+  "notes": "Optional notes",
+  "civitaiLinks": [
+    "https://civitai.com/models/12345/example-model",
+    "https://civitai.com/models/12345?modelVersionId=67890"
+  ],
+  "isActive": true
+}
+```
+
+Preset list/detail responses include the normalized `civitaiLinks` array:
+
+```json
+{
+  "id": "preset-id",
+  "categoryId": "category-id",
+  "name": "Preset name",
+  "slug": "preset-slug",
+  "notes": "Optional notes",
+  "civitaiLinks": ["https://civitai.com/models/12345/example-model"],
+  "folderId": null,
+  "sortOrder": 0,
+  "isActive": true,
+  "variants": []
+}
+```
+
 ## Model Assets
 
 | Method | Path | Purpose |
