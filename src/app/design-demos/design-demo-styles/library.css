@@ -2007,13 +2007,13 @@
   .reviewSelectActions,
   .imageListMediumSelectPanel {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    width: 100%;
+    grid-template-columns: repeat(3, max-content);
+    width: auto;
     gap: 6px;
+    justify-content: start;
   }
 
-  .reviewBulkActions,
-  .imageListMediumActionPanel {
+  .reviewBulkActions {
     position: sticky;
     top: 68px;
     z-index: 6;
@@ -2022,19 +2022,22 @@
     gap: 6px;
   }
 
-  .reviewControlStrip .imageListMediumActionPanel {
-    position: fixed;
+  .imageListMediumActionTrack {
+    width: 38px;
+  }
+
+  .imageListMediumActionPanel {
+    position: sticky;
     top: 76px;
-    right: calc(10px + env(safe-area-inset-right));
-    z-index: 36;
-    max-height: calc(100dvh - 168px - env(safe-area-inset-bottom));
-    overflow-y: auto;
-    border: 1px solid var(--demo-border);
-    border-radius: 10px;
-    background: var(--demo-glass-bg);
-    padding: 4px;
-    -webkit-backdrop-filter: blur(14px) saturate(140%);
-    backdrop-filter: blur(14px) saturate(140%);
+    z-index: 6;
+    grid-template-columns: 1fr;
+    width: 38px;
+    gap: 6px;
+  }
+
+  .imageListMediumSelectPanel .button {
+    gap: 3px;
+    padding-inline: 4px;
   }
 
   .reviewControlStrip .button,

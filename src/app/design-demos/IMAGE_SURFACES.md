@@ -129,13 +129,6 @@
 - 模型和 LoRA 浏览页。
 - 设置、日志、监控、登录、loading 和未匹配页面。
 
-## 保留但未渲染的旧图片代码
-
-`project-pages.tsx` 里仍有一个旧的 `SectionEditorPage` 函数，用于迁移到
-`section-editor-page.tsx` 期间保留参考。它的 `最新结果` aside 使用
-`ImageStrip`，但 `design-demo-client.tsx` 不会选择这个函数，因此不属于当前
-实际渲染的图片显示面。
-
 ## 后续替换原则
 
 - 卡片级上下文预览只使用 `ImageListSmall` / `ImageStrip`。

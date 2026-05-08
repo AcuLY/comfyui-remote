@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
 import type * as React from "react";
-import { Archive, ArrowLeft, ArrowRight, Check, CheckSquare, ChevronDown, ChevronUp, Copy, Download, Edit3, Eye, GripVertical, ImageIcon, ListChecks, Play, Plus, Rows3, Save, Square, Star, Trash2 } from "lucide-react";
+import { Archive, ArrowLeft, Check, CheckSquare, ChevronDown, ChevronUp, Copy, Download, Edit3, Eye, GripVertical, ImageIcon, ListChecks, Play, Plus, Rows3, Save, Square, Star, Trash2 } from "lucide-react";
 
 import type { DemoData, DemoImage, DemoProject, DemoSection } from "./design-demo-data";
 import s from "./design-demo-styles";
-import { Button, ButtonLink, DemoTabs, EmptyPage, Field, ImageGrid, ImageStrip, OperationStateStrip, PageHeader, Panel, SelectLike, StatusBadge, SwitchRow, TextAreaField } from "./design-demo-ui";
+import { Button, ButtonLink, DemoTabs, EmptyPage, Field, ImageGrid, ImageStrip, PageHeader, Panel, SelectLike, StatusBadge, SwitchRow, TextAreaField } from "./design-demo-ui";
 import { compactFileName, cx, demoHref, filterImages, projectPresetSummary, rawSectionId, sectionAnchorId, sectionRunStatus } from "./design-demo-utils";
 import type { ProjectCardView, ResultDemoFilter, SectionNavMode } from "./design-demo-utils";
 import { QueuePage } from "./runs-page";
@@ -583,7 +583,4 @@ function ProjectSectionResultCard({
       <ImageGrid images={visibleImages} />
     </section>
   );
-}
-
-// Kept while the routed sect  );
 }

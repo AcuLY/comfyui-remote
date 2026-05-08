@@ -61,7 +61,7 @@
   min-height: 100vh;
   position: relative;
   isolation: isolate;
-  overflow-x: hidden;
+  overflow-x: clip;
   background: var(--demo-bg);
   color: var(--demo-text);
   font-family: var(--demo-font-sans);
@@ -2107,6 +2107,11 @@ button.imagePreviewFrame {
   outline: none;
 }
 
+.imageListMediumActionTrack {
+  min-width: 0;
+  align-self: stretch;
+}
+
 .imageListMediumActionPanel {
   position: sticky;
   top: 14px;
@@ -2114,7 +2119,6 @@ button.imagePreviewFrame {
   display: grid;
   min-width: 0;
   gap: 8px;
-  align-self: start;
 }
 
 .imageListMediumActionPanel .button {

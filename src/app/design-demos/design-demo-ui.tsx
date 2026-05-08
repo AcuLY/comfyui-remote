@@ -752,7 +752,11 @@ export function ImageListMedium({
           </button>
         ) : null}
       </div>
-      {actionPanel ? <div className={s.imageListMediumActionPanel}>{actionPanel}</div> : null}
+      {actionPanel ? (
+        <div className={s.imageListMediumActionTrack}>
+          <div className={s.imageListMediumActionPanel}>{actionPanel}</div>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -112,8 +112,8 @@ export function ImageListComponentsPage({ data }: { data: DemoData }) {
           summary={<strong>{selectedCount > 0 ? `已选 ${selectedCount} 张` : "未选择图片"}</strong>}
           selectPanel={(
             <>
-              <Button icon={CheckSquare} pressed={allSelected} onClick={() => setSelectedIds(new Set(images.map((image) => image.id)))}>
-                全选
+              <Button icon={CheckSquare} pressed={allSelected} onClick={() => setSelectedIds(allSelected ? new Set() : new Set(images.map((image) => image.id)))}>
+                {allSelected ? "取消全选" : "全选"}
               </Button>
               <Button icon={Square} pressed={pendingOnlySelected} onClick={() => setSelectedIds(new Set(pendingIds))}>
                 <span className={s.desktopOnlyText}>只选待审</span>
