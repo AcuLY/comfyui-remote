@@ -69,6 +69,7 @@ export type RouteKey =
   | "fonts"
   | "logs"
   | "monitor"
+  | "image-size-tuner"
   | "not-found";
 
 export type Match = {
@@ -170,6 +171,7 @@ export const ROUTES: RouteDef[] = [
   { key: "logs", pattern: "/settings/logs", title: "日志", group: "设置", icon: History },
   { key: "monitor", pattern: "/settings/monitor", title: "Worker 监控", group: "设置", icon: Monitor },
   { key: "settings", pattern: "/settings", title: "设置", group: "设置", icon: Settings },
+  { key: "image-size-tuner", pattern: "/image-size-tuner", title: "图片尺寸调节", group: "临时", icon: SlidersHorizontal },
   { key: "login", pattern: "/login", title: "登录", group: "系统", icon: Lock },
 ];
 

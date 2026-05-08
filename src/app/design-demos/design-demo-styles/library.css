@@ -2502,3 +2502,27 @@
     justify-content: space-between;
   }
 }
+
+@media (max-width: 1180px) {
+  .imageSizeTunerControls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .imageSizeTunerStage {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .imageSizeTunerControls {
+    grid-template-columns: 1fr;
+  }
+
+  .imageSizeTunerValues {
+    justify-content: flex-start;
+  }
+
+  .imageSizeTunerCard {
+    padding: 10px;
+  }
+}

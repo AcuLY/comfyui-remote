@@ -1900,6 +1900,152 @@ button.imagePreviewFrame {
   object-fit: contain;
 }
 
+.imageSizeTunerValues {
+  display: flex;
+  max-width: 100%;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.imageSizeTunerValues code {
+  border: 1px solid var(--demo-border);
+  border-radius: 999px;
+  background: var(--demo-field-bg);
+  color: var(--demo-text);
+  font-size: 11px;
+  font-weight: 560;
+  line-height: 1;
+  padding: 7px 9px;
+}
+
+.imageSizeTunerPanel,
+.imageSizeTunerCard {
+  min-width: 0;
+  border: 1px solid var(--demo-border);
+  border-radius: var(--demo-radius);
+  background: var(--demo-panel);
+}
+
+.imageSizeTunerPanel {
+  padding: 12px;
+}
+
+.imageSizeTunerControls {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.imageSizeTunerControl {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+  border: 1px solid var(--demo-border);
+  border-radius: 8px;
+  background: var(--demo-field-bg);
+  padding: 10px;
+}
+
+.imageSizeTunerControl span {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--demo-muted);
+  font-size: 12px;
+}
+
+.imageSizeTunerControl strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--demo-text);
+  font-weight: 560;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.imageSizeTunerControl code {
+  flex: 0 0 auto;
+  color: var(--demo-green);
+  font-size: 11px;
+}
+
+.imageSizeTunerControl input[type="range"] {
+  width: 100%;
+  accent-color: var(--demo-green);
+}
+
+.imageSizeTunerStage {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.72fr) minmax(220px, 0.9fr) minmax(360px, 1.8fr);
+  align-items: start;
+  gap: 14px;
+}
+
+.imageSizeTunerCard {
+  display: grid;
+  gap: 12px;
+  justify-items: start;
+  overflow: auto;
+  padding: 14px;
+}
+
+.imageSizeTunerCardHeader {
+  display: grid;
+  gap: 4px;
+}
+
+.imageSizeTunerCardHeader strong {
+  color: var(--demo-text);
+  font-size: 13px;
+  font-weight: 620;
+}
+
+.imageSizeTunerCardHeader span {
+  color: var(--demo-muted);
+  font-size: 12px;
+}
+
+.imageSizeTunerSmallPreview {
+  width: var(--demo-tuner-small-width);
+}
+
+.imageSizeTunerSmallPreview .imageThumbSmall {
+  width: 100%;
+}
+
+.imageSizeTunerMediumPreview {
+  width: var(--demo-tuner-medium-width);
+}
+
+.imageSizeTunerMediumPreview .imageThumbMedium {
+  width: 100%;
+}
+
+.imageSizeTunerMediumPreview .imageThumbSelect,
+.imageSizeTunerMediumPreview .imageThumbActions {
+  opacity: 1;
+  transform: none;
+}
+
+.imageSizeTunerLargePreview {
+  width: var(--demo-tuner-large-width);
+  max-width: 100%;
+  height: var(--demo-tuner-large-height);
+}
+
+.imageSizeTunerLargePreview .imagePreviewFrame {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--demo-border);
+  border-radius: var(--demo-radius);
+  background: var(--demo-panel-2);
+}
+
 .thumb {
   position: relative;
   display: grid;
