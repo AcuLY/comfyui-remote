@@ -4,7 +4,7 @@
 
 import Link from "next/link";
 import type { CSSProperties } from "react";
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { Children, createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   Activity,
@@ -13,6 +13,8 @@ import {
   ArrowRight,
   Check,
   CheckSquare,
+  ChevronDown,
+  ChevronUp,
   Eye,
   ImageIcon,
   Square,
@@ -241,7 +243,7 @@ export function ImageThumbMedium({
           <StatusBadge status={image.status} label={imageReviewLabel(image.status)} />
         </div>
       ) : null}
-      {actionSlot ? <div className={s.imageThumbActions}>{actionSlot}</div> : null}
+      {actionSlot ? <div className={cx(s.imageThumbActions, !showStatus && s.imageThumbActionsFlush)}>{actionSlot}</div> : null}
     </article>
   );
 }
@@ -612,15 +614,101 @@ export function MetricCard({ icon: Icon, label, value, meta, tone }: { icon: Rou
   );
 }
 
-export function ImageStrip({ images, wide = false }: { images: DemoImage[]; wide?: boolean }) {
+export function ImageListSmall({
+  className,
+  images,
+  limit = 10,
+  maxWidth,
+  wide = false,
+}: {
+  className?: string;
+  images: DemoImage[];
+  limit?: number;
+  maxWidth?: number | string;
+  wide?: boolean;
+}) {
   if (images.length === 0) {
     return <div className={s.empty}>没有可用图片</div>;
   }
+  const style: CSSProperties | undefined = maxWidth === undefined
+    ? undefined
+    : { maxWidth: typeof maxWidth === "number" ? `${maxWidth}px` : maxWidth };
   return (
-    <div className={s.imageStrip}>
-      {images.slice(0, 10).map((image, index) => (
+    <div className={cx(s.imageListSmall, s.imageStrip, className)} style={style}>
+      {images.slice(0, limit).map((image, index) => (
         <ImageThumbSmall image={image} key={`${image.id}-${index}`} priority={index === 0} wide={wide} />
       ))}
+    </div>
+  );
+}
+
+export function ImageStrip({ images, wide = false }: { images: DemoImage[]; wide?: boolean }) {
+  return <ImageListSmall images={images} wide={wide} />;
+}
+
+type ImageListMediumStyle = CSSProperties & {
+  "--demo-image-list-gap"?: string;
+  "--demo-image-list-max-height"?: string;
+  "--demo-image-list-max-width"?: string;
+};
+
+export function ImageListMedium({
+  actionPanel,
+  children,
+  className,
+  defaultExpanded = false,
+  emptyLabel = "没有可用图片",
+  gap,
+  maxHeight,
+  maxWidth,
+  selectPanel,
+  summary,
+}: {
+  actionPanel?: React.ReactNode;
+  children: React.ReactNode;
+  className?: string;
+  defaultExpanded?: boolean;
+  emptyLabel?: string;
+  gap?: number;
+  maxHeight?: number | string;
+  maxWidth?: number | string;
+  selectPanel?: React.ReactNode;
+  summary?: React.ReactNode;
+}) {
+  const [expanded, setExpanded] = useState(defaultExpanded);
+  const childrenArray = Children.toArray(children).filter(Boolean);
+  const hasItems = childrenArray.length > 0;
+  const collapsible = maxHeight !== undefined;
+  const style: ImageListMediumStyle = {};
+  if (gap !== undefined) style["--demo-image-list-gap"] = `${gap}px`;
+  if (maxHeight !== undefined) style["--demo-image-list-max-height"] = typeof maxHeight === "number" ? `${maxHeight}px` : maxHeight;
+  if (maxWidth !== undefined) style["--demo-image-list-max-width"] = typeof maxWidth === "number" ? `${maxWidth}px` : maxWidth;
+
+  if (!hasItems) return <div className={s.empty}>{emptyLabel}</div>;
+
+  return (
+    <div className={cx(s.imageListMedium, className)} style={style}>
+      <div className={s.imageListMediumMain}>
+        {summary || selectPanel ? (
+          <div className={s.imageListMediumHeader}>
+            {summary ? <div className={s.imageListMediumSummary}>{summary}</div> : <span />}
+            {selectPanel ? <div className={s.imageListMediumSelectPanel}>{selectPanel}</div> : null}
+          </div>
+        ) : null}
+        <div className={s.imageListMediumViewport} data-expanded={!collapsible || expanded}>
+          <div className={s.imageListMediumGrid}>
+            {childrenArray}
+          </div>
+          {collapsible && !expanded ? <div className={s.imageListMediumFade} aria-hidden="true" /> : null}
+        </div>
+        {collapsible ? (
+          <button className={s.imageListMediumExpand} type="button" onClick={() => setExpanded((value) => !value)}>
+            {expanded ? <ChevronUp className={s.icon} /> : <ChevronDown className={s.icon} />}
+            {expanded ? "收起" : "展开全部"}
+          </button>
+        ) : null}
+      </div>
+      {actionPanel ? <div className={s.imageListMediumActionPanel}>{actionPanel}</div> : null}
     </div>
   );
 }
@@ -661,7 +749,7 @@ export function ImageGrid({
     : null;
   return (
     <>
-      <div className={s.imageGrid}>
+      <ImageListMedium>
         {images.map((image, index) => (
           <ImageThumbMedium
             image={image}
@@ -673,7 +761,7 @@ export function ImageGrid({
             tags={[]}
           />
         ))}
-      </div>
+      </ImageListMedium>
       {activeImage && portalTarget ? createPortal(
         <ImagePreviewLarge
           image={activeImage}
@@ -750,46 +838,46 @@ export function ReviewImageBoard({ images }: { images: DemoImage[] }) {
 
   return (
     <>
-      <div className={s.reviewControlStrip}>
-        <div className={s.reviewListPane}>
-          <div className={s.reviewListHeader}>
-            <strong>{selectedCount > 0 ? `已选 ${selectedCount} 张` : "未选择图片"}</strong>
-            <div className={s.reviewSelectActions}>
-              <Button icon={CheckSquare} onClick={() => setSelectedIds(selectedCount === images.length ? new Set() : new Set(images.map((image) => image.id)))}>
-                {selectedCount === images.length ? "取消全选" : "全选"}
-              </Button>
-              <Button icon={Square} onClick={() => setSelectedIds(new Set(pendingIds))}>只选待审</Button>
-              <Button tone="subtle" icon={X} onClick={() => setSelectedIds(new Set())} disabled={selectedCount === 0}>取消选择</Button>
-            </div>
-          </div>
-
-          <div className={s.reviewImageGrid}>
-            {images.map((image, index) => {
-              const selected = selectedIds.has(image.id);
-              const hasStatusOverlay = image.status === "kept" || image.status === "trashed";
-              return (
-                <ImageThumbMedium
-                  image={image}
-                  key={`${image.id}-${index}`}
-                  onOpen={() => setActiveIndex(index)}
-                  onSelect={() => toggleImage(image.id)}
-                  selectable
-                  selected={selected}
-                  showStatus={hasStatusOverlay}
-                />
-              );
-            })}
-          </div>
-        </div>
-        <div className={s.reviewBulkActions}>
-          <Button tone="primary" icon={Check} className={s.reviewActionKeep} disabled={selectedCount === 0} feedback={{ title: "已加入保留队列", detail: `${selectedCount} 张图片` }}>保留</Button>
-          <Button tone="pink" icon={Star} className={s.reviewActionFeatured} disabled={selectedCount === 0} feedback={{ title: "已加入 p站 标记队列", detail: `${selectedCount} 张图片` }}>p站</Button>
-          <Button tone="pink" icon={Eye} className={s.reviewActionFeatured} disabled={selectedCount === 0} feedback={{ title: "已加入预览标记队列", detail: `${selectedCount} 张图片` }}>预览</Button>
-          <Button tone="subtle" icon={ImageIcon} className={s.reviewActionCover} disabled={selectedCount !== 1} feedback={{ title: "已设为封面", detail: "1 张图片" }}>封面</Button>
-          <Button tone="danger" icon={Trash2} className={s.reviewActionDelete} disabled={selectedCount === 0} feedback={{ tone: "warning", title: "已加入删除队列", detail: `${selectedCount} 张图片` }}>删除</Button>
-          <Button tone="subtle" icon={Archive} className={s.reviewActionUndo} feedback={{ tone: "info", title: "最近操作已撤销" }}>撤销最近操作</Button>
-        </div>
-      </div>
+      <ImageListMedium
+        className={s.reviewControlStrip}
+        maxHeight={520}
+        summary={<strong>{selectedCount > 0 ? `已选 ${selectedCount} 张` : "未选择图片"}</strong>}
+        selectPanel={(
+          <>
+            <Button icon={CheckSquare} onClick={() => setSelectedIds(selectedCount === images.length ? new Set() : new Set(images.map((image) => image.id)))}>
+              {selectedCount === images.length ? "取消全选" : "全选"}
+            </Button>
+            <Button icon={Square} onClick={() => setSelectedIds(new Set(pendingIds))}>只选待审</Button>
+            <Button tone="subtle" icon={X} onClick={() => setSelectedIds(new Set())} disabled={selectedCount === 0}>取消选择</Button>
+          </>
+        )}
+        actionPanel={(
+          <>
+            <Button tone="primary" icon={Check} className={s.reviewActionKeep} disabled={selectedCount === 0} feedback={{ title: "已加入保留队列", detail: `${selectedCount} 张图片` }}>保留</Button>
+            <Button tone="pink" icon={Star} className={s.reviewActionFeatured} disabled={selectedCount === 0} feedback={{ title: "已加入 p站 标记队列", detail: `${selectedCount} 张图片` }}>p站</Button>
+            <Button tone="pink" icon={Eye} className={s.reviewActionFeatured} disabled={selectedCount === 0} feedback={{ title: "已加入预览标记队列", detail: `${selectedCount} 张图片` }}>预览</Button>
+            <Button tone="subtle" icon={ImageIcon} className={s.reviewActionCover} disabled={selectedCount !== 1} feedback={{ title: "已设为封面", detail: "1 张图片" }}>封面</Button>
+            <Button tone="danger" icon={Trash2} className={s.reviewActionDelete} disabled={selectedCount === 0} feedback={{ tone: "warning", title: "已加入删除队列", detail: `${selectedCount} 张图片` }}>删除</Button>
+            <Button tone="subtle" icon={Archive} className={s.reviewActionUndo} feedback={{ tone: "info", title: "最近操作已撤销" }}>撤销最近操作</Button>
+          </>
+        )}
+      >
+        {images.map((image, index) => {
+          const selected = selectedIds.has(image.id);
+          const hasStatusOverlay = image.status === "kept" || image.status === "trashed";
+          return (
+            <ImageThumbMedium
+              image={image}
+              key={`${image.id}-${index}`}
+              onOpen={() => setActiveIndex(index)}
+              onSelect={() => toggleImage(image.id)}
+              selectable
+              selected={selected}
+              showStatus={hasStatusOverlay}
+            />
+          );
+        })}
+      </ImageListMedium>
 
       {activeImage && portalTarget ? createPortal(
         <ImagePreviewLarge

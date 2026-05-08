@@ -44,7 +44,7 @@ import {
   initialPromptBlocks,
   mockVariants,
 } from "./section-editor-page-data";
-import { ImagePreviewLarge, ImageThumbMedium } from "./design-demo-ui";
+import { ImageListMedium, ImagePreviewLarge, ImageThumbMedium } from "./design-demo-ui";
 
 type SectionEditorPageProps = {
   data: DemoData;
@@ -974,7 +974,7 @@ function SectionEditorInner({
                     </button>
                   </div>
                 </div>
-                <div className={s.runGrid}>
+                <ImageListMedium gap={10}>
                   {run.images
                     .filter((img) => filteredImageIds.has(img.id))
                     .map((img) => (
@@ -1022,7 +1022,7 @@ function SectionEditorInner({
                         showStatus={img.status !== "pending"}
                       />
                     ))}
-                </div>
+                </ImageListMedium>
               </div>
             ))
           )}

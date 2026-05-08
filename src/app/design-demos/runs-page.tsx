@@ -27,7 +27,7 @@ import {
   DemoTabs,
   EmptyPage,
   EmptyRows,
-  ImageThumbSmall,
+  ImageListSmall,
   MetricCard,
   PageHeader,
   ReviewImageBoard,
@@ -342,11 +342,7 @@ export function QueuePage({ data }: { data: DemoData }) {
                               <span>run {row.run.runIndex}</span>
                               <span className={s.queueRunDate}>生成于 {row.run.createdAt}</span>
                             </div>
-                            <div className={s.queueThumbs}>
-                              {row.run.images.slice(0, 5).map((image, index) => (
-                                <ImageThumbSmall image={image} key={`${image.id}-${index}`} />
-                              ))}
-                            </div>
+                            <ImageListSmall className={s.queueThumbs} images={row.run.images} limit={5} />
                           </Link>
                         ))}
                       </div>

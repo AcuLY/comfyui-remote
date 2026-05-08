@@ -1978,23 +1978,28 @@
     padding: 10px;
   }
 
-  .reviewListPane {
+  .reviewListPane,
+  .imageListMediumMain {
     gap: 10px;
   }
 
-  .reviewListHeader {
+  .reviewListHeader,
+  .imageListMediumHeader {
     grid-template-columns: 1fr;
     align-items: start;
     gap: 8px;
   }
 
-  .reviewSelectActions {
+  .reviewSelectActions,
+  .imageListMediumSelectPanel {
+    display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     width: 100%;
     gap: 6px;
   }
 
-  .reviewBulkActions {
+  .reviewBulkActions,
+  .imageListMediumActionPanel {
     grid-template-columns: 1fr;
     width: 42px;
     gap: 6px;
@@ -2008,7 +2013,8 @@
     white-space: nowrap;
   }
 
-  .reviewBulkActions .button {
+  .reviewBulkActions .button,
+  .imageListMediumActionPanel .button {
     width: 42px;
     height: 38px;
     min-height: 38px;
@@ -2017,7 +2023,8 @@
     font-size: 0;
   }
 
-  .reviewBulkActions .button svg {
+  .reviewBulkActions .button svg,
+  .imageListMediumActionPanel .button svg {
     width: 17px;
     height: 17px;
   }
