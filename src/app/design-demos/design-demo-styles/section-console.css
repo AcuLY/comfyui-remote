@@ -1086,7 +1086,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-height: 34px;
+  min-height: 36px;
   padding: 7px 14px;
   border: 1px solid var(--demo-glass-border);
   border-radius: 10px;
@@ -1101,6 +1101,7 @@
 .btnGhost:hover {
   background: var(--demo-glass-hover);
   border-color: var(--demo-glass-accent-border);
+  transform: translateY(-1px);
 }
 
 .btnPrimary {
@@ -1112,6 +1113,7 @@
 
 .btnPrimary:hover {
   background: color-mix(in oklab, var(--demo-green) 18%, var(--demo-glass-hover));
+  transform: translateY(-1px);
 }
 
 .btnPrimary:disabled {
@@ -1405,7 +1407,7 @@
 
 .importTab {
   appearance: none;
-  min-height: 28px;
+  min-height: 32px;
   padding: 4px 11px;
   border: 1px solid transparent;
   border-radius: 9px;
@@ -1421,6 +1423,7 @@
   background: var(--demo-glass-hover);
   border-color: var(--demo-glass-border);
   color: var(--demo-text);
+  transform: translateY(-1px);
 }
 
 .importTabActive {
@@ -2342,7 +2345,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-height: 34px;
+  min-height: 36px;
   padding: 7px 15px;
   border: 1px dashed var(--demo-glass-border);
   border-radius: 10px;
@@ -2358,6 +2361,7 @@
   color: var(--demo-green);
   border-color: var(--demo-green);
   background: var(--demo-green-soft);
+  transform: translateY(-1px);
 }
 
 /* ============================================================ */
@@ -2531,7 +2535,7 @@
   align-items: center;
   justify-content: center;
   gap: 5px;
-  min-height: 28px;
+  min-height: 32px;
   padding: 5px 11px;
   border: 1px solid transparent;
   border-radius: 9px;
@@ -2548,6 +2552,7 @@
   background: var(--demo-glass-hover);
   border-color: var(--demo-glass-border);
   color: var(--demo-text);
+  transform: translateY(-1px);
 }
 
 .resultsFilterBtnActive {
