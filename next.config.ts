@@ -8,6 +8,36 @@ const nextConfig: NextConfig = {
         path: "**/next.config.ts",
         title: "Encountered unexpected file in NFT list",
       },
+      {
+        path: "**/src/app/design-demos/design-demo-data.ts",
+        title: /The file pattern/,
+        description: /Overly broad patterns/,
+      },
+      {
+        path: "**/src/server/services/image-result-service.ts",
+        title: /The file pattern/,
+        description: /Overly broad patterns/,
+      },
+      {
+        path: "**/src/server/services/image-file-service.ts",
+        title: /The file pattern/,
+        description: /Overly broad patterns/,
+      },
+      {
+        path: "**/src/server/services/comfy-patch-manager.ts",
+        title: /The file pattern/,
+        description: /Overly broad patterns/,
+      },
+      {
+        path: /src[\\/]app[\\/]api[\\/]images[\\/]\[\.\.\.path\][\\/]route\.ts$/,
+        title: /The file pattern/,
+        description: /Overly broad patterns/,
+      },
+      {
+        path: "**/src/lib/logger.ts",
+        title: /The file pattern/,
+        description: /Overly broad patterns/,
+      },
     ],
   },
   outputFileTracingExcludes: {
