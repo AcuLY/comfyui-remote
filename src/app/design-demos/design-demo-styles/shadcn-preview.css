@@ -1,0 +1,237 @@
+/* Demo-local shadcn preview theme: color, font family, and icon treatment only. */
+
+.shadcnPreview {
+  font-family: var(--demo-font-sans);
+}
+
+.shadcnPreview :where(svg) {
+  color: currentColor;
+  stroke-width: 1.85;
+}
+
+.demoShadcnButton {
+  border-color: var(--demo-border);
+  color: var(--demo-text);
+}
+
+.demoShadcnButton:focus-visible,
+.demoShadcnBadge:focus-visible,
+.demoShadcnInput:focus-visible,
+.demoShadcnTextarea:focus-visible,
+.demoShadcnSelectTrigger:focus,
+.demoShadcnSwitch:focus-visible,
+.demoShadcnTabsTrigger:focus-visible,
+.demoShadcnToggleItem:focus-visible {
+  border-color: var(--demo-glass-accent-border);
+  --tw-ring-color: color-mix(in srgb, var(--demo-green) 34%, transparent);
+}
+
+.demoShadcnButtonDefault {
+  background: var(--demo-glass-bg);
+  color: var(--demo-text);
+}
+
+.demoShadcnButtonDefault:hover {
+  background: var(--demo-glass-hover);
+}
+
+.demoShadcnButtonSecondary {
+  background: var(--demo-panel-2);
+  color: var(--demo-text);
+}
+
+.demoShadcnButtonSecondary:hover {
+  background: var(--demo-panel-3);
+}
+
+.demoShadcnButtonOutline {
+  background: var(--demo-field-bg);
+  color: var(--demo-text);
+}
+
+.demoShadcnButtonOutline:hover {
+  background: var(--demo-surface-hover);
+}
+
+.demoShadcnButtonGhost {
+  background: transparent;
+  color: var(--demo-muted);
+}
+
+.demoShadcnButtonGhost:hover {
+  background: var(--demo-control-hover);
+  color: var(--demo-text);
+}
+
+.demoShadcnButtonPrimary,
+.demoShadcnButton[aria-pressed="true"] {
+  background: var(--demo-green-soft);
+  border-color: color-mix(in srgb, var(--demo-green) 36%, transparent);
+  color: var(--demo-green);
+}
+
+.demoShadcnButtonPrimary:hover,
+.demoShadcnButton[aria-pressed="true"]:hover {
+  background: color-mix(in srgb, var(--demo-green-soft) 78%, var(--demo-surface-hover));
+}
+
+.demoShadcnButtonPink {
+  background: var(--demo-pink-soft);
+  border-color: color-mix(in srgb, var(--demo-pink) 34%, transparent);
+  color: var(--demo-pink);
+}
+
+.demoShadcnButtonPink:hover {
+  background: color-mix(in srgb, var(--demo-pink-soft) 78%, var(--demo-surface-hover));
+}
+
+.demoShadcnButtonDanger {
+  background: var(--demo-red-soft);
+  border-color: color-mix(in srgb, var(--demo-red) 34%, transparent);
+  color: var(--demo-red);
+}
+
+.demoShadcnButtonDanger:hover {
+  background: color-mix(in srgb, var(--demo-red-soft) 78%, var(--demo-surface-hover));
+}
+
+.demoShadcnBadge {
+  border-color: var(--demo-border);
+}
+
+.demoShadcnBadgeDefault {
+  background: var(--demo-glass-bg);
+  color: var(--demo-text);
+}
+
+.demoShadcnBadgeSecondary {
+  background: var(--demo-panel-2);
+  color: var(--demo-muted);
+}
+
+.demoShadcnBadgeSuccess {
+  background: var(--demo-green-soft);
+  border-color: color-mix(in srgb, var(--demo-green) 30%, transparent);
+  color: var(--demo-green);
+}
+
+.demoShadcnBadgeWarning {
+  background: var(--demo-amber-soft);
+  border-color: color-mix(in srgb, var(--demo-amber) 30%, transparent);
+  color: var(--demo-amber);
+}
+
+.demoShadcnBadgeDanger {
+  background: var(--demo-red-soft);
+  border-color: color-mix(in srgb, var(--demo-red) 30%, transparent);
+  color: var(--demo-red);
+}
+
+.demoShadcnBadgeSky {
+  background: var(--demo-sky-soft);
+  border-color: color-mix(in srgb, var(--demo-sky) 30%, transparent);
+  color: var(--demo-sky);
+}
+
+.demoShadcnBadgePink {
+  background: var(--demo-pink-soft);
+  border-color: color-mix(in srgb, var(--demo-pink) 30%, transparent);
+  color: var(--demo-pink);
+}
+
+.demoShadcnInput,
+.demoShadcnTextarea,
+.demoShadcnSelectTrigger {
+  background: var(--demo-field-bg);
+  border-color: var(--demo-border);
+  color: var(--demo-text);
+}
+
+.demoShadcnInput::placeholder,
+.demoShadcnTextarea::placeholder {
+  color: var(--demo-faint);
+}
+
+.demoShadcnInput:disabled,
+.demoShadcnTextarea:disabled,
+.demoShadcnSelectTrigger:disabled {
+  color: var(--demo-faint);
+}
+
+.demoShadcnSelectContent {
+  background: var(--demo-panel);
+  border-color: var(--demo-border);
+  color: var(--demo-text);
+  -webkit-backdrop-filter: var(--demo-glass-blur);
+  backdrop-filter: var(--demo-glass-blur);
+}
+
+.demoShadcnSelectItem {
+  color: var(--demo-muted);
+}
+
+.demoShadcnSelectItem:hover,
+.demoShadcnSelectItem:focus {
+  background: var(--demo-control-hover);
+  color: var(--demo-text);
+}
+
+.demoShadcnSelectItem[data-selected="true"] {
+  color: var(--demo-green);
+}
+
+.demoShadcnSwitch {
+  background: var(--demo-panel-3);
+}
+
+.demoShadcnSwitch[data-state="checked"] {
+  background: var(--demo-green);
+}
+
+.demoShadcnSwitchThumb {
+  background: var(--demo-surface);
+}
+
+.demoShadcnSwitch[data-state="checked"] .demoShadcnSwitchThumb {
+  background: #ffffff;
+}
+
+.demoShadcnTabsList {
+  background: var(--demo-panel-2);
+  color: var(--demo-muted);
+}
+
+.demoShadcnTabsTrigger[data-state="active"] {
+  background: var(--demo-green-soft);
+  color: var(--demo-green);
+}
+
+.demoShadcnTabsTrigger[data-state="inactive"]:hover {
+  color: var(--demo-text);
+}
+
+.demoShadcnTabsCount {
+  background: var(--demo-surface);
+  color: var(--demo-muted);
+}
+
+.demoShadcnTabsPanel {
+  background: var(--demo-field-bg);
+  border-color: var(--demo-border);
+  color: var(--demo-muted);
+}
+
+.demoShadcnToggleItem {
+  background: var(--demo-field-bg);
+  color: var(--demo-muted);
+}
+
+.demoShadcnToggleItem:hover {
+  background: var(--demo-control-hover);
+  color: var(--demo-text);
+}
+
+.demoShadcnToggleItem[data-state="on"] {
+  background: var(--demo-green-soft);
+  color: var(--demo-green);
+}
