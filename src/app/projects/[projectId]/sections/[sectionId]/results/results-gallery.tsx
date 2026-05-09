@@ -75,6 +75,26 @@ export function ResultsGalleryProvider({
     }
   }, [allImages.length, currentIndex, open]);
 
+  useEffect(() => {
+    if (!projectId) return;
+
+    const handler = (event: KeyboardEvent) => {
+      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
+
+      if ((event.key === "u" || event.key === "U") && previousSection) {
+        event.preventDefault();
+        router.push(`/projects/${projectId}/sections/${previousSection.id}/results`);
+      }
+      if ((event.key === "o" || event.key === "O") && nextSection) {
+        event.preventDefault();
+        router.push(`/projects/${projectId}/sections/${nextSection.id}/results`);
+      }
+    };
+
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [nextSection, previousSection, projectId, router]);
+
   const goPrev = useCallback(() => {
     setCurrentIndex((index) => (index > 0 ? index - 1 : allImages.length - 1));
   }, [allImages.length]);
@@ -259,20 +279,10 @@ export function ResultsGalleryProvider({
         }
       }
 
-      // U: 上一小节
-      if ((event.key === "u" || event.key === "U") && previousSection && projectId) {
-        event.preventDefault();
-        router.push(`/projects/${projectId}/sections/${previousSection.id}/results`);
-      }
-      // O: 下一小节
-      if ((event.key === "o" || event.key === "O") && nextSection && projectId) {
-        event.preventDefault();
-        router.push(`/projects/${projectId}/sections/${nextSection.id}/results`);
-      }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [allImages.length, goNext, goPrev, open, reviewCurrent, toggleMarker, previousSection, nextSection, onUndo, router]);
+  }, [allImages.length, goNext, goPrev, open, reviewCurrent, toggleMarker, onUndo]);
 
   const openLightbox = useCallback(
     (index: number) => {

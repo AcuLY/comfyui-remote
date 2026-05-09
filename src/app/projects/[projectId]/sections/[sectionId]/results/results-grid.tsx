@@ -96,11 +96,6 @@ export function ResultsGrid({
     });
   }
 
-  // Refs to store functions for cross-component communication
-  const openLightboxRef = useCallback((fn: (index: number) => void) => {
-    (window as unknown as Record<string, (index: number) => void>).__resultsGridOpenLightbox = fn;
-  }, []);
-
   // Save setLastTrashedIds to window for ResultsGalleryProvider to use
   useEffect(() => {
     (window as unknown as Record<string, (ids: string[]) => void>).__resultsGridSetLastTrashedIds = setLastTrashedIds;
@@ -159,8 +154,6 @@ export function ResultsGrid({
       onUndo={handleUndo}
     >
       {({ openLightbox, isFeatured, isFeatured2, isCover }) => {
-        // Store openLightbox function for external access
-        openLightboxRef(openLightbox);
         return (
         <div className="space-y-6">
           {/* Image grid by run */}
