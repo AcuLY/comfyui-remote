@@ -52,7 +52,6 @@ export type RouteKey =
   | "project-results"
   | "project-batch"
   | "section-editor"
-  | "section-results"
   | "models"
   | "loras"
   | "presets"
@@ -85,7 +84,7 @@ export type ModelBrowserState = "ready" | "loading" | "error" | "empty";
 export type ResultDemoFilter = "all" | "pending" | "kept" | "pstation" | "preview" | "cover";
 export type ProjectCardView = "sections" | "results";
 export type LogDemoSource = "app" | "console";
-export type SectionNavMode = "detail" | "project-results" | "editor" | "section-results";
+export type SectionNavMode = "detail" | "project-results" | "editor";
 export type TemplateSectionMode = "template-edit" | "template-section";
 export type DemoToastTone = "success" | "info" | "warning" | "error";
 export type DemoTemplateSection = DemoTemplate["sections"][number];
@@ -152,7 +151,6 @@ export const ROUTES: RouteDef[] = [
   { key: "project-edit", pattern: "/projects/:projectId/edit", title: "编辑项目", group: "项目", icon: Edit3 },
   { key: "project-results", pattern: "/projects/:projectId/results", title: "项目结果", group: "项目", icon: ImageIcon },
   { key: "project-batch", pattern: "/projects/:projectId/batch-create", title: "批量创建", group: "项目", icon: Rows3 },
-  { key: "section-results", pattern: "/projects/:projectId/sections/:sectionId/results", title: "小节结果", group: "项目", icon: ImageIcon },
   { key: "section-editor", pattern: "/projects/:projectId/sections/:sectionId", title: "小节编辑", group: "项目", icon: SlidersHorizontal },
   { key: "project-detail", pattern: "/projects/:projectId", title: "项目详情", group: "项目", icon: FolderTree },
   { key: "projects", pattern: "/projects", title: "项目列表", group: "项目", icon: FolderTree },

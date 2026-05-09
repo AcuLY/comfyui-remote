@@ -625,7 +625,6 @@ function ProjectSectionCard({
 function sectionNavHref(project: DemoProject, section: DemoSection, mode: SectionNavMode) {
   if (mode === "detail") return `${demoHref(`/projects/${project.id}`)}#${sectionAnchorId(section)}`;
   if (mode === "project-results") return `${demoHref(`/projects/${project.id}/results`)}#${sectionAnchorId(section)}`;
-  if (mode === "section-results") return demoHref(`/projects/${project.id}/sections/${rawSectionId(section)}/results`);
   return demoHref(`/projects/${project.id}/sections/${rawSectionId(section)}`);
 }
 
@@ -651,7 +650,7 @@ export function ProjectSectionShell({
   });
   const activeSectionId = activeSectionState.projectId === project.id ? activeSectionState.sectionId : defaultActiveSectionId;
   const displayedActiveSectionId =
-    (mode === "editor" || mode === "section-results") && activeSection
+    mode === "editor" && activeSection
       ? activeSection.id
       : activeSectionId ?? defaultActiveSectionId;
   const contentRef = useRef<HTMLDivElement>(null);
@@ -770,7 +769,7 @@ const SectionRail = forwardRef<HTMLElement, {
 ) {
   const resolvedActiveId = activeSectionId ?? activeSection?.id ?? project.sections[0]?.id ?? null;
   const showCompactToggle = mode === "detail" && onToggleCompact;
-  const showReviewCounts = mode === "project-results" || mode === "section-results";
+  const showReviewCounts = mode === "project-results";
   return (
     <nav className={s.sectionRail} ref={ref} aria-label="小节导航">
       <div className={s.railHeading}>

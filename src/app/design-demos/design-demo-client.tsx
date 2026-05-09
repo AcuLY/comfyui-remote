@@ -8,7 +8,6 @@ import { ModelsPage } from "./model-pages";
 import { PresetsPage, PresetCategoryFormPage, PresetEditPage, PresetGroupPage, SortRulesPage } from "./preset-pages";
 import { BatchCreatePage } from "./batch-create-page";
 import { RootPage, ProjectsPage, ProjectDetailPage, ProjectFormPage } from "./project-pages";
-import { SectionResultsPage } from "./section-results-page";
 import { ImageListComponentsPage } from "./image-list-components-page";
 import { QueuePage, ReviewPage } from "./runs-page";
 import { SectionEditorPage as SectionEditorPageV2 } from "./section-editor-page";
@@ -43,8 +42,6 @@ function CurrentPage({ match, data }: { match: Match; data: DemoData }) {
       return <BatchCreatePage project={project} data={data} />;
     case "section-editor":
       return <SectionEditorPageV2 data={data} project={project} section={section} />;
-    case "section-results":
-      return <SectionResultsPage project={project} section={section} />;
     case "models":
       return <ModelsPage />;
     case "loras":

@@ -104,17 +104,6 @@
 | 主 tab：`运行结果`；筛选：`删除` | 同上 | 删除栏迁移后的目标展示面。 |
 | 主 tab：`运行结果`；筛选：`精选` | 同上 | 小节编辑内精选结果。 |
 
-#### `/design-demos/projects/:projectId/sections/:sectionId/results`
-
-| Tab / 面板 | 组件路径 | 显示说明 |
-| --- | --- | --- |
-| `全部` tab | `SectionResultsPage` → `RunResultBlock` → `ImageGrid` → `ImageListMedium` → `ImageThumbMedium` → `ImagePreviewLarge` | 独立小节结果页，按 run 分组展示所有结果。 |
-| `待审` tab | 同上 | 小节结果待审图片。 |
-| `已保留` tab | 同上 | 小节结果保留图片。 |
-| `p站` tab | 同上 | 小节结果 p站标记图片。 |
-| `预览` tab | 同上 | 小节结果预览标记图片。 |
-| `封面` tab | 同上 | 小节结果封面图片。 |
-
 #### `/design-demos/image-list-components`
 
 | Tab / 面板 | 组件路径 | 显示说明 |
