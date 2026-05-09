@@ -196,7 +196,6 @@ export function ResultsGalleryProvider({
       if (!current || busy) return;
 
       const imageId = current.id;
-      const removedIndex = currentIndex;
       const imageCount = allImages.length;
       setReviewingAction(action);
 
@@ -224,10 +223,7 @@ export function ResultsGalleryProvider({
             if (imageCount <= 1) {
               setOpen(false);
             } else {
-              setCurrentIndex(Math.min(removedIndex, imageCount - 2));
-              if (autoNext) {
-                goNext();
-              }
+              setCurrentIndex(Math.min(currentIndex, imageCount - 2));
             }
           }
           router.refresh();
