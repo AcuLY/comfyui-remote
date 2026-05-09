@@ -886,12 +886,15 @@ export function ReviewImageBoard({ images }: { images: DemoImage[] }) {
 
   if (images.length === 0) return <div className={s.empty}>当前筛选下没有图片</div>;
 
+  const hasSelection = selectedCount > 0;
+  const actionTargetCount = hasSelection ? selectedCount : images.length;
+
   return (
     <>
       <ImageListMedium
         className={s.reviewControlStrip}
         maxHeight={520}
-        summary={<strong>{selectedCount > 0 ? `已选 ${selectedCount} 张` : "未选择图片"}</strong>}
+        summary={hasSelection ? `已选 ${selectedCount} 张` : "未选择图片"}
         selectPanel={(
           <>
             <Button icon={CheckSquare} pressed={allSelected} onClick={() => setSelectedIds(allSelected ? new Set() : new Set(images.map((image) => image.id)))}>
@@ -906,11 +909,11 @@ export function ReviewImageBoard({ images }: { images: DemoImage[] }) {
         )}
         actionPanel={(
           <>
-            <Button tone="primary" icon={Check} className={s.reviewActionKeep} disabled={selectedCount === 0} feedback={{ title: "已加入保留队列", detail: `${selectedCount} 张图片` }}>保留</Button>
+            <Button tone="primary" icon={Check} className={s.reviewActionKeep} feedback={{ title: "已加入保留队列", detail: `${actionTargetCount} 张图片` }}>{hasSelection ? "保留" : "全部保留"}</Button>
             <Button tone="pink" icon={Star} className={s.reviewActionFeatured} disabled={selectedCount === 0} feedback={{ title: "已加入 p站 标记队列", detail: `${selectedCount} 张图片` }}>p站</Button>
             <Button tone="pink" icon={Eye} className={s.reviewActionFeatured} disabled={selectedCount === 0} feedback={{ title: "已加入预览标记队列", detail: `${selectedCount} 张图片` }}>预览</Button>
             <Button tone="subtle" icon={ImageIcon} className={s.reviewActionCover} disabled={selectedCount !== 1} feedback={{ title: "已设为封面", detail: "1 张图片" }}>封面</Button>
-            <Button tone="danger" icon={Trash2} className={s.reviewActionDelete} disabled={selectedCount === 0} feedback={{ tone: "warning", title: "已加入删除队列", detail: `${selectedCount} 张图片` }}>删除</Button>
+            <Button tone="danger" icon={Trash2} className={s.reviewActionDelete} feedback={{ tone: "warning", title: "已加入删除队列", detail: `${actionTargetCount} 张图片` }}>{hasSelection ? "删除" : "全部删除"}</Button>
             <Button tone="subtle" icon={Archive} className={s.reviewActionUndo} feedback={{ tone: "info", title: "最近操作已撤销" }}>撤销最近操作</Button>
           </>
         )}

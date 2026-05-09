@@ -2043,9 +2043,14 @@ button.imagePreviewFrame {
 
 .imageListMediumSummary {
   min-width: 0;
-  color: var(--demo-text);
+  color: var(--demo-muted);
   font-size: 13px;
-  font-weight: 560;
+  font-weight: 400;
+}
+
+.imageListMediumSummary strong {
+  color: inherit;
+  font-weight: inherit;
 }
 
 .imageListMediumSelectPanel {
@@ -2075,6 +2080,7 @@ button.imagePreviewFrame {
   align-items: flex-start;
   gap: var(--demo-image-list-gap);
   justify-content: flex-start;
+  padding-top: 14px;
 }
 
 .imageListMediumFade {

@@ -27,6 +27,8 @@
 | 图片语义 tag | `tags` 或默认 `imageTagLabels(image)` | 右上角 `imageThumbTags` | 默认根据 `featured`/`featured2`/`cover` 显示"p站""预览""封面"；页面也可以传空数组隐藏。 |
 | 快速操作槽 | `actionSlot` | 中下部 `imageThumbActions` | 可放"保留""删除""精选"等小按钮。桌面端 hover/focus 出现；移动端隐藏；当审核状态 tag 为空时贴近底部。 |
 | 状态样式 | `selected`、hover/focus | 卡片边框和阴影 | 选中态使用绿色描边；hover/focus 提升边框强调。 |
+| 顶部快速选择 | `ImageListMedium.selectPanel` | 列表顶部右侧 | 可放"全选""只选待审/待审""清空"等批量选择按钮；按钮支持 pressed/disabled 反馈。 |
+| 右侧操作列 | `ImageListMedium.actionPanel` | 列表右侧，窄屏在列表范围内 sticky | 可放"保留""删除""p站""预览""封面""撤销"等批量按钮。审核列表未选择图片时，保留/删除改为"全部保留"/"全部删除"并作用于当前列表全部图片；选中图片后恢复为对选中项操作。 |
 
 当前页面对中图层的使用差异：
 

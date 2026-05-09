@@ -76,6 +76,8 @@ export function ImageListComponentsPage({ data }: { data: DemoData }) {
   const pendingIds = images.filter((image) => image.status === "pending").map((image) => image.id);
   const allSelected = images.length > 0 && selectedCount === images.length;
   const pendingOnlySelected = pendingIds.length > 0 && selectedCount === pendingIds.length && pendingIds.every((id) => selectedIds.has(id));
+  const hasSelection = selectedCount > 0;
+  const actionTargetCount = hasSelection ? selectedCount : images.length;
 
   function toggleImage(imageId: string) {
     setSelectedIds((current) => {
@@ -109,7 +111,7 @@ export function ImageListComponentsPage({ data }: { data: DemoData }) {
         </div>
         <ImageListMedium
           maxHeight={388}
-          summary={<strong>{selectedCount > 0 ? `已选 ${selectedCount} 张` : "未选择图片"}</strong>}
+          summary={hasSelection ? `已选 ${selectedCount} 张` : "未选择图片"}
           selectPanel={(
             <>
               <Button icon={CheckSquare} pressed={allSelected} onClick={() => setSelectedIds(allSelected ? new Set() : new Set(images.map((image) => image.id)))}>
@@ -126,10 +128,10 @@ export function ImageListComponentsPage({ data }: { data: DemoData }) {
           )}
           actionPanel={(
             <>
-              <Button icon={Check} disabled={selectedCount === 0}>保留</Button>
+              <Button icon={Check} feedback={{ title: "已加入保留队列", detail: `${actionTargetCount} 张图片` }}>{hasSelection ? "保留" : "全部保留"}</Button>
               <Button tone="pink" icon={Star} disabled={selectedCount === 0}>精选</Button>
               <Button tone="pink" icon={Eye} disabled={selectedCount === 0}>预览</Button>
-              <Button tone="danger" icon={Trash2} disabled={selectedCount === 0}>删除</Button>
+              <Button tone="danger" icon={Trash2} feedback={{ tone: "warning", title: "已加入删除队列", detail: `${actionTargetCount} 张图片` }}>{hasSelection ? "删除" : "全部删除"}</Button>
               <Button tone="subtle" icon={Archive}>撤销</Button>
             </>
           )}
