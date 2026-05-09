@@ -467,6 +467,13 @@
   position: relative;
 }
 
+.segmentedItemActive:hover:not(:disabled),
+.sectionTabActive:hover {
+  border-color: var(--demo-glass-accent-border);
+  background: var(--demo-green-soft);
+  color: var(--demo-green);
+}
+
 .segmentedItemActive::after,
 .sectionTabActive::after {
   display: none;
@@ -542,6 +549,15 @@
   color: var(--demo-green);
   border-color: var(--demo-glass-accent-border);
   box-shadow: 0 5px 14px rgba(4, 120, 87, 0.12);
+}
+
+.segmentedControlCompact .segmentedItemActive:hover:not(:disabled),
+.aspectChipActive:hover {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent),
+    var(--demo-green-soft);
+  color: var(--demo-green);
+  border-color: var(--demo-glass-accent-border);
 }
 
 /* Tab body surface */
