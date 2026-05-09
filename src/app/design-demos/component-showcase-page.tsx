@@ -16,7 +16,7 @@ import {
   ImageThumbSmall, ImageThumbMedium, ImageListSmall, ImageListMedium,
   ImageGrid, ReviewImageBoard, ImagePreviewLarge, ImageStrip,
 } from "./design-demo-ui";
-import { SectionTabs, SpecSection, SpecRow, CheckpointPicker, AspectChips, StepperInput, DimensionsReadout, UpscaleControl, KSamplerCard, SelectChip, VariantSwitcher } from "./section-editor-controls";
+import { SpecSection, SpecRow, StepperInput, DimensionsReadout, UpscaleControl, KSamplerCard, SelectChip, VariantSwitcher } from "./section-editor-controls";
 import { SectionNameEditor, SaveStatusPill } from "./section-editor-header";
 import { PresetBindingRow } from "./section-editor-presets";
 import type { PresetBinding, ImportCategory, PresetImportSelection } from "./section-editor-presets";
@@ -26,7 +26,6 @@ import type { PromptBlockRowData, CompiledPromptGroup } from "./section-editor-p
 import { LoraRow, HistoryDiffRow } from "./section-editor-lora-history";
 import type { LoraRowData, HistoryDiffChange } from "./section-editor-lora-history";
 import { LoraColumn } from "./section-editor-lora-column";
-import type { SectionTabValue } from "./section-editor-controls";
 import type { SaveStatus } from "./section-editor-header";
 import s from "./design-demo-styles";
 
@@ -92,7 +91,7 @@ function ShowcaseItem({ name, desc, children }: {
 
 export function ComponentShowcaseIndex({ data }: { data: DemoData }) {
   const categories = [
-    { href: "/component-showcase-atoms", title: "原子 / 小组件", desc: "Button、StatusBadge、Field、Switch、SegmentedControl、StepperInput、AspectChips、SvgIcon 等", icon: Layers, count: 26 },
+    { href: "/component-showcase-atoms", title: "原子 / 小组件", desc: "Button、StatusBadge、Field、Switch、SegmentedControl、StepperInput、SvgIcon 等", icon: Layers, count: 23 },
     { href: "/component-showcase-mid", title: "中组件", desc: "PageHeader、Panel、RouteTable、Toast、EmptyPage、ProjectDetailHeader、QueueMetrics 等", icon: Grid3X3, count: 16 },
     { href: "/component-showcase-images", title: "图片组件", desc: "ImageThumb、ImageStrip、ImageList、ImageGrid、ReviewBoard、Lightbox", icon: Palette, count: 9 },
     { href: "/component-showcase-editor", title: "Section Editor 组件", desc: "SectionHeader、PresetBindingRow、PromptBlockRow、LoraRow、LoraColumn 等", icon: SlidersHorizontal, count: 8 },
@@ -129,11 +128,9 @@ export function ComponentShowcaseIndex({ data }: { data: DemoData }) {
 export function ComponentShowcaseAtoms() {
   const [tabValue, setTabValue] = useState("params");
   const [stepperVal, setStepperVal] = useState(4);
-  const [aspectVal, setAspectVal] = useState("2:3");
   const [upscaleVal, setUpscaleVal] = useState(2);
   const [selectChipVal, setSelectChipVal] = useState("euler");
   const [variantId, setVariantId] = useState("v1");
-  const [checkpointVal, setCheckpointVal] = useState("dreamshaper_v8");
   const [sectionName, setSectionName] = useState("肖像 - 女性角色");
 
   const images = useMemo(() => makeImages(8), []);
@@ -272,22 +269,6 @@ export function ComponentShowcaseAtoms() {
         />
       </ShowcaseItem>
 
-      {/* 1.12 SectionTabs */}
-      <ShowcaseItem name="SectionTabs" desc="小节编辑器专用 Tab 栏">
-        <SectionTabs
-          tabs={[
-            { value: "params", label: "参数" },
-            { value: "presets", label: "预制", count: 3 },
-            { value: "prompts", label: "提示词" },
-            { value: "lora", label: "LoRA", count: 2 },
-            { value: "history", label: "历史" },
-            { value: "results", label: "结果", count: 48 },
-          ]}
-          value={tabValue as SectionTabValue}
-          onChange={(v) => setTabValue(v)}
-        />
-      </ShowcaseItem>
-
       {/* 1.13 SectionNameEditor */}
       <ShowcaseItem name="SectionNameEditor" desc="点击编辑小节名">
         <SectionNameEditor initialName={sectionName} onChange={setSectionName} />
@@ -312,21 +293,6 @@ export function ComponentShowcaseAtoms() {
             <StepperInput value={7} onChange={() => {}} min={1} max={30} step={0.5} />
           </SpecRow>
         </SpecSection>
-      </ShowcaseItem>
-
-      {/* 1.16 CheckpointPicker */}
-      <ShowcaseItem name="CheckpointPicker" desc="Checkpoint 下拉选择器">
-        <CheckpointPicker
-          value={checkpointVal}
-          projectCheckpoint="dreamshaper_v8"
-          options={["dreamshaper_v8.safetensors", "sdxl_base_1.0.safetensors", "realisticVision_v5.safetensors"]}
-          onChange={setCheckpointVal}
-        />
-      </ShowcaseItem>
-
-      {/* 1.17 AspectChips */}
-      <ShowcaseItem name="AspectChips" desc="画幅比例芯片组选择器">
-        <AspectChips value={aspectVal} onChange={setAspectVal} />
       </ShowcaseItem>
 
       {/* 1.18 StepperInput */}

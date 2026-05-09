@@ -1366,6 +1366,7 @@
 }
 
 .switch {
+  --switch-thumb-x: 20px;
   appearance: none;
   -webkit-appearance: none;
   position: relative;
@@ -1400,25 +1401,24 @@
 .switchThumb {
   position: absolute;
   top: 50%;
-  right: 3px;
+  left: 3px;
   width: 16px;
   height: 16px;
   border-radius: 50%;
   background: var(--demo-green);
   box-shadow: 0 1px 4px color-mix(in srgb, var(--demo-green) 24%, transparent);
   pointer-events: none;
-  transform: translateY(-50%);
-  transition: background-color 150ms ease;
+  transform: translate3d(var(--switch-thumb-x), -50%, 0);
+  transition: background-color 180ms ease, transform 180ms ease;
 }
 
 .switch[data-state="unchecked"] {
+  --switch-thumb-x: 0;
   border-color: var(--demo-border);
   background: var(--demo-panel-2);
 }
 
 .switch[data-state="unchecked"] .switchThumb {
-  right: auto;
-  left: 3px;
   background: var(--demo-muted);
 }
 

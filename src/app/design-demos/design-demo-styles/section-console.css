@@ -396,6 +396,8 @@
 .segmentedControl,
 .sectionTabs {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   width: 100%;
   min-width: 0;
   gap: 4px;
@@ -406,8 +408,7 @@
   background: var(--demo-glass-bg);
   backdrop-filter: var(--demo-glass-blur);
   box-shadow: none;
-  overflow-x: auto;
-  scrollbar-width: none;
+  overflow: visible;
 }
 
 .segmentedControlPanel,
@@ -824,20 +825,25 @@
 
 .stepperValue {
   flex: 1;
-  text-align: center;
-  font-size: 12.5px;
-  font-variant-numeric: tabular-nums;
-  color: var(--demo-text);
-  display: inline-flex;
-  align-items: center;
+  display: inline-grid;
+  grid-auto-flow: column;
+  grid-auto-columns: max-content;
+  align-items: baseline;
   justify-content: center;
   gap: 3px;
+  min-width: 0;
+  color: var(--demo-text);
+  font-size: 12.5px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
 }
 
 .stepperValue em {
   font-style: normal;
   color: var(--demo-faint);
   font-size: 10.5px;
+  line-height: 1;
 }
 
 /* Dimensions readout */
