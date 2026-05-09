@@ -13,9 +13,9 @@
 |------|-----|
 | 导出名 | `Button` |
 | 文件 | `design-demo-ui.tsx` |
-| Props | `children`, `tone?: "default" \| "subtle" \| "primary" \| "pink" \| "danger"`, `icon?: RouteIcon`, `onClick?`, `pressed?`, `pending?`, `disabled?`, `feedback?: DemoButtonFeedback`, `className?` |
-| 功能 | 通用按钮，支持 5 种色调、图标、pending 旋转、点击后 toast 反馈 |
-| CSS 类 | `.button`, `.buttonSubtle`, `.buttonPrimary`, `.buttonPink`, `.buttonDanger`, `.buttonPending`, `.buttonSpinner` |
+| Props | `children?`, `tone?: "default" \| "subtle" \| "primary" \| "pink" \| "danger"`, `icon?: RouteIcon`, `iconOnly?`, `ariaLabel?`, `onClick?`, `pressed?`, `pending?`, `disabled?`, `feedback?: DemoButtonFeedback`, `className?` |
+| 功能 | 通用按钮，支持 5 种色调、图标、纯 icon、pending 旋转、点击后 toast 反馈 |
+| CSS 类 | `.button`, `.buttonSubtle`, `.buttonPrimary`, `.buttonPink`, `.buttonDanger`, `.buttonIcon`, `.buttonIconOnly`, `.buttonPending`, `.buttonSpinner` |
 
 ### 1.2 ButtonLink
 
@@ -23,8 +23,8 @@
 |------|-----|
 | 导出名 | `ButtonLink` |
 | 文件 | `design-demo-ui.tsx` |
-| Props | `href`, `children`, `tone?`, `icon?`, `className?` |
-| 功能 | 按钮外观的 `<Link>`，色调同 Button |
+| Props | `href`, `children?`, `tone?`, `icon?`, `iconOnly?`, `ariaLabel?`, `className?` |
+| 功能 | 按钮外观的 `<Link>`，色调与纯 icon 模式同 Button |
 | CSS 类 | 同 Button |
 
 ### 1.3 StatusBadge

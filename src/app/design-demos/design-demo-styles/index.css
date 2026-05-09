@@ -6,3 +6,24 @@
 @import "./section-console.css";
 @import "./models.css";
 @import "./showcase.css";
+
+.button {
+  height: 36px;
+  min-height: 36px;
+  font-size: 12px;
+  font-weight: 580;
+  line-height: 1.2;
+}
+
+.buttonIcon {
+  width: 14px;
+  height: 14px;
+}
+
+.buttonIconOnly,
+.iconButton {
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  min-height: 36px;
+}

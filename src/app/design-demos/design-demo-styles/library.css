@@ -1325,10 +1325,6 @@
     flex: 0 0 auto;
   }
 
-  .button {
-    min-height: 44px;
-  }
-
   .desktopOnlyText {
     display: none;
   }

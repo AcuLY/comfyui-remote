@@ -148,6 +148,12 @@ export function StatusBadge({ status, label }: { status: string; label?: string 
   return <span className={cx(s.status, statusTone(status))}>{label ?? statusLabel(status)}</span>;
 }
 
+function controlLabel(children: React.ReactNode, ariaLabel?: string) {
+  if (ariaLabel) return ariaLabel;
+  if (typeof children === "string" || typeof children === "number") return String(children);
+  return "按钮";
+}
+
 function imageTagLabels(image: DemoImage) {
   return [
     image.featured ? "p站" : null,
@@ -470,28 +476,37 @@ export function ButtonLink({
   children,
   tone = "default",
   icon: Icon,
+  iconOnly = false,
+  ariaLabel,
   className,
 }: {
   href: string;
-  children: React.ReactNode;
+  children?: React.ReactNode;
   tone?: "default" | "subtle" | "primary" | "pink" | "danger";
   icon?: RouteIcon;
+  iconOnly?: boolean;
+  ariaLabel?: string;
   className?: string;
 }) {
+  const label = iconOnly ? controlLabel(children, ariaLabel) : undefined;
+
   return (
     <Link
       href={demoHref(href)}
+      aria-label={iconOnly ? label : undefined}
+      title={iconOnly ? label : undefined}
       className={cx(
         s.button,
         tone === "subtle" && s.buttonSubtle,
         tone === "primary" && s.buttonPrimary,
         tone === "pink" && s.buttonPink,
         tone === "danger" && s.buttonDanger,
+        iconOnly && s.buttonIconOnly,
         className,
       )}
     >
-      {Icon ? <Icon className="size-4" /> : null}
-      {children}
+      {Icon ? <Icon className={s.buttonIcon} /> : null}
+      {iconOnly ? null : children}
     </Link>
   );
 }
@@ -500,6 +515,8 @@ export function Button({
   children,
   tone = "default",
   icon: Icon,
+  iconOnly = false,
+  ariaLabel,
   onClick,
   pressed,
   pending = false,
@@ -507,9 +524,11 @@ export function Button({
   feedback,
   className,
 }: {
-  children: React.ReactNode;
+  children?: React.ReactNode;
   tone?: "default" | "subtle" | "primary" | "pink" | "danger";
   icon?: RouteIcon;
+  iconOnly?: boolean;
+  ariaLabel?: string;
   onClick?: () => void;
   pressed?: boolean;
   pending?: boolean;
@@ -518,6 +537,7 @@ export function Button({
   className?: string;
 }) {
   const { pushToast } = useDemoFeedback();
+  const label = iconOnly ? controlLabel(children, ariaLabel) : undefined;
 
   function handleClick() {
     if (disabled || pending) return;
@@ -535,8 +555,10 @@ export function Button({
     <button
       type="button"
       onClick={handleClick}
+      aria-label={iconOnly ? label : undefined}
       aria-pressed={pressed}
       aria-busy={pending || undefined}
+      title={iconOnly ? label : undefined}
       disabled={disabled || pending}
       className={cx(
         s.button,
@@ -545,11 +567,12 @@ export function Button({
         tone === "pink" && s.buttonPink,
         tone === "danger" && s.buttonDanger,
         pending && s.buttonPending,
+        iconOnly && s.buttonIconOnly,
         className,
       )}
     >
-      {pending ? <Activity className={cx("size-4", s.buttonSpinner)} /> : Icon ? <Icon className="size-4" /> : null}
-      {children}
+      {pending ? <Activity className={cx(s.buttonIcon, s.buttonSpinner)} /> : Icon ? <Icon className={s.buttonIcon} /> : null}
+      {iconOnly ? null : children}
     </button>
   );
 }

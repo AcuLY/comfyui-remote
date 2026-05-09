@@ -1383,44 +1383,63 @@
 }
 
 .button {
+  --button-bg: color-mix(in srgb, var(--demo-glass-soft) 88%, transparent);
+  --button-bg-hover: color-mix(in srgb, var(--demo-glass-hover) 92%, transparent);
+  --button-border: var(--demo-border-strong);
+  --button-border-hover: color-mix(in srgb, var(--demo-text) 20%, var(--demo-border-strong));
+  --button-color: var(--demo-text);
+  --button-shadow: none;
+  --button-shadow-hover: 0 6px 18px rgba(0, 0, 0, 0.1);
+  --button-focus: color-mix(in srgb, var(--demo-green) 30%, transparent);
   display: inline-flex;
   min-width: 0;
   max-width: 100%;
+  height: 36px;
   min-height: 36px;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  border: 1px solid var(--demo-border);
-  border-radius: var(--demo-radius);
-  background: var(--demo-glass-soft);
-  color: var(--demo-text);
+  gap: 8px;
+  border: 1px solid var(--button-border);
+  border-radius: 8px;
+  background: var(--button-bg);
+  backdrop-filter: var(--demo-glass-blur);
+  box-shadow: var(--button-shadow);
+  color: var(--button-color);
   cursor: pointer;
   font: inherit;
   font-size: 12px;
-  font-weight: 540;
+  font-weight: 580;
+  letter-spacing: 0;
   line-height: 1.2;
   overflow: hidden;
-  padding: 7px 10px;
+  padding: 0 12px;
   text-decoration: none;
   text-overflow: ellipsis;
-  text-wrap: pretty;
-  transition: 150ms ease;
-  white-space: normal;
+  transition: background 160ms ease, border-color 160ms ease, box-shadow 160ms ease, color 160ms ease, opacity 160ms ease;
+  white-space: nowrap;
   overflow-wrap: anywhere;
 }
 
 .button:hover,
 .button:focus-visible {
-  border-color: var(--demo-glass-accent-border);
-  background: var(--demo-glass-hover);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.08);
+  border-color: var(--button-border-hover);
+  background: var(--button-bg-hover);
+  box-shadow: var(--button-shadow-hover);
+  color: var(--button-color);
   transform: translateY(-1px);
-  outline: none;
+}
+
+.button:focus-visible {
+  outline: 3px solid var(--button-focus);
+  outline-offset: 2px;
+  transform: none;
 }
 
 .button:disabled {
   cursor: not-allowed;
-  opacity: 0.48;
+  filter: saturate(0.72);
+  opacity: 0.52;
+  transform: none;
 }
 
 .buttonPending {
@@ -1432,9 +1451,12 @@
 }
 
 .button[aria-pressed="true"] {
-  border-color: var(--demo-glass-accent-border);
-  background: var(--demo-selected);
-  color: var(--demo-green);
+  --button-bg: var(--demo-green-soft);
+  --button-bg-hover: color-mix(in srgb, var(--demo-green-soft) 78%, var(--demo-glass-hover));
+  --button-border: color-mix(in srgb, var(--demo-green) 36%, transparent);
+  --button-border-hover: color-mix(in srgb, var(--demo-green) 52%, transparent);
+  --button-color: var(--demo-green);
+  --button-shadow: none;
 }
 
 .mobileOnlyText {
@@ -1539,66 +1561,60 @@
 }
 
 .buttonPrimary {
-  border-color: var(--demo-glass-accent-border);
-  background: var(--demo-selected);
-  color: var(--demo-green);
-}
-
-.buttonPrimary:hover,
-.buttonPrimary:focus-visible {
-  border-color: var(--demo-glass-accent-border);
-  background: color-mix(in srgb, var(--demo-green-soft) 78%, var(--demo-glass-hover));
-  color: var(--demo-green);
-  transform: translateY(-1px);
+  --button-bg: var(--demo-green-soft);
+  --button-bg-hover: color-mix(in srgb, var(--demo-green-soft) 78%, var(--demo-glass-hover));
+  --button-border: color-mix(in srgb, var(--demo-green) 34%, transparent);
+  --button-border-hover: color-mix(in srgb, var(--demo-green) 52%, transparent);
+  --button-color: var(--demo-green);
+  --button-focus: color-mix(in srgb, var(--demo-green) 30%, transparent);
 }
 
 .buttonSubtle {
-  min-height: 30px;
-  border-color: transparent;
-  background: transparent;
-  color: var(--demo-muted);
-  box-shadow: none;
-  padding-inline: 8px;
+  --button-bg: transparent;
+  --button-bg-hover: var(--demo-control-hover);
+  --button-border: transparent;
+  --button-border-hover: transparent;
+  --button-color: var(--demo-muted);
+  --button-shadow: none;
+  --button-shadow-hover: none;
 }
 
 .buttonSubtle:hover,
 .buttonSubtle:focus-visible {
-  border-color: transparent;
-  background: transparent;
-  color: var(--demo-green);
-  box-shadow: none;
+  color: var(--demo-text);
 }
 
 .buttonPink {
-  border-color: rgba(249, 168, 212, 0.26);
-  background: var(--demo-pink-soft);
-  color: var(--demo-pink);
-}
-
-.buttonPink:hover,
-.buttonPink:focus-visible {
-  border-color: rgba(249, 168, 212, 0.38);
-  background: color-mix(in srgb, var(--demo-pink-soft) 82%, var(--demo-glass-soft));
-  color: var(--demo-pink);
-  transform: translateY(-1px);
+  --button-bg: var(--demo-pink-soft);
+  --button-bg-hover: color-mix(in srgb, var(--demo-pink-soft) 78%, var(--demo-glass-hover));
+  --button-border: color-mix(in srgb, var(--demo-pink) 30%, transparent);
+  --button-border-hover: color-mix(in srgb, var(--demo-pink) 46%, transparent);
+  --button-color: var(--demo-pink);
+  --button-focus: color-mix(in srgb, var(--demo-pink) 24%, transparent);
 }
 
 .buttonDanger {
-  border-color: rgba(251, 113, 133, 0.3);
-  background: var(--demo-red-soft);
-  color: var(--demo-red);
+  --button-bg: var(--demo-red-soft);
+  --button-bg-hover: color-mix(in srgb, var(--demo-red-soft) 78%, var(--demo-glass-hover));
+  --button-border: color-mix(in srgb, var(--demo-red) 32%, transparent);
+  --button-border-hover: color-mix(in srgb, var(--demo-red) 48%, transparent);
+  --button-color: var(--demo-red);
+  --button-focus: color-mix(in srgb, var(--demo-red) 24%, transparent);
 }
 
-.buttonDanger:hover,
-.buttonDanger:focus-visible {
-  border-color: rgba(251, 113, 133, 0.42);
-  background: color-mix(in srgb, var(--demo-red-soft) 78%, var(--demo-glass-hover));
-  color: var(--demo-red);
-  transform: translateY(-1px);
+.buttonIcon {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  stroke-width: 2.2;
 }
 
+.buttonIconOnly,
 .iconButton {
+  height: 36px;
   width: 36px;
+  min-width: 36px;
+  min-height: 36px;
   padding: 0;
 }
 
