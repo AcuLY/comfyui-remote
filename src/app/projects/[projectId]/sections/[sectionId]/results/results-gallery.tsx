@@ -4,6 +4,7 @@ import {
   useState,
   useCallback,
   useEffect,
+  useRef,
   useTransition,
   type ReactNode,
 } from "react";
@@ -58,6 +59,8 @@ export function ResultsGalleryProvider({
   const [loadedImageId, setLoadedImageId] = useState<string | null>(null);
   const [togglingMarker, setTogglingMarker] = useState<MarkerField | null>(null);
   const [reviewingAction, setReviewingAction] = useState<ReviewAction | null>(null);
+  const preloadedImageUrlsRef = useRef<Set<string>>(new Set());
+  const preloadImagesRef = useRef<HTMLImageElement[]>([]);
   const [, startTransition] = useTransition();
 
   useEffect(() => {
@@ -74,6 +77,20 @@ export function ResultsGalleryProvider({
       setCurrentIndex(Math.max(allImages.length - 1, 0));
     }
   }, [allImages.length, currentIndex, open]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const remainingImages = allImages.slice(currentIndex + 1);
+    for (const image of remainingImages) {
+      if (!image.full || preloadedImageUrlsRef.current.has(image.full)) continue;
+      const preloadImage = new window.Image();
+      preloadImage.decoding = "async";
+      preloadImage.src = image.full;
+      preloadedImageUrlsRef.current.add(image.full);
+      preloadImagesRef.current.push(preloadImage);
+    }
+  }, [allImages, currentIndex, open]);
 
   useEffect(() => {
     if (!projectId) return;

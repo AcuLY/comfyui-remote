@@ -96,6 +96,30 @@ export function ResultsGrid({
     });
   }
 
+  const trashLatestRunImages = useCallback(() => {
+    if (isPending) return;
+    const latestRun = runs.reduce<RunData | null>((latest, run) => {
+      if (run.images.length === 0) return latest;
+      if (!latest || run.runIndex > latest.runIndex) return run;
+      return latest;
+    }, null);
+    if (!latestRun) return;
+
+    const imageIds = latestRun.images.map((img) => img.id);
+    if (imageIds.length === 0) return;
+
+    setLastTrashedIds(imageIds);
+    startTransition(async () => {
+      try {
+        await trashImages(imageIds);
+        setSelected(new Set());
+        router.refresh();
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "删除失败");
+      }
+    });
+  }, [isPending, router, runs, startTransition]);
+
   // Save setLastTrashedIds to window for ResultsGalleryProvider to use
   useEffect(() => {
     (window as unknown as Record<string, (ids: string[]) => void>).__resultsGridSetLastTrashedIds = setLastTrashedIds;
@@ -117,10 +141,15 @@ export function ResultsGrid({
           toggleLightbox(0);
         }
       }
+      if (event.key === "x" || event.key === "X") {
+        if (event.repeat) return;
+        event.preventDefault();
+        trashLatestRunImages();
+      }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [allImages.length]);
+  }, [allImages.length, trashLatestRunImages]);
 
   // Undo function
   const handleUndo = useCallback(async () => {
