@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useState } from "react";
 import {
   Activity, Archive, Check, CheckSquare, ChevronDown, ChevronUp,
@@ -29,25 +28,6 @@ import type { LoraRowData, HistoryDiffChange } from "./section-editor-lora-histo
 import { LoraColumn } from "./section-editor-lora-column";
 import type { SectionTabValue } from "./section-editor-controls";
 import type { SaveStatus } from "./section-editor-header";
-import {
-  Badge as ShadcnDemoBadge,
-  Button as ShadcnDemoButton,
-  Input as ShadcnDemoInput,
-  Select as ShadcnDemoSelect,
-  SelectContent as ShadcnDemoSelectContent,
-  SelectItem as ShadcnDemoSelectItem,
-  SelectTrigger as ShadcnDemoSelectTrigger,
-  SelectValue as ShadcnDemoSelectValue,
-  Switch as ShadcnDemoSwitch,
-  Tabs as ShadcnDemoTabs,
-  TabsContent as ShadcnDemoTabsContent,
-  TabsList as ShadcnDemoTabsList,
-  TabsTrigger as ShadcnDemoTabsTrigger,
-  Textarea as ShadcnDemoTextarea,
-  ToggleGroup as ShadcnDemoToggleGroup,
-  ToggleGroupItem as ShadcnDemoToggleGroupItem,
-  buttonVariants,
-} from "./shadcn";
 import s from "./design-demo-styles";
 
 /* ───────────────────────── helpers ───────────────────────── */
@@ -154,165 +134,12 @@ export function ComponentShowcaseAtoms() {
   const [variantId, setVariantId] = useState("v1");
   const [checkpointVal, setCheckpointVal] = useState("dreamshaper_v8");
   const [sectionName, setSectionName] = useState("肖像 - 女性角色");
-  const [shadcnTabValue, setShadcnTabValue] = useState("params");
-  const [shadcnAspectValue, setShadcnAspectValue] = useState<string[]>(["2:3"]);
-  const [shadcnUpscaleValue, setShadcnUpscaleValue] = useState<string[]>(["2"]);
-  const [shadcnSelectValue, setShadcnSelectValue] = useState("dreamshaper_v8");
-  const [shadcnSwitchValue, setShadcnSwitchValue] = useState(true);
-  const [shadcnStepperValue, setShadcnStepperValue] = useState(20);
 
   const images = useMemo(() => makeImages(8), []);
 
   return (
     <div className={s.showcasePage}>
       <PageHeader back={{ href: "/component-showcase", label: "返回总览" }} eyebrow="组件展示" title="原子 / 小组件" subtitle="基础组件，调整浏览器窗口宽度查看响应式表现" />
-
-      {/* 0.1 Demo-local shadcn preview */}
-      <ShowcaseItem name="Shadcn Preview / 基础组件第一版" desc="demo 内部 shadcn 基础层；只覆盖字体、颜色和 icon，旧自研组件保留在下方">
-        <div className="shadcnPreview">
-          <div className={s.showcaseGroup}>
-            <div className={s.showcaseGroupTitle}>Button</div>
-            <div className={s.showcaseRow}>
-              <ShadcnDemoButton>Default</ShadcnDemoButton>
-              <ShadcnDemoButton variant="secondary">Secondary</ShadcnDemoButton>
-              <ShadcnDemoButton variant="outline">Outline</ShadcnDemoButton>
-              <ShadcnDemoButton variant="ghost">Ghost</ShadcnDemoButton>
-              <ShadcnDemoButton className="demoShadcnTonePrimary" variant="outline">Primary</ShadcnDemoButton>
-              <ShadcnDemoButton className="demoShadcnTonePink" variant="outline">Pink</ShadcnDemoButton>
-              <ShadcnDemoButton variant="destructive">Danger</ShadcnDemoButton>
-              <ShadcnDemoButton disabled>Disabled</ShadcnDemoButton>
-              <ShadcnDemoButton disabled><Activity data-icon="inline-start" className="animate-spin" />Loading</ShadcnDemoButton>
-              <ShadcnDemoButton aria-pressed="true" className="demoShadcnTonePrimary" variant="outline"><Check data-icon="inline-start" />Pressed</ShadcnDemoButton>
-            </div>
-          </div>
-          <div className={s.showcaseGroup}>
-            <div className={s.showcaseGroupTitle}>Icon + Text / Icon Only</div>
-            <div className={s.showcaseRow}>
-              <ShadcnDemoButton><Plus data-icon="inline-start" />新增</ShadcnDemoButton>
-              <ShadcnDemoButton className="demoShadcnTonePrimary" variant="outline"><Settings data-icon="inline-start" />设置</ShadcnDemoButton>
-              <ShadcnDemoButton variant="destructive"><Trash2 data-icon="inline-start" />删除</ShadcnDemoButton>
-              <ShadcnDemoButton aria-label="新增" size="icon"><Plus /></ShadcnDemoButton>
-              <ShadcnDemoButton aria-label="设置" className="demoShadcnTonePrimary" size="icon" variant="outline"><Settings /></ShadcnDemoButton>
-              <ShadcnDemoButton aria-label="精选" className="demoShadcnTonePink" size="icon" variant="outline"><Star /></ShadcnDemoButton>
-              <ShadcnDemoButton aria-label="删除" size="icon" variant="destructive"><Trash2 /></ShadcnDemoButton>
-            </div>
-          </div>
-          <div className={s.showcaseGroup}>
-            <div className={s.showcaseGroupTitle}>ButtonLink</div>
-            <div className={s.showcaseRow}>
-              <Link className={buttonVariants({ variant: "default" })} href="/design-demos/component-showcase">Default Link</Link>
-              <Link className={buttonVariants({ variant: "outline", className: "demoShadcnTonePrimary" })} href="/design-demos/component-showcase">
-                <Plus data-icon="inline-start" />
-                Primary Link
-              </Link>
-              <Link className={buttonVariants({ variant: "outline", size: "icon" })} href="/design-demos/component-showcase" aria-label="设置">
-                <Settings />
-              </Link>
-            </div>
-          </div>
-          <div className={s.showcaseGroup}>
-            <div className={s.showcaseGroupTitle}>Badge</div>
-            <div className={s.showcaseRow}>
-              <ShadcnDemoBadge className="demoShadcnToneWarning" variant="outline">运行中</ShadcnDemoBadge>
-              <ShadcnDemoBadge className="demoShadcnTonePrimary" variant="outline">完成</ShadcnDemoBadge>
-              <ShadcnDemoBadge variant="secondary">待审</ShadcnDemoBadge>
-              <ShadcnDemoBadge variant="destructive">失败</ShadcnDemoBadge>
-              <ShadcnDemoBadge className="demoShadcnToneSky" variant="outline">草稿</ShadcnDemoBadge>
-              <ShadcnDemoBadge className="demoShadcnTonePink" variant="outline">精选</ShadcnDemoBadge>
-            </div>
-          </div>
-          <div className={s.showcaseGroup}>
-            <div className={s.showcaseGroupTitle}>Input / Textarea</div>
-            <div className={s.showcaseStack}>
-              <ShadcnDemoInput readOnly value="夏日人像合集" aria-label="项目名称" />
-              <ShadcnDemoInput disabled value="禁用字段" aria-label="禁用字段" />
-              <ShadcnDemoTextarea
-                readOnly
-                value="masterpiece, best quality, 1girl, portrait, detailed face, studio lighting, bokeh background"
-                aria-label="正向提示词"
-              />
-            </div>
-          </div>
-          <div className={s.showcaseGroup}>
-            <div className={s.showcaseGroupTitle}>Select / Switch</div>
-            <div className={s.showcaseStack}>
-              <ShadcnDemoSelect
-                value={shadcnSelectValue}
-                onValueChange={(value) => {
-                  if (value) setShadcnSelectValue(value);
-                }}
-              >
-                <ShadcnDemoSelectTrigger className="w-full">
-                  <ShadcnDemoSelectValue placeholder="选择 checkpoint" />
-                </ShadcnDemoSelectTrigger>
-                <ShadcnDemoSelectContent>
-                  <ShadcnDemoSelectItem value="dreamshaper_v8">dreamshaper_v8.safetensors</ShadcnDemoSelectItem>
-                  <ShadcnDemoSelectItem value="sdxl_base_1_0">sdxl_base_1.0.safetensors</ShadcnDemoSelectItem>
-                  <ShadcnDemoSelectItem value="realistic_vision_v5">realisticVision_v5.safetensors</ShadcnDemoSelectItem>
-                </ShadcnDemoSelectContent>
-              </ShadcnDemoSelect>
-              <div className="demoShadcnTabsPanel flex items-center justify-between gap-4 rounded-md border p-3 text-sm">
-                <div>
-                  <strong>启用 LoRA</strong>
-                  <span className="block opacity-70">加载关联的 LoRA 模型</span>
-                </div>
-                <ShadcnDemoSwitch checked={shadcnSwitchValue} onCheckedChange={setShadcnSwitchValue} aria-label="启用 LoRA" />
-              </div>
-            </div>
-          </div>
-          <div className={s.showcaseGroup}>
-            <div className={s.showcaseGroupTitle}>Tabs / ToggleGroup</div>
-            <div className={s.showcaseStack}>
-              <ShadcnDemoTabs
-                value={shadcnTabValue}
-                onValueChange={setShadcnTabValue}
-              >
-                <ShadcnDemoTabsList>
-                  <ShadcnDemoTabsTrigger value="params">参数</ShadcnDemoTabsTrigger>
-                  <ShadcnDemoTabsTrigger value="presets">预制 <span className="demoShadcnCount">3</span></ShadcnDemoTabsTrigger>
-                  <ShadcnDemoTabsTrigger value="prompts">提示词</ShadcnDemoTabsTrigger>
-                  <ShadcnDemoTabsTrigger value="lora">LoRA <span className="demoShadcnCount">2</span></ShadcnDemoTabsTrigger>
-                  <ShadcnDemoTabsTrigger value="results">结果 <span className="demoShadcnCount">48</span></ShadcnDemoTabsTrigger>
-                </ShadcnDemoTabsList>
-                <ShadcnDemoTabsContent className="demoShadcnTabsPanel rounded-md border p-3" value={shadcnTabValue}>当前 Tab：{shadcnTabValue}</ShadcnDemoTabsContent>
-              </ShadcnDemoTabs>
-              <ShadcnDemoToggleGroup
-                value={shadcnAspectValue}
-                onValueChange={(value) => setShadcnAspectValue(value.slice(-1))}
-                variant="outline"
-              >
-                <ShadcnDemoToggleGroupItem value="1:1">1:1</ShadcnDemoToggleGroupItem>
-                <ShadcnDemoToggleGroupItem value="2:3">2:3</ShadcnDemoToggleGroupItem>
-                <ShadcnDemoToggleGroupItem value="3:4">3:4</ShadcnDemoToggleGroupItem>
-                <ShadcnDemoToggleGroupItem value="16:9">16:9</ShadcnDemoToggleGroupItem>
-              </ShadcnDemoToggleGroup>
-              <ShadcnDemoToggleGroup
-                value={shadcnUpscaleValue}
-                onValueChange={(value) => setShadcnUpscaleValue(value.slice(-1))}
-                variant="outline"
-              >
-                <ShadcnDemoToggleGroupItem value="1">1×</ShadcnDemoToggleGroupItem>
-                <ShadcnDemoToggleGroupItem value="1.5">1.5×</ShadcnDemoToggleGroupItem>
-                <ShadcnDemoToggleGroupItem value="2">2×</ShadcnDemoToggleGroupItem>
-                <ShadcnDemoToggleGroupItem value="3">3×</ShadcnDemoToggleGroupItem>
-                <ShadcnDemoToggleGroupItem value="4">4×</ShadcnDemoToggleGroupItem>
-              </ShadcnDemoToggleGroup>
-            </div>
-          </div>
-          <div className={s.showcaseGroup}>
-            <div className={s.showcaseGroupTitle}>Stepper Preview</div>
-            <div className={s.showcaseRow}>
-              <ShadcnDemoButton aria-label="减少步数" variant="outline" onClick={() => setShadcnStepperValue((value) => Math.max(1, value - 1))}>
-                -
-              </ShadcnDemoButton>
-              <ShadcnDemoInput className="w-24 text-center" readOnly value={`${shadcnStepperValue} 步`} aria-label="步数" />
-              <ShadcnDemoButton aria-label="增加步数" variant="outline" onClick={() => setShadcnStepperValue((value) => Math.min(50, value + 1))}>
-                +
-              </ShadcnDemoButton>
-            </div>
-          </div>
-        </div>
-      </ShowcaseItem>
 
       {/* 1.1 Button */}
       <ShowcaseItem name="Button" desc="通用按钮，5 种色调">

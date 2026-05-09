@@ -6,7 +6,6 @@
 @import "./section-console.css";
 @import "./models.css";
 @import "./showcase.css";
-@import "./shadcn-preview.css";
 
 .button {
   height: 36px;
