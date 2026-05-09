@@ -109,7 +109,7 @@ For review pages, the main surface should stay readable as one work area: header
   - `--demo-font-cjk: "HarmonyOS Sans SC"` — CJK glyphs (优先)
   - `--demo-font-geist: "geistSans"` — Latin / UI letters
   - `--demo-font-sans: var(--demo-font-geist), var(--demo-font-cjk), system-ui, sans-serif` — final sans stack
-  - `--demo-font-mono: var(--font-demo-maple-mono), "Cascadia Code", ui-monospace, monospace` — monospace stack for code/logs
+  - `--demo-font-mono: var(--font-demo-ibm-plex-mono), "IBM Plex Mono", "Cascadia Code", ui-monospace, monospace` — monospace stack for code/logs
 - Page titles: 18-24px, 560-620 weight. Avoid oversized hero typography inside tools.
 - Panel and row titles: 12-14px, 540-600 weight.
 - Metadata and helper text: 10-12px, normal or medium weight.

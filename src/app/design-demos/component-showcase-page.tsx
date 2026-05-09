@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import {
   Activity, Archive, Check, CheckSquare, ChevronDown, ChevronUp,
-  Eye, FileText, FlaskConical, Grid3X3, Layers, Monitor, Palette, Plus,
+  Eye, FlaskConical, Grid3X3, Layers, Monitor, Palette, Plus,
   Rows3, Settings, Shuffle, SlidersHorizontal, Square, Star,
   Trash2, Wand2, X,
 } from "lucide-react";
@@ -93,7 +93,6 @@ function ShowcaseItem({ name, desc, children }: {
 export function ComponentShowcaseIndex({ data }: { data: DemoData }) {
   const categories = [
     { href: "/component-showcase-atoms", title: "原子 / 小组件", desc: "Button、StatusBadge、Field、StepperInput、AspectChips 等", icon: Layers, count: 23 },
-    { href: "/component-showcase-fonts", title: "代码字体", desc: "JetBrains、Cascadia、Fira、IBM Plex、Commit 与当前字体对比", icon: FileText, count: 6 },
     { href: "/component-showcase-mid", title: "中组件", desc: "PageHeader、Panel、RouteTable、Toast、EmptyPage", icon: Grid3X3, count: 5 },
     { href: "/component-showcase-images", title: "图片组件", desc: "ImageThumb、ImageList、ImageGrid、ReviewBoard、Lightbox", icon: Palette, count: 8 },
     { href: "/component-showcase-editor", title: "Section Editor 组件", desc: "SectionHeader、PresetBindingRow、PromptBlockRow、LoraRow、LoraColumn 等", icon: SlidersHorizontal, count: 8 },
@@ -117,187 +116,6 @@ export function ComponentShowcaseIndex({ data }: { data: DemoData }) {
           </a>
         ))}
       </div>
-    </div>
-  );
-}
-
-/* ══════════════════════════════════════════════════════════════
-   Font Preview Page
-   ══════════════════════════════════════════════════════════════ */
-
-const fontPreviewSamples = {
-  title: "dreamshaper_v8.safetensors / KSampler 01",
-  meta: "Run #2489 · 2026-05-09 21:34 · batch=8 · seed=1847295301",
-  code: `{
-  "checkpoint": "dreamshaper_v8.safetensors",
-  "sampler": "euler",
-  "scheduler": "normal",
-  "steps": 24,
-  "cfg": 7.5,
-  "size": "832 x 1216",
-  "lora": ["portrait-soft-light:0.65", "film-grain:0.25"]
-}`,
-  prompt: "masterpiece, best quality, 1girl, portrait, detailed face, studio lighting, bokeh background",
-  glyphs: "0 O 1 l I | {} [] () => / \\ _ - + * # @ & 1847295301",
-};
-
-const fontPreviewOptions = [
-  {
-    name: "JetBrains Mono",
-    stack: "var(--font-demo-jetbrains-mono), ui-monospace, monospace",
-    badge: "推荐",
-    note: "编辑器气质最稳，数字和易混字符清楚，适合参数、日志、模型名。",
-  },
-  {
-    name: "Cascadia Code",
-    stack: "\"Cascadia Code\", \"Cascadia Mono\", ui-monospace, monospace",
-    badge: "系统预览",
-    note: "更贴近 Windows / PowerShell / VS Code 语境；未安装时会回退到系统等宽。",
-  },
-  {
-    name: "IBM Plex Mono",
-    stack: "var(--font-demo-ibm-plex-mono), ui-monospace, monospace",
-    badge: "克制",
-    note: "企业工具感强，字面窄而清爽，适合高密度数据面板。",
-  },
-  {
-    name: "Fira Code",
-    stack: "var(--font-demo-fira-code), ui-monospace, monospace",
-    badge: "技术感",
-    note: "代码和 dashboard 识别度高，比 JetBrains 更有个性。",
-  },
-  {
-    name: "Commit Mono",
-    stack: "\"Commit Mono\", ui-monospace, monospace",
-    badge: "系统预览",
-    note: "现代、低噪音；未安装时会回退到系统等宽。",
-  },
-  {
-    name: "Maple Mono",
-    stack: "var(--font-demo-maple-mono), \"Cascadia Code\", ui-monospace, monospace",
-    badge: "当前",
-    note: "当前 demo 字体，圆润、亲和，和中文 UI 的柔和感较接近。",
-  },
-];
-
-const fontPreviewScopedCss = `
-.fontPreviewLayout{display:grid;grid-template-columns:minmax(240px,320px) minmax(0,1fr);gap:16px;align-items:start}
-.fontPreviewList{display:flex;flex-direction:column;gap:8px;position:sticky;top:20px}
-.fontPreviewOption{width:100%;border:1px solid var(--demo-border);border-radius:10px;background:var(--demo-surface);color:var(--demo-text);padding:12px;text-align:left;cursor:pointer;transition:background .16s ease,border-color .16s ease,box-shadow .16s ease,transform .16s ease}
-.fontPreviewOption:hover{transform:translateY(-1px);border-color:var(--demo-border-strong);background:var(--demo-surface-hover)}
-.fontPreviewOptionSelected{border-color:var(--demo-glass-accent-border);background:var(--demo-selected);box-shadow:0 14px 38px rgba(4,120,87,.12)}
-.fontPreviewOptionTop{display:flex;align-items:center;justify-content:space-between;gap:10px}
-.fontPreviewOptionName{min-width:0;font-size:15px;font-weight:650;line-height:1.2}
-.fontPreviewOptionSample{display:block;margin-top:8px;color:var(--demo-code-text);font-size:14px;line-height:1.35;overflow-wrap:anywhere}
-.fontPreviewOptionNote{display:block;margin-top:8px;color:var(--demo-muted);font-family:var(--demo-font-sans);font-size:12px;line-height:1.45}
-.fontPreviewStage,.fontComparePanel{min-width:0;border:1px solid var(--demo-border);border-radius:12px;background:var(--demo-panel);box-shadow:var(--demo-glass-shadow)}
-.fontPreviewStage{padding:18px}
-.fontPreviewStageHeader,.fontCompareHeader{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:16px}
-.fontPreviewStageLabel{color:var(--demo-muted);font-family:var(--demo-font-sans);font-size:11px;font-weight:650;letter-spacing:.08em;line-height:1.2;text-transform:uppercase}
-.fontPreviewStageTitle{margin:4px 0 0;color:var(--demo-text);font-size:42px;font-weight:650;letter-spacing:0;line-height:1.04}
-.fontPreviewBadge{flex:0 0 auto;border:1px solid var(--demo-glass-accent-border);border-radius:999px;background:var(--demo-green-soft);color:var(--demo-green);padding:3px 8px;font-family:var(--demo-font-sans);font-size:11px;font-weight:600;line-height:1.2}
-.fontPreviewLargePanel{border:1px solid var(--demo-border-strong);border-radius:10px;background:var(--demo-code-bg);color:var(--demo-code-text);padding:18px;overflow:hidden}
-.fontPreviewLargeTitle{font-size:20px;font-weight:650;line-height:1.35;overflow-wrap:anywhere}
-.fontPreviewLargeMeta{margin-top:8px;color:var(--demo-muted);font-size:14px;line-height:1.45;overflow-wrap:anywhere}
-.fontPreviewLargeCode{margin:18px 0;color:var(--demo-code-text);font:inherit;font-size:16px;line-height:1.7;white-space:pre-wrap;overflow-wrap:anywhere}
-.fontPreviewLargePrompt,.fontPreviewLargeGlyphs{border-top:1px solid var(--demo-border);padding-top:14px;color:var(--demo-muted);font-size:15px;line-height:1.55;overflow-wrap:anywhere}
-.fontPreviewLargeGlyphs{margin-top:14px;color:var(--demo-code-text);font-size:18px}
-.fontComparePanel{margin-top:16px;padding:16px}
-.fontCompareTitle{margin:4px 0 0;color:var(--demo-text);font-size:18px;font-weight:650;line-height:1.25}
-.fontCompareHint{color:var(--demo-muted);font-size:12px;line-height:1.45}
-.fontCompareRows{display:grid;gap:8px}
-.fontCompareRow{display:grid;grid-template-columns:160px minmax(0,1fr);gap:14px;align-items:baseline;width:100%;border:1px solid var(--demo-border);border-radius:8px;background:var(--demo-surface-soft);color:var(--demo-text);padding:10px 12px;text-align:left;cursor:pointer;transition:background .16s ease,border-color .16s ease}
-.fontCompareRow:hover{border-color:var(--demo-border-strong);background:var(--demo-surface-hover)}
-.fontCompareRowSelected{border-color:var(--demo-glass-accent-border);background:var(--demo-green-soft)}
-.fontCompareName{color:var(--demo-muted);font-family:var(--demo-font-sans);font-size:12px;font-weight:650}
-.fontCompareSample{min-width:0;color:var(--demo-code-text);font-size:15px;line-height:1.4;overflow-wrap:anywhere}
-@media (max-width:900px){.fontPreviewLayout{grid-template-columns:1fr}.fontPreviewList{position:static;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}.fontCompareRow{grid-template-columns:1fr;gap:6px}}
-@media (max-width:520px){.fontPreviewStage,.fontComparePanel{padding:12px}.fontPreviewLargePanel{padding:14px}.fontPreviewStageTitle{font-size:30px}.fontPreviewLargeTitle{font-size:17px}.fontPreviewLargeCode{font-size:13px}.fontPreviewLargeGlyphs{font-size:15px}}
-`;
-
-export function ComponentShowcaseFonts() {
-  const [selectedFontName, setSelectedFontName] = useState(fontPreviewOptions[0].name);
-  const selectedFont = fontPreviewOptions.find((font) => font.name === selectedFontName) ?? fontPreviewOptions[0];
-
-  return (
-    <div className={s.showcasePage}>
-      <style>{fontPreviewScopedCss}</style>
-      <PageHeader
-        eyebrow="组件展示"
-        title="代码字体预览"
-        subtitle="点击左侧字体，右侧查看大号样本。Cascadia Code 与 Commit Mono 依赖本机字体安装。"
-      />
-
-      <div className={s.fontPreviewLayout}>
-        <aside className={s.fontPreviewList} aria-label="代码字体选项">
-          {fontPreviewOptions.map((font) => {
-            const selected = font.name === selectedFont.name;
-
-            return (
-              <button
-                key={font.name}
-                type="button"
-                className={selected ? `${s.fontPreviewOption} ${s.fontPreviewOptionSelected}` : s.fontPreviewOption}
-                onClick={() => setSelectedFontName(font.name)}
-                aria-pressed={selected}
-              >
-                <span className={s.fontPreviewOptionTop}>
-                  <span className={s.fontPreviewOptionName} style={{ fontFamily: font.stack }}>{font.name}</span>
-                  <span className={s.fontPreviewBadge}>{font.badge}</span>
-                </span>
-                <span className={s.fontPreviewOptionSample} style={{ fontFamily: font.stack }}>
-                  0O 1lI · seed=1847295301
-                </span>
-                <span className={s.fontPreviewOptionNote}>{font.note}</span>
-              </button>
-            );
-          })}
-        </aside>
-
-        <section className={s.fontPreviewStage}>
-          <div className={s.fontPreviewStageHeader}>
-            <div>
-              <div className={s.fontPreviewStageLabel}>当前预览</div>
-              <h2 className={s.fontPreviewStageTitle} style={{ fontFamily: selectedFont.stack }}>{selectedFont.name}</h2>
-            </div>
-            <span className={s.fontPreviewBadge}>{selectedFont.badge}</span>
-          </div>
-
-          <div className={s.fontPreviewLargePanel} style={{ fontFamily: selectedFont.stack }}>
-            <div className={s.fontPreviewLargeTitle}>{fontPreviewSamples.title}</div>
-            <div className={s.fontPreviewLargeMeta}>{fontPreviewSamples.meta}</div>
-            <pre className={s.fontPreviewLargeCode}>{fontPreviewSamples.code}</pre>
-            <div className={s.fontPreviewLargePrompt}>{fontPreviewSamples.prompt}</div>
-            <div className={s.fontPreviewLargeGlyphs}>{fontPreviewSamples.glyphs}</div>
-          </div>
-        </section>
-      </div>
-
-      <section className={s.fontComparePanel} aria-label="字体横向对比">
-        <div className={s.fontCompareHeader}>
-          <div>
-            <div className={s.fontPreviewStageLabel}>横向对比</div>
-            <h2 className={s.fontCompareTitle}>同一句样本</h2>
-          </div>
-          <span className={s.fontCompareHint}>只比较英文字母、数字、符号和模型名</span>
-        </div>
-
-        <div className={s.fontCompareRows}>
-          {fontPreviewOptions.map((font) => (
-            <button
-              key={font.name}
-              type="button"
-              className={font.name === selectedFont.name ? `${s.fontCompareRow} ${s.fontCompareRowSelected}` : s.fontCompareRow}
-              onClick={() => setSelectedFontName(font.name)}
-            >
-              <span className={s.fontCompareName}>{font.name}</span>
-              <span className={s.fontCompareSample} style={{ fontFamily: font.stack }}>
-                dreamshaper_v8.safetensors · cfg=7.5 · 0O 1lI [] =&gt; seed=1847295301
-              </span>
-            </button>
-          ))}
-        </div>
-      </section>
     </div>
   );
 }

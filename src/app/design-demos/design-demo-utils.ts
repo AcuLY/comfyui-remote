@@ -72,7 +72,6 @@ export type RouteKey =
   | "image-list-components"
   | "component-showcase"
   | "component-showcase-atoms"
-  | "component-showcase-fonts"
   | "component-showcase-mid"
   | "component-showcase-images"
   | "component-showcase-editor"
@@ -179,7 +178,6 @@ export const ROUTES: RouteDef[] = [
   { key: "image-list-components", pattern: "/image-list-components", title: "图片列表组件", group: "临时", icon: ImageIcon },
   { key: "component-showcase", pattern: "/component-showcase", title: "组件展示总览", group: "临时", icon: Layers },
   { key: "component-showcase-atoms", pattern: "/component-showcase-atoms", title: "原子组件", group: "临时", icon: Layers },
-  { key: "component-showcase-fonts", pattern: "/component-showcase-fonts", title: "代码字体", group: "临时", icon: FileText },
   { key: "component-showcase-mid", pattern: "/component-showcase-mid", title: "中组件展示", group: "临时", icon: Grid3X3 },
   { key: "component-showcase-images", pattern: "/component-showcase-images", title: "图片组件展示", group: "临时", icon: ImageIcon },
   { key: "component-showcase-editor", pattern: "/component-showcase-editor", title: "编辑器组件展示", group: "临时", icon: SlidersHorizontal },
