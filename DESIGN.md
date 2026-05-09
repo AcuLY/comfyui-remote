@@ -135,106 +135,14 @@ For review pages, the main surface should stay readable as one work area: header
 
 ## 6. Components
 
-### 6.1 小组件（UI 原语）
-
-| 组件 | CSS 类 | 用途 | 规范要点 |
-|--------|----------|------|----------|
-| `Button` | `.button`, `.buttonPrimary`, `.buttonSubtle`, `.buttonPink`, `.buttonDanger` | 通用按钮 | glass/透明表面、1px border、36px 最小高度；Primary 用软绿色填充而非实色；hover 有 `translateY(-1px)` |
-| `ButtonLink` | `.buttonLink` | 链接样式按钮 | 复用 `.button` 样式体系 |
-| `StatusBadge` | `.status`, `.statusGreen`, `.statusPink`, `.statusAmber`, `.statusSky`, `.statusRed` | 状态徽章 | 药丸形状、半透明填充、小号文字；按语义用色 |
-| `OperationStateStrip` | `.operationStateStrip`, `.operationStateItem` | 操作状态条 | 行内状态展示 |
-| `DemoToast` / `DemoToastStack` | `.toast`, `.toastStack` | Toast 通知 | 顶部右侧浮现、自动消失 |
-| `DemoFeedbackProvider` | — | Toast 上下文提供者 | 管理全局消息提示 |
-
-### 6.2 图片组件
-
-| 组件 | CSS 类 | 用途 | 规范要点 |
-|--------|----------|------|----------|
-| `ImageThumbSmall` | `.imageThumbSmall`, `.imageThumbImageButton` | 小缩略图 | 桌面 80×120、移动端 60×90；`object-fit: cover`；hover 有 `translateY(-1px)` |
-| `ImageThumbMedium` | `.imageThumbMedium`, `.imageThumbSelect`, `.imageThumbTags` | 中缩略图 | 桌面 160×240、移动端 120×180；支持勾选、状态 tag、快速操作；hover 有 `translateY(-1px)` |
-| `ImagePreviewLarge` | `.imagePreviewFrame`, `.imagePreviewFrameInteractive`, `.imagePreviewFrameZoomed` | 大图预览灯箱 | 只作为 lightbox 弹窗使用；保持原图比例；支持上一张/下一张、滚轮缩放 |
-| `ImageListSmall` / `ImageStrip` | `.imageListSmall`, `.imageStrip` | 小图列表 | 固定一行、横向滚动；超出后横向滚动；边缘渐隐提示 |
-| `ImageListMedium` | `.imageListMedium` | 中图列表 | flex-start 布局；可限制纵向尺寸；纵向折叠时渐变隐藏并提供展开按钮 |
-| `ImageGrid` | `.imageGrid` | 图片网格 | 使用 `ImageListMedium` 渲染 `ImageThumbMedium`；点击后打开 `ImagePreviewLarge` |
-| `ReviewImageBoard` | `.reviewImageBoard`, `.reviewTile`, `.reviewSelectButton`, `.reviewMarkers`, `.reviewTileStatus` | 审核网格 | 使用 `ImageListMedium` 渲染可勾选的 `ImageThumbMedium`；带批量选择和操作栏 |
-
-### 6.3 表单组件
-
-| 组件 | CSS 类 | 用途 | 规范要点 |
-|--------|----------|------|----------|
-| `Field` | `.field` | 表单字段 | 1px border、glass 背景；符合 DESIGN.md 规范 |
-| `TextAreaField` | `.textarea` | 文本域 | 复用 `.field` 样式体系 |
-| `SelectLike` | `.select` | 类下拉选择 | 复用 `.field` 样式体系 |
-| `DemoTabs` | `.tabs`, `.tab` | 标签页 | compact segmented rows 带 count pill；active 用绿色 token 柔和展示 |
-| `SwitchRow` | `.switchRow`, `.switch` | 开关行 | 行内开关控件 |
-
-### 6.4 数据展示组件
-
-| 组件 | CSS 类 | 用途 | 规范要点 |
-|--------|----------|------|----------|
-| `MetricCard` | `.metric` | 指标卡片 | 展示图标、标签、数值、元数据；hover 无 `transform: none`（有意禁用浮动） |
-| `RouteTable` | `.routeTable` | 路由表格 | 展示所有页面路径；使用 Panel 组件 |
-| `EmptyRows` | `.emptyRows` | 空状态 | 列表空状态提示 |
-| `EmptyPage` | `.emptyPage` | 空页面 | 包含页面头部和空状态 |
-
-### 6.5 导航与 Shell 组件
-
-| 组件 | CSS 类 | 用途 | 规范要点 |
-|--------|----------|------|----------|
-| `PageHeader` | `.pageHeader` | 页面头部 | 返回链接、标题、副标题、操作区 |
-| `Panel` | `.panel`, `.panelHeader`, `.panelBody` | 面板 | 一个 glass surface 带紧凑 header 和 row-based body；参数面板可折叠 |
-| `ProjectSectionShell` | `.projectSectionShell`, `.projectScrollPane` | 项目小节外壳 | 包含可滚动内容区和侧边导航栏 |
-| `SectionRail` | `.sectionRail`, `.railHeading`, `.railItem`, `.railItemActive` | 小节导航栏 | 支持滚动同步和高亮当前小节 |
-
-### 6.6 Section Editor 组件
-
-| 组件 | CSS 类 | 用途 | 规范要点 |
-|--------|----------|------|----------|
-| `SectionTabs` | `.sectionTabs`, `.sectionTab`, `.sectionTabActive`, `.sectionTabCount` | 选项卡切换栏 | Params/Presets/Prompts/LoRA/History/Results |
-| `SpecSection` / `SpecRow` | `.specSection`, `.specRow`, `.specRowLabel`, `.specRowControl` | 参数分区/行 | 标签 + 控件 |
-| `CheckpointPicker` | `.cpPicker`, `.cpPickerBtn`, `.cpPickerOption` | Checkpoint 选择器 | 下拉菜单 |
-| `AspectChips` | `.aspectChips`, `.aspectChip`, `.aspectChipActive` | 宽高比选择芯片组 | 芯片式选择 |
-| `StepperInput` | `.stepper`, `.stepperBtn`, `.stepperValue` | 数字步进输入器 | 带 +/- 按钮 |
-| `DimensionsReadout` | `.dimReadout`, `.dimReadoutBase`, `.dimReadoutFinal` | 图像尺寸读取 | 基础→最终 |
-| `UpscaleControl` | `.upscaleControl`, `.upscaleChips` | 放大倍数控制 | 芯片选择 + 警告 |
-| `SamplerCard` | `.ksCard`, `.ksGrid` | KSampler 参数卡片 | Steps/CFG/Denoise/Sampler 等 |
-| `SelectChip` | `.selectChip`, `.selectChipBtn`, `.selectChipOption` | 下拉选择芯片 | 通用 |
-| `VariantSwitcher` | `.variantSwitcher`, `.variantSwitcherBtn`, `.variantSwitcherOption` | 变体切换器 | 下拉菜单 |
-| `PresetBindingRow` | `.bindRow`, `.bindRowMain`, `.bindNameWrap`, `.bindCategory`, `.bindGroupChip` | 预设绑定行 | 显示绑定信息、展开成员 |
-| `PresetImportInline` / `PresetImportInlineBody` | `.importInline`, `.importHeader`, `.importTabs`, `.importTab`, `.importItem` | 预设导入面板/内容 | 搜索、分类、选择 |
-| `PromptBlockRow` | `.pbRow`, `.pbRowGrip`, `.pbRowMain`, `.pbRowTitleLine`, `.pbRowActions` | 提示词块行 | 可展开编辑；支持 drag handle |
-| `CompiledPromptPreview` | `.compiledPanel`, `.compiledGroup`, `.compiledLine` | 编译后提示词预览 | 按预设分组 |
-| `LoraColumn` / `LoraRow` | `.loraColumn`, `.loraRow`, `.loraList` | LoRA 列/行 | 文件选择、权重、开关、删除 |
-| `HistoryDiffRow` | `.diffRow`, `.diffMain`, `.diffTitle` | 历史变更记录行 | 展示参数/Prompt/LoRA 变更 |
-
-### 6.7 页面级组件
-
-| 组件 | CSS 类 | 用途 | 规范要点 |
-|--------|----------|------|----------|
-| `RootPage` | `.page` | 根页面入口 | 实际渲染 QueuePage |
-| `QueuePage` | `.page`, `.queueSurfaceStack`, `.queueSurface` | 任务队列主页面 | 包含待审核/队列/失败三个标签页 |
-| `QueueMetrics` | `.metricGrid` | 队列指标卡片网格 | 展示待审/队列/失败数量统计 |
-| `CurrentRunningProgressCard` | `.currentRunSurface` | 当前运行中任务进度卡片 | 展示采样进度条和元信息 |
-| `RunList` | `.queueRunList`, `.queueRunRow`, `.queueRowSelectable` | 运行任务列表 | 用于展示运行中和失败的任务 |
-| `DemoPager` | `.pagerControls`, `.pagerButton`, `.pagerButtonActive` | 演示用分页控件 | 支持页码跳转和省略号显示 |
-| `ReviewPage` | `.page`, `.reviewPageHeader`, `.reviewSurface` | 图片审核页面 | 支持按状态筛选和全屏预览 |
-| `ProjectsPage` | `.page`, `.projectListGrid`, `.card`, `.projectListCard` | 项目列表页面 | 展示所有项目的卡片网格 |
-| `ProjectDetailPage` | `.page` | 项目详情页面 | 支持小节视图和结果视图切换 |
-| `ProjectSectionCard` | `.sectionCard`, `.sectionCardCompact` | 项目小节卡片 | 展示小节信息、图片预览和运行控制 |
-| `ProjectFormPage` | `.page`, `.twoCol`, `.grid`, `.fieldGrid` | 项目创建/编辑表单 | 表单页面 |
-| `SectionEditorPage` | `.page` | 小节编辑器主页面 | 包含所有 Section Editor 组件 |
-| `SectionResultsPage` | — | 小节结果页面 | 按 run 分组展示所有结果 |
-| `ModelsPage` | — | 模型/ LoRA 浏览页面 | |
-| `PresetsPage` | — | 预设库页面 | |
-| `TemplatesPage` | — | 模板列表页面 | |
-| `SettingsPage` / `LogsPage` / `MonitorPage` | — | 设置/日志/监控页面 | |
-
-### 6.8 反馈与弹窗组件
-
-| 组件 | CSS 类 | 用途 | 规范要点 |
-|--------|----------|------|----------|
-| `ImagePreviewLarge` | `.imagePreviewFrame`, `.imagePreviewFrameInteractive` | 大图预览 lightbox | Modals/sheets 类型；使用更强的 glass 背景和阴影 |
-| `DemoToast` / `DemoToastStack` | `.toast`, `.toastStack` | Toast 通知 | 顶部右侧浮现、自动消失 |
+- Buttons: glass or transparent surface, 1px border, 36px minimum height. Primary actions use green text/border or a very soft green fill, not a heavy solid fill.
+- Badges: pill shape, translucent fill, small text. Use color to classify, not to decorate.
+- Back links: lightweight text/icon links in the page header area. They should not compete with primary actions.
+- Panels: one glass surface with a compact header and row-based body. Parameter panels can be collapsible; their closed state should still expose the facts needed to understand the run.
+- Tables/lists: row dividers are preferred over repeated nested cards.
+- Tabs and filters: compact segmented rows with small count pills. Active state uses the green token softly; inactive items should stay quiet.
+- Image grids: keep thumbnails stable with fixed aspect ratios; selection should use border/ring plus a small control, not large color overlays.
+- Modals/sheets: use stronger glass background and shadow, with a dim backdrop. Keep action buttons in the footer.
 
 ## 7. Motion
 
