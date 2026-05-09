@@ -138,6 +138,7 @@ const fontPreviewSamples = {
   "lora": ["portrait-soft-light:0.65", "film-grain:0.25"]
 }`,
   prompt: "masterpiece, best quality, 1girl, portrait, detailed face, studio lighting, bokeh background",
+  glyphs: "0 O 1 l I | {} [] () => / \\ _ - + * # @ & 1847295301",
 };
 
 const fontPreviewOptions = [
@@ -179,36 +180,124 @@ const fontPreviewOptions = [
   },
 ];
 
+const fontPreviewScopedCss = `
+.fontPreviewLayout{display:grid;grid-template-columns:minmax(240px,320px) minmax(0,1fr);gap:16px;align-items:start}
+.fontPreviewList{display:flex;flex-direction:column;gap:8px;position:sticky;top:20px}
+.fontPreviewOption{width:100%;border:1px solid var(--demo-border);border-radius:10px;background:var(--demo-surface);color:var(--demo-text);padding:12px;text-align:left;cursor:pointer;transition:background .16s ease,border-color .16s ease,box-shadow .16s ease,transform .16s ease}
+.fontPreviewOption:hover{transform:translateY(-1px);border-color:var(--demo-border-strong);background:var(--demo-surface-hover)}
+.fontPreviewOptionSelected{border-color:var(--demo-glass-accent-border);background:var(--demo-selected);box-shadow:0 14px 38px rgba(4,120,87,.12)}
+.fontPreviewOptionTop{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.fontPreviewOptionName{min-width:0;font-size:15px;font-weight:650;line-height:1.2}
+.fontPreviewOptionSample{display:block;margin-top:8px;color:var(--demo-code-text);font-size:14px;line-height:1.35;overflow-wrap:anywhere}
+.fontPreviewOptionNote{display:block;margin-top:8px;color:var(--demo-muted);font-family:var(--demo-font-sans);font-size:12px;line-height:1.45}
+.fontPreviewStage,.fontComparePanel{min-width:0;border:1px solid var(--demo-border);border-radius:12px;background:var(--demo-panel);box-shadow:var(--demo-glass-shadow)}
+.fontPreviewStage{padding:18px}
+.fontPreviewStageHeader,.fontCompareHeader{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:16px}
+.fontPreviewStageLabel{color:var(--demo-muted);font-family:var(--demo-font-sans);font-size:11px;font-weight:650;letter-spacing:.08em;line-height:1.2;text-transform:uppercase}
+.fontPreviewStageTitle{margin:4px 0 0;color:var(--demo-text);font-size:42px;font-weight:650;letter-spacing:0;line-height:1.04}
+.fontPreviewBadge{flex:0 0 auto;border:1px solid var(--demo-glass-accent-border);border-radius:999px;background:var(--demo-green-soft);color:var(--demo-green);padding:3px 8px;font-family:var(--demo-font-sans);font-size:11px;font-weight:600;line-height:1.2}
+.fontPreviewLargePanel{border:1px solid var(--demo-border-strong);border-radius:10px;background:var(--demo-code-bg);color:var(--demo-code-text);padding:18px;overflow:hidden}
+.fontPreviewLargeTitle{font-size:20px;font-weight:650;line-height:1.35;overflow-wrap:anywhere}
+.fontPreviewLargeMeta{margin-top:8px;color:var(--demo-muted);font-size:14px;line-height:1.45;overflow-wrap:anywhere}
+.fontPreviewLargeCode{margin:18px 0;color:var(--demo-code-text);font:inherit;font-size:16px;line-height:1.7;white-space:pre-wrap;overflow-wrap:anywhere}
+.fontPreviewLargePrompt,.fontPreviewLargeGlyphs{border-top:1px solid var(--demo-border);padding-top:14px;color:var(--demo-muted);font-size:15px;line-height:1.55;overflow-wrap:anywhere}
+.fontPreviewLargeGlyphs{margin-top:14px;color:var(--demo-code-text);font-size:18px}
+.fontComparePanel{margin-top:16px;padding:16px}
+.fontCompareTitle{margin:4px 0 0;color:var(--demo-text);font-size:18px;font-weight:650;line-height:1.25}
+.fontCompareHint{color:var(--demo-muted);font-size:12px;line-height:1.45}
+.fontCompareRows{display:grid;gap:8px}
+.fontCompareRow{display:grid;grid-template-columns:160px minmax(0,1fr);gap:14px;align-items:baseline;width:100%;border:1px solid var(--demo-border);border-radius:8px;background:var(--demo-surface-soft);color:var(--demo-text);padding:10px 12px;text-align:left;cursor:pointer;transition:background .16s ease,border-color .16s ease}
+.fontCompareRow:hover{border-color:var(--demo-border-strong);background:var(--demo-surface-hover)}
+.fontCompareRowSelected{border-color:var(--demo-glass-accent-border);background:var(--demo-green-soft)}
+.fontCompareName{color:var(--demo-muted);font-family:var(--demo-font-sans);font-size:12px;font-weight:650}
+.fontCompareSample{min-width:0;color:var(--demo-code-text);font-size:15px;line-height:1.4;overflow-wrap:anywhere}
+@media (max-width:900px){.fontPreviewLayout{grid-template-columns:1fr}.fontPreviewList{position:static;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}.fontCompareRow{grid-template-columns:1fr;gap:6px}}
+@media (max-width:520px){.fontPreviewStage,.fontComparePanel{padding:12px}.fontPreviewLargePanel{padding:14px}.fontPreviewStageTitle{font-size:30px}.fontPreviewLargeTitle{font-size:17px}.fontPreviewLargeCode{font-size:13px}.fontPreviewLargeGlyphs{font-size:15px}}
+`;
+
 export function ComponentShowcaseFonts() {
+  const [selectedFontName, setSelectedFontName] = useState(fontPreviewOptions[0].name);
+  const selectedFont = fontPreviewOptions.find((font) => font.name === selectedFontName) ?? fontPreviewOptions[0];
+
   return (
     <div className={s.showcasePage}>
+      <style>{fontPreviewScopedCss}</style>
       <PageHeader
         eyebrow="组件展示"
         title="代码字体预览"
-        subtitle="对比组件名、参数、日志和 prompt 场景。Cascadia Code 与 Commit Mono 依赖本机字体安装。"
+        subtitle="点击左侧字体，右侧查看大号样本。Cascadia Code 与 Commit Mono 依赖本机字体安装。"
       />
 
-      <div className={s.fontPreviewGrid}>
-        {fontPreviewOptions.map((font) => (
-          <section key={font.name} className={s.fontPreviewCard} style={{ fontFamily: font.stack }}>
-            <div className={s.fontPreviewHeader}>
-              <div>
-                <div className={s.fontPreviewName}>{font.name}</div>
-                <div className={s.fontPreviewStack}>{font.stack}</div>
-              </div>
-              <span className={s.fontPreviewBadge}>{font.badge}</span>
+      <div className={s.fontPreviewLayout}>
+        <aside className={s.fontPreviewList} aria-label="代码字体选项">
+          {fontPreviewOptions.map((font) => {
+            const selected = font.name === selectedFont.name;
+
+            return (
+              <button
+                key={font.name}
+                type="button"
+                className={selected ? `${s.fontPreviewOption} ${s.fontPreviewOptionSelected}` : s.fontPreviewOption}
+                onClick={() => setSelectedFontName(font.name)}
+                aria-pressed={selected}
+              >
+                <span className={s.fontPreviewOptionTop}>
+                  <span className={s.fontPreviewOptionName} style={{ fontFamily: font.stack }}>{font.name}</span>
+                  <span className={s.fontPreviewBadge}>{font.badge}</span>
+                </span>
+                <span className={s.fontPreviewOptionSample} style={{ fontFamily: font.stack }}>
+                  0O 1lI · seed=1847295301
+                </span>
+                <span className={s.fontPreviewOptionNote}>{font.note}</span>
+              </button>
+            );
+          })}
+        </aside>
+
+        <section className={s.fontPreviewStage}>
+          <div className={s.fontPreviewStageHeader}>
+            <div>
+              <div className={s.fontPreviewStageLabel}>当前预览</div>
+              <h2 className={s.fontPreviewStageTitle} style={{ fontFamily: selectedFont.stack }}>{selectedFont.name}</h2>
             </div>
-            <p className={s.fontPreviewNote}>{font.note}</p>
-            <div className={s.fontPreviewPanel}>
-              <div className={s.fontPreviewTitle}>{fontPreviewSamples.title}</div>
-              <div className={s.fontPreviewMeta}>{fontPreviewSamples.meta}</div>
-              <pre className={s.fontPreviewCode}>{fontPreviewSamples.code}</pre>
-              <div className={s.fontPreviewPrompt}>{fontPreviewSamples.prompt}</div>
-              <div className={s.fontPreviewGlyphs}>0 O 1 l I | {} [] () =&gt; / \ _ - + * # @ &amp; 1847295301</div>
-            </div>
-          </section>
-        ))}
+            <span className={s.fontPreviewBadge}>{selectedFont.badge}</span>
+          </div>
+
+          <div className={s.fontPreviewLargePanel} style={{ fontFamily: selectedFont.stack }}>
+            <div className={s.fontPreviewLargeTitle}>{fontPreviewSamples.title}</div>
+            <div className={s.fontPreviewLargeMeta}>{fontPreviewSamples.meta}</div>
+            <pre className={s.fontPreviewLargeCode}>{fontPreviewSamples.code}</pre>
+            <div className={s.fontPreviewLargePrompt}>{fontPreviewSamples.prompt}</div>
+            <div className={s.fontPreviewLargeGlyphs}>{fontPreviewSamples.glyphs}</div>
+          </div>
+        </section>
       </div>
+
+      <section className={s.fontComparePanel} aria-label="字体横向对比">
+        <div className={s.fontCompareHeader}>
+          <div>
+            <div className={s.fontPreviewStageLabel}>横向对比</div>
+            <h2 className={s.fontCompareTitle}>同一句样本</h2>
+          </div>
+          <span className={s.fontCompareHint}>只比较英文字母、数字、符号和模型名</span>
+        </div>
+
+        <div className={s.fontCompareRows}>
+          {fontPreviewOptions.map((font) => (
+            <button
+              key={font.name}
+              type="button"
+              className={font.name === selectedFont.name ? `${s.fontCompareRow} ${s.fontCompareRowSelected}` : s.fontCompareRow}
+              onClick={() => setSelectedFontName(font.name)}
+            >
+              <span className={s.fontCompareName}>{font.name}</span>
+              <span className={s.fontCompareSample} style={{ fontFamily: font.stack }}>
+                dreamshaper_v8.safetensors · cfg=7.5 · 0O 1lI [] =&gt; seed=1847295301
+              </span>
+            </button>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }

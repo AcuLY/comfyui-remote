@@ -121,6 +121,233 @@
 
 /* ── Font preview ── */
 
+.fontPreviewLayout {
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.fontPreviewList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: sticky;
+  top: 20px;
+}
+
+.fontPreviewOption {
+  width: 100%;
+  border: 1px solid var(--demo-border);
+  border-radius: 10px;
+  background: var(--demo-surface);
+  color: var(--demo-text);
+  padding: 12px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+
+.fontPreviewOption:hover {
+  transform: translateY(-1px);
+  border-color: var(--demo-border-strong);
+  background: var(--demo-surface-hover);
+}
+
+.fontPreviewOptionSelected {
+  border-color: var(--demo-glass-accent-border);
+  background: var(--demo-selected);
+  box-shadow: 0 14px 38px rgba(4, 120, 87, 0.12);
+}
+
+.fontPreviewOptionTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.fontPreviewOptionName {
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.fontPreviewOptionSample {
+  display: block;
+  margin-top: 8px;
+  color: var(--demo-code-text);
+  font-size: 14px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.fontPreviewOptionNote {
+  display: block;
+  margin-top: 8px;
+  color: var(--demo-muted);
+  font-family: var(--demo-font-sans);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.fontPreviewStage,
+.fontComparePanel {
+  min-width: 0;
+  border: 1px solid var(--demo-border);
+  border-radius: 12px;
+  background: var(--demo-panel);
+  box-shadow: var(--demo-glass-shadow);
+}
+
+.fontPreviewStage {
+  padding: 18px;
+}
+
+.fontPreviewStageHeader,
+.fontCompareHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.fontPreviewStageLabel {
+  color: var(--demo-muted);
+  font-family: var(--demo-font-sans);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.fontPreviewStageTitle {
+  margin: 4px 0 0;
+  color: var(--demo-text);
+  font-size: clamp(28px, 4vw, 48px);
+  font-weight: 650;
+  letter-spacing: 0;
+  line-height: 1.04;
+}
+
+.fontPreviewLargePanel {
+  border: 1px solid var(--demo-border-strong);
+  border-radius: 10px;
+  background: var(--demo-code-bg);
+  color: var(--demo-code-text);
+  padding: 18px;
+  overflow: hidden;
+}
+
+.fontPreviewLargeTitle {
+  font-size: 20px;
+  font-weight: 650;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.fontPreviewLargeMeta {
+  margin-top: 8px;
+  color: var(--demo-muted);
+  font-size: 14px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.fontPreviewLargeCode {
+  margin: 18px 0;
+  color: var(--demo-code-text);
+  font: inherit;
+  font-size: 16px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.fontPreviewLargePrompt,
+.fontPreviewLargeGlyphs {
+  border-top: 1px solid var(--demo-border);
+  padding-top: 14px;
+  color: var(--demo-muted);
+  font-size: 15px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.fontPreviewLargeGlyphs {
+  margin-top: 14px;
+  color: var(--demo-code-text);
+  font-size: 18px;
+}
+
+.fontComparePanel {
+  margin-top: 16px;
+  padding: 16px;
+}
+
+.fontCompareTitle {
+  margin: 4px 0 0;
+  color: var(--demo-text);
+  font-size: 18px;
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.fontCompareHint {
+  color: var(--demo-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.fontCompareRows {
+  display: grid;
+  gap: 8px;
+}
+
+.fontCompareRow {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr);
+  gap: 14px;
+  align-items: baseline;
+  width: 100%;
+  border: 1px solid var(--demo-border);
+  border-radius: 8px;
+  background: var(--demo-surface-soft);
+  color: var(--demo-text);
+  padding: 10px 12px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.16s ease, border-color 0.16s ease;
+}
+
+.fontCompareRow:hover {
+  border-color: var(--demo-border-strong);
+  background: var(--demo-surface-hover);
+}
+
+.fontCompareRowSelected {
+  border-color: var(--demo-glass-accent-border);
+  background: var(--demo-green-soft);
+}
+
+.fontCompareName {
+  color: var(--demo-muted);
+  font-family: var(--demo-font-sans);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.fontCompareSample {
+  min-width: 0;
+  color: var(--demo-code-text);
+  font-size: 15px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
 .fontPreviewGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
@@ -224,6 +451,46 @@
 .fontPreviewGlyphs {
   margin-top: 10px;
   color: var(--demo-faint);
+}
+
+@media (max-width: 900px) {
+  .fontPreviewLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .fontPreviewList {
+    position: static;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  }
+
+  .fontCompareRow {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+}
+
+@media (max-width: 520px) {
+  .fontPreviewStage,
+  .fontComparePanel {
+    padding: 12px;
+  }
+
+  .fontPreviewLargePanel {
+    padding: 14px;
+  }
+
+  .fontPreviewLargeTitle {
+    font-size: 17px;
+  }
+
+  .fontPreviewLargeCode {
+    font-size: 13px;
+  }
+
+  .fontPreviewLargeGlyphs {
+    font-size: 15px;
+  }
 }
 
 /* ── Image showcase ── */
