@@ -1283,7 +1283,9 @@
   font-size: 13px;
   outline: none;
   padding: 11px 12px;
-  transition: 150ms ease;
+  caret-color: var(--demo-green);
+  cursor: text;
+  transition: border-color 150ms ease, background-color 150ms ease, box-shadow 150ms ease;
 }
 
 .selectShell {
@@ -1315,8 +1317,11 @@
 .input:focus,
 .textarea:focus,
 .select:focus {
-  border-color: rgba(0, 217, 146, 0.44);
-  box-shadow: 0 0 0 3px rgba(0, 217, 146, 0.1);
+  border-color: color-mix(in srgb, var(--demo-green) 34%, var(--demo-border));
+  background: var(--demo-field-bg);
+  box-shadow:
+    0 0 0 3px var(--demo-green-soft),
+    0 0 0 1px color-mix(in srgb, var(--demo-green) 18%, transparent);
 }
 
 .input:disabled {
@@ -1351,12 +1356,26 @@
 }
 
 .switch {
+  appearance: none;
   position: relative;
   width: 42px;
   height: 24px;
-  border: 1px solid rgba(0, 217, 146, 0.3);
+  flex: 0 0 auto;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--demo-green) 30%, var(--demo-border));
   border-radius: 999px;
-  background: var(--demo-panel-2);
+  background: color-mix(in srgb, var(--demo-green-soft) 58%, var(--demo-panel-2));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--demo-green) 8%, transparent);
+  cursor: pointer;
+  outline: none;
+  transition: border-color 150ms ease, background-color 150ms ease, box-shadow 150ms ease;
+}
+
+.switch:focus-visible {
+  border-color: color-mix(in srgb, var(--demo-green) 44%, var(--demo-border));
+  box-shadow:
+    0 0 0 3px var(--demo-green-soft),
+    inset 0 0 0 1px color-mix(in srgb, var(--demo-green) 14%, transparent);
 }
 
 .switch::after {
@@ -1368,6 +1387,18 @@
   height: 16px;
   border-radius: 50%;
   background: var(--demo-green);
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--demo-green) 24%, transparent);
+  transition: background-color 150ms ease, transform 150ms ease;
+}
+
+.switch[data-state="unchecked"] {
+  border-color: var(--demo-border);
+  background: var(--demo-panel-2);
+}
+
+.switch[data-state="unchecked"]::after {
+  background: var(--demo-muted);
+  transform: translateX(-18px);
 }
 
 .segmented,

@@ -168,6 +168,10 @@ function imageReviewLabel(status: DemoImage["status"]) {
   return "删除";
 }
 
+function preventReadonlyEdit(event: React.SyntheticEvent<HTMLInputElement | HTMLTextAreaElement>) {
+  event.preventDefault();
+}
+
 export function ImageThumbSmall({
   image,
   priority = false,
@@ -992,7 +996,16 @@ export function Field({ label, value, disabled = false }: { label: string; value
   return (
     <div className={s.field}>
       <label>{label}</label>
-      <input className={s.input} value={value} disabled={disabled} readOnly />
+      <input
+        aria-readonly="true"
+        className={s.input}
+        disabled={disabled}
+        onBeforeInput={preventReadonlyEdit}
+        onChange={() => undefined}
+        onDrop={preventReadonlyEdit}
+        onPaste={preventReadonlyEdit}
+        value={value}
+      />
     </div>
   );
 }
@@ -1001,7 +1014,15 @@ export function TextAreaField({ label, value }: { label: string; value: string }
   return (
     <div className={s.textAreaField}>
       <label>{label}</label>
-      <textarea className={s.textarea} value={value} readOnly />
+      <textarea
+        aria-readonly="true"
+        className={s.textarea}
+        onBeforeInput={preventReadonlyEdit}
+        onChange={() => undefined}
+        onDrop={preventReadonlyEdit}
+        onPaste={preventReadonlyEdit}
+        value={value}
+      />
     </div>
   );
 }
@@ -1048,6 +1069,39 @@ export function DemoTabs<T extends string>({
   );
 }
 
+export function Switch({
+  checked,
+  defaultChecked = true,
+  ariaLabel = "切换开关",
+  onCheckedChange,
+}: {
+  checked?: boolean;
+  defaultChecked?: boolean;
+  ariaLabel?: string;
+  onCheckedChange?: (checked: boolean) => void;
+}) {
+  const [internalChecked, setInternalChecked] = useState(defaultChecked);
+  const isChecked = checked ?? internalChecked;
+
+  function toggleSwitch() {
+    const next = !isChecked;
+    if (checked === undefined) setInternalChecked(next);
+    onCheckedChange?.(next);
+  }
+
+  return (
+    <button
+      aria-label={ariaLabel}
+      aria-checked={isChecked}
+      className={s.switch}
+      data-state={isChecked ? "checked" : "unchecked"}
+      onClick={toggleSwitch}
+      role="switch"
+      type="button"
+    />
+  );
+}
+
 export function SwitchRow({ title, subtitle }: { title: string; subtitle: string }) {
   return (
     <div className={s.switchRow}>
@@ -1055,7 +1109,7 @@ export function SwitchRow({ title, subtitle }: { title: string; subtitle: string
         <strong>{title}</strong>
         <span>{subtitle}</span>
       </div>
-      <span className={s.switch} />
+      <Switch ariaLabel={title} />
     </div>
   );
 }
