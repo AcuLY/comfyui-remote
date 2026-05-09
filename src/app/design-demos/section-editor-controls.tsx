@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useMemo } from "react";
 import type * as React from "react";
-import { ChevronDown, AlertCircle, Wand2 } from "lucide-react";
+import { ChevronDown, AlertCircle } from "lucide-react";
 
 import { FloatingSelect, SegmentedControl } from "./design-demo-ui";
 import s from "./design-demo-styles";
@@ -190,7 +190,6 @@ export function StepperInput({
   min,
   max,
   step = 1,
-  suffix,
   width = 92,
 }: {
   value: number;
@@ -198,7 +197,6 @@ export function StepperInput({
   min?: number;
   max?: number;
   step?: number;
-  suffix?: string;
   width?: number;
 }) {
   const clamp = (n: number) => {
@@ -218,7 +216,6 @@ export function StepperInput({
       </button>
       <span className={s.stepperValue}>
         {value}
-        {suffix ? <em>{suffix}</em> : null}
       </span>
       <button
         type="button"
@@ -457,7 +454,6 @@ export function VariantSwitcher({ variants, currentVariantId, onChange }: Varian
       buttonClassName={s.variantSwitcherBtn}
       className={s.variantSwitcher}
       displayValue={current?.name ?? "切换"}
-      leadingIcon={<Wand2 aria-hidden="true" />}
       menuClassName={s.variantSwitcherMenu}
       onChange={(variantId) => onChange?.(variantId)}
       optionClassName={s.variantSwitcherOption}

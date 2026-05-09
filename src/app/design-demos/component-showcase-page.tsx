@@ -16,7 +16,7 @@ import {
   ImageThumbSmall, ImageThumbMedium, ImageListSmall, ImageListMedium,
   ImageGrid, ReviewImageBoard, ImagePreviewLarge, ImageStrip,
 } from "./design-demo-ui";
-import { SpecSection, SpecRow, StepperInput, DimensionsReadout, UpscaleControl, KSamplerCard, SelectChip, VariantSwitcher } from "./section-editor-controls";
+import { SpecSection, SpecRow, StepperInput, DimensionsReadout, KSamplerCard } from "./section-editor-controls";
 import { SectionNameEditor, SaveStatusPill } from "./section-editor-header";
 import { PresetBindingRow } from "./section-editor-presets";
 import type { PresetBinding, ImportCategory, PresetImportSelection } from "./section-editor-presets";
@@ -91,8 +91,8 @@ function ShowcaseItem({ name, desc, children }: {
 
 export function ComponentShowcaseIndex({ data }: { data: DemoData }) {
   const categories = [
-    { href: "/component-showcase-atoms", title: "原子 / 小组件", desc: "Button、StatusBadge、Field、Switch、SegmentedControl、StepperInput、SvgIcon 等", icon: Layers, count: 23 },
-    { href: "/component-showcase-mid", title: "中组件", desc: "PageHeader、Panel、RouteTable、Toast、EmptyPage、ProjectDetailHeader、QueueMetrics 等", icon: Grid3X3, count: 16 },
+    { href: "/component-showcase-atoms", title: "原子 / 小组件", desc: "Button、StatusBadge、Field、Switch、SegmentedControl、StepperInput、SvgIcon 等", icon: Layers, count: 19 },
+    { href: "/component-showcase-mid", title: "中组件", desc: "PageHeader、Panel、RouteTable、Toast、EmptyPage、ProjectDetailHeader、QueueMetrics 等", icon: Grid3X3, count: 17 },
     { href: "/component-showcase-images", title: "图片组件", desc: "ImageThumb、ImageStrip、ImageList、ImageGrid、ReviewBoard、Lightbox", icon: Palette, count: 9 },
     { href: "/component-showcase-editor", title: "Section Editor 组件", desc: "SectionHeader、PresetBindingRow、PromptBlockRow、LoraRow、LoraColumn 等", icon: SlidersHorizontal, count: 8 },
     { href: "/component-showcase-projects", title: "项目卡片和列表", desc: "ProjectListItem、ProjectSectionCard、ProjectFolderRow、BatchSizeSelector 等", icon: Archive, count: 11 },
@@ -128,9 +128,6 @@ export function ComponentShowcaseIndex({ data }: { data: DemoData }) {
 export function ComponentShowcaseAtoms() {
   const [tabValue, setTabValue] = useState("params");
   const [stepperVal, setStepperVal] = useState(4);
-  const [upscaleVal, setUpscaleVal] = useState(2);
-  const [selectChipVal, setSelectChipVal] = useState("euler");
-  const [variantId, setVariantId] = useState("v1");
   const [sectionName, setSectionName] = useState("肖像 - 女性角色");
 
   const images = useMemo(() => makeImages(8), []);
@@ -299,10 +296,10 @@ export function ComponentShowcaseAtoms() {
       <ShowcaseItem name="StepperInput" desc="步进数值输入">
         <div className={s.showcaseStack}>
           <div className={s.showcaseRow}>
-            <StepperInput value={stepperVal} onChange={setStepperVal} min={1} max={50} suffix=" 步" />
-            <StepperInput value={7} onChange={() => {}} min={1} max={30} step={0.5} suffix=" CFG" />
+            <StepperInput value={stepperVal} onChange={setStepperVal} min={1} max={50} />
+            <StepperInput value={7} onChange={() => {}} min={1} max={30} step={0.5} />
           </div>
-          <StepperInput value={0.85} onChange={() => {}} min={0.1} max={1} step={0.05} width={120} suffix=" denoise" />
+          <StepperInput value={0.85} onChange={() => {}} min={0.1} max={1} step={0.05} width={120} />
         </div>
       </ShowcaseItem>
 
@@ -313,61 +310,6 @@ export function ComponentShowcaseAtoms() {
         <DimensionsReadout aspect="1:1" shortSide={1024} upscale={1} />
       </ShowcaseItem>
 
-      {/* 1.20 UpscaleControl */}
-      <ShowcaseItem name="UpscaleControl" desc="放大倍数芯片组">
-        <UpscaleControl value={upscaleVal} onChange={setUpscaleVal} />
-      </ShowcaseItem>
-
-      {/* 1.21 KSamplerCard */}
-      <ShowcaseItem name="KSamplerCard" desc="KSampler 参数卡片">
-        <KSamplerCard
-          label="KSampler 1"
-          hint="第一次采样"
-          params={{
-            steps: 20,
-            cfg: 7,
-            denoise: 0.85,
-            sampler_name: "euler",
-            scheduler: "normal",
-            seedPolicy: "randomize",
-          }}
-        />
-        <hr className={s.showcaseDivider} />
-        <KSamplerCard
-          label="KSampler 2"
-          hint="第二次采样（可禁用）"
-          params={{
-            steps: 12,
-            cfg: 4,
-            denoise: 0.5,
-            sampler_name: "dpmpp_2m",
-            scheduler: "karras",
-            seedPolicy: "fixed",
-          }}
-          disabled
-        />
-      </ShowcaseItem>
-
-      {/* 1.22 SelectChip */}
-      <ShowcaseItem name="SelectChip" desc="芯片式下拉选择器">
-        <div className={s.showcaseRow}>
-          <SelectChip value={selectChipVal} options={["euler", "euler_ancestral", "dpmpp_2m", "dpmpp_sde", "ddim"]} onChange={setSelectChipVal} />
-          <SelectChip value="normal" options={["normal", "karras", "exponential", "sgm_uniform"]} onChange={() => {}} />
-        </div>
-      </ShowcaseItem>
-
-      {/* 1.23 VariantSwitcher */}
-      <ShowcaseItem name="VariantSwitcher" desc="变体切换下拉">
-        <VariantSwitcher
-          variants={[
-            { id: "v1", name: "默认变体" },
-            { id: "v2", name: "高细节" },
-            { id: "v3", name: "柔和风格" },
-          ]}
-          currentVariantId={variantId}
-          onChange={setVariantId}
-        />
-      </ShowcaseItem>
     </div>
   );
 }
@@ -414,6 +356,36 @@ export function ComponentShowcaseMid({ data }: { data: DemoData }) {
       {/* 2.5 EmptyPage */}
       <ShowcaseItem name="EmptyPage" desc="空状态页面">
         <EmptyPage title="暂无数据" />
+      </ShowcaseItem>
+
+      {/* 2.6 KSamplerCard */}
+      <ShowcaseItem name="KSamplerCard" desc="KSampler 参数卡片">
+        <KSamplerCard
+          label="KSampler 1"
+          hint="第一次采样"
+          params={{
+            steps: 20,
+            cfg: 7,
+            denoise: 0.85,
+            sampler_name: "euler",
+            scheduler: "normal",
+            seedPolicy: "randomize",
+          }}
+        />
+        <hr className={s.showcaseDivider} />
+        <KSamplerCard
+          label="KSampler 2"
+          hint="第二次采样（可禁用）"
+          params={{
+            steps: 12,
+            cfg: 4,
+            denoise: 0.5,
+            sampler_name: "dpmpp_2m",
+            scheduler: "karras",
+            seedPolicy: "fixed",
+          }}
+          disabled
+        />
       </ShowcaseItem>
     </div>
   );

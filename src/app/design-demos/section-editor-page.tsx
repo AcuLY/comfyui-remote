@@ -462,7 +462,6 @@ function SectionEditorInner({
                 min={256}
                 max={2048}
                 step={64}
-                suffix="px"
                 width={130}
               />
               <DimensionsReadout
