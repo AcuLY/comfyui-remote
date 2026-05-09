@@ -94,15 +94,16 @@ export function ResultsGalleryProvider({
 
   useEffect(() => {
     if (!projectId) return;
+    if (open) return;
 
     const handler = (event: KeyboardEvent) => {
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
 
-      if ((event.key === "u" || event.key === "U") && previousSection) {
+      if ((event.key === "s" || event.key === "S") && previousSection) {
         event.preventDefault();
         router.push(`/projects/${projectId}/sections/${previousSection.id}/results`);
       }
-      if ((event.key === "o" || event.key === "O") && nextSection) {
+      if ((event.key === "f" || event.key === "F") && nextSection) {
         event.preventDefault();
         router.push(`/projects/${projectId}/sections/${nextSection.id}/results`);
       }
@@ -110,7 +111,7 @@ export function ResultsGalleryProvider({
 
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [nextSection, previousSection, projectId, router]);
+  }, [nextSection, open, previousSection, projectId, router]);
 
   const goPrev = useCallback(() => {
     setCurrentIndex((index) => (index > 0 ? index - 1 : allImages.length - 1));
