@@ -210,9 +210,22 @@ export function ResultsGalleryProvider({
       // 忽略输入框中的按键
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
 
-      if (event.key === "Escape") setOpen(false);
-      if (event.key === "ArrowLeft" && allImages.length > 1) goPrev();
-      if (event.key === "ArrowRight" && allImages.length > 1) goNext();
+      // I: 退出放大
+      if (event.key === "i" || event.key === "I") {
+        event.preventDefault();
+        setOpen(false);
+        return;
+      }
+      // S: 上一张
+      if (event.key === "s" || event.key === "S") {
+        event.preventDefault();
+        if (allImages.length > 1) goPrev();
+      }
+      // F: 下一张
+      if (event.key === "f" || event.key === "F") {
+        event.preventDefault();
+        if (allImages.length > 1) goNext();
+      }
 
       // J: 保留并切换到下一张
       if (event.key === "j" || event.key === "J") {
@@ -256,12 +269,6 @@ export function ResultsGalleryProvider({
         event.preventDefault();
         router.push(`/projects/${projectId}/sections/${nextSection.id}/results`);
       }
-
-      // 保留原有快捷键（可选）
-      if (event.key === "f" || event.key === "F") toggleMarker("featured");
-      if (event.key === "2") toggleMarker("featured2");
-      if (event.key === "c" || event.key === "C") toggleMarker("cover");
-      if (event.key === "Delete" || event.key === "Backspace") reviewCurrent("trash");
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
@@ -275,6 +282,27 @@ export function ResultsGalleryProvider({
     },
     [allImages],
   );
+
+  const toggleLightbox = useCallback(
+    (index: number = 0) => {
+      if (open) {
+        setOpen(false);
+      } else {
+        if (!allImages[index]) return;
+        setCurrentIndex(index);
+        setOpen(true);
+      }
+    },
+    [open, allImages],
+  );
+
+  // Expose toggleLightbox to window for cross-component communication
+  useEffect(() => {
+    (window as unknown as Record<string, (index?: number) => void>).__resultsGalleryToggleLightbox = toggleLightbox;
+    return () => {
+      delete (window as unknown as Record<string, unknown>).__resultsGalleryToggleLightbox;
+    };
+  }, [toggleLightbox]);
 
   const isFeatured = useCallback(
     (imageId: string) => allImages.find((img) => img.id === imageId)?.featured ?? false,

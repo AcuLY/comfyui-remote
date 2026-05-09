@@ -109,17 +109,17 @@ export function ResultsGrid({
     };
   }, [setLastTrashedIds]);
 
-  // Keyboard shortcut: I to open first image
+  // Keyboard shortcut: I to toggle lightbox (open first image or close)
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
       // Ignore if typing in input/textarea
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
-      // I key: open lightbox with first image
+      // I key: toggle lightbox
       if (event.key === "i" || event.key === "I") {
         event.preventDefault();
-        const openLightbox = (window as unknown as Record<string, (index: number) => void>).__resultsGridOpenLightbox;
-        if (openLightbox && allImages.length > 0) {
-          openLightbox(0);
+        const toggleLightbox = (window as unknown as Record<string, (index?: number) => void>).__resultsGalleryToggleLightbox;
+        if (toggleLightbox) {
+          toggleLightbox(0);
         }
       }
     };
@@ -149,12 +149,6 @@ export function ResultsGrid({
       toast.error(error instanceof Error ? error.message : "撤销失败");
     }
   }, [lastTrashedIds, router]);
-
-  // Wrapper for trashImages that records image IDs for undo
-  const trashImagesWithUndo = useCallback((ids: string[]) => {
-    setLastTrashedIds(ids);
-    return trashImages(ids);
-  }, []);
 
   return (
     <ResultsGalleryProvider
