@@ -41,21 +41,10 @@ type RunData = {
   }[];
 };
 
-type SectionNav = {
-  id: string;
-  name: string;
-};
-
 export function ResultsGrid({
   runs,
-  projectId,
-  previousSection,
-  nextSection,
 }: {
   runs: RunData[];
-  projectId?: string;
-  previousSection?: SectionNav | null;
-  nextSection?: SectionNav | null;
 }) {
   const router = useRouter();
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -133,6 +122,22 @@ export function ResultsGrid({
     const handler = (event: KeyboardEvent) => {
       // Ignore if typing in input/textarea
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
+      if (!document.querySelector("[data-results-lightbox]")) {
+        if (event.key === "s" || event.key === "S") {
+          const previousLink = document.querySelector<HTMLAnchorElement>('[data-section-nav="previous"]');
+          if (!previousLink) return;
+          event.preventDefault();
+          previousLink.click();
+          return;
+        }
+        if (event.key === "f" || event.key === "F") {
+          const nextLink = document.querySelector<HTMLAnchorElement>('[data-section-nav="next"]');
+          if (!nextLink) return;
+          event.preventDefault();
+          nextLink.click();
+          return;
+        }
+      }
       // I key: toggle lightbox
       if (event.key === "i" || event.key === "I") {
         event.preventDefault();
@@ -177,9 +182,6 @@ export function ResultsGrid({
   return (
     <ResultsGalleryProvider
       allImages={allImages}
-      projectId={projectId}
-      previousSection={previousSection}
-      nextSection={nextSection}
       onUndo={handleUndo}
     >
       {({ openLightbox, isFeatured, isFeatured2, isCover }) => {

@@ -43,6 +43,7 @@ export default async function SectionResultsPage({
           {data.previousSection ? (
             <Link
               href={`/projects/${projectId}/sections/${data.previousSection.id}/results`}
+              data-section-nav="previous"
               title={data.previousSection.name}
               className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
             >
@@ -58,6 +59,7 @@ export default async function SectionResultsPage({
           {data.nextSection ? (
             <Link
               href={`/projects/${projectId}/sections/${data.nextSection.id}/results`}
+              data-section-nav="next"
               title={data.nextSection.name}
               className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
             >
@@ -85,9 +87,6 @@ export default async function SectionResultsPage({
         ) : (
           <ResultsGrid
             runs={data.runs}
-            projectId={data.projectId}
-            previousSection={data.previousSection}
-            nextSection={data.nextSection}
           />
         )}
       </SectionCard>

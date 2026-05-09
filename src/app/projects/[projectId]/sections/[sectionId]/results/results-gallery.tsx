@@ -27,17 +27,9 @@ type GalleryImage = {
 type MarkerField = "featured" | "featured2" | "cover";
 type ReviewAction = "keep" | "trash";
 
-type SectionNav = {
-  id: string;
-  name: string;
-};
-
 export function ResultsGalleryProvider({
   allImages: initialImages,
   children,
-  projectId,
-  previousSection,
-  nextSection,
   onUndo,
 }: {
   allImages: GalleryImage[];
@@ -47,9 +39,6 @@ export function ResultsGalleryProvider({
     isFeatured2: (imageId: string) => boolean;
     isCover: (imageId: string) => boolean;
   }) => ReactNode;
-  projectId?: string;
-  previousSection?: SectionNav | null;
-  nextSection?: SectionNav | null;
   onUndo?: () => Promise<void>;
 }) {
   const router = useRouter();
@@ -91,27 +80,6 @@ export function ResultsGalleryProvider({
       preloadImagesRef.current.push(preloadImage);
     }
   }, [allImages, currentIndex, open]);
-
-  useEffect(() => {
-    if (!projectId) return;
-    if (open) return;
-
-    const handler = (event: KeyboardEvent) => {
-      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
-
-      if ((event.key === "s" || event.key === "S") && previousSection) {
-        event.preventDefault();
-        router.push(`/projects/${projectId}/sections/${previousSection.id}/results`);
-      }
-      if ((event.key === "f" || event.key === "F") && nextSection) {
-        event.preventDefault();
-        router.push(`/projects/${projectId}/sections/${nextSection.id}/results`);
-      }
-    };
-
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [nextSection, open, previousSection, projectId, router]);
 
   const goPrev = useCallback(() => {
     setCurrentIndex((index) => (index > 0 ? index - 1 : allImages.length - 1));
@@ -349,6 +317,7 @@ export function ResultsGalleryProvider({
 
       {open && current && (
         <div
+          data-results-lightbox
           className="fixed inset-0 z-[100] flex flex-col bg-black/90 backdrop-blur-sm"
           onClick={() => setOpen(false)}
         >
