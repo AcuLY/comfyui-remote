@@ -139,7 +139,7 @@ export function ComponentShowcaseAtoms() {
 
   return (
     <div className={s.showcasePage}>
-      <PageHeader eyebrow="组件展示" title="原子 / 小组件" subtitle="基础组件，调整浏览器窗口宽度查看响应式表现" />
+      <PageHeader back={{ href: "/component-showcase", label: "返回总览" }} eyebrow="组件展示" title="原子 / 小组件" subtitle="基础组件，调整浏览器窗口宽度查看响应式表现" />
 
       {/* 1.1 Button */}
       <ShowcaseItem name="Button" desc="通用按钮，5 种色调">
@@ -412,7 +412,7 @@ export function ComponentShowcaseAtoms() {
 export function ComponentShowcaseMid({ data }: { data: DemoData }) {
   return (
     <div className={s.showcasePage}>
-      <PageHeader eyebrow="组件展示" title="中组件" subtitle="5 个中型组件" />
+      <PageHeader back={{ href: "/component-showcase", label: "返回总览" }} eyebrow="组件展示" title="中组件" subtitle="5 个中型组件" />
 
       {/* 2.1 PageHeader */}
       <ShowcaseItem name="PageHeader" desc="页面顶部标题栏">
@@ -487,7 +487,7 @@ export function ComponentShowcaseImages({ data }: { data: DemoData }) {
 
   return (
     <div className={s.showcasePage}>
-      <PageHeader eyebrow="组件展示" title="图片组件" subtitle="8 个图片相关组件" />
+      <PageHeader back={{ href: "/component-showcase", label: "返回总览" }} eyebrow="组件展示" title="图片组件" subtitle="8 个图片相关组件" />
 
       {/* 3.1 ImageThumbSmall */}
       <ShowcaseItem name="ImageThumbSmall" desc="小缩略图">
@@ -583,7 +583,7 @@ export function ComponentShowcaseImages({ data }: { data: DemoData }) {
 export function ComponentShowcaseEditor({ data }: { data: DemoData }) {
   return (
     <div className={s.showcasePage}>
-      <PageHeader eyebrow="组件展示" title="Section Editor 组件" subtitle="8 个小节编辑器专用组件" />
+      <PageHeader back={{ href: "/component-showcase", label: "返回总览" }} eyebrow="组件展示" title="Section Editor 组件" subtitle="8 个小节编辑器专用组件" />
 
       {/* 5.1 SectionHeader - too large for showcase, just mention */}
       <ShowcaseItem name="SectionHeader" desc="小节编辑器顶部栏（运行控制 + 导航 + 保存状态）">

@@ -120,7 +120,7 @@ export function IconShowcasePage() {
 
   return (
     <div className={s.showcasePage}>
-      <PageHeader eyebrow="组件展示" title="Icons" subtitle={`项目使用的全部 ${ALL_ICONS.length} 个 Lucide 图标`} />
+      <PageHeader back={{ href: "/component-showcase", label: "返回总览" }} eyebrow="组件展示" title="Icons" subtitle={`项目使用的全部 ${ALL_ICONS.length} 个 Lucide 图标`} />
 
       <div className={s.iconFilterBar}>
         <input
