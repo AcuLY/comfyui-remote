@@ -1396,7 +1396,6 @@
   border: 1px solid var(--button-border);
   border-radius: 8px;
   background: var(--button-bg);
-  backdrop-filter: var(--demo-glass-blur);
   box-shadow: var(--button-shadow);
   color: var(--button-color);
   cursor: pointer;
