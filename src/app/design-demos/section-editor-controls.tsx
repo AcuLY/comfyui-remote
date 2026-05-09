@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import type * as React from "react";
 import { ChevronDown, AlertCircle, Wand2 } from "lucide-react";
 
+import { SegmentedControl } from "./design-demo-ui";
 import s from "./design-demo-styles";
 import { cx } from "./design-demo-utils";
 export type SectionTabValue = "params" | "presets" | "prompts" | "lora" | "history" | "results";
@@ -20,27 +21,14 @@ export function SectionTabs({
   onChange: (value: SectionTabValue) => void;
 }) {
   return (
-    <div
-      className={s.sectionTabs}
-      data-panel="surface"
+    <SegmentedControl
+      ariaLabel="切换分区"
+      items={tabs.map((tab) => ({ value: tab.value, label: tab.label, count: tab.count }))}
+      onChange={onChange}
+      panel
       role="tablist"
-    >
-      {tabs.map((tab) => (
-        <button
-          key={tab.value}
-          type="button"
-          role="tab"
-          aria-selected={tab.value === value}
-          className={cx(s.sectionTab, tab.value === value && s.sectionTabActive)}
-          onClick={() => onChange(tab.value)}
-        >
-          <span>{tab.label}</span>
-          {typeof tab.count === "number" ? (
-            <span className={s.sectionTabCount}>{tab.count}</span>
-          ) : null}
-        </button>
-      ))}
-    </div>
+      value={value}
+    />
   );
 }
 
@@ -182,18 +170,13 @@ export function AspectChips({
   onChange: (v: string) => void;
 }) {
   return (
-    <div className={s.aspectChips}>
-      {ASPECT_PRESETS.map((preset) => (
-        <button
-          key={preset}
-          type="button"
-          className={cx(s.aspectChip, value === preset && s.aspectChipActive)}
-          onClick={() => onChange(preset)}
-        >
-          {preset}
-        </button>
-      ))}
-    </div>
+    <SegmentedControl
+      ariaLabel="选择画幅比例"
+      compact
+      items={ASPECT_PRESETS.map((preset) => ({ value: preset, label: preset }))}
+      onChange={onChange}
+      value={value}
+    />
   );
 }
 
@@ -314,18 +297,13 @@ export function UpscaleControl({
 }) {
   return (
     <div className={s.upscaleControl}>
-      <div className={s.upscaleChips}>
-        {UPSCALE_PRESETS.map((preset) => (
-          <button
-            key={preset}
-            type="button"
-            className={cx(s.aspectChip, value === preset && s.aspectChipActive)}
-            onClick={() => onChange(preset)}
-          >
-            {preset}×
-          </button>
-        ))}
-      </div>
+      <SegmentedControl
+        ariaLabel="选择放大倍率"
+        compact
+        items={UPSCALE_PRESETS.map((preset) => ({ value: preset, label: `${preset}×` }))}
+        onChange={onChange}
+        value={value}
+      />
       {value === 1 ? (
         <p className={s.upscaleWarning}>
           <AlertCircle className="size-3.5" />

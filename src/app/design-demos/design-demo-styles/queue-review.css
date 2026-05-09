@@ -175,17 +175,21 @@
   padding: 8px 10px;
 }
 
-.queueTabsBar .tabs {
+.queueTabsBar .tabs,
+.queueTabsBar .segmentedControl {
   display: flex;
   width: 100%;
   gap: 4px;
+  margin-top: 0;
   border: 0;
   border-radius: 0;
   background: transparent;
+  backdrop-filter: none;
   padding: 0;
 }
 
-.queueTabsBar .tab {
+.queueTabsBar .tab,
+.queueTabsBar .segmentedItem {
   position: relative;
   flex: 0 0 auto;
   justify-content: center;
@@ -195,18 +199,21 @@
   padding: 7px 12px;
 }
 
-.queueTabsBar .tab + .tab {
+.queueTabsBar .tab + .tab,
+.queueTabsBar .segmentedItem + .segmentedItem {
   border-left: 0;
 }
 
-.queueTabsBar .tabActive {
+.queueTabsBar .tabActive,
+.queueTabsBar .segmentedItemActive {
   background: var(--demo-surface-hover);
   box-shadow: 0 0 0 1px rgba(0, 217, 146, 0.38) inset;
   color: var(--demo-green);
   transform: none;
 }
 
-.queueTabsBar .tabActive .navCount {
+.queueTabsBar .tabActive .navCount,
+.queueTabsBar .segmentedItemActive .segmentedCount {
   border-color: rgba(52, 211, 153, 0.18);
   background: rgba(52, 211, 153, 0.14);
   color: var(--demo-green);
@@ -241,13 +248,16 @@
   border-bottom: 1px solid var(--demo-border);
 }
 
-.reviewSurfaceTabs > .tabs {
+.reviewSurfaceTabs > .tabs,
+.reviewSurfaceTabs > .segmentedControl {
   flex: 1;
   display: flex;
   flex-wrap: nowrap;
   overflow-x: auto;
+  margin-top: 0;
   border: 0;
   background: transparent;
+  backdrop-filter: none;
   padding: 0;
   border-radius: 0;
 }
