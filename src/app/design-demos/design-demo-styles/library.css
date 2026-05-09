@@ -1999,8 +1999,8 @@
 
   .reviewListHeader,
   .imageListMediumHeader {
-    grid-template-columns: 1fr;
-    align-items: start;
+    grid-template-columns: minmax(0, 1fr) max-content;
+    align-items: center;
     gap: 8px;
   }
 

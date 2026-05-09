@@ -901,8 +901,7 @@ export function ReviewImageBoard({ images }: { images: DemoImage[] }) {
               {allSelected ? "取消全选" : "全选"}
             </Button>
             <Button icon={Square} pressed={pendingOnlySelected} onClick={() => setSelectedIds(new Set(pendingIds))}>
-              <span className={s.desktopOnlyText}>只选待审</span>
-              <span className={s.mobileOnlyText}>待审</span>
+              待审
             </Button>
             <Button tone="subtle" icon={X} onClick={() => setSelectedIds(new Set())} disabled={selectedCount === 0}>取消选择</Button>
           </>

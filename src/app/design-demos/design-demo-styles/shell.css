@@ -1712,7 +1712,7 @@
   max-width: 100%;
   gap: 6px;
   overflow-x: auto;
-  padding-bottom: 1px;
+  padding: 2px 4px 3px;
 }
 
 .imageListSmallFrame[data-overflow-left="true"] > .imageListSmall {
@@ -2080,7 +2080,7 @@ button.imagePreviewFrame {
   align-items: flex-start;
   gap: var(--demo-image-list-gap);
   justify-content: flex-start;
-  padding-top: 14px;
+  padding: 14px 4px 2px;
 }
 
 .imageListMediumFade {

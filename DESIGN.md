@@ -140,6 +140,7 @@ For review pages, the main surface should stay readable as one work area: header
 - Back links: lightweight text/icon links in the page header area. They should not compete with primary actions.
 - Panels: one glass surface with a compact header and row-based body. Parameter panels can be collapsible; their closed state should still expose the facts needed to understand the run.
 - Tables/lists: row dividers are preferred over repeated nested cards.
+- Lists: always leave inner edge padding when items have hover lift, focus rings, outlines, shadows, or glows. Check top, bottom, left, and right clipping in both scrollable and collapsed list containers before shipping.
 - Tabs and filters: compact segmented rows with small count pills. Active state uses the green token softly; inactive items should stay quiet.
 - Image grids: keep thumbnails stable with fixed aspect ratios; selection should use border/ring plus a small control, not large color overlays.
 - Modals/sheets: use stronger glass background and shadow, with a dim backdrop. Keep action buttons in the footer.
