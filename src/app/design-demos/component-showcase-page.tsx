@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import {
   Activity, Archive, Check, CheckSquare, ChevronDown, ChevronUp,
-  Eye, FlaskConical, Grid3X3, Layers, Monitor, Palette, Plus,
+  Eye, FileText, FlaskConical, Grid3X3, Layers, Monitor, Palette, Plus,
   Rows3, Settings, Shuffle, SlidersHorizontal, Square, Star,
   Trash2, Wand2, X,
 } from "lucide-react";
@@ -93,6 +93,7 @@ function ShowcaseItem({ name, desc, children }: {
 export function ComponentShowcaseIndex({ data }: { data: DemoData }) {
   const categories = [
     { href: "/component-showcase-atoms", title: "原子 / 小组件", desc: "Button、StatusBadge、Field、StepperInput、AspectChips 等", icon: Layers, count: 23 },
+    { href: "/component-showcase-fonts", title: "代码字体", desc: "JetBrains、Cascadia、Fira、IBM Plex、Commit 与当前字体对比", icon: FileText, count: 6 },
     { href: "/component-showcase-mid", title: "中组件", desc: "PageHeader、Panel、RouteTable、Toast、EmptyPage", icon: Grid3X3, count: 5 },
     { href: "/component-showcase-images", title: "图片组件", desc: "ImageThumb、ImageList、ImageGrid、ReviewBoard、Lightbox", icon: Palette, count: 8 },
     { href: "/component-showcase-editor", title: "Section Editor 组件", desc: "SectionHeader、PresetBindingRow、PromptBlockRow、LoraRow、LoraColumn 等", icon: SlidersHorizontal, count: 8 },
@@ -114,6 +115,98 @@ export function ComponentShowcaseIndex({ data }: { data: DemoData }) {
             <div className={s.showcaseIndexCardDesc}>{cat.desc}</div>
             <div className={s.showcaseIndexCardCount}>{cat.count} 个组件</div>
           </a>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Font Preview Page
+   ══════════════════════════════════════════════════════════════ */
+
+const fontPreviewSamples = {
+  title: "dreamshaper_v8.safetensors / KSampler 01",
+  meta: "Run #2489 · 2026-05-09 21:34 · batch=8 · seed=1847295301",
+  code: `{
+  "checkpoint": "dreamshaper_v8.safetensors",
+  "sampler": "euler",
+  "scheduler": "normal",
+  "steps": 24,
+  "cfg": 7.5,
+  "size": "832 x 1216",
+  "lora": ["portrait-soft-light:0.65", "film-grain:0.25"]
+}`,
+  prompt: "masterpiece, best quality, 1girl, portrait, detailed face, studio lighting, bokeh background",
+};
+
+const fontPreviewOptions = [
+  {
+    name: "JetBrains Mono",
+    stack: "var(--font-demo-jetbrains-mono), ui-monospace, monospace",
+    badge: "推荐",
+    note: "编辑器气质最稳，数字和易混字符清楚，适合参数、日志、模型名。",
+  },
+  {
+    name: "Cascadia Code",
+    stack: "\"Cascadia Code\", \"Cascadia Mono\", ui-monospace, monospace",
+    badge: "系统预览",
+    note: "更贴近 Windows / PowerShell / VS Code 语境；未安装时会回退到系统等宽。",
+  },
+  {
+    name: "IBM Plex Mono",
+    stack: "var(--font-demo-ibm-plex-mono), ui-monospace, monospace",
+    badge: "克制",
+    note: "企业工具感强，字面窄而清爽，适合高密度数据面板。",
+  },
+  {
+    name: "Fira Code",
+    stack: "var(--font-demo-fira-code), ui-monospace, monospace",
+    badge: "技术感",
+    note: "代码和 dashboard 识别度高，比 JetBrains 更有个性。",
+  },
+  {
+    name: "Commit Mono",
+    stack: "\"Commit Mono\", ui-monospace, monospace",
+    badge: "系统预览",
+    note: "现代、低噪音；未安装时会回退到系统等宽。",
+  },
+  {
+    name: "Maple Mono",
+    stack: "var(--font-demo-maple-mono), \"Cascadia Code\", ui-monospace, monospace",
+    badge: "当前",
+    note: "当前 demo 字体，圆润、亲和，和中文 UI 的柔和感较接近。",
+  },
+];
+
+export function ComponentShowcaseFonts() {
+  return (
+    <div className={s.showcasePage}>
+      <PageHeader
+        eyebrow="组件展示"
+        title="代码字体预览"
+        subtitle="对比组件名、参数、日志和 prompt 场景。Cascadia Code 与 Commit Mono 依赖本机字体安装。"
+      />
+
+      <div className={s.fontPreviewGrid}>
+        {fontPreviewOptions.map((font) => (
+          <section key={font.name} className={s.fontPreviewCard} style={{ fontFamily: font.stack }}>
+            <div className={s.fontPreviewHeader}>
+              <div>
+                <div className={s.fontPreviewName}>{font.name}</div>
+                <div className={s.fontPreviewStack}>{font.stack}</div>
+              </div>
+              <span className={s.fontPreviewBadge}>{font.badge}</span>
+            </div>
+            <p className={s.fontPreviewNote}>{font.note}</p>
+            <div className={s.fontPreviewPanel}>
+              <div className={s.fontPreviewTitle}>{fontPreviewSamples.title}</div>
+              <div className={s.fontPreviewMeta}>{fontPreviewSamples.meta}</div>
+              <pre className={s.fontPreviewCode}>{fontPreviewSamples.code}</pre>
+              <div className={s.fontPreviewPrompt}>{fontPreviewSamples.prompt}</div>
+              <div className={s.fontPreviewGlyphs}>0 O 1 l I | {} [] () =&gt; / \ _ - + * # @ &amp; 1847295301</div>
+            </div>
+          </section>
         ))}
       </div>
     </div>

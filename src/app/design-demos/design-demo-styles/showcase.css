@@ -119,6 +119,113 @@
   margin-top: 8px;
 }
 
+/* ── Font preview ── */
+
+.fontPreviewGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 14px;
+}
+
+.fontPreviewCard {
+  min-width: 0;
+  border: 1px solid var(--demo-border);
+  border-radius: 10px;
+  background: var(--demo-panel);
+  padding: 14px;
+  box-shadow: var(--demo-glass-shadow);
+}
+
+.fontPreviewHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.fontPreviewName {
+  font-size: 18px;
+  font-weight: 650;
+  line-height: 1.2;
+  color: var(--demo-text);
+}
+
+.fontPreviewStack {
+  margin-top: 4px;
+  font-size: 10px;
+  line-height: 1.35;
+  color: var(--demo-faint);
+  overflow-wrap: anywhere;
+}
+
+.fontPreviewBadge {
+  flex: 0 0 auto;
+  border: 1px solid var(--demo-glass-accent-border);
+  border-radius: 999px;
+  background: var(--demo-green-soft);
+  color: var(--demo-green);
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.fontPreviewNote {
+  min-height: 44px;
+  margin: 0 0 12px;
+  color: var(--demo-muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.fontPreviewPanel {
+  border: 1px solid var(--demo-border);
+  border-radius: 8px;
+  background: var(--demo-code-bg);
+  padding: 12px;
+  overflow: hidden;
+}
+
+.fontPreviewTitle {
+  color: var(--demo-code-text);
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.fontPreviewMeta {
+  margin-top: 4px;
+  color: var(--demo-faint);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.fontPreviewCode {
+  margin: 12px 0;
+  color: var(--demo-code-text);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.fontPreviewPrompt,
+.fontPreviewGlyphs {
+  border-top: 1px solid var(--demo-border);
+  padding-top: 10px;
+  color: var(--demo-muted);
+  font-size: 11px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.fontPreviewGlyphs {
+  margin-top: 10px;
+  color: var(--demo-faint);
+}
+
 /* ── Image showcase ── */
 
 .showcaseImageRow {

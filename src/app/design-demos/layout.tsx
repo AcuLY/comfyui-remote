@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Fira_Code, IBM_Plex_Mono, JetBrains_Mono } from "next/font/google";
 import localFont from "next/font/local";
 import "./fonts/font-options.css";
 import "./design-demo-styles/index.css";
@@ -51,6 +52,31 @@ const mapleMono = localFont({
   fallback: ["Cascadia Code", "ui-monospace", "monospace"],
 });
 
+const jetBrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-demo-jetbrains-mono",
+  display: "swap",
+});
+
+const firaCode = Fira_Code({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-demo-fira-code",
+  display: "swap",
+});
+
+const ibmPlexMono = IBM_Plex_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-demo-ibm-plex-mono",
+  display: "swap",
+});
+
 export default function DesignDemosLayout({ children }: { children: ReactNode }) {
-  return <div className={mapleMono.variable}>{children}</div>;
+  return (
+    <div className={`${mapleMono.variable} ${jetBrainsMono.variable} ${firaCode.variable} ${ibmPlexMono.variable}`}>
+      {children}
+    </div>
+  );
 }
