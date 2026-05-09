@@ -64,8 +64,8 @@
 | 导出名 | `SelectLike` |
 | 文件 | `design-demo-ui.tsx` |
 | Props | `label`, `value: string` |
-| 功能 | 只读下拉选择样式字段 |
-| CSS 类 | `.field`, `.select` |
+| 功能 | 自绘只读下拉选择样式字段，底层为原生 `<select>` + Lucide chevron overlay |
+| CSS 类 | `.field`, `.selectShell`, `.select`, `.selectIcon` |
 
 ### 1.7 SwitchRow
 

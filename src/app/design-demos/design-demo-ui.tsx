@@ -1010,9 +1010,12 @@ export function SelectLike({ label, value }: { label: string; value: string }) {
   return (
     <div className={s.field}>
       <label>{label}</label>
-      <select className={s.select} value={value} onChange={() => undefined}>
-        <option value={value}>{value}</option>
-      </select>
+      <div className={s.selectShell}>
+        <select className={s.select} value={value} onChange={() => undefined}>
+          <option value={value}>{value}</option>
+        </select>
+        <ChevronDown className={s.selectIcon} aria-hidden="true" />
+      </div>
     </div>
   );
 }

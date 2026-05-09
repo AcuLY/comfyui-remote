@@ -1286,6 +1286,27 @@
   transition: 150ms ease;
 }
 
+.selectShell {
+  position: relative;
+  min-width: 0;
+}
+
+.selectShell .select {
+  appearance: none;
+  padding-right: 42px;
+}
+
+.selectIcon {
+  position: absolute;
+  top: 50%;
+  right: 16px;
+  width: 14px;
+  height: 14px;
+  color: var(--demo-muted);
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
 .textarea {
   min-height: 96px;
   resize: vertical;
