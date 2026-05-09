@@ -83,7 +83,7 @@ export async function listProjects(): Promise<ProjectCard[]> {
 
 export async function listProjectFolders(): Promise<ProjectFolderItem[]> {
   const folders = await prisma.projectFolder.findMany({
-    orderBy: [{ parentId: "asc" }, { sortOrder: "asc" }, { createdAt: "asc" }],
+    orderBy: [{ parentId: "asc" }, { sortOrder: "asc" }, { name: "asc" }],
     select: {
       id: true,
       name: true,
