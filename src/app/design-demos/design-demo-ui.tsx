@@ -1150,7 +1150,9 @@ export function Switch({
       onClick={toggleSwitch}
       role="switch"
       type="button"
-    />
+    >
+      <span className={s.switchThumb} aria-hidden="true" />
+    </button>
   );
 }
 

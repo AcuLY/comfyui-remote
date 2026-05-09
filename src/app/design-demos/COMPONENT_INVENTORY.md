@@ -75,7 +75,7 @@
 | 文件 | `design-demo-ui.tsx` |
 | Props | `checked?`, `defaultChecked?`, `ariaLabel?`, `onCheckedChange?` |
 | 功能 | 可交互开关（受控/非受控） |
-| CSS 类 | `.switch` |
+| CSS 类 | `.switch`, `.switchThumb` |
 
 ### 1.8 SwitchRow
 
@@ -85,7 +85,7 @@
 | 文件 | `design-demo-ui.tsx` |
 | Props | `title`, `subtitle` |
 | 功能 | 开关行（纯展示，无真实 toggle） |
-| CSS 类 | `.switchRow`, `.switchText`, `.switch` |
+| CSS 类 | `.switchRow`, `.switchText`, `.switch`, `.switchThumb` |
 
 ### 1.9 SegmentedControl
 
