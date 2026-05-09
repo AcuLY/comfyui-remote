@@ -1,0 +1,180 @@
+/* ── Component Showcase ── */
+
+.showcasePage {
+  padding: 24px;
+  max-width: 1440px;
+  margin: 0 auto;
+}
+
+.showcaseViewportBar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--demo-panel);
+  border-radius: 10px;
+  margin-bottom: 24px;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  backdrop-filter: blur(12px);
+}
+
+.showcaseViewportLabel {
+  font-size: 13px;
+  color: var(--demo-muted);
+  margin-right: 4px;
+}
+
+.showcaseViewportBtn {
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--demo-border);
+  background: transparent;
+  color: var(--demo-text);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.showcaseViewportBtn:hover {
+  background: var(--demo-surface);
+}
+
+.showcaseViewportBtnActive {
+  background: var(--demo-accent);
+  color: var(--demo-bg);
+  border-color: var(--demo-accent);
+}
+
+.showcaseItem {
+  margin-bottom: 32px;
+  border: 1px solid var(--demo-border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--demo-panel);
+}
+
+.showcaseItemHeader {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--demo-border);
+  background: var(--demo-surface);
+}
+
+.showcaseItemName {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--demo-text);
+  font-family: var(--demo-font-mono);
+}
+
+.showcaseItemDesc {
+  font-size: 12px;
+  color: var(--demo-muted);
+}
+
+.showcaseItemBody {
+  padding: 16px;
+  transition: max-width 0.3s ease;
+  margin: 0 auto;
+}
+
+.showcaseViewportSM { max-width: 375px; }
+.showcaseViewportMD { max-width: 768px; }
+.showcaseViewportLG { max-width: 1280px; }
+
+.showcaseGroup {
+  margin-bottom: 24px;
+}
+
+.showcaseGroupTitle {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--demo-muted);
+  margin-bottom: 8px;
+}
+
+.showcaseRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.showcaseStack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.showcaseCardGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.showcaseDivider {
+  border: none;
+  border-top: 1px solid var(--demo-border);
+  margin: 16px 0;
+}
+
+/* ── Index page ── */
+
+.showcaseIndexGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.showcaseIndexCard {
+  display: block;
+  padding: 20px;
+  border: 1px solid var(--demo-border);
+  border-radius: 10px;
+  background: var(--demo-panel);
+  text-decoration: none;
+  color: var(--demo-text);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  cursor: pointer;
+}
+
+.showcaseIndexCard:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.showcaseIndexCardTitle {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.showcaseIndexCardDesc {
+  font-size: 13px;
+  color: var(--demo-muted);
+}
+
+.showcaseIndexCardCount {
+  font-size: 12px;
+  color: var(--demo-accent);
+  margin-top: 8px;
+}
+
+/* ── Image showcase ── */
+
+.showcaseImageRow {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.showcaseImageList {
+  margin-bottom: 16px;
+}

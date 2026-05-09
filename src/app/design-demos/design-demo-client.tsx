@@ -9,6 +9,7 @@ import { PresetsPage, PresetCategoryFormPage, PresetEditPage, PresetGroupPage, S
 import { BatchCreatePage } from "./batch-create-page";
 import { RootPage, ProjectsPage, ProjectDetailPage, ProjectFormPage } from "./project-pages";
 import { ImageListComponentsPage } from "./image-list-components-page";
+import { ComponentShowcaseIndex, ComponentShowcaseAtoms, ComponentShowcaseMid, ComponentShowcaseImages, ComponentShowcaseEditor } from "./component-showcase-page";
 import { QueuePage, ReviewPage } from "./runs-page";
 import { SectionEditorPage as SectionEditorPageV2 } from "./section-editor-page";
 import { SettingsPage, LogsPage, MonitorPage, LoginPage, NotFoundPage } from "./system-pages";
@@ -74,6 +75,16 @@ function CurrentPage({ match, data }: { match: Match; data: DemoData }) {
       return <MonitorPage data={data} />;
     case "image-list-components":
       return <ImageListComponentsPage data={data} />;
+    case "component-showcase":
+      return <ComponentShowcaseIndex data={data} />;
+    case "component-showcase-atoms":
+      return <ComponentShowcaseAtoms />;
+    case "component-showcase-mid":
+      return <ComponentShowcaseMid data={data} />;
+    case "component-showcase-images":
+      return <ComponentShowcaseImages data={data} />;
+    case "component-showcase-editor":
+      return <ComponentShowcaseEditor data={data} />;
     case "login":
       return <LoginPage />;
     default:
