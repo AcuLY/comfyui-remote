@@ -1,6 +1,6 @@
 # ComfyUI Manager Design System
 
-Updated: 2026-05-05
+Updated: 2026-05-09
 
 This product UI uses a calm dual-theme workspace aesthetic: soft gradient atmosphere, translucent glass surfaces, compact data density, and restrained green actions. Light mode is the primary reference tone; dark mode should feel like the same product translated to dark surfaces, not a separate visual identity.
 
@@ -135,7 +135,11 @@ For review pages, the main surface should stay readable as one work area: header
 
 ## 6. Components
 
-- Buttons: glass or transparent surface, 1px border, 36px minimum height. Primary actions use green text/border or a very soft green fill, not a heavy solid fill.
+- Buttons: glass or transparent surface, 1px border, fixed 36px control height for the normal density. Primary actions use green text/border or a very soft green fill, not a heavy solid fill.
+  Text buttons use 12px text, 580 weight, 1.2 line-height, 0 letter spacing, and a single-line label. Icons inside buttons use the shared button icon size, 14px square with consistent stroke weight, so icon+text buttons read at the same scale as text-only buttons. Use 8px horizontal icon/text gap and 12px horizontal padding.
+  All tones (`default`, `subtle`, `primary`, `pink`, `danger`, `pressed`, `pending`, `disabled`) keep the same height, font size, icon size, padding rhythm, and border radius. Tone changes only adjust soft fill, border, and text color. Do not let success/primary/danger variants use larger typography than default.
+  Icon-only buttons use the same 36px by 36px square as normal-height controls, carry an accessible label, and use the same 14px icon. Do not create separate oversized icon-only variants unless a specific layout explicitly defines a larger toolbar density.
+  Avoid simulated top-edge white highlights or glossy reflections on buttons. The system's button material should match the calm glass workbench: translucent fill, fine border, optional blur, no static shadow. Hover may add a shallow shadow and 1px lift; focus uses an outer ring and should not resize or shift the control.
 - Badges: pill shape, translucent fill, small text. Use color to classify, not to decorate.
 - Back links: lightweight text/icon links in the page header area. They should not compete with primary actions.
 - Panels: one glass surface with a compact header and row-based body. Parameter panels can be collapsible; their closed state should still expose the facts needed to understand the run.
@@ -175,6 +179,7 @@ Do not:
 ## 9. Implementation Notes For `/design-demos`
 
 - The routed demo shell should use this glass system while keeping all CSS inside `src/app/design-demos/**`.
+- Shared demo primitives such as `.button` must be normalized after page-specific style imports when needed. Page styles may narrow layout or flex behavior, but must not override shared button height, text size, icon size, or tone scale.
 - Existing parity work should stay intact: `/runs`, `/projects`, `/presets`, `/models`, `/templates`, and settings routes remain routeable.
 - The shell can use mock data, but visible UI should read as final product state.
 - Validation should include TypeScript, targeted ESLint, in-app browser checks on desktop/mobile widths, and a clean `git diff -- src/app/globals.css`.
