@@ -67,7 +67,17 @@
 | 功能 | 自绘只读下拉选择样式字段，底层为原生 `<select>` + Lucide chevron overlay |
 | CSS 类 | `.field`, `.selectShell`, `.select`, `.selectIcon` |
 
-### 1.7 SwitchRow
+### 1.7 Switch
+
+| 字段 | 值 |
+|------|-----|
+| 导出名 | `Switch` |
+| 文件 | `design-demo-ui.tsx` |
+| Props | `checked?`, `defaultChecked?`, `ariaLabel?`, `onCheckedChange?` |
+| 功能 | 可交互开关（受控/非受控） |
+| CSS 类 | `.switch` |
+
+### 1.8 SwitchRow
 
 | 字段 | 值 |
 |------|-----|
@@ -77,17 +87,27 @@
 | 功能 | 开关行（纯展示，无真实 toggle） |
 | CSS 类 | `.switchRow`, `.switchText`, `.switch` |
 
-### 1.8 DemoTabs
+### 1.9 SegmentedControl
+
+| 字段 | 值 |
+|------|-----|
+| 导出名 | `SegmentedControl<T>` |
+| 文件 | `design-demo-ui.tsx` |
+| Props | `items: Array<SegmentedControlItem<T>>`, `value: T`, `onChange`, `ariaLabel?`, `role?: "tablist" \| "radiogroup"`, `panel?`, `compact?`, `className?` |
+| 功能 | 通用分段控制器，支持 tab/radio 角色、面板模式、紧凑模式 |
+| CSS 类 | `.segmentedControl`, `.segmentedControlPanel`, `.segmentedControlCompact`, `.segmentedItem`, `.segmentedItemActive`, `.segmentedCount` |
+
+### 1.10 DemoTabs
 
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `DemoTabs<T>` |
 | 文件 | `design-demo-ui.tsx` |
 | Props | `tabs: Array<{ key: T; label: string; count?: number }>`, `value: T`, `onChange: (next: T) => void` |
-| 功能 | 通用 Tab 切换器，支持 count 徽章 |
-| CSS 类 | `.tabs`, `.tab`, `.tabActive`, `.navCount` |
+| 功能 | 通用 Tab 切换器，基于 SegmentedControl，支持 count 徽章 |
+| CSS 类 | 同 SegmentedControl |
 
-### 1.9 MetricCard
+### 1.11 MetricCard
 
 | 字段 | 值 |
 |------|-----|
@@ -97,7 +117,7 @@
 | 功能 | 指标卡片（图标 + 标签 + 数值 + 描述） |
 | CSS 类 | `.metric`, `.metricLabel`, `.metricValue`, `.metricMeta` |
 
-### 1.10 EmptyRows
+### 1.12 EmptyRows
 
 | 字段 | 值 |
 |------|-----|
@@ -107,7 +127,7 @@
 | 功能 | 空状态文字 |
 | CSS 类 | `.empty` |
 
-### 1.11 OperationStateStrip
+### 1.13 OperationStateStrip
 
 | 字段 | 值 |
 |------|-----|
@@ -117,7 +137,7 @@
 | 功能 | 横向操作状态条（多 label + value + 色调指示） |
 | CSS 类 | `.operationStateStrip`, `.operationStateItem`, `.operationStateSuccess/Warning/Error` |
 
-### 1.12 SectionTabs
+### 1.14 SectionTabs
 
 | 字段 | 值 |
 |------|-----|
@@ -127,7 +147,7 @@
 | 功能 | 小节编辑器的专用 Tab 栏 |
 | CSS 类 | `.sectionTabs`, `.sectionTab`, `.sectionTabActive`, `.sectionTabCount` |
 
-### 1.13 SectionNameEditor
+### 1.15 SectionNameEditor
 
 | 字段 | 值 |
 |------|-----|
@@ -137,7 +157,7 @@
 | 功能 | 点击编辑小节名（debounced save） |
 | CSS 类 | `.sectionNameDisplay`, `.sectionNamePencil`, `.sectionNameInput` |
 
-### 1.14 SaveStatusPill
+### 1.16 SaveStatusPill
 
 | 字段 | 值 |
 |------|-----|
@@ -147,7 +167,7 @@
 | 功能 | 保存状态指示（idle / saving / saved） |
 | CSS 类 | `.savePill`, `.savePillSpinner` |
 
-### 1.15 SpecSection / SpecRow
+### 1.17 SpecSection / SpecRow
 
 | 字段 | 值 |
 |------|-----|
@@ -157,7 +177,7 @@
 | 功能 | 参数表单的分组和行布局 |
 | CSS 类 | `.specSection`, `.specSectionHead`, `.specRows`, `.specRow`, `.specRowLabel`, `.specRowControl` |
 
-### 1.16 CheckpointPicker
+### 1.18 CheckpointPicker
 
 | 字段 | 值 |
 |------|-----|
@@ -167,7 +187,7 @@
 | 功能 | Checkpoint 下拉选择器，支持"继承项目"标记 |
 | CSS 类 | `.cpPicker`, `.cpPickerBtn`, `.cpPickerValue`, `.cpInheritTag`, `.cpPickerMenu`, `.cpPickerOption` |
 
-### 1.17 AspectChips
+### 1.19 AspectChips
 
 | 字段 | 值 |
 |------|-----|
@@ -177,7 +197,7 @@
 | 功能 | 画幅比例芯片组选择器（1:1, 2:3, 3:2 等） |
 | CSS 类 | `.aspectChips`, `.aspectChip`, `.aspectChipActive` |
 
-### 1.18 StepperInput
+### 1.20 StepperInput
 
 | 字段 | 值 |
 |------|-----|
@@ -187,7 +207,7 @@
 | 功能 | 步进数值输入 |
 | CSS 类 | `.stepper`, `.stepperBtn`, `.stepperValue` |
 
-### 1.19 DimensionsReadout
+### 1.21 DimensionsReadout
 
 | 字段 | 值 |
 |------|-----|
@@ -197,7 +217,7 @@
 | 功能 | 图像尺寸计算与展示（基础尺寸 → 最终尺寸） |
 | CSS 类 | `.dimReadout`, `.dimReadoutBase`, `.dimReadoutArrow`, `.dimReadoutFinal` |
 
-### 1.20 UpscaleControl
+### 1.22 UpscaleControl
 
 | 字段 | 值 |
 |------|-----|
@@ -207,7 +227,7 @@
 | 功能 | 放大倍数芯片组 + 1× 警告 |
 | CSS 类 | `.upscaleControl`, `.upscaleChips`, `.upscaleWarning` |
 
-### 1.21 KSamplerCard
+### 1.23 KSamplerCard
 
 | 字段 | 值 |
 |------|-----|
@@ -217,7 +237,7 @@
 | 功能 | KSampler 参数卡片（steps, cfg, denoise, sampler, scheduler, seed） |
 | CSS 类 | `.ksCard`, `.ksCardHead`, `.ksGrid`, `.ksCardDisabled` |
 
-### 1.22 SelectChip
+### 1.24 SelectChip
 
 | 字段 | 值 |
 |------|-----|
@@ -227,7 +247,7 @@
 | 功能 | 芯片式下拉选择器 |
 | CSS 类 | `.selectChip`, `.selectChipBtn`, `.selectChipMenu`, `.selectChipOption` |
 
-### 1.23 VariantSwitcher
+### 1.25 VariantSwitcher
 
 | 字段 | 值 |
 |------|-----|
@@ -236,6 +256,16 @@
 | Props | `variants: Array<{ id; name }>`, `currentVariantId`, `onChange?` |
 | 功能 | 变体切换下拉 |
 | CSS 类 | `.variantSwitcher`, `.variantSwitcherBtn`, `.variantSwitcherMenu`, `.variantSwitcherOption` |
+
+### 1.26 SvgIcon / createSvgIcon / createSvgIconFromString / createSvgIconFromUrl
+
+| 字段 | 值 |
+|------|-----|
+| 导出名 | `SvgIcon`, `createSvgIcon`, `createSvgIconFromString`, `createSvgIconFromUrl` |
+| 文件 | `svg-icon.tsx` |
+| Props | `SvgIcon`: `viewBox?`, `fill?`, `children`, `className?`, `size?`, `color?`, `strokeWidth?`, `style?`；`createSvgIcon`: `displayName?`, `viewBox?`, `fill?`, `defaultStrokeWidth?`, `children`；`createSvgIconFromString`: `displayName?`, `svg`, `defaultStrokeWidth?`；`createSvgIconFromUrl`: `displayName?`, `href`, `viewBox?` |
+| 功能 | 自定义 SVG 图标系统，与 Lucide 图标完全兼容。`SvgIcon` 为基础组件，`createSvgIcon` 从 JSX 子元素创建，`createSvgIconFromString` 从原始 SVG 字符串创建，`createSvgIconFromUrl` 从 SVG 文件 URL 创建 |
+| CSS 类 | 无自定义 CSS 类，通过 `className` / `style` 透传 |
 
 ---
 
@@ -291,6 +321,116 @@
 | 功能 | 空状态页面 |
 | CSS 类 | `.page`, `.empty` |
 
+### 2.6 ProjectDetailHeader（内部）
+
+| 字段 | 值 |
+|------|-----|
+| 导出名 | `ProjectDetailHeader`（内部） |
+| 文件 | `project-pages.tsx` |
+| Props | `isResultView`, `project: DemoProject`, `subtitle`, `view: ProjectCardView` |
+| 功能 | 项目详情页头部（返回链接 + 标题 + 视图切换 + 命令栏 + 运行控制） |
+| CSS 类 | `.projectDetailHeader`, `.projectHeaderTop`, `.projectTitleRow`, `.projectTitleEdit`, `.projectHeaderControls`, `.projectCommandBar`, `.projectCommandSecondary`, `.projectRunCluster` |
+
+### 2.7 ProjectBatchBar（内部）
+
+| 字段 | 值 |
+|------|-----|
+| 导出名 | `ProjectBatchBar`（内部） |
+| 文件 | `project-pages.tsx` |
+| Props | `folders`, `selectedCount`, `totalCount`, `onClear`, `onMove`, `onSelectAll` |
+| 功能 | 项目批量操作栏（已选计数 + 移动菜单 + 全选/清除） |
+| CSS 类 | `.projectBatchBar` |
+
+### 2.8 ProjectMoveMenu（内部）
+
+| 字段 | 值 |
+|------|-----|
+| 导出名 | `ProjectMoveMenu`（内部） |
+| 文件 | `project-pages.tsx` |
+| Props | `currentFolderId`, `folders`, `label?`, `onMove` |
+| 功能 | 项目移动到文件夹的下拉菜单 |
+| CSS 类 | `.projectMoveMenu`, `.projectMoveMenuList` |
+
+### 2.9 ProjectFolderBreadcrumb（内部）
+
+| 字段 | 值 |
+|------|-----|
+| 导出名 | `ProjectFolderBreadcrumb`（内部） |
+| 文件 | `project-pages.tsx` |
+| Props | `breadcrumb: DemoProjectFolder[]`, `onNavigate` |
+| 功能 | 项目文件夹面包屑导航 |
+| CSS 类 | `.projectFolderBreadcrumbs` |
+
+### 2.10 QueueMetrics（内部）
+
+| 字段 | 值 |
+|------|-----|
+| 导出名 | `QueueMetrics`（内部） |
+| 文件 | `runs-page.tsx` |
+| Props | `pendingImages`, `reviewGroups`, `runningCount`, `failedCount` |
+| 功能 | 队列指标卡片区（待审/队列/失败） |
+| CSS 类 | `.metricGrid` |
+
+### 2.11 CurrentRunningProgressCard（内部）
+
+| 字段 | 值 |
+|------|-----|
+| 导出名 | `CurrentRunningProgressCard`（内部） |
+| 文件 | `runs-page.tsx` |
+| Props | `runs: DemoCurrentRun[]` |
+| 功能 | 当前运行任务的进度卡片列表（项目名 + 小节 + 进度条 + 已用/剩余时间） |
+| CSS 类 | `.currentRunSurface`, `.currentRunHeader`, `.currentRunList`, `.currentRunItem`, `.currentRunTitleBlock`, `.currentRunProgressBlock`, `.currentRunProgressTop`, `.currentRunProgressTrack`, `.currentRunProgressFill`, `.currentRunMeta` |
+
+### 2.12 ReviewMetaCard（内部）
+
+| 字段 | 值 |
+|------|-----|
+| 导出名 | `ReviewMetaCard`（内部） |
+| 文件 | `runs-page.tsx` |
+| Props | `section`, `run: DemoRun`, `meta: Record<string, unknown> \| null` |
+| 功能 | 审核元数据卡片（可展开/折叠，展示 KSampler/LoRA/Prompt 等参数） |
+| CSS 类 | `.reviewMetaSurface`, `.reviewMetaHeader`, `.reviewMetaSummary`, `.reviewMetaChevron` |
+
+### 2.13 PresetCategorySidebar（内部）
+
+| 字段 | 值 |
+|------|-----|
+| 导出名 | `PresetCategorySidebar`（内部） |
+| 文件 | `preset-pages.tsx` |
+| Props | `categories: DemoCategory[]`, `selectedCategory: DemoCategory`, `onSelect` |
+| 功能 | 预设分类侧边栏（新建 + 分类列表 + 拖拽 + 编辑/删除） |
+| CSS 类 | `.presetCategorySidebar`, `.presetCategoryHeader`, `.presetCategoryList`, `.presetCategoryItem`, `.presetCategoryItemActive`, `.presetCategoryRow`, `.presetCategorySelect`, `.categorySwatch`, `.presetCategoryText`, `.presetCategoryActions` |
+
+### 2.14 PresetCategoryEditor（内部）
+
+| 字段 | 值 |
+|------|-----|
+| 导出名 | `PresetCategoryEditor`（内部） |
+| 文件 | `preset-pages.tsx` |
+| Props | `category: DemoCategory \| null`, `categories: DemoCategory[]` |
+| 功能 | 分类编辑器（类型切换 + 名称 + 色相 + 插槽预览 + 危险区） |
+| CSS 类 | `.categoryEditor`, `.categoryEditorHeader`, `.categoryTypeSwitch`, `.categoryTypeButton`, `.categoryTypeButtonActive`, `.categoryEditorGrid`, `.hueControl`, `.hueSlider`, `.slotEditor`, `.slotEditorHeader`, `.slotRow`, `.categoryEditorFooter`, `.categoryDangerZone`, `.inlineNotice`, `.inlineNoticeWarn` |
+
+### 2.15 PresetFolderBrowser（内部）
+
+| 字段 | 值 |
+|------|-----|
+| 导出名 | `PresetFolderBrowser`（内部） |
+| 文件 | `preset-pages.tsx` |
+| Props | `category`, `selectedFolderId`, `onSelectFolder` |
+| 功能 | 预设文件夹浏览器（面包屑 + 文件夹行列表） |
+| CSS 类 | `.presetFolderBar`, `.presetFolderBreadcrumbs`, `.presetFolderGrid`, `.presetFolderRow` |
+
+### 2.16 SortRulePanel（内部）
+
+| 字段 | 值 |
+|------|-----|
+| 导出名 | `SortRulePanel`（内部） |
+| 文件 | `preset-pages.tsx` |
+| Props | `title: string`, `rules: SortRule[]` |
+| 功能 | 单维度排序规则面板（标题 + 可拖拽规则列表 + 新增按钮） |
+| CSS 类 | `.sortRulePanel`, `.sortRuleHeader`, `.sortRuleList`, `.sortRuleRow`, `.sortRuleFooter` |
+
 ---
 
 ## 3. 图片组件
@@ -315,17 +455,27 @@
 | 功能 | 中缩略图（可选中、有标签、有操作区） |
 | CSS 类 | `.imageThumbMedium`, `.imageThumbMediumSelected`, `.imageThumbSelect`, `.imageThumbTags`, `.imageThumbImageButton`, `.imageThumbOverlay`, `.imageThumbActions` |
 
-### 3.3 ImageListSmall / ImageStrip
+### 3.3 ImageStrip
 
 | 字段 | 值 |
 |------|-----|
-| 导出名 | `ImageListSmall`, `ImageStrip` |
+| 导出名 | `ImageStrip` |
+| 文件 | `design-demo-ui.tsx` |
+| Props | `images: DemoImage[]`, `wide?` |
+| 功能 | 横向滚动图片条（紧凑型） |
+| CSS 类 | `.imageStrip` |
+
+### 3.4 ImageListSmall
+
+| 字段 | 值 |
+|------|-----|
+| 导出名 | `ImageListSmall` |
 | 文件 | `design-demo-ui.tsx` |
 | Props | `images`, `className?`, `limit?`, `maxWidth?`, `wide?` |
 | 功能 | 横向滚动小图列表 |
-| CSS 类 | `.imageListSmallFrame`, `.imageListSmall`, `.imageStrip` |
+| CSS 类 | `.imageListSmallFrame`, `.imageListSmall` |
 
-### 3.4 ImageListMedium
+### 3.5 ImageListMedium
 
 | 字段 | 值 |
 |------|-----|
@@ -335,7 +485,7 @@
 | 功能 | 中图网格列表（可折叠、有摘要/选择/操作面板） |
 | CSS 类 | `.imageListMedium`, `.imageListMediumMain`, `.imageListMediumHeader`, `.imageListMediumGrid`, `.imageListMediumViewport`, `.imageListMediumFade`, `.imageListMediumExpand`, `.imageListMediumActionTrack`, `.imageListMediumActionPanel` |
 
-### 3.5 ImageGrid
+### 3.6 ImageGrid
 
 | 字段 | 值 |
 |------|-----|
@@ -345,7 +495,7 @@
 | 功能 | 图片网格 + Lightbox 预览 |
 | CSS 类 | 复用 `ImageListMedium` + `ImagePreviewLarge` |
 
-### 3.6 ReviewImageBoard
+### 3.7 ReviewImageBoard
 
 | 字段 | 值 |
 |------|-----|
@@ -355,7 +505,7 @@
 | 功能 | 审核图片面板（选择 + 批量操作 + Lightbox） |
 | CSS 类 | `.reviewControlStrip` + 复用 `ImageListMedium` / `ImagePreviewLarge` |
 
-### 3.7 ImagePreviewFrame (internal)
+### 3.8 ImagePreviewFrame (internal)
 
 | 字段 | 值 |
 |------|-----|
@@ -365,7 +515,7 @@
 | 功能 | 图片预览帧（支持缩放、拖拽、双击重置） |
 | CSS 类 | `.imagePreviewFrame`, `.imagePreviewFrameInteractive`, `.imagePreviewFrameZoomed`, `.imagePreviewFrameDragging`, `.imageFill`, `.imagePreviewInteractiveImage` |
 
-### 3.8 ImagePreviewLarge (Lightbox)
+### 3.9 ImagePreviewLarge (Lightbox)
 
 | 字段 | 值 |
 |------|-----|
@@ -460,7 +610,7 @@
 | 文件 | `section-editor-presets.tsx` |
 | Props | `open`, `categories: ImportCategory[]`, `selected?`, `onSelect` |
 | 功能 | 行内预制导入面板（分类选择 → 文件夹 → 预制/组选择） |
-| CSS 类 | `.importPanel`, `.importCategoryColumn`, `.importCategoryItem`, `.importPresetColumn`, `.importHeaderActions` |
+| CSS 类 | `.importPanel`, `.importCategoryColumn`, `.importPresetColumn`, `.importHeaderActions` |
 
 ### 5.4 PromptBlockRow
 
@@ -533,7 +683,7 @@
 | 文件 | `project-pages.tsx` |
 | Props | `data: DemoData` |
 | 功能 | 项目列表页（文件夹面包屑 + 文件夹行 + 项目卡片列表 + 批量操作） |
-| CSS 类 | `.projectFolderWorkspace`, `.projectFolderTopbar`, `.projectFolderBreadcrumbs`, `.projectFolderActions`, `.projectBatchBar`, `.projectFolderSurface`, `.projectFolderGrid`, `.projectFolderRow`, `.projectFolderGrip`, `.projectFolderOpen`, `.projectFolderRowActions`, `.projectListGrid`, `.projectListCard`, `.projectListCardSelected`, `.projectSelectButton`, `.projectListOpenArea`, `.projectCardTitle`, `.projectCardStats`, `.projectItemActions`, `.projectMoveMenu`, `.projectMoveMenuList` |
+| CSS 类 | `.projectFolderWorkspace`, `.projectFolderTopbar`, `.projectFolderActions`, `.projectFolderSurface`, `.projectFolderGrid`, `.projectListGrid` |
 
 ### 6.3 ProjectDetailPage
 
@@ -543,9 +693,9 @@
 | 文件 | `project-pages.tsx` |
 | Props | `project?: DemoProject`, `initialView?: "sections" \| "results"` |
 | 功能 | 项目详情页（小节视图 / 结果视图） |
-| CSS 类 | `.projectDetailHeader`, `.projectHeaderTop`, `.projectTitleRow`, `.projectTitleEdit`, `.projectHeaderControls`, `.projectCommandBar`, `.projectCommandSecondary`, `.projectRunCluster` |
+| CSS 类 | 复用 `ProjectDetailHeader` 等 |
 
-### 6.4 ProjectSectionCard
+### 6.4 ProjectSectionCard（内部）
 
 | 字段 | 值 |
 |------|-----|
@@ -555,7 +705,37 @@
 | 功能 | 小节卡片（拖拽手柄 + 选中 + 标题 + 缩略图 + 运行/复制/删除操作） |
 | CSS 类 | `.sectionCard`, `.sectionCardCompact`, `.sectionCardSelected`, `.sectionCardMain`, `.dragHandle`, `.sectionSelectButton`, `.sectionCardContent`, `.sectionCardHeader`, `.sectionCardTitle`, `.sectionCardTitleLine`, `.sectionCardBody`, `.sectionCardActions`, `.sectionRunControl` |
 
-### 6.5 ProjectSectionShell / SectionRail
+### 6.5 ProjectSectionResultCard（内部）
+
+| 字段 | 值 |
+|------|-----|
+| 导出名 | `ProjectSectionResultCard`（内部） |
+| 文件 | `project-pages.tsx` |
+| Props | `collapsed`, `images`, `index`, `onToggleCollapsed`, `section` |
+| 功能 | 小节结果卡片（标题 + 状态标签 + 操作栏 + 图片列表） |
+| CSS 类 | `.resultSectionBlock`, `.resultSectionHeader`, `.resultSectionTitle`, `.sectionCardTitleLine`, `.resultSectionActions`, `.resultActionBar` |
+
+### 6.6 ProjectListItem（内部）
+
+| 字段 | 值 |
+|------|-----|
+| 导出名 | `ProjectListItem`（内部） |
+| 文件 | `project-pages.tsx` |
+| Props | `folders`, `project: DemoProject`, `selected`, `onMove`, `onToggleSelected` |
+| 功能 | 项目卡片（选中框 + 缩略图条 + 标题/状态 + 统计 + 更新时间 + 移动/删除操作） |
+| CSS 类 | `.projectListCard`, `.projectListCardSelected`, `.projectSelectButton`, `.projectListOpenArea`, `.cardHeader`, `.projectCardTitle`, `.projectCardStats`, `.badge`, `.projectItemActions` |
+
+### 6.7 ProjectFolderRow（内部）
+
+| 字段 | 值 |
+|------|-----|
+| 导出名 | `ProjectFolderRow`（内部） |
+| 文件 | `project-pages.tsx` |
+| Props | `folder: DemoProjectFolder`, `itemCount`, `onEnter` |
+| 功能 | 文件夹行（拖拽手柄 + 文件夹图标 + 名称 + 条目数 + 进入/重命名/删除操作） |
+| CSS 类 | `.projectFolderRow`, `.projectFolderGrip`, `.projectFolderOpen`, `.projectFolderRowActions` |
+
+### 6.8 ProjectSectionShell / SectionRail
 
 | 字段 | 值 |
 |------|-----|
@@ -565,7 +745,7 @@
 | 功能 | 小节列表 + 右侧导航轨道（双滚动同步） |
 | CSS 类 | `.projectSectionShell`, `.projectScrollPane`, `.sectionRail`, `.railHeading`, `.railItem`, `.railItemActive` |
 
-### 6.6 ProjectFormPage
+### 6.9 ProjectFormPage
 
 | 字段 | 值 |
 |------|-----|
@@ -575,7 +755,7 @@
 | 功能 | 项目创建/编辑表单 |
 | CSS 类 | `.twoCol`, `.grid`, `.fieldGrid` |
 
-### 6.7 BatchSizeSelector
+### 6.10 BatchSizeSelector
 
 | 字段 | 值 |
 |------|-----|
@@ -585,7 +765,7 @@
 | 功能 | 批量张数选择器（1/2/4/8/16） |
 | CSS 类 | `.batchSizeSelector`, `.batchSizeSelectorCompact` |
 
-### 6.8 ProjectViewToggle
+### 6.11 ProjectViewToggle（内部）
 
 | 字段 | 值 |
 |------|-----|
@@ -639,6 +819,36 @@
 | 功能 | 分页器 |
 | CSS 类 | `.pagerControls`, `.pagerButton`, `.pagerButtonActive`, `.pagerChunk`, `.pagerEllipsis` |
 
+### 7.5 SamplerMetaBlock（内部）
+
+| 字段 | 值 |
+|------|-----|
+| 导出名 | `SamplerMetaBlock`（内部） |
+| 文件 | `runs-page.tsx` |
+| Props | `meta: Record<string, unknown>`, `stage: 1 \| 2` |
+| 功能 | KSampler 参数展示块（seed/steps/cfg/denoise/sampler） |
+| CSS 类 | `.reviewSamplerBlock` |
+
+### 7.6 MetaStat（内部）
+
+| 字段 | 值 |
+|------|-----|
+| 导出名 | `MetaStat`（内部） |
+| 文件 | `runs-page.tsx` |
+| Props | `label: string`, `value: React.ReactNode` |
+| 功能 | 元数据标签-值行 |
+| CSS 类 | `.reviewMetaStat` |
+
+### 7.7 ReviewExecutionMeta（内部）
+
+| 字段 | 值 |
+|------|-----|
+| 导出名 | `ReviewExecutionMeta`（内部） |
+| 文件 | `runs-page.tsx` |
+| Props | `meta: Record<string, unknown>` |
+| 功能 | 执行元数据展示（KSampler 网格 + LoRA 网格 + Prompt 预览） |
+| CSS 类 | `.reviewMetaBody`, `.reviewSamplerGrid`, `.reviewMetaLine`, `.reviewLoraGrid`, `.reviewLoraColumn`, `.reviewPromptGrid` |
+
 ---
 
 ## 8. Preset 组件
@@ -651,7 +861,7 @@
 | 文件 | `preset-pages.tsx` |
 | Props | `data: DemoData` |
 | 功能 | 预设库页面（分类侧边栏 + 文件夹浏览 + 条目列表 + 批量移动） |
-| CSS 类 | `.presetManagerLayout`, `.presetCategorySidebar`, `.presetCategoryHeader`, `.presetCategoryList`, `.presetCategoryItem`, `.presetCategoryItemActive`, `.presetCategoryRow`, `.presetCategorySelect`, `.categorySwatch`, `.presetCategoryText`, `.presetCategoryActions`, `.presetCategoryDragIcon`, `.presetWorkArea`, `.presetWorkspaceHeader`, `.presetContextBar`, `.presetBatchBar`, `.presetLibrarySurface`, `.presetFolderBar`, `.presetFolderBreadcrumbs`, `.presetFolderGrid`, `.presetFolderRow`, `.presetFolderDraft`, `.presetFolderBack`, `.presetItemList`, `.presetItemRow`, `.presetItemRowSelected`, `.presetItemCheck`, `.presetItemOpenArea`, `.presetItemMain`, `.presetItemMeta`, `.presetItemArrow` |
+| CSS 类 | `.presetManagerLayout`, `.presetWorkArea`, `.presetWorkspaceHeader`, `.presetContextBar`, `.presetBatchBar`, `.presetLibrarySurface`, `.presetItemList`, `.presetItemRow`, `.presetItemRowSelected`, `.presetItemCheck`, `.presetItemOpenArea`, `.presetItemMain`, `.presetItemMeta`, `.presetItemArrow` |
 
 ### 8.2 PresetCategoryFormPage
 
@@ -661,7 +871,7 @@
 | 文件 | `preset-pages.tsx` |
 | Props | `data`, `category?`, `mode` |
 | 功能 | 分类新建/编辑页 |
-| CSS 类 | `.categoryFormLayout`, `.categoryFormSurface`, `.categoryEditor`, `.categoryEditorHeader`, `.categoryTypeSwitch`, `.categoryTypeButton`, `.categoryTypeButtonActive`, `.categoryEditorGrid`, `.hueControl`, `.hueSlider`, `.slotEditor`, `.slotEditorHeader`, `.slotRow`, `.categoryEditorFooter`, `.categoryDangerZone`, `.inlineNotice`, `.inlineNoticeWarn` |
+| CSS 类 | `.categoryFormLayout`, `.categoryFormSurface` |
 
 ### 8.3 PresetEditPage
 
@@ -702,6 +912,36 @@
 | Props | `category`, `confirmFeedback?`, `onCancel`, `onConfirm`, `onSelect`, `selectedCount`, `selectedFolderId` |
 | 功能 | 移动文件夹对话框 |
 | CSS 类 | `.presetMoveBackdrop`, `.presetMoveSheet`, `.presetMoveHeader`, `.presetMoveBreadcrumbs`, `.presetMoveTargets`, `.presetMoveTarget`, `.presetMoveTargetActive`, `.presetMoveFooter` |
+
+### 8.7 PresetFolderRows（内部）
+
+| 字段 | 值 |
+|------|-----|
+| 导出名 | `PresetFolderRows`（内部） |
+| 文件 | `preset-pages.tsx` |
+| Props | `category`, `selectedFolderId`, `onSelectFolder` |
+| 功能 | 预设文件夹行列表（拖拽 + 编辑 + 删除） |
+| CSS 类 | `.presetFolderGrid`, `.presetFolderRow` |
+
+### 8.8 PresetItemRows（内部）
+
+| 字段 | 值 |
+|------|-----|
+| 导出名 | `PresetItemRows`（内部） |
+| 文件 | `preset-pages.tsx` |
+| Props | `items`, `selectedIds`, `onToggle` |
+| 功能 | 预设条目行列表（选中 + 打开 + 元数据） |
+| CSS 类 | `.presetItemList`, `.presetItemRow`, `.presetItemRowSelected`, `.presetItemCheck`, `.presetItemOpenArea`, `.presetItemMain`, `.presetItemMeta`, `.presetItemArrow` |
+
+### 8.9 PresetLoraStage（内部）
+
+| 字段 | 值 |
+|------|-----|
+| 导出名 | `PresetLoraStage`（内部） |
+| 文件 | `preset-pages.tsx` |
+| Props | `title`, `preset`, `variant`, `stage` |
+| 功能 | LoRA 阶段展示（名称 + 权重 + 触发词） |
+| CSS 类 | `.loraStage`, `.loraRow` |
 
 ---
 
@@ -746,6 +986,16 @@
 | Props | `activeSection?`, `children`, `mode`, `template` |
 | 功能 | 模板小节布局 + 右侧导航（双滚动同步） |
 | CSS 类 | 复用 `projectSectionShell`, `sectionRail` 等 |
+
+### 9.5 TemplateSectionRow（内部）
+
+| 字段 | 值 |
+|------|-----|
+| 导出名 | `TemplateSectionRow`（内部） |
+| 文件 | `template-pages.tsx` |
+| Props | `index`, `section: DemoTemplateSection`, `template?` |
+| 功能 | 模板小节行（拖拽手柄 + 标题 + 元数据 + 编辑/复制/删除操作） |
+| CSS 类 | `.templateSectionRow`, `.templateSectionRowMain`, `.templateSectionTitleLine`, `.sectionMetaGrid`, `.templateSectionRowActions` |
 
 ---
 
@@ -849,3 +1099,13 @@
 | 文件 | `project-pages.tsx` |
 | Props | `data: DemoData` |
 | 功能 | 根路由，重定向到 QueuePage |
+
+### 13.3 IconShowcasePage
+
+| 字段 | 值 |
+|------|-----|
+| 导出名 | `IconShowcasePage` |
+| 文件 | `icon-showcase-page.tsx` |
+| Props | 无 |
+| 功能 | 图标展示页（Lucide 图标全览 + 自定义 SVG 图标演示） |
+| CSS 类 | `.iconListContainer`, `.iconListRow`, `.iconListHeader`, `.iconListColIcon`, `.iconListColName`, `.iconListColDesc`, `.iconListColUsage`, `.iconListTag`, `.iconListCategory` |

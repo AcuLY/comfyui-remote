@@ -2,10 +2,10 @@
 
 import { useMemo, useState } from "react";
 import {
-  Activity, Archive, Check, CheckSquare, ChevronDown, ChevronUp,
-  Eye, FlaskConical, Grid3X3, Layers, Monitor, Palette, Plus,
-  Rows3, Settings, Shuffle, SlidersHorizontal, Square, Star,
-  Trash2, Wand2, X,
+  Activity, Archive, Check, CheckSquare, ChevronDown, ChevronRight, ChevronUp, Copy,
+  Eye, FlaskConical, Folder, FolderInput, GripVertical, Grid3X3, Layers,
+  Monitor, Palette, Pencil, Play, Plus, Rows3, Settings, Shuffle,
+  SlidersHorizontal, Square, Star, Trash2, Wand2, X,
 } from "lucide-react";
 
 import type { DemoData, DemoImage } from "./design-demo-data";
@@ -14,7 +14,7 @@ import {
   SwitchRow, DemoTabs, MetricCard, EmptyRows, OperationStateStrip,
   PageHeader, Panel, RouteTable, EmptyPage, DemoFeedbackProvider,
   ImageThumbSmall, ImageThumbMedium, ImageListSmall, ImageListMedium,
-  ImageGrid, ReviewImageBoard, ImagePreviewLarge,
+  ImageGrid, ReviewImageBoard, ImagePreviewLarge, ImageStrip,
 } from "./design-demo-ui";
 import { SectionTabs, SpecSection, SpecRow, CheckpointPicker, AspectChips, StepperInput, DimensionsReadout, UpscaleControl, KSamplerCard, SelectChip, VariantSwitcher } from "./section-editor-controls";
 import { SectionNameEditor, SaveStatusPill } from "./section-editor-header";
@@ -92,11 +92,12 @@ function ShowcaseItem({ name, desc, children }: {
 
 export function ComponentShowcaseIndex({ data }: { data: DemoData }) {
   const categories = [
-    { href: "/component-showcase-atoms", title: "原子 / 小组件", desc: "Button、StatusBadge、Field、StepperInput、AspectChips 等", icon: Layers, count: 23 },
-    { href: "/component-showcase-mid", title: "中组件", desc: "PageHeader、Panel、RouteTable、Toast、EmptyPage", icon: Grid3X3, count: 5 },
-    { href: "/component-showcase-images", title: "图片组件", desc: "ImageThumb、ImageList、ImageGrid、ReviewBoard、Lightbox", icon: Palette, count: 8 },
+    { href: "/component-showcase-atoms", title: "原子 / 小组件", desc: "Button、StatusBadge、Field、Switch、SegmentedControl、StepperInput、AspectChips、SvgIcon 等", icon: Layers, count: 26 },
+    { href: "/component-showcase-mid", title: "中组件", desc: "PageHeader、Panel、RouteTable、Toast、EmptyPage、ProjectDetailHeader、QueueMetrics 等", icon: Grid3X3, count: 16 },
+    { href: "/component-showcase-images", title: "图片组件", desc: "ImageThumb、ImageStrip、ImageList、ImageGrid、ReviewBoard、Lightbox", icon: Palette, count: 9 },
     { href: "/component-showcase-editor", title: "Section Editor 组件", desc: "SectionHeader、PresetBindingRow、PromptBlockRow、LoraRow、LoraColumn 等", icon: SlidersHorizontal, count: 8 },
-    { href: "/component-showcase-icons", title: "Icons 图标", desc: "Lucide 图标全览 + 使用位置", icon: Palette, count: 57 },
+    { href: "/component-showcase-projects", title: "项目卡片和列表", desc: "ProjectListItem、ProjectSectionCard、ProjectFolderRow、BatchSizeSelector 等", icon: Archive, count: 11 },
+    { href: "/component-showcase-icons", title: "Icons 图标", desc: "Lucide 图标全览 + 自定义 SVG 图标", icon: Palette, count: 57 },
     { href: "/image-list-components", title: "图片列表组件检查", desc: "已有的图片列表专项检查页", icon: Rows3, count: 3 },
   ];
 
@@ -819,6 +820,237 @@ export function ComponentShowcaseEditor({ data }: { data: DemoData }) {
             after: "realistic_skin.safetensors (0.6)",
           }}
         />
+      </ShowcaseItem>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Project Cards & List Components Page
+   ══════════════════════════════════════════════════════════════ */
+
+export function ComponentShowcaseProjects({ data }: { data: DemoData }) {
+  const [batchSize, setBatchSize] = useState(2);
+  const images = useMemo(() => makeImages(6), []);
+
+  return (
+    <div className={s.showcasePage}>
+      <PageHeader back={{ href: "/component-showcase", label: "返回总览" }} eyebrow="组件展示" title="项目卡片和列表" subtitle="项目列表页和详情页中的卡片、行和导航组件" />
+
+      {/* ProjectListItem 模拟 */}
+      <ShowcaseItem name="ProjectListItem" desc="项目卡片（选中框 + 缩略图条 + 标题/状态 + 统计 + 操作）">
+        <div style={{ maxWidth: 480 }}>
+          <article className={`${s.projectListCard} ${s.projectListCardSelected}`} style={{ marginBottom: 12 }}>
+            <button className={s.projectSelectButton} type="button" aria-label="取消选择">
+              <CheckSquare className={s.icon} />
+            </button>
+            <div className={s.projectListOpenArea}>
+              <ImageStrip images={images} />
+              <div className={s.cardHeader}>
+                <div className={s.projectCardTitle}>
+                  <strong>夏日人像合集</strong>
+                  <span>3 个预制</span>
+                </div>
+                <StatusBadge status="running" label="运行中" />
+              </div>
+              <div className={s.projectCardStats}>
+                <span className={s.badge}>12 小节</span>
+                <span className={s.badge}>dreamshaper_v8</span>
+              </div>
+              <div className={`${s.small} ${s.faint}`}>更新：2026-05-09</div>
+            </div>
+            <div className={s.projectItemActions}>
+              <button type="button" aria-label="移动"><FolderInput className={s.icon} /></button>
+              <button type="button" aria-label="删除"><Trash2 className={s.icon} /></button>
+            </div>
+          </article>
+          <article className={s.projectListCard}>
+            <button className={s.projectSelectButton} type="button" aria-label="选择项目">
+              <Square className={s.icon} />
+            </button>
+            <div className={s.projectListOpenArea}>
+              <ImageStrip images={images.slice(0, 3)} />
+              <div className={s.cardHeader}>
+                <div className={s.projectCardTitle}>
+                  <strong>风景写意</strong>
+                  <span>1 个预制</span>
+                </div>
+                <StatusBadge status="done" label="完成" />
+              </div>
+              <div className={s.projectCardStats}>
+                <span className={s.badge}>6 小节</span>
+                <span className={s.badge}>sdxl_base_1.0</span>
+              </div>
+              <div className={`${s.small} ${s.faint}`}>更新：2026-05-08</div>
+            </div>
+            <div className={s.projectItemActions}>
+              <button type="button" aria-label="移动"><FolderInput className={s.icon} /></button>
+              <button type="button" aria-label="删除"><Trash2 className={s.icon} /></button>
+            </div>
+          </article>
+        </div>
+      </ShowcaseItem>
+
+      {/* ProjectFolderRow 模拟 */}
+      <ShowcaseItem name="ProjectFolderRow" desc="文件夹行（拖拽手柄 + 名称 + 条目数 + 操作）">
+        <div style={{ maxWidth: 480 }}>
+          <div className={s.projectFolderRow}>
+            <button className={s.projectFolderGrip} type="button" aria-label="排序手柄">
+              <GripVertical className={s.icon} />
+            </button>
+            <button className={s.projectFolderOpen} type="button">
+              <Folder className={s.icon} />
+              <strong>人物</strong>
+              <span>8 项</span>
+              <ChevronRight className={s.icon} />
+            </button>
+            <div className={s.projectFolderRowActions}>
+              <button type="button" aria-label="重命名"><Pencil className={s.icon} /></button>
+              <button type="button" aria-label="删除"><Trash2 className={s.icon} /></button>
+            </div>
+          </div>
+          <div className={s.projectFolderRow}>
+            <button className={s.projectFolderGrip} type="button" aria-label="排序手柄">
+              <GripVertical className={s.icon} />
+            </button>
+            <button className={s.projectFolderOpen} type="button">
+              <Folder className={s.icon} />
+              <strong>风景</strong>
+              <span>3 项</span>
+              <ChevronRight className={s.icon} />
+            </button>
+            <div className={s.projectFolderRowActions}>
+              <button type="button" aria-label="重命名"><Pencil className={s.icon} /></button>
+            </div>
+          </div>
+        </div>
+      </ShowcaseItem>
+
+      {/* ProjectFolderBreadcrumb 模拟 */}
+      <ShowcaseItem name="ProjectFolderBreadcrumb" desc="文件夹面包屑导航">
+        <div className={s.projectFolderBreadcrumbs}>
+          <button type="button">根目录</button>
+          <span><ChevronRight className={s.icon} /><button type="button">人物</button></span>
+          <span><ChevronRight className={s.icon} /><button type="button" disabled>写实</button></span>
+        </div>
+      </ShowcaseItem>
+
+      {/* ProjectBatchBar 模拟 */}
+      <ShowcaseItem name="ProjectBatchBar" desc="批量操作栏">
+        <div style={{ maxWidth: 480 }}>
+          <div className={s.projectBatchBar}>
+            <strong>已选 3 个项目</strong>
+            <div>
+              <button type="button">移至文件夹</button>
+              <button type="button">全选</button>
+              <button type="button" aria-label="清除选择"><X className={s.icon} /></button>
+            </div>
+          </div>
+        </div>
+      </ShowcaseItem>
+
+      {/* BatchSizeSelector 模拟 */}
+      <ShowcaseItem name="BatchSizeSelector" desc="批量张数选择器">
+        <div className={s.batchSizeSelector}>
+          {[1, 2, 4, 8, 16].map((option) => (
+            <button aria-pressed={batchSize === option} key={option} onClick={() => setBatchSize(option)} type="button">
+              {option}
+            </button>
+          ))}
+        </div>
+        <hr className={s.showcaseDivider} />
+        <div style={{ maxWidth: 240 }}>
+          <div className={`${s.batchSizeSelector} ${s.batchSizeSelectorCompact}`}>
+            {[1, 2, 4, 8, 16].map((option) => (
+              <button aria-pressed={batchSize === option} key={option} onClick={() => setBatchSize(option)} type="button">
+                {option}
+              </button>
+            ))}
+          </div>
+        </div>
+      </ShowcaseItem>
+
+      {/* ProjectViewToggle 模拟 */}
+      <ShowcaseItem name="ProjectViewToggle" desc="项目视图切换（小节/结果）">
+        <div className={`${s.segmented} ${s.projectViewToggle}`}>
+          <a className={`${s.segment} ${s.segmentActive}`}>小节</a>
+          <a className={s.segment}>结果</a>
+        </div>
+      </ShowcaseItem>
+
+      {/* ProjectSectionCard 模拟 */}
+      <ShowcaseItem name="ProjectSectionCard" desc="小节卡片（拖拽手柄 + 选中 + 标题 + 缩略图 + 运行/复制/删除）">
+        <div style={{ maxWidth: 480 }}>
+          <article className={s.sectionCard}>
+            <button className={s.dragHandle} type="button" aria-label="排序手柄">
+              <GripVertical className={s.icon} />
+            </button>
+            <button className={s.sectionSelectButton} type="button" aria-label="选择">
+              <Square className={s.icon} />
+            </button>
+            <div className={s.sectionCardMain}>
+              <div className={s.sectionCardHeader}>
+                <div className={s.sectionCardTitle}>
+                  <div className={s.sectionCardTitleLine}>
+                    <span>01</span>
+                    <strong>肖像 - 女性角色</strong>
+                  </div>
+                </div>
+              </div>
+              <div className={s.sectionCardBody}>
+                <ImageStrip images={images.slice(0, 3)} />
+                <div className={s.projectCardStats}>
+                  <span className={s.badge}>2:3</span>
+                  <span className={s.badge}>20 步</span>
+                  <span className={s.badge}>2 LoRA</span>
+                </div>
+              </div>
+              <div className={s.sectionCardActions}>
+                <Button tone="primary" icon={Play}>运行</Button>
+                <Button tone="subtle" icon={Copy}>复制</Button>
+                <Button tone="danger" icon={Trash2}>删除</Button>
+              </div>
+            </div>
+          </article>
+        </div>
+      </ShowcaseItem>
+
+      {/* ProjectSectionResultCard 模拟 */}
+      <ShowcaseItem name="ProjectSectionResultCard" desc="小节结果卡片（标题 + 状态标签 + 操作栏 + 图片列表）">
+        <div style={{ maxWidth: 480 }}>
+          <section className={s.resultSectionBlock}>
+            <div className={s.resultSectionHeader}>
+              <div className={s.resultSectionTitle}>
+                <div className={s.sectionCardTitleLine}>
+                  <span>01</span>
+                  <strong>肖像 - 女性角色</strong>
+                </div>
+              </div>
+              <div className={s.resultSectionActions}>
+                <span className={s.badge}>4 待审</span>
+                <span className={s.badge}>6 保留</span>
+                <span className={s.badge}>2 p站/预览</span>
+              </div>
+            </div>
+            <div className={s.resultActionBar}>
+              <Button tone="subtle" icon={Square}>选择本节</Button>
+              <Button icon={Check}>保留</Button>
+              <Button tone="pink" icon={Star}>p站</Button>
+            </div>
+          </section>
+        </div>
+      </ShowcaseItem>
+
+      {/* ProjectMoveMenu 模拟 */}
+      <ShowcaseItem name="ProjectMoveMenu" desc="移动到文件夹下拉菜单">
+        <div style={{ maxWidth: 200 }}>
+          <div className={s.projectMoveMenu}>
+            <button type="button">移动</button>
+          </div>
+        </div>
+        <div style={{ color: "var(--demo-muted)", fontSize: 12, marginTop: 8 }}>
+          完整交互请查看项目列表页面（/design-demos/projects）
+        </div>
       </ShowcaseItem>
     </div>
   );
