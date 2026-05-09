@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import type * as React from "react";
 import { ChevronDown, AlertCircle, Wand2 } from "lucide-react";
 
-import { SegmentedControl } from "./design-demo-ui";
+import { FloatingSelect, SegmentedControl } from "./design-demo-ui";
 import s from "./design-demo-styles";
 import { cx } from "./design-demo-utils";
 export type SectionTabValue = "params" | "presets" | "prompts" | "lora" | "history" | "results";
@@ -424,48 +424,17 @@ export function SelectChip({
   options: string[];
   onChange: (v: string) => void;
 }) {
-  const [open, setOpen] = useState(false);
-  const wrap = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const close = (e: MouseEvent) => {
-      if (wrap.current && !wrap.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", close);
-    return () => document.removeEventListener("mousedown", close);
-  }, [open]);
-
   return (
-    <div className={s.selectChip} ref={wrap}>
-      <button
-        type="button"
-        className={s.selectChipBtn}
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-      >
-        <span>{value}</span>
-        <ChevronDown className="size-3.5" />
-      </button>
-      {open ? (
-        <div className={s.selectChipMenu}>
-          {options.map((opt) => (
-            <button
-              key={opt}
-              type="button"
-              className={s.selectChipOption}
-              data-selected={opt === value}
-              onClick={() => {
-                onChange(opt);
-                setOpen(false);
-              }}
-            >
-              {opt}
-            </button>
-          ))}
-        </div>
-      ) : null}
-    </div>
+    <FloatingSelect
+      ariaLabel="Select option"
+      buttonClassName={s.selectChipBtn}
+      className={s.selectChip}
+      menuClassName={s.selectChipMenu}
+      onChange={onChange}
+      optionClassName={s.selectChipOption}
+      options={options.map((opt) => ({ value: opt }))}
+      value={value}
+    />
   );
 }
 
@@ -480,49 +449,21 @@ type VariantSwitcherProps = {
 };
 
 export function VariantSwitcher({ variants, currentVariantId, onChange }: VariantSwitcherProps) {
-  const [open, setOpen] = useState(false);
-  const wrap = useRef<HTMLDivElement>(null);
   const current = variants.find((v) => v.id === currentVariantId);
 
-  useEffect(() => {
-    if (!open) return;
-    const close = (e: MouseEvent) => {
-      if (wrap.current && !wrap.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", close);
-    return () => document.removeEventListener("mousedown", close);
-  }, [open]);
-
   return (
-    <div className={s.variantSwitcher} ref={wrap}>
-      <button
-        type="button"
-        className={s.variantSwitcherBtn}
-        onClick={() => setOpen((v) => !v)}
-      >
-        <Wand2 className="size-3" />
-        <span>{current?.name ?? "切换"}</span>
-        <ChevronDown className="size-3" />
-      </button>
-      {open ? (
-        <div className={s.variantSwitcherMenu}>
-          {variants.map((variant) => (
-            <button
-              key={variant.id}
-              type="button"
-              data-selected={variant.id === currentVariantId}
-              className={s.variantSwitcherOption}
-              onClick={() => {
-                onChange?.(variant.id);
-                setOpen(false);
-              }}
-            >
-              {variant.name}
-            </button>
-          ))}
-        </div>
-      ) : null}
-    </div>
+    <FloatingSelect
+      ariaLabel="Select variant"
+      buttonClassName={s.variantSwitcherBtn}
+      className={s.variantSwitcher}
+      displayValue={current?.name ?? "切换"}
+      leadingIcon={<Wand2 aria-hidden="true" />}
+      menuClassName={s.variantSwitcherMenu}
+      onChange={(variantId) => onChange?.(variantId)}
+      optionClassName={s.variantSwitcherOption}
+      options={variants.map((variant) => ({ value: variant.id, label: variant.name }))}
+      value={currentVariantId}
+    />
   );
 }
 
