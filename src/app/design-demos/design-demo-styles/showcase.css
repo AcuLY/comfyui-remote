@@ -6,47 +6,6 @@
   margin: 0 auto;
 }
 
-.showcaseViewportBar {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  padding: 12px 16px;
-  background: var(--demo-panel);
-  border-radius: 10px;
-  margin-bottom: 24px;
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  backdrop-filter: blur(12px);
-}
-
-.showcaseViewportLabel {
-  font-size: 13px;
-  color: var(--demo-muted);
-  margin-right: 4px;
-}
-
-.showcaseViewportBtn {
-  padding: 6px 14px;
-  border-radius: 6px;
-  border: 1px solid var(--demo-border);
-  background: transparent;
-  color: var(--demo-text);
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.showcaseViewportBtn:hover {
-  background: var(--demo-surface);
-}
-
-.showcaseViewportBtnActive {
-  background: var(--demo-accent);
-  color: var(--demo-bg);
-  border-color: var(--demo-accent);
-}
-
 .showcaseItem {
   margin-bottom: 32px;
   border: 1px solid var(--demo-border);
@@ -78,13 +37,7 @@
 
 .showcaseItemBody {
   padding: 16px;
-  transition: max-width 0.3s ease;
-  margin: 0 auto;
 }
-
-.showcaseViewportSM { max-width: 375px; }
-.showcaseViewportMD { max-width: 768px; }
-.showcaseViewportLG { max-width: 1280px; }
 
 .showcaseGroup {
   margin-bottom: 24px;

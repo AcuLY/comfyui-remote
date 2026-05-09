@@ -26,20 +26,11 @@ import type { PromptBlockRowData, CompiledPromptGroup } from "./section-editor-p
 import { LoraRow, HistoryDiffRow } from "./section-editor-lora-history";
 import type { LoraRowData, HistoryDiffChange } from "./section-editor-lora-history";
 import { LoraColumn } from "./section-editor-lora-column";
-import { cx } from "./design-demo-utils";
 import type { SectionTabValue } from "./section-editor-controls";
 import type { SaveStatus } from "./section-editor-header";
 import s from "./design-demo-styles";
 
 /* ───────────────────────── helpers ───────────────────────── */
-
-type ViewportSize = "sm" | "md" | "lg";
-
-const VIEWPORT_LABELS: Record<ViewportSize, string> = {
-  sm: "手机 375px",
-  md: "平板 768px",
-  lg: "桌面 1280px",
-};
 
 function svgImageDataUri(label: string, hue: number) {
   const svg = `
@@ -79,36 +70,9 @@ function makeImages(count: number): DemoImage[] {
 
 /* ───────────────────────── shared layout ───────────────────────── */
 
-function ViewportSwitcher({ value, onChange }: { value: ViewportSize; onChange: (v: ViewportSize) => void }) {
-  return (
-    <div className={s.showcaseViewportBar}>
-      <span className={s.showcaseViewportLabel}>视口宽度：</span>
-      {(["sm", "md", "lg"] as ViewportSize[]).map((size) => (
-        <button
-          key={size}
-          className={cx(s.showcaseViewportBtn, value === size && s.showcaseViewportBtnActive)}
-          type="button"
-          onClick={() => onChange(size)}
-        >
-          {VIEWPORT_LABELS[size]}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function ViewportFrame({ viewport, children }: { viewport: ViewportSize; children: React.ReactNode }) {
-  const cls =
-    viewport === "sm" ? s.showcaseViewportSM :
-    viewport === "md" ? s.showcaseViewportMD :
-    s.showcaseViewportLG;
-  return <div className={cx(s.showcaseItemBody, cls)}>{children}</div>;
-}
-
-function ShowcaseItem({ name, desc, viewport, children }: {
+function ShowcaseItem({ name, desc, children }: {
   name: string;
   desc: string;
-  viewport: ViewportSize;
   children: React.ReactNode;
 }) {
   return (
@@ -117,7 +81,7 @@ function ShowcaseItem({ name, desc, viewport, children }: {
         <span className={s.showcaseItemName}>{name}</span>
         <span className={s.showcaseItemDesc}>{desc}</span>
       </div>
-      <ViewportFrame viewport={viewport}>{children}</ViewportFrame>
+      <div className={s.showcaseItemBody}>{children}</div>
     </div>
   );
 }
@@ -140,7 +104,7 @@ export function ComponentShowcaseIndex({ data }: { data: DemoData }) {
       <PageHeader
         eyebrow="临时页面"
         title="组件展示总览"
-        subtitle="选择分类查看各组件在不同视口宽度下的表现。"
+        subtitle="选择分类查看各组件。调整浏览器窗口宽度查看响应式表现。"
       />
       <div className={s.showcaseIndexGrid}>
         {categories.map((cat) => (
@@ -161,7 +125,6 @@ export function ComponentShowcaseIndex({ data }: { data: DemoData }) {
    ══════════════════════════════════════════════════════════════ */
 
 export function ComponentShowcaseAtoms() {
-  const [viewport, setViewport] = useState<ViewportSize>("lg");
   const [tabValue, setTabValue] = useState("params");
   const [stepperVal, setStepperVal] = useState(4);
   const [aspectVal, setAspectVal] = useState("2:3");
@@ -175,11 +138,10 @@ export function ComponentShowcaseAtoms() {
 
   return (
     <div className={s.showcasePage}>
-      <PageHeader eyebrow="组件展示" title="原子 / 小组件" subtitle="23 个基础组件，切换视口宽度查看响应式表现" />
-      <ViewportSwitcher value={viewport} onChange={setViewport} />
+      <PageHeader eyebrow="组件展示" title="原子 / 小组件" subtitle="23 个基础组件，调整浏览器窗口宽度查看响应式表现" />
 
       {/* 1.1 Button */}
-      <ShowcaseItem name="Button" desc="通用按钮，5 种色调" viewport={viewport}>
+      <ShowcaseItem name="Button" desc="通用按钮，5 种色调">
         <div className={s.showcaseGroup}>
           <div className={s.showcaseGroupTitle}>Tone 变体</div>
           <div className={s.showcaseRow}>
@@ -210,7 +172,7 @@ export function ComponentShowcaseAtoms() {
       </ShowcaseItem>
 
       {/* 1.2 ButtonLink */}
-      <ShowcaseItem name="ButtonLink" desc="按钮外观的 Link" viewport={viewport}>
+      <ShowcaseItem name="ButtonLink" desc="按钮外观的 Link">
         <div className={s.showcaseRow}>
           <ButtonLink href="/design-demos">Default</ButtonLink>
           <ButtonLink href="/design-demos" tone="primary" icon={Plus}>Primary</ButtonLink>
@@ -219,7 +181,7 @@ export function ComponentShowcaseAtoms() {
       </ShowcaseItem>
 
       {/* 1.3 StatusBadge */}
-      <ShowcaseItem name="StatusBadge" desc="状态标签" viewport={viewport}>
+      <ShowcaseItem name="StatusBadge" desc="状态标签">
         <div className={s.showcaseRow}>
           <StatusBadge status="running" label="运行中" />
           <StatusBadge status="done" label="完成" />
@@ -230,7 +192,7 @@ export function ComponentShowcaseAtoms() {
       </ShowcaseItem>
 
       {/* 1.4 Field */}
-      <ShowcaseItem name="Field" desc="只读文本输入字段" viewport={viewport}>
+      <ShowcaseItem name="Field" desc="只读文本输入字段">
         <div className={s.showcaseStack}>
           <Field label="项目名称" value="夏日人像合集" />
           <Field label="画幅比例" value="2:3" />
@@ -239,17 +201,17 @@ export function ComponentShowcaseAtoms() {
       </ShowcaseItem>
 
       {/* 1.5 TextAreaField */}
-      <ShowcaseItem name="TextAreaField" desc="只读多行文本字段" viewport={viewport}>
+      <ShowcaseItem name="TextAreaField" desc="只读多行文本字段">
         <TextAreaField label="正向提示词" value="masterpiece, best quality, 1girl, portrait, detailed face, studio lighting, bokeh background" />
       </ShowcaseItem>
 
       {/* 1.6 SelectLike */}
-      <ShowcaseItem name="SelectLike" desc="只读下拉选择样式字段" viewport={viewport}>
+      <ShowcaseItem name="SelectLike" desc="只读下拉选择样式字段">
         <SelectLike label="Checkpoint" value="dreamshaper_v8.safetensors" />
       </ShowcaseItem>
 
       {/* 1.7 SwitchRow */}
-      <ShowcaseItem name="SwitchRow" desc="开关行（纯展示）" viewport={viewport}>
+      <ShowcaseItem name="SwitchRow" desc="开关行（纯展示）">
         <div className={s.showcaseStack}>
           <SwitchRow title="启用 LoRA" subtitle="加载关联的 LoRA 模型" />
           <SwitchRow title="SFW 模式" subtitle="隐藏敏感内容" />
@@ -257,7 +219,7 @@ export function ComponentShowcaseAtoms() {
       </ShowcaseItem>
 
       {/* 1.8 DemoTabs */}
-      <ShowcaseItem name="DemoTabs" desc="通用 Tab 切换器" viewport={viewport}>
+      <ShowcaseItem name="DemoTabs" desc="通用 Tab 切换器">
         <DemoTabs
           tabs={[
             { key: "params", label: "参数" },
@@ -272,7 +234,7 @@ export function ComponentShowcaseAtoms() {
       </ShowcaseItem>
 
       {/* 1.9 MetricCard */}
-      <ShowcaseItem name="MetricCard" desc="指标卡片" viewport={viewport}>
+      <ShowcaseItem name="MetricCard" desc="指标卡片">
         <div className={s.showcaseCardGrid}>
           <MetricCard icon={FlaskConical} label="运行中" value={3} meta="2 个小节" />
           <MetricCard icon={Check} label="已完成" value={127} meta="今天 +12" />
@@ -282,12 +244,12 @@ export function ComponentShowcaseAtoms() {
       </ShowcaseItem>
 
       {/* 1.10 EmptyRows */}
-      <ShowcaseItem name="EmptyRows" desc="空状态文字" viewport={viewport}>
+      <ShowcaseItem name="EmptyRows" desc="空状态文字">
         <EmptyRows label="暂无运行记录" />
       </ShowcaseItem>
 
       {/* 1.11 OperationStateStrip */}
-      <ShowcaseItem name="OperationStateStrip" desc="横向操作状态条" viewport={viewport}>
+      <ShowcaseItem name="OperationStateStrip" desc="横向操作状态条">
         <OperationStateStrip
           items={[
             { label: "保留", value: "32", tone: "success" },
@@ -298,7 +260,7 @@ export function ComponentShowcaseAtoms() {
       </ShowcaseItem>
 
       {/* 1.12 SectionTabs */}
-      <ShowcaseItem name="SectionTabs" desc="小节编辑器专用 Tab 栏" viewport={viewport}>
+      <ShowcaseItem name="SectionTabs" desc="小节编辑器专用 Tab 栏">
         <SectionTabs
           tabs={[
             { value: "params", label: "参数" },
@@ -314,12 +276,12 @@ export function ComponentShowcaseAtoms() {
       </ShowcaseItem>
 
       {/* 1.13 SectionNameEditor */}
-      <ShowcaseItem name="SectionNameEditor" desc="点击编辑小节名" viewport={viewport}>
+      <ShowcaseItem name="SectionNameEditor" desc="点击编辑小节名">
         <SectionNameEditor initialName={sectionName} onChange={setSectionName} />
       </ShowcaseItem>
 
       {/* 1.14 SaveStatusPill */}
-      <ShowcaseItem name="SaveStatusPill" desc="保存状态指示" viewport={viewport}>
+      <ShowcaseItem name="SaveStatusPill" desc="保存状态指示">
         <div className={s.showcaseRow}>
           <SaveStatusPill status="idle" />
           <SaveStatusPill status="saving" />
@@ -328,7 +290,7 @@ export function ComponentShowcaseAtoms() {
       </ShowcaseItem>
 
       {/* 1.15 SpecSection / SpecRow */}
-      <ShowcaseItem name="SpecSection / SpecRow" desc="参数表单的分组和行布局" viewport={viewport}>
+      <ShowcaseItem name="SpecSection / SpecRow" desc="参数表单的分组和行布局">
         <SpecSection title="采样参数" hint="调整采样器参数以控制生成质量">
           <SpecRow label="步数" description="更多步数通常更精细">
             <StepperInput value={stepperVal} onChange={setStepperVal} min={1} max={50} />
@@ -340,7 +302,7 @@ export function ComponentShowcaseAtoms() {
       </ShowcaseItem>
 
       {/* 1.16 CheckpointPicker */}
-      <ShowcaseItem name="CheckpointPicker" desc="Checkpoint 下拉选择器" viewport={viewport}>
+      <ShowcaseItem name="CheckpointPicker" desc="Checkpoint 下拉选择器">
         <CheckpointPicker
           value={checkpointVal}
           projectCheckpoint="dreamshaper_v8"
@@ -350,12 +312,12 @@ export function ComponentShowcaseAtoms() {
       </ShowcaseItem>
 
       {/* 1.17 AspectChips */}
-      <ShowcaseItem name="AspectChips" desc="画幅比例芯片组选择器" viewport={viewport}>
+      <ShowcaseItem name="AspectChips" desc="画幅比例芯片组选择器">
         <AspectChips value={aspectVal} onChange={setAspectVal} />
       </ShowcaseItem>
 
       {/* 1.18 StepperInput */}
-      <ShowcaseItem name="StepperInput" desc="步进数值输入" viewport={viewport}>
+      <ShowcaseItem name="StepperInput" desc="步进数值输入">
         <div className={s.showcaseStack}>
           <div className={s.showcaseRow}>
             <StepperInput value={stepperVal} onChange={setStepperVal} min={1} max={50} suffix=" 步" />
@@ -366,19 +328,19 @@ export function ComponentShowcaseAtoms() {
       </ShowcaseItem>
 
       {/* 1.19 DimensionsReadout */}
-      <ShowcaseItem name="DimensionsReadout" desc="图像尺寸计算与展示" viewport={viewport}>
+      <ShowcaseItem name="DimensionsReadout" desc="图像尺寸计算与展示">
         <DimensionsReadout aspect="2:3" shortSide={512} upscale={2} />
         <hr className={s.showcaseDivider} />
         <DimensionsReadout aspect="1:1" shortSide={1024} upscale={1} />
       </ShowcaseItem>
 
       {/* 1.20 UpscaleControl */}
-      <ShowcaseItem name="UpscaleControl" desc="放大倍数芯片组" viewport={viewport}>
+      <ShowcaseItem name="UpscaleControl" desc="放大倍数芯片组">
         <UpscaleControl value={upscaleVal} onChange={setUpscaleVal} />
       </ShowcaseItem>
 
       {/* 1.21 KSamplerCard */}
-      <ShowcaseItem name="KSamplerCard" desc="KSampler 参数卡片" viewport={viewport}>
+      <ShowcaseItem name="KSamplerCard" desc="KSampler 参数卡片">
         <KSamplerCard
           label="KSampler 1"
           hint="第一次采样"
@@ -408,7 +370,7 @@ export function ComponentShowcaseAtoms() {
       </ShowcaseItem>
 
       {/* 1.22 SelectChip */}
-      <ShowcaseItem name="SelectChip" desc="芯片式下拉选择器" viewport={viewport}>
+      <ShowcaseItem name="SelectChip" desc="芯片式下拉选择器">
         <div className={s.showcaseRow}>
           <SelectChip value={selectChipVal} options={["euler", "euler_ancestral", "dpmpp_2m", "dpmpp_sde", "ddim"]} onChange={setSelectChipVal} />
           <SelectChip value="normal" options={["normal", "karras", "exponential", "sgm_uniform"]} onChange={() => {}} />
@@ -416,7 +378,7 @@ export function ComponentShowcaseAtoms() {
       </ShowcaseItem>
 
       {/* 1.23 VariantSwitcher */}
-      <ShowcaseItem name="VariantSwitcher" desc="变体切换下拉" viewport={viewport}>
+      <ShowcaseItem name="VariantSwitcher" desc="变体切换下拉">
         <VariantSwitcher
           variants={[
             { id: "v1", name: "默认变体" },
@@ -436,22 +398,19 @@ export function ComponentShowcaseAtoms() {
    ══════════════════════════════════════════════════════════════ */
 
 export function ComponentShowcaseMid({ data }: { data: DemoData }) {
-  const [viewport, setViewport] = useState<ViewportSize>("lg");
-
   return (
     <div className={s.showcasePage}>
       <PageHeader eyebrow="组件展示" title="中组件" subtitle="5 个中型组件" />
-      <ViewportSwitcher value={viewport} onChange={setViewport} />
 
       {/* 2.1 PageHeader */}
-      <ShowcaseItem name="PageHeader" desc="页面顶部标题栏" viewport={viewport}>
+      <ShowcaseItem name="PageHeader" desc="页面顶部标题栏">
         <PageHeader eyebrow="项目" title="夏日人像合集" subtitle="12 个小节 · 3 个预制" actions={<><Button tone="primary" icon={Plus}>新增小节</Button><Button icon={Settings}>设置</Button></>} />
         <hr className={s.showcaseDivider} />
         <PageHeader back={{ href: "/design-demos/projects", label: "返回项目" }} eyebrow="小节" title="肖像 - 女性角色" subtitle="2:3 · 512×768 · 4 张" />
       </ShowcaseItem>
 
       {/* 2.2 Panel */}
-      <ShowcaseItem name="Panel" desc="面板容器" viewport={viewport}>
+      <ShowcaseItem name="Panel" desc="面板容器">
         <Panel title="采样参数" subtitle="调整 KSampler 参数" actions={<Button tone="subtle" icon={Shuffle}>随机种子</Button>}>
           <div className={s.showcaseRow}>
             <Field label="Steps" value={20} />
@@ -462,19 +421,19 @@ export function ComponentShowcaseMid({ data }: { data: DemoData }) {
       </ShowcaseItem>
 
       {/* 2.3 RouteTable */}
-      <ShowcaseItem name="RouteTable" desc="完整页面路径表格" viewport={viewport}>
+      <ShowcaseItem name="RouteTable" desc="完整页面路径表格">
         <RouteTable data={data} />
       </ShowcaseItem>
 
       {/* 2.4 DemoFeedbackProvider / Toast */}
-      <ShowcaseItem name="DemoFeedbackProvider" desc="Toast 提示 Context Provider" viewport={viewport}>
+      <ShowcaseItem name="DemoFeedbackProvider" desc="Toast 提示 Context Provider">
         <DemoFeedbackProvider>
           <ToastDemoButtons />
         </DemoFeedbackProvider>
       </ShowcaseItem>
 
       {/* 2.5 EmptyPage */}
-      <ShowcaseItem name="EmptyPage" desc="空状态页面" viewport={viewport}>
+      <ShowcaseItem name="EmptyPage" desc="空状态页面">
         <EmptyPage title="暂无数据" />
       </ShowcaseItem>
     </div>
@@ -496,7 +455,6 @@ function ToastDemoButtons() {
    ══════════════════════════════════════════════════════════════ */
 
 export function ComponentShowcaseImages({ data }: { data: DemoData }) {
-  const [viewport, setViewport] = useState<ViewportSize>("lg");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
 
@@ -518,10 +476,9 @@ export function ComponentShowcaseImages({ data }: { data: DemoData }) {
   return (
     <div className={s.showcasePage}>
       <PageHeader eyebrow="组件展示" title="图片组件" subtitle="8 个图片相关组件" />
-      <ViewportSwitcher value={viewport} onChange={setViewport} />
 
       {/* 3.1 ImageThumbSmall */}
-      <ShowcaseItem name="ImageThumbSmall" desc="小缩略图" viewport={viewport}>
+      <ShowcaseItem name="ImageThumbSmall" desc="小缩略图">
         <div className={s.showcaseRow}>
           {images.slice(0, 5).map((img, i) => (
             <ImageThumbSmall key={img.id} image={img} />
@@ -530,7 +487,7 @@ export function ComponentShowcaseImages({ data }: { data: DemoData }) {
       </ShowcaseItem>
 
       {/* 3.2 ImageThumbMedium */}
-      <ShowcaseItem name="ImageThumbMedium" desc="中缩略图（可选中）" viewport={viewport}>
+      <ShowcaseItem name="ImageThumbMedium" desc="中缩略图（可选中）">
         <div className={s.showcaseRow}>
           {images.slice(0, 4).map((img, i) => (
             <ImageThumbMedium
@@ -547,7 +504,7 @@ export function ComponentShowcaseImages({ data }: { data: DemoData }) {
       </ShowcaseItem>
 
       {/* 3.3 ImageListSmall */}
-      <ShowcaseItem name="ImageListSmall" desc="横向滚动小图列表" viewport={viewport}>
+      <ShowcaseItem name="ImageListSmall" desc="横向滚动小图列表">
         <div className={s.showcaseImageList}>
           <ImageListSmall images={images} limit={8} maxWidth={420} />
         </div>
@@ -556,7 +513,7 @@ export function ComponentShowcaseImages({ data }: { data: DemoData }) {
       </ShowcaseItem>
 
       {/* 3.4 ImageListMedium */}
-      <ShowcaseItem name="ImageListMedium" desc="中图网格列表（可折叠）" viewport={viewport}>
+      <ShowcaseItem name="ImageListMedium" desc="中图网格列表（可折叠）">
         <ImageListMedium maxHeight={320} summary={`已选 ${selectedIds.size} 张`}>
           {images.slice(0, 8).map((img, i) => (
             <ImageThumbMedium
@@ -573,19 +530,19 @@ export function ComponentShowcaseImages({ data }: { data: DemoData }) {
       </ShowcaseItem>
 
       {/* 3.5 ImageGrid */}
-      <ShowcaseItem name="ImageGrid" desc="图片网格 + Lightbox 预览" viewport={viewport}>
+      <ShowcaseItem name="ImageGrid" desc="图片网格 + Lightbox 预览">
         <ImageGrid images={images.slice(0, 6)} showStatus selectable />
       </ShowcaseItem>
 
       {/* 3.6 ReviewImageBoard */}
-      <ShowcaseItem name="ReviewImageBoard" desc="审核图片面板" viewport={viewport}>
+      <ShowcaseItem name="ReviewImageBoard" desc="审核图片面板">
         <ReviewImageBoard images={images.slice(0, 6)} />
       </ShowcaseItem>
 
       {/* 3.7 ImagePreviewFrame (internal - shown through Lightbox) */}
 
       {/* 3.8 ImagePreviewLarge (Lightbox) */}
-      <ShowcaseItem name="ImagePreviewLarge" desc="全屏 Lightbox 预览" viewport={viewport}>
+      <ShowcaseItem name="ImagePreviewLarge" desc="全屏 Lightbox 预览">
         <Button icon={Eye} onClick={() => setPreviewIndex(0)}>打开 Lightbox</Button>
       </ShowcaseItem>
 
@@ -612,15 +569,12 @@ export function ComponentShowcaseImages({ data }: { data: DemoData }) {
    ══════════════════════════════════════════════════════════════ */
 
 export function ComponentShowcaseEditor({ data }: { data: DemoData }) {
-  const [viewport, setViewport] = useState<ViewportSize>("lg");
-
   return (
     <div className={s.showcasePage}>
       <PageHeader eyebrow="组件展示" title="Section Editor 组件" subtitle="8 个小节编辑器专用组件" />
-      <ViewportSwitcher value={viewport} onChange={setViewport} />
 
       {/* 5.1 SectionHeader - too large for showcase, just mention */}
-      <ShowcaseItem name="SectionHeader" desc="小节编辑器顶部栏（运行控制 + 导航 + 保存状态）" viewport={viewport}>
+      <ShowcaseItem name="SectionHeader" desc="小节编辑器顶部栏（运行控制 + 导航 + 保存状态）">
         <div style={{ color: "var(--demo-muted)", fontSize: 13 }}>
           SectionHeader 是完整的页面级头部组件，请在实际小节编辑器页面中查看。
           <br />
@@ -629,7 +583,7 @@ export function ComponentShowcaseEditor({ data }: { data: DemoData }) {
       </ShowcaseItem>
 
       {/* 5.2 PresetBindingRow */}
-      <ShowcaseItem name="PresetBindingRow" desc="预制绑定行" viewport={viewport}>
+      <ShowcaseItem name="PresetBindingRow" desc="预制绑定行">
         <PresetBindingRow
           binding={{
             id: "bind-1",
@@ -669,7 +623,7 @@ export function ComponentShowcaseEditor({ data }: { data: DemoData }) {
       </ShowcaseItem>
 
       {/* 5.3 PresetImportInline */}
-      <ShowcaseItem name="PresetImportInline" desc="行内预制导入面板" viewport={viewport}>
+      <ShowcaseItem name="PresetImportInline" desc="行内预制导入面板">
         <PresetImportInline
           open
           categories={data.categories.slice(0, 2).map((cat): ImportCategory => ({
@@ -693,7 +647,7 @@ export function ComponentShowcaseEditor({ data }: { data: DemoData }) {
       </ShowcaseItem>
 
       {/* 5.4 PromptBlockRow */}
-      <ShowcaseItem name="PromptBlockRow" desc="提示词块行" viewport={viewport}>
+      <ShowcaseItem name="PromptBlockRow" desc="提示词块行">
         <PromptBlockRow
           block={{
             id: "pb-1",
@@ -726,7 +680,7 @@ export function ComponentShowcaseEditor({ data }: { data: DemoData }) {
       </ShowcaseItem>
 
       {/* 5.5 CompiledPromptPreview */}
-      <ShowcaseItem name="CompiledPromptPreview" desc="编译后的 Prompt 预览" viewport={viewport}>
+      <ShowcaseItem name="CompiledPromptPreview" desc="编译后的 Prompt 预览">
         <CompiledPromptPreview
           groups={[
             {
@@ -749,7 +703,7 @@ export function ComponentShowcaseEditor({ data }: { data: DemoData }) {
       </ShowcaseItem>
 
       {/* 5.6 LoraRow */}
-      <ShowcaseItem name="LoraRow" desc="LoRA 行" viewport={viewport}>
+      <ShowcaseItem name="LoraRow" desc="LoRA 行">
         <LoraRow
           entry={{
             id: "lora-1",
@@ -791,7 +745,7 @@ export function ComponentShowcaseEditor({ data }: { data: DemoData }) {
       </ShowcaseItem>
 
       {/* 5.7 LoraColumn */}
-      <ShowcaseItem name="LoraColumn" desc="LoRA 列容器" viewport={viewport}>
+      <ShowcaseItem name="LoraColumn" desc="LoRA 列容器">
         <LoraColumn
           label="Stage 1"
           entries={[
@@ -827,7 +781,7 @@ export function ComponentShowcaseEditor({ data }: { data: DemoData }) {
       </ShowcaseItem>
 
       {/* 5.8 HistoryDiffRow */}
-      <ShowcaseItem name="HistoryDiffRow" desc="变更记录 diff 行" viewport={viewport}>
+      <ShowcaseItem name="HistoryDiffRow" desc="变更记录 diff 行">
         <HistoryDiffRow
           change={{
             id: "diff-1",
