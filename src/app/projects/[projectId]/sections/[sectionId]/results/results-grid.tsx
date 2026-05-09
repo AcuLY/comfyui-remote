@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect, useCallback } from "react";
 import {
   Check,
   CheckSquare,
@@ -14,6 +14,7 @@ import {
   Star,
   Trash2,
 } from "lucide-react";
+import { toast } from "sonner";
 import { keepImages, trashImages } from "@/lib/actions";
 import { ResultsGalleryProvider } from "./results-gallery";
 
@@ -39,10 +40,27 @@ type RunData = {
     cover: boolean;
   }[];
 };
-export function ResultsGrid({ runs }: { runs: RunData[] }) {
+
+type SectionNav = {
+  id: string;
+  name: string;
+};
+
+export function ResultsGrid({
+  runs,
+  projectId,
+  previousSection,
+  nextSection,
+}: {
+  runs: RunData[];
+  projectId?: string;
+  previousSection?: SectionNav | null;
+  nextSection?: SectionNav | null;
+}) {
   const router = useRouter();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [isPending, startTransition] = useTransition();
+  const [lastTrashedIds, setLastTrashedIds] = useState<string[]>([]);
 
   // Flatten all images for the lightbox
   const allImages = runs.flatMap((run) =>
@@ -78,9 +96,78 @@ export function ResultsGrid({ runs }: { runs: RunData[] }) {
     });
   }
 
+  // Refs to store functions for cross-component communication
+  const openLightboxRef = useCallback((fn: (index: number) => void) => {
+    (window as unknown as Record<string, (index: number) => void>).__resultsGridOpenLightbox = fn;
+  }, []);
+
+  // Save setLastTrashedIds to window for ResultsGalleryProvider to use
+  useEffect(() => {
+    (window as unknown as Record<string, (ids: string[]) => void>).__resultsGridSetLastTrashedIds = setLastTrashedIds;
+    return () => {
+      delete (window as unknown as Record<string, unknown>).__resultsGridSetLastTrashedIds;
+    };
+  }, [setLastTrashedIds]);
+
+  // Keyboard shortcut: I to open first image
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      // Ignore if typing in input/textarea
+      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
+      // I key: open lightbox with first image
+      if (event.key === "i" || event.key === "I") {
+        event.preventDefault();
+        const openLightbox = (window as unknown as Record<string, (index: number) => void>).__resultsGridOpenLightbox;
+        if (openLightbox && allImages.length > 0) {
+          openLightbox(0);
+        }
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [allImages.length]);
+
+  // Undo function
+  const handleUndo = useCallback(async () => {
+    if (lastTrashedIds.length === 0) {
+      toast.error("没有可撤销的操作");
+      return;
+    }
+    try {
+      // Restore all last trashed images
+      await Promise.all(
+        lastTrashedIds.map((id) =>
+          fetch(`/api/images/${encodeURIComponent(id)}/restore`, {
+            method: "POST",
+          }),
+        ),
+      );
+      setLastTrashedIds([]);
+      toast.success(`已撤销，恢复了 ${lastTrashedIds.length} 张图片`);
+      router.refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "撤销失败");
+    }
+  }, [lastTrashedIds, router]);
+
+  // Wrapper for trashImages that records image IDs for undo
+  const trashImagesWithUndo = useCallback((ids: string[]) => {
+    setLastTrashedIds(ids);
+    return trashImages(ids);
+  }, []);
+
   return (
-    <ResultsGalleryProvider allImages={allImages}>
-      {({ openLightbox, isFeatured, isFeatured2, isCover }) => (
+    <ResultsGalleryProvider
+      allImages={allImages}
+      projectId={projectId}
+      previousSection={previousSection}
+      nextSection={nextSection}
+      onUndo={handleUndo}
+    >
+      {({ openLightbox, isFeatured, isFeatured2, isCover }) => {
+        // Store openLightbox function for external access
+        openLightboxRef(openLightbox);
+        return (
         <div className="space-y-6">
           {/* Image grid by run */}
           {runs.map((run) => {
@@ -251,12 +338,14 @@ export function ResultsGrid({ runs }: { runs: RunData[] }) {
                           // Quick trash: trash all pending in this run
                           const ids = runPendingImages.map((img) => img.id);
                           if (ids.length === 0) return;
+                          setLastTrashedIds(ids);
                           startTransition(async () => {
                             await trashImages(ids);
                             setSelected(new Set());
                             router.refresh();
                           });
                         } else {
+                          setLastTrashedIds(runSelectedIds);
                           startTransition(async () => {
                             await trashImages(runSelectedIds);
                             setSelected(new Set());
@@ -283,7 +372,8 @@ export function ResultsGrid({ runs }: { runs: RunData[] }) {
           })}
 
         </div>
-      )}
+        );
+      }}
     </ResultsGalleryProvider>
   );
 }

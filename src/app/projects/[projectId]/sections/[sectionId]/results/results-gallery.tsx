@@ -26,9 +26,18 @@ type GalleryImage = {
 type MarkerField = "featured" | "featured2" | "cover";
 type ReviewAction = "keep" | "trash";
 
+type SectionNav = {
+  id: string;
+  name: string;
+};
+
 export function ResultsGalleryProvider({
   allImages: initialImages,
   children,
+  projectId,
+  previousSection,
+  nextSection,
+  onUndo,
 }: {
   allImages: GalleryImage[];
   children: (ctx: {
@@ -37,6 +46,10 @@ export function ResultsGalleryProvider({
     isFeatured2: (imageId: string) => boolean;
     isCover: (imageId: string) => boolean;
   }) => ReactNode;
+  projectId?: string;
+  previousSection?: SectionNav | null;
+  nextSection?: SectionNav | null;
+  onUndo?: () => Promise<void>;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -142,7 +155,7 @@ export function ResultsGalleryProvider({
   );
 
   const reviewCurrent = useCallback(
-    (action: ReviewAction) => {
+    (action: ReviewAction, autoNext = false) => {
       if (!current || busy) return;
 
       const imageId = current.id;
@@ -159,13 +172,25 @@ export function ResultsGalleryProvider({
                 image.id === imageId ? { ...image, status: "kept" } : image,
               ),
             );
+            if (autoNext && imageCount > 1) {
+              goNext();
+            }
           } else {
+            // Record trashed image ID for undo
+            const setLastTrashedIds = (window as unknown as Record<string, (ids: string[]) => void>).__resultsGridSetLastTrashedIds;
+            if (setLastTrashedIds) {
+              setLastTrashedIds([imageId]);
+            }
+
             await trashImages([imageId]);
             setAllImages((prev) => prev.filter((image) => image.id !== imageId));
             if (imageCount <= 1) {
               setOpen(false);
             } else {
               setCurrentIndex(Math.min(removedIndex, imageCount - 2));
+              if (autoNext) {
+                goNext();
+              }
             }
           }
           router.refresh();
@@ -176,24 +201,71 @@ export function ResultsGalleryProvider({
         }
       });
     },
-    [allImages.length, busy, current, currentIndex, router],
+    [allImages.length, busy, current, currentIndex, router, goNext],
   );
 
   useEffect(() => {
     if (!open) return;
     const handler = (event: KeyboardEvent) => {
+      // 忽略输入框中的按键
+      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
+
       if (event.key === "Escape") setOpen(false);
       if (event.key === "ArrowLeft" && allImages.length > 1) goPrev();
       if (event.key === "ArrowRight" && allImages.length > 1) goNext();
+
+      // J: 保留并切换到下一张
+      if (event.key === "j" || event.key === "J") {
+        event.preventDefault();
+        reviewCurrent("keep", true);
+      }
+      // K: 删除并切换到下一张
+      if (event.key === "k" || event.key === "K") {
+        event.preventDefault();
+        reviewCurrent("trash", true);
+      }
+
+      // L: 切换P站标记（不切换图片）
+      if (event.key === "l" || event.key === "L") {
+        event.preventDefault();
+        toggleMarker("featured");
+      }
+      // ;: 切换预览标记（不切换图片）
+      if (event.key === ";") {
+        event.preventDefault();
+        toggleMarker("featured2");
+      }
+
+      // Ctrl+Z: 撤销上一个操作
+      if ((event.ctrlKey || event.metaKey) && event.key === "z") {
+        event.preventDefault();
+        if (onUndo) {
+          onUndo().catch((error) => {
+            toast.error(error instanceof Error ? error.message : "撤销失败");
+          });
+        }
+      }
+
+      // U: 上一小节
+      if ((event.key === "u" || event.key === "U") && previousSection && projectId) {
+        event.preventDefault();
+        router.push(`/projects/${projectId}/sections/${previousSection.id}/results`);
+      }
+      // O: 下一小节
+      if ((event.key === "o" || event.key === "O") && nextSection && projectId) {
+        event.preventDefault();
+        router.push(`/projects/${projectId}/sections/${nextSection.id}/results`);
+      }
+
+      // 保留原有快捷键（可选）
       if (event.key === "f" || event.key === "F") toggleMarker("featured");
       if (event.key === "2") toggleMarker("featured2");
       if (event.key === "c" || event.key === "C") toggleMarker("cover");
-      if (event.key === "k" || event.key === "K") reviewCurrent("keep");
       if (event.key === "Delete" || event.key === "Backspace") reviewCurrent("trash");
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [allImages.length, goNext, goPrev, open, reviewCurrent, toggleMarker]);
+  }, [allImages.length, goNext, goPrev, open, reviewCurrent, toggleMarker, previousSection, nextSection, onUndo, router]);
 
   const openLightbox = useCallback(
     (index: number) => {

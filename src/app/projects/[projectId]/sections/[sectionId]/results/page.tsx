@@ -83,7 +83,12 @@ export default async function SectionResultsPage({
             暂无运行结果
           </div>
         ) : (
-          <ResultsGrid runs={data.runs} />
+          <ResultsGrid
+            runs={data.runs}
+            projectId={data.projectId}
+            previousSection={data.previousSection}
+            nextSection={data.nextSection}
+          />
         )}
       </SectionCard>
     </div>
