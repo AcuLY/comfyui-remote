@@ -96,6 +96,7 @@ export function ComponentShowcaseIndex({ data }: { data: DemoData }) {
     { href: "/component-showcase-mid", title: "中组件", desc: "PageHeader、Panel、RouteTable、Toast、EmptyPage", icon: Grid3X3, count: 5 },
     { href: "/component-showcase-images", title: "图片组件", desc: "ImageThumb、ImageList、ImageGrid、ReviewBoard、Lightbox", icon: Palette, count: 8 },
     { href: "/component-showcase-editor", title: "Section Editor 组件", desc: "SectionHeader、PresetBindingRow、PromptBlockRow、LoraRow、LoraColumn 等", icon: SlidersHorizontal, count: 8 },
+    { href: "/component-showcase-icons", title: "Icons 图标", desc: "Lucide 图标全览 + 使用位置", icon: Palette, count: 57 },
     { href: "/image-list-components", title: "图片列表组件检查", desc: "已有的图片列表专项检查页", icon: Rows3, count: 3 },
   ];
 
@@ -138,7 +139,7 @@ export function ComponentShowcaseAtoms() {
 
   return (
     <div className={s.showcasePage}>
-      <PageHeader eyebrow="组件展示" title="原子 / 小组件" subtitle="23 个基础组件，调整浏览器窗口宽度查看响应式表现" />
+      <PageHeader eyebrow="组件展示" title="原子 / 小组件" subtitle="基础组件，调整浏览器窗口宽度查看响应式表现" />
 
       {/* 1.1 Button */}
       <ShowcaseItem name="Button" desc="通用按钮，5 种色调">
@@ -161,6 +162,16 @@ export function ComponentShowcaseAtoms() {
           </div>
         </div>
         <div className={s.showcaseGroup}>
+          <div className={s.showcaseGroupTitle}>纯 Icon</div>
+          <div className={s.showcaseRow}>
+            <Button icon={Plus} iconOnly ariaLabel="新增" />
+            <Button icon={Settings} iconOnly tone="primary" ariaLabel="设置" />
+            <Button icon={Star} iconOnly tone="pink" ariaLabel="精选" />
+            <Button icon={Trash2} iconOnly tone="danger" ariaLabel="删除" />
+            <Button icon={Check} iconOnly pressed ariaLabel="已选择" />
+          </div>
+        </div>
+        <div className={s.showcaseGroup}>
           <div className={s.showcaseGroupTitle}>状态</div>
           <div className={s.showcaseRow}>
             <Button pending>Pending</Button>
@@ -177,6 +188,7 @@ export function ComponentShowcaseAtoms() {
           <ButtonLink href="/design-demos">Default</ButtonLink>
           <ButtonLink href="/design-demos" tone="primary" icon={Plus}>Primary</ButtonLink>
           <ButtonLink href="/design-demos" tone="pink">Pink</ButtonLink>
+          <ButtonLink href="/design-demos" tone="subtle" icon={Settings} iconOnly ariaLabel="设置" />
         </div>
       </ShowcaseItem>
 

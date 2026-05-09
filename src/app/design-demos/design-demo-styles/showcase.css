@@ -77,6 +77,100 @@
   margin: 16px 0;
 }
 
+/* ── Icon grid ── */
+
+.showcaseIconGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.showcaseIconRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.showcaseIconCell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 6px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  min-width: 72px;
+  transition: background 0.12s, border-color 0.12s;
+  cursor: default;
+}
+
+.showcaseIconCell:hover {
+  background: var(--demo-surface);
+  border-color: var(--demo-border);
+}
+
+.showcaseIconCell span {
+  font-size: 10px;
+  color: var(--demo-muted);
+  font-family: var(--demo-font-mono);
+  text-align: center;
+  line-height: 1.2;
+  word-break: break-all;
+}
+
+.iconCellName {
+  display: block;
+}
+
+.iconCellUsage {
+  font-size: 9px !important;
+  opacity: 0.7;
+  color: var(--demo-accent);
+  font-family: var(--demo-font-mono);
+}
+
+/* ── Icon filter ── */
+
+.iconFilterBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+  position: relative;
+}
+
+.iconFilterInput {
+  flex: 1;
+  max-width: 400px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--demo-border);
+  background: var(--demo-panel);
+  color: var(--demo-text);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.iconFilterInput:focus {
+  border-color: var(--demo-accent);
+}
+
+.iconFilterInput::placeholder {
+  color: var(--demo-muted);
+}
+
+.iconFilterClear {
+  position: absolute;
+  right: calc(100% - 400px + 8px);
+  background: none;
+  border: none;
+  color: var(--demo-muted);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 4px;
+}
+
 /* ── Index page ── */
 
 .showcaseIndexGrid {

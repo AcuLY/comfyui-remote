@@ -75,6 +75,7 @@ export type RouteKey =
   | "component-showcase-mid"
   | "component-showcase-images"
   | "component-showcase-editor"
+  | "component-showcase-icons"
   | "not-found";
 
 export type Match = {
@@ -181,6 +182,7 @@ export const ROUTES: RouteDef[] = [
   { key: "component-showcase-mid", pattern: "/component-showcase-mid", title: "中组件展示", group: "临时", icon: Grid3X3 },
   { key: "component-showcase-images", pattern: "/component-showcase-images", title: "图片组件展示", group: "临时", icon: ImageIcon },
   { key: "component-showcase-editor", pattern: "/component-showcase-editor", title: "编辑器组件展示", group: "临时", icon: SlidersHorizontal },
+  { key: "component-showcase-icons", pattern: "/component-showcase-icons", title: "Icons 图标展示", group: "临时", icon: Tags },
   { key: "login", pattern: "/login", title: "登录", group: "系统", icon: Lock },
 ];
 
