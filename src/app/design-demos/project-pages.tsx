@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
 import type * as React from "react";
-import { Archive, ArrowLeft, Check, CheckSquare, ChevronDown, ChevronUp, Copy, Download, Edit3, Eye, GripVertical, ImageIcon, ListChecks, Play, Plus, Rows3, Save, Square, Star, Trash2 } from "lucide-react";
+import { Archive, ArrowLeft, Check, CheckSquare, ChevronDown, ChevronRight, ChevronUp, Copy, Download, Edit3, Eye, Folder, FolderInput, FolderPlus, GripVertical, ImageIcon, ListChecks, Pencil, Play, Plus, Rows3, Save, Square, Star, Trash2, X } from "lucide-react";
 
-import type { DemoData, DemoImage, DemoProject, DemoSection } from "./design-demo-data";
+import type { DemoData, DemoImage, DemoProject, DemoProjectFolder, DemoSection } from "./design-demo-data";
 import s from "./design-demo-styles";
 import { Button, ButtonLink, DemoTabs, EmptyPage, Field, ImageGrid, ImageStrip, PageHeader, Panel, SelectLike, StatusBadge, SwitchRow, TextAreaField } from "./design-demo-ui";
 import { compactFileName, cx, demoHref, filterImages, projectPresetSummary, rawSectionId, sectionAnchorId, sectionRunStatus } from "./design-demo-utils";
@@ -16,35 +16,346 @@ export function RootPage({ data }: { data: DemoData }) {
 }
 
 export function ProjectsPage({ data }: { data: DemoData }) {
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isCreatingFolder, setIsCreatingFolder] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("角色组探索");
+  const folders = data.projectFolders;
+  const visibleFolders = folders
+    .filter((folder) => folder.parentId === currentFolderId)
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+  const visibleProjects = data.projects.filter((project) => project.folderId === currentFolderId);
+  const breadcrumb = buildProjectFolderBreadcrumb(folders, currentFolderId);
+  const selectedProjects = visibleProjects.filter((project) => selectedIds.has(project.id));
+  const currentFolderName = breadcrumb.at(-1)?.name ?? "根目录";
+  const createProjectHref = currentFolderId ? `/projects/new?folder=${encodeURIComponent(currentFolderId)}` : "/projects/new";
+
+  function navigateFolder(folderId: string | null) {
+    setCurrentFolderId(folderId);
+    setSelectedIds(new Set());
+  }
+
+  function toggleProjectSelection(projectId: string) {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(projectId)) next.delete(projectId);
+      else next.add(projectId);
+      return next;
+    });
+  }
+
+  function moveProjects(folderId: string | null) {
+    const movedIds = new Set(selectedProjects.map((project) => project.id));
+    setSelectedIds((current) => new Set(Array.from(current).filter((id) => !movedIds.has(id))));
+    setCurrentFolderId(folderId);
+  }
+
   return (
     <div className={s.page}>
       <PageHeader
         eyebrow="项目"
         title="项目列表"
-        subtitle={`${data.projects.length} 个项目 · ${data.metrics.sections} 个小节`}
-        actions={<ButtonLink href="/projects/new" tone="primary" icon={Plus}>创建项目</ButtonLink>}
+        subtitle={`${data.projects.length} 个项目 · ${folders.length} 个文件夹 · 当前：${currentFolderName}`}
+        actions={<ButtonLink href={createProjectHref} tone="primary" icon={Plus}>创建项目</ButtonLink>}
       />
-      <div className={s.projectListGrid}>
-        {data.projects.map((project) => (
-          <Link className={cx(s.card, s.projectListCard)} href={demoHref(`/projects/${project.id}`)} key={project.id}>
-            <ImageStrip images={project.images} />
-            <div className={s.cardHeader}>
-                <div className={s.projectCardTitle}>
-                  <strong>{project.title}</strong>
-                  <span>{projectPresetSummary(project)}</span>
-                </div>
-              <StatusBadge status={project.status} />
+      <section className={s.projectFolderWorkspace} aria-label="项目文件夹管理">
+        <div className={s.projectFolderTopbar}>
+          <ProjectFolderBreadcrumb breadcrumb={breadcrumb} onNavigate={navigateFolder} />
+          <div className={s.projectFolderActions}>
+            <Button tone="subtle" icon={FolderPlus} onClick={() => setIsCreatingFolder(true)}>
+              新建文件夹
+            </Button>
+            <ButtonLink href={createProjectHref} tone="primary" icon={Plus}>创建项目</ButtonLink>
+          </div>
+        </div>
+
+        {selectedIds.size > 0 ? (
+          <ProjectBatchBar
+            folders={folders}
+            selectedCount={selectedIds.size}
+            totalCount={visibleProjects.length}
+            onClear={() => setSelectedIds(new Set())}
+            onMove={moveProjects}
+            onSelectAll={() => setSelectedIds(new Set(visibleProjects.map((project) => project.id)))}
+          />
+        ) : null}
+
+        {isCreatingFolder ? (
+          <div className={s.projectFolderDraftRow}>
+            <Folder className={s.icon} />
+            <input
+              aria-label="文件夹名称"
+              value={newFolderName}
+              onChange={(event) => setNewFolderName(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") setIsCreatingFolder(false);
+              }}
+            />
+            <Button
+              icon={Save}
+              disabled={!newFolderName.trim()}
+              feedback={{ title: "文件夹创建动作已预览", detail: `${currentFolderName} / ${newFolderName.trim() || "未命名"}` }}
+              onClick={() => setIsCreatingFolder(false)}
+            >
+              保存
+            </Button>
+            <button className={s.iconMiniButton} type="button" onClick={() => setIsCreatingFolder(false)} aria-label="取消新建文件夹">
+              <X className={s.icon} />
+            </button>
+          </div>
+        ) : null}
+
+        <div className={s.projectFolderSurface}>
+          {visibleFolders.length ? (
+            <div className={s.projectFolderGrid}>
+              {visibleFolders.map((folder) => (
+                <ProjectFolderRow
+                  folder={folder}
+                  itemCount={countProjectFolderItems(folder.id, folders, data.projects)}
+                  key={folder.id}
+                  onEnter={() => navigateFolder(folder.id)}
+                />
+              ))}
             </div>
-            <div className={s.projectCardStats}>
-              <span className={s.badge}>{project.sectionCount} 小节</span>
-              <span className={s.badge}>{compactFileName(project.checkpointName)}</span>
+          ) : null}
+
+          {visibleProjects.length ? (
+            <div className={s.projectListGrid}>
+              {visibleProjects.map((project) => (
+                <ProjectListItem
+                  folders={folders}
+                  key={project.id}
+                  project={project}
+                  selected={selectedIds.has(project.id)}
+                  onMove={(folderId) => navigateFolder(folderId)}
+                  onToggleSelected={() => toggleProjectSelection(project.id)}
+                />
+              ))}
             </div>
-            <div className={cx(s.small, s.faint)}>更新：{project.updatedAt}</div>
-          </Link>
-        ))}
+          ) : visibleFolders.length ? null : (
+            <div className={s.projectFolderEmpty}>
+              <Folder className={s.icon} />
+              <strong>{currentFolderId ? "此文件夹为空" : "暂无项目"}</strong>
+              <span>{currentFolderId ? "可以创建新项目，或从其他文件夹移动项目到这里。" : "创建项目或新建文件夹后会显示在这里。"}</span>
+            </div>
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function buildProjectFolderBreadcrumb(folders: DemoProjectFolder[], currentFolderId: string | null) {
+  const path: DemoProjectFolder[] = [];
+  let folderId = currentFolderId;
+  while (folderId) {
+    const folder = folders.find((item) => item.id === folderId);
+    if (!folder) break;
+    path.unshift(folder);
+    folderId = folder.parentId;
+  }
+  return path;
+}
+
+function countProjectFolderItems(folderId: string, folders: DemoProjectFolder[], projects: DemoProject[]) {
+  return folders.filter((folder) => folder.parentId === folderId).length + projects.filter((project) => project.folderId === folderId).length;
+}
+
+function ProjectFolderBreadcrumb({
+  breadcrumb,
+  onNavigate,
+}: {
+  breadcrumb: DemoProjectFolder[];
+  onNavigate: (folderId: string | null) => void;
+}) {
+  return (
+    <div className={s.projectFolderBreadcrumbs} aria-label="项目文件夹路径">
+      <button type="button" onClick={() => onNavigate(null)} disabled={breadcrumb.length === 0}>
+        根目录
+      </button>
+      {breadcrumb.map((folder, index) => (
+        <span key={folder.id}>
+          <ChevronRight className={s.icon} />
+          <button
+            type="button"
+            onClick={() => onNavigate(folder.id)}
+            disabled={index === breadcrumb.length - 1}
+          >
+            {folder.name}
+          </button>
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function ProjectFolderRow({
+  folder,
+  itemCount,
+  onEnter,
+}: {
+  folder: DemoProjectFolder;
+  itemCount: number;
+  onEnter: () => void;
+}) {
+  return (
+    <div className={s.projectFolderRow}>
+      <button className={s.projectFolderGrip} type="button" aria-label="排序手柄">
+        <GripVertical className={s.icon} />
+      </button>
+      <button className={s.projectFolderOpen} type="button" onClick={onEnter}>
+        <Folder className={s.icon} />
+        <strong>{folder.name}</strong>
+        <span>{itemCount} 项</span>
+        <ChevronRight className={s.icon} />
+      </button>
+      <div className={s.projectFolderRowActions}>
+        <button type="button" aria-label={`重命名文件夹：${folder.name}`}>
+          <Pencil className={s.icon} />
+        </button>
+        {itemCount === 0 ? (
+          <button type="button" aria-label={`删除文件夹：${folder.name}`}>
+            <Trash2 className={s.icon} />
+          </button>
+        ) : null}
       </div>
     </div>
   );
+}
+
+function ProjectBatchBar({
+  folders,
+  selectedCount,
+  totalCount,
+  onClear,
+  onMove,
+  onSelectAll,
+}: {
+  folders: DemoProjectFolder[];
+  selectedCount: number;
+  totalCount: number;
+  onClear: () => void;
+  onMove: (folderId: string | null) => void;
+  onSelectAll: () => void;
+}) {
+  return (
+    <div className={s.projectBatchBar}>
+      <strong>已选 {selectedCount} 个项目</strong>
+      <div>
+        <ProjectMoveMenu folders={folders} currentFolderId={null} onMove={onMove} label="移至文件夹" />
+        <button type="button" onClick={selectedCount === totalCount ? onClear : onSelectAll}>
+          {selectedCount === totalCount ? "取消全选" : "全选"}
+        </button>
+        <button type="button" onClick={onClear} aria-label="清除选择">
+          <X className={s.icon} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ProjectListItem({
+  folders,
+  project,
+  selected,
+  onMove,
+  onToggleSelected,
+}: {
+  folders: DemoProjectFolder[];
+  project: DemoProject;
+  selected: boolean;
+  onMove: (folderId: string | null) => void;
+  onToggleSelected: () => void;
+}) {
+  return (
+    <article className={cx(s.projectListCard, selected && s.projectListCardSelected)}>
+      <button
+        aria-label={selected ? `取消选择项目：${project.title}` : `选择项目：${project.title}`}
+        aria-pressed={selected}
+        className={s.projectSelectButton}
+        type="button"
+        onClick={onToggleSelected}
+      >
+        {selected ? <CheckSquare className={s.icon} /> : <Square className={s.icon} />}
+      </button>
+      <Link className={s.projectListOpenArea} href={demoHref(`/projects/${project.id}`)}>
+        <ImageStrip images={project.images} />
+        <div className={s.cardHeader}>
+          <div className={s.projectCardTitle}>
+            <strong>{project.title}</strong>
+            <span>{projectPresetSummary(project)}</span>
+          </div>
+          <StatusBadge status={project.status} />
+        </div>
+        <div className={s.projectCardStats}>
+          <span className={s.badge}>{project.sectionCount} 小节</span>
+          <span className={s.badge}>{compactFileName(project.checkpointName)}</span>
+        </div>
+        <div className={cx(s.small, s.faint)}>更新：{project.updatedAt}</div>
+      </Link>
+      <div className={s.projectItemActions}>
+        <ProjectMoveMenu folders={folders} currentFolderId={project.folderId} onMove={onMove} />
+        <button type="button" aria-label={`删除项目：${project.title}`}>
+          <Trash2 className={s.icon} />
+        </button>
+      </div>
+    </article>
+  );
+}
+
+function ProjectMoveMenu({
+  currentFolderId,
+  folders,
+  label = "移动",
+  onMove,
+}: {
+  currentFolderId: string | null;
+  folders: DemoProjectFolder[];
+  label?: string;
+  onMove: (folderId: string | null) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  if (!folders.length) return null;
+  const options = flattenProjectFolderOptions(folders);
+
+  return (
+    <div className={s.projectMoveMenu}>
+      <button type="button" onClick={() => setOpen((value) => !value)}>
+        <FolderInput className={s.icon} />
+        <span>{label}</span>
+      </button>
+      {open ? (
+        <div className={s.projectMoveMenuList}>
+          {options.map((option) => (
+            <button
+              disabled={option.id === currentFolderId}
+              key={option.id ?? "__root"}
+              onClick={() => {
+                onMove(option.id);
+                setOpen(false);
+              }}
+              type="button"
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function flattenProjectFolderOptions(folders: DemoProjectFolder[], parentId: string | null = null, depth = 0): Array<{ id: string | null; label: string }> {
+  const options: Array<{ id: string | null; label: string }> = [];
+  if (depth === 0) options.push({ id: null, label: "根目录" });
+  const children = folders
+    .filter((folder) => folder.parentId === parentId)
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+  for (const child of children) {
+    options.push({ id: child.id, label: `${"  ".repeat(depth + 1)}${child.name}` });
+    options.push(...flattenProjectFolderOptions(folders, child.id, depth + 1));
+  }
+  return options;
 }
 
 export function ProjectDetailPage({

@@ -79,6 +79,7 @@ export type DemoProject = {
   id: string;
   title: string;
   slug: string;
+  folderId: string | null;
   status: string;
   updatedAt: string;
   notes: string;
@@ -87,6 +88,15 @@ export type DemoProject = {
   sectionCount: number;
   sections: DemoSection[];
   images: DemoImage[];
+};
+
+export type DemoProjectFolder = {
+  id: string;
+  name: string;
+  parentId: string | null;
+  sortOrder: number;
+  projectCount: number;
+  childCount: number;
 };
 
 export type DemoRun = {
@@ -212,6 +222,7 @@ export type DemoData = {
     templates: number;
     loras: number;
   };
+  projectFolders: DemoProjectFolder[];
   projects: DemoProject[];
   runs: DemoRun[];
   categories: DemoCategory[];
@@ -539,6 +550,7 @@ function fallbackData(warning: string | null): DemoData {
       id: "project-demo",
       title: "示例图像项目",
       slug: "sample-project",
+      folderId: "project-folder-active",
       status: "active",
       updatedAt: shortDate(new Date().toISOString()),
       notes: "默认项目会在本地数据不可用时展示基础工作流。",
@@ -547,6 +559,47 @@ function fallbackData(warning: string | null): DemoData {
       sectionCount: sections.length,
       sections,
       images: demoImages.slice(0, 8),
+    },
+    {
+      id: "project-archive",
+      title: "归档风格探索",
+      slug: "archive-style-study",
+      folderId: "project-folder-archive",
+      status: "draft",
+      updatedAt: shortDate(new Date(Date.now() - 86400000).toISOString()),
+      notes: "用于展示文件夹内项目和根目录项目的混排状态。",
+      checkpointName: "style-checkpoint.safetensors",
+      presetNames: ["风格", "场景"],
+      sectionCount: sections.length,
+      sections,
+      images: demoImages.slice(2, 10),
+    },
+  ];
+
+  const projectFolders: DemoProjectFolder[] = [
+    {
+      id: "project-folder-active",
+      name: "正在制作",
+      parentId: null,
+      sortOrder: 0,
+      projectCount: projects.filter((project) => project.folderId === "project-folder-active").length,
+      childCount: 1,
+    },
+    {
+      id: "project-folder-archive",
+      name: "归档",
+      parentId: null,
+      sortOrder: 1,
+      projectCount: projects.filter((project) => project.folderId === "project-folder-archive").length,
+      childCount: 0,
+    },
+    {
+      id: "project-folder-active-client",
+      name: "客户 A",
+      parentId: "project-folder-active",
+      sortOrder: 0,
+      projectCount: 0,
+      childCount: 0,
     },
   ];
 
@@ -602,6 +655,7 @@ function fallbackData(warning: string | null): DemoData {
       templates: 1,
       loras: envAssets.filter((asset) => asset.modelType === "lora").length,
     },
+    projectFolders,
     projects,
     runs,
     categories: [
@@ -780,7 +834,7 @@ export async function loadDesignDemoData(): Promise<DemoData> {
     const projects = (db
       .prepare(
         `select
-           p.id, p.title, p.slug, p.status, p.updatedAt, p.notes, p.checkpointName, p.presetBindings,
+           p.id, p.title, p.slug, p.folderId, p.status, p.updatedAt, p.notes, p.checkpointName, p.presetBindings,
            (select count(*) from ProjectSection s where s.projectId = p.id) as sectionCount
          from Project p
          order by datetime(p.updatedAt) desc
@@ -795,6 +849,7 @@ export async function loadDesignDemoData(): Promise<DemoData> {
         id: text(row.id),
         title: text(row.title, "未命名项目"),
         slug: text(row.slug),
+        folderId: row.folderId === null ? null : text(row.folderId),
         status: text(row.status, "draft"),
         updatedAt: shortDate(row.updatedAt),
         notes: text(row.notes),
@@ -805,6 +860,25 @@ export async function loadDesignDemoData(): Promise<DemoData> {
         images: [],
       } satisfies DemoProject;
     });
+
+    const projectFolders = (db
+      .prepare(
+        `select
+           f.id, f.name, f.parentId, f.sortOrder,
+           (select count(*) from Project p where p.folderId = f.id) as projectCount,
+           (select count(*) from ProjectFolder c where c.parentId = f.id) as childCount
+         from ProjectFolder f
+         order by coalesce(f.parentId, ''), f.sortOrder asc
+         limit 160`,
+      )
+      .all() as SqlRow[]).map((row) => ({
+      id: text(row.id),
+      name: text(row.name, "未命名文件夹"),
+      parentId: row.parentId === null ? null : text(row.parentId),
+      sortOrder: int(row.sortOrder),
+      projectCount: int(row.projectCount),
+      childCount: int(row.childCount),
+    } satisfies DemoProjectFolder));
 
     const projectIds = projects.map((project) => project.id);
     const sectionRows = projectIds.length
@@ -1125,6 +1199,7 @@ export async function loadDesignDemoData(): Promise<DemoData> {
         templates: int(counts.templates),
         loras: int(counts.loras),
       },
+      projectFolders,
       projects: projects.length ? projects : fallbackData(null).projects,
       runs: runs.length ? runs : fallbackData(null).runs,
       categories: categories.length ? categories : fallbackData(null).categories,
