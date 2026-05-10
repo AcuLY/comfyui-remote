@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import {
   parseSectionLoraConfig,
   serializeSectionLoraConfig,
+  type SectionLoraConfig,
   type LoraEntry,
 } from "@/lib/lora-types";
 import { getDetachedPresetPaths } from "@/lib/preset-binding-utils";
@@ -25,6 +26,19 @@ export type PresetUsageInfo = {
     blockCount: number;
   }>;
   totalBlocks: number;
+};
+
+type TemplatePromptBlockJson = Record<string, unknown> & {
+  label?: string;
+  positive?: string;
+  negative?: string | null;
+  sortOrder?: number;
+  type?: string | null;
+  sourceId?: string | null;
+  variantId?: string | null;
+  categoryId?: string | null;
+  bindingId?: string | null;
+  groupBindingId?: string | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -141,13 +155,42 @@ export async function syncPresetToSections(presetId: string) {
   const preset = await prisma.preset.findUnique({
     where: { id: presetId },
     include: {
-      category: { select: { name: true, color: true, lora1Order: true, lora2Order: true } },
+      category: { select: { id: true, name: true, color: true, lora1Order: true, lora2Order: true } },
       variants: { where: { isActive: true }, orderBy: { sortOrder: "asc" } },
     },
   });
   if (!preset || preset.variants.length === 0) return;
 
   const defaultVariant = preset.variants[0];
+  type ActiveVariant = typeof defaultVariant;
+  type ResolvedVariantContent = Awaited<ReturnType<typeof resolveVariantContent>>;
+  const resolvedByVariantId = new Map<string, ResolvedVariantContent>();
+  const getResolvedVariantContent = async (variantId: string) => {
+    const cached = resolvedByVariantId.get(variantId);
+    if (cached) return cached;
+    const resolved = await resolveVariantContent(variantId);
+    resolvedByVariantId.set(variantId, resolved);
+    return resolved;
+  };
+  const resolvePresetVariant = (variantId: string | null | undefined, label: string | null | undefined): ActiveVariant => {
+    if (variantId) {
+      const found = preset.variants.find((v) => v.id === variantId);
+      if (found) return found;
+    }
+
+    if (label) {
+      for (const v of preset.variants) {
+        const expectedLabel = preset.variants.length === 1
+          ? preset.name : `${preset.name} / ${v.name}`;
+        if (label === expectedLabel) return v;
+      }
+    }
+
+    return defaultVariant;
+  };
+  const makePresetLabel = (variant: ActiveVariant) => preset.variants.length === 1
+    ? preset.name : `${preset.name} / ${variant.name}`;
+
   const blocks = await prisma.promptBlock.findMany({
     where: { sourceId: presetId },
     select: {
@@ -163,7 +206,14 @@ export async function syncPresetToSections(presetId: string) {
       sortOrder: true,
     },
   });
-  if (blocks.length === 0) return;
+  const templateSections = await prisma.projectTemplateSection.findMany({
+    select: {
+      id: true,
+      projectTemplateId: true,
+      promptBlocks: true,
+      loraConfig: true,
+    },
+  });
 
   const categories = await prisma.presetCategory.findMany({
     select: { name: true, lora1Order: true, lora2Order: true },
@@ -174,6 +224,39 @@ export async function syncPresetToSections(presetId: string) {
       { lora1Order: category.lora1Order, lora2Order: category.lora2Order },
     ]),
   );
+  const syncPresetLoraConfig = (
+    config: SectionLoraConfig,
+    bindingId: string,
+    groupBindingId: string | null | undefined,
+    resolved: ResolvedVariantContent,
+  ) => {
+    const makeLora = (b: { path: string; weight: number; enabled: boolean }): LoraEntry => ({
+      id: createLoraEntryId(),
+      path: b.path, weight: b.weight, enabled: b.enabled,
+      source: "preset", sourceLabel: preset.category.name,
+      sourceColor: preset.category.color ?? undefined, sourceName: preset.name,
+      bindingId,
+      groupBindingId: groupBindingId ?? undefined,
+    });
+    const detachedLora1Paths = getDetachedPresetPaths(config.lora1, bindingId);
+    const detachedLora2Paths = getDetachedPresetPaths(config.lora2, bindingId);
+    const nextPresetLora1 = resolved.lora1
+      .filter((entry) => !detachedLora1Paths.has(entry.path))
+      .map(makeLora);
+    const nextPresetLora2 = resolved.lora2
+      .filter((entry) => !detachedLora2Paths.has(entry.path))
+      .map(makeLora);
+    config.lora1 = sortSectionLoraEntriesByCategoryOrder(
+      [...config.lora1.filter((e) => e.bindingId !== bindingId), ...nextPresetLora1],
+      "lora1Order",
+      categoryOrderByName,
+    );
+    config.lora2 = sortSectionLoraEntriesByCategoryOrder(
+      [...config.lora2.filter((e) => e.bindingId !== bindingId), ...nextPresetLora2],
+      "lora2Order",
+      categoryOrderByName,
+    );
+  };
 
   const affectedSections = new Map<string, string>();
   for (const block of blocks) {
@@ -181,24 +264,9 @@ export async function syncPresetToSections(presetId: string) {
   }
 
   for (const block of blocks) {
-    // Determine which variant this block uses
-    let variant = defaultVariant;
-    if (block.variantId) {
-      // Prefer stored variantId
-      const found = preset.variants.find((v) => v.id === block.variantId);
-      if (found) variant = found;
-    } else {
-      // Fallback: match by label
-      for (const v of preset.variants) {
-        const expectedLabel = preset.variants.length === 1
-          ? preset.name : `${preset.name} / ${v.name}`;
-        if (block.label === expectedLabel) { variant = v; break; }
-      }
-    }
-
-    const resolved = await resolveVariantContent(variant.id);
-    const label = preset.variants.length === 1
-      ? preset.name : `${preset.name} / ${variant.name}`;
+    const variant = resolvePresetVariant(block.variantId, block.label);
+    const resolved = await getResolvedVariantContent(variant.id);
+    const label = makePresetLabel(variant);
 
     const updatedBlock = await prisma.promptBlock.update({
       where: { id: block.id },
@@ -232,32 +300,7 @@ export async function syncPresetToSections(presetId: string) {
       const beforeLoraConfig = section.loraConfig ?? null;
       const config = parseSectionLoraConfig(section.loraConfig);
       const currentConfig = serializeSectionLoraConfig(config);
-      const makeLora = (b: { path: string; weight: number; enabled: boolean }): LoraEntry => ({
-        id: createLoraEntryId(),
-        path: b.path, weight: b.weight, enabled: b.enabled,
-        source: "preset", sourceLabel: preset.category.name,
-        sourceColor: preset.category.color ?? undefined, sourceName: preset.name,
-        bindingId,
-        groupBindingId: block.groupBindingId ?? undefined,
-      });
-      const detachedLora1Paths = getDetachedPresetPaths(config.lora1, bindingId);
-      const detachedLora2Paths = getDetachedPresetPaths(config.lora2, bindingId);
-      const nextPresetLora1 = resolved.lora1
-        .filter((entry) => !detachedLora1Paths.has(entry.path))
-        .map(makeLora);
-      const nextPresetLora2 = resolved.lora2
-        .filter((entry) => !detachedLora2Paths.has(entry.path))
-        .map(makeLora);
-      config.lora1 = sortSectionLoraEntriesByCategoryOrder(
-        [...config.lora1.filter((e) => e.bindingId !== bindingId), ...nextPresetLora1],
-        "lora1Order",
-        categoryOrderByName,
-      );
-      config.lora2 = sortSectionLoraEntriesByCategoryOrder(
-        [...config.lora2.filter((e) => e.bindingId !== bindingId), ...nextPresetLora2],
-        "lora2Order",
-        categoryOrderByName,
-      );
+      syncPresetLoraConfig(config, bindingId, block.groupBindingId, resolved);
       const nextConfig = serializeSectionLoraConfig(config);
       const changed = JSON.stringify(currentConfig) !== JSON.stringify(nextConfig);
       if (changed) {
@@ -274,6 +317,59 @@ export async function syncPresetToSections(presetId: string) {
         });
       }
     }
+  }
+  const affectedTemplateIds = new Set<string>();
+  for (const templateSection of templateSections) {
+    const rawBlocks = Array.isArray(templateSection.promptBlocks) ? templateSection.promptBlocks : [];
+    let hasPresetBlock = false;
+    const nextBlocks: TemplatePromptBlockJson[] = [];
+    const config = parseSectionLoraConfig(templateSection.loraConfig);
+    const currentConfig = serializeSectionLoraConfig(config);
+
+    for (const rawBlock of rawBlocks) {
+      if (!rawBlock || typeof rawBlock !== "object" || Array.isArray(rawBlock)) {
+        continue;
+      }
+
+      const block = rawBlock as TemplatePromptBlockJson;
+      if (block.type !== "preset" || block.sourceId !== presetId) {
+        nextBlocks.push(block);
+        continue;
+      }
+
+      hasPresetBlock = true;
+      const variant = resolvePresetVariant(block.variantId, block.label);
+      const resolved = await getResolvedVariantContent(variant.id);
+      const nextBlock: TemplatePromptBlockJson = {
+        ...block,
+        label: makePresetLabel(variant),
+        positive: resolved.prompt,
+        negative: resolved.negativePrompt,
+        variantId: variant.id,
+        categoryId: preset.category.id,
+      };
+      nextBlocks.push(nextBlock);
+
+      if (typeof block.bindingId === "string" && block.bindingId) {
+        syncPresetLoraConfig(config, block.bindingId, block.groupBindingId, resolved);
+      }
+    }
+
+    if (!hasPresetBlock) continue;
+
+    const nextConfig = serializeSectionLoraConfig(config);
+    const promptBlocksChanged = JSON.stringify(rawBlocks) !== JSON.stringify(nextBlocks);
+    const loraConfigChanged = JSON.stringify(currentConfig) !== JSON.stringify(nextConfig);
+    if (!promptBlocksChanged && !loraConfigChanged) continue;
+
+    await prisma.projectTemplateSection.update({
+      where: { id: templateSection.id },
+      data: {
+        promptBlocks: nextBlocks as Prisma.InputJsonValue,
+        loraConfig: nextConfig as Prisma.InputJsonValue,
+      },
+    });
+    affectedTemplateIds.add(templateSection.projectTemplateId);
   }
   for (const [sectionId, projectId] of affectedSections) {
     const sectionBlocks = await prisma.promptBlock.findMany({
@@ -298,6 +394,12 @@ export async function syncPresetToSections(presetId: string) {
 
     revalidatePath(`/projects/${projectId}`);
     revalidatePath(`/projects/${projectId}/sections/${sectionId}`);
+  }
+  for (const templateId of affectedTemplateIds) {
+    revalidatePath(`/assets/templates/${templateId}/edit`);
+  }
+  if (affectedTemplateIds.size > 0) {
+    revalidatePath("/assets/templates");
   }
   revalidatePath("/projects");
 }
