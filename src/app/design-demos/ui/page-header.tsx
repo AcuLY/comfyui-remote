@@ -4,7 +4,7 @@ import type * as React from "react";
 import { ArrowLeft } from "lucide-react";
 
 import { cx } from "../design-demo-utils";
-import s from "../design-demo-styles";
+import s from "./ui.module.css";
 import { ButtonLink } from "./button-link";
 
 export function PageHeader({

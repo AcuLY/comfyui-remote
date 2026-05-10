@@ -6,7 +6,7 @@ import { Check, ImageIcon, Square } from "lucide-react";
 
 import type { DemoImage } from "../design-demo-data";
 import { cx } from "../design-demo-utils";
-import s from "../design-demo-styles";
+import s from "./ui.module.css";
 import { StatusBadge } from "./status-badge";
 import { imageReviewLabel, imageTagLabels } from "./utils";
 

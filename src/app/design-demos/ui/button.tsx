@@ -6,7 +6,7 @@ import { Activity } from "lucide-react";
 
 import type { DemoButtonFeedback } from "../design-demo-utils";
 import { cx } from "../design-demo-utils";
-import s from "../design-demo-styles";
+import s from "./ui.module.css";
 import { useDemoFeedback } from "./feedback-context";
 import type { ButtonTone, RouteIcon } from "./types";
 import { controlLabel } from "./utils";
@@ -23,6 +23,7 @@ export function Button({
   disabled = false,
   feedback,
   className,
+  size = "md",
 }: {
   children?: React.ReactNode;
   tone?: ButtonTone;
@@ -35,6 +36,7 @@ export function Button({
   disabled?: boolean;
   feedback?: DemoButtonFeedback;
   className?: string;
+  size?: "sm" | "md";
 }) {
   const { pushToast } = useDemoFeedback();
   const label = iconOnly ? controlLabel(children, ariaLabel) : undefined;
@@ -62,6 +64,7 @@ export function Button({
       disabled={disabled || pending}
       className={cx(
         s.button,
+        size === "sm" && s.buttonSmall,
         tone === "subtle" && s.buttonSubtle,
         tone === "primary" && s.buttonPrimary,
         tone === "pink" && s.buttonPink,

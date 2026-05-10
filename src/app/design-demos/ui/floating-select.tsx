@@ -6,7 +6,7 @@ import { createPortal } from "react-dom";
 import { ChevronDown } from "lucide-react";
 
 import { cx } from "../design-demo-utils";
-import s from "../design-demo-styles";
+import s from "./ui.module.css";
 
 export type FloatingSelectOption = {
   value: string;
@@ -93,7 +93,7 @@ export function FloatingSelect({
   }, [open, updateMenuPosition]);
 
   const portalTarget = open && typeof document !== "undefined"
-    ? document.querySelector<HTMLElement>(`.${s.shell}`) ?? document.body
+    ? document.querySelector<HTMLElement>("[data-design-demo-shell]") ?? document.body
     : null;
 
   return (

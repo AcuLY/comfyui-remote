@@ -2,7 +2,7 @@
 
 import type * as React from "react";
 
-import s from "../design-demo-styles";
+import s from "./ui.module.css";
 
 export function Panel({ title, subtitle, actions, children }: { title: string; subtitle?: string; actions?: React.ReactNode; children: React.ReactNode }) {
   return (

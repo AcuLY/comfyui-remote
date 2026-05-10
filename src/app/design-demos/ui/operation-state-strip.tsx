@@ -2,7 +2,7 @@
 
 import type { DemoToastTone } from "../design-demo-utils";
 import { cx } from "../design-demo-utils";
-import s from "../design-demo-styles";
+import s from "./ui.module.css";
 
 export function OperationStateStrip({
   items,

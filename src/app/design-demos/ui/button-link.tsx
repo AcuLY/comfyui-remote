@@ -4,7 +4,7 @@ import Link from "next/link";
 import type * as React from "react";
 
 import { cx, demoHref } from "../design-demo-utils";
-import s from "../design-demo-styles";
+import s from "./ui.module.css";
 import type { ButtonTone, RouteIcon } from "./types";
 import { controlLabel } from "./utils";
 
@@ -16,6 +16,7 @@ export function ButtonLink({
   iconOnly = false,
   ariaLabel,
   className,
+  size = "md",
 }: {
   href: string;
   children?: React.ReactNode;
@@ -24,6 +25,7 @@ export function ButtonLink({
   iconOnly?: boolean;
   ariaLabel?: string;
   className?: string;
+  size?: "sm" | "md";
 }) {
   const label = iconOnly ? controlLabel(children, ariaLabel) : undefined;
 
@@ -34,6 +36,7 @@ export function ButtonLink({
       title={iconOnly ? label : undefined}
       className={cx(
         s.button,
+        size === "sm" && s.buttonSmall,
         tone === "subtle" && s.buttonSubtle,
         tone === "primary" && s.buttonPrimary,
         tone === "pink" && s.buttonPink,

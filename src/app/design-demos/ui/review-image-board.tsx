@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { Archive, Check, CheckSquare, Eye, ImageIcon, Square, Star, Trash2, X } from "lucide-react";
 
 import type { DemoImage } from "../design-demo-data";
-import s from "../design-demo-styles";
+import s from "./ui.module.css";
 import { Button } from "./button";
 import { ImageListMedium } from "./image-list-medium";
 import { ImagePreviewLarge } from "./image-preview-large";
@@ -22,7 +22,7 @@ export function ReviewImageBoard({ images }: { images: DemoImage[] }) {
   const allSelected = images.length > 0 && selectedCount === images.length;
   const pendingOnlySelected = pendingIds.length > 0 && selectedCount === pendingIds.length && pendingIds.every((id) => selectedVisibleIds.has(id));
   const portalTarget = activeImage && typeof document !== "undefined"
-    ? document.querySelector<HTMLElement>(`.${s.shell}`) ?? document.body
+    ? document.querySelector<HTMLElement>("[data-design-demo-shell]") ?? document.body
     : null;
 
   useEffect(() => {

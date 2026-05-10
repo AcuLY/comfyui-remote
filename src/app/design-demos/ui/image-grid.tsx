@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { Archive, Check, Eye, Star, Trash2 } from "lucide-react";
 
 import type { DemoImage } from "../design-demo-data";
-import s from "../design-demo-styles";
+import s from "./ui.module.css";
 import { Button } from "./button";
 import { ImageListMedium } from "./image-list-medium";
 import { ImagePreviewLarge } from "./image-preview-large";
@@ -43,7 +43,7 @@ export function ImageGrid({
 
   if (images.length === 0) return <div className={s.empty}>没有可用图片</div>;
   const portalTarget = activeImage && typeof document !== "undefined"
-    ? document.querySelector<HTMLElement>(`.${s.shell}`) ?? document.body
+    ? document.querySelector<HTMLElement>("[data-design-demo-shell]") ?? document.body
     : null;
   return (
     <>

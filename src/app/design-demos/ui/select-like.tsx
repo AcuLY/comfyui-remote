@@ -1,6 +1,6 @@
 "use client";
 
-import s from "../design-demo-styles";
+import s from "./ui.module.css";
 import { FloatingSelect } from "./floating-select";
 
 export function SelectLike({ label, value }: { label: string; value: string }) {

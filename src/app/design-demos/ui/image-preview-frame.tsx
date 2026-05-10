@@ -7,7 +7,7 @@ import { ImageIcon } from "lucide-react";
 
 import type { DemoImage } from "../design-demo-data";
 import { cx } from "../design-demo-utils";
-import s from "../design-demo-styles";
+import s from "./ui.module.css";
 
 export function ImagePreviewFrame({
   image,

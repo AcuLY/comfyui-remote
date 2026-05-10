@@ -1,6 +1,6 @@
 "use client";
 
-import s from "../design-demo-styles";
+import s from "./ui.module.css";
 import { Switch } from "./switch";
 
 export function SwitchRow({ title, subtitle }: { title: string; subtitle: string }) {

@@ -54,7 +54,9 @@ export function LoraRow({
         gridTemplateAreas: '"grip main actions" "grip weight weight"',
       }}
     >
-      <Button className={s.loraRowGrip} icon={GripVertical} iconOnly tone="subtle" ariaLabel="拖拽排序" />
+      <span className={s.loraRowGrip}>
+        <Button icon={GripVertical} iconOnly tone="subtle" ariaLabel="拖拽排序" size="sm" />
+      </span>
       <div className={s.loraRowMain}>
         <span className={s.loraRowTopLine}>
           {entry.kind === "preset" ? (
@@ -98,24 +100,17 @@ export function LoraRow({
         />
       </div>
       <div className={s.loraActions}>
-        <Switch checked={entry.enabled} onCheckedChange={onToggle} ariaLabel={entry.enabled ? "停用" : "启用"} />
+        <Switch checked={entry.enabled} onCheckedChange={onToggle} ariaLabel={entry.enabled ? "停用" : "启用"} size="sm" />
         {entry.kind === "preset" && onUnlink ? (
-          <Button
-            className={s.iconGhostBtn}
-            icon={Unlink}
-            iconOnly
-            onClick={onUnlink}
-            ariaLabel="单独删除（仅本条）"
-            tone="subtle"
-          />
+          <Button icon={Unlink} iconOnly onClick={onUnlink} ariaLabel="单独删除（仅本条）" tone="subtle" size="sm" />
         ) : null}
         <Button
-          className={s.iconGhostBtn}
           icon={X}
           iconOnly
           onClick={onDelete}
           ariaLabel="删除"
           tone="danger"
+          size="sm"
         />
       </div>
     </div>

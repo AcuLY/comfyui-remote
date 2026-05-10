@@ -327,7 +327,7 @@ export function DesignDemoShell({
 
   return (
     <DemoFeedbackProvider>
-      <div className={cx(s.shell, isLightTheme && s.shellLight)} data-demo-font="harmonyos" data-theme={theme}>
+      <div className={cx(s.shell, isLightTheme && s.shellLight)} data-design-demo-shell data-demo-font="harmonyos" data-theme={theme}>
         <MobileTopbar
           activeLabel={activeNav?.label ?? "工作台"}
           menuOpen={menuOpen}

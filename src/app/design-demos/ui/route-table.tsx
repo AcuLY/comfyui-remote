@@ -4,7 +4,7 @@ import { ArrowRight } from "lucide-react";
 
 import type { DemoData } from "../design-demo-data";
 import { demoHref, sampleRouteInventory } from "../design-demo-utils";
-import s from "../design-demo-styles";
+import s from "./ui.module.css";
 import { ButtonLink } from "./button-link";
 import { Panel } from "./panel";
 

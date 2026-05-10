@@ -1,6 +1,6 @@
 "use client";
 
-import s from "../design-demo-styles";
+import s from "./ui.module.css";
 import { preventReadonlyEdit } from "./utils";
 
 export function Field({ label, value, disabled = false }: { label: string; value: string | number; disabled?: boolean }) {

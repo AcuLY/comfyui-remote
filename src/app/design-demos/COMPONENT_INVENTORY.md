@@ -13,7 +13,7 @@
 |------|-----|
 | 导出名 | `Button` |
 | 文件 | `ui/button.tsx` |
-| Props | `children?`, `tone?: "default" \| "subtle" \| "primary" \| "pink" \| "danger"`, `icon?: RouteIcon`, `iconOnly?`, `ariaLabel?`, `onClick?`, `pressed?`, `pending?`, `disabled?`, `feedback?: DemoButtonFeedback`, `className?` |
+| Props | `children?`, `tone?: "default" \| "subtle" \| "primary" \| "pink" \| "danger"`, `icon?: RouteIcon`, `iconOnly?`, `ariaLabel?`, `onClick?`, `pressed?`, `pending?`, `disabled?`, `feedback?: DemoButtonFeedback`, `className?`, `size?: "sm" \| "md"` |
 | 功能 | 通用按钮，支持 5 种色调、图标、纯 icon、pending 旋转、点击后 toast 反馈 |
 | CSS 类 | `.button`, `.buttonSubtle`, `.buttonPrimary`, `.buttonPink`, `.buttonDanger`, `.buttonIcon`, `.buttonIconOnly`, `.buttonPending`, `.buttonSpinner` |
 
@@ -73,7 +73,7 @@
 |------|-----|
 | 导出名 | `Switch` |
 | 文件 | `ui/switch.tsx` |
-| Props | `checked?`, `defaultChecked?`, `ariaLabel?`, `onCheckedChange?` |
+| Props | `checked?`, `defaultChecked?`, `ariaLabel?`, `className?`, `onCheckedChange?`, `size?: "sm" \| "md"` |
 | 功能 | 可交互开关（受控/非受控） |
 | CSS 类 | `.switch`, `.switchThumb` |
 

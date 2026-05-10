@@ -3,7 +3,7 @@
 import type * as React from "react";
 
 import { cx } from "../design-demo-utils";
-import s from "../design-demo-styles";
+import s from "./ui.module.css";
 
 export type SegmentedControlItem<T extends string | number> = {
   value: T;

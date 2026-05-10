@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 
 import type { DemoImage } from "../design-demo-data";
 import { cx } from "../design-demo-utils";
-import s from "../design-demo-styles";
+import s from "./ui.module.css";
 import { ImageThumbSmall } from "./image-thumb-small";
 
 export function ImageListSmall({

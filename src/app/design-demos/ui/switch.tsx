@@ -2,18 +2,23 @@
 
 import { useState } from "react";
 
-import s from "../design-demo-styles";
+import { cx } from "../design-demo-utils";
+import s from "./ui.module.css";
 
 export function Switch({
   checked,
   defaultChecked = true,
   ariaLabel = "切换开关",
+  className,
   onCheckedChange,
+  size = "md",
 }: {
   checked?: boolean;
   defaultChecked?: boolean;
   ariaLabel?: string;
+  className?: string;
   onCheckedChange?: (checked: boolean) => void;
+  size?: "sm" | "md";
 }) {
   const [internalChecked, setInternalChecked] = useState(defaultChecked);
   const isChecked = checked ?? internalChecked;
@@ -28,7 +33,8 @@ export function Switch({
     <button
       aria-label={ariaLabel}
       aria-checked={isChecked}
-      className={s.switch}
+      className={cx(s.switch, className)}
+      data-size={size}
       data-state={isChecked ? "checked" : "unchecked"}
       onClick={toggleSwitch}
       role="switch"

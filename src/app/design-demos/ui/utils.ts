@@ -1,7 +1,7 @@
 import type * as React from "react";
 
 import type { DemoImage } from "../design-demo-data";
-import s from "../design-demo-styles";
+import s from "./ui.module.css";
 
 export function statusTone(status: string) {
   const value = status.toLowerCase();

@@ -5,7 +5,7 @@ import { Children, useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 
 import { cx } from "../design-demo-utils";
-import s from "../design-demo-styles";
+import s from "./ui.module.css";
 
 type ImageListMediumStyle = CSSProperties & {
   "--demo-image-list-gap"?: string;

@@ -6,7 +6,7 @@ import { Check, X } from "lucide-react";
 
 import type { DemoToast } from "../design-demo-utils";
 import { cx } from "../design-demo-utils";
-import s from "../design-demo-styles";
+import s from "./ui.module.css";
 import { Button } from "./button";
 import { DemoFeedbackContext } from "./feedback-context";
 

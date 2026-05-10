@@ -4,7 +4,7 @@ import type * as React from "react";
 import { ArrowLeft, ArrowRight, X } from "lucide-react";
 
 import type { DemoImage } from "../design-demo-data";
-import s from "../design-demo-styles";
+import s from "./ui.module.css";
 import { Button } from "./button";
 import { ImagePreviewFrame } from "./image-preview-frame";
 

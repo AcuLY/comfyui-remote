@@ -1,6 +1,6 @@
 "use client";
 
-import s from "../design-demo-styles";
+import s from "./ui.module.css";
 import { PageHeader } from "./page-header";
 
 export function EmptyPage({ title }: { title: string }) {

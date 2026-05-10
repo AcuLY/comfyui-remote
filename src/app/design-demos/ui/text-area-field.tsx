@@ -1,6 +1,6 @@
 "use client";
 
-import s from "../design-demo-styles";
+import s from "./ui.module.css";
 import { preventReadonlyEdit } from "./utils";
 
 export function TextAreaField({ label, value }: { label: string; value: string }) {
