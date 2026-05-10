@@ -1527,7 +1527,7 @@
   right: 16px;
   z-index: 80;
   display: grid;
-  width: min(360px, calc(100vw - 32px));
+  width: min(312px, calc(100vw - 32px));
   gap: 8px;
   pointer-events: none;
 }

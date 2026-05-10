@@ -1464,11 +1464,11 @@
   }
 
   .toastStack {
-    top: auto;
+    top: calc(12px + env(safe-area-inset-top));
     right: 12px;
-    bottom: calc(104px + env(safe-area-inset-bottom));
-    left: 12px;
-    width: auto;
+    bottom: auto;
+    left: auto;
+    width: min(288px, calc(100vw - 24px));
   }
 
   .pageHeader {
