@@ -14,8 +14,8 @@ The design demo shell is a standalone frontend prototype area. It should be easi
 ## Styling Direction
 
 - Prefer plain CSS and CSS Modules for demo code.
-- Do not use Tailwind utility classes for new demo layout, spacing, typography, colors, borders, shadows, or component states.
-- Existing tiny icon utilities such as `size-4` may remain temporarily, but new code should prefer CSS Module classes or component props.
+- Do not use Tailwind utility classes anywhere in demo code.
+- Demo code must keep working after Tailwind, shadcn Tailwind CSS, `tailwind-merge`, and Tailwind-related dependencies are removed from the project.
 - Do not introduce new `cva`, `tailwind-merge`, shadcn-style variants, or Tailwind-based primitive components inside `src/app/design-demos/**`.
 - Use CSS custom properties for shared demo tokens, not Tailwind theme coupling.
 
@@ -70,23 +70,29 @@ Feature components may own layout and local feature structure.
 - Prefer stable dimensions for controls: buttons, switches, segmented items, thumbnails, toolbars, and rows should not resize when state changes.
 - Avoid nested card styling. Use rows, rails, panels, and continuous surfaces unless a real repeated card item is being shown.
 
-## Tailwind Policy
+## Tailwind Ban
 
-Tailwind remains installed for the app, but `/design-demos` should not rely on it.
+Tailwind is forbidden in `/design-demos`.
 
-Allowed temporarily:
+Not allowed:
 
-- Existing icon sizing utilities such as `size-3.5`, `size-4`, `opacity-40`.
-- Existing legacy utilities while a file is not being touched.
-
-Not allowed in new or refactored demo code:
-
+- Icon utilities: `size-*`, `opacity-*`, `text-*`.
 - Layout utilities: `flex`, `grid`, `gap-*`, `items-*`, `justify-*`.
 - Spacing utilities: `p-*`, `px-*`, `py-*`, `m-*`, `mt-*`.
-- Visual utilities: `bg-*`, `text-*`, `border-*`, `rounded-*`, `shadow-*`.
-- State utilities or long utility strings.
+- Sizing utilities: `w-*`, `h-*`, `min-*`, `max-*`.
+- Visual utilities: `bg-*`, `border-*`, `rounded-*`, `shadow-*`.
+- Position utilities: `fixed`, `absolute`, `relative`, `z-*`, `translate-*`.
+- State utilities, arbitrary values, or long utility strings.
+- `cn`, `twMerge`, `cva`, or shadcn/Tailwind-style variant composition for demo components.
 
-When touching a file, replace nearby Tailwind utilities if the replacement is small and local.
+Current Tailwind utility uses are migration debt. Do not add more, and remove nearby utility classes whenever touching a file.
+
+Before `/design-demos` can be treated as production-ready, these checks must pass with zero code matches:
+
+```powershell
+rg -n 'className=.*(size-|opacity-|flex|grid|gap-|px-|py-|p-|m-|w-|h-|text-|bg-|border-|rounded|shadow|items-|justify-|min-|max-|overflow|translate|z-|fixed|absolute|relative)' src/app/design-demos -g '*.tsx'
+rg -n 'tailwind|twMerge|cva\\(|class-variance-authority|shadcn' src/app/design-demos -g '*.ts' -g '*.tsx' -g '*.css'
+```
 
 ## Showcase Rules
 
@@ -111,7 +117,7 @@ The component showcase must demonstrate real reusable components, not custom sho
 Before finishing a demo frontend change, check:
 
 - `rg "design-demo-styles" src/app/design-demos/ui` returns no matches.
-- New demo primitives do not use Tailwind utility strings.
+- Touched demo files do not use Tailwind utility strings.
 - Existing primitives are customized through props, not feature CSS classes.
 - `component-showcase-page.tsx` imports primitives from `./ui/<component>`.
 - `src/app/globals.css` has no diff.
@@ -127,4 +133,4 @@ The target state is:
 - Feature files own feature composition and layout only.
 - `component-showcase-page.tsx` is split into smaller showcase modules.
 - `design-demo-styles/` remains only for route shells and legacy feature surfaces until they are migrated.
-- Tailwind utilities are removed from demo code over time, starting with touched files.
+- Tailwind utilities are fully removed from demo code before the demo shell is officially enabled.

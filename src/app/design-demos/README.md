@@ -15,6 +15,7 @@ This directory implements the routable `/design-demos` frontend shell.
 - `design-demo-styles/`: route-level CSS split by shell, queue/review, projects, library, section editor, and model browser surfaces.
 - `design-demo-styles.ts`: class-name bridge used by components so existing `s.foo` references map to the global route CSS classes.
 - `FRONTEND_RULES.md`: demo-only frontend rules for component boundaries, CSS Modules, Tailwind usage, and migration checks.
+- `TAILWIND_CLEANUP_PLAN.md`: phased cleanup plan for removing all Tailwind usage from demo code before the demo shell is officially enabled.
 
 ## Route Mapping
 
