@@ -65,6 +65,22 @@ function modelLabel(kind: ModelKind) {
   return kind === "checkpoint" ? "checkpoint" : "LoRA";
 }
 
+async function fetchJsonWithTimeout<T>(url: string, timeoutMs = 15000): Promise<T> {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const res = await fetch(url, { signal: controller.signal });
+    const json = await res.json().catch(() => null);
+    if (!res.ok) {
+      throw new Error(json?.error?.message ?? `HTTP ${res.status}`);
+    }
+    return json as T;
+  } finally {
+    window.clearTimeout(timeout);
+  }
+}
+
 function useLoraSearch(kind: ModelKind) {
   const [query, setQuery] = useState("");
   const [allFiles, setAllFiles] = useState<BrowseItem[]>([]);
@@ -81,12 +97,14 @@ function useLoraSearch(kind: ModelKind) {
       setSearching(true);
       const params = new URLSearchParams({ recursive: "true" });
       try {
-        const res = await fetch(buildModelUrl("browse", kind, params));
-        const json = await res.json();
+        const json = await fetchJsonWithTimeout<{ data?: BrowseResult }>(
+          buildModelUrl("browse", kind, params),
+          30000,
+        );
         if (cancelled) return;
-        const data: BrowseResult = json.data;
-        setAllFiles(data.items.filter((i) => i.type === "file"));
+        setAllFiles((json.data?.items ?? []).filter((i) => i.type === "file"));
       } catch {
+        loaded.current = false;
         // Search is best-effort; the picker can still browse folders.
       } finally {
         if (!cancelled) setSearching(false);
@@ -141,8 +159,10 @@ export function LoraCascadePicker({
     setSelectedTrigger(null);
     if (!value) return;
     const params = new URLSearchParams({ paths: value });
-    fetch(buildModelUrl("notes", kind, params))
-      .then((r) => r.json())
+    fetchJsonWithTimeout<{ data?: Record<string, { notes?: string; triggerWords?: string }> }>(
+      buildModelUrl("notes", kind, params),
+      10000,
+    )
       .then((json) => {
         const data = json.data?.[value];
         if (data) {
@@ -159,12 +179,9 @@ export function LoraCascadePicker({
     try {
       const params = new URLSearchParams();
       if (dirPath) params.set("path", dirPath);
-      const res = await fetch(buildModelUrl("browse", kind, params));
-      if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        throw new Error(body?.error?.message ?? `HTTP ${res.status}`);
-      }
-      const data: BrowseResult = (await res.json()).data;
+      const json = await fetchJsonWithTimeout<{ data?: BrowseResult }>(buildModelUrl("browse", kind, params));
+      const data = json.data;
+      if (!data) throw new Error("Invalid browse response");
       setItems(data.items);
       setParentPath(data.parentPath);
       setBrowsePath(data.currentPath);
@@ -484,8 +501,9 @@ export function LoraDirPicker({ onSelect, onCancel }: LoraDirPickerProps) {
     try {
       const params = new URLSearchParams();
       if (dirPath) params.set("path", dirPath);
-      const res = await fetch(buildModelUrl("browse", "lora", params));
-      const data: BrowseResult = (await res.json()).data;
+      const json = await fetchJsonWithTimeout<{ data?: BrowseResult }>(buildModelUrl("browse", "lora", params));
+      const data = json.data;
+      if (!data) throw new Error("Invalid browse response");
       setBrowsePath(data.currentPath);
       setParentPath(data.parentPath);
       setItems(data.items.filter((i) => i.type === "directory"));

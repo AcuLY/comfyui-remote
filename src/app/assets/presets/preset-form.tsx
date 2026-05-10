@@ -493,6 +493,19 @@ export function PresetForm({
     }
   }
 
+  function updateCurrentVariantLoras(key: "lora1" | "lora2", value: VariantDraft["lora1"]) {
+    const updated = [...variants];
+    updated[currentIdx] = { ...current, [key]: value };
+    setVariants(updated);
+
+    const hasIncompleteLora = updated.some((variant) =>
+      [...variant.lora1, ...variant.lora2].some((entry) => !entry.path.trim()),
+    );
+    if (!hasIncompleteLora) {
+      saveDrafts(updated);
+    }
+  }
+
   function addVariant() {
     const newIdx = variants.length;
     const prev = variants[variants.length - 1];
@@ -796,12 +809,12 @@ export function PresetForm({
 
         <div className="space-y-1">
           <span className="text-[11px] font-medium text-zinc-500">LoRA 1（第一阶段）</span>
-          <LoraBindingEditor bindings={current.lora1} onChange={(v) => updateCurrentVariant({ lora1: v })} />
+          <LoraBindingEditor bindings={current.lora1} onChange={(v) => updateCurrentVariantLoras("lora1", v)} />
         </div>
 
         <div className="space-y-1">
           <span className="text-[11px] font-medium text-zinc-500">LoRA 2（高清修复）</span>
-          <LoraBindingEditor bindings={current.lora2} onChange={(v) => updateCurrentVariant({ lora2: v })} />
+          <LoraBindingEditor bindings={current.lora2} onChange={(v) => updateCurrentVariantLoras("lora2", v)} />
         </div>
       </div>
 
