@@ -32,6 +32,8 @@ const DemoFeedbackContext = createContext<{
   pushToast: (toast: Omit<DemoToast, "id">) => void;
 } | null>(null);
 
+type DemoToastState = DemoToast & { closing?: boolean };
+
 function useDemoFeedback() {
   return useContext(DemoFeedbackContext) ?? {
     pushToast: () => undefined,
@@ -39,25 +41,34 @@ function useDemoFeedback() {
 }
 
 export function DemoFeedbackProvider({ children }: { children: React.ReactNode }) {
-  const [toasts, setToasts] = useState<DemoToast[]>([]);
+  const [toasts, setToasts] = useState<DemoToastState[]>([]);
+
+  const dismissToast = useCallback((id: string) => {
+    setToasts((current) =>
+      current.map((item) => (item.id === id ? { ...item, closing: true } : item)),
+    );
+    window.setTimeout(() => {
+      setToasts((current) => current.filter((item) => item.id !== id));
+    }, 180);
+  }, []);
 
   const pushToast = useCallback((toast: Omit<DemoToast, "id">) => {
     const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     setToasts((current) => [{ id, ...toast }, ...current].slice(0, 3));
     window.setTimeout(() => {
-      setToasts((current) => current.filter((item) => item.id !== id));
+      dismissToast(id);
     }, 3600);
-  }, []);
+  }, [dismissToast]);
 
   return (
     <DemoFeedbackContext.Provider value={{ pushToast }}>
       {children}
-      <DemoToastStack toasts={toasts} onDismiss={(id) => setToasts((current) => current.filter((item) => item.id !== id))} />
+      <DemoToastStack toasts={toasts} onDismiss={dismissToast} />
     </DemoFeedbackContext.Provider>
   );
 }
 
-function DemoToastStack({ toasts, onDismiss }: { toasts: DemoToast[]; onDismiss: (id: string) => void }) {
+function DemoToastStack({ toasts, onDismiss }: { toasts: DemoToastState[]; onDismiss: (id: string) => void }) {
   if (!toasts.length) return null;
 
   return (
@@ -69,6 +80,7 @@ function DemoToastStack({ toasts, onDismiss }: { toasts: DemoToast[]; onDismiss:
             toast.tone === "success" && s.toastSuccess,
             toast.tone === "warning" && s.toastWarning,
             toast.tone === "error" && s.toastError,
+            toast.closing && s.toastClosing,
           )}
           key={toast.id}
         >
@@ -77,7 +89,7 @@ function DemoToastStack({ toasts, onDismiss }: { toasts: DemoToast[]; onDismiss:
             <strong>{toast.title}</strong>
             {toast.detail ? <span>{toast.detail}</span> : null}
           </div>
-          <Button className={s.iconMiniButton} tone="subtle" icon={X} iconOnly onClick={() => onDismiss(toast.id)} ariaLabel="关闭提示" />
+          <Button className={s.toastCloseButton} tone="subtle" icon={X} iconOnly onClick={() => onDismiss(toast.id)} ariaLabel="关闭提示" />
         </div>
       ))}
     </div>

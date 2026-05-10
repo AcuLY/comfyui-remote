@@ -7,7 +7,7 @@ import { Button, Switch } from "./design-demo-ui";
 import s from "./design-demo-styles";
 import { cx } from "./design-demo-utils";
 import { parseHue } from "./section-editor-shared";
-import { SelectChip } from "./section-editor-controls";
+import { SelectChip, StepperInput } from "./section-editor-controls";
 export type LoraRowData = {
   id: string;
   /** Bound preset display name; undefined for manual */
@@ -43,29 +43,30 @@ export function LoraRow({
 }) {
   const hue = parseHue(entry.categoryColor);
   const color = `hsl(${hue} 70% 60%)`;
-  const adj = (delta: number) => {
-    const next = Math.max(-2, Math.min(2, Math.round((entry.weight + delta) * 100) / 100));
-    onWeightChange(next);
-  };
 
   return (
-    <div className={cx(s.loraRow, s.sectionLoraRow)} data-enabled={entry.enabled}>
-      <div className={s.loraRowGrip} aria-label="拖拽排序">
-        <GripVertical className="size-4" />
-      </div>
+    <div
+      className={cx(s.loraRow, s.sectionLoraRow)}
+      data-enabled={entry.enabled}
+      style={{
+        gridTemplateColumns: "22px minmax(0, 1fr) auto",
+        gridTemplateAreas: '"grip main actions" "grip weight weight"',
+      }}
+    >
+      <Button className={s.loraRowGrip} icon={GripVertical} iconOnly tone="subtle" ariaLabel="拖拽排序" />
       <div className={s.loraRowMain}>
         <span className={s.loraRowTopLine}>
           {entry.kind === "preset" ? (
             <>
+              <span className={s.loraPresetName}>
+                {entry.presetName}
+                {entry.variantName ? <em> / {entry.variantName}</em> : null}
+              </span>
               <span
                 className={s.loraSourceBadge}
                 style={{ "--cat": color } as React.CSSProperties}
               >
                 {entry.categoryName}
-              </span>
-              <span className={s.loraPresetName}>
-                {entry.presetName}
-                {entry.variantName ? <em> / {entry.variantName}</em> : null}
               </span>
             </>
           ) : (
@@ -86,28 +87,14 @@ export function LoraRow({
         {entry.notes ? <span className={s.loraNotes}>{entry.notes}</span> : null}
       </div>
       <div className={s.loraWeight}>
-        <Button tone="subtle" className={s.loraStep} onClick={() => adj(-0.5)}>
-          −0.5
-        </Button>
-        <Button tone="subtle" className={s.loraStep} onClick={() => adj(-0.1)}>
-          −0.1
-        </Button>
-        <input
-          type="number"
-          step={0.05}
+        <StepperInput
+          value={entry.weight}
+          onChange={onWeightChange}
           min={-2}
           max={2}
-          className={s.loraWeightInput}
-          value={entry.weight}
-          onChange={(e) => onWeightChange(parseFloat(e.target.value) || 0)}
-          aria-label="权重"
+          step={0.05}
+          width={112}
         />
-        <Button tone="subtle" className={s.loraStep} onClick={() => adj(0.1)}>
-          +0.1
-        </Button>
-        <Button tone="subtle" className={s.loraStep} onClick={() => adj(0.5)}>
-          +0.5
-        </Button>
       </div>
       <div className={s.loraActions}>
         <Switch checked={entry.enabled} onCheckedChange={onToggle} ariaLabel={entry.enabled ? "停用" : "启用"} />

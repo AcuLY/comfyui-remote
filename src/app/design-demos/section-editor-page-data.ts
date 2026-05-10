@@ -31,21 +31,40 @@ export function buildBindings(section: DemoSection, project: DemoProject): Prese
   const list: PresetBinding[] = [];
   if (section.presetBindings && section.presetBindings.length > 0) {
     for (const b of section.presetBindings) {
+      if (b.kind === "group") {
+        const members = Array.from({ length: 2 }).map((_, i) => ({
+          id: `${b.id}-m${i}`,
+          presetName: `${b.name} #${i + 1}`,
+          variantId: "v-default",
+          variantName: mockVariants()[0]?.name,
+          variants: mockVariants(),
+          detailHref: demoHref(`/presets/${b.id}-m${i}`),
+        }));
+
+        members.forEach((member, i) => {
+          list.push({
+            ...b,
+            id: member.id,
+            kind: "group",
+            scope: "section",
+            name: member.presetName,
+            variantId: member.variantId,
+            variantName: member.variantName,
+            blockCount: Math.max(1, Math.ceil(b.blockCount / members.length)),
+            loraCount: i === 0 ? b.loraCount : 0,
+            variants: member.variants,
+            members: undefined,
+            detailHref: member.detailHref,
+          });
+        });
+        continue;
+      }
+
       list.push({
         ...b,
         scope: "section",
-        variants: b.kind === "preset" ? mockVariants() : undefined,
-        members:
-          b.kind === "group"
-            ? Array.from({ length: 2 }).map((_, i) => ({
-                id: `${b.id}-m${i}`,
-                presetName: i === 0 ? "主体预制" : "辅助预制",
-                variantName: "默认",
-                variants: mockVariants(),
-                detailHref: demoHref(`/presets/${b.id}-m${i}`),
-              }))
-            : undefined,
-        detailHref: b.kind === "preset" ? demoHref(`/presets/${b.id}`) : undefined,
+        variants: mockVariants(),
+        detailHref: demoHref(`/presets/${b.id}`),
       });
     }
   }

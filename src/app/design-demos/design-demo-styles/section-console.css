@@ -1355,11 +1355,12 @@
 }
 
 .bindRow {
+  position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   align-items: center;
   gap: 12px;
-  padding: 12px 12px;
+  padding: 12px 178px 12px 12px;
   border: 1px solid var(--demo-glass-border);
   border-radius: 12px;
   background: var(--demo-field-bg);
@@ -1379,6 +1380,8 @@
   display: grid;
   gap: 2px;
   min-width: 0;
+  color: inherit;
+  text-decoration: none;
 }
 
 .bindCategory {
@@ -1406,7 +1409,7 @@
   flex-wrap: wrap;
   gap: 8px;
   font-size: 13.5px;
-  font-weight: 620;
+  font-weight: 500;
   color: var(--demo-text);
   line-height: 1.35;
 }
@@ -1446,12 +1449,16 @@
 }
 
 .bindRowControls {
+  position: absolute;
+  right: 12px;
+  top: 50%;
   display: inline-flex;
   align-items: center;
   gap: 5px;
   padding: 2px;
   border-radius: 999px;
   background: var(--demo-glass-soft);
+  transform: translateY(-50%);
 }
 
 .bindChevron {
@@ -1803,7 +1810,7 @@
 
 .pbRow {
   display: grid;
-  grid-template-columns: 20px auto minmax(0, 1fr) auto;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
   padding: 9px 10px;
@@ -1835,6 +1842,21 @@
   justify-content: center;
 }
 
+.pbRowGrip.button,
+.loraRowGrip.button {
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  min-height: 28px;
+  padding: 0;
+  cursor: grab;
+}
+
+.pbRowGrip.button:active,
+.loraRowGrip.button:active {
+  cursor: grabbing;
+}
+
 .pbCategory {
   display: inline-flex;
   align-items: center;
@@ -1859,7 +1881,7 @@
   color: inherit;
   font: inherit;
   text-align: left;
-  cursor: pointer;
+  cursor: default;
 }
 
 .pbRowTitleLine {
@@ -1871,7 +1893,7 @@
 
 .pbRowTitleLine strong {
   font-size: 12.5px;
-  font-weight: 620;
+  font-weight: 500;
   color: var(--demo-text);
   max-width: 14ch;
   white-space: nowrap;
@@ -1939,6 +1961,12 @@
   border-top: 1px solid var(--demo-border);
   border-radius: 0;
   background: transparent;
+}
+
+.pbEditActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .pbField {
@@ -2068,7 +2096,7 @@
 .compiledGroupTitle {
   color: var(--demo-text);
   font-size: 12.5px;
-  font-weight: 620;
+  font-weight: 500;
 }
 
 .compiledGroupVariant {
@@ -2203,11 +2231,9 @@
 }
 
 .sectionLoraRow {
-  grid-template-columns: 22px minmax(0, 1fr) auto;
-  grid-template-areas:
-    "grip main actions"
-    "grip weight actions";
-  align-items: start;
+  grid-template-columns: 22px minmax(170px, 1fr) auto auto;
+  grid-template-areas: "grip main weight actions";
+  align-items: center;
   gap: 10px 14px;
   min-height: 0;
   padding: 12px;
@@ -2240,7 +2266,6 @@
 
 .sectionLoraRow .loraRowGrip {
   grid-area: grip;
-  padding-top: 2px;
 }
 
 .loraRowMain {
@@ -2251,7 +2276,7 @@
 
 .sectionLoraRow .loraRowMain {
   grid-area: main;
-  gap: 10px;
+  gap: 7px;
 }
 
 .sectionLoraRow .selectChip {
@@ -2290,7 +2315,7 @@
 .loraPresetName {
   font-size: 12px;
   color: var(--demo-text);
-  font-weight: 620;
+  font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2339,6 +2364,14 @@
   line-height: 1.2;
 }
 
+.shellLight .bindCategory,
+.shellLight .pbCategory,
+.shellLight .loraSourceBadge {
+  border-color: color-mix(in oklab, var(--cat, var(--demo-green)) 42%, var(--demo-border));
+  background: color-mix(in oklab, var(--cat, var(--demo-green)) 16%, white);
+  color: color-mix(in oklab, var(--cat, var(--demo-green)) 68%, #17211d);
+}
+
 .bindGroupChip,
 .bindScopeChip,
 .loraManualBadge,
@@ -2370,30 +2403,22 @@
 
 .sectionLoraRow .loraWeight {
   grid-area: weight;
-  justify-self: start;
+  justify-self: end;
   max-width: 100%;
   flex-wrap: wrap;
   row-gap: 4px;
 }
 
 .loraStep {
-  appearance: none;
-  min-height: 24px;
-  padding: 3px 7px;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--demo-muted);
-  font: inherit;
+  min-height: 28px;
+  padding: 3px 8px;
   font-size: 10.5px;
   font-variant-numeric: tabular-nums;
-  cursor: pointer;
-  transition: 120ms ease;
 }
 
-.loraStep:hover {
-  background: var(--demo-glass-hover);
-  color: var(--demo-text);
+.loraWeight .stepper {
+  background: transparent;
+  box-shadow: none;
 }
 
 .loraWeightInput {
@@ -2426,10 +2451,10 @@
 
 .sectionLoraRow .loraActions {
   grid-area: actions;
-  display: inline-grid;
+  display: inline-flex;
   grid-auto-flow: column;
   grid-auto-columns: max-content;
-  align-self: start;
+  align-self: center;
   align-items: center;
   justify-content: end;
   gap: 5px;
@@ -3027,10 +3052,11 @@
 
   .bindRow {
     grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
   }
 
   .bindRowControls {
-    justify-self: start;
+    justify-self: end;
   }
 
   .pbRow {
@@ -3052,16 +3078,23 @@
   }
 
   .sectionLoraRow {
-    grid-template-columns: 20px minmax(0, 1fr);
+    grid-template-columns: 20px minmax(0, 1fr) auto;
     grid-template-areas:
-      "grip main"
-      "grip weight"
-      ". actions";
+      "grip main actions"
+      "grip weight weight";
     min-height: 0;
   }
 
   .sectionLoraRow .loraActions {
+    justify-self: end;
+  }
+
+  .sectionLoraRow .loraWeight {
     justify-self: start;
+  }
+
+  .sectionLoraRow .loraWeight .loraStep {
+    display: none;
   }
 
   .compiledGroup {

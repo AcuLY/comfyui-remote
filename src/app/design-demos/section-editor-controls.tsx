@@ -424,11 +424,9 @@ export function SelectChip({
   return (
     <FloatingSelect
       ariaLabel="Select option"
-      buttonClassName={s.selectChipBtn}
-      className={s.selectChip}
-      menuClassName={s.selectChipMenu}
+      buttonClassName={s.select}
+      className={s.selectShell}
       onChange={onChange}
-      optionClassName={s.selectChipOption}
       options={options.map((opt) => ({ value: opt }))}
       value={value}
     />

@@ -1497,6 +1497,30 @@
   }
 }
 
+@keyframes demoToastIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes demoToastOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+}
+
 .toastStack {
   position: fixed;
   top: 16px;
@@ -1521,6 +1545,12 @@
   box-shadow: var(--demo-glass-shadow);
   padding: 10px;
   pointer-events: auto;
+  animation: demoToastIn 180ms ease-out both;
+}
+
+.toastClosing {
+  pointer-events: none;
+  animation: demoToastOut 180ms ease-in both;
 }
 
 .toast strong,
@@ -1553,6 +1583,30 @@
 
 .toastError {
   border-color: rgba(251, 86, 91, 0.35);
+}
+
+.toastCloseButton.button {
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  min-height: 30px;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+.toastCloseButton.button:hover,
+.toastCloseButton.button:focus-visible {
+  border-color: transparent;
+  background: var(--demo-control-hover);
+  box-shadow: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast,
+  .toastClosing {
+    animation: none;
+  }
 }
 
 .buttonPrimary {

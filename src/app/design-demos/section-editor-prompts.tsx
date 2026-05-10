@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import type * as React from "react";
-import { GripVertical, Trash2, Unlink } from "lucide-react";
+import { GripVertical, Pencil, Trash2, Unlink } from "lucide-react";
 
 import { Button } from "./design-demo-ui";
 import s from "./design-demo-styles";
@@ -24,15 +25,16 @@ export function PromptBlockRow({
   block,
   expanded,
   onToggle,
-  onLabelChange,
   onPositiveChange,
   onNegativeChange,
   onUnlink,
   onDelete,
+  column = "positive",
 }: {
   block: PromptBlockRowData;
   expanded: boolean;
   onToggle: () => void;
+  column?: "positive" | "negative";
   onLabelChange?: (label: string) => void;
   onPositiveChange?: (value: string) => void;
   onNegativeChange?: (value: string) => void;
@@ -41,47 +43,52 @@ export function PromptBlockRow({
 }) {
   const hue = parseHue(block.categoryColor);
   const color = `hsl(${hue} 70% 60%)`;
+  const text = column === "positive" ? block.positive : block.negative;
+  const [draft, setDraft] = useState(text);
+
+  function handleEdit() {
+    setDraft(text);
+    onToggle();
+  }
+
+  function handleBlur() {
+    if (column === "positive") {
+      onPositiveChange?.(draft);
+    } else {
+      onNegativeChange?.(draft);
+    }
+    onToggle();
+  }
 
   return (
     <div className={s.pbRow} data-expanded={expanded}>
-      <div className={s.pbRowGrip} aria-label="拖拽排序">
-        <GripVertical className="size-4" />
-      </div>
-      <span
-        className={s.pbCategory}
-        style={{ "--cat": color } as React.CSSProperties}
-      >
-        {block.categoryName}
-      </span>
-      <button
-        type="button"
-        className={s.pbRowMain}
-        onClick={onToggle}
-        aria-expanded={expanded}
-      >
+      <Button className={s.pbRowGrip} icon={GripVertical} iconOnly tone="subtle" ariaLabel="拖拽排序" />
+      <div className={s.pbRowMain}>
         <span className={s.pbRowTitleLine}>
           <strong>{block.label}</strong>
-          {block.presetName ? (
-            <em>
-              ← {block.presetName}
-              {block.variantName ? ` / ${block.variantName}` : ""}
-            </em>
-          ) : (
-            <em className={s.pbRowManualMark}>自定义</em>
-          )}
+          <span
+            className={s.pbCategory}
+            style={{ "--cat": color } as React.CSSProperties}
+          >
+            {block.categoryName}
+          </span>
         </span>
         <span className={s.pbRowPreview}>
           <span className={s.pbRowPreviewPlus}>+</span>
-          <code>{firstLine(block.positive) || "—"}</code>
-          {block.negative ? (
-            <>
-              <span className={s.pbRowPreviewMinus}>−</span>
-              <code>{firstLine(block.negative)}</code>
-            </>
-          ) : null}
+          <code>{firstLine(text) || "—"}</code>
         </span>
-      </button>
+      </div>
       <div className={s.pbRowActions}>
+        {!expanded ? (
+          <Button
+            className={s.iconGhostBtn}
+            icon={Pencil}
+            iconOnly
+            onClick={handleEdit}
+            ariaLabel={column === "positive" ? "编辑正向提示词" : "编辑负向提示词"}
+            tone="subtle"
+          />
+        ) : null}
         {block.kind === "preset" ? (
           <Button
             className={s.iconGhostBtn}
@@ -104,31 +111,15 @@ export function PromptBlockRow({
       {expanded ? (
         <div className={s.pbInlineBody}>
           <label className={s.pbField}>
-            <span>名称</span>
-            <input
-              type="text"
-              value={block.label}
-              onChange={(e) => onLabelChange?.(e.target.value)}
-              className={s.pbFieldInput}
-            />
-          </label>
-          <label className={s.pbField}>
-            <span>正向</span>
-            <textarea
-              value={block.positive}
-              onChange={(e) => onPositiveChange?.(e.target.value)}
-              rows={2}
-              className={s.pbFieldArea}
-            />
-          </label>
-          <label className={s.pbField}>
-            <span>负向</span>
-            <textarea
-              value={block.negative}
-              onChange={(e) => onNegativeChange?.(e.target.value)}
-              rows={2}
-              className={s.pbFieldArea}
-            />
+            <span>{column === "positive" ? "正向" : "负向"}</span>
+              <textarea
+                autoFocus
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onBlur={handleBlur}
+                rows={3}
+                className={s.pbFieldArea}
+              />
           </label>
         </div>
       ) : null}
@@ -187,9 +178,6 @@ export function CompiledPromptPreview({ groups }: { groups: CompiledPromptGroup[
                 <span className={s.compiledGroupTitle}>
                   {group.presetName ?? group.categoryName}
                 </span>
-                {group.variantName ? (
-                  <span className={s.compiledGroupVariant}>{group.variantName}</span>
-                ) : null}
               </div>
               <pre className={cx(s.compiledLine, s.compiledLinePositive)}>{renderLine(group.positive, "+")}</pre>
               <pre className={cx(s.compiledLine, s.compiledLineNegative)}>{renderLine(group.negative, "−")}</pre>

@@ -117,7 +117,7 @@ function SectionEditorInner({
 
   // Prompt blocks
   const [promptBlocks, setPromptBlocks] = useState<PromptBlockRowData[]>(initialPromptBlocks);
-  const [expandedBlockId, setExpandedBlockId] = useState<string | null>(null);
+  const [expandedBlockKey, setExpandedBlockKey] = useState<string | null>(null);
 
   // LoRA
   const [lora1, setLora1] = useState<LoraRowData[]>(initialLora1);
@@ -194,27 +194,27 @@ function SectionEditorInner({
       } else {
         const group = cat.groups?.find((g) => g.id === selection.id);
         if (!group) return;
+        const variants = mockVariants();
         setBindings((prev) => [
           ...prev,
-          {
-            id: `binding-${Date.now()}`,
-            kind: "group",
-            scope: "section",
+          ...Array.from({ length: group.memberCount }).map((_, i) => ({
+            id: `binding-${Date.now()}-${i}`,
+            kind: "group" as const,
+            scope: "section" as const,
             categoryId: cat.id,
             categoryName: cat.name,
             categoryColor: cat.color,
-            name: group.name,
-            blockCount: group.memberCount * 2,
-            loraCount: group.memberCount,
-            members: Array.from({ length: group.memberCount }).map((_, i) => ({
-              id: `m-${Date.now()}-${i}`,
-              presetName: `${group.name} 成员 ${i + 1}`,
-              variantName: "默认",
-              variants: mockVariants(),
-              detailHref: demoHref(`/presets/${group.id}`),
-            })),
-          },
+            name: `${group.name} #${i + 1}`,
+            variantId: variants[0]?.id,
+            variantName: variants[0]?.name,
+            blockCount: 1,
+            loraCount: i === 0 ? 1 : 0,
+            variants,
+            detailHref: demoHref(`/presets/${group.id}-${i}`),
+          })),
         ]);
+        flashSave();
+        return;
       }
 
       flashSave();
@@ -618,7 +618,6 @@ function SectionEditorInner({
                     );
                     flashSave();
                   }}
-                  onCopyName={() => flashSave()}
                   onUnlink={(b, memberId) => {
                     if (memberId) {
                       setBindings((prev) =>
@@ -658,48 +657,41 @@ function SectionEditorInner({
                 <h4>正向</h4>
               </div>
               <div className={s.pbList}>
-                {promptBlocks.map((block) => (
-                  <PromptBlockRow
-                    key={`pos-${block.id}`}
-                    block={block}
-                    expanded={expandedBlockId === block.id}
-                    onToggle={() =>
-                      setExpandedBlockId((id) => (id === block.id ? null : block.id))
-                    }
-                    onLabelChange={(v) => {
-                      setPromptBlocks((prev) =>
-                        prev.map((b) => (b.id === block.id ? { ...b, label: v } : b)),
-                      );
-                      flashSave();
-                    }}
-                    onPositiveChange={(v) => {
-                      setPromptBlocks((prev) =>
-                        prev.map((b) => (b.id === block.id ? { ...b, positive: v } : b)),
-                      );
-                      flashSave();
-                    }}
-                    onNegativeChange={(v) => {
-                      setPromptBlocks((prev) =>
-                        prev.map((b) => (b.id === block.id ? { ...b, negative: v } : b)),
-                      );
-                      flashSave();
-                    }}
-                    onUnlink={() => {
-                      setPromptBlocks((prev) =>
-                        prev.map((b) =>
-                          b.id === block.id
-                            ? { ...b, kind: "manual", presetName: undefined, variantName: undefined }
-                            : b,
-                        ),
-                      );
-                      flashSave();
-                    }}
-                    onDelete={() => {
-                      setPromptBlocks((prev) => prev.filter((b) => b.id !== block.id));
-                      flashSave();
-                    }}
-                  />
-                ))}
+                {promptBlocks
+                  .filter((block) => block.positive.trim().length > 0 || expandedBlockKey === `positive:${block.id}`)
+                  .map((block) => (
+                    <PromptBlockRow
+                      key={`pos-${block.id}`}
+                      block={block}
+                      expanded={expandedBlockKey === `positive:${block.id}`}
+                      column="positive"
+                      onToggle={() =>
+                        setExpandedBlockKey((key) =>
+                          key === `positive:${block.id}` ? null : `positive:${block.id}`,
+                        )
+                      }
+                      onPositiveChange={(v) => {
+                        setPromptBlocks((prev) =>
+                          prev.map((b) => (b.id === block.id ? { ...b, positive: v } : b)),
+                        );
+                        flashSave();
+                      }}
+                      onUnlink={() => {
+                        setPromptBlocks((prev) =>
+                          prev.map((b) =>
+                            b.id === block.id
+                              ? { ...b, kind: "manual", presetName: undefined, variantName: undefined }
+                              : b,
+                          ),
+                        );
+                        flashSave();
+                      }}
+                      onDelete={() => {
+                        setPromptBlocks((prev) => prev.filter((b) => b.id !== block.id));
+                        flashSave();
+                      }}
+                    />
+                  ))}
               </div>
             </div>
             <div>
@@ -708,15 +700,38 @@ function SectionEditorInner({
               </div>
               <div className={s.pbList}>
                 {promptBlocks
-                  .filter((b) => b.negative.trim().length > 0)
+                  .filter((b) => b.negative.trim().length > 0 || expandedBlockKey === `negative:${b.id}`)
                   .map((block) => (
                     <PromptBlockRow
                       key={`neg-${block.id}`}
-                      block={{ ...block, positive: block.negative, negative: "" }}
-                      expanded={false}
+                      block={block}
+                      expanded={expandedBlockKey === `negative:${block.id}`}
+                      column="negative"
                       onToggle={() =>
-                        setExpandedBlockId((id) => (id === block.id ? null : block.id))
+                        setExpandedBlockKey((key) =>
+                          key === `negative:${block.id}` ? null : `negative:${block.id}`,
+                        )
                       }
+                      onNegativeChange={(v) => {
+                        setPromptBlocks((prev) =>
+                          prev.map((b) => (b.id === block.id ? { ...b, negative: v } : b)),
+                        );
+                        flashSave();
+                      }}
+                      onUnlink={() => {
+                        setPromptBlocks((prev) =>
+                          prev.map((b) =>
+                            b.id === block.id
+                              ? { ...b, kind: "manual", presetName: undefined, variantName: undefined }
+                              : b,
+                          ),
+                        );
+                        flashSave();
+                      }}
+                      onDelete={() => {
+                        setPromptBlocks((prev) => prev.filter((b) => b.id !== block.id));
+                        flashSave();
+                      }}
                     />
                   ))}
               </div>
@@ -739,7 +754,7 @@ function SectionEditorInner({
                     kind: "manual",
                   },
                 ]);
-                setExpandedBlockId(id);
+                setExpandedBlockKey(`positive:${id}`);
                 flashSave();
               }}
             >

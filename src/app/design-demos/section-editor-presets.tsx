@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import type * as React from "react";
-import { ChevronDown, Search, Trash2, Unlink, ExternalLink, Copy as CopyIcon } from "lucide-react";
+import Link from "next/link";
+import { Search, Trash2, Unlink } from "lucide-react";
 
-import { Button, ButtonLink, SegmentedControl } from "./design-demo-ui";
+import { Button, SegmentedControl } from "./design-demo-ui";
 import s from "./design-demo-styles";
 import { cx } from "./design-demo-utils";
 import { parseHue } from "./section-editor-shared";
@@ -37,7 +38,6 @@ export type PresetBinding = {
 type PresetBindingRowProps = {
   binding: PresetBinding;
   onVariantChange?: (bindingId: string, variantId: string, memberId?: string) => void;
-  onCopyName?: (binding: PresetBinding) => void;
   onUnlink?: (binding: PresetBinding, memberId?: string) => void;
   onDelete?: (binding: PresetBinding) => void;
 };
@@ -45,42 +45,30 @@ type PresetBindingRowProps = {
 export function PresetBindingRow({
   binding,
   onVariantChange,
-  onCopyName,
   onUnlink,
   onDelete,
 }: PresetBindingRowProps) {
-  const [expanded, setExpanded] = useState(false);
   const hue = parseHue(binding.categoryColor);
   const color = `hsl(${hue} 70% 60%)`;
-  const isGroup = binding.kind === "group";
+  const isFromGroup = binding.kind === "group";
 
   return (
-    <div className={s.bindRow} data-expanded={expanded}>
-      <div className={s.bindRowMain}>
-        <div className={s.bindNameWrap}>
-          <span className={s.bindName}>
-            {binding.name}
-            <span
-              className={s.bindCategory}
-              style={{ "--cat": color } as React.CSSProperties}
-            >
-              {binding.categoryName}
-            </span>
-            {isGroup ? <span className={s.bindGroupChip}>组</span> : null}
-            {binding.scope === "project" ? (
-              <span className={s.bindScopeChip}>项目</span>
-            ) : null}
-          </span>
-          <span className={s.bindMeta}>
-            <b>{binding.blockCount}</b> 块 · <b>{binding.loraCount}</b> LoRA
-            {binding.variantName ? <> · {binding.variantName}</> : null}
-            {isGroup && binding.members ? <> · {binding.members.length} 个预制</> : null}
-          </span>
+    <div className={s.bindRow} style={{ position: "relative", paddingRight: 178 }}>
+      {binding.detailHref ? (
+        <Link className={s.bindRowMain} href={binding.detailHref}>
+          <PresetBindingSummary binding={binding} color={color} isFromGroup={isFromGroup} />
+        </Link>
+      ) : (
+        <div className={s.bindRowMain}>
+          <PresetBindingSummary binding={binding} color={color} isFromGroup={isFromGroup} />
         </div>
-      </div>
+      )}
 
-      <div className={s.bindRowControls}>
-        {!isGroup && binding.variants && binding.variants.length > 1 ? (
+      <div
+        className={s.bindRowControls}
+        style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)" }}
+      >
+        {binding.variants && binding.variants.length > 1 ? (
           <VariantSwitcher
             variants={binding.variants}
             currentVariantId={binding.variantId ?? binding.variants[0]?.id ?? ""}
@@ -88,46 +76,14 @@ export function PresetBindingRow({
           />
         ) : null}
 
-        {isGroup ? (
-          <Button
-            className={s.iconGhostBtn}
-            icon={ChevronDown}
-            iconOnly
-            onClick={() => setExpanded((v) => !v)}
-            ariaLabel={expanded ? "收起组内预制" : "展开组内预制"}
-            pressed={expanded}
-            tone="subtle"
-          />
-        ) : null}
-
-        {binding.detailHref ? (
-          <ButtonLink
-            href={binding.detailHref}
-            className={s.iconGhostBtn}
-            icon={ExternalLink}
-            iconOnly
-            ariaLabel="跳转预制详情"
-            tone="subtle"
-          />
-        ) : null}
         <Button
           className={s.iconGhostBtn}
-          icon={CopyIcon}
+          icon={Unlink}
           iconOnly
-          onClick={() => onCopyName?.(binding)}
-          ariaLabel="作为小节名"
+          onClick={() => onUnlink?.(binding)}
+          ariaLabel="单独解绑"
           tone="subtle"
         />
-        {!isGroup ? (
-          <Button
-            className={s.iconGhostBtn}
-            icon={Unlink}
-            iconOnly
-            onClick={() => onUnlink?.(binding)}
-            ariaLabel="单独解绑"
-            tone="subtle"
-          />
-        ) : null}
         <Button
           className={s.iconGhostBtn}
           icon={Trash2}
@@ -138,36 +94,35 @@ export function PresetBindingRow({
         />
       </div>
 
-      {isGroup && expanded && binding.members ? (
-        <div className={s.bindMembers}>
-          {binding.members.map((m) => (
-            <div key={m.id} className={s.bindMemberRow}>
-              <span className={s.bindMemberDot} aria-hidden />
-              <span className={s.bindMemberName}>{m.presetName}</span>
-              {m.variants && m.variants.length > 1 ? (
-                <VariantSwitcher
-                  variants={m.variants}
-                  currentVariantId={m.variantId ?? m.variants[0]?.id ?? ""}
-                  onChange={(vid) => onVariantChange?.(binding.id, vid, m.id)}
-                />
-              ) : (
-                <span className={s.bindMemberVariant}>{m.variantName ?? "默认"}</span>
-              )}
-              {m.detailHref ? (
-                <ButtonLink href={m.detailHref} className={s.iconGhostBtn} icon={ExternalLink} iconOnly ariaLabel="预制详情" tone="subtle" />
-              ) : null}
-              <Button
-                className={s.iconGhostBtn}
-                icon={Unlink}
-                iconOnly
-                onClick={() => onUnlink?.(binding, m.id)}
-                ariaLabel="仅移除该成员"
-                tone="subtle"
-              />
-            </div>
-          ))}
-        </div>
-      ) : null}
+    </div>
+  );
+}
+
+function PresetBindingSummary({
+  binding,
+  color,
+  isFromGroup,
+}: {
+  binding: PresetBinding;
+  color: string;
+  isFromGroup: boolean;
+}) {
+  return (
+    <div className={s.bindNameWrap}>
+      <span className={s.bindName}>
+        {binding.name}
+        <span
+          className={s.bindCategory}
+          style={{ "--cat": color } as React.CSSProperties}
+        >
+          {binding.categoryName}
+        </span>
+        {isFromGroup ? <span className={s.bindGroupChip}>组</span> : null}
+      </span>
+      <span className={s.bindMeta}>
+        <b>{binding.blockCount}</b> 块 · <b>{binding.loraCount}</b> LoRA
+        {binding.variantName ? <> · {binding.variantName}</> : null}
+      </span>
     </div>
   );
 }
