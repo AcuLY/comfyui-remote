@@ -1,4 +1,4 @@
-import s from "../design-demo.module.css";
+import s from "../styles/shell.module.css";
 
 export default function Loading() {
   return (

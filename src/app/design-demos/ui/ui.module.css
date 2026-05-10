@@ -311,6 +311,10 @@
   font-size: 11px;
 }
 
+.toastSuccess {
+  border-color: var(--ui-glass-accent-border);
+}
+
 .toastWarning {
   border-color: rgba(251, 191, 36, 0.35);
 }

@@ -2,7 +2,7 @@
 
 import { SectionHeader, SectionTabs } from "../section-editor-components";
 import { demoHref, rawSectionId } from "../design-demo-utils";
-import s from "../design-demo.module.css";
+import s from "../styles/section-editor.module.css";
 import type { SectionEditorLoadedProps } from "./types";
 import { HistoryPanel } from "./history-panel";
 import { LightboxPreview } from "./lightbox-preview";

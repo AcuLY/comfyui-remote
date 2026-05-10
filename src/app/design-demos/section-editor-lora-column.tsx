@@ -3,7 +3,7 @@
 import { Plus } from "lucide-react";
 
 import { Button } from "./ui/button";
-import s from "./design-demo.module.css";
+import s from "./styles/section-editor.module.css";
 import { LORA_FILE_OPTIONS } from "./section-editor-page-data";
 import { LoraRow, type LoraRowData } from "./section-editor-components";
 

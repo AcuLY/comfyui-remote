@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 
 import type { DemoData } from "./design-demo-data";
-import s from "./design-demo.module.css";
+import s from "./styles/shell.module.css";
 import { Button } from "./ui/button";
 import { DemoFeedbackProvider } from "./ui/demo-feedback-provider";
 import {

@@ -6,7 +6,7 @@ import { ChevronDown, AlertCircle } from "lucide-react";
 
 import { FloatingSelect } from "./ui/floating-select";
 import { SegmentedControl } from "./ui/segmented-control";
-import s from "./design-demo.module.css";
+import s from "./styles/section-editor.module.css";
 import { cx } from "./design-demo-utils";
 export type SectionTabValue = "params" | "presets" | "prompts" | "lora" | "history" | "results";
 

@@ -5,7 +5,7 @@ import { GripVertical, X, Unlink, Zap } from "lucide-react";
 
 import { Button } from "./ui/button";
 import { Switch } from "./ui/switch";
-import s from "./design-demo.module.css";
+import s from "./styles/section-editor.module.css";
 import { cx } from "./design-demo-utils";
 import { parseHue } from "./section-editor-shared";
 import { SelectChip, StepperInput } from "./section-editor-controls";
@@ -46,14 +46,7 @@ export function LoraRow({
   const color = `hsl(${hue} 70% 60%)`;
 
   return (
-    <div
-      className={cx(s.loraRow, s.sectionLoraRow)}
-      data-enabled={entry.enabled}
-      style={{
-        gridTemplateColumns: "22px minmax(0, 1fr) auto",
-        gridTemplateAreas: '"grip main actions" "grip weight weight"',
-      }}
-    >
+    <div className={cx(s.loraRow, s.sectionLoraRow, s.sectionLoraRowCompact)} data-enabled={entry.enabled}>
       <span className={s.loraRowGrip}>
         <Button icon={GripVertical} iconOnly tone="subtle" ariaLabel="拖拽排序" size="sm" />
       </span>

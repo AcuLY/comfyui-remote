@@ -6,11 +6,12 @@ This directory implements the routable `/design-demos` frontend shell.
 
 - `[[...route]]/page.tsx`: optional catch-all route for every product page shell.
 - `[[...route]]/loading.tsx`: local route skeleton that uses the same glass design system.
-- `design-demo-data.ts`: server-side mock loader. It reads `.env`, opens the local SQLite database when available, scans `MODEL_BASE_DIR`, and returns browser-safe mock data.
+- `design-demo-data.ts`: public data entrypoint backed by modules in `data/`.
 - `design-demo-client.tsx`: client shell, navigation, route dispatch, and remaining page skeletons.
 - `ui/`: reusable UI primitives, feedback toasts, image grids, and shared lightbox behavior.
-- `design-demo.module.css`: temporary scoped CSS Module for the current route and feature surfaces while feature modules are split.
-- `design-demo-utils.ts`: route mapping, shared types, navigation metadata, and browser-safe data helpers.
+- `styles/`: feature CSS Modules for shell, showcase, runs, projects, library pages, models, and section editor.
+- `design-demo-utils.ts`: public utility entrypoint backed by modules in `utils/`.
+- `component-showcase/`, `runs/`, `projects/`, `presets/`, `templates/`, `batch-create/`, `models/`, `system/`, `section-editor/`: feature modules behind the route facades.
 - `IMAGE_SURFACES.md`: inventory of every routed demo page and panel that renders generated images.
 - `runs-page.tsx`: task workbench and run review pages.
 - `FRONTEND_RULES.md`: demo-only frontend rules for component boundaries, CSS Modules, Tailwind usage, and migration checks.

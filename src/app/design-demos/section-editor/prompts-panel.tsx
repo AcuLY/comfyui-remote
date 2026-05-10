@@ -7,7 +7,7 @@ import {
   CompiledPromptPreview,
   PromptBlockRow,
 } from "../section-editor-components";
-import s from "../design-demo.module.css";
+import s from "../styles/section-editor.module.css";
 import type { SectionEditorModel } from "./use-section-editor-state";
 
 export function PromptsPanel({ editor }: { editor: SectionEditorModel }) {

@@ -24,9 +24,9 @@ The design demo shell is a standalone frontend prototype area. It should be easi
 Use these layers and keep ownership clear:
 
 1. `ui/`: reusable demo UI primitives.
-2. `section-editor-*`, `project-*`, `runs-*`, `preset-*`: feature components.
-3. `component-showcase-page.tsx`: showcase composition only.
-4. `design-demo.module.css`: temporary scoped compatibility module while feature CSS Modules are split.
+2. Feature folders such as `projects/`, `runs/`, `presets/`, `templates/`, `section-editor/`, `models/`, `system/`, and `component-showcase/`.
+3. Route entry files such as `project-pages.tsx` and `component-showcase-page.tsx`: public facades or composition only.
+4. `styles/*.module.css`: feature-owned CSS Modules. These modules are imported by the owning feature/page only.
 
 New reusable controls belong in `ui/`, not inside a feature page.
 
@@ -85,8 +85,6 @@ Not allowed:
 - State utilities, arbitrary values, or long utility strings.
 - `cn`, `twMerge`, `cva`, or shadcn/Tailwind-style variant composition for demo components.
 
-Current Tailwind utility uses are migration debt. Do not add more, and remove nearby utility classes whenever touching a file.
-
 Before `/design-demos` can be treated as production-ready, these checks must pass with zero code matches:
 
 ```powershell
@@ -103,20 +101,11 @@ The component showcase must demonstrate real reusable components, not custom sho
 - Showcase samples should avoid passing feature CSS classes into primitives.
 - If a component cannot be displayed correctly without extra showcase CSS, the primitive is not reusable enough yet.
 
-## Legacy CSS Rules
-
-`design-demo.module.css` is a temporary compatibility layer.
-
-- It may continue to style existing page shells and feature layouts while Phase 4 is in progress.
-- It should not be used by new `ui/` primitives.
-- Do not add new generic primitive classes there, such as `.button`, `.switch`, `.tabs`, or `.input`.
-- Gradually split it into feature-owned CSS Modules.
-
 ## Refactor Checklist
 
 Before finishing a demo frontend change, check:
 
-- `rg "design-demo.module.css" src/app/design-demos/ui` returns no matches.
+- No old compatibility barrels, global style proxies, or route-level monolithic style modules are imported.
 - Touched demo files do not use Tailwind utility strings.
 - Existing primitives are customized through props, not feature CSS classes.
 - `component-showcase-page.tsx` imports primitives from `./ui/<component>`.
@@ -132,5 +121,5 @@ The target state is:
 - `ui/` owns reusable demo primitives and their CSS Module styles.
 - Feature files own feature composition and layout only.
 - `component-showcase-page.tsx` is split into smaller showcase modules.
-- `design-demo.module.css` is split into feature modules and then removed.
+- Feature styles are split into explicit CSS Modules under `styles/`.
 - Tailwind utilities are fully removed from demo code before the demo shell is officially enabled.

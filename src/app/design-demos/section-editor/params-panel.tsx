@@ -11,7 +11,7 @@ import {
   UpscaleControl,
 } from "../section-editor-components";
 import { CHECKPOINT_OPTIONS } from "../section-editor-page-data";
-import s from "../design-demo.module.css";
+import s from "../styles/section-editor.module.css";
 import local from "./section-editor.module.css";
 import type { SectionEditorModel } from "./use-section-editor-state";
 

@@ -20,20 +20,17 @@ Completed in this cleanup pass:
 
 - Demo pages import UI primitives from `ui/<component>` files directly.
 - The legacy UI compatibility barrel was removed.
-- The legacy `ui/index.ts` barrel was removed.
+- The previous UI index barrel was removed.
 - Tailwind-like icon utility strings were replaced with semantic CSS classes such as `.iconMd`, `.iconSm`, and `.iconSubtle`.
 - The string-based style proxy was removed from runtime imports.
 - The layout no longer imports a global demo style aggregate.
-- Existing demo route styles now enter through a scoped CSS Module.
-
-Remaining cleanup debt:
-
-- `design-demo.module.css` is intentionally a temporary compatibility module and is too large.
-- `component-showcase-page.tsx` still needs to be split by showcase route group.
-- `section-editor-page.tsx` still needs to be split into page composition, params, results, history, and import modules.
-- `design-demo-data.ts` still needs to be split into fixtures, local database loading, filesystem scanning, and shape transforms.
-- `design-demo-utils.ts` still needs to be split into route mapping, navigation metadata, status helpers, and image helpers.
-- Feature CSS should move from the temporary compatibility module into feature-level CSS Modules.
+- Existing demo route styles now enter through explicit feature CSS Modules under `styles/`.
+- The old monolithic route-level style module was removed.
+- `component-showcase-page.tsx` was split by showcase route group.
+- `section-editor-page.tsx` was split into page composition, params, results, history, lightbox, and import modules.
+- `design-demo-data.ts` was split into data loading, fixtures, filesystem scanning, and shape transforms.
+- `design-demo-utils.ts` was split into route mapping, navigation metadata, status helpers, image helpers, and preset-library helpers.
+- Large feature pages were split into route facades plus folders for runs, projects, presets, templates, batch-create, models, system, and icon showcase.
 
 ## Phase 1: Baseline And Rules
 
@@ -52,11 +49,10 @@ git diff -- src/app/globals.css
 
 Status: done for the active import path.
 
-Follow-up:
+Ongoing rule:
 
-- Continue moving primitive-only style from the temporary compatibility module into `ui/ui.module.css`.
 - Keep each primitive self-contained.
-- Remove `className`-driven primitive visual overrides in favor of component props.
+- Remove future `className`-driven primitive visual overrides in favor of component props.
 
 ## Phase 3: Tailwind Zero Dependency
 
@@ -69,41 +65,33 @@ Follow-up:
 
 ## Phase 4: Feature CSS Modules
 
-Status: partially complete.
+Status: done for the active code path.
 
-Next steps:
+Current modules:
 
-1. Split `design-demo.module.css` by feature:
-   - shell
-   - showcase
-   - runs
-   - projects
-   - presets
-   - templates
-   - models
-   - section editor
-   - system/settings
-2. Import feature modules directly from the owning feature file.
-3. Keep shared tokens as custom properties on the shell/root demo surface.
-4. Delete selectors that only existed to patch primitive internals.
+- `styles/shell.module.css`
+- `styles/showcase.module.css`
+- `styles/runs.module.css`
+- `styles/projects.module.css`
+- `styles/library.module.css`
+- `styles/models.module.css`
+- `styles/section-editor.module.css`
+
+Ongoing rule:
+
+- Import feature modules directly from the owning feature file.
+- Keep shared tokens as custom properties on the shell/root demo surface.
+- Do not add selectors that patch primitive internals from feature CSS.
 
 ## Phase 5: Large File Split
 
-Status: pending.
+Status: done for the primary route and feature surfaces.
 
-Targets:
-
-- `component-showcase-page.tsx`
-- `section-editor-page.tsx`
-- `design-demo-data.ts`
-- `design-demo-utils.ts`
-- large feature CSS modules after Phase 4
-
-The split must preserve route behavior, mock data shape, selected states, filters, lightboxes, and browser-visible UI.
+The split preserved route behavior, mock data shape, selected states, filters, lightboxes, and browser-visible UI.
 
 ## Phase 6: Dependency Removal Readiness
 
-Status: pending final proof.
+Status: ready for separate dependency-removal work after final build and route checks.
 
 Required before removing dependencies:
 

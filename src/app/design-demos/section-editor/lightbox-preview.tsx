@@ -2,7 +2,7 @@
 
 import { Check, Star, Trash2 } from "lucide-react";
 
-import s from "../design-demo.module.css";
+import s from "../styles/section-editor.module.css";
 import { ImagePreviewLarge } from "../ui/image-preview-large";
 import type { SectionEditorModel } from "./use-section-editor-state";
 

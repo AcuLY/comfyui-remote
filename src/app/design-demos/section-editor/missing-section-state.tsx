@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 
-import s from "../design-demo.module.css";
+import s from "../styles/section-editor.module.css";
 import { demoHref } from "../design-demo-utils";
 
 export function MissingSectionState() {
