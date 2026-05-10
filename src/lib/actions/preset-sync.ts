@@ -3,9 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
+import {
+  parseSectionLoraConfig,
+  serializeSectionLoraConfig,
+  type LoraEntry,
+} from "@/lib/lora-types";
 import { getDetachedPresetPaths } from "@/lib/preset-binding-utils";
 import { recordSectionChange } from "@/server/services/section-change-history-service";
-import { sortSectionLoraEntriesByCategoryOrder } from "./_helpers";
+import { createLoraEntryId, sortSectionLoraEntriesByCategoryOrder } from "./_helpers";
 import { resolveVariantContent } from "./preset-variant";
 
 // ---------------------------------------------------------------------------
@@ -21,8 +26,6 @@ export type PresetUsageInfo = {
   }>;
   totalBlocks: number;
 };
-
-type SectionLoraJsonEntry = Record<string, unknown>;
 
 // ---------------------------------------------------------------------------
 // Preset usage check + cascade operations
@@ -223,56 +226,50 @@ export async function syncPresetToSections(presetId: string) {
         where: { id: block.projectSectionId },
         select: { loraConfig: true },
       });
-      if (!section?.loraConfig) continue;
+      if (!section) continue;
 
-      const config = section.loraConfig as {
-        lora1?: SectionLoraJsonEntry[];
-        lora2?: SectionLoraJsonEntry[];
-      };
-      let changed = false;
-      const makeLora = (b: { path: string; weight: number; enabled: boolean }) => ({
-        id: `lora-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+      const beforeLoraConfig = section.loraConfig ?? null;
+      const config = parseSectionLoraConfig(section.loraConfig);
+      const currentConfig = serializeSectionLoraConfig(config);
+      const makeLora = (b: { path: string; weight: number; enabled: boolean }): LoraEntry => ({
+        id: createLoraEntryId(),
         path: b.path, weight: b.weight, enabled: b.enabled,
         source: "preset", sourceLabel: preset.category.name,
-        sourceColor: preset.category.color, sourceName: preset.name,
+        sourceColor: preset.category.color ?? undefined, sourceName: preset.name,
         bindingId: block.bindingId,
         groupBindingId: block.groupBindingId ?? undefined,
       });
-      if (Array.isArray(config.lora1)) {
-        const detachedPaths = getDetachedPresetPaths(config.lora1, block.bindingId);
-        const nextPresetLoras = resolved.lora1
-          .filter((entry) => !detachedPaths.has(entry.path))
-          .map(makeLora);
-        config.lora1 = sortSectionLoraEntriesByCategoryOrder(
-          [...config.lora1.filter((e) => e.bindingId !== block.bindingId), ...nextPresetLoras],
-          "lora1Order",
-          categoryOrderByName,
-        );
-        changed = true;
-      }
-      if (Array.isArray(config.lora2)) {
-        const detachedPaths = getDetachedPresetPaths(config.lora2, block.bindingId);
-        const nextPresetLoras = resolved.lora2
-          .filter((entry) => !detachedPaths.has(entry.path))
-          .map(makeLora);
-        config.lora2 = sortSectionLoraEntriesByCategoryOrder(
-          [...config.lora2.filter((e) => e.bindingId !== block.bindingId), ...nextPresetLoras],
-          "lora2Order",
-          categoryOrderByName,
-        );
-        changed = true;
-      }
+      const detachedLora1Paths = getDetachedPresetPaths(config.lora1, block.bindingId);
+      const detachedLora2Paths = getDetachedPresetPaths(config.lora2, block.bindingId);
+      const nextPresetLora1 = resolved.lora1
+        .filter((entry) => !detachedLora1Paths.has(entry.path))
+        .map(makeLora);
+      const nextPresetLora2 = resolved.lora2
+        .filter((entry) => !detachedLora2Paths.has(entry.path))
+        .map(makeLora);
+      config.lora1 = sortSectionLoraEntriesByCategoryOrder(
+        [...config.lora1.filter((e) => e.bindingId !== block.bindingId), ...nextPresetLora1],
+        "lora1Order",
+        categoryOrderByName,
+      );
+      config.lora2 = sortSectionLoraEntriesByCategoryOrder(
+        [...config.lora2.filter((e) => e.bindingId !== block.bindingId), ...nextPresetLora2],
+        "lora2Order",
+        categoryOrderByName,
+      );
+      const nextConfig = serializeSectionLoraConfig(config);
+      const changed = JSON.stringify(currentConfig) !== JSON.stringify(nextConfig);
       if (changed) {
         await prisma.projectSection.update({
           where: { id: block.projectSectionId },
-          data: { loraConfig: config as Prisma.InputJsonValue },
+          data: { loraConfig: nextConfig as Prisma.InputJsonValue },
         });
         await recordSectionChange({
           sectionId: block.projectSectionId,
           dimension: "lora",
           title: `同步预制 LoRA：${label}`,
-          before: section.loraConfig,
-          after: config,
+          before: beforeLoraConfig,
+          after: nextConfig,
         });
       }
     }
