@@ -14,7 +14,7 @@ import {
 
 import type { DemoData } from "./design-demo-data";
 import s from "./design-demo-styles";
-import { DemoFeedbackProvider } from "./design-demo-ui";
+import { Button, DemoFeedbackProvider } from "./design-demo-ui";
 import {
   DESIGN_DEMO_SFW_STORAGE_KEY,
   DESIGN_DEMO_THEME_STORAGE_KEY,
@@ -68,14 +68,13 @@ function Sidebar({
     <aside className={cx(s.sidebar, collapsed && s.sidebarCollapsed, open && s.sidebarOpen)}>
       <div className={s.brand}>
         <div className={s.brandTop}>
-          <button
+          <Button
             className={cx(s.button, s.iconButton, s.sidebarCollapseButton)}
-            type="button"
+            icon={Menu}
+            iconOnly
             onClick={open ? onClose : onToggleCollapsed}
-            aria-label={open || !collapsed ? "收起侧边栏" : "展开侧边栏"}
-          >
-            <Menu className="size-4" />
-          </button>
+            ariaLabel={open || !collapsed ? "收起侧边栏" : "展开侧边栏"}
+          />
           <div className={cx(s.toolbar, s.brandIdentity)}>
             <div className={s.brandName}>
               <strong>ComfyUI Manager</strong>
@@ -208,29 +207,27 @@ function MobileTopbar({
 
   return (
     <div className={s.mobileTopbar}>
-      <button
+      <Button
         className={cx(s.button, s.iconButton, s.mobileTopbarButton)}
-        type="button"
+        icon={Menu}
+        iconOnly
         onClick={onOpenMenu}
-        aria-expanded={menuOpen}
-        aria-label="打开导航菜单"
-      >
-        <Menu className="size-4" />
-      </button>
+        pressed={menuOpen}
+        ariaLabel="打开导航菜单"
+      />
       <div className={s.mobileTopbarTitle}>
         <strong>{activeLabel}</strong>
         <span>ComfyUI Manager</span>
       </div>
       <div className={s.mobileTopbarTools}>
-        <button
+        <Button
           className={cx(s.button, s.iconButton, s.mobileTopbarButton)}
-          type="button"
+          icon={MoreHorizontal}
+          iconOnly
           onClick={onToggleTools}
-          aria-expanded={toolsOpen}
-          aria-label="打开显示设置"
-        >
-          <MoreHorizontal className="size-4" />
-        </button>
+          pressed={toolsOpen}
+          ariaLabel="打开显示设置"
+        />
         {toolsOpen ? (
           <div className={s.mobileToolsMenu} role="menu" aria-label="显示设置">
             <button

@@ -6,7 +6,7 @@ import { Activity, ArrowRight, ClipboardList, Gauge, History, Home, Lock, Monito
 
 import type { DemoData } from "./design-demo-data";
 import s from "./design-demo-styles";
-import { Button, ButtonLink, DemoTabs, Field, OperationStateStrip, PageHeader, Panel, RouteTable, StatusBadge } from "./design-demo-ui";
+import { Button, ButtonLink, DemoTabs, Field, OperationStateStrip, PageHeader, Panel, RouteTable, SegmentedControl, StatusBadge } from "./design-demo-ui";
 import { cx, demoHref } from "./design-demo-utils";
 import type { LogDemoSource } from "./design-demo-utils";
 export function SettingsPage({ data }: { data: DemoData }) {
@@ -127,18 +127,14 @@ export function LogsPage({ data }: { data: DemoData }) {
             value={level}
             onChange={setLevel}
           />
-          <div className={s.logModuleChips}>
-            {modules.map((moduleName) => (
-              <button
-                className={cx(s.logModuleChip, moduleFilter === moduleName && s.logModuleChipActive)}
-                key={moduleName}
-                type="button"
-                onClick={() => setModuleFilter(moduleName)}
-              >
-                {moduleName === "all" ? "全部模块" : moduleName}
-              </button>
-            ))}
-          </div>
+          <SegmentedControl
+            ariaLabel="日志模块"
+            className={s.logModuleChips}
+            compact
+            items={modules.map((moduleName) => ({ value: moduleName, label: moduleName === "all" ? "全部模块" : moduleName }))}
+            onChange={setModuleFilter}
+            value={moduleFilter}
+          />
         </section>
         <section className={s.logViewerPanel}>
           <div className={s.logViewerHeader}>
@@ -191,10 +187,16 @@ export function MonitorPage({ data }: { data: DemoData }) {
                 <strong>{mode === "managed" ? "托管进程" : "外部 ComfyUI"}</strong>
                 <span>{mode === "managed" ? "由本应用启动和重启 ComfyUI" : "连接已由用户维护的外部服务"}</span>
               </div>
-              <div className={s.segmented}>
-                <button className={cx(s.segment, mode === "managed" && s.segmentActive)} type="button" onClick={() => setMode("managed")}>托管</button>
-                <button className={cx(s.segment, mode === "external" && s.segmentActive)} type="button" onClick={() => setMode("external")}>外部</button>
-              </div>
+              <SegmentedControl
+                ariaLabel="ComfyUI 连接模式"
+                items={[
+                  { value: "managed", label: "托管" },
+                  { value: "external", label: "外部" },
+                ]}
+                onChange={setMode}
+                role="tablist"
+                value={mode}
+              />
             </div>
             <div className={s.monitorStatusGrid}>
               <div className={s.monitorStatusRow}>

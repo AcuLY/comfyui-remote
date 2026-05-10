@@ -6,6 +6,7 @@ import {
   MoreVertical, Edit2, Trash2, Move, X, Check,
   Folder, ArrowLeft, Plus
 } from 'lucide-react';
+import { Button, SegmentedControl, StatusBadge } from './design-demo-ui';
 import styles from './design-demo-styles';
 
 interface FileItem {
@@ -107,25 +108,21 @@ export function ModelsPage() {
         </div>
 
         <div className={styles.toolbar}>
-          <button
-            type="button"
-            className={styles.button}
+          <Button
+            icon={Upload}
             onClick={handleUpload}
             disabled={isUploading}
           >
-            <Upload className="size-4" />
             {isUploading ? '上传中...' : '上传文件'}
-          </button>
+          </Button>
 
-          <button type="button" className={styles.button}>
-            <Plus className="size-4" />
+          <Button icon={Plus}>
             新建文件夹
-          </button>
+          </Button>
 
-          <button type="button" className={styles.button}>
-            <Search className="size-4" />
+          <Button icon={Search}>
             扫描目录
-          </button>
+          </Button>
         </div>
       </header>
 
@@ -134,22 +131,16 @@ export function ModelsPage() {
         {/* Left: File Browser */}
         <div className={styles.modelsBrowser}>
           {/* Model Type Tabs */}
-          <div className={styles.segmented}>
-            <button
-              className={`${styles.segment} ${activeTab === 'lora' ? styles.segmentActive : ''}`}
-              type="button"
-              onClick={() => setActiveTab('lora')}
-            >
-              LoRA
-            </button>
-            <button
-              className={`${styles.segment} ${activeTab === 'checkpoint' ? styles.segmentActive : ''}`}
-              type="button"
-              onClick={() => setActiveTab('checkpoint')}
-            >
-              Checkpoint
-            </button>
-          </div>
+          <SegmentedControl
+            ariaLabel="模型类型"
+            items={[
+              { value: 'lora', label: 'LoRA' },
+              { value: 'checkpoint', label: 'Checkpoint' },
+            ]}
+            onChange={setActiveTab}
+            role="tablist"
+            value={activeTab}
+          />
 
           {/* Breadcrumb Navigation */}
           <div className={styles.breadcrumb}>
@@ -178,13 +169,14 @@ export function ModelsPage() {
               className={styles.searchInput}
             />
             {searchQuery && (
-              <button
-                type="button"
+              <Button
+                icon={X}
+                iconOnly
                 onClick={() => setSearchQuery('')}
                 className={styles.searchClear}
-              >
-                <X className="size-3" />
-              </button>
+                ariaLabel="清除搜索"
+                tone="subtle"
+              />
             )}
           </div>
 
@@ -233,16 +225,17 @@ export function ModelsPage() {
                   )}
 
                   {file.type === 'file' && (
-                    <button
-                      type="button"
+                    <Button
                       className={styles.fileAction}
+                      icon={MoreVertical}
+                      iconOnly
                       onClick={(e) => {
                         e.stopPropagation();
                         setShowMoveDialog(true);
                       }}
-                    >
-                      <MoreVertical className="size-4" />
-                    </button>
+                      ariaLabel="文件操作"
+                      tone="subtle"
+                    />
                   )}
                 </div>
               ))}
@@ -253,10 +246,9 @@ export function ModelsPage() {
             <div className={styles.emptyState}>
               <FolderOpen className="size-8 opacity-20" />
               <p>当前目录为空</p>
-              <button type="button" className={styles.button} onClick={handleUpload}>
-                <Upload className="size-4" />
+              <Button icon={Upload} onClick={handleUpload}>
                 上传文件
-              </button>
+              </Button>
             </div>
           )}
         </div>
@@ -266,13 +258,14 @@ export function ModelsPage() {
           <div className={styles.detailsPanel}>
             <div className={styles.detailsHeader}>
               <h3 className={styles.detailsTitle}>文件信息</h3>
-              <button
-                type="button"
+              <Button
                 className={styles.iconButton}
+                icon={X}
+                iconOnly
                 onClick={() => setSelectedFile(null)}
-              >
-                <X className="size-4" />
-              </button>
+                ariaLabel="关闭文件信息"
+                tone="subtle"
+              />
             </div>
 
             <div className={styles.detailsContent}>
@@ -299,9 +292,7 @@ export function ModelsPage() {
               {/* Model Type */}
               <div className={styles.detailsSection}>
                 <label className={styles.detailsLabel}>类型</label>
-                <div className={styles.badge}>
-                  {selectedFile.modelType === 'lora' ? 'LoRA' : 'Checkpoint'}
-                </div>
+                <StatusBadge status={selectedFile.modelType === 'lora' ? 'review' : 'ready'} label={selectedFile.modelType === 'lora' ? 'LoRA' : 'Checkpoint'} />
               </div>
 
               {/* Trigger Words (LoRA only) */}
@@ -321,17 +312,14 @@ export function ModelsPage() {
               <div className={styles.detailsSection}>
                 <div className={styles.detailsSectionHeader}>
                   <label className={styles.detailsLabel}>备注</label>
-                  <button
-                    type="button"
+                  <Button
                     className={styles.iconButton}
+                    icon={editingNotes ? Check : Edit2}
+                    iconOnly
                     onClick={() => setEditingNotes(!editingNotes)}
-                  >
-                    {editingNotes ? (
-                      <Check className="size-3" />
-                    ) : (
-                      <Edit2 className="size-3" />
-                    )}
-                  </button>
+                    ariaLabel={editingNotes ? '完成备注编辑' : '编辑备注'}
+                    tone="subtle"
+                  />
                 </div>
                 {editingNotes ? (
                   <textarea
@@ -349,18 +337,12 @@ export function ModelsPage() {
 
               {/* Actions */}
               <div className={styles.detailsActions}>
-                <button
-                  type="button"
-                  className={styles.button}
-                  onClick={() => setShowMoveDialog(true)}
-                >
-                  <Move className="size-4" />
+                <Button icon={Move} onClick={() => setShowMoveDialog(true)}>
                   移动文件
-                </button>
-                <button type="button" className={styles.buttonDanger}>
-                  <Trash2 className="size-4" />
+                </Button>
+                <Button tone="danger" icon={Trash2}>
                   删除文件
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -373,13 +355,14 @@ export function ModelsPage() {
           <div className={styles.dialog} onClick={(e) => e.stopPropagation()}>
             <div className={styles.dialogHeader}>
               <h3 className={styles.dialogTitle}>移动文件</h3>
-              <button
-                type="button"
+              <Button
                 className={styles.iconButton}
+                icon={X}
+                iconOnly
                 onClick={() => setShowMoveDialog(false)}
-              >
-                <X className="size-4" />
-              </button>
+                ariaLabel="关闭移动文件对话框"
+                tone="subtle"
+              />
             </div>
             <div className={styles.dialogContent}>
               <p className={styles.dialogDescription}>
@@ -402,20 +385,12 @@ export function ModelsPage() {
               </div>
             </div>
             <div className={styles.dialogFooter}>
-              <button
-                type="button"
-                className={styles.button}
-                onClick={() => setShowMoveDialog(false)}
-              >
+              <Button tone="subtle" onClick={() => setShowMoveDialog(false)}>
                 取消
-              </button>
-              <button
-                type="button"
-                className={styles.buttonPrimary}
-                onClick={() => setShowMoveDialog(false)}
-              >
+              </Button>
+              <Button tone="primary" onClick={() => setShowMoveDialog(false)}>
                 移动
-              </button>
+              </Button>
             </div>
           </div>
         </div>

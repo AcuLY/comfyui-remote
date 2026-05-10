@@ -325,9 +325,7 @@ function PresetCategorySidebar({
           <span>分类管理</span>
           <strong>{categories.length} 个分类</strong>
         </div>
-        <Link className={s.iconMiniButton} href={demoHref("/presets/categories/new")} aria-label="新建分类">
-          <Plus className={s.icon} />
-        </Link>
+        <ButtonLink className={s.iconMiniButton} href="/presets/categories/new" icon={Plus} iconOnly ariaLabel="新建分类" tone="subtle" />
       </div>
       <div className={s.presetCategoryList}>
         {categories.map((category) => {
@@ -347,12 +345,8 @@ function PresetCategorySidebar({
                   </span>
                 </button>
                 <div className={s.presetCategoryActions}>
-                  <Link href={demoHref(`/presets/categories/${category.id}/edit`)} aria-label="编辑分类">
-                    <Edit3 className={s.icon} />
-                  </Link>
-                  <button type="button" aria-label="删除分类" disabled={categoryItemCount(category) > 0}>
-                    <Trash2 className={s.icon} />
-                  </button>
+                  <ButtonLink href={`/presets/categories/${category.id}/edit`} icon={Edit3} iconOnly ariaLabel="编辑分类" tone="subtle" />
+                  <Button tone="danger" icon={Trash2} iconOnly ariaLabel="删除分类" disabled={categoryItemCount(category) > 0} />
                 </div>
               </div>
             </div>
@@ -402,16 +396,14 @@ function PresetCategoryEditor({ category, categories }: { category: DemoCategory
         <div className={s.slotEditor}>
           <div className={s.slotEditorHeader}>
             <strong>默认槽位</strong>
-            <button type="button"><Plus className={s.icon} />添加槽位</button>
+            <Button icon={Plus}>添加槽位</Button>
           </div>
           {(slots.length ? slots : [{ id: "new-slot", label: "主体", categoryName: presetCategories[0]?.name ?? "选择预设分类" }]).map((slot) => (
             <div className={s.slotRow} key={slot.id}>
               <GripVertical className={s.categoryDragIcon} />
               <SelectLike label="来源分类" value={slot.categoryName} />
               <Field label="槽位标签" value={slot.label} />
-              <button className={s.iconMiniButton} type="button" aria-label="删除槽位">
-                <X className={s.icon} />
-              </button>
+              <Button className={s.iconMiniButton} tone="danger" icon={X} iconOnly ariaLabel="删除槽位" />
             </div>
           ))}
         </div>
@@ -424,9 +416,9 @@ function PresetCategoryEditor({ category, categories }: { category: DemoCategory
                 删除前需移动 {itemCount} 个条目
               </span>
             ) : null}
-            <button className={cx(s.button, s.buttonDanger)} type="button" disabled={itemCount > 0}>
+            <Button tone="danger" disabled={itemCount > 0}>
               删除分类
-            </button>
+            </Button>
           </div>
         ) : null}
         <span className={s.inlineToast}>已保存</span>
@@ -750,9 +742,7 @@ export function PresetGroupPage({ data, group }: { data: DemoData; group: DemoPr
                     <em>{member.categoryName} · {member.variant}</em>
                   </div>
                   <SelectLike label="变体" value={member.variant} />
-                  <button className={s.iconMiniButton} type="button" aria-label="移除成员">
-                    <Trash2 className={s.icon} />
-                  </button>
+                  <Button className={s.iconMiniButton} tone="danger" icon={Trash2} iconOnly ariaLabel="移除成员" />
                 </div>
               ))}
             </div>

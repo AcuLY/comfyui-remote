@@ -1,10 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 import type * as React from "react";
 import { ChevronDown, Search, Trash2, Unlink, ExternalLink, Copy as CopyIcon } from "lucide-react";
 
+import { Button, ButtonLink, SegmentedControl } from "./design-demo-ui";
 import s from "./design-demo-styles";
 import { cx } from "./design-demo-utils";
 import { parseHue } from "./section-editor-shared";
@@ -89,57 +89,53 @@ export function PresetBindingRow({
         ) : null}
 
         {isGroup ? (
-          <button
-            type="button"
+          <Button
             className={s.iconGhostBtn}
+            icon={ChevronDown}
+            iconOnly
             onClick={() => setExpanded((v) => !v)}
-            aria-expanded={expanded}
-            title={expanded ? "收起组内预制" : "展开组内预制"}
-          >
-            <ChevronDown
-              className={cx("size-4", s.bindChevron)}
-              data-expanded={expanded}
-            />
-          </button>
+            ariaLabel={expanded ? "收起组内预制" : "展开组内预制"}
+            pressed={expanded}
+            tone="subtle"
+          />
         ) : null}
 
         {binding.detailHref ? (
-          <Link
+          <ButtonLink
             href={binding.detailHref}
             className={s.iconGhostBtn}
-            title="跳转预制详情"
-          >
-            <ExternalLink className="size-3.5" />
-          </Link>
+            icon={ExternalLink}
+            iconOnly
+            ariaLabel="跳转预制详情"
+            tone="subtle"
+          />
         ) : null}
-        <button
-          type="button"
+        <Button
           className={s.iconGhostBtn}
+          icon={CopyIcon}
+          iconOnly
           onClick={() => onCopyName?.(binding)}
-          title="作为小节名"
-        >
-          <CopyIcon className="size-3.5" />
-        </button>
+          ariaLabel="作为小节名"
+          tone="subtle"
+        />
         {!isGroup ? (
-          <button
-            type="button"
+          <Button
             className={s.iconGhostBtn}
-            data-tone="warn"
+            icon={Unlink}
+            iconOnly
             onClick={() => onUnlink?.(binding)}
-            title="单独解绑"
-          >
-            <Unlink className="size-3.5" />
-          </button>
+            ariaLabel="单独解绑"
+            tone="subtle"
+          />
         ) : null}
-        <button
-          type="button"
+        <Button
           className={s.iconGhostBtn}
-          data-tone="danger"
+          icon={Trash2}
+          iconOnly
           onClick={() => onDelete?.(binding)}
-          title="级联删除"
-        >
-          <Trash2 className="size-3.5" />
-        </button>
+          ariaLabel="级联删除"
+          tone="danger"
+        />
       </div>
 
       {isGroup && expanded && binding.members ? (
@@ -158,19 +154,16 @@ export function PresetBindingRow({
                 <span className={s.bindMemberVariant}>{m.variantName ?? "默认"}</span>
               )}
               {m.detailHref ? (
-                <Link href={m.detailHref} className={s.iconGhostBtn} title="预制详情">
-                  <ExternalLink className="size-3.5" />
-                </Link>
+                <ButtonLink href={m.detailHref} className={s.iconGhostBtn} icon={ExternalLink} iconOnly ariaLabel="预制详情" tone="subtle" />
               ) : null}
-              <button
-                type="button"
+              <Button
                 className={s.iconGhostBtn}
-                data-tone="warn"
+                icon={Unlink}
+                iconOnly
                 onClick={() => onUnlink?.(binding, m.id)}
-                title="仅移除该成员"
-              >
-                <Unlink className="size-3.5" />
-              </button>
+                ariaLabel="仅移除该成员"
+                tone="subtle"
+              />
             </div>
           ))}
         </div>
@@ -254,25 +247,18 @@ function PresetImportInlineBody({
   return (
     <>
       <div className={s.importHeader}>
-        <div className={s.importTabs} role="tablist">
-          <button
-            type="button"
-            className={cx(s.importTab, !activeCat && s.importTabActive)}
-            onClick={() => setActiveCat(null)}
-          >
-            全部
-          </button>
-          {categories.map((c) => (
-            <button
-              key={c.id}
-              type="button"
-              className={cx(s.importTab, activeCat === c.id && s.importTabActive)}
-              onClick={() => setActiveCat(c.id)}
-            >
-              {c.name}
-            </button>
-          ))}
-        </div>
+        <SegmentedControl
+          ariaLabel="筛选预制分类"
+          className={s.importTabs}
+          compact
+          items={[
+            { value: "__all", label: "全部" },
+            ...categories.map((c) => ({ value: c.id, label: c.name })),
+          ]}
+          onChange={(value) => setActiveCat(value === "__all" ? null : value)}
+          role="tablist"
+          value={activeCat ?? "__all"}
+        />
         <div className={s.importSearch}>
           <Search className="size-3.5" aria-hidden />
           <input

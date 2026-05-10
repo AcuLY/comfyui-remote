@@ -41,8 +41,8 @@ export function TemplatesPage({ data }: { data: DemoData }) {
               </div>
             </div>
             <div className={s.templateListMeta}>
-              <span className={s.badge}>{template.sectionCount} 小节</span>
-              <span className={s.badge}>更新 {template.updatedAt}</span>
+              <StatusBadge status="sections" label={`${template.sectionCount} 小节`} />
+              <StatusBadge status="updated" label={`更新 ${template.updatedAt}`} />
               <div className={s.toolbar}>
                 <ButtonLink href={`/templates/${template.id}/edit`} icon={Edit3}>编辑</ButtonLink>
                 <Button tone="danger" icon={Trash2}>删除</Button>
@@ -156,9 +156,7 @@ function TemplateSectionRow({
       data-section-card={section.id}
       id={templateSectionAnchorId(section)}
     >
-      <button className={s.dragHandle} type="button" aria-label="排序手柄">
-        <GripVertical className={s.icon} />
-      </button>
+      <Button className={s.dragHandle} tone="subtle" icon={GripVertical} iconOnly ariaLabel="排序手柄" />
       <Link className={s.templateSectionRowMain} href={demoHref(href)}>
         <span className={s.templateSectionTitleLine}>
           <span>{String(index + 1).padStart(2, "0")}</span>
@@ -309,9 +307,7 @@ export function TemplateSectionPage({ template, sectionIndex }: { template: Demo
             <div className={s.promptBlockList}>
               {promptBlocks.map((block, blockIndex) => (
                 <div className={s.promptBlockRow} key={block.label}>
-                  <button className={s.dragHandle} type="button" aria-label="排序手柄">
-                    <GripVertical className={s.icon} />
-                  </button>
+                  <Button className={s.dragHandle} tone="subtle" icon={GripVertical} iconOnly ariaLabel="排序手柄" />
                   <div className={s.promptBlockContent}>
                     <div className={s.promptBlockTitle}>
                       <strong>{String(blockIndex + 1).padStart(2, "0")} · {block.label}</strong>
@@ -344,7 +340,7 @@ export function TemplateSectionPage({ template, sectionIndex }: { template: Demo
                     <div className={s.loraRow} key={`${stage}-${itemIndex}`}>
                       <span>{stageIndex === 0 ? section.name : template.name}</span>
                       <em>weight {(0.7 + itemIndex * 0.1).toFixed(2)}</em>
-                      <button type="button">触发词</button>
+                      <Button tone="subtle">触发词</Button>
                     </div>
                   ))}
                 </div>
@@ -363,15 +359,15 @@ export function TemplateSectionPage({ template, sectionIndex }: { template: Demo
             <div className={s.importPresetLayout}>
               <div className={s.importCategoryColumn}>
                 {["角色", "风格", "姿势", "场景"].map((name, categoryIndex) => (
-                  <button className={categoryIndex === 0 ? s.importCategoryActive : ""} type="button" key={name}>
+                  <Button className={categoryIndex === 0 ? s.importCategoryActive : ""} pressed={categoryIndex === 0} tone="subtle" key={name}>
                     {name}
-                  </button>
+                  </Button>
                 ))}
               </div>
               <div className={s.importPresetColumn}>
                 <div className={s.presetContextBar}>
-                  <span className={s.badge}>根目录 / 模板候选</span>
-                  <span className={s.badge}>2 个变体可用</span>
+                  <StatusBadge status="template" label="根目录 / 模板候选" />
+                  <StatusBadge status="ready" label="2 个变体可用" />
                 </div>
                 {["中野三玖校服", "二次元默认", "放学后教室"].map((name, presetIndex) => (
                   <div className={s.contentRow} key={name}>

@@ -7,7 +7,7 @@ import { Archive, ArrowLeft, Check, CheckSquare, ChevronDown, ChevronRight, Chev
 
 import type { DemoData, DemoImage, DemoProject, DemoProjectFolder, DemoSection } from "./design-demo-data";
 import s from "./design-demo-styles";
-import { Button, ButtonLink, DemoTabs, EmptyPage, Field, ImageGrid, ImageStrip, PageHeader, Panel, SelectLike, StatusBadge, SwitchRow, TextAreaField } from "./design-demo-ui";
+import { Button, ButtonLink, DemoTabs, EmptyPage, Field, ImageGrid, ImageStrip, PageHeader, Panel, SegmentedControl, SelectLike, StatusBadge, SwitchRow, TextAreaField } from "./design-demo-ui";
 import { compactFileName, cx, demoHref, filterImages, projectPresetSummary, rawSectionId, sectionAnchorId, sectionRunStatus } from "./design-demo-utils";
 import type { ProjectCardView, ResultDemoFilter, SectionNavMode } from "./design-demo-utils";
 import { QueuePage } from "./runs-page";
@@ -99,9 +99,7 @@ export function ProjectsPage({ data }: { data: DemoData }) {
             >
               保存
             </Button>
-            <button className={s.iconMiniButton} type="button" onClick={() => setIsCreatingFolder(false)} aria-label="取消新建文件夹">
-              <X className={s.icon} />
-            </button>
+            <Button className={s.iconMiniButton} tone="subtle" icon={X} iconOnly onClick={() => setIsCreatingFolder(false)} ariaLabel="取消新建文件夹" />
           </div>
         ) : null}
 
@@ -170,19 +168,19 @@ function ProjectFolderBreadcrumb({
 }) {
   return (
     <div className={s.projectFolderBreadcrumbs} aria-label="项目文件夹路径">
-      <button type="button" onClick={() => onNavigate(null)} disabled={breadcrumb.length === 0}>
+      <Button tone="subtle" onClick={() => onNavigate(null)} disabled={breadcrumb.length === 0}>
         根目录
-      </button>
+      </Button>
       {breadcrumb.map((folder, index) => (
         <span key={folder.id}>
           <ChevronRight className={s.icon} />
-          <button
-            type="button"
+          <Button
+            tone="subtle"
             onClick={() => onNavigate(folder.id)}
             disabled={index === breadcrumb.length - 1}
           >
             {folder.name}
-          </button>
+          </Button>
         </span>
       ))}
     </div>
@@ -200,9 +198,7 @@ function ProjectFolderRow({
 }) {
   return (
     <div className={s.projectFolderRow}>
-      <button className={s.projectFolderGrip} type="button" aria-label="排序手柄">
-        <GripVertical className={s.icon} />
-      </button>
+      <Button className={s.projectFolderGrip} tone="subtle" icon={GripVertical} iconOnly ariaLabel="排序手柄" />
       <button className={s.projectFolderOpen} type="button" onClick={onEnter}>
         <Folder className={s.icon} />
         <strong>{folder.name}</strong>
@@ -210,13 +206,9 @@ function ProjectFolderRow({
         <ChevronRight className={s.icon} />
       </button>
       <div className={s.projectFolderRowActions}>
-        <button type="button" aria-label={`重命名文件夹：${folder.name}`}>
-          <Pencil className={s.icon} />
-        </button>
+        <Button tone="subtle" icon={Pencil} iconOnly ariaLabel={`重命名文件夹：${folder.name}`} />
         {itemCount === 0 ? (
-          <button type="button" aria-label={`删除文件夹：${folder.name}`}>
-            <Trash2 className={s.icon} />
-          </button>
+          <Button tone="danger" icon={Trash2} iconOnly ariaLabel={`删除文件夹：${folder.name}`} />
         ) : null}
       </div>
     </div>
@@ -243,12 +235,10 @@ function ProjectBatchBar({
       <strong>已选 {selectedCount} 个项目</strong>
       <div>
         <ProjectMoveMenu folders={folders} currentFolderId={null} onMove={onMove} label="移至文件夹" />
-        <button type="button" onClick={selectedCount === totalCount ? onClear : onSelectAll}>
+        <Button icon={CheckSquare} onClick={selectedCount === totalCount ? onClear : onSelectAll}>
           {selectedCount === totalCount ? "取消全选" : "全选"}
-        </button>
-        <button type="button" onClick={onClear} aria-label="清除选择">
-          <X className={s.icon} />
-        </button>
+        </Button>
+        <Button tone="subtle" icon={X} iconOnly onClick={onClear} ariaLabel="清除选择" />
       </div>
     </div>
   );
@@ -269,15 +259,14 @@ function ProjectListItem({
 }) {
   return (
     <article className={cx(s.projectListCard, selected && s.projectListCardSelected)}>
-      <button
-        aria-label={selected ? `取消选择项目：${project.title}` : `选择项目：${project.title}`}
-        aria-pressed={selected}
+      <Button
+        ariaLabel={selected ? `取消选择项目：${project.title}` : `选择项目：${project.title}`}
         className={s.projectSelectButton}
-        type="button"
+        icon={selected ? CheckSquare : Square}
+        iconOnly
         onClick={onToggleSelected}
-      >
-        {selected ? <CheckSquare className={s.icon} /> : <Square className={s.icon} />}
-      </button>
+        pressed={selected}
+      />
       <Link className={s.projectListOpenArea} href={demoHref(`/projects/${project.id}`)}>
         <ImageStrip images={project.images} />
         <div className={s.cardHeader}>
@@ -288,16 +277,14 @@ function ProjectListItem({
           <StatusBadge status={project.status} />
         </div>
         <div className={s.projectCardStats}>
-          <span className={s.badge}>{project.sectionCount} 小节</span>
-          <span className={s.badge}>{compactFileName(project.checkpointName)}</span>
+          <StatusBadge status="sections" label={`${project.sectionCount} 小节`} />
+          <StatusBadge status="checkpoint" label={compactFileName(project.checkpointName)} />
         </div>
         <div className={cx(s.small, s.faint)}>更新：{project.updatedAt}</div>
       </Link>
       <div className={s.projectItemActions}>
         <ProjectMoveMenu folders={folders} currentFolderId={project.folderId} onMove={onMove} />
-        <button type="button" aria-label={`删除项目：${project.title}`}>
-          <Trash2 className={s.icon} />
-        </button>
+        <Button tone="danger" icon={Trash2} iconOnly ariaLabel={`删除项目：${project.title}`} />
       </div>
     </article>
   );
@@ -320,10 +307,15 @@ function ProjectMoveMenu({
 
   return (
     <div className={s.projectMoveMenu}>
-      <button type="button" onClick={() => setOpen((value) => !value)}>
-        <FolderInput className={s.icon} />
-        <span>{label}</span>
-      </button>
+      <Button
+        tone="subtle"
+        icon={FolderInput}
+        iconOnly={label === "移动"}
+        ariaLabel={label}
+        onClick={() => setOpen((value) => !value)}
+      >
+        {label}
+      </Button>
       {open ? (
         <div className={s.projectMoveMenuList}>
           {options.map((option) => (
@@ -513,20 +505,12 @@ function ProjectDetailHeader({
 function ProjectViewToggle({ projectId, value }: { projectId: string; value: ProjectCardView }) {
   return (
     <div className={cx(s.segmented, s.projectViewToggle)} aria-label="项目视图">
-      <Link
-        aria-current={value === "sections" ? "page" : undefined}
-        className={cx(s.segment, value === "sections" && s.segmentActive)}
-        href={demoHref(`/projects/${projectId}`)}
-      >
+      <ButtonLink href={`/projects/${projectId}`} className={cx(s.projectViewToggleButton, value === "sections" && s.projectViewToggleButtonActive)}>
         小节
-      </Link>
-      <Link
-        aria-current={value === "results" ? "page" : undefined}
-        className={cx(s.segment, value === "results" && s.segmentActive)}
-        href={demoHref(`/projects/${projectId}/results`)}
-      >
+      </ButtonLink>
+      <ButtonLink href={`/projects/${projectId}/results`} className={cx(s.projectViewToggleButton, value === "results" && s.projectViewToggleButtonActive)}>
         结果
-      </Link>
+      </ButtonLink>
     </div>
   );
 }
@@ -541,18 +525,14 @@ function BatchSizeSelector({
   compact?: boolean;
 }) {
   return (
-    <div className={cx(s.batchSizeSelector, compact && s.batchSizeSelectorCompact)} aria-label="批量张数">
-      {[1, 2, 4, 8, 16].map((option) => (
-        <button
-          aria-pressed={value === option}
-          key={option}
-          onClick={() => onChange(option)}
-          type="button"
-        >
-          {option}
-        </button>
-      ))}
-    </div>
+    <SegmentedControl
+      ariaLabel="批量张数"
+      className={cx(s.batchSizeSelector, compact && s.batchSizeSelectorCompact)}
+      compact
+      items={[1, 2, 4, 8, 16].map((option) => ({ value: option, label: option }))}
+      onChange={onChange}
+      value={value}
+    />
   );
 }
 
@@ -582,17 +562,15 @@ function ProjectSectionCard({
       id={sectionAnchorId(section)}
     >
       <div className={s.sectionCardMain}>
-        <button className={s.dragHandle} type="button" aria-label="排序手柄">
-          <GripVertical className={s.icon} />
-        </button>
-        <button
-          aria-pressed={selected}
+        <Button className={s.dragHandle} tone="subtle" icon={GripVertical} iconOnly ariaLabel="排序手柄" />
+        <Button
+          ariaLabel={selected ? "取消选择小节" : "选择小节"}
           className={s.sectionSelectButton}
-          type="button"
+          icon={selected ? CheckSquare : Square}
+          iconOnly
           onClick={onToggleSelection}
-        >
-          {selected ? <CheckSquare className={s.icon} /> : <Square className={s.icon} />}
-        </button>
+          pressed={selected}
+        />
         <Link className={s.sectionCardContent} href={demoHref(`/projects/${project.id}/sections/${rawSectionId(section)}`)}>
           <div className={s.sectionCardHeader}>
             <div className={s.sectionCardTitle}>
@@ -872,9 +850,9 @@ function ProjectSectionResultCard({
           </div>
         </div>
         <div className={s.resultSectionActions}>
-          <span className={s.badge}>{pendingCount} 待审</span>
-          <span className={s.badge}>{keptCount} 保留</span>
-          <span className={s.badge}>{featuredCount} p站/预览</span>
+          <StatusBadge status="pending" label={`${pendingCount} 待审`} />
+          <StatusBadge status="kept" label={`${keptCount} 保留`} />
+          <StatusBadge status="review" label={`${featuredCount} p站/预览`} />
           {canCollapse ? (
             <Button tone="subtle" icon={collapsed ? ChevronDown : ChevronUp} onClick={onToggleCollapsed}>
               {collapsed ? "展开" : "折叠"}

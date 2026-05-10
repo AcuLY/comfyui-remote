@@ -577,27 +577,22 @@ export function DemoPager({ currentPage, totalPages }: { currentPage: number; to
 
   return (
     <div className={s.pagerControls} aria-label="分页">
-      <button className={s.pagerButton} type="button" disabled={currentPage <= 1} aria-label="上一页">
-        <ArrowLeft className="size-3.5" />
-      </button>
+      <Button className={s.pagerButton} tone="subtle" icon={ArrowLeft} iconOnly disabled={currentPage <= 1} ariaLabel="上一页" />
       {pages.map((page, index) => {
         const previous = pages[index - 1];
         return (
           <span className={s.pagerChunk} key={page}>
             {previous && page - previous > 1 ? <span className={s.pagerEllipsis}>…</span> : null}
-            <button
+            <Button
               className={cx(s.pagerButton, page === currentPage && s.pagerButtonActive)}
-              type="button"
-              aria-current={page === currentPage ? "page" : undefined}
+              pressed={page === currentPage}
             >
               {page}
-            </button>
+            </Button>
           </span>
         );
       })}
-      <button className={s.pagerButton} type="button" disabled={currentPage >= totalPages} aria-label="下一页">
-        <ArrowRight className="size-3.5" />
-      </button>
+      <Button className={s.pagerButton} tone="subtle" icon={ArrowRight} iconOnly disabled={currentPage >= totalPages} ariaLabel="下一页" />
     </div>
   );
 }

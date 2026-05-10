@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useState, useRef, useEffect, useCallback } from "react";
-import { ChevronLeft, ChevronRight, Pencil, Check, ExternalLink } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pencil, Check, ExternalLink, Play } from "lucide-react";
 
+import { Button, SegmentedControl } from "./design-demo-ui";
 import s from "./design-demo-styles";
 import { cx } from "./design-demo-utils";
 export type SaveStatus = "idle" | "saving" | "saved";
@@ -222,38 +223,22 @@ export function SectionHeader(props: HeaderProps) {
 
         <div className={s.sectionRunDock}>
           <div className={s.sectionRunStepper} role="group" aria-label="批量数">
-            {BATCH_SIZE_OPTIONS.map((size) => (
-              <button
-                key={size}
-                type="button"
-                className={cx(
-                  s.sectionRunBatchOption,
-                  batchSize === size && s.sectionRunBatchOptionActive,
-                )}
-                onClick={() => onBatchSizeChange(size)}
-                aria-pressed={batchSize === size}
-                aria-label={`批量 ${size}`}
-              >
-                {size}
-              </button>
-            ))}
+            <SegmentedControl
+              ariaLabel="批量数"
+              className={s.sectionRunBatchControl}
+              compact
+              items={BATCH_SIZE_OPTIONS.map((size) => ({ value: size, label: size }))}
+              onChange={onBatchSizeChange}
+              value={batchSize}
+            />
             <span className={s.sectionRunBatchLabel}>批量</span>
           </div>
-          <button type="button" className={s.sectionRunButton} onClick={onRun}>
-            <RunIcon />
+          <Button className={s.sectionRunButton} tone="primary" icon={Play} onClick={onRun}>
             运行
-          </button>
+          </Button>
         </div>
       </div>
     </header>
-  );
-}
-
-function RunIcon() {
-  return (
-    <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden>
-      <path d="M4 3.2a1 1 0 0 1 1.5-.86l7.5 4.3a1 1 0 0 1 0 1.74l-7.5 4.3A1 1 0 0 1 4 11.8V3.2Z" />
-    </svg>
   );
 }
 

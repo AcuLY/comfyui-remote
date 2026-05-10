@@ -3,6 +3,7 @@
 import type * as React from "react";
 import { GripVertical, X, Unlink, Zap } from "lucide-react";
 
+import { Button, Switch } from "./design-demo-ui";
 import s from "./design-demo-styles";
 import { cx } from "./design-demo-utils";
 import { parseHue } from "./section-editor-shared";
@@ -85,12 +86,12 @@ export function LoraRow({
         {entry.notes ? <span className={s.loraNotes}>{entry.notes}</span> : null}
       </div>
       <div className={s.loraWeight}>
-        <button type="button" className={s.loraStep} onClick={() => adj(-0.5)}>
+        <Button tone="subtle" className={s.loraStep} onClick={() => adj(-0.5)}>
           −0.5
-        </button>
-        <button type="button" className={s.loraStep} onClick={() => adj(-0.1)}>
+        </Button>
+        <Button tone="subtle" className={s.loraStep} onClick={() => adj(-0.1)}>
           −0.1
-        </button>
+        </Button>
         <input
           type="number"
           step={0.05}
@@ -101,43 +102,33 @@ export function LoraRow({
           onChange={(e) => onWeightChange(parseFloat(e.target.value) || 0)}
           aria-label="权重"
         />
-        <button type="button" className={s.loraStep} onClick={() => adj(0.1)}>
+        <Button tone="subtle" className={s.loraStep} onClick={() => adj(0.1)}>
           +0.1
-        </button>
-        <button type="button" className={s.loraStep} onClick={() => adj(0.5)}>
+        </Button>
+        <Button tone="subtle" className={s.loraStep} onClick={() => adj(0.5)}>
           +0.5
-        </button>
+        </Button>
       </div>
       <div className={s.loraActions}>
-        <button
-          type="button"
-          className={s.toggle}
-          data-on={entry.enabled}
-          onClick={onToggle}
-          aria-label={entry.enabled ? "停用" : "启用"}
-        >
-          <span />
-        </button>
+        <Switch checked={entry.enabled} onCheckedChange={onToggle} ariaLabel={entry.enabled ? "停用" : "启用"} />
         {entry.kind === "preset" && onUnlink ? (
-          <button
-            type="button"
+          <Button
             className={s.iconGhostBtn}
-            data-tone="warn"
+            icon={Unlink}
+            iconOnly
             onClick={onUnlink}
-            title="单独删除（仅本条）"
-          >
-            <Unlink className="size-3.5" />
-          </button>
+            ariaLabel="单独删除（仅本条）"
+            tone="subtle"
+          />
         ) : null}
-        <button
-          type="button"
+        <Button
           className={s.iconGhostBtn}
-          data-tone="danger"
+          icon={X}
+          iconOnly
           onClick={onDelete}
-          title="删除"
-        >
-          <X className="size-3.5" />
-        </button>
+          ariaLabel="删除"
+          tone="danger"
+        />
       </div>
     </div>
   );

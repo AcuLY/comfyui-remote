@@ -27,3 +27,61 @@
   height: 36px;
   min-height: 36px;
 }
+
+.projectBatchBar .button,
+.projectFolderBreadcrumbs .button,
+.projectFolderRowActions .button,
+.projectItemActions .button,
+.projectMoveMenu > .button,
+.projectSelectButton.button,
+.projectFolderGrip.button,
+.dragHandle.button,
+.sectionSelectButton.button,
+.sectionRunButton.button,
+.detailsActions .button,
+.dialogFooter .button,
+.toolbar .button {
+  height: 36px;
+  min-height: 36px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 580;
+  line-height: 1.2;
+}
+
+.button.iconMiniButton,
+.button.iconGhostBtn,
+.button.pagerButton,
+.button.fileAction,
+.button.iconButton,
+.projectFolderRowActions .buttonIconOnly,
+.projectItemActions .buttonIconOnly,
+.projectSelectButton.buttonIconOnly,
+.projectFolderGrip.buttonIconOnly,
+.dragHandle.buttonIconOnly,
+.sectionSelectButton.buttonIconOnly {
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0;
+}
+
+.loraStep.button,
+.batchSizeSelector .segmentedItem,
+.sectionRunBatchControl .segmentedItem,
+.importTabs .segmentedItem,
+.logModuleChips .segmentedItem {
+  min-height: 28px;
+  font-size: 11px;
+}
+
+.projectViewToggle .button {
+  min-width: 72px;
+}
+
+.badge,
+.status {
+  overflow-wrap: normal;
+  white-space: nowrap;
+}

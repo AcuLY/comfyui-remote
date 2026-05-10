@@ -14,7 +14,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 
 import { PageHeader, Button } from "./design-demo-ui";
-import { createSvgIcon, createSvgIconFromString, SvgIcon, type SvgIconComponent } from "./svg-icon";
+import { createSvgIcon, createSvgIconFromString, type SvgIconComponent } from "./svg-icon";
 import s from "./design-demo-styles";
 
 /* ───────────────────────── data ───────────────────────── */

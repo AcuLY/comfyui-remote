@@ -48,18 +48,10 @@ function fallbackImages(): DemoImage[] {
 function ThumbActionSlot() {
   return (
     <>
-      <button className={s.iconMiniButton} type="button" aria-label="保留">
-        <Check className={s.icon} />
-      </button>
-      <button className={s.iconMiniButton} type="button" aria-label="精选">
-        <Star className={s.icon} />
-      </button>
-      <button className={s.iconMiniButton} type="button" aria-label="预览">
-        <Eye className={s.icon} />
-      </button>
-      <button className={s.iconMiniButton} type="button" aria-label="删除">
-        <Trash2 className={s.icon} />
-      </button>
+      <Button className={s.iconMiniButton} icon={Check} iconOnly ariaLabel="保留" />
+      <Button className={s.iconMiniButton} tone="pink" icon={Star} iconOnly ariaLabel="精选" />
+      <Button className={s.iconMiniButton} tone="pink" icon={Eye} iconOnly ariaLabel="预览" />
+      <Button className={s.iconMiniButton} tone="danger" icon={Trash2} iconOnly ariaLabel="删除" />
     </>
   );
 }

@@ -221,9 +221,7 @@ export function BatchCreatePage({ project, data }: { project: DemoProject | unde
                     ) : (
                       <span className={s.inlineNotice}>{item.kind === "group" ? "组导入" : "单变体"}</span>
                     )}
-                    <button className={s.iconMiniButton} type="button" onClick={() => removeImport(item.key)} aria-label="移除导入项">
-                      <X className={s.icon} />
-                    </button>
+                    <Button className={s.iconMiniButton} tone="subtle" icon={X} iconOnly onClick={() => removeImport(item.key)} ariaLabel="移除导入项" />
                   </div>
                 ))}
               </div>

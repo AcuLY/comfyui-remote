@@ -3,6 +3,7 @@
 import type * as React from "react";
 import { GripVertical, Trash2, Unlink } from "lucide-react";
 
+import { Button } from "./design-demo-ui";
 import s from "./design-demo-styles";
 import { cx } from "./design-demo-utils";
 import { parseHue } from "./section-editor-shared";
@@ -82,25 +83,23 @@ export function PromptBlockRow({
       </button>
       <div className={s.pbRowActions}>
         {block.kind === "preset" ? (
-          <button
-            type="button"
+          <Button
             className={s.iconGhostBtn}
-            data-tone="warn"
+            icon={Unlink}
+            iconOnly
             onClick={onUnlink}
-            title="单独删除（仅本块）"
-          >
-            <Unlink className="size-3.5" />
-          </button>
+            ariaLabel="单独删除（仅本块）"
+            tone="subtle"
+          />
         ) : null}
-        <button
-          type="button"
+        <Button
           className={s.iconGhostBtn}
-          data-tone="danger"
+          icon={Trash2}
+          iconOnly
           onClick={onDelete}
-          title="级联删除（同预制全部）"
-        >
-          <Trash2 className="size-3.5" />
-        </button>
+          ariaLabel="级联删除（同预制全部）"
+          tone="danger"
+        />
       </div>
       {expanded ? (
         <div className={s.pbInlineBody}>

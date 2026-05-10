@@ -3,7 +3,7 @@
 /* eslint-disable @next/next/no-img-element -- Local design shell previews use direct API image URLs. */
 
 import Link from "next/link";
-import type { CSSProperties, ReactNode } from "react";
+import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode } from "react";
 import { Children, createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -77,9 +77,7 @@ function DemoToastStack({ toasts, onDismiss }: { toasts: DemoToast[]; onDismiss:
             <strong>{toast.title}</strong>
             {toast.detail ? <span>{toast.detail}</span> : null}
           </div>
-          <button className={s.iconMiniButton} type="button" onClick={() => onDismiss(toast.id)} aria-label="关闭提示">
-            <X className={s.icon} />
-          </button>
+          <Button className={s.iconMiniButton} tone="subtle" icon={X} iconOnly onClick={() => onDismiss(toast.id)} ariaLabel="关闭提示" />
         </div>
       ))}
     </div>
@@ -586,9 +584,7 @@ export function ImagePreviewLarge({
             <strong>{title ?? image.label}</strong>
             {meta ? <span>{meta}</span> : null}
           </div>
-          <button className={s.iconMiniButton} type="button" onClick={onClose} aria-label="关闭预览">
-            <X className={s.icon} />
-          </button>
+          <Button className={s.iconMiniButton} tone="subtle" icon={X} iconOnly onClick={onClose} ariaLabel="关闭预览" />
         </div>
         <div className={s.lightboxImage}>
           <ImagePreviewFrame image={image} interactive key={image.id} priority />
@@ -671,7 +667,7 @@ export function Button({
   icon?: RouteIcon;
   iconOnly?: boolean;
   ariaLabel?: string;
-  onClick?: () => void;
+  onClick?: (event: ReactMouseEvent<HTMLButtonElement>) => void;
   pressed?: boolean;
   pending?: boolean;
   disabled?: boolean;
@@ -681,9 +677,9 @@ export function Button({
   const { pushToast } = useDemoFeedback();
   const label = iconOnly ? controlLabel(children, ariaLabel) : undefined;
 
-  function handleClick() {
+  function handleClick(event: ReactMouseEvent<HTMLButtonElement>) {
     if (disabled || pending) return;
-    onClick?.();
+    onClick?.(event);
     if (feedback) {
       if (typeof feedback === "string") {
         pushToast({ tone: "success", title: feedback });
@@ -1336,9 +1332,7 @@ export function RouteTable({ data }: { data: DemoData }) {
                 <td><code>{demoHref(row.sample)}</code></td>
                 <td>{row.group}</td>
                 <td>
-                  <Link className={s.button} href={demoHref(row.sample)}>
-                    进入 <ArrowRight className="size-3.5" />
-                  </Link>
+                  <ButtonLink href={row.sample} icon={ArrowRight}>进入</ButtonLink>
                 </td>
               </tr>
             ))}

@@ -2,6 +2,7 @@
 
 import { Plus } from "lucide-react";
 
+import { Button } from "./design-demo-ui";
 import s from "./design-demo-styles";
 import { LORA_FILE_OPTIONS } from "./section-editor-page-data";
 import { LoraRow, type LoraRowData } from "./section-editor-components";
@@ -53,10 +54,9 @@ export function LoraColumn({
         </div>
       )}
       <div className={s.addRow}>
-        <button type="button" onClick={onAdd}>
-          <Plus className="size-4" />
+        <Button icon={Plus} onClick={onAdd}>
           新增自定义 LoRA
-        </button>
+        </Button>
       </div>
     </div>
   );
