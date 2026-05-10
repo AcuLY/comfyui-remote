@@ -222,6 +222,7 @@ export async function syncPresetToSections(presetId: string) {
     });
 
     if (block.bindingId) {
+      const bindingId = block.bindingId;
       const section = await prisma.projectSection.findUnique({
         where: { id: block.projectSectionId },
         select: { loraConfig: true },
@@ -236,11 +237,11 @@ export async function syncPresetToSections(presetId: string) {
         path: b.path, weight: b.weight, enabled: b.enabled,
         source: "preset", sourceLabel: preset.category.name,
         sourceColor: preset.category.color ?? undefined, sourceName: preset.name,
-        bindingId: block.bindingId,
+        bindingId,
         groupBindingId: block.groupBindingId ?? undefined,
       });
-      const detachedLora1Paths = getDetachedPresetPaths(config.lora1, block.bindingId);
-      const detachedLora2Paths = getDetachedPresetPaths(config.lora2, block.bindingId);
+      const detachedLora1Paths = getDetachedPresetPaths(config.lora1, bindingId);
+      const detachedLora2Paths = getDetachedPresetPaths(config.lora2, bindingId);
       const nextPresetLora1 = resolved.lora1
         .filter((entry) => !detachedLora1Paths.has(entry.path))
         .map(makeLora);
@@ -248,12 +249,12 @@ export async function syncPresetToSections(presetId: string) {
         .filter((entry) => !detachedLora2Paths.has(entry.path))
         .map(makeLora);
       config.lora1 = sortSectionLoraEntriesByCategoryOrder(
-        [...config.lora1.filter((e) => e.bindingId !== block.bindingId), ...nextPresetLora1],
+        [...config.lora1.filter((e) => e.bindingId !== bindingId), ...nextPresetLora1],
         "lora1Order",
         categoryOrderByName,
       );
       config.lora2 = sortSectionLoraEntriesByCategoryOrder(
-        [...config.lora2.filter((e) => e.bindingId !== block.bindingId), ...nextPresetLora2],
+        [...config.lora2.filter((e) => e.bindingId !== bindingId), ...nextPresetLora2],
         "lora2Order",
         categoryOrderByName,
       );
