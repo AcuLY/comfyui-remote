@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { ChevronLeft, ChevronRight, Pencil, Check, ExternalLink, Play } from "lucide-react";
 
-import { Button, SegmentedControl } from "./design-demo-ui";
+import { Button } from "./ui/button";
+import { SegmentedControl } from "./ui/segmented-control";
 import s from "./design-demo-styles";
 import { cx } from "./design-demo-utils";
 export type SaveStatus = "idle" | "saving" | "saved";

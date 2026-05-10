@@ -4,7 +4,7 @@ import { useState } from "react";
 import type * as React from "react";
 import { GripVertical, Pencil, Trash2, Unlink } from "lucide-react";
 
-import { Button } from "./design-demo-ui";
+import { Button } from "./ui/button";
 import s from "./design-demo-styles";
 import { cx } from "./design-demo-utils";
 import { parseHue } from "./section-editor-shared";

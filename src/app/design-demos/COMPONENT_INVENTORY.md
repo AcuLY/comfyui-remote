@@ -12,7 +12,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `Button` |
-| 文件 | `design-demo-ui.tsx` |
+| 文件 | `ui/button.tsx` |
 | Props | `children?`, `tone?: "default" \| "subtle" \| "primary" \| "pink" \| "danger"`, `icon?: RouteIcon`, `iconOnly?`, `ariaLabel?`, `onClick?`, `pressed?`, `pending?`, `disabled?`, `feedback?: DemoButtonFeedback`, `className?` |
 | 功能 | 通用按钮，支持 5 种色调、图标、纯 icon、pending 旋转、点击后 toast 反馈 |
 | CSS 类 | `.button`, `.buttonSubtle`, `.buttonPrimary`, `.buttonPink`, `.buttonDanger`, `.buttonIcon`, `.buttonIconOnly`, `.buttonPending`, `.buttonSpinner` |
@@ -22,7 +22,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `ButtonLink` |
-| 文件 | `design-demo-ui.tsx` |
+| 文件 | `ui/button-link.tsx` |
 | Props | `href`, `children?`, `tone?`, `icon?`, `iconOnly?`, `ariaLabel?`, `className?` |
 | 功能 | 按钮外观的 `<Link>`，色调与纯 icon 模式同 Button |
 | CSS 类 | 同 Button |
@@ -32,7 +32,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `StatusBadge` |
-| 文件 | `design-demo-ui.tsx` |
+| 文件 | `ui/status-badge.tsx` |
 | Props | `status: string`, `label?: string` |
 | 功能 | 状态标签，根据 status 自动着色（green / amber / red / sky） |
 | CSS 类 | `.status`, `.statusGreen`, `.statusAmber`, `.statusRed`, `.statusSky` |
@@ -42,7 +42,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `Field` |
-| 文件 | `design-demo-ui.tsx` |
+| 文件 | `ui/field.tsx` |
 | Props | `label`, `value: string \| number`, `disabled?` |
 | 功能 | 只读文本输入字段 |
 | CSS 类 | `.field`, `.input` |
@@ -52,7 +52,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `TextAreaField` |
-| 文件 | `design-demo-ui.tsx` |
+| 文件 | `ui/text-area-field.tsx` |
 | Props | `label`, `value: string` |
 | 功能 | 只读多行文本字段 |
 | CSS 类 | `.textAreaField`, `.textarea` |
@@ -62,7 +62,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `SelectLike` |
-| 文件 | `design-demo-ui.tsx` |
+| 文件 | `ui/select-like.tsx` |
 | Props | `label`, `value: string` |
 | 功能 | 自绘只读下拉选择样式字段，底层为原生 `<select>` + Lucide chevron overlay |
 | CSS 类 | `.field`, `.selectShell`, `.select`, `.selectIcon` |
@@ -72,7 +72,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `Switch` |
-| 文件 | `design-demo-ui.tsx` |
+| 文件 | `ui/switch.tsx` |
 | Props | `checked?`, `defaultChecked?`, `ariaLabel?`, `onCheckedChange?` |
 | 功能 | 可交互开关（受控/非受控） |
 | CSS 类 | `.switch`, `.switchThumb` |
@@ -82,7 +82,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `SwitchRow` |
-| 文件 | `design-demo-ui.tsx` |
+| 文件 | `ui/switch-row.tsx` |
 | Props | `title`, `subtitle` |
 | 功能 | 开关行（纯展示，无真实 toggle） |
 | CSS 类 | `.switchRow`, `.switchText`, `.switch`, `.switchThumb` |
@@ -92,7 +92,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `SegmentedControl<T>` |
-| 文件 | `design-demo-ui.tsx` |
+| 文件 | `ui/segmented-control.tsx` |
 | Props | `items: Array<SegmentedControlItem<T>>`, `value: T`, `onChange`, `ariaLabel?`, `role?: "tablist" \| "radiogroup"`, `panel?`, `compact?`, `className?` |
 | 功能 | 通用分段控制器，支持 tab/radio 角色、面板模式、紧凑模式 |
 | CSS 类 | `.segmentedControl`, `.segmentedControlPanel`, `.segmentedControlCompact`, `.segmentedItem`, `.segmentedItemActive`, `.segmentedCount` |
@@ -102,7 +102,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `DemoTabs<T>` |
-| 文件 | `design-demo-ui.tsx` |
+| 文件 | `ui/demo-tabs.tsx` |
 | Props | `tabs: Array<{ key: T; label: string; count?: number }>`, `value: T`, `onChange: (next: T) => void` |
 | 功能 | 通用 Tab 切换器，基于 SegmentedControl，支持 count 徽章 |
 | CSS 类 | 同 SegmentedControl |
@@ -112,7 +112,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `MetricCard` |
-| 文件 | `design-demo-ui.tsx` |
+| 文件 | `ui/metric-card.tsx` |
 | Props | `icon: RouteIcon`, `label`, `value: string \| number`, `meta: string`, `tone?` |
 | 功能 | 指标卡片（图标 + 标签 + 数值 + 描述） |
 | CSS 类 | `.metric`, `.metricLabel`, `.metricValue`, `.metricMeta` |
@@ -122,7 +122,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `EmptyRows` |
-| 文件 | `design-demo-ui.tsx` |
+| 文件 | `ui/empty-rows.tsx` |
 | Props | `label: string` |
 | 功能 | 空状态文字 |
 | CSS 类 | `.empty` |
@@ -132,7 +132,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `OperationStateStrip` |
-| 文件 | `design-demo-ui.tsx` |
+| 文件 | `ui/operation-state-strip.tsx` |
 | Props | `items: Array<{ label; value; tone? }>` |
 | 功能 | 横向操作状态条（多 label + value + 色调指示） |
 | CSS 类 | `.operationStateStrip`, `.operationStateItem`, `.operationStateSuccess/Warning/Error` |
@@ -276,7 +276,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `PageHeader` |
-| 文件 | `design-demo-ui.tsx` |
+| 文件 | `ui/page-header.tsx` |
 | Props | `back?: { href; label }`, `eyebrow`, `title`, `subtitle?`, `actions?`, `className?` |
 | 功能 | 页面顶部标题栏（返回链接 + eyebrow + 标题 + 副标题 + 操作区） |
 | CSS 类 | `.pageHeader`, `.pageTitleBlock`, `.pageBackLink`, `.eyebrow`, `.pageTitle`, `.pageSubtitle`, `.toolbar` |
@@ -286,7 +286,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `Panel` |
-| 文件 | `design-demo-ui.tsx` |
+| 文件 | `ui/panel.tsx` |
 | Props | `title`, `subtitle?`, `actions?`, `children` |
 | 功能 | 面板容器（标题 + 副标题 + 操作 + 内容） |
 | CSS 类 | `.panel`, `.panelHeader`, `.panelBody`, `.inlineControls` |
@@ -296,7 +296,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `RouteTable` |
-| 文件 | `design-demo-ui.tsx` |
+| 文件 | `ui/route-table.tsx` |
 | Props | `data: DemoData` |
 | 功能 | 完整页面路径表格 |
 | CSS 类 | `.tableWrap`, `.table` |
@@ -306,7 +306,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `DemoFeedbackProvider` (内部: `DemoToastStack`) |
-| 文件 | `design-demo-ui.tsx` |
+| 文件 | `ui/demo-feedback-provider.tsx` |
 | Props | `children` |
 | 功能 | Toast 提示的 Context Provider，最多 3 条 |
 | CSS 类 | `.toastStack`, `.toast`, `.toastSuccess`, `.toastWarning`, `.toastError` |
@@ -316,7 +316,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `EmptyPage` |
-| 文件 | `design-demo-ui.tsx` |
+| 文件 | `ui/empty-page.tsx` |
 | Props | `title: string` |
 | 功能 | 空状态页面 |
 | CSS 类 | `.page`, `.empty` |
@@ -440,7 +440,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `ImageThumbSmall` |
-| 文件 | `design-demo-ui.tsx` |
+| 文件 | `ui/image-thumb-small.tsx` |
 | Props | `image: DemoImage`, `priority?`, `wide?` |
 | 功能 | 小缩略图（用于列表行内） |
 | CSS 类 | `.imageThumbSmall`, `.imageThumbSmallWide` |
@@ -450,7 +450,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `ImageThumbMedium` |
-| 文件 | `design-demo-ui.tsx` |
+| 文件 | `ui/image-thumb-medium.tsx` |
 | Props | `image`, `actionSlot?`, `onOpen?`, `onSelect?`, `priority?`, `selectable?`, `selected?`, `showStatus?`, `tags?` |
 | 功能 | 中缩略图（可选中、有标签、有操作区） |
 | CSS 类 | `.imageThumbMedium`, `.imageThumbMediumSelected`, `.imageThumbSelect`, `.imageThumbTags`, `.imageThumbImageButton`, `.imageThumbOverlay`, `.imageThumbActions` |
@@ -460,7 +460,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `ImageStrip` |
-| 文件 | `design-demo-ui.tsx` |
+| 文件 | `ui/image-strip.tsx` |
 | Props | `images: DemoImage[]`, `wide?` |
 | 功能 | 横向滚动图片条（紧凑型） |
 | CSS 类 | `.imageStrip` |
@@ -470,7 +470,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `ImageListSmall` |
-| 文件 | `design-demo-ui.tsx` |
+| 文件 | `ui/image-list-small.tsx` |
 | Props | `images`, `className?`, `limit?`, `maxWidth?`, `wide?` |
 | 功能 | 横向滚动小图列表 |
 | CSS 类 | `.imageListSmallFrame`, `.imageListSmall` |
@@ -480,7 +480,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `ImageListMedium` |
-| 文件 | `design-demo-ui.tsx` |
+| 文件 | `ui/image-list-medium.tsx` |
 | Props | `actionPanel?`, `children`, `className?`, `defaultExpanded?`, `emptyLabel?`, `gap?`, `maxHeight?`, `maxWidth?`, `selectPanel?`, `summary?` |
 | 功能 | 中图网格列表（可折叠、有摘要/选择/操作面板） |
 | CSS 类 | `.imageListMedium`, `.imageListMediumMain`, `.imageListMediumHeader`, `.imageListMediumGrid`, `.imageListMediumViewport`, `.imageListMediumFade`, `.imageListMediumExpand`, `.imageListMediumActionTrack`, `.imageListMediumActionPanel` |
@@ -490,7 +490,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `ImageGrid` |
-| 文件 | `design-demo-ui.tsx` |
+| 文件 | `ui/image-grid.tsx` |
 | Props | `images: DemoImage[]`, `showStatus?`, `selectable?` |
 | 功能 | 图片网格 + Lightbox 预览 |
 | CSS 类 | 复用 `ImageListMedium` + `ImagePreviewLarge` |
@@ -500,7 +500,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `ReviewImageBoard` |
-| 文件 | `design-demo-ui.tsx` |
+| 文件 | `ui/review-image-board.tsx` |
 | Props | `images: DemoImage[]` |
 | 功能 | 审核图片面板（选择 + 批量操作 + Lightbox） |
 | CSS 类 | `.reviewControlStrip` + 复用 `ImageListMedium` / `ImagePreviewLarge` |
@@ -510,7 +510,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `ImagePreviewFrame`（内部） |
-| 文件 | `design-demo-ui.tsx` |
+| 文件 | `ui/image-preview-frame.tsx` |
 | Props | `image`, `interactive?`, `onOpen?`, `priority?` |
 | 功能 | 图片预览帧（支持缩放、拖拽、双击重置） |
 | CSS 类 | `.imagePreviewFrame`, `.imagePreviewFrameInteractive`, `.imagePreviewFrameZoomed`, `.imagePreviewFrameDragging`, `.imageFill`, `.imagePreviewInteractiveImage` |
@@ -520,7 +520,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `ImagePreviewLarge` |
-| 文件 | `design-demo-ui.tsx` |
+| 文件 | `ui/image-preview-large.tsx` |
 | Props | `actions?`, `image`, `meta?`, `onClose`, `onNext?`, `onPrevious?`, `nextDisabled?`, `previousDisabled?`, `title?` |
 | 功能 | 全屏 Lightbox 预览 |
 | CSS 类 | `.lightboxOverlay`, `.lightboxPanel`, `.lightboxChrome`, `.lightboxImage`, `.lightboxFooter`, `.lightboxNavigation`, `.lightboxActions` |

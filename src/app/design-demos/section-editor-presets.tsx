@@ -5,7 +5,8 @@ import type * as React from "react";
 import Link from "next/link";
 import { Search, Trash2, Unlink } from "lucide-react";
 
-import { Button, SegmentedControl } from "./design-demo-ui";
+import { Button } from "./ui/button";
+import { SegmentedControl } from "./ui/segmented-control";
 import s from "./design-demo-styles";
 import { cx } from "./design-demo-utils";
 import { parseHue } from "./section-editor-shared";

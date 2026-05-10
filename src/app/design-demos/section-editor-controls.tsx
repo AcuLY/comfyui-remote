@@ -4,7 +4,8 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import type * as React from "react";
 import { ChevronDown, AlertCircle } from "lucide-react";
 
-import { FloatingSelect, SegmentedControl } from "./design-demo-ui";
+import { FloatingSelect } from "./ui/floating-select";
+import { SegmentedControl } from "./ui/segmented-control";
 import s from "./design-demo-styles";
 import { cx } from "./design-demo-utils";
 export type SectionTabValue = "params" | "presets" | "prompts" | "lora" | "history" | "results";

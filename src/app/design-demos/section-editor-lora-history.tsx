@@ -3,7 +3,8 @@
 import type * as React from "react";
 import { GripVertical, X, Unlink, Zap } from "lucide-react";
 
-import { Button, Switch } from "./design-demo-ui";
+import { Button } from "./ui/button";
+import { Switch } from "./ui/switch";
 import s from "./design-demo-styles";
 import { cx } from "./design-demo-utils";
 import { parseHue } from "./section-editor-shared";

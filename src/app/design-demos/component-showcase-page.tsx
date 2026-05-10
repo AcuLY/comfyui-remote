@@ -9,13 +9,31 @@ import {
 } from "lucide-react";
 
 import type { DemoData, DemoImage } from "./design-demo-data";
-import {
-  Button, ButtonLink, StatusBadge, Field, TextAreaField, SelectLike,
-  SwitchRow, DemoTabs, SegmentedControl, MetricCard, EmptyRows, OperationStateStrip,
-  PageHeader, Panel, RouteTable, EmptyPage, DemoFeedbackProvider,
-  ImageThumbSmall, ImageThumbMedium, ImageListSmall, ImageListMedium,
-  ImageGrid, ReviewImageBoard, ImagePreviewLarge, ImageStrip,
-} from "./design-demo-ui";
+import { Button } from "./ui/button";
+import { ButtonLink } from "./ui/button-link";
+import { DemoFeedbackProvider } from "./ui/demo-feedback-provider";
+import { DemoTabs } from "./ui/demo-tabs";
+import { EmptyPage } from "./ui/empty-page";
+import { EmptyRows } from "./ui/empty-rows";
+import { Field } from "./ui/field";
+import { ImageGrid } from "./ui/image-grid";
+import { ImageListMedium } from "./ui/image-list-medium";
+import { ImageListSmall } from "./ui/image-list-small";
+import { ImagePreviewLarge } from "./ui/image-preview-large";
+import { ImageStrip } from "./ui/image-strip";
+import { ImageThumbMedium } from "./ui/image-thumb-medium";
+import { ImageThumbSmall } from "./ui/image-thumb-small";
+import { MetricCard } from "./ui/metric-card";
+import { OperationStateStrip } from "./ui/operation-state-strip";
+import { PageHeader } from "./ui/page-header";
+import { Panel } from "./ui/panel";
+import { ReviewImageBoard } from "./ui/review-image-board";
+import { RouteTable } from "./ui/route-table";
+import { SegmentedControl } from "./ui/segmented-control";
+import { SelectLike } from "./ui/select-like";
+import { StatusBadge } from "./ui/status-badge";
+import { SwitchRow } from "./ui/switch-row";
+import { TextAreaField } from "./ui/text-area-field";
 import { SpecSection, SpecRow, StepperInput, DimensionsReadout, KSamplerCard } from "./section-editor-controls";
 import { SectionNameEditor, SaveStatusPill } from "./section-editor-header";
 import { PresetBindingRow } from "./section-editor-presets";
