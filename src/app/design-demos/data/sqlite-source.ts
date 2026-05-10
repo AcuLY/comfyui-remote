@@ -11,12 +11,12 @@ export function resolveSqlitePath() {
     if (path.isAbsolute(normalized)) {
       candidates.push(normalized);
     } else {
-      candidates.push(path.resolve(process.cwd(), normalized));
-      candidates.push(path.resolve(process.cwd(), "prisma", normalized));
+      candidates.push(path.resolve(/* turbopackIgnore: true */ process.cwd(), normalized));
+      candidates.push(path.resolve(/* turbopackIgnore: true */ process.cwd(), "prisma", normalized));
     }
   }
 
-  candidates.push(path.resolve(process.cwd(), "prisma", "data", "comfyui.db"));
+  candidates.push(path.resolve(/* turbopackIgnore: true */ process.cwd(), "prisma", "data", "comfyui.db"));
 
   const found = candidates.find((candidate) => {
     try {
