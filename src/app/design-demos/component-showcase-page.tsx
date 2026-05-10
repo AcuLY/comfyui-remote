@@ -22,7 +22,7 @@ import { PresetBindingRow } from "./section-editor-presets";
 import type { ImportCategory } from "./section-editor-presets";
 import { PresetImportInline } from "./section-editor-presets";
 import { PromptBlockRow, CompiledPromptPreview } from "./section-editor-prompts";
-import { LoraRow, HistoryDiffRow } from "./section-editor-lora-history";
+import { LoraRow, HistoryDiffRow, type LoraRowData } from "./section-editor-lora-history";
 import { LoraColumn } from "./section-editor-lora-column";
 import s from "./design-demo-styles";
 
@@ -516,6 +516,34 @@ export function ComponentShowcaseImages({ data }: { data: DemoData }) {
    ══════════════════════════════════════════════════════════════ */
 
 export function ComponentShowcaseEditor({ data }: { data: DemoData }) {
+  const [openPromptBlock, setOpenPromptBlock] = useState<string | null>(null);
+  const [showcaseLoras, setShowcaseLoras] = useState<LoraRowData[]>([
+    {
+      id: "lora-1",
+      fileName: "add_detail.safetensors",
+      filePath: "add_detail/add_detail.safetensors",
+      weight: 0.8,
+      enabled: true,
+      kind: "preset" as const,
+      presetName: "写实人像",
+      categoryName: "人物",
+      categoryColor: "158 100% 43%",
+      triggerWords: "add detail, highly detailed",
+    },
+    {
+      id: "lora-2",
+      fileName: "flat_color.safetensors",
+      filePath: "flat_color/flat_color.safetensors",
+      weight: 0.5,
+      enabled: false,
+      kind: "manual" as const,
+      triggerWords: "flat color",
+    },
+  ]);
+  const updateShowcaseLora = (id: string, patch: Partial<(typeof showcaseLoras)[number]>) => {
+    setShowcaseLoras((items) => items.map((item) => (item.id === id ? { ...item, ...patch } : item)));
+  };
+
   return (
     <div className={s.showcasePage}>
       <PageHeader back={{ href: "/component-showcase", label: "返回总览" }} eyebrow="组件展示" title="Section Editor 组件" subtitle="8 个小节编辑器专用组件" />
@@ -535,7 +563,7 @@ export function ComponentShowcaseEditor({ data }: { data: DemoData }) {
           binding={{
             id: "bind-1",
             kind: "preset",
-            scope: "project",
+            scope: "section",
             categoryId: "cat-1",
             categoryName: "人物",
             categoryColor: "158 100% 43%",
@@ -559,11 +587,12 @@ export function ComponentShowcaseEditor({ data }: { data: DemoData }) {
             categoryName: "风景",
             categoryColor: "200 80% 50%",
             name: "风景写意",
+            variantName: "默认",
             blockCount: 1,
             loraCount: 0,
-            members: [
-              { id: "m1", presetName: "天空光影", variantName: "默认" },
-              { id: "m2", presetName: "植被细节" },
+            variants: [
+              { id: "v1", name: "默认" },
+              { id: "v2", name: "湿润" },
             ],
           }}
         />
@@ -607,8 +636,9 @@ export function ComponentShowcaseEditor({ data }: { data: DemoData }) {
             negative: "lowres, bad anatomy, bad hands, blurry",
             kind: "preset",
           }}
-          expanded
-          onToggle={() => {}}
+          expanded={openPromptBlock === "pb-1"}
+          column="positive"
+          onToggle={() => setOpenPromptBlock((id) => (id === "pb-1" ? null : "pb-1"))}
         />
         <hr className={s.showcaseDivider} />
         <PromptBlockRow
@@ -621,8 +651,9 @@ export function ComponentShowcaseEditor({ data }: { data: DemoData }) {
             negative: "worst quality, low quality, watermark, text",
             kind: "manual",
           }}
-          expanded={false}
-          onToggle={() => {}}
+          expanded={openPromptBlock === "pb-2"}
+          column="negative"
+          onToggle={() => setOpenPromptBlock((id) => (id === "pb-2" ? null : "pb-2"))}
         />
       </ShowcaseItem>
 
@@ -633,7 +664,6 @@ export function ComponentShowcaseEditor({ data }: { data: DemoData }) {
             {
               id: "g1",
               presetName: "写实人像",
-              variantName: "高细节",
               categoryName: "人物",
               positive: ["masterpiece, best quality", "1girl, portrait, detailed face", "studio lighting"],
               negative: ["lowres", "bad anatomy, bad hands"],
@@ -652,40 +682,21 @@ export function ComponentShowcaseEditor({ data }: { data: DemoData }) {
       {/* 5.6 LoraRow */}
       <ShowcaseItem name="LoraRow" desc="LoRA 行">
         <LoraRow
-          entry={{
-            id: "lora-1",
-            fileName: "add_detail.safetensors",
-            filePath: "add_detail/add_detail.safetensors",
-            weight: 0.8,
-            enabled: true,
-            kind: "preset",
-            presetName: "写实人像",
-            categoryName: "人物",
-            categoryColor: "158 100% 43%",
-            triggerWords: "add detail, highly detailed",
-          }}
+          entry={showcaseLoras[0]}
           fileOptions={["add_detail.safetensors", "flat_color.safetensors", "realistic_skin.safetensors"]}
-          onWeightChange={() => {}}
-          onToggle={() => {}}
-          onPathChange={() => {}}
+          onWeightChange={(weight) => updateShowcaseLora("lora-1", { weight })}
+          onToggle={() => updateShowcaseLora("lora-1", { enabled: !showcaseLoras[0]?.enabled })}
+          onPathChange={(filePath) => updateShowcaseLora("lora-1", { filePath })}
           onUnlink={() => {}}
           onDelete={() => {}}
         />
         <hr className={s.showcaseDivider} />
         <LoraRow
-          entry={{
-            id: "lora-2",
-            fileName: "flat_color.safetensors",
-            filePath: "flat_color/flat_color.safetensors",
-            weight: 0.5,
-            enabled: false,
-            kind: "manual",
-            triggerWords: "flat color",
-          }}
+          entry={showcaseLoras[1]}
           fileOptions={["add_detail.safetensors", "flat_color.safetensors", "realistic_skin.safetensors"]}
-          onWeightChange={() => {}}
-          onToggle={() => {}}
-          onPathChange={() => {}}
+          onWeightChange={(weight) => updateShowcaseLora("lora-2", { weight })}
+          onToggle={() => updateShowcaseLora("lora-2", { enabled: !showcaseLoras[1]?.enabled })}
+          onPathChange={(filePath) => updateShowcaseLora("lora-2", { filePath })}
           onUnlink={() => {}}
           onDelete={() => {}}
         />
