@@ -14,6 +14,7 @@ This directory implements the routable `/design-demos` frontend shell.
 - `runs-page.tsx`: task workbench and run review pages.
 - `design-demo-styles/`: route-level CSS split by shell, queue/review, projects, library, section editor, and model browser surfaces.
 - `design-demo-styles.ts`: class-name bridge used by components so existing `s.foo` references map to the global route CSS classes.
+- `FRONTEND_RULES.md`: demo-only frontend rules for component boundaries, CSS Modules, Tailwind usage, and migration checks.
 
 ## Route Mapping
 
