@@ -5,8 +5,16 @@ import { useState } from "react";
 import { ArrowLeft, ArrowRight, Check, CheckSquare, Edit3, FolderTree, GripVertical, History, Plus, Save, Search, Shuffle, Square, Trash2, X } from "lucide-react";
 
 import type { DemoCategory, DemoData, DemoPreset, DemoPresetGroup } from "./design-demo-data";
-import s from "./design-demo-styles";
-import { Button, ButtonLink, EmptyPage, Field, OperationStateStrip, PageHeader, SelectLike, StatusBadge, TextAreaField } from "./design-demo-ui";
+import s from "./design-demo.module.css";
+import { Button } from "./ui/button";
+import { ButtonLink } from "./ui/button-link";
+import { EmptyPage } from "./ui/empty-page";
+import { Field } from "./ui/field";
+import { OperationStateStrip } from "./ui/operation-state-strip";
+import { PageHeader } from "./ui/page-header";
+import { SelectLike } from "./ui/select-like";
+import { StatusBadge } from "./ui/status-badge";
+import { TextAreaField } from "./ui/text-area-field";
 import { categoryColorValue, categoryHueValue, categoryItemCount, categorySlotPreview, categoryTypeLabel, cx, demoHref, firstCategory, presetFolderBreadcrumb, presetFolderChildren, presetFolderItemCount, presetFolderOptions, presetLibraryItems } from "./design-demo-utils";
 import type { DemoButtonFeedback, PresetLibraryItem, SortRuleDimensionKey } from "./design-demo-utils";
 function PresetMoveSheet({
@@ -38,7 +46,7 @@ function PresetMoveSheet({
             <h2>{selectedCount} 个{categoryTypeLabel(category)}条目</h2>
           </div>
           <button className={s.iconButton} type="button" onClick={onCancel} aria-label="关闭">
-            <X className="size-4" />
+            <X className={s.iconMd} />
           </button>
         </header>
         <div className={s.presetMoveBreadcrumbs}>
@@ -57,7 +65,7 @@ function PresetMoveSheet({
               key={option.id ?? "root"}
               onClick={() => onSelect(option.id)}
             >
-              <FolderTree className="size-4" />
+              <FolderTree className={s.iconMd} />
               <strong style={{ paddingLeft: `${option.depth * 8}px` }}>{option.name}</strong>
               <span>{option.count} 项</span>
             </button>
@@ -116,7 +124,7 @@ function PresetFolderRows({
       {folders.map((folder) => (
         <button className={s.presetFolderRow} type="button" key={folder.id} onClick={() => onNavigate(folder.id)}>
           <GripVertical className={s.categoryDragIcon} />
-          <FolderTree className="size-4" />
+          <FolderTree className={s.iconMd} />
           <strong>{folder.name}</strong>
           <span>{presetFolderItemCount(category, folder.id)} 项</span>
           <Edit3 className={s.icon} />
@@ -148,7 +156,7 @@ function PresetItemRows({
         return (
           <div className={cx(s.presetItemRow, checked && s.presetItemRowSelected)} key={item.id}>
             <button className={s.presetItemCheck} type="button" onClick={() => onToggle(item.id)} aria-label={checked ? "取消选择" : "选择"}>
-              {checked ? <CheckSquare className="size-4" /> : <Square className="size-4" />}
+              {checked ? <CheckSquare className={s.iconMd} /> : <Square className={s.iconMd} />}
             </button>
             <Link className={s.presetItemOpenArea} href={demoHref(item.href)}>
               <GripVertical className={s.categoryDragIcon} />
@@ -266,14 +274,14 @@ export function PresetsPage({ data }: { data: DemoData }) {
                   const currentFolder = presetFolderBreadcrumb(category, currentFolderId)[presetFolderBreadcrumb(category, currentFolderId).length - 1];
                   navigateFolder(currentFolder?.parentId ?? null);
                 }}>
-                  <ArrowLeft className="size-4" />
+                  <ArrowLeft className={s.iconMd} />
                   返回上级
                 </button>
               ) : null}
               {showDraftFolder ? (
                 <div className={cx(s.presetFolderRow, s.presetFolderDraft)}>
                   <GripVertical className={s.categoryDragIcon} />
-                  <FolderTree className="size-4" />
+                  <FolderTree className={s.iconMd} />
                   <strong>新建文件夹</strong>
                   <span>保存中</span>
                   <X className={s.icon} />

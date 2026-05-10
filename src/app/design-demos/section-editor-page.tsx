@@ -33,7 +33,7 @@ import {
   type KSamplerFull,
   type ImportCategory,
 } from "./section-editor-components";
-import s from "./design-demo-styles";
+import s from "./design-demo.module.css";
 import { LoraColumn } from "./section-editor-lora-column";
 import {
   CHECKPOINT_OPTIONS,
@@ -44,7 +44,9 @@ import {
   initialPromptBlocks,
   mockVariants,
 } from "./section-editor-page-data";
-import { ImageListMedium, ImagePreviewLarge, ImageThumbMedium } from "./design-demo-ui";
+import { ImageListMedium } from "./ui/image-list-medium";
+import { ImagePreviewLarge } from "./ui/image-preview-large";
+import { ImageThumbMedium } from "./ui/image-thumb-medium";
 
 type SectionEditorPageProps = {
   data: DemoData;
@@ -60,7 +62,7 @@ export function SectionEditorPage({ data, project, section }: SectionEditorPageP
       <div className={s.page}>
         <div className={s.pageHeader}>
           <Link href={demoHref("/projects")} className={s.pageBackLink}>
-            <ChevronLeft className="size-4" />
+            <ChevronLeft className={s.iconMd} />
             返回项目
           </Link>
           <div className={s.pageTitleBlock}>
@@ -553,7 +555,7 @@ function SectionEditorInner({
                       setImportOpen(false);
                     }}
                   >
-                    <Check className="size-4" />
+                    <Check className={s.iconMd} />
                     确认
                   </button>
                 </>
@@ -563,7 +565,7 @@ function SectionEditorInner({
                   className={s.btnPrimary}
                   onClick={() => setImportOpen(true)}
                 >
-                  <Plus className="size-4" />
+                  <Plus className={s.iconMd} />
                   导入预制
                 </button>
               )}
@@ -758,7 +760,7 @@ function SectionEditorInner({
                 flashSave();
               }}
             >
-              <Plus className="size-4" />
+              <Plus className={s.iconMd} />
               新增自定义 Block
             </button>
           </div>
@@ -958,7 +960,7 @@ function SectionEditorInner({
               <div key={run.runIndex} className={s.runGroup}>
                 <div className={s.runGroupHead}>
                   <span className={s.runGroupNumber}>
-                    <ImageIcon className="size-3.5" />
+                    <ImageIcon className={s.iconSm} />
                     Run <b>#{run.runIndex}</b>
                   </span>
                   <span className={s.runGroupTime}>{run.timestamp}</span>
@@ -977,14 +979,14 @@ function SectionEditorInner({
                       className={s.resultsFilterBtn}
                       onClick={() => bulkStatusForRun(run.runIndex, "kept")}
                     >
-                      <Check className="size-3.5" /> 批量保留
+                      <Check className={s.iconSm} /> 批量保留
                     </button>
                     <button
                       type="button"
                       className={s.resultsFilterBtn}
                       onClick={() => bulkStatusForRun(run.runIndex, "trashed")}
                     >
-                      <Trash2 className="size-3.5" /> 批量删除
+                      <Trash2 className={s.iconSm} /> 批量删除
                     </button>
                   </div>
                 </div>
@@ -1003,7 +1005,7 @@ function SectionEditorInner({
                             aria-label="保留"
                             title="保留"
                           >
-                            <Check className="size-3.5" />
+                            <Check className={s.iconSm} />
                           </button>
                           <button
                             type="button"
@@ -1013,7 +1015,7 @@ function SectionEditorInner({
                             aria-label="删除"
                             title="删除"
                           >
-                            <Trash2 className="size-3.5" />
+                            <Trash2 className={s.iconSm} />
                           </button>
                           <button
                             type="button"
@@ -1023,7 +1025,7 @@ function SectionEditorInner({
                             aria-label="精选"
                             title="精选"
                           >
-                            <Star className="size-3.5" />
+                            <Star className={s.iconSm} />
                           </button>
                           </>
                         )}
@@ -1059,7 +1061,7 @@ function SectionEditorInner({
                 aria-label="保留"
                 title="保留"
               >
-                <Check className="size-4" />
+                <Check className={s.iconMd} />
                 保留
               </button>
               <button
@@ -1074,7 +1076,7 @@ function SectionEditorInner({
                 aria-label="删除"
                 title="删除"
               >
-                <Trash2 className="size-4" />
+                <Trash2 className={s.iconMd} />
                 删除
               </button>
               <button
@@ -1084,7 +1086,7 @@ function SectionEditorInner({
                 aria-label="精选"
                 title="精选"
               >
-                <Star className="size-4" />
+                <Star className={s.iconMd} />
                 精选
               </button>
             </>

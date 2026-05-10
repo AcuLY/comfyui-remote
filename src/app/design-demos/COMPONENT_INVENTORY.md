@@ -753,7 +753,7 @@
 | 文件 | `project-pages.tsx` |
 | Props | `project?`, `mode: "new" \| "edit"` |
 | 功能 | 项目创建/编辑表单 |
-| CSS 类 | `.twoCol`, `.grid`, `.fieldGrid` |
+| CSS 类 | `.twoCol`, `.contentGrid`, `.fieldGrid` |
 
 ### 6.10 BatchSizeSelector
 

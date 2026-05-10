@@ -6,8 +6,16 @@ import type * as React from "react";
 import { ArrowLeft, ArrowRight, Copy, Download, Edit3, GripVertical, Layers3, Plus, Rows3, Save, SlidersHorizontal, Trash2 } from "lucide-react";
 
 import type { DemoData, DemoTemplate } from "./design-demo-data";
-import s from "./design-demo-styles";
-import { Button, ButtonLink, EmptyPage, Field, OperationStateStrip, PageHeader, SelectLike, StatusBadge, TextAreaField } from "./design-demo-ui";
+import s from "./design-demo.module.css";
+import { Button } from "./ui/button";
+import { ButtonLink } from "./ui/button-link";
+import { EmptyPage } from "./ui/empty-page";
+import { Field } from "./ui/field";
+import { OperationStateStrip } from "./ui/operation-state-strip";
+import { PageHeader } from "./ui/page-header";
+import { SelectLike } from "./ui/select-like";
+import { StatusBadge } from "./ui/status-badge";
+import { TextAreaField } from "./ui/text-area-field";
 import { cx, demoHref } from "./design-demo-utils";
 import type { DemoTemplateSection, TemplateSectionMode } from "./design-demo-utils";
 export function TemplatesPage({ data }: { data: DemoData }) {

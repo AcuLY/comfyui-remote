@@ -4,8 +4,13 @@ import { useMemo, useState } from "react";
 import { Archive, Check, CheckSquare, Eye, Square, Star, Trash2, X } from "lucide-react";
 
 import type { DemoData, DemoImage } from "./design-demo-data";
-import { Button, ImageListMedium, ImageListSmall, ImagePreviewLarge, ImageThumbMedium, PageHeader } from "./design-demo-ui";
-import s from "./design-demo-styles";
+import { Button } from "./ui/button";
+import { ImageListMedium } from "./ui/image-list-medium";
+import { ImageListSmall } from "./ui/image-list-small";
+import { ImagePreviewLarge } from "./ui/image-preview-large";
+import { ImageThumbMedium } from "./ui/image-thumb-medium";
+import { PageHeader } from "./ui/page-header";
+import s from "./design-demo.module.css";
 
 function svgImageDataUri(label: string, hue: number) {
   const svg = `

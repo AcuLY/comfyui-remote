@@ -7,7 +7,7 @@ import { Search, Trash2, Unlink } from "lucide-react";
 
 import { Button } from "./ui/button";
 import { SegmentedControl } from "./ui/segmented-control";
-import s from "./design-demo-styles";
+import s from "./design-demo.module.css";
 import { cx } from "./design-demo-utils";
 import { parseHue } from "./section-editor-shared";
 import { VariantSwitcher } from "./section-editor-controls";
@@ -54,7 +54,7 @@ export function PresetBindingRow({
   const isFromGroup = binding.kind === "group";
 
   return (
-    <div className={s.bindRow} style={{ position: "relative", paddingRight: 178 }}>
+    <div className={s.bindRow}>
       {binding.detailHref ? (
         <Link className={s.bindRowMain} href={binding.detailHref}>
           <PresetBindingSummary binding={binding} color={color} isFromGroup={isFromGroup} />
@@ -65,10 +65,7 @@ export function PresetBindingRow({
         </div>
       )}
 
-      <div
-        className={s.bindRowControls}
-        style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)" }}
-      >
+      <div className={s.bindRowControls}>
         {binding.variants && binding.variants.length > 1 ? (
           <VariantSwitcher
             variants={binding.variants}
@@ -216,7 +213,7 @@ function PresetImportInlineBody({
           value={activeCat ?? "__all"}
         />
         <div className={s.importSearch}>
-          <Search className="size-3.5" aria-hidden />
+          <Search className={s.iconSm} aria-hidden />
           <input
             type="text"
             placeholder="搜索预制 / 预制组…"

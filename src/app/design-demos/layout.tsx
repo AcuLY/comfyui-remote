@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { IBM_Plex_Mono } from "next/font/google";
 import "./fonts/font-options.css";
-import "./design-demo-styles/index.css";
 
 const ibmPlexMono = IBM_Plex_Mono({
   subsets: ["latin"],

@@ -136,7 +136,7 @@ export function ImagePreviewFrame({
       style={interactiveImageStyle}
     />
   ) : (
-    <ImageIcon className="size-8" />
+    <ImageIcon className={s.icon2xl} />
   );
 
   if (onOpen) {

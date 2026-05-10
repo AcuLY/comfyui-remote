@@ -6,8 +6,21 @@ import type * as React from "react";
 import { Archive, ArrowLeft, Check, CheckSquare, ChevronDown, ChevronRight, ChevronUp, Copy, Download, Edit3, Eye, Folder, FolderInput, FolderPlus, GripVertical, ImageIcon, ListChecks, Pencil, Play, Plus, Rows3, Save, Square, Star, Trash2, X } from "lucide-react";
 
 import type { DemoData, DemoImage, DemoProject, DemoProjectFolder, DemoSection } from "./design-demo-data";
-import s from "./design-demo-styles";
-import { Button, ButtonLink, DemoTabs, EmptyPage, Field, ImageGrid, ImageStrip, PageHeader, Panel, SegmentedControl, SelectLike, StatusBadge, SwitchRow, TextAreaField } from "./design-demo-ui";
+import s from "./design-demo.module.css";
+import { Button } from "./ui/button";
+import { ButtonLink } from "./ui/button-link";
+import { DemoTabs } from "./ui/demo-tabs";
+import { EmptyPage } from "./ui/empty-page";
+import { Field } from "./ui/field";
+import { ImageGrid } from "./ui/image-grid";
+import { ImageStrip } from "./ui/image-strip";
+import { PageHeader } from "./ui/page-header";
+import { Panel } from "./ui/panel";
+import { SegmentedControl } from "./ui/segmented-control";
+import { SelectLike } from "./ui/select-like";
+import { StatusBadge } from "./ui/status-badge";
+import { SwitchRow } from "./ui/switch-row";
+import { TextAreaField } from "./ui/text-area-field";
 import { compactFileName, cx, demoHref, filterImages, projectPresetSummary, rawSectionId, sectionAnchorId, sectionRunStatus } from "./design-demo-utils";
 import type { ProjectCardView, ResultDemoFilter, SectionNavMode } from "./design-demo-utils";
 import { QueuePage } from "./runs-page";
@@ -795,7 +808,7 @@ export function ProjectFormPage({ project, mode }: { project?: DemoProject; mode
       />
       <div className={s.twoCol}>
         <Panel title="基础信息">
-          <div className={s.grid}>
+          <div className={s.contentGrid}>
             <div className={s.fieldGrid}>
               <Field label="项目名称" value={project?.title ?? "新图像项目"} />
               <Field label="Slug" value={project?.slug ?? "new-project"} />
@@ -806,7 +819,7 @@ export function ProjectFormPage({ project, mode }: { project?: DemoProject; mode
           </div>
         </Panel>
         <Panel title="默认运行参数">
-          <div className={s.grid}>
+          <div className={s.contentGrid}>
             <SwitchRow title="继承模板参数" subtitle="创建小节时自动填充模板默认值。" />
             <div className={s.fieldGrid}>
               <Field label="默认比例" value="2:3" />

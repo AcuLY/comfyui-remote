@@ -58,7 +58,7 @@ export function ImageThumbMedium({
             loading="eager"
           />
         ) : (
-          <ImageIcon className="size-6" />
+          <ImageIcon className={s.iconXl} />
         )}
       </button>
       {showStatus ? (

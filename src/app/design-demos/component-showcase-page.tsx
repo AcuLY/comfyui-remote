@@ -42,7 +42,7 @@ import { PresetImportInline } from "./section-editor-presets";
 import { PromptBlockRow, CompiledPromptPreview } from "./section-editor-prompts";
 import { LoraRow, HistoryDiffRow, type LoraRowData } from "./section-editor-lora-history";
 import { LoraColumn } from "./section-editor-lora-column";
-import s from "./design-demo-styles";
+import s from "./design-demo.module.css";
 
 /* ───────────────────────── helpers ───────────────────────── */
 

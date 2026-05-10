@@ -26,7 +26,7 @@ Use these layers and keep ownership clear:
 1. `ui/`: reusable demo UI primitives.
 2. `section-editor-*`, `project-*`, `runs-*`, `preset-*`: feature components.
 3. `component-showcase-page.tsx`: showcase composition only.
-4. `design-demo-styles/`: legacy route and feature CSS while migration is in progress.
+4. `design-demo.module.css`: temporary scoped compatibility module while feature CSS Modules are split.
 
 New reusable controls belong in `ui/`, not inside a feature page.
 
@@ -34,7 +34,7 @@ New reusable controls belong in `ui/`, not inside a feature page.
 
 Files in `src/app/design-demos/ui/` must be self-contained.
 
-- A UI primitive must not import `../design-demo-styles`.
+- A UI primitive must not import legacy route-level style proxies.
 - A UI primitive should use a colocated or shared UI CSS Module, currently `ui.module.css`.
 - A UI primitive must expose visual differences through props such as `tone`, `size`, `variant`, `shape`, `pressed`, or `disabled`.
 - A UI primitive must not require callers to pass external CSS to look correct.
@@ -99,24 +99,24 @@ rg -n 'tailwind|twMerge|cva\\(|class-variance-authority|shadcn' src/app/design-d
 The component showcase must demonstrate real reusable components, not custom showcase-only copies.
 
 - Showcase pages import primitives directly from `./ui/<component>`.
-- Showcase pages should not import the compatibility barrel `./design-demo-ui` for primitives.
+- Showcase pages should not import compatibility barrels for primitives.
 - Showcase samples should avoid passing feature CSS classes into primitives.
 - If a component cannot be displayed correctly without extra showcase CSS, the primitive is not reusable enough yet.
 
 ## Legacy CSS Rules
 
-`design-demo-styles/` is legacy-compatible route and feature styling.
+`design-demo.module.css` is a temporary compatibility layer.
 
-- It may continue to style existing page shells and feature layouts.
+- It may continue to style existing page shells and feature layouts while Phase 4 is in progress.
 - It should not be used by new `ui/` primitives.
 - Do not add new generic primitive classes there, such as `.button`, `.switch`, `.tabs`, or `.input`.
-- Gradually move reusable primitive styling from `design-demo-styles/` into `ui/`.
+- Gradually split it into feature-owned CSS Modules.
 
 ## Refactor Checklist
 
 Before finishing a demo frontend change, check:
 
-- `rg "design-demo-styles" src/app/design-demos/ui` returns no matches.
+- `rg "design-demo.module.css" src/app/design-demos/ui` returns no matches.
 - Touched demo files do not use Tailwind utility strings.
 - Existing primitives are customized through props, not feature CSS classes.
 - `component-showcase-page.tsx` imports primitives from `./ui/<component>`.
@@ -132,5 +132,5 @@ The target state is:
 - `ui/` owns reusable demo primitives and their CSS Module styles.
 - Feature files own feature composition and layout only.
 - `component-showcase-page.tsx` is split into smaller showcase modules.
-- `design-demo-styles/` remains only for route shells and legacy feature surfaces until they are migrated.
+- `design-demo.module.css` is split into feature modules and then removed.
 - Tailwind utilities are fully removed from demo code before the demo shell is officially enabled.

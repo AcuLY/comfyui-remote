@@ -8,14 +8,13 @@ This directory implements the routable `/design-demos` frontend shell.
 - `[[...route]]/loading.tsx`: local route skeleton that uses the same glass design system.
 - `design-demo-data.ts`: server-side mock loader. It reads `.env`, opens the local SQLite database when available, scans `MODEL_BASE_DIR`, and returns browser-safe mock data.
 - `design-demo-client.tsx`: client shell, navigation, route dispatch, and remaining page skeletons.
-- `design-demo-ui.tsx`: reusable UI primitives, feedback toasts, image grids, and shared lightbox behavior.
+- `ui/`: reusable UI primitives, feedback toasts, image grids, and shared lightbox behavior.
+- `design-demo.module.css`: temporary scoped CSS Module for the current route and feature surfaces while feature modules are split.
 - `design-demo-utils.ts`: route mapping, shared types, navigation metadata, and browser-safe data helpers.
 - `IMAGE_SURFACES.md`: inventory of every routed demo page and panel that renders generated images.
 - `runs-page.tsx`: task workbench and run review pages.
-- `design-demo-styles/`: route-level CSS split by shell, queue/review, projects, library, section editor, and model browser surfaces.
-- `design-demo-styles.ts`: class-name bridge used by components so existing `s.foo` references map to the global route CSS classes.
 - `FRONTEND_RULES.md`: demo-only frontend rules for component boundaries, CSS Modules, Tailwind usage, and migration checks.
-- `TAILWIND_CLEANUP_PLAN.md`: phased cleanup plan for removing all Tailwind usage from demo code before the demo shell is officially enabled.
+- `DEMO_CODE_CLEANUP_PLAN.md`: phased cleanup plan for demo code structure, style ownership, Tailwind removal, and dependency-removal readiness.
 
 ## Route Mapping
 

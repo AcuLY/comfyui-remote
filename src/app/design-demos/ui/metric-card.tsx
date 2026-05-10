@@ -8,7 +8,7 @@ export function MetricCard({ icon: Icon, label, value, meta, tone }: { icon: Rou
   return (
     <div className={s.metric}>
       <div className={s.metricLabel}>
-        <Icon className={cx("size-4", tone)} />
+        <Icon className={cx(s.iconMd, tone)} />
         {label}
       </div>
       <div className={s.metricValue}>{value}</div>

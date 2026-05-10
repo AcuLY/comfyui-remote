@@ -6,8 +6,10 @@ import {
   MoreVertical, Edit2, Trash2, Move, X, Check,
   Folder, ArrowLeft, Plus
 } from 'lucide-react';
-import { Button, SegmentedControl, StatusBadge } from './design-demo-ui';
-import styles from './design-demo-styles';
+import { Button } from "./ui/button";
+import { SegmentedControl } from "./ui/segmented-control";
+import { StatusBadge } from "./ui/status-badge";
+import styles from './design-demo.module.css';
 
 interface FileItem {
   id: string;
@@ -146,7 +148,7 @@ export function ModelsPage() {
           <div className={styles.breadcrumb}>
             {breadcrumbs.map((crumb, index) => (
               <div key={crumb.path} className={styles.breadcrumbItem}>
-                {index > 0 && <ChevronRight className="size-3 opacity-40" />}
+                {index > 0 && <ChevronRight className={`${styles.iconXs} ${styles.iconSubtle}`} />}
                 <button
                   type="button"
                   onClick={() => handleBreadcrumbClick(index)}
@@ -160,7 +162,7 @@ export function ModelsPage() {
 
           {/* Search Bar */}
           <div className={styles.searchBar}>
-            <Search className="size-4 opacity-40" />
+            <Search className={`${styles.iconMd} ${styles.iconSubtle}`} />
             <input
               type="text"
               placeholder="搜索文件..."
@@ -191,7 +193,7 @@ export function ModelsPage() {
                   setSelectedFile(null);
                 }}
               >
-                <ArrowLeft className="size-4 opacity-60" />
+                <ArrowLeft className={`${styles.iconMd} ${styles.iconMuted}`} />
                 <span className={styles.fileName}>返回上级</span>
               </button>
             )}
@@ -207,9 +209,9 @@ export function ModelsPage() {
                 >
                   <div className={styles.fileIcon}>
                     {file.type === 'folder' ? (
-                      <Folder className="size-4" />
+                      <Folder className={styles.iconMd} />
                     ) : (
-                      <File className="size-4" />
+                      <File className={styles.iconMd} />
                     )}
                   </div>
 
@@ -221,7 +223,7 @@ export function ModelsPage() {
                   </div>
 
                   {file.type === 'folder' && (
-                    <ChevronRight className="size-4 opacity-40" />
+                    <ChevronRight className={`${styles.iconMd} ${styles.iconSubtle}`} />
                   )}
 
                   {file.type === 'file' && (
@@ -244,7 +246,7 @@ export function ModelsPage() {
           {/* Empty State */}
           {files.filter(f => f.modelType === activeTab).length === 0 && (
             <div className={styles.emptyState}>
-              <FolderOpen className="size-8 opacity-20" />
+              <FolderOpen className={`${styles.icon2xl} ${styles.iconFaint}`} />
               <p>当前目录为空</p>
               <Button icon={Upload} onClick={handleUpload}>
                 上传文件
@@ -371,15 +373,15 @@ export function ModelsPage() {
               {/* Folder tree would go here */}
               <div className={styles.folderTree}>
                 <div className={styles.folderTreeItem}>
-                  <Folder className="size-4" />
+                  <Folder className={styles.iconMd} />
                   <span>models</span>
                 </div>
                 <div className={styles.folderTreeItem} style={{ paddingLeft: '1.5rem' }}>
-                  <Folder className="size-4" />
+                  <Folder className={styles.iconMd} />
                   <span>character</span>
                 </div>
                 <div className={styles.folderTreeItem} style={{ paddingLeft: '1.5rem' }}>
-                  <Folder className="size-4" />
+                  <Folder className={styles.iconMd} />
                   <span>nsfw</span>
                 </div>
               </div>

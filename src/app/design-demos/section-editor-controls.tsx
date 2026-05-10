@@ -6,7 +6,7 @@ import { ChevronDown, AlertCircle } from "lucide-react";
 
 import { FloatingSelect } from "./ui/floating-select";
 import { SegmentedControl } from "./ui/segmented-control";
-import s from "./design-demo-styles";
+import s from "./design-demo.module.css";
 import { cx } from "./design-demo-utils";
 export type SectionTabValue = "params" | "presets" | "prompts" | "lora" | "history" | "results";
 
@@ -119,7 +119,7 @@ export function CheckpointPicker({
       >
         <span className={s.cpPickerValue}>{display}</span>
         {inherited ? <span className={s.cpInheritTag}>继承项目</span> : null}
-        <ChevronDown className="size-4" />
+        <ChevronDown className={s.iconMd} />
       </button>
       {isOpen ? (
         <div className={s.cpPickerMenu}>
@@ -304,7 +304,7 @@ export function UpscaleControl({
       />
       {value === 1 ? (
         <p className={s.upscaleWarning}>
-          <AlertCircle className="size-3.5" />
+          <AlertCircle className={s.iconSm} />
           1× 模式跳过 Upscale Latent 与 KSampler 2
         </p>
       ) : null}

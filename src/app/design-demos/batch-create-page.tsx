@@ -5,8 +5,11 @@ import { useState } from "react";
 import { ArrowLeft, Boxes, FolderTree, Plus, Search, Wand2, X } from "lucide-react";
 
 import type { DemoData, DemoProject } from "./design-demo-data";
-import s from "./design-demo-styles";
-import { Button, EmptyPage, PageHeader, StatusBadge } from "./design-demo-ui";
+import s from "./design-demo.module.css";
+import { Button } from "./ui/button";
+import { EmptyPage } from "./ui/empty-page";
+import { PageHeader } from "./ui/page-header";
+import { StatusBadge } from "./ui/status-badge";
 import { batchImportFromGroup, batchImportFromPreset, batchItemKey, categoryColorValue, categoryTypeLabel, cx, demoHref, presetFolderBreadcrumb, presetFolderChildren, presetFolderItemCount, projectBatchBindings, rawSectionId } from "./design-demo-utils";
 import type { BatchImportItem } from "./design-demo-utils";
 export function BatchCreatePage({ project, data }: { project: DemoProject | undefined; data: DemoData }) {

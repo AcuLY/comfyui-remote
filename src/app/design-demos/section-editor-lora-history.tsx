@@ -5,7 +5,7 @@ import { GripVertical, X, Unlink, Zap } from "lucide-react";
 
 import { Button } from "./ui/button";
 import { Switch } from "./ui/switch";
-import s from "./design-demo-styles";
+import s from "./design-demo.module.css";
 import { cx } from "./design-demo-utils";
 import { parseHue } from "./section-editor-shared";
 import { SelectChip, StepperInput } from "./section-editor-controls";
@@ -77,7 +77,7 @@ export function LoraRow({
           )}
           {entry.triggerWords ? (
             <span className={s.loraTrigger} title={entry.triggerWords}>
-              <Zap className="size-3" />
+              <Zap className={s.iconXs} />
               触发词
             </span>
           ) : null}

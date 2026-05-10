@@ -26,7 +26,7 @@ export function ImageThumbSmall({
           loading="eager"
         />
       ) : (
-        <ImageIcon className="size-5" />
+        <ImageIcon className={s.iconLg} />
       )}
     </span>
   );

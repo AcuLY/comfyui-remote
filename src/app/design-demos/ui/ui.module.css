@@ -211,6 +211,54 @@
   flex: 0 0 auto;
 }
 
+.iconXs {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 auto;
+}
+
+.iconSm {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+}
+
+.iconMd {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+
+.iconLg {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+}
+
+.iconXl {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+}
+
+.icon2xl {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+}
+
+.iconMuted {
+  opacity: 0.6;
+}
+
+.iconSubtle {
+  opacity: 0.4;
+}
+
+.iconFaint {
+  opacity: 0.2;
+}
+
 .toastStack {
   position: fixed;
   top: 16px;

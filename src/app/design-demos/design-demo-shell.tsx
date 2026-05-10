@@ -13,8 +13,9 @@ import {
 } from "lucide-react";
 
 import type { DemoData } from "./design-demo-data";
-import s from "./design-demo-styles";
-import { Button, DemoFeedbackProvider } from "./design-demo-ui";
+import s from "./design-demo.module.css";
+import { Button } from "./ui/button";
+import { DemoFeedbackProvider } from "./ui/demo-feedback-provider";
 import {
   DESIGN_DEMO_SFW_STORAGE_KEY,
   DESIGN_DEMO_THEME_STORAGE_KEY,
@@ -96,7 +97,7 @@ function Sidebar({
                 key={link.href}
                 onClick={onClose}
               >
-                <Icon className="size-4" />
+                <Icon className={s.iconMd} />
                 <span>{link.label}</span>
                 {link.count ? <em className={s.navCount}>{link.count(data)}</em> : null}
               </Link>
@@ -111,7 +112,7 @@ function Sidebar({
                 aria-checked={isDarkTheme}
                 onClick={onToggleTheme}
               >
-                <ThemeIcon className="size-4" />
+                <ThemeIcon className={s.iconMd} />
                 <span>暗色</span>
                 <span className={s.sidebarToggleSwitch} aria-hidden="true">
                   <span />
@@ -124,7 +125,7 @@ function Sidebar({
                 aria-checked={sfwMode}
                 onClick={onToggleSfwMode}
               >
-                <SfwIcon className="size-4" />
+                <SfwIcon className={s.iconMd} />
                 <span>SFW</span>
                 <span className={s.sidebarToggleSwitch} aria-hidden="true">
                   <span />
@@ -160,7 +161,7 @@ function MobileBottomNav({
             href={demoHref(link.href)}
             key={link.href}
           >
-            <Icon className="size-4" />
+            <Icon className={s.iconMd} />
             <span>{link.label}</span>
             {link.count ? <em>{link.count(data)}</em> : null}
           </Link>
@@ -173,7 +174,7 @@ function MobileBottomNav({
         aria-expanded={moreOpen}
         aria-label="打开更多页面"
       >
-        <MoreHorizontal className="size-4" />
+        <MoreHorizontal className={s.iconMd} />
         <span>更多</span>
       </button>
     </nav>
@@ -237,7 +238,7 @@ function MobileTopbar({
               aria-checked={isDarkTheme}
               onClick={onToggleTheme}
             >
-              <ThemeIcon className="size-4" />
+              <ThemeIcon className={s.iconMd} />
               <span>暗色模式</span>
             </button>
             <button
@@ -247,7 +248,7 @@ function MobileTopbar({
               aria-checked={sfwMode}
               onClick={onToggleSfwMode}
             >
-              <SfwIcon className="size-4" />
+              <SfwIcon className={s.iconMd} />
               <span>SFW 模式</span>
             </button>
           </div>

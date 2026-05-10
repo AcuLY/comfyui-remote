@@ -21,18 +21,16 @@ import {
 import type { DemoData, DemoRun } from "./design-demo-data";
 import { cx, demoHref, filterImages, findProject, findSection, rawSectionId } from "./design-demo-utils";
 import type { QueueDemoTab, ResultDemoFilter } from "./design-demo-utils";
-import {
-  Button,
-  ButtonLink,
-  DemoTabs,
-  EmptyPage,
-  EmptyRows,
-  ImageListSmall,
-  MetricCard,
-  PageHeader,
-  ReviewImageBoard,
-} from "./design-demo-ui";
-import s from "./design-demo-styles";
+import { Button } from "./ui/button";
+import { ButtonLink } from "./ui/button-link";
+import { DemoTabs } from "./ui/demo-tabs";
+import { EmptyPage } from "./ui/empty-page";
+import { EmptyRows } from "./ui/empty-rows";
+import { ImageListSmall } from "./ui/image-list-small";
+import { MetricCard } from "./ui/metric-card";
+import { PageHeader } from "./ui/page-header";
+import { ReviewImageBoard } from "./ui/review-image-board";
+import s from "./design-demo.module.css";
 type QueueReviewRow = {
   run: DemoRun;
   pendingCount: number;
@@ -806,7 +804,7 @@ export function ReviewPage({ data, run }: { data: DemoData; run: DemoRun | undef
           <>
             {sectionPath ? <ButtonLink href={sectionPath} icon={ExternalLink}>跳转至小节</ButtonLink> : null}
             <a className={s.button} href={`/api/runs/${run.id}/workflow`} download>
-              <Download className="size-4" />
+              <Download className={s.iconMd} />
               下载工作流文件
             </a>
           </>

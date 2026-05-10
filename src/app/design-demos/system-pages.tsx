@@ -5,8 +5,17 @@ import { useState } from "react";
 import { Activity, ArrowRight, ClipboardList, Gauge, History, Home, Lock, Monitor, Play, Search, X } from "lucide-react";
 
 import type { DemoData } from "./design-demo-data";
-import s from "./design-demo-styles";
-import { Button, ButtonLink, DemoTabs, Field, OperationStateStrip, PageHeader, Panel, RouteTable, SegmentedControl, StatusBadge } from "./design-demo-ui";
+import s from "./design-demo.module.css";
+import { Button } from "./ui/button";
+import { ButtonLink } from "./ui/button-link";
+import { DemoTabs } from "./ui/demo-tabs";
+import { Field } from "./ui/field";
+import { OperationStateStrip } from "./ui/operation-state-strip";
+import { PageHeader } from "./ui/page-header";
+import { Panel } from "./ui/panel";
+import { RouteTable } from "./ui/route-table";
+import { SegmentedControl } from "./ui/segmented-control";
+import { StatusBadge } from "./ui/status-badge";
 import { cx, demoHref } from "./design-demo-utils";
 import type { LogDemoSource } from "./design-demo-utils";
 export function SettingsPage({ data }: { data: DemoData }) {
@@ -24,14 +33,14 @@ export function SettingsPage({ data }: { data: DemoData }) {
         ].map((item) => (
           <Link className={s.settingsLinkRow} href={demoHref(item.href)} key={item.href}>
             <div className={s.settingsLinkMain}>
-              <item.icon className="size-4" />
+              <item.icon className={s.iconMd} />
               <div className={s.settingsLinkText}>
                 <strong>{item.title}</strong>
                 <span>{item.meta}</span>
               </div>
             </div>
             <div className={s.settingsLinkArrow}>
-              <ArrowRight className="size-4" />
+              <ArrowRight className={s.iconMd} />
             </div>
           </Link>
         ))}
@@ -284,7 +293,7 @@ export function LoginPage() {
         subtitle="使用本地访问令牌进入工作台。"
       />
       <Panel title="访问令牌">
-        <div className={s.grid}>
+        <div className={s.contentGrid}>
           <Field label="Token" value="本地访问令牌" />
           <div className={s.toolbar}>
             <Button tone="primary" icon={Lock} feedback={{ title: "登录验证已通过" }}>登录</Button>

@@ -6,7 +6,7 @@ import { ChevronLeft, ChevronRight, Pencil, Check, ExternalLink, Play } from "lu
 
 import { Button } from "./ui/button";
 import { SegmentedControl } from "./ui/segmented-control";
-import s from "./design-demo-styles";
+import s from "./design-demo.module.css";
 import { cx } from "./design-demo-utils";
 export type SaveStatus = "idle" | "saving" | "saved";
 
@@ -79,7 +79,7 @@ export function SectionNameEditor({
       >
         <strong>{name}</strong>
         <span className={s.sectionNamePencil} aria-hidden>
-          <Pencil className="size-3.5" />
+          <Pencil className={s.iconSm} />
         </span>
       </button>
     );
@@ -121,12 +121,12 @@ export function SaveStatusPill({ status }: { status: SaveStatus }) {
         </>
       ) : status === "saved" ? (
         <>
-          <Check className="size-3.5" />
+          <Check className={s.iconSm} />
           已保存
         </>
       ) : (
         <>
-          <Check className="size-3.5" />
+          <Check className={s.iconSm} />
           已保存
         </>
       )}
@@ -173,7 +173,7 @@ export function SectionHeader(props: HeaderProps) {
     <header className={s.sectionHeader}>
       <div className={s.sectionHeaderTop}>
         <Link href={backHref} className={s.sectionHeaderBack}>
-          <ChevronLeft className="size-4" />
+          <ChevronLeft className={s.iconMd} />
           {backLabel}
         </Link>
         <span className={s.sectionHeaderEyebrow}>小节</span>
@@ -189,11 +189,11 @@ export function SectionHeader(props: HeaderProps) {
         <nav className={s.sectionHeaderNav} aria-label="切换小节">
           {prev ? (
             <Link href={prev.href} className={s.sectionHeaderNavBtn} title={`上一节 · ${prev.name}`}>
-              <ChevronLeft className="size-4" />
+              <ChevronLeft className={s.iconMd} />
             </Link>
           ) : (
             <span className={cx(s.sectionHeaderNavBtn, s.sectionHeaderNavBtnDisabled)} aria-disabled>
-              <ChevronLeft className="size-4" />
+              <ChevronLeft className={s.iconMd} />
             </span>
           )}
           <span className={s.sectionHeaderNavLabel}>
@@ -203,11 +203,11 @@ export function SectionHeader(props: HeaderProps) {
           </span>
           {next ? (
             <Link href={next.href} className={s.sectionHeaderNavBtn} title={`下一节 · ${next.name}`}>
-              <ChevronRight className="size-4" />
+              <ChevronRight className={s.iconMd} />
             </Link>
           ) : (
             <span className={cx(s.sectionHeaderNavBtn, s.sectionHeaderNavBtnDisabled)} aria-disabled>
-              <ChevronRight className="size-4" />
+              <ChevronRight className={s.iconMd} />
             </span>
           )}
         </nav>
@@ -218,7 +218,7 @@ export function SectionHeader(props: HeaderProps) {
           className={s.sectionHeaderGhostBtn}
           title="下载 workflow"
         >
-          <ExternalLink className="size-4" />
+          <ExternalLink className={s.iconMd} />
           <span>workflow</span>
         </Link>
 

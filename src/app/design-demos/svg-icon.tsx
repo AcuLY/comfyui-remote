@@ -87,7 +87,7 @@ export const SvgIcon = forwardRef<SVGSVGElement, SvgIconProps & {
  * });
  *
  * // 使用 —— 和 lucide-react 图标完全一样
- * <ComfyuiIcon size={20} className="text-blue-500" />
+ * <ComfyuiIcon size={20} style={{ color: "#2563eb" }} />
  * <Button icon={ComfyuiIcon}>ComfyUI</Button>
  * ```
  */
