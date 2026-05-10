@@ -40,7 +40,9 @@ export function Switch({
       role="switch"
       type="button"
     >
-      <span className={s.switchThumb} aria-hidden="true" />
+      <span className={s.switchTrack} aria-hidden="true">
+        <span className={s.switchThumb} />
+      </span>
     </button>
   );
 }

@@ -498,14 +498,14 @@
   min-width: var(--switch-width);
   height: var(--switch-height);
   min-height: var(--switch-height);
+  align-items: center;
+  justify-content: center;
   flex: 0 0 auto;
-  overflow: hidden;
+  overflow: visible;
   border: 0;
   border-radius: var(--switch-height);
-  background: var(--ui-green);
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--ui-green) 18%, transparent),
-    0 5px 12px color-mix(in srgb, var(--ui-green) 20%, transparent);
+  background: transparent;
+  box-shadow: none;
   caret-color: transparent;
   color: inherit;
   cursor: pointer;
@@ -522,15 +522,32 @@
 }
 
 .switch[data-size="sm"] {
-  --switch-width: 40px;
+  --switch-width: 42px;
   --switch-height: 24px;
   --switch-thumb: 18px;
 }
 
 .switch:focus-visible {
+  box-shadow: none;
+}
+
+.switch:focus-visible .switchTrack {
   box-shadow:
     0 0 0 3px var(--ui-green-soft),
     0 5px 12px color-mix(in srgb, var(--ui-green) 20%, transparent);
+}
+
+.switchTrack {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--ui-green);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--ui-green) 18%, transparent),
+    0 5px 12px color-mix(in srgb, var(--ui-green) 20%, transparent);
+  pointer-events: none;
+  transition: background-color 180ms ease, box-shadow 180ms ease;
 }
 
 .switchThumb {
@@ -551,6 +568,9 @@
 
 .switch[data-state="unchecked"] {
   --switch-thumb-left: var(--switch-padding);
+}
+
+.switch[data-state="unchecked"] .switchTrack {
   background: color-mix(in srgb, var(--ui-muted) 24%, var(--ui-panel-2));
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ui-muted) 18%, transparent);
 }
