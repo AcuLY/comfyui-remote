@@ -11,7 +11,11 @@ import {
   updateProjectSection as updateProjectSectionInRepository,
 } from "@/server/repositories/project-repository";
 import { audit } from "@/server/services/audit-service";
-import { submitRunToComfyUI, pollRunCompletion } from "@/server/services/run-executor";
+import {
+  buildSubmittedRunData,
+  submitRunToComfyUI,
+  pollRunCompletion,
+} from "@/server/services/run-executor";
 import { getWorkerRun } from "@/server/worker/repository";
 import { prisma } from "@/lib/prisma";
 import { recordSectionChange } from "@/server/services/section-change-history-service";
@@ -495,10 +499,10 @@ export async function enqueueProjectRuns(projectId: string, overrideBatchSize?: 
     if (!run) continue;
 
     try {
-      const { comfyPromptId } = await submitRunToComfyUI(run);
+      const submitResult = await submitRunToComfyUI(run);
       await prisma.run.update({
         where: { id: run.runId },
-        data: { comfyPromptId },
+        data: buildSubmittedRunData(submitResult),
       });
       pollRunCompletion(run.runId).catch(() => {});
       allFailed = false;
@@ -550,10 +554,10 @@ export async function enqueueProjectSectionRun(
     if (!run) continue;
 
     try {
-      const { comfyPromptId } = await submitRunToComfyUI(run);
+      const submitResult = await submitRunToComfyUI(run);
       await prisma.run.update({
         where: { id: run.runId },
-        data: { comfyPromptId },
+        data: buildSubmittedRunData(submitResult),
       });
       pollRunCompletion(run.runId).catch(() => {});
     } catch (error) {

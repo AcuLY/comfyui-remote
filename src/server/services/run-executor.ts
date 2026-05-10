@@ -11,10 +11,10 @@
  */
 
 import { RunStatus } from "@/lib/db-enums";
+import type { Prisma } from "@/generated/prisma";
 import { assertEnv } from "@/lib/env";
 import { createLogger } from "@/lib/logger";
 import {
-  ComfyPromptExecutionError,
   validateComfyPromptDraft,
   submitComfyPrompt,
   pollComfyPromptHistory,
@@ -89,6 +89,37 @@ export type SubmitResult = {
   promptDraft: ComfyPromptDraft;
 };
 
+type JsonRecord = Record<string, unknown>;
+
+function asJsonRecord(value: unknown): JsonRecord | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+
+  return value as JsonRecord;
+}
+
+function normalizeComfyApiUrl(apiUrl: string) {
+  const normalizedApiUrl = apiUrl.trim().replace(/\/+$/, "");
+
+  if (!normalizedApiUrl) {
+    throw new Error("ComfyUI API URL is empty");
+  }
+
+  return normalizedApiUrl;
+}
+
+export function buildSubmittedRunData(result: SubmitResult) {
+  return {
+    comfyPromptId: result.comfyPromptId,
+    submittedPrompt: result.validatedDraft.apiPrompt as Prisma.InputJsonObject,
+    executionMeta: extractExecutionMeta(
+      result.validatedDraft.apiPrompt,
+      result.promptDraft,
+    ) as Prisma.InputJsonObject,
+  };
+}
+
 /**
  * Validate and submit a single run to ComfyUI.
  * Called synchronously from the server action before creating the Run record.
@@ -143,6 +174,8 @@ export async function pollRunCompletion(runId: string): Promise<void> {
         id: true,
         status: true,
         comfyPromptId: true,
+        submittedPrompt: true,
+        executionMeta: true,
         resolvedConfigSnapshot: true,
         outputDir: true,
         runIndex: true,
@@ -190,18 +223,24 @@ export async function pollRunCompletion(runId: string): Promise<void> {
     const runLog = log.child({ runId, comfyPromptId });
     const runTimer = runLog.startTimer("process-run");
 
-    // We need the validatedDraft for extractExecutionMeta — rebuild it
     const promptDraft = buildComfyPromptDraft(run);
-    const validatedDraft = await validateComfyPromptDraft(
-      run.comfyApiUrl,
-      promptDraft,
-    );
+    const storedSubmittedPrompt = asJsonRecord(runRecord.submittedPrompt);
+    const apiUrl = normalizeComfyApiUrl(run.comfyApiUrl);
+    let apiPrompt = storedSubmittedPrompt;
+
+    if (!apiPrompt) {
+      const validatedDraft = await validateComfyPromptDraft(
+        run.comfyApiUrl,
+        promptDraft,
+      );
+      apiPrompt = validatedDraft.apiPrompt;
+    }
 
     try {
       // Keep DB status aligned with ComfyUI's real queue state. A submitted
       // prompt is still "queued" until ComfyUI moves it into queue_running.
       if (runRecord.status === RunStatus.running) {
-        const position = await getComfyQueuePosition(validatedDraft.apiUrl, comfyPromptId);
+        const position = await getComfyQueuePosition(apiUrl, comfyPromptId);
         if (position === "pending") {
           await db.run.updateMany({
             where: { id: runId, status: RunStatus.running },
@@ -213,7 +252,7 @@ export async function pollRunCompletion(runId: string): Promise<void> {
 
       if (runRecord.status === RunStatus.queued) {
         const started = await waitForPromptToStart(
-          validatedDraft.apiUrl,
+          apiUrl,
           comfyPromptId,
           { pollIntervalMs: 2000 },
         );
@@ -245,7 +284,7 @@ export async function pollRunCompletion(runId: string): Promise<void> {
       }
 
       const historyEntry = await pollComfyPromptHistory(
-        validatedDraft.apiUrl,
+        apiUrl,
         comfyPromptId,
       );
 
@@ -254,7 +293,9 @@ export async function pollRunCompletion(runId: string): Promise<void> {
       });
 
       const outputImages = extractOutputImages(historyEntry);
-      const executionMeta = extractExecutionMeta(validatedDraft.apiPrompt, promptDraft);
+      const executionMeta =
+        asJsonRecord(runRecord.executionMeta) ??
+        extractExecutionMeta(apiPrompt, promptDraft);
       const claimedFinalization = await claimRunFinalization(runId, runRecord.outputDir);
 
       if (!claimedFinalization) {
@@ -270,18 +311,18 @@ export async function pollRunCompletion(runId: string): Promise<void> {
       );
 
       // Save workflow JSON alongside images
-      if (persistedOutput.outputDir && validatedDraft) {
+      if (persistedOutput.outputDir) {
         const fs = await import("fs/promises");
         const path = await import("path");
         const workflowPath = path.join(persistedOutput.outputDir, "workflow.json");
-        await fs.writeFile(workflowPath, JSON.stringify(validatedDraft.apiPrompt, null, 2), "utf-8");
+        await fs.writeFile(workflowPath, JSON.stringify(apiPrompt, null, 2), "utf-8");
       }
 
       await completeWorkerRun(runId, {
         status: RunStatus.done,
         comfyPromptId,
         executionMeta,
-        submittedPrompt: validatedDraft.apiPrompt,
+        submittedPrompt: apiPrompt,
         outputDir: persistedOutput.outputDir,
         images: persistedOutput.images,
       });

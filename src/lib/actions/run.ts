@@ -6,7 +6,11 @@ import {
   enqueueProjectRuns as enqueueProjectRunsRepo,
   enqueueProjectSectionRun as enqueueProjectSectionRunRepo,
 } from "@/server/repositories/project-repository";
-import { submitRunToComfyUI, pollRunCompletion } from "@/server/services/run-executor";
+import {
+  buildSubmittedRunData,
+  submitRunToComfyUI,
+  pollRunCompletion,
+} from "@/server/services/run-executor";
 import { getWorkerRun } from "@/server/worker/repository";
 import {
   deleteComfyQueueItems,
@@ -31,11 +35,11 @@ export async function runProject(projectId: string, overrideBatchSize?: number |
     if (!run) continue;
 
     try {
-      const { comfyPromptId } = await submitRunToComfyUI(run);
+      const submitResult = await submitRunToComfyUI(run);
       // Store comfyPromptId — now "queued" means "in ComfyUI's queue"
       await prisma.run.update({
         where: { id: run.runId },
-        data: { comfyPromptId },
+        data: buildSubmittedRunData(submitResult),
       });
       // Fire-and-forget: poll for completion
       pollRunCompletion(run.runId).catch(() => {});
@@ -85,10 +89,10 @@ export async function runSection(sectionId: string, overrideBatchSize?: number |
     if (!run) continue;
 
     try {
-      const { comfyPromptId } = await submitRunToComfyUI(run);
+      const submitResult = await submitRunToComfyUI(run);
       await prisma.run.update({
         where: { id: run.runId },
-        data: { comfyPromptId },
+        data: buildSubmittedRunData(submitResult),
       });
       pollRunCompletion(run.runId).catch(() => {});
     } catch (error) {
