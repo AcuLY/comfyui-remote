@@ -23,6 +23,8 @@ import { ShowcaseItem } from "./showcase-item";
 export function ComponentShowcaseAtoms() {
   const [tabValue, setTabValue] = useState("params");
   const [stepperVal, setStepperVal] = useState(4);
+  const [cfgVal, setCfgVal] = useState(7);
+  const [denoiseVal, setDenoiseVal] = useState(0.85);
   const [sectionName, setSectionName] = useState("肖像 - 女性角色");
 
   return (
@@ -180,7 +182,7 @@ export function ComponentShowcaseAtoms() {
             <StepperInput value={stepperVal} onChange={setStepperVal} min={1} max={50} />
           </SpecRow>
           <SpecRow label="CFG Scale" description="提示词相关性">
-            <StepperInput value={7} onChange={() => {}} min={1} max={30} step={0.5} />
+            <StepperInput value={cfgVal} onChange={setCfgVal} min={1} max={30} step={0.5} decrementSteps={[1, 0.5]} incrementSteps={[0.5, 1]} width={220} />
           </SpecRow>
         </SpecSection>
       </ShowcaseItem>
@@ -190,9 +192,9 @@ export function ComponentShowcaseAtoms() {
         <div className={s.showcaseStack}>
           <div className={s.showcaseRow}>
             <StepperInput value={stepperVal} onChange={setStepperVal} min={1} max={50} />
-            <StepperInput value={7} onChange={() => {}} min={1} max={30} step={0.5} />
+            <StepperInput value={cfgVal} onChange={setCfgVal} min={1} max={30} step={0.5} decrementSteps={[1, 0.5]} incrementSteps={[0.5, 1]} width={220} />
           </div>
-          <StepperInput value={0.85} onChange={() => {}} min={0.1} max={1} step={0.05} width={120} />
+          <StepperInput value={denoiseVal} onChange={setDenoiseVal} min={0.1} max={1} step={0.05} decrementSteps={[0.1, 0.05]} incrementSteps={[0.05, 0.1]} width={236} />
         </div>
       </ShowcaseItem>
 

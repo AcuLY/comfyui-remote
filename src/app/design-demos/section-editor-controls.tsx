@@ -185,13 +185,43 @@ export function AspectChips({
 // Compact number input with stepper
 // ============================================================================
 
+function normalizeStepOptions(options: number[] | undefined, fallback: number) {
+  const normalized = (options?.length ? options : [fallback])
+    .map((option) => Math.abs(option))
+    .filter((option) => Number.isFinite(option) && option > 0);
+
+  return normalized.length ? normalized : [1];
+}
+
+function countDecimals(value: number) {
+  const text = `${value}`;
+  if (!text.includes("e")) {
+    return text.includes(".") ? text.split(".")[1]?.length ?? 0 : 0;
+  }
+
+  const [base, exponent] = text.split("e-");
+  return (base.split(".")[1]?.length ?? 0) + Number(exponent ?? 0);
+}
+
+function compactNumber(value: number) {
+  if (!Number.isFinite(value)) return "";
+  return `${Number.parseFloat(value.toFixed(8))}`;
+}
+
+function isPartialNumber(value: string) {
+  return value === "" || value === "-" || value === "+" || value === "." || value === "-." || value === "+.";
+}
+
 export function StepperInput({
   value,
   onChange,
   min,
   max,
   step = 1,
-  width = 92,
+  width = 132,
+  decrementSteps,
+  incrementSteps,
+  ariaLabel = "数值",
 }: {
   value: number;
   onChange: (v: number) => void;
@@ -199,33 +229,141 @@ export function StepperInput({
   max?: number;
   step?: number;
   width?: number;
+  decrementSteps?: number[];
+  incrementSteps?: number[];
+  ariaLabel?: string;
 }) {
+  const decrementOptions = normalizeStepOptions(decrementSteps, step);
+  const incrementOptions = normalizeStepOptions(incrementSteps, step);
+  const controlCount = decrementOptions.length + incrementOptions.length;
+  const precision = Math.min(
+    8,
+    Math.max(
+      countDecimals(value),
+      countDecimals(step),
+      ...decrementOptions.map(countDecimals),
+      ...incrementOptions.map(countDecimals),
+    ),
+  );
+  const [draftValue, setDraftValue] = useState(() => compactNumber(value));
+  const [isEditing, setIsEditing] = useState(false);
+  const skipCommitRef = useRef(false);
+
   const clamp = (n: number) => {
     if (typeof min === "number" && n < min) return min;
     if (typeof max === "number" && n > max) return max;
     return n;
   };
+  const normalizeValue = (n: number) => Number.parseFloat(clamp(n).toFixed(precision));
+  const displayDelta = (delta: number) => compactNumber(Math.abs(delta));
+  const controlLabel = (delta: number) => {
+    const sign = delta < 0 ? "−" : "+";
+    return controlCount > 2 ? `${sign}${displayDelta(delta)}` : sign;
+  };
+  const applyDelta = (delta: number) => {
+    const nextValue = normalizeValue(value + delta);
+    onChange(nextValue);
+    if (isEditing) setDraftValue(compactNumber(nextValue));
+  };
+  const commitDraft = (inputValue: string) => {
+    if (isPartialNumber(inputValue)) {
+      setDraftValue(compactNumber(value));
+      return;
+    }
+
+    const parsed = Number(inputValue);
+    if (!Number.isFinite(parsed)) {
+      setDraftValue(compactNumber(value));
+      return;
+    }
+
+    const nextValue = clamp(parsed);
+    onChange(nextValue);
+    setDraftValue(compactNumber(nextValue));
+  };
+  const inputValue = isEditing ? draftValue : compactNumber(value);
+
   return (
     <div className={s.stepper} style={{ width }}>
-      <button
-        type="button"
-        className={s.stepperBtn}
-        onClick={() => onChange(clamp(value - step))}
-        aria-label="减"
-      >
-        −
-      </button>
-      <span className={s.stepperValue}>
-        {value}
-      </span>
-      <button
-        type="button"
-        className={s.stepperBtn}
-        onClick={() => onChange(clamp(value + step))}
-        aria-label="加"
-      >
-        +
-      </button>
+      <div className={s.stepperControls}>
+        {decrementOptions.map((option, index) => (
+          <button
+            key={`decrement-${option}-${index}`}
+            type="button"
+            className={s.stepperBtn}
+            data-stepper-direction="decrement"
+            onClick={() => applyDelta(-option)}
+            aria-label={`减少 ${displayDelta(option)}`}
+          >
+            {controlLabel(-option)}
+          </button>
+        ))}
+      </div>
+      <input
+        aria-label={ariaLabel}
+        aria-valuemax={max}
+        aria-valuemin={min}
+        aria-valuenow={Number.isFinite(value) ? value : undefined}
+        className={s.stepperInput}
+        inputMode={precision > 0 ? "decimal" : "numeric"}
+        onBlur={(event) => {
+          if (skipCommitRef.current) {
+            skipCommitRef.current = false;
+            setIsEditing(false);
+            setDraftValue(compactNumber(value));
+            return;
+          }
+          setIsEditing(false);
+          commitDraft(event.currentTarget.value);
+        }}
+        onChange={(event) => {
+          const nextDraft = event.currentTarget.value;
+          setDraftValue(nextDraft);
+          if (isPartialNumber(nextDraft)) return;
+
+          const parsed = Number(nextDraft);
+          if (Number.isFinite(parsed)) onChange(clamp(parsed));
+        }}
+        onFocus={() => {
+          setDraftValue(compactNumber(value));
+          setIsEditing(true);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "ArrowDown") {
+            event.preventDefault();
+            applyDelta(-step);
+          }
+          if (event.key === "ArrowUp") {
+            event.preventDefault();
+            applyDelta(step);
+          }
+          if (event.key === "Enter") {
+            event.currentTarget.blur();
+          }
+          if (event.key === "Escape") {
+            skipCommitRef.current = true;
+            setDraftValue(compactNumber(value));
+            event.currentTarget.blur();
+          }
+        }}
+        role="spinbutton"
+        type="text"
+        value={inputValue}
+      />
+      <div className={s.stepperControls}>
+        {incrementOptions.map((option, index) => (
+          <button
+            key={`increment-${option}-${index}`}
+            type="button"
+            className={s.stepperBtn}
+            data-stepper-direction="increment"
+            onClick={() => applyDelta(option)}
+            aria-label={`增加 ${displayDelta(option)}`}
+          >
+            {controlLabel(option)}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

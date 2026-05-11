@@ -193,7 +193,7 @@
   min-width: 36px;
   height: 36px;
   min-height: 36px;
-  border-radius: 999px;
+  border-radius: 8px;
   padding: 0;
 }
 
@@ -407,7 +407,7 @@
 
 .selectShell .select {
   appearance: none;
-  padding-right: 42px;
+  padding-right: 12px;
 }
 
 .textarea {
@@ -442,6 +442,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  text-align: left;
 }
 
 .floatingSelectBtn svg {
@@ -457,6 +458,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  text-align: left;
 }
 
 .floatingSelectMenu {
