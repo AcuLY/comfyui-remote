@@ -1087,9 +1087,6 @@
 .pbRowMain:focus-visible,
 .pbFieldInput:focus-visible,
 .pbFieldArea:focus-visible,
-.loraStep:focus-visible,
-.loraWeightInput:focus-visible,
-.toggle:focus-visible,
 .addRow button:focus-visible,
 .resultsFilterBtn:focus-visible,
 .resultThumbAction:focus-visible {
@@ -1527,8 +1524,7 @@
   justify-content: center;
 }
 
-.pbRowGrip.button,
-.loraRowGrip.button {
+.pbRowGrip.button {
   width: 28px;
   min-width: 28px;
   height: 28px;
@@ -1537,8 +1533,7 @@
   cursor: grab;
 }
 
-.pbRowGrip.button:active,
-.loraRowGrip.button:active {
+.pbRowGrip.button:active {
   cursor: grabbing;
 }
 
@@ -1867,134 +1862,159 @@
   border-top: 0;
 }
 
-.sectionLoraRow {
-  grid-template-columns: 22px minmax(170px, 1fr) auto auto;
-  grid-template-areas: "grip main weight actions";
+.loraEditorRow {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  grid-template-areas: "handle main actions";
   align-items: center;
-  gap: 10px 14px;
-  min-height: 0;
-  padding: 12px;
+  gap: 10px;
+  min-width: 0;
+  padding: 10px;
   border: 1px solid var(--demo-glass-border);
   border-radius: 12px;
-  background: var(--demo-field-bg);
-  box-shadow: none;
+  background: color-mix(in srgb, var(--demo-field-bg) 88%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--demo-inset-highlight) 54%, transparent);
   transition: background-color 140ms ease, border-color 140ms ease, opacity 140ms ease,
     transform 140ms ease, box-shadow 140ms ease;
 }
 
-.sectionLoraRow:hover {
+.loraEditorRow:hover {
   border-color: var(--demo-glass-accent-border);
   background: var(--demo-glass-hover);
   box-shadow: var(--demo-glass-hover-shadow);
   transform: translateY(-1px);
 }
 
-.sectionLoraRowCompact {
-  grid-template-columns: minmax(0, 1fr) auto;
+.loraEditorRow[data-enabled="false"] {
+  opacity: 0.58;
 }
 
-.loraRow[data-enabled="false"] {
-  opacity: 0.55;
-}
-
-.loraRowGrip {
-  color: var(--demo-faint);
-  cursor: grab;
+.loraEditorHandle {
+  grid-area: handle;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  color: var(--demo-faint);
 }
 
-.sectionLoraRow .loraRowGrip {
-  grid-area: grip;
+.loraEditorHandle button {
+  cursor: grab;
 }
 
-.loraRowMain {
-  display: grid;
-  gap: 6px;
-  min-width: 0;
+.loraEditorHandle button:active {
+  cursor: grabbing;
 }
 
-.sectionLoraRow .loraRowMain {
+.loraEditorMain {
   grid-area: main;
-  gap: 7px;
-}
-
-.sectionLoraRow .selectChip {
-  width: 100%;
-}
-
-.sectionLoraRow .selectChipBtn {
-  min-height: 32px;
-  border-radius: 9px;
-}
-
-.loraRowTopLine {
-  display: inline-flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "meta meta"
+    "file weight";
   align-items: center;
-  gap: 6px;
+  gap: 7px 8px;
   min-width: 0;
 }
 
-.sectionLoraRow .loraRowTopLine {
-  flex-wrap: wrap;
-  row-gap: 5px;
+.loraEditorMeta {
+  grid-area: meta;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
 }
 
-.loraSourceBadge {
+.loraEditorTitle {
+  min-width: 0;
+  max-width: min(28ch, 100%);
+  overflow: hidden;
+  color: var(--demo-text);
+  font-size: 12px;
+  font-weight: 560;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.loraEditorTitle em {
+  color: var(--demo-faint);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 400;
+}
+
+.loraEditorCategory,
+.loraEditorKind,
+.loraEditorTrigger {
   display: inline-flex;
+  flex: 0 0 auto;
   align-items: center;
-  padding: 1px 8px;
+  min-height: 20px;
   border-radius: 999px;
-  font-size: 10.5px;
-  font-weight: 620;
+  font-size: 10px;
+  font-weight: 560;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.loraEditorCategory {
+  padding: 1px 8px;
   border: 1px solid var(--cat, var(--demo-glass-border));
   color: var(--cat, var(--demo-muted));
   background: color-mix(in oklab, var(--cat, var(--demo-muted)) 10%, transparent);
 }
 
-.loraPresetName {
-  font-size: 12px;
-  color: var(--demo-text);
-  font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.loraPresetName em {
-  font-style: normal;
-  color: var(--demo-faint);
-  font-weight: 400;
-  font-size: 11px;
-}
-
-.loraManualBadge {
-  display: inline-flex;
-  align-items: center;
-  padding: 1px 8px;
-  border-radius: 999px;
+.loraEditorKind {
+  padding: 1px 7px;
   background: var(--demo-sky-soft);
   color: var(--demo-sky);
-  font-size: 10.5px;
-  font-weight: 540;
 }
 
-.loraTrigger {
-  display: inline-flex;
-  align-items: center;
+.loraEditorTrigger {
   gap: 3px;
-  padding: 1px 6px;
-  border-radius: 999px;
+  padding: 1px 7px;
   background: var(--demo-amber-soft);
   color: var(--demo-amber);
-  font-size: 10px;
   cursor: help;
+}
+
+.loraEditorNotes {
+  min-width: 4ch;
+  overflow: hidden;
+  color: var(--demo-faint);
+  font-size: 11px;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.loraEditorFile {
+  grid-area: file;
+  min-width: 0;
+}
+
+.loraEditorWeight {
+  grid-area: weight;
+  display: inline-flex;
+  align-items: center;
+  justify-self: end;
+  min-width: 136px;
+}
+
+.loraEditorActions {
+  grid-area: actions;
+  display: inline-flex;
+  align-items: center;
+  justify-self: end;
+  gap: 4px;
+  min-width: 0;
 }
 
 .bindCategory,
 .pbCategory,
-.loraSourceBadge {
+.loraEditorCategory {
   min-height: 24px;
   padding: 2px 9px;
   border-radius: 999px;
@@ -2007,7 +2027,7 @@
 
 :global([data-theme="light"]) .bindCategory,
 :global([data-theme="light"]) .pbCategory,
-:global([data-theme="light"]) .loraSourceBadge {
+:global([data-theme="light"]) .loraEditorCategory {
   border-color: color-mix(in oklab, var(--cat, var(--demo-green)) 42%, var(--demo-border));
   background: color-mix(in oklab, var(--cat, var(--demo-green)) 16%, white);
   color: color-mix(in oklab, var(--cat, var(--demo-green)) 68%, #17211d);
@@ -2015,8 +2035,8 @@
 
 .bindGroupChip,
 .bindScopeChip,
-.loraManualBadge,
-.loraTrigger,
+.loraEditorKind,
+.loraEditorTrigger,
 .importItemBadge {
   min-height: 20px;
   padding: 1px 7px;
@@ -2024,59 +2044,6 @@
   font-size: 10px;
   font-weight: 560;
   line-height: 1.2;
-}
-
-.loraNotes {
-  font-size: 11px;
-  color: var(--demo-faint);
-}
-
-.loraWeight {
-  display: inline-flex;
-  align-items: center;
-  min-width: 0;
-}
-
-.sectionLoraRow .loraWeight {
-  grid-area: weight;
-  justify-self: end;
-  max-width: 100%;
-  flex-wrap: nowrap;
-}
-
-.loraActions {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 2px;
-  border-radius: 999px;
-  background: var(--demo-glass-soft);
-}
-
-.sectionLoraRow .loraActions {
-  grid-area: actions;
-  display: inline-flex;
-  grid-auto-flow: column;
-  grid-auto-columns: max-content;
-  align-self: center;
-  align-items: center;
-  justify-content: end;
-  gap: 5px;
-  background: transparent;
-  padding: 0;
-}
-
-.sectionLoraRow .toggle {
-  --toggle-width: 40px;
-  --toggle-height: 24px;
-  --toggle-knob: 18px;
-  align-self: center;
-  justify-self: center;
-}
-
-.sectionLoraRow .iconGhostBtn {
-  width: 28px;
-  height: 28px;
 }
 
 .addRow {
@@ -2463,26 +2430,6 @@
     grid-row: 1 / span 2;
   }
 
-  .sectionLoraRow {
-    grid-template-columns: 20px minmax(0, 1fr) auto;
-    grid-template-areas:
-      "grip main actions"
-      "grip weight weight";
-    min-height: 0;
-  }
-
-  .sectionLoraRow .loraActions {
-    justify-self: end;
-  }
-
-  .sectionLoraRow .loraWeight {
-    justify-self: start;
-  }
-
-  .sectionLoraRow .loraWeight .loraStep {
-    display: none;
-  }
-
   .compiledGroup {
     grid-template-columns: 1fr;
     grid-template-areas:
@@ -2521,6 +2468,30 @@
   .sectionRunButton {
     flex: 1;
     justify-content: center;
+  }
+}
+
+@media (max-width: 560px) {
+
+  .loraEditorRow {
+    grid-template-columns: 30px minmax(0, 1fr);
+    grid-template-areas:
+      "handle main"
+      "handle actions";
+    align-items: start;
+  }
+
+  .loraEditorMain {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "meta"
+      "file"
+      "weight";
+  }
+
+  .loraEditorActions,
+  .loraEditorWeight {
+    justify-self: start;
   }
 }
 

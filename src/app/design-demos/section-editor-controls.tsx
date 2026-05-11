@@ -521,16 +521,21 @@ export function SelectChip({
   value,
   options,
   onChange,
+  ariaLabel = "Select option",
+  displayValue,
 }: {
   value: string;
   options: string[];
   onChange: (v: string) => void;
+  ariaLabel?: string;
+  displayValue?: React.ReactNode;
 }) {
   return (
     <FloatingSelect
-      ariaLabel="Select option"
+      ariaLabel={ariaLabel}
       buttonClassName={s.select}
       className={s.selectShell}
+      displayValue={displayValue}
       onChange={onChange}
       options={options.map((opt) => ({ value: opt }))}
       value={value}
