@@ -707,13 +707,13 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex-wrap: wrap;
-  gap: 4px 5px;
+  flex-wrap: nowrap;
+  gap: 4px 7px;
   box-sizing: border-box;
   width: fit-content;
   max-width: 100%;
   min-height: 36px;
-  padding: 4px 5px;
+  padding: 4px 10px;
   border: 1px solid var(--demo-glass-border);
   border-radius: 10px;
   background: color-mix(in srgb, var(--demo-field-bg) 88%, transparent);
@@ -723,12 +723,11 @@
 
 .stepper[data-stepper-multistep="true"] {
   gap: 4px 7px;
-  padding-inline: 10px;
 }
 
 .stepperControls {
   display: inline-flex;
-  flex: 0 1 auto;
+  flex: 0 0 auto;
   align-items: center;
   flex-wrap: nowrap;
   gap: 2px;
@@ -757,7 +756,7 @@
 
 .stepper[data-stepper-multistep="true"] .stepperBtn {
   min-width: 0;
-  padding-inline: 6px;
+  padding-inline: 3px;
   font-size: 11.5px;
 }
 
