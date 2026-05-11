@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useTransition, useMemo, useEffect, useCallback } from "react";
+import { useState, useTransition, useMemo, useCallback } from "react";
 import Link from "next/link";
 import {
   ArrowLeft, Plus, X, ChevronDown, ChevronLeft, Search,
-  Folder, RotateCw, ClipboardCopy, Check, Package, Replace,
+  Folder, ClipboardCopy, Check, Replace,
 } from "lucide-react";
 import { toast } from "sonner";
 import { createSectionFromTemplate, flattenGroup } from "@/lib/actions";
@@ -39,6 +39,14 @@ type CreatedSection = {
   name: string;
   index: number;
 };
+
+function buildGroupSectionName(items: ImportItem[], groupBindingId: string) {
+  return items
+    .filter((item) => item.groupBindingId === groupBindingId)
+    .map((item) => item.label.trim())
+    .filter(Boolean)
+    .join(" · ");
+}
 
 // ---------------------------------------------------------------------------
 // Aspect ratio options
@@ -83,12 +91,6 @@ export function BatchCreateClient({
 
   const selectedCat = library.categories.find((c) => c.id === selectedCatId);
   const isGroupCat = selectedCat?.type === "group";
-
-  // Reset folder/search when category changes
-  useEffect(() => {
-    setCurrentFolderId(null);
-    setSearchQuery("");
-  }, [selectedCatId]);
 
   // --- Computed: subfolders ---
   const subFolders = useMemo(() => {
@@ -177,6 +179,12 @@ export function BatchCreateClient({
     [library],
   );
 
+  const selectCategory = useCallback((categoryId: string) => {
+    setSelectedCatId(categoryId);
+    setCurrentFolderId(null);
+    setSearchQuery("");
+  }, []);
+
   // --- Actions ---
   const addPresetToImportList = useCallback(
     (presetId: string, presetName: string, variantId: string, variantName: string, folderId: string | null, categoryId: string, variants: Array<{ id: string; name: string }>) => {
@@ -221,8 +229,7 @@ export function BatchCreateClient({
         for (const pid of catPresetIds) delete next[pid];
         return next;
       });
-      // Fill section name
-      setSectionName(presetName);
+      setSectionName(label);
       toast.success(`已覆盖 ${presetName}`);
     },
     [projectBindingInfos],
@@ -236,7 +243,6 @@ export function BatchCreateClient({
 
       // Look up the group name directly from the group that was clicked
       let resolvedGroupName: string | undefined;
-      let groupCategoryId = "";
       for (const cat of library.categories) {
         const g = (cat.groups ?? []).find((gg) => gg.id === groupId);
         if (g) { resolvedGroupName = g.name; break; }
@@ -347,8 +353,8 @@ export function BatchCreateClient({
         for (const pid of catPresetIds) delete next[pid];
         return next;
       });
-      // Fill section name with group name
-      if (resolvedGroupName) setSectionName(resolvedGroupName);
+      const groupSectionName = buildGroupSectionName(newItems, groupBindingId);
+      if (groupSectionName) setSectionName(groupSectionName);
       toast.success(`已覆盖 ${resolvedGroupName}`);
     },
     [library, projectBindingInfos],
@@ -381,16 +387,10 @@ export function BatchCreateClient({
     (key: string) => {
       const item = importList.find((i) => i.key === key);
       if (!item) return;
-      // If part of a group, use the group name
-      if (item.groupBindingId && item.groupName) {
-        setSectionName(item.groupName);
-      } else if (item.groupBindingId) {
-        // Fallback: concatenate all group member names
-        const groupMembers = importList.filter((i) => i.groupBindingId === item.groupBindingId);
-        const names = groupMembers.map((m) => m.label.split(" / ")[0]);
-        setSectionName(names.join(" · "));
+      if (item.groupBindingId) {
+        setSectionName(buildGroupSectionName(importList, item.groupBindingId));
       } else {
-        setSectionName(item.label.split(" / ")[0]);
+        setSectionName(item.label);
       }
     },
     [importList],
@@ -404,7 +404,7 @@ export function BatchCreateClient({
         groupBindingId: item.groupBindingId,
       }));
       const bindingVariantOverrides = Object.entries(bindingOverrides)
-        .filter(([_, variantId]) => !!variantId)
+        .filter(([, variantId]) => !!variantId)
         .map(([presetId, variantId]) => ({ presetId, variantId }));
 
       const sectionId = await createSectionFromTemplate({
@@ -459,7 +459,7 @@ export function BatchCreateClient({
               <button
                 key={cat.id}
                 type="button"
-                onClick={() => setSelectedCatId(cat.id)}
+                onClick={() => selectCategory(cat.id)}
                 className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] transition ${
                   selectedCatId === cat.id
                     ? "bg-white/10 text-white"
