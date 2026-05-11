@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useMemo } from "react";
 import type * as React from "react";
-import { ChevronDown, AlertCircle } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 
 import { FloatingSelect } from "./ui/floating-select";
 import { SegmentedControl } from "./ui/segmented-control";
@@ -94,66 +94,27 @@ export function CheckpointPicker({
   options,
   onChange,
 }: CheckpointPickerProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const wrap = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    const close = (e: MouseEvent) => {
-      if (wrap.current && !wrap.current.contains(e.target as Node)) setIsOpen(false);
-    };
-    document.addEventListener("mousedown", close);
-    return () => document.removeEventListener("mousedown", close);
-  }, [isOpen]);
-
   const inherited = !value && projectCheckpoint;
   const display = value || projectCheckpoint || "选择 checkpoint";
+  const checkpointOptions = [
+    ...(projectCheckpoint
+      ? [{ value: "", label: "继承项目设置", description: projectCheckpoint }]
+      : []),
+    ...options.map((opt) => ({ value: opt })),
+  ];
 
   return (
-    <div className={s.cpPicker} ref={wrap}>
-      <button
-        type="button"
-        className={s.cpPickerBtn}
-        onClick={() => setIsOpen((v) => !v)}
-        aria-expanded={isOpen}
-      >
-        <span className={s.cpPickerValue}>{display}</span>
-        {inherited ? <span className={s.cpInheritTag}>继承项目</span> : null}
-        <ChevronDown className={s.iconMd} />
-      </button>
-      {isOpen ? (
-        <div className={s.cpPickerMenu}>
-          {projectCheckpoint ? (
-            <button
-              type="button"
-              className={s.cpPickerOption}
-              data-selected={!value}
-              onClick={() => {
-                onChange?.("");
-                setIsOpen(false);
-              }}
-            >
-              <span>继承项目设置</span>
-              <em>{projectCheckpoint}</em>
-            </button>
-          ) : null}
-          {options.map((opt) => (
-            <button
-              key={opt}
-              type="button"
-              className={s.cpPickerOption}
-              data-selected={value === opt}
-              onClick={() => {
-                onChange?.(opt);
-                setIsOpen(false);
-              }}
-            >
-              {opt}
-            </button>
-          ))}
-        </div>
-      ) : null}
-    </div>
+    <FloatingSelect
+      ariaLabel="选择 checkpoint"
+      buttonClassName={s.select}
+      className={s.cpPicker}
+      displayValue={display}
+      endSlot={inherited ? <span className={s.cpInheritTag}>继承项目</span> : null}
+      onChange={(next) => onChange?.(next)}
+      options={checkpointOptions}
+      value={value}
+      valueClassName={s.cpPickerValue}
+    />
   );
 }
 
@@ -218,7 +179,7 @@ export function StepperInput({
   min,
   max,
   step = 1,
-  width = 132,
+  width,
   decrementSteps,
   incrementSteps,
   ariaLabel = "数值",
@@ -236,6 +197,7 @@ export function StepperInput({
   const decrementOptions = normalizeStepOptions(decrementSteps, step);
   const incrementOptions = normalizeStepOptions(incrementSteps, step);
   const controlCount = decrementOptions.length + incrementOptions.length;
+  const isMultiStep = controlCount > 2;
   const precision = Math.min(
     8,
     Math.max(
@@ -258,7 +220,7 @@ export function StepperInput({
   const displayDelta = (delta: number) => compactNumber(Math.abs(delta));
   const controlLabel = (delta: number) => {
     const sign = delta < 0 ? "−" : "+";
-    return controlCount > 2 ? `${sign}${displayDelta(delta)}` : sign;
+    return isMultiStep ? `${sign}${displayDelta(delta)}` : sign;
   };
   const applyDelta = (delta: number) => {
     const nextValue = normalizeValue(value + delta);
@@ -284,7 +246,11 @@ export function StepperInput({
   const inputValue = isEditing ? draftValue : compactNumber(value);
 
   return (
-    <div className={s.stepper} style={{ width }}>
+    <div
+      className={s.stepper}
+      data-stepper-multistep={isMultiStep ? "true" : undefined}
+      style={typeof width === "number" ? { width } : undefined}
+    >
       <div className={s.stepperControls}>
         {decrementOptions.map((option, index) => (
           <button
