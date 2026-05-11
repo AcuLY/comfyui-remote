@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Activity, Check, FlaskConical, Plus, Settings, Star, Trash2 } from "lucide-react";
 
 import s from "../styles/showcase.module.css";
-import { AspectChips, CheckpointPicker, SelectChip, SpecSection, SpecRow, StepperInput, UpscaleControl, VariantSwitcher } from "../section-editor-controls";
+import { AspectChips, CheckpointPicker, DimensionsReadout, SelectChip, SpecSection, SpecRow, StepperInput, UpscaleControl, VariantSwitcher } from "../section-editor-controls";
 import { SectionNameEditor, SaveStatusPill } from "../section-editor-header";
 import { Button } from "../ui/button";
 import { ButtonLink } from "../ui/button-link";
