@@ -1862,10 +1862,15 @@
   border-top: 0;
 }
 
+.loraEditorShell {
+  container-type: inline-size;
+  min-width: 0;
+}
+
 .loraEditorRow {
   display: grid;
-  grid-template-columns: 30px minmax(0, 1fr) auto;
-  grid-template-areas: "handle main actions";
+  grid-template-columns: 30px minmax(0, 1fr);
+  grid-template-areas: "handle main";
   align-items: center;
   gap: 10px;
   min-width: 0;
@@ -1908,12 +1913,10 @@
 .loraEditorMain {
   grid-area: main;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-areas:
-    "meta meta"
-    "file weight";
+  grid-template-columns: minmax(126px, 0.72fr) minmax(180px, 1fr) auto auto;
+  grid-template-areas: "meta file weight actions";
   align-items: center;
-  gap: 7px 8px;
+  gap: 8px;
   min-width: 0;
 }
 
@@ -1927,8 +1930,9 @@
 }
 
 .loraEditorTitle {
+  flex: 1 1 auto;
   min-width: 0;
-  max-width: min(28ch, 100%);
+  max-width: min(20ch, 100%);
   overflow: hidden;
   color: var(--demo-text);
   font-size: 12px;
@@ -2010,6 +2014,69 @@
   justify-self: end;
   gap: 4px;
   min-width: 0;
+}
+
+@container (max-width: 760px) {
+
+  .loraEditorMain {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "meta meta meta"
+      "file weight actions";
+    gap: 7px 8px;
+  }
+
+  .loraEditorMeta {
+    flex-wrap: wrap;
+    overflow: visible;
+    row-gap: 4px;
+  }
+
+  .loraEditorTitle {
+    flex: 0 1 auto;
+    max-width: min(26ch, 100%);
+  }
+}
+
+@container (max-width: 590px) {
+
+  .loraEditorMain {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "meta meta"
+      "file file"
+      "weight actions";
+  }
+
+  .loraEditorWeight {
+    justify-self: start;
+  }
+
+  .loraEditorActions {
+    justify-self: end;
+  }
+}
+
+@container (max-width: 360px) {
+
+  .loraEditorRow {
+    grid-template-columns: 24px minmax(0, 1fr);
+    gap: 8px;
+    padding: 9px;
+  }
+
+  .loraEditorMain {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "meta"
+      "file"
+      "weight"
+      "actions";
+  }
+
+  .loraEditorActions {
+    justify-self: start;
+  }
 }
 
 .bindCategory,
@@ -2468,30 +2535,6 @@
   .sectionRunButton {
     flex: 1;
     justify-content: center;
-  }
-}
-
-@media (max-width: 560px) {
-
-  .loraEditorRow {
-    grid-template-columns: 30px minmax(0, 1fr);
-    grid-template-areas:
-      "handle main"
-      "handle actions";
-    align-items: start;
-  }
-
-  .loraEditorMain {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-areas:
-      "meta"
-      "file"
-      "weight";
-  }
-
-  .loraEditorActions,
-  .loraEditorWeight {
-    justify-self: start;
   }
 }
 
