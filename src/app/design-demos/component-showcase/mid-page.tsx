@@ -5,6 +5,9 @@ import { Check, Plus, Settings, Shuffle, Trash2, Wand2 } from "lucide-react";
 import type { DemoData } from "../design-demo-data";
 import s from "../styles/showcase.module.css";
 import { KSamplerCard } from "../section-editor-controls";
+import { CurrentRunningProgressCard } from "../runs/current-running-progress-card";
+import { QueueMetrics } from "../runs/queue-metrics";
+import type { DemoCurrentRun } from "../runs/types";
 import { Button } from "../ui/button";
 import { DemoFeedbackProvider } from "../ui/demo-feedback-provider";
 import { EmptyPage } from "../ui/empty-page";
@@ -17,7 +20,7 @@ import { ShowcaseItem } from "./showcase-item";
 export function ComponentShowcaseMid({ data }: { data: DemoData }) {
   return (
     <div className={s.showcasePage}>
-      <PageHeader back={{ href: "/component-showcase", label: "返回总览" }} eyebrow="组件展示" title="中组件" subtitle="5 个中型组件" />
+      <PageHeader back={{ href: "/component-showcase", label: "返回总览" }} eyebrow="组件展示" title="中组件" subtitle="8 个中型组件" />
 
       {/* 2.1 PageHeader */}
       <ShowcaseItem name="PageHeader" desc="页面顶部标题栏">
@@ -83,6 +86,16 @@ export function ComponentShowcaseMid({ data }: { data: DemoData }) {
           disabled
         />
       </ShowcaseItem>
+
+      {/* 2.7 QueueMetrics */}
+      <ShowcaseItem name="QueueMetrics" desc="队列指标卡片区">
+        <QueueMetrics pendingImages={48} reviewGroups={3} runningCount={2} failedCount={1} />
+      </ShowcaseItem>
+
+      {/* 2.8 CurrentRunningProgressCard */}
+      <ShowcaseItem name="CurrentRunningProgressCard" desc="当前运行任务进度卡片">
+        <CurrentRunningProgressCard runs={MOCK_CURRENT_RUNS} />
+      </ShowcaseItem>
     </div>
   );
 }
@@ -96,3 +109,14 @@ function ToastDemoButtons() {
     </div>
   );
 }
+
+const MOCK_CURRENT_RUNS: DemoCurrentRun[] = [
+  {
+    run: { id: "r1", projectId: "p1", sectionId: "s1", projectTitle: "夏日人像合集", sectionName: "肖像 - 女性角色", status: "running", runIndex: 3, createdAt: "2026-05-11 10:00", startedAt: "2026-05-11 10:01", finishedAt: null, errorMessage: null, imageCount: 0, pendingCount: 0, executionMeta: null, images: [] },
+    progress: { percent: 65, currentStep: 13, totalSteps: 20, elapsed: "45s", remaining: "24s", rate: "0.29 it/s", stage: 1 },
+  },
+  {
+    run: { id: "r2", projectId: "p2", sectionId: "s2", projectTitle: "风景写意", sectionName: "山川晨雾", status: "running", runIndex: 1, createdAt: "2026-05-11 09:55", startedAt: "2026-05-11 09:56", finishedAt: null, errorMessage: null, imageCount: 0, pendingCount: 0, executionMeta: null, images: [] },
+    progress: { percent: 100, currentStep: 20, totalSteps: 20, elapsed: "1m 12s", remaining: null, rate: "0.28 it/s", stage: 2 },
+  },
+];

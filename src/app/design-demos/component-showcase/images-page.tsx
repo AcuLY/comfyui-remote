@@ -10,6 +10,7 @@ import { ImageGrid } from "../ui/image-grid";
 import { ImageListMedium } from "../ui/image-list-medium";
 import { ImageListSmall } from "../ui/image-list-small";
 import { ImagePreviewLarge } from "../ui/image-preview-large";
+import { ImageStrip } from "../ui/image-strip";
 import { ImageThumbMedium } from "../ui/image-thumb-medium";
 import { ImageThumbSmall } from "../ui/image-thumb-small";
 import { PageHeader } from "../ui/page-header";
@@ -38,7 +39,7 @@ export function ComponentShowcaseImages({ data }: { data: DemoData }) {
 
   return (
     <div className={s.showcasePage}>
-      <PageHeader back={{ href: "/component-showcase", label: "返回总览" }} eyebrow="组件展示" title="图片组件" subtitle="8 个图片相关组件" />
+      <PageHeader back={{ href: "/component-showcase", label: "返回总览" }} eyebrow="组件展示" title="图片组件" subtitle="9 个图片相关组件" />
 
       {/* 3.1 ImageThumbSmall */}
       <ShowcaseItem name="ImageThumbSmall" desc="小缩略图">
@@ -64,6 +65,11 @@ export function ComponentShowcaseImages({ data }: { data: DemoData }) {
             />
           ))}
         </div>
+      </ShowcaseItem>
+
+      {/* 3.3 ImageStrip */}
+      <ShowcaseItem name="ImageStrip" desc="横向滚动图片条（紧凑型）">
+        <ImageStrip images={images.slice(0, 6)} />
       </ShowcaseItem>
 
       {/* 3.3 ImageListSmall */}

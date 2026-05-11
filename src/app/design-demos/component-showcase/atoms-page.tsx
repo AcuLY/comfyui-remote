@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Activity, Check, FlaskConical, Plus, Settings, Star, Trash2 } from "lucide-react";
 
 import s from "../styles/showcase.module.css";
-import { SpecSection, SpecRow, StepperInput, DimensionsReadout } from "../section-editor-controls";
+import { AspectChips, CheckpointPicker, SelectChip, SpecSection, SpecRow, StepperInput, UpscaleControl, VariantSwitcher } from "../section-editor-controls";
 import { SectionNameEditor, SaveStatusPill } from "../section-editor-header";
 import { Button } from "../ui/button";
 import { ButtonLink } from "../ui/button-link";
@@ -14,8 +14,10 @@ import { Field } from "../ui/field";
 import { MetricCard } from "../ui/metric-card";
 import { OperationStateStrip } from "../ui/operation-state-strip";
 import { PageHeader } from "../ui/page-header";
+import { SegmentedControl } from "../ui/segmented-control";
 import { SelectLike } from "../ui/select-like";
 import { StatusBadge } from "../ui/status-badge";
+import { Switch } from "../ui/switch";
 import { SwitchRow } from "../ui/switch-row";
 import { TextAreaField } from "../ui/text-area-field";
 import { ShowcaseItem } from "./showcase-item";
@@ -26,6 +28,14 @@ export function ComponentShowcaseAtoms() {
   const [cfgVal, setCfgVal] = useState(7);
   const [denoiseVal, setDenoiseVal] = useState(0.85);
   const [sectionName, setSectionName] = useState("肖像 - 女性角色");
+  const [segValue, setSegValue] = useState("euler");
+  const [switchChecked, setSwitchChecked] = useState(true);
+  const [switchSmChecked, setSwitchSmChecked] = useState(false);
+  const [checkpointValue, setCheckpointValue] = useState("");
+  const [aspectValue, setAspectValue] = useState("2:3");
+  const [upscaleValue, setUpscaleValue] = useState(2);
+  const [selectChipValue, setSelectChipValue] = useState("normal");
+  const [variantId, setVariantId] = useState("v1");
 
   return (
     <div className={s.showcasePage}>
@@ -203,6 +213,77 @@ export function ComponentShowcaseAtoms() {
         <DimensionsReadout aspect="2:3" shortSide={512} upscale={2} />
         <hr className={s.showcaseDivider} />
         <DimensionsReadout aspect="1:1" shortSide={1024} upscale={1} />
+      </ShowcaseItem>
+
+      {/* 1.7 Switch */}
+      <ShowcaseItem name="Switch" desc="可交互开关">
+        <div className={s.showcaseRow}>
+          <Switch checked={switchChecked} onCheckedChange={setSwitchChecked} ariaLabel="开关 md" />
+          <Switch checked={switchSmChecked} onCheckedChange={setSwitchSmChecked} size="sm" ariaLabel="开关 sm" />
+          <Switch defaultChecked={false} ariaLabel="默认关闭" />
+        </div>
+      </ShowcaseItem>
+
+      {/* 1.9 SegmentedControl */}
+      <ShowcaseItem name="SegmentedControl" desc="通用分段控制器">
+        <div className={s.showcaseStack}>
+          <SegmentedControl
+            ariaLabel="采样器选择"
+            items={["euler", "euler_ancestral", "dpmpp_2m", "dpmpp_2m_sde"].map((v) => ({ value: v, label: v }))}
+            onChange={setSegValue}
+            value={segValue}
+          />
+          <hr className={s.showcaseDivider} />
+          <SegmentedControl
+            ariaLabel="紧凑模式"
+            compact
+            items={[1, 2, 4, 8, 16].map((v) => ({ value: v, label: v }))}
+            onChange={() => {}}
+            value={4}
+          />
+        </div>
+      </ShowcaseItem>
+
+      {/* 1.18 CheckpointPicker */}
+      <ShowcaseItem name="CheckpointPicker" desc="Checkpoint 下拉选择器">
+        <CheckpointPicker
+          value={checkpointValue}
+          projectCheckpoint="dreamshaper_v8.safetensors"
+          options={["dreamshaper_v8.safetensors", "sdxl_base_1.0.safetensors", "realisticVision_v5.safetensors"]}
+          onChange={setCheckpointValue}
+        />
+      </ShowcaseItem>
+
+      {/* 1.19 AspectChips */}
+      <ShowcaseItem name="AspectChips" desc="画幅比例芯片组选择器">
+        <AspectChips value={aspectValue} onChange={setAspectValue} />
+      </ShowcaseItem>
+
+      {/* 1.22 UpscaleControl */}
+      <ShowcaseItem name="UpscaleControl" desc="放大倍数芯片组">
+        <UpscaleControl value={upscaleValue} onChange={setUpscaleValue} />
+      </ShowcaseItem>
+
+      {/* 1.24 SelectChip */}
+      <ShowcaseItem name="SelectChip" desc="芯片式下拉选择器">
+        <SelectChip
+          value={selectChipValue}
+          options={["normal", "karras", "exponential", "simple"]}
+          onChange={setSelectChipValue}
+        />
+      </ShowcaseItem>
+
+      {/* 1.25 VariantSwitcher */}
+      <ShowcaseItem name="VariantSwitcher" desc="变体切换下拉">
+        <VariantSwitcher
+          variants={[
+            { id: "v1", name: "默认" },
+            { id: "v2", name: "高细节" },
+            { id: "v3", name: "低步数" },
+          ]}
+          currentVariantId={variantId}
+          onChange={setVariantId}
+        />
       </ShowcaseItem>
 
     </div>

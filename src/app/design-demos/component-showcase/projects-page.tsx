@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import { Check, CheckSquare, ChevronRight, Copy, Folder, FolderInput, GripVertical, Pencil, Play, Square, Star, Trash2, X } from "lucide-react";
 
 import type { DemoData } from "../design-demo-data";
+import type { DemoProject } from "../data/types";
+import { ProjectDetailHeader } from "../projects/project-detail-header";
 import s from "../styles/showcase.module.css";
 import { Button } from "../ui/button";
 import { ImageStrip } from "../ui/image-strip";
@@ -23,6 +25,16 @@ export function ComponentShowcaseProjects({ data: _data }: { data: DemoData }) {
   return (
     <div className={s.showcasePage}>
       <PageHeader back={{ href: "/component-showcase", label: "返回总览" }} eyebrow="组件展示" title="项目卡片和列表" subtitle="项目列表页和详情页中的卡片、行和导航组件" />
+
+      {/* ProjectDetailHeader 模拟 */}
+      <ShowcaseItem name="ProjectDetailHeader" desc="项目详情页头部（返回 + 标题 + 视图切换 + 命令栏 + 运行控制）">
+        <ProjectDetailHeader
+          isResultView={false}
+          project={MOCK_PROJECT}
+          subtitle="12 个小节 · 3 个预制"
+          view="sections"
+        />
+      </ShowcaseItem>
 
       {/* ProjectListItem 模拟 */}
       <ShowcaseItem name="ProjectListItem" desc="项目卡片（选中框 + 缩略图条 + 标题/状态 + 统计 + 操作）">
@@ -240,3 +252,18 @@ export function ComponentShowcaseProjects({ data: _data }: { data: DemoData }) {
     </div>
   );
 }
+
+const MOCK_PROJECT: DemoProject = {
+  id: "p1",
+  title: "夏日人像合集",
+  slug: "summer-portrait",
+  folderId: null,
+  status: "active",
+  updatedAt: "2026-05-09",
+  notes: "夏日人像主题合集",
+  checkpointName: "dreamshaper_v8.safetensors",
+  presetNames: ["写实人像", "风格化"],
+  sectionCount: 12,
+  sections: [],
+  images: [],
+};
