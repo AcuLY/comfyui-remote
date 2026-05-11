@@ -13,7 +13,7 @@ import { EmptyRows } from "../ui/empty-rows";
 import { Field } from "../ui/field";
 import { MetricCard } from "../ui/metric-card";
 import { OperationStateStrip } from "../ui/operation-state-strip";
-import { PageHeader } from "../ui/page-header";
+import { PageHeader, PageHeaderBack } from "../ui/page-header";
 import { SelectLike } from "../ui/select-like";
 import { StatusBadge } from "../ui/status-badge";
 import { Switch } from "../ui/switch";
@@ -83,6 +83,11 @@ export function ComponentShowcaseAtoms() {
           <ButtonLink href="/design-demos" tone="pink">Pink</ButtonLink>
           <ButtonLink href="/design-demos" tone="subtle" icon={Settings} iconOnly ariaLabel="设置" />
         </div>
+      </ShowcaseItem>
+
+      {/* 1.3 PageHeaderBack */}
+      <ShowcaseItem name="PageHeaderBack" desc="PageHeader 返回链接">
+        <PageHeaderBack href="/component-showcase" label="返回总览" />
       </ShowcaseItem>
 
       {/* 1.3 StatusBadge */}

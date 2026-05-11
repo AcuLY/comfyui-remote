@@ -704,16 +704,18 @@
 }
 
 .stepper {
+  --stepper-btn-width: 44px;
+  --stepper-input-width: 58px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-wrap: nowrap;
-  gap: 4px 7px;
+  gap: 4px;
   box-sizing: border-box;
   width: fit-content;
   max-width: 100%;
   min-height: 36px;
-  padding: 4px 8px;
+  padding: 4px;
   border: 1px solid var(--demo-glass-border);
   border-radius: 10px;
   background: color-mix(in srgb, var(--demo-field-bg) 88%, transparent);
@@ -722,7 +724,7 @@
 }
 
 .stepper[data-stepper-multistep="true"] {
-  gap: 4px 7px;
+  gap: 4px;
 }
 
 .stepperControls {
@@ -737,11 +739,13 @@
 .stepperBtn {
   appearance: none;
   display: inline-flex;
+  flex: 0 0 var(--stepper-btn-width);
   align-items: center;
   justify-content: center;
-  min-width: 26px;
+  width: var(--stepper-btn-width);
+  min-width: var(--stepper-btn-width);
   height: 26px;
-  padding: 0 7px;
+  padding: 0;
   border: 1px solid transparent;
   border-radius: 7px;
   background: transparent;
@@ -755,9 +759,7 @@
 }
 
 .stepper[data-stepper-multistep="true"] .stepperBtn {
-  min-width: 0;
-  padding-inline: 3px;
-  font-size: 11.5px;
+  min-width: var(--stepper-btn-width);
 }
 
 .stepperBtn:only-child {
@@ -781,8 +783,8 @@
 }
 
 .stepperInput {
-  flex: 0 0 52px;
-  width: 52px;
+  flex: 0 0 var(--stepper-input-width);
+  width: var(--stepper-input-width);
   box-sizing: border-box;
   height: 26px;
   padding: 0 8px;
@@ -1553,7 +1555,7 @@
 .pbRowMain {
   appearance: none;
   display: grid;
-  gap: 3px;
+  gap: 10px;
   min-width: 0;
   padding: 2px 0;
   border: 0;
@@ -1566,8 +1568,8 @@
 
 .pbRowTitleLine {
   display: inline-flex;
-  align-items: baseline;
-  gap: 6px;
+  align-items: center;
+  gap: 7px;
   min-width: 0;
 }
 
@@ -1578,6 +1580,7 @@
   max-width: 14ch;
   white-space: nowrap;
   overflow: hidden;
+  line-height: 24px;
   text-overflow: ellipsis;
 }
 
@@ -1913,15 +1916,23 @@
 .loraEditorMain {
   grid-area: main;
   display: grid;
-  grid-template-columns: minmax(126px, 0.72fr) minmax(180px, 1fr) auto auto;
-  grid-template-areas: "meta file weight actions";
+  grid-template-columns: minmax(260px, 0.8fr) minmax(180px, 1fr) auto;
+  grid-template-areas: "header file controls";
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.loraEditorHeader {
+  grid-area: header;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
   min-width: 0;
 }
 
 .loraEditorMeta {
-  grid-area: meta;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -1999,16 +2010,22 @@
   min-width: 0;
 }
 
-.loraEditorWeight {
-  grid-area: weight;
+.loraEditorControls {
+  grid-area: controls;
   display: inline-flex;
   align-items: center;
   justify-self: end;
-  min-width: 136px;
+  gap: 8px;
+  min-width: 0;
 }
 
-.loraEditorActions {
-  grid-area: actions;
+.loraEditorWeight {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.loraEditorTopActions {
   display: inline-flex;
   align-items: center;
   justify-self: end;
@@ -2019,10 +2036,11 @@
 @container (max-width: 760px) {
 
   .loraEditorMain {
-    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
-      "meta meta meta"
-      "file weight actions";
+      "header header"
+      "file file"
+      "controls controls";
     gap: 7px 8px;
   }
 
@@ -2036,24 +2054,10 @@
     flex: 0 1 auto;
     max-width: min(26ch, 100%);
   }
-}
 
-@container (max-width: 590px) {
-
-  .loraEditorMain {
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas:
-      "meta meta"
-      "file file"
-      "weight actions";
-  }
-
-  .loraEditorWeight {
-    justify-self: start;
-  }
-
-  .loraEditorActions {
-    justify-self: end;
+  .loraEditorControls {
+    justify-self: stretch;
+    justify-content: space-between;
   }
 }
 
@@ -2068,14 +2072,17 @@
   .loraEditorMain {
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
-      "meta"
+      "header"
       "file"
-      "weight"
-      "actions";
+      "controls";
   }
 
-  .loraEditorActions {
-    justify-self: start;
+  .loraEditorHeader {
+    align-items: start;
+  }
+
+  .loraEditorControls {
+    justify-content: start;
   }
 }
 

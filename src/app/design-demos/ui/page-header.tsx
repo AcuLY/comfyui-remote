@@ -7,6 +7,20 @@ import { cx } from "../design-demo-utils";
 import s from "./ui.module.css";
 import { ButtonLink } from "./button-link";
 
+export function PageHeaderBack({
+  href,
+  label,
+}: {
+  href: string;
+  label: string;
+}) {
+  return (
+    <ButtonLink href={href} tone="subtle" icon={ArrowLeft} className={s.pageBackLink}>
+      {label}
+    </ButtonLink>
+  );
+}
+
 export function PageHeader({
   back,
   eyebrow,
@@ -26,9 +40,7 @@ export function PageHeader({
     <header className={cx(s.pageHeader, className)}>
       <div className={s.pageTitleBlock}>
         {back ? (
-          <ButtonLink href={back.href} tone="subtle" icon={ArrowLeft} className={s.pageBackLink}>
-            {back.label}
-          </ButtonLink>
+          <PageHeaderBack href={back.href} label={back.label} />
         ) : null}
         <span className={s.eyebrow}>{eyebrow}</span>
         <h1 className={s.pageTitle}>{title}</h1>

@@ -249,7 +249,7 @@ export function StepperInput({
     <div
       className={s.stepper}
       data-stepper-multistep={isMultiStep ? "true" : undefined}
-      style={typeof width === "number" ? { width } : undefined}
+      style={typeof width === "number" ? { minWidth: width } : undefined}
     >
       <div className={s.stepperControls}>
         {decrementOptions.map((option, index) => (
