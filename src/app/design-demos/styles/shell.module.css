@@ -1085,7 +1085,7 @@
 .mobileTopbarTitle strong {
   color: var(--demo-text);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 450;
 }
 .mobileTopbarTitle span {
   color: var(--demo-muted);
@@ -1181,7 +1181,7 @@
   overflow: hidden;
   color: var(--demo-text);
   font-size: 19px;
-  font-weight: 500;
+  font-weight: 450;
   letter-spacing: 0;
   line-height: 1.18;
   text-overflow: ellipsis;
