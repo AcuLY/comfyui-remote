@@ -535,7 +535,6 @@
 
 .sectionRunButton:hover {
   background: color-mix(in oklab, var(--demo-green) 18%, var(--demo-glass-hover));
-  transform: translateY(-1px);
 }
 
 :global([data-theme="light"]) .sectionRunDock {
@@ -1052,7 +1051,6 @@
 .btnGhost:hover {
   background: var(--demo-glass-hover);
   border-color: var(--demo-glass-accent-border);
-  transform: translateY(-1px);
 }
 
 .btnPrimary {
@@ -1064,7 +1062,6 @@
 
 .btnPrimary:hover {
   background: color-mix(in oklab, var(--demo-green) 18%, var(--demo-glass-hover));
-  transform: translateY(-1px);
 }
 
 .btnPrimary:disabled {
@@ -2149,7 +2146,6 @@
   color: var(--demo-green);
   border-color: var(--demo-green);
   background: var(--demo-green-soft);
-  transform: translateY(-1px);
 }
 
 .loraColumn .addRow button {
@@ -2361,7 +2357,6 @@
   background: var(--demo-glass-hover);
   border-color: var(--demo-glass-border);
   color: var(--demo-text);
-  transform: translateY(-1px);
 }
 
 .resultsFilterBtnActive {

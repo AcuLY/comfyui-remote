@@ -628,7 +628,6 @@
   background: var(--button-bg-hover);
   box-shadow: var(--button-shadow-hover);
   color: var(--button-color);
-  transform: translateY(-1px);
 }
 .button:focus-visible {
   outline: 3px solid var(--button-focus);

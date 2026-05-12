@@ -369,7 +369,6 @@
   border-color: var(--demo-glass-accent-border);
   box-shadow: 0 8px 22px rgba(15, 23, 42, 0.08);
   color: var(--demo-text);
-  transform: translateY(-1px);
 }
 
 .headerButtonPrimary:hover,

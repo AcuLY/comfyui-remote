@@ -102,7 +102,6 @@
   background: var(--button-bg-hover);
   box-shadow: var(--button-shadow-hover);
   color: var(--button-color);
-  transform: translateY(-1px);
 }
 
 .button.button:focus-visible {
@@ -1717,7 +1716,6 @@ button.imagePreviewFrame {
   border-color: var(--ui-glass-accent-border);
   background: color-mix(in srgb, var(--ui-green-soft) 84%, var(--ui-glass-soft));
   color: var(--ui-green);
-  transform: translateY(-1px);
 }
 
 .reviewActionFeatured:hover,
@@ -1725,7 +1723,6 @@ button.imagePreviewFrame {
   border-color: rgba(249, 168, 212, 0.42);
   background: color-mix(in srgb, var(--ui-pink-soft) 86%, var(--ui-glass-soft));
   color: var(--ui-pink);
-  transform: translateY(-1px);
 }
 
 .reviewActionCover {
@@ -1739,7 +1736,6 @@ button.imagePreviewFrame {
   border-color: rgba(147, 197, 253, 0.46);
   background: color-mix(in srgb, var(--ui-sky-soft) 84%, var(--ui-glass-soft));
   color: var(--ui-sky);
-  transform: translateY(-1px);
 }
 
 .reviewActionDelete:hover,
@@ -1747,7 +1743,6 @@ button.imagePreviewFrame {
   border-color: rgba(251, 113, 133, 0.42);
   background: color-mix(in srgb, var(--ui-red-soft) 82%, var(--ui-glass-soft));
   color: var(--ui-red);
-  transform: translateY(-1px);
 }
 
 .reviewActionUndo {
@@ -1761,7 +1756,6 @@ button.imagePreviewFrame {
   border-color: var(--ui-border-strong);
   background: var(--ui-control-hover);
   color: var(--ui-text);
-  transform: translateY(-1px);
 }
 
 @keyframes uiSpin {
