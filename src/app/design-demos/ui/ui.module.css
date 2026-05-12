@@ -795,14 +795,17 @@
 }
 
 .segmentedControlDense {
+  height: 36px;
+  min-height: 36px;
   gap: 3px;
   padding: 3px;
 }
 
 .segmentedControlDense .segmentedItem {
-  min-height: 30px;
+  height: 28px;
+  min-height: 28px;
   gap: 4px;
-  padding: 4px 7px;
+  padding: 0 7px;
 }
 
 .segmentedControlCompact .segmentedItem:hover:not(:disabled) {
