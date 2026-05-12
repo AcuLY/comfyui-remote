@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { Archive, Check, CheckSquare, Eye, ImageIcon, Square, Star, Trash2, X } from "lucide-react";
+import { Check, CheckSquare, Eye, ImageIcon, Square, Star, Trash2, Undo2, X } from "lucide-react";
 
 import type { DemoImage } from "../design-demo-data";
 import s from "./ui.module.css";
@@ -20,7 +20,7 @@ export function ReviewImageBoard({ images }: { images: DemoImage[] }) {
   const selectedVisibleIds = new Set([...selectedIds].filter((id) => visibleIds.has(id)));
   const selectedCount = selectedVisibleIds.size;
   const allSelected = images.length > 0 && selectedCount === images.length;
-  const pendingOnlySelected = pendingIds.length > 0 && selectedCount === pendingIds.length && pendingIds.every((id) => selectedVisibleIds.has(id));
+  const pendingOnlySelected = !allSelected && pendingIds.length > 0 && selectedCount === pendingIds.length && pendingIds.every((id) => selectedVisibleIds.has(id));
   const portalTarget = activeImage && typeof document !== "undefined"
     ? document.querySelector<HTMLElement>("[data-design-demo-shell]") ?? document.body
     : null;
@@ -83,7 +83,7 @@ export function ReviewImageBoard({ images }: { images: DemoImage[] }) {
             <Button tone="pink" icon={Eye} className={s.reviewActionFeatured} disabled={selectedCount === 0} feedback={{ title: "已加入预览标记队列", detail: `${selectedCount} 张图片` }}>预览</Button>
             <Button tone="subtle" icon={ImageIcon} className={s.reviewActionCover} disabled={selectedCount !== 1} feedback={{ title: "已设为封面", detail: "1 张图片" }}>封面</Button>
             <Button tone="danger" icon={Trash2} className={s.reviewActionDelete} feedback={{ tone: "warning", title: "已加入删除队列", detail: `${actionTargetCount} 张图片` }}>{hasSelection ? "删除" : "全部删除"}</Button>
-            <Button tone="subtle" icon={Archive} className={s.reviewActionUndo} feedback={{ tone: "info", title: "最近操作已撤销" }}>撤销最近操作</Button>
+            <Button tone="subtle" icon={Undo2} className={s.reviewActionUndo} feedback={{ tone: "info", title: "最近操作已撤销" }}>撤销</Button>
           </>
         )}
       >
@@ -125,7 +125,7 @@ export function ReviewImageBoard({ images }: { images: DemoImage[] }) {
               <Button tone="danger" icon={Trash2} feedback={{ tone: "warning", title: "图片已加入删除队列", detail: activeImage.label }}>
                 删除
               </Button>
-              <Button tone="subtle" icon={Archive} feedback={{ tone: "info", title: "最近操作已撤销" }}>撤销</Button>
+              <Button tone="subtle" icon={Undo2} feedback={{ tone: "info", title: "最近操作已撤销" }}>撤销</Button>
             </>
           )}
         />,

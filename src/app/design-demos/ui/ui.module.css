@@ -1744,3 +1744,53 @@ button.imagePreviewFrame {
     width: 120px;
   }
 }
+
+@media (max-width: 520px) {
+  .reviewControlStrip {
+    grid-template-columns: minmax(0, 1fr) 42px;
+    gap: 10px;
+    padding-inline: 12px;
+  }
+
+  .reviewControlStrip .imageListMediumSelectPanel {
+    display: grid;
+    width: min(100%, 188px);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+    gap: 7px;
+  }
+
+  .reviewControlStrip .imageListMediumSelectPanel .button {
+    width: 100%;
+    height: 32px;
+    min-height: 32px;
+    padding-inline: 9px;
+  }
+
+  .reviewControlStrip .imageListMediumSelectPanel .buttonSubtle {
+    width: max-content;
+    grid-column: 1 / -1;
+    justify-self: start;
+    padding-inline: 8px;
+  }
+
+  .reviewControlStrip .imageListMediumActionPanel {
+    gap: 7px;
+  }
+
+  .reviewControlStrip .imageListMediumActionPanel .button {
+    width: 38px;
+    min-width: 38px;
+    height: 38px;
+    min-height: 38px;
+    gap: 0;
+    border-radius: 8px;
+    font-size: 0;
+    padding: 0;
+  }
+
+  .reviewControlStrip .imageListMediumActionPanel .buttonIcon {
+    width: 16px;
+    height: 16px;
+  }
+}
