@@ -49,7 +49,7 @@ import {
 } from "../design-demo-utils";
 import type { RouteIcon, RouteKey } from "../design-demo-utils";
 import s from "../styles/showcase.module.css";
-import { PageHeader } from "../ui/page-header";
+import { PageHeader, PageHeaderBack } from "../ui/page-header";
 import headerS from "./headers-showcase.module.css";
 
 type HeaderActionTone = "default" | "primary" | "pink" | "danger" | "subtle";
@@ -674,10 +674,9 @@ function HeaderSurface({
               <Menu aria-hidden="true" className={headerS.headerIcon} />
             </button>
             {spec.back ? (
-              <button aria-label={spec.back.label} className={cx(headerS.backButton, isCollapsed && headerS.backButtonIcon)} type="button">
-                <ArrowLeft aria-hidden="true" className={headerS.headerIcon} />
-                {!isCollapsed && !isMobile ? <span>{spec.back.label}</span> : null}
-              </button>
+              <div className={headerS.backSlot}>
+                <PageHeaderBack href={spec.back.href} label={spec.back.label} />
+              </div>
             ) : null}
           </div>
 

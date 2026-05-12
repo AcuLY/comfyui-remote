@@ -201,6 +201,16 @@
   justify-content: flex-end;
 }
 
+.backSlot {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+}
+
+.backSlot a {
+  margin: 0;
+}
+
 .identityBlock {
   display: grid;
   min-width: 0;
@@ -293,7 +303,6 @@
 }
 
 .iconSurface,
-.backButton,
 .headerButton {
   display: inline-flex;
   min-height: 34px;
@@ -326,11 +335,6 @@
   padding: 0;
 }
 
-.backButton {
-  color: var(--demo-text);
-}
-
-.backButtonIcon,
 .headerButtonIconOnly {
   width: 34px;
   padding: 0;
@@ -360,8 +364,6 @@
 
 .iconSurface:hover,
 .iconSurface:focus-visible,
-.backButton:hover,
-.backButton:focus-visible,
 .headerButton:hover,
 .headerButton:focus-visible {
   border-color: var(--demo-glass-accent-border);
@@ -404,7 +406,6 @@
 }
 
 .fixedHeaderMobile .iconSurface,
-.fixedHeaderMobile .backButton,
 .fixedHeaderMobile .headerButton {
   width: 40px;
   min-height: 40px;
@@ -499,15 +500,12 @@
 
 @media (prefers-reduced-motion: reduce) {
   .iconSurface,
-  .backButton,
   .headerButton {
     transition: none;
   }
 
   .iconSurface:hover,
   .iconSurface:focus-visible,
-  .backButton:hover,
-  .backButton:focus-visible,
   .headerButton:hover,
   .headerButton:focus-visible {
     transform: none;

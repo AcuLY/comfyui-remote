@@ -1141,39 +1141,13 @@
 .routeHeaderToolButton {
   flex: 0 0 auto;
 }
-.routeHeaderBack {
-  display: inline-flex;
+.routeHeaderBackSlot {
+  display: flex;
   min-width: 0;
-  height: 36px;
   align-items: center;
-  gap: 7px;
-  border: 1px solid var(--demo-border);
-  border-radius: 8px;
-  background: var(--demo-field-bg);
-  color: var(--demo-text);
-  font-size: 12px;
-  font-weight: 580;
-  line-height: 1;
-  padding: 0 10px;
-  text-decoration: none;
-  transition:
-    background 160ms ease,
-    border-color 160ms ease,
-    color 160ms ease,
-    transform 160ms ease;
-  white-space: nowrap;
 }
-.routeHeaderBack:hover,
-.routeHeaderBack:focus-visible {
-  border-color: var(--demo-glass-accent-border);
-  background: var(--demo-selected);
-  color: var(--demo-green);
-  transform: translateY(-1px);
-}
-.routeHeaderBack:focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--demo-green) 30%, transparent);
-  outline-offset: 2px;
-  transform: none;
+.routeHeaderBackSlot a {
+  margin: 0;
 }
 .routeHeaderIdentity {
   display: grid;
@@ -1298,14 +1272,6 @@
 }
 .routeHeaderCollapsed .routeHeaderIdentity h1 {
   font-size: 15px;
-}
-.routeHeaderCollapsed .routeHeaderBack {
-  width: 36px;
-  padding: 0;
-  justify-content: center;
-}
-.routeHeaderCollapsed .routeHeaderBack span {
-  display: none;
 }
 :global([data-design-demo-shell]):has(.lightboxOverlay) .mobileBottomNav {
   display: none;
@@ -1624,14 +1590,6 @@
     min-height: 44px;
   }
 
-  .routeHeaderBack {
-    width: 44px;
-    height: 44px;
-    justify-content: center;
-    padding: 0;
-  }
-
-  .routeHeaderBack span,
   .routeHeaderEyebrow,
   .routeHeaderIdentity p,
   .routeHeaderMeta {

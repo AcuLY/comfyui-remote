@@ -5,7 +5,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import {
   Archive,
-  ArrowLeft,
   Eye,
   EyeOff,
   Grid3X3,
@@ -25,6 +24,7 @@ import type { DemoData } from "./design-demo-data";
 import s from "./styles/shell.module.css";
 import { Button } from "./ui/button";
 import { DemoFeedbackProvider } from "./ui/demo-feedback-provider";
+import { PageHeaderBack } from "./ui/page-header";
 import {
   DESIGN_DEMO_SFW_STORAGE_KEY,
   DESIGN_DEMO_THEME_STORAGE_KEY,
@@ -434,10 +434,9 @@ function DemoRouteHeader({
           ariaLabel="打开导航菜单"
         />
         {config.back ? (
-          <Link className={s.routeHeaderBack} href={demoHref(config.back.href)} aria-label={collapsed ? config.back.label : undefined}>
-            <ArrowLeft className={s.iconMd} aria-hidden="true" />
-            <span>{config.back.label}</span>
-          </Link>
+          <div className={s.routeHeaderBackSlot}>
+            <PageHeaderBack href={config.back.href} label={config.back.label} />
+          </div>
         ) : null}
         <div className={s.routeHeaderIdentity}>
           <span className={s.routeHeaderEyebrow}>
