@@ -389,8 +389,6 @@ function DemoRouteHeader({
   collapsed,
   config,
   isDarkTheme,
-  menuOpen,
-  onOpenMenu,
   onToggleSfwMode,
   onToggleTheme,
   onToggleTools,
@@ -400,8 +398,6 @@ function DemoRouteHeader({
   collapsed: boolean;
   config: RouteHeaderConfig;
   isDarkTheme: boolean;
-  menuOpen: boolean;
-  onOpenMenu: () => void;
   onToggleSfwMode: () => void;
   onToggleTheme: () => void;
   onToggleTools: () => void;
@@ -413,14 +409,6 @@ function DemoRouteHeader({
   return (
     <header className={cx(s.routeHeader, collapsed && s.routeHeaderCollapsed)} data-route-header-collapsed={collapsed ? "true" : "false"}>
       <div className={s.routeHeaderMain}>
-        <Button
-          className={cx(s.button, s.iconButton, s.routeHeaderMenuButton)}
-          icon={Menu}
-          iconOnly
-          onClick={onOpenMenu}
-          pressed={menuOpen}
-          ariaLabel="打开导航菜单"
-        />
         {config.back ? (
           <div className={s.routeHeaderBackSlot}>
             <PageHeaderBack href={config.back.href} label={config.back.label} />
@@ -635,11 +623,6 @@ export function DesignDemoShell({
                 collapsed={routeHeaderCollapsed}
                 config={routeHeaderConfig}
                 isDarkTheme={theme === "dark"}
-                menuOpen={menuOpen}
-                onOpenMenu={() => {
-                  setMenuOpen(true);
-                  setToolsOpen(false);
-                }}
                 onToggleSfwMode={toggleSfwMode}
                 onToggleTheme={toggleTheme}
                 onToggleTools={() => {

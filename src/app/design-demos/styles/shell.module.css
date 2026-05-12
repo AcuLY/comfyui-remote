@@ -31,8 +31,8 @@
   --demo-bg-sheen: linear-gradient(135deg, rgba(255, 255, 255, 0.07), transparent 42%, rgba(255, 255, 255, 0.035));
   --demo-sidebar-bg: rgba(24, 24, 27, 0.72);
   --demo-topbar-bg: rgba(24, 24, 27, 0.66);
-  --demo-route-header-bg: rgba(24, 24, 27, 0.54);
-  --demo-route-header-bg-collapsed: rgba(24, 24, 27, 0.62);
+  --demo-route-header-bg: rgba(24, 24, 27, 0.42);
+  --demo-route-header-bg-collapsed: rgba(24, 24, 27, 0.5);
   --demo-mobile-nav-bg: rgba(24, 24, 27, 0.58);
   --demo-surface: rgba(24, 24, 27, 0.76);
   --demo-surface-soft: rgba(24, 24, 27, 0.52);
@@ -117,8 +117,8 @@
   --demo-bg-sheen: linear-gradient(135deg, rgba(255, 255, 255, 0.6), transparent 42%, rgba(255, 255, 255, 0.28));
   --demo-sidebar-bg: rgba(255, 255, 255, 0.68);
   --demo-topbar-bg: rgba(247, 249, 251, 0.66);
-  --demo-route-header-bg: rgba(255, 255, 255, 0.56);
-  --demo-route-header-bg-collapsed: rgba(255, 255, 255, 0.68);
+  --demo-route-header-bg: rgba(255, 255, 255, 0.42);
+  --demo-route-header-bg-collapsed: rgba(255, 255, 255, 0.52);
   --demo-mobile-nav-bg: rgba(247, 249, 251, 0.58);
   --demo-surface: rgba(255, 255, 255, 0.78);
   --demo-surface-soft: rgba(255, 255, 255, 0.66);
@@ -1127,46 +1127,31 @@
   position: relative;
   z-index: 32;
   min-width: 0;
-  overflow: clip;
-  border-bottom: 1px solid var(--demo-glass-border);
-  background:
-    linear-gradient(180deg, var(--demo-glass-highlight), transparent 140%),
-    var(--demo-route-header-bg);
-  -webkit-backdrop-filter: blur(24px) saturate(165%);
-  backdrop-filter: blur(24px) saturate(165%);
-  box-shadow:
-    0 12px 34px rgba(15, 23, 42, 0.08),
-    inset 0 1px 0 var(--demo-inset-highlight);
+  border-bottom: 1px solid var(--demo-border);
+  background-color: var(--demo-route-header-bg);
+  box-shadow: 0 12px 34px rgba(15, 23, 42, 0.07);
   margin: 0;
   padding: 12px 18px;
   padding-block-start: max(12px, env(safe-area-inset-top));
   transform: translateZ(0);
   transition:
     background-color 220ms ease,
-    border-color 220ms ease,
     box-shadow 220ms ease,
     padding 220ms cubic-bezier(0.2, 0, 0, 1);
   will-change: padding, box-shadow;
 }
 .routeHeaderCollapsed {
-  background:
-    linear-gradient(180deg, var(--demo-glass-highlight), transparent 150%),
-    var(--demo-route-header-bg-collapsed);
-  border-color: var(--demo-border);
-  box-shadow:
-    0 10px 28px rgba(15, 23, 42, 0.12),
-    inset 0 1px 0 var(--demo-inset-highlight);
+  background-color: var(--demo-route-header-bg-collapsed);
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.1);
   padding-block: 8px;
   padding-block-start: max(8px, env(safe-area-inset-top));
 }
 .routeHeaderMain {
-  display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr) auto auto;
+  display: flex;
   align-items: center;
   gap: 8px;
   min-width: 0;
 }
-.routeHeaderMenuButton,
 .routeHeaderToolButton {
   flex: 0 0 auto;
 }
@@ -1180,6 +1165,7 @@
 }
 .routeHeaderIdentity {
   display: grid;
+  flex: 1 1 auto;
   min-width: 0;
   gap: 3px;
   transition: gap 220ms cubic-bezier(0.2, 0, 0, 1);
@@ -1678,10 +1664,6 @@
     gap: 8px;
   }
 
-  .routeHeaderMenuButton {
-    display: none;
-  }
-
   .routeHeaderToolButton {
     width: 44px;
     height: 44px;
@@ -2070,7 +2052,6 @@
 }
 
 @media (max-width: 639px) {
-  .routeHeaderMenuButton,
   .sidebarOpen .sidebarCollapseButton {
     display: none;
   }
