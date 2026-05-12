@@ -10,7 +10,6 @@ import { ImageGrid } from "../ui/image-grid";
 import { ImageListMedium } from "../ui/image-list-medium";
 import { ImageListSmall } from "../ui/image-list-small";
 import { ImagePreviewLarge } from "../ui/image-preview-large";
-import { ImageStrip } from "../ui/image-strip";
 import { ImageThumbMedium } from "../ui/image-thumb-medium";
 import { ImageThumbSmall } from "../ui/image-thumb-small";
 import { PageHeader } from "../ui/page-header";
@@ -35,7 +34,8 @@ export function ComponentShowcaseImages({ data }: { data: DemoData }) {
 
   const images = useMemo(() => {
     const fromData = data.projects.flatMap((project) => project.sections.flatMap((section) => section.images));
-    return fromData.length >= 6 ? fromData.slice(0, 12) : makeImages(12);
+    const sourceImages = fromData.length >= 6 ? fromData.slice(0, 12) : makeImages(12);
+    return sourceImages.map((image, index) => ({ ...image, id: `${image.id}-${index}` }));
   }, [data.projects]);
 
   const mediumThumbImages = useMemo(() => (
@@ -58,25 +58,25 @@ export function ComponentShowcaseImages({ data }: { data: DemoData }) {
 
   return (
     <div className={s.showcasePage}>
-      <PageHeader back={{ href: "/component-showcase", label: "返回总览" }} eyebrow="组件展示" title="图片组件" subtitle="9 个图片相关组件" />
+      <PageHeader back={{ href: "/component-showcase", label: "返回总览" }} eyebrow="组件展示" title="图片组件" subtitle="7 个图片相关组件" />
 
       {/* 3.1 ImageThumbSmall */}
       <ShowcaseItem name="ImageThumbSmall" desc="小缩略图">
         <div className={s.showcaseRow}>
-          {images.slice(0, 5).map((img) => (
-            <ImageThumbSmall key={img.id} image={img} />
+          {images.slice(0, 5).map((img, index) => (
+            <ImageThumbSmall key={`${img.id}-small-${index}`} image={img} />
           ))}
         </div>
       </ShowcaseItem>
 
       {/* 3.2 ImageThumbMedium */}
-      <ShowcaseItem name="ImageThumbMedium" desc="中缩略图（选择、标签、状态、操作槽）">
+      <ShowcaseItem name="ImageThumbMedium" desc="中缩略图（选择、状态、操作槽）">
         <div className={s.showcaseRow}>
           {mediumThumbImages.map((img, i) => (
             <ImageThumbMedium
               actionSlot={<MediumThumbActions />}
               actionsAlwaysVisible={i === 0}
-              key={img.id}
+              key={`${img.id}-medium-${i}`}
               image={img}
               selectable
               selected={selectedIds.has(img.id)}
@@ -88,13 +88,8 @@ export function ComponentShowcaseImages({ data }: { data: DemoData }) {
         </div>
       </ShowcaseItem>
 
-      {/* 3.3 ImageStrip */}
-      <ShowcaseItem name="ImageStrip" desc="ImageListSmall 的语义封装（项目 / 小节图片条）">
-        <ImageStrip images={images.slice(0, 6)} />
-      </ShowcaseItem>
-
       {/* 3.3 ImageListSmall */}
-      <ShowcaseItem name="ImageListSmall" desc="基础横向滚动小图列表 primitive">
+      <ShowcaseItem name="ImageListSmall" desc="横向滚动小图列表，项目 / 小节图片条直接复用它">
         <div className={s.showcaseImageList}>
           <ImageListSmall images={images} limit={8} maxWidth={420} />
         </div>
@@ -107,7 +102,7 @@ export function ComponentShowcaseImages({ data }: { data: DemoData }) {
         <ImageListMedium maxHeight={320} summary={`已选 ${selectedIds.size} 张`}>
           {images.slice(0, 8).map((img, i) => (
             <ImageThumbMedium
-              key={img.id}
+              key={`${img.id}-list-medium-${i}`}
               image={img}
               selectable
               selected={selectedIds.has(img.id)}

@@ -8,7 +8,7 @@ import type { DemoProject } from "../data/types";
 import { ProjectDetailHeader } from "../projects/project-detail-header";
 import s from "../styles/showcase.module.css";
 import { Button } from "../ui/button";
-import { ImageStrip } from "../ui/image-strip";
+import { ImageListSmall } from "../ui/image-list-small";
 import { PageHeader } from "../ui/page-header";
 import { SegmentedControl } from "../ui/segmented-control";
 import { StatusBadge } from "../ui/status-badge";
@@ -43,7 +43,7 @@ export function ComponentShowcaseProjects({ data: _data }: { data: DemoData }) {
             <article className={`${s.projectListCard} ${s.projectListCardSelected}`}>
               <Button className={s.projectSelectButton} icon={CheckSquare} iconOnly pressed ariaLabel="取消选择" />
               <div className={s.projectListOpenArea}>
-                <ImageStrip images={images} />
+                <ImageListSmall images={images} />
                 <div className={s.cardHeader}>
                   <div className={s.projectCardTitle}>
                     <strong>夏日人像合集</strong>
@@ -65,7 +65,7 @@ export function ComponentShowcaseProjects({ data: _data }: { data: DemoData }) {
             <article className={s.projectListCard}>
               <Button className={s.projectSelectButton} icon={Square} iconOnly ariaLabel="选择项目" />
               <div className={s.projectListOpenArea}>
-                <ImageStrip images={images.slice(0, 3)} />
+                <ImageListSmall images={images.slice(0, 3)} />
                 <div className={s.cardHeader}>
                   <div className={s.projectCardTitle}>
                     <strong>风景写意</strong>
@@ -195,7 +195,7 @@ export function ComponentShowcaseProjects({ data: _data }: { data: DemoData }) {
                 </div>
               </div>
               <div className={s.sectionCardBody}>
-                <ImageStrip images={images.slice(0, 3)} />
+                <ImageListSmall images={images.slice(0, 3)} />
                 <div className={s.projectCardStats}>
                   <StatusBadge status="ratio" label="2:3" />
                   <StatusBadge status="steps" label="20 步" />

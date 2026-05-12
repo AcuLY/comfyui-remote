@@ -8,7 +8,7 @@ import type { DemoProject, DemoSection } from "../design-demo-data";
 import { cx, demoHref, rawSectionId, sectionAnchorId, sectionRunStatus } from "../design-demo-utils";
 import s from "../styles/projects.module.css";
 import { Button } from "../ui/button";
-import { ImageStrip } from "../ui/image-strip";
+import { ImageListSmall } from "../ui/image-list-small";
 import { StatusBadge } from "../ui/status-badge";
 import { BATCH_SIZE_OPTIONS, BatchSizeSelector } from "./batch-size-selector";
 
@@ -59,7 +59,7 @@ export function ProjectSectionCard({
           </div>
           {!compact ? (
             <div className={s.sectionCardBody}>
-              <ImageStrip images={section.images} wide />
+              <ImageListSmall images={section.images} wide />
             </div>
           ) : null}
         </Link>

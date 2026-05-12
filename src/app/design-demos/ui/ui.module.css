@@ -1033,8 +1033,8 @@
 }
 
 .pageHeader .pageBackLink {
-  margin-top: -6px;
-  margin-left: -10px;
+  margin-top: -10px;
+  margin-left: -14px;
   margin-bottom: -2px;
 }
 
@@ -1258,6 +1258,12 @@
   transform: translateY(0);
 }
 
+@media (max-width: 700px) {
+  .imageThumbActions {
+    display: none;
+  }
+}
+
 .imagePreviewFrame {
   position: relative;
   display: grid;
@@ -1458,7 +1464,7 @@ button.imagePreviewFrame {
   gap: 10px;
   border: 1px solid var(--ui-border-strong);
   border-radius: var(--ui-radius);
-  background: var(--ui-panel);
+  background: var(--demo-lightbox-panel-bg, #ffffff);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
   padding: 12px;
 }

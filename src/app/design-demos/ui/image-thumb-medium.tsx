@@ -8,7 +8,7 @@ import type { DemoImage } from "../design-demo-data";
 import { cx } from "../design-demo-utils";
 import s from "./ui.module.css";
 import { StatusBadge } from "./status-badge";
-import { imageReviewLabel, imageTagLabels } from "./utils";
+import { imageReviewLabel } from "./utils";
 
 export function ImageThumbMedium({
   actionSlot,
@@ -20,7 +20,7 @@ export function ImageThumbMedium({
   selectable = false,
   selected = false,
   showStatus = true,
-  tags = imageTagLabels(image),
+  tags = [],
 }: {
   actionSlot?: React.ReactNode;
   actionsAlwaysVisible?: boolean;

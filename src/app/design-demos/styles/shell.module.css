@@ -58,6 +58,7 @@
   --demo-image-label-text: #ffffff;
   --demo-lightbox-image-bg: #050507;
   --demo-lightbox-image-border: rgba(255, 255, 255, 0.16);
+  --demo-lightbox-panel-bg: #18181b;
   min-height: 100vh;
   position: relative;
   isolation: isolate;
@@ -138,6 +139,7 @@
   --demo-thumb-end: rgba(15, 23, 42, 0.018);
   --demo-image-label-border: rgba(255, 255, 255, 0.45);
   --demo-image-label-bg: rgba(15, 23, 42, 0.58);
+  --demo-lightbox-panel-bg: #ffffff;
   --demo-image-label-text: #ffffff;
   --demo-lightbox-image-bg: #ffffff;
   --demo-lightbox-image-border: rgba(15, 23, 42, 0.12);

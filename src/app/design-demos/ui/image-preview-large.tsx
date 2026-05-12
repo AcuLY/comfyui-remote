@@ -49,10 +49,10 @@ export function ImagePreviewLarge({
           <div className={s.lightboxFooter}>
             {hasNavigation ? (
               <div className={s.lightboxNavigation}>
-                <Button tone="subtle" icon={ArrowLeft} onClick={onPrevious} disabled={!onPrevious || previousDisabled}>
+                <Button icon={ArrowLeft} onClick={onPrevious} disabled={!onPrevious || previousDisabled}>
                   上一张
                 </Button>
-                <Button tone="subtle" icon={ArrowRight} onClick={onNext} disabled={!onNext || nextDisabled}>
+                <Button icon={ArrowRight} onClick={onNext} disabled={!onNext || nextDisabled}>
                   下一张
                 </Button>
               </div>

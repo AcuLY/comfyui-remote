@@ -12,7 +12,7 @@ export function ComponentShowcaseIndex({ data: _data }: { data: DemoData }) {
   const categories = [
     { href: "/component-showcase-atoms", title: "原子 / 小组件", desc: "Button、PageHeaderBack、StatusBadge、Field、Switch、SelectLike、StepperInput 等", icon: Layers, count: 18 },
     { href: "/component-showcase-mid", title: "中组件", desc: "PageHeader、Panel、RouteTable、Toast、EmptyPage、QueueMetrics、CurrentRunningProgressCard 等", icon: Grid3X3, count: 8 },
-    { href: "/component-showcase-images", title: "图片组件", desc: "ImageThumb、ImageStrip、ImageList、ImageGrid、ReviewBoard、Lightbox", icon: Palette, count: 9 },
+    { href: "/component-showcase-images", title: "图片组件", desc: "ImageThumb、ImageList、ImageGrid、ReviewBoard、Lightbox", icon: Palette, count: 7 },
     { href: "/component-showcase-editor", title: "Section Editor 组件", desc: "SectionHeader、PresetBindingRow、PromptBlockRow、LoraRow、LoraColumn 等", icon: SlidersHorizontal, count: 8 },
     { href: "/component-showcase-projects", title: "项目卡片和列表", desc: "ProjectDetailHeader、ProjectListItem、ProjectSectionCard、ProjectFolderRow、BatchSizeSelector 等", icon: Archive, count: 10 },
     { href: "/component-showcase-icons", title: "Icons 图标", desc: "Lucide 图标全览 + 自定义 SVG 图标", icon: Palette, count: 57 },

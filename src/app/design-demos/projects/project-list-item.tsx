@@ -7,7 +7,7 @@ import type { DemoProject, DemoProjectFolder } from "../design-demo-data";
 import { compactFileName, cx, demoHref, projectPresetSummary } from "../design-demo-utils";
 import s from "../styles/projects.module.css";
 import { Button } from "../ui/button";
-import { ImageStrip } from "../ui/image-strip";
+import { ImageListSmall } from "../ui/image-list-small";
 import { StatusBadge } from "../ui/status-badge";
 import { ProjectMoveMenu } from "./project-folders";
 
@@ -35,7 +35,7 @@ export function ProjectListItem({
         pressed={selected}
       />
       <Link className={s.projectListOpenArea} href={demoHref(`/projects/${project.id}`)}>
-        <ImageStrip images={project.images} />
+        <ImageListSmall images={project.images} />
         <div className={s.cardHeader}>
           <div className={s.projectCardTitle}>
             <strong>{project.title}</strong>
