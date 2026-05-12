@@ -1598,7 +1598,7 @@ button.imagePreviewFrame {
 
 .reviewControlStrip {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 154px;
+  grid-template-columns: minmax(0, 1fr) max-content;
   grid-template-areas:
     "header actions"
     "main actions";
@@ -1635,6 +1635,10 @@ button.imagePreviewFrame {
 
 .reviewControlStrip .imageListMediumHeader {
   align-items: start;
+}
+
+.reviewControlStrip .imageListMediumActionPanel {
+  width: max-content;
 }
 
 .reviewActionKeep:hover,
