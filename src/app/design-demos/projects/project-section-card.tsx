@@ -2,15 +2,14 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { CheckSquare, Copy, GripVertical, Play, Square, Trash2 } from "lucide-react";
+import { Copy, GripVertical, Play, Trash2 } from "lucide-react";
 
 import type { DemoProject, DemoSection } from "../design-demo-data";
-import { cx, demoHref, rawSectionId, sectionAnchorId, sectionRunStatus } from "../design-demo-utils";
+import { cx, demoHref, rawSectionId, sectionAnchorId } from "../design-demo-utils";
 import s from "../styles/projects.module.css";
 import { Button } from "../ui/button";
 import { ImageListSmall } from "../ui/image-list-small";
 import { SegmentedControl } from "../ui/segmented-control";
-import { StatusBadge } from "../ui/status-badge";
 
 const BATCH_SIZE_OPTIONS = [1, 2, 4, 8, 16];
 
@@ -19,64 +18,41 @@ export function ProjectSectionCard({
   index,
   project,
   section,
-  selected,
-  onToggleSelection,
 }: {
   compact: boolean;
   index: number;
   project: DemoProject;
   section: DemoSection;
-  selected: boolean;
-  onToggleSelection: () => void;
 }) {
-  const runStatus = sectionRunStatus(section, index);
   const defaultBatchSize = BATCH_SIZE_OPTIONS.includes(section.batchSize) ? section.batchSize : 2;
   const [batchSize, setBatchSize] = useState(defaultBatchSize);
+  const sectionHref = demoHref(`/projects/${project.id}/sections/${rawSectionId(section)}`);
 
   return (
     <article
-      className={cx(s.sectionCard, compact && s.sectionCardCompact, selected && s.sectionCardSelected)}
+      className={cx(s.sectionCard, compact && s.sectionCardCompact)}
       data-section-card={section.id}
       id={sectionAnchorId(section)}
     >
-      <div className={s.sectionCardMain}>
-        <Button className={s.dragHandle} tone="subtle" icon={GripVertical} iconOnly ariaLabel="排序手柄" />
-        <Button
-          ariaLabel={selected ? "取消选择小节" : "选择小节"}
-          className={s.sectionSelectButton}
-          icon={selected ? CheckSquare : Square}
-          iconOnly
-          onClick={onToggleSelection}
-          pressed={selected}
-        />
-        <Link className={s.sectionCardContent} href={demoHref(`/projects/${project.id}/sections/${rawSectionId(section)}`)}>
-          <div className={s.sectionCardHeader}>
-            <div className={s.sectionCardTitle}>
-              <div className={s.sectionCardTitleLine}>
-                <span>{String(index + 1).padStart(2, "0")}</span>
-                <strong>{section.name}</strong>
-              </div>
-            </div>
-            <StatusBadge status={runStatus.status} label={runStatus.label} />
-          </div>
-          {!compact ? (
-            <div className={s.sectionCardBody}>
-              <ImageListSmall images={section.images} wide />
-            </div>
-          ) : null}
-        </Link>
-      </div>
+      <Button className={s.dragHandle} tone="subtle" icon={GripVertical} iconOnly ariaLabel={`拖拽排序小节：${section.name}`} />
+      <Link aria-label={`打开第 ${index + 1} 小节最近结果：${section.name}`} className={s.sectionRecentResult} href={sectionHref}>
+        <span className={s.recentResultLabel}>最近结果</span>
+        <ImageListSmall className={s.recentResultImages} images={section.images} limit={1} wide />
+      </Link>
+      <Link className={s.sectionCardTitleLink} href={sectionHref}>
+        <strong>{section.name}</strong>
+      </Link>
       <div className={s.sectionCardActions}>
-        <div className={s.sectionRunControl}>
-          <Button icon={Play} feedback={{ title: "小节运行已加入任务", detail: `${section.name} · batch ${batchSize}` }}>运行</Button>
-          <SegmentedControl
-            ariaLabel="批量张数"
-            compact
-            items={BATCH_SIZE_OPTIONS.map((option) => ({ value: option, label: option }))}
-            onChange={setBatchSize}
-            value={batchSize}
-          />
-        </div>
+        <SegmentedControl
+          ariaLabel="运行批次"
+          className={s.sectionBatchTabs}
+          compact
+          items={BATCH_SIZE_OPTIONS.map((option) => ({ value: option, label: option }))}
+          onChange={setBatchSize}
+          role="tablist"
+          value={batchSize}
+        />
+        <Button tone="primary" icon={Play} feedback={{ title: "小节运行已加入任务", detail: `${section.name} · batch ${batchSize}` }}>运行</Button>
         <Button tone="subtle" icon={Copy} feedback={{ title: "小节已复制", detail: section.name }}>复制</Button>
         <Button tone="danger" icon={Trash2} feedback={{ tone: "warning", title: "删除小节需要确认", detail: section.name }}>删除</Button>
       </div>

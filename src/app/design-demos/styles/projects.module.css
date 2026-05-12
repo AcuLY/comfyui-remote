@@ -706,11 +706,14 @@
   gap: 5px;
 }
 
-.projectFolderRowActions button,
-.projectItemActions button {
+.projectFolderRowActions button {
   width: 28px;
   justify-content: center;
   padding: 0;
+}
+
+.projectItemActions button {
+  justify-content: center;
 }
 
 .projectFolderWorkspace .projectListGrid {
@@ -721,16 +724,19 @@
 .projectFolderWorkspace .projectListCard {
   position: relative;
   display: grid;
-  grid-template-columns: 28px minmax(0, 1fr) auto;
+  grid-template-columns: 30px minmax(82px, 92px) minmax(0, 1fr) auto;
+  grid-template-areas:
+    "controls recent title action"
+    "controls recent meta action";
   align-items: center;
-  gap: 8px;
+  gap: 8px 12px;
   border: 1px solid transparent;
   border-bottom-color: var(--demo-border);
   border-radius: 8px;
   background: transparent;
   color: inherit;
-  padding: 8px 10px;
-  transition: 160ms ease;
+  padding: 10px;
+  transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
 }
 
 .projectFolderWorkspace .projectListCard:hover,
@@ -745,26 +751,135 @@
   box-shadow: 0 0 0 1px rgba(0, 217, 146, 0.1) inset;
 }
 
+.projectItemControls {
+  display: grid;
+  grid-area: controls;
+  align-self: start;
+  justify-items: center;
+  gap: 4px;
+}
+
 .projectSelectButton {
   display: inline-flex;
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  min-height: 30px;
   align-items: center;
   justify-content: center;
   border: 1px solid var(--demo-border);
-  border-radius: 7px;
+  border-radius: 8px;
   background: var(--demo-field-bg);
   color: var(--demo-muted);
   cursor: pointer;
   padding: 0;
 }
 
+.projectDragHandle {
+  display: inline-flex;
+  width: 24px;
+  min-width: 24px;
+  height: 24px;
+  min-height: 24px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--demo-faint);
+  cursor: grab;
+  padding: 0;
+}
+
+.projectDragHandle:hover,
+.projectDragHandle:focus-visible,
 .projectSelectButton:hover,
 .projectSelectButton:focus-visible,
 .projectSelectButton[aria-pressed="true"] {
   border-color: var(--demo-glass-accent-border);
+  background: var(--demo-field-bg);
   color: var(--demo-green);
   outline: none;
+}
+
+.projectListRecentResult,
+.sectionRecentResult {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.projectListRecentResult {
+  grid-area: recent;
+}
+
+.recentResultLabel {
+  overflow: hidden;
+  color: var(--demo-faint);
+  font-size: 10px;
+  font-weight: 560;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recentResultImages {
+  width: 86px;
+}
+
+.projectListTitleLink,
+.sectionCardTitleLink {
+  display: block;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.projectListTitleLink {
+  grid-area: title;
+}
+
+.projectListTitleLink strong,
+.sectionCardTitleLink strong {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--demo-text);
+  font-size: 13px;
+  font-weight: 580;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.projectListTitleLink:hover strong,
+.projectListTitleLink:focus-visible strong,
+.sectionCardTitleLink:hover strong,
+.sectionCardTitleLink:focus-visible strong {
+  color: var(--demo-green);
+}
+
+.projectListTitleLink:focus-visible,
+.sectionCardTitleLink:focus-visible,
+.projectListRecentResult:focus-visible,
+.sectionRecentResult:focus-visible {
+  outline: 3px solid rgba(0, 217, 146, 0.18);
+  outline-offset: 2px;
+}
+
+.projectListMeta {
+  display: flex;
+  grid-area: meta;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.projectUpdateDate {
+  flex: 1 0 100%;
 }
 
 .projectListOpenArea {
@@ -782,6 +897,7 @@
 }
 
 .projectItemActions {
+  grid-area: action;
   justify-self: end;
 }
 
@@ -920,7 +1036,11 @@
   }
 
   .projectFolderWorkspace .projectListCard {
-    grid-template-columns: 28px minmax(0, 1fr);
+    grid-template-columns: 30px minmax(0, 1fr) auto;
+    grid-template-areas:
+      "controls title action"
+      "recent recent recent"
+      "meta meta meta";
     align-items: start;
   }
 
@@ -933,12 +1053,30 @@
     align-items: flex-start;
   }
 
+  .projectListRecentResult {
+    grid-template-columns: 90px minmax(0, 1fr);
+    align-items: center;
+  }
+
+  .projectListRecentResult .recentResultLabel {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .projectListRecentResult .recentResultImages {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .projectListMeta {
+    justify-content: flex-start;
+  }
+
   .projectCardStats {
     justify-content: flex-start;
   }
 
   .projectItemActions {
-    grid-column: 2;
     justify-self: start;
   }
 
@@ -1110,12 +1248,17 @@
 
 .sectionCard {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: 36px minmax(92px, 104px) minmax(0, 1fr);
+  grid-template-areas:
+    "drag recent title"
+    "drag actions actions";
+  align-items: center;
   gap: 10px;
   border: 1px solid var(--demo-glass-border);
   border-radius: var(--demo-radius);
   background: var(--demo-panel);
   padding: 10px;
+  transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
 }
 
 .sectionCard:hover {
@@ -1130,6 +1273,7 @@
 }
 
 .sectionCardCompact {
+  grid-template-columns: 36px 92px minmax(0, 1fr);
   padding-block: 8px;
 }
 
@@ -1143,12 +1287,12 @@
 .dragHandle,
 .sectionSelectButton {
   display: inline-flex;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   align-items: center;
   justify-content: center;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: 8px;
   background: transparent;
   color: var(--demo-faint);
   cursor: pointer;
@@ -1156,6 +1300,7 @@
 }
 
 .dragHandle {
+  grid-area: drag;
   cursor: grab;
 }
 
@@ -1167,6 +1312,14 @@
   background: var(--demo-field-bg);
   color: var(--demo-green);
   outline: none;
+}
+
+.sectionRecentResult {
+  grid-area: recent;
+}
+
+.sectionCardTitleLink {
+  grid-area: title;
 }
 
 .sectionCardContent {
@@ -1246,6 +1399,7 @@
 
 .sectionCardActions {
   display: flex;
+  grid-area: actions;
   flex-wrap: nowrap;
   align-items: center;
   justify-content: flex-end;
@@ -1257,23 +1411,16 @@
 
 .sectionCardActions .button {
   flex: 0 0 auto;
-  min-height: 30px;
-  font-size: 11px;
-  padding: 5px 8px;
+  min-height: 36px;
+  font-size: 12px;
+  padding: 0 10px;
 }
 
-.sectionRunControl {
-  display: flex;
-  flex: 1 1 auto;
-  min-width: 0;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 6px;
-}
-
-.sectionRunControl .button {
+.sectionCardActions .sectionBatchTabs {
+  flex: 1 1 168px;
   width: auto;
-  min-width: 78px;
+  margin-top: 0;
+  padding: 4px;
 }
 
 .sectionCardCompact .sectionCardActions {
@@ -1281,12 +1428,46 @@
   min-width: 0;
 }
 
-.sectionCardCompact .sectionRunControl {
-  align-items: center;
-}
-
 .sectionCardCompact .sectionCardActions .button {
   min-width: 0;
+}
+
+@media (max-width: 760px) {
+  .sectionCard,
+  .sectionCardCompact {
+    grid-template-columns: 26px 86px minmax(0, 1fr);
+    grid-template-areas:
+      "drag recent title"
+      "actions actions actions";
+    gap: 8px 10px;
+  }
+
+  .sectionCard .dragHandle,
+  .sectionCardCompact .dragHandle {
+    width: 24px;
+    min-width: 24px;
+    height: 30px;
+    min-height: 30px;
+  }
+
+  .sectionCardActions,
+  .sectionCardCompact .sectionCardActions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    justify-content: stretch;
+    gap: 6px;
+  }
+
+  .sectionCardActions .sectionBatchTabs {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .sectionCardActions .button {
+    width: 100%;
+    min-width: 0;
+    padding: 0 8px;
+  }
 }
 
 .resultSectionBlock {
@@ -1436,11 +1617,6 @@
 
   .railItem strong {
     white-space: normal;
-  }
-
-  .sectionCard,
-  .sectionCardCompact {
-    grid-template-columns: 1fr;
   }
 
   .sectionCardActions,
@@ -1694,7 +1870,11 @@
 
   .sectionCard,
   .sectionCardCompact {
-    grid-template-columns: 1fr;
+    grid-template-columns: 36px minmax(0, 1fr);
+    grid-template-areas:
+      "drag title"
+      "recent recent"
+      "actions actions";
   }
 
   .sectionCardMain {
@@ -1710,21 +1890,19 @@
 
   .sectionCardActions,
   .sectionCardCompact .sectionCardActions {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    justify-content: stretch;
     min-width: 0;
   }
 
   .sectionCardActions .button {
-    flex: 1 1 44%;
+    width: 100%;
     min-height: 38px;
   }
 
-  .sectionRunControl {
-    flex: 1 1 100%;
-  }
-
-  .sectionRunControl [role="radiogroup"] {
+  .sectionCardActions .sectionBatchTabs {
+    grid-column: 1 / -1;
     width: 100%;
   }
 
@@ -1802,70 +1980,26 @@
 }
 
 .showcaseProjectListPreview.projectFolderWorkspace .projectListCard {
-  grid-template-columns: 36px minmax(0, 1fr) auto;
-  gap: 10px;
+  grid-template-columns: 30px 86px minmax(0, 1fr) auto;
+  grid-template-areas:
+    "controls recent title action"
+    "controls recent meta action";
+  gap: 8px 12px;
   border-color: var(--demo-border);
   border-radius: 10px;
 }
 
-.showcaseProjectListPreview .projectListOpenArea {
-  grid-template-columns: minmax(128px, 180px) minmax(0, 1fr);
-  gap: 10px 12px;
-}
-
-.showcaseProjectListPreview .projectListOpenArea .imageStrip {
-  grid-row: span 3;
-  max-width: 180px;
-}
-
-.showcaseProjectListPreview .projectListOpenArea .cardHeader,
-.showcaseProjectListPreview .projectListOpenArea .projectCardStats,
-.showcaseProjectListPreview .projectListOpenArea > .small {
-  grid-column: 2;
-  justify-self: start;
-}
-
-.showcaseProjectListPreview .projectListOpenArea .cardHeader {
-  width: 100%;
-  align-items: flex-start;
-}
-
-.showcaseProjectListPreview .projectCardStats {
+.showcaseProjectListPreview .projectListMeta {
   justify-content: flex-start;
-}
-
-.showcaseProjectListPreview .projectCardStats .status {
-  max-width: 100%;
-}
-
-.showcaseProjectListPreview .projectListOpenArea > .small {
-  white-space: nowrap;
 }
 
 @media (max-width: 639px) {
   .showcaseProjectListPreview.projectFolderWorkspace .projectListCard {
-    grid-template-columns: 36px minmax(0, 1fr);
-  }
-
-  .showcaseProjectListPreview .projectListOpenArea {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .showcaseProjectListPreview .projectListOpenArea .imageStrip,
-  .showcaseProjectListPreview .projectListOpenArea .cardHeader,
-  .showcaseProjectListPreview .projectListOpenArea .projectCardStats,
-  .showcaseProjectListPreview .projectListOpenArea > .small {
-    grid-column: 1;
-  }
-
-  .showcaseProjectListPreview .projectListOpenArea .imageStrip {
-    grid-row: auto;
-    max-width: none;
-  }
-
-  .showcaseProjectListPreview .projectItemActions {
-    grid-column: 2;
-    justify-self: start;
+    grid-template-columns: 30px minmax(0, 1fr) auto;
+    grid-template-areas:
+      "controls title action"
+      "recent recent recent"
+      "meta meta meta";
   }
 }
 

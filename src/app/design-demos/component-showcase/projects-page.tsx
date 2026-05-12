@@ -1,14 +1,16 @@
 "use client";
 
-import { useMemo } from "react";
-import { Check, CheckSquare, ChevronRight, Copy, Folder, FolderInput, GripVertical, Pencil, Play, Square, Star, Trash2, X } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Check, CheckSquare, ChevronRight, Folder, FolderInput, GripVertical, Pencil, Square, Star, Trash2, X } from "lucide-react";
 
 import type { DemoData } from "../design-demo-data";
-import type { DemoProject } from "../data/types";
+import type { DemoProject, DemoSection } from "../data/types";
 import { ProjectDetailHeader } from "../projects/project-detail-header";
+import { ProjectListItem } from "../projects/project-list-item";
+import { ProjectSectionCard } from "../projects/project-section-card";
+import projectStyles from "../styles/projects.module.css";
 import s from "../styles/showcase.module.css";
 import { Button } from "../ui/button";
-import { ImageListSmall } from "../ui/image-list-small";
 import { PageHeader } from "../ui/page-header";
 import { StatusBadge } from "../ui/status-badge";
 import showcaseCss from "./component-showcase.module.css";
@@ -18,6 +20,40 @@ import { ShowcaseItem } from "./showcase-item";
 export function ComponentShowcaseProjects({ data: _data }: { data: DemoData }) {
   void _data;
   const images = useMemo(() => makeImages(6), []);
+  const [selectedProjectIds, setSelectedProjectIds] = useState<Set<string>>(new Set(["showcase-p1"]));
+  const projectRows = useMemo<DemoProject[]>(() => ([
+    {
+      ...MOCK_PROJECT,
+      id: "showcase-p1",
+      title: "夏日人像合集",
+      status: "running",
+      updatedAt: "2026-05-09",
+      sectionCount: 12,
+      images,
+    },
+    {
+      ...MOCK_PROJECT,
+      id: "showcase-p2",
+      title: "风景写意",
+      status: "done",
+      updatedAt: "2026-05-08",
+      sectionCount: 6,
+      images: images.slice(0, 3),
+    },
+  ]), [images]);
+  const showcaseSection = useMemo<DemoSection>(() => ({
+    ...MOCK_SECTION,
+    images: images.slice(0, 3),
+  }), [images]);
+
+  function toggleProject(projectId: string) {
+    setSelectedProjectIds((current) => {
+      const next = new Set(current);
+      if (next.has(projectId)) next.delete(projectId);
+      else next.add(projectId);
+      return next;
+    });
+  }
 
   return (
     <div className={s.showcasePage}>
@@ -34,53 +70,17 @@ export function ComponentShowcaseProjects({ data: _data }: { data: DemoData }) {
       </ShowcaseItem>
 
       {/* ProjectListItem 模拟 */}
-      <ShowcaseItem name="ProjectListItem" desc="项目卡片（选中框 + 缩略图条 + 标题/状态 + 统计 + 操作）">
-        <div className={`${s.projectFolderWorkspace} ${s.showcaseProjectListPreview} ${showcaseCss.previewWide}`}>
-          <div className={s.projectListGrid}>
-            <article className={`${s.projectListCard} ${s.projectListCardSelected}`}>
-              <Button className={s.projectSelectButton} icon={CheckSquare} iconOnly pressed ariaLabel="取消选择" />
-              <div className={s.projectListOpenArea}>
-                <ImageListSmall images={images} />
-                <div className={s.cardHeader}>
-                  <div className={s.projectCardTitle}>
-                    <strong>夏日人像合集</strong>
-                    <span>3 个预制</span>
-                  </div>
-                  <StatusBadge status="running" label="运行中" />
-                </div>
-                <div className={s.projectCardStats}>
-                  <StatusBadge status="sections" label="12 小节" />
-                  <StatusBadge status="checkpoint" label="dreamshaper_v8" />
-                </div>
-                <div className={`${s.small} ${s.faint}`}>更新：2026-05-09</div>
-              </div>
-              <div className={s.projectItemActions}>
-                <Button tone="subtle" icon={FolderInput} iconOnly ariaLabel="移动" />
-                <Button tone="danger" icon={Trash2} iconOnly ariaLabel="删除" />
-              </div>
-            </article>
-            <article className={s.projectListCard}>
-              <Button className={s.projectSelectButton} icon={Square} iconOnly ariaLabel="选择项目" />
-              <div className={s.projectListOpenArea}>
-                <ImageListSmall images={images.slice(0, 3)} />
-                <div className={s.cardHeader}>
-                  <div className={s.projectCardTitle}>
-                    <strong>风景写意</strong>
-                    <span>1 个预制</span>
-                  </div>
-                  <StatusBadge status="done" label="完成" />
-                </div>
-                <div className={s.projectCardStats}>
-                  <StatusBadge status="sections" label="6 小节" />
-                  <StatusBadge status="checkpoint" label="sdxl_base_1.0" />
-                </div>
-                <div className={`${s.small} ${s.faint}`}>更新：2026-05-08</div>
-              </div>
-              <div className={s.projectItemActions}>
-                <Button tone="subtle" icon={FolderInput} iconOnly ariaLabel="移动" />
-                <Button tone="danger" icon={Trash2} iconOnly ariaLabel="删除" />
-              </div>
-            </article>
+      <ShowcaseItem name="ProjectListItem" desc="项目行（拖拽 + 勾选 + 最近结果 + 标题/状态/小节/更新 + 删除）">
+        <div className={`${projectStyles.projectFolderWorkspace} ${projectStyles.showcaseProjectListPreview} ${showcaseCss.previewWide}`}>
+          <div className={projectStyles.projectListGrid}>
+            {projectRows.map((project) => (
+              <ProjectListItem
+                key={project.id}
+                project={project}
+                selected={selectedProjectIds.has(project.id)}
+                onToggleSelected={() => toggleProject(project.id)}
+              />
+            ))}
           </div>
         </div>
       </ShowcaseItem>
@@ -140,35 +140,9 @@ export function ComponentShowcaseProjects({ data: _data }: { data: DemoData }) {
       </ShowcaseItem>
 
       {/* ProjectSectionCard 模拟 */}
-      <ShowcaseItem name="ProjectSectionCard" desc="小节卡片（拖拽手柄 + 选中 + 标题 + 缩略图 + 运行/复制/删除）">
+      <ShowcaseItem name="ProjectSectionCard" desc="小节卡片（拖拽 + 最近结果 + 标题 + 批次 + 运行/复制/删除）">
         <div className={showcaseCss.previewMedium}>
-          <article className={s.sectionCard}>
-            <Button className={s.dragHandle} tone="subtle" icon={GripVertical} iconOnly ariaLabel="排序手柄" />
-            <Button className={s.sectionSelectButton} icon={Square} iconOnly ariaLabel="选择" />
-            <div className={s.sectionCardMain}>
-              <div className={s.sectionCardHeader}>
-                <div className={s.sectionCardTitle}>
-                  <div className={s.sectionCardTitleLine}>
-                    <span>01</span>
-                    <strong>肖像 - 女性角色</strong>
-                  </div>
-                </div>
-              </div>
-              <div className={s.sectionCardBody}>
-                <ImageListSmall images={images.slice(0, 3)} />
-                <div className={s.projectCardStats}>
-                  <StatusBadge status="ratio" label="2:3" />
-                  <StatusBadge status="steps" label="20 步" />
-                  <StatusBadge status="lora" label="2 LoRA" />
-                </div>
-              </div>
-              <div className={s.sectionCardActions}>
-                <Button tone="primary" icon={Play}>运行</Button>
-                <Button tone="subtle" icon={Copy}>复制</Button>
-                <Button tone="danger" icon={Trash2}>删除</Button>
-              </div>
-            </div>
-          </article>
+          <ProjectSectionCard compact={false} index={0} project={MOCK_PROJECT} section={showcaseSection} />
         </div>
       </ShowcaseItem>
 
@@ -225,5 +199,37 @@ const MOCK_PROJECT: DemoProject = {
   presetNames: ["写实人像", "风格化"],
   sectionCount: 12,
   sections: [],
+  images: [],
+};
+
+const MOCK_SECTION: DemoSection = {
+  id: "s1",
+  name: "肖像 - 女性角色",
+  sortOrder: 1,
+  enabled: true,
+  aspectRatio: "2:3",
+  batchSize: 2,
+  shortSidePx: 832,
+  seedPolicy1: "fixed",
+  seedPolicy2: "random",
+  positivePrompt: "portrait, soft light",
+  negativePrompt: "low quality",
+  checkpointName: "dreamshaper_v8.safetensors",
+  projectCheckpointName: "dreamshaper_v8.safetensors",
+  upscaleFactor: 1.5,
+  ksampler1: {
+    steps: 20,
+    cfg: 7,
+    sampler_name: "dpmpp_2m",
+    scheduler: "karras",
+  },
+  ksampler2: {
+    steps: 12,
+    cfg: 5,
+    sampler_name: "dpmpp_2m",
+    scheduler: "karras",
+  },
+  promptBlockCount: 4,
+  loraCount: 2,
   images: [],
 };

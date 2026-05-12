@@ -20,23 +20,13 @@ export function ProjectDetailPage({
   initialView?: ProjectCardView;
 }) {
   const [compact, setCompact] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState<ResultDemoFilter>("all");
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
   if (!project) return <EmptyPage title="没有项目数据" />;
   const sections = project.sections;
   const projectImages = sections.flatMap((section) => section.images);
   const isResultView = initialView === "results";
-  const sectionSummary = `${project.sectionCount} 个小节 · ${selectedIds.size ? `${selectedIds.size} 个已选` : "未选择小节"}`;
-
-  function toggleSectionSelection(sectionId: string) {
-    setSelectedIds((current) => {
-      const next = new Set(current);
-      if (next.has(sectionId)) next.delete(sectionId);
-      else next.add(sectionId);
-      return next;
-    });
-  }
+  const sectionSummary = `${project.sectionCount} 个小节`;
 
   function toggleCollapsed(sectionId: string) {
     setCollapsedSections((current) => {
@@ -83,8 +73,6 @@ export function ProjectDetailPage({
                   key={section.id}
                   project={project}
                   section={section}
-                  selected={selectedIds.has(section.id)}
-                  onToggleSelection={() => toggleSectionSelection(section.id)}
                 />
               )
             ))}

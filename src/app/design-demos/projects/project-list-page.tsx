@@ -123,11 +123,9 @@ export function ProjectsPage({ data }: { data: DemoData }) {
             <div className={s.projectListGrid}>
               {visibleProjects.map((project) => (
                 <ProjectListItem
-                  folders={folders}
                   key={project.id}
                   project={project}
                   selected={selectedIds.has(project.id)}
-                  onMove={(folderId) => navigateFolder(folderId)}
                   onToggleSelected={() => toggleProjectSelection(project.id)}
                 />
               ))}
