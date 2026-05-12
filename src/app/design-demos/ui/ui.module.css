@@ -1032,6 +1032,12 @@
   margin-bottom: 2px;
 }
 
+.pageHeader .pageBackLink {
+  margin-top: -6px;
+  margin-left: -10px;
+  margin-bottom: -2px;
+}
+
 .eyebrow {
   color: var(--ui-green);
   font-size: 10px;
@@ -1150,22 +1156,16 @@
   height: 26px;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(255, 255, 255, 0.36);
+  border: 1px solid rgba(255, 255, 255, 0.52);
   border-radius: 7px;
-  background: rgba(6, 12, 18, 0.5);
+  background: rgba(6, 12, 18, 0.72);
   color: #ffffff;
   cursor: pointer;
-  opacity: 0;
+  opacity: 1;
   padding: 0;
   transition: opacity 140ms ease, background-color 140ms ease, border-color 140ms ease;
   -webkit-backdrop-filter: blur(10px) saturate(135%);
   backdrop-filter: blur(10px) saturate(135%);
-}
-
-.imageThumbMedium:hover .imageThumbSelect,
-.imageThumbMedium:focus-within .imageThumbSelect,
-.imageThumbMedium:is(:hover, :focus-within) > .imageThumbSelect {
-  opacity: 1;
 }
 
 .imageThumbMediumSelected .imageThumbSelect {
@@ -1187,14 +1187,15 @@
 }
 
 .imageThumbTags span {
-  border: 1px solid rgba(0, 217, 146, 0.32);
+  border: 1px solid rgba(255, 255, 255, 0.38);
   border-radius: 999px;
-  background: rgba(15, 18, 22, 0.62);
-  color: var(--ui-green);
+  background: rgba(6, 12, 18, 0.76);
+  color: #ffffff;
   font-size: 9px;
   font-weight: 620;
   line-height: 1;
   padding: 4px 7px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
   -webkit-backdrop-filter: blur(6px);
   backdrop-filter: blur(6px);
 }
@@ -1248,6 +1249,11 @@
 .imageThumbMedium:hover .imageThumbActions,
 .imageThumbMedium:focus-within .imageThumbActions,
 .imageThumbMedium:is(:hover, :focus-within) > .imageThumbActions {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.imageThumbActionsVisible {
   opacity: 1;
   transform: translateY(0);
 }

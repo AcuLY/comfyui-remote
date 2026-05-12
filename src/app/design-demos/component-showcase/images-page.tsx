@@ -18,6 +18,17 @@ import { ReviewImageBoard } from "../ui/review-image-board";
 import { makeImages } from "./helpers";
 import { ShowcaseItem } from "./showcase-item";
 
+function MediumThumbActions() {
+  return (
+    <>
+      <Button icon={Check} iconOnly size="sm" ariaLabel="保留" />
+      <Button tone="pink" icon={Star} iconOnly size="sm" ariaLabel="精选" />
+      <Button tone="pink" icon={Eye} iconOnly size="sm" ariaLabel="预览" />
+      <Button tone="danger" icon={Trash2} iconOnly size="sm" ariaLabel="删除" />
+    </>
+  );
+}
+
 export function ComponentShowcaseImages({ data }: { data: DemoData }) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
@@ -26,6 +37,14 @@ export function ComponentShowcaseImages({ data }: { data: DemoData }) {
     const fromData = data.projects.flatMap((project) => project.sections.flatMap((section) => section.images));
     return fromData.length >= 6 ? fromData.slice(0, 12) : makeImages(12);
   }, [data.projects]);
+
+  const mediumThumbImages = useMemo(() => (
+    images.slice(0, 4).map((image, index) => (
+      index === 0
+        ? { ...image, status: "kept" as const, featured: true, featured2: true, cover: true }
+        : image
+    ))
+  ), [images]);
 
   const previewImage = previewIndex !== null ? images[previewIndex] ?? null : null;
 
@@ -51,29 +70,31 @@ export function ComponentShowcaseImages({ data }: { data: DemoData }) {
       </ShowcaseItem>
 
       {/* 3.2 ImageThumbMedium */}
-      <ShowcaseItem name="ImageThumbMedium" desc="中缩略图（可选中）">
+      <ShowcaseItem name="ImageThumbMedium" desc="中缩略图（选择、标签、状态、操作槽）">
         <div className={s.showcaseRow}>
-          {images.slice(0, 4).map((img, i) => (
+          {mediumThumbImages.map((img, i) => (
             <ImageThumbMedium
+              actionSlot={<MediumThumbActions />}
+              actionsAlwaysVisible={i === 0}
               key={img.id}
               image={img}
               selectable
               selected={selectedIds.has(img.id)}
               onSelect={() => toggleImage(img.id)}
               onOpen={() => setPreviewIndex(i)}
-              showStatus={img.status !== "pending"}
+              showStatus
             />
           ))}
         </div>
       </ShowcaseItem>
 
       {/* 3.3 ImageStrip */}
-      <ShowcaseItem name="ImageStrip" desc="横向滚动图片条（紧凑型）">
+      <ShowcaseItem name="ImageStrip" desc="ImageListSmall 的语义封装（项目 / 小节图片条）">
         <ImageStrip images={images.slice(0, 6)} />
       </ShowcaseItem>
 
       {/* 3.3 ImageListSmall */}
-      <ShowcaseItem name="ImageListSmall" desc="横向滚动小图列表">
+      <ShowcaseItem name="ImageListSmall" desc="基础横向滚动小图列表 primitive">
         <div className={s.showcaseImageList}>
           <ImageListSmall images={images} limit={8} maxWidth={420} />
         </div>

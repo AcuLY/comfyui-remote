@@ -12,6 +12,7 @@ import { imageReviewLabel, imageTagLabels } from "./utils";
 
 export function ImageThumbMedium({
   actionSlot,
+  actionsAlwaysVisible = false,
   image,
   onOpen,
   onSelect,
@@ -22,6 +23,7 @@ export function ImageThumbMedium({
   tags = imageTagLabels(image),
 }: {
   actionSlot?: React.ReactNode;
+  actionsAlwaysVisible?: boolean;
   image: DemoImage;
   onOpen?: () => void;
   onSelect?: () => void;
@@ -66,7 +68,11 @@ export function ImageThumbMedium({
           <StatusBadge status={image.status} label={imageReviewLabel(image.status)} />
         </div>
       ) : null}
-      {actionSlot ? <div className={cx(s.imageThumbActions, !showStatus && s.imageThumbActionsFlush)}>{actionSlot}</div> : null}
+      {actionSlot ? (
+        <div className={cx(s.imageThumbActions, !showStatus && s.imageThumbActionsFlush, actionsAlwaysVisible && s.imageThumbActionsVisible)}>
+          {actionSlot}
+        </div>
+      ) : null}
     </article>
   );
 }

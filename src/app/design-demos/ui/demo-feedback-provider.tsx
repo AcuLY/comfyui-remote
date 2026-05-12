@@ -1,7 +1,7 @@
 "use client";
 
 import type * as React from "react";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Check, X } from "lucide-react";
 
 import type { DemoToast } from "../design-demo-utils";
@@ -14,6 +14,7 @@ type DemoToastState = DemoToast & { closing?: boolean };
 
 export function DemoFeedbackProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<DemoToastState[]>([]);
+  const toastSequence = useRef(0);
 
   const dismissToast = useCallback((id: string) => {
     setToasts((current) =>
@@ -25,7 +26,7 @@ export function DemoFeedbackProvider({ children }: { children: React.ReactNode }
   }, []);
 
   const pushToast = useCallback((toast: Omit<DemoToast, "id">) => {
-    const id = `1778416799032-w06qey3t22j`;
+    const id = `toast-${Date.now().toString(36)}-${toastSequence.current++}`;
     setToasts((current) => [{ id, ...toast }, ...current].slice(0, 3));
     window.setTimeout(() => {
       dismissToast(id);
@@ -61,7 +62,7 @@ function DemoToastStack({ toasts, onDismiss }: { toasts: DemoToastState[]; onDis
             <strong>{toast.title}</strong>
             {toast.detail ? <span>{toast.detail}</span> : null}
           </div>
-          <Button className={s.toastCloseButton} tone="subtle" icon={X} iconOnly onClick={() => onDismiss(toast.id)} ariaLabel="????" />
+          <Button className={s.toastCloseButton} tone="subtle" icon={X} iconOnly onClick={() => onDismiss(toast.id)} ariaLabel="关闭提示" />
         </div>
       ))}
     </div>
