@@ -1068,45 +1068,7 @@
 
 .projectViewToggle {
   flex: 0 0 auto;
-}
-
-.batchSizeSelector {
-  display: inline-grid;
-  grid-template-columns: repeat(5, minmax(28px, 1fr));
-  min-width: min(180px, 100%);
-  gap: 3px;
-  border: 1px solid var(--demo-border);
-  border-radius: 8px;
-  background: var(--demo-field-bg);
-  padding: 3px;
-}
-
-.batchSizeSelectorCompact {
-  min-width: 150px;
-}
-
-.batchSizeSelector button {
-  min-width: 0;
-  min-height: 26px;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--demo-muted);
-  cursor: pointer;
-  font: inherit;
-  font-size: 11px;
-  font-weight: 560;
-  padding: 3px 5px;
-  transition: 150ms ease;
-}
-
-.batchSizeSelector button:hover,
-.batchSizeSelector button:focus-visible,
-.batchSizeSelector button[aria-pressed="true"] {
-  border-color: var(--demo-glass-accent-border);
-  background: var(--demo-selected);
-  color: var(--demo-green);
-  outline: none;
+  margin-top: 0;
 }
 
 .projectSectionToolbar > div:first-child {
@@ -1556,8 +1518,7 @@
     padding-left: 0;
   }
 
-  .projectRunCluster .batchSizeSelector,
-  .batchSizeSelectorCompact {
+  .projectRunCluster [role="radiogroup"] {
     width: auto;
     min-width: 0;
     flex: 1 1 148px;
@@ -1763,7 +1724,7 @@
     flex: 1 1 100%;
   }
 
-  .sectionRunControl .batchSizeSelector {
+  .sectionRunControl [role="radiogroup"] {
     width: 100%;
   }
 
@@ -1948,35 +1909,9 @@
 }
 
 .loraStep.button,
-.batchSizeSelector .segmentedItem,
 .sectionRunBatchControl .segmentedItem,
 .importTabs .segmentedItem,
 .logModuleChips .segmentedItem {
   min-height: 28px;
   font-size: 11px;
-}
-
-.projectViewToggle .button {
-  min-width: 72px;
-}
-
-.projectViewToggleButton {
-  min-width: 72px;
-  min-height: 34px;
-  border: 0;
-  background: transparent;
-  color: var(--demo-muted);
-  box-shadow: none;
-}
-
-.projectViewToggleButton:hover,
-.projectViewToggleButton:focus-visible {
-  color: var(--demo-text);
-  background: rgb(255 255 255 / 0.68);
-}
-
-.projectViewToggleButtonActive {
-  color: var(--demo-primary);
-  background: var(--demo-primary-soft);
-  box-shadow: 0 8px 20px rgb(15 118 110 / 0.12);
 }

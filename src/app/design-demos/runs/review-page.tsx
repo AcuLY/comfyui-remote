@@ -44,20 +44,19 @@ export function ReviewPage({ data, run }: { data: DemoData; run: DemoRun | undef
         <ReviewMetaCard section={section} run={run} meta={executionMeta} />
       ) : null}
       <section className={s.reviewSurface}>
-        <div className={s.reviewSurfaceTabs}>
-          <DemoTabs
-            tabs={[
-              { key: "all", label: "全部", count: run.images.length },
-              { key: "pending", label: "待审", count: run.images.filter((image) => image.status === "pending").length },
-              { key: "kept", label: "已保留", count: run.images.filter((image) => image.status === "kept").length },
-              { key: "pstation", label: "p站", count: run.images.filter((image) => image.featured).length },
-              { key: "preview", label: "预览", count: run.images.filter((image) => image.featured2).length },
-              { key: "cover", label: "封面", count: run.images.filter((image) => image.cover).length },
-            ]}
-            value={filter}
-            onChange={setFilter}
-          />
-        </div>
+        <DemoTabs
+          panel
+          tabs={[
+            { key: "all", label: "全部", count: run.images.length },
+            { key: "pending", label: "待审", count: run.images.filter((image) => image.status === "pending").length },
+            { key: "kept", label: "已保留", count: run.images.filter((image) => image.status === "kept").length },
+            { key: "pstation", label: "p站", count: run.images.filter((image) => image.featured).length },
+            { key: "preview", label: "预览", count: run.images.filter((image) => image.featured2).length },
+            { key: "cover", label: "封面", count: run.images.filter((image) => image.cover).length },
+          ]}
+          value={filter}
+          onChange={setFilter}
+        />
         <ReviewImageBoard images={images} />
       </section>
     </div>

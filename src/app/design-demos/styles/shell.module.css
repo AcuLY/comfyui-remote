@@ -1742,13 +1742,9 @@
   padding: 0;
 }
 .loraStep.button,
-.batchSizeSelector .segmentedItem,
 .sectionRunBatchControl .segmentedItem,
 .importTabs .segmentedItem,
 .logModuleChips .segmentedItem {
   min-height: 28px;
   font-size: 11px;
-}
-.projectViewToggle .button {
-  min-width: 72px;
 }

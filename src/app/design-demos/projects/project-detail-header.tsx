@@ -1,15 +1,18 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, Download, Edit3, ImageIcon, Play, Rows3, Save } from "lucide-react";
 
 import type { DemoProject } from "../design-demo-data";
-import { cx } from "../design-demo-utils";
+import { demoHref } from "../design-demo-utils";
 import type { ProjectCardView } from "../design-demo-utils";
 import s from "../styles/projects.module.css";
 import { Button } from "../ui/button";
 import { ButtonLink } from "../ui/button-link";
-import { BatchSizeSelector } from "./batch-size-selector";
+import { SegmentedControl } from "../ui/segmented-control";
+
+const BATCH_SIZE_OPTIONS = [1, 2, 4, 8, 16];
 
 export function ProjectDetailHeader({
   isResultView,
@@ -52,7 +55,13 @@ export function ProjectDetailHeader({
           </div>
           <div className={s.projectRunCluster} role="group" aria-label="整组运行">
             <span>批量张数</span>
-            <BatchSizeSelector value={batchSize} onChange={setBatchSize} compact />
+            <SegmentedControl
+              ariaLabel="批量张数"
+              compact
+              items={BATCH_SIZE_OPTIONS.map((option) => ({ value: option, label: option }))}
+              onChange={setBatchSize}
+              value={batchSize}
+            />
             <Button icon={Play} feedback={{ title: "整组运行已加入任务", detail: `${project.sectionCount} 个小节 · batch ${batchSize}` }}>整组运行</Button>
           </div>
         </div>
@@ -61,15 +70,22 @@ export function ProjectDetailHeader({
   );
 }
 
-export function ProjectViewToggle({ projectId, value }: { projectId: string; value: ProjectCardView }) {
+function ProjectViewToggle({ projectId, value }: { projectId: string; value: ProjectCardView }) {
+  const router = useRouter();
+
   return (
-    <div className={cx(s.segmented, s.projectViewToggle)} aria-label="项目视图">
-      <ButtonLink href={`/projects/${projectId}`} className={cx(s.projectViewToggleButton, value === "sections" && s.projectViewToggleButtonActive)}>
-        小节
-      </ButtonLink>
-      <ButtonLink href={`/projects/${projectId}/results`} className={cx(s.projectViewToggleButton, value === "results" && s.projectViewToggleButtonActive)}>
-        结果
-      </ButtonLink>
-    </div>
+    <SegmentedControl
+      ariaLabel="项目视图"
+      className={s.projectViewToggle}
+      items={[
+        { value: "sections", label: "小节" },
+        { value: "results", label: "结果" },
+      ]}
+      onChange={(nextView) => {
+        router.push(demoHref(nextView === "sections" ? `/projects/${projectId}` : `/projects/${projectId}/results`));
+      }}
+      role="tablist"
+      value={value}
+    />
   );
 }

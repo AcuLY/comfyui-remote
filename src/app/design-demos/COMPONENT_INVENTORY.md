@@ -855,26 +855,6 @@
 | 功能 | 项目创建/编辑表单 |
 | CSS 类 | `.twoCol`, `.contentGrid`, `.fieldGrid` |
 
-### 6.10 BatchSizeSelector
-
-| 字段 | 值 |
-|------|-----|
-| 导出名 | `BatchSizeSelector` |
-| 文件 | `projects/batch-size-selector.tsx` |
-| Props | `value`, `onChange`, `compact?` |
-| 功能 | 批量张数选择器（1/2/4/8/16） |
-| CSS 类 | `.batchSizeSelector`, `.batchSizeSelectorCompact` |
-
-### 6.11 ProjectViewToggle
-
-| 字段 | 值 |
-|------|-----|
-| 导出名 | `ProjectViewToggle` |
-| 文件 | `projects/project-detail-header.tsx` |
-| Props | `projectId`, `value: ProjectCardView` |
-| 功能 | 项目视图切换（小节/结果） |
-| CSS 类 | `.segmented`, `.projectViewToggle`, `.segment`, `.segmentActive` |
-
 ---
 
 ## 7. Queue / Runs 组件
@@ -907,7 +887,7 @@
 | 文件 | `runs/review-page.tsx` |
 | Props | `data: DemoData`, `run?: DemoRun` |
 | 功能 | 单次运行审核页（参数信息卡片 + 图片审核面板） |
-| CSS 类 | `.reviewPageHeader`, `.reviewMetaSurface`, `.reviewMetaHeader`, `.reviewMetaSummary`, `.reviewMetaChevron`, `.reviewMetaBody`, `.reviewSamplerGrid`, `.reviewSamplerBlock`, `.reviewMetaLine`, `.reviewMetaStat`, `.reviewLoraGrid`, `.reviewLoraColumn`, `.reviewPromptGrid`, `.reviewSurface`, `.reviewSurfaceTabs` |
+| CSS 类 | `.reviewPageHeader`, `.reviewMetaSurface`, `.reviewMetaHeader`, `.reviewMetaSummary`, `.reviewMetaChevron`, `.reviewMetaBody`, `.reviewSamplerGrid`, `.reviewSamplerBlock`, `.reviewMetaLine`, `.reviewMetaStat`, `.reviewLoraGrid`, `.reviewLoraColumn`, `.reviewPromptGrid`, `.reviewSurface` |
 
 ### 7.4 DemoPager
 

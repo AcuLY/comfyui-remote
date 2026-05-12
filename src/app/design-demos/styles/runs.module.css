@@ -511,29 +511,6 @@
   overflow: visible;
 }
 
-.reviewSurfaceTabs {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--demo-border);
-}
-
-.reviewSurfaceTabs > .tabs,
-.reviewSurfaceTabs > .segmentedControl {
-  flex: 1;
-  display: flex;
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  margin-top: 0;
-  border: 0;
-  background: transparent;
-  backdrop-filter: none;
-  padding: 0;
-  border-radius: 0;
-}
-
 .reviewSurface > .reviewImageGrid {
   padding: 12px 14px;
 }
@@ -1860,14 +1837,9 @@
 }
 
 .loraStep.button,
-.batchSizeSelector .segmentedItem,
 .sectionRunBatchControl .segmentedItem,
 .importTabs .segmentedItem,
 .logModuleChips .segmentedItem {
   min-height: 28px;
   font-size: 11px;
-}
-
-.projectViewToggle .button {
-  min-width: 72px;
 }

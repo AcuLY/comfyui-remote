@@ -40,7 +40,7 @@ export function SegmentedControl<T extends string | number>({
         compact && s.segmentedControlCompact,
         className,
       )}
-      data-panel={panel ? "surface" : undefined}
+      data-panel={panel ? "card-header" : undefined}
       role={role}
     >
       {items.map((item) => {

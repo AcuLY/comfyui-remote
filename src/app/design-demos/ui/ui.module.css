@@ -658,10 +658,17 @@
 }
 
 .segmentedControlPanel,
-.segmentedControl[data-panel="surface"] {
-  margin-bottom: -14px;
-  border-bottom: 0;
+.segmentedControl[data-panel="card-header"] {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  border: 0;
+  border-bottom: 1px solid var(--ui-border);
   border-radius: calc(var(--ui-radius) + 2px) calc(var(--ui-radius) + 2px) 0 0;
+  background: transparent;
+  margin-top: 0;
+  padding: 8px 10px;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
 .segmentedControl::-webkit-scrollbar {

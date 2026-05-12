@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Check, CheckSquare, ChevronRight, Copy, Folder, FolderInput, GripVertical, Pencil, Play, Square, Star, Trash2, X } from "lucide-react";
 
 import type { DemoData } from "../design-demo-data";
@@ -10,7 +10,6 @@ import s from "../styles/showcase.module.css";
 import { Button } from "../ui/button";
 import { ImageListSmall } from "../ui/image-list-small";
 import { PageHeader } from "../ui/page-header";
-import { SegmentedControl } from "../ui/segmented-control";
 import { StatusBadge } from "../ui/status-badge";
 import showcaseCss from "./component-showcase.module.css";
 import { makeImages } from "./helpers";
@@ -18,8 +17,6 @@ import { ShowcaseItem } from "./showcase-item";
 
 export function ComponentShowcaseProjects({ data: _data }: { data: DemoData }) {
   void _data;
-  const [batchSize, setBatchSize] = useState(2);
-  const [projectView, setProjectView] = useState<"sections" | "results">("sections");
   const images = useMemo(() => makeImages(6), []);
 
   return (
@@ -140,43 +137,6 @@ export function ComponentShowcaseProjects({ data: _data }: { data: DemoData }) {
             </div>
           </div>
         </div>
-      </ShowcaseItem>
-
-      {/* BatchSizeSelector 模拟 */}
-      <ShowcaseItem name="BatchSizeSelector" desc="批量张数选择器">
-        <SegmentedControl
-          ariaLabel="选择批量张数"
-          compact
-          items={[1, 2, 4, 8, 16].map((option) => ({ value: option, label: option }))}
-          onChange={setBatchSize}
-          value={batchSize}
-        />
-        <hr className={s.showcaseDivider} />
-        <div className={showcaseCss.previewSmall}>
-          <SegmentedControl
-            ariaLabel="选择紧凑批量张数"
-            className={s.batchSizeSelectorCompact}
-            compact
-            items={[1, 2, 4, 8, 16].map((option) => ({ value: option, label: option }))}
-            onChange={setBatchSize}
-            value={batchSize}
-          />
-        </div>
-      </ShowcaseItem>
-
-      {/* ProjectViewToggle 模拟 */}
-      <ShowcaseItem name="ProjectViewToggle" desc="项目视图切换（小节/结果）">
-        <SegmentedControl
-          ariaLabel="项目视图"
-          className={s.projectViewToggle}
-          items={[
-            { value: "sections", label: "小节" },
-            { value: "results", label: "结果" },
-          ]}
-          onChange={setProjectView}
-          role="tablist"
-          value={projectView}
-        />
       </ShowcaseItem>
 
       {/* ProjectSectionCard 模拟 */}

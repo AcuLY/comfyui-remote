@@ -2082,7 +2082,7 @@
   }
 
   .loraEditorControls {
-    justify-content: start;
+    justify-content: space-between;
   }
 }
 
@@ -2152,6 +2152,11 @@
   transform: translateY(-1px);
 }
 
+.loraColumn .addRow button {
+  width: 100%;
+  justify-content: center;
+}
+
 .diffList {
   display: grid;
   gap: 8px;
@@ -2219,6 +2224,7 @@
 
 .diffLine {
   display: inline-flex;
+  width: 100%;
   flex-wrap: wrap;
   align-items: center;
   gap: 5px;
@@ -2257,6 +2263,29 @@
   color: var(--demo-faint);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+
+@media (max-width: 520px) {
+  .diffRow {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 8px 10px;
+  }
+
+  .diffMain {
+    grid-column: 1 / -1;
+  }
+
+  .diffTime {
+    justify-self: end;
+  }
+
+  .diffLine {
+    flex-wrap: nowrap;
+  }
+
+  .diffField {
+    min-width: 4ch;
+  }
 }
 
 .diffEmptyState {
@@ -2603,7 +2632,6 @@
 }
 
 .loraStep.button,
-.batchSizeSelector .segmentedItem,
 .sectionRunBatchControl .segmentedItem,
 .importTabs .segmentedItem,
 .logModuleChips .segmentedItem {

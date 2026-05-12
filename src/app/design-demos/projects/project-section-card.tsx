@@ -9,8 +9,10 @@ import { cx, demoHref, rawSectionId, sectionAnchorId, sectionRunStatus } from ".
 import s from "../styles/projects.module.css";
 import { Button } from "../ui/button";
 import { ImageListSmall } from "../ui/image-list-small";
+import { SegmentedControl } from "../ui/segmented-control";
 import { StatusBadge } from "../ui/status-badge";
-import { BATCH_SIZE_OPTIONS, BatchSizeSelector } from "./batch-size-selector";
+
+const BATCH_SIZE_OPTIONS = [1, 2, 4, 8, 16];
 
 export function ProjectSectionCard({
   compact,
@@ -67,7 +69,13 @@ export function ProjectSectionCard({
       <div className={s.sectionCardActions}>
         <div className={s.sectionRunControl}>
           <Button icon={Play} feedback={{ title: "小节运行已加入任务", detail: `${section.name} · batch ${batchSize}` }}>运行</Button>
-          <BatchSizeSelector value={batchSize} onChange={setBatchSize} />
+          <SegmentedControl
+            ariaLabel="批量张数"
+            compact
+            items={BATCH_SIZE_OPTIONS.map((option) => ({ value: option, label: option }))}
+            onChange={setBatchSize}
+            value={batchSize}
+          />
         </div>
         <Button tone="subtle" icon={Copy} feedback={{ title: "小节已复制", detail: section.name }}>复制</Button>
         <Button tone="danger" icon={Trash2} feedback={{ tone: "warning", title: "删除小节需要确认", detail: section.name }}>删除</Button>
