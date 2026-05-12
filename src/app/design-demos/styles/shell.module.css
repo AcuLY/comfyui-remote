@@ -31,6 +31,8 @@
   --demo-bg-sheen: linear-gradient(135deg, rgba(255, 255, 255, 0.07), transparent 42%, rgba(255, 255, 255, 0.035));
   --demo-sidebar-bg: rgba(24, 24, 27, 0.72);
   --demo-topbar-bg: rgba(24, 24, 27, 0.66);
+  --demo-route-header-bg: rgba(24, 24, 27, 0.54);
+  --demo-route-header-bg-collapsed: rgba(24, 24, 27, 0.62);
   --demo-mobile-nav-bg: rgba(24, 24, 27, 0.58);
   --demo-surface: rgba(24, 24, 27, 0.76);
   --demo-surface-soft: rgba(24, 24, 27, 0.52);
@@ -115,6 +117,8 @@
   --demo-bg-sheen: linear-gradient(135deg, rgba(255, 255, 255, 0.6), transparent 42%, rgba(255, 255, 255, 0.28));
   --demo-sidebar-bg: rgba(255, 255, 255, 0.68);
   --demo-topbar-bg: rgba(247, 249, 251, 0.66);
+  --demo-route-header-bg: rgba(255, 255, 255, 0.56);
+  --demo-route-header-bg-collapsed: rgba(255, 255, 255, 0.68);
   --demo-mobile-nav-bg: rgba(247, 249, 251, 0.58);
   --demo-surface: rgba(255, 255, 255, 0.78);
   --demo-surface-soft: rgba(255, 255, 255, 0.66);
@@ -1123,17 +1127,35 @@
   position: relative;
   z-index: 32;
   min-width: 0;
-  border-bottom: 1px solid var(--demo-border);
-  background: var(--demo-topbar-bg);
-  box-shadow: 0 12px 34px rgba(15, 23, 42, 0.07);
+  overflow: clip;
+  border-bottom: 1px solid var(--demo-glass-border);
+  background:
+    linear-gradient(180deg, var(--demo-glass-highlight), transparent 140%),
+    var(--demo-route-header-bg);
+  -webkit-backdrop-filter: blur(24px) saturate(165%);
+  backdrop-filter: blur(24px) saturate(165%);
+  box-shadow:
+    0 12px 34px rgba(15, 23, 42, 0.08),
+    inset 0 1px 0 var(--demo-inset-highlight);
   margin: 0;
   padding: 12px 18px;
   padding-block-start: max(12px, env(safe-area-inset-top));
   transform: translateZ(0);
-  transition: box-shadow 160ms ease;
+  transition:
+    background-color 220ms ease,
+    border-color 220ms ease,
+    box-shadow 220ms ease,
+    padding 220ms cubic-bezier(0.2, 0, 0, 1);
+  will-change: padding, box-shadow;
 }
 .routeHeaderCollapsed {
-  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.1);
+  background:
+    linear-gradient(180deg, var(--demo-glass-highlight), transparent 150%),
+    var(--demo-route-header-bg-collapsed);
+  border-color: var(--demo-border);
+  box-shadow:
+    0 10px 28px rgba(15, 23, 42, 0.12),
+    inset 0 1px 0 var(--demo-inset-highlight);
   padding-block: 8px;
   padding-block-start: max(8px, env(safe-area-inset-top));
 }
@@ -1160,9 +1182,11 @@
   display: grid;
   min-width: 0;
   gap: 3px;
+  transition: gap 220ms cubic-bezier(0.2, 0, 0, 1);
 }
 .routeHeaderEyebrow {
   display: flex;
+  max-height: 14px;
   min-width: 0;
   align-items: center;
   gap: 6px;
@@ -1172,6 +1196,11 @@
   font-weight: 640;
   line-height: 1.2;
   text-overflow: ellipsis;
+  transform: translateY(0);
+  transition:
+    max-height 220ms cubic-bezier(0.2, 0, 0, 1),
+    opacity 180ms ease,
+    transform 220ms cubic-bezier(0.2, 0, 0, 1);
   white-space: nowrap;
 }
 .routeHeaderIdentity h1 {
@@ -1184,9 +1213,14 @@
   letter-spacing: 0;
   line-height: 1.18;
   text-overflow: ellipsis;
+  transform: translateY(0);
+  transition:
+    font-size 220ms cubic-bezier(0.2, 0, 0, 1),
+    transform 220ms cubic-bezier(0.2, 0, 0, 1);
   white-space: nowrap;
 }
 .routeHeaderIdentity p {
+  max-height: 16px;
   min-width: 0;
   margin: 0;
   overflow: hidden;
@@ -1194,6 +1228,11 @@
   font-size: 11px;
   line-height: 1.35;
   text-overflow: ellipsis;
+  transform: translateY(0);
+  transition:
+    max-height 220ms cubic-bezier(0.2, 0, 0, 1),
+    opacity 180ms ease,
+    transform 220ms cubic-bezier(0.2, 0, 0, 1);
   white-space: nowrap;
 }
 .routeHeaderMeta {
@@ -1218,6 +1257,14 @@
   line-height: 1;
   padding: 0 8px;
   text-overflow: ellipsis;
+  transform: translateY(0);
+  transition:
+    max-width 220ms cubic-bezier(0.2, 0, 0, 1),
+    min-height 220ms cubic-bezier(0.2, 0, 0, 1),
+    border-color 180ms ease,
+    opacity 180ms ease,
+    padding 220ms cubic-bezier(0.2, 0, 0, 1),
+    transform 220ms cubic-bezier(0.2, 0, 0, 1);
   white-space: nowrap;
 }
 .routeHeaderTools {
@@ -1272,13 +1319,28 @@
   outline: 3px solid color-mix(in srgb, var(--demo-green) 30%, transparent);
   outline-offset: 2px;
 }
+.routeHeaderCollapsed .routeHeaderIdentity {
+  gap: 0;
+}
 .routeHeaderCollapsed .routeHeaderEyebrow,
-.routeHeaderCollapsed .routeHeaderIdentity p,
+.routeHeaderCollapsed .routeHeaderIdentity p {
+  max-height: 0;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-5px);
+}
 .routeHeaderCollapsed .routeHeaderMeta span:last-child {
-  display: none;
+  max-width: 0;
+  min-height: 0;
+  border-color: transparent;
+  opacity: 0;
+  padding-inline: 0;
+  pointer-events: none;
+  transform: translateY(-4px);
 }
 .routeHeaderCollapsed .routeHeaderIdentity h1 {
   font-size: 15px;
+  transform: translateY(-1px);
 }
 :global([data-design-demo-shell]):has(.lightboxOverlay) .mobileBottomNav {
   display: none;
