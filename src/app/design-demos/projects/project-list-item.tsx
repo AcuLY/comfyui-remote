@@ -20,6 +20,7 @@ export function ProjectListItem({
   onToggleSelected: () => void;
 }) {
   const projectHref = demoHref(`/projects/${project.id}`);
+  const sectionCountLabel = `${project.sectionCount} 小节`;
 
   return (
     <article className={cx(s.projectListCard, selected && s.projectListCardSelected)}>
@@ -34,27 +35,32 @@ export function ProjectListItem({
         />
         <Button className={s.projectDragHandle} tone="subtle" icon={GripVertical} iconOnly ariaLabel={`拖拽排序项目：${project.title}`} />
       </div>
-      <Link aria-label={`打开项目：${project.title}`} className={s.projectListRecentResult} href={projectHref}>
-        <span className={s.recentResultLabel}>最近结果</span>
-        <ImageListSmall className={s.recentResultImages} images={project.images} limit={1} />
-      </Link>
-      <Link className={s.projectListTitleLink} href={projectHref}>
-        <strong>{project.title}</strong>
-      </Link>
-      <div className={s.projectListMeta}>
-        <StatusBadge status={project.status} />
-        <StatusBadge status="sections" label={`${project.sectionCount} 小节`} />
-        <span className={cx(s.small, s.faint, s.projectUpdateDate)}>更新：{project.updatedAt}</span>
-      </div>
-      <div className={s.projectItemActions}>
-        <Button
-          tone="danger"
-          icon={Trash2}
-          size="sm"
-          feedback={{ tone: "warning", title: "删除项目需要确认", detail: project.title }}
-        >
-          删除
-        </Button>
+      <div className={s.projectListContent}>
+        <div className={s.projectListTitleRow}>
+          <Link className={s.projectListTitleLink} href={projectHref}>
+            <strong>{project.title}</strong>
+            <span>{sectionCountLabel}</span>
+          </Link>
+          <div className={s.projectItemActions}>
+            <Button
+              tone="danger"
+              icon={Trash2}
+              size="sm"
+              feedback={{ tone: "warning", title: "删除项目需要确认", detail: project.title }}
+            >
+              删除
+            </Button>
+          </div>
+        </div>
+        <Link aria-label={`打开项目最近结果：${project.title}`} className={s.projectListRecentResult} href={projectHref}>
+          <ImageListSmall className={s.recentResultImages} images={project.images} limit={project.images.length} showCounts />
+        </Link>
+        <div className={s.projectListMeta}>
+          <span className={cx(s.small, s.faint, s.projectUpdateDate)}>更新：{project.updatedAt}</span>
+          <span className={s.projectStatusGroup}>
+            <StatusBadge status={project.status} />
+          </span>
+        </div>
       </div>
     </article>
   );

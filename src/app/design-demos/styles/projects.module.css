@@ -721,12 +721,10 @@
 .projectFolderWorkspace .projectListCard {
   position: relative;
   display: grid;
-  grid-template-columns: 30px minmax(82px, 92px) minmax(0, 1fr) auto;
-  grid-template-areas:
-    "controls recent title action"
-    "controls recent meta action";
-  align-items: center;
-  gap: 8px 12px;
+  grid-template-columns: 30px minmax(0, 1fr);
+  grid-template-areas: "controls content";
+  align-items: stretch;
+  gap: 10px;
   border: 1px solid transparent;
   border-bottom-color: var(--demo-border);
   border-radius: 8px;
@@ -751,9 +749,11 @@
 .projectItemControls {
   display: grid;
   grid-area: controls;
-  align-self: start;
+  grid-template-rows: 30px 1fr;
+  align-self: stretch;
+  align-items: start;
   justify-items: center;
-  gap: 4px;
+  gap: 6px;
 }
 
 .projectSelectButton {
@@ -786,6 +786,15 @@
   color: var(--demo-faint);
   cursor: grab;
   padding: 0;
+  align-self: center;
+}
+
+.projectListContent {
+  display: grid;
+  grid-area: content;
+  min-width: 0;
+  align-content: start;
+  gap: 8px;
 }
 
 .projectDragHandle:hover,
@@ -809,7 +818,9 @@
 }
 
 .projectListRecentResult {
-  grid-area: recent;
+  align-self: start;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
 }
 
 .recentResultLabel {
@@ -826,6 +837,11 @@
   width: 86px;
 }
 
+.projectListRecentResult .recentResultImages,
+.sectionRecentResult .recentResultImages {
+  width: min(270px, 100%);
+}
+
 .projectListTitleLink,
 .sectionCardTitleLink {
   display: block;
@@ -834,8 +850,21 @@
   text-decoration: none;
 }
 
+.projectListTitleRow {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
 .projectListTitleLink {
-  grid-area: title;
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
 }
 
 .projectListTitleLink strong,
@@ -848,6 +877,16 @@
   font-weight: 580;
   line-height: 1.35;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.projectListTitleLink span {
+  display: inline-block;
+  min-width: 0;
+  color: var(--demo-faint);
+  font-size: 11px;
+  font-weight: 520;
+  line-height: 1.35;
   white-space: nowrap;
 }
 
@@ -868,15 +907,24 @@
 
 .projectListMeta {
   display: flex;
-  grid-area: meta;
   min-width: 0;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  justify-content: space-between;
+  gap: 10px;
 }
 
 .projectUpdateDate {
-  flex: 1 0 100%;
+  flex: 1 1 auto;
+}
+
+.projectStatusGroup {
+  display: inline-flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-left: auto;
 }
 
 .projectListOpenArea {
@@ -1033,12 +1081,8 @@
   }
 
   .projectFolderWorkspace .projectListCard {
-    grid-template-columns: 30px minmax(0, 1fr) auto;
-    grid-template-areas:
-      "controls title action"
-      "recent recent recent"
-      "meta meta meta";
-    align-items: start;
+    grid-template-columns: 30px minmax(0, 1fr);
+    grid-template-areas: "controls content";
   }
 
   .projectListOpenArea {
@@ -1051,21 +1095,27 @@
   }
 
   .projectListRecentResult {
-    grid-template-columns: 90px minmax(0, 1fr);
-    align-items: center;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
   }
 
   .projectListRecentResult .recentResultLabel {
-    grid-column: 2;
-    grid-row: 1;
+    grid-column: auto;
+    grid-row: auto;
   }
 
   .projectListRecentResult .recentResultImages {
-    grid-column: 1;
-    grid-row: 1;
+    grid-column: auto;
+    grid-row: auto;
   }
 
   .projectListMeta {
+    align-items: center;
+    flex-direction: row;
+    gap: 10px;
+  }
+
+  .projectStatusGroup {
     justify-content: flex-start;
   }
 
@@ -1074,7 +1124,7 @@
   }
 
   .projectItemActions {
-    justify-self: start;
+    flex: 0 0 auto;
   }
 
   .projectMoveMenuList {
@@ -1245,11 +1295,9 @@
 
 .sectionCard {
   display: grid;
-  grid-template-columns: 36px minmax(92px, 104px) minmax(0, 1fr);
-  grid-template-areas:
-    "drag recent title"
-    "drag actions actions";
-  align-items: center;
+  grid-template-columns: 36px minmax(0, 1fr);
+  grid-template-areas: "drag content";
+  align-items: stretch;
   gap: 10px;
   border: 1px solid var(--demo-glass-border);
   border-radius: var(--demo-radius);
@@ -1270,7 +1318,6 @@
 }
 
 .sectionCardCompact {
-  grid-template-columns: 36px 92px minmax(0, 1fr);
   padding-block: 8px;
 }
 
@@ -1299,6 +1346,8 @@
 .dragHandle {
   grid-area: drag;
   cursor: grab;
+  align-self: center;
+  justify-self: center;
 }
 
 .dragHandle:hover,
@@ -1312,11 +1361,55 @@
 }
 
 .sectionRecentResult {
-  grid-area: recent;
+  align-self: start;
+  border-top: 1px solid var(--demo-border);
+  padding-top: 8px;
 }
 
 .sectionCardTitleLink {
-  grid-area: title;
+  display: inline-flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: baseline;
+  gap: 7px;
+}
+
+.sectionCardTitleLink span {
+  flex: 0 0 auto;
+  color: var(--demo-faint);
+  font-size: 10px;
+  font-weight: 560;
+  line-height: 1.35;
+}
+
+.sectionHeaderActions {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 5px;
+}
+
+.sectionRecentHeader {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 5px;
+  color: var(--demo-faint);
+  font-size: 10px;
+  font-weight: 560;
+  line-height: 1.2;
+}
+
+.sectionRecentHeader svg {
+  flex: 0 0 auto;
+}
+
+.sectionCardContentPane {
+  display: grid;
+  grid-area: content;
+  min-width: 0;
+  align-content: start;
+  gap: 8px;
 }
 
 .sectionCardContent {
@@ -1345,7 +1438,7 @@
 .sectionCardHeader {
   display: flex;
   min-width: 0;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 10px;
 }
@@ -1396,11 +1489,10 @@
 
 .sectionCardActions {
   display: flex;
-  grid-area: actions;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: flex-end;
-  gap: 6px;
+  justify-content: space-between;
+  gap: 8px;
   min-width: 0;
   border-top: 1px solid var(--demo-border);
   padding-top: 8px;
@@ -1408,14 +1500,17 @@
 
 .sectionCardActions .button {
   flex: 0 0 auto;
+  min-width: 84px;
   min-height: 36px;
   font-size: 12px;
   padding: 0 10px;
 }
 
-.sectionCardActions .sectionBatchTabs {
-  flex: 1 1 168px;
+.sectionBatchTabs {
+  flex: 1 1 220px;
   width: auto;
+  min-width: 0;
+  max-width: 320px;
   margin-top: 0;
   padding: 4px;
 }
@@ -1432,10 +1527,8 @@
 @media (max-width: 760px) {
   .sectionCard,
   .sectionCardCompact {
-    grid-template-columns: 26px 86px minmax(0, 1fr);
-    grid-template-areas:
-      "drag recent title"
-      "actions actions actions";
+    grid-template-columns: 26px minmax(0, 1fr);
+    grid-template-areas: "drag content";
     gap: 8px 10px;
   }
 
@@ -1447,22 +1540,29 @@
     min-height: 30px;
   }
 
+  .sectionCardHeader {
+    align-items: center;
+    flex-direction: row;
+  }
+
+  .sectionBatchTabs {
+    width: auto;
+    min-width: 0;
+    flex: 1 1 220px;
+  }
+
   .sectionCardActions,
   .sectionCardCompact .sectionCardActions {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    justify-content: stretch;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
     gap: 6px;
   }
 
-  .sectionCardActions .sectionBatchTabs {
-    grid-column: 1 / -1;
-    width: 100%;
-  }
-
   .sectionCardActions .button {
-    width: 100%;
-    min-width: 0;
+    width: auto;
+    min-width: 84px;
+    flex: 0 0 auto;
     padding: 0 8px;
   }
 }
@@ -1868,10 +1968,7 @@
   .sectionCard,
   .sectionCardCompact {
     grid-template-columns: 36px minmax(0, 1fr);
-    grid-template-areas:
-      "drag title"
-      "recent recent"
-      "actions actions";
+    grid-template-areas: "drag content";
   }
 
   .sectionCardMain {
@@ -1887,20 +1984,23 @@
 
   .sectionCardActions,
   .sectionCardCompact .sectionCardActions {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    justify-content: stretch;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
     min-width: 0;
   }
 
   .sectionCardActions .button {
-    width: 100%;
+    width: auto;
+    min-width: 84px;
+    flex: 0 0 auto;
     min-height: 38px;
   }
 
-  .sectionCardActions .sectionBatchTabs {
-    grid-column: 1 / -1;
-    width: 100%;
+  .sectionBatchTabs {
+    width: auto;
+    min-width: 0;
+    flex: 1 1 220px;
   }
 
   .sectionRail {
@@ -1977,26 +2077,21 @@
 }
 
 .showcaseProjectListPreview.projectFolderWorkspace .projectListCard {
-  grid-template-columns: 30px 86px minmax(0, 1fr) auto;
-  grid-template-areas:
-    "controls recent title action"
-    "controls recent meta action";
-  gap: 8px 12px;
+  grid-template-columns: 30px minmax(0, 1fr);
+  grid-template-areas: "controls content";
+  gap: 10px;
   border-color: var(--demo-border);
   border-radius: 10px;
 }
 
 .showcaseProjectListPreview .projectListMeta {
-  justify-content: flex-start;
+  justify-content: space-between;
 }
 
 @media (max-width: 639px) {
   .showcaseProjectListPreview.projectFolderWorkspace .projectListCard {
-    grid-template-columns: 30px minmax(0, 1fr) auto;
-    grid-template-areas:
-      "controls title action"
-      "recent recent recent"
-      "meta meta meta";
+    grid-template-columns: 30px minmax(0, 1fr);
+    grid-template-areas: "controls content";
   }
 }
 
