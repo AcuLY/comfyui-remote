@@ -104,6 +104,7 @@ export function LogsPage({ data }: { data: DemoData }) {
             ariaLabel="日志模块"
             className={s.logModuleChips}
             compact
+            dense
             items={modules.map((moduleName) => ({ value: moduleName, label: moduleName === "all" ? "全部模块" : moduleName }))}
             onChange={setModuleFilter}
             value={moduleFilter}

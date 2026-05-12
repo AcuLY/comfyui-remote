@@ -818,10 +818,25 @@
   padding: 5px 11px;
 }
 
+.segmentedControlCompact:not([role="tablist"]) {
+  height: 36px;
+  min-height: 36px;
+  padding: 3px;
+}
+
+.segmentedControlCompact:not([role="tablist"]) .segmentedItem {
+  height: 28px;
+  min-height: 28px;
+  padding-block: 0;
+}
+
 .segmentedControlDense {
+  max-width: 100%;
+  flex-wrap: nowrap;
   height: 36px;
   min-height: 36px;
   gap: 3px;
+  overflow-x: auto;
   padding: 3px;
 }
 

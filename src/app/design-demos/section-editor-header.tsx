@@ -228,6 +228,9 @@ export function SectionHeader(props: HeaderProps) {
               ariaLabel="批量数"
               className={s.sectionRunBatchControl}
               compact
+              dense
+              fitItems
+              fitItemWidth={32}
               items={BATCH_SIZE_OPTIONS.map((size) => ({ value: size, label: size }))}
               onChange={onBatchSizeChange}
               value={batchSize}

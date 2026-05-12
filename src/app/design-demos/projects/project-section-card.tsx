@@ -59,7 +59,6 @@ export function ProjectSectionCard({
             fitItemWidth={32}
             items={BATCH_SIZE_OPTIONS.map((option) => ({ value: option, label: option }))}
             onChange={setBatchSize}
-            role="tablist"
             value={batchSize}
           />
           <Button

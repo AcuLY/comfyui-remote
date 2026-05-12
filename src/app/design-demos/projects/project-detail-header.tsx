@@ -57,7 +57,11 @@ export function ProjectDetailHeader({
             <span>批量张数</span>
             <SegmentedControl
               ariaLabel="批量张数"
+              className={s.sectionRunBatchControl}
               compact
+              dense
+              fitItems
+              fitItemWidth={32}
               items={BATCH_SIZE_OPTIONS.map((option) => ({ value: option, label: option }))}
               onChange={setBatchSize}
               value={batchSize}

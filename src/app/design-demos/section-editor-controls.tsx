@@ -135,6 +135,7 @@ export function AspectChips({
     <SegmentedControl
       ariaLabel="选择画幅比例"
       compact
+      dense
       items={ASPECT_PRESETS.map((preset) => ({ value: preset, label: preset }))}
       onChange={onChange}
       value={value}
@@ -402,6 +403,7 @@ export function UpscaleControl({
       <SegmentedControl
         ariaLabel="选择放大倍率"
         compact
+        dense
         items={UPSCALE_PRESETS.map((preset) => ({ value: preset, label: `${preset}×` }))}
         onChange={onChange}
         value={value}
