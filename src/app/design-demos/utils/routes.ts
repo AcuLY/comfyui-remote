@@ -14,6 +14,7 @@ import {
   ListChecks,
   Lock,
   Monitor,
+  PanelTop,
   Plus,
   Rows3,
   Settings,
@@ -62,6 +63,7 @@ export const ROUTES: RouteDef[] = [
   { key: "component-showcase-images", pattern: "/component-showcase-images", title: "图片组件展示", group: "临时", icon: ImageIcon },
   { key: "component-showcase-editor", pattern: "/component-showcase-editor", title: "编辑器组件展示", group: "临时", icon: SlidersHorizontal },
   { key: "component-showcase-icons", pattern: "/component-showcase-icons", title: "Icons 图标展示", group: "临时", icon: Tags },
+  { key: "component-showcase-headers", pattern: "/component-showcase-headers", title: "Headers 设计稿", group: "临时", icon: PanelTop },
   { key: "component-showcase-projects", pattern: "/component-showcase-projects", title: "项目卡片和列表展示", group: "临时", icon: Archive },
   { key: "login", pattern: "/login", title: "登录", group: "系统", icon: Lock },
 ];

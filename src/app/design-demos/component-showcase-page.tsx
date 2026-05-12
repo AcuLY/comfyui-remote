@@ -6,3 +6,4 @@ export { ComponentShowcaseMid } from "./component-showcase/mid-page";
 export { ComponentShowcaseImages } from "./component-showcase/images-page";
 export { ComponentShowcaseEditor } from "./component-showcase/editor-page";
 export { ComponentShowcaseProjects } from "./component-showcase/projects-page";
+export { ComponentShowcaseHeaders } from "./component-showcase/headers-page";

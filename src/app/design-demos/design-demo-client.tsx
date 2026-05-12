@@ -9,7 +9,7 @@ import { PresetsPage, PresetCategoryFormPage, PresetEditPage, PresetGroupPage, S
 import { BatchCreatePage } from "./batch-create-page";
 import { RootPage, ProjectsPage, ProjectDetailPage, ProjectFormPage } from "./project-pages";
 import { ImageListComponentsPage } from "./image-list-components-page";
-import { ComponentShowcaseIndex, ComponentShowcaseAtoms, ComponentShowcaseMid, ComponentShowcaseImages, ComponentShowcaseEditor, ComponentShowcaseProjects } from "./component-showcase-page";
+import { ComponentShowcaseIndex, ComponentShowcaseAtoms, ComponentShowcaseMid, ComponentShowcaseImages, ComponentShowcaseEditor, ComponentShowcaseProjects, ComponentShowcaseHeaders } from "./component-showcase-page";
 import { IconShowcasePage } from "./icon-showcase-page";
 import { QueuePage, ReviewPage } from "./runs-page";
 import { SectionEditorPage as SectionEditorPageV2 } from "./section-editor-page";
@@ -88,6 +88,8 @@ function CurrentPage({ match, data }: { match: Match; data: DemoData }) {
       return <ComponentShowcaseEditor data={data} />;
     case "component-showcase-projects":
       return <ComponentShowcaseProjects data={data} />;
+    case "component-showcase-headers":
+      return <ComponentShowcaseHeaders data={data} />;
     case "component-showcase-icons":
       return <IconShowcasePage />;
     case "login":

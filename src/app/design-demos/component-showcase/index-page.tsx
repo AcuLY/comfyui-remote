@@ -1,6 +1,7 @@
 "use client";
 
-import { Archive, Grid3X3, Layers, Palette, Rows3, SlidersHorizontal } from "lucide-react";
+import Link from "next/link";
+import { Archive, Grid3X3, Layers, Palette, PanelTop, Rows3, SlidersHorizontal } from "lucide-react";
 
 import type { DemoData } from "../design-demo-data";
 import s from "../styles/showcase.module.css";
@@ -15,6 +16,7 @@ export function ComponentShowcaseIndex({ data: _data }: { data: DemoData }) {
     { href: "/component-showcase-images", title: "图片组件", desc: "ImageThumb、ImageList、ImageGrid、ReviewBoard、Lightbox", icon: Palette, count: 7 },
     { href: "/component-showcase-editor", title: "Section Editor 组件", desc: "SectionHeader、PresetBindingRow、PromptBlockRow、LoraRow、LoraColumn 等", icon: SlidersHorizontal, count: 8 },
     { href: "/component-showcase-projects", title: "项目卡片和列表", desc: "ProjectDetailHeader、ProjectListItem、ProjectSectionCard、ProjectFolderRow、ProjectMoveMenu 等", icon: Archive, count: 8 },
+    { href: "/component-showcase-headers", title: "Headers 设计稿", desc: "每个页面的新固定顶部 header 展开、折叠和移动端形态", icon: PanelTop, count: 36 },
     { href: "/component-showcase-icons", title: "Icons 图标", desc: "Lucide 图标全览 + 自定义 SVG 图标", icon: Palette, count: 57 },
     { href: "/image-list-components", title: "图片列表组件检查", desc: "已有的图片列表专项检查页", icon: Rows3, count: 3 },
   ];
@@ -28,12 +30,12 @@ export function ComponentShowcaseIndex({ data: _data }: { data: DemoData }) {
       />
       <div className={s.showcaseIndexGrid}>
         {categories.map((cat) => (
-          <a key={cat.href} href={`/design-demos${cat.href}`} className={s.showcaseIndexCard}>
-            <cat.icon className={showcaseCss.categoryIcon} size={24} />
+          <Link key={cat.href} href={`/design-demos${cat.href}`} className={s.showcaseIndexCard}>
+            <cat.icon aria-hidden="true" className={showcaseCss.categoryIcon} size={24} />
             <div className={s.showcaseIndexCardTitle}>{cat.title}</div>
             <div className={s.showcaseIndexCardDesc}>{cat.desc}</div>
             <div className={s.showcaseIndexCardCount}>{cat.count} 个组件</div>
-          </a>
+          </Link>
         ))}
       </div>
     </div>

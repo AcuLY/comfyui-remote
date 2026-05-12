@@ -39,6 +39,7 @@ export type RouteKey =
   | "component-showcase-images"
   | "component-showcase-editor"
   | "component-showcase-icons"
+  | "component-showcase-headers"
   | "component-showcase-projects"
   | "not-found";
 
