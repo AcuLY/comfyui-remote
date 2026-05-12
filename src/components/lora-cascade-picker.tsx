@@ -65,9 +65,16 @@ function modelLabel(kind: ModelKind) {
   return kind === "checkpoint" ? "checkpoint" : "LoRA";
 }
 
-async function fetchJsonWithTimeout<T>(url: string, timeoutMs = 15000): Promise<T> {
+async function fetchJsonWithTimeout<T>(url: string, timeoutMs = 15000, signal?: AbortSignal): Promise<T> {
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
+  const abortFromSignal = () => controller.abort();
+
+  if (signal?.aborted) {
+    controller.abort();
+  } else {
+    signal?.addEventListener("abort", abortFromSignal, { once: true });
+  }
 
   try {
     const res = await fetch(url, { signal: controller.signal });
@@ -78,6 +85,7 @@ async function fetchJsonWithTimeout<T>(url: string, timeoutMs = 15000): Promise<
     return json as T;
   } finally {
     window.clearTimeout(timeout);
+    signal?.removeEventListener("abort", abortFromSignal);
   }
 }
 
@@ -85,14 +93,32 @@ function useLoraSearch(kind: ModelKind) {
   const [query, setQuery] = useState("");
   const [allFiles, setAllFiles] = useState<BrowseItem[]>([]);
   const [searching, setSearching] = useState(false);
-  const loaded = useRef(false);
+  const loadedKind = useRef<ModelKind | null>(null);
+  const currentKind = useRef<ModelKind>(kind);
+  const requestRef = useRef<AbortController | null>(null);
+  const requestId = useRef(0);
 
   // Lazy-load all files on first search keystroke
   useEffect(() => {
-    if (!query.trim() || loaded.current) return;
-    loaded.current = true;
+    if (currentKind.current !== kind) {
+      currentKind.current = kind;
+      requestId.current += 1;
+      requestRef.current?.abort();
+      requestRef.current = null;
+      loadedKind.current = null;
+      setAllFiles([]);
+      setSearching(false);
+      setQuery("");
+      return;
+    }
 
-    let cancelled = false;
+    if (!query.trim() || loadedKind.current === kind || requestRef.current) return;
+
+    const controller = new AbortController();
+    const activeRequestId = requestId.current + 1;
+    requestId.current = activeRequestId;
+    requestRef.current = controller;
+
     async function loadFiles() {
       setSearching(true);
       const params = new URLSearchParams({ recursive: "true" });
@@ -100,20 +126,32 @@ function useLoraSearch(kind: ModelKind) {
         const json = await fetchJsonWithTimeout<{ data?: BrowseResult }>(
           buildModelUrl("browse", kind, params),
           30000,
+          controller.signal,
         );
-        if (cancelled) return;
+        if (controller.signal.aborted || requestId.current !== activeRequestId) return;
+        loadedKind.current = kind;
         setAllFiles((json.data?.items ?? []).filter((i) => i.type === "file"));
       } catch {
-        loaded.current = false;
+        if (controller.signal.aborted || requestId.current !== activeRequestId) return;
+        loadedKind.current = null;
+        setAllFiles([]);
         // Search is best-effort; the picker can still browse folders.
       } finally {
-        if (!cancelled) setSearching(false);
+        if (requestId.current === activeRequestId) {
+          requestRef.current = null;
+          setSearching(false);
+        }
       }
     }
 
     void loadFiles();
     return () => {
-      cancelled = true;
+      if (requestRef.current === controller) {
+        requestId.current += 1;
+        requestRef.current = null;
+        controller.abort();
+        setSearching(false);
+      }
     };
   }, [kind, query]);
 
@@ -123,7 +161,19 @@ function useLoraSearch(kind: ModelKind) {
     return allFiles.filter((f) => f.name.toLowerCase().includes(q) || (f.notes && f.notes.toLowerCase().includes(q)));
   }, [query, allFiles]);
 
-  return { query, setQuery, results, searching, reset: () => { setQuery(""); } };
+  const reset = useCallback(() => {
+    setQuery("");
+    if (requestRef.current) {
+      requestId.current += 1;
+      requestRef.current.abort();
+      requestRef.current = null;
+      loadedKind.current = null;
+      setAllFiles([]);
+    }
+    setSearching(false);
+  }, []);
+
+  return { query, setQuery, results, searching, reset };
 }
 
 // ---------------------------------------------------------------------------
