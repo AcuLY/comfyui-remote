@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import type { DemoImage } from "../design-demo-data";
 import { cx } from "../design-demo-utils";
 import s from "./ui.module.css";
+import { ImageListStats } from "./image-list-stats";
 import { ImageThumbSmall } from "./image-thumb-small";
 
 export function ImageListSmall({
@@ -13,12 +14,14 @@ export function ImageListSmall({
   images,
   limit = 10,
   maxWidth,
+  showCounts = false,
   wide = false,
 }: {
   className?: string;
   images: DemoImage[];
   limit?: number;
   maxWidth?: number | string;
+  showCounts?: boolean;
   wide?: boolean;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -71,6 +74,7 @@ export function ImageListSmall({
       data-overflow-right={overflow.right}
       style={style}
     >
+      {showCounts ? <ImageListStats images={visibleImages} className={s.imageListSmallStats} /> : null}
       <div className={cx(s.imageListSmall, s.imageStrip)} ref={scrollRef}>
         {visibleImages.map((image, index) => (
           <ImageThumbSmall image={image} key={`${image.id}-${index}`} priority={index === 0} wide={wide} />

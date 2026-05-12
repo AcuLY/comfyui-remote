@@ -1077,6 +1077,32 @@
   min-width: 0;
 }
 
+.imageListStats {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 3px 8px;
+  color: var(--ui-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.35;
+}
+
+.imageListStatsLead {
+  color: var(--ui-text);
+  font-size: 13px;
+  font-weight: 560;
+}
+
+.imageListStatsDetail {
+  color: var(--ui-faint);
+}
+
+.imageListSmallStats {
+  padding: 0 4px 5px;
+}
+
 .imageListSmall,
 .imageStrip {
   display: flex;
@@ -1334,18 +1360,23 @@ button.imagePreviewFrame {
   --demo-image-list-gap: 14px;
   display: grid;
   grid-template-columns: minmax(0, var(--demo-image-list-max-width, 1fr)) auto;
+  grid-template-areas:
+    "header actions"
+    "main actions";
   min-width: 0;
   align-items: start;
   gap: 14px;
 }
 
 .imageListMediumMain {
+  grid-area: main;
   display: grid;
   min-width: 0;
   gap: 10px;
 }
 
 .imageListMediumHeader {
+  grid-area: header;
   display: grid;
   grid-template-columns: minmax(120px, auto) minmax(0, 1fr);
   align-items: center;
@@ -1368,6 +1399,7 @@ button.imagePreviewFrame {
 .imageListMediumSelectPanel {
   display: flex;
   min-width: 0;
+  align-items: center;
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
@@ -1431,6 +1463,7 @@ button.imagePreviewFrame {
 }
 
 .imageListMediumActionTrack {
+  grid-area: actions;
   min-width: 0;
   align-self: stretch;
 }
@@ -1566,6 +1599,9 @@ button.imagePreviewFrame {
 .reviewControlStrip {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 154px;
+  grid-template-areas:
+    "header actions"
+    "main actions";
   align-items: start;
   gap: 14px;
   border-top: 0;
@@ -1573,9 +1609,7 @@ button.imagePreviewFrame {
   padding: 14px;
 }
 
-.reviewControlStrip > div:first-child {
-  display: grid;
-  min-width: 0;
+.reviewControlStrip .imageListMediumMain {
   gap: 3px;
 }
 
@@ -1588,6 +1622,19 @@ button.imagePreviewFrame {
 .reviewControlStrip span {
   color: var(--ui-muted);
   font-size: 11px;
+}
+
+.reviewControlStrip .imageListStatsLead {
+  color: var(--ui-text);
+  font-size: 13px;
+}
+
+.reviewControlStrip .imageListStatsDetail {
+  color: var(--ui-faint);
+}
+
+.reviewControlStrip .imageListMediumHeader {
+  align-items: start;
 }
 
 .reviewActionKeep:hover,
@@ -1679,7 +1726,15 @@ button.imagePreviewFrame {
   }
 }
 
-@media (max-width: 639px) {
+@media (max-width: 760px) {
+  .reviewControlStrip .imageListMediumHeader {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .reviewControlStrip .imageListMediumSelectPanel {
+    justify-content: flex-start;
+  }
+
   .imageThumbSmall,
   .imageThumbSmallWide {
     width: 60px;

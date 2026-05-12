@@ -91,15 +91,15 @@ export function ComponentShowcaseImages({ data }: { data: DemoData }) {
       {/* 3.3 ImageListSmall */}
       <ShowcaseItem name="ImageListSmall" desc="横向滚动小图列表，项目 / 小节图片条直接复用它">
         <div className={s.showcaseImageList}>
-          <ImageListSmall images={images} limit={8} maxWidth={420} />
+          <ImageListSmall images={images} limit={8} maxWidth={420} showCounts />
         </div>
         <hr className={s.showcaseDivider} />
-        <ImageListSmall images={images} limit={12} maxWidth={640} />
+        <ImageListSmall images={images} limit={12} maxWidth={640} showCounts />
       </ShowcaseItem>
 
       {/* 3.4 ImageListMedium */}
       <ShowcaseItem name="ImageListMedium" desc="中图网格列表（可折叠）">
-        <ImageListMedium maxHeight={320} summary={`已选 ${selectedIds.size} 张`}>
+        <ImageListMedium images={images.slice(0, 8)} maxHeight={320} showCounts summary={`已选 ${selectedIds.size} 张`}>
           {images.slice(0, 8).map((img, i) => (
             <ImageThumbMedium
               key={`${img.id}-list-medium-${i}`}

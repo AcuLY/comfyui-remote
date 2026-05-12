@@ -61,7 +61,9 @@ export function ReviewImageBoard({ images }: { images: DemoImage[] }) {
     <>
       <ImageListMedium
         className={s.reviewControlStrip}
+        images={images}
         maxHeight={520}
+        showCounts
         summary={hasSelection ? `已选 ${selectedCount} 张` : "未选择图片"}
         selectPanel={(
           <>

@@ -4,7 +4,9 @@ import type { CSSProperties } from "react";
 import { Children, useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 
+import type { DemoImage } from "../design-demo-data";
 import { cx } from "../design-demo-utils";
+import { ImageListStats } from "./image-list-stats";
 import s from "./ui.module.css";
 
 type ImageListMediumStyle = CSSProperties & {
@@ -20,9 +22,11 @@ export function ImageListMedium({
   defaultExpanded = false,
   emptyLabel = "没有可用图片",
   gap,
+  images,
   maxHeight,
   maxWidth,
   selectPanel,
+  showCounts = false,
   summary,
 }: {
   actionPanel?: React.ReactNode;
@@ -31,9 +35,11 @@ export function ImageListMedium({
   defaultExpanded?: boolean;
   emptyLabel?: string;
   gap?: number;
+  images?: DemoImage[];
   maxHeight?: number | string;
   maxWidth?: number | string;
   selectPanel?: React.ReactNode;
+  showCounts?: boolean;
   summary?: React.ReactNode;
 }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
@@ -47,15 +53,23 @@ export function ImageListMedium({
 
   if (!hasItems) return <div className={s.empty}>{emptyLabel}</div>;
 
+  const header = summary || selectPanel || (showCounts && images) ? (
+    <div className={s.imageListMediumHeader}>
+      {summary || (showCounts && images) ? (
+        <div className={s.imageListMediumSummary}>
+          {showCounts && images ? (
+            <ImageListStats images={images} lead={summary} />
+          ) : summary}
+        </div>
+      ) : <span />}
+      {selectPanel ? <div className={s.imageListMediumSelectPanel}>{selectPanel}</div> : null}
+    </div>
+  ) : null;
+
   return (
     <div className={cx(s.imageListMedium, className)} style={style}>
+      {header}
       <div className={s.imageListMediumMain}>
-        {summary || selectPanel ? (
-          <div className={s.imageListMediumHeader}>
-            {summary ? <div className={s.imageListMediumSummary}>{summary}</div> : <span />}
-            {selectPanel ? <div className={s.imageListMediumSelectPanel}>{selectPanel}</div> : null}
-          </div>
-        ) : null}
         <div className={s.imageListMediumViewport} data-expanded={!collapsible || expanded}>
           <div className={s.imageListMediumGrid}>
             {childrenArray}
