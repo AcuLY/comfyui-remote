@@ -471,6 +471,7 @@ export function DesignDemoShell({
   data: DemoData;
 }) {
   const mainRef = useRef<HTMLElement>(null);
+  const routeHeaderCollapsedRef = useRef(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -521,22 +522,28 @@ export function DesignDemoShell({
     let lastScrollTop = 0;
     let frameId = 0;
     let resetFrameId = 0;
+    const collapseAfter = 96;
+    const expandNearTop = 24;
+    const minDirectionDelta = 10;
 
     function readScrollTop() {
-      if (window.matchMedia("(max-width: 639px)").matches) {
-        return window.scrollY;
-      }
       return mainRef.current?.scrollTop ?? 0;
     }
 
+    function setCollapsed(nextCollapsed: boolean) {
+      if (routeHeaderCollapsedRef.current === nextCollapsed) return;
+      routeHeaderCollapsedRef.current = nextCollapsed;
+      setRouteHeaderCollapsed(nextCollapsed);
+    }
+
     if (!hasRouteHeader) {
-      resetFrameId = window.requestAnimationFrame(() => setRouteHeaderCollapsed(false));
+      resetFrameId = window.requestAnimationFrame(() => setCollapsed(false));
       return () => window.cancelAnimationFrame(resetFrameId);
     }
 
     resetFrameId = window.requestAnimationFrame(() => {
       lastScrollTop = readScrollTop();
-      setRouteHeaderCollapsed(false);
+      setCollapsed(false);
     });
 
     function handleScroll() {
@@ -545,10 +552,12 @@ export function DesignDemoShell({
         const nextScrollTop = readScrollTop();
         const delta = nextScrollTop - lastScrollTop;
 
-        if (nextScrollTop < 20) {
-          setRouteHeaderCollapsed(false);
-        } else if (Math.abs(delta) >= 8) {
-          setRouteHeaderCollapsed(delta > 0);
+        if (nextScrollTop <= expandNearTop) {
+          setCollapsed(false);
+        } else if (delta >= minDirectionDelta && nextScrollTop >= collapseAfter) {
+          setCollapsed(true);
+        } else if (delta <= -minDirectionDelta) {
+          setCollapsed(false);
         }
 
         lastScrollTop = nextScrollTop;
@@ -558,11 +567,9 @@ export function DesignDemoShell({
 
     const main = mainRef.current;
     main?.addEventListener("scroll", handleScroll, { passive: true });
-    window.addEventListener("scroll", handleScroll, { passive: true });
 
     return () => {
       main?.removeEventListener("scroll", handleScroll);
-      window.removeEventListener("scroll", handleScroll);
       if (frameId) window.cancelAnimationFrame(frameId);
       if (resetFrameId) window.cancelAnimationFrame(resetFrameId);
     };
@@ -609,7 +616,7 @@ export function DesignDemoShell({
             aria-label="关闭导航菜单"
           />
         ) : null}
-        <div className={cx(s.workspace, sidebarCollapsed && s.workspaceCollapsed)}>
+        <div className={cx(s.workspace, sidebarCollapsed && s.workspaceCollapsed, hasRouteHeader && s.workspaceWithRouteHeader)}>
           <Sidebar
             collapsed={sidebarCollapsed && !menuOpen}
             data={data}
@@ -622,7 +629,7 @@ export function DesignDemoShell({
             sfwMode={sfwMode}
             onToggleSfwMode={toggleSfwMode}
           />
-          <main className={cx(s.main, hasRouteHeader && s.mainWithRouteHeader)} ref={mainRef}>
+          <div className={cx(s.contentFrame, hasRouteHeader && s.contentFrameWithRouteHeader)}>
             {routeHeaderConfig ? (
               <DemoRouteHeader
                 collapsed={routeHeaderCollapsed}
@@ -643,8 +650,10 @@ export function DesignDemoShell({
                 toolsOpen={toolsOpen}
               />
             ) : null}
-            {children}
-          </main>
+            <main className={cx(s.main, hasRouteHeader && s.mainWithRouteHeader)} ref={mainRef}>
+              {children}
+            </main>
+          </div>
         </div>
         <MobileBottomNav
           data={data}

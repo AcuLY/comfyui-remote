@@ -205,6 +205,16 @@
 .workspaceCollapsed {
   grid-template-columns: 76px minmax(0, 1fr);
 }
+.contentFrame {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  height: 100vh;
+}
+.contentFrameWithRouteHeader {
+  grid-template-rows: auto minmax(0, 1fr);
+}
 .sidebar {
   display: flex;
   flex-direction: column;
@@ -456,13 +466,13 @@
 }
 .main {
   position: relative;
-  height: 100vh;
   min-width: 0;
+  min-height: 0;
   overflow-y: auto;
   padding: 22px 18px 48px;
 }
 .mainWithRouteHeader {
-  padding-top: 0;
+  padding-top: 16px;
 }
 .mainWithRouteHeader > :global(div) > :global([data-demo-page-header]:first-child) {
   display: none;
@@ -1111,19 +1121,17 @@
   display: none;
 }
 .routeHeader {
-  position: sticky;
-  top: 0;
+  position: relative;
   z-index: 32;
   min-width: 0;
   border-bottom: 1px solid var(--demo-border);
   background: var(--demo-topbar-bg);
   box-shadow: 0 12px 34px rgba(15, 23, 42, 0.07);
-  margin: 0 -18px 16px;
+  margin: 0;
   padding: 12px 18px;
   padding-block-start: max(12px, env(safe-area-inset-top));
-  transition:
-    box-shadow 180ms ease,
-    padding 180ms ease;
+  transform: translateZ(0);
+  transition: box-shadow 160ms ease;
 }
 .routeHeaderCollapsed {
   box-shadow: 0 10px 28px rgba(15, 23, 42, 0.1);
@@ -1486,6 +1494,24 @@
     z-index: auto;
   }
 
+  .workspaceWithRouteHeader {
+    height: 100dvh;
+    min-height: 100dvh;
+    overflow: hidden;
+  }
+
+  .contentFrame {
+    display: block;
+    height: auto;
+  }
+
+  .workspaceWithRouteHeader .contentFrame {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    height: 100dvh;
+    min-height: 0;
+  }
+
   .sidebar {
     position: fixed;
     inset: 0 auto 0 0;
@@ -1571,12 +1597,17 @@
     padding: 14px 12px calc(112px + env(safe-area-inset-bottom));
   }
 
+  .workspaceWithRouteHeader .main {
+    min-height: 0;
+    overflow-y: auto;
+  }
+
   .mainWithRouteHeader {
-    padding-top: 0;
+    padding-top: 14px;
   }
 
   .routeHeader {
-    margin: 0 -12px 14px;
+    margin: 0;
     padding: 8px 12px;
     padding-block-start: max(8px, env(safe-area-inset-top));
   }
