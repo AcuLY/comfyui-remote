@@ -19,6 +19,7 @@ import { StatusBadge } from "../ui/status-badge";
 import { Switch } from "../ui/switch";
 import { SwitchRow } from "../ui/switch-row";
 import { TextAreaField } from "../ui/text-area-field";
+import { ProjectSelectCheckbox } from "../projects/project-select-checkbox";
 import { ShowcaseItem } from "./showcase-item";
 
 export function ComponentShowcaseAtoms() {
@@ -28,6 +29,8 @@ export function ComponentShowcaseAtoms() {
   const [denoiseVal, setDenoiseVal] = useState(0.85);
   const [sectionName, setSectionName] = useState("肖像 - 女性角色");
   const [switchChecked, setSwitchChecked] = useState(true);
+  const [projectSelected, setProjectSelected] = useState(true);
+  const [sectionSelected, setSectionSelected] = useState(false);
   const [selectorValue, setSelectorValue] = useState("dreamshaper_v8.safetensors");
 
   return (
@@ -72,6 +75,22 @@ export function ComponentShowcaseAtoms() {
             <Button pressed>Pressed</Button>
             <Button icon={Check} feedback={{ title: "操作成功", detail: "1 项已处理" }}>带反馈</Button>
           </div>
+        </div>
+      </ShowcaseItem>
+
+      {/* 1.2 ProjectSelectCheckbox */}
+      <ShowcaseItem name="ProjectSelectCheckbox" desc="项目 / 小节列表专用 checkbox，不复用通用按钮">
+        <div className={s.showcaseRow}>
+          <ProjectSelectCheckbox
+            checked={projectSelected}
+            label={projectSelected ? "取消选择项目：夏日人像合集" : "选择项目：夏日人像合集"}
+            onChange={() => setProjectSelected((value) => !value)}
+          />
+          <ProjectSelectCheckbox
+            checked={sectionSelected}
+            label={sectionSelected ? "取消选择小节：肖像 - 女性角色" : "选择小节：肖像 - 女性角色"}
+            onChange={() => setSectionSelected((value) => !value)}
+          />
         </div>
       </ShowcaseItem>
 
