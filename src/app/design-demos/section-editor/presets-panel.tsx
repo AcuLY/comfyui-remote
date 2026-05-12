@@ -6,7 +6,7 @@ import {
   PresetBindingRow,
   PresetImportInline,
 } from "../section-editor-components";
-import s from "../styles/section-editor.module.css";
+import s from "./presets-panel.section-editor.module.css";
 import type { SectionEditorModel } from "./use-section-editor-state";
 
 export function PresetsPanel({ editor }: { editor: SectionEditorModel }) {

@@ -3,7 +3,7 @@
 import { GripVertical, Save } from "lucide-react";
 
 import type { DemoCategory, DemoData } from "../design-demo-data";
-import s from "../styles/library.module.css";
+import s from "./sort-rules-page.library.module.css";
 import { Button } from "../ui/button";
 import { PageHeader } from "../ui/page-header";
 import { StatusBadge } from "../ui/status-badge";

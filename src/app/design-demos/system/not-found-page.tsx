@@ -1,7 +1,7 @@
 import { Home } from "lucide-react";
 
-import s from "../styles/shell.module.css";
-import { ButtonLink } from "../ui/button-link";
+import s from "./not-found-page.shell.module.css";
+import { ButtonLink } from "../ui/button";
 import { PageHeader } from "../ui/page-header";
 import { RouteTable } from "../ui/route-table";
 import { fallbackRouteData } from "./fallback-route-data";

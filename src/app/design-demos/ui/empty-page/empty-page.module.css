@@ -1,0 +1,79 @@
+.page,
+.empty {
+  --ui-text: var(--demo-text, #1f2937);
+  --ui-muted: var(--demo-muted, #64748b);
+  --ui-faint: var(--demo-faint, #94a3b8);
+  --ui-border: var(--demo-border, rgba(15, 23, 42, 0.12));
+  --ui-border-strong: var(--demo-border-strong, rgba(15, 23, 42, 0.2));
+  --ui-glass-border: var(--demo-glass-border, rgba(15, 23, 42, 0.1));
+  --ui-glass-accent-border: var(--demo-glass-accent-border, rgba(20, 184, 166, 0.34));
+  --ui-panel: var(--demo-panel, rgba(255, 255, 255, 0.88));
+  --ui-panel-2: var(--demo-panel-2, rgba(248, 250, 252, 0.9));
+  --ui-field-bg: var(--demo-field-bg, rgba(255, 255, 255, 0.78));
+  --ui-glass-bg: var(--demo-glass-bg, rgba(255, 255, 255, 0.72));
+  --ui-glass-soft: var(--demo-glass-soft, rgba(255, 255, 255, 0.52));
+  --ui-glass-hover: var(--demo-glass-hover, rgba(255, 255, 255, 0.86));
+  --ui-control-hover: var(--demo-control-hover, rgba(15, 23, 42, 0.06));
+  --ui-surface-hover: var(--demo-surface-hover, rgba(15, 23, 42, 0.05));
+  --ui-selected: var(--demo-selected, rgba(20, 184, 166, 0.12));
+  --ui-green: var(--demo-green, #0f9f8e);
+  --ui-green-soft: var(--demo-green-soft, rgba(20, 184, 166, 0.13));
+  --ui-pink: var(--demo-pink, #db2777);
+  --ui-pink-soft: var(--demo-pink-soft, rgba(219, 39, 119, 0.1));
+  --ui-red: var(--demo-red, #dc2626);
+  --ui-red-soft: var(--demo-red-soft, rgba(220, 38, 38, 0.1));
+  --ui-amber: var(--demo-amber, #d97706);
+  --ui-amber-soft: var(--demo-amber-soft, rgba(217, 119, 6, 0.11));
+  --ui-sky: var(--demo-sky, #0284c7);
+  --ui-sky-soft: var(--demo-sky-soft, rgba(2, 132, 199, 0.1));
+  --ui-radius: var(--demo-radius, 8px);
+  --ui-inset-highlight: var(--demo-inset-highlight, rgba(255, 255, 255, 0.55));
+  --ui-glass-shadow: var(--demo-glass-shadow, 0 12px 34px rgba(15, 23, 42, 0.08));
+  --ui-glass-blur: var(--demo-glass-blur, blur(18px) saturate(150%));
+}
+
+.page {
+  display: grid;
+  gap: 14px;
+}
+
+.empty {
+  display: grid;
+  min-height: 96px;
+  place-items: center;
+  border: 1px dashed var(--ui-border);
+  border-radius: var(--ui-radius);
+  background: var(--ui-glass-soft);
+  color: var(--ui-muted);
+  font-size: 12px;
+}
+
+@keyframes uiSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes uiToastIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes uiToastOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+}

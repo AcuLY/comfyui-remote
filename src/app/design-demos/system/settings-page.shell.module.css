@@ -1,0 +1,140 @@
+@keyframes demoGradientShift {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.82;
+    transform: scale(1.05);
+  }
+}
+.page {
+  display: grid;
+  gap: 14px;
+}
+.settingsLinkList {
+  display: grid;
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--demo-glass-border);
+  border-radius: var(--demo-radius);
+  background: var(--demo-glass-bg);
+  box-shadow: var(--demo-glass-shadow);
+}
+.settingsLinkRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 30px;
+  align-items: center;
+  gap: 12px;
+  min-height: 58px;
+  border-bottom: 1px solid var(--demo-border);
+  color: inherit;
+  padding: 10px 12px;
+  text-decoration: none;
+  transition: 150ms ease;
+}
+.settingsLinkRow:hover,
+.settingsLinkRow:focus-visible {
+  background: var(--demo-field-bg);
+  outline: none;
+}
+.settingsLinkRow:last-child {
+  border-bottom: 0;
+}
+.settingsLinkMain {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+.settingsLinkMain > svg {
+  color: var(--demo-green);
+}
+.settingsLinkText {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+.settingsLinkText strong {
+  overflow: hidden;
+  color: var(--demo-text);
+  font-size: 13px;
+  font-weight: 560;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.settingsLinkText span {
+  overflow: hidden;
+  color: var(--demo-muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.settingsLinkArrow {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 1px solid var(--demo-border);
+  border-radius: 7px;
+  background: var(--demo-field-bg);
+  color: var(--demo-muted);
+}
+.settingsLinkRow:hover .settingsLinkArrow,
+.settingsLinkRow:focus-visible .settingsLinkArrow {
+  border-color: var(--demo-glass-accent-border);
+  color: var(--demo-green);
+}
+.settingsToggleRow .settingsLinkMain > svg {
+  color: var(--demo-green);
+}
+@keyframes demoSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes demoToastIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes demoToastOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+}
+@keyframes demoSkeleton {
+  to {
+    transform: translateX(100%);
+  }
+}
+@media (max-width: 639px) {
+
+  .settingsLinkRow {
+    min-height: 54px;
+  }
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.iconMd {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}

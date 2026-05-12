@@ -5,7 +5,7 @@ import { GripVertical, X, Unlink, Zap } from "lucide-react";
 
 import { Button } from "./ui/button";
 import { Switch } from "./ui/switch";
-import s from "./styles/section-editor.module.css";
+import s from "./section-editor-lora-history.section-editor.module.css";
 import { cx } from "./design-demo-utils";
 import { parseHue } from "./section-editor-shared";
 import { SelectChip, StepperInput } from "./section-editor-controls";

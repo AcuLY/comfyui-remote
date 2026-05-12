@@ -1,7 +1,7 @@
 import { Clock3 } from "lucide-react";
 
 import type { DemoCurrentRun } from "./types";
-import s from "../styles/runs.module.css";
+import s from "./current-running-progress-card.runs.module.css";
 
 export function CurrentRunningProgressCard({ runs }: { runs: DemoCurrentRun[] }) {
   if (runs.length === 0) return null;

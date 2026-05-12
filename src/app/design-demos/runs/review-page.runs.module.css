@@ -1,0 +1,474 @@
+.reviewSurface {
+  -webkit-backdrop-filter: var(--demo-glass-blur);
+  backdrop-filter: var(--demo-glass-blur);
+}
+
+@keyframes demoGradientShift {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.82;
+    transform: scale(1.05);
+  }
+}
+
+.page {
+  display: grid;
+  gap: 14px;
+}
+
+.projectCommandSecondary :where([data-demo-ui-button="true"]) {
+  min-height: 32px;
+  padding-inline: 8px;
+}
+
+.projectCommandSecondary :where([data-demo-ui-button="true"]):hover,
+.projectCommandSecondary :where([data-demo-ui-button="true"]):focus-visible {
+  border-color: var(--demo-border);
+  background: var(--demo-field-bg);
+  color: var(--demo-green);
+  box-shadow: none;
+}
+
+.workflowDownloadLink {
+  --button-bg: color-mix(in srgb, var(--demo-glass-soft) 88%, transparent);
+  --button-bg-hover: color-mix(in srgb, var(--demo-glass-hover) 92%, transparent);
+  --button-border: var(--demo-border-strong);
+  --button-border-hover: color-mix(in srgb, var(--demo-text) 20%, var(--demo-border-strong));
+  --button-color: var(--demo-text);
+  --button-shadow: none;
+  --button-shadow-hover: 0 6px 18px rgba(0, 0, 0, 0.1);
+  --button-focus: color-mix(in srgb, var(--demo-green) 30%, transparent);
+  display: inline-flex;
+  min-width: 0;
+  max-width: 100%;
+  height: 36px;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid var(--button-border);
+  border-radius: 8px;
+  background: var(--button-bg);
+  box-shadow: var(--button-shadow);
+  color: var(--button-color);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 580;
+  letter-spacing: 0;
+  line-height: 1.2;
+  overflow: hidden;
+  padding: 0 12px;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  transition: background 160ms ease, border-color 160ms ease, box-shadow 160ms ease, color 160ms ease, opacity 160ms ease, transform 160ms ease;
+  white-space: nowrap;
+  overflow-wrap: anywhere;
+}
+
+.workflowDownloadLink:hover,
+.workflowDownloadLink:focus-visible {
+  border-color: var(--button-border-hover);
+  background: var(--button-bg-hover);
+  box-shadow: var(--button-shadow-hover);
+  color: var(--button-color);
+}
+
+.workflowDownloadLink:focus-visible {
+  outline: 3px solid var(--button-focus);
+  outline-offset: 2px;
+  transform: none;
+}
+
+.workflowDownloadLink:disabled {
+  cursor: not-allowed;
+  filter: saturate(0.72);
+  opacity: 0.52;
+  transform: none;
+}
+
+.workflowDownloadLink[aria-pressed="true"] {
+  --button-bg: color-mix(in srgb, var(--demo-green-soft) 78%, var(--demo-field-bg));
+  --button-bg-hover: color-mix(in srgb, var(--demo-green-soft) 88%, var(--demo-glass-hover));
+  --button-border: color-mix(in srgb, var(--demo-green) 48%, transparent);
+  --button-border-hover: color-mix(in srgb, var(--demo-green) 62%, transparent);
+  --button-color: var(--demo-green);
+  --button-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--demo-green) 16%, transparent),
+    inset 0 2px 5px color-mix(in srgb, var(--demo-green) 10%, transparent);
+}
+
+@keyframes demoSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes demoToastIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes demoToastOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+}
+
+.toastCloseButton:where([data-demo-ui-button="true"]) {
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  min-height: 30px;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+.toastCloseButton:where([data-demo-ui-button="true"]):hover,
+.toastCloseButton:where([data-demo-ui-button="true"]):focus-visible {
+  border-color: transparent;
+  background: var(--demo-control-hover);
+  box-shadow: none;
+}
+
+.imageListMediumActionPanel :where([data-demo-ui-button="true"]) {
+  width: 100%;
+  min-height: 34px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+.reviewSurface {
+  display: grid;
+  gap: 0;
+  min-width: 0;
+  border: 1px solid var(--demo-glass-border);
+  border-radius: var(--demo-radius);
+  background: var(--demo-glass-bg);
+  box-shadow: none;
+  overflow: hidden;
+}
+
+.reviewSurface:has(.imageListMediumActionPanel) {
+  overflow: visible;
+}
+
+.reviewSurface > .reviewImageGrid {
+  padding: 12px 14px;
+}
+
+.reviewSurface > .reviewBulkBar {
+  border-top: 1px solid var(--demo-border);
+  padding: 10px 14px;
+}
+
+.queueSurfaceHeader > .toolbar :where([data-demo-ui-button="true"]) {
+  min-height: 34px;
+  flex: 0 0 auto;
+  gap: 5px;
+  border-radius: 8px;
+  font-size: 12px;
+  padding: 5px 10px;
+  white-space: nowrap;
+}
+
+.queueRunRowSelectable > .toolbar :where([data-demo-ui-button="true"]) {
+  min-height: 34px;
+  gap: 5px;
+  border-radius: 8px;
+  font-size: 12px;
+  padding: 5px 10px;
+  white-space: nowrap;
+}
+
+.reviewSelectActions :where([data-demo-ui-button="true"]),
+.reviewBulkActions :where([data-demo-ui-button="true"]) {
+  width: 100%;
+  min-height: 34px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+.projectFolderActions :where([data-demo-ui-button="true"]) {
+  min-height: 32px;
+  white-space: nowrap;
+}
+
+.railHeading :where([data-demo-ui-button="true"]) {
+  flex: 0 0 auto;
+  min-height: 28px;
+  padding-inline: 7px;
+}
+
+.sectionCardActions :where([data-demo-ui-button="true"]) {
+  flex: 0 0 auto;
+  min-height: 30px;
+  font-size: 11px;
+  padding: 5px 8px;
+}
+
+.sectionRunControl :where([data-demo-ui-button="true"]) {
+  width: auto;
+  min-width: 78px;
+}
+
+.sectionCardCompact .sectionCardActions :where([data-demo-ui-button="true"]) {
+  min-width: 0;
+}
+
+.resultActionBar :where([data-demo-ui-button="true"]) {
+  min-height: 34px;
+  border-color: var(--demo-border);
+  border-radius: 8px;
+  font-size: 12px;
+  padding: 6px 10px;
+}
+
+.lightboxFooter :where([data-demo-ui-button="true"]),
+.lightboxActions :where([data-demo-ui-button="true"]) {
+  min-height: 34px;
+  border-color: var(--demo-border);
+  border-radius: 8px;
+  font-size: 12px;
+  padding: 6px 10px;
+}
+
+@keyframes demoSkeleton {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@media (min-width: 640px) and (max-width: 1023px) {
+
+  .sectionCardActions :where([data-demo-ui-button="true"]) {
+    flex: 1 1 88px;
+  }
+}
+
+@media (max-width: 639px) {
+
+  .projectRunCluster > :where([data-demo-ui-button="true"]) {
+    width: auto;
+    min-width: 104px;
+    min-height: 34px;
+    flex: 0 0 auto;
+  }
+
+  .projectCommandSecondary :where([data-demo-ui-button="true"]) {
+    flex: 1 1 96px;
+  }
+
+  .queueSurfaceHeader > .toolbar :where([data-demo-ui-button="true"]) {
+    font-size: 11px;
+  }
+
+  .queueRunRowSelectable .toolbar :where([data-demo-ui-button="true"]) {
+    min-height: 34px;
+    gap: 5px;
+    border-radius: 8px;
+    font-size: 11px;
+    padding: 5px 9px;
+    white-space: nowrap;
+  }
+
+  .reviewPageHeader {
+    position: relative;
+  }
+
+  .reviewPageHeader > .pageTitleBlock {
+    padding-right: 92px;
+  }
+
+  .reviewPageHeader > .toolbar {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: auto;
+    max-width: none;
+    flex-wrap: nowrap;
+    gap: 6px;
+    justify-content: flex-end;
+  }
+
+  .reviewPageHeader > .toolbar :where([data-demo-ui-button="true"]) {
+    width: 38px;
+    height: 38px;
+    min-height: 38px;
+    padding: 0;
+    gap: 0;
+    border-radius: 10px;
+    font-size: 0;
+  }
+
+  .reviewPageHeader > .toolbar :where([data-demo-ui-button="true"]) svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .imageListMediumSelectPanel :where([data-demo-ui-button="true"]) {
+    gap: 3px;
+    padding-inline: 4px;
+  }
+
+  .reviewControlStrip :where([data-demo-ui-button="true"]),
+  .imageListMedium :where([data-demo-ui-button="true"]) {
+    min-height: 34px;
+    padding: 6px 8px;
+    border-radius: 8px;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  .reviewBulkActions :where([data-demo-ui-button="true"]),
+  .imageListMediumActionPanel :where([data-demo-ui-button="true"]) {
+    width: 38px;
+    height: 34px;
+    min-height: 34px;
+    padding: 0;
+    gap: 0;
+    font-size: 0;
+  }
+
+  .reviewBulkActions :where([data-demo-ui-button="true"]) svg,
+  .imageListMediumActionPanel :where([data-demo-ui-button="true"]) svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .templateSectionRowActions :where([data-demo-ui-button="true"]) {
+    flex: 1 1 30%;
+  }
+
+  .sectionCardActions :where([data-demo-ui-button="true"]) {
+    flex: 1 1 44%;
+    min-height: 38px;
+  }
+
+  .promptBlockRow :where([data-demo-ui-button="true"]) {
+    width: 100%;
+  }
+
+  .lightboxFooter :where([data-demo-ui-button="true"]),
+  .lightboxActions :where([data-demo-ui-button="true"]) {
+    flex: 1 1 42%;
+  }
+}
+
+@media (max-width: 520px) {
+
+  .projectActionButtons :where([data-demo-ui-button="true"]) {
+    flex: 1 1 46%;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.pbRowGrip:where([data-demo-ui-button="true"]),
+.loraRowGrip:where([data-demo-ui-button="true"]) {
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  min-height: 28px;
+  padding: 0;
+  cursor: grab;
+}
+
+.pbRowGrip:where([data-demo-ui-button="true"]):active,
+.loraRowGrip:where([data-demo-ui-button="true"]):active {
+  cursor: grabbing;
+}
+
+.showcasePage .projectBatchBar :where([data-demo-ui-button="true"]),
+.showcasePage .projectFolderBreadcrumbs :where([data-demo-ui-button="true"]),
+.showcasePage .projectFolderGrip:where([data-demo-ui-button="true"]),
+.showcasePage .projectFolderRowActions :where([data-demo-ui-button="true"]),
+.showcasePage .projectItemActions :where([data-demo-ui-button="true"]),
+.showcasePage .projectMoveMenu > :where([data-demo-ui-button="true"]),
+.showcasePage .projectSelectButton:where([data-demo-ui-button="true"]),
+.showcasePage .dragHandle:where([data-demo-ui-button="true"]),
+.showcasePage .sectionSelectButton:where([data-demo-ui-button="true"]) {
+  height: 36px;
+  min-height: 36px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 580;
+  line-height: 1.2;
+}
+
+.workflowDownloadLink {
+  height: 36px;
+  min-height: 36px;
+  font-size: 12px;
+  font-weight: 580;
+  line-height: 1.2;
+}
+
+.iconMd {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+
+.projectBatchBar :where([data-demo-ui-button="true"]),
+.projectFolderBreadcrumbs :where([data-demo-ui-button="true"]),
+.projectFolderRowActions :where([data-demo-ui-button="true"]),
+.projectItemActions :where([data-demo-ui-button="true"]),
+.projectMoveMenu > :where([data-demo-ui-button="true"]),
+.projectSelectButton:where([data-demo-ui-button="true"]),
+.projectFolderGrip:where([data-demo-ui-button="true"]),
+.dragHandle:where([data-demo-ui-button="true"]),
+.sectionSelectButton:where([data-demo-ui-button="true"]),
+.sectionRunButton:where([data-demo-ui-button="true"]),
+.detailsActions :where([data-demo-ui-button="true"]),
+.dialogFooter :where([data-demo-ui-button="true"]),
+.toolbar :where([data-demo-ui-button="true"]) {
+  height: 36px;
+  min-height: 36px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 580;
+  line-height: 1.2;
+}
+
+.workflowDownloadLink.iconMiniButton,
+.workflowDownloadLink.iconGhostBtn,
+.workflowDownloadLink.pagerButton,
+.workflowDownloadLink.fileAction,
+.workflowDownloadLink.iconButton {
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0;
+}
+
+.loraStep:where([data-demo-ui-button="true"]) {
+  min-height: 28px;
+  font-size: 11px;
+}

@@ -2,7 +2,7 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 
 import { cx } from "../design-demo-utils";
 import { Button } from "../ui/button";
-import s from "../styles/runs.module.css";
+import s from "./demo-pager.runs.module.css";
 
 export function DemoPager({ currentPage, totalPages }: { currentPage: number; totalPages: number }) {
   const pages = Array.from(new Set([

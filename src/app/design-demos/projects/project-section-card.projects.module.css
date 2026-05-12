@@ -1,0 +1,393 @@
+@keyframes demoGradientShift {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.82;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes demoSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes demoToastIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes demoToastOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+}
+
+.sectionRecentResult {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.recentResultImages {
+  width: 86px;
+}
+
+.projectListRecentResult .recentResultImages,
+.sectionRecentResult .recentResultImages {
+  width: min(270px, 100%);
+}
+
+.sectionCardTitleLink {
+  display: block;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.sectionCardTitleLink strong {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--demo-text);
+  font-size: 13px;
+  font-weight: 580;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sectionCardTitleLink:hover strong,
+.sectionCardTitleLink:focus-visible strong {
+  color: var(--demo-green);
+}
+
+.sectionCardTitleLink:focus-visible,
+.sectionRecentResult:focus-visible {
+  outline: 3px solid rgba(0, 217, 146, 0.18);
+  outline-offset: 2px;
+}
+
+@media (max-width: 639px) {
+
+  .projectListRecentResult .recentResultImages {
+    grid-column: auto;
+    grid-row: auto;
+  }
+}
+
+.sectionCard {
+  --section-card-pad: 10px;
+  --section-card-header-height: 36px;
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "content";
+  align-items: stretch;
+  gap: 10px;
+  border: 1px solid var(--demo-glass-border);
+  border-radius: var(--demo-radius);
+  background: var(--demo-panel);
+  padding: var(--section-card-pad);
+  transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.sectionCard:hover {
+  border-color: var(--demo-glass-accent-border);
+  transform: translateY(-1px);
+}
+
+.sectionCardCompact {
+  --section-card-pad: 8px;
+  padding-block: 8px;
+}
+
+.dragHandle {
+  display: inline-flex;
+  width: 36px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--demo-faint);
+  cursor: pointer;
+  padding: 0;
+}
+
+.dragHandle {
+  grid-area: drag;
+  cursor: grab;
+  position: absolute;
+  top: calc(var(--section-card-pad) + (var(--section-card-header-height) / 2));
+  left: 10px;
+  z-index: 1;
+  transform: translateY(-50%);
+}
+
+.dragHandle:hover,
+.dragHandle:focus-visible {
+  border-color: var(--demo-border);
+  background: var(--demo-field-bg);
+  color: var(--demo-green);
+  outline: none;
+}
+
+.dragHandle:hover,
+.dragHandle:focus-visible {
+  transform: translateY(-50%);
+}
+
+.sectionRecentResult {
+  align-self: start;
+  border-top: 1px solid var(--demo-border);
+  padding-top: 8px;
+}
+
+.sectionCardTitleLink {
+  display: inline-flex;
+  grid-column: 2;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  align-items: baseline;
+  justify-self: center;
+  justify-content: center;
+  gap: 7px;
+}
+
+.sectionCardTitleLink strong {
+  flex: 0 1 auto;
+}
+
+.sectionCardTitleLink span {
+  flex: 0 0 auto;
+  color: var(--demo-faint);
+  font-size: 10px;
+  font-weight: 560;
+  line-height: 1.35;
+}
+
+.sectionHeaderActions {
+  display: inline-flex;
+  grid-column: 3;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-self: end;
+  gap: 5px;
+}
+
+.sectionCardContentPane {
+  display: grid;
+  grid-area: content;
+  min-width: 0;
+  align-content: start;
+  gap: 8px;
+}
+
+.sectionCardHeader {
+  display: grid;
+  grid-template-columns: 78px minmax(0, 1fr) 78px;
+  min-height: var(--section-card-header-height);
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.sectionCardActions {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+  border-top: 1px solid var(--demo-border);
+  padding-top: 8px;
+}
+
+.sectionCardActions :where([data-demo-ui-button="true"]) {
+  flex: 0 0 auto;
+  width: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  font-size: 12px;
+  padding: 0;
+}
+
+.sectionBatchTabs {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 0;
+  max-width: calc(100% - 44px);
+  margin-top: 0;
+  padding: 4px;
+}
+
+.sectionCardCompact .sectionCardActions {
+  align-items: center;
+  min-width: 0;
+}
+
+.sectionCardCompact .sectionCardActions :where([data-demo-ui-button="true"]) {
+  width: 36px;
+  min-width: 36px;
+}
+
+@media (max-width: 760px) {
+  .sectionCard,
+  .sectionCardCompact {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "content";
+    gap: 8px 10px;
+  }
+
+  .sectionCard .dragHandle,
+  .sectionCardCompact .dragHandle {
+    width: 24px;
+    min-width: 24px;
+    height: 30px;
+    min-height: 30px;
+  }
+
+  .sectionCardHeader {
+    align-items: center;
+    grid-template-columns: 70px minmax(0, 1fr) 78px;
+  }
+
+  .sectionBatchTabs {
+    width: auto;
+    min-width: 0;
+    flex: 0 0 auto;
+  }
+
+  .sectionCardActions,
+  .sectionCardCompact .sectionCardActions {
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+    gap: 6px;
+  }
+
+  .sectionCardActions :where([data-demo-ui-button="true"]) {
+    width: 36px;
+    min-width: 36px;
+    flex: 0 0 auto;
+    padding: 0;
+  }
+}
+
+@keyframes demoSkeleton {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@media (min-width: 640px) and (max-width: 1023px) {
+
+  .sectionCardActions,
+  .sectionCardCompact .sectionCardActions {
+    display: flex;
+    flex-wrap: nowrap;
+    min-width: 0;
+  }
+
+  .sectionCardActions :where([data-demo-ui-button="true"]) {
+    width: 36px;
+    min-width: 36px;
+    flex: 0 0 auto;
+  }
+}
+
+@media (max-width: 639px) {
+
+  .sectionCard,
+  .sectionCardCompact {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "content";
+  }
+
+  .dragHandle {
+    width: 36px;
+    height: 36px;
+  }
+
+  .sectionCardActions,
+  .sectionCardCompact .sectionCardActions {
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+    min-width: 0;
+  }
+
+  .sectionCardActions :where([data-demo-ui-button="true"]) {
+    width: 36px;
+    min-width: 36px;
+    flex: 0 0 auto;
+    min-height: 38px;
+  }
+
+  .sectionBatchTabs {
+    width: auto;
+    min-width: 0;
+    flex: 0 0 auto;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.showcasePage .dragHandle:where([data-demo-ui-button="true"]) {
+  height: 36px;
+  min-height: 36px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 580;
+  line-height: 1.2;
+}
+
+.showcasePage .dragHandle:where([data-demo-ui-button-icon-only="true"]) {
+  width: 36px;
+  min-width: 36px;
+  padding: 0;
+}
+
+.dragHandle:where([data-demo-ui-button="true"]) {
+  height: 36px;
+  min-height: 36px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 580;
+  line-height: 1.2;
+}
+
+.dragHandle:where([data-demo-ui-button-icon-only="true"]) {
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0;
+}

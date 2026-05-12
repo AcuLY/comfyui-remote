@@ -1,0 +1,101 @@
+.toolbar {
+  display: flex;
+  min-width: 0;
+  max-width: 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.pageHeader {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 12px;
+  min-width: 0;
+  border-bottom: 1px solid var(--ui-border);
+  padding-bottom: 12px;
+}
+
+.pageHeader > * {
+  min-width: 0;
+}
+
+.pageTitleBlock {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.pageHeader > .toolbar {
+  align-self: end;
+  justify-content: flex-end;
+}
+
+.pageBackLink {
+  width: fit-content;
+  justify-self: start;
+  margin-bottom: 2px;
+}
+
+.pageHeader .pageBackLink {
+  margin-top: -10px;
+  margin-left: -14px;
+  margin-bottom: -2px;
+}
+
+.eyebrow {
+  color: var(--ui-green);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.pageTitle {
+  max-width: 100%;
+  margin: 0;
+  color: var(--ui-text);
+  font-size: clamp(18px, 1.25vw, 21px);
+  font-weight: 560;
+  line-height: 1.14;
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+
+.pageSubtitle {
+  max-width: 72ch;
+  color: var(--ui-muted);
+  font-size: 11px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+
+@keyframes uiSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes uiToastIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes uiToastOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+}

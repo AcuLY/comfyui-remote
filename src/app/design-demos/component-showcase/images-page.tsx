@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { Check, Eye, Star, Trash2 } from "lucide-react";
 
 import type { DemoData } from "../design-demo-data";
-import s from "../styles/showcase.module.css";
+import s from "./images-page.showcase.module.css";
 import { Button } from "../ui/button";
 import { ImageGrid } from "../ui/image-grid";
 import { ImageListMedium } from "../ui/image-list-medium";

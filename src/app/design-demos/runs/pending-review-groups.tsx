@@ -8,7 +8,7 @@ import { ImageListSmall } from "../ui/image-list-small";
 import { DemoPager } from "./demo-pager";
 import { groupCollapsedKey } from "./queue-model";
 import type { QueueProjectGroup, QueueReviewRow } from "./types";
-import s from "../styles/runs.module.css";
+import s from "./pending-review-groups.runs.module.css";
 
 const PAGE_SIZE = 8;
 

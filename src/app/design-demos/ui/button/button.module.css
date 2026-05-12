@@ -1,0 +1,292 @@
+.root {
+  --ui-text: var(--demo-text, #1f2937);
+  --ui-muted: var(--demo-muted, #64748b);
+  --ui-faint: var(--demo-faint, #94a3b8);
+  --ui-border: var(--demo-border, rgba(15, 23, 42, 0.12));
+  --ui-border-strong: var(--demo-border-strong, rgba(15, 23, 42, 0.2));
+  --ui-glass-border: var(--demo-glass-border, rgba(15, 23, 42, 0.1));
+  --ui-glass-accent-border: var(--demo-glass-accent-border, rgba(20, 184, 166, 0.34));
+  --ui-panel: var(--demo-panel, rgba(255, 255, 255, 0.88));
+  --ui-panel-2: var(--demo-panel-2, rgba(248, 250, 252, 0.9));
+  --ui-field-bg: var(--demo-field-bg, rgba(255, 255, 255, 0.78));
+  --ui-glass-bg: var(--demo-glass-bg, rgba(255, 255, 255, 0.72));
+  --ui-glass-soft: var(--demo-glass-soft, rgba(255, 255, 255, 0.52));
+  --ui-glass-hover: var(--demo-glass-hover, rgba(255, 255, 255, 0.86));
+  --ui-control-hover: var(--demo-control-hover, rgba(15, 23, 42, 0.06));
+  --ui-surface-hover: var(--demo-surface-hover, rgba(15, 23, 42, 0.05));
+  --ui-selected: var(--demo-selected, rgba(20, 184, 166, 0.12));
+  --ui-green: var(--demo-green, #0f9f8e);
+  --ui-green-soft: var(--demo-green-soft, rgba(20, 184, 166, 0.13));
+  --ui-pink: var(--demo-pink, #db2777);
+  --ui-pink-soft: var(--demo-pink-soft, rgba(219, 39, 119, 0.1));
+  --ui-red: var(--demo-red, #dc2626);
+  --ui-red-soft: var(--demo-red-soft, rgba(220, 38, 38, 0.1));
+  --ui-amber: var(--demo-amber, #d97706);
+  --ui-amber-soft: var(--demo-amber-soft, rgba(217, 119, 6, 0.11));
+  --ui-sky: var(--demo-sky, #0284c7);
+  --ui-sky-soft: var(--demo-sky-soft, rgba(2, 132, 199, 0.1));
+  --ui-radius: var(--demo-radius, 8px);
+  --ui-inset-highlight: var(--demo-inset-highlight, rgba(255, 255, 255, 0.55));
+  --ui-glass-shadow: var(--demo-glass-shadow, 0 12px 34px rgba(15, 23, 42, 0.08));
+  --ui-glass-blur: var(--demo-glass-blur, blur(18px) saturate(150%));
+}
+
+.root {
+  --button-bg: color-mix(in srgb, var(--ui-glass-soft) 88%, transparent);
+  --button-bg-hover: color-mix(in srgb, var(--ui-glass-hover) 92%, transparent);
+  --button-border: var(--ui-border-strong);
+  --button-border-hover: color-mix(in srgb, var(--ui-text) 20%, var(--ui-border-strong));
+  --button-color: var(--ui-text);
+  --button-shadow: none;
+  --button-shadow-hover: 0 6px 18px rgba(0, 0, 0, 0.1);
+  --button-focus: color-mix(in srgb, var(--ui-green) 30%, transparent);
+  display: inline-flex;
+  min-width: 0;
+  max-width: 100%;
+  height: 36px;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid var(--button-border);
+  border-radius: 8px;
+  background: var(--button-bg);
+  box-shadow: var(--button-shadow);
+  color: var(--button-color);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 580;
+  letter-spacing: 0;
+  line-height: 1.2;
+  overflow: hidden;
+  padding: 0 12px;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  transition: background 160ms ease, border-color 160ms ease, box-shadow 160ms ease, color 160ms ease, opacity 160ms ease, transform 160ms ease;
+  white-space: nowrap;
+  overflow-wrap: anywhere;
+}
+
+.root.root {
+  border-color: var(--button-border);
+  background: var(--button-bg);
+  box-shadow: var(--button-shadow);
+  color: var(--button-color);
+}
+
+.root.root:hover,
+.root.root:focus-visible {
+  border-color: var(--button-border-hover);
+  background: var(--button-bg-hover);
+  box-shadow: var(--button-shadow-hover);
+  color: var(--button-color);
+}
+
+.root.root:focus-visible {
+  outline: 3px solid var(--button-focus);
+  outline-offset: 2px;
+  transform: none;
+}
+
+.root.root:disabled {
+  cursor: not-allowed;
+  filter: saturate(0.72);
+  opacity: 0.52;
+  transform: none;
+}
+
+.root.pending {
+  gap: 6px;
+}
+
+.root.small {
+  height: 30px;
+  min-height: 30px;
+  gap: 6px;
+  border-radius: 9px;
+  font-size: 11px;
+  padding: 0 10px;
+}
+
+.spinner {
+  animation: uiSpin 820ms linear infinite;
+}
+
+.root.root[aria-pressed="true"] {
+  --button-bg: color-mix(in srgb, var(--ui-green-soft) 78%, var(--ui-field-bg));
+  --button-bg-hover: color-mix(in srgb, var(--ui-green-soft) 88%, var(--ui-glass-hover));
+  --button-border: color-mix(in srgb, var(--ui-green) 48%, transparent);
+  --button-border-hover: color-mix(in srgb, var(--ui-green) 62%, transparent);
+  --button-color: var(--ui-green);
+  --button-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--ui-green) 16%, transparent),
+    inset 0 2px 5px color-mix(in srgb, var(--ui-green) 10%, transparent);
+  border-color: var(--button-border);
+  background: var(--button-bg);
+  box-shadow: var(--button-shadow);
+  color: var(--button-color);
+}
+
+.root.primary {
+  --button-bg: var(--ui-green-soft);
+  --button-bg-hover: color-mix(in srgb, var(--ui-green-soft) 78%, var(--ui-glass-hover));
+  --button-border: color-mix(in srgb, var(--ui-green) 34%, transparent);
+  --button-border-hover: color-mix(in srgb, var(--ui-green) 52%, transparent);
+  --button-color: var(--ui-green);
+  --button-focus: color-mix(in srgb, var(--ui-green) 30%, transparent);
+  border-color: var(--button-border);
+  background: var(--button-bg);
+  color: var(--button-color);
+}
+
+.root.subtle {
+  --button-bg: transparent;
+  --button-bg-hover: var(--ui-control-hover);
+  --button-border: transparent;
+  --button-border-hover: transparent;
+  --button-color: var(--ui-muted);
+  --button-shadow: none;
+  --button-shadow-hover: none;
+  border-color: var(--button-border);
+  background: var(--button-bg);
+  box-shadow: var(--button-shadow);
+  color: var(--button-color);
+}
+
+.root.subtle:hover,
+.root.subtle:focus-visible {
+  color: var(--ui-text);
+}
+
+.root.pink {
+  --button-bg: var(--ui-pink-soft);
+  --button-bg-hover: color-mix(in srgb, var(--ui-pink-soft) 78%, var(--ui-glass-hover));
+  --button-border: color-mix(in srgb, var(--ui-pink) 30%, transparent);
+  --button-border-hover: color-mix(in srgb, var(--ui-pink) 46%, transparent);
+  --button-color: var(--ui-pink);
+  --button-focus: color-mix(in srgb, var(--ui-pink) 24%, transparent);
+  border-color: var(--button-border);
+  background: var(--button-bg);
+  color: var(--button-color);
+}
+
+.root.danger {
+  --button-bg: var(--ui-red-soft);
+  --button-bg-hover: color-mix(in srgb, var(--ui-red-soft) 78%, var(--ui-glass-hover));
+  --button-border: color-mix(in srgb, var(--ui-red) 32%, transparent);
+  --button-border-hover: color-mix(in srgb, var(--ui-red) 48%, transparent);
+  --button-color: var(--ui-red);
+  --button-focus: color-mix(in srgb, var(--ui-red) 24%, transparent);
+  border-color: var(--button-border);
+  background: var(--button-bg);
+  color: var(--button-color);
+}
+
+.icon {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  stroke-width: 2.2;
+}
+
+.root.iconOnly {
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  min-height: 36px;
+  border-radius: 8px;
+  padding: 0;
+}
+
+.root.iconOnly.small {
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  min-height: 30px;
+  padding: 0;
+}
+
+.imageListMediumActionPanel .root {
+  width: 100%;
+  min-height: 34px;
+  border-radius: 8px;
+  padding: 6px 8px;
+  white-space: nowrap;
+}
+
+.lightboxFooter .root,
+.lightboxActions .root {
+  min-height: 34px;
+  border-color: var(--ui-border);
+  border-radius: 8px;
+  font-size: 12px;
+  padding: 6px 10px;
+}
+
+.reviewControlStrip .imageListMediumActionPanel .root {
+  width: 100%;
+}
+
+@keyframes uiSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes uiToastIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes uiToastOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+}
+
+@media (max-width: 520px) {
+
+  .reviewControlStrip .imageListMediumSelectPanel .root {
+    width: 100%;
+    height: 32px;
+    min-height: 32px;
+    padding-inline: 9px;
+  }
+
+  .reviewControlStrip .imageListMediumSelectPanel .subtle {
+    width: max-content;
+    grid-column: 1 / -1;
+    justify-self: start;
+    padding-inline: 8px;
+  }
+
+  .reviewControlStrip .imageListMediumActionPanel .root {
+    width: 38px;
+    min-width: 38px;
+    height: 38px;
+    min-height: 38px;
+    gap: 0;
+    border-radius: 8px;
+    font-size: 0;
+    padding: 0;
+  }
+
+  .reviewControlStrip .imageListMediumActionPanel .icon {
+    width: 16px;
+    height: 16px;
+  }
+}

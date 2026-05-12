@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Activity, ClipboardList, Gauge, Monitor, Play, Search, X } from "lucide-react";
 
 import type { DemoData } from "../design-demo-data";
-import s from "../styles/shell.module.css";
+import s from "./monitor-page.shell.module.css";
 import { Button } from "../ui/button";
 import { PageHeader } from "../ui/page-header";
 import { SegmentedControl } from "../ui/segmented-control";

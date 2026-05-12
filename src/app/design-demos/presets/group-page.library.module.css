@@ -1,0 +1,502 @@
+@keyframes demoGradientShift {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.82;
+    transform: scale(1.05);
+  }
+}
+
+.sidebarCollapsed .brandTop > .toolbar {
+  display: none;
+}
+
+.page {
+  display: grid;
+  gap: 14px;
+}
+
+.pageHeader > .toolbar {
+  align-self: end;
+  justify-content: flex-end;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  min-width: 0;
+  max-width: 100%;
+  align-items: center;
+  gap: 6px;
+}
+
+.panelBody .presetCascadeState,
+.panelBody .groupMemberRow,
+.panelBody .groupPreviewRow,
+.panelBody .historyDiffRow {
+  border-width: 0 0 1px;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding-inline: 0;
+}
+
+.panelBody .presetCascadeState:last-child,
+.panelBody .groupMemberRow:last-child,
+.panelBody .groupPreviewRow:last-child,
+.panelBody .historyDiffRow:last-child {
+  border-bottom-color: transparent;
+}
+
+.icon {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+}
+
+@keyframes demoSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes demoToastIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes demoToastOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+}
+
+.currentRunHeader .icon {
+  width: 16px;
+  height: 16px;
+  display: block;
+  flex: 0 0 auto;
+  color: var(--demo-muted);
+}
+
+.queueSurfaceHeader > .toolbar :where([data-demo-ui-button="true"]) {
+  min-height: 34px;
+  flex: 0 0 auto;
+  gap: 5px;
+  border-radius: 8px;
+  font-size: 12px;
+  padding: 5px 10px;
+  white-space: nowrap;
+}
+
+.queueProjectHeader .icon {
+  width: 15px;
+  height: 15px;
+  color: var(--demo-muted);
+  transition: transform 140ms ease;
+}
+
+.queueRunRowSelectable > .toolbar {
+  justify-self: end;
+}
+
+.queueRunRowSelectable > .toolbar :where([data-demo-ui-button="true"]) {
+  min-height: 34px;
+  gap: 5px;
+  border-radius: 8px;
+  font-size: 12px;
+  padding: 5px 10px;
+  white-space: nowrap;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.projectFolderDraftRow > .icon {
+  flex: 0 0 auto;
+  color: var(--demo-amber);
+}
+
+.projectFolderOpen > .icon:first-child {
+  color: var(--demo-amber);
+}
+
+.projectFolderEmpty .icon {
+  width: 24px;
+  height: 24px;
+  color: var(--demo-muted);
+}
+
+.editorSurface {
+  display: grid;
+  gap: 10px;
+}
+
+.editorStickyHeader {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid var(--demo-border);
+  border-radius: var(--demo-radius);
+  background: var(--demo-topbar-bg);
+  padding: 8px 10px;
+}
+
+.editorNavHeader .toolbar {
+  justify-content: flex-end;
+}
+
+.editorIdentity {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.editorIdentity span {
+  color: var(--demo-green);
+  font-size: 10px;
+}
+
+.editorIdentity strong {
+  overflow: hidden;
+  color: var(--demo-text);
+  font-size: 13px;
+  font-weight: 560;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.editorIdentity em {
+  overflow: hidden;
+  color: var(--demo-muted);
+  font-size: 11px;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.editorBlock,
+.editorAside {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  border: 1px solid var(--demo-glass-border);
+  border-radius: var(--demo-radius);
+  background: var(--demo-panel);
+  padding: 12px;
+}
+
+.editorBlockHeader {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  border-bottom: 1px solid var(--demo-border);
+  padding-bottom: 9px;
+}
+
+.editorBlockHeader div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.editorBlockHeader strong,
+.editorAside > strong {
+  color: var(--demo-text);
+  font-size: 13px;
+  font-weight: 560;
+}
+
+.editorBlockHeader span {
+  color: var(--demo-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.editorAside {
+  align-content: start;
+}
+
+.historyDiffList {
+  display: grid;
+  gap: 8px;
+}
+
+.historyDiffRow {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.historyDiffRow strong {
+  overflow: hidden;
+  color: var(--demo-text);
+  font-size: 12px;
+  font-weight: 560;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.historyDiffRow span {
+  overflow: hidden;
+  color: var(--demo-muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.historyDiffRow {
+  border: 1px solid var(--demo-border);
+  border-radius: 7px;
+  background: var(--demo-field-bg);
+  padding: 8px;
+}
+
+.presetGroupShell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(230px, 300px);
+  gap: 12px;
+  align-items: start;
+}
+
+.groupMemberList,
+.groupPreviewList {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  min-width: 0;
+}
+
+.presetCascadeState strong,
+.groupMemberRow strong,
+.groupPreviewRow strong {
+  overflow: hidden;
+  color: var(--demo-text);
+  font-size: 12px;
+  font-weight: 560;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.presetCascadeState span,
+.groupMemberRow em,
+.groupPreviewRow em {
+  overflow: hidden;
+  color: var(--demo-muted);
+  font-size: 10px;
+  font-style: normal;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.presetCascadeState,
+.groupPreviewRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  border: 1px solid var(--demo-border);
+  border-radius: 7px;
+  background: var(--demo-field-bg);
+  padding: 8px;
+}
+
+.presetCascadeState > div,
+.groupMemberRow > div,
+.groupPreviewRow > div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.groupMemberRow {
+  display: grid;
+  grid-template-columns: 14px 28px minmax(0, 1fr) minmax(130px, 180px) 30px;
+  align-items: end;
+  gap: 8px;
+  min-width: 0;
+  border: 1px solid var(--demo-border);
+  border-radius: 7px;
+  background: var(--demo-field-bg);
+  padding: 8px;
+}
+
+.groupMemberRow > span,
+.groupPreviewRow > span {
+  color: var(--demo-faint);
+  font-size: 10px;
+}
+
+.groupPreviewRow {
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+}
+
+@keyframes demoSkeleton {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@media (max-width: 1180px) {
+
+  .presetGroupShell {
+    grid-template-columns: 1fr;
+  }
+
+}
+
+@media (min-width: 640px) and (max-width: 1023px) {
+
+  .sidebarCollapsed.sidebar .brandTop > .toolbar {
+    display: none;
+  }
+}
+
+@media (max-width: 639px) {
+
+  .pageHeader > .toolbar {
+    width: 100%;
+    max-width: 100%;
+    justify-content: flex-start;
+  }
+
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .queueSurfaceHeader > .toolbar {
+    width: auto;
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+    gap: 6px;
+    justify-content: flex-end;
+  }
+
+  .queueSurfaceHeader > .toolbar :where([data-demo-ui-button="true"]) {
+    font-size: 11px;
+  }
+
+  .queueRunRowSelectable .toolbar {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+  }
+
+  .queueRunRowSelectable .toolbar {
+    align-self: center;
+    justify-self: end;
+    margin-top: 0;
+  }
+
+  .queueRunRowSelectable .toolbar :where([data-demo-ui-button="true"]) {
+    min-height: 34px;
+    gap: 5px;
+    border-radius: 8px;
+    font-size: 11px;
+    padding: 5px 9px;
+    white-space: nowrap;
+  }
+
+  .reviewPageHeader > .toolbar {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: auto;
+    max-width: none;
+    flex-wrap: nowrap;
+    gap: 6px;
+    justify-content: flex-end;
+  }
+
+  .reviewPageHeader > .toolbar :where([data-demo-ui-button="true"]) {
+    width: 38px;
+    height: 38px;
+    min-height: 38px;
+    padding: 0;
+    gap: 0;
+    border-radius: 10px;
+    font-size: 0;
+  }
+
+  .reviewPageHeader > .toolbar :where([data-demo-ui-button="true"]) svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .presetContextBar .toolbar {
+    width: 100%;
+  }
+
+  .groupMemberRow {
+    grid-template-columns: 1fr;
+  }
+
+  .presetCascadeState,
+  .groupPreviewRow {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .groupMemberRow :where([data-demo-ui-field="true"]),
+  .groupMemberRow .iconMiniButton {
+    width: 100%;
+  }
+
+  .editorStickyHeader,
+  .editorBlockHeader {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .projectSectionToolbar .toolbar {
+    justify-content: flex-start;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 768px) {
+  .toolbar {
+    flex-wrap: wrap;
+  }
+}
+
+.toolbar :where([data-demo-ui-button="true"]) {
+  height: 36px;
+  min-height: 36px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 580;
+  line-height: 1.2;
+}

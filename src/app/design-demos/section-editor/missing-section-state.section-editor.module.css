@@ -1,0 +1,143 @@
+@keyframes demoGradientShift {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.82;
+    transform: scale(1.05);
+  }
+}
+
+.page {
+  display: grid;
+  gap: 14px;
+}
+
+.pageHeader {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 12px;
+  min-width: 0;
+  border-bottom: 1px solid var(--demo-border);
+  padding-bottom: 12px;
+}
+
+.pageHeader > * {
+  min-width: 0;
+}
+
+.pageTitleBlock {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.pageHeader > .toolbar {
+  align-self: end;
+  justify-content: flex-end;
+}
+
+.projectHeaderTop > .pageTitleBlock {
+  flex: 1 1 320px;
+}
+
+.pageBackLink {
+  width: fit-content;
+  min-height: 28px;
+  margin-bottom: 2px;
+  padding: 4px 0;
+}
+
+.eyebrow {
+  color: var(--demo-green);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.pageTitle {
+  margin: 0;
+  color: var(--demo-text);
+  font-size: clamp(18px, 1.25vw, 21px);
+  font-weight: 560;
+  line-height: 1.14;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+
+@keyframes demoSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes demoToastIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes demoToastOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+}
+
+@keyframes demoSkeleton {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@media (max-width: 639px) {
+
+  .pageHeader {
+    grid-template-columns: 1fr;
+    align-items: start;
+    gap: 10px 12px;
+  }
+
+  .pageHeader > .toolbar {
+    width: 100%;
+    max-width: 100%;
+    justify-content: flex-start;
+  }
+
+  .projectDetailHeader .pageBackLink {
+    width: max-content;
+    max-width: 100%;
+    white-space: nowrap;
+  }
+
+  .reviewPageHeader > .pageTitleBlock {
+    padding-right: 92px;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.iconMd {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}

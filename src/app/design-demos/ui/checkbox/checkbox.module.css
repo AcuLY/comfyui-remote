@@ -1,0 +1,98 @@
+.checkbox {
+  --checkbox-size: 30px;
+  --checkbox-radius: 8px;
+  --checkbox-bg: var(--demo-field-bg, rgba(255, 255, 255, 0.78));
+  --checkbox-border: var(--demo-border, rgba(15, 23, 42, 0.12));
+  --checkbox-color: var(--demo-muted, #64748b);
+  --checkbox-green: var(--demo-green, #0f9f8e);
+  --checkbox-accent-border: var(--demo-glass-accent-border, rgba(20, 184, 166, 0.34));
+  position: relative;
+  display: inline-flex;
+  width: var(--checkbox-size);
+  min-width: var(--checkbox-size);
+  height: var(--checkbox-size);
+  min-height: var(--checkbox-size);
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--checkbox-border);
+  border-radius: var(--checkbox-radius);
+  background: var(--checkbox-bg);
+  color: var(--checkbox-color);
+  cursor: pointer;
+  line-height: 0;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: border-color 160ms ease, color 160ms ease, opacity 160ms ease;
+}
+
+.checkbox:hover {
+  --checkbox-border: var(--checkbox-accent-border);
+  --checkbox-color: var(--checkbox-green);
+}
+
+.checkboxChecked {
+  --checkbox-bg: var(--checkbox-green);
+  --checkbox-border: var(--checkbox-green);
+  --checkbox-color: #ffffff;
+}
+
+.checkboxDisabled {
+  cursor: not-allowed;
+  opacity: 0.52;
+}
+
+.checkboxCompact {
+  --checkbox-size: 26px;
+  --checkbox-radius: 7px;
+}
+
+.checkboxOverlay {
+  --checkbox-size: 26px;
+  --checkbox-radius: 7px;
+  --checkbox-bg: rgba(6, 12, 18, 0.72);
+  --checkbox-border: rgba(255, 255, 255, 0.52);
+  --checkbox-color: #ffffff;
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 3;
+  -webkit-backdrop-filter: blur(10px) saturate(135%);
+  backdrop-filter: blur(10px) saturate(135%);
+}
+
+.checkboxOverlay.checkboxChecked {
+  --checkbox-bg: var(--checkbox-green);
+  --checkbox-border: var(--checkbox-green);
+  --checkbox-color: #04111c;
+}
+
+.checkboxInput {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  cursor: inherit;
+  opacity: 0;
+}
+
+.checkboxGlyph {
+  display: inline-flex;
+  width: 14px;
+  height: 14px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+.checkboxInput:focus-visible + .checkboxGlyph {
+  outline: 2px solid color-mix(in srgb, var(--checkbox-green) 52%, transparent);
+  outline-offset: 3px;
+}
+
+.checkboxIcon {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2.2;
+}

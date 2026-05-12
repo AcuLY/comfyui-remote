@@ -1,0 +1,158 @@
+.root {
+  --ui-text: var(--demo-text, #1f2937);
+  --ui-muted: var(--demo-muted, #64748b);
+  --ui-faint: var(--demo-faint, #94a3b8);
+  --ui-border: var(--demo-border, rgba(15, 23, 42, 0.12));
+  --ui-border-strong: var(--demo-border-strong, rgba(15, 23, 42, 0.2));
+  --ui-glass-border: var(--demo-glass-border, rgba(15, 23, 42, 0.1));
+  --ui-glass-accent-border: var(--demo-glass-accent-border, rgba(20, 184, 166, 0.34));
+  --ui-panel: var(--demo-panel, rgba(255, 255, 255, 0.88));
+  --ui-panel-2: var(--demo-panel-2, rgba(248, 250, 252, 0.9));
+  --ui-field-bg: var(--demo-field-bg, rgba(255, 255, 255, 0.78));
+  --ui-glass-bg: var(--demo-glass-bg, rgba(255, 255, 255, 0.72));
+  --ui-glass-soft: var(--demo-glass-soft, rgba(255, 255, 255, 0.52));
+  --ui-glass-hover: var(--demo-glass-hover, rgba(255, 255, 255, 0.86));
+  --ui-control-hover: var(--demo-control-hover, rgba(15, 23, 42, 0.06));
+  --ui-surface-hover: var(--demo-surface-hover, rgba(15, 23, 42, 0.05));
+  --ui-selected: var(--demo-selected, rgba(20, 184, 166, 0.12));
+  --ui-green: var(--demo-green, #0f9f8e);
+  --ui-green-soft: var(--demo-green-soft, rgba(20, 184, 166, 0.13));
+  --ui-pink: var(--demo-pink, #db2777);
+  --ui-pink-soft: var(--demo-pink-soft, rgba(219, 39, 119, 0.1));
+  --ui-red: var(--demo-red, #dc2626);
+  --ui-red-soft: var(--demo-red-soft, rgba(220, 38, 38, 0.1));
+  --ui-amber: var(--demo-amber, #d97706);
+  --ui-amber-soft: var(--demo-amber-soft, rgba(217, 119, 6, 0.11));
+  --ui-sky: var(--demo-sky, #0284c7);
+  --ui-sky-soft: var(--demo-sky-soft, rgba(2, 132, 199, 0.1));
+  --ui-radius: var(--demo-radius, 8px);
+  --ui-inset-highlight: var(--demo-inset-highlight, rgba(255, 255, 255, 0.55));
+  --ui-glass-shadow: var(--demo-glass-shadow, 0 12px 34px rgba(15, 23, 42, 0.08));
+  --ui-glass-blur: var(--demo-glass-blur, blur(18px) saturate(150%));
+}
+
+.root {
+  --switch-width: 44px;
+  --switch-height: 26px;
+  --switch-thumb: 20px;
+  --switch-padding: 3px;
+  --switch-thumb-left: calc(var(--switch-width) - var(--switch-thumb) - var(--switch-padding));
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  display: inline-flex;
+  box-sizing: border-box;
+  width: var(--switch-width);
+  min-width: var(--switch-width);
+  height: var(--switch-height);
+  min-height: var(--switch-height);
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  overflow: visible;
+  border: 0;
+  border-radius: var(--switch-height);
+  background: transparent;
+  box-shadow: none;
+  caret-color: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  line-height: 0;
+  outline: none;
+  padding: 0;
+  touch-action: manipulation;
+  transition: border-color 150ms ease, background-color 150ms ease, box-shadow 150ms ease;
+  user-select: none;
+  vertical-align: middle;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+}
+
+.root[data-size="sm"] {
+  --switch-width: 42px;
+  --switch-height: 24px;
+  --switch-thumb: 18px;
+}
+
+.root:focus-visible {
+  box-shadow: none;
+}
+
+.root:focus-visible .track {
+  box-shadow:
+    0 0 0 3px var(--ui-green-soft),
+    0 5px 12px color-mix(in srgb, var(--ui-green) 20%, transparent);
+}
+
+.track {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--ui-green);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--ui-green) 18%, transparent),
+    0 5px 12px color-mix(in srgb, var(--ui-green) 20%, transparent);
+  pointer-events: none;
+  transition: background-color 180ms ease, box-shadow 180ms ease;
+}
+
+.thumb {
+  position: absolute;
+  top: 50%;
+  left: var(--switch-thumb-left);
+  width: var(--switch-thumb);
+  height: var(--switch-thumb);
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.2),
+    0 2px 6px rgba(15, 23, 42, 0.16);
+  pointer-events: none;
+  transform: translateY(-50%);
+  transition: background-color 180ms ease, left 180ms ease;
+}
+
+.root[data-state="unchecked"] {
+  --switch-thumb-left: var(--switch-padding);
+}
+
+.root[data-state="unchecked"] .track {
+  background: color-mix(in srgb, var(--ui-muted) 24%, var(--ui-panel-2));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ui-muted) 18%, transparent);
+}
+
+.root[data-state="unchecked"] .thumb {
+  background: #ffffff;
+}
+
+@keyframes uiSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes uiToastIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes uiToastOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+}

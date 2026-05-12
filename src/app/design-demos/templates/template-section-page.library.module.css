@@ -1,0 +1,692 @@
+.contentRow {
+  -webkit-backdrop-filter: var(--demo-glass-blur);
+  backdrop-filter: var(--demo-glass-blur);
+}
+
+@keyframes demoGradientShift {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.82;
+    transform: scale(1.05);
+  }
+}
+
+.sidebarCollapsed .brandTop > .toolbar {
+  display: none;
+}
+
+.page {
+  display: grid;
+  gap: 14px;
+}
+
+.pageHeader > .toolbar {
+  align-self: end;
+  justify-content: flex-end;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  min-width: 0;
+  max-width: 100%;
+  align-items: center;
+  gap: 6px;
+}
+
+.contentRow {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  border: 1px solid var(--demo-border);
+  border-radius: 7px;
+  background: var(--demo-glass-soft);
+  color: inherit;
+  padding: 10px;
+  text-decoration: none;
+}
+
+.contentRow:hover,
+.contentRow:focus-visible {
+  border-color: var(--demo-glass-accent-border);
+  background: var(--demo-glass-hover);
+  outline: none;
+}
+
+.contentRowHeader {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.contentRowTitle {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.contentRowTitle strong {
+  overflow: hidden;
+  color: var(--demo-text);
+  font-size: 12px;
+  font-weight: 560;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.contentRowTitle span,
+.contentRow p {
+  overflow: hidden;
+  margin: 0;
+  color: var(--demo-muted);
+  font-size: 11px;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+}
+
+.panelBody .contentRow,
+.panelBody .historyDiffRow {
+  border-width: 0 0 1px;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding-inline: 0;
+}
+
+.panelBody .contentRow:last-child,
+.panelBody .historyDiffRow:last-child {
+  border-bottom-color: transparent;
+}
+
+@keyframes demoSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes demoToastIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes demoToastOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+}
+
+.queueSurfaceHeader > .toolbar :where([data-demo-ui-button="true"]) {
+  min-height: 34px;
+  flex: 0 0 auto;
+  gap: 5px;
+  border-radius: 8px;
+  font-size: 12px;
+  padding: 5px 10px;
+  white-space: nowrap;
+}
+
+.queueRunRowSelectable > .toolbar {
+  justify-self: end;
+}
+
+.queueRunRowSelectable > .toolbar :where([data-demo-ui-button="true"]) {
+  min-height: 34px;
+  gap: 5px;
+  border-radius: 8px;
+  font-size: 12px;
+  padding: 5px 10px;
+  white-space: nowrap;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.dragHandle {
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--demo-faint);
+  cursor: pointer;
+  padding: 0;
+}
+
+.dragHandle {
+  cursor: grab;
+}
+
+.dragHandle:hover {
+  border-color: var(--demo-border);
+  background: var(--demo-field-bg);
+  color: var(--demo-green);
+  outline: none;
+}
+
+.editorSurface {
+  display: grid;
+  gap: 10px;
+}
+
+.editorStickyHeader {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid var(--demo-border);
+  border-radius: var(--demo-radius);
+  background: var(--demo-topbar-bg);
+  padding: 8px 10px;
+}
+
+.editorNavHeader .toolbar {
+  justify-content: flex-end;
+}
+
+.editorIdentity {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.editorIdentity span {
+  color: var(--demo-green);
+  font-size: 10px;
+}
+
+.editorIdentity strong {
+  overflow: hidden;
+  color: var(--demo-text);
+  font-size: 13px;
+  font-weight: 560;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.editorIdentity em {
+  overflow: hidden;
+  color: var(--demo-muted);
+  font-size: 11px;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.editorBlock,
+.editorAside {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  border: 1px solid var(--demo-glass-border);
+  border-radius: var(--demo-radius);
+  background: var(--demo-panel);
+  padding: 12px;
+}
+
+.editorBlockHeader {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  border-bottom: 1px solid var(--demo-border);
+  padding-bottom: 9px;
+}
+
+.editorBlockHeader div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.editorBlockHeader strong,
+.editorAside > strong,
+.loraStage > strong {
+  color: var(--demo-text);
+  font-size: 13px;
+  font-weight: 560;
+}
+
+.editorBlockHeader span {
+  color: var(--demo-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.editorStatusStrip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  border-top: 1px solid var(--demo-border);
+  padding-top: 9px;
+}
+
+.editorStatusStrip span {
+  border: 1px solid var(--demo-border);
+  border-radius: 999px;
+  background: var(--demo-field-bg);
+  color: var(--demo-muted);
+  font-size: 10px;
+  padding: 4px 8px;
+}
+
+.editorSplitBlock {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
+  gap: 10px;
+}
+
+.editorAside {
+  align-content: start;
+}
+
+.bindingList,
+.promptBlockList,
+.historyDiffList {
+  display: grid;
+  gap: 8px;
+}
+
+.bindingRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(130px, 180px) auto;
+  align-items: end;
+  gap: 8px;
+  border: 1px solid var(--demo-border);
+  border-radius: 7px;
+  background: var(--demo-field-bg);
+  padding: 8px;
+}
+
+.bindingRow > div:first-child,
+.historyDiffRow {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.bindingRow strong,
+.historyDiffRow strong {
+  overflow: hidden;
+  color: var(--demo-text);
+  font-size: 12px;
+  font-weight: 560;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bindingRow span,
+.historyDiffRow span {
+  overflow: hidden;
+  color: var(--demo-muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.promptBlockRow {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: start;
+  border: 1px solid var(--demo-border);
+  border-radius: 7px;
+  background: var(--demo-field-bg);
+  padding: 8px;
+}
+
+.promptBlockContent,
+.promptBlockTitle {
+  display: grid;
+  min-width: 0;
+  gap: 7px;
+}
+
+.promptBlockTitle {
+  gap: 2px;
+}
+
+.promptBlockTitle strong {
+  color: var(--demo-text);
+  font-size: 12px;
+  font-weight: 560;
+}
+
+.promptBlockTitle span {
+  color: var(--demo-faint);
+  font-size: 10px;
+}
+
+.promptColumns,
+.loraStageGrid,
+.importPresetLayout {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.loraStage {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--demo-border);
+  border-radius: 7px;
+  background: var(--demo-field-bg);
+  padding: 9px;
+}
+
+.loraRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+  border-top: 1px solid var(--demo-border);
+  padding-top: 8px;
+}
+
+.loraRow span {
+  overflow: hidden;
+  color: var(--demo-text);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.loraRow em {
+  color: var(--demo-muted);
+  font-size: 10px;
+  font-style: normal;
+}
+
+.loraRow button,
+.importCategoryColumn button {
+  border: 1px solid var(--demo-border);
+  border-radius: 6px;
+  background: var(--demo-field-bg);
+  color: var(--demo-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 10px;
+  padding: 5px 7px;
+}
+
+.loraRow button:hover,
+.importCategoryColumn button:hover,
+.importCategoryColumn button:focus-visible,
+.importCategoryActive {
+  border-color: var(--demo-glass-accent-border) !important;
+  color: var(--demo-green) !important;
+  outline: none;
+}
+
+.importPresetLayout {
+  grid-template-columns: minmax(92px, 132px) minmax(0, 1fr);
+}
+
+.importCategoryColumn,
+.importPresetColumn {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  min-width: 0;
+}
+
+.historyDiffRow {
+  border: 1px solid var(--demo-border);
+  border-radius: 7px;
+  background: var(--demo-field-bg);
+  padding: 8px;
+}
+
+.presetContextBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.presetContextBar {
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--demo-border);
+  padding: 0 0 10px;
+}
+
+.moveTargetGrid .contentRow {
+  width: 100%;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+@keyframes demoSkeleton {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@media (min-width: 640px) and (max-width: 1023px) {
+
+  .sidebarCollapsed.sidebar .brandTop > .toolbar {
+    display: none;
+  }
+}
+
+@media (max-width: 639px) {
+
+  .pageHeader > .toolbar {
+    width: 100%;
+    max-width: 100%;
+    justify-content: flex-start;
+  }
+
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .queueSurfaceHeader > .toolbar {
+    width: auto;
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+    gap: 6px;
+    justify-content: flex-end;
+  }
+
+  .queueSurfaceHeader > .toolbar :where([data-demo-ui-button="true"]) {
+    font-size: 11px;
+  }
+
+  .queueRunRowSelectable .toolbar {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+  }
+
+  .queueRunRowSelectable .toolbar {
+    align-self: center;
+    justify-self: end;
+    margin-top: 0;
+  }
+
+  .queueRunRowSelectable .toolbar :where([data-demo-ui-button="true"]) {
+    min-height: 34px;
+    gap: 5px;
+    border-radius: 8px;
+    font-size: 11px;
+    padding: 5px 9px;
+    white-space: nowrap;
+  }
+
+  .reviewPageHeader > .toolbar {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: auto;
+    max-width: none;
+    flex-wrap: nowrap;
+    gap: 6px;
+    justify-content: flex-end;
+  }
+
+  .reviewPageHeader > .toolbar :where([data-demo-ui-button="true"]) {
+    width: 38px;
+    height: 38px;
+    min-height: 38px;
+    padding: 0;
+    gap: 0;
+    border-radius: 10px;
+    font-size: 0;
+  }
+
+  .reviewPageHeader > .toolbar :where([data-demo-ui-button="true"]) svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .presetContextBar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .presetContextBar .toolbar {
+    width: 100%;
+  }
+
+  .editorStickyHeader,
+  .editorBlockHeader {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .projectSectionToolbar .toolbar {
+    justify-content: flex-start;
+  }
+
+  .dragHandle {
+    width: 36px;
+    height: 36px;
+  }
+
+  .editorSplitBlock,
+  .promptColumns,
+  .loraStageGrid,
+  .importPresetLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .bindingRow,
+  .promptBlockRow {
+    grid-template-columns: 1fr;
+  }
+
+  .bindingRow :where([data-demo-ui-field="true"]),
+  .promptBlockRow :where([data-demo-ui-button="true"]) {
+    width: 100%;
+  }
+}
+
+@media (max-width: 520px) {
+
+  .presetContextBar {
+    padding: 8px;
+  }
+}
+
+.promptBlockList {
+  display: grid;
+  gap: 10px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loraRow {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 2px;
+  border-top: 1px solid var(--demo-border);
+  transition: background-color 120ms ease;
+}
+
+.loraRow:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.loraRow:first-child {
+  border-top: 0;
+}
+
+.loraRow[data-enabled="false"] {
+  opacity: 0.55;
+}
+
+@media (max-width: 768px) {
+  .toolbar {
+    flex-wrap: wrap;
+  }
+}
+
+.showcasePage .dragHandle:where([data-demo-ui-button="true"]) {
+  height: 36px;
+  min-height: 36px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 580;
+  line-height: 1.2;
+}
+
+.showcasePage .dragHandle:where([data-demo-ui-button-icon-only="true"]) {
+  width: 36px;
+  min-width: 36px;
+  padding: 0;
+}
+
+.dragHandle:where([data-demo-ui-button="true"]),
+.toolbar :where([data-demo-ui-button="true"]) {
+  height: 36px;
+  min-height: 36px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 580;
+  line-height: 1.2;
+}
+
+.dragHandle:where([data-demo-ui-button-icon-only="true"]) {
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0;
+}

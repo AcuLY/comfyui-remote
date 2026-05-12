@@ -1,0 +1,630 @@
+@keyframes demoGradientShift {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.82;
+    transform: scale(1.05);
+  }
+}
+
+.sidebarCollapsed .brandTop > .toolbar {
+  display: none;
+}
+
+.page {
+  display: grid;
+  gap: 14px;
+}
+
+.pageHeader > .toolbar {
+  align-self: end;
+  justify-content: flex-end;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  min-width: 0;
+  max-width: 100%;
+  align-items: center;
+  gap: 6px;
+}
+
+.panelBody .presetLinkedRow,
+.panelBody .presetCascadeState,
+.panelBody .historyDiffRow {
+  border-width: 0 0 1px;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding-inline: 0;
+}
+
+.panelBody .presetLinkedRow:last-child,
+.panelBody .presetCascadeState:last-child,
+.panelBody .historyDiffRow:last-child {
+  border-bottom-color: transparent;
+}
+
+.icon {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+}
+
+@keyframes demoSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes demoToastIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes demoToastOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+}
+
+.currentRunHeader .icon {
+  width: 16px;
+  height: 16px;
+  display: block;
+  flex: 0 0 auto;
+  color: var(--demo-muted);
+}
+
+.queueSurfaceHeader > .toolbar :where([data-demo-ui-button="true"]) {
+  min-height: 34px;
+  flex: 0 0 auto;
+  gap: 5px;
+  border-radius: 8px;
+  font-size: 12px;
+  padding: 5px 10px;
+  white-space: nowrap;
+}
+
+.queueProjectHeader .icon {
+  width: 15px;
+  height: 15px;
+  color: var(--demo-muted);
+  transition: transform 140ms ease;
+}
+
+.queueRunRowSelectable > .toolbar {
+  justify-self: end;
+}
+
+.queueRunRowSelectable > .toolbar :where([data-demo-ui-button="true"]) {
+  min-height: 34px;
+  gap: 5px;
+  border-radius: 8px;
+  font-size: 12px;
+  padding: 5px 10px;
+  white-space: nowrap;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.projectFolderDraftRow > .icon {
+  flex: 0 0 auto;
+  color: var(--demo-amber);
+}
+
+.projectFolderOpen > .icon:first-child {
+  color: var(--demo-amber);
+}
+
+.projectFolderEmpty .icon {
+  width: 24px;
+  height: 24px;
+  color: var(--demo-muted);
+}
+
+.editorSurface {
+  display: grid;
+  gap: 10px;
+}
+
+.editorStickyHeader {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid var(--demo-border);
+  border-radius: var(--demo-radius);
+  background: var(--demo-topbar-bg);
+  padding: 8px 10px;
+}
+
+.editorNavHeader .toolbar {
+  justify-content: flex-end;
+}
+
+.editorIdentity {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.editorIdentity span {
+  color: var(--demo-green);
+  font-size: 10px;
+}
+
+.editorIdentity strong {
+  overflow: hidden;
+  color: var(--demo-text);
+  font-size: 13px;
+  font-weight: 560;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.editorIdentity em {
+  overflow: hidden;
+  color: var(--demo-muted);
+  font-size: 11px;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.editorBlock,
+.editorAside {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  border: 1px solid var(--demo-glass-border);
+  border-radius: var(--demo-radius);
+  background: var(--demo-panel);
+  padding: 12px;
+}
+
+.editorBlockHeader {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  border-bottom: 1px solid var(--demo-border);
+  padding-bottom: 9px;
+}
+
+.editorBlockHeader div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.editorBlockHeader strong,
+.editorAside > strong,
+.loraStage > strong {
+  color: var(--demo-text);
+  font-size: 13px;
+  font-weight: 560;
+}
+
+.editorBlockHeader span {
+  color: var(--demo-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.editorStatusStrip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  border-top: 1px solid var(--demo-border);
+  padding-top: 9px;
+}
+
+.editorStatusStrip span {
+  border: 1px solid var(--demo-border);
+  border-radius: 999px;
+  background: var(--demo-field-bg);
+  color: var(--demo-muted);
+  font-size: 10px;
+  padding: 4px 8px;
+}
+
+.editorAside {
+  align-content: start;
+}
+
+.historyDiffList {
+  display: grid;
+  gap: 8px;
+}
+
+.historyDiffRow {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.historyDiffRow strong {
+  overflow: hidden;
+  color: var(--demo-text);
+  font-size: 12px;
+  font-weight: 560;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.historyDiffRow span {
+  overflow: hidden;
+  color: var(--demo-muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.promptColumns,
+.loraStageGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.loraStage {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--demo-border);
+  border-radius: 7px;
+  background: var(--demo-field-bg);
+  padding: 9px;
+}
+
+.loraRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+  border-top: 1px solid var(--demo-border);
+  padding-top: 8px;
+}
+
+.loraRow span {
+  overflow: hidden;
+  color: var(--demo-text);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.loraRow em {
+  color: var(--demo-muted);
+  font-size: 10px;
+  font-style: normal;
+}
+
+.loraRow button {
+  border: 1px solid var(--demo-border);
+  border-radius: 6px;
+  background: var(--demo-field-bg);
+  color: var(--demo-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 10px;
+  padding: 5px 7px;
+}
+
+.loraRow button:hover {
+  border-color: var(--demo-glass-accent-border) !important;
+  color: var(--demo-green) !important;
+  outline: none;
+}
+
+.historyDiffRow {
+  border: 1px solid var(--demo-border);
+  border-radius: 7px;
+  background: var(--demo-field-bg);
+  padding: 8px;
+}
+
+.presetEditorShell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(230px, 300px);
+  gap: 12px;
+  align-items: start;
+}
+
+.presetVariantWorkbench {
+  display: grid;
+  grid-template-columns: minmax(170px, 220px) minmax(0, 1fr);
+  gap: 10px;
+  min-width: 0;
+}
+
+.presetVariantRail,
+.presetLinkedList {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  min-width: 0;
+}
+
+.presetVariantButton {
+  display: grid;
+  grid-template-columns: 14px 24px minmax(0, 1fr);
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  border: 1px solid var(--demo-border);
+  border-radius: 7px;
+  background: var(--demo-field-bg);
+  color: var(--demo-muted);
+  cursor: pointer;
+  font: inherit;
+  padding: 8px;
+  text-align: left;
+  transition: 150ms ease;
+}
+
+.presetVariantButton:hover,
+.presetVariantButton:focus-visible,
+.presetVariantButtonActive {
+  border-color: var(--demo-glass-accent-border);
+  background: var(--demo-glass-hover);
+  color: var(--demo-green);
+  outline: none;
+}
+
+.presetVariantButton span {
+  color: var(--demo-faint);
+  font-size: 10px;
+}
+
+.presetVariantButton strong,
+.presetLinkedRow strong,
+.presetCascadeState strong {
+  overflow: hidden;
+  color: var(--demo-text);
+  font-size: 12px;
+  font-weight: 560;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.presetVariantButton em,
+.presetLinkedRow span,
+.presetCascadeState span {
+  overflow: hidden;
+  color: var(--demo-muted);
+  font-size: 10px;
+  font-style: normal;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.presetVariantButton em {
+  grid-column: 3;
+}
+
+.presetVariantEditor {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.presetLinkedRow,
+.presetCascadeState {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  border: 1px solid var(--demo-border);
+  border-radius: 7px;
+  background: var(--demo-field-bg);
+  padding: 8px;
+}
+
+.presetLinkedRow > div,
+.presetCascadeState > div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+@keyframes demoSkeleton {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@media (max-width: 1180px) {
+
+  .presetEditorShell {
+    grid-template-columns: 1fr;
+  }
+
+}
+
+@media (min-width: 640px) and (max-width: 1023px) {
+
+  .sidebarCollapsed.sidebar .brandTop > .toolbar {
+    display: none;
+  }
+}
+
+@media (max-width: 639px) {
+
+  .pageHeader > .toolbar {
+    width: 100%;
+    max-width: 100%;
+    justify-content: flex-start;
+  }
+
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .queueSurfaceHeader > .toolbar {
+    width: auto;
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+    gap: 6px;
+    justify-content: flex-end;
+  }
+
+  .queueSurfaceHeader > .toolbar :where([data-demo-ui-button="true"]) {
+    font-size: 11px;
+  }
+
+  .queueRunRowSelectable .toolbar {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+  }
+
+  .queueRunRowSelectable .toolbar {
+    align-self: center;
+    justify-self: end;
+    margin-top: 0;
+  }
+
+  .queueRunRowSelectable .toolbar :where([data-demo-ui-button="true"]) {
+    min-height: 34px;
+    gap: 5px;
+    border-radius: 8px;
+    font-size: 11px;
+    padding: 5px 9px;
+    white-space: nowrap;
+  }
+
+  .reviewPageHeader > .toolbar {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: auto;
+    max-width: none;
+    flex-wrap: nowrap;
+    gap: 6px;
+    justify-content: flex-end;
+  }
+
+  .reviewPageHeader > .toolbar :where([data-demo-ui-button="true"]) {
+    width: 38px;
+    height: 38px;
+    min-height: 38px;
+    padding: 0;
+    gap: 0;
+    border-radius: 10px;
+    font-size: 0;
+  }
+
+  .reviewPageHeader > .toolbar :where([data-demo-ui-button="true"]) svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .presetContextBar .toolbar {
+    width: 100%;
+  }
+
+  .presetVariantWorkbench {
+    grid-template-columns: 1fr;
+  }
+
+  .presetVariantRail {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .presetVariantButton {
+    grid-template-columns: 12px 22px minmax(0, 1fr);
+    padding: 7px;
+  }
+
+  .presetLinkedRow,
+  .presetCascadeState {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .editorStickyHeader,
+  .editorBlockHeader {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .projectSectionToolbar .toolbar {
+    justify-content: flex-start;
+  }
+
+  .promptColumns,
+  .loraStageGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loraRow {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 2px;
+  border-top: 1px solid var(--demo-border);
+  transition: background-color 120ms ease;
+}
+
+.loraRow:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.loraRow:first-child {
+  border-top: 0;
+}
+
+.loraRow[data-enabled="false"] {
+  opacity: 0.55;
+}
+
+@media (max-width: 768px) {
+  .toolbar {
+    flex-wrap: wrap;
+  }
+}
+
+.toolbar :where([data-demo-ui-button="true"]) {
+  height: 36px;
+  min-height: 36px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 580;
+  line-height: 1.2;
+}

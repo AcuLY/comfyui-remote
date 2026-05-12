@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 import type { DemoData } from "../design-demo-data";
-import s from "../styles/showcase.module.css";
+import s from "./editor-page.showcase.module.css";
 import { LoraColumn } from "../section-editor-lora-column";
 import { HistoryDiffRow, LoraRow, type LoraRowData } from "../section-editor-lora-history";
 import { PresetBindingRow, PresetImportInline, type ImportCategory } from "../section-editor-presets";

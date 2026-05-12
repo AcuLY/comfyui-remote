@@ -4,7 +4,7 @@ import { useState } from "react";
 import { CheckSquare, ChevronRight, Folder, FolderInput, GripVertical, Pencil, Trash2, X } from "lucide-react";
 
 import type { DemoProject, DemoProjectFolder } from "../design-demo-data";
-import s from "../styles/projects.module.css";
+import s from "./project-folders.projects.module.css";
 import { Button } from "../ui/button";
 
 export function buildProjectFolderBreadcrumb(folders: DemoProjectFolder[], currentFolderId: string | null) {

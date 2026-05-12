@@ -1,0 +1,85 @@
+@keyframes demoGradientShift {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.82;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes demoSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes demoToastIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes demoToastOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+}
+
+@keyframes demoSkeleton {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.iconShowcaseCustom {
+  width: 48px;
+  height: 48px;
+  color: var(--demo-primary);
+}
+
+.iconShowcaseHeading {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--demo-text);
+}
+
+.iconShowcaseDescription {
+  margin: 0;
+  color: var(--demo-text-muted);
+}
+
+.iconShowcaseControlRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.iconShowcaseControlLabel {
+  min-width: 82px;
+  color: var(--demo-text-muted);
+  font-size: 14px;
+  font-weight: 700;
+}

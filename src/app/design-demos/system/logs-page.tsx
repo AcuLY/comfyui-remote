@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Search } from "lucide-react";
 
 import type { DemoData } from "../design-demo-data";
-import s from "../styles/shell.module.css";
+import s from "./logs-page.shell.module.css";
 import { Button } from "../ui/button";
 import { DemoTabs } from "../ui/demo-tabs";
 import { PageHeader } from "../ui/page-header";

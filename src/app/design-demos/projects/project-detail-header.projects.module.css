@@ -1,0 +1,318 @@
+.projectCommandBar {
+  -webkit-backdrop-filter: var(--demo-glass-blur);
+  backdrop-filter: var(--demo-glass-blur);
+}
+
+@keyframes demoGradientShift {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.82;
+    transform: scale(1.05);
+  }
+}
+
+.pageTitleBlock {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.projectDetailHeader {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  border-bottom: 1px solid var(--demo-border);
+  padding-bottom: 12px;
+}
+
+.projectHeaderTop {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.projectHeaderTop > * {
+  min-width: 0;
+}
+
+.projectHeaderTop > .pageTitleBlock {
+  flex: 1 1 320px;
+}
+
+.projectHeaderControls,
+.projectCommandSecondary {
+  display: flex;
+  min-width: 0;
+  max-width: 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.projectHeaderControls {
+  flex: 0 1 auto;
+}
+
+.projectTitleRow {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.projectTitleEdit {
+  min-height: 30px;
+  padding-inline: 9px;
+}
+
+.projectCommandBar {
+  display: flex;
+  flex-wrap: wrap;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-top: 1px solid color-mix(in srgb, var(--demo-border) 72%, transparent);
+  padding-top: 8px;
+}
+
+.projectRunCluster {
+  display: flex;
+  flex: 0 1 auto;
+  flex-wrap: nowrap;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  color: var(--demo-muted);
+  font-size: 10px;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.projectRunCluster > span {
+  flex: 0 0 auto;
+}
+
+.projectRunCluster .sectionRunBatchControl {
+  flex: 0 0 auto;
+  width: max-content;
+  max-width: 100%;
+}
+
+.projectRunButton {
+  height: 36px;
+  min-height: 36px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.projectCommandSecondary :where([data-demo-ui-button="true"]) {
+  min-height: 32px;
+  padding-inline: 8px;
+}
+
+.projectCommandSecondary :where([data-demo-ui-button="true"]):hover,
+.projectCommandSecondary :where([data-demo-ui-button="true"]):focus-visible {
+  border-color: var(--demo-border);
+  background: var(--demo-field-bg);
+  color: var(--demo-green);
+  box-shadow: none;
+}
+
+.projectCommandSecondary {
+  flex: 1 1 360px;
+  justify-content: flex-start;
+}
+
+.pageBackLink {
+  width: fit-content;
+  min-height: 28px;
+  margin-bottom: 2px;
+  padding: 4px 0;
+}
+
+.eyebrow {
+  color: var(--demo-green);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.pageTitle {
+  margin: 0;
+  color: var(--demo-text);
+  font-size: clamp(18px, 1.25vw, 21px);
+  font-weight: 560;
+  line-height: 1.14;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+
+.pageSubtitle {
+  max-width: 72ch;
+  color: var(--demo-muted);
+  font-size: 11px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+
+@keyframes demoSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes demoToastIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes demoToastOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+}
+
+.projectViewToggle {
+  flex: 0 0 auto;
+  margin-top: 0;
+}
+
+@keyframes demoSkeleton {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@media (min-width: 640px) and (max-width: 1023px) {
+
+  .projectHeaderTop {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .projectHeaderControls,
+  .projectCommandSecondary {
+    justify-content: flex-start;
+  }
+
+  .projectCommandBar {
+    align-items: center;
+    flex-direction: row;
+  }
+
+  .projectRunCluster {
+    flex-wrap: wrap;
+    white-space: normal;
+  }
+}
+
+@media (max-width: 639px) {
+
+  .projectDetailHeader .pageBackLink {
+    width: max-content;
+    max-width: 100%;
+    white-space: nowrap;
+  }
+
+  .projectHeaderTop {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .projectHeaderControls,
+  .projectCommandSecondary {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .projectHeaderControls .projectViewToggle {
+    flex: 1 1 auto;
+  }
+
+  .projectCommandBar {
+    align-items: center;
+    flex-direction: row;
+    gap: 8px;
+  }
+
+  .projectRunCluster {
+    display: flex;
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+    max-width: 100%;
+    white-space: nowrap;
+  }
+
+  .projectRunButton {
+    width: auto;
+    min-width: 104px;
+    flex: 0 0 auto;
+  }
+
+  .projectRunCluster > span {
+    display: none;
+    padding-left: 0;
+  }
+
+  .projectRunCluster .sectionRunBatchControl {
+    width: auto;
+    min-width: 0;
+    flex: 0 0 auto;
+  }
+
+  .projectCommandSecondary {
+    display: flex;
+    width: auto;
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+  }
+
+  .projectCommandSecondary :where([data-demo-ui-button="true"]) {
+    flex: 1 1 96px;
+  }
+
+  .reviewPageHeader > .pageTitleBlock {
+    padding-right: 92px;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.sectionRunBatchControl :where([data-demo-ui-segmented-item="true"]) {
+  min-height: 28px;
+  font-size: 11px;
+}

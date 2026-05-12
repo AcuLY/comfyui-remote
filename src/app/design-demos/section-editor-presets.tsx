@@ -7,7 +7,7 @@ import { Search, Trash2, Unlink } from "lucide-react";
 
 import { Button } from "./ui/button";
 import { SegmentedControl } from "./ui/segmented-control";
-import s from "./styles/section-editor.module.css";
+import s from "./section-editor-presets.section-editor.module.css";
 import { cx } from "./design-demo-utils";
 import { parseHue } from "./section-editor-shared";
 import { VariantSwitcher } from "./section-editor-controls";

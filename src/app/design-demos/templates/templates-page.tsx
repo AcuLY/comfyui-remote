@@ -5,9 +5,9 @@ import { Edit3, Layers3, Plus, Trash2 } from "lucide-react";
 
 import type { DemoData } from "../design-demo-data";
 import { demoHref } from "../design-demo-utils";
-import s from "../styles/library.module.css";
+import s from "./templates-page.library.module.css";
 import { Button } from "../ui/button";
-import { ButtonLink } from "../ui/button-link";
+import { ButtonLink } from "../ui/button";
 import { PageHeader } from "../ui/page-header";
 import { StatusBadge } from "../ui/status-badge";
 

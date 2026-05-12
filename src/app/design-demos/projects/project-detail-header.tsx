@@ -7,9 +7,9 @@ import { ArrowLeft, Download, Edit3, ImageIcon, Play, Rows3, Save } from "lucide
 import type { DemoProject } from "../design-demo-data";
 import { demoHref } from "../design-demo-utils";
 import type { ProjectCardView } from "../design-demo-utils";
-import s from "../styles/projects.module.css";
+import s from "./project-detail-header.projects.module.css";
 import { Button } from "../ui/button";
-import { ButtonLink } from "../ui/button-link";
+import { ButtonLink } from "../ui/button";
 import { SegmentedControl } from "../ui/segmented-control";
 
 const BATCH_SIZE_OPTIONS = [1, 2, 4, 8, 16];

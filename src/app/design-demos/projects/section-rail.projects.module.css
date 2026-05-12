@@ -1,0 +1,227 @@
+.railItem,
+.railHeading {
+  -webkit-backdrop-filter: var(--demo-glass-blur);
+  backdrop-filter: var(--demo-glass-blur);
+}
+
+@keyframes demoGradientShift {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.82;
+    transform: scale(1.05);
+  }
+}
+
+.small {
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.projectListCard > .small {
+  justify-self: end;
+  white-space: nowrap;
+}
+
+@keyframes demoSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes demoToastIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes demoToastOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+}
+
+@media (max-width: 900px) {
+
+  .projectListOpenArea > .small {
+    justify-self: start;
+  }
+}
+
+.projectSectionShell > .sectionRail {
+  max-height: calc(100vh - 210px);
+  min-height: 420px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+.sectionRail {
+  display: grid;
+  align-content: start;
+  gap: 5px;
+}
+
+.railItem {
+  display: grid;
+  gap: 2px;
+  border: 1px solid var(--demo-border);
+  border-radius: 7px;
+  background: var(--demo-glass-soft);
+  color: inherit;
+  padding: 7px 8px;
+  text-decoration: none;
+}
+
+.railHeading {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border: 1px solid var(--demo-border);
+  border-radius: var(--demo-radius);
+  background: var(--demo-topbar-bg);
+  color: var(--demo-muted);
+  padding: 6px 8px;
+}
+
+.railHeading > div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.railHeading strong {
+  color: var(--demo-text);
+  font-size: 12px;
+  font-weight: 540;
+}
+
+.railHeading span {
+  color: var(--demo-faint);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.railHeading :where([data-demo-ui-button="true"]) {
+  flex: 0 0 auto;
+  min-height: 28px;
+  padding-inline: 7px;
+}
+
+.railItem strong {
+  overflow: hidden;
+  color: var(--demo-text);
+  font-size: 12px;
+  font-weight: 520;
+  line-height: 1.32;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.railItem .small {
+  color: var(--demo-muted);
+  font-size: 11px;
+  font-weight: 520;
+}
+
+.railItemActive {
+  border-color: rgba(0, 217, 146, 0.62);
+  background: var(--demo-panel);
+  color: var(--demo-green);
+}
+
+@keyframes demoSkeleton {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@media (min-width: 640px) and (max-width: 1023px) {
+
+  .projectListCard > .small {
+    grid-column: 2;
+    justify-content: flex-start;
+    justify-self: start;
+  }
+
+  .railItem {
+    padding: 7px;
+  }
+
+  .railItem strong {
+    white-space: normal;
+  }
+}
+
+@media (max-width: 639px) {
+
+  .projectListCard > .small {
+    grid-column: 2;
+    justify-content: flex-start;
+    justify-self: start;
+  }
+
+  .projectSectionShell > .sectionRail {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .projectSectionShell > .sectionRail {
+    max-height: clamp(340px, calc(100vh - 220px - env(safe-area-inset-bottom)), 620px);
+    min-height: 260px;
+  }
+
+  .projectSectionShell > .sectionRail {
+    padding-bottom: calc(96px + env(safe-area-inset-bottom));
+  }
+
+  .sectionRail {
+    gap: 5px;
+  }
+
+  .railHeading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 1px;
+    padding: 7px;
+  }
+
+  .railItem {
+    padding: 8px 8px;
+  }
+
+  .railItem strong {
+    font-size: 11px;
+    white-space: normal;
+  }
+
+  .railItem .small {
+    font-size: 10px;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

@@ -6,7 +6,7 @@ import { CustomIconDemo } from "./icon-showcase/custom-icon-demo";
 import { ALL_ICONS } from "./icon-showcase/icon-data";
 import { GroupedIconList } from "./icon-showcase/icon-list";
 import { PageHeader } from "./ui/page-header";
-import s from "./styles/showcase.module.css";
+import s from "./icon-showcase-page.showcase.module.css";
 
 export function IconShowcasePage() {
   const [filter, setFilter] = useState("");

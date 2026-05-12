@@ -6,7 +6,7 @@ import { ChevronLeft, ChevronRight, Pencil, Check, ExternalLink, Play } from "lu
 
 import { Button } from "./ui/button";
 import { SegmentedControl } from "./ui/segmented-control";
-import s from "./styles/section-editor.module.css";
+import s from "./section-editor-header.section-editor.module.css";
 import { cx } from "./design-demo-utils";
 export type SaveStatus = "idle" | "saving" | "saved";
 

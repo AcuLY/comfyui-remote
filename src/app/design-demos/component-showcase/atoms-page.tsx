@@ -3,11 +3,12 @@
 import { useState } from "react";
 import { Activity, Check, FlaskConical, Plus, Settings, Star, Trash2 } from "lucide-react";
 
-import s from "../styles/showcase.module.css";
+import s from "./atoms-page.showcase.module.css";
 import { DimensionsReadout, SpecSection, SpecRow, StepperInput } from "../section-editor-controls";
 import { SectionNameEditor, SaveStatusPill } from "../section-editor-header";
 import { Button } from "../ui/button";
-import { ButtonLink } from "../ui/button-link";
+import { ButtonLink } from "../ui/button";
+import { Checkbox } from "../ui/checkbox";
 import { DemoTabs } from "../ui/demo-tabs";
 import { EmptyRows } from "../ui/empty-rows";
 import { Field } from "../ui/field";
@@ -19,7 +20,6 @@ import { StatusBadge } from "../ui/status-badge";
 import { Switch } from "../ui/switch";
 import { SwitchRow } from "../ui/switch-row";
 import { TextAreaField } from "../ui/text-area-field";
-import { ProjectSelectCheckbox } from "../projects/project-select-checkbox";
 import { ShowcaseItem } from "./showcase-item";
 
 export function ComponentShowcaseAtoms() {
@@ -78,18 +78,24 @@ export function ComponentShowcaseAtoms() {
         </div>
       </ShowcaseItem>
 
-      {/* 1.2 ProjectSelectCheckbox */}
-      <ShowcaseItem name="ProjectSelectCheckbox" desc="项目 / 小节列表专用 checkbox，不复用通用按钮">
+      {/* 1.2 Checkbox */}
+      <ShowcaseItem name="Checkbox" desc="列表 / 图片选择专用 checkbox，不复用通用按钮">
         <div className={s.showcaseRow}>
-          <ProjectSelectCheckbox
+          <Checkbox
             checked={projectSelected}
             label={projectSelected ? "取消选择项目：夏日人像合集" : "选择项目：夏日人像合集"}
-            onChange={() => setProjectSelected((value) => !value)}
+            onCheckedChange={setProjectSelected}
           />
-          <ProjectSelectCheckbox
+          <Checkbox
             checked={sectionSelected}
             label={sectionSelected ? "取消选择小节：肖像 - 女性角色" : "选择小节：肖像 - 女性角色"}
-            onChange={() => setSectionSelected((value) => !value)}
+            onCheckedChange={setSectionSelected}
+          />
+          <Checkbox
+            checked={sectionSelected}
+            label={sectionSelected ? "取消选择图片" : "选择图片"}
+            onCheckedChange={setSectionSelected}
+            variant="compact"
           />
         </div>
       </ShowcaseItem>

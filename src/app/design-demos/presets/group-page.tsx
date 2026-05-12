@@ -3,7 +3,7 @@
 import { GripVertical, Plus, Save, Search, Trash2 } from "lucide-react";
 
 import type { DemoData, DemoPresetGroup } from "../design-demo-data";
-import s from "../styles/library.module.css";
+import s from "./group-page.library.module.css";
 import { Button } from "../ui/button";
 import { EmptyPage } from "../ui/empty-page";
 import { Field } from "../ui/field";
@@ -55,7 +55,7 @@ export function PresetGroupPage({ data, group }: { data: DemoData; group: DemoPr
               </div>
               <Button tone="danger" icon={Trash2} feedback={{ tone: "warning", title: "删除预设组需要确认", detail: group.name }}>删除组</Button>
             </div>
-            <div className={s.fieldGrid}>
+            <div className={s.formGrid}>
               <Field label="名称" value={group.name} />
               <Field label="Slug" value={group.slug} />
               <SelectLike label="分类" value={category?.name ?? group.categoryId} />

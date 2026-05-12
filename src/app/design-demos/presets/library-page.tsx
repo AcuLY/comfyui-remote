@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ArrowLeft, ArrowRight, Check, CheckSquare, Edit3, FolderTree, GripVertical, Plus, Shuffle, Square, Trash2, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Edit3, FolderTree, GripVertical, Plus, Shuffle, Trash2, X } from "lucide-react";
 
 import type { DemoCategory, DemoData } from "../design-demo-data";
-import s from "../styles/library.module.css";
+import s from "./library-page.library.module.css";
 import { Button } from "../ui/button";
-import { ButtonLink } from "../ui/button-link";
+import { ButtonLink } from "../ui/button";
+import { Checkbox } from "../ui/checkbox";
 import { EmptyPage } from "../ui/empty-page";
 import { OperationStateStrip } from "../ui/operation-state-strip";
 import { PageHeader } from "../ui/page-header";
@@ -153,9 +154,12 @@ function PresetItemRows({
         const checked = selectedIds.has(item.id);
         return (
           <div className={cx(s.presetItemRow, checked && s.presetItemRowSelected)} key={item.id}>
-            <button className={s.presetItemCheck} type="button" onClick={() => onToggle(item.id)} aria-label={checked ? "取消选择" : "选择"}>
-              {checked ? <CheckSquare className={s.iconMd} /> : <Square className={s.iconMd} />}
-            </button>
+            <Checkbox
+              checked={checked}
+              label={checked ? `取消选择预制：${item.name}` : `选择预制：${item.name}`}
+              onCheckedChange={() => onToggle(item.id)}
+              variant="compact"
+            />
             <Link className={s.presetItemOpenArea} href={demoHref(item.href)}>
               <GripVertical className={s.categoryDragIcon} />
               <div className={s.presetItemMain}>

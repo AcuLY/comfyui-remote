@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
 
 import type { DemoRun } from "../design-demo-data";
 import type { findSection } from "../design-demo-utils";
-import s from "../styles/runs.module.css";
+import s from "./review-meta-card.runs.module.css";
 
 export function mergeExecutionMeta(run: DemoRun, section: NonNullable<ReturnType<typeof findSection>>) {
   const fallback: Record<string, unknown> = {

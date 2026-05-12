@@ -1,5 +1,5 @@
 import { Button } from "../ui/button";
-import s from "../styles/showcase.module.css";
+import s from "./custom-icon-demo.showcase.module.css";
 import local from "./icon-showcase.module.css";
 
 import { ComfyuiIcon, CUSTOM_ICONS, FlameIcon, HeartFilledIcon, HexagonIcon } from "./custom-icons";

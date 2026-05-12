@@ -1,0 +1,275 @@
+.shell {
+  --demo-font-cjk: "HarmonyOS Sans SC";
+  --demo-font-geist: "geistSans";
+  --demo-font-sans: var(--demo-font-geist), var(--demo-font-cjk), system-ui, sans-serif;
+  --demo-font-mono: var(--font-demo-ibm-plex-mono), "IBM Plex Mono", "Cascadia Code", ui-monospace, monospace;
+  --demo-bg: #09090b;
+  --demo-panel: rgba(24, 24, 27, 0.72);
+  --demo-panel-2: rgba(39, 39, 42, 0.72);
+  --demo-panel-3: rgba(63, 63, 70, 0.58);
+  --demo-text: #fafafa;
+  --demo-muted: #a1a1aa;
+  --demo-faint: #71717a;
+  --demo-border: rgba(255, 255, 255, 0.08);
+  --demo-border-strong: rgba(255, 255, 255, 0.14);
+  --demo-green: #34d399;
+  --demo-green-soft: rgba(52, 211, 153, 0.12);
+  --demo-pink: #f9a8d4;
+  --demo-pink-soft: rgba(249, 168, 212, 0.12);
+  --demo-amber: #fbbf24;
+  --demo-amber-soft: rgba(251, 191, 36, 0.12);
+  --demo-sky: #93c5fd;
+  --demo-sky-soft: rgba(147, 197, 253, 0.12);
+  --demo-red: #fb565b;
+  --demo-red-soft: rgba(251, 86, 91, 0.12);
+  --demo-radius: 10px;
+  --demo-shadow: 0 20px 70px rgba(0, 0, 0, 0.28);
+  --demo-bg-wash: linear-gradient(180deg, rgba(39, 39, 42, 0.78), rgba(9, 9, 11, 0) 24rem);
+  --demo-bg-glow-a: radial-gradient(circle at 18% 28%, rgba(52, 211, 153, 0.16) 0%, transparent 52%);
+  --demo-bg-glow-b: radial-gradient(circle at 82% 70%, rgba(249, 168, 212, 0.13) 0%, transparent 54%);
+  --demo-bg-sheen: linear-gradient(135deg, rgba(255, 255, 255, 0.07), transparent 42%, rgba(255, 255, 255, 0.035));
+  --demo-sidebar-bg: rgba(24, 24, 27, 0.72);
+  --demo-topbar-bg: rgba(24, 24, 27, 0.66);
+  --demo-route-header-bg: rgba(24, 24, 27, 0.42);
+  --demo-route-header-bg-collapsed: rgba(24, 24, 27, 0.5);
+  --demo-mobile-nav-bg: rgba(24, 24, 27, 0.58);
+  --demo-surface: rgba(24, 24, 27, 0.76);
+  --demo-surface-soft: rgba(24, 24, 27, 0.52);
+  --demo-surface-hover: rgba(39, 39, 42, 0.82);
+  --demo-glass-bg: rgba(24, 24, 27, 0.7);
+  --demo-glass-soft: rgba(24, 24, 27, 0.52);
+  --demo-glass-hover: rgba(39, 39, 42, 0.82);
+  --demo-glass-border: rgba(255, 255, 255, 0.085);
+  --demo-glass-accent-border: rgba(52, 211, 153, 0.38);
+  --demo-glass-highlight: rgba(255, 255, 255, 0.1);
+  --demo-glass-blur: blur(20px) saturate(140%);
+  --demo-glass-shadow: 0 18px 58px rgba(0, 0, 0, 0.24);
+  --demo-glass-hover-shadow: 0 24px 70px rgba(0, 0, 0, 0.3);
+  --demo-accent-gradient: linear-gradient(135deg, rgba(52, 211, 153, 0.12), rgba(249, 168, 212, 0.1));
+  --demo-control-hover: rgba(255, 255, 255, 0.07);
+  --demo-selected: rgba(52, 211, 153, 0.12);
+  --demo-field-bg: rgba(255, 255, 255, 0.055);
+  --demo-code-bg: rgba(0, 0, 0, 0.24);
+  --demo-code-text: #d4d4d8;
+  --demo-inset-highlight: rgba(255, 255, 255, 0.04);
+  --demo-thumb-start: rgba(255, 255, 255, 0.08);
+  --demo-thumb-end: rgba(255, 255, 255, 0.015);
+  --demo-image-label-border: rgba(255, 255, 255, 0.14);
+  --demo-image-label-bg: rgba(0, 0, 0, 0.52);
+  --demo-image-label-text: #ffffff;
+  --demo-lightbox-image-bg: #050507;
+  --demo-lightbox-image-border: rgba(255, 255, 255, 0.16);
+  --demo-lightbox-panel-bg: #18181b;
+  min-height: 100vh;
+  position: relative;
+  isolation: isolate;
+  overflow-x: clip;
+  background: var(--demo-bg);
+  color: var(--demo-text);
+  font-family: var(--demo-font-sans);
+  text-wrap: pretty;
+}
+.shell::before,
+.shell::after {
+  content: "";
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+.shell::before {
+  background:
+    var(--demo-bg-wash),
+    var(--demo-bg-glow-a),
+    var(--demo-bg-glow-b);
+  animation: demoGradientShift 15s ease infinite;
+}
+.shell::after {
+  background: var(--demo-bg-sheen);
+  opacity: 0.75;
+}
+.shellLight {
+  --demo-bg: #f7f9fb;
+  --demo-panel: rgba(255, 255, 255, 0.72);
+  --demo-panel-2: rgba(238, 242, 245, 0.78);
+  --demo-panel-3: rgba(228, 234, 240, 0.74);
+  --demo-text: #16181d;
+  --demo-muted: #59616d;
+  --demo-faint: #7f8792;
+  --demo-border: rgba(19, 24, 32, 0.1);
+  --demo-border-strong: rgba(19, 24, 32, 0.18);
+  --demo-green: #047857;
+  --demo-green-soft: rgba(4, 120, 87, 0.1);
+  --demo-pink: #db2777;
+  --demo-pink-soft: rgba(244, 114, 182, 0.08);
+  --demo-amber: #a16207;
+  --demo-amber-soft: rgba(161, 98, 7, 0.1);
+  --demo-sky: #0369a1;
+  --demo-sky-soft: rgba(3, 105, 161, 0.1);
+  --demo-red: #be123c;
+  --demo-red-soft: rgba(190, 18, 60, 0.1);
+  --demo-shadow: 0 18px 60px rgba(15, 23, 42, 0.12);
+  --demo-bg-wash: linear-gradient(180deg, rgba(255, 255, 255, 0.9), transparent 24rem);
+  --demo-bg-glow-a: radial-gradient(circle at 20% 30%, rgba(16, 185, 129, 0.12) 0%, transparent 50%);
+  --demo-bg-glow-b: radial-gradient(circle at 80% 70%, rgba(244, 114, 182, 0.08) 0%, transparent 52%);
+  --demo-bg-sheen: linear-gradient(135deg, rgba(255, 255, 255, 0.6), transparent 42%, rgba(255, 255, 255, 0.28));
+  --demo-sidebar-bg: rgba(255, 255, 255, 0.68);
+  --demo-topbar-bg: rgba(247, 249, 251, 0.66);
+  --demo-route-header-bg: rgba(255, 255, 255, 0.42);
+  --demo-route-header-bg-collapsed: rgba(255, 255, 255, 0.52);
+  --demo-mobile-nav-bg: rgba(247, 249, 251, 0.58);
+  --demo-surface: rgba(255, 255, 255, 0.78);
+  --demo-surface-soft: rgba(255, 255, 255, 0.66);
+  --demo-surface-hover: rgba(255, 255, 255, 0.92);
+  --demo-glass-bg: rgba(255, 255, 255, 0.68);
+  --demo-glass-soft: rgba(255, 255, 255, 0.68);
+  --demo-glass-hover: rgba(255, 255, 255, 0.84);
+  --demo-glass-border: rgba(15, 23, 42, 0.075);
+  --demo-glass-accent-border: rgba(4, 120, 87, 0.24);
+  --demo-glass-highlight: rgba(255, 255, 255, 0.78);
+  --demo-glass-blur: blur(20px) saturate(140%);
+  --demo-glass-shadow: 0 18px 54px rgba(15, 23, 42, 0.1);
+  --demo-glass-hover-shadow: 0 22px 62px rgba(15, 23, 42, 0.13);
+  --demo-accent-gradient: linear-gradient(135deg, rgba(4, 120, 87, 0.06), rgba(244, 114, 182, 0.06));
+  --demo-control-hover: rgba(19, 24, 32, 0.055);
+  --demo-selected: rgba(4, 120, 87, 0.1);
+  --demo-field-bg: rgba(255, 255, 255, 0.72);
+  --demo-code-bg: rgba(15, 23, 42, 0.055);
+  --demo-code-text: #263241;
+  --demo-inset-highlight: rgba(255, 255, 255, 0.86);
+  --demo-thumb-start: rgba(15, 23, 42, 0.08);
+  --demo-thumb-end: rgba(15, 23, 42, 0.018);
+  --demo-image-label-border: rgba(255, 255, 255, 0.45);
+  --demo-image-label-bg: rgba(15, 23, 42, 0.58);
+  --demo-lightbox-panel-bg: #ffffff;
+  --demo-image-label-text: #ffffff;
+  --demo-lightbox-image-bg: #ffffff;
+  --demo-lightbox-image-border: rgba(15, 23, 42, 0.12);
+}
+.shell * {
+  box-sizing: border-box;
+}
+.shell :where(h1, h2, h3, h4, p, span, strong, em, a, button, label) {
+  min-width: 0;
+}
+.routeLoadingPanel {
+  -webkit-backdrop-filter: var(--demo-glass-blur);
+  backdrop-filter: var(--demo-glass-blur);
+}
+@keyframes demoGradientShift {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.82;
+    transform: scale(1.05);
+  }
+}
+.brandMark {
+  display: inline-flex;
+  width: 34px;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--demo-border-strong);
+  border-radius: var(--demo-radius);
+  background: var(--demo-glass-soft);
+  color: var(--demo-green);
+  box-shadow: 0 0 0 1px var(--demo-green-soft) inset;
+}
+@keyframes demoSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes demoToastIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes demoToastOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+}
+.routeLoading {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 24px;
+}
+.routeLoadingPanel {
+  display: grid;
+  width: min(520px, 100%);
+  gap: 12px;
+  border: 1px solid var(--demo-border);
+  border-radius: var(--demo-radius);
+  background: var(--demo-glass-bg);
+  box-shadow: var(--demo-glass-shadow);
+  padding: 18px;
+}
+.routeLoadingHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--demo-text);
+  font-size: 13px;
+  font-weight: 560;
+}
+.routeLoadingGrid {
+  display: grid;
+  gap: 8px;
+}
+.skeletonLine {
+  height: 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--demo-field-bg);
+  position: relative;
+}
+.skeletonLine::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, var(--demo-glass-highlight), transparent);
+  transform: translateX(-100%);
+  animation: demoSkeleton 1.2s ease-in-out infinite;
+}
+.skeletonLineShort {
+  width: 48%;
+}
+@keyframes demoSkeleton {
+  to {
+    transform: translateX(100%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .shell *,
+  .shell *::before,
+  .shell *::after {
+    scroll-behavior: auto !important;
+    transition: none !important;
+    animation: none !important;
+  }
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

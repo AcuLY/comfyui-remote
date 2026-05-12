@@ -3,9 +3,9 @@
 import { ArrowLeft, ArrowRight, Copy, Download, GripVertical, Plus, Rows3, Save, Trash2 } from "lucide-react";
 
 import type { DemoTemplate } from "../design-demo-data";
-import s from "../styles/library.module.css";
+import s from "./template-section-page.library.module.css";
 import { Button } from "../ui/button";
-import { ButtonLink } from "../ui/button-link";
+import { ButtonLink } from "../ui/button";
 import { EmptyPage } from "../ui/empty-page";
 import { Field } from "../ui/field";
 import { OperationStateStrip } from "../ui/operation-state-strip";
@@ -72,7 +72,7 @@ export function TemplateSectionPage({ template, sectionIndex }: { template: Demo
               </div>
               <StatusBadge status="ready" label="已保存" />
             </div>
-            <div className={s.fieldGrid}>
+            <div className={s.formGrid}>
               <Field label="小节名" value={section.name} />
               <SelectLike label="比例" value={section.aspectRatio} />
               <Field label="短边像素" value={768} />

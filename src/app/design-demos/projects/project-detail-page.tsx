@@ -5,7 +5,7 @@ import { useState } from "react";
 import type { DemoProject } from "../design-demo-data";
 import { cx, filterImages } from "../design-demo-utils";
 import type { ProjectCardView, ResultDemoFilter } from "../design-demo-utils";
-import s from "../styles/projects.module.css";
+import s from "./project-detail-page.projects.module.css";
 import { EmptyPage } from "../ui/empty-page";
 import { ProjectDetailHeader } from "./project-detail-header";
 import { ProjectResultsToolbar, ProjectSectionResultCard } from "./project-result-card";

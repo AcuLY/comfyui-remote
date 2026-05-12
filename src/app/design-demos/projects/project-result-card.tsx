@@ -5,7 +5,7 @@ import { Archive, Check, ChevronDown, ChevronUp, Eye, Square, Star, Trash2 } fro
 import type { DemoImage, DemoSection } from "../design-demo-data";
 import { sectionAnchorId } from "../design-demo-utils";
 import type { ResultDemoFilter } from "../design-demo-utils";
-import s from "../styles/projects.module.css";
+import s from "./project-result-card.projects.module.css";
 import { Button } from "../ui/button";
 import { DemoTabs } from "../ui/demo-tabs";
 import { ImageGrid } from "../ui/image-grid";

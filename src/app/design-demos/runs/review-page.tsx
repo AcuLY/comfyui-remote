@@ -6,13 +6,13 @@ import { Download, ExternalLink } from "lucide-react";
 import type { DemoData, DemoRun } from "../design-demo-data";
 import { filterImages, findProject, findSection, rawSectionId } from "../design-demo-utils";
 import type { ResultDemoFilter } from "../design-demo-utils";
-import { ButtonLink } from "../ui/button-link";
+import { ButtonLink } from "../ui/button";
 import { DemoTabs } from "../ui/demo-tabs";
 import { EmptyPage } from "../ui/empty-page";
 import { PageHeader } from "../ui/page-header";
 import { ReviewImageBoard } from "../ui/review-image-board";
 import { mergeExecutionMeta, ReviewMetaCard } from "./review-meta-card";
-import s from "../styles/runs.module.css";
+import s from "./review-page.runs.module.css";
 
 export function ReviewPage({ data, run }: { data: DemoData; run: DemoRun | undefined }) {
   const [filter, setFilter] = useState<ResultDemoFilter>("all");
@@ -33,7 +33,7 @@ export function ReviewPage({ data, run }: { data: DemoData; run: DemoRun | undef
         actions={
           <>
             {sectionPath ? <ButtonLink href={sectionPath} icon={ExternalLink}>跳转至小节</ButtonLink> : null}
-            <a className={s.button} href={`/api/runs/${run.id}/workflow`} download>
+            <a className={s.workflowDownloadLink} href={`/api/runs/${run.id}/workflow`} download>
               <Download className={s.iconMd} />
               下载工作流文件
             </a>

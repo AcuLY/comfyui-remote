@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import s from "../styles/showcase.module.css";
+import s from "./showcase-item.showcase.module.css";
 
 export function ShowcaseItem({ name, desc, children }: {
   name: string;

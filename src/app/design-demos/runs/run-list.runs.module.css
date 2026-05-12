@@ -1,0 +1,550 @@
+.queueSurface {
+  -webkit-backdrop-filter: var(--demo-glass-blur);
+  backdrop-filter: var(--demo-glass-blur);
+}
+
+@keyframes demoGradientShift {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.82;
+    transform: scale(1.05);
+  }
+}
+
+.sidebarCollapsed .brandTop > .toolbar {
+  display: none;
+}
+
+.pageHeader > .toolbar {
+  align-self: end;
+  justify-content: flex-end;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  min-width: 0;
+  max-width: 100%;
+  align-items: center;
+  gap: 6px;
+}
+
+.icon {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+}
+
+@keyframes demoSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes demoToastIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes demoToastOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+}
+
+.queueSurface {
+  display: grid;
+  gap: 0;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--demo-border);
+  border-radius: calc(var(--demo-radius) + 2px);
+  background: var(--demo-glass-bg);
+  box-shadow: none;
+}
+
+.currentRunHeader .icon {
+  width: 16px;
+  height: 16px;
+  display: block;
+  flex: 0 0 auto;
+  color: var(--demo-muted);
+}
+
+.queueSurfaceStack > .queueSurface {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.queueSurfaceHeader {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--demo-border);
+  padding: 12px 14px;
+}
+
+.queueSurfaceHeader div:first-child {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.queueSurfaceHeader span {
+  color: var(--demo-green);
+  font-size: 10px;
+  font-weight: 620;
+}
+
+.queueSurfaceHeader strong {
+  overflow: hidden;
+  color: var(--demo-text);
+  font-size: 13px;
+  font-weight: 560;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.queueSurfaceHeader em {
+  color: var(--demo-muted);
+  font-size: 11px;
+  font-style: normal;
+}
+
+.queueSurfaceHeader > .toolbar :where([data-demo-ui-button="true"]) {
+  min-height: 34px;
+  flex: 0 0 auto;
+  gap: 5px;
+  border-radius: 8px;
+  font-size: 12px;
+  padding: 5px 10px;
+  white-space: nowrap;
+}
+
+.queueRunList {
+  display: grid;
+  gap: 0;
+  min-width: 0;
+}
+
+.queueProjectGroup {
+  display: grid;
+  min-width: 0;
+  border-bottom: 1px solid var(--demo-border);
+}
+
+.queueProjectGroup:last-child {
+  border-bottom: 0;
+}
+
+.queueProjectHeader {
+  display: grid;
+  grid-template-columns: 18px minmax(140px, 0.42fr) minmax(180px, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  border: 0;
+  border-bottom: 1px solid var(--demo-border);
+  background: color-mix(in srgb, var(--demo-field-bg) 58%, transparent);
+  color: inherit;
+  cursor: pointer;
+  padding: 9px 14px;
+  text-align: left;
+  transition: background-color 140ms ease;
+}
+
+.queueProjectHeader:hover,
+.queueProjectHeader:focus-visible {
+  background: var(--demo-field-bg);
+  outline: none;
+}
+
+.queueProjectHeader .icon {
+  width: 15px;
+  height: 15px;
+  color: var(--demo-muted);
+  transition: transform 140ms ease;
+}
+
+.queueProjectChevronCollapsed {
+  transform: rotate(-90deg);
+}
+
+.queueProjectHeader span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--demo-text);
+  font-size: 12px;
+  font-weight: 580;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.queueProjectHeader em {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--demo-muted);
+  font-size: 10px;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.queueProjectRows {
+  display: grid;
+  min-width: 0;
+}
+
+.queueRunRow {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.72fr) minmax(220px, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  min-height: 68px;
+  border: 0;
+  border-bottom: 1px solid var(--demo-border);
+  background: transparent;
+  color: inherit;
+  padding: 10px 14px;
+  text-decoration: none;
+  transition:
+    background-color 140ms ease,
+    color 140ms ease;
+}
+
+.queueRunRow:hover,
+.queueRunRow:focus-visible {
+  background: var(--demo-field-bg);
+  outline: none;
+}
+
+.queueRunRow > .queueRunMeta,
+.queueRunRow > .status {
+  display: none;
+}
+
+.queueRunRowSelectable {
+  grid-template-columns: 28px minmax(180px, 1fr) auto;
+  cursor: pointer;
+}
+
+.queueRunRowSelectable:focus-visible {
+  background: var(--demo-field-bg);
+  outline: none;
+}
+
+.queueRunRowSelected {
+  background: var(--demo-selected);
+  box-shadow: 3px 0 0 var(--demo-green) inset;
+}
+
+.queueRunRowSelected .queueRowCheck {
+  border-color: var(--demo-glass-accent-border);
+  background: rgba(52, 211, 153, 0.16);
+  color: var(--demo-green);
+}
+
+.queueRunRow:last-child {
+  border-bottom: 0;
+}
+
+.queueProjectRows .queueRunRow:last-child {
+  border-bottom: 0;
+}
+
+.queueRunMain {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.queueRunMain strong {
+  overflow: hidden;
+  color: var(--demo-text);
+  font-size: 13px;
+  font-weight: 560;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.queueRunMain span {
+  overflow: hidden;
+  color: var(--demo-muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.queueRunMain .queueRunDate {
+  color: var(--demo-faint);
+}
+
+.queueRunMain .queueRunError {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+  border: 1px solid rgba(251, 86, 91, 0.26);
+  border-radius: 999px;
+  background: var(--demo-red-soft);
+  color: var(--demo-red);
+  font-size: 10px;
+  line-height: 1.25;
+  padding: 4px 8px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.queueRunErrorAction {
+  flex: 0 0 auto;
+}
+
+.queueRunErrorCopy {
+  min-height: 22px;
+  gap: 4px;
+  border-color: rgba(251, 86, 91, 0.2);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.46);
+  color: var(--demo-red);
+  font-size: 10px;
+  line-height: 1;
+  padding: 2px 7px;
+}
+
+.queueRunErrorCopy:hover,
+.queueRunErrorCopy:focus-visible {
+  border-color: rgba(251, 86, 91, 0.34);
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--demo-red);
+}
+
+.queueRunErrorCopy svg {
+  width: 12px;
+  height: 12px;
+}
+
+.queueRunRowSelectable > .toolbar {
+  justify-self: end;
+}
+
+.queueRunRowSelectable > .toolbar :where([data-demo-ui-button="true"]) {
+  min-height: 34px;
+  gap: 5px;
+  border-radius: 8px;
+  font-size: 12px;
+  padding: 5px 10px;
+  white-space: nowrap;
+}
+
+.projectFolderDraftRow > .icon {
+  flex: 0 0 auto;
+  color: var(--demo-amber);
+}
+
+.projectFolderOpen > .icon:first-child {
+  color: var(--demo-amber);
+}
+
+.projectFolderEmpty .icon {
+  width: 24px;
+  height: 24px;
+  color: var(--demo-muted);
+}
+
+.editorNavHeader .toolbar {
+  justify-content: flex-end;
+}
+
+@keyframes demoSkeleton {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+.empty {
+  display: grid;
+  place-items: center;
+  min-height: 160px;
+  border: 1px dashed var(--demo-border);
+  border-radius: var(--demo-radius);
+  background: var(--demo-panel);
+  color: var(--demo-muted);
+  text-align: center;
+  padding: 32px 24px;
+}
+
+@media (min-width: 640px) and (max-width: 1023px) {
+
+  .sidebarCollapsed.sidebar .brandTop > .toolbar {
+    display: none;
+  }
+}
+
+@media (max-width: 639px) {
+
+  .pageHeader > .toolbar {
+    width: 100%;
+    max-width: 100%;
+    justify-content: flex-start;
+  }
+
+  .queueSurfaceHeader {
+    align-items: center;
+    flex-direction: row;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  .queueSurfaceHeader > div:first-child {
+    flex: 1 1 auto;
+  }
+
+  .queueSurfaceHeader > .toolbar {
+    width: auto;
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+    gap: 6px;
+    justify-content: flex-end;
+  }
+
+  .queueSurfaceHeader > .toolbar :where([data-demo-ui-button="true"]) {
+    font-size: 11px;
+  }
+
+  .queueRunRow {
+    grid-template-columns: 1fr;
+    align-items: start;
+    gap: 10px;
+    min-height: 0;
+    padding: 12px;
+  }
+
+  .queueProjectHeader {
+    grid-template-columns: 18px minmax(0, 1fr);
+    gap: 7px;
+    padding: 9px 12px;
+  }
+
+  .queueProjectHeader em {
+    grid-column: 2;
+    white-space: normal;
+  }
+
+  .queueRunRowSelectable {
+    align-items: center;
+    grid-template-columns: 28px minmax(0, 1fr) auto;
+  }
+
+  .queueRunRowSelectable .queueRowCheck,
+  .queueRunRowSelectable .queueRunMain {
+    align-self: center;
+  }
+
+  .queueRunRowSelectable .toolbar {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+  }
+
+  .queueRunRowSelectable .toolbar {
+    align-self: center;
+    justify-self: end;
+    margin-top: 0;
+  }
+
+  .queueRunRowSelectable .toolbar :where([data-demo-ui-button="true"]) {
+    min-height: 34px;
+    gap: 5px;
+    border-radius: 8px;
+    font-size: 11px;
+    padding: 5px 9px;
+    white-space: nowrap;
+  }
+
+  .queueRunMain {
+    gap: 5px;
+  }
+
+  .queueRunMain strong,
+  .queueRunMain span {
+    line-height: 1.35;
+    white-space: normal;
+  }
+
+  .reviewPageHeader > .toolbar {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: auto;
+    max-width: none;
+    flex-wrap: nowrap;
+    gap: 6px;
+    justify-content: flex-end;
+  }
+
+  .reviewPageHeader > .toolbar :where([data-demo-ui-button="true"]) {
+    width: 38px;
+    height: 38px;
+    min-height: 38px;
+    padding: 0;
+    gap: 0;
+    border-radius: 10px;
+    font-size: 0;
+  }
+
+  .reviewPageHeader > .toolbar :where([data-demo-ui-button="true"]) svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .presetContextBar .toolbar {
+    width: 100%;
+  }
+
+  .projectSectionToolbar .toolbar {
+    justify-content: flex-start;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 768px) {
+  .toolbar {
+    flex-wrap: wrap;
+  }
+}
+
+.toolbar :where([data-demo-ui-button="true"]) {
+  height: 36px;
+  min-height: 36px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 580;
+  line-height: 1.2;
+}

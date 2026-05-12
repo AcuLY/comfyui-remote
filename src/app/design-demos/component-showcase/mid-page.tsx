@@ -3,13 +3,13 @@
 import { Check, Plus, Settings, Shuffle, Trash2, Wand2 } from "lucide-react";
 
 import type { DemoData } from "../design-demo-data";
-import s from "../styles/showcase.module.css";
+import s from "./mid-page.showcase.module.css";
 import { KSamplerCard } from "../section-editor-controls";
 import { CurrentRunningProgressCard } from "../runs/current-running-progress-card";
 import { QueueMetrics } from "../runs/queue-metrics";
 import type { DemoCurrentRun } from "../runs/types";
 import { Button } from "../ui/button";
-import { DemoFeedbackProvider } from "../ui/demo-feedback-provider";
+import { DemoFeedbackProvider } from "../ui/feedback";
 import { EmptyPage } from "../ui/empty-page";
 import { Field } from "../ui/field";
 import { PageHeader } from "../ui/page-header";

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArrowRight, History, Monitor } from "lucide-react";
 
 import type { DemoData } from "../design-demo-data";
-import s from "../styles/shell.module.css";
+import s from "./settings-page.shell.module.css";
 import { PageHeader } from "../ui/page-header";
 import { demoHref } from "../design-demo-utils";
 

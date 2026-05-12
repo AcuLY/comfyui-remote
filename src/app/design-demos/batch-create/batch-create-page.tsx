@@ -5,7 +5,7 @@ import { useState } from "react";
 import { ArrowLeft, FolderTree, Plus, Search, X } from "lucide-react";
 
 import type { DemoData, DemoProject } from "../design-demo-data";
-import s from "../styles/library.module.css";
+import s from "./batch-create-page.library.module.css";
 import { Button } from "../ui/button";
 import { EmptyPage } from "../ui/empty-page";
 import { PageHeader } from "../ui/page-header";

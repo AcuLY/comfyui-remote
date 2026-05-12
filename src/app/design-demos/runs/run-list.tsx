@@ -1,14 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRight, CheckSquare, ChevronDown, Copy, Square, X } from "lucide-react";
+import { ArrowRight, CheckSquare, ChevronDown, Copy, X } from "lucide-react";
 
 import type { DemoRun } from "../design-demo-data";
 import { cx } from "../design-demo-utils";
 import { Button } from "../ui/button";
+import { Checkbox } from "../ui/checkbox";
 import { groupCollapsedKey, groupRunsByProject } from "./queue-model";
 import type { QueueRunMode } from "./types";
-import s from "../styles/runs.module.css";
+import s from "./run-list.runs.module.css";
 import local from "./run-list.module.css";
 
 export function RunList({
@@ -123,9 +124,13 @@ export function RunList({
                           role="checkbox"
                           tabIndex={0}
                         >
-                          <span className={s.queueRowCheck} aria-hidden="true">
-                            {selected ? <CheckSquare className={s.icon} /> : <Square className={s.icon} />}
-                          </span>
+                          <Checkbox
+                            checked={selected}
+                            label={selected ? `取消选择任务：${run.sectionName}` : `选择任务：${run.sectionName}`}
+                            onCheckedChange={() => toggleRun(run.id)}
+                            stopPropagation
+                            variant="compact"
+                          />
                           <div className={s.queueRunMain}>
                             <strong>{run.sectionName}</strong>
                             <span>run {run.runIndex}</span>

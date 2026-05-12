@@ -3,7 +3,7 @@
 import { Check, Image as ImageIcon, Star, Trash2 } from "lucide-react";
 
 import { cx } from "../design-demo-utils";
-import s from "../styles/section-editor.module.css";
+import s from "./results-panel.section-editor.module.css";
 import { ImageListMedium } from "../ui/image-list-medium";
 import { ImageThumbMedium } from "../ui/image-thumb-medium";
 import type { SectionEditorModel } from "./use-section-editor-state";

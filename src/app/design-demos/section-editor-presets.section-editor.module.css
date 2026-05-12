@@ -1,0 +1,435 @@
+@keyframes demoGradientShift {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.82;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes demoSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes demoToastIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes demoToastOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+}
+
+@keyframes demoSkeleton {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.iconGhostBtn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--demo-muted);
+  text-decoration: none;
+  cursor: pointer;
+  transition: 140ms ease;
+}
+
+.iconGhostBtn:hover {
+  color: var(--demo-text);
+  background: var(--demo-glass-hover);
+  border-color: var(--demo-glass-border);
+}
+
+.iconGhostBtn[data-tone="danger"]:hover {
+  color: var(--demo-red);
+  background: var(--demo-red-soft);
+  border-color: transparent;
+}
+
+.iconGhostBtn[data-tone="warn"]:hover {
+  color: var(--demo-amber);
+  background: var(--demo-amber-soft);
+  border-color: transparent;
+}
+
+.iconGhostBtn:focus-visible,
+.importItem:focus-visible,
+.importSearch input:focus-visible {
+  outline: 2px solid var(--demo-green);
+  outline-offset: 2px;
+}
+
+.bindRow {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  padding: 12px 178px 12px 12px;
+  border: 1px solid var(--demo-glass-border);
+  border-radius: 12px;
+  background: var(--demo-field-bg);
+  box-shadow: none;
+  transition: background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease,
+    transform 150ms ease;
+}
+
+.bindRow:hover {
+  border-color: var(--demo-glass-accent-border);
+  background: var(--demo-glass-hover);
+  box-shadow: var(--demo-glass-hover-shadow);
+  transform: translateY(-1px);
+}
+
+.bindRowMain {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.bindCategory {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 620;
+  border: 1px solid var(--cat, var(--demo-glass-border));
+  color: var(--cat, var(--demo-text));
+  background: color-mix(in oklab, var(--cat, var(--demo-text)) 10%, transparent);
+  white-space: nowrap;
+}
+
+.bindNameWrap {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.bindName {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--demo-text);
+  line-height: 1.35;
+}
+
+.bindMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--demo-faint);
+}
+
+.bindMeta b {
+  color: var(--demo-muted);
+  font-weight: 540;
+}
+
+.bindGroupChip {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 540;
+  letter-spacing: 0.02em;
+}
+
+.bindGroupChip {
+  background: var(--demo-amber-soft);
+  color: var(--demo-amber);
+}
+
+.bindRowControls {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px;
+  border-radius: 999px;
+  background: var(--demo-glass-soft);
+  transform: translateY(-50%);
+}
+
+.importInline {
+  display: none;
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  transition: max-height 240ms ease, opacity 180ms ease, padding 200ms ease,
+    border-color 160ms ease;
+}
+
+.importInlineOpen {
+  display: block;
+  max-height: 540px;
+  opacity: 1;
+  padding: 14px;
+  border-color: var(--demo-glass-border);
+  background: var(--demo-glass-soft);
+  box-shadow: none;
+}
+
+.importHeader {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.importTabs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--demo-glass-border);
+  border-radius: 12px;
+  background: var(--demo-field-bg);
+}
+
+.importSearch {
+  flex: 1;
+  min-width: 180px;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.importSearch svg {
+  position: absolute;
+  left: 10px;
+  color: var(--demo-faint);
+  pointer-events: none;
+}
+
+.importSearch input {
+  width: 100%;
+  min-height: 34px;
+  padding: 7px 12px 7px 31px;
+  border: 1px solid var(--demo-glass-border);
+  border-radius: 10px;
+  background: var(--demo-field-bg);
+  color: var(--demo-text);
+  font: inherit;
+  font-size: 12px;
+  outline: none;
+}
+
+.importSearch input:focus {
+  border-color: var(--demo-glass-accent-border);
+  background: var(--demo-glass-hover);
+}
+
+.importBody {
+  margin-top: 10px;
+  padding-right: 2px;
+  max-height: 310px;
+  overflow-y: auto;
+  display: grid;
+  gap: 12px;
+}
+
+.importCatBlock {
+  display: grid;
+  gap: 6px;
+}
+
+.importCatHead {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 560;
+  color: var(--demo-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.importCatDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+}
+
+.importGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 6px;
+}
+
+.importItem {
+  appearance: none;
+  display: grid;
+  gap: 4px;
+  min-height: 58px;
+  padding: 10px 12px;
+  border: 1px solid var(--demo-glass-border);
+  border-radius: 11px;
+  background: var(--demo-field-bg);
+  color: var(--demo-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 var(--demo-inset-highlight);
+  transition: background-color 140ms ease, border-color 140ms ease, box-shadow 140ms ease,
+    transform 140ms ease;
+}
+
+.importItem:hover {
+  border-color: var(--demo-glass-accent-border);
+  background: var(--demo-glass-hover);
+  transform: translateY(-1px);
+}
+
+.importItemSel {
+  border-color: var(--demo-green);
+  background: var(--demo-green-soft);
+  box-shadow: 0 8px 18px rgba(4, 120, 87, 0.1);
+}
+
+.importItemTop {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 540;
+}
+
+.importItemBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--demo-amber-soft);
+  color: var(--demo-amber);
+  font-size: 9.5px;
+  font-weight: 560;
+}
+
+.importItemName {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.importItemMeta {
+  font-style: normal;
+  font-size: 10.5px;
+  color: var(--demo-faint);
+}
+
+.importEmpty {
+  padding: 18px;
+  border: 1px dashed var(--demo-border);
+  border-radius: 10px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--demo-muted);
+}
+
+.bindCategory {
+  min-height: 24px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  border-color: color-mix(in oklab, var(--cat, var(--demo-green)) 48%, var(--demo-glass-border));
+  background: color-mix(in oklab, var(--cat, var(--demo-green)) 11%, transparent);
+  font-size: 10.5px;
+  font-weight: 620;
+  line-height: 1.2;
+}
+
+:global([data-theme="light"]) .bindCategory {
+  border-color: color-mix(in oklab, var(--cat, var(--demo-green)) 42%, var(--demo-border));
+  background: color-mix(in oklab, var(--cat, var(--demo-green)) 16%, white);
+  color: color-mix(in oklab, var(--cat, var(--demo-green)) 68%, #17211d);
+}
+
+.bindGroupChip,
+.importItemBadge {
+  min-height: 20px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 560;
+  line-height: 1.2;
+}
+
+@media (max-width: 780px) {
+
+  .bindRow {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .bindRowControls {
+    justify-self: end;
+  }
+}
+
+.iconSm {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+}
+
+:where([data-demo-ui-button="true"]).iconGhostBtn {
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0;
+}
+
+.importTabs :where([data-demo-ui-segmented-item="true"]) {
+  min-height: 28px;
+  font-size: 11px;
+}

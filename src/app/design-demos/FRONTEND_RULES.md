@@ -26,7 +26,7 @@ Use these layers and keep ownership clear:
 1. `ui/`: reusable demo UI primitives.
 2. Feature folders such as `projects/`, `runs/`, `presets/`, `templates/`, `section-editor/`, `models/`, `system/`, and `component-showcase/`.
 3. Route entry files such as `project-pages.tsx` and `component-showcase-page.tsx`: public facades or composition only.
-4. `styles/*.module.css`: feature-owned CSS Modules. These modules are imported by the owning feature/page only.
+4. Colocated feature CSS Modules next to the owning feature/page. Route entry files should compose, not centralize style ownership.
 
 New reusable controls belong in `ui/`, not inside a feature page.
 
@@ -35,7 +35,7 @@ New reusable controls belong in `ui/`, not inside a feature page.
 Files in `src/app/design-demos/ui/` must be self-contained.
 
 - A UI primitive must not import legacy route-level style proxies.
-- A UI primitive should use a colocated or shared UI CSS Module, currently `ui.module.css`.
+- A UI primitive should live in `ui/<component>/` and use its own colocated CSS Module, or a deliberately shared subdomain module such as the image surface CSS.
 - A UI primitive must expose visual differences through props such as `tone`, `size`, `variant`, `shape`, `pressed`, or `disabled`.
 - A UI primitive must not require callers to pass external CSS to look correct.
 - `className` is allowed only for layout integration, not for changing the primitive's internal visual anatomy.
@@ -65,7 +65,7 @@ Feature components may own layout and local feature structure.
 ## CSS Module Rules
 
 - Use CSS Modules for new reusable component styles.
-- Keep module class names semantic: `.switchTrack`, `.buttonIconOnly`, `.imageThumbMedium`.
+- Keep module class names semantic and component-owned: `.track`, `.iconOnly`, `.imageThumbMedium`, `.projectListCard`.
 - Keep interactive states in the same module as the component: hover, focus-visible, disabled, selected, checked, pending.
 - Prefer stable dimensions for controls: buttons, switches, segmented items, thumbnails, toolbars, and rows should not resize when state changes.
 - Avoid nested card styling. Use rows, rails, panels, and continuous surfaces unless a real repeated card item is being shown.
@@ -121,5 +121,5 @@ The target state is:
 - `ui/` owns reusable demo primitives and their CSS Module styles.
 - Feature files own feature composition and layout only.
 - `component-showcase-page.tsx` is split into smaller showcase modules.
-- Feature styles are split into explicit CSS Modules under `styles/`.
+- Feature styles are split into explicit CSS Modules colocated with the owning feature/page.
 - Tailwind utilities are fully removed from demo code before the demo shell is officially enabled.

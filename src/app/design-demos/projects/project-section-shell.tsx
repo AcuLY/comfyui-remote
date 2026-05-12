@@ -6,7 +6,7 @@ import type * as React from "react";
 import type { DemoProject, DemoSection } from "../design-demo-data";
 import { sectionAnchorId } from "../design-demo-utils";
 import type { SectionNavMode } from "../design-demo-utils";
-import s from "../styles/projects.module.css";
+import s from "./project-section-shell.projects.module.css";
 import { SectionRail } from "./section-rail";
 
 export function ProjectSectionShell({

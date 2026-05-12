@@ -1,6 +1,6 @@
 "use client";
 
-import s from "../styles/section-editor.module.css";
+import s from "./lora-panel.section-editor.module.css";
 import { LoraColumn } from "../section-editor-lora-column";
 import type { SectionEditorModel } from "./use-section-editor-state";
 

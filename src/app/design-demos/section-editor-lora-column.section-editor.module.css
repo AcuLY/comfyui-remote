@@ -1,0 +1,164 @@
+@keyframes demoGradientShift {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.82;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes demoSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes demoToastIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes demoToastOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+}
+
+@keyframes demoSkeleton {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.addRow button:focus-visible {
+  outline: 2px solid var(--demo-green);
+  outline-offset: 2px;
+}
+
+.bindEmpty {
+  padding: 28px 22px;
+  border: 1px dashed var(--demo-border);
+  border-radius: 12px;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--demo-muted);
+  display: grid;
+  gap: 8px;
+  background: var(--demo-glass-soft);
+}
+
+.bindEmpty b {
+  color: var(--demo-text);
+  font-weight: 560;
+}
+
+.promptTabBody .addRow {
+  border-top: 0;
+  padding: 2px 0 0;
+}
+
+.loraColumn {
+  display: grid;
+  gap: 9px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.loraColumnHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 30px;
+  padding: 0 2px 2px;
+  border-bottom: 0;
+}
+
+.loraColumnHead h4 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 620;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--demo-muted);
+}
+
+.loraColumnHead span {
+  font-size: 11px;
+  color: var(--demo-muted);
+}
+
+.loraList {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-height: 0;
+}
+
+.loraColumn > .bindEmpty {
+  align-self: stretch;
+  min-height: 132px;
+}
+
+.addRow {
+  display: flex;
+  justify-content: center;
+  padding: 12px 0 2px;
+  border-top: 1px dashed var(--demo-border);
+  margin-top: 6px;
+}
+
+.addRow button {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 7px 15px;
+  border: 1px dashed var(--demo-glass-border);
+  border-radius: 10px;
+  background: var(--demo-field-bg);
+  color: var(--demo-muted);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: 140ms ease;
+}
+
+.addRow button:hover {
+  color: var(--demo-green);
+  border-color: var(--demo-green);
+  background: var(--demo-green-soft);
+}
+
+.loraColumn .addRow button {
+  width: 100%;
+  justify-content: center;
+}

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { GripVertical, Plus, Save, X } from "lucide-react";
 
 import type { DemoCategory, DemoData } from "../design-demo-data";
-import s from "../styles/library.module.css";
+import s from "./category-form-page.library.module.css";
 import { Button } from "../ui/button";
 import { EmptyPage } from "../ui/empty-page";
 import { Field } from "../ui/field";

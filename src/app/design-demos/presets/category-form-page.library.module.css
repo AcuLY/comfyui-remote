@@ -1,0 +1,308 @@
+.categoryFormSurface {
+  -webkit-backdrop-filter: var(--demo-glass-blur);
+  backdrop-filter: var(--demo-glass-blur);
+}
+
+@keyframes demoGradientShift {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.82;
+    transform: scale(1.05);
+  }
+}
+
+.page {
+  display: grid;
+  gap: 14px;
+}
+
+@keyframes demoSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes demoToastIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes demoToastOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+}
+
+.categoryDragIcon {
+  width: 12px;
+  height: 12px;
+  color: var(--demo-faint);
+}
+
+.categorySwatch {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.08);
+}
+
+.categoryEditor {
+  display: grid;
+  gap: 10px;
+  background: transparent;
+  padding: 0;
+}
+
+.categoryEditorHeader,
+.slotEditorHeader,
+.categoryEditorFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.categoryEditorHeader {
+  align-items: flex-start;
+}
+
+.categoryEditorHeader strong,
+.slotEditorHeader strong {
+  color: var(--demo-text);
+  font-size: 12px;
+  font-weight: 560;
+}
+
+.categoryEditorHeader span {
+  color: var(--demo-faint);
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.categoryTypeSwitch {
+  display: inline-flex;
+  width: fit-content;
+  gap: 3px;
+  border: 1px solid var(--demo-border);
+  border-radius: 7px;
+  background: var(--demo-field-bg);
+  padding: 3px;
+}
+
+.categoryTypeButton {
+  min-height: 24px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--demo-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 540;
+  padding: 4px 8px;
+}
+
+.categoryTypeButtonActive {
+  background: var(--demo-selected);
+  color: var(--demo-text);
+}
+
+.categoryTypeButton:disabled {
+  cursor: not-allowed;
+}
+
+.categoryEditorGrid {
+  display: grid;
+  gap: 8px;
+}
+
+.categoryEditor :where([data-demo-ui-field="true"]),
+.slotRow :where([data-demo-ui-field="true"]) {
+  gap: 5px;
+}
+
+.categoryEditor :where([data-demo-ui-field="true"]) label,
+.slotRow :where([data-demo-ui-field="true"]) label {
+  font-size: 10px;
+}
+
+.categoryEditor .input,
+.categoryEditor .select,
+.slotRow .input,
+.slotRow .select {
+  min-height: 32px;
+  border-radius: 7px;
+  font-size: 12px;
+  padding: 7px 9px;
+}
+
+.hueControl {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr) 34px;
+  align-items: center;
+  gap: 8px;
+  color: var(--demo-muted);
+  font-size: 10px;
+}
+
+.hueSlider {
+  width: 100%;
+  accent-color: var(--demo-green);
+}
+
+.slotEditor {
+  display: grid;
+  gap: 7px;
+  border: 1px solid var(--demo-border);
+  border-radius: 8px;
+  background: var(--demo-field-bg);
+  padding: 8px;
+}
+
+.slotEditorHeader button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  background: transparent;
+  color: var(--demo-green);
+  cursor: pointer;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 620;
+  padding: 0;
+}
+
+.slotRow {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr) minmax(80px, 0.74fr) 30px;
+  align-items: end;
+  gap: 6px;
+}
+
+.categoryEditorFooter {
+  align-items: center;
+}
+
+.categoryDangerZone {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.inlineNotice,
+.inlineToast {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  border: 1px solid var(--demo-border);
+  border-radius: 999px;
+  color: var(--demo-muted);
+  font-size: 10px;
+  padding: 4px 8px;
+}
+
+.inlineNoticeWarn {
+  border-color: rgba(251, 191, 36, 0.32);
+  background: var(--demo-amber-soft);
+  color: var(--demo-amber);
+}
+
+.inlineToast {
+  border-color: rgba(0, 217, 146, 0.3);
+  background: var(--demo-panel);
+  color: var(--demo-green);
+}
+
+.categoryFormLayout {
+  display: grid;
+  max-width: 960px;
+  grid-template-columns: 1fr;
+}
+
+.categoryFormSurface {
+  display: grid;
+  gap: 14px;
+  border: 1px solid var(--demo-glass-border);
+  border-radius: var(--demo-radius);
+  background: var(--demo-glass-bg);
+  box-shadow: var(--demo-glass-shadow);
+  padding: 14px;
+}
+
+.categoryFormLayout .categoryEditor {
+  padding: 0;
+}
+
+.categoryFormLayout .categoryEditorGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@keyframes demoSkeleton {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@media (max-width: 639px) {
+
+  .categoryTypeSwitch {
+    width: 100%;
+  }
+
+  .categoryTypeButton {
+    flex: 1;
+    padding-inline: 5px;
+  }
+
+  .categoryEditorFooter {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .slotRow {
+    grid-template-columns: 12px minmax(0, 1fr) 30px;
+  }
+
+  .slotRow :where([data-demo-ui-field="true"]):nth-of-type(2) {
+    grid-column: 2 / -1;
+  }
+
+  .categoryFormLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .categoryFormLayout .categoryEditorGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .categoryFormSurface {
+    padding: 12px;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

@@ -1,0 +1,296 @@
+@keyframes demoGradientShift {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.82;
+    transform: scale(1.05);
+  }
+}
+
+.page {
+  display: grid;
+  gap: 14px;
+}
+
+.projectListGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--demo-glass-border);
+  border-radius: var(--demo-radius);
+  background: var(--demo-glass-bg);
+  box-shadow: var(--demo-glass-shadow);
+}
+
+.icon {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+}
+
+@keyframes demoSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes demoToastIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes demoToastOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+}
+
+.currentRunHeader .icon {
+  width: 16px;
+  height: 16px;
+  display: block;
+  flex: 0 0 auto;
+  color: var(--demo-muted);
+}
+
+.queueProjectHeader .icon {
+  width: 15px;
+  height: 15px;
+  color: var(--demo-muted);
+  transition: transform 140ms ease;
+}
+
+.projectFolderWorkspace {
+  display: grid;
+  min-width: 0;
+  gap: 10px;
+  border: 1px solid var(--demo-glass-border);
+  border-radius: var(--demo-radius);
+  background: var(--demo-panel);
+  box-shadow: var(--demo-glass-shadow);
+  padding: 12px;
+}
+
+.projectFolderTopbar,
+.projectFolderDraftRow {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.projectFolderTopbar {
+  border-bottom: 1px solid var(--demo-border);
+  padding-bottom: 10px;
+}
+
+.projectFolderActions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 7px;
+}
+
+.projectFolderActions :where([data-demo-ui-button="true"]) {
+  min-height: 32px;
+  white-space: nowrap;
+}
+
+.projectFolderDraftRow {
+  justify-content: start;
+  border: 1px dashed rgba(251, 191, 36, 0.32);
+  border-radius: var(--demo-radius);
+  background: var(--demo-amber-soft);
+  padding: 8px 10px;
+}
+
+.projectFolderDraftRow > .icon {
+  flex: 0 0 auto;
+  color: var(--demo-amber);
+}
+
+.projectFolderDraftRow input {
+  min-width: 0;
+  flex: 1 1 220px;
+  border: 1px solid var(--demo-border);
+  border-radius: 8px;
+  background: var(--demo-field-bg);
+  color: var(--demo-text);
+  font: inherit;
+  font-size: 12px;
+  padding: 7px 9px;
+}
+
+.projectFolderDraftRow input:focus {
+  border-color: var(--demo-glass-accent-border);
+  outline: none;
+}
+
+.projectFolderSurface,
+.projectFolderGrid {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+}
+
+.projectFolderGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-bottom: 1px solid var(--demo-border);
+  padding-bottom: 10px;
+}
+
+.projectFolderOpen > .icon:first-child {
+  color: var(--demo-amber);
+}
+
+.projectFolderWorkspace .projectListGrid {
+  display: grid;
+  gap: 0;
+}
+
+.projectFolderWorkspace .projectListCard {
+  position: relative;
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  grid-template-areas: "controls content";
+  align-items: stretch;
+  gap: 10px;
+  border: 1px solid transparent;
+  border-bottom-color: var(--demo-border);
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  padding: 10px;
+  transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.projectFolderWorkspace .projectListCard:hover,
+.projectFolderWorkspace .projectListCard:focus-within {
+  border-color: var(--demo-glass-accent-border);
+  background: var(--demo-field-bg);
+}
+
+.projectFolderWorkspace .projectListCardSelected {
+  border-color: rgba(0, 217, 146, 0.34);
+  background: var(--demo-selected);
+  box-shadow: 0 0 0 1px rgba(0, 217, 146, 0.1) inset;
+}
+
+.projectFolderEmpty {
+  display: grid;
+  min-height: 180px;
+  place-items: center;
+  align-content: center;
+  gap: 6px;
+  border: 1px dashed var(--demo-border);
+  border-radius: var(--demo-radius);
+  color: var(--demo-faint);
+  padding: 24px;
+  text-align: center;
+}
+
+.projectFolderEmpty .icon {
+  width: 24px;
+  height: 24px;
+  color: var(--demo-muted);
+}
+
+.projectFolderEmpty strong {
+  color: var(--demo-text);
+  font-size: 13px;
+  font-weight: 620;
+}
+
+.projectFolderEmpty span {
+  max-width: 360px;
+  color: var(--demo-muted);
+  font-size: 11px;
+}
+
+@media (max-width: 900px) {
+  .projectFolderTopbar,
+  .projectFolderDraftRow {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .projectFolderActions {
+    flex-wrap: wrap;
+  }
+
+  .projectFolderGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 639px) {
+  .projectFolderWorkspace {
+    padding: 10px;
+  }
+
+  .projectFolderWorkspace .projectListCard {
+    grid-template-columns: 30px minmax(0, 1fr);
+    grid-template-areas: "controls content";
+  }
+}
+
+@keyframes demoSkeleton {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@media (max-width: 639px) {
+
+  .projectListGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.showcaseProjectListPreview.projectFolderWorkspace {
+  padding: 10px;
+}
+
+.showcaseProjectListPreview .projectListGrid {
+  gap: 10px;
+}
+
+.showcaseProjectListPreview.projectFolderWorkspace .projectListCard {
+  grid-template-columns: 30px minmax(0, 1fr);
+  grid-template-areas: "controls content";
+  gap: 10px;
+  border-color: var(--demo-border);
+  border-radius: 10px;
+}
+
+@media (max-width: 639px) {
+  .showcaseProjectListPreview.projectFolderWorkspace .projectListCard {
+    grid-template-columns: 30px minmax(0, 1fr);
+    grid-template-areas: "controls content";
+  }
+}

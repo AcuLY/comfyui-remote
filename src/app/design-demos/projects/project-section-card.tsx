@@ -6,7 +6,7 @@ import { Copy, GripVertical, Play, Trash2 } from "lucide-react";
 
 import type { DemoProject, DemoSection } from "../design-demo-data";
 import { cx, demoHref, rawSectionId, sectionAnchorId } from "../design-demo-utils";
-import s from "../styles/projects.module.css";
+import s from "./project-section-card.projects.module.css";
 import { Button } from "../ui/button";
 import { ImageListSmall } from "../ui/image-list-small";
 import { SegmentedControl } from "../ui/segmented-control";

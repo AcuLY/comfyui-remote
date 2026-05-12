@@ -48,7 +48,7 @@ import {
   sampleRouteInventory,
 } from "../design-demo-utils";
 import type { RouteIcon, RouteKey } from "../design-demo-utils";
-import s from "../styles/showcase.module.css";
+import s from "./headers-page.showcase.module.css";
 import { PageHeader, PageHeaderBack } from "../ui/page-header";
 import headerS from "./headers-showcase.module.css";
 

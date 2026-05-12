@@ -4,7 +4,7 @@ import { useState } from "react";
 import { GripVertical, History, Plus, Save, Search } from "lucide-react";
 
 import type { DemoData, DemoPreset } from "../design-demo-data";
-import s from "../styles/library.module.css";
+import s from "./preset-edit-page.library.module.css";
 import { Button } from "../ui/button";
 import { EmptyPage } from "../ui/empty-page";
 import { Field } from "../ui/field";
@@ -58,7 +58,7 @@ export function PresetEditPage({ data, preset }: { data: DemoData; preset: DemoP
               </div>
               <StatusBadge status="ready" label="已保存" />
             </div>
-            <div className={s.fieldGrid}>
+            <div className={s.formGrid}>
               <Field label="名称" value={preset.name} />
               <Field label="Slug" value={preset.slug} />
               <SelectLike label="分类" value={category?.name ?? preset.categoryId} />
@@ -93,7 +93,7 @@ export function PresetEditPage({ data, preset }: { data: DemoData; preset: DemoP
                 ))}
               </div>
               <div className={s.presetVariantEditor}>
-                <div className={s.fieldGrid}>
+                <div className={s.formGrid}>
                   <Field label="变体名称" value={activeVariant.name} />
                   <Field label="变体 Slug" value={activeVariant.slug} />
                 </div>

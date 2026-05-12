@@ -4,9 +4,9 @@ import { useState } from "react";
 import { Folder, FolderPlus, Plus, Save, X } from "lucide-react";
 
 import type { DemoData } from "../design-demo-data";
-import s from "../styles/projects.module.css";
+import s from "./project-list-page.projects.module.css";
 import { Button } from "../ui/button";
-import { ButtonLink } from "../ui/button-link";
+import { ButtonLink } from "../ui/button";
 import { PageHeader } from "../ui/page-header";
 import {
   ProjectBatchBar,

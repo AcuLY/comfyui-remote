@@ -1,0 +1,605 @@
+@keyframes demoGradientShift {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.82;
+    transform: scale(1.05);
+  }
+}
+
+.page {
+  display: grid;
+  gap: 14px;
+}
+
+.icon {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+}
+
+@keyframes demoSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes demoToastIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes demoToastOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+}
+
+.currentRunHeader .icon {
+  width: 16px;
+  height: 16px;
+  display: block;
+  flex: 0 0 auto;
+  color: var(--demo-muted);
+}
+
+.queueProjectHeader .icon {
+  width: 15px;
+  height: 15px;
+  color: var(--demo-muted);
+  transition: transform 140ms ease;
+}
+
+.projectFolderDraftRow > .icon {
+  flex: 0 0 auto;
+  color: var(--demo-amber);
+}
+
+.projectFolderOpen > .icon:first-child {
+  color: var(--demo-amber);
+}
+
+.projectFolderEmpty .icon {
+  width: 24px;
+  height: 24px;
+  color: var(--demo-muted);
+}
+
+.batchCreateWorkspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 420px);
+  gap: 12px;
+  align-items: start;
+}
+
+.batchBrowserPane,
+.batchConfigSection {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  border: 1px solid var(--demo-glass-border);
+  border-radius: var(--demo-radius);
+  background: var(--demo-panel);
+  padding: 12px;
+}
+
+.batchBrowserPane {
+  min-height: min(70vh, 760px);
+}
+
+.batchConfigPane {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.batchPaneHeader,
+.batchSectionHeader {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  border-bottom: 1px solid var(--demo-border);
+  padding-bottom: 9px;
+}
+
+.batchPaneHeader div,
+.batchSectionHeader div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.batchPaneHeader span,
+.batchSectionHeader span {
+  color: var(--demo-green);
+  font-size: 10px;
+  font-weight: 620;
+}
+
+.batchPaneHeader strong,
+.batchSectionHeader strong {
+  overflow: hidden;
+  color: var(--demo-text);
+  font-size: 13px;
+  font-weight: 560;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.batchSectionHeader em {
+  color: var(--demo-faint);
+  font-size: 10px;
+  font-style: normal;
+  white-space: nowrap;
+}
+
+.batchCategoryTabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.batchCategoryTabs button,
+.batchRatioGrid button {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--demo-border);
+  border-radius: 999px;
+  background: var(--demo-field-bg);
+  color: var(--demo-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 540;
+  padding: 6px 9px;
+}
+
+.batchCategoryTabs button:hover,
+.batchCategoryTabs button:focus-visible,
+.batchCategoryTabs button[aria-pressed="true"],
+.batchRatioGrid button:hover,
+.batchRatioGrid button:focus-visible,
+.batchRatioGrid button[aria-pressed="true"] {
+  border-color: var(--demo-glass-accent-border);
+  background: var(--demo-panel);
+  color: var(--demo-green);
+  outline: none;
+}
+
+.batchCategoryTabs button > span {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+}
+
+.batchCategoryTabs em {
+  color: var(--demo-faint);
+  font-size: 9px;
+  font-style: normal;
+}
+
+.batchSearchBox {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  border: 1px solid var(--demo-border);
+  border-radius: var(--demo-radius);
+  background: var(--demo-field-bg);
+  color: var(--demo-muted);
+  padding: 0 9px;
+}
+
+.batchSearchBox input {
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--demo-text);
+  font: inherit;
+  font-size: 12px;
+  outline: none;
+}
+
+.batchSearchBox input::placeholder {
+  color: var(--demo-faint);
+}
+
+.batchSearchBox button {
+  border: 0;
+  background: transparent;
+  color: var(--demo-muted);
+  cursor: pointer;
+  padding: 0;
+}
+
+.batchFolderBar {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid var(--demo-border);
+  border-radius: var(--demo-radius);
+  background: var(--demo-glass-soft);
+  padding: 8px;
+}
+
+.batchFolderBar > span {
+  flex: 0 0 auto;
+  color: var(--demo-faint);
+  font-size: 10px;
+}
+
+.batchBreadcrumbs {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.batchBreadcrumbs button {
+  min-height: 26px;
+  border: 1px solid var(--demo-border);
+  border-radius: 999px;
+  background: var(--demo-field-bg);
+  color: var(--demo-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 10px;
+  padding: 4px 8px;
+}
+
+.batchBreadcrumbs button:disabled {
+  color: var(--demo-text);
+  cursor: default;
+}
+
+.batchBrowserList,
+.batchImportList,
+.batchBindingList,
+.batchCreatedList {
+  display: grid;
+  gap: 7px;
+}
+
+.batchBrowserList {
+  max-height: min(60vh, 620px);
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.batchFolderRow,
+.batchCandidateRow,
+.batchImportRow,
+.batchBindingRow,
+.batchCreatedList a {
+  min-width: 0;
+  border: 1px solid var(--demo-border);
+  border-radius: var(--demo-radius);
+  background: var(--demo-field-bg);
+}
+
+.batchFolderRow {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  color: var(--demo-muted);
+  cursor: pointer;
+  font: inherit;
+  padding: 8px 10px;
+  text-align: left;
+}
+
+.batchFolderRow strong,
+.batchCreatedList strong {
+  overflow: hidden;
+  color: var(--demo-text);
+  font-size: 12px;
+  font-weight: 560;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.batchFolderRow span,
+.batchCreatedList em {
+  color: var(--demo-faint);
+  font-size: 10px;
+  font-style: normal;
+  white-space: nowrap;
+}
+
+.batchFolderRow:hover,
+.batchFolderRow:focus-visible {
+  border-color: var(--demo-glass-accent-border);
+  color: var(--demo-green);
+  outline: none;
+}
+
+.batchCandidateRow {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) minmax(86px, auto) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 62px;
+  padding: 8px 10px;
+}
+
+.batchCandidateRowSelected {
+  border-color: rgba(0, 217, 146, 0.34);
+  background: var(--demo-panel);
+  box-shadow: 0 0 0 1px rgba(0, 217, 146, 0.12) inset;
+}
+
+.batchCandidateMain,
+.batchCandidateMeta,
+.batchImportRow > div,
+.batchBindingRow > div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.batchCandidateMain strong,
+.batchImportRow strong,
+.batchBindingRow strong {
+  overflow: hidden;
+  color: var(--demo-text);
+  font-size: 12px;
+  font-weight: 560;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.batchCandidateMain span,
+.batchImportRow span,
+.batchBindingRow span {
+  overflow: hidden;
+  color: var(--demo-muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.batchCandidateMeta {
+  justify-items: end;
+  color: var(--demo-faint);
+  font-size: 10px;
+}
+
+.batchCandidateMeta em {
+  font-style: normal;
+  white-space: nowrap;
+}
+
+.batchCandidateActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.batchCandidateActions button {
+  min-height: 26px;
+  border: 1px solid var(--demo-border);
+  border-radius: 999px;
+  background: var(--demo-field-bg);
+  color: var(--demo-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 10px;
+  padding: 4px 8px;
+}
+
+.batchCandidateActions button:hover,
+.batchCandidateActions button:focus-visible {
+  border-color: var(--demo-glass-accent-border);
+  color: var(--demo-green);
+  outline: none;
+}
+
+.batchCandidateActions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
+}
+
+.batchEmptyState {
+  display: grid;
+  min-height: 74px;
+  place-items: center;
+  border: 1px dashed var(--demo-border);
+  border-radius: var(--demo-radius);
+  color: var(--demo-faint);
+  font-size: 11px;
+  line-height: 1.45;
+  padding: 14px;
+  text-align: center;
+}
+
+.batchImportRow,
+.batchBindingRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(112px, 150px) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+}
+
+.batchImportRow select,
+.batchBindingRow select,
+.batchFormGrid input {
+  width: 100%;
+  border: 1px solid var(--demo-border);
+  border-radius: 7px;
+  background: var(--demo-field-bg);
+  color: var(--demo-text);
+  font: inherit;
+  font-size: 11px;
+  outline: none;
+  padding: 7px 8px;
+}
+
+.batchFormGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 120px;
+  gap: 8px;
+}
+
+.batchFormGrid label {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+}
+
+.batchFormGrid span {
+  color: var(--demo-muted);
+  font-size: 10px;
+  font-weight: 560;
+}
+
+.batchRatioGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.batchCreatedList a {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  color: inherit;
+  padding: 7px 9px;
+  text-decoration: none;
+}
+
+.batchCreatedList a:hover,
+.batchCreatedList a:focus-visible {
+  border-color: var(--demo-glass-accent-border);
+  outline: none;
+}
+
+.batchCreatedList span {
+  color: var(--demo-green);
+  font-size: 10px;
+}
+
+.editorStatusStrip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  border-top: 1px solid var(--demo-border);
+  padding-top: 9px;
+}
+
+.editorStatusStrip span {
+  border: 1px solid var(--demo-border);
+  border-radius: 999px;
+  background: var(--demo-field-bg);
+  color: var(--demo-muted);
+  font-size: 10px;
+  padding: 4px 8px;
+}
+
+.inlineNotice {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  border: 1px solid var(--demo-border);
+  border-radius: 999px;
+  color: var(--demo-muted);
+  font-size: 10px;
+  padding: 4px 8px;
+}
+
+@keyframes demoSkeleton {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@media (max-width: 1180px) {
+
+  .batchCreateWorkspace {
+    grid-template-columns: 1fr;
+  }
+
+}
+
+@media (max-width: 639px) {
+
+  .batchBrowserPane {
+    min-height: 0;
+  }
+
+  .batchCategoryTabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+
+  .batchCategoryTabs button {
+    flex: 0 0 auto;
+  }
+
+  .batchFolderBar,
+  .batchPaneHeader,
+  .batchSectionHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .batchCandidateRow {
+    grid-template-columns: 16px minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .batchCandidateMeta,
+  .batchCandidateActions {
+    grid-column: 2;
+    justify-content: flex-start;
+    justify-items: start;
+  }
+
+  .batchImportRow,
+  .batchBindingRow,
+  .batchFormGrid,
+  .batchCreatedList a {
+    grid-template-columns: 1fr;
+  }
+
+  .batchImportRow .iconMiniButton {
+    justify-self: start;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

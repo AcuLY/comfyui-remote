@@ -1,7 +1,7 @@
 import { AlertTriangle, Clock3, ImageIcon } from "lucide-react";
 
 import { MetricCard } from "../ui/metric-card";
-import s from "../styles/runs.module.css";
+import s from "./queue-metrics.runs.module.css";
 
 export function QueueMetrics({
   pendingImages,

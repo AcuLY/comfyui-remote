@@ -5,11 +5,11 @@ import { GripVertical, Trash2 } from "lucide-react";
 
 import type { DemoProject } from "../design-demo-data";
 import { cx, demoHref } from "../design-demo-utils";
-import s from "../styles/projects.module.css";
+import s from "./project-list-item.projects.module.css";
 import { Button } from "../ui/button";
+import { Checkbox } from "../ui/checkbox";
 import { ImageListSmall } from "../ui/image-list-small";
 import { StatusBadge } from "../ui/status-badge";
-import { ProjectSelectCheckbox } from "./project-select-checkbox";
 
 export function ProjectListItem({
   project,
@@ -26,10 +26,10 @@ export function ProjectListItem({
   return (
     <article className={cx(s.projectListCard, selected && s.projectListCardSelected)}>
       <div className={s.projectItemControls}>
-        <ProjectSelectCheckbox
+        <Checkbox
           checked={selected}
           label={selected ? `取消选择项目：${project.title}` : `选择项目：${project.title}`}
-          onChange={onToggleSelected}
+          onCheckedChange={() => onToggleSelected()}
         />
         <Button className={s.projectDragHandle} tone="subtle" icon={GripVertical} iconOnly ariaLabel={`拖拽排序项目：${project.title}`} />
       </div>

@@ -12,17 +12,17 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `Button` |
-| 文件 | `ui/button.tsx` |
+| 文件 | `ui/button/index.tsx` |
 | Props | `children?`, `tone?: "default" \| "subtle" \| "primary" \| "pink" \| "danger"`, `icon?: RouteIcon`, `iconOnly?`, `ariaLabel?`, `onClick?`, `pressed?`, `pending?`, `disabled?`, `feedback?: DemoButtonFeedback`, `className?`, `size?: "sm" \| "md"` |
 | 功能 | 通用按钮，支持 5 种色调、图标、纯 icon、pending 旋转、点击后 toast 反馈 |
-| CSS 类 | `.button`, `.buttonSubtle`, `.buttonPrimary`, `.buttonPink`, `.buttonDanger`, `.buttonIcon`, `.buttonIconOnly`, `.buttonPending`, `.buttonSpinner` |
+| CSS 类 | `Button` 自有模块类，feature CSS 不直接选择内部类 |
 
 ### 1.2 ButtonLink
 
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `ButtonLink` |
-| 文件 | `ui/button-link.tsx` |
+| 文件 | `ui/button/index.tsx` |
 | Props | `href`, `children?`, `tone?`, `icon?`, `iconOnly?`, `ariaLabel?`, `className?` |
 | 功能 | 按钮外观的 `<Link>`，色调与纯 icon 模式同 Button |
 | CSS 类 | 同 Button |
@@ -32,7 +32,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `StatusBadge` |
-| 文件 | `ui/status-badge.tsx` |
+| 文件 | `ui/status-badge/index.tsx` |
 | Props | `status: string`, `label?: string` |
 | 功能 | 状态标签，根据 status 自动着色（green / amber / red / sky） |
 | CSS 类 | `.status`, `.statusGreen`, `.statusAmber`, `.statusRed`, `.statusSky` |
@@ -42,7 +42,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `Field` |
-| 文件 | `ui/field.tsx` |
+| 文件 | `ui/field/index.tsx` |
 | Props | `label`, `value: string \| number`, `disabled?` |
 | 功能 | 只读文本输入字段 |
 | CSS 类 | `.field`, `.input` |
@@ -306,7 +306,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `DemoFeedbackProvider` (内部: `DemoToastStack`) |
-| 文件 | `ui/demo-feedback-provider.tsx` |
+| 文件 | `ui/feedback/index.tsx` |
 | Props | `children` |
 | 功能 | Toast 提示的 Context Provider，最多 3 条 |
 | CSS 类 | `.toastStack`, `.toast`, `.toastSuccess`, `.toastWarning`, `.toastError` |

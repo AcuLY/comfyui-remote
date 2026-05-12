@@ -1,0 +1,434 @@
+@keyframes demoGradientShift {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.82;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes demoSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes demoToastIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes demoToastOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+}
+
+@keyframes demoSkeleton {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loraEditorShell {
+  container-type: inline-size;
+  min-width: 0;
+}
+
+.loraEditorRow {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  grid-template-areas: "handle main";
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--demo-glass-border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--demo-field-bg) 88%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--demo-inset-highlight) 54%, transparent);
+  transition: background-color 140ms ease, border-color 140ms ease, opacity 140ms ease,
+    transform 140ms ease, box-shadow 140ms ease;
+}
+
+.loraEditorRow:hover {
+  border-color: var(--demo-glass-accent-border);
+  background: var(--demo-glass-hover);
+  box-shadow: var(--demo-glass-hover-shadow);
+  transform: translateY(-1px);
+}
+
+.loraEditorRow[data-enabled="false"] {
+  opacity: 0.58;
+}
+
+.loraEditorHandle {
+  grid-area: handle;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--demo-faint);
+}
+
+.loraEditorHandle button {
+  cursor: grab;
+}
+
+.loraEditorHandle button:active {
+  cursor: grabbing;
+}
+
+.loraEditorMain {
+  grid-area: main;
+  display: grid;
+  grid-template-columns: minmax(260px, 0.8fr) minmax(180px, 1fr) auto;
+  grid-template-areas: "header file controls";
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.loraEditorHeader {
+  grid-area: header;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.loraEditorMeta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.loraEditorTitle {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: min(20ch, 100%);
+  overflow: hidden;
+  color: var(--demo-text);
+  font-size: 12px;
+  font-weight: 560;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.loraEditorTitle em {
+  color: var(--demo-faint);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 400;
+}
+
+.loraEditorCategory,
+.loraEditorKind,
+.loraEditorTrigger {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  min-height: 20px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 560;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.loraEditorCategory {
+  padding: 1px 8px;
+  border: 1px solid var(--cat, var(--demo-glass-border));
+  color: var(--cat, var(--demo-muted));
+  background: color-mix(in oklab, var(--cat, var(--demo-muted)) 10%, transparent);
+}
+
+.loraEditorKind {
+  padding: 1px 7px;
+  background: var(--demo-sky-soft);
+  color: var(--demo-sky);
+}
+
+.loraEditorTrigger {
+  gap: 3px;
+  padding: 1px 7px;
+  background: var(--demo-amber-soft);
+  color: var(--demo-amber);
+  cursor: help;
+}
+
+.loraEditorNotes {
+  min-width: 4ch;
+  overflow: hidden;
+  color: var(--demo-faint);
+  font-size: 11px;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.loraEditorFile {
+  grid-area: file;
+  min-width: 0;
+}
+
+.loraEditorControls {
+  grid-area: controls;
+  display: inline-flex;
+  align-items: center;
+  justify-self: end;
+  gap: 8px;
+  min-width: 0;
+}
+
+.loraEditorWeight {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.loraEditorTopActions {
+  display: inline-flex;
+  align-items: center;
+  justify-self: end;
+  gap: 4px;
+  min-width: 0;
+}
+
+@container (max-width: 760px) {
+
+  .loraEditorMain {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "header header"
+      "file file"
+      "controls controls";
+    gap: 7px 8px;
+  }
+
+  .loraEditorMeta {
+    flex-wrap: wrap;
+    overflow: visible;
+    row-gap: 4px;
+  }
+
+  .loraEditorTitle {
+    flex: 0 1 auto;
+    max-width: min(26ch, 100%);
+  }
+
+  .loraEditorControls {
+    justify-self: stretch;
+    justify-content: space-between;
+  }
+}
+
+@container (max-width: 360px) {
+
+  .loraEditorRow {
+    grid-template-columns: 24px minmax(0, 1fr);
+    gap: 8px;
+    padding: 9px;
+  }
+
+  .loraEditorMain {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "header"
+      "file"
+      "controls";
+  }
+
+  .loraEditorHeader {
+    align-items: start;
+  }
+
+  .loraEditorControls {
+    justify-content: space-between;
+  }
+}
+
+.loraEditorCategory {
+  min-height: 24px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  border-color: color-mix(in oklab, var(--cat, var(--demo-green)) 48%, var(--demo-glass-border));
+  background: color-mix(in oklab, var(--cat, var(--demo-green)) 11%, transparent);
+  font-size: 10.5px;
+  font-weight: 620;
+  line-height: 1.2;
+}
+
+:global([data-theme="light"]) .loraEditorCategory {
+  border-color: color-mix(in oklab, var(--cat, var(--demo-green)) 42%, var(--demo-border));
+  background: color-mix(in oklab, var(--cat, var(--demo-green)) 16%, white);
+  color: color-mix(in oklab, var(--cat, var(--demo-green)) 68%, #17211d);
+}
+
+.loraEditorKind,
+.loraEditorTrigger {
+  min-height: 20px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 560;
+  line-height: 1.2;
+}
+
+.diffRow {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 12px;
+  border: 1px solid var(--demo-glass-border);
+  border-radius: 12px;
+  background: var(--demo-field-bg);
+  box-shadow: inset 0 1px 0 var(--demo-inset-highlight);
+}
+
+.diffDim {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--demo-glass-soft);
+  font-size: 10.5px;
+  font-weight: 540;
+  color: var(--demo-muted);
+}
+
+.diffDim[data-dim="params"] {
+  background: var(--demo-sky-soft);
+  color: var(--demo-sky);
+}
+
+.diffDim[data-dim="preset"] {
+  background: var(--demo-amber-soft);
+  color: var(--demo-amber);
+}
+
+.diffDim[data-dim="prompt"] {
+  background: var(--demo-green-soft);
+  color: var(--demo-green);
+}
+
+.diffDim[data-dim="lora"] {
+  background: var(--demo-pink-soft);
+  color: var(--demo-pink);
+}
+
+.diffMain {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.diffTitle {
+  font-size: 12.5px;
+  font-weight: 620;
+  color: var(--demo-text);
+}
+
+.diffEmpty {
+  font-size: 11px;
+  color: var(--demo-faint);
+}
+
+.diffLine {
+  display: inline-flex;
+  width: 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+}
+
+.diffField {
+  color: var(--demo-muted);
+  font-size: 10.5px;
+}
+
+.diffPill {
+  padding: 1px 8px;
+  border-radius: 6px;
+  font-size: 10.5px;
+}
+
+.diffBefore {
+  background: var(--demo-pink-soft);
+  color: var(--demo-pink);
+  text-decoration: line-through;
+  text-decoration-color: rgba(249, 168, 212, 0.5);
+}
+
+.diffAfter {
+  background: var(--demo-green-soft);
+  color: var(--demo-green);
+}
+
+.diffArrow {
+  color: var(--demo-faint);
+}
+
+.diffTime {
+  font-size: 11px;
+  color: var(--demo-faint);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+@media (max-width: 520px) {
+  .diffRow {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 8px 10px;
+  }
+
+  .diffMain {
+    grid-column: 1 / -1;
+  }
+
+  .diffTime {
+    justify-self: end;
+  }
+
+  .diffLine {
+    flex-wrap: nowrap;
+  }
+
+  .diffField {
+    min-width: 4ch;
+  }
+}
+
+.iconXs {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 auto;
+}

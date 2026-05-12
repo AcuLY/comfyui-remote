@@ -10,7 +10,7 @@ import { ImageListSmall } from "./ui/image-list-small";
 import { ImagePreviewLarge } from "./ui/image-preview-large";
 import { ImageThumbMedium } from "./ui/image-thumb-medium";
 import { PageHeader } from "./ui/page-header";
-import s from "./styles/showcase.module.css";
+import s from "./image-list-components-page.showcase.module.css";
 
 function svgImageDataUri(label: string, hue: number) {
   const svg = `

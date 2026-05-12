@@ -1,0 +1,144 @@
+.floatingSelect,
+.floatingSelectMenu {
+  --ui-text: var(--demo-text, #1f2937);
+  --ui-muted: var(--demo-muted, #64748b);
+  --ui-faint: var(--demo-faint, #94a3b8);
+  --ui-border: var(--demo-border, rgba(15, 23, 42, 0.12));
+  --ui-border-strong: var(--demo-border-strong, rgba(15, 23, 42, 0.2));
+  --ui-glass-border: var(--demo-glass-border, rgba(15, 23, 42, 0.1));
+  --ui-glass-accent-border: var(--demo-glass-accent-border, rgba(20, 184, 166, 0.34));
+  --ui-panel: var(--demo-panel, rgba(255, 255, 255, 0.88));
+  --ui-panel-2: var(--demo-panel-2, rgba(248, 250, 252, 0.9));
+  --ui-field-bg: var(--demo-field-bg, rgba(255, 255, 255, 0.78));
+  --ui-glass-bg: var(--demo-glass-bg, rgba(255, 255, 255, 0.72));
+  --ui-glass-soft: var(--demo-glass-soft, rgba(255, 255, 255, 0.52));
+  --ui-glass-hover: var(--demo-glass-hover, rgba(255, 255, 255, 0.86));
+  --ui-control-hover: var(--demo-control-hover, rgba(15, 23, 42, 0.06));
+  --ui-surface-hover: var(--demo-surface-hover, rgba(15, 23, 42, 0.05));
+  --ui-selected: var(--demo-selected, rgba(20, 184, 166, 0.12));
+  --ui-green: var(--demo-green, #0f9f8e);
+  --ui-green-soft: var(--demo-green-soft, rgba(20, 184, 166, 0.13));
+  --ui-pink: var(--demo-pink, #db2777);
+  --ui-pink-soft: var(--demo-pink-soft, rgba(219, 39, 119, 0.1));
+  --ui-red: var(--demo-red, #dc2626);
+  --ui-red-soft: var(--demo-red-soft, rgba(220, 38, 38, 0.1));
+  --ui-amber: var(--demo-amber, #d97706);
+  --ui-amber-soft: var(--demo-amber-soft, rgba(217, 119, 6, 0.11));
+  --ui-sky: var(--demo-sky, #0284c7);
+  --ui-sky-soft: var(--demo-sky-soft, rgba(2, 132, 199, 0.1));
+  --ui-radius: var(--demo-radius, 8px);
+  --ui-inset-highlight: var(--demo-inset-highlight, rgba(255, 255, 255, 0.55));
+  --ui-glass-shadow: var(--demo-glass-shadow, 0 12px 34px rgba(15, 23, 42, 0.08));
+  --ui-glass-blur: var(--demo-glass-blur, blur(18px) saturate(150%));
+}
+
+.floatingSelect {
+  position: relative;
+  min-width: 0;
+}
+
+.floatingSelectBtn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  text-align: left;
+}
+
+.floatingSelectBtn svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  color: var(--ui-muted);
+}
+
+.floatingSelectValue {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.floatingSelectMenu {
+  position: fixed;
+  top: auto;
+  right: auto;
+  bottom: auto;
+  z-index: 10000;
+  display: grid;
+  gap: 2px;
+  overflow-y: auto;
+  border: 1px solid var(--ui-glass-border);
+  border-radius: 10px;
+  background: var(--ui-glass-bg);
+  box-shadow: 0 22px 44px rgba(0, 0, 0, 0.28);
+  padding: 4px;
+  overscroll-behavior: contain;
+  -webkit-backdrop-filter: var(--ui-glass-blur);
+  backdrop-filter: var(--ui-glass-blur);
+}
+
+.floatingSelectOption {
+  appearance: none;
+  display: grid;
+  gap: 1px;
+  width: 100%;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--ui-text);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  padding: 7px 10px;
+  text-align: left;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.floatingSelectOption em {
+  color: var(--ui-faint);
+  font-size: 10.5px;
+  font-style: normal;
+}
+
+.floatingSelectOption:hover {
+  background: var(--ui-glass-hover);
+}
+
+.floatingSelectOption[data-selected="true"] {
+  background: var(--ui-green-soft);
+  color: var(--ui-green);
+}
+
+@keyframes uiSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes uiToastIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes uiToastOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+}

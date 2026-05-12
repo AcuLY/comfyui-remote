@@ -3,7 +3,7 @@
 import { Save } from "lucide-react";
 
 import type { DemoProject } from "../design-demo-data";
-import s from "../styles/projects.module.css";
+import s from "./project-form-page.projects.module.css";
 import { Button } from "../ui/button";
 import { Field } from "../ui/field";
 import { PageHeader } from "../ui/page-header";
@@ -24,7 +24,7 @@ export function ProjectFormPage({ project, mode }: { project?: DemoProject; mode
       <div className={s.twoCol}>
         <Panel title="基础信息">
           <div className={s.contentGrid}>
-            <div className={s.fieldGrid}>
+            <div className={s.formGrid}>
               <Field label="项目名称" value={project?.title ?? "新图像项目"} />
               <Field label="Slug" value={project?.slug ?? "new-project"} />
               <SelectLike label="状态" value={project?.status ?? "draft"} />
@@ -36,7 +36,7 @@ export function ProjectFormPage({ project, mode }: { project?: DemoProject; mode
         <Panel title="默认运行参数">
           <div className={s.contentGrid}>
             <SwitchRow title="继承模板参数" subtitle="创建小节时自动填充模板默认值。" />
-            <div className={s.fieldGrid}>
+            <div className={s.formGrid}>
               <Field label="默认比例" value="2:3" />
               <Field label="短边像素" value={768} />
               <Field label="批量数" value={2} />

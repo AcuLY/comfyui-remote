@@ -6,9 +6,9 @@ import { Copy, GripVertical, Plus, Save, SlidersHorizontal, Trash2 } from "lucid
 import type { DemoTemplate } from "../design-demo-data";
 import { demoHref } from "../design-demo-utils";
 import type { DemoTemplateSection } from "../design-demo-utils";
-import s from "../styles/library.module.css";
+import s from "./template-form-page.library.module.css";
 import { Button } from "../ui/button";
-import { ButtonLink } from "../ui/button-link";
+import { ButtonLink } from "../ui/button";
 import { Field } from "../ui/field";
 import { OperationStateStrip } from "../ui/operation-state-strip";
 import { PageHeader } from "../ui/page-header";
@@ -28,7 +28,7 @@ export function TemplateFormPage({ template, mode }: { template?: DemoTemplate; 
           </div>
           <StatusBadge status={mode === "new" ? "queued" : "ready"} label={mode === "new" ? "草稿" : "已保存"} />
         </div>
-        <div className={s.fieldGrid}>
+        <div className={s.formGrid}>
           <Field label="名称" value={template?.name ?? "新项目模板"} />
           <TextAreaField label="描述" value={template?.description || "记录模板用途、默认预设绑定和生成流程。"} />
         </div>

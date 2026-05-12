@@ -7,7 +7,7 @@ import { ListChecks } from "lucide-react";
 import type { DemoProject, DemoSection } from "../design-demo-data";
 import { cx, demoHref, rawSectionId, sectionAnchorId } from "../design-demo-utils";
 import type { SectionNavMode } from "../design-demo-utils";
-import s from "../styles/projects.module.css";
+import s from "./section-rail.projects.module.css";
 import { Button } from "../ui/button";
 
 function sectionNavHref(project: DemoProject, section: DemoSection, mode: SectionNavMode) {

@@ -7,7 +7,7 @@ import type * as React from "react";
 import type { DemoTemplate } from "../design-demo-data";
 import { cx, demoHref } from "../design-demo-utils";
 import type { DemoTemplateSection, TemplateSectionMode } from "../design-demo-utils";
-import s from "../styles/library.module.css";
+import s from "./template-section-shell.library.module.css";
 
 export function templateSectionAnchorId(section: DemoTemplateSection) {
   return `template-section-${section.id}`;

@@ -21,9 +21,9 @@ import {
 } from "lucide-react";
 
 import type { DemoData } from "./design-demo-data";
-import s from "./styles/shell.module.css";
+import s from "./design-demo-shell.shell.module.css";
 import { Button } from "./ui/button";
-import { DemoFeedbackProvider } from "./ui/demo-feedback-provider";
+import { DemoFeedbackProvider } from "./ui/feedback";
 import { PageHeaderBack } from "./ui/page-header";
 import {
   DESIGN_DEMO_SFW_STORAGE_KEY,
@@ -169,7 +169,7 @@ function Sidebar({
       <div className={s.brand}>
         <div className={s.brandTop}>
           <Button
-            className={cx(s.button, s.iconButton, s.sidebarCollapseButton)}
+            className={cx(s.shellButton, s.iconButton, s.sidebarCollapseButton)}
             icon={Menu}
             iconOnly
             onClick={open ? onClose : onToggleCollapsed}
@@ -309,7 +309,7 @@ function MobileTopbar({
       </div>
       <div className={s.mobileTopbarTools}>
         <Button
-          className={cx(s.button, s.iconButton, s.mobileTopbarButton)}
+          className={cx(s.shellButton, s.iconButton, s.mobileTopbarButton)}
           icon={MoreHorizontal}
           iconOnly
           onClick={onToggleTools}
@@ -428,7 +428,7 @@ function DemoRouteHeader({
         </div>
         <div className={s.routeHeaderTools}>
           <Button
-            className={cx(s.button, s.iconButton, s.routeHeaderToolButton)}
+            className={cx(s.shellButton, s.iconButton, s.routeHeaderToolButton)}
             icon={MoreHorizontal}
             iconOnly
             onClick={onToggleTools}

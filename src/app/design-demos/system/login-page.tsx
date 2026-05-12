@@ -1,6 +1,6 @@
 import { Lock, X } from "lucide-react";
 
-import s from "../styles/shell.module.css";
+import s from "./login-page.shell.module.css";
 import { Button } from "../ui/button";
 import { Field } from "../ui/field";
 import { OperationStateStrip } from "../ui/operation-state-strip";

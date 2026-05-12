@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Archive, Grid3X3, Layers, Palette, PanelTop, Rows3, SlidersHorizontal } from "lucide-react";
 
 import type { DemoData } from "../design-demo-data";
-import s from "../styles/showcase.module.css";
+import s from "./index-page.showcase.module.css";
 import { PageHeader } from "../ui/page-header";
 import showcaseCss from "./component-showcase.module.css";
 

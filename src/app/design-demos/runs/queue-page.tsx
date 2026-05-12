@@ -17,7 +17,7 @@ import {
 } from "./queue-model";
 import { QueueMetrics } from "./queue-metrics";
 import { RunList } from "./run-list";
-import s from "../styles/runs.module.css";
+import s from "./queue-page.runs.module.css";
 
 export function QueuePage({ data }: { data: DemoData }) {
   const reviewRows = buildQueueReviewRows(data.runs);

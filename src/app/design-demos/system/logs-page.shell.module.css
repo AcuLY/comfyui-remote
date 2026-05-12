@@ -1,0 +1,203 @@
+@keyframes demoGradientShift {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.82;
+    transform: scale(1.05);
+  }
+}
+.page {
+  display: grid;
+  gap: 14px;
+}
+@keyframes demoSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes demoToastIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes demoToastOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+}
+.logWorkbench {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.logWorkbench {
+  overflow: hidden;
+  border: 1px solid var(--demo-glass-border);
+  border-radius: var(--demo-radius);
+  background: var(--demo-glass-bg);
+  box-shadow: var(--demo-glass-shadow);
+  padding: 10px;
+}
+.logFilterBar {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  border: 0;
+  border-bottom: 1px solid var(--demo-border);
+  border-radius: 0;
+  background: transparent;
+  padding: 0 0 10px;
+}
+.logModuleChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.logViewerPanel {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  border: 1px solid var(--demo-glass-border);
+  border-radius: var(--demo-radius);
+  background: var(--demo-panel);
+  box-shadow: none;
+  padding: 12px;
+}
+.logViewerPanel {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+}
+.logViewerHeader {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  border-bottom: 1px solid var(--demo-border);
+  padding-bottom: 9px;
+}
+.logViewerHeader > div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+.logViewerHeader strong {
+  overflow: hidden;
+  color: var(--demo-text);
+  font-size: 12px;
+  font-weight: 560;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.logViewerHeader span {
+  overflow: hidden;
+  color: var(--demo-muted);
+  font-size: 10px;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.logViewer {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  min-height: 260px;
+  max-height: min(56vh, 560px);
+  overflow: auto;
+  border: 1px solid var(--demo-border);
+  border-radius: 7px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 120px),
+    rgba(8, 12, 12, 0.92);
+  padding: 10px;
+  scrollbar-width: thin;
+}
+.logLine {
+  display: grid;
+  grid-template-columns: 54px 44px 82px minmax(0, 1fr);
+  gap: 8px;
+  min-width: 0;
+  color: var(--demo-muted);
+  font-family: var(--demo-font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.logLine span {
+  color: rgba(206, 216, 214, 0.58);
+}
+.logLine em {
+  color: var(--demo-green);
+  font-style: normal;
+  text-transform: uppercase;
+}
+.logLine strong {
+  overflow: hidden;
+  color: rgba(180, 197, 193, 0.72);
+  font-weight: 520;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.logLine code {
+  overflow: hidden;
+  color: rgba(235, 245, 242, 0.9);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.logLineWarn em {
+  color: #e3b96c;
+}
+.logLineError em {
+  color: var(--demo-red);
+}
+.logEmpty {
+  display: grid;
+  min-height: 180px;
+  place-items: center;
+  color: var(--demo-faint);
+  font-size: 12px;
+}
+@keyframes demoSkeleton {
+  to {
+    transform: translateX(100%);
+  }
+}
+@media (max-width: 639px) {
+
+  .logViewerHeader {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .logLine {
+    grid-template-columns: 46px 38px minmax(52px, 70px) minmax(0, 1fr);
+    gap: 6px;
+    font-size: 10px;
+  }
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.logModuleChips :where([data-demo-ui-segmented-item="true"]) {
+  min-height: 28px;
+  font-size: 11px;
+}

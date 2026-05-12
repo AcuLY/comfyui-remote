@@ -1,0 +1,233 @@
+@keyframes demoGradientShift {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.82;
+    transform: scale(1.05);
+  }
+}
+
+.page {
+  display: grid;
+  gap: 14px;
+}
+
+.panelBody .sortRuleRow {
+  border-width: 0 0 1px;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding-inline: 0;
+}
+
+.panelBody .sortRuleRow:last-child {
+  border-bottom-color: transparent;
+}
+
+.icon {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+}
+
+@keyframes demoSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes demoToastIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes demoToastOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+}
+
+.currentRunHeader .icon {
+  width: 16px;
+  height: 16px;
+  display: block;
+  flex: 0 0 auto;
+  color: var(--demo-muted);
+}
+
+.queueProjectHeader .icon {
+  width: 15px;
+  height: 15px;
+  color: var(--demo-muted);
+  transition: transform 140ms ease;
+}
+
+.projectFolderDraftRow > .icon {
+  flex: 0 0 auto;
+  color: var(--demo-amber);
+}
+
+.projectFolderOpen > .icon:first-child {
+  color: var(--demo-amber);
+}
+
+.projectFolderEmpty .icon {
+  width: 24px;
+  height: 24px;
+  color: var(--demo-muted);
+}
+
+.sortRuleList {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  min-width: 0;
+}
+
+.sortRuleHeader strong,
+.sortRuleRow strong {
+  overflow: hidden;
+  color: var(--demo-text);
+  font-size: 12px;
+  font-weight: 560;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sortRuleHeader span,
+.sortRuleRow em,
+.sortRuleFooter span {
+  overflow: hidden;
+  color: var(--demo-muted);
+  font-size: 10px;
+  font-style: normal;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sortRuleHeader > div,
+.sortRuleRow > div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.sortRuleRow > span {
+  color: var(--demo-faint);
+  font-size: 10px;
+}
+
+.sortRulesGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+
+.sortRulePanel {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  border: 1px solid var(--demo-glass-border);
+  border-radius: var(--demo-radius);
+  background: var(--demo-panel);
+  box-shadow: none;
+  padding: 12px;
+}
+
+.sortRuleHeader,
+.sortRuleFooter {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.sortRuleHeader {
+  border-bottom: 1px solid var(--demo-border);
+  padding-bottom: 9px;
+}
+
+.sortRuleFooter {
+  align-items: center;
+  border-top: 1px solid var(--demo-border);
+  padding-top: 9px;
+}
+
+.sortRuleRow {
+  display: grid;
+  grid-template-columns: 14px 26px 10px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  border: 1px solid var(--demo-border);
+  border-radius: 7px;
+  background: var(--demo-field-bg);
+  padding: 8px;
+}
+
+.sortRuleRow i {
+  display: block;
+  width: 8px;
+  height: 24px;
+  border: 1px solid var(--demo-border);
+  border-radius: 999px;
+}
+
+@keyframes demoSkeleton {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@media (max-width: 1180px) {
+
+  .sortRulesGrid {
+    grid-template-columns: 1fr;
+  }
+
+}
+
+@media (max-width: 639px) {
+
+  .sortRuleHeader,
+  .sortRuleFooter {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .sortRulePanel {
+    padding: 10px;
+  }
+
+  .sortRuleRow {
+    grid-template-columns: 14px 22px 8px minmax(0, 1fr);
+    gap: 6px;
+    padding: 7px;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

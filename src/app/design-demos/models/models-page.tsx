@@ -9,7 +9,7 @@ import {
 import { Button } from "../ui/button";
 import { SegmentedControl } from "../ui/segmented-control";
 import { StatusBadge } from "../ui/status-badge";
-import styles from '../styles/models.module.css';
+import styles from './models-page.models.module.css';
 import { modelFiles } from "./model-fixtures";
 import type { BreadcrumbItem, FileItem } from "./model-types";
 

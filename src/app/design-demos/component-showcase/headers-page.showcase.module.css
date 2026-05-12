@@ -1,0 +1,94 @@
+@keyframes demoGradientShift {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.82;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes demoSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes demoToastIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes demoToastOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+}
+
+@keyframes demoSkeleton {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.showcasePage {
+  padding: 24px;
+  max-width: 1440px;
+  margin: 0 auto;
+}
+
+@media (max-width: 639px) {
+  .showcasePage {
+    padding: 18px 14px;
+  }
+}
+
+.showcasePage .projectBatchBar :where([data-demo-ui-button="true"]),
+.showcasePage .projectFolderBreadcrumbs :where([data-demo-ui-button="true"]),
+.showcasePage .projectFolderGrip:where([data-demo-ui-button="true"]),
+.showcasePage .projectFolderRowActions :where([data-demo-ui-button="true"]),
+.showcasePage .projectItemActions :where([data-demo-ui-button="true"]),
+.showcasePage .projectMoveMenu > :where([data-demo-ui-button="true"]),
+.showcasePage .projectSelectButton:where([data-demo-ui-button="true"]),
+.showcasePage .dragHandle:where([data-demo-ui-button="true"]),
+.showcasePage .sectionSelectButton:where([data-demo-ui-button="true"]) {
+  height: 36px;
+  min-height: 36px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 580;
+  line-height: 1.2;
+}
+
+.showcasePage .projectFolderGrip:where([data-demo-ui-button-icon-only="true"]),
+.showcasePage .projectFolderRowActions :where([data-demo-ui-button-icon-only="true"]),
+.showcasePage .projectItemActions :where([data-demo-ui-button-icon-only="true"]),
+.showcasePage .projectSelectButton:where([data-demo-ui-button-icon-only="true"]),
+.showcasePage .dragHandle:where([data-demo-ui-button-icon-only="true"]),
+.showcasePage .sectionSelectButton:where([data-demo-ui-button-icon-only="true"]) {
+  width: 36px;
+  min-width: 36px;
+  padding: 0;
+}

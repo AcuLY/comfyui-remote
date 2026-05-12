@@ -67,15 +67,7 @@ Follow-up:
 
 Status: done for the active code path.
 
-Current modules:
-
-- `styles/shell.module.css`
-- `styles/showcase.module.css`
-- `styles/runs.module.css`
-- `styles/projects.module.css`
-- `styles/library.module.css`
-- `styles/models.module.css`
-- `styles/section-editor.module.css`
+Current modules have been migrated out of the legacy shared styles folder and are colocated with their owning feature files.
 
 Ongoing rule:
 

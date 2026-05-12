@@ -1,0 +1,150 @@
+@keyframes demoGradientShift {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.82;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes demoSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes demoToastIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes demoToastOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+}
+
+@keyframes demoSkeleton {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.iconListContainer {
+  border: 1px solid var(--demo-border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--demo-panel);
+}
+
+.iconListCategory {
+  padding: 6px 16px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--demo-accent);
+  background: var(--demo-surface);
+  border-top: 1px solid var(--demo-border);
+  border-bottom: 1px solid var(--demo-border);
+}
+
+.iconListCategory:first-child {
+  border-top: none;
+}
+
+.iconListRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--demo-border);
+  transition: background 0.1s;
+}
+
+.iconListRow:last-child {
+  border-bottom: none;
+}
+
+.iconListRow:hover {
+  background: var(--demo-surface);
+}
+
+.iconListHeader {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--demo-muted);
+  background: var(--demo-surface);
+  border-bottom: 1px solid var(--demo-border);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.iconListColIcon {
+  flex: 0 0 32px;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--demo-text);
+}
+
+.iconListColName {
+  flex: 0 0 140px;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: var(--demo-font-mono);
+  color: var(--demo-text);
+}
+
+.iconListColDesc {
+  flex: 0 0 160px;
+  font-size: 12px;
+  color: var(--demo-muted);
+}
+
+.iconListColUsage {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.iconListTag {
+  display: inline-block;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-family: var(--demo-font-mono);
+  border-radius: 4px;
+  background: var(--demo-surface);
+  border: 1px solid var(--demo-border);
+  color: var(--demo-muted);
+  line-height: 1.5;
+  white-space: nowrap;
+}
