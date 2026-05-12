@@ -66,7 +66,7 @@ export function ProjectDetailHeader({
               onChange={setBatchSize}
               value={batchSize}
             />
-            <Button icon={Play} feedback={{ title: "整组运行已加入任务", detail: `${project.sectionCount} 个小节 · batch ${batchSize}` }}>整组运行</Button>
+            <Button className={s.projectRunButton} icon={Play} feedback={{ title: "整组运行已加入任务", detail: `${project.sectionCount} 个小节 · batch ${batchSize}` }}>整组运行</Button>
           </div>
         </div>
       ) : null}
