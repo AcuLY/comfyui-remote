@@ -250,6 +250,7 @@
 
 .currentRunSurface {
   display: grid;
+  container-type: inline-size;
   min-width: 0;
   overflow: hidden;
   border: 1px solid var(--demo-glass-border);
@@ -314,6 +315,10 @@
   padding: 13px 14px 14px;
 }
 
+.currentRunItem > * {
+  min-width: 0;
+}
+
 .currentRunTitleBlock {
   display: grid;
   align-content: center;
@@ -364,10 +369,12 @@
 
 .currentRunProgressTop strong {
   flex: 0 0 auto;
+  min-width: 4ch;
   color: var(--demo-green);
   font-family: var(--demo-font-mono);
   font-size: 11px;
   font-weight: 650;
+  text-align: right;
 }
 
 .currentRunProgressTrack {
@@ -395,6 +402,39 @@
   color: var(--demo-faint);
   font-family: var(--demo-font-mono);
   font-size: 10px;
+}
+
+@container (max-width: 860px) {
+  .currentRunItem {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 11px 12px 13px;
+  }
+
+  .currentRunTitleBlock {
+    gap: 3px;
+  }
+
+  .currentRunTitleBlock strong,
+  .currentRunTitleBlock span,
+  .currentRunProgressTop span {
+    white-space: normal;
+  }
+
+  .currentRunProgressBlock {
+    gap: 6px;
+  }
+
+  .currentRunMeta {
+    gap: 5px 9px;
+    font-size: 9px;
+  }
+}
+
+@container (max-width: 460px) {
+  .currentRunHeader > div {
+    flex-wrap: wrap;
+  }
 }
 
 .queueTabsBar {

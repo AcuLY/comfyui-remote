@@ -704,7 +704,7 @@
 }
 
 .stepper {
-  --stepper-btn-width: 44px;
+  --stepper-btn-width: 38px;
   --stepper-input-width: 58px;
   display: inline-flex;
   align-items: center;

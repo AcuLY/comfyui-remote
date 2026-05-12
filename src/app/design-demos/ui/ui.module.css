@@ -271,6 +271,7 @@
 }
 
 .toast {
+  --toast-bg: rgb(from var(--ui-panel) r g b / 0.94);
   display: grid;
   grid-template-columns: 16px minmax(0, 1fr) 30px;
   align-items: center;
@@ -278,9 +279,11 @@
   min-width: 0;
   border: 1px solid var(--ui-glass-accent-border);
   border-radius: var(--ui-radius);
-  background: var(--ui-glass-bg);
+  background: var(--toast-bg);
+  -webkit-backdrop-filter: var(--ui-glass-blur);
+  backdrop-filter: var(--ui-glass-blur);
   color: var(--ui-text);
-  box-shadow: var(--ui-glass-shadow);
+  box-shadow: 0 18px 46px rgba(15, 23, 42, 0.16);
   padding: 10px;
   pointer-events: auto;
   animation: uiToastIn 180ms ease-out both;
@@ -313,14 +316,17 @@
 
 .toastSuccess {
   border-color: var(--ui-glass-accent-border);
+  background: color-mix(in srgb, var(--toast-bg) 92%, var(--ui-green-soft));
 }
 
 .toastWarning {
   border-color: rgba(251, 191, 36, 0.35);
+  background: color-mix(in srgb, var(--toast-bg) 92%, var(--ui-amber-soft));
 }
 
 .toastError {
   border-color: rgba(251, 86, 91, 0.35);
+  background: color-mix(in srgb, var(--toast-bg) 92%, var(--ui-red-soft));
 }
 
 .toastCloseButton.button {
@@ -1022,9 +1028,8 @@
 
 .pageBackLink {
   width: fit-content;
-  min-height: 28px;
+  justify-self: start;
   margin-bottom: 2px;
-  padding: 4px 0;
 }
 
 .eyebrow {
