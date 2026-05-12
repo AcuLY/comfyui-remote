@@ -101,7 +101,7 @@ export function ProjectsPage({ data }: { data: DemoData }) {
             >
               保存
             </Button>
-            <Button className={s.iconMiniButton} tone="subtle" icon={X} iconOnly onClick={() => setIsCreatingFolder(false)} ariaLabel="取消新建文件夹" />
+            <Button tone="subtle" icon={X} iconOnly size="sm" onClick={() => setIsCreatingFolder(false)} ariaLabel="取消新建文件夹" />
           </div>
         ) : null}
 

@@ -331,7 +331,7 @@ function PresetCategorySidebar({
           <span>分类管理</span>
           <strong>{categories.length} 个分类</strong>
         </div>
-        <ButtonLink className={s.iconMiniButton} href="/presets/categories/new" icon={Plus} iconOnly ariaLabel="新建分类" tone="subtle" />
+        <ButtonLink href="/presets/categories/new" icon={Plus} iconOnly size="sm" ariaLabel="新建分类" tone="subtle" />
       </div>
       <div className={s.presetCategoryList}>
         {categories.map((category) => {

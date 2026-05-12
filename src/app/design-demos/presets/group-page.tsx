@@ -81,7 +81,7 @@ export function PresetGroupPage({ data, group }: { data: DemoData; group: DemoPr
                     <em>{member.categoryName} · {member.variant}</em>
                   </div>
                   <SelectLike label="变体" value={member.variant} />
-                  <Button className={s.iconMiniButton} tone="danger" icon={Trash2} iconOnly ariaLabel="移除成员" />
+                  <Button tone="danger" icon={Trash2} iconOnly size="sm" ariaLabel="移除成员" />
                 </div>
               ))}
             </div>

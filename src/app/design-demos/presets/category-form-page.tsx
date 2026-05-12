@@ -58,7 +58,7 @@ function PresetCategoryEditor({ category, categories }: { category: DemoCategory
               <GripVertical className={s.categoryDragIcon} />
               <SelectLike label="来源分类" value={slot.categoryName} />
               <Field label="槽位标签" value={slot.label} />
-              <Button className={s.iconMiniButton} tone="danger" icon={X} iconOnly ariaLabel="删除槽位" />
+              <Button tone="danger" icon={X} iconOnly size="sm" ariaLabel="删除槽位" />
             </div>
           ))}
         </div>

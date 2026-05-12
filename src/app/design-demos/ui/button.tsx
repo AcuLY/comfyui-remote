@@ -56,6 +56,7 @@ export function Button({
   return (
     <button
       type="button"
+      data-demo-ui-button="true"
       onClick={handleClick}
       aria-label={iconOnly ? label : undefined}
       aria-pressed={pressed}

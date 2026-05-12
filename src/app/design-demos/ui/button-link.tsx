@@ -32,6 +32,7 @@ export function ButtonLink({
   return (
     <Link
       href={demoHref(href)}
+      data-demo-ui-button="true"
       aria-label={iconOnly ? label : undefined}
       title={iconOnly ? label : undefined}
       className={cx(

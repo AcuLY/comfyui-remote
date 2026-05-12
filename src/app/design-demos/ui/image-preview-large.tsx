@@ -40,7 +40,7 @@ export function ImagePreviewLarge({
             <strong>{title ?? image.label}</strong>
             {meta ? <span>{meta}</span> : null}
           </div>
-          <Button className={s.iconMiniButton} tone="subtle" icon={X} iconOnly onClick={onClose} ariaLabel="关闭预览" />
+          <Button tone="subtle" icon={X} iconOnly size="sm" onClick={onClose} ariaLabel="关闭预览" />
         </div>
         <div className={s.lightboxImage}>
           <ImagePreviewFrame image={image} interactive key={image.id} priority />
