@@ -1,15 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import {
+  Archive,
+  ArrowLeft,
   Eye,
   EyeOff,
+  Grid3X3,
+  ImageIcon,
+  Layers,
   Menu,
   Moon,
   MoreHorizontal,
+  PanelTop,
+  Rows3,
+  SlidersHorizontal,
   Sun,
+  Tags,
 } from "lucide-react";
 
 import type { DemoData } from "./design-demo-data";
@@ -27,7 +36,97 @@ import {
   isNavActive,
   isSfwEnabledValue,
 } from "./design-demo-utils";
-import type { DemoTheme } from "./design-demo-utils";
+import type { DemoTheme, RouteIcon } from "./design-demo-utils";
+
+type RouteHeaderConfig = {
+  back?: { href: string; label: string };
+  eyebrow: string;
+  icon: RouteIcon;
+  meta: string;
+  subtitle: string;
+  title: string;
+};
+
+const COMPONENT_SHOWCASE_HEADERS: Record<string, RouteHeaderConfig> = {
+  "/component-showcase": {
+    eyebrow: "临时页面",
+    icon: Layers,
+    meta: "7 个分类",
+    subtitle: "选择分类查看各组件。调整浏览器窗口宽度查看响应式表现。",
+    title: "组件展示总览",
+  },
+  "/component-showcase-atoms": {
+    back: { href: "/component-showcase", label: "返回总览" },
+    eyebrow: "组件展示",
+    icon: Layers,
+    meta: "18 个组件",
+    subtitle: "基础组件，调整浏览器窗口宽度查看响应式表现。",
+    title: "原子 / 小组件",
+  },
+  "/component-showcase-mid": {
+    back: { href: "/component-showcase", label: "返回总览" },
+    eyebrow: "组件展示",
+    icon: Grid3X3,
+    meta: "8 个组件",
+    subtitle: "页面标题、面板、路由表和运行指标。",
+    title: "中组件",
+  },
+  "/component-showcase-images": {
+    back: { href: "/component-showcase", label: "返回总览" },
+    eyebrow: "组件展示",
+    icon: ImageIcon,
+    meta: "7 个组件",
+    subtitle: "图片缩略图、列表、宫格与 Lightbox。",
+    title: "图片组件",
+  },
+  "/component-showcase-editor": {
+    back: { href: "/component-showcase", label: "返回总览" },
+    eyebrow: "组件展示",
+    icon: SlidersHorizontal,
+    meta: "8 个组件",
+    subtitle: "小节编辑器专用组件。",
+    title: "Section Editor 组件",
+  },
+  "/component-showcase-projects": {
+    back: { href: "/component-showcase", label: "返回总览" },
+    eyebrow: "组件展示",
+    icon: Archive,
+    meta: "8 个组件",
+    subtitle: "项目列表页和详情页中的卡片、行和导航组件。",
+    title: "项目卡片和列表",
+  },
+  "/component-showcase-icons": {
+    back: { href: "/component-showcase", label: "返回总览" },
+    eyebrow: "组件展示",
+    icon: Tags,
+    meta: "57 个图标",
+    subtitle: "Lucide 图标全览与自定义 SVG 图标。",
+    title: "Icons",
+  },
+  "/component-showcase-headers": {
+    back: { href: "/component-showcase", label: "返回总览" },
+    eyebrow: "组件展示",
+    icon: PanelTop,
+    meta: "36 个页面",
+    subtitle: "固定顶部 header 的页面级设计稿。",
+    title: "Headers",
+  },
+};
+
+function getComponentShowcaseHeader(currentRoute: string) {
+  if (currentRoute === "/image-list-components") {
+    return {
+      back: { href: "/component-showcase", label: "返回总览" },
+      eyebrow: "临时页面",
+      icon: Rows3,
+      meta: "3 个检查项",
+      subtitle: "统一小图列表和中图列表的布局、溢出、选择与操作区。",
+      title: "图片列表组件检查",
+    } satisfies RouteHeaderConfig;
+  }
+
+  return COMPONENT_SHOWCASE_HEADERS[currentRoute] ?? null;
+}
 
 function Sidebar({
   collapsed,
@@ -258,6 +357,123 @@ function MobileTopbar({
   );
 }
 
+function RouteHeaderToolsMenu({
+  isDarkTheme,
+  onToggleSfwMode,
+  onToggleTheme,
+  sfwMode,
+}: {
+  isDarkTheme: boolean;
+  onToggleSfwMode: () => void;
+  onToggleTheme: () => void;
+  sfwMode: boolean;
+}) {
+  const ThemeIcon = isDarkTheme ? Sun : Moon;
+  const SfwIcon = sfwMode ? EyeOff : Eye;
+
+  return (
+    <div className={s.routeHeaderToolsMenu} role="menu" aria-label="显示设置">
+      <button
+        className={cx(s.routeHeaderToolsItem, isDarkTheme && s.routeHeaderToolsItemActive)}
+        type="button"
+        role="menuitemcheckbox"
+        aria-checked={isDarkTheme}
+        onClick={onToggleTheme}
+      >
+        <ThemeIcon className={s.iconMd} aria-hidden="true" />
+        <span>暗色模式</span>
+      </button>
+      <button
+        className={cx(s.routeHeaderToolsItem, sfwMode && s.routeHeaderToolsItemActive)}
+        type="button"
+        role="menuitemcheckbox"
+        aria-checked={sfwMode}
+        onClick={onToggleSfwMode}
+      >
+        <SfwIcon className={s.iconMd} aria-hidden="true" />
+        <span>SFW 模式</span>
+      </button>
+    </div>
+  );
+}
+
+function DemoRouteHeader({
+  collapsed,
+  config,
+  isDarkTheme,
+  menuOpen,
+  onOpenMenu,
+  onToggleSfwMode,
+  onToggleTheme,
+  onToggleTools,
+  sfwMode,
+  toolsOpen,
+}: {
+  collapsed: boolean;
+  config: RouteHeaderConfig;
+  isDarkTheme: boolean;
+  menuOpen: boolean;
+  onOpenMenu: () => void;
+  onToggleSfwMode: () => void;
+  onToggleTheme: () => void;
+  onToggleTools: () => void;
+  sfwMode: boolean;
+  toolsOpen: boolean;
+}) {
+  const Icon = config.icon;
+
+  return (
+    <header className={cx(s.routeHeader, collapsed && s.routeHeaderCollapsed)} data-route-header-collapsed={collapsed ? "true" : "false"}>
+      <div className={s.routeHeaderMain}>
+        <Button
+          className={cx(s.button, s.iconButton, s.routeHeaderMenuButton)}
+          icon={Menu}
+          iconOnly
+          onClick={onOpenMenu}
+          pressed={menuOpen}
+          ariaLabel="打开导航菜单"
+        />
+        {config.back ? (
+          <Link className={s.routeHeaderBack} href={demoHref(config.back.href)} aria-label={collapsed ? config.back.label : undefined}>
+            <ArrowLeft className={s.iconMd} aria-hidden="true" />
+            <span>{config.back.label}</span>
+          </Link>
+        ) : null}
+        <div className={s.routeHeaderIdentity}>
+          <span className={s.routeHeaderEyebrow}>
+            <Icon className={s.iconMd} aria-hidden="true" />
+            {config.eyebrow}
+          </span>
+          <h1>{config.title}</h1>
+          <p>{config.subtitle}</p>
+        </div>
+        <div className={s.routeHeaderMeta} aria-label="页面摘要">
+          <span>{config.meta}</span>
+          <span>ComfyUI Manager</span>
+        </div>
+        <div className={s.routeHeaderTools}>
+          <Button
+            className={cx(s.button, s.iconButton, s.routeHeaderToolButton)}
+            icon={MoreHorizontal}
+            iconOnly
+            onClick={onToggleTools}
+            pressed={toolsOpen}
+            ariaLabel="打开显示设置"
+          />
+          {toolsOpen ? (
+            <RouteHeaderToolsMenu
+              isDarkTheme={isDarkTheme}
+              onToggleSfwMode={onToggleSfwMode}
+              onToggleTheme={onToggleTheme}
+              sfwMode={sfwMode}
+            />
+          ) : null}
+        </div>
+      </div>
+    </header>
+  );
+}
+
 export function DesignDemoShell({
   children,
   currentRoute,
@@ -267,12 +483,16 @@ export function DesignDemoShell({
   currentRoute: string;
   data: DemoData;
 }) {
+  const mainRef = useRef<HTMLElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [theme, setTheme] = useState<DemoTheme>("light");
   const [sfwMode, setSfwMode] = useState(false);
+  const [routeHeaderCollapsed, setRouteHeaderCollapsed] = useState(false);
   const isLightTheme = theme === "light";
+  const routeHeaderConfig = useMemo(() => getComponentShowcaseHeader(currentRoute), [currentRoute]);
+  const hasRouteHeader = Boolean(routeHeaderConfig);
   const activeNav = useMemo(
     () => NAV_LINKS.find((link) => isNavActive(currentRoute, link.href, link.activePrefix)) ?? NAV_LINKS[0],
     [currentRoute],
@@ -310,6 +530,57 @@ export function DesignDemoShell({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [menuOpen, toolsOpen]);
 
+  useEffect(() => {
+    let lastScrollTop = 0;
+    let frameId = 0;
+    let resetFrameId = 0;
+
+    function readScrollTop() {
+      if (window.matchMedia("(max-width: 639px)").matches) {
+        return window.scrollY;
+      }
+      return mainRef.current?.scrollTop ?? 0;
+    }
+
+    if (!hasRouteHeader) {
+      resetFrameId = window.requestAnimationFrame(() => setRouteHeaderCollapsed(false));
+      return () => window.cancelAnimationFrame(resetFrameId);
+    }
+
+    resetFrameId = window.requestAnimationFrame(() => {
+      lastScrollTop = readScrollTop();
+      setRouteHeaderCollapsed(false);
+    });
+
+    function handleScroll() {
+      if (frameId) return;
+      frameId = window.requestAnimationFrame(() => {
+        const nextScrollTop = readScrollTop();
+        const delta = nextScrollTop - lastScrollTop;
+
+        if (nextScrollTop < 20) {
+          setRouteHeaderCollapsed(false);
+        } else if (Math.abs(delta) >= 8) {
+          setRouteHeaderCollapsed(delta > 0);
+        }
+
+        lastScrollTop = nextScrollTop;
+        frameId = 0;
+      });
+    }
+
+    const main = mainRef.current;
+    main?.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => {
+      main?.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("scroll", handleScroll);
+      if (frameId) window.cancelAnimationFrame(frameId);
+      if (resetFrameId) window.cancelAnimationFrame(resetFrameId);
+    };
+  }, [currentRoute, hasRouteHeader]);
+
   function toggleTheme() {
     setTheme((currentTheme) => {
       const nextTheme = currentTheme === "dark" ? "light" : "dark";
@@ -329,23 +600,25 @@ export function DesignDemoShell({
   return (
     <DemoFeedbackProvider>
       <div className={cx(s.shell, isLightTheme && s.shellLight)} data-design-demo-shell data-demo-font="harmonyos" data-theme={theme}>
-        <MobileTopbar
-          activeLabel={activeNav?.label ?? "工作台"}
-          menuOpen={menuOpen}
-          onOpenMenu={() => {
-            setMenuOpen(true);
-            setToolsOpen(false);
-          }}
-          toolsOpen={toolsOpen}
-          onToggleTools={() => {
-            setToolsOpen((open) => !open);
-            setMenuOpen(false);
-          }}
-          theme={theme}
-          onToggleTheme={toggleTheme}
-          sfwMode={sfwMode}
-          onToggleSfwMode={toggleSfwMode}
-        />
+        {!hasRouteHeader ? (
+          <MobileTopbar
+            activeLabel={activeNav?.label ?? "工作台"}
+            menuOpen={menuOpen}
+            onOpenMenu={() => {
+              setMenuOpen(true);
+              setToolsOpen(false);
+            }}
+            toolsOpen={toolsOpen}
+            onToggleTools={() => {
+              setToolsOpen((open) => !open);
+              setMenuOpen(false);
+            }}
+            theme={theme}
+            onToggleTheme={toggleTheme}
+            sfwMode={sfwMode}
+            onToggleSfwMode={toggleSfwMode}
+          />
+        ) : null}
         {menuOpen ? (
           <button
             className={s.mobileNavBackdrop}
@@ -367,7 +640,27 @@ export function DesignDemoShell({
             sfwMode={sfwMode}
             onToggleSfwMode={toggleSfwMode}
           />
-          <main className={s.main}>
+          <main className={cx(s.main, hasRouteHeader && s.mainWithRouteHeader)} ref={mainRef}>
+            {routeHeaderConfig ? (
+              <DemoRouteHeader
+                collapsed={routeHeaderCollapsed}
+                config={routeHeaderConfig}
+                isDarkTheme={theme === "dark"}
+                menuOpen={menuOpen}
+                onOpenMenu={() => {
+                  setMenuOpen(true);
+                  setToolsOpen(false);
+                }}
+                onToggleSfwMode={toggleSfwMode}
+                onToggleTheme={toggleTheme}
+                onToggleTools={() => {
+                  setToolsOpen((open) => !open);
+                  setMenuOpen(false);
+                }}
+                sfwMode={sfwMode}
+                toolsOpen={toolsOpen}
+              />
+            ) : null}
             {children}
           </main>
         </div>

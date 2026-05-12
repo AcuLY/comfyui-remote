@@ -37,7 +37,7 @@ export function PageHeader({
   className?: string;
 }) {
   return (
-    <header className={cx(s.pageHeader, className)}>
+    <header className={cx(s.pageHeader, className)} data-demo-page-header>
       <div className={s.pageTitleBlock}>
         {back ? (
           <PageHeaderBack href={back.href} label={back.label} />

@@ -173,6 +173,8 @@
 .modelInspector,
 .modelMoveSheet,
 .routeLoadingPanel,
+.routeHeader,
+.routeHeaderToolsMenu,
 .mobileTopbar,
 .mobileToolsMenu,
 .mobileBottomNav {
@@ -458,6 +460,12 @@
   min-width: 0;
   overflow-y: auto;
   padding: 22px 18px 48px;
+}
+.mainWithRouteHeader {
+  padding-top: 0;
+}
+.mainWithRouteHeader > :global(div) > :global([data-demo-page-header]:first-child) {
+  display: none;
 }
 .page {
   display: grid;
@@ -1102,6 +1110,203 @@
 .mobileBottomNav {
   display: none;
 }
+.routeHeader {
+  position: sticky;
+  top: 0;
+  z-index: 32;
+  min-width: 0;
+  border-bottom: 1px solid var(--demo-border);
+  background: var(--demo-topbar-bg);
+  box-shadow: 0 12px 34px rgba(15, 23, 42, 0.07);
+  margin: 0 -18px 16px;
+  padding: 12px 18px;
+  padding-block-start: max(12px, env(safe-area-inset-top));
+  transition:
+    box-shadow 180ms ease,
+    padding 180ms ease;
+}
+.routeHeaderCollapsed {
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.1);
+  padding-block: 8px;
+  padding-block-start: max(8px, env(safe-area-inset-top));
+}
+.routeHeaderMain {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.routeHeaderMenuButton,
+.routeHeaderToolButton {
+  flex: 0 0 auto;
+}
+.routeHeaderBack {
+  display: inline-flex;
+  min-width: 0;
+  height: 36px;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--demo-border);
+  border-radius: 8px;
+  background: var(--demo-field-bg);
+  color: var(--demo-text);
+  font-size: 12px;
+  font-weight: 580;
+  line-height: 1;
+  padding: 0 10px;
+  text-decoration: none;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+  white-space: nowrap;
+}
+.routeHeaderBack:hover,
+.routeHeaderBack:focus-visible {
+  border-color: var(--demo-glass-accent-border);
+  background: var(--demo-selected);
+  color: var(--demo-green);
+  transform: translateY(-1px);
+}
+.routeHeaderBack:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--demo-green) 30%, transparent);
+  outline-offset: 2px;
+  transform: none;
+}
+.routeHeaderIdentity {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+.routeHeaderEyebrow {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  color: var(--demo-green);
+  font-size: 10px;
+  font-weight: 640;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.routeHeaderIdentity h1 {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--demo-text);
+  font-size: 19px;
+  font-weight: 640;
+  letter-spacing: 0;
+  line-height: 1.18;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.routeHeaderIdentity p {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--demo-muted);
+  font-size: 11px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.routeHeaderMeta {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.routeHeaderMeta span {
+  display: inline-flex;
+  max-width: 150px;
+  min-height: 26px;
+  align-items: center;
+  overflow: hidden;
+  border: 1px solid var(--demo-border);
+  border-radius: 999px;
+  background: var(--demo-field-bg);
+  color: var(--demo-muted);
+  font-size: 10px;
+  font-weight: 620;
+  line-height: 1;
+  padding: 0 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.routeHeaderTools {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+  justify-content: flex-end;
+}
+.routeHeaderToolsMenu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 50;
+  display: grid;
+  width: min(220px, calc(100vw - 24px));
+  gap: 4px;
+  border: 1px solid var(--demo-border);
+  border-radius: var(--demo-radius);
+  background: var(--demo-glass-bg);
+  box-shadow: var(--demo-glass-shadow);
+  padding: 6px;
+}
+.routeHeaderToolsItem {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--demo-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 560;
+  padding: 8px 10px;
+  text-align: left;
+  transition:
+    background 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease;
+}
+.routeHeaderToolsItem:hover,
+.routeHeaderToolsItem:focus-visible,
+.routeHeaderToolsItemActive {
+  border-color: var(--demo-glass-accent-border);
+  background: var(--demo-selected);
+  color: var(--demo-green);
+}
+.routeHeaderToolsItem:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--demo-green) 30%, transparent);
+  outline-offset: 2px;
+}
+.routeHeaderCollapsed .routeHeaderEyebrow,
+.routeHeaderCollapsed .routeHeaderIdentity p,
+.routeHeaderCollapsed .routeHeaderMeta span:last-child {
+  display: none;
+}
+.routeHeaderCollapsed .routeHeaderIdentity h1 {
+  font-size: 15px;
+}
+.routeHeaderCollapsed .routeHeaderBack {
+  width: 36px;
+  padding: 0;
+  justify-content: center;
+}
+.routeHeaderCollapsed .routeHeaderBack span {
+  display: none;
+}
 :global([data-design-demo-shell]):has(.lightboxOverlay) .mobileBottomNav {
   display: none;
 }
@@ -1394,6 +1599,56 @@
     min-height: 100vh;
     overflow: visible;
     padding: 14px 12px calc(112px + env(safe-area-inset-bottom));
+  }
+
+  .mainWithRouteHeader {
+    padding-top: 0;
+  }
+
+  .routeHeader {
+    margin: 0 -12px 14px;
+    padding: 8px 12px;
+    padding-block-start: max(8px, env(safe-area-inset-top));
+  }
+
+  .routeHeaderMain {
+    grid-template-columns: auto auto minmax(0, 1fr) auto;
+    gap: 8px;
+  }
+
+  .routeHeaderMenuButton,
+  .routeHeaderToolButton {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .routeHeaderBack {
+    width: 44px;
+    height: 44px;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .routeHeaderBack span,
+  .routeHeaderEyebrow,
+  .routeHeaderIdentity p,
+  .routeHeaderMeta {
+    display: none;
+  }
+
+  .routeHeaderIdentity h1 {
+    font-size: 17px;
+  }
+
+  .routeHeaderCollapsed {
+    padding-block: 6px;
+    padding-block-start: max(6px, env(safe-area-inset-top));
+  }
+
+  .routeHeaderCollapsed .routeHeaderIdentity h1 {
+    font-size: 14px;
   }
 
   .pageHeader > .toolbar {
