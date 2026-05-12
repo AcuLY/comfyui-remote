@@ -28,6 +28,7 @@ export const GROUP_HISTORY_TABS: ChangeHistoryTabs<PresetGroupChangeDimension> =
 export type LinkedVariantRef = { presetId: string; variantId: string };
 
 export type VariantDraft = {
+  clientId?: string;
   id?: string; // undefined = new variant
   name: string;
   slug: string;

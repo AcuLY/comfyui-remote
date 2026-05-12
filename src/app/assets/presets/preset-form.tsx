@@ -312,6 +312,20 @@ function SortableVariantBar({
 
 export type { VariantDraft } from "./preset-types";
 
+let variantDraftCounter = 0;
+function nextVariantDraftClientId() {
+  variantDraftCounter += 1;
+  return `variant-draft-${variantDraftCounter}-${Math.random().toString(36).slice(2, 7)}`;
+}
+
+function cloneLoraBindings(bindings: VariantDraft["lora1"]) {
+  return bindings.map((entry) => ({ ...entry }));
+}
+
+function cloneLinkedVariants(linkedVariants: VariantDraft["linkedVariants"]) {
+  return linkedVariants.map((entry) => ({ ...entry }));
+}
+
 export function PresetForm({
   categoryId,
   folderId,
@@ -357,6 +371,7 @@ export function PresetForm({
   const [variants, setVariants] = useState<VariantDraft[]>(() => {
     if (preset && preset.variants.length > 0) {
       return preset.variants.map((v) => ({
+        clientId: nextVariantDraftClientId(),
         id: v.id,
         name: v.name,
         slug: v.slug,
@@ -368,7 +383,7 @@ export function PresetForm({
       }));
     }
     // New preset: start with one empty variant
-    return [{ name: "默认", slug: "default", prompt: "", negativePrompt: "", lora1: [], lora2: [], linkedVariants: [] }];
+    return [{ clientId: nextVariantDraftClientId(), name: "默认", slug: "default", prompt: "", negativePrompt: "", lora1: [], lora2: [], linkedVariants: [] }];
   });
   const [currentIdx, setCurrentIdx] = useState(0);
 
@@ -383,7 +398,11 @@ export function PresetForm({
     () => false,
   );
 
-  const variantIds = useMemo(() => variants.map((_, i) => `variant-sort-${i}`), [variants]);
+  const variantIds = useMemo(
+    () => variants.map((variant, index) => variant.clientId ?? variant.id ?? `draft-${index}`),
+    [variants],
+  );
+  const variantDbIds = variants.map((variant) => variant.id ?? "").join("\u0001");
   const current = variants[currentIdx];
   const totalVariants = variants.length;
 
@@ -392,11 +411,11 @@ export function PresetForm({
       return;
     }
 
-    const nextIdx = variants.findIndex((variant) => variant.id === activeVariantId);
+    const nextIdx = variantDbIds.split("\u0001").indexOf(activeVariantId);
     if (nextIdx >= 0) {
       queueMicrotask(() => setCurrentIdx(nextIdx));
     }
-  }, [activeVariantId, variants]);
+  }, [activeVariantId, variantDbIds]);
 
   function selectVariant(index: number) {
     setCurrentIdx(index);
@@ -416,16 +435,15 @@ export function PresetForm({
   }
 
   function handleVariantNameChange(value: string) {
-    const updated = [...variants];
-    updated[currentIdx] = { ...current, name: value };
+    const patch: Partial<VariantDraft> = { name: value };
     // Auto-slug for variant
     if (!current.id) {
-      updated[currentIdx].slug = value
+      patch.slug = value
         .toLowerCase()
         .replace(/[\s]+/g, "-")
         .replace(/[^a-z0-9\u4e00-\u9fff-]/g, "") || "variant";
     }
-    setVariants(updated);
+    updateVariant(current.clientId, patch);
   }
 
   function buildPresetData(nextCivitaiLinks = civitaiLinks) {
@@ -484,18 +502,28 @@ export function PresetForm({
     if (!isPending) saveDrafts(variants, nextLinks);
   }
 
-  function updateCurrentVariant(patch: Partial<VariantDraft>, options?: { autoSave?: boolean }) {
+  function updateVariant(clientId: string | undefined, patch: Partial<VariantDraft>, options?: { autoSave?: boolean }) {
+    const targetIdx = variants.findIndex((variant, index) =>
+      variant.clientId === clientId || (!clientId && index === currentIdx),
+    );
+    if (targetIdx < 0) return;
+
     const updated = [...variants];
-    updated[currentIdx] = { ...current, ...patch };
+    updated[targetIdx] = { ...updated[targetIdx], ...patch };
     setVariants(updated);
     if (options?.autoSave && !isPending) {
       saveDrafts(updated);
     }
   }
 
-  function updateCurrentVariantLoras(key: "lora1" | "lora2", value: VariantDraft["lora1"]) {
+  function updateVariantLoras(clientId: string | undefined, key: "lora1" | "lora2", value: VariantDraft["lora1"]) {
+    const targetIdx = variants.findIndex((variant, index) =>
+      variant.clientId === clientId || (!clientId && index === currentIdx),
+    );
+    if (targetIdx < 0) return;
+
     const updated = [...variants];
-    updated[currentIdx] = { ...current, [key]: value };
+    updated[targetIdx] = { ...updated[targetIdx], [key]: cloneLoraBindings(value) };
     setVariants(updated);
 
     const hasIncompleteLora = updated.some((variant) =>
@@ -510,13 +538,14 @@ export function PresetForm({
     const newIdx = variants.length;
     const prev = variants[variants.length - 1];
     setVariants([...variants, {
+      clientId: nextVariantDraftClientId(),
       name: `变体 ${newIdx + 1}`,
       slug: `variant-${newIdx + 1}`,
       prompt: prev?.prompt ?? "",
       negativePrompt: prev?.negativePrompt ?? "",
-      lora1: prev?.lora1 ? prev.lora1.map((entry) => ({ ...entry })) : [],
-      lora2: prev?.lora2 ? prev.lora2.map((entry) => ({ ...entry })) : [],
-      linkedVariants: prev?.linkedVariants ? prev.linkedVariants.map((entry) => ({ ...entry })) : [],
+      lora1: prev?.lora1 ? cloneLoraBindings(prev.lora1) : [],
+      lora2: prev?.lora2 ? cloneLoraBindings(prev.lora2) : [],
+      linkedVariants: prev?.linkedVariants ? cloneLinkedVariants(prev.linkedVariants) : [],
     }]);
     setCurrentIdx(newIdx);
     onVariantChange?.(null);
@@ -593,7 +622,7 @@ export function PresetForm({
 
   // For new presets, variants are saved after the preset is created
   // We need a post-save callback — handled by the parent's onSave flow
-  const currentVariantKey = current.id ?? `draft-${currentIdx}`;
+  const currentVariantKey = current.clientId ?? current.id ?? `draft-${currentIdx}`;
 
   const formContent = (
     <div className="min-w-0 space-y-3 border-t border-white/5 px-3 py-3">
@@ -768,7 +797,7 @@ export function PresetForm({
             <input
               type="text"
               value={current.slug}
-              onChange={(e) => updateCurrentVariant({ slug: e.target.value })}
+              onChange={(e) => updateVariant(current.clientId, { slug: e.target.value })}
               onBlur={handleAutoSave}
               placeholder="variant-slug"
               className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
@@ -778,7 +807,7 @@ export function PresetForm({
 
         <LinkedVariantsEditor
           linkedVariants={current.linkedVariants}
-          onChange={(lv) => updateCurrentVariant({ linkedVariants: lv }, { autoSave: true })}
+          onChange={(lv) => updateVariant(current.clientId, { linkedVariants: cloneLinkedVariants(lv) }, { autoSave: true })}
           currentPresetId={preset?.id}
           allCategories={allCategories}
         />
@@ -788,7 +817,7 @@ export function PresetForm({
           <span className="text-[10px] text-zinc-500">正面提示词</span>
           <textarea
             value={current.prompt}
-            onChange={(e) => updateCurrentVariant({ prompt: e.target.value })}
+            onChange={(e) => updateVariant(current.clientId, { prompt: e.target.value })}
             onBlur={handleAutoSave}
             rows={3}
             placeholder="positive prompt..."
@@ -800,7 +829,7 @@ export function PresetForm({
           <span className="text-[10px] text-zinc-500">负面提示词</span>
           <textarea
             value={current.negativePrompt}
-            onChange={(e) => updateCurrentVariant({ negativePrompt: e.target.value })}
+            onChange={(e) => updateVariant(current.clientId, { negativePrompt: e.target.value })}
             onBlur={handleAutoSave}
             rows={2}
             placeholder="negative prompt..."
@@ -813,7 +842,7 @@ export function PresetForm({
           <LoraBindingEditor
             key={`${currentVariantKey}:lora1`}
             bindings={current.lora1}
-            onChange={(v) => updateCurrentVariantLoras("lora1", v)}
+            onChange={(v) => updateVariantLoras(current.clientId, "lora1", v)}
           />
         </div>
 
@@ -822,7 +851,7 @@ export function PresetForm({
           <LoraBindingEditor
             key={`${currentVariantKey}:lora2`}
             bindings={current.lora2}
-            onChange={(v) => updateCurrentVariantLoras("lora2", v)}
+            onChange={(v) => updateVariantLoras(current.clientId, "lora2", v)}
           />
         </div>
       </div>
