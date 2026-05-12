@@ -19,7 +19,6 @@ export function ReviewImageBoard({ images }: { images: DemoImage[] }) {
   const visibleIds = new Set(images.map((image) => image.id));
   const selectedVisibleIds = new Set([...selectedIds].filter((id) => visibleIds.has(id)));
   const selectedCount = selectedVisibleIds.size;
-  const pendingOnlySelected = pendingIds.length > 0 && selectedCount === pendingIds.length && pendingIds.every((id) => selectedVisibleIds.has(id));
   const portalTarget = activeImage && typeof document !== "undefined"
     ? document.querySelector<HTMLElement>("[data-design-demo-shell]") ?? document.body
     : null;
@@ -64,16 +63,16 @@ export function ReviewImageBoard({ images }: { images: DemoImage[] }) {
         maxHeight={520}
         showCounts
         summary={hasSelection ? `已选 ${selectedCount} 张` : "未选择图片"}
-        selectPanel={(
-          <>
-            <Button icon={Square} pressed={pendingOnlySelected} onClick={() => setSelectedIds(new Set(pendingIds))}>
-              待审
-            </Button>
-            <Button tone="subtle" icon={X} onClick={() => setSelectedIds(new Set())} disabled={selectedCount === 0}>取消</Button>
-          </>
-        )}
         actionPanel={(
           <>
+            <Button
+              tone={hasSelection ? "subtle" : "default"}
+              icon={hasSelection ? X : Square}
+              onClick={() => setSelectedIds(hasSelection ? new Set() : new Set(pendingIds))}
+              disabled={!hasSelection && pendingIds.length === 0}
+            >
+              {hasSelection ? "取消" : "待审"}
+            </Button>
             <Button tone="primary" icon={Check} className={s.reviewActionKeep} feedback={{ title: "已加入保留队列", detail: `${actionTargetCount} 张图片` }}>{hasSelection ? "保留" : "全部保留"}</Button>
             <Button tone="pink" icon={Star} className={s.reviewActionFeatured} disabled={selectedCount === 0} feedback={{ title: "已加入 p站 标记队列", detail: `${selectedCount} 张图片` }}>p站</Button>
             <Button tone="pink" icon={Eye} className={s.reviewActionFeatured} disabled={selectedCount === 0} feedback={{ title: "已加入预览标记队列", detail: `${selectedCount} 张图片` }}>预览</Button>
