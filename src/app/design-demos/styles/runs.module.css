@@ -246,6 +246,10 @@
   display: grid;
   min-width: 0;
   gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--demo-border);
+  border-radius: calc(var(--demo-radius) + 2px);
+  background: var(--demo-glass-bg);
 }
 
 .currentRunSurface {
@@ -437,63 +441,10 @@
   }
 }
 
-.queueTabsBar {
-  min-width: 0;
-  overflow: hidden;
-  border: 1px solid var(--demo-border);
-  border-bottom: 0;
-  border-radius: calc(var(--demo-radius) + 2px) calc(var(--demo-radius) + 2px) 0 0;
-  background: var(--demo-glass-bg);
-  padding: 8px 10px;
-}
-
-.queueTabsBar .tabs,
-.queueTabsBar .segmentedControl {
-  display: flex;
-  width: 100%;
-  gap: 4px;
-  margin-top: 0;
+.queueSurfaceStack > .queueSurface {
   border: 0;
   border-radius: 0;
   background: transparent;
-  backdrop-filter: none;
-  padding: 0;
-}
-
-.queueTabsBar .tab,
-.queueTabsBar .segmentedItem {
-  position: relative;
-  flex: 0 0 auto;
-  justify-content: center;
-  min-height: 30px;
-  border: 0;
-  border-radius: 6px;
-  padding: 7px 12px;
-}
-
-.queueTabsBar .tab + .tab,
-.queueTabsBar .segmentedItem + .segmentedItem {
-  border-left: 0;
-}
-
-.queueTabsBar .tabActive,
-.queueTabsBar .segmentedItemActive {
-  background: var(--demo-surface-hover);
-  box-shadow: 0 0 0 1px rgba(0, 217, 146, 0.38) inset;
-  color: var(--demo-green);
-  transform: none;
-}
-
-.queueTabsBar .tabActive .navCount,
-.queueTabsBar .segmentedItemActive .segmentedCount {
-  border-color: rgba(52, 211, 153, 0.18);
-  background: rgba(52, 211, 153, 0.14);
-  color: var(--demo-green);
-}
-
-.queueSurfaceStack > .queueSurface {
-  border-top-left-radius: 0;
-  border-top-right-radius: 0;
 }
 
 .reviewSurface {
@@ -1470,27 +1421,6 @@
   .currentRunMeta {
     gap: 5px 9px;
     font-size: 9px;
-  }
-
-  .queueTabsBar {
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-
-  .queueTabsBar::-webkit-scrollbar {
-    display: none;
-  }
-
-  .queueTabsBar .tabs {
-    width: max-content;
-    min-width: 100%;
-  }
-
-  .queueTabsBar .tab {
-    flex: 0 0 auto;
-    min-width: max-content;
-    min-height: 44px;
-    padding-inline: 14px;
   }
 
   .queueRunRow {

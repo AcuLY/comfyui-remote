@@ -56,17 +56,16 @@ export function QueuePage({ data }: { data: DemoData }) {
       />
       <CurrentRunningProgressCard runs={currentRunningRuns} />
       <div className={s.queueSurfaceStack}>
-        <div className={s.queueTabsBar}>
-          <DemoTabs
-            tabs={[
-              { key: "pending", label: "待审核", count: totalPending },
-              { key: "running", label: "队列", count: running.length },
-              { key: "failed", label: "失败", count: failed.length },
-            ]}
-            value={activeTab}
-            onChange={setActiveTab}
-          />
-        </div>
+        <DemoTabs
+          panel
+          tabs={[
+            { key: "pending", label: "待审核", count: totalPending },
+            { key: "running", label: "队列", count: running.length },
+            { key: "failed", label: "失败", count: failed.length },
+          ]}
+          value={activeTab}
+          onChange={setActiveTab}
+        />
         {activeTab === "pending" ? (
           <PendingReviewGroups
             groups={reviewGroups}
