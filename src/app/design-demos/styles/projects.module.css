@@ -555,7 +555,6 @@
 
 .projectBatchBar button,
 .projectFolderRowActions button,
-.projectItemActions button,
 .projectMoveMenu > button {
   display: inline-flex;
   min-height: 28px;
@@ -576,8 +575,6 @@
 .projectBatchBar button:focus-visible,
 .projectFolderRowActions button:hover,
 .projectFolderRowActions button:focus-visible,
-.projectItemActions button:hover,
-.projectItemActions button:focus-visible,
 .projectMoveMenu > button:hover,
 .projectMoveMenu > button:focus-visible {
   border-color: var(--demo-glass-accent-border);
