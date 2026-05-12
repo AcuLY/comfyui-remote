@@ -282,8 +282,6 @@ function MobileBottomNav({
 
 function MobileTopbar({
   activeLabel,
-  menuOpen,
-  onOpenMenu,
   toolsOpen,
   onToggleTools,
   theme,
@@ -292,8 +290,6 @@ function MobileTopbar({
   onToggleSfwMode,
 }: {
   activeLabel: string;
-  menuOpen: boolean;
-  onOpenMenu: () => void;
   toolsOpen: boolean;
   onToggleTools: () => void;
   theme: DemoTheme;
@@ -307,14 +303,6 @@ function MobileTopbar({
 
   return (
     <div className={s.mobileTopbar}>
-      <Button
-        className={cx(s.button, s.iconButton, s.mobileTopbarButton)}
-        icon={Menu}
-        iconOnly
-        onClick={onOpenMenu}
-        pressed={menuOpen}
-        ariaLabel="打开导航菜单"
-      />
       <div className={s.mobileTopbarTitle}>
         <strong>{activeLabel}</strong>
         <span>ComfyUI Manager</span>
@@ -602,11 +590,6 @@ export function DesignDemoShell({
         {!hasRouteHeader ? (
           <MobileTopbar
             activeLabel={activeNav?.label ?? "工作台"}
-            menuOpen={menuOpen}
-            onOpenMenu={() => {
-              setMenuOpen(true);
-              setToolsOpen(false);
-            }}
             toolsOpen={toolsOpen}
             onToggleTools={() => {
               setToolsOpen((open) => !open);

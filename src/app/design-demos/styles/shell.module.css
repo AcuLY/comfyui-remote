@@ -1075,7 +1075,7 @@
 .mobileTopbarTitle strong {
   color: var(--demo-text);
   font-size: 13px;
-  font-weight: 640;
+  font-weight: 500;
 }
 .mobileTopbarTitle span {
   color: var(--demo-muted);
@@ -1173,7 +1173,7 @@
   overflow: hidden;
   color: var(--demo-text);
   font-size: 19px;
-  font-weight: 640;
+  font-weight: 500;
   letter-spacing: 0;
   line-height: 1.18;
   text-overflow: ellipsis;
@@ -1560,6 +1560,10 @@
     visibility: visible;
   }
 
+  .sidebarOpen .sidebarCollapseButton {
+    display: none;
+  }
+
   .main {
     height: auto;
     min-height: 100vh;
@@ -1578,11 +1582,14 @@
   }
 
   .routeHeaderMain {
-    grid-template-columns: auto auto minmax(0, 1fr) auto;
+    display: flex;
     gap: 8px;
   }
 
-  .routeHeaderMenuButton,
+  .routeHeaderMenuButton {
+    display: none;
+  }
+
   .routeHeaderToolButton {
     width: 44px;
     height: 44px;
@@ -1598,6 +1605,14 @@
 
   .routeHeaderIdentity h1 {
     font-size: 17px;
+  }
+
+  .routeHeaderIdentity {
+    flex: 1 1 auto;
+  }
+
+  .routeHeaderTools {
+    margin-left: auto;
   }
 
   .routeHeaderCollapsed {
@@ -1960,4 +1975,11 @@
 .logModuleChips .segmentedItem {
   min-height: 28px;
   font-size: 11px;
+}
+
+@media (max-width: 639px) {
+  .routeHeaderMenuButton,
+  .sidebarOpen .sidebarCollapseButton {
+    display: none;
+  }
 }

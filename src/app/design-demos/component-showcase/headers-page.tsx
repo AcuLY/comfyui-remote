@@ -670,9 +670,11 @@ function HeaderSurface({
       >
         <div className={headerS.mainRow}>
           <div className={headerS.leftCluster}>
-            <button aria-label="打开导航菜单" className={headerS.iconSurface} type="button">
-              <Menu aria-hidden="true" className={headerS.headerIcon} />
-            </button>
+            {!isMobile ? (
+              <button aria-label="打开导航菜单" className={headerS.iconSurface} type="button">
+                <Menu aria-hidden="true" className={headerS.headerIcon} />
+              </button>
+            ) : null}
             {spec.back ? (
               <div className={headerS.backSlot}>
                 <PageHeaderBack href={spec.back.href} label={spec.back.label} />
