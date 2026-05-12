@@ -4,7 +4,7 @@ export { getQueueRuns, getQueueRunsPage, getRunningRuns, getFailedRuns, getRevie
 // Project view data
 export { listProjects, listProjectFolders, getProjectDetail, getProjectResults, getSectionResults, getProjectFormOptions, getProjectEditData } from "@/server/repositories/project-view-repository";
 export type { ProjectDetailSection, ProjectDetail, ProjectResultsData, SectionResultsData, ProjectFormCategory, ProjectFormOptions, PresetBinding, ProjectEditData, SectionBlockSummary } from "@/server/repositories/project-view-repository";
-export { listSectionTrashItems as getSectionTrashItems } from "@/server/repositories/trash-repository";
+export { listSectionTrashItems as getSectionTrashItems, listTrashItems as getTrashItems } from "@/server/repositories/trash-repository";
 
 // Preset view data
 export {

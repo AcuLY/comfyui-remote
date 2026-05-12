@@ -1,7 +1,8 @@
-import { mkdir, rename, stat } from "node:fs/promises";
+import { mkdir, rename, rm, stat } from "node:fs/promises";
 import { basename, dirname, posix, resolve } from "node:path";
 
 export type ManagedImageMoveStatus = "missing" | "moved" | "skipped";
+export type ManagedImageDeleteStatus = "deleted" | "missing";
 
 const MANAGED_IMAGE_ROOT = posix.join("data", "images");
 const MANAGED_IMAGE_TRASH_ROOT = posix.join(MANAGED_IMAGE_ROOT, ".trash");
@@ -117,4 +118,18 @@ export async function moveManagedImageFile(
       `Failed to move managed image from "${normalizedSourcePath}" to "${normalizedTargetPath}": ${formatError(error)}`,
     );
   }
+}
+
+export async function deleteManagedImageFile(
+  imagePath: string,
+): Promise<ManagedImageDeleteStatus> {
+  const normalizedPath = normalizeManagedImagePath(imagePath);
+  const absolutePath = resolveManagedImagePath(normalizedPath);
+
+  if (!(await pathExists(absolutePath))) {
+    return "missing";
+  }
+
+  await rm(absolutePath, { force: true });
+  return "deleted";
 }

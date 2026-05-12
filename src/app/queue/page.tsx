@@ -1,5 +1,5 @@
 import { QueuePageClient } from "./queue-page-client";
-import { getQueueRunsPage, getRunningRuns, getFailedRuns } from "@/lib/server-data";
+import { getQueueRunsPage, getRunningRuns, getFailedRuns, getTrashItems } from "@/lib/server-data";
 
 export const dynamic = "force-dynamic";
 
@@ -15,10 +15,11 @@ export default async function QueuePage({
   searchParams: Promise<{ page?: string | string[] }>;
 }) {
   const { page } = await searchParams;
-  const [queuePage, runningRuns, failedRuns] = await Promise.all([
+  const [queuePage, runningRuns, failedRuns, trashItems] = await Promise.all([
     getQueueRunsPage({ page: readPage(page) }),
     getRunningRuns(),
     getFailedRuns(),
+    getTrashItems(),
   ]);
 
   return (
@@ -27,6 +28,7 @@ export default async function QueuePage({
       initialQueuePagination={queuePage.pagination}
       initialRunningRuns={runningRuns}
       initialFailedRuns={failedRuns}
+      initialTrashItems={trashItems}
     />
   );
 }

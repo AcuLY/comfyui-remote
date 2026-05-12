@@ -18,6 +18,7 @@ import {
   Eye,
   ImageIcon,
   Star,
+  Trash2,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -415,6 +416,7 @@ export function ProjectResultsClient({
     2 * COLLAPSED_ROW_COUNT,
   );
   const [togglingImageId, setTogglingImageId] = useState<string | null>(null);
+  const [isTrashingAll, setIsTrashingAll] = useState(false);
   const [lightboxImageId, setLightboxImageId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
   const sectionIds = useMemo(
@@ -692,6 +694,54 @@ export function ProjectResultsClient({
     [allImages, sections, setImageCover, togglingImageId],
   );
 
+  const handleTrashAllImages = useCallback(() => {
+    if (isTrashingAll || totalImages === 0) return;
+
+    const firstConfirmed = confirm(
+      `确定要删除项目「${project.title}」中的全部 ${totalImages} 张图片吗？图片会先进入回收站，可从回收站恢复。`,
+    );
+    if (!firstConfirmed) return;
+
+    const secondConfirmed = confirm("请再次确认：将全部图片移入回收站。继续？");
+    if (!secondConfirmed) return;
+
+    setIsTrashingAll(true);
+    startTransition(async () => {
+      try {
+        const response = await fetch(
+          `/api/projects/${encodeURIComponent(project.id)}/results/trash`,
+          { method: "POST" },
+        );
+        const result = (await response.json().catch(() => null)) as {
+          ok?: boolean;
+          data?: { trashedCount?: number };
+          error?: { message?: string };
+        } | null;
+
+        if (!response.ok || result?.ok === false) {
+          throw new Error(result?.error?.message ?? "删除全部图片失败");
+        }
+
+        setLightboxImageId(null);
+        setSections((currentSections) =>
+          currentSections.map((section) => ({
+            ...section,
+            imageCount: 0,
+            pendingCount: 0,
+            featuredCount: 0,
+            featured2Count: 0,
+            runs: section.runs.map((run) => ({ ...run, images: [] })),
+          })),
+        );
+        toast.success(`已移入回收站 ${result?.data?.trashedCount ?? totalImages} 张图片`);
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "删除全部图片失败");
+      } finally {
+        setIsTrashingAll(false);
+      }
+    });
+  }, [isTrashingAll, project.id, project.title, startTransition, totalImages]);
+
   return (
     <SidebarProvider
       style={
@@ -727,6 +777,16 @@ export function ProjectResultsClient({
               <span>{totalFeatured2} 预览</span>
               {hasCover && <span>已设封面</span>}
             </div>
+            <button
+              type="button"
+              disabled={isTrashingAll || totalImages === 0}
+              onClick={handleTrashAllImages}
+              className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-red-500/20 bg-red-500/10 px-2.5 py-1.5 text-[11px] font-medium text-red-300 transition hover:bg-red-500/20 disabled:opacity-40 sm:px-3 sm:text-xs"
+              title="删除全部图片"
+            >
+              <Trash2 className="size-3.5" />
+              {isTrashingAll ? "删除中" : "删除全部"}
+            </button>
           </div>
 
           {sections.length === 0 ? (

@@ -1,10 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import {
   buildManagedTrashPath,
+  deleteManagedImageFile,
   moveManagedImageFile,
 } from "@/server/services/image-file-service";
 import { listSectionTrashItems } from "@/server/repositories/trash-repository";
@@ -27,10 +27,11 @@ export async function getSectionTrashItems(sectionId: string) {
 // ---------------------------------------------------------------------------
 
 export async function keepImages(imageIds: string[]) {
-  if (imageIds.length === 0) return;
+  const uniqueImageIds = [...new Set(imageIds.filter(Boolean))];
+  if (uniqueImageIds.length === 0) return;
 
   const images = await prisma.imageResult.findMany({
-    where: { id: { in: imageIds } },
+    where: { id: { in: uniqueImageIds } },
     select: {
       id: true,
       filePath: true,
@@ -43,11 +44,14 @@ export async function keepImages(imageIds: string[]) {
 
   // 收集需要 revalidate 的 section results 路径
   const sectionPaths = new Set<string>();
+  const projectPaths = new Set<string>();
   for (const img of images) {
     if (img.run) {
       sectionPaths.add(
         `/projects/${img.run.projectSection.projectId}/sections/${img.run.projectSectionId}/results`,
       );
+      projectPaths.add(`/projects/${img.run.projectSection.projectId}`);
+      projectPaths.add(`/projects/${img.run.projectSection.projectId}/results`);
     }
   }
 
@@ -86,7 +90,7 @@ export async function keepImages(imageIds: string[]) {
     // 标记所有活跃 trash record 为已恢复
     prisma.trashRecord.updateMany({
       where: {
-        imageResultId: { in: imageIds },
+        imageResultId: { in: uniqueImageIds },
         restoredAt: null,
       },
       data: { restoredAt: now },
@@ -94,6 +98,7 @@ export async function keepImages(imageIds: string[]) {
   ]);
 
   for (const p of sectionPaths) revalidatePath(p);
+  for (const p of projectPaths) revalidatePath(p);
   revalidatePath("/queue");
 }
 
@@ -102,10 +107,11 @@ export async function keepImages(imageIds: string[]) {
 // ---------------------------------------------------------------------------
 
 export async function trashImages(imageIds: string[]) {
-  if (imageIds.length === 0) return;
+  const uniqueImageIds = [...new Set(imageIds.filter(Boolean))];
+  if (uniqueImageIds.length === 0) return { count: 0, imageIds: [] };
 
   const images = await prisma.imageResult.findMany({
-    where: { id: { in: imageIds } },
+    where: { id: { in: uniqueImageIds } },
     select: {
       id: true,
       filePath: true,
@@ -118,11 +124,14 @@ export async function trashImages(imageIds: string[]) {
 
   // 收集需要 revalidate 的 section results 路径
   const sectionPaths = new Set<string>();
+  const projectPaths = new Set<string>();
   for (const img of images) {
     if (img.run) {
       sectionPaths.add(
         `/projects/${img.run.projectSection.projectId}/sections/${img.run.projectSectionId}/results`,
       );
+      projectPaths.add(`/projects/${img.run.projectSection.projectId}`);
+      projectPaths.add(`/projects/${img.run.projectSection.projectId}/results`);
     }
   }
 
@@ -180,10 +189,147 @@ export async function trashImages(imageIds: string[]) {
         },
       }),
     ),
+    prisma.project.updateMany({
+      where: { coverImageId: { in: plans.map((plan) => plan.imageId) } },
+      data: { coverImageId: null },
+    }),
   ]);
 
   for (const p of sectionPaths) revalidatePath(p);
+  for (const p of projectPaths) revalidatePath(p);
   revalidatePath("/queue");
+
+  return { count: plans.length, imageIds: plans.map((plan) => plan.imageId) };
+}
+
+export async function trashProjectImages(projectId: string) {
+  const normalizedProjectId = projectId.trim();
+  if (!normalizedProjectId) {
+    throw new Error("PROJECT_ID_REQUIRED");
+  }
+
+  const project = await prisma.project.findUnique({
+    where: { id: normalizedProjectId },
+    select: { id: true },
+  });
+
+  if (!project) {
+    throw new Error("PROJECT_NOT_FOUND");
+  }
+
+  const images = await prisma.imageResult.findMany({
+    where: {
+      reviewStatus: { not: "trashed" },
+      run: { projectId: normalizedProjectId },
+    },
+    select: { id: true },
+  });
+
+  const result = await trashImages(images.map((image) => image.id));
+  revalidatePath(`/projects/${normalizedProjectId}`);
+  revalidatePath(`/projects/${normalizedProjectId}/results`);
+
+  return {
+    projectId: normalizedProjectId,
+    trashedCount: result?.count ?? 0,
+  };
+}
+
+export async function clearTrash(): Promise<{
+  ok: boolean;
+  count: number;
+  fileDeleteFailures: number;
+  error?: string;
+}> {
+  try {
+    const records = await prisma.trashRecord.findMany({
+      where: { restoredAt: null },
+      select: {
+        id: true,
+        imageResultId: true,
+        trashPath: true,
+        imageResult: {
+          select: {
+            filePath: true,
+            thumbPath: true,
+            run: {
+              select: {
+                projectId: true,
+                projectSectionId: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (records.length === 0) {
+      return { ok: true, count: 0, fileDeleteFailures: 0 };
+    }
+
+    const imageIds = records.map((record) => record.imageResultId);
+    const filePaths = new Set<string>();
+    const sectionPaths = new Set<string>();
+    const projectPaths = new Set<string>();
+
+    for (const record of records) {
+      filePaths.add(record.trashPath);
+      filePaths.add(record.imageResult.filePath);
+      if (record.imageResult.thumbPath) {
+        filePaths.add(record.imageResult.thumbPath);
+      }
+      sectionPaths.add(
+        `/projects/${record.imageResult.run.projectId}/sections/${record.imageResult.run.projectSectionId}/results`,
+      );
+      projectPaths.add(`/projects/${record.imageResult.run.projectId}`);
+      projectPaths.add(`/projects/${record.imageResult.run.projectId}/results`);
+    }
+
+    const deleteResult = await prisma.$transaction(async (tx) => {
+      await tx.project.updateMany({
+        where: { coverImageId: { in: imageIds } },
+        data: { coverImageId: null },
+      });
+
+      await tx.trashRecord.deleteMany({
+        where: { imageResultId: { in: imageIds } },
+      });
+
+      return tx.imageResult.deleteMany({
+        where: { id: { in: imageIds } },
+      });
+    });
+
+    let fileDeleteFailures = 0;
+    await Promise.all(
+      [...filePaths].map(async (filePath) => {
+        try {
+          await deleteManagedImageFile(filePath);
+        } catch {
+          fileDeleteFailures += 1;
+        }
+      }),
+    );
+
+    for (const p of sectionPaths) revalidatePath(p);
+    for (const p of projectPaths) revalidatePath(p);
+    revalidatePath("/projects");
+    revalidatePath("/queue");
+
+    return {
+      ok: true,
+      count: deleteResult.count,
+      fileDeleteFailures,
+    };
+  } catch (error) {
+    console.error("Failed to clear trash:", error);
+    return {
+      ok: false,
+      count: 0,
+      fileDeleteFailures: 0,
+      error: "清空回收站失败",
+    };
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -198,7 +344,17 @@ export async function restoreImage(trashRecordId: string) {
       originalPath: true,
       trashPath: true,
       restoredAt: true,
-      imageResult: { select: { filePath: true } },
+      imageResult: {
+        select: {
+          filePath: true,
+          run: {
+            select: {
+              projectId: true,
+              projectSectionId: true,
+            },
+          },
+        },
+      },
     },
   });
 
@@ -229,5 +385,10 @@ export async function restoreImage(trashRecordId: string) {
     }),
   ]);
 
+  revalidatePath(`/projects/${record.imageResult.run.projectId}`);
+  revalidatePath(`/projects/${record.imageResult.run.projectId}/results`);
+  revalidatePath(
+    `/projects/${record.imageResult.run.projectId}/sections/${record.imageResult.run.projectSectionId}/results`,
+  );
   revalidatePath("/queue");
 }

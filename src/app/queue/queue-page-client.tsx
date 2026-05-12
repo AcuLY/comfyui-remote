@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { PageHeader } from "@/components/page-header";
 import { SectionCard } from "@/components/section-card";
 import { StatChip } from "@/components/stat-chip";
-import { cancelRun, runSection, clearRuns, clearActiveRuns, restoreImage } from "@/lib/actions";
+import { cancelRun, runSection, clearRuns, clearActiveRuns, clearTrash, restoreImage } from "@/lib/actions";
 import type { QueuePagination, QueueRun, RunningRun, FailedRun, TrashItem } from "@/lib/types";
 
 export type QueueTabKey = "pending" | "running" | "failed" | "trash";
@@ -130,12 +130,21 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [initialQueueRuns, initialQueuePagination]);
 
+  useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect -- server navigation refreshes this client boundary with new trash props */
+    setTrashItems(initialTrashItems ?? []);
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [initialTrashItems]);
+
   const refresh = useCallback(() => {
     startTransition(async () => {
       const params = new URLSearchParams({
         page: String(queuePagination.page),
         pageSize: String(queuePagination.pageSize),
       });
+      if (activeTab === "trash") {
+        params.set("includeTrash", "1");
+      }
       const res = await fetch(`/api/queue-data?${params.toString()}`);
       if (!res.ok) return;
       const data = await res.json();
@@ -169,10 +178,13 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
       }
       knownFailedIdsRef.current = new Set(newFailed.map((r) => r.id));
       setFailedRuns(newFailed);
+      if (Array.isArray(data.trashItems)) {
+        setTrashItems(data.trashItems);
+      }
 
       router.refresh();
     });
-  }, [queuePagination.page, queuePagination.pageSize, router]);
+  }, [activeTab, queuePagination.page, queuePagination.pageSize, router]);
 
   // Auto-poll
   useEffect(() => {
@@ -215,6 +227,32 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
       await restoreImage(trashRecordId);
       setTrashItems((prev) => prev.filter((item) => item.id !== trashRecordId));
       toast.success("图片已恢复");
+    });
+  }
+
+  function handleClearTrash() {
+    if (trashItems.length === 0) return;
+    if (
+      !confirm(
+        `确定要永久清空回收站中的 ${trashItems.length} 张图片吗？此操作不可恢复。`,
+      )
+    ) {
+      return;
+    }
+
+    startTransition(async () => {
+      const result = await clearTrash();
+      if (result.ok) {
+        setTrashItems([]);
+        const suffix =
+          result.fileDeleteFailures > 0
+            ? `，其中 ${result.fileDeleteFailures} 个文件未能删除`
+            : "";
+        toast.success(`已清空 ${result.count} 张图片${suffix}`);
+        router.refresh();
+      } else {
+        toast.error(result.error ?? "清空回收站失败");
+      }
     });
   }
 
@@ -560,8 +598,19 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
       {activeTab === "trash" && (
         <>
           <SectionCard title="回收站" subtitle="已删除的图片可在此恢复到原位置。">
-            <div className="grid grid-cols-2 gap-3">
-              <StatChip label="已删除图片" value={trashCount} tone="warn" />
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="grid grid-cols-2 gap-3 sm:w-72">
+                <StatChip label="已删除图片" value={trashCount} tone="warn" />
+              </div>
+              <button
+                type="button"
+                disabled={isPending || trashCount === 0}
+                onClick={handleClearTrash}
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs font-medium text-red-300 transition hover:bg-red-500/20 disabled:opacity-40"
+              >
+                <Trash2 className="size-3.5" />
+                清空回收站
+              </button>
             </div>
           </SectionCard>
 
