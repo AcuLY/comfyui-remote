@@ -5,7 +5,6 @@ import { useTransition } from "react";
 import { ArrowLeft } from "lucide-react";
 import type { PresetCategoryFull, PresetFull } from "@/lib/server-data";
 import {
-  syncPresetToSections,
   updatePreset,
   updatePresetVariant,
   upsertPresetVariantBySlug,
@@ -77,7 +76,6 @@ export function PresetEditClient({
             await upsertPresetVariantBySlug(variantData);
           }
         }
-        await syncPresetToSections(preset.id);
         toast.success("预制已保存");
         router.refresh();
       } catch (error) {

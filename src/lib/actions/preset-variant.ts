@@ -124,6 +124,73 @@ function presetVariantContentSnapshot(variant: {
   };
 }
 
+function getLinkedVariantIds(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((entry) => {
+      if (!entry || typeof entry !== "object" || Array.isArray(entry)) return null;
+      const variantId = (entry as { variantId?: unknown }).variantId;
+      return typeof variantId === "string" && variantId ? variantId : null;
+    })
+    .filter((variantId): variantId is string => Boolean(variantId));
+}
+
+function shouldSyncVariantContent(input: Partial<PresetVariantInput>) {
+  return (
+    input.name !== undefined ||
+    input.prompt !== undefined ||
+    input.negativePrompt !== undefined ||
+    input.lora1 !== undefined ||
+    input.lora2 !== undefined ||
+    input.linkedVariants !== undefined ||
+    input.isActive !== undefined ||
+    input.sortOrder !== undefined
+  );
+}
+
+async function findPresetIdsAffectedByVariantChange(variantId: string, presetId: string) {
+  const variants = await prisma.presetVariant.findMany({
+    select: { id: true, presetId: true, linkedVariants: true },
+  });
+  const variantById = new Map(variants.map((variant) => [variant.id, variant]));
+  const parentVariantIdsByLinkedVariantId = new Map<string, string[]>();
+
+  for (const variant of variants) {
+    for (const linkedVariantId of getLinkedVariantIds(variant.linkedVariants)) {
+      const parentVariantIds = parentVariantIdsByLinkedVariantId.get(linkedVariantId) ?? [];
+      parentVariantIds.push(variant.id);
+      parentVariantIdsByLinkedVariantId.set(linkedVariantId, parentVariantIds);
+    }
+  }
+
+  const affectedPresetIds = new Set<string>([presetId]);
+  const seenVariantIds = new Set<string>([variantId]);
+  const queue = [variantId];
+
+  while (queue.length > 0) {
+    const currentVariantId = queue.shift()!;
+    for (const parentVariantId of parentVariantIdsByLinkedVariantId.get(currentVariantId) ?? []) {
+      if (seenVariantIds.has(parentVariantId)) continue;
+      seenVariantIds.add(parentVariantId);
+      queue.push(parentVariantId);
+
+      const parentVariant = variantById.get(parentVariantId);
+      if (parentVariant) affectedPresetIds.add(parentVariant.presetId);
+    }
+  }
+
+  return affectedPresetIds;
+}
+
+async function syncVariantContentToImportedSections(variantId: string, presetId: string) {
+  const presetIds = await findPresetIdsAffectedByVariantChange(variantId, presetId);
+  const { syncPresetToSections } = await import("./preset-sync");
+
+  for (const affectedPresetId of presetIds) {
+    await syncPresetToSections(affectedPresetId);
+  }
+}
+
 async function syncPresetMetadataToImportedSections(presetId: string) {
   const preset = await prisma.preset.findUnique({
     where: { id: presetId },
@@ -358,6 +425,9 @@ export async function upsertPresetVariantBySlug(input: PresetVariantInput) {
     before: presetVariantContentSnapshot(existing),
     after: presetVariantContentSnapshot(variant),
   });
+  if (shouldSyncVariantContent(input)) {
+    await syncVariantContentToImportedSections(variant.id, variant.presetId);
+  }
   revalidatePath("/assets/presets");
   revalidatePath("/projects/new");
   return variant;
@@ -411,6 +481,9 @@ export async function updatePresetVariant(id: string, input: Partial<PresetVaria
       after: presetVariantContentSnapshot(variant),
     });
   }
+  if (before && shouldSyncVariantContent(input)) {
+    await syncVariantContentToImportedSections(variant.id, variant.presetId);
+  }
   revalidatePath("/assets/presets");
   revalidatePath("/projects/new");
   return variant;
@@ -435,6 +508,7 @@ export async function deletePresetVariant(id: string) {
       before: presetVariantRosterSnapshot(before),
       after: presetVariantRosterSnapshot(variant),
     });
+    await syncVariantContentToImportedSections(variant.id, variant.presetId);
   }
   revalidatePath("/assets/presets");
   revalidatePath("/projects/new");

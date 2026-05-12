@@ -47,7 +47,6 @@ import {
   upsertPresetVariantBySlug,
   getPresetUsage,
   deletePresetCascade,
-  syncPresetToSections,
   reorderPresetCategories,
   reorderPresets,
   moveToFolder,
@@ -767,8 +766,6 @@ function PresetList({
                             await upsertPresetVariantBySlug(variantData);
                           }
                         }
-                        // Sync updated content (including linked variants) to all sections
-                        await syncPresetToSections(preset.id);
                         toast.success("预制已保存");
                         setEditingId(null);
                         onViewChange({ folder: currentFolderId, preset: null, variant: null });
