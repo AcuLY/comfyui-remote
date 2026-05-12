@@ -1294,15 +1294,18 @@
 }
 
 .sectionCard {
+  --section-card-pad: 10px;
+  --section-card-header-height: 36px;
+  position: relative;
   display: grid;
-  grid-template-columns: 36px minmax(0, 1fr);
-  grid-template-areas: "drag content";
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "content";
   align-items: stretch;
   gap: 10px;
   border: 1px solid var(--demo-glass-border);
   border-radius: var(--demo-radius);
   background: var(--demo-panel);
-  padding: 10px;
+  padding: var(--section-card-pad);
   transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
 }
 
@@ -1318,6 +1321,7 @@
 }
 
 .sectionCardCompact {
+  --section-card-pad: 8px;
   padding-block: 8px;
 }
 
@@ -1346,11 +1350,15 @@
 .dragHandle {
   grid-area: drag;
   cursor: grab;
-  align-self: center;
-  justify-self: center;
+  position: absolute;
+  top: calc(var(--section-card-pad) + (var(--section-card-header-height) / 2));
+  left: 10px;
+  z-index: 1;
+  transform: translateY(-50%);
 }
 
 .dragHandle:hover,
+.dragHandle:focus-visible,
 .sectionSelectButton:hover,
 .sectionSelectButton:focus-visible,
 .sectionSelectButton[aria-pressed="true"] {
@@ -1358,6 +1366,11 @@
   background: var(--demo-field-bg);
   color: var(--demo-green);
   outline: none;
+}
+
+.dragHandle:hover,
+.dragHandle:focus-visible {
+  transform: translateY(-50%);
 }
 
 .sectionRecentResult {
@@ -1368,10 +1381,18 @@
 
 .sectionCardTitleLink {
   display: inline-flex;
+  grid-column: 2;
+  width: 100%;
+  max-width: 100%;
   min-width: 0;
-  flex: 1 1 auto;
   align-items: baseline;
+  justify-self: center;
+  justify-content: center;
   gap: 7px;
+}
+
+.sectionCardTitleLink strong {
+  flex: 0 1 auto;
 }
 
 .sectionCardTitleLink span {
@@ -1384,24 +1405,11 @@
 
 .sectionHeaderActions {
   display: inline-flex;
+  grid-column: 3;
   flex: 0 0 auto;
   align-items: center;
+  justify-self: end;
   gap: 5px;
-}
-
-.sectionRecentHeader {
-  display: inline-flex;
-  min-width: 0;
-  align-items: center;
-  gap: 5px;
-  color: var(--demo-faint);
-  font-size: 10px;
-  font-weight: 560;
-  line-height: 1.2;
-}
-
-.sectionRecentHeader svg {
-  flex: 0 0 auto;
 }
 
 .sectionCardContentPane {
@@ -1436,11 +1444,12 @@
 }
 
 .sectionCardHeader {
-  display: flex;
+  display: grid;
+  grid-template-columns: 78px minmax(0, 1fr) 78px;
+  min-height: var(--section-card-header-height);
   min-width: 0;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
 }
 
 .sectionCardTitle {
@@ -1489,9 +1498,9 @@
 
 .sectionCardActions {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 8px;
   min-width: 0;
   border-top: 1px solid var(--demo-border);
@@ -1500,17 +1509,18 @@
 
 .sectionCardActions .button {
   flex: 0 0 auto;
-  min-width: 84px;
+  width: 36px;
+  min-width: 36px;
   min-height: 36px;
   font-size: 12px;
-  padding: 0 10px;
+  padding: 0;
 }
 
 .sectionBatchTabs {
-  flex: 1 1 220px;
+  flex: 0 0 auto;
   width: auto;
   min-width: 0;
-  max-width: 320px;
+  max-width: calc(100% - 44px);
   margin-top: 0;
   padding: 4px;
 }
@@ -1521,14 +1531,15 @@
 }
 
 .sectionCardCompact .sectionCardActions .button {
-  min-width: 0;
+  width: 36px;
+  min-width: 36px;
 }
 
 @media (max-width: 760px) {
   .sectionCard,
   .sectionCardCompact {
-    grid-template-columns: 26px minmax(0, 1fr);
-    grid-template-areas: "drag content";
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "content";
     gap: 8px 10px;
   }
 
@@ -1542,28 +1553,28 @@
 
   .sectionCardHeader {
     align-items: center;
-    flex-direction: row;
+    grid-template-columns: 70px minmax(0, 1fr) 78px;
   }
 
   .sectionBatchTabs {
     width: auto;
     min-width: 0;
-    flex: 1 1 220px;
+    flex: 0 0 auto;
   }
 
   .sectionCardActions,
   .sectionCardCompact .sectionCardActions {
     display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
+    flex-wrap: nowrap;
+    justify-content: flex-end;
     gap: 6px;
   }
 
   .sectionCardActions .button {
-    width: auto;
-    min-width: 84px;
+    width: 36px;
+    min-width: 36px;
     flex: 0 0 auto;
-    padding: 0 8px;
+    padding: 0;
   }
 }
 
@@ -1719,12 +1730,14 @@
   .sectionCardActions,
   .sectionCardCompact .sectionCardActions {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     min-width: 0;
   }
 
   .sectionCardActions .button {
-    flex: 1 1 88px;
+    width: 36px;
+    min-width: 36px;
+    flex: 0 0 auto;
   }
 }
 
@@ -1967,8 +1980,8 @@
 
   .sectionCard,
   .sectionCardCompact {
-    grid-template-columns: 36px minmax(0, 1fr);
-    grid-template-areas: "drag content";
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "content";
   }
 
   .sectionCardMain {
@@ -1985,14 +1998,14 @@
   .sectionCardActions,
   .sectionCardCompact .sectionCardActions {
     display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
+    flex-wrap: nowrap;
+    justify-content: flex-end;
     min-width: 0;
   }
 
   .sectionCardActions .button {
-    width: auto;
-    min-width: 84px;
+    width: 36px;
+    min-width: 36px;
     flex: 0 0 auto;
     min-height: 38px;
   }
@@ -2000,7 +2013,7 @@
   .sectionBatchTabs {
     width: auto;
     min-width: 0;
-    flex: 1 1 220px;
+    flex: 0 0 auto;
   }
 
   .sectionRail {

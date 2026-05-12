@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Copy, GripVertical, ImageIcon, Play, Trash2 } from "lucide-react";
+import { Copy, GripVertical, Play, Trash2 } from "lucide-react";
 
 import type { DemoProject, DemoSection } from "../design-demo-data";
 import { cx, demoHref, rawSectionId, sectionAnchorId } from "../design-demo-utils";
@@ -47,10 +47,6 @@ export function ProjectSectionCard({
           </div>
         </div>
         <Link aria-label={`打开第 ${index + 1} 小节最近结果：${section.name}`} className={s.sectionRecentResult} href={sectionHref}>
-          <span className={s.sectionRecentHeader}>
-            <ImageIcon aria-hidden="true" size={12} />
-            <span>最近结果</span>
-          </span>
           <ImageListSmall className={s.recentResultImages} images={section.images} limit={section.images.length} showCounts wide />
         </Link>
         <div className={s.sectionCardActions}>
@@ -58,12 +54,21 @@ export function ProjectSectionCard({
             ariaLabel="运行批次"
             className={s.sectionBatchTabs}
             compact
+            dense
+            fitItems
+            fitItemWidth={32}
             items={BATCH_SIZE_OPTIONS.map((option) => ({ value: option, label: option }))}
             onChange={setBatchSize}
             role="tablist"
             value={batchSize}
           />
-          <Button tone="primary" icon={Play} feedback={{ title: "小节运行已加入任务", detail: `${section.name} · batch ${batchSize}` }}>运行</Button>
+          <Button
+            tone="primary"
+            icon={Play}
+            iconOnly
+            ariaLabel={`运行小节：${section.name}`}
+            feedback={{ title: "小节运行已加入任务", detail: `${section.name} · batch ${batchSize}` }}
+          />
         </div>
       </div>
     </article>

@@ -20,6 +20,9 @@ export function SegmentedControl<T extends string | number>({
   role = "radiogroup",
   panel = false,
   compact = false,
+  dense = false,
+  fitItems = false,
+  fitItemWidth,
   className,
 }: {
   items: Array<SegmentedControlItem<T>>;
@@ -29,8 +32,15 @@ export function SegmentedControl<T extends string | number>({
   role?: "tablist" | "radiogroup";
   panel?: boolean;
   compact?: boolean;
+  dense?: boolean;
+  fitItems?: boolean;
+  fitItemWidth?: number | string;
   className?: string;
 }) {
+  const style = fitItemWidth === undefined
+    ? undefined
+    : ({ "--segmented-fit-item-width": typeof fitItemWidth === "number" ? `${fitItemWidth}px` : fitItemWidth } as React.CSSProperties);
+
   return (
     <div
       aria-label={ariaLabel}
@@ -38,10 +48,13 @@ export function SegmentedControl<T extends string | number>({
         s.segmentedControl,
         panel && s.segmentedControlPanel,
         compact && s.segmentedControlCompact,
+        dense && s.segmentedControlDense,
         className,
       )}
+      data-fit-items={fitItems ? "true" : undefined}
       data-panel={panel ? "card-header" : undefined}
       role={role}
+      style={style}
     >
       {items.map((item) => {
         const active = value === item.value;

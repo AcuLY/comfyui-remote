@@ -45,11 +45,11 @@ export function ProjectListItem({
             <Button
               tone="danger"
               icon={Trash2}
+              iconOnly
+              ariaLabel={`删除项目：${project.title}`}
               size="sm"
               feedback={{ tone: "warning", title: "删除项目需要确认", detail: project.title }}
-            >
-              删除
-            </Button>
+            />
           </div>
         </div>
         <Link aria-label={`打开项目最近结果：${project.title}`} className={s.projectListRecentResult} href={projectHref}>
