@@ -514,9 +514,9 @@ export function PresetForm({
       slug: `variant-${newIdx + 1}`,
       prompt: prev?.prompt ?? "",
       negativePrompt: prev?.negativePrompt ?? "",
-      lora1: prev?.lora1 ? [...prev.lora1] : [],
-      lora2: prev?.lora2 ? [...prev.lora2] : [],
-      linkedVariants: prev?.linkedVariants ? [...prev.linkedVariants] : [],
+      lora1: prev?.lora1 ? prev.lora1.map((entry) => ({ ...entry })) : [],
+      lora2: prev?.lora2 ? prev.lora2.map((entry) => ({ ...entry })) : [],
+      linkedVariants: prev?.linkedVariants ? prev.linkedVariants.map((entry) => ({ ...entry })) : [],
     }]);
     setCurrentIdx(newIdx);
     onVariantChange?.(null);
@@ -593,6 +593,7 @@ export function PresetForm({
 
   // For new presets, variants are saved after the preset is created
   // We need a post-save callback — handled by the parent's onSave flow
+  const currentVariantKey = current.id ?? `draft-${currentIdx}`;
 
   const formContent = (
     <div className="min-w-0 space-y-3 border-t border-white/5 px-3 py-3">
@@ -809,12 +810,20 @@ export function PresetForm({
 
         <div className="space-y-1">
           <span className="text-[11px] font-medium text-zinc-500">LoRA 1（第一阶段）</span>
-          <LoraBindingEditor bindings={current.lora1} onChange={(v) => updateCurrentVariantLoras("lora1", v)} />
+          <LoraBindingEditor
+            key={`${currentVariantKey}:lora1`}
+            bindings={current.lora1}
+            onChange={(v) => updateCurrentVariantLoras("lora1", v)}
+          />
         </div>
 
         <div className="space-y-1">
           <span className="text-[11px] font-medium text-zinc-500">LoRA 2（高清修复）</span>
-          <LoraBindingEditor bindings={current.lora2} onChange={(v) => updateCurrentVariantLoras("lora2", v)} />
+          <LoraBindingEditor
+            key={`${currentVariantKey}:lora2`}
+            bindings={current.lora2}
+            onChange={(v) => updateCurrentVariantLoras("lora2", v)}
+          />
         </div>
       </div>
 

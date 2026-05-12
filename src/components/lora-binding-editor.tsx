@@ -189,10 +189,8 @@ function SortableRow({
 // ---------------------------------------------------------------------------
 
 export function LoraBindingEditor({ bindings, onChange }: LoraBindingEditorProps) {
-  // Maintain stable IDs for dnd-kit
-  const [items, setItems] = useState<BindingWithId[]>(() =>
-    bindings.map((b) => ({ ...b, _id: nextId() })),
-  );
+  // Keep stable UI-only IDs for dnd-kit while rendering from parent bindings.
+  const [rowIds, setRowIds] = useState<string[]>(() => bindings.map(() => nextId()));
   const [weightInputs, setWeightInputs] = useState<Record<string, string>>({});
   const dndId = useId();
 
@@ -200,31 +198,27 @@ export function LoraBindingEditor({ bindings, onChange }: LoraBindingEditorProps
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   );
 
+  const items = useMemo<BindingWithId[]>(
+    () => bindings.map((binding, index) => ({ ...binding, _id: rowIds[index] ?? `${dndId}-row-${index}` })),
+    [bindings, dndId, rowIds],
+  );
   const ids = useMemo(() => items.map((i) => i._id), [items]);
 
-  // Sync items → parent (strip _id)
   const emit = useCallback(
     (next: BindingWithId[]) => {
-      setItems(next);
       onChange(next.map(stripInternalId));
     },
     [onChange],
   );
 
-  // Sync from parent when bindings array length changes (e.g. external reset)
-  // Simple: just track length mismatch
-  if (bindings.length !== items.length) {
-    const synced = bindings.map((b, i) =>
-      i < items.length ? { ...b, _id: items[i]._id } : { ...b, _id: nextId() },
-    );
-    setItems(synced);
-  }
-
   function handleAdd() {
-    emit([...items, { path: "", weight: 1.0, enabled: true, _id: nextId() }]);
+    const id = nextId();
+    setRowIds((prev) => [...prev, id]);
+    emit([...items, { path: "", weight: 1.0, enabled: true, _id: id }]);
   }
 
   function handleRemove(id: string) {
+    setRowIds((prev) => prev.filter((rowId) => rowId !== id));
     emit(items.filter((i) => i._id !== id));
     setWeightInputs((prev) => {
       const next = { ...prev };
@@ -242,6 +236,7 @@ export function LoraBindingEditor({ bindings, onChange }: LoraBindingEditorProps
     if (!over || active.id === over.id) return;
     const oldIndex = ids.indexOf(active.id as string);
     const newIndex = ids.indexOf(over.id as string);
+    setRowIds((prev) => arrayMove(prev, oldIndex, newIndex));
     emit(arrayMove(items, oldIndex, newIndex));
   }
 
