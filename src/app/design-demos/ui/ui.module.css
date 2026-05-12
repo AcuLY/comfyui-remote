@@ -1166,7 +1166,7 @@
 }
 
 .imageListSmallStats {
-  padding: 0 4px 5px;
+  padding: 0 0 5px;
 }
 
 .imageListSmall,
@@ -1176,7 +1176,7 @@
   max-width: 100%;
   gap: 6px;
   overflow-x: auto;
-  padding: 2px 4px 3px;
+  padding: 2px 0 3px;
 }
 
 .imageListSmallFrame[data-overflow-left="true"] > .imageListSmall {
