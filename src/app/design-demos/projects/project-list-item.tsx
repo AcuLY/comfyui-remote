@@ -27,6 +27,7 @@ export function ProjectListItem({
     <article className={cx(s.projectListCard, selected && s.projectListCardSelected)}>
       <div className={s.projectItemControls}>
         <Checkbox
+          className={s.projectSelectCheckbox}
           checked={selected}
           label={selected ? `取消选择项目：${project.title}` : `选择项目：${project.title}`}
           onCheckedChange={() => onToggleSelected()}

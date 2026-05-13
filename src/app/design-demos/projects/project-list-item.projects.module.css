@@ -21,8 +21,9 @@
 }
 
 .projectListCard {
+  position: relative;
   display: grid;
-  grid-template-columns: minmax(138px, 220px) minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr);
   align-items: center;
   gap: 12px;
   border: 0;
@@ -31,7 +32,7 @@
   background: transparent;
   box-shadow: none;
   color: inherit;
-  padding: 10px 12px;
+  padding: 14px 14px 14px 54px;
   text-decoration: none;
 }
 
@@ -43,6 +44,12 @@
   box-shadow: none;
   outline: none;
   transform: none;
+}
+
+.projectListCardSelected {
+  border-bottom-color: rgba(0, 217, 146, 0.34);
+  background: var(--demo-selected);
+  box-shadow: 0 0 0 1px rgba(0, 217, 146, 0.1) inset;
 }
 
 .projectListCard:last-child {
@@ -110,18 +117,10 @@
 }
 
 .projectFolderWorkspace .projectListCard {
-  position: relative;
-  display: grid;
-  grid-template-columns: 30px minmax(0, 1fr);
-  grid-template-areas: "controls content";
-  align-items: stretch;
-  gap: 10px;
   border: 1px solid transparent;
   border-bottom-color: var(--demo-border);
   border-radius: 8px;
-  background: transparent;
-  color: inherit;
-  padding: 10px;
+  padding: 14px 14px 14px 54px;
   transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
 }
 
@@ -138,16 +137,28 @@
 }
 
 .projectItemControls {
+  position: absolute;
+  top: 14px;
+  bottom: 14px;
+  left: 14px;
   display: grid;
-  grid-area: controls;
-  grid-template-rows: 30px 1fr;
-  align-self: stretch;
+  width: 26px;
+  grid-template-rows: 26px minmax(0, 1fr);
   align-items: start;
   justify-items: center;
-  gap: 6px;
+  pointer-events: none;
+  z-index: 2;
 }
 
-.projectDragHandle {
+.projectItemControls > * {
+  pointer-events: auto;
+}
+
+.projectSelectCheckbox {
+  grid-row: 1;
+}
+
+.projectDragHandle[data-demo-ui-button="true"][data-demo-ui-button-icon-only="true"] {
   display: inline-flex;
   width: 24px;
   min-width: 24px;
@@ -160,20 +171,21 @@
   background: transparent;
   color: var(--demo-faint);
   cursor: grab;
+  grid-row: 2;
   padding: 0;
   align-self: center;
+  justify-self: center;
 }
 
 .projectListContent {
   display: grid;
-  grid-area: content;
   min-width: 0;
   align-content: start;
   gap: 8px;
 }
 
-.projectDragHandle:hover,
-.projectDragHandle:focus-visible {
+.projectDragHandle[data-demo-ui-button="true"][data-demo-ui-button-icon-only="true"]:hover,
+.projectDragHandle[data-demo-ui-button="true"][data-demo-ui-button-icon-only="true"]:focus-visible {
   border-color: var(--demo-glass-accent-border);
   background: var(--demo-field-bg);
   color: var(--demo-green);
@@ -312,8 +324,7 @@
 @media (max-width: 639px) {
 
   .projectFolderWorkspace .projectListCard {
-    grid-template-columns: 30px minmax(0, 1fr);
-    grid-template-areas: "controls content";
+    padding: 14px 14px 14px 54px;
   }
 
   .projectListRecentResult {
@@ -361,7 +372,7 @@
 @media (min-width: 640px) and (max-width: 1023px) {
 
   .projectListCard {
-    grid-template-columns: minmax(108px, 150px) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
     align-items: start;
   }
 
@@ -387,7 +398,7 @@
 @media (max-width: 639px) {
 
   .projectListCard {
-    grid-template-columns: minmax(82px, 112px) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
     align-items: start;
   }
 
@@ -435,11 +446,10 @@
 }
 
 .showcaseProjectListPreview.projectFolderWorkspace .projectListCard {
-  grid-template-columns: 30px minmax(0, 1fr);
-  grid-template-areas: "controls content";
   gap: 10px;
   border-color: var(--demo-border);
   border-radius: 10px;
+  padding: 14px 14px 14px 54px;
 }
 
 .showcaseProjectListPreview .projectListMeta {
@@ -448,8 +458,7 @@
 
 @media (max-width: 639px) {
   .showcaseProjectListPreview.projectFolderWorkspace .projectListCard {
-    grid-template-columns: 30px minmax(0, 1fr);
-    grid-template-areas: "controls content";
+    padding: 14px 14px 14px 54px;
   }
 }
 
