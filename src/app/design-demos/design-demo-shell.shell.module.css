@@ -196,7 +196,8 @@
   height: 100vh;
 }
 .contentFrameWithRouteHeader {
-  grid-template-rows: auto minmax(0, 1fr);
+  position: relative;
+  grid-template-rows: minmax(0, 1fr);
 }
 .sidebar {
   display: flex;
@@ -443,7 +444,7 @@
   padding: 22px 18px 48px;
 }
 .mainWithRouteHeader {
-  padding-top: 16px;
+  padding-top: calc(96px + env(safe-area-inset-top));
 }
 .mainWithRouteHeader > :global(div) > :global([data-demo-page-header]:first-child) {
   display: none;
@@ -731,7 +732,9 @@
   display: none;
 }
 .routeHeader {
-  position: relative;
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline: 0;
   z-index: 32;
   min-width: 0;
   border-bottom: 1px solid color-mix(in srgb, var(--demo-border) 72%, transparent);
@@ -1154,7 +1157,8 @@
 
   .workspaceWithRouteHeader .contentFrame {
     display: grid;
-    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+    position: relative;
     height: 100dvh;
     min-height: 0;
   }
@@ -1250,7 +1254,7 @@
   }
 
   .mainWithRouteHeader {
-    padding-top: 14px;
+    padding-top: calc(78px + env(safe-area-inset-top));
   }
 
   .routeHeader {
