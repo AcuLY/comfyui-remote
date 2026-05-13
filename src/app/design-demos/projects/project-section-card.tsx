@@ -27,6 +27,7 @@ export function ProjectSectionCard({
   const defaultBatchSize = BATCH_SIZE_OPTIONS.includes(section.batchSize) ? section.batchSize : 2;
   const [batchSize, setBatchSize] = useState(defaultBatchSize);
   const sectionHref = demoHref(`/projects/${project.id}/sections/${rawSectionId(section)}`);
+  const latestRunLabel = `最后运行：${section.latestRunAt ?? "未运行"}`;
 
   return (
     <article
@@ -50,6 +51,7 @@ export function ProjectSectionCard({
           <ImageListSmall className={s.recentResultImages} images={section.images} limit={section.images.length} showCounts wide />
         </Link>
         <div className={s.sectionCardActions}>
+          <span className={s.sectionLastRunTime}>{latestRunLabel}</span>
           <SegmentedControl
             ariaLabel="运行批次"
             className={s.sectionBatchTabs}

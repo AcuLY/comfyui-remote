@@ -44,6 +44,7 @@ export type DemoSection = {
   lora2?: unknown[];
   images: DemoImage[];
   latestRunIndex?: number;
+  latestRunAt?: string;
   presetBindings?: Array<{
     id: string;
     kind: "preset" | "group";

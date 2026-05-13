@@ -52,6 +52,7 @@ export function fallbackData(warning: string | null): DemoData {
     loraCount: 2,
     images: demoImages.slice(index * 4, index * 4 + 6),
     latestRunIndex: 12 + index,
+    latestRunAt: shortDate(new Date(Date.now() - (index + 2) * 3600000).toISOString()),
     presetBindings: [
       {
         id: `binding-${index}-1`,

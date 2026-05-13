@@ -140,7 +140,8 @@ export async function loadDesignDemoData(): Promise<DemoData> {
                id, projectId, name, sortOrder, enabled, aspectRatio, batchSize, shortSidePx,
                seedPolicy1, seedPolicy2, positivePrompt, negativePrompt, checkpointName, loraConfig,
                upscaleFactor, ksampler1, ksampler2,
-               (select count(*) from PromptBlock b where b.projectSectionId = ProjectSection.id) as promptBlockCount
+               (select count(*) from PromptBlock b where b.projectSectionId = ProjectSection.id) as promptBlockCount,
+               (select max(r.createdAt) from Run r where r.projectSectionId = ProjectSection.id) as latestRunAt
              from ProjectSection
              where projectId in (${projectIds.map(() => "?").join(",")})
              order by projectId asc, sortOrder asc`,
@@ -185,6 +186,7 @@ export async function loadDesignDemoData(): Promise<DemoData> {
         lora1: Array.isArray(loraConfig.lora1) ? loraConfig.lora1 : [],
         lora2: Array.isArray(loraConfig.lora2) ? loraConfig.lora2 : [],
         images: [],
+        latestRunAt: row.latestRunAt ? shortDate(row.latestRunAt) : undefined,
       } satisfies DemoSection;
     });
     for (const section of sections) {

@@ -231,5 +231,6 @@ const MOCK_SECTION: DemoSection = {
   },
   promptBlockCount: 4,
   loraCount: 2,
+  latestRunAt: "2026-05-09 10:30",
   images: [],
 };
