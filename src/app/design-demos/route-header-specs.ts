@@ -16,7 +16,6 @@ import {
   PanelTop,
   Play,
   Plus,
-  RefreshCw,
   Rows3,
   Save,
   Search,
@@ -112,7 +111,6 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
     eyebrow: "任务",
     title: "任务工作台",
     subtitle: "按状态处理待审图片、运行中任务和失败记录。",
-    actions: [headerAction("刷新", RefreshCw, "subtle")],
     meta: [`待审 ${data.metrics.pendingImages}`, `运行 ${runningCount}`, `失败 ${failedCount}`],
     status: "审核队列",
   };

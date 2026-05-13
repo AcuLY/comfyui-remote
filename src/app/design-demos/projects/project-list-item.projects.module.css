@@ -21,18 +21,21 @@
 }
 
 .projectListCard {
+  --project-list-control-size: 28px;
+  --project-list-title-row-height: 36px;
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  align-items: center;
-  gap: 12px;
+  grid-template-columns: var(--project-list-control-size) minmax(0, 1fr);
+  grid-template-areas: "controls content";
+  align-items: stretch;
+  gap: 14px;
   border: 0;
   border-bottom: 1px solid var(--demo-border);
   border-radius: 0;
   background: transparent;
   box-shadow: none;
   color: inherit;
-  padding: 14px 14px 14px 54px;
+  padding: 14px;
   text-decoration: none;
 }
 
@@ -120,7 +123,7 @@
   border: 1px solid transparent;
   border-bottom-color: var(--demo-border);
   border-radius: 8px;
-  padding: 14px 14px 14px 54px;
+  padding: 14px;
   transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
 }
 
@@ -137,14 +140,12 @@
 }
 
 .projectItemControls {
-  position: absolute;
-  top: 14px;
-  bottom: 14px;
-  left: 14px;
   display: grid;
-  width: 26px;
-  grid-template-rows: 26px minmax(0, 1fr);
-  align-items: start;
+  grid-area: controls;
+  width: var(--project-list-control-size);
+  grid-template-rows: var(--project-list-title-row-height) minmax(0, 1fr);
+  align-self: stretch;
+  align-items: center;
   justify-items: center;
   pointer-events: none;
   z-index: 2;
@@ -155,15 +156,17 @@
 }
 
 .projectSelectCheckbox {
+  align-self: center;
   grid-row: 1;
+  justify-self: center;
 }
 
 .projectDragHandle[data-demo-ui-button="true"][data-demo-ui-button-icon-only="true"] {
   display: inline-flex;
-  width: 24px;
-  min-width: 24px;
-  height: 24px;
-  min-height: 24px;
+  width: var(--project-list-control-size);
+  min-width: var(--project-list-control-size);
+  height: var(--project-list-control-size);
+  min-height: var(--project-list-control-size);
   align-items: center;
   justify-content: center;
   border: 1px solid transparent;
@@ -179,6 +182,7 @@
 
 .projectListContent {
   display: grid;
+  grid-area: content;
   min-width: 0;
   align-content: start;
   gap: 8px;
@@ -195,8 +199,10 @@
 .projectListRecentResult {
   display: grid;
   min-width: 0;
-  gap: 5px;
+  gap: 7px;
+  border-block: 1px solid var(--demo-border);
   color: inherit;
+  padding-block: 8px;
   text-decoration: none;
 }
 
@@ -226,6 +232,7 @@
 .projectListTitleRow {
   display: flex;
   min-width: 0;
+  min-height: var(--project-list-title-row-height);
   align-items: center;
   justify-content: space-between;
   gap: 10px;
@@ -236,8 +243,8 @@
   min-width: 0;
   flex: 1 1 auto;
   flex-wrap: wrap;
-  align-items: baseline;
-  gap: 2px 8px;
+  align-items: center;
+  gap: 0 8px;
 }
 
 .projectListTitleLink strong {
@@ -247,7 +254,7 @@
   color: var(--demo-text);
   font-size: 13px;
   font-weight: 580;
-  line-height: 1.35;
+  line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -258,7 +265,7 @@
   color: var(--demo-faint);
   font-size: 11px;
   font-weight: 520;
-  line-height: 1.35;
+  line-height: 1.2;
   white-space: nowrap;
 }
 
@@ -325,7 +332,7 @@
 @media (max-width: 639px) {
 
   .projectFolderWorkspace .projectListCard {
-    padding: 14px 14px 14px 54px;
+    padding: 14px;
   }
 
   .projectListRecentResult {
@@ -373,7 +380,7 @@
 @media (min-width: 640px) and (max-width: 1023px) {
 
   .projectListCard {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: var(--project-list-control-size) minmax(0, 1fr);
     align-items: start;
   }
 
@@ -399,7 +406,7 @@
 @media (max-width: 639px) {
 
   .projectListCard {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: var(--project-list-control-size) minmax(0, 1fr);
     align-items: start;
   }
 
@@ -450,7 +457,7 @@
   gap: 10px;
   border-color: var(--demo-border);
   border-radius: 10px;
-  padding: 14px 14px 14px 54px;
+  padding: 14px;
 }
 
 .showcaseProjectListPreview .projectListMeta {
@@ -459,7 +466,7 @@
 
 @media (max-width: 639px) {
   .showcaseProjectListPreview.projectFolderWorkspace .projectListCard {
-    padding: 14px 14px 14px 54px;
+    padding: 14px;
   }
 }
 

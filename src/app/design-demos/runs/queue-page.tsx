@@ -68,6 +68,7 @@ export function QueuePage({ data }: { data: DemoData }) {
         />
         {activeTab === "pending" ? (
           <PendingReviewGroups
+            className={s.queueSurface}
             groups={reviewGroups}
             reviewRows={reviewRows}
             totalPending={totalPending}
@@ -77,6 +78,7 @@ export function QueuePage({ data }: { data: DemoData }) {
           />
         ) : activeTab === "running" ? (
           <RunList
+            className={s.queueSurface}
             title="运行中"
             runs={running}
             empty="当前没有运行中或排队中的任务"
@@ -86,6 +88,7 @@ export function QueuePage({ data }: { data: DemoData }) {
           />
         ) : activeTab === "failed" ? (
           <RunList
+            className={s.queueSurface}
             title="最近失败"
             runs={failed}
             empty="当前没有失败任务"

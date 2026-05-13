@@ -1,6 +1,6 @@
 .checkbox {
-  --checkbox-size: 30px;
-  --checkbox-radius: 8px;
+  --checkbox-size: 26px;
+  --checkbox-radius: 7px;
   --checkbox-bg: var(--demo-field-bg, rgba(255, 255, 255, 0.78));
   --checkbox-border: var(--demo-border, rgba(15, 23, 42, 0.12));
   --checkbox-color: var(--demo-muted, #64748b);
@@ -25,7 +25,7 @@
   transition: border-color 160ms ease, color 160ms ease, opacity 160ms ease;
 }
 
-.checkbox:hover {
+.checkbox:not(.checkboxChecked):hover {
   --checkbox-border: var(--checkbox-accent-border);
   --checkbox-color: var(--checkbox-green);
 }

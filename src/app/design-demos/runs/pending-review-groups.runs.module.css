@@ -317,13 +317,12 @@
 }
 
 .queueThumbs {
-  display: flex;
+  display: grid;
   min-width: 0;
   gap: 5px;
   overflow: hidden;
 }
 
-.queueThumbs span,
 .queueThumbs :where([data-demo-ui-image-thumb-small="true"]) {
   display: inline-flex;
   width: 80px;

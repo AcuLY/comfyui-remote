@@ -125,8 +125,8 @@
 
 .dragHandle {
   display: inline-flex;
-  width: 36px;
-  height: 36px;
+  width: 28px;
+  height: 28px;
   align-items: center;
   justify-content: center;
   border: 1px solid transparent;
@@ -172,7 +172,7 @@
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  align-items: baseline;
+  align-items: center;
   justify-self: start;
   justify-content: flex-start;
   gap: 7px;
@@ -187,7 +187,7 @@
   color: var(--demo-faint);
   font-size: 10px;
   font-weight: 560;
-  line-height: 1.35;
+  line-height: 1;
 }
 
 .sectionHeaderActions {
@@ -277,10 +277,10 @@
 
   .sectionCard .dragHandle,
   .sectionCardCompact .dragHandle {
-    width: 24px;
-    min-width: 24px;
-    height: 30px;
-    min-height: 30px;
+    width: 28px;
+    min-width: 28px;
+    height: 28px;
+    min-height: 28px;
   }
 
   .sectionCardHeader {
@@ -353,8 +353,8 @@
   }
 
   .dragHandle {
-    width: 36px;
-    height: 36px;
+    width: 28px;
+    height: 28px;
   }
 
   .sectionCardActions,
@@ -386,8 +386,8 @@
 }
 
 .showcasePage .dragHandle:where([data-demo-ui-button="true"]) {
-  height: 36px;
-  min-height: 36px;
+  height: 28px;
+  min-height: 28px;
   border-radius: 8px;
   font-size: 12px;
   font-weight: 580;
@@ -395,14 +395,14 @@
 }
 
 .showcasePage .dragHandle:where([data-demo-ui-button-icon-only="true"]) {
-  width: 36px;
-  min-width: 36px;
+  width: 28px;
+  min-width: 28px;
   padding: 0;
 }
 
 .dragHandle:where([data-demo-ui-button="true"]) {
-  height: 36px;
-  min-height: 36px;
+  height: 28px;
+  min-height: 28px;
   border-radius: 8px;
   font-size: 12px;
   font-weight: 580;
@@ -410,9 +410,9 @@
 }
 
 .dragHandle:where([data-demo-ui-button-icon-only="true"]) {
-  width: 36px;
-  min-width: 36px;
-  height: 36px;
-  min-height: 36px;
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  min-height: 28px;
   padding: 0;
 }

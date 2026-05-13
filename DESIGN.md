@@ -1,6 +1,6 @@
 # ComfyUI Manager Design System
 
-Updated: 2026-05-09
+Updated: 2026-05-13
 
 This product UI uses a calm dual-theme workspace aesthetic: soft gradient atmosphere, translucent glass surfaces, compact data density, and restrained green actions. Light mode is the primary reference tone; dark mode should feel like the same product translated to dark surfaces, not a separate visual identity.
 
@@ -114,6 +114,31 @@ For review pages, the main surface should stay readable as one work area: header
 - Panel and row titles: 12-14px, 540-600 weight.
 - Metadata and helper text: 10-12px, normal or medium weight.
 - Letter spacing should stay near zero. Avoid heavy bold labels in dense work areas.
+
+### Demo Type Scale
+
+All `/design-demos` component pages should use this small, explicit type scale. Do not introduce ad hoc `13.5px`, `11.5px`, viewport-based font sizes, or heavier weights to make one card title feel more important than its peers.
+
+| Role | Size | Weight | Line height | Typical use |
+| --- | ---: | ---: | ---: | --- |
+| Route title | 18-21px | 580-620 | 1.2 | Page/header title inside the app shell |
+| Section title | 15px | 580-620 | 1.25 | Main panel column titles, editor panel headings |
+| Showcase/component name | 14px | 600 | 1.25 | `ShowcaseItem` names and inventory labels |
+| Card/entity title | 13px | 580 | 1.2 | Project, section, run, preset, template, folder, and result-card titles |
+| Control text | 12px | 560-580 | 1.2 | Buttons, segmented controls, compact toolbar commands |
+| Secondary/meta text | 11px | 520 | 1.35 | Counts, dates, status helper copy, title-adjacent metadata |
+| Index/ordinal | 10px | 560 | 1 | Row numbers such as `01`, sort/order prefixes |
+| Tiny labels | 9-10px | 600 | 1.1 | Image captions and very dense badges only |
+
+### Demo Card Title Rules
+
+- `Card/entity title` is the default for repeated item titles. Use 13px/580/1.2 for `ProjectListItem`, `ProjectSectionCard`, `ProjectSectionResultCard`, queue/run rows, folder rows, preset/template rows, and comparable demo cards.
+- Title-adjacent metadata, such as `12 小节`, run counts, or update dates, uses `Secondary/meta text` (11px/520/1.35) unless it is inside a badge.
+- Numeric prefixes such as `01` use `Index/ordinal` (10px/560/1) and must be vertically centered with the title text.
+- Title rows should have a stable height before card body content. Use a 36px normal-density title row when the row also contains checkbox, drag, copy, delete, or status controls.
+- Mixed title/meta rows must use `align-items: center`, not baseline alignment. This prevents CJK text, numbers, and small metadata from appearing uneven.
+- Selection controls belong in the same grid row as the title. A project/section checkbox should align to the title row center, not to the thumbnail strip or the full card center.
+- Do not make list cards, section cards, and folder rows use different title sizes just because their surrounding thumbnails differ. The content hierarchy comes from spacing, dividers, badges, and controls, not title-size drift.
 
 ## 5. Layout Rules
 

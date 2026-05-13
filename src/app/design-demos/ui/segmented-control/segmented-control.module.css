@@ -230,6 +230,14 @@
   color: var(--ui-green);
 }
 
+.compact .itemActive:hover:not(:disabled) {
+  border-color: var(--ui-glass-accent-border);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent),
+    var(--ui-green-soft);
+  color: var(--ui-green);
+}
+
 @keyframes uiSpin {
   to {
     transform: rotate(360deg);

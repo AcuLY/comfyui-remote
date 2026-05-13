@@ -13,6 +13,7 @@ import s from "./run-list.runs.module.css";
 import local from "./run-list.module.css";
 
 export function RunList({
+  className,
   title,
   runs,
   empty,
@@ -20,6 +21,7 @@ export function RunList({
   collapsedGroups,
   onToggleGroup,
 }: {
+  className?: string;
   title: string;
   runs: DemoRun[];
   empty: string;
@@ -54,7 +56,7 @@ export function RunList({
   }
 
   return (
-    <section className={s.queueSurface}>
+    <section className={cx(s.queueSurface, className)}>
       <div className={s.queueSurfaceHeader}>
         <div>
           <strong>{title}</strong>
@@ -69,9 +71,9 @@ export function RunList({
               tone="danger"
               icon={X}
               disabled={selectedVisibleCount === 0}
-              feedback={{ tone: "warning", title: "运行任务取消队列已准备", detail: `${selectedVisibleCount} 条任务` }}
+              feedback={{ tone: "warning", title: "运行任务删除队列已准备", detail: `${selectedVisibleCount} 条任务` }}
             >
-              取消所选
+              删除所选
             </Button>
           ) : (
             <Button
@@ -160,7 +162,7 @@ export function RunList({
                           </div>
                           <div className={s.toolbar} onClick={(event) => event.stopPropagation()}>
                             {mode === "running" ? (
-                              <Button tone="danger" icon={X} feedback={{ tone: "warning", title: "取消任务已排队", detail: run.sectionName }}>取消</Button>
+                              <Button tone="danger" icon={X} feedback={{ tone: "warning", title: "删除任务已排队", detail: run.sectionName }}>删除</Button>
                             ) : (
                               <Button tone="primary" icon={ArrowRight} feedback={{ title: "重试已排队", detail: run.sectionName }}>重试</Button>
                             )}

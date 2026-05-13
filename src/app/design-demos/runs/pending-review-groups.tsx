@@ -17,6 +17,7 @@ export function pendingReviewPageSize() {
 }
 
 export function PendingReviewGroups({
+  className,
   groups,
   reviewRows,
   totalPending,
@@ -24,6 +25,7 @@ export function PendingReviewGroups({
   collapsedGroups,
   onToggleGroup,
 }: {
+  className?: string;
   groups: QueueProjectGroup<QueueReviewRow>[];
   reviewRows: QueueReviewRow[];
   totalPending: number;
@@ -32,7 +34,7 @@ export function PendingReviewGroups({
   onToggleGroup: (groupId: string) => void;
 }) {
   return (
-    <section className={s.queueSurface}>
+    <section className={cx(s.queueSurface, className)}>
       <div className={s.queueSurfaceHeader}>
         <div>
           <strong>最新结果组</strong>
@@ -67,7 +69,7 @@ export function PendingReviewGroups({
                         <span>run {row.run.runIndex}</span>
                         <span className={s.queueRunDate}>生成于 {row.run.createdAt}</span>
                       </div>
-                      <ImageListSmall className={s.queueThumbs} images={row.run.images} limit={5} />
+                      <ImageListSmall className={s.queueThumbs} images={row.run.images} limit={row.run.images.length} showCounts />
                     </Link>
                   ))}
                 </div>

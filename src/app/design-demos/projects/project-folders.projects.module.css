@@ -165,9 +165,9 @@
 
 .projectFolderRow {
   display: grid;
-  grid-template-columns: 22px minmax(0, 1fr) auto;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
   min-width: 0;
   border: 1px solid var(--demo-border);
   border-radius: var(--demo-radius);
@@ -177,15 +177,24 @@
 
 .projectFolderGrip {
   display: inline-flex;
-  width: 22px;
+  width: 28px;
   height: 28px;
   align-items: center;
   justify-content: center;
-  border: 0;
+  border: 1px solid transparent;
+  border-radius: 8px;
   background: transparent;
   color: var(--demo-faint);
   cursor: grab;
   padding: 0;
+}
+
+.projectFolderGrip:hover,
+.projectFolderGrip:focus-visible {
+  border-color: var(--demo-glass-accent-border);
+  background: var(--demo-field-bg);
+  color: var(--demo-green);
+  outline: none;
 }
 
 .projectFolderOpen {
@@ -375,8 +384,8 @@
 .projectFolderRowActions :where([data-demo-ui-button="true"]),
 .projectMoveMenu > :where([data-demo-ui-button="true"]),
 .projectFolderGrip:where([data-demo-ui-button="true"]) {
-  height: 36px;
-  min-height: 36px;
+  height: 28px;
+  min-height: 28px;
   border-radius: 8px;
   font-size: 12px;
   font-weight: 580;
@@ -385,9 +394,21 @@
 
 .projectFolderRowActions :where([data-demo-ui-button-icon-only="true"]),
 .projectFolderGrip:where([data-demo-ui-button-icon-only="true"]) {
-  width: 36px;
-  min-width: 36px;
-  height: 36px;
-  min-height: 36px;
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  min-height: 28px;
   padding: 0;
+}
+
+.showcasePage .projectFolderGrip:where([data-demo-ui-button="true"]) {
+  height: 28px;
+  min-height: 28px;
+}
+
+.showcasePage .projectFolderGrip:where([data-demo-ui-button-icon-only="true"]) {
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  min-height: 28px;
 }
