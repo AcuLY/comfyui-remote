@@ -41,26 +41,38 @@
   }
 }
 
-.pagerControls,
-.pagerChunk {
+.pagerControls {
   display: inline-flex;
   align-items: center;
   gap: 4px;
 }
 
+.pagerGap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
 .pagerButton {
   display: inline-flex;
-  width: 28px;
-  height: 28px;
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  min-height: 36px;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--demo-border);
-  border-radius: 7px;
-  background: var(--demo-field-bg);
+  border: 1px solid var(--demo-border-strong);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--demo-glass-soft) 88%, transparent);
   color: var(--demo-muted);
   cursor: pointer;
   font: inherit;
-  font-size: 11px;
+  font-size: 12px;
+  font-weight: 580;
+  letter-spacing: 0;
+  line-height: 1.2;
+  padding: 0;
+  transition: background 160ms ease, border-color 160ms ease, box-shadow 160ms ease, color 160ms ease, opacity 160ms ease;
 }
 
 .pagerButton:hover,
@@ -72,14 +84,59 @@
   outline: none;
 }
 
+.pagerButton:focus-visible {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--demo-green) 26%, transparent);
+}
+
 .pagerButton:disabled {
   cursor: not-allowed;
   opacity: 0.42;
 }
 
-.pagerEllipsis {
-  color: var(--demo-faint);
-  padding-inline: 2px;
+.pagerMenu {
+  position: fixed;
+  z-index: 80;
+  display: grid;
+  width: 96px;
+  max-height: 220px;
+  gap: 2px;
+  overflow-y: auto;
+  border: 1px solid var(--demo-border-strong);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--demo-panel-3) 86%, transparent);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.18);
+  padding: 6px;
+  backdrop-filter: var(--demo-glass-blur);
+}
+
+.pagerGapEnd .pagerMenu {
+  transform: translateX(-100%);
+}
+
+.pagerMenuItem {
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--demo-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 580;
+  letter-spacing: 0;
+  line-height: 1.2;
+  padding: 0 8px;
+  transition: background 160ms ease, color 160ms ease;
+}
+
+.pagerMenuItem:hover,
+.pagerMenuItem:focus-visible {
+  background: var(--demo-control-hover);
+  color: var(--demo-text);
+  outline: none;
 }
 
 @keyframes demoSkeleton {
@@ -101,6 +158,10 @@
     height: 44px;
     min-width: 44px;
   }
+
+  .pagerMenu {
+    width: 104px;
+  }
 }
 
 @keyframes spin {
@@ -115,4 +176,14 @@
   height: 36px;
   min-height: 36px;
   padding: 0;
+}
+
+@media (max-width: 639px) {
+
+  :where([data-demo-ui-button="true"]).pagerButton {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
+  }
 }

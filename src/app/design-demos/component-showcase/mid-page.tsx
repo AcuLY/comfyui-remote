@@ -108,6 +108,8 @@ export function ComponentShowcaseMid({ data }: { data: DemoData }) {
           <hr className={s.showcaseDivider} />
           <DemoPager currentPage={3} totalPages={10} />
           <hr className={s.showcaseDivider} />
+          <DemoPager currentPage={7} totalPages={100} />
+          <hr className={s.showcaseDivider} />
           <DemoPager currentPage={10} totalPages={10} />
         </div>
       </ShowcaseItem>
