@@ -45,6 +45,8 @@ import {
   findProject,
   findRun,
   findTemplate,
+  matchPattern,
+  ROUTES,
   sampleRouteInventory,
 } from "../design-demo-utils";
 import type { RouteIcon, RouteKey } from "../design-demo-utils";
@@ -89,6 +91,11 @@ function routeMap(data: DemoData) {
 
 function currentRoute(routes: Map<RouteKey, string>, key: RouteKey) {
   return routes.get(key) ?? "/runs";
+}
+
+function displayRoute(route: string) {
+  const matchedRoute = ROUTES.find((item) => matchPattern(item.pattern, route));
+  return matchedRoute ? matchedRoute.pattern.replace(/:[^/]+/g, ":id") : route;
 }
 
 function buildHeaderSpecs(data: DemoData) {
@@ -733,7 +740,7 @@ function PageHeaderCard({ spec }: { spec: HeaderSpec }) {
           <h2>{spec.title}</h2>
         </div>
         <Link className={headerS.routeLink} href={demoHref(spec.route)}>
-          {spec.route}
+          {displayRoute(spec.route)}
         </Link>
       </div>
       <div className={headerS.stateGrid}>
