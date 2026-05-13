@@ -298,7 +298,6 @@
   padding-bottom: 1px;
 }
 
-.iconSurface,
 .headerButton {
   display: inline-flex;
   min-height: 34px;
@@ -324,11 +323,6 @@
     color 150ms ease,
     transform 150ms ease;
   white-space: nowrap;
-}
-
-.iconSurface {
-  width: 34px;
-  padding: 0;
 }
 
 .headerButtonIconOnly {
@@ -358,8 +352,6 @@
   background: transparent;
 }
 
-.iconSurface:hover,
-.iconSurface:focus-visible,
 .headerButton:hover,
 .headerButton:focus-visible {
   border-color: var(--demo-glass-accent-border);
@@ -400,7 +392,6 @@
   display: none;
 }
 
-.fixedHeaderMobile .iconSurface,
 .fixedHeaderMobile .headerButton {
   width: 40px;
   min-height: 40px;
@@ -490,13 +481,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .iconSurface,
   .headerButton {
     transition: none;
   }
 
-  .iconSurface:hover,
-  .iconSurface:focus-visible,
   .headerButton:hover,
   .headerButton:focus-visible {
     transform: none;
