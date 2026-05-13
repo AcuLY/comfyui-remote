@@ -2,29 +2,17 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { Ref } from "react";
 import type { ReactNode } from "react";
-import {
-  Archive,
-  Eye,
-  EyeOff,
-  Grid3X3,
-  ImageIcon,
-  Layers,
-  Menu,
-  Moon,
-  MoreHorizontal,
-  PanelTop,
-  Rows3,
-  SlidersHorizontal,
-  Sun,
-  Tags,
-} from "lucide-react";
+import { Eye, EyeOff, Menu, Moon, MoreHorizontal, Sun } from "lucide-react";
 
 import type { DemoData } from "./design-demo-data";
 import s from "./design-demo-shell.shell.module.css";
+import { findHeaderSpecForRoute } from "./route-header-specs";
+import type { HeaderSpec } from "./route-header-specs";
+import { RouteHeaderSurface } from "./route-header-surface";
 import { Button } from "./ui/button";
 import { DemoFeedbackProvider } from "./ui/feedback";
-import { PageHeaderBack } from "./ui/page-header";
 import {
   DESIGN_DEMO_SFW_STORAGE_KEY,
   DESIGN_DEMO_THEME_STORAGE_KEY,
@@ -36,97 +24,7 @@ import {
   isNavActive,
   isSfwEnabledValue,
 } from "./design-demo-utils";
-import type { DemoTheme, RouteIcon } from "./design-demo-utils";
-
-type RouteHeaderConfig = {
-  back?: { href: string; label: string };
-  eyebrow: string;
-  icon: RouteIcon;
-  meta: string;
-  subtitle: string;
-  title: string;
-};
-
-const COMPONENT_SHOWCASE_HEADERS: Record<string, RouteHeaderConfig> = {
-  "/component-showcase": {
-    eyebrow: "临时页面",
-    icon: Layers,
-    meta: "7 个分类",
-    subtitle: "选择分类查看各组件。调整浏览器窗口宽度查看响应式表现。",
-    title: "组件展示总览",
-  },
-  "/component-showcase-atoms": {
-    back: { href: "/component-showcase", label: "返回总览" },
-    eyebrow: "组件展示",
-    icon: Layers,
-    meta: "18 个组件",
-    subtitle: "基础组件，调整浏览器窗口宽度查看响应式表现。",
-    title: "原子 / 小组件",
-  },
-  "/component-showcase-mid": {
-    back: { href: "/component-showcase", label: "返回总览" },
-    eyebrow: "组件展示",
-    icon: Grid3X3,
-    meta: "8 个组件",
-    subtitle: "页面标题、面板、路由表和运行指标。",
-    title: "中组件",
-  },
-  "/component-showcase-images": {
-    back: { href: "/component-showcase", label: "返回总览" },
-    eyebrow: "组件展示",
-    icon: ImageIcon,
-    meta: "7 个组件",
-    subtitle: "图片缩略图、列表、宫格与 Lightbox。",
-    title: "图片组件",
-  },
-  "/component-showcase-editor": {
-    back: { href: "/component-showcase", label: "返回总览" },
-    eyebrow: "组件展示",
-    icon: SlidersHorizontal,
-    meta: "8 个组件",
-    subtitle: "小节编辑器专用组件。",
-    title: "Section Editor 组件",
-  },
-  "/component-showcase-projects": {
-    back: { href: "/component-showcase", label: "返回总览" },
-    eyebrow: "组件展示",
-    icon: Archive,
-    meta: "8 个组件",
-    subtitle: "项目列表页和详情页中的卡片、行和导航组件。",
-    title: "项目卡片和列表",
-  },
-  "/component-showcase-icons": {
-    back: { href: "/component-showcase", label: "返回总览" },
-    eyebrow: "组件展示",
-    icon: Tags,
-    meta: "57 个图标",
-    subtitle: "Lucide 图标全览与自定义 SVG 图标。",
-    title: "Icons",
-  },
-  "/component-showcase-headers": {
-    back: { href: "/component-showcase", label: "返回总览" },
-    eyebrow: "组件展示",
-    icon: PanelTop,
-    meta: "36 个页面",
-    subtitle: "固定顶部 header 的页面级设计稿。",
-    title: "Headers",
-  },
-};
-
-function getComponentShowcaseHeader(currentRoute: string) {
-  if (currentRoute === "/image-list-components") {
-    return {
-      back: { href: "/component-showcase", label: "返回总览" },
-      eyebrow: "临时页面",
-      icon: Rows3,
-      meta: "3 个检查项",
-      subtitle: "统一小图列表和中图列表的布局、溢出、选择与操作区。",
-      title: "图片列表组件检查",
-    } satisfies RouteHeaderConfig;
-  }
-
-  return COMPONENT_SHOWCASE_HEADERS[currentRoute] ?? null;
-}
+import type { DemoTheme } from "./design-demo-utils";
 
 function Sidebar({
   collapsed,
@@ -388,44 +286,33 @@ function RouteHeaderToolsMenu({
 function DemoRouteHeader({
   collapsed,
   config,
+  compact,
   isDarkTheme,
   onToggleSfwMode,
   onToggleTheme,
   onToggleTools,
   sfwMode,
+  surfaceRef,
   toolsOpen,
 }: {
   collapsed: boolean;
-  config: RouteHeaderConfig;
+  config: HeaderSpec;
+  compact: boolean;
   isDarkTheme: boolean;
   onToggleSfwMode: () => void;
   onToggleTheme: () => void;
   onToggleTools: () => void;
   sfwMode: boolean;
+  surfaceRef: Ref<HTMLElement>;
   toolsOpen: boolean;
 }) {
-  const Icon = config.icon;
-
   return (
-    <header className={cx(s.routeHeader, collapsed && s.routeHeaderCollapsed)} data-route-header-collapsed={collapsed ? "true" : "false"}>
-      <div className={s.routeHeaderMain}>
-        {config.back ? (
-          <div className={s.routeHeaderBackSlot}>
-            <PageHeaderBack href={config.back.href} label={config.back.label} />
-          </div>
-        ) : null}
-        <div className={s.routeHeaderIdentity}>
-          <span className={s.routeHeaderEyebrow}>
-            <Icon className={s.iconMd} aria-hidden="true" />
-            {config.eyebrow}
-          </span>
-          <h1>{config.title}</h1>
-          <p>{config.subtitle}</p>
-        </div>
-        <div className={s.routeHeaderMeta} aria-label="页面摘要">
-          <span>{config.meta}</span>
-          <span>ComfyUI Manager</span>
-        </div>
+    <RouteHeaderSurface
+      className={s.routeHeaderSurface}
+      mode={compact ? "mobile" : collapsed ? "collapsed" : "expanded"}
+      spec={config}
+      surfaceRef={surfaceRef}
+      tools={
         <div className={s.routeHeaderTools}>
           <Button
             className={cx(s.shellButton, s.iconButton, s.routeHeaderToolButton)}
@@ -444,8 +331,8 @@ function DemoRouteHeader({
             />
           ) : null}
         </div>
-      </div>
-    </header>
+      }
+    />
   );
 }
 
@@ -458,16 +345,20 @@ export function DesignDemoShell({
   currentRoute: string;
   data: DemoData;
 }) {
+  const contentFrameRef = useRef<HTMLDivElement>(null);
   const mainRef = useRef<HTMLElement>(null);
+  const routeHeaderRef = useRef<HTMLElement>(null);
   const routeHeaderCollapsedRef = useRef(false);
+  const routeHeaderInsetRef = useRef(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [theme, setTheme] = useState<DemoTheme>("light");
   const [sfwMode, setSfwMode] = useState(false);
+  const [routeHeaderCompact, setRouteHeaderCompact] = useState(false);
   const [routeHeaderCollapsed, setRouteHeaderCollapsed] = useState(false);
   const isLightTheme = theme === "light";
-  const routeHeaderConfig = useMemo(() => getComponentShowcaseHeader(currentRoute), [currentRoute]);
+  const routeHeaderConfig = useMemo(() => findHeaderSpecForRoute(data, currentRoute), [currentRoute, data]);
   const hasRouteHeader = Boolean(routeHeaderConfig);
   const activeNav = useMemo(
     () => NAV_LINKS.find((link) => isNavActive(currentRoute, link.href, link.activePrefix)) ?? NAV_LINKS[0],
@@ -478,6 +369,7 @@ export function DesignDemoShell({
     const frameId = window.requestAnimationFrame(() => {
       const storedTheme = window.localStorage.getItem(DESIGN_DEMO_THEME_STORAGE_KEY);
       setSidebarCollapsed(window.matchMedia("(min-width: 640px) and (max-width: 1023px)").matches);
+      setRouteHeaderCompact(window.matchMedia("(max-width: 760px)").matches);
       setSfwMode(isSfwEnabledValue(window.localStorage.getItem(DESIGN_DEMO_SFW_STORAGE_KEY)));
 
       if (storedTheme === "light" || storedTheme === "dark") {
@@ -491,6 +383,52 @@ export function DesignDemoShell({
     });
 
     return () => window.cancelAnimationFrame(frameId);
+  }, []);
+
+  useEffect(() => {
+    routeHeaderInsetRef.current = 0;
+  }, [routeHeaderCompact, routeHeaderConfig?.key]);
+
+  useEffect(() => {
+    const frame = contentFrameRef.current;
+    const header = routeHeaderRef.current;
+
+    if (!hasRouteHeader || !frame || !header) {
+      frame?.style.removeProperty("--demo-route-header-height");
+      return;
+    }
+
+    const observedFrame = frame;
+    const observedHeader = header;
+
+    function syncHeaderInset() {
+      const nextHeight = Math.ceil(observedHeader.getBoundingClientRect().height);
+      const stableHeight = Math.max(routeHeaderInsetRef.current, nextHeight);
+      routeHeaderInsetRef.current = stableHeight;
+      observedFrame.style.setProperty("--demo-route-header-height", `${stableHeight}px`);
+    }
+
+    syncHeaderInset();
+    const observer = new ResizeObserver(syncHeaderInset);
+    observer.observe(observedHeader);
+    window.addEventListener("resize", syncHeaderInset);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", syncHeaderInset);
+    };
+  }, [hasRouteHeader, routeHeaderCompact, routeHeaderConfig?.key]);
+
+  useEffect(() => {
+    const query = window.matchMedia("(max-width: 760px)");
+
+    function syncCompactHeader() {
+      setRouteHeaderCompact(query.matches);
+    }
+
+    syncCompactHeader();
+    query.addEventListener("change", syncCompactHeader);
+    return () => query.removeEventListener("change", syncCompactHeader);
   }, []);
 
   useEffect(() => {
@@ -617,11 +555,12 @@ export function DesignDemoShell({
             sfwMode={sfwMode}
             onToggleSfwMode={toggleSfwMode}
           />
-          <div className={cx(s.contentFrame, hasRouteHeader && s.contentFrameWithRouteHeader)}>
+          <div className={cx(s.contentFrame, hasRouteHeader && s.contentFrameWithRouteHeader)} ref={contentFrameRef}>
             {routeHeaderConfig ? (
               <DemoRouteHeader
                 collapsed={routeHeaderCollapsed}
                 config={routeHeaderConfig}
+                compact={routeHeaderCompact}
                 isDarkTheme={theme === "dark"}
                 onToggleSfwMode={toggleSfwMode}
                 onToggleTheme={toggleTheme}
@@ -630,6 +569,7 @@ export function DesignDemoShell({
                   setMenuOpen(false);
                 }}
                 sfwMode={sfwMode}
+                surfaceRef={routeHeaderRef}
                 toolsOpen={toolsOpen}
               />
             ) : null}

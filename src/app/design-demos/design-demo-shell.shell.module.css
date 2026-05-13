@@ -444,7 +444,7 @@
   padding: 22px 18px 48px;
 }
 .mainWithRouteHeader {
-  padding-top: calc(96px + env(safe-area-inset-top));
+  padding-top: calc(var(--demo-route-header-height, calc(96px + env(safe-area-inset-top))) + 18px);
 }
 .mainWithRouteHeader > :global(div) > :global([data-demo-page-header]:first-child) {
   display: none;
@@ -752,6 +752,9 @@
     padding 220ms cubic-bezier(0.2, 0, 0, 1);
   will-change: padding, box-shadow;
 }
+.routeHeaderSurface {
+  width: 100%;
+}
 .routeHeaderCollapsed {
   background:
     linear-gradient(135deg, var(--demo-route-header-highlight), transparent 58%),
@@ -786,7 +789,6 @@
 }
 .routeHeaderEyebrow {
   display: flex;
-  max-height: 14px;
   min-width: 0;
   align-items: center;
   gap: 6px;
@@ -798,7 +800,6 @@
   text-overflow: ellipsis;
   transform: translateY(0);
   transition:
-    max-height 220ms cubic-bezier(0.2, 0, 0, 1),
     opacity 180ms ease,
     transform 220ms cubic-bezier(0.2, 0, 0, 1);
   white-space: nowrap;
@@ -820,7 +821,6 @@
   white-space: nowrap;
 }
 .routeHeaderIdentity p {
-  max-height: 16px;
   min-width: 0;
   margin: 0;
   overflow: hidden;
@@ -830,7 +830,6 @@
   text-overflow: ellipsis;
   transform: translateY(0);
   transition:
-    max-height 220ms cubic-bezier(0.2, 0, 0, 1),
     opacity 180ms ease,
     transform 220ms cubic-bezier(0.2, 0, 0, 1);
   white-space: nowrap;
@@ -860,7 +859,6 @@
   transform: translateY(0);
   transition:
     max-width 220ms cubic-bezier(0.2, 0, 0, 1),
-    min-height 220ms cubic-bezier(0.2, 0, 0, 1),
     border-color 180ms ease,
     opacity 180ms ease,
     padding 220ms cubic-bezier(0.2, 0, 0, 1),
@@ -924,14 +922,12 @@
 }
 .routeHeaderCollapsed .routeHeaderEyebrow,
 .routeHeaderCollapsed .routeHeaderIdentity p {
-  max-height: 0;
   opacity: 0;
   pointer-events: none;
   transform: translateY(-5px);
 }
 .routeHeaderCollapsed .routeHeaderMeta span:last-child {
   max-width: 0;
-  min-height: 0;
   border-color: transparent;
   opacity: 0;
   padding-inline: 0;
@@ -1254,7 +1250,7 @@
   }
 
   .mainWithRouteHeader {
-    padding-top: calc(78px + env(safe-area-inset-top));
+    padding-top: calc(var(--demo-route-header-height, calc(60px + env(safe-area-inset-top))) + 14px);
   }
 
   .routeHeader {
