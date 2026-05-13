@@ -270,11 +270,11 @@
   display: inline-flex;
   position: absolute;
   top: 50%;
-  left: 0;
-  width: 44px;
-  height: 44px;
-  min-height: 44px;
-  flex: 0 0 44px;
+  left: 10px;
+  width: 36px;
+  height: 36px;
+  min-height: 36px;
+  flex: 0 0 36px;
   transform: translateY(-50%);
 }
 .shell .sidebarCollapseButton:where([data-demo-ui-button="true"]) {
@@ -288,9 +288,9 @@
   border-radius: var(--demo-radius);
 }
 .shell .sidebarCollapseButton.sidebarCollapseButton:where([data-demo-ui-button="true"]) {
-  width: 56px;
-  min-width: 56px;
-  flex-basis: 56px;
+  width: 36px;
+  min-width: 36px;
+  flex-basis: 36px;
   border-color: transparent;
   background: transparent;
   box-shadow: none;
@@ -308,8 +308,8 @@
   outline: none;
 }
 .shell .sidebarCollapsed .sidebarCollapseButton:where([data-demo-ui-button="true"]) {
-  width: 56px;
-  min-width: 56px;
+  width: 36px;
+  min-width: 36px;
 }
 .brand {
   display: grid;
@@ -329,7 +329,7 @@
 }
 .brandIdentity {
   flex: 1 1 auto;
-  max-width: 192px;
+  max-width: 204px;
   min-width: 0;
   overflow: hidden;
   opacity: 1;
@@ -348,8 +348,8 @@
   min-width: 0;
   overflow: hidden;
   opacity: 1;
-  -webkit-mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 18px), transparent);
-  mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 18px), transparent);
+  -webkit-mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 6px), transparent);
+  mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 6px), transparent);
   transition: opacity 180ms ease;
 }
 .brandName strong {

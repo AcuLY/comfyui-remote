@@ -234,6 +234,7 @@
   min-width: 0;
   min-height: var(--project-list-title-row-height);
   align-items: center;
+  font-size: 13px;
   justify-content: space-between;
   gap: 10px;
 }
@@ -244,6 +245,7 @@
   flex: 1 1 auto;
   flex-wrap: wrap;
   align-items: center;
+  font-size: inherit;
   gap: 0 8px;
 }
 
@@ -252,7 +254,7 @@
   min-width: 0;
   overflow: hidden;
   color: var(--demo-text);
-  font-size: 13px;
+  font-size: inherit;
   font-weight: 580;
   line-height: 1.2;
   text-overflow: ellipsis;

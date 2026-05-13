@@ -136,7 +136,7 @@ export function ComponentShowcaseMid({ data }: { data: DemoData }) {
       {/* 2.12 ReviewMetaCard */}
       <ShowcaseItem name="ReviewMetaCard" desc="运行参数信息卡片（可折叠，含 KSampler/Prompt/LoRA）">
         <div className={s.showcaseStack}>
-          <ReviewMetaCard section={{ name: "肖像 - 女性角色" }} run={MOCK_REVIEW_RUN} meta={MOCK_REVIEW_META} />
+          <ReviewMetaCard section={{ name: "肖像 - 女性角色" }} run={MOCK_REVIEW_RUN} meta={MOCK_REVIEW_RUN.executionMeta} />
           <hr className={s.showcaseDivider} />
           <ReviewMetaCard section={{ name: "风景写意" }} run={MOCK_REVIEW_RUN_SIMPLE} meta={null} />
         </div>
