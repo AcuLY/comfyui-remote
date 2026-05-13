@@ -666,61 +666,68 @@ function HeaderSurface({
         <span>{mode === "expanded" ? "桌面展开" : mode === "collapsed" ? "桌面折叠" : "移动端"}</span>
         <em>{mode === "collapsed" ? "向下滚动" : mode === "expanded" ? "向上滚动" : "合并顶栏"}</em>
       </div>
-      <section
-        aria-labelledby={titleId}
-        className={cx(
-          headerS.fixedHeader,
-          isCollapsed && headerS.fixedHeaderCollapsed,
-          isMobile && headerS.fixedHeaderMobile,
-        )}
-      >
-        <div className={headerS.mainRow}>
-          <div className={headerS.leftCluster}>
-            {spec.back ? (
-              <div className={headerS.backSlot}>
-                <PageHeaderBack href={spec.back.href} label={spec.back.label} />
-              </div>
-            ) : null}
-          </div>
-
-          <div className={headerS.identityBlock}>
-            {!isCollapsed ? <span className={headerS.eyebrow}>{spec.eyebrow}</span> : null}
-            <div className={headerS.titleRow}>
-              <h3 id={titleId}>{spec.title}</h3>
-              {spec.status ? <span className={headerS.statusPill}>{spec.status}</span> : null}
+      <div className={cx(headerS.previewStage, isCollapsed && headerS.previewStageCollapsed, isMobile && headerS.previewStageMobile)}>
+        <section
+          aria-labelledby={titleId}
+          className={cx(
+            headerS.fixedHeader,
+            isCollapsed && headerS.fixedHeaderCollapsed,
+            isMobile && headerS.fixedHeaderMobile,
+          )}
+        >
+          <div className={headerS.mainRow}>
+            <div className={headerS.leftCluster}>
+              {spec.back ? (
+                <div className={headerS.backSlot}>
+                  <PageHeaderBack href={spec.back.href} label={spec.back.label} />
+                </div>
+              ) : null}
             </div>
-            {!isCollapsed ? (
-              <p>{isMobile ? "ComfyUI Manager" : spec.subtitle}</p>
-            ) : (
-              <HeaderMeta items={spec.meta?.slice(0, 2)} />
-            )}
-          </div>
 
-          <div className={headerS.actionCluster} role="toolbar" aria-label={`${spec.title} 页面操作`}>
-            {visibleActions?.map((item) => (
-              <HeaderActionButton action={item} iconOnly={isCollapsed || isMobile} key={item.label} />
-            ))}
-            {(hiddenCount > 0 || spec.secondaryActions?.length) ? (
-              <button aria-label="更多页面操作" className={cx(headerS.headerButton, headerS.headerButtonIconOnly)} type="button">
-                <MoreHorizontal aria-hidden="true" className={headerS.headerIcon} />
-              </button>
-            ) : null}
-          </div>
-        </div>
-
-        {!isCollapsed && !isMobile ? (
-          <>
-            <HeaderMeta items={spec.meta} />
-            {spec.secondaryActions?.length ? (
-              <div className={headerS.commandRow} role="toolbar" aria-label={`${spec.title} 二级操作`}>
-                {spec.secondaryActions.map((item) => (
-                  <HeaderActionButton action={item} key={item.label} />
-                ))}
+            <div className={headerS.identityBlock}>
+              {!isCollapsed ? <span className={headerS.eyebrow}>{spec.eyebrow}</span> : null}
+              <div className={headerS.titleRow}>
+                <h3 id={titleId}>{spec.title}</h3>
+                {spec.status ? <span className={headerS.statusPill}>{spec.status}</span> : null}
               </div>
-            ) : null}
-          </>
-        ) : null}
-      </section>
+              {!isCollapsed ? (
+                <p>{isMobile ? "ComfyUI Manager" : spec.subtitle}</p>
+              ) : (
+                <HeaderMeta items={spec.meta?.slice(0, 2)} />
+              )}
+            </div>
+
+            <div className={headerS.actionCluster} role="toolbar" aria-label={`${spec.title} 页面操作`}>
+              {visibleActions?.map((item) => (
+                <HeaderActionButton action={item} iconOnly={isCollapsed || isMobile} key={item.label} />
+              ))}
+              {(hiddenCount > 0 || spec.secondaryActions?.length) ? (
+                <button aria-label="更多页面操作" className={cx(headerS.headerButton, headerS.headerButtonIconOnly)} type="button">
+                  <MoreHorizontal aria-hidden="true" className={headerS.headerIcon} />
+                </button>
+              ) : null}
+            </div>
+          </div>
+
+          {!isCollapsed && !isMobile ? (
+            <>
+              <HeaderMeta items={spec.meta} />
+              {spec.secondaryActions?.length ? (
+                <div className={headerS.commandRow} role="toolbar" aria-label={`${spec.title} 二级操作`}>
+                  {spec.secondaryActions.map((item) => (
+                    <HeaderActionButton action={item} key={item.label} />
+                  ))}
+                </div>
+              ) : null}
+            </>
+          ) : null}
+        </section>
+        <div className={headerS.previewContent} aria-hidden="true">
+          <span />
+          <span />
+          <span />
+        </div>
+      </div>
     </div>
   );
 }
