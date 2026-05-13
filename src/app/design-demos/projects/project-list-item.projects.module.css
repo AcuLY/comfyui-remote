@@ -207,12 +207,13 @@
 }
 
 .recentResultImages {
-  width: 86px;
+  width: 100%;
+  min-width: 0;
 }
 
-.projectListRecentResult .recentResultImages,
-.sectionRecentResult .recentResultImages {
-  width: min(270px, 100%);
+.projectListRecentResult .recentResultImages {
+  width: 100%;
+  max-width: 100%;
 }
 
 .projectListTitleLink {
