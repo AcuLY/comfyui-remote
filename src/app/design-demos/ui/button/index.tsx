@@ -8,8 +8,8 @@ import { Activity } from "lucide-react";
 import type { DemoButtonFeedback } from "../../design-demo-utils";
 import { cx, demoHref } from "../../design-demo-utils";
 import { useDemoFeedback } from "../feedback/context";
-import type { ButtonTone, RouteIcon } from "../_shared/types";
-import { controlLabel } from "../_shared/utils";
+import type { ButtonTone, RouteIcon } from "../shared/types";
+import { controlLabel } from "../shared/utils";
 import s from "./button.module.css";
 
 function buttonClassName({ tone, pending, iconOnly, size, className }: { tone: ButtonTone; pending?: boolean; iconOnly?: boolean; size: "sm" | "md"; className?: string }) {

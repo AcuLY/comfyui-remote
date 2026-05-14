@@ -1,0 +1,32 @@
+.item {
+  display: grid;
+  min-width: 0;
+  gap: 14px;
+  border: 1px solid var(--demo-border);
+  border-radius: 14px;
+  background: var(--demo-surface);
+  box-shadow: var(--demo-glass-shadow);
+  padding: 16px;
+}
+
+.header {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+}
+
+.header strong {
+  color: var(--demo-text);
+  font-size: 16px;
+  font-weight: 650;
+}
+
+.header span {
+  color: var(--demo-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.body {
+  min-width: 0;
+}

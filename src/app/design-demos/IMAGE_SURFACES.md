@@ -62,11 +62,11 @@
 | --- | --- | --- |
 | 小节卡片 | `ProjectDetailPage` → `ProjectSectionCard` → `ImageStrip` → `ImageListSmall` → `ImageThumbSmall` | 小节概览预览；开启 compact 模式后隐藏。 |
 
-#### `/design-demos/image-list-components`
+#### `/design-demos/component-showcase-images`
 
 | Tab / 面板 | 组件路径 | 显示说明 |
 | --- | --- | --- |
-| 临时组件检查页（小图部分） | `ImageListComponentsPage` → `ImageListSmall` | 用于检查小图列表的尺寸限制、滚动、折叠渐变、快速选择和操作区。 |
+| 图片结果与审核功能族（小图部分） | `ComponentShowcaseFamilyPage(images)` → `FamilySamples` → `ImageListSmall` | 用于检查小图列表的尺寸限制、滚动、折叠渐变、快速选择和操作区。 |
 
 ---
 
@@ -104,11 +104,11 @@
 | 主 tab：`运行结果`；筛选：`删除` | 同上 | 删除栏迁移后的目标展示面。 |
 | 主 tab：`运行结果`；筛选：`精选` | 同上 | 小节编辑内精选结果。 |
 
-#### `/design-demos/image-list-components`
+#### `/design-demos/component-showcase-images`
 
 | Tab / 面板 | 组件路径 | 显示说明 |
 | --- | --- | --- |
-| 临时组件检查页（中图部分） | `ImageListComponentsPage` → `ImageListMedium` | 用于检查中图列表的尺寸限制、滚动、折叠渐变、快速选择和操作区。 |
+| 图片结果与审核功能族（中图部分） | `ComponentShowcaseFamilyPage(images)` → `FamilySamples` → `ImageListMedium` | 用于检查中图列表的尺寸限制、滚动、折叠渐变、快速选择和操作区。 |
 
 ## 当前不显示生成图片的 demo 页面
 

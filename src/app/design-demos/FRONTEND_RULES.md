@@ -23,12 +23,16 @@ The design demo shell is a standalone frontend prototype area. It should be easi
 
 Use these layers and keep ownership clear:
 
-1. `ui/`: reusable demo UI primitives.
-2. Feature folders such as `projects/`, `runs/`, `presets/`, `templates/`, `section-editor/`, `models/`, `system/`, and `component-showcase/`.
-3. Route entry files such as `project-pages.tsx` and `component-showcase-page.tsx`: public facades or composition only.
-4. Colocated feature CSS Modules next to the owning feature/page. Route entry files should compose, not centralize style ownership.
+1. `shared/primitives/`: reusable demo UI primitives.
+2. `shared/patterns/`: cross-domain slot-shell components such as unit rows, folder rows, workbench surfaces, batch bars, and rails.
+3. `shared/media/` and `shared/feedback/`: image review surfaces and operation feedback.
+4. `features/`: business adapters grouped by the new IA: `runs`, `projects`, `presets`, `templates`, `models`, `settings`, and `auth`.
+5. `showcase/`: registry-driven functional-family showcase pages.
+6. Existing folders such as `ui/`, `projects/`, `runs/`, and `presets/` remain compatibility sources while migration continues.
 
-New reusable controls belong in `ui/`, not inside a feature page.
+New reusable controls belong in `shared/primitives/`; new cross-domain structures belong in `shared/patterns/`, not inside a feature page.
+
+See `COMPONENT_TAXONOMY.md` for detailed ownership, family boundaries, and migration status.
 
 ## UI Primitive Rules
 
@@ -96,7 +100,9 @@ rg -n 'tailwind|twMerge|cva\\(|class-variance-authority|shadcn' src/app/design-d
 
 The component showcase must demonstrate real reusable components, not custom showcase-only copies.
 
-- Showcase pages import primitives directly from `./ui/<component>`.
+- Showcase pages are registry-driven from `showcase/registry.ts`.
+- Each component entry must have a Chinese review name, English component name, description, paths, usage contexts, status, and family id.
+- Showcase pages import shared components through `shared/*` or feature adapters through `features/*` where possible.
 - Showcase pages should not import compatibility barrels for primitives.
 - Showcase samples should avoid passing feature CSS classes into primitives.
 - If a component cannot be displayed correctly without extra showcase CSS, the primitive is not reusable enough yet.
@@ -108,7 +114,7 @@ Before finishing a demo frontend change, check:
 - No old compatibility barrels, global style proxies, or route-level monolithic style modules are imported.
 - Touched demo files do not use Tailwind utility strings.
 - Existing primitives are customized through props, not feature CSS classes.
-- `component-showcase-page.tsx` imports primitives from `./ui/<component>`.
+- `component-showcase-page.tsx` routes through `showcase` pages and `showcase/registry.ts`.
 - `src/app/globals.css` has no diff.
 - The touched route loads locally without a 500.
 

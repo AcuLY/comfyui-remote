@@ -1,7 +1,7 @@
 "use client";
 
 import s from "./field.module.css";
-import { preventReadonlyEdit } from "../_shared/utils";
+import { preventReadonlyEdit } from "../shared/utils";
 
 export function Field({ label, value, disabled = false }: { label: string; value: string | number; disabled?: boolean }) {
   return (

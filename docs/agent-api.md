@@ -66,6 +66,7 @@ or:
 | User operation | HTTP interface |
 | --- | --- |
 | Create, list, read, update, delete projects | `GET/POST /api/projects`, `GET/PATCH/DELETE /api/projects/:projectId` |
+| Manage project folders and move projects between folders | `GET/POST /api/project-folders`, `GET/PATCH/DELETE /api/project-folders/:folderId`, `POST /api/project-folders/reorder`, `POST /api/project-folders/move`, or `PATCH /api/projects/:projectId` with `folderId` |
 | Copy project | `POST /api/projects/:projectId/copy` |
 | Run all project sections | `POST /api/projects/:projectId/run` |
 | Cancel active project runs | `POST /api/projects/:projectId/cancel-runs` |
@@ -98,7 +99,7 @@ or:
 | Read logs, audit logs, health, worker status | `GET /api/logs`, `GET /api/audit-logs`, `GET /api/health`, `GET /api/worker/status` |
 | MCP automation | `GET/POST/DELETE /api/mcp` |
 
-No remaining user-facing backend operation gap is known after adding `queue/clear`, `queue/clear-active`, section `batch-delete`, project `export`, template import options, template section CRUD, preset import/removal, preset lookup, preset library category/folder/group reads, batch variant switching, and `name/loraConfig` support on section PATCH.
+No remaining user-facing backend operation gap is known after adding project folder management, `queue/clear`, `queue/clear-active`, section `batch-delete`, project `export`, template import options, template section CRUD, preset import/removal, preset lookup, preset library category/folder/group reads, batch variant switching, and `name/loraConfig` support on section PATCH.
 
 ## Projects
 
@@ -122,6 +123,7 @@ Body:
 {
   "title": "Project title",
   "checkpointName": "oneObsession_v19Atypical.safetensors",
+  "folderId": "optional-project-folder-id",
   "notes": "optional notes"
 }
 ```
@@ -140,7 +142,8 @@ Body supports:
 {
   "aspectRatio": "2:3",
   "batchSize": 2,
-  "checkpointName": "oneObsession_v19Atypical.safetensors"
+  "checkpointName": "oneObsession_v19Atypical.safetensors",
+  "folderId": "project-folder-id-or-null"
 }
 ```
 
@@ -149,6 +152,69 @@ Use `null` to clear nullable fields where supported.
 ### `DELETE /api/projects/:projectId`
 
 Deletes the project and cascaded data.
+
+## Project Folders
+
+### `GET /api/project-folders`
+
+Lists project folders. Add `?parentId=<folderId>` to list one parent folder's direct children, or `?parentId=` to list root folders.
+
+### `POST /api/project-folders`
+
+Body:
+
+```json
+{
+  "name": "Folder name",
+  "parentId": "optional-parent-folder-id"
+}
+```
+
+Creates a project folder and returns the created folder.
+
+### `GET /api/project-folders/:folderId`
+
+Returns one project folder with `projectCount` and `childCount`.
+
+### `PATCH /api/project-folders/:folderId`
+
+Body:
+
+```json
+{ "name": "New folder name" }
+```
+
+Renames a project folder and returns the updated folder.
+
+### `DELETE /api/project-folders/:folderId`
+
+Deletes an empty project folder. Non-empty folders return a conflict error.
+
+### `POST /api/project-folders/reorder`
+
+Body:
+
+```json
+{
+  "parentId": "optional-parent-folder-id",
+  "ids": ["folder-id-1", "folder-id-2"]
+}
+```
+
+Updates folder sort order within a parent.
+
+### `POST /api/project-folders/move`
+
+Body:
+
+```json
+{
+  "projectId": "project-id",
+  "folderId": "target-folder-id-or-null"
+}
+```
+
+Moves a project to a folder. `PATCH /api/projects/:projectId` with `{ "folderId": "target-folder-id-or-null" }` is also supported.
 
 ### Project Commands
 

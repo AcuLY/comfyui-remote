@@ -6,12 +6,10 @@ This directory implements the routable `/design-demos` frontend shell.
 
 - `[[...route]]/page.tsx`: optional catch-all route for every product page shell.
 - `[[...route]]/loading.tsx`: local route skeleton that uses the same glass design system.
-- `design-demo-data.ts`: public data entrypoint backed by modules in `data/`.
-- `design-demo-client.tsx`: client shell, navigation, route dispatch, and remaining page skeletons.
-- `ui/`: reusable UI primitives, feedback toasts, image grids, and shared lightbox behavior.
-- `styles/`: feature CSS Modules for shell, showcase, runs, projects, library pages, models, and section editor.
-- `design-demo-utils.ts`: public utility entrypoint backed by modules in `utils/`.
-- `component-showcase/`, `runs/`, `projects/`, `presets/`, `templates/`, `batch-create/`, `models/`, `system/`, `section-editor/`: feature modules behind the route facades.
+- `routing/`, `shell/`, `data/`, `shared/`, `features/`, `showcase/`: implementation-only architecture for the migration-ready demo frontend, intentionally without underscore prefixes.
+- `showcase/registry.ts`: component showcase source of truth for functional families, Chinese review names, descriptions, paths, usage, and migration status.
+- `COMPONENT_TAXONOMY.md`: detailed component split, family ownership, boundary rules, and migration context for future agents.
+- Existing folders such as `ui/`, `runs/`, `projects/`, `presets/`, `templates/`, `batch-create/`, `models/`, `system/`, and `section-editor/` are still compatibility sources while code migrates behind the private-folder entrypoints.
 - `IMAGE_SURFACES.md`: inventory of every routed demo page and panel that renders generated images.
 - `runs-page.tsx`: task workbench and run review pages.
 - `FRONTEND_RULES.md`: demo-only frontend rules for component boundaries, CSS Modules, Tailwind usage, and migration checks.
@@ -48,7 +46,20 @@ The design shell also normalizes the old product paths: `/queue/**` is shown as 
 - `/design-demos/settings`
 - `/design-demos/settings/logs`
 - `/design-demos/settings/monitor`
-- `/design-demos/image-list-components`
+- `/design-demos/component-showcase`
+- `/design-demos/component-showcase-controls`
+- `/design-demos/component-showcase-surfaces`
+- `/design-demos/component-showcase-unit-items`
+- `/design-demos/component-showcase-folders`
+- `/design-demos/component-showcase-batch-actions`
+- `/design-demos/component-showcase-generation-params`
+- `/design-demos/component-showcase-preset-prompt-lora`
+- `/design-demos/component-showcase-taxonomy-history`
+- `/design-demos/component-showcase-images`
+- `/design-demos/component-showcase-runs`
+- `/design-demos/component-showcase-system`
+- `/design-demos/component-showcase-headers`
+- `/design-demos/component-showcase-icons`
 - `/design-demos/login`
 
 ## Page-Internal Switching
@@ -95,6 +106,6 @@ The shell also covers non-routing UI states that the real pages expose:
 
 ## Scope Guard
 
-- Keep changes isolated to `src/app/design-demos/**` and `docs/design-demos-frontend-parity.md`.
+- Keep changes isolated to `src/app/design-demos/**` and related demo docs.
 - Do not use `src/app/globals.css` to fix this shell.
 - Do not edit real frontend pages for route or style parity unless the task explicitly changes scope.
