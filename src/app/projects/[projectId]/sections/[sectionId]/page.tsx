@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ImageIcon, ChevronLeft, ChevronRight, Download } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import { buildFolderScopedItemOrder, hrefWithFolderQuery } from "@/lib/folder-navigation";
 import { toImageUrl } from "@/lib/image-url";
 import { SectionEditor } from "@/components/section-editor";
 import { SectionParamsForm } from "./section-params-form";
@@ -24,7 +25,7 @@ export default async function SectionEditPage({
 }) {
   const { projectId, sectionId } = await params;
 
-  const [pos, libraryV2, siblingSections] = await Promise.all([
+  const [pos, libraryV2, siblingFolders, siblingSections] = await Promise.all([
     prisma.projectSection.findUnique({
       where: { id: sectionId },
       include: {
@@ -77,10 +78,15 @@ export default async function SectionEditPage({
       },
     }),
     getPresetLibraryV2(),
+    prisma.projectSectionFolder.findMany({
+      where: { projectId },
+      orderBy: [{ parentId: "asc" }, { sortOrder: "asc" }, { name: "asc" }],
+      select: { id: true, name: true, parentId: true, sortOrder: true },
+    }),
     prisma.projectSection.findMany({
       where: { projectId },
       orderBy: { sortOrder: "asc" },
-      select: { id: true },
+      select: { id: true, folderId: true, sortOrder: true },
     }),
   ]);
 
@@ -88,9 +94,19 @@ export default async function SectionEditPage({
     notFound();
   }
 
-  const sectionIdx = siblingSections.findIndex((s) => s.id === sectionId);
-  const prevSection = sectionIdx > 0 ? siblingSections[sectionIdx - 1] : null;
-  const nextSection = sectionIdx < siblingSections.length - 1 ? siblingSections[sectionIdx + 1] : null;
+  const orderedSiblingSections = buildFolderScopedItemOrder(siblingFolders, siblingSections);
+  const sectionIdx = orderedSiblingSections.findIndex((s) => s.id === sectionId);
+  const prevSection = sectionIdx > 0 ? orderedSiblingSections[sectionIdx - 1] : null;
+  const nextSection =
+    sectionIdx >= 0 && sectionIdx < orderedSiblingSections.length - 1
+      ? orderedSiblingSections[sectionIdx + 1]
+      : null;
+  const returnHref = hrefWithFolderQuery(
+    `/projects/${projectId}`,
+    "sectionFolder",
+    pos.folderId,
+    `section-${sectionId}`,
+  );
 
   const sectionName =
     pos.name || `小节 ${pos.sortOrder}`;
@@ -302,7 +318,7 @@ export default async function SectionEditPage({
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between gap-2">
               <Link
-                href={`/projects/${projectId}#section-${sectionId}`}
+                href={returnHref}
                 scroll={false}
                 className="inline-flex items-center gap-2 text-sm text-zinc-300"
               >

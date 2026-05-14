@@ -48,6 +48,7 @@ import {
   updateProjectTemplate,
 } from "@/lib/actions";
 import { resolveResolution } from "@/lib/aspect-ratio-utils";
+import { hrefWithFolderQuery } from "@/lib/folder-navigation";
 import { getPreferredScrollContainer } from "@/lib/scroll-container";
 import {
   SidebarSectionNav,
@@ -80,6 +81,7 @@ type Props = {
   initialName?: string;
   initialDescription?: string | null;
   initialSectionFolders?: ProjectTemplateSectionFolderItem[];
+  initialSectionFolderId?: string | null;
   initialSections?: ProjectTemplateSectionData[];
 };
 
@@ -173,6 +175,7 @@ export function TemplateFormClient({
   initialName = "",
   initialDescription = null,
   initialSectionFolders = [],
+  initialSectionFolderId = null,
   initialSections = [],
 }: Props) {
   const router = useRouter();
@@ -180,7 +183,7 @@ export function TemplateFormClient({
   const [description, setDescription] = useState(initialDescription ?? "");
   const [sections, setSections] =
     useState<ProjectTemplateSectionData[]>(initialSections);
-  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(initialSectionFolderId);
   const [isPending, startTransition] = useTransition();
   const savedMetaRef = useRef({
     name: initialName.trim(),
@@ -356,6 +359,16 @@ export function TemplateFormClient({
     });
   }
 
+  function navigateFolder(folderId: string | null) {
+    setCurrentFolderId(folderId);
+    if (isEdit && templateId) {
+      router.replace(
+        hrefWithFolderQuery(`/assets/templates/${templateId}/edit`, "sectionFolder", folderId),
+        { scroll: false },
+      );
+    }
+  }
+
   // ── Save ──
 
   function saveSections(
@@ -495,7 +508,7 @@ export function TemplateFormClient({
             folders={initialSectionFolders}
             items={sections}
             currentFolderId={currentFolderId}
-            onNavigate={setCurrentFolderId}
+            onNavigate={navigateFolder}
             onCreateFolder={(parentId, folderName) => createTemplateSectionFolder(templateId, parentId, folderName)}
             onRenameFolder={renameTemplateSectionFolder}
             onDeleteFolder={deleteTemplateSectionFolder}
@@ -580,7 +593,7 @@ export function TemplateFormClient({
     >
       <TemplateSectionsSidebar
         templateName={name}
-        sections={sections}
+        sections={visibleSections}
         activeSectionId={activeSectionId}
         onNavigateToSection={scrollToSection}
       />

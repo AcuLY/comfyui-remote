@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, ChevronLeft, ChevronRight, Images } from "lucide-react";
 import { SectionCard } from "@/components/section-card";
 import { getSectionResults } from "@/lib/server-data";
+import { hrefWithFolderQuery } from "@/lib/folder-navigation";
 import { ResultsGrid } from "./results-grid";
 
 export const dynamic = "force-dynamic";
@@ -20,13 +21,19 @@ export default async function SectionResultsPage({
   }
 
   const totalImages = data.runs.reduce((sum, run) => sum + run.images.length, 0);
+  const returnHref = hrefWithFolderQuery(
+    `/projects/${projectId}`,
+    "sectionFolder",
+    data.sectionFolderId,
+    `section-${sectionId}`,
+  );
 
   return (
     <div className="space-y-4">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link
-          href={`/projects/${projectId}#section-${sectionId}`}
+          href={returnHref}
           scroll={false}
           className="inline-flex items-center gap-2 text-sm text-zinc-300"
         >

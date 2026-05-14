@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { buildFolderScopedItemOrder } from "@/lib/folder-navigation";
 import { toImageUrl } from "@/lib/image-url";
 import type { ProjectCard, ProjectFolderItem, ReviewStatus } from "@/lib/types";
 import {
@@ -12,6 +13,30 @@ import {
 // ---------------------------------------------------------------------------
 // Projects — 大项目列表
 // ---------------------------------------------------------------------------
+
+async function listProjectNavigationItems() {
+  const [folders, projects] = await Promise.all([
+    prisma.projectFolder.findMany({
+      orderBy: [{ parentId: "asc" }, { sortOrder: "asc" }, { name: "asc" }],
+      select: {
+        id: true,
+        name: true,
+        parentId: true,
+        sortOrder: true,
+      },
+    }),
+    prisma.project.findMany({
+      orderBy: { updatedAt: "desc" },
+      select: {
+        id: true,
+        title: true,
+        folderId: true,
+      },
+    }),
+  ]);
+
+  return buildFolderScopedItemOrder(folders, projects);
+}
 
 export async function listProjects(): Promise<ProjectCard[]> {
   const projects = await prisma.project.findMany({
@@ -130,6 +155,7 @@ export type ProjectDetailSection = {
 export type ProjectDetail = {
   id: string;
   title: string;
+  folderId: string | null;
   presetNames: string[];
   status: string;
   previousProject: { id: string; title: string } | null;
@@ -171,6 +197,7 @@ export async function getProjectDetail(projectId: string): Promise<ProjectDetail
       select: {
         id: true,
         title: true,
+        folderId: true,
         status: true,
         presetBindings: true,
         projectLevelOverrides: true,
@@ -224,10 +251,7 @@ export async function getProjectDetail(projectId: string): Promise<ProjectDetail
         },
       },
     }),
-    prisma.project.findMany({
-      orderBy: [{ updatedAt: "desc" }, { title: "asc" }],
-      select: { id: true, title: true },
-    }),
+    listProjectNavigationItems(),
   ]);
 
   if (!project) return null;
@@ -272,6 +296,7 @@ export async function getProjectDetail(projectId: string): Promise<ProjectDetail
   return {
     id: project.id,
     title: project.title,
+    folderId: project.folderId,
     presetNames,
     status: project.status,
     previousProject,
@@ -322,6 +347,7 @@ export type SectionResultsData = {
   projectTitle: string;
   sectionId: string;
   sectionName: string;
+  sectionFolderId: string | null;
   previousSection: { id: string; name: string } | null;
   nextSection: { id: string; name: string } | null;
   runs: {
@@ -402,24 +428,32 @@ export async function getSectionResults(sectionId: string): Promise<SectionResul
 
   if (!pos) return null;
 
-  const projectSections = await prisma.projectSection.findMany({
-    where: { projectId: pos.project.id },
-    orderBy: { sortOrder: "asc" },
-    select: { id: true, name: true, sortOrder: true },
-  });
-  const currentIndex = projectSections.findIndex((section) => section.id === pos.id);
+  const [projectSectionFolders, projectSections] = await Promise.all([
+    prisma.projectSectionFolder.findMany({
+      where: { projectId: pos.project.id },
+      orderBy: [{ parentId: "asc" }, { sortOrder: "asc" }, { name: "asc" }],
+      select: { id: true, name: true, parentId: true, sortOrder: true },
+    }),
+    prisma.projectSection.findMany({
+      where: { projectId: pos.project.id },
+      orderBy: { sortOrder: "asc" },
+      select: { id: true, name: true, folderId: true, sortOrder: true },
+    }),
+  ]);
+  const orderedProjectSections = buildFolderScopedItemOrder(projectSectionFolders, projectSections);
+  const currentIndex = orderedProjectSections.findIndex((section) => section.id === pos.id);
   const previousSection =
     currentIndex > 0
       ? {
-          id: projectSections[currentIndex - 1].id,
-          name: projectSections[currentIndex - 1].name || `小节 ${projectSections[currentIndex - 1].sortOrder}`,
+          id: orderedProjectSections[currentIndex - 1].id,
+          name: orderedProjectSections[currentIndex - 1].name || `小节 ${orderedProjectSections[currentIndex - 1].sortOrder}`,
         }
       : null;
   const nextSection =
-    currentIndex >= 0 && currentIndex < projectSections.length - 1
+    currentIndex >= 0 && currentIndex < orderedProjectSections.length - 1
       ? {
-          id: projectSections[currentIndex + 1].id,
-          name: projectSections[currentIndex + 1].name || `小节 ${projectSections[currentIndex + 1].sortOrder}`,
+          id: orderedProjectSections[currentIndex + 1].id,
+          name: orderedProjectSections[currentIndex + 1].name || `小节 ${orderedProjectSections[currentIndex + 1].sortOrder}`,
         }
       : null;
 
@@ -455,6 +489,7 @@ export async function getSectionResults(sectionId: string): Promise<SectionResul
     projectTitle: pos.project.title,
     sectionId: pos.id,
     sectionName: pos.name || `小节`,
+    sectionFolderId: pos.folderId,
     previousSection,
     nextSection,
     runs,
@@ -502,10 +537,7 @@ export async function getProjectResults(projectId: string): Promise<ProjectResul
         },
       },
     }),
-    prisma.project.findMany({
-      orderBy: [{ updatedAt: "desc" }, { title: "asc" }],
-      select: { id: true, title: true },
-    }),
+    listProjectNavigationItems(),
   ]);
 
   if (!project) return null;

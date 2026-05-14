@@ -15,6 +15,7 @@ import { ImportPresetPanel, type ImportCategory } from "@/components/section-edi
 import { LoraListEditor } from "@/components/lora-list-editor";
 import { TemplatePromptBlockEditor, type TemplateBlockData } from "@/components/template-prompt-block-editor";
 import { generateLoraEntryId, type LoraEntry, DEFAULT_KSAMPLER1, DEFAULT_KSAMPLER2, type KSamplerParams } from "@/lib/lora-types";
+import { hrefWithFolderQuery } from "@/lib/folder-navigation";
 import type { ProjectTemplateSectionData } from "@/lib/server-data";
 import type { PresetLibraryV2 } from "@/components/prompt-block-editor";
 
@@ -71,7 +72,10 @@ type PresetImportItem = {
 type Props = {
   templateId: string;
   sectionIndex: number;
+  sectionPosition: number;
   totalSections: number;
+  previousSectionIndex: number | null;
+  nextSectionIndex: number | null;
   section: ProjectTemplateSectionData;
   library?: PresetLibraryV2;
 };
@@ -83,7 +87,10 @@ type Props = {
 export function TemplateSectionDetailClient({
   templateId,
   sectionIndex,
+  sectionPosition,
   totalSections,
+  previousSectionIndex,
+  nextSectionIndex,
   section: initialSection,
   library,
 }: Props) {
@@ -331,9 +338,14 @@ export function TemplateSectionDetailClient({
 
   // ── Navigation ──
 
-  const basePath = `/assets/templates/${templateId}/edit`;
+  const basePath = hrefWithFolderQuery(
+    `/assets/templates/${templateId}/edit`,
+    "sectionFolder",
+    initialSection.folderId,
+  );
 
-  function navigateToSection(index: number) {
+  function navigateToSection(index: number | null) {
+    if (index === null) return;
     router.push(`/assets/templates/${templateId}/sections/${index}`);
   }
 
@@ -640,18 +652,20 @@ export function TemplateSectionDetailClient({
         </Link>
         <div className="flex items-center gap-2">
           <button
-            disabled={sectionIndex === 0}
-            onClick={() => navigateToSection(sectionIndex - 1)}
+            type="button"
+            disabled={previousSectionIndex === null}
+            onClick={() => navigateToSection(previousSectionIndex)}
             className="rounded-lg border border-white/10 bg-white/[0.04] p-1.5 text-zinc-400 transition hover:bg-white/[0.08] disabled:opacity-30"
           >
             <ChevronLeft className="size-4" />
           </button>
           <span className="text-xs text-zinc-400">
-            {sectionIndex + 1} / {totalSections}
+            {sectionPosition + 1} / {totalSections}
           </span>
           <button
-            disabled={sectionIndex >= totalSections - 1}
-            onClick={() => navigateToSection(sectionIndex + 1)}
+            type="button"
+            disabled={nextSectionIndex === null}
+            onClick={() => navigateToSection(nextSectionIndex)}
             className="rounded-lg border border-white/10 bg-white/[0.04] p-1.5 text-zinc-400 transition hover:bg-white/[0.08] disabled:opacity-30"
           >
             <ChevronRight className="size-4" />

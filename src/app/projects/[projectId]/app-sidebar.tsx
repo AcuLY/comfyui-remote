@@ -20,6 +20,7 @@ import {
   runProject,
   saveProjectAsTemplate,
 } from "@/lib/actions";
+import { hrefWithFolderQuery } from "@/lib/folder-navigation";
 import { exportProjectImages } from "@/app/projects/actions-export";
 import { BatchSizeQuickFill } from "@/components/batch-size-quick-fill";
 import {
@@ -60,6 +61,7 @@ type Section = {
 type AppSidebarProps = {
   projectId: string;
   projectTitle: string;
+  projectFolderId: string | null;
   previousProject: { id: string; title: string } | null;
   nextProject: { id: string; title: string } | null;
   sections: Section[];
@@ -72,6 +74,7 @@ type AppSidebarProps = {
 export function AppSidebar({
   projectId,
   projectTitle,
+  projectFolderId,
   previousProject,
   nextProject,
   sections,
@@ -131,6 +134,7 @@ export function AppSidebar({
   }
 
   const isExpanded = sidebarState === "expanded";
+  const projectsHref = hrefWithFolderQuery("/projects", "folder", projectFolderId);
 
   return (
     <Sidebar
@@ -140,7 +144,7 @@ export function AppSidebar({
     >
       <SidebarHeader className="gap-1.5 px-3.5 py-3 group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:px-2">
         <Link
-          href="/projects"
+          href={projectsHref}
           className="inline-flex items-center gap-1.5 text-xs text-zinc-400 transition hover:text-zinc-200 group-data-[collapsible=icon]:justify-center"
         >
           <ArrowLeft className="size-3.5" />

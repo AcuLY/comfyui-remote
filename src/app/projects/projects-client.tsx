@@ -28,6 +28,7 @@ import {
   renameProjectFolder,
   reorderProjectFolders,
 } from "@/lib/actions";
+import { hrefWithFolderQuery } from "@/lib/folder-navigation";
 import type { ProjectCard as ProjectCardData, ProjectFolderItem } from "@/lib/types";
 import {
   BatchActionBar,
@@ -41,13 +42,15 @@ import { ProjectDeleteButton } from "./project-delete-button";
 export function ProjectsClient({
   initialProjects,
   folders,
+  initialFolderId,
 }: {
   initialProjects: ProjectCardData[];
   folders: ProjectFolderItem[];
+  initialFolderId: string | null;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(initialFolderId);
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -81,6 +84,7 @@ export function ProjectsClient({
   function navigateFolder(folderId: string | null) {
     setCurrentFolderId(folderId);
     setSelectedIds(new Set());
+    router.replace(hrefWithFolderQuery("/projects", "folder", folderId), { scroll: false });
   }
 
   function refresh() {

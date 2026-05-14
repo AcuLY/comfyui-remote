@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { useScrollSpy } from "@/hooks/use-scroll-spy";
+import { hrefWithFolderQuery } from "@/lib/folder-navigation";
 import { getPreferredScrollContainer } from "@/lib/scroll-container";
 import {
   createProjectSectionFolder,
@@ -23,9 +24,11 @@ import { SectionCards, type Section } from "./section-cards";
 type ProjectDetailClientProps = {
   projectId: string;
   projectTitle: string;
+  projectFolderId: string | null;
   previousProject: { id: string; title: string } | null;
   nextProject: { id: string; title: string } | null;
   sectionFolders: ProjectSectionFolderItem[];
+  initialSectionFolderId: string | null;
   sections: Section[];
 };
 
@@ -44,14 +47,16 @@ function getScrollContainer(): Element | Window {
 export function ProjectDetailClient({
   projectId,
   projectTitle,
+  projectFolderId,
   previousProject,
   nextProject,
   sectionFolders,
+  initialSectionFolderId,
   sections,
 }: ProjectDetailClientProps) {
   const router = useRouter();
   const [compact, setCompact] = useState(false);
-  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(initialSectionFolderId);
   const visibleSections = useMemo(
     () => sections.filter((section) => (section.folderId ?? null) === currentFolderId),
     [sections, currentFolderId],
@@ -225,6 +230,7 @@ export function ProjectDetailClient({
 
   function navigateFolder(folderId: string | null) {
     setCurrentFolderId(folderId);
+    router.replace(hrefWithFolderQuery(`/projects/${projectId}`, "sectionFolder", folderId), { scroll: false });
   }
 
   return (
@@ -238,6 +244,7 @@ export function ProjectDetailClient({
       <AppSidebar
         projectId={projectId}
         projectTitle={projectTitle}
+        projectFolderId={projectFolderId}
         previousProject={previousProject}
         nextProject={nextProject}
         sections={visibleSections}
