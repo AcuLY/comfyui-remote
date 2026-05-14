@@ -3,6 +3,7 @@
   inset-block-start: 0;
   inset-inline: 0;
   z-index: 32;
+  container-type: inline-size;
   display: grid;
   min-width: 0;
   gap: 9px;
@@ -67,6 +68,7 @@
 
 .actionCluster {
   flex: 0 0 auto;
+  flex-wrap: wrap;
   justify-content: flex-end;
 }
 
@@ -136,7 +138,7 @@
   overflow: hidden;
   color: var(--demo-text);
   font-size: 19px;
-  font-weight: 430;
+  font-weight: 560;
   letter-spacing: 0;
   line-height: 1.18;
   text-overflow: ellipsis;
@@ -221,6 +223,8 @@
 }
 
 .commandRow {
+  min-width: 0;
+  flex-wrap: wrap;
   overflow-x: auto;
   overflow-y: hidden;
   padding-bottom: 1px;
@@ -233,6 +237,7 @@
 
 .headerButton {
   display: inline-flex;
+  max-width: 100%;
   min-height: 34px;
   align-items: center;
   justify-content: center;
@@ -248,6 +253,7 @@
   line-height: 1;
   padding: 0 10px;
   text-decoration: none;
+  text-overflow: ellipsis;
   touch-action: manipulation;
   transition:
     background-color 150ms ease,
@@ -256,6 +262,12 @@
     color 150ms ease,
     transform 150ms ease;
   white-space: nowrap;
+}
+
+.headerButton span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .headerButtonIconOnly {
@@ -312,6 +324,11 @@
 
 .fixedHeaderCollapsed .identityBlock {
   gap: 0;
+}
+
+.fixedHeaderCollapsed .actionCluster,
+.fixedHeaderMobile .actionCluster {
+  flex-wrap: nowrap;
 }
 
 .fixedHeaderCollapsed .eyebrow,
@@ -388,6 +405,31 @@
   min-width: 40px;
   height: 40px;
   min-height: 40px;
+}
+
+@container (max-width: 620px) {
+  .fixedHeader:not(.fixedHeaderCollapsed):not(.fixedHeaderMobile) .mainRow {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+    gap: 8px 10px;
+  }
+
+  .fixedHeader:not(.fixedHeaderCollapsed):not(.fixedHeaderMobile) .actionCluster {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+
+  .fixedHeader:not(.fixedHeaderCollapsed):not(.fixedHeaderMobile) .headerButton {
+    max-width: min(100%, 210px);
+  }
+
+  .fixedHeader:not(.fixedHeaderCollapsed):not(.fixedHeaderMobile) .titleRow {
+    align-items: flex-start;
+  }
+
+  .fixedHeader:not(.fixedHeaderCollapsed):not(.fixedHeaderMobile) .statusPill {
+    max-width: 112px;
+  }
 }
 
 @media (max-width: 760px) {
