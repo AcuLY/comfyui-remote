@@ -259,7 +259,7 @@
   text-overflow: ellipsis;
 }
 
-.headerButton.headerButton span {
+.headerButton.headerButton [data-demo-ui-button-label="true"] {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -379,7 +379,7 @@
     padding: 0;
   }
 
-  .fixedHeaderStackedActions:not(.fixedHeaderCollapsed):not(.fixedHeaderMobile) .headerButton.headerButton span {
+  .fixedHeaderStackedActions:not(.fixedHeaderCollapsed):not(.fixedHeaderMobile) .headerButton.headerButton [data-demo-ui-button-label="true"] {
     display: none;
   }
 
