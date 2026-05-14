@@ -33,6 +33,7 @@ import { IconMeaningTable } from "./icons-page";
 import s from "./showcase-pages.module.css";
 
 type PreviewRenderer = (props: { component: ShowcaseComponentEntry; data: DemoData }) => ReactNode;
+type PreviewDataProps = { data: DemoData };
 
 const noop = () => undefined;
 
@@ -114,23 +115,14 @@ const previewRenderers: Record<ShowcasePreviewComponentName, PreviewRenderer> = 
     </div>
   ),
   UnitRowShell: () => <UnitRowShellPreview />,
-  ProjectListItem: ({ data }) => {
-    const project = firstProject(data);
-    if (!project) return <EmptyRows label="没有项目样例" />;
-    return <ProjectListItem project={project} selected onToggleSelected={noop} />;
-  },
+  ProjectListItem: ({ data }) => <ProjectListItemPreview data={data} />,
   ProjectSectionCard: ({ data }) => {
     const project = firstProject(data);
     const section = firstSection(project);
     if (!project || !section) return <EmptyRows label="没有小节样例" />;
     return <ProjectSectionCard compact index={0} project={project} section={section} />;
   },
-  PresetLibraryItemRow: ({ data }) => {
-    const category = firstCategory(data);
-    const item = category ? presetLibraryItems(category)[0] : null;
-    if (!item) return <EmptyRows label="没有预设条目样例" />;
-    return <PresetLibraryItemRow checked index={0} item={item} onToggle={noop} />;
-  },
+  PresetLibraryItemRow: ({ data }) => <PresetLibraryItemRowPreview data={data} />,
   TemplateSectionRow: ({ data }) => {
     const template = firstTemplate(data);
     const section = template?.sections[0];
@@ -370,6 +362,23 @@ function UnitRowShellPreview() {
       selected={selected}
     />
   );
+}
+
+function ProjectListItemPreview(props: PreviewDataProps) {
+  const { data } = props;
+  const project = firstProject(data);
+  const [selected, setSelected] = useState(true);
+  if (!project) return <EmptyRows label="没有项目样例" />;
+  return <ProjectListItem project={project} selected={selected} onToggleSelected={() => setSelected((current) => !current)} />;
+}
+
+function PresetLibraryItemRowPreview(props: PreviewDataProps) {
+  const { data } = props;
+  const category = firstCategory(data);
+  const item = category ? presetLibraryItems(category)[0] : null;
+  const [checked, setChecked] = useState(true);
+  if (!item) return <EmptyRows label="没有预设条目样例" />;
+  return <PresetLibraryItemRow checked={checked} index={0} item={item} onToggle={() => setChecked((current) => !current)} />;
 }
 
 function FolderBreadcrumbPreview() {

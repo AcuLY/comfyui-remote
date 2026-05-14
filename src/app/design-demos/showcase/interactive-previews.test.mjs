@@ -89,3 +89,20 @@ test("showcase unit row and folder samples expose real visible interactions", ()
   assert.match(foldersSampleSource, /onMove=\{setMoveTargetId\}/);
   assert.doesNotMatch(foldersSampleSource, /on(?:Navigate|Move)=\{\(\)\s*=>\s*undefined\}/);
 });
+
+test("unit-items adapter previews do not leave row checkboxes wired to noop", () => {
+  assert.match(componentPreviewsSource, /ProjectListItem:\s*\(\{ data \}\)\s*=>\s*<ProjectListItemPreview data=\{data\}\s*\/>/);
+  assert.match(componentPreviewsSource, /PresetLibraryItemRow:\s*\(\{ data \}\)\s*=>\s*<PresetLibraryItemRowPreview data=\{data\}\s*\/>/);
+
+  const projectPreviewSource = functionSource(componentPreviewsSource, "ProjectListItemPreview");
+  assert.match(projectPreviewSource, /useState\(true\)/);
+  assert.match(projectPreviewSource, /selected=\{selected\}/);
+  assert.match(projectPreviewSource, /onToggleSelected=\{\(\)\s*=>\s*setSelected\(\(current\)\s*=>\s*!current\)\}/);
+  assert.doesNotMatch(projectPreviewSource, /onToggleSelected=\{noop\}/);
+
+  const presetPreviewSource = functionSource(componentPreviewsSource, "PresetLibraryItemRowPreview");
+  assert.match(presetPreviewSource, /useState\(true\)/);
+  assert.match(presetPreviewSource, /checked=\{checked\}/);
+  assert.match(presetPreviewSource, /onToggle=\{\(\)\s*=>\s*setChecked\(\(current\)\s*=>\s*!current\)\}/);
+  assert.doesNotMatch(presetPreviewSource, /onToggle=\{noop\}/);
+});
