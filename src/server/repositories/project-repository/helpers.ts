@@ -6,6 +6,7 @@ export type ProjectUpdateInput = {
   aspectRatio?: string | null;
   batchSize?: number | null;
   checkpointName?: string | null;
+  folderId?: string | null;
 };
 
 export type ProjectCreateInput = {

@@ -34,6 +34,7 @@ type UpdateProjectRequestBody = {
   aspectRatio?: unknown;
   batchSize?: unknown;
   checkpointName?: unknown;
+  folderId?: unknown;
 };
 
 type ListProjectsQuery = {
@@ -71,6 +72,7 @@ const PROJECT_UPDATE_FIELDS = [
   "aspectRatio",
   "batchSize",
   "checkpointName",
+  "folderId",
 ] as const;
 
 const PROJECT_SECTION_UPDATE_FIELDS = [
@@ -170,18 +172,6 @@ function ensureSupportedFields(
       supportedFields,
     });
   }
-}
-
-function normalizeStringField(value: unknown, fieldName: string) {
-  if (value === undefined) {
-    return undefined;
-  }
-
-  if (typeof value !== "string") {
-    throw new ProjectServiceError(`${fieldName} must be a string`, 400);
-  }
-
-  return value;
 }
 
 function normalizeNullableStringField(value: unknown, fieldName: string) {
@@ -346,6 +336,19 @@ function ensureAtLeastOneField(
   }
 }
 
+async function ensureProjectFolderExists(folderId: string | null | undefined) {
+  if (!folderId) return;
+
+  const folder = await prisma.projectFolder.findUnique({
+    where: { id: folderId },
+    select: { id: true },
+  });
+
+  if (!folder) {
+    throw new ProjectServiceError("Project folder not found", 404);
+  }
+}
+
 export async function listProjects(query: ListProjectsQuery = {}) {
   return listProjectsInRepository({
     search: normalizeOptionalSearch(query.search),
@@ -368,6 +371,7 @@ export async function createProject(body: unknown, actorType: ActorType = ActorT
   };
 
   log.info("Creating project", { title: input.title });
+  await ensureProjectFolderExists(input.folderId);
 
   const result = await createProjectInRepository(input);
 
@@ -376,7 +380,7 @@ export async function createProject(body: unknown, actorType: ActorType = ActorT
   return result;
 }
 
-export async function updateProject(projectId: string, body: unknown, actorType: ActorType = ActorType.user) {
+export function normalizeProjectUpdateBody(body: unknown) {
   const parsedBody = parsePatchRequestBody<UpdateProjectRequestBody>(body);
   ensureSupportedFields(parsedBody, PROJECT_UPDATE_FIELDS);
 
@@ -384,6 +388,7 @@ export async function updateProject(projectId: string, body: unknown, actorType:
     aspectRatio: normalizeNullableStringField(parsedBody.aspectRatio, "aspectRatio"),
     batchSize: normalizeBatchSize(parsedBody.batchSize, "batchSize"),
     checkpointName: normalizeNullableStringField(parsedBody.checkpointName, "checkpointName"),
+    folderId: normalizeNullableIdField(parsedBody.folderId, "folderId"),
   };
 
   ensureAtLeastOneField(
@@ -392,7 +397,14 @@ export async function updateProject(projectId: string, body: unknown, actorType:
     PROJECT_UPDATE_FIELDS,
   );
 
+  return input;
+}
+
+export async function updateProject(projectId: string, body: unknown, actorType: ActorType = ActorType.user) {
+  const input = normalizeProjectUpdateBody(body);
+
   const normalizedId = normalizeRequiredId(projectId, "projectId");
+  await ensureProjectFolderExists(input.folderId);
 
   const result = await updateProjectInRepository(normalizedId, input);
 
@@ -609,6 +621,14 @@ export function mapProjectError(error: unknown) {
             message: "Database uniqueness check failed",
             status: 409,
             details: error.meta?.target ?? error.message,
+          };
+        }
+
+        if (error.code === "P2003" || error.code === "P2025") {
+          return {
+            message: "Related record not found",
+            status: 404,
+            details: error.meta ?? error.message,
           };
         }
 

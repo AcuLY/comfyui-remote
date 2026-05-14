@@ -96,6 +96,7 @@ export async function listProjects(filters: ListProjectsFilters = {}) {
     return {
       id: project.id,
       title: project.title,
+      folderId: project.folderId,
       status: project.status,
       updatedAt: project.updatedAt.toISOString(),
       sectionCount: project.sections.length,
@@ -170,6 +171,7 @@ export async function getProjectDetail(projectId: string) {
     id: project.id,
     title: project.title,
     slug: project.slug,
+    folderId: project.folderId,
     status: project.status,
     createdAt: project.createdAt.toISOString(),
     updatedAt: project.updatedAt.toISOString(),
@@ -191,6 +193,7 @@ export async function getProjectAgentContext(projectId: string) {
       title: true,
       slug: true,
       status: true,
+      folderId: true,
       notes: true,
       createdAt: true,
       updatedAt: true,
@@ -295,6 +298,7 @@ export async function getProjectAgentContext(projectId: string) {
       id: project.id,
       title: project.title,
       slug: project.slug,
+      folderId: project.folderId,
       status: project.status,
       createdAt: project.createdAt.toISOString(),
       updatedAt: project.updatedAt.toISOString(),
@@ -436,6 +440,11 @@ export async function updateProject(projectId: string, input: ProjectUpdateInput
   }
   if (input.checkpointName !== undefined) {
     data.checkpointName = input.checkpointName;
+  }
+  if (input.folderId !== undefined) {
+    data.folder = input.folderId === null
+      ? { disconnect: true }
+      : { connect: { id: input.folderId } };
   }
 
   await db.project.update({
