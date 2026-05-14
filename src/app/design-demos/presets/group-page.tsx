@@ -73,16 +73,7 @@ export function PresetGroupPage({ data, group }: { data: DemoData; group: DemoPr
             </div>
             <div className={s.groupMemberList}>
               {members.map((member, index) => (
-                <div className={s.groupMemberRow} key={member.id}>
-                  <GripVertical className={s.icon} />
-                  <span>{String(index + 1).padStart(2, "0")}</span>
-                  <div>
-                    <strong>{member.name}</strong>
-                    <em>{member.categoryName} · {member.variant}</em>
-                  </div>
-                  <SelectLike label="变体" value={member.variant} />
-                  <Button tone="danger" icon={Trash2} iconOnly size="sm" ariaLabel="移除成员" />
-                </div>
+                <PresetMemberRow index={index} key={member.id} member={member} />
               ))}
             </div>
           </section>
@@ -138,6 +129,34 @@ export function PresetGroupPage({ data, group }: { data: DemoData; group: DemoPr
           </div>
         </aside>
       </div>
+    </div>
+  );
+}
+
+export type PresetMemberRowData = {
+  id: string;
+  name: string;
+  categoryName: string;
+  variant: string;
+};
+
+export function PresetMemberRow({
+  index,
+  member,
+}: {
+  index: number;
+  member: PresetMemberRowData;
+}) {
+  return (
+    <div className={s.groupMemberRow}>
+      <GripVertical className={s.icon} />
+      <span>{String(index + 1).padStart(2, "0")}</span>
+      <div>
+        <strong>{member.name}</strong>
+        <em>{member.categoryName} · {member.variant}</em>
+      </div>
+      <SelectLike label="变体" value={member.variant} />
+      <Button tone="danger" icon={Trash2} iconOnly size="sm" ariaLabel="移除成员" />
     </div>
   );
 }

@@ -418,6 +418,44 @@ export function UpscaleControl({
   );
 }
 
+export function ImageSizeControlGroup({
+  aspectRatio,
+  onAspectRatioChange,
+  onShortSideChange,
+  onUpscaleChange,
+  shortSidePx,
+  upscaleFactor,
+}: {
+  aspectRatio: string;
+  onAspectRatioChange: (value: string) => void;
+  onShortSideChange: (value: number) => void;
+  onUpscaleChange: (value: number) => void;
+  shortSidePx: number;
+  upscaleFactor: number;
+}) {
+  return (
+    <SpecSection title="图像输出" hint="决定最终画幅尺寸与批量数。">
+      <SpecRow label="画幅比例">
+        <AspectChips value={aspectRatio} onChange={onAspectRatioChange} />
+      </SpecRow>
+      <SpecRow label="短边像素" description="小于最终像素维度的一侧">
+        <StepperInput
+          value={shortSidePx}
+          onChange={onShortSideChange}
+          min={256}
+          max={2048}
+          step={64}
+          width={130}
+        />
+        <DimensionsReadout aspect={aspectRatio} shortSide={shortSidePx} upscale={upscaleFactor} />
+      </SpecRow>
+      <SpecRow label="放大倍数">
+        <UpscaleControl value={upscaleFactor} onChange={onUpscaleChange} />
+      </SpecRow>
+    </SpecSection>
+  );
+}
+
 // ============================================================================
 // KSampler card — denoise + seed policy added; flat by default, no collapse
 // ============================================================================

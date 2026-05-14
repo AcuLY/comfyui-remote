@@ -6,7 +6,7 @@
 
 - `/design-demos` 是未来替换老前端的候选实现，不只是临时 demo。
 - Showcase 按功能族审核组件，不按页面或代码层级审核。
-- 每个 showcase 条目必须有中文审查名、英文组件名、功能解释、所属功能族、路径、覆盖页面和迁移状态。
+- 每个 showcase 条目必须有中文审查名、英文组件名、功能解释、所属功能族、路径、覆盖页面、迁移状态和真实预览。
 - 新抽组件采用槽位壳组件，不直接耦合 `DemoProject`、`DemoPreset`、`DemoTemplate` 等业务类型。
 
 ## 目录归属
@@ -33,7 +33,7 @@ src/app/design-demos/
 - 英文组件名描述代码实体，例如 `Button`、`FolderRow`、`PresetBindingRow`。
 - 跨业务结构使用中性名：`UnitRowShell`、`ToolbarCluster`、`SelectionBatchBar`。
 - 业务适配组件保留业务名：`ProjectListItem`、`PresetLibraryItemRow`、`TemplateSectionRow`。
-- 页面内未抽出的模式用拟抽名登记，例如 `ModelFileBrowser / ModelFileInspector`。
+- 页面内模式进入 registry 前必须先抽成真实复用组件或 feature 适配组件，不能再用 `planned` 占位登记。
 
 ## 迁移状态
 
@@ -41,7 +41,6 @@ src/app/design-demos/
 | --- | --- |
 | `implemented` | 已经存在真实复用组件或本轮新增的槽位壳组件。 |
 | `adapter` | feature 组件存在，负责把业务数据映射到共享结构。 |
-| `planned` | 页面内已有模式，但还没有独立复用组件。 |
 | `specialty` | Headers 或 Icons 这类专项，不参与普通功能族混排。 |
 
 ## 功能族准入规则
@@ -135,24 +134,34 @@ src/app/design-demos/
 | 通用单元行壳 | `UnitRowShell` | 单元行项 | `shared/patterns` | implemented |
 | 项目列表项 | `ProjectListItem` | 单元行项 | `features/projects` | adapter |
 | 项目小节项 | `ProjectSectionCard` | 单元行项 | `features/projects` | adapter |
+| 预设库条目 | `PresetLibraryItemRow` | 单元行项 | `features/presets` | adapter |
+| 模板小节项 | `TemplateSectionRow` | 单元行项 | `features/templates` | adapter |
 | 通用路径面包屑 | `FolderBreadcrumb` | 文件夹与移动目标 | `shared/patterns` | implemented |
 | 通用文件夹行 | `FolderRow` | 文件夹与移动目标 | `shared/patterns` | implemented |
 | 移动目标选择器 | `MoveTargetPicker` | 文件夹与移动目标 | `shared/patterns` | implemented |
+| 模型文件行 | `ModelFileRow` | 文件夹与移动目标 | `features/models` | adapter |
 | 通用批量栏 | `SelectionBatchBar` | 批量选择与反馈 | `shared/patterns` | implemented |
 | 操作状态条 | `OperationStateStrip` | 批量选择与反馈 | `shared/feedback` | implemented |
 | KSampler 参数卡 | `KSamplerCard` | 生成参数 | `section-editor-controls` | implemented |
+| 图片尺寸参数组 | `ImageSizeControlGroup` | 生成参数 | `section-editor-controls` | implemented |
 | 预设绑定行 | `PresetBindingRow` | 预设/Prompt/LoRA | `section-editor-presets` | implemented |
 | Prompt 块行 | `PromptBlockRow` | 预设/Prompt/LoRA | `section-editor-prompts` | implemented |
 | LoRA 行 | `LoraRow` | 预设/Prompt/LoRA | `section-editor-lora-history` | implemented |
+| 预设成员行 | `PresetMemberRow` | 预设/Prompt/LoRA | `features/presets` | adapter |
 | 可拖拽排序行 | `SortableRowShell` | 分类/排序/历史 | `shared/patterns` | implemented |
 | 历史差异行 | `HistoryDiffRow` | 分类/排序/历史 | `section-editor-lora-history` | implemented |
+| 分类侧栏和分类行 | `PresetCategorySidebar / PresetCategoryRow` | 分类/排序/历史 | `features/presets` | adapter |
 | 中图列表 | `ImageListMedium` | 图片结果与审核 | `shared/media` | implemented |
 | 审核图片面板 | `ReviewImageBoard` | 图片结果与审核 | `shared/media` | implemented |
 | 队列指标 | `QueueMetrics` | 任务运行与队列 | `features/runs` | implemented |
 | 审核元信息卡 | `ReviewMetaCard` | 任务运行与队列 | `features/runs` | implemented |
-| 模型文件浏览器 | `ModelFileBrowser` | 系统/日志/模型文件 | `features/models` | planned |
+| 日志筛选和日志行 | `LogFilterBar / LogLine` | 系统/日志/模型文件 | `features/settings` | adapter |
+| 监控状态行 | `MonitorStatusRow` | 系统/日志/模型文件 | `features/settings` | adapter |
+| 模型文件浏览器 | `ModelFileBrowser / ModelFileInspector` | 系统/日志/模型文件 | `features/models` | adapter |
+| 登录令牌面板 | `LoginTokenPanel` | 系统/日志/模型文件 | `features/auth` | adapter |
 | 固定顶栏设计稿 | `RouteHeaderSurface` | Headers 专项 | `route-header-surface` | specialty |
 | Lucide 图标列表 | `IconList` | Icons 专项 | `icon-showcase/icon-list` | specialty |
+| 图标语义表 | `IconMeaningTable` | Icons 专项 | `showcase/pages` | specialty |
 
 ## 高混淆边界
 
@@ -166,6 +175,8 @@ src/app/design-demos/
 
 - `src/app/design-demos/showcase/registry.ts` 是 showcase 目录真相。
 - 每个功能族至少有一个真实样例和一个组件清单。
+- 每个 registry 条目必须在 `showcase/preview-keys.ts` 和 `showcase/pages/component-previews.tsx` 中有对应真实预览。
 - 总览页、功能族页、计数和状态说明必须从 registry 读取。
 - 旧 `atoms/mid/editor/projects/image-list-components` 入口不再出现在路由表和总览页。
 - 新组件必须先登记功能族，再进入 showcase。
+- `Headers` 和 `Icons` 是专项页：可以使用完整展示布局，不强制放进普通 family card 框架。

@@ -1,1 +1,1 @@
-export { LoginPage } from "../../system/login-page";
+export { LoginPage, LoginTokenPanel } from "../../system/login-page";

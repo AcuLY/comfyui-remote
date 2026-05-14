@@ -5,6 +5,7 @@ import {
   SHOWCASE_FAMILIES,
   SHOWCASE_FAMILY_ROUTES,
 } from "./registry";
+import { SHOWCASE_PREVIEW_COMPONENT_NAMES } from "./preview-keys";
 
 const expectedFamilyIds = [
   "controls",
@@ -45,7 +46,8 @@ assert.equal(
 for (const family of SHOWCASE_FAMILIES) {
   assert.match(family.title, /[\u3400-\u9fff]/, `${family.id} needs a Chinese review title`);
   assert.match(family.summary, /[\u3400-\u9fff]/, `${family.id} needs a Chinese summary`);
-  assert.ok(family.route.startsWith("/component-showcase"), `${family.id} route should live under component-showcase`);
+  assert.ok(family.route.startsWith("/component-showcase-"), `${family.id} route should live under component-showcase family routes`);
+  assert.ok(!family.route.startsWith("#family-"), `${family.id} route navigation must not use page anchors`);
   assert.ok(!oldRouteFragments.some((fragment) => family.route.includes(fragment)), `${family.id} must not use old showcase route naming`);
   assert.equal(SHOWCASE_FAMILY_ROUTES[family.id], family.route, `${family.id} route map should match family registry`);
 
@@ -57,8 +59,20 @@ for (const component of SHOWCASE_COMPONENTS) {
   assert.match(component.reviewName, /[\u3400-\u9fff]/, `${component.componentName} needs a Chinese review name`);
   assert.match(component.description, /[\u3400-\u9fff]/, `${component.componentName} needs a Chinese description`);
   assert.ok(component.componentName.length > 0, `${component.reviewName} needs an English component name`);
+  assert.notEqual(component.status, "planned", `${component.componentName} must be extracted or removed from the registry`);
+  assert.ok(
+    SHOWCASE_PREVIEW_COMPONENT_NAMES.includes(component.componentName as (typeof SHOWCASE_PREVIEW_COMPONENT_NAMES)[number]),
+    `${component.componentName} must have a showcase preview`,
+  );
   assert.ok(component.familyId in SHOWCASE_FAMILY_ROUTES, `${component.componentName} has an unknown family id`);
-  assert.ok(component.paths.length > 0, `${component.componentName} must list source paths or planned paths`);
+  assert.ok(component.paths.length > 0, `${component.componentName} must list source paths`);
   assert.ok(!component.paths.some((path) => path.split("/").some((part) => part.startsWith("_"))), `${component.componentName} should not reference underscored implementation folders`);
   assert.ok(component.usedBy.length > 0, `${component.componentName} must list covered pages or usage contexts`);
+}
+
+for (const previewName of SHOWCASE_PREVIEW_COMPONENT_NAMES) {
+  assert.ok(
+    SHOWCASE_COMPONENTS.some((component) => component.componentName === previewName),
+    `${previewName} preview key must correspond to a registry entry`,
+  );
 }

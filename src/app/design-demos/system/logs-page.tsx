@@ -13,6 +13,14 @@ import { StatusBadge } from "../ui/status-badge";
 import { cx } from "../design-demo-utils";
 import type { LogDemoSource } from "../design-demo-utils";
 
+export type DemoLogViewerLine = {
+  id: string;
+  level: "info" | "warn" | "error";
+  module: string;
+  message: string;
+  time: string;
+};
+
 export function LogsPage({ data }: { data: DemoData }) {
   const [source, setSource] = useState<LogDemoSource>("app");
   const [level, setLevel] = useState<"all" | "info" | "warn" | "error">("all");
@@ -52,7 +60,7 @@ export function LogsPage({ data }: { data: DemoData }) {
                 : row.action === "updated"
                   ? "更新"
                   : row.action;
-    const inferredLevel = row.action.toLowerCase().includes("error") || row.action.toLowerCase().includes("failed")
+    const inferredLevel: DemoLogViewerLine["level"] = row.action.toLowerCase().includes("error") || row.action.toLowerCase().includes("failed")
       ? "error"
       : row.action.toLowerCase().includes("warn")
         ? "warn"
@@ -78,38 +86,20 @@ export function LogsPage({ data }: { data: DemoData }) {
         actions={<Button icon={Search} feedback={{ title: "日志刷新已排队" }}>刷新日志</Button>}
       />
       <div className={s.logWorkbench}>
-        <section className={s.logFilterBar}>
-          <DemoTabs
-            tabs={[
-              { key: "app", label: "应用日志", count: auditRows.length },
-              { key: "console", label: "控制台输出", count: consoleRows.length },
-            ]}
-            value={source}
-            onChange={(next) => {
-              setSource(next);
-              setModuleFilter("all");
-            }}
-          />
-          <DemoTabs
-            tabs={[
-              { key: "all", label: "全部" },
-              { key: "info", label: "INFO" },
-              { key: "warn", label: "WARN" },
-              { key: "error", label: "ERROR" },
-            ]}
-            value={level}
-            onChange={setLevel}
-          />
-          <SegmentedControl
-            ariaLabel="日志模块"
-            className={s.logModuleChips}
-            compact
-            dense
-            items={modules.map((moduleName) => ({ value: moduleName, label: moduleName === "all" ? "全部模块" : moduleName }))}
-            onChange={setModuleFilter}
-            value={moduleFilter}
-          />
-        </section>
+        <LogFilterBar
+          auditCount={auditRows.length}
+          consoleCount={consoleRows.length}
+          level={level}
+          moduleFilter={moduleFilter}
+          modules={modules}
+          onLevelChange={setLevel}
+          onModuleChange={setModuleFilter}
+          onSourceChange={(next) => {
+            setSource(next);
+            setModuleFilter("all");
+          }}
+          source={source}
+        />
         <section className={s.logViewerPanel}>
           <div className={s.logViewerHeader}>
             <div>
@@ -120,18 +110,78 @@ export function LogsPage({ data }: { data: DemoData }) {
           </div>
           <div className={s.logViewer}>
             {visibleRows.length ? visibleRows.map((log) => (
-              <div className={cx(s.logLine, log.level === "warn" && s.logLineWarn, log.level === "error" && s.logLineError)} key={log.id}>
-                <span>{log.time}</span>
-                <em>{log.level}</em>
-                <strong>{log.module}</strong>
-                <code>{log.message}</code>
-              </div>
+              <LogLine key={log.id} log={log} />
             )) : (
               <div className={s.logEmpty}>当前筛选没有日志</div>
             )}
           </div>
         </section>
       </div>
+    </div>
+  );
+}
+
+export function LogFilterBar({
+  auditCount,
+  consoleCount,
+  level,
+  moduleFilter,
+  modules,
+  onLevelChange,
+  onModuleChange,
+  onSourceChange,
+  source,
+}: {
+  auditCount: number;
+  consoleCount: number;
+  level: "all" | "info" | "warn" | "error";
+  moduleFilter: string;
+  modules: string[];
+  onLevelChange: (value: "all" | "info" | "warn" | "error") => void;
+  onModuleChange: (value: string) => void;
+  onSourceChange: (value: LogDemoSource) => void;
+  source: LogDemoSource;
+}) {
+  return (
+    <section className={s.logFilterBar}>
+      <DemoTabs
+        tabs={[
+          { key: "app", label: "应用日志", count: auditCount },
+          { key: "console", label: "控制台输出", count: consoleCount },
+        ]}
+        value={source}
+        onChange={onSourceChange}
+      />
+      <DemoTabs
+        tabs={[
+          { key: "all", label: "全部" },
+          { key: "info", label: "INFO" },
+          { key: "warn", label: "WARN" },
+          { key: "error", label: "ERROR" },
+        ]}
+        value={level}
+        onChange={onLevelChange}
+      />
+      <SegmentedControl
+        ariaLabel="日志模块"
+        className={s.logModuleChips}
+        compact
+        dense
+        items={modules.map((moduleName) => ({ value: moduleName, label: moduleName === "all" ? "全部模块" : moduleName }))}
+        onChange={onModuleChange}
+        value={moduleFilter}
+      />
+    </section>
+  );
+}
+
+export function LogLine({ log }: { log: DemoLogViewerLine }) {
+  return (
+    <div className={cx(s.logLine, log.level === "warn" && s.logLineWarn, log.level === "error" && s.logLineError)}>
+      <span>{log.time}</span>
+      <em>{log.level}</em>
+      <strong>{log.module}</strong>
+      <code>{log.message}</code>
     </div>
   );
 }

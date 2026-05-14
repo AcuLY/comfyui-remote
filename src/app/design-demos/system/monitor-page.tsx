@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Activity, ClipboardList, Gauge, Monitor, Play, Search, X } from "lucide-react";
+import { Activity, ClipboardList, Gauge, Monitor, Play, Search, X, type LucideIcon } from "lucide-react";
+import type * as React from "react";
 
 import type { DemoData } from "../design-demo-data";
 import s from "./monitor-page.shell.module.css";
@@ -47,30 +48,21 @@ export function MonitorPage({ data }: { data: DemoData }) {
               />
             </div>
             <div className={s.monitorStatusGrid}>
-              <div className={s.monitorStatusRow}>
-                <Gauge className={s.icon} />
-                <div>
-                  <strong>Worker</strong>
-                  <span>心跳正常，轮询窗口稳定。</span>
-                </div>
-                <StatusBadge status="ready" label="正常" />
-              </div>
-              <div className={s.monitorStatusRow}>
-                <Monitor className={s.icon} />
-                <div>
-                  <strong>ComfyUI API</strong>
-                  <span>{data.source.comfyApiLabel || "未配置 endpoint"}</span>
-                </div>
-                <StatusBadge status={mode === "managed" ? "running" : "monitor"} label={mode === "managed" ? "运行中" : "外部"} />
-              </div>
-              <div className={s.monitorStatusRow}>
-                <ClipboardList className={s.icon} />
-                <div>
-                  <strong>任务积压</strong>
-                  <span>{running} 个待处理 / 运行中，{data.metrics.pendingImages} 张待审。</span>
-                </div>
-                <StatusBadge status={running ? "pending" : "ready"} label={running ? "忙碌" : "空闲"} />
-              </div>
+              <MonitorStatusRow icon={Gauge} title="Worker" description="心跳正常，轮询窗口稳定。" status="ready" label="正常" />
+              <MonitorStatusRow
+                icon={Monitor}
+                title="ComfyUI API"
+                description={data.source.comfyApiLabel || "未配置 endpoint"}
+                status={mode === "managed" ? "running" : "monitor"}
+                label={mode === "managed" ? "运行中" : "外部"}
+              />
+              <MonitorStatusRow
+                icon={ClipboardList}
+                title="任务积压"
+                description={`${running} 个待处理 / 运行中，${data.metrics.pendingImages} 张待审。`}
+                status={running ? "pending" : "ready"}
+                label={running ? "忙碌" : "空闲"}
+              />
             </div>
             <div className={s.monitorActions}>
               <Button icon={Play} feedback={{ title: "启动命令已发送" }}>启动</Button>
@@ -119,6 +111,31 @@ export function MonitorPage({ data }: { data: DemoData }) {
           </div>
         </aside>
       </div>
+    </div>
+  );
+}
+
+export function MonitorStatusRow({
+  description,
+  icon: Icon,
+  label,
+  status,
+  title,
+}: {
+  description: string;
+  icon: LucideIcon;
+  label: string;
+  status: React.ComponentProps<typeof StatusBadge>["status"];
+  title: string;
+}) {
+  return (
+    <div className={s.monitorStatusRow}>
+      <Icon className={s.icon} />
+      <div>
+        <strong>{title}</strong>
+        <span>{description}</span>
+      </div>
+      <StatusBadge status={status} label={label} />
     </div>
   );
 }

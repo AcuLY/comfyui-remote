@@ -133,6 +133,42 @@ function PresetFolderRows({
   );
 }
 
+export function PresetLibraryItemRow({
+  checked,
+  index,
+  item,
+  onToggle,
+}: {
+  checked: boolean;
+  index: number;
+  item: PresetLibraryItem;
+  onToggle: (id: string) => void;
+}) {
+  return (
+    <div className={cx(s.presetItemRow, checked && s.presetItemRowSelected)}>
+      <Checkbox
+        checked={checked}
+        label={checked ? `取消选择预制：${item.name}` : `选择预制：${item.name}`}
+        onCheckedChange={() => onToggle(item.id)}
+        variant="compact"
+      />
+      <Link className={s.presetItemOpenArea} href={demoHref(item.href)}>
+        <GripVertical className={s.categoryDragIcon} />
+        <div className={s.presetItemMain}>
+          <strong>{item.name}</strong>
+          <span>{item.slug}</span>
+          <p>{item.description}</p>
+        </div>
+        <div className={s.presetItemMeta}>
+          <span>{String(index + 1).padStart(2, "0")}</span>
+          <em>{item.meta}</em>
+        </div>
+        <ArrowRight className={s.presetItemArrow} />
+      </Link>
+    </div>
+  );
+}
+
 function PresetItemRows({
   items,
   onToggle,
@@ -153,27 +189,7 @@ function PresetItemRows({
       {items.map((item, index) => {
         const checked = selectedIds.has(item.id);
         return (
-          <div className={cx(s.presetItemRow, checked && s.presetItemRowSelected)} key={item.id}>
-            <Checkbox
-              checked={checked}
-              label={checked ? `取消选择预制：${item.name}` : `选择预制：${item.name}`}
-              onCheckedChange={() => onToggle(item.id)}
-              variant="compact"
-            />
-            <Link className={s.presetItemOpenArea} href={demoHref(item.href)}>
-              <GripVertical className={s.categoryDragIcon} />
-              <div className={s.presetItemMain}>
-                <strong>{item.name}</strong>
-                <span>{item.slug}</span>
-                <p>{item.description}</p>
-              </div>
-              <div className={s.presetItemMeta}>
-                <span>{String(index + 1).padStart(2, "0")}</span>
-                <em>{item.meta}</em>
-              </div>
-              <ArrowRight className={s.presetItemArrow} />
-            </Link>
-          </div>
+          <PresetLibraryItemRow checked={checked} index={index} item={item} key={item.id} onToggle={onToggle} />
         );
       })}
     </div>
@@ -319,7 +335,7 @@ export function PresetsPage({ data }: { data: DemoData }) {
   );
 }
 
-function PresetCategorySidebar({
+export function PresetCategorySidebar({
   categories,
   selectedCategory,
   onSelect,
@@ -341,28 +357,39 @@ function PresetCategorySidebar({
         {categories.map((category) => {
           const selected = selectedCategory.id === category.id;
           return (
-            <div
-              className={cx(s.presetCategoryItem, selected && s.presetCategoryItemActive)}
-              key={category.id}
-            >
-              <div className={s.presetCategoryRow}>
-                <button className={s.presetCategorySelect} type="button" onClick={() => onSelect(category)}>
-                  <GripVertical className={s.categoryDragIcon} />
-                  <span className={s.categorySwatch} style={{ backgroundColor: categoryColorValue(category.color) }} />
-                  <span className={s.presetCategoryText}>
-                    <strong>{category.name}</strong>
-                    <span>{categoryItemCount(category)} 个{categoryTypeLabel(category)} · {category.slug}</span>
-                  </span>
-                </button>
-                <div className={s.presetCategoryActions}>
-                  <ButtonLink href={`/presets/categories/${category.id}/edit`} icon={Edit3} iconOnly ariaLabel="编辑分类" tone="subtle" />
-                  <Button tone="danger" icon={Trash2} iconOnly ariaLabel="删除分类" disabled={categoryItemCount(category) > 0} />
-                </div>
-              </div>
-            </div>
+            <PresetCategoryRow category={category} key={category.id} onSelect={onSelect} selected={selected} />
           );
         })}
       </div>
     </aside>
+  );
+}
+
+export function PresetCategoryRow({
+  category,
+  onSelect,
+  selected,
+}: {
+  category: DemoCategory;
+  onSelect: (category: DemoCategory) => void;
+  selected: boolean;
+}) {
+  return (
+    <div className={cx(s.presetCategoryItem, selected && s.presetCategoryItemActive)}>
+      <div className={s.presetCategoryRow}>
+        <button className={s.presetCategorySelect} type="button" onClick={() => onSelect(category)}>
+          <GripVertical className={s.categoryDragIcon} />
+          <span className={s.categorySwatch} style={{ backgroundColor: categoryColorValue(category.color) }} />
+          <span className={s.presetCategoryText}>
+            <strong>{category.name}</strong>
+            <span>{categoryItemCount(category)} 个{categoryTypeLabel(category)} · {category.slug}</span>
+          </span>
+        </button>
+        <div className={s.presetCategoryActions}>
+          <ButtonLink href={`/presets/categories/${category.id}/edit`} icon={Edit3} iconOnly ariaLabel="编辑分类" tone="subtle" />
+          <Button tone="danger" icon={Trash2} iconOnly ariaLabel="删除分类" disabled={categoryItemCount(category) > 0} />
+        </div>
+      </div>
+    </div>
   );
 }

@@ -102,6 +102,7 @@ The component showcase must demonstrate real reusable components, not custom sho
 
 - Showcase pages are registry-driven from `showcase/registry.ts`.
 - Each component entry must have a Chinese review name, English component name, description, paths, usage contexts, status, and family id.
+- Each component entry must have a matching preview key and rendered preview in `showcase/pages/component-previews.tsx`; do not leave `planned` entries in the registry.
 - Showcase pages import shared components through `shared/*` or feature adapters through `features/*` where possible.
 - Showcase pages should not import compatibility barrels for primitives.
 - Showcase samples should avoid passing feature CSS classes into primitives.

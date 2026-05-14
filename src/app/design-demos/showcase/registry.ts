@@ -13,7 +13,7 @@ export type ShowcaseFamilyId =
   | "headers"
   | "icons";
 
-export type ShowcaseComponentStatus = "implemented" | "adapter" | "planned" | "specialty";
+export type ShowcaseComponentStatus = "implemented" | "adapter" | "specialty";
 
 export type ShowcaseFamily = {
   id: ShowcaseFamilyId;
@@ -296,7 +296,7 @@ export const SHOWCASE_COMPONENTS: ShowcaseComponentEntry[] = [
     description: "展示预设或预设组名称、slug、描述、编号和进入箭头。",
     paths: ["features/presets", "presets/library-page"],
     usedBy: ["预设库"],
-    status: "planned",
+    status: "adapter",
   },
   {
     familyId: "unit-items",
@@ -305,7 +305,7 @@ export const SHOWCASE_COMPONENTS: ShowcaseComponentEntry[] = [
     description: "展示模板小节排序、参数摘要、编辑、复制和删除操作。",
     paths: ["features/templates", "templates/template-form-page"],
     usedBy: ["模板编辑页"],
-    status: "planned",
+    status: "adapter",
   },
   {
     familyId: "folders",
@@ -342,7 +342,7 @@ export const SHOWCASE_COMPONENTS: ShowcaseComponentEntry[] = [
     description: "展示模型文件或文件夹名称、大小、类型和更多操作。",
     paths: ["features/models", "models/models-page"],
     usedBy: ["模型文件管理"],
-    status: "planned",
+    status: "adapter",
   },
   {
     familyId: "batch-actions",
@@ -411,10 +411,10 @@ export const SHOWCASE_COMPONENTS: ShowcaseComponentEntry[] = [
     familyId: "generation-params",
     reviewName: "图片尺寸参数组",
     componentName: "ImageSizeControlGroup",
-    description: "拟统一画幅、短边、放大倍数和尺寸读数。",
-    paths: ["shared/patterns"],
+    description: "统一画幅、短边、放大倍数和尺寸读数。",
+    paths: ["section-editor-controls"],
     usedBy: ["小节编辑器", "批量创建", "模板小节"],
-    status: "planned",
+    status: "implemented",
   },
   {
     familyId: "preset-prompt-lora",
@@ -447,10 +447,10 @@ export const SHOWCASE_COMPONENTS: ShowcaseComponentEntry[] = [
     familyId: "preset-prompt-lora",
     reviewName: "预设成员行",
     componentName: "PresetMemberRow",
-    description: "拟统一预设组成员、批量导入候选和关联变体的选择行。",
+    description: "统一预设组成员、批量导入候选和关联变体的选择行。",
     paths: ["features/presets"],
     usedBy: ["预设组", "批量创建", "预设详情"],
-    status: "planned",
+    status: "adapter",
   },
   {
     familyId: "taxonomy-history",
@@ -486,7 +486,7 @@ export const SHOWCASE_COMPONENTS: ShowcaseComponentEntry[] = [
     description: "展示分类名称、slug、色块、条目数、编辑和删除保护。",
     paths: ["features/presets", "presets/library-page"],
     usedBy: ["预设库", "分类编辑"],
-    status: "planned",
+    status: "adapter",
   },
   {
     familyId: "images",
@@ -567,7 +567,7 @@ export const SHOWCASE_COMPONENTS: ShowcaseComponentEntry[] = [
     description: "用于来源、级别、模块筛选和终端式日志行展示。",
     paths: ["features/settings", "system/logs-page"],
     usedBy: ["日志页"],
-    status: "planned",
+    status: "adapter",
   },
   {
     familyId: "system",
@@ -576,7 +576,7 @@ export const SHOWCASE_COMPONENTS: ShowcaseComponentEntry[] = [
     description: "展示 Worker、ComfyUI API、任务积压等健康状态。",
     paths: ["features/settings", "system/monitor-page"],
     usedBy: ["监控页"],
-    status: "planned",
+    status: "adapter",
   },
   {
     familyId: "system",
@@ -585,7 +585,7 @@ export const SHOWCASE_COMPONENTS: ShowcaseComponentEntry[] = [
     description: "展示模型类型切换、路径、搜索、文件列表和右侧文件详情。",
     paths: ["features/models", "models/models-page"],
     usedBy: ["模型文件页"],
-    status: "planned",
+    status: "adapter",
     exclusion: "文件夹行复用 folders 族，文件详情和系统浏览器归入 system 族。",
   },
   {
@@ -595,7 +595,7 @@ export const SHOWCASE_COMPONENTS: ShowcaseComponentEntry[] = [
     description: "展示本地 token 输入、登录/清除和验证状态。",
     paths: ["features/auth", "system/login-page"],
     usedBy: ["登录页"],
-    status: "planned",
+    status: "adapter",
   },
   {
     familyId: "headers",
@@ -637,10 +637,10 @@ export const SHOWCASE_COMPONENTS: ShowcaseComponentEntry[] = [
     familyId: "icons",
     reviewName: "图标语义表",
     componentName: "IconMeaningTable",
-    description: "拟用中文解释图标在产品里的固定含义，减少图标误用。",
+    description: "用中文解释图标在产品里的固定含义，减少图标误用。",
     paths: ["showcase/pages"],
     usedBy: ["Icons 专项", "组件拆分文档"],
-    status: "planned",
+    status: "specialty",
   },
 ];
 

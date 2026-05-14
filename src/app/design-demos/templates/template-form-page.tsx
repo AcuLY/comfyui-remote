@@ -100,7 +100,7 @@ export function TemplateFormPage({ template, mode }: { template?: DemoTemplate; 
   );
 }
 
-function TemplateSectionRow({
+export function TemplateSectionRow({
   index,
   section,
   template,

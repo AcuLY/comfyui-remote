@@ -16,7 +16,7 @@ export function ComponentShowcaseIndex({ data: data }: { data: DemoData }) {
       <PageHeader
         eyebrow="组件展示"
         title="组件功能族总览"
-        subtitle="按功能族审核真实复用组件、业务适配组件和待抽模式。每个条目都有中文审查名、英文组件名和迁移状态。"
+        subtitle="按功能族审核真实复用组件、业务适配组件和专项展示。每个条目都有中文审查名、英文组件名、迁移状态和真实预览。"
       />
       <div className={s.indexGrid}>
         {SHOWCASE_FAMILIES.map((family) => {

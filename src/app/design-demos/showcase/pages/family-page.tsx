@@ -1,25 +1,28 @@
 "use client";
 
+import Link from "next/link";
+
 import type { DemoData } from "../../design-demo-data";
+import { demoHref } from "../../design-demo-utils";
 import { ButtonLink, PageHeader } from "../../shared/primitives";
-import { AnchorRail } from "../../shared/patterns";
 import { getShowcaseComponents, getShowcaseFamily, SHOWCASE_FAMILIES } from "../registry";
 import type { ShowcaseComponentEntry, ShowcaseComponentStatus, ShowcaseFamilyId } from "../registry";
 import { ShowcaseItem } from "../showcase-item";
+import { ComponentPreview } from "./component-previews";
 import { FamilySamples } from "./family-samples";
+import { ComponentShowcaseHeadersPage } from "./headers-page";
+import { ComponentShowcaseIconsPage } from "./icons-page";
 import s from "./showcase-pages.module.css";
 
 const statusLabels: Record<ShowcaseComponentStatus, string> = {
   implemented: "真实复用",
   adapter: "业务适配",
-  planned: "待抽",
   specialty: "专项",
 };
 
 const statusClasses: Record<ShowcaseComponentStatus, string> = {
   implemented: s.statusImplemented,
   adapter: s.statusAdapter,
-  planned: s.statusPlanned,
   specialty: s.statusSpecialty,
 };
 
@@ -33,13 +36,15 @@ export function ComponentShowcaseFamilyPage({ data, familyId }: { data: DemoData
     );
   }
 
+  if (family.id === "headers") {
+    return <ComponentShowcaseHeadersPage data={data} />;
+  }
+
+  if (family.id === "icons") {
+    return <ComponentShowcaseIconsPage />;
+  }
+
   const components = getShowcaseComponents(family.id);
-  const navItems = SHOWCASE_FAMILIES.map((item) => ({
-    id: `family-${item.id}`,
-    label: item.title,
-    meta: item.id,
-    active: item.id === family.id,
-  }));
 
   return (
     <div className={s.page} id={`family-${family.id}`}>
@@ -61,20 +66,19 @@ export function ComponentShowcaseFamilyPage({ data, familyId }: { data: DemoData
           </ShowcaseItem>
           <section className={s.componentList} aria-label={`${family.title} 组件清单`}>
             {components.map((component) => (
-              <ComponentCard component={component} key={`${component.familyId}-${component.componentName}-${component.reviewName}`} />
+              <ComponentCard component={component} data={data} key={`${component.familyId}-${component.componentName}-${component.reviewName}`} />
             ))}
           </section>
         </main>
         <aside className={s.familyAside}>
           <section className={s.familyIntro}>
             <strong>功能族导航</strong>
-            <AnchorRail items={navItems} />
+            <ShowcaseFamilyNav currentFamilyId={family.id} />
           </section>
           <section className={s.familyIntro}>
             <strong>状态说明</strong>
             <span>真实复用：已经有可复用组件。</span>
             <span>业务适配：feature 组件保留业务数据映射。</span>
-            <span>待抽：现有页面内模式，后续应抽出。</span>
             <span>专项：不参与普通功能族混排。</span>
           </section>
         </aside>
@@ -83,7 +87,20 @@ export function ComponentShowcaseFamilyPage({ data, familyId }: { data: DemoData
   );
 }
 
-function ComponentCard({ component }: { component: ShowcaseComponentEntry }) {
+function ShowcaseFamilyNav({ currentFamilyId }: { currentFamilyId: ShowcaseFamilyId }) {
+  return (
+    <nav className={s.familyRouteNav} aria-label="功能族路由导航">
+      {SHOWCASE_FAMILIES.map((item) => (
+        <Link aria-current={item.id === currentFamilyId ? "page" : undefined} href={demoHref(item.route)} key={item.id}>
+          <strong>{item.title}</strong>
+          <span>{item.id}</span>
+        </Link>
+      ))}
+    </nav>
+  );
+}
+
+function ComponentCard({ component, data }: { component: ShowcaseComponentEntry; data: DemoData }) {
   return (
     <article className={s.componentCard}>
       <div className={s.componentHead}>
@@ -94,6 +111,9 @@ function ComponentCard({ component }: { component: ShowcaseComponentEntry }) {
         <span className={`${s.status} ${statusClasses[component.status]}`}>{statusLabels[component.status]}</span>
       </div>
       <p>{component.description}</p>
+      <div className={s.componentPreview}>
+        <ComponentPreview component={component} data={data} />
+      </div>
       <div className={s.metaGrid}>
         <MetaBlock label="归属路径" values={component.paths} />
         <MetaBlock label="覆盖页面 / 语境" values={component.usedBy} />

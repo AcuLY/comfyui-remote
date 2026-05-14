@@ -102,6 +102,17 @@
   padding: 14px;
 }
 
+.componentPreview {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--demo-border) 72%, transparent);
+  border-radius: 10px;
+  background:
+    linear-gradient(180deg, var(--demo-field-bg), transparent 64px),
+    var(--demo-surface-soft);
+  padding: 10px;
+}
+
 .componentHead {
   display: flex;
   min-width: 0;
@@ -144,11 +155,6 @@
 .statusAdapter {
   border-color: color-mix(in srgb, var(--demo-sky) 42%, transparent);
   color: var(--demo-sky);
-}
-
-.statusPlanned {
-  border-color: color-mix(in srgb, var(--demo-amber) 42%, transparent);
-  color: var(--demo-amber);
 }
 
 .statusSpecialty {
@@ -206,18 +212,138 @@
   padding-left: 10px;
 }
 
+.familyRouteNav {
+  display: grid;
+  gap: 8px;
+}
+
+.familyRouteNav a {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+  border: 1px solid var(--demo-border);
+  border-radius: 10px;
+  background: var(--demo-surface);
+  color: inherit;
+  padding: 10px 12px;
+  text-decoration: none;
+}
+
+.familyRouteNav a:hover,
+.familyRouteNav a:focus-visible,
+.familyRouteNav a[aria-current="page"] {
+  border-color: var(--demo-glass-accent-border);
+  background: var(--demo-selected);
+  outline: none;
+}
+
+.familyRouteNav strong {
+  overflow: hidden;
+  color: var(--demo-text);
+  font-size: 13px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.familyRouteNav span {
+  color: var(--demo-muted);
+  font-family: var(--demo-font-mono);
+  font-size: 12px;
+}
+
 .sampleRow,
 .sampleStack,
 .sampleCards,
-.sampleSplit {
+.sampleSplit,
+.previewRow,
+.previewStack {
   display: flex;
   min-width: 0;
   gap: 10px;
   flex-wrap: wrap;
 }
 
-.sampleStack {
+.sampleStack,
+.previewStack {
   display: grid;
+}
+
+.previewRow {
+  align-items: center;
+}
+
+.previewGrid {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+}
+
+.previewSplit {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 0.72fr);
+  gap: 10px;
+  align-items: start;
+}
+
+.previewSurface {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--demo-border);
+  border-radius: 10px;
+  background: var(--demo-surface);
+  padding: 10px;
+}
+
+.previewClip {
+  min-width: 0;
+  max-height: 360px;
+  overflow: auto;
+}
+
+.previewImageFrame {
+  width: min(260px, 100%);
+  aspect-ratio: 4 / 3;
+}
+
+.previewLog {
+  display: grid;
+  gap: 4px;
+  overflow: hidden;
+  border: 1px solid var(--demo-border);
+  border-radius: 10px;
+  background: var(--demo-code-bg);
+  padding: 8px;
+}
+
+.previewHeaderFrame {
+  position: relative;
+  min-height: 172px;
+  overflow: hidden;
+  border: 1px solid var(--demo-border);
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 20% 18%, color-mix(in srgb, var(--demo-green-soft) 76%, transparent), transparent 46%),
+    var(--demo-panel-2);
+}
+
+.previewHeaderFrame > div {
+  position: absolute;
+  inset: 84px 12px 12px;
+  z-index: 0;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+.previewHeaderFrame > div span {
+  display: block;
+  height: 28px;
+  border: 1px solid var(--demo-border);
+  border-radius: 8px;
+  background: var(--demo-surface-soft);
 }
 
 .sampleCards {
