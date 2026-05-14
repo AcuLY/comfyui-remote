@@ -18,6 +18,8 @@ Goal: the design demo area should behave like an independently maintainable fron
 
 Completed in this cleanup pass:
 
+- The official architecture entrypoints are `routing/`, `shell/`, `data/`, `shared/`, `features/`, and `showcase/`, with no underscore prefix.
+- Compatibility source folders such as `ui/`, `runs/`, `projects/`, `presets/`, `templates/`, `batch-create/`, `models/`, `system/`, and `section-editor/` still exist while migration continues.
 - Demo pages import UI primitives from `ui/<component>` files directly.
 - The legacy UI compatibility barrel was removed.
 - The previous UI index barrel was removed.
@@ -96,11 +98,19 @@ cmd /c npx next build
 Routes to verify:
 
 - `/design-demos/component-showcase`
-- `/design-demos/component-showcase-atoms`
-- `/design-demos/component-showcase-mid`
+- `/design-demos/component-showcase-controls`
+- `/design-demos/component-showcase-surfaces`
+- `/design-demos/component-showcase-unit-items`
+- `/design-demos/component-showcase-folders`
+- `/design-demos/component-showcase-batch-actions`
+- `/design-demos/component-showcase-generation-params`
+- `/design-demos/component-showcase-preset-prompt-lora`
+- `/design-demos/component-showcase-taxonomy-history`
 - `/design-demos/component-showcase-images`
-- `/design-demos/component-showcase-editor`
-- `/design-demos/component-showcase-projects`
+- `/design-demos/component-showcase-runs`
+- `/design-demos/component-showcase-system`
+- `/design-demos/component-showcase-headers`
+- `/design-demos/component-showcase-icons`
 - `/design-demos/runs`
 - `/design-demos/projects`
 - `/design-demos/models`

@@ -496,7 +496,7 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         group: "临时",
         eyebrow: "临时页面",
         title: "组件功能族总览",
-        subtitle: "按功能族查看真实复用组件、业务适配组件和待抽模式。",
+        subtitle: "按功能族查看真实复用组件、业务适配组件和专项页面。",
         actions: [headerAction("Headers", PanelTop, "primary")],
         meta: ["功能族", "槽位壳", "迁移目录"],
         status: "组件目录",

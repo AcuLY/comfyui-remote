@@ -30,6 +30,32 @@ import type { DemoData } from "../data/types";
 import { firstGroup, firstPreset, firstProject, firstRun, firstSection, firstTemplate } from "./data-selectors";
 import { rawSectionId } from "./image-status";
 import type { Match, NavLinkDef, RouteDef } from "./types";
+import { SHOWCASE_FAMILIES } from "../showcase/registry";
+import type { ShowcaseFamilyId } from "../showcase/registry";
+
+const SHOWCASE_ROUTE_ICONS: Record<ShowcaseFamilyId, RouteDef["icon"]> = {
+  controls: Layers,
+  surfaces: PanelTop,
+  "unit-items": Archive,
+  folders: FolderTree,
+  "batch-actions": Rows3,
+  "generation-params": SlidersHorizontal,
+  "preset-prompt-lora": Wand2,
+  "taxonomy-history": Shuffle,
+  images: ImageIcon,
+  runs: ClipboardList,
+  system: Settings2,
+  headers: PanelTop,
+  icons: Tags,
+};
+
+const SHOWCASE_ROUTE_DEFS: RouteDef[] = SHOWCASE_FAMILIES.map((family) => ({
+  key: family.route.slice(1) as RouteDef["key"],
+  pattern: family.route,
+  title: family.title,
+  group: "临时",
+  icon: SHOWCASE_ROUTE_ICONS[family.id],
+}));
 
 export const ROUTES: RouteDef[] = [
   { key: "root", pattern: "/", title: "任务", group: "核心", icon: Home },
@@ -58,19 +84,7 @@ export const ROUTES: RouteDef[] = [
   { key: "monitor", pattern: "/settings/monitor", title: "Worker 监控", group: "设置", icon: Monitor },
   { key: "settings", pattern: "/settings", title: "设置", group: "设置", icon: Settings },
   { key: "component-showcase", pattern: "/component-showcase", title: "组件展示总览", group: "临时", icon: Layers },
-  { key: "component-showcase-controls", pattern: "/component-showcase-controls", title: "基础操作控件", group: "临时", icon: Layers },
-  { key: "component-showcase-surfaces", pattern: "/component-showcase-surfaces", title: "页面骨架与容器", group: "临时", icon: PanelTop },
-  { key: "component-showcase-unit-items", pattern: "/component-showcase-unit-items", title: "单元行项", group: "临时", icon: Archive },
-  { key: "component-showcase-folders", pattern: "/component-showcase-folders", title: "文件夹与移动目标", group: "临时", icon: FolderTree },
-  { key: "component-showcase-batch-actions", pattern: "/component-showcase-batch-actions", title: "批量选择与反馈", group: "临时", icon: Rows3 },
-  { key: "component-showcase-generation-params", pattern: "/component-showcase-generation-params", title: "生成参数", group: "临时", icon: SlidersHorizontal },
-  { key: "component-showcase-preset-prompt-lora", pattern: "/component-showcase-preset-prompt-lora", title: "预设 Prompt LoRA", group: "临时", icon: Wand2 },
-  { key: "component-showcase-taxonomy-history", pattern: "/component-showcase-taxonomy-history", title: "分类排序历史", group: "临时", icon: Shuffle },
-  { key: "component-showcase-images", pattern: "/component-showcase-images", title: "图片结果与审核", group: "临时", icon: ImageIcon },
-  { key: "component-showcase-runs", pattern: "/component-showcase-runs", title: "任务运行与队列", group: "临时", icon: ClipboardList },
-  { key: "component-showcase-system", pattern: "/component-showcase-system", title: "系统日志模型文件", group: "临时", icon: Settings2 },
-  { key: "component-showcase-headers", pattern: "/component-showcase-headers", title: "Headers 固定顶栏", group: "临时", icon: PanelTop },
-  { key: "component-showcase-icons", pattern: "/component-showcase-icons", title: "Icons 图标专项", group: "临时", icon: Tags },
+  ...SHOWCASE_ROUTE_DEFS,
   { key: "login", pattern: "/login", title: "登录", group: "系统", icon: Lock },
 ];
 

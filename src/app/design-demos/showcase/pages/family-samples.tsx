@@ -4,13 +4,9 @@ import { Check, Copy, Edit3, FileText, FolderInput, History, Home, Play, Plus, S
 import { useMemo, useState } from "react";
 
 import type { DemoData } from "../../design-demo-data";
-import { buildHeaderSpecs } from "../../route-header-specs";
+import { buildHeaderSpecs } from "../../routing/route-header-specs";
 import { RouteHeaderSurface } from "../../route-header-surface";
-import { DimensionsReadout, KSamplerCard, SpecRow, SpecSection, StepperInput } from "../../section-editor-controls";
-import { HistoryDiffRow, LoraRow, type LoraRowData } from "../../section-editor-lora-history";
-import { LoraColumn } from "../../section-editor-lora-column";
-import { PresetBindingRow } from "../../section-editor-presets";
-import { PromptBlockRow } from "../../section-editor-prompts";
+import { DimensionsReadout, HistoryDiffRow, KSamplerCard, LoraColumn, LoraRow, type LoraRowData, PresetBindingRow, PromptBlockRow, SpecRow, SpecSection, StepperInput } from "../../features/projects";
 import { makeImages } from "../helpers";
 import { Button, Checkbox, DemoTabs, Field, MetricCard, PageHeader, SegmentedControl, StatusBadge, Switch, TextAreaField } from "../../shared/primitives";
 import { ImageListMedium, ImageListSmall, ImageThumbMedium, ReviewImageBoard } from "../../shared/media";

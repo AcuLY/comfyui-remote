@@ -652,6 +652,11 @@ export function getShowcaseComponents(familyId: ShowcaseFamilyId) {
   return SHOWCASE_COMPONENTS.filter((component) => component.familyId === familyId);
 }
 
+export function getShowcaseFamilyIdByRoute(route: string): ShowcaseFamilyId | null {
+  const normalized = route.startsWith("/") ? route : `/${route}`;
+  return SHOWCASE_FAMILIES.find((family) => family.route === normalized)?.id ?? null;
+}
+
 export function isShowcaseFamilyId(value: string): value is ShowcaseFamilyId {
   return value in SHOWCASE_FAMILY_ROUTES;
 }

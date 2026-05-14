@@ -4,9 +4,10 @@ import Link from "next/link";
 import { Download, ExternalLink, Gauge, ImageIcon, PanelTop, Play, Rows3, Save, ShieldCheck } from "lucide-react";
 
 import type { DemoData } from "../../design-demo-data";
-import { cx, demoHref } from "../../design-demo-utils";
-import { buildHeaderSpecs, displayHeaderRoute, headerAction as action } from "../../route-header-specs";
-import type { HeaderSpec } from "../../route-header-specs";
+import { cx } from "../../design-demo-utils";
+import { demoHref } from "../../routing";
+import { buildHeaderSpecs, displayHeaderRoute, headerAction as action } from "../../routing/route-header-specs";
+import type { HeaderSpec } from "../../routing/route-header-specs";
 import { RouteHeaderSurface } from "../../route-header-surface";
 import { PageHeader } from "../../shared/primitives";
 import s from "./headers-page.module.css";

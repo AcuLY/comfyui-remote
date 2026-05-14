@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { dirname, relative, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
+import { ROUTES } from "../routing";
 import {
+  getShowcaseFamilyIdByRoute,
   SHOWCASE_COMPONENTS,
   SHOWCASE_FAMILIES,
   SHOWCASE_FAMILY_ROUTES,
@@ -31,6 +36,38 @@ const oldRouteFragments = [
   "image-list-components",
 ];
 
+const showcasePages = [
+  "pages/component-previews.tsx",
+  "pages/family-samples.tsx",
+  "pages/family-page.tsx",
+  "pages/headers-page.tsx",
+  "pages/icons-page.tsx",
+  "pages/index-page.tsx",
+] as const;
+
+const allowedDirectImports = new Set([
+  // Fixture/data selectors and route-header specialty previews remain compatibility imports by design.
+  "../../design-demo-data",
+  "../../design-demo-utils",
+  "../../icon-showcase/custom-icon-demo",
+  "../../icon-showcase/icon-data",
+  "../../icon-showcase/icon-list",
+  "../../icon-showcase-page.showcase.module.css",
+  "../../models/model-fixtures",
+  "../../route-header-surface",
+  "../helpers",
+  "../preview-keys",
+  "../registry",
+  "./headers-page",
+  "./icons-page",
+  "./showcase-pages.module.css",
+  "./headers-page.module.css",
+]);
+
+const compatibilityImportPattern = /from\s+["'](\.\.\/\.\.\/[^"']+)["']/g;
+const testDir = dirname(fileURLToPath(import.meta.url));
+const demoClientSource = readFileSync(resolve(testDir, "../design-demo-client.tsx"), "utf8");
+
 assert.deepEqual(
   SHOWCASE_FAMILIES.map((family) => family.id),
   expectedFamilyIds,
@@ -50,10 +87,27 @@ for (const family of SHOWCASE_FAMILIES) {
   assert.ok(!family.route.startsWith("#family-"), `${family.id} route navigation must not use page anchors`);
   assert.ok(!oldRouteFragments.some((fragment) => family.route.includes(fragment)), `${family.id} must not use old showcase route naming`);
   assert.equal(SHOWCASE_FAMILY_ROUTES[family.id], family.route, `${family.id} route map should match family registry`);
+  assert.ok(
+    ROUTES.some((route) => route.pattern === family.route && route.key === family.route.slice(1)),
+    `${family.id} route must be a registered /component-showcase-* route`,
+  );
+  assert.equal(getShowcaseFamilyIdByRoute(family.route), family.id, `${family.id} route should resolve from registry`);
+  assert.equal(getShowcaseFamilyIdByRoute(family.route.slice(1)), family.id, `${family.id} route resolver should normalize a missing slash`);
 
   const components = SHOWCASE_COMPONENTS.filter((component) => component.familyId === family.id);
   assert.ok(components.length > 0, `${family.id} must document at least one review item`);
 }
+
+assert.match(
+  demoClientSource,
+  /getShowcaseFamilyIdByRoute\(match\.route\)/,
+  "demo client should dispatch showcase family routes through the registry resolver",
+);
+assert.doesNotMatch(
+  demoClientSource,
+  /case "component-showcase-(controls|surfaces|unit-items|folders|batch-actions|generation-params|preset-prompt-lora|taxonomy-history|images|runs|system|headers|icons)"/,
+  "demo client should not hard-code individual showcase family route cases",
+);
 
 for (const component of SHOWCASE_COMPONENTS) {
   assert.match(component.reviewName, /[\u3400-\u9fff]/, `${component.componentName} needs a Chinese review name`);
@@ -75,4 +129,23 @@ for (const previewName of SHOWCASE_PREVIEW_COMPONENT_NAMES) {
     SHOWCASE_COMPONENTS.some((component) => component.componentName === previewName),
     `${previewName} preview key must correspond to a registry entry`,
   );
+}
+
+for (const page of showcasePages) {
+  const sourcePath = resolve(testDir, page);
+  const source = readFileSync(sourcePath, "utf8");
+  const imports = source.matchAll(compatibilityImportPattern);
+
+  for (const match of imports) {
+    const importPath = match[1];
+    const isArchitecturalEntry =
+      importPath.startsWith("../../shared/") ||
+      importPath.startsWith("../../features/") ||
+      importPath.startsWith("../../routing");
+
+    assert.ok(
+      isArchitecturalEntry || allowedDirectImports.has(importPath),
+      `${relative(process.cwd(), sourcePath)} should import ${importPath} through shared/*, features/*, routing/*, or an allowed showcase fixture/specialty path`,
+    );
+  }
 }

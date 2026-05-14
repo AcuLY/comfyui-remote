@@ -25,7 +25,7 @@ src/app/design-demos/
   showcase/     registry、功能族页面、展示容器和样例
 ```
 
-`routing`、`shell`、`shared`、`features`、`showcase` 是正式迁移入口，不再使用下划线前缀。旧 `component-showcase/*` 和 `image-list-components` 内容已由 `showcase/registry.ts` 驱动的新功能族页面替代；其他业务目录仍作为兼容来源，迁移时逐步收敛到 `shared` 和 `features`。
+`routing`、`shell`、`data`、`shared`、`features`、`showcase` 是正式迁移入口，不再使用下划线前缀。旧 `component-showcase/*` 和 `image-list-components` 内容已由 `showcase/registry.ts` 驱动的新功能族页面替代；其他业务目录仍作为兼容来源，迁移时逐步收敛到这些正式入口。
 
 ## 命名规范
 
@@ -33,7 +33,7 @@ src/app/design-demos/
 - 英文组件名描述代码实体，例如 `Button`、`FolderRow`、`PresetBindingRow`。
 - 跨业务结构使用中性名：`UnitRowShell`、`ToolbarCluster`、`SelectionBatchBar`。
 - 业务适配组件保留业务名：`ProjectListItem`、`PresetLibraryItemRow`、`TemplateSectionRow`。
-- 页面内模式进入 registry 前必须先抽成真实复用组件或 feature 适配组件，不能再用 `planned` 占位登记。
+- 页面内模式进入 registry 前必须先抽成真实复用组件或 feature 适配组件，不能再用占位状态登记。
 
 ## 迁移状态
 

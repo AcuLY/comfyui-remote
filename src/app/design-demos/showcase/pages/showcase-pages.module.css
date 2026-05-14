@@ -107,9 +107,7 @@
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--demo-border) 72%, transparent);
   border-radius: 10px;
-  background:
-    linear-gradient(180deg, var(--demo-field-bg), transparent 64px),
-    var(--demo-surface-soft);
+  background: var(--demo-surface-soft);
   padding: 10px;
 }
 

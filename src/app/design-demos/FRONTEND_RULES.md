@@ -28,7 +28,9 @@ Use these layers and keep ownership clear:
 3. `shared/media/` and `shared/feedback/`: image review surfaces and operation feedback.
 4. `features/`: business adapters grouped by the new IA: `runs`, `projects`, `presets`, `templates`, `models`, `settings`, and `auth`.
 5. `showcase/`: registry-driven functional-family showcase pages.
-6. Existing folders such as `ui/`, `projects/`, `runs/`, and `presets/` remain compatibility sources while migration continues.
+6. Existing folders such as `ui/`, `runs/`, `projects/`, `presets/`, `templates/`, `batch-create/`, `models/`, `system/`, and `section-editor/` remain compatibility sources while migration continues.
+
+The official architecture entrypoints are `routing/`, `shell/`, `data/`, `shared/`, `features/`, and `showcase/`, with no underscore prefix.
 
 New reusable controls belong in `shared/primitives/`; new cross-domain structures belong in `shared/patterns/`, not inside a feature page.
 
@@ -102,7 +104,7 @@ The component showcase must demonstrate real reusable components, not custom sho
 
 - Showcase pages are registry-driven from `showcase/registry.ts`.
 - Each component entry must have a Chinese review name, English component name, description, paths, usage contexts, status, and family id.
-- Each component entry must have a matching preview key and rendered preview in `showcase/pages/component-previews.tsx`; do not leave `planned` entries in the registry.
+- Each component entry must have a matching preview key and rendered preview in `showcase/pages/component-previews.tsx`; do not leave placeholder status entries in the registry.
 - Showcase pages import shared components through `shared/*` or feature adapters through `features/*` where possible.
 - Showcase pages should not import compatibility barrels for primitives.
 - Showcase samples should avoid passing feature CSS classes into primitives.
@@ -125,8 +127,8 @@ For visual changes, also verify the affected `/design-demos/component-showcase*`
 
 The target state is:
 
-- `ui/` owns reusable demo primitives and their CSS Module styles.
-- Feature files own feature composition and layout only.
+- `shared/primitives/` owns reusable demo primitives and their CSS Module styles; `ui/` remains a compatibility source during migration.
+- Feature files under `features/` own feature composition and layout only.
 - `component-showcase-page.tsx` is split into smaller showcase modules.
 - Feature styles are split into explicit CSS Modules colocated with the owning feature/page.
 - Tailwind utilities are fully removed from demo code before the demo shell is officially enabled.
