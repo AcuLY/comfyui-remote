@@ -89,6 +89,19 @@
   transform: none;
 }
 
+.root.root:not(:disabled):not(.pending):active {
+  border-color: var(--button-border-hover);
+  background: var(--button-bg-hover);
+  box-shadow:
+    inset 0 2px 5px rgba(15, 23, 42, 0.16),
+    inset 0 0 0 1px color-mix(in srgb, var(--button-border-hover) 36%, transparent);
+  transform: translateY(1px) scale(0.985);
+}
+
+.root.root.iconOnly:not(:disabled):not(.pending):active {
+  transform: translateY(1px) scale(0.96);
+}
+
 .root.root:disabled {
   cursor: not-allowed;
   filter: saturate(0.72);

@@ -277,6 +277,14 @@
   cursor: default;
 }
 
+.batchBreadcrumbButton {
+  min-height: 26px;
+}
+
+.batchBreadcrumbActive {
+  color: var(--demo-text);
+}
+
 .batchBrowserList,
 .batchImportList,
 .batchBindingList,
@@ -304,7 +312,7 @@
 
 .batchFolderRow {
   display: grid;
-  grid-template-columns: 16px minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   align-items: center;
   gap: 8px;
   min-height: 38px;
@@ -313,6 +321,14 @@
   font: inherit;
   padding: 8px 10px;
   text-align: left;
+}
+
+.batchFolderOpen {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
 
 .batchFolderRow strong,

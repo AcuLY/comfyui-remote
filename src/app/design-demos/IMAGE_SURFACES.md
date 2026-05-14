@@ -8,9 +8,9 @@
 | 层级 | 组件 | 尺寸 / 行为 | 用途 |
 | --- | --- | --- | --- |
 | 小缩略图 | `ImageThumbSmall` | 桌面端固定 `80 x 120`；移动端固定 `60 x 90`；纵向 `2:3`，`object-fit: cover`。 | 卡片或队列行里的密集预览。 |
-| 小图列表 | `ImageListSmall` / `ImageStrip` | 固定一行，可限制横向尺寸，超出后横向滚动；左右存在被裁切图片时用边缘渐隐提示；`ImageStrip` 是兼容旧调用的包装。 | 项目、小节和队列行概览预览。 |
+| 小图列表 | `ImageListSmall` / `ImageStrip` | 固定一行，可限制横向尺寸，超出后横向滚动；左右存在被裁切图片时用边缘渐隐提示；`ImageStrip` 是小图列表的项目行适配入口。 | 项目、小节和队列行概览预览。 |
 | 中等缩略图 | `ImageThumbMedium` | 桌面端固定 `160 x 240`；移动端固定 `120 x 180`；纵向 `2:3`，`object-fit: cover`。 | 结果网格和审核网格。 |
-| 中图列表 | `ImageListMedium` | flex-start 布局，固定 gap；可限制横向/纵向尺寸；纵向折叠时用渐变隐藏后续，并提供展开按钮；可选顶部快速选择和右侧操作按钮列；窄屏下操作列在列表范围内 sticky，并压缩为紧凑图标按钮。 | 结果、审核和临时组件检查页的统一中图列表容器。 |
+| 中图列表 | `ImageListMedium` | flex-start 布局，固定 gap；可限制横向/纵向尺寸；纵向折叠时用渐变隐藏后续，并提供展开按钮；可选顶部快速选择和右侧操作按钮列；窄屏下操作列在列表范围内 sticky，并压缩为紧凑图标按钮。 | 结果、审核和组件审查页的统一中图列表容器。 |
 | 中图网格 | `ImageGrid` | 使用 `ImageListMedium` 渲染 `ImageThumbMedium`，点击后打开 `ImagePreviewLarge`。 | 通用结果面板。 |
 | 审核网格 | `ReviewImageBoard` | 使用 `ImageListMedium` 渲染可勾选的 `ImageThumbMedium`，并带批量选择和操作栏。 | 单次 run 的审核页面。 |
 | 大图预览 | `ImagePreviewLarge` | 只作为 lightbox 弹窗使用。保留原图比例，支持上一张/下一张、滚轮缩放、放大后拖拽。 | 从中等缩略图打开；不应作为独立页面元素使用。 |

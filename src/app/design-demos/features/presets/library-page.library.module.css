@@ -415,6 +415,14 @@
   cursor: default;
 }
 
+.presetFolderBreadcrumbButton {
+  min-height: 26px;
+}
+
+.presetFolderBreadcrumbActive {
+  color: var(--demo-text);
+}
+
 .presetBatchBar {
   display: flex;
   align-items: center;
@@ -447,7 +455,7 @@
 .presetFolderBack,
 .presetFolderRow {
   display: grid;
-  grid-template-columns: 14px 18px minmax(0, 1fr) auto auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
   min-height: 38px;
@@ -460,6 +468,22 @@
   font: inherit;
   padding: 8px 10px;
   text-align: left;
+}
+
+.presetFolderOpen {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.presetFolderGrip {
+  color: var(--demo-faint);
+}
+
+.presetFolderRowActions {
+  flex-wrap: nowrap;
 }
 
 .presetFolderBack {
@@ -659,6 +683,10 @@
   padding: 10px 16px;
 }
 
+.presetMoveBreadcrumbs span {
+  flex: 0 0 auto;
+}
+
 .presetMoveBreadcrumbs button {
   flex: 0 0 auto;
   border: 1px solid var(--demo-border);
@@ -681,7 +709,7 @@
 
 .presetMoveTarget {
   display: grid;
-  grid-template-columns: 18px minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   align-items: center;
   gap: 8px;
   min-height: 38px;
@@ -695,13 +723,22 @@
   text-align: left;
 }
 
+.presetMoveTargetOpen {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
 .presetMoveTarget:hover,
 .presetMoveTargetActive {
   border-color: var(--demo-glass-accent-border);
   color: var(--demo-green);
 }
 
-.presetMoveTarget strong {
+.presetMoveTarget strong,
+.presetMoveTargetName {
   overflow: hidden;
   color: var(--demo-text);
   font-size: 12px;

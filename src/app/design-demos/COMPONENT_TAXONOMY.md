@@ -4,7 +4,7 @@
 
 ## 目标
 
-- `/design-demos` 是未来替换老前端的候选实现，不只是临时 demo。
+- `/design-demos` 是未来替换老前端的候选实现，不是一次性 demo。
 - Showcase 按功能族审核组件，不按页面或代码层级审核。
 - 每个 showcase 条目必须有中文审查名、英文组件名、功能解释、所属功能族、路径、覆盖页面、迁移状态和真实预览。
 - 新抽组件采用槽位壳组件，不直接耦合 `DemoProject`、`DemoPreset`、`DemoTemplate` 等业务类型。
@@ -25,7 +25,7 @@ src/app/design-demos/
   showcase/     registry、功能族页面、展示容器和样例
 ```
 
-`routing`、`shell`、`data`、`shared`、`features`、`showcase` 是正式迁移入口，不再使用下划线前缀。旧 `component-showcase/*` 和 `image-list-components` 内容已由 `showcase/registry.ts` 驱动的新功能族页面替代；其他业务目录仍作为兼容来源，迁移时逐步收敛到这些正式入口。
+`routing`、`shell`、`data`、`shared`、`features`、`showcase` 是正式入口，不再使用下划线前缀。此前的 `component-showcase/*` 和 `image-list-components` 内容已由 `showcase/registry.ts` 驱动的新功能族页面替代；后续组件路径必须指向这些正式入口下的真实文件或目录。
 
 ## 命名规范
 
@@ -177,6 +177,6 @@ src/app/design-demos/
 - 每个功能族至少有一个真实样例和一个组件清单。
 - 每个 registry 条目必须在 `showcase/preview-keys.ts` 和 `showcase/pages/component-previews.tsx` 中有对应真实预览。
 - 总览页、功能族页、计数和状态说明必须从 registry 读取。
-- 旧 `atoms/mid/editor/projects/image-list-components` 入口不再出现在路由表和总览页。
+- `atoms/mid/editor/projects/image-list-components` 入口不再出现在路由表和总览页。
 - 新组件必须先登记功能族，再进入 showcase。
 - `Headers` 和 `Icons` 是专项页：可以使用完整展示布局，不强制放进普通 family card 框架。

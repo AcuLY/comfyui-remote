@@ -28,7 +28,6 @@ Use these layers and keep ownership clear:
 3. `shared/media/` and `shared/feedback/`: image review surfaces and operation feedback.
 4. `features/`: business adapters grouped by the new IA: `runs`, `projects`, `presets`, `templates`, `models`, `settings`, and `auth`.
 5. `showcase/`: registry-driven functional-family showcase pages.
-6. Existing folders such as `ui/`, `runs/`, `projects/`, `presets/`, `templates/`, `batch-create/`, `models/`, `system/`, and `section-editor/` remain compatibility sources while migration continues.
 
 The official architecture entrypoints are `routing/`, `shell/`, `data/`, `shared/`, `features/`, and `showcase/`, with no underscore prefix.
 
@@ -38,10 +37,8 @@ See `COMPONENT_TAXONOMY.md` for detailed ownership, family boundaries, and migra
 
 ## UI Primitive Rules
 
-Files in `src/app/design-demos/ui/` must be self-contained.
-
-- A UI primitive must not import legacy route-level style proxies.
-- A UI primitive should live in `ui/<component>/` and use its own colocated CSS Module, or a deliberately shared subdomain module such as the image surface CSS.
+- A UI primitive must live in `shared/primitives/<component>/` and use its own colocated CSS Module, or a deliberately shared subdomain module such as the image surface CSS.
+- A UI primitive must not import route-level style proxies.
 - A UI primitive must expose visual differences through props such as `tone`, `size`, `variant`, `shape`, `pressed`, or `disabled`.
 - A UI primitive must not require callers to pass external CSS to look correct.
 - `className` is allowed only for layout integration, not for changing the primitive's internal visual anatomy.
@@ -65,7 +62,7 @@ Feature components may own layout and local feature structure.
 
 - Feature CSS may position primitives, define grids, define rows, and set feature-specific spacing.
 - Feature CSS must not reach into primitive internals such as `.button`, `.switchThumb`, or generated CSS Module class names.
-- Feature components should not pass old visual classes into primitives.
+- Feature components should not pass page-owned visual classes into primitives.
 - If feature styling repeatedly modifies the same primitive, move that behavior into the primitive as a prop.
 
 ## CSS Module Rules
@@ -106,7 +103,7 @@ The component showcase must demonstrate real reusable components, not custom sho
 - Each component entry must have a Chinese review name, English component name, description, paths, usage contexts, status, and family id.
 - Each component entry must have a matching preview key and rendered preview in `showcase/pages/component-previews.tsx`; do not leave placeholder status entries in the registry.
 - Showcase pages import shared components through `shared/*` or feature adapters through `features/*` where possible.
-- Showcase pages should not import compatibility barrels for primitives.
+- Showcase pages should import primitives from the official `shared/*` entrypoints.
 - Showcase samples should avoid passing feature CSS classes into primitives.
 - If a component cannot be displayed correctly without extra showcase CSS, the primitive is not reusable enough yet.
 
@@ -114,7 +111,7 @@ The component showcase must demonstrate real reusable components, not custom sho
 
 Before finishing a demo frontend change, check:
 
-- No old compatibility barrels, global style proxies, or route-level monolithic style modules are imported.
+- No global style proxies or route-level monolithic style modules are imported.
 - Touched demo files do not use Tailwind utility strings.
 - Existing primitives are customized through props, not feature CSS classes.
 - `showcase/pages` routes through `showcase/registry.ts` and lightweight metadata in `routing/showcase-routes.ts`.
@@ -127,7 +124,7 @@ For visual changes, also verify the affected `/design-demos/component-showcase*`
 
 The target state is:
 
-- `shared/primitives/` owns reusable demo primitives and their CSS Module styles; `ui/` remains a compatibility source during migration.
+- `shared/primitives/` owns reusable demo primitives and their CSS Module styles.
 - Feature files under `features/` own feature composition and layout only.
 - Component showcase pages are split under `showcase/pages`.
 - Feature styles are split into explicit CSS Modules colocated with the owning feature/page.

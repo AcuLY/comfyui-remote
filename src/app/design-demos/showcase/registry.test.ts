@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -28,7 +28,7 @@ const expectedFamilyIds = [
   "icons",
 ] as const;
 
-const oldRouteFragments = [
+const removedRouteFragments = [
   "atoms",
   "mid",
   "editor",
@@ -45,6 +45,33 @@ const showcasePages = [
   "pages/index-page.tsx",
 ] as const;
 
+const sharedPatternsThatNeedFeatureUse = [
+  "UnitRowShell",
+  "FolderBreadcrumb",
+  "FolderRow",
+  "MoveTargetPicker",
+  "SelectionBatchBar",
+  "WorkbenchSurface",
+  "EditorBlock",
+  "InspectorAside",
+  "SortableRowShell",
+  "AnchorRail",
+] as const;
+
+const deletedTopLevelPathSegments = new Set([
+  "ui",
+  "utils",
+  "projects",
+  "presets",
+  "templates",
+  "models",
+  "runs",
+  "system",
+  "batch-create",
+  "section-editor",
+  "icon-showcase",
+]);
+
 const allowedDirectImports = new Set([
   // Fixture data and header specialty previews are allowed direct architectural imports.
   "../../data",
@@ -58,7 +85,7 @@ const allowedDirectImports = new Set([
   "./headers-page.module.css",
 ]);
 
-const compatibilityImportPattern = /from\s+["'](\.\.\/\.\.\/[^"']+)["']/g;
+const crossLayerImportPattern = /from\s+["'](\.\.\/\.\.\/[^"']+)["']/g;
 const testDir = dirname(fileURLToPath(import.meta.url));
 const demoClientSource = readFileSync(resolve(testDir, "../shell/app-client.tsx"), "utf8");
 const designDemosDir = resolve(testDir, "..");
@@ -98,6 +125,26 @@ function assertNoForbiddenImports(relativeDir: string, forbiddenTargets: string[
   }
 }
 
+function sourcePathExists(sourcePath: string) {
+  const absolutePath = resolve(designDemosDir, sourcePath);
+  const candidates = [
+    absolutePath,
+    `${absolutePath}.ts`,
+    `${absolutePath}.tsx`,
+    resolve(absolutePath, "index.ts"),
+    resolve(absolutePath, "index.tsx"),
+    `${absolutePath}.module.css`,
+  ];
+
+  return candidates.some((candidate) => existsSync(candidate));
+}
+
+function joinedSourceUnder(relativeDir: string) {
+  return sourceFilesUnder(relativeDir)
+    .map((sourcePath) => readFileSync(sourcePath, "utf8"))
+    .join("\n");
+}
+
 assert.deepEqual(
   SHOWCASE_FAMILIES.map((family) => family.id),
   expectedFamilyIds,
@@ -115,7 +162,7 @@ for (const family of SHOWCASE_FAMILIES) {
   assert.match(family.summary, /[\u3400-\u9fff]/, `${family.id} needs a Chinese summary`);
   assert.ok(family.route.startsWith("/component-showcase-"), `${family.id} route should live under component-showcase family routes`);
   assert.ok(!family.route.startsWith("#family-"), `${family.id} route navigation must not use page anchors`);
-  assert.ok(!oldRouteFragments.some((fragment) => family.route.includes(fragment)), `${family.id} must not use old showcase route naming`);
+  assert.ok(!removedRouteFragments.some((fragment) => family.route.includes(fragment)), `${family.id} must not use removed showcase route naming`);
   assert.equal(SHOWCASE_FAMILY_ROUTES[family.id], family.route, `${family.id} route map should match family registry`);
   assert.ok(
     ROUTES.some((route) => route.pattern === family.route && route.key === family.route.slice(1)),
@@ -151,6 +198,14 @@ for (const component of SHOWCASE_COMPONENTS) {
   assert.ok(component.familyId in SHOWCASE_FAMILY_ROUTES, `${component.componentName} has an unknown family id`);
   assert.ok(component.paths.length > 0, `${component.componentName} must list source paths`);
   assert.ok(!component.paths.some((path) => path.split("/").some((part) => part.startsWith("_"))), `${component.componentName} should not reference underscored implementation folders`);
+  for (const sourcePath of component.paths) {
+    const [topLevelSegment] = sourcePath.split("/");
+    assert.ok(
+      !deletedTopLevelPathSegments.has(topLevelSegment),
+      `${component.componentName} must not reference deleted top-level source path ${sourcePath}`,
+    );
+    assert.ok(sourcePathExists(sourcePath), `${component.componentName} source path must exist: ${sourcePath}`);
+  }
   assert.ok(component.usedBy.length > 0, `${component.componentName} must list covered pages or usage contexts`);
 }
 
@@ -161,10 +216,19 @@ for (const previewName of SHOWCASE_PREVIEW_COMPONENT_NAMES) {
   );
 }
 
+const featureSource = joinedSourceUnder("features");
+for (const patternName of sharedPatternsThatNeedFeatureUse) {
+  assert.match(
+    featureSource,
+    new RegExp(`(<${patternName}\\b|\\b${patternName}\\b)`),
+    `${patternName} must be used by at least one feature, not only by showcase samples`,
+  );
+}
+
 for (const page of showcasePages) {
   const sourcePath = resolve(testDir, page);
   const source = readFileSync(sourcePath, "utf8");
-  const imports = source.matchAll(compatibilityImportPattern);
+  const imports = source.matchAll(crossLayerImportPattern);
 
   for (const match of imports) {
     const importPath = match[1];

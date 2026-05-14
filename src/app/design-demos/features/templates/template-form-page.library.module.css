@@ -181,6 +181,10 @@
 .editorSurface {
   display: grid;
   gap: 10px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
 }
 
 .editorBlock {
@@ -191,6 +195,12 @@
   border-radius: var(--demo-radius);
   background: var(--demo-panel);
   padding: 12px;
+}
+
+.sectionBlockContent {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
 }
 
 .editorBlockHeader {

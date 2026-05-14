@@ -6,10 +6,10 @@ This directory implements the routable `/design-demos` frontend shell.
 
 - `[[...route]]/page.tsx`: optional catch-all route for every product page shell.
 - `[[...route]]/loading.tsx`: local route skeleton that uses the same glass design system.
-- `routing/`, `shell/`, `data/`, `shared/`, `features/`, `showcase/`: official implementation entrypoints for the migration-ready demo frontend, intentionally without underscore prefixes.
+- `routing/`, `shell/`, `data/`, `shared/`, `features/`, `showcase/`: official implementation entrypoints for the demo frontend, intentionally without underscore prefixes.
 - `showcase/registry.ts` + `showcase/preview-keys.ts`: component showcase source of truth for functional families, Chinese review names, descriptions, paths, usage, migration status, and required preview coverage.
 - `COMPONENT_TAXONOMY.md`: detailed component split, family ownership, boundary rules, and migration context for future agents.
-- Existing folders such as `ui/`, `runs/`, `projects/`, `presets/`, `templates/`, `batch-create/`, `models/`, `system/`, and `section-editor/` are still compatibility sources while code migrates behind the official entrypoints above.
+- New work must enter through `routing/`, `shell/`, `data/`, `shared/`, `features/`, or `showcase/`; deleted folder names are not valid source paths.
 - `IMAGE_SURFACES.md`: inventory of every routed demo page and panel that renders generated images.
 - `runs-feature.tsx`: task workbench and run review pages.
 - `FRONTEND_RULES.md`: demo-only frontend rules for component boundaries, CSS Modules, Tailwind usage, and migration checks.
@@ -19,7 +19,7 @@ This directory implements the routable `/design-demos` frontend shell.
 
 The route `/design-demos/projects/[id]` renders the shell for the real product route `/projects/[id]`.
 `/design-demos/projects/[id]/results` is kept as a deep-link alias for the same project shell in result-card mode.
-The design shell also normalizes the old product paths: `/queue/**` is shown as `/design-demos/runs/**`, and `/assets/**` is shown without the assets prefix.
+The design shell maps product paths into the demo IA: `/queue/**` is shown as `/design-demos/runs/**`, and `/assets/**` is shown without the assets prefix.
 
 - `/design-demos/runs`
 - `/design-demos/runs/[runId]`
@@ -77,7 +77,7 @@ The shell also covers non-routing UI states that the real pages expose:
 - Preset detail states: continuous edit surface with basic info, current variant rail, prompt fields, LoRA1/2 bindings, linked variants, cascade/delete guards, and history diff.
 - Preset group states: group metadata, row-based member editing, variant selection, member removal affordance, flatten preview, delete return path, and history diff.
 - Sort rule states: four independent order panels for positive prompt, negative prompt, LoRA1, and LoRA2 with drag handles and saved-state affordances.
-- Preset/group/template history diff placeholders.
+- Preset/group/template history diff review states.
 - Logs states: source tabs, level/module filters, monospaced viewer, tail/auto-scroll state, and empty filter state.
 - Monitor states: managed/external branch switch, start/stop/restart/probe controls, Worker/API/task backlog status, probe result, and process log viewer.
 - Global operation states: toast stack, disabled/pending button styling, inline operation strips, and route-level loading skeleton.

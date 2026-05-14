@@ -124,15 +124,19 @@
 }
 
 .sortRuleHeader > div,
-.sortRuleRow > div {
+.sortRuleRowText {
   display: grid;
   min-width: 0;
   gap: 2px;
 }
 
-.sortRuleRow > span {
+.sortRuleIndex {
   color: var(--demo-faint);
   font-size: 10px;
+}
+
+.sortRuleRowContent {
+  min-width: 0;
 }
 
 .sortRulesGrid {
@@ -174,7 +178,6 @@
 }
 
 .sortRuleRow {
-  display: grid;
   grid-template-columns: 14px 26px 10px minmax(0, 1fr);
   align-items: center;
   gap: 8px;
@@ -183,6 +186,10 @@
   border-radius: 7px;
   background: var(--demo-field-bg);
   padding: 8px;
+}
+
+.sortRuleMarker {
+  min-width: 0;
 }
 
 .sortRuleRow i {

@@ -1,9 +1,10 @@
 "use client";
 
-import { GripVertical, Save } from "lucide-react";
+import { Save } from "lucide-react";
 
 import { categoryColorValue, categoryItemCount, categoryTypeLabel, type DemoCategory, type DemoData } from "../../data";
 import s from "./sort-rules-page.library.module.css";
+import { SortableRowShell } from "../../shared/patterns";
 import { Button } from "../../shared/primitives/button";
 import { PageHeader } from "../../shared/primitives/page-header";
 import { StatusBadge } from "../../shared/primitives/status-badge";
@@ -60,15 +61,21 @@ function SortRulePanel({
       </div>
       <div className={s.sortRuleList}>
         {categories.map((category, index) => (
-          <div className={s.sortRuleRow} key={category.id}>
-            <GripVertical className={s.icon} />
-            <span>{String(index + 1).padStart(2, "0")}</span>
-            <i style={{ background: categoryColorValue(category.color) }} />
-            <div>
+          <SortableRowShell
+            className={s.sortRuleRow}
+            contentClassName={s.sortRuleRowContent}
+            handleClassName={s.icon}
+            index={index}
+            indexClassName={s.sortRuleIndex}
+            key={category.id}
+            marker={<i style={{ background: categoryColorValue(category.color) }} />}
+            markerClassName={s.sortRuleMarker}
+          >
+            <div className={s.sortRuleRowText}>
               <strong>{category.name}</strong>
               <em>{categoryTypeLabel(category)} · {categoryItemCount(category)} 条目</em>
             </div>
-          </div>
+          </SortableRowShell>
         ))}
       </div>
       <div className={s.sortRuleFooter}>

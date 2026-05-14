@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ClipboardCopy, ClipboardPaste } from "lucide-react";
 
 import s from "./text-area-field.module.css";
@@ -8,21 +8,41 @@ import { Button } from "../button";
 import { useDemoFeedback } from "../../feedback/context";
 import { preventReadonlyEdit } from "../shared/utils";
 
-export function TextAreaField({ label, value }: { label: string; value: string }) {
-  const [fieldValue, setFieldValue] = useState(value);
-  const { pushToast } = useDemoFeedback();
+type TextAreaFieldProps = {
+  label: string;
+  value: string;
+  onChange?: (value: string) => void;
+};
 
-  useEffect(() => {
-    setFieldValue(value);
-  }, [value]);
+export function TextAreaField({ label, value, onChange }: TextAreaFieldProps) {
+  const [fieldValueState, setFieldValue] = useState(() => ({
+    sourceValue: value,
+    draftValue: value,
+  }));
+  const { pushToast } = useDemoFeedback();
+  const isInteractive = Boolean(onChange);
+
+  if (fieldValueState.sourceValue !== value) {
+    setFieldValue({ sourceValue: value, draftValue: value });
+  }
+
+  const fieldValue = fieldValueState.sourceValue === value ? fieldValueState.draftValue : value;
+  const displayValue = isInteractive ? value : fieldValue;
+
+  function updateValue(nextValue: string) {
+    onChange?.(nextValue);
+    if (onChange) return;
+
+    setFieldValue({ sourceValue: value, draftValue: nextValue });
+  }
 
   function handleCopy() {
-    void copyToClipboard(fieldValue)
+    void copyToClipboard(displayValue)
       .then(() => {
         pushToast({
           tone: "success",
           title: "内容已复制",
-          detail: fieldValue ? label : "内容为空",
+          detail: displayValue ? label : "内容为空",
         });
       })
       .catch(() => {
@@ -37,7 +57,7 @@ export function TextAreaField({ label, value }: { label: string; value: string }
   function handlePasteReplace() {
     void readClipboard()
       .then((clipboardValue) => {
-        setFieldValue(clipboardValue);
+        updateValue(clipboardValue);
         pushToast({
           tone: "success",
           title: "已用剪贴板覆盖",
@@ -58,14 +78,14 @@ export function TextAreaField({ label, value }: { label: string; value: string }
       <label>{label}</label>
       <div className={s.controlFrame}>
         <textarea
-          aria-readonly="true"
+          aria-readonly={isInteractive ? undefined : "true"}
           className={s.control}
-          onBeforeInput={preventReadonlyEdit}
-          onChange={() => undefined}
-          onDrop={preventReadonlyEdit}
-          onPaste={preventReadonlyEdit}
-          readOnly
-          value={fieldValue}
+          onBeforeInput={isInteractive ? undefined : preventReadonlyEdit}
+          onChange={(event) => updateValue(event.currentTarget.value)}
+          onDrop={isInteractive ? undefined : preventReadonlyEdit}
+          onPaste={isInteractive ? undefined : preventReadonlyEdit}
+          readOnly={!isInteractive}
+          value={displayValue}
         />
         <div className={s.clipboardDock} role="group" aria-label={`${label} 剪贴板操作`}>
           <Button icon={ClipboardCopy} iconOnly ariaLabel={`复制${label}`} onClick={handleCopy} size="sm" tone="subtle" />

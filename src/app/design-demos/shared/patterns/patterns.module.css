@@ -102,7 +102,8 @@
 }
 
 .workbenchHeader,
-.editorBlockHeader {
+.editorBlockHeader,
+.inspectorHeader {
   display: flex;
   min-width: 0;
   align-items: flex-start;
@@ -119,7 +120,7 @@
 
 .workbenchHeader strong,
 .editorBlockHeader strong,
-.inspectorAside > strong {
+.inspectorHeader > strong {
   color: var(--demo-text);
   font-size: 15px;
 }
@@ -135,6 +136,13 @@
   align-content: start;
 }
 
+.editorBlockContent,
+.inspectorContent {
+  display: grid;
+  min-width: 0;
+  gap: 12px;
+}
+
 .folderBreadcrumb {
   display: flex;
   min-width: 0;
@@ -143,7 +151,7 @@
   flex-wrap: wrap;
 }
 
-.folderBreadcrumb button {
+.folderBreadcrumbButton {
   border: 1px solid var(--demo-border);
   border-radius: 999px;
   background: var(--demo-field-bg);
@@ -155,7 +163,13 @@
   padding: 0 10px;
 }
 
-.folderBreadcrumb button:disabled {
+.folderBreadcrumbSm .folderBreadcrumbButton {
+  min-height: 26px;
+  font-size: 10px;
+  padding: 0 8px;
+}
+
+.folderBreadcrumbButton:disabled {
   cursor: default;
   color: var(--demo-muted);
 }
@@ -172,6 +186,18 @@
   padding: 8px;
 }
 
+.folderRowNoDrag {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.folderRowNoActions {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.folderRowNoDrag.folderRowNoActions {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .folderOpen {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto auto;
@@ -186,6 +212,10 @@
   font: inherit;
   padding: 4px;
   text-align: left;
+}
+
+.folderOpenNoChevron {
+  grid-template-columns: auto minmax(0, 1fr) auto;
 }
 
 .folderOpen strong,
@@ -284,7 +314,7 @@
 }
 
 .sortableRow {
-  grid-template-columns: auto auto minmax(0, 1fr);
+  grid-template-columns: var(--sortable-row-columns, auto auto minmax(0, 1fr));
   gap: 10px;
   padding: 10px 12px;
 }
@@ -299,13 +329,18 @@
   min-width: 0;
 }
 
+.sortableMarker {
+  display: grid;
+  place-items: center;
+}
+
 .anchorRail {
   display: grid;
   min-width: 0;
   gap: 8px;
 }
 
-.anchorRail a {
+.anchorRailItem {
   display: grid;
   min-width: 0;
   gap: 3px;
@@ -316,12 +351,12 @@
   text-decoration: none;
 }
 
-.anchorRail a[aria-current="true"] {
+.anchorRailItem[aria-current="true"] {
   border-color: var(--demo-green);
   background: color-mix(in srgb, var(--demo-green) 10%, transparent);
 }
 
-.anchorRail strong {
+.anchorRailItem strong {
   overflow: hidden;
   color: var(--demo-text);
   font-size: 13px;
@@ -329,7 +364,7 @@
   white-space: nowrap;
 }
 
-.anchorRail span {
+.anchorRailItem span {
   color: var(--demo-muted);
   font-size: 11px;
 }

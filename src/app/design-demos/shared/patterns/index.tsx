@@ -6,6 +6,7 @@ import { useId, useState } from "react";
 
 import { cx } from "../../routing";
 import { Button } from "../primitives";
+import type { RouteIcon } from "../primitives/shared/types";
 import s from "./patterns.module.css";
 
 export function ToolbarCluster({
@@ -121,39 +122,56 @@ export function WorkbenchSurface({
 export function EditorBlock({
   actions,
   children,
+  className,
+  contentClassName,
   description,
+  headerClassName,
   title,
 }: {
   actions?: React.ReactNode;
   children: React.ReactNode;
+  className?: string;
+  contentClassName?: string;
   description?: React.ReactNode;
+  headerClassName?: string;
   title: React.ReactNode;
 }) {
   return (
-    <section className={s.editorBlock}>
-      <header className={s.editorBlockHeader}>
+    <section className={cx(s.editorBlock, className)}>
+      <header className={cx(s.editorBlockHeader, headerClassName)}>
         <div>
           <strong>{title}</strong>
           {description ? <span>{description}</span> : null}
         </div>
         {actions ? <ToolbarCluster>{actions}</ToolbarCluster> : null}
       </header>
-      {children}
+      <div className={cx(s.editorBlockContent, contentClassName)}>{children}</div>
     </section>
   );
 }
 
 export function InspectorAside({
+  actions,
   children,
+  className,
+  contentClassName,
+  headerClassName,
   title,
 }: {
+  actions?: React.ReactNode;
   children: React.ReactNode;
+  className?: string;
+  contentClassName?: string;
+  headerClassName?: string;
   title: React.ReactNode;
 }) {
   return (
-    <aside className={s.inspectorAside}>
-      <strong>{title}</strong>
-      {children}
+    <aside className={cx(s.inspectorAside, className)}>
+      <header className={cx(s.inspectorHeader, headerClassName)}>
+        <strong>{title}</strong>
+        {actions ? <ToolbarCluster>{actions}</ToolbarCluster> : null}
+      </header>
+      <div className={cx(s.inspectorContent, contentClassName)}>{children}</div>
     </aside>
   );
 }
@@ -164,23 +182,45 @@ export type FolderBreadcrumbItem = {
 };
 
 export function FolderBreadcrumb({
+  activeButtonClassName,
+  buttonClassName,
+  className,
+  itemClassName,
   items,
   onNavigate,
+  separatorClassName,
   rootLabel = "根目录",
+  size = "md",
 }: {
+  activeButtonClassName?: string;
+  buttonClassName?: string;
+  className?: string;
+  itemClassName?: string;
   items: FolderBreadcrumbItem[];
   onNavigate?: (id: string | null) => void;
+  separatorClassName?: string;
   rootLabel?: string;
+  size?: "sm" | "md";
 }) {
   return (
-    <nav className={s.folderBreadcrumb} aria-label="文件夹路径">
-      <button type="button" onClick={() => onNavigate?.(null)} disabled={!onNavigate || items.length === 0}>
+    <nav className={cx(s.folderBreadcrumb, size === "sm" && s.folderBreadcrumbSm, className)} aria-label="文件夹路径">
+      <button
+        className={cx(s.folderBreadcrumbButton, buttonClassName, items.length === 0 && activeButtonClassName)}
+        type="button"
+        onClick={() => onNavigate?.(null)}
+        disabled={!onNavigate || items.length === 0}
+      >
         {rootLabel}
       </button>
       {items.map((item, index) => (
-        <span key={`${item.id ?? "root"}-${index}`}>
-          <ChevronRight className={s.patternIcon} aria-hidden="true" />
-          <button type="button" onClick={() => onNavigate?.(item.id)} disabled={!onNavigate || index === items.length - 1}>
+        <span className={itemClassName} key={`${item.id ?? "root"}-${index}`}>
+          <ChevronRight className={cx(s.patternIcon, separatorClassName)} aria-hidden="true" />
+          <button
+            className={cx(s.folderBreadcrumbButton, buttonClassName, index === items.length - 1 && activeButtonClassName)}
+            type="button"
+            onClick={() => onNavigate?.(item.id)}
+            disabled={!onNavigate || index === items.length - 1}
+          >
             {item.label}
           </button>
         </span>
@@ -191,25 +231,45 @@ export function FolderBreadcrumb({
 
 export function FolderRow({
   actions,
+  actionsClassName,
   countLabel,
+  className,
+  countClassName,
+  dragHandleClassName,
+  iconClassName,
+  leadingIcon: LeadingIcon = Folder,
   name,
+  nameClassName,
   onOpen,
+  openClassName,
+  showChevron = true,
+  showDragHandle = true,
 }: {
   actions?: React.ReactNode;
+  actionsClassName?: string;
+  className?: string;
   countLabel: string;
+  countClassName?: string;
+  dragHandleClassName?: string;
+  iconClassName?: string;
+  leadingIcon?: RouteIcon;
   name: string;
+  nameClassName?: string;
   onOpen?: () => void;
+  openClassName?: string;
+  showChevron?: boolean;
+  showDragHandle?: boolean;
 }) {
   return (
-    <div className={s.folderRow}>
-      <Button className={s.dragButton} tone="subtle" icon={GripVertical} iconOnly ariaLabel="排序手柄" />
-      <button className={s.folderOpen} type="button" onClick={onOpen}>
-        <Folder className={s.patternIcon} aria-hidden="true" />
-        <strong>{name}</strong>
-        <span>{countLabel}</span>
-        <ChevronRight className={s.patternIcon} aria-hidden="true" />
+    <div className={cx(s.folderRow, !showDragHandle && s.folderRowNoDrag, !actions && s.folderRowNoActions, className)}>
+      {showDragHandle ? <Button className={cx(s.dragButton, dragHandleClassName)} tone="subtle" icon={GripVertical} iconOnly ariaLabel="排序手柄" /> : null}
+      <button className={cx(s.folderOpen, !showChevron && s.folderOpenNoChevron, openClassName)} type="button" onClick={onOpen}>
+        <LeadingIcon className={cx(s.patternIcon, iconClassName)} aria-hidden="true" />
+        <strong className={nameClassName}>{name}</strong>
+        <span className={countClassName}>{countLabel}</span>
+        {showChevron ? <ChevronRight className={cx(s.patternIcon, iconClassName)} aria-hidden="true" /> : null}
       </button>
-      {actions ? <ToolbarCluster className={s.folderActions}>{actions}</ToolbarCluster> : null}
+      {actions ? <ToolbarCluster className={cx(s.folderActions, actionsClassName)}>{actions}</ToolbarCluster> : null}
     </div>
   );
 }
@@ -222,28 +282,51 @@ export type MoveTargetOption = {
 };
 
 export function MoveTargetPicker({
+  buttonClassName,
+  className,
   currentId,
+  icon,
+  iconOnly = false,
   label = "移动",
+  menuClassName,
   onMove,
+  optionClassName,
   options,
 }: {
+  buttonClassName?: string;
+  className?: string;
   currentId?: string | null;
+  icon?: RouteIcon;
+  iconOnly?: boolean;
   label?: string;
+  menuClassName?: string;
   onMove?: (id: string | null) => void;
+  optionClassName?: string;
   options: MoveTargetOption[];
 }) {
   const [open, setOpen] = useState(false);
   const menuId = useId();
 
   return (
-    <div className={s.movePicker}>
-      <Button ariaControls={menuId} ariaExpanded={open} ariaHasPopup="menu" tone="subtle" onClick={() => setOpen((value) => !value)}>
+    <div className={cx(s.movePicker, className)}>
+      <Button
+        ariaControls={menuId}
+        ariaExpanded={open}
+        ariaHasPopup="menu"
+        ariaLabel={label}
+        className={buttonClassName}
+        icon={icon}
+        iconOnly={iconOnly}
+        tone="subtle"
+        onClick={() => setOpen((value) => !value)}
+      >
         {label}
       </Button>
       {open ? (
-        <div className={s.moveMenu} id={menuId} role="menu">
+        <div className={cx(s.moveMenu, menuClassName)} id={menuId} role="menu">
           {options.map((option) => (
             <button
+              className={optionClassName}
               disabled={option.id === currentId}
               key={option.id ?? "__root"}
               onClick={() => {
@@ -266,21 +349,37 @@ export function MoveTargetPicker({
 
 export function SelectionBatchBar({
   actions,
+  actionsClassName,
+  className,
+  clearIconOnly = true,
+  clearLabel = "清除选择",
+  label,
+  labelClassName,
   onClear,
   selectedCount,
   subject = "项",
 }: {
   actions?: React.ReactNode;
+  actionsClassName?: string;
+  className?: string;
+  clearIconOnly?: boolean;
+  clearLabel?: string;
+  label?: React.ReactNode;
+  labelClassName?: string;
   onClear?: () => void;
   selectedCount: number;
   subject?: string;
 }) {
   return (
-    <div className={s.selectionBatchBar}>
-      <strong>已选 {selectedCount} {subject}</strong>
-      <ToolbarCluster>
+    <div className={cx(s.selectionBatchBar, className)}>
+      <strong className={labelClassName}>{label ?? <>已选 {selectedCount} {subject}</>}</strong>
+      <ToolbarCluster className={actionsClassName}>
         {actions}
-        {onClear ? <Button tone="subtle" icon={X} iconOnly ariaLabel="清除选择" onClick={onClear} /> : null}
+        {onClear ? (
+          <Button tone="subtle" icon={X} iconOnly={clearIconOnly} ariaLabel={clearLabel} onClick={onClear}>
+            {clearLabel}
+          </Button>
+        ) : null}
       </ToolbarCluster>
     </div>
   );
@@ -288,33 +387,86 @@ export function SelectionBatchBar({
 
 export function SortableRowShell({
   children,
+  className,
+  contentClassName,
+  handleClassName,
   index,
+  indexClassName,
+  marker,
+  markerClassName,
 }: {
   children: React.ReactNode;
+  className?: string;
+  contentClassName?: string;
+  handleClassName?: string;
   index: number;
+  indexClassName?: string;
+  marker?: React.ReactNode;
+  markerClassName?: string;
 }) {
+  const columns = ["auto", "auto", marker ? "auto" : null, "minmax(0, 1fr)"].filter(Boolean).join(" ");
+
   return (
-    <div className={s.sortableRow}>
-      <GripVertical className={s.patternIcon} aria-hidden="true" />
-      <span>{String(index + 1).padStart(2, "0")}</span>
-      <div>{children}</div>
+    <div className={cx(s.sortableRow, className)} style={{ "--sortable-row-columns": columns } as React.CSSProperties}>
+      <GripVertical className={cx(s.patternIcon, handleClassName)} aria-hidden="true" />
+      <span className={indexClassName}>{String(index + 1).padStart(2, "0")}</span>
+      {marker ? <div className={cx(s.sortableMarker, markerClassName)}>{marker}</div> : null}
+      <div className={contentClassName}>{children}</div>
     </div>
   );
 }
 
+export type AnchorRailItem = {
+  active?: boolean;
+  className?: string;
+  href?: string;
+  id: string;
+  label: string;
+  meta?: React.ReactNode;
+  onClick?: React.MouseEventHandler<HTMLElement>;
+};
+
+type AnchorRailLinkComponent = React.ComponentType<{
+  "aria-current"?: "true";
+  children: React.ReactNode;
+  className?: string;
+  href: string;
+  onClick?: React.MouseEventHandler;
+}>;
+
 export function AnchorRail({
+  ariaLabel = "页面内导航",
+  className,
   items,
+  linkComponent: LinkComponent,
 }: {
-  items: Array<{ id: string; label: string; meta?: string; active?: boolean }>;
+  ariaLabel?: string;
+  className?: string;
+  items: AnchorRailItem[];
+  linkComponent?: AnchorRailLinkComponent;
 }) {
   return (
-    <nav className={s.anchorRail} aria-label="页面内导航">
-      {items.map((item) => (
-        <a aria-current={item.active ? "true" : undefined} href={`#${item.id}`} key={item.id}>
-          <strong>{item.label}</strong>
-          {item.meta ? <span>{item.meta}</span> : null}
-        </a>
-      ))}
+    <nav className={cx(s.anchorRail, className)} aria-label={ariaLabel}>
+      {items.map((item) => {
+        const content = (
+          <>
+            <strong>{item.label}</strong>
+            {item.meta ? <span>{item.meta}</span> : null}
+          </>
+        );
+        const itemClassName = cx(s.anchorRailItem, item.className);
+        const href = item.href ?? `#${item.id}`;
+
+        return LinkComponent ? (
+          <LinkComponent aria-current={item.active ? "true" : undefined} className={itemClassName} href={href} key={item.id} onClick={item.onClick}>
+            {content}
+          </LinkComponent>
+        ) : (
+          <a aria-current={item.active ? "true" : undefined} className={itemClassName} href={href} key={item.id} onClick={item.onClick}>
+            {content}
+          </a>
+        );
+      })}
     </nav>
   );
 }

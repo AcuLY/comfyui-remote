@@ -24,6 +24,7 @@ import { Checkbox } from "../../shared/primitives/checkbox";
 import { EmptyPage } from "../../shared/primitives/empty-page";
 import { OperationStateStrip } from "../../shared/feedback/operation-state-strip";
 import { PageHeader } from "../../shared/primitives/page-header";
+import { FolderBreadcrumb, FolderRow, SelectionBatchBar } from "../../shared/patterns";
 import { StatusBadge } from "../../shared/primitives/status-badge";
 import { cx, demoHref } from "../../routing";
 import type { DemoButtonFeedback } from "../../routing";
@@ -60,26 +61,29 @@ function PresetMoveSheet({
             <X className={s.iconMd} />
           </button>
         </header>
-        <div className={s.presetMoveBreadcrumbs}>
-          <button type="button" onClick={() => onSelect(null)}>根目录</button>
-          {breadcrumb.map((folder) => (
-            <button type="button" key={folder.id} onClick={() => onSelect(folder.id)}>
-              {folder.name}
-            </button>
-          ))}
-        </div>
+        <FolderBreadcrumb
+          activeButtonClassName={s.presetFolderBreadcrumbActive}
+          buttonClassName={s.presetFolderBreadcrumbButton}
+          className={s.presetMoveBreadcrumbs}
+          items={breadcrumb.map((folder) => ({ id: folder.id, label: folder.name }))}
+          onNavigate={onSelect}
+          size="sm"
+        />
         <div className={s.presetMoveTargets}>
           {options.map((option) => (
-            <button
+            <FolderRow
               className={cx(s.presetMoveTarget, selectedFolderId === option.id && s.presetMoveTargetActive)}
-              type="button"
+              countLabel={`${option.count} 项`}
+              iconClassName={s.iconMd}
               key={option.id ?? "root"}
-              onClick={() => onSelect(option.id)}
-            >
-              <FolderTree className={s.iconMd} />
-              <strong style={{ paddingLeft: `${option.depth * 8}px` }}>{option.name}</strong>
-              <span>{option.count} 项</span>
-            </button>
+              leadingIcon={FolderTree}
+              name={option.name}
+              nameClassName={s.presetMoveTargetName}
+              onOpen={() => onSelect(option.id)}
+              openClassName={s.presetMoveTargetOpen}
+              showChevron={false}
+              showDragHandle={false}
+            />
           ))}
         </div>
         <footer className={s.presetMoveFooter}>
@@ -104,14 +108,14 @@ function PresetFolderBrowser({
 
   return (
     <div className={s.presetFolderBar}>
-      <div className={s.presetFolderBreadcrumbs}>
-        <button type="button" onClick={() => onNavigate(null)} disabled={!currentFolderId}>根目录</button>
-        {breadcrumb.map((folder) => (
-          <button type="button" key={folder.id} onClick={() => onNavigate(folder.id)} disabled={folder.id === currentFolderId}>
-            {folder.name}
-          </button>
-        ))}
-      </div>
+      <FolderBreadcrumb
+        activeButtonClassName={s.presetFolderBreadcrumbActive}
+        buttonClassName={s.presetFolderBreadcrumbButton}
+        className={s.presetFolderBreadcrumbs}
+        items={breadcrumb.map((folder) => ({ id: folder.id, label: folder.name }))}
+        onNavigate={onNavigate}
+        size="sm"
+      />
       <span>{presetFolderItemCount(category, currentFolderId)} 项</span>
     </div>
   );
@@ -133,13 +137,20 @@ function PresetFolderRows({
   return (
     <div className={s.presetFolderGrid}>
       {folders.map((folder) => (
-        <button className={s.presetFolderRow} type="button" key={folder.id} onClick={() => onNavigate(folder.id)}>
-          <GripVertical className={s.categoryDragIcon} />
-          <FolderTree className={s.iconMd} />
-          <strong>{folder.name}</strong>
-          <span>{presetFolderItemCount(category, folder.id)} 项</span>
-          <Edit3 className={s.icon} />
-        </button>
+        <FolderRow
+          actions={<Button tone="subtle" icon={Edit3} iconOnly ariaLabel={`编辑文件夹：${folder.name}`} />}
+          actionsClassName={s.presetFolderRowActions}
+          className={s.presetFolderRow}
+          countLabel={`${presetFolderItemCount(category, folder.id)} 项`}
+          dragHandleClassName={s.presetFolderGrip}
+          iconClassName={s.iconMd}
+          key={folder.id}
+          leadingIcon={FolderTree}
+          name={folder.name}
+          onOpen={() => onNavigate(folder.id)}
+          openClassName={s.presetFolderOpen}
+          showChevron={false}
+        />
       ))}
     </div>
   );
@@ -281,9 +292,9 @@ export function PresetsPage({ data }: { data: DemoData }) {
               ]}
             />
             {selectedCount ? (
-              <div className={s.presetBatchBar}>
-                <strong>已选择 {selectedCount} 项</strong>
-                <div className={s.toolbar}>
+              <SelectionBatchBar
+                actions={
+                  <>
                   <Button tone="subtle" icon={Check} onClick={() => setSelectedIds(new Set(visibleItems.map((item) => item.id)))}>
                     全选当前层
                   </Button>
@@ -294,9 +305,16 @@ export function PresetsPage({ data }: { data: DemoData }) {
                     移动到文件夹
                   </Button>
                   <Button tone="danger" icon={Trash2} feedback={{ tone: "warning", title: "批量删除需要确认", detail: `${selectedCount} 项` }}>批量删除</Button>
-                  <Button tone="subtle" icon={X} onClick={() => setSelectedIds(new Set())}>取消</Button>
-                </div>
-              </div>
+                  </>
+                }
+                actionsClassName={s.toolbar}
+                className={s.presetBatchBar}
+                clearIconOnly={false}
+                clearLabel="取消"
+                label={<>已选择 {selectedCount} 项</>}
+                onClear={() => setSelectedIds(new Set())}
+                selectedCount={selectedCount}
+              />
             ) : null}
             <section className={s.presetLibrarySurface}>
               {currentFolderId ? (
@@ -309,13 +327,18 @@ export function PresetsPage({ data }: { data: DemoData }) {
                 </button>
               ) : null}
               {showDraftFolder ? (
-                <div className={cx(s.presetFolderRow, s.presetFolderDraft)}>
-                  <GripVertical className={s.categoryDragIcon} />
-                  <FolderTree className={s.iconMd} />
-                  <strong>新建文件夹</strong>
-                  <span>保存中</span>
-                  <X className={s.icon} />
-                </div>
+                <FolderRow
+                  actions={<Button tone="subtle" icon={X} iconOnly ariaLabel="取消新建文件夹" onClick={() => setShowDraftFolder(false)} />}
+                  actionsClassName={s.presetFolderRowActions}
+                  className={cx(s.presetFolderRow, s.presetFolderDraft)}
+                  countLabel="保存中"
+                  dragHandleClassName={s.presetFolderGrip}
+                  iconClassName={s.iconMd}
+                  leadingIcon={FolderTree}
+                  name="新建文件夹"
+                  openClassName={s.presetFolderOpen}
+                  showChevron={false}
+                />
               ) : null}
               <PresetFolderRows category={category} currentFolderId={currentFolderId} onNavigate={navigateFolder} />
               <PresetItemRows

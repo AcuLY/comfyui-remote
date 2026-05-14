@@ -51,6 +51,9 @@ export function FamilySamples({ data, familyId }: { data: DemoData; familyId: Sh
 function ControlsSample() {
   const [tab, setTab] = useState("params");
   const [mode, setMode] = useState("lora");
+  const [selectedProject, setSelectedProject] = useState(true);
+  const [projectName, setProjectName] = useState("夏日人像合集");
+  const [promptText, setPromptText] = useState("masterpiece, best quality, portrait, detailed light");
   return (
     <div className={s.sampleStack}>
       <div className={s.sampleRow}>
@@ -61,7 +64,7 @@ function ControlsSample() {
         <Button icon={Star} iconOnly tone="pink" ariaLabel="精选" />
       </div>
       <div className={s.sampleRow}>
-        <Checkbox checked label="选择项目" onCheckedChange={() => undefined} />
+        <Checkbox checked={selectedProject} label="选择项目" onCheckedChange={setSelectedProject} />
         <Switch defaultChecked ariaLabel="启用" />
         <StatusBadge status="running" label="运行中" />
         <StatusBadge status="failed" label="失败" />
@@ -77,8 +80,8 @@ function ControlsSample() {
         value={tab}
         onChange={setTab}
       />
-      <Field label="项目名称" value="夏日人像合集" />
-      <TextAreaField label="正向 Prompt" value="masterpiece, best quality, portrait, detailed light" />
+      <Field label="项目名称" value={projectName} onChange={setProjectName} />
+      <TextAreaField label="正向 Prompt" value={promptText} onChange={setPromptText} />
     </div>
   );
 }

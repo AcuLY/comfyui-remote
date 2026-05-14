@@ -2,32 +2,31 @@
 
 This plan applies only to `src/app/design-demos/**`.
 
-Goal: the design demo area should behave like an independently maintainable frontend sub-app. It must keep existing routes and interactions compatible while removing hidden styling dependencies, barrel import coupling, utility-class debt, oversized feature files, and unclear ownership.
+Goal: the design demo area should behave like an independently maintainable frontend sub-app. It must keep existing routes and interactions stable while removing hidden styling dependencies, barrel import coupling, utility-class debt, oversized feature files, and unclear ownership.
 
 ## Hard Rules
 
 - Demo code must not use Tailwind utility classes.
 - Demo code must keep working after Tailwind, shadcn Tailwind CSS, `tailwind-merge`, and `cva` are removed from the project.
-- Reusable demo primitives live in `ui/` and import their own CSS Module directly.
+- Reusable demo primitives live in `shared/primitives/` and import their own CSS Module directly.
 - Visual differences must be expressed through component props such as `tone`, `size`, `variant`, `shape`, `pressed`, and `disabled`.
 - Feature files may own layout, but they must not reach into primitive internals.
 - Do not edit `src/app/globals.css` for demo fixes.
-- Do not add compatibility barrels or string-based class-name proxies.
+- Do not add barrel imports or string-based class-name proxies.
 
 ## Current Baseline
 
 Completed in this cleanup pass:
 
 - The official architecture entrypoints are `routing/`, `shell/`, `data/`, `shared/`, `features/`, and `showcase/`, with no underscore prefix.
-- Compatibility source folders such as `ui/`, `runs/`, `projects/`, `presets/`, `templates/`, `batch-create/`, `models/`, `system/`, and `section-editor/` still exist while migration continues.
-- Demo pages import UI primitives from `ui/<component>` files directly.
-- The legacy UI compatibility barrel was removed.
-- The previous UI index barrel was removed.
+- Demo pages import UI primitives through `shared/primitives/<component>` or the official `shared/primitives` entrypoint.
+- The root UI barrel has been removed.
+- The former UI index entrypoint has been removed.
 - Tailwind-like icon utility strings were replaced with semantic CSS classes such as `.iconMd`, `.iconSm`, and `.iconSubtle`.
 - The string-based style proxy was removed from runtime imports.
 - The layout no longer imports a global demo style aggregate.
 - Existing demo route styles now enter through explicit feature CSS Modules under `styles/`.
-- The old monolithic route-level style module was removed.
+- The monolithic route-level style module has been removed.
 - Showcase pages were split by route group under `showcase/pages`.
 - `editor-page.tsx` was split into page composition, params, results, history, lightbox, and import modules.
 - `demo-data.ts` was split into data loading, fixtures, filesystem scanning, and shape transforms.
@@ -41,7 +40,7 @@ Status: done for the active code path.
 Checks:
 
 ```powershell
-rg "compatibility barrel" src/app/design-demos -g '*.tsx'
+rg "from .*shared-styles" src/app/design-demos -g '*.tsx'
 rg -n 'className=.*(size-|opacity-|flex|grid|gap-|px-|py-|p-|m-|w-|h-|text-|bg-|border-|rounded|shadow|items-|justify-|min-|max-|overflow|translate|z-|fixed|absolute|relative)' src/app/design-demos -g '*.tsx'
 rg -n 'tailwind|twMerge|cva\(|class-variance-authority|shadcn' src/app/design-demos -g '*.ts' -g '*.tsx' -g '*.css'
 git diff -- src/app/globals.css
@@ -69,7 +68,7 @@ Follow-up:
 
 Status: done for the active code path.
 
-Current modules have been migrated out of the legacy shared styles folder and are colocated with their owning feature files.
+Current modules are colocated with their owning feature files.
 
 Ongoing rule:
 

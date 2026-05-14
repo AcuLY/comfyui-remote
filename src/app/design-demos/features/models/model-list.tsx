@@ -7,6 +7,7 @@ import {
   Folder, ArrowLeft, Plus
 } from 'lucide-react';
 import { Button } from "../../shared/primitives/button";
+import { FolderBreadcrumb, InspectorAside } from "../../shared/patterns";
 import { SegmentedControl } from "../../shared/primitives/segmented-control";
 import { StatusBadge } from "../../shared/primitives/status-badge";
 import styles from './model-list.module.css';
@@ -206,20 +207,17 @@ export function ModelFileBrowser({
         role="tablist"
         value={activeTab}
       />
-      <div className={styles.breadcrumb}>
-        {breadcrumbs.map((crumb, index) => (
-          <div key={crumb.path} className={styles.breadcrumbItem}>
-            {index > 0 ? <ChevronRight className={`${styles.iconXs} ${styles.iconSubtle}`} /> : null}
-            <button
-              type="button"
-              onClick={() => onBreadcrumbClick(index)}
-              className={index === breadcrumbs.length - 1 ? styles.breadcrumbActive : ""}
-            >
-              {crumb.label}
-            </button>
-          </div>
-        ))}
-      </div>
+      <FolderBreadcrumb
+        activeButtonClassName={styles.breadcrumbActive}
+        buttonClassName={styles.breadcrumbButton}
+        className={styles.breadcrumb}
+        itemClassName={styles.breadcrumbItem}
+        items={breadcrumbs.slice(1).map((crumb, index) => ({ id: String(index + 1), label: crumb.label }))}
+        onNavigate={(id) => onBreadcrumbClick(id === null ? 0 : Number(id))}
+        rootLabel={breadcrumbs[0]?.label ?? "models"}
+        separatorClassName={`${styles.iconXs} ${styles.iconSubtle}`}
+        size="sm"
+      />
       <div className={styles.searchBar}>
         <Search className={`${styles.iconMd} ${styles.iconSubtle}`} />
         <input
@@ -325,12 +323,15 @@ export function ModelFileInspector({
   onToggleEditingNotes?: () => void;
 }) {
   return (
-    <div className={styles.detailsPanel}>
-      <div className={styles.detailsHeader}>
-        <h3 className={styles.detailsTitle}>文件信息</h3>
+    <InspectorAside
+      actions={
         <Button className={styles.iconButton} icon={X} iconOnly onClick={onClose} ariaLabel="关闭文件信息" tone="subtle" />
-      </div>
-      <div className={styles.detailsContent}>
+      }
+      className={styles.detailsPanel}
+      contentClassName={styles.detailsContent}
+      headerClassName={styles.detailsHeader}
+      title="文件信息"
+    >
         <div className={styles.detailsSection}>
           <label className={styles.detailsLabel}>文件名</label>
           <div className={styles.detailsValue}>{file.name}</div>
@@ -374,7 +375,6 @@ export function ModelFileInspector({
             删除文件
           </Button>
         </div>
-      </div>
-    </div>
+    </InspectorAside>
   );
 }

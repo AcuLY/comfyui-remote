@@ -489,12 +489,12 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         status: "未匹配",
       },
     ]),
-    section("临时与组件", [
+    section("组件审查", [
       {
         key: "component-showcase",
         route: currentRoute(routes, "component-showcase"),
-        group: "临时",
-        eyebrow: "临时页面",
+        group: "组件审查",
+        eyebrow: "组件目录",
         title: "组件功能族总览",
         subtitle: "按功能族查看真实复用组件、业务适配组件和专项页面。",
         actions: [headerAction("Headers", PanelTop, "primary")],
@@ -504,7 +504,7 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
       {
         key: "component-showcase-controls",
         route: currentRoute(routes, "component-showcase-controls"),
-        group: "临时",
+        group: "组件审查",
         eyebrow: "组件展示",
         title: "基础操作控件",
         subtitle: "按钮、选择、切换、字段和状态徽标等最底层交互控件。",
@@ -516,7 +516,7 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
       {
         key: "component-showcase-surfaces",
         route: currentRoute(routes, "component-showcase-surfaces"),
-        group: "临时",
+        group: "组件审查",
         eyebrow: "组件展示",
         title: "页面骨架与容器",
         subtitle: "页面标题、连续工作区、编辑区块、右侧详情栏、空状态和加载骨架。",
@@ -528,7 +528,7 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
       {
         key: "component-showcase-unit-items",
         route: currentRoute(routes, "component-showcase-unit-items"),
-        group: "临时",
+        group: "组件审查",
         eyebrow: "组件展示",
         title: "单元行项",
         subtitle: "项目、小节、模板、预设、运行任务等可浏览、可选择、可操作的行项。",
@@ -540,7 +540,7 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
       {
         key: "component-showcase-folders",
         route: currentRoute(routes, "component-showcase-folders"),
-        group: "临时",
+        group: "组件审查",
         eyebrow: "组件展示",
         title: "文件夹、路径与移动目标",
         subtitle: "项目、预设、模型和批量创建浏览器中的文件夹、路径和移动目标。",
@@ -552,7 +552,7 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
       {
         key: "component-showcase-batch-actions",
         route: currentRoute(routes, "component-showcase-batch-actions"),
-        group: "临时",
+        group: "组件审查",
         eyebrow: "组件展示",
         title: "批量选择与操作反馈",
         subtitle: "已选数量、全选、移动、删除、撤销、操作状态条、toast 和保存状态。",
@@ -564,7 +564,7 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
       {
         key: "component-showcase-generation-params",
         route: currentRoute(routes, "component-showcase-generation-params"),
-        group: "临时",
+        group: "组件审查",
         eyebrow: "组件展示",
         title: "生成参数与小节配置",
         subtitle: "画幅、尺寸、checkpoint、KSampler、batch、放大和小节参数。",
@@ -576,7 +576,7 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
       {
         key: "component-showcase-preset-prompt-lora",
         route: currentRoute(routes, "component-showcase-preset-prompt-lora"),
-        group: "临时",
+        group: "组件审查",
         eyebrow: "组件展示",
         title: "预设、Prompt 与 LoRA",
         subtitle: "预设绑定、导入、Prompt 块、编译预览、LoRA 两阶段和预设组成员。",
@@ -588,7 +588,7 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
       {
         key: "component-showcase-taxonomy-history",
         route: currentRoute(routes, "component-showcase-taxonomy-history"),
-        group: "临时",
+        group: "组件审查",
         eyebrow: "组件展示",
         title: "分类、排序、历史与差异",
         subtitle: "分类侧栏、分类编辑、槽位、排序规则、历史 diff、变体 rail 和小节 rail。",
@@ -600,7 +600,7 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
       {
         key: "component-showcase-images",
         route: currentRoute(routes, "component-showcase-images"),
-        group: "临时",
+        group: "组件审查",
         eyebrow: "组件展示",
         title: "图片结果与审核面",
         subtitle: "小图、中图、结果列表、审核面板、图片统计、Lightbox 和结果筛选。",
@@ -612,7 +612,7 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
       {
         key: "component-showcase-runs",
         route: currentRoute(routes, "component-showcase-runs"),
-        group: "临时",
+        group: "组件审查",
         eyebrow: "组件展示",
         title: "任务运行、队列与进度",
         subtitle: "队列指标、当前运行进度、运行/失败列表、待审核分组和执行参数摘要。",
@@ -624,7 +624,7 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
       {
         key: "component-showcase-system",
         route: currentRoute(routes, "component-showcase-system"),
-        group: "临时",
+        group: "组件审查",
         eyebrow: "组件展示",
         title: "系统、日志、监控与模型文件",
         subtitle: "日志筛选、日志行、监控状态、探测结果、模型文件浏览和登录令牌。",
@@ -636,7 +636,7 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
       {
         key: "component-showcase-icons",
         route: currentRoute(routes, "component-showcase-icons"),
-        group: "临时",
+        group: "组件审查",
         eyebrow: "组件展示",
         title: "Icons 图标专项",
         subtitle: "Lucide 图标、自定义 SVG 图标和图标语义说明。",
@@ -648,7 +648,7 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
       {
         key: "component-showcase-headers",
         route: currentRoute(routes, "component-showcase-headers"),
-        group: "临时",
+        group: "组件审查",
         eyebrow: "组件展示",
         title: "Headers 固定顶栏专项",
         subtitle: "所有路由的固定顶部 header 展开、折叠和移动端合并状态。",

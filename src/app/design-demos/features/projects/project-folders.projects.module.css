@@ -77,6 +77,13 @@
   gap: 7px;
 }
 
+.projectBatchActions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 7px;
+}
+
 .projectFolderBreadcrumbs {
   display: flex;
   min-width: 0;
@@ -114,6 +121,14 @@
 .projectFolderBreadcrumbs button:disabled {
   color: var(--demo-text);
   cursor: default;
+}
+
+.projectFolderBreadcrumbButton {
+  min-height: 28px;
+}
+
+.projectFolderBreadcrumbActive {
+  color: var(--demo-text);
 }
 
 .projectBatchBar {
@@ -263,6 +278,10 @@
   white-space: nowrap;
 }
 
+.projectMoveMenuButton span {
+  white-space: nowrap;
+}
+
 .projectItemActions .projectMoveMenu > button {
   width: 28px;
   justify-content: center;
@@ -309,6 +328,12 @@
   color: var(--demo-muted);
   text-align: left;
   white-space: pre;
+}
+
+.projectMoveMenuOption {
+  justify-content: start;
+  width: 100%;
+  white-space: normal;
 }
 
 .projectMoveMenuList button:hover,

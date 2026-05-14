@@ -6,7 +6,7 @@ import type { RouteIcon } from "../../../routing";
 
 /* ───────────────────────── types ───────────────────────── */
 
-/** 与 LucideIcon 兼容的 SVG 图标 props */
+/** 与 LucideIcon API 一致的 SVG 图标 props */
 export type SvgIconProps = {
   className?: string;
   size?: number | string;
@@ -21,7 +21,7 @@ export type SvgIconComponent = ComponentType<SvgIconProps> & RouteIcon;
 /* ───────────────────────── base component ───────────────────────── */
 
 /**
- * 通用 SVG 图标组件，与 Lucide 图标 API 完全兼容。
+ * 通用 SVG 图标组件，遵循 Lucide 图标 API。
  *
  * ```tsx
  * // 直接使用
@@ -70,7 +70,7 @@ export const SvgIcon = forwardRef<SVGSVGElement, SvgIconProps & {
 /* ───────────────────────── factory ───────────────────────── */
 
 /**
- * 从 SVG 子元素创建可复用的图标组件，返回的组件与 Lucide 图标完全兼容。
+ * 从 SVG 子元素创建可复用的图标组件，返回的组件遵循 Lucide 图标 API。
  *
  * ```tsx
  * const ComfyuiIcon = createSvgIcon({

@@ -414,6 +414,14 @@
   font-family: inherit;
 }
 
+.breadcrumbButton {
+  min-height: 0;
+  border: 0;
+  background: none;
+  color: var(--demo-muted);
+  padding: 0;
+}
+
 .breadcrumbItem button:hover {
   color: var(--demo-text);
 }
@@ -584,6 +592,8 @@
   backdrop-filter: var(--demo-glass-blur);
   box-shadow: var(--demo-glass-shadow);
   overflow: hidden;
+  gap: 0;
+  padding: 0;
 }
 
 .detailsHeader {
@@ -594,7 +604,7 @@
   border-bottom: 1px solid var(--demo-border);
 }
 
-.detailsTitle {
+.detailsHeader > strong {
   font-size: 0.9375rem;
   font-weight: 600;
   color: var(--demo-text);

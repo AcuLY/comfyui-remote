@@ -53,7 +53,7 @@ const SHOWCASE_ROUTE_DEFS: RouteDef[] = SHOWCASE_ROUTE_METADATA.map((family) => 
   key: family.route.slice(1) as RouteDef["key"],
   pattern: family.route,
   title: family.title,
-  group: "临时",
+  group: "组件审查",
   icon: SHOWCASE_ROUTE_ICONS[family.id],
 }));
 
@@ -83,7 +83,7 @@ export const ROUTES: RouteDef[] = [
   { key: "logs", pattern: "/settings/logs", title: "日志", group: "设置", icon: History },
   { key: "monitor", pattern: "/settings/monitor", title: "Worker 监控", group: "设置", icon: Monitor },
   { key: "settings", pattern: "/settings", title: "设置", group: "设置", icon: Settings },
-  { key: "component-showcase", pattern: "/component-showcase", title: "组件展示总览", group: "临时", icon: Layers },
+  { key: "component-showcase", pattern: "/component-showcase", title: "组件展示总览", group: "组件审查", icon: Layers },
   ...SHOWCASE_ROUTE_DEFS,
   { key: "login", pattern: "/login", title: "登录", group: "系统", icon: Lock },
 ];

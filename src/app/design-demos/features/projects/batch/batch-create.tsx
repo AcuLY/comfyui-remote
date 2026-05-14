@@ -19,6 +19,7 @@ import s from "./batch.module.css";
 import { Button } from "../../../shared/primitives/button";
 import { EmptyPage } from "../../../shared/primitives/empty-page";
 import { PageHeader } from "../../../shared/primitives/page-header";
+import { FolderBreadcrumb, FolderRow } from "../../../shared/patterns";
 import { StatusBadge } from "../../../shared/primitives/status-badge";
 import { cx, demoHref, rawSectionId } from "../../../routing";
 import { getBatchCandidateRows } from "./batch-candidates";
@@ -114,40 +115,49 @@ export function BatchCreatePage({ project, data }: { project: DemoProject | unde
 
           {category ? (
             <div className={s.batchFolderBar}>
-              <div className={s.batchBreadcrumbs}>
-                <button type="button" onClick={() => setCurrentFolderId(null)} disabled={currentFolderId === null}>根目录</button>
-                {folderPath.map((folder) => (
-                  <button type="button" key={folder.id} onClick={() => setCurrentFolderId(folder.id)} disabled={folder.id === currentFolderId}>
-                    {folder.name}
-                  </button>
-                ))}
-              </div>
+              <FolderBreadcrumb
+                activeButtonClassName={s.batchBreadcrumbActive}
+                buttonClassName={s.batchBreadcrumbButton}
+                className={s.batchBreadcrumbs}
+                items={folderPath.map((folder) => ({ id: folder.id, label: folder.name }))}
+                onNavigate={setCurrentFolderId}
+                size="sm"
+              />
               <span>{presetFolderItemCount(category, currentFolderId)} 项</span>
             </div>
           ) : null}
 
           <div className={s.batchBrowserList}>
             {currentFolderId ? (
-              <button
+              <FolderRow
                 className={s.batchFolderRow}
-                type="button"
-                onClick={() => {
+                countLabel={folderPath[folderPath.length - 1]?.name ?? "当前目录"}
+                iconClassName={s.icon}
+                leadingIcon={ArrowLeft}
+                name="返回上级"
+                onOpen={() => {
                   const current = folderPath[folderPath.length - 1];
                   setCurrentFolderId(current?.parentId ?? null);
                 }}
-              >
-                <ArrowLeft className={s.icon} />
-                <strong>返回上级</strong>
-                <span>{folderPath[folderPath.length - 1]?.name ?? "当前目录"}</span>
-              </button>
+                openClassName={s.batchFolderOpen}
+                showChevron={false}
+                showDragHandle={false}
+              />
             ) : null}
 
             {folderChildren.map((folder) => (
-              <button className={s.batchFolderRow} type="button" key={folder.id} onClick={() => setCurrentFolderId(folder.id)}>
-                <FolderTree className={s.icon} />
-                <strong>{folder.name}</strong>
-                <span>{presetFolderItemCount(category!, folder.id)} 项</span>
-              </button>
+              <FolderRow
+                className={s.batchFolderRow}
+                countLabel={`${presetFolderItemCount(category!, folder.id)} 项`}
+                iconClassName={s.icon}
+                key={folder.id}
+                leadingIcon={FolderTree}
+                name={folder.name}
+                onOpen={() => setCurrentFolderId(folder.id)}
+                openClassName={s.batchFolderOpen}
+                showChevron={false}
+                showDragHandle={false}
+              />
             ))}
 
             {candidateRows.map((row) => {

@@ -7,6 +7,7 @@ import type * as React from "react";
 import type { DemoTemplate } from "../../data";
 import { cx, demoHref } from "../../routing";
 import type { DemoTemplateSection, TemplateSectionMode } from "../../routing";
+import { AnchorRail } from "../../shared/patterns";
 import s from "./template-section-shell.library.module.css";
 
 export function templateSectionAnchorId(section: DemoTemplateSection) {
@@ -37,7 +38,7 @@ export function TemplateSectionShell({
   const activeSectionId = activeSectionState.templateId === template.id ? activeSectionState.sectionId : defaultActiveSectionId;
   const displayedActiveSectionId = mode === "template-section" && activeSection ? activeSection.id : activeSectionId;
   const contentRef = useRef<HTMLDivElement>(null);
-  const railRef = useRef<HTMLElement>(null);
+  const railRef = useRef<HTMLDivElement>(null);
   const syncSourceRef = useRef<"content" | "rail" | null>(null);
   const unlockTimerRef = useRef<number | null>(null);
 
@@ -128,7 +129,7 @@ export function TemplateSectionShell({
   );
 }
 
-const TemplateSectionRail = forwardRef<HTMLElement, {
+const TemplateSectionRail = forwardRef<HTMLDivElement, {
   activeSectionId?: string | null;
   mode: TemplateSectionMode;
   onNavigateSection?: (section: DemoTemplateSection) => void;
@@ -145,25 +146,28 @@ const TemplateSectionRail = forwardRef<HTMLElement, {
   const resolvedActiveId = activeSectionId ?? template.sections[0]?.id ?? null;
 
   return (
-    <nav className={s.sectionRail} ref={ref} aria-label="模板小节导航">
+    <div className={s.sectionRail} ref={ref}>
       <div className={s.railHeading}>
         <strong>小节导航</strong>
         <span>{template.sections.length} 小节</span>
       </div>
-      {template.sections.map((section, index) => (
-        <Link
-          className={cx(s.railItem, resolvedActiveId === section.id && s.railItemActive)}
-          href={templateSectionHref(template, section, index, mode)}
-          key={section.id}
-          onClick={(event) => {
+      <AnchorRail
+        ariaLabel="模板小节导航"
+        className={s.railList}
+        items={template.sections.map((section, index) => ({
+          active: resolvedActiveId === section.id,
+          className: cx(s.railItem, resolvedActiveId === section.id && s.railItemActive),
+          href: templateSectionHref(template, section, index, mode),
+          id: section.id,
+          label: section.name,
+          meta: <span className={cx(s.small, s.muted)}>{section.aspectRatio} / 批量 {section.batchSize}</span>,
+          onClick: (event) => {
             if (mode === "template-edit") event.preventDefault();
             onNavigateSection?.(section);
-          }}
-        >
-          <strong>{section.name}</strong>
-          <span className={cx(s.small, s.muted)}>{section.aspectRatio} / 批量 {section.batchSize}</span>
-        </Link>
-      ))}
-    </nav>
+          },
+        }))}
+        linkComponent={Link}
+      />
+    </div>
   );
 });

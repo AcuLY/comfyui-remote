@@ -10,7 +10,7 @@ export function CustomIconDemo() {
     <div className={s.iconShowcaseCustom}>
       <h2 className={s.iconShowcaseHeading}>自定义 SVG 图标</h2>
       <p className={s.iconShowcaseDescription}>
-        使用 <code>createSvgIcon</code> / <code>createSvgIconFromString</code> 创建的图标组件，与 Lucide 图标完全兼容，可直接用于 Button 等组件的 <code>icon</code> 属性。
+        使用 <code>createSvgIcon</code> / <code>createSvgIconFromString</code> 创建的图标组件，遵循 Lucide 图标 API，可直接用于 Button 等组件的 <code>icon</code> 属性。
       </p>
 
       <IconList
