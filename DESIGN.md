@@ -123,8 +123,8 @@ All `/design-demos` component pages should use this small, explicit type scale. 
 | --- | ---: | ---: | ---: | --- |
 | Route title | 18-21px | 580-620 | 1.2 | Page/header title inside the app shell |
 | Section title | 15px | 580-620 | 1.25 | Main panel column titles, editor panel headings |
-| Showcase/component name | 14px | 600 | 1.25 | `ShowcaseItem` names and inventory labels |
-| Card/entity title | 13px | 580 | 1.2 | Project, section, run, preset, template, folder, and result-card titles |
+| Showcase/component name | 16px | 600 | 1.25 | `ShowcaseItem` names and inventory labels |
+| Card/entity title | 16px | 580 | 1.2 | Project, section, run, preset, template, folder, and result-card titles |
 | Control text | 12px | 560-580 | 1.2 | Buttons, segmented controls, compact toolbar commands |
 | Secondary/meta text | 11px | 520 | 1.35 | Counts, dates, status helper copy, title-adjacent metadata |
 | Index/ordinal | 10px | 560 | 1 | Row numbers such as `01`, sort/order prefixes |
@@ -132,7 +132,7 @@ All `/design-demos` component pages should use this small, explicit type scale. 
 
 ### Demo Card Title Rules
 
-- `Card/entity title` is the default for repeated item titles. Use 13px/580/1.2 for `ProjectListItem`, `ProjectSectionCard`, `ProjectSectionResultCard`, queue/run rows, folder rows, preset/template rows, and comparable demo cards.
+- `Card/entity title` is the default for repeated item titles. Use 16px/580/1.2 for `ProjectListItem`, `ProjectSectionCard`, `ProjectSectionResultCard`, queue/run rows, folder rows, preset/template rows, and comparable demo cards.
 - Title-adjacent metadata, such as `12 小节`, run counts, or update dates, uses `Secondary/meta text` (11px/520/1.35) unless it is inside a badge.
 - Numeric prefixes such as `01` use `Index/ordinal` (10px/560/1) and must be vertically centered with the title text.
 - Title rows should have a stable height before card body content. Use a 36px normal-density title row when the row also contains checkbox, drag, copy, delete, or status controls.
@@ -204,6 +204,7 @@ Do not:
 ## 9. Implementation Notes For `/design-demos`
 
 - The routed demo shell should use this glass system while keeping all CSS inside `src/app/design-demos/**`.
+- Basic controls must use the existing primitives in `src/app/design-demos/ui/**` (`Button`, `ButtonLink`, `Field`, `TextAreaField`, `SelectLike`, `Checkbox`, `Switch`, tabs, badges, feedback/toast, and comparable shared controls). Feature and page code must not hand-roll raw `<button>`, `<input>`, `<textarea>`, `<select>`, checkbox/switch, tab, badge, toast, or icon-button implementations unless the task is explicitly to create or update the shared primitive itself.
 - Shared demo primitives such as `.button` must be normalized after page-specific style imports when needed. Page styles may narrow layout or flex behavior, but must not override shared button height, text size, icon size, or tone scale.
 - Existing parity work should stay intact: `/runs`, `/projects`, `/presets`, `/models`, `/templates`, and settings routes remain routeable.
 - The shell can use mock data, but visible UI should read as final product state.

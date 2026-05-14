@@ -234,7 +234,7 @@
   min-width: 0;
   min-height: var(--project-list-title-row-height);
   align-items: center;
-  font-size: 13px;
+  font-size: 16px;
   justify-content: space-between;
   gap: 10px;
 }

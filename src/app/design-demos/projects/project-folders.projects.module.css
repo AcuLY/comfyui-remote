@@ -412,3 +412,30 @@
   height: 28px;
   min-height: 28px;
 }
+
+.showcasePage .projectFolderGrip[data-demo-ui-button="true"][data-demo-ui-button-icon-only="true"],
+.projectFolderGrip[data-demo-ui-button="true"][data-demo-ui-button-icon-only="true"] {
+  display: inline-flex;
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--demo-faint);
+  cursor: grab;
+  padding: 0;
+}
+
+.showcasePage .projectFolderGrip[data-demo-ui-button="true"][data-demo-ui-button-icon-only="true"]:hover,
+.showcasePage .projectFolderGrip[data-demo-ui-button="true"][data-demo-ui-button-icon-only="true"]:focus-visible,
+.projectFolderGrip[data-demo-ui-button="true"][data-demo-ui-button-icon-only="true"]:hover,
+.projectFolderGrip[data-demo-ui-button="true"][data-demo-ui-button-icon-only="true"]:focus-visible {
+  border-color: var(--demo-glass-accent-border);
+  background: var(--demo-field-bg);
+  color: var(--demo-green);
+  outline: none;
+}

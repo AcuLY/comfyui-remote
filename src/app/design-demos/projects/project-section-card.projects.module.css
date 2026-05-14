@@ -70,9 +70,9 @@
   min-width: 0;
   overflow: hidden;
   color: var(--demo-text);
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 580;
-  line-height: 1.35;
+  line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -149,7 +149,7 @@
 
 .dragHandle:hover,
 .dragHandle:focus-visible {
-  border-color: var(--demo-border);
+  border-color: var(--demo-glass-accent-border);
   background: var(--demo-field-bg);
   color: var(--demo-green);
   outline: none;
@@ -385,34 +385,32 @@
   }
 }
 
-.showcasePage .dragHandle:where([data-demo-ui-button="true"]) {
-  height: 28px;
-  min-height: 28px;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 580;
-  line-height: 1.2;
-}
-
-.showcasePage .dragHandle:where([data-demo-ui-button-icon-only="true"]) {
-  width: 28px;
-  min-width: 28px;
-  padding: 0;
-}
-
-.dragHandle:where([data-demo-ui-button="true"]) {
-  height: 28px;
-  min-height: 28px;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 580;
-  line-height: 1.2;
-}
-
-.dragHandle:where([data-demo-ui-button-icon-only="true"]) {
+.showcasePage .dragHandle[data-demo-ui-button="true"][data-demo-ui-button-icon-only="true"],
+.dragHandle[data-demo-ui-button="true"][data-demo-ui-button-icon-only="true"] {
+  display: inline-flex;
   width: 28px;
   min-width: 28px;
   height: 28px;
   min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--demo-faint);
+  cursor: grab;
+  font-size: 12px;
+  font-weight: 580;
+  line-height: 1.2;
   padding: 0;
+}
+
+.showcasePage .dragHandle[data-demo-ui-button="true"][data-demo-ui-button-icon-only="true"]:hover,
+.showcasePage .dragHandle[data-demo-ui-button="true"][data-demo-ui-button-icon-only="true"]:focus-visible,
+.dragHandle[data-demo-ui-button="true"][data-demo-ui-button-icon-only="true"]:hover,
+.dragHandle[data-demo-ui-button="true"][data-demo-ui-button-icon-only="true"]:focus-visible {
+  border-color: var(--demo-glass-accent-border);
+  background: var(--demo-field-bg);
+  color: var(--demo-green);
+  outline: none;
 }
