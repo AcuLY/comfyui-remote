@@ -139,3 +139,7 @@ test("ButtonLink preserves explicit aria labels even when visible text is presen
   assert.match(buttonSource, /const\s+label\s*=\s*controlLabel\(children,\s*ariaLabel\)/);
   assert.match(buttonSource, /aria-label=\{ariaLabel\s*\?\?\s*\(iconOnly\s*\?\s*label\s*:\s*undefined\)\}/);
 });
+
+test("Button primitives expose a stable label slot for responsive composition", () => {
+  assert.match(buttonSource, /<span\s+data-demo-ui-button-label="true">\{children\}<\/span>/);
+});

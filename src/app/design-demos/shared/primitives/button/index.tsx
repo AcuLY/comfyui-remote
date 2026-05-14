@@ -96,7 +96,7 @@ export function Button({
       className={buttonClassName({ tone, pending, iconOnly, size, className })}
     >
       {pending ? <Activity className={cx(s.icon, s.spinner)} data-demo-ui-button-icon="true" /> : Icon ? <Icon className={s.icon} data-demo-ui-button-icon="true" /> : null}
-      {iconOnly ? null : children}
+      {iconOnly ? null : <span data-demo-ui-button-label="true">{children}</span>}
     </button>
   );
 }
@@ -134,7 +134,7 @@ export function ButtonLink({
       className={buttonClassName({ tone, iconOnly, size, className })}
     >
       {Icon ? <Icon className={s.icon} data-demo-ui-button-icon="true" /> : null}
-      {iconOnly ? null : children}
+      {iconOnly ? null : <span data-demo-ui-button-label="true">{children}</span>}
     </Link>
   );
 }
