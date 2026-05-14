@@ -8,9 +8,7 @@ import { ModelsPage } from "./model-pages";
 import { PresetsPage, PresetCategoryFormPage, PresetEditPage, PresetGroupPage, SortRulesPage } from "./preset-pages";
 import { BatchCreatePage } from "./batch-create-page";
 import { RootPage, ProjectsPage, ProjectDetailPage, ProjectFormPage } from "./project-pages";
-import { ImageListComponentsPage } from "./image-list-components-page";
-import { ComponentShowcaseIndex, ComponentShowcaseAtoms, ComponentShowcaseMid, ComponentShowcaseImages, ComponentShowcaseEditor, ComponentShowcaseProjects, ComponentShowcaseHeaders } from "./component-showcase-page";
-import { IconShowcasePage } from "./icon-showcase-page";
+import { ComponentShowcaseFamilyPage, ComponentShowcaseIndex } from "./component-showcase-page";
 import { QueuePage, ReviewPage } from "./runs-page";
 import { SectionEditorPage as SectionEditorPageV2 } from "./section-editor-page";
 import { SettingsPage, LogsPage, MonitorPage, LoginPage, NotFoundPage } from "./system-pages";
@@ -75,24 +73,34 @@ function CurrentPage({ match, data }: { match: Match; data: DemoData }) {
       return <LogsPage data={data} />;
     case "monitor":
       return <MonitorPage data={data} />;
-    case "image-list-components":
-      return <ImageListComponentsPage data={data} />;
     case "component-showcase":
       return <ComponentShowcaseIndex data={data} />;
-    case "component-showcase-atoms":
-      return <ComponentShowcaseAtoms />;
-    case "component-showcase-mid":
-      return <ComponentShowcaseMid data={data} />;
+    case "component-showcase-controls":
+      return <ComponentShowcaseFamilyPage data={data} familyId="controls" />;
+    case "component-showcase-surfaces":
+      return <ComponentShowcaseFamilyPage data={data} familyId="surfaces" />;
+    case "component-showcase-unit-items":
+      return <ComponentShowcaseFamilyPage data={data} familyId="unit-items" />;
+    case "component-showcase-folders":
+      return <ComponentShowcaseFamilyPage data={data} familyId="folders" />;
+    case "component-showcase-batch-actions":
+      return <ComponentShowcaseFamilyPage data={data} familyId="batch-actions" />;
+    case "component-showcase-generation-params":
+      return <ComponentShowcaseFamilyPage data={data} familyId="generation-params" />;
+    case "component-showcase-preset-prompt-lora":
+      return <ComponentShowcaseFamilyPage data={data} familyId="preset-prompt-lora" />;
+    case "component-showcase-taxonomy-history":
+      return <ComponentShowcaseFamilyPage data={data} familyId="taxonomy-history" />;
     case "component-showcase-images":
-      return <ComponentShowcaseImages data={data} />;
-    case "component-showcase-editor":
-      return <ComponentShowcaseEditor data={data} />;
-    case "component-showcase-projects":
-      return <ComponentShowcaseProjects data={data} />;
+      return <ComponentShowcaseFamilyPage data={data} familyId="images" />;
+    case "component-showcase-runs":
+      return <ComponentShowcaseFamilyPage data={data} familyId="runs" />;
+    case "component-showcase-system":
+      return <ComponentShowcaseFamilyPage data={data} familyId="system" />;
     case "component-showcase-headers":
-      return <ComponentShowcaseHeaders data={data} />;
+      return <ComponentShowcaseFamilyPage data={data} familyId="headers" />;
     case "component-showcase-icons":
-      return <IconShowcasePage />;
+      return <ComponentShowcaseFamilyPage data={data} familyId="icons" />;
     case "login":
       return <LoginPage />;
     default:
