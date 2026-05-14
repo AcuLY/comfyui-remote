@@ -24,17 +24,20 @@ import {
   GripVertical,
   ImageIcon,
   CheckSquare,
-  Square,
   Trash2,
+  Square,
 } from "lucide-react";
-import { reorderSections, deleteSections } from "@/lib/actions";
+import { moveProjectSectionsToFolder, reorderSections, deleteSections } from "@/lib/actions";
 import { toast } from "sonner";
+import type { FolderItem } from "@/lib/server-data";
+import { BatchActionBar, MoveToFolderButton } from "@/app/assets/presets/folder-components";
 import { SectionRunButton } from "./project-detail-actions";
 import { CopySectionButton, DeleteSectionButton } from "./section-actions";
 
 export type Section = {
   id: string;
   name: string;
+  folderId: string | null;
   batchSize: number | null;
   aspectRatio: string | null;
   seedPolicy1: string | null;
@@ -52,6 +55,8 @@ export type Section = {
 type SectionCardsProps = {
   projectId: string;
   sections: Section[];
+  allSectionIds?: string[];
+  folders?: FolderItem[];
   compact: boolean;
   setCardRef: (id: string, el: HTMLDivElement | null) => void;
 };
@@ -64,7 +69,14 @@ function statusDotClass(status: string | null): string {
   return "bg-zinc-500";
 }
 
-export function SectionCards({ projectId, sections: initialSections, compact, setCardRef }: SectionCardsProps) {
+export function SectionCards({
+  projectId,
+  sections: initialSections,
+  allSectionIds,
+  folders = [],
+  compact,
+  setCardRef,
+}: SectionCardsProps) {
   const router = useRouter();
   const [sections, setSections] = useState(initialSections);
   const [isPending, startTransition] = useTransition();
@@ -99,13 +111,16 @@ export function SectionCards({ projectId, sections: initialSections, compact, se
     const oldSections = sections;
     const newSections = arrayMove(sections, oldIndex, newIndex);
     setSections(newSections);
+    const visibleIdSet = new Set(newSections.map((section) => section.id));
+    const nextVisibleIds = newSections.map((section) => section.id);
+    const reorderIds =
+      allSectionIds && allSectionIds.length > 0
+        ? allSectionIds.map((id) => (visibleIdSet.has(id) ? nextVisibleIds.shift()! : id))
+        : newSections.map((section) => section.id);
 
     startTransition(async () => {
       try {
-        const result = await reorderSections(
-          projectId,
-          newSections.map((s) => s.id),
-        );
+        const result = await reorderSections(projectId, reorderIds);
         if (!result.ok) {
           setSections(oldSections);
           toast.error(result.message);
@@ -113,6 +128,20 @@ export function SectionCards({ projectId, sections: initialSections, compact, se
       } catch (err) {
         setSections(oldSections);
         toast.error(err instanceof Error ? err.message : "排序失败");
+      }
+    });
+  }
+
+  function handleMoveSections(sectionIds: string[], folderId: string | null) {
+    if (sectionIds.length === 0) return;
+    startTransition(async () => {
+      try {
+        await moveProjectSectionsToFolder(projectId, sectionIds, folderId);
+        setSelectedIds(new Set());
+        router.refresh();
+        toast.success(`已移动 ${sectionIds.length} 个小节`);
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "移动失败");
       }
     });
   }
@@ -156,25 +185,29 @@ export function SectionCards({ projectId, sections: initialSections, compact, se
 
   return (
     <>
-      {compact && sections.length > 0 && (
+      {compact && sections.length > 0 && selectedIds.size === 0 && (
         <div className="mb-2 flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={selectedIds.size === sections.length ? deselectAll : selectAll}
-              className="flex items-center gap-1.5 text-xs text-zinc-400 transition hover:text-white"
-            >
-              {selectedIds.size === sections.length ? (
-                <CheckSquare className="size-3.5 text-sky-400" />
-              ) : (
-                <Square className="size-3.5" />
-              )}
-              {selectedIds.size === sections.length ? "取消全选" : "全选"}
-            </button>
-            {selectedIds.size > 0 && (
-              <span className="text-xs text-zinc-500">已选 {selectedIds.size} 项</span>
-            )}
-          </div>
+          <button
+            type="button"
+            onClick={selectAll}
+            className="flex items-center gap-1.5 text-xs text-zinc-400 transition hover:text-white"
+          >
+            <Square className="size-3.5" />
+            全选
+          </button>
+        </div>
+      )}
+
+      {compact && selectedIds.size > 0 && (
+        <div className="mb-2 flex flex-wrap items-center gap-2">
+          <BatchActionBar
+            selectedCount={selectedIds.size}
+            totalCount={sections.length}
+            folders={folders}
+            onMoveToFolder={(folderId) => handleMoveSections([...selectedIds], folderId)}
+            onSelectAll={selectAll}
+            onClearSelection={deselectAll}
+          />
           {selectedIds.size > 0 && (
             <button
               type="button"
@@ -208,6 +241,8 @@ export function SectionCards({ projectId, sections: initialSections, compact, se
                   setCardRef={setCardRef}
                   isSelected={selectedIds.has(section.id)}
                   onToggleSelect={toggleSelect}
+                  folders={folders}
+                  onMove={(folderId) => handleMoveSections([section.id], folderId)}
                 />
               ) : (
                 <SortableSectionCard
@@ -216,6 +251,8 @@ export function SectionCards({ projectId, sections: initialSections, compact, se
                   projectId={projectId}
                   index={index}
                   setCardRef={setCardRef}
+                  folders={folders}
+                  onMove={(folderId) => handleMoveSections([section.id], folderId)}
                   onDeleted={(deletedId) =>
                     setSections((prev) => prev.filter((item) => item.id !== deletedId))
                   }
@@ -240,6 +277,8 @@ function SortableCompactCard({
   setCardRef,
   isSelected,
   onToggleSelect,
+  folders,
+  onMove,
 }: {
   section: Section;
   projectId: string;
@@ -247,6 +286,8 @@ function SortableCompactCard({
   setCardRef: (id: string, el: HTMLDivElement | null) => void;
   isSelected: boolean;
   onToggleSelect: (id: string) => void;
+  folders: FolderItem[];
+  onMove: (folderId: string | null) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: section.id,
@@ -304,6 +345,7 @@ function SortableCompactCard({
       </Link>
 
       <div className="flex shrink-0 items-center gap-2">
+        <MoveToFolderButton currentFolderId={section.folderId} folders={folders} onMove={onMove} />
         {section.latestImages.length > 0 && (
           <span className="text-[10px] text-zinc-500">
             {section.latestImageCount}张
@@ -324,12 +366,16 @@ function SortableSectionCard({
   projectId,
   index,
   setCardRef,
+  folders,
+  onMove,
   onDeleted,
 }: {
   section: Section;
   projectId: string;
   index: number;
   setCardRef: (id: string, el: HTMLDivElement | null) => void;
+  folders: FolderItem[];
+  onMove: (folderId: string | null) => void;
   onDeleted: (sectionId: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -373,6 +419,7 @@ function SortableSectionCard({
         </Link>
 
         <div className="flex shrink-0 items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+          <MoveToFolderButton currentFolderId={section.folderId} folders={folders} onMove={onMove} />
           <CopySectionButton sectionId={section.id} />
           <DeleteSectionButton
             sectionId={section.id}

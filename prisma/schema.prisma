@@ -184,6 +184,7 @@ model ProjectTemplate {
   createdAt      DateTime                @default(now())
   updatedAt      DateTime                @updatedAt
   sections       ProjectTemplateSection[]
+  sectionFolders ProjectTemplateSectionFolder[]
 
   @@index([createdAt])
 }
@@ -191,6 +192,7 @@ model ProjectTemplate {
 model ProjectTemplateSection {
   id                String            @id @default(cuid())
   projectTemplateId String
+  folderId          String?
   sortOrder         Int               @default(0)
   name              String?
   notes             String?           @db.Text
@@ -207,8 +209,26 @@ model ProjectTemplateSection {
   extraParams       Json?
   promptBlocks      Json?             // Array<{ label, positive, negative?, sortOrder }>
   projectTemplate    ProjectTemplate  @relation(fields: [projectTemplateId], references: [id], onDelete: Cascade)
+  folder             ProjectTemplateSectionFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
 
   @@index([projectTemplateId, sortOrder])
+  @@index([folderId])
+}
+
+model ProjectTemplateSectionFolder {
+  id                String                         @id @default(cuid())
+  projectTemplateId String
+  parentId          String?
+  name              String
+  sortOrder         Int                            @default(0)
+  createdAt         DateTime                       @default(now())
+  updatedAt         DateTime                       @updatedAt
+  projectTemplate   ProjectTemplate                @relation(fields: [projectTemplateId], references: [id], onDelete: Cascade)
+  parent            ProjectTemplateSectionFolder?  @relation("ProjectTemplateSectionFolderTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children          ProjectTemplateSectionFolder[] @relation("ProjectTemplateSectionFolderTree")
+  sections          ProjectTemplateSection[]
+
+  @@index([projectTemplateId, parentId, sortOrder])
 }
 
 // ── Core models ──
@@ -233,6 +253,7 @@ model Project {
   updatedAt             DateTime              @updatedAt
   folder                ProjectFolder?        @relation(fields: [folderId], references: [id], onDelete: SetNull)
   sections              ProjectSection[]
+  sectionFolders        ProjectSectionFolder[]
   runs                  Run[]
   @@index([status, updatedAt])
   @@index([coverImageId])
@@ -256,6 +277,7 @@ model ProjectFolder {
 model ProjectSection {
   id                    String                @id @default(cuid())
   projectId             String
+  folderId              String?
   name                  String?
   sortOrder             Int                   @default(0)
   enabled               Boolean               @default(true)
@@ -276,11 +298,29 @@ model ProjectSection {
   createdAt             DateTime              @default(now())
   updatedAt             DateTime              @updatedAt
   project               Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  folder                ProjectSectionFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
   runs                  Run[]
   promptBlocks          PromptBlock[]
   changeLogs            SectionChangeLog[]
 
   @@index([projectId, sortOrder])
+  @@index([folderId])
+}
+
+model ProjectSectionFolder {
+  id          String                 @id @default(cuid())
+  projectId   String
+  parentId    String?
+  name        String
+  sortOrder   Int                    @default(0)
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+  project     Project                @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  parent      ProjectSectionFolder?  @relation("ProjectSectionFolderTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children    ProjectSectionFolder[] @relation("ProjectSectionFolderTree")
+  sections    ProjectSection[]
+
+  @@index([projectId, parentId, sortOrder])
 }
 
 model SectionChangeLog {

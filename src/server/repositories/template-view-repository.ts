@@ -7,6 +7,7 @@ import { formatDate } from "@/server/repositories/queue-data-repository";
 
 export type ProjectTemplateSectionData = {
   id: string;
+  folderId: string | null;
   sortOrder: number;
   name: string | null;
   notes: string | null;
@@ -33,6 +34,15 @@ export type ProjectTemplateSectionData = {
     bindingId?: string | null;
     groupBindingId?: string | null;
   }>;
+};
+
+export type ProjectTemplateSectionFolderItem = {
+  id: string;
+  name: string;
+  parentId: string | null;
+  sortOrder: number;
+  sectionCount: number;
+  childCount: number;
 };
 
 export type ProjectTemplateListItem = {
@@ -65,6 +75,7 @@ export type ProjectTemplateDetail = {
   id: string;
   name: string;
   description: string | null;
+  sectionFolders: ProjectTemplateSectionFolderItem[];
   sections: ProjectTemplateSectionData[];
 };
 
@@ -73,7 +84,20 @@ export async function getProjectTemplateDetail(
 ): Promise<ProjectTemplateDetail | null> {
   const template = await prisma.projectTemplate.findUnique({
     where: { id: templateId },
-    include: { sections: { orderBy: { sortOrder: "asc" } } },
+    include: {
+      sectionFolders: {
+        orderBy: [{ parentId: "asc" }, { sortOrder: "asc" }, { name: "asc" }],
+        include: {
+          _count: {
+            select: {
+              sections: true,
+              children: true,
+            },
+          },
+        },
+      },
+      sections: { orderBy: { sortOrder: "asc" } },
+    },
   });
   if (!template) return null;
 
@@ -81,8 +105,17 @@ export async function getProjectTemplateDetail(
     id: template.id,
     name: template.name,
     description: template.description,
+    sectionFolders: template.sectionFolders.map((folder) => ({
+      id: folder.id,
+      name: folder.name,
+      parentId: folder.parentId,
+      sortOrder: folder.sortOrder,
+      sectionCount: folder._count.sections,
+      childCount: folder._count.children,
+    })),
     sections: template.sections.map((s) => ({
       id: s.id,
+      folderId: s.folderId,
       sortOrder: s.sortOrder,
       name: s.name,
       notes: s.notes,

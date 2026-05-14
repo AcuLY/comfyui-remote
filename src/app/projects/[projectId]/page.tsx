@@ -15,6 +15,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       projectTitle={project.title}
       previousProject={project.previousProject}
       nextProject={project.nextProject}
+      sectionFolders={project.sectionFolders}
       sections={project.sections}
     />
   );

@@ -3,7 +3,7 @@ export { getQueueRuns, getQueueRunsPage, getRunningRuns, getFailedRuns, getRevie
 
 // Project view data
 export { listProjects, listProjectFolders, getProjectDetail, getProjectResults, getSectionResults, getProjectFormOptions, getProjectEditData } from "@/server/repositories/project-view-repository";
-export type { ProjectDetailSection, ProjectDetail, ProjectResultsData, SectionResultsData, ProjectFormCategory, ProjectFormOptions, PresetBinding, ProjectEditData, SectionBlockSummary } from "@/server/repositories/project-view-repository";
+export type { ProjectDetailSection, ProjectDetail, ProjectSectionFolderItem, ProjectResultsData, SectionResultsData, ProjectFormCategory, ProjectFormOptions, PresetBinding, ProjectEditData, SectionBlockSummary } from "@/server/repositories/project-view-repository";
 export { listSectionTrashItems as getSectionTrashItems, listTrashItems as getTrashItems } from "@/server/repositories/trash-repository";
 
 // Preset view data
@@ -31,7 +31,7 @@ export type {
 
 // Template view data
 export { listProjectTemplates, getProjectTemplateDetail } from "@/server/repositories/template-view-repository";
-export type { ProjectTemplateSectionData, ProjectTemplateListItem, ProjectTemplateDetail } from "@/server/repositories/template-view-repository";
+export type { ProjectTemplateSectionData, ProjectTemplateSectionFolderItem, ProjectTemplateListItem, ProjectTemplateDetail } from "@/server/repositories/template-view-repository";
 
 // Re-export from project-repository
 export type { ProjectCreateOptions } from "@/server/repositories/project-repository";

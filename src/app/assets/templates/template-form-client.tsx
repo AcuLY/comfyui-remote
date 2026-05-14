@@ -38,8 +38,13 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
+  createTemplateSectionFolder,
   copyProjectTemplateSection,
   createProjectTemplate,
+  deleteTemplateSectionFolder,
+  moveTemplateSectionsToFolder,
+  renameTemplateSectionFolder,
+  reorderTemplateSectionFolders,
   updateProjectTemplate,
 } from "@/lib/actions";
 import { resolveResolution } from "@/lib/aspect-ratio-utils";
@@ -48,6 +53,8 @@ import {
   SidebarSectionNav,
   useSyncedSidebarContent,
 } from "@/components/section-sidebar-nav";
+import { SectionFolderControls } from "@/components/section-folder-controls";
+import { MoveToFolderButton } from "@/app/assets/presets/folder-components";
 import { useScrollSpy } from "@/hooks/use-scroll-spy";
 import {
   Sidebar,
@@ -60,7 +67,7 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
-import type { ProjectTemplateSectionData } from "@/lib/server-data";
+import type { ProjectTemplateSectionData, ProjectTemplateSectionFolderItem } from "@/lib/server-data";
 import { type LoraEntry } from "@/lib/lora-types";
 import { DEFAULT_CHECKPOINT_NAME } from "@/lib/model-constants";
 
@@ -72,6 +79,7 @@ type Props = {
   templateId?: string;
   initialName?: string;
   initialDescription?: string | null;
+  initialSectionFolders?: ProjectTemplateSectionFolderItem[];
   initialSections?: ProjectTemplateSectionData[];
 };
 
@@ -164,6 +172,7 @@ export function TemplateFormClient({
   templateId,
   initialName = "",
   initialDescription = null,
+  initialSectionFolders = [],
   initialSections = [],
 }: Props) {
   const router = useRouter();
@@ -171,6 +180,7 @@ export function TemplateFormClient({
   const [description, setDescription] = useState(initialDescription ?? "");
   const [sections, setSections] =
     useState<ProjectTemplateSectionData[]>(initialSections);
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const savedMetaRef = useRef({
     name: initialName.trim(),
@@ -179,9 +189,17 @@ export function TemplateFormClient({
 
   const isEdit = !!templateId;
   const dndId = useId();
+  const visibleSections = useMemo(
+    () => sections.filter((section) => (section.folderId ?? null) === currentFolderId),
+    [sections, currentFolderId],
+  );
+  const visibleFolders = useMemo(
+    () => initialSectionFolders.filter((folder) => (folder.parentId ?? null) === currentFolderId),
+    [initialSectionFolders, currentFolderId],
+  );
   const sectionIds = useMemo(
-    () => sections.map((section) => section.id),
-    [sections],
+    () => visibleSections.map((section) => section.id),
+    [visibleSections],
   );
   const activeSectionId = useScrollSpy(sectionIds, {
     rootSelector: '[data-slot="sidebar-inset"]',
@@ -199,9 +217,10 @@ export function TemplateFormClient({
 
   // ── Section management ──
 
-  function createDefaultSection(index: number): ProjectTemplateSectionData {
+  function createDefaultSection(index: number, folderId: string | null): ProjectTemplateSectionData {
     return {
       id: `new-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+      folderId,
       sortOrder: index,
       name: null,
       notes: null,
@@ -226,7 +245,7 @@ export function TemplateFormClient({
       return;
     }
 
-    const nextSection = createDefaultSection(sections.length);
+    const nextSection = createDefaultSection(sections.length, isEdit ? currentFolderId : null);
     const nextSections = [...sections, nextSection];
     setSections(nextSections);
 
@@ -291,13 +310,21 @@ export function TemplateFormClient({
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
-    const oldIndex = sections.findIndex((s) => s.id === active.id);
-    const newIndex = sections.findIndex((s) => s.id === over.id);
+    const oldIndex = visibleSections.findIndex((s) => s.id === active.id);
+    const newIndex = visibleSections.findIndex((s) => s.id === over.id);
     if (oldIndex === -1 || newIndex === -1) return;
 
-    const nextSections = arrayMove(sections, oldIndex, newIndex).map(
-      (s, i) => ({ ...s, sortOrder: i }),
-    );
+    const reorderedVisibleSections = arrayMove(visibleSections, oldIndex, newIndex);
+    const visibleIdSet = new Set(reorderedVisibleSections.map((section) => section.id));
+    const visibleQueue = [...reorderedVisibleSections];
+    const sectionById = new Map(sections.map((section) => [section.id, section]));
+    const nextSections = sections
+      .map((section) =>
+        visibleIdSet.has(section.id)
+          ? visibleQueue.shift() ?? section
+          : sectionById.get(section.id) ?? section,
+      )
+      .map((section, index) => ({ ...section, sortOrder: index }));
     const previousSections = sections;
     setSections(nextSections);
 
@@ -306,6 +333,27 @@ export function TemplateFormClient({
         setSections(previousSections),
       );
     }
+  }
+
+  function handleMoveSections(sectionIds: string[], folderId: string | null) {
+    if (!isEdit || !templateId || sectionIds.length === 0) return;
+    const uniqueSectionIds = [...new Set(sectionIds)];
+    startTransition(async () => {
+      try {
+        await moveTemplateSectionsToFolder(templateId, uniqueSectionIds, folderId);
+        setSections((prev) =>
+          prev.map((section) =>
+            uniqueSectionIds.includes(section.id)
+              ? { ...section, folderId }
+              : section,
+          ),
+        );
+        toast.success(`已移动 ${uniqueSectionIds.length} 个小节`);
+        router.refresh();
+      } catch (e: unknown) {
+        toast.error(e instanceof Error ? e.message : "移动失败");
+      }
+    });
   }
 
   // ── Save ──
@@ -442,9 +490,23 @@ export function TemplateFormClient({
 
       {/* Sections list — sortable with dnd-kit */}
       <div className="space-y-3">
+        {isEdit && templateId && (
+          <SectionFolderControls
+            folders={initialSectionFolders}
+            items={sections}
+            currentFolderId={currentFolderId}
+            onNavigate={setCurrentFolderId}
+            onCreateFolder={(parentId, folderName) => createTemplateSectionFolder(templateId, parentId, folderName)}
+            onRenameFolder={renameTemplateSectionFolder}
+            onDeleteFolder={deleteTemplateSectionFolder}
+            onReorderFolders={(parentId, ids) => reorderTemplateSectionFolders(templateId, parentId, ids)}
+            onChanged={() => router.refresh()}
+          />
+        )}
+
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-zinc-300">
-            小节配置 ({sections.length})
+            小节配置 ({visibleSections.length}{visibleSections.length === sections.length ? "" : ` / ${sections.length}`})
           </span>
           <button
             type="button"
@@ -456,9 +518,9 @@ export function TemplateFormClient({
           </button>
         </div>
 
-        {sections.length === 0 && (
+        {visibleSections.length === 0 && visibleFolders.length === 0 && (
           <div className="rounded-lg border border-dashed border-white/10 p-4 text-center text-xs text-zinc-500">
-            暂无小节，点击上方按钮添加
+            {currentFolderId ? "此文件夹为空" : "暂无小节，点击上方按钮添加"}
           </div>
         )}
 
@@ -469,16 +531,18 @@ export function TemplateFormClient({
           onDragEnd={handleDragEnd}
         >
           <SortableContext
-            items={sections.map((s) => s.id)}
+            items={visibleSections.map((s) => s.id)}
             strategy={verticalListSortingStrategy}
           >
             <div className="grid grid-cols-1 gap-3 justify-items-center md:grid-cols-2">
-              {sections.map((section, si) => (
+              {visibleSections.map((section) => (
                 <SortableSectionCard
                   key={section.id}
                   section={section}
-                  index={si}
+                  index={sections.findIndex((item) => item.id === section.id)}
                   templateId={templateId}
+                  folders={initialSectionFolders}
+                  onMove={(folderId) => handleMoveSections([section.id], folderId)}
                   onRemove={() => removeSection(section.id)}
                   onCopy={() => copySection(section)}
                 />
@@ -535,12 +599,16 @@ function SortableSectionCard({
   section,
   index,
   templateId,
+  folders,
+  onMove,
   onRemove,
   onCopy,
 }: {
   section: ProjectTemplateSectionData;
   index: number;
   templateId?: string;
+  folders: ProjectTemplateSectionFolderItem[];
+  onMove: (folderId: string | null) => void;
   onRemove: () => void;
   onCopy: () => void;
 }) {
@@ -606,6 +674,7 @@ function SortableSectionCard({
         <span className="min-w-0 flex-1 truncate text-sm font-medium text-white">
           {section.name || "未命名小节"}
         </span>
+        <MoveToFolderButton currentFolderId={section.folderId} folders={folders} onMove={onMove} />
         <button
           onClick={(e) => {
             e.preventDefault();

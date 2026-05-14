@@ -12,14 +12,20 @@ import {
 } from "@/lib/actions";
 import { toast } from "sonner";
 
-export function AddSectionButton({ projectId }: { projectId: string }) {
+export function AddSectionButton({
+  projectId,
+  folderId = null,
+}: {
+  projectId: string;
+  folderId?: string | null;
+}) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
   function handleAdd() {
     startTransition(async () => {
       try {
-        await addSection(projectId);
+        await addSection(projectId, undefined, folderId);
         router.refresh();
         toast.success("小节已添加");
       } catch (error: unknown) {

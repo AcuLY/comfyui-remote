@@ -134,9 +134,11 @@ export type ProjectDetail = {
   status: string;
   previousProject: { id: string; title: string } | null;
   nextProject: { id: string; title: string } | null;
+  sectionFolders: ProjectSectionFolderItem[];
   sections: {
     id: string;
     name: string;
+    folderId: string | null;
     batchSize: number | null;
     aspectRatio: string | null;
     seedPolicy1: string | null;
@@ -153,6 +155,15 @@ export type ProjectDetail = {
   }[];
 };
 
+export type ProjectSectionFolderItem = {
+  id: string;
+  name: string;
+  parentId: string | null;
+  sortOrder: number;
+  sectionCount: number;
+  childCount: number;
+};
+
 export async function getProjectDetail(projectId: string): Promise<ProjectDetail | null> {
   const [project, projectNavItems] = await Promise.all([
     prisma.project.findUnique({
@@ -163,6 +174,21 @@ export async function getProjectDetail(projectId: string): Promise<ProjectDetail
         status: true,
         presetBindings: true,
         projectLevelOverrides: true,
+        sectionFolders: {
+          orderBy: [{ parentId: "asc" }, { sortOrder: "asc" }, { name: "asc" }],
+          select: {
+            id: true,
+            name: true,
+            parentId: true,
+            sortOrder: true,
+            _count: {
+              select: {
+                sections: true,
+                children: true,
+              },
+            },
+          },
+        },
         sections: {
           orderBy: { sortOrder: "asc" },
           include: {
@@ -250,6 +276,14 @@ export async function getProjectDetail(projectId: string): Promise<ProjectDetail
     status: project.status,
     previousProject,
     nextProject,
+    sectionFolders: project.sectionFolders.map((folder) => ({
+      id: folder.id,
+      name: folder.name,
+      parentId: folder.parentId,
+      sortOrder: folder.sortOrder,
+      sectionCount: folder._count.sections,
+      childCount: folder._count.children,
+    })),
     sections: project.sections.map((pos) => {
       const positiveBlockCount = pos.promptBlocks.filter((b) => b.positive?.trim()).length;
       const negativeBlockCount = pos.promptBlocks.filter((b) => b.negative?.trim()).length;
@@ -257,6 +291,7 @@ export async function getProjectDetail(projectId: string): Promise<ProjectDetail
       return {
         id: pos.id,
         name: pos.name || `小节 ${pos.sortOrder}`,
+        folderId: pos.folderId,
         batchSize: pos.batchSize ?? projectDefaultBatchSize,
         aspectRatio: pos.aspectRatio,
         seedPolicy1: pos.seedPolicy1,

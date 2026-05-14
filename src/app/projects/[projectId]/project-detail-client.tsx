@@ -3,10 +3,19 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { ImageIcon, Plus } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { useScrollSpy } from "@/hooks/use-scroll-spy";
 import { getPreferredScrollContainer } from "@/lib/scroll-container";
+import {
+  createProjectSectionFolder,
+  deleteProjectSectionFolder,
+  renameProjectSectionFolder,
+  reorderProjectSectionFolders,
+} from "@/lib/actions";
+import { SectionFolderControls } from "@/components/section-folder-controls";
+import type { ProjectSectionFolderItem } from "@/lib/server-data";
 import { AddSectionButton, ImportTemplateButton } from "./section-actions";
 import { AppSidebar } from "./app-sidebar";
 import { SectionCards, type Section } from "./section-cards";
@@ -16,6 +25,7 @@ type ProjectDetailClientProps = {
   projectTitle: string;
   previousProject: { id: string; title: string } | null;
   nextProject: { id: string; title: string } | null;
+  sectionFolders: ProjectSectionFolderItem[];
   sections: Section[];
 };
 
@@ -36,10 +46,21 @@ export function ProjectDetailClient({
   projectTitle,
   previousProject,
   nextProject,
+  sectionFolders,
   sections,
 }: ProjectDetailClientProps) {
+  const router = useRouter();
   const [compact, setCompact] = useState(false);
-  const sectionIds = useMemo(() => sections.map((section) => section.id), [sections]);
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+  const visibleSections = useMemo(
+    () => sections.filter((section) => (section.folderId ?? null) === currentFolderId),
+    [sections, currentFolderId],
+  );
+  const visibleFolders = useMemo(
+    () => sectionFolders.filter((folder) => (folder.parentId ?? null) === currentFolderId),
+    [sectionFolders, currentFolderId],
+  );
+  const sectionIds = useMemo(() => visibleSections.map((section) => section.id), [visibleSections]);
   const activeSectionId = useScrollSpy(sectionIds, {
     rootSelector: '[data-slot="sidebar-inset"]',
   });
@@ -202,6 +223,10 @@ export function ProjectDetailClient({
     };
   }, [projectId]);
 
+  function navigateFolder(folderId: string | null) {
+    setCurrentFolderId(folderId);
+  }
+
   return (
     <SidebarProvider
       style={{
@@ -215,7 +240,7 @@ export function ProjectDetailClient({
         projectTitle={projectTitle}
         previousProject={previousProject}
         nextProject={nextProject}
-        sections={sections}
+        sections={visibleSections}
         compact={compact}
         onToggleCompact={handleToggleCompact}
         activeSectionId={activeSectionId}
@@ -229,7 +254,7 @@ export function ProjectDetailClient({
             <SidebarTrigger className="-ml-1 hidden md:inline-flex" />
             <div className="flex-1" />
             <div className="grid w-full grid-cols-1 gap-1.5 sm:w-auto sm:grid-cols-4 sm:gap-2" style={{ maxWidth: "36rem" }}>
-              <AddSectionButton projectId={projectId} />
+              <AddSectionButton projectId={projectId} folderId={currentFolderId} />
               <ImportTemplateButton projectId={projectId} />
               <Link
                 href={`/projects/${projectId}/results`}
@@ -246,15 +271,29 @@ export function ProjectDetailClient({
             </div>
           </div>
 
+          <SectionFolderControls
+            folders={sectionFolders}
+            items={sections}
+            currentFolderId={currentFolderId}
+            onNavigate={navigateFolder}
+            onCreateFolder={(parentId, name) => createProjectSectionFolder(projectId, parentId, name)}
+            onRenameFolder={renameProjectSectionFolder}
+            onDeleteFolder={deleteProjectSectionFolder}
+            onReorderFolders={(parentId, ids) => reorderProjectSectionFolders(projectId, parentId, ids)}
+            onChanged={() => router.refresh()}
+          />
+
           {/* Section cards or empty state */}
-          {sections.length === 0 ? (
+          {visibleSections.length === 0 && visibleFolders.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-white/10 p-6 text-center text-sm text-zinc-500">
-              暂无小节，点击上方按钮添加
+              {currentFolderId ? "此文件夹为空" : "暂无小节，点击上方按钮添加"}
             </div>
           ) : (
             <SectionCards
               projectId={projectId}
-              sections={sections}
+              sections={visibleSections}
+              allSectionIds={sections.map((section) => section.id)}
+              folders={sectionFolders}
               compact={compact}
               setCardRef={setCardRef}
             />

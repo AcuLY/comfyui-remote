@@ -43,7 +43,7 @@ export type ReorderSectionsResult =
 // 添加小节（Section）
 // ---------------------------------------------------------------------------
 
-export async function addSection(projectId: string, name?: string): Promise<string> {
+export async function addSection(projectId: string, name?: string, folderId?: string | null): Promise<string> {
   // 获取项目信息以创建初始 PromptBlocks
   const project = await prisma.project.findUnique({
     where: { id: projectId },
@@ -57,6 +57,13 @@ export async function addSection(projectId: string, name?: string): Promise<stri
   });
 
   if (!project) throw new Error("PROJECT_NOT_FOUND");
+  if (folderId) {
+    const folder = await prisma.projectSectionFolder.findFirst({
+      where: { id: folderId, projectId },
+      select: { id: true },
+    });
+    if (!folder) throw new Error("SECTION_FOLDER_NOT_FOUND");
+  }
 
   const sortOrder = project._count.sections + 1;
 
@@ -86,6 +93,7 @@ export async function addSection(projectId: string, name?: string): Promise<stri
   const section = await prisma.projectSection.create({
     data: {
       projectId: projectId,
+      folderId: folderId ?? null,
       sortOrder,
       enabled: true,
       name: name || null,
@@ -337,6 +345,7 @@ export async function copySection(sectionId: string): Promise<string | null> {
   const newSection = await prisma.projectSection.create({
     data: {
       projectId: section.projectId,
+      folderId: section.folderId,
       sortOrder: count + 1,
       enabled: section.enabled,
       name: section.name ? `${section.name} (副本)` : null,

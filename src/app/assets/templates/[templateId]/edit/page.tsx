@@ -16,6 +16,7 @@ export default async function EditTemplatePage({
       templateId={template.id}
       initialName={template.name}
       initialDescription={template.description}
+      initialSectionFolders={template.sectionFolders}
       initialSections={template.sections}
     />
   );

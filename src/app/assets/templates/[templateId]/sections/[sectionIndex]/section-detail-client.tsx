@@ -250,6 +250,7 @@ export function TemplateSectionDetailClient({
   const buildUpdatedSection = useCallback((): ProjectTemplateSectionData => {
     return {
       id: initialSection.id,
+      folderId: initialSection.folderId,
       sortOrder: sectionIndex,
       name: name.trim() || null,
       notes: notes.trim() || null,
@@ -270,6 +271,7 @@ export function TemplateSectionDetailClient({
     aspectRatio,
     batchSize,
     initialSection.extraParams,
+    initialSection.folderId,
     initialSection.id,
     ks1,
     ks2,

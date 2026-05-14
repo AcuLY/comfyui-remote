@@ -9,5 +9,6 @@ export * from "./actions/preset-group";
 export * from "./actions/preset-folder";
 export * from "./actions/prompt-block";
 export * from "./actions/section";
+export * from "./actions/section-folder";
 export * from "./actions/template";
 export * from "./actions/lora";
