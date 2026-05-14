@@ -204,7 +204,7 @@ Do not:
 ## 9. Implementation Notes For `/design-demos`
 
 - The routed demo shell should use this glass system while keeping all CSS inside `src/app/design-demos/**`.
-- Basic controls must use the existing primitives in `src/app/design-demos/ui/**` (`Button`, `ButtonLink`, `Field`, `TextAreaField`, `SelectLike`, `Checkbox`, `Switch`, tabs, badges, feedback/toast, and comparable shared controls). Feature and page code must not hand-roll raw `<button>`, `<input>`, `<textarea>`, `<select>`, checkbox/switch, tab, badge, toast, or icon-button implementations unless the task is explicitly to create or update the shared primitive itself.
+- Basic controls must use the existing primitives in `src/app/design-demos/shared/primitives/**` (`Button`, `ButtonLink`, `Field`, `TextAreaField`, `SelectLike`, `Checkbox`, `Switch`, tabs, badges, feedback/toast, and comparable shared controls). Feature and page code must not hand-roll raw `<button>`, `<input>`, `<textarea>`, `<select>`, checkbox/switch, tab, badge, toast, or icon-button implementations unless the task is explicitly to create or update the shared primitive itself.
 - Shared demo primitives such as `.button` must be normalized after page-specific style imports when needed. Page styles may narrow layout or flex behavior, but must not override shared button height, text size, icon size, or tone scale.
 - Existing parity work should stay intact: `/runs`, `/projects`, `/presets`, `/models`, `/templates`, and settings routes remain routeable.
 - The shell can use mock data, but visible UI should read as final product state.

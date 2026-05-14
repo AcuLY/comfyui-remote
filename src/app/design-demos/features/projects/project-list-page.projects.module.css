@@ -164,35 +164,7 @@
 
 .projectFolderWorkspace .projectListGrid {
   display: grid;
-  gap: 0;
-}
-
-.projectFolderWorkspace .projectListCard {
-  position: relative;
-  display: grid;
-  grid-template-columns: 30px minmax(0, 1fr);
-  grid-template-areas: "controls content";
-  align-items: stretch;
   gap: 10px;
-  border: 1px solid transparent;
-  border-bottom-color: var(--demo-border);
-  border-radius: 8px;
-  background: transparent;
-  color: inherit;
-  padding: 10px;
-  transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
-}
-
-.projectFolderWorkspace .projectListCard:hover,
-.projectFolderWorkspace .projectListCard:focus-within {
-  border-color: var(--demo-glass-accent-border);
-  background: var(--demo-field-bg);
-}
-
-.projectFolderWorkspace .projectListCardSelected {
-  border-color: rgba(0, 217, 146, 0.34);
-  background: var(--demo-selected);
-  box-shadow: 0 0 0 1px rgba(0, 217, 146, 0.1) inset;
 }
 
 .projectFolderEmpty {
@@ -246,11 +218,6 @@
   .projectFolderWorkspace {
     padding: 10px;
   }
-
-  .projectFolderWorkspace .projectListCard {
-    grid-template-columns: 30px minmax(0, 1fr);
-    grid-template-areas: "controls content";
-  }
 }
 
 @keyframes demoSkeleton {
@@ -269,28 +236,5 @@
 @keyframes spin {
   to {
     transform: rotate(360deg);
-  }
-}
-
-.showcaseProjectListPreview.projectFolderWorkspace {
-  padding: 10px;
-}
-
-.showcaseProjectListPreview .projectListGrid {
-  gap: 10px;
-}
-
-.showcaseProjectListPreview.projectFolderWorkspace .projectListCard {
-  grid-template-columns: 30px minmax(0, 1fr);
-  grid-template-areas: "controls content";
-  gap: 10px;
-  border-color: var(--demo-border);
-  border-radius: 10px;
-}
-
-@media (max-width: 639px) {
-  .showcaseProjectListPreview.projectFolderWorkspace .projectListCard {
-    grid-template-columns: 30px minmax(0, 1fr);
-    grid-template-areas: "controls content";
   }
 }

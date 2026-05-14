@@ -114,6 +114,26 @@ function sourceFilesUnder(relativeDir: string) {
   return files;
 }
 
+function filesUnder(relativeDir: string, extensionPattern: RegExp) {
+  const root = resolve(designDemosDir, relativeDir);
+  const files: string[] = [];
+
+  function visit(dir: string) {
+    for (const entry of readdirSync(dir)) {
+      const path = resolve(dir, entry);
+      const stats = statSync(path);
+      if (stats.isDirectory()) {
+        visit(path);
+      } else if (extensionPattern.test(path)) {
+        files.push(path);
+      }
+    }
+  }
+
+  visit(root);
+  return files;
+}
+
 function assertNoForbiddenImports(relativeDir: string, forbiddenTargets: string[]) {
   const importPattern = /(?:import|export)\s+(?:type\s+)?[^"']*?\sfrom\s+["']([^"']+)["']/g;
 
@@ -227,6 +247,23 @@ for (const patternName of sharedPatternsThatNeedFeatureUse) {
     new RegExp(`(<${patternName}\\b|\\b${patternName}\\b)`),
     `${patternName} must be used by at least one feature, not only by showcase samples`,
   );
+}
+
+for (const cssPath of filesUnder("features", /\.css$/)) {
+  const source = readFileSync(cssPath, "utf8");
+  const relativePath = relative(designDemosDir, cssPath);
+  assert.doesNotMatch(
+    source,
+    /\[data-demo-pattern=/,
+    `${relative(process.cwd(), cssPath)} must not target shared pattern internals through data-demo-pattern selectors`,
+  );
+  if (relativePath !== "features/projects/project-list-item.projects.module.css") {
+    assert.doesNotMatch(
+      source,
+      /\.(projectDragHandle|projectItemActions|projectItemControls|projectListCard|projectListCardSelected|projectListContent|projectListMeta|projectListOpenArea|projectListRecentResult|projectListTitleLink|projectListTitleRow|projectListTitleSlot|projectSelectCheckbox|projectStatusGroup|projectUpdateDate)\b/,
+      `${relative(process.cwd(), cssPath)} must not style ProjectListItem-owned CSS module classes`,
+    );
+  }
 }
 
 for (const page of showcasePages) {

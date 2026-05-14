@@ -12,22 +12,81 @@ import { RouteHeaderSurface } from "../../shell/header-surface";
 import { PageHeader } from "../../shared/primitives";
 import s from "./headers-page.module.css";
 
+type HeaderMode = "expanded" | "collapsed" | "mobile";
+
+const modeLabels: Record<HeaderMode, { label: string; state: string; summary: string }> = {
+  expanded: { label: "桌面展开", state: "完整上下文", summary: "标题、状态、摘要、元数据和命令栏完整展示" },
+  collapsed: { label: "桌面折叠", state: "滚动中", summary: "保留标题、紧凑状态或元数据、高频操作" },
+  mobile: { label: "移动端", state: "合并顶栏", summary: "标题截断、返回和主操作固定为触控尺寸" },
+};
+
+function summarizeActions(spec: HeaderSpec) {
+  const primary = spec.actions?.map((item) => item.label).join(" / ") || "无主操作";
+  const secondary = spec.secondaryActions?.length ? `${spec.secondaryActions.length} 个二级操作` : "无二级操作";
+  return `${primary}；${secondary}`;
+}
+
+function summarizeStructure(spec: HeaderSpec) {
+  const back = spec.back ? `返回：${spec.back.label}` : "无返回";
+  const status = spec.status ? `状态：${spec.status}` : "无状态";
+  const meta = spec.meta?.length ? `元数据：${spec.meta.join(" / ")}` : "无元数据";
+  return { back, status, meta };
+}
+
+function AuditReadout({ spec }: { spec: HeaderSpec }) {
+  const structure = summarizeStructure(spec);
+
+  return (
+    <dl className={s.auditReadout} aria-label={`${spec.title} header 审核摘要`}>
+      <div>
+        <dt>Group</dt>
+        <dd>{spec.group}</dd>
+      </div>
+      <div>
+        <dt>Route</dt>
+        <dd>{displayHeaderRoute(spec.route)}</dd>
+      </div>
+      <div>
+        <dt>Back</dt>
+        <dd>{structure.back}</dd>
+      </div>
+      <div>
+        <dt>Status</dt>
+        <dd>{structure.status}</dd>
+      </div>
+      <div>
+        <dt>Actions</dt>
+        <dd>{summarizeActions(spec)}</dd>
+      </div>
+      <div>
+        <dt>Meta</dt>
+        <dd>{structure.meta}</dd>
+      </div>
+    </dl>
+  );
+}
+
 function HeaderSurface({
   mode,
   spec,
 }: {
-  mode: "expanded" | "collapsed" | "mobile";
+  mode: HeaderMode;
   spec: HeaderSpec;
 }) {
   const isCollapsed = mode === "collapsed";
   const isMobile = mode === "mobile";
   const titleId = `${spec.key}-${mode}-title`;
+  const modeLabel = modeLabels[mode];
 
   return (
     <div className={s.previewFrame}>
       <div className={s.previewChrome}>
-        <span>{mode === "expanded" ? "桌面展开" : mode === "collapsed" ? "桌面折叠" : "移动端"}</span>
-        <em>{mode === "collapsed" ? "向下滚动" : mode === "expanded" ? "向上滚动" : "合并顶栏"}</em>
+        <span>{modeLabel.label}</span>
+        <em>{modeLabel.state}</em>
+      </div>
+      <div className={s.stateLabel} aria-label={`${modeLabel.label} 状态说明`}>
+        <strong>{modeLabel.state}</strong>
+        <span>{modeLabel.summary}</span>
       </div>
       <div className={cx(s.previewStage, isCollapsed && s.previewStageCollapsed, isMobile && s.previewStageMobile)}>
         <RouteHeaderSurface headingLevel={3} mode={mode} spec={spec} titleId={titleId} />
@@ -46,13 +105,16 @@ function PageHeaderCard({ spec }: { spec: HeaderSpec }) {
     <article className={s.headerCard}>
       <div className={s.cardIntro}>
         <div>
-          <span>{spec.group}</span>
+          <span>
+            {spec.group} / {displayHeaderRoute(spec.route)}
+          </span>
           <h2>{spec.title}</h2>
         </div>
         <Link className={s.routeLink} href={demoHref(spec.route)}>
           {displayHeaderRoute(spec.route)}
         </Link>
       </div>
+      <AuditReadout spec={spec} />
       <div className={s.stateGrid}>
         <HeaderSurface mode="expanded" spec={spec} />
         <HeaderSurface mode="collapsed" spec={spec} />

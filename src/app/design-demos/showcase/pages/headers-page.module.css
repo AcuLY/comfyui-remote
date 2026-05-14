@@ -2,6 +2,7 @@
   display: grid;
   min-width: 0;
   gap: 18px;
+  overflow-x: hidden;
 }
 
 .principles {
@@ -54,12 +55,12 @@
   contain-intrinsic-size: auto 420px;
   display: grid;
   min-width: 0;
-  gap: 12px;
+  gap: 10px;
   border: 1px solid var(--demo-border);
-  border-radius: 14px;
+  border-radius: 10px;
   background: var(--demo-surface);
   box-shadow: var(--demo-glass-shadow);
-  padding: 14px;
+  padding: 12px;
 }
 
 .cardIntro {
@@ -76,9 +77,14 @@
 }
 
 .cardIntro span {
+  min-width: 0;
+  overflow: hidden;
   color: var(--demo-green);
   font-size: 11px;
   font-weight: 650;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .cardIntro h2 {
@@ -95,9 +101,10 @@
 
 .routeLink {
   max-width: 240px;
+  min-width: 0;
   overflow: hidden;
   border: 1px solid var(--demo-border);
-  border-radius: 999px;
+  border-radius: 8px;
   background: var(--demo-field-bg);
   color: var(--demo-muted);
   font-size: 11px;
@@ -105,14 +112,63 @@
   padding: 7px 10px;
   text-decoration: none;
   text-overflow: ellipsis;
+  touch-action: manipulation;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    color 150ms ease;
   white-space: nowrap;
 }
 
 .routeLink:hover,
 .routeLink:focus-visible {
+  background: color-mix(in srgb, var(--demo-selected) 58%, transparent);
   border-color: var(--demo-glass-accent-border);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--demo-green) 18%, transparent);
   color: var(--demo-text);
   outline: none;
+}
+
+.auditReadout {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+}
+
+.auditReadout div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+  border: 1px solid color-mix(in srgb, var(--demo-border) 78%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--demo-panel-2) 82%, transparent);
+  padding: 7px 8px;
+}
+
+.auditReadout dt,
+.auditReadout dd {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.auditReadout dt {
+  color: var(--demo-faint);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.auditReadout dd {
+  margin: 0;
+  color: var(--demo-muted);
+  font-size: 11px;
+  line-height: 1.25;
 }
 
 .stateGrid {
@@ -126,18 +182,20 @@
   min-width: 0;
   overflow: hidden;
   border: 1px solid var(--demo-border);
-  border-radius: 12px;
+  border-radius: 10px;
   background:
-    linear-gradient(180deg, var(--demo-field-bg), transparent 72px),
+    linear-gradient(180deg, color-mix(in srgb, var(--demo-field-bg) 88%, transparent), transparent 88px),
     var(--demo-panel-2);
 }
 
 .previewChrome {
   display: flex;
+  min-width: 0;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
   border-bottom: 1px solid var(--demo-border);
+  background: color-mix(in srgb, var(--demo-panel) 72%, transparent);
   color: var(--demo-faint);
   font-size: 10px;
   line-height: 1;
@@ -156,13 +214,48 @@
   font-style: normal;
 }
 
+.stateLabel {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+  border-bottom: 1px solid color-mix(in srgb, var(--demo-border) 70%, transparent);
+  background: color-mix(in srgb, var(--demo-field-bg) 58%, transparent);
+  padding: 7px 9px;
+}
+
+.stateLabel strong,
+.stateLabel span {
+  min-width: 0;
+  overflow: hidden;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stateLabel strong {
+  border: 1px solid var(--demo-glass-accent-border);
+  border-radius: 999px;
+  background: var(--demo-selected);
+  color: var(--demo-green);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 4px 7px;
+}
+
+.stateLabel span {
+  color: var(--demo-muted);
+  font-size: 10px;
+}
+
 .previewStage {
   position: relative;
+  isolation: isolate;
   min-height: 190px;
   overflow: hidden;
   background:
-    radial-gradient(circle at 20% 16%, color-mix(in srgb, var(--demo-green-soft) 72%, transparent), transparent 44%),
-    linear-gradient(180deg, var(--demo-field-bg), transparent 90px),
+    linear-gradient(180deg, color-mix(in srgb, var(--demo-field-bg) 78%, transparent), transparent 90px),
     var(--demo-panel-2);
 }
 
@@ -194,7 +287,7 @@
   width: min(86%, 520px);
   height: 34px;
   border: 1px solid color-mix(in srgb, var(--demo-border) 70%, transparent);
-  border-radius: 10px;
+  border-radius: 8px;
   background: color-mix(in srgb, var(--demo-panel) 72%, transparent);
   box-shadow: inset 0 1px 0 var(--demo-inset-highlight);
 }
@@ -252,6 +345,10 @@
   .reviewNotes {
     grid-template-columns: 1fr;
   }
+
+  .auditReadout {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 760px) {
@@ -266,5 +363,24 @@
 
   .headerCard {
     padding: 10px;
+  }
+
+  .auditReadout {
+    grid-template-columns: 1fr;
+  }
+
+  .stateLabel {
+    grid-template-columns: 1fr;
+    gap: 5px;
+  }
+
+  .stateLabel strong {
+    justify-self: start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .routeLink {
+    transition: none;
   }
 }

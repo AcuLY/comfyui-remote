@@ -26,11 +26,6 @@
   line-height: 1.45;
 }
 
-.projectListCard > .small {
-  justify-self: end;
-  white-space: nowrap;
-}
-
 @keyframes demoSpin {
   to {
     transform: rotate(360deg);
@@ -58,13 +53,6 @@
   to {
     opacity: 0;
     transform: translateY(-8px) scale(0.98);
-  }
-}
-
-@media (max-width: 900px) {
-
-  .projectListOpenArea > .small {
-    justify-self: start;
   }
 }
 
@@ -179,12 +167,6 @@
 
 @media (min-width: 640px) and (max-width: 1023px) {
 
-  .projectListCard > .small {
-    grid-column: 2;
-    justify-content: flex-start;
-    justify-self: start;
-  }
-
   .projectSectionShell {
     grid-template-columns: minmax(0, 1fr) minmax(132px, 160px);
   }
@@ -199,12 +181,6 @@
 }
 
 @media (max-width: 639px) {
-
-  .projectListCard > .small {
-    grid-column: 2;
-    justify-content: flex-start;
-    justify-self: start;
-  }
 
   .projectSectionShell {
     grid-template-columns: minmax(96px, 31vw) minmax(0, 1fr);
@@ -264,21 +240,5 @@
 @keyframes spin {
   to {
     transform: rotate(360deg);
-  }
-}
-
-.showcaseProjectListPreview .projectListOpenArea > .small {
-  grid-column: 2;
-  justify-self: start;
-}
-
-.showcaseProjectListPreview .projectListOpenArea > .small {
-  white-space: nowrap;
-}
-
-@media (max-width: 639px) {
-
-  .showcaseProjectListPreview .projectListOpenArea > .small {
-    grid-column: 1;
   }
 }

@@ -22,11 +22,6 @@
   line-height: 1.45;
 }
 
-.projectListCard > .small {
-  justify-self: end;
-  white-space: nowrap;
-}
-
 @keyframes demoSpin {
   to {
     transform: rotate(360deg);
@@ -54,13 +49,6 @@
   to {
     opacity: 0;
     transform: translateY(-8px) scale(0.98);
-  }
-}
-
-@media (max-width: 900px) {
-
-  .projectListOpenArea > .small {
-    justify-self: start;
   }
 }
 
@@ -158,12 +146,6 @@
 
 @media (min-width: 640px) and (max-width: 1023px) {
 
-  .projectListCard > .small {
-    grid-column: 2;
-    justify-content: flex-start;
-    justify-self: start;
-  }
-
   .railItem {
     padding: 7px;
   }
@@ -174,12 +156,6 @@
 }
 
 @media (max-width: 639px) {
-
-  .projectListCard > .small {
-    grid-column: 2;
-    justify-content: flex-start;
-    justify-self: start;
-  }
 
   .projectSectionShell > .sectionRail {
     grid-column: 1;

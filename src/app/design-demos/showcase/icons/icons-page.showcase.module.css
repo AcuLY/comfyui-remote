@@ -109,7 +109,6 @@
 .showcasePage .projectFolderBreadcrumbs :where([data-demo-ui-button="true"]),
 .showcasePage .projectFolderGrip:where([data-demo-ui-button="true"]),
 .showcasePage .projectFolderRowActions :where([data-demo-ui-button="true"]),
-.showcasePage .projectItemActions :where([data-demo-ui-button="true"]),
 .showcasePage .projectMoveMenu > :where([data-demo-ui-button="true"]),
 .showcasePage .projectSelectButton:where([data-demo-ui-button="true"]),
 .showcasePage .dragHandle:where([data-demo-ui-button="true"]),
@@ -124,7 +123,6 @@
 
 .showcasePage .projectFolderGrip:where([data-demo-ui-button-icon-only="true"]),
 .showcasePage .projectFolderRowActions :where([data-demo-ui-button-icon-only="true"]),
-.showcasePage .projectItemActions :where([data-demo-ui-button-icon-only="true"]),
 .showcasePage .projectSelectButton:where([data-demo-ui-button-icon-only="true"]),
 .showcasePage .dragHandle:where([data-demo-ui-button-icon-only="true"]),
 .showcasePage .sectionSelectButton:where([data-demo-ui-button-icon-only="true"]) {

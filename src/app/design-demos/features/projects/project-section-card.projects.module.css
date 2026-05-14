@@ -53,7 +53,6 @@
   width: 86px;
 }
 
-.projectListRecentResult .recentResultImages,
 .sectionRecentResult .recentResultImages {
   width: min(270px, 100%);
 }
@@ -90,7 +89,7 @@
 
 @media (max-width: 639px) {
 
-  .projectListRecentResult .recentResultImages {
+  .sectionRecentResult .recentResultImages {
     grid-column: auto;
     grid-row: auto;
   }
