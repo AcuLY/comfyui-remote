@@ -1,4 +1,4 @@
-import type { DemoImage } from "../design-demo-data";
+import type { DemoImage } from "../data";
 
 function svgImageDataUri(label: string, hue: number) {
   const svg = `

@@ -1,3 +1,2 @@
-export { DemoFeedbackProvider } from "../../ui/feedback";
-export { OperationStateStrip } from "../../ui/operation-state-strip";
-export { SaveStatusPill } from "../../section-editor-header";
+export { DemoFeedbackProvider } from "./provider";
+export { OperationStateStrip } from "./operation-state-strip";

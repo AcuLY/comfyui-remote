@@ -3,9 +3,9 @@
 import { Check, Copy, Edit3, FileText, FolderInput, History, Home, Play, Plus, Search, Settings, Star, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 
-import type { DemoData } from "../../design-demo-data";
-import { buildHeaderSpecs } from "../../routing/route-header-specs";
-import { RouteHeaderSurface } from "../../route-header-surface";
+import type { DemoData } from "../../data";
+import { buildHeaderSpecs } from "../../routing/header-specs";
+import { RouteHeaderSurface } from "../../shell/header-surface";
 import { DimensionsReadout, HistoryDiffRow, KSamplerCard, LoraColumn, LoraRow, type LoraRowData, PresetBindingRow, PromptBlockRow, SpecRow, SpecSection, StepperInput } from "../../features/projects";
 import { makeImages } from "../helpers";
 import { Button, Checkbox, DemoTabs, Field, MetricCard, PageHeader, SegmentedControl, StatusBadge, Switch, TextAreaField } from "../../shared/primitives";

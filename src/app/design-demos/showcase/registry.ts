@@ -1,24 +1,16 @@
-export type ShowcaseFamilyId =
-  | "controls"
-  | "surfaces"
-  | "unit-items"
-  | "folders"
-  | "batch-actions"
-  | "generation-params"
-  | "preset-prompt-lora"
-  | "taxonomy-history"
-  | "images"
-  | "runs"
-  | "system"
-  | "headers"
-  | "icons";
+import {
+  SHOWCASE_FAMILY_ROUTES,
+  SHOWCASE_ROUTE_METADATA,
+  type ShowcaseFamilyId,
+  type ShowcaseRouteMetadata,
+} from "../routing/showcase-routes";
+
+export { SHOWCASE_FAMILY_ROUTES };
+export type { ShowcaseFamilyId };
 
 export type ShowcaseComponentStatus = "implemented" | "adapter" | "specialty";
 
-export type ShowcaseFamily = {
-  id: ShowcaseFamilyId;
-  route: string;
-  title: string;
+export type ShowcaseFamily = ShowcaseRouteMetadata & {
   summary: string;
   intent: string;
 };
@@ -34,115 +26,65 @@ export type ShowcaseComponentEntry = {
   exclusion?: string;
 };
 
-export const SHOWCASE_FAMILIES = [
-  {
-    id: "controls",
-    route: "/component-showcase-controls",
-    title: "基础操作控件",
+const SHOWCASE_FAMILY_DETAILS: Record<ShowcaseFamilyId, Pick<ShowcaseFamily, "summary" | "intent">> = {
+  controls: {
     summary: "按钮、选择、切换、字段和状态徽标等最底层交互控件。",
     intent: "只审核控件本体的尺寸、状态、图标、可读性和响应式表现，不承载页面业务结构。",
   },
-  {
-    id: "surfaces",
-    route: "/component-showcase-surfaces",
-    title: "页面骨架、容器与空状态",
+  surfaces: {
     summary: "页面标题、连续工作区、编辑区块、右侧详情栏、空状态和加载骨架。",
     intent: "审核工作台页面的结构层级和容器密度，避免卡片套卡片。",
   },
-  {
-    id: "unit-items",
-    route: "/component-showcase-unit-items",
-    title: "单元行项 / List Item 家族",
+  "unit-items": {
     summary: "项目、小节、模板、预设、运行任务等可浏览、可选择、可操作的行项。",
     intent: "把跨页面重复的对象摘要行放在一起审，统一拖拽、勾选、主信息、元信息和行尾操作。",
   },
-  {
-    id: "folders",
-    route: "/component-showcase-folders",
-    title: "文件夹、路径与移动目标",
+  folders: {
     summary: "项目、预设、模型和批量创建浏览器中的文件夹、路径、返回上级和移动目标。",
     intent: "统一所有文件夹浏览和移动目标选择模式，避免每个页面各写一套文件管理 UI。",
   },
-  {
-    id: "batch-actions",
-    route: "/component-showcase-batch-actions",
-    title: "批量选择、工具栏与操作反馈",
+  "batch-actions": {
     summary: "已选数量、全选、移动、删除、撤销、操作状态条、toast 和保存状态。",
     intent: "审核批量操作的危险级别、按钮密度、禁用态和反馈一致性。",
   },
-  {
-    id: "generation-params",
-    route: "/component-showcase-generation-params",
-    title: "生成参数与小节配置",
+  "generation-params": {
     summary: "画幅、尺寸、checkpoint、KSampler、batch、放大和小节参数。",
     intent: "把影响生成结果的参数控件从普通表单控件中拆出，集中审核可编辑密度和继承状态。",
   },
-  {
-    id: "preset-prompt-lora",
-    route: "/component-showcase-preset-prompt-lora",
-    title: "预设、Prompt 与 LoRA 编辑",
+  "preset-prompt-lora": {
     summary: "预设绑定、导入、Prompt 块、编译预览、LoRA 两阶段和预设组成员。",
     intent: "集中审核资源来源、变体、级联、手动项和两阶段 LoRA 的表达方式。",
   },
-  {
-    id: "taxonomy-history",
-    route: "/component-showcase-taxonomy-history",
-    title: "分类、排序、历史与差异",
+  "taxonomy-history": {
     summary: "分类侧栏、分类编辑、槽位、排序规则、历史 diff、变体 rail 和小节 rail。",
     intent: "审核可拖拽排序、资源分类和历史差异的统一表达。",
   },
-  {
-    id: "images",
-    route: "/component-showcase-images",
-    title: "图片结果与审核面",
+  images: {
     summary: "小图、中图、结果列表、审核面板、图片统计、Lightbox 和结果筛选。",
     intent: "统一所有生成图片的缩略图尺寸、选择态、状态 tag、批量操作和预览行为。",
   },
-  {
-    id: "runs",
-    route: "/component-showcase-runs",
-    title: "任务运行、队列与进度",
+  runs: {
     summary: "队列指标、当前运行进度、运行/失败列表、待审核分组和执行参数摘要。",
     intent: "审核任务生命周期、分组、进度、错误和审核入口，不混入图片网格本体。",
   },
-  {
-    id: "system",
-    route: "/component-showcase-system",
-    title: "系统、日志、监控与模型文件",
+  system: {
     summary: "日志筛选、日志行、监控状态、探测结果、模型文件浏览和登录令牌。",
     intent: "集中审核偏系统工具的高密度信息行、终端式日志和文件详情结构。",
   },
-  {
-    id: "headers",
-    route: "/component-showcase-headers",
-    title: "Headers 固定顶栏专项",
+  headers: {
     summary: "所有路由的固定顶部 header 展开、折叠和移动端合并状态。",
     intent: "作为专项保留，不混入普通容器族；专门审核页面身份和主操作归属。",
   },
-  {
-    id: "icons",
-    route: "/component-showcase-icons",
-    title: "Icons 图标专项",
+  icons: {
     summary: "Lucide 图标、自定义 SVG 图标和图标语义说明。",
     intent: "作为素材专项保留，集中审核图标选择和产品语义。",
   },
-] as const satisfies readonly ShowcaseFamily[];
-
-export const SHOWCASE_FAMILY_ROUTES: Record<ShowcaseFamilyId, string> = {
-  controls: "/component-showcase-controls",
-  surfaces: "/component-showcase-surfaces",
-  "unit-items": "/component-showcase-unit-items",
-  folders: "/component-showcase-folders",
-  "batch-actions": "/component-showcase-batch-actions",
-  "generation-params": "/component-showcase-generation-params",
-  "preset-prompt-lora": "/component-showcase-preset-prompt-lora",
-  "taxonomy-history": "/component-showcase-taxonomy-history",
-  images: "/component-showcase-images",
-  runs: "/component-showcase-runs",
-  system: "/component-showcase-system",
-  headers: "/component-showcase-headers",
-  icons: "/component-showcase-icons",
 };
+
+export const SHOWCASE_FAMILIES = SHOWCASE_ROUTE_METADATA.map((family) => ({
+  ...family,
+  ...SHOWCASE_FAMILY_DETAILS[family.id],
+})) satisfies readonly ShowcaseFamily[];
 
 export const SHOWCASE_COMPONENTS: ShowcaseComponentEntry[] = [
   {
@@ -340,7 +282,7 @@ export const SHOWCASE_COMPONENTS: ShowcaseComponentEntry[] = [
     reviewName: "模型文件行",
     componentName: "ModelFileRow",
     description: "展示模型文件或文件夹名称、大小、类型和更多操作。",
-    paths: ["features/models", "models/models-page"],
+    paths: ["features/models", "models/model-list"],
     usedBy: ["模型文件管理"],
     status: "adapter",
   },
@@ -385,7 +327,7 @@ export const SHOWCASE_COMPONENTS: ShowcaseComponentEntry[] = [
     reviewName: "参数分组和参数行",
     componentName: "SpecSection / SpecRow",
     description: "用于采样、尺寸、checkpoint 等参数块的标题、说明和控件行。",
-    paths: ["section-editor-controls"],
+    paths: ["editor-controls"],
     usedBy: ["小节编辑器", "模板小节"],
     status: "implemented",
   },
@@ -394,7 +336,7 @@ export const SHOWCASE_COMPONENTS: ShowcaseComponentEntry[] = [
     reviewName: "KSampler 参数卡",
     componentName: "KSamplerCard",
     description: "展示 steps、cfg、denoise、sampler、scheduler 和 seed 策略。",
-    paths: ["section-editor-controls"],
+    paths: ["editor-controls"],
     usedBy: ["小节编辑器", "运行元信息"],
     status: "implemented",
   },
@@ -403,7 +345,7 @@ export const SHOWCASE_COMPONENTS: ShowcaseComponentEntry[] = [
     reviewName: "尺寸读数",
     componentName: "DimensionsReadout",
     description: "展示基础尺寸到最终尺寸的计算结果。",
-    paths: ["section-editor-controls"],
+    paths: ["editor-controls"],
     usedBy: ["小节编辑器", "批量创建"],
     status: "implemented",
   },
@@ -412,7 +354,7 @@ export const SHOWCASE_COMPONENTS: ShowcaseComponentEntry[] = [
     reviewName: "图片尺寸参数组",
     componentName: "ImageSizeControlGroup",
     description: "统一画幅、短边、放大倍数和尺寸读数。",
-    paths: ["section-editor-controls"],
+    paths: ["editor-controls"],
     usedBy: ["小节编辑器", "批量创建", "模板小节"],
     status: "implemented",
   },
@@ -421,7 +363,7 @@ export const SHOWCASE_COMPONENTS: ShowcaseComponentEntry[] = [
     reviewName: "预设绑定行",
     componentName: "PresetBindingRow",
     description: "展示小节当前绑定的预设或预设组、分类、变体和资源数量。",
-    paths: ["section-editor-presets"],
+    paths: ["editor-presets"],
     usedBy: ["小节编辑器", "模板小节"],
     status: "implemented",
   },
@@ -430,7 +372,7 @@ export const SHOWCASE_COMPONENTS: ShowcaseComponentEntry[] = [
     reviewName: "Prompt 块行",
     componentName: "PromptBlockRow",
     description: "展示正向或反向 Prompt 块、来源和展开内容。",
-    paths: ["section-editor-prompts"],
+    paths: ["editor-prompts"],
     usedBy: ["小节编辑器", "预设详情"],
     status: "implemented",
   },
@@ -439,7 +381,7 @@ export const SHOWCASE_COMPONENTS: ShowcaseComponentEntry[] = [
     reviewName: "LoRA 行和两阶段列",
     componentName: "LoraRow / LoraColumn",
     description: "展示 LoRA 文件、权重、启用、来源、触发词和 Stage 1/2 分列。",
-    paths: ["section-editor-lora-history", "section-editor-lora-column"],
+    paths: ["editor-lora-history", "editor-lora-column"],
     usedBy: ["小节编辑器", "预设详情"],
     status: "implemented",
   },
@@ -475,7 +417,7 @@ export const SHOWCASE_COMPONENTS: ShowcaseComponentEntry[] = [
     reviewName: "历史差异行",
     componentName: "HistoryDiffRow",
     description: "展示参数、Prompt 和 LoRA 的 before/after 差异。",
-    paths: ["section-editor-lora-history"],
+    paths: ["editor-lora-history"],
     usedBy: ["小节编辑器", "预设详情", "预设组"],
     status: "implemented",
   },
@@ -583,7 +525,7 @@ export const SHOWCASE_COMPONENTS: ShowcaseComponentEntry[] = [
     reviewName: "模型文件浏览器",
     componentName: "ModelFileBrowser / ModelFileInspector",
     description: "展示模型类型切换、路径、搜索、文件列表和右侧文件详情。",
-    paths: ["features/models", "models/models-page"],
+    paths: ["features/models", "models/model-list"],
     usedBy: ["模型文件页"],
     status: "adapter",
     exclusion: "文件夹行复用 folders 族，文件详情和系统浏览器归入 system 族。",
@@ -602,7 +544,7 @@ export const SHOWCASE_COMPONENTS: ShowcaseComponentEntry[] = [
     reviewName: "固定顶栏设计稿",
     componentName: "RouteHeaderSurface",
     description: "展示页面 header 在桌面展开、桌面折叠和移动端合并三种状态。",
-    paths: ["route-header-surface", "route-header-specs"],
+    paths: ["header-surface", "header-specs"],
     usedBy: ["所有设计 demo 路由"],
     status: "specialty",
   },
@@ -611,7 +553,7 @@ export const SHOWCASE_COMPONENTS: ShowcaseComponentEntry[] = [
     reviewName: "路由 Header 卡",
     componentName: "PageHeaderCard",
     description: "按路由列出页面身份、返回、状态和主操作的 header 预览。",
-    paths: ["showcase/pages", "route-header-specs"],
+    paths: ["showcase/pages", "header-specs"],
     usedBy: ["Headers 专项"],
     status: "specialty",
   },
@@ -620,7 +562,7 @@ export const SHOWCASE_COMPONENTS: ShowcaseComponentEntry[] = [
     reviewName: "Lucide 图标列表",
     componentName: "IconList",
     description: "用于确认通用图标选择、尺寸和语义是否合适。",
-    paths: ["icon-showcase/icon-list"],
+    paths: ["showcase-icons/icon-list"],
     usedBy: ["Icons 专项"],
     status: "specialty",
   },
@@ -629,7 +571,7 @@ export const SHOWCASE_COMPONENTS: ShowcaseComponentEntry[] = [
     reviewName: "自定义 SVG 图标",
     componentName: "CustomIconDemo",
     description: "用于审核项目自定义 SVG 图标资产和渲染方式。",
-    paths: ["icon-showcase/custom-icon-demo", "svg-icon"],
+    paths: ["showcase-icons/custom-icon-demo", "custom-svg"],
     usedBy: ["Icons 专项"],
     status: "specialty",
   },

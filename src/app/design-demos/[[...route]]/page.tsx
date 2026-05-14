@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 
-import { DesignDemoApp } from "../design-demo-client";
-import { loadDesignDemoData } from "../design-demo-data";
-import { DESIGN_DEMO_THEME_COOKIE, resolveDemoTheme } from "../utils/sfw";
+import { DesignDemoApp } from "../shell/app-client";
+import { loadDesignDemoData } from "../data/load-demo-data";
+import { DESIGN_DEMO_THEME_COOKIE, resolveDemoTheme } from "../routing/sfw";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";

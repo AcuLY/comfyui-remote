@@ -2,7 +2,7 @@
   --demo-font-cjk: "HarmonyOS Sans SC";
   --demo-font-geist: "geistSans";
   --demo-font-sans: var(--demo-font-geist), var(--demo-font-cjk), system-ui, sans-serif;
-  --demo-font-mono: var(--font-demo-ibm-plex-mono), "IBM Plex Mono", "Cascadia Code", ui-monospace, monospace;
+  --demo-font-mono: var(--font-demo-ibm-plex-mono, "Cascadia Code"), ui-monospace, monospace;
   --demo-bg: #09090b;
   --demo-panel: rgba(24, 24, 27, 0.72);
   --demo-panel-2: rgba(39, 39, 42, 0.72);

@@ -4,7 +4,7 @@ import { ChevronRight, Folder, GripVertical, X } from "lucide-react";
 import type * as React from "react";
 import { useId, useState } from "react";
 
-import { cx } from "../../design-demo-utils";
+import { cx } from "../../routing";
 import { Button } from "../primitives";
 import s from "./patterns.module.css";
 

@@ -142,14 +142,14 @@ src/app/design-demos/
 | 模型文件行 | `ModelFileRow` | 文件夹与移动目标 | `features/models` | adapter |
 | 通用批量栏 | `SelectionBatchBar` | 批量选择与反馈 | `shared/patterns` | implemented |
 | 操作状态条 | `OperationStateStrip` | 批量选择与反馈 | `shared/feedback` | implemented |
-| KSampler 参数卡 | `KSamplerCard` | 生成参数 | `section-editor-controls` | implemented |
-| 图片尺寸参数组 | `ImageSizeControlGroup` | 生成参数 | `section-editor-controls` | implemented |
-| 预设绑定行 | `PresetBindingRow` | 预设/Prompt/LoRA | `section-editor-presets` | implemented |
-| Prompt 块行 | `PromptBlockRow` | 预设/Prompt/LoRA | `section-editor-prompts` | implemented |
-| LoRA 行 | `LoraRow` | 预设/Prompt/LoRA | `section-editor-lora-history` | implemented |
+| KSampler 参数卡 | `KSamplerCard` | 生成参数 | `editor-controls` | implemented |
+| 图片尺寸参数组 | `ImageSizeControlGroup` | 生成参数 | `editor-controls` | implemented |
+| 预设绑定行 | `PresetBindingRow` | 预设/Prompt/LoRA | `editor-presets` | implemented |
+| Prompt 块行 | `PromptBlockRow` | 预设/Prompt/LoRA | `editor-prompts` | implemented |
+| LoRA 行 | `LoraRow` | 预设/Prompt/LoRA | `editor-lora-history` | implemented |
 | 预设成员行 | `PresetMemberRow` | 预设/Prompt/LoRA | `features/presets` | adapter |
 | 可拖拽排序行 | `SortableRowShell` | 分类/排序/历史 | `shared/patterns` | implemented |
-| 历史差异行 | `HistoryDiffRow` | 分类/排序/历史 | `section-editor-lora-history` | implemented |
+| 历史差异行 | `HistoryDiffRow` | 分类/排序/历史 | `editor-lora-history` | implemented |
 | 分类侧栏和分类行 | `PresetCategorySidebar / PresetCategoryRow` | 分类/排序/历史 | `features/presets` | adapter |
 | 中图列表 | `ImageListMedium` | 图片结果与审核 | `shared/media` | implemented |
 | 审核图片面板 | `ReviewImageBoard` | 图片结果与审核 | `shared/media` | implemented |
@@ -159,8 +159,8 @@ src/app/design-demos/
 | 监控状态行 | `MonitorStatusRow` | 系统/日志/模型文件 | `features/settings` | adapter |
 | 模型文件浏览器 | `ModelFileBrowser / ModelFileInspector` | 系统/日志/模型文件 | `features/models` | adapter |
 | 登录令牌面板 | `LoginTokenPanel` | 系统/日志/模型文件 | `features/auth` | adapter |
-| 固定顶栏设计稿 | `RouteHeaderSurface` | Headers 专项 | `route-header-surface` | specialty |
-| Lucide 图标列表 | `IconList` | Icons 专项 | `icon-showcase/icon-list` | specialty |
+| 固定顶栏设计稿 | `RouteHeaderSurface` | Headers 专项 | `header-surface` | specialty |
+| Lucide 图标列表 | `IconList` | Icons 专项 | `showcase-icons/icon-list` | specialty |
 | 图标语义表 | `IconMeaningTable` | Icons 专项 | `showcase/pages` | specialty |
 
 ## 高混淆边界

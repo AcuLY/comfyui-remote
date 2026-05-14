@@ -28,10 +28,10 @@ Completed in this cleanup pass:
 - The layout no longer imports a global demo style aggregate.
 - Existing demo route styles now enter through explicit feature CSS Modules under `styles/`.
 - The old monolithic route-level style module was removed.
-- `component-showcase-page.tsx` was split by showcase route group.
-- `section-editor-page.tsx` was split into page composition, params, results, history, lightbox, and import modules.
-- `design-demo-data.ts` was split into data loading, fixtures, filesystem scanning, and shape transforms.
-- `design-demo-utils.ts` was split into route mapping, navigation metadata, status helpers, image helpers, and preset-library helpers.
+- Showcase pages were split by route group under `showcase/pages`.
+- `editor-page.tsx` was split into page composition, params, results, history, lightbox, and import modules.
+- `demo-data.ts` was split into data loading, fixtures, filesystem scanning, and shape transforms.
+- `routing.ts` was split into route mapping, navigation metadata, status helpers, image helpers, and data-level preset library helpers.
 - Large feature pages were split into route facades plus folders for runs, projects, presets, templates, batch-create, models, system, and icon showcase.
 
 ## Phase 1: Baseline And Rules

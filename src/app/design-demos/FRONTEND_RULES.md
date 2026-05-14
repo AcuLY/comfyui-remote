@@ -117,7 +117,7 @@ Before finishing a demo frontend change, check:
 - No old compatibility barrels, global style proxies, or route-level monolithic style modules are imported.
 - Touched demo files do not use Tailwind utility strings.
 - Existing primitives are customized through props, not feature CSS classes.
-- `component-showcase-page.tsx` routes through `showcase` pages and `showcase/registry.ts`.
+- `showcase/pages` routes through `showcase/registry.ts` and lightweight metadata in `routing/showcase-routes.ts`.
 - `src/app/globals.css` has no diff.
 - The touched route loads locally without a 500.
 
@@ -129,6 +129,6 @@ The target state is:
 
 - `shared/primitives/` owns reusable demo primitives and their CSS Module styles; `ui/` remains a compatibility source during migration.
 - Feature files under `features/` own feature composition and layout only.
-- `component-showcase-page.tsx` is split into smaller showcase modules.
+- Component showcase pages are split under `showcase/pages`.
 - Feature styles are split into explicit CSS Modules colocated with the owning feature/page.
 - Tailwind utilities are fully removed from demo code before the demo shell is officially enabled.

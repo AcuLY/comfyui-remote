@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 
-import type { DemoData } from "../../design-demo-data";
-import { demoHref } from "../../design-demo-utils";
+import type { DemoData } from "../../data";
+import { demoHref } from "../../routing";
 import { ButtonLink, PageHeader } from "../../shared/primitives";
 import { getShowcaseComponents, getShowcaseFamily, SHOWCASE_FAMILIES } from "../registry";
 import type { ShowcaseComponentEntry, ShowcaseComponentStatus, ShowcaseFamilyId } from "../registry";

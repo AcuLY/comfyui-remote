@@ -3,11 +3,11 @@
 import { useMemo, useState } from "react";
 import { FolderInput, History, Home, ImageIcon, Play, Search, Star, Trash2 } from "lucide-react";
 
-import { CustomIconDemo } from "../../icon-showcase/custom-icon-demo";
-import { ALL_ICONS } from "../../icon-showcase/icon-data";
-import { GroupedIconList } from "../../icon-showcase/icon-list";
+import { CustomIconDemo } from "../icons/custom-icon-demo";
+import { ALL_ICONS } from "../icons/icon-data";
+import { GroupedIconList } from "../icons/icon-list";
 import { PageHeader } from "../../shared/primitives";
-import iconS from "../../icon-showcase-page.showcase.module.css";
+import iconS from "../icons/icons-page.showcase.module.css";
 import s from "./showcase-pages.module.css";
 
 const ICON_MEANINGS = [

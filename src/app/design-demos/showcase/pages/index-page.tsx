@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 
-import type { DemoData } from "../../design-demo-data";
-import { demoHref } from "../../design-demo-utils";
+import type { DemoData } from "../../data";
+import { demoHref } from "../../routing";
 import { PageHeader } from "../../shared/primitives";
 import { SHOWCASE_COMPONENTS, SHOWCASE_FAMILIES } from "../registry";
 import s from "./showcase-pages.module.css";

@@ -1,1 +1,1 @@
-export { demoHref, normalizeProductRoute, productRouteFromPathname } from "../utils/routes";
+export { demoHref, normalizeProductRoute, productRouteFromPathname } from "./routes";

@@ -142,7 +142,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `SectionTabs` |
-| 文件 | `section-editor-controls.tsx` |
+| 文件 | `editor-controls.tsx` |
 | Props | `tabs: TabDef[]`, `value: SectionTabValue`, `onChange` |
 | 功能 | 小节编辑器的专用 Tab 栏 |
 | CSS 类 | `.sectionTabs`, `.sectionTab`, `.sectionTabActive`, `.sectionTabCount` |
@@ -152,7 +152,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `SectionNameEditor` |
-| 文件 | `section-editor-header.tsx` |
+| 文件 | `editor-header.tsx` |
 | Props | `initialName`, `onChange?`, `onSavingChange?` |
 | 功能 | 点击编辑小节名（debounced save） |
 | CSS 类 | `.sectionNameDisplay`, `.sectionNamePencil`, `.sectionNameInput` |
@@ -162,7 +162,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `SaveStatusPill` |
-| 文件 | `section-editor-header.tsx` |
+| 文件 | `editor-header.tsx` |
 | Props | `status: SaveStatus` |
 | 功能 | 保存状态指示（idle / saving / saved） |
 | CSS 类 | `.savePill`, `.savePillSpinner` |
@@ -172,7 +172,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `SpecSection`, `SpecRow` |
-| 文件 | `section-editor-controls.tsx` |
+| 文件 | `editor-controls.tsx` |
 | Props | `title`, `hint?`, `label`, `description?`, `children` |
 | 功能 | 参数表单的分组和行布局 |
 | CSS 类 | `.specSection`, `.specSectionHead`, `.specRows`, `.specRow`, `.specRowLabel`, `.specRowControl` |
@@ -182,7 +182,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `CheckpointPicker` |
-| 文件 | `section-editor-controls.tsx` |
+| 文件 | `editor-controls.tsx` |
 | Props | `value`, `projectCheckpoint?`, `options: string[]`, `onChange?` |
 | 功能 | Checkpoint 下拉选择器，支持"继承项目"标记 |
 | CSS 类 | `.cpPicker`, `.cpPickerBtn`, `.cpPickerValue`, `.cpInheritTag`, `.cpPickerMenu`, `.cpPickerOption` |
@@ -192,7 +192,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `AspectChips` |
-| 文件 | `section-editor-controls.tsx` |
+| 文件 | `editor-controls.tsx` |
 | Props | `value: string`, `onChange: (v: string) => void` |
 | 功能 | 画幅比例芯片组选择器（1:1, 2:3, 3:2 等） |
 | CSS 类 | `.aspectChips`, `.aspectChip`, `.aspectChipActive` |
@@ -202,7 +202,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `StepperInput` |
-| 文件 | `section-editor-controls.tsx` |
+| 文件 | `editor-controls.tsx` |
 | Props | `value`, `onChange`, `min?`, `max?`, `step?`, `width?`, `decrementSteps?`, `incrementSteps?`, `ariaLabel?` |
 | 功能 | 可手动输入的步进数值输入，支持两侧配置多个固定增减按钮 |
 | CSS 类 | `.stepper`, `.stepperControls`, `.stepperBtn`, `.stepperInput` |
@@ -212,7 +212,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `DimensionsReadout` |
-| 文件 | `section-editor-controls.tsx` |
+| 文件 | `editor-controls.tsx` |
 | Props | `aspect`, `shortSide`, `upscale` |
 | 功能 | 图像尺寸计算与展示（基础尺寸 → 最终尺寸） |
 | CSS 类 | `.dimReadout`, `.dimReadoutBase`, `.dimReadoutArrow`, `.dimReadoutFinal` |
@@ -222,7 +222,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `UpscaleControl` |
-| 文件 | `section-editor-controls.tsx` |
+| 文件 | `editor-controls.tsx` |
 | Props | `value: number`, `onChange: (v: number) => void` |
 | 功能 | 放大倍数芯片组 + 1× 警告 |
 | CSS 类 | `.upscaleControl`, `.upscaleChips`, `.upscaleWarning` |
@@ -232,7 +232,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `KSamplerCard` |
-| 文件 | `section-editor-controls.tsx` |
+| 文件 | `editor-controls.tsx` |
 | Props | `label`, `hint?`, `params: KSamplerFull`, `disabled?`, `onChange?` |
 | 功能 | KSampler 参数卡片（steps, cfg, denoise, sampler, scheduler, seed） |
 | CSS 类 | `.ksCard`, `.ksCardHead`, `.ksGrid`, `.ksCardDisabled` |
@@ -242,7 +242,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `SelectChip` |
-| 文件 | `section-editor-controls.tsx` |
+| 文件 | `editor-controls.tsx` |
 | Props | `value: string`, `options: string[]`, `onChange: (v: string) => void` |
 | 功能 | 芯片式下拉选择器 |
 | CSS 类 | `.selectChip`, `.selectChipBtn`, `.selectChipMenu`, `.selectChipOption` |
@@ -252,7 +252,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `VariantSwitcher` |
-| 文件 | `section-editor-controls.tsx` |
+| 文件 | `editor-controls.tsx` |
 | Props | `variants: Array<{ id; name }>`, `currentVariantId`, `onChange?` |
 | 功能 | 变体切换下拉 |
 | CSS 类 | `.variantSwitcher`, `.variantSwitcherBtn`, `.variantSwitcherMenu`, `.variantSwitcherOption` |
@@ -262,7 +262,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `SvgIcon`, `createSvgIcon`, `createSvgIconFromString`, `createSvgIconFromUrl` |
-| 文件 | `svg-icon.tsx` |
+| 文件 | `custom-svg.tsx` |
 | Props | `SvgIcon`: `viewBox?`, `fill?`, `children`, `className?`, `size?`, `color?`, `strokeWidth?`, `style?`；`createSvgIcon`: `displayName?`, `viewBox?`, `fill?`, `defaultStrokeWidth?`, `children`；`createSvgIconFromString`: `displayName?`, `svg`, `defaultStrokeWidth?`；`createSvgIconFromUrl`: `displayName?`, `href`, `viewBox?` |
 | 功能 | 自定义 SVG 图标系统，与 Lucide 图标完全兼容。`SvgIcon` 为基础组件，`createSvgIcon` 从 JSX 子元素创建，`createSvgIconFromString` 从原始 SVG 字符串创建，`createSvgIconFromUrl` 从 SVG 文件 URL 创建 |
 | CSS 类 | 无自定义 CSS 类，通过 `className` / `style` 透传 |
@@ -544,7 +544,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `DesignDemoShell` |
-| 文件 | `design-demo-shell.tsx` |
+| 文件 | `app-shell.tsx` |
 | Props | `children`, `currentRoute`, `data: DemoData` |
 | 功能 | Demo 全局 Shell（主题切换、SFW 模式、侧边栏折叠、移动端顶栏/底栏） |
 | CSS 类 | `.shell`, `.shellLight`, `.workspace`, `.workspaceCollapsed`, `.main` |
@@ -554,7 +554,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `Sidebar`（内部） |
-| 文件 | `design-demo-shell.tsx` |
+| 文件 | `app-shell.tsx` |
 | Props | `collapsed`, `data`, `currentRoute`, `open`, `onClose`, `onToggleCollapsed`, `theme`, `onToggleTheme`, `sfwMode`, `onToggleSfwMode` |
 | 功能 | 侧边栏（品牌 + 导航分组 + 主题/SFW 切换） |
 | CSS 类 | `.sidebar`, `.sidebarCollapsed`, `.sidebarOpen`, `.brand`, `.brandTop`, `.brandIdentity`, `.brandName`, `.brandMark`, `.navSection`, `.navTitle`, `.navLink`, `.navLinkActive`, `.navCount`, `.sidebarTools`, `.sidebarToggle`, `.sidebarToggleSwitch`, `.sidebarToggleActive`, `.sidebarCollapseButton` |
@@ -564,7 +564,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `MobileTopbar`（内部） |
-| 文件 | `design-demo-shell.tsx` |
+| 文件 | `app-shell.tsx` |
 | Props | `activeLabel`, `menuOpen`, `onOpenMenu`, `toolsOpen`, `onToggleTools`, `theme`, `onToggleTheme`, `sfwMode`, `onToggleSfwMode` |
 | 功能 | 移动端顶部栏 |
 | CSS 类 | `.mobileTopbar`, `.mobileTopbarTitle`, `.mobileTopbarTools`, `.mobileTopbarButton`, `.mobileToolsMenu`, `.mobileToolsItem`, `.mobileToolsItemActive` |
@@ -574,7 +574,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `MobileBottomNav`（内部） |
-| 文件 | `design-demo-shell.tsx` |
+| 文件 | `app-shell.tsx` |
 | Props | `data`, `currentRoute`, `moreOpen`, `onMore` |
 | 功能 | 移动端底部导航栏 |
 | CSS 类 | `.mobileBottomNav`, `.mobileBottomItem`, `.mobileBottomItemActive` |
@@ -584,7 +584,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `DesignDemoApp` |
-| 文件 | `design-demo-client.tsx` |
+| 文件 | `app-client.tsx` |
 | Props | `initialRouteSegments: string[]`, `data: DemoData` |
 | 功能 | 路由根组件，根据 pathname 渲染对应页面 |
 
@@ -597,7 +597,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `SectionHeader` |
-| 文件 | `section-editor-header.tsx` |
+| 文件 | `editor-header.tsx` |
 | Props | `backHref`, `backLabel`, `prev/next`, `workflowDownloadHref`, `initialName`, `saveStatus`, `onSavingChange`, `onRename`, `batchSize`, `onBatchSizeChange`, `onRun` |
 | 功能 | 小节编辑器顶部（返回 + 名称编辑 + 保存状态 + 前后导航 + workflow 下载 + 运行控制） |
 | CSS 类 | `.sectionHeader`, `.sectionHeaderTop`, `.sectionHeaderBack`, `.sectionHeaderEyebrow`, `.sectionHeaderSpacer`, `.sectionHeaderNav`, `.sectionHeaderNavBtn`, `.sectionHeaderNavBtnDisabled`, `.sectionHeaderNavLabel`, `.sectionHeaderGhostBtn`, `.sectionRunDock`, `.sectionRunStepper`, `.sectionRunBatchOption`, `.sectionRunBatchOptionActive`, `.sectionRunBatchLabel`, `.sectionRunButton` |
@@ -607,7 +607,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `SectionEditorShell` |
-| 文件 | `section-editor/section-editor-shell.tsx` |
+| 文件 | `section-editor/editor-shell.tsx` |
 | Props | `SectionEditorLoadedProps` |
 | 功能 | 小节编辑器 Shell（Tab 栏 + 内容面板 + 空状态） |
 | CSS 类 | `.page`, `.sectionTabBody` |
@@ -627,7 +627,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `PresetsPanel` |
-| 文件 | `section-editor/presets-panel.tsx` |
+| 文件 | `section-editor/preset-bindings-panel.tsx` |
 | Props | `editor: SectionEditorModel` |
 | 功能 | 预制 Tab 面板（绑定列表 + 导入面板） |
 | CSS 类 | 复用 PresetBindingRow / PresetImportInline 等 |
@@ -697,7 +697,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `PresetBindingRow` |
-| 文件 | `section-editor-presets.tsx` |
+| 文件 | `editor-presets.tsx` |
 | Props | `binding: PresetBinding`, `onVariantChange?`, `onCopyName?`, `onUnlink?`, `onDelete?` |
 | 功能 | 预制绑定行（名称 + 分类色 + 变体切换 + 展开/折叠组内成员 + 操作） |
 | CSS 类 | `.bindRow`, `.bindRowMain`, `.bindNameWrap`, `.bindName`, `.bindCategory`, `.bindGroupChip`, `.bindScopeChip`, `.bindMeta`, `.bindRowControls`, `.bindChevron`, `.bindList` |
@@ -707,7 +707,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `PresetImportInline` |
-| 文件 | `section-editor-presets.tsx` |
+| 文件 | `editor-presets.tsx` |
 | Props | `open`, `categories: ImportCategory[]`, `selected?`, `onSelect` |
 | 功能 | 行内预制导入面板（分类选择 → 文件夹 → 预制/组选择） |
 | CSS 类 | `.importPanel`, `.importCategoryColumn`, `.importPresetColumn`, `.importHeaderActions` |
@@ -717,7 +717,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `PromptBlockRow` |
-| 文件 | `section-editor-prompts.tsx` |
+| 文件 | `editor-prompts.tsx` |
 | Props | `block: PromptBlockRowData`, `expanded`, `onToggle`, `onLabelChange?`, `onPositiveChange?`, `onNegativeChange?`, `onUnlink?`, `onDelete?` |
 | 功能 | 提示词块行（折叠/展开、分类色标记、预设来源标识、正负向文本） |
 | CSS 类 | `.pbRow`, `.pbRowGrip`, `.pbCategory`, `.pbRowMain`, `.pbRowTitleLine`, `.pbRowPreview`, `.pbRowManualMark` |
@@ -727,7 +727,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `CompiledPromptPreview` |
-| 文件 | `section-editor-prompts.tsx` |
+| 文件 | `editor-prompts.tsx` |
 | Props | `groups` |
 | 功能 | 编译后的 Prompt 预览（按预制分组展示正负向） |
 
@@ -736,7 +736,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `LoraRow` |
-| 文件 | `section-editor-lora-history.tsx` |
+| 文件 | `editor-lora-history.tsx` |
 | Props | `entry: LoraRowData`, `fileOptions: string[]`, `onWeightChange`, `onToggle`, `onPathChange`, `onUnlink?`, `onDelete` |
 | 功能 | LoRA 行（来源标记 + 文件选择 + 权重步进 + 启用/禁用 + 触发词） |
 | CSS 类 | `.loraRow`, `.sectionLoraRow`, `.loraRowGrip`, `.loraRowMain`, `.loraRowTopLine`, `.loraSourceBadge`, `.loraPresetName`, `.loraManualBadge`, `.loraTrigger` |
@@ -746,7 +746,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `LoraColumn` |
-| 文件 | `section-editor-lora-column.tsx` |
+| 文件 | `editor-lora-column.tsx` |
 | Props | `label`, `entries: LoraRowData[]`, `onAdd`, `onWeight`, `onToggle`, `onPath`, `onUnlink`, `onDelete` |
 | 功能 | LoRA 列容器（头部 + 列表 + 新增按钮） |
 | CSS 类 | `.loraColumn`, `.loraColumnHead`, `.loraList`, `.addRow`, `.bindEmpty` |
@@ -756,7 +756,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `HistoryDiffRow` |
-| 文件 | `section-editor-lora-history.tsx` |
+| 文件 | `editor-lora-history.tsx` |
 | Props | `change: HistoryDiffChange` |
 | 功能 | 变更记录 diff 行 |
 | CSS 类 | `.diffList`, `.diffRow`, `.diffEmptyState` |
@@ -1032,7 +1032,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `TemplatesPage` |
-| 文件 | `templates/templates-page.tsx` |
+| 文件 | `templates/template-list.tsx` |
 | Props | `data: DemoData` |
 | 功能 | 模板列表页 |
 | CSS 类 | `.rowList`, `.templateListItem`, `.templateListMain`, `.templateListTitle`, `.templateSectionSummary`, `.templateListMeta` |
@@ -1076,7 +1076,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `ModelsPage` |
-| 文件 | `models/models-page.tsx` |
+| 文件 | `models/model-list.tsx` |
 | Props | 无 |
 | 功能 | 模型文件管理（LoRA/Checkpoint 切换 + 面包屑 + 搜索 + 文件列表 + 详情面板 + 移动对话框） |
 | CSS 类 | `.modelsLayout`, `.modelsBrowser`, `.segmented`, `.segment`, `.segmentActive`, `.breadcrumb`, `.breadcrumbItem`, `.breadcrumbActive`, `.searchBar`, `.searchInput`, `.searchClear`, `.fileList`, `.fileRow`, `.fileRowActive`, `.fileIcon`, `.fileInfo`, `.fileName`, `.fileSize`, `.fileAction`, `.emptyState`, `.detailsPanel`, `.detailsHeader`, `.detailsTitle`, `.detailsContent`, `.detailsSection`, `.detailsLabel`, `.detailsValue`, `.detailsValueMuted`, `.detailsSectionHeader`, `.detailsActions`, `.dialogOverlay`, `.dialog`, `.dialogHeader`, `.dialogTitle`, `.dialogContent`, `.dialogDescription`, `.folderTree`, `.folderTreeItem`, `.dialogFooter` |
@@ -1142,7 +1142,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `BatchCreatePage` |
-| 文件 | `batch-create/batch-create-page.tsx` |
+| 文件 | `batch-create/batch-create.tsx` |
 | Props | `project?: DemoProject`, `data: DemoData` |
 | 功能 | 批量创建小节（预设浏览器 + 导入列表 + 项目绑定 + 新小节参数 + 最近创建） |
 | CSS 类 | `.batchCreateWorkspace`, `.batchBrowserPane`, `.batchPaneHeader`, `.batchCategoryTabs`, `.batchSearchBox`, `.batchFolderBar`, `.batchBreadcrumbs`, `.batchBrowserList`, `.batchFolderRow`, `.batchCandidateRow`, `.batchCandidateRowSelected`, `.batchCandidateMain`, `.batchCandidateMeta`, `.batchCandidateActions`, `.batchConfigPane`, `.batchConfigSection`, `.batchSectionHeader`, `.batchImportList`, `.batchImportRow`, `.batchBindingList`, `.batchBindingRow`, `.batchFormGrid`, `.batchRatioGrid`, `.batchCreatedList` |
@@ -1175,7 +1175,7 @@
 | 字段 | 值 |
 |------|-----|
 | 导出名 | `IconShowcasePage` |
-| 文件 | `icon-showcase-page.tsx` |
+| 文件 | `icons-page.tsx` |
 | Props | 无 |
 | 功能 | 图标展示页（Lucide 图标全览 + 自定义 SVG 图标演示） |
 | CSS 类 | `.iconListContainer`, `.iconListRow`, `.iconListHeader`, `.iconListColIcon`, `.iconListColName`, `.iconListColDesc`, `.iconListColUsage`, `.iconListTag`, `.iconListCategory` |

@@ -1,10 +1,14 @@
 import type { ReactNode } from "react";
-import { IBM_Plex_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import "./fonts/font-options.css";
 
-const ibmPlexMono = IBM_Plex_Mono({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+const ibmPlexMono = localFont({
+  src: [
+    { path: "./fonts/ibm-plex-mono/IBMPlexMono-Regular.ttf", weight: "400", style: "normal" },
+    { path: "./fonts/ibm-plex-mono/IBMPlexMono-Medium.ttf", weight: "500", style: "normal" },
+    { path: "./fonts/ibm-plex-mono/IBMPlexMono-SemiBold.ttf", weight: "600", style: "normal" },
+    { path: "./fonts/ibm-plex-mono/IBMPlexMono-Bold.ttf", weight: "700", style: "normal" },
+  ],
   variable: "--font-demo-ibm-plex-mono",
   display: "swap",
 });

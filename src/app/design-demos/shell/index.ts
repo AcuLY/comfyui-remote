@@ -1,1 +1,1 @@
-export { DesignDemoShell } from "../design-demo-shell";
+export { DesignDemoShell } from "./app-shell";

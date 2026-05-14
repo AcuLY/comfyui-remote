@@ -11,7 +11,7 @@ This directory implements the routable `/design-demos` frontend shell.
 - `COMPONENT_TAXONOMY.md`: detailed component split, family ownership, boundary rules, and migration context for future agents.
 - Existing folders such as `ui/`, `runs/`, `projects/`, `presets/`, `templates/`, `batch-create/`, `models/`, `system/`, and `section-editor/` are still compatibility sources while code migrates behind the official entrypoints above.
 - `IMAGE_SURFACES.md`: inventory of every routed demo page and panel that renders generated images.
-- `runs-page.tsx`: task workbench and run review pages.
+- `runs-feature.tsx`: task workbench and run review pages.
 - `FRONTEND_RULES.md`: demo-only frontend rules for component boundaries, CSS Modules, Tailwind usage, and migration checks.
 - `DEMO_CODE_CLEANUP_PLAN.md`: phased cleanup plan for demo code structure, style ownership, Tailwind removal, and dependency-removal readiness.
 

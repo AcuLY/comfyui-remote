@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -46,15 +46,9 @@ const showcasePages = [
 ] as const;
 
 const allowedDirectImports = new Set([
-  // Fixture/data selectors and route-header specialty previews remain compatibility imports by design.
-  "../../design-demo-data",
-  "../../design-demo-utils",
-  "../../icon-showcase/custom-icon-demo",
-  "../../icon-showcase/icon-data",
-  "../../icon-showcase/icon-list",
-  "../../icon-showcase-page.showcase.module.css",
-  "../../models/model-fixtures",
-  "../../route-header-surface",
+  // Fixture data and header specialty previews are allowed direct architectural imports.
+  "../../data",
+  "../../shell/header-surface",
   "../helpers",
   "../preview-keys",
   "../registry",
@@ -66,7 +60,43 @@ const allowedDirectImports = new Set([
 
 const compatibilityImportPattern = /from\s+["'](\.\.\/\.\.\/[^"']+)["']/g;
 const testDir = dirname(fileURLToPath(import.meta.url));
-const demoClientSource = readFileSync(resolve(testDir, "../design-demo-client.tsx"), "utf8");
+const demoClientSource = readFileSync(resolve(testDir, "../shell/app-client.tsx"), "utf8");
+const designDemosDir = resolve(testDir, "..");
+
+function sourceFilesUnder(relativeDir: string) {
+  const root = resolve(designDemosDir, relativeDir);
+  const files: string[] = [];
+
+  function visit(dir: string) {
+    for (const entry of readdirSync(dir)) {
+      const path = resolve(dir, entry);
+      const stats = statSync(path);
+      if (stats.isDirectory()) {
+        visit(path);
+      } else if (/\.(ts|tsx)$/.test(path)) {
+        files.push(path);
+      }
+    }
+  }
+
+  visit(root);
+  return files;
+}
+
+function assertNoForbiddenImports(relativeDir: string, forbiddenTargets: string[]) {
+  const importPattern = /(?:import|export)\s+(?:type\s+)?[^"']*?\sfrom\s+["']([^"']+)["']/g;
+
+  for (const sourcePath of sourceFilesUnder(relativeDir)) {
+    const source = readFileSync(sourcePath, "utf8");
+    for (const match of source.matchAll(importPattern)) {
+      const importPath = match[1];
+      assert.ok(
+        !forbiddenTargets.some((target) => importPath.includes(target)),
+        `${relative(process.cwd(), sourcePath)} must not import ${importPath}`,
+      );
+    }
+  }
+}
 
 assert.deepEqual(
   SHOWCASE_FAMILIES.map((family) => family.id),
@@ -141,7 +171,8 @@ for (const page of showcasePages) {
     const isArchitecturalEntry =
       importPath.startsWith("../../shared/") ||
       importPath.startsWith("../../features/") ||
-      importPath.startsWith("../../routing");
+      importPath.startsWith("../../routing") ||
+      importPath.startsWith("../../data");
 
     assert.ok(
       isArchitecturalEntry || allowedDirectImports.has(importPath),
@@ -149,3 +180,6 @@ for (const page of showcasePages) {
     );
   }
 }
+
+assertNoForbiddenImports("routing", ["/features/", "/showcase/"]);
+assertNoForbiddenImports("shared", ["/features/"]);

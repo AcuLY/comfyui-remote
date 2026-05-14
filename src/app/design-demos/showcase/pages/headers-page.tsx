@@ -3,12 +3,12 @@
 import Link from "next/link";
 import { Download, ExternalLink, Gauge, ImageIcon, PanelTop, Play, Rows3, Save, ShieldCheck } from "lucide-react";
 
-import type { DemoData } from "../../design-demo-data";
-import { cx } from "../../design-demo-utils";
+import type { DemoData } from "../../data";
+import { cx } from "../../routing";
 import { demoHref } from "../../routing";
-import { buildHeaderSpecs, displayHeaderRoute, headerAction as action } from "../../routing/route-header-specs";
-import type { HeaderSpec } from "../../routing/route-header-specs";
-import { RouteHeaderSurface } from "../../route-header-surface";
+import { buildHeaderSpecs, displayHeaderRoute, headerAction as action } from "../../routing/header-specs";
+import type { HeaderSpec } from "../../routing/header-specs";
+import { RouteHeaderSurface } from "../../shell/header-surface";
 import { PageHeader } from "../../shared/primitives";
 import s from "./headers-page.module.css";
 

@@ -4,15 +4,15 @@ import { Check, ClipboardList, Copy, Edit3, FolderInput, Gauge, Home, Monitor, P
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 
-import type { DemoData } from "../../design-demo-data";
-import { firstCategory, firstProject, firstRun, firstSection, firstTemplate, findSection, presetLibraryItems } from "../../design-demo-utils";
-import { ALL_ICONS } from "../../icon-showcase/icon-data";
-import { CustomIconDemo } from "../../icon-showcase/custom-icon-demo";
-import { IconList } from "../../icon-showcase/icon-list";
-import { modelFiles } from "../../models/model-fixtures";
+import { presetLibraryItems, type DemoData } from "../../data";
+import { firstCategory, firstProject, firstRun, firstSection, firstTemplate, findSection } from "../../routing";
+import { ALL_ICONS } from "../icons/icon-data";
+import { CustomIconDemo } from "../icons/custom-icon-demo";
+import { IconList } from "../icons/icon-list";
+import { modelFiles } from "../../features/models/model-fixtures";
 import { buildCurrentRunningRuns, buildQueueReviewRows, buildQueueStatusRuns, groupRowsByProject } from "../../features/runs";
-import { RouteHeaderSurface } from "../../route-header-surface";
-import { buildHeaderSpecs } from "../../routing/route-header-specs";
+import { RouteHeaderSurface } from "../../shell/header-surface";
+import { buildHeaderSpecs } from "../../routing/header-specs";
 import { DimensionsReadout, HistoryDiffRow, ImageSizeControlGroup, KSamplerCard, LoraColumn, LoraRow, type LoraRowData, PresetBindingRow, PromptBlockRow, SpecRow, SpecSection, StepperInput } from "../../features/projects";
 import { CurrentRunningProgressCard, PendingReviewGroups, QueueMetrics, ReviewMetaCard, RunList } from "../../features/runs";
 import { ModelFileBrowser, ModelFileInspector, ModelFileRow } from "../../features/models";

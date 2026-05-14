@@ -1,4 +1,4 @@
-export { TemplatesPage } from "../../templates/templates-page";
-export { TemplateFormPage, TemplateSectionRow } from "../../templates/template-form-page";
-export { TemplateSectionPage } from "../../templates/template-section-page";
-export { TemplateSectionShell } from "../../templates/template-section-shell";
+export { TemplatesPage } from "./template-list";
+export { TemplateFormPage, TemplateSectionRow } from "./template-form-page";
+export { TemplateSectionPage } from "./template-section-page";
+export { TemplateSectionShell } from "./template-section-shell";

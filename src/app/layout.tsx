@@ -6,7 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
 import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
-import { DESIGN_DEMO_THEME_COOKIE, resolveDemoTheme } from "./design-demos/utils/sfw";
+import { DESIGN_DEMO_THEME_COOKIE, resolveDemoTheme } from "./design-demos/routing/sfw";
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
