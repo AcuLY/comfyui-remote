@@ -11,11 +11,11 @@ import { HistoryDiffRow, LoraRow, type LoraRowData } from "../../section-editor-
 import { LoraColumn } from "../../section-editor-lora-column";
 import { PresetBindingRow } from "../../section-editor-presets";
 import { PromptBlockRow } from "../../section-editor-prompts";
-import { makeImages } from "../../component-showcase/helpers";
-import { Button, Checkbox, DemoTabs, Field, MetricCard, PageHeader, SegmentedControl, StatusBadge, Switch, TextAreaField } from "../../_shared/primitives";
-import { ImageListMedium, ImageListSmall, ImageThumbMedium, ReviewImageBoard } from "../../_shared/media";
-import { OperationStateStrip } from "../../_shared/feedback";
-import { AnchorRail, EditorBlock, FolderBreadcrumb, FolderRow, InspectorAside, MoveTargetPicker, SelectionBatchBar, SortableRowShell, ToolbarCluster, UnitRowShell, WorkbenchSurface } from "../../_shared/patterns";
+import { makeImages } from "../helpers";
+import { Button, Checkbox, DemoTabs, Field, MetricCard, PageHeader, SegmentedControl, StatusBadge, Switch, TextAreaField } from "../../shared/primitives";
+import { ImageListMedium, ImageListSmall, ImageThumbMedium, ReviewImageBoard } from "../../shared/media";
+import { OperationStateStrip } from "../../shared/feedback";
+import { AnchorRail, EditorBlock, FolderBreadcrumb, FolderRow, InspectorAside, MoveTargetPicker, SelectionBatchBar, SortableRowShell, ToolbarCluster, UnitRowShell, WorkbenchSurface } from "../../shared/patterns";
 import type { ShowcaseFamilyId } from "../registry";
 import s from "./showcase-pages.module.css";
 

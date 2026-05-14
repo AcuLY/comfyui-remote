@@ -1,6 +1,6 @@
 # Design Demos Component Taxonomy
 
-本文档是 `/design-demos` 组件拆分和功能族归属的长期上下文。后续如果发现分类或组件不合预期，先改这份文档和 `_showcase/registry.ts`，再让 agent 按它们实施。
+本文档是 `/design-demos` 组件拆分和功能族归属的长期上下文。后续如果发现分类或组件不合预期，先改这份文档和 `showcase/registry.ts`，再让 agent 按它们实施。
 
 ## 目标
 
@@ -13,19 +13,19 @@
 
 ```text
 src/app/design-demos/
-  _routing/      demo 内部路由、href、header spec 的迁移入口
-  _shell/        设计 demo 外壳、导航、主题、loading 壳
-  _data/         数据类型、fixture、sqlite/source 读取入口
-  _shared/
+  routing/      demo 内部路由、href、header spec 的迁移入口
+  shell/        设计 demo 外壳、导航、主题、loading 壳
+  data/         数据类型、fixture、sqlite/source 读取入口
+  shared/
     primitives/  最底层控件：按钮、字段、tab、badge、switch
     patterns/    跨业务槽位壳：unit row、folder、batch bar、workbench、rail
     media/       图片缩略图、图片列表、审核面板、lightbox
     feedback/    toast、operation strip、保存状态
-  _features/     按新版 IA 的业务适配：runs/projects/presets/templates/models/settings/auth
-  _showcase/     registry、功能族页面、展示容器和样例
+  features/     按新版 IA 的业务适配：runs/projects/presets/templates/models/settings/auth
+  showcase/     registry、功能族页面、展示容器和样例
 ```
 
-旧目录暂时可以保留，新的 private folders 提供迁移入口。新代码优先从 `_shared` 和 `_features` 引入，旧路径只作为兼容来源。
+`routing`、`shell`、`shared`、`features`、`showcase` 是正式迁移入口，不再使用下划线前缀。旧 `component-showcase/*` 和 `image-list-components` 内容已由 `showcase/registry.ts` 驱动的新功能族页面替代；其他业务目录仍作为兼容来源，迁移时逐步收敛到 `shared` 和 `features`。
 
 ## 命名规范
 
@@ -128,29 +128,29 @@ src/app/design-demos/
 
 | 中文名 | 英文名 | 归属族 | 新路径 / 入口 | 状态 |
 | --- | --- | --- | --- | --- |
-| 通用按钮 | `Button` | 基础操作控件 | `_shared/primitives` | implemented |
-| 状态徽标 | `StatusBadge` | 基础操作控件 | `_shared/primitives` | implemented |
-| 页面标题栏 | `PageHeader` | 页面骨架 | `_shared/primitives` | implemented |
-| 连续工作区 | `WorkbenchSurface` | 页面骨架 | `_shared/patterns` | implemented |
-| 通用单元行壳 | `UnitRowShell` | 单元行项 | `_shared/patterns` | implemented |
-| 项目列表项 | `ProjectListItem` | 单元行项 | `_features/projects` | adapter |
-| 项目小节项 | `ProjectSectionCard` | 单元行项 | `_features/projects` | adapter |
-| 通用路径面包屑 | `FolderBreadcrumb` | 文件夹与移动目标 | `_shared/patterns` | implemented |
-| 通用文件夹行 | `FolderRow` | 文件夹与移动目标 | `_shared/patterns` | implemented |
-| 移动目标选择器 | `MoveTargetPicker` | 文件夹与移动目标 | `_shared/patterns` | implemented |
-| 通用批量栏 | `SelectionBatchBar` | 批量选择与反馈 | `_shared/patterns` | implemented |
-| 操作状态条 | `OperationStateStrip` | 批量选择与反馈 | `_shared/feedback` | implemented |
+| 通用按钮 | `Button` | 基础操作控件 | `shared/primitives` | implemented |
+| 状态徽标 | `StatusBadge` | 基础操作控件 | `shared/primitives` | implemented |
+| 页面标题栏 | `PageHeader` | 页面骨架 | `shared/primitives` | implemented |
+| 连续工作区 | `WorkbenchSurface` | 页面骨架 | `shared/patterns` | implemented |
+| 通用单元行壳 | `UnitRowShell` | 单元行项 | `shared/patterns` | implemented |
+| 项目列表项 | `ProjectListItem` | 单元行项 | `features/projects` | adapter |
+| 项目小节项 | `ProjectSectionCard` | 单元行项 | `features/projects` | adapter |
+| 通用路径面包屑 | `FolderBreadcrumb` | 文件夹与移动目标 | `shared/patterns` | implemented |
+| 通用文件夹行 | `FolderRow` | 文件夹与移动目标 | `shared/patterns` | implemented |
+| 移动目标选择器 | `MoveTargetPicker` | 文件夹与移动目标 | `shared/patterns` | implemented |
+| 通用批量栏 | `SelectionBatchBar` | 批量选择与反馈 | `shared/patterns` | implemented |
+| 操作状态条 | `OperationStateStrip` | 批量选择与反馈 | `shared/feedback` | implemented |
 | KSampler 参数卡 | `KSamplerCard` | 生成参数 | `section-editor-controls` | implemented |
 | 预设绑定行 | `PresetBindingRow` | 预设/Prompt/LoRA | `section-editor-presets` | implemented |
 | Prompt 块行 | `PromptBlockRow` | 预设/Prompt/LoRA | `section-editor-prompts` | implemented |
 | LoRA 行 | `LoraRow` | 预设/Prompt/LoRA | `section-editor-lora-history` | implemented |
-| 可拖拽排序行 | `SortableRowShell` | 分类/排序/历史 | `_shared/patterns` | implemented |
+| 可拖拽排序行 | `SortableRowShell` | 分类/排序/历史 | `shared/patterns` | implemented |
 | 历史差异行 | `HistoryDiffRow` | 分类/排序/历史 | `section-editor-lora-history` | implemented |
-| 中图列表 | `ImageListMedium` | 图片结果与审核 | `_shared/media` | implemented |
-| 审核图片面板 | `ReviewImageBoard` | 图片结果与审核 | `_shared/media` | implemented |
-| 队列指标 | `QueueMetrics` | 任务运行与队列 | `_features/runs` | implemented |
-| 审核元信息卡 | `ReviewMetaCard` | 任务运行与队列 | `_features/runs` | implemented |
-| 模型文件浏览器 | `ModelFileBrowser` | 系统/日志/模型文件 | `_features/models` | planned |
+| 中图列表 | `ImageListMedium` | 图片结果与审核 | `shared/media` | implemented |
+| 审核图片面板 | `ReviewImageBoard` | 图片结果与审核 | `shared/media` | implemented |
+| 队列指标 | `QueueMetrics` | 任务运行与队列 | `features/runs` | implemented |
+| 审核元信息卡 | `ReviewMetaCard` | 任务运行与队列 | `features/runs` | implemented |
+| 模型文件浏览器 | `ModelFileBrowser` | 系统/日志/模型文件 | `features/models` | planned |
 | 固定顶栏设计稿 | `RouteHeaderSurface` | Headers 专项 | `route-header-surface` | specialty |
 | Lucide 图标列表 | `IconList` | Icons 专项 | `icon-showcase/icon-list` | specialty |
 
@@ -164,7 +164,7 @@ src/app/design-demos/
 
 ## Showcase 覆盖要求
 
-- `src/app/design-demos/_showcase/registry.ts` 是 showcase 目录真相。
+- `src/app/design-demos/showcase/registry.ts` 是 showcase 目录真相。
 - 每个功能族至少有一个真实样例和一个组件清单。
 - 总览页、功能族页、计数和状态说明必须从 registry 读取。
 - 旧 `atoms/mid/editor/projects/image-list-components` 入口不再出现在路由表和总览页。

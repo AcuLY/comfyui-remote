@@ -1,7 +1,7 @@
 "use client";
 
 import s from "./text-area-field.module.css";
-import { preventReadonlyEdit } from "../_shared/utils";
+import { preventReadonlyEdit } from "../shared/utils";
 
 export function TextAreaField({ label, value }: { label: string; value: string }) {
   return (

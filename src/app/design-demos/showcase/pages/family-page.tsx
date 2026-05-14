@@ -1,8 +1,8 @@
 "use client";
 
 import type { DemoData } from "../../design-demo-data";
-import { ButtonLink, PageHeader } from "../../_shared/primitives";
-import { AnchorRail } from "../../_shared/patterns";
+import { ButtonLink, PageHeader } from "../../shared/primitives";
+import { AnchorRail } from "../../shared/patterns";
 import { getShowcaseComponents, getShowcaseFamily, SHOWCASE_FAMILIES } from "../registry";
 import type { ShowcaseComponentEntry, ShowcaseComponentStatus, ShowcaseFamilyId } from "../registry";
 import { ShowcaseItem } from "../showcase-item";

@@ -59,5 +59,6 @@ for (const component of SHOWCASE_COMPONENTS) {
   assert.ok(component.componentName.length > 0, `${component.reviewName} needs an English component name`);
   assert.ok(component.familyId in SHOWCASE_FAMILY_ROUTES, `${component.componentName} has an unknown family id`);
   assert.ok(component.paths.length > 0, `${component.componentName} must list source paths or planned paths`);
+  assert.ok(!component.paths.some((path) => path.split("/").some((part) => part.startsWith("_"))), `${component.componentName} should not reference underscored implementation folders`);
   assert.ok(component.usedBy.length > 0, `${component.componentName} must list covered pages or usage contexts`);
 }

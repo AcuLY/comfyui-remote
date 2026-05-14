@@ -9,7 +9,7 @@ import { cx } from "../../design-demo-utils";
 import { Checkbox } from "../checkbox";
 import s from "../image/image.module.css";
 import { StatusBadge } from "../status-badge";
-import { imageReviewLabel } from "../_shared/utils";
+import { imageReviewLabel } from "../shared/utils";
 
 export function ImageThumbMedium({
   actionSlot,

@@ -2,7 +2,7 @@
 
 import { cx } from "../../design-demo-utils";
 import s from "./status-badge.module.css";
-import { statusLabel } from "../_shared/utils";
+import { statusLabel } from "../shared/utils";
 
 function statusTone(status: string) {
   const value = status.toLowerCase();

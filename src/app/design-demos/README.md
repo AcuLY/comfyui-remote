@@ -6,8 +6,8 @@ This directory implements the routable `/design-demos` frontend shell.
 
 - `[[...route]]/page.tsx`: optional catch-all route for every product page shell.
 - `[[...route]]/loading.tsx`: local route skeleton that uses the same glass design system.
-- `_routing/`, `_shell/`, `_data/`, `_shared/`, `_features/`, `_showcase/`: private-folder architecture for the migration-ready demo frontend.
-- `_showcase/registry.ts`: component showcase source of truth for functional families, Chinese review names, descriptions, paths, usage, and migration status.
+- `routing/`, `shell/`, `data/`, `shared/`, `features/`, `showcase/`: implementation-only architecture for the migration-ready demo frontend, intentionally without underscore prefixes.
+- `showcase/registry.ts`: component showcase source of truth for functional families, Chinese review names, descriptions, paths, usage, and migration status.
 - `COMPONENT_TAXONOMY.md`: detailed component split, family ownership, boundary rules, and migration context for future agents.
 - Existing folders such as `ui/`, `runs/`, `projects/`, `presets/`, `templates/`, `batch-create/`, `models/`, `system/`, and `section-editor/` are still compatibility sources while code migrates behind the private-folder entrypoints.
 - `IMAGE_SURFACES.md`: inventory of every routed demo page and panel that renders generated images.

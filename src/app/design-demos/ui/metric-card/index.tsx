@@ -2,7 +2,7 @@
 
 import { cx } from "../../design-demo-utils";
 import s from "./metric-card.module.css";
-import type { RouteIcon } from "../_shared/types";
+import type { RouteIcon } from "../shared/types";
 
 export function MetricCard({ icon: Icon, label, value, meta, tone }: { icon: RouteIcon; label: string; value: string | number; meta: string; tone?: string }) {
   return (

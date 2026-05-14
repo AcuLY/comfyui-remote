@@ -1151,15 +1151,15 @@
 
 ## 13. 辅助 / 检查页
 
-### 13.1 ImageListComponentsPage
+### 13.1 ComponentShowcaseFamilyPage(images)
 
 | 字段 | 值 |
 |------|-----|
-| 导出名 | `ImageListComponentsPage` |
-| 文件 | `image-list-components-page.tsx` |
+| 导出名 | `ComponentShowcaseFamilyPage` |
+| 文件 | `showcase/pages/family-page.tsx` + `showcase/pages/family-samples.tsx` |
 | Props | `data: DemoData` |
-| 功能 | 图片列表组件检查页（小图列表 / 中图列表 / 无操作区模式） |
-| CSS 类 | `.imageListDemoSurface`, `.imageListDemoHeader` |
+| 功能 | 图片结果与审核功能族检查页（小图列表 / 中图列表 / 审核面板 / Lightbox 相关入口） |
+| CSS 类 | `showcase/pages/showcase-pages.module.css` |
 
 ### 13.2 RootPage
 

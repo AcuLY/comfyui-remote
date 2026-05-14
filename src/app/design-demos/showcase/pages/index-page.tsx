@@ -4,12 +4,12 @@ import Link from "next/link";
 
 import type { DemoData } from "../../design-demo-data";
 import { demoHref } from "../../design-demo-utils";
-import { PageHeader } from "../../_shared/primitives";
+import { PageHeader } from "../../shared/primitives";
 import { SHOWCASE_COMPONENTS, SHOWCASE_FAMILIES } from "../registry";
 import s from "./showcase-pages.module.css";
 
-export function ComponentShowcaseIndex({ data: _data }: { data: DemoData }) {
-  void _data;
+export function ComponentShowcaseIndex({ data: data }: { data: DemoData }) {
+  void data;
 
   return (
     <div className={s.page}>
