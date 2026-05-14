@@ -1,3 +1,5 @@
+"use client";
+
 import type { KeyboardEvent, MouseEvent } from "react";
 import { Check, Square } from "lucide-react";
 

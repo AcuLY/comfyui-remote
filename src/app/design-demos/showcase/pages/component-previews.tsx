@@ -68,12 +68,7 @@ const previewRenderers: Record<ShowcasePreviewComponentName, PreviewRenderer> = 
       <ButtonLink href="/settings" tone="subtle" icon={Settings}>设置</ButtonLink>
     </div>
   ),
-  Checkbox: () => (
-    <div className={s.previewRow}>
-      <Checkbox checked label="已选择" onCheckedChange={noop} />
-      <Checkbox checked={false} label="未选择" onCheckedChange={noop} />
-    </div>
-  ),
+  Checkbox: () => <CheckboxPreview />,
   Switch: () => (
     <div className={s.previewRow}>
       <Switch defaultChecked ariaLabel="启用预览" />
@@ -89,12 +84,7 @@ const previewRenderers: Record<ShowcasePreviewComponentName, PreviewRenderer> = 
   ),
   SegmentedControl: () => <SegmentedControlPreview />,
   DemoTabs: () => <DemoTabsPreview />,
-  "Field / TextAreaField": () => (
-    <div className={s.previewGrid}>
-      <Field label="名称" value="写实人像" />
-      <TextAreaField label="Prompt" value="masterpiece, best quality, portrait" />
-    </div>
-  ),
+  "Field / TextAreaField": () => <FieldsPreview />,
   PageHeader: () => (
     <div className={s.previewSurface}>
       <PageHeader eyebrow="项目" title="夏日人像合集" subtitle="12 个小节 · 3 个预设" actions={<Button tone="primary" icon={Plus}>新增</Button>} />
@@ -123,18 +113,7 @@ const previewRenderers: Record<ShowcasePreviewComponentName, PreviewRenderer> = 
       </div>
     </div>
   ),
-  UnitRowShell: () => (
-    <UnitRowShell
-      dragHandle={<Button className={s.dragHandle} tone="subtle" icon={GripVertical} iconOnly ariaLabel="拖拽排序条目" />}
-      leading={<Checkbox checked label="选择" onCheckedChange={noop} variant="compact" />}
-      media={<StatusBadge status="running" label="运行中" />}
-      title="夏日人像合集"
-      description="主信息、元信息和行尾操作都使用槽位组合。"
-      meta={<><span>12 小节</span><span>刚刚更新</span></>}
-      actions={<Button icon={Edit3}>编辑</Button>}
-      selected
-    />
-  ),
+  UnitRowShell: () => <UnitRowShellPreview />,
   ProjectListItem: ({ data }) => {
     const project = firstProject(data);
     if (!project) return <EmptyRows label="没有项目样例" />;
@@ -158,9 +137,7 @@ const previewRenderers: Record<ShowcasePreviewComponentName, PreviewRenderer> = 
     if (!section) return <EmptyRows label="没有模板小节样例" />;
     return <TemplateSectionRow index={0} section={section} template={template} />;
   },
-  FolderBreadcrumb: () => (
-    <FolderBreadcrumb items={[{ id: "people", label: "人物" }, { id: "portrait", label: "写实" }]} onNavigate={noop} />
-  ),
+  FolderBreadcrumb: () => <FolderBreadcrumbPreview />,
   FolderRow: () => (
     <FolderRow
       name="人物"
@@ -168,14 +145,7 @@ const previewRenderers: Record<ShowcasePreviewComponentName, PreviewRenderer> = 
       actions={<><Button icon={Edit3} iconOnly tone="subtle" ariaLabel="重命名" /><Button icon={Trash2} iconOnly tone="danger" ariaLabel="删除" /></>}
     />
   ),
-  MoveTargetPicker: () => (
-    <MoveTargetPicker
-      currentId="portrait"
-      label="移动到"
-      options={[{ id: null, label: "根目录", countLabel: "12 项" }, { id: "people", label: "人物", depth: 1, countLabel: "8 项" }, { id: "portrait", label: "写实", depth: 2, countLabel: "当前" }]}
-      onMove={noop}
-    />
-  ),
+  MoveTargetPicker: () => <MoveTargetPickerPreview />,
   ModelFileRow: () => <ModelFileRow file={modelFiles[2] ?? modelFiles[0]} onAction={noop} onSelect={noop} selected />,
   SelectionBatchBar: () => (
     <SelectionBatchBar
@@ -364,6 +334,70 @@ function ButtonPreview() {
   );
 }
 
+function CheckboxPreview() {
+  const [checkedSelected, setCheckedSelected] = useState(true);
+  const [uncheckedSelected, setUncheckedSelected] = useState(false);
+  return (
+    <div className={s.previewRow}>
+      <Checkbox checked={checkedSelected} label="已选择" onCheckedChange={setCheckedSelected} />
+      <Checkbox checked={uncheckedSelected} label="未选择" onCheckedChange={setUncheckedSelected} />
+    </div>
+  );
+}
+
+function FieldsPreview() {
+  const [name, setName] = useState("写实人像");
+  const [prompt, setPrompt] = useState("masterpiece, best quality, portrait");
+  return (
+    <div className={s.previewGrid}>
+      <Field label="名称" value={name} onChange={setName} />
+      <TextAreaField label="Prompt" value={prompt} onChange={setPrompt} />
+    </div>
+  );
+}
+
+function UnitRowShellPreview() {
+  const [selected, setSelected] = useState(true);
+  return (
+    <UnitRowShell
+      dragHandle={<Button className={s.dragHandle} tone="subtle" icon={GripVertical} iconOnly ariaLabel="拖拽排序条目" />}
+      leading={<Checkbox checked={selected} label="选择" onCheckedChange={setSelected} variant="compact" />}
+      media={<StatusBadge status="running" label="运行中" />}
+      title="夏日人像合集"
+      description="主信息、元信息和行尾操作都使用槽位组合。"
+      meta={<><span>12 小节</span><span>刚刚更新</span></>}
+      actions={<Button icon={Edit3}>编辑</Button>}
+      selected={selected}
+    />
+  );
+}
+
+function FolderBreadcrumbPreview() {
+  const [activeFolderId, setActiveFolderId] = useState<string | null>("portrait");
+  const items = activeFolderId === "portrait"
+    ? [{ id: "people", label: "人物" }, { id: "portrait", label: "写实" }]
+    : activeFolderId === "people"
+      ? [{ id: "people", label: "人物" }]
+      : [];
+  return <FolderBreadcrumb items={items} onNavigate={setActiveFolderId} />;
+}
+
+function MoveTargetPickerPreview() {
+  const [moveTargetId, setMoveTargetId] = useState<string | null>("portrait");
+  const targetLabel = moveTargetId === "portrait" ? "写实" : moveTargetId === "people" ? "人物" : "根目录";
+  return (
+    <div className={s.previewRow}>
+      <MoveTargetPicker
+        currentId={moveTargetId}
+        label="移动到"
+        options={[{ id: null, label: "根目录", countLabel: "12 项" }, { id: "people", label: "人物", depth: 1, countLabel: "8 项" }, { id: "portrait", label: "写实", depth: 2, countLabel: "当前" }]}
+        onMove={setMoveTargetId}
+      />
+      <StatusBadge status="ready" label={`当前：${targetLabel}`} />
+    </div>
+  );
+}
+
 function SegmentedControlPreview() {
   const [value, setValue] = useState("lora");
   return (
@@ -389,13 +423,19 @@ function DemoTabsPreview() {
 
 function SpecSectionPreview() {
   const [steps, setSteps] = useState(20);
+  const [checkpoint, setCheckpoint] = useState("realisticVision.safetensors");
   return (
     <SpecSection title="采样参数" hint="参数行只负责生成配置。">
       <SpecRow label="步数" description="更多步数通常更精细">
         <StepperInput value={steps} onChange={setSteps} min={1} max={50} />
       </SpecRow>
       <SpecRow label="Checkpoint">
-        <SelectLike label="模型" value="realisticVision.safetensors" />
+        <SelectLike
+          label="模型"
+          value={checkpoint}
+          options={["realisticVision.safetensors", "dreamShaper.safetensors", "sdxlBase.safetensors"]}
+          onChange={setCheckpoint}
+        />
       </SpecRow>
     </SpecSection>
   );

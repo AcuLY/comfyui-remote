@@ -1,12 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import type { ReactNode } from "react";
 import type { Ref } from "react";
-import { MoreHorizontal } from "lucide-react";
+import { ArrowLeft, MoreHorizontal } from "lucide-react";
 
-import { cx } from "../routing";
+import { cx, demoHref } from "../routing";
 import type { HeaderAction, HeaderSpec } from "../routing/header-specs";
-import { PageHeaderBack } from "../shared/primitives/page-header";
 import s from "./header-surface.module.css";
 
 type RouteHeaderMode = "expanded" | "collapsed" | "mobile";
@@ -48,6 +48,34 @@ function HeaderMeta({ className, items }: { className?: string; items?: string[]
         <span key={item}>{item}</span>
       ))}
     </div>
+  );
+}
+
+function HeaderBackLink({
+  back,
+  mode,
+}: {
+  back: NonNullable<HeaderSpec["back"]>;
+  mode: RouteHeaderMode;
+}) {
+  const compact = mode === "collapsed" || mode === "mobile";
+
+  return (
+    <Link
+      aria-label={back.label}
+      className={cx(
+        s.headerButton,
+        s.headerButtonSubtle,
+        s.headerBackButton,
+        compact && s.headerButtonIconOnly,
+        compact && s.headerBackButtonCompact,
+      )}
+      href={demoHref(back.href)}
+      title={compact ? back.label : undefined}
+    >
+      <ArrowLeft aria-hidden="true" className={s.headerIcon} />
+      {compact ? null : <span className={s.headerBackText}>{back.label}</span>}
+    </Link>
   );
 }
 
@@ -100,7 +128,7 @@ export function RouteHeaderSurface({
         <div className={s.leftCluster}>
           {spec.back ? (
             <div className={s.backSlot}>
-              <PageHeaderBack href={spec.back.href} label={spec.back.label} />
+              <HeaderBackLink back={spec.back} mode={mode} />
             </div>
           ) : null}
         </div>

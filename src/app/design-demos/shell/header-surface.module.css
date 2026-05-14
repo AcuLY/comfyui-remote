@@ -66,6 +66,7 @@
 }
 
 .actionCluster {
+  flex: 0 0 auto;
   justify-content: flex-end;
 }
 
@@ -77,6 +78,21 @@
 
 .backSlot a {
   margin: 0;
+}
+
+.headerBackButton {
+  flex: 0 0 auto;
+  max-width: min(184px, 20vw);
+}
+
+.headerBackButtonCompact {
+  max-width: none;
+}
+
+.headerBackText {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .identityBlock {
@@ -110,9 +126,11 @@
   min-width: 0;
   align-items: center;
   gap: 7px;
+  overflow: hidden;
 }
 
 .titleRow :where(h1, h2, h3) {
+  flex: 1 1 auto;
   min-width: 0;
   margin: 0;
   overflow: hidden;
@@ -170,6 +188,7 @@
 
 .statusPill {
   flex: 0 1 auto;
+  min-width: 0;
 }
 
 .metaStrip {
@@ -240,6 +259,7 @@
 }
 
 .headerButtonIconOnly {
+  min-width: 34px;
   width: 34px;
   padding: 0;
 }
@@ -296,7 +316,6 @@
 
 .fixedHeaderCollapsed .eyebrow,
 .fixedHeaderCollapsed .identityBlock p,
-.fixedHeaderCollapsed .statusPill,
 .fixedHeaderCollapsed .blockMeta,
 .fixedHeaderCollapsed .commandRow {
   opacity: 0;
@@ -313,6 +332,26 @@
 .fixedHeaderCollapsed .titleRow :where(h1, h2, h3) {
   font-size: 15px;
   transform: translateY(-1px);
+}
+
+.fixedHeaderCollapsed .headerBackButtonCompact {
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  min-height: 34px;
+}
+
+.fixedHeaderCollapsed .statusPill {
+  max-width: min(34vw, 116px);
+  padding: 4px 6px;
+  font-size: 9px;
+  transform: translateY(-1px);
+}
+
+.fixedHeaderCollapsed .inlineMeta span {
+  max-width: 96px;
+  padding: 4px 6px;
+  font-size: 9px;
 }
 
 .fixedHeaderMobile .mainRow {
@@ -338,9 +377,17 @@
 }
 
 .fixedHeaderMobile .headerButton {
+  min-width: 40px;
   width: 40px;
   min-height: 40px;
   padding: 0;
+}
+
+.fixedHeaderMobile .headerBackButtonCompact {
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  min-height: 40px;
 }
 
 @media (max-width: 760px) {
@@ -367,9 +414,22 @@
   }
 
   .fixedHeader:not(.fixedHeaderMobile) .headerButton {
+    min-width: 40px;
     width: 40px;
     min-height: 40px;
     padding: 0;
+  }
+
+  .fixedHeader:not(.fixedHeaderMobile) .headerBackButton {
+    width: 40px;
+    min-width: 40px;
+    height: 40px;
+    min-height: 40px;
+    padding: 0;
+  }
+
+  .fixedHeader:not(.fixedHeaderMobile) .headerBackText {
+    display: none;
   }
 
   .fixedHeader:not(.fixedHeaderMobile) .headerButton span {

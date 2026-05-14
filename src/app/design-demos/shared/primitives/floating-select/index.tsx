@@ -1,7 +1,7 @@
 "use client";
 
-import type { CSSProperties, ReactNode } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent, ReactNode } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ChevronDown } from "lucide-react";
 
@@ -16,6 +16,7 @@ export type FloatingSelectOption = {
 
 export function FloatingSelect({
   value,
+  defaultValue,
   options,
   onChange,
   ariaLabel,
@@ -27,9 +28,11 @@ export function FloatingSelect({
   displayValue,
   leadingIcon,
   endSlot,
-  disabled,
+  disabled = false,
+  readOnly = false,
 }: {
-  value: string;
+  value?: string;
+  defaultValue?: string;
   options: FloatingSelectOption[];
   onChange?: (value: string) => void;
   ariaLabel?: string;
@@ -42,13 +45,47 @@ export function FloatingSelect({
   leadingIcon?: ReactNode;
   endSlot?: ReactNode;
   disabled?: boolean;
+  readOnly?: boolean;
 }) {
+  const baseId = useId();
+  const listboxId = `${baseId}-listbox`;
+  const resolvedValue = value ?? defaultValue ?? options[0]?.value ?? "";
+  const [selectedValueState, setSelectedValueState] = useState(() => ({
+    sourceValue: resolvedValue,
+    selectedValue: resolvedValue,
+  }));
   const [open, setOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
   const [menuStyle, setMenuStyle] = useState<CSSProperties>({});
   const wrapRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const selected = options.find((option) => option.value === value) ?? options[0];
+  const isReadOnly = readOnly;
+  const isControlled = value !== undefined && onChange !== undefined;
+  const optionId = useCallback((optionValue: string) => (
+    `${baseId}-option-${optionValue.replace(/[^a-zA-Z0-9_-]/g, "-")}`
+  ), [baseId]);
+  const selectedValue = isControlled
+    ? resolvedValue
+    : selectedValueState.sourceValue === resolvedValue
+      ? selectedValueState.selectedValue
+      : resolvedValue;
+  const selected = options.find((option) => option.value === selectedValue) ?? options[0];
+  const selectedIndex = Math.max(0, options.findIndex((option) => option.value === selected?.value));
+  const activeOption = options[activeIndex] ?? selected ?? options[0];
+  const activeOptionId = activeOption ? optionId(activeOption.value) : undefined;
+
+  useEffect(() => {
+    setSelectedValueState((current) => (
+      current.sourceValue === resolvedValue
+        ? current
+        : { sourceValue: resolvedValue, selectedValue: resolvedValue }
+    ));
+  }, [resolvedValue]);
+
+  useEffect(() => {
+    setActiveIndex(selectedIndex);
+  }, [selectedIndex]);
 
   const updateMenuPosition = useCallback(() => {
     const button = buttonRef.current;
@@ -77,7 +114,7 @@ export function FloatingSelect({
       if (wrapRef.current?.contains(target) || menuRef.current?.contains(target)) return;
       setOpen(false);
     };
-    const handleKeyDown = (event: KeyboardEvent) => {
+    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
       if (event.key === "Escape") setOpen(false);
     };
     document.addEventListener("mousedown", close);
@@ -92,6 +129,71 @@ export function FloatingSelect({
     };
   }, [open, updateMenuPosition]);
 
+  function openMenu(nextActiveIndex = selectedIndex) {
+    if (disabled || isReadOnly || options.length === 0) return;
+    setActiveIndex(nextActiveIndex);
+    setOpen(true);
+  }
+
+  function commitValue(nextValue: string) {
+    if (disabled || isReadOnly) return;
+    onChange?.(nextValue);
+    if (!isControlled) setSelectedValue(nextValue);
+    setOpen(false);
+  }
+
+  function setSelectedValue(nextValue: string) {
+    setSelectedValueState({ sourceValue: resolvedValue, selectedValue: nextValue });
+  }
+
+  function moveActive(delta: number) {
+    if (options.length === 0) return;
+    setActiveIndex((current) => (current + delta + options.length) % options.length);
+  }
+
+  function handleButtonKeyDown(event: ReactKeyboardEvent<HTMLButtonElement>) {
+    switch (event.key) {
+      case "Enter":
+      case " ":
+        event.preventDefault();
+        if (open && activeOption) {
+          commitValue(activeOption.value);
+          return;
+        }
+        openMenu(selectedIndex);
+        return;
+      case "ArrowDown":
+        event.preventDefault();
+        if (!open) {
+          openMenu(selectedIndex);
+          return;
+        }
+        moveActive(1);
+        return;
+      case "ArrowUp":
+        event.preventDefault();
+        if (!open) {
+          openMenu(selectedIndex);
+          return;
+        }
+        moveActive(-1);
+        return;
+      case "Escape":
+        if (!open) return;
+        event.preventDefault();
+        setOpen(false);
+        return;
+      case "Home":
+        event.preventDefault();
+        openMenu(0);
+        return;
+      case "End":
+        event.preventDefault();
+        openMenu(Math.max(0, options.length - 1));
+        return;
+    }
+  }
+
   const portalTarget = open && typeof document !== "undefined"
     ? document.querySelector<HTMLElement>("[data-app-shell]") ?? document.body
     : null;
@@ -99,13 +201,27 @@ export function FloatingSelect({
   return (
     <div className={cx(s.floatingSelect, className)} ref={wrapRef}>
       <button
+        aria-activedescendant={open ? activeOptionId : undefined}
+        aria-controls={listboxId}
+        aria-disabled={disabled ? "true" : undefined}
         aria-expanded={open}
         aria-haspopup="listbox"
         aria-label={ariaLabel}
+        aria-readonly={isReadOnly ? "true" : undefined}
         className={cx(s.floatingSelectBtn, buttonClassName)}
         disabled={disabled}
-        onClick={() => setOpen((current) => !current)}
+        onClick={() => {
+          if (isReadOnly) return;
+          setOpen((current) => {
+            if (current) return false;
+            if (options.length === 0) return false;
+            setActiveIndex(selectedIndex);
+            return true;
+          });
+        }}
+        onKeyDown={handleButtonKeyDown}
         ref={buttonRef}
+        role="combobox"
         type="button"
       >
         {leadingIcon}
@@ -118,20 +234,19 @@ export function FloatingSelect({
       {open && portalTarget ? createPortal(
         <div
           className={cx(s.floatingSelectMenu, menuClassName)}
+          id={listboxId}
           ref={menuRef}
           role="listbox"
           style={menuStyle}
         >
           {options.map((option) => (
             <button
-              aria-selected={option.value === value}
+              aria-selected={option.value === selectedValue}
               className={cx(s.floatingSelectOption, optionClassName)}
-              data-selected={option.value === value}
+              data-selected={option.value === selectedValue}
+              id={optionId(option.value)}
               key={option.value}
-              onClick={() => {
-                onChange?.(option.value);
-                setOpen(false);
-              }}
+              onClick={() => commitValue(option.value)}
               role="option"
               type="button"
             >

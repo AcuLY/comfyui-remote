@@ -106,17 +106,18 @@ function SurfacesSample() {
 }
 
 function UnitItemsSample() {
+  const [selectedProject, setSelectedProject] = useState(true);
   return (
     <div className={s.sampleStack}>
       <UnitRowShell
         dragHandle={<Button className={s.dragHandle} tone="subtle" icon={GripVertical} iconOnly ariaLabel="拖拽排序项目：夏日人像合集" />}
-        leading={<Checkbox checked label="选择项目" onCheckedChange={() => undefined} variant="compact" />}
+        leading={<Checkbox checked={selectedProject} label="选择项目" onCheckedChange={setSelectedProject} variant="compact" />}
         media={<StatusBadge status="running" label="运行中" />}
         title="夏日人像合集"
         description="项目列表项：封面、标题、状态、小节数和更新时间。"
         meta={<><span>12 小节</span><span>更新 2026-05-09</span></>}
         actions={<><Button icon={Edit3}>编辑</Button><Button tone="danger" icon={Trash2}>删除</Button></>}
-        selected
+        selected={selectedProject}
       />
       <UnitRowShell
         leading={<span className={s.miniSwatch} />}
@@ -130,11 +131,19 @@ function UnitItemsSample() {
 }
 
 function FoldersSample() {
+  const [activeFolderId, setActiveFolderId] = useState<string | null>("realistic");
+  const [moveTargetId, setMoveTargetId] = useState<string | null>("realistic");
+  const breadcrumbItems = activeFolderId === "realistic"
+    ? [{ id: "people", label: "人物" }, { id: "realistic", label: "写实" }]
+    : activeFolderId === "people"
+      ? [{ id: "people", label: "人物" }]
+      : [];
+  const targetLabel = moveTargetId === "realistic" ? "写实" : moveTargetId === "people" ? "人物" : "根目录";
   return (
     <div className={s.sampleStack}>
       <FolderBreadcrumb
-        items={[{ id: "people", label: "人物" }, { id: "realistic", label: "写实" }]}
-        onNavigate={() => undefined}
+        items={breadcrumbItems}
+        onNavigate={setActiveFolderId}
       />
       <FolderRow
         name="人物"
@@ -142,15 +151,16 @@ function FoldersSample() {
         actions={<><Button icon={Edit3} iconOnly tone="subtle" ariaLabel="重命名" /><Button icon={Trash2} iconOnly tone="danger" ariaLabel="删除" /></>}
       />
       <MoveTargetPicker
-        currentId="realistic"
+        currentId={moveTargetId}
         label="移动到"
         options={[
           { id: null, label: "根目录", countLabel: "12 项" },
           { id: "people", label: "人物", depth: 1, countLabel: "8 项" },
           { id: "realistic", label: "写实", depth: 2, countLabel: "当前" },
         ]}
-        onMove={() => undefined}
+        onMove={setMoveTargetId}
       />
+      <StatusBadge status="ready" label={`当前目标：${targetLabel}`} />
     </div>
   );
 }

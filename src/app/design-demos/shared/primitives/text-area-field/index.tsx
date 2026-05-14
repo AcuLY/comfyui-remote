@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ClipboardCopy, ClipboardPaste } from "lucide-react";
 
 import s from "./text-area-field.module.css";
@@ -10,30 +10,40 @@ import { preventReadonlyEdit } from "../shared/utils";
 
 type TextAreaFieldProps = {
   label: string;
-  value: string;
+  value?: string;
+  defaultValue?: string;
+  disabled?: boolean;
+  readOnly?: boolean;
   onChange?: (value: string) => void;
 };
 
-export function TextAreaField({ label, value, onChange }: TextAreaFieldProps) {
+export function TextAreaField({ label, value, defaultValue, disabled = false, readOnly = false, onChange }: TextAreaFieldProps) {
+  const resolvedValue = value ?? defaultValue ?? "";
   const [fieldValueState, setFieldValue] = useState(() => ({
-    sourceValue: value,
-    draftValue: value,
+    sourceValue: resolvedValue,
+    draftValue: resolvedValue,
   }));
   const { pushToast } = useDemoFeedback();
-  const isInteractive = Boolean(onChange);
+  const isReadOnly = readOnly;
+  const isControlled = value !== undefined && onChange !== undefined;
 
-  if (fieldValueState.sourceValue !== value) {
-    setFieldValue({ sourceValue: value, draftValue: value });
-  }
+  useEffect(() => {
+    setFieldValue((current) => (
+      current.sourceValue === resolvedValue
+        ? current
+        : { sourceValue: resolvedValue, draftValue: resolvedValue }
+    ));
+  }, [resolvedValue]);
 
-  const fieldValue = fieldValueState.sourceValue === value ? fieldValueState.draftValue : value;
-  const displayValue = isInteractive ? value : fieldValue;
+  const fieldValue = fieldValueState.sourceValue === resolvedValue ? fieldValueState.draftValue : resolvedValue;
+  const displayValue = isControlled ? resolvedValue : fieldValue;
 
   function updateValue(nextValue: string) {
+    if (isReadOnly || disabled) return;
     onChange?.(nextValue);
-    if (onChange) return;
+    if (isControlled) return;
 
-    setFieldValue({ sourceValue: value, draftValue: nextValue });
+    setFieldValue({ sourceValue: resolvedValue, draftValue: nextValue });
   }
 
   function handleCopy() {
@@ -55,6 +65,8 @@ export function TextAreaField({ label, value, onChange }: TextAreaFieldProps) {
   }
 
   function handlePasteReplace() {
+    if (isReadOnly || disabled) return;
+
     void readClipboard()
       .then((clipboardValue) => {
         updateValue(clipboardValue);
@@ -78,18 +90,19 @@ export function TextAreaField({ label, value, onChange }: TextAreaFieldProps) {
       <label>{label}</label>
       <div className={s.controlFrame}>
         <textarea
-          aria-readonly={isInteractive ? undefined : "true"}
+          aria-readonly={isReadOnly ? "true" : undefined}
           className={s.control}
-          onBeforeInput={isInteractive ? undefined : preventReadonlyEdit}
+          disabled={disabled}
+          onBeforeInput={isReadOnly ? preventReadonlyEdit : undefined}
           onChange={(event) => updateValue(event.currentTarget.value)}
-          onDrop={isInteractive ? undefined : preventReadonlyEdit}
-          onPaste={isInteractive ? undefined : preventReadonlyEdit}
-          readOnly={!isInteractive}
+          onDrop={isReadOnly ? preventReadonlyEdit : undefined}
+          onPaste={isReadOnly ? preventReadonlyEdit : undefined}
+          readOnly={isReadOnly}
           value={displayValue}
         />
         <div className={s.clipboardDock} role="group" aria-label={`${label} 剪贴板操作`}>
           <Button icon={ClipboardCopy} iconOnly ariaLabel={`复制${label}`} onClick={handleCopy} size="sm" tone="subtle" />
-          <Button icon={ClipboardPaste} iconOnly ariaLabel={`用剪贴板覆盖${label}`} onClick={handlePasteReplace} size="sm" tone="subtle" />
+          <Button disabled={isReadOnly || disabled} icon={ClipboardPaste} iconOnly ariaLabel={`用剪贴板覆盖${label}`} onClick={handlePasteReplace} size="sm" tone="subtle" />
         </div>
       </div>
     </div>

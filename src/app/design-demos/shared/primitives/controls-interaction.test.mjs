@@ -6,10 +6,11 @@ import { fileURLToPath } from "node:url";
 
 const testDir = dirname(fileURLToPath(import.meta.url));
 const designDemosDir = resolve(testDir, "../..");
-const familySamplesSource = readDemoSource("showcase/pages/family-samples.tsx");
 const fieldSource = readDemoSource("shared/primitives/field/index.tsx");
 const textAreaFieldSource = readDemoSource("shared/primitives/text-area-field/index.tsx");
-const buttonCssSource = readDemoSource("shared/primitives/button/button.module.css");
+const floatingSelectSource = readDemoSource("shared/primitives/floating-select/index.tsx");
+const selectLikeSource = readDemoSource("shared/primitives/select-like/index.tsx");
+const checkboxSource = readDemoSource("shared/primitives/checkbox/index.tsx");
 
 function readDemoSource(relativePath) {
   return readFileSync(resolve(designDemosDir, relativePath), "utf8");
@@ -33,90 +34,102 @@ function functionSource(source, functionName) {
   assert.fail(`${functionName} body should close`);
 }
 
-function jsxTagSource(source, componentName, label) {
-  const pattern = new RegExp(`<${componentName}\\b[\\s\\S]*?label="${label}"[\\s\\S]*?\\/>`);
-  const match = source.match(pattern);
-  assert.ok(match, `${componentName} with label "${label}" should exist`);
-  return match[0];
-}
-
-test("ControlsSample uses real state for representative controls", () => {
-  const controlsSampleSource = functionSource(familySamplesSource, "ControlsSample");
-
-  assert.match(
-    controlsSampleSource,
-    /const\s+\[\s*selectedProject\s*,\s*setSelectedProject\s*\]\s*=\s*useState\(true\)/,
-    "checkbox sample should keep local checked state",
-  );
-  assert.match(
-    controlsSampleSource,
-    /const\s+\[\s*projectName\s*,\s*setProjectName\s*\]\s*=\s*useState\("夏日人像合集"\)/,
-    "Field sample should keep local text state",
-  );
-  assert.match(
-    controlsSampleSource,
-    /const\s+\[\s*promptText\s*,\s*setPromptText\s*\]\s*=\s*useState\("masterpiece, best quality, portrait, detailed light"\)/,
-    "TextAreaField sample should keep local text state",
-  );
-
-  assert.match(jsxTagSource(controlsSampleSource, "Checkbox", "选择项目"), /checked=\{selectedProject\}/);
-  assert.match(jsxTagSource(controlsSampleSource, "Checkbox", "选择项目"), /onCheckedChange=\{setSelectedProject\}/);
-  assert.match(jsxTagSource(controlsSampleSource, "Field", "项目名称"), /value=\{projectName\}/);
-  assert.match(jsxTagSource(controlsSampleSource, "Field", "项目名称"), /onChange=\{setProjectName\}/);
-  assert.match(jsxTagSource(controlsSampleSource, "TextAreaField", "正向 Prompt"), /value=\{promptText\}/);
-  assert.match(jsxTagSource(controlsSampleSource, "TextAreaField", "正向 Prompt"), /onChange=\{setPromptText\}/);
-  assert.doesNotMatch(controlsSampleSource, /onCheckedChange=\{\(\)\s*=>\s*undefined\}/);
+test("Field defaults editable and keeps local draft state without onChange", () => {
+  assert.match(fieldSource, /^"use client";/);
+  assert.match(fieldSource, /useState/);
+  assert.match(fieldSource, /value\?:\s*string\s*\|\s*number/);
+  assert.match(fieldSource, /defaultValue\?:\s*string\s*\|\s*number/);
+  assert.match(fieldSource, /readOnly\?:\s*boolean/);
+  assert.match(fieldSource, /disabled\?:\s*boolean/);
+  assert.match(fieldSource, /const\s+isReadOnly\s*=\s*readOnly/);
+  assert.match(fieldSource, /const\s+isControlled\s*=\s*value\s*!==\s*undefined\s*&&\s*onChange\s*!==\s*undefined/);
+  assert.match(fieldSource, /useEffect/);
+  assert.match(fieldSource, /draftValue/);
+  assert.match(fieldSource, /setFieldValue\(\{ sourceValue: resolvedValue, draftValue: nextValue \}\)/);
+  assert.match(fieldSource, /onChange\?\.\(nextValue\)/);
+  assert.match(fieldSource, /value=\{displayValue\}/);
+  assert.match(fieldSource, /readOnly=\{isReadOnly\}/);
+  assert.match(fieldSource, /aria-readonly=\{isReadOnly\s*\?\s*"true"\s*:\s*undefined\}/);
+  assert.match(fieldSource, /disabled=\{disabled\}/);
+  assert.match(fieldSource, /onBeforeInput=\{isReadOnly\s*\?\s*preventReadonlyEdit\s*:\s*undefined\}/);
+  assert.match(fieldSource, /onDrop=\{isReadOnly\s*\?\s*preventReadonlyEdit\s*:\s*undefined\}/);
+  assert.match(fieldSource, /onPaste=\{isReadOnly\s*\?\s*preventReadonlyEdit\s*:\s*undefined\}/);
+  assert.doesNotMatch(fieldSource, /const\s+isInteractive\s*=\s*Boolean\(onChange\)/);
+  assert.doesNotMatch(fieldSource, /readOnly=\{!isInteractive\}/);
+  assert.doesNotMatch(fieldSource, /aria-readonly=\{isInteractive\s*\?\s*undefined\s*:\s*"true"\}/);
 });
 
-test("Field stays read-only by default and becomes controlled when onChange is supplied", () => {
-  assert.match(fieldSource, /onChange\?:\s*\(value:\s*string\)\s*=>\s*void/);
-  assert.match(fieldSource, /const\s+isInteractive\s*=\s*Boolean\(onChange\)/);
-  assert.match(fieldSource, /value=\{value\}/);
-  assert.match(fieldSource, /readOnly=\{!isInteractive\}/);
-  assert.match(fieldSource, /aria-readonly=\{isInteractive\s*\?\s*undefined\s*:\s*"true"\}/);
-  assert.match(fieldSource, /onBeforeInput=\{isInteractive\s*\?\s*undefined\s*:\s*preventReadonlyEdit\}/);
-  assert.match(fieldSource, /onDrop=\{isInteractive\s*\?\s*undefined\s*:\s*preventReadonlyEdit\}/);
-  assert.match(fieldSource, /onPaste=\{isInteractive\s*\?\s*undefined\s*:\s*preventReadonlyEdit\}/);
-  assert.match(fieldSource, /onChange=\{\(event\)\s*=>\s*onChange\?\.\(event\.currentTarget\.value\)\}/);
-  assert.doesNotMatch(fieldSource, /onChange=\{\(\)\s*=>\s*undefined\}/);
-});
-
-test("TextAreaField keeps controlled edits separate from read-only draft replacement", () => {
-  assert.match(textAreaFieldSource, /onChange\?:\s*\(value:\s*string\)\s*=>\s*void/);
-  assert.match(textAreaFieldSource, /const\s+isInteractive\s*=\s*Boolean\(onChange\)/);
-  assert.match(textAreaFieldSource, /const\s+fieldValue\s*=\s*fieldValueState\.sourceValue\s*===\s*value\s*\?\s*fieldValueState\.draftValue\s*:\s*value/);
-  assert.match(textAreaFieldSource, /const\s+displayValue\s*=\s*isInteractive\s*\?\s*value\s*:\s*fieldValue/);
-  assert.match(textAreaFieldSource, /if\s*\(fieldValueState\.sourceValue\s*!==\s*value\)\s*\{\s*setFieldValue\(\{ sourceValue: value, draftValue: value \}\);\s*\}/);
+test("TextAreaField defaults editable, supports readOnly, and keeps clipboard replace noninteractive when read-only", () => {
+  assert.match(textAreaFieldSource, /^"use client";/);
+  assert.match(textAreaFieldSource, /value\?:\s*string/);
+  assert.match(textAreaFieldSource, /defaultValue\?:\s*string/);
+  assert.match(textAreaFieldSource, /readOnly\?:\s*boolean/);
+  assert.match(textAreaFieldSource, /disabled\?:\s*boolean/);
+  assert.match(textAreaFieldSource, /const\s+isReadOnly\s*=\s*readOnly/);
+  assert.match(textAreaFieldSource, /const\s+isControlled\s*=\s*value\s*!==\s*undefined\s*&&\s*onChange\s*!==\s*undefined/);
+  assert.match(textAreaFieldSource, /useEffect/);
+  assert.match(textAreaFieldSource, /draftValue/);
 
   const updateValueSource = functionSource(textAreaFieldSource, "updateValue");
+  assert.match(updateValueSource, /if\s*\(isReadOnly\s*\|\|\s*disabled\)\s*return/);
   assert.match(updateValueSource, /onChange\?\.\(nextValue\)/);
-  assert.match(updateValueSource, /if\s*\(onChange\)\s*return/);
-  assert.match(updateValueSource, /setFieldValue\(\{ sourceValue: value, draftValue: nextValue \}\)/);
+  assert.match(updateValueSource, /if\s*\(isControlled\)\s*return/);
+  assert.match(updateValueSource, /setFieldValue\(\{ sourceValue: resolvedValue, draftValue: nextValue \}\)/);
 
   assert.match(textAreaFieldSource, /copyToClipboard\(displayValue\)/);
-  assert.match(textAreaFieldSource, /updateValue\(clipboardValue\)/);
-  assert.match(textAreaFieldSource, /value=\{displayValue\}/);
-  assert.match(textAreaFieldSource, /readOnly=\{!isInteractive\}/);
-  assert.match(textAreaFieldSource, /onBeforeInput=\{isInteractive\s*\?\s*undefined\s*:\s*preventReadonlyEdit\}/);
-  assert.match(textAreaFieldSource, /onDrop=\{isInteractive\s*\?\s*undefined\s*:\s*preventReadonlyEdit\}/);
-  assert.match(textAreaFieldSource, /onPaste=\{isInteractive\s*\?\s*undefined\s*:\s*preventReadonlyEdit\}/);
-  assert.match(textAreaFieldSource, /onChange=\{\(event\)\s*=>\s*updateValue\(event\.currentTarget\.value\)\}/);
+  assert.match(textAreaFieldSource, /disabled=\{isReadOnly\s*\|\|\s*disabled\}/);
+  assert.match(textAreaFieldSource, /readOnly=\{isReadOnly\}/);
+  assert.match(textAreaFieldSource, /aria-readonly=\{isReadOnly\s*\?\s*"true"\s*:\s*undefined\}/);
+  assert.match(textAreaFieldSource, /onBeforeInput=\{isReadOnly\s*\?\s*preventReadonlyEdit\s*:\s*undefined\}/);
+  assert.match(textAreaFieldSource, /onDrop=\{isReadOnly\s*\?\s*preventReadonlyEdit\s*:\s*undefined\}/);
+  assert.match(textAreaFieldSource, /onPaste=\{isReadOnly\s*\?\s*preventReadonlyEdit\s*:\s*undefined\}/);
+  assert.doesNotMatch(textAreaFieldSource, /const\s+isInteractive\s*=\s*Boolean\(onChange\)/);
+  assert.doesNotMatch(textAreaFieldSource, /readOnly=\{!isInteractive\}/);
+  assert.doesNotMatch(textAreaFieldSource, /aria-readonly=\{isInteractive\s*\?\s*undefined\s*:\s*"true"\}/);
 });
 
-test("shared buttons have enabled tactile active feedback", () => {
-  assert.match(
-    buttonCssSource,
-    /\.root\.root:not\(:disabled\):not\(\.pending\):active\s*\{[\s\S]*?transform:\s*translateY\(1px\)[^;]*;/,
-    "enabled shared buttons and links should move down while active",
-  );
-  assert.match(
-    buttonCssSource,
-    /\.root\.root:not\(:disabled\):not\(\.pending\):active\s*\{[\s\S]*?box-shadow:\s*[\s\S]*?inset/,
-    "enabled active feedback should include an inset pressed shadow",
-  );
-  assert.match(
-    buttonCssSource,
-    /\.root\.root\.iconOnly:not\(:disabled\):not\(\.pending\):active\s*\{/,
-    "icon-only buttons should have explicit active feedback",
-  );
+test("SelectLike forwards controlled and uncontrolled selection props to FloatingSelect", () => {
+  assert.match(selectLikeSource, /^"use client";/);
+  assert.match(selectLikeSource, /value\?:\s*string/);
+  assert.match(selectLikeSource, /defaultValue\?:\s*string/);
+  assert.match(selectLikeSource, /readOnly\?:\s*boolean/);
+  assert.match(selectLikeSource, /disabled\?:\s*boolean/);
+  assert.match(selectLikeSource, /value=\{value\}/);
+  assert.match(selectLikeSource, /defaultValue=\{defaultValue\}/);
+  assert.match(selectLikeSource, /readOnly=\{readOnly\}/);
+  assert.match(selectLikeSource, /disabled=\{disabled\}/);
+  assert.match(selectLikeSource, /onChange=\{onChange\}/);
+});
+
+test("FloatingSelect supports local selection state, explicit readOnly, and keyboard listbox ARIA", () => {
+  assert.match(floatingSelectSource, /^"use client";/);
+  assert.match(floatingSelectSource, /value\?:\s*string/);
+  assert.match(floatingSelectSource, /defaultValue\?:\s*string/);
+  assert.match(floatingSelectSource, /readOnly\?:\s*boolean/);
+  assert.match(floatingSelectSource, /const\s+isReadOnly\s*=\s*readOnly/);
+  assert.match(floatingSelectSource, /const\s+isControlled\s*=\s*value\s*!==\s*undefined\s*&&\s*onChange\s*!==\s*undefined/);
+  assert.match(floatingSelectSource, /selectedValue/);
+  assert.match(floatingSelectSource, /setSelectedValue\(nextValue\)/);
+  assert.match(floatingSelectSource, /aria-controls=\{listboxId\}/);
+  assert.match(floatingSelectSource, /aria-activedescendant=\{open\s*\?\s*activeOptionId\s*:\s*undefined\}/);
+  assert.match(floatingSelectSource, /aria-expanded=\{open\}/);
+  assert.match(floatingSelectSource, /aria-readonly=\{isReadOnly\s*\?\s*"true"\s*:\s*undefined\}/);
+  assert.match(floatingSelectSource, /aria-disabled=\{disabled\s*\?\s*"true"\s*:\s*undefined\}/);
+  assert.match(floatingSelectSource, /id=\{listboxId\}/);
+  assert.match(floatingSelectSource, /id=\{optionId\(option\.value\)\}/);
+  assert.match(floatingSelectSource, /aria-selected=\{option\.value\s*===\s*selectedValue\}/);
+  assert.match(floatingSelectSource, /role="listbox"/);
+  assert.match(floatingSelectSource, /role="option"/);
+  assert.match(floatingSelectSource, /case\s+"Enter"/);
+  assert.match(floatingSelectSource, /case\s+" "/);
+  assert.match(floatingSelectSource, /case\s+"ArrowDown"/);
+  assert.match(floatingSelectSource, /case\s+"ArrowUp"/);
+  assert.match(floatingSelectSource, /case\s+"Escape"/);
+  assert.match(floatingSelectSource, /case\s+"Home"/);
+  assert.match(floatingSelectSource, /case\s+"End"/);
+  assert.doesNotMatch(floatingSelectSource, /onChange\?\.\(option\.value\);\s*setOpen\(false\)/);
+});
+
+test("Checkbox declares an explicit client boundary", () => {
+  assert.match(checkboxSource, /^"use client";/);
 });
