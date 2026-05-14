@@ -138,16 +138,15 @@ export function DemoPager({
           const isActive = item.page === activePage;
 
           return (
-            <button
+            <Button
               key={item.page}
-              type="button"
-              data-demo-ui-button="true"
-              className={cx(s.pagerButton, isActive && s.pagerButtonActive)}
-              aria-current={isActive ? "page" : undefined}
+              className={s.pagerButton}
+              ariaCurrent={isActive ? "page" : undefined}
+              pressed={isActive}
               onClick={() => requestPage(item.page)}
             >
               {item.page}
-            </button>
+            </Button>
           );
         }
 
@@ -156,18 +155,17 @@ export function DemoPager({
 
         return (
           <span className={cx(s.pagerGap, item.key === "right-gap" && s.pagerGapEnd)} key={item.key}>
-            <button
-              type="button"
-              data-demo-ui-button="true"
-              className={cx(s.pagerButton, isOpen && s.pagerButtonActive)}
-              aria-controls={menuId}
-              aria-expanded={isOpen}
-              aria-haspopup="menu"
-              aria-label={`跳转到 ${item.from}-${item.to} 页`}
+            <Button
+              className={s.pagerButton}
+              ariaControls={menuId}
+              ariaExpanded={isOpen}
+              ariaHasPopup="menu"
+              ariaLabel={`跳转到 ${item.from}-${item.to} 页`}
+              pressed={isOpen}
               onClick={(event) => toggleGap(item.key, event)}
             >
               ...
-            </button>
+            </Button>
             {isOpen && menuPosition ? (
               <div
                 id={menuId}

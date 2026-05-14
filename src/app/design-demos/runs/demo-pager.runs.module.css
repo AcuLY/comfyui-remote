@@ -53,46 +53,6 @@
   align-items: center;
 }
 
-.pagerButton {
-  display: inline-flex;
-  width: 36px;
-  min-width: 36px;
-  height: 36px;
-  min-height: 36px;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--demo-border-strong);
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--demo-glass-soft) 88%, transparent);
-  color: var(--demo-muted);
-  cursor: pointer;
-  font: inherit;
-  font-size: 12px;
-  font-weight: 580;
-  letter-spacing: 0;
-  line-height: 1.2;
-  padding: 0;
-  transition: background 160ms ease, border-color 160ms ease, box-shadow 160ms ease, color 160ms ease, opacity 160ms ease;
-}
-
-.pagerButton:hover,
-.pagerButton:focus-visible,
-.pagerButtonActive {
-  border-color: var(--demo-glass-accent-border);
-  background: var(--demo-selected);
-  color: var(--demo-green);
-  outline: none;
-}
-
-.pagerButton:focus-visible {
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--demo-green) 26%, transparent);
-}
-
-.pagerButton:disabled {
-  cursor: not-allowed;
-  opacity: 0.42;
-}
-
 .pagerMenu {
   position: fixed;
   z-index: 80;
@@ -151,12 +111,6 @@
     order: 1;
     width: 100%;
     justify-content: center;
-  }
-
-  .pagerButton {
-    width: 44px;
-    height: 44px;
-    min-width: 44px;
   }
 
   .pagerMenu {

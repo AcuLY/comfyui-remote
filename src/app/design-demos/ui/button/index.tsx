@@ -32,6 +32,10 @@ export function Button({
   icon: Icon,
   iconOnly = false,
   ariaLabel,
+  ariaControls,
+  ariaCurrent,
+  ariaExpanded,
+  ariaHasPopup,
   onClick,
   pressed,
   pending = false,
@@ -45,6 +49,10 @@ export function Button({
   icon?: RouteIcon;
   iconOnly?: boolean;
   ariaLabel?: string;
+  ariaControls?: string;
+  ariaCurrent?: React.AriaAttributes["aria-current"];
+  ariaExpanded?: boolean;
+  ariaHasPopup?: React.AriaAttributes["aria-haspopup"];
   onClick?: (event: ReactMouseEvent<HTMLButtonElement>) => void;
   pressed?: boolean;
   pending?: boolean;
@@ -54,7 +62,7 @@ export function Button({
   size?: "sm" | "md";
 }) {
   const { pushToast } = useDemoFeedback();
-  const label = iconOnly ? controlLabel(children, ariaLabel) : undefined;
+  const label = iconOnly ? controlLabel(children, ariaLabel) : ariaLabel;
 
   function handleClick(event: ReactMouseEvent<HTMLButtonElement>) {
     if (disabled || pending) return;
@@ -76,7 +84,11 @@ export function Button({
       data-demo-ui-button-size={size}
       data-demo-ui-button-tone={tone}
       onClick={handleClick}
-      aria-label={iconOnly ? label : undefined}
+      aria-controls={ariaControls}
+      aria-current={ariaCurrent}
+      aria-expanded={ariaExpanded}
+      aria-haspopup={ariaHasPopup}
+      aria-label={label}
       aria-pressed={pressed}
       aria-busy={pending || undefined}
       title={iconOnly ? label : undefined}
