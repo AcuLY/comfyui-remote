@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import s from "./field.module.css";
 import { preventReadonlyEdit } from "../shared/utils";
@@ -23,13 +23,9 @@ export function Field({ label, value, defaultValue, disabled = false, readOnly =
   const isReadOnly = readOnly;
   const isControlled = value !== undefined && onChange !== undefined;
 
-  useEffect(() => {
-    setFieldValue((current) => (
-      current.sourceValue === resolvedValue
-        ? current
-        : { sourceValue: resolvedValue, draftValue: resolvedValue }
-    ));
-  }, [resolvedValue]);
+  if (fieldValue.sourceValue !== resolvedValue) {
+    setFieldValue({ sourceValue: resolvedValue, draftValue: resolvedValue });
+  }
 
   const displayValue = isControlled
     ? resolvedValue

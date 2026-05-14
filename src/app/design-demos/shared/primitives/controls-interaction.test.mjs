@@ -43,7 +43,7 @@ test("Field defaults editable and keeps local draft state without onChange", () 
   assert.match(fieldSource, /disabled\?:\s*boolean/);
   assert.match(fieldSource, /const\s+isReadOnly\s*=\s*readOnly/);
   assert.match(fieldSource, /const\s+isControlled\s*=\s*value\s*!==\s*undefined\s*&&\s*onChange\s*!==\s*undefined/);
-  assert.match(fieldSource, /useEffect/);
+  assert.match(fieldSource, /if\s*\(fieldValue\.sourceValue\s*!==\s*resolvedValue\)\s*\{\s*setFieldValue\(\{ sourceValue: resolvedValue, draftValue: resolvedValue \}\);\s*\}/);
   assert.match(fieldSource, /draftValue/);
   assert.match(fieldSource, /setFieldValue\(\{ sourceValue: resolvedValue, draftValue: nextValue \}\)/);
   assert.match(fieldSource, /onChange\?\.\(nextValue\)/);
@@ -67,7 +67,7 @@ test("TextAreaField defaults editable, supports readOnly, and keeps clipboard re
   assert.match(textAreaFieldSource, /disabled\?:\s*boolean/);
   assert.match(textAreaFieldSource, /const\s+isReadOnly\s*=\s*readOnly/);
   assert.match(textAreaFieldSource, /const\s+isControlled\s*=\s*value\s*!==\s*undefined\s*&&\s*onChange\s*!==\s*undefined/);
-  assert.match(textAreaFieldSource, /useEffect/);
+  assert.match(textAreaFieldSource, /if\s*\(fieldValueState\.sourceValue\s*!==\s*resolvedValue\)\s*\{\s*setFieldValue\(\{ sourceValue: resolvedValue, draftValue: resolvedValue \}\);\s*\}/);
   assert.match(textAreaFieldSource, /draftValue/);
 
   const updateValueSource = functionSource(textAreaFieldSource, "updateValue");

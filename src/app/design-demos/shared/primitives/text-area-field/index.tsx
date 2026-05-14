@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ClipboardCopy, ClipboardPaste } from "lucide-react";
 
 import s from "./text-area-field.module.css";
@@ -27,13 +27,9 @@ export function TextAreaField({ label, value, defaultValue, disabled = false, re
   const isReadOnly = readOnly;
   const isControlled = value !== undefined && onChange !== undefined;
 
-  useEffect(() => {
-    setFieldValue((current) => (
-      current.sourceValue === resolvedValue
-        ? current
-        : { sourceValue: resolvedValue, draftValue: resolvedValue }
-    ));
-  }, [resolvedValue]);
+  if (fieldValueState.sourceValue !== resolvedValue) {
+    setFieldValue({ sourceValue: resolvedValue, draftValue: resolvedValue });
+  }
 
   const fieldValue = fieldValueState.sourceValue === resolvedValue ? fieldValueState.draftValue : resolvedValue;
   const displayValue = isControlled ? resolvedValue : fieldValue;
