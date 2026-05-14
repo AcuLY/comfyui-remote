@@ -45,6 +45,10 @@ const showcasePages = [
   "pages/index-page.tsx",
 ] as const;
 
+const removedShowcaseFiles = [
+  "icons/icons-page.tsx",
+] as const;
+
 const sharedPatternsThatNeedFeatureUse = [
   "UnitRowShell",
   "FolderBreadcrumb",
@@ -243,6 +247,13 @@ for (const page of showcasePages) {
       `${relative(process.cwd(), sourcePath)} should import ${importPath} through shared/*, features/*, routing/*, or an allowed showcase fixture/specialty path`,
     );
   }
+}
+
+for (const removedFile of removedShowcaseFiles) {
+  assert.ok(
+    !existsSync(resolve(testDir, removedFile)),
+    `${removedFile} should not exist; specialty pages belong under showcase/pages`,
+  );
 }
 
 assertNoForbiddenImports("routing", ["/features/", "/showcase/"]);
