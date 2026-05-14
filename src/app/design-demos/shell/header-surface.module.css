@@ -408,26 +408,26 @@
 }
 
 @container (max-width: 620px) {
-  .fixedHeader:not(.fixedHeaderCollapsed):not(.fixedHeaderMobile) .mainRow {
+  .fixedHeaderStackedActions:not(.fixedHeaderCollapsed):not(.fixedHeaderMobile) .mainRow {
     grid-template-columns: auto minmax(0, 1fr);
     align-items: start;
     gap: 8px 10px;
   }
 
-  .fixedHeader:not(.fixedHeaderCollapsed):not(.fixedHeaderMobile) .actionCluster {
-    grid-column: 1 / -1;
+  .fixedHeaderStackedActions:not(.fixedHeaderCollapsed):not(.fixedHeaderMobile) .actionCluster {
+    grid-column: 2 / -1;
     justify-content: flex-start;
   }
 
-  .fixedHeader:not(.fixedHeaderCollapsed):not(.fixedHeaderMobile) .headerButton {
+  .fixedHeaderStackedActions:not(.fixedHeaderCollapsed):not(.fixedHeaderMobile) .headerButton {
     max-width: min(100%, 210px);
   }
 
-  .fixedHeader:not(.fixedHeaderCollapsed):not(.fixedHeaderMobile) .titleRow {
+  .fixedHeaderStackedActions:not(.fixedHeaderCollapsed):not(.fixedHeaderMobile) .titleRow {
     align-items: flex-start;
   }
 
-  .fixedHeader:not(.fixedHeaderCollapsed):not(.fixedHeaderMobile) .statusPill {
+  .fixedHeaderStackedActions:not(.fixedHeaderCollapsed):not(.fixedHeaderMobile) .statusPill {
     max-width: 112px;
   }
 }

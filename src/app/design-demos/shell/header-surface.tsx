@@ -115,11 +115,19 @@ export function RouteHeaderSurface({
   const resolvedTitleId = titleId ?? `${spec.key}-${mode}-title`;
   const visibleActions = isMobile ? spec.actions?.slice(0, 1) : isCollapsed ? spec.actions?.slice(0, 2) : spec.actions;
   const hiddenCount = Math.max(0, (spec.actions?.length ?? 0) - (visibleActions?.length ?? 0));
+  const showsMoreActions = hiddenCount > 0 || Boolean(spec.secondaryActions?.length);
+  const actionDensity = (visibleActions?.length ?? 0) + (showsMoreActions ? 1 : 0);
 
   return (
     <header
       aria-labelledby={resolvedTitleId}
-      className={cx(s.fixedHeader, isCollapsed && s.fixedHeaderCollapsed, isMobile && s.fixedHeaderMobile, className)}
+      className={cx(
+        s.fixedHeader,
+        actionDensity > 1 && s.fixedHeaderStackedActions,
+        isCollapsed && s.fixedHeaderCollapsed,
+        isMobile && s.fixedHeaderMobile,
+        className,
+      )}
       data-route-header-collapsed={isCollapsed ? "true" : "false"}
       data-header-surface
       ref={surfaceRef}
@@ -149,7 +157,7 @@ export function RouteHeaderSurface({
           {visibleActions?.map((item) => (
             <HeaderActionButton action={item} iconOnly={isCollapsed || isMobile} key={item.label} />
           ))}
-          {(hiddenCount > 0 || spec.secondaryActions?.length) ? (
+          {showsMoreActions ? (
             <button aria-label="更多页面操作" className={cx(s.headerButton, s.headerButtonIconOnly)} type="button">
               <MoreHorizontal aria-hidden="true" className={s.headerIcon} />
             </button>
