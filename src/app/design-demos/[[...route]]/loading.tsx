@@ -2,7 +2,7 @@ import s from "./loading.shell.module.css";
 
 export default function Loading() {
   return (
-    <div className={`${s.shell} ${s.shellLight}`}>
+    <div className={s.shell}>
       <div className={s.routeLoading}>
         <section className={s.routeLoadingPanel} aria-label="页面载入中">
           <div className={s.routeLoadingHeader}>

@@ -17,6 +17,7 @@ import { SettingsPage, LogsPage, MonitorPage, LoginPage, NotFoundPage } from "./
 import { TemplatesPage, TemplateFormPage, TemplateSectionPage } from "./template-pages";
 import { findCategory, findGroup, findPreset, findProject, findRun, findSection, findTemplate, matchRoute, productRouteFromPathname } from "./design-demo-utils";
 import type { Match } from "./design-demo-utils";
+import type { DemoTheme } from "./design-demo-utils";
 
 function CurrentPage({ match, data }: { match: Match; data: DemoData }) {
   const project = findProject(data, match.params.projectId);
@@ -102,16 +103,18 @@ function CurrentPage({ match, data }: { match: Match; data: DemoData }) {
 export function DesignDemoApp({
   initialRouteSegments,
   data,
+  initialTheme,
 }: {
   initialRouteSegments: string[];
   data: DemoData;
+  initialTheme: DemoTheme;
 }) {
   const pathname = usePathname();
   const currentRoute = productRouteFromPathname(pathname, initialRouteSegments);
   const match = matchRoute(currentRoute);
 
   return (
-    <DesignDemoShell data={data} currentRoute={currentRoute}>
+    <DesignDemoShell data={data} currentRoute={currentRoute} initialTheme={initialTheme}>
       <CurrentPage match={match} data={data} />
     </DesignDemoShell>
   );

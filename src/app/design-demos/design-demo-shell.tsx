@@ -18,9 +18,11 @@ import {
   DESIGN_DEMO_THEME_STORAGE_KEY,
   MOBILE_NAV_LINKS,
   NAV_LINKS,
+  applyDesignDemoTheme,
   applyDesignDemoSfwMode,
   cx,
   demoHref,
+  isDemoThemeValue,
   isNavActive,
   isSfwEnabledValue,
 } from "./design-demo-utils";
@@ -340,10 +342,12 @@ export function DesignDemoShell({
   children,
   currentRoute,
   data,
+  initialTheme,
 }: {
   children: ReactNode;
   currentRoute: string;
   data: DemoData;
+  initialTheme: DemoTheme;
 }) {
   const contentFrameRef = useRef<HTMLDivElement>(null);
   const mainRef = useRef<HTMLElement>(null);
@@ -353,7 +357,7 @@ export function DesignDemoShell({
   const [menuOpen, setMenuOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [theme, setTheme] = useState<DemoTheme>("light");
+  const [theme, setTheme] = useState<DemoTheme>(initialTheme);
   const [sfwMode, setSfwMode] = useState(false);
   const [routeHeaderCompact, setRouteHeaderCompact] = useState(false);
   const [routeHeaderCollapsed, setRouteHeaderCollapsed] = useState(false);
@@ -368,22 +372,17 @@ export function DesignDemoShell({
   useEffect(() => {
     const frameId = window.requestAnimationFrame(() => {
       const storedTheme = window.localStorage.getItem(DESIGN_DEMO_THEME_STORAGE_KEY);
+      const resolvedTheme = isDemoThemeValue(storedTheme) ? storedTheme : initialTheme;
+
+      applyDesignDemoTheme(resolvedTheme);
+      setTheme(resolvedTheme);
       setSidebarCollapsed(window.matchMedia("(min-width: 640px) and (max-width: 1023px)").matches);
       setRouteHeaderCompact(window.matchMedia("(max-width: 760px)").matches);
       setSfwMode(isSfwEnabledValue(window.localStorage.getItem(DESIGN_DEMO_SFW_STORAGE_KEY)));
-
-      if (storedTheme === "light" || storedTheme === "dark") {
-        setTheme(storedTheme);
-        return;
-      }
-
-      if (window.matchMedia("(prefers-color-scheme: light)").matches) {
-        setTheme("light");
-      }
     });
 
     return () => window.cancelAnimationFrame(frameId);
-  }, []);
+  }, [initialTheme]);
 
   useEffect(() => {
     routeHeaderInsetRef.current = 0;
@@ -504,7 +503,7 @@ export function DesignDemoShell({
   function toggleTheme() {
     setTheme((currentTheme) => {
       const nextTheme = currentTheme === "dark" ? "light" : "dark";
-      window.localStorage.setItem(DESIGN_DEMO_THEME_STORAGE_KEY, nextTheme);
+      applyDesignDemoTheme(nextTheme);
       return nextTheme;
     });
   }

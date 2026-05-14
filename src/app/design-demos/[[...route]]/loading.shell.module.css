@@ -89,7 +89,8 @@
   background: var(--demo-bg-sheen);
   opacity: 0.75;
 }
-.shellLight {
+.shellLight,
+:global(html[data-design-demo-theme="light"]) .shell {
   --demo-bg: #f7f9fb;
   --demo-panel: rgba(255, 255, 255, 0.72);
   --demo-panel-2: rgba(238, 242, 245, 0.78);
