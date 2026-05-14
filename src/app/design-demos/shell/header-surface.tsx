@@ -1,12 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import type { ReactNode } from "react";
 import type { Ref } from "react";
 import { ArrowLeft, MoreHorizontal } from "lucide-react";
 
-import { cx, demoHref } from "../routing";
+import { cx } from "../routing";
 import type { HeaderAction, HeaderSpec } from "../routing/header-specs";
+import { Button, ButtonLink } from "../shared/primitives";
 import s from "./header-surface.module.css";
 
 type RouteHeaderMode = "expanded" | "collapsed" | "mobile";
@@ -19,24 +19,17 @@ function HeaderActionButton({
   action: HeaderAction;
   iconOnly?: boolean;
 }) {
-  const Icon = item.icon;
   return (
-    <button
-      aria-label={item.label}
-      className={cx(
-        s.headerButton,
-        item.tone === "primary" && s.headerButtonPrimary,
-        item.tone === "pink" && s.headerButtonPink,
-        item.tone === "danger" && s.headerButtonDanger,
-        item.tone === "subtle" && s.headerButtonSubtle,
-        iconOnly && s.headerButtonIconOnly,
-      )}
-      title={iconOnly ? item.label : undefined}
-      type="button"
+    <Button
+      ariaLabel={item.label}
+      className={s.headerButton}
+      icon={item.icon}
+      iconOnly={iconOnly}
+      size="sm"
+      tone={item.tone ?? "default"}
     >
-      <Icon aria-hidden="true" className={s.headerIcon} />
-      {iconOnly ? null : <span>{item.label}</span>}
-    </button>
+      {item.label}
+    </Button>
   );
 }
 
@@ -61,21 +54,17 @@ function HeaderBackLink({
   const compact = mode === "collapsed" || mode === "mobile";
 
   return (
-    <Link
-      aria-label={back.label}
-      className={cx(
-        s.headerButton,
-        s.headerButtonSubtle,
-        s.headerBackButton,
-        compact && s.headerButtonIconOnly,
-        compact && s.headerBackButtonCompact,
-      )}
-      href={demoHref(back.href)}
-      title={compact ? back.label : undefined}
+    <ButtonLink
+      ariaLabel={back.label}
+      className={cx(s.headerButton, s.headerBackButton, compact && s.headerBackButtonCompact)}
+      href={back.href}
+      icon={ArrowLeft}
+      iconOnly={compact}
+      size="sm"
+      tone="subtle"
     >
-      <ArrowLeft aria-hidden="true" className={s.headerIcon} />
-      {compact ? null : <span className={s.headerBackText}>{back.label}</span>}
-    </Link>
+      {back.label}
+    </ButtonLink>
   );
 }
 
@@ -158,9 +147,13 @@ export function RouteHeaderSurface({
             <HeaderActionButton action={item} iconOnly={isCollapsed || isMobile} key={item.label} />
           ))}
           {showsMoreActions ? (
-            <button aria-label="更多页面操作" className={cx(s.headerButton, s.headerButtonIconOnly)} type="button">
-              <MoreHorizontal aria-hidden="true" className={s.headerIcon} />
-            </button>
+            <Button
+              ariaLabel="更多页面操作"
+              className={s.headerButton}
+              icon={MoreHorizontal}
+              iconOnly
+              size="sm"
+            />
           ) : null}
           {tools}
         </div>
