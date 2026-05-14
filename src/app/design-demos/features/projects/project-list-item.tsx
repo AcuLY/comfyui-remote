@@ -9,6 +9,7 @@ import s from "./project-list-item.projects.module.css";
 import { Button } from "../../shared/primitives/button";
 import { Checkbox } from "../../shared/primitives/checkbox";
 import { ImageListSmall } from "../../shared/media/image-list-small";
+import { UnitRowShell } from "../../shared/patterns";
 import { StatusBadge } from "../../shared/primitives/status-badge";
 
 export function ProjectListItem({
@@ -24,17 +25,23 @@ export function ProjectListItem({
   const sectionCountLabel = `${project.sectionCount} 小节`;
 
   return (
-    <article className={cx(s.projectListCard, selected && s.projectListCardSelected)}>
-      <div className={s.projectItemControls}>
-        <Checkbox
-          className={s.projectSelectCheckbox}
-          checked={selected}
-          label={selected ? `取消选择项目：${project.title}` : `选择项目：${project.title}`}
-          onCheckedChange={() => onToggleSelected()}
-        />
-        <Button className={s.projectDragHandle} tone="subtle" icon={GripVertical} iconOnly ariaLabel={`拖拽排序项目：${project.title}`} />
-      </div>
-      <div className={s.projectListContent}>
+    <UnitRowShell
+      className={cx(s.projectListCard, selected && s.projectListCardSelected)}
+      leadingClassName={s.projectItemControls}
+      mainClassName={s.projectListContent}
+      titleClassName={s.projectListTitleSlot}
+      leading={(
+        <>
+          <Checkbox
+            className={s.projectSelectCheckbox}
+            checked={selected}
+            label={selected ? `取消选择项目：${project.title}` : `选择项目：${project.title}`}
+            onCheckedChange={() => onToggleSelected()}
+          />
+          <Button className={s.projectDragHandle} tone="subtle" icon={GripVertical} iconOnly ariaLabel={`拖拽排序项目：${project.title}`} />
+        </>
+      )}
+      title={(
         <div className={s.projectListTitleRow}>
           <Link className={s.projectListTitleLink} href={projectHref}>
             <strong>{project.title}</strong>
@@ -51,16 +58,20 @@ export function ProjectListItem({
             />
           </div>
         </div>
-        <Link aria-label={`打开项目最近结果：${project.title}`} className={s.projectListRecentResult} href={projectHref}>
-          <ImageListSmall className={s.recentResultImages} images={project.images} limit={project.images.length} showCounts />
-        </Link>
-        <div className={s.projectListMeta}>
-          <span className={cx(s.small, s.faint, s.projectUpdateDate)}>更新：{project.updatedAt}</span>
-          <span className={s.projectStatusGroup}>
-            <StatusBadge status={project.status} />
-          </span>
-        </div>
-      </div>
-    </article>
+      )}
+      body={(
+        <>
+          <Link aria-label={`打开项目最近结果：${project.title}`} className={s.projectListRecentResult} href={projectHref}>
+            <ImageListSmall className={s.recentResultImages} images={project.images} limit={project.images.length} showCounts />
+          </Link>
+          <div className={s.projectListMeta}>
+            <span className={cx(s.small, s.faint, s.projectUpdateDate)}>更新：{project.updatedAt}</span>
+            <span className={s.projectStatusGroup}>
+              <StatusBadge status={project.status} />
+            </span>
+          </div>
+        </>
+      )}
+    />
   );
 }

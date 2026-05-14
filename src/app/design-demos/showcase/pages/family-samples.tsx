@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Copy, Edit3, FileText, FolderInput, History, Home, Play, Plus, Search, Settings, Star, Trash2 } from "lucide-react";
+import { Check, Copy, Edit3, FileText, FolderInput, GripVertical, History, Home, Play, Plus, Search, Settings, Star, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import type { DemoData } from "../../data";
@@ -106,6 +106,7 @@ function UnitItemsSample() {
   return (
     <div className={s.sampleStack}>
       <UnitRowShell
+        dragHandle={<Button className={s.dragHandle} tone="subtle" icon={GripVertical} iconOnly ariaLabel="拖拽排序项目：夏日人像合集" />}
         leading={<Checkbox checked label="选择项目" onCheckedChange={() => undefined} variant="compact" />}
         media={<StatusBadge status="running" label="运行中" />}
         title="夏日人像合集"

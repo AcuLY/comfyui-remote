@@ -26,24 +26,46 @@ export function ToolbarCluster({
 
 export function UnitRowShell({
   actions,
+  actionsClassName,
+  body,
+  bodyClassName,
   className,
   description,
+  descriptionClassName,
+  dragHandle,
+  dragHandleClassName,
   leading,
+  leadingClassName,
+  mainClassName,
   media,
+  mediaClassName,
   meta,
+  metaClassName,
   selected = false,
   title,
+  titleClassName,
 }: {
   actions?: React.ReactNode;
+  actionsClassName?: string;
+  body?: React.ReactNode;
+  bodyClassName?: string;
   className?: string;
   description?: React.ReactNode;
+  descriptionClassName?: string;
+  dragHandle?: React.ReactNode;
+  dragHandleClassName?: string;
   leading?: React.ReactNode;
+  leadingClassName?: string;
+  mainClassName?: string;
   media?: React.ReactNode;
+  mediaClassName?: string;
   meta?: React.ReactNode;
+  metaClassName?: string;
   selected?: boolean;
   title: React.ReactNode;
+  titleClassName?: string;
 }) {
-  const columns = [leading ? "auto" : null, media ? "auto" : null, "minmax(0, 1fr)", meta ? "auto" : null, actions ? "auto" : null]
+  const columns = [dragHandle ? "auto" : null, leading ? "auto" : null, media ? "auto" : null, "minmax(0, 1fr)", meta ? "auto" : null, actions ? "auto" : null]
     .filter(Boolean)
     .join(" ");
 
@@ -53,14 +75,16 @@ export function UnitRowShell({
       data-demo-pattern="unit-row"
       style={{ "--unit-row-columns": columns } as React.CSSProperties}
     >
-      {leading ? <div className={s.unitLeading}>{leading}</div> : null}
-      {media ? <div className={s.unitMedia}>{media}</div> : null}
-      <div className={s.unitMain}>
-        <div className={s.unitTitle}>{title}</div>
-        {description ? <div className={s.unitDescription}>{description}</div> : null}
+      {dragHandle ? <div className={cx(s.unitDrag, dragHandleClassName)}>{dragHandle}</div> : null}
+      {leading ? <div className={cx(s.unitLeading, leadingClassName)}>{leading}</div> : null}
+      {media ? <div className={cx(s.unitMedia, mediaClassName)}>{media}</div> : null}
+      <div className={cx(s.unitMain, mainClassName)}>
+        <div className={cx(s.unitTitle, titleClassName)}>{title}</div>
+        {description ? <div className={cx(s.unitDescription, descriptionClassName)}>{description}</div> : null}
+        {body ? <div className={cx(s.unitBody, bodyClassName)}>{body}</div> : null}
       </div>
-      {meta ? <div className={s.unitMeta}>{meta}</div> : null}
-      {actions ? <ToolbarCluster className={s.unitActions}>{actions}</ToolbarCluster> : null}
+      {meta ? <div className={cx(s.unitMeta, metaClassName)}>{meta}</div> : null}
+      {actions ? <ToolbarCluster className={cx(s.unitActions, actionsClassName)}>{actions}</ToolbarCluster> : null}
     </article>
   );
 }

@@ -40,6 +40,7 @@
   background: color-mix(in srgb, var(--demo-green) 10%, var(--demo-surface));
 }
 
+.unitDrag,
 .unitLeading,
 .unitMedia,
 .unitMeta,
@@ -71,6 +72,12 @@
   line-height: 1.4;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.unitBody {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
 }
 
 .unitMeta {

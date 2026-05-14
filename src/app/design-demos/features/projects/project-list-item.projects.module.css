@@ -20,7 +20,7 @@
   line-height: 1.45;
 }
 
-.projectListCard {
+.projectListCard[data-demo-pattern="unit-row"] {
   --project-list-control-size: 28px;
   --project-list-title-row-height: 36px;
   position: relative;
@@ -39,8 +39,8 @@
   text-decoration: none;
 }
 
-.projectListCard:hover,
-.projectListCard:focus-visible {
+.projectListCard[data-demo-pattern="unit-row"]:hover,
+.projectListCard[data-demo-pattern="unit-row"]:focus-visible {
   border-color: transparent;
   border-bottom-color: var(--demo-glass-accent-border);
   background: var(--demo-field-bg);
@@ -49,13 +49,13 @@
   transform: none;
 }
 
-.projectListCardSelected {
+.projectListCardSelected[data-demo-pattern="unit-row"] {
   border-bottom-color: rgba(0, 217, 146, 0.34);
   background: var(--demo-selected);
   box-shadow: 0 0 0 1px rgba(0, 217, 146, 0.1) inset;
 }
 
-.projectListCard:last-child {
+.projectListCard[data-demo-pattern="unit-row"]:last-child {
   border-bottom: 0;
 }
 
@@ -119,7 +119,7 @@
   justify-content: center;
 }
 
-.projectFolderWorkspace .projectListCard {
+.projectFolderWorkspace .projectListCard[data-demo-pattern="unit-row"] {
   border: 1px solid transparent;
   border-bottom-color: var(--demo-border);
   border-radius: 8px;
@@ -127,13 +127,13 @@
   transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
 }
 
-.projectFolderWorkspace .projectListCard:hover,
-.projectFolderWorkspace .projectListCard:focus-within {
+.projectFolderWorkspace .projectListCard[data-demo-pattern="unit-row"]:hover,
+.projectFolderWorkspace .projectListCard[data-demo-pattern="unit-row"]:focus-within {
   border-color: var(--demo-glass-accent-border);
   background: var(--demo-field-bg);
 }
 
-.projectFolderWorkspace .projectListCardSelected {
+.projectFolderWorkspace .projectListCardSelected[data-demo-pattern="unit-row"] {
   border-color: rgba(0, 217, 146, 0.34);
   background: var(--demo-selected);
   box-shadow: 0 0 0 1px rgba(0, 217, 146, 0.1) inset;
@@ -180,7 +180,7 @@
   justify-self: center;
 }
 
-.projectListContent {
+.projectListCard[data-demo-pattern="unit-row"] .projectListContent {
   display: grid;
   grid-area: content;
   min-width: 0;
@@ -227,6 +227,16 @@
   min-width: 0;
   color: inherit;
   text-decoration: none;
+}
+
+.projectListCard[data-demo-pattern="unit-row"] .projectListTitleSlot {
+  width: 100%;
+  overflow: visible;
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  text-overflow: clip;
+  white-space: normal;
 }
 
 .projectListTitleRow {
@@ -333,7 +343,7 @@
 
 @media (max-width: 639px) {
 
-  .projectFolderWorkspace .projectListCard {
+  .projectFolderWorkspace .projectListCard[data-demo-pattern="unit-row"] {
     padding: 14px;
   }
 
@@ -381,7 +391,7 @@
 
 @media (min-width: 640px) and (max-width: 1023px) {
 
-  .projectListCard {
+  .projectListCard[data-demo-pattern="unit-row"] {
     grid-template-columns: var(--project-list-control-size) minmax(0, 1fr);
     align-items: start;
   }
@@ -407,7 +417,7 @@
 
 @media (max-width: 639px) {
 
-  .projectListCard {
+  .projectListCard[data-demo-pattern="unit-row"] {
     grid-template-columns: var(--project-list-control-size) minmax(0, 1fr);
     align-items: start;
   }
@@ -455,7 +465,7 @@
   padding: 0;
 }
 
-.showcaseProjectListPreview.projectFolderWorkspace .projectListCard {
+.showcaseProjectListPreview.projectFolderWorkspace .projectListCard[data-demo-pattern="unit-row"] {
   gap: 10px;
   border-color: var(--demo-border);
   border-radius: 10px;
@@ -467,7 +477,7 @@
 }
 
 @media (max-width: 639px) {
-  .showcaseProjectListPreview.projectFolderWorkspace .projectListCard {
+  .showcaseProjectListPreview.projectFolderWorkspace .projectListCard[data-demo-pattern="unit-row"] {
     padding: 14px;
   }
 }

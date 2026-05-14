@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ClipboardList, Copy, Edit3, FolderInput, Gauge, Home, Monitor, Play, Plus, Settings, Star, Trash2 } from "lucide-react";
+import { Check, ClipboardList, Copy, Edit3, FolderInput, Gauge, GripVertical, Home, Monitor, Play, Plus, Settings, Star, Trash2 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 
@@ -125,6 +125,7 @@ const previewRenderers: Record<ShowcasePreviewComponentName, PreviewRenderer> = 
   ),
   UnitRowShell: () => (
     <UnitRowShell
+      dragHandle={<Button className={s.dragHandle} tone="subtle" icon={GripVertical} iconOnly ariaLabel="拖拽排序条目" />}
       leading={<Checkbox checked label="选择" onCheckedChange={noop} variant="compact" />}
       media={<StatusBadge status="running" label="运行中" />}
       title="夏日人像合集"
