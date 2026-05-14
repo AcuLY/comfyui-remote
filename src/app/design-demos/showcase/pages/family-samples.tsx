@@ -166,13 +166,14 @@ function FoldersSample() {
 }
 
 function BatchActionsSample() {
+  const [selectedCount, setSelectedCount] = useState(3);
   return (
     <div className={s.sampleStack}>
       <SelectionBatchBar
-        selectedCount={3}
+        selectedCount={selectedCount}
         subject="个项目"
         actions={<><Button tone="subtle" icon={FolderInput}>移至文件夹</Button><Button icon={Check}>全选</Button><Button tone="danger" icon={Trash2}>批量删除</Button></>}
-        onClear={() => undefined}
+        onClear={() => setSelectedCount(0)}
       />
       <OperationStateStrip
         items={[
@@ -210,10 +211,35 @@ function GenerationParamsSample() {
 
 function PresetPromptLoraSample() {
   const [expanded, setExpanded] = useState(false);
-  const loras = useMemo<LoraRowData[]>(() => [
+  const [loras, setLoras] = useState<LoraRowData[]>(() => [
     { id: "lora-1", fileName: "add_detail.safetensors", filePath: "add_detail/add_detail.safetensors", weight: 0.8, enabled: true, kind: "preset", presetName: "写实人像", categoryName: "人物", categoryColor: "158 100% 43%", triggerWords: "add detail" },
     { id: "lora-2", fileName: "flat_color.safetensors", filePath: "flat_color/flat_color.safetensors", weight: 0.5, enabled: true, kind: "manual", triggerWords: "flat color" },
-  ], []);
+  ]);
+  const loraFileOptions = ["add_detail/add_detail.safetensors", "flat_color/flat_color.safetensors"];
+  const firstLora = loras[0];
+
+  function updateLora(id: string, updater: (entry: LoraRowData) => LoraRowData) {
+    setLoras((current) => current.map((entry) => (entry.id === id ? updater(entry) : entry)));
+  }
+
+  function addLora() {
+    setLoras((current) => [
+      ...current,
+      {
+        id: `lora-${current.length + 1}`,
+        fileName: "flat_color.safetensors",
+        filePath: "flat_color/flat_color.safetensors",
+        weight: 0.5,
+        enabled: true,
+        kind: "manual",
+        triggerWords: "flat color",
+      },
+    ]);
+  }
+
+  function updateLoraPath(id: string, path: string) {
+    updateLora(id, (entry) => ({ ...entry, filePath: path, fileName: path.split("/").pop() ?? path }));
+  }
 
   return (
     <div className={s.sampleStack}>
@@ -238,16 +264,27 @@ function PresetPromptLoraSample() {
         expanded={expanded}
         onToggle={() => setExpanded((value) => !value)}
       />
-      <LoraRow
-        entry={loras[0]}
-        fileOptions={["add_detail.safetensors", "flat_color.safetensors"]}
-        onDelete={() => undefined}
-        onPathChange={() => undefined}
-        onToggle={() => undefined}
-        onUnlink={() => undefined}
-        onWeightChange={() => undefined}
+      {firstLora ? (
+        <LoraRow
+          entry={firstLora}
+          fileOptions={loraFileOptions}
+          onDelete={() => setLoras((current) => current.filter((entry) => entry.id !== firstLora.id))}
+          onPathChange={(path) => updateLoraPath(firstLora.id, path)}
+          onToggle={() => updateLora(firstLora.id, (entry) => ({ ...entry, enabled: !entry.enabled }))}
+          onUnlink={() => updateLora(firstLora.id, (entry) => ({ ...entry, kind: "manual" }))}
+          onWeightChange={(weight) => updateLora(firstLora.id, (entry) => ({ ...entry, weight }))}
+        />
+      ) : null}
+      <LoraColumn
+        label="Stage 1"
+        entries={loras}
+        onAdd={addLora}
+        onDelete={(id) => setLoras((current) => current.filter((entry) => entry.id !== id))}
+        onPath={updateLoraPath}
+        onToggle={(id) => updateLora(id, (entry) => ({ ...entry, enabled: !entry.enabled }))}
+        onUnlink={(id) => updateLora(id, (entry) => ({ ...entry, kind: "manual" }))}
+        onWeight={(id, weight) => updateLora(id, (entry) => ({ ...entry, weight }))}
       />
-      <LoraColumn label="Stage 1" entries={loras} onAdd={() => undefined} onDelete={() => undefined} onPath={() => undefined} onToggle={() => undefined} onUnlink={() => undefined} onWeight={() => undefined} />
     </div>
   );
 }

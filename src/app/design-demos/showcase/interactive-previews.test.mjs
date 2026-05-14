@@ -106,3 +106,9 @@ test("unit-items adapter previews do not leave row checkboxes wired to noop", ()
   assert.match(presetPreviewSource, /onToggle=\{\(\)\s*=>\s*setChecked\(\(current\)\s*=>\s*!current\)\}/);
   assert.doesNotMatch(presetPreviewSource, /onToggle=\{noop\}/);
 });
+
+test("showcase pages do not wire visible controls to no-op callbacks", () => {
+  assert.doesNotMatch(componentPreviewsSource, /\bnoop\b/);
+  assert.doesNotMatch(componentPreviewsSource, /=>\s*undefined/);
+  assert.doesNotMatch(familySamplesSource, /=>\s*undefined/);
+});

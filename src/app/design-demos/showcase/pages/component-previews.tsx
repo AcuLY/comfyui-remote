@@ -2,7 +2,7 @@
 
 import { Check, ClipboardList, Copy, Edit3, FolderInput, Gauge, GripVertical, Home, Monitor, Play, Plus, Settings, Star, Trash2 } from "lucide-react";
 import type { ReactNode } from "react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import { presetLibraryItems, type DemoData } from "../../data";
 import { firstCategory, firstProject, firstRun, firstSection, firstTemplate, findSection } from "../../routing";
@@ -35,8 +35,6 @@ import s from "./showcase-pages.module.css";
 type PreviewRenderer = (props: { component: ShowcaseComponentEntry; data: DemoData }) => ReactNode;
 type PreviewDataProps = { data: DemoData };
 
-const noop = () => undefined;
-
 const sampleLoras: LoraRowData[] = [
   {
     id: "lora-preview-1",
@@ -60,6 +58,7 @@ const sampleLoras: LoraRowData[] = [
     triggerWords: "flat color",
   },
 ];
+const loraFileOptions = ["add_detail/add_detail.safetensors", "flat_color/flat_color.safetensors"];
 
 const previewRenderers: Record<ShowcasePreviewComponentName, PreviewRenderer> = {
   Button: () => <ButtonPreview />,
@@ -138,15 +137,8 @@ const previewRenderers: Record<ShowcasePreviewComponentName, PreviewRenderer> = 
     />
   ),
   MoveTargetPicker: () => <MoveTargetPickerPreview />,
-  ModelFileRow: () => <ModelFileRow file={modelFiles[2] ?? modelFiles[0]} onAction={noop} onSelect={noop} selected />,
-  SelectionBatchBar: () => (
-    <SelectionBatchBar
-      selectedCount={3}
-      subject="个项目"
-      actions={<><Button tone="subtle" icon={FolderInput}>移动</Button><Button tone="danger" icon={Trash2}>删除</Button></>}
-      onClear={noop}
-    />
-  ),
+  ModelFileRow: () => <ModelFileRowPreview />,
+  SelectionBatchBar: () => <SelectionBatchBarPreview />,
   ToolbarCluster: () => (
     <ToolbarCluster align="start">
       <Button icon={Play}>运行</Button>
@@ -217,16 +209,7 @@ const previewRenderers: Record<ShowcasePreviewComponentName, PreviewRenderer> = 
       }}
     />
   ),
-  "PresetCategorySidebar / PresetCategoryRow": ({ data }) => {
-    const category = firstCategory(data);
-    if (!category) return <EmptyRows label="没有分类样例" />;
-    return (
-      <div className={s.previewGrid}>
-        <PresetCategoryRow category={category} onSelect={noop} selected />
-        <PresetCategorySidebar categories={data.categories.slice(0, 3)} selectedCategory={category} onSelect={noop} />
-      </div>
-    );
-  },
+  "PresetCategorySidebar / PresetCategoryRow": ({ data }) => <PresetCategoryPreview data={data} />,
   "ImageThumbSmall / ImageListSmall": () => {
     const images = makeImages(6);
     return <ImageListSmall images={images} limit={6} showCounts maxWidth={440} />;
@@ -381,6 +364,33 @@ function PresetLibraryItemRowPreview(props: PreviewDataProps) {
   return <PresetLibraryItemRow checked={checked} index={0} item={item} onToggle={() => setChecked((current) => !current)} />;
 }
 
+function ModelFileRowPreview() {
+  const file = modelFiles[2] ?? modelFiles[0];
+  const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
+  if (!file) return <EmptyRows label="没有模型文件样例" />;
+
+  return (
+    <ModelFileRow
+      file={file}
+      onAction={(activeFile) => setSelectedFileId(activeFile.id)}
+      onSelect={(activeFile) => setSelectedFileId(activeFile.id)}
+      selected={selectedFileId === file.id}
+    />
+  );
+}
+
+function SelectionBatchBarPreview() {
+  const [selectedCount, setSelectedCount] = useState(3);
+  return (
+    <SelectionBatchBar
+      selectedCount={selectedCount}
+      subject="个项目"
+      actions={<><Button tone="subtle" icon={FolderInput}>移动</Button><Button tone="danger" icon={Trash2}>删除</Button></>}
+      onClear={() => setSelectedCount(0)}
+    />
+  );
+}
+
 function FolderBreadcrumbPreview() {
   const [activeFolderId, setActiveFolderId] = useState<string | null>("portrait");
   const items = activeFolderId === "portrait"
@@ -489,19 +499,69 @@ function PromptBlockPreview() {
 }
 
 function LoraPreview() {
-  const loras = useMemo(() => sampleLoras, []);
+  const [loras, setLoras] = useState<LoraRowData[]>(() => sampleLoras);
+  const firstLora = loras[0];
+
+  function updateLora(id: string, updater: (entry: LoraRowData) => LoraRowData) {
+    setLoras((current) => current.map((entry) => (entry.id === id ? updater(entry) : entry)));
+  }
+
+  function addLora() {
+    setLoras((current) => [
+      ...current,
+      {
+        id: `lora-preview-${current.length + 1}`,
+        fileName: "flat_color.safetensors",
+        filePath: "flat_color/flat_color.safetensors",
+        weight: 0.5,
+        enabled: true,
+        kind: "manual",
+        triggerWords: "flat color",
+      },
+    ]);
+  }
+
+  function updateLoraPath(id: string, path: string) {
+    updateLora(id, (entry) => ({ ...entry, filePath: path, fileName: path.split("/").pop() ?? path }));
+  }
+
   return (
     <div className={s.previewStack}>
-      <LoraRow
-        entry={loras[0]}
-        fileOptions={["add_detail/add_detail.safetensors", "flat_color/flat_color.safetensors"]}
-        onDelete={noop}
-        onPathChange={noop}
-        onToggle={noop}
-        onUnlink={noop}
-        onWeightChange={noop}
+      {firstLora ? (
+        <LoraRow
+          entry={firstLora}
+          fileOptions={loraFileOptions}
+          onDelete={() => setLoras((current) => current.filter((entry) => entry.id !== firstLora.id))}
+          onPathChange={(path) => updateLoraPath(firstLora.id, path)}
+          onToggle={() => updateLora(firstLora.id, (entry) => ({ ...entry, enabled: !entry.enabled }))}
+          onUnlink={() => updateLora(firstLora.id, (entry) => ({ ...entry, kind: "manual" }))}
+          onWeightChange={(weight) => updateLora(firstLora.id, (entry) => ({ ...entry, weight }))}
+        />
+      ) : null}
+      <LoraColumn
+        label="Stage 1"
+        entries={loras}
+        onAdd={addLora}
+        onDelete={(id) => setLoras((current) => current.filter((entry) => entry.id !== id))}
+        onPath={updateLoraPath}
+        onToggle={(id) => updateLora(id, (entry) => ({ ...entry, enabled: !entry.enabled }))}
+        onUnlink={(id) => updateLora(id, (entry) => ({ ...entry, kind: "manual" }))}
+        onWeight={(id, weight) => updateLora(id, (entry) => ({ ...entry, weight }))}
       />
-      <LoraColumn label="Stage 1" entries={loras} onAdd={noop} onDelete={noop} onPath={noop} onToggle={noop} onUnlink={noop} onWeight={noop} />
+    </div>
+  );
+}
+
+function PresetCategoryPreview({ data }: PreviewDataProps) {
+  const categories = data.categories.slice(0, 3);
+  const [selectedCategoryId, setSelectedCategoryId] = useState(categories[0]?.id ?? "");
+  const selectedCategory = categories.find((category) => category.id === selectedCategoryId) ?? categories[0];
+  if (!selectedCategory) return <EmptyRows label="没有分类样例" />;
+
+  return (
+    <div className={s.previewGrid}>
+      <PresetCategoryRow category={selectedCategory} onSelect={(category) => setSelectedCategoryId(category.id)} selected />
+      <PresetCategorySidebar categories={categories} selectedCategory={selectedCategory} onSelect={(category) => setSelectedCategoryId(category.id)} />
     </div>
   );
 }
@@ -573,6 +633,7 @@ function ModelBrowserPreview() {
   const [activeTab, setActiveTab] = useState<"lora" | "checkpoint">("lora");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFile, setSelectedFile] = useState(modelFiles.find((file) => file.type === "file") ?? null);
+  const [editingNotes, setEditingNotes] = useState(false);
   return (
     <div className={s.previewSplit}>
       <ModelFileBrowser
@@ -580,18 +641,24 @@ function ModelBrowserPreview() {
         breadcrumbs={[{ label: "models", path: "models" }]}
         currentPath={["models"]}
         files={modelFiles}
-        onBack={noop}
-        onBreadcrumbClick={noop}
+        onBack={() => setSearchQuery("")}
+        onBreadcrumbClick={() => setSearchQuery("")}
         onFileAction={setSelectedFile}
         onFileSelect={setSelectedFile}
         onSearchChange={setSearchQuery}
         onTabChange={setActiveTab}
-        onUpload={noop}
+        onUpload={() => setSearchQuery("")}
         searchQuery={searchQuery}
         selectedFileId={selectedFile?.id ?? null}
       />
       {selectedFile ? (
-        <ModelFileInspector editingNotes={false} file={selectedFile} onClose={noop} onMove={noop} onToggleEditingNotes={noop} />
+        <ModelFileInspector
+          editingNotes={editingNotes}
+          file={selectedFile}
+          onClose={() => setSelectedFile(null)}
+          onMove={() => setSearchQuery(selectedFile.name)}
+          onToggleEditingNotes={() => setEditingNotes((value) => !value)}
+        />
       ) : null}
     </div>
   );
