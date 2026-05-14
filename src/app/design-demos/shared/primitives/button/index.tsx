@@ -120,7 +120,7 @@ export function ButtonLink({
   className?: string;
   size?: "sm" | "md";
 }) {
-  const label = iconOnly ? controlLabel(children, ariaLabel) : undefined;
+  const label = controlLabel(children, ariaLabel);
 
   return (
     <Link
@@ -129,7 +129,7 @@ export function ButtonLink({
       data-demo-ui-button-icon-only={iconOnly ? "true" : undefined}
       data-demo-ui-button-size={size}
       data-demo-ui-button-tone={tone}
-      aria-label={iconOnly ? label : undefined}
+      aria-label={ariaLabel ?? (iconOnly ? label : undefined)}
       title={iconOnly ? label : undefined}
       className={buttonClassName({ tone, iconOnly, size, className })}
     >

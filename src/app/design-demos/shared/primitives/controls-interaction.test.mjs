@@ -11,6 +11,7 @@ const textAreaFieldSource = readDemoSource("shared/primitives/text-area-field/in
 const floatingSelectSource = readDemoSource("shared/primitives/floating-select/index.tsx");
 const selectLikeSource = readDemoSource("shared/primitives/select-like/index.tsx");
 const checkboxSource = readDemoSource("shared/primitives/checkbox/index.tsx");
+const buttonSource = readDemoSource("shared/primitives/button/index.tsx");
 
 function readDemoSource(relativePath) {
   return readFileSync(resolve(designDemosDir, relativePath), "utf8");
@@ -132,4 +133,9 @@ test("FloatingSelect supports local selection state, explicit readOnly, and keyb
 
 test("Checkbox declares an explicit client boundary", () => {
   assert.match(checkboxSource, /^"use client";/);
+});
+
+test("ButtonLink preserves explicit aria labels even when visible text is present", () => {
+  assert.match(buttonSource, /const\s+label\s*=\s*controlLabel\(children,\s*ariaLabel\)/);
+  assert.match(buttonSource, /aria-label=\{ariaLabel\s*\?\?\s*\(iconOnly\s*\?\s*label\s*:\s*undefined\)\}/);
 });
