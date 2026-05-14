@@ -12,6 +12,15 @@ session, read the login token from the project-root `.env` file and use it to
 log in. Do not hard-code the token, print it in logs, or commit token values.
 <!-- END:auth-debug-rules -->
 
+<!-- BEGIN:subagent-development-rules -->
+# 子代理开发规则
+
+- 当改动量涉及三个以上文件，或预计新增/修改超过一百行，并且不是简单批量替换、重命名、格式化或纯机械迁移时，必须让子代理完成实际代码或文档更改。
+- 主代理只负责编排任务、拆分边界、提供上下文、验收结果、打回返工，并保证原计划被完整完成；不要在这种大改动中亲自承担主要实现工作。
+- 如果多个改动之间没有明显耦合，优先启用多个子代理并行开发，并为每个子代理明确负责范围、允许修改的目录/文件和验收标准。
+- 子代理返回后，主代理必须检查改动是否冲突、是否遗漏计划项、是否引入旧兼容路径或临时绕法，并在必要时继续派发返工任务。
+<!-- END:subagent-development-rules -->
+
 <!-- BEGIN:deploy-rules -->
 # 部署流程
 
