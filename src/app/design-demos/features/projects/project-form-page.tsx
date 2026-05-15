@@ -8,9 +8,8 @@ import { Button } from "../../shared/primitives/button";
 import { Field } from "../../shared/primitives/field";
 import { PageHeader } from "../../shared/primitives/page-header";
 import { Panel } from "../../shared/primitives/panel";
-import { SelectLike } from "../../shared/primitives/select-like";
+import { FloatingSelect } from "../../shared/primitives/floating-select";
 import { SwitchRow } from "../../shared/primitives/switch-row";
-import { TextAreaField } from "../../shared/primitives/text-area-field";
 
 export function ProjectFormPage({ project, mode }: { project?: DemoProject; mode: "new" | "edit" }) {
   return (
@@ -27,10 +26,10 @@ export function ProjectFormPage({ project, mode }: { project?: DemoProject; mode
             <div className={s.formGrid}>
               <Field label="项目名称" value={project?.title ?? "新图像项目"} />
               <Field label="Slug" value={project?.slug ?? "new-project"} />
-              <SelectLike label="状态" value={project?.status ?? "draft"} />
-              <SelectLike label="Checkpoint" value={project?.checkpointName ?? "继承默认模型"} />
+              <FloatingSelect label="状态" value={project?.status ?? "draft"} />
+              <FloatingSelect label="Checkpoint" value={project?.checkpointName ?? "继承默认模型"} />
             </div>
-            <TextAreaField label="备注" value={project?.notes || "项目级说明、输出目标和人工备注。"} />
+            <Field multiline features={{ resize: true, clipboard: true }} label="备注" value={project?.notes || "项目级说明、输出目标和人工备注。"} />
           </div>
         </Panel>
         <Panel title="默认运行参数">

@@ -14,7 +14,6 @@ import { OperationStateStrip } from "../../shared/feedback/operation-state-strip
 import { EditorBlock, WorkbenchSurface } from "../../shared/patterns";
 import { PageHeader } from "../../shared/primitives/page-header";
 import { StatusBadge } from "../../shared/primitives/status-badge";
-import { TextAreaField } from "../../shared/primitives/text-area-field";
 import { TemplateSectionShell, templateSectionAnchorId } from "./template-section-shell";
 
 export function TemplateFormPage({ template, mode }: { template?: DemoTemplate; mode: "new" | "edit" }) {
@@ -30,7 +29,7 @@ export function TemplateFormPage({ template, mode }: { template?: DemoTemplate; 
         title="模板信息"
       >
         <Field label="名称" value={template?.name ?? "新项目模板"} />
-        <TextAreaField label="描述" value={template?.description || "记录模板用途、默认预设绑定和生成流程。"} />
+        <Field multiline features={{ resize: true, clipboard: true }} label="描述" value={template?.description || "记录模板用途、默认预设绑定和生成流程。"} />
       </EditorBlock>
 
       <EditorBlock

@@ -157,7 +157,6 @@
 }
 .sidebar,
 .routeHeader,
-.routeHeaderToolsMenu,
 .mobileTopbar,
 .mobileToolsMenu,
 .mobileBottomNav {
@@ -188,6 +187,9 @@
 }
 .workspaceCollapsed {
   grid-template-columns: 76px minmax(0, 1fr);
+}
+.workspaceSidebarReady {
+  --demo-sidebar-layout-ready: 1;
 }
 .contentFrame {
   display: grid;
@@ -867,22 +869,11 @@
 .routeHeaderSurface {
   width: 100%;
 }
-.routeHeaderCollapsed {
-  background:
-    linear-gradient(135deg, var(--demo-route-header-highlight), transparent 58%),
-    var(--demo-route-header-bg-collapsed);
-  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
-  padding-block: 8px;
-  padding-block-start: max(8px, env(safe-area-inset-top));
-}
 .routeHeaderMain {
   display: flex;
   align-items: center;
   gap: 8px;
   min-width: 0;
-}
-.routeHeaderToolButton {
-  flex: 0 0 auto;
 }
 .routeHeaderBackSlot {
   display: flex;
@@ -977,79 +968,6 @@
     transform 220ms cubic-bezier(0.2, 0, 0, 1);
   white-space: nowrap;
 }
-.routeHeaderTools {
-  position: relative;
-  display: inline-flex;
-  flex: 0 0 auto;
-  justify-content: flex-end;
-}
-.routeHeaderToolsMenu {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  z-index: 50;
-  display: grid;
-  width: min(220px, calc(100vw - 24px));
-  gap: 4px;
-  border: 1px solid var(--demo-border);
-  border-radius: var(--demo-radius);
-  background: var(--demo-glass-bg);
-  box-shadow: var(--demo-glass-shadow);
-  padding: 6px;
-}
-.routeHeaderToolsItem {
-  display: grid;
-  grid-template-columns: 16px minmax(0, 1fr);
-  align-items: center;
-  gap: 8px;
-  min-height: 40px;
-  border: 1px solid transparent;
-  border-radius: 7px;
-  background: transparent;
-  color: var(--demo-muted);
-  cursor: pointer;
-  font: inherit;
-  font-size: 12px;
-  font-weight: 560;
-  padding: 8px 10px;
-  text-align: left;
-  transition:
-    background 150ms ease,
-    border-color 150ms ease,
-    color 150ms ease;
-}
-.routeHeaderToolsItem:hover,
-.routeHeaderToolsItem:focus-visible,
-.routeHeaderToolsItemActive {
-  border-color: var(--demo-glass-accent-border);
-  background: var(--demo-selected);
-  color: var(--demo-green);
-}
-.routeHeaderToolsItem:focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--demo-green) 30%, transparent);
-  outline-offset: 2px;
-}
-.routeHeaderCollapsed .routeHeaderIdentity {
-  gap: 0;
-}
-.routeHeaderCollapsed .routeHeaderEyebrow,
-.routeHeaderCollapsed .routeHeaderIdentity p {
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(-5px);
-}
-.routeHeaderCollapsed .routeHeaderMeta span:last-child {
-  max-width: 0;
-  border-color: transparent;
-  opacity: 0;
-  padding-inline: 0;
-  pointer-events: none;
-  transform: translateY(-4px);
-}
-.routeHeaderCollapsed .routeHeaderIdentity h1 {
-  font-size: 15px;
-  transform: translateY(-1px);
-}
 :global([data-app-shell]):has(.lightboxOverlay) .mobileBottomNav {
   display: none;
 }
@@ -1142,6 +1060,70 @@
 
   .sidebarCollapseButton {
     display: inline-flex;
+  }
+
+  .workspace:not(.workspaceSidebarReady) {
+    grid-template-columns: 76px minmax(0, 1fr);
+  }
+
+  .workspace:not(.workspaceSidebarReady) .sidebar {
+    padding-inline: 10px;
+  }
+
+  .workspace:not(.workspaceSidebarReady) .sidebar .sourceCard {
+    display: none;
+  }
+
+  .workspace:not(.workspaceSidebarReady) .sidebar .brandName {
+    opacity: 0;
+  }
+
+  .workspace:not(.workspaceSidebarReady) .sidebar .navLink span,
+  .workspace:not(.workspaceSidebarReady) .sidebar .navCount,
+  .workspace:not(.workspaceSidebarReady) .sidebar .sidebarToggle > span:not(.sidebarToggleSwitch),
+  .workspace:not(.workspaceSidebarReady) .sidebar .sidebarToggleSwitch {
+    max-width: 0;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .workspace:not(.workspaceSidebarReady) .sidebar .navTitle {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .workspace:not(.workspaceSidebarReady) .sidebar .brandTop {
+    justify-content: center;
+    padding-left: 0;
+  }
+
+  .workspace:not(.workspaceSidebarReady) .sidebar .brandIdentity {
+    max-width: 0;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(-8px);
+  }
+
+  .workspace:not(.workspaceSidebarReady) .sidebar .sidebarTools {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+
+  .workspace:not(.workspaceSidebarReady) .sidebar .sidebarToggle {
+    width: 100%;
+    min-height: 36px;
+    grid-template-columns: minmax(0, 0) 0;
+    padding-right: 0;
+  }
+
+  .workspace:not(.workspaceSidebarReady) .sidebar .sidebarToggle svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .workspace:not(.workspaceSidebarReady) .sidebar .navLink {
+    grid-template-columns: minmax(0, 0) 0;
+    padding-right: 0;
   }
 
   .sectionCardActions :where([data-demo-ui-button="true"]) {
@@ -1340,13 +1322,6 @@
     gap: 8px;
   }
 
-  .routeHeaderToolButton {
-    width: 44px;
-    height: 44px;
-    min-width: 44px;
-    min-height: 44px;
-  }
-
   .routeHeaderEyebrow,
   .routeHeaderIdentity p,
   .routeHeaderMeta {
@@ -1359,19 +1334,6 @@
 
   .routeHeaderIdentity {
     flex: 1 1 auto;
-  }
-
-  .routeHeaderTools {
-    margin-left: auto;
-  }
-
-  .routeHeaderCollapsed {
-    padding-block: 6px;
-    padding-block-start: max(6px, env(safe-area-inset-top));
-  }
-
-  .routeHeaderCollapsed .routeHeaderIdentity h1 {
-    font-size: 14px;
   }
 
   .pageHeader > .toolbar {

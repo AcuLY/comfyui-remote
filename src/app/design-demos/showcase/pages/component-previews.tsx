@@ -23,7 +23,7 @@ import { LoginTokenPanel } from "../../features/auth";
 import { TemplateSectionRow } from "../../features/templates";
 import { OperationStateStrip } from "../../shared/feedback";
 import { ImageListMedium, ImageListSmall, ImagePreviewFrame, ImageThumbMedium, ReviewImageBoard } from "../../shared/media";
-import { Button, ButtonLink, Checkbox, DemoTabs, EmptyPage, EmptyRows, Field, FloatingSelect, PageHeader, SegmentedControl, SelectLike, StatusBadge, Switch, TextAreaField } from "../../shared/primitives";
+import { Button, ButtonLink, Checkbox, DemoTabs, EmptyPage, EmptyRows, Field, FloatingSelect, PageHeader, SegmentedControl, StatusBadge, Switch } from "../../shared/primitives";
 import { AnchorRail, EditorBlock, FolderBreadcrumb, FolderRow, InspectorAside, MoveTargetPicker, SelectionBatchBar, SortableRowShell, ToolbarCluster, UnitRowShell, WorkbenchSurface } from "../../shared/patterns";
 import { makeImages } from "../helpers";
 import type { ShowcasePreviewComponentName } from "../preview-keys";
@@ -84,8 +84,8 @@ const previewRenderers: Record<ShowcasePreviewComponentName, PreviewRenderer> = 
   ),
   SegmentedControl: () => <SegmentedControlPreview />,
   DemoTabs: () => <DemoTabsPreview />,
-  "Field / TextAreaField": () => <FieldsPreview />,
-  "FloatingSelect / SelectLike": () => <SelectControlsPreview />,
+  Field: () => <FieldsPreview />,
+  FloatingSelect: () => <SelectControlsPreview />,
   PageHeader: () => (
     <div className={s.previewSurface}>
       <PageHeader eyebrow="项目" title="夏日人像合集" subtitle="12 个小节 · 3 个预设" actions={<Button tone="primary" icon={Plus}>新增</Button>} />
@@ -327,7 +327,7 @@ function FieldsPreview() {
   return (
     <div className={s.previewGrid}>
       <Field label="名称" value={name} onChange={setName} />
-      <TextAreaField label="Prompt" value={prompt} onChange={setPrompt} />
+      <Field multiline features={{ resize: true, clipboard: true }} label="Prompt" value={prompt} onChange={setPrompt} />
     </div>
   );
 }
@@ -348,7 +348,7 @@ function SelectControlsPreview() {
         ]}
         value={scheduler}
       />
-      <SelectLike
+      <FloatingSelect
         label="预设状态"
         value={presetStatus}
         options={["draft", "ready", "archived"]}
@@ -476,7 +476,7 @@ function SpecSectionPreview() {
         <StepperInput value={steps} onChange={setSteps} min={1} max={50} />
       </SpecRow>
       <SpecRow label="Checkpoint">
-        <SelectLike
+        <FloatingSelect
           label="模型"
           value={checkpoint}
           options={["realisticVision.safetensors", "dreamShaper.safetensors", "sdxlBase.safetensors"]}

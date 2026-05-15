@@ -8,7 +8,7 @@ import { Button } from "../../shared/primitives/button";
 import { EmptyPage } from "../../shared/primitives/empty-page";
 import { Field } from "../../shared/primitives/field";
 import { PageHeader } from "../../shared/primitives/page-header";
-import { SelectLike } from "../../shared/primitives/select-like";
+import { FloatingSelect } from "../../shared/primitives/floating-select";
 import { StatusBadge } from "../../shared/primitives/status-badge";
 import { firstCategory } from "../../routing";
 
@@ -58,8 +58,8 @@ export function PresetGroupPage({ data, group }: { data: DemoData; group: DemoPr
             <div className={s.formGrid}>
               <Field label="名称" value={group.name} />
               <Field label="Slug" value={group.slug} />
-              <SelectLike label="分类" value={category?.name ?? group.categoryId} />
-              <SelectLike label="文件夹" value={folderPath} />
+              <FloatingSelect label="分类" value={category?.name ?? group.categoryId} />
+              <FloatingSelect label="文件夹" value={folderPath} />
             </div>
           </section>
 
@@ -155,7 +155,7 @@ export function PresetMemberRow({
         <strong>{member.name}</strong>
         <em>{member.categoryName} · {member.variant}</em>
       </div>
-      <SelectLike label="变体" value={member.variant} />
+      <FloatingSelect label="变体" value={member.variant} />
       <Button tone="danger" icon={Trash2} iconOnly size="sm" ariaLabel="移除成员" />
     </div>
   );

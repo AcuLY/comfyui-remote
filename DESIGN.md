@@ -1,6 +1,6 @@
 # ComfyUI Manager Design System
 
-Updated: 2026-05-13
+Updated: 2026-05-15
 
 This product UI uses a calm dual-theme workspace aesthetic: soft gradient atmosphere, translucent glass surfaces, compact data density, and restrained green actions. Light mode is the primary reference tone; dark mode should feel like the same product translated to dark surfaces, not a separate visual identity.
 
@@ -99,6 +99,27 @@ box-shadow: 0 18px 54px rgba(15, 23, 42, 0.10);
 ```
 
 On dark theme, keep the same material model but swap the fill to translucent zinc, not solid black.
+
+### Header And Toast Glass
+
+Fixed route headers and floating feedback toasts use the same frosted glass recipe so they read as one overlay system. Use the route-header glass tokens as the base, then add a subtle hover sheen and an inset top highlight:
+
+```css
+background:
+  linear-gradient(135deg, var(--demo-route-header-highlight), transparent 58%),
+  linear-gradient(180deg, color-mix(in srgb, var(--demo-glass-hover) 24%, transparent), transparent 118%),
+  color-mix(in srgb, var(--demo-route-header-bg) 88%, transparent);
+border: 1px solid var(--demo-glass-accent-border);
+backdrop-filter: var(--demo-glass-blur); /* blur(20px) saturate(140%) */
+box-shadow:
+  inset 0 1px 0 color-mix(in srgb, var(--demo-inset-highlight) 76%, transparent),
+  0 18px 46px color-mix(in srgb, var(--demo-bg) 30%, transparent);
+```
+
+- Light theme route-header glass: `--demo-route-header-bg: rgba(255, 255, 255, 0.16)`, collapsed/stronger overlay `rgba(255, 255, 255, 0.24)`, highlight `rgba(255, 255, 255, 0.08)`.
+- Dark theme route-header glass: `--demo-route-header-bg: rgba(24, 24, 27, 0.34)`, collapsed/stronger overlay `rgba(24, 24, 27, 0.42)`, highlight `rgba(255, 255, 255, 0.06)`.
+- Toast semantic tones should tint the base glass, not replace it: mix the toast base at about `90%` with `--demo-green-soft`, `--demo-amber-soft`, or `--demo-red-soft` for success, warning, and error.
+- Keep the material translucent enough to reveal page motion and color underneath, but never so transparent that text contrast drops. If in doubt, strengthen the bottom fill before increasing borders or glow.
 
 For review pages, the main surface should stay readable as one work area: header, metadata strip, tab/filter row, image board, and action strip. Avoid splitting every small group into standalone floating cards.
 
@@ -204,7 +225,7 @@ Do not:
 ## 9. Implementation Notes For `/design-demos`
 
 - The routed demo shell should use this glass system while keeping all CSS inside `src/app/design-demos/**`.
-- Basic controls must use the existing primitives in `src/app/design-demos/shared/primitives/**` (`Button`, `ButtonLink`, `Field`, `TextAreaField`, `SelectLike`, `Checkbox`, `Switch`, tabs, badges, feedback/toast, and comparable shared controls). Feature and page code must not hand-roll raw `<button>`, `<input>`, `<textarea>`, `<select>`, checkbox/switch, tab, badge, toast, or icon-button implementations unless the task is explicitly to create or update the shared primitive itself.
+- Basic controls must use the existing primitives in `src/app/design-demos/shared/primitives/**` (`Button`, `ButtonLink`, `Field`, `FloatingSelect`, `Checkbox`, `Switch`, tabs, badges, feedback/toast, and comparable shared controls). Feature and page code must not hand-roll raw `<button>`, `<input>`, `<textarea>`, `<select>`, checkbox/switch, tab, badge, toast, or icon-button implementations unless the task is explicitly to create or update the shared primitive itself.
 - Shared demo primitives such as `.button` must be normalized after page-specific style imports when needed. Page styles may narrow layout or flex behavior, but must not override shared button height, text size, icon size, or tone scale.
 - Existing parity work should stay intact: `/runs`, `/projects`, `/presets`, `/models`, `/templates`, and settings routes remain routeable.
 - The shell can use mock data, but visible UI should read as final product state.

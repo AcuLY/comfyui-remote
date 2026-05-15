@@ -115,20 +115,24 @@ function ComponentCard({ component, data }: { component: ShowcaseComponentEntry;
         <ComponentPreview component={component} data={data} />
       </div>
       <div className={s.metaGrid}>
-        <MetaBlock label="归属路径" values={component.paths} />
-        <MetaBlock label="覆盖页面 / 语境" values={component.usedBy} />
+        <MetaBlock label="归属路径" values={component.paths} kind="path" />
+        <MetaBlock label="覆盖页面 / 语境" values={component.usedBy} kind="context" />
       </div>
       {component.exclusion ? <div className={s.exclusion}>边界说明：{component.exclusion}</div> : null}
     </article>
   );
 }
 
-function MetaBlock({ label, values }: { label: string; values: string[] }) {
+function MetaBlock({ label, values, kind }: { label: string; values: string[]; kind: "path" | "context" }) {
   return (
     <div className={s.metaBlock}>
       <span>{label}</span>
       <div className={s.tagList}>
-        {values.map((value) => <code key={value}>{value}</code>)}
+        {values.map((value) =>
+          kind === "path"
+            ? <code className={s.pathTag} key={value}>{value}</code>
+            : <span className={s.contextTag} key={value}>{value}</span>,
+        )}
       </div>
     </div>
   );

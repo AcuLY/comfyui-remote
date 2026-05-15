@@ -78,7 +78,7 @@ export function SpecRow({
 }
 
 // ============================================================================
-// Checkpoint Picker — simplified to inline select-like
+// Checkpoint Picker — simplified to inline selection controls.
 // ============================================================================
 
 type CheckpointPickerProps = {

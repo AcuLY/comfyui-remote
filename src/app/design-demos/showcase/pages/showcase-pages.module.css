@@ -191,15 +191,23 @@
   flex-wrap: wrap;
 }
 
-.tagList code,
-.tagList em {
+.pathTag,
+.contextTag {
   border: 1px solid var(--demo-border);
   border-radius: 999px;
+  font-size: 11px;
+  padding: 3px 7px;
+}
+
+.pathTag {
   color: var(--demo-muted);
   font-family: var(--demo-font-mono);
-  font-size: 11px;
-  font-style: normal;
-  padding: 3px 7px;
+}
+
+.contextTag {
+  background: var(--demo-surface-soft);
+  color: var(--demo-faint);
+  font-family: inherit;
 }
 
 .exclusion {

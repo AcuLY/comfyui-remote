@@ -107,7 +107,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.logViewerHeader span {
+.logViewerHeader > div > span {
   overflow: hidden;
   color: var(--demo-muted);
   font-size: 10px;

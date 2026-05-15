@@ -179,7 +179,7 @@
   gap: 2px;
 }
 
-.presetCategoryHeader span {
+.presetCategoryHeader > div > span {
   color: var(--demo-faint);
   font-size: 10px;
   font-weight: 650;
@@ -343,7 +343,7 @@
   gap: 3px;
 }
 
-.presetWorkspaceHeader span {
+.presetWorkspaceHeader > div > span {
   color: var(--demo-faint);
   font-size: 10px;
   font-weight: 650;
@@ -662,8 +662,8 @@
   border-bottom: 0;
 }
 
-.presetMoveHeader span,
-.presetMoveFooter span {
+.presetMoveHeader > div > span,
+.presetMoveFooter > span {
   color: var(--demo-faint);
   font-size: 10px;
 }
@@ -894,7 +894,7 @@
     padding-bottom: 7px;
   }
 
-  .presetCategoryHeader span {
+  .presetCategoryHeader > div > span {
     display: none;
   }
 

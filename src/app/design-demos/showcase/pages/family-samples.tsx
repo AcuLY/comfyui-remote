@@ -8,7 +8,7 @@ import { buildHeaderSpecs } from "../../routing/header-specs";
 import { RouteHeaderSurface } from "../../shell/header-surface";
 import { DimensionsReadout, HistoryDiffRow, KSamplerCard, LoraColumn, LoraRow, type LoraRowData, PresetBindingRow, PromptBlockRow, SpecRow, SpecSection, StepperInput } from "../../features/projects";
 import { makeImages } from "../helpers";
-import { Button, Checkbox, DemoTabs, Field, MetricCard, PageHeader, SegmentedControl, StatusBadge, Switch, TextAreaField } from "../../shared/primitives";
+import { Button, Checkbox, DemoTabs, Field, MetricCard, PageHeader, SegmentedControl, StatusBadge, Switch } from "../../shared/primitives";
 import { ImageListMedium, ImageListSmall, ImageThumbMedium, ReviewImageBoard } from "../../shared/media";
 import { OperationStateStrip } from "../../shared/feedback";
 import { AnchorRail, EditorBlock, FolderBreadcrumb, FolderRow, InspectorAside, MoveTargetPicker, SelectionBatchBar, SortableRowShell, ToolbarCluster, UnitRowShell, WorkbenchSurface } from "../../shared/patterns";
@@ -81,7 +81,7 @@ function ControlsSample() {
         onChange={setTab}
       />
       <Field label="项目名称" value={projectName} onChange={setProjectName} />
-      <TextAreaField label="正向 Prompt" value={promptText} onChange={setPromptText} />
+      <Field multiline features={{ resize: true, clipboard: true }} label="正向 Prompt" value={promptText} onChange={setPromptText} />
     </div>
   );
 }

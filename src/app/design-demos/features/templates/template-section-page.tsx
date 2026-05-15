@@ -10,9 +10,8 @@ import { EmptyPage } from "../../shared/primitives/empty-page";
 import { Field } from "../../shared/primitives/field";
 import { OperationStateStrip } from "../../shared/feedback/operation-state-strip";
 import { PageHeader } from "../../shared/primitives/page-header";
-import { SelectLike } from "../../shared/primitives/select-like";
+import { FloatingSelect } from "../../shared/primitives/floating-select";
 import { StatusBadge } from "../../shared/primitives/status-badge";
-import { TextAreaField } from "../../shared/primitives/text-area-field";
 import { TemplateSectionShell, templateSectionAnchorId } from "./template-section-shell";
 
 export function TemplateSectionPage({ template, sectionIndex }: { template: DemoTemplate | undefined; sectionIndex: string | undefined }) {
@@ -74,11 +73,11 @@ export function TemplateSectionPage({ template, sectionIndex }: { template: Demo
             </div>
             <div className={s.formGrid}>
               <Field label="小节名" value={section.name} />
-              <SelectLike label="比例" value={section.aspectRatio} />
+              <FloatingSelect label="比例" value={section.aspectRatio} />
               <Field label="短边像素" value={768} />
               <Field label="批量数" value={section.batchSize} />
-              <SelectLike label="Checkpoint" value="继承模板默认" />
-              <SelectLike label="Upscale" value="2x / 可清除" />
+              <FloatingSelect label="Checkpoint" value="继承模板默认" />
+              <FloatingSelect label="Upscale" value="2x / 可清除" />
             </div>
             <div className={s.editorStatusStrip}>
               <span>KSampler 1: 28 steps · CFG 7</span>
@@ -110,7 +109,7 @@ export function TemplateSectionPage({ template, sectionIndex }: { template: Demo
                       <strong>{name} · {bindingIndex === 0 ? section.name : template.name}</strong>
                       <span>{bindingIndex + 1} 个 prompt block · {bindingIndex + 1} 个 LoRA</span>
                     </div>
-                    <SelectLike label="变体" value={bindingIndex === 0 ? "默认" : "继承"} />
+                    <FloatingSelect label="变体" value={bindingIndex === 0 ? "默认" : "继承"} />
                     <Button tone="subtle" icon={Trash2} feedback={{ tone: "warning", title: "绑定移除已排队", detail: name }}>移除</Button>
                   </div>
                 ))}
@@ -150,8 +149,8 @@ export function TemplateSectionPage({ template, sectionIndex }: { template: Demo
                       <span>template block</span>
                     </div>
                     <div className={s.promptColumns}>
-                      <TextAreaField label="正向" value={block.positive} />
-                      <TextAreaField label="反向" value={block.negative} />
+                      <Field multiline features={{ resize: true, clipboard: true }} label="正向" value={block.positive} />
+                      <Field multiline features={{ resize: true, clipboard: true }} label="反向" value={block.negative} />
                     </div>
                   </div>
                   <Button tone="subtle" icon={Trash2}>删除</Button>

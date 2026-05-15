@@ -14,9 +14,29 @@ export type FloatingSelectOption = {
   description?: ReactNode;
 };
 
+type FloatingSelectProps = {
+  value?: string;
+  defaultValue?: string;
+  label?: string;
+  options?: Array<FloatingSelectOption | string>;
+  onChange?: (value: string) => void;
+  ariaLabel?: string;
+  className?: string;
+  buttonClassName?: string;
+  menuClassName?: string;
+  optionClassName?: string;
+  valueClassName?: string;
+  displayValue?: ReactNode;
+  leadingIcon?: ReactNode;
+  endSlot?: ReactNode;
+  disabled?: boolean;
+  readOnly?: boolean;
+};
+
 export function FloatingSelect({
   value,
   defaultValue,
+  label,
   options,
   onChange,
   ariaLabel,
@@ -30,26 +50,13 @@ export function FloatingSelect({
   endSlot,
   disabled = false,
   readOnly = false,
-}: {
-  value?: string;
-  defaultValue?: string;
-  options: FloatingSelectOption[];
-  onChange?: (value: string) => void;
-  ariaLabel?: string;
-  className?: string;
-  buttonClassName?: string;
-  menuClassName?: string;
-  optionClassName?: string;
-  valueClassName?: string;
-  displayValue?: ReactNode;
-  leadingIcon?: ReactNode;
-  endSlot?: ReactNode;
-  disabled?: boolean;
-  readOnly?: boolean;
-}) {
+}: FloatingSelectProps) {
   const baseId = useId();
+  const buttonId = `${baseId}-button`;
   const listboxId = `${baseId}-listbox`;
-  const resolvedValue = value ?? defaultValue ?? options[0]?.value ?? "";
+  const fallbackValue = value ?? defaultValue ?? "";
+  const normalizedOptions = normalizeFloatingSelectOptions(options?.length ? options : [fallbackValue]);
+  const resolvedValue = value ?? defaultValue ?? normalizedOptions[0]?.value ?? "";
   const [selectedValueState, setSelectedValueState] = useState(() => ({
     sourceValue: resolvedValue,
     selectedValue: resolvedValue,
@@ -70,9 +77,9 @@ export function FloatingSelect({
     : selectedValueState.sourceValue === resolvedValue
       ? selectedValueState.selectedValue
       : resolvedValue;
-  const selected = options.find((option) => option.value === selectedValue) ?? options[0];
-  const selectedIndex = Math.max(0, options.findIndex((option) => option.value === selected?.value));
-  const activeOption = options[activeIndex] ?? selected ?? options[0];
+  const selected = normalizedOptions.find((option) => option.value === selectedValue) ?? normalizedOptions[0];
+  const selectedIndex = Math.max(0, normalizedOptions.findIndex((option) => option.value === selected?.value));
+  const activeOption = normalizedOptions[activeIndex] ?? selected ?? normalizedOptions[0];
   const activeOptionId = activeOption ? optionId(activeOption.value) : undefined;
 
   useEffect(() => {
@@ -130,7 +137,7 @@ export function FloatingSelect({
   }, [open, updateMenuPosition]);
 
   function openMenu(nextActiveIndex = selectedIndex) {
-    if (disabled || isReadOnly || options.length === 0) return;
+    if (disabled || isReadOnly || normalizedOptions.length === 0) return;
     setActiveIndex(nextActiveIndex);
     setOpen(true);
   }
@@ -147,8 +154,8 @@ export function FloatingSelect({
   }
 
   function moveActive(delta: number) {
-    if (options.length === 0) return;
-    setActiveIndex((current) => (current + delta + options.length) % options.length);
+    if (normalizedOptions.length === 0) return;
+    setActiveIndex((current) => (current + delta + normalizedOptions.length) % normalizedOptions.length);
   }
 
   function handleButtonKeyDown(event: ReactKeyboardEvent<HTMLButtonElement>) {
@@ -189,7 +196,7 @@ export function FloatingSelect({
         return;
       case "End":
         event.preventDefault();
-        openMenu(Math.max(0, options.length - 1));
+        openMenu(Math.max(0, normalizedOptions.length - 1));
         return;
     }
   }
@@ -199,22 +206,24 @@ export function FloatingSelect({
     : null;
 
   return (
-    <div className={cx(s.floatingSelect, className)} ref={wrapRef}>
+    <div className={cx(s.floatingSelect, label && s.fieldRoot, className)} data-demo-ui-field={label ? "true" : undefined} ref={wrapRef}>
+      {label ? <label htmlFor={buttonId}>{label}</label> : null}
       <button
         aria-activedescendant={open ? activeOptionId : undefined}
         aria-controls={listboxId}
         aria-disabled={disabled ? "true" : undefined}
         aria-expanded={open}
         aria-haspopup="listbox"
-        aria-label={ariaLabel}
+        aria-label={ariaLabel ?? label}
         aria-readonly={isReadOnly ? "true" : undefined}
-        className={cx(s.floatingSelectBtn, buttonClassName)}
+        className={cx(s.floatingSelectBtn, label && s.fieldButton, buttonClassName)}
         disabled={disabled}
+        id={buttonId}
         onClick={() => {
           if (isReadOnly) return;
           setOpen((current) => {
             if (current) return false;
-            if (options.length === 0) return false;
+            if (normalizedOptions.length === 0) return false;
             setActiveIndex(selectedIndex);
             return true;
           });
@@ -239,7 +248,7 @@ export function FloatingSelect({
           role="listbox"
           style={menuStyle}
         >
-          {options.map((option) => (
+          {normalizedOptions.map((option) => (
             <button
               aria-selected={option.value === selectedValue}
               className={cx(s.floatingSelectOption, optionClassName)}
@@ -259,4 +268,8 @@ export function FloatingSelect({
       ) : null}
     </div>
   );
+}
+
+function normalizeFloatingSelectOptions(options: Array<FloatingSelectOption | string>): FloatingSelectOption[] {
+  return options.map((option) => (typeof option === "string" ? { value: option } : option));
 }

@@ -111,12 +111,6 @@
   gap: 3px;
 }
 
-.queueSurfaceHeader span {
-  color: var(--demo-green);
-  font-size: 10px;
-  font-weight: 620;
-}
-
 .queueSurfaceHeader strong {
   overflow: hidden;
   color: var(--demo-text);

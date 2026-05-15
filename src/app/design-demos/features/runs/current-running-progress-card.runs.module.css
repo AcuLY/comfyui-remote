@@ -75,7 +75,7 @@
   gap: 9px;
 }
 
-.currentRunHeader span {
+.currentRunHeader > div > span {
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -274,7 +274,7 @@
     gap: 7px;
   }
 
-  .currentRunHeader span {
+  .currentRunHeader > div > span {
     font-size: 12px;
   }
 

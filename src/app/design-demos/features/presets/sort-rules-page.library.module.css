@@ -111,9 +111,9 @@
   white-space: nowrap;
 }
 
-.sortRuleHeader span,
+.sortRuleHeader > div span,
 .sortRuleRow em,
-.sortRuleFooter span {
+.sortRuleFooter > span {
   overflow: hidden;
   color: var(--demo-muted);
   font-size: 10px;

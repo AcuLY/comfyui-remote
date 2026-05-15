@@ -277,7 +277,7 @@
   font-weight: 560;
 }
 
-.editorBlockHeader span {
+.editorBlockHeader > div > span {
   color: var(--demo-muted);
   font-size: 11px;
   line-height: 1.45;

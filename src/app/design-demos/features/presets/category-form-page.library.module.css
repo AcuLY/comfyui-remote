@@ -91,7 +91,7 @@
   font-weight: 560;
 }
 
-.categoryEditorHeader span {
+.categoryEditorHeader > span {
   color: var(--demo-faint);
   font-size: 10px;
   line-height: 1.35;

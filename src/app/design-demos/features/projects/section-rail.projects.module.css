@@ -104,7 +104,7 @@
   font-weight: 540;
 }
 
-.railHeading span {
+.railHeading > div > span {
   color: var(--demo-faint);
   font-size: 10px;
   white-space: nowrap;

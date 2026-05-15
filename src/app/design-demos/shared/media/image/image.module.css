@@ -535,7 +535,7 @@ button.imagePreviewFrame {
   font-weight: 560;
 }
 
-.lightboxChrome span {
+.lightboxChrome > div > span {
   color: var(--ui-faint);
   font-size: 11px;
 }
@@ -605,7 +605,7 @@ button.imagePreviewFrame {
   font-weight: 560;
 }
 
-.reviewControlStrip span {
+.reviewControlStrip :where(.imageListStats > span) {
   color: var(--ui-muted);
   font-size: 11px;
 }

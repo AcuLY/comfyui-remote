@@ -42,6 +42,12 @@
   font-weight: 600;
 }
 
+.controlFrame {
+  min-width: 0;
+  position: relative;
+  padding-bottom: 30px;
+}
+
 .control {
   width: 100%;
   border: 1px solid var(--ui-border);
@@ -69,6 +75,28 @@
   color: var(--ui-faint);
   cursor: not-allowed;
   opacity: 0.7;
+}
+
+.multilineControl {
+  min-height: 96px;
+}
+
+.noResize {
+  resize: none;
+}
+
+.resizable {
+  resize: vertical;
+}
+
+.clipboardDock {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
 }
 
 @keyframes uiSpin {

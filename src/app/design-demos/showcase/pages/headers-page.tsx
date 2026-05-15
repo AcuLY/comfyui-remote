@@ -12,18 +12,15 @@ import { RouteHeaderSurface } from "../../shell/header-surface";
 import { PageHeader } from "../../shared/primitives";
 import s from "./headers-page.module.css";
 
-type HeaderMode = "expanded" | "collapsed" | "mobile";
+type HeaderMode = "expanded" | "mobile";
 
 const modeLabels: Record<HeaderMode, { label: string; state: string; summary: string }> = {
   expanded: { label: "桌面展开", state: "完整上下文", summary: "标题、状态、摘要、元数据和命令栏完整展示" },
-  collapsed: { label: "桌面折叠", state: "滚动中", summary: "保留标题、紧凑状态或元数据、高频操作" },
   mobile: { label: "移动端", state: "合并顶栏", summary: "标题截断、返回和主操作固定为触控尺寸" },
 };
 
 function summarizeActions(spec: HeaderSpec) {
-  const primary = spec.actions?.map((item) => item.label).join(" / ") || "无主操作";
-  const secondary = spec.secondaryActions?.length ? `${spec.secondaryActions.length} 个二级操作` : "无二级操作";
-  return `${primary}；${secondary}`;
+  return spec.actions?.map((item) => item.label).join(" / ") || "无操作";
 }
 
 function summarizeStructure(spec: HeaderSpec) {
@@ -73,7 +70,6 @@ function HeaderSurface({
   mode: HeaderMode;
   spec: HeaderSpec;
 }) {
-  const isCollapsed = mode === "collapsed";
   const isMobile = mode === "mobile";
   const titleId = `${spec.key}-${mode}-title`;
   const modeLabel = modeLabels[mode];
@@ -88,7 +84,7 @@ function HeaderSurface({
         <strong>{modeLabel.state}</strong>
         <span>{modeLabel.summary}</span>
       </div>
-      <div className={cx(s.previewStage, isCollapsed && s.previewStageCollapsed, isMobile && s.previewStageMobile)}>
+      <div className={cx(s.previewStage, isMobile && s.previewStageMobile)}>
         <RouteHeaderSurface headingLevel={3} mode={mode} spec={spec} titleId={titleId} />
         <div className={s.previewContent} aria-hidden="true">
           <span />
@@ -117,7 +113,6 @@ function PageHeaderCard({ spec }: { spec: HeaderSpec }) {
       <AuditReadout spec={spec} />
       <div className={s.stateGrid}>
         <HeaderSurface mode="expanded" spec={spec} />
-        <HeaderSurface mode="collapsed" spec={spec} />
         <HeaderSurface mode="mobile" spec={spec} />
       </div>
     </article>
@@ -146,8 +141,13 @@ function HeaderPrinciples() {
       title: "Miku spring batch A",
       subtitle: "项目页的视图切换、命令栏和运行控制在展开态完整保留。",
       back: { href: "/projects", label: "返回项目列表" },
-      actions: [action("批量创建", Rows3, "primary"), action("整组运行", Play, "primary")],
-      secondaryActions: [action("导入模板", Download), action("图片整合", ImageIcon), action("保存模板", Save)],
+      actions: [
+        action("批量创建", Rows3, "primary"),
+        action("整组运行", Play, "primary"),
+        action("导入模板", Download),
+        action("图片整合", ImageIcon),
+        action("保存模板", Save),
+      ],
       meta: ["12 小节", "小节视图", "batch 2"],
       status: "项目详情",
     },
@@ -172,7 +172,7 @@ export function ComponentShowcaseHeadersPage({ data }: { data: DemoData }) {
         back={{ href: "/component-showcase", label: "返回总览" }}
         eyebrow="组件展示"
         title="Headers 固定顶栏专项"
-        subtitle={`${total} 个页面 header 设计稿，覆盖桌面展开、桌面折叠和移动端合并状态。`}
+        subtitle={`${total} 个页面 header 设计稿，覆盖桌面展开和移动端合并状态；滚动时整条 header 隐藏或恢复。`}
       />
       <HeaderPrinciples />
       <div className={s.pageMap}>
@@ -198,8 +198,8 @@ export function ComponentShowcaseHeadersPage({ data }: { data: DemoData }) {
         </div>
         <div>
           <Gauge aria-hidden="true" className={s.noteIcon} />
-          <strong>滚动折叠</strong>
-          <span>向下滚动保留返回、标题、状态和高频操作；向上滚动恢复完整上下文。</span>
+          <strong>滚动隐藏</strong>
+          <span>向下滚动整条 header 上移隐藏；向上滚动恢复完整上下文。</span>
         </div>
         <div>
           <ShieldCheck aria-hidden="true" className={s.noteIcon} />

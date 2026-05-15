@@ -117,10 +117,10 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.logViewerHeader span,
-.monitorHeader span,
-.monitorStatusRow span,
-.monitorProbeBox span {
+.logViewerHeader > div > span,
+.monitorHeader > div > span,
+.monitorStatusRow > div > span,
+.monitorProbeBox > span {
   overflow: hidden;
   color: var(--demo-muted);
   font-size: 10px;
@@ -213,7 +213,7 @@
 .monitorProbeBox {
   grid-template-columns: minmax(0, 1fr) auto;
 }
-.monitorProbeBox span {
+.monitorProbeBox > span {
   white-space: normal;
 }
 .monitorActions {

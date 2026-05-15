@@ -173,7 +173,7 @@
 
 .stateGrid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
 
@@ -259,10 +259,6 @@
     var(--demo-panel-2);
 }
 
-.previewStageCollapsed {
-  min-height: 128px;
-}
-
 .previewStageMobile {
   min-height: 128px;
 }
@@ -277,7 +273,6 @@
   padding: 128px 12px 12px;
 }
 
-.previewStageCollapsed .previewContent,
 .previewStageMobile .previewContent {
   padding-top: 64px;
 }

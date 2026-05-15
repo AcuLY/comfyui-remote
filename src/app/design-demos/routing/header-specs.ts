@@ -62,7 +62,6 @@ export type HeaderSpec = {
     label: string;
   };
   actions?: HeaderAction[];
-  secondaryActions?: HeaderAction[];
   meta?: string[];
   status?: string;
 };
@@ -179,8 +178,6 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
           headerAction("编辑", Edit3),
           headerAction("批量创建", Rows3, "primary"),
           headerAction("整组运行", Play, "primary"),
-        ],
-        secondaryActions: [
           headerAction("导入模板", Download),
           headerAction("图片整合", ImageIcon),
           headerAction("保存模板", Save),
@@ -240,8 +237,6 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
           headerAction("下一节", ArrowRight, "subtle"),
           headerAction("workflow", ExternalLink),
           headerAction("运行", Play, "primary"),
-        ],
-        secondaryActions: [
           headerAction("参数", SlidersHorizontal, "primary"),
           headerAction("预设", Tags),
           headerAction("Prompt", Wand2),
@@ -394,8 +389,7 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         title: template?.name ?? "编辑模板",
         subtitle: `${template?.sectionCount ?? 0} 个小节`,
         back: { href: "/templates", label: "返回模板列表" },
-        actions: [headerAction("添加小节", Plus)],
-        secondaryActions: [headerAction("保存", Save, "primary")],
+        actions: [headerAction("添加小节", Plus), headerAction("保存", Save, "primary")],
         meta: ["小节导航", "排序保存"],
         status: "模板编辑",
       },
@@ -410,8 +404,6 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         actions: [
           headerAction("复制小节", Copy),
           headerAction("已保存", Save, "primary"),
-        ],
-        secondaryActions: [
           headerAction("上一节", ArrowLeft, "subtle"),
           headerAction("下一节", ArrowRight, "subtle"),
           headerAction("导出", Download),
@@ -640,9 +632,18 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         group: "组件审查",
         eyebrow: "组件展示",
         title: "Headers 固定顶栏专项",
-        subtitle: "所有路由的固定顶部 header 展开、折叠和移动端合并状态。",
+        subtitle: "所有路由的固定顶部 header 展开、移动端合并和滚动隐藏状态。",
         back: { href: "/component-showcase", label: "返回总览" },
-        meta: ["桌面", "折叠", "移动端"],
+        actions: [
+          headerAction("校准间距", SlidersHorizontal),
+          headerAction("截图", ExternalLink),
+          headerAction("复制配置", Copy),
+          headerAction("导出 CSS", Download),
+          headerAction("移动端预览", Monitor),
+          headerAction("保存样式", Save, "primary"),
+          headerAction("重置布局", X, "danger"),
+        ],
+        meta: ["桌面", "移动端"],
         status: "专项",
       },
     ]),

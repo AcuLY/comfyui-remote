@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
-import type { Ref } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { Eye, EyeOff, Menu, Moon, MoreHorizontal, Sun } from "lucide-react";
 
@@ -245,95 +244,24 @@ function MobileTopbar({
   );
 }
 
-function RouteHeaderToolsMenu({
-  isDarkTheme,
-  onToggleSfwMode,
-  onToggleTheme,
-  sfwMode,
-}: {
-  isDarkTheme: boolean;
-  onToggleSfwMode: () => void;
-  onToggleTheme: () => void;
-  sfwMode: boolean;
-}) {
-  const ThemeIcon = isDarkTheme ? Sun : Moon;
-  const SfwIcon = sfwMode ? EyeOff : Eye;
-
-  return (
-    <div className={s.routeHeaderToolsMenu} role="menu" aria-label="显示设置">
-      <button
-        className={cx(s.routeHeaderToolsItem, isDarkTheme && s.routeHeaderToolsItemActive)}
-        type="button"
-        role="menuitemcheckbox"
-        aria-checked={isDarkTheme}
-        onClick={onToggleTheme}
-      >
-        <ThemeIcon className={s.iconMd} aria-hidden="true" />
-        <span>暗色模式</span>
-      </button>
-      <button
-        className={cx(s.routeHeaderToolsItem, sfwMode && s.routeHeaderToolsItemActive)}
-        type="button"
-        role="menuitemcheckbox"
-        aria-checked={sfwMode}
-        onClick={onToggleSfwMode}
-      >
-        <SfwIcon className={s.iconMd} aria-hidden="true" />
-        <span>SFW 模式</span>
-      </button>
-    </div>
-  );
-}
-
 function DemoRouteHeader({
-  collapsed,
   config,
   compact,
-  isDarkTheme,
-  onToggleSfwMode,
-  onToggleTheme,
-  onToggleTools,
-  sfwMode,
+  hidden,
   surfaceRef,
-  toolsOpen,
 }: {
-  collapsed: boolean;
   config: HeaderSpec;
   compact: boolean;
-  isDarkTheme: boolean;
-  onToggleSfwMode: () => void;
-  onToggleTheme: () => void;
-  onToggleTools: () => void;
-  sfwMode: boolean;
-  surfaceRef: Ref<HTMLElement>;
-  toolsOpen: boolean;
+  hidden: boolean;
+  surfaceRef: (node: HTMLElement | null) => void;
 }) {
   return (
     <RouteHeaderSurface
       className={s.routeHeaderSurface}
-      mode={compact ? "mobile" : collapsed ? "collapsed" : "expanded"}
+      hidden={hidden}
+      mode={compact ? "mobile" : "expanded"}
       spec={config}
       surfaceRef={surfaceRef}
-      tools={
-        <div className={s.routeHeaderTools}>
-          <Button
-            className={cx(s.shellButton, s.iconButton, s.routeHeaderToolButton)}
-            icon={MoreHorizontal}
-            iconOnly
-            onClick={onToggleTools}
-            pressed={toolsOpen}
-            ariaLabel="打开显示设置"
-          />
-          {toolsOpen ? (
-            <RouteHeaderToolsMenu
-              isDarkTheme={isDarkTheme}
-              onToggleSfwMode={onToggleSfwMode}
-              onToggleTheme={onToggleTheme}
-              sfwMode={sfwMode}
-            />
-          ) : null}
-        </div>
-      }
     />
   );
 }
@@ -352,36 +280,52 @@ export function DesignDemoShell({
   const contentFrameRef = useRef<HTMLDivElement>(null);
   const mainRef = useRef<HTMLElement>(null);
   const routeHeaderRef = useRef<HTMLElement>(null);
-  const routeHeaderCollapsedRef = useRef(false);
+  const routeHeaderHiddenRef = useRef(false);
   const routeHeaderInsetRef = useRef(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
+  const [sidebarLayoutReady, setSidebarLayoutReady] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [theme, setTheme] = useState<DemoTheme>(initialTheme);
   const [sfwMode, setSfwMode] = useState(false);
   const [routeHeaderCompact, setRouteHeaderCompact] = useState(false);
-  const [routeHeaderCollapsed, setRouteHeaderCollapsed] = useState(false);
+  const [routeHeaderHidden, setRouteHeaderHidden] = useState(false);
   const isLightTheme = theme === "light";
   const routeHeaderConfig = useMemo(() => findHeaderSpecForRoute(data, currentRoute), [currentRoute, data]);
   const hasRouteHeader = Boolean(routeHeaderConfig);
+  const setRouteHeaderNode = useCallback((node: HTMLElement | null) => {
+    routeHeaderRef.current = node;
+  }, []);
   const activeNav = useMemo(
     () => NAV_LINKS.find((link) => isNavActive(currentRoute, link.href, link.activePrefix)) ?? NAV_LINKS[0],
     [currentRoute],
   );
 
   useEffect(() => {
+    const sidebarQuery = window.matchMedia("(min-width: 640px) and (max-width: 1023px)");
+
+    function syncSidebarCollapse() {
+      setSidebarCollapsed(sidebarQuery.matches);
+      setSidebarLayoutReady(true);
+    }
+
+    syncSidebarCollapse();
+    sidebarQuery.addEventListener("change", syncSidebarCollapse);
+
     const frameId = window.requestAnimationFrame(() => {
       const storedTheme = window.localStorage.getItem(DESIGN_DEMO_THEME_STORAGE_KEY);
       const resolvedTheme = isDemoThemeValue(storedTheme) ? storedTheme : initialTheme;
 
       applyDesignDemoTheme(resolvedTheme);
       setTheme(resolvedTheme);
-      setSidebarCollapsed(window.matchMedia("(min-width: 640px) and (max-width: 1023px)").matches);
       setRouteHeaderCompact(window.matchMedia("(max-width: 760px)").matches);
       setSfwMode(isSfwEnabledValue(window.localStorage.getItem(DESIGN_DEMO_SFW_STORAGE_KEY)));
     });
 
-    return () => window.cancelAnimationFrame(frameId);
+    return () => {
+      sidebarQuery.removeEventListener("change", syncSidebarCollapse);
+      window.cancelAnimationFrame(frameId);
+    };
   }, [initialTheme]);
 
   useEffect(() => {
@@ -447,7 +391,7 @@ export function DesignDemoShell({
     let lastScrollTop = 0;
     let frameId = 0;
     let resetFrameId = 0;
-    const collapseAfter = 96;
+    const hideAfter = 96;
     const expandNearTop = 24;
     const minDirectionDelta = 10;
 
@@ -455,20 +399,20 @@ export function DesignDemoShell({
       return mainRef.current?.scrollTop ?? 0;
     }
 
-    function setCollapsed(nextCollapsed: boolean) {
-      if (routeHeaderCollapsedRef.current === nextCollapsed) return;
-      routeHeaderCollapsedRef.current = nextCollapsed;
-      setRouteHeaderCollapsed(nextCollapsed);
+    function setHeaderHidden(nextHidden: boolean) {
+      if (routeHeaderHiddenRef.current === nextHidden) return;
+      routeHeaderHiddenRef.current = nextHidden;
+      setRouteHeaderHidden(nextHidden);
     }
 
     if (!hasRouteHeader) {
-      resetFrameId = window.requestAnimationFrame(() => setCollapsed(false));
+      resetFrameId = window.requestAnimationFrame(() => setHeaderHidden(false));
       return () => window.cancelAnimationFrame(resetFrameId);
     }
 
     resetFrameId = window.requestAnimationFrame(() => {
       lastScrollTop = readScrollTop();
-      setCollapsed(false);
+      setHeaderHidden(false);
     });
 
     function handleScroll() {
@@ -478,11 +422,11 @@ export function DesignDemoShell({
         const delta = nextScrollTop - lastScrollTop;
 
         if (nextScrollTop <= expandNearTop) {
-          setCollapsed(false);
-        } else if (delta >= minDirectionDelta && nextScrollTop >= collapseAfter) {
-          setCollapsed(true);
+          setHeaderHidden(false);
+        } else if (delta >= minDirectionDelta && nextScrollTop >= hideAfter) {
+          setHeaderHidden(true);
         } else if (delta <= -minDirectionDelta) {
-          setCollapsed(false);
+          setHeaderHidden(false);
         }
 
         lastScrollTop = nextScrollTop;
@@ -517,8 +461,8 @@ export function DesignDemoShell({
   }
 
   return (
-    <DemoFeedbackProvider>
-      <div className={cx(s.shell, isLightTheme && s.shellLight)} data-app-shell data-demo-font="harmonyos" data-theme={theme}>
+    <div className={cx(s.shell, isLightTheme && s.shellLight)} data-app-shell data-demo-font="harmonyos" data-theme={theme}>
+      <DemoFeedbackProvider>
         {!hasRouteHeader ? (
           <MobileTopbar
             activeLabel={activeNav?.label ?? "工作台"}
@@ -541,7 +485,12 @@ export function DesignDemoShell({
             aria-label="关闭导航菜单"
           />
         ) : null}
-        <div className={cx(s.workspace, sidebarCollapsed && s.workspaceCollapsed, hasRouteHeader && s.workspaceWithRouteHeader)}>
+        <div className={cx(
+          s.workspace,
+          sidebarLayoutReady && s.workspaceSidebarReady,
+          sidebarCollapsed && s.workspaceCollapsed,
+          hasRouteHeader && s.workspaceWithRouteHeader,
+        )}>
           <Sidebar
             collapsed={sidebarCollapsed && !menuOpen}
             data={data}
@@ -557,19 +506,10 @@ export function DesignDemoShell({
           <div className={cx(s.contentFrame, hasRouteHeader && s.contentFrameWithRouteHeader)} ref={contentFrameRef}>
             {routeHeaderConfig ? (
               <DemoRouteHeader
-                collapsed={routeHeaderCollapsed}
                 config={routeHeaderConfig}
                 compact={routeHeaderCompact}
-                isDarkTheme={theme === "dark"}
-                onToggleSfwMode={toggleSfwMode}
-                onToggleTheme={toggleTheme}
-                onToggleTools={() => {
-                  setToolsOpen((open) => !open);
-                  setMenuOpen(false);
-                }}
-                sfwMode={sfwMode}
-                surfaceRef={routeHeaderRef}
-                toolsOpen={toolsOpen}
+                hidden={routeHeaderHidden}
+                surfaceRef={setRouteHeaderNode}
               />
             ) : null}
             <main className={cx(s.main, hasRouteHeader && s.mainWithRouteHeader)} ref={mainRef}>
@@ -586,7 +526,7 @@ export function DesignDemoShell({
             setToolsOpen(false);
           }}
         />
-      </div>
-    </DemoFeedbackProvider>
+      </DemoFeedbackProvider>
+    </div>
   );
 }

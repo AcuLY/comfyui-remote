@@ -40,7 +40,7 @@ function jsxTagSource(source, componentName, label) {
 
 test("component primitive previews keep local state instead of no-op callbacks", () => {
   assert.match(componentPreviewsSource, /Checkbox:\s*\(\)\s*=>\s*<CheckboxPreview\s*\/>/);
-  assert.match(componentPreviewsSource, /"Field \/ TextAreaField":\s*\(\)\s*=>\s*<FieldsPreview\s*\/>/);
+  assert.match(componentPreviewsSource, /Field:\s*\(\)\s*=>\s*<FieldsPreview\s*\/>/);
 
   const checkboxPreviewSource = functionSource(componentPreviewsSource, "CheckboxPreview");
   assert.match(checkboxPreviewSource, /useState\(true\)/);
@@ -53,13 +53,15 @@ test("component primitive previews keep local state instead of no-op callbacks",
   assert.match(fieldsPreviewSource, /useState\("写实人像"\)/);
   assert.match(fieldsPreviewSource, /useState\("masterpiece, best quality, portrait"\)/);
   assert.match(jsxTagSource(fieldsPreviewSource, "Field", "名称"), /onChange=\{setName\}/);
-  assert.match(jsxTagSource(fieldsPreviewSource, "TextAreaField", "Prompt"), /onChange=\{setPrompt\}/);
+  assert.match(jsxTagSource(fieldsPreviewSource, "Field", "Prompt"), /multiline/);
+  assert.match(jsxTagSource(fieldsPreviewSource, "Field", "Prompt"), /features=\{\{ resize: true, clipboard: true \}\}/);
+  assert.match(jsxTagSource(fieldsPreviewSource, "Field", "Prompt"), /onChange=\{setPrompt\}/);
 
   const specSectionPreviewSource = functionSource(componentPreviewsSource, "SpecSectionPreview");
   assert.match(specSectionPreviewSource, /const\s+\[\s*checkpoint\s*,\s*setCheckpoint\s*\]\s*=\s*useState\("realisticVision\.safetensors"\)/);
-  assert.match(jsxTagSource(specSectionPreviewSource, "SelectLike", "模型"), /value=\{checkpoint\}/);
-  assert.match(jsxTagSource(specSectionPreviewSource, "SelectLike", "模型"), /onChange=\{setCheckpoint\}/);
-  assert.doesNotMatch(jsxTagSource(specSectionPreviewSource, "SelectLike", "模型"), /value="realisticVision\.safetensors"/);
+  assert.match(jsxTagSource(specSectionPreviewSource, "FloatingSelect", "模型"), /value=\{checkpoint\}/);
+  assert.match(jsxTagSource(specSectionPreviewSource, "FloatingSelect", "模型"), /onChange=\{setCheckpoint\}/);
+  assert.doesNotMatch(jsxTagSource(specSectionPreviewSource, "FloatingSelect", "模型"), /value="realisticVision\.safetensors"/);
 });
 
 test("showcase unit row and folder samples expose real visible interactions", () => {

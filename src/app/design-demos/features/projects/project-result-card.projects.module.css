@@ -115,7 +115,7 @@
   white-space: nowrap;
 }
 
-.projectSectionToolbar span {
+.projectSectionToolbar > div:first-child span {
   min-width: 0;
   max-width: 100%;
   overflow: hidden;

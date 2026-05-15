@@ -9,9 +9,8 @@ import { Button } from "../../shared/primitives/button";
 import { EmptyPage } from "../../shared/primitives/empty-page";
 import { Field } from "../../shared/primitives/field";
 import { PageHeader } from "../../shared/primitives/page-header";
-import { SelectLike } from "../../shared/primitives/select-like";
+import { FloatingSelect } from "../../shared/primitives/floating-select";
 import { StatusBadge } from "../../shared/primitives/status-badge";
-import { TextAreaField } from "../../shared/primitives/text-area-field";
 import { cx, firstCategory } from "../../routing";
 
 export function PresetEditPage({ data, preset }: { data: DemoData; preset: DemoPreset | undefined }) {
@@ -61,10 +60,10 @@ export function PresetEditPage({ data, preset }: { data: DemoData; preset: DemoP
             <div className={s.formGrid}>
               <Field label="名称" value={preset.name} />
               <Field label="Slug" value={preset.slug} />
-              <SelectLike label="分类" value={category?.name ?? preset.categoryId} />
-              <SelectLike label="文件夹" value={folderPath} />
+              <FloatingSelect label="分类" value={category?.name ?? preset.categoryId} />
+              <FloatingSelect label="文件夹" value={folderPath} />
             </div>
-            <TextAreaField label="备注" value={preset.notes || "预设说明和维护备注。"} />
+            <Field multiline features={{ resize: true, clipboard: true }} label="备注" value={preset.notes || "预设说明和维护备注。"} />
           </section>
 
           <section className={s.editorBlock}>
@@ -98,8 +97,8 @@ export function PresetEditPage({ data, preset }: { data: DemoData; preset: DemoP
                   <Field label="变体 Slug" value={activeVariant.slug} />
                 </div>
                 <div className={s.promptColumns}>
-                  <TextAreaField label="正向 Prompt" value={activeVariant.prompt || "正向提示词"} />
-                  <TextAreaField label="反向 Prompt" value={activeVariant.negativePrompt || "反向提示词"} />
+                  <Field multiline features={{ resize: true, clipboard: true }} label="正向 Prompt" value={activeVariant.prompt || "正向提示词"} />
+                  <Field multiline features={{ resize: true, clipboard: true }} label="反向 Prompt" value={activeVariant.negativePrompt || "反向提示词"} />
                 </div>
               </div>
             </div>

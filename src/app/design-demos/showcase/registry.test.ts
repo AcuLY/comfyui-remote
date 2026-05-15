@@ -92,6 +92,7 @@ const allowedDirectImports = new Set([
 const crossLayerImportPattern = /from\s+["'](\.\.\/\.\.\/[^"']+)["']/g;
 const testDir = dirname(fileURLToPath(import.meta.url));
 const demoClientSource = readFileSync(resolve(testDir, "../shell/app-client.tsx"), "utf8");
+const familyPageSource = readFileSync(resolve(testDir, "pages/family-page.tsx"), "utf8");
 const designDemosDir = resolve(testDir, "..");
 
 function sourceFilesUnder(relativeDir: string) {
@@ -199,15 +200,33 @@ for (const family of SHOWCASE_FAMILIES) {
   assert.ok(components.length > 0, `${family.id} must document at least one review item`);
 }
 
-const baseSelectControl = SHOWCASE_COMPONENTS.find((component) => component.componentName === "FloatingSelect / SelectLike");
-assert.ok(baseSelectControl, "controls family must document the base dropdown select controls");
-assert.equal(baseSelectControl.familyId, "controls", "FloatingSelect / SelectLike belongs in the controls family");
-assert.ok(baseSelectControl.paths.includes("shared/primitives/floating-select"), "FloatingSelect path must be listed");
-assert.ok(baseSelectControl.paths.includes("shared/primitives/select-like"), "SelectLike path must be listed");
 assert.ok(
-  SHOWCASE_PREVIEW_COMPONENT_NAMES.includes("FloatingSelect / SelectLike"),
+  !SHOWCASE_COMPONENTS.some((component) => component.componentName === `FloatingSelect / ${["Select", "Like"].join("")}`),
+  "controls family must not present the removed select adapter as a peer primary component",
+);
+assert.ok(
+  !SHOWCASE_COMPONENTS.some((component) => component.componentName === `Field / ${["Text", "Area", "Field"].join("")}`),
+  "controls family must not present the removed textarea adapter as a peer primary component",
+);
+
+const baseSelectControl = SHOWCASE_COMPONENTS.find((component) => component.componentName === "FloatingSelect");
+assert.ok(baseSelectControl, "controls family must document FloatingSelect as the base dropdown select primitive");
+assert.equal(baseSelectControl.familyId, "controls", "FloatingSelect belongs in the controls family");
+assert.ok(baseSelectControl.paths.includes("shared/primitives/floating-select"), "FloatingSelect path must be listed");
+assert.ok(!baseSelectControl.paths.includes(["shared/primitives/select", "like"].join("-")), "removed select adapter path must not be listed");
+assert.doesNotMatch(baseSelectControl.description, new RegExp(["Select", "Like"].join("")), "FloatingSelect documentation must not mention removed select adapter");
+assert.ok(
+  SHOWCASE_PREVIEW_COMPONENT_NAMES.includes("FloatingSelect"),
   "base dropdown select controls must have a showcase preview key",
 );
+
+const fieldControl = SHOWCASE_COMPONENTS.find((component) => component.componentName === "Field");
+assert.ok(fieldControl, "controls family must document Field as the base text field primitive");
+assert.equal(fieldControl.familyId, "controls", "Field belongs in the controls family");
+assert.ok(fieldControl.paths.includes("shared/primitives/field"), "Field path must be listed");
+assert.ok(!fieldControl.paths.includes(["shared/primitives/text", "area", "field"].join("-")), "removed textarea adapter path must not be listed");
+assert.doesNotMatch(fieldControl.description, new RegExp(["Text", "Area", "Field"].join("")), "Field documentation must not mention removed textarea adapter");
+assert.ok(SHOWCASE_PREVIEW_COMPONENT_NAMES.includes("Field"), "text field controls must have a showcase preview key");
 
 assert.match(
   demoClientSource,
@@ -218,6 +237,22 @@ assert.doesNotMatch(
   demoClientSource,
   /case "component-showcase-(controls|surfaces|unit-items|folders|batch-actions|generation-params|preset-prompt-lora|taxonomy-history|images|runs|system|headers|icons)"/,
   "demo client should not hard-code individual showcase family route cases",
+);
+
+assert.match(
+  familyPageSource,
+  /<MetaBlock label="归属路径" values=\{component\.paths\} kind="path" \/>/,
+  "source path metadata must render with path/code chip semantics",
+);
+assert.match(
+  familyPageSource,
+  /<MetaBlock label="覆盖页面 \/ 语境" values=\{component\.usedBy\} kind="context" \/>/,
+  "usage context metadata must render with context chip semantics",
+);
+assert.doesNotMatch(
+  familyPageSource,
+  /function MetaBlock[\s\S]*values\.map\(\(value\) => <code key=\{value\}>\{value\}<\/code>\)/,
+  "usage context metadata such as 预设详情 must not be rendered as code tags",
 );
 
 for (const component of SHOWCASE_COMPONENTS) {

@@ -17,7 +17,7 @@ import { Button } from "../../shared/primitives/button";
 import { EmptyPage } from "../../shared/primitives/empty-page";
 import { Field } from "../../shared/primitives/field";
 import { PageHeader } from "../../shared/primitives/page-header";
-import { SelectLike } from "../../shared/primitives/select-like";
+import { FloatingSelect } from "../../shared/primitives/floating-select";
 import { cx } from "../../routing";
 
 function PresetCategoryEditor({ category, categories }: { category: DemoCategory | null; categories: DemoCategory[] }) {
@@ -64,7 +64,7 @@ function PresetCategoryEditor({ category, categories }: { category: DemoCategory
           {(slots.length ? slots : [{ id: "new-slot", label: "主体", categoryName: presetCategories[0]?.name ?? "选择预设分类" }]).map((slot) => (
             <div className={s.slotRow} key={slot.id}>
               <GripVertical className={s.categoryDragIcon} />
-              <SelectLike label="来源分类" value={slot.categoryName} />
+              <FloatingSelect label="来源分类" value={slot.categoryName} />
               <Field label="槽位标签" value={slot.label} />
               <Button tone="danger" icon={X} iconOnly size="sm" ariaLabel="删除槽位" />
             </div>

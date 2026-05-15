@@ -125,8 +125,8 @@
   font-size: 15px;
 }
 
-.workbenchHeader span,
-.editorBlockHeader span {
+.workbenchHeader > div > span,
+.editorBlockHeader > div > span {
   color: var(--demo-muted);
   font-size: 12px;
   line-height: 1.45;

@@ -128,8 +128,8 @@
   gap: 3px;
 }
 
-.batchPaneHeader span,
-.batchSectionHeader span {
+.batchPaneHeader > div span,
+.batchSectionHeader > div span {
   color: var(--demo-green);
   font-size: 10px;
   font-weight: 620;

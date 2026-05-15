@@ -10,8 +10,6 @@ export { PageHeader, PageHeaderBack } from "./page-header";
 export { Panel } from "./panel";
 export { RouteTable } from "./route-table";
 export { SegmentedControl } from "./segmented-control";
-export { SelectLike } from "./select-like";
 export { StatusBadge } from "./status-badge";
 export { Switch } from "./switch";
 export { SwitchRow } from "./switch-row";
-export { TextAreaField } from "./text-area-field";
