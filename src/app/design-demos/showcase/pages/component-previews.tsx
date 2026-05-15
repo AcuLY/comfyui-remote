@@ -23,7 +23,7 @@ import { LoginTokenPanel } from "../../features/auth";
 import { TemplateSectionRow } from "../../features/templates";
 import { OperationStateStrip } from "../../shared/feedback";
 import { ImageListMedium, ImageListSmall, ImagePreviewFrame, ImageThumbMedium, ReviewImageBoard } from "../../shared/media";
-import { Button, ButtonLink, Checkbox, DemoTabs, EmptyPage, EmptyRows, Field, PageHeader, SegmentedControl, SelectLike, StatusBadge, Switch, TextAreaField } from "../../shared/primitives";
+import { Button, ButtonLink, Checkbox, DemoTabs, EmptyPage, EmptyRows, Field, FloatingSelect, PageHeader, SegmentedControl, SelectLike, StatusBadge, Switch, TextAreaField } from "../../shared/primitives";
 import { AnchorRail, EditorBlock, FolderBreadcrumb, FolderRow, InspectorAside, MoveTargetPicker, SelectionBatchBar, SortableRowShell, ToolbarCluster, UnitRowShell, WorkbenchSurface } from "../../shared/patterns";
 import { makeImages } from "../helpers";
 import type { ShowcasePreviewComponentName } from "../preview-keys";
@@ -85,6 +85,7 @@ const previewRenderers: Record<ShowcasePreviewComponentName, PreviewRenderer> = 
   SegmentedControl: () => <SegmentedControlPreview />,
   DemoTabs: () => <DemoTabsPreview />,
   "Field / TextAreaField": () => <FieldsPreview />,
+  "FloatingSelect / SelectLike": () => <SelectControlsPreview />,
   PageHeader: () => (
     <div className={s.previewSurface}>
       <PageHeader eyebrow="项目" title="夏日人像合集" subtitle="12 个小节 · 3 个预设" actions={<Button tone="primary" icon={Plus}>新增</Button>} />
@@ -327,6 +328,32 @@ function FieldsPreview() {
     <div className={s.previewGrid}>
       <Field label="名称" value={name} onChange={setName} />
       <TextAreaField label="Prompt" value={prompt} onChange={setPrompt} />
+    </div>
+  );
+}
+
+function SelectControlsPreview() {
+  const [scheduler, setScheduler] = useState("normal");
+  const [presetStatus, setPresetStatus] = useState("draft");
+
+  return (
+    <div className={s.previewGrid}>
+      <FloatingSelect
+        ariaLabel="选择 Scheduler"
+        onChange={setScheduler}
+        options={[
+          { value: "normal", label: "normal", description: "默认调度" },
+          { value: "karras", label: "karras", description: "更平滑的降噪" },
+          { value: "exponential", label: "exponential", description: "指数调度" },
+        ]}
+        value={scheduler}
+      />
+      <SelectLike
+        label="预设状态"
+        value={presetStatus}
+        options={["draft", "ready", "archived"]}
+        onChange={setPresetStatus}
+      />
     </div>
   );
 }

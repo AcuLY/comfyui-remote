@@ -199,6 +199,16 @@ for (const family of SHOWCASE_FAMILIES) {
   assert.ok(components.length > 0, `${family.id} must document at least one review item`);
 }
 
+const baseSelectControl = SHOWCASE_COMPONENTS.find((component) => component.componentName === "FloatingSelect / SelectLike");
+assert.ok(baseSelectControl, "controls family must document the base dropdown select controls");
+assert.equal(baseSelectControl.familyId, "controls", "FloatingSelect / SelectLike belongs in the controls family");
+assert.ok(baseSelectControl.paths.includes("shared/primitives/floating-select"), "FloatingSelect path must be listed");
+assert.ok(baseSelectControl.paths.includes("shared/primitives/select-like"), "SelectLike path must be listed");
+assert.ok(
+  SHOWCASE_PREVIEW_COMPONENT_NAMES.includes("FloatingSelect / SelectLike"),
+  "base dropdown select controls must have a showcase preview key",
+);
+
 assert.match(
   demoClientSource,
   /getShowcaseFamilyIdByRoute\(match\.route\)/,

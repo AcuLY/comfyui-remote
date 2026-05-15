@@ -160,6 +160,15 @@ export const SHOWCASE_COMPONENTS: ShowcaseComponentEntry[] = [
     status: "implemented",
   },
   {
+    familyId: "controls",
+    reviewName: "浮层下拉选择器",
+    componentName: "FloatingSelect / SelectLike",
+    description: "基础下拉/选择控件；生成参数页里的 Scheduler、Sampler、Seed 只是业务使用场景，不改变它的基础控件归属。",
+    paths: ["shared/primitives/floating-select", "shared/primitives/select-like"],
+    usedBy: ["生成参数 Scheduler", "生成参数 Sampler", "生成参数 Seed", "项目表单", "预设表单", "模板表单"],
+    status: "implemented",
+  },
+  {
     familyId: "surfaces",
     reviewName: "页面标题栏",
     componentName: "PageHeader",

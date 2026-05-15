@@ -9,6 +9,7 @@ const designDemosDir = resolve(testDir, "../..");
 const fieldSource = readDemoSource("shared/primitives/field/index.tsx");
 const textAreaFieldSource = readDemoSource("shared/primitives/text-area-field/index.tsx");
 const floatingSelectSource = readDemoSource("shared/primitives/floating-select/index.tsx");
+const floatingSelectStyleSource = readDemoSource("shared/primitives/floating-select/floating-select.module.css");
 const selectLikeSource = readDemoSource("shared/primitives/select-like/index.tsx");
 const checkboxSource = readDemoSource("shared/primitives/checkbox/index.tsx");
 const buttonSource = readDemoSource("shared/primitives/button/index.tsx");
@@ -129,6 +130,16 @@ test("FloatingSelect supports local selection state, explicit readOnly, and keyb
   assert.match(floatingSelectSource, /case\s+"Home"/);
   assert.match(floatingSelectSource, /case\s+"End"/);
   assert.doesNotMatch(floatingSelectSource, /onChange\?\.\(option\.value\);\s*setOpen\(false\)/);
+});
+
+test("FloatingSelect has standalone base button chrome", () => {
+  assert.match(floatingSelectStyleSource, /:where\(\.floatingSelectBtn\)\s*\{/);
+  assert.match(floatingSelectStyleSource, /min-height:\s*38px/);
+  assert.match(floatingSelectStyleSource, /border:\s*1px solid var\(--ui-glass-border\)/);
+  assert.match(floatingSelectStyleSource, /background:\s*var\(--ui-field-bg\)/);
+  assert.match(floatingSelectStyleSource, /padding:\s*8px 12px/);
+  assert.match(floatingSelectStyleSource, /\.floatingSelectBtn:hover/);
+  assert.match(floatingSelectStyleSource, /\.floatingSelectBtn:focus-visible/);
 });
 
 test("Checkbox declares an explicit client boundary", () => {

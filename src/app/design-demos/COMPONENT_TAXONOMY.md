@@ -129,6 +129,7 @@ src/app/design-demos/
 | --- | --- | --- | --- | --- |
 | 通用按钮 | `Button` | 基础操作控件 | `shared/primitives` | implemented |
 | 状态徽标 | `StatusBadge` | 基础操作控件 | `shared/primitives` | implemented |
+| 浮层下拉选择器 | `FloatingSelect / SelectLike` | 基础操作控件 | `shared/primitives` | implemented |
 | 页面标题栏 | `PageHeader` | 页面骨架 | `shared/primitives` | implemented |
 | 连续工作区 | `WorkbenchSurface` | 页面骨架 | `shared/patterns` | implemented |
 | 通用单元行壳 | `UnitRowShell` | 单元行项 | `shared/patterns` | implemented |

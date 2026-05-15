@@ -533,6 +533,7 @@ export function KSamplerCard({
         </SpecRow>
         <SpecRow label="Sampler">
           <SelectChip
+            ariaLabel="选择 Sampler"
             value={params.sampler_name}
             options={SAMPLER_NAMES}
             onChange={(v) => set("sampler_name", v)}
@@ -540,6 +541,7 @@ export function KSamplerCard({
         </SpecRow>
         <SpecRow label="Scheduler">
           <SelectChip
+            ariaLabel="选择 Scheduler"
             value={params.scheduler}
             options={SCHEDULER_NAMES}
             onChange={(v) => set("scheduler", v)}
@@ -547,6 +549,7 @@ export function KSamplerCard({
         </SpecRow>
         <SpecRow label="Seed">
           <SelectChip
+            ariaLabel="选择 Seed"
             value={params.seedPolicy}
             options={SEED_POLICIES}
             onChange={(v) => set("seedPolicy", v)}
@@ -561,7 +564,7 @@ export function SelectChip({
   value,
   options,
   onChange,
-  ariaLabel = "Select option",
+  ariaLabel = "选择选项",
   displayValue,
 }: {
   value: string;

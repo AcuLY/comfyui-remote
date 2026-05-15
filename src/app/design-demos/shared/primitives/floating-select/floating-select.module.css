@@ -37,13 +37,44 @@
   min-width: 0;
 }
 
-.floatingSelectBtn {
+:where(.floatingSelectBtn) {
   appearance: none;
   display: inline-flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  min-width: 120px;
+  min-height: 38px;
+  border: 1px solid var(--ui-glass-border);
+  border-radius: 10px;
+  background: var(--ui-field-bg);
+  box-shadow: inset 0 1px 0 var(--ui-inset-highlight);
+  color: var(--ui-text);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+  padding: 8px 12px;
   text-align: left;
+  transition: background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+}
+
+:where(.floatingSelectBtn:hover:not(:disabled)) {
+  border-color: var(--ui-glass-accent-border);
+  background: var(--ui-glass-hover);
+}
+
+:where(.floatingSelectBtn:focus-visible) {
+  border-color: color-mix(in srgb, var(--ui-green) 34%, var(--ui-border));
+  box-shadow:
+    0 0 0 3px var(--ui-green-soft),
+    0 0 0 1px color-mix(in srgb, var(--ui-green) 18%, transparent);
+}
+
+:where(.floatingSelectBtn:disabled),
+:where(.floatingSelectBtn[aria-readonly="true"]) {
+  cursor: default;
+  opacity: 0.64;
 }
 
 .floatingSelectBtn svg {

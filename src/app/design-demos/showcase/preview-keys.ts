@@ -7,6 +7,7 @@ export const SHOWCASE_PREVIEW_COMPONENT_NAMES = [
   "SegmentedControl",
   "DemoTabs",
   "Field / TextAreaField",
+  "FloatingSelect / SelectLike",
   "PageHeader",
   "WorkbenchSurface",
   "EditorBlock",
