@@ -51,20 +51,38 @@ function isPublicPath(pathname: string): boolean {
   return false;
 }
 
+function nextWithRequestContext(
+  request: NextRequest,
+  pathname: string,
+  options: { authMode?: string } = {},
+) {
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-pathname", pathname);
+  if (options.authMode) {
+    requestHeaders.set("x-auth-mode", options.authMode);
+  }
+
+  const response = NextResponse.next({
+    request: {
+      headers: requestHeaders,
+    },
+  });
+  response.headers.set("x-pathname", pathname);
+  if (options.authMode) {
+    response.headers.set("x-auth-mode", options.authMode);
+  }
+  return response;
+}
+
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (pathname.startsWith("/api/") && hasValidHeaderToken(request)) {
-    const response = NextResponse.next();
-    response.headers.set("x-pathname", pathname);
-    response.headers.set("x-auth-mode", "header-token");
-    return response;
+    return nextWithRequestContext(request, pathname, { authMode: "header-token" });
   }
 
   if (isPublicPath(pathname)) {
-    const response = NextResponse.next();
-    response.headers.set("x-pathname", pathname);
-    return response;
+    return nextWithRequestContext(request, pathname);
   }
 
   // Only check cookie existence (actual token validation by /api/auth/verify)
@@ -83,9 +101,7 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  const response = NextResponse.next();
-  response.headers.set("x-pathname", pathname);
-  return response;
+  return nextWithRequestContext(request, pathname);
 }
 
 export const config = {
