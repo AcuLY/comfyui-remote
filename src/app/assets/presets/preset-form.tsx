@@ -326,6 +326,12 @@ function cloneLinkedVariants(linkedVariants: VariantDraft["linkedVariants"]) {
   return linkedVariants.map((entry) => ({ ...entry }));
 }
 
+function hasIncompleteLoraDraft(variantDrafts: VariantDraft[]) {
+  return variantDrafts.some((variant) =>
+    [...variant.lora1, ...variant.lora2].some((entry) => !entry.path.trim()),
+  );
+}
+
 export function PresetForm({
   categoryId,
   folderId,
@@ -526,10 +532,40 @@ export function PresetForm({
     updated[targetIdx] = { ...updated[targetIdx], [key]: cloneLoraBindings(value) };
     setVariants(updated);
 
-    const hasIncompleteLora = updated.some((variant) =>
-      [...variant.lora1, ...variant.lora2].some((entry) => !entry.path.trim()),
-    );
-    if (!hasIncompleteLora) {
+    if (!hasIncompleteLoraDraft(updated)) {
+      saveDrafts(updated);
+    }
+  }
+
+  function applyPromptToAllVariants(key: "prompt" | "negativePrompt") {
+    const value = current[key];
+    const updated = variants.map((variant) => ({ ...variant, [key]: value }));
+    setVariants(updated);
+    saveDrafts(updated);
+  }
+
+  function applyLoraToAllVariants(key: "lora1" | "lora2", entry: VariantDraft["lora1"][number]) {
+    const path = entry.path.trim();
+    if (!path) return;
+
+    const appliedEntry = {
+      path,
+      weight: entry.weight,
+      enabled: entry.enabled,
+    };
+    const updated = variants.map((variant) => {
+      const bindings = cloneLoraBindings(variant[key]);
+      const existingIdx = bindings.findIndex((item) => item.path.trim() === path);
+      if (existingIdx >= 0) {
+        bindings[existingIdx] = appliedEntry;
+      } else {
+        bindings.push(appliedEntry);
+      }
+      return { ...variant, [key]: bindings };
+    });
+
+    setVariants(updated);
+    if (!hasIncompleteLoraDraft(updated)) {
       saveDrafts(updated);
     }
   }
@@ -623,6 +659,41 @@ export function PresetForm({
   // For new presets, variants are saved after the preset is created
   // We need a post-save callback — handled by the parent's onSave flow
   const currentVariantKey = current.clientId ?? current.id ?? `draft-${currentIdx}`;
+  const applyAllButtonClass = "inline-flex shrink-0 items-center rounded-md border border-white/10 bg-white/[0.03] px-2 py-1 text-[10px] text-zinc-400 transition hover:border-sky-500/30 hover:bg-sky-500/10 hover:text-sky-300";
+
+  function renderLoraApplyActions(key: "lora1" | "lora2") {
+    const bindings = current[key].filter((entry) => entry.path.trim());
+    if (bindings.length === 0) return null;
+
+    return (
+      <div className="space-y-1">
+        {bindings.map((entry, index) => {
+          const path = entry.path.trim();
+          return (
+            <div
+              key={`${path}:${index}`}
+              className="flex min-w-0 items-center justify-between gap-2 rounded-lg border border-white/5 bg-white/[0.02] px-2 py-1.5"
+            >
+              <div className="min-w-0 text-[11px] text-zinc-500">
+                <span className="block truncate text-zinc-400">{path.split(/[\\/]/).pop() || path}</span>
+                <span className="text-zinc-600">
+                  {entry.enabled ? "enabled" : "disabled"} / {entry.weight.toFixed(2)}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => applyLoraToAllVariants(key, entry)}
+                className={applyAllButtonClass}
+                title="Apply to all variants"
+              >
+                应用到所有变体
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
 
   const formContent = (
     <div className="min-w-0 space-y-3 border-t border-white/5 px-3 py-3">
@@ -813,8 +884,16 @@ export function PresetForm({
         />
 
         {/* Variant prompt fields */}
-        <label className="block space-y-1">
+        <div className="space-y-1">
           <span className="text-[10px] text-zinc-500">正面提示词</span>
+          <button
+            type="button"
+            onClick={() => applyPromptToAllVariants("prompt")}
+            className={`${applyAllButtonClass} float-right -mt-1 mb-1`}
+            title="Apply to all variants"
+          >
+            应用到所有变体
+          </button>
           <textarea
             value={current.prompt}
             onChange={(e) => updateVariant(current.clientId, { prompt: e.target.value })}
@@ -823,10 +902,18 @@ export function PresetForm({
             placeholder="positive prompt..."
             className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
           />
-        </label>
+        </div>
 
-        <label className="block space-y-1">
+        <div className="space-y-1">
           <span className="text-[10px] text-zinc-500">负面提示词</span>
+          <button
+            type="button"
+            onClick={() => applyPromptToAllVariants("negativePrompt")}
+            className={`${applyAllButtonClass} float-right -mt-1 mb-1`}
+            title="Apply to all variants"
+          >
+            应用到所有变体
+          </button>
           <textarea
             value={current.negativePrompt}
             onChange={(e) => updateVariant(current.clientId, { negativePrompt: e.target.value })}
@@ -835,7 +922,7 @@ export function PresetForm({
             placeholder="negative prompt..."
             className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
           />
-        </label>
+        </div>
 
         <div className="space-y-1">
           <span className="text-[11px] font-medium text-zinc-500">LoRA 1（第一阶段）</span>
@@ -844,6 +931,7 @@ export function PresetForm({
             bindings={current.lora1}
             onChange={(v) => updateVariantLoras(current.clientId, "lora1", v)}
           />
+          {renderLoraApplyActions("lora1")}
         </div>
 
         <div className="space-y-1">
@@ -853,6 +941,7 @@ export function PresetForm({
             bindings={current.lora2}
             onChange={(v) => updateVariantLoras(current.clientId, "lora2", v)}
           />
+          {renderLoraApplyActions("lora2")}
         </div>
       </div>
 

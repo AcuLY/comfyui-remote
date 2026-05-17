@@ -42,10 +42,7 @@ import type {
 } from "@/lib/server-data";
 import {
   createPreset,
-  updatePreset,
   createPresetVariant,
-  updatePresetVariant,
-  upsertPresetVariantBySlug,
   copyPreset,
   getPresetUsage,
   deletePresetCascade,
@@ -62,7 +59,7 @@ import {
 } from "@/lib/actions";
 import { parseLoraBindings, serializeLoraBindings } from "@/lib/lora-types";
 import { toast } from "sonner";
-import type { PresetQueryPatch, VariantDraft } from "./preset-types";
+import type { PresetQueryPatch } from "./preset-types";
 export { GROUP_HISTORY_TABS } from "./preset-types";
 export { AddGroupMemberForm } from "./add-group-member-form";
 export { PresetChangeHistoryPanel } from "./change-history-panel";
@@ -113,7 +110,6 @@ export function PresetManager({
   const queryCategoryId = searchParams.get("category");
   const queryFolderId = searchParams.get("folder");
   const queryPresetId = searchParams.get("preset");
-  const queryVariantId = searchParams.get("variant");
   const initialSelectedCatId =
     resolveQueryCategoryId(initialCategories, queryCategoryId, queryPresetId) ??
     initialCategories[0]?.id ??
@@ -125,22 +121,24 @@ export function PresetManager({
 
   // Sync with server data after router.refresh()
   useEffect(() => {
-    setCategories(initialCategories);
-    // Keep selection if the category still exists, otherwise select first
-    setSelectedCatId((prev) => {
-      const querySelection = resolveQueryCategoryId(
-        initialCategories,
-        queryCategoryId,
-        queryPresetId,
-      );
+    queueMicrotask(() => {
+      setCategories(initialCategories);
+      // Keep selection if the category still exists, otherwise select first
+      setSelectedCatId((prev) => {
+        const querySelection = resolveQueryCategoryId(
+          initialCategories,
+          queryCategoryId,
+          queryPresetId,
+        );
 
-      if (querySelection) {
-        return querySelection;
-      }
+        if (querySelection) {
+          return querySelection;
+        }
 
-      return initialCategories.some((c) => c.id === prev)
-        ? prev
-        : initialCategories[0]?.id ?? null;
+        return initialCategories.some((c) => c.id === prev)
+          ? prev
+          : initialCategories[0]?.id ?? null;
+      });
     });
   }, [initialCategories, queryCategoryId, queryPresetId]);
   const [showCatForm, setShowCatForm] = useState(false);
@@ -354,7 +352,6 @@ export function PresetManager({
                   allCategories={categories}
                   queryFolderId={queryFolderId}
                   queryPresetId={queryPresetId}
-                  queryVariantId={queryVariantId}
                   onViewChange={(patch) => replacePresetQuery({ category: selectedCat.id, ...patch })}
                 />
               )
@@ -380,7 +377,6 @@ function PresetList({
   allCategories,
   queryFolderId,
   queryPresetId,
-  queryVariantId,
   onViewChange,
 }: {
   category: PresetCategoryFull;
@@ -388,11 +384,9 @@ function PresetList({
   allCategories: PresetCategoryFull[];
   queryFolderId: string | null;
   queryPresetId: string | null;
-  queryVariantId: string | null;
   onViewChange: (patch: Omit<PresetQueryPatch, "category">) => void;
 }) {
   const [isPending, startTransition] = useTransition();
-  const [editingId, setEditingId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [presets, setPresets] = useState(category.presets);
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
@@ -420,13 +414,17 @@ function PresetList({
 
   // Sync presets when category changes
   useEffect(() => {
-    setPresets(category.presets);
+    queueMicrotask(() => {
+      setPresets(category.presets);
+    });
   }, [category.presets]);
 
   // Restore folder from URL query state.
   useEffect(() => {
-    setCurrentFolderId(resolvedQueryFolderId);
-    setSelectedIds(new Set());
+    queueMicrotask(() => {
+      setCurrentFolderId(resolvedQueryFolderId);
+      setSelectedIds(new Set());
+    });
   }, [category.id, resolvedQueryFolderId]);
 
   // Filter presets and folders for current folder level
@@ -720,7 +718,6 @@ function PresetList({
                 }}
                 isSelected={selectedIds.has(preset.id)}
                 onToggleSelect={() => togglePresetSelection(preset.id)}
-                isEditing={editingId === preset.id}
                 onCopy={() => {
                   startTransition(async () => {
                     try {
@@ -752,61 +749,12 @@ function PresetList({
                       if (!confirm(msg)) return;
                       await deletePresetCascade(preset.id);
                       toast.success("预制已删除");
-                      setEditingId(null);
                       onViewChange({ folder: currentFolderId, preset: null, variant: null });
                       onRefresh();
                     } catch (e: unknown) {
                       toast.error(e instanceof Error ? e.message : "删除失败");
                     }
                   });
-                }}
-                presetFormProps={{
-                  categoryId: category.id,
-                  allCategories,
-                  onSave: (data, variantDrafts) => {
-                    startTransition(async () => {
-                      try {
-                        await updatePreset(preset.id, data);
-                        // Save all variant drafts
-                        for (const v of variantDrafts) {
-                          const variantData = {
-                            presetId: preset.id,
-                            name: v.name.trim(),
-                            slug: v.slug.trim(),
-                            prompt: v.prompt.trim(),
-                            negativePrompt: v.negativePrompt.trim() || null,
-                            lora1: serializeLoraBindings(v.lora1),
-                            lora2: serializeLoraBindings(v.lora2),
-                            linkedVariants: v.linkedVariants,
-                          };
-                          if (v.id) {
-                            await updatePresetVariant(v.id, variantData);
-                          } else {
-                            await upsertPresetVariantBySlug(variantData);
-                          }
-                        }
-                        toast.success("预制已保存");
-                        setEditingId(null);
-                        onViewChange({ folder: currentFolderId, preset: null, variant: null });
-                        onRefresh();
-                      } catch (e: unknown) {
-                        toast.error(e instanceof Error ? e.message : "保存失败");
-                      }
-                    });
-                  },
-                  onCancel: () => {
-                    setEditingId(null);
-                    onViewChange({ folder: currentFolderId, preset: null, variant: null });
-                  },
-                  isPending,
-                  activeVariantId: queryPresetId === preset.id ? queryVariantId : null,
-                  onVariantChange: (variantId) => {
-                    onViewChange({
-                      folder: preset.folderId ?? null,
-                      preset: preset.id,
-                      variant: variantId,
-                    });
-                  },
                 }}
               />
             ))}
@@ -828,8 +776,6 @@ function SortablePresetCard({
   onMoveToFolder,
   isSelected,
   onToggleSelect,
-  isEditing,
-  presetFormProps,
   onCopy,
   onDelete,
 }: {
@@ -838,24 +784,6 @@ function SortablePresetCard({
   onMoveToFolder: (folderId: string | null) => void;
   isSelected: boolean;
   onToggleSelect: () => void;
-  isEditing: boolean;
-  presetFormProps?: {
-    categoryId: string;
-    allCategories: PresetCategoryFull[];
-    onSave: (data: {
-      categoryId: string;
-      folderId?: string | null;
-      name: string;
-      slug: string;
-      notes?: string | null;
-      civitaiLinks?: string[] | null;
-      isActive?: boolean;
-    }, variantDrafts: VariantDraft[]) => void;
-    onCancel: () => void;
-    isPending: boolean;
-    activeVariantId?: string | null;
-    onVariantChange?: (variantId: string | null) => void;
-  };
   onCopy?: () => void;
   onDelete?: () => void;
 }) {
