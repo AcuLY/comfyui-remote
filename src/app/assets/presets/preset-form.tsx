@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition, useMemo, useId, useSyncExternalStore } from "react";
+import { useState, useEffect, useTransition, useMemo, useId, useSyncExternalStore, useRef } from "react";
 import {
   DndContext,
   closestCenter,
@@ -24,6 +24,9 @@ import {
   ChevronUp,
   ChevronDown,
   ExternalLink,
+  Loader2,
+  CheckCircle2,
+  AlertTriangle,
 } from "lucide-react";
 import { LoraBindingEditor } from "@/components/lora-binding-editor";
 import { PresetCascadePicker } from "@/components/preset-cascade-picker";
@@ -40,6 +43,17 @@ import { parseLoraBindings } from "@/lib/lora-types";
 import type { LinkedVariantRef, VariantDraft } from "./preset-types";
 import { PRESET_HISTORY_TABS } from "./preset-types";
 import { PresetChangeHistoryPanel } from "./change-history-panel";
+import { toSlug } from "./group-utils";
+
+function uniqueSlug(base: string, usedSlugs: Set<string>) {
+  let slug = base;
+  let suffix = 2;
+  while (usedSlugs.has(slug)) {
+    slug = `${base}-${suffix}`;
+    suffix += 1;
+  }
+  return slug;
+}
 
 // ---------------------------------------------------------------------------
 // LinkedVariantsEditor — select linked variants from other presets
@@ -332,6 +346,27 @@ function hasIncompleteLoraDraft(variantDrafts: VariantDraft[]) {
   );
 }
 
+type PresetFormData = {
+  categoryId: string;
+  folderId?: string | null;
+  name: string;
+  slug: string;
+  notes?: string | null;
+  civitaiLinks?: string[] | null;
+  isActive?: boolean;
+};
+
+type SavePayload = {
+  data: PresetFormData;
+  variantDrafts: VariantDraft[];
+};
+
+type SaveStatus = "idle" | "saving" | "queued" | "saved" | "error";
+
+function errorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "保存失败";
+}
+
 export function PresetForm({
   categoryId,
   folderId,
@@ -347,15 +382,7 @@ export function PresetForm({
   categoryId: string;
   folderId?: string | null;
   preset: PresetFull | null;
-  onSave: (data: {
-    categoryId: string;
-    folderId?: string | null;
-    name: string;
-    slug: string;
-    notes?: string | null;
-    civitaiLinks?: string[] | null;
-    isActive?: boolean;
-  }, variantDrafts: VariantDraft[]) => void;
+  onSave: (data: PresetFormData, variantDrafts: VariantDraft[]) => void | Promise<void>;
   onCancel: () => void;
   isPending: boolean;
   allCategories: PresetCategoryFull[];
@@ -365,10 +392,14 @@ export function PresetForm({
   embedded?: boolean;
 }) {
   const [, startVariantTransition] = useTransition();
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>(preset ? "saved" : "idle");
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const saveInFlightRef = useRef(false);
+  const queuedSaveRef = useRef<SavePayload | null>(null);
+  const failedSaveRef = useRef<SavePayload | null>(null);
 
   // Preset-level fields
   const [name, setName] = useState(preset?.name ?? "");
-  const [slug, setSlug] = useState(preset?.slug ?? "");
   const [notes, setNotes] = useState(preset?.notes ?? "");
   const [civitaiLinks, setCivitaiLinks] = useState<string[]>(preset?.civitaiLinks ?? []);
   const [newCivitaiLink, setNewCivitaiLink] = useState("");
@@ -430,42 +461,98 @@ export function PresetForm({
 
   function handleNameChange(value: string) {
     setName(value);
-    if (!preset) {
-      setSlug(
-        value
-          .toLowerCase()
-          .replace(/[\s]+/g, "-")
-          .replace(/[^a-z0-9\u4e00-\u9fff-]/g, ""),
-      );
-    }
   }
 
   function handleVariantNameChange(value: string) {
     const patch: Partial<VariantDraft> = { name: value };
-    // Auto-slug for variant
     if (!current.id) {
-      patch.slug = value
-        .toLowerCase()
-        .replace(/[\s]+/g, "-")
-        .replace(/[^a-z0-9\u4e00-\u9fff-]/g, "") || "variant";
+      patch.slug = toSlug(value) || "variant";
     }
     updateVariant(current.clientId, patch);
   }
 
   function buildPresetData(nextCivitaiLinks = civitaiLinks) {
+    const categoryPresets = allCategories.find((item) => item.id === categoryId)?.presets ?? [];
+    const usedSlugs = new Set(categoryPresets.filter((item) => item.id !== preset?.id).map((item) => item.slug));
     return {
       categoryId,
       folderId,
       name: name.trim(),
-      slug: slug.trim(),
+      slug: preset?.slug ?? uniqueSlug(toSlug(name.trim()) || "preset", usedSlugs),
       notes: notes.trim() || null,
       civitaiLinks: nextCivitaiLinks,
       isActive: true,
     };
   }
 
+  function withSystemVariantSlugs(nextVariants: VariantDraft[]) {
+    const usedSlugs = new Set<string>();
+    return nextVariants.map((variant) => {
+      const baseSlug = variant.id ? (variant.slug || toSlug(variant.name) || "variant") : (toSlug(variant.name) || "variant");
+      const slug = uniqueSlug(baseSlug, usedSlugs);
+      usedSlugs.add(slug);
+      return { ...variant, slug };
+    });
+  }
+
+  function buildSavePayload(nextVariants: VariantDraft[] = variants, nextCivitaiLinks = civitaiLinks): SavePayload {
+    return {
+      data: buildPresetData(nextCivitaiLinks),
+      variantDrafts: withSystemVariantSlugs(nextVariants),
+    };
+  }
+
+  async function flushSaveQueue() {
+    if (saveInFlightRef.current) return;
+    saveInFlightRef.current = true;
+
+    try {
+      while (queuedSaveRef.current) {
+        const payload = queuedSaveRef.current;
+        queuedSaveRef.current = null;
+        setSaveStatus("saving");
+        setSaveError(null);
+
+        try {
+          await onSave(payload.data, payload.variantDrafts);
+          failedSaveRef.current = null;
+        } catch (error: unknown) {
+          failedSaveRef.current = payload;
+          setSaveStatus("error");
+          setSaveError(errorMessage(error));
+          return;
+        }
+      }
+
+      setSaveStatus("saved");
+    } finally {
+      saveInFlightRef.current = false;
+      if (queuedSaveRef.current) {
+        void flushSaveQueue();
+      }
+    }
+  }
+
+  function requestSave(payload: SavePayload) {
+    failedSaveRef.current = null;
+    queuedSaveRef.current = payload;
+    setSaveStatus(saveInFlightRef.current ? "queued" : "saving");
+    setSaveError(null);
+    void flushSaveQueue();
+  }
+
+  function retryFailedSave() {
+    const payload = queuedSaveRef.current ?? failedSaveRef.current;
+    if (!payload) return;
+    failedSaveRef.current = null;
+    queuedSaveRef.current = payload;
+    setSaveStatus("saving");
+    setSaveError(null);
+    void flushSaveQueue();
+  }
+
   function saveDrafts(nextVariants: VariantDraft[] = variants, nextCivitaiLinks = civitaiLinks) {
-    onSave(buildPresetData(nextCivitaiLinks), nextVariants);
+    requestSave(buildSavePayload(nextVariants, nextCivitaiLinks));
   }
 
   function normalizeCivitaiLink(value: string) {
@@ -499,13 +586,13 @@ export function PresetForm({
     const nextLinks = [...civitaiLinks, link];
     setCivitaiLinks(nextLinks);
     setNewCivitaiLink("");
-    if (!isPending) saveDrafts(variants, nextLinks);
+    saveDrafts(variants, nextLinks);
   }
 
   function removeCivitaiLink(link: string) {
     const nextLinks = civitaiLinks.filter((item) => item !== link);
     setCivitaiLinks(nextLinks);
-    if (!isPending) saveDrafts(variants, nextLinks);
+    saveDrafts(variants, nextLinks);
   }
 
   function updateVariant(clientId: string | undefined, patch: Partial<VariantDraft>, options?: { autoSave?: boolean }) {
@@ -517,7 +604,7 @@ export function PresetForm({
     const updated = [...variants];
     updated[targetIdx] = { ...updated[targetIdx], ...patch };
     setVariants(updated);
-    if (options?.autoSave && !isPending) {
+    if (options?.autoSave) {
       saveDrafts(updated);
     }
   }
@@ -652,7 +739,6 @@ export function PresetForm({
   }
 
   function handleAutoSave() {
-    if (isPending) return;
     handleSubmit();
   }
 
@@ -660,6 +746,8 @@ export function PresetForm({
   // We need a post-save callback — handled by the parent's onSave flow
   const currentVariantKey = current.clientId ?? current.id ?? `draft-${currentIdx}`;
   const applyAllButtonClass = "inline-flex shrink-0 items-center rounded-md border border-white/10 bg-white/[0.03] px-2 py-1 text-[10px] text-zinc-400 transition hover:border-sky-500/30 hover:bg-sky-500/10 hover:text-sky-300";
+  const isSaveBusy = saveStatus === "saving" || saveStatus === "queued" || isPending;
+  const showSaveStatus = preset || saveStatus !== "idle";
 
   function renderLoraApplyActions(key: "lora1" | "lora2") {
     const bindings = current[key].filter((entry) => entry.path.trim());
@@ -697,8 +785,49 @@ export function PresetForm({
 
   const formContent = (
     <div className="min-w-0 space-y-3 border-t border-white/5 px-3 py-3">
-      {/* Preset-level: name + slug */}
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+      {showSaveStatus && (
+        <div className="flex min-w-0 items-center justify-between gap-2 rounded-lg border border-white/5 bg-white/[0.02] px-2.5 py-2 text-[11px]">
+          <span className="shrink-0 text-zinc-500">自动保存</span>
+          <div className="flex min-w-0 items-center gap-2">
+            {saveStatus === "saving" && (
+              <span className="inline-flex items-center gap-1.5 text-zinc-400">
+                <Loader2 className="size-3 animate-spin" />
+                保存中…
+              </span>
+            )}
+            {saveStatus === "queued" && (
+              <span className="inline-flex items-center gap-1.5 text-sky-300">
+                <Loader2 className="size-3 animate-spin" />
+                还有修改待保存
+              </span>
+            )}
+            {saveStatus === "saved" && (
+              <span className="inline-flex items-center gap-1.5 text-emerald-400/80">
+                <CheckCircle2 className="size-3" />
+                已保存
+              </span>
+            )}
+            {saveStatus === "error" && (
+              <>
+                <span className="inline-flex min-w-0 items-center gap-1.5 text-red-300">
+                  <AlertTriangle className="size-3 shrink-0" />
+                  <span className="truncate">{saveError ?? "保存失败"}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={retryFailedSave}
+                  className="shrink-0 rounded-md border border-red-400/20 bg-red-500/10 px-2 py-0.5 text-[10px] text-red-200 transition hover:bg-red-500/20"
+                >
+                  重试
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Preset-level: name */}
+      <div className="grid grid-cols-1 gap-2">
         <label className="space-y-1">
           <span className="text-[10px] text-zinc-500">预制名称</span>
           <input
@@ -707,17 +836,6 @@ export function PresetForm({
             onChange={(e) => handleNameChange(e.target.value)}
             onBlur={handleAutoSave}
             placeholder="预制名称"
-            className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
-          />
-        </label>
-        <label className="space-y-1">
-          <span className="text-[10px] text-zinc-500">Slug</span>
-          <input
-            type="text"
-            value={slug}
-            onChange={(e) => setSlug(e.target.value)}
-            onBlur={handleAutoSave}
-            placeholder="slug"
             className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
           />
         </label>
@@ -782,7 +900,7 @@ export function PresetForm({
           <button
             type="button"
             onClick={addCivitaiLink}
-            disabled={!newCivitaiLink.trim() || isPending}
+            disabled={!newCivitaiLink.trim() || isSaveBusy}
             className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-sky-500/20 bg-sky-500/10 px-2.5 py-1.5 text-xs text-sky-300 transition hover:bg-sky-500/20 disabled:opacity-40"
           >
             <Plus className="size-3" /> 添加
@@ -850,8 +968,8 @@ export function PresetForm({
         </div>
 
 
-        {/* Variant name + slug */}
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        {/* Variant name */}
+        <div className="grid grid-cols-1 gap-2">
           <label className="space-y-1">
             <span className="text-[10px] text-zinc-500">变体名称</span>
             <input
@@ -860,17 +978,6 @@ export function PresetForm({
               onChange={(e) => handleVariantNameChange(e.target.value)}
               onBlur={handleAutoSave}
               placeholder="变体名称"
-              className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
-            />
-          </label>
-          <label className="space-y-1">
-            <span className="text-[10px] text-zinc-500">变体 Slug</span>
-            <input
-              type="text"
-              value={current.slug}
-              onChange={(e) => updateVariant(current.clientId, { slug: e.target.value })}
-              onBlur={handleAutoSave}
-              placeholder="variant-slug"
               className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
             />
           </label>
@@ -971,7 +1078,7 @@ export function PresetForm({
             {preset ? "编辑预制" : "新建预制"}
           </div>
           <div className="text-[10px] text-zinc-500">
-            {preset ? preset.slug : "填写名称、变体与 LoRA"}
+            {preset ? `${variants.length} 个变体` : "填写名称、变体与 LoRA"}
           </div>
         </div>
         <ChevronUp className="size-3.5 text-zinc-500" />

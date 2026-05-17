@@ -45,7 +45,6 @@ export function PresetGroupEditClient({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [name, setName] = useState(group.name);
-  const [slug, setSlug] = useState(group.slug);
   const backHref = groupListUrl(categoryId, group.id, group.folderId);
   const selectableGroups = groups.filter((item) => item.id !== group.id);
 
@@ -101,7 +100,6 @@ export function PresetGroupEditClient({
         await updatePresetGroup(group.id, {
           categoryId,
           name: name.trim(),
-          slug: slug.trim(),
         });
         toast.success("预制组已保存");
         router.refresh();
@@ -134,23 +132,15 @@ export function PresetGroupEditClient({
       </Link>
       <div>
         <h1 className="text-lg font-semibold text-white">{group.name}</h1>
-        <p className="mt-1 text-sm text-zinc-400">预制组 / {group.slug}</p>
+        <p className="mt-1 text-sm text-zinc-400">预制组 / {group.members.length} 个成员</p>
       </div>
       <div className="space-y-4">
-        <div className="grid gap-3 border-t border-white/5 pt-3 md:grid-cols-2">
+        <div className="grid gap-3 border-t border-white/5 pt-3">
           <label className="space-y-1.5">
             <span className="text-[10px] text-zinc-500">名称</span>
             <input
               value={name}
               onChange={(event) => setName(event.target.value)}
-              className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-zinc-200 outline-none focus:border-sky-500/30"
-            />
-          </label>
-          <label className="space-y-1.5">
-            <span className="text-[10px] text-zinc-500">Slug</span>
-            <input
-              value={slug}
-              onChange={(event) => setSlug(event.target.value)}
               className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-zinc-200 outline-none focus:border-sky-500/30"
             />
           </label>
@@ -287,7 +277,7 @@ export function PresetGroupEditClient({
         <div className="flex flex-wrap gap-2 border-t border-white/5 pt-3">
           <button
             type="button"
-            disabled={isPending || !name.trim() || !slug.trim()}
+            disabled={isPending || !name.trim()}
             onClick={saveGroup}
             className="inline-flex items-center gap-1.5 rounded-lg bg-sky-500/20 px-3 py-2 text-xs text-sky-300 transition hover:bg-sky-500/30 disabled:opacity-50"
           >

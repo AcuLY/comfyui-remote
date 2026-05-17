@@ -47,6 +47,24 @@ function hslString(hue: number): string {
   return `${hue} 50% 55%`;
 }
 
+function toSystemSlug(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[\s]+/g, "-")
+    .replace(/[^a-z0-9\u4e00-\u9fff-]/g, "")
+    .replace(/^-|-$/g, "") || "category";
+}
+
+function uniqueSystemSlug(base: string, usedSlugs: Set<string>) {
+  let slug = base;
+  let suffix = 2;
+  while (usedSlugs.has(slug)) {
+    slug = `${base}-${suffix}`;
+    suffix += 1;
+  }
+  return slug;
+}
+
 // ---------------------------------------------------------------------------
 // CategoryBadge
 // ---------------------------------------------------------------------------
@@ -108,7 +126,6 @@ export function CategoryForm({
   isPending: boolean;
 }) {
   const [name, setName] = useState(category?.name ?? "");
-  const [slug, setSlug] = useState(category?.slug ?? "");
   const [catType, setCatType] = useState<string>(category?.type ?? "preset");
   const [hue, setHue] = useState(() =>
     category ? parseHue(category.color) : Math.floor(Math.random() * 360),
@@ -120,14 +137,6 @@ export function CategoryForm({
 
   function handleNameChange(value: string) {
     setName(value);
-    if (!category) {
-      setSlug(
-        value
-          .toLowerCase()
-          .replace(/[\s]+/g, "-")
-          .replace(/[^a-z0-9\u4e00-\u9fff-]/g, ""),
-      );
-    }
   }
 
   function addSlot() {
@@ -155,10 +164,11 @@ export function CategoryForm({
   }
 
   function handleSave(nextSlots = slots) {
-    if (isPending || !name.trim() || !slug.trim()) return;
+    if (isPending || !name.trim()) return;
+    const usedSlugs = new Set(allCategories.filter((item) => item.id !== category?.id).map((item) => item.slug));
     onSave({
       name: name.trim(),
-      slug: slug.trim(),
+      slug: category?.slug ?? uniqueSystemSlug(toSystemSlug(name), usedSlugs),
       color: hslString(hue),
       type: category ? undefined : catType,
       slotTemplate: catType === "group" ? nextSlots : undefined,
@@ -204,14 +214,6 @@ export function CategoryForm({
         placeholder="分类名称"
         className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
       />
-      <input
-        type="text"
-        value={slug}
-        onChange={(e) => setSlug(e.target.value)}
-        onBlur={() => handleSave()}
-        placeholder="slug"
-        className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
-      />
       <HueSlider
         value={hue}
         onChange={(value) => {
@@ -238,7 +240,6 @@ export function CategoryForm({
             <div className="py-0.5 text-[10px] text-zinc-600">无默认槽位，新建预制组时成员列表为空</div>
           )}
           {slots.map((slot, idx) => {
-            const slotCat = presetCategories.find((c) => c.id === slot.categoryId);
             return (
               <div key={idx} className="flex items-center gap-1.5">
                 <div className="relative flex-1">
@@ -254,18 +255,6 @@ export function CategoryForm({
                   </select>
                   <ChevronDown className="pointer-events-none absolute right-2 top-1/2 size-3 -translate-y-1/2 text-zinc-500" />
                 </div>
-                <input
-                  type="text"
-                  value={slot.label ?? ""}
-                  onChange={(e) => {
-                    const updated = [...slots];
-                    updated[idx] = { ...slot, label: e.target.value || undefined };
-                    setSlots(updated);
-                  }}
-                  onBlur={() => handleSave()}
-                  placeholder={slotCat?.name ?? "标签"}
-                  className="w-24 rounded-lg border border-white/10 bg-white/[0.04] px-1.5 py-1 text-[10px] text-zinc-300 outline-none focus:border-sky-500/30 placeholder:text-zinc-600"
-                />
                 <button
                   type="button"
                   onClick={() => removeSlot(idx)}

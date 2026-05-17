@@ -10,6 +10,16 @@ import type {
 } from "@/lib/server-data";
 import { toSlug } from "./group-utils";
 
+function uniqueSlug(base: string, usedSlugs: Set<string>) {
+  let slug = base;
+  let suffix = 2;
+  while (usedSlugs.has(slug)) {
+    slug = `${base}-${suffix}`;
+    suffix += 1;
+  }
+  return slug;
+}
+
 // ---------------------------------------------------------------------------
 // GroupCreateForm
 // ---------------------------------------------------------------------------
@@ -34,7 +44,6 @@ export function GroupCreateForm({
   allGroups: PresetGroupItem[];
 }) {
   const [name, setName] = useState("");
-  const [slug, setSlug] = useState("");
 
   // Inline member drafts (not yet persisted)
   type MemberDraft = { presetId?: string; variantId?: string; subGroupId?: string; slotCategoryId?: string; displayName: string };
@@ -91,15 +100,16 @@ export function GroupCreateForm({
     const slugParts = members.map((m) => toSlug(m.displayName));
     const joined = slugParts.join("-");
     setName(joined);
-    setSlug(joined);
   }
 
   const canAddMember = mode === "group" ? !!selGroupId : !!pickerValue;
   // Allow creating with just slot members (even if no preset selected yet) or with manually added members
   const hasAnyMember = members.length > 0;
-  const canCreate = !!name.trim() && !!slug.trim() && hasAnyMember;
+  const canCreate = !!name.trim() && hasAnyMember;
 
   const selectClass = "w-full appearance-none rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 pr-7 text-xs text-zinc-200 outline-none focus:border-sky-500/30";
+  const generatedSlugBase = toSlug(name.trim()) || "group";
+  const generatedSlug = uniqueSlug(generatedSlugBase, new Set(allGroups.map((group) => group.slug)));
 
   return (
     <div className="rounded-xl border border-white/5 bg-white/[0.02]">
@@ -112,7 +122,7 @@ export function GroupCreateForm({
         <div className="flex-1 min-w-0">
           <div className="text-xs font-medium text-zinc-200">新建预制组</div>
           <div className="text-[10px] text-zinc-500">
-            {members.length} 个成员 · {slug || "slug"}
+            {members.length} 个成员
           </div>
         </div>
         <ChevronDown className="size-3.5 text-zinc-500" style={{ transform: "rotate(180deg)" }} />
@@ -120,28 +130,15 @@ export function GroupCreateForm({
 
       <div className="border-t border-white/5 px-3 py-3 space-y-3">
 
-      {/* Name + Slug */}
+      {/* Name */}
       <div className="flex gap-2 items-end">
         <label className="flex-1 space-y-1">
           <span className="text-[10px] text-zinc-500">组名</span>
           <input
             type="text"
             value={name}
-            onChange={(e) => {
-              setName(e.target.value);
-              if (!slug || slug === toSlug(name)) setSlug(toSlug(e.target.value));
-            }}
+            onChange={(e) => setName(e.target.value)}
             placeholder="如：基础组合"
-            className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
-          />
-        </label>
-        <label className="flex-1 space-y-1">
-          <span className="text-[10px] text-zinc-500">Slug</span>
-          <input
-            type="text"
-            value={slug}
-            onChange={(e) => setSlug(e.target.value)}
-            placeholder="basic-combo"
             className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
           />
         </label>
@@ -288,7 +285,7 @@ export function GroupCreateForm({
           type="button"
           disabled={isPending || !canCreate}
           onClick={() => onSave(
-            { categoryId, folderId, name: name.trim(), slug: slug.trim() },
+            { categoryId, folderId, name: name.trim(), slug: generatedSlug },
             members.map((m) => ({ presetId: m.presetId, variantId: m.variantId, subGroupId: m.subGroupId, slotCategoryId: m.slotCategoryId })),
           )}
           className="inline-flex items-center gap-1 rounded-lg bg-sky-500/20 px-2 py-1 text-[11px] text-sky-300 hover:bg-sky-500/30 disabled:opacity-50"

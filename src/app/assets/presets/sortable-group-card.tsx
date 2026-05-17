@@ -172,7 +172,7 @@ export function SortableGroupCard({
         <div className="min-w-0 flex-1">
           <div className="text-xs font-medium text-zinc-200">{group.name}</div>
           <div className="text-[10px] text-zinc-500">
-            {members.length} 个成员 · {group.slug}
+            {members.length} 个成员
           </div>
         </div>
         <span onClick={(e) => e.preventDefault()}>
