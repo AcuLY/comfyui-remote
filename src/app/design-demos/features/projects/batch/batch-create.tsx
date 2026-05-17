@@ -23,6 +23,7 @@ import { FolderBreadcrumb, FolderRow } from "../../../shared/patterns";
 import { StatusBadge } from "../../../shared/primitives/status-badge";
 import { cx, demoHref, rawSectionId } from "../../../routing";
 import { getBatchCandidateRows } from "./batch-candidates";
+
 export function BatchCreatePage({ project, data }: { project: DemoProject | undefined; data: DemoData }) {
   const activeProject = project ?? data.projects[0];
   const [selectedCategoryId, setSelectedCategoryId] = useState(data.categories[0]?.id ?? "");
@@ -74,9 +75,9 @@ export function BatchCreatePage({ project, data }: { project: DemoProject | unde
       <PageHeader
         back={{ href: `/projects/${activeProject.id}`, label: "返回项目" }}
         eyebrow="项目"
-        title={`${activeProject.title} / 批量创建小节`}
-        subtitle="从预设库导入一个或多个预设，覆盖项目已有绑定后创建新的项目小节。"
-        actions={<Button tone="primary" icon={Plus} onClick={() => setCreatedCount((count) => count + 1)}>创建小节</Button>}
+        title={`${activeProject.title} / 批量创建`}
+        subtitle="从预设库导入预设并批量创建新的项目小节。"
+        actions={<Button tone="primary" icon={Plus} onClick={() => setCreatedCount((count) => count + 1)}>批量创建</Button>}
       />
       <div className={s.batchCreateWorkspace}>
         <section className={s.batchBrowserPane} aria-label="预设浏览器">
@@ -105,7 +106,7 @@ export function BatchCreatePage({ project, data }: { project: DemoProject | unde
 
           <label className={s.batchSearchBox}>
             <Search className={s.icon} />
-            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索预设、预设组或 slug" />
+            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索预设或预设组" />
             {query ? (
               <button aria-label="清除搜索" type="button" onClick={() => setQuery("")}>
                 <X className={s.icon} />

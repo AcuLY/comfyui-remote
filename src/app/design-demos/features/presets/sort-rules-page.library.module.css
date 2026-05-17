@@ -13,6 +13,7 @@
 
 .page {
   display: grid;
+  container-type: inline-size;
   gap: 14px;
 }
 
@@ -141,9 +142,15 @@
 
 .sortRulesGrid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
   align-items: start;
+}
+
+@container (min-width: 520px) {
+  .sortRulesGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .sortRulePanel {
@@ -204,14 +211,6 @@
   to {
     transform: translateX(100%);
   }
-}
-
-@media (max-width: 1180px) {
-
-  .sortRulesGrid {
-    grid-template-columns: 1fr;
-  }
-
 }
 
 @media (max-width: 639px) {

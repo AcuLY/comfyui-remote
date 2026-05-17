@@ -6,7 +6,6 @@ import { Search } from "lucide-react";
 import type { DemoData } from "../../data";
 import s from "./logs-page.shell.module.css";
 import { Button } from "../../shared/primitives/button";
-import { DemoTabs } from "../../shared/primitives/demo-tabs";
 import { PageHeader } from "../../shared/primitives/page-header";
 import { SegmentedControl } from "../../shared/primitives/segmented-control";
 import { StatusBadge } from "../../shared/primitives/status-badge";
@@ -144,20 +143,24 @@ export function LogFilterBar({
 }) {
   return (
     <section className={s.logFilterBar}>
-      <DemoTabs
-        tabs={[
-          { key: "app", label: "应用日志", count: auditCount },
-          { key: "console", label: "控制台输出", count: consoleCount },
+      <SegmentedControl
+        ariaLabel="切换视图"
+        role="tablist"
+        items={[
+          { value: "app", label: "应用日志", count: auditCount },
+          { value: "console", label: "控制台输出", count: consoleCount },
         ]}
         value={source}
         onChange={onSourceChange}
       />
-      <DemoTabs
-        tabs={[
-          { key: "all", label: "全部" },
-          { key: "info", label: "INFO" },
-          { key: "warn", label: "WARN" },
-          { key: "error", label: "ERROR" },
+      <SegmentedControl
+        ariaLabel="日志级别"
+        role="tablist"
+        items={[
+          { value: "all", label: "全部" },
+          { value: "info", label: "INFO" },
+          { value: "warn", label: "WARN" },
+          { value: "error", label: "ERROR" },
         ]}
         value={level}
         onChange={onLevelChange}

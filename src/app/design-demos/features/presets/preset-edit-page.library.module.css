@@ -226,7 +226,8 @@
 
 .editorBlockHeader strong,
 .editorAside > strong,
-.loraStage > strong {
+.loraStage > strong,
+.loraStageHeader > strong {
   color: var(--demo-text);
   font-size: 13px;
   font-weight: 560;
@@ -294,6 +295,35 @@
   gap: 10px;
 }
 
+.promptField {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+}
+
+.promptFieldHeader,
+.loraStageHeader {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.promptFieldHeader > span,
+.loraStageHeader > span {
+  overflow: hidden;
+  color: var(--demo-muted);
+  font-size: 10px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.promptApplyButton {
+  flex: 0 0 auto;
+}
+
 .loraStage {
   display: grid;
   gap: 8px;
@@ -303,44 +333,52 @@
   padding: 9px;
 }
 
-.loraRow {
+.loraMain {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  align-items: center;
-  gap: 8px;
-  border-top: 1px solid var(--demo-border);
-  padding-top: 8px;
+  min-width: 0;
+  gap: 2px;
 }
 
-.loraRow span {
+.loraName {
   overflow: hidden;
   color: var(--demo-text);
   font-size: 11px;
+  font-weight: 560;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.loraRow em {
+.loraPath {
+  overflow: hidden;
+  color: var(--demo-faint);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.loraWeight {
   color: var(--demo-muted);
   font-size: 10px;
   font-style: normal;
+  white-space: nowrap;
 }
 
-.loraRow button {
+.loraTrigger {
+  overflow: hidden;
+  max-width: 120px;
   border: 1px solid var(--demo-border);
   border-radius: 6px;
   background: var(--demo-field-bg);
   color: var(--demo-muted);
-  cursor: pointer;
-  font: inherit;
   font-size: 10px;
   padding: 5px 7px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.loraRow button:hover {
-  border-color: var(--demo-glass-accent-border) !important;
-  color: var(--demo-green) !important;
-  outline: none;
+.loraApplyButton {
+  justify-self: end;
+  white-space: nowrap;
 }
 
 .historyDiffRow {
@@ -594,7 +632,7 @@
 
 .loraRow {
   display: grid;
-  grid-template-columns: 20px minmax(0, 1fr) auto auto;
+  grid-template-columns: 16px minmax(0, 1fr) auto minmax(70px, auto) auto;
   align-items: center;
   gap: 10px;
   padding: 8px 2px;
@@ -627,4 +665,38 @@
   font-size: 12px;
   font-weight: 580;
   line-height: 1.2;
+}
+
+@media (max-width: 639px) {
+
+  .promptFieldHeader {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .promptApplyButton,
+  .loraApplyButton {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .loraRow {
+    grid-template-columns: 16px minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 8px;
+  }
+
+  .loraWeight {
+    justify-self: end;
+  }
+
+  .loraTrigger {
+    grid-column: 2 / -1;
+    max-width: 100%;
+    justify-self: start;
+  }
+
+  .loraApplyButton {
+    grid-column: 1 / -1;
+  }
 }

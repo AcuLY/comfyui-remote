@@ -5,7 +5,6 @@ export const SHOWCASE_PREVIEW_COMPONENT_NAMES = [
   "Switch",
   "StatusBadge",
   "SegmentedControl",
-  "DemoTabs",
   "Field",
   "FloatingSelect",
   "PageHeader",

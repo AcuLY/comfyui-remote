@@ -14,15 +14,11 @@ export function ProjectSectionShell({
   activeSection,
   mode,
   children,
-  compact,
-  onToggleCompact,
 }: {
   project: DemoProject;
   activeSection?: DemoSection;
   mode: SectionNavMode;
   children: React.ReactNode;
-  compact?: boolean;
-  onToggleCompact?: () => void;
 }) {
   const defaultActiveSectionId = activeSection?.id ?? project.sections[0]?.id ?? null;
   const [activeSectionState, setActiveSectionState] = useState({
@@ -35,7 +31,7 @@ export function ProjectSectionShell({
       ? activeSection.id
       : activeSectionId ?? defaultActiveSectionId;
   const contentRef = useRef<HTMLDivElement>(null);
-  const railRef = useRef<HTMLElement>(null);
+  const railRef = useRef<HTMLDivElement>(null);
   const syncSourceRef = useRef<"content" | "rail" | null>(null);
   const unlockTimerRef = useRef<number | null>(null);
 
@@ -119,10 +115,8 @@ export function ProjectSectionShell({
         ref={railRef}
         project={project}
         activeSectionId={displayedActiveSectionId}
-        compact={compact}
         mode={mode}
         onNavigateSection={handleNavigateSection}
-        onToggleCompact={onToggleCompact}
       />
     </div>
   );

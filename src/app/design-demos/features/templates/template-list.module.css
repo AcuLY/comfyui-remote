@@ -22,6 +22,7 @@
 
 .page {
   display: grid;
+  container-type: inline-size;
   gap: 14px;
 }
 
@@ -42,6 +43,20 @@
 .rowList {
   display: grid;
   gap: 10px;
+}
+
+@container (min-width: 520px) {
+  .rowList {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .rowList .templateListItem {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .rowList .templateListMeta {
+    justify-items: start;
+  }
 }
 
 .templateListItem {

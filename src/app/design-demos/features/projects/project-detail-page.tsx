@@ -1,16 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import type { DemoProject } from "../../data";
 import { cx, filterImages } from "../../routing";
 import type { ProjectCardView, ResultDemoFilter } from "../../routing";
 import s from "./project-detail-page.projects.module.css";
 import { EmptyPage } from "../../shared/primitives/empty-page";
-import { ProjectDetailHeader } from "./project-detail-header";
 import { ProjectResultsToolbar, ProjectSectionResultCard } from "./project-result-card";
 import { ProjectSectionCard } from "./project-section-card";
 import { ProjectSectionShell } from "./project-section-shell";
+
+type ProjectSectionViewMode = "standard" | "compact";
+
+const PROJECT_SECTION_VIEW_MODE_EVENT = "design-demo:projects:section-view-mode";
+const PROJECT_SECTION_VIEW_MODE_STORAGE_KEY = "design-demo:projects:section-view-mode";
+
+function isProjectSectionViewMode(value: unknown): value is ProjectSectionViewMode {
+  return value === "standard" || value === "compact";
+}
+
+function readProjectSectionViewMode(): ProjectSectionViewMode {
+  if (typeof window === "undefined") return "standard";
+  const stored = window.localStorage.getItem(PROJECT_SECTION_VIEW_MODE_STORAGE_KEY);
+  return isProjectSectionViewMode(stored) ? stored : "standard";
+}
 
 export function ProjectDetailPage({
   project,
@@ -19,14 +33,28 @@ export function ProjectDetailPage({
   project: DemoProject | undefined;
   initialView?: ProjectCardView;
 }) {
-  const [compact, setCompact] = useState(false);
+  const [compact, setCompact] = useState(() => readProjectSectionViewMode() === "compact");
   const [filter, setFilter] = useState<ResultDemoFilter>("all");
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    function handleSectionViewModeChange(event: Event) {
+      const detail = (event as CustomEvent<{ compact?: unknown; mode?: unknown }>).detail;
+      if (isProjectSectionViewMode(detail?.mode)) {
+        setCompact(detail.mode === "compact");
+      } else if (typeof detail?.compact === "boolean") {
+        setCompact(detail.compact);
+      }
+    }
+
+    window.addEventListener(PROJECT_SECTION_VIEW_MODE_EVENT, handleSectionViewModeChange);
+    return () => window.removeEventListener(PROJECT_SECTION_VIEW_MODE_EVENT, handleSectionViewModeChange);
+  }, []);
+
   if (!project) return <EmptyPage title="没有项目数据" />;
   const sections = project.sections;
   const projectImages = sections.flatMap((section) => section.images);
   const isResultView = initialView === "results";
-  const sectionSummary = `${project.sectionCount} 个小节`;
 
   function toggleCollapsed(sectionId: string) {
     setCollapsedSections((current) => {
@@ -39,15 +67,7 @@ export function ProjectDetailPage({
 
   return (
     <div className={s.page}>
-      <ProjectDetailHeader
-        isResultView={isResultView}
-        project={project}
-        subtitle={project.notes ? `${project.notes} · ${sectionSummary}` : sectionSummary}
-        view={initialView}
-      />
       <ProjectSectionShell
-        compact={compact}
-        onToggleCompact={() => setCompact((value) => !value)}
         project={project}
         mode={isResultView ? "project-results" : "detail"}
       >

@@ -25,7 +25,7 @@ export function getBatchCandidateRows({
           item: batchImportFromGroup(category, group),
         }))
       : category.presets
-        .filter((preset) => normalizedQuery ? `${preset.name} ${preset.slug}`.toLowerCase().includes(normalizedQuery) : (preset.folderId ?? null) === currentFolderId)
+        .filter((preset) => normalizedQuery ? preset.name.toLowerCase().includes(normalizedQuery) : (preset.folderId ?? null) === currentFolderId)
         .flatMap((preset) => {
           const variants = preset.variants.length ? preset.variants : [undefined];
           return variants.map((variant) => ({
@@ -33,7 +33,7 @@ export function getBatchCandidateRows({
             icon: Wand2,
             title: variant?.name ? `${preset.name} / ${variant.name}` : preset.name,
             meta: `${preset.variantCount} variants`,
-            description: preset.notes || variant?.prompt || preset.slug,
+            description: preset.notes || variant?.prompt || "暂无备注",
             item: batchImportFromPreset(category, preset, variant),
           }));
         })

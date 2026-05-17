@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { ArrowLeft, MoreHorizontal } from "lucide-react";
 
-import { cx } from "../routing";
+import { cx, demoHref } from "../routing";
 import type { HeaderAction, HeaderSpec } from "../routing/header-specs";
 import { Button, ButtonLink } from "../shared/primitives";
 import s from "./header-surface.module.css";
@@ -13,20 +14,36 @@ import s from "./header-surface.module.css";
 type RouteHeaderMode = "expanded" | "mobile";
 type HeadingLevel = 1 | 2 | 3;
 
-function actionLimitForHeader(mode: RouteHeaderMode, width: number, totalActions: number) {
-  if (totalActions <= 0) return 0;
-  if (mode === "mobile") return 1;
-  if (width >= 1100) return totalActions;
-  if (width >= 820) return Math.min(4, totalActions);
-  if (width >= 700) return Math.min(3, totalActions);
-  return 1;
-}
+export type HeaderActionSlot = {
+  key: string;
+  label: string;
+  node: ReactNode;
+  overflowNode?: ReactNode;
+  placement?: "leading" | "trailing";
+};
+
+type HeaderActionUnit =
+  | { action: HeaderAction; key: string; type: "action" }
+  | { key: string; slot: HeaderActionSlot; type: "slot" };
 
 function HeaderActionButton({
   action: item,
 }: {
   action: HeaderAction;
 }) {
+  if (item.href) {
+    return (
+      <ButtonLink
+        ariaLabel={item.label}
+        href={item.href}
+        icon={item.icon}
+        tone={item.tone ?? "default"}
+      >
+        {item.label}
+      </ButtonLink>
+    );
+  }
+
   return (
     <Button
       ariaLabel={item.label}
@@ -38,17 +55,22 @@ function HeaderActionButton({
   );
 }
 
-function HeaderMeta({ className, items }: { className?: string; items?: string[] }) {
-  if (!items?.length) return null;
+function HeaderActionSlotView({ slot }: { slot: HeaderActionSlot }) {
   return (
-    <div className={cx(s.metaStrip, className)}>
-      {items.map((item) => (
-        <span className={s.metaItem} key={item}>
-          <span className={s.metaText}>{item}</span>
-        </span>
-      ))}
+    <div
+      className={s.actionSlot}
+      data-header-action-slot={slot.key}
+      role="group"
+      aria-label={slot.label}
+    >
+      {slot.node}
     </div>
   );
+}
+
+function HeaderActionUnitView({ unit }: { unit: HeaderActionUnit }) {
+  if (unit.type === "slot") return <HeaderActionSlotView slot={unit.slot} />;
+  return <HeaderActionButton action={unit.action} />;
 }
 
 function HeaderBackLink({
@@ -84,6 +106,7 @@ function HeaderTitle({
 }
 
 export function RouteHeaderSurface({
+  actionSlots,
   className,
   headingLevel = 1,
   hidden = false,
@@ -92,6 +115,7 @@ export function RouteHeaderSurface({
   surfaceRef,
   titleId,
 }: {
+  actionSlots?: HeaderActionSlot[];
   className?: string;
   hidden?: boolean;
   headingLevel?: HeadingLevel;
@@ -104,18 +128,38 @@ export function RouteHeaderSurface({
   const resolvedTitleId = titleId ?? `${spec.key}-${mode}-title`;
   const overflowMenuId = `${resolvedTitleId}-actions-overflow`;
   const headerNodeRef = useRef<HTMLElement | null>(null);
+  const actionMeasureRef = useRef<HTMLDivElement | null>(null);
+  const leftClusterRef = useRef<HTMLDivElement | null>(null);
   const overflowRef = useRef<HTMLDivElement | null>(null);
   const overflowMenuRef = useRef<HTMLDivElement | null>(null);
   const [headerWidth, setHeaderWidth] = useState(0);
+  const [visibleActionLimit, setVisibleActionLimit] = useState(0);
   const [overflowOpen, setOverflowOpen] = useState(false);
   const [overflowMenuStyle, setOverflowMenuStyle] = useState<CSSProperties>({});
   const [overflowPortalTarget, setOverflowPortalTarget] = useState<HTMLElement | null>(null);
   const actions = useMemo(() => spec.actions ?? [], [spec.actions]);
-  const fallbackActionLimit = isMobile ? 1 : Math.min(3, actions.length);
-  const visibleActionLimit = headerWidth ? actionLimitForHeader(mode, headerWidth, actions.length) : fallbackActionLimit;
-  const visibleActions = actions.slice(0, visibleActionLimit);
-  const overflowActions = actions.slice(visibleActionLimit);
-  const showsMoreActions = overflowActions.length > 0;
+  const actionUnits = useMemo<HeaderActionUnit[]>(() => {
+    const actionItems = actions.map((action) => ({
+      action,
+      key: `action:${action.label}`,
+      type: "action" as const,
+    }));
+    const slots = actionSlots ?? [];
+    const leadingSlotItems = slots.filter((slot) => slot.placement !== "trailing").map((slot) => ({
+      key: `slot:${slot.key}`,
+      slot,
+      type: "slot" as const,
+    }));
+    const trailingSlotItems = slots.filter((slot) => slot.placement === "trailing").map((slot) => ({
+      key: `slot:${slot.key}`,
+      slot,
+      type: "slot" as const,
+    }));
+    return [...leadingSlotItems, ...actionItems, ...trailingSlotItems];
+  }, [actions, actionSlots]);
+  const visibleActionUnits = actionUnits.slice(0, visibleActionLimit);
+  const overflowActionUnits = actionUnits.slice(visibleActionLimit);
+  const showsMoreActions = overflowActionUnits.length > 0;
   const overflowMenuOpen = overflowOpen && !hidden;
 
   const setHeaderNode = useCallback(
@@ -132,7 +176,7 @@ export function RouteHeaderSurface({
     if (!anchor || typeof window === "undefined") return;
     const rect = anchor.getBoundingClientRect();
     const viewportPadding = 12;
-    const width = Math.min(210, Math.max(160, window.innerWidth - viewportPadding * 2));
+    const width = Math.min(260, Math.max(180, window.innerWidth - viewportPadding * 2));
     const left = Math.min(
       Math.max(rect.right - width, viewportPadding),
       Math.max(viewportPadding, window.innerWidth - width - viewportPadding),
@@ -165,6 +209,55 @@ export function RouteHeaderSurface({
       window.removeEventListener("resize", syncHeaderWidth);
     };
   }, []);
+
+  useLayoutEffect(() => {
+    const frameId = window.requestAnimationFrame(() => {
+      const headerNode = headerNodeRef.current;
+      const measureNode = actionMeasureRef.current;
+      if (!headerNode || !measureNode) {
+        setVisibleActionLimit(actionUnits.length);
+        return;
+      }
+
+      if (actionUnits.length === 0) {
+        setVisibleActionLimit(0);
+        return;
+      }
+
+      const measuredUnits = Array.from(measureNode.querySelectorAll<HTMLElement>("[data-header-measure-unit]"));
+      const moreButton = measureNode.querySelector<HTMLElement>("[data-header-measure-more]");
+      if (measuredUnits.length !== actionUnits.length || !moreButton) return;
+
+      const styles = window.getComputedStyle(measureNode);
+      const gap = Number.parseFloat(styles.columnGap || styles.gap || "0") || 0;
+      const headerRect = headerNode.getBoundingClientRect();
+      const leftWidth = Math.ceil(leftClusterRef.current?.getBoundingClientRect().width ?? 0);
+      const titleReserve = isMobile
+        ? Math.min(340, Math.max(230, headerRect.width * 0.42))
+        : Math.min(460, Math.max(300, headerRect.width * 0.36));
+      const availableWidth = Math.max(0, headerRect.width - leftWidth - titleReserve - 18);
+      const unitWidths = measuredUnits.map((unit) => Math.ceil(unit.getBoundingClientRect().width));
+      const moreWidth = Math.ceil(moreButton.getBoundingClientRect().width);
+      const fullWidth = unitWidths.reduce((sum, width) => sum + width, 0) + gap * Math.max(unitWidths.length - 1, 0);
+
+      let nextVisibleLimit = actionUnits.length;
+      if (fullWidth > availableWidth) {
+        nextVisibleLimit = 0;
+        for (let count = actionUnits.length - 1; count >= 0; count -= 1) {
+          const visibleWidth = unitWidths.slice(0, count).reduce((sum, width) => sum + width, 0);
+          const usedWidth = visibleWidth + moreWidth + gap * Math.max(count, 0);
+          if (usedWidth <= availableWidth) {
+            nextVisibleLimit = count;
+            break;
+          }
+        }
+      }
+
+      setVisibleActionLimit((current) => (current === nextVisibleLimit ? current : nextVisibleLimit));
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [actionUnits, headerWidth, isMobile]);
 
   useEffect(() => {
     if (!hidden) return undefined;
@@ -215,7 +308,7 @@ export function RouteHeaderSurface({
       ref={setHeaderNode}
     >
       <div className={s.mainRow}>
-        <div className={s.leftCluster}>
+        <div className={s.leftCluster} ref={leftClusterRef}>
           {spec.back ? (
             <div className={s.backSlot}>
               <HeaderBackLink back={spec.back} />
@@ -229,14 +322,13 @@ export function RouteHeaderSurface({
             <HeaderTitle id={resolvedTitleId} level={headingLevel}>
               {spec.title}
             </HeaderTitle>
-            {!isMobile && spec.meta?.length ? <p className={s.titleMeta}>{spec.meta.join(" / ")}</p> : null}
-            <HeaderMeta className={s.inlineMeta} items={spec.meta?.slice(0, 2)} />
+            {spec.meta?.length ? <p className={s.titleMeta}>{spec.meta.join(" / ")}</p> : null}
           </div>
         </div>
 
         <div className={s.actionCluster} role="toolbar" aria-label={`${spec.title} 页面操作`}>
-          {visibleActions?.map((item) => (
-            <HeaderActionButton action={item} key={item.label} />
+          {visibleActionUnits?.map((unit) => (
+            <HeaderActionUnitView key={unit.key} unit={unit} />
           ))}
           {showsMoreActions ? (
             <div className={s.overflowMenuWrap} ref={overflowRef}>
@@ -258,23 +350,47 @@ export function RouteHeaderSurface({
                   className={s.overflowMenu}
                   id={overflowMenuId}
                   ref={overflowMenuRef}
-                  role="menu"
+                  role="group"
                   aria-label={`${spec.title} 更多页面操作`}
                   style={overflowMenuStyle}
                 >
-                  {overflowActions.map((item) => {
-                    const Icon = item.icon;
-                    return (
+                  {overflowActionUnits.map((unit) => {
+                    if (unit.type === "slot") {
+                      return (
+                        <div className={s.overflowMenuSlot} key={unit.key} role="group" aria-label={unit.slot.label}>
+                          <div className={s.overflowMenuSlotBody}>
+                            {unit.slot.overflowNode ?? unit.slot.node}
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    const Icon = unit.action.icon;
+                    const content = (
+                      <>
+                        <Icon className={s.overflowMenuIcon} aria-hidden="true" />
+                        <span>{unit.action.label}</span>
+                      </>
+                    );
+                    return unit.action.href ? (
+                      <Link
+                        className={s.overflowMenuItem}
+                        data-tone={unit.action.tone ?? "default"}
+                        href={demoHref(unit.action.href)}
+                        key={unit.key}
+                        onClick={() => setOverflowOpen(false)}
+                      >
+                        {content}
+                      </Link>
+                    ) : (
                       <button
                         className={s.overflowMenuItem}
-                        data-tone={item.tone ?? "default"}
-                        key={item.label}
+                        data-tone={unit.action.tone ?? "default"}
+                        key={unit.key}
                         onClick={() => setOverflowOpen(false)}
-                        role="menuitem"
                         type="button"
                       >
-                        <Icon className={s.overflowMenuIcon} aria-hidden="true" />
-                        <span>{item.label}</span>
+                        {content}
                       </button>
                     );
                   })}
@@ -283,6 +399,16 @@ export function RouteHeaderSurface({
               ) : null}
             </div>
           ) : null}
+        </div>
+      </div>
+      <div className={s.actionMeasureTray} aria-hidden="true" inert ref={actionMeasureRef}>
+        {actionUnits.map((unit) => (
+          <div className={s.actionMeasureUnit} data-header-measure-unit key={`measure:${unit.key}`}>
+            <HeaderActionUnitView unit={unit} />
+          </div>
+        ))}
+        <div className={s.actionMeasureUnit} data-header-measure-more>
+          <Button ariaLabel="更多页面操作" icon={MoreHorizontal} iconOnly />
         </div>
       </div>
     </header>

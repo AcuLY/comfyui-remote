@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRight, CheckSquare, ChevronDown, Copy, X } from "lucide-react";
+import { ArrowRight, CheckSquare, ChevronDown, CircleAlert, Copy, X } from "lucide-react";
 
 import type { DemoRun } from "../../data";
 import { cx } from "../../routing";
@@ -114,7 +114,12 @@ export function RunList({
                       return (
                         <div
                           aria-checked={selected}
-                          className={cx(s.queueRunRow, s.queueRunRowSelectable, selected && s.queueRunRowSelected)}
+                          className={cx(
+                            s.queueRunRow,
+                            s.queueRunRowSelectable,
+                            mode === "failed" && s.queueRunRowFailed,
+                            selected && s.queueRunRowSelected,
+                          )}
                           key={run.id}
                           onClick={() => toggleRun(run.id)}
                           onKeyDown={(event) => {
@@ -140,8 +145,11 @@ export function RunList({
                               {mode === "running" ? "创建于" : "失败于"} {mode === "running" ? run.createdAt : run.startedAt ?? run.createdAt}
                             </span>
                             {mode === "failed" ? (
-                              <span className={s.queueRunError}>
+                              <span className={s.queueRunError} role="status">
+                                <CircleAlert className={s.queueRunErrorIcon} />
+                                <span className={s.queueRunErrorText}>
                                 原因：{errorMessage}
+                                </span>
                                 <span
                                   className={s.queueRunErrorAction}
                                   onClick={(event) => event.stopPropagation()}

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { GripVertical, Trash2 } from "lucide-react";
 
 import type { DemoProject } from "../../data";
@@ -12,11 +13,42 @@ import { ImageListSmall } from "../../shared/media/image-list-small";
 import { UnitRowShell } from "../../shared/patterns";
 import { StatusBadge } from "../../shared/primitives/status-badge";
 
+export function ProjectListCardShell({
+  body,
+  className,
+  compact = false,
+  leading,
+  selected = false,
+  title,
+}: {
+  body: ReactNode;
+  className?: string;
+  compact?: boolean;
+  leading?: ReactNode;
+  selected?: boolean;
+  title: ReactNode;
+}) {
+  return (
+    <UnitRowShell
+      className={cx(s.projectListCard, compact && s.projectListCardCompact, selected && s.projectListCardSelected, className)}
+      leadingClassName={leading ? s.projectItemControls : undefined}
+      mainClassName={s.projectListContent}
+      bodyClassName={s.projectListBody}
+      titleClassName={s.projectListTitleSlot}
+      leading={leading}
+      title={title}
+      body={body}
+    />
+  );
+}
+
 export function ProjectListItem({
+  compact = false,
   project,
   selected,
   onToggleSelected,
 }: {
+  compact?: boolean;
   project: DemoProject;
   selected: boolean;
   onToggleSelected: () => void;
@@ -25,11 +57,9 @@ export function ProjectListItem({
   const sectionCountLabel = `${project.sectionCount} 小节`;
 
   return (
-    <UnitRowShell
-      className={cx(s.projectListCard, selected && s.projectListCardSelected)}
-      leadingClassName={s.projectItemControls}
-      mainClassName={s.projectListContent}
-      titleClassName={s.projectListTitleSlot}
+    <ProjectListCardShell
+      compact={compact}
+      selected={selected}
       leading={(
         <>
           <Checkbox

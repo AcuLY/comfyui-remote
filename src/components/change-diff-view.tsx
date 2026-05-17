@@ -9,12 +9,11 @@ type DiffRow = {
 
 const MISSING = Symbol("missing");
 const MAX_TEXT_LENGTH = 180;
-const ARRAY_ID_KEYS = ["id", "bindingId", "sourceId", "variantId", "slug", "name", "label", "path"];
+const ARRAY_ID_KEYS = ["id", "bindingId", "sourceId", "variantId", "name", "label", "path"];
 const VALUE_KEYS = [
   "name",
   "label",
   "title",
-  "slug",
   "category",
   "variantId",
   "bindingId",
@@ -50,7 +49,6 @@ const FIELD_LABELS: Record<string, string> = {
   seed: "种子",
   seedPolicy: "种子策略",
   shortSidePx: "短边尺寸",
-  slug: "Slug",
   sourceId: "来源 ID",
   sourceName: "来源名称",
   steps: "步数",
@@ -105,7 +103,7 @@ function itemLabel(value: unknown): string | null {
   if (typeof value === "number" || typeof value === "boolean") return String(value);
   if (!isPlainObject(value)) return null;
 
-  for (const key of ["name", "label", "title", "slug", "sourceName", "path", "id"]) {
+  for (const key of ["name", "label", "title", "sourceName", "path", "id"]) {
     const candidate = value[key];
     if (typeof candidate === "string" && candidate.trim()) return compactText(candidate);
     if (typeof candidate === "number") return String(candidate);

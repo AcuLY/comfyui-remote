@@ -1,9 +1,3 @@
-.railItem,
-.railHeading {
-  -webkit-backdrop-filter: var(--demo-glass-blur);
-  backdrop-filter: var(--demo-glass-blur);
-}
-
 @keyframes demoGradientShift {
   0%,
   100% {

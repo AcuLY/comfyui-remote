@@ -1,26 +1,47 @@
 "use client";
 
-import { useState } from "react";
-import { Folder, FolderPlus, Plus, Save, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Folder, Save, X } from "lucide-react";
 
 import type { DemoData } from "../../data";
+import { cx, demoHref } from "../../routing";
 import s from "./project-list-page.projects.module.css";
 import { Button } from "../../shared/primitives/button";
-import { ButtonLink } from "../../shared/primitives/button";
 import { PageHeader } from "../../shared/primitives/page-header";
 import {
   ProjectBatchBar,
   ProjectFolderBreadcrumb,
   ProjectFolderRow,
   buildProjectFolderBreadcrumb,
-  countProjectFolderItems,
+  buildProjectFolderCardData,
 } from "./project-folders";
 import { ProjectListItem } from "./project-list-item";
 
+const PROJECT_LIST_CREATE_FOLDER_EVENT = "design-demo:projects:create-folder";
+const PROJECT_LIST_CREATE_PROJECT_EVENT = "design-demo:projects:create-project";
+const PROJECT_LIST_VIEW_MODE_EVENT = "design-demo:projects:view-mode";
+const PROJECT_LIST_VIEW_MODE_STORAGE_KEY = "design-demo:projects:view-mode";
+
+type ProjectListViewMode = "card" | "compact";
+
+function isProjectListViewMode(value: unknown): value is ProjectListViewMode {
+  return value === "card" || value === "compact";
+}
+
+function readProjectListViewMode(): ProjectListViewMode {
+  if (typeof window === "undefined") return "card";
+  const stored = window.localStorage.getItem(PROJECT_LIST_VIEW_MODE_STORAGE_KEY);
+  return isProjectListViewMode(stored) ? stored : "card";
+}
+
 export function ProjectsPage({ data }: { data: DemoData }) {
+  const router = useRouter();
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectedFolderIds, setSelectedFolderIds] = useState<Set<string>>(new Set());
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
+  const [listViewMode, setListViewMode] = useState<ProjectListViewMode>(readProjectListViewMode);
   const [newFolderName, setNewFolderName] = useState("角色组探索");
   const folders = data.projectFolders;
   const visibleFolders = folders
@@ -29,12 +50,41 @@ export function ProjectsPage({ data }: { data: DemoData }) {
   const visibleProjects = data.projects.filter((project) => project.folderId === currentFolderId);
   const breadcrumb = buildProjectFolderBreadcrumb(folders, currentFolderId);
   const selectedProjects = visibleProjects.filter((project) => selectedIds.has(project.id));
+  const selectedCount = selectedIds.size + selectedFolderIds.size;
   const currentFolderName = breadcrumb.at(-1)?.name ?? "根目录";
   const createProjectHref = currentFolderId ? `/projects/new?folder=${encodeURIComponent(currentFolderId)}` : "/projects/new";
+
+  useEffect(() => {
+    function handleCreateFolder() {
+      setIsCreatingFolder(true);
+    }
+
+    function handleCreateProject() {
+      router.push(demoHref(createProjectHref));
+    }
+
+    window.addEventListener(PROJECT_LIST_CREATE_FOLDER_EVENT, handleCreateFolder);
+    window.addEventListener(PROJECT_LIST_CREATE_PROJECT_EVENT, handleCreateProject);
+    return () => {
+      window.removeEventListener(PROJECT_LIST_CREATE_FOLDER_EVENT, handleCreateFolder);
+      window.removeEventListener(PROJECT_LIST_CREATE_PROJECT_EVENT, handleCreateProject);
+    };
+  }, [createProjectHref, router]);
+
+  useEffect(() => {
+    function handleViewModeChange(event: Event) {
+      const nextMode = (event as CustomEvent<{ mode?: unknown }>).detail?.mode;
+      if (isProjectListViewMode(nextMode)) setListViewMode(nextMode);
+    }
+
+    window.addEventListener(PROJECT_LIST_VIEW_MODE_EVENT, handleViewModeChange);
+    return () => window.removeEventListener(PROJECT_LIST_VIEW_MODE_EVENT, handleViewModeChange);
+  }, []);
 
   function navigateFolder(folderId: string | null) {
     setCurrentFolderId(folderId);
     setSelectedIds(new Set());
+    setSelectedFolderIds(new Set());
   }
 
   function toggleProjectSelection(projectId: string) {
@@ -46,9 +96,19 @@ export function ProjectsPage({ data }: { data: DemoData }) {
     });
   }
 
+  function toggleFolderSelection(folderId: string) {
+    setSelectedFolderIds((current) => {
+      const next = new Set(current);
+      if (next.has(folderId)) next.delete(folderId);
+      else next.add(folderId);
+      return next;
+    });
+  }
+
   function moveProjects(folderId: string | null) {
     const movedIds = new Set(selectedProjects.map((project) => project.id));
     setSelectedIds((current) => new Set(Array.from(current).filter((id) => !movedIds.has(id))));
+    setSelectedFolderIds(new Set());
     setCurrentFolderId(folderId);
   }
 
@@ -58,27 +118,21 @@ export function ProjectsPage({ data }: { data: DemoData }) {
         eyebrow="项目"
         title="项目列表"
         subtitle={`${data.projects.length} 个项目 · ${folders.length} 个文件夹 · 当前：${currentFolderName}`}
-        actions={<ButtonLink href={createProjectHref} tone="primary" icon={Plus}>创建项目</ButtonLink>}
       />
       <section className={s.projectFolderWorkspace} aria-label="项目文件夹管理">
         <div className={s.projectFolderTopbar}>
           <ProjectFolderBreadcrumb breadcrumb={breadcrumb} onNavigate={navigateFolder} />
-          <div className={s.projectFolderActions}>
-            <Button tone="subtle" icon={FolderPlus} onClick={() => setIsCreatingFolder(true)}>
-              新建文件夹
-            </Button>
-            <ButtonLink href={createProjectHref} tone="primary" icon={Plus}>创建项目</ButtonLink>
-          </div>
         </div>
 
-        {selectedIds.size > 0 ? (
+        {selectedCount > 0 ? (
           <ProjectBatchBar
             folders={folders}
-            selectedCount={selectedIds.size}
-            totalCount={visibleProjects.length}
-            onClear={() => setSelectedIds(new Set())}
+            selectedCount={selectedCount}
+            onClear={() => {
+              setSelectedIds(new Set());
+              setSelectedFolderIds(new Set());
+            }}
             onMove={moveProjects}
-            onSelectAll={() => setSelectedIds(new Set(visibleProjects.map((project) => project.id)))}
           />
         ) : null}
 
@@ -105,17 +159,25 @@ export function ProjectsPage({ data }: { data: DemoData }) {
           </div>
         ) : null}
 
-        <div className={s.projectFolderSurface}>
+        <div className={cx(s.projectFolderSurface, listViewMode === "compact" && s.projectFolderSurfaceCompact)}>
           {visibleFolders.length ? (
             <div className={s.projectFolderGrid}>
-              {visibleFolders.map((folder) => (
-                <ProjectFolderRow
-                  folder={folder}
-                  itemCount={countProjectFolderItems(folder.id, folders, data.projects)}
-                  key={folder.id}
-                  onEnter={() => navigateFolder(folder.id)}
-                />
-              ))}
+              {visibleFolders.map((folder) => {
+                const folderCard = buildProjectFolderCardData(folder.id, folders, data.projects, data.runs);
+                return (
+                  <ProjectFolderRow
+                    compact={listViewMode === "compact"}
+                    folder={folder}
+                    images={folderCard.images}
+                    key={folder.id}
+                    onEnter={() => navigateFolder(folder.id)}
+                    onToggleSelected={() => toggleFolderSelection(folder.id)}
+                    projectCount={folderCard.projectCount}
+                    selected={selectedFolderIds.has(folder.id)}
+                    subfolderCount={folderCard.subfolderCount}
+                  />
+                );
+              })}
             </div>
           ) : null}
 
@@ -123,6 +185,7 @@ export function ProjectsPage({ data }: { data: DemoData }) {
             <div className={s.projectListGrid}>
               {visibleProjects.map((project) => (
                 <ProjectListItem
+                  compact={listViewMode === "compact"}
                   key={project.id}
                   project={project}
                   selected={selectedIds.has(project.id)}

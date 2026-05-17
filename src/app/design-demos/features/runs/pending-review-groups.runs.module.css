@@ -99,6 +99,8 @@
   border: 0;
   border-radius: 0;
   background: transparent;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
 .queueSurfaceHeader {
@@ -152,6 +154,7 @@
   display: grid;
   min-width: 0;
   border-bottom: 1px solid var(--demo-border);
+  container-type: inline-size;
 }
 
 .queueProjectGroup:last-child {
@@ -253,6 +256,48 @@
   border-bottom: 0;
 }
 
+@container (min-width: 520px) {
+  .queueProjectRows {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0;
+    background: transparent;
+  }
+
+  .queueProjectRows .queueRunRow {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    min-height: 0;
+    border-right: 1px solid var(--demo-border);
+    border-bottom: 1px solid var(--demo-border);
+    background: transparent;
+  }
+
+  .queueProjectRows .queueRunRow:nth-child(2n) {
+    border-right: 0;
+  }
+
+  .queueProjectRows .queueRunRow:last-child,
+  .queueProjectRows .queueRunRow:nth-last-child(2):nth-child(odd) {
+    border-bottom: 0;
+  }
+
+  .queueProjectRows .queueRunRow:hover,
+  .queueProjectRows .queueRunRow:focus-visible {
+    background: var(--demo-control-hover);
+  }
+
+  .queueThumbs {
+    width: 100%;
+  }
+}
+
+@container (min-width: 820px) {
+  .queueProjectRows .queueRunRow {
+    grid-template-columns: minmax(150px, 0.62fr) minmax(220px, 1fr);
+    align-items: center;
+  }
+}
+
 .queueRunMain {
   display: grid;
   min-width: 0;
@@ -334,6 +379,24 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+@container (min-width: 520px) {
+  .queueThumbs :where([data-demo-ui-image-thumb-small="true"]) {
+    width: 60px;
+  }
+}
+
+@container (min-width: 640px) {
+  .queueThumbs :where([data-demo-ui-image-thumb-small="true"]) {
+    width: 68px;
+  }
+}
+
+@container (min-width: 820px) {
+  .queueThumbs :where([data-demo-ui-image-thumb-small="true"]) {
+    width: 72px;
+  }
 }
 
 .queuePager {

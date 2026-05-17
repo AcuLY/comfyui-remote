@@ -1,6 +1,5 @@
 export { Button, ButtonLink } from "./button";
 export { Checkbox } from "./checkbox";
-export { DemoTabs } from "./demo-tabs";
 export { EmptyPage } from "./empty-page";
 export { EmptyRows } from "./empty-rows";
 export { Field } from "./field";

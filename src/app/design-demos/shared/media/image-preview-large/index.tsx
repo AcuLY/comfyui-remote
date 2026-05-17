@@ -43,7 +43,7 @@ export function ImagePreviewLarge({
           <Button tone="subtle" icon={X} iconOnly size="sm" onClick={onClose} ariaLabel="关闭预览" />
         </div>
         <div className={s.lightboxImage}>
-          <ImagePreviewFrame image={image} interactive key={image.id} priority />
+          <ImagePreviewFrame image={image} interactive key={image.id} onBlankClick={onClose} priority />
         </div>
         {hasFooter ? (
           <div className={s.lightboxFooter}>

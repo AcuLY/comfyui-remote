@@ -7,29 +7,41 @@
   line-height: 1.45;
 }
 
-.projectListCard {
+.projectListCard.projectListCard {
   --project-list-control-size: 28px;
   --project-list-title-row-height: 36px;
   position: relative;
   align-items: stretch;
   gap: 14px;
+  box-shadow: var(--project-list-row-shadow, 0 1px 2px rgba(15, 23, 42, 0.04));
   color: inherit;
   padding: 14px;
   text-decoration: none;
   transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
 }
 
+.projectListCardCompact.projectListCardCompact {
+  --project-list-control-size: 30px;
+  --project-list-title-row-height: 36px;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  min-height: 52px;
+  padding: 8px 10px;
+}
+
 .projectListCard:not(.projectListCardSelected):hover,
 .projectListCard:not(.projectListCardSelected):focus-within {
   border-color: var(--demo-glass-accent-border);
   background: var(--demo-field-bg);
+  box-shadow: var(--project-list-row-shadow-hover, 0 1px 2px rgba(15, 23, 42, 0.05), 0 8px 18px rgba(15, 23, 42, 0.035));
   outline: none;
 }
 
 .projectListCard.projectListCardSelected {
   border-color: rgba(0, 217, 146, 0.34);
   background: var(--demo-selected);
-  box-shadow: 0 0 0 1px rgba(0, 217, 146, 0.1) inset;
+  box-shadow: var(--project-list-row-shadow, 0 1px 2px rgba(15, 23, 42, 0.04)), 0 0 0 1px rgba(0, 217, 146, 0.1) inset;
 }
 
 .projectListCard.projectListCardSelected:hover,
@@ -64,6 +76,15 @@
   z-index: 2;
 }
 
+.projectListCardCompact .projectItemControls {
+  display: flex;
+  width: auto;
+  align-self: center;
+  align-items: center;
+  justify-items: start;
+  gap: 6px;
+}
+
 .projectItemControls > * {
   pointer-events: auto;
 }
@@ -93,11 +114,26 @@
   justify-self: center;
 }
 
+.projectListCardCompact .projectDragHandle[data-demo-ui-button="true"][data-demo-ui-button-icon-only="true"] {
+  grid-row: auto;
+  align-self: center;
+  justify-self: start;
+}
+
 .projectListContent {
   display: grid;
   min-width: 0;
   align-content: start;
   gap: 8px;
+}
+
+.projectListBody {
+  min-width: 0;
+}
+
+.projectListCardCompact .projectListContent {
+  align-content: center;
+  gap: 0;
 }
 
 .projectDragHandle[data-demo-ui-button="true"][data-demo-ui-button-icon-only="true"]:hover,
@@ -158,6 +194,11 @@
   gap: 10px;
 }
 
+.projectListCardCompact .projectListTitleRow {
+  min-height: 36px;
+  gap: 8px;
+}
+
 .projectListTitleLink {
   display: flex;
   min-width: 0;
@@ -188,6 +229,20 @@
   font-weight: 520;
   line-height: 1.2;
   white-space: nowrap;
+}
+
+.projectListCardCompact .projectListTitleLink {
+  flex-wrap: nowrap;
+}
+
+.projectListCardCompact .projectListTitleLink span {
+  display: none;
+}
+
+.projectListCardCompact .projectListRecentResult,
+.projectListCardCompact .projectListMeta,
+.projectListCardCompact .projectListBody {
+  display: none;
 }
 
 .projectListTitleLink:hover strong,

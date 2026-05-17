@@ -48,12 +48,21 @@
 
 .sectionContentGrid {
   display: grid;
+  container-type: inline-size;
   gap: 12px;
 }
 
 .sectionCardList {
   display: grid;
   gap: 10px;
+  padding-top: 10px;
+}
+
+@container (min-width: 520px) {
+  .sectionCardList {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
 }
 
 .sectionCardListCompact {

@@ -6,7 +6,7 @@ import { useId, useState } from "react";
 
 import { cx } from "../../routing";
 import { Button } from "../primitives";
-import type { RouteIcon } from "../primitives/shared/types";
+import type { ButtonTone, RouteIcon } from "../primitives/shared/types";
 import s from "./patterns.module.css";
 
 export function ToolbarCluster({
@@ -283,6 +283,7 @@ export type MoveTargetOption = {
 
 export function MoveTargetPicker({
   buttonClassName,
+  buttonTone = "subtle",
   className,
   currentId,
   icon,
@@ -294,6 +295,7 @@ export function MoveTargetPicker({
   options,
 }: {
   buttonClassName?: string;
+  buttonTone?: ButtonTone;
   className?: string;
   currentId?: string | null;
   icon?: RouteIcon;
@@ -317,7 +319,7 @@ export function MoveTargetPicker({
         className={buttonClassName}
         icon={icon}
         iconOnly={iconOnly}
-        tone="subtle"
+        tone={buttonTone}
         onClick={() => setOpen((value) => !value)}
       >
         {label}
@@ -353,6 +355,7 @@ export function SelectionBatchBar({
   className,
   clearIconOnly = true,
   clearLabel = "清除选择",
+  clearTone = "subtle",
   label,
   labelClassName,
   onClear,
@@ -364,6 +367,7 @@ export function SelectionBatchBar({
   className?: string;
   clearIconOnly?: boolean;
   clearLabel?: string;
+  clearTone?: ButtonTone;
   label?: React.ReactNode;
   labelClassName?: string;
   onClear?: () => void;
@@ -376,7 +380,7 @@ export function SelectionBatchBar({
       <ToolbarCluster className={actionsClassName}>
         {actions}
         {onClear ? (
-          <Button tone="subtle" icon={X} iconOnly={clearIconOnly} ariaLabel={clearLabel} onClick={onClear}>
+          <Button tone={clearTone} icon={X} iconOnly={clearIconOnly} ariaLabel={clearLabel} onClick={onClear}>
             {clearLabel}
           </Button>
         ) : null}

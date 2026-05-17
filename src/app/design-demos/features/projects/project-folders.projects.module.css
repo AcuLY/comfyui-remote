@@ -66,8 +66,10 @@
   display: flex;
   min-width: 0;
   align-items: center;
+  flex-wrap: nowrap;
   justify-content: space-between;
   gap: 10px;
+  overflow-x: auto;
 }
 
 .projectBatchBar > div {
@@ -81,6 +83,7 @@
   display: flex;
   flex: 0 0 auto;
   align-items: center;
+  flex-wrap: nowrap;
   gap: 7px;
 }
 
@@ -139,33 +142,32 @@
 }
 
 .projectBatchBar strong {
+  flex: 1 1 auto;
   color: var(--demo-green);
   font-size: 12px;
   font-weight: 620;
+  white-space: nowrap;
 }
 
 .projectBatchBar button,
-.projectFolderRowActions button,
 .projectMoveMenu > button {
   display: inline-flex;
-  min-height: 28px;
+  min-height: 36px;
   align-items: center;
   gap: 5px;
   border: 1px solid var(--demo-border);
-  border-radius: 999px;
+  border-radius: 8px;
   background: var(--demo-field-bg);
   color: var(--demo-muted);
   cursor: pointer;
   font: inherit;
-  font-size: 10px;
-  font-weight: 560;
-  padding: 5px 8px;
+  font-size: 12px;
+  font-weight: 580;
+  padding: 7px 10px;
 }
 
 .projectBatchBar button:hover,
 .projectBatchBar button:focus-visible,
-.projectFolderRowActions button:hover,
-.projectFolderRowActions button:focus-visible,
 .projectMoveMenu > button:hover,
 .projectMoveMenu > button:focus-visible {
   border-color: var(--demo-glass-accent-border);
@@ -178,96 +180,26 @@
   color: var(--demo-amber);
 }
 
-.projectFolderRow {
-  display: grid;
-  grid-template-columns: 28px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-  border: 1px solid var(--demo-border);
-  border-radius: var(--demo-radius);
-  background: var(--demo-glass-soft);
-  padding: 7px;
-}
-
-.projectFolderGrip {
-  display: inline-flex;
-  width: 28px;
-  height: 28px;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--demo-faint);
-  cursor: grab;
-  padding: 0;
-}
-
-.projectFolderGrip:hover,
-.projectFolderGrip:focus-visible {
-  border-color: var(--demo-glass-accent-border);
-  background: var(--demo-field-bg);
-  color: var(--demo-green);
-  outline: none;
-}
-
-.projectFolderOpen {
-  display: grid;
-  grid-template-columns: 18px minmax(0, 1fr) auto 14px;
-  align-items: center;
-  gap: 7px;
-  min-width: 0;
+.projectFolderTitleButton {
+  width: 100%;
   border: 0;
   background: transparent;
-  color: var(--demo-muted);
   cursor: pointer;
   font: inherit;
   padding: 0;
   text-align: left;
 }
 
-.projectFolderOpen > .icon:first-child {
+.projectFolderTitleIcon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
   color: var(--demo-amber);
 }
 
-.projectFolderOpen strong {
-  overflow: hidden;
-  color: var(--demo-text);
-  font-size: 12px;
-  font-weight: 580;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.projectFolderOpen span {
-  color: var(--demo-faint);
-  font-size: 10px;
-  white-space: nowrap;
-}
-
-.projectFolderRow:hover,
-.projectFolderRow:focus-within {
-  border-color: var(--demo-glass-accent-border);
-  background: var(--demo-field-bg);
-}
-
-.projectFolderOpen:hover,
-.projectFolderOpen:focus-visible {
-  color: var(--demo-green);
-  outline: none;
-}
-
-.projectFolderRowActions {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.projectFolderRowActions button {
-  width: 28px;
-  justify-content: center;
-  padding: 0;
+.projectFolderPreviewButton {
+  width: 100%;
+  cursor: pointer;
 }
 
 .projectMoveMenu {
@@ -340,12 +272,12 @@
 
 @media (max-width: 900px) {
   .projectBatchBar {
-    align-items: stretch;
-    flex-direction: column;
+    align-items: center;
+    flex-direction: row;
   }
 
   .projectBatchBar > div {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
   }
 }
 
@@ -371,8 +303,6 @@
 
 .showcasePage .projectBatchBar :where([data-demo-ui-button="true"]),
 .showcasePage .projectFolderBreadcrumbs :where([data-demo-ui-button="true"]),
-.showcasePage .projectFolderGrip:where([data-demo-ui-button="true"]),
-.showcasePage .projectFolderRowActions :where([data-demo-ui-button="true"]),
 .showcasePage .projectMoveMenu > :where([data-demo-ui-button="true"]) {
   height: 36px;
   min-height: 36px;
@@ -382,70 +312,21 @@
   line-height: 1.2;
 }
 
-.showcasePage .projectFolderGrip:where([data-demo-ui-button-icon-only="true"]),
-.showcasePage .projectFolderRowActions :where([data-demo-ui-button-icon-only="true"]) {
-  width: 36px;
-  min-width: 36px;
-  padding: 0;
-}
-
 .projectBatchBar :where([data-demo-ui-button="true"]),
-.projectFolderBreadcrumbs :where([data-demo-ui-button="true"]),
-.projectFolderRowActions :where([data-demo-ui-button="true"]),
-.projectMoveMenu > :where([data-demo-ui-button="true"]),
-.projectFolderGrip:where([data-demo-ui-button="true"]) {
-  height: 28px;
-  min-height: 28px;
+.projectMoveMenu > :where([data-demo-ui-button="true"]) {
+  height: 36px;
+  min-height: 36px;
   border-radius: 8px;
   font-size: 12px;
   font-weight: 580;
   line-height: 1.2;
 }
 
-.projectFolderRowActions :where([data-demo-ui-button-icon-only="true"]),
-.projectFolderGrip:where([data-demo-ui-button-icon-only="true"]) {
-  width: 28px;
-  min-width: 28px;
+.projectFolderBreadcrumbs :where([data-demo-ui-button="true"]) {
   height: 28px;
   min-height: 28px;
-  padding: 0;
-}
-
-.showcasePage .projectFolderGrip:where([data-demo-ui-button="true"]) {
-  height: 28px;
-  min-height: 28px;
-}
-
-.showcasePage .projectFolderGrip:where([data-demo-ui-button-icon-only="true"]) {
-  width: 28px;
-  min-width: 28px;
-  height: 28px;
-  min-height: 28px;
-}
-
-.showcasePage .projectFolderGrip[data-demo-ui-button="true"][data-demo-ui-button-icon-only="true"],
-.projectFolderGrip[data-demo-ui-button="true"][data-demo-ui-button-icon-only="true"] {
-  display: inline-flex;
-  width: 28px;
-  min-width: 28px;
-  height: 28px;
-  min-height: 28px;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid transparent;
   border-radius: 8px;
-  background: transparent;
-  color: var(--demo-faint);
-  cursor: grab;
-  padding: 0;
-}
-
-.showcasePage .projectFolderGrip[data-demo-ui-button="true"][data-demo-ui-button-icon-only="true"]:hover,
-.showcasePage .projectFolderGrip[data-demo-ui-button="true"][data-demo-ui-button-icon-only="true"]:focus-visible,
-.projectFolderGrip[data-demo-ui-button="true"][data-demo-ui-button-icon-only="true"]:hover,
-.projectFolderGrip[data-demo-ui-button="true"][data-demo-ui-button-icon-only="true"]:focus-visible {
-  border-color: var(--demo-glass-accent-border);
-  background: var(--demo-field-bg);
-  color: var(--demo-green);
-  outline: none;
+  font-size: 12px;
+  font-weight: 580;
+  line-height: 1.2;
 }

@@ -61,9 +61,12 @@
 }
 
 .checkboxOverlay.checkboxChecked {
-  --checkbox-bg: var(--checkbox-green);
+  --checkbox-bg: rgba(6, 12, 18, 0.88);
   --checkbox-border: var(--checkbox-green);
-  --checkbox-color: #04111c;
+  --checkbox-color: #ffffff;
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--checkbox-green) 82%, transparent),
+    0 8px 18px rgba(0, 0, 0, 0.26);
 }
 
 .checkboxInput {

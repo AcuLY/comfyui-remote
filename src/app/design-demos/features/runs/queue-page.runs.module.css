@@ -64,6 +64,8 @@
   border: 0;
   border-radius: 0;
   background: transparent;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
 @keyframes demoSkeleton {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { GripVertical, History, Plus, Save, Search } from "lucide-react";
+import { Copy, GripVertical, History, Plus, Save, Search } from "lucide-react";
 
 import { categoryTypeLabel, presetFolderBreadcrumb, type DemoData, type DemoPreset } from "../../data";
 import s from "./preset-edit-page.library.module.css";
@@ -39,9 +39,9 @@ export function PresetEditPage({ data, preset }: { data: DemoData; preset: DemoP
         <main className={s.editorSurface}>
           <div className={s.editorStickyHeader}>
             <div className={s.editorIdentity}>
-              <span>{preset.slug}</span>
+              <span>{category?.name ?? "未分类"} · {folderPath}</span>
               <strong>{activeVariant.name}</strong>
-              <em>{activeVariant.slug}</em>
+              <em>{preset.variantCount} 个变体</em>
             </div>
             <div className={s.toolbar}>
               <StatusBadge status="ready" label="已保存" />
@@ -53,13 +53,12 @@ export function PresetEditPage({ data, preset }: { data: DemoData; preset: DemoP
             <div className={s.editorBlockHeader}>
               <div>
                 <strong>基础信息</strong>
-                <span>名称、slug、分类和文件夹。</span>
+                <span>名称、分类和文件夹。</span>
               </div>
               <StatusBadge status="ready" label="已保存" />
             </div>
             <div className={s.formGrid}>
               <Field label="名称" value={preset.name} />
-              <Field label="Slug" value={preset.slug} />
               <FloatingSelect label="分类" value={category?.name ?? preset.categoryId} />
               <FloatingSelect label="文件夹" value={folderPath} />
             </div>
@@ -87,18 +86,24 @@ export function PresetEditPage({ data, preset }: { data: DemoData; preset: DemoP
                     <GripVertical className={s.icon} />
                     <span>{String(index + 1).padStart(2, "0")}</span>
                     <strong>{variant.name}</strong>
-                    <em>{variant.slug}</em>
                   </button>
                 ))}
               </div>
               <div className={s.presetVariantEditor}>
                 <div className={s.formGrid}>
                   <Field label="变体名称" value={activeVariant.name} />
-                  <Field label="变体 Slug" value={activeVariant.slug} />
                 </div>
                 <div className={s.promptColumns}>
-                  <Field multiline features={{ resize: true, clipboard: true }} label="正向 Prompt" value={activeVariant.prompt || "正向提示词"} />
-                  <Field multiline features={{ resize: true, clipboard: true }} label="反向 Prompt" value={activeVariant.negativePrompt || "反向提示词"} />
+                  <PromptApplyField
+                    fieldName="正向 Prompt"
+                    value={activeVariant.prompt || "正向提示词"}
+                    variantName={activeVariant.name}
+                  />
+                  <PromptApplyField
+                    fieldName="反向 Prompt"
+                    value={activeVariant.negativePrompt || "反向提示词"}
+                    variantName={activeVariant.name}
+                  />
                 </div>
               </div>
             </div>
@@ -133,7 +138,7 @@ export function PresetEditPage({ data, preset }: { data: DemoData; preset: DemoP
                   <div className={s.presetLinkedRow} key={sourcePreset.id}>
                     <div>
                       <strong>{sourcePreset.name}</strong>
-                      <span>{sourceCategory.name} · {variant?.name ?? "默认"} · {variant?.slug ?? "default"}</span>
+                      <span>{sourceCategory.name} · {variant?.name ?? "默认"}</span>
                     </div>
                     <StatusBadge status={index === 0 ? "ready" : "monitor"} label={index === 0 ? "级联" : "候选"} />
                   </div>
@@ -190,6 +195,37 @@ export function PresetEditPage({ data, preset }: { data: DemoData; preset: DemoP
   );
 }
 
+function PromptApplyField({
+  fieldName,
+  value,
+  variantName,
+}: {
+  fieldName: string;
+  value: string;
+  variantName: string;
+}) {
+  return (
+    <div className={s.promptField}>
+      <div className={s.promptFieldHeader}>
+        <span>{fieldName}</span>
+        <Button
+          className={s.promptApplyButton}
+          icon={Copy}
+          size="sm"
+          tone="subtle"
+          feedback={{
+            title: `${fieldName} 将应用到所有变体`,
+            detail: `来源变体：${variantName}`,
+          }}
+        >
+          应用到所有变体
+        </Button>
+      </div>
+      <Field multiline features={{ resize: true, clipboard: true }} label={`${fieldName} 内容`} value={value} />
+    </div>
+  );
+}
+
 function PresetLoraStage({
   title,
   preset,
@@ -203,25 +239,48 @@ function PresetLoraStage({
 }) {
   const rows = [
     {
-      name: `${preset.slug}-${stage}`,
+      name: stage === 1 ? `${preset.name} 主体 LoRA` : `${preset.name} 风格 LoRA`,
+      path: stage === 1 ? "ComfyUI 模型库 / 主体 LoRA" : "ComfyUI 模型库 / 风格 LoRA",
       weight: stage === 1 ? "0.82" : "0.56",
-      trigger: variant.slug,
+      trigger: variant.name,
     },
     {
-      name: stage === 1 ? "character-refine" : "style-balance",
+      name: stage === 1 ? "角色精修 LoRA" : "风格平衡 LoRA",
+      path: stage === 1 ? "ComfyUI 模型库 / 角色精修" : "ComfyUI 模型库 / 风格平衡",
       weight: stage === 1 ? "0.35" : "0.48",
-      trigger: preset.slug,
+      trigger: preset.name,
     },
   ];
 
   return (
     <div className={s.loraStage}>
-      <strong>{title}</strong>
+      <div className={s.loraStageHeader}>
+        <strong>{title}</strong>
+        <span>{rows.length} 行</span>
+      </div>
       {rows.map((row) => (
         <div className={s.loraRow} key={`${title}-${row.name}`}>
-          <span>{row.name}</span>
-          <em>{row.weight}</em>
-          <button type="button">{row.trigger}</button>
+          <GripVertical className={s.icon} />
+          <div className={s.loraMain}>
+            <strong className={s.loraName}>{row.name}</strong>
+            <span className={s.loraPath}>{row.path}</span>
+          </div>
+          <em className={s.loraWeight}>w {row.weight}</em>
+          <span className={s.loraTrigger} title={row.trigger}>
+            {row.trigger}
+          </span>
+          <Button
+            className={s.loraApplyButton}
+            icon={Copy}
+            size="sm"
+            tone="subtle"
+            feedback={{
+              title: `${row.name} 将应用到所有变体`,
+              detail: "真实流程会为缺失变体创建 LoRA 行",
+            }}
+          >
+            应用
+          </Button>
         </div>
       ))}
     </div>

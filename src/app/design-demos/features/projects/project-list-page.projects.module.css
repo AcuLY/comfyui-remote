@@ -12,19 +12,28 @@
 }
 
 .page {
+  --project-list-panel-shadow: 0 1px 2px rgba(15, 23, 42, 0.045), 0 12px 30px rgba(15, 23, 42, 0.035);
+  --project-list-row-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --project-list-row-shadow-hover: 0 1px 2px rgba(15, 23, 42, 0.05), 0 8px 18px rgba(15, 23, 42, 0.035);
   display: grid;
   gap: 14px;
+}
+
+:global([data-theme="dark"]) .page {
+  --project-list-panel-shadow: 0 1px 2px rgba(0, 0, 0, 0.22), 0 10px 24px rgba(0, 0, 0, 0.16);
+  --project-list-row-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+  --project-list-row-shadow-hover: 0 1px 2px rgba(0, 0, 0, 0.22), 0 8px 18px rgba(0, 0, 0, 0.14);
 }
 
 .projectListGrid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 0;
-  overflow: hidden;
-  border: 1px solid var(--demo-glass-border);
-  border-radius: var(--demo-radius);
-  background: var(--demo-glass-bg);
-  box-shadow: var(--demo-glass-shadow);
+  gap: 10px;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .icon {
@@ -85,7 +94,7 @@
   border: 1px solid var(--demo-glass-border);
   border-radius: var(--demo-radius);
   background: var(--demo-panel);
-  box-shadow: var(--demo-glass-shadow);
+  box-shadow: var(--project-list-panel-shadow);
   padding: 12px;
 }
 
@@ -100,6 +109,7 @@
 
 .projectFolderTopbar {
   border-bottom: 1px solid var(--demo-border);
+  justify-content: flex-start;
   padding-bottom: 10px;
 }
 
@@ -149,13 +159,26 @@
 .projectFolderGrid {
   display: grid;
   min-width: 0;
+  gap: 10px;
+}
+
+.projectFolderSurface {
+  container-type: inline-size;
+}
+
+.projectFolderSurfaceCompact {
   gap: 8px;
 }
 
 .projectFolderGrid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   border-bottom: 1px solid var(--demo-border);
   padding-bottom: 10px;
+}
+
+.projectFolderGrid:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
 }
 
 .projectFolderOpen > .icon:first-child {
@@ -165,6 +188,29 @@
 .projectFolderWorkspace .projectListGrid {
   display: grid;
   gap: 10px;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.projectFolderSurfaceCompact .projectFolderGrid,
+.projectFolderWorkspace .projectFolderSurfaceCompact .projectListGrid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 8px;
+}
+
+@container (min-width: 720px) {
+  .projectFolderGrid,
+  .projectFolderWorkspace .projectListGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .projectFolderSurfaceCompact .projectFolderGrid,
+  .projectFolderWorkspace .projectFolderSurfaceCompact .projectListGrid {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  }
 }
 
 .projectFolderEmpty {
@@ -207,10 +253,6 @@
 
   .projectFolderActions {
     flex-wrap: wrap;
-  }
-
-  .projectFolderGrid {
-    grid-template-columns: 1fr;
   }
 }
 

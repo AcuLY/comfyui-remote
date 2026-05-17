@@ -1,7 +1,6 @@
 "use client";
 
-import { SectionHeader, SectionTabs } from "./editor-parts";
-import { demoHref, rawSectionId } from "../../../routing";
+import { SectionTabs } from "./editor-parts";
 import s from "./editor-shell.module.css";
 import type { SectionEditorLoadedProps } from "./types";
 import { HistoryPanel } from "./history-panel";
@@ -15,43 +14,9 @@ import { useSectionEditorState } from "./use-section-editor-state";
 
 export function SectionEditorShell(props: SectionEditorLoadedProps) {
   const editor = useSectionEditorState(props);
-  const { project, section, prevSection, nextSection } = editor;
 
   return (
     <div className={s.page}>
-      <SectionHeader
-        backHref={demoHref(`/projects/${project.id}`)}
-        backLabel={project.title}
-        prev={
-          prevSection
-            ? {
-                name: prevSection.name,
-                href: demoHref(
-                  `/projects/${project.id}/sections/${rawSectionId(prevSection)}`,
-                ),
-              }
-            : null
-        }
-        next={
-          nextSection
-            ? {
-                name: nextSection.name,
-                href: demoHref(
-                  `/projects/${project.id}/sections/${rawSectionId(nextSection)}`,
-                ),
-              }
-            : null
-        }
-        workflowDownloadHref={editor.downloadHref}
-        initialName={section.name}
-        saveStatus={editor.saveStatus}
-        onSavingChange={editor.setSaveStatus}
-        onRename={() => undefined}
-        batchSize={editor.batchSize}
-        onBatchSizeChange={editor.updateBatchSize}
-        onRun={editor.flashSave}
-      />
-
       <SectionTabs tabs={editor.tabs} value={editor.tab} onChange={editor.setTab} />
 
       {editor.tab === "params" ? <ParamsPanel editor={editor} /> : null}

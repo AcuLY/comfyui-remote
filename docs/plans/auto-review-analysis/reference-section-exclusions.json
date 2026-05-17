@@ -1,0 +1,14 @@
+{
+  "updatedAt": "2026-05-17",
+  "scope": "valid reference projects trash-rate / auto-review calibration analysis",
+  "excludedCanonicalSections": [
+    {
+      "canonicalSectionName": "单人 · 拎鞋",
+      "reason": "Luca confirmed this section is not representative for trash-rate/reference-risk analysis."
+    },
+    {
+      "canonicalSectionName": "第一人称 · 胸压",
+      "reason": "Luca confirmed this section is not representative for trash-rate/reference-risk analysis."
+    }
+  ]
+}

@@ -12,11 +12,13 @@ import s from "../image/image.module.css";
 export function ImagePreviewFrame({
   image,
   interactive = false,
+  onBlankClick,
   onOpen,
   priority = false,
 }: {
   image: DemoImage;
   interactive?: boolean;
+  onBlankClick?: () => void;
   onOpen?: () => void;
   priority?: boolean;
 }) {
@@ -111,18 +113,18 @@ export function ImagePreviewFrame({
     }
   }
 
-  const isLandscapeImage = image.width !== null && image.height !== null
-    ? image.width >= image.height
-    : false;
   const interactiveImageStyle: CSSProperties | undefined = interactive
     ? {
-        height: isLandscapeImage ? "auto" : "100%",
         left: `calc(50% + ${view.x}px)`,
         top: `calc(50% + ${view.y}px)`,
         transform: `translate(-50%, -50%) scale(${view.scale})`,
-        width: isLandscapeImage ? "100%" : "auto",
       }
     : undefined;
+
+  function handleFrameClick(event: React.MouseEvent<HTMLDivElement>) {
+    if (!interactive || !onBlankClick || event.target !== event.currentTarget || isDragging) return;
+    onBlankClick();
+  }
 
   const content = image.full || image.src ? (
     <img
@@ -155,6 +157,7 @@ export function ImagePreviewFrame({
         interactive && view.scale > 1 && s.imagePreviewFrameZoomed,
         isDragging && s.imagePreviewFrameDragging,
       )}
+      onClick={handleFrameClick}
       onDoubleClick={interactive ? resetView : undefined}
       onPointerCancel={interactive ? handlePointerUp : undefined}
       onPointerDown={interactive ? handlePointerDown : undefined}

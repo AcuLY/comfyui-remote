@@ -49,7 +49,10 @@
 }
 
 .control {
+  box-sizing: border-box;
   width: 100%;
+  height: 36px;
+  min-height: 36px;
   border: 1px solid var(--ui-border);
   border-radius: var(--ui-radius);
   background: var(--ui-field-bg);
@@ -57,7 +60,7 @@
   font: inherit;
   font-size: 13px;
   outline: none;
-  padding: 11px 12px;
+  padding: 0 12px;
   caret-color: var(--ui-green);
   cursor: text;
   transition: border-color 150ms ease, background-color 150ms ease, box-shadow 150ms ease;
@@ -78,7 +81,10 @@
 }
 
 .multilineControl {
-  min-height: 96px;
+  height: auto;
+  min-height: 104px;
+  line-height: 1.4;
+  padding: 7px 12px;
 }
 
 .noResize {

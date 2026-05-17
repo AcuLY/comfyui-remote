@@ -4,13 +4,9 @@ import {
   ArrowRight,
   Copy,
   Download,
-  Edit3,
   ExternalLink,
-  FolderPlus,
   History,
   Home,
-  ImageIcon,
-  Layers,
   Lock,
   Monitor,
   PanelTop,
@@ -21,19 +17,19 @@ import {
   Search,
   Shuffle,
   SlidersHorizontal,
-  Tags,
+  Trash2,
   Upload,
-  Wand2,
   X,
 } from "lucide-react";
 
-import type { DemoData } from "../data";
+import type { DemoData, DemoSection } from "../data";
 import {
   findCategory,
   findGroup,
   findPreset,
   findProject,
   findRun,
+  findSection,
   findTemplate,
   matchPattern,
   matchRoute,
@@ -45,6 +41,7 @@ import type { RouteIcon, RouteKey } from "./";
 export type HeaderActionTone = "default" | "primary" | "pink" | "danger" | "subtle";
 
 export type HeaderAction = {
+  href?: string;
   icon: RouteIcon;
   label: string;
   tone?: HeaderActionTone;
@@ -73,8 +70,8 @@ export type HeaderSpecSection = {
 
 const section = (label: string, specs: HeaderSpec[]): HeaderSpecSection => ({ label, specs });
 
-export function headerAction(label: string, icon: RouteIcon, tone: HeaderActionTone = "default"): HeaderAction {
-  return { label, icon, tone };
+export function headerAction(label: string, icon: RouteIcon, tone: HeaderActionTone = "default", href?: string): HeaderAction {
+  return { label, icon, tone, href };
 }
 
 function routeMap(data: DemoData) {
@@ -102,6 +99,38 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
   const templateSection = template?.sections[0];
   const runningCount = data.runs.filter((item) => item.status === "queued" || item.status === "running").length;
   const failedCount = data.runs.filter((item) => item.status === "failed").length;
+  const completedProjectCount = data.projects.filter((item) => item.status === "done").length;
+  const unfinishedProjectCount = Math.max(data.projects.length - completedProjectCount, 0);
+  const projectImages = project?.sections.flatMap((section) => section.images) ?? project?.images ?? [];
+  const projectImageSummary = {
+    total: projectImages.length,
+    pending: projectImages.filter((item) => item.status === "pending").length,
+    kept: projectImages.filter((item) => item.status === "kept").length,
+    featured: projectImages.filter((item) => item.featured).length,
+    preview: projectImages.filter((item) => item.featured2).length,
+    cover: projectImages.filter((item) => item.cover).length,
+  };
+  const projectImageMeta = [
+    `${project?.sectionCount ?? 0} 小节`,
+    `${projectImageSummary.total} 张`,
+    `待审 ${projectImageSummary.pending}`,
+    `保留 ${projectImageSummary.kept}`,
+    `p站 ${projectImageSummary.featured}`,
+    `预览 ${projectImageSummary.preview}`,
+    `封面 ${projectImageSummary.cover}`,
+  ];
+  const sectionImageCount = sectionData?.images.length ?? 0;
+  const sectionMeta = sectionData
+    ? [
+        sectionData.aspectRatio,
+        `batch ${sectionData.batchSize}`,
+        `${sectionImageCount} 张`,
+        `Prompt ${sectionData.promptBlockCount}`,
+        `LoRA ${sectionData.loraCount}`,
+      ]
+    : undefined;
+  const presetGroupCount = data.categories.reduce((sum, item) => sum + item.groupCount, 0);
+  const categoryItemCount = category ? (category.type === "group" ? category.groupCount : category.presetCount) : 0;
 
   const queueHeader: HeaderSpec = {
     key: "root",
@@ -128,14 +157,14 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         route: currentRoute(routes, "queue-review"),
         group: "核心",
         eyebrow: "审核",
-        title: `${run?.projectTitle ?? "项目"} / ${run?.sectionName ?? "小节"}`,
+        title: run?.projectTitle ?? project?.title ?? "项目",
         subtitle: project?.notes || "逐张处理待审图片并保留运行上下文。",
         back: { href: "/runs", label: "返回任务" },
         actions: [
-          headerAction("跳转至小节", ExternalLink),
-          headerAction("下载工作流文件", Download),
+          headerAction("小节", ExternalLink),
+          headerAction("下载工作流", Download),
         ],
-        meta: [`RUN-${String(run?.runIndex ?? 1).padStart(2, "0")}`, `${run?.imageCount ?? 0} 张`, `待审 ${run?.pendingCount ?? 0}`],
+        meta: [run?.sectionName ?? "小节", `RUN-${String(run?.runIndex ?? 1).padStart(2, "0")}`, `${run?.imageCount ?? 0} 张`],
         status: "图片审核",
       },
     ]),
@@ -147,11 +176,7 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         eyebrow: "项目",
         title: "项目列表",
         subtitle: `${data.projects.length} 个项目 · ${data.projectFolders.length} 个文件夹`,
-        actions: [
-          headerAction("新建文件夹", FolderPlus),
-          headerAction("创建项目", Plus, "primary"),
-        ],
-        meta: ["根目录", "可批量移动"],
+        meta: [`${data.projects.length} 个项目`, `已完成 ${completedProjectCount}`, `未完成 ${unfinishedProjectCount}`],
         status: "项目管理",
       },
       {
@@ -162,8 +187,7 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         title: "创建新项目",
         subtitle: "基础信息、预设绑定、默认参数和小节种子策略。",
         back: { href: "/projects", label: "返回项目列表" },
-        actions: [headerAction("创建", Save, "primary")],
-        meta: ["草稿", "继承模板参数"],
+        actions: [headerAction("创建项目", Save, "primary")],
         status: "新建",
       },
       {
@@ -174,15 +198,7 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         title: project?.title ?? "项目详情",
         subtitle: project?.notes || `${project?.sectionCount ?? 0} 个小节`,
         back: { href: "/projects", label: "返回项目列表" },
-        actions: [
-          headerAction("编辑", Edit3),
-          headerAction("批量创建", Rows3, "primary"),
-          headerAction("整组运行", Play, "primary"),
-          headerAction("导入模板", Download),
-          headerAction("图片整合", ImageIcon),
-          headerAction("保存模板", Save),
-        ],
-        meta: [`${project?.sectionCount ?? 0} 小节`, "小节视图", "batch 2"],
+        meta: projectImageMeta,
         status: "项目详情",
       },
       {
@@ -190,11 +206,10 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         route: currentRoute(routes, "project-edit"),
         group: "项目",
         eyebrow: "项目",
-        title: `编辑项目：${project?.title ?? "项目"}`,
+        title: project?.title ?? "项目",
         subtitle: "基础信息、预设绑定、默认参数和小节种子策略。",
         back: { href: `/projects/${project?.id ?? "project-id"}`, label: "返回项目" },
         actions: [headerAction("保存", Save, "primary")],
-        meta: ["自动保存待确认"],
         status: "编辑",
       },
       {
@@ -202,14 +217,11 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         route: currentRoute(routes, "project-results"),
         group: "项目",
         eyebrow: "项目结果",
-        title: `${project?.title ?? "项目"} / 结果`,
+        title: project?.title ?? "项目",
         subtitle: "按小节查看已保留、精选、预览和封面图片。",
         back: { href: `/projects/${project?.id ?? "project-id"}`, label: "返回项目" },
-        actions: [
-          headerAction("小节", Layers, "subtle"),
-          headerAction("结果", ImageIcon, "primary"),
-        ],
-        meta: [`${project?.images.length ?? data.images.length} 张`, "全部状态"],
+        actions: [headerAction("删除全部", Trash2, "danger")],
+        meta: projectImageMeta,
         status: "结果视图",
       },
       {
@@ -217,11 +229,10 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         route: currentRoute(routes, "project-batch"),
         group: "项目",
         eyebrow: "项目",
-        title: `${project?.title ?? "项目"} / 批量创建小节`,
+        title: project?.title ?? "项目",
         subtitle: "从预设库导入预设并创建新的项目小节。",
         back: { href: `/projects/${project?.id ?? "project-id"}`, label: "返回项目" },
-        actions: [headerAction("创建小节", Plus, "primary")],
-        meta: ["预设浏览器", "导入队列", "参数草稿"],
+        actions: [headerAction("批量创建", Rows3, "primary")],
         status: "批量创建",
       },
       {
@@ -232,17 +243,7 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         title: sectionData?.name ?? "小节编辑",
         subtitle: `${project?.title ?? "项目"} · ${sectionData?.aspectRatio ?? "2:3"} · 批量 ${sectionData?.batchSize ?? 2}`,
         back: { href: `/projects/${project?.id ?? "project-id"}`, label: project?.title ?? "返回项目" },
-        actions: [
-          headerAction("上一节", ArrowLeft, "subtle"),
-          headerAction("下一节", ArrowRight, "subtle"),
-          headerAction("workflow", ExternalLink),
-          headerAction("运行", Play, "primary"),
-          headerAction("参数", SlidersHorizontal, "primary"),
-          headerAction("预设", Tags),
-          headerAction("Prompt", Wand2),
-          headerAction("历史", History),
-        ],
-        meta: ["已保存", "batch 2", "KSampler 1/2"],
+        meta: sectionMeta,
         status: "小节编辑",
       },
     ]),
@@ -258,7 +259,7 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
           headerAction("新建分类", Plus),
           headerAction("排序规则", Shuffle),
         ],
-        meta: [category?.name ?? "分类", "文件夹", "移动队列"],
+        meta: [`分类 ${data.categories.length}`, `预设 ${data.metrics.presets}`, `预设组 ${presetGroupCount}`],
         status: "预设管理",
       },
       {
@@ -270,7 +271,6 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         subtitle: "创建分类后回到预设库。",
         back: { href: "/presets", label: "返回预设库" },
         actions: [headerAction("创建分类", Save, "primary")],
-        meta: ["预设 / 预设组", "色相"],
         status: "新建分类",
       },
       {
@@ -278,11 +278,11 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         route: currentRoute(routes, "preset-category-edit"),
         group: "资源",
         eyebrow: "预设分类",
-        title: `编辑分类 / ${category?.name ?? "分类"}`,
+        title: `编辑分类：${category?.name ?? "分类"}`,
         subtitle: `${category?.type === "group" ? "预设组" : "预设"} · ${category?.presetCount ?? 0} 个条目`,
         back: { href: "/presets", label: "返回预设库" },
         actions: [headerAction("保存分类", Save, "primary")],
-        meta: ["分类类型锁定", "删除检查"],
+        meta: [category?.type === "group" ? "预设组" : "预设", `${categoryItemCount} 个条目`],
         status: "编辑分类",
       },
       {
@@ -297,7 +297,7 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
           headerAction("添加变体", Plus),
           headerAction("保存", Save, "primary"),
         ],
-        meta: [preset?.slug ?? "preset", "变体", "Prompt Blocks"],
+        meta: [category?.name ?? "未分类", `${preset?.variantCount ?? 0} 变体`],
         status: "预设编辑",
       },
       {
@@ -312,7 +312,7 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
           headerAction("选择预设", Search),
           headerAction("保存", Save, "primary"),
         ],
-        meta: [group?.slug ?? "group", "成员编排"],
+        meta: [category?.name ?? "未分类", `${group?.memberCount ?? 0} 成员`],
         status: "预设组",
       },
       {
@@ -324,7 +324,6 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         subtitle: "正向、反向与两段 LoRA 独立保存。",
         back: { href: "/presets", label: "返回预设库" },
         actions: [headerAction("保存全部", Save, "primary")],
-        meta: ["正向 Prompt", "反向 Prompt", "LoRA 1/2"],
         status: "排序",
       },
       {
@@ -353,7 +352,7 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
           headerAction("上传 LoRA", Upload),
           headerAction("扫描目录", Search),
         ],
-        meta: [`${data.loras.length} 个文件`, "触发词"],
+        meta: [`${data.loras.length} 个文件`],
         status: "LoRA",
       },
     ]),
@@ -378,7 +377,6 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         subtitle: "先填写模板信息，再添加可复用的小节配置。",
         back: { href: "/templates", label: "返回模板列表" },
         actions: [headerAction("创建模板", Save, "primary")],
-        meta: ["草稿", "待创建"],
         status: "新建模板",
       },
       {
@@ -390,7 +388,7 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         subtitle: `${template?.sectionCount ?? 0} 个小节`,
         back: { href: "/templates", label: "返回模板列表" },
         actions: [headerAction("添加小节", Plus), headerAction("保存", Save, "primary")],
-        meta: ["小节导航", "排序保存"],
+        meta: [`${template?.sectionCount ?? 0} 小节`, template?.updatedAt ?? "未记录"],
         status: "模板编辑",
       },
       {
@@ -408,7 +406,11 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
           headerAction("下一节", ArrowRight, "subtle"),
           headerAction("导出", Download),
         ],
-        meta: [`#${String((templateSection?.sortOrder ?? 0) + 1).padStart(2, "0")}`, templateSection?.aspectRatio ?? "2:3"],
+        meta: [
+          `#${String((templateSection?.sortOrder ?? 0) + 1).padStart(2, "0")}`,
+          templateSection?.aspectRatio ?? "2:3",
+          `batch ${templateSection?.batchSize ?? 0}`,
+        ],
         status: "模板小节",
       },
     ]),
@@ -424,7 +426,6 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
           headerAction("监控", Monitor),
           headerAction("日志", History),
         ],
-        meta: ["ComfyUI", "后端日志"],
         status: "设置入口",
       },
       {
@@ -436,7 +437,7 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         subtitle: "按来源、级别和模块筛选日志。",
         back: { href: "/settings", label: "返回设置" },
         actions: [headerAction("刷新日志", Search)],
-        meta: [`${data.auditLogs.length} 条`, "INFO / WARN / ERROR"],
+        meta: [`${data.auditLogs.length} 条`],
         status: "日志",
       },
       {
@@ -452,7 +453,7 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
           headerAction("启动", Play),
           headerAction("停止", X, "danger"),
         ],
-        meta: [`处理中 ${runningCount}`, "HTTP 200"],
+        meta: [`处理中 ${runningCount}`],
         status: "Worker 正常",
       },
       {
@@ -466,7 +467,6 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
           headerAction("登录", Lock, "primary"),
           headerAction("清除", X),
         ],
-        meta: ["待输入", "返回任务工作台"],
         status: "访问令牌",
       },
       {
@@ -477,7 +477,6 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         title: "未匹配页面",
         subtitle: "/unknown-demo-route",
         actions: [headerAction("返回任务", Home)],
-        meta: ["路由表"],
         status: "未匹配",
       },
     ]),
@@ -490,7 +489,6 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         title: "组件功能族总览",
         subtitle: "按功能族查看真实复用组件、业务适配组件和专项页面。",
         actions: [headerAction("Headers", PanelTop, "primary")],
-        meta: ["功能族", "槽位壳", "迁移目录"],
         status: "组件目录",
       },
       {
@@ -501,7 +499,6 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         title: "基础操作控件",
         subtitle: "按钮、选择、切换、字段和状态徽标等最底层交互控件。",
         back: { href: "/component-showcase", label: "返回总览" },
-        meta: ["Button", "Tabs", "Field"],
         status: "功能族",
       },
       {
@@ -512,7 +509,6 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         title: "页面骨架与容器",
         subtitle: "页面标题、连续工作区、编辑区块、右侧详情栏、空状态和加载骨架。",
         back: { href: "/component-showcase", label: "返回总览" },
-        meta: ["PageHeader", "Workbench", "Inspector"],
         status: "功能族",
       },
       {
@@ -523,7 +519,6 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         title: "单元行项",
         subtitle: "项目、小节、模板、预设、运行任务等可浏览、可选择、可操作的行项。",
         back: { href: "/component-showcase", label: "返回总览" },
-        meta: ["UnitRow", "Project", "Preset"],
         status: "功能族",
       },
       {
@@ -534,7 +529,6 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         title: "文件夹、路径与移动目标",
         subtitle: "项目、预设、模型和批量创建浏览器中的文件夹、路径和移动目标。",
         back: { href: "/component-showcase", label: "返回总览" },
-        meta: ["FolderRow", "Breadcrumb", "MoveTarget"],
         status: "功能族",
       },
       {
@@ -545,7 +539,6 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         title: "批量选择与操作反馈",
         subtitle: "已选数量、全选、移动、删除、撤销、操作状态条、toast 和保存状态。",
         back: { href: "/component-showcase", label: "返回总览" },
-        meta: ["BatchBar", "Toolbar", "Toast"],
         status: "功能族",
       },
       {
@@ -556,7 +549,6 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         title: "生成参数与小节配置",
         subtitle: "画幅、尺寸、checkpoint、KSampler、batch、放大和小节参数。",
         back: { href: "/component-showcase", label: "返回总览" },
-        meta: ["KSampler", "Size", "Checkpoint"],
         status: "功能族",
       },
       {
@@ -567,7 +559,6 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         title: "预设、Prompt 与 LoRA",
         subtitle: "预设绑定、导入、Prompt 块、编译预览、LoRA 两阶段和预设组成员。",
         back: { href: "/component-showcase", label: "返回总览" },
-        meta: ["Preset", "Prompt", "LoRA"],
         status: "功能族",
       },
       {
@@ -578,7 +569,6 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         title: "分类、排序、历史与差异",
         subtitle: "分类侧栏、分类编辑、槽位、排序规则、历史 diff、变体 rail 和小节 rail。",
         back: { href: "/component-showcase", label: "返回总览" },
-        meta: ["Taxonomy", "Sort", "History"],
         status: "功能族",
       },
       {
@@ -589,7 +579,6 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         title: "图片结果与审核面",
         subtitle: "小图、中图、结果列表、审核面板、图片统计、Lightbox 和结果筛选。",
         back: { href: "/component-showcase", label: "返回总览" },
-        meta: ["ImageThumb", "ReviewBoard", "Lightbox"],
         status: "功能族",
       },
       {
@@ -600,7 +589,6 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         title: "任务运行、队列与进度",
         subtitle: "队列指标、当前运行进度、运行/失败列表、待审核分组和执行参数摘要。",
         back: { href: "/component-showcase", label: "返回总览" },
-        meta: ["Queue", "RunList", "Progress"],
         status: "功能族",
       },
       {
@@ -611,7 +599,6 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         title: "系统、日志、监控与模型文件",
         subtitle: "日志筛选、日志行、监控状态、探测结果、模型文件浏览和登录令牌。",
         back: { href: "/component-showcase", label: "返回总览" },
-        meta: ["Logs", "Monitor", "Models"],
         status: "功能族",
       },
       {
@@ -623,7 +610,6 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         subtitle: "Lucide 图标、自定义 SVG 图标和图标语义说明。",
         back: { href: "/component-showcase", label: "返回总览" },
         actions: [headerAction("搜索", Search)],
-        meta: ["Lucide", "Custom SVG", "语义"],
         status: "专项",
       },
       {
@@ -643,7 +629,6 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
           headerAction("保存样式", Save, "primary"),
           headerAction("重置布局", X, "danger"),
         ],
-        meta: ["桌面", "移动端"],
         status: "专项",
       },
     ]),
@@ -654,8 +639,32 @@ export function flattenHeaderSpecs(data: DemoData) {
   return buildHeaderSpecs(data).flatMap((group) => group.specs);
 }
 
+function sectionHeaderMeta(section: DemoSection | undefined) {
+  if (!section) return undefined;
+  const sectionImageCount = section.images.length;
+  return [
+    section.aspectRatio,
+    `batch ${section.batchSize}`,
+    `${sectionImageCount} 张`,
+    `Prompt ${section.promptBlockCount}`,
+    `LoRA ${section.loraCount}`,
+  ];
+}
+
 export function findHeaderSpecForRoute(data: DemoData, currentRoute: string) {
   const specs = flattenHeaderSpecs(data);
   const matched = matchRoute(currentRoute);
-  return specs.find((spec) => spec.key === matched.key) ?? specs.find((spec) => spec.route === currentRoute) ?? specs.find((spec) => spec.key === "not-found") ?? null;
+  const spec = specs.find((item) => item.key === matched.key) ?? specs.find((item) => item.route === currentRoute) ?? specs.find((item) => item.key === "not-found") ?? null;
+  if (!spec || matched.key !== "section-editor") return spec;
+
+  const project = findProject(data, matched.params.projectId);
+  const section = findSection(project, matched.params.sectionId);
+
+  return {
+    ...spec,
+    back: { href: `/projects/${project?.id ?? matched.params.projectId ?? "project-id"}`, label: project?.title ?? "返回项目" },
+    meta: sectionHeaderMeta(section),
+    subtitle: `${project?.title ?? "项目"} · ${section?.aspectRatio ?? "2:3"} · 批量 ${section?.batchSize ?? 2}`,
+    title: section?.name ?? spec.title,
+  };
 }

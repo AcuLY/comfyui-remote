@@ -8,7 +8,7 @@ import { buildHeaderSpecs } from "../../routing/header-specs";
 import { RouteHeaderSurface } from "../../shell/header-surface";
 import { DimensionsReadout, HistoryDiffRow, KSamplerCard, LoraColumn, LoraRow, type LoraRowData, PresetBindingRow, PromptBlockRow, SpecRow, SpecSection, StepperInput } from "../../features/projects";
 import { makeImages } from "../helpers";
-import { Button, Checkbox, DemoTabs, Field, MetricCard, PageHeader, SegmentedControl, StatusBadge, Switch } from "../../shared/primitives";
+import { Button, Checkbox, Field, MetricCard, PageHeader, SegmentedControl, StatusBadge, Switch } from "../../shared/primitives";
 import { ImageListMedium, ImageListSmall, ImageThumbMedium, ReviewImageBoard } from "../../shared/media";
 import { OperationStateStrip } from "../../shared/feedback";
 import { AnchorRail, EditorBlock, FolderBreadcrumb, FolderRow, InspectorAside, MoveTargetPicker, SelectionBatchBar, SortableRowShell, ToolbarCluster, UnitRowShell, WorkbenchSurface } from "../../shared/patterns";
@@ -75,8 +75,10 @@ function ControlsSample() {
         onChange={setMode}
         value={mode}
       />
-      <DemoTabs
-        tabs={[{ key: "params", label: "参数" }, { key: "results", label: "结果", count: 12 }, { key: "history", label: "历史" }]}
+      <SegmentedControl
+        ariaLabel="切换视图"
+        role="tablist"
+        items={[{ value: "params", label: "参数" }, { value: "results", label: "结果", count: 12 }, { value: "history", label: "历史" }]}
         value={tab}
         onChange={setTab}
       />
@@ -94,7 +96,7 @@ function SurfacesSample() {
         <EditorBlock title="编辑区块" description="标题、说明、状态和内容统一归位。" actions={<StatusBadge status="ready" label="已保存" />}>
           <div className={s.sampleCards}>
             <Field label="名称" value="写实人像" />
-            <Field label="Slug" value="portrait-realistic" />
+            <Field label="备注" value="用于角色基础描述。" />
           </div>
         </EditorBlock>
       </WorkbenchSurface>
@@ -122,7 +124,7 @@ function UnitItemsSample() {
       <UnitRowShell
         leading={<span className={s.miniSwatch} />}
         title="写实人像 / 高细节"
-        description="预设库条目：分类色、名称、slug、说明和进入箭头。"
+        description="预设库条目：分类色、名称、说明和进入箭头。"
         meta={<StatusBadge status="ready" label="预设" />}
         actions={<Button icon={FileText}>打开</Button>}
       />

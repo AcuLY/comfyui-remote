@@ -19,6 +19,7 @@ export function PromptsPanel({ editor }: { editor: SectionEditorModel }) {
           <span>{editor.promptBlocks.length} 块 · 支持拖动排序</span>
         </div>
       </div>
+
       <div className={s.promptTwoColumn}>
         <div>
           <div className={s.pbColumnHead}>

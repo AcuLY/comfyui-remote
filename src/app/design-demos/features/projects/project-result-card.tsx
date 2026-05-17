@@ -7,8 +7,8 @@ import { sectionAnchorId } from "../../routing";
 import type { ResultDemoFilter } from "../../routing";
 import s from "./project-result-card.projects.module.css";
 import { Button } from "../../shared/primitives/button";
-import { DemoTabs } from "../../shared/primitives/demo-tabs";
 import { ImageGrid } from "../../shared/media/image-grid";
+import { SegmentedControl } from "../../shared/primitives/segmented-control";
 import { StatusBadge } from "../../shared/primitives/status-badge";
 
 export function ProjectResultsToolbar({
@@ -27,14 +27,16 @@ export function ProjectResultsToolbar({
         <span>{images.length} 张图片 · {images.filter((image) => image.status === "pending").length} 张待审</span>
       </div>
       <div className={s.toolbar}>
-        <DemoTabs
-          tabs={[
-            { key: "all", label: "全部", count: images.length },
-            { key: "pending", label: "待审", count: images.filter((image) => image.status === "pending").length },
-            { key: "kept", label: "保留", count: images.filter((image) => image.status === "kept").length },
-            { key: "pstation", label: "p站", count: images.filter((image) => image.featured).length },
-            { key: "preview", label: "预览", count: images.filter((image) => image.featured2).length },
-            { key: "cover", label: "封面", count: images.filter((image) => image.cover).length },
+        <SegmentedControl
+          ariaLabel="切换视图"
+          role="tablist"
+          items={[
+            { value: "all", label: "全部", count: images.length },
+            { value: "pending", label: "待审", count: images.filter((image) => image.status === "pending").length },
+            { value: "kept", label: "保留", count: images.filter((image) => image.status === "kept").length },
+            { value: "pstation", label: "p站", count: images.filter((image) => image.featured).length },
+            { value: "preview", label: "预览", count: images.filter((image) => image.featured2).length },
+            { value: "cover", label: "封面", count: images.filter((image) => image.cover).length },
           ]}
           value={filter}
           onChange={onFilterChange}

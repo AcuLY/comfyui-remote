@@ -23,7 +23,7 @@ import { LoginTokenPanel } from "../../features/auth";
 import { TemplateSectionRow } from "../../features/templates";
 import { OperationStateStrip } from "../../shared/feedback";
 import { ImageListMedium, ImageListSmall, ImagePreviewFrame, ImageThumbMedium, ReviewImageBoard } from "../../shared/media";
-import { Button, ButtonLink, Checkbox, DemoTabs, EmptyPage, EmptyRows, Field, FloatingSelect, PageHeader, SegmentedControl, StatusBadge, Switch } from "../../shared/primitives";
+import { Button, ButtonLink, Checkbox, EmptyPage, EmptyRows, Field, FloatingSelect, PageHeader, SegmentedControl, StatusBadge, Switch } from "../../shared/primitives";
 import { AnchorRail, EditorBlock, FolderBreadcrumb, FolderRow, InspectorAside, MoveTargetPicker, SelectionBatchBar, SortableRowShell, ToolbarCluster, UnitRowShell, WorkbenchSurface } from "../../shared/patterns";
 import { makeImages } from "../helpers";
 import type { ShowcasePreviewComponentName } from "../preview-keys";
@@ -83,7 +83,6 @@ const previewRenderers: Record<ShowcasePreviewComponentName, PreviewRenderer> = 
     </div>
   ),
   SegmentedControl: () => <SegmentedControlPreview />,
-  DemoTabs: () => <DemoTabsPreview />,
   Field: () => <FieldsPreview />,
   FloatingSelect: () => <SelectControlsPreview />,
   PageHeader: () => (
@@ -98,7 +97,7 @@ const previewRenderers: Record<ShowcasePreviewComponentName, PreviewRenderer> = 
   ),
   EditorBlock: () => (
     <EditorBlock title="编辑区块" description="标题、说明和内容一起出现。" actions={<StatusBadge status="ready" label="已保存" />}>
-      <Field label="Slug" value="portrait-realistic" />
+      <Field label="名称" value="写实人像" />
     </EditorBlock>
   ),
   InspectorAside: () => (
@@ -446,24 +445,23 @@ function MoveTargetPickerPreview() {
 
 function SegmentedControlPreview() {
   const [value, setValue] = useState("lora");
+  const [tab, setTab] = useState("params");
   return (
-    <SegmentedControl
-      ariaLabel="模型类型"
-      items={[{ value: "lora", label: "LoRA" }, { value: "checkpoint", label: "Checkpoint" }]}
-      onChange={setValue}
-      value={value}
-    />
-  );
-}
-
-function DemoTabsPreview() {
-  const [value, setValue] = useState("params");
-  return (
-    <DemoTabs
-      tabs={[{ key: "params", label: "参数" }, { key: "results", label: "结果", count: 12 }, { key: "history", label: "历史" }]}
-      value={value}
-      onChange={setValue}
-    />
+    <div className={s.previewStack}>
+      <SegmentedControl
+        ariaLabel="模型类型"
+        items={[{ value: "lora", label: "LoRA" }, { value: "checkpoint", label: "Checkpoint" }]}
+        onChange={setValue}
+        value={value}
+      />
+      <SegmentedControl
+        ariaLabel="切换视图"
+        role="tablist"
+        items={[{ value: "params", label: "参数" }, { value: "results", label: "结果", count: 12 }, { value: "history", label: "历史" }]}
+        value={tab}
+        onChange={setTab}
+      />
+    </div>
   );
 }
 

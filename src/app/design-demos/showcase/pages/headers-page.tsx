@@ -8,6 +8,7 @@ import { cx } from "../../routing";
 import { demoHref } from "../../routing";
 import { buildHeaderSpecs, displayHeaderRoute, headerAction as action } from "../../routing/header-specs";
 import type { HeaderSpec } from "../../routing/header-specs";
+import { getHeaderActionSlots } from "../../shell/header-action-slots";
 import { RouteHeaderSurface } from "../../shell/header-surface";
 import { PageHeader } from "../../shared/primitives";
 import s from "./headers-page.module.css";
@@ -64,15 +65,18 @@ function AuditReadout({ spec }: { spec: HeaderSpec }) {
 }
 
 function HeaderSurface({
+  data,
   mode,
   spec,
 }: {
+  data: DemoData;
   mode: HeaderMode;
   spec: HeaderSpec;
 }) {
   const isMobile = mode === "mobile";
   const titleId = `${spec.key}-${mode}-title`;
   const modeLabel = modeLabels[mode];
+  const actionSlots = getHeaderActionSlots(spec.key, data);
 
   return (
     <div className={s.previewFrame}>
@@ -85,7 +89,7 @@ function HeaderSurface({
         <span>{modeLabel.summary}</span>
       </div>
       <div className={cx(s.previewStage, isMobile && s.previewStageMobile)}>
-        <RouteHeaderSurface headingLevel={3} mode={mode} spec={spec} titleId={titleId} />
+        <RouteHeaderSurface actionSlots={actionSlots} headingLevel={3} mode={mode} spec={spec} titleId={titleId} />
         <div className={s.previewContent} aria-hidden="true">
           <span />
           <span />
@@ -96,7 +100,7 @@ function HeaderSurface({
   );
 }
 
-function PageHeaderCard({ spec }: { spec: HeaderSpec }) {
+function PageHeaderCard({ data, spec }: { data: DemoData; spec: HeaderSpec }) {
   return (
     <article className={s.headerCard}>
       <div className={s.cardIntro}>
@@ -112,14 +116,14 @@ function PageHeaderCard({ spec }: { spec: HeaderSpec }) {
       </div>
       <AuditReadout spec={spec} />
       <div className={s.stateGrid}>
-        <HeaderSurface mode="expanded" spec={spec} />
-        <HeaderSurface mode="mobile" spec={spec} />
+        <HeaderSurface data={data} mode="expanded" spec={spec} />
+        <HeaderSurface data={data} mode="mobile" spec={spec} />
       </div>
     </article>
   );
 }
 
-function HeaderPrinciples() {
+function HeaderPrinciples({ data }: { data: DemoData }) {
   const specs: HeaderSpec[] = [
     {
       key: "principle-review",
@@ -156,7 +160,7 @@ function HeaderPrinciples() {
   return (
     <section className={s.principles}>
       {specs.map((spec) => (
-        <HeaderSurface key={spec.key} mode="expanded" spec={spec} />
+        <HeaderSurface data={data} key={spec.key} mode="expanded" spec={spec} />
       ))}
     </section>
   );
@@ -174,7 +178,7 @@ export function ComponentShowcaseHeadersPage({ data }: { data: DemoData }) {
         title="Headers 固定顶栏专项"
         subtitle={`${total} 个页面 header 设计稿，覆盖桌面展开和移动端合并状态；滚动时整条 header 隐藏或恢复。`}
       />
-      <HeaderPrinciples />
+      <HeaderPrinciples data={data} />
       <div className={s.pageMap}>
         {groups.map((group) => (
           <section className={s.groupSection} key={group.label}>
@@ -184,7 +188,7 @@ export function ComponentShowcaseHeadersPage({ data }: { data: DemoData }) {
             </div>
             <div className={s.cardGrid}>
               {group.specs.map((spec) => (
-                <PageHeaderCard key={spec.key} spec={spec} />
+                <PageHeaderCard data={data} key={spec.key} spec={spec} />
               ))}
             </div>
           </section>

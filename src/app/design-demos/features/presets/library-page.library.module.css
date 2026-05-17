@@ -448,6 +448,7 @@
 
 .presetLibrarySurface {
   display: grid;
+  container-type: inline-size;
   gap: 8px;
   min-width: 0;
 }
@@ -525,12 +526,19 @@
 }
 
 .presetFolderGrid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@container (min-width: 520px) {
+  .presetFolderGrid,
+  .presetItemList {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .presetItemRow {
   display: grid;
-  grid-template-columns: 28px minmax(0, 1fr);
+  grid-template-columns: 28px minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
   min-height: 64px;
@@ -559,6 +567,29 @@
 
 .presetItemOpenArea:focus-visible {
   outline: none;
+}
+
+.presetItemActions {
+  display: inline-flex;
+  min-width: 36px;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.presetItemCopyButton {
+  flex: 0 0 auto;
+}
+
+.presetCopyState {
+  border: 1px solid rgba(0, 217, 146, 0.26);
+  border-radius: 999px;
+  background: rgba(0, 217, 146, 0.08);
+  color: var(--demo-green);
+  font-size: 10px;
+  line-height: 1;
+  padding: 4px 6px;
+  white-space: nowrap;
 }
 
 .presetItemRowSelected {
@@ -802,6 +833,10 @@
     grid-column: 3;
     grid-row: 1;
   }
+
+  .presetCopyState {
+    display: none;
+  }
 }
 
 @media (max-width: 639px) {
@@ -982,7 +1017,7 @@
   }
 
   .presetItemRow {
-    grid-template-columns: 26px minmax(0, 1fr);
+    grid-template-columns: 26px minmax(0, 1fr) auto;
     align-items: start;
   }
 
@@ -999,6 +1034,10 @@
   .presetItemArrow {
     grid-column: 3;
     grid-row: 1;
+  }
+
+  .presetItemActions {
+    align-self: start;
   }
 
   .presetMoveBackdrop {
@@ -1040,6 +1079,10 @@
 
   .presetItemRow {
     padding: 7px;
+  }
+
+  .presetCopyState {
+    display: none;
   }
 
   .presetItemMain p {

@@ -1,6 +1,7 @@
 "use client";
 
-export * from "./editor-header";
+export type SaveStatus = "idle" | "saving" | "saved";
+
 export * from "./editor-controls";
 export * from "./editor-presets";
 export * from "./editor-prompts";

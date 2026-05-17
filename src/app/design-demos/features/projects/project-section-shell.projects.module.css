@@ -42,16 +42,20 @@
 }
 
 .projectSectionShell {
+  --project-section-shell-offset: calc(var(--demo-route-header-height, calc(96px + env(safe-area-inset-top))) + 22px);
+  --project-section-scroll-height: calc(100vh - var(--project-section-shell-offset));
+  --project-section-scroll-height: calc(100dvh - var(--project-section-shell-offset));
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(190px, 236px);
   gap: 12px;
   align-items: start;
+  min-height: 0;
 }
 
-.projectScrollPane,
-.projectSectionShell > .sectionRail {
-  max-height: calc(100vh - 210px);
-  min-height: 420px;
+.projectScrollPane {
+  height: var(--project-section-scroll-height);
+  max-height: var(--project-section-scroll-height);
+  min-height: min(420px, var(--project-section-scroll-height));
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
@@ -60,6 +64,9 @@
 .projectScrollPane {
   min-width: 0;
   padding-right: 2px;
+  padding-bottom: 18px;
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 34px), transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 34px), transparent 100%);
 }
 
 @keyframes demoSkeleton {
@@ -78,13 +85,11 @@
 @media (max-width: 639px) {
 
   .projectSectionShell {
+    --project-section-shell-offset: calc(var(--demo-route-header-height, calc(60px + env(safe-area-inset-top))) + 126px + env(safe-area-inset-bottom));
+    --project-section-scroll-height: clamp(260px, calc(100vh - var(--project-section-shell-offset)), 620px);
+    --project-section-scroll-height: clamp(260px, calc(100dvh - var(--project-section-shell-offset)), 620px);
     grid-template-columns: minmax(96px, 31vw) minmax(0, 1fr);
     gap: 8px;
-  }
-
-  .projectSectionShell > .sectionRail {
-    grid-column: 1;
-    grid-row: 1;
   }
 
   .projectScrollPane {
@@ -92,18 +97,8 @@
     grid-row: 1;
   }
 
-  .projectScrollPane,
-  .projectSectionShell > .sectionRail {
-    max-height: clamp(340px, calc(100vh - 220px - env(safe-area-inset-bottom)), 620px);
-    min-height: 260px;
-  }
-
   .projectScrollPane {
     padding-right: 0;
-    padding-bottom: calc(96px + env(safe-area-inset-bottom));
-  }
-
-  .projectSectionShell > .sectionRail {
     padding-bottom: calc(96px + env(safe-area-inset-bottom));
   }
 }

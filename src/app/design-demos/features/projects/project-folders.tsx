@@ -1,17 +1,23 @@
 "use client";
 
-import { CheckSquare, FolderInput, Pencil, Trash2 } from "lucide-react";
+import { Folder, FolderInput, GripVertical, Trash2 } from "lucide-react";
 
-import type { DemoProject, DemoProjectFolder } from "../../data";
+import type { DemoImage, DemoProject, DemoProjectFolder, DemoRun } from "../../data";
+import { cx } from "../../routing";
+import cardStyles from "./project-list-item.projects.module.css";
 import s from "./project-folders.projects.module.css";
 import { Button } from "../../shared/primitives/button";
+import { Checkbox } from "../../shared/primitives/checkbox";
+import { ImageListSmall } from "../../shared/media/image-list-small";
 import {
   FolderBreadcrumb,
-  FolderRow,
   MoveTargetPicker,
   SelectionBatchBar,
   type MoveTargetOption,
 } from "../../shared/patterns";
+import { ProjectListCardShell } from "./project-list-item";
+
+const FOLDER_PREVIEW_IMAGE_LIMIT = 24;
 
 export function buildProjectFolderBreadcrumb(folders: DemoProjectFolder[], currentFolderId: string | null) {
   const path: DemoProjectFolder[] = [];
@@ -25,8 +31,54 @@ export function buildProjectFolderBreadcrumb(folders: DemoProjectFolder[], curre
   return path;
 }
 
-export function countProjectFolderItems(folderId: string, folders: DemoProjectFolder[], projects: DemoProject[]) {
-  return folders.filter((folder) => folder.parentId === folderId).length + projects.filter((project) => project.folderId === folderId).length;
+export function buildProjectFolderCardData(folderId: string, folders: DemoProjectFolder[], projects: DemoProject[], runs: DemoRun[]) {
+  const descendantFolderIds = collectDescendantFolderIds(folderId, folders);
+  const projectCount = folders
+    .filter((folder) => descendantFolderIds.has(folder.id))
+    .reduce((count, folder) => count + folder.projectCount, 0);
+  const subfolderCount = Math.max(0, descendantFolderIds.size - 1);
+  const folderProjects = projects.filter((project) => project.folderId !== null && descendantFolderIds.has(project.folderId));
+  const projectIds = new Set(folderProjects.map((project) => project.id));
+  const projectsWithRunImages = new Set<string>();
+  const runImages = runs.flatMap((run) => {
+    const hasPreviewableRunImages = run.imageCount > 0 && run.images.length > 0;
+    if (!projectIds.has(run.projectId) || projectsWithRunImages.has(run.projectId) || !hasPreviewableRunImages) {
+      return [];
+    }
+    projectsWithRunImages.add(run.projectId);
+    return run.images;
+  });
+  const fallbackProjectImages = folderProjects.flatMap((project) => (
+    projectsWithRunImages.has(project.id) ? [] : project.images
+  ));
+  const images = uniqueImages([...runImages, ...fallbackProjectImages]).slice(0, FOLDER_PREVIEW_IMAGE_LIMIT);
+
+  return { images, projectCount, subfolderCount };
+}
+
+function collectDescendantFolderIds(folderId: string, folders: DemoProjectFolder[]) {
+  const ids = new Set<string>([folderId]);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const folder of folders) {
+      if (folder.parentId && ids.has(folder.parentId) && !ids.has(folder.id)) {
+        ids.add(folder.id);
+        changed = true;
+      }
+    }
+  }
+  return ids;
+}
+
+function uniqueImages(images: DemoImage[]) {
+  const seen = new Set<string>();
+  return images.filter((image) => {
+    const key = image.id || image.src || image.full;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 export function ProjectFolderBreadcrumb({
@@ -50,32 +102,84 @@ export function ProjectFolderBreadcrumb({
 }
 
 export function ProjectFolderRow({
+  compact = false,
   folder,
-  itemCount,
+  images,
   onEnter,
+  onToggleSelected,
+  projectCount,
+  selected,
+  subfolderCount,
 }: {
+  compact?: boolean;
   folder: DemoProjectFolder;
-  itemCount: number;
+  images: DemoImage[];
   onEnter: () => void;
+  onToggleSelected: () => void;
+  projectCount: number;
+  selected: boolean;
+  subfolderCount: number;
 }) {
   return (
-    <FolderRow
-      actions={
+    <ProjectListCardShell
+      compact={compact}
+      selected={selected}
+      leading={(
         <>
-          <Button tone="subtle" icon={Pencil} iconOnly ariaLabel={`重命名文件夹：${folder.name}`} />
-          {itemCount === 0 ? (
-            <Button tone="danger" icon={Trash2} iconOnly ariaLabel={`删除文件夹：${folder.name}`} />
-          ) : null}
+          <Checkbox
+            className={cardStyles.projectSelectCheckbox}
+            checked={selected}
+            label={selected ? `取消选择文件夹：${folder.name}` : `选择文件夹：${folder.name}`}
+            onCheckedChange={() => onToggleSelected()}
+          />
+          <Button
+            className={cardStyles.projectDragHandle}
+            tone="subtle"
+            icon={GripVertical}
+            iconOnly
+            ariaLabel={`拖拽排序文件夹：${folder.name}`}
+          />
         </>
-      }
-      actionsClassName={s.projectFolderRowActions}
-      className={s.projectFolderRow}
-      countLabel={`${itemCount} 项`}
-      dragHandleClassName={s.projectFolderGrip}
-      iconClassName={s.icon}
-      name={folder.name}
-      onOpen={onEnter}
-      openClassName={s.projectFolderOpen}
+      )}
+      body={(
+        <>
+          <div
+            aria-label={`打开文件夹：${folder.name}`}
+            className={cx(cardStyles.projectListRecentResult, s.projectFolderPreviewButton)}
+            onClick={onEnter}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                onEnter();
+              }
+            }}
+            role="button"
+            tabIndex={0}
+          >
+            <ImageListSmall className={cardStyles.recentResultImages} images={images} limit={images.length} showCounts />
+          </div>
+        </>
+      )}
+      title={(
+        <div className={cardStyles.projectListTitleRow}>
+          <button className={cx(cardStyles.projectListTitleLink, s.projectFolderTitleButton)} type="button" onClick={onEnter}>
+            <Folder className={s.projectFolderTitleIcon} aria-hidden="true" />
+            <strong>{folder.name}</strong>
+            <span>{projectCount} 项目</span>
+            <span>{subfolderCount} 子文件夹</span>
+          </button>
+          <div className={cardStyles.projectItemActions}>
+            <Button
+              tone="danger"
+              icon={Trash2}
+              iconOnly
+              ariaLabel={`删除文件夹：${folder.name}`}
+              size="sm"
+              feedback={{ tone: "warning", title: "删除文件夹需要确认", detail: folder.name }}
+            />
+          </div>
+        </div>
+      )}
     />
   );
 }
@@ -83,31 +187,21 @@ export function ProjectFolderRow({
 export function ProjectBatchBar({
   folders,
   selectedCount,
-  totalCount,
   onClear,
   onMove,
-  onSelectAll,
 }: {
   folders: DemoProjectFolder[];
   selectedCount: number;
-  totalCount: number;
   onClear: () => void;
   onMove: (folderId: string | null) => void;
-  onSelectAll: () => void;
 }) {
   return (
     <SelectionBatchBar
-      actions={
-        <>
-          <ProjectMoveMenu folders={folders} currentFolderId={null} onMove={onMove} label="移至文件夹" />
-          <Button icon={CheckSquare} onClick={selectedCount === totalCount ? onClear : onSelectAll}>
-            {selectedCount === totalCount ? "取消全选" : "全选"}
-          </Button>
-        </>
-      }
+      actions={<ProjectMoveMenu folders={folders} currentFolderId={null} onMove={onMove} label="移至文件夹" />}
       actionsClassName={s.projectBatchActions}
       className={s.projectBatchBar}
-      label={<>已选 {selectedCount} 个项目</>}
+      clearTone="danger"
+      label={<>已选 {selectedCount} 项</>}
       onClear={onClear}
       selectedCount={selectedCount}
     />
@@ -129,6 +223,7 @@ export function ProjectMoveMenu({
 
   return (
     <MoveTargetPicker
+      buttonTone="default"
       buttonClassName={s.projectMoveMenuButton}
       className={s.projectMoveMenu}
       currentId={currentFolderId}

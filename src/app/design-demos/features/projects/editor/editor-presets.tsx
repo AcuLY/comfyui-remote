@@ -6,11 +6,12 @@ import Link from "next/link";
 import { Search, Trash2, Unlink } from "lucide-react";
 
 import { Button } from "../../../shared/primitives/button";
+import { FloatingSelect } from "../../../shared/primitives/floating-select";
 import { SegmentedControl } from "../../../shared/primitives/segmented-control";
 import s from "./editor-presets.module.css";
 import { cx } from "../../../routing";
 import { parseHue } from "./editor-shared";
-import { VariantSwitcher } from "./editor-controls";
+
 export type PresetBinding = {
   id: string;
   kind: "preset" | "group";
@@ -23,6 +24,10 @@ export type PresetBinding = {
   variantName?: string;
   blockCount: number;
   loraCount: number;
+  positivePromptCount?: number;
+  negativePromptCount?: number;
+  lora1Count?: number;
+  lora2Count?: number;
   variants?: Array<{ id: string; name: string }>;
   /** member presets for kind=group */
   members?: Array<{
@@ -52,6 +57,8 @@ export function PresetBindingRow({
   const hue = parseHue(binding.categoryColor);
   const color = `hsl(${hue} 70% 60%)`;
   const isFromGroup = binding.kind === "group";
+  const currentVariantId = binding.variantId ?? binding.variants?.[0]?.id ?? "";
+  const currentVariant = binding.variants?.find((variant) => variant.id === currentVariantId);
 
   return (
     <div className={s.bindRow}>
@@ -67,10 +74,19 @@ export function PresetBindingRow({
 
       <div className={s.bindRowControls}>
         {binding.variants && binding.variants.length > 1 ? (
-          <VariantSwitcher
-            variants={binding.variants}
-            currentVariantId={binding.variantId ?? binding.variants[0]?.id ?? ""}
+          <FloatingSelect
+            ariaLabel="Select variant"
+            buttonClassName={s.variantSelectBtn}
+            className={s.variantSelect}
+            displayValue={currentVariant?.name ?? "切换"}
+            menuClassName={s.variantSelectMenu}
             onChange={(vid) => onVariantChange?.(binding.id, vid)}
+            optionClassName={s.variantSelectOption}
+            options={binding.variants.map((variant) => ({
+              value: variant.id,
+              label: variant.name,
+            }))}
+            value={currentVariantId}
           />
         ) : null}
 
@@ -105,24 +121,64 @@ function PresetBindingSummary({
   color: string;
   isFromGroup: boolean;
 }) {
+  const counts = getBindingCounts(binding);
+  const displayName =
+    binding.scope === "project" ? stripProjectDefaultSuffix(binding.name) : binding.name;
+
   return (
     <div className={s.bindNameWrap}>
       <span className={s.bindName}>
-        {binding.name}
+        <span className={s.bindTitleText}>{displayName}</span>
         <span
           className={s.bindCategory}
           style={{ "--cat": color } as React.CSSProperties}
         >
           {binding.categoryName}
         </span>
+        {binding.scope === "project" ? <span className={s.bindScopeChip}>项目</span> : null}
         {isFromGroup ? <span className={s.bindGroupChip}>组</span> : null}
       </span>
       <span className={s.bindMeta}>
-        <b>{binding.blockCount}</b> 块 · <b>{binding.loraCount}</b> LoRA
-        {binding.variantName ? <> · {binding.variantName}</> : null}
+        <span className={s.bindMetric}>
+          <em>正面</em>
+          <b>{counts.positive}</b>
+        </span>
+        <span className={s.bindMetric}>
+          <em>负面</em>
+          <b>{counts.negative}</b>
+        </span>
+        <span className={s.bindMetric}>
+          <em>LoRA1</em>
+          <b>{counts.lora1}</b>
+        </span>
+        <span className={s.bindMetric}>
+          <em>LoRA2</em>
+          <b>{counts.lora2}</b>
+        </span>
       </span>
     </div>
   );
+}
+
+function stripProjectDefaultSuffix(name: string) {
+  return name.replace(/\s*·\s*项目默认\s*$/, "");
+}
+
+function getBindingCounts(binding: PresetBinding) {
+  const blockCount = normalizeCount(binding.blockCount);
+  const loraCount = normalizeCount(binding.loraCount);
+  const lora1Fallback = Math.ceil(loraCount / 2);
+
+  return {
+    positive: binding.positivePromptCount ?? blockCount,
+    negative: binding.negativePromptCount ?? blockCount,
+    lora1: binding.lora1Count ?? lora1Fallback,
+    lora2: binding.lora2Count ?? Math.max(0, loraCount - lora1Fallback),
+  };
+}
+
+function normalizeCount(value: number | undefined) {
+  return Number.isFinite(value) ? Math.max(0, Math.round(value ?? 0)) : 0;
 }
 
 // ============================================================================

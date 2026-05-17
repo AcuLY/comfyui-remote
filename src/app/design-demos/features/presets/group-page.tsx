@@ -37,7 +37,7 @@ export function PresetGroupPage({ data, group }: { data: DemoData; group: DemoPr
         <main className={s.editorSurface}>
           <div className={s.editorStickyHeader}>
             <div className={s.editorIdentity}>
-              <span>{group.slug}</span>
+              <span>{category?.name ?? "未分类"} · {folderPath}</span>
               <strong>成员编排</strong>
               <em>拖拽排序、添加预设或子组、保存后返回当前分类和文件夹。</em>
             </div>
@@ -51,13 +51,12 @@ export function PresetGroupPage({ data, group }: { data: DemoData; group: DemoPr
             <div className={s.editorBlockHeader}>
               <div>
                 <strong>组信息</strong>
-                <span>预设组保留分类、文件夹和删除返回路径，名称与 slug 可直接编辑。</span>
+                <span>预设组保留分类、文件夹和删除返回路径，名称可直接编辑。</span>
               </div>
               <Button tone="danger" icon={Trash2} feedback={{ tone: "warning", title: "删除预设组需要确认", detail: group.name }}>删除组</Button>
             </div>
             <div className={s.formGrid}>
               <Field label="名称" value={group.name} />
-              <Field label="Slug" value={group.slug} />
               <FloatingSelect label="分类" value={category?.name ?? group.categoryId} />
               <FloatingSelect label="文件夹" value={folderPath} />
             </div>

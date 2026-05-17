@@ -16,7 +16,7 @@ export function ProjectFormPage({ project, mode }: { project?: DemoProject; mode
     <div className={s.page}>
       <PageHeader
         eyebrow="项目"
-        title={mode === "new" ? "创建新项目" : `编辑项目：${project?.title ?? "项目"}`}
+        title={mode === "new" ? "创建新项目" : project?.title ?? "项目"}
         subtitle="基础信息、预设绑定、默认参数和小节种子策略。"
         actions={<Button tone="primary" icon={Save}>{mode === "new" ? "创建" : "保存"}</Button>}
       />
@@ -25,7 +25,6 @@ export function ProjectFormPage({ project, mode }: { project?: DemoProject; mode
           <div className={s.contentGrid}>
             <div className={s.formGrid}>
               <Field label="项目名称" value={project?.title ?? "新图像项目"} />
-              <Field label="Slug" value={project?.slug ?? "new-project"} />
               <FloatingSelect label="状态" value={project?.status ?? "draft"} />
               <FloatingSelect label="Checkpoint" value={project?.checkpointName ?? "继承默认模型"} />
             </div>

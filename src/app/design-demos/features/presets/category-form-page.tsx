@@ -1,10 +1,10 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import { useState } from "react";
 import { GripVertical, Plus, Save, X } from "lucide-react";
 
 import {
-  categoryColorValue,
   categoryHueValue,
   categoryItemCount,
   categorySlotPreview,
@@ -19,6 +19,7 @@ import { Field } from "../../shared/primitives/field";
 import { PageHeader } from "../../shared/primitives/page-header";
 import { FloatingSelect } from "../../shared/primitives/floating-select";
 import { cx } from "../../routing";
+import { UnitRowShell } from "../../shared/patterns";
 
 function PresetCategoryEditor({ category, categories }: { category: DemoCategory | null; categories: DemoCategory[] }) {
   const [draftType, setDraftType] = useState<"preset" | "group">(category?.type === "group" ? "group" : "preset");
@@ -26,13 +27,15 @@ function PresetCategoryEditor({ category, categories }: { category: DemoCategory
   const itemCount = category ? categoryItemCount(category) : 0;
   const slots = categorySlotPreview(category, categories);
   const presetCategories = categories.filter((item) => item.type !== "group");
+  const [hue, setHue] = useState(() => categoryHueValue(category?.color ?? null));
+  const hueColor = `hsl(${hue} 100% 43%)`;
+  const hueControlStyle = {
+    "--category-hue-color": hueColor,
+    "--category-hue-progress": `${(hue / 359) * 100}%`,
+  } as CSSProperties;
 
   return (
     <div className={s.categoryEditor}>
-      <div className={s.categoryEditorHeader}>
-        <strong>{category ? "编辑分类" : "新建分类"}</strong>
-        <span>{category ? "分类类型已锁定" : "选择预设或预设组"}</span>
-      </div>
       <div className={s.categoryTypeSwitch}>
         {(["preset", "group"] as const).map((item) => (
           <button
@@ -48,26 +51,44 @@ function PresetCategoryEditor({ category, categories }: { category: DemoCategory
       </div>
       <div className={s.categoryEditorGrid}>
         <Field label="名称" value={category?.name ?? "新分类"} />
-        <Field label="Slug" value={category?.slug ?? "new-category"} />
       </div>
-      <div className={s.hueControl}>
-        <span className={s.categorySwatch} style={{ backgroundColor: categoryColorValue(category?.color ?? null) }} />
-        <input className={s.hueSlider} type="range" min={0} max={359} defaultValue={categoryHueValue(category?.color ?? null)} />
-        <span>{categoryHueValue(category?.color ?? null)}°</span>
+      <div className={s.hueControl} style={hueControlStyle}>
+        <span className={s.categorySwatch} style={{ backgroundColor: hueColor }} />
+        <div className={s.hueSliderFrame}>
+          <input
+            aria-label="分类色相"
+            className={s.hueSlider}
+            max={359}
+            min={0}
+            onChange={(event) => setHue(Number(event.currentTarget.value))}
+            onInput={(event) => setHue(Number(event.currentTarget.value))}
+            type="range"
+            value={hue}
+          />
+        </div>
+        <span>{hue}°</span>
       </div>
       {type === "group" ? (
         <div className={s.slotEditor}>
           <div className={s.slotEditorHeader}>
             <strong>默认槽位</strong>
-            <Button icon={Plus}>添加槽位</Button>
+            <Button icon={Plus} size="sm" tone="primary">添加槽位</Button>
           </div>
           {(slots.length ? slots : [{ id: "new-slot", label: "主体", categoryName: presetCategories[0]?.name ?? "选择预设分类" }]).map((slot) => (
-            <div className={s.slotRow} key={slot.id}>
-              <GripVertical className={s.categoryDragIcon} />
-              <FloatingSelect label="来源分类" value={slot.categoryName} />
-              <Field label="槽位标签" value={slot.label} />
-              <Button tone="danger" icon={X} iconOnly size="sm" ariaLabel="删除槽位" />
-            </div>
+            <UnitRowShell
+              className={s.slotRow}
+              dragHandle={<GripVertical className={s.categoryDragIcon} />}
+              dragHandleClassName={s.slotRowHandle}
+              key={slot.id}
+              mainClassName={s.slotRowMain}
+              title={(
+                <div className={s.slotRowControls}>
+                  <FloatingSelect label="来源分类" value={slot.categoryName} />
+                  <Button tone="danger" icon={X} iconOnly ariaLabel="删除槽位" />
+                </div>
+              )}
+              titleClassName={s.slotRowTitle}
+            />
           ))}
         </div>
       ) : null}

@@ -1,9 +1,3 @@
-.railItem,
-.railHeading {
-  -webkit-backdrop-filter: var(--demo-glass-blur);
-  backdrop-filter: var(--demo-glass-blur);
-}
-
 @keyframes demoGradientShift {
   0%,
   100% {
@@ -15,11 +9,6 @@
     opacity: 0.82;
     transform: scale(1.05);
   }
-}
-
-.small {
-  font-size: 11px;
-  line-height: 1.45;
 }
 
 @keyframes demoSpin {
@@ -52,18 +41,38 @@
   }
 }
 
-.projectSectionShell > .sectionRail {
-  max-height: calc(100vh - 210px);
-  min-height: 420px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-width: thin;
-}
-
 .sectionRail {
   display: grid;
   align-content: start;
-  gap: 5px;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 6px;
+  height: var(--project-section-scroll-height, calc(100dvh - 210px));
+  max-height: var(--project-section-scroll-height, calc(100dvh - 210px));
+  min-height: min(420px, var(--project-section-scroll-height, calc(100dvh - 210px)));
+  border: 1px solid var(--demo-glass-accent-border);
+  border-radius: var(--demo-radius);
+  background:
+    linear-gradient(135deg, var(--demo-route-header-highlight), transparent 58%),
+    linear-gradient(180deg, color-mix(in srgb, var(--demo-glass-hover) 18%, transparent), transparent 72%),
+    color-mix(in srgb, var(--demo-glass-bg) 72%, transparent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--demo-inset-highlight) 58%, transparent),
+    0 12px 30px color-mix(in srgb, var(--demo-bg) 10%, transparent);
+  overflow: hidden;
+  padding: 0 6px 6px;
+  -webkit-backdrop-filter: var(--demo-glass-blur);
+  backdrop-filter: var(--demo-glass-blur);
+}
+
+.railList {
+  display: grid;
+  min-height: 0;
+  align-content: start;
+  gap: 6px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
 }
 
 .railItem {
@@ -85,10 +94,20 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  border: 1px solid var(--demo-border);
-  border-radius: var(--demo-radius);
-  background: var(--demo-topbar-bg);
+  margin-inline: -6px;
+  border: 0 solid var(--demo-glass-accent-border);
+  border-bottom-width: 1px;
+  border-radius: calc(var(--demo-radius) - 1px) calc(var(--demo-radius) - 1px) 8px 8px;
+  background:
+    linear-gradient(135deg, var(--demo-route-header-highlight), transparent 58%),
+    linear-gradient(180deg, color-mix(in srgb, var(--demo-glass-hover) 24%, transparent), transparent 118%),
+    color-mix(in srgb, var(--demo-glass-bg) 94%, transparent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--demo-inset-highlight) 76%, transparent),
+    0 8px 18px color-mix(in srgb, var(--demo-bg) 12%, transparent);
   color: var(--demo-muted);
+  -webkit-backdrop-filter: var(--demo-glass-blur);
+  backdrop-filter: var(--demo-glass-blur);
   padding: 6px 8px;
 }
 
@@ -117,8 +136,12 @@
 }
 
 .railItem strong {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
   overflow: hidden;
-  color: var(--demo-text);
+  color: var(--demo-muted);
   font-size: 12px;
   font-weight: 520;
   line-height: 1.32;
@@ -126,16 +149,24 @@
   white-space: nowrap;
 }
 
-.railItem .small {
-  color: var(--demo-muted);
-  font-size: 11px;
-  font-weight: 520;
+.railItemPending strong::before {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 6px;
+  border: 0;
+  border-radius: 999px;
+  background: #fbbf24;
+  content: "";
 }
 
 .railItemActive {
   border-color: rgba(0, 217, 146, 0.62);
   background: var(--demo-panel);
   color: var(--demo-green);
+}
+
+.railItemActive strong {
+  color: var(--demo-text);
 }
 
 @keyframes demoSkeleton {
@@ -157,22 +188,15 @@
 
 @media (max-width: 639px) {
 
-  .projectSectionShell > .sectionRail {
+  .sectionRail {
     grid-column: 1;
     grid-row: 1;
+    padding-bottom: 6px;
+    gap: 6px;
   }
 
-  .projectSectionShell > .sectionRail {
-    max-height: clamp(340px, calc(100vh - 220px - env(safe-area-inset-bottom)), 620px);
-    min-height: 260px;
-  }
-
-  .projectSectionShell > .sectionRail {
-    padding-bottom: calc(96px + env(safe-area-inset-bottom));
-  }
-
-  .sectionRail {
-    gap: 5px;
+  .railList {
+    padding-bottom: calc(90px + env(safe-area-inset-bottom));
   }
 
   .railHeading {
@@ -189,10 +213,6 @@
   .railItem strong {
     font-size: 11px;
     white-space: normal;
-  }
-
-  .railItem .small {
-    font-size: 10px;
   }
 }
 

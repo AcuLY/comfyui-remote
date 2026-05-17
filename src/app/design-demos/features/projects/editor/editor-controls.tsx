@@ -585,35 +585,3 @@ export function SelectChip({
     />
   );
 }
-
-// ============================================================================
-// Variant Switcher — used by preset rows
-// ============================================================================
-
-type VariantSwitcherProps = {
-  variants: Array<{ id: string; name: string }>;
-  currentVariantId: string;
-  onChange?: (variantId: string) => void;
-};
-
-export function VariantSwitcher({ variants, currentVariantId, onChange }: VariantSwitcherProps) {
-  const current = variants.find((v) => v.id === currentVariantId);
-
-  return (
-    <FloatingSelect
-      ariaLabel="Select variant"
-      buttonClassName={s.variantSwitcherBtn}
-      className={s.variantSwitcher}
-      displayValue={current?.name ?? "切换"}
-      menuClassName={s.variantSwitcherMenu}
-      onChange={(variantId) => onChange?.(variantId)}
-      optionClassName={s.variantSwitcherOption}
-      options={variants.map((variant) => ({ value: variant.id, label: variant.name }))}
-      value={currentVariantId}
-    />
-  );
-}
-
-// ============================================================================
-// Preset binding row
-// ============================================================================

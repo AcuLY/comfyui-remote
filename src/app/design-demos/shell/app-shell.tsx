@@ -9,6 +9,7 @@ import type { DemoData } from "../data";
 import s from "./app-shell.module.css";
 import { findHeaderSpecForRoute } from "../routing/header-specs";
 import type { HeaderSpec } from "../routing/header-specs";
+import { getHeaderActionSlots } from "./header-action-slots";
 import { RouteHeaderSurface } from "./header-surface";
 import { Button } from "../shared/primitives/button";
 import { DemoFeedbackProvider } from "../shared/feedback";
@@ -247,16 +248,21 @@ function MobileTopbar({
 function DemoRouteHeader({
   config,
   compact,
+  data,
   hidden,
   surfaceRef,
 }: {
   config: HeaderSpec;
   compact: boolean;
+  data: DemoData;
   hidden: boolean;
   surfaceRef: (node: HTMLElement | null) => void;
 }) {
+  const actionSlots = getHeaderActionSlots(config.key, data);
+
   return (
     <RouteHeaderSurface
+      actionSlots={actionSlots}
       className={s.routeHeaderSurface}
       hidden={hidden}
       mode={compact ? "mobile" : "expanded"}
@@ -508,6 +514,7 @@ export function DesignDemoShell({
               <DemoRouteHeader
                 config={routeHeaderConfig}
                 compact={routeHeaderCompact}
+                data={data}
                 hidden={routeHeaderHidden}
                 surfaceRef={setRouteHeaderNode}
               />

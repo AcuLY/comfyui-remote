@@ -64,7 +64,7 @@ export function ImageThumbMedium({
       </button>
       {showStatus ? (
         <div className={s.imageThumbOverlay}>
-          <StatusBadge status={image.status} label={imageReviewLabel(image.status)} />
+          <StatusBadge className={s.imageThumbStatusBadge} status={image.status} label={imageReviewLabel(image.status)} />
         </div>
       ) : null}
       {actionSlot ? (

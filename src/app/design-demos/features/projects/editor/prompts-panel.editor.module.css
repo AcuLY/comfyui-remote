@@ -63,7 +63,8 @@
   border: 1px solid var(--demo-glass-border);
   border-radius: 0 0 16px 16px;
   background: var(--demo-glass-bg);
-  backdrop-filter: var(--demo-glass-blur);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
   box-shadow: var(--demo-glass-shadow);
   overflow: clip;
 }
@@ -111,12 +112,6 @@
   color: var(--demo-muted);
 }
 
-.promptTwoColumn {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 14px;
-}
-
 .promptTabBody {
   gap: 14px;
 }
@@ -124,6 +119,12 @@
 .promptTabBody .addRow {
   border-top: 0;
   padding: 2px 0 0;
+}
+
+.promptTwoColumn {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
 }
 
 .pbColumnHead {

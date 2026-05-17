@@ -50,12 +50,14 @@
 
 :where(.floatingSelectBtn) {
   appearance: none;
+  box-sizing: border-box;
   display: inline-flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
   min-width: 120px;
-  min-height: 38px;
+  height: 36px;
+  min-height: 36px;
   border: 1px solid var(--ui-glass-border);
   border-radius: 10px;
   background: var(--ui-field-bg);
@@ -65,7 +67,7 @@
   font: inherit;
   font-size: 13px;
   outline: none;
-  padding: 8px 12px;
+  padding: 0 12px;
   text-align: left;
   transition: background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
 }

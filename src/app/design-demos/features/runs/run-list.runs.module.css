@@ -93,6 +93,8 @@
   border: 0;
   border-radius: 0;
   background: transparent;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
 .queueSurfaceHeader {
@@ -146,6 +148,7 @@
   display: grid;
   min-width: 0;
   border-bottom: 1px solid var(--demo-border);
+  container-type: inline-size;
 }
 
 .queueProjectGroup:last-child {
@@ -244,6 +247,37 @@
   cursor: pointer;
 }
 
+.queueRunRowFailed {
+  grid-template-columns: 28px minmax(0, 1fr);
+  grid-template-areas:
+    "check body"
+    ". action";
+  align-items: start;
+  gap: 10px 12px;
+  padding-block: 14px;
+}
+
+.queueRunRowFailed > :first-child {
+  grid-area: check;
+  margin-top: 2px;
+}
+
+.queueRunRowFailed > .queueRunMain {
+  grid-area: body;
+}
+
+.queueRunRowFailed > .toolbar {
+  grid-area: action;
+  width: 100%;
+  align-self: stretch;
+  justify-self: stretch;
+}
+
+.queueRunRowFailed > .toolbar :where([data-demo-ui-button="true"]) {
+  width: 100%;
+  min-height: 40px;
+}
+
 .queueRunRowSelectable:focus-visible {
   background: var(--demo-field-bg);
   outline: none;
@@ -266,6 +300,50 @@
 
 .queueProjectRows .queueRunRow:last-child {
   border-bottom: 0;
+}
+
+@container (min-width: 520px) {
+  .queueProjectRows {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0;
+    background: transparent;
+  }
+
+  .queueProjectRows .queueRunRow {
+    grid-template-columns: 28px minmax(0, 1fr) auto;
+    align-items: center;
+    min-height: 0;
+    border-right: 1px solid var(--demo-border);
+    border-bottom: 1px solid var(--demo-border);
+    background: transparent;
+  }
+
+  .queueProjectRows .queueRunRowFailed {
+    grid-template-columns: 28px minmax(0, 1fr);
+    grid-template-areas:
+      "check body"
+      ". action";
+    align-items: start;
+    padding-block: 15px;
+  }
+
+  .queueProjectRows .queueRunRow:nth-child(2n) {
+    border-right: 0;
+  }
+
+  .queueProjectRows .queueRunRow:last-child,
+  .queueProjectRows .queueRunRow:nth-last-child(2):nth-child(odd) {
+    border-bottom: 0;
+  }
+
+  .queueProjectRows .queueRunRow:hover,
+  .queueProjectRows .queueRunRow:focus-visible {
+    background: var(--demo-control-hover);
+  }
+
+  .queueProjectRows .queueRunRowSelected {
+    background: var(--demo-selected);
+  }
 }
 
 .queueRunMain {
@@ -296,42 +374,76 @@
 }
 
 .queueRunMain .queueRunError {
-  display: inline-flex;
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
   min-width: 0;
   max-width: 100%;
-  border: 1px solid rgba(251, 86, 91, 0.26);
-  border-radius: 999px;
-  background: var(--demo-red-soft);
+  border: 1px solid color-mix(in srgb, var(--demo-red) 22%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--demo-red-soft) 68%, transparent);
   color: var(--demo-red);
-  font-size: 10px;
-  line-height: 1.25;
-  padding: 4px 8px;
+  font-size: 11px;
+  line-height: 1.35;
+  padding: 7px 8px;
   white-space: normal;
   overflow-wrap: anywhere;
 }
 
-.queueRunErrorAction {
+.queueRunErrorIcon {
+  width: 15px;
+  height: 15px;
+  align-self: start;
+  margin-top: 1px;
+  color: var(--demo-red);
+}
+
+.queueRunMain .queueRunErrorText {
+  overflow: visible;
+  min-width: 0;
+  color: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.queueRunMain .queueRunErrorAction {
+  display: inline-flex;
   flex: 0 0 auto;
+  overflow: visible;
+  color: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  white-space: normal;
 }
 
 .queueRunErrorCopy {
-  min-height: 22px;
+  min-height: 28px;
   gap: 4px;
-  border-color: rgba(251, 86, 91, 0.2);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.46);
+  border-color: color-mix(in srgb, var(--demo-red) 18%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--demo-glass-soft) 72%, transparent);
   color: var(--demo-red);
   font-size: 10px;
+  font-weight: 580;
   line-height: 1;
-  padding: 2px 7px;
+  padding: 4px 7px;
+}
+
+.queueRunErrorCopy.queueRunErrorCopy {
+  --button-bg: color-mix(in srgb, var(--demo-glass-soft) 72%, transparent);
+  --button-bg-hover: color-mix(in srgb, var(--demo-red-soft) 82%, var(--demo-field-bg));
+  --button-border: color-mix(in srgb, var(--demo-red) 18%, transparent);
+  --button-border-hover: color-mix(in srgb, var(--demo-red) 32%, transparent);
+  --button-color: var(--demo-red);
 }
 
 .queueRunErrorCopy:hover,
 .queueRunErrorCopy:focus-visible {
-  border-color: rgba(251, 86, 91, 0.34);
-  background: rgba(255, 255, 255, 0.7);
+  border-color: color-mix(in srgb, var(--demo-red) 32%, transparent);
+  background: color-mix(in srgb, var(--demo-red-soft) 82%, var(--demo-field-bg));
   color: var(--demo-red);
 }
 
@@ -351,6 +463,17 @@
   font-size: 12px;
   padding: 5px 10px;
   white-space: nowrap;
+}
+
+.queueRunRowSelectable.queueRunRowFailed > .toolbar {
+  width: 100%;
+  align-self: stretch;
+  justify-self: stretch;
+}
+
+.queueRunRowSelectable.queueRunRowFailed > .toolbar :where([data-demo-ui-button="true"]) {
+  width: 100%;
+  min-height: 40px;
 }
 
 .projectFolderDraftRow > .icon {
@@ -452,14 +575,33 @@
     grid-template-columns: 28px minmax(0, 1fr) auto;
   }
 
+  .queueRunRowFailed {
+    grid-template-columns: 28px minmax(0, 1fr);
+    grid-template-areas:
+      "check body"
+      ". action";
+    align-items: start;
+  }
+
   .queueRunRowSelectable .queueRowCheck,
   .queueRunRowSelectable .queueRunMain {
     align-self: center;
   }
 
+  .queueRunRowFailed .queueRunMain {
+    align-self: start;
+  }
+
   .queueRunRowSelectable .toolbar {
     grid-column: 3;
     grid-row: 1 / span 2;
+  }
+
+  .queueRunRowFailed .toolbar {
+    grid-column: auto;
+    grid-row: auto;
+    width: 100%;
+    justify-self: stretch;
   }
 
   .queueRunRowSelectable .toolbar {
@@ -475,6 +617,17 @@
     font-size: 11px;
     padding: 5px 9px;
     white-space: nowrap;
+  }
+
+  .queueRunRowSelectable.queueRunRowFailed .toolbar {
+    align-self: stretch;
+    justify-self: stretch;
+    width: 100%;
+  }
+
+  .queueRunRowSelectable.queueRunRowFailed .toolbar :where([data-demo-ui-button="true"]) {
+    width: 100%;
+    min-height: 40px;
   }
 
   .queueRunMain {

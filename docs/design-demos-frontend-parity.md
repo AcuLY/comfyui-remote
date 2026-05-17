@@ -52,7 +52,7 @@
 | `/assets/models` | `/design-demos/models` | 静态对齐 | kind 切换、目录、面包屑、文件行、上传位置、备注/触发词、移动 sheet、空/错/加载态。 | 真实文件操作。 |
 | `/assets/loras` | `/design-demos/loras` | 兼容入口 | 提示 LoRA 已并入模型文件管理。 | 后续可改成直接跳转。 |
 | `/assets/presets` | `/design-demos/presets` | 静态对齐 | 分类栏、文件夹面包屑、文件夹行、整行预设/组入口、批量选择、移动 sheet。 | 真实移动、删除、新建和 DnD。 |
-| `/assets/presets/categories/new` | `/design-demos/presets/categories/new` | 静态对齐 | 独立创建页、类型切换、名称/slug/色相、保存反馈。 | 真实字段联动和提交。 |
+| `/assets/presets/categories/new` | `/design-demos/presets/categories/new` | 静态对齐 | 独立创建页、类型切换、名称、色相、保存反馈；slug 由系统生成且不展示。 | 真实字段联动和提交。 |
 | `/assets/presets/categories/[categoryId]/edit` | `/design-demos/presets/categories/[categoryId]/edit` | 静态对齐 | 独立编辑页、类型锁定、删除保护、预设组默认槽位。 | 真实槽位来源和删除确认。 |
 | `/assets/presets/[presetId]` | `/design-demos/presets/[presetId]` | 静态对齐 | 连续 PresetForm、variant、prompt、LoRA、linked variants、级联/删除保护、历史 diff、操作反馈。 | 真实保存和 picker 写入。 |
 | `/assets/preset-groups/[groupId]` | `/design-demos/preset-groups/[groupId]` | 静态对齐 | 组信息、成员行、variant、成员删除、flatten 预览、历史 diff、操作反馈。 | 添加成员和 reorder/delete 提交。 |

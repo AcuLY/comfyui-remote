@@ -4,8 +4,8 @@ import { useState } from "react";
 
 import type { DemoData } from "../../data";
 import type { QueueDemoTab } from "../../routing";
-import { DemoTabs } from "../../shared/primitives/demo-tabs";
 import { PageHeader } from "../../shared/primitives/page-header";
+import { SegmentedControl } from "../../shared/primitives/segmented-control";
 import { CurrentRunningProgressCard } from "./current-running-progress-card";
 import { PendingReviewGroups, pendingReviewPageSize } from "./pending-review-groups";
 import {
@@ -56,12 +56,14 @@ export function QueuePage({ data }: { data: DemoData }) {
       />
       <CurrentRunningProgressCard runs={currentRunningRuns} />
       <div className={s.queueSurfaceStack}>
-        <DemoTabs
+        <SegmentedControl
+          ariaLabel="切换视图"
           panel
-          tabs={[
-            { key: "pending", label: "待审核", count: totalPending },
-            { key: "running", label: "队列", count: running.length },
-            { key: "failed", label: "失败", count: failed.length },
+          role="tablist"
+          items={[
+            { value: "pending", label: "待审核", count: totalPending },
+            { value: "running", label: "队列", count: running.length },
+            { value: "failed", label: "失败", count: failed.length },
           ]}
           value={activeTab}
           onChange={setActiveTab}

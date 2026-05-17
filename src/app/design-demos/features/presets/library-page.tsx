@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { ArrowLeft, ArrowRight, Check, Edit3, FolderTree, GripVertical, Plus, Shuffle, Trash2, X } from "lucide-react";
+import { type MouseEvent as ReactMouseEvent, useState } from "react";
+import { ArrowLeft, ArrowRight, Check, Copy, Edit3, FolderTree, GripVertical, Plus, Shuffle, Trash2, X } from "lucide-react";
 
 import {
   categoryColorValue,
@@ -167,6 +167,15 @@ export function PresetLibraryItemRow({
   item: PresetLibraryItem;
   onToggle: (id: string) => void;
 }) {
+  const [copied, setCopied] = useState(false);
+
+  function handleCopy(event: ReactMouseEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1800);
+  }
+
   return (
     <div className={cx(s.presetItemRow, checked && s.presetItemRowSelected)}>
       <Checkbox
@@ -179,7 +188,6 @@ export function PresetLibraryItemRow({
         <GripVertical className={s.categoryDragIcon} />
         <div className={s.presetItemMain}>
           <strong>{item.name}</strong>
-          <span>{item.slug}</span>
           <p>{item.description}</p>
         </div>
         <div className={s.presetItemMeta}>
@@ -188,6 +196,26 @@ export function PresetLibraryItemRow({
         </div>
         <ArrowRight className={s.presetItemArrow} />
       </Link>
+      <div className={s.presetItemActions}>
+        {item.kind === "preset" ? (
+          <>
+            {copied ? <span className={s.presetCopyState}>已复制</span> : null}
+            <Button
+              ariaLabel={`复制预制：${item.name}`}
+              className={s.presetItemCopyButton}
+              icon={Copy}
+              iconOnly
+              onClick={handleCopy}
+              size="sm"
+              tone="subtle"
+              feedback={{
+                title: "深拷贝将创建新的系统标识",
+                detail: item.name,
+              }}
+            />
+          </>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -273,7 +301,7 @@ export function PresetsPage({ data }: { data: DemoData }) {
               <div>
                 <span>{categoryTypeLabel(category)}分类</span>
                 <h2>{category.name}</h2>
-                <p>{category.slug} · {categoryItemCount(category)} 个条目 · {category.folders.length} 个文件夹</p>
+                <p>{categoryItemCount(category)} 个条目 · {category.folders.length} 个文件夹</p>
               </div>
               <StatusBadge status={category.type === "group" ? "template" : "ready"} label={categoryTypeLabel(category)} />
             </div>
@@ -417,7 +445,7 @@ export function PresetCategoryRow({
           <span className={s.categorySwatch} style={{ backgroundColor: categoryColorValue(category.color) }} />
           <span className={s.presetCategoryText}>
             <strong>{category.name}</strong>
-            <span>{categoryItemCount(category)} 个{categoryTypeLabel(category)} · {category.slug}</span>
+            <span>{categoryItemCount(category)} 个{categoryTypeLabel(category)}</span>
           </span>
         </button>
         <div className={s.presetCategoryActions}>
