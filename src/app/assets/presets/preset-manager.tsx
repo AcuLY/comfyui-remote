@@ -24,6 +24,7 @@ import { CSS } from "@dnd-kit/utilities";
 import {
   Plus,
   Trash2,
+  Copy,
   Settings2,
   CheckSquare,
   Square,
@@ -45,6 +46,7 @@ import {
   createPresetVariant,
   updatePresetVariant,
   upsertPresetVariantBySlug,
+  copyPreset,
   getPresetUsage,
   deletePresetCascade,
   reorderPresetCategories,
@@ -719,6 +721,23 @@ function PresetList({
                 isSelected={selectedIds.has(preset.id)}
                 onToggleSelect={() => togglePresetSelection(preset.id)}
                 isEditing={editingId === preset.id}
+                onCopy={() => {
+                  startTransition(async () => {
+                    try {
+                      const copied = await copyPreset(preset.id);
+                      toast.success(`已复制预制：${copied.name}`);
+                      setCurrentFolderId(copied.folderId ?? null);
+                      onViewChange({
+                        folder: copied.folderId ?? null,
+                        preset: copied.id,
+                        variant: null,
+                      });
+                      onRefresh();
+                    } catch (e: unknown) {
+                      toast.error(e instanceof Error ? e.message : "复制失败");
+                    }
+                  });
+                }}
                 onDelete={() => {
                   startTransition(async () => {
                     try {
@@ -811,6 +830,7 @@ function SortablePresetCard({
   onToggleSelect,
   isEditing,
   presetFormProps,
+  onCopy,
   onDelete,
 }: {
   preset: PresetFull;
@@ -836,6 +856,7 @@ function SortablePresetCard({
     activeVariantId?: string | null;
     onVariantChange?: (variantId: string | null) => void;
   };
+  onCopy?: () => void;
   onDelete?: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: preset.id });
@@ -886,6 +907,16 @@ function SortablePresetCard({
             onMove={onMoveToFolder}
           />
         </span>
+        {onCopy && (
+          <button
+            type="button"
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onCopy(); }}
+            className="shrink-0 rounded p-1 text-zinc-600 transition hover:bg-sky-500/10 hover:text-sky-400"
+            title="复制预制"
+          >
+            <Copy className="size-3.5" />
+          </button>
+        )}
         {onDelete && (
           <button
             type="button"

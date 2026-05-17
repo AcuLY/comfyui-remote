@@ -86,6 +86,43 @@ function presetData(input: PresetInput | Partial<PresetInput>) {
   return data;
 }
 
+function cloneJsonField(value: unknown): Prisma.InputJsonValue | typeof Prisma.DbNull {
+  if (value == null) return Prisma.DbNull;
+  return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
+}
+
+function remapLinkedVariants(
+  linkedVariants: unknown,
+  originalPresetId: string,
+  newPresetId: string,
+  variantIdMap: Map<string, string>,
+) {
+  const cloned = linkedVariants == null
+    ? null
+    : JSON.parse(JSON.stringify(linkedVariants));
+
+  if (!Array.isArray(cloned)) return cloned;
+
+  return cloned.map((entry) => {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) return entry;
+
+    const ref = entry as { presetId?: unknown; variantId?: unknown };
+    if (
+      ref.presetId === originalPresetId &&
+      typeof ref.variantId === "string" &&
+      variantIdMap.has(ref.variantId)
+    ) {
+      return {
+        ...entry,
+        presetId: newPresetId,
+        variantId: variantIdMap.get(ref.variantId)!,
+      };
+    }
+
+    return entry;
+  });
+}
+
 function presetVariantRosterSnapshot(variant: {
   name: string;
   slug: string;
@@ -349,6 +386,119 @@ export async function createPreset(input: PresetInput) {
   revalidatePath("/assets/presets");
   revalidatePath("/projects/new");
   return preset;
+}
+
+export async function copyPreset(presetId: string) {
+  const source = await prisma.preset.findUnique({
+    where: { id: presetId },
+    include: {
+      variants: {
+        where: { isActive: true },
+        orderBy: { sortOrder: "asc" },
+      },
+    },
+  });
+
+  if (!source || !source.isActive) {
+    throw new Error("Preset not found");
+  }
+
+  let copyIdentity: { name: string; slug: string } | null = null;
+  for (let attempt = 1; attempt <= 100; attempt += 1) {
+    const copySuffix = attempt === 1 ? "Copy" : `Copy ${attempt}`;
+    const slugSuffix = attempt === 1 ? "copy" : `copy-${attempt}`;
+    const candidateSlug = `${source.slug}-${slugSuffix}`;
+    const existing = await prisma.preset.findUnique({
+      where: {
+        categoryId_slug: {
+          categoryId: source.categoryId,
+          slug: candidateSlug,
+        },
+      },
+      select: { id: true },
+    });
+
+    if (!existing) {
+      copyIdentity = { name: `${source.name} ${copySuffix}`, slug: candidateSlug };
+      break;
+    }
+  }
+
+  if (!copyIdentity) {
+    throw new Error("Unable to generate a unique preset copy slug");
+  }
+
+  const maxOrder = await prisma.preset.aggregate({
+    where: { categoryId: source.categoryId },
+    _max: { sortOrder: true },
+  });
+
+  const copied = await prisma.$transaction(async (tx) => {
+    const newPreset = await tx.preset.create({
+      data: {
+        categoryId: source.categoryId,
+        folderId: source.folderId,
+        name: copyIdentity.name,
+        slug: copyIdentity.slug,
+        notes: source.notes,
+        civitaiLinks: cloneJsonField(source.civitaiLinks),
+        isActive: true,
+        sortOrder: (maxOrder._max.sortOrder ?? -1) + 1,
+      },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        categoryId: true,
+        folderId: true,
+      },
+    });
+
+    const variantIdMap = new Map<string, string>();
+    const createdVariants: Array<{ newId: string; linkedVariants: unknown }> = [];
+
+    for (const variant of source.variants) {
+      const newVariant = await tx.presetVariant.create({
+        data: {
+          presetId: newPreset.id,
+          name: variant.name,
+          slug: variant.slug,
+          prompt: variant.prompt,
+          negativePrompt: variant.negativePrompt,
+          lora1: cloneJsonField(variant.lora1),
+          lora2: cloneJsonField(variant.lora2),
+          linkedVariants: Prisma.DbNull,
+          isActive: variant.isActive,
+          sortOrder: variant.sortOrder,
+        },
+        select: { id: true },
+      });
+      variantIdMap.set(variant.id, newVariant.id);
+      createdVariants.push({
+        newId: newVariant.id,
+        linkedVariants: variant.linkedVariants,
+      });
+    }
+
+    for (const variant of createdVariants) {
+      const linkedVariants = remapLinkedVariants(
+        variant.linkedVariants,
+        source.id,
+        newPreset.id,
+        variantIdMap,
+      );
+      await tx.presetVariant.update({
+        where: { id: variant.newId },
+        data: { linkedVariants: cloneJsonField(linkedVariants) },
+      });
+    }
+
+    return newPreset;
+  });
+
+  revalidatePath("/assets/presets");
+  revalidatePath("/projects/new");
+  return copied;
 }
 
 export async function createPresetVariant(input: PresetVariantInput) {
