@@ -8,12 +8,19 @@ import {
   verifyPhase0Baseline,
   type Phase0VerificationResult,
 } from "../../src/server/quality/phase0-baseline";
+import {
+  getDefaultPhase1SummaryPath,
+  verifyPhase1Evaluation,
+  type Phase1VerificationResult,
+} from "../../src/server/quality/phase1-offline-eval";
 
 export interface VerifyCliArgs {
-  phase: 0;
+  phase: 0 | 1;
   summaryPath?: string;
   outDir?: string;
 }
+
+export type QualityVerificationResult = Phase0VerificationResult | Phase1VerificationResult;
 
 export function parseVerifyArgs(argv: readonly string[]): VerifyCliArgs {
   let phase: number | undefined;
@@ -40,11 +47,11 @@ export function parseVerifyArgs(argv: readonly string[]): VerifyCliArgs {
   }
 
   if (phase === undefined) phase = 0;
-  if (phase !== 0) {
+  if (phase !== 0 && phase !== 1) {
     throw new Error(`Unsupported quality verification phase: ${phase}`);
   }
 
-  return { phase: 0, summaryPath, outDir };
+  return { phase, summaryPath, outDir };
 }
 
 export async function verifyPhase0BaselineSummaryFile(
@@ -58,17 +65,54 @@ export async function verifyPhase0BaselineSummaryFile(
   return verifyPhase0Baseline(summary);
 }
 
-export async function runPhase0VerifyCli(argv = process.argv.slice(2)): Promise<number> {
+export async function verifyPhase1EvaluationSummaryFile(
+  summaryPath: string,
+  options: { phase: 1 },
+): Promise<Phase1VerificationResult> {
+  if (options.phase !== 1) {
+    throw new Error(`Unsupported quality verification phase: ${options.phase}`);
+  }
+  const summary = JSON.parse(await readFile(summaryPath, "utf8")) as Record<string, unknown>;
+  return verifyPhase1Evaluation(summary);
+}
+
+export async function verifyQualitySummaryFile(
+  summaryPath: string,
+  options: { phase: 0 | 1 },
+): Promise<QualityVerificationResult> {
+  if (options.phase === 0) {
+    return verifyPhase0BaselineSummaryFile(summaryPath, { phase: 0 });
+  }
+  return verifyPhase1EvaluationSummaryFile(summaryPath, { phase: 1 });
+}
+
+export async function runQualityVerifyCli(argv = process.argv.slice(2)): Promise<number> {
   const args = parseVerifyArgs(argv);
-  const summaryPath = path.resolve(
-    args.summaryPath ??
-      (args.outDir
-        ? path.join(args.outDir, "valid-projects-trash-rate-summary.json")
-        : getDefaultPhase0SummaryPath(process.cwd())),
-  );
-  const verification = await verifyPhase0BaselineSummaryFile(summaryPath, { phase: args.phase });
+  const summaryPath = path.resolve(resolveSummaryPath(args));
+  const verification = await verifyQualitySummaryFile(summaryPath, { phase: args.phase });
   console.log(JSON.stringify(verification, null, 2));
   return verification.pass ? 0 : 1;
+}
+
+export async function runPhase0VerifyCli(argv = process.argv.slice(2)): Promise<number> {
+  return runQualityVerifyCli(argv);
+}
+
+function resolveSummaryPath(args: VerifyCliArgs): string {
+  if (args.summaryPath) return args.summaryPath;
+
+  if (args.outDir) {
+    return path.join(
+      args.outDir,
+      args.phase === 0
+        ? "valid-projects-trash-rate-summary.json"
+        : "phase1-offline-evaluation-summary.json",
+    );
+  }
+
+  return args.phase === 0
+    ? getDefaultPhase0SummaryPath(process.cwd())
+    : getDefaultPhase1SummaryPath(process.cwd());
 }
 
 function parsePhase(value: string): number {
@@ -88,7 +132,7 @@ function requireValue(argv: readonly string[], index: number, flag: string): str
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  runPhase0VerifyCli().then(
+  runQualityVerifyCli().then(
     (exitCode) => {
       process.exitCode = exitCode;
     },

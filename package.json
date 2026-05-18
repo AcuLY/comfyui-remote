@@ -18,6 +18,8 @@
     "db:bootstrap": "prisma migrate dev && npx tsx src/scripts/seed.mts",
     "db:bootstrap:sqlite": "DB_PROVIDER=sqlite prisma generate && DB_PROVIDER=sqlite DATABASE_URL=file:./data/comfyui.db prisma migrate dev && DB_PROVIDER=sqlite DATABASE_URL=file:./data/comfyui.db npx tsx src/scripts/seed.mts",
     "quality:baseline": "tsx scripts/quality/baseline.ts",
+    "quality:evaluate": "tsx scripts/quality/evaluate.ts",
+    "quality:review": "tsx scripts/quality/review.ts",
     "quality:verify": "tsx scripts/quality/verify.ts"
   },
   "prisma": {

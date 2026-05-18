@@ -70,6 +70,14 @@ interface NodeSqliteModule {
 }
 
 async function loadNodeSqliteForTest(): Promise<NodeSqliteModule> {
+  const nodeSqlite = await tryLoadNodeSqliteForTest();
+  if (!nodeSqlite) {
+    throw new Error("node:sqlite is unavailable in this Node.js runtime");
+  }
+  return nodeSqlite;
+}
+
+async function tryLoadNodeSqliteForTest(): Promise<NodeSqliteModule | null> {
   const originalEmitWarning = process.emitWarning;
   process.emitWarning = ((warning: string | Error, ...args: unknown[]) => {
     if (args[0] === "ExperimentalWarning" && String(warning).includes("SQLite")) {
@@ -84,13 +92,29 @@ async function loadNodeSqliteForTest(): Promise<NodeSqliteModule> {
   try {
     const nodeSqliteSpecifier = "node:sqlite";
     return (await import(nodeSqliteSpecifier)) as unknown as NodeSqliteModule;
+  } catch (error) {
+    if (isNodeSqliteUnavailable(error)) return null;
+    throw error;
   } finally {
     process.emitWarning = originalEmitWarning;
   }
 }
 
-async function createPhase0SqliteFixture(dbPath: string): Promise<void> {
-  const { DatabaseSync } = await loadNodeSqliteForTest();
+function isNodeSqliteUnavailable(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const nodeError = error as Error & { code?: unknown };
+  return (
+    nodeError.code === "ERR_UNKNOWN_BUILTIN_MODULE" ||
+    /No such built-in module: node:sqlite/i.test(error.message) ||
+    /Cannot find module 'node:sqlite'/i.test(error.message)
+  );
+}
+
+async function createPhase0SqliteFixture(
+  dbPath: string,
+  nodeSqlite?: NodeSqliteModule,
+): Promise<void> {
+  const { DatabaseSync } = nodeSqlite ?? (await loadNodeSqliteForTest());
   const db = new DatabaseSync(dbPath);
 
   try {
@@ -192,11 +216,17 @@ async function createPhase0SqliteFixture(dbPath: string): Promise<void> {
   }
 }
 
-test("readPhase0RowsFromSqlite can use node:sqlite and auto fallback for aggregation", async () => {
+test("readPhase0RowsFromSqlite can use node:sqlite and auto fallback for aggregation", async (t) => {
+  const nodeSqlite = await tryLoadNodeSqliteForTest();
+  if (!nodeSqlite) {
+    t.skip("node:sqlite is unavailable in this Node.js runtime");
+    return;
+  }
+
   const outputDir = await mkdtemp(path.join(tmpdir(), "phase0-sqlite-"));
   try {
     const dbPath = path.join(outputDir, "phase0-fixture.db");
-    await createPhase0SqliteFixture(dbPath);
+    await createPhase0SqliteFixture(dbPath, nodeSqlite);
 
     const rows = await readPhase0RowsFromSqlite(dbPath, VALID_REFERENCE_PROJECT_TITLES, {
       sqliteBackend: "node:sqlite",
@@ -352,6 +382,34 @@ test("verifyPhase0Baseline enforces hard Phase 0 acceptance criteria", () => {
   ]);
 });
 
+test("verifyPhase0Baseline requires exact valid reference project titles", () => {
+  const missingTitlesSummary = { ...validSummary() } as Record<string, unknown>;
+  delete missingTitlesSummary.validProjectTitles;
+
+  const missingTitles = verifyPhase0Baseline(missingTitlesSummary);
+  assert.equal(missingTitles.pass, false);
+  assert.deepEqual(missingTitles.failedCriteria, ["valid_reference_projects_only"]);
+
+  const emptyTitles = verifyPhase0Baseline(validSummary({ validProjectTitles: [] }));
+  assert.equal(emptyTitles.pass, false);
+  assert.deepEqual(emptyTitles.failedCriteria, ["valid_reference_projects_only"]);
+});
+
+test("verifyPhase0Baseline requires a stats signature for reproducibility", () => {
+  const missingSignatureSummary = { ...validSummary() } as Record<string, unknown>;
+  delete missingSignatureSummary.statsSignature;
+
+  const missingSignature = verifyPhase0Baseline(missingSignatureSummary);
+  assert.equal(missingSignature.pass, false);
+  assert.equal(missingSignature.reproducible, false);
+  assert.deepEqual(missingSignature.failedCriteria, ["reproducible"]);
+
+  const emptySignature = verifyPhase0Baseline(validSummary({ statsSignature: "  " }));
+  assert.equal(emptySignature.pass, false);
+  assert.equal(emptySignature.reproducible, false);
+  assert.deepEqual(emptySignature.failedCriteria, ["reproducible"]);
+});
+
 test("writePhase0BaselineReports writes deterministic CSV, Markdown, and summary JSON", async () => {
   const outputDir = await mkdtemp(path.join(tmpdir(), "phase0-baseline-"));
   try {
@@ -405,7 +463,49 @@ test("writePhase0BaselineReports writes deterministic CSV, Markdown, and summary
   }
 });
 
-test("verify CLI helpers read summary JSON and reject unsupported phases", async () => {
+test("writePhase0BaselineReports escapes spreadsheet formula-leading CSV cells", async () => {
+  const outputDir = await mkdtemp(path.join(tmpdir(), "phase0-csv-escape-"));
+  try {
+    const baseline = aggregatePhase0Baseline([
+      sourceRow({
+        projectId: "=project-a",
+        projectTitle: "叶瞬光",
+        sectionId: "+section-a",
+        sectionName: "=cmd",
+        runId: "-run-a",
+        imageId: "@image-a",
+        filePath: "=images/image-a.png",
+        thumbPath: "+thumbs/image-a.webp",
+        checkpointName: "-checkpoint.safetensors",
+        loraConfig: "@lora-a:0.8",
+      }),
+    ]);
+
+    const reportPaths = await writePhase0BaselineReports(baseline, { outputDir });
+    const aggregateCsv = await readFile(reportPaths.aggregateCsv, "utf8");
+    const labeledCsv = await readFile(reportPaths.labeledImagesCsv, "utf8");
+    const sectionProjectCsv = await readFile(reportPaths.sectionProjectCsv, "utf8");
+
+    assert.match(aggregateCsv, /'\=cmd/);
+    assert.match(labeledCsv, /'\=project-a/);
+    assert.match(labeledCsv, /'\+section-a/);
+    assert.match(labeledCsv, /'\=cmd/);
+    assert.match(labeledCsv, /'\-run-a/);
+    assert.match(labeledCsv, /'@image-a/);
+    assert.match(labeledCsv, /'\=images\/image-a\.png/);
+    assert.match(labeledCsv, /'\+thumbs\/image-a\.webp/);
+    assert.match(labeledCsv, /'\-checkpoint\.safetensors/);
+    assert.match(labeledCsv, /'@lora-a:0\.8/);
+    assert.match(sectionProjectCsv, /'\=project-a/);
+    assert.match(sectionProjectCsv, /'\+section-a/);
+    assert.match(sectionProjectCsv, /'\-checkpoint\.safetensors/);
+    assert.match(sectionProjectCsv, /'@lora-a:0\.8/);
+  } finally {
+    await rm(outputDir, { recursive: true, force: true });
+  }
+});
+
+test("verify CLI helpers read summary JSON and parse supported phases", async () => {
   const outputDir = await mkdtemp(path.join(tmpdir(), "phase0-verify-"));
   try {
     const summaryPath = path.join(outputDir, "summary.json");
@@ -424,10 +524,11 @@ test("verify CLI helpers read summary JSON and reject unsupported phases", async
       summaryPath,
       outDir: undefined,
     });
-    assert.throws(
-      () => parseVerifyArgs(["--phase", "1"]),
-      /Unsupported quality verification phase: 1/,
-    );
+    assert.deepEqual(parseVerifyArgs(["--phase", "1", "--summary", summaryPath]), {
+      phase: 1,
+      summaryPath,
+      outDir: undefined,
+    });
   } finally {
     await rm(outputDir, { recursive: true, force: true });
   }

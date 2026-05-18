@@ -573,7 +573,9 @@ export function verifyPhase0Baseline(
     false,
   );
   const dbMutated = getBoolean(summary, "dbMutated", false);
-  const reproducible = getBoolean(summary, "reproducible", false);
+  const statsSignature = getString(summary, "statsSignature", "");
+  const reproducible =
+    getBoolean(summary, "reproducible", false) && hasStatsSignature(statsSignature);
 
   const failedCriteria: string[] = [];
   if (phase !== 0) {
@@ -637,12 +639,23 @@ export async function createPhase0BaselineFromSqlite(
   });
   const after = await stat(dbPath);
   const dbMutated = before.size !== after.size || before.mtimeMs !== after.mtimeMs;
-
-  return aggregatePhase0Baseline(rows, {
+  const aggregationOptions: Phase0AggregationOptions = {
     manualExclusions,
     dbMutated,
     reproducible: true,
     sourceDb: dbPath,
+  };
+  const baseline = aggregatePhase0Baseline(rows, aggregationOptions);
+  const repeatedBaseline = aggregatePhase0Baseline(rows, aggregationOptions);
+  const reproducible =
+    hasStatsSignature(baseline.summary.statsSignature) &&
+    baseline.summary.statsSignature === repeatedBaseline.summary.statsSignature;
+
+  if (reproducible) return baseline;
+
+  return aggregatePhase0Baseline(rows, {
+    ...aggregationOptions,
+    reproducible: false,
   });
 }
 
@@ -1165,9 +1178,17 @@ function serializeCsv(
 
 function csvCell(value: unknown): string {
   if (value === null || value === undefined) return "";
-  const text = String(value);
+  const text = spreadsheetSafeText(value);
   if (!/[",\n\r]|^\s|\s$/.test(text)) return text;
   return `"${text.replace(/"/g, '""')}"`;
+}
+
+function spreadsheetSafeText(value: unknown): string {
+  const text = String(value);
+  if (typeof value === "string" && /^[=+\-@]/.test(text)) {
+    return `'${text}`;
+  }
+  return text;
 }
 
 function serializeMarkdownReport(
@@ -1355,6 +1376,20 @@ function getBoolean(
   return fallback;
 }
 
+function getString(
+  summary: Phase0BaselineSummary | Record<string, unknown>,
+  key: string,
+  fallback: string,
+): string {
+  const value = (summary as Record<string, unknown>)[key];
+  if (typeof value === "string") return value;
+  return fallback;
+}
+
+function hasStatsSignature(statsSignature: unknown): boolean {
+  return typeof statsSignature === "string" && statsSignature.trim().length > 0;
+}
+
 function getValidProjectTitles(
   summary: Phase0BaselineSummary | Record<string, unknown>,
 ): string[] {
@@ -1405,12 +1440,12 @@ function hasExactValidReferenceProjects(
   validProjects: number,
   validProjectTitles: readonly string[],
 ): boolean {
-  if (validProjects !== VALID_REFERENCE_PROJECT_TITLES.length) return false;
-  if (validProjectTitles.length === 0) return true;
-  const expected = new Set<string>(VALID_REFERENCE_PROJECT_TITLES);
   return (
-    validProjectTitles.length === expected.size &&
-    validProjectTitles.every((title) => expected.has(title))
+    validProjects === VALID_REFERENCE_PROJECT_TITLES.length &&
+    validProjectTitles.length === VALID_REFERENCE_PROJECT_TITLES.length &&
+    VALID_REFERENCE_PROJECT_TITLES.every(
+      (title, index) => validProjectTitles[index] === title,
+    )
   );
 }
 
