@@ -8,13 +8,19 @@ import {
   readPhase0LabeledImagesCsv,
 } from "../../src/server/quality/phase1-offline-eval";
 import {
+  createCodexVisionClient,
   createOpenAICompatibleVisionClient,
   writePhase1ReviewerPredictionsJsonl,
   type Phase1ReviewerImageField,
 } from "../../src/server/quality/phase1-reviewer";
 
+export type Phase1ReviewerBackend = "openai" | "codex";
+
+export type ReviewCliEnv = Record<string, string | undefined>;
+
 export interface ReviewCliArgs {
   phase: 1;
+  backend: Phase1ReviewerBackend;
   labeledPath?: string;
   outPath?: string;
   limit?: number;
@@ -22,11 +28,13 @@ export interface ReviewCliArgs {
   projectTitle?: string;
   imageField: Phase1ReviewerImageField;
   resume: boolean;
+  model?: string;
   projectRoot: string;
 }
 
-export function parseReviewArgs(argv: readonly string[]): ReviewCliArgs {
+export function parseReviewArgs(argv: readonly string[], env: ReviewCliEnv = process.env): ReviewCliArgs {
   let phase: number | undefined;
+  let backend: Phase1ReviewerBackend = parseBackend(env.PHASE1_REVIEWER_BACKEND ?? "openai");
   let labeledPath: string | undefined;
   let outPath: string | undefined;
   let limit: number | undefined;
@@ -34,6 +42,7 @@ export function parseReviewArgs(argv: readonly string[]): ReviewCliArgs {
   let projectTitle: string | undefined;
   let imageField: Phase1ReviewerImageField = "filePath";
   let resume = false;
+  let model: string | undefined;
   let projectRoot = process.cwd();
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -42,6 +51,10 @@ export function parseReviewArgs(argv: readonly string[]): ReviewCliArgs {
       phase = parsePhase(requireValue(argv, (index += 1), "--phase"));
     } else if (arg.startsWith("--phase=")) {
       phase = parsePhase(arg.slice("--phase=".length));
+    } else if (arg === "--backend") {
+      backend = parseBackend(requireValue(argv, (index += 1), "--backend"));
+    } else if (arg.startsWith("--backend=")) {
+      backend = parseBackend(arg.slice("--backend=".length));
     } else if (arg === "--labeled") {
       labeledPath = requireValue(argv, (index += 1), "--labeled");
     } else if (arg.startsWith("--labeled=")) {
@@ -68,6 +81,10 @@ export function parseReviewArgs(argv: readonly string[]): ReviewCliArgs {
       imageField = parseImageField(arg.slice("--image-field=".length));
     } else if (arg === "--resume") {
       resume = true;
+    } else if (arg === "--model") {
+      model = requireValue(argv, (index += 1), "--model");
+    } else if (arg.startsWith("--model=")) {
+      model = arg.slice("--model=".length);
     } else if (arg === "--project-root") {
       projectRoot = path.resolve(requireValue(argv, (index += 1), "--project-root"));
     } else if (arg.startsWith("--project-root=")) {
@@ -84,6 +101,7 @@ export function parseReviewArgs(argv: readonly string[]): ReviewCliArgs {
 
   return {
     phase: 1,
+    backend,
     labeledPath,
     outPath,
     limit,
@@ -91,6 +109,7 @@ export function parseReviewArgs(argv: readonly string[]): ReviewCliArgs {
     projectTitle,
     imageField,
     resume,
+    model,
     projectRoot,
   };
 }
@@ -113,7 +132,10 @@ export async function runPhase1ReviewCli(argv = process.argv.slice(2)): Promise<
     .slice(args.offset)
     .slice(0, args.limit ?? undefined);
 
-  const client = createOpenAICompatibleVisionClient();
+  const client =
+    args.backend === "codex"
+      ? createCodexVisionClient({ model: args.model })
+      : createOpenAICompatibleVisionClient({ model: args.model });
   const summary = await writePhase1ReviewerPredictionsJsonl(selectedRows, {
     outputPath,
     projectRoot,
@@ -126,6 +148,7 @@ export async function runPhase1ReviewCli(argv = process.argv.slice(2)): Promise<
     JSON.stringify(
       {
         phase: 1,
+        backend: args.backend,
         outputPath: summary.outputPath,
         selectedRows: summary.selectedRows,
         written: summary.written,
@@ -146,6 +169,11 @@ function parsePhase(value: string): number {
     throw new Error(`Unsupported quality review phase: ${value}`);
   }
   return parsed;
+}
+
+function parseBackend(value: string): Phase1ReviewerBackend {
+  if (value === "openai" || value === "codex") return value;
+  throw new Error(`Unsupported Phase 1 reviewer backend: ${value}`);
 }
 
 function parseImageField(value: string): Phase1ReviewerImageField {

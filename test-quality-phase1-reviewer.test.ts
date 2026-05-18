@@ -6,10 +6,12 @@ import { tmpdir } from "node:os";
 
 import {
   buildPhase1ReviewerPrompt,
+  createCodexVisionClient,
   parsePhase1ReviewerJsonResponse,
   resolvePhase1ReviewerImagePath,
   reviewPhase1Image,
   writePhase1ReviewerPredictionsJsonl,
+  type CodexExecRequest,
   type Phase1ReviewerClient,
 } from "./src/server/quality/phase1-reviewer";
 import { type Phase1LabeledImageRow } from "./src/server/quality/phase1-offline-eval";
@@ -151,6 +153,53 @@ test("reviewPhase1Image with fake client returns normalized record and includes 
     assert.equal(seenRequests.length, 1);
     assert.match(seenRequests[0].prompt, /review-image/);
     assert.match(seenRequests[0].imageDataUrl, /^data:image\/png;base64,/);
+  } finally {
+    await rm(outputDir, { recursive: true, force: true });
+  }
+});
+
+test("createCodexVisionClient delegates prompt and image path to injected Codex runner", async () => {
+  const outputDir = await mkdtemp(path.join(tmpdir(), "phase1-review-codex-client-"));
+  try {
+    const imagePath = path.join(outputDir, "codex-image.webp");
+    await writeFile(imagePath, Buffer.from([0x52, 0x49, 0x46, 0x46]));
+    const seenRequests: CodexExecRequest[] = [];
+    const client = createCodexVisionClient({
+      model: "gpt-5.5",
+      timeoutMs: 1234,
+      command: "npx",
+      commandArgs: ["-y", "@openai/codex"],
+      async runCodexExec(request) {
+        seenRequests.push(request);
+        return JSON.stringify({
+          prediction: "auto_trash",
+          confidence: 0.94,
+          reasons: ["Broken hands"],
+          poseMatched: false,
+          anatomyOk: false,
+          detailOk: true,
+        });
+      },
+    });
+
+    const record = await reviewPhase1Image(
+      labeledRow({ imageId: "codex-image", filePath: imagePath }),
+      client,
+      { projectRoot: outputDir, imageField: "filePath" },
+    );
+
+    assert.equal(client.model, "gpt-5.5");
+    assert.equal(record.imageId, "codex-image");
+    assert.equal(record.prediction, "auto_trash");
+    assert.equal(record.confidence, 0.94);
+    assert.deepEqual(record.reasons, ["broken_hands"]);
+    assert.equal(seenRequests.length, 1);
+    assert.match(seenRequests[0].prompt, /codex-image/);
+    assert.equal(seenRequests[0].imagePath, imagePath);
+    assert.equal(seenRequests[0].model, "gpt-5.5");
+    assert.equal(seenRequests[0].timeoutMs, 1234);
+    assert.equal(seenRequests[0].command, "npx");
+    assert.deepEqual(seenRequests[0].commandArgs, ["-y", "@openai/codex"]);
   } finally {
     await rm(outputDir, { recursive: true, force: true });
   }
@@ -323,9 +372,12 @@ test("parseReviewArgs supports requested flags", () => {
       "--image-field",
       "thumbPath",
       "--resume",
-    ]),
+      "--model",
+      "gpt-4o-mini",
+    ], {}),
     {
       phase: 1,
+      backend: "openai",
       labeledPath: "phase0.csv",
       outPath: "predictions.jsonl",
       limit: 25,
@@ -333,15 +385,27 @@ test("parseReviewArgs supports requested flags", () => {
       projectTitle: "叶瞬光",
       imageField: "thumbPath",
       resume: true,
+      model: "gpt-4o-mini",
       projectRoot: process.cwd(),
     },
   );
 });
 
-test("parseReviewArgs rejects unsupported phase and image-field", () => {
-  assert.throws(() => parseReviewArgs(["--phase", "0"]), /Unsupported quality review phase: 0/);
+test("parseReviewArgs supports Codex backend and model", () => {
+  const parsed = parseReviewArgs(["--backend", "codex", "--model", "gpt-5.5"], {});
+
+  assert.equal(parsed.backend, "codex");
+  assert.equal(parsed.model, "gpt-5.5");
+});
+
+test("parseReviewArgs rejects unsupported phase, backend, and image-field", () => {
+  assert.throws(() => parseReviewArgs(["--phase", "0"], {}), /Unsupported quality review phase: 0/);
   assert.throws(
-    () => parseReviewArgs(["--phase", "1", "--image-field", "previewPath"]),
+    () => parseReviewArgs(["--backend", "local"], {}),
+    /Unsupported Phase 1 reviewer backend: local/,
+  );
+  assert.throws(
+    () => parseReviewArgs(["--phase", "1", "--image-field", "previewPath"], {}),
     /Unsupported Phase 1 reviewer image field: previewPath/,
   );
 });

@@ -1,4 +1,6 @@
-import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
+import { spawn } from "node:child_process";
+import { appendFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import path from "node:path";
 
 import {
@@ -31,6 +33,25 @@ export interface Phase1ReviewerClientConfig {
   fetchImpl?: typeof fetch;
 }
 
+export interface CodexExecRequest {
+  prompt: string;
+  imagePath: string;
+  model: string;
+  timeoutMs: number;
+  command: string;
+  commandArgs: readonly string[];
+}
+
+export type CodexExecRunner = (request: CodexExecRequest) => Promise<string>;
+
+export interface CodexVisionClientConfig {
+  model?: string;
+  timeoutMs?: number;
+  command?: string;
+  commandArgs?: readonly string[];
+  runCodexExec?: CodexExecRunner;
+}
+
 export interface ReviewPhase1ImageOptions {
   projectRoot: string;
   imageField?: Phase1ReviewerImageField;
@@ -51,6 +72,24 @@ export interface WritePhase1ReviewerPredictionsJsonlResult {
 
 const DEFAULT_MODEL = "gpt-4o-mini";
 const DEFAULT_BASE_URL = "https://api.openai.com/v1";
+const DEFAULT_CODEX_MODEL = "gpt-5.5";
+const DEFAULT_CODEX_TIMEOUT_MS = 180_000;
+const DEFAULT_CODEX_COMMAND = "npx";
+const DEFAULT_CODEX_COMMAND_ARGS = ["-y", "@openai/codex"] as const;
+const CODEX_REVIEWER_OUTPUT_SCHEMA = {
+  $schema: "http://json-schema.org/draft-07/schema#",
+  type: "object",
+  additionalProperties: false,
+  required: ["prediction", "confidence", "reasons", "poseMatched", "anatomyOk", "detailOk"],
+  properties: {
+    prediction: { enum: ["auto_trash", "candidate", "review"] },
+    confidence: { type: "number", minimum: 0, maximum: 1 },
+    reasons: { type: "array", items: { type: "string" } },
+    poseMatched: { type: ["boolean", "null"] },
+    anatomyOk: { type: ["boolean", "null"] },
+    detailOk: { type: ["boolean", "null"] },
+  },
+} as const;
 const MAX_REASON_LENGTH = 64;
 const MEANINGFUL_ALPHANUMERIC_PATTERN = new RegExp("[\\p{L}\\p{N}]", "u");
 
@@ -203,6 +242,42 @@ export function createOpenAICompatibleVisionClient(
   };
 }
 
+export function createCodexVisionClient(config: CodexVisionClientConfig = {}): Phase1ReviewerClient {
+  const model =
+    config.model ??
+    process.env.PHASE1_REVIEWER_CODEX_MODEL ??
+    process.env.PHASE1_REVIEWER_MODEL ??
+    DEFAULT_CODEX_MODEL;
+  const timeoutMs =
+    config.timeoutMs ??
+    parseOptionalPositiveIntegerEnv(
+      process.env.PHASE1_REVIEWER_CODEX_TIMEOUT_MS,
+      "PHASE1_REVIEWER_CODEX_TIMEOUT_MS",
+    ) ??
+    DEFAULT_CODEX_TIMEOUT_MS;
+  const command = config.command ?? process.env.PHASE1_REVIEWER_CODEX_COMMAND ?? DEFAULT_CODEX_COMMAND;
+  const commandArgs = [
+    ...(config.commandArgs ??
+      parseCodexCommandArgsEnv(process.env.PHASE1_REVIEWER_CODEX_COMMAND_ARGS) ??
+      defaultCodexCommandArgs(command)),
+  ];
+  const runCodexExec = config.runCodexExec ?? runCodexExecCli;
+
+  return {
+    model,
+    async reviewImage(request) {
+      return runCodexExec({
+        prompt: request.prompt,
+        imagePath: request.imagePath,
+        model,
+        timeoutMs,
+        command,
+        commandArgs,
+      });
+    },
+  };
+}
+
 export async function writePhase1ReviewerPredictionsJsonl(
   rows: readonly Phase1LabeledImageRow[],
   options: WritePhase1ReviewerPredictionsJsonlOptions,
@@ -251,6 +326,171 @@ export async function writePhase1ReviewerPredictionsJsonl(
     written,
     skipped,
   };
+}
+
+interface CodexProcessResult {
+  stdout: string;
+}
+
+async function runCodexExecCli(request: CodexExecRequest): Promise<string> {
+  const tempDir = await mkdtemp(path.join(tmpdir(), "phase1-codex-reviewer-"));
+  const outputPath = path.join(tempDir, "last-message.txt");
+  const schemaPath = path.join(tempDir, "output-schema.json");
+
+  try {
+    await writeFile(schemaPath, `${JSON.stringify(CODEX_REVIEWER_OUTPUT_SCHEMA)}\n`, "utf8");
+    const result = await runCodexCliProcess(
+      request.command,
+      [
+        ...request.commandArgs,
+        "exec",
+        "--model",
+        request.model,
+        "--skip-git-repo-check",
+        "--ephemeral",
+        "--sandbox",
+        "read-only",
+        "--image",
+        request.imagePath,
+        "--output-schema",
+        schemaPath,
+        "--output-last-message",
+        outputPath,
+        request.prompt,
+      ],
+      request.timeoutMs,
+    );
+
+    const outputText = (await readUtf8FileIfExists(outputPath)).trim();
+    if (outputText) return outputText;
+
+    const stdoutText = result.stdout.trim();
+    if (stdoutText) return stdoutText;
+
+    throw new Error("Codex CLI Phase 1 reviewer did not produce a final message");
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
+}
+
+function runCodexCliProcess(
+  command: string,
+  args: readonly string[],
+  timeoutMs: number,
+): Promise<CodexProcessResult> {
+  return new Promise((resolve, reject) => {
+    const stdoutChunks: Buffer[] = [];
+    let settled = false;
+    let timedOut = false;
+    let forceKillTimer: NodeJS.Timeout | undefined;
+
+    const child = spawn(command, [...args], {
+      shell: false,
+      stdio: ["ignore", "pipe", "pipe"],
+      windowsHide: true,
+    });
+
+    const timeoutTimer = setTimeout(() => {
+      timedOut = true;
+      child.kill("SIGTERM");
+      forceKillTimer = setTimeout(() => child.kill("SIGKILL"), 5_000);
+      forceKillTimer.unref();
+    }, timeoutMs);
+    timeoutTimer.unref();
+
+    child.stdout?.on("data", (chunk: Buffer | string) => {
+      stdoutChunks.push(bufferFromChunk(chunk));
+    });
+    child.stderr?.on("data", () => {
+      // Drain stderr but do not include it in errors; it may contain prompt or image context.
+    });
+    child.on("error", (error: unknown) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeoutTimer);
+      if (forceKillTimer) clearTimeout(forceKillTimer);
+      reject(safeCodexCliStartError(error));
+    });
+    child.on("close", (code, signal) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeoutTimer);
+      if (forceKillTimer) clearTimeout(forceKillTimer);
+
+      if (timedOut) {
+        reject(new Error(`Codex CLI Phase 1 reviewer timed out after ${timeoutMs} ms`));
+        return;
+      }
+
+      if (code !== 0) {
+        const signalText = signal ? ` signal=${signal}` : "";
+        reject(new Error(`Codex CLI Phase 1 reviewer exited with code=${code ?? "unknown"}${signalText}`));
+        return;
+      }
+
+      resolve({ stdout: Buffer.concat(stdoutChunks).toString("utf8") });
+    });
+  });
+}
+
+function bufferFromChunk(chunk: Buffer | string): Buffer {
+  return Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+}
+
+function safeCodexCliStartError(error: unknown): Error {
+  if (isNodeError(error) && typeof error.code === "string") {
+    return new Error(`Codex CLI Phase 1 reviewer failed to start code=${error.code}`);
+  }
+  return new Error("Codex CLI Phase 1 reviewer failed to start");
+}
+
+async function readUtf8FileIfExists(filePath: string): Promise<string> {
+  try {
+    return await readFile(filePath, "utf8");
+  } catch (error) {
+    if (isNodeError(error) && error.code === "ENOENT") return "";
+    throw error;
+  }
+}
+
+function defaultCodexCommandArgs(command: string): readonly string[] {
+  const commandName = path.basename(command).toLowerCase();
+  if (commandName === "npx" || commandName === "npx.cmd" || commandName === "npx.exe") {
+    return DEFAULT_CODEX_COMMAND_ARGS;
+  }
+  return [];
+}
+
+function parseCodexCommandArgsEnv(value: string | undefined): readonly string[] | undefined {
+  const trimmed = value?.trim();
+  if (!trimmed) return undefined;
+
+  if (trimmed.startsWith("[")) {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(trimmed) as unknown;
+    } catch {
+      throw new Error("PHASE1_REVIEWER_CODEX_COMMAND_ARGS must be a valid JSON string array");
+    }
+
+    if (!Array.isArray(parsed) || parsed.some((item) => typeof item !== "string" || !item)) {
+      throw new Error("PHASE1_REVIEWER_CODEX_COMMAND_ARGS must contain only non-empty strings");
+    }
+    return parsed;
+  }
+
+  return trimmed.split(/\s+/);
+}
+
+function parseOptionalPositiveIntegerEnv(value: string | undefined, envName: string): number | undefined {
+  const trimmed = value?.trim();
+  if (!trimmed) return undefined;
+
+  const parsed = Number(trimmed);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new Error(`${envName} must be a positive integer`);
+  }
+  return parsed;
 }
 
 function parseJsonObjectFromResponse(text: string): Record<string, unknown> {
