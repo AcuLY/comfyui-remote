@@ -598,6 +598,16 @@
   box-shadow: 0 0 0 1px rgba(0, 217, 146, 0.12) inset;
 }
 
+.presetItemRowCopy {
+  border-color: rgba(0, 217, 146, 0.38);
+  background: rgba(0, 217, 146, 0.07);
+}
+
+.presetItemRowSource {
+  border-color: rgba(99, 179, 237, 0.34);
+  background: rgba(99, 179, 237, 0.06);
+}
+
 .presetItemRowSelected .presetItemCheck {
   color: var(--demo-green);
 }
@@ -609,6 +619,10 @@
 }
 
 .presetItemMain strong {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
   overflow: hidden;
   color: var(--demo-text);
   font-size: 13px;
@@ -617,7 +631,32 @@
   white-space: nowrap;
 }
 
-.presetItemMain span,
+.presetItemNameText {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--demo-text);
+  text-overflow: ellipsis;
+}
+
+.presetInlineState {
+  flex: 0 0 auto;
+  border: 1px solid rgba(99, 179, 237, 0.28);
+  border-radius: 999px;
+  background: rgba(99, 179, 237, 0.08);
+  color: var(--demo-muted);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 3px 6px;
+  white-space: nowrap;
+}
+
+.presetItemRowCopy .presetInlineState {
+  border-color: rgba(0, 217, 146, 0.28);
+  background: rgba(0, 217, 146, 0.1);
+  color: var(--demo-green);
+}
+
 .presetItemMain p {
   overflow: hidden;
   margin: 0;

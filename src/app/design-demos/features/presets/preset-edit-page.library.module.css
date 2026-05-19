@@ -242,6 +242,7 @@
 .editorStatusStrip {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 6px;
   border-top: 1px solid var(--demo-border);
   padding-top: 9px;
@@ -254,6 +255,21 @@
   color: var(--demo-muted);
   font-size: 10px;
   padding: 4px 8px;
+}
+
+.saveStateStrip {
+  border: 1px solid var(--demo-border);
+  border-radius: 8px;
+  background: var(--demo-field-bg);
+  padding: 8px;
+}
+
+.saveStateStrip[data-state="saving"] {
+  border-color: color-mix(in srgb, var(--demo-amber) 45%, var(--demo-border));
+}
+
+.saveStateStrip[data-state="failed"] {
+  border-color: color-mix(in srgb, var(--demo-red) 45%, var(--demo-border));
 }
 
 .editorAside {
@@ -494,6 +510,60 @@
   gap: 2px;
 }
 
+.civitaiLinkPanel {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.civitaiLinkInputRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 8px;
+}
+
+.civitaiLinkError {
+  margin: 0;
+  color: var(--demo-red);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.civitaiLinkList {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.civitaiLinkRow {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  border: 1px solid var(--demo-border);
+  border-radius: 7px;
+  background: var(--demo-field-bg);
+  padding: 7px;
+}
+
+.civitaiLinkRow span {
+  overflow: hidden;
+  color: var(--demo-muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.civitaiLinkEmpty {
+  border: 1px dashed var(--demo-border);
+  border-radius: 7px;
+  color: var(--demo-muted);
+  font-size: 11px;
+  padding: 9px;
+}
+
 @keyframes demoSkeleton {
   to {
     transform: translateX(100%);
@@ -606,6 +676,10 @@
   .presetCascadeState {
     grid-template-columns: 1fr;
     align-items: stretch;
+  }
+
+  .civitaiLinkInputRow {
+    grid-template-columns: 1fr;
   }
 
   .editorStickyHeader,

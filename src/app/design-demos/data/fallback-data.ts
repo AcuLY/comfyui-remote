@@ -255,6 +255,7 @@ export function fallbackData(warning: string | null): DemoData {
             name: "默认角色",
             slug: "default-character",
             notes: "Fallback preset",
+            civitaiLinks: ["https://civitai.com/models/2491032"],
             variantCount: 2,
             variants: [
               {
@@ -263,6 +264,18 @@ export function fallbackData(warning: string | null): DemoData {
                 slug: "soft",
                 prompt: "soft light, warm expression",
                 negativePrompt: "low quality",
+                lora1: [
+                  {
+                    path: "characters/default-character.safetensors",
+                    weight: 0.75,
+                    enabled: true,
+                    source: "preset",
+                    presetId: "preset-demo",
+                    variantId: "variant-demo-a",
+                  },
+                ],
+                lora2: [],
+                linkedVariants: [{ presetId: "preset-demo", variantId: "variant-demo-b" }],
               },
               {
                 id: "variant-demo-b",
@@ -270,6 +283,18 @@ export function fallbackData(warning: string | null): DemoData {
                 slug: "cinematic",
                 prompt: "cinematic light, deep focus",
                 negativePrompt: "flat color",
+                lora1: [],
+                lora2: [
+                  {
+                    path: "detail/refiner.safetensors",
+                    weight: 0.45,
+                    enabled: true,
+                    source: "preset",
+                    presetId: "preset-demo",
+                    variantId: "variant-demo-b",
+                  },
+                ],
+                linkedVariants: [],
               },
             ],
           },

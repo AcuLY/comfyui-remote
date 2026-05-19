@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ClipboardList, Copy, Edit3, FolderInput, Gauge, GripVertical, Home, Monitor, Play, Plus, Settings, Star, Trash2 } from "lucide-react";
+import { Check, ClipboardList, Copy, Edit3, ExternalLink, FolderInput, Gauge, GripVertical, Home, Link2, Monitor, Play, Plus, RefreshCw, Settings, Star, Trash2 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useState } from "react";
 
@@ -182,6 +182,10 @@ const previewRenderers: Record<ShowcasePreviewComponentName, PreviewRenderer> = 
       }}
     />
   ),
+  PresetCopySyncPreview: () => <PresetCopySyncPreview />,
+  AutoSaveQueuePreview: () => <AutoSaveQueuePreview />,
+  CivitaiLinkManagerPreview: () => <CivitaiLinkManagerPreview />,
+  ApplyToAllVariantsPreview: () => <ApplyToAllVariantsPreview />,
   PromptBlockRow: () => <PromptBlockPreview />,
   "LoraRow / LoraColumn": () => <LoraPreview />,
   PresetMemberRow: () => (
@@ -498,6 +502,98 @@ function ImageSizeControlGroupPreview() {
       shortSidePx={shortSidePx}
       upscaleFactor={upscaleFactor}
     />
+  );
+}
+
+function PresetCopySyncPreview() {
+  const [copiedPresets, setCopiedPresets] = useState(["写实人像", "胶片风格"]);
+  const [copyStatus, setCopyStatus] = useState("等待复制");
+
+  function handlePresetCopy() {
+    const nextName = `写实人像 副本 ${copiedPresets.length - 1}`;
+    setCopiedPresets((current) => [nextName, ...current]);
+    setCopyStatus("已复制");
+  }
+
+  return (
+    <div className={s.previewStack}>
+      <OperationStateStrip items={[{ label: "复制状态", value: copyStatus, tone: copyStatus === "已复制" ? "success" : "warning" }, { label: "草稿", value: `${copiedPresets.length} 个`, tone: "success" }]} />
+      <ToolbarCluster align="start">
+        <Button icon={Copy} onClick={handlePresetCopy}>复制当前预设</Button>
+        <StatusBadge status="draft" label={copiedPresets[0]} />
+      </ToolbarCluster>
+    </div>
+  );
+}
+
+function AutoSaveQueuePreview() {
+  const [saveQueue, setSaveQueue] = useState([
+    { id: "prompt", label: "正向 Prompt", status: "failed", attempts: 1 },
+    { id: "lora", label: "LoRA 1", status: "queued", attempts: 0 },
+  ]);
+
+  function retryFailedSave(id: string) {
+    setSaveQueue((current) => current.map((item) => (item.id === id ? { ...item, status: "saving", attempts: item.attempts + 1 } : item)));
+  }
+
+  return (
+    <div className={s.previewStack}>
+      <OperationStateStrip
+        items={saveQueue.map((item) => ({
+          label: item.label,
+          value: item.status === "failed" ? "失败" : item.status === "saving" ? "重试中" : "待保存",
+          tone: item.status === "failed" ? "error" : item.status === "saving" ? "warning" : "success",
+        }))}
+      />
+      <ToolbarCluster align="start">
+        <Button icon={RefreshCw} onClick={() => retryFailedSave("prompt")}>重试保存</Button>
+        <StatusBadge status="pending" label={`尝试 ${saveQueue[0]?.attempts ?? 0} 次`} />
+      </ToolbarCluster>
+    </div>
+  );
+}
+
+function CivitaiLinkManagerPreview() {
+  const [civitaiLink, setCivitaiLink] = useState("https://civitai.com/models/2491032");
+  const [linkState, setLinkState] = useState("已链接");
+
+  function updateCivitaiLink(nextLink: string) {
+    setCivitaiLink(nextLink);
+    setLinkState(nextLink.includes("civitai.com/models/") ? "已链接" : "需要检查");
+  }
+
+  return (
+    <div className={s.previewStack}>
+      <Field label="Civitai 模型链接" value={civitaiLink} onChange={updateCivitaiLink} />
+      <ToolbarCluster align="start">
+        <Button icon={Link2} onClick={() => updateCivitaiLink("https://civitai.com/models/2800411")}>更新链接</Button>
+        <Button icon={ExternalLink} tone="subtle" onClick={() => setLinkState("来源已确认")}>打开来源</Button>
+        <StatusBadge status={linkState === "需要检查" ? "monitor" : "ready"} label={linkState} />
+      </ToolbarCluster>
+    </div>
+  );
+}
+
+function ApplyToAllVariantsPreview() {
+  const [variants, setVariants] = useState([
+    { id: "default", name: "默认", prompt: "masterpiece, portrait" },
+    { id: "detail", name: "高细节", prompt: "portrait, cinematic detail" },
+    { id: "soft", name: "柔光", prompt: "soft light portrait" },
+  ]);
+  const sourcePrompt = variants[0]?.prompt ?? "";
+
+  function applyPromptToAllVariants() {
+    setVariants((current) => current.map((variant) => ({ ...variant, prompt: sourcePrompt })));
+  }
+
+  return (
+    <div className={s.previewStack}>
+      <ToolbarCluster align="start">
+        <Button icon={Copy} onClick={applyPromptToAllVariants}>应用到所有变体</Button>
+        <StatusBadge status="ready" label={`${variants.length} 个变体`} />
+      </ToolbarCluster>
+      <OperationStateStrip items={variants.map((variant) => ({ label: variant.name, value: variant.prompt === sourcePrompt ? "已同步" : "有差异", tone: variant.prompt === sourcePrompt ? "success" : "warning" }))} />
+    </div>
   );
 }
 

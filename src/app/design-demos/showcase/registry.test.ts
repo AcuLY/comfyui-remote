@@ -3,6 +3,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { fallbackData } from "../data/fallback-data";
 import { ROUTES } from "../routing";
 import {
   getShowcaseFamilyIdByRoute,
@@ -79,6 +80,7 @@ const deletedTopLevelPathSegments = new Set([
 const allowedDirectImports = new Set([
   // Fixture data and header specialty previews are allowed direct architectural imports.
   "../../data",
+  "../../shell/header-action-slots",
   "../../shell/header-surface",
   "../helpers",
   "../preview-keys",
@@ -340,3 +342,23 @@ for (const removedFile of removedShowcaseFiles) {
 
 assertNoForbiddenImports("routing", ["/features/", "/showcase/"]);
 assertNoForbiddenImports("shared", ["/features/"]);
+
+const dataTypesSource = readFileSync(resolve(designDemosDir, "data/types.ts"), "utf8");
+assert.match(dataTypesSource, /civitaiLinks:\s*string\[\]/, "DemoPreset should expose Civitai links as demo-only data");
+assert.match(dataTypesSource, /lora1:\s*DemoPresetVariantLoraBinding\[\]/, "DemoPresetVariant should expose typed lora1 demo data");
+assert.match(dataTypesSource, /lora2:\s*DemoPresetVariantLoraBinding\[\]/, "DemoPresetVariant should expose typed lora2 demo data");
+assert.match(dataTypesSource, /linkedVariants:\s*DemoPresetLinkedVariant\[\]/, "DemoPresetVariant should expose typed linked variant refs");
+
+const loaderSource = readFileSync(resolve(designDemosDir, "data/load-demo-data.ts"), "utf8");
+assert.match(loaderSource, /PresetVariant[\s\S]*lora1[\s\S]*lora2[\s\S]*linkedVariants/, "SQLite loader should select variant lora/link fields");
+assert.match(loaderSource, /Preset[\s\S]*civitaiLinks/, "SQLite loader should select preset Civitai links");
+assert.match(loaderSource, /parseJson<DemoPresetVariantLoraBinding\[\]>/, "SQLite loader should parse variant LoRA fields through structured JSON");
+assert.match(loaderSource, /parseJson<DemoPresetLinkedVariant\[\]>/, "SQLite loader should parse linked variants through structured JSON");
+assert.doesNotMatch(loaderSource, /\.slice\([^)]*lora/i, "SQLite loader should not shape LoRA JSON with string slicing");
+
+const fallbackPreset = fallbackData(null).categories.flatMap((category) => category.presets)[0];
+assert.ok(fallbackPreset.civitaiLinks.length > 0, "fallback presets should include a Civitai link sample");
+const fallbackVariant = fallbackPreset.variants.find(
+  (variant) => variant.lora1.length > 0 || variant.lora2.length > 0 || variant.linkedVariants.length > 0,
+);
+assert.ok(fallbackVariant, "fallback variants should include LoRA or linked variant samples");

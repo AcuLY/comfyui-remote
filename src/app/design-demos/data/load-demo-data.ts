@@ -7,7 +7,9 @@ import type {
   DemoPreset,
   DemoPresetFolder,
   DemoPresetGroup,
+  DemoPresetLinkedVariant,
   DemoPresetVariant,
+  DemoPresetVariantLoraBinding,
   DemoProject,
   DemoProjectFolder,
   DemoRun,
@@ -21,6 +23,21 @@ import { modelAssetsFromEnv } from "./model-assets";
 import { bool, buildProjectImages, formatSize, imageFromRow, int, parseJson, placeholders, shortDate, text } from "./row-shaping";
 import { resolveSqlitePath } from "./sqlite-source";
 import { sourceSummary } from "./source-summary";
+
+function parsePresetLoras(value: SqlRow[string]) {
+  const parsed = parseJson<DemoPresetVariantLoraBinding[]>(value, []);
+  return Array.isArray(parsed) ? parsed : [];
+}
+
+function parseLinkedVariants(value: SqlRow[string]) {
+  const parsed = parseJson<DemoPresetLinkedVariant[]>(value, []);
+  return Array.isArray(parsed) ? parsed : [];
+}
+
+function parseCivitaiLinks(value: SqlRow[string]) {
+  const parsed = parseJson<string[]>(value, []);
+  return Array.isArray(parsed) ? parsed.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0) : [];
+}
 
 export async function loadDesignDemoData(): Promise<DemoData> {
   const sqlite = resolveSqlitePath();
@@ -237,7 +254,7 @@ export async function loadDesignDemoData(): Promise<DemoData> {
     const variantsByPreset = new Map<string, DemoPresetVariant[]>();
     for (const row of db
       .prepare(
-        `select id, presetId, name, slug, prompt, negativePrompt
+        `select id, presetId, name, slug, prompt, negativePrompt, lora1, lora2, linkedVariants
          from PresetVariant
          where isActive = 1
          order by presetId asc, sortOrder asc
@@ -252,6 +269,9 @@ export async function loadDesignDemoData(): Promise<DemoData> {
         slug: text(row.slug),
         prompt: text(row.prompt, "positive prompt"),
         negativePrompt: text(row.negativePrompt, "negative prompt"),
+        lora1: parsePresetLoras(row.lora1),
+        lora2: parsePresetLoras(row.lora2),
+        linkedVariants: parseLinkedVariants(row.linkedVariants),
       });
     }
 
@@ -278,7 +298,7 @@ export async function loadDesignDemoData(): Promise<DemoData> {
     const presetsByCategory = new Map<string, DemoPreset[]>();
     for (const row of db
       .prepare(
-        `select id, categoryId, folderId, name, slug, notes
+        `select id, categoryId, folderId, name, slug, notes, civitaiLinks
          from Preset
          where isActive = 1
          order by categoryId asc, sortOrder asc
@@ -295,6 +315,7 @@ export async function loadDesignDemoData(): Promise<DemoData> {
         name: text(row.name),
         slug: text(row.slug),
         notes: text(row.notes),
+        civitaiLinks: parseCivitaiLinks(row.civitaiLinks),
         variantCount: variants.length,
         variants: variants.slice(0, 6),
       });

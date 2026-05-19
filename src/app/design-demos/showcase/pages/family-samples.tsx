@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Copy, Edit3, FileText, FolderInput, GripVertical, History, Home, Play, Plus, Search, Settings, Star, Trash2 } from "lucide-react";
+import { Check, Copy, Edit3, ExternalLink, FileText, FolderInput, GripVertical, History, Home, Link2, Play, Plus, RefreshCw, Search, Settings, Star, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import type { DemoData } from "../../data";
@@ -213,12 +213,45 @@ function GenerationParamsSample() {
 
 function PresetPromptLoraSample() {
   const [expanded, setExpanded] = useState(false);
+  const [copiedPresets, setCopiedPresets] = useState(["写实人像", "胶片风格"]);
+  const [copyStatus, setCopyStatus] = useState("等待复制");
+  const [saveQueue, setSaveQueue] = useState([
+    { id: "prompt", label: "正向 Prompt", status: "failed", attempts: 1 },
+    { id: "lora", label: "LoRA 1", status: "queued", attempts: 0 },
+  ]);
+  const [civitaiLink, setCivitaiLink] = useState("https://civitai.com/models/2491032");
+  const [linkState, setLinkState] = useState("已链接");
+  const [variants, setVariants] = useState([
+    { id: "default", name: "默认", prompt: "masterpiece, portrait" },
+    { id: "detail", name: "高细节", prompt: "portrait, cinematic detail" },
+    { id: "soft", name: "柔光", prompt: "soft light portrait" },
+  ]);
   const [loras, setLoras] = useState<LoraRowData[]>(() => [
     { id: "lora-1", fileName: "add_detail.safetensors", filePath: "add_detail/add_detail.safetensors", weight: 0.8, enabled: true, kind: "preset", presetName: "写实人像", categoryName: "人物", categoryColor: "158 100% 43%", triggerWords: "add detail" },
     { id: "lora-2", fileName: "flat_color.safetensors", filePath: "flat_color/flat_color.safetensors", weight: 0.5, enabled: true, kind: "manual", triggerWords: "flat color" },
   ]);
   const loraFileOptions = ["add_detail/add_detail.safetensors", "flat_color/flat_color.safetensors"];
   const firstLora = loras[0];
+  const sourcePrompt = variants[0]?.prompt ?? "";
+
+  function handlePresetCopy() {
+    const nextName = `写实人像 副本 ${copiedPresets.length - 1}`;
+    setCopiedPresets((current) => [nextName, ...current]);
+    setCopyStatus("已复制");
+  }
+
+  function retryFailedSave(id: string) {
+    setSaveQueue((current) => current.map((item) => (item.id === id ? { ...item, status: "saving", attempts: item.attempts + 1 } : item)));
+  }
+
+  function updateCivitaiLink(nextLink: string) {
+    setCivitaiLink(nextLink);
+    setLinkState(nextLink.includes("civitai.com/models/") ? "已链接" : "需要检查");
+  }
+
+  function applyPromptToAllVariants() {
+    setVariants((current) => current.map((variant) => ({ ...variant, prompt: sourcePrompt })));
+  }
 
   function updateLora(id: string, updater: (entry: LoraRowData) => LoraRowData) {
     setLoras((current) => current.map((entry) => (entry.id === id ? updater(entry) : entry)));
@@ -260,6 +293,22 @@ function PresetPromptLoraSample() {
           variants: [{ id: "v1", name: "默认" }, { id: "v2", name: "高细节" }],
         }}
       />
+      <ToolbarCluster align="start">
+        <Button icon={Copy} onClick={handlePresetCopy}>复制预设</Button>
+        <Button icon={RefreshCw} onClick={() => retryFailedSave("prompt")}>重试保存</Button>
+        <Button icon={Link2} onClick={() => updateCivitaiLink("https://civitai.com/models/2800411")}>更新 Civitai</Button>
+        <Button icon={Copy} onClick={applyPromptToAllVariants}>应用到所有变体</Button>
+      </ToolbarCluster>
+      <OperationStateStrip
+        items={[
+          { label: "复制", value: `${copyStatus} · ${copiedPresets.length} 个草稿`, tone: copyStatus === "已复制" ? "success" : "warning" },
+          { label: "保存", value: saveQueue[0]?.status === "saving" ? "重试中" : "失败待重试", tone: saveQueue[0]?.status === "saving" ? "warning" : "error" },
+          { label: "Civitai", value: linkState, tone: linkState === "需要检查" ? "warning" : "success" },
+          { label: "变体", value: `${variants.filter((variant) => variant.prompt === sourcePrompt).length}/${variants.length} 已同步`, tone: "success" },
+        ]}
+      />
+      <Field label="Civitai 模型链接" value={civitaiLink} onChange={updateCivitaiLink} />
+      <Button icon={ExternalLink} tone="subtle" onClick={() => setLinkState("来源已确认")}>打开来源</Button>
       <PromptBlockRow
         block={{ id: "pb-1", label: "主体描述", categoryName: "人物", categoryColor: "158 100% 43%", presetName: "写实人像", variantName: "高细节", positive: "masterpiece, best quality, portrait", negative: "lowres, blurry", kind: "preset" }}
         column="positive"

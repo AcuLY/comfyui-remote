@@ -56,8 +56,7 @@
   justify-content: space-between;
   gap: 8px;
   min-width: 120px;
-  height: 36px;
-  min-height: 36px;
+  min-height: 38px;
   border: 1px solid var(--ui-glass-border);
   border-radius: 10px;
   background: var(--ui-field-bg);
@@ -67,7 +66,7 @@
   font: inherit;
   font-size: 13px;
   outline: none;
-  padding: 0 12px;
+  padding: 8px 12px;
   text-align: left;
   transition: background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
 }

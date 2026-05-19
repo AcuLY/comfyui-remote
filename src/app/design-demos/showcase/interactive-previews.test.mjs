@@ -8,6 +8,8 @@ const testDir = dirname(fileURLToPath(import.meta.url));
 const showcaseDir = resolve(testDir);
 const componentPreviewsSource = readShowcaseSource("pages/component-previews.tsx");
 const familySamplesSource = readShowcaseSource("pages/family-samples.tsx");
+const previewKeysSource = readShowcaseSource("preview-keys.ts");
+const registrySource = readShowcaseSource("registry.ts");
 
 function readShowcaseSource(relativePath) {
   return readFileSync(resolve(showcaseDir, relativePath), "utf8");
@@ -113,4 +115,67 @@ test("showcase pages do not wire visible controls to no-op callbacks", () => {
   assert.doesNotMatch(componentPreviewsSource, /\bnoop\b/);
   assert.doesNotMatch(componentPreviewsSource, /=>\s*undefined/);
   assert.doesNotMatch(familySamplesSource, /=>\s*undefined/);
+});
+
+test("preset sync showcase entries document durable non-noop interactions", () => {
+  for (const componentName of [
+    "PresetCopySyncPreview",
+    "AutoSaveQueuePreview",
+    "CivitaiLinkManagerPreview",
+    "ApplyToAllVariantsPreview",
+  ]) {
+    assert.match(previewKeysSource, new RegExp(`"${componentName}"`), `${componentName} must have a preview key`);
+    assert.match(componentPreviewsSource, new RegExp(`${componentName}:\\s*\\(\\)\\s*=>\\s*<${componentName}\\s*\\/>`), `${componentName} must render a dedicated preview`);
+    assert.match(registrySource, new RegExp(`componentName:\\s*"${componentName}"`), `${componentName} must be listed in the registry`);
+  }
+
+  for (const reviewName of ["预设复制", "自动保存队列", "Civitai 链接", "应用到所有变体"]) {
+    assert.match(registrySource, new RegExp(`reviewName:\\s*"${reviewName}"`), `${reviewName} should be visible with a Chinese review name`);
+  }
+
+  const presetCopySource = functionSource(componentPreviewsSource, "PresetCopySyncPreview");
+  assert.match(presetCopySource, /useState\(\["写实人像",\s*"胶片风格"\]\)/);
+  assert.match(presetCopySource, /function\s+handlePresetCopy\(/);
+  assert.match(presetCopySource, /setCopiedPresets\(\(current\)\s*=>\s*\[/);
+  assert.match(presetCopySource, /setCopyStatus\("已复制"\)/);
+  assert.doesNotMatch(presetCopySource, /feedback=\{\{/);
+
+  const autoSaveSource = functionSource(componentPreviewsSource, "AutoSaveQueuePreview");
+  assert.match(autoSaveSource, /useState\(\[\s*\{\s*id:\s*"prompt"/);
+  assert.match(autoSaveSource, /function\s+retryFailedSave\(/);
+  assert.match(autoSaveSource, /setSaveQueue\(\(current\)\s*=>\s*current\.map/);
+  assert.match(autoSaveSource, /status:\s*"saving"/);
+  assert.doesNotMatch(autoSaveSource, /feedback=\{\{/);
+
+  const civitaiSource = functionSource(componentPreviewsSource, "CivitaiLinkManagerPreview");
+  assert.match(civitaiSource, /useState\("https:\/\/civitai\.com\/models\/2491032"\)/);
+  assert.match(civitaiSource, /function\s+updateCivitaiLink\(/);
+  assert.match(civitaiSource, /setCivitaiLink\(nextLink\)/);
+  assert.match(civitaiSource, /setLinkState\(/);
+  assert.doesNotMatch(civitaiSource, /feedback=\{\{/);
+
+  const applySource = functionSource(componentPreviewsSource, "ApplyToAllVariantsPreview");
+  assert.match(applySource, /useState\(\[/);
+  assert.match(applySource, /function\s+applyPromptToAllVariants\(/);
+  assert.match(applySource, /setVariants\(\(current\)\s*=>\s*current\.map/);
+  assert.match(applySource, /prompt:\s*sourcePrompt/);
+  assert.doesNotMatch(applySource, /feedback=\{\{/);
+});
+
+test("preset sync family sample exposes the same real state transitions", () => {
+  const sampleSource = functionSource(familySamplesSource, "PresetPromptLoraSample");
+
+  for (const identifier of [
+    "handlePresetCopy",
+    "retryFailedSave",
+    "updateCivitaiLink",
+    "applyPromptToAllVariants",
+  ]) {
+    assert.match(sampleSource, new RegExp(`function\\s+${identifier}\\(`), `PresetPromptLoraSample should include ${identifier}`);
+  }
+
+  assert.match(sampleSource, /setCopiedPresets\(\(current\)\s*=>\s*\[/);
+  assert.match(sampleSource, /setSaveQueue\(\(current\)\s*=>\s*current\.map/);
+  assert.match(sampleSource, /setCivitaiLink\(nextLink\)/);
+  assert.match(sampleSource, /setVariants\(\(current\)\s*=>\s*current\.map/);
 });

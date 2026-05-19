@@ -110,12 +110,31 @@ export type DemoRun = {
   images: DemoImage[];
 };
 
+export type DemoPresetVariantLoraBinding = {
+  path: string;
+  weight: number;
+  enabled: boolean;
+  name?: string | null;
+  source?: string | null;
+  bindingId?: string | null;
+  presetId?: string | null;
+  variantId?: string | null;
+};
+
+export type DemoPresetLinkedVariant = {
+  presetId: string;
+  variantId: string;
+};
+
 export type DemoPresetVariant = {
   id: string;
   name: string;
   slug: string;
   prompt: string;
   negativePrompt: string;
+  lora1: DemoPresetVariantLoraBinding[];
+  lora2: DemoPresetVariantLoraBinding[];
+  linkedVariants: DemoPresetLinkedVariant[];
 };
 
 export type DemoPreset = {
@@ -125,6 +144,7 @@ export type DemoPreset = {
   name: string;
   slug: string;
   notes: string;
+  civitaiLinks: string[];
   variantCount: number;
   variants: DemoPresetVariant[];
 };
