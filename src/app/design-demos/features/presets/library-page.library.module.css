@@ -559,10 +559,14 @@
   text-decoration: none;
 }
 
-.presetItemRow:hover,
-.presetItemRow:focus-within {
+.presetItemRow:hover {
   border-color: var(--demo-glass-accent-border);
   background: var(--demo-field-bg);
+}
+
+.presetItemRow:focus-within {
+  border-color: color-mix(in srgb, var(--demo-green) 22%, var(--demo-glass-border));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--demo-green) 12%, transparent) inset;
 }
 
 .presetItemOpenArea:focus-visible {

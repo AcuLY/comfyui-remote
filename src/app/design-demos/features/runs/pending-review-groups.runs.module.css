@@ -570,13 +570,13 @@
   }
 
   .queueThumbs {
-    display: flex;
-    width: auto;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
     gap: 6px;
     overflow: hidden;
   }
 
-  .queueThumbs span,
   .queueThumbs :where([data-demo-ui-image-thumb-small="true"]) {
     width: 80px;
   }

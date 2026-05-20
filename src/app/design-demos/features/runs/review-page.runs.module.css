@@ -177,6 +177,19 @@
   padding: 12px 14px;
 }
 
+.reviewSurface > .reviewFilterTabs {
+  gap: 6px 10px;
+  border: 0;
+  border-bottom: 1px solid var(--demo-border);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  margin-top: 0;
+  padding: 10px 14px;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
 .reviewSurface > .reviewBulkBar {
   border-top: 1px solid var(--demo-border);
   padding: 10px 14px;

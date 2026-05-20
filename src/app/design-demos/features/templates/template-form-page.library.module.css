@@ -33,8 +33,14 @@
   align-items: start;
   border: 1px solid var(--demo-border);
   border-radius: 7px;
-  background: var(--demo-field-bg);
+  background: var(--demo-panel);
   padding: 9px;
+  transition: background-color 160ms ease, border-color 160ms ease;
+}
+
+.templateSectionRow:hover {
+  border-color: var(--demo-glass-accent-border);
+  background: var(--demo-glass-hover);
 }
 
 .templateSectionRowMain {

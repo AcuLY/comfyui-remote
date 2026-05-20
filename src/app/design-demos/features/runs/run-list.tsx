@@ -144,37 +144,38 @@ export function RunList({
                             <span className={s.queueRunDate}>
                               {mode === "running" ? "创建于" : "失败于"} {mode === "running" ? run.createdAt : run.startedAt ?? run.createdAt}
                             </span>
-                            {mode === "failed" ? (
-                              <span className={s.queueRunError} role="status">
-                                <CircleAlert className={s.queueRunErrorIcon} />
-                                <span className={s.queueRunErrorText}>
-                                原因：{errorMessage}
-                                </span>
-                                <span
-                                  className={s.queueRunErrorAction}
-                                  onClick={(event) => event.stopPropagation()}
-                                  onKeyDown={(event) => event.stopPropagation()}
+                          </div>
+                          {mode === "failed" ? (
+                            <div className={s.queueRunSecondary}>
+                              <div className={s.queueRunError} role="status">
+                                <div className={s.queueRunErrorHeader}>
+                                  <CircleAlert className={s.queueRunErrorIcon} aria-hidden="true" />
+                                  <span>失败原因</span>
+                                </div>
+                                <p className={s.queueRunErrorText}>{errorMessage}</p>
+                              </div>
+                              <div
+                                className={cx(s.toolbar, s.queueRunFailureToolbar)}
+                                onClick={(event) => event.stopPropagation()}
+                                onKeyDown={(event) => event.stopPropagation()}
+                              >
+                                <Button
+                                  tone="subtle"
+                                  icon={Copy}
+                                  className={s.queueRunErrorCopy}
+                                  onClick={() => copyErrorMessage(errorMessage)}
+                                  feedback={{ title: "报错已复制", detail: errorMessage }}
                                 >
-                                  <Button
-                                    tone="subtle"
-                                    icon={Copy}
-                                    className={s.queueRunErrorCopy}
-                                    onClick={() => copyErrorMessage(errorMessage)}
-                                    feedback={{ title: "报错已复制", detail: errorMessage }}
-                                  >
-                                    复制
-                                  </Button>
-                                </span>
-                              </span>
-                            ) : null}
-                          </div>
-                          <div className={s.toolbar} onClick={(event) => event.stopPropagation()}>
-                            {mode === "running" ? (
+                                  复制
+                                </Button>
+                                <Button tone="subtle" icon={ArrowRight} className={s.queueRunRetryAction} feedback={{ title: "重试已排队", detail: run.sectionName }}>重试</Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className={s.toolbar} onClick={(event) => event.stopPropagation()}>
                               <Button tone="danger" icon={X} feedback={{ tone: "warning", title: "删除任务已排队", detail: run.sectionName }}>删除</Button>
-                            ) : (
-                              <Button tone="primary" icon={ArrowRight} feedback={{ title: "重试已排队", detail: run.sectionName }}>重试</Button>
-                            )}
-                          </div>
+                            </div>
+                          )}
                         </div>
                       );
                     })}

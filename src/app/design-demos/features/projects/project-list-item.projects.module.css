@@ -30,11 +30,16 @@
   padding: 8px 10px;
 }
 
-.projectListCard:not(.projectListCardSelected):hover,
-.projectListCard:not(.projectListCardSelected):focus-within {
+.projectListCard:not(.projectListCardSelected):hover {
   border-color: var(--demo-glass-accent-border);
   background: var(--demo-field-bg);
   box-shadow: var(--project-list-row-shadow-hover, 0 1px 2px rgba(15, 23, 42, 0.05), 0 8px 18px rgba(15, 23, 42, 0.035));
+  outline: none;
+}
+
+.projectListCard:not(.projectListCardSelected):focus-within {
+  border-color: color-mix(in srgb, var(--demo-green) 22%, var(--demo-glass-border));
+  box-shadow: var(--project-list-row-shadow, 0 1px 2px rgba(15, 23, 42, 0.04)), 0 0 0 1px color-mix(in srgb, var(--demo-green) 12%, transparent) inset;
   outline: none;
 }
 

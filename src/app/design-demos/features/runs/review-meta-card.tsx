@@ -152,23 +152,14 @@ function ReviewExecutionMeta({ meta }: { meta: Record<string, unknown> }) {
 }
 
 export function ReviewMetaCard({
-  section,
   run,
   meta,
 }: {
-  section: { name: string };
   run: DemoRun;
   meta: Record<string, unknown> | null;
 }) {
   const [open, setOpen] = useState(false);
-  const summary = meta
-    ? [
-        metaText(meta, "aspectRatio") || null,
-        metaText(meta, "shortSidePx") ? `${metaText(meta, "shortSidePx")}px` : null,
-        metaText(meta, "batchSize") ? `${metaText(meta, "batchSize")} 张` : null,
-        metaText(meta, "upscaleFactor") ? `${metaText(meta, "upscaleFactor")}x` : null,
-      ].filter(Boolean) as string[]
-    : [];
+  const completedAt = run.finishedAt ?? run.createdAt;
 
   return (
     <section className={s.reviewMetaSurface} data-open={open ? "true" : "false"}>
@@ -178,18 +169,10 @@ export function ReviewMetaCard({
         onClick={() => setOpen((prev) => !prev)}
         aria-expanded={open}
       >
-        <div>
+        <div className={s.reviewMetaHeading}>
           <em>RUN-{run.runIndex.toString().padStart(2, "0")}</em>
-          <strong>参数信息</strong>
-          <span>{section.name} · {run.createdAt}</span>
+          <span>完成于 {completedAt}</span>
         </div>
-        {summary.length > 0 ? (
-          <ul className={s.reviewMetaSummary} aria-hidden={open}>
-            {summary.map((item, idx) => (
-              <li key={`${item}-${idx}`}>{item}</li>
-            ))}
-          </ul>
-        ) : null}
         <ChevronDown className={s.reviewMetaChevron} aria-hidden="true" />
       </button>
       {meta ? <ReviewExecutionMeta meta={meta} /> : null}

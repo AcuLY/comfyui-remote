@@ -261,7 +261,7 @@ const previewRenderers: Record<ShowcasePreviewComponentName, PreviewRenderer> = 
     const project = data.projects.find((item) => item.id === run?.projectId) ?? firstProject(data);
     const section = findSection(project, run?.sectionId);
     if (!run || !section) return <EmptyRows label="没有运行样例" />;
-    return <ReviewMetaCard run={run} section={section} meta={run.executionMeta} />;
+    return <ReviewMetaCard run={run} meta={run.executionMeta} />;
   },
   "LogFilterBar / LogLine": () => <LogPreview />,
   MonitorStatusRow: () => (
@@ -306,6 +306,7 @@ function ButtonPreview() {
     <div className={s.previewRow}>
       <Button>默认</Button>
       <Button tone="primary" icon={Plus}>主操作</Button>
+      <Button tone="primary" pending>处理中</Button>
       <Button tone="subtle" icon={Settings}>次操作</Button>
       <Button tone="danger" icon={Trash2}>危险</Button>
       <Button icon={Star} iconOnly tone="pink" ariaLabel="精选" />

@@ -114,6 +114,7 @@
 
 .sectionCard:hover {
   border-color: var(--demo-glass-accent-border);
+  background: var(--demo-glass-hover);
   transform: translateY(-1px);
 }
 

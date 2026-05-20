@@ -41,12 +41,12 @@ export function ReviewPage({ data, run }: { data: DemoData; run: DemoRun | undef
         }
       />
       {section ? (
-        <ReviewMetaCard section={section} run={run} meta={executionMeta} />
+        <ReviewMetaCard run={run} meta={executionMeta} />
       ) : null}
       <section className={s.reviewSurface}>
         <SegmentedControl
           ariaLabel="切换视图"
-          panel
+          className={s.reviewFilterTabs}
           role="tablist"
           items={[
             { value: "all", label: "全部", count: run.images.length },

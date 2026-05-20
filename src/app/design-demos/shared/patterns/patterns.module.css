@@ -27,6 +27,7 @@
   border-radius: 12px;
   background: var(--demo-surface);
   box-shadow: var(--demo-glass-shadow);
+  transition: background-color 160ms ease, border-color 160ms ease;
 }
 
 .unitRow {
@@ -35,9 +36,19 @@
   padding: 12px;
 }
 
+.unitRow:hover {
+  border-color: var(--demo-border-strong);
+  background: var(--demo-glass-hover);
+}
+
 .unitRowSelected {
   border-color: var(--demo-green);
   background: color-mix(in srgb, var(--demo-green) 10%, var(--demo-surface));
+}
+
+.unitRowSelected:hover {
+  border-color: var(--demo-green);
+  background: color-mix(in srgb, var(--demo-green) 16%, var(--demo-surface));
 }
 
 .unitDrag,
@@ -370,24 +381,58 @@
 }
 
 @media (max-width: 760px) {
-  .unitRow {
-    grid-template-columns: auto minmax(0, 1fr);
-  }
-
-  .unitMedia,
-  .unitMeta,
-  .unitActions {
-    grid-column: 1 / -1;
-  }
-
-  .unitMeta {
-    text-align: left;
-  }
-
   .workbenchHeader,
   .editorBlockHeader,
   .selectionBatchBar {
     grid-template-columns: 1fr;
     align-items: stretch;
+  }
+}
+
+@media (max-width: 639px) {
+  .unitRow {
+    grid-template-columns: auto auto minmax(0, 1fr);
+    grid-template-areas:
+      "drag leading media"
+      "main main main"
+      "meta meta meta"
+      "actions actions actions";
+    align-items: start;
+    gap: 10px;
+  }
+
+  .unitDrag {
+    grid-area: drag;
+  }
+
+  .unitLeading {
+    grid-area: leading;
+  }
+
+  .unitMedia {
+    grid-area: media;
+    justify-self: start;
+  }
+
+  .unitMain {
+    grid-area: main;
+  }
+
+  .unitMeta {
+    grid-area: meta;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+    justify-content: flex-start;
+  }
+
+  .unitActions {
+    grid-area: actions;
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .unitActions :where([data-demo-ui-button="true"]) {
+    flex: 0 1 auto;
   }
 }

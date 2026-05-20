@@ -251,9 +251,9 @@
   grid-template-columns: 28px minmax(0, 1fr);
   grid-template-areas:
     "check body"
-    ". action";
+    ". secondary";
   align-items: start;
-  gap: 10px 12px;
+  gap: 9px 12px;
   padding-block: 14px;
 }
 
@@ -266,16 +266,8 @@
   grid-area: body;
 }
 
-.queueRunRowFailed > .toolbar {
-  grid-area: action;
-  width: 100%;
-  align-self: stretch;
-  justify-self: stretch;
-}
-
-.queueRunRowFailed > .toolbar :where([data-demo-ui-button="true"]) {
-  width: 100%;
-  min-height: 40px;
+.queueRunRowFailed > .queueRunSecondary {
+  grid-area: secondary;
 }
 
 .queueRunRowSelectable:focus-visible {
@@ -322,7 +314,7 @@
     grid-template-columns: 28px minmax(0, 1fr);
     grid-template-areas:
       "check body"
-      ". action";
+      ". secondary";
     align-items: start;
     padding-block: 15px;
   }
@@ -373,33 +365,52 @@
   color: var(--demo-faint);
 }
 
-.queueRunMain .queueRunError {
+.queueRunSecondary {
   display: grid;
-  grid-template-columns: 16px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 7px;
+  grid-template-columns: 1fr;
+  min-width: 0;
+  gap: 9px;
+  border: 1px solid color-mix(in srgb, var(--demo-red) 18%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--demo-red-soft) 30%, var(--demo-field-bg));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--demo-red) 10%, transparent);
+  padding: 10px;
+}
+
+.queueRunError {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
   min-width: 0;
   max-width: 100%;
-  border: 1px solid color-mix(in srgb, var(--demo-red) 22%, transparent);
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--demo-red-soft) 68%, transparent);
+  background: transparent;
   color: var(--demo-red);
   font-size: 11px;
   line-height: 1.35;
-  padding: 7px 8px;
   white-space: normal;
   overflow-wrap: anywhere;
 }
 
+.queueRunErrorHeader {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  color: color-mix(in srgb, var(--demo-red) 86%, var(--demo-text));
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
 .queueRunErrorIcon {
-  width: 15px;
-  height: 15px;
-  align-self: start;
-  margin-top: 1px;
+  width: 14px;
+  height: 14px;
+  align-self: center;
   color: var(--demo-red);
 }
 
-.queueRunMain .queueRunErrorText {
+.queueRunErrorText {
+  margin: 0;
   overflow: visible;
   min-width: 0;
   color: inherit;
@@ -409,17 +420,17 @@
   white-space: normal;
 }
 
-.queueRunMain .queueRunErrorAction {
-  display: inline-flex;
-  flex: 0 0 auto;
-  overflow: visible;
-  color: inherit;
-  font-size: inherit;
-  line-height: inherit;
-  white-space: normal;
+.queueRunFailureToolbar {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: 100%;
+  gap: 8px;
+  border-top: 1px solid color-mix(in srgb, var(--demo-red) 16%, transparent);
+  padding-top: 8px;
 }
 
-.queueRunErrorCopy {
+.queueRunErrorCopy,
+.queueRunRetryAction {
   min-height: 28px;
   gap: 4px;
   border-color: color-mix(in srgb, var(--demo-red) 18%, transparent);
@@ -432,7 +443,8 @@
   padding: 4px 7px;
 }
 
-.queueRunErrorCopy.queueRunErrorCopy {
+.queueRunErrorCopy.queueRunErrorCopy,
+.queueRunRetryAction.queueRunRetryAction {
   --button-bg: color-mix(in srgb, var(--demo-glass-soft) 72%, transparent);
   --button-bg-hover: color-mix(in srgb, var(--demo-red-soft) 82%, var(--demo-field-bg));
   --button-border: color-mix(in srgb, var(--demo-red) 18%, transparent);
@@ -441,13 +453,16 @@
 }
 
 .queueRunErrorCopy:hover,
-.queueRunErrorCopy:focus-visible {
+.queueRunErrorCopy:focus-visible,
+.queueRunRetryAction:hover,
+.queueRunRetryAction:focus-visible {
   border-color: color-mix(in srgb, var(--demo-red) 32%, transparent);
   background: color-mix(in srgb, var(--demo-red-soft) 82%, var(--demo-field-bg));
   color: var(--demo-red);
 }
 
-.queueRunErrorCopy svg {
+.queueRunErrorCopy svg,
+.queueRunRetryAction svg {
   width: 12px;
   height: 12px;
 }
@@ -463,17 +478,6 @@
   font-size: 12px;
   padding: 5px 10px;
   white-space: nowrap;
-}
-
-.queueRunRowSelectable.queueRunRowFailed > .toolbar {
-  width: 100%;
-  align-self: stretch;
-  justify-self: stretch;
-}
-
-.queueRunRowSelectable.queueRunRowFailed > .toolbar :where([data-demo-ui-button="true"]) {
-  width: 100%;
-  min-height: 40px;
 }
 
 .projectFolderDraftRow > .icon {
@@ -579,7 +583,7 @@
     grid-template-columns: 28px minmax(0, 1fr);
     grid-template-areas:
       "check body"
-      ". action";
+      ". secondary";
     align-items: start;
   }
 
@@ -592,25 +596,18 @@
     align-self: start;
   }
 
-  .queueRunRowSelectable .toolbar {
+  .queueRunRowSelectable > .toolbar {
     grid-column: 3;
     grid-row: 1 / span 2;
   }
 
-  .queueRunRowFailed .toolbar {
-    grid-column: auto;
-    grid-row: auto;
-    width: 100%;
-    justify-self: stretch;
-  }
-
-  .queueRunRowSelectable .toolbar {
+  .queueRunRowSelectable > .toolbar {
     align-self: center;
     justify-self: end;
     margin-top: 0;
   }
 
-  .queueRunRowSelectable .toolbar :where([data-demo-ui-button="true"]) {
+  .queueRunRowSelectable > .toolbar :where([data-demo-ui-button="true"]) {
     min-height: 34px;
     gap: 5px;
     border-radius: 8px;
@@ -619,15 +616,13 @@
     white-space: nowrap;
   }
 
-  .queueRunRowSelectable.queueRunRowFailed .toolbar {
-    align-self: stretch;
-    justify-self: stretch;
-    width: 100%;
+  .queueRunFailureToolbar {
+    justify-self: end;
   }
 
-  .queueRunRowSelectable.queueRunRowFailed .toolbar :where([data-demo-ui-button="true"]) {
+  .queueRunFailureToolbar :where([data-demo-ui-button="true"]) {
     width: 100%;
-    min-height: 40px;
+    min-height: 32px;
   }
 
   .queueRunMain {
@@ -675,6 +670,19 @@
   }
 }
 
+@media (max-width: 439px) {
+
+  .queueRunSecondary {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .queueRunFailureToolbar :where([data-demo-ui-button="true"]) {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+}
+
 @keyframes spin {
   to {
     transform: rotate(360deg);
@@ -684,6 +692,10 @@
 @media (max-width: 768px) {
   .toolbar {
     flex-wrap: wrap;
+  }
+
+  .queueRunFailureToolbar.queueRunFailureToolbar {
+    flex-wrap: nowrap;
   }
 }
 
