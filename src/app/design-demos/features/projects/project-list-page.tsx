@@ -40,14 +40,16 @@ export function ProjectsPage({ data }: { data: DemoData }) {
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectedFolderIds, setSelectedFolderIds] = useState<Set<string>>(new Set());
+  const [hiddenProjectIds, setHiddenProjectIds] = useState<Set<string>>(new Set());
+  const [hiddenFolderIds, setHiddenFolderIds] = useState<Set<string>>(new Set());
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [listViewMode, setListViewMode] = useState<ProjectListViewMode>(readProjectListViewMode);
   const [newFolderName, setNewFolderName] = useState("角色组探索");
   const folders = data.projectFolders;
   const visibleFolders = folders
-    .filter((folder) => folder.parentId === currentFolderId)
+    .filter((folder) => folder.parentId === currentFolderId && !hiddenFolderIds.has(folder.id))
     .sort((a, b) => a.sortOrder - b.sortOrder);
-  const visibleProjects = data.projects.filter((project) => project.folderId === currentFolderId);
+  const visibleProjects = data.projects.filter((project) => project.folderId === currentFolderId && !hiddenProjectIds.has(project.id));
   const breadcrumb = buildProjectFolderBreadcrumb(folders, currentFolderId);
   const selectedProjects = visibleProjects.filter((project) => selectedIds.has(project.id));
   const selectedCount = selectedIds.size + selectedFolderIds.size;
@@ -170,6 +172,7 @@ export function ProjectsPage({ data }: { data: DemoData }) {
                     folder={folder}
                     images={folderCard.images}
                     key={folder.id}
+                    onDelete={() => setHiddenFolderIds(prev => new Set([...prev, folder.id]))}
                     onEnter={() => navigateFolder(folder.id)}
                     onToggleSelected={() => toggleFolderSelection(folder.id)}
                     projectCount={folderCard.projectCount}
@@ -187,6 +190,7 @@ export function ProjectsPage({ data }: { data: DemoData }) {
                 <ProjectListItem
                   compact={listViewMode === "compact"}
                   key={project.id}
+                  onDelete={() => setHiddenProjectIds(prev => new Set([...prev, project.id]))}
                   project={project}
                   selected={selectedIds.has(project.id)}
                   onToggleSelected={() => toggleProjectSelection(project.id)}

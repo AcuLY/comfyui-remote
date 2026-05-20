@@ -44,11 +44,13 @@ export function ProjectListCardShell({
 
 export function ProjectListItem({
   compact = false,
+  onDelete,
   project,
   selected,
   onToggleSelected,
 }: {
   compact?: boolean;
+  onDelete?: () => void;
   project: DemoProject;
   selected: boolean;
   onToggleSelected: () => void;
@@ -84,6 +86,7 @@ export function ProjectListItem({
               iconOnly
               ariaLabel={`删除项目：${project.title}`}
               size="sm"
+              onClick={onDelete}
               feedback={{ tone: "warning", title: "删除项目需要确认", detail: project.title }}
             />
           </div>

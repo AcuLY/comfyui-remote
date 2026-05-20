@@ -67,6 +67,55 @@ function PresetEditPageContent({ data, preset }: { data: DemoData; preset: DemoP
     };
   }, [saveState]);
 
+  function addLoraRow() {
+    const stage: LoraStageId = 1;
+    const newRow: LoraDraftRow = {
+      id: `${activeVariant.id}-${stage}-new-${Date.now()}`,
+      name: "新 LoRA",
+      path: "ComfyUI 模型库 / 待选择",
+      weight: "1.00",
+      trigger: activeVariant.name,
+    };
+    updateActiveVariant(
+      (variant) => ({
+        ...variant,
+        loraStages: {
+          ...variant.loraStages,
+          [stage]: [...variant.loraStages[stage], newRow],
+        },
+      }),
+      "LoRA 行已添加",
+    );
+  }
+
+  function addVariant() {
+    const newId = `variant-new-${Date.now()}`;
+    const newVariant: VariantDraft = {
+      id: newId,
+      name: `变体 ${variants.length + 1}`,
+      slug: newId,
+      prompt: "",
+      negativePrompt: "",
+      lora1: [],
+      lora2: [],
+      linkedVariants: [],
+      civitaiLinks: [],
+      loraStages: {
+        1: [
+          { id: `${newId}-1-primary`, name: `${preset.name} 主体 LoRA`, path: "ComfyUI 模型库 / 主体 LoRA", weight: "0.82", trigger: `变体 ${variants.length + 1}` },
+          { id: `${newId}-1-refine`, name: "角色精修 LoRA", path: "ComfyUI 模型库 / 角色精修", weight: "0.35", trigger: preset.name },
+        ],
+        2: [
+          { id: `${newId}-2-primary`, name: `${preset.name} 风格 LoRA`, path: "ComfyUI 模型库 / 风格 LoRA", weight: "0.56", trigger: `变体 ${variants.length + 1}` },
+          { id: `${newId}-2-refine`, name: "风格平衡 LoRA", path: "ComfyUI 模型库 / 风格平衡", weight: "0.48", trigger: preset.name },
+        ],
+      },
+    };
+    setVariants((current) => [...current, newVariant]);
+    setActiveVariantId(newId);
+    markDraftChanged("新变体已添加");
+  }
+
   const category = data.categories.find((item) => item.id === preset.categoryId) ?? firstCategory(data);
   const folderPath = category ? presetFolderBreadcrumb(category, preset.folderId).map((folder) => folder.name).join(" / ") || "根目录" : "根目录";
   const activeVariant = variants.find((variant) => variant.id === activeVariantId) ?? variants[0];
@@ -188,7 +237,10 @@ function PresetEditPageContent({ data, preset }: { data: DemoData; preset: DemoP
                 <strong>变体</strong>
                 <span>每个变体保留独立 prompt、LoRA 和关联变体。</span>
               </div>
-              <Button icon={GripVertical} feedback={{ title: "变体顺序已保存" }}>保存顺序</Button>
+              <div style={{ display: "flex", gap: "0.5rem" }}>
+                <Button icon={Plus} onClick={addVariant} feedback={{ title: "新变体已添加" }}>添加变体</Button>
+                <Button icon={GripVertical} feedback={{ title: "变体顺序已保存" }}>保存顺序</Button>
+              </div>
             </div>
             <div className={s.presetVariantWorkbench}>
               <div className={s.presetVariantRail}>
@@ -237,7 +289,7 @@ function PresetEditPageContent({ data, preset }: { data: DemoData; preset: DemoP
                 <strong>LoRA 绑定</strong>
                 <span>阶段 1 和阶段 2 对应真实编辑器的两个 LoRA 列表，保留权重、触发词和来源表达。</span>
               </div>
-              <Button icon={Plus} feedback={{ title: "LoRA 行已添加", detail: activeVariant.name }}>添加 LoRA</Button>
+              <Button icon={Plus} onClick={addLoraRow} feedback={{ title: "LoRA 行已添加", detail: activeVariant.name }}>添加 LoRA</Button>
             </div>
             <div className={s.loraStageGrid}>
               <PresetLoraStage title="LoRA 1" rows={activeVariant.loraStages[1]} stage={1} onApplyToAll={applyLoraToAll} />

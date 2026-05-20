@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import type { DemoProject } from "../../data";
+import type { DemoProject, DemoSection } from "../../data";
 import { cx, filterImages } from "../../routing";
 import type { ProjectCardView, ResultDemoFilter } from "../../routing";
 import s from "./project-detail-page.projects.module.css";
@@ -36,6 +36,7 @@ export function ProjectDetailPage({
   const [compact, setCompact] = useState(() => readProjectSectionViewMode() === "compact");
   const [filter, setFilter] = useState<ResultDemoFilter>("all");
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
+  const [localSections, setLocalSections] = useState<DemoSection[]>(project?.sections ?? []);
 
   useEffect(() => {
     function handleSectionViewModeChange(event: Event) {
@@ -52,9 +53,23 @@ export function ProjectDetailPage({
   }, []);
 
   if (!project) return <EmptyPage title="没有项目数据" />;
-  const sections = project.sections;
+  const sections = localSections;
   const projectImages = sections.flatMap((section) => section.images);
   const isResultView = initialView === "results";
+
+  function handleCopySection(section: DemoSection) {
+    const copy: DemoSection = {
+      ...section,
+      id: `${section.id}-copy-${Date.now()}`,
+      name: `${section.name} (副本)`,
+      sortOrder: localSections.length,
+    };
+    setLocalSections(prev => [...prev, copy]);
+  }
+
+  function handleDeleteSection(sectionId: string) {
+    setLocalSections(prev => prev.filter(sec => sec.id !== sectionId));
+  }
 
   function toggleCollapsed(sectionId: string) {
     setCollapsedSections((current) => {
@@ -83,6 +98,7 @@ export function ProjectDetailPage({
                   images={filterImages(section.images, filter)}
                   index={index}
                   key={section.id}
+                  onDelete={handleDeleteSection}
                   onToggleCollapsed={() => toggleCollapsed(section.id)}
                   section={section}
                 />
@@ -91,6 +107,8 @@ export function ProjectDetailPage({
                   compact={compact}
                   index={index}
                   key={section.id}
+                  onCopy={handleCopySection}
+                  onDelete={handleDeleteSection}
                   project={project}
                   section={section}
                 />

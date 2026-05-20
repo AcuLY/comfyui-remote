@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Copy, Download, GripVertical, Plus, Rows3, Save, Trash2 } from "lucide-react";
 
 import type { DemoData, DemoTemplate } from "../../data";
@@ -19,10 +20,19 @@ export function TemplateSectionPage({ template, sectionIndex, data }: { template
   const safeIndex = Number.isFinite(index) ? index : 0;
   const section = template?.sections[safeIndex] ?? template?.sections[0];
   if (!template || !section) return <EmptyPage title="没有模板小节" />;
-  const promptBlocks = [
-    { label: "主体", positive: `${section.name} 正向提示词`, negative: "低质量、模糊" },
-    { label: "风格", positive: section.notes || `${template.name} 风格提示词`, negative: "结构错误、多余手指" },
+  const initialPromptBlocks = [
+    { id: "pb-main", label: "主体", positive: `${section.name} 正向提示词`, negative: "低质量、模糊" },
+    { id: "pb-style", label: "风格", positive: section.notes || `${template.name} 风格提示词`, negative: "结构错误、多余手指" },
   ];
+  const fallbackBindings = [{ id: "fb-char", name: "角色" }, { id: "fb-style", name: "风格" }, { id: "fb-scene", name: "场景" }];
+  const [bindings, setBindings] = useState(() => data?.categories.slice(0, 3) ?? fallbackBindings);
+  const [promptBlocks, setPromptBlocks] = useState(initialPromptBlocks);
+  const [loraItems, setLoraItems] = useState<Array<{ id: string; stage: number; name: string; weight: number }>>(() => [
+    { id: "lora-1-0", stage: 0, name: section.name, weight: 0.7 },
+    { id: "lora-1-1", stage: 0, name: section.name, weight: 0.8 },
+    { id: "lora-2-0", stage: 1, name: template.name, weight: 0.7 },
+    { id: "lora-2-1", stage: 1, name: template.name, weight: 0.8 },
+  ]);
 
   return (
     <div className={s.page}>
@@ -80,14 +90,14 @@ export function TemplateSectionPage({ template, sectionIndex, data }: { template
                 <Button icon={Download} feedback={{ title: "导入预设面板已准备" }}>导入预设</Button>
               </div>
               <div className={s.bindingList}>
-                {(data?.categories.slice(0, 3) ?? [{ id: "fb-char", name: "角色" }, { id: "fb-style", name: "风格" }, { id: "fb-scene", name: "场景" }]).map((cat, bindingIndex) => (
+                {bindings.map((cat, bindingIndex) => (
                   <div className={s.bindingRow} key={cat.id}>
                     <div>
                       <strong>{cat.name} · {bindingIndex === 0 ? section.name : template.name}</strong>
                       <span>{bindingIndex + 1} 个 prompt block · {bindingIndex + 1} 个 LoRA</span>
                     </div>
                     <FloatingSelect label="变体" value={bindingIndex === 0 ? "默认" : "继承"} />
-                    <Button tone="subtle" icon={Trash2} feedback={{ tone: "warning", title: "绑定移除已排队", detail: cat.name }}>移除</Button>
+                    <Button tone="subtle" icon={Trash2} onClick={() => setBindings(prev => prev.filter((_, i) => i !== bindingIndex))} feedback={{ tone: "warning", title: "绑定移除已排队", detail: cat.name }}>移除</Button>
                   </div>
                 ))}
               </div>
@@ -114,11 +124,11 @@ export function TemplateSectionPage({ template, sectionIndex, data }: { template
                 <strong>Prompt Blocks</strong>
                 <span>模板使用和项目小节一致的 block 结构。</span>
               </div>
-              <Button icon={Plus} feedback={{ title: "Prompt Block 已添加" }}>添加 Block</Button>
+              <Button icon={Plus} onClick={() => setPromptBlocks(prev => [...prev, { id: `pb-${Date.now()}`, label: `Block ${prev.length + 1}`, positive: "", negative: "" }])} feedback={{ title: "Prompt Block 已添加" }}>添加 Block</Button>
             </div>
             <div className={s.promptBlockList}>
               {promptBlocks.map((block, blockIndex) => (
-                <div className={s.promptBlockRow} key={block.label}>
+                <div className={s.promptBlockRow} key={block.id}>
                   <Button className={s.dragHandle} tone="subtle" icon={GripVertical} iconOnly ariaLabel="排序手柄" />
                   <div className={s.promptBlockContent}>
                     <div className={s.promptBlockTitle}>
@@ -130,7 +140,7 @@ export function TemplateSectionPage({ template, sectionIndex, data }: { template
                       <Field multiline features={{ resize: true, clipboard: true }} label="反向" value={block.negative} />
                     </div>
                   </div>
-                  <Button tone="subtle" icon={Trash2}>删除</Button>
+                  <Button tone="subtle" icon={Trash2} onClick={() => setPromptBlocks(prev => prev.filter(b => b.id !== block.id))}>删除</Button>
                 </div>
               ))}
             </div>
@@ -142,21 +152,24 @@ export function TemplateSectionPage({ template, sectionIndex, data }: { template
                 <strong>LoRA 模板</strong>
                 <span>阶段 1 / 阶段 2 与项目小节保持同样的配置密度。</span>
               </div>
-              <Button icon={Plus}>添加 LoRA</Button>
+              <Button icon={Plus} onClick={() => setLoraItems(prev => [...prev, { id: `lora-${Date.now()}`, stage: 0, name: `新 LoRA ${prev.length + 1}`, weight: 0.7 }])} feedback={{ title: "LoRA 已添加" }}>添加 LoRA</Button>
             </div>
             <div className={s.loraStageGrid}>
-              {["LoRA 1", "LoRA 2"].map((stage, stageIndex) => (
-                <div className={s.loraStage} key={stage}>
-                  <strong>{stage}</strong>
-                  {[0, 1].map((itemIndex) => (
-                    <div className={s.loraRow} key={`${stage}-${itemIndex}`}>
-                      <span>{stageIndex === 0 ? section.name : template.name}</span>
-                      <em>weight {(0.7 + itemIndex * 0.1).toFixed(2)}</em>
-                      <Button tone="subtle">触发词</Button>
-                    </div>
-                  ))}
-                </div>
-              ))}
+              {[0, 1].map((stageIndex) => {
+                const stageItems = loraItems.filter((item) => item.stage === stageIndex);
+                return (
+                  <div className={s.loraStage} key={`stage-${stageIndex}`}>
+                    <strong>LoRA {stageIndex + 1}</strong>
+                    {stageItems.map((item) => (
+                      <div className={s.loraRow} key={item.id}>
+                        <span>{item.name}</span>
+                        <em>weight {item.weight.toFixed(2)}</em>
+                        <Button tone="subtle">触发词</Button>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
             </div>
           </section>
 

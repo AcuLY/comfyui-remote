@@ -3,7 +3,6 @@ export { RootPage } from "./root-page";
 export { ProjectsPage } from "./project-list-page";
 export { ProjectDetailPage } from "./project-detail-page";
 export { ProjectFormPage } from "./project-form-page";
-export { ProjectDetailHeader } from "./project-detail-header";
 export { ProjectListItem } from "./project-list-item";
 export { ProjectSectionCard } from "./project-section-card";
 export { ProjectSectionResultCard, ProjectResultsToolbar } from "./project-result-card";

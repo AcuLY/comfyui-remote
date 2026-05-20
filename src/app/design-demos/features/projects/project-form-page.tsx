@@ -20,7 +20,7 @@ export function ProjectFormPage({ project, mode, data }: { project?: DemoProject
         eyebrow="项目"
         title={mode === "new" ? "创建新项目" : project?.title ?? "项目"}
         subtitle="基础信息、预设绑定、默认参数和小节种子策略。"
-        actions={<Button tone="primary" icon={Save}>{mode === "new" ? "创建" : "保存"}</Button>}
+        actions={<Button tone="primary" icon={Save} feedback={{ title: mode === "new" ? "项目已创建" : "项目已保存" }}>{mode === "new" ? "创建" : "保存"}</Button>}
       />
       <div className={s.twoCol}>
         <Panel title="基础信息">

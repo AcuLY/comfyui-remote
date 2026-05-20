@@ -7,6 +7,7 @@ import type { DemoRun } from "../../data";
 import { cx } from "../../routing";
 import { Button } from "../../shared/primitives/button";
 import { Checkbox } from "../../shared/primitives/checkbox";
+import { StatusBadge } from "../../shared/primitives/status-badge";
 import { groupCollapsedKey, groupRunsByProject } from "./queue-model";
 import type { QueueRunMode } from "./types";
 import s from "./run-list.runs.module.css";
@@ -29,7 +30,10 @@ export function RunList({
   collapsedGroups: Set<string>;
   onToggleGroup: (groupId: string) => void;
 }) {
-  const groups = groupRunsByProject(runs);
+  const [hiddenRunIds, setHiddenRunIds] = useState<Set<string>>(new Set());
+  const [retriedRunIds, setRetriedRunIds] = useState<Set<string>>(new Set());
+  const activeRuns = runs.filter((r) => !hiddenRunIds.has(r.id));
+  const groups = groupRunsByProject(activeRuns);
   const visibleRuns = groups.flatMap((group) => group.rows.map((row) => row.run)).slice(0, 8);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const selectedVisibleCount = visibleRuns.filter((run) => selectedIds.has(run.id)).length;
@@ -55,6 +59,29 @@ export function RunList({
     });
   }
 
+  function batchDelete() {
+    setHiddenRunIds((prev) => new Set([...prev, ...selectedIds]));
+    setSelectedIds(new Set());
+  }
+
+  function batchRetry() {
+    setRetriedRunIds((prev) => new Set([...prev, ...selectedIds]));
+    setSelectedIds(new Set());
+  }
+
+  function deleteRun(runId: string) {
+    setHiddenRunIds((prev) => new Set([...prev, runId]));
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.delete(runId);
+      return next;
+    });
+  }
+
+  function retryRun(runId: string) {
+    setRetriedRunIds((prev) => new Set([...prev, runId]));
+  }
+
   return (
     <section className={cx(s.queueSurface, className)}>
       <div className={s.queueSurfaceHeader}>
@@ -71,6 +98,7 @@ export function RunList({
               tone="danger"
               icon={X}
               disabled={selectedVisibleCount === 0}
+              onClick={batchDelete}
               feedback={{ tone: "warning", title: "运行任务删除队列已准备", detail: `${selectedVisibleCount} 条任务` }}
             >
               删除所选
@@ -80,6 +108,7 @@ export function RunList({
               tone="primary"
               icon={ArrowRight}
               disabled={selectedVisibleCount === 0}
+              onClick={batchRetry}
               feedback={{ title: "失败任务已加入重试队列", detail: `${selectedVisibleCount} 条任务` }}
             >
               重试所选
@@ -110,6 +139,7 @@ export function RunList({
                   <div className={s.queueProjectRows}>
                     {group.rows.map(({ run }) => {
                       const selected = selectedIds.has(run.id);
+                      const retried = retriedRunIds.has(run.id);
                       const errorMessage = run.errorMessage ?? "ComfyUI 返回空结果或连接超时";
                       return (
                         <div
@@ -117,7 +147,7 @@ export function RunList({
                           className={cx(
                             s.queueRunRow,
                             s.queueRunRowSelectable,
-                            mode === "failed" && s.queueRunRowFailed,
+                            mode === "failed" && !retried && s.queueRunRowFailed,
                             selected && s.queueRunRowSelected,
                           )}
                           key={run.id}
@@ -140,40 +170,46 @@ export function RunList({
                           />
                           <div className={s.queueRunMain}>
                             <strong>{run.sectionName}</strong>
-                            <span>run {run.runIndex}</span>
+                            <span>run {run.runIndex}{retried ? " · 已重试" : ""}</span>
                             <span className={s.queueRunDate}>
-                              {mode === "running" ? "创建于" : "失败于"} {mode === "running" ? run.createdAt : run.startedAt ?? run.createdAt}
+                              {retried ? "已加入重试队列" : mode === "running" ? "创建于" : "失败于"} {retried ? "" : mode === "running" ? run.createdAt : run.startedAt ?? run.createdAt}
                             </span>
                           </div>
                           {mode === "failed" ? (
-                            <div className={s.queueRunSecondary}>
-                              <div className={s.queueRunError} role="status">
-                                <div className={s.queueRunErrorHeader}>
-                                  <CircleAlert className={s.queueRunErrorIcon} aria-hidden="true" />
-                                  <span>失败原因</span>
+                            retried ? (
+                              <div className={s.toolbar} onClick={(event) => event.stopPropagation()}>
+                                <StatusBadge status="pending" label="已排队重试" />
+                              </div>
+                            ) : (
+                              <div className={s.queueRunSecondary}>
+                                <div className={s.queueRunError} role="status">
+                                  <div className={s.queueRunErrorHeader}>
+                                    <CircleAlert className={s.queueRunErrorIcon} aria-hidden="true" />
+                                    <span>失败原因</span>
+                                  </div>
+                                  <p className={s.queueRunErrorText}>{errorMessage}</p>
                                 </div>
-                                <p className={s.queueRunErrorText}>{errorMessage}</p>
-                              </div>
-                              <div
-                                className={cx(s.toolbar, s.queueRunFailureToolbar)}
-                                onClick={(event) => event.stopPropagation()}
-                                onKeyDown={(event) => event.stopPropagation()}
-                              >
-                                <Button
-                                  tone="subtle"
-                                  icon={Copy}
-                                  className={s.queueRunErrorCopy}
-                                  onClick={() => copyErrorMessage(errorMessage)}
-                                  feedback={{ title: "报错已复制", detail: errorMessage }}
+                                <div
+                                  className={cx(s.toolbar, s.queueRunFailureToolbar)}
+                                  onClick={(event) => event.stopPropagation()}
+                                  onKeyDown={(event) => event.stopPropagation()}
                                 >
-                                  复制
-                                </Button>
-                                <Button tone="subtle" icon={ArrowRight} className={s.queueRunRetryAction} feedback={{ title: "重试已排队", detail: run.sectionName }}>重试</Button>
+                                  <Button
+                                    tone="subtle"
+                                    icon={Copy}
+                                    className={s.queueRunErrorCopy}
+                                    onClick={() => copyErrorMessage(errorMessage)}
+                                    feedback={{ title: "报错已复制", detail: errorMessage }}
+                                  >
+                                    复制
+                                  </Button>
+                                  <Button tone="subtle" icon={ArrowRight} className={s.queueRunRetryAction} onClick={() => retryRun(run.id)} feedback={{ title: "重试已排队", detail: run.sectionName }}>重试</Button>
+                                </div>
                               </div>
-                            </div>
+                            )
                           ) : (
                             <div className={s.toolbar} onClick={(event) => event.stopPropagation()}>
-                              <Button tone="danger" icon={X} feedback={{ tone: "warning", title: "删除任务已排队", detail: run.sectionName }}>删除</Button>
+                              <Button tone="danger" icon={X} onClick={() => deleteRun(run.id)} feedback={{ tone: "warning", title: "删除任务已排队", detail: run.sectionName }}>删除</Button>
                             </div>
                           )}
                         </div>

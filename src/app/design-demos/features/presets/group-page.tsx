@@ -15,20 +15,45 @@ import { firstCategory } from "../../routing";
 import { SortableList, useDemoSortable } from "../../shared/primitives/sortable";
 
 export function PresetGroupPage({ data, group }: { data: DemoData; group: DemoPresetGroup | undefined }) {
+  const [memberOrder, setMemberOrder] = useState<string[]>([]);
+  const [deleted, setDeleted] = useState(false);
+  const [removedMemberIds, setRemovedMemberIds] = useState<Set<string>>(new Set());
+  const [addedMembers, setAddedMembers] = useState<Array<{ id: string; name: string; categoryName: string; variant: string }>>([]);
+
+  if (deleted) return <EmptyPage title="预设组已删除" />;
   if (!group) return <EmptyPage title="没有预设组数据" />;
   const category = data.categories.find((item) => item.id === group.categoryId) ?? firstCategory(data);
   const folderPath = category ? presetFolderBreadcrumb(category, group.folderId).map((folder) => folder.name).join(" / ") || "根目录" : "根目录";
   const fallbackMembers = data.categories.flatMap((item) => item.presets).slice(0, Math.max(3, group.memberCount));
-  const members = Array.from({ length: Math.max(group.memberCount, 3) }, (_, index) => ({
+  const baseMembers = Array.from({ length: Math.max(group.memberCount, 3) }, (_, index) => ({
     id: `${group.id}-${index}`,
     name: group.members[index] ?? fallbackMembers[index % Math.max(fallbackMembers.length, 1)]?.name ?? "选择预设",
     categoryName: data.categories.find((item) => item.presets.some((preset) => preset.name === group.members[index]))?.name ?? "预设",
     variant: fallbackMembers[index % Math.max(fallbackMembers.length, 1)]?.variants[0]?.name ?? "默认",
   }));
-  const [memberOrder, setMemberOrder] = useState(members.map((m) => m.id));
+  const members = [...baseMembers, ...addedMembers].filter((m) => !removedMemberIds.has(m.id));
   const orderedMembers = memberOrder.length
     ? memberOrder.map((id) => members.find((m) => m.id === id)).filter((m): m is typeof members[number] => Boolean(m))
     : members;
+
+  function addMember() {
+    const nextIndex = baseMembers.length + addedMembers.length;
+    const fallbackPreset = fallbackMembers[nextIndex % Math.max(fallbackMembers.length, 1)];
+    setAddedMembers((prev) => [
+      ...prev,
+      {
+        id: `${group!.id}-added-${Date.now()}`,
+        name: fallbackPreset?.name ?? "新成员预设",
+        categoryName: data.categories[nextIndex % Math.max(data.categories.length, 1)]?.name ?? "预设",
+        variant: fallbackPreset?.variants[0]?.name ?? "默认",
+      },
+    ]);
+  }
+
+  function handleRemoveMember(memberId: string) {
+    setRemovedMemberIds((prev) => new Set([...prev, memberId]));
+    setMemberOrder((prev) => prev.filter((id) => id !== memberId));
+  }
 
   return (
     <div className={s.page}>
@@ -41,25 +66,13 @@ export function PresetGroupPage({ data, group }: { data: DemoData; group: DemoPr
       />
       <div className={s.presetGroupShell}>
         <main className={s.editorSurface}>
-          <div className={s.editorStickyHeader}>
-            <div className={s.editorIdentity}>
-              <span>{category?.name ?? "未分类"} · {folderPath}</span>
-              <strong>成员编排</strong>
-              <em>拖拽排序、添加预设或子组、保存后返回当前分类和文件夹。</em>
-            </div>
-            <div className={s.toolbar}>
-              <StatusBadge status="ready" label="已保存" />
-              <Button icon={Plus} feedback={{ title: "成员选择面板已准备" }}>添加成员</Button>
-            </div>
-          </div>
-
           <section className={s.editorBlock}>
             <div className={s.editorBlockHeader}>
               <div>
                 <strong>组信息</strong>
                 <span>预设组保留分类、文件夹和删除返回路径，名称可直接编辑。</span>
               </div>
-              <Button tone="danger" icon={Trash2} feedback={{ tone: "warning", title: "删除预设组需要确认", detail: group.name }}>删除组</Button>
+              <Button tone="danger" icon={Trash2} onClick={() => setDeleted(true)} feedback={{ tone: "warning", title: "删除预设组需要确认", detail: group.name }}>删除组</Button>
             </div>
             <div className={s.formGrid}>
               <Field label="名称" value={group.name} />
@@ -74,12 +87,15 @@ export function PresetGroupPage({ data, group }: { data: DemoData; group: DemoPr
                 <strong>成员列表</strong>
                 <span>行内展示成员来源、变体和排序手柄，避免在列表里再展开编辑卡片。</span>
               </div>
-              <Button icon={Search} feedback={{ title: "预设选择面板已准备" }}>选择预设</Button>
+              <div style={{ display: "flex", gap: "0.5rem" }}>
+                <Button icon={Plus} onClick={addMember} feedback={{ title: "新成员已添加" }}>添加成员</Button>
+                <Button icon={Search} feedback={{ title: "预设选择面板已准备" }}>选择预设</Button>
+              </div>
             </div>
             <div className={s.groupMemberList}>
               <SortableList items={orderedMembers.map((m) => m.id)} onReorder={setMemberOrder}>
                 {orderedMembers.map((member, index) => (
-                  <PresetMemberRow index={index} key={member.id} member={member} />
+                  <PresetMemberRow index={index} key={member.id} member={member} onRemove={handleRemoveMember} />
                 ))}
               </SortableList>
             </div>
@@ -150,9 +166,11 @@ export type PresetMemberRowData = {
 export function PresetMemberRow({
   index,
   member,
+  onRemove,
 }: {
   index: number;
   member: PresetMemberRowData;
+  onRemove?: (memberId: string) => void;
 }) {
   const { ref, style, handleProps } = useDemoSortable(member.id);
 
@@ -165,7 +183,7 @@ export function PresetMemberRow({
         <em>{member.categoryName} · {member.variant}</em>
       </div>
       <FloatingSelect label="变体" value={member.variant} />
-      <Button tone="danger" icon={Trash2} iconOnly size="sm" ariaLabel="移除成员" />
+      <Button tone="danger" icon={Trash2} iconOnly size="sm" ariaLabel="移除成员" onClick={() => onRemove?.(member.id)} />
     </div>
   );
 }

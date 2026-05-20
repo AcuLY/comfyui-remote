@@ -16,18 +16,28 @@ const BATCH_SIZE_OPTIONS = [1, 2, 4, 8, 16];
 export function ProjectSectionCard({
   compact,
   index,
+  onCopy,
+  onDelete,
   project,
   section,
 }: {
   compact: boolean;
   index: number;
+  onCopy?: (section: DemoSection) => void;
+  onDelete?: (sectionId: string) => void;
   project: DemoProject;
   section: DemoSection;
 }) {
   const defaultBatchSize = BATCH_SIZE_OPTIONS.includes(section.batchSize) ? section.batchSize : 2;
   const [batchSize, setBatchSize] = useState(defaultBatchSize);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const sectionHref = demoHref(`/projects/${project.id}/sections/${rawSectionId(section)}`);
   const latestRunLabel = `最后运行：${section.latestRunAt ?? "未运行"}`;
+
+  function handleRun() {
+    setIsSubmitting(true);
+    setTimeout(() => setIsSubmitting(false), 1500);
+  }
 
   return (
     <article
@@ -43,8 +53,8 @@ export function ProjectSectionCard({
             <strong>{section.name}</strong>
           </Link>
           <div className={s.sectionHeaderActions}>
-            <Button tone="subtle" icon={Copy} iconOnly ariaLabel={`复制小节：${section.name}`} feedback={{ title: "小节已复制", detail: section.name }} />
-            <Button tone="danger" icon={Trash2} iconOnly ariaLabel={`删除小节：${section.name}`} feedback={{ tone: "warning", title: "删除小节需要确认", detail: section.name }} />
+            <Button tone="subtle" icon={Copy} iconOnly ariaLabel={`复制小节：${section.name}`} onClick={() => onCopy?.(section)} feedback={{ title: "小节已复制", detail: section.name }} />
+            <Button tone="danger" icon={Trash2} iconOnly ariaLabel={`删除小节：${section.name}`} onClick={() => onDelete?.(section.id)} feedback={{ tone: "warning", title: "删除小节需要确认", detail: section.name }} />
           </div>
         </div>
         <Link aria-label={`打开第 ${index + 1} 小节最近结果：${section.name}`} className={s.sectionRecentResult} href={sectionHref}>
@@ -68,6 +78,9 @@ export function ProjectSectionCard({
             icon={Play}
             iconOnly
             ariaLabel={`运行小节：${section.name}`}
+            disabled={isSubmitting}
+            pending={isSubmitting}
+            onClick={handleRun}
             feedback={{ title: "小节运行已加入任务", detail: `${section.name} · batch ${batchSize}` }}
           />
         </div>

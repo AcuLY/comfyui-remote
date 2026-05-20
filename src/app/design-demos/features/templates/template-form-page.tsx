@@ -21,6 +21,21 @@ import { SortableList, useDemoSortable } from "../../shared/primitives/sortable"
 
 export function TemplateFormPage({ template, mode, data }: { template?: DemoTemplate; mode: "new" | "edit"; data?: DemoData }) {
   const sections = template?.sections ?? [];
+  const [extraSections, setExtraSections] = useState<DemoTemplateSection[]>([]);
+  const allSections = [...sections, ...extraSections];
+
+  function addSection() {
+    const newSection: DemoTemplateSection = {
+      id: `new-section-${Date.now()}`,
+      name: `新小节 ${allSections.length + 1}`,
+      sortOrder: allSections.length,
+      aspectRatio: "2:3",
+      batchSize: 2,
+      notes: "",
+    };
+    setExtraSections(prev => [...prev, newSection]);
+  }
+
   const content = (
     <WorkbenchSurface className={s.editorSurface}>
       <EditorBlock
@@ -37,14 +52,14 @@ export function TemplateFormPage({ template, mode, data }: { template?: DemoTemp
       </EditorBlock>
 
       <EditorBlock
-        actions={<Button icon={Plus} feedback={{ title: "小节草稿已添加" }}>添加小节</Button>}
+        actions={<Button icon={Plus} onClick={addSection} feedback={{ title: "小节草稿已添加" }}>添加小节</Button>}
         className={s.editorBlock}
         contentClassName={s.sectionBlockContent}
         description="排序、复制、删除，点击行进入小节编辑。"
         headerClassName={s.editorBlockHeader}
         title="小节配置"
       >
-        <SortableSectionList sections={sections} template={template} />
+        <SortableSectionList sections={allSections} template={template} onAddSection={addSection} />
         <OperationStateStrip
           items={[
             { label: "排序", value: "拖拽释放后保存", tone: "info" },
@@ -63,9 +78,9 @@ export function TemplateFormPage({ template, mode, data }: { template?: DemoTemp
           back={{ href: "/templates", label: "返回模板列表" }}
           eyebrow="模板"
           title={template.name}
-          subtitle={`${template.sectionCount} 个小节`}
+          subtitle={`${allSections.length} 个小节`}
           actions={
-            <Button icon={Plus} feedback={{ title: "小节草稿已添加", detail: template.name }}>添加小节</Button>
+            <Button icon={Plus} onClick={addSection} feedback={{ title: "小节草稿已添加", detail: template.name }}>添加小节</Button>
           }
         />
         <TemplateSectionShell template={template} mode="template-edit">
@@ -89,9 +104,38 @@ export function TemplateFormPage({ template, mode, data }: { template?: DemoTemp
   );
 }
 
-function SortableSectionList({ sections, template }: { sections: DemoTemplateSection[]; template?: DemoTemplate }) {
+function SortableSectionList({ sections, template, onAddSection }: { sections: DemoTemplateSection[]; template?: DemoTemplate; onAddSection?: () => void }) {
   const [orderedIds, setOrderedIds] = useState(() => sections.map((sec) => sec.id));
-  const sectionMap = Object.fromEntries(sections.map((sec) => [sec.id, sec]));
+  const [localCopies, setLocalCopies] = useState<DemoTemplateSection[]>([]);
+  const allSections = [...sections, ...localCopies];
+  const sectionMap = Object.fromEntries(allSections.map((sec) => [sec.id, sec]));
+
+  // Sync orderedIds when sections change (new sections added from parent)
+  const sectionIds = sections.map((sec) => sec.id);
+  const missingIds = sectionIds.filter((id) => !orderedIds.includes(id));
+  if (missingIds.length > 0) {
+    // Will re-render with updated ids
+    setOrderedIds((prev) => [...prev, ...missingIds]);
+  }
+
+  function handleDelete(sectionId: string) {
+    setOrderedIds((prev) => prev.filter((id) => id !== sectionId));
+    setLocalCopies((prev) => prev.filter((sec) => sec.id !== sectionId));
+  }
+
+  function handleCopy(sectionId: string) {
+    const source = sectionMap[sectionId];
+    if (!source) return;
+    const copyId = `${sectionId}-copy-${Date.now()}`;
+    const copy: DemoTemplateSection = {
+      ...source,
+      id: copyId,
+      name: `${source.name} (副本)`,
+      sortOrder: orderedIds.length,
+    };
+    setLocalCopies((prev) => [...prev, copy]);
+    setOrderedIds((prev) => [...prev, copyId]);
+  }
 
   if (!sections.length) {
     return (
@@ -108,7 +152,7 @@ function SortableSectionList({ sections, template }: { sections: DemoTemplateSec
           const section = sectionMap[id];
           if (!section) return null;
           return (
-            <SortableSectionRow key={id} index={index} section={section} template={template} />
+            <SortableSectionRow key={id} index={index} section={section} template={template} onDelete={handleDelete} onCopy={handleCopy} />
           );
         })}
       </SortableList>
@@ -116,11 +160,11 @@ function SortableSectionList({ sections, template }: { sections: DemoTemplateSec
   );
 }
 
-function SortableSectionRow({ index, section, template }: { index: number; section: DemoTemplateSection; template?: DemoTemplate }) {
+function SortableSectionRow({ index, section, template, onDelete, onCopy }: { index: number; section: DemoTemplateSection; template?: DemoTemplate; onDelete?: (sectionId: string) => void; onCopy?: (sectionId: string) => void }) {
   const { ref, style, handleProps } = useDemoSortable(section.id);
   return (
     <div ref={ref} style={style}>
-      <TemplateSectionRow index={index} section={section} template={template} handleProps={handleProps} />
+      <TemplateSectionRow index={index} section={section} template={template} handleProps={handleProps} onDelete={onDelete} onCopy={onCopy} />
     </div>
   );
 }
@@ -128,11 +172,15 @@ function SortableSectionRow({ index, section, template }: { index: number; secti
 export function TemplateSectionRow({
   handleProps,
   index,
+  onCopy,
+  onDelete,
   section,
   template,
 }: {
   handleProps?: Record<string, unknown>;
   index: number;
+  onCopy?: (sectionId: string) => void;
+  onDelete?: (sectionId: string) => void;
   section: DemoTemplateSection;
   template?: DemoTemplate;
 }) {
@@ -168,8 +216,8 @@ export function TemplateSectionRow({
       </Link>
       <div className={s.templateSectionRowActions}>
         <ButtonLink href={href} icon={SlidersHorizontal}>编辑</ButtonLink>
-        <Button tone="subtle" icon={Copy} feedback={{ title: "模板小节已复制", detail: section.name }}>复制</Button>
-        <Button tone="danger" icon={Trash2} feedback={{ tone: "warning", title: "删除小节需要确认", detail: section.name }}>删除</Button>
+        <Button tone="subtle" icon={Copy} onClick={() => onCopy?.(section.id)} feedback={{ title: "模板小节已复制", detail: section.name }}>复制</Button>
+        <Button tone="danger" icon={Trash2} onClick={() => onDelete?.(section.id)} feedback={{ tone: "warning", title: "删除小节需要确认", detail: section.name }}>删除</Button>
       </div>
     </article>
   );

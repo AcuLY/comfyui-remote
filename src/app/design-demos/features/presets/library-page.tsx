@@ -326,17 +326,20 @@ function PresetItemRows({
 export function PresetsPage({ data }: { data: DemoData }) {
   const [categoryId, setCategoryId] = useState(data.categories[0]?.id ?? "");
   const [categoryOrder, setCategoryOrder] = useState(data.categories.map((c) => c.id));
+  const [hiddenCategoryIds, setHiddenCategoryIds] = useState<Set<string>>(new Set());
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [localCopies, setLocalCopies] = useState<LocalPresetLibraryItem[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
   const [moveSheetOpen, setMoveSheetOpen] = useState(false);
   const [moveTargetId, setMoveTargetId] = useState<string | null>(null);
   const [showDraftFolder, setShowDraftFolder] = useState(false);
   const [itemOrder, setItemOrder] = useState<string[]>([]);
-  const category = data.categories.find((item) => item.id === categoryId) ?? data.categories[0];
+  const visibleCategories = data.categories.filter((c) => !hiddenCategoryIds.has(c.id));
+  const category = visibleCategories.find((item) => item.id === categoryId) ?? visibleCategories[0];
   const categoryItems = category ? presetLibraryItemsWithDemoData(category) : [];
   const categoryCopies = category ? localCopies.filter((item) => item.categoryId === category.id) : [];
-  const allCategoryItems = [...categoryItems, ...categoryCopies];
+  const allCategoryItems = [...categoryItems, ...categoryCopies].filter((item) => !hiddenIds.has(item.id));
   const visibleItems = allCategoryItems.filter((item) => (item.folderId ?? null) === currentFolderId);
   const orderedVisibleItems = itemOrder.length
     ? itemOrder.map((id) => visibleItems.find((item) => item.id === id)).filter((item): item is LocalPresetLibraryItem => Boolean(item))
@@ -413,8 +416,9 @@ export function PresetsPage({ data }: { data: DemoData }) {
       {category ? (
         <div className={s.presetManagerLayout}>
           <PresetCategorySidebar
-            categories={data.categories}
+            categories={visibleCategories}
             categoryOrder={categoryOrder}
+            onDeleteCategory={(id) => setHiddenCategoryIds(prev => new Set([...prev, id]))}
             onReorderCategories={setCategoryOrder}
             selectedCategory={category}
             onSelect={selectCategory}
@@ -431,7 +435,21 @@ export function PresetsPage({ data }: { data: DemoData }) {
             <div className={s.presetContextBar}>
               <PresetFolderBrowser category={category} currentFolderId={currentFolderId} itemCount={folderItemCount} onNavigate={navigateFolder} />
               <div className={s.toolbar}>
-                <Button icon={Plus} feedback={{ title: `${category.type === "group" ? "预设组" : "预设"}创建表单已准备` }}>新建{category.type === "group" ? "预设组" : "预设"}</Button>
+                <Button icon={Plus} onClick={() => {
+                  const draftId = `draft-${Date.now()}`;
+                  const draftItem: LocalPresetLibraryItem = {
+                    id: draftId,
+                    name: `新${category.type === "group" ? "预设组" : "预设"}`,
+                    slug: draftId,
+                    kind: category.type === "group" ? "group" : "preset",
+                    href: "#",
+                    description: "刚创建的草稿",
+                    meta: "0 个变体",
+                    folderId: currentFolderId,
+                    categoryId: category.id,
+                  };
+                  setLocalCopies(prev => [...prev, draftItem]);
+                }} feedback={{ title: `${category.type === "group" ? "预设组" : "预设"}创建表单已准备` }}>新建{category.type === "group" ? "预设组" : "预设"}</Button>
                 <Button icon={FolderTree} onClick={() => setShowDraftFolder(true)} feedback={{ title: "文件夹草稿已创建" }}>新建文件夹</Button>
               </div>
             </div>
@@ -448,7 +466,7 @@ export function PresetsPage({ data }: { data: DemoData }) {
                   }}>
                     移动到文件夹
                   </Button>
-                  <Button tone="danger" icon={Trash2} feedback={{ tone: "warning", title: "批量删除需要确认", detail: `${selectedCount} 项` }}>批量删除</Button>
+                  <Button tone="danger" icon={Trash2} onClick={() => { setHiddenIds(prev => new Set([...prev, ...selectedIds])); setSelectedIds(new Set()); }} feedback={{ tone: "warning", title: "批量删除需要确认", detail: `${selectedCount} 项` }}>批量删除</Button>
                   </>
                 }
                 actionsClassName={s.toolbar}
@@ -520,12 +538,14 @@ export function PresetsPage({ data }: { data: DemoData }) {
 export function PresetCategorySidebar({
   categories,
   categoryOrder,
+  onDeleteCategory,
   onReorderCategories,
   selectedCategory,
   onSelect,
 }: {
   categories: DemoCategory[];
   categoryOrder: string[];
+  onDeleteCategory?: (categoryId: string) => void;
   onReorderCategories: (ids: string[]) => void;
   selectedCategory: DemoCategory;
   onSelect: (category: DemoCategory) => void;
@@ -547,7 +567,7 @@ export function PresetCategorySidebar({
           {orderedCategories.map((category) => {
             const selected = selectedCategory.id === category.id;
             return (
-              <PresetCategoryRow category={category} key={category.id} onSelect={onSelect} selected={selected} />
+              <PresetCategoryRow category={category} key={category.id} onDelete={onDeleteCategory} onSelect={onSelect} selected={selected} />
             );
           })}
         </SortableList>
@@ -558,10 +578,12 @@ export function PresetCategorySidebar({
 
 export function PresetCategoryRow({
   category,
+  onDelete,
   onSelect,
   selected,
 }: {
   category: DemoCategory;
+  onDelete?: (categoryId: string) => void;
   onSelect: (category: DemoCategory) => void;
   selected: boolean;
 }) {
@@ -580,7 +602,7 @@ export function PresetCategoryRow({
         </button>
         <div className={s.presetCategoryActions}>
           <ButtonLink href={`/presets/categories/${category.id}/edit`} icon={Edit3} iconOnly ariaLabel="编辑分类" tone="subtle" />
-          <Button tone="danger" icon={Trash2} iconOnly ariaLabel="删除分类" disabled={categoryItemCount(category) > 0} />
+          <Button tone="danger" icon={Trash2} iconOnly ariaLabel="删除分类" disabled={categoryItemCount(category) > 0} onClick={() => onDelete?.(category.id)} />
         </div>
       </div>
     </div>

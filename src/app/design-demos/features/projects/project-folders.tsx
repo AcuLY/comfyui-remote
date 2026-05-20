@@ -105,6 +105,7 @@ export function ProjectFolderRow({
   compact = false,
   folder,
   images,
+  onDelete,
   onEnter,
   onToggleSelected,
   projectCount,
@@ -114,6 +115,7 @@ export function ProjectFolderRow({
   compact?: boolean;
   folder: DemoProjectFolder;
   images: DemoImage[];
+  onDelete?: () => void;
   onEnter: () => void;
   onToggleSelected: () => void;
   projectCount: number;
@@ -175,6 +177,7 @@ export function ProjectFolderRow({
               iconOnly
               ariaLabel={`删除文件夹：${folder.name}`}
               size="sm"
+              onClick={onDelete}
               feedback={{ tone: "warning", title: "删除文件夹需要确认", detail: folder.name }}
             />
           </div>

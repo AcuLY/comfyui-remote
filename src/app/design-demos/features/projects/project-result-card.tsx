@@ -50,12 +50,14 @@ export function ProjectSectionResultCard({
   collapsed,
   images,
   index,
+  onDelete,
   onToggleCollapsed,
   section,
 }: {
   collapsed: boolean;
   images: DemoImage[];
   index: number;
+  onDelete?: (sectionId: string) => void;
   onToggleCollapsed: () => void;
   section: DemoSection;
 }) {
@@ -90,7 +92,7 @@ export function ProjectSectionResultCard({
         <Button icon={Check} feedback={{ title: "本节图片已加入保留队列" }}>保留</Button>
         <Button tone="pink" icon={Star} feedback={{ title: "本节图片已加入 p站 标记队列" }}>p站</Button>
         <Button tone="pink" icon={Eye} feedback={{ title: "本节图片已加入预览标记队列" }}>预览</Button>
-        <Button tone="danger" icon={Trash2} feedback={{ tone: "warning", title: "本节图片已加入删除队列" }}>删除</Button>
+        <Button tone="danger" icon={Trash2} onClick={() => onDelete?.(section.id)} feedback={{ tone: "warning", title: "本节图片已加入删除队列" }}>删除</Button>
         <Button tone="subtle" icon={Archive} feedback={{ tone: "info", title: "最近结果操作已撤销" }}>撤销</Button>
       </div>
       <ImageGrid images={visibleImages} />

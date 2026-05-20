@@ -27,6 +27,7 @@ function PresetCategoryEditor({ category, categories }: { category: DemoCategory
   const itemCount = category ? categoryItemCount(category) : 0;
   const slots = categorySlotPreview(category, categories);
   const presetCategories = categories.filter((item) => item.type !== "group");
+  const [localSlots, setLocalSlots] = useState(() => slots.length ? slots : [{ id: "new-slot", label: "主体", categoryName: presetCategories[0]?.name ?? "选择预设分类" }]);
   const [hue, setHue] = useState(() => categoryHueValue(category?.color ?? null));
   const hueColor = `hsl(${hue} 100% 43%)`;
   const hueControlStyle = {
@@ -72,9 +73,9 @@ function PresetCategoryEditor({ category, categories }: { category: DemoCategory
         <div className={s.slotEditor}>
           <div className={s.slotEditorHeader}>
             <strong>默认槽位</strong>
-            <Button icon={Plus} size="sm" tone="primary">添加槽位</Button>
+            <Button icon={Plus} size="sm" tone="primary" onClick={() => setLocalSlots(prev => [...prev, { id: `slot-${Date.now()}`, label: "新槽位", categoryName: presetCategories[0]?.name ?? "选择预设分类" }])} feedback={{ title: "槽位已添加" }}>添加槽位</Button>
           </div>
-          {(slots.length ? slots : [{ id: "new-slot", label: "主体", categoryName: presetCategories[0]?.name ?? "选择预设分类" }]).map((slot) => (
+          {localSlots.map((slot) => (
             <UnitRowShell
               className={s.slotRow}
               dragHandle={<GripVertical className={s.categoryDragIcon} />}
@@ -84,7 +85,7 @@ function PresetCategoryEditor({ category, categories }: { category: DemoCategory
               title={(
                 <div className={s.slotRowControls}>
                   <FloatingSelect label="来源分类" value={slot.categoryName} />
-                  <Button tone="danger" icon={X} iconOnly ariaLabel="删除槽位" />
+                  <Button tone="danger" icon={X} iconOnly ariaLabel="删除槽位" onClick={() => setLocalSlots(prev => prev.filter(s => s.id !== slot.id))} />
                 </div>
               )}
               titleClassName={s.slotRowTitle}

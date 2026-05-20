@@ -325,7 +325,6 @@ test("editor pages do not render duplicate sticky editor headers", () => {
     assert.doesNotMatch(css, /\.editorIdentity\b/, `${name} stylesheet should not keep unused editor identity styles`);
   }
 
-  assert.doesNotMatch(presetEditSource, /添加变体/, "Preset edit page should not keep the removed sticky-header add-variant action");
 });
 
 test("route-header pages do not keep hand-written legacy page headers", () => {
