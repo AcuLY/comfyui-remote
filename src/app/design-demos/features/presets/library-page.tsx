@@ -81,9 +81,6 @@ function presetLibraryItemsWithDemoData(category: DemoCategory): LocalPresetLibr
   });
 }
 
-/**
- * Move sheet: allows batch moving selected items to a target folder
- */
 function PresetMoveSheet({
   category,
   confirmFeedback,
@@ -105,58 +102,51 @@ function PresetMoveSheet({
   const breadcrumb = presetFolderBreadcrumb(category, selectedFolderId);
 
   return (
-    <div className={s.moveBackdrop} role="presentation" onClick={onCancel}>
-      <section className={s.moveSheet} role="dialog" aria-modal="true" aria-label={`移动 ${selectedCount} 个${categoryTypeLabel(category)}项`} onClick={(event) => event.stopPropagation()}>
-        <header className={s.moveHeader}>
+    <div className={s.presetMoveBackdrop} role="presentation" onClick={onCancel}>
+      <section className={s.presetMoveSheet} role="dialog" aria-modal="true" aria-label="选择移动文件夹" onClick={(event) => event.stopPropagation()}>
+        <header className={s.presetMoveHeader}>
           <div>
-            <p>批量移动</p>
+            <span>批量移动</span>
             <h2>{selectedCount} 个{categoryTypeLabel(category)}条目</h2>
           </div>
-          <button className={s.closeButton} type="button" onClick={onCancel} aria-label="关闭">
-            <X width={16} height={16} />
+          <button className={s.iconButton} type="button" onClick={onCancel} aria-label="关闭">
+            <X className={s.iconMd} />
           </button>
         </header>
-        <nav className={s.moveBreadcrumbs}>
-          <FolderBreadcrumb
-            activeButtonClassName={s.breadcrumbActive}
-            buttonClassName={s.breadcrumbButton}
-            className={s.breadcrumb}
-            items={breadcrumb.map((folder) => ({ id: folder.id, label: folder.name }))}
-            onNavigate={onSelect}
-            rootLabel="根目录"
-            size="sm"
-          />
-        </nav>
-        <div className={s.moveTargets}>
+        <FolderBreadcrumb
+          activeButtonClassName={s.presetFolderBreadcrumbActive}
+          buttonClassName={s.presetFolderBreadcrumbButton}
+          className={s.presetMoveBreadcrumbs}
+          items={breadcrumb.map((folder) => ({ id: folder.id, label: folder.name }))}
+          onNavigate={onSelect}
+          size="sm"
+        />
+        <div className={s.presetMoveTargets}>
           {options.map((option) => (
-            <button
+            <FolderRow
+              className={cx(s.presetMoveTarget, selectedFolderId === option.id && s.presetMoveTargetActive)}
+              countLabel={`${option.count} 项`}
+              iconClassName={s.iconMd}
               key={option.id ?? "root"}
-              type="button"
-              className={cx(s.moveTarget, selectedFolderId === option.id && s.moveTargetActive)}
-              onClick={() => onSelect(option.id)}
-              aria-pressed={selectedFolderId === option.id}
-              style={{ paddingLeft: `${(option.depth ?? 0) * 16}px` }}
-            >
-              <FolderTree width={14} height={14} />
-              <span>{option.name}</span>
-              <em>{option.count} 项</em>
-            </button>
+              leadingIcon={FolderTree}
+              name={option.name}
+              nameClassName={s.presetMoveTargetName}
+              onOpen={() => onSelect(option.id)}
+              openClassName={s.presetMoveTargetOpen}
+              showChevron={false}
+              showDragHandle={false}
+            />
           ))}
         </div>
-        <footer className={s.moveFooter}>
-          <span>移动到：<strong>{breadcrumb[breadcrumb.length - 1]?.name ?? "根目录"}</strong></span>
-          <Button tone="primary" icon={FolderTree} onClick={onConfirm} feedback={confirmFeedback}>
-            移动
-          </Button>
+        <footer className={s.presetMoveFooter}>
+          <span>目标：{breadcrumb[breadcrumb.length - 1]?.name ?? "根目录"}</span>
+          <Button tone="primary" icon={FolderTree} onClick={onConfirm} feedback={confirmFeedback}>移动到这里</Button>
         </footer>
       </section>
     </div>
   );
 }
 
-/**
- * Folder browser: breadcrumb navigation and item counter for current folder
- */
 function PresetFolderBrowser({
   category,
   currentFolderId,
@@ -171,24 +161,20 @@ function PresetFolderBrowser({
   const breadcrumb = presetFolderBreadcrumb(category, currentFolderId);
 
   return (
-    <div className={s.folderBrowser}>
+    <div className={s.presetFolderBar}>
       <FolderBreadcrumb
-        activeButtonClassName={s.breadcrumbActive}
-        buttonClassName={s.breadcrumbButton}
-        className={s.breadcrumb}
+        activeButtonClassName={s.presetFolderBreadcrumbActive}
+        buttonClassName={s.presetFolderBreadcrumbButton}
+        className={s.presetFolderBreadcrumbs}
         items={breadcrumb.map((folder) => ({ id: folder.id, label: folder.name }))}
         onNavigate={onNavigate}
-        rootLabel="根目录"
         size="sm"
       />
-      <span className={s.folderItemCount}>{itemCount ?? presetFolderItemCount(category, currentFolderId)} 项</span>
+      <span>{itemCount ?? presetFolderItemCount(category, currentFolderId)} 项</span>
     </div>
   );
 }
 
-/**
- * Folder rows: list of subfolders in current location
- */
 function PresetFolderRows({
   category,
   currentFolderId,
@@ -203,20 +189,20 @@ function PresetFolderRows({
   if (!folders.length) return null;
 
   return (
-    <div className={s.folderGrid}>
+    <div className={s.presetFolderGrid}>
       {folders.map((folder) => (
         <FolderRow
           actions={<Button tone="subtle" icon={Edit3} iconOnly ariaLabel={`编辑文件夹：${folder.name}`} />}
-          actionsClassName={s.folderRowActions}
-          className={s.folderItem}
+          actionsClassName={s.presetFolderRowActions}
+          className={s.presetFolderRow}
           countLabel={`${presetFolderItemCount(category, folder.id)} 项`}
-          dragHandleClassName={s.dragHandle}
-          iconClassName={s.folderIcon}
+          dragHandleClassName={s.presetFolderGrip}
+          iconClassName={s.iconMd}
           key={folder.id}
           leadingIcon={FolderTree}
           name={folder.name}
           onOpen={() => onNavigate(folder.id)}
-          openClassName={s.folderOpen}
+          openClassName={s.presetFolderOpen}
           showChevron={false}
         />
       ))}
@@ -224,9 +210,6 @@ function PresetFolderRows({
   );
 }
 
-/**
- * Preset library item row: displays a preset or group with copy/delete actions
- */
 export function PresetLibraryItemRow({
   checked,
   copyState,
@@ -257,33 +240,38 @@ export function PresetLibraryItemRow({
 
   const href = item.isLocalCopy ? item.sourceHref ?? item.href : item.href;
   const openLabel = item.isLocalCopy && item.sourceName ? `打开源预制：${item.sourceName}` : undefined;
+  const copyStateLabel = copyState === "copy" ? "本地副本" : copyState === "source" ? "已复制源" : null;
 
   return (
-    <div ref={ref} style={style} className={cx(s.itemRow, checked && s.itemRowSelected, copyState === "copy" && s.itemRowCopy, copyState === "source" && s.itemRowSource)}>
+    <div ref={ref} style={style} className={cx(s.presetItemRow, checked && s.presetItemRowSelected, copyState === "copy" && s.presetItemRowCopy, copyState === "source" && s.presetItemRowSource)}>
       <Checkbox
         checked={checked}
-        label={checked ? `取消选择：${item.name}` : `选择：${item.name}`}
+        label={checked ? `取消选择预制：${item.name}` : `选择预制：${item.name}`}
         onCheckedChange={() => onToggle(item.id)}
         variant="compact"
       />
-      <Link aria-label={openLabel} className={s.itemLink} href={demoHref(href)}>
-        <GripVertical className={s.dragHandle} {...handleProps} width={14} height={14} />
-        <div className={s.itemContent}>
-          <strong className={s.itemTitle}>{item.name}</strong>
-          <p className={s.itemDescription}>{item.description}</p>
+      <Link aria-label={openLabel} className={s.presetItemOpenArea} href={demoHref(href)}>
+        <GripVertical className={s.categoryDragIcon} {...handleProps} />
+        <div className={s.presetItemMain}>
+          <strong>
+            <span className={s.presetItemNameText}>{item.name}</span>
+            {copyStateLabel ? <span className={s.presetInlineState}>{copyStateLabel}</span> : null}
+          </strong>
+          <p>{item.description}</p>
         </div>
-        <div className={s.itemMeta}>
-          <span className={s.itemIndex}>{String(index + 1).padStart(2, "0")}</span>
+        <div className={s.presetItemMeta}>
+          <span>{String(index + 1).padStart(2, "0")}</span>
           <em>{item.isLocalCopy && item.sourceName ? `源：${item.sourceName}` : item.meta}</em>
         </div>
-        <ArrowRight className={s.itemArrow} width={14} height={14} />
+        <ArrowRight className={s.presetItemArrow} />
       </Link>
-      <div className={s.itemActions}>
+      <div className={s.presetItemActions}>
         {item.kind === "preset" ? (
           <>
-            {copied && <span className={s.copiedLabel}>已复制</span>}
+            {copied ? <span className={s.presetCopyState}>已复制</span> : null}
             <Button
               ariaLabel={`复制预制：${item.name}`}
+              className={s.presetItemCopyButton}
               icon={Copy}
               iconOnly
               onClick={handleCopy}
@@ -309,7 +297,7 @@ export function PresetLibraryItemRow({
           tone="danger"
           feedback={{
             tone: "warning",
-            title: "已删除",
+            title: "预设已删除",
             detail: item.name,
           }}
         />
@@ -318,9 +306,6 @@ export function PresetLibraryItemRow({
   );
 }
 
-/**
- * Item rows container: displays all preset/group items in current folder with sortable list
- */
 function PresetItemRows({
   copiedSourceIds,
   items,
@@ -339,26 +324,19 @@ function PresetItemRows({
   selectedIds: Set<string>;
 }) {
   if (!items.length) {
-    return <div className={s.empty}>当前文件夹没有条目</div>;
+    return (
+      <div className={s.empty}>当前文件夹没有条目</div>
+    );
   }
 
   return (
-    <div className={s.itemList}>
+    <div className={s.presetItemList}>
       <SortableList items={items.map((item) => item.id)} onReorder={onReorder}>
         {items.map((item, index) => {
           const checked = selectedIds.has(item.id);
           const copyState = item.isLocalCopy ? "copy" : copiedSourceIds.has(item.id) ? "source" : undefined;
           return (
-            <PresetLibraryItemRow
-              checked={checked}
-              copyState={copyState}
-              index={index}
-              item={item}
-              key={item.id}
-              onCopy={onCopy}
-              onDelete={onDelete}
-              onToggle={onToggle}
-            />
+            <PresetLibraryItemRow checked={checked} copyState={copyState} index={index} item={item} key={item.id} onCopy={onCopy} onDelete={onDelete} onToggle={onToggle} />
           );
         })}
       </SortableList>
@@ -366,93 +344,6 @@ function PresetItemRows({
   );
 }
 
-/**
- * Category sidebar: lists all preset categories for selection
- */
-export function PresetCategorySidebar({
-  categories,
-  categoryOrder,
-  onDeleteCategory,
-  onReorderCategories,
-  selectedCategory,
-  onSelect,
-}: {
-  categories: DemoCategory[];
-  categoryOrder: string[];
-  onDeleteCategory?: (categoryId: string) => void;
-  onReorderCategories: (ids: string[]) => void;
-  selectedCategory: DemoCategory;
-  onSelect: (category: DemoCategory) => void;
-}) {
-  const orderedCategories = categoryOrder.length
-    ? categoryOrder.map((id) => categories.find((c) => c.id === id)).filter((c): c is DemoCategory => Boolean(c))
-    : categories;
-
-  return (
-    <aside className={s.categoryAside}>
-      <header className={s.categoryHeader}>
-        <div>
-          <p>分类</p>
-          <h3>{categories.length} 个</h3>
-        </div>
-      </header>
-      <div className={s.categoryList}>
-        <SortableList items={orderedCategories.map((c) => c.id)} onReorder={onReorderCategories}>
-          {orderedCategories.map((category) => {
-            const selected = selectedCategory.id === category.id;
-            return (
-              <PresetCategoryRow
-                category={category}
-                key={category.id}
-                onDelete={onDeleteCategory}
-                onSelect={onSelect}
-                selected={selected}
-              />
-            );
-          })}
-        </SortableList>
-      </div>
-    </aside>
-  );
-}
-
-/**
- * Category row: single category item in sidebar
- */
-export function PresetCategoryRow({
-  category,
-  onDelete,
-  onSelect,
-  selected,
-}: {
-  category: DemoCategory;
-  onDelete?: (categoryId: string) => void;
-  onSelect: (category: DemoCategory) => void;
-  selected: boolean;
-}) {
-  const { ref, style, handleProps } = useDemoSortable(category.id);
-
-  return (
-    <div ref={ref} style={style} className={cx(s.categoryItem, selected && s.categoryItemActive)}>
-      <button className={s.categoryButton} type="button" onClick={() => onSelect(category)}>
-        <GripVertical className={s.dragHandle} {...handleProps} width={14} height={14} />
-        <span className={s.categoryColor} style={{ backgroundColor: categoryColorValue(category.color) }} />
-        <div className={s.categoryInfo}>
-          <strong>{category.name}</strong>
-          <span>{categoryItemCount(category)} 个{categoryTypeLabel(category)}</span>
-        </div>
-      </button>
-      <div className={s.categoryActions}>
-        <ButtonLink href={`/presets/categories/${category.id}/edit`} icon={Edit3} iconOnly ariaLabel="编辑" tone="subtle" />
-        <Button tone="danger" icon={Trash2} iconOnly ariaLabel="删除" disabled={categoryItemCount(category) > 0} onClick={() => onDelete?.(category.id)} />
-      </div>
-    </div>
-  );
-}
-
-/**
- * Main presets library page: manages category selection, folder navigation, item browsing, and batch operations
- */
 export function PresetsPage({ data }: { data: DemoData }) {
   const [categoryId, setCategoryId] = useState(data.categories[0]?.id ?? "");
   const [categoryOrder, setCategoryOrder] = useState(data.categories.map((c) => c.id));
@@ -465,8 +356,6 @@ export function PresetsPage({ data }: { data: DemoData }) {
   const [moveTargetId, setMoveTargetId] = useState<string | null>(null);
   const [showDraftFolder, setShowDraftFolder] = useState(false);
   const [itemOrder, setItemOrder] = useState<string[]>([]);
-
-  // Derived state
   const visibleCategories = data.categories.filter((c) => !hiddenCategoryIds.has(c.id));
   const category = visibleCategories.find((item) => item.id === categoryId) ?? visibleCategories[0];
   const categoryItems = category ? presetLibraryItemsWithDemoData(category) : [];
@@ -546,7 +435,7 @@ export function PresetsPage({ data }: { data: DemoData }) {
         actions={<ButtonLink href="/presets/sort-rules" icon={Shuffle}>排序规则</ButtonLink>}
       />
       {category ? (
-        <div className={s.layout}>
+        <div className={s.presetManagerLayout}>
           <PresetCategorySidebar
             categories={visibleCategories}
             categoryOrder={categoryOrder}
@@ -555,16 +444,16 @@ export function PresetsPage({ data }: { data: DemoData }) {
             selectedCategory={category}
             onSelect={selectCategory}
           />
-          <section className={s.workArea}>
-            <header className={s.workHeader}>
+          <section className={s.presetWorkArea}>
+            <div className={s.presetWorkspaceHeader}>
               <div>
-                <p>{categoryTypeLabel(category)}分类</p>
+                <span>{categoryTypeLabel(category)}分类</span>
                 <h2>{category.name}</h2>
                 <p>{categoryItemCount(category) + categoryCopies.length} 个条目 · {category.folders.length} 个文件夹</p>
               </div>
               <StatusBadge status={category.type === "group" ? "template" : "ready"} label={categoryTypeLabel(category)} />
-            </header>
-            <div className={s.contextBar}>
+            </div>
+            <div className={s.presetContextBar}>
               <PresetFolderBrowser category={category} currentFolderId={currentFolderId} itemCount={folderItemCount} onNavigate={navigateFolder} />
               <div className={s.toolbar}>
                 <Button icon={Plus} onClick={() => {
@@ -581,34 +470,28 @@ export function PresetsPage({ data }: { data: DemoData }) {
                     categoryId: category.id,
                   };
                   setLocalCopies(prev => [...prev, draftItem]);
-                }} feedback={{ title: `${category.type === "group" ? "预设组" : "预设"}创建表单已准备` }}>
-                  新建{category.type === "group" ? "预设组" : "预设"}
-                </Button>
-                <Button icon={FolderTree} onClick={() => setShowDraftFolder(true)} feedback={{ title: "文件夹草稿已创建" }}>
-                  新建文件夹
-                </Button>
+                }} feedback={{ title: `${category.type === "group" ? "预设组" : "预设"}创建表单已准备` }}>新建{category.type === "group" ? "预设组" : "预设"}</Button>
+                <Button icon={FolderTree} onClick={() => setShowDraftFolder(true)} feedback={{ title: "文件夹草稿已创建" }}>新建文件夹</Button>
               </div>
             </div>
             {selectedCount ? (
               <SelectionBatchBar
                 actions={
                   <>
-                    <Button tone="subtle" icon={Check} onClick={() => setSelectedIds(new Set(visibleItems.map((item) => item.id)))}>
-                      全选当前层
-                    </Button>
-                    <Button icon={FolderTree} onClick={() => {
-                      setMoveTargetId(currentFolderId);
-                      setMoveSheetOpen(true);
-                    }}>
-                      移动到文件夹
-                    </Button>
-                    <Button tone="danger" icon={Trash2} onClick={() => { setHiddenIds(prev => new Set([...prev, ...selectedIds])); setSelectedIds(new Set()); }} feedback={{ tone: "warning", title: "批量删除需要确认", detail: `${selectedCount} 项` }}>
-                      批量删除
-                    </Button>
+                  <Button tone="subtle" icon={Check} onClick={() => setSelectedIds(new Set(visibleItems.map((item) => item.id)))}>
+                    全选当前层
+                  </Button>
+                  <Button icon={FolderTree} onClick={() => {
+                    setMoveTargetId(currentFolderId);
+                    setMoveSheetOpen(true);
+                  }}>
+                    移动到文件夹
+                  </Button>
+                  <Button tone="danger" icon={Trash2} onClick={() => { setHiddenIds(prev => new Set([...prev, ...selectedIds])); setSelectedIds(new Set()); }} feedback={{ tone: "warning", title: "批量删除需要确认", detail: `${selectedCount} 项` }}>批量删除</Button>
                   </>
                 }
                 actionsClassName={s.toolbar}
-                className={s.batchBar}
+                className={s.presetBatchBar}
                 clearIconOnly={false}
                 clearLabel="取消"
                 label={<>已选择 {selectedCount} 项</>}
@@ -616,27 +499,27 @@ export function PresetsPage({ data }: { data: DemoData }) {
                 selectedCount={selectedCount}
               />
             ) : null}
-            <section className={s.libraryContent}>
+            <section className={s.presetLibrarySurface}>
               {currentFolderId ? (
-                <button className={s.backButton} type="button" onClick={() => {
+                <button className={s.presetFolderBack} type="button" onClick={() => {
                   const currentFolder = presetFolderBreadcrumb(category, currentFolderId)[presetFolderBreadcrumb(category, currentFolderId).length - 1];
                   navigateFolder(currentFolder?.parentId ?? null);
                 }}>
-                  <ArrowLeft width={14} height={14} />
+                  <ArrowLeft className={s.iconMd} />
                   返回上级
                 </button>
               ) : null}
               {showDraftFolder ? (
                 <FolderRow
                   actions={<Button tone="subtle" icon={X} iconOnly ariaLabel="取消新建文件夹" onClick={() => setShowDraftFolder(false)} />}
-                  actionsClassName={s.folderRowActions}
-                  className={cx(s.folderItem, s.folderDraft)}
+                  actionsClassName={s.presetFolderRowActions}
+                  className={cx(s.presetFolderRow, s.presetFolderDraft)}
                   countLabel="保存中"
-                  dragHandleClassName={s.dragHandle}
-                  iconClassName={s.folderIcon}
+                  dragHandleClassName={s.presetFolderGrip}
+                  iconClassName={s.iconMd}
                   leadingIcon={FolderTree}
                   name="新建文件夹"
-                  openClassName={s.folderOpen}
+                  openClassName={s.presetFolderOpen}
                   showChevron={false}
                 />
               ) : null}
@@ -670,6 +553,80 @@ export function PresetsPage({ data }: { data: DemoData }) {
           </section>
         </div>
       ) : <EmptyPage title="没有预设分类" />}
+    </div>
+  );
+}
+
+export function PresetCategorySidebar({
+  categories,
+  categoryOrder,
+  onDeleteCategory,
+  onReorderCategories,
+  selectedCategory,
+  onSelect,
+}: {
+  categories: DemoCategory[];
+  categoryOrder: string[];
+  onDeleteCategory?: (categoryId: string) => void;
+  onReorderCategories: (ids: string[]) => void;
+  selectedCategory: DemoCategory;
+  onSelect: (category: DemoCategory) => void;
+}) {
+  const orderedCategories = categoryOrder.length
+    ? categoryOrder.map((id) => categories.find((c) => c.id === id)).filter((c): c is DemoCategory => Boolean(c))
+    : categories;
+
+  return (
+    <aside className={s.presetCategorySidebar}>
+      <div className={s.presetCategoryHeader}>
+        <div>
+          <span>分类管理</span>
+          <strong>{categories.length} 个分类</strong>
+        </div>
+      </div>
+      <div className={s.presetCategoryList}>
+        <SortableList items={orderedCategories.map((c) => c.id)} onReorder={onReorderCategories}>
+          {orderedCategories.map((category) => {
+            const selected = selectedCategory.id === category.id;
+            return (
+              <PresetCategoryRow category={category} key={category.id} onDelete={onDeleteCategory} onSelect={onSelect} selected={selected} />
+            );
+          })}
+        </SortableList>
+      </div>
+    </aside>
+  );
+}
+
+export function PresetCategoryRow({
+  category,
+  onDelete,
+  onSelect,
+  selected,
+}: {
+  category: DemoCategory;
+  onDelete?: (categoryId: string) => void;
+  onSelect: (category: DemoCategory) => void;
+  selected: boolean;
+}) {
+  const { ref, style, handleProps } = useDemoSortable(category.id);
+
+  return (
+    <div ref={ref} style={style} className={cx(s.presetCategoryItem, selected && s.presetCategoryItemActive)}>
+      <div className={s.presetCategoryRow}>
+        <button className={s.presetCategorySelect} type="button" onClick={() => onSelect(category)}>
+          <GripVertical className={s.categoryDragIcon} {...handleProps} />
+          <span className={s.categorySwatch} style={{ backgroundColor: categoryColorValue(category.color) }} />
+          <span className={s.presetCategoryText}>
+            <strong>{category.name}</strong>
+            <span>{categoryItemCount(category)} 个{categoryTypeLabel(category)}</span>
+          </span>
+        </button>
+        <div className={s.presetCategoryActions}>
+          <ButtonLink href={`/presets/categories/${category.id}/edit`} icon={Edit3} iconOnly ariaLabel="编辑分类" tone="subtle" />
+          <Button tone="danger" icon={Trash2} iconOnly ariaLabel="删除分类" disabled={categoryItemCount(category) > 0} onClick={() => onDelete?.(category.id)} />
+        </div>
+      </div>
     </div>
   );
 }
