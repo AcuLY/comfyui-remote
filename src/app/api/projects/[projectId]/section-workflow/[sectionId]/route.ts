@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { fail } from "@/lib/api-response";
 import { buildCurrentSectionWorkflow } from "@/server/services/section-workflow-service";
 
 type RouteContext = {
@@ -22,12 +23,12 @@ export async function GET(_request: Request, context: RouteContext) {
   } catch (error) {
     if (error instanceof Error) {
       if (error.message === "JOB_NOT_FOUND" || error.message === "JOB_POSITION_NOT_FOUND") {
-        return NextResponse.json({ error: "Section not found" }, { status: 404 });
+        return fail("Section not found", 404);
       }
 
-      return NextResponse.json({ error: error.message }, { status: 400 });
+      return fail(error.message, 400);
     }
 
-    return NextResponse.json({ error: "Failed to build workflow" }, { status: 500 });
+    return fail("Failed to build workflow", 500);
   }
 }

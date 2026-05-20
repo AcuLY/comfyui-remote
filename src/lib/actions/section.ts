@@ -158,7 +158,7 @@ export async function addSection(projectId: string, name?: string, folderId?: st
             variantId: variant.id,
             categoryId: preset.categoryId,
             bindingId,
-            label: `${preset.name} / ${variant.name}`,
+            label: preset.variants.length === 1 ? preset.name : `${preset.name} / ${variant.name}`,
             positive: resolved.prompt,
             negative: resolved.negativePrompt,
             sortOrder: blockSortOrder++,
@@ -403,12 +403,7 @@ export async function deleteSection(sectionId: string): Promise<void> {
   });
   if (!section) return;
 
-  // 先删除所有 PromptBlocks
-  await prisma.promptBlock.deleteMany({
-    where: { projectSectionId: sectionId },
-  });
-
-  // 再删除小节
+  // Cascade delete handles PromptBlocks automatically
   await prisma.projectSection.delete({
     where: { id: sectionId },
   });
@@ -429,12 +424,7 @@ export async function deleteSections(sectionIds: string[]): Promise<void> {
     select: { id: true, projectId: true },
   });
 
-  // Delete all PromptBlocks for these sections
-  await prisma.promptBlock.deleteMany({
-    where: { projectSectionId: { in: sectionIds } },
-  });
-
-  // Delete the sections
+  // Cascade delete handles PromptBlocks automatically
   await prisma.projectSection.deleteMany({
     where: { id: { in: sectionIds } },
   });

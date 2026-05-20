@@ -174,7 +174,7 @@ export function GroupList({
       groups: [...otherGroups, ...reordered],
     });
     startTransition(async () => {
-      await reorderPresetGroups(reordered.map((g) => g.id));
+      await reorderPresetGroups(category.id, reordered.map((g) => g.id));
     });
   }
 

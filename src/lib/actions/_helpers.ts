@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { Prisma } from "@/generated/prisma";
 import type { LoraEntry } from "@/lib/lora-types";
 
@@ -42,11 +43,11 @@ export function sortSectionLoraEntriesByCategoryOrder<T extends SectionLoraJsonE
 // ---------------------------------------------------------------------------
 
 export function createBindingId() {
-  return `bind-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+  return `bind-${randomUUID()}`;
 }
 
 export function createLoraEntryId() {
-  return `lora-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+  return `lora-${randomUUID()}`;
 }
 
 // ---------------------------------------------------------------------------

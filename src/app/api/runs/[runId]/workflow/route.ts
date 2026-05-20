@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { fail } from "@/lib/api-response";
 
 export async function GET(
   _req: Request,
@@ -11,7 +12,7 @@ export async function GET(
     select: { submittedPrompt: true, projectSection: { select: { name: true } } },
   });
   if (!run?.submittedPrompt) {
-    return NextResponse.json({ error: "No workflow data" }, { status: 404 });
+    return fail("No workflow data", 404);
   }
   const rawName = run.projectSection?.name ?? runId;
   // RFC 5987: filename* for UTF-8 names; filename must be ASCII-only

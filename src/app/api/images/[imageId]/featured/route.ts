@@ -14,6 +14,14 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const body = await request.json();
     const featured = Boolean(body.featured);
 
+    const existing = await db.imageResult.findUnique({
+      where: { id: imageId },
+      select: { id: true },
+    });
+    if (!existing) {
+      return fail("Image not found", 404);
+    }
+
     const image = await db.imageResult.update({
       where: { id: imageId },
       data: { featured },

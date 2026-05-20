@@ -10,6 +10,7 @@ const dimensionMap: Record<string, string> = {
   preset: "positivePromptOrder",
   group: "negativePromptOrder",
   variant: "lora1Order",
+  lora: "lora2Order",
 };
 
 export async function PATCH(request: NextRequest, context: RouteContext) {
@@ -21,7 +22,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
     const mappedDimension = dimensionMap[dimension];
     if (!mappedDimension) {
-      return fail('dimension must be "preset", "group", or "variant"', 400);
+      return fail('dimension must be "preset", "group", "variant", or "lora"', 400);
     }
     if (!Array.isArray(ids) || ids.some((id: unknown) => typeof id !== "string")) {
       return fail("ids must be a string array", 400);

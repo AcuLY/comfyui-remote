@@ -300,16 +300,10 @@ export async function clearTrash(): Promise<{
       });
     });
 
-    let fileDeleteFailures = 0;
-    await Promise.all(
-      [...filePaths].map(async (filePath) => {
-        try {
-          await deleteManagedImageFile(filePath);
-        } catch {
-          fileDeleteFailures += 1;
-        }
-      }),
+    const results = await Promise.allSettled(
+      [...filePaths].map((filePath) => deleteManagedImageFile(filePath)),
     );
+    const fileDeleteFailures = results.filter((r) => r.status === "rejected").length;
 
     for (const p of sectionPaths) revalidatePath(p);
     for (const p of projectPaths) revalidatePath(p);

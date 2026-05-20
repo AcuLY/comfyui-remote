@@ -1,6 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
+import { timingSafeEqual } from "node:crypto";
 
 const AUTH_COOKIE_NAME = "auth_token";
+
+/**
+ * Timing-safe string comparison. Returns false for empty strings or
+ * mismatched lengths without leaking length info via timing.
+ */
+function safeTokenCompare(a: string, b: string): boolean {
+  if (!a || !b) return false;
+  const bufA = Buffer.from(a, "utf-8");
+  const bufB = Buffer.from(b, "utf-8");
+  if (bufA.length !== bufB.length) {
+    // Compare bufA against itself to keep constant time, then return false
+    timingSafeEqual(bufA, bufA);
+    return false;
+  }
+  return timingSafeEqual(bufA, bufB);
+}
 
 function getHeaderToken(request: NextRequest) {
   const authorization = request.headers.get("authorization")?.trim();
@@ -24,30 +41,17 @@ function hasValidHeaderToken(request: NextRequest) {
     return false;
   }
 
-  return getHeaderToken(request) === authToken;
+  const headerToken = getHeaderToken(request);
+  if (!headerToken) return false;
+  return safeTokenCompare(headerToken, authToken);
 }
 
 function isPublicPath(pathname: string): boolean {
   if (pathname === "/login" || pathname === "/favicon.ico") return true;
   if (pathname.startsWith("/api/auth/")) return true;
   if (pathname.startsWith("/_next")) return true;
-  if (pathname.startsWith("/api/mcp")) return true;
-  // Server-side internal API calls (no browser cookie available)
-  if (pathname.startsWith("/api/projects/")) return true;
-  if (pathname.startsWith("/api/sections/")) return true;
-  if (pathname.startsWith("/api/queue")) return true;
-  if (pathname === "/api/loras" || pathname.startsWith("/api/loras/")) return true;
-  if (pathname === "/api/models" || pathname.startsWith("/api/models/")) return true;
-  if (pathname.startsWith("/api/runs/")) return true;
-  if (pathname.startsWith("/api/images/")) return true;
-  if (pathname.startsWith("/api/audit-logs")) return true;
-  if (pathname.startsWith("/api/logs")) return true;
-  if (pathname.startsWith("/api/path-maps")) return true;
-  if (pathname.startsWith("/api/worker/")) return true;
-  if (pathname.startsWith("/api/comfy/")) return true;
   if (pathname.startsWith("/api/health")) return true;
-  if (pathname.startsWith("/api/agent/")) return true;
-  if (pathname.startsWith("/api/project-create-options")) return true;
+  if (pathname.startsWith("/api/images/")) return true;
   return false;
 }
 
@@ -85,10 +89,12 @@ export function proxy(request: NextRequest) {
     return nextWithRequestContext(request, pathname);
   }
 
-  // Only check cookie existence (actual token validation by /api/auth/verify)
-  const hasCookie = request.cookies.has(AUTH_COOKIE_NAME);
+  // Validate cookie value against AUTH_TOKEN using timing-safe comparison
+  const cookieValue = request.cookies.get(AUTH_COOKIE_NAME)?.value;
+  const authToken = process.env.AUTH_TOKEN;
+  const hasValidCookie = !!(cookieValue && authToken && safeTokenCompare(cookieValue, authToken));
 
-  if (!hasCookie) {
+  if (!hasValidCookie) {
     if (pathname.startsWith("/api/")) {
       return NextResponse.json(
         { error: "Unauthorized", message: "Valid auth_token cookie required" },

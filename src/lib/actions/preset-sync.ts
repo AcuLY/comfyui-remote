@@ -88,63 +88,65 @@ export async function getPresetUsage(presetId: string): Promise<PresetUsageInfo>
 
 /** Delete preset and cascade-remove all related PromptBlocks + LoRAs in sections */
 export async function deletePresetCascade(presetId: string) {
-  // 1. Find all blocks referencing this preset
-  const blocks = await prisma.promptBlock.findMany({
-    where: { sourceId: presetId },
-    select: { id: true, bindingId: true, projectSectionId: true },
-  });
-
-  // 2. Collect unique bindingIds and sectionIds
-  const bindingIds = new Set<string>();
-  const sectionIds = new Set<string>();
-  for (const block of blocks) {
-    if (block.bindingId) bindingIds.add(block.bindingId);
-    sectionIds.add(block.projectSectionId);
-  }
-
-  // 3. Delete all blocks with matching bindingIds (includes blocks from same import)
-  if (bindingIds.size > 0) {
-    await prisma.promptBlock.deleteMany({
-      where: { bindingId: { in: [...bindingIds] } },
+  await prisma.$transaction(async (tx) => {
+    // 1. Find all blocks referencing this preset
+    const blocks = await tx.promptBlock.findMany({
+      where: { sourceId: presetId },
+      select: { id: true, bindingId: true, projectSectionId: true },
     });
-  }
-  // Also delete blocks without bindingId that reference this preset
-  await prisma.promptBlock.deleteMany({
-    where: { sourceId: presetId, bindingId: null },
-  });
 
-  // 4. Remove LoRAs with matching bindingIds from section loraConfig JSON
-  for (const sectionId of sectionIds) {
-    const section = await prisma.projectSection.findUnique({
-      where: { id: sectionId },
-      select: { loraConfig: true },
-    });
-    if (!section?.loraConfig) continue;
-
-    const config = section.loraConfig as { lora1?: Array<Record<string, unknown>>; lora2?: Array<Record<string, unknown>> };
-    let changed = false;
-
-    if (config.lora1) {
-      const before = config.lora1.length;
-      config.lora1 = config.lora1.filter((e) => !e.bindingId || !bindingIds.has(e.bindingId as string));
-      if (config.lora1.length !== before) changed = true;
-    }
-    if (config.lora2) {
-      const before = config.lora2.length;
-      config.lora2 = config.lora2.filter((e) => !e.bindingId || !bindingIds.has(e.bindingId as string));
-      if (config.lora2.length !== before) changed = true;
+    // 2. Collect unique bindingIds and sectionIds
+    const bindingIds = new Set<string>();
+    const sectionIds = new Set<string>();
+    for (const block of blocks) {
+      if (block.bindingId) bindingIds.add(block.bindingId);
+      sectionIds.add(block.projectSectionId);
     }
 
-    if (changed) {
-      await prisma.projectSection.update({
-        where: { id: sectionId },
-        data: { loraConfig: config as Prisma.InputJsonValue },
+    // 3. Delete all blocks with matching bindingIds (includes blocks from same import)
+    if (bindingIds.size > 0) {
+      await tx.promptBlock.deleteMany({
+        where: { bindingId: { in: [...bindingIds] } },
       });
     }
-  }
+    // Also delete blocks without bindingId that reference this preset
+    await tx.promptBlock.deleteMany({
+      where: { sourceId: presetId, bindingId: null },
+    });
 
-  // 5. Soft delete the preset
-  await prisma.preset.update({ where: { id: presetId }, data: { isActive: false } });
+    // 4. Remove LoRAs with matching bindingIds from section loraConfig JSON
+    for (const sectionId of sectionIds) {
+      const section = await tx.projectSection.findUnique({
+        where: { id: sectionId },
+        select: { loraConfig: true },
+      });
+      if (!section?.loraConfig) continue;
+
+      const config = section.loraConfig as { lora1?: Array<Record<string, unknown>>; lora2?: Array<Record<string, unknown>> };
+      let changed = false;
+
+      if (config.lora1) {
+        const before = config.lora1.length;
+        config.lora1 = config.lora1.filter((e) => !e.bindingId || !bindingIds.has(e.bindingId as string));
+        if (config.lora1.length !== before) changed = true;
+      }
+      if (config.lora2) {
+        const before = config.lora2.length;
+        config.lora2 = config.lora2.filter((e) => !e.bindingId || !bindingIds.has(e.bindingId as string));
+        if (config.lora2.length !== before) changed = true;
+      }
+
+      if (changed) {
+        await tx.projectSection.update({
+          where: { id: sectionId },
+          data: { loraConfig: config as Prisma.InputJsonValue },
+        });
+      }
+    }
+
+    // 5. Soft delete the preset
+    await tx.preset.update({ where: { id: presetId }, data: { isActive: false } });
+  });
 
   revalidatePath("/assets/presets");
   revalidatePath("/projects");

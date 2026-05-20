@@ -5,6 +5,8 @@ import {
   saveUploadedModelFile,
 } from "@/server/services/model-asset-service";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   try {
     const data = await listModelAssets("lora");

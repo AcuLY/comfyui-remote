@@ -39,6 +39,10 @@ export async function POST(request: Request, context: RouteContext) {
     return fail("One or more sections were not found in this project", 404);
   }
 
-  await deleteSections(uniqueSectionIds);
-  return ok({ deletedCount: uniqueSectionIds.length });
+  try {
+    await deleteSections(uniqueSectionIds);
+    return ok({ deletedCount: uniqueSectionIds.length });
+  } catch (error) {
+    return fail(error instanceof Error ? error.message : "Failed to delete sections", 500);
+  }
 }

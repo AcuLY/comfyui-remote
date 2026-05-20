@@ -13,7 +13,7 @@ export async function createPresetFolder(
   name: string,
 ) {
   const maxSort = await prisma.presetFolder.aggregate({
-    where: { categoryId, parentId: parentId ?? undefined },
+    where: { categoryId, parentId },
     _max: { sortOrder: true },
   });
   const folder = await prisma.presetFolder.create({
@@ -67,7 +67,10 @@ export async function reorderPresetFolders(
 ) {
   await prisma.$transaction(
     ids.map((id, index) =>
-      prisma.presetFolder.update({ where: { id }, data: { sortOrder: index } }),
+      prisma.presetFolder.update({
+        where: { id, categoryId, parentId },
+        data: { sortOrder: index },
+      }),
     ),
   );
   revalidatePath("/assets/presets");

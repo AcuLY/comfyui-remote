@@ -317,6 +317,11 @@ export async function saveUploadedModelFile(kind: ModelKind, file: File, targetD
     throw new ModelAssetError(`${MODEL_CONFIG[kind].label} only supports ${[...MODEL_CONFIG[kind].extensions].join(", ")} files.`, 400);
   }
 
+  const MAX_UPLOAD_SIZE = 10 * 1024 * 1024 * 1024; // 10GB for model files
+  if (file.size > MAX_UPLOAD_SIZE) {
+    throw new ModelAssetError("File too large (max 10GB)", 413);
+  }
+
   const normalizedDir = normalizeRelativePath(targetDir || "");
   const absoluteTargetDir = path.resolve(baseDir, normalizedDir);
   if (!isWithinBase(baseDir, absoluteTargetDir)) {

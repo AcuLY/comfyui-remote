@@ -71,24 +71,45 @@ export async function createProject(input: CreateProjectInput): Promise<string> 
     || "untitled";
   let slug = baseSlug;
   let i = 1;
+
+  // Find a starting point (best effort)
   while (await prisma.project.findUnique({ where: { slug } })) {
     slug = `${baseSlug}-${i++}`;
   }
 
-  const project = await prisma.project.create({
-    data: {
-      title: input.title,
-      slug,
-      status: "draft",
-      folderId: input.folderId ?? null,
-      checkpointName,
-      presetBindings: input.presetBindings.length > 0 ? input.presetBindings : undefined,
-      notes: input.notes,
-    },
-  });
+  // Retry loop to handle TOCTOU race on slug uniqueness
+  const MAX_RETRIES = 5;
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    try {
+      const project = await prisma.project.create({
+        data: {
+          title: input.title,
+          slug,
+          status: "draft",
+          folderId: input.folderId ?? null,
+          checkpointName,
+          presetBindings: input.presetBindings.length > 0 ? input.presetBindings : undefined,
+          notes: input.notes,
+        },
+      });
 
-  revalidatePath("/projects");
-  return project.id;
+      revalidatePath("/projects");
+      return project.id;
+    } catch (error) {
+      // If it's a unique constraint violation on slug, try next suffix
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002" &&
+        (error.meta?.target as string[] | undefined)?.includes("slug")
+      ) {
+        slug = `${baseSlug}-${i++}`;
+        continue;
+      }
+      throw error; // Re-throw non-slug errors
+    }
+  }
+
+  throw new Error("Failed to generate unique slug after multiple attempts");
 }
 
 // ---------------------------------------------------------------------------
@@ -264,27 +285,37 @@ export async function updateProject(input: UpdateProjectInput) {
     },
   });
 
-  // 如果传了 positions，删除旧的并重建
+  // 如果传了 sections，更新现有小节的排序和字段
   if (sections) {
-    await prisma.projectSection.deleteMany({
-      where: { projectId: projectId },
+    // Update existing sections' sortOrder and enabled status.
+    // We fetch existing sections and update them individually rather than
+    // delete-recreate, which would cascade-delete all runs, images, and blocks.
+    const existingSections = await prisma.projectSection.findMany({
+      where: { projectId },
+      select: { id: true, sortOrder: true },
+      orderBy: { sortOrder: "asc" },
     });
 
-    await prisma.projectSection.createMany({
-      data: sections.map((pos) => ({
-        projectId: projectId,
-        sortOrder: pos.sortOrder,
-        enabled: pos.enabled,
-        positivePrompt: pos.positivePrompt ?? null,
-        negativePrompt: pos.negativePrompt ?? null,
-        aspectRatio: pos.aspectRatio ?? null,
-        batchSize: pos.batchSize ?? null,
-        seedPolicy1: pos.seedPolicy1 ?? null,
-        seedPolicy2: pos.seedPolicy2 ?? null,
-        ksampler1: pos.ksampler1 ? (pos.ksampler1 as Prisma.InputJsonValue) : undefined,
-        ksampler2: pos.ksampler2 ? (pos.ksampler2 as Prisma.InputJsonValue) : undefined,
-      })),
-    });
+    // Update each section by position
+    for (let idx = 0; idx < Math.min(sections.length, existingSections.length); idx++) {
+      const section = existingSections[idx];
+      const update = sections[idx];
+      await prisma.projectSection.update({
+        where: { id: section.id },
+        data: {
+          sortOrder: update.sortOrder,
+          enabled: update.enabled,
+          positivePrompt: update.positivePrompt ?? null,
+          negativePrompt: update.negativePrompt ?? null,
+          aspectRatio: update.aspectRatio ?? null,
+          batchSize: update.batchSize ?? null,
+          seedPolicy1: update.seedPolicy1 ?? null,
+          seedPolicy2: update.seedPolicy2 ?? null,
+          ksampler1: update.ksampler1 ? (update.ksampler1 as Prisma.InputJsonValue) : undefined,
+          ksampler2: update.ksampler2 ? (update.ksampler2 as Prisma.InputJsonValue) : undefined,
+        },
+      });
+    }
   }
 
   if (presetBindings !== undefined) {

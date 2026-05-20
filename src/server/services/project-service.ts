@@ -516,7 +516,9 @@ export async function enqueueProjectRuns(projectId: string, overrideBatchSize?: 
         where: { id: run.runId },
         data: buildSubmittedRunData(submitResult),
       });
-      pollRunCompletion(run.runId).catch(() => {});
+      pollRunCompletion(run.runId).catch((err) => {
+        log.error("pollRunCompletion failed", err instanceof Error ? err : new Error(String(err)), { runId: run.runId });
+      });
       allFailed = false;
     } catch (error) {
       log.error(`Failed to submit run ${run.runId} to ComfyUI`, error);
@@ -571,7 +573,9 @@ export async function enqueueProjectSectionRun(
         where: { id: run.runId },
         data: buildSubmittedRunData(submitResult),
       });
-      pollRunCompletion(run.runId).catch(() => {});
+      pollRunCompletion(run.runId).catch((err) => {
+        log.error("pollRunCompletion failed", err instanceof Error ? err : new Error(String(err)), { runId: run.runId });
+      });
     } catch (error) {
       log.error(`Failed to submit run ${run.runId} to ComfyUI`, error);
       await prisma.run.delete({ where: { id: run.runId } }).catch(() => {});
@@ -620,7 +624,7 @@ export function mapProjectError(error: unknown) {
           return {
             message: "Database uniqueness check failed",
             status: 409,
-            details: error.meta?.target ?? error.message,
+            details: "Database constraint violation",
           };
         }
 
@@ -628,14 +632,14 @@ export function mapProjectError(error: unknown) {
           return {
             message: "Related record not found",
             status: 404,
-            details: error.meta ?? error.message,
+            details: "Database operation failed",
           };
         }
 
         return {
           message: "Database request failed",
           status: 500,
-          details: error.message,
+          details: "Database operation failed",
         };
       }
 
@@ -643,7 +647,7 @@ export function mapProjectError(error: unknown) {
       return {
         message: "Unexpected project error",
         status: 500,
-        details: error.message,
+        details: "An internal error occurred",
       };
   }
 }

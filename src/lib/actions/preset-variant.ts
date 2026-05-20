@@ -729,7 +729,7 @@ export async function resolveVariantContent(
 export async function reorderPresets(categoryId: string, ids: string[]) {
   await prisma.$transaction(
     ids.map((id, index) =>
-      prisma.preset.update({ where: { id }, data: { sortOrder: index } }),
+      prisma.preset.update({ where: { id, categoryId }, data: { sortOrder: index } }),
     ),
   );
   revalidatePath("/assets/presets");

@@ -18,6 +18,7 @@ import {
   interruptComfyPrompt,
 } from "@/server/services/comfyui-service";
 import { env } from "@/lib/env";
+import { logger } from "@/lib/logger";
 
 // ---------------------------------------------------------------------------
 // 运行整个项目
@@ -42,7 +43,9 @@ export async function runProject(projectId: string, overrideBatchSize?: number |
         data: buildSubmittedRunData(submitResult),
       });
       // Fire-and-forget: poll for completion
-      pollRunCompletion(run.runId).catch(() => {});
+      pollRunCompletion(run.runId).catch((err) => {
+        logger.error("pollRunCompletion failed", err instanceof Error ? err : new Error(String(err)), { runId: run.runId });
+      });
       allFailed = false;
     } catch (error) {
       // ComfyUI submission failed — delete the Run record
@@ -94,7 +97,9 @@ export async function runSection(sectionId: string, overrideBatchSize?: number |
         where: { id: run.runId },
         data: buildSubmittedRunData(submitResult),
       });
-      pollRunCompletion(run.runId).catch(() => {});
+      pollRunCompletion(run.runId).catch((err) => {
+        logger.error("pollRunCompletion failed", err instanceof Error ? err : new Error(String(err)), { runId: run.runId });
+      });
     } catch (error) {
       console.error(`Failed to submit run ${run.runId} to ComfyUI:`, error);
       await prisma.run.delete({ where: { id: run.runId } }).catch(() => {});

@@ -7,7 +7,7 @@ type RouteContext = {
 };
 
 export async function POST(request: NextRequest, context: RouteContext) {
-  await context.params;
+  const { categoryId } = await context.params;
 
   try {
     const body = await request.json();
@@ -15,7 +15,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     if (!Array.isArray(ids) || ids.some((id: unknown) => typeof id !== "string")) {
       return fail("ids must be a string array", 400);
     }
-    await reorderPresetGroups(ids);
+    await reorderPresetGroups(categoryId, ids);
     return ok({ success: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";

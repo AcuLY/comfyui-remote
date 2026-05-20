@@ -1,7 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
+import { timingSafeEqual } from "node:crypto";
 
 const COOKIE_NAME = "auth_token";
-const COOKIE_MAX_AGE = 365 * 24 * 60 * 60; // 1 year in seconds
+const COOKIE_MAX_AGE = 30 * 24 * 60 * 60; // 30 days in seconds
+
+function safeTokenCompare(a: string, b: string): boolean {
+  if (!a || !b) return false;
+  const bufA = Buffer.from(a, "utf8");
+  const bufB = Buffer.from(b, "utf8");
+  if (bufA.length !== bufB.length) {
+    timingSafeEqual(bufA, bufA);
+    return false;
+  }
+  return timingSafeEqual(bufA, bufB);
+}
 
 export async function POST(request: NextRequest) {
   const authToken = process.env.AUTH_TOKEN;
@@ -24,7 +36,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "token field is required" }, { status: 400 });
   }
 
-  if (token !== authToken) {
+  if (!safeTokenCompare(token, authToken)) {
     return NextResponse.json({ error: "Invalid token" }, { status: 401 });
   }
 
@@ -33,7 +45,7 @@ export async function POST(request: NextRequest) {
   response.cookies.set(COOKIE_NAME, token, {
     path: "/",
     httpOnly: true,
-    secure: false,
+    secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     maxAge: COOKIE_MAX_AGE,
   });

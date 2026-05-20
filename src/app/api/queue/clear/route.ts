@@ -2,11 +2,15 @@ import { fail, ok } from "@/lib/api-response";
 import { clearRuns } from "@/lib/actions";
 
 export async function POST() {
-  const result = await clearRuns();
+  try {
+    const result = await clearRuns();
 
-  if (!result.ok) {
-    return fail(result.error ?? "Failed to clear runs", 500, { count: result.count });
+    if (!result.ok) {
+      return fail(result.error ?? "Failed to clear runs", 500, { count: result.count });
+    }
+
+    return ok({ clearedCount: result.count });
+  } catch (error) {
+    return fail(error instanceof Error ? error.message : "Failed to clear runs", 500);
   }
-
-  return ok({ clearedCount: result.count });
 }

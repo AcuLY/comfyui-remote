@@ -1,20 +1,13 @@
 /**
  * POST /api/comfy/start
  *
- * Start the ComfyUI process. Only available from localhost.
+ * Start the ComfyUI process. Protected by auth middleware.
  */
 
-import type { NextRequest } from "next/server";
 import { fail, ok } from "@/lib/api-response";
 import { getComfyProcessManager } from "@/server/services/comfy-process-manager";
 
-const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "0.0.0.0", "::1", "[::1]"]);
-
-export async function POST(request: NextRequest) {
-  if (!LOOPBACK_HOSTS.has(request.nextUrl.hostname.toLowerCase())) {
-    return fail("ComfyUI control is only available from localhost.", 403);
-  }
-
+export async function POST() {
   const manager = getComfyProcessManager();
   const result = await manager.start();
 

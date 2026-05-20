@@ -428,7 +428,9 @@ export async function recoverStaleRuns(): Promise<void> {
     log.info("Recovering stale runs", { count: needsRecovery.length });
 
     for (const run of needsRecovery) {
-      pollRunCompletion(run.id).catch(() => {});
+      pollRunCompletion(run.id).catch((err) => {
+        log.error("pollRunCompletion failed", err instanceof Error ? err : new Error(String(err)), { runId: run.id });
+      });
     }
   } finally {
     recoveryInProgress = false;

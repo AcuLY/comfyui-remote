@@ -7,11 +7,12 @@ type RouteContext = {
 };
 
 export async function POST(request: NextRequest, context: RouteContext) {
-  await context.params;
+  const { groupId } = await context.params;
 
   try {
     const body = await request.json();
-    const result = await addGroupMember(body);
+    // Use URL param to ensure route integrity
+    const result = await addGroupMember({ ...body, groupId });
     return ok(result);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";

@@ -405,10 +405,13 @@ export async function removeGroupMember(memberId: string) {
   revalidatePath("/assets/presets");
 }
 
-export async function reorderPresetGroups(ids: string[]) {
+export async function reorderPresetGroups(categoryId: string, ids: string[]) {
   await prisma.$transaction(
     ids.map((id, index) =>
-      prisma.presetGroup.update({ where: { id }, data: { sortOrder: index } }),
+      prisma.presetGroup.update({
+        where: { id, categoryId },
+        data: { sortOrder: index },
+      }),
     ),
   );
   revalidatePath("/assets/presets");
@@ -419,7 +422,10 @@ export async function reorderGroupMembers(groupId: string, ids: string[]) {
   const before = await groupMembersSnapshot(groupId);
   await prisma.$transaction(
     ids.map((id, index) =>
-      prisma.presetGroupMember.update({ where: { id }, data: { sortOrder: index } }),
+      prisma.presetGroupMember.update({
+        where: { id, groupId },
+        data: { sortOrder: index },
+      }),
     ),
   );
   const after = await groupMembersSnapshot(groupId);

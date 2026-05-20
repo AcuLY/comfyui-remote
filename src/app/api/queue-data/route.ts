@@ -23,7 +23,9 @@ export async function GET(request: NextRequest) {
   // Auto-recover: if there are active runs (queued/running) that may not
   // be polled (e.g. after server restart), resume polling for them.
   if (runningRuns.length > 0) {
-    recoverStaleRuns().catch(() => {});
+    recoverStaleRuns().catch((e) => {
+      console.error("recoverStaleRuns failed:", e);
+    });
   }
 
   return NextResponse.json({
