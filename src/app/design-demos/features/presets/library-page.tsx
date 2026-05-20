@@ -216,6 +216,7 @@ export function PresetLibraryItemRow({
   index,
   item,
   onCopy,
+  onDelete,
   onToggle,
 }: {
   checked: boolean;
@@ -223,6 +224,7 @@ export function PresetLibraryItemRow({
   index: number;
   item: DisplayPresetLibraryItem;
   onCopy?: (item: DisplayPresetLibraryItem) => void;
+  onDelete?: (id: string) => void;
   onToggle: (id: string) => void;
 }) {
   const [copied, setCopied] = useState(false);
@@ -282,6 +284,23 @@ export function PresetLibraryItemRow({
             />
           </>
         ) : null}
+        <Button
+          ariaLabel={`删除：${item.name}`}
+          icon={Trash2}
+          iconOnly
+          onClick={(event: ReactMouseEvent<HTMLButtonElement>) => {
+            event.preventDefault();
+            event.stopPropagation();
+            onDelete?.(item.id);
+          }}
+          size="sm"
+          tone="danger"
+          feedback={{
+            tone: "warning",
+            title: "预设已删除",
+            detail: item.name,
+          }}
+        />
       </div>
     </div>
   );
@@ -291,6 +310,7 @@ function PresetItemRows({
   copiedSourceIds,
   items,
   onCopy,
+  onDelete,
   onReorder,
   onToggle,
   selectedIds,
@@ -298,6 +318,7 @@ function PresetItemRows({
   copiedSourceIds: Set<string>;
   items: LocalPresetLibraryItem[];
   onCopy: (item: DisplayPresetLibraryItem) => void;
+  onDelete: (id: string) => void;
   onReorder: (ids: string[]) => void;
   onToggle: (id: string) => void;
   selectedIds: Set<string>;
@@ -315,7 +336,7 @@ function PresetItemRows({
           const checked = selectedIds.has(item.id);
           const copyState = item.isLocalCopy ? "copy" : copiedSourceIds.has(item.id) ? "source" : undefined;
           return (
-            <PresetLibraryItemRow checked={checked} copyState={copyState} index={index} item={item} key={item.id} onCopy={onCopy} onToggle={onToggle} />
+            <PresetLibraryItemRow checked={checked} copyState={copyState} index={index} item={item} key={item.id} onCopy={onCopy} onDelete={onDelete} onToggle={onToggle} />
           );
         })}
       </SortableList>
@@ -507,6 +528,7 @@ export function PresetsPage({ data }: { data: DemoData }) {
                 copiedSourceIds={copiedSourceIds}
                 items={orderedVisibleItems}
                 onCopy={copyPresetItem}
+                onDelete={(id) => setHiddenIds(prev => new Set([...prev, id]))}
                 onReorder={setItemOrder}
                 onToggle={toggleItem}
                 selectedIds={selectedIds}

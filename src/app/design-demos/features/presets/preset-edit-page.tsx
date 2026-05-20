@@ -13,6 +13,7 @@ import { FloatingSelect } from "../../shared/primitives/floating-select";
 import { StatusBadge } from "../../shared/primitives/status-badge";
 import { cx, firstCategory } from "../../routing";
 import { SortableList, useDemoSortable } from "../../shared/primitives/sortable";
+import { EditorBlock, WorkbenchSurface, InspectorAside } from "../../shared/patterns";
 
 type SaveState = "saved" | "queued" | "saving" | "failed";
 type LoraStageId = 1 | 2;
@@ -26,7 +27,6 @@ type LoraDraftRow = {
 };
 
 type VariantDraft = DemoPreset["variants"][number] & {
-  civitaiLinks: string[];
   loraStages: Record<LoraStageId, LoraDraftRow[]>;
 };
 
@@ -44,7 +44,11 @@ function PresetEditPageContent({ data, preset }: { data: DemoData; preset: DemoP
   const [civitaiUrlDraft, setCivitaiUrlDraft] = useState("");
   const [civitaiUrlError, setCivitaiUrlError] = useState("");
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const draftIdCounterRef = useRef(0);
   const [variants, setVariants] = useState<VariantDraft[]>(initialVariants);
+  const [presetNameDraft, setPresetNameDraft] = useState(preset.name);
+  const [presetNotesDraft, setPresetNotesDraft] = useState(preset.notes ?? "");
+  const [civitaiLinks, setCivitaiLinks] = useState<string[]>(preset.civitaiLinks ?? []);
 
   useEffect(() => {
     if (saveState !== "queued") return;
@@ -70,7 +74,7 @@ function PresetEditPageContent({ data, preset }: { data: DemoData; preset: DemoP
   function addLoraRow() {
     const stage: LoraStageId = 1;
     const newRow: LoraDraftRow = {
-      id: `${activeVariant.id}-${stage}-new-${Date.now()}`,
+      id: nextDraftId(`${activeVariant.id}-${stage}-new`),
       name: "新 LoRA",
       path: "ComfyUI 模型库 / 待选择",
       weight: "1.00",
@@ -89,7 +93,7 @@ function PresetEditPageContent({ data, preset }: { data: DemoData; preset: DemoP
   }
 
   function addVariant() {
-    const newId = `variant-new-${Date.now()}`;
+    const newId = nextDraftId("variant-new");
     const newVariant: VariantDraft = {
       id: newId,
       name: `变体 ${variants.length + 1}`,
@@ -99,15 +103,14 @@ function PresetEditPageContent({ data, preset }: { data: DemoData; preset: DemoP
       lora1: [],
       lora2: [],
       linkedVariants: [],
-      civitaiLinks: [],
       loraStages: {
         1: [
-          { id: `${newId}-1-primary`, name: `${preset.name} 主体 LoRA`, path: "ComfyUI 模型库 / 主体 LoRA", weight: "0.82", trigger: `变体 ${variants.length + 1}` },
-          { id: `${newId}-1-refine`, name: "角色精修 LoRA", path: "ComfyUI 模型库 / 角色精修", weight: "0.35", trigger: preset.name },
+          { id: `${newId}-1-primary`, name: `${displayPresetName} 主体 LoRA`, path: "ComfyUI 模型库 / 主体 LoRA", weight: "0.82", trigger: `变体 ${variants.length + 1}` },
+          { id: `${newId}-1-refine`, name: "角色精修 LoRA", path: "ComfyUI 模型库 / 角色精修", weight: "0.35", trigger: displayPresetName },
         ],
         2: [
-          { id: `${newId}-2-primary`, name: `${preset.name} 风格 LoRA`, path: "ComfyUI 模型库 / 风格 LoRA", weight: "0.56", trigger: `变体 ${variants.length + 1}` },
-          { id: `${newId}-2-refine`, name: "风格平衡 LoRA", path: "ComfyUI 模型库 / 风格平衡", weight: "0.48", trigger: preset.name },
+          { id: `${newId}-2-primary`, name: `${displayPresetName} 风格 LoRA`, path: "ComfyUI 模型库 / 风格 LoRA", weight: "0.56", trigger: `变体 ${variants.length + 1}` },
+          { id: `${newId}-2-refine`, name: "风格平衡 LoRA", path: "ComfyUI 模型库 / 风格平衡", weight: "0.48", trigger: displayPresetName },
         ],
       },
     };
@@ -116,8 +119,45 @@ function PresetEditPageContent({ data, preset }: { data: DemoData; preset: DemoP
     markDraftChanged("新变体已添加");
   }
 
+  function removeCurrentVariant() {
+    if (variants.length <= 1) return;
+    const updated = variants.filter((v) => v.id !== activeVariant.id);
+    const currentIndex = variants.indexOf(activeVariant);
+    const nextActive = updated[Math.min(currentIndex, updated.length - 1)] ?? updated[0];
+    setVariants(updated);
+    setActiveVariantId(nextActive.id);
+    markDraftChanged("变体已删除");
+  }
+
+  function removeLoraRow(stage: LoraStageId, rowId: string) {
+    updateActiveVariant(
+      (variant) => ({
+        ...variant,
+        loraStages: {
+          ...variant.loraStages,
+          [stage]: variant.loraStages[stage].filter((r) => r.id !== rowId),
+        },
+      }),
+      "LoRA 行已移除",
+    );
+  }
+
+  function updateLoraWeight(stage: LoraStageId, rowId: string, weight: string) {
+    updateActiveVariant(
+      (variant) => ({
+        ...variant,
+        loraStages: {
+          ...variant.loraStages,
+          [stage]: variant.loraStages[stage].map((r) => (r.id === rowId ? { ...r, weight } : r)),
+        },
+      }),
+      "LoRA 权重已修改",
+    );
+  }
+
   const category = data.categories.find((item) => item.id === preset.categoryId) ?? firstCategory(data);
   const folderPath = category ? presetFolderBreadcrumb(category, preset.folderId).map((folder) => folder.name).join(" / ") || "根目录" : "根目录";
+  const displayPresetName = presetNameDraft.trim() || preset.name;
   const activeVariant = variants.find((variant) => variant.id === activeVariantId) ?? variants[0];
   const linkedVariants = data.categories
     .flatMap((item) => item.presets.map((candidate) => ({ category: item, preset: candidate })))
@@ -127,6 +167,21 @@ function PresetEditPageContent({ data, preset }: { data: DemoData; preset: DemoP
   function markDraftChanged(action: string) {
     setLastSavedAction(action);
     setSaveState("queued");
+  }
+
+  function nextDraftId(prefix: string) {
+    draftIdCounterRef.current += 1;
+    return `${prefix}-${draftIdCounterRef.current}`;
+  }
+
+  function updatePresetName(value: string) {
+    setPresetNameDraft(value);
+    markDraftChanged("预设名称已修改");
+  }
+
+  function updatePresetNotes(value: string) {
+    setPresetNotesDraft(value);
+    markDraftChanged("备注已修改");
   }
 
   function updateActiveVariant(updater: (variant: VariantDraft) => VariantDraft, action: string) {
@@ -167,30 +222,20 @@ function PresetEditPageContent({ data, preset }: { data: DemoData; preset: DemoP
       return;
     }
 
-    if (activeVariant.civitaiLinks.includes(value)) {
-      setCivitaiUrlError("这个链接已经在当前变体中。");
+    if (civitaiLinks.includes(value)) {
+      setCivitaiUrlError("这个链接已经在当前预设中。");
       return;
     }
 
-    updateActiveVariant(
-      (variant) => ({
-        ...variant,
-        civitaiLinks: [...variant.civitaiLinks, value],
-      }),
-      "Civitai 链接已添加",
-    );
+    setCivitaiLinks((current) => [...current, value]);
     setCivitaiUrlDraft("");
     setCivitaiUrlError("");
+    markDraftChanged("Civitai 链接已添加");
   }
 
   function removeCivitaiLink(link: string) {
-    updateActiveVariant(
-      (variant) => ({
-        ...variant,
-        civitaiLinks: variant.civitaiLinks.filter((item) => item !== link),
-      }),
-      "Civitai 链接已移除",
-    );
+    setCivitaiLinks((current) => current.filter((item) => item !== link));
+    markDraftChanged("Civitai 链接已移除");
   }
 
   function retrySave() {
@@ -209,39 +254,35 @@ function PresetEditPageContent({ data, preset }: { data: DemoData; preset: DemoP
       <PageHeader
         back={{ href: `/presets?category=${preset.categoryId}&folder=${preset.folderId ?? ""}&preset=${preset.id}`, label: "返回预设库" }}
         eyebrow={categoryTypeLabel(category)}
-        title={preset.name}
-        subtitle={`${category?.name ?? "未分类"} · ${folderPath} · ${preset.variantCount} 个变体`}
+        title={displayPresetName}
+        subtitle={`${category?.name ?? "未分类"} · ${folderPath} · ${variants.length} 个变体`}
         actions={<Button tone="primary" icon={Save} pending={saveState === "saving"} onClick={saveNow}>保存</Button>}
       />
       <div className={s.presetEditorShell}>
-        <main className={s.editorSurface}>
-          <section className={s.editorBlock}>
-            <div className={s.editorBlockHeader}>
-              <div>
-                <strong>基础信息</strong>
-                <span>名称、分类和文件夹。</span>
-              </div>
-              <StatusBadge status={saveStateToStatus(saveState)} label={saveStateLabel(saveState)} />
-            </div>
-            <div className={s.formGrid}>
-              <Field label="名称" value={preset.name} readOnly />
-              <FloatingSelect label="分类" value={category?.name ?? preset.categoryId} />
-              <FloatingSelect label="文件夹" value={folderPath} />
-            </div>
-            <Field multiline features={{ resize: true, clipboard: true }} label="备注" placeholder="预设说明和维护备注。" value={preset.notes ?? ""} readOnly />
-          </section>
+        <WorkbenchSurface className={s.editorSurface}>
+          <EditorBlock
+            title="基础信息"
+            description="名称、分类和文件夹。"
+            actions={<StatusBadge status={saveStateToStatus(saveState)} label={saveStateLabel(saveState)} />}
+            contentClassName={s.formGrid}
+          >
+            <Field label="名称" value={presetNameDraft} onChange={updatePresetName} />
+            <FloatingSelect label="分类" value={category?.name ?? preset.categoryId} />
+            <FloatingSelect label="文件夹" value={folderPath} />
+            <Field multiline features={{ resize: true, clipboard: true }} label="备注" placeholder="预设说明和维护备注。" value={presetNotesDraft} onChange={updatePresetNotes} />
+          </EditorBlock>
 
-          <section className={s.editorBlock}>
-            <div className={s.editorBlockHeader}>
-              <div>
-                <strong>变体</strong>
-                <span>每个变体保留独立 prompt、LoRA 和关联变体。</span>
-              </div>
+          <EditorBlock
+            title="变体"
+            description="每个变体保留独立 prompt、LoRA 和关联变体。"
+            actions={
               <div style={{ display: "flex", gap: "0.5rem" }}>
                 <Button icon={Plus} onClick={addVariant} feedback={{ title: "新变体已添加" }}>添加变体</Button>
+                <Button icon={Trash2} tone="danger" disabled={variants.length <= 1} onClick={removeCurrentVariant}>删除变体</Button>
                 <Button icon={GripVertical} feedback={{ title: "变体顺序已保存" }}>保存顺序</Button>
               </div>
-            </div>
+            }
+          >
             <div className={s.presetVariantWorkbench}>
               <div className={s.presetVariantRail}>
                 <SortableList items={variants.map((v) => v.id)} onReorder={(ids) => {
@@ -281,30 +322,24 @@ function PresetEditPageContent({ data, preset }: { data: DemoData; preset: DemoP
                 </div>
               </div>
             </div>
-          </section>
+          </EditorBlock>
 
-          <section className={s.editorBlock}>
-            <div className={s.editorBlockHeader}>
-              <div>
-                <strong>LoRA 绑定</strong>
-                <span>阶段 1 和阶段 2 对应真实编辑器的两个 LoRA 列表，保留权重、触发词和来源表达。</span>
-              </div>
-              <Button icon={Plus} onClick={addLoraRow} feedback={{ title: "LoRA 行已添加", detail: activeVariant.name }}>添加 LoRA</Button>
-            </div>
+          <EditorBlock
+            title="LoRA 绑定"
+            description="阶段 1 和阶段 2 对应真实编辑器的两个 LoRA 列表，保留权重、触发词和来源表达。"
+            actions={<Button icon={Plus} onClick={addLoraRow} feedback={{ title: "LoRA 行已添加", detail: activeVariant.name }}>添加 LoRA</Button>}
+          >
             <div className={s.loraStageGrid}>
-              <PresetLoraStage title="LoRA 1" rows={activeVariant.loraStages[1]} stage={1} onApplyToAll={applyLoraToAll} />
-              <PresetLoraStage title="LoRA 2" rows={activeVariant.loraStages[2]} stage={2} onApplyToAll={applyLoraToAll} />
+              <PresetLoraStage title="LoRA 1" rows={activeVariant.loraStages[1]} stage={1} onApplyToAll={applyLoraToAll} onRemoveRow={removeLoraRow} onUpdateWeight={updateLoraWeight} />
+              <PresetLoraStage title="LoRA 2" rows={activeVariant.loraStages[2]} stage={2} onApplyToAll={applyLoraToAll} onRemoveRow={removeLoraRow} onUpdateWeight={updateLoraWeight} />
             </div>
-          </section>
+          </EditorBlock>
 
-          <section className={s.editorBlock}>
-            <div className={s.editorBlockHeader}>
-              <div>
-                <strong>Civitai 链接</strong>
-                <span>维护当前变体关联的模型页面，保存为本地草稿。</span>
-              </div>
-              <StatusBadge status={activeVariant.civitaiLinks.length ? "ready" : "pending"} label={`${activeVariant.civitaiLinks.length} 个链接`} />
-            </div>
+          <EditorBlock
+            title="Civitai 链接"
+            description="维护当前预设关联的模型页面，保存为本地草稿。"
+            actions={<StatusBadge status={civitaiLinks.length ? "ready" : "pending"} label={`${civitaiLinks.length} 个链接`} />}
+          >
             <div className={s.civitaiLinkPanel}>
               <div className={s.civitaiLinkInputRow}>
                 <Field label="Civitai URL" value={civitaiUrlDraft} onChange={(value) => {
@@ -315,27 +350,24 @@ function PresetEditPageContent({ data, preset }: { data: DemoData; preset: DemoP
               </div>
               {civitaiUrlError ? <p className={s.civitaiLinkError}>{civitaiUrlError}</p> : null}
               <div className={s.civitaiLinkList}>
-                {activeVariant.civitaiLinks.length ? activeVariant.civitaiLinks.map((link) => (
+                {civitaiLinks.length ? civitaiLinks.map((link) => (
                   <div className={s.civitaiLinkRow} key={link}>
                     <Link2 className={s.icon} />
                     <span title={link}>{link}</span>
                     <Button icon={Trash2} iconOnly ariaLabel="移除 Civitai 链接" size="sm" tone="subtle" onClick={() => removeCivitaiLink(link)} />
                   </div>
                 )) : (
-                  <div className={s.civitaiLinkEmpty}>当前变体还没有 Civitai 链接。</div>
+                  <div className={s.civitaiLinkEmpty}>当前预设还没有 Civitai 链接。</div>
                 )}
               </div>
             </div>
-          </section>
+          </EditorBlock>
 
-          <section className={s.editorBlock}>
-            <div className={s.editorBlockHeader}>
-              <div>
-                <strong>关联变体</strong>
-                <span>用于级联复用其他预设变体的 prompt 与 LoRA 内容。</span>
-              </div>
-              <Button icon={Search} feedback={{ title: "变体选择面板已准备" }}>选择变体</Button>
-            </div>
+          <EditorBlock
+            title="关联变体"
+            description="用于级联复用其他预设变体的 prompt 与 LoRA 内容。"
+            actions={<Button icon={Search} feedback={{ title: "变体选择面板已准备" }}>选择变体</Button>}
+          >
             <div className={s.presetLinkedList}>
               {linkedVariants.map(({ category: sourceCategory, preset: sourcePreset }, index) => {
                 const variant = sourcePreset.variants[index % Math.max(sourcePreset.variants.length, 1)];
@@ -350,16 +382,13 @@ function PresetEditPageContent({ data, preset }: { data: DemoData; preset: DemoP
                 );
               })}
             </div>
-          </section>
+          </EditorBlock>
 
-          <section className={s.editorBlock}>
-            <div className={s.editorBlockHeader}>
-              <div>
-                <strong>变更历史</strong>
-                <span>按基础信息、变体内容和 LoRA 绑定展示差异。</span>
-              </div>
-              <Button icon={History} feedback={{ title: "历史筛选已应用" }}>筛选历史</Button>
-            </div>
+          <EditorBlock
+            title="变更历史"
+            description="按基础信息、变体内容和 LoRA 绑定展示差异。"
+            actions={<Button icon={History} feedback={{ title: "历史筛选已应用" }}>筛选历史</Button>}
+          >
             <div className={s.historyDiffList}>
               <div className={s.historyDiffRow}>
                 <strong>变体内容更新</strong>
@@ -370,11 +399,10 @@ function PresetEditPageContent({ data, preset }: { data: DemoData; preset: DemoP
                 <span>LoRA 1 权重从 0.75 调整为 0.82，LoRA 2 保持继承。</span>
               </div>
             </div>
-          </section>
-        </main>
+          </EditorBlock>
+        </WorkbenchSurface>
 
-        <aside className={s.editorAside}>
-          <strong>保存状态</strong>
+        <InspectorAside title="保存状态">
           <SaveStateStrip state={saveState} detail={lastSavedAction} variantCount={variants.length} onRetry={retrySave} />
           <div className={s.presetCascadeState}>
             <div>
@@ -390,7 +418,7 @@ function PresetEditPageContent({ data, preset }: { data: DemoData; preset: DemoP
             </div>
             <StatusBadge status="monitor" label="受保护" />
           </div>
-        </aside>
+        </InspectorAside>
       </div>
     </div>
   );
@@ -437,11 +465,15 @@ function PresetLoraStage({
   stage,
   rows,
   onApplyToAll,
+  onRemoveRow,
+  onUpdateWeight,
 }: {
   title: string;
   stage: 1 | 2;
   rows: LoraDraftRow[];
   onApplyToAll: (stage: LoraStageId, row: LoraDraftRow) => void;
+  onRemoveRow?: (stage: LoraStageId, rowId: string) => void;
+  onUpdateWeight?: (stage: LoraStageId, rowId: string, weight: string) => void;
 }) {
   return (
     <div className={s.loraStage}>
@@ -456,7 +488,13 @@ function PresetLoraStage({
             <strong className={s.loraName}>{row.name}</strong>
             <span className={s.loraPath}>{row.path}</span>
           </div>
-          <em className={s.loraWeight}>w {row.weight}</em>
+          <input
+            className={s.loraWeightInput}
+            type="text"
+            value={row.weight}
+            onChange={(e) => onUpdateWeight?.(stage, row.id, e.target.value)}
+            aria-label={`${row.name} 权重`}
+          />
           <span className={s.loraTrigger} title={row.trigger}>
             {row.trigger}
           </span>
@@ -473,6 +511,7 @@ function PresetLoraStage({
           >
             应用
           </Button>
+          <Button icon={Trash2} iconOnly size="sm" tone="danger" ariaLabel="移除 LoRA" onClick={() => onRemoveRow?.(stage, row.id)} />
         </div>
       ))}
     </div>
@@ -542,29 +581,11 @@ function createVariantDrafts(preset: DemoPreset): VariantDraft[] {
     ...variant,
     prompt: variant.prompt || "",
     negativePrompt: variant.negativePrompt || "",
-    civitaiLinks: readCivitaiLinks(preset, variant),
     loraStages: {
       1: readLoraRows(preset, variant, 1),
       2: readLoraRows(preset, variant, 2),
     },
   }));
-}
-
-function readCivitaiLinks(preset: DemoPreset, variant: DemoPreset["variants"][number]) {
-  const candidate = variant as DemoPreset["variants"][number] & {
-    civitaiLinks?: unknown;
-    civitaiUrls?: unknown;
-    civitaiUrl?: unknown;
-  };
-  const links = Array.isArray(candidate.civitaiLinks)
-    ? candidate.civitaiLinks
-    : Array.isArray(candidate.civitaiUrls)
-      ? candidate.civitaiUrls
-      : candidate.civitaiUrl
-        ? [candidate.civitaiUrl]
-        : preset.civitaiLinks;
-
-  return links.filter((link): link is string => typeof link === "string" && link.trim().length > 0);
 }
 
 function readLoraRows(preset: DemoPreset, variant: DemoPreset["variants"][number], stage: LoraStageId): LoraDraftRow[] {
