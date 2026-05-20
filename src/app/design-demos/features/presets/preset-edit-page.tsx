@@ -13,7 +13,6 @@ import { FloatingSelect } from "../../shared/primitives/floating-select";
 import { StatusBadge } from "../../shared/primitives/status-badge";
 import { cx, firstCategory } from "../../routing";
 import { SortableList, useDemoSortable } from "../../shared/primitives/sortable";
-import { EditorBlock, WorkbenchSurface, InspectorAside } from "../../shared/patterns";
 
 type SaveState = "saved" | "queued" | "saving" | "failed";
 type LoraStageId = 1 | 2;
@@ -259,30 +258,35 @@ function PresetEditPageContent({ data, preset }: { data: DemoData; preset: DemoP
         actions={<Button tone="primary" icon={Save} pending={saveState === "saving"} onClick={saveNow}>保存</Button>}
       />
       <div className={s.presetEditorShell}>
-        <WorkbenchSurface className={s.editorSurface}>
-          <EditorBlock
-            title="基础信息"
-            description="名称、分类和文件夹。"
-            actions={<StatusBadge status={saveStateToStatus(saveState)} label={saveStateLabel(saveState)} />}
-            contentClassName={s.formGrid}
-          >
-            <Field label="名称" value={presetNameDraft} onChange={updatePresetName} />
-            <FloatingSelect label="分类" value={category?.name ?? preset.categoryId} />
-            <FloatingSelect label="文件夹" value={folderPath} />
+        <main className={s.editorSurface}>
+          <section className={s.editorBlock}>
+            <div className={s.editorBlockHeader}>
+              <div>
+                <strong>基础信息</strong>
+                <span>名称、分类和文件夹。</span>
+              </div>
+              <StatusBadge status={saveStateToStatus(saveState)} label={saveStateLabel(saveState)} />
+            </div>
+            <div className={s.formGrid}>
+              <Field label="名称" value={presetNameDraft} onChange={updatePresetName} />
+              <FloatingSelect label="分类" value={category?.name ?? preset.categoryId} />
+              <FloatingSelect label="文件夹" value={folderPath} />
+            </div>
             <Field multiline features={{ resize: true, clipboard: true }} label="备注" placeholder="预设说明和维护备注。" value={presetNotesDraft} onChange={updatePresetNotes} />
-          </EditorBlock>
+          </section>
 
-          <EditorBlock
-            title="变体"
-            description="每个变体保留独立 prompt、LoRA 和关联变体。"
-            actions={
+          <section className={s.editorBlock}>
+            <div className={s.editorBlockHeader}>
+              <div>
+                <strong>变体</strong>
+                <span>每个变体保留独立 prompt、LoRA 和关联变体。</span>
+              </div>
               <div style={{ display: "flex", gap: "0.5rem" }}>
                 <Button icon={Plus} onClick={addVariant} feedback={{ title: "新变体已添加" }}>添加变体</Button>
                 <Button icon={Trash2} tone="danger" disabled={variants.length <= 1} onClick={removeCurrentVariant}>删除变体</Button>
                 <Button icon={GripVertical} feedback={{ title: "变体顺序已保存" }}>保存顺序</Button>
               </div>
-            }
-          >
+            </div>
             <div className={s.presetVariantWorkbench}>
               <div className={s.presetVariantRail}>
                 <SortableList items={variants.map((v) => v.id)} onReorder={(ids) => {
@@ -322,24 +326,30 @@ function PresetEditPageContent({ data, preset }: { data: DemoData; preset: DemoP
                 </div>
               </div>
             </div>
-          </EditorBlock>
+          </section>
 
-          <EditorBlock
-            title="LoRA 绑定"
-            description="阶段 1 和阶段 2 对应真实编辑器的两个 LoRA 列表，保留权重、触发词和来源表达。"
-            actions={<Button icon={Plus} onClick={addLoraRow} feedback={{ title: "LoRA 行已添加", detail: activeVariant.name }}>添加 LoRA</Button>}
-          >
+          <section className={s.editorBlock}>
+            <div className={s.editorBlockHeader}>
+              <div>
+                <strong>LoRA 绑定</strong>
+                <span>阶段 1 和阶段 2 对应真实编辑器的两个 LoRA 列表，保留权重、触发词和来源表达。</span>
+              </div>
+              <Button icon={Plus} onClick={addLoraRow} feedback={{ title: "LoRA 行已添加", detail: activeVariant.name }}>添加 LoRA</Button>
+            </div>
             <div className={s.loraStageGrid}>
               <PresetLoraStage title="LoRA 1" rows={activeVariant.loraStages[1]} stage={1} onApplyToAll={applyLoraToAll} onRemoveRow={removeLoraRow} onUpdateWeight={updateLoraWeight} />
               <PresetLoraStage title="LoRA 2" rows={activeVariant.loraStages[2]} stage={2} onApplyToAll={applyLoraToAll} onRemoveRow={removeLoraRow} onUpdateWeight={updateLoraWeight} />
             </div>
-          </EditorBlock>
+          </section>
 
-          <EditorBlock
-            title="Civitai 链接"
-            description="维护当前预设关联的模型页面，保存为本地草稿。"
-            actions={<StatusBadge status={civitaiLinks.length ? "ready" : "pending"} label={`${civitaiLinks.length} 个链接`} />}
-          >
+          <section className={s.editorBlock}>
+            <div className={s.editorBlockHeader}>
+              <div>
+                <strong>Civitai 链接</strong>
+                <span>维护当前预设关联的模型页面，保存为本地草稿。</span>
+              </div>
+              <StatusBadge status={civitaiLinks.length ? "ready" : "pending"} label={`${civitaiLinks.length} 个链接`} />
+            </div>
             <div className={s.civitaiLinkPanel}>
               <div className={s.civitaiLinkInputRow}>
                 <Field label="Civitai URL" value={civitaiUrlDraft} onChange={(value) => {
@@ -361,13 +371,16 @@ function PresetEditPageContent({ data, preset }: { data: DemoData; preset: DemoP
                 )}
               </div>
             </div>
-          </EditorBlock>
+          </section>
 
-          <EditorBlock
-            title="关联变体"
-            description="用于级联复用其他预设变体的 prompt 与 LoRA 内容。"
-            actions={<Button icon={Search} feedback={{ title: "变体选择面板已准备" }}>选择变体</Button>}
-          >
+          <section className={s.editorBlock}>
+            <div className={s.editorBlockHeader}>
+              <div>
+                <strong>关联变体</strong>
+                <span>用于级联复用其他预设变体的 prompt 与 LoRA 内容。</span>
+              </div>
+              <Button icon={Search} feedback={{ title: "变体选择面板已准备" }}>选择变体</Button>
+            </div>
             <div className={s.presetLinkedList}>
               {linkedVariants.map(({ category: sourceCategory, preset: sourcePreset }, index) => {
                 const variant = sourcePreset.variants[index % Math.max(sourcePreset.variants.length, 1)];
@@ -382,13 +395,16 @@ function PresetEditPageContent({ data, preset }: { data: DemoData; preset: DemoP
                 );
               })}
             </div>
-          </EditorBlock>
+          </section>
 
-          <EditorBlock
-            title="变更历史"
-            description="按基础信息、变体内容和 LoRA 绑定展示差异。"
-            actions={<Button icon={History} feedback={{ title: "历史筛选已应用" }}>筛选历史</Button>}
-          >
+          <section className={s.editorBlock}>
+            <div className={s.editorBlockHeader}>
+              <div>
+                <strong>变更历史</strong>
+                <span>按基础信息、变体内容和 LoRA 绑定展示差异。</span>
+              </div>
+              <Button icon={History} feedback={{ title: "历史筛选已应用" }}>筛选历史</Button>
+            </div>
             <div className={s.historyDiffList}>
               <div className={s.historyDiffRow}>
                 <strong>变体内容更新</strong>
@@ -399,10 +415,11 @@ function PresetEditPageContent({ data, preset }: { data: DemoData; preset: DemoP
                 <span>LoRA 1 权重从 0.75 调整为 0.82，LoRA 2 保持继承。</span>
               </div>
             </div>
-          </EditorBlock>
-        </WorkbenchSurface>
+          </section>
+        </main>
 
-        <InspectorAside title="保存状态">
+        <aside className={s.editorAside}>
+          <strong>保存状态</strong>
           <SaveStateStrip state={saveState} detail={lastSavedAction} variantCount={variants.length} onRetry={retrySave} />
           <div className={s.presetCascadeState}>
             <div>
@@ -418,7 +435,7 @@ function PresetEditPageContent({ data, preset }: { data: DemoData; preset: DemoP
             </div>
             <StatusBadge status="monitor" label="受保护" />
           </div>
-        </InspectorAside>
+        </aside>
       </div>
     </div>
   );
