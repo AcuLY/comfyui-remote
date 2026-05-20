@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, Copy, Download, GripVertical, Plus, Rows3, Save, Trash2 } from "lucide-react";
+import { Copy, Download, GripVertical, Plus, Rows3, Save, Trash2 } from "lucide-react";
 
 import type { DemoData, DemoTemplate } from "../../data";
 import s from "./template-section-page.library.module.css";
@@ -19,9 +19,6 @@ export function TemplateSectionPage({ template, sectionIndex, data }: { template
   const safeIndex = Number.isFinite(index) ? index : 0;
   const section = template?.sections[safeIndex] ?? template?.sections[0];
   if (!template || !section) return <EmptyPage title="没有模板小节" />;
-  const currentIndex = template.sections.findIndex((item) => item.id === section.id);
-  const previousSection = currentIndex > 0 ? template.sections[currentIndex - 1] : null;
-  const nextSection = currentIndex >= 0 && currentIndex < template.sections.length - 1 ? template.sections[currentIndex + 1] : null;
   const promptBlocks = [
     { label: "主体", positive: `${section.name} 正向提示词`, negative: "低质量、模糊" },
     { label: "风格", positive: section.notes || `${template.name} 风格提示词`, negative: "结构错误、多余手指" },
@@ -43,27 +40,7 @@ export function TemplateSectionPage({ template, sectionIndex, data }: { template
       />
       <TemplateSectionShell activeSection={section} template={template} mode="template-section">
         <div className={s.editorSurface}>
-          <div className={s.editorStickyHeader} data-section-card={section.id} id={templateSectionAnchorId(section)}>
-            <div className={s.editorIdentity}>
-              <span>#{String(currentIndex + 1).padStart(2, "0")}</span>
-              <strong>{section.name}</strong>
-              <em>{section.aspectRatio} · 批量 {section.batchSize} · 模板小节</em>
-            </div>
-            <div className={s.toolbar}>
-              {previousSection ? (
-                <ButtonLink href={`/templates/${template.id}/sections/${currentIndex - 1}`} tone="subtle" icon={ArrowLeft}>
-                  上一节
-                </ButtonLink>
-              ) : null}
-              {nextSection ? (
-                <ButtonLink href={`/templates/${template.id}/sections/${currentIndex + 1}`} tone="subtle" icon={ArrowRight}>
-                  下一节
-                </ButtonLink>
-              ) : null}
-            </div>
-          </div>
-
-          <section className={s.editorBlock}>
+          <section className={s.editorBlock} data-section-card={section.id} id={templateSectionAnchorId(section)}>
             <div className={s.editorBlockHeader}>
               <div>
                 <strong>运行参数</strong>

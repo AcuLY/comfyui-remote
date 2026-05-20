@@ -7,10 +7,22 @@ import {
   CompiledPromptPreview,
   PromptBlockRow,
 } from "./editor-parts";
+import { SortableList } from "../../../shared/primitives/sortable";
 import s from "./prompts-panel.editor.module.css";
 import type { SectionEditorModel } from "./use-section-editor-state";
 
 export function PromptsPanel({ editor }: { editor: SectionEditorModel }) {
+  const positiveBlocks = editor.promptBlocks.filter(
+    (block) =>
+      block.positive.trim().length > 0 ||
+      editor.expandedBlockKey === `positive:${block.id}`,
+  );
+  const negativeBlocks = editor.promptBlocks.filter(
+    (block) =>
+      block.negative.trim().length > 0 ||
+      editor.expandedBlockKey === `negative:${block.id}`,
+  );
+
   return (
     <div className={cx(s.sectionTabBody, s.promptTabBody)}>
       <div className={s.tabPanelHeader}>
@@ -26,13 +38,8 @@ export function PromptsPanel({ editor }: { editor: SectionEditorModel }) {
             <h4>正向</h4>
           </div>
           <div className={s.pbList}>
-            {editor.promptBlocks
-              .filter(
-                (block) =>
-                  block.positive.trim().length > 0 ||
-                  editor.expandedBlockKey === `positive:${block.id}`,
-              )
-              .map((block) => (
+            <SortableList items={positiveBlocks.map((b) => b.id)} onReorder={editor.reorderPromptBlocks}>
+              {positiveBlocks.map((block) => (
                 <PromptBlockRow
                   key={`pos-${block.id}`}
                   block={block}
@@ -44,6 +51,7 @@ export function PromptsPanel({ editor }: { editor: SectionEditorModel }) {
                   onDelete={() => editor.deletePromptBlock(block.id)}
                 />
               ))}
+            </SortableList>
           </div>
         </div>
         <div>
@@ -51,13 +59,8 @@ export function PromptsPanel({ editor }: { editor: SectionEditorModel }) {
             <h4>负向</h4>
           </div>
           <div className={s.pbList}>
-            {editor.promptBlocks
-              .filter(
-                (block) =>
-                  block.negative.trim().length > 0 ||
-                  editor.expandedBlockKey === `negative:${block.id}`,
-              )
-              .map((block) => (
+            <SortableList items={negativeBlocks.map((b) => b.id)} onReorder={editor.reorderPromptBlocks}>
+              {negativeBlocks.map((block) => (
                 <PromptBlockRow
                   key={`neg-${block.id}`}
                   block={block}
@@ -69,6 +72,7 @@ export function PromptsPanel({ editor }: { editor: SectionEditorModel }) {
                   onDelete={() => editor.deletePromptBlock(block.id)}
                 />
               ))}
+            </SortableList>
           </div>
         </div>
       </div>

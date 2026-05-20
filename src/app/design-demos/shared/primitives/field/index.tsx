@@ -19,6 +19,7 @@ type FieldProps = {
     clipboard?: boolean;
   };
   multiline?: boolean;
+  placeholder?: string;
   readOnly?: boolean;
   onChange?: (value: string) => void;
 };
@@ -30,6 +31,7 @@ export function Field({
   disabled = false,
   features,
   multiline = false,
+  placeholder,
   readOnly = false,
   onChange,
 }: FieldProps) {
@@ -110,6 +112,7 @@ export function Field({
       onChange={(event) => updateValue(event.currentTarget.value)}
       onDrop={isReadOnly ? preventReadonlyEdit : undefined}
       onPaste={isReadOnly ? preventReadonlyEdit : undefined}
+      placeholder={placeholder}
       readOnly={isReadOnly}
       value={displayValue}
     />
@@ -122,6 +125,7 @@ export function Field({
       onChange={(event) => updateValue(event.currentTarget.value)}
       onDrop={isReadOnly ? preventReadonlyEdit : undefined}
       onPaste={isReadOnly ? preventReadonlyEdit : undefined}
+      placeholder={placeholder}
       readOnly={isReadOnly}
       value={displayValue}
     />

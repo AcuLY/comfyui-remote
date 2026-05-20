@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Download, ExternalLink } from "lucide-react";
 
 import type { DemoData, DemoRun } from "../../data";
@@ -16,8 +16,13 @@ import s from "./review-page.runs.module.css";
 
 export function ReviewPage({ data, run }: { data: DemoData; run: DemoRun | undefined }) {
   const [filter, setFilter] = useState<ResultDemoFilter>("all");
+  const [runImages, setRunImages] = useState(run?.images ?? []);
+
+  // Reset when run changes
+  useEffect(() => { if (run) setRunImages(run.images); }, [run]);
+
   if (!run) return <EmptyPage title="没有可审核运行" />;
-  const images = filterImages(run.images, filter);
+  const images = filterImages(runImages, filter);
   const project = findProject(data, run.projectId);
   const section = findSection(project, run.sectionId);
   const sectionPath = project && section ? `/projects/${project.id}/sections/${rawSectionId(section)}` : null;
@@ -49,17 +54,22 @@ export function ReviewPage({ data, run }: { data: DemoData; run: DemoRun | undef
           className={s.reviewFilterTabs}
           role="tablist"
           items={[
-            { value: "all", label: "全部", count: run.images.length },
-            { value: "pending", label: "待审", count: run.images.filter((image) => image.status === "pending").length },
-            { value: "kept", label: "已保留", count: run.images.filter((image) => image.status === "kept").length },
-            { value: "pstation", label: "p站", count: run.images.filter((image) => image.featured).length },
-            { value: "preview", label: "预览", count: run.images.filter((image) => image.featured2).length },
-            { value: "cover", label: "封面", count: run.images.filter((image) => image.cover).length },
+            { value: "all", label: "全部", count: runImages.length },
+            { value: "pending", label: "待审", count: runImages.filter((image) => image.status === "pending").length },
+            { value: "kept", label: "已保留", count: runImages.filter((image) => image.status === "kept").length },
+            { value: "pstation", label: "p站", count: runImages.filter((image) => image.featured).length },
+            { value: "preview", label: "预览", count: runImages.filter((image) => image.featured2).length },
+            { value: "cover", label: "封面", count: runImages.filter((image) => image.cover).length },
           ]}
           value={filter}
           onChange={setFilter}
         />
-        <ReviewImageBoard images={images} />
+        <ReviewImageBoard images={images} onImagesChange={(updated) => {
+          setRunImages((prev) => prev.map((img) => {
+            const match = updated.find((u) => u.id === img.id);
+            return match ?? img;
+          }));
+        }} />
       </section>
     </div>
   );

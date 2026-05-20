@@ -20,61 +20,6 @@
   gap: 14px;
 }
 
-.pageHeader {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: end;
-  gap: 12px;
-  min-width: 0;
-  border-bottom: 1px solid var(--demo-border);
-  padding-bottom: 12px;
-}
-
-.pageHeader > * {
-  min-width: 0;
-}
-
-.pageTitleBlock {
-  display: grid;
-  gap: 6px;
-  min-width: 0;
-}
-
-.pageHeader > .toolbar {
-  align-self: end;
-  justify-content: flex-end;
-}
-
-.projectHeaderTop > .pageTitleBlock {
-  flex: 1 1 320px;
-}
-
-.eyebrow {
-  color: var(--demo-green);
-  font-size: 10px;
-  font-weight: 600;
-}
-
-.pageTitle {
-  margin: 0;
-  color: var(--demo-text);
-  font-size: clamp(18px, 1.25vw, 21px);
-  font-weight: 560;
-  line-height: 1.14;
-  max-width: 100%;
-  overflow-wrap: anywhere;
-  text-wrap: pretty;
-}
-
-.pageSubtitle {
-  max-width: 72ch;
-  color: var(--demo-muted);
-  font-size: 11px;
-  line-height: 1.5;
-  overflow-wrap: anywhere;
-  text-wrap: pretty;
-}
-
 .toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -243,18 +188,6 @@
   .iconButton {
     width: 44px;
     height: 44px;
-  }
-
-  .pageHeader {
-    grid-template-columns: 1fr;
-    align-items: start;
-    gap: 10px 12px;
-  }
-
-  .pageHeader > .toolbar {
-    width: 100%;
-    max-width: 100%;
-    justify-content: flex-start;
   }
 
   .queueSurfaceHeader > .toolbar {

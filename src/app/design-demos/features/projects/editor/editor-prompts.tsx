@@ -8,6 +8,7 @@ import { Button } from "../../../shared/primitives/button";
 import s from "./editor-prompts.module.css";
 import { cx } from "../../../routing";
 import { parseHue } from "./editor-shared";
+import { SortableList, useDemoSortable } from "../../../shared/primitives/sortable";
 export type PromptBlockRowData = {
   id: string;
   label: string;
@@ -56,6 +57,7 @@ export function PromptBlockRow({
   const text = column === "positive" ? block.positive : block.negative;
   const variantLabel = getVariantLabel(block.variantName);
   const [draft, setDraft] = useState(text);
+  const { ref, style, handleProps } = useDemoSortable(block.id);
 
   function handleEdit() {
     setDraft(text);
@@ -72,8 +74,8 @@ export function PromptBlockRow({
   }
 
   return (
-    <div className={s.pbRow} data-expanded={expanded}>
-      <Button className={s.pbRowGrip} icon={GripVertical} iconOnly tone="subtle" ariaLabel="拖拽排序" />
+    <div ref={ref} style={style} className={s.pbRow} data-expanded={expanded}>
+      <Button className={s.pbRowGrip} icon={GripVertical} iconOnly tone="subtle" ariaLabel="拖拽排序" {...handleProps} />
       <div className={s.pbRowMain}>
         <div className={s.pbRowTitleLine}>
           <strong>{block.label}</strong>

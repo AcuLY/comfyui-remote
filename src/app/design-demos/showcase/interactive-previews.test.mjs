@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -16,14 +16,24 @@ const presetLibraryCss = readFileSync(resolve(showcaseDir, "../features/presets/
 const presetLibrarySource = readFileSync(resolve(showcaseDir, "../features/presets/library-page.tsx"), "utf8");
 const presetEditSource = readFileSync(resolve(showcaseDir, "../features/presets/preset-edit-page.tsx"), "utf8");
 const presetEditCss = readFileSync(resolve(showcaseDir, "../features/presets/preset-edit-page.library.module.css"), "utf8");
+const presetGroupSource = readFileSync(resolve(showcaseDir, "../features/presets/group-page.tsx"), "utf8");
+const presetGroupCss = readFileSync(resolve(showcaseDir, "../features/presets/group-page.library.module.css"), "utf8");
+const projectIndexSource = readFileSync(resolve(showcaseDir, "../features/projects/index.ts"), "utf8");
 const projectListItemCss = readFileSync(resolve(showcaseDir, "../features/projects/project-list-item.projects.module.css"), "utf8");
 const projectSectionCardCss = readFileSync(resolve(showcaseDir, "../features/projects/project-section-card.projects.module.css"), "utf8");
+const missingSectionSource = readFileSync(resolve(showcaseDir, "../features/projects/editor/missing-section-state.tsx"), "utf8");
+const missingSectionCssPath = resolve(showcaseDir, "../features/projects/editor/missing-section-state.editor.module.css");
+const missingSectionCss = existsSync(missingSectionCssPath) ? readFileSync(missingSectionCssPath, "utf8") : "";
+const modelListSource = readFileSync(resolve(showcaseDir, "../features/models/model-list.tsx"), "utf8");
+const modelListCss = readFileSync(resolve(showcaseDir, "../features/models/model-list.module.css"), "utf8");
 const runListSource = readFileSync(resolve(showcaseDir, "../features/runs/run-list.tsx"), "utf8");
 const runListCss = readFileSync(resolve(showcaseDir, "../features/runs/run-list.runs.module.css"), "utf8");
 const reviewMetaCardSource = readFileSync(resolve(showcaseDir, "../features/runs/review-meta-card.tsx"), "utf8");
 const reviewMetaCardCss = readFileSync(resolve(showcaseDir, "../features/runs/review-meta-card.runs.module.css"), "utf8");
 const reviewPageSource = readFileSync(resolve(showcaseDir, "../features/runs/review-page.tsx"), "utf8");
 const templateFormCss = readFileSync(resolve(showcaseDir, "../features/templates/template-form-page.library.module.css"), "utf8");
+const templateSectionSource = readFileSync(resolve(showcaseDir, "../features/templates/template-section-page.tsx"), "utf8");
+const templateSectionCss = readFileSync(resolve(showcaseDir, "../features/templates/template-section-page.library.module.css"), "utf8");
 
 function readShowcaseSource(relativePath) {
   return readFileSync(resolve(showcaseDir, relativePath), "utf8");
@@ -304,11 +314,28 @@ test("preset library page avoids duplicate category management controls", () => 
   assert.doesNotMatch(sidebarSource, /ariaLabel="新建分类"/, "Preset category sidebar should not expose a duplicate new-category button");
 });
 
-test("preset edit page does not render a duplicate sticky editor header", () => {
-  assert.doesNotMatch(presetEditSource, /className=\{s\.editorStickyHeader\}/, "Preset edit page should not render the duplicate sticky editor header");
+test("editor pages do not render duplicate sticky editor headers", () => {
+  for (const [name, source, css] of [
+    ["PresetEditPage", presetEditSource, presetEditCss],
+    ["PresetGroupPage", presetGroupSource, presetGroupCss],
+    ["TemplateSectionPage", templateSectionSource, templateSectionCss],
+  ]) {
+    assert.doesNotMatch(source, /className=\{s\.editorStickyHeader\}/, `${name} should not render a duplicate sticky editor header`);
+    assert.doesNotMatch(css, /\.editorStickyHeader\b/, `${name} stylesheet should not keep unused sticky-header styles`);
+    assert.doesNotMatch(css, /\.editorIdentity\b/, `${name} stylesheet should not keep unused editor identity styles`);
+  }
+
   assert.doesNotMatch(presetEditSource, /添加变体/, "Preset edit page should not keep the removed sticky-header add-variant action");
-  assert.doesNotMatch(presetEditCss, /\.editorStickyHeader\b/, "Preset edit stylesheet should not keep unused sticky-header styles");
-  assert.doesNotMatch(presetEditCss, /\.editorIdentity\b/, "Preset edit stylesheet should not keep unused editor identity styles");
+});
+
+test("route-header pages do not keep hand-written legacy page headers", () => {
+  assert.doesNotMatch(modelListSource, /<header className=\{styles\.pageHeader\}>/, "Models page should rely on the route header instead of a visible local page header");
+  assert.doesNotMatch(modelListCss, /\.pageHeader\b/, "Models stylesheet should not keep old local page-header styles");
+  assert.doesNotMatch(missingSectionSource, /className=\{s\.pageHeader\}/, "Missing section state should not render a second local page header");
+  assert.doesNotMatch(missingSectionCss, /\.pageHeader\b/, "Missing section state should not keep old local page-header styles");
+  assert.doesNotMatch(projectIndexSource, /ProjectDetailHeader/, "Projects barrel should not expose the unused legacy project detail header");
+  assert.equal(existsSync(resolve(showcaseDir, "../features/projects/project-detail-header.tsx")), false, "Unused project detail header implementation should be removed");
+  assert.equal(existsSync(resolve(showcaseDir, "../features/projects/project-detail-header.projects.module.css")), false, "Unused project detail header stylesheet should be removed");
 });
 
 test("showcase pages do not wire visible controls to no-op callbacks", () => {

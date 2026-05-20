@@ -152,51 +152,8 @@
   gap: 10px;
 }
 
-.editorStickyHeader {
-  position: sticky;
-  top: 0;
-  z-index: 3;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  border: 1px solid var(--demo-border);
-  border-radius: var(--demo-radius);
-  background: var(--demo-topbar-bg);
-  padding: 8px 10px;
-}
-
 .editorNavHeader .toolbar {
   justify-content: flex-end;
-}
-
-.editorIdentity {
-  display: grid;
-  min-width: 0;
-  gap: 2px;
-}
-
-.editorIdentity span {
-  color: var(--demo-green);
-  font-size: 10px;
-}
-
-.editorIdentity strong {
-  overflow: hidden;
-  color: var(--demo-text);
-  font-size: 13px;
-  font-weight: 560;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.editorIdentity em {
-  overflow: hidden;
-  color: var(--demo-muted);
-  font-size: 11px;
-  font-style: normal;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .editorBlock,
@@ -469,7 +426,6 @@
     width: 100%;
   }
 
-  .editorStickyHeader,
   .editorBlockHeader {
     align-items: stretch;
     flex-direction: column;

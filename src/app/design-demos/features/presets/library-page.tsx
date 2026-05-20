@@ -27,6 +27,7 @@ import { FolderBreadcrumb, FolderRow, SelectionBatchBar } from "../../shared/pat
 import { StatusBadge } from "../../shared/primitives/status-badge";
 import { cx, demoHref } from "../../routing";
 import type { DemoButtonFeedback } from "../../routing";
+import { SortableList, useDemoSortable } from "../../shared/primitives/sortable";
 
 type DisplayPresetLibraryItem = PresetLibraryItem & {
   categoryId?: string;
@@ -225,6 +226,7 @@ export function PresetLibraryItemRow({
   onToggle: (id: string) => void;
 }) {
   const [copied, setCopied] = useState(false);
+  const { ref, style, handleProps } = useDemoSortable(item.id);
 
   function handleCopy(event: ReactMouseEvent<HTMLButtonElement>) {
     event.preventDefault();
@@ -239,7 +241,7 @@ export function PresetLibraryItemRow({
   const copyStateLabel = copyState === "copy" ? "本地副本" : copyState === "source" ? "已复制源" : null;
 
   return (
-    <div className={cx(s.presetItemRow, checked && s.presetItemRowSelected, copyState === "copy" && s.presetItemRowCopy, copyState === "source" && s.presetItemRowSource)}>
+    <div ref={ref} style={style} className={cx(s.presetItemRow, checked && s.presetItemRowSelected, copyState === "copy" && s.presetItemRowCopy, copyState === "source" && s.presetItemRowSource)}>
       <Checkbox
         checked={checked}
         label={checked ? `取消选择预制：${item.name}` : `选择预制：${item.name}`}
@@ -247,7 +249,7 @@ export function PresetLibraryItemRow({
         variant="compact"
       />
       <Link aria-label={openLabel} className={s.presetItemOpenArea} href={demoHref(href)}>
-        <GripVertical className={s.categoryDragIcon} />
+        <GripVertical className={s.categoryDragIcon} {...handleProps} />
         <div className={s.presetItemMain}>
           <strong>
             <span className={s.presetItemNameText}>{item.name}</span>
@@ -289,12 +291,14 @@ function PresetItemRows({
   copiedSourceIds,
   items,
   onCopy,
+  onReorder,
   onToggle,
   selectedIds,
 }: {
   copiedSourceIds: Set<string>;
   items: LocalPresetLibraryItem[];
   onCopy: (item: DisplayPresetLibraryItem) => void;
+  onReorder: (ids: string[]) => void;
   onToggle: (id: string) => void;
   selectedIds: Set<string>;
 }) {
@@ -306,30 +310,37 @@ function PresetItemRows({
 
   return (
     <div className={s.presetItemList}>
-      {items.map((item, index) => {
-        const checked = selectedIds.has(item.id);
-        const copyState = item.isLocalCopy ? "copy" : copiedSourceIds.has(item.id) ? "source" : undefined;
-        return (
-          <PresetLibraryItemRow checked={checked} copyState={copyState} index={index} item={item} key={item.id} onCopy={onCopy} onToggle={onToggle} />
-        );
-      })}
+      <SortableList items={items.map((item) => item.id)} onReorder={onReorder}>
+        {items.map((item, index) => {
+          const checked = selectedIds.has(item.id);
+          const copyState = item.isLocalCopy ? "copy" : copiedSourceIds.has(item.id) ? "source" : undefined;
+          return (
+            <PresetLibraryItemRow checked={checked} copyState={copyState} index={index} item={item} key={item.id} onCopy={onCopy} onToggle={onToggle} />
+          );
+        })}
+      </SortableList>
     </div>
   );
 }
 
 export function PresetsPage({ data }: { data: DemoData }) {
   const [categoryId, setCategoryId] = useState(data.categories[0]?.id ?? "");
+  const [categoryOrder, setCategoryOrder] = useState(data.categories.map((c) => c.id));
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [localCopies, setLocalCopies] = useState<LocalPresetLibraryItem[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [moveSheetOpen, setMoveSheetOpen] = useState(false);
   const [moveTargetId, setMoveTargetId] = useState<string | null>(null);
   const [showDraftFolder, setShowDraftFolder] = useState(false);
+  const [itemOrder, setItemOrder] = useState<string[]>([]);
   const category = data.categories.find((item) => item.id === categoryId) ?? data.categories[0];
   const categoryItems = category ? presetLibraryItemsWithDemoData(category) : [];
   const categoryCopies = category ? localCopies.filter((item) => item.categoryId === category.id) : [];
   const allCategoryItems = [...categoryItems, ...categoryCopies];
   const visibleItems = allCategoryItems.filter((item) => (item.folderId ?? null) === currentFolderId);
+  const orderedVisibleItems = itemOrder.length
+    ? itemOrder.map((id) => visibleItems.find((item) => item.id === id)).filter((item): item is LocalPresetLibraryItem => Boolean(item))
+    : visibleItems;
   const visibleFolders = category ? presetFolderChildren(category, currentFolderId) : [];
   const copiedSourceIds = new Set(categoryCopies.map((item) => item.sourceId).filter((id): id is string => Boolean(id)));
   const folderItemCount = visibleFolders.length + visibleItems.length;
@@ -340,12 +351,14 @@ export function PresetsPage({ data }: { data: DemoData }) {
     setCurrentFolderId(null);
     setSelectedIds(new Set());
     setShowDraftFolder(false);
+    setItemOrder([]);
   }
 
   function navigateFolder(folderId: string | null) {
     setCurrentFolderId(folderId);
     setSelectedIds(new Set());
     setShowDraftFolder(false);
+    setItemOrder([]);
   }
 
   function toggleItem(id: string) {
@@ -401,6 +414,8 @@ export function PresetsPage({ data }: { data: DemoData }) {
         <div className={s.presetManagerLayout}>
           <PresetCategorySidebar
             categories={data.categories}
+            categoryOrder={categoryOrder}
+            onReorderCategories={setCategoryOrder}
             selectedCategory={category}
             onSelect={selectCategory}
           />
@@ -472,8 +487,9 @@ export function PresetsPage({ data }: { data: DemoData }) {
               <PresetFolderRows category={category} currentFolderId={currentFolderId} onNavigate={navigateFolder} />
               <PresetItemRows
                 copiedSourceIds={copiedSourceIds}
-                items={visibleItems}
+                items={orderedVisibleItems}
                 onCopy={copyPresetItem}
+                onReorder={setItemOrder}
                 onToggle={toggleItem}
                 selectedIds={selectedIds}
               />
@@ -503,13 +519,21 @@ export function PresetsPage({ data }: { data: DemoData }) {
 
 export function PresetCategorySidebar({
   categories,
+  categoryOrder,
+  onReorderCategories,
   selectedCategory,
   onSelect,
 }: {
   categories: DemoCategory[];
+  categoryOrder: string[];
+  onReorderCategories: (ids: string[]) => void;
   selectedCategory: DemoCategory;
   onSelect: (category: DemoCategory) => void;
 }) {
+  const orderedCategories = categoryOrder.length
+    ? categoryOrder.map((id) => categories.find((c) => c.id === id)).filter((c): c is DemoCategory => Boolean(c))
+    : categories;
+
   return (
     <aside className={s.presetCategorySidebar}>
       <div className={s.presetCategoryHeader}>
@@ -519,12 +543,14 @@ export function PresetCategorySidebar({
         </div>
       </div>
       <div className={s.presetCategoryList}>
-        {categories.map((category) => {
-          const selected = selectedCategory.id === category.id;
-          return (
-            <PresetCategoryRow category={category} key={category.id} onSelect={onSelect} selected={selected} />
-          );
-        })}
+        <SortableList items={orderedCategories.map((c) => c.id)} onReorder={onReorderCategories}>
+          {orderedCategories.map((category) => {
+            const selected = selectedCategory.id === category.id;
+            return (
+              <PresetCategoryRow category={category} key={category.id} onSelect={onSelect} selected={selected} />
+            );
+          })}
+        </SortableList>
       </div>
     </aside>
   );
@@ -539,11 +565,13 @@ export function PresetCategoryRow({
   onSelect: (category: DemoCategory) => void;
   selected: boolean;
 }) {
+  const { ref, style, handleProps } = useDemoSortable(category.id);
+
   return (
-    <div className={cx(s.presetCategoryItem, selected && s.presetCategoryItemActive)}>
+    <div ref={ref} style={style} className={cx(s.presetCategoryItem, selected && s.presetCategoryItemActive)}>
       <div className={s.presetCategoryRow}>
         <button className={s.presetCategorySelect} type="button" onClick={() => onSelect(category)}>
-          <GripVertical className={s.categoryDragIcon} />
+          <GripVertical className={s.categoryDragIcon} {...handleProps} />
           <span className={s.categorySwatch} style={{ backgroundColor: categoryColorValue(category.color) }} />
           <span className={s.presetCategoryText}>
             <strong>{category.name}</strong>

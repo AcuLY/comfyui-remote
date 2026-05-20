@@ -1,6 +1,7 @@
 "use client";
 
 import { Save } from "lucide-react";
+import { useState } from "react";
 
 import { categoryColorValue, categoryItemCount, categoryTypeLabel, type DemoCategory, type DemoData } from "../../data";
 import s from "./sort-rules-page.library.module.css";
@@ -8,6 +9,7 @@ import { SortableRowShell } from "../../shared/patterns";
 import { Button } from "../../shared/primitives/button";
 import { PageHeader } from "../../shared/primitives/page-header";
 import { StatusBadge } from "../../shared/primitives/status-badge";
+import { SortableList, useDemoSortable } from "../../shared/primitives/sortable";
 import type { SortRuleDimensionKey } from "../../routing";
 
 export function SortRulesPage({ data }: { data: DemoData }) {
@@ -50,6 +52,9 @@ function SortRulePanel({
   title: string;
   subtitle: string;
 }) {
+  const [orderedIds, setOrderedIds] = useState(() => categories.map((c) => c.id));
+  const categoryMap = Object.fromEntries(categories.map((c) => [c.id, c]));
+
   return (
     <section className={s.sortRulePanel}>
       <div className={s.sortRuleHeader}>
@@ -60,28 +65,43 @@ function SortRulePanel({
         <StatusBadge status="ready" label="已保存" />
       </div>
       <div className={s.sortRuleList}>
-        {categories.map((category, index) => (
-          <SortableRowShell
-            className={s.sortRuleRow}
-            contentClassName={s.sortRuleRowContent}
-            handleClassName={s.icon}
-            index={index}
-            indexClassName={s.sortRuleIndex}
-            key={category.id}
-            marker={<i style={{ background: categoryColorValue(category.color) }} />}
-            markerClassName={s.sortRuleMarker}
-          >
-            <div className={s.sortRuleRowText}>
-              <strong>{category.name}</strong>
-              <em>{categoryTypeLabel(category)} · {categoryItemCount(category)} 条目</em>
-            </div>
-          </SortableRowShell>
-        ))}
+        <SortableList items={orderedIds} onReorder={setOrderedIds}>
+          {orderedIds.map((id, index) => {
+            const category = categoryMap[id];
+            if (!category) return null;
+            return (
+              <SortableCategoryRow key={id} category={category} index={index} />
+            );
+          })}
+        </SortableList>
       </div>
       <div className={s.sortRuleFooter}>
         <span>拖拽排序后保存</span>
         <Button icon={Save} feedback={{ title: `${title} 排序已保存` }}>保存此维度</Button>
       </div>
     </section>
+  );
+}
+
+function SortableCategoryRow({ category, index }: { category: DemoCategory; index: number }) {
+  const { ref, style, handleProps } = useDemoSortable(category.id);
+  return (
+    <div ref={ref} style={style}>
+      <SortableRowShell
+        className={s.sortRuleRow}
+        contentClassName={s.sortRuleRowContent}
+        handleClassName={s.icon}
+        handleProps={handleProps}
+        index={index}
+        indexClassName={s.sortRuleIndex}
+        marker={<i style={{ background: categoryColorValue(category.color) }} />}
+        markerClassName={s.sortRuleMarker}
+      >
+        <div className={s.sortRuleRowText}>
+          <strong>{category.name}</strong>
+          <em>{categoryTypeLabel(category)} · {categoryItemCount(category)} 条目</em>
+        </div>
+      </SortableRowShell>
+    </div>
   );
 }

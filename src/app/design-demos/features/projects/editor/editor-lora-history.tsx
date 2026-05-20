@@ -9,6 +9,7 @@ import s from "./editor-lora-history.module.css";
 import { cx } from "../../../routing";
 import { parseHue } from "./editor-shared";
 import { SelectChip, StepperInput } from "./editor-controls";
+import { SortableList, useDemoSortable } from "../../../shared/primitives/sortable";
 export type LoraRowData = {
   id: string;
   /** Bound preset display name; undefined for manual */
@@ -47,9 +48,10 @@ export function LoraRow({
   const fileValue = entry.filePath || entry.fileName;
   const fileSelectOptions = Array.from(new Set([fileValue, ...fileOptions]));
   const displayName = entry.presetName ?? entry.fileName;
+  const { ref, style, handleProps } = useDemoSortable(entry.id);
 
   return (
-    <div className={s.loraEditorShell}>
+    <div ref={ref} style={style} className={s.loraEditorShell}>
       <div className={s.loraEditorRow} data-enabled={entry.enabled}>
         <div className={s.loraEditorHandle}>
           <Button
@@ -58,6 +60,7 @@ export function LoraRow({
             tone="subtle"
             ariaLabel={`拖拽排序 ${displayName}`}
             size="sm"
+            {...handleProps}
           />
         </div>
         <div className={s.loraEditorMain}>

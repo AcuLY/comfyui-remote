@@ -445,6 +445,11 @@ export function useSectionEditorState({ data, project, section }: SectionEditorL
     flashSave();
   };
 
+  const reorderPromptBlocks = (ids: string[]) => {
+    setPromptBlocks((prev) => ids.map((id) => prev.find((b) => b.id === id)!).filter(Boolean));
+    flashSave();
+  };
+
   const addPromptBlock = () => {
     const id = `block-${Date.now()}`;
     setPromptBlocks((prev) => [
@@ -547,6 +552,16 @@ export function useSectionEditorState({ data, project, section }: SectionEditorL
     flashSave();
   };
 
+  const reorderLora1 = (ids: string[]) => {
+    setLora1((prev) => ids.map((id) => prev.find((l) => l.id === id)!).filter(Boolean));
+    flashSave();
+  };
+
+  const reorderLora2 = (ids: string[]) => {
+    setLora2((prev) => ids.map((id) => prev.find((l) => l.id === id)!).filter(Boolean));
+    flashSave();
+  };
+
   const markStatus = (imageId: string, status: ImageStatus) => {
     setImages((prev) => prev.map((img) => (img.id === imageId ? { ...img, status } : img)));
     flashSave();
@@ -614,6 +629,7 @@ export function useSectionEditorState({ data, project, section }: SectionEditorL
     unlinkPromptBlock,
     deletePromptBlock,
     addPromptBlock,
+    reorderPromptBlocks,
     lora1,
     lora2,
     addLora1,
@@ -626,6 +642,8 @@ export function useSectionEditorState({ data, project, section }: SectionEditorL
     updateLora2Path,
     removeLora1,
     removeLora2,
+    reorderLora1,
+    reorderLora2,
     history,
     historyDim,
     setHistoryDim,

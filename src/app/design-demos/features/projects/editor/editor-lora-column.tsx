@@ -6,6 +6,7 @@ import { Button } from "../../../shared/primitives/button";
 import s from "./editor-lora-column.module.css";
 import { LORA_FILE_OPTIONS } from "./editor-page-data";
 import { LoraRow, type LoraRowData } from "./editor-parts";
+import { SortableList } from "../../../shared/primitives/sortable";
 
 export function LoraColumn({
   label,
@@ -16,6 +17,7 @@ export function LoraColumn({
   onPath,
   onUnlink,
   onDelete,
+  onReorder,
 }: {
   label: string;
   entries: LoraRowData[];
@@ -25,6 +27,7 @@ export function LoraColumn({
   onPath: (id: string, path: string) => void;
   onUnlink: (id: string) => void;
   onDelete: (id: string) => void;
+  onReorder?: (ids: string[]) => void;
 }) {
   return (
     <div className={s.loraColumn}>
@@ -39,18 +42,20 @@ export function LoraColumn({
         </div>
       ) : (
         <div className={s.loraList}>
-          {entries.map((entry) => (
-            <LoraRow
-              key={entry.id}
-              entry={entry}
-              fileOptions={LORA_FILE_OPTIONS}
-              onWeightChange={(w) => onWeight(entry.id, w)}
-              onToggle={() => onToggle(entry.id)}
-              onPathChange={(p) => onPath(entry.id, p)}
-              onUnlink={entry.kind === "preset" ? () => onUnlink(entry.id) : undefined}
-              onDelete={() => onDelete(entry.id)}
-            />
-          ))}
+          <SortableList items={entries.map((e) => e.id)} onReorder={onReorder ?? (() => {})}>
+            {entries.map((entry) => (
+              <LoraRow
+                key={entry.id}
+                entry={entry}
+                fileOptions={LORA_FILE_OPTIONS}
+                onWeightChange={(w) => onWeight(entry.id, w)}
+                onToggle={() => onToggle(entry.id)}
+                onPathChange={(p) => onPath(entry.id, p)}
+                onUnlink={entry.kind === "preset" ? () => onUnlink(entry.id) : undefined}
+                onDelete={() => onDelete(entry.id)}
+              />
+            ))}
+          </SortableList>
         </div>
       )}
       <div className={s.addRow}>

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { Copy, GripVertical, Plus, Save, SlidersHorizontal, Trash2 } from "lucide-react";
 
 import type { DemoData, DemoTemplate } from "../../data";
@@ -16,6 +17,7 @@ import { PageHeader } from "../../shared/primitives/page-header";
 import { FloatingSelect } from "../../shared/primitives/floating-select";
 import { StatusBadge } from "../../shared/primitives/status-badge";
 import { TemplateSectionShell, templateSectionAnchorId } from "./template-section-shell";
+import { SortableList, useDemoSortable } from "../../shared/primitives/sortable";
 
 export function TemplateFormPage({ template, mode, data }: { template?: DemoTemplate; mode: "new" | "edit"; data?: DemoData }) {
   const sections = template?.sections ?? [];
@@ -42,20 +44,7 @@ export function TemplateFormPage({ template, mode, data }: { template?: DemoTemp
         headerClassName={s.editorBlockHeader}
         title="小节配置"
       >
-        <div className={s.templateSectionList}>
-          {sections.length ? (
-            sections.map((section, index) => (
-              <TemplateSectionRow
-                index={index}
-                key={section.id}
-                section={section}
-                template={template}
-              />
-            ))
-          ) : (
-            <div className={s.empty}>创建模板后可以添加第一个小节</div>
-          )}
-        </div>
+        <SortableSectionList sections={sections} template={template} />
         <OperationStateStrip
           items={[
             { label: "排序", value: "拖拽释放后保存", tone: "info" },
@@ -100,11 +89,49 @@ export function TemplateFormPage({ template, mode, data }: { template?: DemoTemp
   );
 }
 
+function SortableSectionList({ sections, template }: { sections: DemoTemplateSection[]; template?: DemoTemplate }) {
+  const [orderedIds, setOrderedIds] = useState(() => sections.map((sec) => sec.id));
+  const sectionMap = Object.fromEntries(sections.map((sec) => [sec.id, sec]));
+
+  if (!sections.length) {
+    return (
+      <div className={s.templateSectionList}>
+        <div className={s.empty}>创建模板后可以添加第一个小节</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={s.templateSectionList}>
+      <SortableList items={orderedIds} onReorder={setOrderedIds}>
+        {orderedIds.map((id, index) => {
+          const section = sectionMap[id];
+          if (!section) return null;
+          return (
+            <SortableSectionRow key={id} index={index} section={section} template={template} />
+          );
+        })}
+      </SortableList>
+    </div>
+  );
+}
+
+function SortableSectionRow({ index, section, template }: { index: number; section: DemoTemplateSection; template?: DemoTemplate }) {
+  const { ref, style, handleProps } = useDemoSortable(section.id);
+  return (
+    <div ref={ref} style={style}>
+      <TemplateSectionRow index={index} section={section} template={template} handleProps={handleProps} />
+    </div>
+  );
+}
+
 export function TemplateSectionRow({
+  handleProps,
   index,
   section,
   template,
 }: {
+  handleProps?: Record<string, unknown>;
   index: number;
   section: DemoTemplateSection;
   template?: DemoTemplate;
@@ -117,7 +144,15 @@ export function TemplateSectionRow({
       data-section-card={section.id}
       id={templateSectionAnchorId(section)}
     >
-      <Button className={s.dragHandle} tone="subtle" icon={GripVertical} iconOnly ariaLabel="排序手柄" />
+      <button
+        type="button"
+        className={s.dragHandle}
+        aria-label="排序手柄"
+        style={{ cursor: handleProps ? "grab" : undefined }}
+        {...(handleProps ?? {})}
+      >
+        <GripVertical aria-hidden="true" />
+      </button>
       <Link className={s.templateSectionRowMain} href={demoHref(href)}>
         <span className={s.templateSectionTitleLine}>
           <span>{String(index + 1).padStart(2, "0")}</span>

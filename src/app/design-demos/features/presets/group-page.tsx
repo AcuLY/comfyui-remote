@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { GripVertical, Plus, Save, Search, Trash2 } from "lucide-react";
 
 import { categoryTypeLabel, presetFolderBreadcrumb, type DemoData, type DemoPresetGroup } from "../../data";
@@ -11,6 +12,7 @@ import { PageHeader } from "../../shared/primitives/page-header";
 import { FloatingSelect } from "../../shared/primitives/floating-select";
 import { StatusBadge } from "../../shared/primitives/status-badge";
 import { firstCategory } from "../../routing";
+import { SortableList, useDemoSortable } from "../../shared/primitives/sortable";
 
 export function PresetGroupPage({ data, group }: { data: DemoData; group: DemoPresetGroup | undefined }) {
   if (!group) return <EmptyPage title="没有预设组数据" />;
@@ -23,6 +25,10 @@ export function PresetGroupPage({ data, group }: { data: DemoData; group: DemoPr
     categoryName: data.categories.find((item) => item.presets.some((preset) => preset.name === group.members[index]))?.name ?? "预设",
     variant: fallbackMembers[index % Math.max(fallbackMembers.length, 1)]?.variants[0]?.name ?? "默认",
   }));
+  const [memberOrder, setMemberOrder] = useState(members.map((m) => m.id));
+  const orderedMembers = memberOrder.length
+    ? memberOrder.map((id) => members.find((m) => m.id === id)).filter((m): m is typeof members[number] => Boolean(m))
+    : members;
 
   return (
     <div className={s.page}>
@@ -71,9 +77,11 @@ export function PresetGroupPage({ data, group }: { data: DemoData; group: DemoPr
               <Button icon={Search} feedback={{ title: "预设选择面板已准备" }}>选择预设</Button>
             </div>
             <div className={s.groupMemberList}>
-              {members.map((member, index) => (
-                <PresetMemberRow index={index} key={member.id} member={member} />
-              ))}
+              <SortableList items={orderedMembers.map((m) => m.id)} onReorder={setMemberOrder}>
+                {orderedMembers.map((member, index) => (
+                  <PresetMemberRow index={index} key={member.id} member={member} />
+                ))}
+              </SortableList>
             </div>
           </section>
 
@@ -146,9 +154,11 @@ export function PresetMemberRow({
   index: number;
   member: PresetMemberRowData;
 }) {
+  const { ref, style, handleProps } = useDemoSortable(member.id);
+
   return (
-    <div className={s.groupMemberRow}>
-      <GripVertical className={s.icon} />
+    <div ref={ref} style={style} className={s.groupMemberRow}>
+      <GripVertical className={s.icon} {...handleProps} />
       <span>{String(index + 1).padStart(2, "0")}</span>
       <div>
         <strong>{member.name}</strong>

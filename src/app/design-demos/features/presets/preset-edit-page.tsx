@@ -12,6 +12,7 @@ import { PageHeader } from "../../shared/primitives/page-header";
 import { FloatingSelect } from "../../shared/primitives/floating-select";
 import { StatusBadge } from "../../shared/primitives/status-badge";
 import { cx, firstCategory } from "../../routing";
+import { SortableList, useDemoSortable } from "../../shared/primitives/sortable";
 
 type SaveState = "saved" | "queued" | "saving" | "failed";
 type LoraStageId = 1 | 2;
@@ -178,7 +179,7 @@ function PresetEditPageContent({ data, preset }: { data: DemoData; preset: DemoP
               <FloatingSelect label="分类" value={category?.name ?? preset.categoryId} />
               <FloatingSelect label="文件夹" value={folderPath} />
             </div>
-            <Field multiline features={{ resize: true, clipboard: true }} label="备注" value={preset.notes || "预设说明和维护备注。"} readOnly />
+            <Field multiline features={{ resize: true, clipboard: true }} label="备注" placeholder="预设说明和维护备注。" value={preset.notes ?? ""} readOnly />
           </section>
 
           <section className={s.editorBlock}>
@@ -191,19 +192,20 @@ function PresetEditPageContent({ data, preset }: { data: DemoData; preset: DemoP
             </div>
             <div className={s.presetVariantWorkbench}>
               <div className={s.presetVariantRail}>
-                {variants.map((variant, index) => (
-                  <button
-                    aria-pressed={variant.id === activeVariant.id}
-                    className={cx(s.presetVariantButton, variant.id === activeVariant.id && s.presetVariantButtonActive)}
-                    key={variant.id}
-                    type="button"
-                    onClick={() => setActiveVariantId(variant.id)}
-                  >
-                    <GripVertical className={s.icon} />
-                    <span>{String(index + 1).padStart(2, "0")}</span>
-                    <strong>{variant.name}</strong>
-                  </button>
-                ))}
+                <SortableList items={variants.map((v) => v.id)} onReorder={(ids) => {
+                  setVariants((current) => ids.map((id) => current.find((v) => v.id === id)!).filter(Boolean));
+                  markDraftChanged("变体顺序已调整");
+                }}>
+                  {variants.map((variant, index) => (
+                    <SortableVariantButton
+                      key={variant.id}
+                      variant={variant}
+                      index={index}
+                      isActive={variant.id === activeVariant.id}
+                      onSelect={() => setActiveVariantId(variant.id)}
+                    />
+                  ))}
+                </SortableList>
               </div>
               <div className={s.presetVariantEditor}>
                 <div className={s.formGrid}>
@@ -447,6 +449,35 @@ function SaveStateStrip({
         </Button>
       ) : null}
     </div>
+  );
+}
+
+function SortableVariantButton({
+  variant,
+  index,
+  isActive,
+  onSelect,
+}: {
+  variant: VariantDraft;
+  index: number;
+  isActive: boolean;
+  onSelect: () => void;
+}) {
+  const { ref, style, handleProps } = useDemoSortable(variant.id);
+
+  return (
+    <button
+      ref={ref}
+      style={style}
+      aria-pressed={isActive}
+      className={cx(s.presetVariantButton, isActive && s.presetVariantButtonActive)}
+      type="button"
+      onClick={onSelect}
+    >
+      <GripVertical className={s.icon} {...handleProps} />
+      <span>{String(index + 1).padStart(2, "0")}</span>
+      <strong>{variant.name}</strong>
+    </button>
   );
 }
 

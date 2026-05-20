@@ -74,6 +74,11 @@
     0 0 0 1px color-mix(in srgb, var(--ui-green) 18%, transparent);
 }
 
+.control::placeholder {
+  color: var(--ui-faint);
+  opacity: 1;
+}
+
 .control:disabled {
   color: var(--ui-faint);
   cursor: not-allowed;

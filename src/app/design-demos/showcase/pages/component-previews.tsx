@@ -688,13 +688,14 @@ function LoraPreview() {
 function PresetCategoryPreview({ data }: PreviewDataProps) {
   const categories = data.categories.slice(0, 3);
   const [selectedCategoryId, setSelectedCategoryId] = useState(categories[0]?.id ?? "");
+  const [categoryOrder, setCategoryOrder] = useState(categories.map((c) => c.id));
   const selectedCategory = categories.find((category) => category.id === selectedCategoryId) ?? categories[0];
   if (!selectedCategory) return <EmptyRows label="没有分类样例" />;
 
   return (
     <div className={s.previewGrid}>
       <PresetCategoryRow category={selectedCategory} onSelect={(category) => setSelectedCategoryId(category.id)} selected />
-      <PresetCategorySidebar categories={categories} selectedCategory={selectedCategory} onSelect={(category) => setSelectedCategoryId(category.id)} />
+      <PresetCategorySidebar categories={categories} categoryOrder={categoryOrder} onReorderCategories={setCategoryOrder} selectedCategory={selectedCategory} onSelect={(category) => setSelectedCategoryId(category.id)} />
     </div>
   );
 }

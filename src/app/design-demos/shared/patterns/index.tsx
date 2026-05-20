@@ -394,6 +394,7 @@ export function SortableRowShell({
   className,
   contentClassName,
   handleClassName,
+  handleProps,
   index,
   indexClassName,
   marker,
@@ -403,6 +404,7 @@ export function SortableRowShell({
   className?: string;
   contentClassName?: string;
   handleClassName?: string;
+  handleProps?: Record<string, unknown>;
   index: number;
   indexClassName?: string;
   marker?: React.ReactNode;
@@ -412,7 +414,12 @@ export function SortableRowShell({
 
   return (
     <div className={cx(s.sortableRow, className)} style={{ "--sortable-row-columns": columns } as React.CSSProperties}>
-      <GripVertical className={cx(s.patternIcon, handleClassName)} aria-hidden="true" />
+      <GripVertical
+        className={cx(s.patternIcon, handleClassName)}
+        aria-hidden="true"
+        style={{ cursor: handleProps ? "grab" : undefined }}
+        {...(handleProps as React.SVGAttributes<SVGSVGElement>)}
+      />
       <span className={indexClassName}>{String(index + 1).padStart(2, "0")}</span>
       {marker ? <div className={cx(s.sortableMarker, markerClassName)}>{marker}</div> : null}
       <div className={contentClassName}>{children}</div>

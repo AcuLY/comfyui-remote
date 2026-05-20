@@ -25,6 +25,7 @@ export function LoraPanel({ editor }: { editor: SectionEditorModel }) {
           onPath={editor.updateLora1Path}
           onUnlink={editor.removeLora1}
           onDelete={editor.removeLora1}
+          onReorder={editor.reorderLora1}
         />
         <LoraColumn
           label="LoRA 2"
@@ -35,6 +36,7 @@ export function LoraPanel({ editor }: { editor: SectionEditorModel }) {
           onPath={editor.updateLora2Path}
           onUnlink={editor.removeLora2}
           onDelete={editor.removeLora2}
+          onReorder={editor.reorderLora2}
         />
       </div>
     </div>

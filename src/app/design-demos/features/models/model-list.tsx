@@ -4,7 +4,7 @@ import { useState } from 'react';
 import {
   Upload, FolderOpen, File, ChevronRight, Search,
   MoreVertical, Edit2, Trash2, Move, X, Check,
-  Folder, ArrowLeft, Plus
+  Folder, ArrowLeft
 } from 'lucide-react';
 import { Button } from "../../shared/primitives/button";
 import { FolderBreadcrumb, InspectorAside } from "../../shared/patterns";
@@ -96,36 +96,6 @@ export function ModelsPage({ data }: { data: DemoData }) {
 
   return (
     <div className={styles.page}>
-      {/* Page Header */}
-      <header className={styles.pageHeader}>
-        <div className={styles.pageTitleBlock}>
-          <span className={styles.eyebrow}>模型</span>
-          <h1 className={styles.pageTitle}>模型文件管理</h1>
-          <div className={styles.pageSubtitle}>
-            LoRA 和 checkpoint 统一在这里按文件夹浏览、上传、移动和维护备注。
-          </div>
-        </div>
-
-        <div className={styles.toolbar}>
-          <Button
-            icon={Upload}
-            onClick={handleUpload}
-            disabled={isUploading}
-          >
-            {isUploading ? '上传中...' : '上传文件'}
-          </Button>
-
-          <Button icon={Plus}>
-            新建文件夹
-          </Button>
-
-          <Button icon={Search}>
-            扫描目录
-          </Button>
-        </div>
-      </header>
-
-      {/* Main Content Area */}
       <div className={styles.modelsLayout}>
         <ModelFileBrowser
           activeTab={activeTab}
@@ -144,6 +114,7 @@ export function ModelsPage({ data }: { data: DemoData }) {
           onUpload={handleUpload}
           searchQuery={searchQuery}
           selectedFileId={selectedFile?.id ?? null}
+          uploading={isUploading}
         />
 
         {selectedFile ? (
@@ -221,6 +192,7 @@ export function ModelFileBrowser({
   onUpload,
   searchQuery,
   selectedFileId,
+  uploading,
 }: {
   activeTab: "lora" | "checkpoint";
   breadcrumbs: BreadcrumbItem[];
@@ -235,6 +207,7 @@ export function ModelFileBrowser({
   onUpload?: () => void;
   searchQuery: string;
   selectedFileId: string | null;
+  uploading?: boolean;
 }) {
   const visibleFiles = files
     .filter((file) => file.modelType === activeTab)
@@ -304,8 +277,8 @@ export function ModelFileBrowser({
         <div className={styles.emptyState}>
           <FolderOpen className={`${styles.icon2xl} ${styles.iconFaint}`} />
           <p>当前目录为空</p>
-          <Button icon={Upload} onClick={onUpload}>
-            上传文件
+          <Button disabled={uploading} icon={Upload} onClick={onUpload}>
+            {uploading ? "上传中..." : "上传文件"}
           </Button>
         </div>
       ) : null}
