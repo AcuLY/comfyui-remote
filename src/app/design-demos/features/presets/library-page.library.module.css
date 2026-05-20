@@ -140,10 +140,12 @@
 }
 
 .presetManagerLayout {
+  --preset-sidebar-height: calc(100dvh - var(--demo-route-header-height, calc(96px + env(safe-area-inset-top))) - 80px);
   display: grid;
   grid-template-columns: minmax(230px, 280px) minmax(0, 1fr);
   gap: 12px;
-  align-items: start;
+  align-items: stretch;
+  min-height: var(--preset-sidebar-height);
 }
 
 .presetCategorySidebar,
@@ -157,7 +159,8 @@
   display: grid;
   align-content: start;
   gap: 10px;
-  max-height: calc(100vh - 180px);
+  height: var(--preset-sidebar-height);
+  max-height: var(--preset-sidebar-height);
   overflow-y: auto;
   border-right: 1px solid var(--demo-border);
   padding: 0 12px 0 0;
@@ -945,6 +948,7 @@
 
   .presetCategorySidebar {
     position: static;
+    height: auto;
     max-height: none;
     overflow: visible;
     border-right: 0;

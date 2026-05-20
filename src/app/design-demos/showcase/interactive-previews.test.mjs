@@ -13,6 +13,9 @@ const registrySource = readShowcaseSource("registry.ts");
 const pendingReviewGroupsCss = readFileSync(resolve(showcaseDir, "../features/runs/pending-review-groups.runs.module.css"), "utf8");
 const patternsCss = readFileSync(resolve(showcaseDir, "../shared/patterns/patterns.module.css"), "utf8");
 const presetLibraryCss = readFileSync(resolve(showcaseDir, "../features/presets/library-page.library.module.css"), "utf8");
+const presetLibrarySource = readFileSync(resolve(showcaseDir, "../features/presets/library-page.tsx"), "utf8");
+const presetEditSource = readFileSync(resolve(showcaseDir, "../features/presets/preset-edit-page.tsx"), "utf8");
+const presetEditCss = readFileSync(resolve(showcaseDir, "../features/presets/preset-edit-page.library.module.css"), "utf8");
 const projectListItemCss = readFileSync(resolve(showcaseDir, "../features/projects/project-list-item.projects.module.css"), "utf8");
 const projectSectionCardCss = readFileSync(resolve(showcaseDir, "../features/projects/project-section-card.projects.module.css"), "utf8");
 const runListSource = readFileSync(resolve(showcaseDir, "../features/runs/run-list.tsx"), "utf8");
@@ -275,6 +278,37 @@ test("preset and template rows reserve stacked layout for truly narrow screens",
     /\.templateSectionRow\s*\{[\s\S]*?grid-template-columns:\s*22px\s+minmax\(0,\s*1fr\)/,
     "TemplateSectionRow should keep its drag handle beside the content on narrow screens",
   );
+});
+
+test("preset category sidebar fills the route-header viewport remainder", () => {
+  const layoutBlock = cssBlockSource(presetLibraryCss, ".presetManagerLayout");
+  const sidebarBlock = cssBlockSource(presetLibraryCss, ".presetCategorySidebar {");
+  const mobileBlock = cssBlockSource(presetLibraryCss, "@media (max-width: 639px)");
+
+  assert.match(
+    layoutBlock,
+    /--preset-sidebar-height:\s*calc\(100dvh\s*-\s*var\(--demo-route-header-height/,
+    "Preset manager layout should derive sidebar height from the route header viewport remainder",
+  );
+  assert.match(sidebarBlock, /height:\s*var\(--preset-sidebar-height\)/, "Preset sidebar should fill the computed remaining height");
+  assert.match(sidebarBlock, /max-height:\s*var\(--preset-sidebar-height\)/, "Preset sidebar scroll area should match the filled height");
+  assert.doesNotMatch(sidebarBlock, /max-height:\s*calc\(100vh\s*-\s*180px\)/, "Preset sidebar should not use the old undersized fixed viewport subtraction");
+  assert.match(mobileBlock, /\.presetCategorySidebar\s*\{[\s\S]*?height:\s*auto/, "Mobile preset sidebar should return to natural height");
+});
+
+test("preset library page avoids duplicate category management controls", () => {
+  const sidebarSource = functionSource(presetLibrarySource, "PresetCategorySidebar");
+
+  assert.doesNotMatch(presetLibrarySource, /<OperationStateStrip\b/, "Preset library page should not show the redundant sorting state strip");
+  assert.doesNotMatch(sidebarSource, /href="\/presets\/categories\/new"/, "Preset category sidebar should not duplicate the route-header new-category action");
+  assert.doesNotMatch(sidebarSource, /ariaLabel="新建分类"/, "Preset category sidebar should not expose a duplicate new-category button");
+});
+
+test("preset edit page does not render a duplicate sticky editor header", () => {
+  assert.doesNotMatch(presetEditSource, /className=\{s\.editorStickyHeader\}/, "Preset edit page should not render the duplicate sticky editor header");
+  assert.doesNotMatch(presetEditSource, /添加变体/, "Preset edit page should not keep the removed sticky-header add-variant action");
+  assert.doesNotMatch(presetEditCss, /\.editorStickyHeader\b/, "Preset edit stylesheet should not keep unused sticky-header styles");
+  assert.doesNotMatch(presetEditCss, /\.editorIdentity\b/, "Preset edit stylesheet should not keep unused editor identity styles");
 });
 
 test("showcase pages do not wire visible controls to no-op callbacks", () => {

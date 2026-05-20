@@ -22,7 +22,6 @@ import { Button } from "../../shared/primitives/button";
 import { ButtonLink } from "../../shared/primitives/button";
 import { Checkbox } from "../../shared/primitives/checkbox";
 import { EmptyPage } from "../../shared/primitives/empty-page";
-import { OperationStateStrip } from "../../shared/feedback/operation-state-strip";
 import { PageHeader } from "../../shared/primitives/page-header";
 import { FolderBreadcrumb, FolderRow, SelectionBatchBar } from "../../shared/patterns";
 import { StatusBadge } from "../../shared/primitives/status-badge";
@@ -421,13 +420,6 @@ export function PresetsPage({ data }: { data: DemoData }) {
                 <Button icon={FolderTree} onClick={() => setShowDraftFolder(true)} feedback={{ title: "文件夹草稿已创建" }}>新建文件夹</Button>
               </div>
             </div>
-            <OperationStateStrip
-              items={[
-                { label: "分类排序", value: "拖拽释放后保存", tone: "info" },
-                { label: "文件夹排序", value: "就绪", tone: "success" },
-                { label: "移动队列", value: selectedCount ? `${selectedCount} 项` : "空", tone: selectedCount ? "warning" : "success" },
-              ]}
-            />
             {selectedCount ? (
               <SelectionBatchBar
                 actions={
@@ -525,7 +517,6 @@ export function PresetCategorySidebar({
           <span>分类管理</span>
           <strong>{categories.length} 个分类</strong>
         </div>
-        <ButtonLink href="/presets/categories/new" icon={Plus} iconOnly size="sm" ariaLabel="新建分类" tone="subtle" />
       </div>
       <div className={s.presetCategoryList}>
         {categories.map((category) => {

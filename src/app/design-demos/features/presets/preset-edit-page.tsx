@@ -165,18 +165,6 @@ function PresetEditPageContent({ data, preset }: { data: DemoData; preset: DemoP
       />
       <div className={s.presetEditorShell}>
         <main className={s.editorSurface}>
-          <div className={s.editorStickyHeader}>
-            <div className={s.editorIdentity}>
-              <span>{category?.name ?? "未分类"} · {folderPath}</span>
-              <strong>{activeVariant.name}</strong>
-              <em>{preset.variantCount} 个变体</em>
-            </div>
-            <div className={s.toolbar}>
-              <StatusBadge status={saveStateToStatus(saveState)} label={saveStateLabel(saveState)} />
-              <Button icon={Plus} feedback={{ title: "变体草稿已创建", detail: preset.name }}>添加变体</Button>
-            </div>
-          </div>
-
           <section className={s.editorBlock}>
             <div className={s.editorBlockHeader}>
               <div>
