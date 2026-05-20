@@ -17,6 +17,8 @@ import {
 } from "./editor-parts";
 import {
   buildBindings,
+  getCheckpointOptions,
+  getLoraFileOptions,
   groupImagesByRun,
   initialLora1,
   initialLora2,
@@ -104,6 +106,9 @@ export function useSectionEditorState({ data, project, section }: SectionEditorL
       })),
     [data.categories],
   );
+
+  const checkpointOptions = useMemo(() => getCheckpointOptions(data), [data]);
+  const loraFileOptions = useMemo(() => getLoraFileOptions(data), [data]);
 
   const commitPresetImport = useCallback(
     (selection: PresetImportSelection) => {
@@ -581,6 +586,8 @@ export function useSectionEditorState({ data, project, section }: SectionEditorL
     upscaleFactor,
     ksampler1,
     ksampler2,
+    checkpointOptions,
+    loraFileOptions,
     updateAspectRatio,
     updateShortSidePx,
     updateBatchSize,

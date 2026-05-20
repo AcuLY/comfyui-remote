@@ -131,7 +131,6 @@
   color: var(--demo-muted);
 }
 
-.presetItemOpenArea:hover .presetItemMain strong,
 .presetItemOpenArea:focus-visible .presetItemMain strong {
   color: var(--demo-green);
 }
@@ -861,20 +860,6 @@
 
   .presetManagerLayout {
     grid-template-columns: minmax(180px, 220px) minmax(0, 1fr);
-  }
-
-  .presetItemOpenArea {
-    grid-template-columns: 12px minmax(0, 1fr) 18px;
-  }
-
-  .presetItemMeta {
-    grid-column: 2;
-    justify-items: start;
-  }
-
-  .presetItemArrow {
-    grid-column: 3;
-    grid-row: 1;
   }
 
   .presetCopyState {

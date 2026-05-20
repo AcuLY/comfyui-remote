@@ -43,7 +43,9 @@
 
 .sectionRecentResult {
   display: grid;
+  width: 100%;
   min-width: 0;
+  justify-self: stretch;
   gap: 5px;
   color: inherit;
   text-decoration: none;
@@ -54,7 +56,7 @@
 }
 
 .sectionRecentResult .recentResultImages {
-  width: min(270px, 100%);
+  width: 100%;
 }
 
 .sectionCardTitleLink {
@@ -76,7 +78,6 @@
   white-space: nowrap;
 }
 
-.sectionCardTitleLink:hover strong,
 .sectionCardTitleLink:focus-visible strong {
   color: var(--demo-green);
 }

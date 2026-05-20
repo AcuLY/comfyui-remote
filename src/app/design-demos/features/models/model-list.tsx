@@ -13,8 +13,53 @@ import { StatusBadge } from "../../shared/primitives/status-badge";
 import styles from './model-list.module.css';
 import { modelFiles } from "./model-fixtures";
 import type { BreadcrumbItem, FileItem } from "./model-types";
+import type { DemoData } from "../../data";
 
-export function ModelsPage() {
+function buildFileItems(data: DemoData): FileItem[] {
+  const assets = data.models.length ? data.models : [];
+  if (assets.length === 0) return modelFiles;
+
+  const folders = new Map<string, FileItem>();
+  const files: FileItem[] = [];
+
+  for (const asset of assets) {
+    // Extract directory from relativePath
+    const parts = asset.relativePath.split('/');
+    const fileName = parts.pop() || asset.fileName;
+    const dirPath = parts.join('/');
+
+    // Create folder entries for each directory level
+    for (let i = 1; i <= parts.length; i++) {
+      const folderPath = parts.slice(0, i).join('/');
+      const folderName = parts[i - 1];
+      if (!folders.has(folderPath)) {
+        folders.set(folderPath, {
+          id: `folder-${folderPath}`,
+          name: folderName,
+          type: 'folder',
+          path: folderPath,
+          modelType: asset.modelType === 'checkpoint' ? 'checkpoint' : 'lora',
+        });
+      }
+    }
+
+    // Create file entry
+    files.push({
+      id: asset.id,
+      name: asset.name || asset.fileName || fileName,
+      type: 'file',
+      path: asset.relativePath,
+      size: asset.sizeLabel,
+      notes: asset.notes || undefined,
+      triggerWords: asset.triggerWords || undefined,
+      modelType: asset.modelType === 'checkpoint' ? 'checkpoint' : 'lora',
+    });
+  }
+
+  return [...Array.from(folders.values()), ...files];
+}
+
+export function ModelsPage({ data }: { data: DemoData }) {
   const [activeTab, setActiveTab] = useState<'lora' | 'checkpoint'>('lora');
   const [currentPath, setCurrentPath] = useState<string[]>(['models']);
   const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
@@ -23,7 +68,7 @@ export function ModelsPage() {
   const [showMoveDialog, setShowMoveDialog] = useState(false);
   const [editingNotes, setEditingNotes] = useState(false);
 
-  const files = modelFiles;
+  const files = buildFileItems(data);
 
   const breadcrumbs: BreadcrumbItem[] = currentPath.map((segment, index) => ({
     label: segment,

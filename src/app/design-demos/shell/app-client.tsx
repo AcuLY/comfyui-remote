@@ -33,11 +33,11 @@ function CurrentPage({ match, data }: { match: Match; data: DemoData }) {
     case "projects":
       return <ProjectsPage data={data} />;
     case "project-new":
-      return <ProjectFormPage mode="new" />;
+      return <ProjectFormPage mode="new" data={data} />;
     case "project-detail":
       return <ProjectDetailPage project={project} />;
     case "project-edit":
-      return <ProjectFormPage mode="edit" project={project} />;
+      return <ProjectFormPage mode="edit" project={project} data={data} />;
     case "project-results":
       return <ProjectDetailPage project={project} initialView="results" />;
     case "project-batch":
@@ -45,9 +45,9 @@ function CurrentPage({ match, data }: { match: Match; data: DemoData }) {
     case "section-editor":
       return <SectionEditorPage data={data} project={project} section={section} />;
     case "models":
-      return <ModelsPage />;
+      return <ModelsPage data={data} />;
     case "loras":
-      return <ModelsPage />;
+      return <ModelsPage data={data} />;
     case "presets":
       return <PresetsPage data={data} />;
     case "preset-category-new":
@@ -63,11 +63,11 @@ function CurrentPage({ match, data }: { match: Match; data: DemoData }) {
     case "templates":
       return <TemplatesPage data={data} />;
     case "template-new":
-      return <TemplateFormPage mode="new" />;
+      return <TemplateFormPage mode="new" data={data} />;
     case "template-edit":
-      return <TemplateFormPage mode="edit" template={template} />;
+      return <TemplateFormPage mode="edit" template={template} data={data} />;
     case "template-section":
-      return <TemplateSectionPage template={template} sectionIndex={match.params.sectionIndex} />;
+      return <TemplateSectionPage template={template} sectionIndex={match.params.sectionIndex} data={data} />;
     case "settings":
       return <SettingsPage data={data} />;
     case "logs":

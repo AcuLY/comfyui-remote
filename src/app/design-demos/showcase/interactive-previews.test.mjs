@@ -51,6 +51,23 @@ function jsxTagSource(source, componentName, label) {
   return match[0];
 }
 
+function cssBlockSource(source, marker) {
+  const start = source.indexOf(marker);
+  assert.notEqual(start, -1, `${marker} should exist`);
+  const bodyStart = source.indexOf("{", start);
+  assert.notEqual(bodyStart, -1, `${marker} should have a body`);
+
+  let depth = 0;
+  for (let index = bodyStart; index < source.length; index += 1) {
+    const character = source[index];
+    if (character === "{") depth += 1;
+    if (character === "}") depth -= 1;
+    if (depth === 0) return source.slice(start, index + 1);
+  }
+
+  assert.fail(`${marker} body should close`);
+}
+
 test("component primitive previews keep local state instead of no-op callbacks", () => {
   assert.match(componentPreviewsSource, /Checkbox:\s*\(\)\s*=>\s*<CheckboxPreview\s*\/>/);
   assert.match(componentPreviewsSource, /Field:\s*\(\)\s*=>\s*<FieldsPreview\s*\/>/);
@@ -131,6 +148,35 @@ test("unit-items adapter previews do not leave row checkboxes wired to noop", ()
   assert.doesNotMatch(presetPreviewSource, /onToggle=\{noop\}/);
 });
 
+test("project list item preview shows default and compact states", () => {
+  const projectPreviewSource = functionSource(componentPreviewsSource, "ProjectListItemPreview");
+  const projectListItems = projectPreviewSource.match(/<ProjectListItem\b/g) ?? [];
+
+  assert.equal(projectListItems.length, 2, "ProjectListItem showcase preview should include both default and compact states");
+  assert.match(projectPreviewSource, /<ProjectListItem\s+compact\b/, "ProjectListItem showcase preview should include the compact folded state");
+});
+
+test("project section card preview shows collapsed and expanded states", () => {
+  assert.match(
+    componentPreviewsSource,
+    /ProjectSectionCard:\s*\(\{ data \}\)\s*=>\s*\{[\s\S]*?<ProjectSectionCard\s+compact\s+index=\{0\}\s+project=\{project\}\s+section=\{section\}\s*\/>[\s\S]*?<ProjectSectionCard\s+compact=\{false\}\s+index=\{1\}\s+project=\{project\}\s+section=\{expandedSection\}\s*\/>/,
+    "ProjectSectionCard showcase preview should include both collapsed and expanded states",
+  );
+});
+
+test("project section card expanded image list spans the full row", () => {
+  const sectionRecentResultBlock = cssBlockSource(projectSectionCardCss, ".sectionRecentResult");
+  const sectionRecentResultImagesBlock = cssBlockSource(projectSectionCardCss, ".sectionRecentResult .recentResultImages");
+
+  assert.match(sectionRecentResultBlock, /width:\s*100%/, "ProjectSectionCard image-list link should span the full content row");
+  assert.match(
+    sectionRecentResultImagesBlock,
+    /width:\s*100%/,
+    "ProjectSectionCard image list should use the full link width instead of a capped preview width",
+  );
+  assert.doesNotMatch(sectionRecentResultImagesBlock, /width:\s*min\(270px,\s*100%\)/, "ProjectSectionCard image list should not be capped at 270px");
+});
+
 test("unit row shell has responsive slot layout and bright hover feedback", () => {
   assert.match(
     patternsCss,
@@ -191,6 +237,43 @@ test("section and template rows separate resting and hover surfaces", () => {
     templateFormCss,
     /\.templateSectionRow:hover\s*\{[^}]*background:\s*var\(--demo-glass-hover\)/,
     "TemplateSectionRow hover should provide the bright gray feedback instead",
+  );
+});
+
+test("unit item titles do not turn green on hover", () => {
+  for (const [componentName, css, pattern] of [
+    ["ProjectListItem", projectListItemCss, /\.projectListTitleLink:hover\s+strong[\s\S]*?\{[^}]*color:\s*var\(--demo-green\)/],
+    ["PresetLibraryItemRow", presetLibraryCss, /\.presetItemOpenArea:hover\s+\.presetItemMain\s+strong[\s\S]*?\{[^}]*color:\s*var\(--demo-green\)/],
+    ["ProjectSectionCard", projectSectionCardCss, /\.sectionCardTitleLink:hover\s+strong[\s\S]*?\{[^}]*color:\s*var\(--demo-green\)/],
+    ["TemplateSectionRow", templateFormCss, /\.templateSectionRowMain:hover(?:\s+\.templateSectionTitleLine\s*>\s*strong[\s\S]*?\{[^}]*color:\s*var\(--demo-green\)|\s*,[\s\S]*?\{[^}]*color:\s*var\(--demo-green\)|\s*\{[^}]*color:\s*var\(--demo-green\))/],
+  ]) {
+    assert.doesNotMatch(
+      css,
+      pattern,
+      `${componentName} title should not turn green on hover`,
+    );
+  }
+});
+
+test("preset and template rows reserve stacked layout for truly narrow screens", () => {
+  const presetTabletCss = cssBlockSource(presetLibraryCss, "@media (min-width: 640px) and (max-width: 1023px)");
+  const templateTabletCss = cssBlockSource(templateFormCss, "@media (min-width: 640px) and (max-width: 1023px)");
+  const templateMobileCss = cssBlockSource(templateFormCss, "@media (max-width: 639px)");
+
+  assert.doesNotMatch(
+    presetTabletCss,
+    /\.presetItemOpenArea\s*\{[\s\S]*?grid-template-columns:\s*12px\s+minmax\(0,\s*1fr\)\s+18px/,
+    "PresetLibraryItemRow should not stack metadata in tablet-width showcase previews",
+  );
+  assert.doesNotMatch(
+    templateTabletCss,
+    /\.templateSectionRowActions\s*\{[\s\S]*?grid-column:\s*2/,
+    "TemplateSectionRow should not force actions below the content in tablet-width showcase previews",
+  );
+  assert.match(
+    templateMobileCss,
+    /\.templateSectionRow\s*\{[\s\S]*?grid-template-columns:\s*22px\s+minmax\(0,\s*1fr\)/,
+    "TemplateSectionRow should keep its drag handle beside the content on narrow screens",
   );
 });
 

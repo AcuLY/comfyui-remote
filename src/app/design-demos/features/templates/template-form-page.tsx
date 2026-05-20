@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Copy, GripVertical, Plus, Save, SlidersHorizontal, Trash2 } from "lucide-react";
 
-import type { DemoTemplate } from "../../data";
+import type { DemoData, DemoTemplate } from "../../data";
 import { demoHref } from "../../routing";
 import type { DemoTemplateSection } from "../../routing";
 import s from "./template-form-page.library.module.css";
@@ -13,10 +13,11 @@ import { Field } from "../../shared/primitives/field";
 import { OperationStateStrip } from "../../shared/feedback/operation-state-strip";
 import { EditorBlock, WorkbenchSurface } from "../../shared/patterns";
 import { PageHeader } from "../../shared/primitives/page-header";
+import { FloatingSelect } from "../../shared/primitives/floating-select";
 import { StatusBadge } from "../../shared/primitives/status-badge";
 import { TemplateSectionShell, templateSectionAnchorId } from "./template-section-shell";
 
-export function TemplateFormPage({ template, mode }: { template?: DemoTemplate; mode: "new" | "edit" }) {
+export function TemplateFormPage({ template, mode, data }: { template?: DemoTemplate; mode: "new" | "edit"; data?: DemoData }) {
   const sections = template?.sections ?? [];
   const content = (
     <WorkbenchSurface className={s.editorSurface}>
@@ -30,6 +31,7 @@ export function TemplateFormPage({ template, mode }: { template?: DemoTemplate; 
       >
         <Field label="名称" value={template?.name ?? "新项目模板"} />
         <Field multiline features={{ resize: true, clipboard: true }} label="描述" value={template?.description || "记录模板用途、默认预设绑定和生成流程。"} />
+        {data ? <FloatingSelect label="默认 Checkpoint" value="继承系统默认" options={["继承系统默认", ...data.models.filter(m => m.modelType === "checkpoint").map(c => c.name)]} /> : null}
       </EditorBlock>
 
       <EditorBlock

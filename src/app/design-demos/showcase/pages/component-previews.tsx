@@ -119,7 +119,13 @@ const previewRenderers: Record<ShowcasePreviewComponentName, PreviewRenderer> = 
     const project = firstProject(data);
     const section = firstSection(project);
     if (!project || !section) return <EmptyRows label="没有小节样例" />;
-    return <ProjectSectionCard compact index={0} project={project} section={section} />;
+    const expandedSection = project.sections[1] ?? { ...section, id: `${section.id}:expanded` };
+    return (
+      <>
+        <ProjectSectionCard compact index={0} project={project} section={section} />
+        <ProjectSectionCard compact={false} index={1} project={project} section={expandedSection} />
+      </>
+    );
   },
   PresetLibraryItemRow: ({ data }) => <PresetLibraryItemRowPreview data={data} />,
   TemplateSectionRow: ({ data }) => {
@@ -383,7 +389,12 @@ function ProjectListItemPreview(props: PreviewDataProps) {
   const project = firstProject(data);
   const [selected, setSelected] = useState(true);
   if (!project) return <EmptyRows label="没有项目样例" />;
-  return <ProjectListItem project={project} selected={selected} onToggleSelected={() => setSelected((current) => !current)} />;
+  return (
+    <>
+      <ProjectListItem project={project} selected={selected} onToggleSelected={() => setSelected((current) => !current)} />
+      <ProjectListItem compact project={project} selected={selected} onToggleSelected={() => setSelected((current) => !current)} />
+    </>
+  );
 }
 
 function PresetLibraryItemRowPreview(props: PreviewDataProps) {

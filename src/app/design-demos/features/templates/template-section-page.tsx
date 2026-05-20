@@ -2,7 +2,7 @@
 
 import { ArrowLeft, ArrowRight, Copy, Download, GripVertical, Plus, Rows3, Save, Trash2 } from "lucide-react";
 
-import type { DemoTemplate } from "../../data";
+import type { DemoData, DemoTemplate } from "../../data";
 import s from "./template-section-page.library.module.css";
 import { Button } from "../../shared/primitives/button";
 import { ButtonLink } from "../../shared/primitives/button";
@@ -14,7 +14,7 @@ import { FloatingSelect } from "../../shared/primitives/floating-select";
 import { StatusBadge } from "../../shared/primitives/status-badge";
 import { TemplateSectionShell, templateSectionAnchorId } from "./template-section-shell";
 
-export function TemplateSectionPage({ template, sectionIndex }: { template: DemoTemplate | undefined; sectionIndex: string | undefined }) {
+export function TemplateSectionPage({ template, sectionIndex, data }: { template: DemoTemplate | undefined; sectionIndex: string | undefined; data?: DemoData }) {
   const index = Number(sectionIndex ?? "0");
   const safeIndex = Number.isFinite(index) ? index : 0;
   const section = template?.sections[safeIndex] ?? template?.sections[0];
@@ -103,14 +103,14 @@ export function TemplateSectionPage({ template, sectionIndex }: { template: Demo
                 <Button icon={Download} feedback={{ title: "导入预设面板已准备" }}>导入预设</Button>
               </div>
               <div className={s.bindingList}>
-                {["角色", "风格", "场景"].map((name, bindingIndex) => (
-                  <div className={s.bindingRow} key={name}>
+                {(data?.categories.slice(0, 3) ?? [{ id: "fb-char", name: "角色" }, { id: "fb-style", name: "风格" }, { id: "fb-scene", name: "场景" }]).map((cat, bindingIndex) => (
+                  <div className={s.bindingRow} key={cat.id}>
                     <div>
-                      <strong>{name} · {bindingIndex === 0 ? section.name : template.name}</strong>
+                      <strong>{cat.name} · {bindingIndex === 0 ? section.name : template.name}</strong>
                       <span>{bindingIndex + 1} 个 prompt block · {bindingIndex + 1} 个 LoRA</span>
                     </div>
                     <FloatingSelect label="变体" value={bindingIndex === 0 ? "默认" : "继承"} />
-                    <Button tone="subtle" icon={Trash2} feedback={{ tone: "warning", title: "绑定移除已排队", detail: name }}>移除</Button>
+                    <Button tone="subtle" icon={Trash2} feedback={{ tone: "warning", title: "绑定移除已排队", detail: cat.name }}>移除</Button>
                   </div>
                 ))}
               </div>
@@ -193,23 +193,23 @@ export function TemplateSectionPage({ template, sectionIndex }: { template: Demo
             </div>
             <div className={s.importPresetLayout}>
               <div className={s.importCategoryColumn}>
-                {["角色", "风格", "姿势", "场景"].map((name, categoryIndex) => (
-                  <Button className={categoryIndex === 0 ? s.importCategoryActive : ""} pressed={categoryIndex === 0} tone="subtle" key={name}>
-                    {name}
+                {(data?.categories ?? [{ id: "fb-char", name: "角色" }, { id: "fb-style", name: "风格" }, { id: "fb-pose", name: "姿势" }, { id: "fb-scene", name: "场景" }]).map((cat, categoryIndex) => (
+                  <Button className={categoryIndex === 0 ? s.importCategoryActive : ""} pressed={categoryIndex === 0} tone="subtle" key={cat.id}>
+                    {cat.name}
                   </Button>
                 ))}
               </div>
               <div className={s.importPresetColumn}>
                 <div className={s.presetContextBar}>
                   <StatusBadge status="template" label="根目录 / 模板候选" />
-                  <StatusBadge status="ready" label="2 个变体可用" />
+                  <StatusBadge status="ready" label={`${(data?.categories[0]?.presets ?? []).length || 2} 个变体可用`} />
                 </div>
-                {["中野三玖校服", "二次元默认", "放学后教室"].map((name, presetIndex) => (
-                  <div className={s.contentRow} key={name}>
+                {(data?.categories[0]?.presets.length ? data.categories[0].presets.slice(0, 3) : [{ id: "fb-1", name: "中野三玖校服", variantCount: 2 }, { id: "fb-2", name: "二次元默认", variantCount: 3 }, { id: "fb-3", name: "放学后教室", variantCount: 4 }]).map((preset, presetIndex) => (
+                  <div className={s.contentRow} key={preset.id}>
                     <div className={s.contentRowHeader}>
                       <div className={s.contentRowTitle}>
-                        <strong>{name}</strong>
-                        <span>{presetIndex + 2} variants · prompt + LoRA</span>
+                        <strong>{preset.name}</strong>
+                        <span>{preset.variantCount ?? presetIndex + 2} variants · prompt + LoRA</span>
                       </div>
                       <Button tone="subtle" icon={Plus}>选择</Button>
                     </div>

@@ -250,7 +250,6 @@
   display: none;
 }
 
-.projectListTitleLink:hover strong,
 .projectListTitleLink:focus-visible strong {
   color: var(--demo-green);
 }

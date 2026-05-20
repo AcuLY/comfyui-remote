@@ -1,15 +1,15 @@
-import type { DemoImage, DemoProject, DemoSection } from "../../../data";
+import type { DemoData, DemoImage, DemoProject, DemoSection } from "../../../data";
 import { demoHref } from "../../../routing";
 import type { LoraRowData, PresetBinding, PromptBlockRowData } from "./editor-parts";
 
-export const CHECKPOINT_OPTIONS = [
+const CHECKPOINT_OPTIONS_FALLBACK = [
   "oneObsession_v19Atypical.safetensors",
   "realisticVision_v60B1.safetensors",
   "dreamshaper_8.safetensors",
   "animagineXL_v30.safetensors",
 ];
 
-export const LORA_FILE_OPTIONS = [
+const LORA_FILE_OPTIONS_FALLBACK = [
   "characters/danya_v2.safetensors",
   "characters/lina_v1.safetensors",
   "styles/anime_base_v3.safetensors",
@@ -18,6 +18,25 @@ export const LORA_FILE_OPTIONS = [
   "enhance/skin_v2.safetensors",
   "concept/bow_tie.safetensors",
 ];
+
+export function getCheckpointOptions(data: DemoData): string[] {
+  const fromData = data.models
+    .filter(m => m.modelType === 'checkpoint')
+    .map(m => m.fileName || m.name)
+    .filter(Boolean);
+  return fromData.length > 0 ? fromData : CHECKPOINT_OPTIONS_FALLBACK;
+}
+
+export function getLoraFileOptions(data: DemoData): string[] {
+  const fromData = data.loras
+    .map(m => m.relativePath || m.fileName || m.name)
+    .filter(Boolean);
+  return fromData.length > 0 ? fromData : LORA_FILE_OPTIONS_FALLBACK;
+}
+
+// Keep the old exports for backward compatibility
+export const CHECKPOINT_OPTIONS = CHECKPOINT_OPTIONS_FALLBACK;
+export const LORA_FILE_OPTIONS = LORA_FILE_OPTIONS_FALLBACK;
 
 export function mockVariants() {
   return [
