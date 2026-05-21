@@ -126,13 +126,13 @@ export async function cancelRun(runId: string): Promise<{ ok: boolean; error?: s
     select: { id: true, status: true, projectId: true, comfyPromptId: true },
   });
   if (!run) return { ok: false, error: "任务不存在" };
-  if (run.status !== "queued" && run.status !== "running") {
+  if (run.status !== "queued" && run.status !== "running" && run.status !== "paused") {
     return { ok: false, error: `任务状态为「${run.status}」，无法取消` };
   }
 
   // Use ComfyUI's real queue state. /interrupt is global, so only call it
   // when this prompt is actually in queue_running.
-  if (run.comfyPromptId) {
+  if (run.comfyPromptId && run.status !== "paused") {
     try {
       const position = await getComfyQueuePosition(env.comfyApiUrl, run.comfyPromptId);
       if (position === "running") {
@@ -300,5 +300,181 @@ export async function clearRuns(): Promise<{ ok: boolean; count: number; error?:
   } catch (e) {
     console.error("Failed to clear runs:", e);
     return { ok: false, count: 0, error: "清空失败" };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 暂停任务（Run）
+// ---------------------------------------------------------------------------
+
+export async function pauseRun(runId: string): Promise<{ ok: boolean; error?: string }> {
+  const run = await prisma.run.findUnique({
+    where: { id: runId },
+    select: { id: true, status: true, projectId: true, comfyPromptId: true, outputDir: true },
+  });
+  if (!run) return { ok: false, error: "任务不存在" };
+  if (run.status !== "queued" && run.status !== "running") {
+    return { ok: false, error: `任务状态为「${run.status}」，无法暂停` };
+  }
+
+  // Reject pause during finalization
+  if (run.outputDir?.startsWith("__finalizing__:")) {
+    return { ok: false, error: "任务即将完成，无法暂停" };
+  }
+
+  // Cancel in ComfyUI (best-effort)
+  if (run.comfyPromptId) {
+    try {
+      const position = await getComfyQueuePosition(env.comfyApiUrl, run.comfyPromptId);
+      if (position === "running") {
+        await interruptComfyPrompt(env.comfyApiUrl);
+      } else if (position === "pending") {
+        await deleteComfyQueueItems(env.comfyApiUrl, [run.comfyPromptId]);
+      }
+    } catch (e) {
+      console.warn("Failed to cancel in ComfyUI during pause:", e);
+    }
+  }
+
+  await prisma.run.update({
+    where: { id: runId },
+    data: {
+      status: "paused",
+      comfyPromptId: null,
+    },
+  });
+
+  // Recalculate project status
+  const activeRuns = await prisma.run.count({
+    where: { projectId: run.projectId, status: { in: ["queued", "running"] } },
+  });
+  if (activeRuns === 0) {
+    const pausedRuns = await prisma.run.count({
+      where: { projectId: run.projectId, status: "paused" },
+    });
+    await prisma.project.update({
+      where: { id: run.projectId },
+      data: { status: pausedRuns > 0 ? "queued" : "draft" },
+    });
+  }
+
+  revalidatePath("/queue");
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// 恢复任务（Run）
+// ---------------------------------------------------------------------------
+
+export async function resumeRun(runId: string): Promise<{ ok: boolean; error?: string }> {
+  const run = await prisma.run.findUnique({
+    where: { id: runId },
+    select: { id: true, status: true, projectId: true, submittedPrompt: true },
+  });
+  if (!run) return { ok: false, error: "任务不存在" };
+  if (run.status !== "paused") {
+    return { ok: false, error: `任务状态为「${run.status}」，无法恢复` };
+  }
+  if (!run.submittedPrompt) {
+    return { ok: false, error: "缺少工作流快照，无法恢复" };
+  }
+
+  // Re-submit to ComfyUI
+  let newComfyPromptId: string;
+  try {
+    const apiUrl = env.comfyApiUrl.trim().replace(/\/+$/, "");
+    const res = await fetch(`${apiUrl}/prompt`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt: run.submittedPrompt }),
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "unknown error");
+      throw new Error(`ComfyUI returned ${res.status}: ${text}`);
+    }
+    const data = await res.json();
+    newComfyPromptId = data.prompt_id;
+    if (!newComfyPromptId) {
+      throw new Error("ComfyUI did not return prompt_id");
+    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return { ok: false, error: `无法连接到 ComfyUI: ${msg}` };
+  }
+
+  await prisma.run.update({
+    where: { id: runId },
+    data: {
+      status: "queued",
+      comfyPromptId: newComfyPromptId,
+      startedAt: null,
+      finishedAt: null,
+      errorMessage: null,
+    },
+  });
+
+  // Update project status
+  await prisma.project.update({
+    where: { id: run.projectId },
+    data: { status: "queued" },
+  });
+
+  // Fire-and-forget: poll for completion
+  pollRunCompletion(runId).catch((err) => {
+    logger.error("pollRunCompletion failed after resume", err instanceof Error ? err : new Error(String(err)), { runId });
+  });
+
+  revalidatePath("/queue");
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// 一键暂停所有运行中的任务
+// ---------------------------------------------------------------------------
+
+export async function pauseAllRuns(): Promise<{ ok: boolean; count: number; error?: string }> {
+  try {
+    const activeRuns = await prisma.run.findMany({
+      where: { status: { in: ["queued", "running"] } },
+      select: { id: true },
+    });
+
+    let count = 0;
+    for (const run of activeRuns) {
+      const result = await pauseRun(run.id);
+      if (result.ok) count++;
+    }
+
+    revalidatePath("/queue");
+    return { ok: true, count };
+  } catch (e) {
+    console.error("Failed to pause all runs:", e);
+    return { ok: false, count: 0, error: "批量暂停失败" };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 一键恢复所有暂停的任务
+// ---------------------------------------------------------------------------
+
+export async function resumeAllRuns(): Promise<{ ok: boolean; count: number; error?: string }> {
+  try {
+    const pausedRuns = await prisma.run.findMany({
+      where: { status: "paused" },
+      select: { id: true },
+      orderBy: { createdAt: "asc" },
+    });
+
+    let count = 0;
+    for (const run of pausedRuns) {
+      const result = await resumeRun(run.id);
+      if (result.ok) count++;
+    }
+
+    revalidatePath("/queue");
+    return { ok: true, count };
+  } catch (e) {
+    console.error("Failed to resume all runs:", e);
+    return { ok: false, count: 0, error: "批量恢复失败" };
   }
 }
