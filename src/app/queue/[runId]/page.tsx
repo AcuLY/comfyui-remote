@@ -214,7 +214,7 @@ export default async function ReviewGroupPage({ params }: { params: Promise<{ ru
       </SectionCard>
 
       <SectionCard title="宫格审核">
-        <ReviewGrid images={group.images} nextRunId={nextId} />
+        <ReviewGrid images={group.images} prevRunId={prevId} nextRunId={nextId} />
       </SectionCard>
 
       <div className="grid grid-cols-2 gap-3">

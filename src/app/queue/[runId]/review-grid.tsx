@@ -14,9 +14,11 @@ type MarkerField = "featured" | "featured2" | "cover";
 
 export function ReviewGrid({
   images,
+  prevRunId,
   nextRunId,
 }: {
   images: ReviewImage[];
+  prevRunId: string | null;
   nextRunId: string | null;
 }) {
   const router = useRouter();
@@ -44,6 +46,25 @@ export function ReviewGrid({
       return Math.min(index, reviewImages.length - 1);
     });
   }, [reviewImages.length]);
+
+  // S/F outside lightbox: navigate between run groups; I: open lightbox
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      if (lightboxIndex !== null) return; // lightbox handles its own keys
+      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
+      if (event.key === "s" || event.key === "S") {
+        if (prevRunId) router.push(`/queue/${prevRunId}`);
+      }
+      if (event.key === "f" || event.key === "F") {
+        if (nextRunId) router.push(`/queue/${nextRunId}`);
+      }
+      if (event.key === "i" || event.key === "I") {
+        if (reviewImages.length > 0) setLightboxIndex(0);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [lightboxIndex, prevRunId, nextRunId, router, reviewImages.length]);
 
   const pendingImages = reviewImages.filter((img) => img.status === "pending");
   const selectedCount = selected.size;
@@ -200,12 +221,14 @@ export function ReviewGrid({
             ? { featured2: nextValue }
             : { cover: true };
       const previousImages = reviewImages;
+      const imageCount = reviewImages.length;
 
       setTogglingMarker(field);
       setImageMarker(imageId, field, nextValue);
 
       startTransition(async () => {
         try {
+          // 1. Toggle the marker
           const response = await fetch(
             `/api/images/${encodeURIComponent(imageId)}/${endpoint}`,
             {
@@ -223,6 +246,16 @@ export function ReviewGrid({
             throw new Error(result?.error?.message ?? "更新标记失败");
           }
 
+          // 2. Also keep the image + auto-advance
+          await keepImages([imageId]);
+          markImagesKept([imageId]);
+          if (imageCount > 1) {
+            setLightboxIndex((idx) =>
+              idx !== null && idx < imageCount - 1 ? idx + 1 : idx,
+            );
+          }
+          removeSelectedIds([imageId]);
+          setLastAction("keep");
           router.refresh();
         } catch (error) {
           if (field === "cover") {
@@ -253,6 +286,12 @@ export function ReviewGrid({
           if (action === "keep") {
             await keepImages([imageId]);
             markImagesKept([imageId]);
+            // Auto-advance to next image after keep (matching section results behavior)
+            if (imageCount > 1) {
+              setLightboxIndex((idx) =>
+                idx !== null && idx < imageCount - 1 ? idx + 1 : idx,
+              );
+            }
           } else {
             await trashImages([imageId]);
             removeImages([imageId]);

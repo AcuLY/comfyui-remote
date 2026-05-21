@@ -60,14 +60,25 @@ export function ImageLightbox({
     document.body.style.overflow = "hidden";
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") handleClose();
-      if (event.key === "ArrowLeft" && imageCount > 1) onPrev();
-      if (event.key === "ArrowRight" && imageCount > 1) onNext();
-      if (event.key === "f" || event.key === "F") onToggleMarker("featured");
-      if (event.key === "2") onToggleMarker("featured2");
-      if (event.key === "c" || event.key === "C") onToggleMarker("cover");
-      if (event.key === "k" || event.key === "K") onReview("keep");
-      if (event.key === "Delete" || event.key === "Backspace") onReview("trash");
+      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
+
+      // I: 退出放大 (also keep Escape)
+      if (event.key === "i" || event.key === "I") { event.preventDefault(); handleClose(); return; }
+      if (event.key === "Escape") { handleClose(); return; }
+      // S: 上一张
+      if (event.key === "s" || event.key === "S") { event.preventDefault(); if (imageCount > 1) onPrev(); return; }
+      // F: 下一张
+      if (event.key === "f" || event.key === "F") { event.preventDefault(); if (imageCount > 1) onNext(); return; }
+      // J: 保留并切换到下一张
+      if (event.key === "j" || event.key === "J") { event.preventDefault(); onReview("keep"); return; }
+      // K: 删除并切换到下一张
+      if (event.key === "k" || event.key === "K") { event.preventDefault(); onReview("trash"); return; }
+      // L: 切换P站标记
+      if (event.key === "l" || event.key === "L") { event.preventDefault(); onToggleMarker("featured"); return; }
+      // ;: 切换预览标记
+      if (event.key === ";") { event.preventDefault(); onToggleMarker("featured2"); return; }
+      // C: 切换封面标记
+      if (event.key === "c" || event.key === "C") { event.preventDefault(); onToggleMarker("cover"); return; }
     };
 
     document.addEventListener("keydown", handleKeyDown);
