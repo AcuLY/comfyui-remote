@@ -175,7 +175,9 @@
   transform: translateY(-1px);
 }
 
-.imageThumbMediumSelected {
+.imageThumbMediumSelected,
+.imageThumbMediumSelected:hover,
+.imageThumbMediumSelected:focus-within {
   border-color: rgba(0, 217, 146, 0.62);
   box-shadow: 0 0 0 1px rgba(0, 217, 146, 0.42);
 }

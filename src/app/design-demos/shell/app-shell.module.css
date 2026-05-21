@@ -395,6 +395,10 @@
   color: var(--demo-text);
   outline: none;
 }
+.sidebarTools .sidebarToggleActive:hover,
+.sidebarTools .sidebarToggleActive:focus-visible {
+  color: var(--demo-green);
+}
 .sidebarToggle {
   display: grid;
   position: relative;
@@ -421,7 +425,9 @@
   color: var(--demo-text);
   outline: none;
 }
-.sidebarToggleActive {
+.sidebarToggleActive,
+.sidebarToggleActive:hover,
+.sidebarToggleActive:focus-visible {
   color: var(--demo-green);
 }
 .navLink svg,
@@ -510,7 +516,9 @@
   color: var(--demo-text);
   outline: none;
 }
-.navLinkActive {
+.navLinkActive,
+.navLinkActive:hover,
+.navLinkActive:focus-visible {
   border-color: var(--demo-glass-accent-border);
   background: var(--demo-selected);
   box-shadow: 0 0 0 1px var(--demo-green-soft) inset;

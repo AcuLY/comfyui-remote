@@ -280,6 +280,12 @@
   box-shadow: 3px 0 0 var(--demo-green) inset;
 }
 
+.queueRunRowSelected:hover,
+.queueRunRowSelected:focus-visible {
+  background: var(--demo-selected);
+  box-shadow: 3px 0 0 var(--demo-green) inset;
+}
+
 .queueRunRowSelected .queueRowCheck {
   border-color: var(--demo-glass-accent-border);
   background: rgba(52, 211, 153, 0.16);
@@ -333,7 +339,9 @@
     background: var(--demo-control-hover);
   }
 
-  .queueProjectRows .queueRunRowSelected {
+  .queueProjectRows .queueRunRowSelected,
+  .queueProjectRows .queueRunRowSelected:hover,
+  .queueProjectRows .queueRunRowSelected:focus-visible {
     background: var(--demo-selected);
   }
 }

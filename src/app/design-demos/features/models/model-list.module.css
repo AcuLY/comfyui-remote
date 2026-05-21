@@ -442,7 +442,8 @@
   border-color: var(--demo-border);
 }
 
-.fileRowActive {
+.fileRowActive,
+.fileRowActive:hover {
   background: var(--demo-selected);
   border-color: var(--demo-glass-accent-border);
 }

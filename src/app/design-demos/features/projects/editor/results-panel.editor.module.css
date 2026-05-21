@@ -158,7 +158,8 @@
   color: var(--demo-text);
 }
 
-.resultsFilterBtnActive {
+.resultsFilterBtnActive,
+.resultsFilterBtnActive:hover {
   background: var(--demo-green-soft);
   border-color: var(--demo-glass-accent-border);
   color: var(--demo-green);
