@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { type MouseEvent as ReactMouseEvent, useState } from "react";
-import { ArrowLeft, ArrowRight, Check, Copy, Edit3, FolderTree, GripVertical, Plus, Shuffle, Trash2, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, ChevronDown, Copy, Edit3, FolderTree, GripVertical, Plus, Shuffle, Trash2, X } from "lucide-react";
 
 import {
   categoryColorValue,
@@ -23,7 +23,7 @@ import { ButtonLink } from "../../shared/primitives/button";
 import { Checkbox } from "../../shared/primitives/checkbox";
 import { EmptyPage } from "../../shared/primitives/empty-page";
 import { PageHeader } from "../../shared/primitives/page-header";
-import { FolderBreadcrumb, FolderRow, SelectionBatchBar } from "../../shared/patterns";
+import { FolderBreadcrumb, FolderRow, SelectionBatchBar, UnitRowShell } from "../../shared/patterns";
 import { StatusBadge } from "../../shared/primitives/status-badge";
 import { cx, demoHref } from "../../routing";
 import type { DemoButtonFeedback } from "../../routing";
@@ -242,66 +242,77 @@ export function PresetLibraryItemRow({
   const openLabel = item.isLocalCopy && item.sourceName ? `打开源预制：${item.sourceName}` : undefined;
   const copyStateLabel = copyState === "copy" ? "本地副本" : copyState === "source" ? "已复制源" : null;
 
+  const openHref = demoHref(href);
+
   return (
-    <div ref={ref} style={style} className={cx(s.presetItemRow, checked && s.presetItemRowSelected, copyState === "copy" && s.presetItemRowCopy, copyState === "source" && s.presetItemRowSource)}>
-      <Checkbox
-        checked={checked}
-        label={checked ? `取消选择预制：${item.name}` : `选择预制：${item.name}`}
-        onCheckedChange={() => onToggle(item.id)}
-        variant="compact"
-      />
-      <Link aria-label={openLabel} className={s.presetItemOpenArea} href={demoHref(href)}>
-        <GripVertical className={s.categoryDragIcon} {...handleProps} />
-        <div className={s.presetItemMain}>
-          <strong>
-            <span className={s.presetItemNameText}>{item.name}</span>
-            {copyStateLabel ? <span className={s.presetInlineState}>{copyStateLabel}</span> : null}
-          </strong>
-          <p>{item.description}</p>
-        </div>
-        <div className={s.presetItemMeta}>
-          <span>{String(index + 1).padStart(2, "0")}</span>
-          <em>{item.isLocalCopy && item.sourceName ? `源：${item.sourceName}` : item.meta}</em>
-        </div>
-        <ArrowRight className={s.presetItemArrow} />
-      </Link>
-      <div className={s.presetItemActions}>
-        {item.kind === "preset" ? (
+    <div ref={ref} style={style} className={s.presetItemSortableFrame}>
+      <UnitRowShell
+        actions={(
           <>
-            {copied ? <span className={s.presetCopyState}>已复制</span> : null}
+            {item.kind === "preset" ? (
+              <>
+                {copied ? <span className={s.presetCopyState}>已复制</span> : null}
+                <Button
+                  ariaLabel={`复制预制：${item.name}`}
+                  className={s.presetItemCopyButton}
+                  icon={Copy}
+                  iconOnly
+                  onClick={handleCopy}
+                  size="sm"
+                  tone="subtle"
+                  feedback={{
+                    title: "深拷贝将创建新的系统标识",
+                    detail: item.name,
+                  }}
+                />
+              </>
+            ) : null}
             <Button
-              ariaLabel={`复制预制：${item.name}`}
-              className={s.presetItemCopyButton}
-              icon={Copy}
+              ariaLabel={`删除：${item.name}`}
+              icon={Trash2}
               iconOnly
-              onClick={handleCopy}
+              onClick={(event: ReactMouseEvent<HTMLButtonElement>) => {
+                event.preventDefault();
+                event.stopPropagation();
+                onDelete?.(item.id);
+              }}
               size="sm"
-              tone="subtle"
+              tone="danger"
               feedback={{
-                title: "深拷贝将创建新的系统标识",
+                tone: "warning",
+                title: "预设已删除",
                 detail: item.name,
               }}
             />
           </>
-        ) : null}
-        <Button
-          ariaLabel={`删除：${item.name}`}
-          icon={Trash2}
-          iconOnly
-          onClick={(event: ReactMouseEvent<HTMLButtonElement>) => {
-            event.preventDefault();
-            event.stopPropagation();
-            onDelete?.(item.id);
-          }}
-          size="sm"
-          tone="danger"
-          feedback={{
-            tone: "warning",
-            title: "预设已删除",
-            detail: item.name,
-          }}
-        />
-      </div>
+        )}
+        actionsClassName={s.presetItemActions}
+        className={cx(s.presetItemRow, copyState === "copy" && s.presetItemRowCopy, copyState === "source" && s.presetItemRowSource)}
+        description={<Link className={s.presetItemDescriptionLink} href={openHref}>{item.description}</Link>}
+        dragHandle={<GripVertical className={s.categoryDragIcon} {...handleProps} />}
+        leading={(
+          <Checkbox
+            checked={checked}
+            label={checked ? `取消选择预制：${item.name}` : `选择预制：${item.name}`}
+            onCheckedChange={() => onToggle(item.id)}
+            variant="compact"
+          />
+        )}
+        meta={(
+          <Link aria-label={openLabel} className={s.presetItemMetaLink} href={openHref}>
+            <span>{String(index + 1).padStart(2, "0")}</span>
+            <em>{item.isLocalCopy && item.sourceName ? `源：${item.sourceName}` : item.meta}</em>
+            <ArrowRight className={s.presetItemArrow} />
+          </Link>
+        )}
+        selected={checked}
+        title={(
+          <Link aria-label={openLabel} className={s.presetItemTitleLink} href={openHref}>
+            <span className={s.presetItemNameText}>{item.name}</span>
+            {copyStateLabel ? <span className={s.presetInlineState}>{copyStateLabel}</span> : null}
+          </Link>
+        )}
+      />
     </div>
   );
 }
@@ -572,24 +583,32 @@ export function PresetCategorySidebar({
   selectedCategory: DemoCategory;
   onSelect: (category: DemoCategory) => void;
 }) {
+  const [expanded, setExpanded] = useState(false);
   const orderedCategories = categoryOrder.length
     ? categoryOrder.map((id) => categories.find((c) => c.id === id)).filter((c): c is DemoCategory => Boolean(c))
     : categories;
 
   return (
     <aside className={s.presetCategorySidebar}>
+      <button className={s.presetCategoryAccordionToggle} type="button" onClick={() => setExpanded((v) => !v)} aria-expanded={expanded}>
+        <div>
+          <span>分类管理</span>
+          <strong>{selectedCategory.name}</strong>
+        </div>
+        <ChevronDown className={cx(s.accordionChevron, expanded && s.accordionChevronOpen)} />
+      </button>
       <div className={s.presetCategoryHeader}>
         <div>
           <span>分类管理</span>
           <strong>{categories.length} 个分类</strong>
         </div>
       </div>
-      <div className={s.presetCategoryList}>
+      <div className={cx(s.presetCategoryList, expanded && s.presetCategoryListExpanded)}>
         <SortableList items={orderedCategories.map((c) => c.id)} onReorder={onReorderCategories}>
           {orderedCategories.map((category) => {
             const selected = selectedCategory.id === category.id;
             return (
-              <PresetCategoryRow category={category} key={category.id} onDelete={onDeleteCategory} onSelect={onSelect} selected={selected} />
+              <PresetCategoryRow category={category} key={category.id} onDelete={onDeleteCategory} onSelect={(cat) => { onSelect(cat); setExpanded(false); }} selected={selected} />
             );
           })}
         </SortableList>
