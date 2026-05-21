@@ -71,7 +71,7 @@ async function updateProjectStatus(
     by: ["status"],
     where: {
       projectId: projectId,
-      status: { in: [RunStatus.queued, RunStatus.running] },
+      status: { in: [RunStatus.queued, RunStatus.running, RunStatus.paused] },
     },
     _count: {
       _all: true,
@@ -87,6 +87,8 @@ async function updateProjectStatus(
   if ((activeRunCountByStatus.get(RunStatus.running) ?? 0) > 0) {
     nextStatus = JobStatus.running;
   } else if ((activeRunCountByStatus.get(RunStatus.queued) ?? 0) > 0) {
+    nextStatus = JobStatus.queued;
+  } else if ((activeRunCountByStatus.get(RunStatus.paused) ?? 0) > 0) {
     nextStatus = JobStatus.queued;
   } else {
     const latestRunIds = (

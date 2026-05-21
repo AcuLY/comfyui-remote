@@ -30,7 +30,7 @@ export type RunningRun = {
   projectTitle: string;
   sectionName: string;
   startedAt: string;
-  status: "queued" | "running";
+  status: "queued" | "running" | "paused";
   progress: {
     percent: number;
     currentStep: number;

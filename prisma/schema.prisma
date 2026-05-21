@@ -22,6 +22,7 @@ enum RunStatus {
   done
   failed
   cancelled
+  paused
 }
 
 enum ReviewStatus {

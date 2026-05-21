@@ -321,7 +321,7 @@ export async function getQueueRunsPage(options: QueuePageOptions = {}): Promise<
 
 export async function getRunningRuns(): Promise<RunningRun[]> {
   const runs = await prisma.run.findMany({
-    where: { status: { in: ["queued", "running"] } },
+    where: { status: { in: ["queued", "running", "paused"] } },
     orderBy: { createdAt: "desc" },
     include: {
       project: {
