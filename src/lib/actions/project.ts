@@ -352,3 +352,92 @@ export async function deleteProject(projectId: string): Promise<void> {
 
   revalidatePath("/projects");
 }
+
+// ---------------------------------------------------------------------------
+// 应用参数到所有小节
+// ---------------------------------------------------------------------------
+
+export type ApplyParamName =
+  | "aspectRatio"
+  | "shortSidePx"
+  | "batchSize"
+  | "upscaleFactor"
+  | "seedPolicy"
+  | "ksampler1"
+  | "ksampler2"
+  | "checkpointName"
+  | "presets";
+
+export async function applyParamToAllSections(
+  projectId: string,
+  param: ApplyParamName,
+  value: unknown,
+): Promise<{ ok: boolean; count: number; error?: string }> {
+  try {
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      select: { id: true, presetBindings: true },
+    });
+    if (!project) return { ok: false, count: 0, error: "项目不存在" };
+
+    if (param === "presets") {
+      // For presets: force-apply current project bindings to all sections
+      // by treating previous as empty (all are "new additions")
+      const currentBindings = parsePresetBindings(project.presetBindings);
+      await syncProjectPresetBindingsToSections(projectId, [], currentBindings);
+      const count = await prisma.projectSection.count({ where: { projectId } });
+      revalidatePath(`/projects/${projectId}`);
+      return { ok: true, count };
+    }
+
+    // Build the update data based on param name
+    let data: Record<string, unknown>;
+    switch (param) {
+      case "aspectRatio":
+        data = { aspectRatio: typeof value === "string" ? value : null };
+        break;
+      case "shortSidePx":
+        data = { shortSidePx: typeof value === "number" ? value : null };
+        break;
+      case "batchSize":
+        data = { batchSize: typeof value === "number" ? value : null };
+        break;
+      case "upscaleFactor":
+        data = { upscaleFactor: typeof value === "number" ? value : null };
+        break;
+      case "seedPolicy":
+        if (typeof value === "object" && value !== null) {
+          const v = value as { seedPolicy1?: string; seedPolicy2?: string };
+          data = {
+            seedPolicy1: v.seedPolicy1 ?? null,
+            seedPolicy2: v.seedPolicy2 ?? null,
+          };
+        } else {
+          data = { seedPolicy1: typeof value === "string" ? value : null, seedPolicy2: null };
+        }
+        break;
+      case "ksampler1":
+        data = { ksampler1: value && typeof value === "object" ? value : Prisma.DbNull };
+        break;
+      case "ksampler2":
+        data = { ksampler2: value && typeof value === "object" ? value : Prisma.DbNull };
+        break;
+      case "checkpointName":
+        data = { checkpointName: typeof value === "string" ? value : null };
+        break;
+      default:
+        return { ok: false, count: 0, error: `未知参数: ${param}` };
+    }
+
+    const result = await prisma.projectSection.updateMany({
+      where: { projectId },
+      data,
+    });
+
+    revalidatePath(`/projects/${projectId}`);
+    return { ok: true, count: result.count };
+  } catch (e) {
+    console.error("Failed to apply param to all sections:", e);
+    return { ok: false, count: 0, error: "应用失败" };
+  }
+}

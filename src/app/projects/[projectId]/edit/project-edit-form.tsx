@@ -12,6 +12,47 @@ import { DEFAULT_KSAMPLER1, DEFAULT_KSAMPLER2 } from "@/lib/lora-types";
 import { CheckpointCascadePicker } from "@/components/checkpoint-cascade-picker";
 import { DEFAULT_CHECKPOINT_NAME } from "@/lib/model-constants";
 
+function ApplyToAllButton({
+  projectId,
+  param,
+  value,
+  isPending,
+  startTransition,
+}: {
+  projectId: string;
+  param: string;
+  value: unknown;
+  isPending: boolean;
+  startTransition: (fn: () => Promise<void>) => void;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={isPending}
+      onClick={() => {
+        if (!confirm("确定要将此参数应用到所有小节吗？")) return;
+        startTransition(async () => {
+          const res = await fetch(`/api/projects/${projectId}/apply-param`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ param, value }),
+          });
+          const data = await res.json();
+          if (data.ok) {
+            toast.success(`已应用到 ${data.count} 个小节`);
+          } else {
+            toast.error(data.error ?? "应用失败");
+          }
+        });
+      }}
+      className="shrink-0 rounded-md border border-sky-500/20 bg-sky-500/10 px-2 py-1 text-[10px] text-sky-400 transition hover:bg-sky-500/20 disabled:opacity-40"
+      title="应用到所有小节"
+    >
+      应用全部
+    </button>
+  );
+}
+
 type Props = {
   project: ProjectEditData;
   categories: ProjectFormCategory[];
@@ -154,7 +195,10 @@ export function ProjectEditForm({ project, categories }: Props) {
         </div>
 
         <div className="space-y-2">
-          <label className="text-xs text-zinc-400">Checkpoint</label>
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-zinc-400">Checkpoint</label>
+            <ApplyToAllButton projectId={project.id} param="checkpointName" value={checkpointName} isPending={isPending} startTransition={startTransition} />
+          </div>
           <CheckpointCascadePicker
             value={checkpointName}
             onChange={setCheckpointName}
@@ -163,7 +207,12 @@ export function ProjectEditForm({ project, categories }: Props) {
         </div>
 
         {/* Dynamic category selectors */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-zinc-400">预设绑定</span>
+            <ApplyToAllButton projectId={project.id} param="presets" value="presets" isPending={isPending} startTransition={startTransition} />
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {categories.map((cat) => {
             const colorClass = CATEGORY_COLORS[cat.color ?? ""] ?? "border-white/10 focus:border-sky-500/40";
             const labelClass = CATEGORY_LABELS[cat.color ?? ""] ?? "text-zinc-400";
@@ -202,6 +251,7 @@ export function ProjectEditForm({ project, categories }: Props) {
             );
           })}
         </div>
+        </div>
 
         <div className="space-y-2">
           <label className="text-xs text-zinc-400">备注</label>
@@ -221,7 +271,10 @@ export function ProjectEditForm({ project, categories }: Props) {
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="space-y-2">
-            <label className="text-xs text-zinc-400">默认画幅</label>
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-zinc-400">默认画幅</label>
+              <ApplyToAllButton projectId={project.id} param="aspectRatio" value={defaultAspectRatio} isPending={isPending} startTransition={startTransition} />
+            </div>
             <div className="relative">
               <select value={defaultAspectRatio} onChange={(e) => setDefaultAspectRatio(e.target.value)} className={selectClass}>
                 <option value="1:1" className="bg-zinc-900">1:1 方形</option>
@@ -236,21 +289,33 @@ export function ProjectEditForm({ project, categories }: Props) {
             </div>
           </div>
           <div className="space-y-2">
-            <label className="text-xs text-zinc-400">默认短边像素</label>
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-zinc-400">默认短边像素</label>
+              <ApplyToAllButton projectId={project.id} param="shortSidePx" value={parseInt(defaultShortSidePx, 10) || 512} isPending={isPending} startTransition={startTransition} />
+            </div>
             <input type="number" min={256} max={4096} step={8} value={defaultShortSidePx} onChange={(e) => setDefaultShortSidePx(e.target.value)} className={inputClass} />
           </div>
           <div className="space-y-2">
-            <label className="text-xs text-zinc-400">默认 Batch Size</label>
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-zinc-400">默认 Batch Size</label>
+              <ApplyToAllButton projectId={project.id} param="batchSize" value={parseInt(defaultBatchSize, 10) || 2} isPending={isPending} startTransition={startTransition} />
+            </div>
             <input type="number" min={1} max={100} value={defaultBatchSize} onChange={(e) => setDefaultBatchSize(e.target.value)} className={inputClass} />
             <BatchSizeQuickFill onSelect={(val) => setDefaultBatchSize(String(val))} currentValue={defaultBatchSize ? parseInt(defaultBatchSize, 10) : null} />
           </div>
           <div className="space-y-2">
-            <label className="text-xs text-zinc-400">默认放大倍数</label>
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-zinc-400">默认放大倍数</label>
+              <ApplyToAllButton projectId={project.id} param="upscaleFactor" value={parseFloat(defaultUpscaleFactor) || 2} isPending={isPending} startTransition={startTransition} />
+            </div>
             <input type="number" min={1} max={4} step={0.5} value={defaultUpscaleFactor} onChange={(e) => setDefaultUpscaleFactor(e.target.value)} className={inputClass} />
             <UpscaleFactorQuickFill onSelect={(val) => setDefaultUpscaleFactor(String(val))} currentValue={defaultUpscaleFactor ? parseFloat(defaultUpscaleFactor) : null} />
           </div>
           <div className="space-y-2">
-            <label className="text-xs text-zinc-400">默认 Seed 策略</label>
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-zinc-400">默认 Seed 策略</label>
+              <ApplyToAllButton projectId={project.id} param="seedPolicy" value={defaultSeedPolicy} isPending={isPending} startTransition={startTransition} />
+            </div>
             <div className="relative">
               <select value={defaultSeedPolicy} onChange={(e) => setDefaultSeedPolicy(e.target.value)} className={selectClass}>
                 <option value="random" className="bg-zinc-900">随机 (random)</option>
@@ -270,7 +335,10 @@ export function ProjectEditForm({ project, categories }: Props) {
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
           {/* KSampler1 */}
           <div className="space-y-2 rounded-lg border border-white/5 bg-white/[0.02] p-3">
-            <div className="text-xs font-medium text-zinc-300">KSampler1（第一阶段）</div>
+            <div className="flex items-center gap-2">
+              <div className="text-xs font-medium text-zinc-300">KSampler1（第一阶段）</div>
+              <ApplyToAllButton projectId={project.id} param="ksampler1" value={{ steps: parseInt(ks1Steps, 10) || 20, cfg: parseFloat(ks1Cfg) || 7, sampler_name: ks1Sampler, scheduler: ks1Scheduler, denoise: parseFloat(ks1Denoise) ?? 1 }} isPending={isPending} startTransition={startTransition} />
+            </div>
             <div className="grid grid-cols-2 gap-2">
               <label className="space-y-1">
                 <span className="text-[10px] text-zinc-500">Steps</span>
@@ -316,7 +384,10 @@ export function ProjectEditForm({ project, categories }: Props) {
 
           {/* KSampler2 */}
           <div className="space-y-2 rounded-lg border border-white/5 bg-white/[0.02] p-3">
-            <div className="text-xs font-medium text-zinc-300">KSampler2（高清修复）</div>
+            <div className="flex items-center gap-2">
+              <div className="text-xs font-medium text-zinc-300">KSampler2（高清修复）</div>
+              <ApplyToAllButton projectId={project.id} param="ksampler2" value={{ steps: parseInt(ks2Steps, 10) || 20, cfg: parseFloat(ks2Cfg) || 7, sampler_name: ks2Sampler, scheduler: ks2Scheduler, denoise: parseFloat(ks2Denoise) ?? 1 }} isPending={isPending} startTransition={startTransition} />
+            </div>
             <div className="grid grid-cols-2 gap-2">
               <label className="space-y-1">
                 <span className="text-[10px] text-zinc-500">Steps</span>
