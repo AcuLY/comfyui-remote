@@ -620,6 +620,9 @@ export async function importTemplateToProject(
         loras: { lora1: ImportLoraEntry[]; lora2: ImportLoraEntry[] };
       }> = [];
 
+      // Track preset IDs added from project bindings to avoid duplicates in step 2b
+      const projectBindingPresetIds = new Set<string>();
+
       // 2a. Add blocks from project bindings
       for (const binding of bindings) {
         const preset = presetMap.get(binding.presetId);
@@ -663,6 +666,7 @@ export async function importTemplateToProject(
             lora2: resolved.lora2.map(makeLora),
           },
         });
+        projectBindingPresetIds.add(preset.id);
       }
 
       // 2b. Add blocks from template
@@ -697,8 +701,15 @@ export async function importTemplateToProject(
           let variantId = blockType === "preset" && typeof block.variantId === "string" ? block.variantId : null;
           let catOrder = categoryId ? (catByIdMap.get(categoryId)?.positivePromptOrder ?? 999) : 999;
 
-          const oldBindingId = typeof block.bindingId === "string" ? block.bindingId : null;
           const oldGroupBindingId = typeof block.groupBindingId === "string" ? block.groupBindingId : null;
+
+          // Skip template preset blocks already covered by project bindings
+          // (unless they belong to a group — group members are always section-level)
+          if (sourceId && !oldGroupBindingId && projectBindingPresetIds.has(sourceId)) {
+            continue;
+          }
+
+          const oldBindingId = typeof block.bindingId === "string" ? block.bindingId : null;
           const newBindingId = oldBindingId ? (bindingIdMap.get(oldBindingId) ?? null) : (sourceId ? createBindingId() : null);
           const newGroupBindingId = oldGroupBindingId ? (groupBindingIdMap.get(oldGroupBindingId) ?? null) : null;
 
