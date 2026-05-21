@@ -221,8 +221,8 @@
   gap: 7px;
 }
 
-/* ─── Narrow-screen accordion ─── */
-@media (max-width: 767px) {
+/* ─── Narrow-screen: category list becomes top accordion ─── */
+@media (max-width: 1023px) {
   .presetManagerLayout {
     grid-template-columns: 1fr;
     min-height: auto;
@@ -878,7 +878,7 @@
   padding: 32px 24px;
 }
 
-@media (max-width: 1180px) {
+@media (max-width: 1180px) and (min-width: 1024px) {
 
   .presetManagerLayout {
     grid-template-columns: minmax(220px, 250px) minmax(0, 1fr);
@@ -890,10 +890,6 @@
 
   .sidebarCollapsed.sidebar .brandTop > .toolbar {
     display: none;
-  }
-
-  .presetManagerLayout {
-    grid-template-columns: minmax(180px, 220px) minmax(0, 1fr);
   }
 
   .presetCopyState {
