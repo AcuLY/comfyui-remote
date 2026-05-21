@@ -4,6 +4,7 @@ import { ArrowLeft, ChevronLeft, ChevronRight, Download, ExternalLink, Images } 
 import { SectionCard } from "@/components/section-card";
 import { getReviewGroup, getReviewGroupIds } from "@/lib/server-data";
 import { ReviewGrid } from "./review-grid";
+import { SectionRunButton } from "@/app/projects/[projectId]/project-detail-actions";
 
 function ExecutionMetaDisplay({ meta }: { meta: Record<string, unknown> }) {
   const ks1Seed = meta.ks1Seed as number | null | undefined;
@@ -202,6 +203,18 @@ export default async function ReviewGroupPage({ params }: { params: Promise<{ ru
           </a>
         </div>
       </div>
+
+      {/* Re-run with batch size */}
+      {group.projectSectionId && (
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-zinc-500">再次运行:</span>
+          <SectionRunButton
+            sectionId={group.projectSectionId}
+            defaultBatchSize={(group.executionMeta as Record<string, unknown> | null)?.batchSize as number | undefined ?? 2}
+            showBatchOverride
+          />
+        </div>
+      )}
 
       <SectionCard title={group.title} subtitle={`${group.presetNames.join(" · ") || group.sectionName} · ${group.createdAt}`}>
         <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-zinc-500">

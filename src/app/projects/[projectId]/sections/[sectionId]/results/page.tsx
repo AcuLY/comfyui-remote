@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ChevronLeft, ChevronRight, Images } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Images, Pencil } from "lucide-react";
 import { SectionCard } from "@/components/section-card";
 import { getSectionResults } from "@/lib/server-data";
 import { hrefWithFolderQuery } from "@/lib/folder-navigation";
@@ -40,6 +40,13 @@ export default async function SectionResultsPage({
           <ArrowLeft className="size-4" /> 返回项目详情
         </Link>
         <div className="flex flex-wrap items-center justify-end gap-2">
+          <Link
+            href={`/projects/${projectId}/sections/${sectionId}`}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-sky-500/20 bg-sky-500/10 px-3 py-2 text-xs text-sky-300 transition hover:bg-sky-500/20 hover:text-sky-200"
+          >
+            <Pencil className="size-3.5" />
+            返回小节
+          </Link>
           <Link
             href={`/projects/${projectId}/results`}
             className="inline-flex items-center gap-1.5 rounded-xl border border-violet-500/20 bg-violet-500/10 px-3 py-2 text-xs text-violet-300 transition hover:bg-violet-500/20 hover:text-violet-200"
