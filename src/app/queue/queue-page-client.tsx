@@ -4,12 +4,12 @@ import { useState, useEffect, useTransition, useCallback, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { RotateCw, ChevronLeft, ChevronRight, Clock3, Loader2, RefreshCw, AlertTriangle, XCircle, ImageIcon, Trash2, RotateCcw } from "lucide-react";
+import { RotateCw, ChevronLeft, ChevronRight, Clock3, Loader2, RefreshCw, AlertTriangle, XCircle, ImageIcon, Trash2, RotateCcw, Pause, Play } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/page-header";
 import { SectionCard } from "@/components/section-card";
 import { StatChip } from "@/components/stat-chip";
-import { cancelRun, runSection, clearRuns, clearActiveRuns, clearTrash, restoreImage } from "@/lib/actions";
+import { cancelRun, runSection, clearRuns, clearActiveRuns, clearTrash, restoreImage, pauseRun, resumeRun, pauseAllRuns, resumeAllRuns } from "@/lib/actions";
 import type { QueuePagination, QueueRun, RunningRun, FailedRun, TrashItem } from "@/lib/types";
 
 export type QueueTabKey = "pending" | "running" | "failed" | "trash";
@@ -468,7 +468,47 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
       {/* Running tab */}
       {activeTab === "running" && (
         <SectionCard title="运行中" subtitle="自动每 5 秒刷新。">
-          <div className="mb-3 flex justify-end">
+          <div className="mb-3 flex flex-wrap items-center justify-end gap-2">
+            {runningRuns.some((r) => r.status === "queued" || r.status === "running") && (
+              <button
+                type="button"
+                disabled={isPending}
+                onClick={() => {
+                  startTransition(async () => {
+                    const result = await pauseAllRuns();
+                    if (result.ok) {
+                      toast.success(`已暂停 ${result.count} 个任务`);
+                      refresh();
+                    } else {
+                      toast.error(result.error ?? "批量暂停失败");
+                    }
+                  });
+                }}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-1.5 text-[11px] text-amber-400 transition hover:bg-amber-500/20 disabled:opacity-40"
+              >
+                <Pause className="size-3.5" /> 全部暂停
+              </button>
+            )}
+            {runningRuns.some((r) => r.status === "paused") && (
+              <button
+                type="button"
+                disabled={isPending}
+                onClick={() => {
+                  startTransition(async () => {
+                    const result = await resumeAllRuns();
+                    if (result.ok) {
+                      toast.success(`已恢复 ${result.count} 个任务`);
+                      refresh();
+                    } else {
+                      toast.error(result.error ?? "批量恢复失败");
+                    }
+                  });
+                }}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-[11px] text-emerald-400 transition hover:bg-emerald-500/20 disabled:opacity-40"
+              >
+                <Play className="size-3.5" /> 全部恢复
+              </button>
+            )}
             <button
               type="button"
               disabled={isPending || runningRuns.length === 0}
@@ -488,7 +528,11 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
               <div
                 key={run.id}
                 id={`run-${run.id}`}
-                className="w-full rounded-xl border border-white/10 bg-white/[0.03] p-3 md:max-w-[500px]"
+                className={`w-full rounded-xl border p-3 md:max-w-[500px] ${
+                  run.status === "paused"
+                    ? "border-amber-500/20 bg-amber-500/[0.03]"
+                    : "border-white/10 bg-white/[0.03]"
+                }`}
               >
                 <div className="flex items-center justify-between gap-3">
                   <div>
@@ -496,15 +540,26 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
                     <div className="mt-1 text-xs text-zinc-400">{run.projectTitle}：{run.sectionName}</div>
                   </div>
                   <span className={`rounded-full border px-2 py-1 text-[11px] ${
-                    run.status === "running"
+                    run.status === "paused"
                       ? "border-amber-500/20 bg-amber-500/10 text-amber-300"
-                      : "border-zinc-500/20 bg-zinc-500/10 text-zinc-400"
+                      : run.status === "running"
+                        ? "border-amber-500/20 bg-amber-500/10 text-amber-300"
+                        : "border-zinc-500/20 bg-zinc-500/10 text-zinc-400"
                   }`}>
-                    <Loader2 className={`mr-1 inline size-3 ${run.status === "running" ? "animate-spin" : ""}`} />
-                    {run.status === "running" ? "运行中" : "排队中"}
+                    {run.status === "paused" ? (
+                      <>
+                        <Pause className="mr-1 inline size-3" />
+                        已暂停
+                      </>
+                    ) : (
+                      <>
+                        <Loader2 className={`mr-1 inline size-3 ${run.status === "running" ? "animate-spin" : ""}`} />
+                        {run.status === "running" ? "运行中" : "排队中"}
+                      </>
+                    )}
                   </span>
                 </div>
-                <RunProgressView run={run} />
+                {run.status !== "paused" && <RunProgressView run={run} />}
                 <div className="mt-3 flex items-center justify-between">
                   <div className="flex gap-3 text-xs text-zinc-400">
                     <div className="rounded-xl bg-white/[0.03] px-3 py-2">
@@ -512,25 +567,65 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
                       {run.startedAt}
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    disabled={isPending}
-                    onClick={() => {
-                      startTransition(async () => {
-                        const result = await cancelRun(run.id);
-                        if (result.ok) {
-                          toast.success("任务已取消");
-                          // Remove from local state immediately
-                          setRunningRuns((prev) => prev.filter((r) => r.id !== run.id));
-                        } else {
-                          toast.error(result.error ?? "取消失败");
-                        }
-                      });
-                    }}
-                    className="inline-flex items-center gap-1 rounded-lg border border-red-500/20 bg-red-500/10 px-2.5 py-1.5 text-[11px] text-red-400 hover:bg-red-500/20 disabled:opacity-50"
-                  >
-                    <XCircle className="size-3" /> 取消
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    {run.status === "paused" ? (
+                      <button
+                        type="button"
+                        disabled={isPending}
+                        onClick={() => {
+                          startTransition(async () => {
+                            const result = await resumeRun(run.id);
+                            if (result.ok) {
+                              toast.success("任务已恢复");
+                              refresh();
+                            } else {
+                              toast.error(result.error ?? "恢复失败");
+                            }
+                          });
+                        }}
+                        className="inline-flex items-center gap-1 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1.5 text-[11px] text-emerald-400 hover:bg-emerald-500/20 disabled:opacity-50"
+                      >
+                        <Play className="size-3" /> 恢复
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={isPending}
+                        onClick={() => {
+                          startTransition(async () => {
+                            const result = await pauseRun(run.id);
+                            if (result.ok) {
+                              toast.success("任务已暂停");
+                              refresh();
+                            } else {
+                              toast.error(result.error ?? "暂停失败");
+                            }
+                          });
+                        }}
+                        className="inline-flex items-center gap-1 rounded-lg border border-amber-500/20 bg-amber-500/10 px-2.5 py-1.5 text-[11px] text-amber-400 hover:bg-amber-500/20 disabled:opacity-50"
+                      >
+                        <Pause className="size-3" /> 暂停
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      disabled={isPending}
+                      onClick={() => {
+                        startTransition(async () => {
+                          const result = await cancelRun(run.id);
+                          if (result.ok) {
+                            toast.success("任务已取消");
+                            setRunningRuns((prev) => prev.filter((r) => r.id !== run.id));
+                          } else {
+                            toast.error(result.error ?? "取消失败");
+                          }
+                        });
+                      }}
+                      className="inline-flex items-center gap-1 rounded-lg border border-red-500/20 bg-red-500/10 px-2.5 py-1.5 text-[11px] text-red-400 hover:bg-red-500/20 disabled:opacity-50"
+                    >
+                      <XCircle className="size-3" /> 取消
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
