@@ -168,8 +168,15 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  width: 100%;
+  border: 0;
   border-bottom: 1px solid var(--demo-border);
+  background: transparent;
+  color: inherit;
+  cursor: default;
+  font: inherit;
   padding: 0 0 9px;
+  text-align: left;
 }
 
 .presetCategoryHeader div {
@@ -183,23 +190,21 @@
   font-weight: 650;
 }
 
-.presetCategoryHeader strong {
+.presetCategoryHeaderTitle {
   color: var(--demo-text);
   font-size: 12px;
   font-weight: 620;
 }
 
-.presetCategoryList {
-  display: grid;
-  gap: 7px;
-}
-
-/* Accordion toggle — only visible on narrow screens */
-.presetCategoryAccordionToggle {
+.presetCategoryHeaderSelected {
   display: none;
+  color: var(--demo-text);
+  font-size: 13px;
+  font-weight: 620;
 }
 
 .accordionChevron {
+  display: none;
   width: 14px;
   height: 14px;
   flex: 0 0 auto;
@@ -209,6 +214,11 @@
 
 .accordionChevronOpen {
   transform: rotate(180deg);
+}
+
+.presetCategoryList {
+  display: grid;
+  gap: 7px;
 }
 
 /* ─── Narrow-screen accordion ─── */
@@ -229,40 +239,19 @@
   }
 
   .presetCategoryHeader {
+    cursor: pointer;
+  }
+
+  .presetCategoryHeaderTitle {
     display: none;
   }
 
-  .presetCategoryAccordionToggle {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    width: 100%;
-    border: 0;
-    border-bottom: 1px solid var(--demo-border);
-    background: transparent;
-    color: inherit;
-    cursor: pointer;
-    font: inherit;
-    padding: 0 0 9px;
-    text-align: left;
+  .presetCategoryHeaderSelected {
+    display: block;
   }
 
-  .presetCategoryAccordionToggle div {
-    display: grid;
-    gap: 2px;
-  }
-
-  .presetCategoryAccordionToggle span {
-    color: var(--demo-faint);
-    font-size: 10px;
-    font-weight: 650;
-  }
-
-  .presetCategoryAccordionToggle strong {
-    color: var(--demo-text);
-    font-size: 13px;
-    font-weight: 620;
+  .accordionChevron {
+    display: block;
   }
 
   .presetCategoryList {
@@ -1007,7 +996,7 @@
     display: none;
   }
 
-  .presetCategoryHeader strong {
+  .presetCategoryHeaderTitle {
     font-size: 11px;
   }
 

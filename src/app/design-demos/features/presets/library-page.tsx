@@ -590,19 +590,14 @@ export function PresetCategorySidebar({
 
   return (
     <aside className={s.presetCategorySidebar}>
-      <button className={s.presetCategoryAccordionToggle} type="button" onClick={() => setExpanded((v) => !v)} aria-expanded={expanded}>
+      <button className={s.presetCategoryHeader} type="button" onClick={() => setExpanded((v) => !v)} aria-expanded={expanded}>
         <div>
           <span>分类管理</span>
-          <strong>{selectedCategory.name}</strong>
+          <strong className={s.presetCategoryHeaderTitle}>{categories.length} 个分类</strong>
+          <strong className={s.presetCategoryHeaderSelected}>{selectedCategory.name}</strong>
         </div>
         <ChevronDown className={cx(s.accordionChevron, expanded && s.accordionChevronOpen)} />
       </button>
-      <div className={s.presetCategoryHeader}>
-        <div>
-          <span>分类管理</span>
-          <strong>{categories.length} 个分类</strong>
-        </div>
-      </div>
       <div className={cx(s.presetCategoryList, expanded && s.presetCategoryListExpanded)}>
         <SortableList items={orderedCategories.map((c) => c.id)} onReorder={onReorderCategories}>
           {orderedCategories.map((category) => {
