@@ -437,7 +437,7 @@ export async function getReviewGroup(runId: string): Promise<ReviewGroup | null>
   const images: ReviewImage[] = availableImages.map((img, index) => ({
     id: img.id,
     src: toImageUrl(img.displayPath) ?? "",
-    full: (toImageUrl(img.filePath) ?? "") + "?q=80",
+    full: (toImageUrl(img.filePath) ?? "") + "?w=1920&q=85",
     label: `${index + 1}`.padStart(2, "0"),
     status: img.reviewStatus as ReviewStatus,
     featured: img.featured,

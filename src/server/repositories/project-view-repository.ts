@@ -465,7 +465,7 @@ export async function getSectionResults(sectionId: string): Promise<SectionResul
       .map((img) => ({
         id: img.id,
         src: toImageUrl(img.thumbPath ?? img.filePath) ?? "",
-        full: (toImageUrl(img.filePath) ?? "") + "?q=80",
+        full: (toImageUrl(img.filePath) ?? "") + "?w=1920&q=85",
         status: img.reviewStatus as ReviewStatus,
         featured: img.featured,
         featured2: img.featured2,
@@ -572,7 +572,7 @@ export async function getProjectResults(projectId: string): Promise<ProjectResul
             return {
               id: img.id,
               src: toImageUrl(img.thumbPath ?? img.filePath) ?? "",
-              full: (toImageUrl(img.filePath) ?? "") + "?q=80",
+              full: (toImageUrl(img.filePath) ?? "") + "?w=1920&q=85",
               status: img.reviewStatus as ReviewStatus,
               featured: img.featured,
               featured2: img.featured2,

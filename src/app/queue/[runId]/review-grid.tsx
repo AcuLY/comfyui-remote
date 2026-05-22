@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { Check, ChevronRight, Eye, ImageIcon, Star, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { keepImages, trashImages } from "@/lib/actions";
@@ -46,6 +46,20 @@ export function ReviewGrid({
       return Math.min(index, reviewImages.length - 1);
     });
   }, [reviewImages.length]);
+
+  // Preload upcoming images when lightbox is open
+  const preloadedUrlsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (lightboxIndex === null) return;
+    const upcoming = reviewImages.slice(lightboxIndex + 1);
+    for (const img of upcoming) {
+      if (!img.full || preloadedUrlsRef.current.has(img.full)) continue;
+      const preload = new window.Image();
+      preload.decoding = "async";
+      preload.src = img.full;
+      preloadedUrlsRef.current.add(img.full);
+    }
+  }, [lightboxIndex, reviewImages]);
 
   // S/F outside lightbox: navigate between run groups; I: open lightbox
   useEffect(() => {

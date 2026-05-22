@@ -88,7 +88,7 @@ export async function GET(
         pipeline = pipeline.resize({ width, withoutEnlargement: true });
       }
       const outputBuffer = await pipeline
-        .jpeg({ quality: quality ?? 80, mozjpeg: true })
+        .jpeg({ quality: quality ?? 80 })
         .toBuffer();
 
       return new NextResponse(new Uint8Array(outputBuffer), {
