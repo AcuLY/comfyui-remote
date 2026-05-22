@@ -260,6 +260,9 @@ async function main() {
     sourceImageIds: [source.id],
     renderedPrompt: `${triggerToken}, canonical identity reference`,
   });
+  const canonicalRequest = readJsonRecord(readJsonRecord(await readJobJsonArtifact(job.artifactRoot, `generation-runs/${canonicalRun.id}/request.redacted.json`)).request);
+  assertHostInstructionIsToolOnly(canonicalRequest.hostInstruction, "canonical request artifact");
+  assertPromptIncludes(canonicalRequest.visualPrompt, "canonical request artifact", ["single character", "plain white or neutral background", "front-facing full-body", "preserve identity", "outfit", "shoes", "accessories", "no text", "logo", "watermark", "props"]);
   const canonicalCompleted = await services.canonicalService.mockCompleteCharacterLoraCanonicalGenerationRun(
     canonicalRun.id,
     { sourceImageId: source.id },
@@ -341,9 +344,10 @@ async function main() {
 
   const sectionsWithImages: SmokeSummary["sections"] = [];
   for (const section of instantiated.sections) {
+    const sectionUserInstruction = `Smoke instruction for ${section.key}: keep the section target clear without changing identity.`;
     const sectionRun = await services.phase3Service.enqueueCharacterLoraSectionGenerationRun(section.id, {
       provider: "mock-local",
-      renderedPrompt: `${triggerToken}, ${section.name}, fake section candidate`,
+      userInstruction: sectionUserInstruction,
     });
     assertSectionInputImageProvenance(readJsonArray(sectionRun.inputImages).map(readJsonRecord), {
       source,
@@ -362,6 +366,7 @@ async function main() {
     const payload = readTaskPayload(leasedTask.payload);
     assert(payload.taskType === "image_generation", "leased image task payload should be image_generation");
     const outputDir = payload.request.outputDir;
+    assertSectionPromptLayering(payload.request, `section ${section.key} task payload`, section.key, section.name, promotedPromptCard.finalPromptDraft, sectionUserInstruction);
     assertSectionInputImageProvenance(readJsonArray(payload.request.inputImages).map(readJsonRecord), {
       source,
       manualCanonicalSource,
@@ -370,6 +375,7 @@ async function main() {
     }, `section ${section.key} task payload`);
     const requestArtifact = readJsonRecord(await readJobJsonArtifact(job.artifactRoot, `${outputDir}/request.redacted.json`));
     const redactedRequest = readJsonRecord(requestArtifact.request);
+    assertSectionPromptLayering(redactedRequest, `section ${section.key} redacted request artifact`, section.key, section.name, promotedPromptCard.finalPromptDraft, sectionUserInstruction);
     assertSectionInputImageProvenance(readJsonArray(redactedRequest.inputImages).map(readJsonRecord), {
       source,
       manualCanonicalSource,
@@ -988,6 +994,57 @@ function assertHexSha(value: string | null | undefined, label: string): asserts 
   assert(Boolean(value && /^[a-f0-9]{64}$/i.test(value)), `${label} should be a sha256 hex string`);
 }
 
+function assertHostInstructionIsToolOnly(value: unknown, label: string) {
+  const hostInstruction = assertStringValue(value, `${label} hostInstruction`);
+  const forbidden = /white\s+background|plain\s+white|full[-\s]?body|front[-\s]?facing|\boutfit\b|\bshoes?\b|\baccessor(?:y|ies)\b/i;
+  assert(!forbidden.test(hostInstruction), `${label} hostInstruction should not contain visual keywords`);
+}
+
+function assertSectionPromptLayering(
+  request: unknown,
+  label: string,
+  sectionKey: string,
+  sectionName: string,
+  promptCardDraft: string,
+  userInstruction: string,
+) {
+  const requestRecord = readJsonRecord(request);
+  assertHostInstructionIsToolOnly(requestRecord.hostInstruction, label);
+  assert(
+    requestRecord.renderedPrompt === requestRecord.visualPrompt,
+    `${label} should fall back renderedPrompt to visualPrompt`,
+  );
+  assertPromptIncludes(requestRecord.renderedPrompt, label, [
+    "Global rules:",
+    `Prompt card final draft: ${promptCardDraft}`,
+    `Section target: ${sectionName}`,
+    `section key: ${sectionKey}`,
+    `User instruction: ${userInstruction}`,
+    "Reference image notes:",
+    "canonical",
+    "source",
+    "setting",
+    "local_reference",
+    "previous_candidate",
+    "Output constraints:",
+  ]);
+}
+
+function assertPromptIncludes(value: unknown, label: string, expectedParts: string[]) {
+  const normalizedPrompt = assertStringValue(value, `${label} prompt`).toLowerCase();
+  for (const expectedPart of expectedParts) {
+    assert(
+      normalizedPrompt.includes(expectedPart.toLowerCase()),
+      `${label} prompt should include ${expectedPart}`,
+    );
+  }
+}
+
+function assertStringValue(value: unknown, label: string): string {
+  assert(typeof value === "string" && value.length > 0, `${label} should be a non-empty string`);
+  return value;
+}
+
 async function assertRejects(action: () => Promise<unknown>, message: string) {
   let rejected = false;
 
@@ -1005,7 +1062,7 @@ function readTaskPayload(payload: unknown) {
   return payload as
     | {
         taskType: "image_generation";
-        request: {
+        request: Record<string, unknown> & {
           outputDir: string;
           inputImages: unknown;
         };

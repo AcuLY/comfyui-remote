@@ -125,6 +125,7 @@ export async function enqueueCharacterLoraSectionGenerationRun(sectionId: string
   const runId = randomUUID();
   const outputDir = `sections/${section.id}/runs/${runId}`;
   const hostInstruction = parsed.hostInstruction ?? buildDefaultSectionHostInstruction(provider);
+  const inputImages = await resolveSectionInputImages(job.id, canonicalVersion.imageArtifactId, parsed);
   const visualPrompt =
     parsed.visualPrompt ??
     buildDefaultSectionVisualPrompt({
@@ -133,8 +134,9 @@ export async function enqueueCharacterLoraSectionGenerationRun(sectionId: string
       sectionKey: section.key,
       promptCardDraft: promptCardVersion.finalPromptDraft,
       userInstruction: parsed.userInstruction ?? null,
+      inputImages,
     });
-  const inputImages = await resolveSectionInputImages(job.id, canonicalVersion.imageArtifactId, parsed);
+  const renderedPrompt = parsed.renderedPrompt ?? visualPrompt;
 
   const request = {
     jobId: job.id,
@@ -144,7 +146,7 @@ export async function enqueueCharacterLoraSectionGenerationRun(sectionId: string
     imageModel: parsed.imageModel ?? DEFAULT_IMAGE_MODEL,
     hostInstruction,
     visualPrompt,
-    renderedPrompt: parsed.renderedPrompt,
+    renderedPrompt,
     negativePrompt: parsed.negativePrompt ?? undefined,
     toolParams: parsed.toolParams ?? DEFAULT_TOOL_PARAMS,
     inputImages,
@@ -881,10 +883,10 @@ async function getExistingCandidateImage(imageId: string) {
 
 function buildDefaultSectionHostInstruction(provider: CharacterLoraImageProvider) {
   if (provider === "mock-local") {
-    return "Create a section candidate image generation task for local worker validation. Do not call external providers and do not include secrets in stored payloads.";
+    return "Create a local image_generation task record for section payload validation. Do not call external providers and do not include secrets or private paths in stored payloads.";
   }
 
-  return "Create section-specific Character LoRA training images from supplied artifact references. Use image generation only through the worker and do not include credentials or private paths in provider payloads.";
+  return "Call the image generation worker with the provided section request fields. Forward inputImages, visualPrompt, renderedPrompt, toolParams, and outputDir unchanged. Do not add credentials, private paths, or extra prompt text.";
 }
 
 function buildDefaultSectionVisualPrompt(input: {
@@ -893,15 +895,36 @@ function buildDefaultSectionVisualPrompt(input: {
   sectionKey: string;
   promptCardDraft: string;
   userInstruction: string | null;
+  inputImages: CharacterLoraProviderInputImage[];
 }) {
   return [
-    input.promptCardDraft,
-    `Generate a ${input.sectionName} training candidate for ${input.characterName}.`,
-    `Section key: ${input.sectionKey}. Keep identity, outfit, shoes, accessories, and canonical silhouette consistent.`,
-    input.userInstruction ? `User correction for this run: ${input.userInstruction}` : null,
+    "Global rules: single character only; preserve identity, outfit, shoes, accessories, and canonical silhouette; avoid text, logos, watermarks, extra props, extra characters, and background clutter.",
+    `Prompt card final draft: ${input.promptCardDraft}`,
+    `Section target: ${input.sectionName}; section key: ${input.sectionKey}; character: ${input.characterName}.`,
+    input.userInstruction ? `User instruction: ${input.userInstruction}` : "User instruction: none.",
+    buildReferenceImageNotes(input.inputImages),
+    "Output constraints: produce one clean section-specific LoRA training candidate; keep the requested section target readable and do not average unrelated references together.",
   ]
-    .filter((part): part is string => Boolean(part))
     .join(" ");
+}
+
+function buildReferenceImageNotes(inputImages: CharacterLoraProviderInputImage[]) {
+  const counts = inputImages.reduce<Record<CharacterLoraProviderInputImage["role"], number>>(
+    (accumulator, inputImage) => {
+      accumulator[inputImage.role] += 1;
+      return accumulator;
+    },
+    { canonical: 0, source: 0, setting: 0, local_reference: 0, previous_candidate: 0 },
+  );
+
+  return [
+    "Reference image notes: use each image role deliberately; do not average or blend all references.",
+    `canonical (${counts.canonical}): primary identity, outfit, shoes, accessories, and silhouette anchor.`,
+    `source (${counts.source}): supporting identity evidence; resolve conflicts in favor of the canonical anchor and prompt card.`,
+    `setting (${counts.setting}): environment or lighting context only, not identity or outfit evidence.`,
+    `local_reference (${counts.local_reference}): targeted local detail or operator correction reference.`,
+    `previous_candidate (${counts.previous_candidate}): prior generated candidate for comparison; keep intentional corrections and avoid copying its errors.`,
+  ].join(" ");
 }
 
 function buildDatasetFreezeWarnings(

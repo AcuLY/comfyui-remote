@@ -541,18 +541,20 @@ function sourceRoleToProviderRole(sourceRole: string): CharacterLoraProviderInpu
 
 function buildDefaultCanonicalHostInstruction(provider: CharacterLoraImageProvider) {
   if (provider === "mock-local") {
-    return "Create a canonical Character LoRA generation run for local link validation. Do not call external providers and do not include secrets in stored payloads.";
+    return "Create a local image_generation task record for canonical payload validation. Do not call external providers and do not include secrets or private paths in stored payloads.";
   }
 
-  return "Create a canonical Character LoRA reference image from the supplied artifact references. Use only the input images as visual reference and do not include credentials, auth tokens, or private paths in provider payloads.";
+  return "Call the image generation worker with the provided canonical request fields. Forward inputImages, visualPrompt, renderedPrompt, toolParams, and outputDir unchanged. Do not add credentials, private paths, or extra prompt text.";
 }
 
 function buildDefaultCanonicalVisualPrompt(job: CharacterLoraTrainingJobSummary) {
   return [
-    `Create a clean canonical reference image for ${job.characterName}.`,
-    `Preserve identity, face, hair, outfit, and overall silhouette from the source images for LoRA training.`,
+    `Single character canonical/reference sheet for ${job.characterName}.`,
+    "Use a plain white or neutral background with clean lighting.",
+    "Front-facing full-body composition with the complete character visible.",
+    "Preserve identity, face, hair, outfit, shoes, accessories, and overall silhouette from the source images for LoRA training.",
     `Use trigger token "${job.triggerToken}" as metadata only; do not render text in the image.`,
-    "Prefer a neutral background, clear lighting, and a full-body or three-quarter composition with readable details.",
+    "No text, logo, watermark, extra props, extra characters, or background clutter.",
   ].join(" ");
 }
 
