@@ -833,7 +833,7 @@ function buildDatasetProvenancePolicy() {
   return {
     sourceRules: [
       "candidate artifact kind is source_image",
-      "generation run kind is an explicit direct source/manual canonical import",
+      "generation run kind is an explicit source candidate/direct source/manual canonical import",
     ],
     syntheticRules: [
       "candidate output from a section or canonical generation run",
@@ -851,7 +851,7 @@ function classifyDatasetItemProvenance(input: {
 }) {
   const artifactKind = input.imageArtifact.kind;
   const generationRunKind = input.generationRun.kind;
-  const directSourceRunKinds = new Set(["source", "direct_source", "manual_source", "manual_canonical"]);
+  const directSourceRunKinds = new Set(["source_candidate", "source", "direct_source", "manual_source", "manual_canonical"]);
 
   if (artifactKind === "source_image") {
     return {

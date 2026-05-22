@@ -8,6 +8,7 @@ import {
 } from "@/server/services/character-lora-training/job-service";
 import {
   listCharacterLoraSourceImages as listSourceImages,
+  registerCharacterLoraSourceImageAsCandidate as registerSourceImageAsCandidate,
   uploadCharacterLoraSourceImage as uploadSourceImage,
 } from "@/server/services/character-lora-training/source-image-service";
 import {
@@ -81,6 +82,10 @@ export async function listCharacterLoraSourceImages(jobId: string) {
 
 export async function uploadCharacterLoraSourceImage(jobId: string, input: FormData) {
   return uploadSourceImage(jobId, input);
+}
+
+export async function registerCharacterLoraSourceImageAsCandidate(jobId: string, input: unknown) {
+  return registerSourceImageAsCandidate(jobId, input);
 }
 
 export async function listCharacterLoraPromptCardVersions(jobId: string) {

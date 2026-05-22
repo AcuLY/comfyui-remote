@@ -661,6 +661,136 @@ export async function createCharacterLoraSourceImage(input: CharacterLoraSourceI
   return serializeSourceImage(sourceImage);
 }
 
+export async function registerCharacterLoraSourceImageAsCandidate(input: {
+  jobId: string;
+  sourceImageId: string;
+  reviewStatus?: CharacterLoraImageReviewStatus;
+  captionDraft?: string | null;
+}) {
+  const result = await db.$transaction(async (tx) => {
+    const sourceImage = await tx.characterLoraSourceImage.findUnique({
+      where: { id: input.sourceImageId },
+      select: {
+        ...SOURCE_IMAGE_SELECT,
+        job: {
+          select: {
+            id: true,
+            characterName: true,
+            triggerToken: true,
+          },
+        },
+      },
+    });
+
+    if (!sourceImage || sourceImage.jobId !== input.jobId) {
+      throw new Error("Source image not found for this character LoRA job");
+    }
+
+    const artifact = await tx.characterLoraArtifact.findUnique({
+      where: { id: sourceImage.artifactId },
+      select: ARTIFACT_REF_SELECT,
+    });
+
+    if (!artifact || artifact.jobId !== input.jobId || artifact.kind !== "source_image") {
+      throw new Error("Source image artifact must belong to the job and have kind source_image");
+    }
+
+    const existingCandidate = await tx.characterLoraCandidateImage.findFirst({
+      where: {
+        jobId: input.jobId,
+        artifactId: sourceImage.artifactId,
+      },
+      select: CANDIDATE_IMAGE_SELECT,
+    });
+
+    if (existingCandidate) {
+      return {
+        candidate: existingCandidate,
+        generationRun: null,
+        created: false,
+      };
+    }
+
+    const now = new Date();
+    const run = await tx.characterLoraGenerationRun.create({
+      data: {
+        id: randomUUID(),
+        jobId: input.jobId,
+        sectionId: null,
+        kind: "source_candidate",
+        status: CharacterLoraRunStatus.done,
+        provider: "mock-local",
+        hostModel: "mock-local",
+        imageModel: "source-image-import",
+        hostInstruction: "Register an uploaded source image as a reviewable dataset candidate.",
+        visualPrompt: `${sourceImage.job.triggerToken}, ${sourceImage.job.characterName}, source training anchor`,
+        negativePrompt: null,
+        toolParams: toInputJsonValue({
+          origin: "source_candidate",
+          mode: "register_source_image",
+          sourceImageId: sourceImage.id,
+          sourceRole: sourceImage.role,
+        }),
+        inputImages: toInputJsonValue({
+          origin: "source_candidate",
+          sourceImageId: sourceImage.id,
+          sourceRole: sourceImage.role,
+          artifactId: sourceImage.artifactId,
+          relativePath: sourceImage.filePath,
+          sha256: sourceImage.sha256,
+        }),
+        responseSummary: toInputJsonValue({
+          origin: "source_candidate",
+          sourceImageId: sourceImage.id,
+          sourceRole: sourceImage.role,
+          artifactId: sourceImage.artifactId,
+          relativePath: sourceImage.filePath,
+          registeredAt: now.toISOString(),
+        }),
+        startedAt: now,
+        finishedAt: now,
+      },
+      select: GENERATION_RUN_SUMMARY_SELECT,
+    });
+
+    const candidate = await tx.characterLoraCandidateImage.create({
+      data: {
+        jobId: input.jobId,
+        sectionId: null,
+        generationRunId: run.id,
+        artifactId: sourceImage.artifactId,
+        filePath: sourceImage.filePath,
+        sha256: sourceImage.sha256,
+        width: sourceImage.width,
+        height: sourceImage.height,
+        fileSize: artifact.byteSize,
+        reviewStatus: input.reviewStatus ?? CharacterLoraImageReviewStatus.pending,
+        captionDraft: input.captionDraft ?? `${sourceImage.job.triggerToken}, ${sourceImage.job.characterName}, source reference, ${sourceImage.role}`,
+        reviewedAt: null,
+      },
+      select: CANDIDATE_IMAGE_SELECT,
+    });
+
+    await tx.characterLoraTrainingJob.update({
+      where: { id: input.jobId },
+      data: { status: CharacterLoraJobStatus.reviewing, phase: "review" },
+      select: { id: true },
+    });
+
+    return {
+      candidate,
+      generationRun: run,
+      created: true,
+    };
+  });
+
+  return {
+    candidate: serializeCandidateImage(result.candidate),
+    generationRun: result.generationRun ? serializeGenerationRun(result.generationRun) : null,
+    created: result.created,
+  };
+}
+
 export async function createCharacterLoraJobArtifact(input: {
   jobId: string;
   kind: CharacterLoraArtifactKind;

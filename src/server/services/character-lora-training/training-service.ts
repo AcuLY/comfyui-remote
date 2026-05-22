@@ -473,12 +473,29 @@ function resolveTrainingConfig(input: CharacterLoraTrainingEnqueueRequest): Char
       ...(input.overrides?.expert ?? {}),
     },
   };
+  candidate.expert = normalizeExpertTrainingConfig(candidate.expert);
 
   if (!candidate.advanced.trainTextEncoder) {
     candidate.advanced.textEncoderLearningRate = null;
   }
 
   return parseWithSchema(characterLoraTrainingResolvedConfigSchema, candidate);
+}
+
+function normalizeExpertTrainingConfig(expert: Record<string, unknown>) {
+  if (expert.cacheTextEncoderOutputs !== true) {
+    return expert;
+  }
+
+  return {
+    ...expert,
+    shuffleCaption: false,
+    captionShuffle: false,
+    captionDropoutRate: 0,
+    captionTagDropoutRate: 0,
+    tagDropoutRate: 0,
+    textEncoderDropout: 0,
+  };
 }
 
 async function enqueuePostTrainingBenchmarkAfterCompletion(

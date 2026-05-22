@@ -43,6 +43,7 @@ import {
   persistCharacterLoraJobReport,
   promoteCharacterLoraSectionInstructionToPromptCardVersion,
   promoteCharacterLoraPreset,
+  registerCharacterLoraSourceImageAsCandidate,
   registerManualCharacterLoraCanonicalVersion,
   reviewCharacterLoraImages,
   selectCharacterLoraCanonicalVersion,
@@ -586,6 +587,15 @@ export function JobWorkbenchClient({
     });
   }
 
+  function handleRegisterSourceCandidate(sourceImageId: string) {
+    runAction(`source.register.${sourceImageId}`, "Source candidate 已注册", async () => {
+      await registerCharacterLoraSourceImageAsCandidate(job.id, {
+        sourceImageId,
+        reviewStatus: "pending",
+      });
+    });
+  }
+
   function handleCanonicalGenerate() {
     const sourceImageIds = uniqueIds(canonicalSourceImageIds);
     if (sourceImageIds.length === 0) {
@@ -968,7 +978,13 @@ export function JobWorkbenchClient({
           <input name="sortOrder" type="number" defaultValue={sourceImages.length} className="rounded-lg border border-white/10 bg-black/30 px-2 text-xs text-white" />
           <ActionButton icon={Upload} label="上传" loading={isBusy("source.upload")} disabled={isPending} />
         </form>
-        <SourceImageGrid jobId={job.id} images={sourceImages} />
+        <SourceImageGrid
+          jobId={job.id}
+          images={sourceImages}
+          disabled={isPending}
+          registeringImageId={pendingKey?.startsWith("source.register.") ? pendingKey.replace("source.register.", "") : null}
+          onRegisterCandidate={handleRegisterSourceCandidate}
+        />
       </SectionCard>
 
       <SectionCard title="Canonical" subtitle="生成、模拟完成和选择标准图版本。">
@@ -1961,7 +1977,19 @@ function SourceReferencePicker({
   );
 }
 
-function SourceImageGrid({ jobId, images }: { jobId: string; images: CharacterLoraSourceImage[] }) {
+function SourceImageGrid({
+  jobId,
+  images,
+  disabled,
+  registeringImageId,
+  onRegisterCandidate,
+}: {
+  jobId: string;
+  images: CharacterLoraSourceImage[];
+  disabled: boolean;
+  registeringImageId: string | null;
+  onRegisterCandidate: (sourceImageId: string) => void;
+}) {
   if (images.length === 0) {
     return <div className="mt-3 rounded-lg border border-dashed border-white/10 py-6 text-center text-sm text-zinc-500">暂无 source image</div>;
   }
@@ -1978,6 +2006,14 @@ function SourceImageGrid({ jobId, images }: { jobId: string; images: CharacterLo
             </div>
             <div className="text-zinc-500">{image.width ?? "?"}x{image.height ?? "?"}</div>
             <div className="truncate font-mono text-[11px] text-zinc-500">{image.relativePath}</div>
+            <ActionButton
+              type="button"
+              icon={ImagePlus}
+              label="注册为 candidate"
+              loading={registeringImageId === image.id}
+              disabled={disabled}
+              onClick={() => onRegisterCandidate(image.id)}
+            />
           </div>
         </div>
       ))}
@@ -2079,7 +2115,7 @@ function CandidateImageCard({
       </div>
       <div className="space-y-2 p-3 text-xs">
         <div className="min-w-0">
-          <div className="truncate font-medium text-zinc-100">{section ? `${section.key} / ${section.name}` : "未分组"}</div>
+          <div className="truncate font-medium text-zinc-100">{section ? `${section.key} / ${section.name}` : "Source candidate"}</div>
           <div className="truncate font-mono text-[11px] text-zinc-500">{compactId(image.id)} / {image.width ?? "?"}x{image.height ?? "?"}</div>
           <div className="truncate font-mono text-[11px] text-zinc-500">{image.relativePath}</div>
         </div>

@@ -2,11 +2,12 @@ import path from "node:path";
 import { rm } from "node:fs/promises";
 
 import { Prisma } from "@/generated/prisma";
-import { CharacterLoraJobStatus } from "@/generated/prisma/enums";
+import { CharacterLoraImageReviewStatus, CharacterLoraJobStatus } from "@/generated/prisma/enums";
 import { characterLoraSourceImageRoleSchema } from "@/server/character-lora-training/contracts";
 import {
   createCharacterLoraSourceImage as createSourceImageInRepository,
   findCharacterLoraSourceImageDuplicate,
+  registerCharacterLoraSourceImageAsCandidate as registerSourceImageAsCandidateInRepository,
   getCharacterLoraTrainingJob as getJobFromRepository,
   listCharacterLoraSourceImages as listSourceImagesFromRepository,
 } from "@/server/repositories/character-lora-training-repository";
@@ -32,6 +33,12 @@ type ParsedUploadInput = {
   role: string;
   sortOrder: number;
   provenance?: Record<string, unknown>;
+};
+
+type ParsedRegisterCandidateInput = {
+  sourceImageId: string;
+  reviewStatus?: CharacterLoraImageReviewStatus;
+  captionDraft?: string | null;
 };
 
 export class CharacterLoraSourceImageServiceError extends Error {
@@ -138,6 +145,35 @@ export async function uploadCharacterLoraSourceImage(jobId: string, input: unkno
   }
 }
 
+export async function registerCharacterLoraSourceImageAsCandidate(jobId: string, input: unknown) {
+  const id = normalizeJobId(jobId);
+  const job = await getExistingJob(id);
+
+  if (SOURCE_IMAGE_UPLOAD_BLOCKED_STATUSES.has(job.status)) {
+    throw new CharacterLoraSourceImageServiceError(
+      "Archived or promoted character LoRA training jobs cannot register source candidates",
+      409,
+      { status: job.status },
+    );
+  }
+
+  const parsed = parseRegisterCandidateInput(input);
+
+  try {
+    return await registerSourceImageAsCandidateInRepository({
+      jobId: id,
+      sourceImageId: parsed.sourceImageId,
+      reviewStatus: parsed.reviewStatus,
+      captionDraft: parsed.captionDraft ?? null,
+    });
+  } catch (error) {
+    if (error instanceof Error) {
+      throw new CharacterLoraSourceImageServiceError(error.message, 400);
+    }
+    throw error;
+  }
+}
+
 export function mapCharacterLoraSourceImageError(error: unknown) {
   if (error instanceof CharacterLoraSourceImageServiceError) {
     return {
@@ -204,6 +240,39 @@ function parseUploadInput(input: unknown): ParsedUploadInput {
   };
 }
 
+function parseRegisterCandidateInput(input: unknown): ParsedRegisterCandidateInput {
+  const rawInput = readRawRegisterCandidateInput(input);
+  const sourceImageId = parseRequiredString(rawInput.sourceImageId, "sourceImageId");
+  const reviewStatus = parseOptionalReviewStatus(rawInput.reviewStatus);
+  const captionDraft = parseOptionalTrimmedString(rawInput.captionDraft);
+
+  return {
+    sourceImageId,
+    reviewStatus,
+    captionDraft: captionDraft ?? null,
+  };
+}
+
+function readRawRegisterCandidateInput(input: unknown) {
+  if (typeof input === "string") {
+    return { sourceImageId: input };
+  }
+
+  if (isFormData(input)) {
+    return {
+      sourceImageId: input.get("sourceImageId"),
+      reviewStatus: input.get("reviewStatus"),
+      captionDraft: input.get("captionDraft"),
+    };
+  }
+
+  if (isPlainObject(input)) {
+    return input;
+  }
+
+  throw new CharacterLoraSourceImageServiceError("Invalid source candidate registration request", 400);
+}
+
 function readRawUploadInput(input: unknown) {
   if (isFormData(input)) {
     return {
@@ -251,6 +320,52 @@ function parseOptionalInteger(value: unknown, fieldName: string) {
   }
 
   return numberValue;
+}
+
+function parseRequiredString(value: unknown, fieldName: string) {
+  if (isFile(value)) {
+    throw new CharacterLoraSourceImageServiceError(`${fieldName} must be a string`, 400);
+  }
+
+  const stringValue = typeof value === "string" ? value.trim() : "";
+  if (!stringValue) {
+    throw new CharacterLoraSourceImageServiceError(`${fieldName} is required`, 400);
+  }
+
+  return stringValue;
+}
+
+function parseOptionalTrimmedString(value: unknown) {
+  if (value === undefined || value === null || value === "") {
+    return undefined;
+  }
+
+  if (isFile(value)) {
+    throw new CharacterLoraSourceImageServiceError("captionDraft must be a string", 400);
+  }
+
+  const stringValue = typeof value === "string" ? value.trim() : "";
+
+  return stringValue || undefined;
+}
+
+function parseOptionalReviewStatus(value: unknown) {
+  if (value === undefined || value === null || value === "") {
+    return undefined;
+  }
+
+  if (isFile(value)) {
+    throw new CharacterLoraSourceImageServiceError("reviewStatus must be a string", 400);
+  }
+
+  const status = typeof value === "string" ? value.trim() : "";
+  if (status === CharacterLoraImageReviewStatus.pending || status === CharacterLoraImageReviewStatus.keep) {
+    return status;
+  }
+
+  throw new CharacterLoraSourceImageServiceError("source candidate reviewStatus must be pending or keep", 400, {
+    supportedStatuses: [CharacterLoraImageReviewStatus.pending, CharacterLoraImageReviewStatus.keep],
+  });
 }
 
 function parseProvenance(value: unknown) {

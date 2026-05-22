@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { mkdtemp, mkdir, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import process from "node:process";
@@ -36,6 +36,14 @@ type SmokeSummary = {
     sha256: string;
     relativePath: string;
   };
+  sourceCandidate: {
+    id: string;
+    generationRunId: string;
+    reviewStatus: string;
+    origin: string;
+    repeatCount: number;
+    sourceWeight: number;
+  };
   canonical: {
     id: string;
     version: number;
@@ -63,6 +71,8 @@ type SmokeSummary = {
     id: string;
     version: number;
     itemCount: number;
+    sourceCount: number;
+    syntheticCount: number;
     trainDir: string;
   };
   training: {
@@ -192,6 +202,28 @@ async function main() {
     },
   });
   assertHexSha(source.sha256, "source sha256");
+
+  const registeredSourceCandidate = await services.sourceImageService.registerCharacterLoraSourceImageAsCandidate(job.id, {
+    sourceImageId: source.id,
+  });
+  assert(registeredSourceCandidate.created, "source candidate should be created on first registration");
+  assert(
+    registeredSourceCandidate.candidate.reviewStatus === "pending",
+    "source candidate should default to pending for human review gate",
+  );
+  assert(
+    registeredSourceCandidate.candidate.artifactId === source.artifactId,
+    "source candidate should point at the source image artifact",
+  );
+  assert(
+    registeredSourceCandidate.generationRun?.kind === "source_candidate",
+    "source candidate registration should create a source_candidate run",
+  );
+  const registeredAgain = await services.sourceImageService.registerCharacterLoraSourceImageAsCandidate(job.id, {
+    sourceImageId: source.id,
+  });
+  assert(!registeredAgain.created, "source candidate registration should be idempotent");
+  assert(registeredAgain.candidate.id === registeredSourceCandidate.candidate.id, "idempotent registration should reuse candidate");
 
   const manualCanonicalSource = await services.sourceImageService.uploadCharacterLoraSourceImage(job.id, {
     file: new File([Buffer.concat([PLACEHOLDER_PNG, Buffer.from("manual-canonical")])], "manual-canonical.png", { type: "image/png" }),
@@ -336,7 +368,10 @@ async function main() {
   }
 
   const allImages = await services.phase3Service.listCharacterLoraCandidateImages(job.id);
-  assert(allImages.length === 2, "expected two candidate images before review");
+  const sourceCandidateImage = allImages.find((image) => image.id === registeredSourceCandidate.candidate.id);
+  assert(sourceCandidateImage, "registered source candidate should appear in candidate image list");
+  assert(sourceCandidateImage.reviewStatus === "pending", "source candidate should remain pending before manual review");
+  assert(allImages.length === 3, "expected one source candidate plus two generated candidate images before review");
   await services.phase3Service.reviewCharacterLoraImages({
     images: allImages.map((image) => ({
       imageId: image.id,
@@ -352,9 +387,46 @@ async function main() {
   const frozen = await services.phase3Service.freezeCharacterLoraDataset(job.id, {
     force: true,
     repeatCount: 1,
-    sourceWeight: 1,
+    sourceWeight: 1.5,
   });
   assert(frozen.revision.itemCount === allImages.length, "dataset item count should match kept images");
+  assert(frozen.revision.sourceCount >= 1, "dataset should include registered source candidates as source");
+  assert(frozen.revision.syntheticCount >= 1, "dataset should still include generated candidates as synthetic");
+
+  const selectedManifestArtifact = await services.prismaModule.prisma.characterLoraArtifact.findUnique({
+    where: { id: frozen.revision.selectedManifestArtifactId },
+    select: { relativePath: true },
+  });
+  const metadataJsonlArtifact = await services.prismaModule.prisma.characterLoraArtifact.findUnique({
+    where: { id: frozen.revision.metadataJsonlArtifactId },
+    select: { relativePath: true },
+  });
+  assert(selectedManifestArtifact, "selected manifest artifact should exist");
+  assert(metadataJsonlArtifact, "metadata jsonl artifact should exist");
+  const selectedManifest = readJsonRecord(await readJobJsonArtifact(job.artifactRoot, selectedManifestArtifact.relativePath));
+  const manifestItems = readJsonArray(selectedManifest.items);
+  const sourceManifestItem = readJsonRecord(
+    manifestItems.find((item) => readJsonRecord(item).candidateImageId === registeredSourceCandidate.candidate.id),
+  );
+  assert(sourceManifestItem.origin === "source", "manifest should mark registered source candidate as source");
+  assert(sourceManifestItem.sourceWeight === 1.5, "manifest should apply sourceWeight to source item");
+  assert(sourceManifestItem.repeatCount === 2, "sourceWeight should increase source repeat count");
+  const syntheticManifestItems = manifestItems
+    .map((item) => readJsonRecord(item))
+    .filter((item) => item.origin === "synthetic");
+  assert(syntheticManifestItems.length >= 1, "manifest should keep synthetic generated candidates");
+  assert(
+    syntheticManifestItems.every((item) => item.sourceWeight === null && item.repeatCount === 1),
+    "synthetic items should not receive sourceWeight",
+  );
+  const metadataRows = (await readJobTextArtifact(job.artifactRoot, metadataJsonlArtifact.relativePath))
+    .trim()
+    .split(/\r?\n/)
+    .filter(Boolean)
+    .map((line) => readJsonRecord(JSON.parse(line)));
+  const sourceMetadataItem = metadataRows.find((item) => item.candidateImageId === registeredSourceCandidate.candidate.id);
+  assert(sourceMetadataItem?.origin === "source", "metadata.jsonl should mark registered source candidate as source");
+  assert(sourceMetadataItem.sourceWeight === 1.5, "metadata.jsonl should persist sourceWeight for source item");
 
   const trainingEnqueued = await services.trainingService.enqueueCharacterLoraTrainingRun(frozen.revision.id, {
     launcher: "sd-scripts",
@@ -628,6 +700,14 @@ async function main() {
       sha256: source.sha256,
       relativePath: source.relativePath,
     },
+    sourceCandidate: {
+      id: registeredSourceCandidate.candidate.id,
+      generationRunId: registeredSourceCandidate.candidate.generationRunId,
+      reviewStatus: sourceCandidateImage.reviewStatus,
+      origin: String(sourceManifestItem.origin),
+      repeatCount: Number(sourceManifestItem.repeatCount),
+      sourceWeight: Number(sourceManifestItem.sourceWeight),
+    },
     canonical: {
       id: selectedManualCanonical.canonicalVersion.id,
       version: selectedManualCanonical.canonicalVersion.version,
@@ -651,6 +731,8 @@ async function main() {
       id: frozen.revision.id,
       version: frozen.revision.version,
       itemCount: frozen.revision.itemCount,
+      sourceCount: frozen.revision.sourceCount,
+      syntheticCount: frozen.revision.syntheticCount,
       trainDir: frozen.revision.trainDir,
     },
     training: {
@@ -684,6 +766,9 @@ async function main() {
 
   assert(summary.job.status === "promoted", `final job status should be promoted, got ${summary.job.status}`);
   assert(summary.job.phase === "promotion", `final job phase should be promotion, got ${summary.job.phase}`);
+  assert(summary.sourceCandidate.origin === "source", "summary source candidate origin should be source");
+  assert(summary.dataset.sourceCount >= 1, "summary dataset should count source candidates");
+  assert(summary.dataset.syntheticCount >= 1, "summary dataset should count generated candidates");
   assert(summary.caption.triggerFirst, "caption trigger-first assertion should be true");
   assertHexSha(summary.training.finalSha256, "final training sha256");
   assert(summary.report.coverage.sourceImages >= 1, "report summary should cover source");
@@ -868,6 +953,18 @@ function readBenchmarkMatrixResultSummary(value: unknown) {
   return expectedSectionCount === null && baseSectionCount === null
     ? null
     : { expectedSectionCount, baseSectionCount };
+}
+
+async function readJobJsonArtifact(artifactRoot: string, relativePath: string) {
+  return JSON.parse(await readJobTextArtifact(artifactRoot, relativePath));
+}
+
+async function readJobTextArtifact(artifactRoot: string, relativePath: string) {
+  return readFile(path.join(artifactRoot, relativePath), "utf8");
+}
+
+function readJsonArray(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [];
 }
 
 function readJsonRecord(value: unknown): Record<string, unknown> {
