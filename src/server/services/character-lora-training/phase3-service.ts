@@ -8,6 +8,7 @@ import {
 import {
   characterLoraCaptionPatchRequestSchema,
   characterLoraDatasetFreezeRequestSchema,
+  characterLoraImageGenerationOutputSchema,
   characterLoraImageReviewBatchRequestSchema,
   characterLoraImageReviewStatusSchema,
   characterLoraSectionGenerationRequestSchema,
@@ -52,6 +53,10 @@ import {
   writeCharacterLoraJsonArtifact,
   writeCharacterLoraTextArtifact,
 } from "@/server/services/character-lora-training/artifact-service";
+import {
+  CharacterLoraTrainingServiceError,
+  completeCharacterLoraTrainingTask,
+} from "@/server/services/character-lora-training/training-service";
 import { z } from "zod";
 
 const DEFAULT_PROVIDER = "mock-local" satisfies CharacterLoraImageProvider;
@@ -460,22 +465,30 @@ export async function completeCharacterLoraTask(taskId: string, input: unknown) 
   const parsed = parseWithSchema(characterLoraWorkerTaskCompleteRequestSchema, input);
   const payload = await getTaskPayload(id, parsed.leaseOwner);
 
-  if (payload.taskType !== "image_generation") {
-    throw new CharacterLoraPhase3ServiceError("Only image_generation task completion is supported in Phase 3", 409);
+  if (payload.taskType === "training") {
+    return completeCharacterLoraTrainingTask(id, {
+      leaseOwner: parsed.leaseOwner,
+      output: parsed.output,
+    });
   }
 
+  if (payload.taskType !== "image_generation") {
+    throw new CharacterLoraPhase3ServiceError("Worker task completion is not supported for this task type", 409);
+  }
+
+  const imageOutput = parseWithSchema(characterLoraImageGenerationOutputSchema, parsed.output);
   const job = await getExistingJob(payload.jobId);
   const responseSummary = await writeCharacterLoraJsonArtifact(
     job.artifactRoot,
-    parsed.output.responseSummaryPath,
+    imageOutput.responseSummaryPath,
     redactCharacterLoraProviderPayload({
       completedAt: new Date().toISOString(),
       generationRunId: payload.generationRunId,
-      output: parsed.output,
+      output: imageOutput,
     }),
   );
   const imageArtifacts = await Promise.all(
-    parsed.output.images.map(async (image) => {
+    imageOutput.images.map(async (image) => {
       const resolved = resolveCharacterLoraArtifactPath(job.artifactRoot, image.relativePath);
       const stat = await statArtifactIfExists(job.artifactRoot, image.relativePath);
 
@@ -497,7 +510,7 @@ export async function completeCharacterLoraTask(taskId: string, input: unknown) 
   const result = await completeImageGenerationWorkerTask({
     taskId: id,
     leaseOwner: parsed.leaseOwner,
-    output: parsed.output,
+    output: imageOutput,
     imageArtifacts,
     responseSummaryArtifact: {
       relativePath: responseSummary.relativePath,
@@ -536,6 +549,14 @@ export async function failCharacterLoraTask(taskId: string, input: unknown) {
 }
 
 export function mapCharacterLoraPhase3Error(error: unknown) {
+  if (error instanceof CharacterLoraTrainingServiceError) {
+    return {
+      message: error.message,
+      status: error.status,
+      details: error.details,
+    };
+  }
+
   if (error instanceof CharacterLoraPhase3ServiceError) {
     return {
       message: error.message,

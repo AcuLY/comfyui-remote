@@ -36,6 +36,12 @@ import {
   reviewCharacterLoraImages as reviewImages,
   updateCharacterLoraImageCaption as updateImageCaption,
 } from "@/server/services/character-lora-training/phase3-service";
+import {
+  cancelTrainingRun as cancelTrainingRunInService,
+  enqueueCharacterLoraTrainingRun as enqueueTrainingRun,
+  getCharacterLoraGpuTaskLock as getGpuTaskLock,
+  listCharacterLoraTrainingRuns as listTrainingRuns,
+} from "@/server/services/character-lora-training/training-service";
 
 export async function createCharacterLoraTrainingJob(input: unknown) {
   return createJob(input);
@@ -115,6 +121,22 @@ export async function freezeCharacterLoraDataset(jobId: string, input?: unknown)
 
 export async function listCharacterLoraDatasetRevisions(jobId: string) {
   return listDatasetRevisions(jobId);
+}
+
+export async function enqueueCharacterLoraTrainingRun(datasetRevisionId: string, input?: unknown) {
+  return enqueueTrainingRun(datasetRevisionId, input ?? {});
+}
+
+export async function listCharacterLoraTrainingRuns(jobId: string) {
+  return listTrainingRuns(jobId);
+}
+
+export async function cancelCharacterLoraTrainingRun(trainingRunId: string, input?: unknown) {
+  return cancelTrainingRunInService(trainingRunId, input ?? {});
+}
+
+export async function getCharacterLoraGpuTaskLock() {
+  return getGpuTaskLock();
 }
 
 export async function leaseNextCharacterLoraTask(input: unknown) {

@@ -192,6 +192,99 @@ export const characterLoraImageGenerationOutputSchema = z.object({
   elapsedMs: z.number().int().nonnegative(),
 });
 
+export const characterLoraTrainingLauncherSchema = z.enum(["sd-scripts", "kohya"]);
+export const characterLoraTrainingQueuePolicySchema = z.enum(["reject_when_busy", "queue_when_busy", "ignore_busy"]);
+export const characterLoraTrainingConfigProfileSchema = z.enum(["conservative", "standard", "strong"]);
+
+export const characterLoraTrainingResolvedConfigSchema = z.object({
+  profile: characterLoraTrainingConfigProfileSchema,
+  launcher: characterLoraTrainingLauncherSchema,
+  ordinary: z.object({
+    rank: z.number().int().positive().default(32),
+    alpha: z.number().int().positive().default(16),
+    resolution: z.number().int().positive().default(1024),
+    bucket: z.boolean().default(true),
+    precision: z.enum(["fp16", "bf16", "fp32"]).default("bf16"),
+    batchSize: z.number().int().positive().default(1),
+    targetSteps: z.number().int().positive().default(2000),
+    saveInterval: z.number().int().positive().default(500),
+  }).strict(),
+  advanced: z.object({
+    unetLearningRate: z.number().positive().default(0.0001),
+    textEncoderLearningRate: z.number().positive().nullable().default(0.00002),
+    trainTextEncoder: z.boolean().default(true),
+    networkModule: z.string().trim().min(1).default("networks.lora"),
+    optimizer: z.string().trim().min(1).default("adamw8bit"),
+    lrScheduler: z.string().trim().min(1).default("cosine"),
+    minBucketResolution: z.number().int().positive().default(512),
+    maxBucketResolution: z.number().int().positive().default(1536),
+    seed: z.number().int().optional(),
+  }).strict(),
+  expert: jsonObjectSchema.default({}),
+}).strict();
+
+export const characterLoraTrainingConfigOverridesSchema = z.object({
+  ordinary: characterLoraTrainingResolvedConfigSchema.shape.ordinary.partial().optional(),
+  advanced: characterLoraTrainingResolvedConfigSchema.shape.advanced.partial().optional(),
+  expert: jsonObjectSchema.optional(),
+}).strict();
+
+export const characterLoraTrainingLeaseOptionsSchema = z.object({
+  leaseOwner: z.string().trim().min(1).optional(),
+  leaseDurationSeconds: z.number().int().min(30).max(86_400).optional(),
+}).strict();
+
+export const characterLoraTrainingCancelOptionsSchema = z.object({
+  signalFilename: z.string().trim().min(1).optional(),
+}).strict();
+
+export const characterLoraTrainingEnqueueRequestSchema = z.object({
+  launcher: characterLoraTrainingLauncherSchema.default("sd-scripts"),
+  allowWhenComfyQueueBusy: z.boolean().optional(),
+  queuePolicy: characterLoraTrainingQueuePolicySchema.default("reject_when_busy"),
+  configProfile: characterLoraTrainingConfigProfileSchema.default("standard"),
+  overrides: characterLoraTrainingConfigOverridesSchema.optional(),
+  advanced: characterLoraTrainingResolvedConfigSchema.shape.advanced.partial().optional(),
+  expert: jsonObjectSchema.optional(),
+  lease: characterLoraTrainingLeaseOptionsSchema.optional(),
+  cancel: characterLoraTrainingCancelOptionsSchema.optional(),
+}).strict();
+
+export const characterLoraTrainingProgressSchema = z.object({
+  step: z.number().int().nonnegative().optional(),
+  targetSteps: z.number().int().positive().optional(),
+  loss: z.number().nonnegative().optional(),
+  etaSeconds: z.number().int().nonnegative().optional(),
+  currentCheckpoint: relativeArtifactPathSchema.optional(),
+}).strict();
+
+export const characterLoraTrainingCheckpointOutputSchema = z.object({
+  step: z.number().int().nonnegative(),
+  artifact: characterLoraArtifactRefSchema,
+  metrics: jsonObjectSchema.optional(),
+}).strict();
+
+export const characterLoraTrainingMetadataSummarySchema = z.object({
+  keyCount: z.number().int().nonnegative(),
+  metadataPath: relativeArtifactPathSchema.optional(),
+  summary: jsonObjectSchema.optional(),
+}).strict();
+
+export const characterLoraTrainingCompleteOutputSchema = z.object({
+  finalSafetensorsArtifact: characterLoraArtifactRefSchema,
+  finalSha256: sha256Schema.optional(),
+  hashes: z.record(z.string(), sha256Schema).optional(),
+  metadataSummary: characterLoraTrainingMetadataSummarySchema,
+  checkpoints: z.array(characterLoraTrainingCheckpointOutputSchema).default([]),
+  trainingLogArtifact: characterLoraArtifactRefSchema.optional(),
+  elapsedMs: z.number().int().nonnegative().optional(),
+}).strict();
+
+export const characterLoraTrainingCancelRequestSchema = z.object({
+  reason: z.string().trim().min(1).optional(),
+  requestedBy: z.string().trim().min(1).optional(),
+}).strict();
+
 export const characterLoraProviderErrorSchema = z.object({
   httpStatus: z.number().int().positive().optional(),
   backendError: z.string().min(1),
@@ -203,6 +296,14 @@ export type CharacterLoraProviderToolParams = z.infer<typeof characterLoraProvid
 export type CharacterLoraProviderInputImage = z.infer<typeof characterLoraProviderInputImageSchema>;
 export type CharacterLoraImageGenerationRequest = z.infer<typeof characterLoraImageGenerationRequestSchema>;
 export type CharacterLoraImageGenerationOutput = z.infer<typeof characterLoraImageGenerationOutputSchema>;
+export type CharacterLoraTrainingLauncher = z.infer<typeof characterLoraTrainingLauncherSchema>;
+export type CharacterLoraTrainingQueuePolicy = z.infer<typeof characterLoraTrainingQueuePolicySchema>;
+export type CharacterLoraTrainingConfigProfile = z.infer<typeof characterLoraTrainingConfigProfileSchema>;
+export type CharacterLoraTrainingResolvedConfig = z.infer<typeof characterLoraTrainingResolvedConfigSchema>;
+export type CharacterLoraTrainingEnqueueRequest = z.infer<typeof characterLoraTrainingEnqueueRequestSchema>;
+export type CharacterLoraTrainingProgress = z.infer<typeof characterLoraTrainingProgressSchema>;
+export type CharacterLoraTrainingCompleteOutput = z.infer<typeof characterLoraTrainingCompleteOutputSchema>;
+export type CharacterLoraTrainingCancelRequest = z.infer<typeof characterLoraTrainingCancelRequestSchema>;
 export type CharacterLoraProviderError = z.infer<typeof characterLoraProviderErrorSchema>;
 
 export const characterLoraSectionGenerationRequestSchema = z.object({
@@ -271,7 +372,10 @@ export const characterLoraWorkerTaskHeartbeatRequestSchema = z.object({
 
 export const characterLoraWorkerTaskCompleteRequestSchema = z.object({
   leaseOwner: z.string().trim().min(1).optional(),
-  output: characterLoraImageGenerationOutputSchema,
+  output: z.union([
+    characterLoraImageGenerationOutputSchema,
+    characterLoraTrainingCompleteOutputSchema,
+  ]),
 }).strict();
 
 export const characterLoraWorkerTaskFailRequestSchema = z.object({

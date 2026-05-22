@@ -4,6 +4,7 @@ import {
   CharacterLoraJobStatus,
   CharacterLoraRunStatus,
   CharacterLoraWorkerType,
+  RunStatus,
 } from "@/generated/prisma/enums";
 import { db } from "@/lib/db";
 import { detectProvider } from "@/lib/prisma";
@@ -11,6 +12,8 @@ import type {
   CharacterLoraArtifactKind,
   CharacterLoraImageGenerationOutput,
   CharacterLoraImageGenerationTaskPayload,
+  CharacterLoraTrainingCompleteOutput,
+  CharacterLoraTrainingTaskPayload,
 } from "@/server/character-lora-training/contracts";
 
 const JOB_SUMMARY_SELECT = {
@@ -223,6 +226,36 @@ const DATASET_REVISION_SELECT = {
   },
 } as const;
 
+const TRAINING_RUN_SELECT = {
+  id: true,
+  jobId: true,
+  datasetRevisionId: true,
+  status: true,
+  launcher: true,
+  resolvedConfig: true,
+  configArtifactId: true,
+  dryRunSummaryArtifactId: true,
+  logArtifactId: true,
+  outputDir: true,
+  finalSafetensorsArtifactId: true,
+  finalSha256: true,
+  metadataSummary: true,
+  currentStep: true,
+  targetSteps: true,
+  lossSnapshot: true,
+  cancelRequestedAt: true,
+  startedAt: true,
+  finishedAt: true,
+  createdAt: true,
+  updatedAt: true,
+  _count: {
+    select: {
+      checkpoints: true,
+      benchmarkRuns: true,
+    },
+  },
+} as const;
+
 const WORKER_TASK_SELECT = {
   id: true,
   jobId: true,
@@ -241,6 +274,17 @@ const WORKER_TASK_SELECT = {
   errorSummary: true,
   createdAt: true,
   updatedAt: true,
+} as const;
+
+const GPU_TASK_LOCK_SELECT = {
+  id: true,
+  taskType: true,
+  ownerType: true,
+  ownerId: true,
+  status: true,
+  startedAt: true,
+  releasedAt: true,
+  metadata: true,
 } as const;
 
 type JobSummaryRecord = Prisma.CharacterLoraTrainingJobGetPayload<{
@@ -283,8 +327,16 @@ type DatasetRevisionRecord = Prisma.CharacterLoraDatasetRevisionGetPayload<{
   select: typeof DATASET_REVISION_SELECT;
 }>;
 
+type TrainingRunRecord = Prisma.CharacterLoraTrainingRunGetPayload<{
+  select: typeof TRAINING_RUN_SELECT;
+}>;
+
 type WorkerTaskRecord = Prisma.CharacterLoraWorkerTaskGetPayload<{
   select: typeof WORKER_TASK_SELECT;
+}>;
+
+type GpuTaskLockRecord = Prisma.GpuTaskLockGetPayload<{
+  select: typeof GPU_TASK_LOCK_SELECT;
 }>;
 
 export type CharacterLoraTrainingJobCreateInput = {
@@ -333,7 +385,9 @@ export type CharacterLoraSectionTemplateSummary = ReturnType<typeof serializeSec
 export type CharacterLoraJobSectionSummary = ReturnType<typeof serializeJobSection>;
 export type CharacterLoraCandidateImageSummary = ReturnType<typeof serializeCandidateImage>;
 export type CharacterLoraDatasetRevisionSummary = ReturnType<typeof serializeDatasetRevision>;
+export type CharacterLoraTrainingRunSummary = ReturnType<typeof serializeTrainingRun>;
 export type CharacterLoraWorkerTaskSummary = ReturnType<typeof serializeWorkerTask>;
+export type CharacterLoraGpuTaskLockSummary = ReturnType<typeof serializeGpuTaskLock>;
 
 export type CharacterLoraSourceImageCreateInput = {
   jobId: string;
@@ -1184,30 +1238,221 @@ export async function updateCharacterLoraCandidateCaption(input: {
   return serializeCandidateImage(image);
 }
 
+export async function getCharacterLoraDatasetRevision(datasetRevisionId: string) {
+  const revision = await db.characterLoraDatasetRevision.findUnique({
+    where: { id: datasetRevisionId },
+    select: DATASET_REVISION_SELECT,
+  });
+
+  return revision ? serializeDatasetRevision(revision) : null;
+}
+
+export async function listCharacterLoraTrainingRuns(jobId: string) {
+  const runs = await db.characterLoraTrainingRun.findMany({
+    where: { jobId },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    select: TRAINING_RUN_SELECT,
+  });
+
+  return runs.map(serializeTrainingRun);
+}
+
+export async function getCharacterLoraTrainingRun(trainingRunId: string) {
+  const run = await db.characterLoraTrainingRun.findUnique({
+    where: { id: trainingRunId },
+    select: TRAINING_RUN_SELECT,
+  });
+
+  return run ? serializeTrainingRun(run) : null;
+}
+
+export async function countActiveComfyQueueRuns() {
+  const [queued, running] = await Promise.all([
+    db.run.count({ where: { status: RunStatus.queued } }),
+    db.run.count({ where: { status: RunStatus.running } }),
+  ]);
+
+  return { queued, running };
+}
+
+export async function listActiveCharacterLoraGpuTaskLocks() {
+  const locks = await db.gpuTaskLock.findMany({
+    where: { status: "active" },
+    orderBy: [{ startedAt: "asc" }, { id: "asc" }],
+    select: GPU_TASK_LOCK_SELECT,
+  });
+
+  return locks.map(serializeGpuTaskLock);
+}
+
+export async function getCurrentCharacterLoraGpuTaskLock() {
+  const lock = await db.gpuTaskLock.findFirst({
+    where: { status: "active" },
+    orderBy: [{ startedAt: "asc" }, { id: "asc" }],
+    select: GPU_TASK_LOCK_SELECT,
+  });
+
+  return lock ? serializeGpuTaskLock(lock) : null;
+}
+
+export async function createCharacterLoraTrainingRunWithTask(input: {
+  trainingRunId: string;
+  jobId: string;
+  datasetRevisionId: string;
+  launcher: string;
+  resolvedConfig: Prisma.InputJsonValue;
+  outputDir: string;
+  configArtifact: {
+    relativePath: string;
+    absolutePath: string;
+    sha256: string;
+    byteSize: bigint | number;
+    metadata: Prisma.InputJsonValue;
+  };
+  dryRunSummaryArtifact?: {
+    relativePath: string;
+    absolutePath: string;
+    sha256: string;
+    byteSize: bigint | number;
+    metadata: Prisma.InputJsonValue;
+  } | null;
+  taskPayload: CharacterLoraTrainingTaskPayload;
+  gpuLockMetadata: Prisma.InputJsonValue;
+}) {
+  const result = await db.$transaction(async (tx) => {
+    const configArtifact = await tx.characterLoraArtifact.create({
+      data: {
+        jobId: input.jobId,
+        kind: "training_config",
+        relativePath: input.configArtifact.relativePath,
+        absolutePath: input.configArtifact.absolutePath,
+        sha256: input.configArtifact.sha256,
+        byteSize: input.configArtifact.byteSize,
+        mimeType: "application/toml",
+        redactionLevel: "path_only",
+        metadata: input.configArtifact.metadata,
+      },
+      select: { id: true },
+    });
+
+    const dryRunSummaryArtifact = input.dryRunSummaryArtifact
+      ? await tx.characterLoraArtifact.create({
+          data: {
+            jobId: input.jobId,
+            kind: "training_config",
+            relativePath: input.dryRunSummaryArtifact.relativePath,
+            absolutePath: input.dryRunSummaryArtifact.absolutePath,
+            sha256: input.dryRunSummaryArtifact.sha256,
+            byteSize: input.dryRunSummaryArtifact.byteSize,
+            mimeType: "application/json",
+            redactionLevel: "path_only",
+            metadata: input.dryRunSummaryArtifact.metadata,
+          },
+          select: { id: true },
+        })
+      : null;
+
+    const targetSteps = extractTargetSteps(input.resolvedConfig);
+    const run = await tx.characterLoraTrainingRun.create({
+      data: {
+        id: input.trainingRunId,
+        jobId: input.jobId,
+        datasetRevisionId: input.datasetRevisionId,
+        status: CharacterLoraRunStatus.queued,
+        launcher: input.launcher,
+        resolvedConfig: input.resolvedConfig,
+        configArtifactId: configArtifact.id,
+        dryRunSummaryArtifactId: dryRunSummaryArtifact?.id ?? null,
+        outputDir: input.outputDir,
+        targetSteps,
+      },
+      select: TRAINING_RUN_SELECT,
+    });
+
+    const task = await tx.characterLoraWorkerTask.create({
+      data: {
+        jobId: input.jobId,
+        workerType: CharacterLoraWorkerType.training,
+        targetType: "trainingRun",
+        targetId: run.id,
+        status: CharacterLoraRunStatus.queued,
+        payload: toInputJsonValue(input.taskPayload),
+      },
+      select: { id: true },
+    });
+
+    const gpuLock = await tx.gpuTaskLock.create({
+      data: {
+        taskType: "training",
+        ownerType: "character_lora_training_run",
+        ownerId: run.id,
+        status: "active",
+        metadata: input.gpuLockMetadata,
+      },
+      select: GPU_TASK_LOCK_SELECT,
+    });
+
+    await tx.characterLoraTrainingJob.update({
+      where: { id: input.jobId },
+      data: {
+        status: CharacterLoraJobStatus.training_queued,
+        phase: "training",
+        selectedDatasetRevisionId: input.datasetRevisionId,
+        failureSummary: null,
+      },
+      select: { id: true },
+    });
+
+    return { run, taskId: task.id, gpuLock };
+  });
+
+  return {
+    trainingRun: serializeTrainingRun(result.run),
+    workerTaskId: result.taskId,
+    gpuTaskLock: serializeGpuTaskLock(result.gpuLock),
+  };
+}
+
 export async function leaseNextCharacterLoraWorkerTask(input: {
   workerType: CharacterLoraWorkerType;
   leaseOwner: string;
   leaseExpiresAt: Date;
 }) {
   const task = await db.$transaction(async (tx) => {
+    const now = new Date();
     const queued = await tx.characterLoraWorkerTask.findFirst({
       where: {
         workerType: input.workerType,
-        status: CharacterLoraRunStatus.queued,
+        OR: [
+          { status: CharacterLoraRunStatus.queued },
+          {
+            status: CharacterLoraRunStatus.running,
+            leaseExpiresAt: { lt: now },
+          },
+        ],
       },
-      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-      select: { id: true, targetType: true, targetId: true },
+      orderBy: [
+        { status: "asc" },
+        { createdAt: "asc" },
+        { id: "asc" },
+      ],
+      select: { id: true, targetType: true, targetId: true, status: true },
     });
 
     if (!queued) {
       return null;
     }
 
-    const now = new Date();
     const claimed = await tx.characterLoraWorkerTask.updateMany({
       where: {
         id: queued.id,
-        status: CharacterLoraRunStatus.queued,
+        OR: [
+          { status: CharacterLoraRunStatus.queued },
+          {
+            status: CharacterLoraRunStatus.running,
+            leaseExpiresAt: { lt: now },
+          },
+        ],
       },
       data: {
         status: CharacterLoraRunStatus.running,
@@ -1228,13 +1473,34 @@ export async function leaseNextCharacterLoraWorkerTask(input: {
       await tx.characterLoraGenerationRun.updateMany({
         where: {
           id: queued.targetId,
-          status: CharacterLoraRunStatus.queued,
+          status: { in: [CharacterLoraRunStatus.queued, CharacterLoraRunStatus.running] },
         },
         data: {
           status: CharacterLoraRunStatus.running,
-          startedAt: now,
+          startedAt: queued.status === CharacterLoraRunStatus.queued ? now : undefined,
           errorSummary: null,
         },
+      });
+    }
+
+    if (queued.targetType === "trainingRun") {
+      const run = await tx.characterLoraTrainingRun.update({
+        where: { id: queued.targetId },
+        data: {
+          status: CharacterLoraRunStatus.running,
+          startedAt: queued.status === CharacterLoraRunStatus.queued ? now : undefined,
+        },
+        select: { id: true, jobId: true },
+      });
+
+      await tx.characterLoraTrainingJob.update({
+        where: { id: run.jobId },
+        data: {
+          status: CharacterLoraJobStatus.training_running,
+          phase: "training",
+          failureSummary: null,
+        },
+        select: { id: true },
       });
     }
 
@@ -1256,34 +1522,75 @@ export async function getCharacterLoraWorkerTask(taskId: string) {
   return task ? serializeWorkerTask(task) : null;
 }
 
+export async function getCharacterLoraWorkerTaskForTarget(input: {
+  targetType: string;
+  targetId: string;
+}) {
+  const task = await db.characterLoraWorkerTask.findFirst({
+    where: {
+      targetType: input.targetType,
+      targetId: input.targetId,
+      status: { in: [CharacterLoraRunStatus.queued, CharacterLoraRunStatus.running] },
+    },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    select: WORKER_TASK_SELECT,
+  });
+
+  return task ? serializeWorkerTask(task) : null;
+}
+
 export async function heartbeatCharacterLoraWorkerTask(input: {
   taskId: string;
   leaseOwner?: string;
   leaseExpiresAt?: Date;
   progressJson?: Prisma.InputJsonValue;
 }) {
-  const where: Prisma.CharacterLoraWorkerTaskWhereInput = {
-    id: input.taskId,
-    status: CharacterLoraRunStatus.running,
-    ...(input.leaseOwner ? { leaseOwner: input.leaseOwner } : {}),
-  };
+  const task = await db.$transaction(async (tx) => {
+    const existing = await tx.characterLoraWorkerTask.findUnique({
+      where: { id: input.taskId },
+      select: WORKER_TASK_SELECT,
+    });
 
-  const result = await db.characterLoraWorkerTask.updateMany({
-    where,
-    data: {
-      heartbeatAt: new Date(),
-      ...(input.leaseExpiresAt ? { leaseExpiresAt: input.leaseExpiresAt } : {}),
-      ...(input.progressJson ? { progressJson: input.progressJson } : {}),
-    },
-  });
+    if (!existing || existing.status !== CharacterLoraRunStatus.running) {
+      return null;
+    }
 
-  if (result.count !== 1) {
-    return null;
-  }
+    if (input.leaseOwner && existing.leaseOwner !== input.leaseOwner) {
+      return null;
+    }
 
-  const task = await db.characterLoraWorkerTask.findUnique({
-    where: { id: input.taskId },
-    select: WORKER_TASK_SELECT,
+    const updated = await tx.characterLoraWorkerTask.update({
+      where: { id: input.taskId },
+      data: {
+        heartbeatAt: new Date(),
+        ...(input.leaseExpiresAt ? { leaseExpiresAt: input.leaseExpiresAt } : {}),
+        ...(input.progressJson ? { progressJson: input.progressJson } : {}),
+      },
+      select: WORKER_TASK_SELECT,
+    });
+
+    if (updated.targetType === "trainingRun") {
+      const progress = extractTrainingProgressUpdate(input.progressJson);
+      const run = await tx.characterLoraTrainingRun.update({
+        where: { id: updated.targetId },
+        data: {
+          status: CharacterLoraRunStatus.running,
+          currentStep: progress.currentStep,
+          targetSteps: progress.targetSteps,
+          lossSnapshot: progress.lossSnapshot,
+          startedAt: updated.startedAt,
+        },
+        select: { jobId: true },
+      });
+
+      await tx.characterLoraTrainingJob.update({
+        where: { id: run.jobId },
+        data: { status: CharacterLoraJobStatus.training_running, phase: "training" },
+        select: { id: true },
+      });
+    }
+
+    return updated;
   });
 
   return task ? serializeWorkerTask(task) : null;
@@ -1475,6 +1782,208 @@ export async function completeImageGenerationWorkerTask(input: {
     : null;
 }
 
+export async function completeTrainingWorkerTask(input: {
+  taskId: string;
+  leaseOwner?: string;
+  output: CharacterLoraTrainingCompleteOutput;
+  finalArtifact: {
+    relativePath: string;
+    absolutePath: string;
+    sha256: string;
+    byteSize?: bigint | number | null;
+    metadata?: Prisma.InputJsonValue | null;
+  };
+  logArtifact?: {
+    relativePath: string;
+    absolutePath: string;
+    sha256: string;
+    byteSize?: bigint | number | null;
+    metadata?: Prisma.InputJsonValue | null;
+  } | null;
+  checkpoints: Array<{
+    step: number;
+    relativePath: string;
+    absolutePath: string;
+    sha256: string;
+    byteSize?: bigint | number | null;
+    metrics?: Prisma.InputJsonValue | null;
+  }>;
+}) {
+  const result = await db.$transaction(async (tx) => {
+    const task = await tx.characterLoraWorkerTask.findUnique({
+      where: { id: input.taskId },
+      select: WORKER_TASK_SELECT,
+    });
+
+    if (!task || task.status !== CharacterLoraRunStatus.running) {
+      return null;
+    }
+
+    if (input.leaseOwner && task.leaseOwner !== input.leaseOwner) {
+      return null;
+    }
+
+    if (task.targetType !== "trainingRun") {
+      return null;
+    }
+
+    const run = await tx.characterLoraTrainingRun.findUnique({
+      where: { id: task.targetId },
+      select: { id: true, jobId: true, targetSteps: true },
+    });
+
+    if (!run) {
+      return null;
+    }
+
+    const finalArtifact = await tx.characterLoraArtifact.create({
+      data: {
+        jobId: run.jobId,
+        kind: "safetensors",
+        relativePath: input.finalArtifact.relativePath,
+        absolutePath: input.finalArtifact.absolutePath,
+        sha256: input.finalArtifact.sha256,
+        byteSize: input.finalArtifact.byteSize ?? null,
+        mimeType: "application/octet-stream",
+        redactionLevel: "path_only",
+        metadata: input.finalArtifact.metadata ?? Prisma.DbNull,
+      },
+      select: { id: true },
+    });
+
+    const logArtifact = input.logArtifact
+      ? await tx.characterLoraArtifact.create({
+          data: {
+            jobId: run.jobId,
+            kind: "training_log",
+            relativePath: input.logArtifact.relativePath,
+            absolutePath: input.logArtifact.absolutePath,
+            sha256: input.logArtifact.sha256,
+            byteSize: input.logArtifact.byteSize ?? null,
+            mimeType: "text/plain",
+            redactionLevel: "path_only",
+            metadata: input.logArtifact.metadata ?? Prisma.DbNull,
+          },
+          select: { id: true },
+        })
+      : null;
+
+    for (const checkpoint of input.checkpoints) {
+      const checkpointArtifact =
+        checkpoint.relativePath === input.finalArtifact.relativePath
+          ? finalArtifact
+          : await tx.characterLoraArtifact.create({
+              data: {
+                jobId: run.jobId,
+                kind: "safetensors",
+                relativePath: checkpoint.relativePath,
+                absolutePath: checkpoint.absolutePath,
+                sha256: checkpoint.sha256,
+                byteSize: checkpoint.byteSize ?? null,
+                mimeType: "application/octet-stream",
+                redactionLevel: "path_only",
+                metadata: checkpoint.metrics ?? Prisma.DbNull,
+              },
+              select: { id: true },
+            });
+
+      await tx.characterLoraTrainingCheckpoint.upsert({
+        where: {
+          trainingRunId_step: {
+            trainingRunId: run.id,
+            step: checkpoint.step,
+          },
+        },
+        update: {
+          artifactId: checkpointArtifact.id,
+          sha256: checkpoint.sha256,
+          metrics: checkpoint.metrics ?? Prisma.DbNull,
+        },
+        create: {
+          trainingRunId: run.id,
+          step: checkpoint.step,
+          artifactId: checkpointArtifact.id,
+          sha256: checkpoint.sha256,
+          metrics: checkpoint.metrics ?? Prisma.DbNull,
+        },
+        select: { id: true },
+      });
+    }
+
+    await tx.characterLoraTrainingRun.update({
+      where: { id: run.id },
+      data: {
+        status: CharacterLoraRunStatus.done,
+        logArtifactId: logArtifact?.id ?? null,
+        finalSafetensorsArtifactId: finalArtifact.id,
+        finalSha256: input.finalArtifact.sha256,
+        metadataSummary: toInputJsonValue(input.output.metadataSummary),
+        currentStep: extractCompletionStep(input.output),
+        targetSteps: run.targetSteps ?? extractCompletionStep(input.output),
+        lossSnapshot: toInputJsonValue({
+          final: true,
+          hashes: input.output.hashes ?? {},
+        }),
+        finishedAt: new Date(),
+      },
+      select: { id: true },
+    });
+
+    await tx.characterLoraTrainingJob.update({
+      where: { id: run.jobId },
+      data: {
+        status: CharacterLoraJobStatus.trained,
+        phase: "training",
+        failureSummary: null,
+      },
+      select: { id: true },
+    });
+
+    const completedTask = await tx.characterLoraWorkerTask.update({
+      where: { id: task.id },
+      data: {
+        status: CharacterLoraRunStatus.done,
+        leaseExpiresAt: null,
+        heartbeatAt: new Date(),
+        finishedAt: new Date(),
+        progressJson: toInputJsonValue({
+          completed: true,
+          finalSafetensorsArtifactId: finalArtifact.id,
+          finalSha256: input.finalArtifact.sha256,
+        }),
+        errorSummary: null,
+      },
+      select: WORKER_TASK_SELECT,
+    });
+
+    await tx.gpuTaskLock.updateMany({
+      where: {
+        ownerType: "character_lora_training_run",
+        ownerId: run.id,
+        status: "active",
+      },
+      data: {
+        status: "released",
+        releasedAt: new Date(),
+      },
+    });
+
+    const refreshedRun = await tx.characterLoraTrainingRun.findUnique({
+      where: { id: run.id },
+      select: TRAINING_RUN_SELECT,
+    });
+
+    return { task: completedTask, trainingRun: refreshedRun };
+  });
+
+  return result
+    ? {
+        task: serializeWorkerTask(result.task),
+        trainingRun: result.trainingRun ? serializeTrainingRun(result.trainingRun) : null,
+      }
+    : null;
+}
+
 export async function failCharacterLoraWorkerTask(input: {
   taskId: string;
   leaseOwner?: string;
@@ -1529,6 +2038,39 @@ export async function failCharacterLoraWorkerTask(input: {
       });
     }
 
+    if (task.targetType === "trainingRun") {
+      const run = await tx.characterLoraTrainingRun.update({
+        where: { id: task.targetId },
+        data: {
+          status: CharacterLoraRunStatus.failed,
+          finishedAt: new Date(),
+          lossSnapshot: input.progressJson ?? task.progressJson ?? Prisma.DbNull,
+        },
+        select: { id: true, jobId: true },
+      });
+
+      await tx.characterLoraTrainingJob.update({
+        where: { id: run.jobId },
+        data: {
+          status: CharacterLoraJobStatus.failed,
+          failureSummary: input.errorSummary,
+        },
+        select: { id: true },
+      });
+
+      await tx.gpuTaskLock.updateMany({
+        where: {
+          ownerType: "character_lora_training_run",
+          ownerId: run.id,
+          status: "active",
+        },
+        data: {
+          status: "released",
+          releasedAt: new Date(),
+        },
+      });
+    }
+
     return tx.characterLoraWorkerTask.findUnique({
       where: { id: input.taskId },
       select: WORKER_TASK_SELECT,
@@ -1536,6 +2078,141 @@ export async function failCharacterLoraWorkerTask(input: {
   });
 
   return result ? serializeWorkerTask(result) : null;
+}
+
+export async function cancelCharacterLoraTrainingRun(input: {
+  trainingRunId: string;
+  reason?: string | null;
+  requestedBy?: string | null;
+  cancelSignalArtifact?: {
+    relativePath: string;
+    absolutePath: string;
+    sha256: string;
+    byteSize: bigint | number;
+    metadata: Prisma.InputJsonValue;
+  } | null;
+}) {
+  const result = await db.$transaction(async (tx) => {
+    const run = await tx.characterLoraTrainingRun.findUnique({
+      where: { id: input.trainingRunId },
+      select: TRAINING_RUN_SELECT,
+    });
+
+    if (!run) {
+      return null;
+    }
+
+    const cancelSummary = {
+      cancelRequested: true,
+      reason: input.reason ?? null,
+      requestedBy: input.requestedBy ?? null,
+      cancelSignalPath: input.cancelSignalArtifact?.relativePath ?? null,
+    };
+
+    let cancelArtifactId: string | null = null;
+    if (input.cancelSignalArtifact) {
+      const artifact = await tx.characterLoraArtifact.create({
+        data: {
+          jobId: run.jobId,
+          kind: "training_log",
+          relativePath: input.cancelSignalArtifact.relativePath,
+          absolutePath: input.cancelSignalArtifact.absolutePath,
+          sha256: input.cancelSignalArtifact.sha256,
+          byteSize: input.cancelSignalArtifact.byteSize,
+          mimeType: "application/json",
+          redactionLevel: "path_only",
+          metadata: input.cancelSignalArtifact.metadata,
+        },
+        select: { id: true },
+      });
+      cancelArtifactId = artifact.id;
+    }
+
+    if (run.status === CharacterLoraRunStatus.queued) {
+      await tx.characterLoraWorkerTask.updateMany({
+        where: {
+          targetType: "trainingRun",
+          targetId: run.id,
+          status: CharacterLoraRunStatus.queued,
+        },
+        data: {
+          status: CharacterLoraRunStatus.cancelled,
+          finishedAt: new Date(),
+          progressJson: toInputJsonValue(cancelSummary),
+          errorSummary: input.reason ?? "Training run cancelled before lease",
+        },
+      });
+
+      await tx.characterLoraTrainingRun.update({
+        where: { id: run.id },
+        data: {
+          status: CharacterLoraRunStatus.cancelled,
+          cancelRequestedAt: new Date(),
+          finishedAt: new Date(),
+          lossSnapshot: toInputJsonValue({
+            ...cancelSummary,
+            cancelSignalArtifactId: cancelArtifactId,
+          }),
+        },
+        select: { id: true },
+      });
+
+      await tx.characterLoraTrainingJob.update({
+        where: { id: run.jobId },
+        data: {
+          status: CharacterLoraJobStatus.cancelled,
+          phase: "training",
+          failureSummary: input.reason ?? "Training run cancelled before lease",
+        },
+        select: { id: true },
+      });
+
+      await tx.gpuTaskLock.updateMany({
+        where: {
+          ownerType: "character_lora_training_run",
+          ownerId: run.id,
+          status: "active",
+        },
+        data: {
+          status: "released",
+          releasedAt: new Date(),
+        },
+      });
+    } else if (run.status === CharacterLoraRunStatus.running) {
+      await tx.characterLoraWorkerTask.updateMany({
+        where: {
+          targetType: "trainingRun",
+          targetId: run.id,
+          status: CharacterLoraRunStatus.running,
+        },
+        data: {
+          progressJson: toInputJsonValue(cancelSummary),
+          heartbeatAt: new Date(),
+        },
+      });
+
+      await tx.characterLoraTrainingRun.update({
+        where: { id: run.id },
+        data: {
+          cancelRequestedAt: new Date(),
+          lossSnapshot: toInputJsonValue({
+            ...cancelSummary,
+            cancelSignalArtifactId: cancelArtifactId,
+          }),
+        },
+        select: { id: true },
+      });
+    }
+
+    const refreshedRun = await tx.characterLoraTrainingRun.findUnique({
+      where: { id: run.id },
+      select: TRAINING_RUN_SELECT,
+    });
+
+    return refreshedRun;
+  });
+
+  return result ? serializeTrainingRun(result) : null;
 }
 
 export async function listCharacterLoraDatasetRevisions(jobId: string) {
@@ -1919,6 +2596,36 @@ function serializeDatasetRevision(revision: DatasetRevisionRecord) {
   };
 }
 
+function serializeTrainingRun(run: TrainingRunRecord) {
+  return {
+    id: run.id,
+    jobId: run.jobId,
+    datasetRevisionId: run.datasetRevisionId,
+    status: run.status,
+    launcher: run.launcher,
+    resolvedConfig: run.resolvedConfig,
+    configArtifactId: run.configArtifactId,
+    dryRunSummaryArtifactId: run.dryRunSummaryArtifactId,
+    logArtifactId: run.logArtifactId,
+    outputDir: run.outputDir,
+    finalSafetensorsArtifactId: run.finalSafetensorsArtifactId,
+    finalSha256: run.finalSha256,
+    metadataSummary: run.metadataSummary,
+    currentStep: run.currentStep,
+    targetSteps: run.targetSteps,
+    lossSnapshot: run.lossSnapshot,
+    cancelRequestedAt: run.cancelRequestedAt?.toISOString() ?? null,
+    startedAt: run.startedAt?.toISOString() ?? null,
+    finishedAt: run.finishedAt?.toISOString() ?? null,
+    createdAt: run.createdAt.toISOString(),
+    updatedAt: run.updatedAt.toISOString(),
+    counts: {
+      checkpoints: run._count.checkpoints,
+      benchmarkRuns: run._count.benchmarkRuns,
+    },
+  };
+}
+
 function serializeWorkerTask(task: WorkerTaskRecord) {
   return {
     id: task.id,
@@ -1939,6 +2646,62 @@ function serializeWorkerTask(task: WorkerTaskRecord) {
     createdAt: task.createdAt.toISOString(),
     updatedAt: task.updatedAt.toISOString(),
   };
+}
+
+function serializeGpuTaskLock(lock: GpuTaskLockRecord) {
+  return {
+    id: lock.id,
+    taskType: lock.taskType,
+    ownerType: lock.ownerType,
+    ownerId: lock.ownerId,
+    status: lock.status,
+    startedAt: lock.startedAt.toISOString(),
+    releasedAt: lock.releasedAt?.toISOString() ?? null,
+    metadata: lock.metadata,
+  };
+}
+
+function extractTargetSteps(config: Prisma.InputJsonValue) {
+  if (!config || typeof config !== "object" || Array.isArray(config)) {
+    return null;
+  }
+
+  const ordinary = (config as Record<string, unknown>).ordinary;
+  if (!ordinary || typeof ordinary !== "object" || Array.isArray(ordinary)) {
+    return null;
+  }
+
+  const targetSteps = (ordinary as Record<string, unknown>).targetSteps;
+  return typeof targetSteps === "number" && Number.isInteger(targetSteps) ? targetSteps : null;
+}
+
+function extractTrainingProgressUpdate(progressJson: Prisma.InputJsonValue | undefined) {
+  if (!progressJson || typeof progressJson !== "object" || Array.isArray(progressJson)) {
+    return {};
+  }
+
+  const progress = progressJson as Record<string, unknown>;
+  const step = progress.step;
+  const targetSteps = progress.targetSteps;
+  const loss = progress.loss;
+  const etaSeconds = progress.etaSeconds;
+  const currentCheckpoint = progress.currentCheckpoint;
+
+  return {
+    currentStep: typeof step === "number" && Number.isInteger(step) ? step : undefined,
+    targetSteps: typeof targetSteps === "number" && Number.isInteger(targetSteps) ? targetSteps : undefined,
+    lossSnapshot: toInputJsonValue({
+      step: typeof step === "number" ? step : null,
+      loss: typeof loss === "number" ? loss : null,
+      etaSeconds: typeof etaSeconds === "number" ? etaSeconds : null,
+      currentCheckpoint: typeof currentCheckpoint === "string" ? currentCheckpoint : null,
+    }),
+  };
+}
+
+function extractCompletionStep(output: CharacterLoraTrainingCompleteOutput) {
+  const lastCheckpoint = [...output.checkpoints].sort((a, b) => b.step - a.step)[0];
+  return lastCheckpoint?.step ?? null;
 }
 
 function toInputJsonValue(value: unknown) {
