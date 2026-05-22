@@ -24,6 +24,15 @@ function getApiUrl(path: string) {
   return new URL(path, baseUrl).toString();
 }
 
+function getInternalHeaders(): Record<string, string> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const token = process.env.AUTH_TOKEN;
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  return headers;
+}
+
 export async function submitReviewSelectionAction(
   runId: string,
   _prevState: ReviewMutationState,
@@ -57,9 +66,7 @@ export async function submitReviewSelectionAction(
   try {
     const response = await fetch(getApiUrl(`/api/runs/${encodeURIComponent(runId)}/review/${action}`), {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: getInternalHeaders(),
       body: JSON.stringify({ imageIds }),
       cache: "no-store",
     });
