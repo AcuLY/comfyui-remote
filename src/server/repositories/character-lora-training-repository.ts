@@ -1,5 +1,6 @@
 import { Prisma } from "@/generated/prisma";
 import {
+  CharacterLoraDecisionStatus,
   CharacterLoraImageReviewStatus,
   CharacterLoraJobStatus,
   CharacterLoraRunStatus,
@@ -12,6 +13,7 @@ import type {
   CharacterLoraArtifactKind,
   CharacterLoraImageGenerationOutput,
   CharacterLoraImageGenerationTaskPayload,
+  CharacterLoraBenchmarkTaskPayload,
   CharacterLoraTrainingCompleteOutput,
   CharacterLoraTrainingTaskPayload,
 } from "@/server/character-lora-training/contracts";
@@ -256,6 +258,51 @@ const TRAINING_RUN_SELECT = {
   },
 } as const;
 
+const BENCHMARK_RUN_SELECT = {
+  id: true,
+  jobId: true,
+  trainingRunId: true,
+  status: true,
+  loraAssetId: true,
+  testPresetId: true,
+  testProjectId: true,
+  templateId: true,
+  checkpointMatrix: true,
+  weightMatrix: true,
+  reportArtifactId: true,
+  recommendedWeight: true,
+  resultSummary: true,
+  startedAt: true,
+  finishedAt: true,
+  createdAt: true,
+  updatedAt: true,
+  _count: {
+    select: {
+      promotionDecisions: true,
+    },
+  },
+} as const;
+
+const PROMOTION_DECISION_SELECT = {
+  id: true,
+  jobId: true,
+  benchmarkRunId: true,
+  status: true,
+  selectedLoraAssetId: true,
+  selectedCheckpoint: true,
+  defaultRecommendedWeight: true,
+  perVariantWeightOverrides: true,
+  variantPromptDrafts: true,
+  decisionReason: true,
+  promotedCategoryId: true,
+  promotedPresetId: true,
+  reportArtifactId: true,
+  decidedAt: true,
+  promotedAt: true,
+  createdAt: true,
+  updatedAt: true,
+} as const;
+
 const WORKER_TASK_SELECT = {
   id: true,
   jobId: true,
@@ -331,6 +378,14 @@ type TrainingRunRecord = Prisma.CharacterLoraTrainingRunGetPayload<{
   select: typeof TRAINING_RUN_SELECT;
 }>;
 
+type BenchmarkRunRecord = Prisma.CharacterLoraBenchmarkRunGetPayload<{
+  select: typeof BENCHMARK_RUN_SELECT;
+}>;
+
+type PromotionDecisionRecord = Prisma.CharacterLoraPromotionDecisionGetPayload<{
+  select: typeof PROMOTION_DECISION_SELECT;
+}>;
+
 type WorkerTaskRecord = Prisma.CharacterLoraWorkerTaskGetPayload<{
   select: typeof WORKER_TASK_SELECT;
 }>;
@@ -386,6 +441,8 @@ export type CharacterLoraJobSectionSummary = ReturnType<typeof serializeJobSecti
 export type CharacterLoraCandidateImageSummary = ReturnType<typeof serializeCandidateImage>;
 export type CharacterLoraDatasetRevisionSummary = ReturnType<typeof serializeDatasetRevision>;
 export type CharacterLoraTrainingRunSummary = ReturnType<typeof serializeTrainingRun>;
+export type CharacterLoraBenchmarkRunSummary = ReturnType<typeof serializeBenchmarkRun>;
+export type CharacterLoraPromotionDecisionSummary = ReturnType<typeof serializePromotionDecision>;
 export type CharacterLoraWorkerTaskSummary = ReturnType<typeof serializeWorkerTask>;
 export type CharacterLoraGpuTaskLockSummary = ReturnType<typeof serializeGpuTaskLock>;
 
@@ -1264,6 +1321,707 @@ export async function getCharacterLoraTrainingRun(trainingRunId: string) {
   });
 
   return run ? serializeTrainingRun(run) : null;
+}
+
+export async function getCharacterLoraTrainingRunWithFinalArtifact(trainingRunId: string) {
+  return db.characterLoraTrainingRun.findUnique({
+    where: { id: trainingRunId },
+    select: {
+      id: true,
+      jobId: true,
+      datasetRevisionId: true,
+      status: true,
+      finalSafetensorsArtifactId: true,
+      finalSha256: true,
+      job: { select: JOB_SUMMARY_SELECT },
+      datasetRevision: { select: DATASET_REVISION_SELECT },
+    },
+  });
+}
+
+export async function upsertCharacterLoraAsset(input: {
+  name: string;
+  fileName: string;
+  absolutePath: string;
+  relativePath: string;
+  size?: bigint | number | null;
+  source?: string | null;
+  triggerWords?: string | null;
+  notes?: string | null;
+}) {
+  const asset = await db.loraAsset.upsert({
+    where: { absolutePath: input.absolutePath },
+    update: {
+      name: input.name,
+      modelType: "lora",
+      category: "character",
+      fileName: input.fileName,
+      relativePath: input.relativePath,
+      size: input.size ?? null,
+      source: input.source ?? "character-lora-training",
+      triggerWords: input.triggerWords ?? null,
+      notes: input.notes ?? null,
+    },
+    create: {
+      name: input.name,
+      modelType: "lora",
+      category: "character",
+      fileName: input.fileName,
+      absolutePath: input.absolutePath,
+      relativePath: input.relativePath,
+      size: input.size ?? null,
+      source: input.source ?? "character-lora-training",
+      triggerWords: input.triggerWords ?? null,
+      notes: input.notes ?? null,
+    },
+    select: {
+      id: true,
+      name: true,
+      fileName: true,
+      absolutePath: true,
+      relativePath: true,
+      size: true,
+      category: true,
+      triggerWords: true,
+      notes: true,
+      uploadedAt: true,
+      updatedAt: true,
+    },
+  });
+
+  return serializeLoraAsset(asset);
+}
+
+export async function createCharacterLoraBenchmarkRunWithTask(input: {
+  benchmarkRunId: string;
+  jobId: string;
+  trainingRunId: string;
+  loraAssetId?: string | null;
+  templateId?: string | null;
+  checkpointMatrix: Prisma.InputJsonValue;
+  weightMatrix: Prisma.InputJsonValue;
+  taskPayload?: CharacterLoraBenchmarkTaskPayload | null;
+  tempPreset: {
+    categoryName: string;
+    categorySlug: string;
+    presetName: string;
+    presetSlug: string;
+    variantName: string;
+    variantSlug: string;
+    prompt: string;
+    negativePrompt?: string | null;
+    lora1: Prisma.InputJsonValue;
+    lora2: Prisma.InputJsonValue;
+    notes: string;
+  };
+  tempProject: {
+    title: string;
+    notes: string;
+    checkpointName?: string | null;
+    sectionLoraConfig: Prisma.InputJsonValue;
+    promptBlock: {
+      label: string;
+      positive: string;
+      negative?: string | null;
+    };
+  };
+}) {
+  const result = await db.$transaction(async (tx) => {
+    const category = await ensurePresetCategory(tx, {
+      name: input.tempPreset.categoryName,
+      slug: input.tempPreset.categorySlug,
+      icon: "UserRound",
+      color: "78 50% 55%",
+    });
+    const presetSlug = await resolveUniquePresetSlug(tx, category.id, input.tempPreset.presetSlug);
+    const preset = await tx.preset.create({
+      data: {
+        categoryId: category.id,
+        name: input.tempPreset.presetName,
+        slug: presetSlug,
+        notes: input.tempPreset.notes,
+        variants: {
+          create: {
+            name: input.tempPreset.variantName,
+            slug: input.tempPreset.variantSlug,
+            prompt: input.tempPreset.prompt,
+            negativePrompt: input.tempPreset.negativePrompt ?? null,
+            lora1: input.tempPreset.lora1,
+            lora2: input.tempPreset.lora2,
+            sortOrder: 0,
+          },
+        },
+      },
+      include: { variants: { select: { id: true, slug: true }, take: 1 } },
+    });
+    const variantId = preset.variants[0]?.id ?? null;
+    const projectSlug = await resolveUniqueProjectSlugForRepository(tx, input.tempProject.title);
+    const template = input.templateId
+      ? await tx.projectTemplate.findUnique({
+          where: { id: input.templateId },
+          include: {
+            sectionFolders: { orderBy: [{ parentId: "asc" }, { sortOrder: "asc" }, { id: "asc" }] },
+            sections: { orderBy: [{ sortOrder: "asc" }, { id: "asc" }] },
+          },
+        })
+      : null;
+    const project = await tx.project.create({
+      data: {
+        title: input.tempProject.title,
+        slug: projectSlug,
+        status: "draft",
+        checkpointName: input.tempProject.checkpointName ?? null,
+        presetBindings: toInputJsonValue([{
+          categoryId: category.id,
+          presetId: preset.id,
+          variantId,
+        }]),
+        notes: input.tempProject.notes,
+      },
+      select: { id: true },
+    });
+
+    if (template) {
+      const folderIdMap = new Map<string, string>();
+      for (const folder of template.sectionFolders) {
+        const created = await tx.projectSectionFolder.create({
+          data: {
+            projectId: project.id,
+            parentId: folder.parentId ? folderIdMap.get(folder.parentId) ?? null : null,
+            name: folder.name,
+            sortOrder: folder.sortOrder,
+          },
+          select: { id: true },
+        });
+        folderIdMap.set(folder.id, created.id);
+      }
+
+      for (const [index, section] of template.sections.entries()) {
+        const blocks = normalizeTemplatePromptBlocks(section.promptBlocks, input.tempProject.promptBlock);
+        await tx.projectSection.create({
+          data: {
+            projectId: project.id,
+            folderId: section.folderId ? folderIdMap.get(section.folderId) ?? null : null,
+            sortOrder: section.sortOrder ?? index,
+            enabled: true,
+            name: section.name,
+            positivePrompt: blocks.map((block) => block.positive).filter(Boolean).join("\n"),
+            negativePrompt: blocks.map((block) => block.negative).filter(Boolean).join("\n") || null,
+            aspectRatio: section.aspectRatio,
+            shortSidePx: section.shortSidePx,
+            batchSize: section.batchSize,
+            seedPolicy1: section.seedPolicy1,
+            seedPolicy2: section.seedPolicy2,
+            ksampler1: cloneJsonValueForRepository(section.ksampler1),
+            ksampler2: cloneJsonValueForRepository(section.ksampler2),
+            upscaleFactor: section.upscaleFactor,
+            checkpointName: section.checkpointName ?? input.tempProject.checkpointName ?? null,
+            loraConfig: input.tempProject.sectionLoraConfig,
+            extraParams: cloneJsonValueForRepository(section.extraParams),
+            promptBlocks: {
+              create: blocks.map((block, blockIndex) => ({
+                type: "custom",
+                label: block.label,
+                positive: block.positive,
+                negative: block.negative ?? null,
+                sortOrder: block.sortOrder ?? blockIndex,
+              })),
+            },
+          },
+          select: { id: true },
+        });
+      }
+    } else {
+      await tx.projectSection.create({
+        data: {
+          projectId: project.id,
+          sortOrder: 0,
+          enabled: true,
+          name: "LoRA benchmark smoke test",
+          positivePrompt: input.tempProject.promptBlock.positive,
+          negativePrompt: input.tempProject.promptBlock.negative ?? null,
+          checkpointName: input.tempProject.checkpointName ?? null,
+          loraConfig: input.tempProject.sectionLoraConfig,
+          promptBlocks: {
+            create: {
+              type: "custom",
+              label: input.tempProject.promptBlock.label,
+              positive: input.tempProject.promptBlock.positive,
+              negative: input.tempProject.promptBlock.negative ?? null,
+              sortOrder: 0,
+            },
+          },
+        },
+        select: { id: true },
+      });
+    }
+
+    const run = await tx.characterLoraBenchmarkRun.create({
+      data: {
+        id: input.benchmarkRunId,
+        jobId: input.jobId,
+        trainingRunId: input.trainingRunId,
+        status: CharacterLoraRunStatus.queued,
+        loraAssetId: input.loraAssetId ?? null,
+        testPresetId: preset.id,
+        testProjectId: project.id,
+        templateId: template?.id ?? input.templateId ?? null,
+        checkpointMatrix: input.checkpointMatrix,
+        weightMatrix: input.weightMatrix,
+      },
+      select: BENCHMARK_RUN_SELECT,
+    });
+
+    const task = input.taskPayload
+      ? await tx.characterLoraWorkerTask.create({
+          data: {
+            jobId: input.jobId,
+            workerType: CharacterLoraWorkerType.benchmark,
+            targetType: "benchmarkRun",
+            targetId: run.id,
+            status: CharacterLoraRunStatus.queued,
+            payload: toInputJsonValue(input.taskPayload),
+          },
+          select: { id: true },
+        })
+      : null;
+
+    await tx.characterLoraTrainingJob.update({
+      where: { id: input.jobId },
+      data: {
+        status: CharacterLoraJobStatus.benchmarking,
+        phase: "benchmark",
+        failureSummary: null,
+      },
+      select: { id: true },
+    });
+
+    return { run, taskId: task?.id ?? null, testPresetId: preset.id, testProjectId: project.id };
+  });
+
+  return {
+    benchmarkRun: serializeBenchmarkRun(result.run),
+    workerTaskId: result.taskId,
+    testPresetId: result.testPresetId,
+    testProjectId: result.testProjectId,
+  };
+}
+
+export async function listCharacterLoraBenchmarkRunsByJob(jobId: string) {
+  const runs = await db.characterLoraBenchmarkRun.findMany({
+    where: { jobId },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    select: BENCHMARK_RUN_SELECT,
+  });
+
+  return runs.map(serializeBenchmarkRun);
+}
+
+export async function listCharacterLoraBenchmarkRunsByTrainingRun(trainingRunId: string) {
+  const runs = await db.characterLoraBenchmarkRun.findMany({
+    where: { trainingRunId },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    select: BENCHMARK_RUN_SELECT,
+  });
+
+  return runs.map(serializeBenchmarkRun);
+}
+
+export async function getCharacterLoraBenchmarkRun(benchmarkRunId: string) {
+  const run = await db.characterLoraBenchmarkRun.findUnique({
+    where: { id: benchmarkRunId },
+    select: BENCHMARK_RUN_SELECT,
+  });
+
+  return run ? serializeBenchmarkRun(run) : null;
+}
+
+export async function completeCharacterLoraBenchmarkRunInRepository(input: {
+  benchmarkRunId: string;
+  reportArtifact: {
+    relativePath: string;
+    absolutePath: string;
+    sha256: string;
+    byteSize: bigint | number;
+    metadata?: Prisma.InputJsonValue | null;
+  };
+  recommendedWeight: number;
+  resultSummary: Prisma.InputJsonValue;
+}) {
+  const result = await db.$transaction(async (tx) => {
+    const run = await tx.characterLoraBenchmarkRun.findUnique({
+      where: { id: input.benchmarkRunId },
+      select: { id: true, jobId: true },
+    });
+    if (!run) return null;
+
+    const artifact = await tx.characterLoraArtifact.create({
+      data: {
+        jobId: run.jobId,
+        kind: "benchmark_report",
+        relativePath: input.reportArtifact.relativePath,
+        absolutePath: input.reportArtifact.absolutePath,
+        sha256: input.reportArtifact.sha256,
+        byteSize: input.reportArtifact.byteSize,
+        mimeType: "application/json",
+        redactionLevel: "path_only",
+        metadata: input.reportArtifact.metadata ?? Prisma.DbNull,
+      },
+      select: { id: true },
+    });
+
+    await tx.characterLoraWorkerTask.updateMany({
+      where: {
+        targetType: "benchmarkRun",
+        targetId: run.id,
+        status: { in: [CharacterLoraRunStatus.queued, CharacterLoraRunStatus.running] },
+      },
+      data: {
+        status: CharacterLoraRunStatus.done,
+        finishedAt: new Date(),
+        heartbeatAt: new Date(),
+        leaseExpiresAt: null,
+        progressJson: toInputJsonValue({ completed: true, reportArtifactId: artifact.id }),
+        errorSummary: null,
+      },
+    });
+
+    const updated = await tx.characterLoraBenchmarkRun.update({
+      where: { id: run.id },
+      data: {
+        status: CharacterLoraRunStatus.done,
+        reportArtifactId: artifact.id,
+        recommendedWeight: input.recommendedWeight,
+        resultSummary: input.resultSummary,
+        finishedAt: new Date(),
+      },
+      select: BENCHMARK_RUN_SELECT,
+    });
+
+    await tx.characterLoraTrainingJob.update({
+      where: { id: run.jobId },
+      data: {
+        status: CharacterLoraJobStatus.benchmark_review,
+        phase: "benchmark",
+        failureSummary: null,
+      },
+      select: { id: true },
+    });
+
+    return updated;
+  });
+
+  return result ? serializeBenchmarkRun(result) : null;
+}
+
+export async function createCharacterLoraPromotionDecisionInRepository(input: {
+  benchmarkRunId: string;
+  status: "approved" | "rejected";
+  selectedLoraAssetId: string;
+  selectedCheckpoint?: string | null;
+  defaultRecommendedWeight: number;
+  perVariantWeightOverrides?: Prisma.InputJsonValue | null;
+  variantPromptDrafts: Prisma.InputJsonValue;
+  decisionReason?: string | null;
+  rejectedReturnPoint?: "benchmark_review" | "dataset_ready" | "trained" | null;
+}) {
+  const result = await db.$transaction(async (tx) => {
+    const benchmark = await tx.characterLoraBenchmarkRun.findUnique({
+      where: { id: input.benchmarkRunId },
+      select: { id: true, jobId: true, status: true, resultSummary: true },
+    });
+    if (!benchmark) return null;
+
+    const decision = await tx.characterLoraPromotionDecision.create({
+      data: {
+        jobId: benchmark.jobId,
+        benchmarkRunId: benchmark.id,
+        status: input.status === "approved"
+          ? CharacterLoraDecisionStatus.approved
+          : CharacterLoraDecisionStatus.rejected,
+        selectedLoraAssetId: input.selectedLoraAssetId,
+        selectedCheckpoint: input.selectedCheckpoint ?? null,
+        defaultRecommendedWeight: input.defaultRecommendedWeight,
+        perVariantWeightOverrides: input.perVariantWeightOverrides ?? Prisma.DbNull,
+        variantPromptDrafts: input.variantPromptDrafts,
+        decisionReason: input.decisionReason ?? null,
+        decidedAt: new Date(),
+      },
+      select: PROMOTION_DECISION_SELECT,
+    });
+
+    await tx.characterLoraTrainingJob.update({
+      where: { id: benchmark.jobId },
+      data: {
+        status: input.status === "approved"
+          ? CharacterLoraJobStatus.promotion_ready
+          : (input.rejectedReturnPoint ?? "benchmark_review"),
+        phase: input.status === "approved" ? "promotion" : "benchmark",
+        failureSummary: input.status === "rejected" ? input.decisionReason ?? null : null,
+      },
+      select: { id: true },
+    });
+
+    return decision;
+  });
+
+  return result ? serializePromotionDecision(result) : null;
+}
+
+export async function listCharacterLoraPromotionDecisions(jobId: string) {
+  const decisions = await db.characterLoraPromotionDecision.findMany({
+    where: { jobId },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    select: PROMOTION_DECISION_SELECT,
+  });
+
+  return decisions.map(serializePromotionDecision);
+}
+
+export async function getCharacterLoraPromotionDecisionForPromotion(decisionId: string) {
+  return db.characterLoraPromotionDecision.findUnique({
+    where: { id: decisionId },
+    select: {
+      id: true,
+      jobId: true,
+      benchmarkRunId: true,
+      status: true,
+      selectedLoraAssetId: true,
+      selectedCheckpoint: true,
+      defaultRecommendedWeight: true,
+      perVariantWeightOverrides: true,
+      variantPromptDrafts: true,
+      decisionReason: true,
+      promotedPresetId: true,
+      benchmarkRun: {
+        select: {
+          ...BENCHMARK_RUN_SELECT,
+          trainingRun: {
+            select: {
+              datasetRevisionId: true,
+              finalSha256: true,
+              finalSafetensorsArtifactId: true,
+            },
+          },
+        },
+      },
+      job: { select: JOB_SUMMARY_SELECT },
+    },
+  });
+}
+
+export async function getLoraAssetById(loraAssetId: string) {
+  const asset = await db.loraAsset.findUnique({
+    where: { id: loraAssetId },
+    select: {
+      id: true,
+      name: true,
+      fileName: true,
+      absolutePath: true,
+      relativePath: true,
+      size: true,
+      category: true,
+      triggerWords: true,
+      notes: true,
+      uploadedAt: true,
+      updatedAt: true,
+    },
+  });
+
+  return asset ? serializeLoraAsset(asset) : null;
+}
+
+export async function promoteCharacterLoraDecisionInRepository(input: {
+  decisionId: string;
+  categoryName: string;
+  categorySlug: string;
+  presetName: string;
+  presetSlug: string;
+  presetNotes: string;
+  variants: Array<{
+    name: string;
+    slug: string;
+    prompt: string;
+    negativePrompt?: string | null;
+    lora1: Prisma.InputJsonValue;
+    lora2: Prisma.InputJsonValue;
+    linkedVariants?: Prisma.InputJsonValue | null;
+    sortOrder: number;
+  }>;
+  overwriteExisting?: boolean;
+  reportArtifact: {
+    relativePath: string;
+    absolutePath: string;
+    sha256: string;
+    byteSize: bigint | number;
+    metadata?: Prisma.InputJsonValue | null;
+  };
+}) {
+  const result = await db.$transaction(async (tx) => {
+    const decision = await tx.characterLoraPromotionDecision.findUnique({
+      where: { id: input.decisionId },
+      select: { id: true, jobId: true, status: true },
+    });
+    if (!decision) return null;
+
+    const category = await ensurePresetCategory(tx, {
+      name: input.categoryName,
+      slug: input.categorySlug,
+      icon: "UserRound",
+      color: "78 50% 55%",
+    });
+
+    const presetSlug = input.overwriteExisting
+      ? input.presetSlug
+      : await resolveUniquePresetSlug(tx, category.id, input.presetSlug);
+    const existingPreset = input.overwriteExisting
+      ? await tx.preset.findUnique({
+          where: { categoryId_slug: { categoryId: category.id, slug: presetSlug } },
+          select: { id: true },
+        })
+      : null;
+
+    const preset = existingPreset
+      ? await tx.preset.update({
+          where: { id: existingPreset.id },
+          data: {
+            name: input.presetName,
+            notes: input.presetNotes,
+            isActive: true,
+            variants: { deleteMany: {} },
+          },
+          select: { id: true },
+        })
+      : await tx.preset.create({
+          data: {
+            categoryId: category.id,
+            name: input.presetName,
+            slug: presetSlug,
+            notes: input.presetNotes,
+            isActive: true,
+          },
+          select: { id: true },
+        });
+
+    for (const variant of input.variants) {
+      await tx.presetVariant.create({
+        data: {
+          presetId: preset.id,
+          name: variant.name,
+          slug: variant.slug,
+          prompt: variant.prompt,
+          negativePrompt: variant.negativePrompt ?? null,
+          lora1: variant.lora1,
+          lora2: variant.lora2,
+          linkedVariants: variant.linkedVariants ?? Prisma.DbNull,
+          sortOrder: variant.sortOrder,
+          isActive: true,
+        },
+        select: { id: true },
+      });
+    }
+
+    const reportArtifact = await tx.characterLoraArtifact.create({
+      data: {
+        jobId: decision.jobId,
+        kind: "promotion_report",
+        relativePath: input.reportArtifact.relativePath,
+        absolutePath: input.reportArtifact.absolutePath,
+        sha256: input.reportArtifact.sha256,
+        byteSize: input.reportArtifact.byteSize,
+        mimeType: "application/json",
+        redactionLevel: "path_only",
+        metadata: input.reportArtifact.metadata ?? Prisma.DbNull,
+      },
+      select: { id: true },
+    });
+
+    const updatedDecision = await tx.characterLoraPromotionDecision.update({
+      where: { id: decision.id },
+      data: {
+        status: CharacterLoraDecisionStatus.promoted,
+        promotedCategoryId: category.id,
+        promotedPresetId: preset.id,
+        reportArtifactId: reportArtifact.id,
+        promotedAt: new Date(),
+      },
+      select: PROMOTION_DECISION_SELECT,
+    });
+
+    await tx.characterLoraTrainingJob.update({
+      where: { id: decision.jobId },
+      data: {
+        status: CharacterLoraJobStatus.promoted,
+        phase: "promotion",
+        promotedPresetId: preset.id,
+        failureSummary: null,
+      },
+      select: { id: true },
+    });
+
+    return { decision: updatedDecision, categoryId: category.id, presetId: preset.id };
+  });
+
+  return result
+    ? {
+        decision: serializePromotionDecision(result.decision),
+        categoryId: result.categoryId,
+        presetId: result.presetId,
+      }
+    : null;
+}
+
+export async function findCharacterLoraBenchmarkTemplate() {
+  return db.projectTemplate.findFirst({
+    where: {
+      OR: [
+        { name: { contains: "角色 lora 测试" } },
+        { name: { contains: "角色 LoRA 测试" } },
+        { name: { contains: "character lora" } },
+      ],
+    },
+    orderBy: [{ updatedAt: "desc" }, { id: "asc" }],
+    select: { id: true, name: true },
+  });
+}
+
+export async function findCharacterLoraPromotionLinkedVariant(kind: "halfUndressed" | "naked") {
+  const terms = kind === "halfUndressed" ? ["半脱"] : ["全裸", "裸", "nude", "naked"];
+  for (const term of terms) {
+    const variant = await db.presetVariant.findFirst({
+      where: {
+        isActive: true,
+        OR: [
+          { name: { contains: term } },
+          { slug: { contains: term } },
+          { preset: { name: { contains: term } } },
+          { preset: { slug: { contains: term } } },
+        ],
+      },
+      orderBy: [{ sortOrder: "asc" }, { updatedAt: "desc" }],
+      select: { id: true, presetId: true, name: true, slug: true },
+    });
+    if (variant) return variant;
+  }
+
+  return null;
+}
+
+export async function findBreastSizeSliderLoraAsset() {
+  return db.loraAsset.findFirst({
+    where: {
+      OR: [
+        { name: { contains: "Breast Size Slider" } },
+        { fileName: { contains: "Breast Size Slider" } },
+        { relativePath: { contains: "Breast Size Slider" } },
+        { name: { contains: "breast" } },
+        { fileName: { contains: "breast" } },
+        { relativePath: { contains: "breast" } },
+      ],
+    },
+    orderBy: [{ updatedAt: "desc" }, { id: "asc" }],
+    select: { id: true, name: true, relativePath: true },
+  });
 }
 
 export async function countActiveComfyQueueRuns() {
@@ -2369,6 +3127,131 @@ function ciContains(value: string) {
     : { contains: value };
 }
 
+async function ensurePresetCategory(
+  tx: Prisma.TransactionClient,
+  input: {
+    name: string;
+    slug: string;
+    icon?: string | null;
+    color?: string | null;
+  },
+) {
+  const existing = await tx.presetCategory.findFirst({
+    where: {
+      OR: [
+        { name: input.name },
+        { slug: input.slug },
+        { slug: "role" },
+        { slug: "character" },
+      ],
+    },
+    select: { id: true, name: true, slug: true },
+  });
+
+  if (existing) {
+    return existing;
+  }
+
+  return tx.presetCategory.create({
+    data: {
+      name: input.name,
+      slug: input.slug,
+      icon: input.icon ?? null,
+      color: input.color ?? null,
+      positivePromptOrder: 10,
+      negativePromptOrder: 10,
+      lora1Order: 10,
+      lora2Order: 10,
+      sortOrder: 10,
+      type: "preset",
+    },
+    select: { id: true, name: true, slug: true },
+  });
+}
+
+async function resolveUniquePresetSlug(
+  tx: Prisma.TransactionClient,
+  categoryId: string,
+  baseSlug: string,
+) {
+  const normalizedBase = slugifyForRepository(baseSlug, "preset");
+
+  for (let suffix = 1; suffix <= 100; suffix += 1) {
+    const slug = suffix === 1 ? normalizedBase : `${normalizedBase}-${suffix}`;
+    const existing = await tx.preset.findUnique({
+      where: { categoryId_slug: { categoryId, slug } },
+      select: { id: true },
+    });
+    if (!existing) return slug;
+  }
+
+  throw new Error("PRESET_SLUG_EXHAUSTED");
+}
+
+async function resolveUniqueProjectSlugForRepository(
+  tx: Prisma.TransactionClient,
+  title: string,
+) {
+  const normalizedBase = slugifyForRepository(title, "project");
+
+  for (let suffix = 1; suffix <= 100; suffix += 1) {
+    const slug = suffix === 1 ? normalizedBase : `${normalizedBase}-${suffix}`;
+    const existing = await tx.project.findUnique({
+      where: { slug },
+      select: { id: true },
+    });
+    if (!existing) return slug;
+  }
+
+  throw new Error("PROJECT_SLUG_EXHAUSTED");
+}
+
+function slugifyForRepository(value: string, fallback: string) {
+  const normalized = value
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^\p{Letter}\p{Number}]+/gu, "-")
+    .replace(/^-+|-+$/g, "");
+
+  return normalized || fallback;
+}
+
+function cloneJsonValueForRepository(value: unknown) {
+  return value == null
+    ? Prisma.DbNull
+    : JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
+}
+
+function normalizeTemplatePromptBlocks(
+  value: unknown,
+  fallback: { label: string; positive: string; negative?: string | null },
+) {
+  if (!Array.isArray(value) || value.length === 0) {
+    return [{ ...fallback, sortOrder: 0 }];
+  }
+
+  const blocks = value
+    .map((block, index) => {
+      if (!block || typeof block !== "object" || Array.isArray(block)) {
+        return null;
+      }
+      const record = block as Record<string, unknown>;
+      const positive = typeof record.positive === "string" ? record.positive : "";
+      return {
+        label: typeof record.label === "string" && record.label.trim() ? record.label : `Block ${index + 1}`,
+        positive,
+        negative: typeof record.negative === "string" ? record.negative : null,
+        sortOrder: typeof record.sortOrder === "number" ? record.sortOrder : index,
+      };
+    })
+    .filter((block): block is { label: string; positive: string; negative: string | null; sortOrder: number } =>
+      Boolean(block && (block.positive.trim() || block.negative?.trim())),
+    );
+
+  return blocks.length > 0 ? blocks : [{ ...fallback, sortOrder: 0 }];
+}
+
 function serializeJobSummary(job: JobSummaryRecord) {
   return {
     id: job.id,
@@ -2623,6 +3506,81 @@ function serializeTrainingRun(run: TrainingRunRecord) {
       checkpoints: run._count.checkpoints,
       benchmarkRuns: run._count.benchmarkRuns,
     },
+  };
+}
+
+function serializeBenchmarkRun(run: BenchmarkRunRecord) {
+  return {
+    id: run.id,
+    jobId: run.jobId,
+    trainingRunId: run.trainingRunId,
+    status: run.status,
+    loraAssetId: run.loraAssetId,
+    testPresetId: run.testPresetId,
+    testProjectId: run.testProjectId,
+    templateId: run.templateId,
+    checkpointMatrix: run.checkpointMatrix,
+    weightMatrix: run.weightMatrix,
+    reportArtifactId: run.reportArtifactId,
+    recommendedWeight: run.recommendedWeight,
+    resultSummary: run.resultSummary,
+    startedAt: run.startedAt?.toISOString() ?? null,
+    finishedAt: run.finishedAt?.toISOString() ?? null,
+    createdAt: run.createdAt.toISOString(),
+    updatedAt: run.updatedAt.toISOString(),
+    counts: {
+      promotionDecisions: run._count.promotionDecisions,
+    },
+  };
+}
+
+function serializePromotionDecision(decision: PromotionDecisionRecord) {
+  return {
+    id: decision.id,
+    jobId: decision.jobId,
+    benchmarkRunId: decision.benchmarkRunId,
+    status: decision.status,
+    selectedLoraAssetId: decision.selectedLoraAssetId,
+    selectedCheckpoint: decision.selectedCheckpoint,
+    defaultRecommendedWeight: decision.defaultRecommendedWeight,
+    perVariantWeightOverrides: decision.perVariantWeightOverrides,
+    variantPromptDrafts: decision.variantPromptDrafts,
+    decisionReason: decision.decisionReason,
+    promotedCategoryId: decision.promotedCategoryId,
+    promotedPresetId: decision.promotedPresetId,
+    reportArtifactId: decision.reportArtifactId,
+    decidedAt: decision.decidedAt?.toISOString() ?? null,
+    promotedAt: decision.promotedAt?.toISOString() ?? null,
+    createdAt: decision.createdAt.toISOString(),
+    updatedAt: decision.updatedAt.toISOString(),
+  };
+}
+
+function serializeLoraAsset(asset: {
+  id: string;
+  name: string;
+  fileName: string;
+  absolutePath: string;
+  relativePath: string;
+  size: bigint | number | null;
+  category: string;
+  triggerWords: string | null;
+  notes: string | null;
+  uploadedAt: Date;
+  updatedAt: Date;
+}) {
+  return {
+    id: asset.id,
+    name: asset.name,
+    fileName: asset.fileName,
+    absolutePath: asset.absolutePath,
+    relativePath: asset.relativePath,
+    size: asset.size === null ? null : Number(asset.size),
+    category: asset.category,
+    triggerWords: asset.triggerWords,
+    notes: asset.notes,
+    uploadedAt: asset.uploadedAt.toISOString(),
+    updatedAt: asset.updatedAt.toISOString(),
   };
 }
 

@@ -285,6 +285,55 @@ export const characterLoraTrainingCancelRequestSchema = z.object({
   requestedBy: z.string().trim().min(1).optional(),
 }).strict();
 
+export const characterLoraBenchmarkEnqueueRequestSchema = z.object({
+  checkpointMatrix: z.array(z.string().trim().min(1)).min(1),
+  weightMatrix: z.array(z.number().positive()).min(1),
+  templateId: z.string().trim().min(1).optional(),
+  registerLoraAsset: z.boolean().default(true),
+  copyToCharacterDir: z.boolean().default(false),
+  loraAssetName: z.string().trim().min(1).optional(),
+  queuePolicy: characterLoraTrainingQueuePolicySchema.default("queue_when_busy"),
+  dryRun: z.boolean().default(false),
+  skipQueue: z.boolean().default(false),
+}).strict();
+
+export const characterLoraBenchmarkReportRefSchema = z.object({
+  artifactId: z.string().trim().min(1).optional(),
+  relativePath: relativeArtifactPathSchema.optional(),
+  absolutePath: z.string().trim().min(1).optional(),
+  ref: z.string().trim().min(1).optional(),
+}).strict();
+
+export const characterLoraBenchmarkCompleteRequestSchema = z.object({
+  recommendedWeight: z.number().positive(),
+  resultSummary: jsonObjectSchema.default({}),
+  diagnosticSuggestions: z.array(z.string().trim().min(1)).default([]),
+  report: characterLoraBenchmarkReportRefSchema.optional(),
+}).strict();
+
+export const characterLoraPromotionReturnPointSchema = z.enum([
+  "benchmark_review",
+  "dataset_ready",
+  "trained",
+]);
+
+export const characterLoraPromotionDecisionCreateRequestSchema = z.object({
+  benchmarkRunId: z.string().trim().min(1),
+  status: z.enum(["approved", "rejected"]),
+  selectedLoraAssetId: z.string().trim().min(1),
+  selectedCheckpoint: z.string().trim().min(1).optional(),
+  defaultRecommendedWeight: z.number().positive(),
+  perVariantWeightOverrides: z.record(z.string(), z.number().positive()).optional(),
+  variantPromptDrafts: z.record(z.string(), z.string()).default({}),
+  decisionReason: z.string().trim().min(1).optional(),
+  returnPoint: characterLoraPromotionReturnPointSchema.optional(),
+}).strict();
+
+export const characterLoraPromoteRequestSchema = z.object({
+  dryRun: z.boolean().default(false),
+  overwriteExisting: z.boolean().default(false),
+}).strict();
+
 export const characterLoraProviderErrorSchema = z.object({
   httpStatus: z.number().int().positive().optional(),
   backendError: z.string().min(1),
@@ -304,6 +353,10 @@ export type CharacterLoraTrainingEnqueueRequest = z.infer<typeof characterLoraTr
 export type CharacterLoraTrainingProgress = z.infer<typeof characterLoraTrainingProgressSchema>;
 export type CharacterLoraTrainingCompleteOutput = z.infer<typeof characterLoraTrainingCompleteOutputSchema>;
 export type CharacterLoraTrainingCancelRequest = z.infer<typeof characterLoraTrainingCancelRequestSchema>;
+export type CharacterLoraBenchmarkEnqueueRequest = z.infer<typeof characterLoraBenchmarkEnqueueRequestSchema>;
+export type CharacterLoraBenchmarkCompleteRequest = z.infer<typeof characterLoraBenchmarkCompleteRequestSchema>;
+export type CharacterLoraPromotionDecisionCreateRequest = z.infer<typeof characterLoraPromotionDecisionCreateRequestSchema>;
+export type CharacterLoraPromoteRequest = z.infer<typeof characterLoraPromoteRequestSchema>;
 export type CharacterLoraProviderError = z.infer<typeof characterLoraProviderErrorSchema>;
 
 export const characterLoraSectionGenerationRequestSchema = z.object({

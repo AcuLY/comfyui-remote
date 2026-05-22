@@ -42,6 +42,16 @@ import {
   getCharacterLoraGpuTaskLock as getGpuTaskLock,
   listCharacterLoraTrainingRuns as listTrainingRuns,
 } from "@/server/services/character-lora-training/training-service";
+import {
+  completeBenchmarkRun as completeBenchmarkRunInService,
+  createPromotionDecision as createPromotionDecisionInService,
+  enqueueCharacterLoraBenchmarkRun as enqueueBenchmarkRun,
+  listCharacterLoraBenchmarkRuns as listBenchmarkRuns,
+  listCharacterLoraBenchmarkRunsForTrainingRun as listBenchmarkRunsForTrainingRun,
+  listCharacterLoraPromotionDecisions as listPromotionDecisions,
+  mockCompleteBenchmarkRun as mockCompleteBenchmarkRunInService,
+  promoteCharacterLoraPreset as promotePresetInService,
+} from "@/server/services/character-lora-training/benchmark-promotion-service";
 
 export async function createCharacterLoraTrainingJob(input: unknown) {
   return createJob(input);
@@ -137,6 +147,38 @@ export async function cancelCharacterLoraTrainingRun(trainingRunId: string, inpu
 
 export async function getCharacterLoraGpuTaskLock() {
   return getGpuTaskLock();
+}
+
+export async function enqueueCharacterLoraBenchmarkRun(trainingRunId: string, input?: unknown) {
+  return enqueueBenchmarkRun(trainingRunId, input ?? {});
+}
+
+export async function listCharacterLoraBenchmarkRuns(jobId: string) {
+  return listBenchmarkRuns(jobId);
+}
+
+export async function listCharacterLoraBenchmarkRunsForTrainingRun(trainingRunId: string) {
+  return listBenchmarkRunsForTrainingRun(trainingRunId);
+}
+
+export async function completeCharacterLoraBenchmarkRun(benchmarkRunId: string, input: unknown) {
+  return completeBenchmarkRunInService(benchmarkRunId, input);
+}
+
+export async function mockCompleteCharacterLoraBenchmarkRun(benchmarkRunId: string, input?: unknown) {
+  return mockCompleteBenchmarkRunInService(benchmarkRunId, input ?? {});
+}
+
+export async function createCharacterLoraPromotionDecision(benchmarkRunId: string, input: unknown) {
+  return createPromotionDecisionInService(benchmarkRunId, input);
+}
+
+export async function listCharacterLoraPromotionDecisions(jobId: string) {
+  return listPromotionDecisions(jobId);
+}
+
+export async function promoteCharacterLoraPreset(decisionId: string, input?: unknown) {
+  return promotePresetInService(decisionId, input ?? {});
 }
 
 export async function leaseNextCharacterLoraTask(input: unknown) {
