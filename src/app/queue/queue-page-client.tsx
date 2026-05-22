@@ -729,6 +729,7 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
                         alt={item.id}
                         width={128}
                         height={128}
+                        loading="lazy"
                         className="size-full object-cover"
                         unoptimized
                       />

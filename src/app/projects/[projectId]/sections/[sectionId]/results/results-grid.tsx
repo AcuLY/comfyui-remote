@@ -345,6 +345,7 @@ export function ResultsGrid({
                             alt=""
                             width={200}
                             height={280}
+                            loading="lazy"
                             className="aspect-[3/4] w-full object-cover"
                             unoptimized
                           />

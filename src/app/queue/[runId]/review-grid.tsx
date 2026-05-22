@@ -402,6 +402,7 @@ export function ReviewGrid({
                   alt={image.id}
                   width={400}
                   height={560}
+                  loading="lazy"
                   className="h-40 w-auto max-w-full object-contain"
                   unoptimized
                 />
