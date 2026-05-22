@@ -207,6 +207,7 @@ export const characterLoraTrainingResolvedConfigSchema = z.object({
     bucket: z.boolean().default(true),
     precision: z.enum(["fp16", "bf16", "fp32"]).default("bf16"),
     batchSize: z.number().int().positive().default(1),
+    gradientAccumulation: z.number().int().positive().default(1),
     targetSteps: z.number().int().positive().default(2000),
     saveInterval: z.number().int().positive().default(500),
   }).strict(),

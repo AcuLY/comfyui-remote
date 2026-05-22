@@ -171,6 +171,7 @@ type TrainingOrdinaryOverrides = Partial<{
   bucket: boolean;
   precision: TrainingPrecision;
   batchSize: number;
+  gradientAccumulation: number;
   targetSteps: number;
   saveInterval: number;
 }>;
@@ -338,6 +339,11 @@ function buildTrainingOverrides(formData: FormData) {
     const alpha = readOptionalNumber(formData, "alpha", "alpha", { integer: true, min: 0, minInclusive: false });
     const resolution = readOptionalNumber(formData, "resolution", "resolution", { integer: true, min: 0, minInclusive: false });
     const batchSize = readOptionalNumber(formData, "batchSize", "batchSize", { integer: true, min: 0, minInclusive: false });
+    const gradientAccumulation = readOptionalNumber(formData, "gradientAccumulation", "gradient accumulation", {
+      integer: true,
+      min: 0,
+      minInclusive: false,
+    });
     const saveInterval = readOptionalNumber(formData, "saveInterval", "saveInterval", { integer: true, min: 0, minInclusive: false });
     const precision = readOptionalPrecision(formData);
     const bucket = readOptionalBooleanChoice(formData, "bucket", "bucket");
@@ -351,6 +357,7 @@ function buildTrainingOverrides(formData: FormData) {
     if (alpha !== undefined) ordinary.alpha = alpha;
     if (resolution !== undefined) ordinary.resolution = resolution;
     if (batchSize !== undefined) ordinary.batchSize = batchSize;
+    if (gradientAccumulation !== undefined) ordinary.gradientAccumulation = gradientAccumulation;
     if (saveInterval !== undefined) ordinary.saveInterval = saveInterval;
     if (precision !== undefined) ordinary.precision = precision;
     if (bucket !== undefined) ordinary.bucket = bucket;
@@ -744,10 +751,12 @@ export function JobWorkbenchClient({
   function handleFreezeDataset(formData: FormData) {
     runAction("dataset.freeze", "Dataset 已冻结", async () => {
       const repeatCountRaw = readOptionalString(formData, "repeatCount");
+      const sourceWeightRaw = readOptionalString(formData, "sourceWeight");
       await freezeCharacterLoraDataset(job.id, {
         force: formData.get("force") === "on",
         captionStrategy: readOptionalString(formData, "captionStrategy"),
         repeatCount: repeatCountRaw ? Number(repeatCountRaw) : undefined,
+        sourceWeight: sourceWeightRaw ? Number(sourceWeightRaw) : undefined,
       });
     });
   }
@@ -1310,9 +1319,10 @@ export function JobWorkbenchClient({
             ))}
           </div>
         )}
-        <form action={handleFreezeDataset} className="mt-3 grid gap-2 rounded-lg border border-white/10 bg-white/[0.03] p-3 md:grid-cols-[1fr_100px_auto_auto]">
+        <form action={handleFreezeDataset} className="mt-3 grid gap-2 rounded-lg border border-white/10 bg-white/[0.03] p-3 md:grid-cols-[1fr_100px_120px_auto_auto]">
           <input name="captionStrategy" defaultValue={job.captionStrategy} className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white" />
           <input name="repeatCount" type="number" min={1} defaultValue={1} className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white" />
+          <input name="sourceWeight" type="number" min={1} step="0.1" placeholder="source weight" className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white" />
           <label className="flex items-center gap-2 text-xs text-zinc-300">
             <input name="force" type="checkbox" className="size-3.5 accent-amber-400" />
             force
@@ -1449,6 +1459,7 @@ export function JobWorkbenchClient({
               <TrainingNumberInput name="alpha" label="Alpha" placeholder="16" integer />
               <TrainingNumberInput name="resolution" label="Resolution" placeholder="1024" integer />
               <TrainingNumberInput name="batchSize" label="Batch size" placeholder="1" integer />
+              <TrainingNumberInput name="gradientAccumulation" label="Grad accumulation" placeholder="1" integer />
               <TrainingNumberInput name="saveInterval" label="Save interval" placeholder="500" integer />
               <TrainingNumberInput name="unetLearningRate" label="UNet LR" placeholder="0.0001" step="0.000001" />
               <TrainingNumberInput name="textEncoderLearningRate" label="Text encoder LR" placeholder="0.00002" step="0.000001" />

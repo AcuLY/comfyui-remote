@@ -451,6 +451,7 @@ function resolveTrainingConfig(input: CharacterLoraTrainingEnqueueRequest): Char
       bucket: true,
       precision: "bf16" as const,
       batchSize: 1,
+      gradientAccumulation: 1,
       targetSteps: 2000,
       saveInterval: profileDefaults.saveInterval,
       ...input.overrides?.ordinary,
