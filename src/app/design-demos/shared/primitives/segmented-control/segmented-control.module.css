@@ -168,6 +168,8 @@
   flex: 0 0 auto;
   flex-wrap: nowrap;
   overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
 }
 
 .root[data-fit-items="true"] .item {
@@ -202,7 +204,9 @@
   min-height: 36px;
   gap: 3px;
   overflow-x: auto;
+  overflow-y: hidden;
   padding: 3px;
+  scrollbar-width: none;
 }
 
 .dense .item {

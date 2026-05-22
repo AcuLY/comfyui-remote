@@ -161,6 +161,16 @@ test("unit-items adapter previews do not leave row checkboxes wired to noop", ()
   assert.doesNotMatch(presetPreviewSource, /onToggle=\{noop\}/);
 });
 
+test("preset library item row uses the shared unit row shell surface", () => {
+  const presetItemRowBlock = cssBlockSource(presetLibraryCss, ".presetItemRow {");
+
+  assert.match(presetLibrarySource, /export function PresetLibraryItemRow\([\s\S]*?<UnitRowShell\b/, "PresetLibraryItemRow should use UnitRowShell instead of a one-off row shell");
+  assert.match(presetLibrarySource, /export function PresetLibraryItemRow\([\s\S]*?selected=\{checked\}/, "PresetLibraryItemRow should delegate selected surface styling to UnitRowShell");
+  assert.match(presetLibrarySource, /export function PresetLibraryItemRow\([\s\S]*?leading=\{\([\s\S]*?<Checkbox\b/, "PresetLibraryItemRow should keep the checkbox in the UnitRowShell leading slot");
+  assert.doesNotMatch(presetItemRowBlock, /border:\s*1px\s+solid\s+transparent/, "PresetLibraryItemRow should not hide the UnitRowShell border");
+  assert.doesNotMatch(presetItemRowBlock, /border-bottom-color/, "PresetLibraryItemRow should not reduce the row shell to a bottom divider");
+});
+
 test("project list item preview shows default and compact states", () => {
   const projectPreviewSource = functionSource(componentPreviewsSource, "ProjectListItemPreview");
   const projectListItems = projectPreviewSource.match(/<ProjectListItem\b/g) ?? [];
@@ -256,7 +266,7 @@ test("section and template rows separate resting and hover surfaces", () => {
 test("unit item titles do not turn green on hover", () => {
   for (const [componentName, css, pattern] of [
     ["ProjectListItem", projectListItemCss, /\.projectListTitleLink:hover\s+strong[\s\S]*?\{[^}]*color:\s*var\(--demo-green\)/],
-    ["PresetLibraryItemRow", presetLibraryCss, /\.presetItemOpenArea:hover\s+\.presetItemMain\s+strong[\s\S]*?\{[^}]*color:\s*var\(--demo-green\)/],
+    ["PresetLibraryItemRow", presetLibraryCss, /\.(?:presetItemOpenArea|presetItemTitleLink):hover[\s\S]*?\{[^}]*color:\s*var\(--demo-green\)/],
     ["ProjectSectionCard", projectSectionCardCss, /\.sectionCardTitleLink:hover\s+strong[\s\S]*?\{[^}]*color:\s*var\(--demo-green\)/],
     ["TemplateSectionRow", templateFormCss, /\.templateSectionRowMain:hover(?:\s+\.templateSectionTitleLine\s*>\s*strong[\s\S]*?\{[^}]*color:\s*var\(--demo-green\)|\s*,[\s\S]*?\{[^}]*color:\s*var\(--demo-green\)|\s*\{[^}]*color:\s*var\(--demo-green\))/],
   ]) {

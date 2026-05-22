@@ -15,7 +15,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { keepImages, trashImages } from "@/lib/actions";
+import { keepImages, trashImages, runSection } from "@/lib/actions";
 import { ResultsGalleryProvider } from "./results-gallery";
 
 const RUN_STATUS_BADGE: Record<string, string> = {
@@ -43,13 +43,25 @@ type RunData = {
 
 export function ResultsGrid({
   runs,
+  sectionId,
 }: {
   runs: RunData[];
+  sectionId: string;
 }) {
   const router = useRouter();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [isPending, startTransition] = useTransition();
   const [lastTrashedIds, setLastTrashedIds] = useState<string[]>([]);
+  const [tempBatchSize, setTempBatchSize] = useState(2);
+
+  const handleQuickRun = useCallback(async () => {
+    try {
+      await runSection(sectionId, tempBatchSize);
+      toast.success(`已提交运行 (batch ${tempBatchSize})`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "运行失败");
+    }
+  }, [sectionId, tempBatchSize]);
 
   // Flatten all images for the lightbox
   const allImages = runs.flatMap((run) =>
@@ -117,29 +129,66 @@ export function ResultsGrid({
     };
   }, [setLastTrashedIds]);
 
-  // Keyboard shortcut: I to toggle lightbox (open first image or close)
+  // Keyboard shortcuts: page-level navigation and actions
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
       // Ignore if typing in input/textarea
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
+
+      // When lightbox is closed (page-level navigation)
       if (!document.querySelector("[data-results-lightbox]")) {
-        if (event.key === "s" || event.key === "S") {
+        // S / ArrowLeft: prev section
+        if (event.key === "s" || event.key === "S" || event.key === "ArrowLeft") {
           const previousLink = document.querySelector<HTMLAnchorElement>('[data-section-nav="previous"]');
           if (!previousLink) return;
           event.preventDefault();
           previousLink.click();
           return;
         }
-        if (event.key === "f" || event.key === "F") {
+        // F / ArrowRight: next section
+        if (event.key === "f" || event.key === "F" || event.key === "ArrowRight") {
           const nextLink = document.querySelector<HTMLAnchorElement>('[data-section-nav="next"]');
           if (!nextLink) return;
           event.preventDefault();
           nextLink.click();
           return;
         }
+        // A: jump to section editor
+        if (event.key === "a" || event.key === "A") {
+          event.preventDefault();
+          const editorLink = document.querySelector<HTMLAnchorElement>('[data-nav-editor]');
+          if (editorLink) editorLink.click();
+          return;
+        }
+        // G: go to next section with pending images
+        if (event.key === "g" || event.key === "G") {
+          event.preventDefault();
+          const nextPendingLink = document.querySelector<HTMLAnchorElement>('[data-nav-next-pending]');
+          if (nextPendingLink) nextPendingLink.click();
+          return;
+        }
+        // 1-5: set temporary batch size
+        if ("12345".includes(event.key)) {
+          event.preventDefault();
+          const bsMap: Record<string, number> = { "1": 1, "2": 2, "3": 4, "4": 8, "5": 16 };
+          const bs = bsMap[event.key];
+          if (bs !== undefined) {
+            setTempBatchSize(bs);
+            // Show a toast to confirm
+            toast.dismiss("batch-size");
+            toast(`Batch size: ${bs}`, { id: "batch-size", duration: 2000 });
+          }
+          return;
+        }
+        // N: run current section with temp batch size
+        if (event.key === "n" || event.key === "N") {
+          event.preventDefault();
+          handleQuickRun();
+          return;
+        }
       }
-      // I key: toggle lightbox
-      if (event.key === "i" || event.key === "I") {
+      // I / D: toggle lightbox (works regardless of lightbox state)
+      if (event.key === "i" || event.key === "I" || event.key === "d" || event.key === "D") {
         event.preventDefault();
         const toggleLightbox = (window as unknown as Record<string, (index?: number) => void>).__resultsGalleryToggleLightbox;
         if (toggleLightbox) {
@@ -154,7 +203,7 @@ export function ResultsGrid({
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [allImages.length, trashLatestRunImages]);
+  }, [allImages.length, trashLatestRunImages, tempBatchSize, handleQuickRun]);
 
   // Undo function
   const handleUndo = useCallback(async () => {

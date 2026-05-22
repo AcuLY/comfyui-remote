@@ -61,18 +61,21 @@ export function ReviewGrid({
     }
   }, [lightboxIndex, reviewImages]);
 
-  // S/F outside lightbox: navigate between run groups; I: open lightbox
+  // Page-level shortcuts (lightbox closed)
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
       if (lightboxIndex !== null) return; // lightbox handles its own keys
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
-      if (event.key === "s" || event.key === "S") {
+      // S / ArrowLeft: prev group
+      if (event.key === "s" || event.key === "S" || event.key === "ArrowLeft") {
         if (prevRunId) router.push(`/queue/${prevRunId}`);
       }
-      if (event.key === "f" || event.key === "F") {
+      // F / ArrowRight: next group
+      if (event.key === "f" || event.key === "F" || event.key === "ArrowRight") {
         if (nextRunId) router.push(`/queue/${nextRunId}`);
       }
-      if (event.key === "i" || event.key === "I") {
+      // I / D: open lightbox
+      if (event.key === "i" || event.key === "I" || event.key === "d" || event.key === "D") {
         if (reviewImages.length > 0) setLightboxIndex(0);
       }
     };

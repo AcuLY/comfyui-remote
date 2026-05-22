@@ -9,6 +9,7 @@ const designDemosDir = resolve(testDir, "../..");
 const fieldSource = readDemoSource("shared/primitives/field/index.tsx");
 const floatingSelectSource = readDemoSource("shared/primitives/floating-select/index.tsx");
 const floatingSelectStyleSource = readDemoSource("shared/primitives/floating-select/floating-select.module.css");
+const segmentedControlStyleSource = readDemoSource("shared/primitives/segmented-control/segmented-control.module.css");
 const checkboxSource = readDemoSource("shared/primitives/checkbox/index.tsx");
 const buttonSource = readDemoSource("shared/primitives/button/index.tsx");
 
@@ -32,6 +33,23 @@ function functionSource(source, functionName) {
   }
 
   assert.fail(`${functionName} body should close`);
+}
+
+function cssBlockSource(source, marker) {
+  const start = source.indexOf(marker);
+  assert.notEqual(start, -1, `${marker} should exist`);
+  const bodyStart = source.indexOf("{", start);
+  assert.notEqual(bodyStart, -1, `${marker} should have a body`);
+
+  let depth = 0;
+  for (let index = bodyStart; index < source.length; index += 1) {
+    const character = source[index];
+    if (character === "{") depth += 1;
+    if (character === "}") depth -= 1;
+    if (depth === 0) return source.slice(start, index + 1);
+  }
+
+  assert.fail(`${marker} body should close`);
 }
 
 test("Field defaults editable and keeps local draft state without onChange", () => {
@@ -133,6 +151,18 @@ test("FloatingSelect has standalone and labeled field chrome", () => {
   assert.match(floatingSelectStyleSource, /\.fieldRoot label\s*\{/);
   assert.match(floatingSelectStyleSource, /\.fieldButton\s*\{/);
   assert.match(floatingSelectStyleSource, /width:\s*100%/);
+});
+
+test("SegmentedControl fit and dense layouts do not expose vertical scrollbars", () => {
+  const fitItemsBlock = cssBlockSource(segmentedControlStyleSource, '.root[data-fit-items="true"]');
+  const denseBlock = cssBlockSource(segmentedControlStyleSource, ".dense");
+
+  assert.match(fitItemsBlock, /overflow-x:\s*auto/, "fit item segmented controls may scroll horizontally when space is tight");
+  assert.match(fitItemsBlock, /overflow-y:\s*hidden/, "fit item segmented controls should not expose a vertical scrollbar");
+  assert.match(fitItemsBlock, /scrollbar-width:\s*none/, "fit item segmented controls should hide native scrollbar chrome");
+  assert.match(denseBlock, /overflow-x:\s*auto/, "dense segmented controls may scroll horizontally when space is tight");
+  assert.match(denseBlock, /overflow-y:\s*hidden/, "dense segmented controls should not expose a vertical scrollbar");
+  assert.match(denseBlock, /scrollbar-width:\s*none/, "dense segmented controls should hide native scrollbar chrome");
 });
 
 test("legacy select and textarea adapter primitives are removed", () => {

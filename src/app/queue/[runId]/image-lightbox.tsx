@@ -62,23 +62,25 @@ export function ImageLightbox({
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
 
-      // I: 退出放大 (also keep Escape)
-      if (event.key === "i" || event.key === "I") { event.preventDefault(); handleClose(); return; }
-      if (event.key === "Escape") { handleClose(); return; }
-      // S: 上一张
-      if (event.key === "s" || event.key === "S") { event.preventDefault(); if (imageCount > 1) onPrev(); return; }
-      // F: 下一张
-      if (event.key === "f" || event.key === "F") { event.preventDefault(); if (imageCount > 1) onNext(); return; }
-      // J: 保留并切换到下一张
-      if (event.key === "j" || event.key === "J") { event.preventDefault(); onReview("keep"); return; }
-      // K: 删除并切换到下一张
-      if (event.key === "k" || event.key === "K") { event.preventDefault(); onReview("trash"); return; }
-      // L: 切换P站标记
-      if (event.key === "l" || event.key === "L") { event.preventDefault(); onToggleMarker("featured"); return; }
-      // ;: 切换预览标记
-      if (event.key === ";") { event.preventDefault(); onToggleMarker("featured2"); return; }
-      // C: 切换封面标记
-      if (event.key === "c" || event.key === "C") { event.preventDefault(); onToggleMarker("cover"); return; }
+      const key = event.key;
+
+      // Close: I / D / Escape
+      if (key === "i" || key === "I" || key === "d" || key === "D") { event.preventDefault(); handleClose(); return; }
+      if (key === "Escape") { handleClose(); return; }
+      // Prev: S / ArrowLeft
+      if (key === "s" || key === "S" || key === "ArrowLeft") { event.preventDefault(); if (imageCount > 1) onPrev(); return; }
+      // Next: F / ArrowRight
+      if (key === "f" || key === "F" || key === "ArrowRight") { event.preventDefault(); if (imageCount > 1) onNext(); return; }
+      // Keep + advance: J / W
+      if (key === "j" || key === "J" || key === "w" || key === "W") { event.preventDefault(); onReview("keep"); return; }
+      // Trash + advance: K / E
+      if (key === "k" || key === "K" || key === "e" || key === "E") { event.preventDefault(); onReview("trash"); return; }
+      // Featured (p站) + advance: L / R
+      if (key === "l" || key === "L" || key === "r" || key === "R") { event.preventDefault(); onToggleMarker("featured"); return; }
+      // Featured2 (预览) + advance: ; / T
+      if (key === ";" || key === "t" || key === "T") { event.preventDefault(); onToggleMarker("featured2"); return; }
+      // Cover (封面) + advance: '
+      if (key === "'") { event.preventDefault(); onToggleMarker("cover"); return; }
     };
 
     document.addEventListener("keydown", handleKeyDown);

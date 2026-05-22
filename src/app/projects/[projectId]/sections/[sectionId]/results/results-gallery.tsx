@@ -215,55 +215,71 @@ export function ResultsGalleryProvider({
       // 忽略输入框中的按键
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
 
-      // I: 退出放大
-      if (event.key === "i" || event.key === "I") {
+      const key = event.key;
+
+      // Close lightbox: I / D / Escape
+      if (key === "i" || key === "I" || key === "d" || key === "D") {
         event.preventDefault();
         setOpen(false);
         return;
       }
-      // S: 上一张
-      if (event.key === "s" || event.key === "S") {
+      if (key === "Escape") { setOpen(false); return; }
+
+      // Prev image: S / ArrowLeft
+      if (key === "s" || key === "S" || key === "ArrowLeft") {
         event.preventDefault();
         if (allImages.length > 1) goPrev();
+        return;
       }
-      // F: 下一张
-      if (event.key === "f" || event.key === "F") {
+      // Next image: F / ArrowRight
+      if (key === "f" || key === "F" || key === "ArrowRight") {
         event.preventDefault();
         if (allImages.length > 1) goNext();
+        return;
       }
 
-      // J: 保留并切换到下一张
-      if (event.key === "j" || event.key === "J") {
+      // Keep + advance: J / W
+      if (key === "j" || key === "J" || key === "w" || key === "W") {
         event.preventDefault();
         reviewCurrent("keep", true);
+        return;
       }
-      // K: 删除并切换到下一张
-      if (event.key === "k" || event.key === "K") {
+      // Trash + advance: K / E
+      if (key === "k" || key === "K" || key === "e" || key === "E") {
         event.preventDefault();
         reviewCurrent("trash", true);
+        return;
       }
 
-      // L: 切换P站标记并跳转下一张
-      if (event.key === "l" || event.key === "L") {
+      // Featured (p站) + advance: L / R
+      if (key === "l" || key === "L" || key === "r" || key === "R") {
         event.preventDefault();
         toggleMarker("featured");
+        return;
       }
-      // ;: 切换预览标记并跳转下一张
-      if (event.key === ";") {
+      // Featured2 (预览) + advance: ; / T
+      if (key === ";" || key === "t" || key === "T") {
         event.preventDefault();
         toggleMarker("featured2");
+        return;
+      }
+      // Cover (封面) + advance: '
+      if (key === "'") {
+        event.preventDefault();
+        toggleMarker("cover");
+        return;
       }
 
-      // Ctrl+Z: 撤销上一个操作
-      if ((event.ctrlKey || event.metaKey) && event.key === "z") {
+      // Undo: Z (plain, no modifier)
+      if ((key === "z" || key === "Z") && !event.ctrlKey && !event.metaKey) {
         event.preventDefault();
         if (onUndo) {
           onUndo().catch((error) => {
             toast.error(error instanceof Error ? error.message : "撤销失败");
           });
         }
+        return;
       }
-
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);

@@ -4,6 +4,7 @@ import { ArrowLeft, ChevronLeft, ChevronRight, Images, Pencil } from "lucide-rea
 import { SectionCard } from "@/components/section-card";
 import { getSectionResults } from "@/lib/server-data";
 import { hrefWithFolderQuery } from "@/lib/folder-navigation";
+import { prisma } from "@/lib/prisma";
 import { ResultsGrid } from "./results-grid";
 
 export const dynamic = "force-dynamic";
@@ -19,6 +20,32 @@ export default async function SectionResultsPage({
   if (!data || data.projectId !== projectId) {
     notFound();
   }
+
+  // Find current section's sortOrder for the next-pending query
+  const currentSection = await prisma.projectSection.findUnique({
+    where: { id: sectionId },
+    select: { sortOrder: true },
+  });
+
+  // Find next section with pending images
+  const nextPendingSection = currentSection
+    ? await prisma.projectSection.findFirst({
+        where: {
+          projectId,
+          id: { not: sectionId },
+          sortOrder: { gt: currentSection.sortOrder ?? 0 },
+          runs: {
+            some: {
+              images: {
+                some: { reviewStatus: "pending" },
+              },
+            },
+          },
+        },
+        orderBy: { sortOrder: "asc" },
+        select: { id: true },
+      })
+    : null;
 
   const totalImages = data.runs.reduce((sum, run) => sum + run.images.length, 0);
   const returnHref = hrefWithFolderQuery(
@@ -42,6 +69,7 @@ export default async function SectionResultsPage({
         <div className="flex flex-wrap items-center justify-end gap-2">
           <Link
             href={`/projects/${projectId}/sections/${sectionId}`}
+            data-nav-editor
             className="inline-flex items-center gap-1.5 rounded-xl border border-sky-500/20 bg-sky-500/10 px-3 py-2 text-xs text-sky-300 transition hover:bg-sky-500/20 hover:text-sky-200"
           >
             <Pencil className="size-3.5" />
@@ -101,9 +129,17 @@ export default async function SectionResultsPage({
         ) : (
           <ResultsGrid
             runs={data.runs}
+            sectionId={sectionId}
           />
         )}
       </SectionCard>
+      {nextPendingSection && (
+        <a
+          href={`/projects/${projectId}/sections/${nextPendingSection.id}/results`}
+          data-nav-next-pending
+          className="hidden"
+        />
+      )}
     </div>
   );
 }

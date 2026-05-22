@@ -110,6 +110,33 @@ export function SectionSwitchHeaderLink({
   );
 }
 
+export function SectionKeyboardShortcuts({
+  projectId,
+  sectionId,
+}: {
+  projectId: string;
+  sectionId: string;
+}) {
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      if (
+        event.target instanceof HTMLInputElement ||
+        event.target instanceof HTMLTextAreaElement ||
+        (event.target instanceof HTMLElement && event.target.isContentEditable)
+      )
+        return;
+      if (event.key === "a" || event.key === "A") {
+        event.preventDefault();
+        window.location.href = `/projects/${projectId}/sections/${sectionId}/results`;
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [projectId, sectionId]);
+
+  return null;
+}
+
 export function SectionSwitchNavigation({
   projectId,
   sectionId,
