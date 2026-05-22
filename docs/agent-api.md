@@ -82,6 +82,7 @@ or:
 | Switch a section binding variant | `POST /api/projects/:projectId/sections/:sectionId/switch-variant` |
 | Batch switch section binding variants | `POST /api/agent/projects/:projectId/switch-variants` |
 | Sync preset variants from a reference project | `POST /api/agent/projects/:projectId/sync-preset-variants` |
+| Discover projects by title and run the safe preset-variant sync flow | `POST /api/agent/projects/sync-preset-variant-flow` |
 | Manage prompt blocks | `GET/POST /api/projects/:projectId/sections/:sectionId/blocks`, `PATCH/DELETE /api/projects/:projectId/sections/:sectionId/blocks/:blockId` |
 | List queue, clear finished runs, clear active queue | `GET /api/queue`, `POST /api/queue/clear`, `POST /api/queue/clear-active` |
 | Cancel a run | `POST /api/runs/:runId/cancel` |
@@ -99,7 +100,7 @@ or:
 | Read logs, audit logs, health, worker status | `GET /api/logs`, `GET /api/audit-logs`, `GET /api/health`, `GET /api/worker/status` |
 | MCP automation | `GET/POST/DELETE /api/mcp` |
 
-No remaining user-facing backend operation gap is known after adding project folder management, `queue/clear`, `queue/clear-active`, section `batch-delete`, project `export`, template import options, template section CRUD, preset import/removal, preset lookup, preset library category/folder/group reads, batch variant switching, and `name/loraConfig` support on section PATCH.
+No remaining user-facing backend operation gap is known after adding project folder management, `queue/clear`, `queue/clear-active`, section `batch-delete`, project `export`, template import options, template section CRUD, preset import/removal, preset lookup, preset library category/folder/group reads, batch variant switching, title-based preset-variant sync flow, and `name/loraConfig` support on section PATCH.
 
 ## Projects
 
@@ -513,6 +514,7 @@ The `/api/agent/**` endpoints provide higher-level project/run context and revie
 | `POST` | `/api/agent/projects/:projectId/run-all` | run all enabled sections |
 | `POST` | `/api/agent/projects/:projectId/switch-variants` | batch switch preset binding variants |
 | `POST` | `/api/agent/projects/:projectId/sync-preset-variants` | dry-run or execute variant sync from a reference project |
+| `POST` | `/api/agent/projects/sync-preset-variant-flow` | discover projects/presets by title/name and run dry-run/apply/verify sync flow |
 | `POST` | `/api/agent/sections/:sectionId/run` | run one section |
 | `GET` | `/api/agent/runs/:runId/context` | full run context |
 | `POST` | `/api/agent/runs/:runId/review` | batch keep/trash images |
@@ -549,3 +551,24 @@ Returns per-item success or failure results without aborting the whole batch for
 ```
 
 Use `dryRun: true` first to inspect the plan, then `dryRun: false` to execute the planned switches.
+
+### Sync Preset Variant Flow by Project Title
+
+`POST /api/agent/projects/sync-preset-variant-flow`
+
+```json
+{
+  "sourceProjectTitle": "西施",
+  "targetProjectTitle": "尼可莱恩",
+  "expectedSourceProjectId": "optional-source-project-id-from-dry-run",
+  "expectedTargetProjectId": "optional-target-project-id-from-current-page-or-dry-run",
+  "sourcePresetName": "西施",
+  "targetPresetName": "尼可·莱恩",
+  "matchSectionsBy": "name",
+  "matchVariantsBy": "name",
+  "dryRun": true,
+  "sampleSectionNumbers": [1, 33, 65]
+}
+```
+
+`sourcePresetName` and `targetPresetName` are optional. When omitted, the service infers the active character preset used most often in each project, preferring the role/character preset category. Without expected IDs, projects are resolved by the latest exact title. The UI sends `expectedTargetProjectId` from the current project page during preview, then sends the dry-run's resolved `expectedSourceProjectId` and `expectedTargetProjectId` during apply so duplicate titles or concurrent same-title updates cannot switch a different project than the previewed one. `dryRun: false` requires both expected project IDs and fails closed if either ID is missing or its title no longer matches. The flow always runs an initial dry-run. With `dryRun: false`, it applies the planned switches through the existing variant-switch service, then runs a verification dry-run and returns `verification` with `plannedUpdateCount`, `variantDistribution`, `loraConfig` coverage, and sampled prompt blocks.

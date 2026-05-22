@@ -18,6 +18,7 @@ import {
 import { SectionFolderControls } from "@/components/section-folder-controls";
 import type { ProjectSectionFolderItem } from "@/lib/server-data";
 import { AddSectionButton, ImportTemplateButton } from "./section-actions";
+import { SyncPresetVariantFlowDialog } from "./sync-preset-variant-flow-dialog";
 import { AppSidebar } from "./app-sidebar";
 import { SectionCards, type Section } from "./section-cards";
 
@@ -260,9 +261,10 @@ export function ProjectDetailClient({
           <div className="sticky top-0 z-20 -mx-4 flex items-center gap-2 border-b border-white/[0.06] bg-[var(--bg)]/80 px-4 py-2 backdrop-blur sm:-mx-6 sm:px-6">
             <SidebarTrigger className="-ml-1 hidden md:inline-flex" />
             <div className="flex-1" />
-            <div className="grid w-full grid-cols-1 gap-1.5 sm:w-auto sm:grid-cols-4 sm:gap-2" style={{ maxWidth: "36rem" }}>
+            <div className="grid w-full grid-cols-1 gap-1.5 sm:w-auto sm:grid-cols-5 sm:gap-2" style={{ maxWidth: "45rem" }}>
               <AddSectionButton projectId={projectId} folderId={currentFolderId} />
               <ImportTemplateButton projectId={projectId} />
+              <SyncPresetVariantFlowDialog projectId={projectId} projectTitle={projectTitle} />
               <Link
                 href={`/projects/${projectId}/results`}
                 className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-violet-500/20 bg-violet-500/[0.04] px-2 py-2 text-[11px] text-violet-300 transition hover:bg-violet-500/[0.1] sm:gap-2 sm:px-3 sm:py-3 sm:text-xs"
