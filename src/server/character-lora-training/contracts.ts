@@ -88,6 +88,8 @@ export const CHARACTER_LORA_PROVIDER_INPUT_IMAGE_ROLES = [
   "previous_candidate",
 ] as const;
 
+export const CHARACTER_LORA_IMAGE_PROVIDERS = ["mock-local", "openai-codex"] as const;
+
 export const CHARACTER_LORA_REJECT_REASONS = [
   "identity_wrong",
   "hair_wrong",
@@ -116,6 +118,7 @@ export const characterLoraDecisionStatusSchema = z.enum(CHARACTER_LORA_DECISION_
 export const characterLoraGpuTaskLockStatusSchema = z.enum(CHARACTER_LORA_GPU_TASK_LOCK_STATUSES);
 export const characterLoraSourceImageRoleSchema = z.enum(CHARACTER_LORA_SOURCE_IMAGE_ROLES);
 export const characterLoraProviderInputImageRoleSchema = z.enum(CHARACTER_LORA_PROVIDER_INPUT_IMAGE_ROLES);
+export const characterLoraImageProviderSchema = z.enum(CHARACTER_LORA_IMAGE_PROVIDERS);
 export const characterLoraRejectReasonSchema = z.enum(CHARACTER_LORA_REJECT_REASONS);
 
 export type CharacterLoraJobStatus = z.infer<typeof characterLoraJobStatusSchema>;
@@ -127,6 +130,7 @@ export type CharacterLoraDecisionStatus = z.infer<typeof characterLoraDecisionSt
 export type CharacterLoraGpuTaskLockStatus = z.infer<typeof characterLoraGpuTaskLockStatusSchema>;
 export type CharacterLoraSourceImageRole = z.infer<typeof characterLoraSourceImageRoleSchema>;
 export type CharacterLoraProviderInputImageRole = z.infer<typeof characterLoraProviderInputImageRoleSchema>;
+export type CharacterLoraImageProvider = z.infer<typeof characterLoraImageProviderSchema>;
 export type CharacterLoraRejectReason = z.infer<typeof characterLoraRejectReasonSchema>;
 
 const relativeArtifactPathSchema = z.string().min(1);
@@ -138,7 +142,7 @@ export const characterLoraArtifactRefSchema = z.object({
   kind: characterLoraArtifactKindSchema.optional(),
   relativePath: relativeArtifactPathSchema,
   sha256: sha256Schema.optional(),
-});
+}).strict();
 
 export const characterLoraProviderToolParamsSchema = z.object({
   size: z.string().min(1),
@@ -146,19 +150,19 @@ export const characterLoraProviderToolParamsSchema = z.object({
   outputFormat: z.enum(["png"]),
   background: z.enum(["opaque", "transparent"]),
   partialImages: z.number().int().positive().optional(),
-});
+}).strict();
 
 export const characterLoraProviderInputImageSchema = z.object({
   artifactId: z.string().min(1),
   role: characterLoraProviderInputImageRoleSchema,
   relativePath: relativeArtifactPathSchema,
   sha256: sha256Schema,
-});
+}).strict();
 
 export const characterLoraImageGenerationRequestSchema = z.object({
   jobId: z.string().min(1),
   generationRunId: z.string().min(1),
-  provider: z.enum(["openai-codex"]),
+  provider: characterLoraImageProviderSchema,
   hostModel: z.string().min(1),
   imageModel: z.enum(["gpt-image-2"]),
   // Host instructions describe tool use only. They must not contain provider auth or visual details.
@@ -171,7 +175,7 @@ export const characterLoraImageGenerationRequestSchema = z.object({
   toolParams: characterLoraProviderToolParamsSchema,
   inputImages: z.array(characterLoraProviderInputImageSchema),
   outputDir: relativeArtifactPathSchema,
-});
+}).strict();
 
 export const characterLoraImageGenerationOutputSchema = z.object({
   images: z.array(
@@ -206,7 +210,7 @@ export const characterLoraImageGenerationTaskPayloadSchema = z.object({
   jobId: z.string().min(1),
   generationRunId: z.string().min(1),
   request: characterLoraImageGenerationRequestSchema,
-});
+}).strict();
 
 export const characterLoraDatasetFreezeTaskPayloadSchema = z.object({
   taskType: z.literal("dataset_freeze"),

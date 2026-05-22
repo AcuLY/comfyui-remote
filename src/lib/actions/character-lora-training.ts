@@ -10,6 +10,20 @@ import {
   listCharacterLoraSourceImages as listSourceImages,
   uploadCharacterLoraSourceImage as uploadSourceImage,
 } from "@/server/services/character-lora-training/source-image-service";
+import {
+  createCharacterLoraPromptCardVersion as createPromptCardVersion,
+  listCharacterLoraPromptCardVersions as listPromptCardVersions,
+} from "@/server/services/character-lora-training/prompt-card-service";
+import {
+  instantiateCharacterLoraJobSections as instantiateJobSections,
+  listCharacterLoraJobSections as listJobSections,
+  listCharacterLoraSectionTemplates as listSectionTemplates,
+} from "@/server/services/character-lora-training/section-template-service";
+import {
+  enqueueCharacterLoraCanonicalGenerationRun as enqueueCanonicalGenerationRun,
+  mockCompleteCharacterLoraCanonicalGenerationRun as mockCompleteCanonicalGenerationRun,
+  selectCharacterLoraCanonicalVersion as selectCanonicalVersion,
+} from "@/server/services/character-lora-training/canonical-service";
 
 export async function createCharacterLoraTrainingJob(input: unknown) {
   return createJob(input);
@@ -33,4 +47,36 @@ export async function listCharacterLoraSourceImages(jobId: string) {
 
 export async function uploadCharacterLoraSourceImage(jobId: string, input: FormData) {
   return uploadSourceImage(jobId, input);
+}
+
+export async function listCharacterLoraPromptCardVersions(jobId: string) {
+  return listPromptCardVersions(jobId);
+}
+
+export async function createCharacterLoraPromptCardVersion(jobId: string, input: unknown) {
+  return createPromptCardVersion(jobId, input);
+}
+
+export async function listCharacterLoraSectionTemplates() {
+  return listSectionTemplates();
+}
+
+export async function listCharacterLoraJobSections(jobId: string) {
+  return listJobSections(jobId);
+}
+
+export async function instantiateCharacterLoraJobSections(jobId: string, input?: unknown) {
+  return instantiateJobSections(jobId, input ?? {});
+}
+
+export async function enqueueCharacterLoraCanonicalGenerationRun(jobId: string, input?: unknown) {
+  return enqueueCanonicalGenerationRun(jobId, input ?? {});
+}
+
+export async function mockCompleteCharacterLoraCanonicalGenerationRun(runId: string, input?: unknown) {
+  return mockCompleteCanonicalGenerationRun(runId, input ?? {});
+}
+
+export async function selectCharacterLoraCanonicalVersion(jobId: string, versionId: string) {
+  return selectCanonicalVersion(jobId, versionId);
 }
