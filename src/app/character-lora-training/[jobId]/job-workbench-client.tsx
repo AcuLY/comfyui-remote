@@ -106,6 +106,37 @@ const STATUS_LABEL: Record<string, string> = {
   rejected: "驳回",
 };
 
+const REVIEW_STATUS_OPTIONS = [
+  { value: "all", label: "全部状态" },
+  { value: "pending", label: "待审" },
+  { value: "keep", label: "保留" },
+  { value: "reject", label: "拒绝" },
+  { value: "excluded", label: "排除" },
+  { value: "included_in_training", label: "已入集" },
+] as const;
+
+const REJECT_REASON_OPTIONS = [
+  { value: "identity_wrong", label: "身份不符", suggestion: "重跑时提高 canonical 权重，并补充脸型、发型、标志物约束。" },
+  { value: "hair_wrong", label: "发型错误", suggestion: "重跑时明确发型、发量、发色和刘海边界。" },
+  { value: "bangs_wrong", label: "刘海错误", suggestion: "重跑时单独描述刘海形状，加入局部参考图。" },
+  { value: "eye_wrong", label: "眼睛错误", suggestion: "重跑时补充眼型、瞳色、神态，避免泛化脸。" },
+  { value: "face_wrong", label: "脸型错误", suggestion: "重跑时强化脸型、年龄感和五官比例描述。" },
+  { value: "outfit_wrong", label: "服装错误", suggestion: "重跑时拆分上装、下装、配饰，并锁定颜色材质。" },
+  { value: "shoe_wrong", label: "鞋子错误", suggestion: "重跑时加入鞋型和可见脚部构图要求。" },
+  { value: "pose_wrong", label: "姿势错误", suggestion: "重跑时用更具体姿势和镜头角度，减少自由发挥。" },
+  { value: "composition_wrong", label: "构图错误", suggestion: "重跑时指定半身/全身、留白、主体位置和裁切边界。" },
+  { value: "hands_wrong", label: "手部问题", suggestion: "重跑时降低复杂手势，改用简单可控姿势。" },
+  { value: "anatomy_wrong", label: "结构问题", suggestion: "重跑时加入解剖正确、四肢比例和镜头限制。" },
+  { value: "style_wrong", label: "画风不符", suggestion: "重跑时锁定目标画风，删除冲突风格词。" },
+  { value: "quality_low", label: "质量过低", suggestion: "重跑时提高质量档或减少复杂背景干扰。" },
+  { value: "duplicate", label: "重复图", suggestion: "重跑时换 seed 或要求不同角度/动作。" },
+  { value: "unsafe", label: "不安全", suggestion: "重跑时加强安全约束并替换敏感动作/服装。" },
+  { value: "other", label: "其他", suggestion: "在备注里写明问题，再把备注转成下一轮 userInstruction。" },
+] as const;
+
+type ReviewWritableStatus = "pending" | "keep" | "reject" | "excluded";
+type RejectReason = (typeof REJECT_REASON_OPTIONS)[number]["value"];
+
 function formatDate(value: string | null | undefined) {
   if (!value) {
     return "-";
@@ -182,20 +213,40 @@ export function JobWorkbenchClient({
   const [latestCanonicalRunId, setLatestCanonicalRunId] = useState("");
   const [canonicalVersionId, setCanonicalVersionId] = useState(job.currentCanonicalVersionId ?? "");
   const [selectedImageIds, setSelectedImageIds] = useState<string[]>([]);
+  const [reviewSectionFilter, setReviewSectionFilter] = useState("all");
+  const [reviewStatusFilter, setReviewStatusFilter] = useState("all");
+  const [rejectReason, setRejectReason] = useState<RejectReason>("identity_wrong");
+  const [reviewNote, setReviewNote] = useState("");
   const [identityTraits, setIdentityTraits] = useState("{\n  \"face\": \"\",\n  \"hair\": \"\"\n}");
   const [outfitTraits, setOutfitTraits] = useState("{\n  \"outfit\": \"\"\n}");
   const [negativeTraits, setNegativeTraits] = useState("{\n  \"avoid\": \"wrong identity\"\n}");
 
+  const canonicalVersions = report.canonicalVersions;
   const currentPrompt = promptCards.find((card) => card.id === job.currentPromptCardVersionId) ?? promptCards[0] ?? null;
   const latestFrozenRevision = datasetRevisions.find((revision) => revision.status === "frozen") ?? datasetRevisions[0] ?? null;
   const latestDoneTraining = trainingRuns.find((run) => run.status === "done" && run.finalSafetensorsArtifactId) ?? null;
   const pendingCanonicalRunId = latestCanonicalRunId.trim();
+  const sectionById = useMemo(() => new Map(sections.map((section) => [section.id, section])), [sections]);
   const candidateStatusCounts = useMemo(() => {
     return candidateImages.reduce<Record<string, number>>((acc, image) => {
       acc[image.reviewStatus] = (acc[image.reviewStatus] ?? 0) + 1;
       return acc;
     }, {});
   }, [candidateImages]);
+  const filteredCandidateImages = useMemo(() => {
+    return candidateImages.filter((image) => {
+      const sectionMatches = reviewSectionFilter === "all" || image.sectionId === reviewSectionFilter;
+      const statusMatches = reviewStatusFilter === "all" || image.reviewStatus === reviewStatusFilter;
+
+      return sectionMatches && statusMatches;
+    });
+  }, [candidateImages, reviewSectionFilter, reviewStatusFilter]);
+  const filteredSelectedImageIds = useMemo(() => {
+    const visibleIds = new Set(filteredCandidateImages.map((image) => image.id));
+
+    return selectedImageIds.filter((imageId) => visibleIds.has(imageId));
+  }, [filteredCandidateImages, selectedImageIds]);
+  const rejectSuggestion = REJECT_REASON_OPTIONS.find((reason) => reason.value === rejectReason)?.suggestion ?? "";
 
   function runAction(key: string, label: string, action: () => Promise<unknown>, refresh = true) {
     setPendingKey(key);
@@ -293,7 +344,16 @@ export function JobWorkbenchClient({
     );
   }
 
-  function handleReview(imageIds: string[], reviewStatus: "keep" | "reject" | "excluded" | "pending") {
+  function setFilteredImagesSelected(selected: boolean) {
+    const filteredIds = filteredCandidateImages.map((image) => image.id);
+    setSelectedImageIds((prev) =>
+      selected
+        ? Array.from(new Set([...prev, ...filteredIds]))
+        : prev.filter((imageId) => !filteredIds.includes(imageId)),
+    );
+  }
+
+  function handleReview(imageIds: string[], reviewStatus: ReviewWritableStatus) {
     if (imageIds.length === 0) {
       toast.error("未选择图片");
       return;
@@ -304,7 +364,8 @@ export function JobWorkbenchClient({
         images: imageIds.map((imageId) => ({
           imageId,
           reviewStatus,
-          rejectReasons: reviewStatus === "reject" ? ["other"] : undefined,
+          rejectReasons: reviewStatus === "reject" ? [rejectReason] : undefined,
+          reviewNote: reviewStatus === "reject" ? reviewNote : undefined,
         })),
       });
       setSelectedImageIds([]);
@@ -474,10 +535,7 @@ export function JobWorkbenchClient({
           <input name="sortOrder" type="number" defaultValue={sourceImages.length} className="rounded-lg border border-white/10 bg-black/30 px-2 text-xs text-white" />
           <ActionButton icon={Upload} label="上传" loading={isBusy("source.upload")} disabled={isPending} />
         </form>
-        <CompactList
-          empty="暂无 source image"
-          items={sourceImages.map((image) => `${image.role} / ${image.width ?? "?"}x${image.height ?? "?"} / ${image.relativePath}`)}
-        />
+        <SourceImageGrid jobId={job.id} images={sourceImages} />
       </SectionCard>
 
       <SectionCard title="Canonical" subtitle="生成、模拟完成和选择标准图版本。">
@@ -504,23 +562,50 @@ export function JobWorkbenchClient({
             <ActionButton icon={Check} label="模拟完成" loading={isBusy("canonical.complete")} disabled={isPending} />
           </form>
           <form action={handleCanonicalSelect} className="grid gap-2 rounded-lg border border-white/10 bg-white/[0.03] p-3">
-            <input
+            <select
               name="versionId"
               value={canonicalVersionId}
               onChange={(event) => setCanonicalVersionId(event.target.value)}
-              placeholder="canonical version id"
-              className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 font-mono text-xs text-white"
-            />
-            <ActionButton icon={ShieldCheck} label="设为当前" loading={isBusy("canonical.select")} disabled={isPending} />
+              className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white"
+            >
+              <option value="">选择 canonical</option>
+              {canonicalVersions.map((version) => (
+                <option key={version.id} value={version.id}>
+                  v{version.version} / {version.status} / {compactId(version.id)}
+                </option>
+              ))}
+            </select>
+            <ActionButton icon={ShieldCheck} label="设为当前" loading={isBusy("canonical.select")} disabled={isPending || !canonicalVersionId} />
           </form>
         </div>
+        <CanonicalVersionGrid
+          jobId={job.id}
+          currentCanonicalVersionId={job.currentCanonicalVersionId}
+          versions={canonicalVersions}
+          selectedVersionId={canonicalVersionId}
+          onSelectVersion={setCanonicalVersionId}
+          onSetCurrent={(versionId) => {
+            setCanonicalVersionId(versionId);
+            runAction("canonical.select", "Canonical 已选择", async () => {
+              await selectCharacterLoraCanonicalVersion(job.id, versionId);
+            });
+          }}
+          disabled={isPending}
+        />
       </SectionCard>
 
       <SectionCard title="Prompt Card" subtitle="保存角色特征和最终提示词草稿。">
         <form action={handlePromptCard} className="grid gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-3 lg:grid-cols-2">
           <label className="grid gap-1 text-xs text-zinc-400">
             Canonical version
-            <input name="canonicalVersionId" defaultValue={job.currentCanonicalVersionId ?? canonicalVersionId} className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 font-mono text-xs text-white" />
+            <select name="canonicalVersionId" defaultValue={job.currentCanonicalVersionId ?? canonicalVersionId} className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white">
+              <option value="">未选择</option>
+              {canonicalVersions.map((version) => (
+                <option key={version.id} value={version.id}>
+                  v{version.version} / {compactId(version.id)}
+                </option>
+              ))}
+            </select>
           </label>
           <label className="grid gap-1 text-xs text-zinc-400">
             Trigger
@@ -588,43 +673,69 @@ export function JobWorkbenchClient({
       </SectionCard>
 
       <SectionCard title="Review / Dataset" subtitle="审核候选图、编辑 caption、冻结数据集。">
+        <div className="mb-3 grid gap-2 rounded-lg border border-white/10 bg-white/[0.03] p-3 lg:grid-cols-[1fr_1fr_1.2fr]">
+          <select value={reviewSectionFilter} onChange={(event) => setReviewSectionFilter(event.target.value)} className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white">
+            <option value="all">全部小节</option>
+            {sections.map((section) => (
+              <option key={section.id} value={section.id}>
+                {section.key} / {section.name}
+              </option>
+            ))}
+          </select>
+          <select value={reviewStatusFilter} onChange={(event) => setReviewStatusFilter(event.target.value)} className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white">
+            {REVIEW_STATUS_OPTIONS.map((status) => (
+              <option key={status.value} value={status.value}>{status.label}</option>
+            ))}
+          </select>
+          <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-400">
+            <span>显示 {filteredCandidateImages.length} / 选中 {filteredSelectedImageIds.length}</span>
+            <MiniButton label="选中当前" onClick={() => setFilteredImagesSelected(true)} disabled={isPending || filteredCandidateImages.length === 0} />
+            <MiniButton label="清除当前" onClick={() => setFilteredImagesSelected(false)} disabled={isPending || filteredSelectedImageIds.length === 0} />
+          </div>
+          <select value={rejectReason} onChange={(event) => setRejectReason(event.target.value as RejectReason)} className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white">
+            {REJECT_REASON_OPTIONS.map((reason) => (
+              <option key={reason.value} value={reason.value}>{reason.label}</option>
+            ))}
+          </select>
+          <input
+            value={reviewNote}
+            onChange={(event) => setReviewNote(event.target.value)}
+            placeholder="拒绝备注，可选"
+            className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white"
+          />
+          <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+            重跑建议：{rejectSuggestion}
+          </div>
+        </div>
         <div className="mb-3 flex flex-wrap gap-2">
-          <ActionButton type="button" icon={Check} label="批量 keep" loading={isBusy("review.keep")} disabled={isPending || selectedImageIds.length === 0} onClick={() => handleReview(selectedImageIds, "keep")} />
-          <ActionButton type="button" icon={X} label="批量 reject" loading={isBusy("review.reject")} disabled={isPending || selectedImageIds.length === 0} onClick={() => handleReview(selectedImageIds, "reject")} />
-          <ActionButton type="button" icon={Square} label="批量 excluded" loading={isBusy("review.excluded")} disabled={isPending || selectedImageIds.length === 0} onClick={() => handleReview(selectedImageIds, "excluded")} />
+          <ActionButton type="button" icon={Check} label="批量 keep" loading={isBusy("review.keep")} disabled={isPending || filteredSelectedImageIds.length === 0} onClick={() => handleReview(filteredSelectedImageIds, "keep")} />
+          <ActionButton type="button" icon={X} label="批量 reject" loading={isBusy("review.reject")} disabled={isPending || filteredSelectedImageIds.length === 0} onClick={() => handleReview(filteredSelectedImageIds, "reject")} />
+          <ActionButton type="button" icon={Square} label="批量 excluded" loading={isBusy("review.excluded")} disabled={isPending || filteredSelectedImageIds.length === 0} onClick={() => handleReview(filteredSelectedImageIds, "excluded")} />
+          <ActionButton type="button" icon={RefreshCw} label="批量 pending" loading={isBusy("review.pending")} disabled={isPending || filteredSelectedImageIds.length === 0} onClick={() => handleReview(filteredSelectedImageIds, "pending")} />
         </div>
-        <div className="overflow-hidden rounded-lg border border-white/10">
-          {candidateImages.length === 0 ? (
-            <div className="py-8 text-center text-sm text-zinc-500">暂无候选图</div>
-          ) : (
-            <div className="divide-y divide-white/10">
-              {candidateImages.map((image) => (
-                <div key={image.id} className="grid gap-2 px-3 py-3 text-xs text-zinc-300 lg:grid-cols-[28px_1.1fr_0.8fr_1.4fr_auto] lg:items-center">
-                  <input
-                    type="checkbox"
-                    checked={selectedImageIds.includes(image.id)}
-                    onChange={(event) => setImageSelected(image.id, event.target.checked)}
-                    className="size-3.5 accent-sky-400"
-                  />
-                  <span className="min-w-0">
-                    <span className="block truncate font-mono text-zinc-200">{compactId(image.id)} / {image.width ?? "?"}x{image.height ?? "?"}</span>
-                    <span className="block truncate text-zinc-500">{image.relativePath}</span>
-                  </span>
-                  <span>{STATUS_LABEL[image.reviewStatus] ?? image.reviewStatus}</span>
-                  <form action={(formData) => handleCaption(image.id, formData)} className="flex min-w-0 gap-2">
-                    <input name="captionDraft" defaultValue={image.captionDraft ?? `${job.triggerToken}, ${job.characterName}`} className="min-w-0 flex-1 rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white" />
-                    <ActionButton icon={Save} label="Caption" loading={isBusy(`caption.${image.id}`)} disabled={isPending} />
-                  </form>
-                  <div className="flex flex-wrap gap-1">
-                    <MiniButton label="keep" onClick={() => handleReview([image.id], "keep")} disabled={isPending} />
-                    <MiniButton label="reject" onClick={() => handleReview([image.id], "reject")} disabled={isPending} />
-                    <MiniButton label="exclude" onClick={() => handleReview([image.id], "excluded")} disabled={isPending} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        {candidateImages.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-white/10 py-8 text-center text-sm text-zinc-500">暂无候选图</div>
+        ) : filteredCandidateImages.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-white/10 py-8 text-center text-sm text-zinc-500">当前过滤无结果</div>
+        ) : (
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {filteredCandidateImages.map((image) => (
+              <CandidateImageCard
+                key={image.id}
+                jobId={job.id}
+                image={image}
+                section={image.sectionId ? sectionById.get(image.sectionId) : undefined}
+                selected={selectedImageIds.includes(image.id)}
+                defaultCaption={`${job.triggerToken}, ${job.characterName}`}
+                isPending={isPending}
+                captionLoading={isBusy(`caption.${image.id}`)}
+                onSelectedChange={(selected) => setImageSelected(image.id, selected)}
+                onCaption={(formData) => handleCaption(image.id, formData)}
+                onReview={(status) => handleReview([image.id], status)}
+              />
+            ))}
+          </div>
+        )}
         <form action={handleFreezeDataset} className="mt-3 grid gap-2 rounded-lg border border-white/10 bg-white/[0.03] p-3 md:grid-cols-[1fr_100px_auto_auto]">
           <input name="captionStrategy" defaultValue={job.captionStrategy} className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white" />
           <input name="repeatCount" type="number" min={1} defaultValue={1} className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white" />
@@ -835,6 +946,202 @@ function JsonBox({ label, value, onChange }: { label: string; value: string; onC
       />
     </label>
   );
+}
+
+function SourceImageGrid({ jobId, images }: { jobId: string; images: CharacterLoraSourceImage[] }) {
+  if (images.length === 0) {
+    return <div className="mt-3 rounded-lg border border-dashed border-white/10 py-6 text-center text-sm text-zinc-500">暂无 source image</div>;
+  }
+
+  return (
+    <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      {images.map((image) => (
+        <div key={image.id} className="overflow-hidden rounded-lg border border-white/10 bg-white/[0.03]">
+          <ArtifactThumb jobId={jobId} relativePath={image.relativePath} alt={image.role} />
+          <div className="space-y-1 p-2 text-xs">
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-medium text-zinc-100">{image.role}</span>
+              <span className="font-mono text-zinc-500">{compactId(image.id)}</span>
+            </div>
+            <div className="text-zinc-500">{image.width ?? "?"}x{image.height ?? "?"}</div>
+            <div className="truncate font-mono text-[11px] text-zinc-500">{image.relativePath}</div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function CanonicalVersionGrid({
+  jobId,
+  currentCanonicalVersionId,
+  versions,
+  selectedVersionId,
+  disabled,
+  onSelectVersion,
+  onSetCurrent,
+}: {
+  jobId: string;
+  currentCanonicalVersionId: string | null;
+  versions: CharacterLoraJobReport["canonicalVersions"];
+  selectedVersionId: string;
+  disabled: boolean;
+  onSelectVersion: (versionId: string) => void;
+  onSetCurrent: (versionId: string) => void;
+}) {
+  if (versions.length === 0) {
+    return <div className="mt-3 rounded-lg border border-dashed border-white/10 py-6 text-center text-sm text-zinc-500">暂无 canonical version</div>;
+  }
+
+  return (
+    <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      {versions.map((version) => {
+        const relativePath = version.artifact?.relativePath ?? null;
+        const isCurrent = version.id === currentCanonicalVersionId;
+        const isSelected = version.id === selectedVersionId;
+
+        return (
+          <div key={version.id} className={`overflow-hidden rounded-lg border bg-white/[0.03] ${isCurrent ? "border-sky-400/60" : isSelected ? "border-white/25" : "border-white/10"}`}>
+            <ArtifactThumb jobId={jobId} relativePath={relativePath} alt={`canonical v${version.version}`} />
+            <div className="space-y-2 p-2 text-xs">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-medium text-zinc-100">v{version.version}</span>
+                <span className={isCurrent ? "text-sky-300" : "text-zinc-500"}>{isCurrent ? "当前" : STATUS_LABEL[version.status] ?? version.status}</span>
+              </div>
+              <div className="truncate font-mono text-[11px] text-zinc-500">{compactId(version.id)} / {formatDate(version.createdAt)}</div>
+              {version.notes ? <div className="line-clamp-2 text-zinc-500">{version.notes}</div> : null}
+              <div className="flex flex-wrap gap-1">
+                <MiniButton label="选择" onClick={() => onSelectVersion(version.id)} disabled={disabled} />
+                <MiniButton label="设当前" onClick={() => onSetCurrent(version.id)} disabled={disabled || isCurrent} />
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function CandidateImageCard({
+  jobId,
+  image,
+  section,
+  selected,
+  defaultCaption,
+  isPending,
+  captionLoading,
+  onSelectedChange,
+  onCaption,
+  onReview,
+}: {
+  jobId: string;
+  image: CharacterLoraCandidateImage;
+  section?: CharacterLoraSection;
+  selected: boolean;
+  defaultCaption: string;
+  isPending: boolean;
+  captionLoading: boolean;
+  onSelectedChange: (selected: boolean) => void;
+  onCaption: (formData: FormData) => void;
+  onReview: (status: ReviewWritableStatus) => void;
+}) {
+  const rejectReasons = extractRejectReasons(image.rejectReasons);
+
+  return (
+    <div className={`overflow-hidden rounded-lg border bg-white/[0.03] ${selected ? "border-sky-400/60" : "border-white/10"}`}>
+      <div className="relative">
+        <ArtifactThumb jobId={jobId} relativePath={image.relativePath} alt={image.id} />
+        <label className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-md border border-black/40 bg-black/70 px-2 py-1 text-[11px] text-white">
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={(event) => onSelectedChange(event.target.checked)}
+            className="size-3.5 accent-sky-400"
+          />
+          选中
+        </label>
+        <span className="absolute right-2 top-2 rounded-md bg-black/70 px-2 py-1 text-[11px] text-white">
+          {STATUS_LABEL[image.reviewStatus] ?? image.reviewStatus}
+        </span>
+      </div>
+      <div className="space-y-2 p-3 text-xs">
+        <div className="min-w-0">
+          <div className="truncate font-medium text-zinc-100">{section ? `${section.key} / ${section.name}` : "未分组"}</div>
+          <div className="truncate font-mono text-[11px] text-zinc-500">{compactId(image.id)} / {image.width ?? "?"}x{image.height ?? "?"}</div>
+          <div className="truncate font-mono text-[11px] text-zinc-500">{image.relativePath}</div>
+        </div>
+        {rejectReasons.length > 0 ? (
+          <div className="flex flex-wrap gap-1">
+            {rejectReasons.map((reason) => (
+              <span key={reason} className="rounded-md border border-rose-400/20 bg-rose-500/10 px-1.5 py-0.5 text-[11px] text-rose-200">
+                {formatRejectReason(reason)}
+              </span>
+            ))}
+          </div>
+        ) : null}
+        <form action={onCaption} className="grid gap-2">
+          <input
+            name="captionDraft"
+            defaultValue={image.captionDraft ?? defaultCaption}
+            className="min-w-0 rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white"
+          />
+          <ActionButton icon={Save} label="Caption" loading={captionLoading} disabled={isPending} />
+        </form>
+        <div className="grid grid-cols-2 gap-1">
+          <MiniButton label="keep" onClick={() => onReview("keep")} disabled={isPending || image.reviewStatus === "included_in_training"} />
+          <MiniButton label="reject" onClick={() => onReview("reject")} disabled={isPending || image.reviewStatus === "included_in_training"} />
+          <MiniButton label="exclude" onClick={() => onReview("excluded")} disabled={isPending || image.reviewStatus === "included_in_training"} />
+          <MiniButton label="pending" onClick={() => onReview("pending")} disabled={isPending || image.reviewStatus === "included_in_training"} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ArtifactThumb({
+  jobId,
+  relativePath,
+  alt,
+}: {
+  jobId: string;
+  relativePath: string | null | undefined;
+  alt: string;
+}) {
+  if (!relativePath) {
+    return (
+      <div className="flex aspect-square items-center justify-center bg-black/30 text-xs text-zinc-600">
+        无图片
+      </div>
+    );
+  }
+
+  return (
+    <a href={buildArtifactImageUrl(jobId, relativePath)} target="_blank" rel="noreferrer" className="block">
+      {/* eslint-disable-next-line @next/next/no-img-element -- thumbnails are served by the artifact route with sharp resizing. */}
+      <img
+        src={buildArtifactImageUrl(jobId, relativePath, { w: 360, q: 72 })}
+        alt={alt}
+        loading="lazy"
+        className="aspect-square w-full bg-black/30 object-cover"
+      />
+    </a>
+  );
+}
+
+function buildArtifactImageUrl(jobId: string, relativePath: string, options?: { w?: number; q?: number }) {
+  const params = new URLSearchParams({ path: relativePath });
+  if (options?.w) params.set("w", String(options.w));
+  if (options?.q) params.set("q", String(options.q));
+
+  return `/api/character-lora-training/jobs/${encodeURIComponent(jobId)}/artifacts/image?${params.toString()}`;
+}
+
+function extractRejectReasons(value: unknown) {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+}
+
+function formatRejectReason(value: string) {
+  return REJECT_REASON_OPTIONS.find((reason) => reason.value === value)?.label ?? value;
 }
 
 function ActionButton({
