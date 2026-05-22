@@ -2262,6 +2262,27 @@ export async function leaseNextCharacterLoraWorkerTask(input: {
       });
     }
 
+    if (queued.targetType === "benchmarkRun") {
+      const run = await tx.characterLoraBenchmarkRun.update({
+        where: { id: queued.targetId },
+        data: {
+          status: CharacterLoraRunStatus.running,
+          startedAt: queued.status === CharacterLoraRunStatus.queued ? now : undefined,
+        },
+        select: { id: true, jobId: true },
+      });
+
+      await tx.characterLoraTrainingJob.update({
+        where: { id: run.jobId },
+        data: {
+          status: CharacterLoraJobStatus.benchmarking,
+          phase: "benchmark",
+          failureSummary: null,
+        },
+        select: { id: true },
+      });
+    }
+
     return tx.characterLoraWorkerTask.findUnique({
       where: { id: queued.id },
       select: WORKER_TASK_SELECT,
@@ -2826,6 +2847,31 @@ export async function failCharacterLoraWorkerTask(input: {
           status: "released",
           releasedAt: new Date(),
         },
+      });
+    }
+
+    if (task.targetType === "benchmarkRun") {
+      const run = await tx.characterLoraBenchmarkRun.update({
+        where: { id: task.targetId },
+        data: {
+          status: CharacterLoraRunStatus.failed,
+          finishedAt: new Date(),
+          resultSummary: toInputJsonValue({
+            errorSummary: input.errorSummary,
+            progressJson: input.progressJson ?? task.progressJson ?? null,
+          }),
+        },
+        select: { id: true, jobId: true },
+      });
+
+      await tx.characterLoraTrainingJob.update({
+        where: { id: run.jobId },
+        data: {
+          status: CharacterLoraJobStatus.failed,
+          phase: "benchmark",
+          failureSummary: input.errorSummary,
+        },
+        select: { id: true },
       });
     }
 

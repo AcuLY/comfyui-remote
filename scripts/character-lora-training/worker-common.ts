@@ -4,6 +4,7 @@ import path from "node:path";
 import process from "node:process";
 
 import type {
+  CharacterLoraBenchmarkCompleteRequest,
   CharacterLoraTrainingCompleteOutput,
   CharacterLoraTrainingProgress,
   CharacterLoraWorkerTaskPayload,
@@ -61,6 +62,64 @@ export type ManagerJobReport = {
     id: string;
     configArtifact: { relativePath: string } | null;
     outputDir: string;
+    [key: string]: unknown;
+  }>;
+  benchmarkRuns: Array<{
+    id: string;
+    trainingRunId: string;
+    status: string;
+    testProjectId: string | null;
+    checkpointMatrix: unknown;
+    weightMatrix: unknown;
+    [key: string]: unknown;
+  }>;
+  [key: string]: unknown;
+};
+
+export type ManagerProjectRunResponse = {
+  projectId: string;
+  projectTitle: string;
+  projectStatus: string;
+  queuedRunCount: number;
+  runs: Array<{
+    runId: string;
+    sectionId: string;
+    sortOrder: number;
+    sectionName: string;
+    sectionSlug: string;
+    runIndex: number;
+    status: string;
+    createdAt: string;
+  }>;
+};
+
+export type ManagerProjectLatestRun = {
+  id: string;
+  runIndex: number;
+  status: string;
+  createdAt: string;
+  startedAt: string | null;
+  finishedAt: string | null;
+  outputDir: string | null;
+  errorMessage: string | null;
+  totalCount: number;
+  pendingCount: number;
+  keptCount: number;
+  trashedCount: number;
+};
+
+export type ManagerProjectDetail = {
+  id: string;
+  title: string;
+  slug: string;
+  status: string;
+  sections: Array<{
+    id: string;
+    sortOrder: number;
+    enabled: boolean;
+    latestRunId: string | null;
+    name: string | null;
+    latestRun: ManagerProjectLatestRun | null;
     [key: string]: unknown;
   }>;
   [key: string]: unknown;
@@ -246,6 +305,20 @@ export async function createManagerClient() {
       request<ManagerJob>("GET", `/api/character-lora-training/jobs/${encodeURIComponent(jobId)}`),
     getJobReport: (jobId: string) =>
       request<ManagerJobReport>("GET", `/api/character-lora-training/jobs/${encodeURIComponent(jobId)}/report`),
+    runProject: (projectId: string, body: { batchSize?: number } = {}) =>
+      request<ManagerProjectRunResponse>(
+        "POST",
+        `/api/projects/${encodeURIComponent(projectId)}/run`,
+        body.batchSize ? body : undefined,
+      ),
+    getProjectDetail: (projectId: string) =>
+      request<ManagerProjectDetail>("GET", `/api/projects/${encodeURIComponent(projectId)}`),
+    completeBenchmarkRun: (benchmarkRunId: string, body: CharacterLoraBenchmarkCompleteRequest) =>
+      request<unknown>(
+        "POST",
+        `/api/character-lora-training/benchmark-runs/${encodeURIComponent(benchmarkRunId)}/complete`,
+        body,
+      ),
   };
 }
 

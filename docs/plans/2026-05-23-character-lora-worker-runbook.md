@@ -2,7 +2,7 @@
 
 日期：2026-05-23
 
-范围：`scripts/character-lora-training/worker-common.ts`、`image-worker.ts`、`training-worker.ts`。
+范围：`scripts/character-lora-training/worker-common.ts`、`image-worker.ts`、`training-worker.ts`、`benchmark-worker.ts`。
 
 ## Manager 连接与认证
 
@@ -84,6 +84,44 @@ cmd /c npx tsx scripts/character-lora-training/training-worker.ts --once --dry-r
 cmd /c npx tsx scripts/character-lora-training/training-worker.ts --once --dry-run --mock-complete --worker-owner training-worker-smoke
 ```
 
+## Benchmark Worker
+
+真实训练完成并开启 post-training benchmark 时，Manager 会创建 `workerType=benchmark`、`targetType=benchmarkRun` 的 worker task。Benchmark worker 会读取 job report 中对应的 `benchmarkRunId`，解析 `testProjectId`、`checkpointMatrix` 和 `weightMatrix`，提交临时测试 project，然后默认等待这批 run 的 `latestRun` 全部进入 `done` 或 `failed`。
+
+单次处理：
+
+```powershell
+cmd /c npx tsx scripts/character-lora-training/benchmark-worker.ts --once --worker-owner benchmark-worker-local
+```
+
+持续轮询：
+
+```powershell
+cmd /c npx tsx scripts/character-lora-training/benchmark-worker.ts --poll --worker-owner benchmark-worker-local
+```
+
+默认最多等待 30 分钟，可按测试项目规模调整：
+
+```powershell
+cmd /c npx tsx scripts/character-lora-training/benchmark-worker.ts --once --timeout-ms 3600000 --worker-owner benchmark-worker-local
+```
+
+只提交项目运行、不等待出图完成：
+
+```powershell
+cmd /c npx tsx scripts/character-lora-training/benchmark-worker.ts --once --skip-wait --worker-owner benchmark-worker-submit-only
+```
+
+`--skip-wait` 会立即调用 benchmark complete，把当前 worker task 通过既有 benchmark-run completion 路径标记完成；此模式只适合手动跟进测试 project 结果，不应作为 promotion 前的默认路径。
+
+成功完成时，worker 调用 `POST /api/character-lora-training/benchmark-runs/:benchmarkRunId/complete`，写入：
+
+- `recommendedWeight`：`weightMatrix` 中第一个正数，缺省为 `1`。
+- `resultSummary`：包含 `benchmarkRunId`、`trainingRunId`、`testProjectId`、`runIds`、section latestRun 摘要、`checkpointMatrix`、`weightMatrix`、完成时间和失败计数。
+- `diagnosticSuggestions`：包含失败 run 或 submit-only 的人工复核提示。
+
+Benchmark worker 不调用通用 worker task complete。`completeCharacterLoraBenchmarkRunInRepository` 会把同一 `targetType=benchmarkRun`、`targetId=benchmarkRun.id` 的 queued/running worker task 标记为 `done`。
+
 ## 安全注意事项
 
 - 不要把 Manager token、Codex bearer token、refresh token、账号 ID 写入日志或提交。
@@ -96,6 +134,7 @@ cmd /c npx tsx scripts/character-lora-training/training-worker.ts --once --dry-r
 ```powershell
 cmd /c npx tsx scripts/character-lora-training/image-worker.ts --help
 cmd /c npx tsx scripts/character-lora-training/training-worker.ts --help
-cmd /c npx eslint scripts/character-lora-training/worker-common.ts scripts/character-lora-training/image-worker.ts scripts/character-lora-training/training-worker.ts
+cmd /c npx tsx scripts/character-lora-training/benchmark-worker.ts --help
+cmd /c npx eslint scripts/character-lora-training/worker-common.ts scripts/character-lora-training/image-worker.ts scripts/character-lora-training/training-worker.ts scripts/character-lora-training/benchmark-worker.ts
 cmd /c npx tsc --noEmit --pretty false
 ```
