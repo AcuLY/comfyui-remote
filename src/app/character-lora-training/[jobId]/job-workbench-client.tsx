@@ -146,8 +146,19 @@ const IMAGE_PROVIDERS: Array<{ value: ImageProvider; label: string }> = [
 const IMAGE_SIZE_OPTIONS = ["1024x1536", "1024x1024", "1536x1024"] as const;
 const IMAGE_QUALITY_OPTIONS = ["high", "medium", "low"] as const;
 const TRAINING_PRECISION_OPTIONS = ["", "bf16", "fp16", "fp32"] as const;
+const PROMOTION_RETURN_POINTS = ["benchmark_review", "dataset_ready", "trained"] as const;
+const PROMOTION_VARIANTS = [
+  { slug: "default", label: "default" },
+  { slug: "underwear", label: "underwear" },
+  { slug: "underwear-shoes-off", label: "underwear no shoes" },
+  { slug: "half-undressed", label: "half undressed" },
+  { slug: "half-undressed-upper", label: "half undressed upperbody" },
+  { slug: "half-undressed-shoes-off", label: "half undressed no shoes" },
+  { slug: "naked", label: "naked" },
+] as const;
 
 type TrainingPrecision = Exclude<(typeof TRAINING_PRECISION_OPTIONS)[number], "">;
+type PromotionDecisionStatus = "approved" | "rejected";
 type TrainingOrdinaryOverrides = Partial<{
   rank: number;
   alpha: number;
@@ -244,6 +255,20 @@ function readOptionalNumber(
   if (!Number.isFinite(value) || isTooSmall || (options.integer && !Number.isInteger(value))) {
     const kind = options.integer ? "integer" : "number";
     throw new Error(`${label} must be a valid ${kind}`);
+  }
+
+  return value;
+}
+
+function readRequiredPositiveNumber(formData: FormData, key: string, label: string) {
+  const raw = readOptionalString(formData, key);
+  if (!raw) {
+    throw new Error(`${label} is required`);
+  }
+
+  const value = Number(raw);
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error(`${label} must be a positive number`);
   }
 
   return value;
@@ -388,6 +413,19 @@ function compactId(value: string | null | undefined) {
   return value ? value.slice(0, 8) : "-";
 }
 
+function getBenchmarkDefaultCheckpoint(benchmark: CharacterLoraBenchmarkRun | null | undefined, job: CharacterLoraJob) {
+  const checkpointMatrix = Array.isArray(benchmark?.checkpointMatrix) ? benchmark.checkpointMatrix : [];
+  const firstCheckpoint = checkpointMatrix.find((item): item is string => typeof item === "string" && item.trim().length > 0);
+
+  return firstCheckpoint ?? job.baseCheckpointName ?? "";
+}
+
+function getBenchmarkRecommendedWeight(benchmark: CharacterLoraBenchmarkRun | null | undefined) {
+  return typeof benchmark?.recommendedWeight === "number" && Number.isFinite(benchmark.recommendedWeight) && benchmark.recommendedWeight > 0
+    ? benchmark.recommendedWeight
+    : 1;
+}
+
 export function JobWorkbenchClient({
   job,
   sourceImages,
@@ -426,6 +464,10 @@ export function JobWorkbenchClient({
   const [sectionSize, setSectionSize] = useState("1024x1536");
   const [sectionQuality, setSectionQuality] = useState("high");
   const [sectionParentRunIds, setSectionParentRunIds] = useState<Record<string, string>>({});
+  const [promotionBenchmarkRunId, setPromotionBenchmarkRunId] = useState(
+    () => benchmarkRuns.find((run) => run.status === "done" && run.loraAssetId)?.id ?? "",
+  );
+  const [promotionDecisionStatus, setPromotionDecisionStatus] = useState<PromotionDecisionStatus>("approved");
 
   const canonicalVersions = report.canonicalVersions;
   const currentPrompt = promptCards.find((card) => card.id === job.currentPromptCardVersionId) ?? promptCards[0] ?? null;
@@ -466,6 +508,12 @@ export function JobWorkbenchClient({
 
     return selectedImageIds.filter((imageId) => visibleIds.has(imageId));
   }, [filteredCandidateImages, selectedImageIds]);
+  const promotionBenchmarkOptions = useMemo(
+    () => benchmarkRuns.filter((run) => run.status === "done" && run.loraAssetId),
+    [benchmarkRuns],
+  );
+  const selectedPromotionBenchmark =
+    promotionBenchmarkOptions.find((run) => run.id === promotionBenchmarkRunId) ?? promotionBenchmarkOptions[0] ?? null;
   const rejectSuggestion = REJECT_REASON_OPTIONS.find((reason) => reason.value === rejectReason)?.suggestion ?? "";
 
   function runAction(key: string, label: string, action: () => Promise<unknown>, refresh = true) {
@@ -705,6 +753,65 @@ export function JobWorkbenchClient({
         returnPoint: "benchmark_review",
       });
     });
+  }
+
+  function handleDecisionDraft(formData: FormData) {
+    const benchmarkRunId = readOptionalString(formData, "benchmarkRunId") ?? selectedPromotionBenchmark?.id;
+    const benchmark = benchmarkRuns.find((run) => run.id === benchmarkRunId);
+    if (!benchmark) {
+      toast.error("Select a benchmark run");
+      return;
+    }
+    if (benchmark.status !== "done" || !benchmark.loraAssetId) {
+      toast.error("Benchmark must be done and have a LoRA asset");
+      return;
+    }
+
+    try {
+      const statusRaw = String(formData.get("status") ?? "approved");
+      if (statusRaw !== "approved" && statusRaw !== "rejected") {
+        throw new Error("Status must be approved or rejected");
+      }
+      const status: PromotionDecisionStatus = statusRaw;
+      const defaultRecommendedWeight = readRequiredPositiveNumber(
+        formData,
+        "defaultRecommendedWeight",
+        "Default recommended weight",
+      );
+      const variantPromptDrafts: Record<string, string> = {};
+      const perVariantWeightOverrides: Record<string, number> = {};
+
+      for (const variant of PROMOTION_VARIANTS) {
+        const promptDraft = readOptionalString(formData, `variantPrompt.${variant.slug}`);
+        if (promptDraft) {
+          variantPromptDrafts[variant.slug] = promptDraft;
+        }
+
+        const weightOverride = readOptionalString(formData, `variantWeight.${variant.slug}`);
+        if (weightOverride) {
+          const value = Number(weightOverride);
+          if (!Number.isFinite(value) || value <= 0) {
+            throw new Error(`${variant.label} weight must be a positive number`);
+          }
+          perVariantWeightOverrides[variant.slug] = value;
+        }
+      }
+
+      runAction(`decision.draft.${benchmark.id}`, "Promotion decision 已创建", async () => {
+        await createCharacterLoraPromotionDecision(benchmark.id, {
+          status,
+          selectedLoraAssetId: benchmark.loraAssetId,
+          selectedCheckpoint: readOptionalString(formData, "selectedCheckpoint"),
+          defaultRecommendedWeight,
+          ...(Object.keys(perVariantWeightOverrides).length > 0 ? { perVariantWeightOverrides } : {}),
+          variantPromptDrafts,
+          decisionReason: readOptionalString(formData, "decisionReason"),
+          returnPoint: readOptionalString(formData, "returnPoint"),
+        });
+      });
+    } catch (error) {
+      toast.error("Promotion decision invalid", { description: getErrorMessage(error) });
+    }
   }
 
   function handlePromote(decisionId: string, dryRun: boolean) {
@@ -1273,6 +1380,129 @@ export function JobWorkbenchClient({
           }))}
           empty="暂无 benchmark run"
         />
+        <form
+          key={selectedPromotionBenchmark?.id ?? "empty-promotion-draft"}
+          action={handleDecisionDraft}
+          className="mt-3 grid gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-3"
+        >
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div className="text-xs font-medium text-zinc-100">Promotion decision draft</div>
+              <div className="mt-1 text-[11px] text-zinc-500">
+                Use a done benchmark with a LoRA asset, then review checkpoint, weight, prompts, and overrides.
+              </div>
+            </div>
+            <ActionButton
+              icon={ShieldCheck}
+              label="Create decision"
+              loading={selectedPromotionBenchmark ? isBusy(`decision.draft.${selectedPromotionBenchmark.id}`) : false}
+              disabled={isPending || !selectedPromotionBenchmark}
+            />
+          </div>
+          <div className="grid gap-2 lg:grid-cols-[1.4fr_120px_1fr_160px_150px]">
+            <label className="grid gap-1 text-xs text-zinc-400">
+              Benchmark run
+              <select
+                name="benchmarkRunId"
+                value={selectedPromotionBenchmark?.id ?? ""}
+                onChange={(event) => setPromotionBenchmarkRunId(event.target.value)}
+                className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white"
+              >
+                <option value="">Select done run with asset</option>
+                {promotionBenchmarkOptions.map((run) => (
+                  <option key={run.id} value={run.id}>
+                    {compactId(run.id)} / rec {run.recommendedWeight ?? "-"} / asset {compactId(run.loraAssetId)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="grid gap-1 text-xs text-zinc-400">
+              Status
+              <select
+                name="status"
+                value={promotionDecisionStatus}
+                onChange={(event) => setPromotionDecisionStatus(event.target.value as PromotionDecisionStatus)}
+                className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white"
+              >
+                <option value="approved">approved</option>
+                <option value="rejected">rejected</option>
+              </select>
+            </label>
+            <label className="grid gap-1 text-xs text-zinc-400">
+              Checkpoint
+              <input
+                name="selectedCheckpoint"
+                defaultValue={getBenchmarkDefaultCheckpoint(selectedPromotionBenchmark, job)}
+                className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white"
+              />
+            </label>
+            <label className="grid gap-1 text-xs text-zinc-400">
+              Default weight
+              <input
+                name="defaultRecommendedWeight"
+                type="number"
+                min="0.0001"
+                step="any"
+                required
+                defaultValue={getBenchmarkRecommendedWeight(selectedPromotionBenchmark)}
+                className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white"
+              />
+            </label>
+            <label className="grid gap-1 text-xs text-zinc-400">
+              Return point
+              <select
+                name="returnPoint"
+                defaultValue="benchmark_review"
+                className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white"
+              >
+                {PROMOTION_RETURN_POINTS.map((point) => (
+                  <option key={point} value={point}>
+                    {point}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          {!selectedPromotionBenchmark ? (
+            <div className="rounded-lg border border-amber-400/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+              No eligible benchmark yet. Complete a benchmark and register/carry a LoRA asset before creating a promotion decision.
+            </div>
+          ) : null}
+          <label className="grid gap-1 text-xs text-zinc-400">
+            Decision reason
+            <textarea
+              name="decisionReason"
+              placeholder="Optional manual review note"
+              className="min-h-16 rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white"
+            />
+          </label>
+          <div className="grid gap-2">
+            <div className="text-xs font-medium text-zinc-200">Variant prompt / weight review</div>
+            <div className="grid gap-2">
+              {PROMOTION_VARIANTS.map((variant) => (
+                <div key={variant.slug} className="grid gap-2 rounded-lg border border-white/10 bg-black/20 p-2 md:grid-cols-[180px_1fr_140px] md:items-center">
+                  <div className="min-w-0">
+                    <div className="truncate text-xs font-medium text-zinc-200">{variant.label}</div>
+                    <div className="truncate font-mono text-[11px] text-zinc-500">{variant.slug}</div>
+                  </div>
+                  <input
+                    name={`variantPrompt.${variant.slug}`}
+                    placeholder="Prompt draft override (optional)"
+                    className="min-w-0 rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white"
+                  />
+                  <input
+                    name={`variantWeight.${variant.slug}`}
+                    type="number"
+                    min="0.0001"
+                    step="any"
+                    placeholder="Weight override"
+                    className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        </form>
         <RunList
           runs={promotionDecisions.map((decision) => ({
             id: decision.id,
