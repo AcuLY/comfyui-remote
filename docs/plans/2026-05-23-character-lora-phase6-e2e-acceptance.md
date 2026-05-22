@@ -146,3 +146,19 @@ cmd /c npx tsc --noEmit --pretty false
 - benchmark 使用 `dryRun=true` + `skipQueue=true`，覆盖临时 preset/project 和 benchmark report 状态链，但不进入真实 ComfyUI 出图队列。
 - promotion 在隔离 SQLite 中真实创建 preset，不污染当前业务库。
 - 缺失 breast-size slider 或半脱/裸身 linked variant seed 时，promotion service 会在报告中记录 warning；这不是 smoke 失败条件，因为 7 个角色 variants 仍会创建，且 LoRA 权重仍可验证。
+
+## Phase 6 Report 验收补充
+
+本阶段新增 job 级全链路 report：
+
+- `GET /api/character-lora-training/jobs/[jobId]/report` 返回结构化 JSON。
+- `GET /api/character-lora-training/jobs/[jobId]/report?format=markdown` 返回 Markdown。
+- `POST /api/character-lora-training/jobs/[jobId]/report` 会在 job artifact root 下写入 `reports/job-report-<timestamp>.json` 和 `.md`，并登记为 `CharacterLoraArtifact.kind = job_report`。
+- 工作台页面新增 `Report / Diagnostics` 区块，展示 recommendedReturnPoint、risk、覆盖度、最近 report artifact，并提供生成 report 与 JSON/Markdown 链接。
+- fake E2E smoke 在 promotion 后持久化 report，并断言 report 覆盖 source、canonical、prompt、candidate caption、dataset items、training finalSha、benchmark、promotion，同时把 report artifact refs 写入 summary。
+
+Report 验收要点：
+
+- JSON report 至少包含 job/counts、sourceImages、canonicalVersions、promptCardVersions、sections、generationRuns、candidateImages、datasetRevisions/items、trainingRuns/checkpoints、benchmarkRuns、promotionDecisions、artifactRefs、diagnosticSummary。
+- Markdown report 能用于人工诊断，至少包含 coverage、diagnostics、training、benchmark、promotion 摘要。
+- 诊断 summary 必须给出 `recommendedReturnPoint`、`reasons`、`evidence`、`actions`、`risk`。

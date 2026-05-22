@@ -14,6 +14,7 @@ type ServiceModules = {
   phase3Service: typeof import("../../src/server/services/character-lora-training/phase3-service");
   trainingService: typeof import("../../src/server/services/character-lora-training/training-service");
   benchmarkPromotionService: typeof import("../../src/server/services/character-lora-training/benchmark-promotion-service");
+  reportService: typeof import("../../src/server/services/character-lora-training/report-service");
   artifactService: typeof import("../../src/server/services/character-lora-training/artifact-service");
   prismaModule: typeof import("../../src/lib/prisma");
 };
@@ -78,6 +79,23 @@ type SmokeSummary = {
     presetId: string;
     variantCount: number;
     weights: number[];
+  };
+  report: {
+    recommendedReturnPoint: string;
+    risk: string;
+    jsonArtifactPath: string;
+    markdownArtifactPath: string;
+    coverage: {
+      sourceImages: number;
+      canonicalVersions: number;
+      promptCardVersions: number;
+      candidateImages: number;
+      datasetRevisions: number;
+      datasetItems: number;
+      trainingRuns: number;
+      benchmarkRuns: number;
+      promotionDecisions: number;
+    };
   };
 };
 
@@ -448,6 +466,25 @@ async function main() {
   });
   assert(weights.every((weight) => Number.isFinite(weight) && weight > 0), "variant weights should be positive");
 
+  const persistedReport = await services.reportService.persistCharacterLoraJobReport(job.id);
+  const report = persistedReport.report;
+  assert(report.sourceImages.length >= 1, "report should include source images");
+  assert(report.canonicalVersions.some((version) => version.id === canonicalVersion.id), "report should include canonical version");
+  assert(report.promptCardVersions.some((version) => version.id === promptCard.id), "report should include prompt card version");
+  assert(
+    report.candidateImages.some((image) => image.id === captioned.id && Boolean(image.caption.draft)),
+    "report should include candidate caption",
+  );
+  assert(report.datasetRevisions.some((revision) => revision.id === frozen.revision.id && revision.items.length === allImages.length), "report should include dataset revision/items");
+  assert(
+    report.trainingRuns.some((run) => run.id === completedTrainingRun.id && run.finalSha256 === finalSha256),
+    "report should include training finalSha",
+  );
+  assert(report.benchmarkRuns.some((run) => run.id === benchmarkRun.id), "report should include benchmark run");
+  assert(report.promotionDecisions.some((item) => item.id === promoted.decision.id), "report should include promotion decision");
+  assert(persistedReport.artifacts.json?.relativePath.endsWith(".json"), "report JSON artifact should be persisted");
+  assert(persistedReport.artifacts.markdown?.relativePath.endsWith(".md"), "report markdown artifact should be persisted");
+
   const finalJob = await services.jobService.getCharacterLoraTrainingJob(job.id);
   const configArtifact = await services.prismaModule.prisma.characterLoraArtifact.findUnique({
     where: { id: completedTrainingRun.configArtifactId },
@@ -512,12 +549,27 @@ async function main() {
       variantCount: variants.length,
       weights,
     },
+    report: {
+      recommendedReturnPoint: report.diagnosticSummary.recommendedReturnPoint,
+      risk: report.diagnosticSummary.risk,
+      jsonArtifactPath: persistedReport.artifacts.json?.relativePath ?? "",
+      markdownArtifactPath: persistedReport.artifacts.markdown?.relativePath ?? "",
+      coverage: report.diagnosticSummary.coverage,
+    },
   };
 
   assert(summary.job.status === "promoted", `final job status should be promoted, got ${summary.job.status}`);
   assert(summary.job.phase === "promotion", `final job phase should be promotion, got ${summary.job.phase}`);
   assert(summary.caption.triggerFirst, "caption trigger-first assertion should be true");
   assertHexSha(summary.training.finalSha256, "final training sha256");
+  assert(summary.report.coverage.sourceImages >= 1, "report summary should cover source");
+  assert(summary.report.coverage.canonicalVersions >= 1, "report summary should cover canonical");
+  assert(summary.report.coverage.promptCardVersions >= 1, "report summary should cover prompt");
+  assert(summary.report.coverage.candidateImages >= allImages.length, "report summary should cover candidates");
+  assert(summary.report.coverage.datasetItems >= allImages.length, "report summary should cover dataset items");
+  assert(summary.report.coverage.trainingRuns >= 1, "report summary should cover training");
+  assert(summary.report.coverage.benchmarkRuns >= 1, "report summary should cover benchmark");
+  assert(summary.report.coverage.promotionDecisions >= 1, "report summary should cover promotion");
 
   console.log("Character LoRA fake E2E smoke passed.");
   console.log(JSON.stringify(summary, null, 2));
@@ -535,6 +587,7 @@ async function importServices(): Promise<ServiceModules> {
     phase3Service,
     trainingService,
     benchmarkPromotionService,
+    reportService,
     artifactService,
     prismaModule,
   ] = await Promise.all([
@@ -546,6 +599,7 @@ async function importServices(): Promise<ServiceModules> {
     import("../../src/server/services/character-lora-training/phase3-service"),
     import("../../src/server/services/character-lora-training/training-service"),
     import("../../src/server/services/character-lora-training/benchmark-promotion-service"),
+    import("../../src/server/services/character-lora-training/report-service"),
     import("../../src/server/services/character-lora-training/artifact-service"),
     import("../../src/lib/prisma"),
   ]);
@@ -559,6 +613,7 @@ async function importServices(): Promise<ServiceModules> {
     phase3Service,
     trainingService,
     benchmarkPromotionService,
+    reportService,
     artifactService,
     prismaModule,
   };

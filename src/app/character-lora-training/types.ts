@@ -1,5 +1,6 @@
 import type {
   getCharacterLoraGpuTaskLock,
+  getCharacterLoraJobReport,
   getCharacterLoraTrainingJob,
   listCharacterLoraBenchmarkRuns,
   listCharacterLoraCandidateImages,
@@ -16,6 +17,7 @@ import type {
 export type CharacterLoraJobList = Awaited<ReturnType<typeof listCharacterLoraTrainingJobs>>;
 export type CharacterLoraJobSummary = CharacterLoraJobList["jobs"][number];
 export type CharacterLoraJob = Awaited<ReturnType<typeof getCharacterLoraTrainingJob>>;
+export type CharacterLoraJobReport = Awaited<ReturnType<typeof getCharacterLoraJobReport>>;
 export type CharacterLoraGpuLock = Awaited<ReturnType<typeof getCharacterLoraGpuTaskLock>>;
 export type CharacterLoraSourceImage = Awaited<ReturnType<typeof listCharacterLoraSourceImages>>[number];
 export type CharacterLoraPromptCard = Awaited<ReturnType<typeof listCharacterLoraPromptCardVersions>>[number];

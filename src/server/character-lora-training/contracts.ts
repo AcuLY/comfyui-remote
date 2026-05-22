@@ -48,6 +48,7 @@ export const CHARACTER_LORA_ARTIFACT_KINDS = [
   "safetensors",
   "benchmark_report",
   "promotion_report",
+  "job_report",
 ] as const;
 
 export const CHARACTER_LORA_WORKER_TYPES = [

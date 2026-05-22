@@ -9,6 +9,7 @@ import {
   ArrowLeft,
   Check,
   Database,
+  FileText,
   FlaskConical,
   ImagePlus,
   Loader2,
@@ -39,6 +40,7 @@ import {
   instantiateCharacterLoraJobSections,
   mockCompleteCharacterLoraBenchmarkRun,
   mockCompleteCharacterLoraCanonicalGenerationRun,
+  persistCharacterLoraJobReport,
   promoteCharacterLoraPreset,
   reviewCharacterLoraImages,
   selectCharacterLoraCanonicalVersion,
@@ -51,6 +53,7 @@ import type {
   CharacterLoraDatasetRevision,
   CharacterLoraGpuLock,
   CharacterLoraJob,
+  CharacterLoraJobReport,
   CharacterLoraPromptCard,
   CharacterLoraPromotionDecision,
   CharacterLoraSection,
@@ -70,6 +73,7 @@ type Props = {
   trainingRuns: CharacterLoraTrainingRun[];
   benchmarkRuns: CharacterLoraBenchmarkRun[];
   promotionDecisions: CharacterLoraPromotionDecision[];
+  report: CharacterLoraJobReport;
   gpuLock: CharacterLoraGpuLock;
 };
 
@@ -169,6 +173,7 @@ export function JobWorkbenchClient({
   trainingRuns,
   benchmarkRuns,
   promotionDecisions,
+  report,
   gpuLock,
 }: Props) {
   const router = useRouter();
@@ -405,6 +410,12 @@ export function JobWorkbenchClient({
 
     runAction(`promote.${decisionId}.${dryRun ? "dry" : "real"}`, dryRun ? "发布预检已完成" : "已发布到预设", async () => {
       await promoteCharacterLoraPreset(decisionId, { dryRun, overwriteExisting: false });
+    });
+  }
+
+  function handlePersistReport() {
+    runAction("report.persist", "Report 已生成", async () => {
+      await persistCharacterLoraJobReport(job.id);
     });
   }
 
@@ -749,6 +760,57 @@ export function JobWorkbenchClient({
           empty="暂无 promotion decision"
         />
       </SectionCard>
+
+      <SectionCard title="Report / Diagnostics" subtitle="Job 级全链路 report 与诊断入口。">
+        <div className="grid gap-3 lg:grid-cols-[1fr_1.2fr]">
+          <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3">
+            <div className="grid gap-2 text-xs text-zinc-400">
+              <Info label="Return point" value={report.diagnosticSummary.recommendedReturnPoint} />
+              <Info label="Risk" value={report.diagnosticSummary.risk} />
+              <Info label="Latest report" value={report.latestReportArtifacts[0]?.relativePath ?? "-"} mono />
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <ActionButton
+                type="button"
+                icon={FileText}
+                label="生成 report"
+                loading={isBusy("report.persist")}
+                disabled={isPending}
+                onClick={handlePersistReport}
+              />
+              <Link
+                href={`/api/character-lora-training/jobs/${job.id}/report`}
+                target="_blank"
+                className="inline-flex h-8 items-center justify-center rounded-lg border border-white/10 px-2.5 text-xs font-medium text-zinc-200 hover:bg-white/10"
+              >
+                JSON
+              </Link>
+              <Link
+                href={`/api/character-lora-training/jobs/${job.id}/report?format=markdown`}
+                target="_blank"
+                className="inline-flex h-8 items-center justify-center rounded-lg border border-white/10 px-2.5 text-xs font-medium text-zinc-200 hover:bg-white/10"
+              >
+                Markdown
+              </Link>
+            </div>
+          </div>
+          <div className="grid gap-2 rounded-lg border border-white/10 bg-white/[0.03] p-3 text-xs text-zinc-400 sm:grid-cols-2">
+            <Info label="Source" value={String(report.diagnosticSummary.coverage.sourceImages)} />
+            <Info label="Canonical" value={String(report.diagnosticSummary.coverage.canonicalVersions)} />
+            <Info label="Prompt cards" value={String(report.diagnosticSummary.coverage.promptCardVersions)} />
+            <Info label="Candidates" value={String(report.diagnosticSummary.coverage.candidateImages)} />
+            <Info label="Dataset items" value={String(report.diagnosticSummary.coverage.datasetItems)} />
+            <Info label="Training runs" value={String(report.diagnosticSummary.coverage.trainingRuns)} />
+            <Info label="Benchmarks" value={String(report.diagnosticSummary.coverage.benchmarkRuns)} />
+            <Info label="Promotions" value={String(report.diagnosticSummary.coverage.promotionDecisions)} />
+          </div>
+        </div>
+        <div className="mt-3 grid gap-3 lg:grid-cols-3">
+          <DiagnosticList title="Reasons" items={report.diagnosticSummary.reasons} />
+          <DiagnosticList title="Evidence" items={report.diagnosticSummary.evidence} />
+          <DiagnosticList title="Actions" items={report.diagnosticSummary.actions} />
+        </div>
+      </SectionCard>
     </div>
   );
 }
@@ -828,6 +890,21 @@ function CompactList({ items, empty }: { items: string[]; empty: string }) {
           {item}
         </div>
       ))}
+    </div>
+  );
+}
+
+function DiagnosticList({ title, items }: { title: string; items: string[] }) {
+  return (
+    <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3">
+      <div className="mb-2 text-xs font-medium text-zinc-200">{title}</div>
+      <ul className="space-y-1 text-xs text-zinc-400">
+        {(items.length > 0 ? items : ["-"]).map((item) => (
+          <li key={item} className="break-words">
+            {item}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

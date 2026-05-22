@@ -52,6 +52,10 @@ import {
   mockCompleteBenchmarkRun as mockCompleteBenchmarkRunInService,
   promoteCharacterLoraPreset as promotePresetInService,
 } from "@/server/services/character-lora-training/benchmark-promotion-service";
+import {
+  getCharacterLoraJobReport as getJobReport,
+  persistCharacterLoraJobReport as persistJobReport,
+} from "@/server/services/character-lora-training/report-service";
 
 export async function createCharacterLoraTrainingJob(input: unknown) {
   return createJob(input);
@@ -179,6 +183,14 @@ export async function listCharacterLoraPromotionDecisions(jobId: string) {
 
 export async function promoteCharacterLoraPreset(decisionId: string, input?: unknown) {
   return promotePresetInService(decisionId, input ?? {});
+}
+
+export async function getCharacterLoraJobReport(jobId: string) {
+  return getJobReport(jobId);
+}
+
+export async function persistCharacterLoraJobReport(jobId: string) {
+  return persistJobReport(jobId);
 }
 
 export async function leaseNextCharacterLoraTask(input: unknown) {

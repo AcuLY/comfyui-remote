@@ -85,6 +85,7 @@ enum CharacterLoraArtifactKind {
   safetensors
   benchmark_report
   promotion_report
+  job_report
 }
 
 enum CharacterLoraWorkerType {
