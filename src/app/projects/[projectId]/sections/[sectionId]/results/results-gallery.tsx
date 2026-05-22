@@ -121,6 +121,7 @@ export function ResultsGalleryProvider({
             ? { featured2: nextValue }
             : { cover: true };
       const previousImages = allImages;
+      const imageCount = allImages.length;
 
       setTogglingMarker(field);
       setImageMarker(current.id, field, nextValue);
@@ -144,6 +145,8 @@ export function ResultsGalleryProvider({
             throw new Error(result?.error?.message ?? "更新标记失败");
           }
 
+          // Auto-advance to next image after marking
+          if (imageCount > 1) goNext();
           router.refresh();
         } catch (error) {
           if (field === "cover") {
@@ -157,7 +160,7 @@ export function ResultsGalleryProvider({
         }
       });
     },
-    [allImages, busy, current, router, setImageMarker],
+    [allImages, busy, current, goNext, router, setImageMarker],
   );
 
   const reviewCurrent = useCallback(
@@ -240,12 +243,12 @@ export function ResultsGalleryProvider({
         reviewCurrent("trash", true);
       }
 
-      // L: 切换P站标记（不切换图片）
+      // L: 切换P站标记并跳转下一张
       if (event.key === "l" || event.key === "L") {
         event.preventDefault();
         toggleMarker("featured");
       }
-      // ;: 切换预览标记（不切换图片）
+      // ;: 切换预览标记并跳转下一张
       if (event.key === ";") {
         event.preventDefault();
         toggleMarker("featured2");
