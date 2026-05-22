@@ -1,17 +1,8 @@
 "use server";
 
 import { refresh, revalidatePath } from "next/cache";
+import { updateProjectSection, mapProjectError } from "@/server/services/project-service";
 import type { ProjectSaveState } from "./action-types";
-
-type MutationApiResponse = {
-  ok?: boolean;
-  data?: {
-    id?: string;
-  };
-  error?: {
-    message?: string;
-  };
-};
 
 type MutationErrorState = {
   status: "error";
@@ -20,20 +11,6 @@ type MutationErrorState = {
 
 type RequiredIdResult = { value: string } | { error: MutationErrorState };
 type PositiveIntegerResult = { value: number | null } | { error: MutationErrorState };
-
-function getApiUrl(path: string) {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-  return new URL(path, baseUrl).toString();
-}
-
-function getInternalHeaders(): Record<string, string> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  const token = process.env.AUTH_TOKEN;
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-  return headers;
-}
 
 function getRequiredId(formData: FormData, fieldName: string, label: string): RequiredIdResult {
   const value = String(formData.get(fieldName) ?? "").trim();
@@ -158,37 +135,18 @@ export async function saveSectionEditAction(
   }
 
   try {
-    const response = await fetch(
-      getApiUrl(`/api/projects/${encodeURIComponent(projectId.value)}/sections/${encodeURIComponent(sectionId.value)}`),
-      {
-        method: "PATCH",
-        headers: getInternalHeaders(),
-        body: JSON.stringify(payload),
-        cache: "no-store",
-      },
-    );
-
-    const result = (await response.json().catch(() => null)) as MutationApiResponse | null;
-
-    if (!response.ok || !result?.ok) {
-      return {
-        status: "error",
-        message: result?.error?.message ?? `Request failed with status ${response.status}.`,
-      };
-    }
-
-    revalidatePath("/projects");
-    revalidatePath(`/projects/${projectId.value}`);
-    refresh();
-
-    return {
-      status: "success",
-      message: "Saved section overrides.",
-    };
-  } catch {
-    return {
-      status: "error",
-      message: "The section API is unavailable right now.",
-    };
+    await updateProjectSection(projectId.value, sectionId.value, payload);
+  } catch (error) {
+    const mapped = mapProjectError(error);
+    return { status: "error", message: mapped.message };
   }
+
+  revalidatePath("/projects");
+  revalidatePath(`/projects/${projectId.value}`);
+  refresh();
+
+  return {
+    status: "success",
+    message: "Saved section overrides.",
+  };
 }

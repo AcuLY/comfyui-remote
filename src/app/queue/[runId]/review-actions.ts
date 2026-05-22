@@ -1,6 +1,7 @@
 "use server";
 
 import { refresh } from "next/cache";
+import { keepRunImages, trashRunImages, mapReviewError } from "@/server/services/review-service";
 
 export type ReviewMutationState = {
   status: "idle" | "success" | "error";
@@ -12,27 +13,6 @@ export const initialReviewMutationState: ReviewMutationState = {
   message: "选择图片后即可提交到真实审图 API。",
 };
 
-type ReviewApiResponse = {
-  ok?: boolean;
-  error?: {
-    message?: string;
-  };
-};
-
-function getApiUrl(path: string) {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-  return new URL(path, baseUrl).toString();
-}
-
-function getInternalHeaders(): Record<string, string> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  const token = process.env.AUTH_TOKEN;
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-  return headers;
-}
-
 export async function submitReviewSelectionAction(
   runId: string,
   _prevState: ReviewMutationState,
@@ -43,41 +23,20 @@ export async function submitReviewSelectionAction(
   const imageIds = [...new Set(rawImageIds.split(",").map((value) => value.trim()).filter(Boolean))];
 
   if (!runId.trim()) {
-    return {
-      status: "error",
-      message: "Run id is missing.",
-    };
+    return { status: "error", message: "Run id is missing." };
   }
-
   if (action !== "keep" && action !== "trash") {
-    return {
-      status: "error",
-      message: "Choose a valid review action.",
-    };
+    return { status: "error", message: "Choose a valid review action." };
   }
-
   if (imageIds.length === 0) {
-    return {
-      status: "error",
-      message: "Select at least one image first.",
-    };
+    return { status: "error", message: "Select at least one image first." };
   }
 
   try {
-    const response = await fetch(getApiUrl(`/api/runs/${encodeURIComponent(runId)}/review/${action}`), {
-      method: "POST",
-      headers: getInternalHeaders(),
-      body: JSON.stringify({ imageIds }),
-      cache: "no-store",
-    });
-
-    const result = (await response.json().catch(() => null)) as ReviewApiResponse | null;
-
-    if (!response.ok || !result?.ok) {
-      return {
-        status: "error",
-        message: result?.error?.message ?? `Review request failed with status ${response.status}.`,
-      };
+    if (action === "keep") {
+      await keepRunImages(runId, { imageIds });
+    } else {
+      await trashRunImages(runId, { imageIds });
     }
 
     refresh();
@@ -88,10 +47,8 @@ export async function submitReviewSelectionAction(
         ? `已提交 ${imageIds.length} 张图片的保留操作。`
         : `已提交 ${imageIds.length} 张图片的删除操作。`,
     };
-  } catch {
-    return {
-      status: "error",
-      message: "Review API is unavailable right now.",
-    };
+  } catch (error) {
+    const mapped = mapReviewError(error);
+    return { status: "error", message: mapped.message };
   }
 }
