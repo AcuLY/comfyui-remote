@@ -136,6 +136,15 @@ const REJECT_REASON_OPTIONS = [
 
 type ReviewWritableStatus = "pending" | "keep" | "reject" | "excluded";
 type RejectReason = (typeof REJECT_REASON_OPTIONS)[number]["value"];
+type ImageProvider = "mock-local" | "openai-codex";
+
+const IMAGE_PROVIDERS: Array<{ value: ImageProvider; label: string }> = [
+  { value: "mock-local", label: "mock-local" },
+  { value: "openai-codex", label: "openai-codex" },
+];
+
+const IMAGE_SIZE_OPTIONS = ["1024x1536", "1024x1024", "1536x1024"] as const;
+const IMAGE_QUALITY_OPTIONS = ["high", "medium", "low"] as const;
 
 function formatDate(value: string | null | undefined) {
   if (!value) {
@@ -189,6 +198,19 @@ function parseWeights(value: string) {
   return weights.length > 0 ? weights : [1];
 }
 
+function buildImageToolParams(size: string, quality: string) {
+  return {
+    size,
+    quality,
+    outputFormat: "png" as const,
+    background: "opaque" as const,
+  };
+}
+
+function uniqueIds(ids: string[]) {
+  return Array.from(new Set(ids.filter(Boolean)));
+}
+
 function compactId(value: string | null | undefined) {
   return value ? value.slice(0, 8) : "-";
 }
@@ -220,6 +242,17 @@ export function JobWorkbenchClient({
   const [identityTraits, setIdentityTraits] = useState("{\n  \"face\": \"\",\n  \"hair\": \"\"\n}");
   const [outfitTraits, setOutfitTraits] = useState("{\n  \"outfit\": \"\"\n}");
   const [negativeTraits, setNegativeTraits] = useState("{\n  \"avoid\": \"wrong identity\"\n}");
+  const [canonicalProvider, setCanonicalProvider] = useState<ImageProvider>("mock-local");
+  const [canonicalVisualPrompt, setCanonicalVisualPrompt] = useState("");
+  const [canonicalSourceImageIds, setCanonicalSourceImageIds] = useState<string[]>(() => sourceImages.map((image) => image.id));
+  const [canonicalSize, setCanonicalSize] = useState("1024x1536");
+  const [canonicalQuality, setCanonicalQuality] = useState("high");
+  const [sectionProvider, setSectionProvider] = useState<ImageProvider>("mock-local");
+  const [sectionUserInstruction, setSectionUserInstruction] = useState("");
+  const [sectionSourceImageIds, setSectionSourceImageIds] = useState<string[]>(() => sourceImages.map((image) => image.id));
+  const [sectionSize, setSectionSize] = useState("1024x1536");
+  const [sectionQuality, setSectionQuality] = useState("high");
+  const [sectionParentRunIds, setSectionParentRunIds] = useState<Record<string, string>>({});
 
   const canonicalVersions = report.canonicalVersions;
   const currentPrompt = promptCards.find((card) => card.id === job.currentPromptCardVersionId) ?? promptCards[0] ?? null;
@@ -227,6 +260,20 @@ export function JobWorkbenchClient({
   const latestDoneTraining = trainingRuns.find((run) => run.status === "done" && run.finalSafetensorsArtifactId) ?? null;
   const pendingCanonicalRunId = latestCanonicalRunId.trim();
   const sectionById = useMemo(() => new Map(sections.map((section) => [section.id, section])), [sections]);
+  const generationRunsBySectionId = useMemo(() => {
+    const runsBySection = new Map<string, CharacterLoraJobReport["generationRuns"]>();
+    for (const run of report.generationRuns) {
+      if (!run.sectionId) {
+        continue;
+      }
+
+      const runs = runsBySection.get(run.sectionId) ?? [];
+      runs.push(run);
+      runsBySection.set(run.sectionId, runs);
+    }
+
+    return runsBySection;
+  }, [report.generationRuns]);
   const candidateStatusCounts = useMemo(() => {
     return candidateImages.reduce<Record<string, number>>((acc, image) => {
       acc[image.reviewStatus] = (acc[image.reviewStatus] ?? 0) + 1;
@@ -276,10 +323,18 @@ export function JobWorkbenchClient({
   }
 
   function handleCanonicalGenerate() {
+    const sourceImageIds = uniqueIds(canonicalSourceImageIds);
+    if (sourceImageIds.length === 0) {
+      toast.error("Canonical 至少选择一张 source/reference image");
+      return;
+    }
+
     runAction("canonical.generate", "Canonical 已入队", async () => {
       const run = await enqueueCharacterLoraCanonicalGenerationRun(job.id, {
-        provider: "mock-local",
-        sourceImageIds: sourceImages.map((image) => image.id),
+        provider: canonicalProvider,
+        visualPrompt: canonicalVisualPrompt.trim() || undefined,
+        sourceImageIds,
+        toolParams: buildImageToolParams(canonicalSize, canonicalQuality),
       });
       setLatestCanonicalRunId(run.id);
     });
@@ -333,9 +388,22 @@ export function JobWorkbenchClient({
   }
 
   function handleSectionRun(sectionId: string) {
+    const sourceImageIds = uniqueIds(sectionSourceImageIds);
+    const parentRunId = sectionParentRunIds[sectionId]?.trim();
+
     runAction(`section.${sectionId}`, "Section 已入队", async () => {
-      await enqueueCharacterLoraSectionGenerationRun(sectionId, { provider: "mock-local" });
+      await enqueueCharacterLoraSectionGenerationRun(sectionId, {
+        provider: sectionProvider,
+        userInstruction: sectionUserInstruction.trim() || undefined,
+        parentRunId: parentRunId || undefined,
+        sourceImageIds: sourceImageIds.length > 0 ? sourceImageIds : undefined,
+        toolParams: buildImageToolParams(sectionSize, sectionQuality),
+      });
     });
+  }
+
+  function setSectionParentRunId(sectionId: string, parentRunId: string) {
+    setSectionParentRunIds((prev) => ({ ...prev, [sectionId]: parentRunId }));
   }
 
   function setImageSelected(imageId: string, selected: boolean) {
@@ -540,13 +608,43 @@ export function JobWorkbenchClient({
 
       <SectionCard title="Canonical" subtitle="生成、模拟完成和选择标准图版本。">
         <div className="grid gap-3 lg:grid-cols-3">
-          <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3">
+          <div className="grid gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-3">
+            <div className="grid gap-2 sm:grid-cols-3">
+              <label className="grid gap-1 text-xs text-zinc-400">
+                provider
+                <ProviderSelect value={canonicalProvider} onChange={setCanonicalProvider} disabled={isPending} />
+              </label>
+              <label className="grid gap-1 text-xs text-zinc-400">
+                size
+                <ToolParamSelect value={canonicalSize} options={IMAGE_SIZE_OPTIONS} onChange={setCanonicalSize} disabled={isPending} />
+              </label>
+              <label className="grid gap-1 text-xs text-zinc-400">
+                quality
+                <ToolParamSelect value={canonicalQuality} options={IMAGE_QUALITY_OPTIONS} onChange={setCanonicalQuality} disabled={isPending} />
+              </label>
+            </div>
+            <label className="grid gap-1 text-xs text-zinc-400">
+              visualPrompt
+              <textarea
+                value={canonicalVisualPrompt}
+                onChange={(event) => setCanonicalVisualPrompt(event.target.value)}
+                placeholder="本次 canonical 的视觉提示/修正说明，留空则使用默认 prompt"
+                className="min-h-20 rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white placeholder:text-zinc-600"
+              />
+            </label>
+            <SourceReferencePicker
+              images={sourceImages}
+              selectedIds={canonicalSourceImageIds}
+              onChange={setCanonicalSourceImageIds}
+              disabled={isPending}
+              emptySelectionText="Canonical 必须至少选择一张参考图。"
+            />
             <ActionButton
               type="button"
               icon={ImagePlus}
-              label="入队 mock-local"
+              label={`入队 ${canonicalProvider}`}
               loading={isBusy("canonical.generate")}
-              disabled={isPending || sourceImages.length === 0}
+              disabled={isPending || sourceImages.length === 0 || canonicalSourceImageIds.length === 0}
               onClick={handleCanonicalGenerate}
             />
             <p className="mt-2 truncate font-mono text-[11px] text-zinc-500">最近 run: {pendingCanonicalRunId || "-"}</p>
@@ -647,26 +745,88 @@ export function JobWorkbenchClient({
             <ActionButton icon={Database} label="实例化模板" loading={isBusy("sections.instantiate")} disabled={isPending} />
           </div>
         </form>
+        <div className="mt-3 grid gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <div className="text-xs font-medium text-zinc-200">下一次入队设置</div>
+              <div className="mt-0.5 text-[11px] text-zinc-500">只影响下面 section 的下一次入队，不会修改全局 Prompt Card。</div>
+            </div>
+            <span className="rounded-md border border-sky-400/20 bg-sky-500/10 px-2 py-1 text-[11px] text-sky-200">
+              {sectionProvider}
+            </span>
+          </div>
+          <div className="grid gap-2 md:grid-cols-3">
+            <label className="grid gap-1 text-xs text-zinc-400">
+              provider
+              <ProviderSelect value={sectionProvider} onChange={setSectionProvider} disabled={isPending} />
+            </label>
+            <label className="grid gap-1 text-xs text-zinc-400">
+              size
+              <ToolParamSelect value={sectionSize} options={IMAGE_SIZE_OPTIONS} onChange={setSectionSize} disabled={isPending} />
+            </label>
+            <label className="grid gap-1 text-xs text-zinc-400">
+              quality
+              <ToolParamSelect value={sectionQuality} options={IMAGE_QUALITY_OPTIONS} onChange={setSectionQuality} disabled={isPending} />
+            </label>
+          </div>
+          <label className="grid gap-1 text-xs text-zinc-400">
+            userInstruction
+            <textarea
+              value={sectionUserInstruction}
+              onChange={(event) => setSectionUserInstruction(event.target.value)}
+              placeholder="本轮 section 定向重跑说明，留空则使用默认 section prompt"
+              className="min-h-20 rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white placeholder:text-zinc-600"
+            />
+          </label>
+          <SourceReferencePicker
+            images={sourceImages}
+            selectedIds={sectionSourceImageIds}
+            onChange={setSectionSourceImageIds}
+            disabled={isPending}
+            emptySelectionText="未选择时入队请求会省略 sourceImageIds，由服务默认使用 canonical + all source。"
+          />
+        </div>
         <div className="mt-3 overflow-hidden rounded-lg border border-white/10">
           {sections.length === 0 ? (
             <div className="py-8 text-center text-sm text-zinc-500">暂无 sections</div>
           ) : (
             <div className="divide-y divide-white/10">
-              {sections.map((section) => (
-                <div key={section.id} className="grid gap-2 px-3 py-2 text-xs text-zinc-300 md:grid-cols-[1.2fr_0.8fr_1fr_auto] md:items-center">
-                  <span className="min-w-0 truncate font-medium text-white">{section.name}</span>
-                  <span>{STATUS_LABEL[section.status] ?? section.status}</span>
-                  <span className="text-zinc-500">keep {section.keepCount} / reject {section.rejectCount} / pending {section.pendingCount}</span>
-                  <ActionButton
-                    type="button"
-                    icon={Play}
-                    label="入队"
-                    loading={isBusy(`section.${section.id}`)}
-                    disabled={isPending}
-                    onClick={() => handleSectionRun(section.id)}
-                  />
-                </div>
-              ))}
+              {sections.map((section) => {
+                const sectionRuns = generationRunsBySectionId.get(section.id) ?? [];
+                const parentRunId = sectionParentRunIds[section.id] ?? "";
+
+                return (
+                  <div key={section.id} className="grid gap-2 px-3 py-2 text-xs text-zinc-300 md:grid-cols-[1.1fr_0.7fr_1fr_1.15fr_auto] md:items-center">
+                    <span className="min-w-0 truncate font-medium text-white">{section.name}</span>
+                    <span>{STATUS_LABEL[section.status] ?? section.status}</span>
+                    <span className="text-zinc-500">keep {section.keepCount} / reject {section.rejectCount} / pending {section.pendingCount}</span>
+                    <label className="grid gap-1 text-[11px] text-zinc-500">
+                      parentRunId
+                      <select
+                        value={parentRunId}
+                        onChange={(event) => setSectionParentRunId(section.id, event.target.value)}
+                        disabled={isPending || sectionRuns.length === 0}
+                        className="min-w-0 rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 font-mono text-xs text-white disabled:opacity-50"
+                      >
+                        <option value="">无 parent run</option>
+                        {sectionRuns.map((run) => (
+                          <option key={run.id} value={run.id}>
+                            {compactId(run.id)} / {run.status} / {run.provider} / {formatDate(run.createdAt)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <ActionButton
+                      type="button"
+                      icon={Play}
+                      label="入队"
+                      loading={isBusy(`section.${section.id}`)}
+                      disabled={isPending}
+                      onClick={() => handleSectionRun(section.id)}
+                    />
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
@@ -945,6 +1105,112 @@ function JsonBox({ label, value, onChange }: { label: string; value: string; onC
         className="min-h-24 rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 font-mono text-xs text-white"
       />
     </label>
+  );
+}
+
+function ProviderSelect({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: ImageProvider;
+  onChange: (value: ImageProvider) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <select
+      value={value}
+      onChange={(event) => onChange(event.target.value as ImageProvider)}
+      disabled={disabled}
+      className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white disabled:opacity-50"
+    >
+      {IMAGE_PROVIDERS.map((provider) => (
+        <option key={provider.value} value={provider.value}>
+          {provider.label}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+function ToolParamSelect<T extends string>({
+  value,
+  options,
+  onChange,
+  disabled,
+}: {
+  value: string;
+  options: readonly T[];
+  onChange: (value: T) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <select
+      value={value}
+      onChange={(event) => onChange(event.target.value as T)}
+      disabled={disabled}
+      className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white disabled:opacity-50"
+    >
+      {options.map((option) => (
+        <option key={option} value={option}>
+          {option}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+function SourceReferencePicker({
+  images,
+  selectedIds,
+  onChange,
+  disabled,
+  emptySelectionText,
+}: {
+  images: CharacterLoraSourceImage[];
+  selectedIds: string[];
+  onChange: (ids: string[]) => void;
+  disabled?: boolean;
+  emptySelectionText: string;
+}) {
+  const selectedSet = new Set(selectedIds);
+  const allIds = images.map((image) => image.id);
+
+  function setSelected(imageId: string, selected: boolean) {
+    onChange(selected ? uniqueIds([...selectedIds, imageId]) : selectedIds.filter((id) => id !== imageId));
+  }
+
+  return (
+    <div className="grid gap-2 rounded-lg border border-white/10 bg-black/20 p-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="text-xs font-medium text-zinc-200">source/reference images</span>
+        <div className="flex items-center gap-2 text-[11px] text-zinc-500">
+          <span>{selectedIds.length}/{images.length}</span>
+          <MiniButton label="全选" onClick={() => onChange(allIds)} disabled={disabled || images.length === 0} />
+          <MiniButton label="清空" onClick={() => onChange([])} disabled={disabled || selectedIds.length === 0} />
+        </div>
+      </div>
+      {images.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-white/10 py-4 text-center text-xs text-zinc-500">暂无 source image</div>
+      ) : (
+        <div className="grid gap-1 sm:grid-cols-2">
+          {images.map((image) => (
+            <label key={image.id} className="flex min-w-0 items-center gap-2 rounded-lg border border-white/10 bg-black/20 px-2 py-2 text-xs text-zinc-300">
+              <input
+                type="checkbox"
+                checked={selectedSet.has(image.id)}
+                onChange={(event) => setSelected(image.id, event.target.checked)}
+                disabled={disabled}
+                className="size-3.5 accent-sky-400"
+              />
+              <span className="min-w-0 truncate">{image.role}</span>
+              <span className="ml-auto font-mono text-[11px] text-zinc-500">{compactId(image.id)}</span>
+            </label>
+          ))}
+        </div>
+      )}
+      {selectedIds.length === 0 ? <div className="text-[11px] text-amber-200">{emptySelectionText}</div> : null}
+    </div>
   );
 }
 
