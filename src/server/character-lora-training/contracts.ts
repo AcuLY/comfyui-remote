@@ -470,10 +470,23 @@ export const characterLoraCaptionPatchRequestSchema = z.object({
 
 export const characterLoraDatasetFreezeRequestSchema = z.object({
   force: z.boolean().optional(),
+  forceReason: z.string().trim().min(1).optional(),
   captionStrategy: z.string().trim().min(1).optional(),
   repeatCount: z.number().int().positive().optional(),
   sourceWeight: z.number().positive().optional(),
-}).strict();
+}).strict().superRefine((value, ctx) => {
+  if (!value.force) {
+    return;
+  }
+
+  if (!value.forceReason) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["forceReason"],
+      message: "forceReason is required when forcing dataset freeze",
+    });
+  }
+});
 
 export const characterLoraWorkerTaskLeaseRequestSchema = z.object({
   workerType: characterLoraWorkerTypeSchema,

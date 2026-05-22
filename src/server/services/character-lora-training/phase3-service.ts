@@ -274,6 +274,13 @@ export async function freezeCharacterLoraDataset(jobId: string, input: unknown =
   }
 
   const warnings = buildDatasetFreezeWarnings(sections, keepImages);
+  const forceOverride = parsed.force
+    ? {
+        enabled: true,
+        reason: parsed.forceReason ?? null,
+        warningCount: warnings.length,
+      }
+    : null;
   if (warnings.length > 0 && !parsed.force) {
     throw new CharacterLoraPhase3ServiceError(
       "Each section must reach targetKeepCount before freezing dataset",
@@ -444,6 +451,7 @@ export async function freezeCharacterLoraDataset(jobId: string, input: unknown =
     requestedRepeatCount: repeatCount,
     requestedSourceWeight: parsed.sourceWeight ?? null,
     provenancePolicy,
+    forceOverride,
     warnings,
     items: manifestItems,
   });
@@ -458,6 +466,7 @@ export async function freezeCharacterLoraDataset(jobId: string, input: unknown =
     sourceCount,
     syntheticCount,
     provenancePolicy,
+    forceOverride,
     warnings,
     items: auditItems,
   });
@@ -518,6 +527,7 @@ export async function freezeCharacterLoraDataset(jobId: string, input: unknown =
       sourceCount,
       syntheticCount,
       warnings,
+      forceOverride,
       artifactPaths: {
         selectedManifest: selectedManifest.relativePath,
         metadataJsonl: metadataJsonl.relativePath,

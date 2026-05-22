@@ -447,8 +447,16 @@ async function main() {
   });
   assert(captioned.captionDraft?.startsWith(`${triggerToken},`), "caption should be normalized trigger-first");
 
+  await assertRejects(
+    () => services.phase3Service.freezeCharacterLoraDataset(job.id, {
+      force: true,
+      repeatCount: 1,
+    }),
+    "force dataset freeze should require a forceReason",
+  );
   const frozen = await services.phase3Service.freezeCharacterLoraDataset(job.id, {
     force: true,
+    forceReason: "fake smoke intentionally freezes below template targetKeepCount",
     repeatCount: 1,
     sourceWeight: 1.5,
   });
@@ -467,6 +475,9 @@ async function main() {
   assert(selectedManifestArtifact, "selected manifest artifact should exist");
   assert(metadataJsonlArtifact, "metadata jsonl artifact should exist");
   const selectedManifest = readJsonRecord(await readJobJsonArtifact(job.artifactRoot, selectedManifestArtifact.relativePath));
+  const forceOverride = readJsonRecord(selectedManifest.forceOverride);
+  assert(forceOverride.enabled === true, "selected manifest should record force override");
+  assert(typeof forceOverride.reason === "string" && forceOverride.reason.length > 0, "force override should include a reason");
   const manifestItems = readJsonArray(selectedManifest.items);
   const sourceManifestItem = readJsonRecord(
     manifestItems.find((item) => readJsonRecord(item).candidateImageId === registeredSourceCandidate.candidate.id),
@@ -512,6 +523,7 @@ async function main() {
   );
   const refrozen = await services.phase3Service.freezeCharacterLoraDataset(job.id, {
     force: true,
+    forceReason: "fake smoke rework revision with one source anchor",
     repeatCount: 1,
     sourceWeight: 1,
   });

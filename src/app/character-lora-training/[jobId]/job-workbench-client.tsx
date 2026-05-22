@@ -767,7 +767,6 @@ export function JobWorkbenchClient({
       const repeatCountRaw = readOptionalString(formData, "repeatCount");
       const sourceWeightRaw = readOptionalString(formData, "sourceWeight");
       await freezeCharacterLoraDataset(job.id, {
-        force: formData.get("force") === "on",
         captionStrategy: readOptionalString(formData, "captionStrategy"),
         repeatCount: repeatCountRaw ? Number(repeatCountRaw) : undefined,
         sourceWeight: sourceWeightRaw ? Number(sourceWeightRaw) : undefined,
@@ -1339,14 +1338,10 @@ export function JobWorkbenchClient({
             ))}
           </div>
         )}
-        <form action={handleFreezeDataset} className="mt-3 grid gap-2 rounded-lg border border-white/10 bg-white/[0.03] p-3 md:grid-cols-[1fr_100px_120px_auto_auto]">
+        <form action={handleFreezeDataset} className="mt-3 grid gap-2 rounded-lg border border-white/10 bg-white/[0.03] p-3 md:grid-cols-[1fr_100px_120px_auto]">
           <input name="captionStrategy" defaultValue={job.captionStrategy} className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white" />
           <input name="repeatCount" type="number" min={1} defaultValue={1} className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white" />
           <input name="sourceWeight" type="number" min={1} step="0.1" placeholder="source weight" className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white" />
-          <label className="flex items-center gap-2 text-xs text-zinc-300">
-            <input name="force" type="checkbox" className="size-3.5 accent-amber-400" />
-            force
-          </label>
           <ActionButton icon={Database} label="冻结 Dataset" loading={isBusy("dataset.freeze")} disabled={isPending} />
         </form>
         <CompactList
