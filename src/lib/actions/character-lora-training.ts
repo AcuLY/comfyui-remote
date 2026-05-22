@@ -24,6 +24,18 @@ import {
   mockCompleteCharacterLoraCanonicalGenerationRun as mockCompleteCanonicalGenerationRun,
   selectCharacterLoraCanonicalVersion as selectCanonicalVersion,
 } from "@/server/services/character-lora-training/canonical-service";
+import {
+  completeCharacterLoraTask as completeTask,
+  enqueueCharacterLoraSectionGenerationRun as enqueueSectionGenerationRun,
+  failCharacterLoraTask as failTask,
+  freezeCharacterLoraDataset as freezeDataset,
+  heartbeatCharacterLoraTask as heartbeatTask,
+  leaseNextCharacterLoraTask as leaseNextTask,
+  listCharacterLoraCandidateImages as listCandidateImages,
+  listCharacterLoraDatasetRevisions as listDatasetRevisions,
+  reviewCharacterLoraImages as reviewImages,
+  updateCharacterLoraImageCaption as updateImageCaption,
+} from "@/server/services/character-lora-training/phase3-service";
 
 export async function createCharacterLoraTrainingJob(input: unknown) {
   return createJob(input);
@@ -79,4 +91,44 @@ export async function mockCompleteCharacterLoraCanonicalGenerationRun(runId: str
 
 export async function selectCharacterLoraCanonicalVersion(jobId: string, versionId: string) {
   return selectCanonicalVersion(jobId, versionId);
+}
+
+export async function enqueueCharacterLoraSectionGenerationRun(sectionId: string, input?: unknown) {
+  return enqueueSectionGenerationRun(sectionId, input ?? {});
+}
+
+export async function listCharacterLoraCandidateImages(jobId: string, input?: unknown) {
+  return listCandidateImages(jobId, input ?? {});
+}
+
+export async function reviewCharacterLoraImages(input: unknown) {
+  return reviewImages(input);
+}
+
+export async function updateCharacterLoraImageCaption(imageId: string, input: unknown) {
+  return updateImageCaption(imageId, input);
+}
+
+export async function freezeCharacterLoraDataset(jobId: string, input?: unknown) {
+  return freezeDataset(jobId, input ?? {});
+}
+
+export async function listCharacterLoraDatasetRevisions(jobId: string) {
+  return listDatasetRevisions(jobId);
+}
+
+export async function leaseNextCharacterLoraTask(input: unknown) {
+  return leaseNextTask(input);
+}
+
+export async function heartbeatCharacterLoraTask(taskId: string, input?: unknown) {
+  return heartbeatTask(taskId, input ?? {});
+}
+
+export async function completeCharacterLoraTask(taskId: string, input: unknown) {
+  return completeTask(taskId, input);
+}
+
+export async function failCharacterLoraTask(taskId: string, input: unknown) {
+  return failTask(taskId, input);
 }

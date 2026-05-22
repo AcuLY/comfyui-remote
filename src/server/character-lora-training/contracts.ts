@@ -205,6 +205,91 @@ export type CharacterLoraImageGenerationRequest = z.infer<typeof characterLoraIm
 export type CharacterLoraImageGenerationOutput = z.infer<typeof characterLoraImageGenerationOutputSchema>;
 export type CharacterLoraProviderError = z.infer<typeof characterLoraProviderErrorSchema>;
 
+export const characterLoraSectionGenerationRequestSchema = z.object({
+  provider: characterLoraImageProviderSchema.optional(),
+  hostModel: z.string().trim().min(1).optional(),
+  imageModel: z.literal("gpt-image-2").optional(),
+  hostInstruction: z.string().trim().min(1).optional(),
+  visualPrompt: z.string().trim().min(1).optional(),
+  renderedPrompt: z.string().trim().min(1).optional(),
+  negativePrompt: z
+    .string()
+    .trim()
+    .transform((value) => (value.length > 0 ? value : null))
+    .nullable()
+    .optional(),
+  userInstruction: z
+    .string()
+    .trim()
+    .transform((value) => (value.length > 0 ? value : null))
+    .nullable()
+    .optional(),
+  parentRunId: z.string().trim().min(1).optional(),
+  toolParams: characterLoraProviderToolParamsSchema.optional(),
+  inputImages: z.array(characterLoraProviderInputImageSchema).optional(),
+  sourceImageIds: z.array(z.string().trim().min(1)).optional(),
+}).strict();
+
+export const characterLoraImageReviewPatchSchema = z.object({
+  imageId: z.string().trim().min(1),
+  reviewStatus: z.enum(["pending", "keep", "reject", "excluded"]),
+  rejectReasons: z.array(characterLoraRejectReasonSchema).optional(),
+  reviewNote: z
+    .string()
+    .trim()
+    .transform((value) => (value.length > 0 ? value : null))
+    .nullable()
+    .optional(),
+}).strict();
+
+export const characterLoraImageReviewBatchRequestSchema = z.object({
+  images: z.array(characterLoraImageReviewPatchSchema).min(1),
+}).strict();
+
+export const characterLoraCaptionPatchRequestSchema = z.object({
+  captionDraft: z.string().trim().min(1),
+}).strict();
+
+export const characterLoraDatasetFreezeRequestSchema = z.object({
+  force: z.boolean().optional(),
+  captionStrategy: z.string().trim().min(1).optional(),
+  repeatCount: z.number().int().positive().optional(),
+  sourceWeight: z.number().positive().optional(),
+}).strict();
+
+export const characterLoraWorkerTaskLeaseRequestSchema = z.object({
+  workerType: characterLoraWorkerTypeSchema,
+  leaseOwner: z.string().trim().min(1).optional(),
+  leaseDurationSeconds: z.number().int().min(30).max(86_400).optional(),
+}).strict();
+
+export const characterLoraWorkerTaskHeartbeatRequestSchema = z.object({
+  leaseOwner: z.string().trim().min(1).optional(),
+  leaseDurationSeconds: z.number().int().min(30).max(86_400).optional(),
+  progressJson: jsonObjectSchema.optional(),
+}).strict();
+
+export const characterLoraWorkerTaskCompleteRequestSchema = z.object({
+  leaseOwner: z.string().trim().min(1).optional(),
+  output: characterLoraImageGenerationOutputSchema,
+}).strict();
+
+export const characterLoraWorkerTaskFailRequestSchema = z.object({
+  leaseOwner: z.string().trim().min(1).optional(),
+  errorSummary: z.string().trim().min(1),
+  providerError: characterLoraProviderErrorSchema.optional(),
+}).strict();
+
+export type CharacterLoraSectionGenerationRequest = z.infer<typeof characterLoraSectionGenerationRequestSchema>;
+export type CharacterLoraImageReviewPatch = z.infer<typeof characterLoraImageReviewPatchSchema>;
+export type CharacterLoraImageReviewBatchRequest = z.infer<typeof characterLoraImageReviewBatchRequestSchema>;
+export type CharacterLoraCaptionPatchRequest = z.infer<typeof characterLoraCaptionPatchRequestSchema>;
+export type CharacterLoraDatasetFreezeRequest = z.infer<typeof characterLoraDatasetFreezeRequestSchema>;
+export type CharacterLoraWorkerTaskLeaseRequest = z.infer<typeof characterLoraWorkerTaskLeaseRequestSchema>;
+export type CharacterLoraWorkerTaskHeartbeatRequest = z.infer<typeof characterLoraWorkerTaskHeartbeatRequestSchema>;
+export type CharacterLoraWorkerTaskCompleteRequest = z.infer<typeof characterLoraWorkerTaskCompleteRequestSchema>;
+export type CharacterLoraWorkerTaskFailRequest = z.infer<typeof characterLoraWorkerTaskFailRequestSchema>;
+
 export const characterLoraImageGenerationTaskPayloadSchema = z.object({
   taskType: z.literal("image_generation"),
   jobId: z.string().min(1),

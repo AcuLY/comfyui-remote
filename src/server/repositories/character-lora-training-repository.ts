@@ -1,5 +1,6 @@
 import { Prisma } from "@/generated/prisma";
 import {
+  CharacterLoraImageReviewStatus,
   CharacterLoraJobStatus,
   CharacterLoraRunStatus,
   CharacterLoraWorkerType,
@@ -8,6 +9,7 @@ import { db } from "@/lib/db";
 import { detectProvider } from "@/lib/prisma";
 import type {
   CharacterLoraArtifactKind,
+  CharacterLoraImageGenerationOutput,
   CharacterLoraImageGenerationTaskPayload,
 } from "@/server/character-lora-training/contracts";
 
@@ -174,6 +176,73 @@ const JOB_SECTION_SELECT = {
   },
 } as const;
 
+const CANDIDATE_IMAGE_SELECT = {
+  id: true,
+  jobId: true,
+  sectionId: true,
+  generationRunId: true,
+  artifactId: true,
+  filePath: true,
+  sha256: true,
+  width: true,
+  height: true,
+  fileSize: true,
+  reviewStatus: true,
+  rejectReasons: true,
+  reviewNote: true,
+  captionDraft: true,
+  reviewedAt: true,
+  includedDatasetRevisionId: true,
+  createdAt: true,
+  updatedAt: true,
+} as const;
+
+const DATASET_REVISION_SELECT = {
+  id: true,
+  jobId: true,
+  version: true,
+  status: true,
+  canonicalVersionId: true,
+  promptCardVersionId: true,
+  captionStrategy: true,
+  itemCount: true,
+  sourceCount: true,
+  syntheticCount: true,
+  selectedManifestArtifactId: true,
+  metadataJsonlArtifactId: true,
+  captionAuditArtifactId: true,
+  trainDir: true,
+  frozenAt: true,
+  createdAt: true,
+  updatedAt: true,
+  _count: {
+    select: {
+      items: true,
+      includedCandidateImages: true,
+    },
+  },
+} as const;
+
+const WORKER_TASK_SELECT = {
+  id: true,
+  jobId: true,
+  workerType: true,
+  targetType: true,
+  targetId: true,
+  status: true,
+  payload: true,
+  leaseOwner: true,
+  leaseExpiresAt: true,
+  attemptCount: true,
+  progressJson: true,
+  startedAt: true,
+  heartbeatAt: true,
+  finishedAt: true,
+  errorSummary: true,
+  createdAt: true,
+  updatedAt: true,
+} as const;
+
 type JobSummaryRecord = Prisma.CharacterLoraTrainingJobGetPayload<{
   select: typeof JOB_SUMMARY_SELECT;
 }>;
@@ -204,6 +273,18 @@ type SectionTemplateRecord = Prisma.CharacterLoraSectionTemplateGetPayload<{
 
 type JobSectionRecord = Prisma.CharacterLoraJobSectionGetPayload<{
   select: typeof JOB_SECTION_SELECT;
+}>;
+
+type CandidateImageRecord = Prisma.CharacterLoraCandidateImageGetPayload<{
+  select: typeof CANDIDATE_IMAGE_SELECT;
+}>;
+
+type DatasetRevisionRecord = Prisma.CharacterLoraDatasetRevisionGetPayload<{
+  select: typeof DATASET_REVISION_SELECT;
+}>;
+
+type WorkerTaskRecord = Prisma.CharacterLoraWorkerTaskGetPayload<{
+  select: typeof WORKER_TASK_SELECT;
 }>;
 
 export type CharacterLoraTrainingJobCreateInput = {
@@ -250,6 +331,9 @@ export type CharacterLoraCanonicalVersionSummary = ReturnType<typeof serializeCa
 export type CharacterLoraPromptCardVersionSummary = ReturnType<typeof serializePromptCardVersion>;
 export type CharacterLoraSectionTemplateSummary = ReturnType<typeof serializeSectionTemplate>;
 export type CharacterLoraJobSectionSummary = ReturnType<typeof serializeJobSection>;
+export type CharacterLoraCandidateImageSummary = ReturnType<typeof serializeCandidateImage>;
+export type CharacterLoraDatasetRevisionSummary = ReturnType<typeof serializeDatasetRevision>;
+export type CharacterLoraWorkerTaskSummary = ReturnType<typeof serializeWorkerTask>;
 
 export type CharacterLoraSourceImageCreateInput = {
   jobId: string;
@@ -264,6 +348,23 @@ export type CharacterLoraSourceImageCreateInput = {
   provenance?: Prisma.InputJsonValue | null;
   sortOrder?: number;
   artifactMetadata?: Prisma.InputJsonValue | null;
+};
+
+export type CharacterLoraCandidateImageListFilters = {
+  jobId: string;
+  sectionId?: string;
+  generationRunId?: string;
+  reviewStatus?: CharacterLoraImageReviewStatus;
+};
+
+export type CharacterLoraDatasetItemCreateInput = {
+  candidateImageId: string;
+  imageArtifactId: string;
+  captionArtifactId: string;
+  captionText: string;
+  repeatCount: number;
+  sourceWeight?: number | null;
+  sortOrder: number;
 };
 
 export async function listCharacterLoraTrainingJobs(filters: CharacterLoraTrainingJobListFilters = {}) {
@@ -867,6 +968,724 @@ export async function instantiateCharacterLoraJobSections(input: {
   };
 }
 
+export async function getCharacterLoraJobSection(sectionId: string) {
+  const section = await db.characterLoraJobSection.findUnique({
+    where: { id: sectionId },
+    select: JOB_SECTION_SELECT,
+  });
+
+  return section ? serializeJobSection(section) : null;
+}
+
+export async function createCharacterLoraSectionGenerationRunWithTask(input: {
+  runId: string;
+  jobId: string;
+  sectionId: string;
+  parentRunId?: string | null;
+  provider: string;
+  hostModel: string;
+  imageModel: string;
+  hostInstruction: string;
+  visualPrompt: string;
+  negativePrompt?: string | null;
+  toolParams: Prisma.InputJsonValue;
+  inputImages: Prisma.InputJsonValue;
+  requestArtifact: {
+    relativePath: string;
+    absolutePath: string;
+    sha256: string;
+    byteSize: bigint | number;
+    metadata: Prisma.InputJsonValue;
+  };
+  taskPayload: CharacterLoraImageGenerationTaskPayload;
+}) {
+  const result = await db.$transaction(async (tx) => {
+    const artifact = await tx.characterLoraArtifact.create({
+      data: {
+        jobId: input.jobId,
+        kind: "provider_payload",
+        relativePath: input.requestArtifact.relativePath,
+        absolutePath: input.requestArtifact.absolutePath,
+        sha256: input.requestArtifact.sha256,
+        byteSize: input.requestArtifact.byteSize,
+        mimeType: "application/json",
+        redactionLevel: "payload_redacted",
+        metadata: input.requestArtifact.metadata,
+      },
+      select: { id: true },
+    });
+
+    const run = await tx.characterLoraGenerationRun.create({
+      data: {
+        id: input.runId,
+        jobId: input.jobId,
+        sectionId: input.sectionId,
+        kind: "section",
+        parentRunId: input.parentRunId ?? null,
+        status: CharacterLoraRunStatus.queued,
+        provider: input.provider,
+        hostModel: input.hostModel,
+        imageModel: input.imageModel,
+        hostInstruction: input.hostInstruction,
+        visualPrompt: input.visualPrompt,
+        negativePrompt: input.negativePrompt,
+        toolParams: input.toolParams,
+        inputImages: input.inputImages,
+        requestArtifactId: artifact.id,
+      },
+      select: GENERATION_RUN_SUMMARY_SELECT,
+    });
+
+    const task = await tx.characterLoraWorkerTask.create({
+      data: {
+        jobId: input.jobId,
+        workerType: CharacterLoraWorkerType.image_generation,
+        targetType: "generationRun",
+        targetId: run.id,
+        status: CharacterLoraRunStatus.queued,
+        payload: toInputJsonValue(input.taskPayload),
+      },
+      select: { id: true },
+    });
+
+    await tx.characterLoraJobSection.update({
+      where: { id: input.sectionId },
+      data: { status: "generating" },
+      select: { id: true },
+    });
+
+    await tx.characterLoraTrainingJob.update({
+      where: { id: input.jobId },
+      data: {
+        status: CharacterLoraJobStatus.section_generating,
+        phase: "sections",
+      },
+      select: { id: true },
+    });
+
+    return {
+      run,
+      workerTaskId: task.id,
+    };
+  });
+
+  return {
+    ...serializeGenerationRun(result.run),
+    workerTaskId: result.workerTaskId,
+  };
+}
+
+export async function listCharacterLoraCandidateImages(filters: CharacterLoraCandidateImageListFilters) {
+  const where: Prisma.CharacterLoraCandidateImageWhereInput = {
+    jobId: filters.jobId,
+    ...(filters.sectionId ? { sectionId: filters.sectionId } : {}),
+    ...(filters.generationRunId ? { generationRunId: filters.generationRunId } : {}),
+    ...(filters.reviewStatus ? { reviewStatus: filters.reviewStatus } : {}),
+  };
+
+  const images = await db.characterLoraCandidateImage.findMany({
+    where,
+    orderBy: [{ sectionId: "asc" }, { createdAt: "asc" }, { id: "asc" }],
+    select: CANDIDATE_IMAGE_SELECT,
+  });
+
+  return images.map(serializeCandidateImage);
+}
+
+export async function getCharacterLoraCandidateImage(imageId: string) {
+  const image = await db.characterLoraCandidateImage.findUnique({
+    where: { id: imageId },
+    select: CANDIDATE_IMAGE_SELECT,
+  });
+
+  return image ? serializeCandidateImage(image) : null;
+}
+
+export async function reviewCharacterLoraCandidateImages(input: {
+  images: Array<{
+    imageId: string;
+    reviewStatus: "pending" | "keep" | "reject" | "excluded";
+    rejectReasons?: Prisma.InputJsonValue | null;
+    reviewNote?: string | null;
+  }>;
+}) {
+  const result = await db.$transaction(async (tx) => {
+    const existing = await tx.characterLoraCandidateImage.findMany({
+      where: { id: { in: input.images.map((image) => image.imageId) } },
+      select: { id: true, jobId: true, sectionId: true, includedDatasetRevisionId: true },
+    });
+    const existingById = new Map(existing.map((image) => [image.id, image]));
+    const missingIds = input.images
+      .map((image) => image.imageId)
+      .filter((imageId) => !existingById.has(imageId));
+
+    if (missingIds.length > 0) {
+      throw new Error(`Candidate images not found: ${missingIds.join(", ")}`);
+    }
+
+    const frozenIds = existing
+      .filter((image) => image.includedDatasetRevisionId)
+      .map((image) => image.id);
+
+    if (frozenIds.length > 0) {
+      throw new Error(`Included training images cannot be reviewed again: ${frozenIds.join(", ")}`);
+    }
+
+    for (const image of input.images) {
+      await tx.characterLoraCandidateImage.update({
+        where: { id: image.imageId },
+        data: {
+          reviewStatus: image.reviewStatus,
+          rejectReasons: image.reviewStatus === "reject" ? (image.rejectReasons ?? Prisma.JsonNull) : Prisma.JsonNull,
+          reviewNote: image.reviewNote ?? null,
+          reviewedAt: image.reviewStatus === "pending" ? null : new Date(),
+        },
+        select: { id: true },
+      });
+    }
+
+    const sectionIds = Array.from(
+      new Set(existing.map((image) => image.sectionId).filter((sectionId): sectionId is string => Boolean(sectionId))),
+    );
+
+    await refreshSectionCounts(tx, sectionIds);
+
+    const jobIds = Array.from(new Set(existing.map((image) => image.jobId)));
+    for (const jobId of jobIds) {
+      await tx.characterLoraTrainingJob.update({
+        where: { id: jobId },
+        data: { status: CharacterLoraJobStatus.reviewing, phase: "review" },
+        select: { id: true },
+      });
+    }
+
+    const updated = await tx.characterLoraCandidateImage.findMany({
+      where: { id: { in: input.images.map((image) => image.imageId) } },
+      orderBy: [{ sectionId: "asc" }, { createdAt: "asc" }, { id: "asc" }],
+      select: CANDIDATE_IMAGE_SELECT,
+    });
+
+    return updated;
+  });
+
+  return result.map(serializeCandidateImage);
+}
+
+export async function updateCharacterLoraCandidateCaption(input: {
+  imageId: string;
+  captionDraft: string;
+}) {
+  const image = await db.characterLoraCandidateImage.update({
+    where: { id: input.imageId },
+    data: { captionDraft: input.captionDraft },
+    select: CANDIDATE_IMAGE_SELECT,
+  });
+
+  return serializeCandidateImage(image);
+}
+
+export async function leaseNextCharacterLoraWorkerTask(input: {
+  workerType: CharacterLoraWorkerType;
+  leaseOwner: string;
+  leaseExpiresAt: Date;
+}) {
+  const task = await db.$transaction(async (tx) => {
+    const queued = await tx.characterLoraWorkerTask.findFirst({
+      where: {
+        workerType: input.workerType,
+        status: CharacterLoraRunStatus.queued,
+      },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      select: { id: true, targetType: true, targetId: true },
+    });
+
+    if (!queued) {
+      return null;
+    }
+
+    const now = new Date();
+    const claimed = await tx.characterLoraWorkerTask.updateMany({
+      where: {
+        id: queued.id,
+        status: CharacterLoraRunStatus.queued,
+      },
+      data: {
+        status: CharacterLoraRunStatus.running,
+        leaseOwner: input.leaseOwner,
+        leaseExpiresAt: input.leaseExpiresAt,
+        attemptCount: { increment: 1 },
+        startedAt: now,
+        heartbeatAt: now,
+        errorSummary: null,
+      },
+    });
+
+    if (claimed.count !== 1) {
+      return null;
+    }
+
+    if (queued.targetType === "generationRun") {
+      await tx.characterLoraGenerationRun.updateMany({
+        where: {
+          id: queued.targetId,
+          status: CharacterLoraRunStatus.queued,
+        },
+        data: {
+          status: CharacterLoraRunStatus.running,
+          startedAt: now,
+          errorSummary: null,
+        },
+      });
+    }
+
+    return tx.characterLoraWorkerTask.findUnique({
+      where: { id: queued.id },
+      select: WORKER_TASK_SELECT,
+    });
+  });
+
+  return task ? serializeWorkerTask(task) : null;
+}
+
+export async function getCharacterLoraWorkerTask(taskId: string) {
+  const task = await db.characterLoraWorkerTask.findUnique({
+    where: { id: taskId },
+    select: WORKER_TASK_SELECT,
+  });
+
+  return task ? serializeWorkerTask(task) : null;
+}
+
+export async function heartbeatCharacterLoraWorkerTask(input: {
+  taskId: string;
+  leaseOwner?: string;
+  leaseExpiresAt?: Date;
+  progressJson?: Prisma.InputJsonValue;
+}) {
+  const where: Prisma.CharacterLoraWorkerTaskWhereInput = {
+    id: input.taskId,
+    status: CharacterLoraRunStatus.running,
+    ...(input.leaseOwner ? { leaseOwner: input.leaseOwner } : {}),
+  };
+
+  const result = await db.characterLoraWorkerTask.updateMany({
+    where,
+    data: {
+      heartbeatAt: new Date(),
+      ...(input.leaseExpiresAt ? { leaseExpiresAt: input.leaseExpiresAt } : {}),
+      ...(input.progressJson ? { progressJson: input.progressJson } : {}),
+    },
+  });
+
+  if (result.count !== 1) {
+    return null;
+  }
+
+  const task = await db.characterLoraWorkerTask.findUnique({
+    where: { id: input.taskId },
+    select: WORKER_TASK_SELECT,
+  });
+
+  return task ? serializeWorkerTask(task) : null;
+}
+
+export async function completeImageGenerationWorkerTask(input: {
+  taskId: string;
+  leaseOwner?: string;
+  output: CharacterLoraImageGenerationOutput;
+  imageArtifacts: Array<{
+    relativePath: string;
+    absolutePath: string;
+    sha256: string;
+    width?: number | null;
+    height?: number | null;
+    byteSize?: bigint | number | null;
+    metadata?: Prisma.InputJsonValue | null;
+  }>;
+  responseSummaryArtifact: {
+    relativePath: string;
+    absolutePath: string;
+    sha256: string;
+    byteSize: bigint | number;
+    metadata: Prisma.InputJsonValue;
+  };
+}) {
+  const result = await db.$transaction(async (tx) => {
+    const task = await tx.characterLoraWorkerTask.findUnique({
+      where: { id: input.taskId },
+      select: WORKER_TASK_SELECT,
+    });
+
+    if (!task || task.status !== CharacterLoraRunStatus.running) {
+      return null;
+    }
+
+    if (input.leaseOwner && task.leaseOwner !== input.leaseOwner) {
+      return null;
+    }
+
+    const run = await tx.characterLoraGenerationRun.findUnique({
+      where: { id: task.targetId },
+      select: {
+        ...GENERATION_RUN_SUMMARY_SELECT,
+        job: { select: { triggerToken: true } },
+        section: {
+          select: {
+            id: true,
+            key: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    if (!run || task.targetType !== "generationRun") {
+      return null;
+    }
+
+    const responseArtifact = await tx.characterLoraArtifact.create({
+      data: {
+        jobId: run.jobId,
+        kind: "provider_payload",
+        relativePath: input.responseSummaryArtifact.relativePath,
+        absolutePath: input.responseSummaryArtifact.absolutePath,
+        sha256: input.responseSummaryArtifact.sha256,
+        byteSize: input.responseSummaryArtifact.byteSize,
+        mimeType: "application/json",
+        redactionLevel: "payload_redacted",
+        metadata: input.responseSummaryArtifact.metadata,
+      },
+      select: { id: true },
+    });
+
+    const artifacts = [];
+    for (const artifactInput of input.imageArtifacts) {
+      artifacts.push(
+        await tx.characterLoraArtifact.create({
+          data: {
+            jobId: run.jobId,
+            kind: run.kind === "canonical" ? "canonical_image" : "candidate_image",
+            relativePath: artifactInput.relativePath,
+            absolutePath: artifactInput.absolutePath,
+            sha256: artifactInput.sha256,
+            byteSize: artifactInput.byteSize ?? null,
+            mimeType: "image/png",
+            redactionLevel: "path_only",
+            metadata: artifactInput.metadata ?? Prisma.DbNull,
+          },
+          select: { id: true, relativePath: true, sha256: true, byteSize: true },
+        }),
+      );
+    }
+
+    if (run.kind === "canonical") {
+      const previous = await tx.characterLoraCanonicalVersion.findFirst({
+        where: { jobId: run.jobId },
+        orderBy: { version: "desc" },
+        select: { version: true },
+      });
+      let nextVersion = (previous?.version ?? 0) + 1;
+
+      for (const artifact of artifacts) {
+        await tx.characterLoraCanonicalVersion.create({
+          data: {
+            jobId: run.jobId,
+            version: nextVersion,
+            status: "candidate",
+            sourceRunId: run.id,
+            imageArtifactId: artifact.id,
+            notes: `worker generated canonical image ${artifact.relativePath}`,
+          },
+          select: { id: true },
+        });
+        nextVersion += 1;
+      }
+    } else {
+      for (let index = 0; index < artifacts.length; index += 1) {
+        const artifact = artifacts[index];
+        const image = input.imageArtifacts[index];
+        await tx.characterLoraCandidateImage.create({
+          data: {
+            jobId: run.jobId,
+            sectionId: run.sectionId,
+            generationRunId: run.id,
+            artifactId: artifact.id,
+            filePath: artifact.relativePath,
+            sha256: artifact.sha256 ?? image.sha256,
+            width: image.width ?? null,
+            height: image.height ?? null,
+            fileSize: artifact.byteSize,
+            reviewStatus: CharacterLoraImageReviewStatus.pending,
+            captionDraft: buildDefaultCaption(run.job.triggerToken, run.section?.name ?? null, run.visualPrompt),
+          },
+          select: { id: true },
+        });
+      }
+
+      if (run.sectionId) {
+        await refreshSectionCounts(tx, [run.sectionId]);
+      }
+
+      await tx.characterLoraTrainingJob.update({
+        where: { id: run.jobId },
+        data: { status: CharacterLoraJobStatus.reviewing, phase: "review" },
+        select: { id: true },
+      });
+    }
+
+    await tx.characterLoraGenerationRun.update({
+      where: { id: run.id },
+      data: {
+        status: CharacterLoraRunStatus.done,
+        responseSummary: toInputJsonValue({
+          ...input.output,
+          responseSummaryArtifactId: responseArtifact.id,
+        }),
+        errorSummary: null,
+        finishedAt: new Date(),
+      },
+      select: { id: true },
+    });
+
+    const completedTask = await tx.characterLoraWorkerTask.update({
+      where: { id: task.id },
+      data: {
+        status: CharacterLoraRunStatus.done,
+        leaseExpiresAt: null,
+        heartbeatAt: new Date(),
+        finishedAt: new Date(),
+        errorSummary: null,
+      },
+      select: WORKER_TASK_SELECT,
+    });
+
+    const refreshedRun = await tx.characterLoraGenerationRun.findUnique({
+      where: { id: run.id },
+      select: GENERATION_RUN_SUMMARY_SELECT,
+    });
+
+    return { task: completedTask, generationRun: refreshedRun };
+  });
+
+  return result
+    ? {
+        task: serializeWorkerTask(result.task),
+        generationRun: result.generationRun ? serializeGenerationRun(result.generationRun) : null,
+      }
+    : null;
+}
+
+export async function failCharacterLoraWorkerTask(input: {
+  taskId: string;
+  leaseOwner?: string;
+  errorSummary: string;
+  progressJson?: Prisma.InputJsonValue;
+}) {
+  const result = await db.$transaction(async (tx) => {
+    const task = await tx.characterLoraWorkerTask.findUnique({
+      where: { id: input.taskId },
+      select: WORKER_TASK_SELECT,
+    });
+
+    if (!task || task.status !== CharacterLoraRunStatus.running) {
+      return null;
+    }
+
+    if (input.leaseOwner && task.leaseOwner !== input.leaseOwner) {
+      return null;
+    }
+
+    await tx.characterLoraWorkerTask.update({
+      where: { id: input.taskId },
+      data: {
+        status: CharacterLoraRunStatus.failed,
+        leaseExpiresAt: null,
+        heartbeatAt: new Date(),
+        finishedAt: new Date(),
+        progressJson: input.progressJson ?? task.progressJson ?? Prisma.DbNull,
+        errorSummary: input.errorSummary,
+      },
+      select: { id: true },
+    });
+
+    if (task.targetType === "generationRun") {
+      const run = await tx.characterLoraGenerationRun.update({
+        where: { id: task.targetId },
+        data: {
+          status: CharacterLoraRunStatus.failed,
+          errorSummary: input.errorSummary,
+          finishedAt: new Date(),
+        },
+        select: { id: true, jobId: true },
+      });
+
+      await tx.characterLoraTrainingJob.update({
+        where: { id: run.jobId },
+        data: {
+          status: CharacterLoraJobStatus.failed,
+          failureSummary: input.errorSummary,
+        },
+        select: { id: true },
+      });
+    }
+
+    return tx.characterLoraWorkerTask.findUnique({
+      where: { id: input.taskId },
+      select: WORKER_TASK_SELECT,
+    });
+  });
+
+  return result ? serializeWorkerTask(result) : null;
+}
+
+export async function listCharacterLoraDatasetRevisions(jobId: string) {
+  const revisions = await db.characterLoraDatasetRevision.findMany({
+    where: { jobId },
+    orderBy: [{ version: "asc" }, { createdAt: "asc" }],
+    select: DATASET_REVISION_SELECT,
+  });
+
+  return revisions.map(serializeDatasetRevision);
+}
+
+export async function getNextCharacterLoraDatasetRevisionVersion(jobId: string) {
+  const previous = await db.characterLoraDatasetRevision.findFirst({
+    where: { jobId },
+    orderBy: { version: "desc" },
+    select: { version: true },
+  });
+
+  return (previous?.version ?? 0) + 1;
+}
+
+export async function createFrozenCharacterLoraDatasetRevision(input: {
+  revisionId: string;
+  jobId: string;
+  version: number;
+  canonicalVersionId: string;
+  promptCardVersionId: string;
+  captionStrategy: string;
+  trainDir: string;
+  sourceCount: number;
+  syntheticCount: number;
+  selectedManifestArtifactId: string;
+  metadataJsonlArtifactId: string;
+  captionAuditArtifactId: string;
+  items: CharacterLoraDatasetItemCreateInput[];
+}) {
+  const result = await db.$transaction(async (tx) => {
+    const revision = await tx.characterLoraDatasetRevision.create({
+      data: {
+        id: input.revisionId,
+        jobId: input.jobId,
+        version: input.version,
+        status: "frozen",
+        canonicalVersionId: input.canonicalVersionId,
+        promptCardVersionId: input.promptCardVersionId,
+        captionStrategy: input.captionStrategy,
+        itemCount: input.items.length,
+        sourceCount: input.sourceCount,
+        syntheticCount: input.syntheticCount,
+        selectedManifestArtifactId: input.selectedManifestArtifactId,
+        metadataJsonlArtifactId: input.metadataJsonlArtifactId,
+        captionAuditArtifactId: input.captionAuditArtifactId,
+        trainDir: input.trainDir,
+        frozenAt: new Date(),
+      },
+      select: DATASET_REVISION_SELECT,
+    });
+
+    for (const item of input.items) {
+      await tx.characterLoraDatasetItem.create({
+        data: {
+          datasetRevisionId: revision.id,
+          candidateImageId: item.candidateImageId,
+          imageArtifactId: item.imageArtifactId,
+          captionArtifactId: item.captionArtifactId,
+          captionText: item.captionText,
+          repeatCount: item.repeatCount,
+          sourceWeight: item.sourceWeight ?? null,
+          sortOrder: item.sortOrder,
+        },
+        select: { id: true },
+      });
+    }
+
+    await tx.characterLoraCandidateImage.updateMany({
+      where: { id: { in: input.items.map((item) => item.candidateImageId) } },
+      data: {
+        reviewStatus: CharacterLoraImageReviewStatus.included_in_training,
+        includedDatasetRevisionId: revision.id,
+      },
+    });
+
+    const sectionIds = await tx.characterLoraCandidateImage.findMany({
+      where: { id: { in: input.items.map((item) => item.candidateImageId) } },
+      distinct: ["sectionId"],
+      select: { sectionId: true },
+    });
+
+    await refreshSectionCounts(
+      tx,
+      sectionIds.map((section) => section.sectionId).filter((sectionId): sectionId is string => Boolean(sectionId)),
+    );
+
+    await tx.characterLoraTrainingJob.update({
+      where: { id: input.jobId },
+      data: {
+        status: CharacterLoraJobStatus.dataset_ready,
+        phase: "dataset",
+        selectedDatasetRevisionId: revision.id,
+      },
+      select: { id: true },
+    });
+
+    return revision;
+  });
+
+  return serializeDatasetRevision(result);
+}
+
+async function refreshSectionCounts(
+  tx: Prisma.TransactionClient,
+  sectionIds: string[],
+) {
+  for (const sectionId of sectionIds) {
+    const [keepCount, rejectCount, pendingCount] = await Promise.all([
+      tx.characterLoraCandidateImage.count({
+        where: { sectionId, reviewStatus: CharacterLoraImageReviewStatus.keep },
+      }),
+      tx.characterLoraCandidateImage.count({
+        where: { sectionId, reviewStatus: CharacterLoraImageReviewStatus.reject },
+      }),
+      tx.characterLoraCandidateImage.count({
+        where: { sectionId, reviewStatus: CharacterLoraImageReviewStatus.pending },
+      }),
+    ]);
+
+    await tx.characterLoraJobSection.update({
+      where: { id: sectionId },
+      data: {
+        keepCount,
+        rejectCount,
+        pendingCount,
+        status: pendingCount > 0 ? "reviewing" : "reviewed",
+      },
+      select: { id: true },
+    });
+  }
+}
+
+function buildDefaultCaption(triggerToken: string, sectionName: string | null, visualPrompt: string) {
+  const pieces = [
+    triggerToken,
+    sectionName ? sectionName.toLowerCase() : null,
+    visualPrompt.replace(/\s+/g, " ").slice(0, 180),
+  ].filter((piece): piece is string => Boolean(piece));
+
+  return pieces.join(", ");
+}
+
 function ciContains(value: string) {
   return detectProvider() === "postgresql"
     ? { contains: value, mode: "insensitive" as const }
@@ -1047,6 +1866,78 @@ function serializeJobSection(section: JobSectionRecord) {
     },
     createdAt: section.createdAt.toISOString(),
     updatedAt: section.updatedAt.toISOString(),
+  };
+}
+
+function serializeCandidateImage(image: CandidateImageRecord) {
+  return {
+    id: image.id,
+    jobId: image.jobId,
+    sectionId: image.sectionId,
+    generationRunId: image.generationRunId,
+    artifactId: image.artifactId,
+    filePath: image.filePath,
+    relativePath: image.filePath,
+    sha256: image.sha256,
+    width: image.width,
+    height: image.height,
+    fileSize: image.fileSize?.toString() ?? null,
+    reviewStatus: image.reviewStatus,
+    rejectReasons: image.rejectReasons,
+    reviewNote: image.reviewNote,
+    captionDraft: image.captionDraft,
+    reviewedAt: image.reviewedAt?.toISOString() ?? null,
+    includedDatasetRevisionId: image.includedDatasetRevisionId,
+    createdAt: image.createdAt.toISOString(),
+    updatedAt: image.updatedAt.toISOString(),
+  };
+}
+
+function serializeDatasetRevision(revision: DatasetRevisionRecord) {
+  return {
+    id: revision.id,
+    jobId: revision.jobId,
+    version: revision.version,
+    status: revision.status,
+    canonicalVersionId: revision.canonicalVersionId,
+    promptCardVersionId: revision.promptCardVersionId,
+    captionStrategy: revision.captionStrategy,
+    itemCount: revision.itemCount,
+    sourceCount: revision.sourceCount,
+    syntheticCount: revision.syntheticCount,
+    selectedManifestArtifactId: revision.selectedManifestArtifactId,
+    metadataJsonlArtifactId: revision.metadataJsonlArtifactId,
+    captionAuditArtifactId: revision.captionAuditArtifactId,
+    trainDir: revision.trainDir,
+    frozenAt: revision.frozenAt?.toISOString() ?? null,
+    createdAt: revision.createdAt.toISOString(),
+    updatedAt: revision.updatedAt.toISOString(),
+    counts: {
+      items: revision._count.items,
+      includedCandidateImages: revision._count.includedCandidateImages,
+    },
+  };
+}
+
+function serializeWorkerTask(task: WorkerTaskRecord) {
+  return {
+    id: task.id,
+    jobId: task.jobId,
+    workerType: task.workerType,
+    targetType: task.targetType,
+    targetId: task.targetId,
+    status: task.status,
+    payload: task.payload,
+    leaseOwner: task.leaseOwner,
+    leaseExpiresAt: task.leaseExpiresAt?.toISOString() ?? null,
+    attemptCount: task.attemptCount,
+    progressJson: task.progressJson,
+    startedAt: task.startedAt?.toISOString() ?? null,
+    heartbeatAt: task.heartbeatAt?.toISOString() ?? null,
+    finishedAt: task.finishedAt?.toISOString() ?? null,
+    errorSummary: task.errorSummary,
+    createdAt: task.createdAt.toISOString(),
+    updatedAt: task.updatedAt.toISOString(),
   };
 }
 
