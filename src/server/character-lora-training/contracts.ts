@@ -155,6 +155,7 @@ export const characterLoraProviderToolParamsSchema = z.object({
 
 export const characterLoraProviderInputImageSchema = z.object({
   artifactId: z.string().min(1),
+  sourceImageId: z.string().trim().min(1).optional(),
   role: characterLoraProviderInputImageRoleSchema,
   relativePath: relativeArtifactPathSchema,
   sha256: sha256Schema,

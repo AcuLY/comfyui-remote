@@ -1419,7 +1419,6 @@ export async function reviewCharacterLoraCandidateImages(input: {
         where: { id: image.imageId },
         data: {
           reviewStatus: image.reviewStatus,
-          includedDatasetRevisionId: null,
           rejectReasons: image.reviewStatus === "reject" ? (image.rejectReasons ?? Prisma.JsonNull) : Prisma.JsonNull,
           reviewNote: image.reviewNote ?? null,
           reviewedAt: image.reviewStatus === "pending" ? null : new Date(),

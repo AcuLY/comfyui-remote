@@ -234,6 +234,26 @@ async function main() {
       original: "manual canonical upload",
     },
   });
+  const localReferenceSource = await services.sourceImageService.uploadCharacterLoraSourceImage(job.id, {
+    file: new File([Buffer.concat([PLACEHOLDER_PNG, Buffer.from("local-reference")])], "local-reference.png", { type: "image/png" }),
+    role: "local_reference",
+    sortOrder: 2,
+    provenance: {
+      smoke: true,
+      original: "local reference upload",
+    },
+  });
+  assertHexSha(localReferenceSource.sha256, "local reference sha256");
+  const rerunReferenceSource = await services.sourceImageService.uploadCharacterLoraSourceImage(job.id, {
+    file: new File([Buffer.concat([PLACEHOLDER_PNG, Buffer.from("rerun-reference")])], "rerun-reference.png", { type: "image/png" }),
+    role: "rerun_reference",
+    sortOrder: 3,
+    provenance: {
+      smoke: true,
+      original: "rerun reference upload",
+    },
+  });
+  assertHexSha(rerunReferenceSource.sha256, "rerun reference sha256");
 
   const canonicalRun = await services.canonicalService.enqueueCharacterLoraCanonicalGenerationRun(job.id, {
     provider: "mock-local",
@@ -304,6 +324,20 @@ async function main() {
     templateKeys: ["front_fullbody", "portrait"],
   });
   assert(instantiated.sections.length === 2, "expected two instantiated sections");
+  await assertRejects(
+    () => services.phase3Service.enqueueCharacterLoraSectionGenerationRun(instantiated.sections[0].id, {
+      provider: "mock-local",
+      renderedPrompt: `${triggerToken}, ${instantiated.sections[0].name}, invalid explicit input image`,
+      inputImages: [{
+        artifactId: source.artifactId,
+        sourceImageId: source.id,
+        role: "source",
+        relativePath: source.relativePath,
+        sha256: "0".repeat(64),
+      }],
+    }),
+    "section generation should reject explicit inputImages with a wrong sha256",
+  );
 
   const sectionsWithImages: SmokeSummary["sections"] = [];
   for (const section of instantiated.sections) {
@@ -311,6 +345,12 @@ async function main() {
       provider: "mock-local",
       renderedPrompt: `${triggerToken}, ${section.name}, fake section candidate`,
     });
+    assertSectionInputImageProvenance(readJsonArray(sectionRun.inputImages).map(readJsonRecord), {
+      source,
+      manualCanonicalSource,
+      localReferenceSource,
+      rerunReferenceSource,
+    }, `section ${section.key} generation run`);
     const leasedTask = await services.phase3Service.leaseNextCharacterLoraTask({
       workerType: "image_generation",
       leaseOwner: `fake-image-worker-${section.key}`,
@@ -322,6 +362,20 @@ async function main() {
     const payload = readTaskPayload(leasedTask.payload);
     assert(payload.taskType === "image_generation", "leased image task payload should be image_generation");
     const outputDir = payload.request.outputDir;
+    assertSectionInputImageProvenance(readJsonArray(payload.request.inputImages).map(readJsonRecord), {
+      source,
+      manualCanonicalSource,
+      localReferenceSource,
+      rerunReferenceSource,
+    }, `section ${section.key} task payload`);
+    const requestArtifact = readJsonRecord(await readJobJsonArtifact(job.artifactRoot, `${outputDir}/request.redacted.json`));
+    const redactedRequest = readJsonRecord(requestArtifact.request);
+    assertSectionInputImageProvenance(readJsonArray(redactedRequest.inputImages).map(readJsonRecord), {
+      source,
+      manualCanonicalSource,
+      localReferenceSource,
+      rerunReferenceSource,
+    }, `section ${section.key} redacted request artifact`);
     const imagePath = `${outputDir}/candidate-001.png`;
     const metadataPath = `${outputDir}/candidate-001.metadata.json`;
     const responseSummaryPath = `${outputDir}/response-summary.json`;
@@ -913,6 +967,18 @@ function assertHexSha(value: string | null | undefined, label: string): asserts 
   assert(Boolean(value && /^[a-f0-9]{64}$/i.test(value)), `${label} should be a sha256 hex string`);
 }
 
+async function assertRejects(action: () => Promise<unknown>, message: string) {
+  let rejected = false;
+
+  try {
+    await action();
+  } catch {
+    rejected = true;
+  }
+
+  assert(rejected, message);
+}
+
 function readTaskPayload(payload: unknown) {
   assert(payload && typeof payload === "object", "worker task payload should be an object");
   return payload as
@@ -920,6 +986,7 @@ function readTaskPayload(payload: unknown) {
         taskType: "image_generation";
         request: {
           outputDir: string;
+          inputImages: unknown;
         };
       }
     | {
@@ -927,6 +994,52 @@ function readTaskPayload(payload: unknown) {
         trainingRunId: string;
         outputDir: string;
       };
+}
+
+type SmokeSourceImageRef = {
+  id: string;
+  relativePath: string;
+  sha256: string;
+};
+
+function assertSectionInputImageProvenance(
+  inputImages: Array<Record<string, unknown>>,
+  refs: {
+    source: SmokeSourceImageRef;
+    manualCanonicalSource: SmokeSourceImageRef;
+    localReferenceSource: SmokeSourceImageRef;
+    rerunReferenceSource: SmokeSourceImageRef;
+  },
+  label: string,
+) {
+  assert(
+    inputImages.some(
+      (inputImage) =>
+        inputImage.role === "canonical" &&
+        typeof inputImage.artifactId === "string" &&
+        typeof inputImage.relativePath === "string" &&
+        typeof inputImage.sha256 === "string",
+    ),
+    `${label} should include a canonical input image`,
+  );
+  assertInputImageRef(inputImages, refs.source, "source", label);
+  assertInputImageRef(inputImages, refs.manualCanonicalSource, "source", label);
+  assertInputImageRef(inputImages, refs.localReferenceSource, "local_reference", label);
+  assertInputImageRef(inputImages, refs.rerunReferenceSource, "previous_candidate", label);
+}
+
+function assertInputImageRef(
+  inputImages: Array<Record<string, unknown>>,
+  expected: SmokeSourceImageRef,
+  expectedRole: string,
+  label: string,
+) {
+  const inputImage = inputImages.find((candidate) => candidate.sourceImageId === expected.id);
+  assert(inputImage, `${label} should retain sourceImageId ${expected.id}`);
+  assert(inputImage.role === expectedRole, `${label} should map ${expected.id} to role ${expectedRole}`);
+  assert(inputImage.relativePath === expected.relativePath, `${label} should retain relativePath for ${expected.id}`);
+  assert(inputImage.sha256 === expected.sha256, `${label} should retain sha256 for ${expected.id}`);
+  assert(typeof inputImage.artifactId === "string", `${label} should retain artifactId for ${expected.id}`);
 }
 
 function readBenchmarkSectionWeight(section: { loraConfig: unknown; extraParams: unknown }) {

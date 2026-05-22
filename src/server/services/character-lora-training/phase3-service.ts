@@ -46,6 +46,7 @@ import {
   reviewCharacterLoraCandidateImages,
   updateCharacterLoraCandidateCaption,
   completeImageGenerationWorkerTask,
+  type CharacterLoraSourceImageSummary,
   type CharacterLoraCandidateImageSummary,
 } from "@/server/repositories/character-lora-training-repository";
 import {
@@ -704,10 +705,7 @@ async function resolveSectionInputImages(
   parsed: z.infer<typeof characterLoraSectionGenerationRequestSchema>,
 ) {
   if (parsed.inputImages) {
-    if (parsed.inputImages.length === 0) {
-      throw new CharacterLoraPhase3ServiceError("inputImages must include at least one image", 400);
-    }
-    return parsed.inputImages;
+    return validateExplicitSectionInputImages(jobId, parsed.inputImages);
   }
 
   const canonicalArtifact = await getCharacterLoraArtifact(canonicalArtifactId);
@@ -733,7 +731,8 @@ async function resolveSectionInputImages(
 
     inputImages.push({
       artifactId: sourceImage.artifactId,
-      role: sourceImage.role === "setting" ? "setting" : "source",
+      sourceImageId: sourceImage.id,
+      role: sourceImageRoleToProviderRole(sourceImage.role),
       relativePath: sourceImage.relativePath,
       sha256: sourceImage.sha256,
     });
@@ -750,6 +749,100 @@ async function resolveSectionInputImages(
   }
 
   return inputImages;
+}
+
+async function validateExplicitSectionInputImages(
+  jobId: string,
+  inputImages: CharacterLoraProviderInputImage[],
+) {
+  if (inputImages.length === 0) {
+    throw new CharacterLoraPhase3ServiceError("inputImages must include at least one image", 400);
+  }
+
+  const [artifacts, sourceImages] = await Promise.all([
+    Promise.all(inputImages.map((inputImage) => getCharacterLoraArtifact(inputImage.artifactId))),
+    inputImages.some((inputImage) => inputImage.sourceImageId)
+      ? listCharacterLoraSourceImages(jobId)
+      : Promise.resolve([]),
+  ]);
+  const sourceById = new Map(sourceImages.map((sourceImage) => [sourceImage.id, sourceImage]));
+  const missingArtifactIds: string[] = [];
+  const foreignArtifactIds: string[] = [];
+  const mismatchedArtifactIds: string[] = [];
+  const missingSourceImageIds: string[] = [];
+  const mismatchedSourceImageIds: string[] = [];
+
+  for (const [index, inputImage] of inputImages.entries()) {
+    const artifact = artifacts[index];
+
+    if (!artifact) {
+      missingArtifactIds.push(inputImage.artifactId);
+    } else if (artifact.jobId !== jobId) {
+      foreignArtifactIds.push(inputImage.artifactId);
+    } else if (
+      artifact.relativePath !== inputImage.relativePath ||
+      !artifact.sha256 ||
+      artifact.sha256.toLowerCase() !== inputImage.sha256.toLowerCase()
+    ) {
+      mismatchedArtifactIds.push(inputImage.artifactId);
+    }
+
+    if (!inputImage.sourceImageId) {
+      continue;
+    }
+
+    const sourceImage = sourceById.get(inputImage.sourceImageId);
+    if (!sourceImage) {
+      missingSourceImageIds.push(inputImage.sourceImageId);
+    } else if (sourceImage.artifactId !== inputImage.artifactId) {
+      mismatchedSourceImageIds.push(inputImage.sourceImageId);
+    }
+  }
+
+  if (missingArtifactIds.length > 0 || foreignArtifactIds.length > 0) {
+    throw new CharacterLoraPhase3ServiceError("One or more inputImages do not belong to this job", 404, {
+      missingArtifactIds,
+      foreignArtifactIds,
+    });
+  }
+
+  if (mismatchedArtifactIds.length > 0) {
+    throw new CharacterLoraPhase3ServiceError("One or more inputImages do not match the stored artifact", 409, {
+      artifactIds: mismatchedArtifactIds,
+    });
+  }
+
+  if (missingSourceImageIds.length > 0) {
+    throw new CharacterLoraPhase3ServiceError("One or more inputImages sourceImageIds do not belong to this job", 404, {
+      sourceImageIds: missingSourceImageIds,
+    });
+  }
+
+  if (mismatchedSourceImageIds.length > 0) {
+    throw new CharacterLoraPhase3ServiceError("One or more inputImages sourceImageIds do not match the artifactId", 409, {
+      sourceImageIds: mismatchedSourceImageIds,
+    });
+  }
+
+  return inputImages;
+}
+
+function sourceImageRoleToProviderRole(
+  sourceRole: CharacterLoraSourceImageSummary["role"],
+): CharacterLoraProviderInputImage["role"] {
+  if (sourceRole === "setting") {
+    return "setting";
+  }
+
+  if (sourceRole === "local_reference") {
+    return "local_reference";
+  }
+
+  if (sourceRole === "rerun_reference") {
+    return "previous_candidate";
+  }
+
+  return "source";
 }
 
 async function getExistingJob(jobId: string) {
