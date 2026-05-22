@@ -426,7 +426,7 @@ export function ResultsGalleryProvider({
             <button
               type="button"
               disabled={busy}
-              onClick={() => reviewCurrent("keep")}
+              onClick={() => reviewCurrent("keep", true)}
               className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-emerald-400/25 bg-emerald-500/12 px-3 text-sm font-medium text-emerald-200 transition hover:bg-emerald-500/20 disabled:opacity-45"
             >
               <Check className="size-4" />
@@ -435,7 +435,7 @@ export function ResultsGalleryProvider({
             <button
               type="button"
               disabled={busy}
-              onClick={() => reviewCurrent("trash")}
+              onClick={() => reviewCurrent("trash", true)}
               className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-rose-400/25 bg-rose-500/12 px-3 text-sm font-medium text-rose-200 transition hover:bg-rose-500/20 disabled:opacity-45"
             >
               <Trash2 className="size-4" />
