@@ -42,8 +42,26 @@ const JOB_SUMMARY_SELECT = {
   },
 } as const;
 
+const SOURCE_IMAGE_SELECT = {
+  id: true,
+  jobId: true,
+  role: true,
+  artifactId: true,
+  filePath: true,
+  sha256: true,
+  width: true,
+  height: true,
+  provenance: true,
+  sortOrder: true,
+  createdAt: true,
+} as const;
+
 type JobSummaryRecord = Prisma.CharacterLoraTrainingJobGetPayload<{
   select: typeof JOB_SUMMARY_SELECT;
+}>;
+
+type SourceImageRecord = Prisma.CharacterLoraSourceImageGetPayload<{
+  select: typeof SOURCE_IMAGE_SELECT;
 }>;
 
 export type CharacterLoraTrainingJobCreateInput = {
@@ -83,6 +101,22 @@ export type CharacterLoraTrainingJobListFilters = {
 };
 
 export type CharacterLoraTrainingJobSummary = ReturnType<typeof serializeJobSummary>;
+export type CharacterLoraSourceImageSummary = ReturnType<typeof serializeSourceImage>;
+
+export type CharacterLoraSourceImageCreateInput = {
+  jobId: string;
+  role: string;
+  relativePath: string;
+  absolutePath?: string | null;
+  sha256: string;
+  byteSize?: bigint | number | null;
+  mimeType?: string | null;
+  width?: number | null;
+  height?: number | null;
+  provenance?: Prisma.InputJsonValue | null;
+  sortOrder?: number;
+  artifactMetadata?: Prisma.InputJsonValue | null;
+};
 
 export async function listCharacterLoraTrainingJobs(filters: CharacterLoraTrainingJobListFilters = {}) {
   const page = Math.max(1, filters.page ?? 1);
@@ -157,9 +191,79 @@ export async function updateCharacterLoraTrainingJob(jobId: string, input: Chara
   return serializeJobSummary(job);
 }
 
+export async function listCharacterLoraSourceImages(jobId: string) {
+  const sourceImages = await db.characterLoraSourceImage.findMany({
+    where: { jobId },
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }, { id: "asc" }],
+    select: SOURCE_IMAGE_SELECT,
+  });
+
+  return sourceImages.map(serializeSourceImage);
+}
+
+export async function findCharacterLoraSourceImageDuplicate(input: {
+  jobId: string;
+  sha256: string;
+  role: string;
+}) {
+  return db.characterLoraSourceImage.findUnique({
+    where: {
+      jobId_sha256_role: {
+        jobId: input.jobId,
+        sha256: input.sha256,
+        role: input.role,
+      },
+    },
+    select: { id: true },
+  });
+}
+
+export async function createCharacterLoraSourceImage(input: CharacterLoraSourceImageCreateInput) {
+  const sourceImage = await db.$transaction(async (tx) => {
+    const artifact = await tx.characterLoraArtifact.create({
+      data: {
+        jobId: input.jobId,
+        kind: "source_image",
+        relativePath: input.relativePath,
+        absolutePath: input.absolutePath,
+        sha256: input.sha256,
+        byteSize: input.byteSize,
+        mimeType: input.mimeType,
+        redactionLevel: "path_only",
+        metadata: input.artifactMetadata ?? Prisma.DbNull,
+      },
+      select: { id: true },
+    });
+
+    return tx.characterLoraSourceImage.create({
+      data: {
+        jobId: input.jobId,
+        role: input.role,
+        artifactId: artifact.id,
+        filePath: input.relativePath,
+        sha256: input.sha256,
+        width: input.width ?? null,
+        height: input.height ?? null,
+        provenance: input.provenance ?? Prisma.DbNull,
+        sortOrder: input.sortOrder ?? 0,
+      },
+      select: SOURCE_IMAGE_SELECT,
+    });
+  });
+
+  return serializeSourceImage(sourceImage);
+}
+
 export async function createCharacterLoraJobArtifact(input: {
   jobId: string;
-  kind: "provider_payload" | "prompt" | "training_config" | "dataset_manifest" | "benchmark_report" | "promotion_report";
+  kind:
+    | "source_image"
+    | "provider_payload"
+    | "prompt"
+    | "training_config"
+    | "dataset_manifest"
+    | "benchmark_report"
+    | "promotion_report";
   relativePath: string;
   absolutePath?: string | null;
   sha256?: string | null;
@@ -227,5 +331,22 @@ function serializeJobSummary(job: JobSummaryRecord) {
       artifacts: job._count.artifacts,
       workerTasks: job._count.workerTasks,
     },
+  };
+}
+
+function serializeSourceImage(sourceImage: SourceImageRecord) {
+  return {
+    id: sourceImage.id,
+    jobId: sourceImage.jobId,
+    role: sourceImage.role,
+    artifactId: sourceImage.artifactId,
+    filePath: sourceImage.filePath,
+    relativePath: sourceImage.filePath,
+    sha256: sourceImage.sha256,
+    width: sourceImage.width,
+    height: sourceImage.height,
+    provenance: sourceImage.provenance,
+    sortOrder: sourceImage.sortOrder,
+    createdAt: sourceImage.createdAt.toISOString(),
   };
 }

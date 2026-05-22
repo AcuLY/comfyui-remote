@@ -96,7 +96,11 @@ export async function ensureCharacterLoraJobRoot(jobSlug: string, artifactRoot =
 
 export async function computeCharacterLoraSha256(absolutePath: string) {
   const fileBuffer = await readFile(absolutePath);
-  return createHash("sha256").update(fileBuffer).digest("hex");
+  return computeCharacterLoraBufferSha256(fileBuffer);
+}
+
+export function computeCharacterLoraBufferSha256(content: Buffer | Uint8Array) {
+  return createHash("sha256").update(content).digest("hex");
 }
 
 export async function statCharacterLoraArtifact(
