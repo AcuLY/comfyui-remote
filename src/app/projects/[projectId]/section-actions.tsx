@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { Copy, Download, Plus, Trash2, X } from "lucide-react";
 import {
@@ -131,6 +132,9 @@ export function ImportTemplateButton({ projectId }: { projectId: string }) {
   useEffect(() => {
     if (!isOpen) return;
 
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         setIsOpen(false);
@@ -138,7 +142,10 @@ export function ImportTemplateButton({ projectId }: { projectId: string }) {
     }
 
     document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+    };
   }, [isOpen]);
 
   function closeDialog() {
@@ -172,14 +179,14 @@ export function ImportTemplateButton({ projectId }: { projectId: string }) {
         <Download className="size-3.5" /> 导入模板
       </button>
 
-      {isOpen && (
+      {isOpen && createPortal(
         <>
-          <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm" onClick={closeDialog} />
+          <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm" onClick={closeDialog} />
           <div
             role="dialog"
             aria-modal="true"
             aria-label="导入模板"
-            className="fixed left-1/2 top-[50dvh] z-[110] max-h-[calc(100dvh-2rem)] w-[min(calc(100vw-2rem),26rem)] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-xl border border-white/10 bg-zinc-950 p-3 shadow-2xl"
+            className="fixed left-1/2 top-[50dvh] z-[210] max-h-[calc(100dvh-2rem)] w-[min(calc(100vw-2rem),26rem)] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-xl border border-white/10 bg-zinc-950 p-3 shadow-2xl"
           >
             <div className="mb-3 flex items-center justify-between gap-3">
               <div className="min-w-0">
@@ -230,7 +237,8 @@ export function ImportTemplateButton({ projectId }: { projectId: string }) {
               </div>
             )}
           </div>
-        </>
+        </>,
+        document.body,
       )}
     </>
   );
