@@ -145,6 +145,35 @@ const IMAGE_PROVIDERS: Array<{ value: ImageProvider; label: string }> = [
 
 const IMAGE_SIZE_OPTIONS = ["1024x1536", "1024x1024", "1536x1024"] as const;
 const IMAGE_QUALITY_OPTIONS = ["high", "medium", "low"] as const;
+const TRAINING_PRECISION_OPTIONS = ["", "bf16", "fp16", "fp32"] as const;
+
+type TrainingPrecision = Exclude<(typeof TRAINING_PRECISION_OPTIONS)[number], "">;
+type TrainingOrdinaryOverrides = Partial<{
+  rank: number;
+  alpha: number;
+  resolution: number;
+  bucket: boolean;
+  precision: TrainingPrecision;
+  batchSize: number;
+  targetSteps: number;
+  saveInterval: number;
+}>;
+type TrainingAdvancedOverrides = Partial<{
+  unetLearningRate: number;
+  textEncoderLearningRate: number | null;
+  trainTextEncoder: boolean;
+  networkModule: string;
+  optimizer: string;
+  lrScheduler: string;
+  minBucketResolution: number;
+  maxBucketResolution: number;
+  seed: number;
+}>;
+type TrainingOverrides = {
+  ordinary?: TrainingOrdinaryOverrides;
+  advanced?: TrainingAdvancedOverrides;
+  expert?: Record<string, unknown>;
+};
 
 function formatDate(value: string | null | undefined) {
   if (!value) {
@@ -196,6 +225,150 @@ function parseWeights(value: string) {
     throw new Error("权重矩阵必须是正数");
   }
   return weights.length > 0 ? weights : [1];
+}
+
+function readOptionalNumber(
+  formData: FormData,
+  key: string,
+  label: string,
+  options: { integer?: boolean; min?: number; minInclusive?: boolean } = {},
+) {
+  const raw = readOptionalString(formData, key);
+  if (!raw) {
+    return undefined;
+  }
+
+  const value = Number(raw);
+  const minInclusive = options.minInclusive ?? true;
+  const isTooSmall = options.min === undefined ? false : minInclusive ? value < options.min : value <= options.min;
+  if (!Number.isFinite(value) || isTooSmall || (options.integer && !Number.isInteger(value))) {
+    const kind = options.integer ? "integer" : "number";
+    throw new Error(`${label} must be a valid ${kind}`);
+  }
+
+  return value;
+}
+
+function readOptionalBooleanChoice(formData: FormData, key: string, label: string) {
+  const value = readOptionalString(formData, key);
+  if (!value) {
+    return undefined;
+  }
+  if (value === "true") {
+    return true;
+  }
+  if (value === "false") {
+    return false;
+  }
+  throw new Error(`${label} must be true or false`);
+}
+
+function readOptionalPrecision(formData: FormData) {
+  const value = readOptionalString(formData, "precision");
+  if (!value) {
+    return undefined;
+  }
+  if (value === "bf16" || value === "fp16" || value === "fp32") {
+    return value;
+  }
+  throw new Error("precision must be bf16, fp16, or fp32");
+}
+
+function compactTrainingOverrides(overrides: TrainingOverrides) {
+  const result: TrainingOverrides = {};
+  if (overrides.ordinary && Object.keys(overrides.ordinary).length > 0) {
+    result.ordinary = overrides.ordinary;
+  }
+  if (overrides.advanced && Object.keys(overrides.advanced).length > 0) {
+    result.advanced = overrides.advanced;
+  }
+  if (overrides.expert && Object.keys(overrides.expert).length > 0) {
+    result.expert = overrides.expert;
+  }
+
+  return Object.keys(result).length > 0 ? result : undefined;
+}
+
+function buildTrainingOverrides(formData: FormData) {
+  const ordinary: TrainingOrdinaryOverrides = {};
+  const advanced: TrainingAdvancedOverrides = {};
+  const expert: Record<string, unknown> = {};
+  const targetSteps = readOptionalNumber(formData, "targetSteps", "targetSteps", {
+    integer: true,
+    min: 0,
+    minInclusive: false,
+  });
+  const trainTextEncoder = readOptionalBooleanChoice(formData, "trainTextEncoder", "trainTextEncoder");
+
+  if (targetSteps !== undefined) ordinary.targetSteps = targetSteps;
+  if (trainTextEncoder !== undefined) advanced.trainTextEncoder = trainTextEncoder;
+
+  if (formData.get("enableAdvancedOverrides") === "on") {
+    const rank = readOptionalNumber(formData, "rank", "rank", { integer: true, min: 0, minInclusive: false });
+    const alpha = readOptionalNumber(formData, "alpha", "alpha", { integer: true, min: 0, minInclusive: false });
+    const resolution = readOptionalNumber(formData, "resolution", "resolution", { integer: true, min: 0, minInclusive: false });
+    const batchSize = readOptionalNumber(formData, "batchSize", "batchSize", { integer: true, min: 0, minInclusive: false });
+    const saveInterval = readOptionalNumber(formData, "saveInterval", "saveInterval", { integer: true, min: 0, minInclusive: false });
+    const precision = readOptionalPrecision(formData);
+    const bucket = readOptionalBooleanChoice(formData, "bucket", "bucket");
+    const unetLearningRate = readOptionalNumber(formData, "unetLearningRate", "UNet LR", { min: 0, minInclusive: false });
+    const textEncoderLearningRate = readOptionalNumber(formData, "textEncoderLearningRate", "text encoder LR", {
+      min: 0,
+      minInclusive: false,
+    });
+
+    if (rank !== undefined) ordinary.rank = rank;
+    if (alpha !== undefined) ordinary.alpha = alpha;
+    if (resolution !== undefined) ordinary.resolution = resolution;
+    if (batchSize !== undefined) ordinary.batchSize = batchSize;
+    if (saveInterval !== undefined) ordinary.saveInterval = saveInterval;
+    if (precision !== undefined) ordinary.precision = precision;
+    if (bucket !== undefined) ordinary.bucket = bucket;
+    if (unetLearningRate !== undefined) advanced.unetLearningRate = unetLearningRate;
+    if (textEncoderLearningRate !== undefined) advanced.textEncoderLearningRate = textEncoderLearningRate;
+  }
+
+  if (formData.get("enableExpertOverrides") === "on") {
+    const networkModule = readOptionalString(formData, "networkModule");
+    const optimizer = readOptionalString(formData, "optimizer");
+    const lrScheduler = readOptionalString(formData, "lrScheduler");
+    const seed = readOptionalNumber(formData, "seed", "seed", { integer: true, min: 0 });
+    const minBucketResolution = readOptionalNumber(formData, "minBucketResolution", "min bucket resolution", {
+      integer: true,
+      min: 0,
+      minInclusive: false,
+    });
+    const maxBucketResolution = readOptionalNumber(formData, "maxBucketResolution", "max bucket resolution", {
+      integer: true,
+      min: 0,
+      minInclusive: false,
+    });
+    const minSnrGamma = readOptionalNumber(formData, "minSnrGamma", "minSNR gamma", { min: 0, minInclusive: false });
+    const noiseOffset = readOptionalNumber(formData, "noiseOffset", "noise offset", { min: 0 });
+    const clipSkip = readOptionalNumber(formData, "clipSkip", "clip skip", { integer: true, min: 0, minInclusive: false });
+    const cacheLatents = readOptionalBooleanChoice(formData, "cacheLatents", "cache latents");
+    const cacheTextEncoderOutputs = readOptionalBooleanChoice(
+      formData,
+      "cacheTextEncoderOutputs",
+      "cache text encoder outputs",
+    );
+    const expertJson = parseJsonObject(String(formData.get("expertJson") ?? ""), {});
+
+    if (networkModule) advanced.networkModule = networkModule;
+    if (optimizer) advanced.optimizer = optimizer;
+    if (lrScheduler) advanced.lrScheduler = lrScheduler;
+    if (seed !== undefined) advanced.seed = seed;
+    if (minBucketResolution !== undefined) advanced.minBucketResolution = minBucketResolution;
+    if (maxBucketResolution !== undefined) advanced.maxBucketResolution = maxBucketResolution;
+    if (minSnrGamma !== undefined) expert.minSnrGamma = minSnrGamma;
+    if (noiseOffset !== undefined) expert.noiseOffset = noiseOffset;
+    if (clipSkip !== undefined) expert.clipSkip = clipSkip;
+    if (cacheLatents !== undefined) expert.cacheLatents = cacheLatents;
+    if (cacheTextEncoderOutputs !== undefined) expert.cacheTextEncoderOutputs = cacheTextEncoderOutputs;
+    Object.assign(expert, expertJson);
+  }
+
+  return compactTrainingOverrides({ ordinary, advanced, expert });
 }
 
 function buildImageToolParams(size: string, quality: string) {
@@ -467,11 +640,13 @@ export function JobWorkbenchClient({
     }
 
     runAction("training.enqueue", "训练已入队", async () => {
+      const overrides = buildTrainingOverrides(formData);
       await enqueueCharacterLoraTrainingRun(datasetRevisionId, {
         launcher: String(formData.get("launcher") ?? "sd-scripts"),
         queuePolicy: String(formData.get("queuePolicy") ?? "reject_when_busy"),
         allowWhenComfyQueueBusy: formData.get("allowBusy") === "on",
         configProfile: String(formData.get("configProfile") ?? "standard"),
+        ...(overrides ? { overrides } : {}),
       });
     });
   }
@@ -918,7 +1093,7 @@ export function JobWorkbenchClient({
             <span className="min-w-0 truncate">{gpuLock.current.taskType} / {gpuLock.current.ownerId}</span>
           </div>
         ) : null}
-        <form action={handleTrainingEnqueue} className="grid gap-2 rounded-lg border border-white/10 bg-white/[0.03] p-3 md:grid-cols-3 lg:grid-cols-[1fr_130px_130px_160px_auto]">
+        <form action={handleTrainingEnqueue} className="grid gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-3 md:grid-cols-3 lg:grid-cols-[1fr_130px_130px_160px_auto]">
           <select name="datasetRevisionId" defaultValue={latestFrozenRevision?.id ?? ""} className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white">
             <option value="">选择 dataset revision</option>
             {datasetRevisions.map((revision) => (
@@ -943,6 +1118,89 @@ export function JobWorkbenchClient({
             <input name="allowBusy" type="checkbox" className="size-3.5 accent-amber-400" />
             allow busy
           </label>
+          <label className="grid gap-1 text-xs text-zinc-400 md:col-span-1 lg:col-span-2">
+            Target steps override
+            <input name="targetSteps" type="number" min={1} step={1} placeholder="Profile default" className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white" />
+          </label>
+          <label className="grid gap-1 text-xs text-zinc-400 md:col-span-2 lg:col-span-3">
+            Train text encoder
+            <select name="trainTextEncoder" defaultValue="" className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white">
+              <option value="">Profile default</option>
+              <option value="true">override: train text encoder</option>
+              <option value="false">override: freeze text encoder</option>
+            </select>
+          </label>
+          <details className="rounded-lg border border-white/10 bg-black/20 p-3 md:col-span-3 lg:col-span-5">
+            <summary className="cursor-pointer text-xs font-medium text-zinc-200">Advanced optional overrides</summary>
+            <label className="mt-3 flex items-center gap-2 text-xs text-zinc-300">
+              <input name="enableAdvancedOverrides" type="checkbox" className="size-3.5 accent-sky-400" />
+              Apply advanced fields below. Empty fields keep the selected profile defaults.
+            </label>
+            <div className="mt-3 grid gap-2 md:grid-cols-4">
+              <TrainingNumberInput name="rank" label="Rank" placeholder="32" integer />
+              <TrainingNumberInput name="alpha" label="Alpha" placeholder="16" integer />
+              <TrainingNumberInput name="resolution" label="Resolution" placeholder="1024" integer />
+              <TrainingNumberInput name="batchSize" label="Batch size" placeholder="1" integer />
+              <TrainingNumberInput name="saveInterval" label="Save interval" placeholder="500" integer />
+              <TrainingNumberInput name="unetLearningRate" label="UNet LR" placeholder="0.0001" step="0.000001" />
+              <TrainingNumberInput name="textEncoderLearningRate" label="Text encoder LR" placeholder="0.00002" step="0.000001" />
+              <label className="grid gap-1 text-xs text-zinc-400">
+                Precision
+                <select name="precision" defaultValue="" className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white">
+                  {TRAINING_PRECISION_OPTIONS.map((option) => (
+                    <option key={option || "default"} value={option}>{option || "Profile default"}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid gap-1 text-xs text-zinc-400">
+                Bucket
+                <select name="bucket" defaultValue="" className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white">
+                  <option value="">Profile default</option>
+                  <option value="true">override: enabled</option>
+                  <option value="false">override: disabled</option>
+                </select>
+              </label>
+            </div>
+          </details>
+          <details className="rounded-lg border border-white/10 bg-black/20 p-3 md:col-span-3 lg:col-span-5">
+            <summary className="cursor-pointer text-xs font-medium text-zinc-200">Expert optional overrides</summary>
+            <label className="mt-3 flex items-center gap-2 text-xs text-zinc-300">
+              <input name="enableExpertOverrides" type="checkbox" className="size-3.5 accent-rose-400" />
+              Apply expert fields below. Use only when the launcher profile needs a precise override.
+            </label>
+            <div className="mt-3 grid gap-2 md:grid-cols-3">
+              <TrainingTextInput name="optimizer" label="Optimizer" placeholder="adamw8bit" />
+              <TrainingTextInput name="lrScheduler" label="Scheduler" placeholder="cosine" />
+              <TrainingTextInput name="networkModule" label="Network module" placeholder="networks.lora" />
+              <TrainingNumberInput name="seed" label="Seed" placeholder="optional" integer min={0} />
+              <TrainingNumberInput name="minBucketResolution" label="Min bucket" placeholder="512" integer />
+              <TrainingNumberInput name="maxBucketResolution" label="Max bucket" placeholder="1536" integer />
+              <TrainingNumberInput name="minSnrGamma" label="minSNR gamma" placeholder="5" step="0.1" />
+              <TrainingNumberInput name="noiseOffset" label="Noise offset" placeholder="0.05" step="0.01" min={0} />
+              <TrainingNumberInput name="clipSkip" label="Clip skip" placeholder="2" integer />
+              <label className="grid gap-1 text-xs text-zinc-400">
+                Cache latents
+                <select name="cacheLatents" defaultValue="" className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white">
+                  <option value="">Leave unset</option>
+                  <option value="true">override: true</option>
+                  <option value="false">override: false</option>
+                </select>
+              </label>
+              <label className="grid gap-1 text-xs text-zinc-400">
+                Cache text encoder
+                <select name="cacheTextEncoderOutputs" defaultValue="" className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white">
+                  <option value="">Leave unset</option>
+                  <option value="true">override: true</option>
+                  <option value="false">override: false</option>
+                </select>
+              </label>
+              <label className="grid gap-1 text-xs text-zinc-400 md:col-span-3">
+                Extra expert JSON
+                <textarea name="expertJson" placeholder="{ }" className="min-h-20 rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 font-mono text-xs text-white" />
+              </label>
+            </div>
+          </details>
+          <p className="text-xs text-zinc-500 md:col-span-3 lg:col-span-5">Profiles still produce a full resolved config. Optional layers only send fields you enable or fill.</p>
           <div className="md:col-span-3 lg:col-span-5">
             <ActionButton icon={FlaskConical} label="入队训练" loading={isBusy("training.enqueue")} disabled={isPending || !latestFrozenRevision} />
           </div>
@@ -1083,6 +1341,49 @@ export function JobWorkbenchClient({
         </div>
       </SectionCard>
     </div>
+  );
+}
+
+function TrainingNumberInput({
+  name,
+  label,
+  placeholder,
+  integer = false,
+  min,
+  step,
+}: {
+  name: string;
+  label: string;
+  placeholder: string;
+  integer?: boolean;
+  min?: number;
+  step?: string;
+}) {
+  return (
+    <label className="grid gap-1 text-xs text-zinc-400">
+      {label}
+      <input
+        name={name}
+        type="number"
+        min={min ?? (integer ? 1 : undefined)}
+        step={integer ? 1 : step ?? "any"}
+        placeholder={placeholder}
+        className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white"
+      />
+    </label>
+  );
+}
+
+function TrainingTextInput({ name, label, placeholder }: { name: string; label: string; placeholder: string }) {
+  return (
+    <label className="grid gap-1 text-xs text-zinc-400">
+      {label}
+      <input
+        name={name}
+        placeholder={placeholder}
+        className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white"
+      />
+    </label>
   );
 }
 
