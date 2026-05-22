@@ -1403,7 +1403,7 @@ export async function reviewCharacterLoraCandidateImages(input: {
   const result = await db.$transaction(async (tx) => {
     const existing = await tx.characterLoraCandidateImage.findMany({
       where: { id: { in: input.images.map((image) => image.imageId) } },
-      select: { id: true, jobId: true, sectionId: true, includedDatasetRevisionId: true },
+      select: { id: true, jobId: true, sectionId: true },
     });
     const existingById = new Map(existing.map((image) => [image.id, image]));
     const missingIds = input.images
@@ -1414,19 +1414,12 @@ export async function reviewCharacterLoraCandidateImages(input: {
       throw new Error(`Candidate images not found: ${missingIds.join(", ")}`);
     }
 
-    const frozenIds = existing
-      .filter((image) => image.includedDatasetRevisionId)
-      .map((image) => image.id);
-
-    if (frozenIds.length > 0) {
-      throw new Error(`Included training images cannot be reviewed again: ${frozenIds.join(", ")}`);
-    }
-
     for (const image of input.images) {
       await tx.characterLoraCandidateImage.update({
         where: { id: image.imageId },
         data: {
           reviewStatus: image.reviewStatus,
+          includedDatasetRevisionId: null,
           rejectReasons: image.reviewStatus === "reject" ? (image.rejectReasons ?? Prisma.JsonNull) : Prisma.JsonNull,
           reviewNote: image.reviewNote ?? null,
           reviewedAt: image.reviewStatus === "pending" ? null : new Date(),

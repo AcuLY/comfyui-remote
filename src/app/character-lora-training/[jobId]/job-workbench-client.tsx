@@ -2137,10 +2137,10 @@ function CandidateImageCard({
           <ActionButton icon={Save} label="Caption" loading={captionLoading} disabled={isPending} />
         </form>
         <div className="grid grid-cols-2 gap-1">
-          <MiniButton label="keep" onClick={() => onReview("keep")} disabled={isPending || image.reviewStatus === "included_in_training"} />
-          <MiniButton label="reject" onClick={() => onReview("reject")} disabled={isPending || image.reviewStatus === "included_in_training"} />
-          <MiniButton label="exclude" onClick={() => onReview("excluded")} disabled={isPending || image.reviewStatus === "included_in_training"} />
-          <MiniButton label="pending" onClick={() => onReview("pending")} disabled={isPending || image.reviewStatus === "included_in_training"} />
+          <MiniButton label="keep" onClick={() => onReview("keep")} disabled={isPending} />
+          <MiniButton label="reject" onClick={() => onReview("reject")} disabled={isPending} />
+          <MiniButton label="exclude" onClick={() => onReview("excluded")} disabled={isPending} />
+          <MiniButton label="pending" onClick={() => onReview("pending")} disabled={isPending} />
         </div>
       </div>
     </div>

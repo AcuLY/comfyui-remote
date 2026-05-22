@@ -428,6 +428,34 @@ async function main() {
   assert(sourceMetadataItem?.origin === "source", "metadata.jsonl should mark registered source candidate as source");
   assert(sourceMetadataItem.sourceWeight === 1.5, "metadata.jsonl should persist sourceWeight for source item");
 
+  const revisedIncludedCaption = await services.phase3Service.updateCharacterLoraImageCaption(
+    registeredSourceCandidate.candidate.id,
+    { captionDraft: "revised source anchor caption after first freeze" },
+  );
+  assert(
+    revisedIncludedCaption.captionDraft?.startsWith(`${triggerToken},`),
+    "included source candidate caption should remain editable for a new revision",
+  );
+  const reReviewedIncluded = await services.phase3Service.reviewCharacterLoraImages({
+    images: [{
+      imageId: registeredSourceCandidate.candidate.id,
+      reviewStatus: "keep",
+      reviewNote: "reuse source anchor in a new revision",
+    }],
+  });
+  assert(
+    reReviewedIncluded.some((image) => image.id === registeredSourceCandidate.candidate.id && image.reviewStatus === "keep"),
+    "included training candidate should be reviewable again for future revisions",
+  );
+  const refrozen = await services.phase3Service.freezeCharacterLoraDataset(job.id, {
+    force: true,
+    repeatCount: 1,
+    sourceWeight: 1,
+  });
+  assert(refrozen.revision.version === frozen.revision.version + 1, "re-reviewing included images should allow a new dataset revision");
+  assert(refrozen.revision.itemCount === 1, "refrozen revision should include the re-kept source candidate only");
+  assert(refrozen.revision.sourceCount === 1, "refrozen revision should preserve source provenance");
+
   const trainingEnqueued = await services.trainingService.enqueueCharacterLoraTrainingRun(frozen.revision.id, {
     launcher: "sd-scripts",
     queuePolicy: "reject_when_busy",
