@@ -37,6 +37,72 @@ enum ActorType {
   agent
 }
 
+enum CharacterLoraJobStatus {
+  draft
+  canonical_pending
+  prompt_pending
+  section_generating
+  reviewing
+  dataset_ready
+  training_queued
+  training_running
+  trained
+  benchmarking
+  benchmark_review
+  promotion_ready
+  promoted
+  failed
+  cancelled
+  archived
+}
+
+enum CharacterLoraImageReviewStatus {
+  pending
+  keep
+  reject
+  excluded
+  included_in_training
+}
+
+enum CharacterLoraRunStatus {
+  queued
+  running
+  done
+  failed
+  cancelled
+}
+
+enum CharacterLoraArtifactKind {
+  source_image
+  canonical_image
+  candidate_image
+  prompt
+  provider_payload
+  caption
+  dataset_manifest
+  training_config
+  training_log
+  safetensors
+  benchmark_report
+  promotion_report
+}
+
+enum CharacterLoraWorkerType {
+  image_generation
+  dataset_freeze
+  training
+  benchmark
+  promotion
+}
+
+enum CharacterLoraDecisionStatus {
+  draft
+  approved
+  rejected
+  promoted
+  superseded
+}
+
 // ── Preset system ──
 
 model PresetCategory {
@@ -445,4 +511,421 @@ model AuditLog {
 
   @@index([entityType, entityId, createdAt])
   @@index([action, createdAt])
+}
+
+// Character LoRA training
+
+model CharacterLoraTrainingJob {
+  id                         String                         @id @default(cuid())
+  slug                       String                         @unique
+  characterName              String
+  triggerToken               String
+  status                     CharacterLoraJobStatus         @default(draft)
+  phase                      String?
+  trainingScope              Json
+  captionStrategy            String                         @default("controllable_identity")
+  baseCheckpointName         String?
+  baseCheckpointPath         String?
+  baseCheckpointHash         String?
+  baseFamily                 String?
+  artifactRoot               String
+  currentCanonicalVersionId  String?
+  currentPromptCardVersionId String?
+  selectedDatasetRevisionId  String?
+  promotedPresetId           String?
+  createdBy                  String?
+  failureSummary             String?                        @db.Text
+  createdAt                  DateTime                       @default(now())
+  updatedAt                  DateTime                       @updatedAt
+  sourceImages               CharacterLoraSourceImage[]
+  canonicalVersions          CharacterLoraCanonicalVersion[]
+  promptCardVersions         CharacterLoraPromptCardVersion[]
+  sections                   CharacterLoraJobSection[]
+  generationRuns             CharacterLoraGenerationRun[]
+  candidateImages            CharacterLoraCandidateImage[]
+  datasetRevisions           CharacterLoraDatasetRevision[]
+  trainingRuns               CharacterLoraTrainingRun[]
+  benchmarkRuns              CharacterLoraBenchmarkRun[]
+  promotionDecisions         CharacterLoraPromotionDecision[]
+  artifacts                  CharacterLoraArtifact[]
+  workerTasks                CharacterLoraWorkerTask[]
+
+  @@index([status, updatedAt])
+  @@index([triggerToken])
+  @@index([baseCheckpointHash])
+}
+
+model CharacterLoraSourceImage {
+  id         String                   @id @default(cuid())
+  jobId      String
+  role       String
+  artifactId String
+  filePath   String
+  sha256     String
+  width      Int?
+  height     Int?
+  provenance Json?
+  sortOrder  Int                      @default(0)
+  createdAt  DateTime                 @default(now())
+  job        CharacterLoraTrainingJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, sha256, role])
+  @@index([jobId, sortOrder])
+}
+
+model CharacterLoraCanonicalVersion {
+  id                String                       @id @default(cuid())
+  jobId             String
+  version           Int
+  status            String                       @default("candidate")
+  sourceRunId       String?
+  imageArtifactId   String
+  selectedAt        DateTime?
+  notes             String?                      @db.Text
+  createdAt         DateTime                     @default(now())
+  job               CharacterLoraTrainingJob     @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  sourceRun         CharacterLoraGenerationRun?  @relation(fields: [sourceRunId], references: [id], onDelete: SetNull)
+  promptCards       CharacterLoraPromptCardVersion[]
+  sections          CharacterLoraJobSection[]
+  datasetRevisions  CharacterLoraDatasetRevision[]
+
+  @@unique([jobId, version])
+  @@index([jobId, status])
+  @@index([sourceRunId])
+}
+
+model CharacterLoraPromptCardVersion {
+  id                 String                         @id @default(cuid())
+  jobId              String
+  canonicalVersionId String?
+  version            Int
+  triggerToken       String
+  identityTraits     Json
+  outfitTraits       Json
+  negativeTraits     Json?
+  finalPromptDraft   String                         @db.Text
+  changeReason       String?                        @db.Text
+  createdAt          DateTime                       @default(now())
+  job                CharacterLoraTrainingJob       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  canonicalVersion   CharacterLoraCanonicalVersion? @relation(fields: [canonicalVersionId], references: [id], onDelete: SetNull)
+  sections           CharacterLoraJobSection[]
+  datasetRevisions   CharacterLoraDatasetRevision[]
+
+  @@unique([jobId, version])
+  @@index([canonicalVersionId])
+}
+
+model CharacterLoraSectionTemplate {
+  id                   String                    @id @default(cuid())
+  key                  String                    @unique
+  name                 String
+  description          String?                   @db.Text
+  angleTag             String?
+  promptTemplate       String                    @db.Text
+  negativeTemplate     String?                   @db.Text
+  targetCandidateCount Int                       @default(4)
+  targetKeepCount      Int                       @default(1)
+  sortOrder            Int                       @default(0)
+  isActive             Boolean                   @default(true)
+  sections             CharacterLoraJobSection[]
+
+  @@index([isActive, sortOrder])
+}
+
+model CharacterLoraJobSection {
+  id                   String                          @id @default(cuid())
+  jobId                String
+  templateId           String?
+  key                  String
+  name                 String
+  canonicalVersionId   String
+  promptCardVersionId  String
+  targetCandidateCount Int                             @default(4)
+  targetKeepCount      Int                             @default(1)
+  status               String                          @default("draft")
+  keepCount            Int                             @default(0)
+  rejectCount          Int                             @default(0)
+  pendingCount         Int                             @default(0)
+  sortOrder            Int                             @default(0)
+  createdAt            DateTime                        @default(now())
+  updatedAt            DateTime                        @updatedAt
+  job                  CharacterLoraTrainingJob        @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  template             CharacterLoraSectionTemplate?   @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  canonicalVersion     CharacterLoraCanonicalVersion   @relation(fields: [canonicalVersionId], references: [id], onDelete: Restrict)
+  promptCardVersion    CharacterLoraPromptCardVersion  @relation(fields: [promptCardVersionId], references: [id], onDelete: Restrict)
+  generationRuns       CharacterLoraGenerationRun[]
+  candidateImages      CharacterLoraCandidateImage[]
+
+  @@unique([jobId, key])
+  @@index([jobId, sortOrder])
+  @@index([templateId])
+}
+
+model CharacterLoraGenerationRun {
+  id                String                       @id @default(cuid())
+  jobId             String
+  sectionId         String?
+  kind              String
+  parentRunId       String?
+  status            CharacterLoraRunStatus       @default(queued)
+  provider          String
+  hostModel         String?
+  imageModel        String
+  hostInstruction   String                       @db.Text
+  visualPrompt      String                       @db.Text
+  negativePrompt    String?                      @db.Text
+  toolParams        Json
+  inputImages       Json
+  requestArtifactId String?
+  responseSummary   Json?
+  errorSummary      String?                      @db.Text
+  startedAt         DateTime?
+  finishedAt        DateTime?
+  createdAt         DateTime                     @default(now())
+  updatedAt         DateTime                     @updatedAt
+  job               CharacterLoraTrainingJob     @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  section           CharacterLoraJobSection?     @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+  parentRun         CharacterLoraGenerationRun?  @relation("CharacterLoraGenerationRunTree", fields: [parentRunId], references: [id], onDelete: SetNull)
+  childRuns         CharacterLoraGenerationRun[] @relation("CharacterLoraGenerationRunTree")
+  canonicalVersions CharacterLoraCanonicalVersion[]
+  candidateImages   CharacterLoraCandidateImage[]
+
+  @@index([jobId, status])
+  @@index([sectionId, createdAt])
+  @@index([parentRunId])
+}
+
+model CharacterLoraCandidateImage {
+  id                        String                           @id @default(cuid())
+  jobId                     String
+  sectionId                 String?
+  generationRunId           String
+  artifactId                String
+  filePath                  String                           @unique
+  sha256                    String
+  width                     Int?
+  height                    Int?
+  fileSize                  BigInt?
+  reviewStatus              CharacterLoraImageReviewStatus   @default(pending)
+  rejectReasons             Json?
+  reviewNote                String?                          @db.Text
+  captionDraft              String?                          @db.Text
+  reviewedAt                DateTime?
+  includedDatasetRevisionId String?
+  createdAt                 DateTime                         @default(now())
+  updatedAt                 DateTime                         @updatedAt
+  job                       CharacterLoraTrainingJob         @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  section                   CharacterLoraJobSection?         @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+  generationRun             CharacterLoraGenerationRun       @relation(fields: [generationRunId], references: [id], onDelete: Cascade)
+  includedDatasetRevision   CharacterLoraDatasetRevision?    @relation("CharacterLoraIncludedDatasetRevision", fields: [includedDatasetRevisionId], references: [id], onDelete: SetNull)
+  datasetItems              CharacterLoraDatasetItem[]
+
+  @@index([jobId, reviewStatus])
+  @@index([sectionId, reviewStatus])
+  @@index([generationRunId])
+  @@index([includedDatasetRevisionId])
+}
+
+model CharacterLoraDatasetRevision {
+  id                         String                           @id @default(cuid())
+  jobId                      String
+  version                    Int
+  status                     String                           @default("freezing")
+  canonicalVersionId         String
+  promptCardVersionId        String
+  captionStrategy            String                           @default("controllable_identity")
+  itemCount                  Int                              @default(0)
+  sourceCount                Int                              @default(0)
+  syntheticCount             Int                              @default(0)
+  selectedManifestArtifactId String
+  metadataJsonlArtifactId    String
+  captionAuditArtifactId     String?
+  trainDir                   String
+  frozenAt                   DateTime?
+  createdAt                  DateTime                         @default(now())
+  updatedAt                  DateTime                         @updatedAt
+  job                        CharacterLoraTrainingJob         @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  canonicalVersion           CharacterLoraCanonicalVersion    @relation(fields: [canonicalVersionId], references: [id], onDelete: Restrict)
+  promptCardVersion          CharacterLoraPromptCardVersion   @relation(fields: [promptCardVersionId], references: [id], onDelete: Restrict)
+  includedCandidateImages    CharacterLoraCandidateImage[]    @relation("CharacterLoraIncludedDatasetRevision")
+  items                      CharacterLoraDatasetItem[]
+  trainingRuns               CharacterLoraTrainingRun[]
+
+  @@unique([jobId, version])
+  @@index([jobId, status])
+  @@index([canonicalVersionId])
+  @@index([promptCardVersionId])
+}
+
+model CharacterLoraDatasetItem {
+  id                String                         @id @default(cuid())
+  datasetRevisionId String
+  candidateImageId  String
+  imageArtifactId   String
+  captionArtifactId String
+  captionText       String                         @db.Text
+  repeatCount       Int                            @default(1)
+  sourceWeight      Float?
+  sortOrder         Int                            @default(0)
+  datasetRevision   CharacterLoraDatasetRevision   @relation(fields: [datasetRevisionId], references: [id], onDelete: Cascade)
+  candidateImage    CharacterLoraCandidateImage    @relation(fields: [candidateImageId], references: [id], onDelete: Restrict)
+
+  @@unique([datasetRevisionId, candidateImageId])
+  @@index([datasetRevisionId, sortOrder])
+  @@index([candidateImageId])
+}
+
+model CharacterLoraTrainingRun {
+  id                         String                         @id @default(cuid())
+  jobId                      String
+  datasetRevisionId          String
+  status                     CharacterLoraRunStatus         @default(queued)
+  launcher                   String
+  resolvedConfig             Json
+  configArtifactId           String
+  dryRunSummaryArtifactId    String?
+  logArtifactId              String?
+  outputDir                  String?
+  finalSafetensorsArtifactId String?
+  finalSha256                String?
+  metadataSummary            Json?
+  currentStep                Int?
+  targetSteps                Int?
+  lossSnapshot               Json?
+  cancelRequestedAt          DateTime?
+  startedAt                  DateTime?
+  finishedAt                 DateTime?
+  createdAt                  DateTime                       @default(now())
+  updatedAt                  DateTime                       @updatedAt
+  job                        CharacterLoraTrainingJob       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  datasetRevision            CharacterLoraDatasetRevision   @relation(fields: [datasetRevisionId], references: [id], onDelete: Restrict)
+  checkpoints                CharacterLoraTrainingCheckpoint[]
+  benchmarkRuns              CharacterLoraBenchmarkRun[]
+
+  @@index([jobId, status])
+  @@index([datasetRevisionId])
+  @@index([finalSha256])
+}
+
+model CharacterLoraTrainingCheckpoint {
+  id            String                    @id @default(cuid())
+  trainingRunId String
+  step          Int
+  artifactId    String
+  sha256        String
+  metrics       Json?
+  createdAt     DateTime                  @default(now())
+  trainingRun   CharacterLoraTrainingRun  @relation(fields: [trainingRunId], references: [id], onDelete: Cascade)
+
+  @@unique([trainingRunId, step])
+  @@index([trainingRunId, step])
+  @@index([sha256])
+}
+
+model CharacterLoraBenchmarkRun {
+  id                String                           @id @default(cuid())
+  jobId             String
+  trainingRunId     String
+  status            CharacterLoraRunStatus           @default(queued)
+  loraAssetId       String?
+  testPresetId      String?
+  testProjectId     String?
+  templateId        String?
+  checkpointMatrix  Json
+  weightMatrix      Json
+  reportArtifactId  String?
+  recommendedWeight Float?
+  resultSummary     Json?
+  startedAt         DateTime?
+  finishedAt        DateTime?
+  createdAt         DateTime                         @default(now())
+  updatedAt         DateTime                         @updatedAt
+  job               CharacterLoraTrainingJob         @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  trainingRun       CharacterLoraTrainingRun         @relation(fields: [trainingRunId], references: [id], onDelete: Restrict)
+  promotionDecisions CharacterLoraPromotionDecision[]
+
+  @@index([jobId, status])
+  @@index([trainingRunId])
+  @@index([testProjectId])
+}
+
+model CharacterLoraPromotionDecision {
+  id                        String                         @id @default(cuid())
+  jobId                     String
+  benchmarkRunId            String
+  status                    CharacterLoraDecisionStatus    @default(draft)
+  selectedLoraAssetId       String
+  selectedCheckpoint        String?
+  defaultRecommendedWeight  Float
+  perVariantWeightOverrides Json?
+  variantPromptDrafts       Json
+  decisionReason            String?                        @db.Text
+  promotedCategoryId        String?
+  promotedPresetId          String?
+  reportArtifactId          String?
+  decidedAt                 DateTime?
+  promotedAt                DateTime?
+  createdAt                 DateTime                       @default(now())
+  updatedAt                 DateTime                       @updatedAt
+  job                       CharacterLoraTrainingJob       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  benchmarkRun              CharacterLoraBenchmarkRun      @relation(fields: [benchmarkRunId], references: [id], onDelete: Restrict)
+
+  @@index([jobId, status])
+  @@index([benchmarkRunId])
+  @@index([selectedLoraAssetId])
+}
+
+model CharacterLoraArtifact {
+  id             String                    @id @default(cuid())
+  jobId          String
+  kind           CharacterLoraArtifactKind
+  relativePath   String
+  absolutePath   String?
+  sha256         String?
+  byteSize       BigInt?
+  mimeType       String?
+  redactionLevel String                    @default("path_only")
+  metadata       Json?
+  createdAt      DateTime                  @default(now())
+  job            CharacterLoraTrainingJob  @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, relativePath])
+  @@index([jobId, kind])
+  @@index([sha256])
+}
+
+model CharacterLoraWorkerTask {
+  id             String                   @id @default(cuid())
+  jobId          String
+  workerType     CharacterLoraWorkerType
+  targetType     String
+  targetId       String
+  status         CharacterLoraRunStatus   @default(queued)
+  payload        Json
+  leaseOwner     String?
+  leaseExpiresAt DateTime?
+  heartbeatAt    DateTime?
+  errorSummary   String?                  @db.Text
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+  job            CharacterLoraTrainingJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([status, leaseExpiresAt])
+  @@index([jobId, workerType, status])
+  @@index([targetType, targetId])
+}
+
+model GpuTaskLock {
+  id         String    @id @default(cuid())
+  taskType   String
+  ownerType  String
+  ownerId    String
+  status     String    @default("active")
+  startedAt  DateTime  @default(now())
+  releasedAt DateTime?
+  metadata   Json?
+
+  @@index([status, startedAt])
+  @@index([ownerType, ownerId])
+  @@index([taskType, status])
 }
