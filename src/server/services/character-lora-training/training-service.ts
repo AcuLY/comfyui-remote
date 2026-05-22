@@ -9,6 +9,8 @@ import {
   characterLoraTrainingResolvedConfigSchema,
   characterLoraWorkerTaskPayloadSchema,
   type CharacterLoraArtifactRef,
+  type CharacterLoraBenchmarkEnqueueRequest,
+  type CharacterLoraPostTrainingBenchmark,
   type CharacterLoraTrainingEnqueueRequest,
   type CharacterLoraTrainingResolvedConfig,
 } from "@/server/character-lora-training/contracts";
@@ -34,6 +36,7 @@ import {
   writeCharacterLoraJsonArtifact,
   writeCharacterLoraTextArtifact,
 } from "@/server/services/character-lora-training/artifact-service";
+import { enqueueCharacterLoraBenchmarkRun } from "@/server/services/character-lora-training/benchmark-promotion-service";
 import { z } from "zod";
 
 const DEFAULT_LEASE_OWNER = "training-worker";
@@ -98,6 +101,7 @@ export async function enqueueCharacterLoraTrainingRun(datasetRevisionId: string,
   const outputDir = `training-runs/${trainingRunId}`;
   const cancelSignalPath = `${outputDir}/${parsed.cancel?.signalFilename ?? "cancel-signal.json"}`;
   const resolvedConfig = resolveTrainingConfig(parsed);
+  const postTrainingBenchmarkSummary = summarizePostTrainingBenchmark(parsed.postTrainingBenchmark);
   const tomlPath = `${outputDir}/training.toml`;
   const dryRunSummaryPath = `${outputDir}/dry-run-summary.json`;
   const configArtifactStat = await writeCharacterLoraTextArtifact(
@@ -115,6 +119,7 @@ export async function enqueueCharacterLoraTrainingRun(datasetRevisionId: string,
     outputDir,
     cancelSignalPath,
     queuePolicy: parsed.queuePolicy,
+    postTrainingBenchmark: postTrainingBenchmarkSummary,
     warnings,
     resolvedConfig,
     createdAt: new Date().toISOString(),
@@ -132,6 +137,7 @@ export async function enqueueCharacterLoraTrainingRun(datasetRevisionId: string,
     resolvedConfig,
     outputDir,
     cancelSignalPath,
+    postTrainingBenchmark: parsed.postTrainingBenchmark,
   });
 
   if (taskPayload.taskType !== "training") {
@@ -176,6 +182,7 @@ export async function enqueueCharacterLoraTrainingRun(datasetRevisionId: string,
       workerType: "training",
       leaseOwner: parsed.lease?.leaseOwner ?? DEFAULT_LEASE_OWNER,
       leaseDurationSeconds: parsed.lease?.leaseDurationSeconds ?? DEFAULT_LEASE_SECONDS,
+      postTrainingBenchmark: postTrainingBenchmarkSummary,
       warnings,
     }),
   });
@@ -327,7 +334,16 @@ export async function completeCharacterLoraTrainingTask(taskId: string, input: {
     throw new CharacterLoraTrainingServiceError("Worker task not found, not running, or lease owner mismatch", 404);
   }
 
-  return result;
+  const postTrainingBenchmark = result.trainingRun
+    ? await enqueuePostTrainingBenchmarkAfterCompletion(result.trainingRun.id, task.postTrainingBenchmark)
+    : null;
+
+  return postTrainingBenchmark
+    ? {
+        ...result,
+        postTrainingBenchmark,
+      }
+    : result;
 }
 
 export async function cancelTrainingRun(trainingRunId: string, input: unknown = {}) {
@@ -456,6 +472,81 @@ function resolveTrainingConfig(input: CharacterLoraTrainingEnqueueRequest): Char
   }
 
   return parseWithSchema(characterLoraTrainingResolvedConfigSchema, candidate);
+}
+
+async function enqueuePostTrainingBenchmarkAfterCompletion(
+  trainingRunId: string,
+  config: CharacterLoraPostTrainingBenchmark,
+) {
+  if (!config.enabled) {
+    return null;
+  }
+
+  const benchmarkInput = buildPostTrainingBenchmarkInput(config);
+  try {
+    return await enqueueCharacterLoraBenchmarkRun(trainingRunId, benchmarkInput);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new CharacterLoraTrainingServiceError(`Post-training benchmark enqueue failed: ${message}`, getErrorStatus(error), {
+      trainingRunId,
+      postTrainingBenchmark: summarizePostTrainingBenchmark(config),
+      causeDetails: getErrorDetails(error),
+    });
+  }
+}
+
+function buildPostTrainingBenchmarkInput(config: CharacterLoraPostTrainingBenchmark): CharacterLoraBenchmarkEnqueueRequest {
+  if (!config.enabled || !config.checkpointMatrix || !config.weightMatrix) {
+    throw new CharacterLoraTrainingServiceError("Post-training benchmark config is enabled but incomplete", 400, {
+      postTrainingBenchmark: summarizePostTrainingBenchmark(config),
+    });
+  }
+
+  return {
+    checkpointMatrix: config.checkpointMatrix,
+    weightMatrix: config.weightMatrix,
+    templateId: config.templateId,
+    registerLoraAsset: config.registerLoraAsset,
+    copyToCharacterDir: config.copyToCharacterDir,
+    loraAssetName: config.loraAssetName,
+    queuePolicy: config.queuePolicy,
+    dryRun: config.dryRun,
+    skipQueue: config.skipQueue,
+  };
+}
+
+function summarizePostTrainingBenchmark(config: CharacterLoraPostTrainingBenchmark) {
+  return {
+    enabled: config.enabled,
+    checkpointCount: config.checkpointMatrix?.length ?? 0,
+    weightCount: config.weightMatrix?.length ?? 0,
+    templateId: config.templateId ?? null,
+    registerLoraAsset: config.registerLoraAsset,
+    copyToCharacterDir: config.copyToCharacterDir,
+    loraAssetName: config.loraAssetName ?? null,
+    queuePolicy: config.queuePolicy,
+    dryRun: config.dryRun,
+    skipQueue: config.skipQueue,
+  };
+}
+
+function getErrorStatus(error: unknown) {
+  if (typeof error === "object" && error !== null && "status" in error) {
+    const status = (error as { status?: unknown }).status;
+    if (typeof status === "number" && Number.isInteger(status)) {
+      return status;
+    }
+  }
+
+  return 500;
+}
+
+function getErrorDetails(error: unknown) {
+  if (typeof error === "object" && error !== null && "details" in error) {
+    return (error as { details?: unknown }).details;
+  }
+
+  return undefined;
 }
 
 function resolveProfileDefaults(profile: CharacterLoraTrainingEnqueueRequest["configProfile"]) {

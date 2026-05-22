@@ -19,6 +19,8 @@ type ServiceModules = {
   prismaModule: typeof import("../../src/lib/prisma");
 };
 
+type BenchmarkEnqueueResult = Awaited<ReturnType<ServiceModules["benchmarkPromotionService"]["enqueueCharacterLoraBenchmarkRun"]>>;
+
 type SmokeSummary = {
   tempRoot: string;
   databaseUrl: string;
@@ -333,6 +335,16 @@ async function main() {
       leaseOwner: "fake-training-worker",
       leaseDurationSeconds: 300,
     },
+    postTrainingBenchmark: {
+      enabled: true,
+      checkpointMatrix: ["fake-base.safetensors"],
+      weightMatrix: [0.72],
+      registerLoraAsset: true,
+      copyToCharacterDir: false,
+      loraAssetName: "Smoke Character LoRA",
+      dryRun: true,
+      skipQueue: true,
+    },
   });
   const trainingTask = await services.phase3Service.leaseNextCharacterLoraTask({
     workerType: "training",
@@ -410,23 +422,19 @@ async function main() {
   assert(completedTrainingRun.status === "done", "training run should be done");
   assert(completedTrainingRun.finalSha256 === finalSha256, "training final sha256 should be stored");
 
-  const benchmarkCreated = await services.benchmarkPromotionService.enqueueCharacterLoraBenchmarkRun(
-    completedTrainingRun.id,
-    {
-      checkpointMatrix: ["fake-base.safetensors"],
-      weightMatrix: [0.72],
-      registerLoraAsset: true,
-      copyToCharacterDir: false,
-      loraAssetName: "Smoke Character LoRA",
-      dryRun: true,
-      skipQueue: true,
-    },
-  );
+  assert("postTrainingBenchmark" in trainingCompleted, "training completion should include auto benchmark result");
+  const benchmarkCreated = (trainingCompleted as { postTrainingBenchmark?: BenchmarkEnqueueResult | null }).postTrainingBenchmark;
+  assert(benchmarkCreated, "auto benchmark should be created after training completion");
   const benchmarkRun = "completedBenchmarkRun" in benchmarkCreated
     ? benchmarkCreated.completedBenchmarkRun
     : benchmarkCreated.benchmarkRun;
-  assert(benchmarkRun.status === "done", "benchmark should be mock-completed when dryRun/skipQueue is true");
+  assert(benchmarkRun.status === "done", "auto benchmark should be mock-completed when dryRun/skipQueue is true");
   assert(benchmarkRun.loraAssetId, "benchmark should register a LoRA asset");
+  const autoBenchmarkRuns = await services.benchmarkPromotionService.listCharacterLoraBenchmarkRunsForTrainingRun(completedTrainingRun.id);
+  assert(
+    autoBenchmarkRuns.some((run) => run.id === benchmarkRun.id && run.status === "done"),
+    "auto benchmark should be persisted for the completed training run",
+  );
 
   const decision = await services.benchmarkPromotionService.createPromotionDecision(benchmarkRun.id, {
     status: "approved",

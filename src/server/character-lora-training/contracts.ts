@@ -239,6 +239,59 @@ export const characterLoraTrainingCancelOptionsSchema = z.object({
   signalFilename: z.string().trim().min(1).optional(),
 }).strict();
 
+const characterLoraBenchmarkEnqueueFields = {
+  checkpointMatrix: z.array(z.string().trim().min(1)).min(1),
+  weightMatrix: z.array(z.number().positive()).min(1),
+  templateId: z.string().trim().min(1).optional(),
+  registerLoraAsset: z.boolean().default(true),
+  copyToCharacterDir: z.boolean().default(false),
+  loraAssetName: z.string().trim().min(1).optional(),
+  queuePolicy: characterLoraTrainingQueuePolicySchema.default("queue_when_busy"),
+  dryRun: z.boolean().default(false),
+  skipQueue: z.boolean().default(false),
+} as const;
+
+const characterLoraPostTrainingBenchmarkDefault = {
+  enabled: false,
+  registerLoraAsset: true,
+  copyToCharacterDir: false,
+  queuePolicy: "queue_when_busy",
+  dryRun: false,
+  skipQueue: false,
+} as const;
+
+export const characterLoraPostTrainingBenchmarkSchema = z.object({
+  enabled: z.boolean().default(false),
+  checkpointMatrix: characterLoraBenchmarkEnqueueFields.checkpointMatrix.optional(),
+  weightMatrix: characterLoraBenchmarkEnqueueFields.weightMatrix.optional(),
+  templateId: characterLoraBenchmarkEnqueueFields.templateId,
+  registerLoraAsset: characterLoraBenchmarkEnqueueFields.registerLoraAsset,
+  copyToCharacterDir: characterLoraBenchmarkEnqueueFields.copyToCharacterDir,
+  loraAssetName: characterLoraBenchmarkEnqueueFields.loraAssetName,
+  queuePolicy: characterLoraBenchmarkEnqueueFields.queuePolicy,
+  dryRun: characterLoraBenchmarkEnqueueFields.dryRun,
+  skipQueue: characterLoraBenchmarkEnqueueFields.skipQueue,
+}).strict().superRefine((value, ctx) => {
+  if (!value.enabled) {
+    return;
+  }
+
+  if (!value.checkpointMatrix || value.checkpointMatrix.length === 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["checkpointMatrix"],
+      message: "checkpointMatrix is required when post-training benchmark is enabled",
+    });
+  }
+  if (!value.weightMatrix || value.weightMatrix.length === 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["weightMatrix"],
+      message: "weightMatrix is required when post-training benchmark is enabled",
+    });
+  }
+});
+
 export const characterLoraTrainingEnqueueRequestSchema = z.object({
   launcher: characterLoraTrainingLauncherSchema.default("sd-scripts"),
   allowWhenComfyQueueBusy: z.boolean().optional(),
@@ -249,6 +302,7 @@ export const characterLoraTrainingEnqueueRequestSchema = z.object({
   expert: jsonObjectSchema.optional(),
   lease: characterLoraTrainingLeaseOptionsSchema.optional(),
   cancel: characterLoraTrainingCancelOptionsSchema.optional(),
+  postTrainingBenchmark: characterLoraPostTrainingBenchmarkSchema.default(characterLoraPostTrainingBenchmarkDefault),
 }).strict();
 
 export const characterLoraTrainingProgressSchema = z.object({
@@ -286,17 +340,7 @@ export const characterLoraTrainingCancelRequestSchema = z.object({
   requestedBy: z.string().trim().min(1).optional(),
 }).strict();
 
-export const characterLoraBenchmarkEnqueueRequestSchema = z.object({
-  checkpointMatrix: z.array(z.string().trim().min(1)).min(1),
-  weightMatrix: z.array(z.number().positive()).min(1),
-  templateId: z.string().trim().min(1).optional(),
-  registerLoraAsset: z.boolean().default(true),
-  copyToCharacterDir: z.boolean().default(false),
-  loraAssetName: z.string().trim().min(1).optional(),
-  queuePolicy: characterLoraTrainingQueuePolicySchema.default("queue_when_busy"),
-  dryRun: z.boolean().default(false),
-  skipQueue: z.boolean().default(false),
-}).strict();
+export const characterLoraBenchmarkEnqueueRequestSchema = z.object(characterLoraBenchmarkEnqueueFields).strict();
 
 export const characterLoraBenchmarkReportRefSchema = z.object({
   artifactId: z.string().trim().min(1).optional(),
@@ -351,6 +395,7 @@ export type CharacterLoraTrainingQueuePolicy = z.infer<typeof characterLoraTrain
 export type CharacterLoraTrainingConfigProfile = z.infer<typeof characterLoraTrainingConfigProfileSchema>;
 export type CharacterLoraTrainingResolvedConfig = z.infer<typeof characterLoraTrainingResolvedConfigSchema>;
 export type CharacterLoraTrainingEnqueueRequest = z.infer<typeof characterLoraTrainingEnqueueRequestSchema>;
+export type CharacterLoraPostTrainingBenchmark = z.infer<typeof characterLoraPostTrainingBenchmarkSchema>;
 export type CharacterLoraTrainingProgress = z.infer<typeof characterLoraTrainingProgressSchema>;
 export type CharacterLoraTrainingCompleteOutput = z.infer<typeof characterLoraTrainingCompleteOutputSchema>;
 export type CharacterLoraTrainingCancelRequest = z.infer<typeof characterLoraTrainingCancelRequestSchema>;
@@ -479,6 +524,7 @@ export const characterLoraTrainingTaskPayloadSchema = z.object({
   resolvedConfig: jsonObjectSchema,
   outputDir: relativeArtifactPathSchema,
   cancelSignalPath: relativeArtifactPathSchema,
+  postTrainingBenchmark: characterLoraPostTrainingBenchmarkSchema.default(characterLoraPostTrainingBenchmarkDefault),
 });
 
 export const characterLoraBenchmarkTaskPayloadSchema = z.object({

@@ -396,6 +396,26 @@ function buildTrainingOverrides(formData: FormData) {
   return compactTrainingOverrides({ ordinary, advanced, expert });
 }
 
+function buildPostTrainingBenchmarkConfig(formData: FormData) {
+  const enabled = formData.get("postTrainingBenchmarkEnabled") === "on";
+  if (!enabled) {
+    return { enabled: false };
+  }
+
+  return {
+    enabled: true,
+    checkpointMatrix: parseCsv(String(formData.get("postTrainingBenchmarkCheckpointMatrix") ?? "")),
+    weightMatrix: parseWeights(String(formData.get("postTrainingBenchmarkWeightMatrix") ?? "1")),
+    templateId: readOptionalString(formData, "postTrainingBenchmarkTemplateId"),
+    registerLoraAsset: formData.get("postTrainingBenchmarkRegisterLoraAsset") === "on",
+    copyToCharacterDir: formData.get("postTrainingBenchmarkCopyToCharacterDir") === "on",
+    loraAssetName: readOptionalString(formData, "postTrainingBenchmarkLoraAssetName"),
+    queuePolicy: String(formData.get("postTrainingBenchmarkQueuePolicy") ?? "queue_when_busy"),
+    dryRun: formData.get("postTrainingBenchmarkDryRun") === "on",
+    skipQueue: formData.get("postTrainingBenchmarkSkipQueue") === "on",
+  };
+}
+
 function buildImageToolParams(size: string, quality: string) {
   return {
     size,
@@ -694,6 +714,7 @@ export function JobWorkbenchClient({
         queuePolicy: String(formData.get("queuePolicy") ?? "reject_when_busy"),
         allowWhenComfyQueueBusy: formData.get("allowBusy") === "on",
         configProfile: String(formData.get("configProfile") ?? "standard"),
+        postTrainingBenchmark: buildPostTrainingBenchmarkConfig(formData),
         ...(overrides ? { overrides } : {}),
       });
     });
@@ -1225,6 +1246,55 @@ export function JobWorkbenchClient({
             <input name="allowBusy" type="checkbox" className="size-3.5 accent-amber-400" />
             allow busy
           </label>
+          <details open className="rounded-lg border border-white/10 bg-black/20 p-3 md:col-span-3 lg:col-span-5">
+            <summary className="cursor-pointer text-xs font-medium text-zinc-200">Post-training Benchmark</summary>
+            <div className="mt-3 grid gap-2 md:grid-cols-4">
+              <label className="flex items-center gap-2 text-xs text-zinc-300">
+                <input name="postTrainingBenchmarkEnabled" type="checkbox" defaultChecked className="size-3.5 accent-emerald-400" />
+                auto benchmark
+              </label>
+              <label className="grid gap-1 text-xs text-zinc-400 md:col-span-2">
+                Checkpoints
+                <input name="postTrainingBenchmarkCheckpointMatrix" defaultValue={job.baseCheckpointName ?? "default"} className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white" />
+              </label>
+              <label className="grid gap-1 text-xs text-zinc-400">
+                Weights
+                <input name="postTrainingBenchmarkWeightMatrix" defaultValue="0.7,1" className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white" />
+              </label>
+              <label className="grid gap-1 text-xs text-zinc-400">
+                Queue policy
+                <select name="postTrainingBenchmarkQueuePolicy" defaultValue="queue_when_busy" className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white">
+                  <option value="queue_when_busy">queue busy</option>
+                  <option value="reject_when_busy">reject busy</option>
+                  <option value="ignore_busy">ignore busy</option>
+                </select>
+              </label>
+              <label className="grid gap-1 text-xs text-zinc-400">
+                Template ID
+                <input name="postTrainingBenchmarkTemplateId" placeholder="optional" className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white" />
+              </label>
+              <label className="grid gap-1 text-xs text-zinc-400 md:col-span-2">
+                LoRA asset name
+                <input name="postTrainingBenchmarkLoraAssetName" defaultValue={`${job.characterName} LoRA`} className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white" />
+              </label>
+              <label className="flex items-center gap-2 text-xs text-zinc-300">
+                <input name="postTrainingBenchmarkRegisterLoraAsset" type="checkbox" defaultChecked className="size-3.5 accent-emerald-400" />
+                register asset
+              </label>
+              <label className="flex items-center gap-2 text-xs text-zinc-300">
+                <input name="postTrainingBenchmarkCopyToCharacterDir" type="checkbox" className="size-3.5 accent-emerald-400" />
+                copy file
+              </label>
+              <label className="flex items-center gap-2 text-xs text-zinc-300">
+                <input name="postTrainingBenchmarkDryRun" type="checkbox" className="size-3.5 accent-sky-400" />
+                dryRun
+              </label>
+              <label className="flex items-center gap-2 text-xs text-zinc-300">
+                <input name="postTrainingBenchmarkSkipQueue" type="checkbox" className="size-3.5 accent-sky-400" />
+                skipQueue
+              </label>
+            </div>
+          </details>
           <label className="grid gap-1 text-xs text-zinc-400 md:col-span-1 lg:col-span-2">
             Target steps override
             <input name="targetSteps" type="number" min={1} step={1} placeholder="Profile default" className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white" />
