@@ -1,17 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   BookOpen,
   Database,
+  FlaskConical,
   FolderOpen,
   Images,
   LayoutTemplate,
   Settings,
   type LucideIcon,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 
 type NavItem = {
   href: string;
@@ -25,6 +26,7 @@ const navItems: NavItem[] = [
   { href: "/assets/presets", label: "预制", icon: BookOpen },
   { href: "/assets/templates", label: "模板", icon: LayoutTemplate },
   { href: "/assets/models", label: "模型", icon: Database },
+  { href: "/character-lora-training", label: "LoRA训练", icon: FlaskConical },
   { href: "/settings", label: "设置", icon: Settings },
 ];
 
@@ -65,28 +67,26 @@ function saveCurrentRoute(pathname: string, searchParams: URLSearchParams) {
   );
 }
 
+function readRestoredRoute(href: string) {
+  if (typeof window === "undefined") {
+    return href;
+  }
+
+  return normalizeStoredRoute(
+    window.sessionStorage.getItem(storageKey(LAST_ROUTE_PREFIX, href)),
+    href,
+  );
+}
+
 export function PersistentBottomNav() {
+  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [restoredRoutes, setRestoredRoutes] = useState<Record<string, string>>({});
 
   const currentUrl = useMemo(
     () => readCurrentUrl(pathname, searchParams),
     [pathname, searchParams],
   );
-
-  useEffect(() => {
-    const entries = Object.fromEntries(
-      navItems.map((item) => [
-        item.href,
-        normalizeStoredRoute(
-          window.sessionStorage.getItem(storageKey(LAST_ROUTE_PREFIX, item.href)),
-          item.href,
-        ),
-      ]),
-    );
-    setRestoredRoutes(entries);
-  }, []);
 
   useEffect(() => {
     const activeItem = matchNavItem(pathname);
@@ -95,12 +95,7 @@ export function PersistentBottomNav() {
     }
 
     saveCurrentRoute(pathname, searchParams);
-    setRestoredRoutes((prev) =>
-      prev[activeItem.href] === currentUrl
-        ? prev
-        : { ...prev, [activeItem.href]: currentUrl },
-    );
-  }, [currentUrl, pathname]);
+  }, [currentUrl, pathname, searchParams]);
 
   useEffect(() => {
     const scrollKey = storageKey(SCROLL_PREFIX, currentUrl);
@@ -126,16 +121,26 @@ export function PersistentBottomNav() {
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[var(--panel)]/95 backdrop-blur pb-[env(safe-area-inset-bottom)]">
-      <div className="mx-auto grid max-w-5xl grid-cols-6 gap-1 px-2 py-2">
+      <div className="mx-auto grid max-w-5xl grid-cols-7 gap-1 px-2 py-2">
         {navItems.map(({ href, label, icon: Icon }) => {
           const active = pathname === href || pathname.startsWith(`${href}/`);
-          const restoredHref = restoredRoutes[href] ?? href;
 
           return (
             <Link
               key={href}
-              href={active ? href : restoredHref}
-              onClick={() => saveCurrentRoute(pathname, searchParams)}
+              href={href}
+              onClick={(event) => {
+                saveCurrentRoute(pathname, searchParams);
+                if (active) {
+                  return;
+                }
+
+                const restoredHref = readRestoredRoute(href);
+                if (restoredHref !== href) {
+                  event.preventDefault();
+                  router.push(restoredHref);
+                }
+              }}
               className={`flex min-h-14 w-full min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-1 py-2 text-[11px] transition ${
                 active
                   ? "bg-sky-500/12 text-sky-300"
