@@ -107,6 +107,8 @@ export function CharacterLoraTrainingClient({ jobList, gpuLock }: Props) {
         const triggerToken = String(formData.get("triggerToken") ?? "").trim();
         const baseCheckpointName = String(formData.get("baseCheckpointName") ?? "").trim();
         const baseCheckpointPath = String(formData.get("baseCheckpointPath") ?? "").trim();
+        const baseCheckpointHash = String(formData.get("baseCheckpointHash") ?? "").trim();
+        const baseFamily = String(formData.get("baseFamily") ?? "").trim();
 
         const job = await createCharacterLoraTrainingJob({
           characterName,
@@ -115,9 +117,9 @@ export function CharacterLoraTrainingClient({ jobList, gpuLock }: Props) {
           captionStrategy: String(formData.get("captionStrategy") ?? "controllable_identity").trim(),
           phase: "setup",
           baseCheckpointName: baseCheckpointName || null,
-          baseCheckpointPath: baseCheckpointPath || null,
-          baseCheckpointHash: null,
-          baseFamily: null,
+          baseCheckpointPath,
+          baseCheckpointHash,
+          baseFamily,
           createdBy: null,
         });
 
@@ -181,8 +183,27 @@ export function CharacterLoraTrainingClient({ jobList, gpuLock }: Props) {
             Base checkpoint 路径
             <input
               name="baseCheckpointPath"
+              required
               className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-sky-400"
-              placeholder="训练入队前必须填写"
+              placeholder="checkpoints/model.safetensors"
+            />
+          </label>
+          <label className="grid gap-1 text-xs text-zinc-400">
+            Base checkpoint hash
+            <input
+              name="baseCheckpointHash"
+              required
+              className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-sky-400"
+              placeholder="sha256 或可用 hash"
+            />
+          </label>
+          <label className="grid gap-1 text-xs text-zinc-400">
+            Base family
+            <input
+              name="baseFamily"
+              required
+              className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-sky-400"
+              placeholder="如：illustrious / sd15"
             />
           </label>
           <label className="grid gap-1 text-xs text-zinc-400">

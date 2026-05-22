@@ -1,4 +1,6 @@
 import { randomUUID } from "node:crypto";
+import { copyFile } from "node:fs/promises";
+import path from "node:path";
 
 import { Prisma } from "@/generated/prisma";
 import {
@@ -47,6 +49,7 @@ import {
   type CharacterLoraCandidateImageSummary,
 } from "@/server/repositories/character-lora-training-repository";
 import {
+  ensureCharacterLoraDirectory,
   redactCharacterLoraProviderPayload,
   resolveCharacterLoraArtifactPath,
   statCharacterLoraArtifact,
@@ -74,6 +77,7 @@ const DEFAULT_HOST_MODELS = {
 
 const DEFAULT_LEASE_OWNER = "local-worker";
 const DEFAULT_LEASE_SECONDS = 300;
+const DEFAULT_SOURCE_WEIGHT = 1;
 
 export class CharacterLoraPhase3ServiceError extends Error {
   constructor(
@@ -287,11 +291,73 @@ export async function freezeCharacterLoraDataset(jobId: string, input: unknown =
   const manifestItems = [];
   const auditItems = [];
   const metadataLines = [];
+  const provenancePolicy = buildDatasetProvenancePolicy();
+  let sourceCount = 0;
+  let syntheticCount = 0;
 
   for (let index = 0; index < keepImages.length; index += 1) {
     const image = keepImages[index];
+    const [originalArtifact, generationRun] = await Promise.all([
+      getCharacterLoraArtifact(image.artifactId),
+      getCharacterLoraGenerationRun(image.generationRunId),
+    ]);
+
+    if (!originalArtifact || originalArtifact.jobId !== id) {
+      throw new CharacterLoraPhase3ServiceError("Candidate image artifact is missing for dataset freeze", 409, {
+        candidateImageId: image.id,
+        artifactId: image.artifactId,
+      });
+    }
+
+    if (!generationRun || generationRun.jobId !== id) {
+      throw new CharacterLoraPhase3ServiceError("Candidate generation run is missing for dataset freeze", 409, {
+        candidateImageId: image.id,
+        generationRunId: image.generationRunId,
+      });
+    }
+
+    const provenance = classifyDatasetItemProvenance({
+      image,
+      imageArtifact: originalArtifact,
+      generationRun,
+    });
+    if (provenance.origin === "source") {
+      sourceCount += 1;
+    } else {
+      syntheticCount += 1;
+    }
+
+    const itemWeight = resolveDatasetItemTrainingWeight({
+      origin: provenance.origin,
+      repeatCount,
+      requestedSourceWeight: parsed.sourceWeight,
+    });
+    const stem = `${String(index + 1).padStart(4, "0")}_${image.id}`;
+    const imagePath = `${trainDir}/${stem}${getTrainingImageExtension(originalArtifact.relativePath)}`;
+    const materializedImage = await copyDatasetTrainingImage({
+      jobRoot: job.artifactRoot,
+      sourceRelativePath: originalArtifact.relativePath,
+      targetRelativePath: imagePath,
+    });
+    const materializedImageArtifact = await createCharacterLoraJobArtifact({
+      jobId: id,
+      kind: "candidate_image",
+      relativePath: materializedImage.relativePath,
+      absolutePath: materializedImage.absolutePath,
+      sha256: materializedImage.sha256,
+      byteSize: BigInt(materializedImage.byteSize),
+      mimeType: originalArtifact.mimeType,
+      metadata: toInputJsonValue({
+        datasetRevisionId: revisionId,
+        candidateImageId: image.id,
+        artifactRole: "dataset_train_image",
+        originalArtifactId: originalArtifact.id,
+        originalRelativePath: originalArtifact.relativePath,
+        provenance,
+      }),
+    });
     const caption = normalizeCaptionTrigger(job.triggerToken, image.captionDraft ?? buildFallbackCaption(job, image));
-    const captionPath = `${trainDir}/${String(index + 1).padStart(4, "0")}_${image.id}.txt`;
+    const captionPath = `${trainDir}/${stem}.txt`;
     const captionArtifactStat = await writeCharacterLoraTextArtifact(job.artifactRoot, captionPath, `${caption}\n`);
     const captionArtifact = await createCharacterLoraJobArtifact({
       jobId: id,
@@ -305,43 +371,62 @@ export async function freezeCharacterLoraDataset(jobId: string, input: unknown =
         datasetRevisionId: revisionId,
         candidateImageId: image.id,
         captionStrategy,
+        imageArtifactId: materializedImageArtifact.id,
+        imagePath: materializedImage.relativePath,
       }),
     });
 
     itemRecords.push({
       candidateImageId: image.id,
-      imageArtifactId: image.artifactId,
+      imageArtifactId: materializedImageArtifact.id,
       captionArtifactId: captionArtifact.id,
       captionText: caption,
-      repeatCount,
-      sourceWeight: parsed.sourceWeight ?? null,
+      repeatCount: itemWeight.repeatCount,
+      sourceWeight: itemWeight.sourceWeight,
       sortOrder: index,
     });
     manifestItems.push({
       candidateImageId: image.id,
-      imageArtifactId: image.artifactId,
-      imagePath: image.relativePath,
+      imageArtifactId: materializedImageArtifact.id,
+      originalImageArtifactId: originalArtifact.id,
+      originalImagePath: originalArtifact.relativePath,
+      imagePath: materializedImage.relativePath,
+      fileName: materializedImage.datasetFileName,
       captionPath: captionArtifactStat.relativePath,
       sectionId: image.sectionId,
       generationRunId: image.generationRunId,
-      sha256: image.sha256,
-      repeatCount,
-      sourceWeight: parsed.sourceWeight ?? null,
+      sha256: materializedImage.sha256,
+      originalSha256: image.sha256,
+      origin: provenance.origin,
+      provenance,
+      repeatCount: itemWeight.repeatCount,
+      sourceWeight: itemWeight.sourceWeight,
     });
     metadataLines.push(JSON.stringify({
-      file_name: image.relativePath,
+      file_name: materializedImage.datasetFileName,
       caption,
       candidateImageId: image.id,
       sectionId: image.sectionId,
       generationRunId: image.generationRunId,
-      artifactId: image.artifactId,
-      sha256: image.sha256,
+      artifactId: materializedImageArtifact.id,
+      originalArtifactId: originalArtifact.id,
+      sha256: materializedImage.sha256,
+      origin: provenance.origin,
+      repeatCount: itemWeight.repeatCount,
+      sourceWeight: itemWeight.sourceWeight,
     }));
     auditItems.push({
       candidateImageId: image.id,
       triggerFirst: caption.split(",")[0]?.trim() === job.triggerToken,
       caption,
       sectionId: image.sectionId,
+      generationRunId: image.generationRunId,
+      origin: provenance.origin,
+      provenanceBasis: provenance.basis,
+      imagePath: materializedImage.relativePath,
+      originalImagePath: originalArtifact.relativePath,
+      repeatCount: itemWeight.repeatCount,
+      sourceWeight: itemWeight.sourceWeight,
     });
   }
 
@@ -352,6 +437,12 @@ export async function freezeCharacterLoraDataset(jobId: string, input: unknown =
     canonicalVersionId: job.currentCanonicalVersionId,
     promptCardVersionId: job.currentPromptCardVersionId,
     captionStrategy,
+    trainDir,
+    sourceCount,
+    syntheticCount,
+    requestedRepeatCount: repeatCount,
+    requestedSourceWeight: parsed.sourceWeight ?? null,
+    provenancePolicy,
     warnings,
     items: manifestItems,
   });
@@ -363,6 +454,9 @@ export async function freezeCharacterLoraDataset(jobId: string, input: unknown =
   const captionAudit = await writeCharacterLoraJsonArtifact(job.artifactRoot, `${datasetRoot}/caption-audit.json`, {
     datasetRevisionId: revisionId,
     jobId: id,
+    sourceCount,
+    syntheticCount,
+    provenancePolicy,
     warnings,
     items: auditItems,
   });
@@ -408,8 +502,8 @@ export async function freezeCharacterLoraDataset(jobId: string, input: unknown =
     promptCardVersionId: job.currentPromptCardVersionId,
     captionStrategy,
     trainDir,
-    sourceCount: 0,
-    syntheticCount: keepImages.length,
+    sourceCount,
+    syntheticCount,
     selectedManifestArtifactId: selectedManifestArtifact.id,
     metadataJsonlArtifactId: metadataJsonlArtifact.id,
     captionAuditArtifactId: captionAuditArtifact.id,
@@ -420,6 +514,8 @@ export async function freezeCharacterLoraDataset(jobId: string, input: unknown =
     revision,
     summary: {
       itemCount: keepImages.length,
+      sourceCount,
+      syntheticCount,
       warnings,
       artifactPaths: {
         selectedManifest: selectedManifest.relativePath,
@@ -731,6 +827,114 @@ function buildFallbackCaption(
   image: CharacterLoraCandidateImageSummary,
 ) {
   return `${job.triggerToken}, ${job.characterName}, ${image.sectionId ?? "training candidate"}`;
+}
+
+function buildDatasetProvenancePolicy() {
+  return {
+    sourceRules: [
+      "candidate artifact kind is source_image",
+      "generation run kind is an explicit direct source/manual canonical import",
+    ],
+    syntheticRules: [
+      "candidate output from a section or canonical generation run",
+      "candidate with no direct source artifact marker",
+    ],
+    conservativeAssumption:
+      "CharacterLoraCandidateImage currently requires generationRunId, so generated outputs are classified as synthetic even when their run used source/canonical input images.",
+  };
+}
+
+function classifyDatasetItemProvenance(input: {
+  image: CharacterLoraCandidateImageSummary;
+  imageArtifact: NonNullable<Awaited<ReturnType<typeof getCharacterLoraArtifact>>>;
+  generationRun: NonNullable<Awaited<ReturnType<typeof getCharacterLoraGenerationRun>>>;
+}) {
+  const artifactKind = input.imageArtifact.kind;
+  const generationRunKind = input.generationRun.kind;
+  const directSourceRunKinds = new Set(["source", "direct_source", "manual_source", "manual_canonical"]);
+
+  if (artifactKind === "source_image") {
+    return {
+      origin: "source" as const,
+      basis: "artifact_kind:source_image",
+      artifactKind,
+      generationRunKind,
+      conservative: false,
+      note: "Candidate points directly at a source image artifact.",
+    };
+  }
+
+  if (directSourceRunKinds.has(generationRunKind)) {
+    return {
+      origin: "source" as const,
+      basis: `generation_run_kind:${generationRunKind}`,
+      artifactKind,
+      generationRunKind,
+      conservative: true,
+      note: "Run kind indicates a direct source/manual canonical import; current schema still stores generationRunId on candidate images.",
+    };
+  }
+
+  return {
+    origin: "synthetic" as const,
+    basis: `generation_run_kind:${generationRunKind};artifact_kind:${artifactKind}`,
+    artifactKind,
+    generationRunKind,
+    conservative: true,
+    note: "Candidate is treated as generated output. Input source/canonical references on the run do not make the output a direct source image.",
+  };
+}
+
+function resolveDatasetItemTrainingWeight(input: {
+  origin: "source" | "synthetic";
+  repeatCount: number;
+  requestedSourceWeight?: number;
+}) {
+  if (input.origin !== "source") {
+    return {
+      repeatCount: input.repeatCount,
+      sourceWeight: null,
+    };
+  }
+
+  const sourceWeight = input.requestedSourceWeight ?? DEFAULT_SOURCE_WEIGHT;
+
+  return {
+    repeatCount: sourceWeight > DEFAULT_SOURCE_WEIGHT
+      ? Math.max(input.repeatCount, Math.ceil(input.repeatCount * sourceWeight))
+      : input.repeatCount,
+    sourceWeight,
+  };
+}
+
+function getTrainingImageExtension(relativePath: string) {
+  const extension = path.posix.extname(relativePath);
+  if (!extension) {
+    throw new CharacterLoraPhase3ServiceError("Candidate image path must include a file extension", 409, {
+      relativePath,
+    });
+  }
+  return extension;
+}
+
+async function copyDatasetTrainingImage(input: {
+  jobRoot: string;
+  sourceRelativePath: string;
+  targetRelativePath: string;
+}) {
+  await statCharacterLoraArtifact(input.jobRoot, input.sourceRelativePath);
+  const sourcePath = resolveCharacterLoraArtifactPath(input.jobRoot, input.sourceRelativePath);
+  const targetPath = resolveCharacterLoraArtifactPath(input.jobRoot, input.targetRelativePath);
+
+  await ensureCharacterLoraDirectory(path.dirname(targetPath.absolutePath));
+  await copyFile(sourcePath.absolutePath, targetPath.absolutePath);
+
+  const copiedStat = await statCharacterLoraArtifact(input.jobRoot, targetPath.relativePath);
+
+  return {
+    ...copiedStat,
+    datasetFileName: `train/${path.posix.basename(copiedStat.relativePath)}`,
+  };
 }
 
 function normalizeCaptionTrigger(triggerToken: string, caption: string) {

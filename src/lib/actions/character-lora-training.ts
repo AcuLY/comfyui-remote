@@ -13,6 +13,7 @@ import {
 import {
   createCharacterLoraPromptCardVersion as createPromptCardVersion,
   listCharacterLoraPromptCardVersions as listPromptCardVersions,
+  promoteCharacterLoraSectionInstructionToPromptCardVersion as promoteSectionInstructionToPromptCardVersion,
 } from "@/server/services/character-lora-training/prompt-card-service";
 import {
   instantiateCharacterLoraJobSections as instantiateJobSections,
@@ -22,6 +23,7 @@ import {
 import {
   enqueueCharacterLoraCanonicalGenerationRun as enqueueCanonicalGenerationRun,
   mockCompleteCharacterLoraCanonicalGenerationRun as mockCompleteCanonicalGenerationRun,
+  registerManualCharacterLoraCanonicalVersion as registerManualCanonicalVersion,
   selectCharacterLoraCanonicalVersion as selectCanonicalVersion,
 } from "@/server/services/character-lora-training/canonical-service";
 import {
@@ -89,6 +91,10 @@ export async function createCharacterLoraPromptCardVersion(jobId: string, input:
   return createPromptCardVersion(jobId, input);
 }
 
+export async function promoteCharacterLoraSectionInstructionToPromptCardVersion(jobId: string, input: unknown) {
+  return promoteSectionInstructionToPromptCardVersion(jobId, input);
+}
+
 export async function listCharacterLoraSectionTemplates() {
   return listSectionTemplates();
 }
@@ -107,6 +113,10 @@ export async function enqueueCharacterLoraCanonicalGenerationRun(jobId: string, 
 
 export async function mockCompleteCharacterLoraCanonicalGenerationRun(runId: string, input?: unknown) {
   return mockCompleteCanonicalGenerationRun(runId, input ?? {});
+}
+
+export async function registerManualCharacterLoraCanonicalVersion(jobId: string, input: unknown) {
+  return registerManualCanonicalVersion(jobId, input);
 }
 
 export async function selectCharacterLoraCanonicalVersion(jobId: string, versionId: string) {

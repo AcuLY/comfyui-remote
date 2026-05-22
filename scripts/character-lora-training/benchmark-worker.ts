@@ -56,6 +56,10 @@ type SectionRunSummary = {
   sectionId: string;
   sectionName: string | null;
   sortOrder: number;
+  originalSectionName: string | null;
+  checkpointName: string | null;
+  loraWeight: number | null;
+  benchmarkMatrix: BenchmarkSectionMatrixMetadata | null;
   latestRunId: string | null;
   latestRun: Pick<
     ManagerProjectLatestRun,
@@ -72,6 +76,17 @@ type SectionRunSummary = {
     | "finishedAt"
     | "outputDir"
   > | null;
+};
+
+type BenchmarkSectionMatrixMetadata = {
+  originalSectionName: string | null;
+  originalSortOrder: number | null;
+  baseSectionIndex: number | null;
+  checkpointName: string | null;
+  checkpointIndex: number | null;
+  weight: number | null;
+  weightIndex: number | null;
+  matrixIndex: number | null;
 };
 
 type PollSummary = {
@@ -407,11 +422,18 @@ function summarizeProjectRuns(projectDetail: ManagerProjectDetail, runIds: strin
       continue;
     }
 
+    const matrixMetadata = readBenchmarkSectionMatrixMetadata(section.extraParams);
+    const checkpointName = matrixMetadata?.checkpointName ?? readOptionalString(section.checkpointName);
+    const loraWeight = matrixMetadata?.weight ?? readLoraWeight(section.loraConfig);
     foundRunIds.add(latestRun.id);
     sectionSummaries.push({
       sectionId: section.id,
       sectionName: section.name,
       sortOrder: section.sortOrder,
+      originalSectionName: matrixMetadata?.originalSectionName ?? section.name,
+      checkpointName,
+      loraWeight,
+      benchmarkMatrix: matrixMetadata,
       latestRunId: section.latestRunId,
       latestRun: {
         id: latestRun.id,
@@ -479,6 +501,7 @@ function buildResultSummary(input: {
     runIds: input.runIds,
     submittedRuns: input.submitted.runs,
     sections: input.waitResult.sectionSummaries,
+    matrixExpansion: buildMatrixExpansionSummary(input.waitResult.projectDetail, input.context),
     checkpointMatrix: input.context.checkpointMatrix,
     weightMatrix: input.context.weightMatrix,
     recommendedWeight: input.context.recommendedWeight,
@@ -525,6 +548,44 @@ function buildDiagnosticSuggestions(waitResult: WaitResult, skipWait: boolean) {
   return suggestions;
 }
 
+function buildMatrixExpansionSummary(projectDetail: ManagerProjectDetail, context: BenchmarkContext) {
+  const sections = projectDetail.sections.map((section) => {
+    const metadata = readBenchmarkSectionMatrixMetadata(section.extraParams);
+    const checkpointName = metadata?.checkpointName ?? readOptionalString(section.checkpointName);
+    const weight = metadata?.weight ?? readLoraWeight(section.loraConfig);
+    return {
+      projectSectionId: section.id,
+      sectionName: section.name,
+      sortOrder: section.sortOrder,
+      originalSectionName: metadata?.originalSectionName ?? section.name,
+      baseSectionIndex: metadata?.baseSectionIndex ?? null,
+      originalSortOrder: metadata?.originalSortOrder ?? null,
+      checkpointName,
+      checkpointIndex: metadata?.checkpointIndex ?? inferStringIndex(context.checkpointMatrix, checkpointName),
+      weight,
+      weightIndex: metadata?.weightIndex ?? inferNumberIndex(context.weightMatrix, weight),
+      matrixIndex: metadata?.matrixIndex ?? null,
+      latestRunId: section.latestRunId,
+    };
+  });
+  const baseKeys = new Set(
+    sections.map((section) =>
+      section.baseSectionIndex !== null
+        ? `index:${section.baseSectionIndex}`
+        : `name:${section.originalSectionName ?? section.sectionName ?? section.sortOrder}`,
+    ),
+  );
+  const baseSectionCount = baseKeys.size;
+  return {
+    expectedSectionCount: baseSectionCount * context.checkpointMatrix.length * context.weightMatrix.length,
+    actualSectionCount: sections.length,
+    baseSectionCount,
+    checkpointMatrix: context.checkpointMatrix,
+    weightMatrix: context.weightMatrix,
+    sections,
+  };
+}
+
 async function failLeasedTask(
   input: {
     client: Awaited<ReturnType<typeof createManagerClient>>;
@@ -562,4 +623,74 @@ function readRequiredPositiveNumberArray(value: unknown, fieldName: string): num
     throw new Error(`Benchmark report did not include ${fieldName}`);
   }
   return value;
+}
+
+function readBenchmarkSectionMatrixMetadata(value: unknown): BenchmarkSectionMatrixMetadata | null {
+  const metadata = readJsonRecord(readJsonRecord(value).characterLoraBenchmark);
+  const originalSectionName = readOptionalString(metadata.originalSectionName);
+  const checkpointName = readOptionalString(metadata.checkpointName);
+  const weight = readOptionalPositiveNumber(metadata.weight);
+  if (!originalSectionName && !checkpointName && weight === null) {
+    return null;
+  }
+
+  return {
+    originalSectionName,
+    originalSortOrder: readOptionalNumber(metadata.originalSortOrder),
+    baseSectionIndex: readOptionalNumber(metadata.baseSectionIndex),
+    checkpointName,
+    checkpointIndex: readOptionalNumber(metadata.checkpointIndex),
+    weight,
+    weightIndex: readOptionalNumber(metadata.weightIndex),
+    matrixIndex: readOptionalNumber(metadata.matrixIndex),
+  };
+}
+
+function readLoraWeight(value: unknown): number | null {
+  const record = readJsonRecord(value);
+  for (const key of ["lora1", "lora2"] as const) {
+    const entries = record[key];
+    if (!Array.isArray(entries)) continue;
+    for (const entry of entries) {
+      const weight = readOptionalPositiveNumber(readJsonRecord(entry).weight);
+      if (weight !== null) {
+        return roundBenchmarkWeight(weight);
+      }
+    }
+  }
+  return null;
+}
+
+function readJsonRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+}
+
+function readOptionalString(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function readOptionalNumber(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function readOptionalPositiveNumber(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : null;
+}
+
+function inferStringIndex(values: string[], value: string | null) {
+  if (!value) return null;
+  const index = values.indexOf(value);
+  return index >= 0 ? index : null;
+}
+
+function inferNumberIndex(values: number[], value: number | null) {
+  if (value === null) return null;
+  const index = values.findIndex((candidate) => roundBenchmarkWeight(candidate) === roundBenchmarkWeight(value));
+  return index >= 0 ? index : null;
+}
+
+function roundBenchmarkWeight(value: number) {
+  return Math.round(value * 1000) / 1000;
 }

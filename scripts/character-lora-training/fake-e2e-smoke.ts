@@ -40,11 +40,14 @@ type SmokeSummary = {
     id: string;
     version: number;
     status: string;
+    manualVersionId: string;
+    manualVersion: number;
   };
   promptCard: {
     id: string;
     version: number;
     triggerToken: string;
+    promotedFromSectionInstruction: boolean;
   };
   sections: Array<{
     id: string;
@@ -190,6 +193,16 @@ async function main() {
   });
   assertHexSha(source.sha256, "source sha256");
 
+  const manualCanonicalSource = await services.sourceImageService.uploadCharacterLoraSourceImage(job.id, {
+    file: new File([Buffer.concat([PLACEHOLDER_PNG, Buffer.from("manual-canonical")])], "manual-canonical.png", { type: "image/png" }),
+    role: "manual_canonical",
+    sortOrder: 1,
+    provenance: {
+      smoke: true,
+      original: "manual canonical upload",
+    },
+  });
+
   const canonicalRun = await services.canonicalService.enqueueCharacterLoraCanonicalGenerationRun(job.id, {
     provider: "mock-local",
     sourceImageIds: [source.id],
@@ -206,8 +219,28 @@ async function main() {
   );
   assert(selectedCanonical.job.currentCanonicalVersionId === canonicalVersion.id, "canonical should be selected");
 
+  const manualCanonicalVersion = await services.canonicalService.registerManualCharacterLoraCanonicalVersion(job.id, {
+    sourceImageId: manualCanonicalSource.id,
+    notes: "fake e2e manual canonical registration",
+  });
+  assert(manualCanonicalVersion.sourceRunId === null, "manual canonical should not have a source run");
+  assert(manualCanonicalVersion.version === canonicalVersion.version + 1, "manual canonical should create the next version");
+  const afterManualRegister = await services.jobService.getCharacterLoraTrainingJob(job.id);
+  assert(
+    afterManualRegister.currentCanonicalVersionId === canonicalVersion.id,
+    "manual canonical registration should not auto-select the new version",
+  );
+  const selectedManualCanonical = await services.canonicalService.selectCharacterLoraCanonicalVersion(
+    job.id,
+    manualCanonicalVersion.id,
+  );
+  assert(
+    selectedManualCanonical.job.currentCanonicalVersionId === manualCanonicalVersion.id,
+    "manual canonical should be selectable as current canonical",
+  );
+
   const promptCard = await services.promptCardService.createCharacterLoraPromptCardVersion(job.id, {
-    canonicalVersionId: canonicalVersion.id,
+    canonicalVersionId: manualCanonicalVersion.id,
     triggerToken,
     identityTraits: {
       hair: "short dark hair",
@@ -225,6 +258,15 @@ async function main() {
     changeReason: "fake e2e smoke prompt card",
   });
   assert(promptCard.version >= 1, "prompt card version should be created");
+
+  const promotedPromptCard = await services.promptCardService.promoteCharacterLoraSectionInstructionToPromptCardVersion(job.id, {
+    sectionUserInstruction: "keep the left bangs longer in future section generations",
+  });
+  assert(promotedPromptCard.version === promptCard.version + 1, "promoted prompt card should create a new version");
+  assert(
+    promotedPromptCard.finalPromptDraft.includes("keep the left bangs longer"),
+    "promoted prompt card should include the section instruction",
+  );
 
   const instantiated = await services.sectionTemplateService.instantiateCharacterLoraJobSections(job.id, {
     templateKeys: ["front_fullbody", "portrait"],
@@ -338,9 +380,9 @@ async function main() {
     postTrainingBenchmark: {
       enabled: true,
       checkpointMatrix: ["fake-base.safetensors"],
-      weightMatrix: [0.72],
+      weightMatrix: [0.65, 0.85, 1],
       registerLoraAsset: true,
-      copyToCharacterDir: false,
+      copyToCharacterDir: true,
       loraAssetName: "Smoke Character LoRA",
       dryRun: true,
       skipQueue: true,
@@ -368,8 +410,14 @@ async function main() {
   const finalPath = `${trainingPayload.outputDir}/smoke-final.safetensors`;
   const checkpointPath = `${trainingPayload.outputDir}/checkpoint-step-0004.safetensors`;
   const logPath = `${trainingPayload.outputDir}/train.log`;
-  const finalBytes = Buffer.from(`fake safetensors ${trainingPayload.trainingRunId}\n`, "utf8");
-  const checkpointBytes = Buffer.from(`fake checkpoint ${trainingPayload.trainingRunId}\n`, "utf8");
+  const finalBytes = createFakeSafetensors({
+    trainingRunId: trainingPayload.trainingRunId,
+    role: "final",
+  });
+  const checkpointBytes = createFakeSafetensors({
+    trainingRunId: trainingPayload.trainingRunId,
+    role: "checkpoint",
+  });
   const logBytes = Buffer.from("fake training worker completed\nloss=0.001\n", "utf8");
   await writeJobArtifact(services.artifactService, job.artifactRoot, finalPath, finalBytes);
   await writeJobArtifact(services.artifactService, job.artifactRoot, checkpointPath, checkpointBytes);
@@ -389,7 +437,7 @@ async function main() {
         final: finalSha256,
       },
       metadataSummary: {
-        keyCount: 2,
+        keyCount: 1,
         summary: {
           fakeE2eSmoke: true,
           triggerToken,
@@ -430,6 +478,71 @@ async function main() {
     : benchmarkCreated.benchmarkRun;
   assert(benchmarkRun.status === "done", "auto benchmark should be mock-completed when dryRun/skipQueue is true");
   assert(benchmarkRun.loraAssetId, "benchmark should register a LoRA asset");
+  const benchmarkWeights = Array.isArray(benchmarkRun.weightMatrix) ? benchmarkRun.weightMatrix.map(Number) : [];
+  const benchmarkCheckpoints = Array.isArray(benchmarkRun.checkpointMatrix)
+    ? benchmarkRun.checkpointMatrix.filter((value): value is string => typeof value === "string" && Boolean(value.trim()))
+    : [];
+  assert(
+    benchmarkWeights.join(",") === "0.65,0.85,1",
+    `auto benchmark should use default benchmark weights, got ${benchmarkWeights.join(",")}`,
+  );
+  const benchmarkAsset = await services.prismaModule.prisma.loraAsset.findUnique({
+    where: { id: benchmarkRun.loraAssetId },
+    select: { relativePath: true },
+  });
+  assert(benchmarkAsset?.relativePath.startsWith("character/"), "benchmark LoRA should copy into the character LoRA dir by default");
+  assert(benchmarkRun.testProjectId, "benchmark should create a test project");
+  const benchmarkSections = await services.prismaModule.prisma.projectSection.findMany({
+    where: { projectId: benchmarkRun.testProjectId },
+    orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+    select: {
+      name: true,
+      checkpointName: true,
+      loraConfig: true,
+      extraParams: true,
+      promptBlocks: {
+        orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+        select: { label: true, positive: true },
+      },
+    },
+  });
+  if (!benchmarkRun.templateId) {
+    const expectedFallbackSections = ["默认", "内裤", "内裤+脱鞋", "半脱", "半脱+上半身", "半脱+脱鞋", "裸"];
+    assert(
+      benchmarkSections.length >= expectedFallbackSections.length,
+      `fallback benchmark should create at least ${expectedFallbackSections.length} sections, got ${benchmarkSections.length}`,
+    );
+    for (const name of expectedFallbackSections) {
+      assert(benchmarkSections.some((section) => section.name === name), `fallback benchmark should include section ${name}`);
+    }
+  }
+  const expectedMatrixSectionCount = (!benchmarkRun.templateId ? 7 : countBenchmarkBaseSections(benchmarkSections))
+    * benchmarkCheckpoints.length
+    * benchmarkWeights.length;
+  assert(
+    benchmarkSections.length === expectedMatrixSectionCount,
+    `benchmark matrix should create ${expectedMatrixSectionCount} sections, got ${benchmarkSections.length}`,
+  );
+  const observedWeights = new Set(benchmarkSections.map((section) => readBenchmarkSectionWeight(section)).filter((value): value is number => value !== null));
+  for (const weight of benchmarkWeights) {
+    assert(observedWeights.has(weight), `benchmark project should include weight ${weight}`);
+  }
+  for (const checkpoint of benchmarkCheckpoints) {
+    assert(benchmarkSections.some((section) => section.checkpointName === checkpoint), `benchmark project should include checkpoint ${checkpoint}`);
+  }
+  const matrixResultSummary = readBenchmarkMatrixResultSummary(benchmarkRun.resultSummary);
+  assert(
+    matrixResultSummary?.expectedSectionCount === expectedMatrixSectionCount,
+    `benchmark result summary should record expectedSectionCount ${expectedMatrixSectionCount}`,
+  );
+  assert(
+    matrixResultSummary?.baseSectionCount === (!benchmarkRun.templateId ? 7 : countBenchmarkBaseSections(benchmarkSections)),
+    "benchmark result summary should record baseSectionCount",
+  );
+  assert(
+    benchmarkSections.every((section) => section.promptBlocks.some((block) => block.label && block.positive)),
+    "benchmark sections should record prompt blocks",
+  );
   const autoBenchmarkRuns = await services.benchmarkPromotionService.listCharacterLoraBenchmarkRunsForTrainingRun(completedTrainingRun.id);
   assert(
     autoBenchmarkRuns.some((run) => run.id === benchmarkRun.id && run.status === "done"),
@@ -440,7 +553,7 @@ async function main() {
     status: "approved",
     selectedLoraAssetId: benchmarkRun.loraAssetId,
     selectedCheckpoint: "fake-base.safetensors",
-    defaultRecommendedWeight: 0.72,
+    defaultRecommendedWeight: 0.65,
     perVariantWeightOverrides: {
       portrait: 0.65,
       naked: 0.6,
@@ -516,14 +629,17 @@ async function main() {
       relativePath: source.relativePath,
     },
     canonical: {
-      id: canonicalVersion.id,
-      version: canonicalVersion.version,
-      status: selectedCanonical.canonicalVersion.status,
+      id: selectedManualCanonical.canonicalVersion.id,
+      version: selectedManualCanonical.canonicalVersion.version,
+      status: selectedManualCanonical.canonicalVersion.status,
+      manualVersionId: manualCanonicalVersion.id,
+      manualVersion: manualCanonicalVersion.version,
     },
     promptCard: {
-      id: promptCard.id,
-      version: promptCard.version,
-      triggerToken: promptCard.triggerToken,
+      id: promotedPromptCard.id,
+      version: promotedPromptCard.version,
+      triggerToken: promotedPromptCard.triggerToken,
+      promotedFromSectionInstruction: true,
     },
     sections: sectionsWithImages,
     caption: {
@@ -571,8 +687,8 @@ async function main() {
   assert(summary.caption.triggerFirst, "caption trigger-first assertion should be true");
   assertHexSha(summary.training.finalSha256, "final training sha256");
   assert(summary.report.coverage.sourceImages >= 1, "report summary should cover source");
-  assert(summary.report.coverage.canonicalVersions >= 1, "report summary should cover canonical");
-  assert(summary.report.coverage.promptCardVersions >= 1, "report summary should cover prompt");
+  assert(summary.report.coverage.canonicalVersions >= 2, "report summary should cover generated and manual canonical");
+  assert(summary.report.coverage.promptCardVersions >= 2, "report summary should cover promoted prompt card version");
   assert(summary.report.coverage.candidateImages >= allImages.length, "report summary should cover candidates");
   assert(summary.report.coverage.datasetItems >= allImages.length, "report summary should cover dataset items");
   assert(summary.report.coverage.trainingRuns >= 1, "report summary should cover training");
@@ -660,6 +776,26 @@ function sha256(bytes: Buffer) {
   return createHash("sha256").update(bytes).digest("hex");
 }
 
+function createFakeSafetensors(input: { trainingRunId: string; role: "final" | "checkpoint" }) {
+  const tensorData = Buffer.alloc(4);
+  const header = Buffer.from(JSON.stringify({
+    __metadata__: {
+      format: "pt",
+      fakeE2eSmoke: "true",
+      role: input.role,
+      trainingRunId: input.trainingRunId,
+    },
+    [`fake.${input.role}.weight`]: {
+      dtype: "F32",
+      shape: [1],
+      data_offsets: [0, tensorData.byteLength],
+    },
+  }), "utf8");
+  const prefix = Buffer.alloc(8);
+  prefix.writeBigUInt64LE(BigInt(header.byteLength), 0);
+  return Buffer.concat([prefix, header, tensorData]);
+}
+
 function assertHexSha(value: string | null | undefined, label: string): asserts value is string {
   assert(Boolean(value && /^[a-f0-9]{64}$/i.test(value)), `${label} should be a sha256 hex string`);
 }
@@ -678,6 +814,70 @@ function readTaskPayload(payload: unknown) {
         trainingRunId: string;
         outputDir: string;
       };
+}
+
+function readBenchmarkSectionWeight(section: { loraConfig: unknown; extraParams: unknown }) {
+  const metadataWeight = readJsonRecord(readJsonRecord(section.extraParams).characterLoraBenchmark).weight;
+  if (typeof metadataWeight === "number" && metadataWeight > 0) {
+    return roundBenchmarkWeight(metadataWeight);
+  }
+
+  const config = readJsonRecord(section.loraConfig);
+  for (const key of ["lora1", "lora2"] as const) {
+    const entries = config[key];
+    if (!Array.isArray(entries)) continue;
+    for (const entry of entries) {
+      const weight = readJsonRecord(entry).weight;
+      if (typeof weight === "number" && weight > 0) {
+        return roundBenchmarkWeight(weight);
+      }
+    }
+  }
+  return null;
+}
+
+function countBenchmarkBaseSections(sections: Array<{ name: string | null; extraParams: unknown }>) {
+  const keys = new Set<string>();
+  for (const section of sections) {
+    const metadata = readJsonRecord(readJsonRecord(section.extraParams).characterLoraBenchmark);
+    const baseSectionIndex = metadata.baseSectionIndex;
+    if (typeof baseSectionIndex === "number") {
+      keys.add(`index:${baseSectionIndex}`);
+      continue;
+    }
+    const originalSectionName = metadata.originalSectionName;
+    keys.add(`name:${typeof originalSectionName === "string" ? originalSectionName : section.name ?? "unnamed"}`);
+  }
+  return keys.size;
+}
+
+function readBenchmarkMatrixResultSummary(value: unknown) {
+  const summary = readJsonRecord(value);
+  const expansion = readJsonRecord(summary.matrixExpansion);
+  const expectedSectionCount = typeof summary.expectedSectionCount === "number"
+    ? summary.expectedSectionCount
+    : typeof expansion.expectedSectionCount === "number"
+      ? expansion.expectedSectionCount
+      : null;
+  const baseSectionCount = typeof summary.baseSectionCount === "number"
+    ? summary.baseSectionCount
+    : typeof expansion.baseSectionCount === "number"
+      ? expansion.baseSectionCount
+      : null;
+
+  return expectedSectionCount === null && baseSectionCount === null
+    ? null
+    : { expectedSectionCount, baseSectionCount };
+}
+
+function readJsonRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+}
+
+function roundBenchmarkWeight(value: number) {
+  return Math.round(value * 1000) / 1000;
 }
 
 function assert(condition: unknown, message: string): asserts condition {

@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import { Prisma } from "@/generated/prisma";
 import {
   CharacterLoraDecisionStatus,
@@ -532,6 +534,26 @@ export async function findCharacterLoraTrainingJobBySlug(slug: string) {
   });
 }
 
+export async function findActiveCharacterLoraTrainingJobByTriggerToken(input: {
+  triggerToken: string;
+  excludeJobId?: string;
+}) {
+  return db.characterLoraTrainingJob.findFirst({
+    where: {
+      triggerToken: input.triggerToken,
+      status: { notIn: [CharacterLoraJobStatus.archived, CharacterLoraJobStatus.cancelled] },
+      ...(input.excludeJobId ? { id: { not: input.excludeJobId } } : {}),
+    },
+    select: {
+      id: true,
+      slug: true,
+      characterName: true,
+      triggerToken: true,
+      status: true,
+    },
+  });
+}
+
 export async function createCharacterLoraTrainingJob(input: CharacterLoraTrainingJobCreateInput) {
   const job = await db.characterLoraTrainingJob.create({
     data: input,
@@ -823,6 +845,34 @@ export async function createMockCompletedCanonicalVersion(input: {
     });
 
     return canonicalVersion;
+  });
+
+  return serializeCanonicalVersion(version);
+}
+
+export async function createManualCanonicalVersionFromSourceImage(input: {
+  jobId: string;
+  imageArtifactId: string;
+  notes: string;
+}) {
+  const version = await db.$transaction(async (tx) => {
+    const previous = await tx.characterLoraCanonicalVersion.findFirst({
+      where: { jobId: input.jobId },
+      orderBy: { version: "desc" },
+      select: { version: true },
+    });
+
+    return tx.characterLoraCanonicalVersion.create({
+      data: {
+        jobId: input.jobId,
+        version: (previous?.version ?? 0) + 1,
+        status: "candidate",
+        sourceRunId: null,
+        imageArtifactId: input.imageArtifactId,
+        notes: input.notes,
+      },
+      select: CANONICAL_VERSION_SELECT,
+    });
   });
 
   return serializeCanonicalVersion(version);
@@ -1418,12 +1468,24 @@ export async function createCharacterLoraBenchmarkRunWithTask(input: {
     title: string;
     notes: string;
     checkpointName?: string | null;
+    checkpointMatrix: string[];
+    weightMatrix: number[];
+    loraPath: string;
     sectionLoraConfig: Prisma.InputJsonValue;
     promptBlock: {
       label: string;
       positive: string;
       negative?: string | null;
     };
+    fallbackSections: Array<{
+      name: string;
+      sortOrder?: number | null;
+      promptBlock: {
+        label: string;
+        positive: string;
+        negative?: string | null;
+      };
+    }>;
   };
 }) {
   const result = await db.$transaction(async (tx) => {
@@ -1496,64 +1558,96 @@ export async function createCharacterLoraBenchmarkRunWithTask(input: {
         folderIdMap.set(folder.id, created.id);
       }
 
+      let expandedSortOrder = 0;
       for (const [index, section] of template.sections.entries()) {
         const blocks = normalizeTemplatePromptBlocks(section.promptBlocks, input.tempProject.promptBlock);
-        await tx.projectSection.create({
-          data: {
-            projectId: project.id,
-            folderId: section.folderId ? folderIdMap.get(section.folderId) ?? null : null,
-            sortOrder: section.sortOrder ?? index,
-            enabled: true,
-            name: section.name,
-            positivePrompt: blocks.map((block) => block.positive).filter(Boolean).join("\n"),
-            negativePrompt: blocks.map((block) => block.negative).filter(Boolean).join("\n") || null,
-            aspectRatio: section.aspectRatio,
-            shortSidePx: section.shortSidePx,
-            batchSize: section.batchSize,
-            seedPolicy1: section.seedPolicy1,
-            seedPolicy2: section.seedPolicy2,
-            ksampler1: cloneJsonValueForRepository(section.ksampler1),
-            ksampler2: cloneJsonValueForRepository(section.ksampler2),
-            upscaleFactor: section.upscaleFactor,
-            checkpointName: section.checkpointName ?? input.tempProject.checkpointName ?? null,
-            loraConfig: input.tempProject.sectionLoraConfig,
-            extraParams: cloneJsonValueForRepository(section.extraParams),
-            promptBlocks: {
-              create: blocks.map((block, blockIndex) => ({
-                type: "custom",
-                label: block.label,
-                positive: block.positive,
-                negative: block.negative ?? null,
-                sortOrder: block.sortOrder ?? blockIndex,
-              })),
+        for (const matrixItem of buildBenchmarkMatrixItems(input.tempProject.checkpointMatrix, input.tempProject.weightMatrix)) {
+          const matrixMetadata = buildBenchmarkSectionMetadata({
+            benchmarkRunId: input.benchmarkRunId,
+            baseSectionIndex: index,
+            originalSectionName: section.name ?? `Section ${index + 1}`,
+            originalSortOrder: section.sortOrder ?? index,
+            matrixItem,
+          });
+          const decoratedBlocks = decorateBenchmarkPromptBlocks(blocks, matrixMetadata);
+          await tx.projectSection.create({
+            data: {
+              projectId: project.id,
+              folderId: section.folderId ? folderIdMap.get(section.folderId) ?? null : null,
+              sortOrder: expandedSortOrder,
+              enabled: true,
+              name: section.name,
+              positivePrompt: decoratedBlocks.map((block) => block.positive).filter(Boolean).join("\n"),
+              negativePrompt: decoratedBlocks.map((block) => block.negative).filter(Boolean).join("\n") || null,
+              aspectRatio: section.aspectRatio,
+              shortSidePx: section.shortSidePx,
+              batchSize: section.batchSize,
+              seedPolicy1: section.seedPolicy1,
+              seedPolicy2: section.seedPolicy2,
+              ksampler1: cloneJsonValueForRepository(section.ksampler1),
+              ksampler2: cloneJsonValueForRepository(section.ksampler2),
+              upscaleFactor: section.upscaleFactor,
+              checkpointName: matrixItem.checkpointName,
+              loraConfig: buildBenchmarkSectionLoraConfig(input.tempProject.loraPath, matrixItem.weight),
+              extraParams: buildBenchmarkExtraParams(section.extraParams, matrixMetadata),
+              promptBlocks: {
+                create: decoratedBlocks.map((block, blockIndex) => ({
+                  type: "custom",
+                  label: block.label,
+                  positive: block.positive,
+                  negative: block.negative ?? null,
+                  sortOrder: block.sortOrder ?? blockIndex,
+                })),
+              },
             },
-          },
-          select: { id: true },
-        });
+            select: { id: true },
+          });
+          expandedSortOrder += 1;
+        }
       }
     } else {
-      await tx.projectSection.create({
-        data: {
-          projectId: project.id,
-          sortOrder: 0,
-          enabled: true,
-          name: "LoRA benchmark smoke test",
-          positivePrompt: input.tempProject.promptBlock.positive,
-          negativePrompt: input.tempProject.promptBlock.negative ?? null,
-          checkpointName: input.tempProject.checkpointName ?? null,
-          loraConfig: input.tempProject.sectionLoraConfig,
-          promptBlocks: {
-            create: {
-              type: "custom",
-              label: input.tempProject.promptBlock.label,
-              positive: input.tempProject.promptBlock.positive,
-              negative: input.tempProject.promptBlock.negative ?? null,
-              sortOrder: 0,
+      if (input.tempProject.fallbackSections.length === 0) {
+        throw new Error("Benchmark fallback sections are required when no template is available.");
+      }
+
+      let expandedSortOrder = 0;
+      for (const [index, section] of input.tempProject.fallbackSections.entries()) {
+        const blocks = [{ ...section.promptBlock, sortOrder: 0 }];
+        for (const matrixItem of buildBenchmarkMatrixItems(input.tempProject.checkpointMatrix, input.tempProject.weightMatrix)) {
+          const matrixMetadata = buildBenchmarkSectionMetadata({
+            benchmarkRunId: input.benchmarkRunId,
+            baseSectionIndex: index,
+            originalSectionName: section.name,
+            originalSortOrder: section.sortOrder ?? index,
+            matrixItem,
+          });
+          const decoratedBlocks = decorateBenchmarkPromptBlocks(blocks, matrixMetadata);
+          await tx.projectSection.create({
+            data: {
+              projectId: project.id,
+              sortOrder: expandedSortOrder,
+              enabled: true,
+              name: section.name,
+              positivePrompt: decoratedBlocks.map((block) => block.positive).filter(Boolean).join("\n"),
+              negativePrompt: decoratedBlocks.map((block) => block.negative).filter(Boolean).join("\n") || null,
+              checkpointName: matrixItem.checkpointName,
+              loraConfig: buildBenchmarkSectionLoraConfig(input.tempProject.loraPath, matrixItem.weight),
+              extraParams: buildBenchmarkExtraParams(null, matrixMetadata),
+              promptBlocks: {
+                create: decoratedBlocks.map((block, blockIndex) => ({
+                  type: "custom",
+                  label: block.label,
+                  positive: block.positive,
+                  negative: block.negative ?? null,
+                  sortOrder: block.sortOrder ?? blockIndex,
+                })),
+              },
             },
-          },
-        },
-        select: { id: true },
-      });
+            select: { id: true },
+          });
+          expandedSortOrder += 1;
+        }
+      }
     }
 
     const run = await tx.characterLoraBenchmarkRun.create({
@@ -1634,6 +1728,46 @@ export async function getCharacterLoraBenchmarkRun(benchmarkRunId: string) {
   });
 
   return run ? serializeBenchmarkRun(run) : null;
+}
+
+export async function getCharacterLoraBenchmarkMatrixExpansionSummary(benchmarkRunId: string) {
+  const benchmark = await db.characterLoraBenchmarkRun.findUnique({
+    where: { id: benchmarkRunId },
+    select: {
+      testProjectId: true,
+      checkpointMatrix: true,
+      weightMatrix: true,
+    },
+  });
+  if (!benchmark?.testProjectId) {
+    return null;
+  }
+
+  const sections = await db.projectSection.findMany({
+    where: { projectId: benchmark.testProjectId },
+    orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+    select: {
+      id: true,
+      name: true,
+      sortOrder: true,
+      checkpointName: true,
+      loraConfig: true,
+      extraParams: true,
+      promptBlocks: {
+        orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+        select: {
+          label: true,
+          positive: true,
+        },
+      },
+    },
+  });
+
+  return buildBenchmarkMatrixExpansionSummary({
+    checkpointMatrix: readStringArrayFromJson(benchmark.checkpointMatrix),
+    weightMatrix: readNumberArrayFromJson(benchmark.weightMatrix),
+    sections,
+  });
 }
 
 export async function completeCharacterLoraBenchmarkRunInRepository(input: {
@@ -2783,10 +2917,18 @@ export async function failCharacterLoraWorkerTask(input: {
       return null;
     }
 
+    const shouldMarkTrainingCancelled =
+      task.targetType === "trainingRun" &&
+      (input.errorSummary.toLowerCase().includes("cancel") ||
+        hasCancelRequested(task.progressJson) ||
+        hasCancelRequested(input.progressJson));
+    const terminalStatus = shouldMarkTrainingCancelled ? CharacterLoraRunStatus.cancelled : CharacterLoraRunStatus.failed;
+    const terminalJobStatus = shouldMarkTrainingCancelled ? CharacterLoraJobStatus.cancelled : CharacterLoraJobStatus.failed;
+
     await tx.characterLoraWorkerTask.update({
       where: { id: input.taskId },
       data: {
-        status: CharacterLoraRunStatus.failed,
+        status: terminalStatus,
         leaseExpiresAt: null,
         heartbeatAt: new Date(),
         finishedAt: new Date(),
@@ -2821,7 +2963,7 @@ export async function failCharacterLoraWorkerTask(input: {
       const run = await tx.characterLoraTrainingRun.update({
         where: { id: task.targetId },
         data: {
-          status: CharacterLoraRunStatus.failed,
+          status: terminalStatus,
           finishedAt: new Date(),
           lossSnapshot: input.progressJson ?? task.progressJson ?? Prisma.DbNull,
         },
@@ -2831,7 +2973,7 @@ export async function failCharacterLoraWorkerTask(input: {
       await tx.characterLoraTrainingJob.update({
         where: { id: run.jobId },
         data: {
-          status: CharacterLoraJobStatus.failed,
+          status: terminalJobStatus,
           failureSummary: input.errorSummary,
         },
         select: { id: true },
@@ -3269,6 +3411,222 @@ function cloneJsonValueForRepository(value: unknown) {
     : JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
 }
 
+function buildBenchmarkMatrixItems(checkpointMatrix: string[], weightMatrix: number[]) {
+  return checkpointMatrix.flatMap((checkpointName, checkpointIndex) =>
+    weightMatrix.map((weight, weightIndex) => ({
+      checkpointName,
+      checkpointIndex,
+      weight: roundBenchmarkWeight(weight),
+      weightIndex,
+      matrixIndex: checkpointIndex * weightMatrix.length + weightIndex,
+    })),
+  );
+}
+
+function buildBenchmarkSectionMetadata(input: {
+  benchmarkRunId: string;
+  baseSectionIndex: number;
+  originalSectionName: string;
+  originalSortOrder: number;
+  matrixItem: ReturnType<typeof buildBenchmarkMatrixItems>[number];
+}) {
+  return {
+    benchmarkRunId: input.benchmarkRunId,
+    originalSectionName: input.originalSectionName,
+    originalSortOrder: input.originalSortOrder,
+    baseSectionIndex: input.baseSectionIndex,
+    checkpointName: input.matrixItem.checkpointName,
+    checkpointIndex: input.matrixItem.checkpointIndex,
+    weight: input.matrixItem.weight,
+    weightIndex: input.matrixItem.weightIndex,
+    matrixIndex: input.matrixItem.matrixIndex,
+  };
+}
+
+function decorateBenchmarkPromptBlocks<T extends { label: string; positive: string; negative?: string | null; sortOrder?: number | null }>(
+  blocks: T[],
+  metadata: ReturnType<typeof buildBenchmarkSectionMetadata>,
+) {
+  const matrixLabel = [
+    `section=${metadata.originalSectionName}`,
+    `checkpoint=${shortCheckpointName(metadata.checkpointName)}`,
+    `weight=${formatBenchmarkWeight(metadata.weight)}`,
+  ].join(" | ");
+
+  return blocks.map((block) => ({
+    ...block,
+    label: `${block.label} [${matrixLabel}]`,
+  }));
+}
+
+function buildBenchmarkExtraParams(
+  value: unknown,
+  metadata: ReturnType<typeof buildBenchmarkSectionMetadata>,
+) {
+  const base = readJsonRecord(value);
+  return toInputJsonValue({
+    ...base,
+    characterLoraBenchmark: metadata,
+  });
+}
+
+function buildBenchmarkSectionLoraConfig(loraPath: string, weight: number) {
+  return toInputJsonValue({
+    lora1: [makeBenchmarkSectionLoraEntry(loraPath, weight, "lora1")],
+    lora2: [makeBenchmarkSectionLoraEntry(loraPath, weight, "lora2")],
+  });
+}
+
+function makeBenchmarkSectionLoraEntry(pathValue: string, weight: number, suffix: string) {
+  return {
+    id: `lora-${randomUUID()}`,
+    path: pathValue,
+    weight: roundBenchmarkWeight(weight),
+    enabled: true,
+    source: "preset",
+    sourceLabel: "Character LoRA",
+    sourceColor: "78 50% 55%",
+    sourceName: "Character LoRA benchmark",
+    bindingId: `bind-${suffix}-${randomUUID()}`,
+  };
+}
+
+function buildBenchmarkMatrixExpansionSummary(input: {
+  checkpointMatrix: string[];
+  weightMatrix: number[];
+  sections: Array<{
+    id: string;
+    name: string | null;
+    sortOrder: number;
+    checkpointName: string | null;
+    loraConfig: unknown;
+    extraParams: unknown;
+    promptBlocks: Array<{
+      label: string | null;
+      positive: string;
+    }>;
+  }>;
+}) {
+  const sections = input.sections.map((section) => {
+    const metadata = readBenchmarkMetadata(section.extraParams);
+    const checkpointName = metadata?.checkpointName ?? section.checkpointName ?? null;
+    const weight = metadata?.weight ?? readLoraWeight(section.loraConfig);
+    return {
+      projectSectionId: section.id,
+      sectionName: section.name,
+      sortOrder: section.sortOrder,
+      originalSectionName: metadata?.originalSectionName ?? section.name,
+      baseSectionIndex: metadata?.baseSectionIndex ?? null,
+      originalSortOrder: metadata?.originalSortOrder ?? null,
+      checkpointName,
+      checkpointIndex: metadata?.checkpointIndex ?? inferStringIndex(input.checkpointMatrix, checkpointName),
+      weight,
+      weightIndex: metadata?.weightIndex ?? inferNumberIndex(input.weightMatrix, weight),
+      matrixIndex: metadata?.matrixIndex ?? null,
+      promptBlockLabels: section.promptBlocks
+        .map((block) => block.label)
+        .filter((label): label is string => Boolean(label)),
+    };
+  });
+  const baseKeys = new Set(
+    sections.map((section) =>
+      section.baseSectionIndex !== null
+        ? `index:${section.baseSectionIndex}`
+        : `name:${section.originalSectionName ?? section.sectionName ?? section.sortOrder}`,
+    ),
+  );
+  const matrixSize = Math.max(1, input.checkpointMatrix.length * input.weightMatrix.length);
+  const baseSectionCount = baseKeys.size > 0 ? baseKeys.size : Math.floor(sections.length / matrixSize);
+
+  return {
+    expectedSectionCount: baseSectionCount * input.checkpointMatrix.length * input.weightMatrix.length,
+    actualSectionCount: sections.length,
+    baseSectionCount,
+    checkpointMatrix: input.checkpointMatrix,
+    weightMatrix: input.weightMatrix,
+    sections,
+  };
+}
+
+function readBenchmarkMetadata(value: unknown) {
+  const metadata = readJsonRecord(readJsonRecord(value).characterLoraBenchmark);
+  const originalSectionName = typeof metadata.originalSectionName === "string" ? metadata.originalSectionName : null;
+  const checkpointName = typeof metadata.checkpointName === "string" ? metadata.checkpointName : null;
+  const weight = typeof metadata.weight === "number" ? metadata.weight : null;
+  if (!originalSectionName && !checkpointName && weight === null) {
+    return null;
+  }
+
+  return {
+    originalSectionName,
+    originalSortOrder: typeof metadata.originalSortOrder === "number" ? metadata.originalSortOrder : null,
+    baseSectionIndex: typeof metadata.baseSectionIndex === "number" ? metadata.baseSectionIndex : null,
+    checkpointName,
+    checkpointIndex: typeof metadata.checkpointIndex === "number" ? metadata.checkpointIndex : null,
+    weight,
+    weightIndex: typeof metadata.weightIndex === "number" ? metadata.weightIndex : null,
+    matrixIndex: typeof metadata.matrixIndex === "number" ? metadata.matrixIndex : null,
+  };
+}
+
+function readLoraWeight(value: unknown) {
+  const record = readJsonRecord(value);
+  for (const key of ["lora1", "lora2"] as const) {
+    const entries = record[key];
+    if (!Array.isArray(entries)) continue;
+    for (const entry of entries) {
+      const weight = readJsonRecord(entry).weight;
+      if (typeof weight === "number" && weight > 0) {
+        return roundBenchmarkWeight(weight);
+      }
+    }
+  }
+  return null;
+}
+
+function readStringArrayFromJson(value: unknown) {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string" && Boolean(item.trim())).map((item) => item.trim())
+    : [];
+}
+
+function readNumberArrayFromJson(value: unknown) {
+  return Array.isArray(value)
+    ? value.filter((item): item is number => typeof item === "number" && Number.isFinite(item) && item > 0)
+      .map(roundBenchmarkWeight)
+    : [];
+}
+
+function readJsonRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? JSON.parse(JSON.stringify(value)) as Record<string, unknown>
+    : {};
+}
+
+function inferStringIndex(values: string[], value: string | null) {
+  if (!value) return null;
+  const index = values.indexOf(value);
+  return index >= 0 ? index : null;
+}
+
+function inferNumberIndex(values: number[], value: number | null) {
+  if (value === null) return null;
+  const index = values.findIndex((candidate) => roundBenchmarkWeight(candidate) === roundBenchmarkWeight(value));
+  return index >= 0 ? index : null;
+}
+
+function shortCheckpointName(checkpointName: string) {
+  return checkpointName.split(/[\\/]/).pop() ?? checkpointName;
+}
+
+function formatBenchmarkWeight(value: number) {
+  return String(roundBenchmarkWeight(value));
+}
+
+function roundBenchmarkWeight(value: number) {
+  return Math.round(value * 1000) / 1000;
+}
+
 function normalizeTemplatePromptBlocks(
   value: unknown,
   fallback: { label: string; positive: string; negative?: string | null },
@@ -3701,6 +4059,14 @@ function extractTrainingProgressUpdate(progressJson: Prisma.InputJsonValue | und
       currentCheckpoint: typeof currentCheckpoint === "string" ? currentCheckpoint : null,
     }),
   };
+}
+
+function hasCancelRequested(value: Prisma.JsonValue | Prisma.InputJsonValue | undefined) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+
+  return (value as Record<string, unknown>).cancelRequested === true;
 }
 
 function extractCompletionStep(output: CharacterLoraTrainingCompleteOutput) {

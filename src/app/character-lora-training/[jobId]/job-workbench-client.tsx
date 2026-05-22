@@ -41,7 +41,9 @@ import {
   mockCompleteCharacterLoraBenchmarkRun,
   mockCompleteCharacterLoraCanonicalGenerationRun,
   persistCharacterLoraJobReport,
+  promoteCharacterLoraSectionInstructionToPromptCardVersion,
   promoteCharacterLoraPreset,
+  registerManualCharacterLoraCanonicalVersion,
   reviewCharacterLoraImages,
   selectCharacterLoraCanonicalVersion,
   updateCharacterLoraImageCaption,
@@ -76,6 +78,9 @@ type Props = {
   report: CharacterLoraJobReport;
   gpuLock: CharacterLoraGpuLock;
 };
+
+const DEFAULT_BENCHMARK_WEIGHT_MATRIX = [0.65, 0.85, 1] as const;
+const DEFAULT_BENCHMARK_WEIGHT_MATRIX_TEXT = DEFAULT_BENCHMARK_WEIGHT_MATRIX.join(",");
 
 const STATUS_LABEL: Record<string, string> = {
   draft: "草稿",
@@ -235,7 +240,7 @@ function parseWeights(value: string) {
   if (weights.some((item) => !Number.isFinite(item) || item <= 0)) {
     throw new Error("权重矩阵必须是正数");
   }
-  return weights.length > 0 ? weights : [1];
+  return weights.length > 0 ? weights : [...DEFAULT_BENCHMARK_WEIGHT_MATRIX];
 }
 
 function readOptionalNumber(
@@ -405,7 +410,7 @@ function buildPostTrainingBenchmarkConfig(formData: FormData) {
   return {
     enabled: true,
     checkpointMatrix: parseCsv(String(formData.get("postTrainingBenchmarkCheckpointMatrix") ?? "")),
-    weightMatrix: parseWeights(String(formData.get("postTrainingBenchmarkWeightMatrix") ?? "1")),
+    weightMatrix: parseWeights(String(formData.get("postTrainingBenchmarkWeightMatrix") ?? DEFAULT_BENCHMARK_WEIGHT_MATRIX_TEXT)),
     templateId: readOptionalString(formData, "postTrainingBenchmarkTemplateId"),
     registerLoraAsset: formData.get("postTrainingBenchmarkRegisterLoraAsset") === "on",
     copyToCharacterDir: formData.get("postTrainingBenchmarkCopyToCharacterDir") === "on",
@@ -476,6 +481,9 @@ export function JobWorkbenchClient({
   const [canonicalProvider, setCanonicalProvider] = useState<ImageProvider>("mock-local");
   const [canonicalVisualPrompt, setCanonicalVisualPrompt] = useState("");
   const [canonicalSourceImageIds, setCanonicalSourceImageIds] = useState<string[]>(() => sourceImages.map((image) => image.id));
+  const [manualCanonicalSourceImageId, setManualCanonicalSourceImageId] = useState(
+    () => sourceImages.find((image) => image.role === "manual_canonical")?.id ?? "",
+  );
   const [canonicalSize, setCanonicalSize] = useState("1024x1536");
   const [canonicalQuality, setCanonicalQuality] = useState("high");
   const [sectionProvider, setSectionProvider] = useState<ImageProvider>("mock-local");
@@ -490,7 +498,15 @@ export function JobWorkbenchClient({
   const [promotionDecisionStatus, setPromotionDecisionStatus] = useState<PromotionDecisionStatus>("approved");
 
   const canonicalVersions = report.canonicalVersions;
+  const manualCanonicalSourceImages = useMemo(
+    () => sourceImages.filter((image) => image.role === "manual_canonical"),
+    [sourceImages],
+  );
+  const selectedManualCanonicalSourceImageId = manualCanonicalSourceImages.some((image) => image.id === manualCanonicalSourceImageId)
+    ? manualCanonicalSourceImageId
+    : manualCanonicalSourceImages[0]?.id ?? "";
   const currentPrompt = promptCards.find((card) => card.id === job.currentPromptCardVersionId) ?? promptCards[0] ?? null;
+  const canPromoteSectionInstruction = Boolean(sectionUserInstruction.trim() && currentPrompt);
   const latestFrozenRevision = datasetRevisions.find((revision) => revision.status === "frozen") ?? datasetRevisions[0] ?? null;
   const latestDoneTraining = trainingRuns.find((run) => run.status === "done" && run.finalSafetensorsArtifactId) ?? null;
   const pendingCanonicalRunId = latestCanonicalRunId.trim();
@@ -595,6 +611,22 @@ export function JobWorkbenchClient({
     });
   }
 
+  function handleManualCanonicalRegister(formData: FormData) {
+    const sourceImageId = readOptionalString(formData, "sourceImageId");
+    if (!sourceImageId) {
+      toast.error("缺少 manual_canonical source image");
+      return;
+    }
+
+    runAction("canonical.manual", "Manual canonical 已注册", async () => {
+      const version = await registerManualCharacterLoraCanonicalVersion(job.id, {
+        sourceImageId,
+        notes: readOptionalString(formData, "notes") ?? null,
+      });
+      setCanonicalVersionId(version.id);
+    });
+  }
+
   function handleCanonicalSelect(formData: FormData) {
     const versionId = readOptionalString(formData, "versionId") ?? canonicalVersionId.trim();
     if (!versionId) {
@@ -639,6 +671,26 @@ export function JobWorkbenchClient({
         parentRunId: parentRunId || undefined,
         sourceImageIds: sourceImageIds.length > 0 ? sourceImageIds : undefined,
         toolParams: buildImageToolParams(sectionSize, sectionQuality),
+      });
+    });
+  }
+
+  function handlePromoteSectionInstructionToPromptCard() {
+    const sectionInstruction = sectionUserInstruction.trim();
+
+    if (!sectionInstruction) {
+      toast.error("先填写 section userInstruction");
+      return;
+    }
+
+    if (!currentPrompt) {
+      toast.error("缺少当前 Prompt Card");
+      return;
+    }
+
+    runAction("section.promote-prompt-card", "全局 Prompt Card 修正已创建", async () => {
+      await promoteCharacterLoraSectionInstructionToPromptCardVersion(job.id, {
+        sectionUserInstruction: sectionInstruction,
       });
     });
   }
@@ -739,7 +791,8 @@ export function JobWorkbenchClient({
     runAction("benchmark.enqueue", "Benchmark 已入队", async () => {
       await enqueueCharacterLoraBenchmarkRun(trainingRunId, {
         checkpointMatrix: parseCsv(String(formData.get("checkpointMatrix") ?? "")),
-        weightMatrix: parseWeights(String(formData.get("weightMatrix") ?? "1")),
+        weightMatrix: parseWeights(String(formData.get("weightMatrix") ?? DEFAULT_BENCHMARK_WEIGHT_MATRIX_TEXT)),
+        copyToCharacterDir: formData.get("copyToCharacterDir") === "on",
         dryRun: formData.get("dryRun") === "on",
         skipQueue: formData.get("skipQueue") === "on",
         queuePolicy: String(formData.get("queuePolicy") ?? "queue_when_busy"),
@@ -910,7 +963,7 @@ export function JobWorkbenchClient({
       </SectionCard>
 
       <SectionCard title="Canonical" subtitle="生成、模拟完成和选择标准图版本。">
-        <div className="grid gap-3 lg:grid-cols-3">
+        <div className="grid gap-3 lg:grid-cols-4">
           <div className="grid gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-3">
             <div className="grid gap-2 sm:grid-cols-3">
               <label className="grid gap-1 text-xs text-zinc-400">
@@ -952,6 +1005,27 @@ export function JobWorkbenchClient({
             />
             <p className="mt-2 truncate font-mono text-[11px] text-zinc-500">最近 run: {pendingCanonicalRunId || "-"}</p>
           </div>
+          <form action={handleManualCanonicalRegister} className="grid gap-2 rounded-lg border border-white/10 bg-white/[0.03] p-3">
+            <div className="text-xs font-medium text-zinc-200">Manual canonical</div>
+            <select
+              name="sourceImageId"
+              value={selectedManualCanonicalSourceImageId}
+              onChange={(event) => setManualCanonicalSourceImageId(event.target.value)}
+              className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white"
+            >
+              <option value="">选择 manual_canonical</option>
+              {manualCanonicalSourceImages.map((image) => (
+                <option key={image.id} value={image.id}>{image.role} / {compactId(image.id)}</option>
+              ))}
+            </select>
+            <textarea
+              name="notes"
+              placeholder="可选备注，会写入 canonical notes"
+              className="min-h-20 rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white placeholder:text-zinc-600"
+            />
+            <p className="text-[11px] text-zinc-500">只注册新版本，不自动设为当前。</p>
+            <ActionButton icon={Upload} label="注册版本" loading={isBusy("canonical.manual")} disabled={isPending || !selectedManualCanonicalSourceImageId} />
+          </form>
           <form action={handleCanonicalMockComplete} className="grid gap-2 rounded-lg border border-white/10 bg-white/[0.03] p-3">
             <input name="runId" defaultValue={pendingCanonicalRunId} placeholder="generation run id" className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 font-mono text-xs text-white" />
             <select name="sourceImageId" className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white">
@@ -1052,7 +1126,9 @@ export function JobWorkbenchClient({
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <div className="text-xs font-medium text-zinc-200">下一次入队设置</div>
-              <div className="mt-0.5 text-[11px] text-zinc-500">只影响下面 section 的下一次入队，不会修改全局 Prompt Card。</div>
+              <div className="mt-0.5 text-[11px] text-zinc-500">
+                默认只影响下面 section 的下一次入队；提升为全局修正会新建 Prompt Card version。
+              </div>
             </div>
             <span className="rounded-md border border-sky-400/20 bg-sky-500/10 px-2 py-1 text-[11px] text-sky-200">
               {sectionProvider}
@@ -1081,6 +1157,19 @@ export function JobWorkbenchClient({
               className="min-h-20 rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white placeholder:text-zinc-600"
             />
           </label>
+          <div className="flex flex-wrap items-center gap-2">
+            <ActionButton
+              type="button"
+              icon={FileText}
+              label="提升为全局 Prompt Card 修正"
+              loading={isBusy("section.promote-prompt-card")}
+              disabled={isPending || !canPromoteSectionInstruction}
+              onClick={handlePromoteSectionInstructionToPromptCard}
+            />
+            <span className="text-[11px] text-zinc-500">
+              只创建新 Prompt Card version，只影响之后新生成 run，不会改已有 run/dataset。
+            </span>
+          </div>
           <SourceReferencePicker
             images={sourceImages}
             selectedIds={sectionSourceImageIds}
@@ -1097,10 +1186,32 @@ export function JobWorkbenchClient({
               {sections.map((section) => {
                 const sectionRuns = generationRunsBySectionId.get(section.id) ?? [];
                 const parentRunId = sectionParentRunIds[section.id] ?? "";
+                const staleCanonical =
+                  Boolean(job.currentCanonicalVersionId && section.canonicalVersionId) &&
+                  section.canonicalVersionId !== job.currentCanonicalVersionId;
+                const stalePromptCard =
+                  Boolean(job.currentPromptCardVersionId && section.promptCardVersionId) &&
+                  section.promptCardVersionId !== job.currentPromptCardVersionId;
 
                 return (
                   <div key={section.id} className="grid gap-2 px-3 py-2 text-xs text-zinc-300 md:grid-cols-[1.1fr_0.7fr_1fr_1.15fr_auto] md:items-center">
-                    <span className="min-w-0 truncate font-medium text-white">{section.name}</span>
+                    <span className="min-w-0">
+                      <span className="block truncate font-medium text-white">{section.name}</span>
+                      {(staleCanonical || stalePromptCard) ? (
+                        <span className="mt-1 flex flex-wrap gap-1">
+                          {staleCanonical ? (
+                            <span className="rounded border border-amber-400/30 bg-amber-400/10 px-1.5 py-0.5 text-[10px] text-amber-200">
+                              old canonical
+                            </span>
+                          ) : null}
+                          {stalePromptCard ? (
+                            <span className="rounded border border-sky-400/30 bg-sky-400/10 px-1.5 py-0.5 text-[10px] text-sky-200">
+                              old prompt card
+                            </span>
+                          ) : null}
+                        </span>
+                      ) : null}
+                    </span>
                     <span>{STATUS_LABEL[section.status] ?? section.status}</span>
                     <span className="text-zinc-500">keep {section.keepCount} / reject {section.rejectCount} / pending {section.pendingCount}</span>
                     <label className="grid gap-1 text-[11px] text-zinc-500">
@@ -1210,7 +1321,27 @@ export function JobWorkbenchClient({
         </form>
         <CompactList
           empty="暂无 dataset revision"
-          items={datasetRevisions.map((revision) => `v${revision.version} / ${revision.status} / item ${revision.itemCount} / ${compactId(revision.id)}`)}
+          items={datasetRevisions.map((revision) => {
+            const lineage = [
+              job.currentCanonicalVersionId &&
+              revision.canonicalVersionId &&
+              revision.canonicalVersionId !== job.currentCanonicalVersionId
+                ? "old canonical"
+                : null,
+              job.currentPromptCardVersionId &&
+              revision.promptCardVersionId &&
+              revision.promptCardVersionId !== job.currentPromptCardVersionId
+                ? "old prompt card"
+                : null,
+            ].filter(Boolean);
+            return [
+              `v${revision.version}`,
+              revision.status,
+              `item ${revision.itemCount}`,
+              compactId(revision.id),
+              ...lineage,
+            ].join(" / ");
+          })}
         />
       </SectionCard>
 
@@ -1259,7 +1390,7 @@ export function JobWorkbenchClient({
               </label>
               <label className="grid gap-1 text-xs text-zinc-400">
                 Weights
-                <input name="postTrainingBenchmarkWeightMatrix" defaultValue="0.7,1" className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white" />
+                <input name="postTrainingBenchmarkWeightMatrix" defaultValue={DEFAULT_BENCHMARK_WEIGHT_MATRIX_TEXT} className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white" />
               </label>
               <label className="grid gap-1 text-xs text-zinc-400">
                 Queue policy
@@ -1282,7 +1413,7 @@ export function JobWorkbenchClient({
                 register asset
               </label>
               <label className="flex items-center gap-2 text-xs text-zinc-300">
-                <input name="postTrainingBenchmarkCopyToCharacterDir" type="checkbox" className="size-3.5 accent-emerald-400" />
+                <input name="postTrainingBenchmarkCopyToCharacterDir" type="checkbox" defaultChecked className="size-3.5 accent-emerald-400" />
                 copy file
               </label>
               <label className="flex items-center gap-2 text-xs text-zinc-300">
@@ -1406,7 +1537,7 @@ export function JobWorkbenchClient({
       </SectionCard>
 
       <SectionCard title="Benchmark / Promotion" subtitle="训练完成后做基准测试、创建发布决策并发布到预设。">
-        <form action={handleBenchmarkEnqueue} className="grid gap-2 rounded-lg border border-white/10 bg-white/[0.03] p-3 lg:grid-cols-[1fr_1fr_100px_120px_auto_auto]">
+        <form action={handleBenchmarkEnqueue} className="grid gap-2 rounded-lg border border-white/10 bg-white/[0.03] p-3 lg:grid-cols-[1fr_1fr_120px_120px_auto_auto_auto]">
           <select name="trainingRunId" defaultValue={latestDoneTraining?.id ?? ""} className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white">
             <option value="">选择 done training</option>
             {trainingRuns.map((run) => (
@@ -1414,12 +1545,16 @@ export function JobWorkbenchClient({
             ))}
           </select>
           <input name="checkpointMatrix" defaultValue={job.baseCheckpointName ?? "default"} className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white" />
-          <input name="weightMatrix" defaultValue="0.7,1" className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white" />
+          <input name="weightMatrix" defaultValue={DEFAULT_BENCHMARK_WEIGHT_MATRIX_TEXT} className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white" />
           <select name="queuePolicy" defaultValue="queue_when_busy" className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white">
             <option value="queue_when_busy">queue busy</option>
             <option value="reject_when_busy">reject busy</option>
             <option value="ignore_busy">ignore busy</option>
           </select>
+          <label className="flex items-center gap-2 text-xs text-zinc-300">
+            <input name="copyToCharacterDir" type="checkbox" defaultChecked className="size-3.5 accent-emerald-400" />
+            copy file
+          </label>
           <label className="flex items-center gap-2 text-xs text-zinc-300">
             <input name="dryRun" type="checkbox" className="size-3.5 accent-sky-400" />
             dryRun
@@ -1428,7 +1563,7 @@ export function JobWorkbenchClient({
             <input name="skipQueue" type="checkbox" className="size-3.5 accent-sky-400" />
             skipQueue
           </label>
-          <div className="lg:col-span-6">
+          <div className="lg:col-span-7">
             <ActionButton icon={Send} label="入队 Benchmark" loading={isBusy("benchmark.enqueue")} disabled={isPending || !latestDoneTraining} />
           </div>
         </form>

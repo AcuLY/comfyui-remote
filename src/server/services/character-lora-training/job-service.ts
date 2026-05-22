@@ -1,8 +1,10 @@
+import { basename } from "node:path";
 import { Prisma } from "@/generated/prisma";
 import { CharacterLoraJobStatus } from "@/generated/prisma/enums";
 import {
   createCharacterLoraJobArtifact,
   createCharacterLoraTrainingJob as createJobInRepository,
+  findActiveCharacterLoraTrainingJobByTriggerToken,
   findCharacterLoraTrainingJobBySlug,
   getCharacterLoraTrainingJob as getJobFromRepository,
   listCharacterLoraTrainingJobs as listJobsFromRepository,
@@ -29,9 +31,9 @@ const createJobSchema = z
     triggerToken: z.string().trim().min(1),
     trainingScope: trainingScopeSchema,
     baseCheckpointName: nullableTrimmedStringSchema(),
-    baseCheckpointPath: nullableTrimmedStringSchema(),
-    baseCheckpointHash: nullableTrimmedStringSchema(),
-    baseFamily: nullableTrimmedStringSchema(),
+    baseCheckpointPath: requiredTrimmedStringSchema("baseCheckpointPath is required"),
+    baseCheckpointHash: requiredTrimmedStringSchema("baseCheckpointHash is required"),
+    baseFamily: requiredTrimmedStringSchema("baseFamily is required"),
     captionStrategy: z.string().trim().min(1).default(DEFAULT_CAPTION_STRATEGY),
     phase: nullableTrimmedStringSchema(),
     createdBy: nullableTrimmedStringSchema(),
@@ -98,8 +100,11 @@ export async function getCharacterLoraTrainingJob(jobId: string) {
 
 export async function createCharacterLoraTrainingJob(input: unknown) {
   const parsed = parseWithSchema(createJobSchema, input);
+  await assertTriggerTokenAvailable(parsed.triggerToken);
+
   const slug = await generateUniqueJobSlug(parsed.characterName, parsed.triggerToken);
   const artifactRoot = await ensureCharacterLoraJobRoot(slug);
+  const baseCheckpointName = parsed.baseCheckpointName ?? deriveBaseCheckpointName(parsed.baseCheckpointPath);
 
   const job = await createJobInRepository({
     slug,
@@ -109,7 +114,7 @@ export async function createCharacterLoraTrainingJob(input: unknown) {
     phase: parsed.phase,
     trainingScope: toInputJsonValue(parsed.trainingScope),
     captionStrategy: parsed.captionStrategy,
-    baseCheckpointName: parsed.baseCheckpointName,
+    baseCheckpointName,
     baseCheckpointPath: parsed.baseCheckpointPath,
     baseCheckpointHash: parsed.baseCheckpointHash,
     baseFamily: parsed.baseFamily,
@@ -117,7 +122,7 @@ export async function createCharacterLoraTrainingJob(input: unknown) {
     createdBy: parsed.createdBy,
   });
 
-  await writeInitialJobArtifact(job, parsed);
+  await writeInitialJobArtifact(job, { ...parsed, baseCheckpointName });
 
   return job;
 }
@@ -142,9 +147,15 @@ export async function updateCharacterLoraTrainingJob(jobId: string, input: unkno
     });
   }
 
+  const normalized = normalizeUpdateJobInput(parsed, current);
+
+  if (normalized.triggerToken) {
+    await assertTriggerTokenAvailable(normalized.triggerToken, { excludeJobId: id });
+  }
+
   return updateJobInRepository(id, {
-    ...parsed,
-    trainingScope: parsed.trainingScope ? toInputJsonValue(parsed.trainingScope) : undefined,
+    ...normalized,
+    trainingScope: normalized.trainingScope ? toInputJsonValue(normalized.trainingScope) : undefined,
   });
 }
 
@@ -285,8 +296,98 @@ function nullableTrimmedStringSchema() {
     .optional();
 }
 
+function requiredTrimmedStringSchema(message: string) {
+  return z.string().trim().min(1, message);
+}
+
 function toInputJsonValue(value: unknown) {
   return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
+}
+
+async function assertTriggerTokenAvailable(triggerToken: string, options: { excludeJobId?: string } = {}) {
+  const existing = await findActiveCharacterLoraTrainingJobByTriggerToken({
+    triggerToken,
+    excludeJobId: options.excludeJobId,
+  });
+
+  if (!existing) {
+    return;
+  }
+
+  throw new CharacterLoraTrainingJobServiceError(
+    `triggerToken "${triggerToken}" is already used by active character LoRA job "${existing.characterName}"`,
+    409,
+    {
+      triggerToken,
+      existingJobId: existing.id,
+      existingSlug: existing.slug,
+      existingStatus: existing.status,
+    },
+  );
+}
+
+function normalizeUpdateJobInput(
+  parsed: z.infer<typeof updateJobSchema>,
+  current: CharacterLoraTrainingJobSummary,
+) {
+  const normalized = { ...parsed };
+
+  if (!hasAnyOwn(parsed, ["baseCheckpointName", "baseCheckpointPath", "baseCheckpointHash", "baseFamily"])) {
+    return normalized;
+  }
+
+  const baseCheckpoint = {
+    baseCheckpointPath: hasOwn(parsed, "baseCheckpointPath")
+      ? parsed.baseCheckpointPath
+      : current.baseCheckpointPath,
+    baseCheckpointHash: hasOwn(parsed, "baseCheckpointHash")
+      ? parsed.baseCheckpointHash
+      : current.baseCheckpointHash,
+    baseFamily: hasOwn(parsed, "baseFamily") ? parsed.baseFamily : current.baseFamily,
+  };
+
+  assertCompleteBaseCheckpoint(baseCheckpoint);
+
+  if (parsed.baseCheckpointName === null || (parsed.baseCheckpointName === undefined && !current.baseCheckpointName)) {
+    normalized.baseCheckpointName = deriveBaseCheckpointName(baseCheckpoint.baseCheckpointPath);
+  }
+
+  return normalized;
+}
+
+function assertCompleteBaseCheckpoint(input: {
+  baseCheckpointPath: string | null | undefined;
+  baseCheckpointHash: string | null | undefined;
+  baseFamily: string | null | undefined;
+}): asserts input is { baseCheckpointPath: string; baseCheckpointHash: string; baseFamily: string } {
+  const missingFields = [
+    input.baseCheckpointPath ? null : "baseCheckpointPath",
+    input.baseCheckpointHash ? null : "baseCheckpointHash",
+    input.baseFamily ? null : "baseFamily",
+  ].filter((field): field is string => Boolean(field));
+
+  if (missingFields.length === 0) {
+    return;
+  }
+
+  throw new CharacterLoraTrainingJobServiceError(
+    "baseCheckpointPath, baseCheckpointHash and baseFamily are required for character LoRA jobs",
+    400,
+    { missingFields },
+  );
+}
+
+function hasAnyOwn(value: object, keys: string[]) {
+  return keys.some((key) => hasOwn(value, key));
+}
+
+function hasOwn(value: object, key: string) {
+  return Object.prototype.hasOwnProperty.call(value, key);
+}
+
+function deriveBaseCheckpointName(baseCheckpointPath: string) {
+  const checkpointName = basename(baseCheckpointPath.replace(/\\/g, "/"));
+  return checkpointName || baseCheckpointPath;
 }
 
 function slugify(value: string) {

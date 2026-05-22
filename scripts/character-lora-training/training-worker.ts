@@ -1,5 +1,5 @@
-import { spawn } from "node:child_process";
-import { readdir, readFile, stat, writeFile } from "node:fs/promises";
+import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import { open, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 
@@ -40,7 +40,7 @@ Options:
   --lease-seconds <sec>  Lease/heartbeat extension. Default: 300.
   --worker-owner <name>  Lease owner. Default: character-lora-training-worker.
   --dry-run              Write a log and validate inputs without launching training.
-  --mock-complete        With --dry-run only, write dummy .safetensors and complete the task.
+  --mock-complete        With --dry-run only, write valid mock .safetensors and complete the task.
 
 Training command:
   CHARACTER_LORA_TRAINING_COMMAND is executed by the platform shell.
@@ -60,8 +60,26 @@ type TrainingContext = {
   outputDir: string;
   logRelativePath: string;
   logAbsolutePath: string;
+  cancelSignalRelativePath: string;
   cancelSignalPath: string;
 };
+
+type JsonObject = Record<string, unknown>;
+
+type SafetensorsHeaderSummary = {
+  readable: boolean;
+  keyCount: number;
+  tensorKeyPreview: string[];
+  metadataKeyCount: number;
+  metadataPreview: JsonObject;
+  headerLengthBytes?: number;
+  fileSizeBytes?: number;
+  error?: string;
+};
+
+const CANCEL_SIGNAL_POLL_MS = 1_000;
+const CANCEL_TERMINATION_GRACE_MS = 15_000;
+const MAX_SAFETENSORS_HEADER_BYTES = 64 * 1024 * 1024;
 
 main().catch((error) => {
   console.error("[character-lora training-worker] failed");
@@ -185,12 +203,18 @@ async function runTrainingTask(input: {
       await writeBufferArtifact(
         context.jobRoot,
         `${input.payload.outputDir}/mock-final.safetensors`,
-        Buffer.from(`mock safetensors for ${input.payload.trainingRunId}\n`, "utf8"),
+        createMockSafetensors({
+          trainingRunId: input.payload.trainingRunId,
+          role: "final",
+        }),
       );
       await writeBufferArtifact(
         context.jobRoot,
         `${input.payload.outputDir}/checkpoint-step-0001.safetensors`,
-        Buffer.from(`mock checkpoint for ${input.payload.trainingRunId}\n`, "utf8"),
+        createMockSafetensors({
+          trainingRunId: input.payload.trainingRunId,
+          role: "checkpoint",
+        }),
       );
     } else {
       const command = envValue("CHARACTER_LORA_TRAINING_COMMAND");
@@ -198,6 +222,16 @@ async function runTrainingTask(input: {
         throw new Error("CHARACTER_LORA_TRAINING_COMMAND is required unless --dry-run is used");
       }
       await runTrainingCommand(command, context, input.payload);
+      if (await fileExists(context.cancelSignalPath)) {
+        await appendLog(
+          context.logAbsolutePath,
+          Buffer.from(
+            `[${new Date().toISOString()}] cancel signal found after training command exit; refusing to register success\n`,
+            "utf8",
+          ),
+        );
+        throw new TrainingCancelledError(context.cancelSignalRelativePath);
+      }
     }
 
     const output = await buildCompleteOutput(context, input.payload, startedAt);
@@ -212,9 +246,18 @@ async function runTrainingTask(input: {
       final: output.finalSafetensorsArtifact.relativePath,
     });
   } catch (error) {
+    const isCancelled = error instanceof TrainingCancelledError;
     await input.client.failTask(input.taskId, {
       leaseOwner: input.leaseOwner,
       errorSummary: toErrorMessage(error),
+      ...(isCancelled
+        ? {
+            providerError: {
+              backendError: toErrorMessage(error),
+              retryable: false,
+            },
+          }
+        : {}),
     });
     console.error("[character-lora training-worker] failed task", {
       taskId: input.taskId,
@@ -249,6 +292,7 @@ async function resolveTrainingContext(
   const configPath = safeJoinArtifact(jobRoot, run.configArtifact.relativePath).absolutePath;
   const outputDir = safeJoinArtifact(jobRoot, payload.outputDir).absolutePath;
   const cancelSignalPath = safeJoinArtifact(jobRoot, payload.cancelSignalPath).absolutePath;
+  const cancelSignalRelativePath = safeJoinArtifact(jobRoot, payload.cancelSignalPath).relativePath;
   const logRelativePath = `${payload.outputDir}/train.log`;
   const logAbsolutePath = safeJoinArtifact(jobRoot, logRelativePath).absolutePath;
 
@@ -257,6 +301,7 @@ async function resolveTrainingContext(
     trainDir,
     configPath,
     outputDir,
+    cancelSignalRelativePath,
     cancelSignalPath,
     logRelativePath,
     logAbsolutePath,
@@ -269,9 +314,16 @@ async function runTrainingCommand(
   payload: CharacterLoraTrainingTaskPayload,
 ) {
   await new Promise<void>((resolve, reject) => {
+    let settled = false;
+    let cancelRequested = false;
+    let cancelPollInFlight = false;
+    let cancelPollTimer: NodeJS.Timeout | null = null;
+    let cancelTerminationTimer: NodeJS.Timeout | null = null;
+
     const child = spawn(command, {
       shell: true,
       cwd: process.cwd(),
+      detached: process.platform !== "win32",
       env: {
         ...process.env,
         CHARACTER_LORA_JOB_ROOT: context.jobRoot,
@@ -284,20 +336,106 @@ async function runTrainingCommand(
       windowsHide: true,
     });
 
+    const cleanupTimers = () => {
+      if (cancelPollTimer) {
+        clearInterval(cancelPollTimer);
+        cancelPollTimer = null;
+      }
+      if (cancelTerminationTimer) {
+        clearTimeout(cancelTerminationTimer);
+        cancelTerminationTimer = null;
+      }
+    };
+    const resolveOnce = () => {
+      if (settled) return;
+      settled = true;
+      cleanupTimers();
+      resolve();
+    };
+    const rejectOnce = (error: Error) => {
+      if (settled) return;
+      settled = true;
+      cleanupTimers();
+      reject(error);
+    };
+    const pollCancelSignal = async () => {
+      if (settled || cancelRequested || cancelPollInFlight) {
+        return;
+      }
+
+      cancelPollInFlight = true;
+      try {
+        if (!(await fileExists(context.cancelSignalPath))) {
+          return;
+        }
+
+        cancelRequested = true;
+        try {
+          await appendLog(
+            context.logAbsolutePath,
+            Buffer.from(
+              [
+                `[${new Date().toISOString()}] cancel signal detected at ${context.cancelSignalRelativePath}`,
+                `terminating training process pid=${child.pid ?? "unknown"}`,
+                "",
+              ].join("\n"),
+              "utf8",
+            ),
+          );
+        } catch (error) {
+          console.warn("[character-lora training-worker] cancel log write failed", summarizeUnknown(error));
+        }
+        await terminateTrainingProcess(child);
+        if (settled) {
+          return;
+        }
+        cancelTerminationTimer = setTimeout(() => {
+          void appendLog(
+            context.logAbsolutePath,
+            Buffer.from(
+              `[${new Date().toISOString()}] training process did not exit within ${CANCEL_TERMINATION_GRACE_MS}ms after cancel; forcing termination\n`,
+              "utf8",
+            ),
+          ).catch((error: unknown) => {
+            console.warn("[character-lora training-worker] cancel timeout log write failed", summarizeUnknown(error));
+          }).finally(() => {
+            void terminateTrainingProcess(child, { force: true }).finally(() => {
+              rejectOnce(new TrainingCancelledError(context.cancelSignalRelativePath));
+            });
+          });
+        }, CANCEL_TERMINATION_GRACE_MS);
+      } catch (error) {
+        console.warn("[character-lora training-worker] cancel signal check failed", summarizeUnknown(error));
+      } finally {
+        cancelPollInFlight = false;
+      }
+    };
+
     child.stdout.on("data", (chunk: Buffer) => {
       void appendLog(context.logAbsolutePath, chunk);
     });
     child.stderr.on("data", (chunk: Buffer) => {
       void appendLog(context.logAbsolutePath, chunk);
     });
-    child.on("error", reject);
+    child.on("error", (error) => {
+      rejectOnce(error);
+    });
     child.on("close", (code, signal) => {
-      if (code === 0) {
-        resolve();
+      if (cancelRequested) {
+        rejectOnce(new TrainingCancelledError(context.cancelSignalRelativePath));
         return;
       }
-      reject(new Error(`Training command exited with code ${code ?? "null"} signal ${signal ?? "null"}`));
+      if (code === 0) {
+        resolveOnce();
+        return;
+      }
+      rejectOnce(new Error(`Training command exited with code ${code ?? "null"} signal ${signal ?? "null"}`));
     });
+
+    cancelPollTimer = setInterval(() => {
+      void pollCancelSignal();
+    }, CANCEL_SIGNAL_POLL_MS);
+    void pollCancelSignal();
   });
 }
 
@@ -384,6 +522,12 @@ async function buildCompleteOutput(
 
   const finalStat = await statArtifact(context.jobRoot, finalRelativePath);
   const logStat = await statArtifact(context.jobRoot, `${payload.outputDir}/train.log`);
+  const metadataSummary = await buildSafetensorsMetadataSummary({
+    context,
+    payload,
+    finalRelativePath,
+    finalAbsolutePath: newest.absolutePath,
+  });
   const checkpoints = await Promise.all(
     safetensors
       .filter((file) => /checkpoint-step/i.test(path.basename(file.absolutePath)))
@@ -409,7 +553,7 @@ async function buildCompleteOutput(
     },
     finalSha256: finalStat.sha256,
     hashes,
-    metadataSummary: summarizeTrainingMetadata(payload.resolvedConfig),
+    metadataSummary,
     checkpoints,
     trainingLogArtifact: {
       kind: "training_log",
@@ -447,9 +591,208 @@ function parseCheckpointStep(relativePath: string) {
   return match ? Number(match[1]) : 0;
 }
 
-function summarizeTrainingMetadata(resolvedConfig: Record<string, unknown>) {
+class TrainingCancelledError extends Error {
+  constructor(cancelSignalRelativePath: string) {
+    super(`Training cancelled after cancel signal was detected: ${cancelSignalRelativePath}`);
+    this.name = "TrainingCancelledError";
+  }
+}
+
+async function fileExists(absolutePath: string) {
+  try {
+    await stat(absolutePath);
+    return true;
+  } catch (error) {
+    if (["ENOENT", "ENOTDIR"].includes(getErrorCode(error) ?? "")) {
+      return false;
+    }
+    throw error;
+  }
+}
+
+async function terminateTrainingProcess(
+  child: ChildProcessWithoutNullStreams,
+  options: { force?: boolean } = {},
+) {
+  const pid = child.pid;
+  if (!pid) {
+    return;
+  }
+
+  const force = options.force ?? process.platform === "win32";
+  try {
+    if (process.platform === "win32") {
+      await taskkillProcessTree(pid, force);
+      return;
+    }
+
+    const signal: NodeJS.Signals = force ? "SIGKILL" : "SIGTERM";
+    try {
+      process.kill(-pid, signal);
+    } catch (error) {
+      if (getErrorCode(error) === "ESRCH") {
+        return;
+      }
+      process.kill(pid, signal);
+    }
+  } catch (error) {
+    if (getErrorCode(error) !== "ESRCH") {
+      console.warn("[character-lora training-worker] process termination failed", summarizeUnknown(error));
+    }
+  }
+}
+
+async function taskkillProcessTree(pid: number, force: boolean) {
+  await new Promise<void>((resolve) => {
+    const args = ["/pid", String(pid), "/t"];
+    if (force) {
+      args.push("/f");
+    }
+    const taskkill = spawn("taskkill", args, {
+      windowsHide: true,
+      stdio: "ignore",
+    });
+    taskkill.on("error", () => {
+      resolve();
+    });
+    taskkill.on("close", () => {
+      resolve();
+    });
+  });
+}
+
+function createMockSafetensors(input: { trainingRunId: string; role: "final" | "checkpoint" }) {
+  const tensorData = Buffer.alloc(4);
+  const header = Buffer.from(JSON.stringify({
+    __metadata__: {
+      format: "pt",
+      mock: "true",
+      role: input.role,
+      training_run_id: input.trainingRunId,
+      created_by: "character-lora-training-worker",
+    },
+    [`mock.${input.role}.weight`]: {
+      dtype: "F32",
+      shape: [1],
+      data_offsets: [0, tensorData.byteLength],
+    },
+  }), "utf8");
+  const prefix = Buffer.alloc(8);
+  prefix.writeBigUInt64LE(BigInt(header.byteLength), 0);
+  return Buffer.concat([prefix, header, tensorData]);
+}
+
+async function buildSafetensorsMetadataSummary(input: {
+  context: TrainingContext;
+  payload: CharacterLoraTrainingTaskPayload;
+  finalRelativePath: string;
+  finalAbsolutePath: string;
+}): Promise<CharacterLoraTrainingCompleteOutput["metadataSummary"]> {
+  const headerSummary = await readSafetensorsHeaderSummary(input.finalAbsolutePath);
+  if (!headerSummary.readable || headerSummary.keyCount <= 0) {
+    throw new Error(
+      `Unable to read usable safetensors metadata for ${input.finalRelativePath}: ${
+        headerSummary.error ?? `tensor key count is ${headerSummary.keyCount}`
+      }`,
+    );
+  }
+
+  const resolvedConfigSummary = summarizeTrainingConfig(input.payload.resolvedConfig);
+  const metadataArtifact = await writeJsonArtifact(input.context.jobRoot, `${input.payload.outputDir}/safetensors-metadata.json`, {
+    trainingRunId: input.payload.trainingRunId,
+    finalSafetensors: input.finalRelativePath,
+    safetensors: headerSummary,
+    resolvedConfig: resolvedConfigSummary,
+    writtenAt: new Date().toISOString(),
+  });
+
   return {
-    keyCount: Object.keys(resolvedConfig).length,
+    keyCount: headerSummary.keyCount,
+    metadataPath: metadataArtifact.relativePath,
+    summary: {
+      source: headerSummary.readable ? "safetensors_header" : "safetensors_header_unreadable",
+      finalSafetensors: input.finalRelativePath,
+      tensorKeyCount: headerSummary.keyCount,
+      tensorKeyPreview: headerSummary.tensorKeyPreview,
+      metadataKeyCount: headerSummary.metadataKeyCount,
+      metadataPreview: headerSummary.metadataPreview,
+      headerLengthBytes: headerSummary.headerLengthBytes ?? null,
+      fileSizeBytes: headerSummary.fileSizeBytes ?? null,
+      error: headerSummary.error ?? null,
+      resolvedConfig: resolvedConfigSummary,
+    },
+  };
+}
+
+async function readSafetensorsHeaderSummary(absolutePath: string): Promise<SafetensorsHeaderSummary> {
+  let fileSizeBytes: number | undefined;
+  let handle: Awaited<ReturnType<typeof open>> | null = null;
+
+  try {
+    const fileStat = await stat(absolutePath);
+    fileSizeBytes = fileStat.size;
+    if (fileSizeBytes < 8) {
+      throw new Error("Safetensors file is smaller than the 8-byte header prefix");
+    }
+
+    handle = await open(absolutePath, "r");
+    const prefix = Buffer.alloc(8);
+    const prefixRead = await handle.read(prefix, 0, prefix.byteLength, 0);
+    if (prefixRead.bytesRead !== prefix.byteLength) {
+      throw new Error("Could not read safetensors header prefix");
+    }
+
+    const headerLengthBigInt = prefix.readBigUInt64LE(0);
+    if (headerLengthBigInt > BigInt(MAX_SAFETENSORS_HEADER_BYTES)) {
+      throw new Error(`Safetensors header exceeds ${MAX_SAFETENSORS_HEADER_BYTES} bytes`);
+    }
+
+    const headerLengthBytes = Number(headerLengthBigInt);
+    if (8 + headerLengthBytes > fileSizeBytes) {
+      throw new Error("Safetensors header length exceeds file size");
+    }
+
+    const headerBuffer = Buffer.alloc(headerLengthBytes);
+    const headerRead = await handle.read(headerBuffer, 0, headerLengthBytes, 8);
+    if (headerRead.bytesRead !== headerLengthBytes) {
+      throw new Error("Could not read full safetensors header");
+    }
+
+    const header = JSON.parse(headerBuffer.toString("utf8")) as unknown;
+    if (!isJsonObject(header)) {
+      throw new Error("Safetensors header is not a JSON object");
+    }
+
+    const tensorKeys = Object.keys(header).filter((key) => key !== "__metadata__");
+    const metadata = isJsonObject(header.__metadata__) ? header.__metadata__ : {};
+
+    return {
+      readable: true,
+      keyCount: tensorKeys.length,
+      tensorKeyPreview: tensorKeys.slice(0, 20),
+      metadataKeyCount: Object.keys(metadata).length,
+      metadataPreview: previewRecord(metadata, 20),
+      headerLengthBytes,
+      fileSizeBytes,
+    };
+  } catch (error) {
+    return {
+      readable: false,
+      keyCount: 0,
+      tensorKeyPreview: [],
+      metadataKeyCount: 0,
+      metadataPreview: {},
+      fileSizeBytes,
+      error: toErrorMessage(error),
+    };
+  } finally {
+    await handle?.close();
+  }
+}
+
+function summarizeTrainingConfig(resolvedConfig: Record<string, unknown>) {
+  return {
+    configKeyCount: Object.keys(resolvedConfig).length,
     summary: {
       profile: resolvedConfig.profile ?? null,
       launcher: resolvedConfig.launcher ?? null,
@@ -459,4 +802,60 @@ function summarizeTrainingMetadata(resolvedConfig: Record<string, unknown>) {
         : [],
     },
   };
+}
+
+function previewRecord(record: JsonObject, limit: number): JsonObject {
+  const output: JsonObject = {};
+  const entries = Object.entries(record);
+  for (const [key, value] of entries.slice(0, limit)) {
+    output[key] = previewValue(value);
+  }
+  if (entries.length > limit) {
+    output._truncatedKeyCount = entries.length - limit;
+  }
+  return output;
+}
+
+function previewValue(value: unknown): unknown {
+  if (typeof value === "string") {
+    return truncateText(value, 300);
+  }
+  if (value === null || typeof value === "number" || typeof value === "boolean") {
+    return value;
+  }
+  if (Array.isArray(value)) {
+    return {
+      type: "array",
+      length: value.length,
+      preview: value.slice(0, 5).map((item) => previewValue(item)),
+    };
+  }
+  if (isJsonObject(value)) {
+    const keys = Object.keys(value);
+    return {
+      type: "object",
+      keyCount: keys.length,
+      keyPreview: keys.slice(0, 10),
+    };
+  }
+  return String(value);
+}
+
+function truncateText(value: string, maxLength: number) {
+  if (value.length <= maxLength) {
+    return value;
+  }
+  return `${value.slice(0, maxLength)}...`;
+}
+
+function isJsonObject(value: unknown): value is JsonObject {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function getErrorCode(error: unknown) {
+  if (typeof error === "object" && error !== null && "code" in error) {
+    const code = (error as { code?: unknown }).code;
+    return typeof code === "string" ? code : null;
+  }
+  return null;
 }

@@ -23,6 +23,7 @@ import {
   findCharacterLoraPromotionLinkedVariant,
   getCharacterLoraArtifact,
   getCharacterLoraBenchmarkRun,
+  getCharacterLoraBenchmarkMatrixExpansionSummary,
   getCharacterLoraPromotionDecisionForPromotion,
   getCharacterLoraTrainingJob,
   getCharacterLoraTrainingRunWithFinalArtifact,
@@ -111,7 +112,7 @@ export async function enqueueCharacterLoraBenchmarkRun(trainingRunId: string, in
     ? { id: parsed.templateId, name: "explicit template" }
     : await findCharacterLoraBenchmarkTemplate();
   if (!benchmarkTemplate) {
-    warnings.push("Benchmark template not found; created a minimal smoke-test project section.");
+    warnings.push("Benchmark template not found; created the standard 7-section fallback benchmark project.");
   }
 
   const taskPayload = parsed.dryRun || parsed.skipQueue
@@ -169,6 +170,9 @@ export async function enqueueCharacterLoraBenchmarkRun(trainingRunId: string, in
     tempProject: {
       title: `[Benchmark] ${job.characterName} ${new Date().toISOString().slice(0, 10)}`,
       checkpointName: parsed.checkpointMatrix[0] ?? job.baseCheckpointName ?? null,
+      checkpointMatrix: parsed.checkpointMatrix,
+      weightMatrix: parsed.weightMatrix,
+      loraPath,
       notes: JSON.stringify({
         temporary: true,
         purpose: "character_lora_benchmark",
@@ -188,10 +192,12 @@ export async function enqueueCharacterLoraBenchmarkRun(trainingRunId: string, in
         positive: `${job.triggerToken}, ${job.characterName}, full body, clear face, benchmark test`,
         negative: "low quality, bad anatomy, text, watermark",
       },
+      fallbackSections: buildBenchmarkFallbackSections(job),
     },
   });
 
   if (parsed.dryRun || parsed.skipQueue) {
+    const matrixExpansion = await getCharacterLoraBenchmarkMatrixExpansionSummary(benchmarkRunId);
     const completed = await mockCompleteBenchmarkRun(benchmarkRunId, {
       recommendedWeight: defaultWeight,
       resultSummary: {
@@ -200,6 +206,9 @@ export async function enqueueCharacterLoraBenchmarkRun(trainingRunId: string, in
         warnings,
         checkpointMatrix: parsed.checkpointMatrix,
         weightMatrix: parsed.weightMatrix,
+        expectedSectionCount: matrixExpansion?.expectedSectionCount ?? null,
+        baseSectionCount: matrixExpansion?.baseSectionCount ?? null,
+        matrixExpansion,
       },
       diagnosticSuggestions: warnings.length > 0 ? warnings : ["Benchmark queue was skipped; review generated test project metadata manually."],
     });
@@ -233,6 +242,7 @@ export async function completeBenchmarkRun(benchmarkRunId: string, input: unknow
 export async function mockCompleteBenchmarkRun(benchmarkRunId: string, input: Partial<CharacterLoraBenchmarkCompleteRequest> = {}) {
   const normalizedBenchmarkRunId = normalizeId(benchmarkRunId, "benchmarkRunId");
   const benchmark = await getExistingBenchmarkRun(normalizedBenchmarkRunId);
+  const matrixExpansion = await getCharacterLoraBenchmarkMatrixExpansionSummary(normalizedBenchmarkRunId);
   const weightMatrix = Array.isArray(benchmark.weightMatrix) ? benchmark.weightMatrix : [];
   const fallbackWeight = weightMatrix.find((value): value is number => typeof value === "number" && value > 0) ?? 1;
   const parsed = parseWithSchema(characterLoraBenchmarkCompleteRequestSchema, {
@@ -241,6 +251,9 @@ export async function mockCompleteBenchmarkRun(benchmarkRunId: string, input: Pa
       mocked: true,
       checkpointMatrix: benchmark.checkpointMatrix,
       weightMatrix: benchmark.weightMatrix,
+      expectedSectionCount: matrixExpansion?.expectedSectionCount ?? null,
+      baseSectionCount: matrixExpansion?.baseSectionCount ?? null,
+      matrixExpansion,
     },
     diagnosticSuggestions: input.diagnosticSuggestions ?? [
       "Mock benchmark completed; replace with reviewed image evidence before approving promotion.",
@@ -720,6 +733,27 @@ function resolveVariantPrompt(
   return [job.triggerToken, job.characterName, suffix]
     .filter((piece) => piece && piece.trim())
     .join(", ");
+}
+
+function buildBenchmarkFallbackSections(job: MinimalCharacterLoraJob) {
+  return STANDARD_VARIANTS.map((variant, index) => ({
+    name: variant.name,
+    sortOrder: index,
+    promptBlock: {
+      label: `Benchmark ${variant.name}`,
+      positive: [
+        job.triggerToken,
+        job.characterName,
+        "full body",
+        "clear face",
+        "benchmark test",
+        variant.promptSuffix,
+      ]
+        .filter((piece) => piece && piece.trim())
+        .join(", "),
+      negative: "low quality, bad anatomy, text, watermark",
+    },
+  }));
 }
 
 function parseRecord(value: unknown): Record<string, unknown> {

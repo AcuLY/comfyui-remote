@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { stat } from "node:fs/promises";
+import { open, stat } from "node:fs/promises";
 
 import { Prisma } from "@/generated/prisma";
 import {
@@ -246,6 +246,12 @@ export async function completeCharacterLoraTrainingTask(taskId: string, input: {
     ref: output.finalSafetensorsArtifact,
     expectedSha256: output.finalSha256 ?? output.finalSafetensorsArtifact.sha256,
     errorLabel: "final safetensors",
+  });
+  await assertUsableSafetensorsArtifact({
+    taskId: normalizedTaskId,
+    leaseOwner: input.leaseOwner,
+    finalArtifact,
+    metadataSummary: output.metadataSummary,
   });
   const logArtifact = output.trainingLogArtifact
     ? await resolveOptionalCompletedArtifact({
@@ -700,6 +706,123 @@ async function resolveOptionalCompletedArtifact(input: {
     sha256,
     byteSize: statResult ? BigInt(statResult.byteSize) : null,
   };
+}
+
+async function assertUsableSafetensorsArtifact(input: {
+  taskId: string;
+  leaseOwner?: string;
+  finalArtifact: { relativePath: string; absolutePath: string };
+  metadataSummary: { keyCount: number };
+}) {
+  if (input.metadataSummary.keyCount <= 0) {
+    await failCharacterLoraWorkerTask({
+      taskId: input.taskId,
+      leaseOwner: input.leaseOwner,
+      errorSummary: "final safetensors metadata keyCount must be greater than 0",
+      progressJson: toInputJsonValue({
+        relativePath: input.finalArtifact.relativePath,
+        keyCount: input.metadataSummary.keyCount,
+      }),
+    });
+    throw new CharacterLoraTrainingServiceError(
+      "final safetensors metadata keyCount must be greater than 0",
+      409,
+      { relativePath: input.finalArtifact.relativePath, keyCount: input.metadataSummary.keyCount },
+    );
+  }
+
+  const header = await readSafetensorsHeader(input.finalArtifact.absolutePath);
+  if (header.keyCount <= 0) {
+    await failCharacterLoraWorkerTask({
+      taskId: input.taskId,
+      leaseOwner: input.leaseOwner,
+      errorSummary: "final safetensors header does not contain tensor keys",
+      progressJson: toInputJsonValue({
+        relativePath: input.finalArtifact.relativePath,
+        header,
+      }),
+    });
+    throw new CharacterLoraTrainingServiceError(
+      "final safetensors header does not contain tensor keys",
+      409,
+      { relativePath: input.finalArtifact.relativePath, header },
+    );
+  }
+
+  if (header.keyCount !== input.metadataSummary.keyCount) {
+    await failCharacterLoraWorkerTask({
+      taskId: input.taskId,
+      leaseOwner: input.leaseOwner,
+      errorSummary: "final safetensors metadata keyCount does not match file header",
+      progressJson: toInputJsonValue({
+        relativePath: input.finalArtifact.relativePath,
+        reportedKeyCount: input.metadataSummary.keyCount,
+        headerKeyCount: header.keyCount,
+      }),
+    });
+    throw new CharacterLoraTrainingServiceError(
+      "final safetensors metadata keyCount does not match file header",
+      409,
+      {
+        relativePath: input.finalArtifact.relativePath,
+        reportedKeyCount: input.metadataSummary.keyCount,
+        headerKeyCount: header.keyCount,
+      },
+    );
+  }
+}
+
+async function readSafetensorsHeader(filePath: string) {
+  const handle = await open(filePath, "r");
+  try {
+    const prefix = Buffer.alloc(8);
+    const prefixRead = await handle.read(prefix, 0, prefix.byteLength, 0);
+    if (prefixRead.bytesRead !== prefix.byteLength) {
+      throw new CharacterLoraTrainingServiceError("safetensors file is missing its header length prefix", 409, {
+        filePath,
+      });
+    }
+
+    const headerLength = Number(prefix.readBigUInt64LE(0));
+    if (!Number.isSafeInteger(headerLength) || headerLength <= 0 || headerLength > 64 * 1024 * 1024) {
+      throw new CharacterLoraTrainingServiceError("safetensors header length is invalid", 409, {
+        filePath,
+        headerLength,
+      });
+    }
+
+    const headerBuffer = Buffer.alloc(headerLength);
+    const headerRead = await handle.read(headerBuffer, 0, headerLength, 8);
+    if (headerRead.bytesRead !== headerLength) {
+      throw new CharacterLoraTrainingServiceError("safetensors file header is truncated", 409, {
+        filePath,
+        headerLength,
+        bytesRead: headerRead.bytesRead,
+      });
+    }
+
+    const parsed = JSON.parse(headerBuffer.toString("utf8")) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new CharacterLoraTrainingServiceError("safetensors header is not a JSON object", 409, { filePath });
+    }
+
+    const keys = Object.keys(parsed).filter((key) => key !== "__metadata__");
+    return {
+      headerLength,
+      keyCount: keys.length,
+      metadataKeys: Object.keys((parsed as Record<string, unknown>).__metadata__ ?? {}),
+    };
+  } catch (error) {
+    if (error instanceof CharacterLoraTrainingServiceError) {
+      throw error;
+    }
+    throw new CharacterLoraTrainingServiceError("failed to read final safetensors metadata", 409, {
+      filePath,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  } finally {
+    await handle.close();
+  }
 }
 
 async function statArtifactIfExists(jobRoot: string, relativePath: string) {

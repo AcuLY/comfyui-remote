@@ -2,6 +2,7 @@ import { Prisma } from "@/generated/prisma";
 import {
   createCharacterLoraPromptCardVersion as createPromptCardVersionInRepository,
   getCharacterLoraCanonicalVersion as getCanonicalVersionFromRepository,
+  getCharacterLoraPromptCardVersion as getPromptCardVersionFromRepository,
   getCharacterLoraTrainingJob as getJobFromRepository,
   listCharacterLoraPromptCardVersions as listPromptCardVersionsFromRepository,
 } from "@/server/repositories/character-lora-training-repository";
@@ -20,6 +21,12 @@ const createPromptCardSchema = z
     negativeTraits: jsonObjectSchema.nullable().optional(),
     finalPromptDraft: z.string().trim().min(1),
     changeReason: nullableTrimmedStringSchema(),
+  })
+  .strict();
+
+const promoteSectionInstructionSchema = z
+  .object({
+    sectionUserInstruction: z.string().trim().min(1),
   })
   .strict();
 
@@ -67,6 +74,43 @@ export async function createCharacterLoraPromptCardVersion(jobId: string, input:
         : toInputJsonValue(parsed.negativeTraits),
     finalPromptDraft: parsed.finalPromptDraft,
     changeReason: parsed.changeReason,
+  });
+}
+
+export async function promoteCharacterLoraSectionInstructionToPromptCardVersion(jobId: string, input: unknown) {
+  const id = normalizeId(jobId, "jobId");
+  const job = await getExistingJob(id);
+  const parsed = parseWithSchema(promoteSectionInstructionSchema, input);
+
+  if (!job.currentPromptCardVersionId) {
+    throw new CharacterLoraPromptCardServiceError("Current Prompt Card version is required", 409, { jobId: id });
+  }
+
+  const currentPrompt = await getPromptCardVersionFromRepository(job.currentPromptCardVersionId);
+
+  if (!currentPrompt) {
+    throw new CharacterLoraPromptCardServiceError("Current Prompt Card version was not found", 409, {
+      promptCardVersionId: job.currentPromptCardVersionId,
+    });
+  }
+
+  if (currentPrompt.jobId !== id) {
+    throw new CharacterLoraPromptCardServiceError(
+      "Current Prompt Card version must belong to the character LoRA training job",
+      409,
+      { promptCardVersionId: currentPrompt.id, jobId: id },
+    );
+  }
+
+  return createPromptCardVersionInRepository({
+    jobId: id,
+    canonicalVersionId: currentPrompt.canonicalVersionId ?? job.currentCanonicalVersionId ?? null,
+    triggerToken: currentPrompt.triggerToken,
+    identityTraits: toInputJsonValue(currentPrompt.identityTraits),
+    outfitTraits: toInputJsonValue(currentPrompt.outfitTraits),
+    negativeTraits: currentPrompt.negativeTraits === null ? null : toInputJsonValue(currentPrompt.negativeTraits),
+    finalPromptDraft: appendPromptCorrection(currentPrompt.finalPromptDraft, parsed.sectionUserInstruction),
+    changeReason: buildPromotedSectionInstructionChangeReason(currentPrompt.changeReason, parsed.sectionUserInstruction),
   });
 }
 
@@ -192,4 +236,20 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 
 function toInputJsonValue(value: unknown) {
   return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
+}
+
+function appendPromptCorrection(finalPromptDraft: string, sectionUserInstruction: string) {
+  const draft = finalPromptDraft.trim();
+
+  if (draft.includes(sectionUserInstruction)) {
+    return draft;
+  }
+
+  return `${draft}, ${sectionUserInstruction}`;
+}
+
+function buildPromotedSectionInstructionChangeReason(previousReason: string | null, sectionUserInstruction: string) {
+  const correctionReason = `Promoted section userInstruction to global Prompt Card correction for future new runs only: ${sectionUserInstruction}`;
+
+  return previousReason ? `${previousReason}\n${correctionReason}` : correctionReason;
 }

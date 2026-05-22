@@ -244,7 +244,7 @@ const characterLoraBenchmarkEnqueueFields = {
   weightMatrix: z.array(z.number().positive()).min(1),
   templateId: z.string().trim().min(1).optional(),
   registerLoraAsset: z.boolean().default(true),
-  copyToCharacterDir: z.boolean().default(false),
+  copyToCharacterDir: z.boolean().default(true),
   loraAssetName: z.string().trim().min(1).optional(),
   queuePolicy: characterLoraTrainingQueuePolicySchema.default("queue_when_busy"),
   dryRun: z.boolean().default(false),
@@ -254,7 +254,7 @@ const characterLoraBenchmarkEnqueueFields = {
 const characterLoraPostTrainingBenchmarkDefault = {
   enabled: false,
   registerLoraAsset: true,
-  copyToCharacterDir: false,
+  copyToCharacterDir: true,
   queuePolicy: "queue_when_busy",
   dryRun: false,
   skipQueue: false,

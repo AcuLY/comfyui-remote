@@ -14,10 +14,12 @@ import {
 } from "@/server/character-lora-training/contracts";
 import {
   createCharacterLoraCanonicalGenerationRunWithTask,
+  createManualCanonicalVersionFromSourceImage,
   createMockCompletedCanonicalVersion,
   getCharacterLoraArtifact,
   getCharacterLoraCanonicalVersion,
   getCharacterLoraGenerationRun,
+  getCharacterLoraSourceImage,
   getCharacterLoraTrainingJob,
   listCharacterLoraSourceImages,
   selectCharacterLoraCanonicalVersion as selectCanonicalVersionInRepository,
@@ -62,6 +64,13 @@ const enqueueCanonicalGenerationSchema = z
 const mockCompleteCanonicalSchema = z
   .object({
     sourceImageId: nullableTrimmedStringSchema(),
+  })
+  .strict();
+
+const registerManualCanonicalSchema = z
+  .object({
+    sourceImageId: trimmedStringSchema(),
+    notes: nullableTrimmedStringSchema(),
   })
   .strict();
 
@@ -231,6 +240,66 @@ export async function mockCompleteCharacterLoraCanonicalGenerationRun(runId: str
     canonicalVersion,
     generationRun: await getCharacterLoraGenerationRun(run.id),
   };
+}
+
+export async function registerManualCharacterLoraCanonicalVersion(jobId: string, input: unknown) {
+  const normalizedJobId = normalizeId(jobId, "jobId");
+  const parsed = parseWithSchema(registerManualCanonicalSchema, input);
+
+  await getExistingJob(normalizedJobId);
+
+  const sourceImage = await getCharacterLoraSourceImage(parsed.sourceImageId);
+
+  if (!sourceImage || sourceImage.jobId !== normalizedJobId) {
+    throw new CharacterLoraCanonicalServiceError("Source image not found for this job", 404, {
+      jobId: normalizedJobId,
+      sourceImageId: parsed.sourceImageId,
+    });
+  }
+
+  if (sourceImage.role !== "manual_canonical") {
+    throw new CharacterLoraCanonicalServiceError(
+      "Manual canonical registration requires a manual_canonical source image",
+      409,
+      { sourceImageId: sourceImage.id, role: sourceImage.role },
+    );
+  }
+
+  const sourceArtifact = await getCharacterLoraArtifact(sourceImage.artifactId);
+
+  if (!sourceArtifact) {
+    throw new CharacterLoraCanonicalServiceError("Source image artifact not found", 404, {
+      sourceImageId: sourceImage.id,
+      artifactId: sourceImage.artifactId,
+    });
+  }
+
+  if (sourceArtifact.jobId !== normalizedJobId) {
+    throw new CharacterLoraCanonicalServiceError(
+      "Source image artifact does not belong to this job",
+      409,
+      { sourceArtifactJobId: sourceArtifact.jobId, jobId: normalizedJobId },
+    );
+  }
+
+  if (sourceArtifact.kind !== "source_image") {
+    throw new CharacterLoraCanonicalServiceError(
+      "Manual canonical source artifact must be a source_image artifact",
+      409,
+      { artifactId: sourceArtifact.id, kind: sourceArtifact.kind },
+    );
+  }
+
+  const notes = [
+    `provenance=manual_upload; sourceImageId=${sourceImage.id}; sourceRole=${sourceImage.role}; artifactId=${sourceArtifact.id}; artifactPath=${sourceArtifact.relativePath}`,
+    parsed.notes ? `operatorNotes=${parsed.notes}` : null,
+  ].filter((note): note is string => Boolean(note));
+
+  return createManualCanonicalVersionFromSourceImage({
+    jobId: normalizedJobId,
+    imageArtifactId: sourceArtifact.id,
+    notes: notes.join("; "),
+  });
 }
 
 export async function selectCharacterLoraCanonicalVersion(jobId: string, versionId: string) {

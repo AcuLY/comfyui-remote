@@ -22,6 +22,10 @@ const MAX_SOURCE_IMAGE_BYTES = 50 * 1024 * 1024;
 const REDACTED_VALUE = "[redacted]";
 const ALLOWED_SOURCE_IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".webp"]);
 const WINDOWS_RESERVED_FILE_NAMES = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i;
+const SOURCE_IMAGE_UPLOAD_BLOCKED_STATUSES = new Set<CharacterLoraJobStatus>([
+  CharacterLoraJobStatus.archived,
+  CharacterLoraJobStatus.promoted,
+]);
 
 type ParsedUploadInput = {
   file: File;
@@ -52,9 +56,9 @@ export async function uploadCharacterLoraSourceImage(jobId: string, input: unkno
   const id = normalizeJobId(jobId);
   const job = await getExistingJob(id);
 
-  if (job.status !== CharacterLoraJobStatus.draft) {
+  if (SOURCE_IMAGE_UPLOAD_BLOCKED_STATUSES.has(job.status)) {
     throw new CharacterLoraSourceImageServiceError(
-      "Only draft character LoRA training jobs can accept source image uploads",
+      "Archived or promoted character LoRA training jobs cannot accept source image uploads",
       409,
       { status: job.status },
     );
