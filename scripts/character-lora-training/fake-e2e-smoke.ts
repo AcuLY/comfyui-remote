@@ -426,6 +426,15 @@ async function main() {
   assert(sourceCandidateImage, "registered source candidate should appear in candidate image list");
   assert(sourceCandidateImage.reviewStatus === "pending", "source candidate should remain pending before manual review");
   assert(allImages.length === 3, "expected one source candidate plus two generated candidate images before review");
+  await assertRejects(
+    () => services.phase3Service.reviewCharacterLoraImages({
+      images: [{
+        imageId: sourceCandidateImage.id,
+        reviewStatus: "reject",
+      }],
+    }),
+    "reject review should require at least one reject reason",
+  );
   await services.phase3Service.reviewCharacterLoraImages({
     images: allImages.map((image) => ({
       imageId: image.id,

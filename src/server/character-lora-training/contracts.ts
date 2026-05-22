@@ -99,11 +99,15 @@ export const CHARACTER_LORA_REJECT_REASONS = [
   "face_wrong",
   "outfit_wrong",
   "shoe_wrong",
+  "accessory_missing",
   "pose_wrong",
   "composition_wrong",
   "hands_wrong",
   "anatomy_wrong",
+  "multi_character",
+  "background_pollution",
   "style_wrong",
+  "watermark_text",
   "quality_low",
   "duplicate",
   "unsafe",
@@ -442,7 +446,19 @@ export const characterLoraImageReviewPatchSchema = z.object({
     .transform((value) => (value.length > 0 ? value : null))
     .nullable()
     .optional(),
-}).strict();
+}).strict().superRefine((value, ctx) => {
+  if (value.reviewStatus !== "reject") {
+    return;
+  }
+
+  if (!value.rejectReasons || value.rejectReasons.length === 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["rejectReasons"],
+      message: "rejectReasons must include at least one reason when reviewStatus is reject",
+    });
+  }
+});
 
 export const characterLoraImageReviewBatchRequestSchema = z.object({
   images: z.array(characterLoraImageReviewPatchSchema).min(1),
