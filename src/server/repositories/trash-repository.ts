@@ -14,7 +14,7 @@ function serializeTrashRecord(record: TrashRecordWithImage): TrashItem {
   return {
     id: record.id,
     imageResultId: record.imageResultId,
-    src: toImageUrl(record.imageResult.thumbPath ?? record.imageResult.filePath) ?? "",
+    src: (toImageUrl(record.imageResult.thumbPath ?? record.imageResult.filePath) ?? "") + "?w=400&q=75",
     title: `${run.project.title} / ${sectionName}`,
     deletedAt: formatDate(record.deletedAt),
     originalPath: record.originalPath,

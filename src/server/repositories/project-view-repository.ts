@@ -98,7 +98,7 @@ export async function listProjects(): Promise<ProjectCard[]> {
       latestRunStatus: latestRun?.status as ProjectCard["latestRunStatus"],
       latestImages: (latestRun?.images ?? []).map((img) => ({
         id: img.id,
-        src: toImageUrl(img.thumbPath ?? img.filePath) ?? "",
+        src: (toImageUrl(img.thumbPath ?? img.filePath) ?? "") + "?w=400&q=75",
         status: img.reviewStatus as ReviewStatus,
       })),
       latestImageCount: latestRun?._count.images ?? 0,
@@ -328,7 +328,7 @@ export async function getProjectDetail(projectId: string): Promise<ProjectDetail
         negativeBlockCount,
         latestImages: (latestRun?.images ?? []).map((img) => ({
           id: img.id,
-          src: toImageUrl(img.thumbPath ?? img.filePath) ?? "",
+          src: (toImageUrl(img.thumbPath ?? img.filePath) ?? "") + "?w=400&q=75",
           status: img.reviewStatus,
         })),
         latestImageCount: latestRun?._count.images ?? 0,
@@ -464,7 +464,7 @@ export async function getSectionResults(sectionId: string): Promise<SectionResul
       .filter((img) => img.reviewStatus !== "trashed")
       .map((img) => ({
         id: img.id,
-        src: toImageUrl(img.thumbPath ?? img.filePath) ?? "",
+        src: (toImageUrl(img.thumbPath ?? img.filePath) ?? "") + "?w=400&q=75",
         full: (toImageUrl(img.filePath) ?? "") + "?w=1920&q=85",
         status: img.reviewStatus as ReviewStatus,
         featured: img.featured,
@@ -571,7 +571,7 @@ export async function getProjectResults(projectId: string): Promise<ProjectResul
 
             return {
               id: img.id,
-              src: toImageUrl(img.thumbPath ?? img.filePath) ?? "",
+              src: (toImageUrl(img.thumbPath ?? img.filePath) ?? "") + "?w=400&q=75",
               full: (toImageUrl(img.filePath) ?? "") + "?w=1920&q=85",
               status: img.reviewStatus as ReviewStatus,
               featured: img.featured,
