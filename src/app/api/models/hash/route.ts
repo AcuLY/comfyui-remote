@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { fail, ok } from "@/lib/api-response";
 import {
-  browseModelDirectory,
+  hashModelFile,
   ModelAssetError,
   parseModelKind,
 } from "@/server/services/model-asset-service";
@@ -11,14 +11,12 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const kind = parseModelKind(searchParams.get("kind"));
     const relativePath = searchParams.get("path") ?? "";
-    const recursiveParam = searchParams.get("recursive");
-    const recursive = recursiveParam === "true" || recursiveParam === "1";
-    const data = await browseModelDirectory(kind, relativePath, recursive);
+    const data = await hashModelFile(kind, relativePath);
     return ok(data);
   } catch (error) {
     if (error instanceof ModelAssetError) {
       return fail(error.message, error.status, error.details);
     }
-    return fail("Failed to browse model directory", 500, String(error));
+    return fail("Failed to hash model file", 500, String(error));
   }
 }

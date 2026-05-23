@@ -635,6 +635,8 @@ HTTP API 面向 agent、worker 和需要 fetch 的客户端。
 }
 ```
 
+创建 job 的 UI 可以从 checkpoint browser 读取 `MODEL_BASE_DIR/checkpoints` 下的已有 `.safetensors`，选择后回填 `baseCheckpointName` / `baseCheckpointPath`；`baseCheckpointHash` 通过按需 hash API 单文件计算，不在浏览列表中批量扫描大模型内容。用户仍可手动输入或修正 `baseCheckpointName`、`baseCheckpointPath`、`baseCheckpointHash` 和 `baseFamily`，最终 hash 继续记录在 job 上供训练、benchmark 和报告追溯。
+
 审图：
 
 ```json
@@ -1107,6 +1109,7 @@ sequenceDiagram
 - 2026-05-23：补齐 canonical rejected 后续 lineage 规则。Prompt Card 创建和 section instruction 提升会拒绝显式或默认解析到的 `rejected` canonicalVersionId，返回 `409`；工作台 Prompt Card canonical select 显示状态并禁用 rejected 选项；fake e2e smoke 覆盖 rejected canonical 创建 Prompt Card 和 rejected-bound current Prompt Card 提升失败。
 - 2026-05-23：补齐 PRD 5.4 小节暂停/恢复缺口。`PATCH /api/character-lora-training/sections/:sectionId` 可暂停/恢复 section；暂停后保留历史 runs/images/counts，section generation/rerun 入队返回清晰 `409`；review/count 刷新不会把 `paused` 改回 active 状态；resume 按 counts 推导为 `reviewing` / `reviewed` / `draft` 后可再次入队。fake e2e smoke 覆盖 service 路径的暂停、409 拒绝、paused 保持和恢复后入队。
 - 2026-05-23：补齐 PRD 5.5 小节定向重生图片上下文缺口。`POST /api/character-lora-training/sections/:sectionId/runs` 支持 `previousCandidateImageIds`；候选图必须属于同一 job section，并会解析为 provider `inputImages` 中的 `previous_candidate`。如果传入 `parentRunId` 但没有显式 `inputImages` 或 `previousCandidateImageIds`，服务会自动把 parent run 在同小节下的候选图作为 `previous_candidate` 参考图。fake e2e smoke 覆盖 run payload、worker task payload 和 redacted request 的 provenance。
+- 2026-05-23：补齐 PRD 5.1 创建 job 时选择底模 checkpoint 的 UX/API 缺口。新建任务表单加载 checkpoint browser 文件列表并可回填 name/path，`GET /api/models/hash?kind=checkpoint&path=<relative>` 按需 streaming 计算单个 `.safetensors` 的 sha256；浏览列表不批量计算大模型 hash，用户仍可手动填写 name/path/hash/base family，hash 继续记录在 job。
 
 ## 12. 验证计划
 

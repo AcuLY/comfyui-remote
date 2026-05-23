@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+import { createReadStream } from "node:fs";
 import { mkdir, readdir, rename, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { db } from "@/lib/db";
@@ -20,6 +22,14 @@ export type ModelBrowseItem =
       path: string;
     }
   | ModelFileItem;
+
+export type ModelFileHash = {
+  name: string;
+  path: string;
+  absolutePath: string;
+  size: number;
+  sha256: string;
+};
 
 const MODEL_CONFIG: Record<ModelKind, {
   label: string;
@@ -218,6 +228,62 @@ export async function browseModelDirectory(
     }
     throw new ModelAssetError("Failed to browse directory", 500, String(error));
   }
+}
+
+export async function hashModelFile(kind: ModelKind, rawRelativePath: string): Promise<ModelFileHash> {
+  const baseDir = getRequiredModelBaseDir(kind);
+  const requestedPath = normalizeRelativePath(rawRelativePath);
+  if (!requestedPath.trim()) {
+    throw new ModelAssetError("path is required", 400);
+  }
+
+  const absolutePath = path.resolve(baseDir, requestedPath);
+  if (!isWithinBase(baseDir, absolutePath)) {
+    throw new ModelAssetError("Invalid path", 400);
+  }
+
+  const relativePath = path.relative(baseDir, absolutePath).replace(/\\/g, "/");
+  const fileName = path.basename(absolutePath);
+  if (!isAllowedModelFile(kind, fileName)) {
+    throw new ModelAssetError(`${MODEL_CONFIG[kind].label} only supports ${[...MODEL_CONFIG[kind].extensions].join(", ")} files.`, 400);
+  }
+
+  let fileStat: Awaited<ReturnType<typeof stat>>;
+  try {
+    fileStat = await stat(absolutePath);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      throw new ModelAssetError("File not found", 404);
+    }
+    throw new ModelAssetError("Failed to read file metadata", 500, String(error));
+  }
+
+  if (!fileStat.isFile()) {
+    throw new ModelAssetError("Path is not a file", 400);
+  }
+
+  const sha256 = await new Promise<string>((resolve, reject) => {
+    const hash = createHash("sha256");
+    const stream = createReadStream(absolutePath);
+
+    stream.on("data", (chunk) => {
+      hash.update(chunk);
+    });
+    stream.on("error", (error) => {
+      reject(new ModelAssetError("Failed to hash model file", 500, String(error)));
+    });
+    stream.on("end", () => {
+      resolve(hash.digest("hex"));
+    });
+  });
+
+  return {
+    name: fileName,
+    path: relativePath,
+    absolutePath,
+    size: Number(fileStat.size),
+    sha256,
+  };
 }
 
 export async function listModelAssets(kind: ModelKind) {

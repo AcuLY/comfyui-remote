@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { AlertTriangle, ArrowRight, Loader2, Plus, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
@@ -25,6 +25,31 @@ type DerivedStateInput = {
   riskNote?: string;
   note?: string;
 };
+
+type ModelBrowseItem = {
+  name: string;
+  type: "directory" | "file";
+  path: string;
+  size?: number;
+};
+
+type ModelBrowseResult = {
+  currentPath: string;
+  parentPath: string | null;
+  items: ModelBrowseItem[];
+};
+
+type ModelHashResult = {
+  name: string;
+  path: string;
+  absolutePath?: string;
+  size: number;
+  sha256: string;
+};
+
+type ApiResult<T> =
+  | { ok: true; data: T }
+  | { ok: false; error?: { message?: string } };
 
 const STATUS_LABEL: Record<string, string> = {
   draft: "草稿",
@@ -63,6 +88,23 @@ function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "操作失败";
 }
 
+async function fetchApiData<T>(url: string, init?: RequestInit) {
+  const response = await fetch(url, init);
+  const json = await response.json().catch(() => null) as ApiResult<T> | null;
+  if (!response.ok || !json) {
+    throw new Error(`HTTP ${response.status}`);
+  }
+  if (!json.ok) {
+    throw new Error(json.error?.message ?? `HTTP ${response.status}`);
+  }
+  return json.data;
+}
+
+function basenameFromPath(value: string) {
+  const normalized = value.replace(/\\/g, "/");
+  return normalized.split("/").filter(Boolean).pop() ?? normalized;
+}
+
 const DEFAULT_DERIVED_STATES: DerivedStateInput[] = [
   { state: "underwear", includeInTraining: false, note: "默认不进入训练，仅用于后续基准/发布变体。" },
   { state: "underwear_shoes", includeInTraining: false, note: "默认不进入训练，仅用于后续基准/发布变体。" },
@@ -97,7 +139,46 @@ export function CharacterLoraTrainingClient({ jobList, gpuLock }: Props) {
   const [blockMultipleOfficialOutfits, setBlockMultipleOfficialOutfits] = useState(true);
   const [advancedExperiment, setAdvancedExperiment] = useState(false);
   const [derivedStatesJson, setDerivedStatesJson] = useState(JSON.stringify(DEFAULT_DERIVED_STATES, null, 2));
+  const [checkpointFiles, setCheckpointFiles] = useState<ModelBrowseItem[]>([]);
+  const [checkpointLoading, setCheckpointLoading] = useState(true);
+  const [checkpointError, setCheckpointError] = useState<string | null>(null);
+  const [selectedCheckpointPath, setSelectedCheckpointPath] = useState("");
+  const [baseCheckpointName, setBaseCheckpointName] = useState("");
+  const [baseCheckpointPath, setBaseCheckpointPath] = useState("");
+  const [baseCheckpointHash, setBaseCheckpointHash] = useState("");
+  const [hashLoading, setHashLoading] = useState(false);
   const [query, setQuery] = useState("");
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadCheckpointFiles() {
+      setCheckpointLoading(true);
+      setCheckpointError(null);
+      try {
+        const data = await fetchApiData<ModelBrowseResult>(
+          "/api/models/browse?kind=checkpoint&recursive=1",
+          { signal: controller.signal },
+        );
+        if (controller.signal.aborted) return;
+        const files = data.items
+          .filter((item) => item.type === "file")
+          .sort((a, b) => a.path.localeCompare(b.path));
+        setCheckpointFiles(files);
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        setCheckpointFiles([]);
+        setCheckpointError(getErrorMessage(error));
+      } finally {
+        if (!controller.signal.aborted) {
+          setCheckpointLoading(false);
+        }
+      }
+    }
+
+    void loadCheckpointFiles();
+    return () => controller.abort();
+  }, []);
 
   const visibleJobs = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -124,6 +205,49 @@ export function CharacterLoraTrainingClient({ jobList, gpuLock }: Props) {
     startTransition(() => {
       router.refresh();
     });
+  }
+
+  function handleSelectCheckpoint(pathValue: string) {
+    setSelectedCheckpointPath(pathValue);
+    if (!pathValue) return;
+
+    const checkpoint = checkpointFiles.find((item) => item.path === pathValue);
+    setBaseCheckpointPath(checkpoint?.path ?? pathValue);
+    setBaseCheckpointName(checkpoint?.name ?? basenameFromPath(pathValue));
+    setBaseCheckpointHash("");
+  }
+
+  function handleBaseCheckpointPathChange(pathValue: string) {
+    setBaseCheckpointPath(pathValue);
+    if (pathValue !== selectedCheckpointPath) {
+      setSelectedCheckpointPath("");
+    }
+    setBaseCheckpointHash("");
+  }
+
+  async function handleHashCheckpoint() {
+    const relativePath = baseCheckpointPath.trim();
+    if (!relativePath) {
+      toast.error("请先填写 checkpoint 路径");
+      return;
+    }
+
+    setHashLoading(true);
+    try {
+      const params = new URLSearchParams({ kind: "checkpoint", path: relativePath });
+      const data = await fetchApiData<ModelHashResult>(`/api/models/hash?${params.toString()}`);
+      setBaseCheckpointPath(data.absolutePath ?? data.path);
+      setBaseCheckpointName((current) => current.trim() || data.name);
+      setBaseCheckpointHash(data.sha256);
+      if (checkpointFiles.some((item) => item.path === data.path)) {
+        setSelectedCheckpointPath(data.path);
+      }
+      toast.success("checkpoint hash 已计算", { description: data.name });
+    } catch (error) {
+      toast.error("hash 计算失败", { description: getErrorMessage(error) });
+    } finally {
+      setHashLoading(false);
+    }
   }
 
   function handleCreate(formData: FormData) {
@@ -212,10 +336,56 @@ export function CharacterLoraTrainingClient({ jobList, gpuLock }: Props) {
               placeholder="如：tangtang"
             />
           </label>
+          <div className="grid gap-2 rounded-lg border border-white/10 bg-black/20 p-3 text-xs text-zinc-400 lg:col-span-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="font-medium text-zinc-300">Checkpoint browser</span>
+              <span className="text-[11px] text-zinc-500">
+                {checkpointLoading ? "加载中" : `${checkpointFiles.length} files`}
+              </span>
+            </div>
+            <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_auto]">
+              <select
+                value={selectedCheckpointPath}
+                onChange={(event) => handleSelectCheckpoint(event.target.value)}
+                disabled={checkpointLoading || checkpointFiles.length === 0}
+                className="h-9 rounded-lg border border-white/10 bg-black/30 px-3 font-mono text-xs text-white outline-none focus:border-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <option value="">
+                  {checkpointLoading ? "正在加载 checkpoint..." : "从已有 checkpoint 选择..."}
+                </option>
+                {checkpointFiles.map((checkpoint) => (
+                  <option key={checkpoint.path} value={checkpoint.path}>
+                    {checkpoint.path}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={handleHashCheckpoint}
+                disabled={hashLoading || !baseCheckpointPath.trim()}
+                className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-sky-500/20 bg-sky-500/10 px-3 text-xs font-medium text-sky-300 transition hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {hashLoading ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
+                计算 hash
+              </button>
+            </div>
+            {selectedCheckpointPath ? (
+              <div className="truncate font-mono text-[11px] text-zinc-500">
+                selected: {selectedCheckpointPath}
+              </div>
+            ) : null}
+            {checkpointError ? (
+              <div className="rounded-md border border-amber-500/20 bg-amber-500/10 px-2 py-1.5 text-[11px] text-amber-200">
+                Checkpoint browser 加载失败：{checkpointError}，仍可手填。
+              </div>
+            ) : null}
+          </div>
           <label className="grid gap-1 text-xs text-zinc-400">
             Base checkpoint 名称
             <input
               name="baseCheckpointName"
+              value={baseCheckpointName}
+              onChange={(event) => setBaseCheckpointName(event.target.value)}
               className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-sky-400"
               placeholder="可选"
             />
@@ -225,8 +395,10 @@ export function CharacterLoraTrainingClient({ jobList, gpuLock }: Props) {
             <input
               name="baseCheckpointPath"
               required
-              className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-sky-400"
-              placeholder="checkpoints/model.safetensors"
+              value={baseCheckpointPath}
+              onChange={(event) => handleBaseCheckpointPathChange(event.target.value)}
+              className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 font-mono text-xs text-white outline-none focus:border-sky-400"
+              placeholder="model.safetensors 或完整 checkpoint 路径"
             />
           </label>
           <label className="grid gap-1 text-xs text-zinc-400">
@@ -234,7 +406,9 @@ export function CharacterLoraTrainingClient({ jobList, gpuLock }: Props) {
             <input
               name="baseCheckpointHash"
               required
-              className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-sky-400"
+              value={baseCheckpointHash}
+              onChange={(event) => setBaseCheckpointHash(event.target.value)}
+              className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 font-mono text-xs text-white outline-none focus:border-sky-400"
               placeholder="sha256 或可用 hash"
             />
           </label>

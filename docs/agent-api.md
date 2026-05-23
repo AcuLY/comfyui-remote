@@ -96,7 +96,7 @@ or:
 | Manage templates | `GET/POST /api/templates`, `GET/PATCH/DELETE /api/templates/:templateId`, `GET/PATCH/DELETE /api/templates/:templateId/sections/:sectionId`, `POST /api/templates/:templateId/sections/:sectionId/copy`, `POST /api/templates/:templateId/import` |
 | Manage preset library | `/api/preset-library/**` endpoints listed below |
 | Search preset library for agent use | `GET /api/presets`, `GET /api/preset-library/presets`, `GET /api/preset-library/presets/:presetId` |
-| Upload/list/move/annotate models | `GET/POST /api/models?kind=lora|checkpoint`, `GET /api/models/browse`, `POST /api/models/move`, `GET/PUT /api/models/notes` |
+| Upload/list/move/hash/annotate models | `GET/POST /api/models?kind=lora|checkpoint`, `GET /api/models/browse`, `GET /api/models/hash`, `POST /api/models/move`, `GET/PUT /api/models/notes` |
 | Manage Character LoRA training jobs and sections | `/api/character-lora-training/**` endpoints listed below |
 | Read logs, audit logs, health, worker status | `GET /api/logs`, `GET /api/audit-logs`, `GET /api/health`, `GET /api/worker/status` |
 | MCP automation | `GET/POST/DELETE /api/mcp` |
@@ -482,10 +482,12 @@ Preset list/detail responses include the normalized `civitaiLinks` array:
 | `GET` | `/api/models?kind=lora\|checkpoint` | list registered model files |
 | `POST` | `/api/models?kind=lora\|checkpoint` | upload a model file with multipart form data |
 | `GET` | `/api/models/browse?kind=lora\|checkpoint` | browse model directories |
+| `GET` | `/api/models/hash?kind=lora\|checkpoint&path=<relative>` | compute sha256 for one allowed model file on demand |
 | `POST` | `/api/models/move?kind=lora\|checkpoint` | move a model file |
 | `GET/PUT` | `/api/models/notes?kind=lora\|checkpoint` | read or update notes |
 
 `kind=checkpoint` is rooted at `MODEL_BASE_DIR/checkpoints`, only exposes `.safetensors` files, and stores notes only. `kind=lora` is rooted at `MODEL_BASE_DIR/loras` and supports notes plus trigger words.
+`GET /api/models/hash` returns `{ "name": "...", "path": "...", "absolutePath": "...", "size": 123, "sha256": "..." }`, validates that `path` stays under the selected kind's base directory, validates the model extension, and hashes the file as a stream so browse calls do not scan large model contents. `path` is normalized relative to the selected kind's base directory; `absolutePath` is available for training jobs that need a directly stat-able checkpoint path.
 
 ## Character LoRA Training
 
