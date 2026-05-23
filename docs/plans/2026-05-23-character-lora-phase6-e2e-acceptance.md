@@ -54,8 +54,10 @@ cmd /c npx prisma db push --schema prisma/schema.sqlite.prisma
 14. dryRun + skipQueue 创建并 mock complete benchmark，并断言它不能创建 approved promotion decision、仍可创建 rejected decision 用于诊断回退。
 15. 先断言缺失 ProjectTemplate 时非 dryRun/skipQueue benchmark enqueue 返回 409；再创建同名但 sections 不足的模板并断言真实 benchmark 仍返回 409，随后删除坏模板并调用默认 benchmark template ensure helper，在隔离 SQLite 中创建真实 `角色 LoRA 测试` ProjectTemplate（至少 7 个 sections），并重复 ensure 断言不会重复创建。
 16. 另外创建一个非 dryRun/skipQueue benchmark，确认其 `templateId` 来自 ensure 出来的真实 ProjectTemplate，并直接通过 complete 服务写入 benchmark-worker 风格的完成证据（runIds、sections、counts done=totalRuns、matrixExpansion >= 7 base sections、skipWait=false）。
-17. 使用第 16 步的真实证据形态 benchmark 创建 approved promotion decision。
-18. 在隔离 SQLite 中真实执行 promotion，创建正式 preset 和 7 个 variants。
+17. 对完成后的临时 benchmark preset/project 执行 cleanup dryRun、真实 cleanup 和重复 cleanup，断言原始 `testProjectId` / `testPresetId`、training run、LoRA asset、safetensors artifact 和 benchmark report artifact 保留。
+18. 直接覆盖 job 级 benchmark route：错误 `trainingRunId` 返回 404；未传 `trainingRunId` 时自动选择该 job 最新完成且有 final safetensors 的 training run，并走 dryRun/skipQueue benchmark，不留下 active GPU lock。
+19. 使用第 16 步的真实证据形态 benchmark 创建 approved promotion decision。
+20. 在隔离 SQLite 中真实执行 promotion，创建正式 preset 和 7 个 variants。
 
 脚本不使用裸 SQL 绕过业务规则；只在最后用 Prisma read 查询 promoted variants 做断言。
 
@@ -73,6 +75,7 @@ cmd /c npx prisma db push --schema prisma/schema.sqlite.prisma
 - training config path。
 - final safetensors sha256。
 - benchmark report artifact/result summary。
+- benchmark cleanup 状态和原始临时 test ids。
 - promotion decision。
 - preset variant count 和 resolved LoRA weights。
 - managerProject 验收信息：promotion 后创建的普通 Manager project、section、preset prompt block 和 LoRA path。
@@ -126,7 +129,9 @@ cmd /c npx tsc --noEmit --pretty false
 - `fake-e2e-smoke.ts` 完整 smoke 通过，最终 job status 为 `promoted`，phase 为 `promotion`。
 - 完整 smoke 的 dataset item count 为 `3`（1 张 source candidate + 2 张 section candidate），caption trigger-first 为 `true`。
 - 完整 smoke 的 training run status 为 `done`，final sha256 为 64 位 hex。
-- 完整 smoke 的 benchmark run status 为 `done`，promotion decision status 为 `promoted`，promoted preset variant count 为 `7`。
+- 完整 smoke 的主 benchmark run status 为 `done`，job 级 route benchmark 也被纳入 report 覆盖，当前 report coverage 中 benchmarkRuns 至少为 `3`。
+- benchmark cleanup 会删除临时 test project/preset，但保留 benchmark run 原始 test ids、LoRA asset、training safetensors 和 benchmark report artifact；重复 cleanup 幂等。
+- promotion decision status 为 `promoted`，promoted preset variant count 为 `7`。
 - PostgreSQL schema validate 通过。
 - SQLite schema validate 通过。
 - targeted ESLint 通过。
@@ -140,6 +145,8 @@ cmd /c npx tsc --noEmit --pretty false
 - caption 第一个逗号分隔 token 等于 job trigger token。
 - training run status 为 `done`，final sha256 为 64 位 hex。
 - benchmark run status 为 `done`。
+- job 级 benchmark route 能拒绝跨 job/不存在的 `trainingRunId`，并能在未传 `trainingRunId` 时从最新完成训练 run 启动 benchmark。
+- benchmark cleanup 保留训练产物和报告，且记录 `testProjectCleanedAt` / `testPresetCleanedAt`。
 - promotion decision status 为 `promoted`。
 - promoted preset variant count 为 `7`，每个 variant 的 resolved LoRA weight 为正数。
 - promotion 后正式 preset 可以被普通 Manager project 的 `addSection` 路径展开，生成 preset prompt block，并把角色 LoRA 写入 section `loraConfig.lora1/lora2`。
@@ -149,6 +156,7 @@ cmd /c npx tsc --noEmit --pretty false
 - fake image provider 不调用外部图像模型，section candidate 由脚本写入 dummy PNG artifact 后通过真实 worker complete 入口登记。
 - fake training worker 不调用 sd-scripts/kohya，只通过真实 training complete 入口登记 dummy `.safetensors`、checkpoint、hashes 和 log。
 - dryRun/skipQueue benchmark 只覆盖临时 preset/project 和 benchmark report 状态链；缺失 ProjectTemplate 时允许使用 fallback sections，或使用 sections 不足的模板，但这些都只属于 debug 路径，不能作为 approved promotion evidence。
+- job 级 benchmark route 只负责从 job 上下文解析 training run；实际 benchmark 门禁仍复用 training run 级 service，避免 job 级入口绕过完成状态、final safetensors、ProjectTemplate 或 GPU busy 规则。
 - smoke 会另建一个非 dryRun/skipQueue benchmark；真实 benchmark 前应通过工作台或 `cmd /c npx tsx scripts/character-lora-training/ensure-benchmark-template.ts --checkpoint <checkpoint>` 幂等确保 `角色 LoRA 测试` ProjectTemplate，并确认 `isUsable=true` / `sectionCount >= 7`，不能静默 fallback，并用 benchmark-worker 风格的完成 `resultSummary` 作为 approved promotion evidence；该路径不进入真实 ComfyUI 出图队列。
 - benchmark task payload 必须携带训练 job 当时的 base checkpoint 快照：`baseCheckpoint.name/path/hash/baseFamily` 来自 `job.baseCheckpointName/baseCheckpointPath/baseCheckpointHash/baseFamily`。
 - benchmark-worker 风格的 `resultSummary.sections[]` 和 `resultSummary.matrixExpansion.sections[]` 必须同时记录 section、checkpointName、loraWeight、顶层 seed、原始 `executionMeta` 以及 `baseCheckpoint` 快照；seed 从 `executionMeta.ks1Seed` 优先提取，其次使用 `executionMeta.ks2Seed`，便于逐张测试图审计 checkpoint、LoRA weight、section、seed、base checkpoint。
