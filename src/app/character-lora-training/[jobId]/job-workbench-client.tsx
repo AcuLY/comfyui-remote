@@ -2354,6 +2354,26 @@ function CandidateImageCard({
             ))}
           </div>
         ) : null}
+        {sectionCanonicalVersion?.artifact?.relativePath ? (
+          <a
+            href={buildArtifactImageUrl(jobId, sectionCanonicalVersion.artifact.relativePath)}
+            target="_blank"
+            rel="noreferrer"
+            className="grid grid-cols-[44px_1fr] items-center gap-2 rounded-lg border border-white/10 bg-black/20 p-1.5"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element -- compact compare thumb uses the same artifact route as the main thumbnail. */}
+            <img
+              src={buildArtifactImageUrl(jobId, sectionCanonicalVersion.artifact.relativePath, { w: 96, q: 60 })}
+              alt={`canonical v${sectionCanonicalVersion.version}`}
+              loading="lazy"
+              className="size-11 rounded-md bg-black/30 object-cover"
+            />
+            <span className="min-w-0">
+              <span className="block text-[11px] text-zinc-300">canonical v{sectionCanonicalVersion.version}</span>
+              <span className="block truncate font-mono text-[10px] text-zinc-500">{sectionCanonicalVersion.artifact.relativePath}</span>
+            </span>
+          </a>
+        ) : null}
         {rejectReasons.length > 0 ? (
           <div className="flex flex-wrap gap-1">
             {rejectReasons.map((reason) => (
