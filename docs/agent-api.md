@@ -493,6 +493,9 @@ Preset list/detail responses include the normalized `civitaiLinks` array:
 
 | Method | Path | Purpose |
 | --- | --- | --- |
+| `GET` | `/api/character-lora-training/training-templates` | list active LoRA Training Templates / Recipes with defaults and owned section templates |
+| `GET` | `/api/character-lora-training/section-templates` | list active section templates |
+| `POST` | `/api/character-lora-training/section-templates` | copy an existing section template; copies inherit the source template's recipe ownership |
 | `GET` | `/api/character-lora-training/jobs` | list Character LoRA training jobs |
 | `POST` | `/api/character-lora-training/jobs` | create a training job |
 | `GET/PATCH` | `/api/character-lora-training/jobs/:jobId` | read or update a job |
@@ -505,6 +508,10 @@ Preset list/detail responses include the normalized `civitaiLinks` array:
 | `PATCH` | `/api/character-lora-training/sections/:sectionId` | pause or resume one job section with `{ "status": "paused" }`, `{ "status": "active" }`, `{ "action": "pause" }`, or `{ "action": "resume" }` |
 | `POST` | `/api/character-lora-training/sections/:sectionId/runs` | enqueue section generation or rerun; paused sections return `409` |
 | `POST` | `/api/character-lora-training/images/review` | update candidate image reviews and refresh section counts |
+
+`POST /api/character-lora-training/jobs` accepts optional `trainingTemplateId`. When omitted, the service uses the default `character_identity_default` recipe. Created jobs store both the source `trainingTemplateId` and an immutable `trainingTemplateSnapshot`; the selected recipe's section templates are instantiated immediately. `captionStrategy` defaults from the recipe unless explicitly overridden. Recipe defaults do not remove the requirement to provide the job's concrete character identity, trigger token, training scope, and base checkpoint path/hash/family.
+
+`POST /api/character-lora-training/jobs/:jobId/sections/instantiate` is scoped to the job's recipe when the job has `trainingTemplateId`. Re-instantiating existing section keys does not duplicate sections; it refreshes empty or stale `canonicalVersionId` / `promptCardVersionId` lineage to the job's current pointers when available.
 
 Pausing a Character LoRA job section does not delete runs, images, or review counts. Count refreshes keep `paused` until an explicit resume. Resume derives the active status from current counts: `pending > 0` becomes `reviewing`, any kept/rejected images become `reviewed`, and empty sections become `draft`.
 
