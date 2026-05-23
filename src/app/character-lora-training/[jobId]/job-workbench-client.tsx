@@ -1268,14 +1268,14 @@ export function JobWorkbenchClient({
   }
 
   return (
-    <div className="mx-auto w-full max-w-5xl min-w-0 space-y-5">
+    <div className="mx-auto w-full max-w-5xl min-w-0 space-y-5 [&_input]:min-w-0 [&_select]:min-w-0 [&_textarea]:min-w-0">
       <PageHeader
         title={job.characterName}
         description={`${job.triggerToken} / ${job.slug}`}
         actions={
           <Link
             href="/character-lora-training"
-            className="inline-flex h-8 items-center gap-1 rounded-lg border border-white/10 px-2 text-xs text-zinc-300 hover:bg-white/5"
+            className="inline-flex h-8 shrink-0 items-center gap-1 whitespace-nowrap rounded-lg border border-white/10 px-2 text-xs text-zinc-300 hover:bg-white/5"
           >
             <ArrowLeft className="size-3.5" />
             返回
@@ -1283,7 +1283,7 @@ export function JobWorkbenchClient({
         }
       />
 
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-2 lg:grid-cols-6">
         <StatChip label="状态" value={STATUS_LABEL[job.status] ?? job.status} tone="accent" />
         <StatChip label="Phase" value={job.phase ?? "-"} />
         <StatChip label="Source" value={sourceImages.length} />
@@ -1708,7 +1708,7 @@ export function JobWorkbenchClient({
                         ))}
                       </select>
                     </label>
-                    <div className="flex flex-wrap justify-end gap-1">
+                    <div className="flex flex-wrap gap-1 md:justify-end">
                       {isPaused ? (
                         <ActionButton
                           type="button"
@@ -3143,10 +3143,10 @@ function ActionButton({
       onClick={onClick}
       disabled={disabled || loading}
       title={title}
-      className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-2.5 text-xs font-medium text-zinc-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+      className="inline-flex h-8 max-w-full min-w-0 items-center justify-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-2.5 text-xs font-medium text-zinc-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
     >
       {loading ? <Loader2 className="size-3.5 animate-spin" /> : <Icon className="size-3.5" />}
-      {label}
+      <span className="min-w-0 truncate">{label}</span>
     </button>
   );
 }
@@ -3172,10 +3172,10 @@ function MiniButton({
       onClick={onClick}
       disabled={disabled}
       title={title}
-      className={`inline-flex h-7 items-center justify-center gap-1 rounded-md border px-2 text-[11px] transition disabled:cursor-not-allowed disabled:opacity-50 ${tone === "danger" ? "border-red-400/20 text-red-200 hover:bg-red-500/10" : "border-white/10 text-zinc-300 hover:bg-white/5"}`}
+      className={`inline-flex h-7 max-w-full min-w-0 items-center justify-center gap-1 rounded-md border px-2 text-[11px] transition disabled:cursor-not-allowed disabled:opacity-50 ${tone === "danger" ? "border-red-400/20 text-red-200 hover:bg-red-500/10" : "border-white/10 text-zinc-300 hover:bg-white/5"}`}
     >
       {Icon ? <Icon className="size-3" /> : null}
-      {label}
+      <span className="min-w-0 truncate">{label}</span>
     </button>
   );
 }

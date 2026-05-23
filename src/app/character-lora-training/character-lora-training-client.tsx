@@ -326,7 +326,7 @@ export function CharacterLoraTrainingClient({ jobList, gpuLock }: Props) {
 
   return (
     <div className="space-y-5">
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-2 lg:grid-cols-5">
         <StatChip label="任务" value={jobList.total} tone="accent" />
         <StatChip label="草稿" value={statusCounts.draft ?? 0} />
         <StatChip label="训练中" value={(statusCounts.training_queued ?? 0) + (statusCounts.training_running ?? 0)} tone="warn" />
@@ -344,7 +344,7 @@ export function CharacterLoraTrainingClient({ jobList, gpuLock }: Props) {
       ) : null}
 
       <SectionCard title="新建训练任务" subtitle="建立角色任务并可先上传参考图，详情页继续补 canonical、prompt、section。">
-        <form action={handleCreate} className="grid gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-3 lg:grid-cols-2">
+        <form action={handleCreate} className="grid min-w-0 gap-3 overflow-hidden rounded-lg border border-white/10 bg-white/[0.03] p-3 [&_input]:min-w-0 [&_select]:min-w-0 [&_textarea]:min-w-0 lg:grid-cols-2">
           <label className="grid gap-1 text-xs text-zinc-400">
             角色名
             <input
@@ -370,7 +370,7 @@ export function CharacterLoraTrainingClient({ jobList, gpuLock }: Props) {
                 {checkpointLoading ? "加载中" : `${checkpointFiles.length} files`}
               </span>
             </div>
-            <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_auto]">
+            <div className="grid min-w-0 gap-2 md:grid-cols-[minmax(0,1fr)_auto]">
               <select
                 value={selectedCheckpointPath}
                 onChange={(event) => handleSelectCheckpoint(event.target.value)}
@@ -390,7 +390,7 @@ export function CharacterLoraTrainingClient({ jobList, gpuLock }: Props) {
                 type="button"
                 onClick={handleHashCheckpoint}
                 disabled={hashLoading || !baseCheckpointPath.trim()}
-                className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-sky-500/20 bg-sky-500/10 px-3 text-xs font-medium text-sky-300 transition hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg border border-sky-500/20 bg-sky-500/10 px-3 text-xs font-medium text-sky-300 transition hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-60 md:w-auto"
               >
                 {hashLoading ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
                 计算 hash
@@ -552,7 +552,7 @@ export function CharacterLoraTrainingClient({ jobList, gpuLock }: Props) {
             <button
               type="submit"
               disabled={isPending}
-              className="inline-flex h-9 items-center gap-2 rounded-lg bg-sky-500 px-3 text-sm font-medium text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-sky-500 px-3 text-sm font-medium text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
             >
               {isPending ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
               创建并进入
@@ -565,18 +565,18 @@ export function CharacterLoraTrainingClient({ jobList, gpuLock }: Props) {
         title="任务列表"
         subtitle={`${visibleJobs.length} / ${jobList.total}`}
         actions={
-          <div className="flex min-w-0 flex-wrap gap-2">
+          <div className="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              className="h-8 w-48 rounded-lg border border-white/10 bg-black/30 px-2 text-xs text-white outline-none focus:border-sky-400"
+              className="h-8 w-full rounded-lg border border-white/10 bg-black/30 px-2 text-xs text-white outline-none focus:border-sky-400 sm:w-48"
               placeholder="过滤角色 / trigger / checkpoint"
             />
             <button
               type="button"
               onClick={handleRefresh}
               disabled={isPending}
-              className="inline-flex h-8 items-center gap-1 rounded-lg border border-white/10 px-2 text-xs text-zinc-300 hover:bg-white/5 disabled:opacity-60"
+              className="inline-flex h-8 w-full items-center justify-center gap-1 rounded-lg border border-white/10 px-2 text-xs text-zinc-300 hover:bg-white/5 disabled:opacity-60 sm:w-auto"
             >
               <RefreshCw className={`size-3.5 ${isPending ? "animate-spin" : ""}`} />
               刷新
@@ -590,7 +590,7 @@ export function CharacterLoraTrainingClient({ jobList, gpuLock }: Props) {
           </div>
         ) : (
           <div className="overflow-hidden rounded-lg border border-white/10">
-            <div className="grid grid-cols-[1.4fr_0.9fr_0.8fr_1fr_44px] border-b border-white/10 bg-white/[0.03] px-3 py-2 text-[11px] text-zinc-500">
+            <div className="hidden grid-cols-[1.4fr_0.9fr_0.8fr_1fr_44px] border-b border-white/10 bg-white/[0.03] px-3 py-2 text-[11px] text-zinc-500 sm:grid">
               <span>角色</span>
               <span>状态</span>
               <span>素材</span>
@@ -613,7 +613,7 @@ function JobRow({ job }: { job: CharacterLoraJobSummary }) {
   return (
     <Link
       href={`/character-lora-training/${job.id}`}
-      className="grid grid-cols-[1.4fr_0.9fr_0.8fr_1fr_44px] items-center gap-2 px-3 py-3 text-sm text-zinc-200 transition hover:bg-white/[0.04]"
+      className="grid gap-2 px-3 py-3 text-sm text-zinc-200 transition hover:bg-white/[0.04] sm:grid-cols-[1.4fr_0.9fr_0.8fr_1fr_44px] sm:items-center"
     >
       <span className="min-w-0">
         <span className="block truncate font-medium text-white">{job.characterName}</span>

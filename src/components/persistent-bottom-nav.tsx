@@ -121,7 +121,7 @@ export function PersistentBottomNav() {
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[var(--panel)]/95 backdrop-blur pb-[env(safe-area-inset-bottom)]">
-      <div className="mx-auto grid max-w-5xl grid-cols-7 gap-1 px-2 py-2">
+      <div className="mx-auto grid max-w-5xl grid-cols-7 gap-0.5 px-1.5 py-2 sm:gap-1 sm:px-2">
         {navItems.map(({ href, label, icon: Icon }) => {
           const active = pathname === href || pathname.startsWith(`${href}/`);
 
@@ -141,14 +141,14 @@ export function PersistentBottomNav() {
                   router.push(restoredHref);
                 }
               }}
-              className={`flex min-h-14 w-full min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-1 py-2 text-[11px] transition ${
+              className={`flex min-h-14 w-full min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-0.5 py-2 text-[10px] transition sm:rounded-2xl sm:px-1 sm:text-[11px] ${
                 active
                   ? "bg-sky-500/12 text-sky-300"
                   : "text-zinc-400 hover:bg-white/5 hover:text-white"
               }`}
             >
               <Icon className="size-4" />
-              <span>{label}</span>
+              <span className="max-w-full truncate whitespace-nowrap leading-tight">{label}</span>
             </Link>
           );
         })}
