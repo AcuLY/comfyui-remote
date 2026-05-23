@@ -2248,7 +2248,7 @@ export function JobWorkbenchClient({
           runs={trainingRuns.map((run) => ({
             id: run.id,
             status: run.status === "running" && run.cancelRequestedAt ? "cancelling" : run.status,
-            primary: `${run.launcher} / ${run.currentStep ?? 0}/${run.targetSteps ?? "-"}`,
+            primary: `Training Run / ${run.launcher} / ${run.currentStep ?? 0}/${run.targetSteps ?? "-"}`,
             secondary: [
               compactId(run.datasetRevisionId),
               run.outputDir,
@@ -2333,7 +2333,7 @@ export function JobWorkbenchClient({
             return {
               id: run.id,
               status: run.status,
-              primary: `weight ${Array.isArray(run.weightMatrix) ? run.weightMatrix.join(",") : "-"} / rec ${run.recommendedWeight ?? "-"}`,
+              primary: `Benchmark Run / weight ${Array.isArray(run.weightMatrix) ? run.weightMatrix.join(",") : "-"} / rec ${run.recommendedWeight ?? "-"}`,
               secondary: [
                 `asset ${compactId(run.loraAssetId)}`,
                 `training ${compactId(run.trainingRunId)}`,
@@ -2508,7 +2508,7 @@ export function JobWorkbenchClient({
           runs={promotionDecisions.map((decision) => ({
             id: decision.id,
             status: decision.status,
-            primary: `weight ${decision.defaultRecommendedWeight} / asset ${compactId(decision.selectedLoraAssetId)}`,
+            primary: `Promotion Decision / weight ${decision.defaultRecommendedWeight} / asset ${compactId(decision.selectedLoraAssetId)}`,
             secondary: `benchmark ${compactId(decision.benchmarkRunId)} / preset ${compactId(decision.promotedPresetId)}`,
             action: (
               <div className="flex flex-wrap gap-1">

@@ -100,7 +100,7 @@ export async function enqueueCharacterLoraTrainingRun(datasetRevisionId: string,
   const trainingRunId = randomUUID();
   const outputDir = `training-runs/${trainingRunId}`;
   const cancelSignalPath = `${outputDir}/${parsed.cancel?.signalFilename ?? "cancel-signal.json"}`;
-  const resolvedConfig = resolveTrainingConfig(parsed);
+  const resolvedConfig = resolveTrainingConfig(parsed, job.trainingTemplateSnapshot);
   warnings.push(...getTrainingConfigWarnings(resolvedConfig));
   const postTrainingBenchmarkSummary = summarizePostTrainingBenchmark(parsed.postTrainingBenchmark);
   const tomlPath = `${outputDir}/training.toml`;
@@ -440,8 +440,12 @@ export function mapCharacterLoraTrainingError(error: unknown) {
   };
 }
 
-function resolveTrainingConfig(input: CharacterLoraTrainingEnqueueRequest): CharacterLoraTrainingResolvedConfig {
+function resolveTrainingConfig(
+  input: CharacterLoraTrainingEnqueueRequest,
+  trainingTemplateSnapshot: unknown,
+): CharacterLoraTrainingResolvedConfig {
   const profileDefaults = resolveProfileDefaults(input.configProfile);
+  const recipeDefaults = readRecipeTrainingDefaults(trainingTemplateSnapshot);
   const candidate = {
     profile: input.configProfile,
     launcher: input.launcher,
@@ -455,6 +459,7 @@ function resolveTrainingConfig(input: CharacterLoraTrainingEnqueueRequest): Char
       gradientAccumulation: 1,
       targetSteps: 2000,
       saveInterval: profileDefaults.saveInterval,
+      ...recipeDefaults.ordinary,
       ...input.overrides?.ordinary,
     },
     advanced: {
@@ -466,10 +471,12 @@ function resolveTrainingConfig(input: CharacterLoraTrainingEnqueueRequest): Char
       lrScheduler: "cosine",
       minBucketResolution: 512,
       maxBucketResolution: 1536,
+      ...recipeDefaults.advanced,
       ...input.advanced,
       ...input.overrides?.advanced,
     },
     expert: {
+      ...recipeDefaults.expert,
       ...(input.expert ?? {}),
       ...(input.overrides?.expert ?? {}),
     },
@@ -481,6 +488,85 @@ function resolveTrainingConfig(input: CharacterLoraTrainingEnqueueRequest): Char
   }
 
   return parseWithSchema(characterLoraTrainingResolvedConfigSchema, candidate);
+}
+
+function readRecipeTrainingDefaults(snapshot: unknown) {
+  const snapshotRecord = asRecord(snapshot);
+  const trainingDefaults = asRecord(snapshotRecord.trainingDefaults);
+  const configProfiles = asRecord(trainingDefaults.configProfiles);
+  const ordinarySource = mergeRecords(asRecord(trainingDefaults.ordinary), asRecord(configProfiles.ordinary));
+  const advancedSource = mergeRecords(asRecord(trainingDefaults.advanced), asRecord(configProfiles.advanced));
+  const expertSource = mergeRecords(asRecord(trainingDefaults.expert), asRecord(configProfiles.expert));
+  const precision = readString(ordinarySource, "precision") ?? readString(advancedSource, "mixedPrecision");
+  const learningRate = readNumber(ordinarySource, "learningRate") ?? readNumber(advancedSource, "learningRate");
+
+  return {
+    ordinary: stripUndefined({
+      rank: readInteger(ordinarySource, "rank") ?? readInteger(ordinarySource, "networkDim"),
+      alpha: readInteger(ordinarySource, "alpha") ?? readInteger(ordinarySource, "networkAlpha"),
+      resolution: readInteger(ordinarySource, "resolution"),
+      bucket: readBoolean(ordinarySource, "bucket"),
+      precision: isTrainingPrecision(precision) ? precision : undefined,
+      batchSize: readInteger(ordinarySource, "batchSize"),
+      gradientAccumulation: readInteger(ordinarySource, "gradientAccumulation"),
+      targetSteps: readInteger(ordinarySource, "targetSteps") ?? readInteger(ordinarySource, "steps"),
+      saveInterval: readInteger(ordinarySource, "saveInterval"),
+    }),
+    advanced: stripUndefined({
+      unetLearningRate: readNumber(advancedSource, "unetLearningRate") ?? learningRate,
+      textEncoderLearningRate: readNullableNumber(advancedSource, "textEncoderLearningRate"),
+      trainTextEncoder: readBoolean(advancedSource, "trainTextEncoder"),
+      networkModule: readString(advancedSource, "networkModule"),
+      optimizer: readString(advancedSource, "optimizer"),
+      lrScheduler: readString(advancedSource, "lrScheduler"),
+      minBucketResolution: readInteger(advancedSource, "minBucketResolution"),
+      maxBucketResolution: readInteger(advancedSource, "maxBucketResolution"),
+      seed: readInteger(advancedSource, "seed"),
+    }),
+    expert: expertSource,
+  };
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function mergeRecords(...records: Array<Record<string, unknown>>) {
+  return Object.assign({}, ...records);
+}
+
+function stripUndefined<T extends Record<string, unknown>>(record: T) {
+  return Object.fromEntries(Object.entries(record).filter(([, value]) => value !== undefined));
+}
+
+function readNumber(record: Record<string, unknown>, key: string) {
+  const value = record[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function readNullableNumber(record: Record<string, unknown>, key: string) {
+  if (!(key in record)) return undefined;
+  const value = record[key];
+  return value === null || (typeof value === "number" && Number.isFinite(value)) ? value : undefined;
+}
+
+function readInteger(record: Record<string, unknown>, key: string) {
+  const value = readNumber(record, key);
+  return value !== undefined && Number.isInteger(value) ? value : undefined;
+}
+
+function readBoolean(record: Record<string, unknown>, key: string) {
+  const value = record[key];
+  return typeof value === "boolean" ? value : undefined;
+}
+
+function readString(record: Record<string, unknown>, key: string) {
+  const value = record[key];
+  return typeof value === "string" && value.trim() ? value : undefined;
+}
+
+function isTrainingPrecision(value: string | undefined): value is "bf16" | "fp16" | "fp32" {
+  return value === "bf16" || value === "fp16" || value === "fp32";
 }
 
 function normalizeExpertTrainingConfig(expert: Record<string, unknown>) {
