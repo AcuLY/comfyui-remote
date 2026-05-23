@@ -59,6 +59,20 @@ Invoke-WebRequest -Uri "http://127.0.0.1:3000/api/character-lora-training/worker
 
 `worker/status` 会返回全局 queued/running/failed/cancelled/done 计数、每类 worker 的最近 heartbeat、未被 lease 的 queued 数量、过期 running lease 数量和推荐 supervisor 命令。Workbench 的 Report / Diagnostics 区会展示同一状态；如果出现 queued 但没有 running/heartbeat，优先启动 supervisor，而不是重复入队。
 
+Windows 常驻启动：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/character-lora-training/start-worker-queue.ps1 -Mode real
+```
+
+安装当前用户登录自启动任务：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/character-lora-training/install-worker-queue-task.ps1 -Mode real -StartNow
+```
+
+这两个脚本只保存进程 pid 和日志路径，不保存 token。真实模式仍要求外部环境提供 `CHARACTER_LORA_CODEX_BEARER_TOKEN` / `CODEX_OAUTH_TOKEN` / `CHARACTER_LORA_CODEX_AUTH_FILE` 之一，否则 `openai-codex` image task 会失败；真实 training 也需要 `CHARACTER_LORA_TRAINING_COMMAND`。缺失项会写入 `logs/character-lora-worker-queue.log` 的 launcher 记录，便于排查常驻进程已经启动但外部 provider 未配置的情况。
+
 ## Image Worker
 
 默认使用 task payload 中的 `request.provider`；当前 Manager 生成任务默认写入 `openai-codex`。`--provider` 是强制 override，生产或真实验收时不要传 `--provider mock-local`；只有本地 smoke/debug 才显式传 `--provider mock-local`。
