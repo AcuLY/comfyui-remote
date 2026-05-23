@@ -101,6 +101,7 @@ export async function enqueueCharacterLoraTrainingRun(datasetRevisionId: string,
   const outputDir = `training-runs/${trainingRunId}`;
   const cancelSignalPath = `${outputDir}/${parsed.cancel?.signalFilename ?? "cancel-signal.json"}`;
   const resolvedConfig = resolveTrainingConfig(parsed);
+  warnings.push(...getTrainingConfigWarnings(resolvedConfig));
   const postTrainingBenchmarkSummary = summarizePostTrainingBenchmark(parsed.postTrainingBenchmark);
   const tomlPath = `${outputDir}/training.toml`;
   const dryRunSummaryPath = `${outputDir}/dry-run-summary.json`;
@@ -496,6 +497,16 @@ function normalizeExpertTrainingConfig(expert: Record<string, unknown>) {
     tagDropoutRate: 0,
     textEncoderDropout: 0,
   };
+}
+
+function getTrainingConfigWarnings(config: CharacterLoraTrainingResolvedConfig) {
+  if (config.expert.cacheTextEncoderOutputs !== true) {
+    return [];
+  }
+
+  return [
+    "cacheTextEncoderOutputs enabled; caption shuffle/dropout options were forced off in the resolved config.",
+  ];
 }
 
 async function enqueuePostTrainingBenchmarkAfterCompletion(

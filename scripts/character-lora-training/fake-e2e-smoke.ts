@@ -1017,6 +1017,11 @@ async function main() {
       },
       expert: {
         fakeE2eSmoke: true,
+        cacheTextEncoderOutputs: true,
+        shuffleCaption: true,
+        captionDropoutRate: 0.25,
+        tagDropoutRate: 0.5,
+        textEncoderDropout: 0.15,
       },
     },
     lease: {
@@ -1034,6 +1039,14 @@ async function main() {
       skipQueue: true,
     },
   });
+  const trainingDryRunSummary = readJsonRecord(
+    await readJobJsonArtifact(job.artifactRoot, `${trainingEnqueued.trainingRun.outputDir}/dry-run-summary.json`),
+  );
+  const trainingDryRunWarnings = readJsonArray(trainingDryRunSummary.warnings).map(String);
+  assert(
+    trainingDryRunWarnings.some((warning) => warning.includes("cacheTextEncoderOutputs enabled")),
+    "training dry-run summary should warn when text encoder cache disables shuffle/dropout",
+  );
   const trainingTask = await services.phase3Service.leaseNextCharacterLoraTask({
     workerType: "training",
     leaseOwner: "fake-training-worker",
@@ -1053,6 +1066,13 @@ async function main() {
 
   const trainingPayload = readTaskPayload(trainingTask.payload);
   assert(trainingPayload.taskType === "training", "leased training task payload should be training");
+  const trainingConfig = readJsonRecord(trainingPayload.resolvedConfig);
+  const trainingExpertConfig = readJsonRecord(trainingConfig.expert);
+  assert(trainingExpertConfig.cacheTextEncoderOutputs === true, "training config should keep cacheTextEncoderOutputs enabled");
+  assert(trainingExpertConfig.shuffleCaption === false, "cacheTextEncoderOutputs should disable shuffleCaption");
+  assert(trainingExpertConfig.captionDropoutRate === 0, "cacheTextEncoderOutputs should clear captionDropoutRate");
+  assert(trainingExpertConfig.tagDropoutRate === 0, "cacheTextEncoderOutputs should clear tagDropoutRate");
+  assert(trainingExpertConfig.textEncoderDropout === 0, "cacheTextEncoderOutputs should clear textEncoderDropout");
   const finalPath = `${trainingPayload.outputDir}/smoke-final.safetensors`;
   const checkpointPath = `${trainingPayload.outputDir}/checkpoint-step-0004.safetensors`;
   const logPath = `${trainingPayload.outputDir}/train.log`;
@@ -2265,6 +2285,7 @@ function readTaskPayload(payload: unknown) {
         taskType: "training";
         trainingRunId: string;
         outputDir: string;
+        resolvedConfig: unknown;
       }
     | {
         taskType: "dataset_freeze";

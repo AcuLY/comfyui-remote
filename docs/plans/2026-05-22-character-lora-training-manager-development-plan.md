@@ -1113,6 +1113,7 @@ sequenceDiagram
 - 2026-05-23：补齐 PRD 5.7/5.11 的工作台可见性缺口。候选图卡片在主候选图和 canonical 缩略图之外，直接展示当前 run 的 source、setting、local reference 和 previous candidate 输入缩略图，便于人工做原图/canonical/候选图对比；running training run 写入 cancel signal 后在列表中显示为“取消中”和 cancel requested 时间，避免把已请求取消的训练误看成普通运行中。
 - 2026-05-23：补齐 PRD 5.3 canonical 变更后的 Prompt Card 提示。当前 Prompt Card 绑定旧 canonical 时，工作台在 Prompt Card 区块直接提示当前 job canonical 与 Prompt Card canonical 的版本差异；表单继续允许沿用旧 lineage，但会提示用户可切换到当前 canonical 后保存新 Prompt Card version。
 - 2026-05-23：补齐 PRD 5.11 GPU 锁状态可见性。工作台训练区的 GPU task lock banner 展示当前 task type、owner type/id、startedAt 和从 lock metadata `leaseDurationSeconds` 推导出的预计 lease 释放时间；无法推导时显示“未估算”，避免只展示一个 owner id。
+- 2026-05-23：补齐 PRD 5.8 text encoder cache 冲突规则的 dry-run 证据。训练配置启用 `cacheTextEncoderOutputs` 时，service 会把 caption shuffle/dropout/text encoder dropout 相关 expert 字段强制归零或关闭，并把该处理写入 `dry-run-summary.json` 的 warnings；fake e2e smoke 覆盖 resolved config 和 warning。
 
 ## 12. 验证计划
 
