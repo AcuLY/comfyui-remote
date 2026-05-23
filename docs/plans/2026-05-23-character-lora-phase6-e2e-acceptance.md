@@ -165,5 +165,6 @@ Report 验收要点：
 - JSON report 至少包含 job/counts、sourceImages、canonicalVersions、promptCardVersions、sections、generationRuns、candidateImages、datasetRevisions/items、trainingRuns/checkpoints、benchmarkRuns、promotionDecisions、artifactRefs、diagnosticSummary。
 - `generationRuns[].responseSummary` 必须保留 worker 写入的 redacted provider request/response summary，字段包括 `workerRequest`、`workerResponseSummary`、`requestRedactedPath`、`responseSummaryPath` 和最终 `responseSummaryArtifactId`，用于追溯 provider/http/auth source shape。
 - `candidateImages[].lineage` 必须内嵌候选图对应的 generation run 快照，包括 provider、hostModel、imageModel、hostInstruction、visualPrompt、negativePrompt、toolParams、inputImages、requestArtifactId、createdAt/startedAt/finishedAt，并记录 runCanonicalArtifactId、runCanonicalVersionId、sectionCanonicalVersionId、sectionPromptCardVersionId。
+- Promotion report 和正式 preset notes 必须记录 base checkpoint name/path/hash/baseFamily、benchmark checkpoint/weight matrix、recommendedWeight、LoRA hash、选择理由和每个 variant 的 resolved weight。
 - Markdown report 能用于人工诊断，至少包含 coverage、diagnostics、training、benchmark、promotion 摘要。
 - 诊断 summary 必须给出 `recommendedReturnPoint`、`reasons`、`evidence`、`actions`、`risk`。

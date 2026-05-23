@@ -837,12 +837,26 @@ async function buildPromotionPlan(decisionId: string, input: CharacterLoraPromot
   });
   const presetName = job.characterName;
   const presetSlug = slugifyForService(job.characterName || job.slug);
+  const baseCheckpoint = {
+    name: job.baseCheckpointName,
+    path: job.baseCheckpointPath,
+    hash: job.baseCheckpointHash,
+    baseFamily: job.baseFamily,
+  };
+  const benchmarkMatrix = {
+    checkpointMatrix: benchmark.checkpointMatrix,
+    weightMatrix: benchmark.weightMatrix,
+    recommendedWeight: benchmark.recommendedWeight,
+  };
   const report = {
     decisionId,
     jobId: job.id,
     datasetRevisionId: benchmark.datasetRevisionId ?? job.selectedDatasetRevisionId,
     trainingRunId: benchmark.trainingRunId,
     benchmarkRunId: benchmark.id,
+    baseCheckpoint,
+    benchmarkMatrix,
+    benchmarkResultSummary: benchmark.resultSummary,
     selectedLoraAssetId: loraAsset.id,
     loraRelativePath: loraAsset.relativePath,
     loraHash: benchmark.resultSummary && typeof benchmark.resultSummary === "object"
@@ -874,6 +888,8 @@ async function buildPromotionPlan(decisionId: string, input: CharacterLoraPromot
     loraAssetId: loraAsset.id,
     loraRelativePath: loraAsset.relativePath,
     loraHash: benchmark.finalSha256,
+    baseCheckpoint,
+    benchmarkMatrix,
     selectedCheckpoint: decision.selectedCheckpoint,
     defaultRecommendedWeight: decision.defaultRecommendedWeight,
     decisionReason: decision.decisionReason,
@@ -1141,6 +1157,9 @@ function serializeIncludedJob(job: {
   triggerToken: string;
   artifactRoot: string;
   baseCheckpointName: string | null;
+  baseCheckpointPath: string | null;
+  baseCheckpointHash: string | null;
+  baseFamily: string | null;
   selectedDatasetRevisionId: string | null;
 }) {
   return {
@@ -1150,6 +1169,9 @@ function serializeIncludedJob(job: {
     triggerToken: job.triggerToken,
     artifactRoot: job.artifactRoot,
     baseCheckpointName: job.baseCheckpointName,
+    baseCheckpointPath: job.baseCheckpointPath,
+    baseCheckpointHash: job.baseCheckpointHash,
+    baseFamily: job.baseFamily,
     selectedDatasetRevisionId: job.selectedDatasetRevisionId,
   };
 }
@@ -1157,6 +1179,9 @@ function serializeIncludedJob(job: {
 function serializeIncludedBenchmark(benchmark: {
   id: string;
   trainingRunId: string;
+  checkpointMatrix: unknown;
+  weightMatrix: unknown;
+  recommendedWeight: number | null;
   resultSummary: unknown;
   trainingRun?: {
     datasetRevisionId: string | null;
@@ -1167,6 +1192,9 @@ function serializeIncludedBenchmark(benchmark: {
   return {
     id: benchmark.id,
     trainingRunId: benchmark.trainingRunId,
+    checkpointMatrix: benchmark.checkpointMatrix,
+    weightMatrix: benchmark.weightMatrix,
+    recommendedWeight: benchmark.recommendedWeight,
     resultSummary: benchmark.resultSummary,
     datasetRevisionId: benchmark.trainingRun?.datasetRevisionId ?? null,
     finalSha256: benchmark.trainingRun?.finalSha256 ?? null,

@@ -1299,6 +1299,21 @@ async function main() {
   assert("decision" in promoted, "promotion should return a persisted decision");
   assert(promoted.decision.status === "promoted", "promotion decision should be promoted");
   assert(promoted.presetId, "promotion should create a preset");
+  const promotionReport = readJsonRecord(promoted.report);
+  const promotionBaseCheckpoint = readJsonRecord(promotionReport.baseCheckpoint);
+  assert(promotionBaseCheckpoint.hash === baseCheckpointHash, "promotion report should record base checkpoint hash");
+  assert(promotionBaseCheckpoint.baseFamily === "sdxl", "promotion report should record base family");
+  const promotionBenchmarkMatrix = readJsonRecord(promotionReport.benchmarkMatrix);
+  assert(readJsonArray(promotionBenchmarkMatrix.checkpointMatrix).includes("fake-base.safetensors"), "promotion report should record checkpoint matrix");
+  assert(readJsonArray(promotionBenchmarkMatrix.weightMatrix).includes(0.65), "promotion report should record weight matrix");
+  const promotedPreset = await services.prismaModule.prisma.preset.findUnique({
+    where: { id: promoted.presetId },
+    select: { notes: true },
+  });
+  assert(promotedPreset?.notes, "promoted preset should retain promotion metadata notes");
+  const presetNotes = readJsonRecord(JSON.parse(promotedPreset.notes));
+  assert(readJsonRecord(presetNotes.baseCheckpoint).hash === baseCheckpointHash, "preset notes should record base checkpoint hash");
+  assert(readJsonArray(readJsonRecord(presetNotes.benchmarkMatrix).weightMatrix).includes(0.65), "preset notes should record benchmark weight matrix");
 
   const variants = await services.prismaModule.prisma.presetVariant.findMany({
     where: { presetId: promoted.presetId },
