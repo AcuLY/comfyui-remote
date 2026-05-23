@@ -591,6 +591,7 @@ export function JobWorkbenchClient({
   const [pendingKey, setPendingKey] = useState<string | null>(null);
   const [latestCanonicalRunId, setLatestCanonicalRunId] = useState("");
   const [canonicalVersionId, setCanonicalVersionId] = useState(job.currentCanonicalVersionId ?? "");
+  const [promptCardCanonicalVersionId, setPromptCardCanonicalVersionId] = useState(job.currentCanonicalVersionId ?? "");
   const [selectedImageIds, setSelectedImageIds] = useState<string[]>([]);
   const [reviewSectionFilter, setReviewSectionFilter] = useState("all");
   const [reviewStatusFilter, setReviewStatusFilter] = useState("all");
@@ -642,6 +643,11 @@ export function JobWorkbenchClient({
   );
   const selectedCanonicalVersion = canonicalVersionById.get(canonicalVersionId);
   const selectedCanonicalIsRejected = selectedCanonicalVersion?.status === "rejected";
+  const resolvedPromptCardCanonicalVersionId = promptCardCanonicalVersionId || job.currentCanonicalVersionId || "";
+  const promptCardCanonicalVersion = resolvedPromptCardCanonicalVersionId
+    ? canonicalVersionById.get(resolvedPromptCardCanonicalVersionId)
+    : undefined;
+  const promptCardCanonicalIsRejected = promptCardCanonicalVersion?.status === "rejected";
   const promptCardById = useMemo(() => new Map(promptCards.map((card) => [card.id, card])), [promptCards]);
   const generationRunById = useMemo(() => new Map(report.generationRuns.map((run) => [run.id, run])), [report.generationRuns]);
   const generationRunsBySectionId = useMemo(() => {
@@ -695,6 +701,16 @@ export function JobWorkbenchClient({
     setPostTrainingBenchmarkTemplateId(benchmarkTemplateDefaultId);
     setBenchmarkTemplateId(benchmarkTemplateDefaultId);
   }, [benchmarkTemplateDefaultId]);
+
+  useEffect(() => {
+    setPromptCardCanonicalVersionId((current) => {
+      if (current && canonicalVersionById.has(current)) {
+        return current;
+      }
+
+      return job.currentCanonicalVersionId ?? "";
+    });
+  }, [canonicalVersionById, job.currentCanonicalVersionId]);
 
   function runAction(key: string, label: string, action: () => Promise<unknown>, refresh = true) {
     setPendingKey(key);
@@ -802,9 +818,20 @@ export function JobWorkbenchClient({
   }
 
   function handlePromptCard(formData: FormData) {
+    const formCanonicalVersionId = readOptionalString(formData, "canonicalVersionId") ?? null;
+    const resolvedCanonicalVersionId = formCanonicalVersionId ?? job.currentCanonicalVersionId ?? null;
+    const resolvedCanonicalVersion = resolvedCanonicalVersionId
+      ? canonicalVersionById.get(resolvedCanonicalVersionId)
+      : undefined;
+
+    if (resolvedCanonicalVersion?.status === "rejected") {
+      toast.error("Rejected canonical versions cannot be used for Prompt Card");
+      return;
+    }
+
     runAction("prompt.create", "Prompt Card 已保存", async () => {
       await createCharacterLoraPromptCardVersion(job.id, {
-        canonicalVersionId: readOptionalString(formData, "canonicalVersionId") ?? null,
+        canonicalVersionId: formCanonicalVersionId,
         triggerToken: readOptionalString(formData, "triggerToken"),
         identityTraits: parseJsonObject(identityTraits, {}),
         outfitTraits: parseJsonObject(outfitTraits, {}),
@@ -1299,14 +1326,29 @@ export function JobWorkbenchClient({
         <form action={handlePromptCard} className="grid gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-3 lg:grid-cols-2">
           <label className="grid gap-1 text-xs text-zinc-400">
             Canonical version
-            <select name="canonicalVersionId" defaultValue={job.currentCanonicalVersionId ?? canonicalVersionId} className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white">
+            <select
+              name="canonicalVersionId"
+              value={promptCardCanonicalVersionId}
+              onChange={(event) => setPromptCardCanonicalVersionId(event.target.value)}
+              className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white"
+            >
               <option value="">未选择</option>
               {canonicalVersions.map((version) => (
-                <option key={version.id} value={version.id}>
-                  v{version.version} / {compactId(version.id)}
+                <option key={version.id} value={version.id} disabled={version.status === "rejected"}>
+                  v{version.version} / {formatCanonicalStatus(version.status)} / {compactId(version.id)}
                 </option>
               ))}
             </select>
+            {promptCardCanonicalVersion ? (
+              <span className="text-[11px] text-zinc-500">
+                v{promptCardCanonicalVersion.version} / {formatCanonicalStatus(promptCardCanonicalVersion.status)}
+              </span>
+            ) : null}
+            {promptCardCanonicalIsRejected ? (
+              <span className="text-[11px] text-amber-200">
+                This canonical is rejected. Select a valid canonical before saving.
+              </span>
+            ) : null}
           </label>
           <label className="grid gap-1 text-xs text-zinc-400">
             Trigger
@@ -1324,7 +1366,13 @@ export function JobWorkbenchClient({
             <textarea name="finalPromptDraft" required defaultValue={currentPrompt?.finalPromptDraft ?? `${job.triggerToken}, ${job.characterName}`} className="min-h-24 rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white" />
           </label>
           <div className="lg:col-span-2">
-            <ActionButton icon={Save} label="保存 Prompt Card" loading={isBusy("prompt.create")} disabled={isPending} />
+            <ActionButton
+              icon={Save}
+              label="保存 Prompt Card"
+              loading={isBusy("prompt.create")}
+              disabled={isPending || promptCardCanonicalIsRejected}
+              title={promptCardCanonicalIsRejected ? "Rejected canonical versions cannot be used for Prompt Card" : undefined}
+            />
           </div>
         </form>
         <CompactList

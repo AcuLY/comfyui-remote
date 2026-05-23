@@ -444,6 +444,25 @@ async function main() {
   );
   const rejectedCandidateVersion = rejectedCandidateCompleted.canonicalVersion;
   assert(rejectedCandidateVersion.status === "candidate", "second canonical candidate should start as candidate");
+  const rejectedAnchorPromptCard = await services.promptCardService.createCharacterLoraPromptCardVersion(job.id, {
+    canonicalVersionId: rejectedCandidateVersion.id,
+    triggerToken,
+    identityTraits: {
+      hair: "temporary rejected-anchor hair",
+    },
+    outfitTraits: {
+      top: "temporary rejected-anchor jacket",
+    },
+    negativeTraits: {
+      avoid: ["temporary rejected-anchor prompt"],
+    },
+    finalPromptDraft: `${triggerToken}, temporary prompt card before canonical rejection`,
+    changeReason: "fake e2e prompt card bound before canonical rejection",
+  });
+  assert(
+    rejectedAnchorPromptCard.canonicalVersionId === rejectedCandidateVersion.id,
+    "pre-rejection prompt card should bind the candidate canonical",
+  );
   const rejectedCanonicalVersion = await services.canonicalService.rejectCharacterLoraCanonicalVersion(
     job.id,
     rejectedCandidateVersion.id,
@@ -463,6 +482,30 @@ async function main() {
   assert(
     afterRejectedCandidate.currentCanonicalVersionId === manualCanonicalVersion.id,
     "rejected canonical candidate should not change the current manual canonical",
+  );
+  await assertRejectsWithStatus(
+    () => services.promptCardService.createCharacterLoraPromptCardVersion(job.id, {
+      canonicalVersionId: rejectedCanonicalVersion.id,
+      triggerToken,
+      identityTraits: {
+        hair: "rejected canonical should not save",
+      },
+      outfitTraits: {
+        top: "rejected canonical should not save",
+      },
+      negativeTraits: null,
+      finalPromptDraft: `${triggerToken}, rejected canonical prompt card should fail`,
+      changeReason: "fake e2e rejected canonical prompt card guard",
+    }),
+    409,
+    "rejected canonical should not be usable for prompt card creation",
+  );
+  await assertRejectsWithStatus(
+    () => services.promptCardService.promoteCharacterLoraSectionInstructionToPromptCardVersion(job.id, {
+      sectionUserInstruction: "this promotion should not reuse a rejected canonical anchor",
+    }),
+    409,
+    "promoting from a prompt card bound to rejected canonical should return 409",
   );
 
   const promptCard = await services.promptCardService.createCharacterLoraPromptCardVersion(job.id, {
@@ -484,6 +527,10 @@ async function main() {
     changeReason: "fake e2e smoke prompt card",
   });
   assert(promptCard.version >= 1, "prompt card version should be created");
+  assert(
+    promptCard.version === rejectedAnchorPromptCard.version + 1,
+    "manual canonical prompt card should still create the next version after rejected canonical guards",
+  );
 
   const promotedPromptCard = await services.promptCardService.promoteCharacterLoraSectionInstructionToPromptCardVersion(job.id, {
     sectionUserInstruction: "keep the left bangs longer in future section generations",

@@ -55,7 +55,7 @@ export async function createCharacterLoraPromptCardVersion(jobId: string, input:
   const canonicalVersionId = parsed.canonicalVersionId ?? job.currentCanonicalVersionId ?? null;
 
   if (canonicalVersionId) {
-    await assertCanonicalVersionBelongsToJob({
+    await assertCanonicalVersionCanBeUsedForPromptCard({
       jobId: id,
       canonicalVersionId,
       fromCurrentJobPointer: !parsed.canonicalVersionId,
@@ -102,9 +102,20 @@ export async function promoteCharacterLoraSectionInstructionToPromptCardVersion(
     );
   }
 
+  const canonicalVersionId = currentPrompt.canonicalVersionId ?? job.currentCanonicalVersionId ?? null;
+
+  if (canonicalVersionId) {
+    await assertCanonicalVersionCanBeUsedForPromptCard({
+      jobId: id,
+      canonicalVersionId,
+      fromCurrentJobPointer: !currentPrompt.canonicalVersionId,
+      ...(currentPrompt.canonicalVersionId ? { currentPromptCardVersionId: currentPrompt.id } : {}),
+    });
+  }
+
   return createPromptCardVersionInRepository({
     jobId: id,
-    canonicalVersionId: currentPrompt.canonicalVersionId ?? job.currentCanonicalVersionId ?? null,
+    canonicalVersionId,
     triggerToken: currentPrompt.triggerToken,
     identityTraits: toInputJsonValue(currentPrompt.identityTraits),
     outfitTraits: toInputJsonValue(currentPrompt.outfitTraits),
@@ -164,21 +175,25 @@ async function getExistingJob(jobId: string) {
   return job;
 }
 
-async function assertCanonicalVersionBelongsToJob(input: {
+async function assertCanonicalVersionCanBeUsedForPromptCard(input: {
   jobId: string;
   canonicalVersionId: string;
   fromCurrentJobPointer: boolean;
+  currentPromptCardVersionId?: string;
 }) {
   const canonicalVersion = await getCanonicalVersionFromRepository(input.canonicalVersionId);
 
   if (!canonicalVersion) {
-    throw new CharacterLoraPromptCardServiceError(
-      input.fromCurrentJobPointer
-        ? "Current canonical version was not found"
-        : "Canonical version not found",
-      input.fromCurrentJobPointer ? 409 : 404,
-      { canonicalVersionId: input.canonicalVersionId },
-    );
+    let message = "Canonical version not found";
+    if (input.currentPromptCardVersionId) {
+      message = "Current Prompt Card canonical version was not found";
+    } else if (input.fromCurrentJobPointer) {
+      message = "Current canonical version was not found";
+    }
+
+    throw new CharacterLoraPromptCardServiceError(message, input.fromCurrentJobPointer || input.currentPromptCardVersionId ? 409 : 404, {
+      canonicalVersionId: input.canonicalVersionId,
+    });
   }
 
   if (canonicalVersion.jobId !== input.jobId) {
@@ -187,6 +202,22 @@ async function assertCanonicalVersionBelongsToJob(input: {
       400,
       { canonicalVersionId: input.canonicalVersionId, jobId: input.jobId },
     );
+  }
+
+  if (canonicalVersion.status === "rejected") {
+    let message = "Rejected canonical version cannot be used for Prompt Card canonicalVersionId";
+    if (input.currentPromptCardVersionId) {
+      message =
+        "Current Prompt Card is bound to a rejected canonical version; create or choose a Prompt Card with a valid canonicalVersionId before promoting section instructions";
+    } else if (input.fromCurrentJobPointer) {
+      message = "Current canonical version is rejected and cannot be used for Prompt Card canonicalVersionId";
+    }
+
+    throw new CharacterLoraPromptCardServiceError(message, 409, {
+      canonicalVersionId: input.canonicalVersionId,
+      status: canonicalVersion.status,
+      currentPromptCardVersionId: input.currentPromptCardVersionId,
+    });
   }
 }
 

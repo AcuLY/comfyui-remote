@@ -162,7 +162,7 @@ flowchart LR
 | `changeReason` | `String? @db.Text` | 手动编辑、从局部修正提升等。 |
 | `createdAt` | `DateTime` | 创建时间。 |
 
-约束：`@@unique([jobId, version])`。Prompt Card 被 section run 引用后不可原地变更；编辑会创建新 version。
+约束：`@@unique([jobId, version])`。Prompt Card 被 section run 引用后不可原地变更；编辑会创建新 version。`canonicalVersionId` 不能指向 `rejected` canonical version；创建 Prompt Card 和从 section instruction 提升新 Prompt Card 时，如果显式或默认解析到 rejected canonical，返回 `409`，避免 rejected anchor 回到后续 lineage。
 
 #### `CharacterLoraSectionTemplate`
 
@@ -529,7 +529,7 @@ Server actions 面向浏览器 UI，放在 `src/lib/actions/character-lora-train
 | `enqueueCanonicalGeneration` | `jobId`, provider params | generation run | 创建 canonical generation task。 |
 | `selectCanonicalVersion` | `jobId`, `canonicalVersionId` | job summary | 更新当前 canonical，不影响旧 lineage。 |
 | `rejectCanonicalVersion` | `jobId`, `canonicalVersionId` | canonical version | 仅允许 `candidate -> rejected`，拒绝 current/selected/superseded/rejected 时返回 `409`。 |
-| `createPromptCardVersion` | traits、prompt draft、change reason | prompt card version | 永远新增版本。 |
+| `createPromptCardVersion` | traits、prompt draft、change reason | prompt card version | 永远新增版本；`canonicalVersionId` 不能指向 `rejected` canonical，违规则 `409`。 |
 | `instantiateTrainingSections` | template keys 或自定义 sections | sections | 从模板创建 job sections。 |
 | `enqueueSectionGenerationRun` | `sectionId`, userInstruction, input image refs | generation run | 可生成或 rerun。 |
 | `reviewCandidateImages` | image ids、status、reasons、note | counts | 批量 keep/reject/exclude。 |
@@ -1104,6 +1104,7 @@ sequenceDiagram
 
 验收记录：
 - 2026-05-23：补齐 PRD 5.2 canonical version 候选拒绝缺口。新增 `POST /api/character-lora-training/jobs/:jobId/canonical/:versionId/reject` 和 server action；service/repository 只允许 `candidate -> rejected`，拒绝 current/selected/superseded/rejected 返回 `409`，选择 `rejected` 也返回 `409`；工作台 canonical grid 显示 rejected 状态并禁用“设当前”。fake e2e smoke 覆盖第二个 candidate 拒绝、重复拒绝、选择 rejected 失败，以及当前 manual canonical 不被影响。
+- 2026-05-23：补齐 canonical rejected 后续 lineage 规则。Prompt Card 创建和 section instruction 提升会拒绝显式或默认解析到的 `rejected` canonicalVersionId，返回 `409`；工作台 Prompt Card canonical select 显示状态并禁用 rejected 选项；fake e2e smoke 覆盖 rejected canonical 创建 Prompt Card 和 rejected-bound current Prompt Card 提升失败。
 - 2026-05-23：补齐 PRD 5.4 小节暂停/恢复缺口。`PATCH /api/character-lora-training/sections/:sectionId` 可暂停/恢复 section；暂停后保留历史 runs/images/counts，section generation/rerun 入队返回清晰 `409`；review/count 刷新不会把 `paused` 改回 active 状态；resume 按 counts 推导为 `reviewing` / `reviewed` / `draft` 后可再次入队。fake e2e smoke 覆盖 service 路径的暂停、409 拒绝、paused 保持和恢复后入队。
 - 2026-05-23：补齐 PRD 5.5 小节定向重生图片上下文缺口。`POST /api/character-lora-training/sections/:sectionId/runs` 支持 `previousCandidateImageIds`；候选图必须属于同一 job section，并会解析为 provider `inputImages` 中的 `previous_candidate`。如果传入 `parentRunId` 但没有显式 `inputImages` 或 `previousCandidateImageIds`，服务会自动把 parent run 在同小节下的候选图作为 `previous_candidate` 参考图。fake e2e smoke 覆盖 run payload、worker task payload 和 redacted request 的 provenance。
 
