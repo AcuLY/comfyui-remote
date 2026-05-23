@@ -82,6 +82,7 @@ type Props = {
 
 const DEFAULT_BENCHMARK_WEIGHT_MATRIX = [0.65, 0.85, 1] as const;
 const DEFAULT_BENCHMARK_WEIGHT_MATRIX_TEXT = DEFAULT_BENCHMARK_WEIGHT_MATRIX.join(",");
+const MIN_APPROVAL_BENCHMARK_EVIDENCE_COUNT = 7;
 
 const STATUS_LABEL: Record<string, string> = {
   draft: "草稿",
@@ -463,6 +464,94 @@ function getBenchmarkRecommendedWeight(benchmark: CharacterLoraBenchmarkRun | nu
     : 1;
 }
 
+function getBenchmarkApprovalState(benchmark: CharacterLoraBenchmarkRun, selectedCheckpoint: string | undefined) {
+  const summary = readBenchmarkRecord(benchmark.resultSummary);
+  const counts = readBenchmarkRecord(summary?.counts);
+  const matrixExpansion = readBenchmarkRecord(summary?.matrixExpansion);
+  const sections = Array.isArray(summary?.sections) ? summary.sections : [];
+  const runIds = readBenchmarkStringArray(summary?.runIds);
+  const blockers: string[] = [];
+
+  if (!selectedCheckpoint?.trim()) {
+    blockers.push("missing checkpoint");
+  }
+  if (!summary) {
+    blockers.push("missing benchmark result");
+  }
+  if (summary?.mocked === true || summary?.dryRun === true || summary?.skipQueue === true || summary?.skipWait === true) {
+    blockers.push("mock/dryRun/skip result");
+  }
+  if (!counts) {
+    blockers.push("missing run counts");
+  } else {
+    const failed = readBenchmarkNumber(counts.failed) ?? 0;
+    const missing = readBenchmarkNumber(counts.missing) ?? 0;
+    const queued = readBenchmarkNumber(counts.queued) ?? 0;
+    const running = readBenchmarkNumber(counts.running) ?? 0;
+    const totalRuns = readBenchmarkNumber(counts.totalRuns);
+    const done = readBenchmarkNumber(counts.done);
+
+    if (failed > 0 || missing > 0 || queued > 0 || running > 0) {
+      blockers.push("unfinished or failed runs");
+    }
+    if (totalRuns === null || done === null || done < totalRuns) {
+      blockers.push("runs not complete");
+    }
+    if (totalRuns !== null && totalRuns < MIN_APPROVAL_BENCHMARK_EVIDENCE_COUNT) {
+      blockers.push("not enough run evidence");
+    }
+  }
+  if (!matrixExpansion) {
+    blockers.push("missing matrix evidence");
+  } else {
+    const expectedSectionCount = readBenchmarkNumber(matrixExpansion.expectedSectionCount);
+    const actualSectionCount = readBenchmarkNumber(matrixExpansion.actualSectionCount);
+    if (expectedSectionCount === null || actualSectionCount === null || actualSectionCount < expectedSectionCount) {
+      blockers.push("matrix incomplete");
+    }
+  }
+  if (countBenchmarkSectionEvidence(sections) < MIN_APPROVAL_BENCHMARK_EVIDENCE_COUNT || runIds.length < MIN_APPROVAL_BENCHMARK_EVIDENCE_COUNT) {
+    blockers.push("need 7 section/run evidence");
+  }
+
+  return {
+    canApprove: blockers.length === 0,
+    blocker: blockers[0] ?? null,
+  };
+}
+
+function readBenchmarkRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
+function readBenchmarkNumber(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function readBenchmarkStringArray(value: unknown) {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+    : [];
+}
+
+function countBenchmarkSectionEvidence(sections: unknown[]) {
+  return sections.filter((section) => {
+    const sectionRecord = readBenchmarkRecord(section);
+    if (!sectionRecord || typeof sectionRecord.sectionId !== "string" || !sectionRecord.sectionId.trim()) {
+      return false;
+    }
+
+    const latestRun = readBenchmarkRecord(sectionRecord.latestRun);
+    return (
+      typeof latestRun?.id === "string" &&
+      latestRun.id.trim().length > 0 &&
+      latestRun.status === "done"
+    );
+  }).length;
+}
+
 export function JobWorkbenchClient({
   job,
   sourceImages,
@@ -562,6 +651,12 @@ export function JobWorkbenchClient({
   );
   const selectedPromotionBenchmark =
     promotionBenchmarkOptions.find((run) => run.id === promotionBenchmarkRunId) ?? promotionBenchmarkOptions[0] ?? null;
+  const selectedPromotionCheckpoint = getBenchmarkDefaultCheckpoint(selectedPromotionBenchmark, job);
+  const selectedPromotionApproval = selectedPromotionBenchmark
+    ? getBenchmarkApprovalState(selectedPromotionBenchmark, selectedPromotionCheckpoint)
+    : null;
+  const isPromotionDraftApprovalBlocked =
+    promotionDecisionStatus === "approved" && (!selectedPromotionApproval || !selectedPromotionApproval.canApprove);
   const rejectSuggestion = REJECT_REASON_OPTIONS.find((reason) => reason.value === rejectReason)?.suggestion ?? "";
 
   function runAction(key: string, label: string, action: () => Promise<unknown>, refresh = true) {
@@ -834,8 +929,12 @@ export function JobWorkbenchClient({
       return;
     }
 
-    const checkpointMatrix = Array.isArray(benchmark.checkpointMatrix) ? benchmark.checkpointMatrix : [];
-    const selectedCheckpoint = typeof checkpointMatrix[0] === "string" ? checkpointMatrix[0] : undefined;
+    const selectedCheckpoint = getBenchmarkDefaultCheckpoint(benchmark, job) || undefined;
+    const approval = getBenchmarkApprovalState(benchmark, selectedCheckpoint);
+    if (status === "approved" && !approval.canApprove) {
+      toast.error("Benchmark cannot be approved", { description: approval.blocker ?? "missing completed benchmark evidence" });
+      return;
+    }
     const defaultWeight = typeof benchmark.recommendedWeight === "number" ? benchmark.recommendedWeight : 1;
 
     runAction(`decision.${benchmark.id}.${status}`, "Promotion decision 已创建", async () => {
@@ -869,6 +968,13 @@ export function JobWorkbenchClient({
         throw new Error("Status must be approved or rejected");
       }
       const status: PromotionDecisionStatus = statusRaw;
+      const selectedCheckpoint = readOptionalString(formData, "selectedCheckpoint");
+      if (status === "approved") {
+        const approval = getBenchmarkApprovalState(benchmark, selectedCheckpoint);
+        if (!approval.canApprove) {
+          throw new Error(approval.blocker ?? "missing completed benchmark evidence");
+        }
+      }
       const defaultRecommendedWeight = readRequiredPositiveNumber(
         formData,
         "defaultRecommendedWeight",
@@ -897,7 +1003,7 @@ export function JobWorkbenchClient({
         await createCharacterLoraPromotionDecision(benchmark.id, {
           status,
           selectedLoraAssetId: benchmark.loraAssetId,
-          selectedCheckpoint: readOptionalString(formData, "selectedCheckpoint"),
+          selectedCheckpoint,
           defaultRecommendedWeight,
           ...(Object.keys(perVariantWeightOverrides).length > 0 ? { perVariantWeightOverrides } : {}),
           variantPromptDrafts,
@@ -1594,21 +1700,34 @@ export function JobWorkbenchClient({
           </div>
         </form>
         <RunList
-          runs={benchmarkRuns.map((run) => ({
-            id: run.id,
-            status: run.status,
-            primary: `weight ${Array.isArray(run.weightMatrix) ? run.weightMatrix.join(",") : "-"} / rec ${run.recommendedWeight ?? "-"}`,
-            secondary: `asset ${compactId(run.loraAssetId)} / training ${compactId(run.trainingRunId)}`,
-            action: (
-              <div className="flex flex-wrap gap-1">
-                {run.status !== "done" ? (
-                  <ActionButton type="button" icon={RefreshCw} label="模拟完成" loading={isBusy(`benchmark.complete.${run.id}`)} disabled={isPending} onClick={() => handleBenchmarkMockComplete(run.id)} />
-                ) : null}
-                <MiniButton label="approved" onClick={() => handleDecision(run, "approved")} disabled={isPending || run.status !== "done" || !run.loraAssetId} />
-                <MiniButton label="rejected" onClick={() => handleDecision(run, "rejected")} disabled={isPending || run.status !== "done" || !run.loraAssetId} />
-              </div>
-            ),
-          }))}
+          runs={benchmarkRuns.map((run) => {
+            const selectedCheckpoint = getBenchmarkDefaultCheckpoint(run, job) || undefined;
+            const approval = getBenchmarkApprovalState(run, selectedCheckpoint);
+            const canCreateDecision = run.status === "done" && Boolean(run.loraAssetId);
+            return {
+              id: run.id,
+              status: run.status,
+              primary: `weight ${Array.isArray(run.weightMatrix) ? run.weightMatrix.join(",") : "-"} / rec ${run.recommendedWeight ?? "-"}`,
+              secondary: `asset ${compactId(run.loraAssetId)} / training ${compactId(run.trainingRunId)}`,
+              action: (
+                <div className="flex flex-wrap gap-1">
+                  {run.status !== "done" ? (
+                    <ActionButton type="button" icon={RefreshCw} label="模拟完成" loading={isBusy(`benchmark.complete.${run.id}`)} disabled={isPending} onClick={() => handleBenchmarkMockComplete(run.id)} />
+                  ) : null}
+                  <MiniButton
+                    label="approved"
+                    onClick={() => handleDecision(run, "approved")}
+                    disabled={isPending || !canCreateDecision || !approval.canApprove}
+                    title={approval.blocker ?? undefined}
+                  />
+                  <MiniButton label="rejected" onClick={() => handleDecision(run, "rejected")} disabled={isPending || !canCreateDecision} />
+                  {canCreateDecision && !approval.canApprove ? (
+                    <div className="basis-full text-[11px] text-amber-300">approved blocked: {approval.blocker}</div>
+                  ) : null}
+                </div>
+              ),
+            };
+          })}
           empty="暂无 benchmark run"
         />
         <form
@@ -1627,7 +1746,7 @@ export function JobWorkbenchClient({
               icon={ShieldCheck}
               label="Create decision"
               loading={selectedPromotionBenchmark ? isBusy(`decision.draft.${selectedPromotionBenchmark.id}`) : false}
-              disabled={isPending || !selectedPromotionBenchmark}
+              disabled={isPending || !selectedPromotionBenchmark || isPromotionDraftApprovalBlocked}
             />
           </div>
           <div className="grid gap-2 lg:grid-cols-[1.4fr_120px_1fr_160px_150px]">
@@ -1663,7 +1782,7 @@ export function JobWorkbenchClient({
               Checkpoint
               <input
                 name="selectedCheckpoint"
-                defaultValue={getBenchmarkDefaultCheckpoint(selectedPromotionBenchmark, job)}
+                defaultValue={selectedPromotionCheckpoint}
                 className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white"
               />
             </label>
@@ -1697,6 +1816,11 @@ export function JobWorkbenchClient({
           {!selectedPromotionBenchmark ? (
             <div className="rounded-lg border border-amber-400/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
               No eligible benchmark yet. Complete a benchmark and register/carry a LoRA asset before creating a promotion decision.
+            </div>
+          ) : null}
+          {selectedPromotionBenchmark && isPromotionDraftApprovalBlocked ? (
+            <div className="rounded-lg border border-amber-400/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+              Approved decision blocked: {selectedPromotionApproval?.blocker ?? "missing completed benchmark evidence"}. Rejected remains available.
             </div>
           ) : null}
           <label className="grid gap-1 text-xs text-zinc-400">
@@ -2220,12 +2344,13 @@ function ActionButton({
   );
 }
 
-function MiniButton({ label, onClick, disabled }: { label: string; onClick: () => void; disabled?: boolean }) {
+function MiniButton({ label, onClick, disabled, title }: { label: string; onClick: () => void; disabled?: boolean; title?: string }) {
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
+      title={title}
       className="h-7 rounded-md border border-white/10 px-2 text-[11px] text-zinc-300 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-50"
     >
       {label}

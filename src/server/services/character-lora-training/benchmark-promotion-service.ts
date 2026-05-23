@@ -53,6 +53,9 @@ const STANDARD_VARIANTS = [
   { name: "裸", slug: "naked", promptSuffix: "nude body", link: "naked" as const },
 ] as const;
 
+const MIN_APPROVAL_BENCHMARK_EVIDENCE_COUNT = 7;
+const BLOCKING_BENCHMARK_COUNT_KEYS = ["failed", "missing", "queued", "running"] as const;
+
 type MinimalCharacterLoraJob = {
   id: string;
   slug: string;
@@ -284,6 +287,9 @@ export async function createPromotionDecision(benchmarkRunId: string, input: unk
       selectedLoraAssetId: parsed.selectedLoraAssetId,
     });
   }
+  if (parsed.status === "approved") {
+    assertBenchmarkHasApprovedPromotionEvidence(benchmark, parsed.selectedCheckpoint);
+  }
 
   const decision = await createCharacterLoraPromotionDecisionInRepository({
     benchmarkRunId: benchmark.id,
@@ -396,6 +402,160 @@ export function mapCharacterLoraBenchmarkPromotionError(error: unknown) {
     status: 500,
     details: "An internal error occurred",
   };
+}
+
+function assertBenchmarkHasApprovedPromotionEvidence(
+  benchmark: {
+    id: string;
+    resultSummary: unknown;
+  },
+  selectedCheckpoint: string | undefined,
+) {
+  const { blockers, evidence } = inspectApprovedPromotionEvidence(benchmark.resultSummary, selectedCheckpoint);
+  if (blockers.length === 0) {
+    return;
+  }
+
+  throw new CharacterLoraBenchmarkPromotionServiceError(
+    "Approved promotion decision requires completed benchmark evidence",
+    409,
+    {
+      benchmarkRunId: benchmark.id,
+      blockers,
+      evidence,
+    },
+  );
+}
+
+function inspectApprovedPromotionEvidence(resultSummary: unknown, selectedCheckpoint: string | undefined) {
+  const summary = readRecord(resultSummary);
+  const counts = readRecord(summary?.counts);
+  const matrixExpansion = readRecord(summary?.matrixExpansion);
+  const sections = Array.isArray(summary?.sections) ? summary.sections : [];
+  const runIds = readStringArray(summary?.runIds);
+  const sectionEvidenceCount = countBenchmarkSectionEvidence(sections);
+  const countEvidence = {
+    totalRuns: readNumber(counts?.totalRuns),
+    done: readNumber(counts?.done),
+    failed: readNumber(counts?.failed),
+    missing: readNumber(counts?.missing),
+    queued: readNumber(counts?.queued),
+    running: readNumber(counts?.running),
+  };
+  const matrixEvidence = {
+    expectedSectionCount: readNumber(matrixExpansion?.expectedSectionCount),
+    actualSectionCount: readNumber(matrixExpansion?.actualSectionCount),
+    baseSectionCount: readNumber(matrixExpansion?.baseSectionCount),
+  };
+  const flags = {
+    mocked: summary?.mocked === true,
+    dryRun: summary?.dryRun === true,
+    skipQueue: summary?.skipQueue === true,
+    skipWait: summary?.skipWait === true,
+  };
+  const evidence = {
+    selectedCheckpoint: selectedCheckpoint?.trim() || null,
+    resultSummaryPresent: Boolean(summary),
+    flags,
+    counts: countEvidence,
+    matrixExpansion: matrixEvidence,
+    sectionEvidenceCount,
+    runEvidenceCount: runIds.length,
+    minimumEvidenceCount: MIN_APPROVAL_BENCHMARK_EVIDENCE_COUNT,
+  };
+  const blockers: Array<{ code: string; message: string; value?: unknown }> = [];
+
+  if (!evidence.selectedCheckpoint) {
+    blockers.push({
+      code: "selected_checkpoint_required",
+      message: "approved promotion decisions require an explicit selectedCheckpoint",
+    });
+  }
+  if (!summary) {
+    blockers.push({
+      code: "result_summary_missing",
+      message: "benchmark resultSummary is required before approval",
+    });
+  }
+  for (const [flag, enabled] of Object.entries(flags)) {
+    if (enabled) {
+      blockers.push({
+        code: `${flag}_not_approvable`,
+        message: `${flag} benchmark evidence cannot be approved`,
+      });
+    }
+  }
+  if (!counts) {
+    blockers.push({
+      code: "counts_missing",
+      message: "benchmark resultSummary.counts is required before approval",
+    });
+  } else {
+    for (const key of BLOCKING_BENCHMARK_COUNT_KEYS) {
+      const value = countEvidence[key];
+      if (value !== null && value > 0) {
+        blockers.push({
+          code: `${key}_runs_present`,
+          message: `benchmark counts.${key} must be 0 before approval`,
+          value,
+        });
+      }
+    }
+    if (countEvidence.totalRuns === null || countEvidence.done === null) {
+      blockers.push({
+        code: "run_counts_missing",
+        message: "benchmark counts.totalRuns and counts.done are required before approval",
+      });
+    } else {
+      if (countEvidence.done < countEvidence.totalRuns) {
+        blockers.push({
+          code: "runs_not_complete",
+          message: "benchmark counts.done must be greater than or equal to counts.totalRuns before approval",
+          value: countEvidence,
+        });
+      }
+      if (countEvidence.totalRuns < MIN_APPROVAL_BENCHMARK_EVIDENCE_COUNT) {
+        blockers.push({
+          code: "run_evidence_insufficient",
+          message: `at least ${MIN_APPROVAL_BENCHMARK_EVIDENCE_COUNT} benchmark runs are required before approval`,
+          value: countEvidence.totalRuns,
+        });
+      }
+    }
+  }
+  if (!matrixExpansion) {
+    blockers.push({
+      code: "matrix_expansion_missing",
+      message: "benchmark resultSummary.matrixExpansion is required before approval",
+    });
+  } else if (matrixEvidence.expectedSectionCount === null || matrixEvidence.actualSectionCount === null) {
+    blockers.push({
+      code: "matrix_section_counts_missing",
+      message: "benchmark matrixExpansion expectedSectionCount and actualSectionCount are required before approval",
+    });
+  } else if (matrixEvidence.actualSectionCount < matrixEvidence.expectedSectionCount) {
+    blockers.push({
+      code: "matrix_sections_incomplete",
+      message: "benchmark matrixExpansion actualSectionCount must cover expectedSectionCount before approval",
+      value: matrixEvidence,
+    });
+  }
+  if (sectionEvidenceCount < MIN_APPROVAL_BENCHMARK_EVIDENCE_COUNT) {
+    blockers.push({
+      code: "section_evidence_insufficient",
+      message: `at least ${MIN_APPROVAL_BENCHMARK_EVIDENCE_COUNT} benchmark section results are required before approval`,
+      value: sectionEvidenceCount,
+    });
+  }
+  if (runIds.length < MIN_APPROVAL_BENCHMARK_EVIDENCE_COUNT) {
+    blockers.push({
+      code: "run_id_evidence_insufficient",
+      message: `at least ${MIN_APPROVAL_BENCHMARK_EVIDENCE_COUNT} benchmark run ids are required before approval`,
+      value: runIds.length,
+    });
+  }
+
+  return { blockers, evidence };
 }
 
 async function completeBenchmarkRunWithParsedInput(
@@ -856,4 +1016,36 @@ function serializeIncludedBenchmark(benchmark: {
 
 function toInputJsonValue(value: unknown) {
   return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
+}
+
+function readRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
+function readNumber(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function readStringArray(value: unknown) {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+    : [];
+}
+
+function countBenchmarkSectionEvidence(sections: unknown[]) {
+  return sections.filter((section) => {
+    const sectionRecord = readRecord(section);
+    if (!sectionRecord || typeof sectionRecord.sectionId !== "string" || !sectionRecord.sectionId.trim()) {
+      return false;
+    }
+
+    const latestRun = readRecord(sectionRecord.latestRun);
+    return (
+      typeof latestRun?.id === "string" &&
+      latestRun.id.trim().length > 0 &&
+      latestRun.status === "done"
+    );
+  }).length;
 }

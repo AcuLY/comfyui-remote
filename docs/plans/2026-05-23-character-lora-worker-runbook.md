@@ -132,12 +132,12 @@ cmd /c npx tsx scripts/character-lora-training/benchmark-worker.ts --once --time
 cmd /c npx tsx scripts/character-lora-training/benchmark-worker.ts --once --skip-wait --worker-owner benchmark-worker-submit-only
 ```
 
-`--skip-wait` 会立即调用 benchmark complete，把当前 worker task 通过既有 benchmark-run completion 路径标记完成；此模式只适合手动跟进测试 project 结果，不应作为 promotion 前的默认路径。
+`--skip-wait` 会立即调用 benchmark complete，把当前 worker task 通过既有 benchmark-run completion 路径标记完成；此模式只适合手动跟进测试 project 结果，不能作为 approved promotion 的验收证据。approved promotion 必须使用非 dryRun/skipQueue/skipWait 且 counts 全部完成、matrixExpansion 完整、至少 7 个 section/run 证据的 benchmark。
 
 成功完成时，worker 调用 `POST /api/character-lora-training/benchmark-runs/:benchmarkRunId/complete`，写入：
 
 - `recommendedWeight`：`weightMatrix` 中第一个正数，缺省为 `1`。
-- `resultSummary`：包含 `benchmarkRunId`、`trainingRunId`、`testProjectId`、`runIds`、section latestRun 摘要、`checkpointMatrix`、`weightMatrix`、完成时间和失败计数。
+- `resultSummary`：包含 `benchmarkRunId`、`trainingRunId`、`testProjectId`、`runIds`、section latestRun 摘要、`checkpointMatrix`、`weightMatrix`、`matrixExpansion`、完成时间和 counts。只有非 dryRun/skipQueue/skipWait 且 counts 无 failed/missing/queued/running、done 覆盖 totalRuns 的结果可用于 approved promotion。
 - `diagnosticSuggestions`：包含失败 run 或 submit-only 的人工复核提示。
 
 Benchmark worker 不调用通用 worker task complete。`completeCharacterLoraBenchmarkRunInRepository` 会把同一 `targetType=benchmarkRun`、`targetId=benchmarkRun.id` 的 queued/running worker task 标记为 `done`。

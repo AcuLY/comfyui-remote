@@ -942,9 +942,142 @@ async function main() {
     "auto benchmark should be persisted for the completed training run",
   );
 
-  const decision = await services.benchmarkPromotionService.createPromotionDecision(benchmarkRun.id, {
-    status: "approved",
+  const blockedApproval = await assertRejectsWithStatus(
+    () => services.benchmarkPromotionService.createPromotionDecision(benchmarkRun.id, {
+      status: "approved",
+      selectedLoraAssetId: benchmarkRun.loraAssetId,
+      selectedCheckpoint: "fake-base.safetensors",
+      defaultRecommendedWeight: 0.65,
+      variantPromptDrafts: {},
+      decisionReason: "dryRun/skipQueue benchmark must not be approved",
+    }),
+    409,
+    "dryRun/skipQueue benchmark should not create an approved promotion decision",
+  );
+  assert(
+    readJsonArray(readJsonRecord(readErrorDetails(blockedApproval)).blockers).length > 0,
+    "blocked approval should expose promotion evidence blockers",
+  );
+
+  const rejectedDecision = await services.benchmarkPromotionService.createPromotionDecision(benchmarkRun.id, {
+    status: "rejected",
     selectedLoraAssetId: benchmarkRun.loraAssetId,
+    defaultRecommendedWeight: 0.65,
+    variantPromptDrafts: {},
+    decisionReason: "dryRun/skipQueue benchmark rejected for diagnostics",
+    returnPoint: "benchmark_review",
+  });
+  assert(rejectedDecision.status === "rejected", "dryRun/skipQueue benchmark should still allow rejected decision");
+
+  const approvalCheckpointMatrix = ["fake-base.safetensors"];
+  const approvalWeightMatrix = [0.65];
+  const approvalBenchmarkCreated = await services.benchmarkPromotionService.enqueueCharacterLoraBenchmarkRun(completedTrainingRun.id, {
+    checkpointMatrix: approvalCheckpointMatrix,
+    weightMatrix: approvalWeightMatrix,
+    registerLoraAsset: true,
+    copyToCharacterDir: true,
+    loraAssetName: "Smoke Character LoRA Approval Evidence",
+    dryRun: false,
+    skipQueue: false,
+    queuePolicy: "queue_when_busy",
+  });
+  assert(!("completedBenchmarkRun" in approvalBenchmarkCreated), "approval benchmark should not be dry-run completed");
+  const approvalBenchmarkRun = approvalBenchmarkCreated.benchmarkRun;
+  assert(approvalBenchmarkRun.loraAssetId, "approval benchmark should register a LoRA asset");
+  assert(approvalBenchmarkRun.testProjectId, "approval benchmark should create a test project");
+  const approvalBenchmarkSections = await services.prismaModule.prisma.projectSection.findMany({
+    where: { projectId: approvalBenchmarkRun.testProjectId },
+    orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+    select: {
+      id: true,
+      name: true,
+      sortOrder: true,
+      checkpointName: true,
+      loraConfig: true,
+      extraParams: true,
+    },
+  });
+  const approvalBaseSectionCount = countBenchmarkBaseSections(approvalBenchmarkSections);
+  const approvalExpectedSectionCount = approvalBaseSectionCount * approvalCheckpointMatrix.length * approvalWeightMatrix.length;
+  assert(approvalBaseSectionCount >= 7, "approval benchmark should have at least 7 base sections");
+  assert(
+    approvalBenchmarkSections.length === approvalExpectedSectionCount,
+    `approval benchmark matrix should create ${approvalExpectedSectionCount} sections, got ${approvalBenchmarkSections.length}`,
+  );
+  const approvalCompletedAt = new Date().toISOString();
+  const approvalRunIds = approvalBenchmarkSections.map((section, index) => `smoke-approved-${index + 1}-${section.id}`);
+  const approvalSectionSummaries = approvalBenchmarkSections.map((section, index) => {
+    const runId = approvalRunIds[index] ?? `smoke-approved-${index + 1}-${section.id}`;
+    const benchmarkMatrix = readJsonRecord(readJsonRecord(section.extraParams).characterLoraBenchmark);
+    return {
+      sectionId: section.id,
+      sectionName: section.name,
+      sortOrder: section.sortOrder,
+      originalSectionName: typeof benchmarkMatrix.originalSectionName === "string" ? benchmarkMatrix.originalSectionName : section.name,
+      checkpointName: section.checkpointName,
+      loraWeight: readBenchmarkSectionWeight(section),
+      benchmarkMatrix,
+      latestRunId: runId,
+      latestRun: {
+        id: runId,
+        status: "done",
+        runIndex: 1,
+        totalCount: 1,
+        pendingCount: 0,
+        keptCount: 1,
+        trashedCount: 0,
+        errorMessage: null,
+        createdAt: approvalCompletedAt,
+        startedAt: approvalCompletedAt,
+        finishedAt: approvalCompletedAt,
+        outputDir: `smoke/benchmark/${section.id}`,
+      },
+    };
+  });
+  const approvalCompletedBenchmarkRun = await services.benchmarkPromotionService.completeBenchmarkRun(approvalBenchmarkRun.id, {
+    recommendedWeight: 0.65,
+    resultSummary: {
+      benchmarkRunId: approvalBenchmarkRun.id,
+      trainingRunId: completedTrainingRun.id,
+      testProjectId: approvalBenchmarkRun.testProjectId,
+      runIds: approvalRunIds,
+      submittedRuns: approvalRunIds.map((runId) => ({ runId })),
+      sections: approvalSectionSummaries,
+      matrixExpansion: {
+        expectedSectionCount: approvalExpectedSectionCount,
+        actualSectionCount: approvalBenchmarkSections.length,
+        baseSectionCount: approvalBaseSectionCount,
+        checkpointMatrix: approvalCheckpointMatrix,
+        weightMatrix: approvalWeightMatrix,
+        sections: approvalSectionSummaries,
+      },
+      checkpointMatrix: approvalCheckpointMatrix,
+      weightMatrix: approvalWeightMatrix,
+      recommendedWeight: 0.65,
+      finalSafetensorsArtifact: {
+        relativePath: finalPath,
+        sha256: finalSha256,
+      },
+      projectStatus: "done",
+      completedAt: approvalCompletedAt,
+      elapsedMs: 1,
+      skipWait: false,
+      counts: {
+        totalRuns: approvalRunIds.length,
+        done: approvalRunIds.length,
+        failed: 0,
+        queued: 0,
+        running: 0,
+        missing: 0,
+      },
+    },
+    diagnosticSuggestions: [],
+  });
+  assert(approvalCompletedBenchmarkRun.status === "done", "approval benchmark should be completed with real evidence shape");
+
+  const decision = await services.benchmarkPromotionService.createPromotionDecision(approvalCompletedBenchmarkRun.id, {
+    status: "approved",
+    selectedLoraAssetId: approvalCompletedBenchmarkRun.loraAssetId,
     selectedCheckpoint: "fake-base.safetensors",
     defaultRecommendedWeight: 0.65,
     perVariantWeightOverrides: {
@@ -954,7 +1087,7 @@ async function main() {
     variantPromptDrafts: {
       default: `${triggerToken}, Smoke Character, default promoted prompt`,
     },
-    decisionReason: "phase6 fake e2e approved on isolated sqlite database",
+    decisionReason: "phase6 fake e2e approved with completed benchmark evidence shape",
   });
   assert(decision.status === "approved", "promotion decision should be approved");
 
@@ -994,7 +1127,8 @@ async function main() {
     report.trainingRuns.some((run) => run.id === completedTrainingRun.id && run.finalSha256 === finalSha256),
     "report should include training finalSha",
   );
-  assert(report.benchmarkRuns.some((run) => run.id === benchmarkRun.id), "report should include benchmark run");
+  assert(report.benchmarkRuns.some((run) => run.id === benchmarkRun.id), "report should include dryRun benchmark run");
+  assert(report.benchmarkRuns.some((run) => run.id === approvalCompletedBenchmarkRun.id), "report should include approved benchmark run");
   assert(report.promotionDecisions.some((item) => item.id === promoted.decision.id), "report should include promotion decision");
   assert(persistedReport.artifacts.json?.relativePath.endsWith(".json"), "report JSON artifact should be persisted");
   assert(persistedReport.artifacts.markdown?.relativePath.endsWith(".md"), "report markdown artifact should be persisted");
@@ -1064,10 +1198,10 @@ async function main() {
       logPath,
     },
     benchmark: {
-      id: benchmarkRun.id,
-      status: benchmarkRun.status,
-      reportArtifactId: benchmarkRun.reportArtifactId,
-      resultSummary: benchmarkRun.resultSummary,
+      id: approvalCompletedBenchmarkRun.id,
+      status: approvalCompletedBenchmarkRun.status,
+      reportArtifactId: approvalCompletedBenchmarkRun.reportArtifactId,
+      resultSummary: approvalCompletedBenchmarkRun.resultSummary,
     },
     promotion: {
       decisionId: promoted.decision.id,
@@ -1331,6 +1465,32 @@ async function assertRejects(action: () => Promise<unknown>, message: string) {
   }
 
   assert(rejected, message);
+}
+
+async function assertRejectsWithStatus(action: () => Promise<unknown>, expectedStatus: number, message: string) {
+  let caught: unknown = null;
+
+  try {
+    await action();
+  } catch (error) {
+    caught = error;
+  }
+
+  assert(caught, message);
+  assert(readErrorStatus(caught) === expectedStatus, `${message}: expected status ${expectedStatus}`);
+  return caught;
+}
+
+function readErrorStatus(error: unknown) {
+  return error && typeof error === "object" && "status" in error
+    ? (error as { status?: unknown }).status
+    : null;
+}
+
+function readErrorDetails(error: unknown) {
+  return error && typeof error === "object" && "details" in error
+    ? (error as { details?: unknown }).details
+    : null;
 }
 
 function getDatasetFreezeRevision(
