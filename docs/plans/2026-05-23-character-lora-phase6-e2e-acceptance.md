@@ -158,10 +158,11 @@ cmd /c npx tsc --noEmit --pretty false
 - `GET /api/character-lora-training/jobs/[jobId]/report?format=markdown` 返回 Markdown。
 - `POST /api/character-lora-training/jobs/[jobId]/report` 会在 job artifact root 下写入 `reports/job-report-<timestamp>.json` 和 `.md`，并登记为 `CharacterLoraArtifact.kind = job_report`。
 - 工作台页面新增 `Report / Diagnostics` 区块，展示 recommendedReturnPoint、risk、覆盖度、最近 report artifact，并提供生成 report 与 JSON/Markdown 链接。
-- fake E2E smoke 在 promotion 后持久化 report，并断言 report 覆盖 source、canonical、prompt、candidate caption、dataset items、training finalSha、benchmark、promotion，同时把 report artifact refs 写入 summary。
+- fake E2E smoke 在 promotion 后持久化 report，并断言 report 覆盖 source、canonical、prompt、candidate caption、candidate lineage、dataset items、training finalSha、benchmark、promotion，同时把 report artifact refs 写入 summary。
 
 Report 验收要点：
 
 - JSON report 至少包含 job/counts、sourceImages、canonicalVersions、promptCardVersions、sections、generationRuns、candidateImages、datasetRevisions/items、trainingRuns/checkpoints、benchmarkRuns、promotionDecisions、artifactRefs、diagnosticSummary。
+- `candidateImages[].lineage` 必须内嵌候选图对应的 generation run 快照，包括 provider、hostModel、imageModel、hostInstruction、visualPrompt、negativePrompt、toolParams、inputImages、requestArtifactId、createdAt/startedAt/finishedAt，并记录 runCanonicalArtifactId、runCanonicalVersionId、sectionCanonicalVersionId、sectionPromptCardVersionId。
 - Markdown report 能用于人工诊断，至少包含 coverage、diagnostics、training、benchmark、promotion 摘要。
 - 诊断 summary 必须给出 `recommendedReturnPoint`、`reasons`、`evidence`、`actions`、`risk`。
