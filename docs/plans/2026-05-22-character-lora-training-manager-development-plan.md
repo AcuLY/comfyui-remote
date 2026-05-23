@@ -525,25 +525,18 @@ type RouteContext = {
 
 Server actions 面向浏览器 UI，放在 `src/lib/actions/character-lora-training.ts`，再从 `src/lib/actions.ts` re-export。
 
-| Action | 输入 | 输出 | 说明 |
-| --- | --- | --- | --- |
-| `createCharacterLoraTrainingJob` | `characterName`, `triggerToken`, `baseCheckpointName/path/hash`, `trainingScope`, source images | job summary | 创建 job、artifact root、source manifest。 |
-| `updateCharacterLoraTrainingJob` | job 基础字段 | job summary | 仅允许 draft 或未训练前修改关键字段。 |
-| `attachCharacterLoraSourceImage` | `jobId`, `file`, `role` | source image | 上传/登记 source，计算 hash。 |
-| `enqueueCanonicalGeneration` | `jobId`, provider params | generation run | 创建 canonical generation task。 |
-| `selectCanonicalVersion` | `jobId`, `canonicalVersionId` | job summary | 更新当前 canonical，不影响旧 lineage。 |
-| `rejectCanonicalVersion` | `jobId`, `canonicalVersionId` | canonical version | 仅允许 `candidate -> rejected`，拒绝 current/selected/superseded/rejected 时返回 `409`。 |
-| `createPromptCardVersion` | traits、prompt draft、change reason | prompt card version | 永远新增版本；`canonicalVersionId` 不能指向 `rejected` canonical，违规则 `409`。 |
-| `instantiateTrainingSections` | template keys 或自定义 sections | sections | 从模板创建 job sections。 |
-| `enqueueSectionGenerationRun` | `sectionId`, userInstruction, input image refs | generation run | 可生成或 rerun。 |
-| `reviewCandidateImages` | image ids、status、reasons、note | counts | 批量 keep/reject/exclude。 |
-| `updateCandidateCaptionDraft` | image id、caption | image | freeze 前人工改 caption。 |
-| `freezeDatasetRevision` | `jobId`, selected section/image scope | dataset revision | 只收 keep 图，生成 immutable revision。 |
-| `enqueueTrainingRun` | `datasetRevisionId`, config profile/overrides | training run | 生成 resolved config 和 worker task。 |
-| `cancelTrainingRun` | `trainingRunId` | run summary | 写 cancelRequestedAt 和取消信号。 |
-| `enqueueBenchmarkRun` | `trainingRunId`, matrix | benchmark run | copy/register LoRA，创建临时测试项目。 |
-| `savePromotionDecision` | benchmark run、weight、7 变体 prompt | decision | 保存人工选择。 |
-| `promoteCharacterLoraPreset` | `decisionId` | preset summary | 创建正式 preset/category/variants。 |
+| Action group | 当前导出 action | 说明 |
+| --- | --- | --- |
+| Job | `createCharacterLoraTrainingJob`, `updateCharacterLoraTrainingJob`, `listCharacterLoraTrainingJobs`, `getCharacterLoraTrainingJob` | 创建、更新、查询 job；创建时可带初始 source images，写 artifact root 与 provenance。 |
+| Source images | `listCharacterLoraSourceImages`, `uploadCharacterLoraSourceImage`, `registerCharacterLoraSourceImageAsCandidate` | 上传/登记 source，计算 hash；允许把 source anchor 登记为训练候选图。 |
+| Canonical | `enqueueCharacterLoraCanonicalGenerationRun`, `mockCompleteCharacterLoraCanonicalGenerationRun`, `registerManualCharacterLoraCanonicalVersion`, `rejectCharacterLoraCanonicalVersion`, `selectCharacterLoraCanonicalVersion` | 创建 canonical generation task；本地/debug 可 mock 完成；人工上传、拒绝、选择 canonical version。 |
+| Prompt Card | `listCharacterLoraPromptCardVersions`, `createCharacterLoraPromptCardVersion`, `promoteCharacterLoraSectionInstructionToPromptCardVersion` | 永远新增版本；拒绝使用 rejected canonical；支持把局部 section instruction 提升为全局 Prompt Card 版本。 |
+| Sections | `listCharacterLoraSectionTemplates`, `copyCharacterLoraSectionTemplate`, `listCharacterLoraJobSections`, `instantiateCharacterLoraJobSections`, `updateCharacterLoraJobSectionStatus`, `pauseCharacterLoraJobSection`, `resumeCharacterLoraJobSection`, `enqueueCharacterLoraSectionGenerationRun` | 模板复制、实例化、暂停/恢复和 section generation/rerun。 |
+| Review / caption / dataset | `listCharacterLoraCandidateImages`, `reviewCharacterLoraImages`, `updateCharacterLoraImageCaption`, `freezeCharacterLoraDataset`, `listCharacterLoraDatasetRevisions` | 候选图筛选、caption 编辑、dataset freeze 和 revision 查询。 |
+| Training / GPU | `enqueueCharacterLoraTrainingRun`, `listCharacterLoraTrainingRuns`, `cancelCharacterLoraTrainingRun`, `getCharacterLoraGpuTaskLock` | 生成 resolved config/dry-run summary、入队训练、取消训练和展示 GPU task lock。 |
+| Benchmark / cleanup | `getCharacterLoraBenchmarkTemplateStatus`, `ensureCharacterLoraBenchmarkTemplate`, `enqueueCharacterLoraBenchmarkRun`, `listCharacterLoraBenchmarkRuns`, `listCharacterLoraBenchmarkRunsForTrainingRun`, `completeCharacterLoraBenchmarkRun`, `mockCompleteCharacterLoraBenchmarkRun`, `cleanupCharacterLoraBenchmarkRunTemporaryResources` | benchmark 模板检查、从 training run/job 上下文启动 benchmark、worker/debug 完成和临时测试 preset/project cleanup。 |
+| Promotion / report | `createCharacterLoraPromotionDecision`, `listCharacterLoraPromotionDecisions`, `promoteCharacterLoraPreset`, `getCharacterLoraJobReport`, `persistCharacterLoraJobReport` | 保存人工决策、正式发布 7 变体 preset、生成/持久化 job report。 |
+| Worker tasks | `leaseNextCharacterLoraTask`, `heartbeatCharacterLoraTask`, `completeCharacterLoraTask`, `failCharacterLoraTask` | 外部 image/dataset/training/benchmark worker 的 lease、heartbeat、完成和失败回写。 |
 
 ### 6.3 HTTP API
 
@@ -1139,6 +1132,7 @@ sequenceDiagram
 - 2026-05-23：补齐 PRD 5.4 复制训练集模板的可调目标数入口。工作台复制 section template 时可覆盖 `targetCandidateCount` 与 `targetKeepCount`，直接复用 service 侧 `targetKeepCount <= targetCandidateCount` 校验，方便复制模板后调整候选/keep 目标。
 
 - 2026-05-23：补齐 PRD 5.12 临时 benchmark preset/project cleanup。`CharacterLoraBenchmarkRun` 增加 cleanup 时间与摘要字段；新增 `POST /api/character-lora-training/benchmark-runs/:benchmarkRunId/cleanup` 和 server action；实际 cleanup 要求 benchmark done 且 report artifact 存在，queued/running project runs 返回 `409`；保留 training run、LoRA asset、safetensors artifact、benchmark report artifact 与原始 test ids；fake e2e 覆盖 dryRun、实际 cleanup、重复 cleanup 幂等和 promotion/report 后续可用。
+- 2026-05-23：补齐 job 级 benchmark enqueue API。`POST /api/character-lora-training/jobs/:jobId/benchmark-runs` 支持从 job 上下文启动 benchmark：显式 `trainingRunId` 必须属于该 job；未传时自动选择该 job 最新的 `done` 且有 `finalSafetensorsArtifactId` 的 training run；入队逻辑继续复用 training run 级 `enqueueCharacterLoraBenchmarkRun`，避免两套 benchmark 规则分叉。
 ## 12. 验证计划
 
 ### 自动化验证
