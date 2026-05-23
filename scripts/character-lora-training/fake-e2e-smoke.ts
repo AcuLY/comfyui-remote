@@ -16,7 +16,12 @@ type ServiceModules = {
   benchmarkPromotionService: typeof import("../../src/server/services/character-lora-training/benchmark-promotion-service");
   reportService: typeof import("../../src/server/services/character-lora-training/report-service");
   artifactService: typeof import("../../src/server/services/character-lora-training/artifact-service");
+  sectionActions: SectionActionModule;
   prismaModule: typeof import("../../src/lib/prisma");
+};
+
+type SectionActionModule = {
+  addSection: (projectId: string, name?: string, folderId?: string | null) => Promise<string>;
 };
 
 type BenchmarkEnqueueResult = Awaited<ReturnType<ServiceModules["benchmarkPromotionService"]["enqueueCharacterLoraBenchmarkRun"]>>;
@@ -94,6 +99,12 @@ type SmokeSummary = {
     presetId: string;
     variantCount: number;
     weights: number[];
+  };
+  managerProject: {
+    id: string;
+    sectionId: string;
+    presetBlockId: string;
+    loraPath: string;
   };
   report: {
     recommendedReturnPoint: string;
@@ -1371,7 +1382,7 @@ async function main() {
   const variants = await services.prismaModule.prisma.presetVariant.findMany({
     where: { presetId: promoted.presetId },
     orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
-    select: { id: true, slug: true, lora1: true, lora2: true },
+    select: { id: true, slug: true, prompt: true, lora1: true, lora2: true },
   });
   assert(variants.length === 7, `expected 7 promoted preset variants, got ${variants.length}`);
   const weights = variants.map((variant) => {
@@ -1381,6 +1392,77 @@ async function main() {
     return Number((first as { weight: unknown }).weight);
   });
   assert(weights.every((weight) => Number.isFinite(weight) && weight > 0), "variant weights should be positive");
+  const defaultVariant = variants.find((variant) => variant.slug === "default") ?? variants[0];
+  assert(defaultVariant, "promoted preset should have a default usable variant");
+  const defaultVariantLora1 = readJsonArray(defaultVariant.lora1);
+  const defaultVariantLoraEntry = readJsonRecord(defaultVariantLora1[0]);
+  const defaultVariantLoraPath = defaultVariantLoraEntry.path;
+  assert(typeof defaultVariantLoraPath === "string" && defaultVariantLoraPath.length > 0, "default promoted variant should expose lora1 path");
+  const managerProject = await services.prismaModule.prisma.project.create({
+    data: {
+      title: "Character LoRA smoke manager project",
+      slug: "character-lora-smoke-manager-project",
+      status: "draft",
+      checkpointName: "fake-base.safetensors",
+      presetBindings: [{
+        categoryId: promoted.categoryId,
+        presetId: promoted.presetId,
+        variantId: defaultVariant.id,
+      }],
+      notes: "Verifies promoted Character LoRA preset can be consumed by ordinary Manager project section creation.",
+    },
+    select: { id: true },
+  });
+  const managerSectionName = "Uses promoted Character LoRA preset";
+  const managerSectionId = await addManagerSectionForSmoke(
+    services,
+    managerProject.id,
+    managerSectionName,
+  );
+  const managerSection = await services.prismaModule.prisma.projectSection.findUnique({
+    where: { id: managerSectionId },
+    select: {
+      id: true,
+      loraConfig: true,
+      promptBlocks: {
+        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+        select: {
+          id: true,
+          type: true,
+          sourceId: true,
+          variantId: true,
+          positive: true,
+          bindingId: true,
+        },
+      },
+    },
+  });
+  assert(managerSection, "ordinary Manager project section should be created");
+  const managerPresetBlock = managerSection.promptBlocks.find((block) => block.sourceId === promoted.presetId);
+  assert(managerPresetBlock, "ordinary Manager section should import the promoted preset prompt block");
+  assert(managerPresetBlock.type === "preset", "ordinary Manager imported block should remain preset-linked");
+  assert(managerPresetBlock.variantId === defaultVariant.id, "ordinary Manager imported block should use the promoted default variant");
+  assert(managerPresetBlock.positive === defaultVariant.prompt, "ordinary Manager imported block should use the promoted variant prompt");
+  assert(managerPresetBlock.bindingId, "ordinary Manager imported block should have a bindingId for LoRA linkage");
+  const managerLoraConfig = readJsonRecord(managerSection.loraConfig);
+  const managerLora1 = readJsonArray(managerLoraConfig.lora1).map(readJsonRecord);
+  const managerLora2 = readJsonArray(managerLoraConfig.lora2).map(readJsonRecord);
+  assert(
+    managerLora1.some((entry) =>
+      entry.path === defaultVariantLoraPath &&
+      entry.source === "preset" &&
+      entry.bindingId === managerPresetBlock.bindingId
+    ),
+    "ordinary Manager section should materialize promoted preset lora1",
+  );
+  assert(
+    managerLora2.some((entry) =>
+      entry.path === defaultVariantLoraPath &&
+      entry.source === "preset" &&
+      entry.bindingId === managerPresetBlock.bindingId
+    ),
+    "ordinary Manager section should materialize promoted preset lora2",
+  );
 
   const persistedReport = await services.reportService.persistCharacterLoraJobReport(job.id);
   const report = persistedReport.report;
@@ -1569,6 +1651,12 @@ async function main() {
       variantCount: variants.length,
       weights,
     },
+    managerProject: {
+      id: managerProject.id,
+      sectionId: managerSection.id,
+      presetBlockId: managerPresetBlock.id,
+      loraPath: defaultVariantLoraPath,
+    },
     report: {
       recommendedReturnPoint: report.diagnosticSummary.recommendedReturnPoint,
       risk: report.diagnosticSummary.risk,
@@ -1644,6 +1732,7 @@ async function importServices(): Promise<ServiceModules> {
     benchmarkPromotionService,
     reportService,
     artifactService,
+    sectionActionsModule,
     prismaModule,
   ] = await Promise.all([
     import("../../src/server/services/character-lora-training/job-service"),
@@ -1656,6 +1745,7 @@ async function importServices(): Promise<ServiceModules> {
     import("../../src/server/services/character-lora-training/benchmark-promotion-service"),
     import("../../src/server/services/character-lora-training/report-service"),
     import("../../src/server/services/character-lora-training/artifact-service"),
+    import("../../src/lib/actions/section"),
     import("../../src/lib/prisma"),
   ]);
 
@@ -1670,8 +1760,53 @@ async function importServices(): Promise<ServiceModules> {
     benchmarkPromotionService,
     reportService,
     artifactService,
+    sectionActions: resolveSectionActionsModule(sectionActionsModule),
     prismaModule,
   };
+}
+
+function resolveSectionActionsModule(value: unknown): SectionActionModule {
+  const direct = readJsonRecord(value);
+  const candidates = [
+    direct,
+    readJsonRecord(direct.default),
+    readJsonRecord(direct["module.exports"]),
+  ];
+
+  for (const candidate of candidates) {
+    if (typeof candidate.addSection === "function") {
+      return { addSection: candidate.addSection as SectionActionModule["addSection"] };
+    }
+  }
+
+  throw new Error("Unable to load addSection from section actions module");
+}
+
+async function addManagerSectionForSmoke(
+  services: ServiceModules,
+  projectId: string,
+  name: string,
+) {
+  try {
+    return await services.sectionActions.addSection(projectId, name);
+  } catch (error) {
+    if (!isScriptRevalidatePathError(error)) {
+      throw error;
+    }
+
+    const section = await services.prismaModule.prisma.projectSection.findFirst({
+      where: { projectId, name },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      select: { id: true },
+    });
+    assert(section, "ordinary Manager section should persist before script-only revalidatePath failure");
+    return section.id;
+  }
+}
+
+function isScriptRevalidatePathError(error: unknown) {
+  return error instanceof Error &&
+    error.message.includes("static generation store missing in revalidatePath");
 }
 
 function runPrismaDbPush(databaseUrl: string) {
