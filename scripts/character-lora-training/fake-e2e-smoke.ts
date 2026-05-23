@@ -1224,6 +1224,40 @@ async function main() {
   const autoBenchmarkLocks = await listActiveBenchmarkGpuLocks(services, benchmarkRun.id);
   assert(autoBenchmarkLocks.length === 0, "dryRun/skipQueue benchmark should not create an active GPU lock");
 
+  const jobBenchmarkRoute = await import("../../src/app/api/character-lora-training/jobs/[jobId]/benchmark-runs/route");
+  const routeMissingTrainingResponse = await jobBenchmarkRoute.POST(
+    new Request("http://localhost/api/character-lora-training/jobs/fake/benchmark-runs", {
+      method: "POST",
+      body: JSON.stringify({ trainingRunId: "missing-training-run" }),
+    }),
+    { params: Promise.resolve({ jobId: job.id }) },
+  );
+  assert(routeMissingTrainingResponse.status === 404, "job benchmark route should reject training runs outside the job");
+  const routeBenchmarkResponse = await jobBenchmarkRoute.POST(
+    new Request("http://localhost/api/character-lora-training/jobs/fake/benchmark-runs", {
+      method: "POST",
+      body: JSON.stringify({
+        checkpointMatrix: ["fake-base.safetensors"],
+        weightMatrix: [0.65],
+        registerLoraAsset: true,
+        copyToCharacterDir: true,
+        loraAssetName: "Smoke Character LoRA Route Evidence",
+        dryRun: true,
+        skipQueue: true,
+      }),
+    }),
+    { params: Promise.resolve({ jobId: job.id }) },
+  );
+  assert(routeBenchmarkResponse.status === 201, "job benchmark route should enqueue from latest completed training run");
+  const routeBenchmarkPayload = readJsonRecord(await routeBenchmarkResponse.json());
+  assert(routeBenchmarkPayload.ok === true, "job benchmark route response should use ok envelope");
+  const routeBenchmarkData = readJsonRecord(routeBenchmarkPayload.data);
+  const routeBenchmarkRun = readJsonRecord(routeBenchmarkData.completedBenchmarkRun ?? routeBenchmarkData.benchmarkRun);
+  assert(routeBenchmarkRun.trainingRunId === completedTrainingRun.id, "job benchmark route should select the completed training run");
+  assert(routeBenchmarkRun.status === "done", "job benchmark route dryRun/skipQueue should mock-complete the benchmark");
+  const routeBenchmarkLocks = await listActiveBenchmarkGpuLocks(services, String(routeBenchmarkRun.id));
+  assert(routeBenchmarkLocks.length === 0, "job benchmark route dryRun/skipQueue should not create an active GPU lock");
+
   const blockedApproval = await assertRejectsWithStatus(
     () => services.benchmarkPromotionService.createPromotionDecision(benchmarkRun.id, {
       status: "approved",
