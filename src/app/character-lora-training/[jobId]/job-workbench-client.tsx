@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -32,6 +32,7 @@ import {
   cancelCharacterLoraTrainingRun,
   createCharacterLoraPromptCardVersion,
   createCharacterLoraPromotionDecision,
+  ensureCharacterLoraBenchmarkTemplate,
   enqueueCharacterLoraBenchmarkRun,
   enqueueCharacterLoraCanonicalGenerationRun,
   enqueueCharacterLoraSectionGenerationRun,
@@ -52,6 +53,7 @@ import {
 } from "@/lib/actions/character-lora-training";
 import type {
   CharacterLoraBenchmarkRun,
+  CharacterLoraBenchmarkTemplateStatus,
   CharacterLoraCandidateImage,
   CharacterLoraDatasetRevision,
   CharacterLoraGpuLock,
@@ -75,6 +77,7 @@ type Props = {
   datasetRevisions: CharacterLoraDatasetRevision[];
   trainingRuns: CharacterLoraTrainingRun[];
   benchmarkRuns: CharacterLoraBenchmarkRun[];
+  benchmarkTemplateStatus: CharacterLoraBenchmarkTemplateStatus;
   promotionDecisions: CharacterLoraPromotionDecision[];
   report: CharacterLoraJobReport;
   gpuLock: CharacterLoraGpuLock;
@@ -562,6 +565,7 @@ export function JobWorkbenchClient({
   datasetRevisions,
   trainingRuns,
   benchmarkRuns,
+  benchmarkTemplateStatus,
   promotionDecisions,
   report,
   gpuLock,
@@ -597,6 +601,9 @@ export function JobWorkbenchClient({
     () => benchmarkRuns.find((run) => run.status === "done" && run.loraAssetId)?.id ?? "",
   );
   const [promotionDecisionStatus, setPromotionDecisionStatus] = useState<PromotionDecisionStatus>("approved");
+  const benchmarkTemplateDefaultId = benchmarkTemplateStatus.template?.id ?? "";
+  const [postTrainingBenchmarkTemplateId, setPostTrainingBenchmarkTemplateId] = useState(benchmarkTemplateDefaultId);
+  const [benchmarkTemplateId, setBenchmarkTemplateId] = useState(benchmarkTemplateDefaultId);
 
   const canonicalVersions = report.canonicalVersions;
   const manualCanonicalSourceImages = useMemo(
@@ -658,6 +665,11 @@ export function JobWorkbenchClient({
   const isPromotionDraftApprovalBlocked =
     promotionDecisionStatus === "approved" && (!selectedPromotionApproval || !selectedPromotionApproval.canApprove);
   const rejectSuggestion = REJECT_REASON_OPTIONS.find((reason) => reason.value === rejectReason)?.suggestion ?? "";
+
+  useEffect(() => {
+    setPostTrainingBenchmarkTemplateId(benchmarkTemplateDefaultId);
+    setBenchmarkTemplateId(benchmarkTemplateDefaultId);
+  }, [benchmarkTemplateDefaultId]);
 
   function runAction(key: string, label: string, action: () => Promise<unknown>, refresh = true) {
     setPendingKey(key);
@@ -909,11 +921,22 @@ export function JobWorkbenchClient({
       await enqueueCharacterLoraBenchmarkRun(trainingRunId, {
         checkpointMatrix: parseCsv(String(formData.get("checkpointMatrix") ?? "")),
         weightMatrix: parseWeights(String(formData.get("weightMatrix") ?? DEFAULT_BENCHMARK_WEIGHT_MATRIX_TEXT)),
+        templateId: readOptionalString(formData, "templateId"),
         copyToCharacterDir: formData.get("copyToCharacterDir") === "on",
         dryRun: formData.get("dryRun") === "on",
         skipQueue: formData.get("skipQueue") === "on",
         queuePolicy: String(formData.get("queuePolicy") ?? "queue_when_busy"),
       });
+    });
+  }
+
+  function handleEnsureBenchmarkTemplate() {
+    runAction("benchmark.template.ensure", "Benchmark template 已就绪", async () => {
+      const result = await ensureCharacterLoraBenchmarkTemplate({
+        checkpointName: job.baseCheckpointName ?? null,
+      });
+      setPostTrainingBenchmarkTemplateId(result.template.id);
+      setBenchmarkTemplateId(result.template.id);
     });
   }
 
@@ -1510,6 +1533,11 @@ export function JobWorkbenchClient({
           </label>
           <details open className="rounded-lg border border-white/10 bg-black/20 p-3 md:col-span-3 lg:col-span-5">
             <summary className="cursor-pointer text-xs font-medium text-zinc-200">Post-training Benchmark</summary>
+            <BenchmarkTemplateStatusPanel
+              status={benchmarkTemplateStatus}
+              loading={isBusy("benchmark.template.ensure")}
+              onEnsure={handleEnsureBenchmarkTemplate}
+            />
             <div className="mt-3 grid gap-2 md:grid-cols-4">
               <label className="flex items-center gap-2 text-xs text-zinc-300">
                 <input name="postTrainingBenchmarkEnabled" type="checkbox" defaultChecked className="size-3.5 accent-emerald-400" />
@@ -1533,7 +1561,13 @@ export function JobWorkbenchClient({
               </label>
               <label className="grid gap-1 text-xs text-zinc-400">
                 Template ID
-                <input name="postTrainingBenchmarkTemplateId" placeholder="optional" className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white" />
+                <input
+                  name="postTrainingBenchmarkTemplateId"
+                  value={postTrainingBenchmarkTemplateId}
+                  onChange={(event) => setPostTrainingBenchmarkTemplateId(event.target.value)}
+                  placeholder="optional"
+                  className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white"
+                />
               </label>
               <label className="grid gap-1 text-xs text-zinc-400 md:col-span-2">
                 LoRA asset name
@@ -1669,7 +1703,12 @@ export function JobWorkbenchClient({
       </SectionCard>
 
       <SectionCard title="Benchmark / Promotion" subtitle="训练完成后做基准测试、创建发布决策并发布到预设。">
-        <form action={handleBenchmarkEnqueue} className="grid gap-2 rounded-lg border border-white/10 bg-white/[0.03] p-3 lg:grid-cols-[1fr_1fr_120px_120px_auto_auto_auto]">
+        <BenchmarkTemplateStatusPanel
+          status={benchmarkTemplateStatus}
+          loading={isBusy("benchmark.template.ensure")}
+          onEnsure={handleEnsureBenchmarkTemplate}
+        />
+        <form action={handleBenchmarkEnqueue} className="mt-3 grid gap-2 rounded-lg border border-white/10 bg-white/[0.03] p-3 md:grid-cols-2 lg:grid-cols-[1fr_1fr_120px_120px_1fr_auto_auto_auto]">
           <select name="trainingRunId" defaultValue={latestDoneTraining?.id ?? ""} className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white">
             <option value="">选择 done training</option>
             {trainingRuns.map((run) => (
@@ -1683,6 +1722,13 @@ export function JobWorkbenchClient({
             <option value="reject_when_busy">reject busy</option>
             <option value="ignore_busy">ignore busy</option>
           </select>
+          <input
+            name="templateId"
+            value={benchmarkTemplateId}
+            onChange={(event) => setBenchmarkTemplateId(event.target.value)}
+            placeholder="Template ID"
+            className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white"
+          />
           <label className="flex items-center gap-2 text-xs text-zinc-300">
             <input name="copyToCharacterDir" type="checkbox" defaultChecked className="size-3.5 accent-emerald-400" />
             copy file
@@ -1695,7 +1741,7 @@ export function JobWorkbenchClient({
             <input name="skipQueue" type="checkbox" className="size-3.5 accent-sky-400" />
             skipQueue
           </label>
-          <div className="lg:col-span-7">
+          <div className="md:col-span-2 lg:col-span-8">
             <ActionButton icon={Send} label="入队 Benchmark" loading={isBusy("benchmark.enqueue")} disabled={isPending || !latestDoneTraining} />
           </div>
         </form>
@@ -2314,6 +2360,45 @@ function extractRejectReasons(value: unknown) {
 
 function formatRejectReason(value: string) {
   return REJECT_REASON_OPTIONS.find((reason) => reason.value === value)?.label ?? value;
+}
+
+function BenchmarkTemplateStatusPanel({
+  status,
+  loading,
+  onEnsure,
+}: {
+  status: CharacterLoraBenchmarkTemplateStatus;
+  loading?: boolean;
+  onEnsure: () => void;
+}) {
+  const template = status.template;
+  const ready = Boolean(template?.isUsable);
+
+  return (
+    <div className="mt-3 flex flex-col gap-2 rounded-lg border border-white/10 bg-white/[0.03] p-3 text-xs text-zinc-300 md:flex-row md:items-center md:justify-between">
+      <div className="min-w-0 space-y-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className={ready ? "text-emerald-300" : "text-amber-300"}>
+            {ready ? "Benchmark template ready" : template ? "Benchmark template needs review" : "Benchmark template missing"}
+          </span>
+          <span className="rounded-full border border-white/10 px-2 py-0.5 text-[11px] text-zinc-400">
+            sections {template?.sectionCount ?? 0}/{status.requiredSectionCount}
+          </span>
+        </div>
+        <div className="truncate font-mono text-[11px] text-zinc-500">
+          {template ? `${template.name} / ${template.id}` : status.requiredTemplateNames.join(" / ")}
+        </div>
+      </div>
+      <ActionButton
+        type="button"
+        icon={Database}
+        label={template ? "确保模板" : "创建模板"}
+        loading={loading}
+        disabled={loading}
+        onClick={onEnsure}
+      />
+    </div>
+  );
 }
 
 function ActionButton({

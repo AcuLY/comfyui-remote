@@ -110,7 +110,15 @@ cmd /c npx tsx scripts/character-lora-training/training-worker.ts --once --dry-r
 
 Benchmark enqueue 会先检查当前 ComfyUI queued/running 数量和 active LoRA `GpuTaskLock`。`queuePolicy=reject_when_busy` 时，只要 ComfyUI 忙或已有 active LoRA GPU lock，就返回 409，details 包含 `comfyQueue` 和 `gpuTaskLocks`；`queue_when_busy` / `ignore_busy` 会继续创建 benchmark，但会把 busy 状态写入 warnings 和 benchmark lock metadata。非 `dryRun` / 非 `skipQueue` 的 benchmark task 会创建 `taskType=benchmark`、`ownerType=character_lora_benchmark_run`、`ownerId=benchmarkRun.id` 的 active GPU lock；benchmark complete 或 worker fail 会释放该 lock。`dryRun` / `skipQueue` 不会创建 GPU lock。
 
-真实 benchmark（非 `dryRun` 且非 `skipQueue`）必须复用 ProjectTemplate：显式 `templateId` 必须存在；未显式指定时会自动查找 `角色 lora 测试` / `角色 LoRA 测试` / `character lora`。缺失时 benchmark enqueue 返回 409，不能静默创建 fallback project。fallback sections 只允许在 `dryRun` / `skipQueue` 调试路径使用，并且不能作为 approved promotion evidence。
+真实 benchmark（非 `dryRun` 且非 `skipQueue`）必须复用可用 ProjectTemplate：显式 `templateId` 必须存在且至少包含 7 个 sections；未显式指定时会自动查找 `角色 lora 测试` / `角色 LoRA 测试` / `character lora`，同样要求至少 7 个 sections。缺失或 section 数不足时 benchmark enqueue 返回 409，不能静默创建 fallback project。fallback sections 或不足 7 sections 的模板只允许在 `dryRun` / `skipQueue` 调试路径使用，并且不能作为 approved promotion evidence。
+
+本地或部署后可先幂等 bootstrap 默认模板；已有匹配模板时返回 `found`，不会重复创建，缺失时创建标准 7 变体 `角色 LoRA 测试` 模板：
+
+```powershell
+cmd /c npx tsx scripts/character-lora-training/ensure-benchmark-template.ts --checkpoint fake-base.safetensors
+```
+
+脚本只输出 JSON 摘要（`result`/`created`/`found`/`id`/`name`/`sectionCount`/`isUsable`），不会打印 token 或其它 secret。工作台的 Post-training Benchmark 和 Benchmark enqueue 区域也提供同一 ensure 入口，并会把找到的 template id 作为默认值，仍允许手工覆盖；若 status 显示 `isUsable=false`，需要补齐到至少 7 个 sections 后才能用于真实 benchmark。
 
 单次处理：
 

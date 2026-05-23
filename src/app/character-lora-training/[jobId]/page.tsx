@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 
 import {
+  getCharacterLoraBenchmarkTemplateStatus,
   getCharacterLoraGpuTaskLock,
   getCharacterLoraJobReport,
   getCharacterLoraTrainingJob,
@@ -44,6 +45,7 @@ export default async function CharacterLoraTrainingJobPage({
     datasetRevisions,
     trainingRuns,
     benchmarkRuns,
+    benchmarkTemplateStatus,
     promotionDecisions,
     report,
     gpuLock,
@@ -56,6 +58,7 @@ export default async function CharacterLoraTrainingJobPage({
     listCharacterLoraDatasetRevisions(jobId),
     listCharacterLoraTrainingRuns(jobId),
     listCharacterLoraBenchmarkRuns(jobId),
+    getCharacterLoraBenchmarkTemplateStatus(),
     listCharacterLoraPromotionDecisions(jobId),
     getCharacterLoraJobReport(jobId),
     getCharacterLoraGpuTaskLock(),
@@ -72,6 +75,7 @@ export default async function CharacterLoraTrainingJobPage({
       datasetRevisions={datasetRevisions}
       trainingRuns={trainingRuns}
       benchmarkRuns={benchmarkRuns}
+      benchmarkTemplateStatus={benchmarkTemplateStatus}
       promotionDecisions={promotionDecisions}
       report={report}
       gpuLock={gpuLock}

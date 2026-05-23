@@ -19,9 +19,11 @@ import {
   countActiveComfyQueueRuns,
   createCharacterLoraBenchmarkRunWithTask,
   createCharacterLoraPromotionDecisionInRepository,
+  ensureCharacterLoraBenchmarkTemplateInRepository,
   findBreastSizeSliderLoraAsset,
   findCharacterLoraBenchmarkTemplate,
   findCharacterLoraPromotionLinkedVariant,
+  getCharacterLoraBenchmarkTemplateStatusInRepository,
   getCharacterLoraBenchmarkTemplateById,
   getCharacterLoraArtifact,
   getCharacterLoraBenchmarkRun,
@@ -63,8 +65,12 @@ const REQUIRED_BENCHMARK_TEMPLATE_NAMES = [
   "\u89d2\u8272 LoRA \u6d4b\u8bd5",
   "character lora",
 ] as const;
+const REQUIRED_BENCHMARK_TEMPLATE_SECTION_COUNT = 7;
 const DEBUG_FALLBACK_BENCHMARK_WARNING =
   "Benchmark ProjectTemplate was not found; using fallback sections only because dryRun/skipQueue skipped the real benchmark queue. This debug fallback is not approved promotion evidence.";
+const characterLoraBenchmarkTemplateEnsureRequestSchema = z.object({
+  checkpointName: z.string().trim().min(1).nullable().optional(),
+}).strict();
 
 type MinimalCharacterLoraJob = {
   id: string;
@@ -85,6 +91,17 @@ export class CharacterLoraBenchmarkPromotionServiceError extends Error {
     super(message);
     this.name = "CharacterLoraBenchmarkPromotionServiceError";
   }
+}
+
+export async function getCharacterLoraBenchmarkTemplateStatus() {
+  return getCharacterLoraBenchmarkTemplateStatusInRepository();
+}
+
+export async function ensureCharacterLoraBenchmarkTemplate(input: unknown = {}) {
+  const parsed = parseWithSchema(characterLoraBenchmarkTemplateEnsureRequestSchema, input ?? {});
+  return ensureCharacterLoraBenchmarkTemplateInRepository({
+    checkpointName: parsed.checkpointName ?? null,
+  });
 }
 
 export async function enqueueCharacterLoraBenchmarkRun(trainingRunId: string, input: unknown = {}) {
@@ -972,11 +989,13 @@ async function resolveBenchmarkTemplateForEnqueue(
     if (!template) {
       throw missingBenchmarkTemplateError(input, "explicit");
     }
+    validateBenchmarkTemplateUsableForEnqueue(input, template, "explicit", warnings);
     return template;
   }
 
   const template = await findCharacterLoraBenchmarkTemplate();
   if (template) {
+    validateBenchmarkTemplateUsableForEnqueue(input, template, "automatic", warnings);
     return template;
   }
 
@@ -986,6 +1005,32 @@ async function resolveBenchmarkTemplateForEnqueue(
 
   warnings.push(DEBUG_FALLBACK_BENCHMARK_WARNING);
   return null;
+}
+
+function validateBenchmarkTemplateUsableForEnqueue(
+  input: Pick<CharacterLoraBenchmarkEnqueueRequest, "templateId" | "dryRun" | "skipQueue">,
+  template: {
+    id: string;
+    name: string;
+    sectionCount: number;
+    isUsable: boolean;
+  },
+  lookup: "explicit" | "automatic",
+  warnings: string[],
+) {
+  if (template.isUsable && template.sectionCount >= REQUIRED_BENCHMARK_TEMPLATE_SECTION_COUNT) {
+    return;
+  }
+
+  const warning =
+    `Benchmark ProjectTemplate ${template.name} has ${template.sectionCount}/${REQUIRED_BENCHMARK_TEMPLATE_SECTION_COUNT} sections; ` +
+    "it is allowed only for dryRun/skipQueue debug and is not approved promotion evidence.";
+  if (input.dryRun || input.skipQueue) {
+    warnings.push(warning);
+    return;
+  }
+
+  throw unusableBenchmarkTemplateError(input, template, lookup);
 }
 
 function missingBenchmarkTemplateError(
@@ -999,8 +1044,34 @@ function missingBenchmarkTemplateError(
       templateId: input.templateId ?? null,
       dryRun: input.dryRun,
       skipQueue: input.skipQueue,
+      requiredSectionCount: REQUIRED_BENCHMARK_TEMPLATE_SECTION_COUNT,
       requiredTemplateNames: [...REQUIRED_BENCHMARK_TEMPLATE_NAMES],
       lookup,
+    },
+  );
+}
+
+function unusableBenchmarkTemplateError(
+  input: Pick<CharacterLoraBenchmarkEnqueueRequest, "templateId" | "dryRun" | "skipQueue">,
+  template: {
+    id: string;
+    name: string;
+    sectionCount: number;
+  },
+  lookup: "explicit" | "automatic",
+) {
+  return new CharacterLoraBenchmarkPromotionServiceError(
+    "Character LoRA benchmark ProjectTemplate is not usable",
+    409,
+    {
+      templateId: template.id,
+      templateName: template.name,
+      sectionCount: template.sectionCount,
+      requiredSectionCount: REQUIRED_BENCHMARK_TEMPLATE_SECTION_COUNT,
+      dryRun: input.dryRun,
+      skipQueue: input.skipQueue,
+      lookup,
+      requiredTemplateNames: [...REQUIRED_BENCHMARK_TEMPLATE_NAMES],
     },
   );
 }

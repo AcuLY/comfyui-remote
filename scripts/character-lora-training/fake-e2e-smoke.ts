@@ -1015,7 +1015,93 @@ async function main() {
     "invalid explicit template error should echo templateId",
   );
 
-  const approvalTemplateId = await createSmokeBenchmarkProjectTemplate(services, approvalCheckpointMatrix[0]);
+  const initialTemplateStatus = await services.benchmarkPromotionService.getCharacterLoraBenchmarkTemplateStatus();
+  assert(initialTemplateStatus.status === "missing", "isolated smoke DB should start without benchmark ProjectTemplate");
+  const incompleteTemplate = await createIncompleteBenchmarkProjectTemplate(
+    services,
+    approvalCheckpointMatrix[0],
+    "Intentionally incomplete benchmark template for smoke negative assertion.",
+  );
+  const incompleteTemplateStatus = await services.benchmarkPromotionService.getCharacterLoraBenchmarkTemplateStatus();
+  assert(incompleteTemplateStatus.template?.id === incompleteTemplate.id, "status should find the incomplete benchmark template");
+  assert(incompleteTemplateStatus.template.sectionCount === 1, "incomplete benchmark template should report sectionCount=1");
+  assert(incompleteTemplateStatus.template.isUsable === false, "incomplete benchmark template should be marked unusable");
+  const unusableTemplateBenchmark = await assertRejectsWithStatus(
+    () => services.benchmarkPromotionService.enqueueCharacterLoraBenchmarkRun(completedTrainingRun.id, {
+      checkpointMatrix: approvalCheckpointMatrix,
+      weightMatrix: approvalWeightMatrix,
+      registerLoraAsset: false,
+      copyToCharacterDir: false,
+      dryRun: false,
+      skipQueue: false,
+      queuePolicy: "queue_when_busy",
+    }),
+    409,
+    "non-skipped benchmark should reject an incomplete Character LoRA test ProjectTemplate",
+  );
+  const unusableTemplateDetails = readJsonRecord(readErrorDetails(unusableTemplateBenchmark));
+  assert(unusableTemplateDetails.templateId === incompleteTemplate.id, "unusable template error should expose templateId");
+  assert(unusableTemplateDetails.templateName === "\u89d2\u8272 LoRA \u6d4b\u8bd5", "unusable template error should expose templateName");
+  assert(unusableTemplateDetails.sectionCount === 1, "unusable template error should expose sectionCount");
+  assert(unusableTemplateDetails.requiredSectionCount === 7, "unusable template error should expose requiredSectionCount");
+  assert(unusableTemplateDetails.dryRun === false, "unusable template error should expose dryRun=false");
+  assert(unusableTemplateDetails.skipQueue === false, "unusable template error should expose skipQueue=false");
+  assert(unusableTemplateDetails.lookup === "automatic", "unusable template error should expose lookup=automatic");
+  assert(
+    readJsonArray(unusableTemplateDetails.requiredTemplateNames).includes("\u89d2\u8272 LoRA \u6d4b\u8bd5"),
+    "unusable template error should expose required benchmark template names",
+  );
+  await services.prismaModule.prisma.projectTemplate.delete({ where: { id: incompleteTemplate.id } });
+  const afterBadTemplateDeleteStatus = await services.benchmarkPromotionService.getCharacterLoraBenchmarkTemplateStatus();
+  assert(afterBadTemplateDeleteStatus.status === "missing", "template status should return to missing after deleting incomplete template");
+  const ensuredTemplate = await services.benchmarkPromotionService.ensureCharacterLoraBenchmarkTemplate({
+    checkpointName: approvalCheckpointMatrix[0],
+  });
+  assert(ensuredTemplate.result === "created", "first benchmark template ensure should create the template");
+  assert(ensuredTemplate.created === true && ensuredTemplate.found === false, "created ensure result should expose created=true/found=false");
+  assert(ensuredTemplate.template.sectionCount === 7, "created benchmark template should have 7 sections");
+  const repeatedTemplateEnsure = await services.benchmarkPromotionService.ensureCharacterLoraBenchmarkTemplate({
+    checkpointName: "should-not-create-a-second-template.safetensors",
+  });
+  assert(repeatedTemplateEnsure.result === "found", "second benchmark template ensure should find the existing template");
+  assert(repeatedTemplateEnsure.template.id === ensuredTemplate.template.id, "repeated ensure should return the same template id");
+  const benchmarkTemplateCount = await services.prismaModule.prisma.projectTemplate.count({
+    where: { name: "\u89d2\u8272 LoRA \u6d4b\u8bd5" },
+  });
+  assert(benchmarkTemplateCount === 1, "repeated ensure should not create duplicate benchmark templates");
+  const newerIncompleteTemplate = await createIncompleteBenchmarkProjectTemplate(
+    services,
+    approvalCheckpointMatrix[0],
+    "Intentionally newer incomplete benchmark template for usable-template priority assertion.",
+  );
+  assert(newerIncompleteTemplate.id !== ensuredTemplate.template.id, "newer incomplete template should be a distinct template");
+  const preferredTemplateStatus = await services.benchmarkPromotionService.getCharacterLoraBenchmarkTemplateStatus();
+  assert(
+    preferredTemplateStatus.template?.id === ensuredTemplate.template.id,
+    "status should prefer the usable benchmark template over a newer incomplete template",
+  );
+  assert(
+    preferredTemplateStatus.template?.id !== newerIncompleteTemplate.id,
+    "status should not let a newer incomplete benchmark template shadow the usable template",
+  );
+  assert(preferredTemplateStatus.template?.sectionCount === 7, "preferred benchmark template should report 7 sections");
+  assert(preferredTemplateStatus.template?.isUsable === true, "preferred benchmark template should be usable");
+  const ensureAfterNewerBadTemplate = await services.benchmarkPromotionService.ensureCharacterLoraBenchmarkTemplate({
+    checkpointName: "should-still-find-usable-template.safetensors",
+  });
+  assert(
+    ensureAfterNewerBadTemplate.template.id === ensuredTemplate.template.id,
+    "ensure should prefer the existing usable benchmark template over a newer incomplete template",
+  );
+  const benchmarkTemplateCountAfterNewerBad = await services.prismaModule.prisma.projectTemplate.count({
+    where: { name: "\u89d2\u8272 LoRA \u6d4b\u8bd5" },
+  });
+  assert(
+    benchmarkTemplateCountAfterNewerBad === 2,
+    "ensure should not create another template when a usable template and newer incomplete template coexist",
+  );
+
+  const approvalTemplateId = ensuredTemplate.template.id;
   const approvalBenchmarkCreated = await services.benchmarkPromotionService.enqueueCharacterLoraBenchmarkRun(completedTrainingRun.id, {
     checkpointMatrix: approvalCheckpointMatrix,
     weightMatrix: approvalWeightMatrix,
@@ -1331,6 +1417,38 @@ async function main() {
   await services.prismaModule.prisma.$disconnect();
 }
 
+async function createIncompleteBenchmarkProjectTemplate(
+  services: ServiceModules,
+  checkpointName: string,
+  description: string,
+) {
+  return services.prismaModule.prisma.projectTemplate.create({
+    data: {
+      name: "\u89d2\u8272 LoRA \u6d4b\u8bd5",
+      description,
+      sections: {
+        create: [{
+          sortOrder: 0,
+          name: "\u9ed8\u8ba4",
+          aspectRatio: "2:3",
+          shortSidePx: 768,
+          batchSize: 1,
+          seedPolicy1: "random",
+          seedPolicy2: "reuse",
+          checkpointName,
+          promptBlocks: [{
+            label: "Incomplete benchmark",
+            positive: "smoke_lora_chr, Smoke Character",
+            negative: "low quality",
+            sortOrder: 0,
+          }],
+        }],
+      },
+    },
+    select: { id: true },
+  });
+}
+
 async function importServices(): Promise<ServiceModules> {
   const [
     jobService,
@@ -1387,68 +1505,6 @@ function runPrismaDbPush(databaseUrl: string) {
       },
     },
   );
-}
-
-async function createSmokeBenchmarkProjectTemplate(
-  services: ServiceModules,
-  checkpointName: string,
-) {
-  const sections = [
-    ["Default", "default outfit, standing pose"],
-    ["Underwear", "underwear outfit, standing pose"],
-    ["Underwear Shoes Off", "underwear outfit, barefoot"],
-    ["Half Undressed", "half undressed outfit"],
-    ["Half Undressed Upper", "half undressed upper body"],
-    ["Half Undressed Shoes Off", "half undressed outfit, barefoot"],
-    ["Naked", "nude body, neutral pose"],
-  ] as const;
-
-  const template = await services.prismaModule.prisma.projectTemplate.create({
-    data: {
-      name: "\u89d2\u8272 LoRA \u6d4b\u8bd5",
-      description: "Smoke ProjectTemplate required for real Character LoRA benchmark approval evidence.",
-      presetBindings: [],
-      sections: {
-        create: sections.map(([name, positiveSuffix], index) => ({
-          sortOrder: index,
-          name,
-          notes: "fake-e2e benchmark template section",
-          aspectRatio: "2:3",
-          shortSidePx: 768,
-          batchSize: 1,
-          seedPolicy1: "random",
-          seedPolicy2: "reuse",
-          ksampler1: {
-            steps: 20,
-            cfg: 7,
-            samplerName: "euler",
-            scheduler: "normal",
-          },
-          ksampler2: {
-            steps: 12,
-            cfg: 6,
-            samplerName: "euler",
-            scheduler: "normal",
-          },
-          upscaleFactor: 1,
-          checkpointName,
-          extraParams: {
-            smokeTemplate: true,
-            benchmarkBaseSectionIndex: index,
-          },
-          promptBlocks: [{
-            label: `Benchmark ${name}`,
-            positive: `smoke_lora_chr, Smoke Character, ${positiveSuffix}, clear face, benchmark test`,
-            negative: "low quality, bad anatomy, text, watermark",
-            sortOrder: 0,
-          }],
-        })),
-      },
-    },
-    select: { id: true },
-  });
-
-  return template.id;
 }
 
 function toPrismaSqliteUrl(dbPath: string) {

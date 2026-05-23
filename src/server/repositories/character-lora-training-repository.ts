@@ -26,6 +26,19 @@ const CHARACTER_LORA_BENCHMARK_TEMPLATE_NAME_TERMS = [
   "\u89d2\u8272 LoRA \u6d4b\u8bd5",
   "character lora",
 ] as const;
+const CHARACTER_LORA_BENCHMARK_TEMPLATE_NAME = "\u89d2\u8272 LoRA \u6d4b\u8bd5";
+const CHARACTER_LORA_BENCHMARK_TEMPLATE_DESCRIPTION =
+  "Default ProjectTemplate for Character LoRA training benchmark and promotion evidence. It covers the standard 7 promotion variants.";
+const CHARACTER_LORA_BENCHMARK_TEMPLATE_REQUIRED_SECTION_COUNT = 7;
+const CHARACTER_LORA_BENCHMARK_TEMPLATE_SECTIONS = [
+  { name: "\u9ed8\u8ba4", slug: "default", promptSuffix: "default outfit, standing pose" },
+  { name: "\u5185\u88e4", slug: "underwear", promptSuffix: "underwear outfit, standing pose" },
+  { name: "\u5185\u88e4+\u8131\u978b", slug: "underwear-shoes-off", promptSuffix: "underwear outfit, barefoot" },
+  { name: "\u534a\u8131", slug: "half-undressed", promptSuffix: "half undressed outfit" },
+  { name: "\u534a\u8131+\u4e0a\u534a\u8eab", slug: "half-undressed-upper", promptSuffix: "half undressed upper body" },
+  { name: "\u534a\u8131+\u8131\u978b", slug: "half-undressed-shoes-off", promptSuffix: "half undressed outfit, barefoot" },
+  { name: "\u88f8", slug: "naked", promptSuffix: "nude body, neutral pose" },
+] as const;
 
 const JOB_SUMMARY_SELECT = {
   id: true,
@@ -351,6 +364,19 @@ const GPU_TASK_LOCK_SELECT = {
   metadata: true,
 } as const;
 
+const BENCHMARK_TEMPLATE_SELECT = {
+  id: true,
+  name: true,
+  description: true,
+  createdAt: true,
+  updatedAt: true,
+  _count: {
+    select: {
+      sections: true,
+    },
+  },
+} as const;
+
 type JobSummaryRecord = Prisma.CharacterLoraTrainingJobGetPayload<{
   select: typeof JOB_SUMMARY_SELECT;
 }>;
@@ -409,6 +435,10 @@ type WorkerTaskRecord = Prisma.CharacterLoraWorkerTaskGetPayload<{
 
 type GpuTaskLockRecord = Prisma.GpuTaskLockGetPayload<{
   select: typeof GPU_TASK_LOCK_SELECT;
+}>;
+
+type BenchmarkTemplateRecord = Prisma.ProjectTemplateGetPayload<{
+  select: typeof BENCHMARK_TEMPLATE_SELECT;
 }>;
 
 export type CharacterLoraTrainingJobCreateInput = {
@@ -2288,20 +2318,63 @@ export async function promoteCharacterLoraDecisionInRepository(input: {
 }
 
 export async function findCharacterLoraBenchmarkTemplate() {
-  return db.projectTemplate.findFirst({
-    where: {
-      OR: CHARACTER_LORA_BENCHMARK_TEMPLATE_NAME_TERMS.map((term) => ({ name: { contains: term } })),
-    },
-    orderBy: [{ updatedAt: "desc" }, { id: "asc" }],
-    select: { id: true, name: true },
+  const template = await findPreferredCharacterLoraBenchmarkTemplate();
+  return template ? serializeBenchmarkTemplate(template) : null;
+}
+
+export async function getCharacterLoraBenchmarkTemplateStatusInRepository() {
+  const template = await findPreferredCharacterLoraBenchmarkTemplate();
+  return buildBenchmarkTemplateStatus(template ? serializeBenchmarkTemplate(template) : null);
+}
+
+export async function ensureCharacterLoraBenchmarkTemplateInRepository(input: {
+  checkpointName?: string | null;
+} = {}) {
+  const checkpointName = normalizeOptionalTemplateCheckpointName(input.checkpointName);
+  const result = await db.$transaction(async (tx) => {
+    const existing = await findPreferredCharacterLoraBenchmarkTemplate(tx);
+
+    if (existing) {
+      return {
+        result: "found" as const,
+        template: serializeBenchmarkTemplate(existing),
+      };
+    }
+
+    const created = await tx.projectTemplate.create({
+      data: {
+        name: CHARACTER_LORA_BENCHMARK_TEMPLATE_NAME,
+        description: CHARACTER_LORA_BENCHMARK_TEMPLATE_DESCRIPTION,
+        presetBindings: toInputJsonValue([]),
+        sections: {
+          create: buildCharacterLoraBenchmarkTemplateSections(checkpointName),
+        },
+      },
+      select: BENCHMARK_TEMPLATE_SELECT,
+    });
+
+    return {
+      result: "created" as const,
+      template: serializeBenchmarkTemplate(created),
+    };
   });
+
+  return {
+    ...result,
+    created: result.result === "created",
+    found: result.result === "found",
+    requiredTemplateNames: [...CHARACTER_LORA_BENCHMARK_TEMPLATE_NAME_TERMS],
+    requiredSectionCount: CHARACTER_LORA_BENCHMARK_TEMPLATE_REQUIRED_SECTION_COUNT,
+  };
 }
 
 export async function getCharacterLoraBenchmarkTemplateById(templateId: string) {
-  return db.projectTemplate.findUnique({
+  const template = await db.projectTemplate.findUnique({
     where: { id: templateId },
-    select: { id: true, name: true },
+    select: BENCHMARK_TEMPLATE_SELECT,
   });
+
+  return template ? serializeBenchmarkTemplate(template) : null;
 }
 
 export async function findCharacterLoraPromotionLinkedVariant(kind: "halfUndressed" | "naked") {
@@ -3947,6 +4020,105 @@ function normalizeTemplatePromptBlocks(
     );
 
   return blocks.length > 0 ? blocks : [{ ...fallback, sortOrder: 0 }];
+}
+
+function buildBenchmarkTemplateStatus(template: ReturnType<typeof serializeBenchmarkTemplate> | null) {
+  return {
+    status: template ? "found" as const : "missing" as const,
+    found: Boolean(template),
+    template,
+    requiredTemplateNames: [...CHARACTER_LORA_BENCHMARK_TEMPLATE_NAME_TERMS],
+    requiredSectionCount: CHARACTER_LORA_BENCHMARK_TEMPLATE_REQUIRED_SECTION_COUNT,
+  };
+}
+
+async function findPreferredCharacterLoraBenchmarkTemplate(
+  client: Pick<Prisma.TransactionClient, "projectTemplate"> = db,
+) {
+  const templates = await client.projectTemplate.findMany({
+    where: buildCharacterLoraBenchmarkTemplateWhere(),
+    orderBy: [{ updatedAt: "desc" }, { id: "asc" }],
+    select: BENCHMARK_TEMPLATE_SELECT,
+  });
+
+  return templates.find((template) => (
+    template._count.sections >= CHARACTER_LORA_BENCHMARK_TEMPLATE_REQUIRED_SECTION_COUNT
+  )) ?? templates[0] ?? null;
+}
+
+function buildCharacterLoraBenchmarkTemplateWhere(): Prisma.ProjectTemplateWhereInput {
+  return {
+    OR: CHARACTER_LORA_BENCHMARK_TEMPLATE_NAME_TERMS.map((term) => ({ name: { contains: term } })),
+  };
+}
+
+function buildCharacterLoraBenchmarkTemplateSections(checkpointName: string | null) {
+  return CHARACTER_LORA_BENCHMARK_TEMPLATE_SECTIONS.map((section, index) => ({
+    sortOrder: index,
+    name: section.name,
+    notes: "Standard Character LoRA benchmark/promotion evidence section.",
+    aspectRatio: "2:3",
+    shortSidePx: 768,
+    batchSize: 1,
+    seedPolicy1: "random",
+    seedPolicy2: "reuse",
+    ksampler1: toInputJsonValue({
+      steps: 24,
+      cfg: 6.5,
+      samplerName: "euler",
+      scheduler: "normal",
+    }),
+    ksampler2: toInputJsonValue({
+      steps: 12,
+      cfg: 6,
+      samplerName: "euler",
+      scheduler: "normal",
+    }),
+    upscaleFactor: 1,
+    checkpointName,
+    extraParams: toInputJsonValue({
+      characterLoraBenchmarkTemplate: {
+        standardVariant: true,
+        variantSlug: section.slug,
+        variantName: section.name,
+        sortOrder: index,
+      },
+    }),
+    promptBlocks: toInputJsonValue([{
+      label: `Benchmark ${section.name}`,
+      positive: [
+        "character LoRA trigger token",
+        "target character",
+        section.promptSuffix,
+        "clear face",
+        "benchmark test",
+      ].join(", "),
+      negative: "low quality, bad anatomy, text, watermark",
+      sortOrder: 0,
+    }]),
+  }));
+}
+
+function normalizeOptionalTemplateCheckpointName(value: string | null | undefined) {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : null;
+}
+
+function serializeBenchmarkTemplate(template: BenchmarkTemplateRecord) {
+  const sectionCount = template._count.sections;
+  return {
+    id: template.id,
+    name: template.name,
+    description: template.description,
+    sectionCount,
+    isUsable: sectionCount >= CHARACTER_LORA_BENCHMARK_TEMPLATE_REQUIRED_SECTION_COUNT,
+    createdAt: template.createdAt.toISOString(),
+    updatedAt: template.updatedAt.toISOString(),
+  };
 }
 
 function serializeJobSummary(job: JobSummaryRecord) {

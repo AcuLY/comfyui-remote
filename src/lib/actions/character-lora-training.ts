@@ -48,7 +48,9 @@ import {
 import {
   completeBenchmarkRun as completeBenchmarkRunInService,
   createPromotionDecision as createPromotionDecisionInService,
+  ensureCharacterLoraBenchmarkTemplate as ensureBenchmarkTemplateInService,
   enqueueCharacterLoraBenchmarkRun as enqueueBenchmarkRun,
+  getCharacterLoraBenchmarkTemplateStatus as getBenchmarkTemplateStatusInService,
   listCharacterLoraBenchmarkRuns as listBenchmarkRuns,
   listCharacterLoraBenchmarkRunsForTrainingRun as listBenchmarkRunsForTrainingRun,
   listCharacterLoraPromotionDecisions as listPromotionDecisions,
@@ -166,6 +168,14 @@ export async function cancelCharacterLoraTrainingRun(trainingRunId: string, inpu
 
 export async function getCharacterLoraGpuTaskLock() {
   return getGpuTaskLock();
+}
+
+export async function getCharacterLoraBenchmarkTemplateStatus() {
+  return getBenchmarkTemplateStatusInService();
+}
+
+export async function ensureCharacterLoraBenchmarkTemplate(input?: unknown) {
+  return ensureBenchmarkTemplateInService(input ?? {});
 }
 
 export async function enqueueCharacterLoraBenchmarkRun(trainingRunId: string, input?: unknown) {
