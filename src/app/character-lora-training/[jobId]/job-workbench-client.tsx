@@ -1126,7 +1126,7 @@ export function JobWorkbenchClient({
         />
       </SectionCard>
 
-      <SectionCard title="Canonical" subtitle="生成、模拟完成和选择标准图版本。">
+      <SectionCard title="Canonical" subtitle="生成、注册和选择标准图版本。">
         <div className="grid gap-3 lg:grid-cols-4">
           <div className="grid gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-3">
             <div className="grid gap-2 sm:grid-cols-3">
@@ -1190,16 +1190,18 @@ export function JobWorkbenchClient({
             <p className="text-[11px] text-zinc-500">只注册新版本，不自动设为当前。</p>
             <ActionButton icon={Upload} label="注册版本" loading={isBusy("canonical.manual")} disabled={isPending || !selectedManualCanonicalSourceImageId} />
           </form>
-          <form action={handleCanonicalMockComplete} className="grid gap-2 rounded-lg border border-white/10 bg-white/[0.03] p-3">
-            <input name="runId" defaultValue={pendingCanonicalRunId} placeholder="generation run id" className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 font-mono text-xs text-white" />
-            <select name="sourceImageId" className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white">
-              <option value="">自动 source</option>
-              {sourceImages.map((image) => (
-                <option key={image.id} value={image.id}>{image.role} / {compactId(image.id)}</option>
-              ))}
-            </select>
-            <ActionButton icon={Check} label="模拟完成" loading={isBusy("canonical.complete")} disabled={isPending} />
-          </form>
+          <DebugPanel summary="Debug: 模拟完成 canonical">
+            <form action={handleCanonicalMockComplete} className="grid gap-2">
+              <input name="runId" defaultValue={pendingCanonicalRunId} placeholder="generation run id" className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 font-mono text-xs text-white" />
+              <select name="sourceImageId" className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white">
+                <option value="">自动 source</option>
+                {sourceImages.map((image) => (
+                  <option key={image.id} value={image.id}>{image.role} / {compactId(image.id)}</option>
+                ))}
+              </select>
+              <ActionButton icon={Check} label="模拟完成" loading={isBusy("canonical.complete")} disabled={isPending} />
+            </form>
+          </DebugPanel>
           <form action={handleCanonicalSelect} className="grid gap-2 rounded-lg border border-white/10 bg-white/[0.03] p-3">
             <select
               name="versionId"
@@ -1743,14 +1745,20 @@ export function JobWorkbenchClient({
             <input name="copyToCharacterDir" type="checkbox" defaultChecked className="size-3.5 accent-emerald-400" />
             copy file
           </label>
-          <label className="flex items-center gap-2 text-xs text-zinc-300">
-            <input name="dryRun" type="checkbox" className="size-3.5 accent-sky-400" />
-            dryRun
-          </label>
-          <label className="flex items-center gap-2 text-xs text-zinc-300">
-            <input name="skipQueue" type="checkbox" className="size-3.5 accent-sky-400" />
-            skipQueue
-          </label>
+          <div className="md:col-span-2 lg:col-span-8">
+            <DebugPanel summary="Debug: benchmark enqueue options">
+              <div className="grid gap-2 sm:grid-cols-2">
+                <label className="flex items-center gap-2 text-xs text-zinc-300">
+                  <input name="dryRun" type="checkbox" className="size-3.5 accent-sky-400" />
+                  dryRun
+                </label>
+                <label className="flex items-center gap-2 text-xs text-zinc-300">
+                  <input name="skipQueue" type="checkbox" className="size-3.5 accent-sky-400" />
+                  skipQueue
+                </label>
+              </div>
+            </DebugPanel>
+          </div>
           <div className="md:col-span-2 lg:col-span-8">
             <ActionButton icon={Send} label="入队 Benchmark" loading={isBusy("benchmark.enqueue")} disabled={isPending || !latestDoneTraining} />
           </div>
@@ -1768,7 +1776,9 @@ export function JobWorkbenchClient({
               action: (
                 <div className="flex flex-wrap gap-1">
                   {run.status !== "done" ? (
-                    <ActionButton type="button" icon={RefreshCw} label="模拟完成" loading={isBusy(`benchmark.complete.${run.id}`)} disabled={isPending} onClick={() => handleBenchmarkMockComplete(run.id)} />
+                    <DebugPanel summary="Debug: 模拟完成" compact>
+                      <ActionButton type="button" icon={RefreshCw} label="模拟完成" loading={isBusy(`benchmark.complete.${run.id}`)} disabled={isPending} onClick={() => handleBenchmarkMockComplete(run.id)} />
+                    </DebugPanel>
                   ) : null}
                   <MiniButton
                     label="approved"
@@ -2502,6 +2512,19 @@ function BenchmarkTemplateStatusPanel({
         onClick={onEnsure}
       />
     </div>
+  );
+}
+
+function DebugPanel({ summary, children, compact }: { summary: string; children: ReactNode; compact?: boolean }) {
+  return (
+    <details className={`basis-full rounded-lg border border-amber-400/20 bg-amber-500/[0.06] ${compact ? "px-2 py-1.5" : "p-3"}`}>
+      <summary className={`${compact ? "text-[11px]" : "text-xs"} cursor-pointer select-none font-medium text-amber-100`}>
+        {summary}
+      </summary>
+      <div className={compact ? "mt-2" : "mt-3"}>
+        {children}
+      </div>
+    </details>
   );
 }
 
