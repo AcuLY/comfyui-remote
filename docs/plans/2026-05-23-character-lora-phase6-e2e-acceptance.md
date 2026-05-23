@@ -74,6 +74,7 @@ cmd /c npx prisma db push --schema prisma/schema.sqlite.prisma
 - benchmark report artifact/result summary。
 - promotion decision。
 - preset variant count 和 resolved LoRA weights。
+- managerProject 验收信息：promotion 后创建的普通 Manager project、section、preset prompt block 和 LoRA path。
 
 关键断言失败会直接抛错并以非 0 exit code 结束。
 
@@ -140,6 +141,7 @@ cmd /c npx tsc --noEmit --pretty false
 - benchmark run status 为 `done`。
 - promotion decision status 为 `promoted`。
 - promoted preset variant count 为 `7`，每个 variant 的 resolved LoRA weight 为正数。
+- promotion 后正式 preset 可以被普通 Manager project 的 `addSection` 路径展开，生成 preset prompt block，并把角色 LoRA 写入 section `loraConfig.lora1/lora2`。
 
 ## 已知边界
 
@@ -150,6 +152,7 @@ cmd /c npx tsc --noEmit --pretty false
 - benchmark task payload 必须携带训练 job 当时的 base checkpoint 快照：`baseCheckpoint.name/path/hash/baseFamily` 来自 `job.baseCheckpointName/baseCheckpointPath/baseCheckpointHash/baseFamily`。
 - benchmark-worker 风格的 `resultSummary.sections[]` 和 `resultSummary.matrixExpansion.sections[]` 必须同时记录 section、checkpointName、loraWeight、顶层 seed、原始 `executionMeta` 以及 `baseCheckpoint` 快照；seed 从 `executionMeta.ks1Seed` 优先提取，其次使用 `executionMeta.ks2Seed`，便于逐张测试图审计 checkpoint、LoRA weight、section、seed、base checkpoint。
 - promotion 在隔离 SQLite 中真实创建 preset，不污染当前业务库。
+- smoke 会在 promotion 后额外创建一个普通 Manager project 并绑定正式角色 preset，随后调用现有 `addSection` 展开逻辑验证普通项目可用性；独立脚本环境会吞掉 Next `revalidatePath` 缺少 static generation store 的上下文错误，但只在确认 section 已持久化后继续断言。
 - 缺失 breast-size slider 或半脱/裸身 linked variant seed 时，promotion service 会在报告中记录 warning；这不是 smoke 失败条件，因为 7 个角色 variants 仍会创建，且 LoRA 权重仍可验证。
 
 ## Phase 6 Report 验收补充
