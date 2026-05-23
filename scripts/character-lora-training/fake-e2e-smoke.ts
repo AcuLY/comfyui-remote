@@ -65,6 +65,7 @@ type SmokeSummary = {
   sections: Array<{
     id: string;
     key: string;
+    generationRunId: string;
     imageIds: string[];
   }>;
   caption: {
@@ -602,9 +603,67 @@ async function main() {
       generationRunId: sectionRun.id,
     });
     assert(sectionImages.length === 1, `expected one candidate image for section ${section.key}`);
+    if (sectionsWithImages.length === 0) {
+      const parentRerun = await services.phase3Service.enqueueCharacterLoraSectionGenerationRun(section.id, {
+        provider: "mock-local",
+        parentRunId: sectionRun.id,
+        userInstruction: "Smoke parent rerun should include previous candidate references.",
+      });
+      assert(parentRerun.parentRunId === sectionRun.id, "parent rerun should retain parentRunId lineage");
+      const parentRerunInputImages = readJsonArray(parentRerun.inputImages).map(readJsonRecord);
+      assertSectionInputImageProvenance(parentRerunInputImages, {
+        source,
+        manualCanonicalSource,
+        localReferenceSource,
+        rerunReferenceSource,
+      }, "parent rerun generation run");
+      assertPreviousCandidateInputImage(parentRerunInputImages, sectionImages[0], "parent rerun generation run");
+
+      const parentRerunTask = await services.phase3Service.leaseNextCharacterLoraTask({
+        workerType: "image_generation",
+        leaseOwner: "fake-image-worker-parent-rerun",
+        leaseDurationSeconds: 300,
+      });
+      assert(parentRerunTask, "parent rerun image task should be leased");
+      assert(parentRerunTask.targetId === parentRerun.id, `parent rerun task should target run ${parentRerun.id}`);
+      const parentRerunPayload = readTaskPayload(parentRerunTask.payload);
+      assert(parentRerunPayload.taskType === "image_generation", "parent rerun payload should be image_generation");
+      const parentRerunOutputDir = parentRerunPayload.request.outputDir;
+      const parentRerunPayloadInputImages = readJsonArray(parentRerunPayload.request.inputImages).map(readJsonRecord);
+      assertSectionInputImageProvenance(parentRerunPayloadInputImages, {
+        source,
+        manualCanonicalSource,
+        localReferenceSource,
+        rerunReferenceSource,
+      }, "parent rerun task payload");
+      assertPreviousCandidateInputImage(parentRerunPayloadInputImages, sectionImages[0], "parent rerun task payload");
+
+      const parentRerunRequestArtifact = readJsonRecord(
+        await readJobJsonArtifact(job.artifactRoot, `${parentRerunOutputDir}/request.redacted.json`),
+      );
+      const parentRerunRedactedRequest = readJsonRecord(parentRerunRequestArtifact.request);
+      const parentRerunRedactedInputImages = readJsonArray(parentRerunRedactedRequest.inputImages).map(readJsonRecord);
+      assertSectionInputImageProvenance(parentRerunRedactedInputImages, {
+        source,
+        manualCanonicalSource,
+        localReferenceSource,
+        rerunReferenceSource,
+      }, "parent rerun redacted request artifact");
+      assertPreviousCandidateInputImage(parentRerunRedactedInputImages, sectionImages[0], "parent rerun redacted request artifact");
+      await services.phase3Service.completeCharacterLoraTask(parentRerunTask.id, {
+        leaseOwner: parentRerunTask.leaseOwner,
+        output: {
+          images: [],
+          requestRedactedPath: `${parentRerunOutputDir}/request.redacted.json`,
+          responseSummaryPath: `${parentRerunOutputDir}/response-summary.json`,
+          elapsedMs: 1,
+        },
+      });
+    }
     sectionsWithImages.push({
       id: section.id,
       key: section.key,
+      generationRunId: sectionRun.id,
       imageIds: sectionImages.map((image) => image.id),
     });
   }
@@ -2127,6 +2186,13 @@ type SmokeSourceImageRef = {
   sha256: string;
 };
 
+type SmokeCandidateImageRef = {
+  id: string;
+  artifactId: string;
+  relativePath: string;
+  sha256: string;
+};
+
 function assertSectionInputImageProvenance(
   inputImages: Array<Record<string, unknown>>,
   refs: {
@@ -2165,6 +2231,18 @@ function assertInputImageRef(
   assert(inputImage.relativePath === expected.relativePath, `${label} should retain relativePath for ${expected.id}`);
   assert(inputImage.sha256 === expected.sha256, `${label} should retain sha256 for ${expected.id}`);
   assert(typeof inputImage.artifactId === "string", `${label} should retain artifactId for ${expected.id}`);
+}
+
+function assertPreviousCandidateInputImage(
+  inputImages: Array<Record<string, unknown>>,
+  expected: SmokeCandidateImageRef,
+  label: string,
+) {
+  const inputImage = inputImages.find((candidate) => candidate.artifactId === expected.artifactId);
+  assert(inputImage, `${label} should include previous candidate artifact ${expected.artifactId}`);
+  assert(inputImage.role === "previous_candidate", `${label} should map ${expected.id} to previous_candidate`);
+  assert(inputImage.relativePath === expected.relativePath, `${label} should retain previous candidate relativePath`);
+  assert(inputImage.sha256 === expected.sha256, `${label} should retain previous candidate sha256`);
 }
 
 async function listActiveBenchmarkGpuLocks(services: ServiceModules, benchmarkRunId: string) {

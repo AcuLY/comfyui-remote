@@ -1102,6 +1102,7 @@ sequenceDiagram
 
 验收记录：
 - 2026-05-23：补齐 PRD 5.4 小节暂停/恢复缺口。`PATCH /api/character-lora-training/sections/:sectionId` 可暂停/恢复 section；暂停后保留历史 runs/images/counts，section generation/rerun 入队返回清晰 `409`；review/count 刷新不会把 `paused` 改回 active 状态；resume 按 counts 推导为 `reviewing` / `reviewed` / `draft` 后可再次入队。fake e2e smoke 覆盖 service 路径的暂停、409 拒绝、paused 保持和恢复后入队。
+- 2026-05-23：补齐 PRD 5.5 小节定向重生图片上下文缺口。`POST /api/character-lora-training/sections/:sectionId/runs` 支持 `previousCandidateImageIds`；候选图必须属于同一 job section，并会解析为 provider `inputImages` 中的 `previous_candidate`。如果传入 `parentRunId` 但没有显式 `inputImages` 或 `previousCandidateImageIds`，服务会自动把 parent run 在同小节下的候选图作为 `previous_candidate` 参考图。fake e2e smoke 覆盖 run payload、worker task payload 和 redacted request 的 provenance。
 
 ## 12. 验证计划
 

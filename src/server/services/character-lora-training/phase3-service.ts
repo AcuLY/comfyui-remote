@@ -104,6 +104,9 @@ export async function enqueueCharacterLoraSectionGenerationRun(sectionId: string
   if (parsed.inputImages && parsed.sourceImageIds) {
     throw new CharacterLoraPhase3ServiceError("Provide either inputImages or sourceImageIds, not both", 400);
   }
+  if (parsed.inputImages && parsed.previousCandidateImageIds) {
+    throw new CharacterLoraPhase3ServiceError("Provide either inputImages or previousCandidateImageIds, not both", 400);
+  }
 
   const section = await getExistingSection(normalizedSectionId);
   if (section.status === "paused") {
@@ -139,7 +142,7 @@ export async function enqueueCharacterLoraSectionGenerationRun(sectionId: string
   const runId = randomUUID();
   const outputDir = `sections/${section.id}/runs/${runId}`;
   const hostInstruction = parsed.hostInstruction ?? buildDefaultSectionHostInstruction(provider);
-  const inputImages = await resolveSectionInputImages(job.id, canonicalVersion.imageArtifactId, parsed);
+  const inputImages = await resolveSectionInputImages(job.id, section.id, canonicalVersion.imageArtifactId, parsed);
   const templateVariables = {
     characterName: job.characterName,
     finalPromptDraft: promptCardVersion.finalPromptDraft,
@@ -1034,6 +1037,7 @@ function assertUniqueIds(ids: string[], fieldName: string) {
 
 async function resolveSectionInputImages(
   jobId: string,
+  sectionId: string,
   canonicalArtifactId: string,
   parsed: z.infer<typeof characterLoraSectionGenerationRequestSchema>,
 ) {
@@ -1081,7 +1085,91 @@ async function resolveSectionInputImages(
     }
   }
 
+  const previousCandidateImages = await resolvePreviousCandidateInputImages({
+    jobId,
+    sectionId,
+    parentRunId: parsed.parentRunId,
+    previousCandidateImageIds: parsed.previousCandidateImageIds,
+  });
+  inputImages.push(...previousCandidateImages.map(candidateImageToPreviousCandidateInput));
+
   return inputImages;
+}
+
+async function resolvePreviousCandidateInputImages(input: {
+  jobId: string;
+  sectionId: string;
+  parentRunId?: string;
+  previousCandidateImageIds?: string[];
+}) {
+  if (input.previousCandidateImageIds) {
+    assertUniqueIds(input.previousCandidateImageIds, "previousCandidateImageIds");
+    return getPreviousCandidateImagesByIds(input.jobId, input.sectionId, input.previousCandidateImageIds);
+  }
+
+  if (!input.parentRunId) {
+    return [];
+  }
+
+  return listCandidateImagesFromRepository({
+    jobId: input.jobId,
+    sectionId: input.sectionId,
+    generationRunId: input.parentRunId,
+  });
+}
+
+async function getPreviousCandidateImagesByIds(jobId: string, sectionId: string, candidateImageIds: string[]) {
+  const candidateImages = await Promise.all(
+    candidateImageIds.map((candidateImageId) => getCharacterLoraCandidateImage(candidateImageId)),
+  );
+  const candidateById = new Map(
+    candidateImages
+      .filter((candidateImage): candidateImage is CharacterLoraCandidateImageSummary => Boolean(candidateImage))
+      .map((candidateImage) => [candidateImage.id, candidateImage]),
+  );
+  const missingCandidateImageIds: string[] = [];
+  const foreignJobCandidateImageIds: string[] = [];
+  const foreignSectionCandidateImageIds: string[] = [];
+
+  for (const candidateImageId of candidateImageIds) {
+    const candidateImage = candidateById.get(candidateImageId);
+
+    if (!candidateImage) {
+      missingCandidateImageIds.push(candidateImageId);
+      continue;
+    }
+
+    if (candidateImage.jobId !== jobId) {
+      foreignJobCandidateImageIds.push(candidateImageId);
+    } else if (candidateImage.sectionId !== sectionId) {
+      foreignSectionCandidateImageIds.push(candidateImageId);
+    }
+  }
+
+  if (
+    missingCandidateImageIds.length > 0 ||
+    foreignJobCandidateImageIds.length > 0 ||
+    foreignSectionCandidateImageIds.length > 0
+  ) {
+    throw new CharacterLoraPhase3ServiceError("One or more previousCandidateImageIds do not belong to this section", 404, {
+      missingCandidateImageIds,
+      foreignJobCandidateImageIds,
+      foreignSectionCandidateImageIds,
+    });
+  }
+
+  return candidateImageIds.map((candidateImageId) => candidateById.get(candidateImageId)!);
+}
+
+function candidateImageToPreviousCandidateInput(
+  candidateImage: CharacterLoraCandidateImageSummary,
+): CharacterLoraProviderInputImage {
+  return {
+    artifactId: candidateImage.artifactId,
+    role: "previous_candidate",
+    relativePath: candidateImage.relativePath,
+    sha256: candidateImage.sha256,
+  };
 }
 
 async function validateExplicitSectionInputImages(

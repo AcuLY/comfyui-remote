@@ -502,6 +502,8 @@ Preset list/detail responses include the normalized `civitaiLinks` array:
 
 Pausing a Character LoRA job section does not delete runs, images, or review counts. Count refreshes keep `paused` until an explicit resume. Resume derives the active status from current counts: `pending > 0` becomes `reviewing`, any kept/rejected images become `reviewed`, and empty sections become `draft`.
 
+`POST /api/character-lora-training/sections/:sectionId/runs` accepts `sourceImageIds`, explicit provider `inputImages`, `parentRunId`, and `previousCandidateImageIds`. `inputImages` remains a complete explicit provider input list and cannot be combined with `sourceImageIds` or `previousCandidateImageIds`. `previousCandidateImageIds` can be combined with `sourceImageIds` and `parentRunId`; each id must point to a candidate image from the same job section and is sent to the provider as role `previous_candidate` with artifact id, relative path, and sha256. When `parentRunId` is provided without explicit `inputImages` or `previousCandidateImageIds`, the service automatically adds that parent run's candidate images from the same section as `previous_candidate` references.
+
 ## ComfyUI And System
 
 | Method | Path | Purpose |
