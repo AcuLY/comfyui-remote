@@ -925,6 +925,8 @@ export function JobWorkbenchClient({
         sourceTemplateKey,
         key: readOptionalString(formData, "copyTemplateKey"),
         name: readOptionalString(formData, "copyTemplateName"),
+        targetCandidateCount: readOptionalNumber(formData, "copyTemplateTargetCandidateCount", "targetCandidateCount", { integer: true, min: 1 }),
+        targetKeepCount: readOptionalNumber(formData, "copyTemplateTargetKeepCount", "targetKeepCount", { integer: true, min: 1 }),
       });
     });
   }
@@ -1471,7 +1473,7 @@ export function JobWorkbenchClient({
           </div>
         </form>
         <form action={handleCopySectionTemplate} className="mt-3 rounded-lg border border-white/10 bg-white/[0.03] p-3">
-          <div className="grid gap-2 md:grid-cols-[minmax(180px,1.2fr)_minmax(140px,1fr)_minmax(160px,1fr)_auto] md:items-end">
+          <div className="grid gap-2 md:grid-cols-[minmax(180px,1.2fr)_minmax(140px,1fr)_minmax(160px,1fr)_90px_90px_auto] md:items-end">
             <label className="grid gap-1 text-xs text-zinc-400">
               源模板
               <select
@@ -1500,6 +1502,28 @@ export function JobWorkbenchClient({
               新名称
               <input
                 name="copyTemplateName"
+                placeholder="auto"
+                disabled={isPending || sectionTemplates.length === 0}
+                className="h-8 rounded-lg border border-white/10 bg-black/30 px-2 text-xs text-white placeholder:text-zinc-600 disabled:opacity-50"
+              />
+            </label>
+            <label className="grid gap-1 text-xs text-zinc-400">
+              候选数
+              <input
+                name="copyTemplateTargetCandidateCount"
+                type="number"
+                min={1}
+                placeholder="auto"
+                disabled={isPending || sectionTemplates.length === 0}
+                className="h-8 rounded-lg border border-white/10 bg-black/30 px-2 text-xs text-white placeholder:text-zinc-600 disabled:opacity-50"
+              />
+            </label>
+            <label className="grid gap-1 text-xs text-zinc-400">
+              keep 数
+              <input
+                name="copyTemplateTargetKeepCount"
+                type="number"
+                min={1}
                 placeholder="auto"
                 disabled={isPending || sectionTemplates.length === 0}
                 className="h-8 rounded-lg border border-white/10 bg-black/30 px-2 text-xs text-white placeholder:text-zinc-600 disabled:opacity-50"

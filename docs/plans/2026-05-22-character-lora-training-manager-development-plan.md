@@ -1118,6 +1118,7 @@ sequenceDiagram
 - 2026-05-23：补齐 PRD 5.13 失败诊断返工入口的 UI 缺口。Report / Diagnostics 面板根据 `recommendedReturnPoint` 给出“打开返工入口”按钮，跳转到 source、canonical、section、dataset/caption、Prompt Card、training config 或 benchmark/promotion 的现有人工确认表单；按钮只定位入口，不自动创建新的 dataset revision、training run 或 promotion run，继续由用户在目标表单确认执行。
 - 2026-05-23：补齐 PRD 5.7/5.8 freeze dataset 前置门禁的 UI 缺口。Review / Dataset 面板会在没有 keep 图或 section `keepCount < targetKeepCount` 时禁用“冻结 Dataset”，并直接列出未达标 section，和 service 侧 `409` 校验保持一致，避免用户点了才发现不可 freeze。
 - 2026-05-23：补齐 PRD 5.7 从 reject reason 生成下一轮重生建议的卡片级可见性。候选图卡片在已有 reject reason chip 外，直接把每个 reject reason 映射为 rerun suggestion 文案，便于用户把问题转成下一轮 section rerun 的 userInstruction。
+- 2026-05-23：补齐 PRD 5.4 复制训练集模板的可调目标数入口。工作台复制 section template 时可覆盖 `targetCandidateCount` 与 `targetKeepCount`，直接复用 service 侧 `targetKeepCount <= targetCandidateCount` 校验，方便复制模板后调整候选/keep 目标。
 
 ## 12. 验证计划
 
