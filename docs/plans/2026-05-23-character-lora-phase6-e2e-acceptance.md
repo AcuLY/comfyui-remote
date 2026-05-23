@@ -122,7 +122,7 @@ cmd /c npx tsc --noEmit --pretty false
 
 - `fake-e2e-smoke.ts --help` 通过。
 - `fake-e2e-smoke.ts` 完整 smoke 通过，最终 job status 为 `promoted`，phase 为 `promotion`。
-- 完整 smoke 的 dataset item count 为 `2`，caption trigger-first 为 `true`。
+- 完整 smoke 的 dataset item count 为 `3`（1 张 source candidate + 2 张 section candidate），caption trigger-first 为 `true`。
 - 完整 smoke 的 training run status 为 `done`，final sha256 为 64 位 hex。
 - 完整 smoke 的 benchmark run status 为 `done`，promotion decision status 为 `promoted`，promoted preset variant count 为 `7`。
 - PostgreSQL schema validate 通过。
