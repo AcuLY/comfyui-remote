@@ -121,6 +121,7 @@ const STATUS_LABEL: Record<string, string> = {
   archived: "归档",
   queued: "排队",
   running: "运行中",
+  cancelling: "取消中",
   done: "完成",
   paused: "已暂停",
   keep: "保留",
@@ -1879,10 +1880,14 @@ export function JobWorkbenchClient({
         <RunList
           runs={trainingRuns.map((run) => ({
             id: run.id,
-            status: run.status,
+            status: run.status === "running" && run.cancelRequestedAt ? "cancelling" : run.status,
             primary: `${run.launcher} / ${run.currentStep ?? 0}/${run.targetSteps ?? "-"}`,
-            secondary: `${compactId(run.datasetRevisionId)} / ${run.outputDir}`,
-            action: run.status === "queued" || run.status === "running"
+            secondary: [
+              compactId(run.datasetRevisionId),
+              run.outputDir,
+              run.cancelRequestedAt ? `cancel requested ${formatDate(run.cancelRequestedAt)}` : null,
+            ].filter(Boolean).join(" / "),
+            action: run.status === "queued" || (run.status === "running" && !run.cancelRequestedAt)
               ? (
                   <ActionButton
                     type="button"
@@ -1893,6 +1898,8 @@ export function JobWorkbenchClient({
                     onClick={() => handleCancelTraining(run.id)}
                   />
                 )
+              : run.status === "running" && run.cancelRequestedAt
+                ? <span className="text-[11px] text-amber-200">等待 worker 停止</span>
               : null,
           }))}
           empty="暂无 training run"
@@ -2609,6 +2616,9 @@ function CandidateImageCard({
         }
       : null,
   ].filter((chip): chip is { label: string; className: string } => Boolean(chip));
+  const referenceInputs = extractComparisonInputImages(generationRun?.inputImages).filter(
+    (input) => input.role !== "canonical",
+  );
 
   return (
     <div className={`overflow-hidden rounded-lg border bg-white/[0.03] ${selected ? "border-sky-400/60" : "border-white/10"}`}>
@@ -2664,6 +2674,33 @@ function CandidateImageCard({
               <span className="block truncate font-mono text-[10px] text-zinc-500">{lineageCanonicalVersion.artifact.relativePath}</span>
             </span>
           </a>
+        ) : null}
+        {referenceInputs.length > 0 ? (
+          <div className="space-y-1">
+            <div className="text-[10px] uppercase text-zinc-500">source / reference</div>
+            <div className="grid grid-cols-3 gap-1">
+              {referenceInputs.slice(0, 6).map((input) => (
+                <a
+                  key={`${input.artifactId}-${input.role}`}
+                  href={buildArtifactImageUrl(jobId, input.relativePath)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="group min-w-0"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element -- compact compare thumbs use the artifact route. */}
+                  <img
+                    src={buildArtifactImageUrl(jobId, input.relativePath, { w: 96, q: 60 })}
+                    alt={formatInputImageRole(input.role)}
+                    loading="lazy"
+                    className="aspect-square w-full rounded-md bg-black/30 object-cover ring-1 ring-white/10"
+                  />
+                  <span className="mt-0.5 block truncate text-[10px] text-zinc-500 group-hover:text-zinc-300">
+                    {formatInputImageRole(input.role)}
+                  </span>
+                </a>
+              ))}
+            </div>
+          </div>
         ) : null}
         {rejectReasons.length > 0 ? (
           <div className="flex flex-wrap gap-1">
@@ -2743,6 +2780,38 @@ function getRunCanonicalArtifactId(inputImages: unknown) {
   }) as { artifactId?: unknown } | undefined;
 
   return typeof canonicalInput?.artifactId === "string" ? canonicalInput.artifactId : null;
+}
+
+function extractComparisonInputImages(inputImages: unknown) {
+  if (!Array.isArray(inputImages)) return [];
+
+  return inputImages.flatMap((input) => {
+    if (!input || typeof input !== "object" || Array.isArray(input)) return [];
+    const record = input as Record<string, unknown>;
+    const artifactId = readRecordString(record, "artifactId");
+    const relativePath = readRecordString(record, "relativePath");
+    if (!artifactId || !relativePath) return [];
+
+    return [{
+      artifactId,
+      relativePath,
+      role: readRecordString(record, "role") ?? "reference",
+    }];
+  });
+}
+
+function readRecordString(record: Record<string, unknown>, key: string) {
+  const value = record[key];
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
+function formatInputImageRole(value: string) {
+  if (value === "source") return "source";
+  if (value === "setting") return "setting";
+  if (value === "local_reference") return "local ref";
+  if (value === "previous_candidate") return "previous";
+  if (value === "manual_canonical") return "manual";
+  return value.replaceAll("_", " ");
 }
 
 function formatRejectReason(value: string) {
