@@ -620,6 +620,10 @@ export function JobWorkbenchClient({
   const pendingCanonicalRunId = latestCanonicalRunId.trim();
   const sectionById = useMemo(() => new Map(sections.map((section) => [section.id, section])), [sections]);
   const canonicalVersionById = useMemo(() => new Map(canonicalVersions.map((version) => [version.id, version])), [canonicalVersions]);
+  const canonicalVersionByArtifactId = useMemo(
+    () => new Map(canonicalVersions.map((version) => [version.imageArtifactId, version])),
+    [canonicalVersions],
+  );
   const promptCardById = useMemo(() => new Map(promptCards.map((card) => [card.id, card])), [promptCards]);
   const generationRunById = useMemo(() => new Map(report.generationRuns.map((run) => [run.id, run])), [report.generationRuns]);
   const generationRunsBySectionId = useMemo(() => {
@@ -1463,6 +1467,7 @@ export function JobWorkbenchClient({
                 currentCanonicalVersionId={job.currentCanonicalVersionId}
                 currentPromptCardVersionId={job.currentPromptCardVersionId}
                 canonicalVersionById={canonicalVersionById}
+                canonicalVersionByArtifactId={canonicalVersionByArtifactId}
                 promptCardById={promptCardById}
                 selected={selectedImageIds.includes(image.id)}
                 defaultCaption={`${job.triggerToken}, ${job.characterName}`}
@@ -2256,6 +2261,7 @@ function CandidateImageCard({
   currentCanonicalVersionId,
   currentPromptCardVersionId,
   canonicalVersionById,
+  canonicalVersionByArtifactId,
   promptCardById,
   selected,
   defaultCaption,
@@ -2272,6 +2278,7 @@ function CandidateImageCard({
   currentCanonicalVersionId: string | null;
   currentPromptCardVersionId: string | null;
   canonicalVersionById: Map<string, CharacterLoraJobReport["canonicalVersions"][number]>;
+  canonicalVersionByArtifactId: Map<string, CharacterLoraJobReport["canonicalVersions"][number]>;
   promptCardById: Map<string, CharacterLoraPromptCard>;
   selected: boolean;
   defaultCaption: string;
@@ -2283,11 +2290,15 @@ function CandidateImageCard({
 }) {
   const rejectReasons = extractRejectReasons(image.rejectReasons);
   const sectionCanonicalVersion = section ? canonicalVersionById.get(section.canonicalVersionId) : null;
+  const runCanonicalVersion = generationRun
+    ? canonicalVersionByArtifactId.get(getRunCanonicalArtifactId(generationRun.inputImages) ?? "")
+    : null;
+  const lineageCanonicalVersion = runCanonicalVersion ?? sectionCanonicalVersion;
   const sectionPromptCard = section ? promptCardById.get(section.promptCardVersionId) : null;
   const staleCanonical = Boolean(
-    section?.canonicalVersionId &&
+    lineageCanonicalVersion?.id &&
     currentCanonicalVersionId &&
-    section.canonicalVersionId !== currentCanonicalVersionId,
+    lineageCanonicalVersion.id !== currentCanonicalVersionId,
   );
   const stalePromptCard = Boolean(
     section?.promptCardVersionId &&
@@ -2295,9 +2306,9 @@ function CandidateImageCard({
     section.promptCardVersionId !== currentPromptCardVersionId,
   );
   const lineageChips = [
-    sectionCanonicalVersion
+    lineageCanonicalVersion
       ? {
-          label: `${staleCanonical ? "old " : ""}canonical v${sectionCanonicalVersion.version}`,
+          label: `${staleCanonical ? "old " : ""}${runCanonicalVersion ? "run" : "section"} canonical v${lineageCanonicalVersion.version}`,
           className: staleCanonical
             ? "border-amber-400/30 bg-amber-400/10 text-amber-200"
             : "border-emerald-400/25 bg-emerald-500/10 text-emerald-200",
@@ -2354,23 +2365,23 @@ function CandidateImageCard({
             ))}
           </div>
         ) : null}
-        {sectionCanonicalVersion?.artifact?.relativePath ? (
+        {lineageCanonicalVersion?.artifact?.relativePath ? (
           <a
-            href={buildArtifactImageUrl(jobId, sectionCanonicalVersion.artifact.relativePath)}
+            href={buildArtifactImageUrl(jobId, lineageCanonicalVersion.artifact.relativePath)}
             target="_blank"
             rel="noreferrer"
             className="grid grid-cols-[44px_1fr] items-center gap-2 rounded-lg border border-white/10 bg-black/20 p-1.5"
           >
             {/* eslint-disable-next-line @next/next/no-img-element -- compact compare thumb uses the same artifact route as the main thumbnail. */}
             <img
-              src={buildArtifactImageUrl(jobId, sectionCanonicalVersion.artifact.relativePath, { w: 96, q: 60 })}
-              alt={`canonical v${sectionCanonicalVersion.version}`}
+              src={buildArtifactImageUrl(jobId, lineageCanonicalVersion.artifact.relativePath, { w: 96, q: 60 })}
+              alt={`canonical v${lineageCanonicalVersion.version}`}
               loading="lazy"
               className="size-11 rounded-md bg-black/30 object-cover"
             />
             <span className="min-w-0">
-              <span className="block text-[11px] text-zinc-300">canonical v{sectionCanonicalVersion.version}</span>
-              <span className="block truncate font-mono text-[10px] text-zinc-500">{sectionCanonicalVersion.artifact.relativePath}</span>
+              <span className="block text-[11px] text-zinc-300">{runCanonicalVersion ? "run" : "section"} canonical v{lineageCanonicalVersion.version}</span>
+              <span className="block truncate font-mono text-[10px] text-zinc-500">{lineageCanonicalVersion.artifact.relativePath}</span>
             </span>
           </a>
         ) : null}
@@ -2442,6 +2453,16 @@ function buildArtifactImageUrl(jobId: string, relativePath: string, options?: { 
 
 function extractRejectReasons(value: unknown) {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+}
+
+function getRunCanonicalArtifactId(inputImages: unknown) {
+  if (!Array.isArray(inputImages)) return null;
+  const canonicalInput = inputImages.find((image) => {
+    if (!image || typeof image !== "object" || Array.isArray(image)) return false;
+    return (image as { role?: unknown }).role === "canonical";
+  }) as { artifactId?: unknown } | undefined;
+
+  return typeof canonicalInput?.artifactId === "string" ? canonicalInput.artifactId : null;
 }
 
 function formatRejectReason(value: string) {
