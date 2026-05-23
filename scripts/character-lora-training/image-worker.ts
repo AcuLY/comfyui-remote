@@ -44,7 +44,7 @@ Character LoRA image provider worker
 
 Usage:
   cmd /c npx tsx scripts/character-lora-training/image-worker.ts --help
-  cmd /c npx tsx scripts/character-lora-training/image-worker.ts --once --provider mock-local
+  cmd /c npx tsx scripts/character-lora-training/image-worker.ts --once
   cmd /c npx tsx scripts/character-lora-training/image-worker.ts --poll --provider openai-codex --worker-owner image-worker-01
 
 Options:
@@ -53,7 +53,7 @@ Options:
   --interval-ms <ms>     Poll interval. Default: 5000.
   --lease-seconds <sec>  Lease/heartbeat extension. Default: 300.
   --worker-owner <name>  Lease owner. Default: character-lora-image-worker.
-  --provider <name>      mock-local or openai-codex. Default: mock-local.
+  --provider <name>      mock-local or openai-codex. Default: openai-codex.
   --self-test            Run local parser checks without leasing tasks.
 
 Manager auth:
@@ -80,7 +80,7 @@ async function main() {
   const cli = parseWorkerCli(process.argv.slice(2), {
     workerOwner: "character-lora-image-worker",
   });
-  const provider = (readStringOption(cli.values, "--provider") ?? "mock-local") as ImageProvider;
+  const provider = (readStringOption(cli.values, "--provider") ?? "openai-codex") as ImageProvider;
 
   if (cli.help) {
     console.log(HELP);

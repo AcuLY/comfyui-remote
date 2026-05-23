@@ -23,25 +23,30 @@ Worker 会用 `x-api-token` 调用 Manager API。token 来源按顺序读取：
 
 ## Image Worker
 
-无外部 token 的本地 smoke：
+默认 provider 是 `openai-codex`。生产或真实验收时不要省略为 `mock-local`；只有本地 smoke/debug 才显式传 `--provider mock-local`。
+
+无外部 token 的本地 smoke/debug：
 
 ```powershell
 cmd /c npx tsx scripts/character-lora-training/image-worker.ts --once --provider mock-local --worker-owner image-worker-local
 ```
 
-持续轮询：
-
-```powershell
-cmd /c npx tsx scripts/character-lora-training/image-worker.ts --poll --provider mock-local --worker-owner image-worker-local
-```
-
-真实 Codex / GPT-Image-2 provider：
+真实 Codex / GPT-Image-2 provider 单次处理：
 
 ```powershell
 $env:CHARACTER_LORA_CODEX_BEARER_TOKEN="<set outside logs>"
 $env:CHARACTER_LORA_CODEX_BASE_URL="https://chatgpt.com/backend-api/codex/responses"
 $env:CHARACTER_LORA_CODEX_HOST_MODEL="gpt-5.5"
-cmd /c npx tsx scripts/character-lora-training/image-worker.ts --once --provider openai-codex --worker-owner image-worker-codex
+cmd /c npx tsx scripts/character-lora-training/image-worker.ts --once --worker-owner image-worker-codex
+```
+
+真实 Codex / GPT-Image-2 provider 持续轮询：
+
+```powershell
+$env:CHARACTER_LORA_CODEX_BEARER_TOKEN="<set outside logs>"
+$env:CHARACTER_LORA_CODEX_BASE_URL="https://chatgpt.com/backend-api/codex/responses"
+$env:CHARACTER_LORA_CODEX_HOST_MODEL="gpt-5.5"
+cmd /c npx tsx scripts/character-lora-training/image-worker.ts --poll --worker-owner image-worker-codex
 ```
 
 可选项：
