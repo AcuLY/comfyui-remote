@@ -1116,6 +1116,7 @@ sequenceDiagram
 - 2026-05-23：补齐 PRD 5.8 text encoder cache 冲突规则的 dry-run 证据。训练配置启用 `cacheTextEncoderOutputs` 时，service 会把 caption shuffle/dropout/text encoder dropout 相关 expert 字段强制归零或关闭，并把该处理写入 `dry-run-summary.json` 的 warnings；fake e2e smoke 覆盖 resolved config 和 warning。
 - 2026-05-23：补齐 PRD 5.1 创建 job 时上传/选择参考图的入口。新建训练任务表单支持一次选择多张初始参考图并标记 role；创建 job 后立即通过 source image upload service 写 artifact、sha256、provenance，再进入详情页继续 canonical / Prompt Card / section 流程。
 - 2026-05-23：补齐 PRD 5.13 失败诊断返工入口的 UI 缺口。Report / Diagnostics 面板根据 `recommendedReturnPoint` 给出“打开返工入口”按钮，跳转到 source、canonical、section、dataset/caption、Prompt Card、training config 或 benchmark/promotion 的现有人工确认表单；按钮只定位入口，不自动创建新的 dataset revision、training run 或 promotion run，继续由用户在目标表单确认执行。
+- 2026-05-23：补齐 PRD 5.7/5.8 freeze dataset 前置门禁的 UI 缺口。Review / Dataset 面板会在没有 keep 图或 section `keepCount < targetKeepCount` 时禁用“冻结 Dataset”，并直接列出未达标 section，和 service 侧 `409` 校验保持一致，避免用户点了才发现不可 freeze。
 
 ## 12. 验证计划
 

@@ -738,6 +738,12 @@ export function JobWorkbenchClient({
   const rejectSuggestion = REJECT_REASON_OPTIONS.find((reason) => reason.value === rejectReason)?.suggestion ?? "";
   const diagnosticReturnPoint = normalizeDiagnosticReturnPoint(report.diagnosticSummary.recommendedReturnPoint);
   const diagnosticReturnAction = DIAGNOSTIC_RETURN_ACTIONS[diagnosticReturnPoint];
+  const hasKeepImages = candidateImages.some((image) => image.reviewStatus === "keep");
+  const datasetFreezeSectionBlockers = sections.filter((section) => section.keepCount < section.targetKeepCount);
+  const datasetFreezeBlocked = !hasKeepImages || datasetFreezeSectionBlockers.length > 0;
+  const datasetFreezeBlockerText = !hasKeepImages
+    ? "Dataset freeze requires at least one keep image."
+    : `Sections below targetKeepCount: ${datasetFreezeSectionBlockers.map((section) => `${section.key} ${section.keepCount}/${section.targetKeepCount}`).join(", ")}`;
 
   useEffect(() => {
     setPostTrainingBenchmarkTemplateId(benchmarkTemplateDefaultId);
@@ -1733,8 +1739,13 @@ export function JobWorkbenchClient({
           <input name="captionStrategy" defaultValue={job.captionStrategy} className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white" />
           <input name="repeatCount" type="number" min={1} defaultValue={1} className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white" />
           <input name="sourceWeight" type="number" min={1} step="0.1" placeholder="source weight" className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white" />
-          <ActionButton icon={Database} label="冻结 Dataset" loading={isBusy("dataset.freeze")} disabled={isPending} />
+          <ActionButton icon={Database} label="冻结 Dataset" loading={isBusy("dataset.freeze")} disabled={isPending || datasetFreezeBlocked} title={datasetFreezeBlocked ? datasetFreezeBlockerText : undefined} />
         </form>
+        {datasetFreezeBlocked ? (
+          <div className="mt-2 rounded-lg border border-amber-400/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+            {datasetFreezeBlockerText}
+          </div>
+        ) : null}
         <CompactList
           empty="暂无 dataset revision"
           items={datasetRevisions.map((revision) => {
