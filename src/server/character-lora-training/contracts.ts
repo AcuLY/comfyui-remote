@@ -693,12 +693,20 @@ export const characterLoraTrainingTaskPayloadSchema = z.object({
   postTrainingBenchmark: characterLoraPostTrainingBenchmarkSchema.default(characterLoraPostTrainingBenchmarkDefault),
 });
 
+export const characterLoraBaseCheckpointSnapshotSchema = z.object({
+  name: z.string().min(1).nullable(),
+  path: z.string().min(1).nullable(),
+  hash: sha256Schema.nullable(),
+  baseFamily: z.string().min(1).nullable(),
+}).strict();
+
 export const characterLoraBenchmarkTaskPayloadSchema = z.object({
   taskType: z.literal("benchmark"),
   jobId: z.string().min(1),
   benchmarkRunId: z.string().min(1),
   trainingRunId: z.string().min(1),
   finalSafetensorsArtifact: characterLoraArtifactRefSchema,
+  baseCheckpoint: characterLoraBaseCheckpointSnapshotSchema,
   checkpointMatrix: z.array(z.string().min(1)).min(1),
   weightMatrix: z.array(z.number().positive()).min(1),
   templateId: z.string().min(1).optional(),

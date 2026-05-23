@@ -47,6 +47,7 @@ type BenchmarkRunReport = ManagerJobReport["benchmarkRuns"][number];
 type BenchmarkContext = {
   benchmarkRun: BenchmarkRunReport;
   testProjectId: string;
+  baseCheckpoint: CharacterLoraBenchmarkTaskPayload["baseCheckpoint"];
   checkpointMatrix: string[];
   weightMatrix: number[];
   recommendedWeight: number;
@@ -57,6 +58,7 @@ type SectionRunSummary = {
   sectionName: string | null;
   sortOrder: number;
   originalSectionName: string | null;
+  baseCheckpoint: CharacterLoraBenchmarkTaskPayload["baseCheckpoint"];
   checkpointName: string | null;
   loraWeight: number | null;
   seed: number | null;
@@ -243,7 +245,7 @@ async function runBenchmarkTask(input: {
     };
 
     const waitResult = input.skipWait
-      ? await summarizeSubmittedProject(input.client, context.testProjectId, runIds)
+      ? await summarizeSubmittedProject(input.client, context.testProjectId, runIds, context.baseCheckpoint)
       : await waitForProjectRuns({
           client: input.client,
           taskId: input.taskId,
@@ -251,6 +253,7 @@ async function runBenchmarkTask(input: {
           leaseDurationSeconds: input.leaseDurationSeconds,
           projectId: context.testProjectId,
           runIds,
+          baseCheckpoint: context.baseCheckpoint,
           pollIntervalMs: input.pollIntervalMs,
           timeoutMs: input.timeoutMs,
           updateProgress: (summary) => {
@@ -333,6 +336,7 @@ async function resolveBenchmarkContext(
   return {
     benchmarkRun,
     testProjectId,
+    baseCheckpoint: payload.baseCheckpoint,
     checkpointMatrix,
     weightMatrix,
     recommendedWeight,
@@ -343,9 +347,10 @@ async function summarizeSubmittedProject(
   client: Awaited<ReturnType<typeof createManagerClient>>,
   projectId: string,
   runIds: string[],
+  baseCheckpoint: CharacterLoraBenchmarkTaskPayload["baseCheckpoint"],
 ): Promise<WaitResult> {
   const projectDetail = await client.getProjectDetail(projectId);
-  const summary = summarizeProjectRuns(projectDetail, runIds);
+  const summary = summarizeProjectRuns(projectDetail, runIds, baseCheckpoint);
   return {
     ...summary,
     projectDetail,
@@ -360,6 +365,7 @@ async function waitForProjectRuns(input: {
   leaseDurationSeconds: number;
   projectId: string;
   runIds: string[];
+  baseCheckpoint: CharacterLoraBenchmarkTaskPayload["baseCheckpoint"];
   pollIntervalMs: number;
   timeoutMs: number;
   updateProgress: (summary: PollSummary) => void;
@@ -370,7 +376,7 @@ async function waitForProjectRuns(input: {
 
   while (Date.now() <= deadline) {
     lastProjectDetail = await input.client.getProjectDetail(input.projectId);
-    lastSummary = summarizeProjectRuns(lastProjectDetail, input.runIds);
+    lastSummary = summarizeProjectRuns(lastProjectDetail, input.runIds, input.baseCheckpoint);
     input.updateProgress(lastSummary);
     await input.client.heartbeatTask(input.taskId, {
       leaseOwner: input.leaseOwner,
@@ -414,7 +420,11 @@ async function waitForProjectRuns(input: {
   );
 }
 
-function summarizeProjectRuns(projectDetail: ManagerProjectDetail, runIds: string[]): PollSummary {
+function summarizeProjectRuns(
+  projectDetail: ManagerProjectDetail,
+  runIds: string[],
+  baseCheckpoint: CharacterLoraBenchmarkTaskPayload["baseCheckpoint"],
+): PollSummary {
   const expectedRunIds = new Set(runIds);
   const foundRunIds = new Set<string>();
   const sectionSummaries: SectionRunSummary[] = [];
@@ -435,6 +445,7 @@ function summarizeProjectRuns(projectDetail: ManagerProjectDetail, runIds: strin
       sectionName: section.name,
       sortOrder: section.sortOrder,
       originalSectionName: matrixMetadata?.originalSectionName ?? section.name,
+      baseCheckpoint,
       checkpointName,
       loraWeight,
       seed,
@@ -509,6 +520,7 @@ function buildResultSummary(input: {
     submittedRuns: input.submitted.runs,
     sections: input.waitResult.sectionSummaries,
     matrixExpansion: buildMatrixExpansionSummary(input.waitResult.projectDetail, input.context),
+    baseCheckpoint: input.context.baseCheckpoint,
     checkpointMatrix: input.context.checkpointMatrix,
     weightMatrix: input.context.weightMatrix,
     recommendedWeight: input.context.recommendedWeight,
@@ -565,6 +577,7 @@ function buildMatrixExpansionSummary(projectDetail: ManagerProjectDetail, contex
       sectionName: section.name,
       sortOrder: section.sortOrder,
       originalSectionName: metadata?.originalSectionName ?? section.name,
+      baseCheckpoint: context.baseCheckpoint,
       baseSectionIndex: metadata?.baseSectionIndex ?? null,
       originalSortOrder: metadata?.originalSortOrder ?? null,
       checkpointName,

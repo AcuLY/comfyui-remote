@@ -147,7 +147,8 @@ cmd /c npx tsc --noEmit --pretty false
 - fake training worker 不调用 sd-scripts/kohya，只通过真实 training complete 入口登记 dummy `.safetensors`、checkpoint、hashes 和 log。
 - dryRun/skipQueue benchmark 只覆盖临时 preset/project 和 benchmark report 状态链；缺失 ProjectTemplate 时允许使用 fallback sections，或使用 sections 不足的模板，但这些都只属于 debug 路径，不能作为 approved promotion evidence。
 - smoke 会另建一个非 dryRun/skipQueue benchmark；真实 benchmark 前应通过工作台或 `cmd /c npx tsx scripts/character-lora-training/ensure-benchmark-template.ts --checkpoint <checkpoint>` 幂等确保 `角色 LoRA 测试` ProjectTemplate，并确认 `isUsable=true` / `sectionCount >= 7`，不能静默 fallback，并用 benchmark-worker 风格的完成 `resultSummary` 作为 approved promotion evidence；该路径不进入真实 ComfyUI 出图队列。
-- benchmark-worker 风格的 `resultSummary.sections[]` 必须同时记录 section、checkpointName、loraWeight、顶层 seed 以及原始 `executionMeta`；seed 从 `executionMeta.ks1Seed` 优先提取，其次使用 `executionMeta.ks2Seed`，便于逐张测试图审计 checkpoint、LoRA weight、section、seed、base checkpoint。
+- benchmark task payload 必须携带训练 job 当时的 base checkpoint 快照：`baseCheckpoint.name/path/hash/baseFamily` 来自 `job.baseCheckpointName/baseCheckpointPath/baseCheckpointHash/baseFamily`。
+- benchmark-worker 风格的 `resultSummary.sections[]` 和 `resultSummary.matrixExpansion.sections[]` 必须同时记录 section、checkpointName、loraWeight、顶层 seed、原始 `executionMeta` 以及 `baseCheckpoint` 快照；seed 从 `executionMeta.ks1Seed` 优先提取，其次使用 `executionMeta.ks2Seed`，便于逐张测试图审计 checkpoint、LoRA weight、section、seed、base checkpoint。
 - promotion 在隔离 SQLite 中真实创建 preset，不污染当前业务库。
 - 缺失 breast-size slider 或半脱/裸身 linked variant seed 时，promotion service 会在报告中记录 warning；这不是 smoke 失败条件，因为 7 个角色 variants 仍会创建，且 LoRA 权重仍可验证。
 
@@ -164,7 +165,7 @@ cmd /c npx tsc --noEmit --pretty false
 Report 验收要点：
 
 - JSON report 至少包含 job/counts、sourceImages、canonicalVersions、promptCardVersions、sections、generationRuns、candidateImages、datasetRevisions/items、trainingRuns/checkpoints、benchmarkRuns、promotionDecisions、artifactRefs、diagnosticSummary。
-- `benchmarkRuns[].resultSummary.sections[]` 必须保留每张测试图的 seed/executionMeta 证据，并随 report/promotion evidence 持久化。
+- `benchmarkRuns[].resultSummary.sections[]` 必须保留每张测试图的 seed/executionMeta/baseCheckpoint 证据，并随 report/promotion evidence 持久化；fake E2E smoke 需要断言 approved benchmark 的 `resultSummary`、benchmark report artifact 和最终 job report 中 section `baseCheckpoint.hash` 等于 job 的 base checkpoint hash。
 - `generationRuns[]` 会从 redacted request artifact 补齐 `renderedPrompt`、`userInstruction`、`inputImageIds`、`sourceImageIds` 和 `requestPayload`，确保 rerun 的自然语言修正、输入图 id/role/path/hash 与最终 provider-facing prompt 可在 report 内直接审计。
 - canonical/section 生成的服务端默认 provider 与工作台默认选择均为 `openai-codex`；`mock-local` 仅作为显式 debug 选项，避免生产省略 provider 时误入 mock 路径。
 - `generationRuns[].responseSummary` 必须保留 worker 写入的 redacted provider request/response summary，字段包括 `workerRequest`、`workerResponseSummary`、`requestRedactedPath`、`responseSummaryPath` 和最终 `responseSummaryArtifactId`，用于追溯 provider/http/auth source shape。

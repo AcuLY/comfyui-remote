@@ -79,6 +79,9 @@ type MinimalCharacterLoraJob = {
   triggerToken: string;
   artifactRoot: string;
   baseCheckpointName: string | null;
+  baseCheckpointPath: string | null;
+  baseCheckpointHash: string | null;
+  baseFamily: string | null;
   selectedDatasetRevisionId: string | null;
 };
 
@@ -160,6 +163,7 @@ export async function enqueueCharacterLoraBenchmarkRun(trainingRunId: string, in
   const defaultWeight = parsed.weightMatrix[0] ?? 1;
   const loraPath = loraRegistration.relativePath;
   const loraBinding = { path: loraPath, weight: roundWeight(defaultWeight), enabled: true };
+  const baseCheckpoint = buildBaseCheckpointSnapshot(job);
 
   const taskPayload = parsed.dryRun || parsed.skipQueue
     ? null
@@ -174,6 +178,7 @@ export async function enqueueCharacterLoraBenchmarkRun(trainingRunId: string, in
           relativePath: finalArtifact.relativePath,
           sha256: finalArtifact.sha256 ?? trainingRun.finalSha256 ?? undefined,
         },
+        baseCheckpoint,
         checkpointMatrix: parsed.checkpointMatrix,
         weightMatrix: parsed.weightMatrix,
         templateId: benchmarkTemplate?.id,
@@ -199,6 +204,7 @@ export async function enqueueCharacterLoraBenchmarkRun(trainingRunId: string, in
           trainingRunId: trainingRun.id,
           benchmarkRunId,
           workerType: "benchmark",
+          baseCheckpoint,
           checkpointMatrix: parsed.checkpointMatrix,
           weightMatrix: parsed.weightMatrix,
           queuePolicy: parsed.queuePolicy,
@@ -226,6 +232,7 @@ export async function enqueueCharacterLoraBenchmarkRun(trainingRunId: string, in
         queuePolicy: parsed.queuePolicy,
         warnings,
         busy: busyDetails,
+        baseCheckpoint,
       }, null, 2),
     },
     tempProject: {
@@ -245,6 +252,7 @@ export async function enqueueCharacterLoraBenchmarkRun(trainingRunId: string, in
         queuePolicy: parsed.queuePolicy,
         warnings,
         busy: busyDetails,
+        baseCheckpoint,
       }, null, 2),
       sectionLoraConfig: toInputJsonValue({
         lora1: [makeSectionLoraEntry(loraPath, defaultWeight, "lora1")],
@@ -1199,6 +1207,15 @@ function serializeIncludedBenchmark(benchmark: {
     datasetRevisionId: benchmark.trainingRun?.datasetRevisionId ?? null,
     finalSha256: benchmark.trainingRun?.finalSha256 ?? null,
     finalSafetensorsArtifactId: benchmark.trainingRun?.finalSafetensorsArtifactId ?? null,
+  };
+}
+
+function buildBaseCheckpointSnapshot(job: MinimalCharacterLoraJob) {
+  return {
+    name: job.baseCheckpointName,
+    path: job.baseCheckpointPath,
+    hash: job.baseCheckpointHash,
+    baseFamily: job.baseFamily,
   };
 }
 

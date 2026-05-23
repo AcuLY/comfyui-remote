@@ -1201,6 +1201,12 @@ async function main() {
   );
   const approvalCompletedAt = new Date().toISOString();
   const approvalRunIds = approvalBenchmarkSections.map((section, index) => `smoke-approved-${index + 1}-${section.id}`);
+  const approvalBaseCheckpointSnapshot = {
+    name: "fake-base.safetensors",
+    path: baseCheckpointPath,
+    hash: baseCheckpointHash,
+    baseFamily: "sdxl",
+  };
   const approvalSectionSummaries = approvalBenchmarkSections.map((section, index) => {
     const runId = approvalRunIds[index] ?? `smoke-approved-${index + 1}-${section.id}`;
     const benchmarkMatrix = readJsonRecord(readJsonRecord(section.extraParams).characterLoraBenchmark);
@@ -1217,6 +1223,7 @@ async function main() {
       sectionName: section.name,
       sortOrder: section.sortOrder,
       originalSectionName: typeof benchmarkMatrix.originalSectionName === "string" ? benchmarkMatrix.originalSectionName : section.name,
+      baseCheckpoint: approvalBaseCheckpointSnapshot,
       checkpointName: section.checkpointName,
       loraWeight: readBenchmarkSectionWeight(section),
       seed,
@@ -1257,6 +1264,7 @@ async function main() {
         weightMatrix: approvalWeightMatrix,
         sections: approvalSectionSummaries,
       },
+      baseCheckpoint: approvalBaseCheckpointSnapshot,
       checkpointMatrix: approvalCheckpointMatrix,
       weightMatrix: approvalWeightMatrix,
       recommendedWeight: 0.65,
@@ -1282,6 +1290,18 @@ async function main() {
   assert(approvalCompletedBenchmarkRun.status === "done", "approval benchmark should be completed with real evidence shape");
   const completedBenchmarkSummary = readJsonRecord(approvalCompletedBenchmarkRun.resultSummary);
   assert(
+    readJsonArray(completedBenchmarkSummary.sections).every((section) =>
+      readJsonRecord(readJsonRecord(section).baseCheckpoint).hash === baseCheckpointHash
+    ),
+    "approval benchmark resultSummary sections should record base checkpoint hash",
+  );
+  assert(
+    readJsonArray(readJsonRecord(completedBenchmarkSummary.matrixExpansion).sections).every((section) =>
+      readJsonRecord(readJsonRecord(section).baseCheckpoint).hash === baseCheckpointHash
+    ),
+    "approval benchmark matrixExpansion sections should record base checkpoint hash",
+  );
+  assert(
     readJsonArray(completedBenchmarkSummary.sections).some((section) => {
       const sectionSummary = readJsonRecord(section);
       const executionMeta = readJsonRecord(sectionSummary.executionMeta);
@@ -1289,6 +1309,18 @@ async function main() {
       return sectionSummary.seed === executionMeta.ks1Seed && sectionSummary.seed === latestRunExecutionMeta.ks1Seed;
     }),
     "approval benchmark resultSummary should expose seed and executionMeta evidence",
+  );
+  const benchmarkReportArtifact = await services.prismaModule.prisma.characterLoraArtifact.findUnique({
+    where: { id: approvalCompletedBenchmarkRun.reportArtifactId ?? "" },
+    select: { relativePath: true },
+  });
+  assert(benchmarkReportArtifact, "approval benchmark should persist a benchmark report artifact");
+  const benchmarkReportPayload = readJsonRecord(await readJobJsonArtifact(job.artifactRoot, benchmarkReportArtifact.relativePath));
+  assert(
+    readJsonArray(readJsonRecord(benchmarkReportPayload.resultSummary).sections).every((section) =>
+      readJsonRecord(readJsonRecord(section).baseCheckpoint).hash === baseCheckpointHash
+    ),
+    "approval benchmark report should record base checkpoint hash per section",
   );
   const releasedApprovalBenchmarkLocks = await listReleasedBenchmarkGpuLocks(services, approvalBenchmarkRun.id);
   assert(releasedApprovalBenchmarkLocks.length === 1, "benchmark complete should release the active GPU lock");
@@ -1449,6 +1481,12 @@ async function main() {
       return typeof sectionSummary.seed === "number" && readJsonRecord(sectionSummary.executionMeta).ks1Seed === sectionSummary.seed;
     }),
     "report should preserve approved benchmark seed/executionMeta evidence",
+  );
+  assert(
+    readJsonArray(reportApprovalBenchmarkSummary.sections).every((section) =>
+      readJsonRecord(readJsonRecord(section).baseCheckpoint).hash === baseCheckpointHash
+    ),
+    "report should preserve approved benchmark base checkpoint evidence",
   );
   assert(report.promotionDecisions.some((item) => item.id === promoted.decision.id), "report should include promotion decision");
   assert(persistedReport.artifacts.json?.relativePath.endsWith(".json"), "report JSON artifact should be persisted");
