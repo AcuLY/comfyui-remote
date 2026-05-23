@@ -4,13 +4,19 @@ import {
   getCharacterLoraCanonicalVersion as getCanonicalVersionFromRepository,
   getCharacterLoraPromptCardVersion as getPromptCardVersionFromRepository,
   getCharacterLoraSectionTemplate as getSectionTemplateFromRepository,
+  getCharacterLoraTrainingTemplate as getTrainingTemplateFromRepository,
   getCharacterLoraTrainingJob as getJobFromRepository,
   instantiateCharacterLoraJobSections as instantiateJobSectionsInRepository,
   listActiveCharacterLoraSectionTemplates as listActiveSectionTemplatesFromRepository,
+  listActiveCharacterLoraTrainingTemplates as listActiveTrainingTemplatesFromRepository,
   listCharacterLoraJobSections as listJobSectionsFromRepository,
   updateCharacterLoraJobSectionStatus as updateJobSectionStatusInRepository,
   type CharacterLoraJobSectionStatusPatch,
+  type CharacterLoraTrainingTemplateSummary,
+  type CharacterLoraTrainingTemplateUpsertInput,
+  upsertCharacterLoraTrainingTemplates as upsertTrainingTemplatesInRepository,
   upsertCharacterLoraSectionTemplates as upsertSectionTemplatesInRepository,
+  type CharacterLoraSectionTemplateSummary,
   type CharacterLoraSectionTemplateCopyCreateInput,
   type CharacterLoraSectionTemplateUpsertInput,
 } from "@/server/repositories/character-lora-training-repository";
@@ -18,6 +24,62 @@ import { z } from "zod";
 
 const DEFAULT_NEGATIVE_TEMPLATE =
   "wrong identity, inconsistent face, inconsistent outfit, low quality, blurry, distorted anatomy, extra fingers";
+
+export const DEFAULT_TRAINING_TEMPLATE_KEY = "character_identity_default";
+
+const DEFAULT_TRAINING_TEMPLATE: CharacterLoraTrainingTemplateUpsertInput = {
+  key: DEFAULT_TRAINING_TEMPLATE_KEY,
+  name: "Character Identity Default",
+  description: "Default recipe for one character identity and one primary outfit/form LoRA training.",
+  baseFamily: null,
+  captionStrategyDefault: "controllable_identity",
+  canonicalDefaults: {
+    provider: "openai-codex",
+    size: "1024x1536",
+    quality: "high",
+    sourceRoles: ["source", "manual_canonical"],
+  },
+  promptCardDefaults: {
+    triggerPlaceholder: "{{triggerToken}}",
+    requiredFields: ["identityTraits", "outfitTraits", "negativeTraits", "finalPromptDraft"],
+  },
+  trainingDefaults: {
+    profile: "standard",
+    launcher: "sd-scripts",
+    configProfiles: {
+      ordinary: {
+        networkDim: 32,
+        networkAlpha: 16,
+        learningRate: 0.0001,
+        batchSize: 1,
+        epochs: 10,
+      },
+      advanced: {
+        networkDim: 64,
+        networkAlpha: 32,
+        learningRate: 0.00008,
+        gradientCheckpointing: true,
+        mixedPrecision: "bf16",
+      },
+      expert: {
+        notes: "Use only when manually overriding the generated training config.",
+      },
+    },
+  },
+  benchmarkDefaults: {
+    checkpointMatrix: ["{{baseCheckpointName}}"],
+    weightMatrix: [0.6, 0.75, 0.9],
+    templateRole: "character_lora_benchmark",
+    registerLoraAsset: true,
+    copyToCharacterDir: true,
+  },
+  promotionDefaults: {
+    requiresManualApproval: true,
+    returnPoints: ["datasetReview", "trainingConfig", "benchmarkReview", "weightSelection"],
+  },
+  isActive: true,
+  sortOrder: 10,
+};
 
 const DEFAULT_SECTION_TEMPLATES: CharacterLoraSectionTemplateUpsertInput[] = [
   {
@@ -178,6 +240,49 @@ const DEFAULT_SECTION_TEMPLATES: CharacterLoraSectionTemplateUpsertInput[] = [
   },
 ];
 
+async function upsertDefaultSectionTemplates(trainingTemplateId: string) {
+  return upsertSectionTemplatesInRepository(
+    DEFAULT_SECTION_TEMPLATES.map((template) => ({
+      ...template,
+      trainingTemplateId,
+    })),
+  );
+}
+
+function buildTrainingTemplateSnapshot(
+  template: CharacterLoraTrainingTemplateSummary,
+  sectionTemplates: CharacterLoraSectionTemplateSummary[],
+) {
+  return {
+    id: template.id,
+    key: template.key,
+    name: template.name,
+    description: template.description,
+    baseFamily: template.baseFamily,
+    captionStrategyDefault: template.captionStrategyDefault,
+    canonicalDefaults: template.canonicalDefaults,
+    promptCardDefaults: template.promptCardDefaults,
+    trainingDefaults: template.trainingDefaults,
+    benchmarkDefaults: template.benchmarkDefaults,
+    promotionDefaults: template.promotionDefaults,
+    sectionTemplates: sectionTemplates.map((section) => ({
+      id: section.id,
+      trainingTemplateId: section.trainingTemplateId,
+      key: section.key,
+      name: section.name,
+      description: section.description,
+      angleTag: section.angleTag,
+      promptTemplate: section.promptTemplate,
+      negativeTemplate: section.negativeTemplate,
+      targetCandidateCount: section.targetCandidateCount,
+      targetKeepCount: section.targetKeepCount,
+      sortOrder: section.sortOrder,
+      isActive: section.isActive,
+    })),
+    capturedAt: new Date().toISOString(),
+  };
+}
+
 const instantiateSectionsSchema = z
   .object({
     templateKeys: z.array(z.string().trim().min(1)).min(1).optional(),
@@ -230,13 +335,56 @@ export class CharacterLoraSectionTemplateServiceError extends Error {
 }
 
 export async function ensureDefaultCharacterLoraSectionTemplates() {
-  return upsertSectionTemplatesInRepository(DEFAULT_SECTION_TEMPLATES);
+  const template = await ensureDefaultCharacterLoraTrainingTemplate();
+  return listActiveSectionTemplatesFromRepository(undefined, template.id);
 }
 
 export async function listCharacterLoraSectionTemplates() {
-  await ensureDefaultCharacterLoraSectionTemplates();
+  const template = await ensureDefaultCharacterLoraTrainingTemplate();
+  await upsertDefaultSectionTemplates(template.id);
 
   return listActiveSectionTemplatesFromRepository();
+}
+
+export async function ensureDefaultCharacterLoraTrainingTemplate() {
+  const [template] = await upsertTrainingTemplatesInRepository([DEFAULT_TRAINING_TEMPLATE]);
+
+  await upsertDefaultSectionTemplates(template.id);
+
+  return template;
+}
+
+export async function listCharacterLoraTrainingTemplates() {
+  await ensureDefaultCharacterLoraTrainingTemplate();
+
+  return listActiveTrainingTemplatesFromRepository();
+}
+
+export async function getCharacterLoraTrainingTemplate(input: { id?: string | null; key?: string | null }) {
+  await ensureDefaultCharacterLoraTrainingTemplate();
+
+  const template = await getTrainingTemplateFromRepository({
+    ...(input.id ? { id: input.id } : {}),
+    ...(input.key ? { key: input.key } : {}),
+  });
+
+  return template;
+}
+
+export async function getCharacterLoraTrainingTemplateSnapshot(input: { id?: string | null; key?: string | null }) {
+  const template = input.id || input.key
+    ? await getCharacterLoraTrainingTemplate(input)
+    : await ensureDefaultCharacterLoraTrainingTemplate();
+
+  if (!template) {
+    throw new CharacterLoraSectionTemplateServiceError("Character LoRA training template not found", 404, input);
+  }
+
+  await upsertDefaultSectionTemplates(template.id);
+
+  const sectionTemplates = await listActiveSectionTemplatesFromRepository(undefined, template.id);
+
+  return buildTrainingTemplateSnapshot(template, sectionTemplates);
 }
 
 export async function copyCharacterLoraSectionTemplate(input: unknown) {
@@ -312,17 +460,19 @@ export async function instantiateCharacterLoraJobSections(jobId: string, input: 
   const parsed = parseWithSchema(instantiateSectionsSchema, input ?? {});
   const templateKeys = dedupeTemplateKeys(parsed.templateKeys);
 
-  assertJobHasCurrentVersions(job);
-  await assertCurrentVersionsBelongToJob({
-    jobId: id,
-    canonicalVersionId: job.currentCanonicalVersionId,
-    promptCardVersionId: job.currentPromptCardVersionId,
-  });
+  if (job.currentCanonicalVersionId && job.currentPromptCardVersionId) {
+    await assertCurrentVersionsBelongToJob({
+      jobId: id,
+      canonicalVersionId: job.currentCanonicalVersionId,
+      promptCardVersionId: job.currentPromptCardVersionId,
+    });
+  }
 
   await ensureDefaultCharacterLoraSectionTemplates();
 
   const templates = await listActiveSectionTemplatesFromRepository(
     templateKeys.length > 0 ? templateKeys : undefined,
+    job.trainingTemplateId ?? undefined,
   );
 
   if (templateKeys.length > 0) {
@@ -419,30 +569,6 @@ async function getExistingJob(jobId: string) {
   }
 
   return job;
-}
-
-function assertJobHasCurrentVersions<
-  T extends {
-    currentCanonicalVersionId: string | null;
-    currentPromptCardVersionId: string | null;
-  },
->(job: T): asserts job is T & {
-  currentCanonicalVersionId: string;
-  currentPromptCardVersionId: string;
-} {
-  if (!job.currentCanonicalVersionId) {
-    throw new CharacterLoraSectionTemplateServiceError(
-      "Job must have a current canonical version before instantiating sections",
-      409,
-    );
-  }
-
-  if (!job.currentPromptCardVersionId) {
-    throw new CharacterLoraSectionTemplateServiceError(
-      "Job must have a current prompt card version before instantiating sections",
-      409,
-    );
-  }
 }
 
 async function assertCurrentVersionsBelongToJob(input: {

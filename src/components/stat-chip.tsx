@@ -6,9 +6,9 @@ export function StatChip({ label, value, tone = "default" }: { label: string; va
   }[tone];
 
   return (
-    <div className={`rounded-2xl border px-3 py-2 ${toneClass}`}>
+    <div className={`min-w-0 rounded-2xl border px-3 py-2 ${toneClass}`}>
       <div className="text-[11px] text-zinc-400">{label}</div>
-      <div className="mt-1 text-sm font-semibold">{value}</div>
+      <div className="mt-1 break-words text-sm font-semibold">{value}</div>
     </div>
   );
 }

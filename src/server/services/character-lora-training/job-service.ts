@@ -7,6 +7,7 @@ import {
   findActiveCharacterLoraTrainingJobByTriggerToken,
   findCharacterLoraTrainingJobBySlug,
   getCharacterLoraTrainingJob as getJobFromRepository,
+  instantiateCharacterLoraJobSections as instantiateJobSectionsInRepository,
   listCharacterLoraTrainingJobs as listJobsFromRepository,
   updateCharacterLoraTrainingJob as updateJobInRepository,
   type CharacterLoraTrainingJobSummary,
@@ -15,6 +16,7 @@ import {
   ensureCharacterLoraJobRoot,
   writeCharacterLoraJsonArtifact,
 } from "@/server/services/character-lora-training/artifact-service";
+import { getCharacterLoraTrainingTemplateSnapshot } from "@/server/services/character-lora-training/section-template-service";
 import { characterLoraTrainingScopeSchema } from "@/server/character-lora-training/contracts";
 import { z } from "zod";
 
@@ -30,7 +32,8 @@ const createJobSchema = z
     baseCheckpointPath: requiredTrimmedStringSchema("baseCheckpointPath is required"),
     baseCheckpointHash: requiredTrimmedStringSchema("baseCheckpointHash is required"),
     baseFamily: requiredTrimmedStringSchema("baseFamily is required"),
-    captionStrategy: z.string().trim().min(1).default(DEFAULT_CAPTION_STRATEGY),
+    captionStrategy: nullableTrimmedStringSchema(),
+    trainingTemplateId: nullableTrimmedStringSchema(),
     phase: nullableTrimmedStringSchema(),
     createdBy: nullableTrimmedStringSchema(),
   })
@@ -101,6 +104,10 @@ export async function createCharacterLoraTrainingJob(input: unknown) {
   const slug = await generateUniqueJobSlug(parsed.characterName, parsed.triggerToken);
   const artifactRoot = await ensureCharacterLoraJobRoot(slug);
   const baseCheckpointName = parsed.baseCheckpointName ?? deriveBaseCheckpointName(parsed.baseCheckpointPath);
+  const trainingTemplateSnapshot = await getCharacterLoraTrainingTemplateSnapshot({
+    id: parsed.trainingTemplateId,
+  });
+  const captionStrategy = parsed.captionStrategy ?? trainingTemplateSnapshot.captionStrategyDefault ?? DEFAULT_CAPTION_STRATEGY;
 
   const job = await createJobInRepository({
     slug,
@@ -109,16 +116,30 @@ export async function createCharacterLoraTrainingJob(input: unknown) {
     status: CharacterLoraJobStatus.draft,
     phase: parsed.phase,
     trainingScope: toInputJsonValue(parsed.trainingScope),
-    captionStrategy: parsed.captionStrategy,
+    captionStrategy,
     baseCheckpointName,
     baseCheckpointPath: parsed.baseCheckpointPath,
     baseCheckpointHash: parsed.baseCheckpointHash,
     baseFamily: parsed.baseFamily,
     artifactRoot,
+    trainingTemplateId: trainingTemplateSnapshot.id,
+    trainingTemplateSnapshot: toInputJsonValue(trainingTemplateSnapshot),
     createdBy: parsed.createdBy,
   });
 
-  await writeInitialJobArtifact(job, { ...parsed, baseCheckpointName });
+  await instantiateJobSectionsInRepository({
+    jobId: job.id,
+    canonicalVersionId: null,
+    promptCardVersionId: null,
+    templates: trainingTemplateSnapshot.sectionTemplates,
+  });
+
+  await writeInitialJobArtifact(job, {
+    ...parsed,
+    captionStrategy,
+    baseCheckpointName,
+    trainingTemplateId: trainingTemplateSnapshot.id,
+  });
 
   return job;
 }
@@ -197,7 +218,11 @@ export function mapCharacterLoraTrainingJobError(error: unknown) {
 
 async function writeInitialJobArtifact(
   job: CharacterLoraTrainingJobSummary,
-  input: z.infer<typeof createJobSchema>,
+  input: z.infer<typeof createJobSchema> & {
+    captionStrategy: string;
+    baseCheckpointName: string;
+    trainingTemplateId: string;
+  },
 ) {
   const artifact = await writeCharacterLoraJsonArtifact(job.artifactRoot, "job.json", {
     id: job.id,
@@ -212,6 +237,7 @@ async function writeInitialJobArtifact(
     baseCheckpointPath: input.baseCheckpointPath,
     baseCheckpointHash: input.baseCheckpointHash,
     baseFamily: input.baseFamily,
+    trainingTemplateId: input.trainingTemplateId,
     createdBy: input.createdBy,
     createdAt: job.createdAt,
   });

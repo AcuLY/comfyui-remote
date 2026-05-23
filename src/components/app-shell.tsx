@@ -9,7 +9,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <>
       <SfwModeProvider />
-      <main className="mx-auto flex max-w-5xl flex-col gap-3 px-5 py-4 pb-24 sm:px-6">
+      <main className="mx-auto flex w-full max-w-5xl min-w-0 flex-col gap-3 overflow-x-hidden px-3 py-4 pb-24 sm:px-6">
         {children}
       </main>
       <PersistentBottomNav />

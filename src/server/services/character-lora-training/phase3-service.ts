@@ -118,6 +118,18 @@ export async function enqueueCharacterLoraSectionGenerationRun(sectionId: string
   }
 
   const job = await getExistingJob(section.jobId);
+  if (!section.canonicalVersionId || !section.promptCardVersionId) {
+    throw new CharacterLoraPhase3ServiceError(
+      "Section must have current canonical and prompt card lineage before enqueueing generation runs",
+      409,
+      {
+        sectionId: normalizedSectionId,
+        canonicalVersionId: section.canonicalVersionId,
+        promptCardVersionId: section.promptCardVersionId,
+      },
+    );
+  }
+
   const [canonicalVersion, promptCardVersion] = await Promise.all([
     getCharacterLoraCanonicalVersion(section.canonicalVersionId),
     getCharacterLoraPromptCardVersion(section.promptCardVersionId),

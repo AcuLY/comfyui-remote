@@ -41,6 +41,30 @@ const CHARACTER_LORA_BENCHMARK_TEMPLATE_SECTIONS = [
   { name: "\u88f8", slug: "naked", promptSuffix: "nude body, neutral pose" },
 ] as const;
 
+const TRAINING_TEMPLATE_SELECT = {
+  id: true,
+  key: true,
+  name: true,
+  description: true,
+  baseFamily: true,
+  captionStrategyDefault: true,
+  canonicalDefaults: true,
+  promptCardDefaults: true,
+  trainingDefaults: true,
+  benchmarkDefaults: true,
+  promotionDefaults: true,
+  isActive: true,
+  sortOrder: true,
+  createdAt: true,
+  updatedAt: true,
+  _count: {
+    select: {
+      sectionTemplates: true,
+      jobs: true,
+    },
+  },
+} as const;
+
 const JOB_SUMMARY_SELECT = {
   id: true,
   slug: true,
@@ -59,6 +83,8 @@ const JOB_SUMMARY_SELECT = {
   currentPromptCardVersionId: true,
   selectedDatasetRevisionId: true,
   promotedPresetId: true,
+  trainingTemplateId: true,
+  trainingTemplateSnapshot: true,
   createdBy: true,
   failureSummary: true,
   createdAt: true,
@@ -167,6 +193,7 @@ const PROMPT_CARD_VERSION_SELECT = {
 
 const SECTION_TEMPLATE_SELECT = {
   id: true,
+  trainingTemplateId: true,
   key: true,
   name: true,
   description: true,
@@ -386,6 +413,10 @@ type JobSummaryRecord = Prisma.CharacterLoraTrainingJobGetPayload<{
   select: typeof JOB_SUMMARY_SELECT;
 }>;
 
+type TrainingTemplateRecord = Prisma.CharacterLoraTrainingTemplateGetPayload<{
+  select: typeof TRAINING_TEMPLATE_SELECT;
+}>;
+
 type SourceImageRecord = Prisma.CharacterLoraSourceImageGetPayload<{
   select: typeof SOURCE_IMAGE_SELECT;
 }>;
@@ -459,6 +490,8 @@ export type CharacterLoraTrainingJobCreateInput = {
   baseCheckpointHash?: string | null;
   baseFamily?: string | null;
   artifactRoot: string;
+  trainingTemplateId?: string | null;
+  trainingTemplateSnapshot?: Prisma.InputJsonValue | null;
   createdBy?: string | null;
 };
 
@@ -472,6 +505,8 @@ export type CharacterLoraTrainingJobUpdateInput = Partial<{
   baseCheckpointPath: string | null;
   baseCheckpointHash: string | null;
   baseFamily: string | null;
+  trainingTemplateId: string | null;
+  trainingTemplateSnapshot: Prisma.InputJsonValue | null;
   createdBy: string | null;
 }>;
 
@@ -482,7 +517,23 @@ export type CharacterLoraTrainingJobListFilters = {
   pageSize?: number;
 };
 
+export type CharacterLoraTrainingTemplateUpsertInput = {
+  key: string;
+  name: string;
+  description?: string | null;
+  baseFamily?: string | null;
+  captionStrategyDefault: string;
+  canonicalDefaults: Prisma.InputJsonValue;
+  promptCardDefaults: Prisma.InputJsonValue;
+  trainingDefaults: Prisma.InputJsonValue;
+  benchmarkDefaults: Prisma.InputJsonValue;
+  promotionDefaults: Prisma.InputJsonValue;
+  isActive: boolean;
+  sortOrder: number;
+};
+
 export type CharacterLoraTrainingJobSummary = ReturnType<typeof serializeJobSummary>;
+export type CharacterLoraTrainingTemplateSummary = ReturnType<typeof serializeTrainingTemplate>;
 export type CharacterLoraSourceImageSummary = ReturnType<typeof serializeSourceImage>;
 export type CharacterLoraArtifactRefSummary = ReturnType<typeof serializeArtifactRef>;
 export type CharacterLoraGenerationRunSummary = ReturnType<typeof serializeGenerationRun>;
@@ -637,7 +688,7 @@ export async function findActiveCharacterLoraTrainingJobByTriggerToken(input: {
 
 export async function createCharacterLoraTrainingJob(input: CharacterLoraTrainingJobCreateInput) {
   const job = await db.characterLoraTrainingJob.create({
-    data: input,
+    data: input as Prisma.CharacterLoraTrainingJobUncheckedCreateInput,
     select: JOB_SUMMARY_SELECT,
   });
 
@@ -647,11 +698,57 @@ export async function createCharacterLoraTrainingJob(input: CharacterLoraTrainin
 export async function updateCharacterLoraTrainingJob(jobId: string, input: CharacterLoraTrainingJobUpdateInput) {
   const job = await db.characterLoraTrainingJob.update({
     where: { id: jobId },
-    data: input,
+    data: input as Prisma.CharacterLoraTrainingJobUncheckedUpdateInput,
     select: JOB_SUMMARY_SELECT,
   });
 
   return serializeJobSummary(job);
+}
+
+export async function upsertCharacterLoraTrainingTemplates(
+  templates: CharacterLoraTrainingTemplateUpsertInput[],
+) {
+  const records = await db.$transaction(
+    templates.map((template) =>
+      db.characterLoraTrainingTemplate.upsert({
+        where: { key: template.key },
+        update: template,
+        create: template,
+        select: TRAINING_TEMPLATE_SELECT,
+      }),
+    ),
+  );
+
+  return records.map(serializeTrainingTemplate);
+}
+
+export async function getCharacterLoraTrainingTemplate(input: { id?: string; key?: string }) {
+  const where = input.id
+    ? { id: input.id }
+    : input.key
+      ? { key: input.key }
+      : null;
+
+  if (!where) {
+    return null;
+  }
+
+  const template = await db.characterLoraTrainingTemplate.findUnique({
+    where,
+    select: TRAINING_TEMPLATE_SELECT,
+  });
+
+  return template ? serializeTrainingTemplate(template) : null;
+}
+
+export async function listActiveCharacterLoraTrainingTemplates() {
+  const templates = await db.characterLoraTrainingTemplate.findMany({
+    where: { isActive: true },
+    orderBy: [{ sortOrder: "asc" }, { key: "asc" }],
+    select: TRAINING_TEMPLATE_SELECT,
+  });
+
+  return templates.map(serializeTrainingTemplate);
 }
 
 export async function listCharacterLoraSourceImages(jobId: string) {
@@ -1249,6 +1346,7 @@ export async function createCharacterLoraPromptCardVersion(input: {
 }
 
 export type CharacterLoraSectionTemplateUpsertInput = {
+  trainingTemplateId?: string | null;
   key: string;
   name: string;
   description?: string | null;
@@ -1353,11 +1451,15 @@ export async function createCharacterLoraSectionTemplateCopy(
     : new Error("Failed to create a unique Character LoRA section template copy.");
 }
 
-export async function listActiveCharacterLoraSectionTemplates(templateKeys?: string[]) {
+export async function listActiveCharacterLoraSectionTemplates(
+  templateKeys?: string[],
+  trainingTemplateId?: string | null,
+) {
   const templates = await db.characterLoraSectionTemplate.findMany({
     where: {
       isActive: true,
       ...(templateKeys ? { key: { in: templateKeys } } : {}),
+      ...(trainingTemplateId !== undefined ? { trainingTemplateId } : {}),
     },
     orderBy: [{ sortOrder: "asc" }, { key: "asc" }],
     select: SECTION_TEMPLATE_SELECT,
@@ -1378,8 +1480,8 @@ export async function listCharacterLoraJobSections(jobId: string) {
 
 export async function instantiateCharacterLoraJobSections(input: {
   jobId: string;
-  canonicalVersionId: string;
-  promptCardVersionId: string;
+  canonicalVersionId?: string | null;
+  promptCardVersionId?: string | null;
   templates: CharacterLoraSectionTemplateSummary[];
 }) {
   const result = await db.$transaction(async (tx) => {
@@ -1401,14 +1503,31 @@ export async function instantiateCharacterLoraJobSections(input: {
           templateId: template.id,
           key: template.key,
           name: template.name,
-          canonicalVersionId: input.canonicalVersionId,
-          promptCardVersionId: input.promptCardVersionId,
+          canonicalVersionId: input.canonicalVersionId ?? null,
+          promptCardVersionId: input.promptCardVersionId ?? null,
           targetCandidateCount: template.targetCandidateCount,
           targetKeepCount: template.targetKeepCount,
           status: "draft",
           sortOrder: template.sortOrder,
         },
         select: { id: true },
+      });
+    }
+
+    if (input.canonicalVersionId || input.promptCardVersionId) {
+      await tx.characterLoraJobSection.updateMany({
+        where: {
+          jobId: input.jobId,
+          key: { in: keys },
+          OR: [
+            ...(input.canonicalVersionId ? [{ canonicalVersionId: null }] : []),
+            ...(input.promptCardVersionId ? [{ promptCardVersionId: null }] : []),
+          ],
+        },
+        data: {
+          ...(input.canonicalVersionId ? { canonicalVersionId: input.canonicalVersionId } : {}),
+          ...(input.promptCardVersionId ? { promptCardVersionId: input.promptCardVersionId } : {}),
+        },
       });
     }
 
@@ -4583,6 +4702,8 @@ function serializeJobSummary(job: JobSummaryRecord) {
     currentPromptCardVersionId: job.currentPromptCardVersionId,
     selectedDatasetRevisionId: job.selectedDatasetRevisionId,
     promotedPresetId: job.promotedPresetId,
+    trainingTemplateId: job.trainingTemplateId,
+    trainingTemplateSnapshot: job.trainingTemplateSnapshot,
     createdBy: job.createdBy,
     failureSummary: job.failureSummary,
     createdAt: job.createdAt.toISOString(),
@@ -4600,6 +4721,30 @@ function serializeJobSummary(job: JobSummaryRecord) {
       promotionDecisions: job._count.promotionDecisions,
       artifacts: job._count.artifacts,
       workerTasks: job._count.workerTasks,
+    },
+  };
+}
+
+function serializeTrainingTemplate(template: TrainingTemplateRecord) {
+  return {
+    id: template.id,
+    key: template.key,
+    name: template.name,
+    description: template.description,
+    baseFamily: template.baseFamily,
+    captionStrategyDefault: template.captionStrategyDefault,
+    canonicalDefaults: template.canonicalDefaults,
+    promptCardDefaults: template.promptCardDefaults,
+    trainingDefaults: template.trainingDefaults,
+    benchmarkDefaults: template.benchmarkDefaults,
+    promotionDefaults: template.promotionDefaults,
+    isActive: template.isActive,
+    sortOrder: template.sortOrder,
+    createdAt: template.createdAt.toISOString(),
+    updatedAt: template.updatedAt.toISOString(),
+    counts: {
+      sectionTemplates: template._count.sectionTemplates,
+      jobs: template._count.jobs,
     },
   };
 }
@@ -4700,6 +4845,7 @@ function serializePromptCardVersion(version: PromptCardVersionRecord) {
 function serializeSectionTemplate(template: SectionTemplateRecord) {
   return {
     id: template.id,
+    trainingTemplateId: template.trainingTemplateId,
     key: template.key,
     name: template.name,
     description: template.description,

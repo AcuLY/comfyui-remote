@@ -12,11 +12,17 @@ import {
   createCharacterLoraTrainingJob,
   uploadCharacterLoraSourceImage,
 } from "@/lib/actions/character-lora-training";
-import type { CharacterLoraGpuLock, CharacterLoraJobList, CharacterLoraJobSummary } from "./types";
+import type {
+  CharacterLoraGpuLock,
+  CharacterLoraJobList,
+  CharacterLoraJobSummary,
+  CharacterLoraTrainingTemplate,
+} from "./types";
 
 type Props = {
   jobList: CharacterLoraJobList;
   gpuLock: CharacterLoraGpuLock;
+  trainingTemplates: CharacterLoraTrainingTemplate[];
 };
 
 type DerivedStateInput = {
@@ -138,9 +144,10 @@ function readUploadFiles(formData: FormData, key: string) {
     .filter((value): value is File => value instanceof File && value.size > 0);
 }
 
-export function CharacterLoraTrainingClient({ jobList, gpuLock }: Props) {
+export function CharacterLoraTrainingClient({ jobList, gpuLock, trainingTemplates }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [trainingTemplateId, setTrainingTemplateId] = useState(trainingTemplates[0]?.id ?? "");
   const [purpose, setPurpose] = useState("character_identity");
   const [primaryOutfitOrForm, setPrimaryOutfitOrForm] = useState("");
   const [scopeNote, setScopeNote] = useState("默认只训练一个角色身份与一个主要服装/形态，内裤/半脱/裸等派生状态不进入训练。");
@@ -209,6 +216,10 @@ export function CharacterLoraTrainingClient({ jobList, gpuLock }: Props) {
       return acc;
     }, {});
   }, [jobList.jobs]);
+
+  const selectedTrainingTemplate = useMemo(() => {
+    return trainingTemplates.find((template) => template.id === trainingTemplateId) ?? trainingTemplates[0] ?? null;
+  }, [trainingTemplateId, trainingTemplates]);
 
   function handleRefresh() {
     startTransition(() => {
@@ -296,6 +307,7 @@ export function CharacterLoraTrainingClient({ jobList, gpuLock }: Props) {
           baseCheckpointPath,
           baseCheckpointHash,
           baseFamily,
+          trainingTemplateId: String(formData.get("trainingTemplateId") ?? "").trim() || undefined,
           createdBy: null,
         });
 
@@ -326,8 +338,8 @@ export function CharacterLoraTrainingClient({ jobList, gpuLock }: Props) {
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 gap-2 lg:grid-cols-5">
-        <StatChip label="任务" value={jobList.total} tone="accent" />
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+        <StatChip label="Projects" value={jobList.total} tone="accent" />
         <StatChip label="草稿" value={statusCounts.draft ?? 0} />
         <StatChip label="训练中" value={(statusCounts.training_queued ?? 0) + (statusCounts.training_running ?? 0)} tone="warn" />
         <StatChip label="已发布" value={statusCounts.promoted ?? 0} />
@@ -335,16 +347,38 @@ export function CharacterLoraTrainingClient({ jobList, gpuLock }: Props) {
       </div>
 
       {gpuLock.current ? (
-        <div className="flex items-center gap-2 rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+        <div className="flex min-w-0 items-start gap-2 rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-200 sm:items-center">
           <AlertTriangle className="size-4 shrink-0" />
-          <span className="min-w-0 truncate">
+          <span className="min-w-0 break-all sm:truncate">
             当前锁定：{gpuLock.current.taskType} / {gpuLock.current.ownerId}
           </span>
         </div>
       ) : null}
 
-      <SectionCard title="新建训练任务" subtitle="建立角色任务并可先上传参考图，详情页继续补 canonical、prompt、section。">
+      <SectionCard title="新建 Training Project" subtitle="建立角色 LoRA Project，可先上传参考图，详情页继续补 canonical、prompt、section。">
         <form action={handleCreate} className="grid min-w-0 gap-3 overflow-hidden rounded-lg border border-white/10 bg-white/[0.03] p-3 [&_input]:min-w-0 [&_select]:min-w-0 [&_textarea]:min-w-0 lg:grid-cols-2">
+          <label className="grid gap-1 text-xs text-zinc-400 lg:col-span-2">
+            LoRA Template / Recipe
+            <select
+              name="trainingTemplateId"
+              value={trainingTemplateId}
+              onChange={(event) => setTrainingTemplateId(event.target.value)}
+              className="h-11 rounded-lg border border-white/10 bg-black/30 px-3 text-sm text-white outline-none focus:border-sky-400 sm:h-9"
+            >
+              {trainingTemplates.map((template) => (
+                <option key={template.id} value={template.id}>
+                  {template.name} / {template.key}
+                </option>
+              ))}
+            </select>
+            {selectedTrainingTemplate ? (
+              <span className="break-words text-[11px] text-zinc-500">
+                {selectedTrainingTemplate.captionStrategyDefault} / sections {selectedTrainingTemplate.counts.sectionTemplates}
+              </span>
+            ) : (
+              <span className="text-[11px] text-amber-200">未加载到 active recipe，将由服务端使用默认模板。</span>
+            )}
+          </label>
           <label className="grid gap-1 text-xs text-zinc-400">
             角色名
             <input
@@ -397,7 +431,7 @@ export function CharacterLoraTrainingClient({ jobList, gpuLock }: Props) {
               </button>
             </div>
             {selectedCheckpointPath ? (
-              <div className="truncate font-mono text-[11px] text-zinc-500">
+              <div className="break-all font-mono text-[11px] text-zinc-500 sm:truncate">
                 selected: {selectedCheckpointPath}
               </div>
             ) : null}
@@ -475,7 +509,7 @@ export function CharacterLoraTrainingClient({ jobList, gpuLock }: Props) {
                   type="file"
                   multiple
                   accept="image/png,image/jpeg,image/webp"
-                  className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white file:mr-3 file:rounded-md file:border-0 file:bg-white/10 file:px-2 file:py-1 file:text-xs file:text-zinc-200"
+                  className="max-w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white file:mr-3 file:rounded-md file:border-0 file:bg-white/10 file:px-2 file:py-1 file:text-xs file:text-zinc-200"
                 />
               </label>
             </div>
@@ -552,7 +586,7 @@ export function CharacterLoraTrainingClient({ jobList, gpuLock }: Props) {
             <button
               type="submit"
               disabled={isPending}
-              className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-sky-500 px-3 text-sm font-medium text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-sky-500 px-3 text-sm font-medium text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-60 sm:h-9 sm:w-auto"
             >
               {isPending ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
               创建并进入
@@ -562,21 +596,21 @@ export function CharacterLoraTrainingClient({ jobList, gpuLock }: Props) {
       </SectionCard>
 
       <SectionCard
-        title="任务列表"
+        title="LoRA Projects"
         subtitle={`${visibleJobs.length} / ${jobList.total}`}
         actions={
           <div className="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              className="h-8 w-full rounded-lg border border-white/10 bg-black/30 px-2 text-xs text-white outline-none focus:border-sky-400 sm:w-48"
+              className="h-11 w-full rounded-lg border border-white/10 bg-black/30 px-2 text-xs text-white outline-none focus:border-sky-400 sm:h-8 sm:w-48"
               placeholder="过滤角色 / trigger / checkpoint"
             />
             <button
               type="button"
               onClick={handleRefresh}
               disabled={isPending}
-              className="inline-flex h-8 w-full items-center justify-center gap-1 rounded-lg border border-white/10 px-2 text-xs text-zinc-300 hover:bg-white/5 disabled:opacity-60 sm:w-auto"
+              className="inline-flex h-11 w-full items-center justify-center gap-1 rounded-lg border border-white/10 px-2 text-xs text-zinc-300 hover:bg-white/5 disabled:opacity-60 sm:h-8 sm:w-auto"
             >
               <RefreshCw className={`size-3.5 ${isPending ? "animate-spin" : ""}`} />
               刷新
@@ -616,22 +650,22 @@ function JobRow({ job }: { job: CharacterLoraJobSummary }) {
       className="grid gap-2 px-3 py-3 text-sm text-zinc-200 transition hover:bg-white/[0.04] sm:grid-cols-[1.4fr_0.9fr_0.8fr_1fr_44px] sm:items-center"
     >
       <span className="min-w-0">
-        <span className="block truncate font-medium text-white">{job.characterName}</span>
-        <span className="mt-1 block truncate font-mono text-[11px] text-zinc-500">{job.triggerToken} / {job.slug}</span>
+        <span className="block break-words font-medium text-white sm:truncate">{job.characterName}</span>
+        <span className="mt-1 block break-all font-mono text-[11px] text-zinc-500 sm:truncate">{job.triggerToken} / {job.slug}</span>
       </span>
       <span className="min-w-0">
         <span className="rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-zinc-300">
           {STATUS_LABEL[job.status] ?? job.status}
         </span>
-        <span className="mt-1 block truncate text-[11px] text-zinc-500">{job.phase ?? "-"}</span>
+        <span className="mt-1 block break-words text-[11px] text-zinc-500 sm:truncate">{job.phase ?? "-"}</span>
       </span>
       <span className="text-xs text-zinc-400">
         src {job.counts.sourceImages} / img {job.counts.candidateImages}
       </span>
-      <span className="min-w-0 truncate text-xs text-zinc-500">
+      <span className="min-w-0 break-words text-xs text-zinc-500 sm:truncate">
         {formatDate(job.updatedAt)}
       </span>
-      <span className="flex justify-end text-zinc-500">
+      <span className="hidden justify-end text-zinc-500 sm:flex">
         <ArrowRight className="size-4" />
       </span>
     </Link>

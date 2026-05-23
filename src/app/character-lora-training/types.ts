@@ -11,12 +11,15 @@ import type {
   listCharacterLoraPromotionDecisions,
   listCharacterLoraSectionTemplates,
   listCharacterLoraSourceImages,
+  listCharacterLoraTrainingTemplates,
   listCharacterLoraTrainingJobs,
   listCharacterLoraTrainingRuns,
 } from "@/lib/actions/character-lora-training";
 
 export type CharacterLoraJobList = Awaited<ReturnType<typeof listCharacterLoraTrainingJobs>>;
 export type CharacterLoraJobSummary = CharacterLoraJobList["jobs"][number];
+export type CharacterLoraTrainingTemplateList = Awaited<ReturnType<typeof listCharacterLoraTrainingTemplates>>;
+export type CharacterLoraTrainingTemplate = CharacterLoraTrainingTemplateList[number];
 export type CharacterLoraJob = Awaited<ReturnType<typeof getCharacterLoraTrainingJob>>;
 export type CharacterLoraJobReport = Awaited<ReturnType<typeof getCharacterLoraJobReport>>;
 export type CharacterLoraGpuLock = Awaited<ReturnType<typeof getCharacterLoraGpuTaskLock>>;

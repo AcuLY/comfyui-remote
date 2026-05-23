@@ -1268,14 +1268,14 @@ export function JobWorkbenchClient({
   }
 
   return (
-    <div className="mx-auto w-full max-w-5xl min-w-0 space-y-5 [&_input]:min-w-0 [&_select]:min-w-0 [&_textarea]:min-w-0">
+    <div className="mx-auto w-full max-w-5xl min-w-0 space-y-5 overflow-x-hidden [&_input]:min-w-0 [&_select]:min-w-0 [&_textarea]:min-w-0">
       <PageHeader
         title={job.characterName}
         description={`${job.triggerToken} / ${job.slug}`}
         actions={
           <Link
             href="/character-lora-training"
-            className="inline-flex h-8 shrink-0 items-center gap-1 whitespace-nowrap rounded-lg border border-white/10 px-2 text-xs text-zinc-300 hover:bg-white/5"
+            className="inline-flex h-11 w-full shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-lg border border-white/10 px-2 text-xs text-zinc-300 hover:bg-white/5 sm:h-8 sm:w-auto"
           >
             <ArrowLeft className="size-3.5" />
             返回
@@ -1283,7 +1283,7 @@ export function JobWorkbenchClient({
         }
       />
 
-      <div className="grid grid-cols-2 gap-2 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
         <StatChip label="状态" value={STATUS_LABEL[job.status] ?? job.status} tone="accent" />
         <StatChip label="Phase" value={job.phase ?? "-"} />
         <StatChip label="Source" value={sourceImages.length} />
@@ -1310,7 +1310,7 @@ export function JobWorkbenchClient({
             type="file"
             accept="image/png,image/jpeg,image/webp"
             required
-            className="min-w-0 rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs text-zinc-300"
+            className="max-w-full min-w-0 rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs text-zinc-300"
           />
           <select name="role" defaultValue="source" className="rounded-lg border border-white/10 bg-black/30 px-2 text-xs text-white">
             <option value="source">source</option>
@@ -1369,7 +1369,7 @@ export function JobWorkbenchClient({
               disabled={isPending || sourceImages.length === 0 || canonicalSourceImageIds.length === 0}
               onClick={handleCanonicalGenerate}
             />
-            <p className="mt-2 truncate font-mono text-[11px] text-zinc-500">最近 run: {pendingCanonicalRunId || "-"}</p>
+            <p className="mt-2 break-all font-mono text-[11px] text-zinc-500 sm:truncate">最近 run: {pendingCanonicalRunId || "-"}</p>
           </div>
           <form action={handleManualCanonicalRegister} className="grid gap-2 rounded-lg border border-white/10 bg-white/[0.03] p-3">
             <div className="text-xs font-medium text-zinc-200">Manual canonical</div>
@@ -1520,7 +1520,7 @@ export function JobWorkbenchClient({
             {sectionTemplates.map((template) => (
               <label key={template.key} className="flex min-w-0 items-center gap-2 rounded-lg border border-white/10 bg-black/20 px-2 py-2 text-xs text-zinc-300">
                 <input name="templateKeys" type="checkbox" value={template.key} className="size-3.5 accent-sky-400" />
-                <span className="min-w-0 truncate">{template.name}</span>
+                <span className="min-w-0 break-words sm:truncate">{template.name}</span>
                 <span className="ml-auto text-zinc-500">{template.targetKeepCount}/{template.targetCandidateCount}</span>
               </label>
             ))}
@@ -1595,7 +1595,7 @@ export function JobWorkbenchClient({
           </div>
         </form>
         <div className="mt-3 grid gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
             <div>
               <div className="text-xs font-medium text-zinc-200">下一次入队设置</div>
               <div className="mt-0.5 text-[11px] text-zinc-500">
@@ -1626,7 +1626,7 @@ export function JobWorkbenchClient({
               className="min-h-20 rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white placeholder:text-zinc-600"
             />
           </label>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
             <ActionButton
               type="button"
               icon={FileText}
@@ -1664,9 +1664,9 @@ export function JobWorkbenchClient({
                 const isPaused = section.status === "paused";
 
                 return (
-                  <div key={section.id} className="grid gap-2 px-3 py-2 text-xs text-zinc-300 md:grid-cols-[1.1fr_0.7fr_1fr_1.15fr_auto] md:items-center">
+                  <div key={section.id} className="grid gap-3 px-3 py-3 text-xs text-zinc-300 md:grid-cols-[1.1fr_0.7fr_1fr_1.15fr_auto] md:items-center">
                     <span className="min-w-0">
-                      <span className="block truncate font-medium text-white">{section.name}</span>
+                      <span className="block break-words font-medium text-white sm:truncate">{section.name}</span>
                       {(staleCanonical || stalePromptCard) ? (
                         <span className="mt-1 flex flex-wrap gap-1">
                           {staleCanonical ? (
@@ -1691,7 +1691,7 @@ export function JobWorkbenchClient({
                     >
                       {STATUS_LABEL[section.status] ?? section.status}
                     </span>
-                    <span className="text-zinc-500">keep {section.keepCount} / reject {section.rejectCount} / pending {section.pendingCount}</span>
+                    <span className="break-words text-zinc-500">keep {section.keepCount} / reject {section.rejectCount} / pending {section.pendingCount}</span>
                     <label className="grid gap-1 text-[11px] text-zinc-500">
                       parentRunId
                       <select
@@ -1708,7 +1708,7 @@ export function JobWorkbenchClient({
                         ))}
                       </select>
                     </label>
-                    <div className="flex flex-wrap gap-1 md:justify-end">
+                    <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap md:justify-end">
                       {isPaused ? (
                         <ActionButton
                           type="button"
@@ -2420,7 +2420,7 @@ function Info({ label, value, mono = false }: { label: string; value: string; mo
   return (
     <div className="min-w-0">
       <div className="text-[11px] text-zinc-500">{label}</div>
-      <div className={`mt-1 truncate text-zinc-200 ${mono ? "font-mono" : ""}`}>{value}</div>
+      <div className={`mt-1 break-all text-zinc-200 sm:truncate ${mono ? "font-mono" : ""}`}>{value}</div>
     </div>
   );
 }
@@ -2530,7 +2530,7 @@ function GpuLockBanner({ lock }: { lock: NonNullable<CharacterLoraGpuLock["curre
 
   return (
     <div className="mb-3 rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <AlertTriangle className="size-4 shrink-0" />
         <span className="font-medium">GPU task lock active</span>
         <span className="rounded border border-amber-300/25 px-1.5 py-0.5 text-[10px] uppercase text-amber-100">
@@ -2541,7 +2541,7 @@ function GpuLockBanner({ lock }: { lock: NonNullable<CharacterLoraGpuLock["curre
         {detailItems.map(([label, value]) => (
           <div key={label} className="min-w-0">
             <div className="text-[10px] uppercase text-amber-200/70">{label}</div>
-            <div className="truncate font-mono text-[11px] text-amber-50">{value}</div>
+            <div className="break-all font-mono text-[11px] text-amber-50 sm:truncate">{value}</div>
           </div>
         ))}
       </div>
@@ -2573,7 +2573,7 @@ function SourceReferencePicker({
     <div className="grid gap-2 rounded-lg border border-white/10 bg-black/20 p-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="text-xs font-medium text-zinc-200">source/reference images</span>
-        <div className="flex items-center gap-2 text-[11px] text-zinc-500">
+        <div className="flex flex-wrap items-center gap-2 text-[11px] text-zinc-500">
           <span>{selectedIds.length}/{images.length}</span>
           <MiniButton label="全选" onClick={() => onChange(allIds)} disabled={disabled || images.length === 0} />
           <MiniButton label="清空" onClick={() => onChange([])} disabled={disabled || selectedIds.length === 0} />
@@ -2592,7 +2592,7 @@ function SourceReferencePicker({
                 disabled={disabled}
                 className="size-3.5 accent-sky-400"
               />
-              <span className="min-w-0 truncate">{image.role}</span>
+              <span className="min-w-0 break-words sm:truncate">{image.role}</span>
               <span className="ml-auto font-mono text-[11px] text-zinc-500">{compactId(image.id)}</span>
             </label>
           ))}
@@ -2631,7 +2631,7 @@ function SourceImageGrid({
               <span className="font-mono text-zinc-500">{compactId(image.id)}</span>
             </div>
             <div className="text-zinc-500">{image.width ?? "?"}x{image.height ?? "?"}</div>
-            <div className="truncate font-mono text-[11px] text-zinc-500">{image.relativePath}</div>
+            <div className="break-all font-mono text-[11px] text-zinc-500 sm:truncate">{image.relativePath}</div>
             <ActionButton
               type="button"
               icon={ImagePlus}
@@ -2687,7 +2687,7 @@ function CanonicalVersionGrid({
                 <span className="font-medium text-zinc-100">v{version.version}</span>
                 <span className={getCanonicalStatusClass(version.status, isCurrent)}>{formatCanonicalStatus(version.status, isCurrent)}</span>
               </div>
-              <div className="truncate font-mono text-[11px] text-zinc-500">{compactId(version.id)} / {formatDate(version.createdAt)}</div>
+              <div className="break-all font-mono text-[11px] text-zinc-500 sm:truncate">{compactId(version.id)} / {formatDate(version.createdAt)}</div>
               {version.notes ? <div className="line-clamp-2 text-zinc-500">{version.notes}</div> : null}
               <div className="flex flex-wrap gap-1">
                 <MiniButton label="选择" onClick={() => onSelectVersion(version.id)} disabled={disabled} />
@@ -2796,12 +2796,14 @@ function CandidateImageCard({
 }) {
   const rejectReasons = extractRejectReasons(image.rejectReasons);
   const rejectSuggestions = getRejectReasonSuggestions(rejectReasons);
-  const sectionCanonicalVersion = section ? canonicalVersionById.get(section.canonicalVersionId) : null;
+  const sectionCanonicalVersion = section?.canonicalVersionId
+    ? canonicalVersionById.get(section.canonicalVersionId)
+    : null;
   const runCanonicalVersion = generationRun
     ? canonicalVersionByArtifactId.get(getRunCanonicalArtifactId(generationRun.inputImages) ?? "")
     : null;
   const lineageCanonicalVersion = runCanonicalVersion ?? sectionCanonicalVersion;
-  const sectionPromptCard = section ? promptCardById.get(section.promptCardVersionId) : null;
+  const sectionPromptCard = section?.promptCardVersionId ? promptCardById.get(section.promptCardVersionId) : null;
   const staleCanonical = Boolean(
     lineageCanonicalVersion?.id &&
     currentCanonicalVersionId &&
@@ -2859,12 +2861,12 @@ function CandidateImageCard({
       </div>
       <div className="space-y-2 p-3 text-xs">
         <div className="min-w-0">
-          <div className="truncate font-medium text-zinc-100">{section ? `${section.key} / ${section.name}` : "Source candidate"}</div>
-          <div className="truncate font-mono text-[11px] text-zinc-500">{compactId(image.id)} / {image.width ?? "?"}x{image.height ?? "?"}</div>
-          <div className="truncate font-mono text-[11px] text-zinc-500">
+          <div className="break-words font-medium text-zinc-100 sm:truncate">{section ? `${section.key} / ${section.name}` : "Source candidate"}</div>
+          <div className="break-all font-mono text-[11px] text-zinc-500 sm:truncate">{compactId(image.id)} / {image.width ?? "?"}x{image.height ?? "?"}</div>
+          <div className="break-all font-mono text-[11px] text-zinc-500 sm:truncate">
             run {compactId(image.generationRunId)} / {generationRun?.kind ?? "unknown"} / {generationRun?.provider ?? "unknown"} / {generationRun?.status ?? "unknown"}
           </div>
-          <div className="truncate font-mono text-[11px] text-zinc-500">{image.relativePath}</div>
+          <div className="break-all font-mono text-[11px] text-zinc-500 sm:truncate">{image.relativePath}</div>
         </div>
         {lineageChips.length > 0 ? (
           <div className="flex flex-wrap gap-1">
@@ -2891,7 +2893,7 @@ function CandidateImageCard({
             />
             <span className="min-w-0">
               <span className="block text-[11px] text-zinc-300">{runCanonicalVersion ? "run" : "section"} canonical v{lineageCanonicalVersion.version}</span>
-              <span className="block truncate font-mono text-[10px] text-zinc-500">{lineageCanonicalVersion.artifact.relativePath}</span>
+              <span className="block break-all font-mono text-[10px] text-zinc-500 sm:truncate">{lineageCanonicalVersion.artifact.relativePath}</span>
             </span>
           </a>
         ) : null}
@@ -2914,7 +2916,7 @@ function CandidateImageCard({
                     loading="lazy"
                     className="aspect-square w-full rounded-md bg-black/30 object-cover ring-1 ring-white/10"
                   />
-                  <span className="mt-0.5 block truncate text-[10px] text-zinc-500 group-hover:text-zinc-300">
+                  <span className="mt-0.5 block break-words text-[10px] text-zinc-500 group-hover:text-zinc-300 sm:truncate">
                     {formatInputImageRole(input.role)}
                   </span>
                 </a>
@@ -3143,7 +3145,7 @@ function ActionButton({
       onClick={onClick}
       disabled={disabled || loading}
       title={title}
-      className="inline-flex h-8 max-w-full min-w-0 items-center justify-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-2.5 text-xs font-medium text-zinc-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+      className="inline-flex h-11 max-w-full min-w-0 items-center justify-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-2.5 text-xs font-medium text-zinc-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50 sm:h-8"
     >
       {loading ? <Loader2 className="size-3.5 animate-spin" /> : <Icon className="size-3.5" />}
       <span className="min-w-0 truncate">{label}</span>
@@ -3172,7 +3174,7 @@ function MiniButton({
       onClick={onClick}
       disabled={disabled}
       title={title}
-      className={`inline-flex h-7 max-w-full min-w-0 items-center justify-center gap-1 rounded-md border px-2 text-[11px] transition disabled:cursor-not-allowed disabled:opacity-50 ${tone === "danger" ? "border-red-400/20 text-red-200 hover:bg-red-500/10" : "border-white/10 text-zinc-300 hover:bg-white/5"}`}
+      className={`inline-flex h-11 max-w-full min-w-0 items-center justify-center gap-1 rounded-md border px-2 text-[11px] transition disabled:cursor-not-allowed disabled:opacity-50 sm:h-7 ${tone === "danger" ? "border-red-400/20 text-red-200 hover:bg-red-500/10" : "border-white/10 text-zinc-300 hover:bg-white/5"}`}
     >
       {Icon ? <Icon className="size-3" /> : null}
       <span className="min-w-0 truncate">{label}</span>
@@ -3188,7 +3190,7 @@ function CompactList({ items, empty }: { items: string[]; empty: string }) {
   return (
     <div className="mt-3 divide-y divide-white/10 overflow-hidden rounded-lg border border-white/10">
       {items.map((item) => (
-        <div key={item} className="truncate px-3 py-2 text-xs text-zinc-400">
+        <div key={item} className="break-all px-3 py-2 text-xs text-zinc-400 sm:truncate">
           {item}
         </div>
       ))}
@@ -3226,11 +3228,11 @@ function RunList({
     <div className="mt-3 divide-y divide-white/10 overflow-hidden rounded-lg border border-white/10">
       {runs.map((run) => (
         <div key={run.id} className="grid gap-2 px-3 py-3 text-xs text-zinc-300 md:grid-cols-[0.7fr_1fr_1.4fr_auto] md:items-center">
-          <span className="font-mono">{compactId(run.id)}</span>
-          <span>{STATUS_LABEL[run.status] ?? run.status}</span>
+          <span className="break-all font-mono">{compactId(run.id)}</span>
+          <span className="break-words">{STATUS_LABEL[run.status] ?? run.status}</span>
           <span className="min-w-0">
-            <span className="block truncate text-zinc-200">{run.primary}</span>
-            <span className="block truncate text-zinc-500">{run.secondary}</span>
+            <span className="block break-words text-zinc-200 sm:truncate">{run.primary}</span>
+            <span className="block break-all text-zinc-500 sm:truncate">{run.secondary}</span>
           </span>
           {run.action}
         </div>

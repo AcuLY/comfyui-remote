@@ -516,6 +516,28 @@ model AuditLog {
 
 // Character LoRA training
 
+model CharacterLoraTrainingTemplate {
+  id                     String                         @id @default(cuid())
+  key                    String                         @unique
+  name                   String
+  description            String?                        @db.Text
+  baseFamily             String?
+  captionStrategyDefault String                         @default("controllable_identity")
+  canonicalDefaults      Json
+  promptCardDefaults     Json
+  trainingDefaults       Json
+  benchmarkDefaults      Json
+  promotionDefaults      Json
+  isActive               Boolean                        @default(true)
+  sortOrder              Int                            @default(0)
+  createdAt              DateTime                       @default(now())
+  updatedAt              DateTime                       @updatedAt
+  jobs                   CharacterLoraTrainingJob[]
+  sectionTemplates       CharacterLoraSectionTemplate[]
+
+  @@index([isActive, sortOrder])
+}
+
 model CharacterLoraTrainingJob {
   id                         String                         @id @default(cuid())
   slug                       String                         @unique
@@ -534,10 +556,13 @@ model CharacterLoraTrainingJob {
   currentPromptCardVersionId String?
   selectedDatasetRevisionId  String?
   promotedPresetId           String?
+  trainingTemplateId         String?
+  trainingTemplateSnapshot   Json?
   createdBy                  String?
   failureSummary             String?                        @db.Text
   createdAt                  DateTime                       @default(now())
   updatedAt                  DateTime                       @updatedAt
+  trainingTemplate           CharacterLoraTrainingTemplate? @relation(fields: [trainingTemplateId], references: [id], onDelete: SetNull)
   sourceImages               CharacterLoraSourceImage[]
   canonicalVersions          CharacterLoraCanonicalVersion[]
   promptCardVersions         CharacterLoraPromptCardVersion[]
@@ -554,6 +579,7 @@ model CharacterLoraTrainingJob {
   @@index([status, updatedAt])
   @@index([triggerToken])
   @@index([baseCheckpointHash])
+  @@index([trainingTemplateId])
 }
 
 model CharacterLoraSourceImage {
@@ -618,6 +644,7 @@ model CharacterLoraPromptCardVersion {
 
 model CharacterLoraSectionTemplate {
   id                   String                    @id @default(cuid())
+  trainingTemplateId   String?
   key                  String                    @unique
   name                 String
   description          String?                   @db.Text
@@ -628,9 +655,11 @@ model CharacterLoraSectionTemplate {
   targetKeepCount      Int                       @default(1)
   sortOrder            Int                       @default(0)
   isActive             Boolean                   @default(true)
+  trainingTemplate     CharacterLoraTrainingTemplate? @relation(fields: [trainingTemplateId], references: [id], onDelete: SetNull)
   sections             CharacterLoraJobSection[]
 
   @@index([isActive, sortOrder])
+  @@index([trainingTemplateId, isActive, sortOrder])
 }
 
 model CharacterLoraJobSection {
@@ -639,8 +668,8 @@ model CharacterLoraJobSection {
   templateId           String?
   key                  String
   name                 String
-  canonicalVersionId   String
-  promptCardVersionId  String
+  canonicalVersionId   String?
+  promptCardVersionId  String?
   targetCandidateCount Int                             @default(4)
   targetKeepCount      Int                             @default(1)
   status               String                          @default("draft")
@@ -652,8 +681,8 @@ model CharacterLoraJobSection {
   updatedAt            DateTime                        @updatedAt
   job                  CharacterLoraTrainingJob        @relation(fields: [jobId], references: [id], onDelete: Cascade)
   template             CharacterLoraSectionTemplate?   @relation(fields: [templateId], references: [id], onDelete: SetNull)
-  canonicalVersion     CharacterLoraCanonicalVersion   @relation(fields: [canonicalVersionId], references: [id], onDelete: Restrict)
-  promptCardVersion    CharacterLoraPromptCardVersion  @relation(fields: [promptCardVersionId], references: [id], onDelete: Restrict)
+  canonicalVersion     CharacterLoraCanonicalVersion?  @relation(fields: [canonicalVersionId], references: [id], onDelete: SetNull)
+  promptCardVersion    CharacterLoraPromptCardVersion? @relation(fields: [promptCardVersionId], references: [id], onDelete: SetNull)
   generationRuns       CharacterLoraGenerationRun[]
   candidateImages      CharacterLoraCandidateImage[]
 

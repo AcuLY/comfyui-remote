@@ -18,6 +18,7 @@ import {
 } from "@/server/services/character-lora-training/prompt-card-service";
 import {
   copyCharacterLoraSectionTemplate as copySectionTemplate,
+  listCharacterLoraTrainingTemplates as listTrainingTemplates,
   instantiateCharacterLoraJobSections as instantiateJobSections,
   listCharacterLoraJobSections as listJobSections,
   listCharacterLoraSectionTemplates as listSectionTemplates,
@@ -110,6 +111,10 @@ export async function promoteCharacterLoraSectionInstructionToPromptCardVersion(
 
 export async function listCharacterLoraSectionTemplates() {
   return listSectionTemplates();
+}
+
+export async function listCharacterLoraTrainingTemplates() {
+  return listTrainingTemplates();
 }
 
 export async function copyCharacterLoraSectionTemplate(input: unknown) {
