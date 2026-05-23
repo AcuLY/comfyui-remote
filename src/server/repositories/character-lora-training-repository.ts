@@ -1514,15 +1514,17 @@ export async function instantiateCharacterLoraJobSections(input: {
       });
     }
 
-    if (input.canonicalVersionId || input.promptCardVersionId) {
+    const lineageUpdateClauses: Prisma.CharacterLoraJobSectionWhereInput[] = [
+      ...(input.canonicalVersionId ? [{ canonicalVersionId: { not: input.canonicalVersionId } }] : []),
+      ...(input.promptCardVersionId ? [{ promptCardVersionId: { not: input.promptCardVersionId } }] : []),
+    ];
+
+    if (lineageUpdateClauses.length > 0) {
       await tx.characterLoraJobSection.updateMany({
         where: {
           jobId: input.jobId,
           key: { in: keys },
-          OR: [
-            ...(input.canonicalVersionId ? [{ canonicalVersionId: null }] : []),
-            ...(input.promptCardVersionId ? [{ promptCardVersionId: null }] : []),
-          ],
+          OR: lineageUpdateClauses,
         },
         data: {
           ...(input.canonicalVersionId ? { canonicalVersionId: input.canonicalVersionId } : {}),

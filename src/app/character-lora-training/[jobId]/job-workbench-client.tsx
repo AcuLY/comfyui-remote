@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import {
   AlertTriangle,
   ArrowLeft,
+  ArrowRight,
   Ban,
   Check,
   Copy,
@@ -231,6 +232,14 @@ const PROMOTION_VARIANTS = [
 
 type TrainingPrecision = Exclude<(typeof TRAINING_PRECISION_OPTIONS)[number], "">;
 type PromotionDecisionStatus = "approved" | "rejected";
+type StageNavItem = {
+  label: string;
+  targetId: string;
+  satisfied: boolean;
+  detail: string;
+  nextLabel?: string;
+  nextTargetId?: string;
+};
 type TrainingOrdinaryOverrides = Partial<{
   rank: number;
   alpha: number;
@@ -706,9 +715,20 @@ export function JobWorkbenchClient({
     : manualCanonicalSourceImages[0]?.id ?? "";
   const currentPrompt = promptCards.find((card) => card.id === job.currentPromptCardVersionId) ?? promptCards[0] ?? null;
   const canPromoteSectionInstruction = Boolean(sectionUserInstruction.trim() && currentPrompt);
-  const latestFrozenRevision = datasetRevisions.find((revision) => revision.status === "frozen") ?? datasetRevisions[0] ?? null;
+  const trainableDatasetRevisions = useMemo(
+    () =>
+      datasetRevisions
+        .filter((revision) => revision.status === "frozen" || revision.status === "ready")
+        .sort((a, b) => b.version - a.version),
+    [datasetRevisions],
+  );
+  const latestFrozenRevision = trainableDatasetRevisions[0] ?? null;
   const latestDoneTraining = trainingRuns.find((run) => run.status === "done" && run.finalSafetensorsArtifactId) ?? null;
   const pendingCanonicalRunId = latestCanonicalRunId.trim();
+  const templateSnapshot = readUnknownRecord(job.trainingTemplateSnapshot);
+  const trainingTemplateLabel = job.trainingTemplateId
+    ? `${readRecordString(templateSnapshot, "name") ?? "LoRA Template"} / ${readRecordString(templateSnapshot, "key") ?? compactId(job.trainingTemplateId)}`
+    : "Legacy / no template";
   const sectionById = useMemo(() => new Map(sections.map((section) => [section.id, section])), [sections]);
   const canonicalVersionById = useMemo(() => new Map(canonicalVersions.map((version) => [version.id, version])), [canonicalVersions]);
   const canonicalVersionByArtifactId = useMemo(
@@ -740,6 +760,15 @@ export function JobWorkbenchClient({
   );
   const promptCardById = useMemo(() => new Map(promptCards.map((card) => [card.id, card])), [promptCards]);
   const generationRunById = useMemo(() => new Map(report.generationRuns.map((run) => [run.id, run])), [report.generationRuns]);
+  const candidateImagesByRunId = useMemo(() => {
+    const imagesByRun = new Map<string, CharacterLoraCandidateImage[]>();
+    for (const image of candidateImages) {
+      const images = imagesByRun.get(image.generationRunId) ?? [];
+      images.push(image);
+      imagesByRun.set(image.generationRunId, images);
+    }
+    return imagesByRun;
+  }, [candidateImages]);
   const generationRunsBySectionId = useMemo(() => {
     const runsBySection = new Map<string, CharacterLoraJobReport["generationRuns"]>();
     for (const run of report.generationRuns) {
@@ -789,12 +818,107 @@ export function JobWorkbenchClient({
   const diagnosticReturnPoint = normalizeDiagnosticReturnPoint(report.diagnosticSummary.recommendedReturnPoint);
   const diagnosticReturnAction = DIAGNOSTIC_RETURN_ACTIONS[diagnosticReturnPoint];
   const defaultPromotionReturnPoint = mapDiagnosticReturnPointToPromotionReturnPoint(diagnosticReturnPoint);
-  const hasKeepImages = candidateImages.some((image) => image.reviewStatus === "keep");
+  const keepCandidateImages = candidateImages.filter((image) => image.reviewStatus === "keep");
+  const hasKeepImages = keepCandidateImages.length > 0;
+  const keepImagesMissingCaption = keepCandidateImages.filter((image) => !image.captionDraft?.trim());
   const datasetFreezeSectionBlockers = sections.filter((section) => section.keepCount < section.targetKeepCount);
-  const datasetFreezeBlocked = !hasKeepImages || datasetFreezeSectionBlockers.length > 0;
-  const datasetFreezeBlockerText = !hasKeepImages
-    ? "Dataset freeze requires at least one keep image."
-    : `Sections below targetKeepCount: ${datasetFreezeSectionBlockers.map((section) => `${section.key} ${section.keepCount}/${section.targetKeepCount}`).join(", ")}`;
+  const datasetFreezeBlockers = [
+    !job.currentCanonicalVersionId ? "Dataset freeze requires a current canonical version." : null,
+    !job.currentPromptCardVersionId ? "Dataset freeze requires a current Prompt Card." : null,
+    !hasKeepImages ? "Dataset freeze requires at least one keep image." : null,
+    datasetFreezeSectionBlockers.length > 0
+      ? `Sections below targetKeepCount: ${datasetFreezeSectionBlockers.map((section) => `${section.key} ${section.keepCount}/${section.targetKeepCount}`).join(", ")}`
+      : null,
+    keepImagesMissingCaption.length > 0
+      ? `Kept images missing captions: ${keepImagesMissingCaption.map((image) => compactId(image.id)).join(", ")}`
+      : null,
+  ].filter((item): item is string => Boolean(item));
+  const datasetFreezeWarnings = [
+    (candidateStatusCounts.pending ?? 0) > 0 ? `${candidateStatusCounts.pending} candidate image(s) are still pending review.` : null,
+    (candidateStatusCounts.reject ?? 0) > 0 ? `${candidateStatusCounts.reject} candidate image(s) are rejected and will not enter the dataset.` : null,
+  ].filter((item): item is string => Boolean(item));
+  const datasetFreezeBlocked = datasetFreezeBlockers.length > 0;
+  const datasetFreezeBlockerText = datasetFreezeBlockers.join(" ");
+  const stageItems: StageNavItem[] = [
+    {
+      label: "Project Overview",
+      targetId: "character-lora-project-overview",
+      satisfied: true,
+      detail: trainingTemplateLabel,
+      nextLabel: sourceImages.length > 0 ? "Review sources" : "Add sources",
+      nextTargetId: "character-lora-source",
+    },
+    {
+      label: "Sources",
+      targetId: "character-lora-source",
+      satisfied: sourceImages.length > 0,
+      detail: `${sourceImages.length} source/reference image(s)`,
+      nextLabel: "Generate canonical",
+      nextTargetId: "character-lora-canonical",
+    },
+    {
+      label: "Canonical",
+      targetId: "character-lora-canonical",
+      satisfied: Boolean(job.currentCanonicalVersionId),
+      detail: job.currentCanonicalVersionId ? `current ${compactId(job.currentCanonicalVersionId)}` : "missing current canonical",
+      nextLabel: "Create Prompt Card",
+      nextTargetId: "character-lora-prompt-card",
+    },
+    {
+      label: "Prompt Card",
+      targetId: "character-lora-prompt-card",
+      satisfied: Boolean(job.currentPromptCardVersionId),
+      detail: job.currentPromptCardVersionId ? `current ${compactId(job.currentPromptCardVersionId)}` : "missing current prompt card",
+      nextLabel: "Work sections",
+      nextTargetId: "character-lora-sections",
+    },
+    {
+      label: "Sections",
+      targetId: "character-lora-sections",
+      satisfied: sections.length > 0 && sections.every((section) => section.keepCount >= section.targetKeepCount),
+      detail: `${sections.length} section(s), ${datasetFreezeSectionBlockers.length} below target`,
+      nextLabel: "Review dataset",
+      nextTargetId: "character-lora-review-dataset",
+    },
+    {
+      label: "Review Dataset",
+      targetId: "character-lora-review-dataset",
+      satisfied: !datasetFreezeBlocked && trainableDatasetRevisions.length > 0,
+      detail: trainableDatasetRevisions.length > 0 ? `latest v${trainableDatasetRevisions[0].version}` : datasetFreezeBlocked ? "freeze blocked" : "ready to freeze",
+      nextLabel: "Train",
+      nextTargetId: "character-lora-training",
+    },
+    {
+      label: "Train",
+      targetId: "character-lora-training",
+      satisfied: Boolean(latestDoneTraining),
+      detail: latestDoneTraining ? `done ${compactId(latestDoneTraining.id)}` : trainableDatasetRevisions.length > 0 ? "ready to enqueue" : "needs frozen dataset",
+      nextLabel: "Benchmark",
+      nextTargetId: "character-lora-benchmark-promotion",
+    },
+    {
+      label: "Benchmark",
+      targetId: "character-lora-benchmark-promotion",
+      satisfied: benchmarkRuns.some((run) => run.status === "done"),
+      detail: `${benchmarkRuns.length} benchmark run(s)`,
+      nextLabel: "Promote",
+      nextTargetId: "character-lora-promotion",
+    },
+    {
+      label: "Promote",
+      targetId: "character-lora-promotion",
+      satisfied: promotionDecisions.some((decision) => decision.status === "approved" || decision.status === "promoted"),
+      detail: `${promotionDecisions.length} decision(s)`,
+      nextLabel: "Report",
+      nextTargetId: "character-lora-report",
+    },
+    {
+      label: "Report",
+      targetId: "character-lora-report",
+      satisfied: true,
+      detail: `risk ${report.diagnosticSummary.risk}`,
+    },
+  ];
 
   useEffect(() => {
     setPostTrainingBenchmarkTemplateId(benchmarkTemplateDefaultId);
@@ -834,8 +958,7 @@ export function JobWorkbenchClient({
 
   function handleDiagnosticReturn(point: DiagnosticReturnPoint) {
     const action = DIAGNOSTIC_RETURN_ACTIONS[point];
-    const target = document.getElementById(action.targetId);
-    if (!target) {
+    if (!scrollToAnchor(action.targetId)) {
       toast.error("Diagnostic return target is not available");
       return;
     }
@@ -844,7 +967,6 @@ export function JobWorkbenchClient({
       setReviewStatusFilter("keep");
     }
 
-    target.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   function handleUpload(formData: FormData) {
@@ -982,18 +1104,42 @@ export function JobWorkbenchClient({
     });
   }
 
-  function handleSectionRun(sectionId: string) {
+  function enqueueSectionRun(sectionId: string, input: { userInstruction?: string; parentRunId?: string; actionKey?: string } = {}) {
     const sourceImageIds = uniqueIds(sectionSourceImageIds);
-    const parentRunId = sectionParentRunIds[sectionId]?.trim();
+    const parentRunId = input.parentRunId ?? sectionParentRunIds[sectionId]?.trim();
+    const userInstruction = input.userInstruction ?? sectionUserInstruction.trim();
 
-    runAction(`section.${sectionId}`, "Section 已入队", async () => {
+    runAction(input.actionKey ?? `section.${sectionId}`, "Section 已入队", async () => {
       await enqueueCharacterLoraSectionGenerationRun(sectionId, {
         provider: sectionProvider,
-        userInstruction: sectionUserInstruction.trim() || undefined,
+        userInstruction: userInstruction || undefined,
         parentRunId: parentRunId || undefined,
         sourceImageIds: sourceImageIds.length > 0 ? sourceImageIds : undefined,
         toolParams: buildImageToolParams(sectionSize, sectionQuality),
       });
+    });
+  }
+
+  function handleSectionRun(sectionId: string) {
+    enqueueSectionRun(sectionId);
+  }
+
+  function handleSectionRunForm(sectionId: string, formData: FormData) {
+    enqueueSectionRun(sectionId, {
+      userInstruction: readOptionalString(formData, "userInstruction") ?? "",
+      parentRunId: readOptionalString(formData, "parentRunId") ?? undefined,
+      actionKey: `section.${sectionId}.form`,
+    });
+  }
+
+  function handleSectionRefreshLineage(sectionKey: string, sectionId: string) {
+    if (!job.currentCanonicalVersionId || !job.currentPromptCardVersionId) {
+      toast.error("需要 current canonical 和 Prompt Card 后才能刷新 section lineage");
+      return;
+    }
+
+    runAction(`section.${sectionId}.lineage`, "Section lineage 已刷新", async () => {
+      await instantiateCharacterLoraJobSections(job.id, { templateKeys: [sectionKey] });
     });
   }
 
@@ -1292,8 +1438,11 @@ export function JobWorkbenchClient({
         <StatChip label="GPU" value={gpuLock.current ? "占用" : "空闲"} tone={gpuLock.current ? "warn" : "default"} />
       </div>
 
-      <SectionCard title="Job 概览" subtitle="当前指针和产物根目录。">
+      <StageNavigation stages={stageItems} />
+
+      <SectionCard id="character-lora-project-overview" title="Project Overview" subtitle="当前 recipe、指针和产物根目录。">
         <div className="grid gap-2 rounded-lg border border-white/10 bg-white/[0.03] p-3 text-xs text-zinc-400 md:grid-cols-2">
+          <Info label="LoRA Template / Recipe" value={trainingTemplateLabel} />
           <Info label="Base checkpoint" value={job.baseCheckpointName ?? "-"} />
           <Info label="Base path" value={job.baseCheckpointPath ?? "-"} mono />
           <Info label="Canonical" value={compactId(job.currentCanonicalVersionId)} mono />
@@ -1662,11 +1811,18 @@ export function JobWorkbenchClient({
                   Boolean(job.currentPromptCardVersionId && section.promptCardVersionId) &&
                   section.promptCardVersionId !== job.currentPromptCardVersionId;
                 const isPaused = section.status === "paused";
+                const latestSectionRun = sectionRuns.at(-1);
+                const latestRunSummary = latestSectionRun
+                  ? summarizeCandidateReview(candidateImagesByRunId.get(latestSectionRun.id) ?? [])
+                  : null;
 
                 return (
                   <div key={section.id} className="grid gap-3 px-3 py-3 text-xs text-zinc-300 md:grid-cols-[1.1fr_0.7fr_1fr_1.15fr_auto] md:items-center">
                     <span className="min-w-0">
                       <span className="block break-words font-medium text-white sm:truncate">{section.name}</span>
+                      <span className="mt-1 block break-all font-mono text-[11px] text-zinc-500 sm:truncate">
+                        latest {latestSectionRun ? `${compactId(latestSectionRun.id)} / ${latestSectionRun.provider} / out ${latestRunSummary?.total ?? 0}` : "-"}
+                      </span>
                       {(staleCanonical || stalePromptCard) ? (
                         <span className="mt-1 flex flex-wrap gap-1">
                           {staleCanonical ? (
@@ -1731,13 +1887,57 @@ export function JobWorkbenchClient({
                       <ActionButton
                         type="button"
                         icon={ImagePlus}
-                        label={isPaused ? "已暂停" : "入队"}
+                        label={isPaused ? "已暂停" : "Run again"}
                         loading={isBusy(`section.${section.id}`)}
                         disabled={isPending || isPaused}
                         title={isPaused ? "Section 已暂停，恢复后才能入队生成或重跑。" : undefined}
                         onClick={() => handleSectionRun(section.id)}
                       />
+                      {(staleCanonical || stalePromptCard) ? (
+                        <MiniButton
+                          icon={RefreshCw}
+                          label="当前 lineage"
+                          onClick={() => handleSectionRefreshLineage(section.key, section.id)}
+                          disabled={isPending || !job.currentCanonicalVersionId || !job.currentPromptCardVersionId}
+                        />
+                      ) : null}
                     </div>
+                    <details className="rounded-lg border border-white/10 bg-black/20 p-2 md:col-span-5">
+                      <summary className="cursor-pointer select-none text-[11px] font-medium text-zinc-300">
+                        Run history ({sectionRuns.length})
+                      </summary>
+                      <form action={(formData) => handleSectionRunForm(section.id, formData)} className="mt-2 grid gap-2 rounded-md border border-white/10 bg-white/[0.03] p-2 md:grid-cols-[1fr_220px_auto]">
+                        <label className="grid gap-1 text-[11px] text-zinc-500">
+                          correction
+                          <textarea
+                            name="userInstruction"
+                            placeholder="本轮局部修正，只影响这次 generation run"
+                            className="min-h-16 rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white placeholder:text-zinc-600"
+                          />
+                        </label>
+                        <label className="grid gap-1 text-[11px] text-zinc-500">
+                          parent run
+                          <select name="parentRunId" defaultValue={parentRunId} disabled={sectionRuns.length === 0} className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 font-mono text-xs text-white disabled:opacity-50">
+                            <option value="">无 parent run</option>
+                            {sectionRuns.map((run) => (
+                              <option key={run.id} value={run.id}>
+                                {compactId(run.id)} / {run.status} / {formatDate(run.createdAt)}
+                              </option>
+                            ))}
+                          </select>
+                          <span className="text-[10px] text-zinc-600">provider/source refs use the controls above.</span>
+                        </label>
+                        <div className="flex items-end">
+                          <ActionButton
+                            icon={ImagePlus}
+                            label="Run again"
+                            loading={isBusy(`section.${section.id}.form`)}
+                            disabled={isPending || isPaused}
+                          />
+                        </div>
+                      </form>
+                      <SectionRunHistory runs={sectionRuns} candidateImagesByRunId={candidateImagesByRunId} />
+                    </details>
                   </div>
                 );
               })}
@@ -1824,7 +2024,20 @@ export function JobWorkbenchClient({
         </form>
         {datasetFreezeBlocked ? (
           <div className="mt-2 rounded-lg border border-amber-400/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
-            {datasetFreezeBlockerText}
+            <ul className="space-y-1">
+              {datasetFreezeBlockers.map((blocker) => (
+                <li key={blocker} className="break-words">{blocker}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+        {datasetFreezeWarnings.length > 0 ? (
+          <div className="mt-2 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-zinc-400">
+            <ul className="space-y-1">
+              {datasetFreezeWarnings.map((warning) => (
+                <li key={warning} className="break-words">{warning}</li>
+              ))}
+            </ul>
           </div>
         ) : null}
         <CompactList
@@ -1858,7 +2071,7 @@ export function JobWorkbenchClient({
         <form action={handleTrainingEnqueue} className="grid gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-3 md:grid-cols-3 lg:grid-cols-[1fr_130px_130px_160px_auto]">
           <select name="datasetRevisionId" defaultValue={latestFrozenRevision?.id ?? ""} className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white">
             <option value="">选择 dataset revision</option>
-            {datasetRevisions.map((revision) => (
+            {trainableDatasetRevisions.map((revision) => (
               <option key={revision.id} value={revision.id}>v{revision.version} / {revision.status}</option>
             ))}
           </select>
@@ -2066,6 +2279,9 @@ export function JobWorkbenchClient({
           loading={isBusy("benchmark.template.ensure")}
           onEnsure={handleEnsureBenchmarkTemplate}
         />
+        <div className="mt-3 rounded-lg border border-white/10 bg-white/[0.03] p-3 text-xs text-zinc-400">
+          Benchmark 是 LoRA Project 的验证 run；执行载体是临时 Manager test project / preset。完成审核后再手动创建 promotion decision，临时资源可 cleanup，rejected decision 会回到指定 return point。
+        </div>
         <form action={handleBenchmarkEnqueue} className="mt-3 grid gap-2 rounded-lg border border-white/10 bg-white/[0.03] p-3 md:grid-cols-2 lg:grid-cols-[1fr_1fr_120px_120px_1fr_auto_auto_auto]">
           <select name="trainingRunId" defaultValue={latestDoneTraining?.id ?? ""} className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white">
             <option value="">选择 done training</option>
@@ -2160,9 +2376,10 @@ export function JobWorkbenchClient({
           empty="暂无 benchmark run"
         />
         <form
+          id="character-lora-promotion"
           key={`${selectedPromotionBenchmark?.id ?? "empty-promotion-draft"}:${defaultPromotionReturnPoint}`}
           action={handleDecisionDraft}
-          className="mt-3 grid gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-3"
+          className="mt-3 grid scroll-mt-20 gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-3"
         >
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
@@ -2304,7 +2521,7 @@ export function JobWorkbenchClient({
         />
       </SectionCard>
 
-      <SectionCard title="Report / Diagnostics" subtitle="Job 级全链路 report 与诊断入口。">
+      <SectionCard id="character-lora-report" title="Report / Diagnostics" subtitle="Job 级全链路 report 与诊断入口。">
         <div className="grid gap-3 lg:grid-cols-[1fr_1.2fr]">
           <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3">
             <div className="grid gap-2 text-xs text-zinc-400">
@@ -2361,8 +2578,10 @@ export function JobWorkbenchClient({
             <Info label="Training runs" value={String(report.diagnosticSummary.coverage.trainingRuns)} />
             <Info label="Benchmarks" value={String(report.diagnosticSummary.coverage.benchmarkRuns)} />
             <Info label="Promotions" value={String(report.diagnosticSummary.coverage.promotionDecisions)} />
+            <Info label="Worker tasks" value={String(report.diagnosticSummary.coverage.workerTasks)} />
           </div>
         </div>
+        <WorkerTaskPanel report={report} />
         <div className="mt-3 grid gap-3 lg:grid-cols-3">
           <DiagnosticList title="Reasons" items={report.diagnosticSummary.reasons} />
           <DiagnosticList title="Evidence" items={report.diagnosticSummary.evidence} />
@@ -2421,6 +2640,129 @@ function Info({ label, value, mono = false }: { label: string; value: string; mo
     <div className="min-w-0">
       <div className="text-[11px] text-zinc-500">{label}</div>
       <div className={`mt-1 break-all text-zinc-200 sm:truncate ${mono ? "font-mono" : ""}`}>{value}</div>
+    </div>
+  );
+}
+
+function StageNavigation({ stages }: { stages: StageNavItem[] }) {
+  const nextStage = stages.find((stage) => !stage.satisfied);
+
+  return (
+    <div className="sticky top-2 z-20 rounded-lg border border-white/10 bg-zinc-950/95 p-2 shadow-xl shadow-black/20 backdrop-blur">
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {stages.map((stage) => (
+          <button
+            key={stage.label}
+            type="button"
+            onClick={() => scrollToAnchor(stage.targetId)}
+            className={`min-w-[132px] rounded-md border px-2 py-2 text-left text-[11px] transition ${
+              stage.satisfied
+                ? "border-emerald-400/25 bg-emerald-500/10 text-emerald-100 hover:bg-emerald-500/15"
+                : "border-amber-400/25 bg-amber-500/10 text-amber-100 hover:bg-amber-500/15"
+            }`}
+          >
+            <span className="block font-medium">{stage.label}</span>
+            <span className="mt-1 block truncate text-[10px] opacity-75">{stage.satisfied ? "Gate OK" : "Blocked"} / {stage.detail}</span>
+          </button>
+        ))}
+      </div>
+      <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <span className="text-[11px] text-zinc-500">
+          {nextStage ? `Next gate: ${nextStage.label} - ${nextStage.detail}` : "All visible gates are satisfied."}
+        </span>
+        {nextStage ? (
+          <button
+            type="button"
+            onClick={() => scrollToAnchor(nextStage.nextTargetId ?? nextStage.targetId)}
+            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-white/10 px-2.5 text-xs font-medium text-zinc-200 hover:bg-white/10"
+          >
+            {nextStage.nextLabel ?? nextStage.label}
+            <ArrowRight className="size-3.5" />
+          </button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function SectionRunHistory({
+  runs,
+  candidateImagesByRunId,
+}: {
+  runs: CharacterLoraJobReport["generationRuns"];
+  candidateImagesByRunId: Map<string, CharacterLoraCandidateImage[]>;
+}) {
+  if (runs.length === 0) {
+    return <div className="mt-2 rounded-md border border-dashed border-white/10 py-3 text-center text-[11px] text-zinc-500">No generation run yet.</div>;
+  }
+
+  return (
+    <div className="mt-2 divide-y divide-white/10 overflow-hidden rounded-md border border-white/10">
+      {[...runs].reverse().map((run) => {
+        const images = candidateImagesByRunId.get(run.id) ?? [];
+        const summary = summarizeCandidateReview(images);
+        return (
+          <div key={run.id} className="grid gap-2 p-2 text-[11px] text-zinc-400 md:grid-cols-[0.8fr_1fr_1.2fr_1fr]">
+            <div className="min-w-0">
+              <div className="font-mono text-zinc-200">{compactId(run.id)}</div>
+              <div className="break-words">{STATUS_LABEL[run.status] ?? run.status} / {formatDate(run.createdAt)}</div>
+            </div>
+            <div className="min-w-0">
+              <div className="break-words text-zinc-200">{run.provider} / {run.imageModel ?? run.hostModel ?? "-"}</div>
+              <div className="break-words">inputs {formatInputRoleCounts(run.inputImages)}</div>
+            </div>
+            <div className="min-w-0">
+              <div className="break-words text-zinc-200">{run.userInstruction || run.visualPrompt || "default section prompt"}</div>
+              <div className="line-clamp-2 break-words">{run.renderedPrompt ?? run.hostInstruction ?? "-"}</div>
+            </div>
+            <div className="min-w-0">
+              <div className="break-words text-zinc-200">out {summary.total} / keep {summary.keep} / reject {summary.reject}</div>
+              <div className="break-words">pending {summary.pending} / excluded {summary.excluded}</div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function WorkerTaskPanel({ report }: { report: CharacterLoraJobReport }) {
+  const tasks = report.workerTasks.filter((task) => task.status === "queued" || task.status === "running" || task.status === "failed");
+  const environment = report.trainingWorkerEnvironment;
+
+  return (
+    <div className="mt-3 rounded-lg border border-white/10 bg-white/[0.03] p-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <div className="text-xs font-medium text-zinc-200">Worker observability</div>
+          <div className="mt-1 text-[11px] text-zinc-500">
+            Training command: {environment.commandConfigured ? "configured" : "not configured"} / mode {environment.mode}
+          </div>
+        </div>
+        <span className="rounded-md border border-white/10 px-2 py-1 text-[11px] text-zinc-400">
+          queued {report.workerTaskStatusCounts.queued ?? 0} / running {report.workerTaskStatusCounts.running ?? 0} / failed {report.workerTaskStatusCounts.failed ?? 0}
+        </span>
+      </div>
+      {tasks.length === 0 ? (
+        <div className="mt-3 rounded-lg border border-dashed border-white/10 py-4 text-center text-xs text-zinc-500">
+          No queued, running, or failed worker tasks.
+        </div>
+      ) : (
+        <div className="mt-3 divide-y divide-white/10 overflow-hidden rounded-lg border border-white/10">
+          {tasks.map((task) => (
+            <div key={task.id} className="grid gap-2 p-2 text-[11px] text-zinc-400 md:grid-cols-[0.8fr_0.8fr_1fr_1.1fr]">
+              <div className="min-w-0">
+                <div className="font-mono text-zinc-200">{compactId(task.id)}</div>
+                <div className="break-words">{task.workerType} / {task.status}</div>
+              </div>
+              <div className="min-w-0 break-words">{task.targetType} / {compactId(task.targetId)}</div>
+              <div className="min-w-0 break-words">lease {task.leaseOwner ?? "-"} / heartbeat {formatDate(task.heartbeatAt)}</div>
+              <div className="min-w-0 break-words">{task.errorSummary ?? formatWorkerProgress(task.progressJson)}</div>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="mt-2 break-all text-[11px] text-zinc-500">Runbook: {environment.runbook}</div>
     </div>
   );
 }
@@ -3042,6 +3384,68 @@ function readUnknownRecord(value: unknown) {
   return value && typeof value === "object" && !Array.isArray(value)
     ? value as Record<string, unknown>
     : {};
+}
+
+function summarizeCandidateReview(images: CharacterLoraCandidateImage[]) {
+  return images.reduce(
+    (summary, image) => {
+      summary.total += 1;
+      if (image.reviewStatus === "keep" || image.reviewStatus === "included_in_training") {
+        summary.keep += 1;
+      } else if (image.reviewStatus === "reject") {
+        summary.reject += 1;
+      } else if (image.reviewStatus === "excluded") {
+        summary.excluded += 1;
+      } else {
+        summary.pending += 1;
+      }
+      return summary;
+    },
+    { total: 0, keep: 0, reject: 0, pending: 0, excluded: 0 },
+  );
+}
+
+function formatInputRoleCounts(inputImages: unknown) {
+  if (!Array.isArray(inputImages) || inputImages.length === 0) {
+    return "-";
+  }
+
+  const counts = new Map<string, number>();
+  for (const input of inputImages) {
+    if (!input || typeof input !== "object" || Array.isArray(input)) {
+      continue;
+    }
+
+    const role = readRecordString(input as Record<string, unknown>, "role") ?? "reference";
+    counts.set(role, (counts.get(role) ?? 0) + 1);
+  }
+
+  return Array.from(counts.entries()).map(([role, count]) => `${role}:${count}`).join(", ") || "-";
+}
+
+function formatWorkerProgress(progressJson: unknown) {
+  const progress = readUnknownRecord(progressJson);
+  const step = typeof progress.step === "number" ? progress.step : null;
+  const targetSteps = typeof progress.targetSteps === "number" ? progress.targetSteps : null;
+  const phase = typeof progress.phase === "string" ? progress.phase : null;
+
+  if (step !== null || targetSteps !== null) {
+    return `step ${step ?? "-"}/${targetSteps ?? "-"}`;
+  }
+
+  return phase ?? "-";
+}
+
+function scrollToAnchor(targetId: string) {
+  const target = document.getElementById(targetId);
+  if (!target) {
+    return false;
+  }
+
+  const top = target.getBoundingClientRect().top + window.scrollY - 84;
+  window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+  window.history.replaceState(null, "", `#${targetId}`);
+  return true;
 }
 
 function addSecondsIso(value: string, seconds: number) {

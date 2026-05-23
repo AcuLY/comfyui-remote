@@ -105,6 +105,7 @@ export function renderCharacterLoraJobReportMarkdown(report: CharacterLoraJobRep
     `Job: ${report.job.id} / ${report.job.slug}`,
     `Status: ${report.job.status}`,
     `Phase: ${report.job.phase ?? "-"}`,
+    `Template: ${report.job.trainingTemplateLabel}`,
     "",
     "## Coverage",
     "",
@@ -117,6 +118,20 @@ export function renderCharacterLoraJobReportMarkdown(report: CharacterLoraJobRep
     `- Training runs: ${coverage.trainingRuns}`,
     `- Benchmark runs: ${coverage.benchmarkRuns}`,
     `- Promotion decisions: ${coverage.promotionDecisions}`,
+    `- Worker tasks: ${coverage.workerTasks}`,
+    "",
+    "## Worker Tasks",
+    "",
+    `Training command configured: ${report.trainingWorkerEnvironment.commandConfigured ? "yes" : "no"}`,
+    `Training mode: ${report.trainingWorkerEnvironment.mode}`,
+    "",
+    ...formatBulletLines(
+      report.workerTasks
+        .filter((task) => task.status === "queued" || task.status === "running" || task.status === "failed")
+        .map((task) =>
+          `${task.id}: ${task.workerType}/${task.targetType}/${task.status}, leaseOwner=${task.leaseOwner ?? "-"}, heartbeat=${task.heartbeatAt ?? "-"}`,
+        ),
+    ),
     "",
     "## Diagnostics",
     "",
@@ -211,6 +226,7 @@ async function buildCharacterLoraJobReport(jobId: string) {
       benchmarkRuns: { orderBy: [{ createdAt: "asc" }, { id: "asc" }] },
       promotionDecisions: { orderBy: [{ createdAt: "asc" }, { id: "asc" }] },
       artifacts: { orderBy: [{ createdAt: "asc" }, { id: "asc" }] },
+      workerTasks: { orderBy: [{ createdAt: "desc" }, { id: "desc" }] },
     },
   });
 
@@ -523,6 +539,37 @@ async function buildCharacterLoraJobReport(jobId: string) {
     updatedAt: decision.updatedAt.toISOString(),
   }));
 
+  const workerTasks = job.workerTasks.map((task) => ({
+    id: task.id,
+    jobId: task.jobId,
+    workerType: task.workerType,
+    targetType: task.targetType,
+    targetId: task.targetId,
+    status: task.status,
+    payload: task.payload,
+    leaseOwner: task.leaseOwner,
+    leaseExpiresAt: task.leaseExpiresAt?.toISOString() ?? null,
+    attemptCount: task.attemptCount,
+    progressJson: task.progressJson,
+    startedAt: task.startedAt?.toISOString() ?? null,
+    heartbeatAt: task.heartbeatAt?.toISOString() ?? null,
+    finishedAt: task.finishedAt?.toISOString() ?? null,
+    errorSummary: task.errorSummary,
+    createdAt: task.createdAt.toISOString(),
+    updatedAt: task.updatedAt.toISOString(),
+  }));
+  const workerTaskStatusCounts = workerTasks.reduce<Record<string, number>>((acc, task) => {
+    acc[task.status] = (acc[task.status] ?? 0) + 1;
+    return acc;
+  }, {});
+  const trainingCommand = process.env.CHARACTER_LORA_TRAINING_COMMAND?.trim();
+  const trainingWorkerEnvironment = {
+    commandConfigured: Boolean(trainingCommand),
+    mode: trainingCommand ? "real-capable" : "dry-run/mock-required",
+    commandSource: trainingCommand ? "CHARACTER_LORA_TRAINING_COMMAND" : null,
+    runbook: "docs/plans/2026-05-23-character-lora-worker-runbook.md",
+  };
+
   const counts = {
     sourceImages: sourceImages.length,
     canonicalVersions: canonicalVersions.length,
@@ -539,6 +586,7 @@ async function buildCharacterLoraJobReport(jobId: string) {
     completedTrainingRuns: trainingRuns.filter((run) => run.status === "done").length,
     benchmarkRuns: benchmarkRuns.length,
     promotionDecisions: promotionDecisions.length,
+    workerTasks: workerTasks.length,
     artifacts: artifacts.length,
     reportArtifacts: reportArtifacts.length,
   };
@@ -564,6 +612,9 @@ async function buildCharacterLoraJobReport(jobId: string) {
       currentPromptCardVersionId: job.currentPromptCardVersionId,
       selectedDatasetRevisionId: job.selectedDatasetRevisionId,
       promotedPresetId: job.promotedPresetId,
+      trainingTemplateId: job.trainingTemplateId,
+      trainingTemplateSnapshot: job.trainingTemplateSnapshot,
+      trainingTemplateLabel: formatTrainingTemplateLabel(job.trainingTemplateId, job.trainingTemplateSnapshot),
       createdBy: job.createdBy,
       failureSummary: job.failureSummary,
       createdAt: job.createdAt.toISOString(),
@@ -581,6 +632,9 @@ async function buildCharacterLoraJobReport(jobId: string) {
     benchmarkRuns,
     benchmarkProjects: benchmarkProjectSummaries,
     promotionDecisions,
+    workerTasks,
+    workerTaskStatusCounts,
+    trainingWorkerEnvironment,
     artifactRefs: artifacts,
     latestReportArtifacts: reportArtifacts.slice(0, 6),
     diagnosticSummary: buildDiagnosticSummary({
@@ -592,6 +646,7 @@ async function buildCharacterLoraJobReport(jobId: string) {
       trainingRuns,
       benchmarkRuns,
       promotionDecisions,
+      workerTasks,
     }),
   };
 
@@ -785,6 +840,16 @@ function buildDiagnosticSummary(input: {
     defaultRecommendedWeight?: number | null;
     perVariantWeightOverrides?: unknown;
   }>;
+  workerTasks: Array<{
+    id: string;
+    workerType: string;
+    targetType: string;
+    targetId: string;
+    status: string;
+    leaseOwner: string | null;
+    heartbeatAt: string | null;
+    errorSummary: string | null;
+  }>;
 }) {
   const reasons: string[] = [];
   const evidence: string[] = [];
@@ -953,6 +1018,24 @@ function buildDiagnosticSummary(input: {
     );
   }
   evidence.push(`promotionDecisions=${input.counts.promotionDecisions}`);
+  evidence.push(`workerTasks=${input.counts.workerTasks ?? 0}`);
+
+  const activeWorkerTasks = input.workerTasks.filter((task) => task.status === "queued" || task.status === "running");
+  const failedWorkerTasks = input.workerTasks.filter((task) => task.status === "failed");
+  if (activeWorkerTasks.length > 0) {
+    evidence.push(
+      `activeWorkerTasks=${activeWorkerTasks.map((task) => `${task.workerType}:${task.status}:${task.leaseOwner ?? "-"}`).join(", ")}`,
+    );
+  }
+  if (failedWorkerTasks.length > 0) {
+    recommend(
+      "trainingConfig",
+      3,
+      `${failedWorkerTasks.length} worker task(s) failed.`,
+      "Inspect failed worker task error summaries and rerun only after the underlying worker/config issue is fixed.",
+      `failedWorkerTasks=${failedWorkerTasks.map((task) => `${task.workerType}:${task.targetId}:${task.errorSummary ?? "-"}`).join(" | ")}`,
+    );
+  }
 
   if (missingCaptions.length > 0) {
     recommend(
@@ -1201,8 +1284,23 @@ function buildDiagnosticSummary(input: {
       trainingRuns: input.counts.trainingRuns,
       benchmarkRuns: input.counts.benchmarkRuns,
       promotionDecisions: input.counts.promotionDecisions,
+      workerTasks: input.counts.workerTasks ?? 0,
     },
   };
+}
+
+function formatTrainingTemplateLabel(templateId: string | null, snapshot: unknown) {
+  if (!templateId) {
+    return "Legacy / no template";
+  }
+
+  const record = snapshot && typeof snapshot === "object" && !Array.isArray(snapshot)
+    ? snapshot as Record<string, unknown>
+    : {};
+  const name = typeof record.name === "string" && record.name.trim() ? record.name : "LoRA Template";
+  const key = typeof record.key === "string" && record.key.trim() ? record.key : templateId;
+
+  return `${name} / ${key}`;
 }
 
 function pushUnique(items: string[], value: string) {
