@@ -10,12 +10,15 @@ import {
   ClipboardCheck,
   Eye,
   ImageIcon,
+  Loader2,
+  Play,
   Square,
   Star,
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { keepImages, trashImages, runSection } from "@/lib/actions";
+import { BatchSizeQuickFill } from "@/components/batch-size-quick-fill";
 import { ResultsGalleryProvider } from "./results-gallery";
 
 const RUN_STATUS_BADGE: Record<string, string> = {
@@ -44,24 +47,30 @@ type RunData = {
 export function ResultsGrid({
   runs,
   sectionId,
+  initialBatchSize,
 }: {
   runs: RunData[];
   sectionId: string;
+  initialBatchSize: number;
 }) {
   const router = useRouter();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [isPending, startTransition] = useTransition();
   const [lastTrashedIds, setLastTrashedIds] = useState<string[]>([]);
-  const [tempBatchSize, setTempBatchSize] = useState(2);
+  const [tempBatchSize, setTempBatchSize] = useState(initialBatchSize);
 
   const handleQuickRun = useCallback(async () => {
-    try {
-      await runSection(sectionId, tempBatchSize);
-      toast.success(`已提交运行 (batch ${tempBatchSize})`);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "运行失败");
-    }
-  }, [sectionId, tempBatchSize]);
+    if (isPending) return;
+    startTransition(async () => {
+      try {
+        await runSection(sectionId, tempBatchSize);
+        toast.success(`已提交运行 (batch ${tempBatchSize})`);
+        router.refresh();
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "运行失败");
+      }
+    });
+  }, [isPending, router, sectionId, startTransition, tempBatchSize]);
 
   // Flatten all images for the lightbox
   const allImages = runs.flatMap((run) =>
@@ -236,6 +245,41 @@ export function ResultsGrid({
       {({ openLightbox, isFeatured, isFeatured2, isCover }) => {
         return (
         <div className="space-y-6">
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <div className="text-xs font-medium text-zinc-300">临时运行</div>
+                <div className="mt-0.5 text-[11px] text-zinc-500">Batch {tempBatchSize}</div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[10px] uppercase text-zinc-500">Batch</span>
+                <BatchSizeQuickFill
+                  onSelect={setTempBatchSize}
+                  currentValue={tempBatchSize}
+                  disabled={isPending}
+                  size="sm"
+                />
+                <button
+                  type="button"
+                  data-results-run-section
+                  disabled={isPending}
+                  onClick={handleQuickRun}
+                  className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-sky-500/20 bg-sky-500/10 px-3 py-1.5 text-xs font-medium text-sky-300 transition hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                  title={isPending ? "提交中..." : "运行本节"}
+                >
+                  {isPending ? <Loader2 className="size-3 animate-spin" /> : <Play className="size-3" />}
+                  {isPending ? "提交中..." : "运行本节"}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {runs.length === 0 && (
+            <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-8 text-center text-sm text-zinc-500">
+              暂无运行结果
+            </div>
+          )}
+
           {/* Image grid by run */}
           {runs.map((run) => {
             const runPendingImages = run.images.filter((img) => img.status === "pending");

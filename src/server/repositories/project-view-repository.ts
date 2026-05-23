@@ -347,6 +347,7 @@ export type SectionResultsData = {
   projectTitle: string;
   sectionId: string;
   sectionName: string;
+  batchSize: number | null;
   sectionFolderId: string | null;
   previousSection: { id: string; name: string } | null;
   nextSection: { id: string; name: string } | null;
@@ -489,6 +490,7 @@ export async function getSectionResults(sectionId: string): Promise<SectionResul
     projectTitle: pos.project.title,
     sectionId: pos.id,
     sectionName: pos.name || `小节`,
+    batchSize: pos.batchSize,
     sectionFolderId: pos.folderId,
     previousSection,
     nextSection,
