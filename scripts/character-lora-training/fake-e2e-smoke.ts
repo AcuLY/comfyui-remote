@@ -499,6 +499,7 @@ async function main() {
     }, `section ${section.key} redacted request artifact`);
     const imagePath = `${outputDir}/candidate-001.png`;
     const metadataPath = `${outputDir}/candidate-001.metadata.json`;
+    const workerRequestPath = `${outputDir}/provider-request.redacted.json`;
     const responseSummaryPath = `${outputDir}/response-summary.json`;
     const imageBytes = Buffer.concat([
       PLACEHOLDER_PNG,
@@ -510,6 +511,27 @@ async function main() {
       job.artifactRoot,
       metadataPath,
       Buffer.from(JSON.stringify({ sectionId: section.id, sectionKey: section.key }, null, 2), "utf8"),
+    );
+    await writeJobArtifact(
+      services.artifactService,
+      job.artifactRoot,
+      workerRequestPath,
+      Buffer.from(JSON.stringify({
+        provider: "mock-local",
+        hostModel: sectionRun.hostModel,
+        imageModel: sectionRun.imageModel,
+        auth: { provider: { source: "none", hasBearerToken: false, hasRefreshToken: false } },
+      }, null, 2), "utf8"),
+    );
+    await writeJobArtifact(
+      services.artifactService,
+      job.artifactRoot,
+      responseSummaryPath,
+      Buffer.from(JSON.stringify({
+        provider: "mock-local",
+        httpStatus: 200,
+        auth: { provider: { source: "none", hasBearerToken: false, hasRefreshToken: false } },
+      }, null, 2), "utf8"),
     );
 
     await services.phase3Service.completeCharacterLoraTask(leasedTask.id, {
@@ -524,11 +546,14 @@ async function main() {
             metadataPath,
           },
         ],
-        requestRedactedPath: payload.request.outputDir + "/request.redacted.json",
+        requestRedactedPath: workerRequestPath,
         responseSummaryPath,
         elapsedMs: 1,
       },
     });
+    const completedResponseSummary = readJsonRecord(await readJobJsonArtifact(job.artifactRoot, responseSummaryPath));
+    assert(readJsonRecord(completedResponseSummary.workerRequest).provider === "mock-local", `section ${section.key} should preserve worker request summary`);
+    assert(readJsonRecord(completedResponseSummary.workerResponseSummary).httpStatus === 200, `section ${section.key} should preserve worker response summary`);
 
     const sectionImages = await services.phase3Service.listCharacterLoraCandidateImages(job.id, {
       sectionId: section.id,
@@ -1307,6 +1332,11 @@ async function main() {
   assert(reportLineageRun.id === generatedCandidate.generationRunId, "candidate lineage should embed source generation run");
   assert(reportLineageRun.provider === "mock-local", "candidate lineage should include generation provider");
   assert(reportLineageRun.imageModel === "gpt-image-2", "candidate lineage should include image model");
+  const reportGenerationRun = report.generationRuns.find((run) => run.id === generatedCandidate.generationRunId);
+  assert(reportGenerationRun, "report should include generated candidate source run");
+  const reportRunResponseSummary = readJsonRecord(reportGenerationRun.responseSummary);
+  assert(readJsonRecord(reportRunResponseSummary.workerRequest).provider === "mock-local", "report should preserve worker request summary");
+  assert(readJsonRecord(reportRunResponseSummary.workerResponseSummary).httpStatus === 200, "report should preserve worker response summary");
   assertPromptIncludes(reportLineageRun.visualPrompt, "candidate report lineage generation run", [
     "Prompt card final draft:",
     "Smoke instruction",

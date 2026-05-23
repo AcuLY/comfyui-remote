@@ -2804,6 +2804,7 @@ export async function completeImageGenerationWorkerTask(input: {
   taskId: string;
   leaseOwner?: string;
   output: CharacterLoraImageGenerationOutput;
+  responseSummary: Prisma.InputJsonValue;
   imageArtifacts: Array<{
     relativePath: string;
     absolutePath: string;
@@ -2949,7 +2950,7 @@ export async function completeImageGenerationWorkerTask(input: {
       data: {
         status: CharacterLoraRunStatus.done,
         responseSummary: toInputJsonValue({
-          ...input.output,
+          ...asJsonRecord(input.responseSummary),
           responseSummaryArtifactId: responseArtifact.id,
         }),
         errorSummary: null,
@@ -4549,4 +4550,10 @@ function extractCompletionStep(output: CharacterLoraTrainingCompleteOutput) {
 
 function toInputJsonValue(value: unknown) {
   return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
+}
+
+function asJsonRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : { value };
 }

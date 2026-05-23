@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { copyFile } from "node:fs/promises";
+import { copyFile, readFile } from "node:fs/promises";
 import path from "node:path";
 
 import { Prisma } from "@/generated/prisma";
@@ -363,14 +363,23 @@ export async function completeCharacterLoraTask(taskId: string, input: unknown) 
 
   const imageOutput = parseWithSchema(characterLoraImageGenerationOutputSchema, parsed.output);
   const job = await getExistingJob(payload.jobId);
+  const [workerRequest, workerResponseSummary] = await Promise.all([
+    readJsonArtifactIfExists(job.artifactRoot, imageOutput.requestRedactedPath),
+    readJsonArtifactIfExists(job.artifactRoot, imageOutput.responseSummaryPath),
+  ]);
+  const responseSummaryPayload = redactCharacterLoraProviderPayload({
+    completedAt: new Date().toISOString(),
+    generationRunId: payload.generationRunId,
+    requestRedactedPath: imageOutput.requestRedactedPath,
+    responseSummaryPath: imageOutput.responseSummaryPath,
+    workerRequest,
+    workerResponseSummary,
+    output: imageOutput,
+  });
   const responseSummary = await writeCharacterLoraJsonArtifact(
     job.artifactRoot,
     imageOutput.responseSummaryPath,
-    redactCharacterLoraProviderPayload({
-      completedAt: new Date().toISOString(),
-      generationRunId: payload.generationRunId,
-      output: imageOutput,
-    }),
+    responseSummaryPayload,
   );
   const imageArtifacts = await Promise.all(
     imageOutput.images.map(async (image) => {
@@ -396,6 +405,7 @@ export async function completeCharacterLoraTask(taskId: string, input: unknown) 
     taskId: id,
     leaseOwner: parsed.leaseOwner,
     output: imageOutput,
+    responseSummary: toInputJsonValue(responseSummaryPayload),
     imageArtifacts,
     responseSummaryArtifact: {
       relativePath: responseSummary.relativePath,
@@ -1409,6 +1419,21 @@ async function statArtifactIfExists(jobRoot: string, relativePath: string) {
   } catch {
     return null;
   }
+}
+
+async function readJsonArtifactIfExists(jobRoot: string, relativePath: string) {
+  const resolved = resolveCharacterLoraArtifactPath(jobRoot, relativePath);
+
+  try {
+    return JSON.parse(await readFile(resolved.absolutePath, "utf8")) as unknown;
+  } catch (error) {
+    if (isFileNotFoundError(error)) return null;
+    throw error;
+  }
+}
+
+function isFileNotFoundError(error: unknown) {
+  return Boolean(error && typeof error === "object" && "code" in error && error.code === "ENOENT");
 }
 
 function normalizeId(value: string, fieldName: string) {
