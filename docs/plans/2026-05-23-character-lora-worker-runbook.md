@@ -113,6 +113,11 @@ cmd /c npx tsx scripts/character-lora-training/training-worker.ts --once --dry-r
 
 真实训练完成并开启 post-training benchmark 时，Manager 会创建 `workerType=benchmark`、`targetType=benchmarkRun` 的 worker task。Benchmark worker 会读取 job report 中对应的 `benchmarkRunId`，解析 `testProjectId`、`checkpointMatrix` 和 `weightMatrix`，提交临时测试 project，然后默认等待这批 run 的 `latestRun` 全部进入 `done` 或 `failed`。
 
+Benchmark 可从两个 HTTP 入口创建：
+
+- `POST /api/character-lora-training/training-runs/:trainingRunId/benchmark-runs`：显式从某个 training run 启动。
+- `POST /api/character-lora-training/jobs/:jobId/benchmark-runs`：从 job 上下文启动；body 中可选 `trainingRunId`，且该 run 必须属于当前 job。未传时 Manager 会选择该 job 最新的 `done` 且有 `finalSafetensorsArtifactId` 的 training run。两种入口最终都调用同一个 benchmark enqueue service，因此完成状态、final safetensors、ProjectTemplate、ComfyUI busy 和 GPU lock 规则不会分叉。
+
 Benchmark enqueue 会先检查当前 ComfyUI queued/running 数量和 active LoRA `GpuTaskLock`。`queuePolicy=reject_when_busy` 时，只要 ComfyUI 忙或已有 active LoRA GPU lock，就返回 409，details 包含 `comfyQueue` 和 `gpuTaskLocks`；`queue_when_busy` / `ignore_busy` 会继续创建 benchmark，但会把 busy 状态写入 warnings 和 benchmark lock metadata。非 `dryRun` / 非 `skipQueue` 的 benchmark task 会创建 `taskType=benchmark`、`ownerType=character_lora_benchmark_run`、`ownerId=benchmarkRun.id` 的 active GPU lock；benchmark complete 或 worker fail 会释放该 lock。`dryRun` / `skipQueue` 不会创建 GPU lock。
 
 真实 benchmark（非 `dryRun` 且非 `skipQueue`）必须复用可用 ProjectTemplate：显式 `templateId` 必须存在且至少包含 7 个 sections；未显式指定时会自动查找 `角色 lora 测试` / `角色 LoRA 测试` / `character lora`，同样要求至少 7 个 sections。缺失或 section 数不足时 benchmark enqueue 返回 409，不能静默创建 fallback project。fallback sections 或不足 7 sections 的模板只允许在 `dryRun` / `skipQueue` 调试路径使用，并且不能作为 approved promotion evidence。
@@ -158,6 +163,18 @@ cmd /c npx tsx scripts/character-lora-training/benchmark-worker.ts --once --skip
 - `diagnosticSuggestions`：包含失败 run 或 submit-only 的人工复核提示。
 
 Benchmark worker 不调用通用 worker task complete。`completeCharacterLoraBenchmarkRunInRepository` 会把同一 `targetType=benchmarkRun`、`targetId=benchmarkRun.id` 的 queued/running worker task 标记为 `done`。
+
+Benchmark 完成并已生成 `reportArtifactId` 后，可以清理 PRD 5.12 的临时测试 project/preset：
+
+```powershell
+Invoke-WebRequest -Method POST `
+  -Uri "http://127.0.0.1:3000/api/character-lora-training/benchmark-runs/<benchmarkRunId>/cleanup" `
+  -Headers @{ "x-api-token" = $env:AUTH_TOKEN } `
+  -ContentType "application/json" `
+  -Body '{ "dryRun": true }'
+```
+
+实际 cleanup 去掉 `dryRun` 或传 `{ "dryRun": false }`。Manager 会保留 `CharacterLoraBenchmarkRun.testProjectId` / `testPresetId` 原始值，并写入 `testProjectCleanedAt`、`testPresetCleanedAt` 和 `cleanupSummary`；training run、LoRA asset、safetensors artifact、benchmark report artifact 不会删除。如果临时 test project 下仍有 queued/running `Run`，cleanup 返回 409。重复 cleanup 是幂等操作。
 
 ## 安全注意事项
 
