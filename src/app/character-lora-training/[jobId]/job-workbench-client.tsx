@@ -2696,6 +2696,7 @@ function CandidateImageCard({
   onReview: (status: ReviewWritableStatus) => void;
 }) {
   const rejectReasons = extractRejectReasons(image.rejectReasons);
+  const rejectSuggestions = getRejectReasonSuggestions(rejectReasons);
   const sectionCanonicalVersion = section ? canonicalVersionById.get(section.canonicalVersionId) : null;
   const runCanonicalVersion = generationRun
     ? canonicalVersionByArtifactId.get(getRunCanonicalArtifactId(generationRun.inputImages) ?? "")
@@ -2831,6 +2832,12 @@ function CandidateImageCard({
             ))}
           </div>
         ) : null}
+        {rejectSuggestions.length > 0 ? (
+          <div className="rounded-lg border border-amber-400/20 bg-amber-500/10 px-2 py-1.5 text-[11px] text-amber-100">
+            <span className="font-medium">rerun suggestions: </span>
+            {rejectSuggestions.join(" ")}
+          </div>
+        ) : null}
         <form action={onCaption} className="grid gap-2">
           <input
             name="captionDraft"
@@ -2953,6 +2960,13 @@ function formatInputImageRole(value: string) {
 
 function formatRejectReason(value: string) {
   return REJECT_REASON_OPTIONS.find((reason) => reason.value === value)?.label ?? value;
+}
+
+function getRejectReasonSuggestions(values: string[]) {
+  return values.flatMap((value) => {
+    const option = REJECT_REASON_OPTIONS.find((reason) => reason.value === value);
+    return option?.suggestion ? [option.suggestion] : [];
+  });
 }
 
 function BenchmarkTemplateStatusPanel({
