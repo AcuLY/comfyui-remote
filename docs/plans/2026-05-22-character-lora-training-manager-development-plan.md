@@ -1115,6 +1115,7 @@ sequenceDiagram
 - 2026-05-23：补齐 PRD 5.11 GPU 锁状态可见性。工作台训练区的 GPU task lock banner 展示当前 task type、owner type/id、startedAt 和从 lock metadata `leaseDurationSeconds` 推导出的预计 lease 释放时间；无法推导时显示“未估算”，避免只展示一个 owner id。
 - 2026-05-23：补齐 PRD 5.8 text encoder cache 冲突规则的 dry-run 证据。训练配置启用 `cacheTextEncoderOutputs` 时，service 会把 caption shuffle/dropout/text encoder dropout 相关 expert 字段强制归零或关闭，并把该处理写入 `dry-run-summary.json` 的 warnings；fake e2e smoke 覆盖 resolved config 和 warning。
 - 2026-05-23：补齐 PRD 5.1 创建 job 时上传/选择参考图的入口。新建训练任务表单支持一次选择多张初始参考图并标记 role；创建 job 后立即通过 source image upload service 写 artifact、sha256、provenance，再进入详情页继续 canonical / Prompt Card / section 流程。
+- 2026-05-23：补齐 PRD 5.13 失败诊断返工入口的 UI 缺口。Report / Diagnostics 面板根据 `recommendedReturnPoint` 给出“打开返工入口”按钮，跳转到 source、canonical、section、dataset/caption、Prompt Card、training config 或 benchmark/promotion 的现有人工确认表单；按钮只定位入口，不自动创建新的 dataset revision、training run 或 promotion run，继续由用户在目标表单确认执行。
 
 ## 12. 验证计划
 

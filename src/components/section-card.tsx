@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 
-export function SectionCard({ title, subtitle, actions, children, className }: { title: ReactNode; subtitle?: string; actions?: ReactNode; children: ReactNode; className?: string }) {
+export function SectionCard({ id, title, subtitle, actions, children, className }: { id?: string; title: ReactNode; subtitle?: string; actions?: ReactNode; children: ReactNode; className?: string }) {
   return (
-    <section className={`w-full min-w-0${className ? ` ${className}` : ""}`}>
+    <section id={id} className={`w-full min-w-0 scroll-mt-20${className ? ` ${className}` : ""}`}>
       <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
         <div className="min-w-0">
           <h2 className="text-sm font-semibold text-white">{title}</h2>

@@ -178,6 +178,29 @@ const IMAGE_SIZE_OPTIONS = ["1024x1536", "1024x1024", "1536x1024"] as const;
 const IMAGE_QUALITY_OPTIONS = ["high", "medium", "low"] as const;
 const TRAINING_PRECISION_OPTIONS = ["", "bf16", "fp16", "fp32"] as const;
 const PROMOTION_RETURN_POINTS = ["benchmark_review", "dataset_ready", "trained"] as const;
+const DIAGNOSTIC_RETURN_POINTS = ["source", "canonical", "sections", "dataset", "caption", "prompt", "trainingConfig", "weightSelection"] as const;
+type DiagnosticReturnPoint = (typeof DIAGNOSTIC_RETURN_POINTS)[number];
+const DIAGNOSTIC_RETURN_ACTIONS: Record<DiagnosticReturnPoint, { targetId: string; label: string; description: string }> = {
+  source: { targetId: "character-lora-source", label: "Upload or register source anchors", description: "Use the source upload/register controls before generating canonical images or datasets." },
+  canonical: { targetId: "character-lora-canonical", label: "Generate or select a canonical anchor", description: "Create a new canonical candidate or pick a non-rejected canonical version as the identity anchor." },
+  sections: { targetId: "character-lora-sections", label: "Regenerate weak training sections", description: "Create section reruns with explicit user instructions and reference images." },
+  dataset: { targetId: "character-lora-review-dataset", label: "Review images and freeze a new dataset", description: "Keep/reject candidates, then explicitly freeze a new dataset revision." },
+  caption: { targetId: "character-lora-review-dataset", label: "Fix captions and freeze a new dataset", description: "Edit caption drafts for kept images before explicitly freezing a new dataset revision." },
+  prompt: { targetId: "character-lora-prompt-card", label: "Create a new Prompt Card version", description: "Promote global fixes into a new Prompt Card version before rerunning affected sections." },
+  trainingConfig: { targetId: "character-lora-training", label: "Review config and enqueue training", description: "Adjust the selected dataset and training overrides, then enqueue a new training run manually." },
+  weightSelection: { targetId: "character-lora-benchmark-promotion", label: "Review benchmark weights and promotion", description: "Compare checkpoint/weight evidence, then create a promotion decision manually." },
+};
+
+function normalizeDiagnosticReturnPoint(value: string): DiagnosticReturnPoint {
+  for (const point of DIAGNOSTIC_RETURN_POINTS) {
+    if (point === value) {
+      return point;
+    }
+  }
+
+  return "source";
+}
+
 const PROMOTION_VARIANTS = [
   { slug: "default", label: "default" },
   { slug: "underwear", label: "underwear" },
@@ -713,6 +736,8 @@ export function JobWorkbenchClient({
   const isPromotionDraftApprovalBlocked =
     promotionDecisionStatus === "approved" && (!selectedPromotionApproval || !selectedPromotionApproval.canApprove);
   const rejectSuggestion = REJECT_REASON_OPTIONS.find((reason) => reason.value === rejectReason)?.suggestion ?? "";
+  const diagnosticReturnPoint = normalizeDiagnosticReturnPoint(report.diagnosticSummary.recommendedReturnPoint);
+  const diagnosticReturnAction = DIAGNOSTIC_RETURN_ACTIONS[diagnosticReturnPoint];
 
   useEffect(() => {
     setPostTrainingBenchmarkTemplateId(benchmarkTemplateDefaultId);
@@ -748,6 +773,21 @@ export function JobWorkbenchClient({
 
   function isBusy(key: string) {
     return isPending && pendingKey === key;
+  }
+
+  function handleDiagnosticReturn(point: DiagnosticReturnPoint) {
+    const action = DIAGNOSTIC_RETURN_ACTIONS[point];
+    const target = document.getElementById(action.targetId);
+    if (!target) {
+      toast.error("Diagnostic return target is not available");
+      return;
+    }
+
+    if (point === "caption") {
+      setReviewStatusFilter("keep");
+    }
+
+    target.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   function handleUpload(formData: FormData) {
@@ -1198,7 +1238,7 @@ export function JobWorkbenchClient({
         </div>
       </SectionCard>
 
-      <SectionCard title="Source" subtitle="上传原始参考图。">
+      <SectionCard id="character-lora-source" title="Source" subtitle="上传原始参考图。">
         <form action={handleUpload} className="grid gap-2 rounded-lg border border-white/10 bg-white/[0.03] p-3 md:grid-cols-[1fr_150px_90px_auto]">
           <input
             name="file"
@@ -1226,7 +1266,7 @@ export function JobWorkbenchClient({
         />
       </SectionCard>
 
-      <SectionCard title="Canonical" subtitle="生成、注册和选择标准图版本。">
+      <SectionCard id="character-lora-canonical" title="Canonical" subtitle="生成、注册和选择标准图版本。">
         <div className="grid gap-3 lg:grid-cols-4">
           <div className="grid gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-3">
             <div className="grid gap-2 sm:grid-cols-3">
@@ -1339,7 +1379,7 @@ export function JobWorkbenchClient({
         />
       </SectionCard>
 
-      <SectionCard title="Prompt Card" subtitle="保存角色特征和最终提示词草稿。">
+      <SectionCard id="character-lora-prompt-card" title="Prompt Card" subtitle="保存角色特征和最终提示词草稿。">
         {currentPromptCanonicalIsStale ? (
           <div className="mb-3 rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
             当前 Prompt Card v{currentPrompt?.version} 仍绑定 canonical v{currentPromptCanonicalVersion?.version ?? "?"}；
@@ -1409,7 +1449,7 @@ export function JobWorkbenchClient({
         />
       </SectionCard>
 
-      <SectionCard title="Sections" subtitle="从模板实例化，并对单个 section 入队生成候选图。">
+      <SectionCard id="character-lora-sections" title="Sections" subtitle="从模板实例化，并对单个 section 入队生成候选图。">
         <form action={handleInstantiateSections} className="rounded-lg border border-white/10 bg-white/[0.03] p-3">
           <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
             {sectionTemplates.map((template) => (
@@ -1619,7 +1659,7 @@ export function JobWorkbenchClient({
         </div>
       </SectionCard>
 
-      <SectionCard title="Review / Dataset" subtitle="审核候选图、编辑 caption、冻结数据集。">
+      <SectionCard id="character-lora-review-dataset" title="Review / Dataset" subtitle="审核候选图、编辑 caption、冻结数据集。">
         <div className="mb-3 grid gap-2 rounded-lg border border-white/10 bg-white/[0.03] p-3 lg:grid-cols-[1fr_1fr_1.2fr]">
           <select value={reviewSectionFilter} onChange={(event) => setReviewSectionFilter(event.target.value)} className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white">
             <option value="all">全部小节</option>
@@ -1721,7 +1761,7 @@ export function JobWorkbenchClient({
         />
       </SectionCard>
 
-      <SectionCard title="Training" subtitle="用最新 frozen dataset 入队训练，可查看 GPU 锁并取消运行。">
+      <SectionCard id="character-lora-training" title="Training" subtitle="用最新 frozen dataset 入队训练，可查看 GPU 锁并取消运行。">
         {gpuLock.current ? <GpuLockBanner lock={gpuLock.current} /> : null}
         <form action={handleTrainingEnqueue} className="grid gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-3 md:grid-cols-3 lg:grid-cols-[1fr_130px_130px_160px_auto]">
           <select name="datasetRevisionId" defaultValue={latestFrozenRevision?.id ?? ""} className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white">
@@ -1928,7 +1968,7 @@ export function JobWorkbenchClient({
         />
       </SectionCard>
 
-      <SectionCard title="Benchmark / Promotion" subtitle="训练完成后做基准测试、创建发布决策并发布到预设。">
+      <SectionCard id="character-lora-benchmark-promotion" title="Benchmark / Promotion" subtitle="训练完成后做基准测试、创建发布决策并发布到预设。">
         <BenchmarkTemplateStatusPanel
           status={benchmarkTemplateStatus}
           loading={isBusy("benchmark.template.ensure")}
@@ -2161,6 +2201,21 @@ export function JobWorkbenchClient({
               <Info label="Return point" value={report.diagnosticSummary.recommendedReturnPoint} />
               <Info label="Risk" value={report.diagnosticSummary.risk} />
               <Info label="Latest report" value={report.latestReportArtifacts[0]?.relativePath ?? "-"} mono />
+            </div>
+            <div className="mt-3 rounded-lg border border-sky-400/20 bg-sky-500/10 p-3 text-xs text-sky-100">
+              <div className="font-medium">{diagnosticReturnAction.label}</div>
+              <div className="mt-1 text-sky-100/80">{diagnosticReturnAction.description}</div>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <MiniButton
+                  icon={RefreshCw}
+                  label="Open return entry"
+                  onClick={() => handleDiagnosticReturn(diagnosticReturnPoint)}
+                  disabled={isPending}
+                />
+                <span className="text-[11px] text-sky-100/70">
+                  No dataset revision, training run, or promotion run is created until you confirm in the target form.
+                </span>
+              </div>
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
               <ActionButton
