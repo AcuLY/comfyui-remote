@@ -343,6 +343,9 @@ flowchart LR
 | `reportArtifactId` | `String?` | benchmark report。 |
 | `recommendedWeight` | `Float?` | 推荐默认 weight。 |
 | `resultSummary` | `Json?` | 7 小节结果、失败原因、推荐返工点。 |
+| `testPresetCleanedAt` | `DateTime?` | PRD 5.12 cleanup timestamp for the temporary test preset; `testPresetId` stays for audit. |
+| `testProjectCleanedAt` | `DateTime?` | PRD 5.12 cleanup timestamp for the temporary test project; `testProjectId` stays for audit. |
+| `cleanupSummary` | `Json?` | Cleanup request/result summary, including deleted/missing/skipped resources and preserved artifact ids. |
 | `startedAt` / `finishedAt` | `DateTime?` | 运行时间。 |
 | `createdAt` / `updatedAt` | `DateTime` | 标准时间戳。 |
 
@@ -582,6 +585,7 @@ HTTP API 面向 agent、worker 和需要 fetch 的客户端。
 | `POST` | `/api/character-lora-training/training-runs/:trainingRunId/benchmark-runs` | 从 training run 启动 benchmark。 |
 | `POST` | `/api/character-lora-training/jobs/:jobId/benchmark-runs` | 从 job 级上下文启动 benchmark。 |
 | `POST` | `/api/character-lora-training/benchmark-runs/:benchmarkRunId/complete` | benchmark worker/debug 完成入口。 |
+| `POST` | `/api/character-lora-training/benchmark-runs/:benchmarkRunId/cleanup` | 清理 PRD 5.12 temporary test project/preset；默认清理两者，支持 `{ "dryRun": true }`，保留 training/LoRA/safetensors/report artifacts 与原始 test ids。 |
 | `POST` | `/api/character-lora-training/benchmark-runs/:benchmarkRunId/decisions` | 保存审核决策。 |
 | `GET` | `/api/character-lora-training/jobs/:jobId/promotion-decisions` | job promotion decision 列表。 |
 | `GET` | `/api/character-lora-training/jobs/:jobId/report` | job report JSON；`?format=markdown` 返回 Markdown。 |
@@ -591,6 +595,18 @@ HTTP API 面向 agent、worker 和需要 fetch 的客户端。
 | `POST` | `/api/character-lora-training/worker/tasks/:taskId/heartbeat` | worker 心跳和进度。 |
 | `POST` | `/api/character-lora-training/worker/tasks/:taskId/complete` | worker 成功回写 artifact references。 |
 | `POST` | `/api/character-lora-training/worker/tasks/:taskId/fail` | worker 失败回写 error summary。 |
+
+Benchmark cleanup contract:
+
+```json
+{
+  "project": true,
+  "preset": true,
+  "dryRun": false
+}
+```
+
+Response returns `{ benchmarkRun, cleanup, blockers, dryRun, canCleanup }`. Actual cleanup requires `status=done` and an existing `reportArtifactId`; queued/running `Run` rows under the temp test project return `409`. Cleanup is idempotent and never deletes `CharacterLoraTrainingRun`, `LoraAsset`, `CharacterLoraArtifact` safetensors, benchmark report artifacts, or the original `testProjectId`/`testPresetId` fields.
 
 ### 6.4 关键 payload 示例
 
@@ -778,7 +794,7 @@ export type ImageGenerationResult = {
 硬规则：
 - 不直接创建正式 preset。
 - benchmark 图片走现有 `Project` / `Run` / `ImageResult`，以便复用队列、结果页和审图能力。
-- 临时测试 preset/project 可标记为临时或归档，但 report 和训练产物保留。
+- 临时测试 preset/project 可清理；必须在 benchmark report artifact 存在后执行，并通过 `cleanupSummary` / `testPresetCleanedAt` / `testProjectCleanedAt` 保留审计摘要，training run、LoRA asset、safetensors artifact、benchmark report artifact 保留。
 
 ## 8. 核心状态机
 
@@ -987,7 +1003,7 @@ sequenceDiagram
 - `defaultRecommendedWeight` 初始化所有 variant；如 benchmark 明确证明某些 variant 更适合低 weight，可把 resolved weight 写入单个 variant 的 `lora1`，但运行时不再保留 weight matrix。
 - 半脱相关 variant 的 `linkedVariants` 继续链接服装半脱类 preset；裸 variant 继续链接全裸类 preset。具体目标 preset/variant 用可配置 slug 或人工选择，不硬编码数据库 id。
 - `lora2` 是否写入“角色 LoRA + breast size slider weight 0”按现有角色 preset 规范确认后执行；如果现有规范已变化，以当前 `PresetVariant.lora2` 结构为准。
-- promotion 不修改历史 benchmark project；临时测试项目可归档，但 `CharacterLoraBenchmarkRun.testProjectId` 和 report 保留。
+- promotion 不修改历史 benchmark project；临时测试项目/测试 preset 可在 report artifact 存在后清理，但 `CharacterLoraBenchmarkRun.testProjectId` / `testPresetId`、cleanup 字段和 report 保留。
 
 ## 11. 分阶段实施计划
 
@@ -1122,6 +1138,7 @@ sequenceDiagram
 - 2026-05-23：补齐 PRD 5.7 从 reject reason 生成下一轮重生建议的卡片级可见性。候选图卡片在已有 reject reason chip 外，直接把每个 reject reason 映射为 rerun suggestion 文案，便于用户把问题转成下一轮 section rerun 的 userInstruction。
 - 2026-05-23：补齐 PRD 5.4 复制训练集模板的可调目标数入口。工作台复制 section template 时可覆盖 `targetCandidateCount` 与 `targetKeepCount`，直接复用 service 侧 `targetKeepCount <= targetCandidateCount` 校验，方便复制模板后调整候选/keep 目标。
 
+- 2026-05-23：补齐 PRD 5.12 临时 benchmark preset/project cleanup。`CharacterLoraBenchmarkRun` 增加 cleanup 时间与摘要字段；新增 `POST /api/character-lora-training/benchmark-runs/:benchmarkRunId/cleanup` 和 server action；实际 cleanup 要求 benchmark done 且 report artifact 存在，queued/running project runs 返回 `409`；保留 training run、LoRA asset、safetensors artifact、benchmark report artifact 与原始 test ids；fake e2e 覆盖 dryRun、实际 cleanup、重复 cleanup 幂等和 promotion/report 后续可用。
 ## 12. 验证计划
 
 ### 自动化验证
@@ -1143,7 +1160,7 @@ sequenceDiagram
 4. 生成至少 2 个 section run，批量 keep/reject，检查 counts。
 5. freeze dataset rev-001，确认 pending/reject 未收录。
 6. 用 fake training worker 生成 dummy safetensors artifact 和 hashes.json，验证训练状态推进。
-7. 用真实或 fake benchmark 创建临时 project，确认 Run/ImageResult 仍走现有 queue。
+7. 用真实或 fake benchmark 创建临时 project，确认 Run/ImageResult 仍走现有 queue；完成 benchmark/report 后执行 cleanup，确认临时 project/preset 被清理而 benchmark run、test ids、LoRA asset、safetensors artifact 和 report artifact 仍保留，重复 cleanup 幂等。
 8. 保存 promotion decision，执行 promotion，确认 `Preset` / 7 `PresetVariant` / `LoraAsset` 关系。
 9. 用正式 preset 创建普通项目，确认 lora1/lora2 JSON 能被现有项目编辑器和 workflow builder 解析。
 

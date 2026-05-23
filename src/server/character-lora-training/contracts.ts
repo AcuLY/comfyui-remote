@@ -476,6 +476,24 @@ export const characterLoraBenchmarkCompleteRequestSchema = z.object({
   report: characterLoraBenchmarkReportRefSchema.optional(),
 }).strict();
 
+export const characterLoraBenchmarkCleanupRequestSchema = z.object({
+  project: z.boolean().default(true),
+  preset: z.boolean().default(true),
+  dryRun: z.boolean().default(false),
+}).strict();
+
+export const characterLoraBenchmarkCleanupResponseSchema = z.object({
+  dryRun: z.boolean(),
+  canCleanup: z.boolean(),
+  benchmarkRun: z.unknown(),
+  cleanup: jsonObjectSchema,
+  blockers: z.array(z.object({
+    code: z.string().trim().min(1),
+    message: z.string().trim().min(1),
+    details: z.unknown().optional(),
+  }).strict()).default([]),
+}).strict();
+
 export const characterLoraPromotionReturnPointSchema = z.enum([
   "dataset",
   "caption",
@@ -525,6 +543,8 @@ export type CharacterLoraTrainingCompleteOutput = z.infer<typeof characterLoraTr
 export type CharacterLoraTrainingCancelRequest = z.infer<typeof characterLoraTrainingCancelRequestSchema>;
 export type CharacterLoraBenchmarkEnqueueRequest = z.infer<typeof characterLoraBenchmarkEnqueueRequestSchema>;
 export type CharacterLoraBenchmarkCompleteRequest = z.infer<typeof characterLoraBenchmarkCompleteRequestSchema>;
+export type CharacterLoraBenchmarkCleanupRequest = z.infer<typeof characterLoraBenchmarkCleanupRequestSchema>;
+export type CharacterLoraBenchmarkCleanupResponse = z.infer<typeof characterLoraBenchmarkCleanupResponseSchema>;
 export type CharacterLoraPromotionDecisionCreateRequest = z.infer<typeof characterLoraPromotionDecisionCreateRequestSchema>;
 export type CharacterLoraPromotionReturnPoint = z.infer<typeof characterLoraPromotionReturnPointSchema>;
 export type CharacterLoraPromoteRequest = z.infer<typeof characterLoraPromoteRequestSchema>;

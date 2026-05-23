@@ -6,15 +6,18 @@ import { Prisma } from "@/generated/prisma";
 import { env } from "@/lib/env";
 import {
   characterLoraBenchmarkCompleteRequestSchema,
+  characterLoraBenchmarkCleanupRequestSchema,
   characterLoraBenchmarkEnqueueRequestSchema,
   characterLoraPromotionDecisionCreateRequestSchema,
   characterLoraPromoteRequestSchema,
   characterLoraWorkerTaskPayloadSchema,
   type CharacterLoraBenchmarkCompleteRequest,
+  type CharacterLoraBenchmarkCleanupRequest,
   type CharacterLoraBenchmarkEnqueueRequest,
   type CharacterLoraPromoteRequest,
 } from "@/server/character-lora-training/contracts";
 import {
+  cleanupCharacterLoraBenchmarkTemporaryResourcesInRepository,
   completeCharacterLoraBenchmarkRunInRepository,
   countActiveComfyQueueRuns,
   createCharacterLoraBenchmarkRunWithTask,
@@ -337,6 +340,54 @@ export async function mockCompleteBenchmarkRun(benchmarkRunId: string, input: Pa
   return completeBenchmarkRunWithParsedInput(normalizedBenchmarkRunId, parsed);
 }
 
+export async function cleanupBenchmarkRunTemporaryResources(benchmarkRunId: string, input: unknown = {}) {
+  const normalizedBenchmarkRunId = normalizeId(benchmarkRunId, "benchmarkRunId");
+  const parsed = parseWithSchema(characterLoraBenchmarkCleanupRequestSchema, input);
+  const benchmark = await getExistingBenchmarkRun(normalizedBenchmarkRunId);
+  const evidenceBlockers = await collectBenchmarkCleanupEvidenceBlockers(benchmark, parsed);
+
+  if (!parsed.dryRun && evidenceBlockers.length > 0) {
+    throw new CharacterLoraBenchmarkPromotionServiceError(
+      "Benchmark temporary resources cannot be cleaned yet",
+      409,
+      {
+        benchmarkRunId: benchmark.id,
+        blockers: evidenceBlockers,
+      },
+    );
+  }
+
+  const result = await cleanupCharacterLoraBenchmarkTemporaryResourcesInRepository({
+    benchmarkRunId: benchmark.id,
+    cleanupProject: parsed.project,
+    cleanupPreset: parsed.preset,
+    dryRun: parsed.dryRun,
+  });
+
+  if (!result) {
+    throw new CharacterLoraBenchmarkPromotionServiceError("Benchmark run not found", 404);
+  }
+
+  const blockers = [...evidenceBlockers, ...result.blockers];
+  if (!parsed.dryRun && blockers.length > 0) {
+    throw new CharacterLoraBenchmarkPromotionServiceError(
+      "Benchmark temporary resources cannot be cleaned yet",
+      409,
+      {
+        benchmarkRunId: benchmark.id,
+        blockers,
+        cleanup: result.cleanup,
+      },
+    );
+  }
+
+  return {
+    ...result,
+    blockers,
+    canCleanup: blockers.length === 0,
+  };
+}
+
 export async function createPromotionDecision(benchmarkRunId: string, input: unknown) {
   const normalizedBenchmarkRunId = normalizeId(benchmarkRunId, "benchmarkRunId");
   const raw = input && typeof input === "object" && !Array.isArray(input)
@@ -472,6 +523,54 @@ export function mapCharacterLoraBenchmarkPromotionError(error: unknown) {
     status: 500,
     details: "An internal error occurred",
   };
+}
+
+async function collectBenchmarkCleanupEvidenceBlockers(
+  benchmark: Awaited<ReturnType<typeof getExistingBenchmarkRun>>,
+  request: CharacterLoraBenchmarkCleanupRequest,
+) {
+  const blockers: Array<{ code: string; message: string; details?: unknown }> = [];
+
+  if (!request.project && !request.preset) {
+    return blockers;
+  }
+
+  if (benchmark.status !== "done") {
+    blockers.push({
+      code: "benchmark_not_done",
+      message: "Benchmark run must be done before cleanup",
+      details: {
+        benchmarkRunId: benchmark.id,
+        status: benchmark.status,
+      },
+    });
+  }
+
+  if (!benchmark.reportArtifactId) {
+    blockers.push({
+      code: "benchmark_report_required",
+      message: "Benchmark report artifact is required before cleanup",
+      details: {
+        benchmarkRunId: benchmark.id,
+        reportArtifactId: null,
+      },
+    });
+    return blockers;
+  }
+
+  const reportArtifact = await getCharacterLoraArtifact(benchmark.reportArtifactId);
+  if (!reportArtifact) {
+    blockers.push({
+      code: "benchmark_report_missing",
+      message: "Benchmark report artifact is missing before cleanup",
+      details: {
+        benchmarkRunId: benchmark.id,
+        reportArtifactId: benchmark.reportArtifactId,
+      },
+    });
+  }
+
+  return blockers;
 }
 
 function assertBenchmarkHasApprovedPromotionEvidence(

@@ -95,6 +95,13 @@ type SmokeSummary = {
     status: string;
     reportArtifactId: string | null;
     resultSummary: unknown;
+    cleanup: {
+      testProjectId: string;
+      testPresetId: string;
+      testProjectCleanedAt: string | null;
+      testPresetCleanedAt: string | null;
+      repeatedCleanupCanCleanup: boolean;
+    };
   };
   promotion: {
     decisionId: string;
@@ -1584,6 +1591,74 @@ async function main() {
     "benchmark complete should leave no active GPU lock",
   );
 
+  const approvalTestProjectId = approvalBenchmarkRun.testProjectId;
+  const approvalTestPresetId = approvalBenchmarkRun.testPresetId;
+  assert(approvalTestProjectId, "approval benchmark should keep original testProjectId before cleanup");
+  assert(approvalTestPresetId, "approval benchmark should keep original testPresetId before cleanup");
+  const cleanupDryRun = await services.benchmarkPromotionService.cleanupBenchmarkRunTemporaryResources(
+    approvalCompletedBenchmarkRun.id,
+    { dryRun: true },
+  );
+  assert(cleanupDryRun.dryRun === true, "cleanup dryRun should be marked as dryRun");
+  assert(cleanupDryRun.canCleanup === true, "cleanup dryRun should allow completed benchmark with report");
+  const cleanupResult = await services.benchmarkPromotionService.cleanupBenchmarkRunTemporaryResources(
+    approvalCompletedBenchmarkRun.id,
+    {},
+  );
+  assert(cleanupResult.benchmarkRun.id === approvalCompletedBenchmarkRun.id, "cleanup should return the benchmark run");
+  assert(cleanupResult.benchmarkRun.testProjectId === approvalTestProjectId, "cleanup should preserve original testProjectId");
+  assert(cleanupResult.benchmarkRun.testPresetId === approvalTestPresetId, "cleanup should preserve original testPresetId");
+  assert(cleanupResult.benchmarkRun.trainingRunId === completedTrainingRun.id, "cleanup should preserve trainingRunId");
+  assert(cleanupResult.benchmarkRun.loraAssetId === approvalCompletedBenchmarkRun.loraAssetId, "cleanup should preserve loraAssetId");
+  assert(cleanupResult.benchmarkRun.reportArtifactId === approvalCompletedBenchmarkRun.reportArtifactId, "cleanup should preserve reportArtifactId");
+  assert(cleanupResult.benchmarkRun.cleanup.testProjectCleanedAt, "cleanup should record test project cleanup time");
+  assert(cleanupResult.benchmarkRun.cleanup.testPresetCleanedAt, "cleanup should record test preset cleanup time");
+  const projectAfterCleanup = await services.prismaModule.prisma.project.findUnique({
+    where: { id: approvalTestProjectId },
+    select: { id: true },
+  });
+  const presetAfterCleanup = await services.prismaModule.prisma.preset.findUnique({
+    where: { id: approvalTestPresetId },
+    select: { id: true },
+  });
+  assert(!projectAfterCleanup, "cleanup should remove the temporary benchmark project");
+  assert(!presetAfterCleanup, "cleanup should remove the temporary benchmark preset");
+  const repeatedCleanup = await services.benchmarkPromotionService.cleanupBenchmarkRunTemporaryResources(
+    approvalCompletedBenchmarkRun.id,
+    {},
+  );
+  assert(repeatedCleanup.canCleanup === true, "repeated cleanup should remain idempotent");
+  assert(
+    repeatedCleanup.benchmarkRun.cleanup.testProjectCleanedAt === cleanupResult.benchmarkRun.cleanup.testProjectCleanedAt,
+    "repeated cleanup should not replace test project cleanup time",
+  );
+  assert(
+    repeatedCleanup.benchmarkRun.cleanup.testPresetCleanedAt === cleanupResult.benchmarkRun.cleanup.testPresetCleanedAt,
+    "repeated cleanup should not replace test preset cleanup time",
+  );
+  const retainedBenchmarkRuns = await services.benchmarkPromotionService.listCharacterLoraBenchmarkRunsForTrainingRun(completedTrainingRun.id);
+  const retainedBenchmarkRun = retainedBenchmarkRuns.find((run) => run.id === approvalCompletedBenchmarkRun.id);
+  assert(retainedBenchmarkRun, "cleanup should keep the benchmark run record");
+  assert(retainedBenchmarkRun.testProjectId === approvalTestProjectId, "retained benchmark should keep testProjectId");
+  assert(retainedBenchmarkRun.testPresetId === approvalTestPresetId, "retained benchmark should keep testPresetId");
+  assert(retainedBenchmarkRun.reportArtifactId === approvalCompletedBenchmarkRun.reportArtifactId, "retained benchmark should keep report artifact id");
+  assert(retainedBenchmarkRun.loraAssetId === approvalCompletedBenchmarkRun.loraAssetId, "retained benchmark should keep lora asset id");
+  const loraAssetAfterCleanup = await services.prismaModule.prisma.loraAsset.findUnique({
+    where: { id: approvalCompletedBenchmarkRun.loraAssetId ?? "" },
+    select: { id: true },
+  });
+  const reportArtifactAfterCleanup = await services.prismaModule.prisma.characterLoraArtifact.findUnique({
+    where: { id: approvalCompletedBenchmarkRun.reportArtifactId ?? "" },
+    select: { id: true },
+  });
+  const trainingRunAfterCleanup = await services.prismaModule.prisma.characterLoraTrainingRun.findUnique({
+    where: { id: completedTrainingRun.id },
+    select: { id: true, finalSafetensorsArtifactId: true },
+  });
+  assert(loraAssetAfterCleanup, "cleanup should retain the LoRA asset");
+  assert(reportArtifactAfterCleanup, "cleanup should retain the benchmark report artifact");
+  assert(trainingRunAfterCleanup?.finalSafetensorsArtifactId === completedTrainingRun.finalSafetensorsArtifactId, "cleanup should retain the training safetensors artifact link");
+
   const decision = await services.benchmarkPromotionService.createPromotionDecision(approvalCompletedBenchmarkRun.id, {
     status: "approved",
     selectedLoraAssetId: approvalCompletedBenchmarkRun.loraAssetId,
@@ -1805,6 +1880,11 @@ async function main() {
   assert(report.benchmarkRuns.some((run) => run.id === benchmarkRun.id), "report should include dryRun benchmark run");
   assert(report.benchmarkRuns.some((run) => run.id === approvalCompletedBenchmarkRun.id), "report should include approved benchmark run");
   const reportApprovalBenchmarkRun = report.benchmarkRuns.find((run) => run.id === approvalCompletedBenchmarkRun.id);
+  const reportApprovalCleanup = readJsonRecord(reportApprovalBenchmarkRun?.cleanup);
+  assert(reportApprovalCleanup.testProjectCleaned === true, "report should preserve benchmark test project cleanup status");
+  assert(reportApprovalCleanup.testPresetCleaned === true, "report should preserve benchmark test preset cleanup status");
+  assert(reportApprovalCleanup.testProjectCleanedAt === cleanupResult.benchmarkRun.cleanup.testProjectCleanedAt, "report should preserve project cleanup timestamp");
+  assert(reportApprovalCleanup.testPresetCleanedAt === cleanupResult.benchmarkRun.cleanup.testPresetCleanedAt, "report should preserve preset cleanup timestamp");
   const reportApprovalBenchmarkSummary = readJsonRecord(reportApprovalBenchmarkRun?.resultSummary);
   assert(
     readJsonArray(reportApprovalBenchmarkSummary.sections).some((section) => {
@@ -1894,6 +1974,13 @@ async function main() {
       status: approvalCompletedBenchmarkRun.status,
       reportArtifactId: approvalCompletedBenchmarkRun.reportArtifactId,
       resultSummary: approvalCompletedBenchmarkRun.resultSummary,
+      cleanup: {
+        testProjectId: approvalTestProjectId,
+        testPresetId: approvalTestPresetId,
+        testProjectCleanedAt: cleanupResult.benchmarkRun.cleanup.testProjectCleanedAt,
+        testPresetCleanedAt: cleanupResult.benchmarkRun.cleanup.testPresetCleanedAt,
+        repeatedCleanupCanCleanup: repeatedCleanup.canCleanup,
+      },
     },
     promotion: {
       decisionId: promoted.decision.id,

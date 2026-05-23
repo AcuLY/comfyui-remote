@@ -481,6 +481,13 @@ async function buildCharacterLoraJobReport(jobId: string) {
     reportArtifact: run.reportArtifactId ? artifactById.get(run.reportArtifactId) ?? null : null,
     recommendedWeight: run.recommendedWeight,
     resultSummary: run.resultSummary,
+    cleanup: {
+      testPresetCleaned: Boolean(run.testPresetCleanedAt),
+      testProjectCleaned: Boolean(run.testProjectCleanedAt),
+      testPresetCleanedAt: run.testPresetCleanedAt?.toISOString() ?? null,
+      testProjectCleanedAt: run.testProjectCleanedAt?.toISOString() ?? null,
+      summary: run.cleanupSummary,
+    },
     summary: {
       testProjectId: run.testProjectId,
       testPresetId: run.testPresetId,

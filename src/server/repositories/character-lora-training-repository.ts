@@ -303,6 +303,9 @@ const BENCHMARK_RUN_SELECT = {
   reportArtifactId: true,
   recommendedWeight: true,
   resultSummary: true,
+  testPresetCleanedAt: true,
+  testProjectCleanedAt: true,
+  cleanupSummary: true,
   startedAt: true,
   finishedAt: true,
   createdAt: true,
@@ -495,6 +498,20 @@ export type CharacterLoraBenchmarkRunSummary = ReturnType<typeof serializeBenchm
 export type CharacterLoraPromotionDecisionSummary = ReturnType<typeof serializePromotionDecision>;
 export type CharacterLoraWorkerTaskSummary = ReturnType<typeof serializeWorkerTask>;
 export type CharacterLoraGpuTaskLockSummary = ReturnType<typeof serializeGpuTaskLock>;
+
+export type CharacterLoraBenchmarkCleanupBlocker = {
+  code: string;
+  message: string;
+  details?: unknown;
+};
+
+export type CharacterLoraBenchmarkCleanupRepositoryResult = {
+  benchmarkRun: CharacterLoraBenchmarkRunSummary;
+  cleanup: Record<string, unknown>;
+  blockers: CharacterLoraBenchmarkCleanupBlocker[];
+  dryRun: boolean;
+  canCleanup: boolean;
+};
 
 export type CharacterLoraSourceImageCreateInput = {
   jobId: string;
@@ -2203,6 +2220,194 @@ export async function completeCharacterLoraBenchmarkRunInRepository(input: {
   });
 
   return result ? serializeBenchmarkRun(result) : null;
+}
+
+export async function cleanupCharacterLoraBenchmarkTemporaryResourcesInRepository(input: {
+  benchmarkRunId: string;
+  cleanupProject: boolean;
+  cleanupPreset: boolean;
+  dryRun: boolean;
+  cleanedAt?: Date;
+}): Promise<CharacterLoraBenchmarkCleanupRepositoryResult | null> {
+  const cleanedAt = input.cleanedAt ?? new Date();
+  const cleanedAtIso = cleanedAt.toISOString();
+
+  return db.$transaction(async (tx) => {
+    const run = await tx.characterLoraBenchmarkRun.findUnique({
+      where: { id: input.benchmarkRunId },
+      select: BENCHMARK_RUN_SELECT,
+    });
+    if (!run) return null;
+
+    const blockers: CharacterLoraBenchmarkCleanupBlocker[] = [];
+    const projectState: Record<string, unknown> = {
+      requested: input.cleanupProject,
+      id: run.testProjectId,
+      cleanedAt: run.testProjectCleanedAt?.toISOString() ?? null,
+      action: input.cleanupProject ? "pending" : "skipped_by_request",
+    };
+    const presetState: Record<string, unknown> = {
+      requested: input.cleanupPreset,
+      id: run.testPresetId,
+      cleanedAt: run.testPresetCleanedAt?.toISOString() ?? null,
+      action: input.cleanupPreset ? "pending" : "skipped_by_request",
+    };
+
+    if (input.cleanupProject) {
+      if (!run.testProjectId) {
+        projectState.action = "missing_reference";
+      } else if (run.testProjectCleanedAt) {
+        projectState.action = "already_cleaned";
+      } else {
+        const project = await tx.project.findUnique({
+          where: { id: run.testProjectId },
+          select: { id: true, title: true, notes: true },
+        });
+        projectState.exists = Boolean(project);
+        projectState.title = project?.title ?? null;
+
+        if (!project) {
+          projectState.action = "already_missing";
+        } else if (!isTemporaryBenchmarkResourceNotes(project.notes)) {
+          projectState.action = "blocked_not_temporary";
+          blockers.push({
+            code: "project_not_temporary",
+            message: "Benchmark test project notes do not mark it as a temporary benchmark resource",
+            details: { projectId: project.id, benchmarkRunId: run.id },
+          });
+        } else {
+          const activeRuns = await tx.run.findMany({
+            where: {
+              projectId: project.id,
+              status: { in: [RunStatus.queued, RunStatus.running] },
+            },
+            orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+            take: 20,
+            select: {
+              id: true,
+              status: true,
+              projectSectionId: true,
+              createdAt: true,
+            },
+          });
+          projectState.activeRuns = activeRuns.map((activeRun) => ({
+            id: activeRun.id,
+            status: activeRun.status,
+            projectSectionId: activeRun.projectSectionId,
+            createdAt: activeRun.createdAt.toISOString(),
+          }));
+
+          if (activeRuns.length > 0) {
+            projectState.action = "blocked_active_runs";
+            blockers.push({
+              code: "project_active_runs",
+              message: "Benchmark test project still has queued or running project runs",
+              details: { projectId: project.id, activeRuns: projectState.activeRuns },
+            });
+          } else {
+            projectState.action = "delete";
+          }
+        }
+      }
+    }
+
+    if (input.cleanupPreset) {
+      if (!run.testPresetId) {
+        presetState.action = "missing_reference";
+      } else if (run.testPresetCleanedAt) {
+        presetState.action = "already_cleaned";
+      } else {
+        const preset = await tx.preset.findUnique({
+          where: { id: run.testPresetId },
+          select: { id: true, name: true, notes: true },
+        });
+        presetState.exists = Boolean(preset);
+        presetState.name = preset?.name ?? null;
+
+        if (!preset) {
+          presetState.action = "already_missing";
+        } else if (!isTemporaryBenchmarkResourceNotes(preset.notes)) {
+          presetState.action = "blocked_not_temporary";
+          blockers.push({
+            code: "preset_not_temporary",
+            message: "Benchmark test preset notes do not mark it as a temporary benchmark resource",
+            details: { presetId: preset.id, benchmarkRunId: run.id },
+          });
+        } else {
+          presetState.action = "delete";
+        }
+      }
+    }
+
+    const summary: Record<string, unknown> = {
+      requestedAt: cleanedAtIso,
+      dryRun: input.dryRun,
+      requested: {
+        project: input.cleanupProject,
+        preset: input.cleanupPreset,
+      },
+      preserved: {
+        benchmarkRunId: run.id,
+        jobId: run.jobId,
+        trainingRunId: run.trainingRunId,
+        loraAssetId: run.loraAssetId,
+        reportArtifactId: run.reportArtifactId,
+        testPresetId: run.testPresetId,
+        testProjectId: run.testProjectId,
+      },
+      project: projectState,
+      preset: presetState,
+    };
+
+    if (blockers.length > 0 || input.dryRun) {
+      return {
+        benchmarkRun: serializeBenchmarkRun(run),
+        cleanup: summary,
+        blockers,
+        dryRun: input.dryRun,
+        canCleanup: blockers.length === 0,
+      };
+    }
+
+    const updateData: Prisma.CharacterLoraBenchmarkRunUpdateInput = {
+      cleanupSummary: toInputJsonValue(summary),
+    };
+
+    if (projectState.action === "delete" && run.testProjectId) {
+      const deletion = await tx.project.deleteMany({ where: { id: run.testProjectId } });
+      projectState.action = deletion.count > 0 ? "deleted" : "already_missing";
+      projectState.deletedCount = deletion.count;
+      updateData.testProjectCleanedAt = cleanedAt;
+    } else if (projectState.action === "already_missing") {
+      updateData.testProjectCleanedAt = cleanedAt;
+    }
+
+    if (presetState.action === "delete" && run.testPresetId) {
+      const deletion = await tx.preset.deleteMany({ where: { id: run.testPresetId } });
+      presetState.action = deletion.count > 0 ? "deleted" : "already_missing";
+      presetState.deletedCount = deletion.count;
+      updateData.testPresetCleanedAt = cleanedAt;
+    } else if (presetState.action === "already_missing") {
+      updateData.testPresetCleanedAt = cleanedAt;
+    }
+
+    summary.completedAt = cleanedAtIso;
+    updateData.cleanupSummary = toInputJsonValue(summary);
+
+    const updated = await tx.characterLoraBenchmarkRun.update({
+      where: { id: run.id },
+      data: updateData,
+      select: BENCHMARK_RUN_SELECT,
+    });
+
+    return {
+      benchmarkRun: serializeBenchmarkRun(updated),
+      cleanup: summary,
+      blockers: [],
+      dryRun: false,
+      canCleanup: true,
+    };
+  });
 }
 
 export async function createCharacterLoraPromotionDecisionInRepository(input: {
@@ -4639,6 +4844,13 @@ function serializeBenchmarkRun(run: BenchmarkRunRecord) {
     reportArtifactId: run.reportArtifactId,
     recommendedWeight: run.recommendedWeight,
     resultSummary: run.resultSummary,
+    cleanup: {
+      testPresetCleaned: Boolean(run.testPresetCleanedAt),
+      testProjectCleaned: Boolean(run.testProjectCleanedAt),
+      testPresetCleanedAt: run.testPresetCleanedAt?.toISOString() ?? null,
+      testProjectCleanedAt: run.testProjectCleanedAt?.toISOString() ?? null,
+      summary: run.cleanupSummary,
+    },
     startedAt: run.startedAt?.toISOString() ?? null,
     finishedAt: run.finishedAt?.toISOString() ?? null,
     createdAt: run.createdAt.toISOString(),
@@ -4812,6 +5024,22 @@ function hasCancelRequested(value: Prisma.JsonValue | Prisma.InputJsonValue | un
 function extractCompletionStep(output: CharacterLoraTrainingCompleteOutput) {
   const lastCheckpoint = [...output.checkpoints].sort((a, b) => b.step - a.step)[0];
   return lastCheckpoint?.step ?? null;
+}
+
+function isTemporaryBenchmarkResourceNotes(notes: string | null | undefined) {
+  if (!notes) return false;
+
+  try {
+    const parsed = JSON.parse(notes) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return false;
+    }
+
+    const record = parsed as Record<string, unknown>;
+    return record.temporary === true && record.purpose === "character_lora_benchmark";
+  } catch {
+    return false;
+  }
 }
 
 function toInputJsonValue(value: unknown) {

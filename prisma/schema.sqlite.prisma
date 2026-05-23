@@ -734,6 +734,9 @@ model CharacterLoraBenchmarkRun {
   reportArtifactId   String?
   recommendedWeight  Float?
   resultSummary      Json?
+  testPresetCleanedAt  DateTime?
+  testProjectCleanedAt DateTime?
+  cleanupSummary       Json?
   startedAt          DateTime?
   finishedAt         DateTime?
   createdAt          DateTime                         @default(now())

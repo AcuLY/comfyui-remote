@@ -22,6 +22,7 @@ import {
   Send,
   ShieldCheck,
   Square,
+  Trash2,
   Upload,
   X,
   type LucideIcon,
@@ -33,6 +34,7 @@ import { SectionCard } from "@/components/section-card";
 import { StatChip } from "@/components/stat-chip";
 import {
   cancelCharacterLoraTrainingRun,
+  cleanupCharacterLoraBenchmarkRunTemporaryResources,
   copyCharacterLoraSectionTemplate,
   createCharacterLoraPromptCardVersion,
   createCharacterLoraPromotionDecision,
@@ -508,6 +510,38 @@ function uniqueIds(ids: string[]) {
 
 function compactId(value: string | null | undefined) {
   return value ? value.slice(0, 8) : "-";
+}
+
+function getBenchmarkCleanupState(benchmark: CharacterLoraBenchmarkRun) {
+  const cleanup = benchmark.cleanup;
+  const projectCleanedAt = cleanup?.testProjectCleanedAt ?? null;
+  const presetCleanedAt = cleanup?.testPresetCleanedAt ?? null;
+  const projectDone = !benchmark.testProjectId || Boolean(projectCleanedAt);
+  const presetDone = !benchmark.testPresetId || Boolean(presetCleanedAt);
+  const allDone = projectDone && presetDone;
+  const hasTemporaryResources = Boolean(benchmark.testProjectId || benchmark.testPresetId);
+  const needsCleanup = hasTemporaryResources && !allDone;
+  const canCleanup = needsCleanup && benchmark.status === "done" && Boolean(benchmark.reportArtifactId);
+  const blocker = !needsCleanup
+    ? "Temporary project/preset already cleaned or absent."
+    : benchmark.status !== "done"
+      ? "Cleanup requires a completed benchmark."
+      : !benchmark.reportArtifactId
+        ? "Cleanup requires a benchmark report artifact."
+        : undefined;
+  const details = [
+    `temp project ${compactId(benchmark.testProjectId)} ${benchmark.testProjectId ? (projectCleanedAt ? `cleaned ${formatDate(projectCleanedAt)}` : "present") : "absent"}`,
+    `temp preset ${compactId(benchmark.testPresetId)} ${benchmark.testPresetId ? (presetCleanedAt ? `cleaned ${formatDate(presetCleanedAt)}` : "present") : "absent"}`,
+  ];
+
+  return {
+    allDone,
+    needsCleanup,
+    canCleanup,
+    blocker,
+    details,
+    label: allDone ? (hasTemporaryResources ? "temp cleaned" : "no temp") : "cleanup temp",
+  };
 }
 
 function getBenchmarkDefaultCheckpoint(benchmark: CharacterLoraBenchmarkRun | null | undefined, job: CharacterLoraJob) {
@@ -1115,6 +1149,12 @@ export function JobWorkbenchClient({
   function handleBenchmarkMockComplete(benchmarkRunId: string) {
     runAction(`benchmark.complete.${benchmarkRunId}`, "Benchmark 已模拟完成", async () => {
       await mockCompleteCharacterLoraBenchmarkRun(benchmarkRunId, {});
+    });
+  }
+
+  function handleBenchmarkCleanup(benchmarkRunId: string) {
+    runAction(`benchmark.cleanup.${benchmarkRunId}`, "Benchmark temp cleanup complete", async () => {
+      await cleanupCharacterLoraBenchmarkRunTemporaryResources(benchmarkRunId, {});
     });
   }
 
@@ -2072,12 +2112,17 @@ export function JobWorkbenchClient({
           runs={benchmarkRuns.map((run) => {
             const selectedCheckpoint = getBenchmarkDefaultCheckpoint(run, job) || undefined;
             const approval = getBenchmarkApprovalState(run, selectedCheckpoint);
+            const cleanupState = getBenchmarkCleanupState(run);
             const canCreateDecision = run.status === "done" && Boolean(run.loraAssetId);
             return {
               id: run.id,
               status: run.status,
               primary: `weight ${Array.isArray(run.weightMatrix) ? run.weightMatrix.join(",") : "-"} / rec ${run.recommendedWeight ?? "-"}`,
-              secondary: `asset ${compactId(run.loraAssetId)} / training ${compactId(run.trainingRunId)}`,
+              secondary: [
+                `asset ${compactId(run.loraAssetId)}`,
+                `training ${compactId(run.trainingRunId)}`,
+                ...cleanupState.details,
+              ].join(" / "),
               action: (
                 <div className="flex flex-wrap gap-1">
                   {run.status !== "done" ? (
@@ -2085,6 +2130,19 @@ export function JobWorkbenchClient({
                       <ActionButton type="button" icon={RefreshCw} label="模拟完成" loading={isBusy(`benchmark.complete.${run.id}`)} disabled={isPending} onClick={() => handleBenchmarkMockComplete(run.id)} />
                     </DebugPanel>
                   ) : null}
+                  {cleanupState.allDone ? (
+                    <span className="inline-flex h-7 items-center rounded-md border border-emerald-400/20 px-2 text-[11px] text-emerald-200">
+                      {cleanupState.label}
+                    </span>
+                  ) : (
+                    <MiniButton
+                      icon={Trash2}
+                      label="cleanup temp"
+                      onClick={() => handleBenchmarkCleanup(run.id)}
+                      disabled={isPending || !cleanupState.canCleanup}
+                      title={cleanupState.blocker}
+                    />
+                  )}
                   <MiniButton
                     label="approved"
                     onClick={() => handleDecision(run, "approved")}

@@ -51,6 +51,7 @@ import {
   listCharacterLoraTrainingRuns as listTrainingRuns,
 } from "@/server/services/character-lora-training/training-service";
 import {
+  cleanupBenchmarkRunTemporaryResources as cleanupBenchmarkRunTemporaryResourcesInService,
   completeBenchmarkRun as completeBenchmarkRunInService,
   createPromotionDecision as createPromotionDecisionInService,
   ensureCharacterLoraBenchmarkTemplate as ensureBenchmarkTemplateInService,
@@ -221,6 +222,10 @@ export async function completeCharacterLoraBenchmarkRun(benchmarkRunId: string, 
 
 export async function mockCompleteCharacterLoraBenchmarkRun(benchmarkRunId: string, input?: unknown) {
   return mockCompleteBenchmarkRunInService(benchmarkRunId, input ?? {});
+}
+
+export async function cleanupCharacterLoraBenchmarkRunTemporaryResources(benchmarkRunId: string, input?: unknown) {
+  return cleanupBenchmarkRunTemporaryResourcesInService(benchmarkRunId, input ?? {});
 }
 
 export async function createCharacterLoraPromotionDecision(benchmarkRunId: string, input: unknown) {
