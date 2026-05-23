@@ -3233,6 +3233,64 @@ export async function getCharacterLoraWorkerTaskForTarget(input: {
   return task ? serializeWorkerTask(task) : null;
 }
 
+export async function getCharacterLoraWorkerQueueStatus() {
+  const generatedAt = new Date();
+  const tasks = await db.characterLoraWorkerTask.findMany({
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    select: WORKER_TASK_SELECT,
+  });
+  const serializedTasks = tasks.map(serializeWorkerTask);
+  const workerTypes = Object.values(CharacterLoraWorkerType);
+  const totals = countWorkerTasks(serializedTasks);
+  const activeTasks = serializedTasks.filter((task) => task.status === "queued" || task.status === "running");
+  const failedTasks = serializedTasks.filter((task) => task.status === "failed");
+
+  return {
+    generatedAt: generatedAt.toISOString(),
+    runbook: "docs/plans/2026-05-23-character-lora-worker-runbook.md",
+    statusEndpoint: "/api/character-lora-training/worker/status",
+    supervisorCommand: "cmd /c npm run character-lora:workers",
+    mockSupervisorCommand: "cmd /c npm run character-lora:workers:mock",
+    totals,
+    hasActiveTasks: activeTasks.length > 0,
+    hasRunningWorkers: activeTasks.some((task) => task.status === "running" && task.heartbeatAt),
+    types: workerTypes.map((workerType) => {
+      const typeTasks = serializedTasks.filter((task) => task.workerType === workerType);
+      const queuedTasks = typeTasks.filter((task) => task.status === "queued");
+      const runningTasks = typeTasks.filter((task) => task.status === "running");
+      const expiredRunningTasks = runningTasks.filter((task) => {
+        if (!task.leaseExpiresAt) {
+          return false;
+        }
+        return Date.parse(task.leaseExpiresAt) <= generatedAt.getTime();
+      });
+      const latestHeartbeatAt = latestIsoDate(runningTasks.map((task) => task.heartbeatAt));
+      const oldestQueuedAt = oldestIsoDate(queuedTasks.map((task) => task.createdAt));
+
+      return {
+        workerType,
+        counts: countWorkerTasks(typeTasks),
+        queuedCount: queuedTasks.length,
+        runningCount: runningTasks.length,
+        failedCount: typeTasks.filter((task) => task.status === "failed").length,
+        cancelledCount: typeTasks.filter((task) => task.status === "cancelled").length,
+        doneCount: typeTasks.filter((task) => task.status === "done").length,
+        unleasedQueuedCount: queuedTasks.filter((task) => !task.leaseOwner).length,
+        expiredRunningCount: expiredRunningTasks.length,
+        activeLeaseOwners: Array.from(new Set(runningTasks.map((task) => task.leaseOwner).filter(Boolean))),
+        latestHeartbeatAt,
+        oldestQueuedAt,
+        oldestQueuedAgeMs: oldestQueuedAt ? generatedAt.getTime() - Date.parse(oldestQueuedAt) : null,
+        needsWorker: queuedTasks.length > 0 && runningTasks.length === 0,
+        latestTask: typeTasks[0] ?? null,
+      };
+    }),
+    activeTasks,
+    failedTasks: failedTasks.slice(0, 25),
+    recentTasks: serializedTasks.slice(0, 50),
+  };
+}
+
 export async function heartbeatCharacterLoraWorkerTask(input: {
   taskId: string;
   leaseOwner?: string;
@@ -5120,6 +5178,34 @@ function serializeWorkerTask(task: WorkerTaskRecord) {
     createdAt: task.createdAt.toISOString(),
     updatedAt: task.updatedAt.toISOString(),
   };
+}
+
+function countWorkerTasks(tasks: Array<ReturnType<typeof serializeWorkerTask>>) {
+  return tasks.reduce<Record<string, number>>((acc, task) => {
+    acc[task.status] = (acc[task.status] ?? 0) + 1;
+    return acc;
+  }, {});
+}
+
+function latestIsoDate(values: Array<string | null>) {
+  const timestamps = values
+    .filter((value): value is string => Boolean(value))
+    .map((value) => Date.parse(value))
+    .filter(Number.isFinite);
+  if (timestamps.length === 0) {
+    return null;
+  }
+  return new Date(Math.max(...timestamps)).toISOString();
+}
+
+function oldestIsoDate(values: string[]) {
+  const timestamps = values
+    .map((value) => Date.parse(value))
+    .filter(Number.isFinite);
+  if (timestamps.length === 0) {
+    return null;
+  }
+  return new Date(Math.min(...timestamps)).toISOString();
 }
 
 function serializeGpuTaskLock(lock: GpuTaskLockRecord) {

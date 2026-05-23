@@ -69,6 +69,7 @@ import type {
   CharacterLoraGpuLock,
   CharacterLoraJob,
   CharacterLoraJobReport,
+  CharacterLoraWorkerQueueStatus,
   CharacterLoraPromptCard,
   CharacterLoraPromotionDecision,
   CharacterLoraSection,
@@ -91,6 +92,7 @@ type Props = {
   promotionDecisions: CharacterLoraPromotionDecision[];
   report: CharacterLoraJobReport;
   gpuLock: CharacterLoraGpuLock;
+  workerQueueStatus: CharacterLoraWorkerQueueStatus;
 };
 
 const DEFAULT_BENCHMARK_WEIGHT_MATRIX = [0.65, 0.85, 1] as const;
@@ -669,6 +671,7 @@ export function JobWorkbenchClient({
   promotionDecisions,
   report,
   gpuLock,
+  workerQueueStatus,
 }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -2592,7 +2595,7 @@ export function JobWorkbenchClient({
             <Info label="Worker tasks" value={String(report.diagnosticSummary.coverage.workerTasks)} />
           </div>
         </div>
-        <WorkerTaskPanel report={report} />
+        <WorkerTaskPanel report={report} workerQueueStatus={workerQueueStatus} />
         <div className="mt-3 grid gap-3 lg:grid-cols-3">
           <DiagnosticList title="Reasons" items={report.diagnosticSummary.reasons} />
           <DiagnosticList title="Evidence" items={report.diagnosticSummary.evidence} />
@@ -2738,7 +2741,13 @@ function SectionRunHistory({
   );
 }
 
-function WorkerTaskPanel({ report }: { report: CharacterLoraJobReport }) {
+function WorkerTaskPanel({
+  report,
+  workerQueueStatus,
+}: {
+  report: CharacterLoraJobReport;
+  workerQueueStatus: CharacterLoraWorkerQueueStatus;
+}) {
   const tasks = report.workerTasks.filter((task) => task.status === "queued" || task.status === "running" || task.status === "failed");
   const latestTaskByType = new Map<string, CharacterLoraJobReport["workerTasks"][number]>();
   for (const task of report.workerTasks) {
@@ -2747,6 +2756,10 @@ function WorkerTaskPanel({ report }: { report: CharacterLoraJobReport }) {
     }
   }
   const environment = report.trainingWorkerEnvironment;
+  const queueTypesNeedingWorker = workerQueueStatus.types.filter((type) => type.needsWorker);
+  const globalQueued = workerQueueStatus.totals.queued ?? 0;
+  const globalRunning = workerQueueStatus.totals.running ?? 0;
+  const globalFailed = workerQueueStatus.totals.failed ?? 0;
 
   return (
     <div className="mt-3 rounded-lg border border-white/10 bg-white/[0.03] p-3">
@@ -2757,10 +2770,31 @@ function WorkerTaskPanel({ report }: { report: CharacterLoraJobReport }) {
             Training command: {environment.commandConfigured ? "configured" : "not configured"} / mode {environment.mode}
           </div>
         </div>
-        <span className="rounded-md border border-white/10 px-2 py-1 text-[11px] text-zinc-400">
-          queued {report.workerTaskStatusCounts.queued ?? 0} / running {report.workerTaskStatusCounts.running ?? 0} / failed {report.workerTaskStatusCounts.failed ?? 0}
-        </span>
+        <div className="flex flex-wrap gap-1.5">
+          <span className="rounded-md border border-white/10 px-2 py-1 text-[11px] text-zinc-400">
+            job queued {report.workerTaskStatusCounts.queued ?? 0} / running {report.workerTaskStatusCounts.running ?? 0} / failed {report.workerTaskStatusCounts.failed ?? 0}
+          </span>
+          <span className="rounded-md border border-white/10 px-2 py-1 text-[11px] text-zinc-400">
+            queue queued {globalQueued} / running {globalRunning} / failed {globalFailed}
+          </span>
+        </div>
       </div>
+      {queueTypesNeedingWorker.length > 0 ? (
+        <div className="mt-3 flex flex-col gap-2 rounded-lg border border-amber-400/25 bg-amber-500/10 p-3 text-xs text-amber-100 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 font-medium">
+              <AlertTriangle className="size-3.5" />
+              Worker queue is waiting for a lease
+            </div>
+            <div className="mt-1 break-words text-amber-100/80">
+              {queueTypesNeedingWorker.map((type) => `${type.workerType}:${type.queuedCount}`).join(", ")}
+            </div>
+          </div>
+          <code className="break-all rounded-md border border-amber-400/20 bg-black/30 px-2 py-1 text-[11px] text-amber-50">
+            {workerQueueStatus.supervisorCommand}
+          </code>
+        </div>
+      ) : null}
       {tasks.length === 0 ? (
         <div className="mt-3 rounded-lg border border-dashed border-white/10 py-4 text-center text-xs text-zinc-500">
           No queued, running, or failed worker tasks.
@@ -2783,12 +2817,18 @@ function WorkerTaskPanel({ report }: { report: CharacterLoraJobReport }) {
       <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
         {WORKER_TYPES.map((type) => {
           const task = latestTaskByType.get(type);
+          const globalType = workerQueueStatus.types.find((item) => item.workerType === type);
           return (
             <div key={type} className="min-w-0 rounded-lg border border-white/10 bg-black/20 p-2 text-[11px] text-zinc-400">
               <div className="truncate font-mono text-zinc-200">{type}</div>
+              {globalType ? (
+                <div className="mt-1 break-words">
+                  queue {globalType.queuedCount} / running {globalType.runningCount} / heartbeat {formatDate(globalType.latestHeartbeatAt)}
+                </div>
+              ) : null}
               {task ? (
                 <>
-                  <div className="mt-1 break-words">{STATUS_LABEL[task.status] ?? task.status} / {compactId(task.id)}</div>
+                  <div className="break-words">{STATUS_LABEL[task.status] ?? task.status} / {compactId(task.id)}</div>
                   <div className="break-words">heartbeat {formatDate(task.heartbeatAt)}</div>
                   <div className="break-words">lease {task.leaseOwner ?? "-"}</div>
                 </>
@@ -2799,7 +2839,9 @@ function WorkerTaskPanel({ report }: { report: CharacterLoraJobReport }) {
           );
         })}
       </div>
-      <div className="mt-2 break-all text-[11px] text-zinc-500">Runbook: {environment.runbook}</div>
+      <div className="mt-2 break-all text-[11px] text-zinc-500">
+        Runbook: {environment.runbook} / Status: {workerQueueStatus.statusEndpoint}
+      </div>
     </div>
   );
 }

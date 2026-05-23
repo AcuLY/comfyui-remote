@@ -41,6 +41,7 @@ import {
   getCharacterLoraJobSection,
   getCharacterLoraPromptCardVersion,
   getCharacterLoraTrainingJob,
+  getCharacterLoraWorkerQueueStatus as getWorkerQueueStatusFromRepository,
   getCharacterLoraWorkerTask,
   getNextCharacterLoraDatasetRevisionVersion,
   heartbeatCharacterLoraWorkerTask,
@@ -334,6 +335,10 @@ export async function leaseNextCharacterLoraTask(input: unknown) {
     leaseOwner,
     leaseExpiresAt: new Date(Date.now() + (parsed.leaseDurationSeconds ?? DEFAULT_LEASE_SECONDS) * 1000),
   });
+}
+
+export async function getCharacterLoraWorkerQueueStatus() {
+  return getWorkerQueueStatusFromRepository();
 }
 
 export async function heartbeatCharacterLoraTask(taskId: string, input: unknown = {}) {

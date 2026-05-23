@@ -5,6 +5,7 @@ import {
   getCharacterLoraGpuTaskLock,
   getCharacterLoraJobReport,
   getCharacterLoraTrainingJob,
+  getCharacterLoraWorkerQueueStatus,
   listCharacterLoraBenchmarkRuns,
   listCharacterLoraCandidateImages,
   listCharacterLoraDatasetRevisions,
@@ -49,6 +50,7 @@ export default async function CharacterLoraTrainingJobPage({
     promotionDecisions,
     report,
     gpuLock,
+    workerQueueStatus,
   ] = await Promise.all([
     listCharacterLoraSourceImages(jobId),
     listCharacterLoraPromptCardVersions(jobId),
@@ -62,6 +64,7 @@ export default async function CharacterLoraTrainingJobPage({
     listCharacterLoraPromotionDecisions(jobId),
     getCharacterLoraJobReport(jobId),
     getCharacterLoraGpuTaskLock(),
+    getCharacterLoraWorkerQueueStatus(),
   ]);
 
   return (
@@ -79,6 +82,7 @@ export default async function CharacterLoraTrainingJobPage({
       promotionDecisions={promotionDecisions}
       report={report}
       gpuLock={gpuLock}
+      workerQueueStatus={workerQueueStatus}
     />
   );
 }

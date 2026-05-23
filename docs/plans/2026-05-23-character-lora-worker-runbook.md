@@ -21,6 +21,44 @@ Worker 会用 `x-api-token` 调用 Manager API。token 来源按顺序读取：
 
 脚本只在启动日志和 artifact summary 中记录 auth source shape，例如 `env:AUTH_TOKEN`、`hasToken=true`。不要把 token 值写入 DB、日志或 artifact。
 
+## Worker Queue Supervisor
+
+常驻队列入口用于一次性启动 `image_generation`、`dataset_freeze`、`training`、`benchmark` 四类 worker，避免任务只入队但长期没有进程领取。它不运行在 Next.js 内，也不负责启动/重启 Manager；需要和 Manager 服务并行常驻。
+
+真实队列：
+
+```powershell
+cmd /c npm run character-lora:workers
+```
+
+本地 mock/debug 队列：
+
+```powershell
+cmd /c npm run character-lora:workers:mock
+```
+
+手动覆盖参数：
+
+```powershell
+cmd /c npx tsx scripts/character-lora-training/worker-queue.ts --worker-owner-prefix character-lora-queue --interval-ms 5000 --lease-seconds 300
+```
+
+常用选项：
+
+- `--mock-image`：image worker 强制使用 `mock-local`。
+- `--image-provider task-request|mock-local|openai-codex`：默认 `task-request`，即使用任务 payload 中的 provider。
+- `--dry-run-training` / `--mock-complete-training`：训练 worker 本地调试路径。
+- `--benchmark-skip-wait` / `--benchmark-timeout-ms <ms>`：benchmark worker 调试或长任务等待控制。
+- `--skip-image` / `--skip-dataset-freeze` / `--skip-training` / `--skip-benchmark`：只启动部分 worker。
+
+状态检测：
+
+```powershell
+Invoke-WebRequest -Uri "http://127.0.0.1:3000/api/character-lora-training/worker/status" -Headers @{ "x-api-token" = $env:AUTH_TOKEN }
+```
+
+`worker/status` 会返回全局 queued/running/failed/cancelled/done 计数、每类 worker 的最近 heartbeat、未被 lease 的 queued 数量、过期 running lease 数量和推荐 supervisor 命令。Workbench 的 Report / Diagnostics 区会展示同一状态；如果出现 queued 但没有 running/heartbeat，优先启动 supervisor，而不是重复入队。
+
 ## Image Worker
 
 默认使用 task payload 中的 `request.provider`；当前 Manager 生成任务默认写入 `openai-codex`。`--provider` 是强制 override，生产或真实验收时不要传 `--provider mock-local`；只有本地 smoke/debug 才显式传 `--provider mock-local`。
@@ -187,10 +225,11 @@ Invoke-WebRequest -Method POST `
 
 ```powershell
 cmd /c npx tsx scripts/character-lora-training/image-worker.ts --help
+cmd /c npx tsx scripts/character-lora-training/worker-queue.ts --help
 cmd /c npx tsx scripts/character-lora-training/image-worker.ts --self-test
 cmd /c npx tsx scripts/character-lora-training/dataset-freeze-worker.ts --help
 cmd /c npx tsx scripts/character-lora-training/training-worker.ts --help
 cmd /c npx tsx scripts/character-lora-training/benchmark-worker.ts --help
-cmd /c npx eslint scripts/character-lora-training/worker-common.ts scripts/character-lora-training/image-worker.ts scripts/character-lora-training/dataset-freeze-worker.ts scripts/character-lora-training/training-worker.ts scripts/character-lora-training/benchmark-worker.ts
+cmd /c npx eslint scripts/character-lora-training/worker-common.ts scripts/character-lora-training/worker-queue.ts scripts/character-lora-training/image-worker.ts scripts/character-lora-training/dataset-freeze-worker.ts scripts/character-lora-training/training-worker.ts scripts/character-lora-training/benchmark-worker.ts
 cmd /c npx tsc --noEmit --pretty false
 ```

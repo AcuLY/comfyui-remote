@@ -38,6 +38,7 @@ import {
   enqueueCharacterLoraSectionGenerationRun as enqueueSectionGenerationRun,
   failCharacterLoraTask as failTask,
   freezeCharacterLoraDataset as freezeDataset,
+  getCharacterLoraWorkerQueueStatus as getWorkerQueueStatus,
   heartbeatCharacterLoraTask as heartbeatTask,
   leaseNextCharacterLoraTask as leaseNextTask,
   listCharacterLoraCandidateImages as listCandidateImages,
@@ -199,6 +200,10 @@ export async function cancelCharacterLoraTrainingRun(trainingRunId: string, inpu
 
 export async function getCharacterLoraGpuTaskLock() {
   return getGpuTaskLock();
+}
+
+export async function getCharacterLoraWorkerQueueStatus() {
+  return getWorkerQueueStatus();
 }
 
 export async function getCharacterLoraBenchmarkTemplateStatus() {

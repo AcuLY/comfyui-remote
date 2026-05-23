@@ -124,6 +124,9 @@ export function renderCharacterLoraJobReportMarkdown(report: CharacterLoraJobRep
     "",
     `Training command configured: ${report.trainingWorkerEnvironment.commandConfigured ? "yes" : "no"}`,
     `Training mode: ${report.trainingWorkerEnvironment.mode}`,
+    `Supervisor: ${report.trainingWorkerEnvironment.supervisorCommand}`,
+    `Mock supervisor: ${report.trainingWorkerEnvironment.mockSupervisorCommand}`,
+    `Status endpoint: ${report.trainingWorkerEnvironment.statusEndpoint}`,
     "",
     ...formatBulletLines(
       report.workerTasks
@@ -568,6 +571,9 @@ async function buildCharacterLoraJobReport(jobId: string) {
     mode: trainingCommand ? "real-capable" : "dry-run/mock-required",
     commandSource: trainingCommand ? "CHARACTER_LORA_TRAINING_COMMAND" : null,
     runbook: "docs/plans/2026-05-23-character-lora-worker-runbook.md",
+    supervisorCommand: "cmd /c npm run character-lora:workers",
+    mockSupervisorCommand: "cmd /c npm run character-lora:workers:mock",
+    statusEndpoint: "/api/character-lora-training/worker/status",
   };
 
   const counts = {
