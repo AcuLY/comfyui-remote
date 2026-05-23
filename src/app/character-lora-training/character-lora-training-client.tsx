@@ -8,7 +8,10 @@ import { toast } from "sonner";
 
 import { SectionCard } from "@/components/section-card";
 import { StatChip } from "@/components/stat-chip";
-import { createCharacterLoraTrainingJob } from "@/lib/actions/character-lora-training";
+import {
+  createCharacterLoraTrainingJob,
+  uploadCharacterLoraSourceImage,
+} from "@/lib/actions/character-lora-training";
 import type { CharacterLoraGpuLock, CharacterLoraJobList, CharacterLoraJobSummary } from "./types";
 
 type Props = {
@@ -127,6 +130,12 @@ function readDerivedStates(value: string) {
   }
 
   return parsed as DerivedStateInput[];
+}
+
+function readUploadFiles(formData: FormData, key: string) {
+  return formData
+    .getAll(key)
+    .filter((value): value is File => value instanceof File && value.size > 0);
 }
 
 export function CharacterLoraTrainingClient({ jobList, gpuLock }: Props) {
@@ -259,6 +268,8 @@ export function CharacterLoraTrainingClient({ jobList, gpuLock }: Props) {
         const baseCheckpointPath = String(formData.get("baseCheckpointPath") ?? "").trim();
         const baseCheckpointHash = String(formData.get("baseCheckpointHash") ?? "").trim();
         const baseFamily = String(formData.get("baseFamily") ?? "").trim();
+        const initialSourceRole = String(formData.get("initialSourceRole") ?? "source").trim() || "source";
+        const initialSourceFiles = readUploadFiles(formData, "sourceFiles");
         const normalizedPurpose = purpose.trim() || "character_identity";
         const normalizedPrimaryOutfitOrForm = primaryOutfitOrForm.trim();
         const normalizedScopeNote = scopeNote.trim();
@@ -288,7 +299,23 @@ export function CharacterLoraTrainingClient({ jobList, gpuLock }: Props) {
           createdBy: null,
         });
 
-        toast.success("训练任务已创建", { description: job.characterName });
+        for (const [index, file] of initialSourceFiles.entries()) {
+          const uploadForm = new FormData();
+          uploadForm.set("file", file);
+          uploadForm.set("role", initialSourceRole);
+          uploadForm.set("sortOrder", String(index));
+          uploadForm.set("provenance", JSON.stringify({
+            uploadedDuringJobCreation: true,
+            originalName: file.name,
+          }));
+          await uploadCharacterLoraSourceImage(job.id, uploadForm);
+        }
+
+        toast.success("训练任务已创建", {
+          description: initialSourceFiles.length > 0
+            ? `${job.characterName} / source ${initialSourceFiles.length}`
+            : job.characterName,
+        });
         router.push(`/character-lora-training/${job.id}`);
         router.refresh();
       } catch (error) {
@@ -316,7 +343,7 @@ export function CharacterLoraTrainingClient({ jobList, gpuLock }: Props) {
         </div>
       ) : null}
 
-      <SectionCard title="新建训练任务" subtitle="先建立角色任务，再进入详情页补 source、canonical、prompt、section。">
+      <SectionCard title="新建训练任务" subtitle="建立角色任务并可先上传参考图，详情页继续补 canonical、prompt、section。">
         <form action={handleCreate} className="grid gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-3 lg:grid-cols-2">
           <label className="grid gap-1 text-xs text-zinc-400">
             角色名
@@ -429,6 +456,30 @@ export function CharacterLoraTrainingClient({ jobList, gpuLock }: Props) {
               className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-sky-400"
             />
           </label>
+          <div className="grid gap-2 rounded-lg border border-white/10 bg-black/20 p-3 text-xs text-zinc-400 lg:col-span-2">
+            <div className="text-xs font-medium text-zinc-300">初始参考图</div>
+            <div className="grid gap-2 md:grid-cols-[160px_1fr]">
+              <label className="grid gap-1">
+                role
+                <select name="initialSourceRole" defaultValue="source" className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-sky-400">
+                  <option value="source">source</option>
+                  <option value="setting">setting</option>
+                  <option value="local_reference">local_reference</option>
+                  <option value="manual_canonical">manual_canonical</option>
+                </select>
+              </label>
+              <label className="grid gap-1">
+                files
+                <input
+                  name="sourceFiles"
+                  type="file"
+                  multiple
+                  accept="image/png,image/jpeg,image/webp"
+                  className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white file:mr-3 file:rounded-md file:border-0 file:bg-white/10 file:px-2 file:py-1 file:text-xs file:text-zinc-200"
+                />
+              </label>
+            </div>
+          </div>
           <label className="grid gap-1 text-xs text-zinc-400">
             训练目的
             <input
