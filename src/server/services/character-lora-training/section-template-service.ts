@@ -433,6 +433,7 @@ export async function copyCharacterLoraSectionTemplate(input: unknown) {
   }
 
   const createInput: CharacterLoraSectionTemplateCopyCreateInput = {
+    trainingTemplateId: source.trainingTemplateId,
     key: normalizeTemplateKey(parsed.key ?? `${source.key}_copy`),
     name: normalizeTemplateName(parsed.name ?? `${source.name} Copy`),
     description: parsed.description !== undefined ? parsed.description : source.description,

@@ -35,6 +35,8 @@ type SmokeSummary = {
     slug: string;
     status: string;
     phase: string | null;
+    trainingTemplateId: string | null;
+    trainingTemplateKey: string | null;
   };
   source: {
     id: string;
@@ -324,6 +326,26 @@ async function main() {
     createdBy: "fake-e2e-smoke",
   });
   assert(job.status === "draft", "job should start as draft");
+  assert(job.trainingTemplateId, "job should be created from the default training template");
+  const trainingTemplateSnapshot = readJsonRecord(job.trainingTemplateSnapshot);
+  assert(trainingTemplateSnapshot.key === "character_identity_default", "job should snapshot the default training template key");
+  assert(trainingTemplateSnapshot.captionStrategyDefault === "controllable_identity", "job should snapshot default caption strategy");
+  const snapshotSectionTemplates = readJsonArray(trainingTemplateSnapshot.sectionTemplates).map(readJsonRecord);
+  assert(snapshotSectionTemplates.length >= 2, "job template snapshot should include section templates");
+  assert(
+    snapshotSectionTemplates.every((template) => template.trainingTemplateId === job.trainingTemplateId),
+    "snapshot section templates should retain recipe ownership",
+  );
+  const activeTrainingTemplates = await services.sectionTemplateService.listCharacterLoraTrainingTemplates();
+  assert(
+    activeTrainingTemplates.some((template) => template.id === job.trainingTemplateId && template.key === "character_identity_default"),
+    "active training templates should include the default recipe used by the job",
+  );
+  const initialJobSections = await services.sectionTemplateService.listCharacterLoraJobSections(job.id);
+  assert(
+    initialJobSections.length >= snapshotSectionTemplates.length,
+    "job creation should auto-instantiate recipe section templates",
+  );
   assertTrainingScopeNormalized(job.trainingScope, "created job");
   const initialJobArtifact = readJsonRecord(await readJobJsonArtifact(job.artifactRoot, "job.json"));
   assertTrainingScopeNormalized(initialJobArtifact.trainingScope, "initial job artifact");
@@ -1953,6 +1975,8 @@ async function main() {
       slug: finalJob.slug,
       status: finalJob.status,
       phase: finalJob.phase,
+      trainingTemplateId: finalJob.trainingTemplateId,
+      trainingTemplateKey: readJsonRecord(finalJob.trainingTemplateSnapshot).key as string | null,
     },
     source: {
       id: source.id,

@@ -1360,6 +1360,7 @@ export type CharacterLoraSectionTemplateUpsertInput = {
 };
 
 export type CharacterLoraSectionTemplateCopyCreateInput = {
+  trainingTemplateId?: string | null;
   key: string;
   name: string;
   description?: string | null;
@@ -1422,6 +1423,7 @@ export async function createCharacterLoraSectionTemplateCopy(
           data: {
             key,
             name,
+            trainingTemplateId: input.trainingTemplateId ?? null,
             description: input.description ?? null,
             angleTag: input.angleTag ?? null,
             promptTemplate: input.promptTemplate,
@@ -1515,8 +1517,18 @@ export async function instantiateCharacterLoraJobSections(input: {
     }
 
     const lineageUpdateClauses: Prisma.CharacterLoraJobSectionWhereInput[] = [
-      ...(input.canonicalVersionId ? [{ canonicalVersionId: { not: input.canonicalVersionId } }] : []),
-      ...(input.promptCardVersionId ? [{ promptCardVersionId: { not: input.promptCardVersionId } }] : []),
+      ...(input.canonicalVersionId
+        ? [
+            { canonicalVersionId: null },
+            { canonicalVersionId: { not: input.canonicalVersionId } },
+          ]
+        : []),
+      ...(input.promptCardVersionId
+        ? [
+            { promptCardVersionId: null },
+            { promptCardVersionId: { not: input.promptCardVersionId } },
+          ]
+        : []),
     ];
 
     if (lineageUpdateClauses.length > 0) {
