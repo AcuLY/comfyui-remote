@@ -4,6 +4,22 @@ import { timingSafeEqual } from "node:crypto";
 const COOKIE_NAME = "auth_token";
 const COOKIE_MAX_AGE = 30 * 24 * 60 * 60; // 30 days in seconds
 
+function shouldUseSecureCookie(request: NextRequest): boolean {
+  if (process.env.NODE_ENV !== "production") return false;
+
+  const forwardedProto = request.headers
+    .get("x-forwarded-proto")
+    ?.split(",")[0]
+    ?.trim()
+    .toLowerCase();
+
+  if (forwardedProto) return forwardedProto === "https";
+  if (request.nextUrl.protocol === "https:") return true;
+
+  const hostname = request.nextUrl.hostname.toLowerCase();
+  return hostname !== "localhost" && hostname !== "127.0.0.1" && hostname !== "::1";
+}
+
 function safeTokenCompare(a: string, b: string): boolean {
   if (!a || !b) return false;
   const bufA = Buffer.from(a, "utf8");
@@ -45,7 +61,7 @@ export async function POST(request: NextRequest) {
   response.cookies.set(COOKIE_NAME, token, {
     path: "/",
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: shouldUseSecureCookie(request),
     sameSite: "lax",
     maxAge: COOKIE_MAX_AGE,
   });
