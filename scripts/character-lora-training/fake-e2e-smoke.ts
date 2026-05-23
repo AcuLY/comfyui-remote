@@ -941,6 +941,8 @@ async function main() {
     autoBenchmarkRuns.some((run) => run.id === benchmarkRun.id && run.status === "done"),
     "auto benchmark should be persisted for the completed training run",
   );
+  const autoBenchmarkLocks = await listActiveBenchmarkGpuLocks(services, benchmarkRun.id);
+  assert(autoBenchmarkLocks.length === 0, "dryRun/skipQueue benchmark should not create an active GPU lock");
 
   const blockedApproval = await assertRejectsWithStatus(
     () => services.benchmarkPromotionService.createPromotionDecision(benchmarkRun.id, {
@@ -985,6 +987,44 @@ async function main() {
   const approvalBenchmarkRun = approvalBenchmarkCreated.benchmarkRun;
   assert(approvalBenchmarkRun.loraAssetId, "approval benchmark should register a LoRA asset");
   assert(approvalBenchmarkRun.testProjectId, "approval benchmark should create a test project");
+  const approvalBenchmarkLocks = await listActiveBenchmarkGpuLocks(services, approvalBenchmarkRun.id);
+  assert(approvalBenchmarkLocks.length === 1, "approval benchmark should create one active GPU lock");
+  const approvalBenchmarkLock = approvalBenchmarkLocks[0];
+  assert(approvalBenchmarkLock, "approval benchmark active GPU lock should be readable");
+  assert(approvalBenchmarkLock.taskType === "benchmark", "approval benchmark GPU lock should use taskType=benchmark");
+  assert(approvalBenchmarkLock.ownerType === "character_lora_benchmark_run", "approval benchmark GPU lock should use benchmark owner type");
+  const approvalLockMetadata = readJsonRecord(approvalBenchmarkLock.metadata);
+  assert(approvalLockMetadata.jobId === job.id, "benchmark GPU lock metadata should include jobId");
+  assert(approvalLockMetadata.trainingRunId === completedTrainingRun.id, "benchmark GPU lock metadata should include trainingRunId");
+  assert(approvalLockMetadata.benchmarkRunId === approvalBenchmarkRun.id, "benchmark GPU lock metadata should include benchmarkRunId");
+  assert(approvalLockMetadata.workerType === "benchmark", "benchmark GPU lock metadata should include workerType");
+  assert(approvalLockMetadata.queuePolicy === "queue_when_busy", "benchmark GPU lock metadata should include queuePolicy");
+  assert(
+    readJsonArray(approvalLockMetadata.checkpointMatrix).join(",") === approvalCheckpointMatrix.join(","),
+    "benchmark GPU lock metadata should include checkpoint matrix",
+  );
+  assert(
+    readJsonArray(approvalLockMetadata.weightMatrix).map(Number).join(",") === approvalWeightMatrix.join(","),
+    "benchmark GPU lock metadata should include weight matrix",
+  );
+  const blockedBenchmarkEnqueue = await assertRejectsWithStatus(
+    () => services.benchmarkPromotionService.enqueueCharacterLoraBenchmarkRun(completedTrainingRun.id, {
+      checkpointMatrix: ["fake-base.safetensors"],
+      weightMatrix: [0.65],
+      registerLoraAsset: false,
+      copyToCharacterDir: false,
+      dryRun: true,
+      skipQueue: true,
+      queuePolicy: "reject_when_busy",
+    }),
+    409,
+    "reject_when_busy benchmark should reject while a benchmark GPU lock is active",
+  );
+  const blockedBenchmarkDetails = readJsonRecord(readErrorDetails(blockedBenchmarkEnqueue));
+  assert(
+    readJsonArray(blockedBenchmarkDetails.gpuTaskLocks).some((lock) => readJsonRecord(lock).ownerId === approvalBenchmarkRun.id),
+    "reject_when_busy benchmark error details should include active benchmark GPU lock",
+  );
   const approvalBenchmarkSections = await services.prismaModule.prisma.projectSection.findMany({
     where: { projectId: approvalBenchmarkRun.testProjectId },
     orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
@@ -1074,6 +1114,12 @@ async function main() {
     diagnosticSuggestions: [],
   });
   assert(approvalCompletedBenchmarkRun.status === "done", "approval benchmark should be completed with real evidence shape");
+  const releasedApprovalBenchmarkLocks = await listReleasedBenchmarkGpuLocks(services, approvalBenchmarkRun.id);
+  assert(releasedApprovalBenchmarkLocks.length === 1, "benchmark complete should release the active GPU lock");
+  assert(
+    (await listActiveBenchmarkGpuLocks(services, approvalBenchmarkRun.id)).length === 0,
+    "benchmark complete should leave no active GPU lock",
+  );
 
   const decision = await services.benchmarkPromotionService.createPromotionDecision(approvalCompletedBenchmarkRun.id, {
     status: "approved",
@@ -1572,6 +1618,30 @@ function assertInputImageRef(
   assert(inputImage.relativePath === expected.relativePath, `${label} should retain relativePath for ${expected.id}`);
   assert(inputImage.sha256 === expected.sha256, `${label} should retain sha256 for ${expected.id}`);
   assert(typeof inputImage.artifactId === "string", `${label} should retain artifactId for ${expected.id}`);
+}
+
+async function listActiveBenchmarkGpuLocks(services: ServiceModules, benchmarkRunId: string) {
+  return services.prismaModule.prisma.gpuTaskLock.findMany({
+    where: {
+      taskType: "benchmark",
+      ownerType: "character_lora_benchmark_run",
+      ownerId: benchmarkRunId,
+      status: "active",
+    },
+    orderBy: [{ startedAt: "asc" }, { id: "asc" }],
+  });
+}
+
+async function listReleasedBenchmarkGpuLocks(services: ServiceModules, benchmarkRunId: string) {
+  return services.prismaModule.prisma.gpuTaskLock.findMany({
+    where: {
+      taskType: "benchmark",
+      ownerType: "character_lora_benchmark_run",
+      ownerId: benchmarkRunId,
+      status: "released",
+    },
+    orderBy: [{ releasedAt: "asc" }, { id: "asc" }],
+  });
 }
 
 function readBenchmarkSectionWeight(section: { loraConfig: unknown; extraParams: unknown }) {

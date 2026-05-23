@@ -1598,6 +1598,7 @@ export async function createCharacterLoraBenchmarkRunWithTask(input: {
   checkpointMatrix: Prisma.InputJsonValue;
   weightMatrix: Prisma.InputJsonValue;
   taskPayload?: CharacterLoraBenchmarkTaskPayload | null;
+  gpuLockMetadata?: Prisma.InputJsonValue | null;
   tempPreset: {
     categoryName: string;
     categorySlug: string;
@@ -1826,6 +1827,18 @@ export async function createCharacterLoraBenchmarkRunWithTask(input: {
           select: { id: true },
         })
       : null;
+    const gpuLock = input.taskPayload
+      ? await tx.gpuTaskLock.create({
+          data: {
+            taskType: "benchmark",
+            ownerType: "character_lora_benchmark_run",
+            ownerId: run.id,
+            status: "active",
+            metadata: input.gpuLockMetadata ?? Prisma.DbNull,
+          },
+          select: GPU_TASK_LOCK_SELECT,
+        })
+      : null;
 
     await tx.characterLoraTrainingJob.update({
       where: { id: input.jobId },
@@ -1837,12 +1850,13 @@ export async function createCharacterLoraBenchmarkRunWithTask(input: {
       select: { id: true },
     });
 
-    return { run, taskId: task?.id ?? null, testPresetId: preset.id, testProjectId: project.id };
+    return { run, taskId: task?.id ?? null, gpuLock, testPresetId: preset.id, testProjectId: project.id };
   });
 
   return {
     benchmarkRun: serializeBenchmarkRun(result.run),
     workerTaskId: result.taskId,
+    gpuTaskLock: result.gpuLock ? serializeGpuTaskLock(result.gpuLock) : null,
     testPresetId: result.testPresetId,
     testProjectId: result.testProjectId,
   };
@@ -1964,6 +1978,18 @@ export async function completeCharacterLoraBenchmarkRunInRepository(input: {
         leaseExpiresAt: null,
         progressJson: toInputJsonValue({ completed: true, reportArtifactId: artifact.id }),
         errorSummary: null,
+      },
+    });
+
+    await tx.gpuTaskLock.updateMany({
+      where: {
+        ownerType: "character_lora_benchmark_run",
+        ownerId: run.id,
+        status: "active",
+      },
+      data: {
+        status: "released",
+        releasedAt: new Date(),
       },
     });
 
@@ -3194,6 +3220,18 @@ export async function failCharacterLoraWorkerTask(input: {
           failureSummary: input.errorSummary,
         },
         select: { id: true },
+      });
+
+      await tx.gpuTaskLock.updateMany({
+        where: {
+          ownerType: "character_lora_benchmark_run",
+          ownerId: run.id,
+          status: "active",
+        },
+        data: {
+          status: "released",
+          releasedAt: new Date(),
+        },
       });
     }
 

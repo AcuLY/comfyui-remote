@@ -108,6 +108,8 @@ cmd /c npx tsx scripts/character-lora-training/training-worker.ts --once --dry-r
 
 真实训练完成并开启 post-training benchmark 时，Manager 会创建 `workerType=benchmark`、`targetType=benchmarkRun` 的 worker task。Benchmark worker 会读取 job report 中对应的 `benchmarkRunId`，解析 `testProjectId`、`checkpointMatrix` 和 `weightMatrix`，提交临时测试 project，然后默认等待这批 run 的 `latestRun` 全部进入 `done` 或 `failed`。
 
+Benchmark enqueue 会先检查当前 ComfyUI queued/running 数量和 active LoRA `GpuTaskLock`。`queuePolicy=reject_when_busy` 时，只要 ComfyUI 忙或已有 active LoRA GPU lock，就返回 409，details 包含 `comfyQueue` 和 `gpuTaskLocks`；`queue_when_busy` / `ignore_busy` 会继续创建 benchmark，但会把 busy 状态写入 warnings 和 benchmark lock metadata。非 `dryRun` / 非 `skipQueue` 的 benchmark task 会创建 `taskType=benchmark`、`ownerType=character_lora_benchmark_run`、`ownerId=benchmarkRun.id` 的 active GPU lock；benchmark complete 或 worker fail 会释放该 lock。`dryRun` / `skipQueue` 不会创建 GPU lock。
+
 单次处理：
 
 ```powershell

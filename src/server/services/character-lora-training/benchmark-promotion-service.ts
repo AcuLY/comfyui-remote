@@ -16,6 +16,7 @@ import {
 } from "@/server/character-lora-training/contracts";
 import {
   completeCharacterLoraBenchmarkRunInRepository,
+  countActiveComfyQueueRuns,
   createCharacterLoraBenchmarkRunWithTask,
   createCharacterLoraPromotionDecisionInRepository,
   findBreastSizeSliderLoraAsset,
@@ -28,6 +29,7 @@ import {
   getCharacterLoraTrainingJob,
   getCharacterLoraTrainingRunWithFinalArtifact,
   getLoraAssetById,
+  listActiveCharacterLoraGpuTaskLocks,
   listCharacterLoraBenchmarkRunsByJob,
   listCharacterLoraBenchmarkRunsByTrainingRun,
   listCharacterLoraPromotionDecisions as listPromotionDecisionsFromRepository,
@@ -99,7 +101,28 @@ export async function enqueueCharacterLoraBenchmarkRun(trainingRunId: string, in
     throw new CharacterLoraBenchmarkPromotionServiceError("Final safetensors artifact not found", 404);
   }
 
+  const [queue, activeLocks] = await Promise.all([
+    countActiveComfyQueueRuns(),
+    listActiveCharacterLoraGpuTaskLocks(),
+  ]);
+  const busyDetails = {
+    comfyQueue: queue,
+    gpuTaskLocks: activeLocks,
+  };
+  const isBusy = queue.queued > 0 || queue.running > 0 || activeLocks.length > 0;
   const warnings: string[] = [];
+
+  if (isBusy && parsed.queuePolicy === "reject_when_busy") {
+    throw new CharacterLoraBenchmarkPromotionServiceError("GPU is busy; benchmark enqueue rejected", 409, busyDetails);
+  }
+
+  if (queue.queued > 0 || queue.running > 0) {
+    warnings.push(`ComfyUI queue is busy: queued=${queue.queued}, running=${queue.running}`);
+  }
+  if (activeLocks.length > 0) {
+    warnings.push(`Active GPU task lock exists: ${activeLocks.map((lock) => lock.id).join(", ")}`);
+  }
+
   const loraRegistration = await registerBenchmarkLoraAsset({
     input: parsed,
     job,
@@ -150,6 +173,19 @@ export async function enqueueCharacterLoraBenchmarkRun(trainingRunId: string, in
     checkpointMatrix: toInputJsonValue(parsed.checkpointMatrix),
     weightMatrix: toInputJsonValue(parsed.weightMatrix),
     taskPayload: benchmarkTaskPayload,
+    gpuLockMetadata: benchmarkTaskPayload
+      ? toInputJsonValue({
+          jobId: job.id,
+          trainingRunId: trainingRun.id,
+          benchmarkRunId,
+          workerType: "benchmark",
+          checkpointMatrix: parsed.checkpointMatrix,
+          weightMatrix: parsed.weightMatrix,
+          queuePolicy: parsed.queuePolicy,
+          warnings,
+          busy: busyDetails,
+        })
+      : null,
     tempPreset: {
       categoryName: ROLE_CATEGORY_NAME,
       categorySlug: ROLE_CATEGORY_SLUG,
@@ -167,7 +203,9 @@ export async function enqueueCharacterLoraBenchmarkRun(trainingRunId: string, in
         jobId: job.id,
         trainingRunId: trainingRun.id,
         finalSha256: trainingRun.finalSha256,
+        queuePolicy: parsed.queuePolicy,
         warnings,
+        busy: busyDetails,
       }, null, 2),
     },
     tempProject: {
@@ -184,7 +222,9 @@ export async function enqueueCharacterLoraBenchmarkRun(trainingRunId: string, in
         benchmarkRunId,
         checkpointMatrix: parsed.checkpointMatrix,
         weightMatrix: parsed.weightMatrix,
+        queuePolicy: parsed.queuePolicy,
         warnings,
+        busy: busyDetails,
       }, null, 2),
       sectionLoraConfig: toInputJsonValue({
         lora1: [makeSectionLoraEntry(loraPath, defaultWeight, "lora1")],
@@ -206,7 +246,9 @@ export async function enqueueCharacterLoraBenchmarkRun(trainingRunId: string, in
       resultSummary: {
         dryRun: parsed.dryRun,
         skipQueue: parsed.skipQueue,
+        queuePolicy: parsed.queuePolicy,
         warnings,
+        busy: busyDetails,
         checkpointMatrix: parsed.checkpointMatrix,
         weightMatrix: parsed.weightMatrix,
         expectedSectionCount: matrixExpansion?.expectedSectionCount ?? null,
