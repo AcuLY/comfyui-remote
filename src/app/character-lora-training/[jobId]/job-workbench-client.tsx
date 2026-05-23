@@ -1130,10 +1130,7 @@ export function JobWorkbenchClient({
         <div className="grid gap-3 lg:grid-cols-4">
           <div className="grid gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-3">
             <div className="grid gap-2 sm:grid-cols-3">
-              <label className="grid gap-1 text-xs text-zinc-400">
-                provider
-                <ProviderSelect value={canonicalProvider} onChange={setCanonicalProvider} disabled={isPending} />
-              </label>
+              <ProviderControl value={canonicalProvider} onChange={setCanonicalProvider} disabled={isPending} />
               <label className="grid gap-1 text-xs text-zinc-400">
                 size
                 <ToolParamSelect value={canonicalSize} options={IMAGE_SIZE_OPTIONS} onChange={setCanonicalSize} disabled={isPending} />
@@ -1301,10 +1298,7 @@ export function JobWorkbenchClient({
             </span>
           </div>
           <div className="grid gap-2 md:grid-cols-3">
-            <label className="grid gap-1 text-xs text-zinc-400">
-              provider
-              <ProviderSelect value={sectionProvider} onChange={setSectionProvider} disabled={isPending} />
-            </label>
+            <ProviderControl value={sectionProvider} onChange={setSectionProvider} disabled={isPending} />
             <label className="grid gap-1 text-xs text-zinc-400">
               size
               <ToolParamSelect value={sectionSize} options={IMAGE_SIZE_OPTIONS} onChange={setSectionSize} disabled={isPending} />
@@ -1596,14 +1590,20 @@ export function JobWorkbenchClient({
                 <input name="postTrainingBenchmarkCopyToCharacterDir" type="checkbox" defaultChecked className="size-3.5 accent-emerald-400" />
                 copy file
               </label>
-              <label className="flex items-center gap-2 text-xs text-zinc-300">
-                <input name="postTrainingBenchmarkDryRun" type="checkbox" className="size-3.5 accent-sky-400" />
-                dryRun
-              </label>
-              <label className="flex items-center gap-2 text-xs text-zinc-300">
-                <input name="postTrainingBenchmarkSkipQueue" type="checkbox" className="size-3.5 accent-sky-400" />
-                skipQueue
-              </label>
+              <div className="md:col-span-4">
+                <DebugPanel summary="Debug: post-training benchmark options">
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <label className="flex items-center gap-2 text-xs text-zinc-300">
+                      <input name="postTrainingBenchmarkDryRun" type="checkbox" className="size-3.5 accent-sky-400" />
+                      dryRun
+                    </label>
+                    <label className="flex items-center gap-2 text-xs text-zinc-300">
+                      <input name="postTrainingBenchmarkSkipQueue" type="checkbox" className="size-3.5 accent-sky-400" />
+                      skipQueue
+                    </label>
+                  </div>
+                </DebugPanel>
+              </div>
             </div>
           </details>
           <label className="grid gap-1 text-xs text-zinc-400 md:col-span-2 lg:col-span-3">
@@ -1932,7 +1932,7 @@ export function JobWorkbenchClient({
             secondary: `benchmark ${compactId(decision.benchmarkRunId)} / preset ${compactId(decision.promotedPresetId)}`,
             action: (
               <div className="flex flex-wrap gap-1">
-                <MiniButton label="dryRun" onClick={() => handlePromote(decision.id, true)} disabled={isPending} />
+                <MiniButton label="发布预检" onClick={() => handlePromote(decision.id, true)} disabled={isPending} />
                 <MiniButton label="真实发布" onClick={() => handlePromote(decision.id, false)} disabled={isPending || decision.status !== "approved"} />
               </div>
             ),
@@ -2057,6 +2057,33 @@ function JsonBox({ label, value, onChange }: { label: string; value: string; onC
         className="min-h-24 rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 font-mono text-xs text-white"
       />
     </label>
+  );
+}
+
+function ProviderControl({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: ImageProvider;
+  onChange: (value: ImageProvider) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="grid gap-2">
+      <div className="grid gap-1 text-xs text-zinc-400">
+        <span>provider</span>
+        <div className="rounded-lg border border-white/10 bg-black/20 px-2 py-1.5 font-mono text-xs text-zinc-200">
+          {value}
+        </div>
+      </div>
+      <DebugPanel summary="Debug: provider override" compact>
+        <label className="grid gap-1 text-xs text-zinc-400">
+          provider
+          <ProviderSelect value={value} onChange={onChange} disabled={disabled} />
+        </label>
+      </DebugPanel>
+    </div>
   );
 }
 
