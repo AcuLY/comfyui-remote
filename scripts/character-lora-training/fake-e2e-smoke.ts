@@ -1204,6 +1204,14 @@ async function main() {
   const approvalSectionSummaries = approvalBenchmarkSections.map((section, index) => {
     const runId = approvalRunIds[index] ?? `smoke-approved-${index + 1}-${section.id}`;
     const benchmarkMatrix = readJsonRecord(readJsonRecord(section.extraParams).characterLoraBenchmark);
+    const seed = 900_000 + index;
+    const executionMeta = {
+      ks1Seed: seed,
+      ks2Seed: seed + 10_000,
+      baseCheckpoint: approvalCheckpointMatrix[0],
+      checkpointName: section.checkpointName,
+      loraWeight: readBenchmarkSectionWeight(section),
+    };
     return {
       sectionId: section.id,
       sectionName: section.name,
@@ -1211,6 +1219,8 @@ async function main() {
       originalSectionName: typeof benchmarkMatrix.originalSectionName === "string" ? benchmarkMatrix.originalSectionName : section.name,
       checkpointName: section.checkpointName,
       loraWeight: readBenchmarkSectionWeight(section),
+      seed,
+      executionMeta,
       benchmarkMatrix,
       latestRunId: runId,
       latestRun: {
@@ -1226,6 +1236,7 @@ async function main() {
         startedAt: approvalCompletedAt,
         finishedAt: approvalCompletedAt,
         outputDir: `smoke/benchmark/${section.id}`,
+        executionMeta,
       },
     };
   });
@@ -1269,6 +1280,16 @@ async function main() {
     diagnosticSuggestions: [],
   });
   assert(approvalCompletedBenchmarkRun.status === "done", "approval benchmark should be completed with real evidence shape");
+  const completedBenchmarkSummary = readJsonRecord(approvalCompletedBenchmarkRun.resultSummary);
+  assert(
+    readJsonArray(completedBenchmarkSummary.sections).some((section) => {
+      const sectionSummary = readJsonRecord(section);
+      const executionMeta = readJsonRecord(sectionSummary.executionMeta);
+      const latestRunExecutionMeta = readJsonRecord(readJsonRecord(sectionSummary.latestRun).executionMeta);
+      return sectionSummary.seed === executionMeta.ks1Seed && sectionSummary.seed === latestRunExecutionMeta.ks1Seed;
+    }),
+    "approval benchmark resultSummary should expose seed and executionMeta evidence",
+  );
   const releasedApprovalBenchmarkLocks = await listReleasedBenchmarkGpuLocks(services, approvalBenchmarkRun.id);
   assert(releasedApprovalBenchmarkLocks.length === 1, "benchmark complete should release the active GPU lock");
   assert(
@@ -1420,6 +1441,15 @@ async function main() {
   );
   assert(report.benchmarkRuns.some((run) => run.id === benchmarkRun.id), "report should include dryRun benchmark run");
   assert(report.benchmarkRuns.some((run) => run.id === approvalCompletedBenchmarkRun.id), "report should include approved benchmark run");
+  const reportApprovalBenchmarkRun = report.benchmarkRuns.find((run) => run.id === approvalCompletedBenchmarkRun.id);
+  const reportApprovalBenchmarkSummary = readJsonRecord(reportApprovalBenchmarkRun?.resultSummary);
+  assert(
+    readJsonArray(reportApprovalBenchmarkSummary.sections).some((section) => {
+      const sectionSummary = readJsonRecord(section);
+      return typeof sectionSummary.seed === "number" && readJsonRecord(sectionSummary.executionMeta).ks1Seed === sectionSummary.seed;
+    }),
+    "report should preserve approved benchmark seed/executionMeta evidence",
+  );
   assert(report.promotionDecisions.some((item) => item.id === promoted.decision.id), "report should include promotion decision");
   assert(persistedReport.artifacts.json?.relativePath.endsWith(".json"), "report JSON artifact should be persisted");
   assert(persistedReport.artifacts.markdown?.relativePath.endsWith(".md"), "report markdown artifact should be persisted");

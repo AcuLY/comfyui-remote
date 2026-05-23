@@ -59,6 +59,8 @@ type SectionRunSummary = {
   originalSectionName: string | null;
   checkpointName: string | null;
   loraWeight: number | null;
+  seed: number | null;
+  executionMeta: unknown;
   benchmarkMatrix: BenchmarkSectionMatrixMetadata | null;
   latestRunId: string | null;
   latestRun: Pick<
@@ -75,6 +77,7 @@ type SectionRunSummary = {
     | "startedAt"
     | "finishedAt"
     | "outputDir"
+    | "executionMeta"
   > | null;
 };
 
@@ -425,6 +428,7 @@ function summarizeProjectRuns(projectDetail: ManagerProjectDetail, runIds: strin
     const matrixMetadata = readBenchmarkSectionMatrixMetadata(section.extraParams);
     const checkpointName = matrixMetadata?.checkpointName ?? readOptionalString(section.checkpointName);
     const loraWeight = matrixMetadata?.weight ?? readLoraWeight(section.loraConfig);
+    const seed = readExecutionSeed(latestRun.executionMeta);
     foundRunIds.add(latestRun.id);
     sectionSummaries.push({
       sectionId: section.id,
@@ -433,6 +437,8 @@ function summarizeProjectRuns(projectDetail: ManagerProjectDetail, runIds: strin
       originalSectionName: matrixMetadata?.originalSectionName ?? section.name,
       checkpointName,
       loraWeight,
+      seed,
+      executionMeta: latestRun.executionMeta ?? null,
       benchmarkMatrix: matrixMetadata,
       latestRunId: section.latestRunId,
       latestRun: {
@@ -448,6 +454,7 @@ function summarizeProjectRuns(projectDetail: ManagerProjectDetail, runIds: strin
         startedAt: latestRun.startedAt,
         finishedAt: latestRun.finishedAt,
         outputDir: latestRun.outputDir,
+        executionMeta: latestRun.executionMeta ?? null,
       },
     });
   }
@@ -661,6 +668,11 @@ function readLoraWeight(value: unknown): number | null {
   return null;
 }
 
+function readExecutionSeed(value: unknown): number | null {
+  const metadata = readJsonRecord(value);
+  return readOptionalSeed(metadata.ks1Seed) ?? readOptionalSeed(metadata.ks2Seed);
+}
+
 function readJsonRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value)
     ? value as Record<string, unknown>
@@ -677,6 +689,17 @@ function readOptionalNumber(value: unknown): number | null {
 
 function readOptionalPositiveNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : null;
+}
+
+function readOptionalSeed(value: unknown): number | null {
+  if (typeof value === "number" && Number.isSafeInteger(value) && value >= 0) {
+    return value;
+  }
+  if (typeof value === "string" && /^\d+$/.test(value.trim())) {
+    const parsed = Number(value.trim());
+    return Number.isSafeInteger(parsed) ? parsed : null;
+  }
+  return null;
 }
 
 function inferStringIndex(values: string[], value: string | null) {

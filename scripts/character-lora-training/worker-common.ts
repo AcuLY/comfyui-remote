@@ -102,6 +102,7 @@ export type ManagerProjectLatestRun = {
   finishedAt: string | null;
   outputDir: string | null;
   errorMessage: string | null;
+  executionMeta: unknown;
   totalCount: number;
   pendingCount: number;
   keptCount: number;

@@ -53,6 +53,7 @@ export type LatestRunRecord = {
   finishedAt: Date | null;
   outputDir: string | null;
   errorMessage: string | null;
+  executionMeta?: Prisma.JsonValue | null;
   images: Array<{ reviewStatus: string }>;
 };
 
@@ -147,6 +148,7 @@ export function serializeLatestRun(run: LatestRunRecord | null) {
     finishedAt: toIsoString(run.finishedAt),
     outputDir: run.outputDir,
     errorMessage: run.errorMessage,
+    executionMeta: run.executionMeta ?? null,
     ...summarizeRunImages(run.images),
   };
 }
@@ -210,6 +212,7 @@ export async function getLatestRunsById(latestRunIds: string[]) {
       finishedAt: true,
       outputDir: true,
       errorMessage: true,
+      executionMeta: true,
       images: {
         select: {
           reviewStatus: true,
