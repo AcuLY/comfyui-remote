@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises";
+
 import { Prisma } from "@/generated/prisma";
 import { db } from "@/lib/db";
 import { createCharacterLoraJobArtifact } from "@/server/repositories/character-lora-training-repository";
@@ -226,6 +228,7 @@ async function buildCharacterLoraJobReport(jobId: string) {
     .filter((projectId): projectId is string => Boolean(projectId));
   const benchmarkProjectSummaries = await loadBenchmarkProjectSummaries(benchmarkProjectIds);
   const benchmarkProjectById = new Map(benchmarkProjectSummaries.map((project) => [project.id, project]));
+  const requestPayloadByArtifactId = await loadGenerationRequestPayloads(job.generationRuns, artifactById);
 
   const sourceImages = job.sourceImages.map((image) => ({
     id: image.id,
@@ -284,29 +287,40 @@ async function buildCharacterLoraJobReport(jobId: string) {
     updatedAt: section.updatedAt.toISOString(),
   }));
 
-  const generationRuns = job.generationRuns.map((run) => ({
-    id: run.id,
-    sectionId: run.sectionId,
-    kind: run.kind,
-    parentRunId: run.parentRunId,
-    status: run.status,
-    provider: run.provider,
-    hostModel: run.hostModel,
-    imageModel: run.imageModel,
-    hostInstruction: run.hostInstruction,
-    visualPrompt: run.visualPrompt,
-    negativePrompt: run.negativePrompt,
-    toolParams: run.toolParams,
-    inputImages: run.inputImages,
-    requestArtifactId: run.requestArtifactId,
-    requestArtifact: run.requestArtifactId ? artifactById.get(run.requestArtifactId) ?? null : null,
-    responseSummary: run.responseSummary,
-    errorSummary: run.errorSummary,
-    startedAt: run.startedAt?.toISOString() ?? null,
-    finishedAt: run.finishedAt?.toISOString() ?? null,
-    createdAt: run.createdAt.toISOString(),
-    updatedAt: run.updatedAt.toISOString(),
-  }));
+  const generationRuns = job.generationRuns.map((run) => {
+    const requestPayload = run.requestArtifactId
+      ? requestPayloadByArtifactId.get(run.requestArtifactId) ?? null
+      : null;
+
+    return {
+      id: run.id,
+      sectionId: run.sectionId,
+      kind: run.kind,
+      parentRunId: run.parentRunId,
+      status: run.status,
+      provider: run.provider,
+      hostModel: run.hostModel,
+      imageModel: run.imageModel,
+      hostInstruction: run.hostInstruction,
+      visualPrompt: run.visualPrompt,
+      renderedPrompt: getRequestPayloadRenderedPrompt(requestPayload) ?? run.visualPrompt,
+      userInstruction: getRequestPayloadUserInstruction(requestPayload),
+      negativePrompt: run.negativePrompt,
+      toolParams: run.toolParams,
+      inputImageIds: getInputImageIdList(run.inputImages),
+      sourceImageIds: getInputSourceImageIdList(run.inputImages),
+      inputImages: run.inputImages,
+      requestArtifactId: run.requestArtifactId,
+      requestArtifact: run.requestArtifactId ? artifactById.get(run.requestArtifactId) ?? null : null,
+      requestPayload,
+      responseSummary: run.responseSummary,
+      errorSummary: run.errorSummary,
+      startedAt: run.startedAt?.toISOString() ?? null,
+      finishedAt: run.finishedAt?.toISOString() ?? null,
+      createdAt: run.createdAt.toISOString(),
+      updatedAt: run.updatedAt.toISOString(),
+    };
+  });
   const generationRunById = new Map(generationRuns.map((run) => [run.id, run]));
   const canonicalVersionByArtifactId = new Map(canonicalVersions.map((version) => [version.imageArtifactId, version]));
   const sectionById = new Map(sections.map((section) => [section.id, section]));
@@ -334,10 +348,15 @@ async function buildCharacterLoraJobReport(jobId: string) {
             imageModel: generationRun.imageModel,
             hostInstruction: generationRun.hostInstruction,
             visualPrompt: generationRun.visualPrompt,
+            renderedPrompt: generationRun.renderedPrompt,
+            userInstruction: generationRun.userInstruction,
             negativePrompt: generationRun.negativePrompt,
             toolParams: generationRun.toolParams,
+            inputImageIds: generationRun.inputImageIds,
+            sourceImageIds: generationRun.sourceImageIds,
             inputImages,
             requestArtifactId: generationRun.requestArtifactId,
+            requestPayload: generationRun.requestPayload,
             createdAt: generationRun.createdAt,
             startedAt: generationRun.startedAt,
             finishedAt: generationRun.finishedAt,
@@ -1439,12 +1458,83 @@ function getMetadataString(metadata: unknown, key: string) {
   return typeof value === "string" ? value : null;
 }
 
+async function loadGenerationRequestPayloads(
+  generationRuns: Array<{ requestArtifactId: string | null }>,
+  artifactById: Map<string, ArtifactRef>,
+) {
+  const artifactIds = Array.from(
+    new Set(generationRuns.map((run) => run.requestArtifactId).filter((id): id is string => Boolean(id))),
+  );
+
+  const entries = await Promise.all(
+    artifactIds.map(async (artifactId) => {
+      const artifact = artifactById.get(artifactId);
+      if (!artifact?.absolutePath) {
+        return null;
+      }
+
+      const payload = await readJsonRecordFile(artifact.absolutePath);
+      return payload ? ([artifactId, payload] as const) : null;
+    }),
+  );
+
+  return new Map(entries.filter((entry): entry is readonly [string, Record<string, unknown>] => Boolean(entry)));
+}
+
+async function readJsonRecordFile(absolutePath: string) {
+  try {
+    const parsed = JSON.parse(await readFile(absolutePath, "utf8"));
+    return isRecord(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
 function getInputImageArray(inputImages: unknown): Array<Record<string, unknown>> {
   if (Array.isArray(inputImages)) {
     return inputImages.filter(isRecord);
   }
 
   return isRecord(inputImages) ? [inputImages] : [];
+}
+
+function getInputImageIdList(inputImages: unknown) {
+  return getUniqueStringFieldValues(getInputImageArray(inputImages), "artifactId");
+}
+
+function getInputSourceImageIdList(inputImages: unknown) {
+  return getUniqueStringFieldValues(getInputImageArray(inputImages), "sourceImageId");
+}
+
+function getRequestPayloadRenderedPrompt(payload: Record<string, unknown> | null) {
+  const request = getRequestPayloadRequest(payload);
+  return getStringField(request, "renderedPrompt") ?? getStringField(payload, "renderedPrompt");
+}
+
+function getRequestPayloadUserInstruction(payload: Record<string, unknown> | null) {
+  const request = getRequestPayloadRequest(payload);
+  return getStringField(payload, "userInstruction") ?? getStringField(request, "userInstruction");
+}
+
+function getRequestPayloadRequest(payload: Record<string, unknown> | null) {
+  const request = payload?.request;
+  return isRecord(request) ? request : null;
+}
+
+function getStringField(record: Record<string, unknown> | null, key: string) {
+  const value = record?.[key];
+  return typeof value === "string" && value.length > 0 ? value : null;
+}
+
+function getUniqueStringFieldValues(items: Array<Record<string, unknown>>, key: string) {
+  const values = new Set<string>();
+  for (const item of items) {
+    const value = item[key];
+    if (typeof value === "string" && value.length > 0) {
+      values.add(value);
+    }
+  }
+  return Array.from(values);
 }
 
 function getCanonicalInputArtifactId(inputImages: Array<Record<string, unknown>>) {

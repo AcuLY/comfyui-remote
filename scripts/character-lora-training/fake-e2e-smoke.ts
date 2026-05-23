@@ -1349,6 +1349,35 @@ async function main() {
   assert(reportLineageRun.imageModel === "gpt-image-2", "candidate lineage should include image model");
   const reportGenerationRun = report.generationRuns.find((run) => run.id === generatedCandidate.generationRunId);
   assert(reportGenerationRun, "report should include generated candidate source run");
+  const reportGeneratedSection = instantiated.sections.find((section) => section.id === generatedCandidate.sectionId);
+  assert(reportGeneratedSection, "smoke should resolve generated candidate section");
+  const expectedReportUserInstruction =
+    `Smoke instruction for ${reportGeneratedSection.key}: keep the section target clear without changing identity.`;
+  assert(
+    reportGenerationRun.userInstruction === expectedReportUserInstruction,
+    "report should expose section run userInstruction from request artifact",
+  );
+  assert(
+    reportGenerationRun.renderedPrompt === reportGenerationRun.visualPrompt,
+    "report should expose renderedPrompt for section run",
+  );
+  assert(
+    readJsonArray(reportGenerationRun.inputImageIds).includes(selectedManualCanonical.canonicalVersion.imageArtifactId),
+    "report generation run should expose canonical input artifact id",
+  );
+  assert(
+    readJsonArray(reportGenerationRun.sourceImageIds).includes(source.id),
+    "report generation run should expose source image ids",
+  );
+  const reportRunRequestPayload = readJsonRecord(reportGenerationRun.requestPayload);
+  assert(
+    reportRunRequestPayload.userInstruction === expectedReportUserInstruction,
+    "report should preserve redacted request payload userInstruction",
+  );
+  assert(
+    readJsonRecord(reportRunRequestPayload.request).renderedPrompt === reportGenerationRun.renderedPrompt,
+    "report should preserve redacted request payload renderedPrompt",
+  );
   const reportRunResponseSummary = readJsonRecord(reportGenerationRun.responseSummary);
   assert(readJsonRecord(reportRunResponseSummary.workerRequest).provider === "mock-local", "report should preserve worker request summary");
   assert(readJsonRecord(reportRunResponseSummary.workerResponseSummary).httpStatus === 200, "report should preserve worker response summary");
@@ -1375,6 +1404,14 @@ async function main() {
   assert(
     readJsonArray(reportLineageRun.inputImages).some((inputImage) => readJsonRecord(inputImage).role === "canonical"),
     "candidate lineage generation run should include canonical input image",
+  );
+  assert(
+    readJsonArray(reportLineageRun.inputImageIds).includes(selectedManualCanonical.canonicalVersion.imageArtifactId),
+    "candidate lineage generation run should expose canonical input artifact id",
+  );
+  assert(
+    reportLineageRun.userInstruction === expectedReportUserInstruction,
+    "candidate lineage generation run should expose userInstruction",
   );
   assert(report.datasetRevisions.some((revision) => revision.id === frozenRevision.id && revision.items.length === allImages.length), "report should include dataset revision/items");
   assert(
