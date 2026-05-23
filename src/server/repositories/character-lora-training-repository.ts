@@ -21,6 +21,12 @@ import type {
   CharacterLoraTrainingTaskPayload,
 } from "@/server/character-lora-training/contracts";
 
+const CHARACTER_LORA_BENCHMARK_TEMPLATE_NAME_TERMS = [
+  "\u89d2\u8272 lora \u6d4b\u8bd5",
+  "\u89d2\u8272 LoRA \u6d4b\u8bd5",
+  "character lora",
+] as const;
+
 const JOB_SUMMARY_SELECT = {
   id: true,
   slug: true,
@@ -1675,6 +1681,9 @@ export async function createCharacterLoraBenchmarkRunWithTask(input: {
           },
         })
       : null;
+    if (input.templateId && !template) {
+      throw new Error(`Benchmark ProjectTemplate not found: ${input.templateId}`);
+    }
     const project = await tx.project.create({
       data: {
         title: input.tempProject.title,
@@ -1807,7 +1816,7 @@ export async function createCharacterLoraBenchmarkRunWithTask(input: {
         loraAssetId: input.loraAssetId ?? null,
         testPresetId: preset.id,
         testProjectId: project.id,
-        templateId: template?.id ?? input.templateId ?? null,
+        templateId: template?.id ?? null,
         checkpointMatrix: input.checkpointMatrix,
         weightMatrix: input.weightMatrix,
       },
@@ -2281,13 +2290,16 @@ export async function promoteCharacterLoraDecisionInRepository(input: {
 export async function findCharacterLoraBenchmarkTemplate() {
   return db.projectTemplate.findFirst({
     where: {
-      OR: [
-        { name: { contains: "角色 lora 测试" } },
-        { name: { contains: "角色 LoRA 测试" } },
-        { name: { contains: "character lora" } },
-      ],
+      OR: CHARACTER_LORA_BENCHMARK_TEMPLATE_NAME_TERMS.map((term) => ({ name: { contains: term } })),
     },
     orderBy: [{ updatedAt: "desc" }, { id: "asc" }],
+    select: { id: true, name: true },
+  });
+}
+
+export async function getCharacterLoraBenchmarkTemplateById(templateId: string) {
+  return db.projectTemplate.findUnique({
+    where: { id: templateId },
     select: { id: true, name: true },
   });
 }

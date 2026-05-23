@@ -973,6 +973,49 @@ async function main() {
 
   const approvalCheckpointMatrix = ["fake-base.safetensors"];
   const approvalWeightMatrix = [0.65];
+  const missingTemplateBenchmark = await assertRejectsWithStatus(
+    () => services.benchmarkPromotionService.enqueueCharacterLoraBenchmarkRun(completedTrainingRun.id, {
+      checkpointMatrix: approvalCheckpointMatrix,
+      weightMatrix: approvalWeightMatrix,
+      registerLoraAsset: false,
+      copyToCharacterDir: false,
+      dryRun: false,
+      skipQueue: false,
+      queuePolicy: "queue_when_busy",
+    }),
+    409,
+    "non-skipped benchmark should require the Character LoRA test ProjectTemplate",
+  );
+  const missingTemplateDetails = readJsonRecord(readErrorDetails(missingTemplateBenchmark));
+  assert(missingTemplateDetails.templateId === null, "missing template error should expose null templateId for auto lookup");
+  assert(missingTemplateDetails.dryRun === false, "missing template error should expose dryRun=false");
+  assert(missingTemplateDetails.skipQueue === false, "missing template error should expose skipQueue=false");
+  assert(
+    readJsonArray(missingTemplateDetails.requiredTemplateNames).includes("\u89d2\u8272 LoRA \u6d4b\u8bd5"),
+    "missing template error should expose required benchmark template names",
+  );
+
+  const invalidExplicitTemplateBenchmark = await assertRejectsWithStatus(
+    () => services.benchmarkPromotionService.enqueueCharacterLoraBenchmarkRun(completedTrainingRun.id, {
+      checkpointMatrix: approvalCheckpointMatrix,
+      weightMatrix: approvalWeightMatrix,
+      templateId: "missing-character-lora-benchmark-template",
+      registerLoraAsset: false,
+      copyToCharacterDir: false,
+      dryRun: true,
+      skipQueue: true,
+      queuePolicy: "queue_when_busy",
+    }),
+    409,
+    "explicit invalid benchmark templateId should reject instead of falling back",
+  );
+  const invalidExplicitTemplateDetails = readJsonRecord(readErrorDetails(invalidExplicitTemplateBenchmark));
+  assert(
+    invalidExplicitTemplateDetails.templateId === "missing-character-lora-benchmark-template",
+    "invalid explicit template error should echo templateId",
+  );
+
+  const approvalTemplateId = await createSmokeBenchmarkProjectTemplate(services, approvalCheckpointMatrix[0]);
   const approvalBenchmarkCreated = await services.benchmarkPromotionService.enqueueCharacterLoraBenchmarkRun(completedTrainingRun.id, {
     checkpointMatrix: approvalCheckpointMatrix,
     weightMatrix: approvalWeightMatrix,
@@ -987,6 +1030,7 @@ async function main() {
   const approvalBenchmarkRun = approvalBenchmarkCreated.benchmarkRun;
   assert(approvalBenchmarkRun.loraAssetId, "approval benchmark should register a LoRA asset");
   assert(approvalBenchmarkRun.testProjectId, "approval benchmark should create a test project");
+  assert(approvalBenchmarkRun.templateId === approvalTemplateId, "approval benchmark should use the real Character LoRA test template");
   const approvalBenchmarkLocks = await listActiveBenchmarkGpuLocks(services, approvalBenchmarkRun.id);
   assert(approvalBenchmarkLocks.length === 1, "approval benchmark should create one active GPU lock");
   const approvalBenchmarkLock = approvalBenchmarkLocks[0];
@@ -1343,6 +1387,68 @@ function runPrismaDbPush(databaseUrl: string) {
       },
     },
   );
+}
+
+async function createSmokeBenchmarkProjectTemplate(
+  services: ServiceModules,
+  checkpointName: string,
+) {
+  const sections = [
+    ["Default", "default outfit, standing pose"],
+    ["Underwear", "underwear outfit, standing pose"],
+    ["Underwear Shoes Off", "underwear outfit, barefoot"],
+    ["Half Undressed", "half undressed outfit"],
+    ["Half Undressed Upper", "half undressed upper body"],
+    ["Half Undressed Shoes Off", "half undressed outfit, barefoot"],
+    ["Naked", "nude body, neutral pose"],
+  ] as const;
+
+  const template = await services.prismaModule.prisma.projectTemplate.create({
+    data: {
+      name: "\u89d2\u8272 LoRA \u6d4b\u8bd5",
+      description: "Smoke ProjectTemplate required for real Character LoRA benchmark approval evidence.",
+      presetBindings: [],
+      sections: {
+        create: sections.map(([name, positiveSuffix], index) => ({
+          sortOrder: index,
+          name,
+          notes: "fake-e2e benchmark template section",
+          aspectRatio: "2:3",
+          shortSidePx: 768,
+          batchSize: 1,
+          seedPolicy1: "random",
+          seedPolicy2: "reuse",
+          ksampler1: {
+            steps: 20,
+            cfg: 7,
+            samplerName: "euler",
+            scheduler: "normal",
+          },
+          ksampler2: {
+            steps: 12,
+            cfg: 6,
+            samplerName: "euler",
+            scheduler: "normal",
+          },
+          upscaleFactor: 1,
+          checkpointName,
+          extraParams: {
+            smokeTemplate: true,
+            benchmarkBaseSectionIndex: index,
+          },
+          promptBlocks: [{
+            label: `Benchmark ${name}`,
+            positive: `smoke_lora_chr, Smoke Character, ${positiveSuffix}, clear face, benchmark test`,
+            negative: "low quality, bad anatomy, text, watermark",
+            sortOrder: 0,
+          }],
+        })),
+      },
+    },
+    select: { id: true },
+  });
+
+  return template.id;
 }
 
 function toPrismaSqliteUrl(dbPath: string) {

@@ -51,9 +51,10 @@ cmd /c npx prisma db push --schema prisma/schema.sqlite.prisma
 11. enqueue training，生成 training config、dry-run summary 和 GPU lock。
 12. lease + heartbeat + complete fake training task，登记 dummy safetensors/hash/log/checkpoint。
 13. dryRun + skipQueue 创建并 mock complete benchmark，并断言它不能创建 approved promotion decision、仍可创建 rejected decision 用于诊断回退。
-14. 另外创建一个非 dryRun/skipQueue benchmark，直接通过 complete 服务写入 benchmark-worker 风格的完成证据（runIds、sections、counts done=totalRuns、matrixExpansion >= 7 base sections、skipWait=false）。
-15. 使用第 14 步的真实证据形态 benchmark 创建 approved promotion decision。
-16. 在隔离 SQLite 中真实执行 promotion，创建正式 preset 和 7 个 variants。
+14. 先断言缺失 ProjectTemplate 时非 dryRun/skipQueue benchmark enqueue 返回 409；随后在隔离 SQLite 中创建真实 `角色 LoRA 测试` ProjectTemplate（至少 7 个 sections）。
+15. 另外创建一个非 dryRun/skipQueue benchmark，确认其 `templateId` 来自真实 ProjectTemplate，并直接通过 complete 服务写入 benchmark-worker 风格的完成证据（runIds、sections、counts done=totalRuns、matrixExpansion >= 7 base sections、skipWait=false）。
+16. 使用第 15 步的真实证据形态 benchmark 创建 approved promotion decision。
+17. 在隔离 SQLite 中真实执行 promotion，创建正式 preset 和 7 个 variants。
 
 脚本不使用裸 SQL 绕过业务规则；只在最后用 Prisma read 查询 promoted variants 做断言。
 
@@ -144,8 +145,8 @@ cmd /c npx tsc --noEmit --pretty false
 
 - fake image provider 不调用外部图像模型，section candidate 由脚本写入 dummy PNG artifact 后通过真实 worker complete 入口登记。
 - fake training worker 不调用 sd-scripts/kohya，只通过真实 training complete 入口登记 dummy `.safetensors`、checkpoint、hashes 和 log。
-- dryRun/skipQueue benchmark 只覆盖临时 preset/project 和 benchmark report 状态链，不能作为 approved promotion evidence。
-- smoke 会另建一个非 dryRun/skipQueue benchmark，并用 benchmark-worker 风格的完成 `resultSummary` 作为 approved promotion evidence；该路径不进入真实 ComfyUI 出图队列。
+- dryRun/skipQueue benchmark 只覆盖临时 preset/project 和 benchmark report 状态链；缺失 ProjectTemplate 时允许使用 fallback sections，但该 fallback 只属于 debug 路径，不能作为 approved promotion evidence。
+- smoke 会另建一个非 dryRun/skipQueue benchmark；真实 benchmark 必须复用 `角色 LoRA 测试` ProjectTemplate，不能静默 fallback，并用 benchmark-worker 风格的完成 `resultSummary` 作为 approved promotion evidence；该路径不进入真实 ComfyUI 出图队列。
 - promotion 在隔离 SQLite 中真实创建 preset，不污染当前业务库。
 - 缺失 breast-size slider 或半脱/裸身 linked variant seed 时，promotion service 会在报告中记录 warning；这不是 smoke 失败条件，因为 7 个角色 variants 仍会创建，且 LoRA 权重仍可验证。
 

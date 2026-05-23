@@ -22,6 +22,7 @@ import {
   findBreastSizeSliderLoraAsset,
   findCharacterLoraBenchmarkTemplate,
   findCharacterLoraPromotionLinkedVariant,
+  getCharacterLoraBenchmarkTemplateById,
   getCharacterLoraArtifact,
   getCharacterLoraBenchmarkRun,
   getCharacterLoraBenchmarkMatrixExpansionSummary,
@@ -57,6 +58,13 @@ const STANDARD_VARIANTS = [
 
 const MIN_APPROVAL_BENCHMARK_EVIDENCE_COUNT = 7;
 const BLOCKING_BENCHMARK_COUNT_KEYS = ["failed", "missing", "queued", "running"] as const;
+const REQUIRED_BENCHMARK_TEMPLATE_NAMES = [
+  "\u89d2\u8272 lora \u6d4b\u8bd5",
+  "\u89d2\u8272 LoRA \u6d4b\u8bd5",
+  "character lora",
+] as const;
+const DEBUG_FALLBACK_BENCHMARK_WARNING =
+  "Benchmark ProjectTemplate was not found; using fallback sections only because dryRun/skipQueue skipped the real benchmark queue. This debug fallback is not approved promotion evidence.";
 
 type MinimalCharacterLoraJob = {
   id: string;
@@ -123,6 +131,7 @@ export async function enqueueCharacterLoraBenchmarkRun(trainingRunId: string, in
     warnings.push(`Active GPU task lock exists: ${activeLocks.map((lock) => lock.id).join(", ")}`);
   }
 
+  const benchmarkTemplate = await resolveBenchmarkTemplateForEnqueue(parsed, warnings);
   const loraRegistration = await registerBenchmarkLoraAsset({
     input: parsed,
     job,
@@ -134,12 +143,6 @@ export async function enqueueCharacterLoraBenchmarkRun(trainingRunId: string, in
   const defaultWeight = parsed.weightMatrix[0] ?? 1;
   const loraPath = loraRegistration.relativePath;
   const loraBinding = { path: loraPath, weight: roundWeight(defaultWeight), enabled: true };
-  const benchmarkTemplate = parsed.templateId
-    ? { id: parsed.templateId, name: "explicit template" }
-    : await findCharacterLoraBenchmarkTemplate();
-  if (!benchmarkTemplate) {
-    warnings.push("Benchmark template not found; created the standard 7-section fallback benchmark project.");
-  }
 
   const taskPayload = parsed.dryRun || parsed.skipQueue
     ? null
@@ -956,6 +959,50 @@ function buildBenchmarkFallbackSections(job: MinimalCharacterLoraJob) {
       negative: "low quality, bad anatomy, text, watermark",
     },
   }));
+}
+
+async function resolveBenchmarkTemplateForEnqueue(
+  input: CharacterLoraBenchmarkEnqueueRequest,
+  warnings: string[],
+) {
+  const allowDebugFallback = input.dryRun || input.skipQueue;
+
+  if (input.templateId) {
+    const template = await getCharacterLoraBenchmarkTemplateById(input.templateId);
+    if (!template) {
+      throw missingBenchmarkTemplateError(input, "explicit");
+    }
+    return template;
+  }
+
+  const template = await findCharacterLoraBenchmarkTemplate();
+  if (template) {
+    return template;
+  }
+
+  if (!allowDebugFallback) {
+    throw missingBenchmarkTemplateError(input, "automatic");
+  }
+
+  warnings.push(DEBUG_FALLBACK_BENCHMARK_WARNING);
+  return null;
+}
+
+function missingBenchmarkTemplateError(
+  input: Pick<CharacterLoraBenchmarkEnqueueRequest, "templateId" | "dryRun" | "skipQueue">,
+  lookup: "explicit" | "automatic",
+) {
+  return new CharacterLoraBenchmarkPromotionServiceError(
+    "Character LoRA benchmark requires a valid ProjectTemplate",
+    409,
+    {
+      templateId: input.templateId ?? null,
+      dryRun: input.dryRun,
+      skipQueue: input.skipQueue,
+      requiredTemplateNames: [...REQUIRED_BENCHMARK_TEMPLATE_NAMES],
+      lookup,
+    },
+  );
 }
 
 function parseRecord(value: unknown): Record<string, unknown> {

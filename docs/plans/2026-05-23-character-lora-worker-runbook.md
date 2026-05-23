@@ -110,6 +110,8 @@ cmd /c npx tsx scripts/character-lora-training/training-worker.ts --once --dry-r
 
 Benchmark enqueue 会先检查当前 ComfyUI queued/running 数量和 active LoRA `GpuTaskLock`。`queuePolicy=reject_when_busy` 时，只要 ComfyUI 忙或已有 active LoRA GPU lock，就返回 409，details 包含 `comfyQueue` 和 `gpuTaskLocks`；`queue_when_busy` / `ignore_busy` 会继续创建 benchmark，但会把 busy 状态写入 warnings 和 benchmark lock metadata。非 `dryRun` / 非 `skipQueue` 的 benchmark task 会创建 `taskType=benchmark`、`ownerType=character_lora_benchmark_run`、`ownerId=benchmarkRun.id` 的 active GPU lock；benchmark complete 或 worker fail 会释放该 lock。`dryRun` / `skipQueue` 不会创建 GPU lock。
 
+真实 benchmark（非 `dryRun` 且非 `skipQueue`）必须复用 ProjectTemplate：显式 `templateId` 必须存在；未显式指定时会自动查找 `角色 lora 测试` / `角色 LoRA 测试` / `character lora`。缺失时 benchmark enqueue 返回 409，不能静默创建 fallback project。fallback sections 只允许在 `dryRun` / `skipQueue` 调试路径使用，并且不能作为 approved promotion evidence。
+
 单次处理：
 
 ```powershell
