@@ -1722,12 +1722,7 @@ export function JobWorkbenchClient({
       </SectionCard>
 
       <SectionCard title="Training" subtitle="用最新 frozen dataset 入队训练，可查看 GPU 锁并取消运行。">
-        {gpuLock.current ? (
-          <div className="mb-3 flex items-center gap-2 rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
-            <AlertTriangle className="size-4 shrink-0" />
-            <span className="min-w-0 truncate">{gpuLock.current.taskType} / {gpuLock.current.ownerId}</span>
-          </div>
-        ) : null}
+        {gpuLock.current ? <GpuLockBanner lock={gpuLock.current} /> : null}
         <form action={handleTrainingEnqueue} className="grid gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-3 md:grid-cols-3 lg:grid-cols-[1fr_130px_130px_160px_auto]">
           <select name="datasetRevisionId" defaultValue={latestFrozenRevision?.id ?? ""} className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white">
             <option value="">选择 dataset revision</option>
@@ -2357,6 +2352,38 @@ function ToolParamSelect<T extends string>({
   );
 }
 
+function GpuLockBanner({ lock }: { lock: NonNullable<CharacterLoraGpuLock["current"]> }) {
+  const metadata = readUnknownRecord(lock.metadata);
+  const leaseDurationSeconds = readRecordNumber(metadata, "leaseDurationSeconds");
+  const estimatedReleaseAt = leaseDurationSeconds ? addSecondsIso(lock.startedAt, leaseDurationSeconds) : null;
+  const detailItems = [
+    ["type", lock.taskType],
+    ["owner", `${lock.ownerType} / ${compactId(lock.ownerId)}`],
+    ["started", formatDate(lock.startedAt)],
+    ["eta", estimatedReleaseAt ? formatDate(estimatedReleaseAt) : "未估算"],
+  ];
+
+  return (
+    <div className="mb-3 rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+      <div className="flex items-center gap-2">
+        <AlertTriangle className="size-4 shrink-0" />
+        <span className="font-medium">GPU task lock active</span>
+        <span className="rounded border border-amber-300/25 px-1.5 py-0.5 text-[10px] uppercase text-amber-100">
+          {lock.status}
+        </span>
+      </div>
+      <div className="mt-2 grid gap-1 sm:grid-cols-2 lg:grid-cols-4">
+        {detailItems.map(([label, value]) => (
+          <div key={label} className="min-w-0">
+            <div className="text-[10px] uppercase text-amber-200/70">{label}</div>
+            <div className="truncate font-mono text-[11px] text-amber-50">{value}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function SourceReferencePicker({
   images,
   selectedIds,
@@ -2830,6 +2857,23 @@ function extractComparisonInputImages(inputImages: unknown) {
 function readRecordString(record: Record<string, unknown>, key: string) {
   const value = record[key];
   return typeof value === "string" && value.trim() ? value : null;
+}
+
+function readRecordNumber(record: Record<string, unknown>, key: string) {
+  const value = record[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function readUnknownRecord(value: unknown) {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+}
+
+function addSecondsIso(value: string, seconds: number) {
+  const timestamp = Date.parse(value);
+  if (!Number.isFinite(timestamp)) return null;
+  return new Date(timestamp + seconds * 1000).toISOString();
 }
 
 function formatInputImageRole(value: string) {
