@@ -1534,12 +1534,13 @@ export function JobWorkbenchClient({
           <select name="queuePolicy" defaultValue="reject_when_busy" className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white">
             <option value="reject_when_busy">reject busy</option>
             <option value="queue_when_busy">queue busy</option>
-            <option value="ignore_busy">ignore busy</option>
           </select>
-          <label className="flex items-center gap-2 text-xs text-zinc-300">
-            <input name="allowBusy" type="checkbox" className="size-3.5 accent-amber-400" />
-            allow busy
-          </label>
+          <DebugPanel summary="Debug: training queue override" compact>
+            <label className="flex items-center gap-2 text-xs text-zinc-300">
+              <input name="allowBusy" type="checkbox" className="size-3.5 accent-amber-400" />
+              allow busy
+            </label>
+          </DebugPanel>
           <details open className="rounded-lg border border-white/10 bg-black/20 p-3 md:col-span-3 lg:col-span-5">
             <summary className="cursor-pointer text-xs font-medium text-zinc-200">Post-training Benchmark</summary>
             <BenchmarkTemplateStatusPanel
@@ -1565,7 +1566,6 @@ export function JobWorkbenchClient({
                 <select name="postTrainingBenchmarkQueuePolicy" defaultValue="queue_when_busy" className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white">
                   <option value="queue_when_busy">queue busy</option>
                   <option value="reject_when_busy">reject busy</option>
-                  <option value="ignore_busy">ignore busy</option>
                 </select>
               </label>
               <label className="grid gap-1 text-xs text-zinc-400">
@@ -1732,7 +1732,6 @@ export function JobWorkbenchClient({
           <select name="queuePolicy" defaultValue="queue_when_busy" className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white">
             <option value="queue_when_busy">queue busy</option>
             <option value="reject_when_busy">reject busy</option>
-            <option value="ignore_busy">ignore busy</option>
           </select>
           <input
             name="templateId"
