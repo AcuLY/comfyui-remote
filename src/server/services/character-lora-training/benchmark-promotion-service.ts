@@ -372,7 +372,7 @@ export async function createPromotionDecision(benchmarkRunId: string, input: unk
       : null,
     variantPromptDrafts: toInputJsonValue(parsed.variantPromptDrafts),
     decisionReason: parsed.decisionReason ?? null,
-    rejectedReturnPoint: parsed.status === "rejected" ? parsed.returnPoint ?? "benchmark_review" : null,
+    rejectedReturnPoint: parsed.status === "rejected" ? parsed.returnPoint ?? "weightSelection" : null,
   });
 
   if (!decision) {

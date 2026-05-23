@@ -177,7 +177,8 @@ const IMAGE_PROVIDERS: Array<{ value: ImageProvider; label: string }> = [
 const IMAGE_SIZE_OPTIONS = ["1024x1536", "1024x1024", "1536x1024"] as const;
 const IMAGE_QUALITY_OPTIONS = ["high", "medium", "low"] as const;
 const TRAINING_PRECISION_OPTIONS = ["", "bf16", "fp16", "fp32"] as const;
-const PROMOTION_RETURN_POINTS = ["benchmark_review", "dataset_ready", "trained"] as const;
+const PROMOTION_RETURN_POINTS = ["dataset", "caption", "prompt", "trainingConfig", "weightSelection"] as const;
+type PromotionReturnPoint = (typeof PROMOTION_RETURN_POINTS)[number];
 type DiagnosticReturnPoint = CharacterLoraJobReport["diagnosticSummary"]["recommendedReturnPoint"];
 const DIAGNOSTIC_RETURN_POINTS = ["source", "canonical", "sections", "dataset", "caption", "prompt", "trainingConfig", "weightSelection"] as const satisfies readonly DiagnosticReturnPoint[];
 const DIAGNOSTIC_RETURN_ACTIONS: Record<DiagnosticReturnPoint, { targetId: string; label: string; description: string }> = {
@@ -199,6 +200,21 @@ function normalizeDiagnosticReturnPoint(value: string): DiagnosticReturnPoint {
   }
 
   return "source";
+}
+
+function mapDiagnosticReturnPointToPromotionReturnPoint(point: DiagnosticReturnPoint): PromotionReturnPoint {
+  switch (point) {
+    case "dataset":
+    case "caption":
+    case "prompt":
+    case "trainingConfig":
+    case "weightSelection":
+      return point;
+    case "source":
+    case "canonical":
+    case "sections":
+      return "dataset";
+  }
 }
 
 const PROMOTION_VARIANTS = [
@@ -738,6 +754,7 @@ export function JobWorkbenchClient({
   const rejectSuggestion = REJECT_REASON_OPTIONS.find((reason) => reason.value === rejectReason)?.suggestion ?? "";
   const diagnosticReturnPoint = normalizeDiagnosticReturnPoint(report.diagnosticSummary.recommendedReturnPoint);
   const diagnosticReturnAction = DIAGNOSTIC_RETURN_ACTIONS[diagnosticReturnPoint];
+  const defaultPromotionReturnPoint = mapDiagnosticReturnPointToPromotionReturnPoint(diagnosticReturnPoint);
   const hasKeepImages = candidateImages.some((image) => image.reviewStatus === "keep");
   const datasetFreezeSectionBlockers = sections.filter((section) => section.keepCount < section.targetKeepCount);
   const datasetFreezeBlocked = !hasKeepImages || datasetFreezeSectionBlockers.length > 0;
@@ -1123,7 +1140,7 @@ export function JobWorkbenchClient({
         defaultRecommendedWeight: defaultWeight,
         variantPromptDrafts: {},
         decisionReason: status === "approved" ? "approved from workbench" : "rejected from workbench",
-        returnPoint: "benchmark_review",
+        ...(status === "rejected" ? { returnPoint: defaultPromotionReturnPoint } : {}),
       });
     });
   }
@@ -1186,7 +1203,7 @@ export function JobWorkbenchClient({
           ...(Object.keys(perVariantWeightOverrides).length > 0 ? { perVariantWeightOverrides } : {}),
           variantPromptDrafts,
           decisionReason: readOptionalString(formData, "decisionReason"),
-          returnPoint: readOptionalString(formData, "returnPoint"),
+          ...(status === "rejected" ? { returnPoint: readOptionalString(formData, "returnPoint") } : {}),
         });
       });
     } catch (error) {
@@ -2085,7 +2102,7 @@ export function JobWorkbenchClient({
           empty="暂无 benchmark run"
         />
         <form
-          key={selectedPromotionBenchmark?.id ?? "empty-promotion-draft"}
+          key={`${selectedPromotionBenchmark?.id ?? "empty-promotion-draft"}:${defaultPromotionReturnPoint}`}
           action={handleDecisionDraft}
           className="mt-3 grid gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-3"
         >
@@ -2156,7 +2173,7 @@ export function JobWorkbenchClient({
               Return point
               <select
                 name="returnPoint"
-                defaultValue="benchmark_review"
+                defaultValue={defaultPromotionReturnPoint}
                 className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white"
               >
                 {PROMOTION_RETURN_POINTS.map((point) => (

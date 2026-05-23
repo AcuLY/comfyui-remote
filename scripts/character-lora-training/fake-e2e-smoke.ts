@@ -1240,9 +1240,16 @@ async function main() {
     defaultRecommendedWeight: 0.65,
     variantPromptDrafts: {},
     decisionReason: "dryRun/skipQueue benchmark rejected for diagnostics",
-    returnPoint: "benchmark_review",
+    returnPoint: "caption",
   });
   assert(rejectedDecision.status === "rejected", "dryRun/skipQueue benchmark should still allow rejected decision");
+  assert(rejectedDecision.rejectedReturnPoint === "caption", "rejected decision should persist the selected PRD return point");
+  const rejectedJobState = await services.prismaModule.prisma.characterLoraTrainingJob.findUnique({
+    where: { id: job.id },
+    select: { status: true, phase: true },
+  });
+  assert(rejectedJobState?.status === "dataset_ready", "caption return point should map the job back to dataset_ready");
+  assert(rejectedJobState.phase === "dataset", "caption return point should map the job phase back to dataset");
 
   const approvalCheckpointMatrix = ["fake-base.safetensors"];
   const approvalWeightMatrix = [0.65];
@@ -1592,6 +1599,7 @@ async function main() {
     decisionReason: "phase6 fake e2e approved with completed benchmark evidence shape",
   });
   assert(decision.status === "approved", "promotion decision should be approved");
+  assert(decision.rejectedReturnPoint === null, "approved promotion decision should not store a rejected return point");
 
   const promoted = await services.benchmarkPromotionService.promoteCharacterLoraPreset(decision.id, {
     dryRun: false,

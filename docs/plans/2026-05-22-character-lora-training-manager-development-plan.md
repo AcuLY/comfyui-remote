@@ -362,6 +362,7 @@ flowchart LR
 | `perVariantWeightOverrides` | `Json?` | 个别变体 weight override。 |
 | `variantPromptDrafts` | `Json` | 7 个标准变体 prompt 草案。 |
 | `decisionReason` | `String? @db.Text` | 选择理由。 |
+| `rejectedReturnPoint` | `String?` | rejected 时用户选择的 PRD 5.13 返工点：`dataset` / `caption` / `prompt` / `trainingConfig` / `weightSelection`。approved/promoted 决策为空。 |
 | `promotedCategoryId` | `String?` | 目标角色 category。 |
 | `promotedPresetId` | `String?` | 创建的 `Preset.id`。 |
 | `reportArtifactId` | `String?` | promotion report。 |
@@ -1116,6 +1117,7 @@ sequenceDiagram
 - 2026-05-23：补齐 PRD 5.8 text encoder cache 冲突规则的 dry-run 证据。训练配置启用 `cacheTextEncoderOutputs` 时，service 会把 caption shuffle/dropout/text encoder dropout 相关 expert 字段强制归零或关闭，并把该处理写入 `dry-run-summary.json` 的 warnings；fake e2e smoke 覆盖 resolved config 和 warning。
 - 2026-05-23：补齐 PRD 5.1 创建 job 时上传/选择参考图的入口。新建训练任务表单支持一次选择多张初始参考图并标记 role；创建 job 后立即通过 source image upload service 写 artifact、sha256、provenance，再进入详情页继续 canonical / Prompt Card / section 流程。
 - 2026-05-23：补齐 PRD 5.13 失败诊断返工入口的 UI 缺口。Report / Diagnostics 面板根据 `recommendedReturnPoint` 给出“打开返工入口”按钮，跳转到 source、canonical、section、dataset/caption、Prompt Card、training config 或 benchmark/promotion 的现有人工确认表单；按钮只定位入口，不自动创建新的 dataset revision、training run 或 promotion run，继续由用户在目标表单确认执行。
+- 2026-05-23：对齐 PRD 5.13 promotion rejected return point 语义。Promotion decision contract 改为 `dataset` / `caption` / `prompt` / `trainingConfig` / `weightSelection`，rejected 决策持久化 `rejectedReturnPoint` 并映射到现有 job status（dataset/caption -> `dataset_ready`，prompt -> `prompt_pending`，trainingConfig -> `trained`，weightSelection -> `benchmark_review`）；approved 决策保持该字段为空，工作台和 fake e2e smoke 已覆盖 rejected 持久化与状态映射。
 - 2026-05-23：补齐 PRD 5.7/5.8 freeze dataset 前置门禁的 UI 缺口。Review / Dataset 面板会在没有 keep 图或 section `keepCount < targetKeepCount` 时禁用“冻结 Dataset”，并直接列出未达标 section，和 service 侧 `409` 校验保持一致，避免用户点了才发现不可 freeze。
 - 2026-05-23：补齐 PRD 5.7 从 reject reason 生成下一轮重生建议的卡片级可见性。候选图卡片在已有 reject reason chip 外，直接把每个 reject reason 映射为 rerun suggestion 文案，便于用户把问题转成下一轮 section rerun 的 userInstruction。
 - 2026-05-23：补齐 PRD 5.4 复制训练集模板的可调目标数入口。工作台复制 section template 时可覆盖 `targetCandidateCount` 与 `targetKeepCount`，直接复用 service 侧 `targetKeepCount <= targetCandidateCount` 校验，方便复制模板后调整候选/keep 目标。

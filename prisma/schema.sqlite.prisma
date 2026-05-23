@@ -758,6 +758,7 @@ model CharacterLoraPromotionDecision {
   perVariantWeightOverrides Json?
   variantPromptDrafts       Json
   decisionReason            String?
+  rejectedReturnPoint       String?
   promotedCategoryId        String?
   promotedPresetId          String?
   reportArtifactId          String?

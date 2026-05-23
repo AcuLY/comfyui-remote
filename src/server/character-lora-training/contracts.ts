@@ -477,9 +477,11 @@ export const characterLoraBenchmarkCompleteRequestSchema = z.object({
 }).strict();
 
 export const characterLoraPromotionReturnPointSchema = z.enum([
-  "benchmark_review",
-  "dataset_ready",
-  "trained",
+  "dataset",
+  "caption",
+  "prompt",
+  "trainingConfig",
+  "weightSelection",
 ]);
 
 export const characterLoraPromotionDecisionCreateRequestSchema = z.object({
@@ -524,6 +526,7 @@ export type CharacterLoraTrainingCancelRequest = z.infer<typeof characterLoraTra
 export type CharacterLoraBenchmarkEnqueueRequest = z.infer<typeof characterLoraBenchmarkEnqueueRequestSchema>;
 export type CharacterLoraBenchmarkCompleteRequest = z.infer<typeof characterLoraBenchmarkCompleteRequestSchema>;
 export type CharacterLoraPromotionDecisionCreateRequest = z.infer<typeof characterLoraPromotionDecisionCreateRequestSchema>;
+export type CharacterLoraPromotionReturnPoint = z.infer<typeof characterLoraPromotionReturnPointSchema>;
 export type CharacterLoraPromoteRequest = z.infer<typeof characterLoraPromoteRequestSchema>;
 export type CharacterLoraProviderError = z.infer<typeof characterLoraProviderErrorSchema>;
 

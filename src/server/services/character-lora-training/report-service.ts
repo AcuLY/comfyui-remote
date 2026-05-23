@@ -505,6 +505,7 @@ async function buildCharacterLoraJobReport(jobId: string) {
     perVariantWeightOverrides: decision.perVariantWeightOverrides,
     variantPromptDrafts: decision.variantPromptDrafts,
     decisionReason: decision.decisionReason,
+    rejectedReturnPoint: decision.rejectedReturnPoint,
     promotedCategoryId: decision.promotedCategoryId,
     promotedPresetId: decision.promotedPresetId,
     reportArtifactId: decision.reportArtifactId,
@@ -771,6 +772,7 @@ function buildDiagnosticSummary(input: {
     id: string;
     status: string;
     decisionReason: string | null;
+    rejectedReturnPoint?: string | null;
     promotedPresetId: string | null;
     selectedCheckpoint?: string | null;
     defaultRecommendedWeight?: number | null;
@@ -1165,13 +1167,13 @@ function buildDiagnosticSummary(input: {
   }
 
   if (latestRejectedDecision) {
-    const mappedPoint = mapRejectedReturnPoint(input.status);
+    const mappedPoint = mapRejectedReturnPoint(latestRejectedDecision.rejectedReturnPoint ?? input.status);
     recommend(
       mappedPoint,
       4,
       "Latest promotion decision was rejected.",
       "Use the rejected decision reason plus benchmark evidence to choose the next dataset/caption/prompt/trainingConfig/weightSelection rerun.",
-      `promotionRejectedDecision=${latestRejectedDecision.id}, jobReturnStatus=${input.status}, mappedReturnPoint=${mappedPoint}, reason=${latestRejectedDecision.decisionReason ?? "-"}`,
+      `promotionRejectedDecision=${latestRejectedDecision.id}, rejectedReturnPoint=${latestRejectedDecision.rejectedReturnPoint ?? "-"}, jobReturnStatus=${input.status}, mappedReturnPoint=${mappedPoint}, reason=${latestRejectedDecision.decisionReason ?? "-"}`,
     );
   }
 
@@ -1382,6 +1384,12 @@ function formatBenchmarkImageEvidence(run: {
 
 function mapRejectedReturnPoint(status: string): DiagnosticReturnPoint {
   switch (status) {
+    case "dataset":
+    case "caption":
+    case "prompt":
+    case "trainingConfig":
+    case "weightSelection":
+      return status;
     case "dataset_ready":
     case "reviewing":
     case "section_generating":

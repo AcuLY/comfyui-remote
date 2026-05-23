@@ -17,6 +17,7 @@ import type {
   CharacterLoraImageGenerationOutput,
   CharacterLoraImageGenerationTaskPayload,
   CharacterLoraBenchmarkTaskPayload,
+  CharacterLoraPromotionReturnPoint,
   CharacterLoraTrainingCompleteOutput,
   CharacterLoraTrainingTaskPayload,
 } from "@/server/character-lora-training/contracts";
@@ -324,6 +325,7 @@ const PROMOTION_DECISION_SELECT = {
   perVariantWeightOverrides: true,
   variantPromptDrafts: true,
   decisionReason: true,
+  rejectedReturnPoint: true,
   promotedCategoryId: true,
   promotedPresetId: true,
   reportArtifactId: true,
@@ -2212,7 +2214,7 @@ export async function createCharacterLoraPromotionDecisionInRepository(input: {
   perVariantWeightOverrides?: Prisma.InputJsonValue | null;
   variantPromptDrafts: Prisma.InputJsonValue;
   decisionReason?: string | null;
-  rejectedReturnPoint?: "benchmark_review" | "dataset_ready" | "trained" | null;
+  rejectedReturnPoint?: CharacterLoraPromotionReturnPoint | null;
 }) {
   const result = await db.$transaction(async (tx) => {
     const benchmark = await tx.characterLoraBenchmarkRun.findUnique({
@@ -2220,6 +2222,10 @@ export async function createCharacterLoraPromotionDecisionInRepository(input: {
       select: { id: true, jobId: true, status: true, resultSummary: true },
     });
     if (!benchmark) return null;
+
+    const rejectedReturnPoint = input.status === "rejected"
+      ? input.rejectedReturnPoint ?? "weightSelection"
+      : null;
 
     const decision = await tx.characterLoraPromotionDecision.create({
       data: {
@@ -2234,6 +2240,7 @@ export async function createCharacterLoraPromotionDecisionInRepository(input: {
         perVariantWeightOverrides: input.perVariantWeightOverrides ?? Prisma.DbNull,
         variantPromptDrafts: input.variantPromptDrafts,
         decisionReason: input.decisionReason ?? null,
+        rejectedReturnPoint,
         decidedAt: new Date(),
       },
       select: PROMOTION_DECISION_SELECT,
@@ -2244,8 +2251,10 @@ export async function createCharacterLoraPromotionDecisionInRepository(input: {
       data: {
         status: input.status === "approved"
           ? CharacterLoraJobStatus.promotion_ready
-          : (input.rejectedReturnPoint ?? "benchmark_review"),
-        phase: input.status === "approved" ? "promotion" : "benchmark",
+          : mapRejectedPromotionReturnPointToJobStatus(rejectedReturnPoint ?? "weightSelection"),
+        phase: input.status === "approved"
+          ? "promotion"
+          : mapRejectedPromotionReturnPointToJobPhase(rejectedReturnPoint ?? "weightSelection"),
         failureSummary: input.status === "rejected" ? input.decisionReason ?? null : null,
       },
       select: { id: true },
@@ -4652,6 +4661,7 @@ function serializePromotionDecision(decision: PromotionDecisionRecord) {
     perVariantWeightOverrides: decision.perVariantWeightOverrides,
     variantPromptDrafts: decision.variantPromptDrafts,
     decisionReason: decision.decisionReason,
+    rejectedReturnPoint: decision.rejectedReturnPoint,
     promotedCategoryId: decision.promotedCategoryId,
     promotedPresetId: decision.promotedPresetId,
     reportArtifactId: decision.reportArtifactId,
@@ -4660,6 +4670,34 @@ function serializePromotionDecision(decision: PromotionDecisionRecord) {
     createdAt: decision.createdAt.toISOString(),
     updatedAt: decision.updatedAt.toISOString(),
   };
+}
+
+function mapRejectedPromotionReturnPointToJobStatus(point: CharacterLoraPromotionReturnPoint): CharacterLoraJobStatus {
+  switch (point) {
+    case "dataset":
+    case "caption":
+      return CharacterLoraJobStatus.dataset_ready;
+    case "prompt":
+      return CharacterLoraJobStatus.prompt_pending;
+    case "trainingConfig":
+      return CharacterLoraJobStatus.trained;
+    case "weightSelection":
+      return CharacterLoraJobStatus.benchmark_review;
+  }
+}
+
+function mapRejectedPromotionReturnPointToJobPhase(point: CharacterLoraPromotionReturnPoint) {
+  switch (point) {
+    case "dataset":
+    case "caption":
+      return "dataset";
+    case "prompt":
+      return "prompt_card";
+    case "trainingConfig":
+      return "training";
+    case "weightSelection":
+      return "benchmark";
+  }
 }
 
 function serializeLoraAsset(asset: {
