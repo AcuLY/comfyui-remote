@@ -297,7 +297,7 @@ export async function createManagerClient() {
     },
     heartbeatTask: (taskId: string, body: { leaseOwner?: string; leaseDurationSeconds?: number; progressJson?: CharacterLoraTrainingProgress | Record<string, unknown> }) =>
       request<unknown>("POST", `/api/character-lora-training/worker/tasks/${encodeURIComponent(taskId)}/heartbeat`, body),
-    completeTask: (taskId: string, body: { leaseOwner?: string; output: unknown }) =>
+    completeTask: (taskId: string, body: { leaseOwner?: string; output?: unknown }) =>
       request<unknown>("POST", `/api/character-lora-training/worker/tasks/${encodeURIComponent(taskId)}/complete`, body),
     failTask: (taskId: string, body: { leaseOwner?: string; errorSummary: string; providerError?: { httpStatus?: number; backendError: string; retryable: boolean } }) =>
       request<unknown>("POST", `/api/character-lora-training/worker/tasks/${encodeURIComponent(taskId)}/fail`, body),

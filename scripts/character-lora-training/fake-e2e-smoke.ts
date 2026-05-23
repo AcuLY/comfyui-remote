@@ -581,16 +581,17 @@ async function main() {
     repeatCount: 1,
     sourceWeight: 1.5,
   });
-  assert(frozen.revision.itemCount === allImages.length, "dataset item count should match kept images");
-  assert(frozen.revision.sourceCount >= 1, "dataset should include registered source candidates as source");
-  assert(frozen.revision.syntheticCount >= 1, "dataset should still include generated candidates as synthetic");
+  const frozenRevision = getDatasetFreezeRevision(frozen, "sync dataset freeze");
+  assert(frozenRevision.itemCount === allImages.length, "dataset item count should match kept images");
+  assert(frozenRevision.sourceCount >= 1, "dataset should include registered source candidates as source");
+  assert(frozenRevision.syntheticCount >= 1, "dataset should still include generated candidates as synthetic");
 
   const selectedManifestArtifact = await services.prismaModule.prisma.characterLoraArtifact.findUnique({
-    where: { id: frozen.revision.selectedManifestArtifactId },
+    where: { id: frozenRevision.selectedManifestArtifactId },
     select: { relativePath: true },
   });
   const metadataJsonlArtifact = await services.prismaModule.prisma.characterLoraArtifact.findUnique({
-    where: { id: frozen.revision.metadataJsonlArtifactId },
+    where: { id: frozenRevision.metadataJsonlArtifactId },
     select: { relativePath: true },
   });
   assert(selectedManifestArtifact, "selected manifest artifact should exist");
@@ -648,11 +649,107 @@ async function main() {
     repeatCount: 1,
     sourceWeight: 1,
   });
-  assert(refrozen.revision.version === frozen.revision.version + 1, "re-reviewing included images should allow a new dataset revision");
-  assert(refrozen.revision.itemCount === 1, "refrozen revision should include the re-kept source candidate only");
-  assert(refrozen.revision.sourceCount === 1, "refrozen revision should preserve source provenance");
+  const refrozenRevision = getDatasetFreezeRevision(refrozen, "sync re-freeze");
+  assert(refrozenRevision.version === frozenRevision.version + 1, "re-reviewing included images should allow a new dataset revision");
+  assert(refrozenRevision.itemCount === 1, "refrozen revision should include the re-kept source candidate only");
+  assert(refrozenRevision.sourceCount === 1, "refrozen revision should preserve source provenance");
 
-  const trainingEnqueued = await services.trainingService.enqueueCharacterLoraTrainingRun(frozen.revision.id, {
+  await services.phase3Service.reviewCharacterLoraImages({
+    images: [{
+      imageId: registeredSourceCandidate.candidate.id,
+      reviewStatus: "keep",
+      reviewNote: "queue source anchor in a dataset freeze task",
+    }],
+  });
+  const queuedFreeze = await services.phase3Service.freezeCharacterLoraDataset(job.id, {
+    queue: true,
+    force: true,
+    forceReason: "fake smoke queued freeze with source anchor snapshot",
+    repeatCount: 1,
+    sourceWeight: 1,
+  });
+  assert("queued" in queuedFreeze && queuedFreeze.queued === true, "queued dataset freeze should report queued=true");
+  assert(typeof queuedFreeze.taskId === "string" && queuedFreeze.taskId.length > 0, "queued dataset freeze should return task id");
+  assert(
+    queuedFreeze.datasetRevisionId && queuedFreeze.datasetRevisionId !== refrozenRevision.id,
+    "queued dataset freeze should reserve a new datasetRevisionId without creating a placeholder revision",
+  );
+  assert(
+    queuedFreeze.version === refrozenRevision.version + 1,
+    "queued dataset freeze should snapshot the next dataset revision version",
+  );
+
+  const datasetFreezeTask = await services.phase3Service.leaseNextCharacterLoraTask({
+    workerType: "dataset_freeze",
+    leaseOwner: "fake-dataset-freeze-worker",
+    leaseDurationSeconds: 300,
+  });
+  assert(datasetFreezeTask, "dataset_freeze task should be leased");
+  assert(
+    datasetFreezeTask.targetId === queuedFreeze.datasetRevisionId,
+    "dataset_freeze task targetId should be the reserved dataset revision id",
+  );
+  const datasetFreezePayload = readTaskPayload(datasetFreezeTask.payload);
+  assert(datasetFreezePayload.taskType === "dataset_freeze", "leased dataset freeze task payload should be dataset_freeze");
+  assert(
+    datasetFreezePayload.datasetRevisionId === queuedFreeze.datasetRevisionId,
+    "dataset freeze payload should snapshot datasetRevisionId",
+  );
+  assert(datasetFreezePayload.version === queuedFreeze.version, "dataset freeze payload should snapshot version");
+  assert(
+    datasetFreezePayload.keepImageIds.includes(registeredSourceCandidate.candidate.id),
+    "dataset freeze payload should snapshot keepImageIds at enqueue time",
+  );
+  const revisionBeforeQueuedComplete = await services.prismaModule.prisma.characterLoraDatasetRevision.findUnique({
+    where: { id: queuedFreeze.datasetRevisionId },
+    select: { id: true },
+  });
+  assert(!revisionBeforeQueuedComplete, "queued dataset freeze should not create a placeholder dataset revision");
+
+  await services.phase3Service.reviewCharacterLoraImages({
+    images: [{
+      imageId: registeredSourceCandidate.candidate.id,
+      reviewStatus: "reject",
+      rejectReasons: ["other"],
+      reviewNote: "mutated after queued freeze to verify payload snapshot",
+    }],
+  });
+  const queuedCompleted = await services.phase3Service.completeCharacterLoraTask(datasetFreezeTask.id, {
+    leaseOwner: "fake-dataset-freeze-worker",
+  });
+  assert("revision" in queuedCompleted, "dataset_freeze complete should return a dataset revision");
+  assert(queuedCompleted.revision.id === queuedFreeze.datasetRevisionId, "queued complete should create the reserved dataset revision");
+  assert(queuedCompleted.revision.status === "frozen", "queued completed revision should be frozen");
+  assert(queuedCompleted.revision.version === queuedFreeze.version, "queued completed revision should keep payload version");
+  assert(queuedCompleted.revision.itemCount === datasetFreezePayload.keepImageIds.length, "queued completed revision should use snapshot keepImageIds");
+  assert(queuedCompleted.revision.sourceCount === 1, "queued completed revision should preserve source provenance");
+
+  const queuedManifestArtifact = await services.prismaModule.prisma.characterLoraArtifact.findUnique({
+    where: { id: queuedCompleted.revision.selectedManifestArtifactId },
+    select: { relativePath: true },
+  });
+  const queuedCaptionAuditArtifact = await services.prismaModule.prisma.characterLoraArtifact.findUnique({
+    where: { id: queuedCompleted.revision.captionAuditArtifactId ?? "" },
+    select: { relativePath: true },
+  });
+  assert(queuedManifestArtifact, "queued selected manifest artifact should exist");
+  assert(queuedCaptionAuditArtifact, "queued caption audit artifact should exist");
+  const queuedManifest = readJsonRecord(await readJobJsonArtifact(job.artifactRoot, queuedManifestArtifact.relativePath));
+  const queuedManifestItems = readJsonArray(queuedManifest.items).map(readJsonRecord);
+  assert(
+    queuedManifestItems.some((item) => item.candidateImageId === registeredSourceCandidate.candidate.id),
+    "queued manifest should include the snapshotted source candidate even after review mutation",
+  );
+  const queuedCaptionAudit = readJsonRecord(await readJobJsonArtifact(job.artifactRoot, queuedCaptionAuditArtifact.relativePath));
+  assert(readJsonArray(queuedCaptionAudit.items).length === queuedCompleted.revision.itemCount, "queued caption audit should cover all items");
+  await assertRejects(
+    () => services.phase3Service.completeCharacterLoraTask(datasetFreezeTask.id, {
+      leaseOwner: "fake-dataset-freeze-worker",
+    }),
+    "dataset_freeze complete should reject repeated completion after task is done",
+  );
+
+  const trainingEnqueued = await services.trainingService.enqueueCharacterLoraTrainingRun(frozenRevision.id, {
     launcher: "sd-scripts",
     queuePolicy: "reject_when_busy",
     configProfile: "conservative",
@@ -892,7 +989,7 @@ async function main() {
     report.candidateImages.some((image) => image.id === captioned.id && Boolean(image.caption.draft)),
     "report should include candidate caption",
   );
-  assert(report.datasetRevisions.some((revision) => revision.id === frozen.revision.id && revision.items.length === allImages.length), "report should include dataset revision/items");
+  assert(report.datasetRevisions.some((revision) => revision.id === frozenRevision.id && revision.items.length === allImages.length), "report should include dataset revision/items");
   assert(
     report.trainingRuns.some((run) => run.id === completedTrainingRun.id && run.finalSha256 === finalSha256),
     "report should include training finalSha",
@@ -952,12 +1049,12 @@ async function main() {
       triggerFirst: captioned.captionDraft?.split(",")[0]?.trim() === triggerToken,
     },
     dataset: {
-      id: frozen.revision.id,
-      version: frozen.revision.version,
-      itemCount: frozen.revision.itemCount,
-      sourceCount: frozen.revision.sourceCount,
-      syntheticCount: frozen.revision.syntheticCount,
-      trainDir: frozen.revision.trainDir,
+      id: frozenRevision.id,
+      version: frozenRevision.version,
+      itemCount: frozenRevision.itemCount,
+      sourceCount: frozenRevision.sourceCount,
+      syntheticCount: frozenRevision.syntheticCount,
+      trainDir: frozenRevision.trainDir,
     },
     training: {
       id: completedTrainingRun.id,
@@ -1236,6 +1333,15 @@ async function assertRejects(action: () => Promise<unknown>, message: string) {
   assert(rejected, message);
 }
 
+function getDatasetFreezeRevision(
+  result: Awaited<ReturnType<ServiceModules["phase3Service"]["freezeCharacterLoraDataset"]>>,
+  label: string,
+) {
+  const revision = "revision" in result ? result.revision : null;
+  assert(revision, `${label} should return a dataset revision`);
+  return revision;
+}
+
 function readTaskPayload(payload: unknown) {
   assert(payload && typeof payload === "object", "worker task payload should be an object");
   return payload as
@@ -1250,6 +1356,15 @@ function readTaskPayload(payload: unknown) {
         taskType: "training";
         trainingRunId: string;
         outputDir: string;
+      }
+    | {
+        taskType: "dataset_freeze";
+        datasetRevisionId: string;
+        version: number;
+        keepImageIds: string[];
+        captionStrategy: string;
+        repeatCount: number;
+        sourceWeight?: number;
       };
 }
 

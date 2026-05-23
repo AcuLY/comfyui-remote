@@ -2,7 +2,7 @@
 
 日期：2026-05-23
 
-范围：`scripts/character-lora-training/worker-common.ts`、`image-worker.ts`、`training-worker.ts`、`benchmark-worker.ts`。
+范围：`scripts/character-lora-training/worker-common.ts`、`image-worker.ts`、`dataset-freeze-worker.ts`、`training-worker.ts`、`benchmark-worker.ts`。
 
 ## Manager 连接与认证
 
@@ -51,6 +51,26 @@ cmd /c npx tsx scripts/character-lora-training/image-worker.ts --once --provider
 - `CHARACTER_LORA_CODEX_AUTH_FILE`：专用 auth JSON 文件，支持 `access_token` / `accessToken` / `bearer_token` / `bearerToken` / `token` 字段。artifact 只记录文件来源和是否含 refresh token，不记录值。
 
 `mock-local` 会写入 1x1 PNG、`request.redacted.json` 和 `response-summary.json`，然后 complete task。`openai-codex` 会把 `hostInstruction` 放入 Responses `instructions`，把 `renderedPrompt` 或 `visualPrompt` 放入 input text，把 job artifactRoot 下的 input image relativePath 读成 data URL，请求落盘版本会 redact 图片 bytes 和 auth。
+
+## Dataset Freeze Worker
+
+默认 `POST /api/character-lora-training/jobs/:jobId/dataset-revisions` 仍同步冻结数据集。请求体传入 `queue: true` 时，Manager 会先完整校验当前 selected canonical / prompt card、`keep` 图片、`targetKeepCount` 与 `force/forceReason` 规则，然后把本次 `keepImageIds`、`captionStrategy`、`repeatCount`、`sourceWeight`、`canonicalVersionId`、`promptCardVersionId`、`datasetRevisionId` 和 `version` 快照进 `workerType=dataset_freeze`、`targetType=datasetRevision` 的 worker task。
+
+单次处理：
+
+```powershell
+cmd /c npx tsx scripts/character-lora-training/dataset-freeze-worker.ts --once --worker-owner dataset-freeze-worker-local
+```
+
+持续轮询：
+
+```powershell
+cmd /c npx tsx scripts/character-lora-training/dataset-freeze-worker.ts --poll --worker-owner dataset-freeze-worker-local
+```
+
+Dataset freeze worker 不直接读写 artifact。它 lease `dataset_freeze` task 后先 heartbeat，再调用通用 `POST /api/character-lora-training/worker/tasks/:taskId/complete`，服务端会根据 task payload 快照执行与同步 freeze 相同的 train image materialize、manifest、metadata.jsonl、caption audit 和 DB revision 创建逻辑。失败时 worker 调用 fail API，Manager 会把 task 标记为 failed，并把 job 置为 dataset 阶段失败。
+
+重复 complete、非 running task 或 lease owner 不匹配都会由 Manager 拒绝；如果 enqueue 后已有其他 revision 占用了同一个版本号，需要重新 enqueue 以分配新的 version。
 
 ## Training Worker
 
@@ -133,8 +153,9 @@ Benchmark worker 不调用通用 worker task complete。`completeCharacterLoraBe
 
 ```powershell
 cmd /c npx tsx scripts/character-lora-training/image-worker.ts --help
+cmd /c npx tsx scripts/character-lora-training/dataset-freeze-worker.ts --help
 cmd /c npx tsx scripts/character-lora-training/training-worker.ts --help
 cmd /c npx tsx scripts/character-lora-training/benchmark-worker.ts --help
-cmd /c npx eslint scripts/character-lora-training/worker-common.ts scripts/character-lora-training/image-worker.ts scripts/character-lora-training/training-worker.ts scripts/character-lora-training/benchmark-worker.ts
+cmd /c npx eslint scripts/character-lora-training/worker-common.ts scripts/character-lora-training/image-worker.ts scripts/character-lora-training/dataset-freeze-worker.ts scripts/character-lora-training/training-worker.ts scripts/character-lora-training/benchmark-worker.ts
 cmd /c npx tsc --noEmit --pretty false
 ```

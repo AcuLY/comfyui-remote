@@ -13,6 +13,7 @@ import { db } from "@/lib/db";
 import { detectProvider } from "@/lib/prisma";
 import type {
   CharacterLoraArtifactKind,
+  CharacterLoraDatasetFreezeTaskPayload,
   CharacterLoraImageGenerationOutput,
   CharacterLoraImageGenerationTaskPayload,
   CharacterLoraBenchmarkTaskPayload,
@@ -486,6 +487,22 @@ export type CharacterLoraDatasetItemCreateInput = {
   repeatCount: number;
   sourceWeight?: number | null;
   sortOrder: number;
+};
+
+type CharacterLoraDatasetRevisionCreateInput = {
+  revisionId: string;
+  jobId: string;
+  version: number;
+  canonicalVersionId: string;
+  promptCardVersionId: string;
+  captionStrategy: string;
+  trainDir: string;
+  sourceCount: number;
+  syntheticCount: number;
+  selectedManifestArtifactId: string;
+  metadataJsonlArtifactId: string;
+  captionAuditArtifactId: string;
+  items: CharacterLoraDatasetItemCreateInput[];
 };
 
 export async function listCharacterLoraTrainingJobs(filters: CharacterLoraTrainingJobListFilters = {}) {
@@ -2435,6 +2452,39 @@ export async function createCharacterLoraTrainingRunWithTask(input: {
   };
 }
 
+export async function createCharacterLoraDatasetFreezeWorkerTask(input: {
+  jobId: string;
+  revisionId: string;
+  taskPayload: CharacterLoraDatasetFreezeTaskPayload;
+}) {
+  const task = await db.$transaction(async (tx) => {
+    const created = await tx.characterLoraWorkerTask.create({
+      data: {
+        jobId: input.jobId,
+        workerType: CharacterLoraWorkerType.dataset_freeze,
+        targetType: "datasetRevision",
+        targetId: input.revisionId,
+        status: CharacterLoraRunStatus.queued,
+        payload: toInputJsonValue(input.taskPayload),
+      },
+      select: WORKER_TASK_SELECT,
+    });
+
+    await tx.characterLoraTrainingJob.update({
+      where: { id: input.jobId },
+      data: {
+        phase: "dataset",
+        failureSummary: null,
+      },
+      select: { id: true },
+    });
+
+    return created;
+  });
+
+  return serializeWorkerTask(task);
+}
+
 export async function leaseNextCharacterLoraWorkerTask(input: {
   workerType: CharacterLoraWorkerType;
   leaseOwner: string;
@@ -3147,6 +3197,18 @@ export async function failCharacterLoraWorkerTask(input: {
       });
     }
 
+    if (task.targetType === "datasetRevision") {
+      await tx.characterLoraTrainingJob.update({
+        where: { id: task.jobId },
+        data: {
+          status: CharacterLoraJobStatus.failed,
+          phase: "dataset",
+          failureSummary: input.errorSummary,
+        },
+        select: { id: true },
+      });
+    }
+
     return tx.characterLoraWorkerTask.findUnique({
       where: { id: input.taskId },
       select: WORKER_TASK_SELECT,
@@ -3311,92 +3373,143 @@ export async function getNextCharacterLoraDatasetRevisionVersion(jobId: string) 
   return (previous?.version ?? 0) + 1;
 }
 
-export async function createFrozenCharacterLoraDatasetRevision(input: {
-  revisionId: string;
-  jobId: string;
-  version: number;
-  canonicalVersionId: string;
-  promptCardVersionId: string;
-  captionStrategy: string;
-  trainDir: string;
-  sourceCount: number;
-  syntheticCount: number;
-  selectedManifestArtifactId: string;
-  metadataJsonlArtifactId: string;
-  captionAuditArtifactId: string;
-  items: CharacterLoraDatasetItemCreateInput[];
-}) {
+export async function createFrozenCharacterLoraDatasetRevision(input: CharacterLoraDatasetRevisionCreateInput) {
   const result = await db.$transaction(async (tx) => {
-    const revision = await tx.characterLoraDatasetRevision.create({
-      data: {
-        id: input.revisionId,
-        jobId: input.jobId,
-        version: input.version,
-        status: "frozen",
-        canonicalVersionId: input.canonicalVersionId,
-        promptCardVersionId: input.promptCardVersionId,
-        captionStrategy: input.captionStrategy,
-        itemCount: input.items.length,
-        sourceCount: input.sourceCount,
-        syntheticCount: input.syntheticCount,
-        selectedManifestArtifactId: input.selectedManifestArtifactId,
-        metadataJsonlArtifactId: input.metadataJsonlArtifactId,
-        captionAuditArtifactId: input.captionAuditArtifactId,
-        trainDir: input.trainDir,
-        frozenAt: new Date(),
-      },
-      select: DATASET_REVISION_SELECT,
-    });
-
-    for (const item of input.items) {
-      await tx.characterLoraDatasetItem.create({
-        data: {
-          datasetRevisionId: revision.id,
-          candidateImageId: item.candidateImageId,
-          imageArtifactId: item.imageArtifactId,
-          captionArtifactId: item.captionArtifactId,
-          captionText: item.captionText,
-          repeatCount: item.repeatCount,
-          sourceWeight: item.sourceWeight ?? null,
-          sortOrder: item.sortOrder,
-        },
-        select: { id: true },
-      });
-    }
-
-    await tx.characterLoraCandidateImage.updateMany({
-      where: { id: { in: input.items.map((item) => item.candidateImageId) } },
-      data: {
-        reviewStatus: CharacterLoraImageReviewStatus.included_in_training,
-        includedDatasetRevisionId: revision.id,
-      },
-    });
-
-    const sectionIds = await tx.characterLoraCandidateImage.findMany({
-      where: { id: { in: input.items.map((item) => item.candidateImageId) } },
-      distinct: ["sectionId"],
-      select: { sectionId: true },
-    });
-
-    await refreshSectionCounts(
-      tx,
-      sectionIds.map((section) => section.sectionId).filter((sectionId): sectionId is string => Boolean(sectionId)),
-    );
-
-    await tx.characterLoraTrainingJob.update({
-      where: { id: input.jobId },
-      data: {
-        status: CharacterLoraJobStatus.dataset_ready,
-        phase: "dataset",
-        selectedDatasetRevisionId: revision.id,
-      },
-      select: { id: true },
-    });
-
-    return revision;
+    return createFrozenCharacterLoraDatasetRevisionInTx(tx, input);
   });
 
   return serializeDatasetRevision(result);
+}
+
+export async function completeDatasetFreezeWorkerTask(input: {
+  taskId: string;
+  leaseOwner?: string;
+  revision: CharacterLoraDatasetRevisionCreateInput;
+  progressJson?: Prisma.InputJsonValue;
+}) {
+  const result = await db.$transaction(async (tx) => {
+    const task = await tx.characterLoraWorkerTask.findUnique({
+      where: { id: input.taskId },
+      select: WORKER_TASK_SELECT,
+    });
+
+    if (!task || task.status !== CharacterLoraRunStatus.running) {
+      return null;
+    }
+
+    if (input.leaseOwner && task.leaseOwner !== input.leaseOwner) {
+      return null;
+    }
+
+    if (
+      task.workerType !== CharacterLoraWorkerType.dataset_freeze ||
+      task.targetType !== "datasetRevision" ||
+      task.targetId !== input.revision.revisionId
+    ) {
+      return null;
+    }
+
+    const revision = await createFrozenCharacterLoraDatasetRevisionInTx(tx, input.revision);
+    const completedTask = await tx.characterLoraWorkerTask.update({
+      where: { id: task.id },
+      data: {
+        status: CharacterLoraRunStatus.done,
+        leaseExpiresAt: null,
+        heartbeatAt: new Date(),
+        finishedAt: new Date(),
+        progressJson: input.progressJson ?? toInputJsonValue({
+          completed: true,
+          datasetRevisionId: revision.id,
+          version: revision.version,
+          itemCount: revision.itemCount,
+        }),
+        errorSummary: null,
+      },
+      select: WORKER_TASK_SELECT,
+    });
+
+    return { task: completedTask, revision };
+  });
+
+  return result
+    ? {
+        task: serializeWorkerTask(result.task),
+        revision: serializeDatasetRevision(result.revision),
+      }
+    : null;
+}
+
+async function createFrozenCharacterLoraDatasetRevisionInTx(
+  tx: Prisma.TransactionClient,
+  input: CharacterLoraDatasetRevisionCreateInput,
+) {
+  const revision = await tx.characterLoraDatasetRevision.create({
+    data: {
+      id: input.revisionId,
+      jobId: input.jobId,
+      version: input.version,
+      status: "frozen",
+      canonicalVersionId: input.canonicalVersionId,
+      promptCardVersionId: input.promptCardVersionId,
+      captionStrategy: input.captionStrategy,
+      itemCount: input.items.length,
+      sourceCount: input.sourceCount,
+      syntheticCount: input.syntheticCount,
+      selectedManifestArtifactId: input.selectedManifestArtifactId,
+      metadataJsonlArtifactId: input.metadataJsonlArtifactId,
+      captionAuditArtifactId: input.captionAuditArtifactId,
+      trainDir: input.trainDir,
+      frozenAt: new Date(),
+    },
+    select: DATASET_REVISION_SELECT,
+  });
+
+  for (const item of input.items) {
+    await tx.characterLoraDatasetItem.create({
+      data: {
+        datasetRevisionId: revision.id,
+        candidateImageId: item.candidateImageId,
+        imageArtifactId: item.imageArtifactId,
+        captionArtifactId: item.captionArtifactId,
+        captionText: item.captionText,
+        repeatCount: item.repeatCount,
+        sourceWeight: item.sourceWeight ?? null,
+        sortOrder: item.sortOrder,
+      },
+      select: { id: true },
+    });
+  }
+
+  await tx.characterLoraCandidateImage.updateMany({
+    where: { id: { in: input.items.map((item) => item.candidateImageId) } },
+    data: {
+      reviewStatus: CharacterLoraImageReviewStatus.included_in_training,
+      includedDatasetRevisionId: revision.id,
+    },
+  });
+
+  const sectionIds = await tx.characterLoraCandidateImage.findMany({
+    where: { id: { in: input.items.map((item) => item.candidateImageId) } },
+    distinct: ["sectionId"],
+    select: { sectionId: true },
+  });
+
+  await refreshSectionCounts(
+    tx,
+    sectionIds.map((section) => section.sectionId).filter((sectionId): sectionId is string => Boolean(sectionId)),
+  );
+
+  await tx.characterLoraTrainingJob.update({
+    where: { id: input.jobId },
+    data: {
+      status: CharacterLoraJobStatus.dataset_ready,
+      phase: "dataset",
+      selectedDatasetRevisionId: revision.id,
+    },
+    select: { id: true },
+  });
+
+  return revision;
 }
 
 async function refreshSectionCounts(

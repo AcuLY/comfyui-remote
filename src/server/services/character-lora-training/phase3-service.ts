@@ -19,12 +19,18 @@ import {
   characterLoraWorkerTaskHeartbeatRequestSchema,
   characterLoraWorkerTaskLeaseRequestSchema,
   characterLoraWorkerTaskPayloadSchema,
+  type CharacterLoraDatasetFreezeForceOverride,
+  type CharacterLoraDatasetFreezeRequest,
+  type CharacterLoraDatasetFreezeTaskPayload,
+  type CharacterLoraDatasetFreezeWarning,
   type CharacterLoraImageProvider,
   type CharacterLoraProviderInputImage,
   type CharacterLoraProviderToolParams,
 } from "@/server/character-lora-training/contracts";
 import {
+  completeDatasetFreezeWorkerTask,
   createCharacterLoraJobArtifact,
+  createCharacterLoraDatasetFreezeWorkerTask,
   createCharacterLoraSectionGenerationRunWithTask,
   createFrozenCharacterLoraDatasetRevision,
   failCharacterLoraWorkerTask,
@@ -268,285 +274,32 @@ export async function listCharacterLoraDatasetRevisions(jobId: string) {
 export async function freezeCharacterLoraDataset(jobId: string, input: unknown = {}) {
   const id = normalizeId(jobId, "jobId");
   const parsed = parseWithSchema(characterLoraDatasetFreezeRequestSchema, input);
-  const job = await getExistingJob(id);
+  const plan = await prepareDatasetFreezePlan(id, parsed);
 
-  if (!job.currentCanonicalVersionId || !job.currentPromptCardVersionId) {
-    throw new CharacterLoraPhase3ServiceError("Dataset freeze requires selected canonical and prompt card versions", 409);
+  if (parsed.queue) {
+    const payload = buildDatasetFreezeTaskPayload(plan);
+    const task = await createCharacterLoraDatasetFreezeWorkerTask({
+      jobId: plan.job.id,
+      revisionId: plan.revisionId,
+      taskPayload: payload,
+    });
+
+    return {
+      queued: true,
+      taskId: task.id,
+      task,
+      datasetRevisionId: plan.revisionId,
+      version: plan.version,
+      summary: buildQueuedDatasetFreezeSummary(plan),
+    };
   }
 
-  const [sections, keepImages] = await Promise.all([
-    listCharacterLoraJobSections(id),
-    listCandidateImagesFromRepository({
-      jobId: id,
-      reviewStatus: CharacterLoraImageReviewStatus.keep,
-    }),
-  ]);
-
-  if (keepImages.length === 0) {
-    throw new CharacterLoraPhase3ServiceError("Dataset freeze requires at least one keep image", 409);
-  }
-
-  const warnings = buildDatasetFreezeWarnings(sections, keepImages);
-  const forceOverride = parsed.force
-    ? {
-        enabled: true,
-        reason: parsed.forceReason ?? null,
-        warningCount: warnings.length,
-      }
-    : null;
-  if (warnings.length > 0 && !parsed.force) {
-    throw new CharacterLoraPhase3ServiceError(
-      "Each section must reach targetKeepCount before freezing dataset",
-      409,
-      { warnings },
-    );
-  }
-
-  const revisionId = randomUUID();
-  const version = await getNextCharacterLoraDatasetRevisionVersion(id);
-  const captionStrategy = parsed.captionStrategy ?? job.captionStrategy;
-  const repeatCount = parsed.repeatCount ?? 1;
-  const datasetRoot = `dataset/revisions/${revisionId}`;
-  const trainDir = `${datasetRoot}/train`;
-  const itemRecords = [];
-  const manifestItems = [];
-  const auditItems = [];
-  const metadataLines = [];
-  const provenancePolicy = buildDatasetProvenancePolicy();
-  let sourceCount = 0;
-  let syntheticCount = 0;
-
-  for (let index = 0; index < keepImages.length; index += 1) {
-    const image = keepImages[index];
-    const [originalArtifact, generationRun] = await Promise.all([
-      getCharacterLoraArtifact(image.artifactId),
-      getCharacterLoraGenerationRun(image.generationRunId),
-    ]);
-
-    if (!originalArtifact || originalArtifact.jobId !== id) {
-      throw new CharacterLoraPhase3ServiceError("Candidate image artifact is missing for dataset freeze", 409, {
-        candidateImageId: image.id,
-        artifactId: image.artifactId,
-      });
-    }
-
-    if (!generationRun || generationRun.jobId !== id) {
-      throw new CharacterLoraPhase3ServiceError("Candidate generation run is missing for dataset freeze", 409, {
-        candidateImageId: image.id,
-        generationRunId: image.generationRunId,
-      });
-    }
-
-    const provenance = classifyDatasetItemProvenance({
-      image,
-      imageArtifact: originalArtifact,
-      generationRun,
-    });
-    if (provenance.origin === "source") {
-      sourceCount += 1;
-    } else {
-      syntheticCount += 1;
-    }
-
-    const itemWeight = resolveDatasetItemTrainingWeight({
-      origin: provenance.origin,
-      repeatCount,
-      requestedSourceWeight: parsed.sourceWeight,
-    });
-    const stem = `${String(index + 1).padStart(4, "0")}_${image.id}`;
-    const imagePath = `${trainDir}/${stem}${getTrainingImageExtension(originalArtifact.relativePath)}`;
-    const materializedImage = await copyDatasetTrainingImage({
-      jobRoot: job.artifactRoot,
-      sourceRelativePath: originalArtifact.relativePath,
-      targetRelativePath: imagePath,
-    });
-    const materializedImageArtifact = await createCharacterLoraJobArtifact({
-      jobId: id,
-      kind: "candidate_image",
-      relativePath: materializedImage.relativePath,
-      absolutePath: materializedImage.absolutePath,
-      sha256: materializedImage.sha256,
-      byteSize: BigInt(materializedImage.byteSize),
-      mimeType: originalArtifact.mimeType,
-      metadata: toInputJsonValue({
-        datasetRevisionId: revisionId,
-        candidateImageId: image.id,
-        artifactRole: "dataset_train_image",
-        originalArtifactId: originalArtifact.id,
-        originalRelativePath: originalArtifact.relativePath,
-        provenance,
-      }),
-    });
-    const caption = normalizeCaptionTrigger(job.triggerToken, image.captionDraft ?? buildFallbackCaption(job, image));
-    const captionPath = `${trainDir}/${stem}.txt`;
-    const captionArtifactStat = await writeCharacterLoraTextArtifact(job.artifactRoot, captionPath, `${caption}\n`);
-    const captionArtifact = await createCharacterLoraJobArtifact({
-      jobId: id,
-      kind: "caption",
-      relativePath: captionArtifactStat.relativePath,
-      absolutePath: captionArtifactStat.absolutePath,
-      sha256: captionArtifactStat.sha256,
-      byteSize: BigInt(captionArtifactStat.byteSize),
-      mimeType: "text/plain",
-      metadata: toInputJsonValue({
-        datasetRevisionId: revisionId,
-        candidateImageId: image.id,
-        captionStrategy,
-        imageArtifactId: materializedImageArtifact.id,
-        imagePath: materializedImage.relativePath,
-      }),
-    });
-
-    itemRecords.push({
-      candidateImageId: image.id,
-      imageArtifactId: materializedImageArtifact.id,
-      captionArtifactId: captionArtifact.id,
-      captionText: caption,
-      repeatCount: itemWeight.repeatCount,
-      sourceWeight: itemWeight.sourceWeight,
-      sortOrder: index,
-    });
-    manifestItems.push({
-      candidateImageId: image.id,
-      imageArtifactId: materializedImageArtifact.id,
-      originalImageArtifactId: originalArtifact.id,
-      originalImagePath: originalArtifact.relativePath,
-      imagePath: materializedImage.relativePath,
-      fileName: materializedImage.datasetFileName,
-      captionPath: captionArtifactStat.relativePath,
-      sectionId: image.sectionId,
-      generationRunId: image.generationRunId,
-      sha256: materializedImage.sha256,
-      originalSha256: image.sha256,
-      origin: provenance.origin,
-      provenance,
-      repeatCount: itemWeight.repeatCount,
-      sourceWeight: itemWeight.sourceWeight,
-    });
-    metadataLines.push(JSON.stringify({
-      file_name: materializedImage.datasetFileName,
-      caption,
-      candidateImageId: image.id,
-      sectionId: image.sectionId,
-      generationRunId: image.generationRunId,
-      artifactId: materializedImageArtifact.id,
-      originalArtifactId: originalArtifact.id,
-      sha256: materializedImage.sha256,
-      origin: provenance.origin,
-      repeatCount: itemWeight.repeatCount,
-      sourceWeight: itemWeight.sourceWeight,
-    }));
-    auditItems.push({
-      candidateImageId: image.id,
-      triggerFirst: caption.split(",")[0]?.trim() === job.triggerToken,
-      caption,
-      sectionId: image.sectionId,
-      generationRunId: image.generationRunId,
-      origin: provenance.origin,
-      provenanceBasis: provenance.basis,
-      imagePath: materializedImage.relativePath,
-      originalImagePath: originalArtifact.relativePath,
-      repeatCount: itemWeight.repeatCount,
-      sourceWeight: itemWeight.sourceWeight,
-    });
-  }
-
-  const selectedManifest = await writeCharacterLoraJsonArtifact(job.artifactRoot, `${datasetRoot}/selected-manifest.json`, {
-    datasetRevisionId: revisionId,
-    jobId: id,
-    version,
-    canonicalVersionId: job.currentCanonicalVersionId,
-    promptCardVersionId: job.currentPromptCardVersionId,
-    captionStrategy,
-    trainDir,
-    sourceCount,
-    syntheticCount,
-    requestedRepeatCount: repeatCount,
-    requestedSourceWeight: parsed.sourceWeight ?? null,
-    provenancePolicy,
-    forceOverride,
-    warnings,
-    items: manifestItems,
-  });
-  const metadataJsonl = await writeCharacterLoraTextArtifact(
-    job.artifactRoot,
-    `${datasetRoot}/metadata.jsonl`,
-    `${metadataLines.join("\n")}\n`,
-  );
-  const captionAudit = await writeCharacterLoraJsonArtifact(job.artifactRoot, `${datasetRoot}/caption-audit.json`, {
-    datasetRevisionId: revisionId,
-    jobId: id,
-    sourceCount,
-    syntheticCount,
-    provenancePolicy,
-    forceOverride,
-    warnings,
-    items: auditItems,
-  });
-
-  const [selectedManifestArtifact, metadataJsonlArtifact, captionAuditArtifact] = await Promise.all([
-    createCharacterLoraJobArtifact({
-      jobId: id,
-      kind: "dataset_manifest",
-      relativePath: selectedManifest.relativePath,
-      absolutePath: selectedManifest.absolutePath,
-      sha256: selectedManifest.sha256,
-      byteSize: BigInt(selectedManifest.byteSize),
-      mimeType: "application/json",
-      metadata: toInputJsonValue({ datasetRevisionId: revisionId, artifactRole: "selected_manifest" }),
-    }),
-    createCharacterLoraJobArtifact({
-      jobId: id,
-      kind: "dataset_manifest",
-      relativePath: metadataJsonl.relativePath,
-      absolutePath: metadataJsonl.absolutePath,
-      sha256: metadataJsonl.sha256,
-      byteSize: BigInt(metadataJsonl.byteSize),
-      mimeType: "application/jsonl",
-      metadata: toInputJsonValue({ datasetRevisionId: revisionId, artifactRole: "metadata_jsonl" }),
-    }),
-    createCharacterLoraJobArtifact({
-      jobId: id,
-      kind: "dataset_manifest",
-      relativePath: captionAudit.relativePath,
-      absolutePath: captionAudit.absolutePath,
-      sha256: captionAudit.sha256,
-      byteSize: BigInt(captionAudit.byteSize),
-      mimeType: "application/json",
-      metadata: toInputJsonValue({ datasetRevisionId: revisionId, artifactRole: "caption_audit" }),
-    }),
-  ]);
-
-  const revision = await createFrozenCharacterLoraDatasetRevision({
-    revisionId,
-    jobId: id,
-    version,
-    canonicalVersionId: job.currentCanonicalVersionId,
-    promptCardVersionId: job.currentPromptCardVersionId,
-    captionStrategy,
-    trainDir,
-    sourceCount,
-    syntheticCount,
-    selectedManifestArtifactId: selectedManifestArtifact.id,
-    metadataJsonlArtifactId: metadataJsonlArtifact.id,
-    captionAuditArtifactId: captionAuditArtifact.id,
-    items: itemRecords,
-  });
+  const materialized = await materializeCharacterLoraDatasetFreeze(plan);
+  const revision = await createFrozenCharacterLoraDatasetRevision(materialized.revision);
 
   return {
     revision,
-    summary: {
-      itemCount: keepImages.length,
-      sourceCount,
-      syntheticCount,
-      warnings,
-      forceOverride,
-      artifactPaths: {
-        selectedManifest: selectedManifest.relativePath,
-        metadataJsonl: metadataJsonl.relativePath,
-        captionAudit: captionAudit.relativePath,
-      },
-    },
+    summary: materialized.summary,
   };
 }
 
@@ -586,14 +339,26 @@ export async function completeCharacterLoraTask(taskId: string, input: unknown) 
   const payload = await getTaskPayload(id, parsed.leaseOwner);
 
   if (payload.taskType === "training") {
+    if (!parsed.output) {
+      throw new CharacterLoraPhase3ServiceError("Training worker completion requires output", 400);
+    }
+
     return completeCharacterLoraTrainingTask(id, {
       leaseOwner: parsed.leaseOwner,
       output: parsed.output,
     });
   }
 
+  if (payload.taskType === "dataset_freeze") {
+    return completeCharacterLoraDatasetFreezeTask(id, parsed.leaseOwner, payload);
+  }
+
   if (payload.taskType !== "image_generation") {
     throw new CharacterLoraPhase3ServiceError("Worker task completion is not supported for this task type", 409);
+  }
+
+  if (!parsed.output) {
+    throw new CharacterLoraPhase3ServiceError("Image generation worker completion requires output", 400);
   }
 
   const imageOutput = parseWithSchema(characterLoraImageGenerationOutputSchema, parsed.output);
@@ -687,6 +452,15 @@ export function mapCharacterLoraPhase3Error(error: unknown) {
 
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
     if (error.code === "P2002") {
+      const target = Array.isArray(error.meta?.target)
+        ? error.meta.target.map(String)
+        : [];
+      if (target.includes("jobId") && target.includes("version")) {
+        return {
+          message: "Dataset revision version already exists; enqueue a fresh dataset freeze to allocate a new version",
+          status: 409,
+        };
+      }
       return { message: "Character LoRA Phase 3 record already exists", status: 409 };
     }
     if (error.code === "P2025") {
@@ -720,6 +494,524 @@ async function getTaskPayload(taskId: string, leaseOwner?: string) {
   }
 
   return parseWithSchema(characterLoraWorkerTaskPayloadSchema, task.payload);
+}
+
+type DatasetFreezePlan = {
+  job: Awaited<ReturnType<typeof getExistingJob>>;
+  revisionId: string;
+  version: number;
+  canonicalVersionId: string;
+  promptCardVersionId: string;
+  keepImages: CharacterLoraCandidateImageSummary[];
+  captionStrategy: string;
+  repeatCount: number;
+  sourceWeight?: number;
+  warnings: CharacterLoraDatasetFreezeWarning[];
+  forceOverride: CharacterLoraDatasetFreezeForceOverride | null;
+};
+
+type DatasetFreezeRevisionInput = {
+  revisionId: string;
+  jobId: string;
+  version: number;
+  canonicalVersionId: string;
+  promptCardVersionId: string;
+  captionStrategy: string;
+  trainDir: string;
+  sourceCount: number;
+  syntheticCount: number;
+  selectedManifestArtifactId: string;
+  metadataJsonlArtifactId: string;
+  captionAuditArtifactId: string;
+  items: Array<{
+    candidateImageId: string;
+    imageArtifactId: string;
+    captionArtifactId: string;
+    captionText: string;
+    repeatCount: number;
+    sourceWeight?: number | null;
+    sortOrder: number;
+  }>;
+};
+
+async function prepareDatasetFreezePlan(
+  jobId: string,
+  parsed: CharacterLoraDatasetFreezeRequest,
+): Promise<DatasetFreezePlan> {
+  const job = await getExistingJob(jobId);
+
+  if (!job.currentCanonicalVersionId || !job.currentPromptCardVersionId) {
+    throw new CharacterLoraPhase3ServiceError("Dataset freeze requires selected canonical and prompt card versions", 409);
+  }
+
+  await validateDatasetFreezeVersionRefs(
+    job.id,
+    job.currentCanonicalVersionId,
+    job.currentPromptCardVersionId,
+  );
+
+  const [sections, keepImages] = await Promise.all([
+    listCharacterLoraJobSections(job.id),
+    listCandidateImagesFromRepository({
+      jobId: job.id,
+      reviewStatus: CharacterLoraImageReviewStatus.keep,
+    }),
+  ]);
+
+  if (keepImages.length === 0) {
+    throw new CharacterLoraPhase3ServiceError("Dataset freeze requires at least one keep image", 409);
+  }
+
+  const warnings = buildDatasetFreezeWarnings(sections, keepImages);
+  const forceOverride: CharacterLoraDatasetFreezeForceOverride | null = parsed.force
+    ? {
+        enabled: true,
+        reason: requireForceReason(parsed.forceReason),
+        warningCount: warnings.length,
+      }
+    : null;
+  if (warnings.length > 0 && !parsed.force) {
+    throw new CharacterLoraPhase3ServiceError(
+      "Each section must reach targetKeepCount before freezing dataset",
+      409,
+      { warnings },
+    );
+  }
+
+  return {
+    job,
+    revisionId: randomUUID(),
+    version: await getNextCharacterLoraDatasetRevisionVersion(job.id),
+    canonicalVersionId: job.currentCanonicalVersionId,
+    promptCardVersionId: job.currentPromptCardVersionId,
+    keepImages,
+    captionStrategy: parsed.captionStrategy ?? job.captionStrategy,
+    repeatCount: parsed.repeatCount ?? 1,
+    sourceWeight: parsed.sourceWeight,
+    warnings,
+    forceOverride,
+  };
+}
+
+function buildDatasetFreezeTaskPayload(plan: DatasetFreezePlan): CharacterLoraDatasetFreezeTaskPayload {
+  const payload = parseWithSchema(characterLoraWorkerTaskPayloadSchema, {
+    taskType: "dataset_freeze",
+    jobId: plan.job.id,
+    datasetRevisionId: plan.revisionId,
+    canonicalVersionId: plan.canonicalVersionId,
+    promptCardVersionId: plan.promptCardVersionId,
+    version: plan.version,
+    keepImageIds: plan.keepImages.map((image) => image.id),
+    captionStrategy: plan.captionStrategy,
+    repeatCount: plan.repeatCount,
+    ...(plan.sourceWeight === undefined ? {} : { sourceWeight: plan.sourceWeight }),
+    forceOverride: plan.forceOverride,
+    warnings: plan.warnings,
+  });
+
+  if (payload.taskType !== "dataset_freeze") {
+    throw new CharacterLoraPhase3ServiceError("Invalid dataset freeze task payload", 500);
+  }
+
+  return payload;
+}
+
+function buildQueuedDatasetFreezeSummary(plan: DatasetFreezePlan) {
+  return {
+    itemCount: plan.keepImages.length,
+    keepImageIds: plan.keepImages.map((image) => image.id),
+    captionStrategy: plan.captionStrategy,
+    repeatCount: plan.repeatCount,
+    sourceWeight: plan.sourceWeight ?? null,
+    warnings: plan.warnings,
+    forceOverride: plan.forceOverride,
+  };
+}
+
+async function completeCharacterLoraDatasetFreezeTask(
+  taskId: string,
+  leaseOwner: string | undefined,
+  payload: CharacterLoraDatasetFreezeTaskPayload,
+) {
+  const job = await getExistingJob(payload.jobId);
+  await validateDatasetFreezeVersionRefs(
+    job.id,
+    payload.canonicalVersionId,
+    payload.promptCardVersionId,
+  );
+
+  const keepImages = await getDatasetFreezeSnapshotImages(job.id, payload.keepImageIds);
+  const materialized = await materializeCharacterLoraDatasetFreeze({
+    job,
+    revisionId: payload.datasetRevisionId,
+    version: payload.version,
+    canonicalVersionId: payload.canonicalVersionId,
+    promptCardVersionId: payload.promptCardVersionId,
+    keepImages,
+    captionStrategy: payload.captionStrategy,
+    repeatCount: payload.repeatCount,
+    sourceWeight: payload.sourceWeight,
+    warnings: payload.warnings,
+    forceOverride: payload.forceOverride ?? null,
+  });
+  const result = await completeDatasetFreezeWorkerTask({
+    taskId,
+    leaseOwner,
+    revision: materialized.revision,
+    progressJson: toInputJsonValue({
+      completed: true,
+      datasetRevisionId: payload.datasetRevisionId,
+      version: payload.version,
+      itemCount: materialized.summary.itemCount,
+      sourceCount: materialized.summary.sourceCount,
+      syntheticCount: materialized.summary.syntheticCount,
+    }),
+  });
+
+  if (!result) {
+    throw new CharacterLoraPhase3ServiceError("Worker task not found, not running, or lease owner mismatch", 404);
+  }
+
+  return {
+    ...result,
+    summary: materialized.summary,
+  };
+}
+
+async function materializeCharacterLoraDatasetFreeze(input: DatasetFreezePlan): Promise<{
+  revision: DatasetFreezeRevisionInput;
+  summary: {
+    itemCount: number;
+    sourceCount: number;
+    syntheticCount: number;
+    warnings: CharacterLoraDatasetFreezeWarning[];
+    forceOverride: CharacterLoraDatasetFreezeForceOverride | null;
+    artifactPaths: {
+      selectedManifest: string;
+      metadataJsonl: string;
+      captionAudit: string;
+    };
+  };
+}> {
+  const datasetRoot = `dataset/revisions/${input.revisionId}`;
+  const trainDir = `${datasetRoot}/train`;
+  const itemRecords: DatasetFreezeRevisionInput["items"] = [];
+  const manifestItems: Array<Record<string, unknown>> = [];
+  const auditItems: Array<Record<string, unknown>> = [];
+  const metadataLines: string[] = [];
+  const provenancePolicy = buildDatasetProvenancePolicy();
+  let sourceCount = 0;
+  let syntheticCount = 0;
+
+  for (let index = 0; index < input.keepImages.length; index += 1) {
+    const image = input.keepImages[index];
+    const [originalArtifact, generationRun] = await Promise.all([
+      getCharacterLoraArtifact(image.artifactId),
+      getCharacterLoraGenerationRun(image.generationRunId),
+    ]);
+
+    if (!originalArtifact || originalArtifact.jobId !== input.job.id) {
+      throw new CharacterLoraPhase3ServiceError("Candidate image artifact is missing for dataset freeze", 409, {
+        candidateImageId: image.id,
+        artifactId: image.artifactId,
+      });
+    }
+
+    if (!generationRun || generationRun.jobId !== input.job.id) {
+      throw new CharacterLoraPhase3ServiceError("Candidate generation run is missing for dataset freeze", 409, {
+        candidateImageId: image.id,
+        generationRunId: image.generationRunId,
+      });
+    }
+
+    const provenance = classifyDatasetItemProvenance({
+      image,
+      imageArtifact: originalArtifact,
+      generationRun,
+    });
+    if (provenance.origin === "source") {
+      sourceCount += 1;
+    } else {
+      syntheticCount += 1;
+    }
+
+    const itemWeight = resolveDatasetItemTrainingWeight({
+      origin: provenance.origin,
+      repeatCount: input.repeatCount,
+      requestedSourceWeight: input.sourceWeight,
+    });
+    const stem = `${String(index + 1).padStart(4, "0")}_${image.id}`;
+    const imagePath = `${trainDir}/${stem}${getTrainingImageExtension(originalArtifact.relativePath)}`;
+    const materializedImage = await copyDatasetTrainingImage({
+      jobRoot: input.job.artifactRoot,
+      sourceRelativePath: originalArtifact.relativePath,
+      targetRelativePath: imagePath,
+    });
+    const materializedImageArtifact = await createCharacterLoraJobArtifact({
+      jobId: input.job.id,
+      kind: "candidate_image",
+      relativePath: materializedImage.relativePath,
+      absolutePath: materializedImage.absolutePath,
+      sha256: materializedImage.sha256,
+      byteSize: BigInt(materializedImage.byteSize),
+      mimeType: originalArtifact.mimeType,
+      metadata: toInputJsonValue({
+        datasetRevisionId: input.revisionId,
+        candidateImageId: image.id,
+        artifactRole: "dataset_train_image",
+        originalArtifactId: originalArtifact.id,
+        originalRelativePath: originalArtifact.relativePath,
+        provenance,
+      }),
+    });
+    const caption = normalizeCaptionTrigger(
+      input.job.triggerToken,
+      image.captionDraft ?? buildFallbackCaption(input.job, image),
+    );
+    const captionPath = `${trainDir}/${stem}.txt`;
+    const captionArtifactStat = await writeCharacterLoraTextArtifact(input.job.artifactRoot, captionPath, `${caption}\n`);
+    const captionArtifact = await createCharacterLoraJobArtifact({
+      jobId: input.job.id,
+      kind: "caption",
+      relativePath: captionArtifactStat.relativePath,
+      absolutePath: captionArtifactStat.absolutePath,
+      sha256: captionArtifactStat.sha256,
+      byteSize: BigInt(captionArtifactStat.byteSize),
+      mimeType: "text/plain",
+      metadata: toInputJsonValue({
+        datasetRevisionId: input.revisionId,
+        candidateImageId: image.id,
+        captionStrategy: input.captionStrategy,
+        imageArtifactId: materializedImageArtifact.id,
+        imagePath: materializedImage.relativePath,
+      }),
+    });
+
+    itemRecords.push({
+      candidateImageId: image.id,
+      imageArtifactId: materializedImageArtifact.id,
+      captionArtifactId: captionArtifact.id,
+      captionText: caption,
+      repeatCount: itemWeight.repeatCount,
+      sourceWeight: itemWeight.sourceWeight,
+      sortOrder: index,
+    });
+    manifestItems.push({
+      candidateImageId: image.id,
+      imageArtifactId: materializedImageArtifact.id,
+      originalImageArtifactId: originalArtifact.id,
+      originalImagePath: originalArtifact.relativePath,
+      imagePath: materializedImage.relativePath,
+      fileName: materializedImage.datasetFileName,
+      captionPath: captionArtifactStat.relativePath,
+      sectionId: image.sectionId,
+      generationRunId: image.generationRunId,
+      sha256: materializedImage.sha256,
+      originalSha256: image.sha256,
+      origin: provenance.origin,
+      provenance,
+      repeatCount: itemWeight.repeatCount,
+      sourceWeight: itemWeight.sourceWeight,
+    });
+    metadataLines.push(JSON.stringify({
+      file_name: materializedImage.datasetFileName,
+      caption,
+      candidateImageId: image.id,
+      sectionId: image.sectionId,
+      generationRunId: image.generationRunId,
+      artifactId: materializedImageArtifact.id,
+      originalArtifactId: originalArtifact.id,
+      sha256: materializedImage.sha256,
+      origin: provenance.origin,
+      repeatCount: itemWeight.repeatCount,
+      sourceWeight: itemWeight.sourceWeight,
+    }));
+    auditItems.push({
+      candidateImageId: image.id,
+      triggerFirst: caption.split(",")[0]?.trim() === input.job.triggerToken,
+      caption,
+      sectionId: image.sectionId,
+      generationRunId: image.generationRunId,
+      origin: provenance.origin,
+      provenanceBasis: provenance.basis,
+      imagePath: materializedImage.relativePath,
+      originalImagePath: originalArtifact.relativePath,
+      repeatCount: itemWeight.repeatCount,
+      sourceWeight: itemWeight.sourceWeight,
+    });
+  }
+
+  const selectedManifest = await writeCharacterLoraJsonArtifact(input.job.artifactRoot, `${datasetRoot}/selected-manifest.json`, {
+    datasetRevisionId: input.revisionId,
+    jobId: input.job.id,
+    version: input.version,
+    canonicalVersionId: input.canonicalVersionId,
+    promptCardVersionId: input.promptCardVersionId,
+    captionStrategy: input.captionStrategy,
+    trainDir,
+    sourceCount,
+    syntheticCount,
+    requestedRepeatCount: input.repeatCount,
+    requestedSourceWeight: input.sourceWeight ?? null,
+    provenancePolicy,
+    forceOverride: input.forceOverride,
+    warnings: input.warnings,
+    items: manifestItems,
+  });
+  const metadataJsonl = await writeCharacterLoraTextArtifact(
+    input.job.artifactRoot,
+    `${datasetRoot}/metadata.jsonl`,
+    `${metadataLines.join("\n")}\n`,
+  );
+  const captionAudit = await writeCharacterLoraJsonArtifact(input.job.artifactRoot, `${datasetRoot}/caption-audit.json`, {
+    datasetRevisionId: input.revisionId,
+    jobId: input.job.id,
+    sourceCount,
+    syntheticCount,
+    provenancePolicy,
+    forceOverride: input.forceOverride,
+    warnings: input.warnings,
+    items: auditItems,
+  });
+
+  const [selectedManifestArtifact, metadataJsonlArtifact, captionAuditArtifact] = await Promise.all([
+    createCharacterLoraJobArtifact({
+      jobId: input.job.id,
+      kind: "dataset_manifest",
+      relativePath: selectedManifest.relativePath,
+      absolutePath: selectedManifest.absolutePath,
+      sha256: selectedManifest.sha256,
+      byteSize: BigInt(selectedManifest.byteSize),
+      mimeType: "application/json",
+      metadata: toInputJsonValue({ datasetRevisionId: input.revisionId, artifactRole: "selected_manifest" }),
+    }),
+    createCharacterLoraJobArtifact({
+      jobId: input.job.id,
+      kind: "dataset_manifest",
+      relativePath: metadataJsonl.relativePath,
+      absolutePath: metadataJsonl.absolutePath,
+      sha256: metadataJsonl.sha256,
+      byteSize: BigInt(metadataJsonl.byteSize),
+      mimeType: "application/jsonl",
+      metadata: toInputJsonValue({ datasetRevisionId: input.revisionId, artifactRole: "metadata_jsonl" }),
+    }),
+    createCharacterLoraJobArtifact({
+      jobId: input.job.id,
+      kind: "dataset_manifest",
+      relativePath: captionAudit.relativePath,
+      absolutePath: captionAudit.absolutePath,
+      sha256: captionAudit.sha256,
+      byteSize: BigInt(captionAudit.byteSize),
+      mimeType: "application/json",
+      metadata: toInputJsonValue({ datasetRevisionId: input.revisionId, artifactRole: "caption_audit" }),
+    }),
+  ]);
+
+  return {
+    revision: {
+      revisionId: input.revisionId,
+      jobId: input.job.id,
+      version: input.version,
+      canonicalVersionId: input.canonicalVersionId,
+      promptCardVersionId: input.promptCardVersionId,
+      captionStrategy: input.captionStrategy,
+      trainDir,
+      sourceCount,
+      syntheticCount,
+      selectedManifestArtifactId: selectedManifestArtifact.id,
+      metadataJsonlArtifactId: metadataJsonlArtifact.id,
+      captionAuditArtifactId: captionAuditArtifact.id,
+      items: itemRecords,
+    },
+    summary: {
+      itemCount: input.keepImages.length,
+      sourceCount,
+      syntheticCount,
+      warnings: input.warnings,
+      forceOverride: input.forceOverride,
+      artifactPaths: {
+        selectedManifest: selectedManifest.relativePath,
+        metadataJsonl: metadataJsonl.relativePath,
+        captionAudit: captionAudit.relativePath,
+      },
+    },
+  };
+}
+
+async function getDatasetFreezeSnapshotImages(jobId: string, keepImageIds: string[]) {
+  assertUniqueIds(keepImageIds, "keepImageIds");
+  const images = await Promise.all(keepImageIds.map((imageId) => getCharacterLoraCandidateImage(imageId)));
+  const missingImageIds: string[] = [];
+  const foreignImageIds: string[] = [];
+  const byId = new Map<string, CharacterLoraCandidateImageSummary>();
+
+  for (let index = 0; index < keepImageIds.length; index += 1) {
+    const imageId = keepImageIds[index];
+    const image = images[index];
+    if (!image) {
+      missingImageIds.push(imageId);
+      continue;
+    }
+    if (image.jobId !== jobId) {
+      foreignImageIds.push(imageId);
+      continue;
+    }
+    byId.set(image.id, image);
+  }
+
+  if (missingImageIds.length > 0 || foreignImageIds.length > 0) {
+    throw new CharacterLoraPhase3ServiceError("Dataset freeze payload references images outside this job", 404, {
+      missingImageIds,
+      foreignImageIds,
+    });
+  }
+
+  return keepImageIds.map((imageId) => byId.get(imageId) as CharacterLoraCandidateImageSummary);
+}
+
+async function validateDatasetFreezeVersionRefs(
+  jobId: string,
+  canonicalVersionId: string,
+  promptCardVersionId: string,
+) {
+  const [canonicalVersion, promptCardVersion] = await Promise.all([
+    getCharacterLoraCanonicalVersion(canonicalVersionId),
+    getCharacterLoraPromptCardVersion(promptCardVersionId),
+  ]);
+
+  if (!canonicalVersion || canonicalVersion.jobId !== jobId) {
+    throw new CharacterLoraPhase3ServiceError("Dataset freeze canonical version not found for job", 409);
+  }
+
+  if (!promptCardVersion || promptCardVersion.jobId !== jobId) {
+    throw new CharacterLoraPhase3ServiceError("Dataset freeze prompt card version not found for job", 409);
+  }
+}
+
+function requireForceReason(forceReason: string | undefined) {
+  if (!forceReason) {
+    throw new CharacterLoraPhase3ServiceError("forceReason is required when forcing dataset freeze", 400);
+  }
+  return forceReason;
+}
+
+function assertUniqueIds(ids: string[], fieldName: string) {
+  const seen = new Set<string>();
+  const duplicates: string[] = [];
+
+  for (const id of ids) {
+    if (seen.has(id)) {
+      duplicates.push(id);
+      continue;
+    }
+    seen.add(id);
+  }
+
+  if (duplicates.length > 0) {
+    throw new CharacterLoraPhase3ServiceError(`${fieldName} must not contain duplicates`, 400, {
+      duplicates,
+    });
+  }
 }
 
 async function resolveSectionInputImages(

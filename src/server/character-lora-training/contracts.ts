@@ -584,7 +584,21 @@ export const characterLoraCaptionPatchRequestSchema = z.object({
   captionDraft: z.string().trim().min(1),
 }).strict();
 
+export const characterLoraDatasetFreezeWarningSchema = z.object({
+  sectionId: z.string().trim().min(1),
+  sectionKey: z.string().trim().min(1),
+  targetKeepCount: z.number().int().nonnegative(),
+  actualKeepCount: z.number().int().nonnegative(),
+}).strict();
+
+export const characterLoraDatasetFreezeForceOverrideSchema = z.object({
+  enabled: z.literal(true),
+  reason: z.string().trim().min(1),
+  warningCount: z.number().int().nonnegative(),
+}).strict();
+
 export const characterLoraDatasetFreezeRequestSchema = z.object({
+  queue: z.boolean().optional(),
   force: z.boolean().optional(),
   forceReason: z.string().trim().min(1).optional(),
   captionStrategy: z.string().trim().min(1).optional(),
@@ -621,7 +635,7 @@ export const characterLoraWorkerTaskCompleteRequestSchema = z.object({
   output: z.union([
     characterLoraImageGenerationOutputSchema,
     characterLoraTrainingCompleteOutputSchema,
-  ]),
+  ]).optional(),
 }).strict();
 
 export const characterLoraWorkerTaskFailRequestSchema = z.object({
@@ -634,6 +648,8 @@ export type CharacterLoraSectionGenerationRequest = z.infer<typeof characterLora
 export type CharacterLoraImageReviewPatch = z.infer<typeof characterLoraImageReviewPatchSchema>;
 export type CharacterLoraImageReviewBatchRequest = z.infer<typeof characterLoraImageReviewBatchRequestSchema>;
 export type CharacterLoraCaptionPatchRequest = z.infer<typeof characterLoraCaptionPatchRequestSchema>;
+export type CharacterLoraDatasetFreezeWarning = z.infer<typeof characterLoraDatasetFreezeWarningSchema>;
+export type CharacterLoraDatasetFreezeForceOverride = z.infer<typeof characterLoraDatasetFreezeForceOverrideSchema>;
 export type CharacterLoraDatasetFreezeRequest = z.infer<typeof characterLoraDatasetFreezeRequestSchema>;
 export type CharacterLoraWorkerTaskLeaseRequest = z.infer<typeof characterLoraWorkerTaskLeaseRequestSchema>;
 export type CharacterLoraWorkerTaskHeartbeatRequest = z.infer<typeof characterLoraWorkerTaskHeartbeatRequestSchema>;
@@ -653,10 +669,13 @@ export const characterLoraDatasetFreezeTaskPayloadSchema = z.object({
   datasetRevisionId: z.string().min(1),
   canonicalVersionId: z.string().min(1),
   promptCardVersionId: z.string().min(1),
+  version: z.number().int().positive(),
   keepImageIds: z.array(z.string().min(1)).min(1),
   captionStrategy: z.string().min(1),
-  repeatCount: z.number().int().positive().optional(),
+  repeatCount: z.number().int().positive(),
   sourceWeight: z.number().positive().optional(),
+  forceOverride: characterLoraDatasetFreezeForceOverrideSchema.nullable().optional(),
+  warnings: z.array(characterLoraDatasetFreezeWarningSchema).default([]),
 });
 
 export const characterLoraTrainingTaskPayloadSchema = z.object({
