@@ -53,7 +53,8 @@ Options:
   --interval-ms <ms>     Poll interval. Default: 5000.
   --lease-seconds <sec>  Lease/heartbeat extension. Default: 300.
   --worker-owner <name>  Lease owner. Default: character-lora-image-worker.
-  --provider <name>      mock-local or openai-codex. Default: openai-codex.
+  --provider <name>      Override task provider with mock-local or openai-codex.
+                         Default: task request provider; Manager default is openai-codex.
   --self-test            Run local parser checks without leasing tasks.
 
 Manager auth:
@@ -80,7 +81,7 @@ async function main() {
   const cli = parseWorkerCli(process.argv.slice(2), {
     workerOwner: "character-lora-image-worker",
   });
-  const provider = (readStringOption(cli.values, "--provider") ?? "openai-codex") as ImageProvider;
+  const providerOverride = parseProviderOverride(readStringOption(cli.values, "--provider"));
 
   if (cli.help) {
     console.log(HELP);
@@ -91,15 +92,11 @@ async function main() {
     console.log("[character-lora image-worker] self-test passed");
     return;
   }
-  if (provider !== "mock-local" && provider !== "openai-codex") {
-    throw new Error(`Unsupported provider: ${provider}`);
-  }
-
   const client = await createManagerClient();
   console.log("[character-lora image-worker] starting", {
     managerUrl: client.baseUrl,
     managerAuth: client.authSource,
-    provider,
+    provider: providerOverride ?? "task-request",
     workerOwner: cli.workerOwner,
     mode: cli.once ? "once" : "poll",
   });
@@ -120,12 +117,6 @@ async function main() {
       continue;
     }
 
-    await client.heartbeatTask(task.id, {
-      leaseOwner: cli.workerOwner,
-      leaseDurationSeconds: cli.leaseDurationSeconds,
-      progressJson: { status: "leased", provider },
-    });
-
     if (task.payload.taskType !== "image_generation") {
       await client.failTask(task.id, {
         leaseOwner: cli.workerOwner,
@@ -134,11 +125,23 @@ async function main() {
       continue;
     }
 
+    const provider = resolveTaskProvider(task.payload.request.provider, providerOverride);
+    await client.heartbeatTask(task.id, {
+      leaseOwner: cli.workerOwner,
+      leaseDurationSeconds: cli.leaseDurationSeconds,
+      progressJson: {
+        status: "leased",
+        provider,
+        requestProvider: task.payload.request.provider,
+        providerOverride: providerOverride ?? null,
+      },
+    });
+
     await runTask({
       client,
       taskId: task.id,
       leaseOwner: cli.workerOwner,
-      provider,
+      providerOverride,
       payload: task.payload,
     });
   } while (cli.poll);
@@ -148,16 +151,17 @@ async function runTask(input: {
   client: Awaited<ReturnType<typeof createManagerClient>>;
   taskId: string;
   leaseOwner: string;
-  provider: ImageProvider;
+  providerOverride: ImageProvider | null;
   payload: CharacterLoraImageGenerationTaskPayload;
 }) {
   const startedAt = Date.now();
   const request = input.payload.request;
+  const provider = resolveTaskProvider(request.provider, input.providerOverride);
 
   try {
     const jobRoot = await getJobArtifactRoot(input.client, input.payload.jobId);
     const result =
-      input.provider === "mock-local"
+      provider === "mock-local"
         ? await runMockLocalProvider(jobRoot, request, startedAt, input.client.authSource)
         : await runOpenAiCodexProvider(jobRoot, request, startedAt, input.client.authSource);
 
@@ -169,6 +173,7 @@ async function runTask(input: {
       taskId: input.taskId,
       jobId: input.payload.jobId,
       generationRunId: input.payload.generationRunId,
+      provider,
       imageCount: result.output.images.length,
     });
   } catch (error) {
@@ -184,6 +189,19 @@ async function runTask(input: {
       error: providerError,
     });
   }
+}
+
+function parseProviderOverride(value: string | undefined): ImageProvider | null {
+  if (value === undefined) return null;
+  if (value === "mock-local" || value === "openai-codex") return value;
+  throw new Error(`Unsupported provider: ${value}`);
+}
+
+function resolveTaskProvider(
+  requestProvider: CharacterLoraImageGenerationRequest["provider"],
+  providerOverride: ImageProvider | null,
+): ImageProvider {
+  return providerOverride ?? requestProvider;
 }
 
 async function runMockLocalProvider(
@@ -580,6 +598,19 @@ function isRetryableStatus(status: number) {
 }
 
 function runParserSelfTest() {
+  if (parseProviderOverride(undefined) !== null) {
+    throw new Error("Provider override should be optional");
+  }
+  if (parseProviderOverride("mock-local") !== "mock-local") {
+    throw new Error("Provider override should accept mock-local");
+  }
+  if (resolveTaskProvider("openai-codex", null) !== "openai-codex") {
+    throw new Error("Worker should use request provider when no CLI override is set");
+  }
+  if (resolveTaskProvider("openai-codex", "mock-local") !== "mock-local") {
+    throw new Error("Worker should honor explicit CLI provider override");
+  }
+
   const partialBase64 = "iVBORpartial";
   const finalBase64 = "iVBORfinal";
   const sse = [

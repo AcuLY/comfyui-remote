@@ -23,7 +23,7 @@ Worker 会用 `x-api-token` 调用 Manager API。token 来源按顺序读取：
 
 ## Image Worker
 
-默认 provider 是 `openai-codex`。生产或真实验收时不要省略为 `mock-local`；只有本地 smoke/debug 才显式传 `--provider mock-local`。
+默认使用 task payload 中的 `request.provider`；当前 Manager 生成任务默认写入 `openai-codex`。`--provider` 是强制 override，生产或真实验收时不要传 `--provider mock-local`；只有本地 smoke/debug 才显式传 `--provider mock-local`。
 
 无外部 token 的本地 smoke/debug：
 
