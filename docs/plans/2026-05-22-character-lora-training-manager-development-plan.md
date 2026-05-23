@@ -552,6 +552,7 @@ HTTP API 面向 agent、worker 和需要 fetch 的客户端。
 | `PATCH` | `/api/character-lora-training/jobs/:jobId` | 更新 draft 字段。 |
 | `GET` | `/api/character-lora-training/gpu-task-lock` | 当前 Character LoRA GPU 锁状态。 |
 | `GET` | `/api/character-lora-training/section-templates` | 默认训练集小节模板。 |
+| `POST` | `/api/character-lora-training/section-templates` | 复制训练集小节模板；body 支持 `sourceTemplateId` / `sourceTemplateKey`、可选 `key` / `name`、target counts 和 prompt overrides，返回新的 active template。 |
 | `GET` | `/api/character-lora-training/jobs/:jobId/source-images` | source image 列表。 |
 | `POST` | `/api/character-lora-training/jobs/:jobId/source-images` | 上传/登记 source image。 |
 | `POST` | `/api/character-lora-training/jobs/:jobId/canonical/generate` | 创建 canonical generation task。 |
@@ -1004,11 +1005,13 @@ sequenceDiagram
 - canonical candidate/version 管理。
 - Prompt Card CRUD/versioning。
 - 默认 section templates seed。
+- section template 复制入口：从 source template id/key 复制字段，允许覆盖 key/name、target counts 和 prompt templates，并创建新的 active template。
 - job section 实例化、counts、lineage 提示。
 
 验收：
 - canonical 更新不覆盖旧 version。
 - 小节生成引用具体 canonical version 和 Prompt Card version。
+- 复制默认 section template 后，新 template 会出现在 active template 列表，并可通过 `instantiateTrainingSections` 创建 job section。
 - UI 能区分旧 canonical 与新 canonical 产生的 run。
 
 ### Phase 3：GPT-Image-2 provider、审图、dataset freeze

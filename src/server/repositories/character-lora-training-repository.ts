@@ -1212,6 +1212,18 @@ export type CharacterLoraSectionTemplateUpsertInput = {
   isActive: boolean;
 };
 
+export type CharacterLoraSectionTemplateCopyCreateInput = {
+  key: string;
+  name: string;
+  description?: string | null;
+  angleTag?: string | null;
+  promptTemplate: string;
+  negativeTemplate?: string | null;
+  targetCandidateCount: number;
+  targetKeepCount: number;
+  sortOrder: number;
+};
+
 export async function upsertCharacterLoraSectionTemplates(
   templates: CharacterLoraSectionTemplateUpsertInput[],
 ) {
@@ -1227,6 +1239,69 @@ export async function upsertCharacterLoraSectionTemplates(
   );
 
   return records.map(serializeSectionTemplate);
+}
+
+export async function getCharacterLoraSectionTemplate(input: { id?: string; key?: string }) {
+  const where = input.id
+    ? { id: input.id }
+    : input.key
+      ? { key: input.key }
+      : null;
+
+  if (!where) {
+    return null;
+  }
+
+  const template = await db.characterLoraSectionTemplate.findUnique({
+    where,
+    select: SECTION_TEMPLATE_SELECT,
+  });
+
+  return template ? serializeSectionTemplate(template) : null;
+}
+
+export async function createCharacterLoraSectionTemplateCopy(
+  input: CharacterLoraSectionTemplateCopyCreateInput,
+) {
+  let lastUniqueError: unknown = null;
+
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    try {
+      const record = await db.$transaction(async (tx) => {
+        const key = await findAvailableSectionTemplateKey(tx, input.key);
+        const name = await findAvailableSectionTemplateName(tx, input.name);
+
+        return tx.characterLoraSectionTemplate.create({
+          data: {
+            key,
+            name,
+            description: input.description ?? null,
+            angleTag: input.angleTag ?? null,
+            promptTemplate: input.promptTemplate,
+            negativeTemplate: input.negativeTemplate ?? null,
+            targetCandidateCount: input.targetCandidateCount,
+            targetKeepCount: input.targetKeepCount,
+            sortOrder: input.sortOrder,
+            isActive: true,
+          },
+          select: SECTION_TEMPLATE_SELECT,
+        });
+      });
+
+      return serializeSectionTemplate(record);
+    } catch (error) {
+      if (isUniqueConstraintError(error) && attempt < 4) {
+        lastUniqueError = error;
+        continue;
+      }
+
+      throw error;
+    }
+  }
+
+  throw lastUniqueError instanceof Error
+    ? lastUniqueError
+    : new Error("Failed to create a unique Character LoRA section template copy.");
 }
 
 export async function listActiveCharacterLoraSectionTemplates(templateKeys?: string[]) {
@@ -4031,6 +4106,65 @@ function buildBenchmarkTemplateStatus(template: ReturnType<typeof serializeBench
     requiredTemplateNames: [...CHARACTER_LORA_BENCHMARK_TEMPLATE_NAME_TERMS],
     requiredSectionCount: CHARACTER_LORA_BENCHMARK_TEMPLATE_REQUIRED_SECTION_COUNT,
   };
+}
+
+const SECTION_TEMPLATE_KEY_MAX_LENGTH = 96;
+const SECTION_TEMPLATE_NAME_MAX_LENGTH = 160;
+
+async function findAvailableSectionTemplateKey(
+  client: Prisma.TransactionClient,
+  preferredKey: string,
+) {
+  const baseKey = truncateWithFallback(preferredKey, SECTION_TEMPLATE_KEY_MAX_LENGTH, "section_template_copy");
+
+  for (let index = 0; index <= 100; index += 1) {
+    const candidate = appendNumberedSuffix(baseKey, index, SECTION_TEMPLATE_KEY_MAX_LENGTH, "_");
+    const existing = await client.characterLoraSectionTemplate.findUnique({
+      where: { key: candidate },
+      select: { id: true },
+    });
+
+    if (!existing) {
+      return candidate;
+    }
+  }
+
+  return appendNumberedSuffix(baseKey, Date.now() % 1_000_000, SECTION_TEMPLATE_KEY_MAX_LENGTH, "_");
+}
+
+async function findAvailableSectionTemplateName(
+  client: Prisma.TransactionClient,
+  preferredName: string,
+) {
+  const baseName = truncateWithFallback(preferredName, SECTION_TEMPLATE_NAME_MAX_LENGTH, "Section Template Copy");
+
+  for (let index = 0; index <= 100; index += 1) {
+    const candidate = appendNumberedSuffix(baseName, index, SECTION_TEMPLATE_NAME_MAX_LENGTH, " ");
+    const existing = await client.characterLoraSectionTemplate.findFirst({
+      where: { name: candidate },
+      select: { id: true },
+    });
+
+    if (!existing) {
+      return candidate;
+    }
+  }
+
+  return appendNumberedSuffix(baseName, Date.now() % 1_000_000, SECTION_TEMPLATE_NAME_MAX_LENGTH, " ");
+}
+
+function truncateWithFallback(value: string, maxLength: number, fallback: string) {
+  const normalized = value.trim();
+  return (normalized || fallback).slice(0, maxLength);
+}
+
+function appendNumberedSuffix(base: string, index: number, maxLength: number, separator: string) {
+  const suffix = index === 0 ? "" : `${separator}${index + 1}`;
+  return `${base.slice(0, Math.max(1, maxLength - suffix.length))}${suffix}`;
+}
+
+function isUniqueConstraintError(error: unknown) {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
 }
 
 async function findPreferredCharacterLoraBenchmarkTemplate(

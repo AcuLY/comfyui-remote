@@ -449,6 +449,37 @@ async function main() {
     "promoted prompt card should include the section instruction",
   );
 
+  const copiedTemplate = await services.sectionTemplateService.copyCharacterLoraSectionTemplate({
+    sourceTemplateKey: "front_fullbody",
+    key: "front_fullbody_smoke_copy",
+    name: "Front Full Body Smoke Copy",
+  });
+  assert(copiedTemplate.key === "front_fullbody_smoke_copy", "copied section template should use requested unique key");
+  assert(copiedTemplate.name === "Front Full Body Smoke Copy", "copied section template should use requested name");
+  assert(copiedTemplate.isActive, "copied section template should be active");
+
+  const templatesAfterCopy = await services.sectionTemplateService.listCharacterLoraSectionTemplates();
+  const sourceTemplate = templatesAfterCopy.find((template) => template.key === "front_fullbody");
+  assert(sourceTemplate, "default source section template should still be listed after copy");
+  assert(
+    templatesAfterCopy.some((template) => template.id === copiedTemplate.id),
+    "copied section template should appear in active template list",
+  );
+  assert(
+    copiedTemplate.promptTemplate === sourceTemplate.promptTemplate &&
+      copiedTemplate.negativeTemplate === sourceTemplate.negativeTemplate,
+    "copied section template should inherit source prompt templates by default",
+  );
+
+  const copiedTemplateSections = await services.sectionTemplateService.instantiateCharacterLoraJobSections(job.id, {
+    templateKeys: [copiedTemplate.key],
+  });
+  assert(copiedTemplateSections.createdCount === 1, "copied section template should instantiate one new job section");
+  const copiedTemplateSection = copiedTemplateSections.sections.find((section) => section.key === copiedTemplate.key);
+  assert(copiedTemplateSection, "copied section template should create a visible job section");
+  assert(copiedTemplateSection.templateId === copiedTemplate.id, "copied section should retain copied template id");
+  assert(copiedTemplateSection.name === copiedTemplate.name, "copied section should use copied template name");
+
   const instantiated = await services.sectionTemplateService.instantiateCharacterLoraJobSections(job.id, {
     templateKeys: ["front_fullbody", "portrait"],
   });

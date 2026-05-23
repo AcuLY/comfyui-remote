@@ -43,18 +43,19 @@ cmd /c npx prisma db push --schema prisma/schema.sqlite.prisma
 3. 创建 canonical generation run 和 worker task。
 4. mock complete canonical version 并选择 canonical。
 5. 创建 Prompt Card version。
-6. 实例化 `front_fullbody`、`portrait` 两个 sections。
-7. 为每个 section 创建 fake image generation task。
-8. lease + complete worker task，登记 fake candidate artifact。
-9. keep 所有 candidate，并验证 caption 自动 trigger-first。
-10. freeze dataset revision，生成 manifest、metadata jsonl、caption audit。
-11. enqueue training，生成 training config、dry-run summary 和 GPU lock。
-12. lease + heartbeat + complete fake training task，登记 dummy safetensors/hash/log/checkpoint。
-13. dryRun + skipQueue 创建并 mock complete benchmark，并断言它不能创建 approved promotion decision、仍可创建 rejected decision 用于诊断回退。
-14. 先断言缺失 ProjectTemplate 时非 dryRun/skipQueue benchmark enqueue 返回 409；再创建同名但 sections 不足的模板并断言真实 benchmark 仍返回 409，随后删除坏模板并调用默认 benchmark template ensure helper，在隔离 SQLite 中创建真实 `角色 LoRA 测试` ProjectTemplate（至少 7 个 sections），并重复 ensure 断言不会重复创建。
-15. 另外创建一个非 dryRun/skipQueue benchmark，确认其 `templateId` 来自 ensure 出来的真实 ProjectTemplate，并直接通过 complete 服务写入 benchmark-worker 风格的完成证据（runIds、sections、counts done=totalRuns、matrixExpansion >= 7 base sections、skipWait=false）。
-16. 使用第 15 步的真实证据形态 benchmark 创建 approved promotion decision。
-17. 在隔离 SQLite 中真实执行 promotion，创建正式 preset 和 7 个 variants。
+6. 通过业务 service 复制默认 section template，断言新 template 出现在 active 列表，并可实例化为 job section。
+7. 实例化 `front_fullbody`、`portrait` 两个 sections。
+8. 为每个 section 创建 fake image generation task。
+9. lease + complete worker task，登记 fake candidate artifact。
+10. keep 所有 candidate，并验证 caption 自动 trigger-first。
+11. freeze dataset revision，生成 manifest、metadata jsonl、caption audit。
+12. enqueue training，生成 training config、dry-run summary 和 GPU lock。
+13. lease + heartbeat + complete fake training task，登记 dummy safetensors/hash/log/checkpoint。
+14. dryRun + skipQueue 创建并 mock complete benchmark，并断言它不能创建 approved promotion decision、仍可创建 rejected decision 用于诊断回退。
+15. 先断言缺失 ProjectTemplate 时非 dryRun/skipQueue benchmark enqueue 返回 409；再创建同名但 sections 不足的模板并断言真实 benchmark 仍返回 409，随后删除坏模板并调用默认 benchmark template ensure helper，在隔离 SQLite 中创建真实 `角色 LoRA 测试` ProjectTemplate（至少 7 个 sections），并重复 ensure 断言不会重复创建。
+16. 另外创建一个非 dryRun/skipQueue benchmark，确认其 `templateId` 来自 ensure 出来的真实 ProjectTemplate，并直接通过 complete 服务写入 benchmark-worker 风格的完成证据（runIds、sections、counts done=totalRuns、matrixExpansion >= 7 base sections、skipWait=false）。
+17. 使用第 16 步的真实证据形态 benchmark 创建 approved promotion decision。
+18. 在隔离 SQLite 中真实执行 promotion，创建正式 preset 和 7 个 variants。
 
 脚本不使用裸 SQL 绕过业务规则；只在最后用 Prisma read 查询 promoted variants 做断言。
 

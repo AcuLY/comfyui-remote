@@ -1,12 +1,15 @@
 import { Prisma } from "@/generated/prisma";
 import {
+  createCharacterLoraSectionTemplateCopy as createSectionTemplateCopyInRepository,
   getCharacterLoraCanonicalVersion as getCanonicalVersionFromRepository,
   getCharacterLoraPromptCardVersion as getPromptCardVersionFromRepository,
+  getCharacterLoraSectionTemplate as getSectionTemplateFromRepository,
   getCharacterLoraTrainingJob as getJobFromRepository,
   instantiateCharacterLoraJobSections as instantiateJobSectionsInRepository,
   listActiveCharacterLoraSectionTemplates as listActiveSectionTemplatesFromRepository,
   listCharacterLoraJobSections as listJobSectionsFromRepository,
   upsertCharacterLoraSectionTemplates as upsertSectionTemplatesInRepository,
+  type CharacterLoraSectionTemplateCopyCreateInput,
   type CharacterLoraSectionTemplateUpsertInput,
 } from "@/server/repositories/character-lora-training-repository";
 import { z } from "zod";
@@ -179,6 +182,29 @@ const instantiateSectionsSchema = z
   })
   .strict();
 
+const optionalTextSchema = z.string().trim().min(1).optional();
+const optionalNullableTextSchema = z.union([z.string().trim().min(1), z.null()]).optional();
+
+const copySectionTemplateSchema = z
+  .object({
+    sourceTemplateId: optionalTextSchema,
+    sourceTemplateKey: optionalTextSchema,
+    key: optionalTextSchema,
+    name: optionalTextSchema,
+    description: optionalNullableTextSchema,
+    angleTag: optionalNullableTextSchema,
+    promptTemplate: optionalTextSchema,
+    negativeTemplate: optionalNullableTextSchema,
+    targetCandidateCount: z.coerce.number().int().min(1).max(100).optional(),
+    targetKeepCount: z.coerce.number().int().min(1).max(100).optional(),
+    sortOrder: z.coerce.number().int().min(-10_000).max(10_000).optional(),
+  })
+  .strict()
+  .refine((input) => Boolean(input.sourceTemplateId || input.sourceTemplateKey), {
+    message: "sourceTemplateId or sourceTemplateKey is required",
+    path: ["sourceTemplateId"],
+  });
+
 export class CharacterLoraSectionTemplateServiceError extends Error {
   constructor(
     message: string,
@@ -198,6 +224,66 @@ export async function listCharacterLoraSectionTemplates() {
   await ensureDefaultCharacterLoraSectionTemplates();
 
   return listActiveSectionTemplatesFromRepository();
+}
+
+export async function copyCharacterLoraSectionTemplate(input: unknown) {
+  const parsed = parseWithSchema(copySectionTemplateSchema, input ?? {});
+
+  await ensureDefaultCharacterLoraSectionTemplates();
+
+  const source = await getSectionTemplateFromRepository(
+    parsed.sourceTemplateId
+      ? { id: parsed.sourceTemplateId }
+      : { key: parsed.sourceTemplateKey },
+  );
+
+  if (!source) {
+    throw new CharacterLoraSectionTemplateServiceError(
+      "Source section template not found",
+      404,
+      {
+        sourceTemplateId: parsed.sourceTemplateId ?? null,
+        sourceTemplateKey: parsed.sourceTemplateKey ?? null,
+      },
+    );
+  }
+
+  if (parsed.sourceTemplateKey && source.key !== parsed.sourceTemplateKey) {
+    throw new CharacterLoraSectionTemplateServiceError(
+      "Source section template id/key mismatch",
+      400,
+      {
+        sourceTemplateId: parsed.sourceTemplateId ?? null,
+        sourceTemplateKey: parsed.sourceTemplateKey,
+        actualKey: source.key,
+      },
+    );
+  }
+
+  const targetCandidateCount = parsed.targetCandidateCount ?? source.targetCandidateCount;
+  const targetKeepCount = parsed.targetKeepCount ?? source.targetKeepCount;
+
+  if (targetKeepCount > targetCandidateCount) {
+    throw new CharacterLoraSectionTemplateServiceError(
+      "targetKeepCount cannot exceed targetCandidateCount",
+      400,
+      { targetCandidateCount, targetKeepCount },
+    );
+  }
+
+  const createInput: CharacterLoraSectionTemplateCopyCreateInput = {
+    key: normalizeTemplateKey(parsed.key ?? `${source.key}_copy`),
+    name: normalizeTemplateName(parsed.name ?? `${source.name} Copy`),
+    description: parsed.description !== undefined ? parsed.description : source.description,
+    angleTag: parsed.angleTag !== undefined ? parsed.angleTag : source.angleTag,
+    promptTemplate: parsed.promptTemplate ?? source.promptTemplate,
+    negativeTemplate: parsed.negativeTemplate !== undefined ? parsed.negativeTemplate : source.negativeTemplate,
+    targetCandidateCount,
+    targetKeepCount,
+    sortOrder: parsed.sortOrder ?? source.sortOrder,
+  };
+
+  return createSectionTemplateCopyInRepository(createInput);
 }
 
 export async function listCharacterLoraJobSections(jobId: string) {
@@ -372,6 +458,32 @@ function normalizeId(value: string, fieldName: string) {
 
   if (!normalized) {
     throw new CharacterLoraSectionTemplateServiceError(`${fieldName} is required`, 400);
+  }
+
+  return normalized;
+}
+
+function normalizeTemplateKey(value: string) {
+  const normalized = value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "_")
+    .replace(/_{2,}/g, "_")
+    .replace(/^[_-]+|[_-]+$/g, "")
+    .slice(0, 96);
+
+  if (!normalized) {
+    throw new CharacterLoraSectionTemplateServiceError("Template key is required", 400);
+  }
+
+  return normalized;
+}
+
+function normalizeTemplateName(value: string) {
+  const normalized = value.trim().slice(0, 160);
+
+  if (!normalized) {
+    throw new CharacterLoraSectionTemplateServiceError("Template name is required", 400);
   }
 
   return normalized;
