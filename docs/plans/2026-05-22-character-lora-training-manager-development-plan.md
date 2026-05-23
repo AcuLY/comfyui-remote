@@ -550,20 +550,37 @@ HTTP API 面向 agent、worker 和需要 fetch 的客户端。
 | `POST` | `/api/character-lora-training/jobs` | 创建 job。 |
 | `GET` | `/api/character-lora-training/jobs/:jobId` | job 详情，包含 current versions、sections、counts。 |
 | `PATCH` | `/api/character-lora-training/jobs/:jobId` | 更新 draft 字段。 |
+| `GET` | `/api/character-lora-training/gpu-task-lock` | 当前 Character LoRA GPU 锁状态。 |
+| `GET` | `/api/character-lora-training/section-templates` | 默认训练集小节模板。 |
+| `GET` | `/api/character-lora-training/jobs/:jobId/source-images` | source image 列表。 |
 | `POST` | `/api/character-lora-training/jobs/:jobId/source-images` | 上传/登记 source image。 |
 | `POST` | `/api/character-lora-training/jobs/:jobId/canonical/generate` | 创建 canonical generation task。 |
+| `POST` | `/api/character-lora-training/jobs/:jobId/canonical/manual` | 把已上传 `manual_canonical` source 登记为新 canonical version。 |
 | `POST` | `/api/character-lora-training/jobs/:jobId/canonical/:versionId/select` | 选择 canonical version。 |
+| `POST` | `/api/character-lora-training/generation-runs/:runId/mock-complete-canonical` | 本地/debug canonical mock 完成入口；不作为真实生成证据。 |
 | `GET` | `/api/character-lora-training/jobs/:jobId/prompt-cards` | Prompt Card versions。 |
 | `POST` | `/api/character-lora-training/jobs/:jobId/prompt-cards` | 新建 Prompt Card version。 |
+| `GET` | `/api/character-lora-training/jobs/:jobId/sections` | job sections 列表。 |
 | `POST` | `/api/character-lora-training/jobs/:jobId/sections/instantiate` | 从模板创建 sections。 |
 | `POST` | `/api/character-lora-training/sections/:sectionId/runs` | 小节生成/rerun。 |
+| `GET` | `/api/character-lora-training/jobs/:jobId/images` | candidate image 列表，可按 section/status 过滤。 |
 | `POST` | `/api/character-lora-training/images/review` | 批量审图。 |
 | `PATCH` | `/api/character-lora-training/images/:imageId/caption` | 修改 caption draft。 |
+| `GET` | `/api/character-lora-training/jobs/:jobId/artifacts/image` | 读取 job artifact image，支持缩略图参数。 |
+| `GET` | `/api/character-lora-training/jobs/:jobId/dataset-revisions` | dataset revision 列表。 |
 | `POST` | `/api/character-lora-training/jobs/:jobId/dataset-revisions` | freeze dataset。 |
+| `GET` | `/api/character-lora-training/jobs/:jobId/training-runs` | job training run 列表。 |
 | `POST` | `/api/character-lora-training/dataset-revisions/:revisionId/training-runs` | 启动训练。 |
 | `POST` | `/api/character-lora-training/training-runs/:trainingRunId/cancel` | 取消训练。 |
-| `POST` | `/api/character-lora-training/training-runs/:trainingRunId/benchmark-runs` | 启动 benchmark。 |
+| `GET` | `/api/character-lora-training/jobs/:jobId/benchmark-runs` | job benchmark run 列表。 |
+| `GET` | `/api/character-lora-training/training-runs/:trainingRunId/benchmark-runs` | training run benchmark 列表。 |
+| `POST` | `/api/character-lora-training/training-runs/:trainingRunId/benchmark-runs` | 从 training run 启动 benchmark。 |
+| `POST` | `/api/character-lora-training/jobs/:jobId/benchmark-runs` | 从 job 级上下文启动 benchmark。 |
+| `POST` | `/api/character-lora-training/benchmark-runs/:benchmarkRunId/complete` | benchmark worker/debug 完成入口。 |
 | `POST` | `/api/character-lora-training/benchmark-runs/:benchmarkRunId/decisions` | 保存审核决策。 |
+| `GET` | `/api/character-lora-training/jobs/:jobId/promotion-decisions` | job promotion decision 列表。 |
+| `GET` | `/api/character-lora-training/jobs/:jobId/report` | job report JSON；`?format=markdown` 返回 Markdown。 |
+| `POST` | `/api/character-lora-training/jobs/:jobId/report` | 持久化 job report JSON/Markdown artifacts。 |
 | `POST` | `/api/character-lora-training/promotion-decisions/:decisionId/promote` | 执行 promotion。 |
 | `GET` | `/api/character-lora-training/worker/tasks/next?workerType=...` | worker 拉取任务并获取 lease。 |
 | `POST` | `/api/character-lora-training/worker/tasks/:taskId/heartbeat` | worker 心跳和进度。 |
