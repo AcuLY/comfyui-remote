@@ -153,8 +153,8 @@ type RejectReason = (typeof REJECT_REASON_OPTIONS)[number]["value"];
 type ImageProvider = "mock-local" | "openai-codex";
 
 const IMAGE_PROVIDERS: Array<{ value: ImageProvider; label: string }> = [
-  { value: "mock-local", label: "mock-local" },
   { value: "openai-codex", label: "openai-codex" },
+  { value: "mock-local", label: "mock-local (debug)" },
 ];
 
 const IMAGE_SIZE_OPTIONS = ["1024x1536", "1024x1024", "1536x1024"] as const;
@@ -583,7 +583,7 @@ export function JobWorkbenchClient({
   const [identityTraits, setIdentityTraits] = useState("{\n  \"face\": \"\",\n  \"hair\": \"\"\n}");
   const [outfitTraits, setOutfitTraits] = useState("{\n  \"outfit\": \"\"\n}");
   const [negativeTraits, setNegativeTraits] = useState("{\n  \"avoid\": \"wrong identity\"\n}");
-  const [canonicalProvider, setCanonicalProvider] = useState<ImageProvider>("mock-local");
+  const [canonicalProvider, setCanonicalProvider] = useState<ImageProvider>("openai-codex");
   const [canonicalVisualPrompt, setCanonicalVisualPrompt] = useState("");
   const [canonicalSourceImageIds, setCanonicalSourceImageIds] = useState<string[]>(() => sourceImages.map((image) => image.id));
   const [manualCanonicalSourceImageId, setManualCanonicalSourceImageId] = useState(
@@ -591,7 +591,7 @@ export function JobWorkbenchClient({
   );
   const [canonicalSize, setCanonicalSize] = useState("1024x1536");
   const [canonicalQuality, setCanonicalQuality] = useState("high");
-  const [sectionProvider, setSectionProvider] = useState<ImageProvider>("mock-local");
+  const [sectionProvider, setSectionProvider] = useState<ImageProvider>("openai-codex");
   const [sectionUserInstruction, setSectionUserInstruction] = useState("");
   const [sectionSourceImageIds, setSectionSourceImageIds] = useState<string[]>(() => sourceImages.map((image) => image.id));
   const [sectionSize, setSectionSize] = useState("1024x1536");

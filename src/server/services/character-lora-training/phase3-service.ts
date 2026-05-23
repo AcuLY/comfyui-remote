@@ -69,7 +69,7 @@ import {
 } from "@/server/services/character-lora-training/training-service";
 import { z } from "zod";
 
-const DEFAULT_PROVIDER = "mock-local" satisfies CharacterLoraImageProvider;
+const DEFAULT_PROVIDER = "openai-codex" satisfies CharacterLoraImageProvider;
 const DEFAULT_IMAGE_MODEL = "gpt-image-2" as const;
 const DEFAULT_TOOL_PARAMS = {
   size: "1024x1536",
