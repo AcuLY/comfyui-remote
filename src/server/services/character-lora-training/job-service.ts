@@ -15,21 +15,17 @@ import {
   ensureCharacterLoraJobRoot,
   writeCharacterLoraJsonArtifact,
 } from "@/server/services/character-lora-training/artifact-service";
+import { characterLoraTrainingScopeSchema } from "@/server/character-lora-training/contracts";
 import { z } from "zod";
 
 const DEFAULT_CAPTION_STRATEGY = "controllable_identity";
 const SLUG_SUFFIX_LENGTH = 6;
 
-const trainingScopeSchema = z.record(z.string(), z.unknown()).refine(
-  (value) => Object.keys(value).length > 0,
-  "trainingScope must not be empty",
-);
-
 const createJobSchema = z
   .object({
     characterName: z.string().trim().min(1),
     triggerToken: z.string().trim().min(1),
-    trainingScope: trainingScopeSchema,
+    trainingScope: characterLoraTrainingScopeSchema,
     baseCheckpointName: nullableTrimmedStringSchema(),
     baseCheckpointPath: requiredTrimmedStringSchema("baseCheckpointPath is required"),
     baseCheckpointHash: requiredTrimmedStringSchema("baseCheckpointHash is required"),
@@ -44,7 +40,7 @@ const updateJobSchema = z
   .object({
     characterName: z.string().trim().min(1).optional(),
     triggerToken: z.string().trim().min(1).optional(),
-    trainingScope: trainingScopeSchema.optional(),
+    trainingScope: characterLoraTrainingScopeSchema.optional(),
     baseCheckpointName: nullableTrimmedStringSchema().optional(),
     baseCheckpointPath: nullableTrimmedStringSchema().optional(),
     baseCheckpointHash: nullableTrimmedStringSchema().optional(),

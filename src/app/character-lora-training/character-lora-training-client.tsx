@@ -16,6 +16,16 @@ type Props = {
   gpuLock: CharacterLoraGpuLock;
 };
 
+type DerivedStateInput = {
+  state: string;
+  includeInTraining: boolean;
+  advancedExperiment?: boolean;
+  captionTag?: string;
+  ratioLimit?: number;
+  riskNote?: string;
+  note?: string;
+};
+
 const STATUS_LABEL: Record<string, string> = {
   draft: "草稿",
   canonical_pending: "标准图",
@@ -53,24 +63,40 @@ function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "操作失败";
 }
 
-function readJsonObject(value: string, fallback: Record<string, unknown>) {
+const DEFAULT_DERIVED_STATES: DerivedStateInput[] = [
+  { state: "underwear", includeInTraining: false, note: "默认不进入训练，仅用于后续基准/发布变体。" },
+  { state: "underwear_shoes", includeInTraining: false, note: "默认不进入训练，仅用于后续基准/发布变体。" },
+  { state: "semi_undressed", includeInTraining: false, note: "默认不进入训练，仅用于后续基准/发布变体。" },
+  { state: "semi_undressed_upper_body", includeInTraining: false, note: "默认不进入训练，仅用于后续基准/发布变体。" },
+  { state: "semi_undressed_shoes", includeInTraining: false, note: "默认不进入训练，仅用于后续基准/发布变体。" },
+  { state: "nude", includeInTraining: false, note: "默认不进入训练，仅用于后续基准/发布变体。" },
+  { state: "default_outfit", includeInTraining: false, note: "主体训练由主要服装/形态字段约束。" },
+];
+
+function readDerivedStates(value: string) {
   const trimmed = value.trim();
   if (!trimmed) {
-    return fallback;
+    return DEFAULT_DERIVED_STATES;
   }
 
   const parsed = JSON.parse(trimmed) as unknown;
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    throw new Error("训练范围必须是 JSON object");
+  if (!Array.isArray(parsed)) {
+    throw new Error("派生状态必须是 JSON array");
   }
 
-  return parsed as Record<string, unknown>;
+  return parsed as DerivedStateInput[];
 }
 
 export function CharacterLoraTrainingClient({ jobList, gpuLock }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [trainingScope, setTrainingScope] = useState("{\n  \"purpose\": \"character_identity\"\n}");
+  const [purpose, setPurpose] = useState("character_identity");
+  const [primaryOutfitOrForm, setPrimaryOutfitOrForm] = useState("");
+  const [scopeNote, setScopeNote] = useState("默认只训练一个角色身份与一个主要服装/形态，内裤/半脱/裸等派生状态不进入训练。");
+  const [blockMixedCharacters, setBlockMixedCharacters] = useState(true);
+  const [blockMultipleOfficialOutfits, setBlockMultipleOfficialOutfits] = useState(true);
+  const [advancedExperiment, setAdvancedExperiment] = useState(false);
+  const [derivedStatesJson, setDerivedStatesJson] = useState(JSON.stringify(DEFAULT_DERIVED_STATES, null, 2));
   const [query, setQuery] = useState("");
 
   const visibleJobs = useMemo(() => {
@@ -109,11 +135,26 @@ export function CharacterLoraTrainingClient({ jobList, gpuLock }: Props) {
         const baseCheckpointPath = String(formData.get("baseCheckpointPath") ?? "").trim();
         const baseCheckpointHash = String(formData.get("baseCheckpointHash") ?? "").trim();
         const baseFamily = String(formData.get("baseFamily") ?? "").trim();
+        const normalizedPurpose = purpose.trim() || "character_identity";
+        const normalizedPrimaryOutfitOrForm = primaryOutfitOrForm.trim();
+        const normalizedScopeNote = scopeNote.trim();
 
         const job = await createCharacterLoraTrainingJob({
           characterName,
           triggerToken,
-          trainingScope: readJsonObject(trainingScope, { purpose: "character_identity" }),
+          trainingScope: {
+            purpose: normalizedPurpose,
+            primaryOutfitOrForm: normalizedPrimaryOutfitOrForm,
+            scopeNote: normalizedScopeNote || undefined,
+            advancedExperiment,
+            mixingPolicy: {
+              allowMixedCharacters: !blockMixedCharacters,
+              allowMultipleOfficialOutfits: !blockMultipleOfficialOutfits,
+              note: normalizedScopeNote || undefined,
+              reason: advancedExperiment ? normalizedScopeNote || undefined : undefined,
+            },
+            derivedStates: advancedExperiment ? readDerivedStates(derivedStatesJson) : DEFAULT_DERIVED_STATES,
+          },
           captionStrategy: String(formData.get("captionStrategy") ?? "controllable_identity").trim(),
           phase: "setup",
           baseCheckpointName: baseCheckpointName || null,
@@ -214,14 +255,74 @@ export function CharacterLoraTrainingClient({ jobList, gpuLock }: Props) {
               className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-sky-400"
             />
           </label>
-          <label className="grid gap-1 text-xs text-zinc-400 lg:row-span-2">
-            Training scope JSON
-            <textarea
-              value={trainingScope}
-              onChange={(event) => setTrainingScope(event.target.value)}
-              className="min-h-24 rounded-lg border border-white/10 bg-black/30 px-3 py-2 font-mono text-xs text-white outline-none focus:border-sky-400"
+          <label className="grid gap-1 text-xs text-zinc-400">
+            训练目的
+            <input
+              value={purpose}
+              onChange={(event) => setPurpose(event.target.value)}
+              className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-sky-400"
+              placeholder="character_identity"
             />
           </label>
+          <label className="grid gap-1 text-xs text-zinc-400">
+            主要服装 / 形态
+            <input
+              required
+              value={primaryOutfitOrForm}
+              onChange={(event) => setPrimaryOutfitOrForm(event.target.value)}
+              className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-sky-400"
+              placeholder="如：白色外套、黑色短靴、默认发型"
+            />
+          </label>
+          <label className="grid gap-1 text-xs text-zinc-400 lg:col-span-2">
+            范围说明
+            <textarea
+              value={scopeNote}
+              onChange={(event) => setScopeNote(event.target.value)}
+              className="min-h-20 rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-sky-400"
+            />
+          </label>
+          <div className="grid gap-3 rounded-lg border border-white/10 bg-black/20 p-3 text-xs text-zinc-300 lg:col-span-2">
+            <div className="grid gap-2 sm:grid-cols-2">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={blockMixedCharacters}
+                  onChange={(event) => setBlockMixedCharacters(event.target.checked)}
+                  className="size-4 rounded border-white/20 bg-black/40"
+                />
+                禁止混入其他角色
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={blockMultipleOfficialOutfits}
+                  onChange={(event) => setBlockMultipleOfficialOutfits(event.target.checked)}
+                  className="size-4 rounded border-white/20 bg-black/40"
+                />
+                禁止混入多套官方服装
+              </label>
+            </div>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={advancedExperiment}
+                onChange={(event) => setAdvancedExperiment(event.target.checked)}
+                className="size-4 rounded border-white/20 bg-black/40"
+              />
+              高级实验：允许显式声明混训或派生状态训练
+            </label>
+            {advancedExperiment ? (
+              <label className="grid gap-1 text-xs text-zinc-400">
+                派生状态 JSON
+                <textarea
+                  value={derivedStatesJson}
+                  onChange={(event) => setDerivedStatesJson(event.target.value)}
+                  className="min-h-36 rounded-lg border border-white/10 bg-black/30 px-3 py-2 font-mono text-xs text-white outline-none focus:border-sky-400"
+                />
+              </label>
+            ) : null}
+          </div>
           <div className="flex items-end">
             <button
               type="submit"

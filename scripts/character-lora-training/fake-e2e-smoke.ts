@@ -174,15 +174,127 @@ async function main() {
   const services = await importServices();
   const baseCheckpointHash = sha256(Buffer.from("fake base checkpoint for smoke test\n", "utf8"));
   const triggerToken = "smoke_lora_chr";
+  const smokeTrainingScope = createSmokeTrainingScope();
+
+  await assertRejects(
+    () => services.jobService.createCharacterLoraTrainingJob({
+      characterName: "Invalid Mixed Scope",
+      triggerToken: "invalid_mixed_scope",
+      trainingScope: {
+        purpose: "character_identity",
+        primaryOutfitOrForm: "white jacket and black boots",
+        mixingPolicy: {
+          allowMixedCharacters: true,
+          allowMultipleOfficialOutfits: false,
+        },
+      },
+      baseCheckpointName: "fake-base.safetensors",
+      baseCheckpointPath,
+      baseCheckpointHash,
+      baseFamily: "sdxl",
+      phase: "draft",
+      createdBy: "fake-e2e-smoke",
+    }),
+    "job creation should reject mixed-character training without advancedExperiment and reason",
+  );
+
+  await assertRejects(
+    () => services.jobService.createCharacterLoraTrainingJob({
+      characterName: "Invalid Derived Scope",
+      triggerToken: "invalid_derived_scope_no_advanced",
+      trainingScope: {
+        purpose: "character_identity",
+        primaryOutfitOrForm: "white jacket and black boots",
+        advancedExperiment: false,
+        mixingPolicy: {
+          allowMixedCharacters: false,
+          allowMultipleOfficialOutfits: false,
+          note: "single identity only",
+        },
+        derivedStates: [{
+          state: "nude",
+          includeInTraining: true,
+          captionTag: "nude_state",
+          ratioLimit: 0.05,
+          riskNote: "would overfit a benchmark-only derived state",
+        }],
+      },
+      baseCheckpointName: "fake-base.safetensors",
+      baseCheckpointPath,
+      baseCheckpointHash,
+      baseFamily: "sdxl",
+      phase: "draft",
+      createdBy: "fake-e2e-smoke",
+    }),
+    "job creation should reject derived-state training without advancedExperiment",
+  );
+
+  await assertRejects(
+    () => services.jobService.createCharacterLoraTrainingJob({
+      characterName: "Invalid Derived Scope",
+      triggerToken: "invalid_derived_scope",
+      trainingScope: {
+        purpose: "character_identity",
+        primaryOutfitOrForm: "white jacket and black boots",
+        advancedExperiment: true,
+        mixingPolicy: {
+          allowMixedCharacters: false,
+          allowMultipleOfficialOutfits: false,
+          note: "single identity only",
+        },
+        derivedStates: [{
+          state: "nude",
+          includeInTraining: true,
+          captionTag: "nude_state",
+          ratioLimit: 0.05,
+        }],
+      },
+      baseCheckpointName: "fake-base.safetensors",
+      baseCheckpointPath,
+      baseCheckpointHash,
+      baseFamily: "sdxl",
+      phase: "draft",
+      createdBy: "fake-e2e-smoke",
+    }),
+    "job creation should reject derived-state training without riskNote",
+  );
+
+  await assertRejects(
+    () => services.jobService.createCharacterLoraTrainingJob({
+      characterName: "Invalid Derived Scope",
+      triggerToken: "invalid_derived_scope_explicit_false",
+      trainingScope: {
+        purpose: "character_identity",
+        primaryOutfitOrForm: "white jacket and black boots",
+        advancedExperiment: true,
+        mixingPolicy: {
+          allowMixedCharacters: false,
+          allowMultipleOfficialOutfits: false,
+          note: "single identity only",
+        },
+        derivedStates: [{
+          state: "nude",
+          includeInTraining: true,
+          advancedExperiment: false,
+          captionTag: "nude_state",
+          ratioLimit: 0.05,
+          riskNote: "would overfit a benchmark-only derived state",
+        }],
+      },
+      baseCheckpointName: "fake-base.safetensors",
+      baseCheckpointPath,
+      baseCheckpointHash,
+      baseFamily: "sdxl",
+      phase: "draft",
+      createdBy: "fake-e2e-smoke",
+    }),
+    "job creation should reject derived-state training with explicit advancedExperiment=false",
+  );
 
   const job = await services.jobService.createCharacterLoraTrainingJob({
     characterName: "Smoke Character",
     triggerToken,
-    trainingScope: {
-      purpose: "phase6_fake_e2e_smoke",
-      isolated: true,
-      source: "scripts/character-lora-training/fake-e2e-smoke.ts",
-    },
+    trainingScope: smokeTrainingScope,
     baseCheckpointName: "fake-base.safetensors",
     baseCheckpointPath,
     baseCheckpointHash,
@@ -191,6 +303,9 @@ async function main() {
     createdBy: "fake-e2e-smoke",
   });
   assert(job.status === "draft", "job should start as draft");
+  assertTrainingScopeNormalized(job.trainingScope, "created job");
+  const initialJobArtifact = readJsonRecord(await readJobJsonArtifact(job.artifactRoot, "job.json"));
+  assertTrainingScopeNormalized(initialJobArtifact.trainingScope, "initial job artifact");
 
   const source = await services.sourceImageService.uploadCharacterLoraSourceImage(job.id, {
     file: new File([PLACEHOLDER_PNG], "source.png", { type: "image/png" }),
@@ -988,6 +1103,56 @@ function createFakeSafetensors(input: { trainingRunId: string; role: "final" | "
   const prefix = Buffer.alloc(8);
   prefix.writeBigUInt64LE(BigInt(header.byteLength), 0);
   return Buffer.concat([prefix, header, tensorData]);
+}
+
+function createSmokeTrainingScope() {
+  return {
+    purpose: "character_identity",
+    primaryOutfitOrForm: "white jacket, black boots, default smoke-test form",
+    scopeNote: "Fake smoke scope: single identity, one primary outfit/form, no mixed characters or derived-state training.",
+    advancedExperiment: false,
+    mixingPolicy: {
+      allowMixedCharacters: false,
+      allowMultipleOfficialOutfits: false,
+      note: "Default smoke run keeps character identity isolated and avoids multiple official outfits.",
+    },
+    derivedStates: [
+      { state: "underwear", includeInTraining: false, note: "benchmark/promotion variant only" },
+      { state: "underwear_shoes", includeInTraining: false, note: "benchmark/promotion variant only" },
+      { state: "semi_undressed", includeInTraining: false, note: "benchmark/promotion variant only" },
+      { state: "semi_undressed_upper_body", includeInTraining: false, note: "benchmark/promotion variant only" },
+      { state: "semi_undressed_shoes", includeInTraining: false, note: "benchmark/promotion variant only" },
+      { state: "nude", includeInTraining: false, note: "benchmark/promotion variant only" },
+      { state: "default_outfit", includeInTraining: false, note: "primaryOutfitOrForm controls training" },
+    ],
+  };
+}
+
+function assertTrainingScopeNormalized(value: unknown, label: string) {
+  const scope = readJsonRecord(value);
+  assert(scope.purpose === "character_identity", `${label} trainingScope should normalize purpose`);
+  assert(
+    scope.primaryOutfitOrForm === "white jacket, black boots, default smoke-test form",
+    `${label} trainingScope should persist primaryOutfitOrForm`,
+  );
+  const mixingPolicy = readJsonRecord(scope.mixingPolicy);
+  assert(mixingPolicy.allowMixedCharacters === false, `${label} trainingScope should prohibit mixed characters`);
+  assert(
+    mixingPolicy.allowMultipleOfficialOutfits === false,
+    `${label} trainingScope should prohibit multiple official outfits`,
+  );
+  const derivedStates = readJsonArray(scope.derivedStates).map(readJsonRecord);
+  assert(derivedStates.length === 7, `${label} trainingScope should express seven derived states`);
+  assert(
+    derivedStates.every((state) => state.includeInTraining === false),
+    `${label} trainingScope should exclude derived states by default`,
+  );
+  assert(
+    derivedStates.some((state) => state.state === "underwear") &&
+      derivedStates.some((state) => state.state === "semi_undressed") &&
+      derivedStates.some((state) => state.state === "nude"),
+    `${label} trainingScope should list underwear, semi_undressed and nude states`,
+  );
 }
 
 function assertHexSha(value: string | null | undefined, label: string): asserts value is string {

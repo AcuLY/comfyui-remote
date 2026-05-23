@@ -114,6 +114,16 @@ export const CHARACTER_LORA_REJECT_REASONS = [
   "other",
 ] as const;
 
+export const CHARACTER_LORA_DEFAULT_DERIVED_TRAINING_STATES = [
+  { state: "underwear", includeInTraining: false, note: "Excluded by default; benchmark/promotion variant only." },
+  { state: "underwear_shoes", includeInTraining: false, note: "Excluded by default; benchmark/promotion variant only." },
+  { state: "semi_undressed", includeInTraining: false, note: "Excluded by default; benchmark/promotion variant only." },
+  { state: "semi_undressed_upper_body", includeInTraining: false, note: "Excluded by default; benchmark/promotion variant only." },
+  { state: "semi_undressed_shoes", includeInTraining: false, note: "Excluded by default; benchmark/promotion variant only." },
+  { state: "nude", includeInTraining: false, note: "Excluded by default; benchmark/promotion variant only." },
+  { state: "default_outfit", includeInTraining: false, note: "Primary training is controlled by primaryOutfitOrForm." },
+] as const;
+
 export const characterLoraJobStatusSchema = z.enum(CHARACTER_LORA_JOB_STATUSES);
 export const characterLoraImageReviewStatusSchema = z.enum(CHARACTER_LORA_IMAGE_REVIEW_STATUSES);
 export const characterLoraRunStatusSchema = z.enum(CHARACTER_LORA_RUN_STATUSES);
@@ -141,6 +151,110 @@ export type CharacterLoraRejectReason = z.infer<typeof characterLoraRejectReason
 const relativeArtifactPathSchema = z.string().min(1);
 const sha256Schema = z.string().regex(/^[a-f0-9]{64}$/i);
 const jsonObjectSchema = z.record(z.string(), z.unknown());
+const optionalTrimmedStringSchema = z
+  .string()
+  .trim()
+  .transform((value) => (value.length > 0 ? value : undefined))
+  .optional();
+
+const characterLoraTrainingScopeMixingPolicySchema = z.object({
+  allowMixedCharacters: z.boolean().default(false),
+  allowMultipleOfficialOutfits: z.boolean().default(false),
+  note: optionalTrimmedStringSchema,
+  reason: optionalTrimmedStringSchema,
+}).strict();
+
+export const characterLoraTrainingScopeDerivedStateSchema = z.object({
+  state: z.string().trim().min(1),
+  includeInTraining: z.boolean().default(false),
+  advancedExperiment: z.boolean().optional(),
+  captionTag: optionalTrimmedStringSchema,
+  ratioLimit: z.number().positive().max(1).optional(),
+  riskNote: optionalTrimmedStringSchema,
+  note: optionalTrimmedStringSchema,
+}).strict();
+
+export const characterLoraTrainingScopeSchema = z.object({
+  purpose: z.string().trim().min(1).default("character_identity"),
+  primaryOutfitOrForm: z.string().trim().min(1),
+  scopeNote: optionalTrimmedStringSchema,
+  advancedExperiment: z.boolean().default(false),
+  mixingPolicy: characterLoraTrainingScopeMixingPolicySchema.default({
+    allowMixedCharacters: false,
+    allowMultipleOfficialOutfits: false,
+    note: "Default PRD 5.2 policy: train one character identity and one primary outfit/form only.",
+  }),
+  derivedStates: z.array(characterLoraTrainingScopeDerivedStateSchema).default([
+    ...CHARACTER_LORA_DEFAULT_DERIVED_TRAINING_STATES,
+  ]),
+}).strict().superRefine((value, ctx) => {
+  const mixingRequested =
+    value.mixingPolicy.allowMixedCharacters ||
+    value.mixingPolicy.allowMultipleOfficialOutfits;
+  const mixingExplanation = value.mixingPolicy.reason ?? value.mixingPolicy.note;
+
+  if (mixingRequested && !value.advancedExperiment) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["advancedExperiment"],
+      message: "advancedExperiment=true is required when training scope allows mixed characters or multiple official outfits",
+    });
+  }
+
+  if (mixingRequested && !mixingExplanation) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["mixingPolicy", "reason"],
+      message: "mixingPolicy.reason or note is required when mixed training is allowed",
+    });
+  }
+
+  value.derivedStates.forEach((state, index) => {
+    if (!state.includeInTraining) {
+      return;
+    }
+
+    if (state.advancedExperiment === false || (!value.advancedExperiment && state.advancedExperiment !== true)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["derivedStates", index, "advancedExperiment"],
+        message: "advancedExperiment=true is required when a derived state is included in training",
+      });
+    }
+
+    if (!state.captionTag) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["derivedStates", index, "captionTag"],
+        message: "captionTag is required when a derived state is included in training",
+      });
+    }
+
+    if (state.ratioLimit === undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["derivedStates", index, "ratioLimit"],
+        message: "ratioLimit is required when a derived state is included in training",
+      });
+    }
+
+    if (!state.riskNote) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["derivedStates", index, "riskNote"],
+        message: "riskNote is required when a derived state is included in training",
+      });
+    }
+  });
+}).transform((value) => ({
+  ...value,
+  mixingPolicy: {
+    ...value.mixingPolicy,
+    note: value.mixingPolicy.note ??
+      "Default PRD 5.2 policy: train one character identity and one primary outfit/form only.",
+  },
+  derivedStates: normalizeTrainingScopeDerivedStates(value.derivedStates, value.advancedExperiment),
+}));
 
 export const characterLoraArtifactRefSchema = z.object({
   artifactId: z.string().min(1).optional(),
@@ -396,6 +510,8 @@ export type CharacterLoraProviderToolParams = z.infer<typeof characterLoraProvid
 export type CharacterLoraProviderInputImage = z.infer<typeof characterLoraProviderInputImageSchema>;
 export type CharacterLoraImageGenerationRequest = z.infer<typeof characterLoraImageGenerationRequestSchema>;
 export type CharacterLoraImageGenerationOutput = z.infer<typeof characterLoraImageGenerationOutputSchema>;
+export type CharacterLoraTrainingScope = z.infer<typeof characterLoraTrainingScopeSchema>;
+export type CharacterLoraTrainingScopeDerivedState = z.infer<typeof characterLoraTrainingScopeDerivedStateSchema>;
 export type CharacterLoraTrainingLauncher = z.infer<typeof characterLoraTrainingLauncherSchema>;
 export type CharacterLoraTrainingQueuePolicy = z.infer<typeof characterLoraTrainingQueuePolicySchema>;
 export type CharacterLoraTrainingConfigProfile = z.infer<typeof characterLoraTrainingConfigProfileSchema>;
@@ -595,3 +711,40 @@ export type CharacterLoraTrainingTaskPayload = z.infer<typeof characterLoraTrain
 export type CharacterLoraBenchmarkTaskPayload = z.infer<typeof characterLoraBenchmarkTaskPayloadSchema>;
 export type CharacterLoraPromotionTaskPayload = z.infer<typeof characterLoraPromotionTaskPayloadSchema>;
 export type CharacterLoraWorkerTaskPayload = z.infer<typeof characterLoraWorkerTaskPayloadSchema>;
+
+function normalizeTrainingScopeDerivedStates(
+  states: Array<z.infer<typeof characterLoraTrainingScopeDerivedStateSchema>>,
+  scopeAdvancedExperiment: boolean,
+) {
+  const byState = new Map(states.map((state) => [state.state, state]));
+  const defaultStateNames = new Set<string>(CHARACTER_LORA_DEFAULT_DERIVED_TRAINING_STATES.map((state) => state.state));
+
+  const normalizedDefaults = CHARACTER_LORA_DEFAULT_DERIVED_TRAINING_STATES.map((defaultState) => {
+    const state = byState.get(defaultState.state);
+    if (!state) {
+      return {
+        ...defaultState,
+        advancedExperiment: false,
+      };
+    }
+
+    return {
+      ...defaultState,
+      ...state,
+      advancedExperiment: state.includeInTraining
+        ? state.advancedExperiment ?? scopeAdvancedExperiment
+        : state.advancedExperiment ?? false,
+    };
+  });
+
+  const customStates = states
+    .filter((state) => !defaultStateNames.has(state.state))
+    .map((state) => ({
+      ...state,
+      advancedExperiment: state.includeInTraining
+        ? state.advancedExperiment ?? scopeAdvancedExperiment
+        : state.advancedExperiment ?? false,
+    }));
+
+  return [...normalizedDefaults, ...customStates];
+}
