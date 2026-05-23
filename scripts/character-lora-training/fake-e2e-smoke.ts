@@ -1298,6 +1298,39 @@ async function main() {
     report.candidateImages.some((image) => image.id === captioned.id && Boolean(image.caption.draft)),
     "report should include candidate caption",
   );
+  const generatedCandidate = allImages.find((image) => image.sectionId && image.generationRunId);
+  assert(generatedCandidate, "smoke should have a generated candidate image");
+  const reportGeneratedCandidate = report.candidateImages.find((image) => image.id === generatedCandidate.id);
+  assert(reportGeneratedCandidate, "report should include generated candidate image");
+  const reportGeneratedLineage = readJsonRecord(reportGeneratedCandidate.lineage);
+  const reportLineageRun = readJsonRecord(reportGeneratedLineage.generationRun);
+  assert(reportLineageRun.id === generatedCandidate.generationRunId, "candidate lineage should embed source generation run");
+  assert(reportLineageRun.provider === "mock-local", "candidate lineage should include generation provider");
+  assert(reportLineageRun.imageModel === "gpt-image-2", "candidate lineage should include image model");
+  assertPromptIncludes(reportLineageRun.visualPrompt, "candidate report lineage generation run", [
+    "Prompt card final draft:",
+    "Smoke instruction",
+  ]);
+  assert(
+    reportGeneratedLineage.runCanonicalArtifactId === selectedManualCanonical.canonicalVersion.imageArtifactId,
+    "candidate lineage should pin the run canonical artifact",
+  );
+  assert(
+    reportGeneratedLineage.runCanonicalVersionId === selectedManualCanonical.canonicalVersion.id,
+    "candidate lineage should pin the run canonical version",
+  );
+  assert(
+    reportGeneratedLineage.sectionCanonicalVersionId === selectedManualCanonical.canonicalVersion.id,
+    "candidate lineage should include section canonical version",
+  );
+  assert(
+    reportGeneratedLineage.sectionPromptCardVersionId === promotedPromptCard.id,
+    "candidate lineage should include section prompt card version",
+  );
+  assert(
+    readJsonArray(reportLineageRun.inputImages).some((inputImage) => readJsonRecord(inputImage).role === "canonical"),
+    "candidate lineage generation run should include canonical input image",
+  );
   assert(report.datasetRevisions.some((revision) => revision.id === frozenRevision.id && revision.items.length === allImages.length), "report should include dataset revision/items");
   assert(
     report.trainingRuns.some((run) => run.id === completedTrainingRun.id && run.finalSha256 === finalSha256),

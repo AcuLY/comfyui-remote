@@ -307,6 +307,48 @@ async function buildCharacterLoraJobReport(jobId: string) {
     createdAt: run.createdAt.toISOString(),
     updatedAt: run.updatedAt.toISOString(),
   }));
+  const generationRunById = new Map(generationRuns.map((run) => [run.id, run]));
+  const canonicalVersionByArtifactId = new Map(canonicalVersions.map((version) => [version.imageArtifactId, version]));
+  const sectionById = new Map(sections.map((section) => [section.id, section]));
+  const buildCandidateImageLineage = (image: (typeof job.candidateImages)[number]) => {
+    const generationRun = generationRunById.get(image.generationRunId) ?? null;
+    const inputImages = getInputImageArray(generationRun?.inputImages);
+    const runCanonicalArtifactId = getCanonicalInputArtifactId(inputImages);
+    const runCanonicalVersion = runCanonicalArtifactId
+      ? canonicalVersionByArtifactId.get(runCanonicalArtifactId) ?? null
+      : null;
+    const section = image.sectionId ? sectionById.get(image.sectionId) ?? null : null;
+
+    return {
+      sourceGenerationRunId: image.generationRunId,
+      sectionId: image.sectionId,
+      includedDatasetRevisionId: image.includedDatasetRevisionId,
+      generationRun: generationRun
+        ? {
+            id: generationRun.id,
+            kind: generationRun.kind,
+            parentRunId: generationRun.parentRunId,
+            status: generationRun.status,
+            provider: generationRun.provider,
+            hostModel: generationRun.hostModel,
+            imageModel: generationRun.imageModel,
+            hostInstruction: generationRun.hostInstruction,
+            visualPrompt: generationRun.visualPrompt,
+            negativePrompt: generationRun.negativePrompt,
+            toolParams: generationRun.toolParams,
+            inputImages,
+            requestArtifactId: generationRun.requestArtifactId,
+            createdAt: generationRun.createdAt,
+            startedAt: generationRun.startedAt,
+            finishedAt: generationRun.finishedAt,
+          }
+        : null,
+      runCanonicalArtifactId,
+      runCanonicalVersionId: runCanonicalVersion?.id ?? null,
+      sectionCanonicalVersionId: section?.canonicalVersionId ?? null,
+      sectionPromptCardVersionId: section?.promptCardVersionId ?? null,
+    };
+  };
 
   const candidateImages = job.candidateImages.map((image) => ({
     id: image.id,
@@ -331,11 +373,7 @@ async function buildCharacterLoraJobReport(jobId: string) {
         (artifact) => artifact.kind === "caption" && getMetadataString(artifact.metadata, "candidateImageId") === image.id,
       ),
     },
-    lineage: {
-      sourceGenerationRunId: image.generationRunId,
-      sectionId: image.sectionId,
-      includedDatasetRevisionId: image.includedDatasetRevisionId,
-    },
+    lineage: buildCandidateImageLineage(image),
     createdAt: image.createdAt.toISOString(),
     updatedAt: image.updatedAt.toISOString(),
   }));
@@ -1399,6 +1437,23 @@ function getMetadataString(metadata: unknown, key: string) {
 
   const value = (metadata as Record<string, unknown>)[key];
   return typeof value === "string" ? value : null;
+}
+
+function getInputImageArray(inputImages: unknown): Array<Record<string, unknown>> {
+  if (Array.isArray(inputImages)) {
+    return inputImages.filter(isRecord);
+  }
+
+  return isRecord(inputImages) ? [inputImages] : [];
+}
+
+function getCanonicalInputArtifactId(inputImages: Array<Record<string, unknown>>) {
+  const canonical = inputImages.find((image) => image.role === "canonical");
+  return typeof canonical?.artifactId === "string" ? canonical.artifactId : null;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
 function collectStrings(value: unknown, keys: string[]) {
