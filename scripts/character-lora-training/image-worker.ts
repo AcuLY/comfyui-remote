@@ -54,6 +54,7 @@ Options:
   --lease-seconds <sec>  Lease/heartbeat extension. Default: 300.
   --worker-owner <name>  Lease owner. Default: character-lora-image-worker.
   --provider <name>      mock-local or openai-codex. Default: mock-local.
+  --self-test            Run local parser checks without leasing tasks.
 
 Manager auth:
   CHARACTER_LORA_MANAGER_URL defaults to http://127.0.0.1:3000.
@@ -83,6 +84,11 @@ async function main() {
 
   if (cli.help) {
     console.log(HELP);
+    return;
+  }
+  if (cli.values.has("--self-test")) {
+    runParserSelfTest();
+    console.log("[character-lora image-worker] self-test passed");
     return;
   }
   if (provider !== "mock-local" && provider !== "openai-codex") {
@@ -464,7 +470,10 @@ function redactCodexBody(body: Awaited<ReturnType<typeof buildCodexResponsesBody
 function extractImageResult(text: string) {
   const events = parseSseEvents(text);
   const jsonPayloads = events.length > 0 ? events : parseJsonPayloads(text);
-  const base64Png = jsonPayloads.map(findImageBase64).find((value): value is string => Boolean(value));
+  const finalPayloads = jsonPayloads.filter((payload) => !isPartialImagePayload(payload));
+  const base64Png =
+    finalPayloads.map(findImageBase64).find((value): value is string => Boolean(value)) ??
+    jsonPayloads.map(findImageBase64).find((value): value is string => Boolean(value));
   return {
     base64Png,
     eventCount: jsonPayloads.length,
@@ -527,6 +536,20 @@ function findImageBase64(value: unknown): string | null {
   return null;
 }
 
+function isPartialImagePayload(value: unknown): boolean {
+  if (!value || typeof value !== "object") return false;
+
+  if (Array.isArray(value)) {
+    return value.some(isPartialImagePayload);
+  }
+
+  const record = value as Record<string, unknown>;
+  if (typeof record.type === "string" && record.type.includes("partial_image")) return true;
+  if (typeof record.partial_image_b64 === "string" || typeof record.partialImageB64 === "string") return true;
+
+  return false;
+}
+
 function looksLikeBase64Png(value: string) {
   const stripped = stripDataUrlPrefix(value).replace(/\s/g, "");
   return stripped.startsWith("iVBOR") && /^[a-z0-9+/=]+$/i.test(stripped);
@@ -554,6 +577,28 @@ function extractBackendError(responseText: string) {
 
 function isRetryableStatus(status: number) {
   return status === 408 || status === 409 || status === 425 || status === 429 || status >= 500;
+}
+
+function runParserSelfTest() {
+  const partialBase64 = "iVBORpartial";
+  const finalBase64 = "iVBORfinal";
+  const sse = [
+    "event: response.image_generation_call.partial_image",
+    `data: ${JSON.stringify({ type: "response.image_generation_call.partial_image", partial_image_b64: partialBase64 })}`,
+    "",
+    "event: response.output_item.done",
+    `data: ${JSON.stringify({ type: "response.output_item.done", item: { type: "image_generation_call", result: finalBase64 } })}`,
+    "",
+  ].join("\n");
+  const sseResult = extractImageResult(sse);
+  if (sseResult.base64Png !== finalBase64 || sseResult.eventCount !== 2) {
+    throw new Error("SSE parser should prefer final image_generation result over partial images");
+  }
+
+  const jsonResult = extractImageResult(JSON.stringify({ result: finalBase64 }));
+  if (jsonResult.base64Png !== finalBase64 || jsonResult.eventCount !== 1) {
+    throw new Error("JSON parser should extract image_generation result");
+  }
 }
 
 class ProviderHttpError extends Error {

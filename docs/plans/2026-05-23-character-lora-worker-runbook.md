@@ -165,6 +165,7 @@ Benchmark worker 不调用通用 worker task complete。`completeCharacterLoraBe
 
 ```powershell
 cmd /c npx tsx scripts/character-lora-training/image-worker.ts --help
+cmd /c npx tsx scripts/character-lora-training/image-worker.ts --self-test
 cmd /c npx tsx scripts/character-lora-training/dataset-freeze-worker.ts --help
 cmd /c npx tsx scripts/character-lora-training/training-worker.ts --help
 cmd /c npx tsx scripts/character-lora-training/benchmark-worker.ts --help
