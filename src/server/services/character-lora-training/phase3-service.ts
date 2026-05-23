@@ -126,6 +126,14 @@ export async function enqueueCharacterLoraSectionGenerationRun(sectionId: string
   const outputDir = `sections/${section.id}/runs/${runId}`;
   const hostInstruction = parsed.hostInstruction ?? buildDefaultSectionHostInstruction(provider);
   const inputImages = await resolveSectionInputImages(job.id, canonicalVersion.imageArtifactId, parsed);
+  const templateVariables = {
+    characterName: job.characterName,
+    finalPromptDraft: promptCardVersion.finalPromptDraft,
+    sectionName: section.name,
+    sectionKey: section.key,
+    angleTag: section.template?.angleTag ?? null,
+  };
+  const sectionTemplatePrompt = renderPromptTemplate(section.template?.promptTemplate ?? null, templateVariables);
   const visualPrompt =
     parsed.visualPrompt ??
     buildDefaultSectionVisualPrompt({
@@ -133,10 +141,13 @@ export async function enqueueCharacterLoraSectionGenerationRun(sectionId: string
       sectionName: section.name,
       sectionKey: section.key,
       promptCardDraft: promptCardVersion.finalPromptDraft,
+      sectionTemplatePrompt,
       userInstruction: parsed.userInstruction ?? null,
       inputImages,
     });
   const renderedPrompt = parsed.renderedPrompt ?? visualPrompt;
+  const negativePrompt =
+    parsed.negativePrompt ?? renderPromptTemplate(section.template?.negativeTemplate ?? null, templateVariables) ?? undefined;
 
   const request = {
     jobId: job.id,
@@ -147,7 +158,7 @@ export async function enqueueCharacterLoraSectionGenerationRun(sectionId: string
     hostInstruction,
     visualPrompt,
     renderedPrompt,
-    negativePrompt: parsed.negativePrompt ?? undefined,
+    negativePrompt,
     toolParams: parsed.toolParams ?? DEFAULT_TOOL_PARAMS,
     inputImages,
     outputDir,
@@ -894,18 +905,44 @@ function buildDefaultSectionVisualPrompt(input: {
   sectionName: string;
   sectionKey: string;
   promptCardDraft: string;
+  sectionTemplatePrompt?: string | null;
   userInstruction: string | null;
   inputImages: CharacterLoraProviderInputImage[];
 }) {
   return [
     "Global rules: single character only; preserve identity, outfit, shoes, accessories, and canonical silhouette; avoid text, logos, watermarks, extra props, extra characters, and background clutter.",
     `Prompt card final draft: ${input.promptCardDraft}`,
+    input.sectionTemplatePrompt ? `Section template: ${input.sectionTemplatePrompt}` : null,
     `Section target: ${input.sectionName}; section key: ${input.sectionKey}; character: ${input.characterName}.`,
     input.userInstruction ? `User instruction: ${input.userInstruction}` : "User instruction: none.",
     buildReferenceImageNotes(input.inputImages),
     "Output constraints: produce one clean section-specific LoRA training candidate; keep the requested section target readable and do not average unrelated references together.",
   ]
+    .filter((part): part is string => Boolean(part))
     .join(" ");
+}
+
+function renderPromptTemplate(
+  template: string | null | undefined,
+  variables: {
+    characterName: string;
+    finalPromptDraft: string;
+    sectionName: string;
+    sectionKey: string;
+    angleTag: string | null;
+  },
+) {
+  const trimmed = template?.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  return trimmed
+    .replace(/\{\{\s*characterName\s*\}\}/g, variables.characterName)
+    .replace(/\{\{\s*finalPromptDraft\s*\}\}/g, variables.finalPromptDraft)
+    .replace(/\{\{\s*sectionName\s*\}\}/g, variables.sectionName)
+    .replace(/\{\{\s*sectionKey\s*\}\}/g, variables.sectionKey)
+    .replace(/\{\{\s*angleTag\s*\}\}/g, variables.angleTag ?? "");
 }
 
 function buildReferenceImageNotes(inputImages: CharacterLoraProviderInputImage[]) {

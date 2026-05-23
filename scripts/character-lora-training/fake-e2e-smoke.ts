@@ -1193,6 +1193,20 @@ function assertSectionPromptLayering(
     "previous_candidate",
     "Output constraints:",
   ]);
+  const expectedTemplatePrompt =
+    sectionKey === "front_fullbody"
+      ? "full body, standing, front view"
+      : sectionKey === "portrait"
+        ? "close portrait, shoulders up"
+        : null;
+  if (expectedTemplatePrompt) {
+    assertPromptIncludes(requestRecord.renderedPrompt, label, ["Section template:", expectedTemplatePrompt]);
+  }
+  assertPromptIncludes(requestRecord.negativePrompt, `${label} negative`, [
+    "wrong identity",
+    "inconsistent face",
+    "inconsistent outfit",
+  ]);
 }
 
 function assertPromptIncludes(value: unknown, label: string, expectedParts: string[]) {

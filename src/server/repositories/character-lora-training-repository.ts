@@ -175,6 +175,14 @@ const JOB_SECTION_SELECT = {
   sortOrder: true,
   createdAt: true,
   updatedAt: true,
+  template: {
+    select: {
+      promptTemplate: true,
+      negativeTemplate: true,
+      angleTag: true,
+      description: true,
+    },
+  },
   _count: {
     select: {
       generationRuns: true,
@@ -3950,6 +3958,14 @@ function serializeJobSection(section: JobSectionRecord) {
       generationRuns: section._count.generationRuns,
       candidateImages: section._count.candidateImages,
     },
+    template: section.template
+      ? {
+          promptTemplate: section.template.promptTemplate,
+          negativeTemplate: section.template.negativeTemplate,
+          angleTag: section.template.angleTag,
+          description: section.template.description,
+        }
+      : null,
     createdAt: section.createdAt.toISOString(),
     updatedAt: section.updatedAt.toISOString(),
   };
