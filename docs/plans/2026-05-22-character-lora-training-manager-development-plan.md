@@ -1111,6 +1111,7 @@ sequenceDiagram
 - 2026-05-23：补齐 PRD 5.5 小节定向重生图片上下文缺口。`POST /api/character-lora-training/sections/:sectionId/runs` 支持 `previousCandidateImageIds`；候选图必须属于同一 job section，并会解析为 provider `inputImages` 中的 `previous_candidate`。如果传入 `parentRunId` 但没有显式 `inputImages` 或 `previousCandidateImageIds`，服务会自动把 parent run 在同小节下的候选图作为 `previous_candidate` 参考图。fake e2e smoke 覆盖 run payload、worker task payload 和 redacted request 的 provenance。
 - 2026-05-23：补齐 PRD 5.1 创建 job 时选择底模 checkpoint 的 UX/API 缺口。新建任务表单加载 checkpoint browser 文件列表并可回填 name/path，`GET /api/models/hash?kind=checkpoint&path=<relative>` 按需 streaming 计算单个 `.safetensors` 的 sha256；浏览列表不批量计算大模型 hash，用户仍可手动填写 name/path/hash/base family，hash 继续记录在 job。
 - 2026-05-23：补齐 PRD 5.7/5.11 的工作台可见性缺口。候选图卡片在主候选图和 canonical 缩略图之外，直接展示当前 run 的 source、setting、local reference 和 previous candidate 输入缩略图，便于人工做原图/canonical/候选图对比；running training run 写入 cancel signal 后在列表中显示为“取消中”和 cancel requested 时间，避免把已请求取消的训练误看成普通运行中。
+- 2026-05-23：补齐 PRD 5.3 canonical 变更后的 Prompt Card 提示。当前 Prompt Card 绑定旧 canonical 时，工作台在 Prompt Card 区块直接提示当前 job canonical 与 Prompt Card canonical 的版本差异；表单继续允许沿用旧 lineage，但会提示用户可切换到当前 canonical 后保存新 Prompt Card version。
 
 ## 12. 验证计划
 

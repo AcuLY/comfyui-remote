@@ -644,11 +644,27 @@ export function JobWorkbenchClient({
   );
   const selectedCanonicalVersion = canonicalVersionById.get(canonicalVersionId);
   const selectedCanonicalIsRejected = selectedCanonicalVersion?.status === "rejected";
+  const currentCanonicalVersion = job.currentCanonicalVersionId
+    ? canonicalVersionById.get(job.currentCanonicalVersionId)
+    : undefined;
+  const currentPromptCanonicalVersion = currentPrompt?.canonicalVersionId
+    ? canonicalVersionById.get(currentPrompt.canonicalVersionId)
+    : undefined;
+  const currentPromptCanonicalIsStale = Boolean(
+    currentPrompt?.canonicalVersionId &&
+    job.currentCanonicalVersionId &&
+    currentPrompt.canonicalVersionId !== job.currentCanonicalVersionId,
+  );
   const resolvedPromptCardCanonicalVersionId = promptCardCanonicalVersionId || job.currentCanonicalVersionId || "";
   const promptCardCanonicalVersion = resolvedPromptCardCanonicalVersionId
     ? canonicalVersionById.get(resolvedPromptCardCanonicalVersionId)
     : undefined;
   const promptCardCanonicalIsRejected = promptCardCanonicalVersion?.status === "rejected";
+  const promptCardFormCanonicalIsStale = Boolean(
+    resolvedPromptCardCanonicalVersionId &&
+    job.currentCanonicalVersionId &&
+    resolvedPromptCardCanonicalVersionId !== job.currentCanonicalVersionId,
+  );
   const promptCardById = useMemo(() => new Map(promptCards.map((card) => [card.id, card])), [promptCards]);
   const generationRunById = useMemo(() => new Map(report.generationRuns.map((run) => [run.id, run])), [report.generationRuns]);
   const generationRunsBySectionId = useMemo(() => {
@@ -1324,6 +1340,12 @@ export function JobWorkbenchClient({
       </SectionCard>
 
       <SectionCard title="Prompt Card" subtitle="保存角色特征和最终提示词草稿。">
+        {currentPromptCanonicalIsStale ? (
+          <div className="mb-3 rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+            当前 Prompt Card v{currentPrompt?.version} 仍绑定 canonical v{currentPromptCanonicalVersion?.version ?? "?"}；
+            当前 job canonical 是 v{currentCanonicalVersion?.version ?? "?"}。可在下方选择当前 canonical 后保存新 Prompt Card version，或继续沿用旧 lineage。
+          </div>
+        ) : null}
         <form action={handlePromptCard} className="grid gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-3 lg:grid-cols-2">
           <label className="grid gap-1 text-xs text-zinc-400">
             Canonical version
@@ -1348,6 +1370,11 @@ export function JobWorkbenchClient({
             {promptCardCanonicalIsRejected ? (
               <span className="text-[11px] text-amber-200">
                 This canonical is rejected. Select a valid canonical before saving.
+              </span>
+            ) : null}
+            {promptCardFormCanonicalIsStale ? (
+              <span className="text-[11px] text-amber-200">
+                保存后会继续绑定旧 canonical；切到当前 canonical 可新建更新版 Prompt Card。
               </span>
             ) : null}
           </label>
