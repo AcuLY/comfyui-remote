@@ -619,6 +619,9 @@ export function JobWorkbenchClient({
   const latestDoneTraining = trainingRuns.find((run) => run.status === "done" && run.finalSafetensorsArtifactId) ?? null;
   const pendingCanonicalRunId = latestCanonicalRunId.trim();
   const sectionById = useMemo(() => new Map(sections.map((section) => [section.id, section])), [sections]);
+  const canonicalVersionById = useMemo(() => new Map(canonicalVersions.map((version) => [version.id, version])), [canonicalVersions]);
+  const promptCardById = useMemo(() => new Map(promptCards.map((card) => [card.id, card])), [promptCards]);
+  const generationRunById = useMemo(() => new Map(report.generationRuns.map((run) => [run.id, run])), [report.generationRuns]);
   const generationRunsBySectionId = useMemo(() => {
     const runsBySection = new Map<string, CharacterLoraJobReport["generationRuns"]>();
     for (const run of report.generationRuns) {
@@ -1456,6 +1459,11 @@ export function JobWorkbenchClient({
                 jobId={job.id}
                 image={image}
                 section={image.sectionId ? sectionById.get(image.sectionId) : undefined}
+                generationRun={generationRunById.get(image.generationRunId)}
+                currentCanonicalVersionId={job.currentCanonicalVersionId}
+                currentPromptCardVersionId={job.currentPromptCardVersionId}
+                canonicalVersionById={canonicalVersionById}
+                promptCardById={promptCardById}
                 selected={selectedImageIds.includes(image.id)}
                 defaultCaption={`${job.triggerToken}, ${job.characterName}`}
                 isPending={isPending}
@@ -2244,6 +2252,11 @@ function CandidateImageCard({
   jobId,
   image,
   section,
+  generationRun,
+  currentCanonicalVersionId,
+  currentPromptCardVersionId,
+  canonicalVersionById,
+  promptCardById,
   selected,
   defaultCaption,
   isPending,
@@ -2255,6 +2268,11 @@ function CandidateImageCard({
   jobId: string;
   image: CharacterLoraCandidateImage;
   section?: CharacterLoraSection;
+  generationRun?: CharacterLoraJobReport["generationRuns"][number];
+  currentCanonicalVersionId: string | null;
+  currentPromptCardVersionId: string | null;
+  canonicalVersionById: Map<string, CharacterLoraJobReport["canonicalVersions"][number]>;
+  promptCardById: Map<string, CharacterLoraPromptCard>;
   selected: boolean;
   defaultCaption: string;
   isPending: boolean;
@@ -2264,6 +2282,42 @@ function CandidateImageCard({
   onReview: (status: ReviewWritableStatus) => void;
 }) {
   const rejectReasons = extractRejectReasons(image.rejectReasons);
+  const sectionCanonicalVersion = section ? canonicalVersionById.get(section.canonicalVersionId) : null;
+  const sectionPromptCard = section ? promptCardById.get(section.promptCardVersionId) : null;
+  const staleCanonical = Boolean(
+    section?.canonicalVersionId &&
+    currentCanonicalVersionId &&
+    section.canonicalVersionId !== currentCanonicalVersionId,
+  );
+  const stalePromptCard = Boolean(
+    section?.promptCardVersionId &&
+    currentPromptCardVersionId &&
+    section.promptCardVersionId !== currentPromptCardVersionId,
+  );
+  const lineageChips = [
+    sectionCanonicalVersion
+      ? {
+          label: `${staleCanonical ? "old " : ""}canonical v${sectionCanonicalVersion.version}`,
+          className: staleCanonical
+            ? "border-amber-400/30 bg-amber-400/10 text-amber-200"
+            : "border-emerald-400/25 bg-emerald-500/10 text-emerald-200",
+        }
+      : null,
+    sectionPromptCard
+      ? {
+          label: `${stalePromptCard ? "old " : ""}prompt v${sectionPromptCard.version}`,
+          className: stalePromptCard
+            ? "border-sky-400/30 bg-sky-400/10 text-sky-200"
+            : "border-white/10 bg-white/[0.04] text-zinc-300",
+        }
+      : null,
+    generationRun?.parentRunId
+      ? {
+          label: `parent ${compactId(generationRun.parentRunId)}`,
+          className: "border-violet-400/25 bg-violet-500/10 text-violet-200",
+        }
+      : null,
+  ].filter((chip): chip is { label: string; className: string } => Boolean(chip));
 
   return (
     <div className={`overflow-hidden rounded-lg border bg-white/[0.03] ${selected ? "border-sky-400/60" : "border-white/10"}`}>
@@ -2286,8 +2340,20 @@ function CandidateImageCard({
         <div className="min-w-0">
           <div className="truncate font-medium text-zinc-100">{section ? `${section.key} / ${section.name}` : "Source candidate"}</div>
           <div className="truncate font-mono text-[11px] text-zinc-500">{compactId(image.id)} / {image.width ?? "?"}x{image.height ?? "?"}</div>
+          <div className="truncate font-mono text-[11px] text-zinc-500">
+            run {compactId(image.generationRunId)} / {generationRun?.kind ?? "unknown"} / {generationRun?.provider ?? "unknown"} / {generationRun?.status ?? "unknown"}
+          </div>
           <div className="truncate font-mono text-[11px] text-zinc-500">{image.relativePath}</div>
         </div>
+        {lineageChips.length > 0 ? (
+          <div className="flex flex-wrap gap-1">
+            {lineageChips.map((chip) => (
+              <span key={chip.label} className={`rounded border px-1.5 py-0.5 text-[10px] ${chip.className}`}>
+                {chip.label}
+              </span>
+            ))}
+          </div>
+        ) : null}
         {rejectReasons.length > 0 ? (
           <div className="flex flex-wrap gap-1">
             {rejectReasons.map((reason) => (
