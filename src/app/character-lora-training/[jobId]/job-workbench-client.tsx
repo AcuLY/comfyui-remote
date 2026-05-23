@@ -333,17 +333,16 @@ function buildTrainingOverrides(formData: FormData) {
   const ordinary: TrainingOrdinaryOverrides = {};
   const advanced: TrainingAdvancedOverrides = {};
   const expert: Record<string, unknown> = {};
-  const targetSteps = readOptionalNumber(formData, "targetSteps", "targetSteps", {
-    integer: true,
-    min: 0,
-    minInclusive: false,
-  });
   const trainTextEncoder = readOptionalBooleanChoice(formData, "trainTextEncoder", "trainTextEncoder");
 
-  if (targetSteps !== undefined) ordinary.targetSteps = targetSteps;
   if (trainTextEncoder !== undefined) advanced.trainTextEncoder = trainTextEncoder;
 
   if (formData.get("enableAdvancedOverrides") === "on") {
+    const targetSteps = readOptionalNumber(formData, "targetSteps", "targetSteps", {
+      integer: true,
+      min: 0,
+      minInclusive: false,
+    });
     const rank = readOptionalNumber(formData, "rank", "rank", { integer: true, min: 0, minInclusive: false });
     const alpha = readOptionalNumber(formData, "alpha", "alpha", { integer: true, min: 0, minInclusive: false });
     const resolution = readOptionalNumber(formData, "resolution", "resolution", { integer: true, min: 0, minInclusive: false });
@@ -362,6 +361,7 @@ function buildTrainingOverrides(formData: FormData) {
       minInclusive: false,
     });
 
+    if (targetSteps !== undefined) ordinary.targetSteps = targetSteps;
     if (rank !== undefined) ordinary.rank = rank;
     if (alpha !== undefined) ordinary.alpha = alpha;
     if (resolution !== undefined) ordinary.resolution = resolution;
@@ -1604,10 +1604,6 @@ export function JobWorkbenchClient({
               </label>
             </div>
           </details>
-          <label className="grid gap-1 text-xs text-zinc-400 md:col-span-1 lg:col-span-2">
-            Target steps override
-            <input name="targetSteps" type="number" min={1} step={1} placeholder="Profile default" className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white" />
-          </label>
           <label className="grid gap-1 text-xs text-zinc-400 md:col-span-2 lg:col-span-3">
             Train text encoder
             <select name="trainTextEncoder" defaultValue="" className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white">
@@ -1623,6 +1619,7 @@ export function JobWorkbenchClient({
               Apply advanced fields below. Empty fields keep the selected profile defaults.
             </label>
             <div className="mt-3 grid gap-2 md:grid-cols-4">
+              <TrainingNumberInput name="targetSteps" label="Target steps" placeholder="2000" integer />
               <TrainingNumberInput name="rank" label="Rank" placeholder="32" integer />
               <TrainingNumberInput name="alpha" label="Alpha" placeholder="16" integer />
               <TrainingNumberInput name="resolution" label="Resolution" placeholder="1024" integer />
