@@ -337,7 +337,7 @@ export function CharacterLoraTrainingClient({ jobList, gpuLock, trainingTemplate
   }
 
   return (
-    <div className="space-y-5">
+    <div className="min-w-0 space-y-5 overflow-x-hidden">
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
         <StatChip label="Projects" value={jobList.total} tone="accent" />
         <StatChip label="草稿" value={statusCounts.draft ?? 0} />
@@ -623,7 +623,7 @@ export function CharacterLoraTrainingClient({ jobList, gpuLock, trainingTemplate
             暂无训练任务
           </div>
         ) : (
-          <div className="overflow-hidden rounded-lg border border-white/10">
+          <div className="min-w-0 overflow-hidden rounded-lg border border-white/10">
             <div className="hidden grid-cols-[1.4fr_0.9fr_0.8fr_1fr_44px] border-b border-white/10 bg-white/[0.03] px-3 py-2 text-[11px] text-zinc-500 sm:grid">
               <span>角色</span>
               <span>状态</span>
@@ -647,7 +647,7 @@ function JobRow({ job }: { job: CharacterLoraJobSummary }) {
   return (
     <Link
       href={`/character-lora-training/${job.id}`}
-      className="grid gap-2 px-3 py-3 text-sm text-zinc-200 transition hover:bg-white/[0.04] sm:grid-cols-[1.4fr_0.9fr_0.8fr_1fr_44px] sm:items-center"
+      className="grid min-w-0 gap-2 px-3 py-3 text-sm text-zinc-200 transition hover:bg-white/[0.04] sm:grid-cols-[1.4fr_0.9fr_0.8fr_1fr_44px] sm:items-center"
     >
       <span className="min-w-0">
         <span className="block break-words font-medium text-white sm:truncate">{job.characterName}</span>

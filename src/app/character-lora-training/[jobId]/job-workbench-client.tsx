@@ -176,6 +176,7 @@ const IMAGE_PROVIDERS: Array<{ value: ImageProvider; label: string }> = [
   { value: "openai-codex", label: "openai-codex" },
   { value: "mock-local", label: "mock-local (debug)" },
 ];
+const WORKER_TYPES = ["image_generation", "dataset_freeze", "training", "benchmark", "promotion"] as const;
 
 const IMAGE_SIZE_OPTIONS = ["1024x1536", "1024x1024", "1536x1024"] as const;
 const IMAGE_QUALITY_OPTIONS = ["high", "medium", "low"] as const;
@@ -2250,8 +2251,10 @@ export function JobWorkbenchClient({
             status: run.status === "running" && run.cancelRequestedAt ? "cancelling" : run.status,
             primary: `Training Run / ${run.launcher} / ${run.currentStep ?? 0}/${run.targetSteps ?? "-"}`,
             secondary: [
-              compactId(run.datasetRevisionId),
-              run.outputDir,
+              `dataset ${compactId(run.datasetRevisionId)}`,
+              `output ${run.outputDir}`,
+              `log ${compactId(run.logArtifactId)}`,
+              `final ${run.finalSafetensorsArtifactId ? compactId(run.finalSafetensorsArtifactId) : run.finalSha256?.slice(0, 8) ?? "-"}`,
               run.cancelRequestedAt ? `cancel requested ${formatDate(run.cancelRequestedAt)}` : null,
             ].filter(Boolean).join(" / "),
             action: run.status === "queued" || (run.status === "running" && !run.cancelRequestedAt)
@@ -2648,33 +2651,33 @@ function StageNavigation({ stages }: { stages: StageNavItem[] }) {
   const nextStage = stages.find((stage) => !stage.satisfied);
 
   return (
-    <div className="sticky top-2 z-20 rounded-lg border border-white/10 bg-zinc-950/95 p-2 shadow-xl shadow-black/20 backdrop-blur">
-      <div className="flex gap-2 overflow-x-auto pb-1">
+    <div className="sticky top-1 z-20 -mx-1 rounded-lg border border-white/10 bg-zinc-950/95 p-1.5 shadow-xl shadow-black/20 backdrop-blur sm:top-2 sm:mx-0 sm:p-2">
+      <div className="flex gap-1.5 overflow-x-auto pb-1 sm:gap-2">
         {stages.map((stage) => (
           <button
             key={stage.label}
             type="button"
             onClick={() => scrollToAnchor(stage.targetId)}
-            className={`min-w-[132px] rounded-md border px-2 py-2 text-left text-[11px] transition ${
+            className={`min-w-[104px] rounded-md border px-2 py-1.5 text-left text-[11px] transition sm:min-w-[132px] sm:py-2 ${
               stage.satisfied
                 ? "border-emerald-400/25 bg-emerald-500/10 text-emerald-100 hover:bg-emerald-500/15"
                 : "border-amber-400/25 bg-amber-500/10 text-amber-100 hover:bg-amber-500/15"
             }`}
           >
-            <span className="block font-medium">{stage.label}</span>
-            <span className="mt-1 block truncate text-[10px] opacity-75">{stage.satisfied ? "Gate OK" : "Blocked"} / {stage.detail}</span>
+            <span className="block truncate font-medium">{stage.label}</span>
+            <span className="mt-1 hidden truncate text-[10px] opacity-75 sm:block">{stage.satisfied ? "Gate OK" : "Blocked"} / {stage.detail}</span>
           </button>
         ))}
       </div>
       <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <span className="text-[11px] text-zinc-500">
+        <span className="min-w-0 break-words text-[11px] text-zinc-500">
           {nextStage ? `Next gate: ${nextStage.label} - ${nextStage.detail}` : "All visible gates are satisfied."}
         </span>
         {nextStage ? (
           <button
             type="button"
             onClick={() => scrollToAnchor(nextStage.nextTargetId ?? nextStage.targetId)}
-            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-white/10 px-2.5 text-xs font-medium text-zinc-200 hover:bg-white/10"
+            className="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-lg border border-white/10 px-2.5 text-xs font-medium text-zinc-200 hover:bg-white/10 sm:h-9 sm:w-auto"
           >
             {nextStage.nextLabel ?? nextStage.label}
             <ArrowRight className="size-3.5" />
@@ -2728,6 +2731,12 @@ function SectionRunHistory({
 
 function WorkerTaskPanel({ report }: { report: CharacterLoraJobReport }) {
   const tasks = report.workerTasks.filter((task) => task.status === "queued" || task.status === "running" || task.status === "failed");
+  const latestTaskByType = new Map<string, CharacterLoraJobReport["workerTasks"][number]>();
+  for (const task of report.workerTasks) {
+    if (!latestTaskByType.has(task.workerType)) {
+      latestTaskByType.set(task.workerType, task);
+    }
+  }
   const environment = report.trainingWorkerEnvironment;
 
   return (
@@ -2762,6 +2771,25 @@ function WorkerTaskPanel({ report }: { report: CharacterLoraJobReport }) {
           ))}
         </div>
       )}
+      <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+        {WORKER_TYPES.map((type) => {
+          const task = latestTaskByType.get(type);
+          return (
+            <div key={type} className="min-w-0 rounded-lg border border-white/10 bg-black/20 p-2 text-[11px] text-zinc-400">
+              <div className="truncate font-mono text-zinc-200">{type}</div>
+              {task ? (
+                <>
+                  <div className="mt-1 break-words">{STATUS_LABEL[task.status] ?? task.status} / {compactId(task.id)}</div>
+                  <div className="break-words">heartbeat {formatDate(task.heartbeatAt)}</div>
+                  <div className="break-words">lease {task.leaseOwner ?? "-"}</div>
+                </>
+              ) : (
+                <div className="mt-1 text-zinc-500">No task yet.</div>
+              )}
+            </div>
+          );
+        })}
+      </div>
       <div className="mt-2 break-all text-[11px] text-zinc-500">Runbook: {environment.runbook}</div>
     </div>
   );
@@ -2965,12 +2993,12 @@ function SourceImageGrid({
   return (
     <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       {images.map((image) => (
-        <div key={image.id} className="overflow-hidden rounded-lg border border-white/10 bg-white/[0.03]">
+        <div key={image.id} className="min-w-0 overflow-hidden rounded-lg border border-white/10 bg-white/[0.03]">
           <ArtifactThumb jobId={jobId} relativePath={image.relativePath} alt={image.role} />
           <div className="space-y-1 p-2 text-xs">
-            <div className="flex items-center justify-between gap-2">
-              <span className="font-medium text-zinc-100">{image.role}</span>
-              <span className="font-mono text-zinc-500">{compactId(image.id)}</span>
+            <div className="flex min-w-0 items-center justify-between gap-2">
+              <span className="min-w-0 break-words font-medium text-zinc-100 sm:truncate">{image.role}</span>
+              <span className="shrink-0 font-mono text-zinc-500">{compactId(image.id)}</span>
             </div>
             <div className="text-zinc-500">{image.width ?? "?"}x{image.height ?? "?"}</div>
             <div className="break-all font-mono text-[11px] text-zinc-500 sm:truncate">{image.relativePath}</div>
@@ -3022,7 +3050,7 @@ function CanonicalVersionGrid({
         const canReject = version.status === "candidate" && !isCurrent;
 
         return (
-          <div key={version.id} className={`overflow-hidden rounded-lg border ${isRejected ? "border-red-400/30 bg-red-500/[0.03]" : isCurrent ? "border-sky-400/60 bg-white/[0.03]" : isSelected ? "border-white/25 bg-white/[0.03]" : "border-white/10 bg-white/[0.03]"}`}>
+          <div key={version.id} className={`min-w-0 overflow-hidden rounded-lg border ${isRejected ? "border-red-400/30 bg-red-500/[0.03]" : isCurrent ? "border-sky-400/60 bg-white/[0.03]" : isSelected ? "border-white/25 bg-white/[0.03]" : "border-white/10 bg-white/[0.03]"}`}>
             <ArtifactThumb jobId={jobId} relativePath={relativePath} alt={`canonical v${version.version}`} />
             <div className="space-y-2 p-2 text-xs">
               <div className="flex items-center justify-between gap-2">
@@ -3185,7 +3213,7 @@ function CandidateImageCard({
   );
 
   return (
-    <div className={`overflow-hidden rounded-lg border bg-white/[0.03] ${selected ? "border-sky-400/60" : "border-white/10"}`}>
+    <div className={`min-w-0 overflow-hidden rounded-lg border bg-white/[0.03] ${selected ? "border-sky-400/60" : "border-white/10"}`}>
       <div className="relative">
         <ArtifactThumb jobId={jobId} relativePath={image.relativePath} alt={image.id} />
         <label className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-md border border-black/40 bg-black/70 px-2 py-1 text-[11px] text-white">
@@ -3549,7 +3577,7 @@ function ActionButton({
       onClick={onClick}
       disabled={disabled || loading}
       title={title}
-      className="inline-flex h-11 max-w-full min-w-0 items-center justify-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-2.5 text-xs font-medium text-zinc-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50 sm:h-8"
+      className="inline-flex h-11 w-full max-w-full min-w-0 items-center justify-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-2.5 text-xs font-medium text-zinc-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50 sm:h-8 sm:w-auto"
     >
       {loading ? <Loader2 className="size-3.5 animate-spin" /> : <Icon className="size-3.5" />}
       <span className="min-w-0 truncate">{label}</span>
@@ -3578,7 +3606,7 @@ function MiniButton({
       onClick={onClick}
       disabled={disabled}
       title={title}
-      className={`inline-flex h-11 max-w-full min-w-0 items-center justify-center gap-1 rounded-md border px-2 text-[11px] transition disabled:cursor-not-allowed disabled:opacity-50 sm:h-7 ${tone === "danger" ? "border-red-400/20 text-red-200 hover:bg-red-500/10" : "border-white/10 text-zinc-300 hover:bg-white/5"}`}
+      className={`inline-flex h-11 w-full max-w-full min-w-0 items-center justify-center gap-1 rounded-md border px-2 text-[11px] transition disabled:cursor-not-allowed disabled:opacity-50 sm:h-7 sm:w-auto ${tone === "danger" ? "border-red-400/20 text-red-200 hover:bg-red-500/10" : "border-white/10 text-zinc-300 hover:bg-white/5"}`}
     >
       {Icon ? <Icon className="size-3" /> : null}
       <span className="min-w-0 truncate">{label}</span>
@@ -3638,7 +3666,7 @@ function RunList({
             <span className="block break-words text-zinc-200 sm:truncate">{run.primary}</span>
             <span className="block break-all text-zinc-500 sm:truncate">{run.secondary}</span>
           </span>
-          {run.action}
+          {run.action ? <span className="min-w-0 sm:justify-self-end">{run.action}</span> : null}
         </div>
       ))}
     </div>
