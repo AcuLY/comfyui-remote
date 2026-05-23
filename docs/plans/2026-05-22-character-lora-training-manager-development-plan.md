@@ -144,7 +144,7 @@ flowchart LR
 | `notes` | `String? @db.Text` | 人工备注。 |
 | `createdAt` | `DateTime` | 创建时间。 |
 
-规则：canonical 更新只新增 version，不覆盖旧 version；旧 section run、review、dataset revision 保留 lineage。
+规则：canonical 更新只新增 version，不覆盖旧 version；旧 section run、review、dataset revision 保留 lineage。`candidate` 可以被人工拒绝为 `rejected`；当前 `selected`/current canonical、`selected`、`superseded` 和已 `rejected` 版本不能被拒绝。`rejected` 版本保留在历史里，但不能再被选择为 current canonical。
 
 #### `CharacterLoraPromptCardVersion`
 
@@ -528,6 +528,7 @@ Server actions 面向浏览器 UI，放在 `src/lib/actions/character-lora-train
 | `attachCharacterLoraSourceImage` | `jobId`, `file`, `role` | source image | 上传/登记 source，计算 hash。 |
 | `enqueueCanonicalGeneration` | `jobId`, provider params | generation run | 创建 canonical generation task。 |
 | `selectCanonicalVersion` | `jobId`, `canonicalVersionId` | job summary | 更新当前 canonical，不影响旧 lineage。 |
+| `rejectCanonicalVersion` | `jobId`, `canonicalVersionId` | canonical version | 仅允许 `candidate -> rejected`，拒绝 current/selected/superseded/rejected 时返回 `409`。 |
 | `createPromptCardVersion` | traits、prompt draft、change reason | prompt card version | 永远新增版本。 |
 | `instantiateTrainingSections` | template keys 或自定义 sections | sections | 从模板创建 job sections。 |
 | `enqueueSectionGenerationRun` | `sectionId`, userInstruction, input image refs | generation run | 可生成或 rerun。 |
@@ -557,7 +558,8 @@ HTTP API 面向 agent、worker 和需要 fetch 的客户端。
 | `POST` | `/api/character-lora-training/jobs/:jobId/source-images` | 上传/登记 source image。 |
 | `POST` | `/api/character-lora-training/jobs/:jobId/canonical/generate` | 创建 canonical generation task。 |
 | `POST` | `/api/character-lora-training/jobs/:jobId/canonical/manual` | 把已上传 `manual_canonical` source 登记为新 canonical version。 |
-| `POST` | `/api/character-lora-training/jobs/:jobId/canonical/:versionId/select` | 选择 canonical version。 |
+| `POST` | `/api/character-lora-training/jobs/:jobId/canonical/:versionId/select` | 选择 canonical version；`rejected` 返回 `409`。 |
+| `POST` | `/api/character-lora-training/jobs/:jobId/canonical/:versionId/reject` | 拒绝 canonical candidate；current/selected/superseded/rejected 返回 `409`。 |
 | `POST` | `/api/character-lora-training/generation-runs/:runId/mock-complete-canonical` | 本地/debug canonical mock 完成入口；不作为真实生成证据。 |
 | `GET` | `/api/character-lora-training/jobs/:jobId/prompt-cards` | Prompt Card versions。 |
 | `POST` | `/api/character-lora-training/jobs/:jobId/prompt-cards` | 新建 Prompt Card version。 |
@@ -1101,6 +1103,7 @@ sequenceDiagram
 - 本地验证、生产部署前 queue gate、schema 双验证都有文档。
 
 验收记录：
+- 2026-05-23：补齐 PRD 5.2 canonical version 候选拒绝缺口。新增 `POST /api/character-lora-training/jobs/:jobId/canonical/:versionId/reject` 和 server action；service/repository 只允许 `candidate -> rejected`，拒绝 current/selected/superseded/rejected 返回 `409`，选择 `rejected` 也返回 `409`；工作台 canonical grid 显示 rejected 状态并禁用“设当前”。fake e2e smoke 覆盖第二个 candidate 拒绝、重复拒绝、选择 rejected 失败，以及当前 manual canonical 不被影响。
 - 2026-05-23：补齐 PRD 5.4 小节暂停/恢复缺口。`PATCH /api/character-lora-training/sections/:sectionId` 可暂停/恢复 section；暂停后保留历史 runs/images/counts，section generation/rerun 入队返回清晰 `409`；review/count 刷新不会把 `paused` 改回 active 状态；resume 按 counts 推导为 `reviewing` / `reviewed` / `draft` 后可再次入队。fake e2e smoke 覆盖 service 路径的暂停、409 拒绝、paused 保持和恢复后入队。
 - 2026-05-23：补齐 PRD 5.5 小节定向重生图片上下文缺口。`POST /api/character-lora-training/sections/:sectionId/runs` 支持 `previousCandidateImageIds`；候选图必须属于同一 job section，并会解析为 provider `inputImages` 中的 `previous_candidate`。如果传入 `parentRunId` 但没有显式 `inputImages` 或 `previousCandidateImageIds`，服务会自动把 parent run 在同小节下的候选图作为 `previous_candidate` 参考图。fake e2e smoke 覆盖 run payload、worker task payload 和 redacted request 的 provenance。
 
@@ -1120,7 +1123,7 @@ sequenceDiagram
 ### 手动链路验证
 
 1. 创建 job，上传 2-5 张 source image，确认 hash/provenance/source manifest。
-2. 用 mock provider 生成 canonical candidate，选择 canonical v1。
+2. 用 mock provider 生成 canonical candidate，选择 canonical v1；再创建第二个 candidate，拒绝它并确认不能被选为 current。
 3. 创建 Prompt Card v1，实例化默认 sections。
 4. 生成至少 2 个 section run，批量 keep/reject，检查 counts。
 5. freeze dataset rev-001，确认 pending/reject 未收录。

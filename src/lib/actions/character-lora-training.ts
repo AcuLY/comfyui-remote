@@ -29,6 +29,7 @@ import {
   enqueueCharacterLoraCanonicalGenerationRun as enqueueCanonicalGenerationRun,
   mockCompleteCharacterLoraCanonicalGenerationRun as mockCompleteCanonicalGenerationRun,
   registerManualCharacterLoraCanonicalVersion as registerManualCanonicalVersion,
+  rejectCharacterLoraCanonicalVersion as rejectCanonicalVersion,
   selectCharacterLoraCanonicalVersion as selectCanonicalVersion,
 } from "@/server/services/character-lora-training/canonical-service";
 import {
@@ -144,6 +145,10 @@ export async function mockCompleteCharacterLoraCanonicalGenerationRun(runId: str
 
 export async function registerManualCharacterLoraCanonicalVersion(jobId: string, input: unknown) {
   return registerManualCanonicalVersion(jobId, input);
+}
+
+export async function rejectCharacterLoraCanonicalVersion(jobId: string, versionId: string) {
+  return rejectCanonicalVersion(jobId, versionId);
 }
 
 export async function selectCharacterLoraCanonicalVersion(jobId: string, versionId: string) {

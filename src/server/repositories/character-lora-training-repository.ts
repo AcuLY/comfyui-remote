@@ -1089,6 +1089,35 @@ export async function listCharacterLoraCanonicalVersions(jobId: string) {
   return versions.map(serializeCanonicalVersion);
 }
 
+export async function rejectCharacterLoraCanonicalVersion(input: {
+  jobId: string;
+  canonicalVersionId: string;
+}) {
+  const version = await db.$transaction(async (tx) => {
+    const updated = await tx.characterLoraCanonicalVersion.updateMany({
+      where: {
+        jobId: input.jobId,
+        id: input.canonicalVersionId,
+        status: "candidate",
+      },
+      data: {
+        status: "rejected",
+      },
+    });
+
+    if (updated.count !== 1) {
+      return null;
+    }
+
+    return tx.characterLoraCanonicalVersion.findUnique({
+      where: { id: input.canonicalVersionId },
+      select: CANONICAL_VERSION_SELECT,
+    });
+  });
+
+  return version ? serializeCanonicalVersion(version) : null;
+}
+
 export async function selectCharacterLoraCanonicalVersion(input: {
   jobId: string;
   canonicalVersionId: string;

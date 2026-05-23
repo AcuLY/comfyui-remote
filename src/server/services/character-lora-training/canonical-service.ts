@@ -22,6 +22,7 @@ import {
   getCharacterLoraSourceImage,
   getCharacterLoraTrainingJob,
   listCharacterLoraSourceImages,
+  rejectCharacterLoraCanonicalVersion as rejectCanonicalVersionInRepository,
   selectCharacterLoraCanonicalVersion as selectCanonicalVersionInRepository,
   type CharacterLoraSourceImageSummary,
   type CharacterLoraTrainingJobSummary,
@@ -302,6 +303,81 @@ export async function registerManualCharacterLoraCanonicalVersion(jobId: string,
   });
 }
 
+export async function rejectCharacterLoraCanonicalVersion(jobId: string, versionId: string) {
+  const normalizedJobId = normalizeId(jobId, "jobId");
+  const normalizedVersionId = normalizeId(versionId, "versionId");
+  const job = await getExistingJob(normalizedJobId);
+  const version = await getCharacterLoraCanonicalVersion(normalizedVersionId);
+
+  if (!version || version.jobId !== normalizedJobId) {
+    throw new CharacterLoraCanonicalServiceError("Canonical version not found for this job", 404, {
+      jobId: normalizedJobId,
+      versionId: normalizedVersionId,
+    });
+  }
+
+  if (job.currentCanonicalVersionId === normalizedVersionId) {
+    throw new CharacterLoraCanonicalServiceError(
+      "Current canonical version cannot be rejected",
+      409,
+      { jobId: normalizedJobId, versionId: normalizedVersionId },
+    );
+  }
+
+  if (version.status === "selected") {
+    throw new CharacterLoraCanonicalServiceError(
+      "Selected canonical version cannot be rejected",
+      409,
+      { jobId: normalizedJobId, versionId: normalizedVersionId, status: version.status },
+    );
+  }
+
+  if (version.status === "superseded") {
+    throw new CharacterLoraCanonicalServiceError(
+      "Superseded canonical version cannot be rejected",
+      409,
+      { jobId: normalizedJobId, versionId: normalizedVersionId, status: version.status },
+    );
+  }
+
+  if (version.status === "rejected") {
+    throw new CharacterLoraCanonicalServiceError(
+      "Canonical version is already rejected",
+      409,
+      { jobId: normalizedJobId, versionId: normalizedVersionId, status: version.status },
+    );
+  }
+
+  if (version.status !== "candidate") {
+    throw new CharacterLoraCanonicalServiceError(
+      "Only candidate canonical versions can be rejected",
+      409,
+      { jobId: normalizedJobId, versionId: normalizedVersionId, status: version.status },
+    );
+  }
+
+  const rejected = await rejectCanonicalVersionInRepository({
+    jobId: normalizedJobId,
+    canonicalVersionId: normalizedVersionId,
+  });
+
+  if (!rejected) {
+    const latest = await getCharacterLoraCanonicalVersion(normalizedVersionId);
+
+    throw new CharacterLoraCanonicalServiceError(
+      "Only candidate canonical versions can be rejected",
+      409,
+      {
+        jobId: normalizedJobId,
+        versionId: normalizedVersionId,
+        status: latest?.status ?? "missing",
+      },
+    );
+  }
+
+  return rejected;
+}
+
 export async function selectCharacterLoraCanonicalVersion(jobId: string, versionId: string) {
   const normalizedJobId = normalizeId(jobId, "jobId");
   const normalizedVersionId = normalizeId(versionId, "versionId");
@@ -315,6 +391,14 @@ export async function selectCharacterLoraCanonicalVersion(jobId: string, version
       jobId: normalizedJobId,
       versionId: normalizedVersionId,
     });
+  }
+
+  if (version.status === "rejected") {
+    throw new CharacterLoraCanonicalServiceError(
+      "Rejected canonical version cannot be selected",
+      409,
+      { jobId: normalizedJobId, versionId: normalizedVersionId, status: version.status },
+    );
   }
 
   return selectCanonicalVersionInRepository({

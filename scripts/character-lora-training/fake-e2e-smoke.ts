@@ -55,6 +55,8 @@ type SmokeSummary = {
     status: string;
     manualVersionId: string;
     manualVersion: number;
+    rejectedVersionId: string;
+    rejectedVersion: number;
   };
   promptCard: {
     id: string;
@@ -419,6 +421,48 @@ async function main() {
   assert(
     selectedManualCanonical.job.currentCanonicalVersionId === manualCanonicalVersion.id,
     "manual canonical should be selectable as current canonical",
+  );
+  await assertRejectsWithStatus(
+    () => services.canonicalService.rejectCharacterLoraCanonicalVersion(job.id, manualCanonicalVersion.id),
+    409,
+    "current manual canonical should not be rejectable",
+  );
+  await assertRejectsWithStatus(
+    () => services.canonicalService.rejectCharacterLoraCanonicalVersion(job.id, canonicalVersion.id),
+    409,
+    "superseded canonical should not be rejectable",
+  );
+
+  const rejectedCandidateRun = await services.canonicalService.enqueueCharacterLoraCanonicalGenerationRun(job.id, {
+    provider: "mock-local",
+    sourceImageIds: [localReferenceSource.id],
+    renderedPrompt: `${triggerToken}, alternate canonical candidate for rejection`,
+  });
+  const rejectedCandidateCompleted = await services.canonicalService.mockCompleteCharacterLoraCanonicalGenerationRun(
+    rejectedCandidateRun.id,
+    { sourceImageId: localReferenceSource.id },
+  );
+  const rejectedCandidateVersion = rejectedCandidateCompleted.canonicalVersion;
+  assert(rejectedCandidateVersion.status === "candidate", "second canonical candidate should start as candidate");
+  const rejectedCanonicalVersion = await services.canonicalService.rejectCharacterLoraCanonicalVersion(
+    job.id,
+    rejectedCandidateVersion.id,
+  );
+  assert(rejectedCanonicalVersion.status === "rejected", "second canonical candidate should be rejected");
+  await assertRejectsWithStatus(
+    () => services.canonicalService.rejectCharacterLoraCanonicalVersion(job.id, rejectedCanonicalVersion.id),
+    409,
+    "repeated canonical rejection should return 409",
+  );
+  await assertRejectsWithStatus(
+    () => services.canonicalService.selectCharacterLoraCanonicalVersion(job.id, rejectedCanonicalVersion.id),
+    409,
+    "rejected canonical should not be selectable",
+  );
+  const afterRejectedCandidate = await services.jobService.getCharacterLoraTrainingJob(job.id);
+  assert(
+    afterRejectedCandidate.currentCanonicalVersionId === manualCanonicalVersion.id,
+    "rejected canonical candidate should not change the current manual canonical",
   );
 
   const promptCard = await services.promptCardService.createCharacterLoraPromptCardVersion(job.id, {
@@ -1594,6 +1638,10 @@ async function main() {
   const report = persistedReport.report;
   assert(report.sourceImages.length >= 1, "report should include source images");
   assert(report.canonicalVersions.some((version) => version.id === canonicalVersion.id), "report should include canonical version");
+  assert(
+    report.canonicalVersions.some((version) => version.id === rejectedCanonicalVersion.id && version.status === "rejected"),
+    "report should include rejected canonical version",
+  );
   assert(report.promptCardVersions.some((version) => version.id === promptCard.id), "report should include prompt card version");
   assert(
     report.candidateImages.some((image) => image.id === captioned.id && Boolean(image.caption.draft)),
@@ -1736,6 +1784,8 @@ async function main() {
       status: selectedManualCanonical.canonicalVersion.status,
       manualVersionId: manualCanonicalVersion.id,
       manualVersion: manualCanonicalVersion.version,
+      rejectedVersionId: rejectedCanonicalVersion.id,
+      rejectedVersion: rejectedCanonicalVersion.version,
     },
     promptCard: {
       id: promotedPromptCard.id,
@@ -1800,7 +1850,7 @@ async function main() {
   assert(summary.caption.triggerFirst, "caption trigger-first assertion should be true");
   assertHexSha(summary.training.finalSha256, "final training sha256");
   assert(summary.report.coverage.sourceImages >= 1, "report summary should cover source");
-  assert(summary.report.coverage.canonicalVersions >= 2, "report summary should cover generated and manual canonical");
+  assert(summary.report.coverage.canonicalVersions >= 3, "report summary should cover generated, manual, and rejected canonical");
   assert(summary.report.coverage.promptCardVersions >= 2, "report summary should cover promoted prompt card version");
   assert(summary.report.coverage.candidateImages >= allImages.length, "report summary should cover candidates");
   assert(summary.report.coverage.datasetItems >= allImages.length, "report summary should cover dataset items");

@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import {
   AlertTriangle,
   ArrowLeft,
+  Ban,
   Check,
   Copy,
   Database,
@@ -50,6 +51,7 @@ import {
   promoteCharacterLoraPreset,
   registerCharacterLoraSourceImageAsCandidate,
   registerManualCharacterLoraCanonicalVersion,
+  rejectCharacterLoraCanonicalVersion,
   resumeCharacterLoraJobSection,
   reviewCharacterLoraImages,
   selectCharacterLoraCanonicalVersion,
@@ -91,6 +93,12 @@ type Props = {
 const DEFAULT_BENCHMARK_WEIGHT_MATRIX = [0.65, 0.85, 1] as const;
 const DEFAULT_BENCHMARK_WEIGHT_MATRIX_TEXT = DEFAULT_BENCHMARK_WEIGHT_MATRIX.join(",");
 const MIN_APPROVAL_BENCHMARK_EVIDENCE_COUNT = 7;
+const CANONICAL_STATUS_LABEL: Record<string, string> = {
+  candidate: "\u5019\u9009",
+  selected: "\u5df2\u9009",
+  rejected: "\u5df2\u62d2\u7edd",
+  superseded: "\u5df2\u66ff\u6362",
+};
 
 const STATUS_LABEL: Record<string, string> = {
   draft: "草稿",
@@ -632,6 +640,8 @@ export function JobWorkbenchClient({
     () => new Map(canonicalVersions.map((version) => [version.imageArtifactId, version])),
     [canonicalVersions],
   );
+  const selectedCanonicalVersion = canonicalVersionById.get(canonicalVersionId);
+  const selectedCanonicalIsRejected = selectedCanonicalVersion?.status === "rejected";
   const promptCardById = useMemo(() => new Map(promptCards.map((card) => [card.id, card])), [promptCards]);
   const generationRunById = useMemo(() => new Map(report.generationRuns.map((run) => [run.id, run])), [report.generationRuns]);
   const generationRunsBySectionId = useMemo(() => {
@@ -779,6 +789,15 @@ export function JobWorkbenchClient({
 
     runAction("canonical.select", "Canonical 已选择", async () => {
       await selectCharacterLoraCanonicalVersion(job.id, versionId);
+    });
+  }
+
+  function handleCanonicalReject(versionId: string) {
+    runAction(`canonical.reject.${versionId}`, "Canonical \u5df2\u62d2\u7edd", async () => {
+      await rejectCharacterLoraCanonicalVersion(job.id, versionId);
+      if (canonicalVersionId === versionId) {
+        setCanonicalVersionId("");
+      }
     });
   }
 
@@ -1245,12 +1264,18 @@ export function JobWorkbenchClient({
             >
               <option value="">选择 canonical</option>
               {canonicalVersions.map((version) => (
-                <option key={version.id} value={version.id}>
-                  v{version.version} / {version.status} / {compactId(version.id)}
+                <option key={version.id} value={version.id} disabled={version.status === "rejected"}>
+                  v{version.version} / {formatCanonicalStatus(version.status)} / {compactId(version.id)}
                 </option>
               ))}
             </select>
-            <ActionButton icon={ShieldCheck} label="设为当前" loading={isBusy("canonical.select")} disabled={isPending || !canonicalVersionId} />
+            <ActionButton
+              icon={ShieldCheck}
+              label="设为当前"
+              loading={isBusy("canonical.select")}
+              disabled={isPending || !canonicalVersionId || selectedCanonicalIsRejected}
+              title={selectedCanonicalIsRejected ? "Rejected canonical versions cannot be selected" : undefined}
+            />
           </form>
         </div>
         <CanonicalVersionGrid
@@ -1265,6 +1290,7 @@ export function JobWorkbenchClient({
               await selectCharacterLoraCanonicalVersion(job.id, versionId);
             });
           }}
+          onReject={handleCanonicalReject}
           disabled={isPending}
         />
       </SectionCard>
@@ -2355,6 +2381,7 @@ function CanonicalVersionGrid({
   disabled,
   onSelectVersion,
   onSetCurrent,
+  onReject,
 }: {
   jobId: string;
   currentCanonicalVersionId: string | null;
@@ -2363,6 +2390,7 @@ function CanonicalVersionGrid({
   disabled: boolean;
   onSelectVersion: (versionId: string) => void;
   onSetCurrent: (versionId: string) => void;
+  onReject: (versionId: string) => void;
 }) {
   if (versions.length === 0) {
     return <div className="mt-3 rounded-lg border border-dashed border-white/10 py-6 text-center text-sm text-zinc-500">暂无 canonical version</div>;
@@ -2374,20 +2402,36 @@ function CanonicalVersionGrid({
         const relativePath = version.artifact?.relativePath ?? null;
         const isCurrent = version.id === currentCanonicalVersionId;
         const isSelected = version.id === selectedVersionId;
+        const isRejected = version.status === "rejected";
+        const canReject = version.status === "candidate" && !isCurrent;
 
         return (
-          <div key={version.id} className={`overflow-hidden rounded-lg border bg-white/[0.03] ${isCurrent ? "border-sky-400/60" : isSelected ? "border-white/25" : "border-white/10"}`}>
+          <div key={version.id} className={`overflow-hidden rounded-lg border ${isRejected ? "border-red-400/30 bg-red-500/[0.03]" : isCurrent ? "border-sky-400/60 bg-white/[0.03]" : isSelected ? "border-white/25 bg-white/[0.03]" : "border-white/10 bg-white/[0.03]"}`}>
             <ArtifactThumb jobId={jobId} relativePath={relativePath} alt={`canonical v${version.version}`} />
             <div className="space-y-2 p-2 text-xs">
               <div className="flex items-center justify-between gap-2">
                 <span className="font-medium text-zinc-100">v{version.version}</span>
-                <span className={isCurrent ? "text-sky-300" : "text-zinc-500"}>{isCurrent ? "当前" : STATUS_LABEL[version.status] ?? version.status}</span>
+                <span className={getCanonicalStatusClass(version.status, isCurrent)}>{formatCanonicalStatus(version.status, isCurrent)}</span>
               </div>
               <div className="truncate font-mono text-[11px] text-zinc-500">{compactId(version.id)} / {formatDate(version.createdAt)}</div>
               {version.notes ? <div className="line-clamp-2 text-zinc-500">{version.notes}</div> : null}
               <div className="flex flex-wrap gap-1">
                 <MiniButton label="选择" onClick={() => onSelectVersion(version.id)} disabled={disabled} />
-                <MiniButton label="设当前" onClick={() => onSetCurrent(version.id)} disabled={disabled || isCurrent} />
+                <MiniButton
+                  icon={ShieldCheck}
+                  label="设当前"
+                  onClick={() => onSetCurrent(version.id)}
+                  disabled={disabled || isCurrent || isRejected}
+                  title={isRejected ? "Rejected canonical versions cannot be selected" : undefined}
+                />
+                <MiniButton
+                  icon={Ban}
+                  label="拒绝"
+                  tone="danger"
+                  onClick={() => onReject(version.id)}
+                  disabled={disabled || !canReject}
+                  title={getCanonicalRejectDisabledReason(version.status, isCurrent)}
+                />
               </div>
             </div>
           </div>
@@ -2395,6 +2439,50 @@ function CanonicalVersionGrid({
       })}
     </div>
   );
+}
+
+function formatCanonicalStatus(status: string, isCurrent = false) {
+  if (isCurrent) {
+    return "\u5f53\u524d";
+  }
+
+  return CANONICAL_STATUS_LABEL[status] ?? STATUS_LABEL[status] ?? status;
+}
+
+function getCanonicalStatusClass(status: string, isCurrent: boolean) {
+  if (isCurrent) {
+    return "text-sky-300";
+  }
+
+  if (status === "rejected") {
+    return "text-red-300";
+  }
+
+  if (status === "candidate") {
+    return "text-amber-200";
+  }
+
+  return "text-zinc-500";
+}
+
+function getCanonicalRejectDisabledReason(status: string, isCurrent: boolean) {
+  if (isCurrent) {
+    return "Current canonical version cannot be rejected";
+  }
+
+  if (status === "rejected") {
+    return "Canonical version is already rejected";
+  }
+
+  if (status === "selected") {
+    return "Selected canonical version cannot be rejected";
+  }
+
+  if (status === "superseded") {
+    return "Superseded canonical version cannot be rejected";
+  }
+
+  return undefined;
 }
 
 function CandidateImageCard({
@@ -2696,15 +2784,30 @@ function ActionButton({
   );
 }
 
-function MiniButton({ label, onClick, disabled, title }: { label: string; onClick: () => void; disabled?: boolean; title?: string }) {
+function MiniButton({
+  label,
+  icon: Icon,
+  onClick,
+  disabled,
+  title,
+  tone = "default",
+}: {
+  label: string;
+  icon?: LucideIcon;
+  onClick: () => void;
+  disabled?: boolean;
+  title?: string;
+  tone?: "default" | "danger";
+}) {
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
       title={title}
-      className="h-7 rounded-md border border-white/10 px-2 text-[11px] text-zinc-300 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-50"
+      className={`inline-flex h-7 items-center justify-center gap-1 rounded-md border px-2 text-[11px] transition disabled:cursor-not-allowed disabled:opacity-50 ${tone === "danger" ? "border-red-400/20 text-red-200 hover:bg-red-500/10" : "border-white/10 text-zinc-300 hover:bg-white/5"}`}
     >
+      {Icon ? <Icon className="size-3" /> : null}
       {label}
     </button>
   );

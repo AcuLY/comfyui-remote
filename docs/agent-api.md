@@ -494,6 +494,10 @@ Preset list/detail responses include the normalized `civitaiLinks` array:
 | `GET` | `/api/character-lora-training/jobs` | list Character LoRA training jobs |
 | `POST` | `/api/character-lora-training/jobs` | create a training job |
 | `GET/PATCH` | `/api/character-lora-training/jobs/:jobId` | read or update a job |
+| `POST` | `/api/character-lora-training/jobs/:jobId/canonical/generate` | enqueue a canonical generation task |
+| `POST` | `/api/character-lora-training/jobs/:jobId/canonical/manual` | register an uploaded `manual_canonical` source image as a new canonical candidate |
+| `POST` | `/api/character-lora-training/jobs/:jobId/canonical/:versionId/select` | select a canonical version as current; rejected versions return `409` |
+| `POST` | `/api/character-lora-training/jobs/:jobId/canonical/:versionId/reject` | reject a canonical candidate; current, selected, superseded, and already rejected versions return `409` |
 | `GET` | `/api/character-lora-training/jobs/:jobId/sections` | list job sections with counts and run/image totals |
 | `POST` | `/api/character-lora-training/jobs/:jobId/sections/instantiate` | create missing sections from active templates |
 | `PATCH` | `/api/character-lora-training/sections/:sectionId` | pause or resume one job section with `{ "status": "paused" }`, `{ "status": "active" }`, `{ "action": "pause" }`, or `{ "action": "resume" }` |
@@ -501,6 +505,8 @@ Preset list/detail responses include the normalized `civitaiLinks` array:
 | `POST` | `/api/character-lora-training/images/review` | update candidate image reviews and refresh section counts |
 
 Pausing a Character LoRA job section does not delete runs, images, or review counts. Count refreshes keep `paused` until an explicit resume. Resume derives the active status from current counts: `pending > 0` becomes `reviewing`, any kept/rejected images become `reviewed`, and empty sections become `draft`.
+
+Canonical versions use `candidate`, `selected`, `rejected`, and `superseded`. Rejecting is only the `candidate -> rejected` transition. Rejected canonical versions stay visible in job reports for lineage/audit purposes, but cannot be selected as the current canonical.
 
 `POST /api/character-lora-training/sections/:sectionId/runs` accepts `sourceImageIds`, explicit provider `inputImages`, `parentRunId`, and `previousCandidateImageIds`. `inputImages` remains a complete explicit provider input list and cannot be combined with `sourceImageIds` or `previousCandidateImageIds`. `previousCandidateImageIds` can be combined with `sourceImageIds` and `parentRunId`; each id must point to a candidate image from the same job section and is sent to the provider as role `previous_candidate` with artifact id, relative path, and sha256. When `parentRunId` is provided without explicit `inputImages` or `previousCandidateImageIds`, the service automatically adds that parent run's candidate images from the same section as `previous_candidate` references.
 
