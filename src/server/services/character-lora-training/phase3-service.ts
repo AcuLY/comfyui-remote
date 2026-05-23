@@ -106,6 +106,14 @@ export async function enqueueCharacterLoraSectionGenerationRun(sectionId: string
   }
 
   const section = await getExistingSection(normalizedSectionId);
+  if (section.status === "paused") {
+    throw new CharacterLoraPhase3ServiceError(
+      "Character LoRA section is paused; resume it before enqueueing generation runs",
+      409,
+      { sectionId: normalizedSectionId, status: section.status },
+    );
+  }
+
   const job = await getExistingJob(section.jobId);
   const [canonicalVersion, promptCardVersion] = await Promise.all([
     getCharacterLoraCanonicalVersion(section.canonicalVersionId),

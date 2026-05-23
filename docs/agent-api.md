@@ -97,6 +97,7 @@ or:
 | Manage preset library | `/api/preset-library/**` endpoints listed below |
 | Search preset library for agent use | `GET /api/presets`, `GET /api/preset-library/presets`, `GET /api/preset-library/presets/:presetId` |
 | Upload/list/move/annotate models | `GET/POST /api/models?kind=lora|checkpoint`, `GET /api/models/browse`, `POST /api/models/move`, `GET/PUT /api/models/notes` |
+| Manage Character LoRA training jobs and sections | `/api/character-lora-training/**` endpoints listed below |
 | Read logs, audit logs, health, worker status | `GET /api/logs`, `GET /api/audit-logs`, `GET /api/health`, `GET /api/worker/status` |
 | MCP automation | `GET/POST/DELETE /api/mcp` |
 
@@ -485,6 +486,21 @@ Preset list/detail responses include the normalized `civitaiLinks` array:
 | `GET/PUT` | `/api/models/notes?kind=lora\|checkpoint` | read or update notes |
 
 `kind=checkpoint` is rooted at `MODEL_BASE_DIR/checkpoints`, only exposes `.safetensors` files, and stores notes only. `kind=lora` is rooted at `MODEL_BASE_DIR/loras` and supports notes plus trigger words.
+
+## Character LoRA Training
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/api/character-lora-training/jobs` | list Character LoRA training jobs |
+| `POST` | `/api/character-lora-training/jobs` | create a training job |
+| `GET/PATCH` | `/api/character-lora-training/jobs/:jobId` | read or update a job |
+| `GET` | `/api/character-lora-training/jobs/:jobId/sections` | list job sections with counts and run/image totals |
+| `POST` | `/api/character-lora-training/jobs/:jobId/sections/instantiate` | create missing sections from active templates |
+| `PATCH` | `/api/character-lora-training/sections/:sectionId` | pause or resume one job section with `{ "status": "paused" }`, `{ "status": "active" }`, `{ "action": "pause" }`, or `{ "action": "resume" }` |
+| `POST` | `/api/character-lora-training/sections/:sectionId/runs` | enqueue section generation or rerun; paused sections return `409` |
+| `POST` | `/api/character-lora-training/images/review` | update candidate image reviews and refresh section counts |
+
+Pausing a Character LoRA job section does not delete runs, images, or review counts. Count refreshes keep `paused` until an explicit resume. Resume derives the active status from current counts: `pending > 0` becomes `reviewing`, any kept/rejected images become `reviewed`, and empty sections become `draft`.
 
 ## ComfyUI And System
 

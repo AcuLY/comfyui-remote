@@ -485,6 +485,7 @@ export type CharacterLoraCanonicalVersionSummary = ReturnType<typeof serializeCa
 export type CharacterLoraPromptCardVersionSummary = ReturnType<typeof serializePromptCardVersion>;
 export type CharacterLoraSectionTemplateSummary = ReturnType<typeof serializeSectionTemplate>;
 export type CharacterLoraJobSectionSummary = ReturnType<typeof serializeJobSection>;
+export type CharacterLoraJobSectionStatusPatch = "paused" | "active";
 export type CharacterLoraCandidateImageSummary = ReturnType<typeof serializeCandidateImage>;
 export type CharacterLoraDatasetRevisionSummary = ReturnType<typeof serializeDatasetRevision>;
 export type CharacterLoraTrainingRunSummary = ReturnType<typeof serializeTrainingRun>;
@@ -1399,6 +1400,44 @@ export async function getCharacterLoraJobSection(sectionId: string) {
   const section = await db.characterLoraJobSection.findUnique({
     where: { id: sectionId },
     select: JOB_SECTION_SELECT,
+  });
+
+  return section ? serializeJobSection(section) : null;
+}
+
+export async function updateCharacterLoraJobSectionStatus(input: {
+  sectionId: string;
+  status: CharacterLoraJobSectionStatusPatch;
+}) {
+  const section = await db.$transaction(async (tx) => {
+    const current = await tx.characterLoraJobSection.findUnique({
+      where: { id: input.sectionId },
+      select: {
+        id: true,
+        keepCount: true,
+        rejectCount: true,
+        pendingCount: true,
+      },
+    });
+
+    if (!current) {
+      return null;
+    }
+
+    const status =
+      input.status === "paused"
+        ? "paused"
+        : deriveActiveSectionStatus({
+            keepCount: current.keepCount,
+            rejectCount: current.rejectCount,
+            pendingCount: current.pendingCount,
+          });
+
+    return tx.characterLoraJobSection.update({
+      where: { id: input.sectionId },
+      data: { status },
+      select: JOB_SECTION_SELECT,
+    });
   });
 
   return section ? serializeJobSection(section) : null;
@@ -3716,7 +3755,11 @@ async function refreshSectionCounts(
   sectionIds: string[],
 ) {
   for (const sectionId of sectionIds) {
-    const [keepCount, rejectCount, pendingCount] = await Promise.all([
+    const [section, keepCount, rejectCount, pendingCount] = await Promise.all([
+      tx.characterLoraJobSection.findUnique({
+        where: { id: sectionId },
+        select: { status: true },
+      }),
       tx.characterLoraCandidateImage.count({
         where: { sectionId, reviewStatus: CharacterLoraImageReviewStatus.keep },
       }),
@@ -3728,17 +3771,39 @@ async function refreshSectionCounts(
       }),
     ]);
 
+    if (!section) {
+      continue;
+    }
+
     await tx.characterLoraJobSection.update({
       where: { id: sectionId },
       data: {
         keepCount,
         rejectCount,
         pendingCount,
-        status: pendingCount > 0 ? "reviewing" : "reviewed",
+        ...(section.status === "paused"
+          ? {}
+          : { status: deriveActiveSectionStatus({ keepCount, rejectCount, pendingCount }) }),
       },
       select: { id: true },
     });
   }
+}
+
+function deriveActiveSectionStatus(input: {
+  keepCount: number;
+  rejectCount: number;
+  pendingCount: number;
+}) {
+  if (input.pendingCount > 0) {
+    return "reviewing";
+  }
+
+  if (input.keepCount > 0 || input.rejectCount > 0) {
+    return "reviewed";
+  }
+
+  return "draft";
 }
 
 function buildDefaultCaption(triggerToken: string, sectionName: string | null, visualPrompt: string) {

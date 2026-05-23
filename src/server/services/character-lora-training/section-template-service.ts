@@ -8,6 +8,8 @@ import {
   instantiateCharacterLoraJobSections as instantiateJobSectionsInRepository,
   listActiveCharacterLoraSectionTemplates as listActiveSectionTemplatesFromRepository,
   listCharacterLoraJobSections as listJobSectionsFromRepository,
+  updateCharacterLoraJobSectionStatus as updateJobSectionStatusInRepository,
+  type CharacterLoraJobSectionStatusPatch,
   upsertCharacterLoraSectionTemplates as upsertSectionTemplatesInRepository,
   type CharacterLoraSectionTemplateCopyCreateInput,
   type CharacterLoraSectionTemplateUpsertInput,
@@ -182,6 +184,17 @@ const instantiateSectionsSchema = z
   })
   .strict();
 
+const updateSectionStatusSchema = z
+  .object({
+    action: z.enum(["pause", "resume"]).optional(),
+    status: z.enum(["paused", "active"]).optional(),
+  })
+  .strict()
+  .refine((input) => Boolean(input.action) !== Boolean(input.status), {
+    message: "Provide exactly one of action or status",
+    path: ["action"],
+  });
+
 const optionalTextSchema = z.string().trim().min(1).optional();
 const optionalNullableTextSchema = z.union([z.string().trim().min(1), z.null()]).optional();
 
@@ -335,6 +348,27 @@ export async function instantiateCharacterLoraJobSections(jobId: string, input: 
     promptCardVersionId: job.currentPromptCardVersionId,
     templates,
   });
+}
+
+export async function updateCharacterLoraJobSectionStatus(sectionId: string, input: unknown) {
+  const id = normalizeId(sectionId, "sectionId");
+  const parsed = parseWithSchema(updateSectionStatusSchema, input ?? {});
+  const status = resolveSectionStatusPatch(parsed);
+  const section = await updateJobSectionStatusInRepository({ sectionId: id, status });
+
+  if (!section) {
+    throw new CharacterLoraSectionTemplateServiceError("Character LoRA section not found", 404);
+  }
+
+  return section;
+}
+
+export async function pauseCharacterLoraJobSection(sectionId: string) {
+  return updateCharacterLoraJobSectionStatus(sectionId, { status: "paused" });
+}
+
+export async function resumeCharacterLoraJobSection(sectionId: string) {
+  return updateCharacterLoraJobSectionStatus(sectionId, { status: "active" });
 }
 
 export function mapCharacterLoraSectionTemplateError(error: unknown) {
@@ -491,4 +525,14 @@ function normalizeTemplateName(value: string) {
 
 function dedupeTemplateKeys(templateKeys: string[] | undefined) {
   return Array.from(new Set(templateKeys ?? []));
+}
+
+function resolveSectionStatusPatch(
+  input: z.infer<typeof updateSectionStatusSchema>,
+): CharacterLoraJobSectionStatusPatch {
+  if (input.status) {
+    return input.status;
+  }
+
+  return input.action === "pause" ? "paused" : "active";
 }

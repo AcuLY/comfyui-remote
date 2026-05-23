@@ -14,6 +14,7 @@ import {
   FlaskConical,
   ImagePlus,
   Loader2,
+  Pause,
   Play,
   RefreshCw,
   Save,
@@ -44,10 +45,12 @@ import {
   mockCompleteCharacterLoraBenchmarkRun,
   mockCompleteCharacterLoraCanonicalGenerationRun,
   persistCharacterLoraJobReport,
+  pauseCharacterLoraJobSection,
   promoteCharacterLoraSectionInstructionToPromptCardVersion,
   promoteCharacterLoraPreset,
   registerCharacterLoraSourceImageAsCandidate,
   registerManualCharacterLoraCanonicalVersion,
+  resumeCharacterLoraJobSection,
   reviewCharacterLoraImages,
   selectCharacterLoraCanonicalVersion,
   updateCharacterLoraImageCaption,
@@ -91,10 +94,12 @@ const MIN_APPROVAL_BENCHMARK_EVIDENCE_COUNT = 7;
 
 const STATUS_LABEL: Record<string, string> = {
   draft: "草稿",
+  generating: "生成中",
   canonical_pending: "标准图",
   prompt_pending: "提示词",
   section_generating: "分镜生成",
   reviewing: "审核",
+  reviewed: "已审核",
   dataset_ready: "数据集",
   training_queued: "训练排队",
   training_running: "训练中",
@@ -109,6 +114,7 @@ const STATUS_LABEL: Record<string, string> = {
   queued: "排队",
   running: "运行中",
   done: "完成",
+  paused: "已暂停",
   keep: "保留",
   reject: "拒绝",
   excluded: "排除",
@@ -829,6 +835,18 @@ export function JobWorkbenchClient({
     });
   }
 
+  function handleSectionPause(sectionId: string) {
+    runAction(`section.${sectionId}.pause`, "Section 已暂停", async () => {
+      await pauseCharacterLoraJobSection(sectionId);
+    });
+  }
+
+  function handleSectionResume(sectionId: string) {
+    runAction(`section.${sectionId}.resume`, "Section 已恢复", async () => {
+      await resumeCharacterLoraJobSection(sectionId);
+    });
+  }
+
   function handlePromoteSectionInstructionToPromptCard() {
     const sectionInstruction = sectionUserInstruction.trim();
 
@@ -1414,6 +1432,7 @@ export function JobWorkbenchClient({
                 const stalePromptCard =
                   Boolean(job.currentPromptCardVersionId && section.promptCardVersionId) &&
                   section.promptCardVersionId !== job.currentPromptCardVersionId;
+                const isPaused = section.status === "paused";
 
                 return (
                   <div key={section.id} className="grid gap-2 px-3 py-2 text-xs text-zinc-300 md:grid-cols-[1.1fr_0.7fr_1fr_1.15fr_auto] md:items-center">
@@ -1434,7 +1453,15 @@ export function JobWorkbenchClient({
                         </span>
                       ) : null}
                     </span>
-                    <span>{STATUS_LABEL[section.status] ?? section.status}</span>
+                    <span
+                      className={
+                        isPaused
+                          ? "w-fit rounded border border-amber-400/30 bg-amber-400/10 px-1.5 py-0.5 text-[11px] text-amber-200"
+                          : undefined
+                      }
+                    >
+                      {STATUS_LABEL[section.status] ?? section.status}
+                    </span>
                     <span className="text-zinc-500">keep {section.keepCount} / reject {section.rejectCount} / pending {section.pendingCount}</span>
                     <label className="grid gap-1 text-[11px] text-zinc-500">
                       parentRunId
@@ -1452,14 +1479,36 @@ export function JobWorkbenchClient({
                         ))}
                       </select>
                     </label>
-                    <ActionButton
-                      type="button"
-                      icon={Play}
-                      label="入队"
-                      loading={isBusy(`section.${section.id}`)}
-                      disabled={isPending}
-                      onClick={() => handleSectionRun(section.id)}
-                    />
+                    <div className="flex flex-wrap justify-end gap-1">
+                      {isPaused ? (
+                        <ActionButton
+                          type="button"
+                          icon={Play}
+                          label="恢复"
+                          loading={isBusy(`section.${section.id}.resume`)}
+                          disabled={isPending}
+                          onClick={() => handleSectionResume(section.id)}
+                        />
+                      ) : (
+                        <ActionButton
+                          type="button"
+                          icon={Pause}
+                          label="暂停"
+                          loading={isBusy(`section.${section.id}.pause`)}
+                          disabled={isPending}
+                          onClick={() => handleSectionPause(section.id)}
+                        />
+                      )}
+                      <ActionButton
+                        type="button"
+                        icon={ImagePlus}
+                        label={isPaused ? "已暂停" : "入队"}
+                        loading={isBusy(`section.${section.id}`)}
+                        disabled={isPending || isPaused}
+                        title={isPaused ? "Section 已暂停，恢复后才能入队生成或重跑。" : undefined}
+                        onClick={() => handleSectionRun(section.id)}
+                      />
+                    </div>
                   </div>
                 );
               })}
@@ -2623,6 +2672,7 @@ function ActionButton({
   disabled,
   type = "submit",
   onClick,
+  title,
 }: {
   label: string;
   icon: LucideIcon;
@@ -2630,12 +2680,14 @@ function ActionButton({
   disabled?: boolean;
   type?: "submit" | "button";
   onClick?: () => void;
+  title?: string;
 }) {
   return (
     <button
       type={type}
       onClick={onClick}
       disabled={disabled || loading}
+      title={title}
       className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-2.5 text-xs font-medium text-zinc-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
     >
       {loading ? <Loader2 className="size-3.5 animate-spin" /> : <Icon className="size-3.5" />}

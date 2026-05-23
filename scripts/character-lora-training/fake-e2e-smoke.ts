@@ -630,6 +630,42 @@ async function main() {
       reviewNote: "fake smoke keep",
     })),
   });
+
+  const pauseTarget = sectionsWithImages[0];
+  assert(pauseTarget, "expected at least one generated section for pause/resume smoke coverage");
+  const pausedSection = await services.sectionTemplateService.pauseCharacterLoraJobSection(pauseTarget.id);
+  assert(pausedSection.status === "paused", "paused section should report paused status");
+  assert(pausedSection.counts.generationRuns >= 1, "paused section should preserve generation run history");
+  assert(pausedSection.counts.candidateImages >= 1, "paused section should preserve candidate image history");
+  assert(pausedSection.keepCount >= 1, "paused section should preserve keep counts");
+  await assertRejectsWithStatus(
+    () => services.phase3Service.enqueueCharacterLoraSectionGenerationRun(pauseTarget.id, {
+      provider: "mock-local",
+      userInstruction: "This rerun should be blocked while the section is paused.",
+    }),
+    409,
+    "paused section generation enqueue should fail with 409",
+  );
+  const pauseTargetImageId = pauseTarget.imageIds[0];
+  assert(pauseTargetImageId, "pause/resume smoke target should have a candidate image");
+  await services.phase3Service.reviewCharacterLoraImages({
+    images: [{
+      imageId: pauseTargetImageId,
+      reviewStatus: "keep",
+      reviewNote: "fake smoke keep while paused",
+    }],
+  });
+  const pausedAfterReviewRefresh = (await services.sectionTemplateService.listCharacterLoraJobSections(job.id))
+    .find((section) => section.id === pauseTarget.id);
+  assert(pausedAfterReviewRefresh?.status === "paused", "review count refresh should preserve paused section status");
+  const resumedSection = await services.sectionTemplateService.resumeCharacterLoraJobSection(pauseTarget.id);
+  assert(resumedSection.status === "reviewed", "resumed kept section should derive reviewed status from counts");
+  const resumedRun = await services.phase3Service.enqueueCharacterLoraSectionGenerationRun(pauseTarget.id, {
+    provider: "mock-local",
+    userInstruction: "Smoke rerun after resume should enqueue.",
+  });
+  assert(resumedRun.sectionId === pauseTarget.id, "resumed section should allow generation enqueue");
+
   const captioned = await services.phase3Service.updateCharacterLoraImageCaption(allImages[0].id, {
     captionDraft: "portrait smoke test, clean face",
   });

@@ -194,7 +194,7 @@ flowchart LR
 | `canonicalVersionId` | `String` | 默认引用的 canonical version。 |
 | `promptCardVersionId` | `String` | 默认引用的 Prompt Card version。 |
 | `targetCandidateCount` / `targetKeepCount` | `Int` | 小节目标。 |
-| `status` | `String` | `draft`, `generating`, `reviewing`, `ready`, `blocked`。 |
+| `status` | `String` | `draft`, `generating`, `reviewing`, `reviewed`, `paused`。`paused` 保留历史 runs/images/counts，必须显式 resume 才能继续生成或重跑。 |
 | `keepCount` / `rejectCount` / `pendingCount` | `Int` | 可缓存，最终以 query 聚合校验。 |
 | `sortOrder` | `Int` | UI 顺序。 |
 | `createdAt` / `updatedAt` | `DateTime` | 标准时间戳。 |
@@ -563,6 +563,7 @@ HTTP API 面向 agent、worker 和需要 fetch 的客户端。
 | `POST` | `/api/character-lora-training/jobs/:jobId/prompt-cards` | 新建 Prompt Card version。 |
 | `GET` | `/api/character-lora-training/jobs/:jobId/sections` | job sections 列表。 |
 | `POST` | `/api/character-lora-training/jobs/:jobId/sections/instantiate` | 从模板创建 sections。 |
+| `PATCH` | `/api/character-lora-training/sections/:sectionId` | 暂停/恢复单个 job section；body 支持 `{ "status": "paused" }`、`{ "status": "active" }`、`{ "action": "pause" }`、`{ "action": "resume" }`。 |
 | `POST` | `/api/character-lora-training/sections/:sectionId/runs` | 小节生成/rerun。 |
 | `GET` | `/api/character-lora-training/jobs/:jobId/images` | candidate image 列表，可按 section/status 过滤。 |
 | `POST` | `/api/character-lora-training/images/review` | 批量审图。 |
@@ -802,7 +803,28 @@ stateDiagram-v2
   failed --> draft: manual recover
 ```
 
-### 8.2 候选图状态
+### 8.2 Job section 状态
+
+```mermaid
+stateDiagram-v2
+  [*] --> draft
+  draft --> generating: enqueue section run
+  generating --> reviewing: candidate images created
+  reviewing --> generating: rerun requested
+  reviewing --> reviewed: pending cleared
+  reviewed --> generating: rerun requested
+  draft --> paused: pause section
+  generating --> paused: pause future reruns
+  reviewing --> paused: pause section
+  reviewed --> paused: pause section
+  paused --> draft: resume with no images
+  paused --> reviewing: resume with pending images
+  paused --> reviewed: resume with keep/reject images
+```
+
+`paused` 是 section 的生成门禁状态，不删除历史 run、候选图或审图计数；暂停期间禁止新的 section generation/rerun 入队，已存在的历史数据仍可查看和审图。
+
+### 8.3 候选图状态
 
 ```mermaid
 stateDiagram-v2
@@ -817,7 +839,7 @@ stateDiagram-v2
   included_in_training --> [*]
 ```
 
-### 8.3 Dataset revision 状态
+### 8.4 Dataset revision 状态
 
 ```mermaid
 stateDiagram-v2
@@ -829,7 +851,7 @@ stateDiagram-v2
   failed --> draft_request: retry
 ```
 
-### 8.4 Training run 状态
+### 8.5 Training run 状态
 
 ```mermaid
 stateDiagram-v2
@@ -843,7 +865,7 @@ stateDiagram-v2
   failed --> queued: retry with same revision
 ```
 
-### 8.5 Promotion 决策状态
+### 8.6 Promotion 决策状态
 
 ```mermaid
 stateDiagram-v2
@@ -1077,6 +1099,9 @@ sequenceDiagram
 验收：
 - 生成 report，能追溯每张训练图、每个 prompt、caption、训练参数、LoRA hash、benchmark 图和 promotion 决策。
 - 本地验证、生产部署前 queue gate、schema 双验证都有文档。
+
+验收记录：
+- 2026-05-23：补齐 PRD 5.4 小节暂停/恢复缺口。`PATCH /api/character-lora-training/sections/:sectionId` 可暂停/恢复 section；暂停后保留历史 runs/images/counts，section generation/rerun 入队返回清晰 `409`；review/count 刷新不会把 `paused` 改回 active 状态；resume 按 counts 推导为 `reviewing` / `reviewed` / `draft` 后可再次入队。fake e2e smoke 覆盖 service 路径的暂停、409 拒绝、paused 保持和恢复后入队。
 
 ## 12. 验证计划
 

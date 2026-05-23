@@ -21,6 +21,9 @@ import {
   instantiateCharacterLoraJobSections as instantiateJobSections,
   listCharacterLoraJobSections as listJobSections,
   listCharacterLoraSectionTemplates as listSectionTemplates,
+  pauseCharacterLoraJobSection as pauseJobSection,
+  resumeCharacterLoraJobSection as resumeJobSection,
+  updateCharacterLoraJobSectionStatus as updateJobSectionStatus,
 } from "@/server/services/character-lora-training/section-template-service";
 import {
   enqueueCharacterLoraCanonicalGenerationRun as enqueueCanonicalGenerationRun,
@@ -117,6 +120,18 @@ export async function listCharacterLoraJobSections(jobId: string) {
 
 export async function instantiateCharacterLoraJobSections(jobId: string, input?: unknown) {
   return instantiateJobSections(jobId, input ?? {});
+}
+
+export async function updateCharacterLoraJobSectionStatus(sectionId: string, input: unknown) {
+  return updateJobSectionStatus(sectionId, input);
+}
+
+export async function pauseCharacterLoraJobSection(sectionId: string) {
+  return pauseJobSection(sectionId);
+}
+
+export async function resumeCharacterLoraJobSection(sectionId: string) {
+  return resumeJobSection(sectionId);
 }
 
 export async function enqueueCharacterLoraCanonicalGenerationRun(jobId: string, input?: unknown) {
