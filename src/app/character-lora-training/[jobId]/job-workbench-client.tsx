@@ -2252,9 +2252,12 @@ export function JobWorkbenchClient({
             primary: `Training Run / ${run.launcher} / ${run.currentStep ?? 0}/${run.targetSteps ?? "-"}`,
             secondary: [
               `dataset ${compactId(run.datasetRevisionId)}`,
+              `config ${compactId(run.configArtifactId)}`,
               `output ${run.outputDir}`,
               `log ${compactId(run.logArtifactId)}`,
               `final ${run.finalSafetensorsArtifactId ? compactId(run.finalSafetensorsArtifactId) : run.finalSha256?.slice(0, 8) ?? "-"}`,
+              `ckpt ${run.counts.checkpoints}`,
+              run.dryRunSummaryArtifactId ? `dry ${compactId(run.dryRunSummaryArtifactId)}` : null,
               run.cancelRequestedAt ? `cancel requested ${formatDate(run.cancelRequestedAt)}` : null,
             ].filter(Boolean).join(" / "),
             action: run.status === "queued" || (run.status === "running" && !run.cancelRequestedAt)
@@ -2512,7 +2515,12 @@ export function JobWorkbenchClient({
             id: decision.id,
             status: decision.status,
             primary: `Promotion Decision / weight ${decision.defaultRecommendedWeight} / asset ${compactId(decision.selectedLoraAssetId)}`,
-            secondary: `benchmark ${compactId(decision.benchmarkRunId)} / preset ${compactId(decision.promotedPresetId)}`,
+            secondary: [
+              `benchmark ${compactId(decision.benchmarkRunId)}`,
+              `checkpoint ${decision.selectedCheckpoint ?? "-"}`,
+              `variant prompts ${Object.keys(readUnknownRecord(decision.variantPromptDrafts)).length}`,
+              `preset ${compactId(decision.promotedPresetId)}`,
+            ].join(" / "),
             action: (
               <div className="flex flex-wrap gap-1">
                 <MiniButton label="发布预检" onClick={() => handlePromote(decision.id, true)} disabled={isPending} />
@@ -2713,6 +2721,7 @@ function SectionRunHistory({
             <div className="min-w-0">
               <div className="break-words text-zinc-200">{run.provider} / {run.imageModel ?? run.hostModel ?? "-"}</div>
               <div className="break-words">inputs {formatInputRoleCounts(run.inputImages)}</div>
+              <div className="break-words">request {compactId(run.requestArtifactId)}</div>
             </div>
             <div className="min-w-0">
               <div className="break-words text-zinc-200">{run.userInstruction || run.visualPrompt || "default section prompt"}</div>
@@ -3235,6 +3244,9 @@ function CandidateImageCard({
           <div className="break-all font-mono text-[11px] text-zinc-500 sm:truncate">{compactId(image.id)} / {image.width ?? "?"}x{image.height ?? "?"}</div>
           <div className="break-all font-mono text-[11px] text-zinc-500 sm:truncate">
             run {compactId(image.generationRunId)} / {generationRun?.kind ?? "unknown"} / {generationRun?.provider ?? "unknown"} / {generationRun?.status ?? "unknown"}
+          </div>
+          <div className="break-all font-mono text-[11px] text-zinc-500 sm:truncate">
+            request {compactId(generationRun?.requestArtifactId)}
           </div>
           <div className="break-all font-mono text-[11px] text-zinc-500 sm:truncate">{image.relativePath}</div>
         </div>
