@@ -178,8 +178,8 @@ const IMAGE_SIZE_OPTIONS = ["1024x1536", "1024x1024", "1536x1024"] as const;
 const IMAGE_QUALITY_OPTIONS = ["high", "medium", "low"] as const;
 const TRAINING_PRECISION_OPTIONS = ["", "bf16", "fp16", "fp32"] as const;
 const PROMOTION_RETURN_POINTS = ["benchmark_review", "dataset_ready", "trained"] as const;
-const DIAGNOSTIC_RETURN_POINTS = ["source", "canonical", "sections", "dataset", "caption", "prompt", "trainingConfig", "weightSelection"] as const;
-type DiagnosticReturnPoint = (typeof DIAGNOSTIC_RETURN_POINTS)[number];
+type DiagnosticReturnPoint = CharacterLoraJobReport["diagnosticSummary"]["recommendedReturnPoint"];
+const DIAGNOSTIC_RETURN_POINTS = ["source", "canonical", "sections", "dataset", "caption", "prompt", "trainingConfig", "weightSelection"] as const satisfies readonly DiagnosticReturnPoint[];
 const DIAGNOSTIC_RETURN_ACTIONS: Record<DiagnosticReturnPoint, { targetId: string; label: string; description: string }> = {
   source: { targetId: "character-lora-source", label: "Upload or register source anchors", description: "Use the source upload/register controls before generating canonical images or datasets." },
   canonical: { targetId: "character-lora-canonical", label: "Generate or select a canonical anchor", description: "Create a new canonical candidate or pick a non-rejected canonical version as the identity anchor." },

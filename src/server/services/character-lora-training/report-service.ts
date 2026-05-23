@@ -1176,7 +1176,7 @@ function buildDiagnosticSummary(input: {
   }
 
   return {
-    recommendedReturnPoint,
+    recommendedReturnPoint: recommendedReturnPoint as DiagnosticReturnPoint,
     reasons,
     evidence,
     actions,
