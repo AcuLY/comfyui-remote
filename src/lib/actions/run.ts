@@ -1,6 +1,8 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
+import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import {
   enqueueProjectRuns as enqueueProjectRunsRepo,
@@ -20,6 +22,156 @@ import {
 } from "@/server/services/comfyui-service";
 import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
+
+const QUEUE_PAUSE_META_KEY = "__queuePause";
+const PRIORITY_SECTION_RUN_SOURCE = "priority-section-run";
+
+type QueuePauseMarker = {
+  source: string;
+  batchId: string;
+  pausedAt: string;
+};
+
+type QueuePauseMarkerInput = {
+  source: string;
+  batchId: string;
+  pausedAt?: string;
+};
+
+type RunSectionOptions = {
+  prioritize?: boolean;
+};
+
+type PauseAllRunsOptions = {
+  source?: string;
+  batchId?: string;
+};
+
+type PauseAllRunsResult = {
+  ok: boolean;
+  count: number;
+  runIds: string[];
+  batchId: string;
+  error?: string;
+};
+
+type ResumeAllRunsOptions = {
+  runIds?: string[];
+  source?: string;
+  batchId?: string;
+  markedOnly?: boolean;
+};
+
+type ResumeAllRunsResult = {
+  ok: boolean;
+  count: number;
+  runIds: string[];
+  error?: string;
+};
+
+function buildQueuePauseMarker(input: QueuePauseMarkerInput): QueuePauseMarker {
+  return {
+    source: input.source,
+    batchId: input.batchId,
+    pausedAt: input.pausedAt ?? new Date().toISOString(),
+  };
+}
+
+function toWritableJsonObject(value: Prisma.JsonValue | null): Record<string, Prisma.InputJsonValue> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+
+  return JSON.parse(JSON.stringify(value)) as Record<string, Prisma.InputJsonValue>;
+}
+
+function buildExecutionMetaUpdate(
+  currentValue: Prisma.JsonValue | null,
+  marker?: QueuePauseMarkerInput,
+): Prisma.InputJsonObject | typeof Prisma.DbNull {
+  const next = toWritableJsonObject(currentValue);
+
+  if (marker) {
+    next[QUEUE_PAUSE_META_KEY] = buildQueuePauseMarker(marker) as unknown as Prisma.InputJsonValue;
+  } else {
+    delete next[QUEUE_PAUSE_META_KEY];
+  }
+
+  return Object.keys(next).length > 0 ? (next as Prisma.InputJsonObject) : Prisma.DbNull;
+}
+
+function getQueuePauseMarker(value: Prisma.JsonValue | null): QueuePauseMarker | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+
+  const marker = (value as Record<string, unknown>)[QUEUE_PAUSE_META_KEY];
+  if (!marker || typeof marker !== "object" || Array.isArray(marker)) {
+    return null;
+  }
+
+  const { source, batchId, pausedAt } = marker as Record<string, unknown>;
+  if (typeof source !== "string" || typeof batchId !== "string" || typeof pausedAt !== "string") {
+    return null;
+  }
+
+  return { source, batchId, pausedAt };
+}
+
+function matchesResumeOptions(
+  run: { id: string; executionMeta: Prisma.JsonValue | null },
+  options?: ResumeAllRunsOptions,
+) {
+  if (!options) return true;
+
+  const runIds = options.runIds ? [...new Set(options.runIds)].filter(Boolean) : undefined;
+  if (runIds && !runIds.includes(run.id)) {
+    return false;
+  }
+
+  const marker = getQueuePauseMarker(run.executionMeta);
+  if (options.markedOnly && !marker) {
+    return false;
+  }
+
+  if (options.source && marker?.source !== options.source) {
+    return false;
+  }
+
+  if (options.batchId && marker?.batchId !== options.batchId) {
+    return false;
+  }
+
+  return true;
+}
+
+async function resumeRunsAfterPriorityPause(
+  pausedRunIds: string[],
+  batchId: string,
+  primaryError: unknown,
+) {
+  if (pausedRunIds.length === 0) return;
+
+  const result = await resumeAllRuns({
+    runIds: pausedRunIds,
+    source: PRIORITY_SECTION_RUN_SOURCE,
+    batchId,
+    markedOnly: true,
+  });
+
+  if (result.ok) return;
+
+  const error = new Error(result.error ?? "Failed to resume paused runs");
+  if (primaryError) {
+    logger.error("Failed to resume runs after priority section run", error, {
+      runIds: pausedRunIds,
+      batchId,
+    });
+    return;
+  }
+
+  throw error;
+}
 
 // ---------------------------------------------------------------------------
 // 运行整个项目
@@ -75,46 +227,70 @@ export async function runProject(projectId: string, overrideBatchSize?: number |
 // 运行单个 Section
 // ---------------------------------------------------------------------------
 
-export async function runSection(sectionId: string, overrideBatchSize?: number | null) {
-  // 需要先拿到 projectId，因为 repository 函数需要它
-  const pos = await prisma.projectSection.findUnique({
-    where: { id: sectionId },
-    select: { projectId: true },
-  });
+export async function runSection(
+  sectionId: string,
+  overrideBatchSize?: number | null,
+  options?: RunSectionOptions,
+) {
+  let priorityPause: Pick<PauseAllRunsResult, "runIds" | "batchId"> | null = null;
+  let primaryError: unknown = null;
 
-  if (!pos) return;
+  try {
+    if (options?.prioritize) {
+      const pauseResult = await pauseAllRuns({ source: PRIORITY_SECTION_RUN_SOURCE });
+      priorityPause = { runIds: pauseResult.runIds, batchId: pauseResult.batchId };
+      if (!pauseResult.ok) {
+        throw new Error(pauseResult.error ?? "Failed to pause active runs");
+      }
+    }
 
-  // 1. Create Run record with status="queued" (no comfyPromptId yet)
-  const result = await enqueueProjectSectionRunRepo(pos.projectId, sectionId, overrideBatchSize ?? undefined);
+    // 需要先拿到 projectId，因为 repository 函数需要它
+    const pos = await prisma.projectSection.findUnique({
+      where: { id: sectionId },
+      select: { projectId: true },
+    });
 
-  // 2. Submit to ComfyUI synchronously
-  for (const enqueuedRun of result.runs) {
-    const run = await getWorkerRun(enqueuedRun.runId);
-    if (!run) continue;
+    if (!pos) return;
 
-    try {
-      const submitResult = await submitRunToComfyUI(run);
-      await prisma.run.update({
-        where: { id: run.runId },
-        data: buildSubmittedRunData(submitResult),
-      });
-      pollRunCompletion(run.runId).catch((err) => {
-        logger.error("pollRunCompletion failed", err instanceof Error ? err : new Error(String(err)), { runId: run.runId });
-      });
-    } catch (error) {
-      console.error(`Failed to submit run ${run.runId} to ComfyUI:`, error);
-      await prisma.run.delete({ where: { id: run.runId } }).catch(() => {});
-      // Reset project status from "queued" back since the run was deleted
-      await prisma.project.update({
-        where: { id: pos.projectId },
-        data: { status: "draft" },
-      }).catch(() => {});
-      throw new Error("无法连接到 ComfyUI，请检查服务是否运行");
+    // 1. Create Run record with status="queued" (no comfyPromptId yet)
+    const result = await enqueueProjectSectionRunRepo(pos.projectId, sectionId, overrideBatchSize ?? undefined);
+
+    // 2. Submit to ComfyUI synchronously
+    for (const enqueuedRun of result.runs) {
+      const run = await getWorkerRun(enqueuedRun.runId);
+      if (!run) continue;
+
+      try {
+        const submitResult = await submitRunToComfyUI(run);
+        await prisma.run.update({
+          where: { id: run.runId },
+          data: buildSubmittedRunData(submitResult),
+        });
+        pollRunCompletion(run.runId).catch((err) => {
+          logger.error("pollRunCompletion failed", err instanceof Error ? err : new Error(String(err)), { runId: run.runId });
+        });
+      } catch (error) {
+        console.error(`Failed to submit run ${run.runId} to ComfyUI:`, error);
+        await prisma.run.delete({ where: { id: run.runId } }).catch(() => {});
+        // Reset project status from "queued" back since the run was deleted
+        await prisma.project.update({
+          where: { id: pos.projectId },
+          data: { status: "draft" },
+        }).catch(() => {});
+        throw new Error("无法连接到 ComfyUI，请检查服务是否运行");
+      }
+    }
+
+    revalidatePath("/projects");
+    revalidatePath("/queue");
+  } catch (error) {
+    primaryError = error;
+    throw error;
+  } finally {
+    if (priorityPause) {
+      await resumeRunsAfterPriorityPause(priorityPause.runIds, priorityPause.batchId, primaryError);
     }
   }
-
-  revalidatePath("/projects");
-  revalidatePath("/queue");
 }
 
 // ---------------------------------------------------------------------------
@@ -308,10 +484,10 @@ export async function clearRuns(): Promise<{ ok: boolean; count: number; error?:
 // 暂停任务（Run）
 // ---------------------------------------------------------------------------
 
-export async function pauseRun(runId: string): Promise<{ ok: boolean; error?: string }> {
+export async function pauseRun(runId: string, marker?: QueuePauseMarkerInput): Promise<{ ok: boolean; error?: string }> {
   const run = await prisma.run.findUnique({
     where: { id: runId },
-    select: { id: true, status: true, projectId: true, comfyPromptId: true, outputDir: true },
+    select: { id: true, status: true, projectId: true, comfyPromptId: true, outputDir: true, executionMeta: true },
   });
   if (!run) return { ok: false, error: "任务不存在" };
   if (run.status !== "queued" && run.status !== "running") {
@@ -342,6 +518,7 @@ export async function pauseRun(runId: string): Promise<{ ok: boolean; error?: st
     data: {
       status: "paused",
       comfyPromptId: null,
+      executionMeta: buildExecutionMetaUpdate(run.executionMeta, marker),
     },
   });
 
@@ -370,7 +547,7 @@ export async function pauseRun(runId: string): Promise<{ ok: boolean; error?: st
 export async function resumeRun(runId: string): Promise<{ ok: boolean; error?: string }> {
   const run = await prisma.run.findUnique({
     where: { id: runId },
-    select: { id: true, status: true, projectId: true, submittedPrompt: true },
+    select: { id: true, status: true, projectId: true, submittedPrompt: true, executionMeta: true },
   });
   if (!run) return { ok: false, error: "任务不存在" };
   if (run.status !== "paused") {
@@ -412,6 +589,7 @@ export async function resumeRun(runId: string): Promise<{ ok: boolean; error?: s
       startedAt: null,
       finishedAt: null,
       errorMessage: null,
+      executionMeta: buildExecutionMetaUpdate(run.executionMeta),
     },
   });
 
@@ -434,24 +612,44 @@ export async function resumeRun(runId: string): Promise<{ ok: boolean; error?: s
 // 一键暂停所有运行中的任务
 // ---------------------------------------------------------------------------
 
-export async function pauseAllRuns(): Promise<{ ok: boolean; count: number; error?: string }> {
+export async function pauseAllRuns(options?: PauseAllRunsOptions): Promise<PauseAllRunsResult> {
+  const batchId = options?.batchId ?? randomUUID();
   try {
     const activeRuns = await prisma.run.findMany({
       where: { status: { in: ["queued", "running"] } },
       select: { id: true },
+      orderBy: { createdAt: "asc" },
     });
 
     let count = 0;
+    const runIds: string[] = [];
+    const failures: string[] = [];
+    const marker = options?.source ? { source: options.source, batchId } : undefined;
     for (const run of activeRuns) {
-      const result = await pauseRun(run.id);
-      if (result.ok) count++;
+      const result = await pauseRun(run.id, marker);
+      if (result.ok) {
+        count++;
+        runIds.push(run.id);
+      } else {
+        failures.push(`${run.id}: ${result.error ?? "unknown error"}`);
+      }
     }
 
     revalidatePath("/queue");
-    return { ok: true, count };
+    if (failures.length > 0) {
+      return {
+        ok: false,
+        count,
+        runIds,
+        batchId,
+        error: `批量暂停部分失败：${failures.join("; ")}`,
+      };
+    }
+
+    return { ok: true, count, runIds, batchId };
   } catch (e) {
     console.error("Failed to pause all runs:", e);
-    return { ok: false, count: 0, error: "批量暂停失败" };
+    return { ok: false, count: 0, runIds: [], batchId, error: "批量暂停失败" };
   }
 }
 
@@ -459,24 +657,38 @@ export async function pauseAllRuns(): Promise<{ ok: boolean; count: number; erro
 // 一键恢复所有暂停的任务
 // ---------------------------------------------------------------------------
 
-export async function resumeAllRuns(): Promise<{ ok: boolean; count: number; error?: string }> {
+export async function resumeAllRuns(options?: ResumeAllRunsOptions): Promise<ResumeAllRunsResult> {
   try {
-    const pausedRuns = await prisma.run.findMany({
-      where: { status: "paused" },
-      select: { id: true },
+    const uniqueRunIds = options?.runIds ? [...new Set(options.runIds)].filter(Boolean) : undefined;
+    if (uniqueRunIds && uniqueRunIds.length === 0) {
+      return { ok: true, count: 0, runIds: [] };
+    }
+
+    const candidateRuns = await prisma.run.findMany({
+      where: {
+        status: "paused",
+        ...(uniqueRunIds ? { id: { in: uniqueRunIds } } : {}),
+      },
+      select: { id: true, executionMeta: true },
       orderBy: { createdAt: "asc" },
     });
+    const resumeOptions = uniqueRunIds ? { ...(options ?? {}), runIds: uniqueRunIds } : options;
+    const pausedRuns = candidateRuns.filter((run) => matchesResumeOptions(run, resumeOptions));
 
     let count = 0;
+    const runIds: string[] = [];
     for (const run of pausedRuns) {
       const result = await resumeRun(run.id);
-      if (result.ok) count++;
+      if (result.ok) {
+        count++;
+        runIds.push(run.id);
+      }
     }
 
     revalidatePath("/queue");
-    return { ok: true, count };
+    return { ok: true, count, runIds };
   } catch (e) {
     console.error("Failed to resume all runs:", e);
-    return { ok: false, count: 0, error: "批量恢复失败" };
+    return { ok: false, count: 0, runIds: [], error: "批量恢复失败" };
   }
 }

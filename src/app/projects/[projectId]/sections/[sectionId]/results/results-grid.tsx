@@ -63,7 +63,7 @@ export function ResultsGrid({
     if (isPending) return;
     startTransition(async () => {
       try {
-        await runSection(sectionId, tempBatchSize);
+        await runSection(sectionId, tempBatchSize, { prioritize: true });
         toast.success(`已提交运行 (batch ${tempBatchSize})`);
         router.refresh();
       } catch (e) {

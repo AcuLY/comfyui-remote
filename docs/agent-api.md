@@ -84,7 +84,7 @@ or:
 | Sync preset variants from a reference project | `POST /api/agent/projects/:projectId/sync-preset-variants` |
 | Discover projects by title and run the safe preset-variant sync flow | `POST /api/agent/projects/sync-preset-variant-flow` |
 | Manage prompt blocks | `GET/POST /api/projects/:projectId/sections/:sectionId/blocks`, `PATCH/DELETE /api/projects/:projectId/sections/:sectionId/blocks/:blockId` |
-| List queue, clear finished runs, clear active queue | `GET /api/queue`, `POST /api/queue/clear`, `POST /api/queue/clear-active` |
+| List queue, clear finished runs, clear active queue, pause/resume active runs | `GET /api/queue`, `POST /api/queue/clear`, `POST /api/queue/clear-active`, `POST /api/queue/pause-active`, `POST /api/queue/resume-paused` |
 | Cancel a run | `POST /api/runs/:runId/cancel` |
 | Read run detail and workflow | `GET /api/runs/:runId`, `GET /api/runs/:runId/workflow` |
 | Keep or trash generated images | `POST /api/runs/:runId/review/keep`, `POST /api/runs/:runId/review/trash` |
@@ -333,6 +333,8 @@ Deletes one prompt block.
 | `GET` | `/api/queue-data` | none | queue page data; this route is a response-shape exception and may return raw JSON |
 | `POST` | `/api/queue/clear` | none | deletes finished, failed, and cancelled run records |
 | `POST` | `/api/queue/clear-active` | none | cancels queued/running runs and clears matching ComfyUI queue entries |
+| `POST` | `/api/queue/pause-active` | none | pauses queued/running runs, marks only those runs with an internal pause batch, and returns `pausedCount`, `runIds`, and `batchId` |
+| `POST` | `/api/queue/resume-paused` | `{ "batchId": "...", "runIds": ["..."] }` optional | resumes only paused runs marked by `/api/queue/pause-active`; pass the returned `batchId` or `runIds` to restore that batch exactly. Without a body, it still ignores manually paused runs and only resumes runs carrying the API pause marker |
 | `GET` | `/api/runs/:runId` | none | run detail |
 | `GET` | `/api/runs/:runId/workflow` | none | workflow data for the run |
 | `POST` | `/api/runs/:runId/cancel` | none | cancels a queued/running run |
