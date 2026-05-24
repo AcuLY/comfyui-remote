@@ -188,13 +188,15 @@ class ComfyProcessManager {
         this.state === "restarting");
 
     if (shouldKillExternal) {
+      const previousState = this.state;
+      const previousErrorMessage = this.errorMessage;
       this.log("[manager] ComfyUI is not owned by this Next.js process, killing by port...");
       this.stopHealthCheck();
       const result = await this.killByPort();
       if (!result.ok) {
-        this.errorMessage = result.message;
         this.externallyStarted = true;
-        this.setState("running");
+        this.setState(previousState);
+        this.errorMessage = previousErrorMessage ?? result.message;
         this.startHealthCheck();
         return result;
       }
