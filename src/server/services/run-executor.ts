@@ -295,6 +295,12 @@ export async function pollRunCompletion(runId: string): Promise<void> {
         );
 
         if (started) {
+          if (!(await isRunStillPollingPrompt(runId, comfyPromptId))) {
+            runLog.info("Run prompt changed before execution state transition, stopping stale poll");
+            runTimer.done({ status: "superseded" });
+            return;
+          }
+
           const transitionResult = await db.run.updateMany({
             where: { id: runId, status: RunStatus.queued },
             data: { status: RunStatus.running, startedAt: new Date() },
