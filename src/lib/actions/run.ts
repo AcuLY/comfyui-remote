@@ -13,6 +13,7 @@ import {
 } from "@/server/services/run-executor";
 import { getWorkerRun } from "@/server/worker/repository";
 import {
+  clearComfyQueueSnapshotCache,
   deleteComfyQueueItems,
   getComfyQueuePosition,
   interruptComfyPrompt,
@@ -397,6 +398,7 @@ export async function resumeRun(runId: string): Promise<{ ok: boolean; error?: s
     if (!newComfyPromptId) {
       throw new Error("ComfyUI did not return prompt_id");
     }
+    clearComfyQueueSnapshotCache();
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     return { ok: false, error: `无法连接到 ComfyUI: ${msg}` };

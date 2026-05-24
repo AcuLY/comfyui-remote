@@ -540,7 +540,7 @@ export async function submitComfyPrompt(
   }
 
   // A just-submitted prompt can be missing from a stale shared queue snapshot.
-  comfyQueueSnapshotCache = null;
+  clearComfyQueueSnapshotCache();
 
   return promptId;
 }
@@ -559,6 +559,10 @@ type ComfyQueueSnapshotCache = {
 };
 
 let comfyQueueSnapshotCache: ComfyQueueSnapshotCache | null = null;
+
+export function clearComfyQueueSnapshotCache() {
+  comfyQueueSnapshotCache = null;
+}
 
 function extractQueuePromptId(item: unknown): string | null {
   // ComfyUI queue items are arrays (tuples): [number, prompt_id, prompt, extra_data, outputs].
