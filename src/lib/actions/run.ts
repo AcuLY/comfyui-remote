@@ -45,6 +45,7 @@ type RunSectionOptions = {
 type PauseAllRunsOptions = {
   source?: string;
   batchId?: string;
+  statuses?: Array<"queued" | "running">;
 };
 
 type PauseAllRunsResult = {
@@ -237,7 +238,10 @@ export async function runSection(
 
   try {
     if (options?.prioritize) {
-      const pauseResult = await pauseAllRuns({ source: PRIORITY_SECTION_RUN_SOURCE });
+      const pauseResult = await pauseAllRuns({
+        source: PRIORITY_SECTION_RUN_SOURCE,
+        statuses: ["queued"],
+      });
       priorityPause = { runIds: pauseResult.runIds, batchId: pauseResult.batchId };
       if (!pauseResult.ok) {
         throw new Error(pauseResult.error ?? "Failed to pause active runs");
@@ -484,27 +488,39 @@ export async function clearRuns(): Promise<{ ok: boolean; count: number; error?:
 // 暂停任务（Run）
 // ---------------------------------------------------------------------------
 
-async function cancelComfyPromptForPause(promptId: string) {
+async function cancelComfyPromptForPause(promptId: string, options: { allowRunning?: boolean } = {}) {
   for (let attempt = 0; attempt < 2; attempt++) {
     clearComfyQueueSnapshotCache();
     const position = await getComfyQueuePosition(env.comfyApiUrl, promptId);
     if (position === "running") {
+      if (options.allowRunning === false) {
+        return { skipped: true };
+      }
       await interruptComfyPrompt(env.comfyApiUrl);
     } else if (position === "pending") {
       await deleteComfyQueueItems(env.comfyApiUrl, [promptId]);
     } else {
-      return;
+      return { skipped: false };
     }
   }
   clearComfyQueueSnapshotCache();
+  return { skipped: false };
 }
 
-export async function pauseRun(runId: string, marker?: QueuePauseMarkerInput): Promise<{ ok: boolean; error?: string }> {
+export async function pauseRun(
+  runId: string,
+  marker?: QueuePauseMarkerInput,
+  options: { statuses?: Array<"queued" | "running"> } = {},
+): Promise<{ ok: boolean; error?: string; skipped?: boolean }> {
   const run = await prisma.run.findUnique({
     where: { id: runId },
     select: { id: true, status: true, projectId: true, comfyPromptId: true, outputDir: true, executionMeta: true },
   });
   if (!run) return { ok: false, error: "任务不存在" };
+  const allowedStatuses = options.statuses ?? ["queued", "running"];
+  if ((run.status === "queued" || run.status === "running") && !allowedStatuses.includes(run.status)) {
+    return { ok: false, skipped: true, error: `Run status is ${run.status}; skipped pause` };
+  }
   if (run.status !== "queued" && run.status !== "running") {
     return { ok: false, error: `任务状态为「${run.status}」，无法暂停` };
   }
@@ -517,7 +533,12 @@ export async function pauseRun(runId: string, marker?: QueuePauseMarkerInput): P
   // Cancel in ComfyUI (best-effort)
   if (run.comfyPromptId) {
     try {
-      await cancelComfyPromptForPause(run.comfyPromptId);
+      const cancelResult = await cancelComfyPromptForPause(run.comfyPromptId, {
+        allowRunning: allowedStatuses.includes("running"),
+      });
+      if (cancelResult.skipped) {
+        return { ok: false, skipped: true, error: "Prompt is already running; skipped pause" };
+      }
     } catch (e) {
       console.warn("Failed to cancel in ComfyUI during pause:", e);
     }
@@ -624,9 +645,10 @@ export async function resumeRun(runId: string): Promise<{ ok: boolean; error?: s
 
 export async function pauseAllRuns(options?: PauseAllRunsOptions): Promise<PauseAllRunsResult> {
   const batchId = options?.batchId ?? randomUUID();
+  const statuses: Array<"queued" | "running"> = options?.statuses ?? ["queued", "running"];
   try {
     const activeRuns = await prisma.run.findMany({
-      where: { status: { in: ["queued", "running"] } },
+      where: { status: { in: statuses } },
       select: { id: true },
       orderBy: { createdAt: "asc" },
     });
@@ -636,10 +658,12 @@ export async function pauseAllRuns(options?: PauseAllRunsOptions): Promise<Pause
     const failures: string[] = [];
     const marker = options?.source ? { source: options.source, batchId } : undefined;
     for (const run of activeRuns) {
-      const result = await pauseRun(run.id, marker);
+      const result = await pauseRun(run.id, marker, { statuses });
       if (result.ok) {
         count++;
         runIds.push(run.id);
+      } else if (result.skipped) {
+        continue;
       } else {
         failures.push(`${run.id}: ${result.error ?? "unknown error"}`);
       }

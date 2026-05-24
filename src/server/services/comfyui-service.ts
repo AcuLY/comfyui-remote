@@ -49,6 +49,20 @@ export class ComfyPromptExecutionError extends Error {
   }
 }
 
+export class ComfyPromptPollAbortedError extends Error {
+  readonly promptId: string;
+
+  constructor(promptId: string) {
+    super(`Polling stopped for superseded prompt ${promptId}`);
+    this.name = "ComfyPromptPollAbortedError";
+    this.promptId = promptId;
+  }
+}
+
+type PollComfyPromptHistoryOptions = {
+  shouldContinue?: () => boolean | Promise<boolean>;
+};
+
 export type ValidatedComfyPromptDraft = {
   apiUrl: string;
   apiPrompt: JsonRecord;
@@ -719,6 +733,7 @@ export async function waitForPromptToStart(
 export async function pollComfyPromptHistory(
   apiUrl: string,
   promptId: string,
+  options: PollComfyPromptHistoryOptions = {},
 ): Promise<ComfyPromptHistoryEntry> {
   const batchAttempts = env.comfyHistoryMaxAttempts;
   const maxExtensions = 60; // Each extension adds another full batch of attempts
@@ -728,6 +743,10 @@ export async function pollComfyPromptHistory(
   for (let extension = 0; extension <= maxExtensions; extension++) {
     for (let i = 0; i < batchAttempts; i++) {
       totalAttempts++;
+
+      if (options.shouldContinue && !(await options.shouldContinue())) {
+        throw new ComfyPromptPollAbortedError(promptId);
+      }
 
       let payload: unknown;
       try {

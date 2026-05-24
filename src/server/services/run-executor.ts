@@ -21,6 +21,7 @@ import {
   extractOutputImages,
   extractExecutionMeta,
   getComfyQueuePosition,
+  ComfyPromptPollAbortedError,
   type ValidatedComfyPromptDraft,
 } from "@/server/services/comfyui-service";
 import {
@@ -72,6 +73,7 @@ function parseFinalizingMarker(outputDir: string | null) {
 async function claimRunFinalization(
   runId: string,
   currentOutputDir: string | null,
+  comfyPromptId: string,
 ): Promise<boolean> {
   const markerTimestamp = parseFinalizingMarker(currentOutputDir);
   if (markerTimestamp !== null && Date.now() - markerTimestamp < FINALIZING_CLAIM_TTL_MS) {
@@ -83,6 +85,7 @@ async function claimRunFinalization(
       id: runId,
       status: { in: [RunStatus.queued, RunStatus.running] },
       outputDir: currentOutputDir,
+      comfyPromptId,
     },
     data: {
       outputDir: createFinalizingMarker(),
@@ -163,8 +166,21 @@ export async function submitRunToComfyUI(run: WorkerRunSnapshot): Promise<Submit
 
 // ─── Poll ──────────────────────────────────────────────────────────────────
 
-/** Track active polling loops to prevent duplicates for the same run. */
-const activePolls = new Set<string>();
+/** Track active polling loops by run and prompt to prevent stale poll ownership. */
+const activePolls = new Map<string, string>();
+
+async function isRunStillPollingPrompt(runId: string, comfyPromptId: string) {
+  const currentRun = await db.run.findUnique({
+    where: { id: runId },
+    select: { status: true, comfyPromptId: true },
+  });
+
+  return (
+    currentRun?.comfyPromptId === comfyPromptId &&
+    (currentRun.status === RunStatus.queued || currentRun.status === RunStatus.running) &&
+    activePolls.get(runId) === comfyPromptId
+  );
+}
 
 /**
  * Poll a submitted run until it completes.
@@ -172,11 +188,7 @@ const activePolls = new Set<string>();
  * Fire-and-forget from the server action after creating the Run record.
  */
 export async function pollRunCompletion(runId: string): Promise<void> {
-  if (activePolls.has(runId)) {
-    log.debug("Poll already active for run", { runId });
-    return;
-  }
-  activePolls.add(runId);
+  let comfyPromptId: string | null = null;
 
   try {
     const runRecord = await db.run.findUnique({
@@ -209,6 +221,21 @@ export async function pollRunCompletion(runId: string): Promise<void> {
       return;
     }
 
+    comfyPromptId = runRecord.comfyPromptId;
+    const existingPromptId = activePolls.get(runId);
+    if (existingPromptId === comfyPromptId) {
+      log.debug("Poll already active for run prompt", { runId, comfyPromptId });
+      return;
+    }
+    if (existingPromptId) {
+      log.info("Replacing stale poll for run prompt", {
+        runId,
+        previousComfyPromptId: existingPromptId,
+        comfyPromptId,
+      });
+    }
+    activePolls.set(runId, comfyPromptId);
+
     // Reconstruct WorkerRunSnapshot for the helper functions
     const run: WorkerRunSnapshot = {
       runId: runRecord.id,
@@ -230,7 +257,6 @@ export async function pollRunCompletion(runId: string): Promise<void> {
       },
     };
 
-    const comfyPromptId = runRecord.comfyPromptId;
     const runLog = log.child({ runId, comfyPromptId });
     const runTimer = runLog.startTimer("process-run");
 
@@ -294,9 +320,11 @@ export async function pollRunCompletion(runId: string): Promise<void> {
         }
       }
 
+      const pollingComfyPromptId = comfyPromptId;
       const historyEntry = await pollComfyPromptHistory(
         apiUrl,
-        comfyPromptId,
+        pollingComfyPromptId,
+        { shouldContinue: () => isRunStillPollingPrompt(runId, pollingComfyPromptId) },
       );
 
       runLog.debug("ComfyUI prompt completed", {
@@ -307,7 +335,7 @@ export async function pollRunCompletion(runId: string): Promise<void> {
       const executionMeta =
         asJsonRecord(runRecord.executionMeta) ??
         extractExecutionMeta(apiPrompt, promptDraft);
-      const claimedFinalization = await claimRunFinalization(runId, runRecord.outputDir);
+      const claimedFinalization = await claimRunFinalization(runId, runRecord.outputDir, comfyPromptId);
 
       if (!claimedFinalization) {
         runLog.info("Run finalization is already claimed elsewhere, skipping duplicate poll");
@@ -345,13 +373,19 @@ export async function pollRunCompletion(runId: string): Promise<void> {
 
       runTimer.done({ status: "done", imageCount: persistedOutput.images.length });
     } catch (error) {
+      if (error instanceof ComfyPromptPollAbortedError) {
+        runLog.info("Run prompt changed before polling completed, stopping stale poll");
+        runTimer.done({ status: "superseded" });
+        return;
+      }
+
       const errorMessage = formatError(error);
 
       // Check if the run was already completed (e.g. completeWorkerRun succeeded
       // but a later step like audit threw). If so, do NOT delete images.
       const currentRun = await db.run.findUnique({
         where: { id: runId },
-        select: { status: true },
+        select: { status: true, comfyPromptId: true },
       });
 
       if (currentRun?.status === "done") {
@@ -359,6 +393,14 @@ export async function pollRunCompletion(runId: string): Promise<void> {
           error: errorMessage,
         });
         runTimer.done({ status: "done" });
+        return;
+      }
+
+      if (currentRun && currentRun.comfyPromptId !== comfyPromptId) {
+        runLog.info("Run prompt changed before failure handling, skipping stale poll failure", {
+          currentComfyPromptId: currentRun.comfyPromptId,
+        });
+        runTimer.done({ status: "superseded" });
         return;
       }
 
@@ -398,7 +440,9 @@ export async function pollRunCompletion(runId: string): Promise<void> {
       runTimer.done({ status: "failed", error: errorMessage });
     }
   } finally {
-    activePolls.delete(runId);
+    if (comfyPromptId && activePolls.get(runId) === comfyPromptId) {
+      activePolls.delete(runId);
+    }
   }
 }
 
@@ -440,13 +484,13 @@ export async function recoverStaleRuns(): Promise<void> {
         status: { in: [RunStatus.queued, RunStatus.running] },
         comfyPromptId: { not: null },
       },
-      select: { id: true },
+      select: { id: true, comfyPromptId: true },
     });
 
     if (staleRuns.length === 0) return;
 
     // Filter out runs that already have an active polling loop
-    const needsRecovery = staleRuns.filter((r) => !activePolls.has(r.id));
+    const needsRecovery = staleRuns.filter((r) => r.comfyPromptId && activePolls.get(r.id) !== r.comfyPromptId);
 
     if (needsRecovery.length === 0) return;
 
