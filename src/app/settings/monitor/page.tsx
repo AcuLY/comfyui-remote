@@ -34,6 +34,10 @@ type ComfyStatus = {
   errorMessage: string | null;
 };
 
+type ComfyActionResponse =
+  | { ok: true; data?: { message?: string } }
+  | { ok: false; error?: { message?: string } };
+
 // ---------------------------------------------------------------------------
 // State badge
 // ---------------------------------------------------------------------------
@@ -133,32 +137,6 @@ const STDERR_ERROR_PATTERNS = [
   /SyntaxError/i,
 ];
 
-const STDERR_HARMLESS_PREFIXES = [
-  "[LoRA-Manager]",
-  "[ComfyUI-Manager]",
-  "Import times for",
-  "### ",
-  "Context impl",
-  "Assets scan",
-  "Starting server",
-  "To see the GUI",
-  "ComfyUI-GGUF:",
-  "Warning:",
-  "sageattention",
-  "0.0 seconds:",
-  "0.1 seconds:",
-  "0.2 seconds:",
-  "0.3 seconds:",
-  "0.4 seconds:",
-  "0.5 seconds:",
-  "0.6 seconds:",
-  "0.7 seconds:",
-  "0.8 seconds:",
-  "0.9 seconds:",
-  "1.",
-  "2.",
-];
-
 function getLogLineColor(line: string): string {
   // Manager internal messages
   if (line.includes("[manager]")) return "text-sky-400/70";
@@ -187,6 +165,7 @@ export default function MonitorPage() {
   const [status, setStatus] = useState<ComfyStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionPending, setActionPending] = useState(false);
+  const [actionResult, setActionResult] = useState<{ ok: boolean; message: string } | null>(null);
   const [probePending, setProbePending] = useState(false);
   const [probeResult, setProbeResult] = useState<{ ok: boolean; latencyMs: number; error?: string } | null>(null);
   const logContainerRef = useRef<HTMLDivElement>(null);
@@ -229,13 +208,21 @@ export default function MonitorPage() {
   // Actions
   const performAction = useCallback(async (action: "start" | "stop" | "restart") => {
     setActionPending(true);
+    setActionResult(null);
     try {
-      await fetch(`/api/comfy/${action}`, { method: "POST" });
+      const res = await fetch(`/api/comfy/${action}`, { method: "POST" });
+      const json = (await res.json().catch(() => null)) as ComfyActionResponse | null;
+      if (!res.ok || json?.ok !== true) {
+        const message = json?.ok === false ? json.error?.message : null;
+        throw new Error(message ?? `Request failed (${res.status})`);
+      }
+      setActionResult({ ok: true, message: json.data?.message ?? "Action completed" });
       // Small delay then refresh
       await new Promise((r) => setTimeout(r, 500));
       await fetchStatus();
-    } catch {
-      // Silently fail, next poll will show state
+    } catch (error) {
+      setActionResult({ ok: false, message: error instanceof Error ? error.message : "Request failed" });
+      await fetchStatus();
     } finally {
       setActionPending(false);
     }
@@ -368,6 +355,11 @@ export default function MonitorPage() {
               icon={HeartPulse}
               label={probePending ? "探测中..." : "健康探测"}
             />
+          </div>
+        )}
+        {actionResult && (
+          <div className={`mt-2 rounded-lg border p-2 text-xs ${actionResult.ok ? "border-emerald-500/20 bg-emerald-500/5 text-emerald-300" : "border-red-500/20 bg-red-500/5 text-red-300"}`}>
+            {actionResult.message}
           </div>
         )}
         {!status.managedMode && (

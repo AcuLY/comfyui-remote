@@ -121,7 +121,7 @@ class ComfyProcessManager {
   getStatus(): ComfyProcessStatus {
     return {
       state: this.state,
-      pid: this.process?.pid ?? null,
+      pid: this.getStatusPid(),
       uptime:
         this.startedAt !== null ? Math.floor((Date.now() - this.startedAt) / 1000) : null,
       lastHealthCheck: this.lastHealthCheck,
@@ -153,10 +153,14 @@ class ComfyProcessManager {
     // Check if ComfyUI is already reachable (e.g. started externally)
     const alreadyRunning = await this.checkExistingComfyUI();
     if (alreadyRunning) {
-      this.externallyStarted = true;
-      this.setState("running");
+      this.markExternalRunning("start check");
       this.startHealthCheck();
       return { ok: true, message: "ComfyUI is already running (external)" };
+    }
+    if (this.hasConfiguredPortListener()) {
+      this.markExternalUnhealthy("start check", "ComfyUI is listening but health check failed");
+      this.startHealthCheck();
+      return { ok: true, message: "ComfyUI is already listening (external, unhealthy)" };
     }
 
     this.maxRestartsReached = false;
@@ -175,13 +179,31 @@ class ComfyProcessManager {
 
   async stop(): Promise<{ ok: boolean; message: string }> {
     // ComfyUI detected as externally started — kill by port
-    if (this.externallyStarted && (this.state === "running" || this.state === "unhealthy")) {
-      this.log("[manager] ComfyUI was started externally, killing by port...");
+    const shouldKillExternal =
+      !this.process &&
+      (this.externallyStarted ||
+        this.state === "running" ||
+        this.state === "unhealthy" ||
+        this.state === "starting" ||
+        this.state === "restarting");
+
+    if (shouldKillExternal) {
+      this.log("[manager] ComfyUI is not owned by this Next.js process, killing by port...");
       this.stopHealthCheck();
+      const result = await this.killByPort();
+      if (!result.ok) {
+        this.errorMessage = result.message;
+        this.externallyStarted = true;
+        this.setState("running");
+        this.startHealthCheck();
+        return result;
+      }
+
       this.setState("stopped");
+      this.startedAt = null;
+      this.spawnedAt = null;
       this.externallyStarted = false;
-      await this.killByPort();
-      return { ok: true, message: "ComfyUI external process kill signal sent" };
+      return result;
     }
 
     if (!this.process || this.state === "stopped") {
@@ -365,12 +387,12 @@ class ComfyProcessManager {
    * Used when ComfyUI was started externally (we don't hold the ChildProcess handle).
    * Uses `lsof` (macOS/Linux) or `netstat` (Windows) to find the PID.
    */
-  private async killByPort() {
+  private async killByPort(): Promise<{ ok: boolean; message: string }> {
     const port = this.extractPortFromUrl(env.comfyApiUrl);
     if (!port) {
-      this.log("[manager] Cannot extract port from comfyApiUrl, trying taskkill on all python processes...");
-      this.execKillAll("python");
-      return;
+      const message = "Cannot extract port from COMFY_API_URL; refusing to kill unrelated Python processes";
+      this.log(`[manager] ${message}`);
+      return { ok: false, message };
     }
 
     this.log(`[manager] Looking for processes on port ${port}...`);
@@ -378,18 +400,27 @@ class ComfyProcessManager {
     try {
       const pids = this.findPidsOnPort(port);
       if (pids.length === 0) {
-        this.log(`[manager] No processes found on port ${port}`);
-        return;
+        const message = `No ComfyUI process found on port ${port}`;
+        this.log(`[manager] ${message}`);
+        return { ok: false, message };
       }
 
       this.log(`[manager] Found PIDs on port ${port}: ${pids.join(", ")}`);
 
+      let killed = 0;
       for (const pid of pids) {
-        this.killPid(pid);
+        if (this.killPid(pid)) killed += 1;
       }
+      if (killed === 0) {
+        const message = `Failed to stop processes on port ${port}`;
+        this.log(`[manager] ${message}`);
+        return { ok: false, message };
+      }
+      return { ok: true, message: `ComfyUI stop signal sent to ${killed} process(es)` };
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       this.log(`[manager] Failed to kill by port: ${message}`);
+      return { ok: false, message };
     }
   }
 
@@ -436,12 +467,12 @@ class ComfyProcessManager {
     }
   }
 
-  private killPid(pid: number) {
+  private killPid(pid: number): boolean {
     const isWin = process.platform === "win32";
 
     try {
       if (isWin) {
-        execSync(`taskkill /F /PID ${pid}`, { encoding: "utf8", timeout: 5000 });
+        execSync(`taskkill /T /F /PID ${pid}`, { encoding: "utf8", timeout: 5000 });
         this.log(`[manager] Killed PID ${pid} via taskkill`);
       } else {
         process.kill(pid, "SIGTERM");
@@ -458,26 +489,11 @@ class ComfyProcessManager {
           }
         }, 3000);
       }
+      return true;
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       this.log(`[manager] Failed to kill PID ${pid}: ${message}`);
-    }
-  }
-
-  private execKillAll(name: string) {
-    const isWin = process.platform === "win32";
-
-    try {
-      if (isWin) {
-        execSync(`taskkill /F /IM ${name}.exe`, { encoding: "utf8", timeout: 10000 });
-        this.log(`[manager] Killed all ${name}.exe processes`);
-      } else {
-        execSync(`pkill -f ${name}`, { encoding: "utf8", timeout: 10000 });
-        this.log(`[manager] Sent pkill for ${name}`);
-      }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      this.log(`[manager] execKillAll failed: ${message}`);
+      return false;
     }
   }
 
@@ -541,7 +557,9 @@ class ComfyProcessManager {
         this.lastHealthCheck = new Date().toISOString();
         this.lastHealthOk = true;
         this.consecutiveHealthFailures = 0;
-        if (this.state !== "running") {
+        if (!this.process) {
+          this.markExternalRunning("manual probe");
+        } else if (this.state !== "running") {
           this.log(`[health] Manual probe: ComfyUI is responsive ✓, transitioning from ${this.state} → running`);
           this.setState("running");
         }
@@ -551,7 +569,9 @@ class ComfyProcessManager {
       this.lastHealthCheck = new Date().toISOString();
       this.lastHealthOk = false;
       this.consecutiveHealthFailures += 1;
-      if (this.state === "running") {
+      if (!this.process && this.hasConfiguredPortListener()) {
+        this.markExternalUnhealthy("manual probe", `HTTP ${res.status}`);
+      } else if (this.state === "running") {
         this.log(`[health] Manual probe: HTTP ${res.status} (${this.consecutiveHealthFailures} consecutive failures)`);
         if (this.consecutiveHealthFailures >= ComfyProcessManager.UNHEALTHY_THRESHOLD) {
           this.setState("unhealthy");
@@ -564,7 +584,9 @@ class ComfyProcessManager {
       this.lastHealthCheck = new Date().toISOString();
       this.lastHealthOk = false;
       this.consecutiveHealthFailures += 1;
-      if (this.state === "running") {
+      if (!this.process && this.hasConfiguredPortListener()) {
+        this.markExternalUnhealthy("manual probe", String(err));
+      } else if (this.state === "running") {
         this.log(`[health] Manual probe: ComfyUI is unreachable (${this.consecutiveHealthFailures} consecutive failures)`);
         if (this.consecutiveHealthFailures >= ComfyProcessManager.UNHEALTHY_THRESHOLD) {
           this.setState("unhealthy");
@@ -587,6 +609,11 @@ class ComfyProcessManager {
         this.lastHealthOk = true;
         this.consecutiveHealthFailures = 0;
 
+        if (!this.process) {
+          this.markExternalRunning("health check");
+          return;
+        }
+
         // Transition to running if we were starting
         if (this.state === "starting" || this.state === "unhealthy" || this.state === "restarting") {
           this.log("[health] ComfyUI is responsive ✓");
@@ -601,6 +628,11 @@ class ComfyProcessManager {
 
     this.lastHealthOk = false;
     this.consecutiveHealthFailures += 1;
+
+    if (!this.process && this.hasConfiguredPortListener()) {
+      this.markExternalUnhealthy("health check", "Health check failed while ComfyUI port is listening");
+      return;
+    }
 
     // During startup grace period, don't escalate to unhealthy
     const inGracePeriod =
@@ -708,6 +740,51 @@ class ComfyProcessManager {
     if (this.state !== newState) {
       this.state = newState;
     }
+  }
+
+  private getStatusPid(): number | null {
+    if (this.process?.pid) return this.process.pid;
+    if (
+      this.state !== "running" &&
+      this.state !== "unhealthy" &&
+      this.state !== "starting" &&
+      this.state !== "restarting"
+    ) {
+      return null;
+    }
+
+    const port = this.extractPortFromUrl(env.comfyApiUrl);
+    if (!port) return null;
+    return this.findPidsOnPort(port)[0] ?? null;
+  }
+
+  private hasConfiguredPortListener(): boolean {
+    const port = this.extractPortFromUrl(env.comfyApiUrl);
+    return port !== null && this.findPidsOnPort(port).length > 0;
+  }
+
+  private markExternalRunning(source: string) {
+    if (!this.externallyStarted || this.state !== "running") {
+      this.log(`[manager] ComfyUI is responsive via ${source}; treating it as an external process`);
+    }
+    this.process = null;
+    this.startedAt = null;
+    this.spawnedAt = null;
+    this.errorMessage = null;
+    this.externallyStarted = true;
+    this.setState("running");
+  }
+
+  private markExternalUnhealthy(source: string, message: string) {
+    if (!this.externallyStarted || this.state !== "unhealthy") {
+      this.log(`[manager] ComfyUI is listening via ${source}, but health check failed; treating it as external unhealthy`);
+    }
+    this.process = null;
+    this.startedAt = null;
+    this.spawnedAt = null;
+    this.errorMessage = message;
+    this.externallyStarted = true;
+    this.setState("unhealthy");
   }
 
   private log(message: string) {
