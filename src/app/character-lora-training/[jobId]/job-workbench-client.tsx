@@ -1136,6 +1136,30 @@ export function JobWorkbenchClient({
     });
   }
 
+  function handleRerunFromImage(image: CharacterLoraCandidateImage, formData: FormData) {
+    if (!image.sectionId) {
+      toast.error("候选图缺少 sectionId，无法基于它重跑");
+      return;
+    }
+
+    const userInstruction = readOptionalString(formData, "userInstruction");
+    if (!userInstruction) {
+      toast.error("先填写基于候选图的修改要求");
+      return;
+    }
+
+    runAction(`section.rerun.${image.id}`, "基于候选图的重跑已入队", async () => {
+      await enqueueCharacterLoraSectionGenerationRun(image.sectionId!, {
+        provider: sectionProvider,
+        userInstruction,
+        negativePrompt: readOptionalString(formData, "negativePrompt") ?? undefined,
+        parentRunId: image.generationRunId,
+        previousCandidateImageIds: [image.id],
+        toolParams: buildImageToolParams(sectionSize, sectionQuality),
+      });
+    });
+  }
+
   function handleSectionRefreshLineage(sectionKey: string, sectionId: string) {
     if (!job.currentCanonicalVersionId || !job.currentPromptCardVersionId) {
       toast.error("需要 current canonical 和 Prompt Card 后才能刷新 section lineage");
@@ -2013,9 +2037,11 @@ export function JobWorkbenchClient({
                 defaultCaption={`${job.triggerToken}, ${job.characterName}`}
                 isPending={isPending}
                 captionLoading={isBusy(`caption.${image.id}`)}
+                rerunLoading={isBusy(`section.rerun.${image.id}`)}
                 onSelectedChange={(selected) => setImageSelected(image.id, selected)}
                 onCaption={(formData) => handleCaption(image.id, formData)}
                 onReview={(status) => handleReview([image.id], status)}
+                onRerunFromImage={(formData) => handleRerunFromImage(image, formData)}
               />
             ))}
           </div>
@@ -3194,9 +3220,11 @@ function CandidateImageCard({
   defaultCaption,
   isPending,
   captionLoading,
+  rerunLoading,
   onSelectedChange,
   onCaption,
   onReview,
+  onRerunFromImage,
 }: {
   jobId: string;
   image: CharacterLoraCandidateImage;
@@ -3211,9 +3239,11 @@ function CandidateImageCard({
   defaultCaption: string;
   isPending: boolean;
   captionLoading: boolean;
+  rerunLoading: boolean;
   onSelectedChange: (selected: boolean) => void;
   onCaption: (formData: FormData) => void;
   onReview: (status: ReviewWritableStatus) => void;
+  onRerunFromImage: (formData: FormData) => void;
 }) {
   const rejectReasons = extractRejectReasons(image.rejectReasons);
   const rejectSuggestions = getRejectReasonSuggestions(rejectReasons);
@@ -3363,6 +3393,22 @@ function CandidateImageCard({
             {rejectSuggestions.join(" ")}
           </div>
         ) : null}
+        <form action={onRerunFromImage} className="grid gap-2 rounded-lg border border-sky-400/20 bg-sky-500/10 p-2">
+          <input type="hidden" name="parentRunId" value={image.generationRunId} />
+          <input type="hidden" name="previousCandidateImageIds" value={image.id} />
+          <textarea
+            name="userInstruction"
+            rows={3}
+            placeholder="基于此图继续修改：姿势、表情、构图、细节..."
+            className="min-w-0 rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs leading-5 text-white"
+          />
+          <input
+            name="negativePrompt"
+            placeholder="负面提示词，可选"
+            className="min-w-0 rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white"
+          />
+          <ActionButton icon={RefreshCw} label="基于此图重跑" loading={rerunLoading} disabled={isPending || !image.sectionId} />
+        </form>
         <form action={onCaption} className="grid gap-2">
           <input
             name="captionDraft"

@@ -19,12 +19,6 @@ import { enqueueSectionRunAction, instantiateSectionsAction } from "../workflow-
 
 export const dynamic = "force-dynamic";
 
-async function enqueueSectionRunFormAction(sectionId: string, jobId: string, formData: FormData): Promise<void> {
-  "use server";
-
-  await enqueueSectionRunAction(sectionId, jobId, formData);
-}
-
 export default async function SectionsPage({
   params,
 }: {
@@ -104,11 +98,17 @@ export default async function SectionsPage({
                   </span>
                   <span className="text-xs text-zinc-500">{formatDate(section.updatedAt)}</span>
                   <div className="flex items-center gap-2">
-                    <form action={enqueueSectionRunFormAction.bind(null, section.id, job.id)}>
-                      <button disabled={!canGenerate || !section.canonicalVersionId || !section.promptCardVersionId || section.status === "paused"} className="h-8 rounded-md bg-emerald-500 px-2 text-xs font-medium text-white transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50">
-                        生成
-                      </button>
-                    </form>
+                    <WorkflowActionForm
+                      action={enqueueSectionRunAction.bind(null, section.id, job.id)}
+                      submitLabel="生成"
+                      pendingLabel="入队中"
+                      successMessage="候选图任务已入队"
+                      disabled={!canGenerate || !section.canonicalVersionId || !section.promptCardVersionId || section.status === "paused"}
+                      className="contents"
+                      buttonClassName="h-8 rounded-md bg-emerald-500 px-2 text-xs font-medium text-white transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <input type="hidden" name="provider" value="openai-codex" />
+                    </WorkflowActionForm>
                     <Link href={`/character-lora-training/${job.id}/sections/${section.id}`} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/10 text-zinc-300 transition hover:bg-white/[0.06]">
                       <ArrowRight className="size-4" />
                     </Link>

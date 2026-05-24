@@ -33,15 +33,20 @@ export async function uploadSourceImageAction(jobId: string, formData: FormData)
   }
 }
 
-export async function enqueueCanonicalAction(jobId: string, formData: FormData) {
-  const sourceImageIds = formData.getAll("sourceImageIds").map(String).filter(Boolean);
-  await enqueueCharacterLoraCanonicalGenerationRun(jobId, {
-    provider: stringOrUndefined(formData.get("provider")),
-    sourceImageIds: sourceImageIds.length > 0 ? sourceImageIds : undefined,
-    visualPrompt: stringOrUndefined(formData.get("visualPrompt")),
-    negativePrompt: stringOrNull(formData.get("negativePrompt")),
-  });
-  revalidateJob(jobId);
+export async function enqueueCanonicalAction(jobId: string, formData: FormData): Promise<WorkflowActionResult> {
+  try {
+    const sourceImageIds = formData.getAll("sourceImageIds").map(String).filter(Boolean);
+    const run = await enqueueCharacterLoraCanonicalGenerationRun(jobId, {
+      provider: stringOrUndefined(formData.get("provider")),
+      sourceImageIds: sourceImageIds.length > 0 ? sourceImageIds : undefined,
+      visualPrompt: stringOrUndefined(formData.get("visualPrompt")),
+      negativePrompt: stringOrNull(formData.get("negativePrompt")),
+    });
+    revalidateJob(jobId);
+    return { ok: true, message: `已入队人设图 run ${compactActionId(run.id)} / task ${compactActionId(run.workerTaskId)}。` };
+  } catch (error) {
+    return toActionResult(error);
+  }
 }
 
 export async function registerManualCanonicalAction(jobId: string, formData: FormData) {
@@ -80,13 +85,23 @@ export async function instantiateSectionsAction(jobId: string) {
   revalidateJob(jobId);
 }
 
-export async function enqueueSectionRunAction(sectionId: string, jobId: string, formData: FormData) {
-  await enqueueCharacterLoraSectionGenerationRun(sectionId, {
-    provider: stringOrUndefined(formData.get("provider")),
-    userInstruction: stringOrNull(formData.get("userInstruction")),
-    negativePrompt: stringOrNull(formData.get("negativePrompt")),
-  });
-  revalidateJob(jobId);
+export async function enqueueSectionRunAction(sectionId: string, jobId: string, formData: FormData): Promise<WorkflowActionResult> {
+  try {
+    const previousCandidateImageIds = formData.getAll("previousCandidateImageIds").map(String).filter(Boolean);
+    const sourceImageIds = formData.getAll("sourceImageIds").map(String).filter(Boolean);
+    const run = await enqueueCharacterLoraSectionGenerationRun(sectionId, {
+      provider: stringOrUndefined(formData.get("provider")),
+      userInstruction: stringOrNull(formData.get("userInstruction")),
+      negativePrompt: stringOrNull(formData.get("negativePrompt")),
+      parentRunId: stringOrUndefined(formData.get("parentRunId")),
+      previousCandidateImageIds: previousCandidateImageIds.length > 0 ? previousCandidateImageIds : undefined,
+      sourceImageIds: sourceImageIds.length > 0 ? sourceImageIds : undefined,
+    });
+    revalidateJob(jobId);
+    return { ok: true, message: `已入队候选图 run ${compactActionId(run.id)} / task ${compactActionId(run.workerTaskId)}。` };
+  } catch (error) {
+    return toActionResult(error);
+  }
 }
 
 export async function reviewCandidateAction(jobId: string, imageId: string, reviewStatus: "pending" | "keep" | "reject" | "excluded", formData: FormData) {
@@ -204,6 +219,11 @@ function positiveNumberOrUndefined(value: FormDataEntryValue | null) {
   if (!text) return undefined;
   const numberValue = Number(text);
   return Number.isFinite(numberValue) && numberValue > 0 ? numberValue : undefined;
+}
+
+function compactActionId(value: string | null | undefined) {
+  if (!value) return "-";
+  return value.length > 12 ? `${value.slice(0, 8)}...${value.slice(-4)}` : value;
 }
 
 function toActionResult(error: unknown): WorkflowActionResult {

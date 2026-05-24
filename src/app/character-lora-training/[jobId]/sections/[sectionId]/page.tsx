@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 
 import {
+  getCharacterLoraJobReport,
   getCharacterLoraTrainingJob,
   listCharacterLoraCandidateImages,
   listCharacterLoraJobSections,
@@ -16,15 +17,10 @@ import {
   compactId,
   formatDate,
 } from "../../shared-ui";
+import { WorkflowActionForm } from "../../workflow-action-form";
 import { enqueueSectionRunAction, reviewCandidateAction, updateCaptionAction } from "../../workflow-actions";
 
 export const dynamic = "force-dynamic";
-
-async function enqueueSectionRunFormAction(sectionId: string, jobId: string, formData: FormData): Promise<void> {
-  "use server";
-
-  await enqueueSectionRunAction(sectionId, jobId, formData);
-}
 
 export default async function SectionDetailPage({
   params,
@@ -38,9 +34,10 @@ export default async function SectionDetailPage({
   });
   if (!job) notFound();
 
-  const [sections, candidateImages] = await Promise.all([
+  const [sections, candidateImages, report] = await Promise.all([
     listCharacterLoraJobSections(jobId),
     listCharacterLoraCandidateImages(jobId, { sectionId }),
+    getCharacterLoraJobReport(jobId),
   ]);
   const section = sections.find((item) => item.id === sectionId);
   if (!section) notFound();
@@ -54,6 +51,15 @@ export default async function SectionDetailPage({
     section.status === "paused" ? "模块已暂停" : null,
   ].filter((reason): reason is string => Boolean(reason));
   const canGenerate = blockingReasons.length === 0;
+  const sectionGenerationRuns = report.generationRuns.filter((run) => run.sectionId === sectionId);
+  const sectionGenerationRunIds = new Set(sectionGenerationRuns.map((run) => run.id));
+  const sectionWorkerTasks = report.workerTasks.filter(
+    (task) => task.workerType === "image_generation" && task.targetType === "generationRun" && sectionGenerationRunIds.has(task.targetId),
+  );
+  const taskByRunId = new Map(sectionWorkerTasks.map((task) => [task.targetId, task]));
+  const latestSectionRun = sectionGenerationRuns.at(-1) ?? null;
+  const activeSectionTasks = sectionWorkerTasks.filter((task) => task.status === "queued" || task.status === "running");
+  const failedSectionTasks = sectionWorkerTasks.filter((task) => task.status === "failed");
 
   return (
     <JobPageShell
@@ -79,7 +85,14 @@ export default async function SectionDetailPage({
             <InfoRow label="生成批次" value={section.counts.generationRuns} />
             <InfoRow label="更新时间" value={formatDate(section.updatedAt)} />
           </dl>
-          <form action={enqueueSectionRunFormAction.bind(null, section.id, job.id)} className="mt-4 space-y-3 rounded-lg border border-white/10 bg-white/[0.03] p-3">
+          <WorkflowActionForm
+            action={enqueueSectionRunAction.bind(null, section.id, job.id)}
+            submitLabel="入队生成本模块"
+            pendingLabel="正在入队"
+            successMessage="候选图任务已入队"
+            disabled={!canGenerate}
+            className="mt-4 space-y-3 rounded-lg border border-white/10 bg-white/[0.03] p-3"
+          >
             {!canGenerate ? (
               <div className="rounded-md border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
                 阻塞：{blockingReasons.join("；")}
@@ -100,55 +113,124 @@ export default async function SectionDetailPage({
               负面提示词
               <input name="negativePrompt" placeholder="可选" className="mt-1 w-full rounded-md border border-white/10 bg-black/30 px-2 py-2 text-sm text-zinc-200 outline-none transition focus:border-sky-400" />
             </label>
-            <button disabled={!canGenerate} className="h-9 rounded-md bg-emerald-500 px-3 text-xs font-medium text-white transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50">
-              入队生成本模块
-            </button>
-          </form>
+          </WorkflowActionForm>
         </SimpleSection>
 
-        <SimpleSection title="候选训练图" subtitle={`${keptImages.length} keep / ${candidateImages.length} total`}>
-          {candidateImages.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-white/10 py-10 text-center text-sm text-zinc-500">
-              暂无候选训练图
+        <div className="space-y-4">
+          <SimpleSection title="任务状态" subtitle={`${sectionGenerationRuns.length} 个 generation run / ${sectionWorkerTasks.length} 个 worker task`}>
+            <div className="grid gap-2 sm:grid-cols-3">
+              <div className="rounded-lg border border-white/10 bg-black/20 p-3 text-xs text-zinc-300">
+                <div className="text-[11px] text-zinc-500">最新 run</div>
+                <div className="mt-1 font-mono text-zinc-100">{compactId(latestSectionRun?.id)}</div>
+                <div className="mt-1">{latestSectionRun ? <StatusPill value={latestSectionRun.status} /> : "-"}</div>
+              </div>
+              <div className="rounded-lg border border-white/10 bg-black/20 p-3 text-xs text-zinc-300">
+                <div className="text-[11px] text-zinc-500">进行中任务</div>
+                <div className="mt-1 text-xl font-semibold text-white">{activeSectionTasks.length}</div>
+                <div className="mt-1 text-zinc-500">queued/running worker tasks</div>
+              </div>
+              <div className="rounded-lg border border-white/10 bg-black/20 p-3 text-xs text-zinc-300">
+                <div className="text-[11px] text-zinc-500">失败任务</div>
+                <div className="mt-1 text-xl font-semibold text-white">{failedSectionTasks.length}</div>
+                <div className="mt-1 text-zinc-500">failed worker tasks</div>
+              </div>
             </div>
-          ) : (
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {candidateImages.map((image) => (
-                <div key={image.id} className="rounded-lg border border-white/10 bg-white/[0.03] p-2">
-                  <ArtifactThumb jobId={job.id} relativePath={image.relativePath} alt={image.id} />
-                  <div className="mt-2 flex items-center justify-between gap-2 text-xs">
-                    <StatusPill value={image.reviewStatus} />
-                    <span className="font-mono text-zinc-500">{compactId(image.id)}</span>
+            {sectionGenerationRuns.length === 0 ? (
+              <div className="mt-3 rounded-lg border border-dashed border-white/10 py-6 text-center text-sm text-zinc-500">
+                暂无候选图生成任务。入队后这里会显示 run / worker task / lease / heartbeat。
+              </div>
+            ) : (
+              <div className="mt-3 divide-y divide-white/10 overflow-hidden rounded-lg border border-white/10">
+                {[...sectionGenerationRuns].reverse().map((run) => {
+                  const task = taskByRunId.get(run.id);
+                  return (
+                    <div key={run.id} className="grid gap-2 p-3 text-xs text-zinc-400 md:grid-cols-[0.8fr_0.8fr_1fr_1fr]">
+                      <div className="min-w-0">
+                        <div className="font-mono text-zinc-100">{compactId(run.id)}</div>
+                        <div className="mt-1"><StatusPill value={run.status} /></div>
+                        <div className="mt-1">{formatDate(run.createdAt)}</div>
+                      </div>
+                      <div className="min-w-0 break-words">
+                        <div className="text-zinc-200">{run.provider}</div>
+                        <div>{run.imageModel ?? run.hostModel ?? "-"}</div>
+                        <div>parent {compactId(run.parentRunId)}</div>
+                      </div>
+                      <div className="min-w-0 break-words">
+                        <div className="text-zinc-200">task {compactId(task?.id)}</div>
+                        <div>{task ? <StatusPill value={task.status} /> : "未找到 worker task"}</div>
+                        <div>attempt {task?.attemptCount ?? 0}</div>
+                      </div>
+                      <div className="min-w-0 break-words">
+                        <div>lease {task?.leaseOwner ?? "-"}</div>
+                        <div>heartbeat {formatDate(task?.heartbeatAt)}</div>
+                        <div className={task?.errorSummary ? "text-rose-200" : "text-zinc-500"}>{task?.errorSummary ?? "-"}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </SimpleSection>
+
+          <SimpleSection title="候选训练图" subtitle={`${keptImages.length} keep / ${candidateImages.length} total`}>
+            {candidateImages.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-white/10 py-10 text-center text-sm text-zinc-500">
+                暂无候选训练图
+              </div>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {candidateImages.map((image) => (
+                  <div key={image.id} className="rounded-lg border border-white/10 bg-white/[0.03] p-2">
+                    <ArtifactThumb jobId={job.id} relativePath={image.relativePath} alt={image.id} />
+                    <div className="mt-2 flex items-center justify-between gap-2 text-xs">
+                      <StatusPill value={image.reviewStatus} />
+                      <span className="font-mono text-zinc-500">{compactId(image.id)}</span>
+                    </div>
+                    <div className="mt-1 break-all font-mono text-[11px] text-zinc-500">run {compactId(image.generationRunId)}</div>
+                    <WorkflowActionForm
+                      action={enqueueSectionRunAction.bind(null, section.id, job.id)}
+                      submitLabel="基于此图重跑"
+                      pendingLabel="重跑入队中"
+                      successMessage="基于候选图的重跑任务已入队"
+                      disabled={!canGenerate}
+                      className="mt-2 space-y-2 rounded-md border border-sky-500/20 bg-sky-500/10 p-2"
+                      buttonClassName="h-8 w-full rounded-md bg-sky-500 px-2 text-xs font-medium text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <input type="hidden" name="provider" value="openai-codex" />
+                      <input type="hidden" name="parentRunId" value={image.generationRunId} />
+                      <input type="hidden" name="previousCandidateImageIds" value={image.id} />
+                      <textarea name="userInstruction" rows={3} required placeholder="基于这张候选图继续修改：姿势、表情、构图、细节..." className="w-full rounded-md border border-white/10 bg-black/30 px-2 py-2 text-xs leading-5 text-zinc-200 outline-none transition focus:border-sky-400" />
+                    </WorkflowActionForm>
+                    <form action={updateCaptionAction.bind(null, job.id, image.id)} className="mt-2 space-y-2">
+                      <textarea name="captionDraft" rows={4} defaultValue={image.captionDraft ?? ""} required className="w-full rounded-md border border-white/10 bg-black/30 px-2 py-2 text-xs leading-5 text-zinc-200 outline-none transition focus:border-sky-400" />
+                      <button className="h-8 rounded-md border border-white/10 px-2 text-xs text-zinc-200 transition hover:bg-white/[0.06]">
+                        保存 caption
+                      </button>
+                    </form>
+                    <div className="mt-2 grid grid-cols-3 gap-2">
+                      <form action={reviewCandidateAction.bind(null, job.id, image.id, "keep")}>
+                        <button disabled={image.reviewStatus === "keep" || image.reviewStatus === "included_in_training"} className="h-8 w-full rounded-md bg-emerald-500 px-2 text-xs font-medium text-white transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50">
+                          keep
+                        </button>
+                      </form>
+                      <form action={reviewCandidateAction.bind(null, job.id, image.id, "reject")}>
+                        <input type="hidden" name="rejectReasons" value="other" />
+                        <button disabled={image.reviewStatus === "reject"} className="h-8 w-full rounded-md border border-rose-500/30 px-2 text-xs font-medium text-rose-200 transition hover:bg-rose-500/10 disabled:cursor-not-allowed disabled:opacity-50">
+                          reject
+                        </button>
+                      </form>
+                      <form action={reviewCandidateAction.bind(null, job.id, image.id, "pending")}>
+                        <button disabled={image.reviewStatus === "pending"} className="h-8 w-full rounded-md border border-white/10 px-2 text-xs text-zinc-200 transition hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-50">
+                          pending
+                        </button>
+                      </form>
+                    </div>
                   </div>
-                  <form action={updateCaptionAction.bind(null, job.id, image.id)} className="mt-2 space-y-2">
-                    <textarea name="captionDraft" rows={4} defaultValue={image.captionDraft ?? ""} required className="w-full rounded-md border border-white/10 bg-black/30 px-2 py-2 text-xs leading-5 text-zinc-200 outline-none transition focus:border-sky-400" />
-                    <button className="h-8 rounded-md border border-white/10 px-2 text-xs text-zinc-200 transition hover:bg-white/[0.06]">
-                      保存 caption
-                    </button>
-                  </form>
-                  <div className="mt-2 grid grid-cols-3 gap-2">
-                    <form action={reviewCandidateAction.bind(null, job.id, image.id, "keep")}>
-                      <button disabled={image.reviewStatus === "keep" || image.reviewStatus === "included_in_training"} className="h-8 w-full rounded-md bg-emerald-500 px-2 text-xs font-medium text-white transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50">
-                        keep
-                      </button>
-                    </form>
-                    <form action={reviewCandidateAction.bind(null, job.id, image.id, "reject")}>
-                      <input type="hidden" name="rejectReasons" value="other" />
-                      <button disabled={image.reviewStatus === "reject"} className="h-8 w-full rounded-md border border-rose-500/30 px-2 text-xs font-medium text-rose-200 transition hover:bg-rose-500/10 disabled:cursor-not-allowed disabled:opacity-50">
-                        reject
-                      </button>
-                    </form>
-                    <form action={reviewCandidateAction.bind(null, job.id, image.id, "pending")}>
-                      <button disabled={image.reviewStatus === "pending"} className="h-8 w-full rounded-md border border-white/10 px-2 text-xs text-zinc-200 transition hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-50">
-                        pending
-                      </button>
-                    </form>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </SimpleSection>
+                ))}
+              </div>
+            )}
+          </SimpleSection>
+        </div>
       </div>
     </JobPageShell>
   );

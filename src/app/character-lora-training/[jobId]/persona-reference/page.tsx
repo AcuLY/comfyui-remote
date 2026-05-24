@@ -15,6 +15,7 @@ import {
   formatDate,
 } from "../shared-ui";
 import { SourceImageUploader } from "../source-image-uploader";
+import { WorkflowActionForm } from "../workflow-action-form";
 import {
   enqueueCanonicalAction,
   registerManualCanonicalAction,
@@ -42,6 +43,15 @@ export default async function PersonaReferencePage({
   const manualSourceImages = report.sourceImages.filter((image) => image.role === "manual_canonical");
   const selectedCanonical = report.canonicalVersions.filter((version) => version.status === "selected").length;
   const rejectedCanonical = report.canonicalVersions.filter((version) => version.status === "rejected").length;
+  const canonicalRuns = report.generationRuns.filter((run) => run.kind === "canonical");
+  const canonicalRunIds = new Set(canonicalRuns.map((run) => run.id));
+  const canonicalTasks = report.workerTasks.filter(
+    (task) => task.workerType === "image_generation" && task.targetType === "generationRun" && canonicalRunIds.has(task.targetId),
+  );
+  const canonicalTaskByRunId = new Map(canonicalTasks.map((task) => [task.targetId, task]));
+  const activeCanonicalTasks = canonicalTasks.filter((task) => task.status === "queued" || task.status === "running");
+  const failedCanonicalTasks = canonicalTasks.filter((task) => task.status === "failed");
+  const latestCanonicalRun = canonicalRuns.at(-1) ?? null;
 
   return (
     <JobPageShell
@@ -61,7 +71,15 @@ export default async function PersonaReferencePage({
           </SimpleSection>
 
           <SimpleSection title="生成人设图" subtitle={report.sourceImages.length > 0 ? "使用选中的源图入队生成 canonical" : "需要先上传源图"}>
-            <form action={enqueueCanonicalAction.bind(null, job.id)} className="space-y-3 rounded-lg border border-white/10 bg-white/[0.03] p-3">
+            <WorkflowActionForm
+              action={enqueueCanonicalAction.bind(null, job.id)}
+              submitLabel="入队生成人设图"
+              pendingLabel="正在入队"
+              successMessage="人设图任务已入队"
+              disabled={report.sourceImages.length === 0}
+              className="space-y-3 rounded-lg border border-white/10 bg-white/[0.03] p-3"
+              buttonClassName="inline-flex h-9 items-center rounded-md bg-emerald-500 px-3 text-xs font-medium text-white transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
+            >
               {report.sourceImages.length > 0 ? (
                 <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                   {report.sourceImages.map((image) => (
@@ -94,10 +112,62 @@ export default async function PersonaReferencePage({
                 视觉提示补充
                 <textarea name="visualPrompt" rows={3} placeholder="留空使用默认 canonical 生成提示" className="mt-1 w-full rounded-md border border-white/10 bg-black/30 px-2 py-2 text-sm text-zinc-200 outline-none transition focus:border-sky-400" />
               </label>
-              <button disabled={report.sourceImages.length === 0} className="inline-flex h-9 items-center rounded-md bg-emerald-500 px-3 text-xs font-medium text-white transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50">
-                入队生成人设图
-              </button>
-            </form>
+            </WorkflowActionForm>
+          </SimpleSection>
+
+          <SimpleSection title="人设图任务状态" subtitle={`${canonicalRuns.length} 个 generation run / ${canonicalTasks.length} 个 worker task`}>
+            <div className="grid gap-2 sm:grid-cols-3">
+              <div className="rounded-lg border border-white/10 bg-black/20 p-3 text-xs text-zinc-300">
+                <div className="text-[11px] text-zinc-500">最新 run</div>
+                <div className="mt-1 font-mono text-zinc-100">{compactId(latestCanonicalRun?.id)}</div>
+                <div className="mt-1">{latestCanonicalRun ? <StatusPill value={latestCanonicalRun.status} /> : "-"}</div>
+              </div>
+              <div className="rounded-lg border border-white/10 bg-black/20 p-3 text-xs text-zinc-300">
+                <div className="text-[11px] text-zinc-500">进行中任务</div>
+                <div className="mt-1 text-xl font-semibold text-white">{activeCanonicalTasks.length}</div>
+                <div className="mt-1 text-zinc-500">queued/running worker tasks</div>
+              </div>
+              <div className="rounded-lg border border-white/10 bg-black/20 p-3 text-xs text-zinc-300">
+                <div className="text-[11px] text-zinc-500">失败任务</div>
+                <div className="mt-1 text-xl font-semibold text-white">{failedCanonicalTasks.length}</div>
+                <div className="mt-1 text-zinc-500">failed worker tasks</div>
+              </div>
+            </div>
+            {canonicalRuns.length === 0 ? (
+              <div className="mt-3 rounded-lg border border-dashed border-white/10 py-6 text-center text-sm text-zinc-500">
+                暂无人设图生成任务。入队后这里会显示 run / worker task / lease / heartbeat。
+              </div>
+            ) : (
+              <div className="mt-3 divide-y divide-white/10 overflow-hidden rounded-lg border border-white/10">
+                {[...canonicalRuns].reverse().map((run) => {
+                  const task = canonicalTaskByRunId.get(run.id);
+                  return (
+                    <div key={run.id} className="grid gap-2 p-3 text-xs text-zinc-400 md:grid-cols-[0.85fr_0.85fr_1fr_1fr]">
+                      <div className="min-w-0">
+                        <div className="font-mono text-zinc-100">{compactId(run.id)}</div>
+                        <div className="mt-1"><StatusPill value={run.status} /></div>
+                        <div className="mt-1">{formatDate(run.createdAt)}</div>
+                      </div>
+                      <div className="min-w-0 break-words">
+                        <div className="text-zinc-200">{run.provider}</div>
+                        <div>{run.imageModel ?? run.hostModel ?? "-"}</div>
+                        <div>request {compactId(run.requestArtifactId)}</div>
+                      </div>
+                      <div className="min-w-0 break-words">
+                        <div className="text-zinc-200">task {compactId(task?.id)}</div>
+                        <div>{task ? <StatusPill value={task.status} /> : "未找到 worker task"}</div>
+                        <div>attempt {task?.attemptCount ?? 0}</div>
+                      </div>
+                      <div className="min-w-0 break-words">
+                        <div>lease {task?.leaseOwner ?? "-"}</div>
+                        <div>heartbeat {formatDate(task?.heartbeatAt)}</div>
+                        <div className={task?.errorSummary ? "text-rose-200" : "text-zinc-500"}>{task?.errorSummary ?? "-"}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </SimpleSection>
 
           <SimpleSection title="人设图候选" subtitle={`${report.canonicalVersions.length} 个版本，${selectedCanonical} selected / ${rejectedCanonical} rejected`}>
