@@ -121,7 +121,6 @@ export function ResultsGalleryProvider({
             ? { featured2: nextValue }
             : { cover: true };
       const previousImages = allImages;
-      const imageCount = allImages.length;
 
       setTogglingMarker(field);
       setImageMarker(current.id, field, nextValue);
@@ -145,8 +144,6 @@ export function ResultsGalleryProvider({
             throw new Error(result?.error?.message ?? "更新标记失败");
           }
 
-          // Auto-advance to next image after marking
-          if (imageCount > 1) goNext();
           router.refresh();
         } catch (error) {
           if (field === "cover") {
@@ -160,7 +157,7 @@ export function ResultsGalleryProvider({
         }
       });
     },
-    [allImages, busy, current, goNext, router, setImageMarker],
+    [allImages, busy, current, router, setImageMarker],
   );
 
   const reviewCurrent = useCallback(
@@ -251,19 +248,19 @@ export function ResultsGalleryProvider({
         return;
       }
 
-      // Featured (p站) + advance: L / R
+      // Featured (p站): L / R
       if (key === "l" || key === "L" || key === "r" || key === "R") {
         event.preventDefault();
         toggleMarker("featured");
         return;
       }
-      // Featured2 (预览) + advance: ; / T
+      // Featured2 (预览): ; / T
       if (key === ";" || key === "t" || key === "T") {
         event.preventDefault();
         toggleMarker("featured2");
         return;
       }
-      // Cover (封面) + advance: '
+      // Cover (封面): '
       if (key === "'") {
         event.preventDefault();
         toggleMarker("cover");

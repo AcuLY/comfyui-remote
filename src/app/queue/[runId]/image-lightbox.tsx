@@ -75,11 +75,11 @@ export function ImageLightbox({
       if (key === "j" || key === "J" || key === "w" || key === "W") { event.preventDefault(); onReview("keep"); return; }
       // Trash + advance: K / E
       if (key === "k" || key === "K" || key === "e" || key === "E") { event.preventDefault(); onReview("trash"); return; }
-      // Featured (p站) + advance: L / R
+      // Featured (p站): L / R
       if (key === "l" || key === "L" || key === "r" || key === "R") { event.preventDefault(); onToggleMarker("featured"); return; }
-      // Featured2 (预览) + advance: ; / T
+      // Featured2 (预览): ; / T
       if (key === ";" || key === "t" || key === "T") { event.preventDefault(); onToggleMarker("featured2"); return; }
-      // Cover (封面) + advance: '
+      // Cover (封面): '
       if (key === "'") { event.preventDefault(); onToggleMarker("cover"); return; }
     };
 

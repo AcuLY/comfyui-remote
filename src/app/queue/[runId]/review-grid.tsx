@@ -238,7 +238,6 @@ export function ReviewGrid({
             ? { featured2: nextValue }
             : { cover: true };
       const previousImages = reviewImages;
-      const imageCount = reviewImages.length;
 
       setTogglingMarker(field);
       setImageMarker(imageId, field, nextValue);
@@ -263,14 +262,9 @@ export function ReviewGrid({
             throw new Error(result?.error?.message ?? "更新标记失败");
           }
 
-          // 2. Also keep the image + auto-advance
+          // 2. Also keep the image
           await keepImages([imageId]);
           markImagesKept([imageId]);
-          if (imageCount > 1) {
-            setLightboxIndex((idx) =>
-              idx !== null && idx < imageCount - 1 ? idx + 1 : idx,
-            );
-          }
           removeSelectedIds([imageId]);
           setLastAction("keep");
           router.refresh();
