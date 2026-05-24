@@ -1,5 +1,6 @@
 import { fail, ok } from "@/lib/api-response";
 import {
+  archiveCharacterLoraTrainingJob,
   getCharacterLoraTrainingJob,
   mapCharacterLoraTrainingJobError,
   updateCharacterLoraTrainingJob,
@@ -33,6 +34,18 @@ export async function PATCH(request: Request, context: JobRouteContext) {
 
   try {
     const data = await updateCharacterLoraTrainingJob(jobId, body);
+    return ok(data);
+  } catch (error) {
+    const mapped = mapCharacterLoraTrainingJobError(error);
+    return fail(mapped.message, mapped.status, mapped.details);
+  }
+}
+
+export async function DELETE(_request: Request, context: JobRouteContext) {
+  const { jobId } = await context.params;
+
+  try {
+    const data = await archiveCharacterLoraTrainingJob(jobId);
     return ok(data);
   } catch (error) {
     const mapped = mapCharacterLoraTrainingJobError(error);

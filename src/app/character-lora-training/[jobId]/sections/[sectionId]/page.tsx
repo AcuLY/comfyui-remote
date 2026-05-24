@@ -16,6 +16,7 @@ import {
   compactId,
   formatDate,
 } from "../../shared-ui";
+import { enqueueSectionRunAction, reviewCandidateAction, updateCaptionAction } from "../../workflow-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -41,13 +42,19 @@ export default async function SectionDetailPage({
   const keptImages = candidateImages.filter((image) =>
     image.reviewStatus === "keep" || image.reviewStatus === "included_in_training"
   );
+  const blockingReasons = [
+    !section.canonicalVersionId ? "模块未绑定 canonical lineage" : null,
+    !section.promptCardVersionId ? "模块未绑定 prompt card lineage" : null,
+    section.status === "paused" ? "模块已暂停" : null,
+  ].filter((reason): reason is string => Boolean(reason));
+  const canGenerate = blockingReasons.length === 0;
 
   return (
     <JobPageShell
       job={job}
       currentPath="sections"
       title={`${job.characterName} / ${section.name}`}
-      description="单个训练集模块的状态、候选图和 caption 摘要。"
+      description="为单个模块发起生成、审核候选图并修订 caption。"
     >
       <MetricGrid>
         <MetricCard label="状态" value={<StatusPill value={section.status} />} />
@@ -66,6 +73,31 @@ export default async function SectionDetailPage({
             <InfoRow label="生成批次" value={section.counts.generationRuns} />
             <InfoRow label="更新时间" value={formatDate(section.updatedAt)} />
           </dl>
+          <form action={enqueueSectionRunAction.bind(null, section.id, job.id)} className="mt-4 space-y-3 rounded-lg border border-white/10 bg-white/[0.03] p-3">
+            {!canGenerate ? (
+              <div className="rounded-md border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+                阻塞：{blockingReasons.join("；")}
+              </div>
+            ) : null}
+            <label className="block text-xs text-zinc-400">
+              生成器
+              <select name="provider" defaultValue="openai-codex" className="mt-1 w-full rounded-md border border-white/10 bg-black/30 px-2 py-2 text-sm text-zinc-200 outline-none transition focus:border-sky-400">
+                <option value="openai-codex">openai-codex</option>
+                <option value="mock-local">mock-local</option>
+              </select>
+            </label>
+            <label className="block text-xs text-zinc-400">
+              本轮生成指令
+              <textarea name="userInstruction" rows={4} placeholder="补充角度、姿势、构图或修正要求" className="mt-1 w-full rounded-md border border-white/10 bg-black/30 px-2 py-2 text-sm text-zinc-200 outline-none transition focus:border-sky-400" />
+            </label>
+            <label className="block text-xs text-zinc-400">
+              负面提示词
+              <input name="negativePrompt" placeholder="可选" className="mt-1 w-full rounded-md border border-white/10 bg-black/30 px-2 py-2 text-sm text-zinc-200 outline-none transition focus:border-sky-400" />
+            </label>
+            <button disabled={!canGenerate} className="h-9 rounded-md bg-emerald-500 px-3 text-xs font-medium text-white transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50">
+              入队生成本模块
+            </button>
+          </form>
         </SimpleSection>
 
         <SimpleSection title="候选训练图" subtitle={`${keptImages.length} keep / ${candidateImages.length} total`}>
@@ -82,8 +114,29 @@ export default async function SectionDetailPage({
                     <StatusPill value={image.reviewStatus} />
                     <span className="font-mono text-zinc-500">{compactId(image.id)}</span>
                   </div>
-                  <div className="mt-2 line-clamp-3 min-h-[3.75rem] text-xs leading-5 text-zinc-400">
-                    {image.captionDraft || "暂无 caption"}
+                  <form action={updateCaptionAction.bind(null, job.id, image.id)} className="mt-2 space-y-2">
+                    <textarea name="captionDraft" rows={4} defaultValue={image.captionDraft ?? ""} required className="w-full rounded-md border border-white/10 bg-black/30 px-2 py-2 text-xs leading-5 text-zinc-200 outline-none transition focus:border-sky-400" />
+                    <button className="h-8 rounded-md border border-white/10 px-2 text-xs text-zinc-200 transition hover:bg-white/[0.06]">
+                      保存 caption
+                    </button>
+                  </form>
+                  <div className="mt-2 grid grid-cols-3 gap-2">
+                    <form action={reviewCandidateAction.bind(null, job.id, image.id, "keep")}>
+                      <button disabled={image.reviewStatus === "keep" || image.reviewStatus === "included_in_training"} className="h-8 w-full rounded-md bg-emerald-500 px-2 text-xs font-medium text-white transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50">
+                        keep
+                      </button>
+                    </form>
+                    <form action={reviewCandidateAction.bind(null, job.id, image.id, "reject")}>
+                      <input type="hidden" name="rejectReasons" value="other" />
+                      <button disabled={image.reviewStatus === "reject"} className="h-8 w-full rounded-md border border-rose-500/30 px-2 text-xs font-medium text-rose-200 transition hover:bg-rose-500/10 disabled:cursor-not-allowed disabled:opacity-50">
+                        reject
+                      </button>
+                    </form>
+                    <form action={reviewCandidateAction.bind(null, job.id, image.id, "pending")}>
+                      <button disabled={image.reviewStatus === "pending"} className="h-8 w-full rounded-md border border-white/10 px-2 text-xs text-zinc-200 transition hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-50">
+                        pending
+                      </button>
+                    </form>
                   </div>
                 </div>
               ))}

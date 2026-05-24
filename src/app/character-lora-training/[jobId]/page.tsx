@@ -23,6 +23,8 @@ import {
   compactId,
   formatDate,
 } from "./shared-ui";
+import { OverviewMetadataForm } from "./overview-metadata-form";
+import { OverviewSourceUpload } from "./overview-source-upload";
 
 export const dynamic = "force-dynamic";
 
@@ -91,6 +93,10 @@ export default async function CharacterLoraTrainingJobPage({
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="space-y-4">
+          <SimpleSection title="项目信息" subtitle="创建后仍可调整项目名、触发词和 checkpoint 选择。">
+            <OverviewMetadataForm job={job} />
+          </SimpleSection>
+
           <SimpleSection title="项目状态" subtitle="只展示确定状态和机械缺项，不给诊断建议。">
             <dl className="divide-y divide-white/10">
               <InfoRow label="项目 ID" value={<span className="font-mono text-xs">{compactId(job.id)}</span>} />
@@ -98,7 +104,7 @@ export default async function CharacterLoraTrainingJobPage({
               <InfoRow label="更新时间" value={formatDate(job.updatedAt)} />
               <InfoRow label="当前人设图" value={job.currentCanonicalVersionId ? compactId(job.currentCanonicalVersionId) : "缺失"} />
               <InfoRow label="当前提示词卡" value={job.currentPromptCardVersionId ? compactId(job.currentPromptCardVersionId) : "缺失"} />
-              <InfoRow label="训练集版本" value={datasetRevisions[0] ? `v${datasetRevisions[0].version} / ${datasetRevisions[0].status}` : "缺失"} />
+              <InfoRow label="训练集版本" value={datasetRevisions.at(-1) ? `v${datasetRevisions.at(-1)?.version} / ${datasetRevisions.at(-1)?.status}` : "缺失"} />
               <InfoRow label="最新训练" value={latestTraining ? `${latestTraining.status} / ${formatDate(latestTraining.updatedAt)}` : "未开始"} />
             </dl>
           </SimpleSection>
@@ -117,6 +123,10 @@ export default async function CharacterLoraTrainingJobPage({
                 ))}
               </div>
             )}
+          </SimpleSection>
+
+          <SimpleSection title="初始参考图" subtitle={`${sourceImages.length} 张`}>
+            <OverviewSourceUpload jobId={job.id} sourceImageCount={sourceImages.length} />
           </SimpleSection>
 
           <SimpleSection title="流程入口" subtitle="普通 UI 只保留训练准备、训练集和 LoRA 文件产出路径。">

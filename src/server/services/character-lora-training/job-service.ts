@@ -4,6 +4,7 @@ import { CharacterLoraJobStatus } from "@/generated/prisma/enums";
 import {
   createCharacterLoraJobArtifact,
   createCharacterLoraTrainingJob as createJobInRepository,
+  archiveCharacterLoraTrainingJob as archiveJobInRepository,
   findActiveCharacterLoraTrainingJobByTriggerToken,
   findCharacterLoraTrainingJobBySlug,
   getCharacterLoraTrainingJob as getJobFromRepository,
@@ -41,7 +42,7 @@ const createJobSchema = z
     trainingScope: characterLoraTrainingScopeSchema,
     baseCheckpointName: nullableTrimmedStringSchema(),
     baseCheckpointPath: requiredTrimmedStringSchema("baseCheckpointPath is required"),
-    baseCheckpointHash: requiredTrimmedStringSchema("baseCheckpointHash is required"),
+    baseCheckpointHash: nullableTrimmedStringSchema(),
     baseFamily: nullableTrimmedStringSchema(),
     captionStrategy: nullableTrimmedStringSchema(),
     trainingTemplateId: nullableTrimmedStringSchema(),
@@ -119,11 +120,11 @@ export class CharacterLoraTrainingJobServiceError extends Error {
 
 export async function listCharacterLoraTrainingJobs(input: unknown = {}) {
   const query = parseWithSchema(listJobsSchema, input);
-  validateStatusFilter(query.status);
+  const status = parseStatusFilter(query.status);
 
   return listJobsFromRepository({
     q: query.q ?? undefined,
-    status: query.status ?? undefined,
+    status,
     page: query.page,
     pageSize: query.pageSize,
   });
@@ -275,6 +276,8 @@ export async function createCharacterLoraTrainingJob(input: unknown) {
     id: parsed.trainingTemplateId,
   });
   const captionStrategy = parsed.captionStrategy ?? trainingTemplateSnapshot.captionStrategyDefault ?? DEFAULT_CAPTION_STRATEGY;
+  const baseCheckpointHash = parsed.baseCheckpointHash ?? null;
+  const baseFamily = parsed.baseFamily ?? trainingTemplateSnapshot.baseFamily ?? null;
 
   const job = await createJobInRepository({
     slug,
@@ -286,8 +289,8 @@ export async function createCharacterLoraTrainingJob(input: unknown) {
     captionStrategy,
     baseCheckpointName,
     baseCheckpointPath: parsed.baseCheckpointPath,
-    baseCheckpointHash: parsed.baseCheckpointHash,
-    baseFamily: parsed.baseFamily,
+    baseCheckpointHash,
+    baseFamily,
     artifactRoot,
     trainingTemplateId: trainingTemplateSnapshot.id,
     trainingTemplateSnapshot: toInputJsonValue(trainingTemplateSnapshot),
@@ -305,6 +308,8 @@ export async function createCharacterLoraTrainingJob(input: unknown) {
     ...parsed,
     captionStrategy,
     baseCheckpointName,
+    baseCheckpointHash,
+    baseFamily,
     trainingTemplateId: trainingTemplateSnapshot.id,
   });
 
@@ -347,9 +352,7 @@ export async function createCharacterLoraTrainingProject(input: unknown) {
     baseCheckpointName: checkpoint.name,
     baseCheckpointPath: checkpoint.absolutePath,
     baseCheckpointHash: checkpoint.sha256,
-    // Checkpoint model assets do not currently expose baseFamily metadata without a schema change.
-    // Keep the job snapshot nullable and let expert/report views surface the missing metadata.
-    baseFamily: trainingTemplateSnapshot.baseFamily,
+    baseFamily: trainingTemplateSnapshot.baseFamily ?? null,
     trainingTemplateId: trainingTemplateSnapshot.id,
     createdBy: parsed.createdBy ?? buildFacadeCreatedBy(parsed),
   });
@@ -375,7 +378,7 @@ export async function updateCharacterLoraTrainingJob(jobId: string, input: unkno
     });
   }
 
-  const normalized = normalizeUpdateJobInput(parsed, current);
+  const normalized = await normalizeUpdateJobInput(parsed, current);
 
   if (normalized.triggerToken) {
     await assertTriggerTokenAvailable(normalized.triggerToken, { excludeJobId: id });
@@ -384,6 +387,28 @@ export async function updateCharacterLoraTrainingJob(jobId: string, input: unkno
   return updateJobInRepository(id, {
     ...normalized,
     trainingScope: normalized.trainingScope ? toInputJsonValue(normalized.trainingScope) : undefined,
+  });
+}
+
+export async function archiveCharacterLoraTrainingJob(jobId: string) {
+  const id = normalizeJobId(jobId);
+  const job = await getCharacterLoraTrainingJob(id);
+  if (job.status === CharacterLoraJobStatus.archived) {
+    return job;
+  }
+
+  const trainingRuns = await listTrainingRunsFromRepository(id);
+  const activeTrainingRun = trainingRuns.find((run) => run.status === "queued" || run.status === "running");
+  if (activeTrainingRun) {
+    throw new CharacterLoraTrainingJobServiceError(
+      "Cannot archive a job with queued or running training runs",
+      409,
+      { trainingRunId: activeTrainingRun.id, status: activeTrainingRun.status },
+    );
+  }
+
+  return archiveJobInRepository(id, {
+    phase: "archived",
   });
 }
 
@@ -501,16 +526,24 @@ function normalizeJobId(jobId: string) {
   return normalized;
 }
 
-function validateStatusFilter(status: string | null | undefined) {
+function parseStatusFilter(status: string | null | undefined) {
   if (!status) {
-    return;
+    return undefined;
   }
 
-  if (!Object.values(CharacterLoraJobStatus).includes(status as never)) {
-    throw new CharacterLoraTrainingJobServiceError("status must be a valid character LoRA job status", 400, {
-      supportedStatuses: Object.values(CharacterLoraJobStatus),
-    });
+  if (isCharacterLoraJobStatus(status)) {
+    return status;
   }
+
+  throw new CharacterLoraTrainingJobServiceError("status must be a valid character LoRA job status", 400, {
+    supportedStatuses: CHARACTER_LORA_JOB_STATUS_VALUES,
+  });
+}
+
+const CHARACTER_LORA_JOB_STATUS_VALUES = Object.values(CharacterLoraJobStatus);
+
+function isCharacterLoraJobStatus(status: string): status is CharacterLoraJobStatus {
+  return CHARACTER_LORA_JOB_STATUS_VALUES.includes(status as CharacterLoraJobStatus);
 }
 
 function parseWithSchema<T>(schema: z.ZodType<T>, input: unknown) {
@@ -567,7 +600,7 @@ async function assertTriggerTokenAvailable(triggerToken: string, options: { excl
   );
 }
 
-function normalizeUpdateJobInput(
+async function normalizeUpdateJobInput(
   parsed: z.infer<typeof updateJobSchema>,
   current: CharacterLoraTrainingJobSummary,
 ) {
@@ -577,45 +610,40 @@ function normalizeUpdateJobInput(
     return normalized;
   }
 
-  const baseCheckpoint = {
-    baseCheckpointPath: hasOwn(parsed, "baseCheckpointPath")
-      ? parsed.baseCheckpointPath
-      : current.baseCheckpointPath,
-    baseCheckpointHash: hasOwn(parsed, "baseCheckpointHash")
-      ? parsed.baseCheckpointHash
-      : current.baseCheckpointHash,
-    baseFamily: hasOwn(parsed, "baseFamily") ? parsed.baseFamily : current.baseFamily,
-  };
+  if (hasOwn(parsed, "baseCheckpointPath") && parsed.baseCheckpointPath) {
+    const checkpoint = await hashModelFile("checkpoint", normalizeCheckpointRelativePath(parsed.baseCheckpointPath));
+    normalized.baseCheckpointName =
+      hasOwn(parsed, "baseCheckpointName") && parsed.baseCheckpointName !== null
+        ? parsed.baseCheckpointName
+        : checkpoint.name;
+    normalized.baseCheckpointPath = checkpoint.absolutePath;
+    normalized.baseCheckpointHash = hasOwn(parsed, "baseCheckpointHash") ? parsed.baseCheckpointHash : checkpoint.sha256;
+    normalized.baseFamily = hasOwn(parsed, "baseFamily") ? parsed.baseFamily : current.baseFamily;
+    return normalized;
+  }
 
-  assertCompleteBaseCheckpoint(baseCheckpoint);
+  if (hasOwn(parsed, "baseCheckpointPath") && parsed.baseCheckpointPath === null) {
+    normalized.baseCheckpointName =
+      hasOwn(parsed, "baseCheckpointName") && parsed.baseCheckpointName !== null
+        ? parsed.baseCheckpointName
+        : null;
+    normalized.baseCheckpointHash = hasOwn(parsed, "baseCheckpointHash") ? parsed.baseCheckpointHash : null;
+    return normalized;
+  }
 
-  if (parsed.baseCheckpointName === null || (parsed.baseCheckpointName === undefined && !current.baseCheckpointName)) {
-    normalized.baseCheckpointName = deriveBaseCheckpointName(baseCheckpoint.baseCheckpointPath);
+  const baseCheckpointPath = hasOwn(parsed, "baseCheckpointPath")
+    ? parsed.baseCheckpointPath
+    : current.baseCheckpointPath;
+  const shouldDeriveBaseCheckpointName =
+    (hasOwn(parsed, "baseCheckpointPath") && !hasOwn(parsed, "baseCheckpointName")) ||
+    parsed.baseCheckpointName === null ||
+    (parsed.baseCheckpointName === undefined && !current.baseCheckpointName);
+
+  if (shouldDeriveBaseCheckpointName) {
+    normalized.baseCheckpointName = baseCheckpointPath ? deriveBaseCheckpointName(baseCheckpointPath) : null;
   }
 
   return normalized;
-}
-
-function assertCompleteBaseCheckpoint(input: {
-  baseCheckpointPath: string | null | undefined;
-  baseCheckpointHash: string | null | undefined;
-  baseFamily: string | null | undefined;
-}): asserts input is { baseCheckpointPath: string; baseCheckpointHash: string; baseFamily: string } {
-  const missingFields = [
-    input.baseCheckpointPath ? null : "baseCheckpointPath",
-    input.baseCheckpointHash ? null : "baseCheckpointHash",
-    input.baseFamily ? null : "baseFamily",
-  ].filter((field): field is string => Boolean(field));
-
-  if (missingFields.length === 0) {
-    return;
-  }
-
-  throw new CharacterLoraTrainingJobServiceError(
-    "baseCheckpointPath, baseCheckpointHash and baseFamily are required for character LoRA jobs",
-    400,
-    { missingFields },
-  );
 }
 
 function hasAnyOwn(value: object, keys: string[]) {
@@ -719,8 +747,11 @@ function buildOverviewMissingItems(input: {
 }) {
   const items: Array<{ code: string; label: string; blocking: boolean }> = [];
 
-  if (!input.job.baseCheckpointPath || !input.job.baseCheckpointHash) {
-    items.push({ code: "checkpoint_snapshot", label: "checkpoint path/hash", blocking: true });
+  if (!input.job.baseCheckpointPath) {
+    items.push({ code: "checkpoint_path", label: "checkpoint path", blocking: true });
+  }
+  if (!input.job.baseCheckpointHash) {
+    items.push({ code: "checkpoint_hash", label: "checkpoint hash", blocking: true });
   }
   if (!input.job.baseFamily) {
     items.push({ code: "checkpoint_base_family", label: "checkpoint base family", blocking: false });

@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 
 import {
+  getCharacterLoraJobReport,
   getCharacterLoraTrainingJob,
   listCharacterLoraPromptCardVersions,
 } from "@/lib/actions/character-lora-training";
@@ -11,6 +12,7 @@ import {
   compactId,
   formatDate,
 } from "../shared-ui";
+import { createPromptCardAction } from "../workflow-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -26,38 +28,88 @@ export default async function PromptCardPage({
   });
   if (!job) notFound();
 
-  const promptCards = await listCharacterLoraPromptCardVersions(jobId);
+  const [promptCards, report] = await Promise.all([
+    listCharacterLoraPromptCardVersions(jobId),
+    getCharacterLoraJobReport(jobId),
+  ]);
   const currentPrompt = promptCards.find((card) => card.id === job.currentPromptCardVersionId) ?? promptCards[promptCards.length - 1] ?? null;
+  const currentCanonical = report.canonicalVersions.find((version) => version.id === job.currentCanonicalVersionId) ?? null;
+  const usableCanonicalVersions = report.canonicalVersions.filter((version) => version.status !== "rejected");
 
   return (
     <JobPageShell
       job={job}
       currentPath="prompt-card"
       title={`${job.characterName} / 提示词卡`}
-      description="查看当前提示词卡和历史版本。字段由外部 Agent 或人工确认写入。"
+      description="创建可追踪的提示词卡版本，供后续模块生成与训练集冻结使用。"
     >
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <SimpleSection title="当前提示词卡" subtitle={currentPrompt ? `v${currentPrompt.version}` : "未创建"}>
-          {currentPrompt ? (
-            <div className="space-y-4">
-              <dl>
-                <InfoRow label="版本 ID" value={<span className="font-mono text-xs">{compactId(currentPrompt.id)}</span>} />
-                <InfoRow label="触发词" value={<span className="font-mono text-xs">{currentPrompt.triggerToken}</span>} />
-                <InfoRow label="绑定人设图" value={compactId(currentPrompt.canonicalVersionId)} />
-                <InfoRow label="创建时间" value={formatDate(currentPrompt.createdAt)} />
-                <InfoRow label="变更原因" value={currentPrompt.changeReason ?? "-"} />
-              </dl>
-              <PromptBlock title="角色核心特征" value={currentPrompt.identityTraits} />
-              <PromptBlock title="服装/形态特征" value={currentPrompt.outfitTraits} />
-              <PromptBlock title="负面约束" value={currentPrompt.negativeTraits} />
-              <PromptText title="最终完整提示词" value={currentPrompt.finalPromptDraft} />
-            </div>
-          ) : (
-            <div className="rounded-lg border border-dashed border-white/10 py-10 text-center text-sm text-zinc-500">
-              暂无提示词卡
-            </div>
-          )}
-        </SimpleSection>
+        <div className="space-y-4">
+          <SimpleSection title="创建提示词卡版本" subtitle={currentCanonical ? `默认绑定人设图 v${currentCanonical.version}` : "当前没有 canonical，可创建无绑定版本"}>
+            {!currentCanonical ? (
+              <div className="mb-3 rounded-md border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+                机械警告：没有当前人设图时，后续 section lineage 仍会阻塞；该提示词卡可先保存，但不能独立生成训练图。
+              </div>
+            ) : null}
+            <form action={createPromptCardAction.bind(null, job.id)} className="space-y-3 rounded-lg border border-white/10 bg-white/[0.03] p-3">
+              <input type="hidden" name="triggerToken" value={job.triggerToken} />
+              <label className="block text-xs text-zinc-400">
+                绑定人设图
+                <select name="canonicalVersionId" defaultValue={currentCanonical?.id ?? ""} className="mt-1 w-full rounded-md border border-white/10 bg-black/30 px-2 py-2 text-sm text-zinc-200 outline-none transition focus:border-sky-400">
+                  <option value="">不绑定 canonical</option>
+                  {usableCanonicalVersions.map((version) => (
+                    <option key={version.id} value={version.id}>v{version.version} / {version.status} / {compactId(version.id)}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="block text-xs text-zinc-400">
+                identity / core traits
+                <textarea name="identityTraits" rows={4} required defaultValue={currentPrompt ? formatEditableJsonish(currentPrompt.identityTraits) : ""} className="mt-1 w-full rounded-md border border-white/10 bg-black/30 px-2 py-2 text-sm text-zinc-200 outline-none transition focus:border-sky-400" />
+              </label>
+              <label className="block text-xs text-zinc-400">
+                outfit / form traits
+                <textarea name="outfitTraits" rows={4} required defaultValue={currentPrompt ? formatEditableJsonish(currentPrompt.outfitTraits) : ""} className="mt-1 w-full rounded-md border border-white/10 bg-black/30 px-2 py-2 text-sm text-zinc-200 outline-none transition focus:border-sky-400" />
+              </label>
+              <label className="block text-xs text-zinc-400">
+                negative constraints
+                <textarea name="negativeTraits" rows={3} defaultValue={currentPrompt ? formatEditableJsonish(currentPrompt.negativeTraits) : ""} className="mt-1 w-full rounded-md border border-white/10 bg-black/30 px-2 py-2 text-sm text-zinc-200 outline-none transition focus:border-sky-400" />
+              </label>
+              <label className="block text-xs text-zinc-400">
+                final prompt
+                <textarea name="finalPromptDraft" rows={5} required defaultValue={currentPrompt?.finalPromptDraft ?? `${job.triggerToken}, `} className="mt-1 w-full rounded-md border border-white/10 bg-black/30 px-2 py-2 text-sm text-zinc-200 outline-none transition focus:border-sky-400" />
+              </label>
+              <label className="block text-xs text-zinc-400">
+                change note
+                <input name="changeReason" placeholder="本次版本调整说明" className="mt-1 w-full rounded-md border border-white/10 bg-black/30 px-2 py-2 text-sm text-zinc-200 outline-none transition focus:border-sky-400" />
+              </label>
+              <button className="h-9 rounded-md bg-emerald-500 px-3 text-xs font-medium text-white transition hover:bg-emerald-400">
+                创建新版本
+              </button>
+            </form>
+          </SimpleSection>
+
+          <SimpleSection title="当前提示词卡" subtitle={currentPrompt ? `v${currentPrompt.version}` : "未创建"}>
+            {currentPrompt ? (
+              <div className="space-y-4">
+                <dl>
+                  <InfoRow label="版本 ID" value={<span className="font-mono text-xs">{compactId(currentPrompt.id)}</span>} />
+                  <InfoRow label="触发词" value={<span className="font-mono text-xs">{currentPrompt.triggerToken}</span>} />
+                  <InfoRow label="绑定人设图" value={compactId(currentPrompt.canonicalVersionId)} />
+                  <InfoRow label="创建时间" value={formatDate(currentPrompt.createdAt)} />
+                  <InfoRow label="变更原因" value={currentPrompt.changeReason ?? "-"} />
+                </dl>
+                <PromptBlock title="角色核心特征" value={currentPrompt.identityTraits} />
+                <PromptBlock title="服装/形态特征" value={currentPrompt.outfitTraits} />
+                <PromptBlock title="负面约束" value={currentPrompt.negativeTraits} />
+                <PromptText title="最终完整提示词" value={currentPrompt.finalPromptDraft} />
+              </div>
+            ) : (
+              <div className="rounded-lg border border-dashed border-white/10 py-10 text-center text-sm text-zinc-500">
+                暂无提示词卡
+              </div>
+            )}
+          </SimpleSection>
+        </div>
 
         <SimpleSection title="版本历史" subtitle={`${promptCards.length} 个版本`}>
           {promptCards.length === 0 ? (
@@ -107,4 +159,9 @@ function formatJsonish(value: unknown) {
   if (value === null || value === undefined) return "-";
   if (typeof value === "string") return value;
   return JSON.stringify(value, null, 2);
+}
+
+function formatEditableJsonish(value: unknown) {
+  if (value === null || value === undefined) return "";
+  return formatJsonish(value);
 }

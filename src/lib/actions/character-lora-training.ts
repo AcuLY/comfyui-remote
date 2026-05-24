@@ -1,6 +1,7 @@
 "use server";
 
 import {
+  archiveCharacterLoraTrainingJob as archiveJob,
   createCharacterLoraTrainingProject as createProject,
   createCharacterLoraTrainingJob as createJob,
   getCharacterLoraTrainingJob as getJob,
@@ -82,6 +83,10 @@ export async function createCharacterLoraTrainingProject(input: unknown) {
 
 export async function updateCharacterLoraTrainingJob(jobId: string, input: unknown) {
   return updateJob(jobId, input);
+}
+
+export async function archiveCharacterLoraTrainingJob(jobId: string) {
+  return archiveJob(jobId);
 }
 
 export async function listCharacterLoraTrainingJobs(input?: unknown) {

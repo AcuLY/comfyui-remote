@@ -498,6 +498,7 @@ export type CharacterLoraTrainingJobCreateInput = {
 export type CharacterLoraTrainingJobUpdateInput = Partial<{
   characterName: string;
   triggerToken: string;
+  status: CharacterLoraJobStatus;
   phase: string | null;
   trainingScope: Prisma.InputJsonValue;
   captionStrategy: string;
@@ -512,7 +513,7 @@ export type CharacterLoraTrainingJobUpdateInput = Partial<{
 
 export type CharacterLoraTrainingJobListFilters = {
   q?: string;
-  status?: string;
+  status?: CharacterLoraJobStatus;
   page?: number;
   pageSize?: number;
 };
@@ -616,9 +617,10 @@ export async function listCharacterLoraTrainingJobs(filters: CharacterLoraTraini
   const page = Math.max(1, filters.page ?? 1);
   const pageSize = Math.min(100, Math.max(1, filters.pageSize ?? 50));
   const q = filters.q?.trim();
+  const statusFilter = filters.status ?? null;
 
   const where: Prisma.CharacterLoraTrainingJobWhereInput = {
-    ...(filters.status ? { status: filters.status as never } : {}),
+    ...(statusFilter ? { status: statusFilter } : { status: { not: CharacterLoraJobStatus.archived } }),
     ...(q
       ? {
           OR: [
@@ -699,6 +701,22 @@ export async function updateCharacterLoraTrainingJob(jobId: string, input: Chara
   const job = await db.characterLoraTrainingJob.update({
     where: { id: jobId },
     data: input as Prisma.CharacterLoraTrainingJobUncheckedUpdateInput,
+    select: JOB_SUMMARY_SELECT,
+  });
+
+  return serializeJobSummary(job);
+}
+
+export async function archiveCharacterLoraTrainingJob(
+  jobId: string,
+  input: { phase?: string | null } = {},
+) {
+  const job = await db.characterLoraTrainingJob.update({
+    where: { id: jobId },
+    data: {
+      status: CharacterLoraJobStatus.archived,
+      phase: input.phase ?? "archived",
+    },
     select: JOB_SUMMARY_SELECT,
   });
 
