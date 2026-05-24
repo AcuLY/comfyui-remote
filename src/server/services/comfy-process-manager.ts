@@ -221,7 +221,10 @@ class ComfyProcessManager {
   }
 
   async restart(): Promise<{ ok: boolean; message: string }> {
-    await this.stop();
+    const stopResult = await this.stop();
+    if (!stopResult.ok) {
+      return stopResult;
+    }
     // Wait a short moment for process cleanup
     await sleep(1000);
     return this.start();
