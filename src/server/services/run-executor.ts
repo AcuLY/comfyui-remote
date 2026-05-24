@@ -22,6 +22,7 @@ import {
   extractExecutionMeta,
   getComfyQueuePosition,
   ComfyPromptPollAbortedError,
+  type SubmitComfyPromptOptions,
   type ValidatedComfyPromptDraft,
 } from "@/server/services/comfyui-service";
 import {
@@ -139,7 +140,10 @@ export function buildSubmittedRunData(result: SubmitResult) {
  * Called synchronously from the server action before creating the Run record.
  * Throws on failure — caller should NOT create a Run record if this fails.
  */
-export async function submitRunToComfyUI(run: WorkerRunSnapshot): Promise<SubmitResult> {
+export async function submitRunToComfyUI(
+  run: WorkerRunSnapshot,
+  options: SubmitComfyPromptOptions = {},
+): Promise<SubmitResult> {
   assertEnv();
 
   const promptDraft = buildComfyPromptDraft(run);
@@ -147,7 +151,7 @@ export async function submitRunToComfyUI(run: WorkerRunSnapshot): Promise<Submit
     run.comfyApiUrl,
     promptDraft,
   );
-  const comfyPromptId = await submitComfyPrompt(validatedDraft, promptDraft);
+  const comfyPromptId = await submitComfyPrompt(validatedDraft, promptDraft, options);
 
   const runLog = log.child({ runId: run.runId, projectId: run.project.id });
   runLog.info("Submitted to ComfyUI queue", {

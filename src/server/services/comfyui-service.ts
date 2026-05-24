@@ -63,6 +63,10 @@ type PollComfyPromptHistoryOptions = {
   shouldContinue?: () => boolean | Promise<boolean>;
 };
 
+export type SubmitComfyPromptOptions = {
+  front?: boolean;
+};
+
 export type ValidatedComfyPromptDraft = {
   apiUrl: string;
   apiPrompt: JsonRecord;
@@ -523,6 +527,7 @@ export async function validateComfyPromptDraft(
 export async function submitComfyPrompt(
   validatedDraft: ValidatedComfyPromptDraft,
   promptDraft: ComfyPromptDraft,
+  options: SubmitComfyPromptOptions = {},
 ) {
   const payload = await fetchJson(
     `${validatedDraft.apiUrl}/prompt`,
@@ -535,6 +540,7 @@ export async function submitComfyPrompt(
         prompt: validatedDraft.apiPrompt,
         client_id: promptDraft.clientId,
         extra_data: validatedDraft.extraData,
+        ...(options.front ? { front: true } : {}),
       }),
     },
     "ComfyUI prompt submit",

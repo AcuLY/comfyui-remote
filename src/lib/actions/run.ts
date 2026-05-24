@@ -24,7 +24,6 @@ import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
 
 const QUEUE_PAUSE_META_KEY = "__queuePause";
-const PRIORITY_SECTION_RUN_SOURCE = "priority-section-run";
 
 type QueuePauseMarker = {
   source: string;
@@ -146,34 +145,6 @@ function matchesResumeOptions(
   return true;
 }
 
-async function resumeRunsAfterPriorityPause(
-  pausedRunIds: string[],
-  batchId: string,
-  primaryError: unknown,
-) {
-  if (pausedRunIds.length === 0) return;
-
-  const result = await resumeAllRuns({
-    runIds: pausedRunIds,
-    source: PRIORITY_SECTION_RUN_SOURCE,
-    batchId,
-    markedOnly: true,
-  });
-
-  if (result.ok) return;
-
-  const error = new Error(result.error ?? "Failed to resume paused runs");
-  if (primaryError) {
-    logger.error("Failed to resume runs after priority section run", error, {
-      runIds: pausedRunIds,
-      batchId,
-    });
-    return;
-  }
-
-  throw error;
-}
-
 // ---------------------------------------------------------------------------
 // 运行整个项目
 // ---------------------------------------------------------------------------
@@ -233,21 +204,6 @@ export async function runSection(
   overrideBatchSize?: number | null,
   options?: RunSectionOptions,
 ) {
-  let priorityPause: Pick<PauseAllRunsResult, "runIds" | "batchId"> | null = null;
-  let primaryError: unknown = null;
-
-  try {
-    if (options?.prioritize) {
-      const pauseResult = await pauseAllRuns({
-        source: PRIORITY_SECTION_RUN_SOURCE,
-        statuses: ["queued"],
-      });
-      priorityPause = { runIds: pauseResult.runIds, batchId: pauseResult.batchId };
-      if (!pauseResult.ok) {
-        throw new Error(pauseResult.error ?? "Failed to pause active runs");
-      }
-    }
-
     // 需要先拿到 projectId，因为 repository 函数需要它
     const pos = await prisma.projectSection.findUnique({
       where: { id: sectionId },
@@ -258,14 +214,15 @@ export async function runSection(
 
     // 1. Create Run record with status="queued" (no comfyPromptId yet)
     const result = await enqueueProjectSectionRunRepo(pos.projectId, sectionId, overrideBatchSize ?? undefined);
+    const runsToSubmit = options?.prioritize ? [...result.runs].reverse() : result.runs;
 
     // 2. Submit to ComfyUI synchronously
-    for (const enqueuedRun of result.runs) {
+    for (const enqueuedRun of runsToSubmit) {
       const run = await getWorkerRun(enqueuedRun.runId);
       if (!run) continue;
 
       try {
-        const submitResult = await submitRunToComfyUI(run);
+        const submitResult = await submitRunToComfyUI(run, { front: options?.prioritize === true });
         await prisma.run.update({
           where: { id: run.runId },
           data: buildSubmittedRunData(submitResult),
@@ -287,14 +244,6 @@ export async function runSection(
 
     revalidatePath("/projects");
     revalidatePath("/queue");
-  } catch (error) {
-    primaryError = error;
-    throw error;
-  } finally {
-    if (priorityPause) {
-      await resumeRunsAfterPriorityPause(priorityPause.runIds, priorityPause.batchId, primaryError);
-    }
-  }
 }
 
 // ---------------------------------------------------------------------------
