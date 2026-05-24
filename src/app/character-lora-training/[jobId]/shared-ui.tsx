@@ -4,6 +4,7 @@ import { ArrowLeft, Database, FileText, Images, Layers, Play, UserRound } from "
 
 import { PageHeader } from "@/components/page-header";
 import { SectionCard } from "@/components/section-card";
+import { ArtifactImagePreview } from "./artifact-image-preview";
 import type {
   CharacterLoraJob,
   CharacterLoraJobReport,
@@ -154,25 +155,16 @@ export function ArtifactThumb({
   relativePath: string | null | undefined;
   alt: string;
 }) {
-  if (!relativePath) {
-    return (
-      <div className="flex aspect-[4/5] items-center justify-center rounded-lg border border-dashed border-white/10 bg-black/20 text-xs text-zinc-600">
-        无预览
-      </div>
-    );
-  }
-
-  const src = buildArtifactImageUrl(jobId, relativePath, { w: 360, q: 72 });
-
   return (
-    <a href={buildArtifactImageUrl(jobId, relativePath)} target="_blank" rel="noreferrer" className="block">
-      {/* eslint-disable-next-line @next/next/no-img-element -- artifact images are served by the existing route. */}
-      <img
-        src={src}
-        alt={alt}
-        className="aspect-[4/5] w-full rounded-lg border border-white/10 bg-black/30 object-cover"
-      />
-    </a>
+    <ArtifactImagePreview
+      jobId={jobId}
+      relativePath={relativePath}
+      alt={alt}
+      thumbnailOptions={{ w: 360, q: 72 }}
+      imageClassName="aspect-[4/5] w-full rounded-lg border border-white/10 bg-black/30 object-cover"
+      emptyClassName="flex aspect-[4/5] items-center justify-center rounded-lg border border-dashed border-white/10 bg-black/20 text-xs text-zinc-600"
+      emptyLabel="无预览"
+    />
   );
 }
 

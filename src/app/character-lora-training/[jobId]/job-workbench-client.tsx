@@ -33,6 +33,7 @@ import { toast } from "sonner";
 import { PageHeader } from "@/components/page-header";
 import { SectionCard } from "@/components/section-card";
 import { StatChip } from "@/components/stat-chip";
+import { ArtifactImagePreview } from "./artifact-image-preview";
 import {
   cancelCharacterLoraTrainingRun,
   cleanupCharacterLoraBenchmarkRunTemporaryResources,
@@ -3437,24 +3438,17 @@ function ArtifactThumb({
   relativePath: string | null | undefined;
   alt: string;
 }) {
-  if (!relativePath) {
-    return (
-      <div className="flex aspect-square items-center justify-center bg-black/30 text-xs text-zinc-600">
-        无图片
-      </div>
-    );
-  }
-
   return (
-    <a href={buildArtifactImageUrl(jobId, relativePath)} target="_blank" rel="noreferrer" className="block">
-      {/* eslint-disable-next-line @next/next/no-img-element -- thumbnails are served by the artifact route with sharp resizing. */}
-      <img
-        src={buildArtifactImageUrl(jobId, relativePath, { w: 360, q: 72 })}
-        alt={alt}
-        loading="lazy"
-        className="aspect-square w-full bg-black/30 object-cover"
-      />
-    </a>
+    <ArtifactImagePreview
+      jobId={jobId}
+      relativePath={relativePath}
+      alt={alt}
+      thumbnailOptions={{ w: 360, q: 72 }}
+      buttonClassName="block w-full"
+      imageClassName="aspect-square w-full bg-black/30 object-cover"
+      emptyClassName="flex aspect-square items-center justify-center bg-black/30 text-xs text-zinc-600"
+      emptyLabel="无图片"
+    />
   );
 }
 
