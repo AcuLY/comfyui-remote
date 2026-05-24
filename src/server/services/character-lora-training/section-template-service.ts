@@ -3,6 +3,7 @@ import {
   createCharacterLoraSectionTemplateCopy as createSectionTemplateCopyInRepository,
   getCharacterLoraCanonicalVersion as getCanonicalVersionFromRepository,
   getCharacterLoraPromptCardVersion as getPromptCardVersionFromRepository,
+  getCharacterLoraJobSection as getJobSectionFromRepository,
   getCharacterLoraSectionTemplate as getSectionTemplateFromRepository,
   getCharacterLoraTrainingTemplate as getTrainingTemplateFromRepository,
   getCharacterLoraTrainingJob as getJobFromRepository,
@@ -453,6 +454,17 @@ export async function listCharacterLoraJobSections(jobId: string) {
   await getExistingJob(id);
 
   return listJobSectionsFromRepository(id);
+}
+
+export async function getCharacterLoraJobSection(sectionId: string) {
+  const id = normalizeId(sectionId, "sectionId");
+  const section = await getJobSectionFromRepository(id);
+
+  if (!section) {
+    throw new CharacterLoraSectionTemplateServiceError("Character LoRA section not found", 404);
+  }
+
+  return section;
 }
 
 export async function instantiateCharacterLoraJobSections(jobId: string, input: unknown = {}) {

@@ -2,7 +2,7 @@ import { type NextRequest } from "next/server";
 
 import { fail, ok } from "@/lib/api-response";
 import {
-  createCharacterLoraTrainingJob,
+  createCharacterLoraTrainingProject,
   listCharacterLoraTrainingJobs,
   mapCharacterLoraTrainingJobError,
 } from "@/server/services/character-lora-training/job-service";
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const data = await createCharacterLoraTrainingJob(body);
+    const data = await createCharacterLoraTrainingProject(body);
     return ok(data, { status: 201 });
   } catch (error) {
     const mapped = mapCharacterLoraTrainingJobError(error);

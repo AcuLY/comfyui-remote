@@ -7,6 +7,14 @@ import {
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
+  return handleReview(request);
+}
+
+export async function PATCH(request: Request) {
+  return handleReview(request);
+}
+
+async function handleReview(request: Request) {
   let body: unknown;
 
   try {

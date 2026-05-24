@@ -1,4 +1,4 @@
-import { basename } from "node:path";
+import { basename, isAbsolute as pathIsAbsolute, relative as pathRelative } from "node:path";
 import { Prisma } from "@/generated/prisma";
 import { CharacterLoraJobStatus } from "@/generated/prisma/enums";
 import {
@@ -8,6 +8,13 @@ import {
   findCharacterLoraTrainingJobBySlug,
   getCharacterLoraTrainingJob as getJobFromRepository,
   instantiateCharacterLoraJobSections as instantiateJobSectionsInRepository,
+  listCharacterLoraCandidateImages as listCandidateImagesFromRepository,
+  listCharacterLoraCanonicalVersions as listCanonicalVersionsFromRepository,
+  listCharacterLoraDatasetRevisions as listDatasetRevisionsFromRepository,
+  listCharacterLoraJobSections as listJobSectionsFromRepository,
+  listCharacterLoraPromptCardVersions as listPromptCardVersionsFromRepository,
+  listCharacterLoraSourceImages as listSourceImagesFromRepository,
+  listCharacterLoraTrainingRuns as listTrainingRunsFromRepository,
   listCharacterLoraTrainingJobs as listJobsFromRepository,
   updateCharacterLoraTrainingJob as updateJobInRepository,
   type CharacterLoraTrainingJobSummary,
@@ -17,7 +24,11 @@ import {
   writeCharacterLoraJsonArtifact,
 } from "@/server/services/character-lora-training/artifact-service";
 import { getCharacterLoraTrainingTemplateSnapshot } from "@/server/services/character-lora-training/section-template-service";
-import { characterLoraTrainingScopeSchema } from "@/server/character-lora-training/contracts";
+import {
+  CHARACTER_LORA_DEFAULT_DERIVED_TRAINING_STATES,
+  characterLoraTrainingScopeSchema,
+} from "@/server/character-lora-training/contracts";
+import { getModelBaseDir, hashModelFile, ModelAssetError } from "@/server/services/model-asset-service";
 import { z } from "zod";
 
 const DEFAULT_CAPTION_STRATEGY = "controllable_identity";
@@ -31,13 +42,45 @@ const createJobSchema = z
     baseCheckpointName: nullableTrimmedStringSchema(),
     baseCheckpointPath: requiredTrimmedStringSchema("baseCheckpointPath is required"),
     baseCheckpointHash: requiredTrimmedStringSchema("baseCheckpointHash is required"),
-    baseFamily: requiredTrimmedStringSchema("baseFamily is required"),
+    baseFamily: nullableTrimmedStringSchema(),
     captionStrategy: nullableTrimmedStringSchema(),
     trainingTemplateId: nullableTrimmedStringSchema(),
     phase: nullableTrimmedStringSchema(),
     createdBy: nullableTrimmedStringSchema(),
   })
   .strict();
+
+const createProjectSchema = z
+  .object({
+    characterName: nullableTrimmedStringSchema(),
+    projectName: nullableTrimmedStringSchema(),
+    triggerToken: z.string().trim().min(1),
+    checkpointRelativePath: nullableTrimmedStringSchema(),
+    checkpointPath: nullableTrimmedStringSchema(),
+    trainingTemplateId: nullableTrimmedStringSchema(),
+    actor: nullableTrimmedStringSchema(),
+    source: nullableTrimmedStringSchema(),
+    clientRequestId: nullableTrimmedStringSchema(),
+    createdBy: nullableTrimmedStringSchema(),
+  })
+  .strict()
+  .superRefine((value, ctx) => {
+    if (!value.characterName && !value.projectName) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["characterName"],
+        message: "characterName or projectName is required",
+      });
+    }
+
+    if (!value.checkpointRelativePath && !value.checkpointPath) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["checkpointRelativePath"],
+        message: "checkpointRelativePath or checkpointPath is required",
+      });
+    }
+  });
 
 const updateJobSchema = z
   .object({
@@ -97,6 +140,130 @@ export async function getCharacterLoraTrainingJob(jobId: string) {
   return job;
 }
 
+export async function getCharacterLoraTrainingJobOverview(jobId: string) {
+  const job = await getCharacterLoraTrainingJob(jobId);
+  const [
+    sourceImages,
+    canonicalVersions,
+    promptCardVersions,
+    sections,
+    candidateImages,
+    datasetRevisions,
+    trainingRuns,
+  ] = await Promise.all([
+    listSourceImagesFromRepository(job.id),
+    listCanonicalVersionsFromRepository(job.id),
+    listPromptCardVersionsFromRepository(job.id),
+    listJobSectionsFromRepository(job.id),
+    listCandidateImagesFromRepository({ jobId: job.id }),
+    listDatasetRevisionsFromRepository(job.id),
+    listTrainingRunsFromRepository(job.id),
+  ]);
+
+  const currentCanonical =
+    canonicalVersions.find((version) => version.id === job.currentCanonicalVersionId) ??
+    canonicalVersions.at(-1) ??
+    null;
+  const currentPromptCard =
+    promptCardVersions.find((version) => version.id === job.currentPromptCardVersionId) ??
+    promptCardVersions.at(-1) ??
+    null;
+  const keptImageCount = candidateImages.filter((image) =>
+    image.reviewStatus === "keep" || image.reviewStatus === "included_in_training"
+  ).length;
+  const latestDatasetRevision = datasetRevisions.at(-1) ?? null;
+  const latestTrainingRun = trainingRuns[0] ?? null;
+  const completedSections = sections.filter((section) => section.keepCount >= section.targetKeepCount).length;
+
+  return {
+    job: {
+      id: job.id,
+      slug: job.slug,
+      characterName: job.characterName,
+      triggerToken: job.triggerToken,
+      status: job.status,
+      phase: job.phase,
+      createdAt: job.createdAt,
+      updatedAt: job.updatedAt,
+    },
+    currentStage: deriveOverviewStage({
+      job,
+      sourceImageCount: sourceImages.length,
+      currentCanonicalVersionId: currentCanonical?.id ?? null,
+      currentPromptCardVersionId: currentPromptCard?.id ?? null,
+      sectionCount: sections.length,
+      keptImageCount,
+      datasetRevisionCount: datasetRevisions.length,
+      latestTrainingStatus: latestTrainingRun?.status ?? null,
+    }),
+    missingItems: buildOverviewMissingItems({
+      job,
+      sourceImageCount: sourceImages.length,
+      currentCanonicalVersionId: currentCanonical?.id ?? null,
+      currentPromptCardVersionId: currentPromptCard?.id ?? null,
+      sectionCount: sections.length,
+      keptImageCount,
+      datasetRevisionCount: datasetRevisions.length,
+    }),
+    sourceImages: {
+      count: sourceImages.length,
+    },
+    personaReference: {
+      currentCanonicalVersionId: currentCanonical?.id ?? null,
+      imageArtifactId: currentCanonical?.imageArtifactId ?? null,
+      status: currentCanonical?.status ?? null,
+      versionCount: canonicalVersions.length,
+    },
+    promptCard: {
+      currentPromptCardVersionId: currentPromptCard?.id ?? null,
+      version: currentPromptCard?.version ?? null,
+      versionCount: promptCardVersions.length,
+      hasFinalPromptDraft: Boolean(currentPromptCard?.finalPromptDraft),
+    },
+    sections: {
+      total: sections.length,
+      completed: completedSections,
+      active: sections.filter((section) => section.status !== "paused").length,
+      paused: sections.filter((section) => section.status === "paused").length,
+      targetKeepCount: sections.reduce((sum, section) => sum + section.targetKeepCount, 0),
+      keptImageCount,
+      items: sections.map((section) => ({
+        id: section.id,
+        key: section.key,
+        name: section.name,
+        status: section.status,
+        keepCount: section.keepCount,
+        rejectCount: section.rejectCount,
+        pendingCount: section.pendingCount,
+        targetKeepCount: section.targetKeepCount,
+        generationRunCount: section.counts.generationRuns,
+        candidateImageCount: section.counts.candidateImages,
+      })),
+    },
+    dataset: {
+      selectedDatasetRevisionId: job.selectedDatasetRevisionId,
+      latestDatasetRevisionId: latestDatasetRevision?.id ?? null,
+      versionCount: datasetRevisions.length,
+      latestItemCount: latestDatasetRevision?.itemCount ?? null,
+    },
+    training: {
+      latestTrainingRun: latestTrainingRun
+        ? {
+            id: latestTrainingRun.id,
+            status: latestTrainingRun.status,
+            currentStep: latestTrainingRun.currentStep,
+            targetSteps: latestTrainingRun.targetSteps,
+            finalSha256: latestTrainingRun.finalSha256,
+            finalSafetensorsArtifactId: latestTrainingRun.finalSafetensorsArtifactId,
+            createdAt: latestTrainingRun.createdAt,
+            updatedAt: latestTrainingRun.updatedAt,
+          }
+        : null,
+      runCount: trainingRuns.length,
+    },
+  };
+}
+
 export async function createCharacterLoraTrainingJob(input: unknown) {
   const parsed = parseWithSchema(createJobSchema, input);
   await assertTriggerTokenAvailable(parsed.triggerToken);
@@ -144,6 +311,50 @@ export async function createCharacterLoraTrainingJob(input: unknown) {
   return job;
 }
 
+export async function createCharacterLoraTrainingProject(input: unknown) {
+  const parsed = parseWithSchema(createProjectSchema, input);
+  const characterName = parsed.characterName ?? parsed.projectName;
+  const checkpointPath = parsed.checkpointRelativePath ?? parsed.checkpointPath;
+
+  if (!characterName || !checkpointPath) {
+    throw new CharacterLoraTrainingJobServiceError("characterName/projectName and checkpoint path are required", 400);
+  }
+
+  const [checkpoint, trainingTemplateSnapshot] = await Promise.all([
+    hashModelFile("checkpoint", normalizeCheckpointRelativePath(checkpointPath)),
+    getCharacterLoraTrainingTemplateSnapshot({
+      id: parsed.trainingTemplateId,
+    }),
+  ]);
+
+  return createCharacterLoraTrainingJob({
+    characterName,
+    triggerToken: parsed.triggerToken,
+    trainingScope: {
+      purpose: "character_identity",
+      primaryOutfitOrForm: "external-agent-managed",
+      scopeNote: "Created through the Character LoRA v2 lightweight project facade.",
+      advancedExperiment: false,
+      mixingPolicy: {
+        allowMixedCharacters: false,
+        allowMultipleOfficialOutfits: false,
+        note: "Default v2 policy: external agent manages prompt card and dataset scope after creation.",
+      },
+      derivedStates: [...CHARACTER_LORA_DEFAULT_DERIVED_TRAINING_STATES],
+    },
+    captionStrategy: trainingTemplateSnapshot.captionStrategyDefault ?? DEFAULT_CAPTION_STRATEGY,
+    phase: "setup",
+    baseCheckpointName: checkpoint.name,
+    baseCheckpointPath: checkpoint.absolutePath,
+    baseCheckpointHash: checkpoint.sha256,
+    // Checkpoint model assets do not currently expose baseFamily metadata without a schema change.
+    // Keep the job snapshot nullable and let expert/report views surface the missing metadata.
+    baseFamily: trainingTemplateSnapshot.baseFamily,
+    trainingTemplateId: trainingTemplateSnapshot.id,
+    createdBy: parsed.createdBy ?? buildFacadeCreatedBy(parsed),
+  });
+}
+
 export async function updateCharacterLoraTrainingJob(jobId: string, input: unknown) {
   const id = normalizeJobId(jobId);
   const current = await getCharacterLoraTrainingJob(id);
@@ -178,6 +389,14 @@ export async function updateCharacterLoraTrainingJob(jobId: string, input: unkno
 
 export function mapCharacterLoraTrainingJobError(error: unknown) {
   if (error instanceof CharacterLoraTrainingJobServiceError) {
+    return {
+      message: error.message,
+      status: error.status,
+      details: error.details,
+    };
+  }
+
+  if (error instanceof ModelAssetError) {
     return {
       message: error.message,
       status: error.status,
@@ -410,6 +629,122 @@ function hasOwn(value: object, key: string) {
 function deriveBaseCheckpointName(baseCheckpointPath: string) {
   const checkpointName = basename(baseCheckpointPath.replace(/\\/g, "/"));
   return checkpointName || baseCheckpointPath;
+}
+
+function normalizeCheckpointRelativePath(rawPath: string) {
+  const normalized = rawPath.trim().replace(/\\/g, "/");
+  if (!normalized) {
+    return normalized;
+  }
+
+  if (!pathIsAbsolute(normalized)) {
+    return normalized;
+  }
+
+  const baseDir = getModelBaseDir("checkpoint");
+  if (!baseDir) {
+    return normalized;
+  }
+
+  const relativePath = pathRelative(baseDir, normalized).replace(/\\/g, "/");
+  if (!relativePath || relativePath.startsWith("..") || pathIsAbsolute(relativePath)) {
+    return normalized;
+  }
+
+  return relativePath;
+}
+
+function buildFacadeCreatedBy(input: z.infer<typeof createProjectSchema>) {
+  const actor = input.actor ?? null;
+  const source = input.source ?? null;
+  const clientRequestId = input.clientRequestId ?? null;
+
+  if (!actor && !source && !clientRequestId) {
+    return null;
+  }
+
+  return [
+    actor ? `actor:${actor}` : null,
+    source ? `source:${source}` : null,
+    clientRequestId ? `clientRequestId:${clientRequestId}` : null,
+  ].filter(Boolean).join(" ");
+}
+
+function deriveOverviewStage(input: {
+  job: CharacterLoraTrainingJobSummary;
+  sourceImageCount: number;
+  currentCanonicalVersionId: string | null;
+  currentPromptCardVersionId: string | null;
+  sectionCount: number;
+  keptImageCount: number;
+  datasetRevisionCount: number;
+  latestTrainingStatus: string | null;
+}) {
+  if (input.job.status === "trained" || input.latestTrainingStatus === "done") {
+    return { key: "trained", status: input.job.status };
+  }
+  if (input.latestTrainingStatus === "queued" || input.latestTrainingStatus === "running") {
+    return { key: "training", status: input.job.status };
+  }
+  if (input.datasetRevisionCount > 0 || input.job.selectedDatasetRevisionId) {
+    return { key: "dataset", status: input.job.status };
+  }
+  if (input.keptImageCount > 0) {
+    return { key: "review", status: input.job.status };
+  }
+  if (input.sectionCount > 0 && input.currentPromptCardVersionId) {
+    return { key: "sections", status: input.job.status };
+  }
+  if (input.currentPromptCardVersionId) {
+    return { key: "prompt_card", status: input.job.status };
+  }
+  if (input.currentCanonicalVersionId) {
+    return { key: "persona_reference", status: input.job.status };
+  }
+  if (input.sourceImageCount > 0) {
+    return { key: "source_images", status: input.job.status };
+  }
+
+  return { key: "created", status: input.job.status };
+}
+
+function buildOverviewMissingItems(input: {
+  job: CharacterLoraTrainingJobSummary;
+  sourceImageCount: number;
+  currentCanonicalVersionId: string | null;
+  currentPromptCardVersionId: string | null;
+  sectionCount: number;
+  keptImageCount: number;
+  datasetRevisionCount: number;
+}) {
+  const items: Array<{ code: string; label: string; blocking: boolean }> = [];
+
+  if (!input.job.baseCheckpointPath || !input.job.baseCheckpointHash) {
+    items.push({ code: "checkpoint_snapshot", label: "checkpoint path/hash", blocking: true });
+  }
+  if (!input.job.baseFamily) {
+    items.push({ code: "checkpoint_base_family", label: "checkpoint base family", blocking: false });
+  }
+  if (input.sourceImageCount === 0) {
+    items.push({ code: "source_images", label: "source images", blocking: true });
+  }
+  if (!input.currentCanonicalVersionId) {
+    items.push({ code: "persona_reference", label: "selected persona reference", blocking: true });
+  }
+  if (!input.currentPromptCardVersionId) {
+    items.push({ code: "prompt_card", label: "current prompt card", blocking: true });
+  }
+  if (input.sectionCount === 0) {
+    items.push({ code: "sections", label: "training sections", blocking: true });
+  }
+  if (input.keptImageCount === 0) {
+    items.push({ code: "kept_images", label: "kept training images", blocking: true });
+  }
+  if (input.datasetRevisionCount === 0) {
+    items.push({ code: "dataset_revision", label: "dataset revision", blocking: true });
+  }
+
+  return items;
 }
 
 function slugify(value: string) {

@@ -195,6 +195,17 @@ export async function listCharacterLoraTrainingRuns(jobId: string) {
   return listTrainingRunsFromRepository(normalizedJobId);
 }
 
+export async function getCharacterLoraTrainingRunStatus(trainingRunId: string) {
+  const normalizedTrainingRunId = normalizeId(trainingRunId, "trainingRunId");
+  const run = await getCharacterLoraTrainingRun(normalizedTrainingRunId);
+
+  if (!run) {
+    throw new CharacterLoraTrainingServiceError("Character LoRA training run not found", 404);
+  }
+
+  return run;
+}
+
 export async function getCharacterLoraGpuTaskLock() {
   const [current, activeLocks] = await Promise.all([
     getCurrentCharacterLoraGpuTaskLock(),

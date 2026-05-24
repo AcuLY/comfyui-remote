@@ -1,8 +1,10 @@
 "use server";
 
 import {
+  createCharacterLoraTrainingProject as createProject,
   createCharacterLoraTrainingJob as createJob,
   getCharacterLoraTrainingJob as getJob,
+  getCharacterLoraTrainingJobOverview as getJobOverview,
   listCharacterLoraTrainingJobs as listJobs,
   updateCharacterLoraTrainingJob as updateJob,
 } from "@/server/services/character-lora-training/job-service";
@@ -74,6 +76,10 @@ export async function createCharacterLoraTrainingJob(input: unknown) {
   return createJob(input);
 }
 
+export async function createCharacterLoraTrainingProject(input: unknown) {
+  return createProject(input);
+}
+
 export async function updateCharacterLoraTrainingJob(jobId: string, input: unknown) {
   return updateJob(jobId, input);
 }
@@ -84,6 +90,10 @@ export async function listCharacterLoraTrainingJobs(input?: unknown) {
 
 export async function getCharacterLoraTrainingJob(jobId: string) {
   return getJob(jobId);
+}
+
+export async function getCharacterLoraProjectOverview(jobId: string) {
+  return getJobOverview(jobId);
 }
 
 export async function listCharacterLoraSourceImages(jobId: string) {
