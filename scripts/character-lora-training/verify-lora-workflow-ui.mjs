@@ -19,9 +19,11 @@ function assertNotIncludes(content, needle, label) {
 const workflowActions = read('src/app/character-lora-training/[jobId]/workflow-actions.ts');
 const personaPage = read('src/app/character-lora-training/[jobId]/persona-reference/page.tsx');
 const sectionDetailPage = read('src/app/character-lora-training/[jobId]/sections/[sectionId]/page.tsx');
+const datasetPage = read('src/app/character-lora-training/[jobId]/dataset/page.tsx');
 const sharedUi = read('src/app/character-lora-training/[jobId]/shared-ui.tsx');
 const previewComponent = read('src/app/character-lora-training/[jobId]/artifact-image-preview.tsx');
 const workbenchClient = read('src/app/character-lora-training/[jobId]/job-workbench-client.tsx');
+const canonicalService = read('src/server/services/character-lora-training/canonical-service.ts');
 
 assertIncludes(workflowActions, 'return { ok: true, message: `已入队人设图', 'canonical enqueue action should return visible run/task feedback');
 assertIncludes(workflowActions, 'previousCandidateImageIds', 'section enqueue action should accept previous candidate references');
@@ -30,11 +32,19 @@ assertIncludes(workflowActions, 'parentRunId', 'section enqueue action should ac
 assertIncludes(personaPage, '<WorkflowActionForm', 'persona reference page should use client action form for enqueue feedback');
 assertIncludes(personaPage, '人设图任务状态', 'persona reference page should show canonical external task status');
 assertIncludes(personaPage, 'canonicalTaskByRunId', 'persona reference page should join runs to worker tasks');
+assertIncludes(personaPage, 'rerunCanonicalAction', 'persona reference page should expose canonical-image natural-language rerun action');
+assertIncludes(personaPage, '基于此人设图重生', 'canonical candidate cards should show a natural-language regenerate entry');
+assertIncludes(workflowActions, 'rerunCanonicalAction', 'workflow actions should include a canonical rerun action');
+assertIncludes(workflowActions, 'role: "canonical"', 'canonical rerun should send the selected canonical image as the provider reference');
+assertIncludes(canonicalService, 'validateExplicitCanonicalInputImages', 'canonical service should validate explicit canonical/reference input images');
 
 assertIncludes(sectionDetailPage, '基于此图重跑', 'section detail candidate card should expose rerun-from-image entry');
 assertIncludes(sectionDetailPage, 'previousCandidateImageIds', 'section detail rerun should send the candidate image as previous reference');
 assertIncludes(sectionDetailPage, 'parentRunId', 'section detail rerun should preserve parent run lineage');
 assertIncludes(sectionDetailPage, '任务状态', 'section detail page should show generation/worker task status');
+assertIncludes(datasetPage, 'enqueueSectionRunAction', 'dataset page should be able to enqueue reruns from kept training images');
+assertIncludes(datasetPage, '基于此训练集图重跑', 'dataset kept image cards should expose a natural-language rerun entry');
+assertIncludes(datasetPage, 'previousCandidateImageIds', 'dataset rerun should send the existing training image as previous reference');
 
 assertIncludes(workbenchClient, 'onRerunFromImage', 'expert workbench candidate cards should expose rerun-from-image action');
 assertIncludes(workbenchClient, 'previousCandidateImageIds', 'expert workbench rerun should send previous candidate references');

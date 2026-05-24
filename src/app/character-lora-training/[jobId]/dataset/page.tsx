@@ -14,10 +14,11 @@ import {
   MetricGrid,
   SimpleSection,
   StatusPill,
+  compactId,
   formatDate,
 } from "../shared-ui";
 import { WorkflowActionForm } from "../workflow-action-form";
-import { freezeDatasetAction } from "../workflow-actions";
+import { enqueueSectionRunAction, freezeDatasetAction } from "../workflow-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -82,14 +83,36 @@ export default async function DatasetPage({
             </div>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              {keptImages.map((image) => (
-                <div key={image.id} className="rounded-lg border border-white/10 bg-white/[0.03] p-2">
-                  <ArtifactThumb jobId={job.id} relativePath={image.relativePath} alt={image.id} />
-                  <div className="mt-2 line-clamp-3 min-h-[3.75rem] text-xs leading-5 text-zinc-400">
-                    {image.captionDraft || "缺少 caption"}
+              {keptImages.map((image) => {
+                const section = image.sectionId ? sections.find((candidate) => candidate.id === image.sectionId) ?? null : null;
+                return (
+                  <div key={image.id} className="rounded-lg border border-white/10 bg-white/[0.03] p-2">
+                    <ArtifactThumb jobId={job.id} relativePath={image.relativePath} alt={image.id} />
+                    <div className="mt-2 line-clamp-3 min-h-[3.75rem] text-xs leading-5 text-zinc-400">
+                      {image.captionDraft || "缺少 caption"}
+                    </div>
+                    <div className="mt-2 flex items-center justify-between gap-2 text-[11px] text-zinc-500">
+                      <span>{section?.name ?? "未关联模块"}</span>
+                      <span className="font-mono">{compactId(image.id)}</span>
+                    </div>
+                    <WorkflowActionForm
+                      action={enqueueSectionRunAction.bind(null, image.sectionId ?? "", job.id)}
+                      submitLabel="基于此训练集图重跑"
+                      pendingLabel="重跑入队中"
+                      successMessage="训练集图重跑任务已入队"
+                      disabled={!image.sectionId}
+                      className="mt-2 space-y-2 rounded-lg border border-sky-400/20 bg-sky-500/10 p-2"
+                      buttonClassName="h-8 w-full rounded-md bg-sky-500 px-2 text-xs font-medium text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <input type="hidden" name="provider" value="openai-codex" />
+                      <input type="hidden" name="parentRunId" value={image.generationRunId} />
+                      <input type="hidden" name="previousCandidateImageIds" value={image.id} />
+                      <textarea name="userInstruction" rows={3} required placeholder="自然语言说明要调整的地方：姿势、表情、构图、细节..." className="w-full rounded-md border border-white/10 bg-black/30 px-2 py-2 text-xs leading-5 text-zinc-200 outline-none transition focus:border-sky-400" />
+                      <input name="negativePrompt" placeholder="负面提示词（可选）" className="w-full rounded-md border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-zinc-200 outline-none transition focus:border-sky-400" />
+                    </WorkflowActionForm>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </SimpleSection>

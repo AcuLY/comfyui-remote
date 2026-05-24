@@ -20,6 +20,7 @@ import {
   enqueueCanonicalAction,
   registerManualCanonicalAction,
   rejectCanonicalAction,
+  rerunCanonicalAction,
   selectCanonicalAction,
   uploadSourceImageAction,
 } from "../workflow-actions";
@@ -177,28 +178,48 @@ export default async function PersonaReferencePage({
               </div>
             ) : (
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {report.canonicalVersions.map((version) => (
-                  <div key={version.id} className="rounded-lg border border-white/10 bg-white/[0.03] p-2">
-                    <ArtifactThumb jobId={job.id} relativePath={version.artifact?.relativePath} alt={version.id} />
-                    <div className="mt-2 flex items-center justify-between gap-2 text-xs">
-                      <span className="font-medium text-zinc-200">v{version.version}</span>
-                      <StatusPill value={version.id === job.currentCanonicalVersionId ? "当前" : version.status} />
+                {report.canonicalVersions.map((version) => {
+                  const artifact = version.artifact;
+                  const canRerun = Boolean(artifact?.id && artifact.relativePath && artifact.sha256);
+                  return (
+                    <div key={version.id} className="rounded-lg border border-white/10 bg-white/[0.03] p-2">
+                      <ArtifactThumb jobId={job.id} relativePath={artifact?.relativePath} alt={version.id} />
+                      <div className="mt-2 flex items-center justify-between gap-2 text-xs">
+                        <span className="font-medium text-zinc-200">v{version.version}</span>
+                        <StatusPill value={version.id === job.currentCanonicalVersionId ? "当前" : version.status} />
+                      </div>
+                      <div className="mt-1 truncate font-mono text-[11px] text-zinc-500">{compactId(version.id)}</div>
+                      <div className="mt-2 grid grid-cols-2 gap-2">
+                        <form action={selectCanonicalAction.bind(null, job.id, version.id)}>
+                          <button disabled={version.id === job.currentCanonicalVersionId || version.status === "rejected"} className="h-8 w-full rounded-md bg-sky-500 px-2 text-xs font-medium text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50">
+                            选用
+                          </button>
+                        </form>
+                        <form action={rejectCanonicalAction.bind(null, job.id, version.id)}>
+                          <button disabled={version.id === job.currentCanonicalVersionId || version.status === "rejected"} className="h-8 w-full rounded-md border border-rose-500/30 px-2 text-xs font-medium text-rose-200 transition hover:bg-rose-500/10 disabled:cursor-not-allowed disabled:opacity-50">
+                            拒绝
+                          </button>
+                        </form>
+                      </div>
+                      <WorkflowActionForm
+                        action={rerunCanonicalAction.bind(null, job.id)}
+                        submitLabel="基于此人设图重生"
+                        pendingLabel="重生入队中"
+                        successMessage="人设图重生任务已入队"
+                        disabled={!canRerun}
+                        className="mt-2 space-y-2 rounded-lg border border-sky-400/20 bg-sky-500/10 p-2"
+                        buttonClassName="h-8 w-full rounded-md bg-sky-500 px-2 text-xs font-medium text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <input type="hidden" name="provider" value="openai-codex" />
+                        <input type="hidden" name="artifactId" value={artifact?.id ?? ""} />
+                        <input type="hidden" name="relativePath" value={artifact?.relativePath ?? ""} />
+                        <input type="hidden" name="sha256" value={artifact?.sha256 ?? ""} />
+                        <textarea name="userInstruction" rows={3} required placeholder="自然语言说明要调整的地方：表情、角度、细节、配色..." className="w-full rounded-md border border-white/10 bg-black/30 px-2 py-2 text-xs leading-5 text-zinc-200 outline-none transition focus:border-sky-400" />
+                        <input name="negativePrompt" placeholder="负面提示词（可选）" className="w-full rounded-md border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-zinc-200 outline-none transition focus:border-sky-400" />
+                      </WorkflowActionForm>
                     </div>
-                    <div className="mt-1 truncate font-mono text-[11px] text-zinc-500">{compactId(version.id)}</div>
-                    <div className="mt-2 grid grid-cols-2 gap-2">
-                      <form action={selectCanonicalAction.bind(null, job.id, version.id)}>
-                        <button disabled={version.id === job.currentCanonicalVersionId || version.status === "rejected"} className="h-8 w-full rounded-md bg-sky-500 px-2 text-xs font-medium text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50">
-                          选用
-                        </button>
-                      </form>
-                      <form action={rejectCanonicalAction.bind(null, job.id, version.id)}>
-                        <button disabled={version.id === job.currentCanonicalVersionId || version.status === "rejected"} className="h-8 w-full rounded-md border border-rose-500/30 px-2 text-xs font-medium text-rose-200 transition hover:bg-rose-500/10 disabled:cursor-not-allowed disabled:opacity-50">
-                          拒绝
-                        </button>
-                      </form>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </SimpleSection>

@@ -49,6 +49,30 @@ export async function enqueueCanonicalAction(jobId: string, formData: FormData):
   }
 }
 
+export async function rerunCanonicalAction(jobId: string, formData: FormData): Promise<WorkflowActionResult> {
+  try {
+    const userInstruction = requiredString(formData.get("userInstruction"), "userInstruction");
+    const artifactId = requiredString(formData.get("artifactId"), "artifactId");
+    const relativePath = requiredString(formData.get("relativePath"), "relativePath");
+    const sha256 = requiredString(formData.get("sha256"), "sha256");
+    const run = await enqueueCharacterLoraCanonicalGenerationRun(jobId, {
+      provider: stringOrUndefined(formData.get("provider")),
+      inputImages: [{
+        artifactId,
+        role: "canonical",
+        relativePath,
+        sha256,
+      }],
+      visualPrompt: buildCanonicalRerunPrompt(userInstruction),
+      negativePrompt: stringOrNull(formData.get("negativePrompt")),
+    });
+    revalidateJob(jobId);
+    return { ok: true, message: `已入队人设图重生 run ${compactActionId(run.id)} / task ${compactActionId(run.workerTaskId)}。` };
+  } catch (error) {
+    return toActionResult(error);
+  }
+}
+
 export async function registerManualCanonicalAction(jobId: string, formData: FormData) {
   await registerManualCharacterLoraCanonicalVersion(jobId, {
     sourceImageId: requiredString(formData.get("sourceImageId"), "sourceImageId"),
@@ -224,6 +248,15 @@ function positiveNumberOrUndefined(value: FormDataEntryValue | null) {
 function compactActionId(value: string | null | undefined) {
   if (!value) return "-";
   return value.length > 12 ? `${value.slice(0, 8)}...${value.slice(-4)}` : value;
+}
+
+function buildCanonicalRerunPrompt(userInstruction: string) {
+  return [
+    "Regenerate a single-character canonical/reference sheet by using the provided canonical image as the primary visual reference.",
+    "Preserve the character identity, face, hair, outfit, shoes, accessories, and overall silhouette unless the user explicitly asks to change them.",
+    "Keep a plain white or neutral background, clean lighting, front-facing full-body composition, no text, logo, watermark, extra characters, or background clutter.",
+    `User requested adjustment: ${userInstruction}`,
+  ].join(" ");
 }
 
 function toActionResult(error: unknown): WorkflowActionResult {

@@ -100,7 +100,7 @@ export async function enqueueCharacterLoraCanonicalGenerationRun(jobId: string, 
   }
 
   const provider = parsed.provider ?? DEFAULT_PROVIDER;
-  const inputImages = resolveProviderInputImages(sourceImages, parsed);
+  const inputImages = await resolveProviderInputImages(id, sourceImages, parsed);
   const runId = randomUUID();
   const outputDir = `generation-runs/${runId}`;
   const hostInstruction =
@@ -489,12 +489,13 @@ async function listRequiredSourceImages(jobId: string) {
   return sourceImages;
 }
 
-function resolveProviderInputImages(
+async function resolveProviderInputImages(
+  jobId: string,
   sourceImages: CharacterLoraSourceImageSummary[],
   parsed: z.infer<typeof enqueueCanonicalGenerationSchema>,
 ) {
   if (parsed.inputImages) {
-    return validateExplicitProviderInputImages(sourceImages, parsed.inputImages);
+    return validateExplicitCanonicalInputImages(jobId, sourceImages, parsed.inputImages);
   }
 
   if (parsed.sourceImageIds) {
@@ -504,7 +505,8 @@ function resolveProviderInputImages(
   return sourceImages.map(sourceImageToProviderInput);
 }
 
-function validateExplicitProviderInputImages(
+async function validateExplicitCanonicalInputImages(
+  jobId: string,
   sourceImages: CharacterLoraSourceImageSummary[],
   inputImages: CharacterLoraProviderInputImage[],
 ) {
@@ -512,40 +514,67 @@ function validateExplicitProviderInputImages(
     throw new CharacterLoraCanonicalServiceError("inputImages must include at least one image", 400);
   }
 
-  const sourceByArtifactId = new Map(sourceImages.map((sourceImage) => [sourceImage.artifactId, sourceImage]));
+  const uniqueArtifactIds = new Set(inputImages.map((inputImage) => inputImage.artifactId));
+  if (uniqueArtifactIds.size !== inputImages.length) {
+    throw new CharacterLoraCanonicalServiceError("inputImages must not contain duplicate artifacts", 400);
+  }
+
+  const artifacts = await Promise.all(
+    inputImages.map((inputImage) => getCharacterLoraArtifact(inputImage.artifactId)),
+  );
+  const sourceById = new Map(sourceImages.map((sourceImage) => [sourceImage.id, sourceImage]));
   const missingArtifactIds: string[] = [];
+  const foreignArtifactIds: string[] = [];
   const mismatchedArtifactIds: string[] = [];
+  const missingSourceImageIds: string[] = [];
+  const mismatchedSourceImageIds: string[] = [];
 
-  for (const inputImage of inputImages) {
-    const sourceImage = sourceByArtifactId.get(inputImage.artifactId);
+  for (let index = 0; index < inputImages.length; index += 1) {
+    const inputImage = inputImages[index];
+    const artifact = artifacts[index];
 
-    if (!sourceImage) {
+    if (!artifact) {
       missingArtifactIds.push(inputImage.artifactId);
-      continue;
-    }
-
-    if (
-      inputImage.relativePath !== sourceImage.relativePath ||
-      inputImage.sha256.toLowerCase() !== sourceImage.sha256.toLowerCase()
+    } else if (artifact.jobId !== jobId) {
+      foreignArtifactIds.push(inputImage.artifactId);
+    } else if (
+      artifact.relativePath !== inputImage.relativePath ||
+      !artifact.sha256 ||
+      artifact.sha256.toLowerCase() !== inputImage.sha256.toLowerCase()
     ) {
       mismatchedArtifactIds.push(inputImage.artifactId);
     }
+
+    if (!inputImage.sourceImageId) {
+      continue;
+    }
+
+    const sourceImage = sourceById.get(inputImage.sourceImageId);
+    if (!sourceImage) {
+      missingSourceImageIds.push(inputImage.sourceImageId);
+    } else if (sourceImage.artifactId !== inputImage.artifactId) {
+      mismatchedSourceImageIds.push(inputImage.sourceImageId);
+    }
   }
 
-  if (missingArtifactIds.length > 0) {
-    throw new CharacterLoraCanonicalServiceError(
-      "One or more inputImages do not belong to this job's source images",
-      404,
-      { artifactIds: missingArtifactIds },
-    );
+  if (missingArtifactIds.length > 0 || foreignArtifactIds.length > 0) {
+    throw new CharacterLoraCanonicalServiceError("One or more inputImages do not belong to this job", 404, {
+      missingArtifactIds,
+      foreignArtifactIds,
+    });
   }
 
   if (mismatchedArtifactIds.length > 0) {
-    throw new CharacterLoraCanonicalServiceError(
-      "One or more inputImages do not match the stored source image artifact",
-      409,
-      { artifactIds: mismatchedArtifactIds },
-    );
+    throw new CharacterLoraCanonicalServiceError("One or more inputImages do not match the stored artifact", 409, {
+      artifactIds: mismatchedArtifactIds,
+    });
+  }
+
+  if (missingSourceImageIds.length > 0 || mismatchedSourceImageIds.length > 0) {
+    throw new CharacterLoraCanonicalServiceError("One or more inputImages source references are invalid", 404, {
+      missingSourceImageIds,
+      mismatchedSourceImageIds,
+    });
   }
 
   return inputImages;
