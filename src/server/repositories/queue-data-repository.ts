@@ -1,3 +1,4 @@
+import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import { toImageUrl } from "@/lib/image-url";
 import fs from "node:fs";
@@ -139,10 +140,24 @@ const VISIBLE_QUEUE_RUN_WHERE = {
 const VISIBLE_QUEUE_RUN_ORDER_BY = [
   { finishedAt: "desc" },
   { createdAt: "desc" },
-] as const;
+] satisfies Prisma.RunOrderByWithRelationInput[];
+
+const VISIBLE_QUEUE_RUN_INCLUDE = {
+  project: {
+    select: { id: true, title: true, coverImageId: true, presetBindings: true },
+  },
+  projectSection: true,
+  images: {
+    orderBy: { createdAt: "asc" },
+  },
+} satisfies Prisma.RunInclude;
+
+type VisibleQueueRunRecord = Prisma.RunGetPayload<{
+  include: typeof VISIBLE_QUEUE_RUN_INCLUDE;
+}>;
 
 function serializeQueueRun(
-  run: Awaited<ReturnType<typeof loadVisibleQueueRunPage>>["runs"][number],
+  run: VisibleQueueRunRecord,
   presetMap: Map<string, { name: string }>,
 ) {
   const availableImages = run.images
@@ -196,15 +211,7 @@ async function loadVisibleQueueRunPage(page: number, pageSize: number) {
     orderBy: VISIBLE_QUEUE_RUN_ORDER_BY,
     skip: startIndex,
     take: pageSize,
-    include: {
-      project: {
-        select: { id: true, title: true, coverImageId: true, presetBindings: true },
-      },
-      projectSection: true,
-      images: {
-        orderBy: { createdAt: "asc" },
-      },
-    },
+    include: VISIBLE_QUEUE_RUN_INCLUDE,
   });
 
   const totalPendingImages = await totalPendingImagesPromise;
