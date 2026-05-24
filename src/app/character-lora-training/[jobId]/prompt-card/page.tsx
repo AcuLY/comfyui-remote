@@ -5,6 +5,7 @@ import {
   getCharacterLoraTrainingJob,
   listCharacterLoraPromptCardVersions,
 } from "@/lib/actions/character-lora-training";
+import { getCanonicalViewLabel } from "@/lib/character-lora-canonical-views";
 import {
   InfoRow,
   JobPageShell,
@@ -12,7 +13,7 @@ import {
   compactId,
   formatDate,
 } from "../shared-ui";
-import { createPromptCardAction } from "../workflow-actions";
+import { PromptCardForm } from "./prompt-card-form";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +36,19 @@ export default async function PromptCardPage({
   const currentPrompt = promptCards.find((card) => card.id === job.currentPromptCardVersionId) ?? promptCards[promptCards.length - 1] ?? null;
   const currentCanonical = report.canonicalVersions.find((version) => version.id === job.currentCanonicalVersionId) ?? null;
   const usableCanonicalVersions = report.canonicalVersions.filter((version) => version.status !== "rejected");
+  const canonicalOptions = usableCanonicalVersions.map((version) => ({
+    id: version.id,
+    version: version.version,
+    status: version.status,
+    label: `v${version.version} / ${getCanonicalViewLabel(version.canonicalView)} / ${version.status} / ${compactId(version.id)}`,
+  }));
+  const initialDraft = {
+    characterDescription: currentPrompt ? extractCharacterDescription(currentPrompt.identityTraits) : "",
+    identityTraits: currentPrompt ? formatEditableJsonish(currentPrompt.identityTraits) : "",
+    outfitTraits: currentPrompt ? formatEditableJsonish(currentPrompt.outfitTraits) : "",
+    negativeTraits: currentPrompt ? formatEditableJsonish(currentPrompt.negativeTraits) : "",
+    finalPromptDraft: currentPrompt?.finalPromptDraft ?? `${job.triggerToken}, `,
+  };
 
   return (
     <JobPageShell
@@ -51,41 +65,13 @@ export default async function PromptCardPage({
                 机械警告：没有当前人设图时，后续 section lineage 仍会阻塞；该提示词卡可先保存，但不能独立生成训练图。
               </div>
             ) : null}
-            <form action={createPromptCardAction.bind(null, job.id)} className="space-y-3 rounded-lg border border-white/10 bg-white/[0.03] p-3">
-              <input type="hidden" name="triggerToken" value={job.triggerToken} />
-              <label className="block text-xs text-zinc-400">
-                绑定人设图
-                <select name="canonicalVersionId" defaultValue={currentCanonical?.id ?? ""} className="mt-1 w-full rounded-md border border-white/10 bg-black/30 px-2 py-2 text-sm text-zinc-200 outline-none transition focus:border-sky-400">
-                  <option value="">不绑定 canonical</option>
-                  {usableCanonicalVersions.map((version) => (
-                    <option key={version.id} value={version.id}>v{version.version} / {version.status} / {compactId(version.id)}</option>
-                  ))}
-                </select>
-              </label>
-              <label className="block text-xs text-zinc-400">
-                identity / core traits
-                <textarea name="identityTraits" rows={4} required defaultValue={currentPrompt ? formatEditableJsonish(currentPrompt.identityTraits) : ""} className="mt-1 w-full rounded-md border border-white/10 bg-black/30 px-2 py-2 text-sm text-zinc-200 outline-none transition focus:border-sky-400" />
-              </label>
-              <label className="block text-xs text-zinc-400">
-                outfit / form traits
-                <textarea name="outfitTraits" rows={4} required defaultValue={currentPrompt ? formatEditableJsonish(currentPrompt.outfitTraits) : ""} className="mt-1 w-full rounded-md border border-white/10 bg-black/30 px-2 py-2 text-sm text-zinc-200 outline-none transition focus:border-sky-400" />
-              </label>
-              <label className="block text-xs text-zinc-400">
-                negative constraints
-                <textarea name="negativeTraits" rows={3} defaultValue={currentPrompt ? formatEditableJsonish(currentPrompt.negativeTraits) : ""} className="mt-1 w-full rounded-md border border-white/10 bg-black/30 px-2 py-2 text-sm text-zinc-200 outline-none transition focus:border-sky-400" />
-              </label>
-              <label className="block text-xs text-zinc-400">
-                final prompt
-                <textarea name="finalPromptDraft" rows={5} required defaultValue={currentPrompt?.finalPromptDraft ?? `${job.triggerToken}, `} className="mt-1 w-full rounded-md border border-white/10 bg-black/30 px-2 py-2 text-sm text-zinc-200 outline-none transition focus:border-sky-400" />
-              </label>
-              <label className="block text-xs text-zinc-400">
-                change note
-                <input name="changeReason" placeholder="本次版本调整说明" className="mt-1 w-full rounded-md border border-white/10 bg-black/30 px-2 py-2 text-sm text-zinc-200 outline-none transition focus:border-sky-400" />
-              </label>
-              <button className="h-9 rounded-md bg-emerald-500 px-3 text-xs font-medium text-white transition hover:bg-emerald-400">
-                创建新版本
-              </button>
-            </form>
+            <PromptCardForm
+              jobId={job.id}
+              triggerToken={job.triggerToken}
+              defaultCanonicalVersionId={currentCanonical?.id ?? ""}
+              canonicalOptions={canonicalOptions}
+              initialDraft={initialDraft}
+            />
           </SimpleSection>
 
           <SimpleSection title="当前提示词卡" subtitle={currentPrompt ? `v${currentPrompt.version}` : "未创建"}>
@@ -164,4 +150,10 @@ function formatJsonish(value: unknown) {
 function formatEditableJsonish(value: unknown) {
   if (value === null || value === undefined) return "";
   return formatJsonish(value);
+}
+
+function extractCharacterDescription(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return "";
+  const candidate = (value as Record<string, unknown>).characterDescription;
+  return typeof candidate === "string" ? candidate : "";
 }

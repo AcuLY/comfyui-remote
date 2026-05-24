@@ -1,6 +1,6 @@
 import { fail, ok } from "@/lib/api-response";
 import {
-  enqueueCharacterLoraCanonicalGenerationRun,
+  enqueueCharacterLoraCanonicalViewGenerationRuns,
   mapCharacterLoraCanonicalError,
 } from "@/server/services/character-lora-training/canonical-service";
 
@@ -22,7 +22,7 @@ export async function POST(request: Request, context: GenerateCanonicalRouteCont
   }
 
   try {
-    const data = await enqueueCharacterLoraCanonicalGenerationRun(jobId, body);
+    const data = await enqueueCharacterLoraCanonicalViewGenerationRuns(jobId, body);
     return ok(data, { status: 201 });
   } catch (error) {
     const mapped = mapCharacterLoraCanonicalError(error);

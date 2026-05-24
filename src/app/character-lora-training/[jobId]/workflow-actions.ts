@@ -2,13 +2,17 @@
 
 import { revalidatePath } from "next/cache";
 
+import { buildCanonicalRerunPrompt } from "@/lib/character-lora-canonical-views";
+import type { PromptCardDraftFields } from "@/lib/character-lora-prompt-card-draft";
 import {
   cancelCharacterLoraTrainingRun,
   createCharacterLoraPromptCardVersion,
   enqueueCharacterLoraCanonicalGenerationRun,
+  enqueueCharacterLoraCanonicalViewGenerationRuns,
   enqueueCharacterLoraSectionGenerationRun,
   enqueueCharacterLoraTrainingRun,
   freezeCharacterLoraDataset,
+  generateCharacterLoraPromptCardDraft,
   instantiateCharacterLoraJobSections,
   registerManualCharacterLoraCanonicalVersion,
   rejectCharacterLoraCanonicalVersion,
@@ -21,6 +25,14 @@ import {
 export type WorkflowActionResult = {
   ok: boolean;
   message: string;
+};
+
+export type PromptCardDraftActionResult = WorkflowActionResult & {
+  draft?: PromptCardDraftFields;
+  provider?: string;
+  sourceImageCount?: number;
+  canonicalImageCount?: number;
+  imageCount?: number;
 };
 
 export async function uploadSourceImageAction(jobId: string, formData: FormData): Promise<WorkflowActionResult> {
@@ -36,14 +48,19 @@ export async function uploadSourceImageAction(jobId: string, formData: FormData)
 export async function enqueueCanonicalAction(jobId: string, formData: FormData): Promise<WorkflowActionResult> {
   try {
     const sourceImageIds = formData.getAll("sourceImageIds").map(String).filter(Boolean);
-    const run = await enqueueCharacterLoraCanonicalGenerationRun(jobId, {
+    const runs = await enqueueCharacterLoraCanonicalViewGenerationRuns(jobId, {
       provider: stringOrUndefined(formData.get("provider")),
       sourceImageIds: sourceImageIds.length > 0 ? sourceImageIds : undefined,
       visualPrompt: stringOrUndefined(formData.get("visualPrompt")),
+      characterDescription: stringOrUndefined(formData.get("characterDescription")),
+      finalPromptDraft: stringOrUndefined(formData.get("finalPromptDraft")),
       negativePrompt: stringOrNull(formData.get("negativePrompt")),
     });
     revalidateJob(jobId);
-    return { ok: true, message: `已入队人设图 run ${compactActionId(run.id)} / task ${compactActionId(run.workerTaskId)}。` };
+    return {
+      ok: true,
+      message: `已分别入队正面/背面/左侧/右侧 4 条人设图任务：${runs.map((run) => `${run.canonicalView}:${compactActionId(run.id)}`).join(" / ")}。`,
+    };
   } catch (error) {
     return toActionResult(error);
   }
@@ -57,13 +74,17 @@ export async function rerunCanonicalAction(jobId: string, formData: FormData): P
     const sha256 = requiredString(formData.get("sha256"), "sha256");
     const run = await enqueueCharacterLoraCanonicalGenerationRun(jobId, {
       provider: stringOrUndefined(formData.get("provider")),
+      canonicalView: stringOrUndefined(formData.get("canonicalView")),
       inputImages: [{
         artifactId,
         role: "canonical",
         relativePath,
         sha256,
       }],
-      visualPrompt: buildCanonicalRerunPrompt(userInstruction),
+      visualPrompt: buildCanonicalRerunPrompt({
+        canonicalView: stringOrUndefined(formData.get("canonicalView")),
+        userInstruction,
+      }),
       negativePrompt: stringOrNull(formData.get("negativePrompt")),
     });
     revalidateJob(jobId);
@@ -76,6 +97,7 @@ export async function rerunCanonicalAction(jobId: string, formData: FormData): P
 export async function registerManualCanonicalAction(jobId: string, formData: FormData) {
   await registerManualCharacterLoraCanonicalVersion(jobId, {
     sourceImageId: requiredString(formData.get("sourceImageId"), "sourceImageId"),
+    canonicalView: stringOrUndefined(formData.get("canonicalView")),
     notes: stringOrNull(formData.get("notes")),
   });
   revalidateJob(jobId);
@@ -102,6 +124,23 @@ export async function createPromptCardAction(jobId: string, formData: FormData) 
     changeReason: stringOrNull(formData.get("changeReason")),
   });
   revalidateJob(jobId);
+}
+
+export async function draftPromptCardAction(jobId: string, input: unknown): Promise<PromptCardDraftActionResult> {
+  try {
+    const result = await generateCharacterLoraPromptCardDraft(jobId, input ?? {});
+    return {
+      ok: true,
+      message: `AI 草稿已生成（${result.provider}，source ${result.sourceImageCount}，canonical ${result.canonicalImageCount}）。请检查后再创建新版本。`,
+      draft: result.draft,
+      provider: result.provider,
+      sourceImageCount: result.sourceImageCount,
+      canonicalImageCount: result.canonicalImageCount,
+      imageCount: result.imageCount,
+    };
+  } catch (error) {
+    return toActionResult(error);
+  }
 }
 
 export async function instantiateSectionsAction(jobId: string) {
@@ -248,15 +287,6 @@ function positiveNumberOrUndefined(value: FormDataEntryValue | null) {
 function compactActionId(value: string | null | undefined) {
   if (!value) return "-";
   return value.length > 12 ? `${value.slice(0, 8)}...${value.slice(-4)}` : value;
-}
-
-function buildCanonicalRerunPrompt(userInstruction: string) {
-  return [
-    "Regenerate a single-character canonical/reference sheet by using the provided canonical image as the primary visual reference.",
-    "Preserve the character identity, face, hair, outfit, shoes, accessories, and overall silhouette unless the user explicitly asks to change them.",
-    "Keep a plain white or neutral background, clean lighting, front-facing full-body composition, no text, logo, watermark, extra characters, or background clutter.",
-    `User requested adjustment: ${userInstruction}`,
-  ].join(" ");
 }
 
 function toActionResult(error: unknown): WorkflowActionResult {

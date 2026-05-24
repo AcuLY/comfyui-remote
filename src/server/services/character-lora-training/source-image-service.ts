@@ -3,7 +3,7 @@ import { rm } from "node:fs/promises";
 
 import { Prisma } from "@/generated/prisma";
 import { CharacterLoraImageReviewStatus, CharacterLoraJobStatus } from "@/generated/prisma/enums";
-import { characterLoraSourceImageRoleSchema } from "@/server/character-lora-training/contracts";
+import { normalizeSourceImageUploadRole } from "@/lib/character-lora-source-images";
 import {
   createCharacterLoraSourceImage as createSourceImageInRepository,
   findCharacterLoraSourceImageDuplicate,
@@ -101,9 +101,9 @@ export async function uploadCharacterLoraSourceImage(jobId: string, input: unkno
 
   if (duplicate) {
     throw new CharacterLoraSourceImageServiceError(
-      "Source image already exists for this job, role, and sha256",
+      "Source image already exists for this job and sha256",
       409,
-      { role: parsed.role, sha256 },
+      { sha256 },
     );
   }
 
@@ -291,17 +291,7 @@ function readRawUploadInput(input: unknown) {
 }
 
 function parseSourceImageRole(value: unknown) {
-  const rawRole = typeof value === "string" ? value.trim() : "";
-  const role = rawRole || DEFAULT_SOURCE_IMAGE_ROLE;
-  const result = characterLoraSourceImageRoleSchema.safeParse(role);
-
-  if (result.success) {
-    return result.data;
-  }
-
-  throw new CharacterLoraSourceImageServiceError("role must be a supported source image role", 400, {
-    supportedRoles: characterLoraSourceImageRoleSchema.options,
-  });
+  return normalizeSourceImageUploadRole(value ?? DEFAULT_SOURCE_IMAGE_ROLE);
 }
 
 function parseOptionalInteger(value: unknown, fieldName: string) {

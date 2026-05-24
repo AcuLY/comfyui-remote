@@ -16,6 +16,7 @@ import {
 } from "@/server/services/character-lora-training/source-image-service";
 import {
   createCharacterLoraPromptCardVersion as createPromptCardVersion,
+  generateCharacterLoraPromptCardDraft as generatePromptCardDraft,
   listCharacterLoraPromptCardVersions as listPromptCardVersions,
   promoteCharacterLoraSectionInstructionToPromptCardVersion as promoteSectionInstructionToPromptCardVersion,
 } from "@/server/services/character-lora-training/prompt-card-service";
@@ -31,6 +32,7 @@ import {
 } from "@/server/services/character-lora-training/section-template-service";
 import {
   enqueueCharacterLoraCanonicalGenerationRun as enqueueCanonicalGenerationRun,
+  enqueueCharacterLoraCanonicalViewGenerationRuns as enqueueCanonicalViewGenerationRuns,
   mockCompleteCharacterLoraCanonicalGenerationRun as mockCompleteCanonicalGenerationRun,
   registerManualCharacterLoraCanonicalVersion as registerManualCanonicalVersion,
   rejectCharacterLoraCanonicalVersion as rejectCanonicalVersion,
@@ -121,6 +123,10 @@ export async function createCharacterLoraPromptCardVersion(jobId: string, input:
   return createPromptCardVersion(jobId, input);
 }
 
+export async function generateCharacterLoraPromptCardDraft(jobId: string, input?: unknown) {
+  return generatePromptCardDraft(jobId, input ?? {});
+}
+
 export async function promoteCharacterLoraSectionInstructionToPromptCardVersion(jobId: string, input: unknown) {
   return promoteSectionInstructionToPromptCardVersion(jobId, input);
 }
@@ -159,6 +165,10 @@ export async function resumeCharacterLoraJobSection(sectionId: string) {
 
 export async function enqueueCharacterLoraCanonicalGenerationRun(jobId: string, input?: unknown) {
   return enqueueCanonicalGenerationRun(jobId, input ?? {});
+}
+
+export async function enqueueCharacterLoraCanonicalViewGenerationRuns(jobId: string, input?: unknown) {
+  return enqueueCanonicalViewGenerationRuns(jobId, input ?? {});
 }
 
 export async function mockCompleteCharacterLoraCanonicalGenerationRun(runId: string, input?: unknown) {

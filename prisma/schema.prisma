@@ -605,6 +605,7 @@ model CharacterLoraCanonicalVersion {
   jobId             String
   version           Int
   status            String                       @default("candidate")
+  canonicalView     String?
   sourceRunId       String?
   imageArtifactId   String
   selectedAt        DateTime?
@@ -618,6 +619,7 @@ model CharacterLoraCanonicalVersion {
 
   @@unique([jobId, version])
   @@index([jobId, status])
+  @@index([jobId, canonicalView])
   @@index([sourceRunId])
 }
 
@@ -696,6 +698,7 @@ model CharacterLoraGenerationRun {
   jobId             String
   sectionId         String?
   kind              String
+  canonicalView     String?
   parentRunId       String?
   status            CharacterLoraRunStatus       @default(queued)
   provider          String
@@ -721,6 +724,7 @@ model CharacterLoraGenerationRun {
   candidateImages   CharacterLoraCandidateImage[]
 
   @@index([jobId, status])
+  @@index([jobId, canonicalView])
   @@index([sectionId, createdAt])
   @@index([parentRunId])
 }

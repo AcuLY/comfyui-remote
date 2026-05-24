@@ -90,6 +90,7 @@ export const CHARACTER_LORA_PROVIDER_INPUT_IMAGE_ROLES = [
 ] as const;
 
 export const CHARACTER_LORA_IMAGE_PROVIDERS = ["mock-local", "openai-codex"] as const;
+export const CHARACTER_LORA_CANONICAL_VIEWS = ["front", "back", "left", "right"] as const;
 
 export const CHARACTER_LORA_REJECT_REASONS = [
   "identity_wrong",
@@ -134,6 +135,7 @@ export const characterLoraGpuTaskLockStatusSchema = z.enum(CHARACTER_LORA_GPU_TA
 export const characterLoraSourceImageRoleSchema = z.enum(CHARACTER_LORA_SOURCE_IMAGE_ROLES);
 export const characterLoraProviderInputImageRoleSchema = z.enum(CHARACTER_LORA_PROVIDER_INPUT_IMAGE_ROLES);
 export const characterLoraImageProviderSchema = z.enum(CHARACTER_LORA_IMAGE_PROVIDERS);
+export const characterLoraCanonicalViewSchema = z.enum(CHARACTER_LORA_CANONICAL_VIEWS);
 export const characterLoraRejectReasonSchema = z.enum(CHARACTER_LORA_REJECT_REASONS);
 
 export type CharacterLoraJobStatus = z.infer<typeof characterLoraJobStatusSchema>;
@@ -146,6 +148,7 @@ export type CharacterLoraGpuTaskLockStatus = z.infer<typeof characterLoraGpuTask
 export type CharacterLoraSourceImageRole = z.infer<typeof characterLoraSourceImageRoleSchema>;
 export type CharacterLoraProviderInputImageRole = z.infer<typeof characterLoraProviderInputImageRoleSchema>;
 export type CharacterLoraImageProvider = z.infer<typeof characterLoraImageProviderSchema>;
+export type CharacterLoraCanonicalView = z.infer<typeof characterLoraCanonicalViewSchema>;
 export type CharacterLoraRejectReason = z.infer<typeof characterLoraRejectReasonSchema>;
 
 const relativeArtifactPathSchema = z.string().min(1);
@@ -282,6 +285,7 @@ export const characterLoraProviderInputImageSchema = z.object({
 export const characterLoraImageGenerationRequestSchema = z.object({
   jobId: z.string().min(1),
   generationRunId: z.string().min(1),
+  canonicalView: characterLoraCanonicalViewSchema.optional(),
   provider: characterLoraImageProviderSchema,
   hostModel: z.string().min(1),
   imageModel: z.enum(["gpt-image-2"]),

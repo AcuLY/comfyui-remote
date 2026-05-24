@@ -13,7 +13,6 @@ export function SourceImageUploader({
 }) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
-  const [role, setRole] = useState("source");
   const [message, setMessage] = useState<string | null>(null);
   const [isError, setIsError] = useState(false);
   const [selectedFileNames, setSelectedFileNames] = useState<string[]>([]);
@@ -37,7 +36,6 @@ export function SourceImageUploader({
       for (const [index, file] of selected.entries()) {
         const formData = new FormData();
         formData.set("file", file);
-        formData.set("role", role);
         const result = await uploadAction(formData);
         if (!result.ok) {
           setMessage(result.message);
@@ -55,20 +53,7 @@ export function SourceImageUploader({
   return (
     <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3">
       <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <label className="text-xs text-zinc-400">
-          图片用途
-          <select
-            value={role}
-            onChange={(event) => setRole(event.target.value)}
-            className="ml-2 rounded-md border border-white/10 bg-black/30 px-2 py-1 text-xs text-zinc-200 outline-none transition focus:border-sky-400"
-          >
-            <option value="source">source</option>
-            <option value="setting">setting</option>
-            <option value="local_reference">local_reference</option>
-            <option value="manual_canonical">manual_canonical</option>
-            <option value="rerun_reference">rerun_reference</option>
-          </select>
-        </label>
+        <div className="text-xs text-zinc-400">上传的图片统一作为参考源图使用。</div>
         <button
           type="button"
           onClick={() => inputRef.current?.click()}

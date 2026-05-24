@@ -33,6 +33,7 @@ import { toast } from "sonner";
 import { PageHeader } from "@/components/page-header";
 import { SectionCard } from "@/components/section-card";
 import { StatChip } from "@/components/stat-chip";
+import { CANONICAL_VIEW_SPECS, getCanonicalViewLabel } from "@/lib/character-lora-canonical-views";
 import { ArtifactImagePreview } from "./artifact-image-preview";
 import {
   cancelCharacterLoraTrainingRun,
@@ -42,7 +43,7 @@ import {
   createCharacterLoraPromotionDecision,
   ensureCharacterLoraBenchmarkTemplate,
   enqueueCharacterLoraBenchmarkRun,
-  enqueueCharacterLoraCanonicalGenerationRun,
+  enqueueCharacterLoraCanonicalViewGenerationRuns,
   enqueueCharacterLoraSectionGenerationRun,
   enqueueCharacterLoraTrainingRun,
   freezeCharacterLoraDataset,
@@ -690,9 +691,11 @@ export function JobWorkbenchClient({
   const [negativeTraits, setNegativeTraits] = useState("{\n  \"avoid\": \"wrong identity\"\n}");
   const [canonicalProvider, setCanonicalProvider] = useState<ImageProvider>("openai-codex");
   const [canonicalVisualPrompt, setCanonicalVisualPrompt] = useState("");
+  const [canonicalCharacterDescription, setCanonicalCharacterDescription] = useState("");
+  const [canonicalFinalPromptDraft, setCanonicalFinalPromptDraft] = useState("");
   const [canonicalSourceImageIds, setCanonicalSourceImageIds] = useState<string[]>(() => sourceImages.map((image) => image.id));
   const [manualCanonicalSourceImageId, setManualCanonicalSourceImageId] = useState(
-    () => sourceImages.find((image) => image.role === "manual_canonical")?.id ?? "",
+    () => sourceImages[0]?.id ?? "",
   );
   const [canonicalSize, setCanonicalSize] = useState("1024x1536");
   const [canonicalQuality, setCanonicalQuality] = useState("high");
@@ -711,10 +714,7 @@ export function JobWorkbenchClient({
   const [benchmarkTemplateId, setBenchmarkTemplateId] = useState(benchmarkTemplateDefaultId);
 
   const canonicalVersions = report.canonicalVersions;
-  const manualCanonicalSourceImages = useMemo(
-    () => sourceImages.filter((image) => image.role === "manual_canonical"),
-    [sourceImages],
-  );
+  const manualCanonicalSourceImages = sourceImages;
   const selectedManualCanonicalSourceImageId = manualCanonicalSourceImages.some((image) => image.id === manualCanonicalSourceImageId)
     ? manualCanonicalSourceImageId
     : manualCanonicalSourceImages[0]?.id ?? "";
@@ -997,13 +997,15 @@ export function JobWorkbenchClient({
     }
 
     runAction("canonical.generate", "Canonical 已入队", async () => {
-      const run = await enqueueCharacterLoraCanonicalGenerationRun(job.id, {
+      const runs = await enqueueCharacterLoraCanonicalViewGenerationRuns(job.id, {
         provider: canonicalProvider,
         visualPrompt: canonicalVisualPrompt.trim() || undefined,
+        characterDescription: canonicalCharacterDescription.trim() || undefined,
+        finalPromptDraft: canonicalFinalPromptDraft.trim() || undefined,
         sourceImageIds,
         toolParams: buildImageToolParams(canonicalSize, canonicalQuality),
       });
-      setLatestCanonicalRunId(run.id);
+      setLatestCanonicalRunId(runs[0]?.id ?? "");
     });
   }
 
@@ -1024,13 +1026,14 @@ export function JobWorkbenchClient({
   function handleManualCanonicalRegister(formData: FormData) {
     const sourceImageId = readOptionalString(formData, "sourceImageId");
     if (!sourceImageId) {
-      toast.error("缺少 manual_canonical source image");
+      toast.error("缺少参考源图");
       return;
     }
 
     runAction("canonical.manual", "Manual canonical 已注册", async () => {
       const version = await registerManualCharacterLoraCanonicalVersion(job.id, {
         sourceImageId,
+        canonicalView: readOptionalString(formData, "canonicalView") ?? undefined,
         notes: readOptionalString(formData, "notes") ?? null,
       });
       setCanonicalVersionId(version.id);
@@ -1482,7 +1485,7 @@ export function JobWorkbenchClient({
       </SectionCard>
 
       <SectionCard id="character-lora-source" title="Source" subtitle="上传原始参考图。">
-        <form action={handleUpload} className="grid gap-2 rounded-lg border border-white/10 bg-white/[0.03] p-3 md:grid-cols-[1fr_150px_90px_auto]">
+        <form action={handleUpload} className="grid gap-2 rounded-lg border border-white/10 bg-white/[0.03] p-3 md:grid-cols-[1fr_90px_auto]">
           <input
             name="file"
             type="file"
@@ -1490,13 +1493,6 @@ export function JobWorkbenchClient({
             required
             className="max-w-full min-w-0 rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs text-zinc-300"
           />
-          <select name="role" defaultValue="source" className="rounded-lg border border-white/10 bg-black/30 px-2 text-xs text-white">
-            <option value="source">source</option>
-            <option value="setting">setting</option>
-            <option value="local_reference">local_reference</option>
-            <option value="manual_canonical">manual_canonical</option>
-            <option value="rerun_reference">rerun_reference</option>
-          </select>
           <input name="sortOrder" type="number" defaultValue={sourceImages.length} className="rounded-lg border border-white/10 bg-black/30 px-2 text-xs text-white" />
           <ActionButton icon={Upload} label="上传" loading={isBusy("source.upload")} disabled={isPending} />
         </form>
@@ -1524,6 +1520,24 @@ export function JobWorkbenchClient({
               </label>
             </div>
             <label className="grid gap-1 text-xs text-zinc-400">
+              characterDescription
+              <textarea
+                value={canonicalCharacterDescription}
+                onChange={(event) => setCanonicalCharacterDescription(event.target.value)}
+                placeholder="从原始参考图提取的细致角色描述；会与四个角度白底人设图提示词拼接"
+                className="min-h-24 rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white placeholder:text-zinc-600"
+              />
+            </label>
+            <label className="grid gap-1 text-xs text-zinc-400">
+              finalPromptDraft
+              <textarea
+                value={canonicalFinalPromptDraft}
+                onChange={(event) => setCanonicalFinalPromptDraft(event.target.value)}
+                placeholder="成品提示词：trigger, hair, eyes, outfit, legwear, shoes..."
+                className="min-h-20 rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white placeholder:text-zinc-600"
+              />
+            </label>
+            <label className="grid gap-1 text-xs text-zinc-400">
               visualPrompt
               <textarea
                 value={canonicalVisualPrompt}
@@ -1542,7 +1556,7 @@ export function JobWorkbenchClient({
             <ActionButton
               type="button"
               icon={ImagePlus}
-              label={`入队 ${canonicalProvider}`}
+              label={`入队四视图 ${canonicalProvider}`}
               loading={isBusy("canonical.generate")}
               disabled={isPending || sourceImages.length === 0 || canonicalSourceImageIds.length === 0}
               onClick={handleCanonicalGenerate}
@@ -1557,9 +1571,15 @@ export function JobWorkbenchClient({
               onChange={(event) => setManualCanonicalSourceImageId(event.target.value)}
               className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white"
             >
-              <option value="">选择 manual_canonical</option>
+              <option value="">选择参考图</option>
               {manualCanonicalSourceImages.map((image) => (
-                <option key={image.id} value={image.id}>{image.role} / {compactId(image.id)}</option>
+                <option key={image.id} value={image.id}>{compactId(image.id)}</option>
+              ))}
+            </select>
+            <select name="canonicalView" className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white">
+              <option value="">未标注角度</option>
+              {CANONICAL_VIEW_SPECS.map((view) => (
+                <option key={view.key} value={view.key}>{view.label}</option>
               ))}
             </select>
             <textarea
@@ -1576,7 +1596,7 @@ export function JobWorkbenchClient({
               <select name="sourceImageId" className="rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white">
                 <option value="">自动 source</option>
                 {sourceImages.map((image) => (
-                  <option key={image.id} value={image.id}>{image.role} / {compactId(image.id)}</option>
+                  <option key={image.id} value={image.id}>{compactId(image.id)}</option>
                 ))}
               </select>
               <ActionButton icon={Check} label="模拟完成" loading={isBusy("canonical.complete")} disabled={isPending} />
@@ -1592,7 +1612,7 @@ export function JobWorkbenchClient({
               <option value="">选择 canonical</option>
               {canonicalVersions.map((version) => (
                 <option key={version.id} value={version.id} disabled={version.status === "rejected"}>
-                  v{version.version} / {formatCanonicalStatus(version.status)} / {compactId(version.id)}
+                  v{version.version} / {getCanonicalViewLabel(version.canonicalView)} / {formatCanonicalStatus(version.status)} / {compactId(version.id)}
                 </option>
               ))}
             </select>
@@ -1641,7 +1661,7 @@ export function JobWorkbenchClient({
               <option value="">未选择</option>
               {canonicalVersions.map((version) => (
                 <option key={version.id} value={version.id} disabled={version.status === "rejected"}>
-                  v{version.version} / {formatCanonicalStatus(version.status)} / {compactId(version.id)}
+                  v{version.version} / {getCanonicalViewLabel(version.canonicalView)} / {formatCanonicalStatus(version.status)} / {compactId(version.id)}
                 </option>
               ))}
             </select>
@@ -3040,7 +3060,6 @@ function SourceReferencePicker({
                 disabled={disabled}
                 className="size-3.5 accent-sky-400"
               />
-              <span className="min-w-0 break-words sm:truncate">{image.role}</span>
               <span className="ml-auto font-mono text-[11px] text-zinc-500">{compactId(image.id)}</span>
             </label>
           ))}
@@ -3072,10 +3091,9 @@ function SourceImageGrid({
     <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       {images.map((image) => (
         <div key={image.id} className="min-w-0 overflow-hidden rounded-lg border border-white/10 bg-white/[0.03]">
-          <ArtifactThumb jobId={jobId} relativePath={image.relativePath} alt={image.role} />
+          <ArtifactThumb jobId={jobId} relativePath={image.relativePath} alt={`source ${image.id}`} />
           <div className="space-y-1 p-2 text-xs">
             <div className="flex min-w-0 items-center justify-between gap-2">
-              <span className="min-w-0 break-words font-medium text-zinc-100 sm:truncate">{image.role}</span>
               <span className="shrink-0 font-mono text-zinc-500">{compactId(image.id)}</span>
             </div>
             <div className="text-zinc-500">{image.width ?? "?"}x{image.height ?? "?"}</div>
@@ -3133,6 +3151,7 @@ function CanonicalVersionGrid({
             <div className="space-y-2 p-2 text-xs">
               <div className="flex items-center justify-between gap-2">
                 <span className="font-medium text-zinc-100">v{version.version}</span>
+                <span className="rounded-full border border-sky-400/30 bg-sky-500/10 px-2 py-0.5 text-[11px] text-sky-200">{getCanonicalViewLabel(version.canonicalView)}</span>
                 <span className={getCanonicalStatusClass(version.status, isCurrent)}>{formatCanonicalStatus(version.status, isCurrent)}</span>
               </div>
               <div className="break-all font-mono text-[11px] text-zinc-500 sm:truncate">{compactId(version.id)} / {formatDate(version.createdAt)}</div>

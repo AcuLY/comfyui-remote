@@ -140,6 +140,7 @@ const GENERATION_RUN_SUMMARY_SELECT = {
   jobId: true,
   sectionId: true,
   kind: true,
+  canonicalView: true,
   parentRunId: true,
   status: true,
   provider: true,
@@ -170,6 +171,7 @@ const CANONICAL_VERSION_SELECT = {
   jobId: true,
   version: true,
   status: true,
+  canonicalView: true,
   sourceRunId: true,
   imageArtifactId: true,
   selectedAt: true,
@@ -1035,6 +1037,7 @@ export async function getCharacterLoraGenerationRun(generationRunId: string) {
 export async function createCharacterLoraCanonicalGenerationRunWithTask(input: {
   runId: string;
   jobId: string;
+  canonicalView?: string | null;
   provider: string;
   hostModel: string;
   imageModel: string;
@@ -1074,6 +1077,7 @@ export async function createCharacterLoraCanonicalGenerationRunWithTask(input: {
         jobId: input.jobId,
         sectionId: null,
         kind: "canonical",
+        canonicalView: input.canonicalView ?? null,
         status: CharacterLoraRunStatus.queued,
         provider: input.provider,
         hostModel: input.hostModel,
@@ -1124,6 +1128,7 @@ export async function createCharacterLoraCanonicalGenerationRunWithTask(input: {
 export async function createMockCompletedCanonicalVersion(input: {
   generationRunId: string;
   jobId: string;
+  canonicalView?: string | null;
   imageArtifactId: string;
   notes?: string | null;
   responseSummary: Prisma.InputJsonValue;
@@ -1140,6 +1145,7 @@ export async function createMockCompletedCanonicalVersion(input: {
         jobId: input.jobId,
         version: (previous?.version ?? 0) + 1,
         status: "candidate",
+        canonicalView: input.canonicalView ?? null,
         sourceRunId: input.generationRunId,
         imageArtifactId: input.imageArtifactId,
         notes: input.notes,
@@ -1178,6 +1184,7 @@ export async function createMockCompletedCanonicalVersion(input: {
 
 export async function createManualCanonicalVersionFromSourceImage(input: {
   jobId: string;
+  canonicalView?: string | null;
   imageArtifactId: string;
   notes: string;
 }) {
@@ -1193,6 +1200,7 @@ export async function createManualCanonicalVersionFromSourceImage(input: {
         jobId: input.jobId,
         version: (previous?.version ?? 0) + 1,
         status: "candidate",
+        canonicalView: input.canonicalView ?? null,
         sourceRunId: null,
         imageArtifactId: input.imageArtifactId,
         notes: input.notes,
@@ -3470,6 +3478,7 @@ export async function completeImageGenerationWorkerTask(input: {
             jobId: run.jobId,
             version: nextVersion,
             status: "candidate",
+            canonicalView: run.canonicalView,
             sourceRunId: run.id,
             imageArtifactId: artifact.id,
             notes: `worker generated canonical image ${artifact.relativePath}`,
@@ -4878,6 +4887,7 @@ function serializeGenerationRun(run: GenerationRunRecord) {
     jobId: run.jobId,
     sectionId: run.sectionId,
     kind: run.kind,
+    canonicalView: run.canonicalView,
     parentRunId: run.parentRunId,
     status: run.status,
     provider: run.provider,
@@ -4908,6 +4918,7 @@ function serializeCanonicalVersion(version: CanonicalVersionRecord) {
     jobId: version.jobId,
     version: version.version,
     status: version.status,
+    canonicalView: version.canonicalView,
     sourceRunId: version.sourceRunId,
     imageArtifactId: version.imageArtifactId,
     selectedAt: version.selectedAt?.toISOString() ?? null,

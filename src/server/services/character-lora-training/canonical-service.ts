@@ -6,6 +6,7 @@ import {
   characterLoraImageGenerationRequestSchema,
   characterLoraImageGenerationTaskPayloadSchema,
   characterLoraImageProviderSchema,
+  characterLoraCanonicalViewSchema,
   characterLoraProviderInputImageSchema,
   characterLoraProviderToolParamsSchema,
   type CharacterLoraImageProvider,
@@ -31,6 +32,7 @@ import {
   redactCharacterLoraProviderPayload,
   writeCharacterLoraJsonArtifact,
 } from "@/server/services/character-lora-training/artifact-service";
+import { buildCanonicalViewGenerationPayloads } from "@/lib/character-lora-canonical-views";
 import { z } from "zod";
 
 const DEFAULT_PROVIDER = "openai-codex" satisfies CharacterLoraImageProvider;
@@ -53,7 +55,10 @@ const enqueueCanonicalGenerationSchema = z
     hostModel: trimmedStringSchema().optional(),
     imageModel: z.literal(DEFAULT_IMAGE_MODEL).optional(),
     hostInstruction: trimmedStringSchema().optional(),
+    canonicalView: characterLoraCanonicalViewSchema.optional(),
     visualPrompt: trimmedStringSchema().optional(),
+    characterDescription: trimmedStringSchema().optional(),
+    finalPromptDraft: trimmedStringSchema().optional(),
     renderedPrompt: trimmedStringSchema().optional(),
     negativePrompt: nullableTrimmedStringSchema(),
     toolParams: characterLoraProviderToolParamsSchema.optional(),
@@ -71,6 +76,7 @@ const mockCompleteCanonicalSchema = z
 const registerManualCanonicalSchema = z
   .object({
     sourceImageId: trimmedStringSchema(),
+    canonicalView: characterLoraCanonicalViewSchema.optional(),
     notes: nullableTrimmedStringSchema(),
   })
   .strict();
@@ -100,6 +106,7 @@ export async function enqueueCharacterLoraCanonicalGenerationRun(jobId: string, 
   }
 
   const provider = parsed.provider ?? DEFAULT_PROVIDER;
+  const canonicalView = parsed.canonicalView ?? null;
   const inputImages = await resolveProviderInputImages(id, sourceImages, parsed);
   const runId = randomUUID();
   const outputDir = `generation-runs/${runId}`;
@@ -110,6 +117,7 @@ export async function enqueueCharacterLoraCanonicalGenerationRun(jobId: string, 
   const request = parseWithSchema(characterLoraImageGenerationRequestSchema, {
     jobId: id,
     generationRunId: runId,
+    canonicalView: canonicalView ?? undefined,
     provider,
     hostModel: parsed.hostModel ?? DEFAULT_HOST_MODELS[provider],
     imageModel: parsed.imageModel ?? DEFAULT_IMAGE_MODEL,
@@ -136,6 +144,7 @@ export async function enqueueCharacterLoraCanonicalGenerationRun(jobId: string, 
     redactCharacterLoraProviderPayload({
       purpose: "canonical_generation_request",
       enqueuedAt: enqueuedAt.toISOString(),
+      canonicalView,
       request,
     }),
   );
@@ -143,6 +152,7 @@ export async function enqueueCharacterLoraCanonicalGenerationRun(jobId: string, 
   return createCharacterLoraCanonicalGenerationRunWithTask({
     runId,
     jobId: id,
+    canonicalView,
     provider: request.provider,
     hostModel: request.hostModel,
     imageModel: request.imageModel,
@@ -167,6 +177,45 @@ export async function enqueueCharacterLoraCanonicalGenerationRun(jobId: string, 
     },
     taskPayload,
   });
+}
+
+export async function enqueueCharacterLoraCanonicalViewGenerationRuns(jobId: string, input: unknown = {}) {
+  const id = normalizeId(jobId, "jobId");
+  const job = await getExistingJob(id);
+  const parsed = parseWithSchema(enqueueCanonicalGenerationSchema, input);
+
+  if (parsed.inputImages && parsed.sourceImageIds) {
+    throw new CharacterLoraCanonicalServiceError(
+      "Provide either inputImages or sourceImageIds, not both",
+      400,
+    );
+  }
+
+  const payloads = buildCanonicalViewGenerationPayloads({
+    characterName: job.characterName,
+    triggerToken: job.triggerToken,
+    provider: parsed.provider,
+    hostModel: parsed.hostModel,
+    imageModel: parsed.imageModel,
+    hostInstruction: parsed.hostInstruction,
+    visualPrompt: parsed.visualPrompt,
+    characterDescription: parsed.characterDescription,
+    finalPromptDraft: parsed.finalPromptDraft,
+    renderedPrompt: parsed.renderedPrompt,
+    negativePrompt: parsed.negativePrompt,
+    toolParams: parsed.toolParams,
+    inputImages: parsed.inputImages,
+    sourceImageIds: parsed.sourceImageIds,
+  });
+
+  const runs = [];
+  for (const payload of payloads) {
+    const { canonicalView, canonicalViewLabel, ...runInput } = payload;
+    const run = await enqueueCharacterLoraCanonicalGenerationRun(id, { ...runInput, canonicalView });
+    runs.push({ ...run, canonicalView, canonicalViewLabel });
+  }
+
+  return runs;
 }
 
 export async function mockCompleteCharacterLoraCanonicalGenerationRun(runId: string, input: unknown = {}) {
@@ -218,6 +267,7 @@ export async function mockCompleteCharacterLoraCanonicalGenerationRun(runId: str
     provider: "mock-local",
     mode: "mock-complete-canonical",
     generationRunId: run.id,
+    canonicalView: run.canonicalView,
     sourceImageId: sourceImage.id,
     reusedSourceArtifact: true,
     canonicalArtifact: {
@@ -232,6 +282,7 @@ export async function mockCompleteCharacterLoraCanonicalGenerationRun(runId: str
   const canonicalVersion = await createMockCompletedCanonicalVersion({
     generationRunId: run.id,
     jobId: job.id,
+    canonicalView: run.canonicalView,
     imageArtifactId: sourceArtifact.id,
     notes: `mock canonical from source image ${sourceImage.id}; reused artifact ${sourceArtifact.id}`,
     responseSummary: toInputJsonValue(responseSummary),
@@ -256,14 +307,6 @@ export async function registerManualCharacterLoraCanonicalVersion(jobId: string,
       jobId: normalizedJobId,
       sourceImageId: parsed.sourceImageId,
     });
-  }
-
-  if (sourceImage.role !== "manual_canonical") {
-    throw new CharacterLoraCanonicalServiceError(
-      "Manual canonical registration requires a manual_canonical source image",
-      409,
-      { sourceImageId: sourceImage.id, role: sourceImage.role },
-    );
   }
 
   const sourceArtifact = await getCharacterLoraArtifact(sourceImage.artifactId);
@@ -292,12 +335,14 @@ export async function registerManualCharacterLoraCanonicalVersion(jobId: string,
   }
 
   const notes = [
-    `provenance=manual_upload; sourceImageId=${sourceImage.id}; sourceRole=${sourceImage.role}; artifactId=${sourceArtifact.id}; artifactPath=${sourceArtifact.relativePath}`,
+    parsed.canonicalView ? `canonicalView=${parsed.canonicalView}` : null,
+    `provenance=manual_upload; sourceImageId=${sourceImage.id}; artifactId=${sourceArtifact.id}; artifactPath=${sourceArtifact.relativePath}`,
     parsed.notes ? `operatorNotes=${parsed.notes}` : null,
   ].filter((note): note is string => Boolean(note));
 
   return createManualCanonicalVersionFromSourceImage({
     jobId: normalizedJobId,
+    canonicalView: parsed.canonicalView ?? null,
     imageArtifactId: sourceArtifact.id,
     notes: notes.join("; "),
   });

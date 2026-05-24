@@ -267,6 +267,7 @@ async function buildCharacterLoraJobReport(jobId: string) {
     id: version.id,
     version: version.version,
     status: version.status,
+    canonicalView: version.canonicalView,
     sourceRunId: version.sourceRunId,
     imageArtifactId: version.imageArtifactId,
     artifact: artifactById.get(version.imageArtifactId) ?? null,
@@ -315,6 +316,7 @@ async function buildCharacterLoraJobReport(jobId: string) {
       id: run.id,
       sectionId: run.sectionId,
       kind: run.kind,
+      canonicalView: run.canonicalView,
       parentRunId: run.parentRunId,
       status: run.status,
       provider: run.provider,
@@ -360,6 +362,7 @@ async function buildCharacterLoraJobReport(jobId: string) {
         ? {
             id: generationRun.id,
             kind: generationRun.kind,
+            canonicalView: generationRun.canonicalView,
             parentRunId: generationRun.parentRunId,
             status: generationRun.status,
             provider: generationRun.provider,
