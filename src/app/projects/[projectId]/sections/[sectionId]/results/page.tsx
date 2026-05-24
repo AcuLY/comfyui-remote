@@ -4,7 +4,6 @@ import { ArrowLeft, ChevronLeft, ChevronRight, Images, Pencil } from "lucide-rea
 import { SectionCard } from "@/components/section-card";
 import { getSectionResults } from "@/lib/server-data";
 import { hrefWithFolderQuery } from "@/lib/folder-navigation";
-import { prisma } from "@/lib/prisma";
 import { ResultsGrid } from "./results-grid";
 
 export const dynamic = "force-dynamic";
@@ -20,32 +19,6 @@ export default async function SectionResultsPage({
   if (!data || data.projectId !== projectId) {
     notFound();
   }
-
-  // Find current section's sortOrder for the next-pending query
-  const currentSection = await prisma.projectSection.findUnique({
-    where: { id: sectionId },
-    select: { sortOrder: true },
-  });
-
-  // Find next section with pending images
-  const nextPendingSection = currentSection
-    ? await prisma.projectSection.findFirst({
-        where: {
-          projectId,
-          id: { not: sectionId },
-          sortOrder: { gt: currentSection.sortOrder ?? 0 },
-          runs: {
-            some: {
-              images: {
-                some: { reviewStatus: "pending" },
-              },
-            },
-          },
-        },
-        orderBy: { sortOrder: "asc" },
-        select: { id: true },
-      })
-    : null;
 
   const totalImages = data.runs.reduce((sum, run) => sum + run.images.length, 0);
   const returnHref = hrefWithFolderQuery(
@@ -128,10 +101,11 @@ export default async function SectionResultsPage({
           initialBatchSize={data.batchSize ?? 2}
         />
       </SectionCard>
-      {nextPendingSection && (
+      {data.nextPendingSection && (
         <a
-          href={`/projects/${projectId}/sections/${nextPendingSection.id}/results`}
+          href={`/projects/${projectId}/sections/${data.nextPendingSection.id}/results`}
           data-nav-next-pending
+          title={data.nextPendingSection.name}
           className="hidden"
         />
       )}

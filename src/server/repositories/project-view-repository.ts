@@ -351,6 +351,7 @@ export type SectionResultsData = {
   sectionFolderId: string | null;
   previousSection: { id: string; name: string } | null;
   nextSection: { id: string; name: string } | null;
+  nextPendingSection: { id: string; name: string } | null;
   runs: {
     id: string;
     runIndex: number;
@@ -429,7 +430,7 @@ export async function getSectionResults(sectionId: string): Promise<SectionResul
 
   if (!pos) return null;
 
-  const [projectSectionFolders, projectSections] = await Promise.all([
+  const [projectSectionFolders, projectSections, pendingRuns] = await Promise.all([
     prisma.projectSectionFolder.findMany({
       where: { projectId: pos.project.id },
       orderBy: [{ parentId: "asc" }, { sortOrder: "asc" }, { name: "asc" }],
@@ -439,6 +440,15 @@ export async function getSectionResults(sectionId: string): Promise<SectionResul
       where: { projectId: pos.project.id },
       orderBy: { sortOrder: "asc" },
       select: { id: true, name: true, folderId: true, sortOrder: true },
+    }),
+    prisma.run.findMany({
+      where: {
+        projectId: pos.project.id,
+        images: {
+          some: { reviewStatus: "pending" },
+        },
+      },
+      select: { projectSectionId: true },
     }),
   ]);
   const orderedProjectSections = buildFolderScopedItemOrder(projectSectionFolders, projectSections);
@@ -457,6 +467,22 @@ export async function getSectionResults(sectionId: string): Promise<SectionResul
           name: orderedProjectSections[currentIndex + 1].name || `小节 ${orderedProjectSections[currentIndex + 1].sortOrder}`,
         }
       : null;
+  const pendingSectionIds = new Set(
+    pendingRuns.map((run) => run.projectSectionId).filter((id) => id !== pos.id),
+  );
+  const nextPendingSource =
+    currentIndex >= 0 && pendingSectionIds.size > 0
+      ? [
+          ...orderedProjectSections.slice(currentIndex + 1),
+          ...orderedProjectSections.slice(0, currentIndex),
+        ].find((section) => pendingSectionIds.has(section.id))
+      : null;
+  const nextPendingSection = nextPendingSource
+    ? {
+        id: nextPendingSource.id,
+        name: nextPendingSource.name || `小节 ${nextPendingSource.sortOrder}`,
+      }
+    : null;
 
   let totalPending = 0;
 
@@ -494,6 +520,7 @@ export async function getSectionResults(sectionId: string): Promise<SectionResul
     sectionFolderId: pos.folderId,
     previousSection,
     nextSection,
+    nextPendingSection,
     runs,
     totalPending,
   };
