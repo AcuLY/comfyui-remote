@@ -16,16 +16,22 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     const existing = await db.imageResult.findUnique({
       where: { id: imageId },
-      select: { id: true },
+      select: { id: true, reviewStatus: true },
     });
     if (!existing) {
       return fail("Image not found", 404);
     }
 
+    const shouldKeep = featured && existing.reviewStatus !== "trashed";
     const image = await db.imageResult.update({
       where: { id: imageId },
-      data: { featured },
-      select: { id: true, featured: true },
+      data: {
+        featured,
+        ...(shouldKeep
+          ? { reviewStatus: "kept", reviewedAt: new Date() }
+          : {}),
+      },
+      select: { id: true, featured: true, reviewStatus: true },
     });
 
     revalidatePath("/projects", "layout");

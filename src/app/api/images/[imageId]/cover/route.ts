@@ -38,11 +38,19 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return fail("不能将已删除图片设为封面", 409);
     }
 
-    const project = await db.project.update({
-      where: { id: image.run.projectId },
-      data: { coverImageId: image.id },
-      select: { id: true, coverImageId: true },
-    });
+    const now = new Date();
+    const [project, keptImage] = await db.$transaction([
+      db.project.update({
+        where: { id: image.run.projectId },
+        data: { coverImageId: image.id },
+        select: { id: true, coverImageId: true },
+      }),
+      db.imageResult.update({
+        where: { id: image.id },
+        data: { reviewStatus: "kept", reviewedAt: now },
+        select: { id: true, reviewStatus: true },
+      }),
+    ]);
 
     revalidatePath("/projects", "layout");
 
@@ -50,6 +58,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       id: image.id,
       projectId: project.id,
       cover: project.coverImageId === image.id,
+      reviewStatus: keptImage.reviewStatus,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";

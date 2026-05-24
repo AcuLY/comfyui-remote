@@ -89,9 +89,9 @@ or:
 | Read run detail and workflow | `GET /api/runs/:runId`, `GET /api/runs/:runId/workflow` |
 | Keep or trash generated images | `POST /api/runs/:runId/review/keep`, `POST /api/runs/:runId/review/trash` |
 | Restore trashed images | `POST /api/images/:imageId/restore` |
-| Toggle p站 image | `POST /api/images/:imageId/featured` |
-| Toggle 预览 image | `POST /api/images/:imageId/featured2` |
-| Set project cover image | `POST /api/images/:imageId/cover` |
+| Toggle p站 image | `POST /api/images/:imageId/featured` (enabling also marks the image kept) |
+| Toggle 预览 image | `POST /api/images/:imageId/featured2` (enabling also marks the image kept) |
+| Set project cover image | `POST /api/images/:imageId/cover` (also marks the image kept) |
 | Read image files | `GET /api/images/:path...` |
 | Manage templates | `GET/POST /api/templates`, `GET/PATCH/DELETE /api/templates/:templateId`, `GET/PATCH/DELETE /api/templates/:templateId/sections/:sectionId`, `POST /api/templates/:templateId/sections/:sectionId/copy`, `POST /api/templates/:templateId/import` |
 | Manage preset library | `/api/preset-library/**` endpoints listed below |
@@ -340,9 +340,9 @@ Deletes one prompt block.
 | `POST` | `/api/runs/:runId/review/trash` | `{ "imageIds": ["..."], "reason": "optional" }` | trashes images |
 | `GET` | `/api/trash` | none | lists trashed images |
 | `POST` | `/api/images/:imageId/restore` | none | restores one trashed image |
-| `POST` | `/api/images/:imageId/featured` | `{ "featured": true }` | toggles p站 flag |
-| `POST` | `/api/images/:imageId/featured2` | `{ "featured2": true }` | toggles 预览 flag |
-| `POST` | `/api/images/:imageId/cover` | `{ "cover": true }` | sets the image as the project cover; selecting another image replaces the existing cover |
+| `POST` | `/api/images/:imageId/featured` | `{ "featured": true }` | toggles p站 flag; enabling also returns `reviewStatus: "kept"` |
+| `POST` | `/api/images/:imageId/featured2` | `{ "featured2": true }` | toggles 预览 flag; enabling also returns `reviewStatus: "kept"` |
+| `POST` | `/api/images/:imageId/cover` | `{ "cover": true }` | sets the image as the project cover and returns `reviewStatus: "kept"`; selecting another image replaces the existing cover |
 | `GET` | `/api/images/:path...` | none | serves image files |
 
 ## Templates

@@ -529,19 +529,29 @@ export function ProjectResultsClient({
             if (image.id !== imageId) return image;
             sectionChanged = true;
             runChanged = true;
-            return { ...image, featured };
+            return {
+              ...image,
+              featured,
+              status:
+                featured && image.status === "pending" ? "kept" : image.status,
+            };
           });
           return runChanged ? { ...run, images } : run;
         });
 
         if (!sectionChanged) return section;
 
+        const pendingCount = runs.reduce(
+          (sum, run) =>
+            sum + run.images.filter((image) => image.status === "pending").length,
+          0,
+        );
         const featuredCount = runs.reduce(
           (sum, run) =>
             sum + run.images.filter((image) => image.featured).length,
           0,
         );
-        return { ...section, runs, featuredCount };
+        return { ...section, runs, pendingCount, featuredCount };
       }),
     );
   }, []);
@@ -556,41 +566,61 @@ export function ProjectResultsClient({
             if (image.id !== imageId) return image;
             sectionChanged = true;
             runChanged = true;
-            return { ...image, featured2 };
+            return {
+              ...image,
+              featured2,
+              status:
+                featured2 && image.status === "pending" ? "kept" : image.status,
+            };
           });
           return runChanged ? { ...run, images } : run;
         });
 
         if (!sectionChanged) return section;
 
+        const pendingCount = runs.reduce(
+          (sum, run) =>
+            sum + run.images.filter((image) => image.status === "pending").length,
+          0,
+        );
         const featured2Count = runs.reduce(
           (sum, run) =>
             sum + run.images.filter((image) => image.featured2).length,
           0,
         );
-        return { ...section, runs, featured2Count };
+        return { ...section, runs, pendingCount, featured2Count };
       }),
     );
   }, []);
 
   const setImageCover = useCallback((imageId: string) => {
     setSections((currentSections) =>
-      currentSections.map((section) => ({
-        ...section,
-        runs: section.runs.map((run) => ({
+      currentSections.map((section) => {
+        const runs = section.runs.map((run) => ({
           ...run,
           images: run.images.map((image) => ({
             ...image,
             cover: image.id === imageId,
+            status:
+              image.id === imageId && image.status === "pending"
+                ? "kept"
+                : image.status,
           })),
-        })),
-      })),
+        }));
+        const pendingCount = runs.reduce(
+          (sum, run) =>
+            sum + run.images.filter((image) => image.status === "pending").length,
+          0,
+        );
+        return { ...section, pendingCount, runs };
+      }),
     );
   }, []);
 
   const handleToggleFeatured = useCallback(
     (imageId: string, featured: boolean) => {
       if (togglingImageId) return;
+      const previousSections = sections;
       setTogglingImageId(imageId);
       setImageFeatured(imageId, featured);
 
@@ -612,19 +642,20 @@ export function ProjectResultsClient({
             throw new Error(result?.error?.message ?? "更新p站标记失败");
           }
         } catch (error) {
-          setImageFeatured(imageId, !featured);
+          setSections(previousSections);
           toast.error(error instanceof Error ? error.message : "更新p站标记失败");
         } finally {
           setTogglingImageId(null);
         }
       });
     },
-    [setImageFeatured, togglingImageId],
+    [sections, setImageFeatured, togglingImageId],
   );
 
   const handleToggleFeatured2 = useCallback(
     (imageId: string, featured2: boolean) => {
       if (togglingImageId) return;
+      const previousSections = sections;
       setTogglingImageId(imageId);
       setImageFeatured2(imageId, featured2);
 
@@ -646,14 +677,14 @@ export function ProjectResultsClient({
             throw new Error(result?.error?.message ?? "更新预览标记失败");
           }
         } catch (error) {
-          setImageFeatured2(imageId, !featured2);
+          setSections(previousSections);
           toast.error(error instanceof Error ? error.message : "更新预览标记失败");
         } finally {
           setTogglingImageId(null);
         }
       });
     },
-    [setImageFeatured2, togglingImageId],
+    [sections, setImageFeatured2, togglingImageId],
   );
 
   const handleSetCover = useCallback(
