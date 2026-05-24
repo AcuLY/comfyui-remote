@@ -346,7 +346,6 @@ export async function pollRunCompletion(runId: string): Promise<void> {
       runTimer.done({ status: "done", imageCount: persistedOutput.images.length });
     } catch (error) {
       const errorMessage = formatError(error);
-      runLog.error("Run failed", error, { comfyPromptId });
 
       // Check if the run was already completed (e.g. completeWorkerRun succeeded
       // but a later step like audit threw). If so, do NOT delete images.
@@ -368,6 +367,8 @@ export async function pollRunCompletion(runId: string): Promise<void> {
         runTimer.done({ status: RunStatus.paused });
         return;
       }
+
+      runLog.error("Run failed", error, { comfyPromptId });
 
       try {
         await removeManagedRunOutput(run);

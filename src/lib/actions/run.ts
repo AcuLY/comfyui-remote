@@ -484,6 +484,21 @@ export async function clearRuns(): Promise<{ ok: boolean; count: number; error?:
 // 暂停任务（Run）
 // ---------------------------------------------------------------------------
 
+async function cancelComfyPromptForPause(promptId: string) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    clearComfyQueueSnapshotCache();
+    const position = await getComfyQueuePosition(env.comfyApiUrl, promptId);
+    if (position === "running") {
+      await interruptComfyPrompt(env.comfyApiUrl);
+    } else if (position === "pending") {
+      await deleteComfyQueueItems(env.comfyApiUrl, [promptId]);
+    } else {
+      return;
+    }
+  }
+  clearComfyQueueSnapshotCache();
+}
+
 export async function pauseRun(runId: string, marker?: QueuePauseMarkerInput): Promise<{ ok: boolean; error?: string }> {
   const run = await prisma.run.findUnique({
     where: { id: runId },
@@ -502,14 +517,7 @@ export async function pauseRun(runId: string, marker?: QueuePauseMarkerInput): P
   // Cancel in ComfyUI (best-effort)
   if (run.comfyPromptId) {
     try {
-      clearComfyQueueSnapshotCache();
-      const position = await getComfyQueuePosition(env.comfyApiUrl, run.comfyPromptId);
-      if (position === "running") {
-        await interruptComfyPrompt(env.comfyApiUrl);
-      } else if (position === "pending") {
-        await deleteComfyQueueItems(env.comfyApiUrl, [run.comfyPromptId]);
-      }
-      clearComfyQueueSnapshotCache();
+      await cancelComfyPromptForPause(run.comfyPromptId);
     } catch (e) {
       console.warn("Failed to cancel in ComfyUI during pause:", e);
     }
