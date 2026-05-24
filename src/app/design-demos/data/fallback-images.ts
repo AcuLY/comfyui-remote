@@ -6,7 +6,7 @@ import { toImageUrl } from "@/lib/image-url";
 import type { DemoImage } from "./types";
 
 export function fallbackImages(): DemoImage[] {
-  const imageRoot = path.resolve(process.cwd(), "data", "images");
+  const imageRoot = path.resolve(/* turbopackIgnore: true */ process.cwd(), "data", "images");
   const files: string[] = [];
 
   function walk(dir: string) {
@@ -33,7 +33,7 @@ export function fallbackImages(): DemoImage[] {
 
   return files
     .map((file, index): DemoImage | null => {
-      const relative = path.relative(path.resolve(process.cwd(), "data", "images"), file).replace(/\\/g, "/");
+      const relative = path.relative(imageRoot, file).replace(/\\/g, "/");
       const url = toImageUrl(relative);
       if (!url) return null;
       return {

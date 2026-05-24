@@ -23,7 +23,7 @@ export function resolveCharacterLoraArtifactRoot() {
 
   return configuredRoot
     ? path.resolve(configuredRoot)
-    : path.resolve(process.cwd(), ...DEFAULT_ARTIFACT_ROOT_SEGMENTS);
+    : path.resolve(/* turbopackIgnore: true */ process.cwd(), ...DEFAULT_ARTIFACT_ROOT_SEGMENTS);
 }
 
 export function buildCharacterLoraJobRoot(jobSlug: string, artifactRoot = resolveCharacterLoraArtifactRoot()) {
