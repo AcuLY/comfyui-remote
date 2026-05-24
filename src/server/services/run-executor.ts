@@ -40,6 +40,17 @@ const log = createLogger({ module: "run-executor" });
 const FINALIZING_OUTPUT_DIR_PREFIX = "__finalizing__:";
 const FINALIZING_CLAIM_TTL_MS = 30 * 60 * 1000;
 
+function isRunRecoveryDisabled() {
+  if (process.env.COMFY_MANAGER_DISABLE_RUN_RECOVERY === "true") {
+    return true;
+  }
+
+  return (
+    process.env.NODE_ENV === "development" &&
+    process.env.COMFY_MANAGER_ENABLE_RUN_RECOVERY !== "true"
+  );
+}
+
 function formatError(error: unknown) {
   if (error instanceof Error) return error.message;
   return String(error);
@@ -352,13 +363,19 @@ export async function pollRunCompletion(runId: string): Promise<void> {
         return;
       }
 
+      if (currentRun?.status === RunStatus.paused) {
+        runLog.info("Run was paused during execution");
+        runTimer.done({ status: RunStatus.paused });
+        return;
+      }
+
       try {
         await removeManagedRunOutput(run);
       } catch (cleanupError) {
         runLog.warn("Cleanup failed", { error: formatError(cleanupError) });
       }
 
-      if (currentRun?.status === "cancelled") {
+      if (currentRun?.status === RunStatus.cancelled) {
         runLog.info("Run was cancelled during execution");
         runTimer.done({ status: "cancelled" });
         return;
@@ -396,6 +413,13 @@ let recoveryInProgress = false;
  * Called from /api/queue-data and instrumentation.ts.
  */
 export async function recoverStaleRuns(): Promise<void> {
+  if (isRunRecoveryDisabled()) {
+    log.debug("Run recovery disabled for this process", {
+      nodeEnv: process.env.NODE_ENV,
+    });
+    return;
+  }
+
   // Prevent concurrent recovery attempts
   if (recoveryInProgress) {
     log.debug("Recovery already in progress, skipping");

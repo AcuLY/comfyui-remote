@@ -502,12 +502,14 @@ export async function pauseRun(runId: string, marker?: QueuePauseMarkerInput): P
   // Cancel in ComfyUI (best-effort)
   if (run.comfyPromptId) {
     try {
+      clearComfyQueueSnapshotCache();
       const position = await getComfyQueuePosition(env.comfyApiUrl, run.comfyPromptId);
       if (position === "running") {
         await interruptComfyPrompt(env.comfyApiUrl);
       } else if (position === "pending") {
         await deleteComfyQueueItems(env.comfyApiUrl, [run.comfyPromptId]);
       }
+      clearComfyQueueSnapshotCache();
     } catch (e) {
       console.warn("Failed to cancel in ComfyUI during pause:", e);
     }
