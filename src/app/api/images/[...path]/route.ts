@@ -11,6 +11,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { readFile, stat } from "node:fs/promises";
 import path from "path";
 import sharp from "sharp";
 
@@ -21,7 +22,6 @@ const RESOLVED_OUTPUT_BASE = path.resolve(OUTPUT_BASE);
 
 // Allowed extensions to prevent arbitrary file access
 const ALLOWED_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".webp", ".gif"]);
-const FS_PROMISES_MODULE = "node:fs/promises";
 
 function isSafePathSegment(segment: string) {
   return (
@@ -67,7 +67,6 @@ export async function GET(
   }
 
   try {
-    const { readFile, stat } = await import(FS_PROMISES_MODULE);
     const fileStat = await stat(resolved);
     if (!fileStat.isFile()) {
       return NextResponse.json({ error: "Not a file" }, { status: 404 });
