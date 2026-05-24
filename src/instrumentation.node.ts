@@ -7,7 +7,7 @@
  * active runs that still have a comfyPromptId.
  *
  * Graceful shutdown: on SIGTERM/SIGINT, pauses all active runs before exit.
- * Graceful startup: resumes paused runs if ComfyUI is healthy.
+ * Paused runs stay paused on startup and are resumed explicitly after deploy.
  */
 
 const ORPHANED_RUN_THRESHOLD_MS = 30 * 60 * 1000; // 30 minutes
@@ -24,8 +24,14 @@ export async function registerNodeInstrumentation() {
   const manager = getComfyProcessManager();
   manager.initAutoStart();
 
-  // Attempt to resume paused runs if ComfyUI is reachable
-  await resumePausedRunsIfHealthy();
+  // Keep paused runs idle until deployment verification explicitly resumes them.
+  // Set AUTO_RESUME_PAUSED_RUNS_ON_STARTUP=true only for crash-recovery sessions
+  // where immediate replay is intentional.
+  if (process.env.AUTO_RESUME_PAUSED_RUNS_ON_STARTUP === "true") {
+    await resumePausedRunsIfHealthy();
+  } else {
+    await logPausedRunsAwaitingManualResume();
+  }
 
   // Register graceful shutdown hooks
   registerShutdownHooks();
@@ -102,6 +108,21 @@ async function resumePausedRunsIfHealthy() {
     }
   } catch (error) {
     console.error("[startup] Failed to resume paused runs:", error);
+  }
+}
+
+async function logPausedRunsAwaitingManualResume() {
+  try {
+    const { db } = await import("@/lib/db");
+    const pausedCount = await db.run.count({ where: { status: "paused" } });
+
+    if (pausedCount > 0) {
+      console.log(
+        `[startup] ${pausedCount} paused run(s) are waiting for manual resume via POST /api/queue/resume-paused`,
+      );
+    }
+  } catch (error) {
+    console.error("[startup] Failed to inspect paused runs:", error);
   }
 }
 
