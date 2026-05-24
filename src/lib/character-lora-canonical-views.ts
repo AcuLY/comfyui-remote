@@ -59,12 +59,22 @@ export const CANONICAL_VIEW_SPECS = [
   },
 ] as const satisfies readonly CanonicalViewSpec[];
 
+export const CANONICAL_VIEW_KEYS = CANONICAL_VIEW_SPECS.map((view) => view.key);
+
 export function getCanonicalViewSpec(key: string | null | undefined) {
   return CANONICAL_VIEW_SPECS.find((view) => view.key === key) ?? null;
 }
 
+export function normalizeCanonicalViewKey(key: string | null | undefined): CanonicalViewKey {
+  return getCanonicalViewSpec(key)?.key ?? "front";
+}
+
 export function getCanonicalViewLabel(key: string | null | undefined) {
   return getCanonicalViewSpec(key)?.label ?? "未标注角度";
+}
+
+export function getEffectiveCanonicalViewLabel(key: string | null | undefined) {
+  return getCanonicalViewSpec(normalizeCanonicalViewKey(key))?.label ?? "正面";
 }
 
 export type CanonicalViewGenerationPayload = {
@@ -80,11 +90,13 @@ export type CanonicalViewGenerationPayload = {
   toolParams?: CanonicalProviderToolParams;
   inputImages?: CanonicalProviderInputImage[];
   sourceImageIds?: string[];
+  canonicalVersionIds?: string[];
 };
 
-export function buildCanonicalViewGenerationPayloads(input: {
+export function buildCanonicalViewGenerationPayload(input: {
   characterName: string;
   triggerToken: string;
+  canonicalView: CanonicalViewKey;
   provider?: CanonicalImageProvider;
   hostModel?: string;
   imageModel?: "gpt-image-2";
@@ -95,10 +107,13 @@ export function buildCanonicalViewGenerationPayloads(input: {
   toolParams?: CanonicalProviderToolParams;
   inputImages?: CanonicalProviderInputImage[];
   sourceImageIds?: string[];
+  canonicalVersionIds?: string[];
   characterDescription?: string | null;
   finalPromptDraft?: string | null;
-}): CanonicalViewGenerationPayload[] {
-  return CANONICAL_VIEW_SPECS.map((view) => ({
+}): CanonicalViewGenerationPayload {
+  const view = getCanonicalViewSpec(input.canonicalView) ?? CANONICAL_VIEW_SPECS[0];
+
+  return {
     canonicalView: view.key,
     canonicalViewLabel: view.label,
     provider: input.provider,
@@ -118,7 +133,52 @@ export function buildCanonicalViewGenerationPayloads(input: {
     toolParams: input.toolParams,
     inputImages: input.inputImages,
     sourceImageIds: input.sourceImageIds,
+    canonicalVersionIds: input.canonicalVersionIds,
+  };
+}
+
+export function buildCanonicalViewGenerationPayloads(input: {
+  characterName: string;
+  triggerToken: string;
+  provider?: CanonicalImageProvider;
+  hostModel?: string;
+  imageModel?: "gpt-image-2";
+  hostInstruction?: string;
+  visualPrompt?: string | null;
+  renderedPrompt?: string;
+  negativePrompt?: string | null;
+  toolParams?: CanonicalProviderToolParams;
+  inputImages?: CanonicalProviderInputImage[];
+  sourceImageIds?: string[];
+  canonicalVersionIds?: string[];
+  characterDescription?: string | null;
+  finalPromptDraft?: string | null;
+}): CanonicalViewGenerationPayload[] {
+  return CANONICAL_VIEW_SPECS.map((view) => buildCanonicalViewGenerationPayload({
+    ...input,
+    canonicalView: view.key,
   }));
+}
+
+export type CanonicalVersionViewChoice = {
+  canonicalView?: string | null;
+};
+
+export function groupCanonicalVersionsByView<T extends CanonicalVersionViewChoice>(
+  versions: readonly T[],
+): Record<CanonicalViewKey, T[]> {
+  const grouped: Record<CanonicalViewKey, T[]> = {
+    front: [],
+    back: [],
+    left: [],
+    right: [],
+  };
+
+  for (const version of versions) {
+    grouped[normalizeCanonicalViewKey(version.canonicalView)].push(version);
+  }
+
+  return grouped;
 }
 
 export function buildCanonicalViewVisualPrompt(input: {

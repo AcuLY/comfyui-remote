@@ -6,8 +6,11 @@ import { normalizeSourceImageUploadRole } from "./src/lib/character-lora-source-
 import {
   CANONICAL_VIEW_SPECS,
   buildCanonicalRerunPrompt,
+  buildCanonicalViewGenerationPayload,
   buildCanonicalViewGenerationPayloads,
   buildCanonicalViewVisualPrompt,
+  groupCanonicalVersionsByView,
+  normalizeCanonicalViewKey,
 } from "./src/lib/character-lora-canonical-views";
 import {
   PromptCardDraftParseError,
@@ -58,6 +61,41 @@ test("canonical generation expands one request into front back left right view p
   assert.ok(payloads.every((payload) => payload.visualPrompt.includes("keep the cardigan and headphones")));
 });
 
+test("single canonical view generation payload targets only the requested view", () => {
+  const payload = buildCanonicalViewGenerationPayload({
+    characterName: "Nakano Miku",
+    triggerToken: "miku_lora",
+    canonicalView: "left",
+    sourceImageIds: ["source-a"],
+    canonicalVersionIds: ["canonical-back-v2"],
+    characterDescription: "brown hair, green eyes, blue cardigan",
+  });
+
+  assert.equal(payload.canonicalView, "left");
+  assert.equal(payload.canonicalViewLabel, "左侧");
+  assert.deepEqual(payload.sourceImageIds, ["source-a"]);
+  assert.deepEqual(payload.canonicalVersionIds, ["canonical-back-v2"]);
+  assert.match(payload.visualPrompt, /left side view only/i);
+  assert.doesNotMatch(payload.visualPrompt, /front view only/i);
+});
+
+test("canonical grouping renders fixed view buckets and treats legacy unlabeled versions as front", () => {
+  const grouped = groupCanonicalVersionsByView([
+    { id: "front-v1", version: 1, canonicalView: "front" },
+    { id: "legacy-v2", version: 2, canonicalView: null },
+    { id: "back-v1", version: 1, canonicalView: "back" },
+    { id: "unknown-v3", version: 3, canonicalView: "diagonal" },
+  ]);
+
+  assert.deepEqual(Object.keys(grouped), ["front", "back", "left", "right"]);
+  assert.deepEqual(grouped.front.map((version) => version.id), ["front-v1", "legacy-v2", "unknown-v3"]);
+  assert.deepEqual(grouped.back.map((version) => version.id), ["back-v1"]);
+  assert.deepEqual(grouped.left, []);
+  assert.deepEqual(grouped.right, []);
+  assert.equal(normalizeCanonicalViewKey(null), "front");
+  assert.equal(normalizeCanonicalViewKey("diagonal"), "front");
+});
+
 test("canonical view prompt is single-view and forbids turnarounds/contact sheets", () => {
   const prompt = buildCanonicalViewVisualPrompt({
     characterName: "Luca",
@@ -90,6 +128,16 @@ test("canonical view is a persisted backend field on generation runs and canonic
     assert.match(schema, /model CharacterLoraCanonicalVersion[\s\S]*canonicalView\s+String\?/);
     assert.match(schema, /model CharacterLoraGenerationRun[\s\S]*canonicalView\s+String\?/);
   }
+});
+
+test("persona reference UI exposes per-view generation, canonical reference checkboxes, and uploadable rerun references", () => {
+  const page = readFileSync("src/app/character-lora-training/[jobId]/persona-reference/page.tsx", "utf8");
+
+  assert.match(page, /CANONICAL_VIEW_SPECS\.map/);
+  assert.match(page, /submitLabel=\{`生成\$\{view\.label\}`\}/);
+  assert.match(page, /name="canonicalVersionIds"/);
+  assert.match(page, /name="referenceFiles"/);
+  assert.match(page, /type="file"/);
 });
 
 test("prompt card draft prompt requests reviewed JSON fields without saving", () => {
@@ -150,7 +198,7 @@ test("prompt card draft canonical selection picks the latest non-rejected versio
   ];
 
   assert.deepEqual(selectLatestCanonicalVersionsByView(versions).map((version) => version.id), [
-    "front-new",
+    "legacy-unlabeled",
     "back-good",
     "left-good",
     "right-good",

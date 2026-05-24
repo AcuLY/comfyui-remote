@@ -33,7 +33,12 @@ import { toast } from "sonner";
 import { PageHeader } from "@/components/page-header";
 import { SectionCard } from "@/components/section-card";
 import { StatChip } from "@/components/stat-chip";
-import { CANONICAL_VIEW_SPECS, getCanonicalViewLabel } from "@/lib/character-lora-canonical-views";
+import {
+  CANONICAL_VIEW_SPECS,
+  type CanonicalViewKey,
+  getEffectiveCanonicalViewLabel,
+  groupCanonicalVersionsByView,
+} from "@/lib/character-lora-canonical-views";
 import { ArtifactImagePreview } from "./artifact-image-preview";
 import {
   cancelCharacterLoraTrainingRun,
@@ -694,6 +699,7 @@ export function JobWorkbenchClient({
   const [canonicalCharacterDescription, setCanonicalCharacterDescription] = useState("");
   const [canonicalFinalPromptDraft, setCanonicalFinalPromptDraft] = useState("");
   const [canonicalSourceImageIds, setCanonicalSourceImageIds] = useState<string[]>(() => sourceImages.map((image) => image.id));
+  const [canonicalReferenceVersionIds, setCanonicalReferenceVersionIds] = useState<string[]>([]);
   const [manualCanonicalSourceImageId, setManualCanonicalSourceImageId] = useState(
     () => sourceImages[0]?.id ?? "",
   );
@@ -714,6 +720,10 @@ export function JobWorkbenchClient({
   const [benchmarkTemplateId, setBenchmarkTemplateId] = useState(benchmarkTemplateDefaultId);
 
   const canonicalVersions = report.canonicalVersions;
+  const usableCanonicalReferenceVersions = useMemo(
+    () => canonicalVersions.filter((version) => version.status !== "rejected"),
+    [canonicalVersions],
+  );
   const manualCanonicalSourceImages = sourceImages;
   const selectedManualCanonicalSourceImageId = manualCanonicalSourceImages.some((image) => image.id === manualCanonicalSourceImageId)
     ? manualCanonicalSourceImageId
@@ -940,6 +950,10 @@ export function JobWorkbenchClient({
     });
   }, [canonicalVersionById, job.currentCanonicalVersionId]);
 
+  useEffect(() => {
+    setCanonicalReferenceVersionIds((current) => current.filter((versionId) => canonicalVersionById.has(versionId)));
+  }, [canonicalVersionById]);
+
   function runAction(key: string, label: string, action: () => Promise<unknown>, refresh = true) {
     setPendingKey(key);
     startTransition(async () => {
@@ -989,20 +1003,24 @@ export function JobWorkbenchClient({
     });
   }
 
-  function handleCanonicalGenerate() {
+  function handleCanonicalGenerate(canonicalView?: CanonicalViewKey) {
     const sourceImageIds = uniqueIds(canonicalSourceImageIds);
-    if (sourceImageIds.length === 0) {
-      toast.error("Canonical 至少选择一张 source/reference image");
+    const canonicalVersionIds = uniqueIds(canonicalReferenceVersionIds);
+    if (sourceImageIds.length === 0 && canonicalVersionIds.length === 0) {
+      toast.error("Canonical 至少选择一张 source/reference image 或已有 canonical 视图");
       return;
     }
 
-    runAction("canonical.generate", "Canonical 已入队", async () => {
+    const actionKey = canonicalView ? `canonical.generate.${canonicalView}` : "canonical.generate";
+    runAction(actionKey, canonicalView ? `${getEffectiveCanonicalViewLabel(canonicalView)} Canonical 已入队` : "Canonical 已入队", async () => {
       const runs = await enqueueCharacterLoraCanonicalViewGenerationRuns(job.id, {
         provider: canonicalProvider,
+        canonicalView,
         visualPrompt: canonicalVisualPrompt.trim() || undefined,
         characterDescription: canonicalCharacterDescription.trim() || undefined,
         finalPromptDraft: canonicalFinalPromptDraft.trim() || undefined,
-        sourceImageIds,
+        sourceImageIds: sourceImageIds.length > 0 ? sourceImageIds : undefined,
+        canonicalVersionIds: canonicalVersionIds.length > 0 ? canonicalVersionIds : undefined,
         toolParams: buildImageToolParams(canonicalSize, canonicalQuality),
       });
       setLatestCanonicalRunId(runs[0]?.id ?? "");
@@ -1551,15 +1569,34 @@ export function JobWorkbenchClient({
               selectedIds={canonicalSourceImageIds}
               onChange={setCanonicalSourceImageIds}
               disabled={isPending}
-              emptySelectionText="Canonical 必须至少选择一张参考图。"
+              emptySelectionText="可只选已有 canonical 视图；若都不选则无法生成。"
             />
+            <CanonicalReferencePicker
+              versions={usableCanonicalReferenceVersions}
+              selectedIds={canonicalReferenceVersionIds}
+              onChange={setCanonicalReferenceVersionIds}
+              disabled={isPending}
+            />
+            <div className="grid gap-2 sm:grid-cols-2">
+              {CANONICAL_VIEW_SPECS.map((view) => (
+                <ActionButton
+                  key={view.key}
+                  type="button"
+                  icon={ImagePlus}
+                  label={`生成${view.label} ${canonicalProvider}`}
+                  loading={isBusy(`canonical.generate.${view.key}`)}
+                  disabled={isPending || (canonicalSourceImageIds.length === 0 && canonicalReferenceVersionIds.length === 0)}
+                  onClick={() => handleCanonicalGenerate(view.key)}
+                />
+              ))}
+            </div>
             <ActionButton
               type="button"
               icon={ImagePlus}
-              label={`入队四视图 ${canonicalProvider}`}
+              label={`一键入队四视图 ${canonicalProvider}`}
               loading={isBusy("canonical.generate")}
-              disabled={isPending || sourceImages.length === 0 || canonicalSourceImageIds.length === 0}
-              onClick={handleCanonicalGenerate}
+              disabled={isPending || (canonicalSourceImageIds.length === 0 && canonicalReferenceVersionIds.length === 0)}
+              onClick={() => handleCanonicalGenerate()}
             />
             <p className="mt-2 break-all font-mono text-[11px] text-zinc-500 sm:truncate">最近 run: {pendingCanonicalRunId || "-"}</p>
           </div>
@@ -1612,7 +1649,7 @@ export function JobWorkbenchClient({
               <option value="">选择 canonical</option>
               {canonicalVersions.map((version) => (
                 <option key={version.id} value={version.id} disabled={version.status === "rejected"}>
-                  v{version.version} / {getCanonicalViewLabel(version.canonicalView)} / {formatCanonicalStatus(version.status)} / {compactId(version.id)}
+                  v{version.version} / {getEffectiveCanonicalViewLabel(version.canonicalView)} / {formatCanonicalStatus(version.status)} / {compactId(version.id)}
                 </option>
               ))}
             </select>
@@ -1661,7 +1698,7 @@ export function JobWorkbenchClient({
               <option value="">未选择</option>
               {canonicalVersions.map((version) => (
                 <option key={version.id} value={version.id} disabled={version.status === "rejected"}>
-                  v{version.version} / {getCanonicalViewLabel(version.canonicalView)} / {formatCanonicalStatus(version.status)} / {compactId(version.id)}
+                  v{version.version} / {getEffectiveCanonicalViewLabel(version.canonicalView)} / {formatCanonicalStatus(version.status)} / {compactId(version.id)}
                 </option>
               ))}
             </select>
@@ -3070,6 +3107,58 @@ function SourceReferencePicker({
   );
 }
 
+function CanonicalReferencePicker({
+  versions,
+  selectedIds,
+  onChange,
+  disabled,
+}: {
+  versions: CharacterLoraJobReport["canonicalVersions"];
+  selectedIds: string[];
+  onChange: (ids: string[]) => void;
+  disabled?: boolean;
+}) {
+  const selectedSet = new Set(selectedIds);
+  const allIds = versions.map((version) => version.id);
+
+  function setSelected(versionId: string, selected: boolean) {
+    onChange(selected ? uniqueIds([...selectedIds, versionId]) : selectedIds.filter((id) => id !== versionId));
+  }
+
+  return (
+    <div className="grid gap-2 rounded-lg border border-white/10 bg-black/20 p-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="text-xs font-medium text-zinc-200">canonical view references</span>
+        <div className="flex flex-wrap items-center gap-2 text-[11px] text-zinc-500">
+          <span>{selectedIds.length}/{versions.length}</span>
+          <MiniButton label="全选" onClick={() => onChange(allIds)} disabled={disabled || versions.length === 0} />
+          <MiniButton label="清空" onClick={() => onChange([])} disabled={disabled || selectedIds.length === 0} />
+        </div>
+      </div>
+      {versions.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-white/10 py-4 text-center text-xs text-zinc-500">暂无 canonical view 可作为参考</div>
+      ) : (
+        <div className="grid gap-1 sm:grid-cols-2">
+          {versions.map((version) => (
+            <label key={version.id} className="flex min-w-0 items-center gap-2 rounded-lg border border-white/10 bg-black/20 px-2 py-2 text-xs text-zinc-300">
+              <input
+                type="checkbox"
+                checked={selectedSet.has(version.id)}
+                onChange={(event) => setSelected(version.id, event.target.checked)}
+                disabled={disabled}
+                className="size-3.5 accent-violet-400"
+              />
+              <span className="min-w-0 truncate">v{version.version} / {getEffectiveCanonicalViewLabel(version.canonicalView)}</span>
+              <span className="ml-auto shrink-0 font-mono text-[11px] text-zinc-500">{compactId(version.id)}</span>
+            </label>
+          ))}
+        </div>
+      )}
+      {selectedIds.length === 0 ? <div className="text-[11px] text-zinc-500">可选：把其它已有人设视图也作为图像输入。</div> : null}
+    </div>
+  );
+}
+
 function SourceImageGrid({
   jobId,
   images,
@@ -3136,45 +3225,64 @@ function CanonicalVersionGrid({
     return <div className="mt-3 rounded-lg border border-dashed border-white/10 py-6 text-center text-sm text-zinc-500">暂无 canonical version</div>;
   }
 
-  return (
-    <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      {versions.map((version) => {
-        const relativePath = version.artifact?.relativePath ?? null;
-        const isCurrent = version.id === currentCanonicalVersionId;
-        const isSelected = version.id === selectedVersionId;
-        const isRejected = version.status === "rejected";
-        const canReject = version.status === "candidate" && !isCurrent;
+  const versionsByView = groupCanonicalVersionsByView(versions);
 
+  return (
+    <div className="mt-3 grid gap-3 lg:grid-cols-2 xl:grid-cols-4">
+      {CANONICAL_VIEW_SPECS.map((view) => {
+        const viewVersions = versionsByView[view.key];
         return (
-          <div key={version.id} className={`min-w-0 overflow-hidden rounded-lg border ${isRejected ? "border-red-400/30 bg-red-500/[0.03]" : isCurrent ? "border-sky-400/60 bg-white/[0.03]" : isSelected ? "border-white/25 bg-white/[0.03]" : "border-white/10 bg-white/[0.03]"}`}>
-            <ArtifactThumb jobId={jobId} relativePath={relativePath} alt={`canonical v${version.version}`} />
-            <div className="space-y-2 p-2 text-xs">
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-medium text-zinc-100">v{version.version}</span>
-                <span className="rounded-full border border-sky-400/30 bg-sky-500/10 px-2 py-0.5 text-[11px] text-sky-200">{getCanonicalViewLabel(version.canonicalView)}</span>
-                <span className={getCanonicalStatusClass(version.status, isCurrent)}>{formatCanonicalStatus(version.status, isCurrent)}</span>
-              </div>
-              <div className="break-all font-mono text-[11px] text-zinc-500 sm:truncate">{compactId(version.id)} / {formatDate(version.createdAt)}</div>
-              {version.notes ? <div className="line-clamp-2 text-zinc-500">{version.notes}</div> : null}
-              <div className="flex flex-wrap gap-1">
-                <MiniButton label="选择" onClick={() => onSelectVersion(version.id)} disabled={disabled} />
-                <MiniButton
-                  icon={ShieldCheck}
-                  label="设当前"
-                  onClick={() => onSetCurrent(version.id)}
-                  disabled={disabled || isCurrent || isRejected}
-                  title={isRejected ? "Rejected canonical versions cannot be selected" : undefined}
-                />
-                <MiniButton
-                  icon={Ban}
-                  label="拒绝"
-                  tone="danger"
-                  onClick={() => onReject(version.id)}
-                  disabled={disabled || !canReject}
-                  title={getCanonicalRejectDisabledReason(version.status, isCurrent)}
-                />
-              </div>
+          <div key={view.key} className="rounded-lg border border-white/10 bg-black/20 p-2">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <div className="text-sm font-semibold text-zinc-100">{view.label}</div>
+              <span className="rounded-full border border-white/10 px-2 py-0.5 text-[11px] text-zinc-400">{viewVersions.length} 个</span>
             </div>
+            {viewVersions.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-white/10 py-6 text-center text-xs text-zinc-500">暂无{view.label} canonical version</div>
+            ) : (
+              <div className="space-y-3">
+                {viewVersions.map((version) => {
+                  const relativePath = version.artifact?.relativePath ?? null;
+                  const isCurrent = version.id === currentCanonicalVersionId;
+                  const isSelected = version.id === selectedVersionId;
+                  const isRejected = version.status === "rejected";
+                  const canReject = version.status === "candidate" && !isCurrent;
+
+                  return (
+                    <div key={version.id} className={`min-w-0 overflow-hidden rounded-lg border ${isRejected ? "border-red-400/30 bg-red-500/[0.03]" : isCurrent ? "border-sky-400/60 bg-white/[0.03]" : isSelected ? "border-white/25 bg-white/[0.03]" : "border-white/10 bg-white/[0.03]"}`}>
+                      <ArtifactThumb jobId={jobId} relativePath={relativePath} alt={`canonical v${version.version}`} />
+                      <div className="space-y-2 p-2 text-xs">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-medium text-zinc-100">v{version.version}</span>
+                          <span className="rounded-full border border-sky-400/30 bg-sky-500/10 px-2 py-0.5 text-[11px] text-sky-200">{getEffectiveCanonicalViewLabel(version.canonicalView)}</span>
+                          <span className={getCanonicalStatusClass(version.status, isCurrent)}>{formatCanonicalStatus(version.status, isCurrent)}</span>
+                        </div>
+                        <div className="break-all font-mono text-[11px] text-zinc-500 sm:truncate">{compactId(version.id)} / {formatDate(version.createdAt)}</div>
+                        {version.notes ? <div className="line-clamp-2 text-zinc-500">{version.notes}</div> : null}
+                        <div className="flex flex-wrap gap-1">
+                          <MiniButton label="选择" onClick={() => onSelectVersion(version.id)} disabled={disabled} />
+                          <MiniButton
+                            icon={ShieldCheck}
+                            label="设当前"
+                            onClick={() => onSetCurrent(version.id)}
+                            disabled={disabled || isCurrent || isRejected}
+                            title={isRejected ? "Rejected canonical versions cannot be selected" : undefined}
+                          />
+                          <MiniButton
+                            icon={Ban}
+                            label="拒绝"
+                            tone="danger"
+                            onClick={() => onReject(version.id)}
+                            disabled={disabled || !canReject}
+                            title={getCanonicalRejectDisabledReason(version.status, isCurrent)}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         );
       })}

@@ -107,7 +107,7 @@ export async function listCharacterLoraSourceImages(jobId: string) {
   return listSourceImages(jobId);
 }
 
-export async function uploadCharacterLoraSourceImage(jobId: string, input: FormData) {
+export async function uploadCharacterLoraSourceImage(jobId: string, input: unknown) {
   return uploadSourceImage(jobId, input);
 }
 

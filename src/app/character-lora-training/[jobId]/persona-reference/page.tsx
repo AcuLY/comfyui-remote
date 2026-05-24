@@ -6,7 +6,9 @@ import {
 } from "@/lib/actions/character-lora-training";
 import {
   CANONICAL_VIEW_SPECS,
+  getEffectiveCanonicalViewLabel,
   getCanonicalViewLabel,
+  groupCanonicalVersionsByView,
 } from "@/lib/character-lora-canonical-views";
 import {
   ArtifactThumb,
@@ -57,6 +59,7 @@ export default async function PersonaReferencePage({
   const activeCanonicalTasks = canonicalTasks.filter((task) => task.status === "queued" || task.status === "running");
   const failedCanonicalTasks = canonicalTasks.filter((task) => task.status === "failed");
   const latestCanonicalRun = canonicalRuns.at(-1) ?? null;
+  const canonicalVersionsByView = groupCanonicalVersionsByView(report.canonicalVersions);
 
   return (
     <JobPageShell
@@ -75,56 +78,81 @@ export default async function PersonaReferencePage({
             <ImageStrip jobId={job.id} images={report.sourceImages} emptyLabel="暂无初始参考图" />
           </SimpleSection>
 
-          <SimpleSection title="生成人设图" subtitle={report.sourceImages.length > 0 ? "使用选中的源图分别入队生成正面/背面/左侧/右侧四张 canonical" : "需要先上传源图"}>
-            <WorkflowActionForm
-              action={enqueueCanonicalAction.bind(null, job.id)}
-              submitLabel="入队生成四视图人设图"
-              pendingLabel="正在入队"
-              successMessage="四视图人设图任务已入队"
-              disabled={report.sourceImages.length === 0}
-              className="space-y-3 rounded-lg border border-white/10 bg-white/[0.03] p-3"
-              buttonClassName="inline-flex h-9 items-center rounded-md bg-emerald-500 px-3 text-xs font-medium text-white transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {report.sourceImages.length > 0 ? (
-                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                  {report.sourceImages.map((image) => (
-                    <label key={image.id} className="flex items-center gap-2 rounded-md border border-white/10 bg-black/20 px-2 py-2 text-xs text-zinc-300">
-                      <input name="sourceImageIds" value={image.id} type="checkbox" className="size-3.5 accent-sky-500" />
-                      <span className="font-mono text-zinc-500">{compactId(image.id)}</span>
+          <SimpleSection title="生成人设图" subtitle="四个角度各自入队；每次可选择原始参考图和已有其它视图作为输入图。">
+            <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-4">
+              {CANONICAL_VIEW_SPECS.map((view) => {
+                const referenceVersions = report.canonicalVersions.filter((version) => version.status !== "rejected");
+                const disabled = report.sourceImages.length === 0 && referenceVersions.length === 0;
+                return (
+                  <WorkflowActionForm
+                    key={view.key}
+                    action={enqueueCanonicalAction.bind(null, job.id)}
+                    submitLabel={`生成${view.label}`}
+                    pendingLabel="正在入队"
+                    successMessage={`${view.label}人设图任务已入队`}
+                    disabled={disabled}
+                    className="space-y-3 rounded-lg border border-white/10 bg-white/[0.03] p-3"
+                    buttonClassName="inline-flex h-9 w-full items-center justify-center rounded-md bg-emerald-500 px-3 text-xs font-medium text-white transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <input type="hidden" name="canonicalView" value={view.key} />
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        <div className="text-sm font-semibold text-zinc-100">{view.label}</div>
+                        <div className="text-[11px] text-zinc-500">{view.promptPhrase}</div>
+                      </div>
+                      <span className="rounded-full border border-sky-400/30 bg-sky-500/10 px-2 py-0.5 text-[11px] text-sky-200">独立任务</span>
+                    </div>
+                    <label className="block text-xs text-zinc-400">
+                      生成器
+                      <select name="provider" defaultValue="openai-codex" className="mt-1 w-full rounded-md border border-white/10 bg-black/30 px-2 py-2 text-sm text-zinc-200 outline-none transition focus:border-sky-400">
+                        <option value="openai-codex">openai-codex</option>
+                        <option value="mock-local">mock-local</option>
+                      </select>
                     </label>
-                  ))}
-                </div>
-              ) : (
-                <div className="rounded-md border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
-                  阻塞：当前项目没有源图，无法入队 canonical 生成。
-                </div>
-              )}
-              <div className="grid gap-3 sm:grid-cols-2">
-                <label className="text-xs text-zinc-400">
-                  生成器
-                  <select name="provider" defaultValue="openai-codex" className="mt-1 w-full rounded-md border border-white/10 bg-black/30 px-2 py-2 text-sm text-zinc-200 outline-none transition focus:border-sky-400">
-                    <option value="openai-codex">openai-codex</option>
-                    <option value="mock-local">mock-local</option>
-                  </select>
-                </label>
-                <label className="text-xs text-zinc-400">
-                  负面提示词
-                  <input name="negativePrompt" placeholder="可选" className="mt-1 w-full rounded-md border border-white/10 bg-black/30 px-2 py-2 text-sm text-zinc-200 outline-none transition focus:border-sky-400" />
-                </label>
-              </div>
-              <label className="block text-xs text-zinc-400">
-                角色描述（可选，建议先由 AI 草拟提示词卡从原始参考图提取）
-                <textarea name="characterDescription" rows={5} placeholder="粘贴从原始参考图提取的细致角色描述：发型、眼睛、服装、配色、鞋袜、配饰、非对称细节..." className="mt-1 w-full rounded-md border border-white/10 bg-black/30 px-2 py-2 text-sm text-zinc-200 outline-none transition focus:border-sky-400" />
-              </label>
-              <label className="block text-xs text-zinc-400">
-                成品提示词（可选）
-                <textarea name="finalPromptDraft" rows={4} placeholder="例如：rabbitbluerosechar, bunny ears, long light blue hair...；会拼接到每个角度的生图提示词中" className="mt-1 w-full rounded-md border border-white/10 bg-black/30 px-2 py-2 text-sm text-zinc-200 outline-none transition focus:border-sky-400" />
-              </label>
-              <label className="block text-xs text-zinc-400">
-                视觉提示补充
-                <textarea name="visualPrompt" rows={3} placeholder="留空使用默认四视图人设图生成提示；这里填写的补充会应用到四条任务" className="mt-1 w-full rounded-md border border-white/10 bg-black/30 px-2 py-2 text-sm text-zinc-200 outline-none transition focus:border-sky-400" />
-              </label>
-            </WorkflowActionForm>
+                    <div className="space-y-2 rounded-md border border-white/10 bg-black/20 p-2">
+                      <div className="text-[11px] font-medium text-zinc-300">原始参考图</div>
+                      {report.sourceImages.length > 0 ? (
+                        <div className="grid gap-1">
+                          {report.sourceImages.map((image) => (
+                            <label key={image.id} className="flex items-center gap-2 rounded-md border border-white/10 bg-black/20 px-2 py-1.5 text-xs text-zinc-300">
+                              <input name="sourceImageIds" value={image.id} type="checkbox" defaultChecked className="size-3.5 accent-sky-500" />
+                              <span className="font-mono text-zinc-500">{compactId(image.id)}</span>
+                            </label>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-[11px] text-zinc-500">暂无原始参考图</div>
+                      )}
+                    </div>
+                    <div className="space-y-2 rounded-md border border-white/10 bg-black/20 p-2">
+                      <div className="text-[11px] font-medium text-zinc-300">已有视图参考</div>
+                      {referenceVersions.length > 0 ? (
+                        <div className="grid gap-1">
+                          {referenceVersions.map((version) => (
+                            <label key={version.id} className="flex items-center gap-2 rounded-md border border-white/10 bg-black/20 px-2 py-1.5 text-xs text-zinc-300">
+                              <input name="canonicalVersionIds" value={version.id} type="checkbox" className="size-3.5 accent-violet-500" />
+                              <span>v{version.version} / {getEffectiveCanonicalViewLabel(version.canonicalView)}</span>
+                              <span className="ml-auto font-mono text-zinc-500">{compactId(version.id)}</span>
+                            </label>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-[11px] text-zinc-500">暂无可用视图参考</div>
+                      )}
+                    </div>
+                    <input name="negativePrompt" placeholder="负面提示词（可选）" className="w-full rounded-md border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-zinc-200 outline-none transition focus:border-sky-400" />
+                    <textarea name="characterDescription" rows={3} placeholder="角色描述（可选，会拼入该视图 prompt）" className="w-full rounded-md border border-white/10 bg-black/30 px-2 py-2 text-xs text-zinc-200 outline-none transition focus:border-sky-400" />
+                    <textarea name="finalPromptDraft" rows={3} placeholder="成品提示词（可选）" className="w-full rounded-md border border-white/10 bg-black/30 px-2 py-2 text-xs text-zinc-200 outline-none transition focus:border-sky-400" />
+                    <textarea name="visualPrompt" rows={3} placeholder="本次补充说明（可选）" className="w-full rounded-md border border-white/10 bg-black/30 px-2 py-2 text-xs text-zinc-200 outline-none transition focus:border-sky-400" />
+                    {disabled ? (
+                      <div className="rounded-md border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+                        阻塞：需要至少一张原始参考图或一个已有 canonical 视图。
+                      </div>
+                    ) : null}
+                  </WorkflowActionForm>
+                );
+              })}
+            </div>
           </SimpleSection>
 
           <SimpleSection title="人设图任务状态" subtitle={`${canonicalRuns.length} 个 generation run / ${canonicalTasks.length} 个 worker task`}>
@@ -183,54 +211,103 @@ export default async function PersonaReferencePage({
             )}
           </SimpleSection>
 
-          <SimpleSection title="人设图候选" subtitle={`${report.canonicalVersions.length} 个版本，${selectedCanonical} selected / ${rejectedCanonical} rejected`}>
+          <SimpleSection title="人设图候选" subtitle={`${report.canonicalVersions.length} 个版本，${selectedCanonical} selected / ${rejectedCanonical} rejected；旧未标注结果显示在正面栏`}>
             {report.canonicalVersions.length === 0 ? (
               <div className="rounded-lg border border-dashed border-white/10 py-8 text-center text-sm text-zinc-500">
                 暂无人设图候选
               </div>
             ) : (
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {report.canonicalVersions.map((version) => {
-                  const artifact = version.artifact;
-                  const canRerun = Boolean(artifact?.id && artifact.relativePath && artifact.sha256);
+              <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-4">
+                {CANONICAL_VIEW_SPECS.map((view) => {
+                  const versions = canonicalVersionsByView[view.key];
                   return (
-                    <div key={version.id} className="rounded-lg border border-white/10 bg-white/[0.03] p-2">
-                      <ArtifactThumb jobId={job.id} relativePath={artifact?.relativePath} alt={version.id} />
-                      <div className="mt-2 flex items-center justify-between gap-2 text-xs">
-                        <span className="font-medium text-zinc-200">v{version.version}</span>
-                        <span className="rounded-full border border-sky-400/30 bg-sky-500/10 px-2 py-0.5 text-[11px] text-sky-200">{getCanonicalViewLabel(version.canonicalView)}</span>
-                        <StatusPill value={version.id === job.currentCanonicalVersionId ? "当前" : version.status} />
+                    <div key={view.key} className="rounded-lg border border-white/10 bg-black/20 p-2">
+                      <div className="mb-2 flex items-center justify-between gap-2">
+                        <div className="text-sm font-semibold text-zinc-100">{view.label}</div>
+                        <span className="rounded-full border border-white/10 px-2 py-0.5 text-[11px] text-zinc-400">{versions.length} 个</span>
                       </div>
-                      <div className="mt-1 truncate font-mono text-[11px] text-zinc-500">{compactId(version.id)}</div>
-                      <div className="mt-2 grid grid-cols-2 gap-2">
-                        <form action={selectCanonicalAction.bind(null, job.id, version.id)}>
-                          <button disabled={version.id === job.currentCanonicalVersionId || version.status === "rejected"} className="h-8 w-full rounded-md bg-sky-500 px-2 text-xs font-medium text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50">
-                            选用
-                          </button>
-                        </form>
-                        <form action={rejectCanonicalAction.bind(null, job.id, version.id)}>
-                          <button disabled={version.id === job.currentCanonicalVersionId || version.status === "rejected"} className="h-8 w-full rounded-md border border-rose-500/30 px-2 text-xs font-medium text-rose-200 transition hover:bg-rose-500/10 disabled:cursor-not-allowed disabled:opacity-50">
-                            拒绝
-                          </button>
-                        </form>
-                      </div>
-                      <WorkflowActionForm
-                        action={rerunCanonicalAction.bind(null, job.id)}
-                        submitLabel="基于此人设图重生"
-                        pendingLabel="重生入队中"
-                        successMessage="人设图重生任务已入队"
-                        disabled={!canRerun}
-                        className="mt-2 space-y-2 rounded-lg border border-sky-400/20 bg-sky-500/10 p-2"
-                        buttonClassName="h-8 w-full rounded-md bg-sky-500 px-2 text-xs font-medium text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        <input type="hidden" name="provider" value="openai-codex" />
-                        <input type="hidden" name="canonicalView" value={version.canonicalView ?? ""} />
-                        <input type="hidden" name="artifactId" value={artifact?.id ?? ""} />
-                        <input type="hidden" name="relativePath" value={artifact?.relativePath ?? ""} />
-                        <input type="hidden" name="sha256" value={artifact?.sha256 ?? ""} />
-                        <textarea name="userInstruction" rows={3} required placeholder="自然语言说明要调整的地方：表情、角度、细节、配色..." className="w-full rounded-md border border-white/10 bg-black/30 px-2 py-2 text-xs leading-5 text-zinc-200 outline-none transition focus:border-sky-400" />
-                        <input name="negativePrompt" placeholder="负面提示词（可选）" className="w-full rounded-md border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-zinc-200 outline-none transition focus:border-sky-400" />
-                      </WorkflowActionForm>
+                      {versions.length === 0 ? (
+                        <div className="rounded-lg border border-dashed border-white/10 py-8 text-center text-xs text-zinc-500">
+                          暂无{view.label}候选
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {versions.map((version) => {
+                            const artifact = version.artifact;
+                            const canRerun = Boolean(artifact?.id && artifact.relativePath && artifact.sha256);
+                            const referenceVersions = report.canonicalVersions.filter((candidate) => candidate.id !== version.id && candidate.status !== "rejected");
+                            return (
+                              <div key={version.id} className="rounded-lg border border-white/10 bg-white/[0.03] p-2">
+                                <ArtifactThumb jobId={job.id} relativePath={artifact?.relativePath} alt={version.id} />
+                                <div className="mt-2 flex items-center justify-between gap-2 text-xs">
+                                  <span className="font-medium text-zinc-200">v{version.version}</span>
+                                  <span className="rounded-full border border-sky-400/30 bg-sky-500/10 px-2 py-0.5 text-[11px] text-sky-200">{getEffectiveCanonicalViewLabel(version.canonicalView)}</span>
+                                  <StatusPill value={version.id === job.currentCanonicalVersionId ? "当前" : version.status} />
+                                </div>
+                                <div className="mt-1 truncate font-mono text-[11px] text-zinc-500">{compactId(version.id)}</div>
+                                <div className="mt-2 grid grid-cols-2 gap-2">
+                                  <form action={selectCanonicalAction.bind(null, job.id, version.id)}>
+                                    <button disabled={version.id === job.currentCanonicalVersionId || version.status === "rejected"} className="h-8 w-full rounded-md bg-sky-500 px-2 text-xs font-medium text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50">
+                                      选用
+                                    </button>
+                                  </form>
+                                  <form action={rejectCanonicalAction.bind(null, job.id, version.id)}>
+                                    <button disabled={version.id === job.currentCanonicalVersionId || version.status === "rejected"} className="h-8 w-full rounded-md border border-rose-500/30 px-2 text-xs font-medium text-rose-200 transition hover:bg-rose-500/10 disabled:cursor-not-allowed disabled:opacity-50">
+                                      拒绝
+                                    </button>
+                                  </form>
+                                </div>
+                                <WorkflowActionForm
+                                  action={rerunCanonicalAction.bind(null, job.id)}
+                                  submitLabel="基于此人设图重生"
+                                  pendingLabel="重生入队中"
+                                  successMessage="人设图重生任务已入队"
+                                  disabled={!canRerun}
+                                  className="mt-2 space-y-2 rounded-lg border border-sky-400/20 bg-sky-500/10 p-2"
+                                  buttonClassName="h-8 w-full rounded-md bg-sky-500 px-2 text-xs font-medium text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                  <input type="hidden" name="provider" value="openai-codex" />
+                                  <input type="hidden" name="canonicalView" value={version.canonicalView ?? view.key} />
+                                  <input type="hidden" name="artifactId" value={artifact?.id ?? ""} />
+                                  <input type="hidden" name="relativePath" value={artifact?.relativePath ?? ""} />
+                                  <input type="hidden" name="sha256" value={artifact?.sha256 ?? ""} />
+                                  <textarea name="userInstruction" rows={3} required placeholder="自然语言说明要调整的地方：表情、角度、细节、配色..." className="w-full rounded-md border border-white/10 bg-black/30 px-2 py-2 text-xs leading-5 text-zinc-200 outline-none transition focus:border-sky-400" />
+                                  <input name="negativePrompt" placeholder="负面提示词（可选）" className="w-full rounded-md border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-zinc-200 outline-none transition focus:border-sky-400" />
+                                  <details className="rounded-md border border-white/10 bg-black/20 p-2 text-xs text-zinc-400">
+                                    <summary className="cursor-pointer text-zinc-200">追加输入图</summary>
+                                    <label className="mt-2 block">
+                                      上传新参考图
+                                      <input name="referenceFiles" type="file" accept="image/png,image/jpeg,image/webp" multiple className="mt-1 w-full rounded-md border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-zinc-300" />
+                                    </label>
+                                    {report.sourceImages.length > 0 ? (
+                                      <div className="mt-2 space-y-1">
+                                        <div className="text-[11px] text-zinc-500">原始参考图</div>
+                                        {report.sourceImages.map((image) => (
+                                          <label key={image.id} className="flex items-center gap-2 rounded-md border border-white/10 bg-black/20 px-2 py-1.5">
+                                            <input name="sourceImageIds" value={image.id} type="checkbox" className="size-3.5 accent-sky-500" />
+                                            <span className="font-mono text-zinc-500">{compactId(image.id)}</span>
+                                          </label>
+                                        ))}
+                                      </div>
+                                    ) : null}
+                                    {referenceVersions.length > 0 ? (
+                                      <div className="mt-2 space-y-1">
+                                        <div className="text-[11px] text-zinc-500">其它视图</div>
+                                        {referenceVersions.map((candidate) => (
+                                          <label key={candidate.id} className="flex items-center gap-2 rounded-md border border-white/10 bg-black/20 px-2 py-1.5">
+                                            <input name="canonicalVersionIds" value={candidate.id} type="checkbox" className="size-3.5 accent-violet-500" />
+                                            <span>v{candidate.version} / {getEffectiveCanonicalViewLabel(candidate.canonicalView)}</span>
+                                          </label>
+                                        ))}
+                                      </div>
+                                    ) : null}
+                                  </details>
+                                </WorkflowActionForm>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -244,7 +321,7 @@ export default async function PersonaReferencePage({
             <dl>
               <InfoRow label="版本" value={currentCanonical ? `v${currentCanonical.version}` : "缺失"} />
               <InfoRow label="状态" value={currentCanonical ? <StatusPill value={currentCanonical.status} /> : "缺失"} />
-              <InfoRow label="角度" value={getCanonicalViewLabel(currentCanonical?.canonicalView)} />
+              <InfoRow label="角度" value={getEffectiveCanonicalViewLabel(currentCanonical?.canonicalView)} />
               <InfoRow label="创建时间" value={formatDate(currentCanonical?.createdAt)} />
               <InfoRow label="备注" value={currentCanonical?.notes ?? "-"} />
             </dl>

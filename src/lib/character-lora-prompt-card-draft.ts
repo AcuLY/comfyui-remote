@@ -1,4 +1,4 @@
-import { CANONICAL_VIEW_SPECS } from "./character-lora-canonical-views";
+import { CANONICAL_VIEW_SPECS, normalizeCanonicalViewKey } from "./character-lora-canonical-views";
 
 export class PromptCardDraftParseError extends Error {
   constructor(message: string) {
@@ -128,7 +128,7 @@ export function selectLatestCanonicalVersionsByView<T extends PromptCardDraftCan
 
   for (const view of CANONICAL_VIEW_SPECS) {
     const latestForView = eligibleVersions
-      .filter((version) => version.canonicalView === view.key)
+      .filter((version) => normalizeCanonicalViewKey(version.canonicalView) === view.key)
       .sort(compareCanonicalVersionChoiceDesc)[0];
 
     if (latestForView) {

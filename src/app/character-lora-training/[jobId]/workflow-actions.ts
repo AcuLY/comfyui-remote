@@ -48,9 +48,13 @@ export async function uploadSourceImageAction(jobId: string, formData: FormData)
 export async function enqueueCanonicalAction(jobId: string, formData: FormData): Promise<WorkflowActionResult> {
   try {
     const sourceImageIds = formData.getAll("sourceImageIds").map(String).filter(Boolean);
+    const canonicalVersionIds = formData.getAll("canonicalVersionIds").map(String).filter(Boolean);
+    const canonicalView = stringOrUndefined(formData.get("canonicalView"));
     const runs = await enqueueCharacterLoraCanonicalViewGenerationRuns(jobId, {
       provider: stringOrUndefined(formData.get("provider")),
+      canonicalView,
       sourceImageIds: sourceImageIds.length > 0 ? sourceImageIds : undefined,
+      canonicalVersionIds: canonicalVersionIds.length > 0 ? canonicalVersionIds : undefined,
       visualPrompt: stringOrUndefined(formData.get("visualPrompt")),
       characterDescription: stringOrUndefined(formData.get("characterDescription")),
       finalPromptDraft: stringOrUndefined(formData.get("finalPromptDraft")),
@@ -59,7 +63,9 @@ export async function enqueueCanonicalAction(jobId: string, formData: FormData):
     revalidateJob(jobId);
     return {
       ok: true,
-      message: `已分别入队正面/背面/左侧/右侧 4 条人设图任务：${runs.map((run) => `${run.canonicalView}:${compactActionId(run.id)}`).join(" / ")}。`,
+      message: canonicalView
+        ? `已入队${canonicalView}人设图任务：${runs.map((run) => compactActionId(run.id)).join(" / ")}。`
+        : `已分别入队正面/背面/左侧/右侧 4 条人设图任务：${runs.map((run) => `${run.canonicalView}:${compactActionId(run.id)}`).join(" / ")}。`,
     };
   } catch (error) {
     return toActionResult(error);
@@ -72,6 +78,12 @@ export async function rerunCanonicalAction(jobId: string, formData: FormData): P
     const artifactId = requiredString(formData.get("artifactId"), "artifactId");
     const relativePath = requiredString(formData.get("relativePath"), "relativePath");
     const sha256 = requiredString(formData.get("sha256"), "sha256");
+    const uploadedSourceImageIds = await uploadReferenceFilesAsSourceImages(jobId, formData, "canonical_rerun_reference");
+    const sourceImageIds = [
+      ...formData.getAll("sourceImageIds").map(String).filter(Boolean),
+      ...uploadedSourceImageIds,
+    ];
+    const canonicalVersionIds = formData.getAll("canonicalVersionIds").map(String).filter(Boolean);
     const run = await enqueueCharacterLoraCanonicalGenerationRun(jobId, {
       provider: stringOrUndefined(formData.get("provider")),
       canonicalView: stringOrUndefined(formData.get("canonicalView")),
@@ -81,6 +93,8 @@ export async function rerunCanonicalAction(jobId: string, formData: FormData): P
         relativePath,
         sha256,
       }],
+      sourceImageIds: sourceImageIds.length > 0 ? sourceImageIds : undefined,
+      canonicalVersionIds: canonicalVersionIds.length > 0 ? canonicalVersionIds : undefined,
       visualPrompt: buildCanonicalRerunPrompt({
         canonicalView: stringOrUndefined(formData.get("canonicalView")),
         userInstruction,
@@ -241,6 +255,32 @@ function revalidateJob(jobId: string) {
 
 function textPayload(value: FormDataEntryValue | null) {
   return jsonObjectPayload(requiredString(value, "text"));
+}
+
+async function uploadReferenceFilesAsSourceImages(jobId: string, formData: FormData, purpose: string) {
+  const files = formData.getAll("referenceFiles").filter(isNonEmptyFile);
+  const uploadedSourceImageIds: string[] = [];
+
+  for (let index = 0; index < files.length; index += 1) {
+    const file = files[index];
+    const uploaded = await uploadCharacterLoraSourceImage(jobId, {
+      file,
+      role: "source",
+      sortOrder: 10_000 + index,
+      provenance: {
+        purpose,
+        uploadedFrom: "canonical_rerun_form",
+        uploadedAt: new Date().toISOString(),
+      },
+    });
+    uploadedSourceImageIds.push(uploaded.id);
+  }
+
+  return uploadedSourceImageIds;
+}
+
+function isNonEmptyFile(value: FormDataEntryValue): value is File {
+  return typeof File !== "undefined" && value instanceof File && value.size > 0;
 }
 
 function optionalTextPayload(value: FormDataEntryValue | null) {

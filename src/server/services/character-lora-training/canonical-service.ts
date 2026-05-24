@@ -32,7 +32,10 @@ import {
   redactCharacterLoraProviderPayload,
   writeCharacterLoraJsonArtifact,
 } from "@/server/services/character-lora-training/artifact-service";
-import { buildCanonicalViewGenerationPayloads } from "@/lib/character-lora-canonical-views";
+import {
+  buildCanonicalViewGenerationPayload,
+  buildCanonicalViewGenerationPayloads,
+} from "@/lib/character-lora-canonical-views";
 import { z } from "zod";
 
 const DEFAULT_PROVIDER = "openai-codex" satisfies CharacterLoraImageProvider;
@@ -64,6 +67,7 @@ const enqueueCanonicalGenerationSchema = z
     toolParams: characterLoraProviderToolParamsSchema.optional(),
     inputImages: z.array(characterLoraProviderInputImageSchema).optional(),
     sourceImageIds: z.array(trimmedStringSchema()).optional(),
+    canonicalVersionIds: z.array(trimmedStringSchema()).optional(),
   })
   .strict();
 
@@ -95,15 +99,8 @@ export class CharacterLoraCanonicalServiceError extends Error {
 export async function enqueueCharacterLoraCanonicalGenerationRun(jobId: string, input: unknown = {}) {
   const id = normalizeId(jobId, "jobId");
   const job = await getExistingJob(id);
-  const sourceImages = await listRequiredSourceImages(id);
+  const sourceImages = await listCharacterLoraSourceImages(id);
   const parsed = parseWithSchema(enqueueCanonicalGenerationSchema, input);
-
-  if (parsed.inputImages && parsed.sourceImageIds) {
-    throw new CharacterLoraCanonicalServiceError(
-      "Provide either inputImages or sourceImageIds, not both",
-      400,
-    );
-  }
 
   const provider = parsed.provider ?? DEFAULT_PROVIDER;
   const canonicalView = parsed.canonicalView ?? null;
@@ -184,14 +181,7 @@ export async function enqueueCharacterLoraCanonicalViewGenerationRuns(jobId: str
   const job = await getExistingJob(id);
   const parsed = parseWithSchema(enqueueCanonicalGenerationSchema, input);
 
-  if (parsed.inputImages && parsed.sourceImageIds) {
-    throw new CharacterLoraCanonicalServiceError(
-      "Provide either inputImages or sourceImageIds, not both",
-      400,
-    );
-  }
-
-  const payloads = buildCanonicalViewGenerationPayloads({
+  const commonPayloadInput = {
     characterName: job.characterName,
     triggerToken: job.triggerToken,
     provider: parsed.provider,
@@ -206,16 +196,17 @@ export async function enqueueCharacterLoraCanonicalViewGenerationRuns(jobId: str
     toolParams: parsed.toolParams,
     inputImages: parsed.inputImages,
     sourceImageIds: parsed.sourceImageIds,
-  });
+    canonicalVersionIds: parsed.canonicalVersionIds,
+  };
+  const payloads = parsed.canonicalView
+    ? [buildCanonicalViewGenerationPayload({ ...commonPayloadInput, canonicalView: parsed.canonicalView })]
+    : buildCanonicalViewGenerationPayloads(commonPayloadInput);
 
-  const runs = [];
-  for (const payload of payloads) {
+  return Promise.all(payloads.map(async (payload) => {
     const { canonicalView, canonicalViewLabel, ...runInput } = payload;
     const run = await enqueueCharacterLoraCanonicalGenerationRun(id, { ...runInput, canonicalView });
-    runs.push({ ...run, canonicalView, canonicalViewLabel });
-  }
-
-  return runs;
+    return { ...run, canonicalView, canonicalViewLabel };
+  }));
 }
 
 export async function mockCompleteCharacterLoraCanonicalGenerationRun(runId: string, input: unknown = {}) {
@@ -539,12 +530,30 @@ async function resolveProviderInputImages(
   sourceImages: CharacterLoraSourceImageSummary[],
   parsed: z.infer<typeof enqueueCanonicalGenerationSchema>,
 ) {
-  if (parsed.inputImages) {
-    return validateExplicitCanonicalInputImages(jobId, sourceImages, parsed.inputImages);
+  const explicitInputImages = parsed.inputImages
+    ? await validateExplicitCanonicalInputImages(jobId, sourceImages, parsed.inputImages)
+    : [];
+  const sourceInputImages = parsed.sourceImageIds
+    ? resolveProviderInputImagesBySourceIds(sourceImages, parsed.sourceImageIds)
+    : [];
+  const canonicalInputImages = parsed.canonicalVersionIds
+    ? await resolveProviderInputImagesByCanonicalVersionIds(jobId, parsed.canonicalVersionIds)
+    : [];
+
+  if (explicitInputImages.length > 0 || sourceInputImages.length > 0 || canonicalInputImages.length > 0) {
+    return dedupeProviderInputImages([
+      ...explicitInputImages,
+      ...sourceInputImages,
+      ...canonicalInputImages,
+    ]);
   }
 
-  if (parsed.sourceImageIds) {
-    return resolveProviderInputImagesBySourceIds(sourceImages, parsed.sourceImageIds);
+  if (sourceImages.length === 0) {
+    throw new CharacterLoraCanonicalServiceError(
+      "Canonical generation requires at least one source image, canonical reference, or explicit input image",
+      409,
+      { jobId },
+    );
   }
 
   return sourceImages.map(sourceImageToProviderInput);
@@ -651,6 +660,109 @@ function resolveProviderInputImagesBySourceIds(
   }
 
   return sourceImageIds.map((sourceImageId) => sourceImageToProviderInput(sourceById.get(sourceImageId)!));
+}
+
+async function resolveProviderInputImagesByCanonicalVersionIds(
+  jobId: string,
+  canonicalVersionIds: string[],
+) {
+  if (canonicalVersionIds.length === 0) {
+    throw new CharacterLoraCanonicalServiceError("canonicalVersionIds must include at least one version", 400);
+  }
+
+  const uniqueIds = new Set(canonicalVersionIds);
+  if (uniqueIds.size !== canonicalVersionIds.length) {
+    throw new CharacterLoraCanonicalServiceError("canonicalVersionIds must not contain duplicates", 400);
+  }
+
+  const versions = await Promise.all(canonicalVersionIds.map((versionId) => getCharacterLoraCanonicalVersion(versionId)));
+  const missingVersionIds: string[] = [];
+  const foreignVersionIds: string[] = [];
+  const missingArtifactIds: string[] = [];
+  const foreignArtifactIds: string[] = [];
+  const missingArtifactShaIds: string[] = [];
+  const rejectedVersionIds: string[] = [];
+  const inputs: CharacterLoraProviderInputImage[] = [];
+
+  for (let index = 0; index < canonicalVersionIds.length; index += 1) {
+    const versionId = canonicalVersionIds[index];
+    const version = versions[index];
+    if (!version) {
+      missingVersionIds.push(versionId);
+      continue;
+    }
+    if (version.jobId !== jobId) {
+      foreignVersionIds.push(version.id);
+      continue;
+    }
+    if (version.status === "rejected") {
+      rejectedVersionIds.push(version.id);
+      continue;
+    }
+
+    const artifact = await getCharacterLoraArtifact(version.imageArtifactId);
+    if (!artifact) {
+      missingArtifactIds.push(version.imageArtifactId);
+      continue;
+    }
+    if (artifact.jobId !== jobId) {
+      foreignArtifactIds.push(artifact.id);
+      continue;
+    }
+    if (!artifact.sha256) {
+      missingArtifactShaIds.push(artifact.id);
+      continue;
+    }
+
+    inputs.push({
+      artifactId: artifact.id,
+      role: "canonical",
+      relativePath: artifact.relativePath,
+      sha256: artifact.sha256,
+    });
+  }
+
+  if (missingVersionIds.length > 0 || foreignVersionIds.length > 0) {
+    throw new CharacterLoraCanonicalServiceError("One or more canonical versions were not found for this job", 404, {
+      missingVersionIds,
+      foreignVersionIds,
+    });
+  }
+
+  if (rejectedVersionIds.length > 0) {
+    throw new CharacterLoraCanonicalServiceError("Rejected canonical versions cannot be used as generation references", 409, {
+      canonicalVersionIds: rejectedVersionIds,
+    });
+  }
+
+  if (missingArtifactIds.length > 0 || foreignArtifactIds.length > 0 || missingArtifactShaIds.length > 0) {
+    throw new CharacterLoraCanonicalServiceError("One or more canonical artifacts were not found for this job", 404, {
+      missingArtifactIds,
+      foreignArtifactIds,
+      missingArtifactShaIds,
+    });
+  }
+
+  return inputs;
+}
+
+function dedupeProviderInputImages(inputImages: CharacterLoraProviderInputImage[]) {
+  const seenArtifactIds = new Set<string>();
+  const deduped: CharacterLoraProviderInputImage[] = [];
+
+  for (const inputImage of inputImages) {
+    if (seenArtifactIds.has(inputImage.artifactId)) {
+      continue;
+    }
+    seenArtifactIds.add(inputImage.artifactId);
+    deduped.push(inputImage);
+  }
+
+  if (deduped.length === 0) {
+    throw new CharacterLoraCanonicalServiceError("Generation input images must include at least one image", 400);
+  }
+
+  return deduped;
 }
 
 function resolveMockSourceImage(
