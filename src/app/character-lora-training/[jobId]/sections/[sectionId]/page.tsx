@@ -20,6 +20,12 @@ import { enqueueSectionRunAction, reviewCandidateAction, updateCaptionAction } f
 
 export const dynamic = "force-dynamic";
 
+async function enqueueSectionRunFormAction(sectionId: string, jobId: string, formData: FormData): Promise<void> {
+  "use server";
+
+  await enqueueSectionRunAction(sectionId, jobId, formData);
+}
+
 export default async function SectionDetailPage({
   params,
 }: {
@@ -73,7 +79,7 @@ export default async function SectionDetailPage({
             <InfoRow label="生成批次" value={section.counts.generationRuns} />
             <InfoRow label="更新时间" value={formatDate(section.updatedAt)} />
           </dl>
-          <form action={enqueueSectionRunAction.bind(null, section.id, job.id)} className="mt-4 space-y-3 rounded-lg border border-white/10 bg-white/[0.03] p-3">
+          <form action={enqueueSectionRunFormAction.bind(null, section.id, job.id)} className="mt-4 space-y-3 rounded-lg border border-white/10 bg-white/[0.03] p-3">
             {!canGenerate ? (
               <div className="rounded-md border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
                 阻塞：{blockingReasons.join("；")}

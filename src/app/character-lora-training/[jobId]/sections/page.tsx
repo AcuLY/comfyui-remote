@@ -14,9 +14,16 @@ import {
   StatusPill,
   formatDate,
 } from "../shared-ui";
+import { WorkflowActionForm } from "../workflow-action-form";
 import { enqueueSectionRunAction, instantiateSectionsAction } from "../workflow-actions";
 
 export const dynamic = "force-dynamic";
+
+async function enqueueSectionRunFormAction(sectionId: string, jobId: string, formData: FormData): Promise<void> {
+  "use server";
+
+  await enqueueSectionRunAction(sectionId, jobId, formData);
+}
 
 export default async function SectionsPage({
   params,
@@ -97,7 +104,7 @@ export default async function SectionsPage({
                   </span>
                   <span className="text-xs text-zinc-500">{formatDate(section.updatedAt)}</span>
                   <div className="flex items-center gap-2">
-                    <form action={enqueueSectionRunAction.bind(null, section.id, job.id)}>
+                    <form action={enqueueSectionRunFormAction.bind(null, section.id, job.id)}>
                       <button disabled={!canGenerate || !section.canonicalVersionId || !section.promptCardVersionId || section.status === "paused"} className="h-8 rounded-md bg-emerald-500 px-2 text-xs font-medium text-white transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50">
                         生成
                       </button>
