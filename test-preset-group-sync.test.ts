@@ -7,6 +7,7 @@ import {
   haveSamePresetGroupMemberSet,
   isPresetGroupPlaceholderBlock,
   sortConcreteGroupMembersForSection,
+  sortSectionPromptBlocksByCategoryOrder,
 } from "./src/lib/actions/preset-group-sync";
 
 test("empty synced preset groups keep a placeholder prompt block with the same group binding", () => {
@@ -69,4 +70,26 @@ test("legacy group binding ids are canonicalized with the source group id", () =
     canonicalPresetGroupBindingId("group-1", "grp:group-1:1776997192539-9dzj762"),
     "grp:group-1:1776997192539-9dzj762",
   );
+});
+
+test("synced preset group members are interleaved with existing section blocks by category order", () => {
+  const sorted = sortSectionPromptBlocksByCategoryOrder([
+    { label: "lazy", categoryOrder: 0, sortOrder: 0 },
+    { label: "person", categoryOrder: 1, sortOrder: 1 },
+    { label: "pose", categoryOrder: 6, sortOrder: 4 },
+    { label: "character", categoryOrder: 2, sortOrder: 2 },
+    { label: "expression", categoryOrder: 4, sortOrder: 3 },
+    { label: "scene", categoryOrder: 7, sortOrder: 5 },
+    { label: "style", categoryOrder: 8, sortOrder: 6 },
+  ]).map((block) => block.label);
+
+  assert.deepEqual(sorted, [
+    "lazy",
+    "person",
+    "character",
+    "expression",
+    "pose",
+    "scene",
+    "style",
+  ]);
 });

@@ -20,6 +20,7 @@ import {
   canonicalPresetGroupBindingId,
   haveSamePresetGroupMemberSet,
   sortConcreteGroupMembersForSection,
+  sortSectionPromptBlocksByCategoryOrder,
 } from "./preset-group-sync";
 import { resolveVariantContent } from "./preset-variant";
 
@@ -136,6 +137,10 @@ async function syncPresetGroupInstances(
   if (!previousSignature && nextMembers.length === 0) return;
 
   const groupBindingPrefix = `grp:${groupId}:`;
+  const categories = await prisma.presetCategory.findMany({
+    select: { id: true, positivePromptOrder: true },
+  });
+  const categoryOrderById = new Map(categories.map((category) => [category.id, category.positivePromptOrder]));
   const sections = await prisma.projectSection.findMany({
     where: {
       promptBlocks: {
@@ -202,58 +207,114 @@ async function syncPresetGroupInstances(
           },
         });
 
-        let nextSortOrder = 0;
-        const createBlocks: Prisma.PromptBlockCreateManyInput[] = [];
-        let insertedGroup = false;
+        type ExistingPromptBlock = (typeof section.promptBlocks)[number];
+        type SortablePromptBlock =
+          | {
+              kind: "existing";
+              block: ExistingPromptBlock;
+              categoryOrder: number | null;
+              sortOrder: number;
+            }
+          | {
+              kind: "create";
+              data: Prisma.PromptBlockCreateManyInput;
+              categoryOrder: number | null;
+              sortOrder: number;
+            };
 
-        const enqueueSyncedGroupBlocks = () => {
-          if (nextMembers.length === 0) {
-            createBlocks.push(
-              buildPresetGroupPlaceholderCreateInput({
-                sectionId: section.id,
-                groupBindingId: targetGroupBindingId,
-                sortOrder: nextSortOrder,
-              }) as Prisma.PromptBlockCreateManyInput,
+        const getCategoryOrderForBlock = (block: { categoryId: string | null; sortOrder: number }) =>
+          block.categoryId ? categoryOrderById.get(block.categoryId) ?? block.sortOrder : block.sortOrder;
+        const fallbackGroupSortOrder = groupBlocks.reduce(
+          (min, block) => Math.min(min, block.sortOrder),
+          Number.POSITIVE_INFINITY,
+        );
+        const groupSortOrder = Number.isFinite(fallbackGroupSortOrder) ? fallbackGroupSortOrder : 0;
+        const usedAnchorIndexes = new Set<number>();
+        const takeAnchorBlock = (member: ConcreteGroupMember, index: number) => {
+          const exactIndex = groupBlocks.findIndex((block, blockIndex) =>
+            !usedAnchorIndexes.has(blockIndex) &&
+            block.type === "preset" &&
+            block.sourceId === member.presetId &&
+            block.variantId === member.variantId,
+          );
+          const categoryIndex = exactIndex >= 0
+            ? exactIndex
+            : groupBlocks.findIndex((block, blockIndex) =>
+              !usedAnchorIndexes.has(blockIndex) && block.categoryId === member.categoryId,
             );
-            nextSortOrder += 1;
-            return;
+          const anchorIndex = categoryIndex >= 0 ? categoryIndex : -1;
+          if (anchorIndex >= 0) {
+            usedAnchorIndexes.add(anchorIndex);
+            return groupBlocks[anchorIndex];
           }
-
-          nextMembers.forEach((member, index) => {
-            createBlocks.push({
-              projectSectionId: section.id,
-              type: "preset",
-              sourceId: member.presetId,
-              variantId: member.variantId,
-              categoryId: member.categoryId,
-              bindingId: nextBindingIds[index],
-              groupBindingId: targetGroupBindingId,
-              label: member.label,
-              positive: member.positive,
-              negative: member.negative,
-              sortOrder: nextSortOrder,
-            });
-            nextSortOrder += 1;
-          });
+          return { categoryId: member.categoryId, sortOrder: groupSortOrder + index };
         };
 
-        for (const block of section.promptBlocks) {
-          if (block.groupBindingId === groupBindingId) {
-            if (!insertedGroup) {
-              enqueueSyncedGroupBlocks();
-              insertedGroup = true;
-            }
-            continue;
-          }
+        const sortableBlocks: SortablePromptBlock[] = section.promptBlocks
+          .filter((block) => block.groupBindingId !== groupBindingId)
+          .map((block) => ({
+            kind: "existing" as const,
+            block,
+            categoryOrder: getCategoryOrderForBlock(block),
+            sortOrder: block.sortOrder,
+          }));
 
-          if (block.sortOrder !== nextSortOrder) {
-            await tx.promptBlock.update({
-              where: { id: block.id },
-              data: { sortOrder: nextSortOrder },
+        if (nextMembers.length === 0) {
+          const anchorBlock: { categoryId: string | null; sortOrder: number } = groupBlocks[0]
+            ? { categoryId: groupBlocks[0].categoryId, sortOrder: groupBlocks[0].sortOrder }
+            : { categoryId: null, sortOrder: groupSortOrder };
+          sortableBlocks.push({
+            kind: "create",
+            data: buildPresetGroupPlaceholderCreateInput({
+              sectionId: section.id,
+              groupBindingId: targetGroupBindingId,
+              sortOrder: groupSortOrder,
+            }) as Prisma.PromptBlockCreateManyInput,
+            categoryOrder: getCategoryOrderForBlock(anchorBlock),
+            sortOrder: anchorBlock.sortOrder,
+          });
+        } else {
+          nextMembers.forEach((member, index) => {
+            const anchorBlock = takeAnchorBlock(member, index);
+            sortableBlocks.push({
+              kind: "create",
+              data: {
+                projectSectionId: section.id,
+                type: "preset",
+                sourceId: member.presetId,
+                variantId: member.variantId,
+                categoryId: member.categoryId,
+                bindingId: nextBindingIds[index],
+                groupBindingId: targetGroupBindingId,
+                label: member.label,
+                positive: member.positive,
+                negative: member.negative,
+                sortOrder: anchorBlock.sortOrder,
+              },
+              categoryOrder: member.positivePromptOrder,
+              sortOrder: anchorBlock.sortOrder,
             });
-          }
-          nextSortOrder += 1;
+          });
         }
+
+        const createBlocks: Prisma.PromptBlockCreateManyInput[] = [];
+        const sortedBlocks = sortSectionPromptBlocksByCategoryOrder(sortableBlocks);
+        const updateSortOrderPromises = sortedBlocks
+          .map((item, nextSortOrder) => {
+            if (item.kind === "create") {
+              createBlocks.push({ ...item.data, sortOrder: nextSortOrder });
+              return null;
+            }
+            return item.block.sortOrder !== nextSortOrder
+              ? tx.promptBlock.update({
+                where: { id: item.block.id },
+                data: { sortOrder: nextSortOrder },
+              })
+              : null;
+          })
+          .filter((promise): promise is ReturnType<typeof tx.promptBlock.update> => Boolean(promise));
+
+        await Promise.all(updateSortOrderPromises);
 
         if (createBlocks.length > 0) {
           await tx.promptBlock.createMany({ data: createBlocks });

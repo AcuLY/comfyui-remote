@@ -88,8 +88,17 @@ type SectionOrderedGroupMember = {
   positivePromptOrder?: number | null;
 };
 
+type SectionPromptBlockWithCategoryOrder = {
+  categoryOrder?: number | null;
+  sortOrder?: number | null;
+};
+
 function normalizeCategoryOrder(order: number | null | undefined) {
   return typeof order === "number" && Number.isFinite(order) ? order : UNKNOWN_CATEGORY_ORDER;
+}
+
+function normalizeSortOrder(order: number | null | undefined, fallback: number) {
+  return typeof order === "number" && Number.isFinite(order) ? order : fallback;
 }
 
 export function sortConcreteGroupMembersForSection<T extends SectionOrderedGroupMember>(members: readonly T[]): T[] {
@@ -100,4 +109,15 @@ export function sortConcreteGroupMembersForSection<T extends SectionOrderedGroup
       a.index - b.index,
     )
     .map(({ member }) => member);
+}
+
+export function sortSectionPromptBlocksByCategoryOrder<T extends SectionPromptBlockWithCategoryOrder>(blocks: readonly T[]): T[] {
+  return blocks
+    .map((block, index) => ({ block, index }))
+    .sort((a, b) =>
+      normalizeCategoryOrder(a.block.categoryOrder) - normalizeCategoryOrder(b.block.categoryOrder) ||
+      normalizeSortOrder(a.block.sortOrder, a.index) - normalizeSortOrder(b.block.sortOrder, b.index) ||
+      a.index - b.index,
+    )
+    .map(({ block }) => block);
 }
