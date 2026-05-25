@@ -12,10 +12,10 @@ type CanonicalVersion = {
   id: string;
   version: number;
   status: string;
-  canonicalView: string | null;
-  notes: string | null;
-  createdAt: string;
-  artifact: { id: string; relativePath: string | null; sha256: string | null } | null;
+  canonicalView?: string | null;
+  notes?: string | null;
+  createdAt?: string;
+  artifact?: { id: string; relativePath: string | null; sha256: string | null } | null;
 };
 
 type SourceImage = {
@@ -31,9 +31,11 @@ type ViewSpec = {
 
 type CanonicalViewPanelProps = {
   viewSpec: ViewSpec;
-  candidates: CanonicalVersion[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  candidates: any[];
   sourceImages: SourceImage[];
-  allNonRejectedVersions: CanonicalVersion[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  allNonRejectedVersions: any[];
   jobId: string;
   currentCanonicalVersionId: string | null;
   enqueueAction: (formData: FormData) => Promise<WorkflowActionResult>;
