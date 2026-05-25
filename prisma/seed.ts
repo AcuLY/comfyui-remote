@@ -731,7 +731,334 @@ async function main() {
     },
   });
 
-  console.log(`Seeded Character LoRA training data: job "${loraJob.slug}" with ${5} canonical versions, ${3} source images.`);
+  // ─── Prompt Card Version ──────────────────────────────────────────────────
+
+  const promptCardV1 = await prisma.characterLoraPromptCardVersion.create({
+    data: {
+      jobId: loraJob.id,
+      canonicalVersionId: canonFrontV1.id,
+      version: 1,
+      triggerToken: "1miku",
+      identityTraits: {
+        hair: "long twin-tails, cyan/teal color",
+        eyes: "large, green-cyan",
+        face: "anime-style, youthful",
+        body: "slender, petite",
+      },
+      outfitTraits: {
+        top: "grey sleeveless shirt with teal tie",
+        bottom: "black pleated mini skirt",
+        arms: "detached black sleeves with teal trim",
+        legs: "thigh-high black boots",
+        accessories: "futuristic headset",
+      },
+      negativeTraits: ["blurry", "low quality", "extra limbs", "bad anatomy", "watermark", "text"],
+      finalPromptDraft: "1miku, full body, standing, anime style, teal twin-tails, grey sleeveless top, teal tie, black pleated skirt, detached sleeves, thigh-high boots, futuristic headset, detailed face, clean lineart",
+      createdAt: hoursAgo(20),
+    },
+  });
+
+  // Update job to point to prompt card
+  await prisma.characterLoraTrainingJob.update({
+    where: { id: loraJob.id },
+    data: { currentPromptCardVersionId: promptCardV1.id },
+  });
+
+  // ─── Section Templates ──────────────────────────────────────────────────
+
+  const sectionTemplateStandingFront = await prisma.characterLoraSectionTemplate.upsert({
+    where: { key: "standing_front" },
+    update: {},
+    create: {
+      trainingTemplateId: loraTemplate.id,
+      key: "standing_front",
+      name: "Standing Front",
+      description: "正面站立，全身可见",
+      angleTag: "front",
+      promptTemplate: "1miku, full body front view, standing pose, {{traits}}, white background",
+      negativeTemplate: "blurry, low quality, cropped",
+      targetCandidateCount: 4,
+      targetKeepCount: 2,
+      sortOrder: 1,
+      isActive: true,
+    },
+  });
+
+  const sectionTemplateActionPose = await prisma.characterLoraSectionTemplate.upsert({
+    where: { key: "action_pose" },
+    update: {},
+    create: {
+      trainingTemplateId: loraTemplate.id,
+      key: "action_pose",
+      name: "Action Pose",
+      description: "动态姿态，展示角色表现力",
+      angleTag: "front",
+      promptTemplate: "1miku, dynamic action pose, {{traits}}, dramatic lighting",
+      negativeTemplate: "blurry, static, stiff",
+      targetCandidateCount: 4,
+      targetKeepCount: 2,
+      sortOrder: 2,
+      isActive: true,
+    },
+  });
+
+  const sectionTemplateSitting = await prisma.characterLoraSectionTemplate.upsert({
+    where: { key: "sitting" },
+    update: {},
+    create: {
+      trainingTemplateId: loraTemplate.id,
+      key: "sitting",
+      name: "Sitting",
+      description: "坐姿，展示休闲状态",
+      angleTag: "front",
+      promptTemplate: "1miku, sitting pose, relaxed, {{traits}}, simple background",
+      negativeTemplate: "blurry, low quality",
+      targetCandidateCount: 3,
+      targetKeepCount: 1,
+      sortOrder: 3,
+      isActive: true,
+    },
+  });
+
+  // ─── Job Sections ──────────────────────────────────────────────────────
+
+  const sectionStandingFront = await prisma.characterLoraJobSection.create({
+    data: {
+      jobId: loraJob.id,
+      templateId: sectionTemplateStandingFront.id,
+      key: "standing_front",
+      name: "Standing Front",
+      canonicalVersionId: canonFrontV1.id,
+      promptCardVersionId: promptCardV1.id,
+      targetCandidateCount: 4,
+      targetKeepCount: 2,
+      status: "draft",
+      keepCount: 2,
+      rejectCount: 1,
+      pendingCount: 1,
+      sortOrder: 1,
+    },
+  });
+
+  const sectionActionPose = await prisma.characterLoraJobSection.create({
+    data: {
+      jobId: loraJob.id,
+      templateId: sectionTemplateActionPose.id,
+      key: "action_pose",
+      name: "Action Pose",
+      canonicalVersionId: canonFrontV1.id,
+      promptCardVersionId: promptCardV1.id,
+      targetCandidateCount: 4,
+      targetKeepCount: 2,
+      status: "draft",
+      keepCount: 1,
+      rejectCount: 0,
+      pendingCount: 2,
+      sortOrder: 2,
+    },
+  });
+
+  const sectionSitting = await prisma.characterLoraJobSection.create({
+    data: {
+      jobId: loraJob.id,
+      templateId: sectionTemplateSitting.id,
+      key: "sitting",
+      name: "Sitting",
+      canonicalVersionId: canonFrontV1.id,
+      promptCardVersionId: promptCardV1.id,
+      targetCandidateCount: 3,
+      targetKeepCount: 1,
+      status: "draft",
+      keepCount: 0,
+      rejectCount: 0,
+      pendingCount: 2,
+      sortOrder: 3,
+    },
+  });
+
+  // ─── Section Generation Runs ───────────────────────────────────────────
+
+  const sectionRunStanding = await prisma.characterLoraGenerationRun.create({
+    data: {
+      jobId: loraJob.id,
+      sectionId: sectionStandingFront.id,
+      kind: "section_candidate",
+      status: "done",
+      provider: "openai-codex",
+      hostModel: "gpt-4.1",
+      imageModel: "gpt-image-2",
+      hostInstruction: "Generate standing front training image",
+      visualPrompt: "1miku, full body front view, standing, white background",
+      toolParams: { size: "768x1024", quality: "high", outputFormat: "png", background: "opaque" },
+      inputImages: [],
+      startedAt: hoursAgo(8),
+      finishedAt: hoursAgo(7.5),
+      createdAt: hoursAgo(8),
+    },
+  });
+
+  const sectionRunAction = await prisma.characterLoraGenerationRun.create({
+    data: {
+      jobId: loraJob.id,
+      sectionId: sectionActionPose.id,
+      kind: "section_candidate",
+      status: "done",
+      provider: "openai-codex",
+      hostModel: "gpt-4.1",
+      imageModel: "gpt-image-2",
+      hostInstruction: "Generate dynamic action pose training image",
+      visualPrompt: "1miku, dynamic action pose, jumping, dramatic lighting",
+      toolParams: { size: "768x1024", quality: "high", outputFormat: "png", background: "opaque" },
+      inputImages: [],
+      startedAt: hoursAgo(6),
+      finishedAt: hoursAgo(5.5),
+      createdAt: hoursAgo(6),
+    },
+  });
+
+  const sectionRunSitting = await prisma.characterLoraGenerationRun.create({
+    data: {
+      jobId: loraJob.id,
+      sectionId: sectionSitting.id,
+      kind: "section_candidate",
+      status: "done",
+      provider: "openai-codex",
+      hostModel: "gpt-4.1",
+      imageModel: "gpt-image-2",
+      hostInstruction: "Generate sitting pose training image",
+      visualPrompt: "1miku, sitting on chair, relaxed pose, simple background",
+      toolParams: { size: "768x1024", quality: "high", outputFormat: "png", background: "opaque" },
+      inputImages: [],
+      startedAt: hoursAgo(4),
+      finishedAt: hoursAgo(3.5),
+      createdAt: hoursAgo(4),
+    },
+  });
+
+  // ─── Candidate Image Artifacts ─────────────────────────────────────────
+
+  const candArtifacts = await Promise.all([
+    prisma.characterLoraArtifact.upsert({ where: { jobId_relativePath: { jobId: loraJob.id, relativePath: "candidates/standing-front/img-01.png" } }, update: {}, create: { jobId: loraJob.id, kind: "candidate_image", relativePath: "candidates/standing-front/img-01.png", sha256: "cand_sf_01", byteSize: BigInt(150000), mimeType: "image/png" } }),
+    prisma.characterLoraArtifact.upsert({ where: { jobId_relativePath: { jobId: loraJob.id, relativePath: "candidates/standing-front/img-02.png" } }, update: {}, create: { jobId: loraJob.id, kind: "candidate_image", relativePath: "candidates/standing-front/img-02.png", sha256: "cand_sf_02", byteSize: BigInt(148000), mimeType: "image/png" } }),
+    prisma.characterLoraArtifact.upsert({ where: { jobId_relativePath: { jobId: loraJob.id, relativePath: "candidates/standing-front/img-03.png" } }, update: {}, create: { jobId: loraJob.id, kind: "candidate_image", relativePath: "candidates/standing-front/img-03.png", sha256: "cand_sf_03", byteSize: BigInt(152000), mimeType: "image/png" } }),
+    prisma.characterLoraArtifact.upsert({ where: { jobId_relativePath: { jobId: loraJob.id, relativePath: "candidates/standing-front/img-04.png" } }, update: {}, create: { jobId: loraJob.id, kind: "candidate_image", relativePath: "candidates/standing-front/img-04.png", sha256: "cand_sf_04", byteSize: BigInt(149000), mimeType: "image/png" } }),
+    prisma.characterLoraArtifact.upsert({ where: { jobId_relativePath: { jobId: loraJob.id, relativePath: "candidates/action-pose/img-01.png" } }, update: {}, create: { jobId: loraJob.id, kind: "candidate_image", relativePath: "candidates/action-pose/img-01.png", sha256: "cand_ap_01", byteSize: BigInt(160000), mimeType: "image/png" } }),
+    prisma.characterLoraArtifact.upsert({ where: { jobId_relativePath: { jobId: loraJob.id, relativePath: "candidates/action-pose/img-02.png" } }, update: {}, create: { jobId: loraJob.id, kind: "candidate_image", relativePath: "candidates/action-pose/img-02.png", sha256: "cand_ap_02", byteSize: BigInt(158000), mimeType: "image/png" } }),
+    prisma.characterLoraArtifact.upsert({ where: { jobId_relativePath: { jobId: loraJob.id, relativePath: "candidates/action-pose/img-03.png" } }, update: {}, create: { jobId: loraJob.id, kind: "candidate_image", relativePath: "candidates/action-pose/img-03.png", sha256: "cand_ap_03", byteSize: BigInt(155000), mimeType: "image/png" } }),
+    prisma.characterLoraArtifact.upsert({ where: { jobId_relativePath: { jobId: loraJob.id, relativePath: "candidates/sitting/img-01.png" } }, update: {}, create: { jobId: loraJob.id, kind: "candidate_image", relativePath: "candidates/sitting/img-01.png", sha256: "cand_sit_01", byteSize: BigInt(145000), mimeType: "image/png" } }),
+    prisma.characterLoraArtifact.upsert({ where: { jobId_relativePath: { jobId: loraJob.id, relativePath: "candidates/sitting/img-02.png" } }, update: {}, create: { jobId: loraJob.id, kind: "candidate_image", relativePath: "candidates/sitting/img-02.png", sha256: "cand_sit_02", byteSize: BigInt(143000), mimeType: "image/png" } }),
+  ]);
+
+  // ─── Candidate Images ──────────────────────────────────────────────────
+
+  // Standing front: 2 keep, 1 reject, 1 pending
+  const candStandF1 = await prisma.characterLoraCandidateImage.create({
+    data: { jobId: loraJob.id, sectionId: sectionStandingFront.id, generationRunId: sectionRunStanding.id, artifactId: candArtifacts[0].id, filePath: "candidates/standing-front/img-01.png", sha256: "cand_sf_01", width: 768, height: 1024, reviewStatus: "keep", captionDraft: "1miku, standing, front view, teal twin-tails, grey top, black skirt, full body, white background", reviewedAt: hoursAgo(6), createdAt: hoursAgo(7) },
+  });
+  const candStandF2 = await prisma.characterLoraCandidateImage.create({
+    data: { jobId: loraJob.id, sectionId: sectionStandingFront.id, generationRunId: sectionRunStanding.id, artifactId: candArtifacts[1].id, filePath: "candidates/standing-front/img-02.png", sha256: "cand_sf_02", width: 768, height: 1024, reviewStatus: "keep", captionDraft: "1miku, standing pose, facing camera, detailed outfit, teal hair, anime style", reviewedAt: hoursAgo(6), createdAt: hoursAgo(7) },
+  });
+  await prisma.characterLoraCandidateImage.create({
+    data: { jobId: loraJob.id, sectionId: sectionStandingFront.id, generationRunId: sectionRunStanding.id, artifactId: candArtifacts[2].id, filePath: "candidates/standing-front/img-03.png", sha256: "cand_sf_03", width: 768, height: 1024, reviewStatus: "reject", rejectReasons: ["bad anatomy", "extra fingers"], reviewedAt: hoursAgo(6), createdAt: hoursAgo(7) },
+  });
+  await prisma.characterLoraCandidateImage.create({
+    data: { jobId: loraJob.id, sectionId: sectionStandingFront.id, generationRunId: sectionRunStanding.id, artifactId: candArtifacts[3].id, filePath: "candidates/standing-front/img-04.png", sha256: "cand_sf_04", width: 768, height: 1024, reviewStatus: "pending", createdAt: hoursAgo(7) },
+  });
+
+  // Action pose: 1 keep, 2 pending
+  const candAction1 = await prisma.characterLoraCandidateImage.create({
+    data: { jobId: loraJob.id, sectionId: sectionActionPose.id, generationRunId: sectionRunAction.id, artifactId: candArtifacts[4].id, filePath: "candidates/action-pose/img-01.png", sha256: "cand_ap_01", width: 768, height: 1024, reviewStatus: "keep", captionDraft: "1miku, dynamic jump pose, arms outstretched, dramatic angle, teal hair flowing", reviewedAt: hoursAgo(4), createdAt: hoursAgo(5) },
+  });
+  await prisma.characterLoraCandidateImage.create({
+    data: { jobId: loraJob.id, sectionId: sectionActionPose.id, generationRunId: sectionRunAction.id, artifactId: candArtifacts[5].id, filePath: "candidates/action-pose/img-02.png", sha256: "cand_ap_02", width: 768, height: 1024, reviewStatus: "pending", createdAt: hoursAgo(5) },
+  });
+  await prisma.characterLoraCandidateImage.create({
+    data: { jobId: loraJob.id, sectionId: sectionActionPose.id, generationRunId: sectionRunAction.id, artifactId: candArtifacts[6].id, filePath: "candidates/action-pose/img-03.png", sha256: "cand_ap_03", width: 768, height: 1024, reviewStatus: "pending", createdAt: hoursAgo(5) },
+  });
+
+  // Sitting: 2 pending
+  await prisma.characterLoraCandidateImage.create({
+    data: { jobId: loraJob.id, sectionId: sectionSitting.id, generationRunId: sectionRunSitting.id, artifactId: candArtifacts[7].id, filePath: "candidates/sitting/img-01.png", sha256: "cand_sit_01", width: 768, height: 1024, reviewStatus: "pending", createdAt: hoursAgo(3) },
+  });
+  await prisma.characterLoraCandidateImage.create({
+    data: { jobId: loraJob.id, sectionId: sectionSitting.id, generationRunId: sectionRunSitting.id, artifactId: candArtifacts[8].id, filePath: "candidates/sitting/img-02.png", sha256: "cand_sit_02", width: 768, height: 1024, reviewStatus: "pending", createdAt: hoursAgo(3) },
+  });
+
+  // ─── Dataset Revision ──────────────────────────────────────────────────
+
+  // Create artifacts for dataset manifest and metadata
+  const manifestArtifact = await prisma.characterLoraArtifact.upsert({
+    where: { jobId_relativePath: { jobId: loraJob.id, relativePath: "reports/dataset-manifest-v1.json" } },
+    update: {},
+    create: { jobId: loraJob.id, kind: "dataset_manifest", relativePath: "reports/dataset-manifest-v1.json", sha256: "manifest_v1_hash", byteSize: BigInt(2000), mimeType: "application/json" },
+  });
+  const metadataArtifact = await prisma.characterLoraArtifact.upsert({
+    where: { jobId_relativePath: { jobId: loraJob.id, relativePath: "reports/dataset-metadata-v1.jsonl" } },
+    update: {},
+    create: { jobId: loraJob.id, kind: "dataset_manifest", relativePath: "reports/dataset-metadata-v1.jsonl", sha256: "metadata_v1_hash", byteSize: BigInt(3500), mimeType: "application/jsonl" },
+  });
+
+  const datasetRevision1 = await prisma.characterLoraDatasetRevision.create({
+    data: {
+      jobId: loraJob.id,
+      version: 1,
+      status: "frozen",
+      canonicalVersionId: canonFrontV1.id,
+      promptCardVersionId: promptCardV1.id,
+      captionStrategy: "controllable_identity",
+      itemCount: 3,
+      sourceCount: 0,
+      syntheticCount: 3,
+      selectedManifestArtifactId: manifestArtifact.id,
+      metadataJsonlArtifactId: metadataArtifact.id,
+      trainDir: `${artifactRoot}/training/dataset-v1`,
+      frozenAt: hoursAgo(2),
+      createdAt: hoursAgo(3),
+    },
+  });
+
+  // Update job to reference dataset
+  await prisma.characterLoraTrainingJob.update({
+    where: { id: loraJob.id },
+    data: { selectedDatasetRevisionId: datasetRevision1.id, status: "section_generating", phase: "sections" },
+  });
+
+  // ─── Dataset Items ─────────────────────────────────────────────────────
+
+  // Create caption artifacts
+  const captionArtifacts = await Promise.all([
+    prisma.characterLoraArtifact.upsert({ where: { jobId_relativePath: { jobId: loraJob.id, relativePath: "captions/standing-front-01.txt" } }, update: {}, create: { jobId: loraJob.id, kind: "caption", relativePath: "captions/standing-front-01.txt", sha256: "cap_sf_01", byteSize: BigInt(200), mimeType: "text/plain" } }),
+    prisma.characterLoraArtifact.upsert({ where: { jobId_relativePath: { jobId: loraJob.id, relativePath: "captions/standing-front-02.txt" } }, update: {}, create: { jobId: loraJob.id, kind: "caption", relativePath: "captions/standing-front-02.txt", sha256: "cap_sf_02", byteSize: BigInt(180), mimeType: "text/plain" } }),
+    prisma.characterLoraArtifact.upsert({ where: { jobId_relativePath: { jobId: loraJob.id, relativePath: "captions/action-pose-01.txt" } }, update: {}, create: { jobId: loraJob.id, kind: "caption", relativePath: "captions/action-pose-01.txt", sha256: "cap_ap_01", byteSize: BigInt(210), mimeType: "text/plain" } }),
+  ]);
+
+  await prisma.characterLoraDatasetItem.create({
+    data: { datasetRevisionId: datasetRevision1.id, candidateImageId: candStandF1.id, imageArtifactId: candArtifacts[0].id, captionArtifactId: captionArtifacts[0].id, captionText: "1miku, standing, front view, teal twin-tails, grey top, black skirt, full body, white background", repeatCount: 1, sortOrder: 1 },
+  });
+  await prisma.characterLoraDatasetItem.create({
+    data: { datasetRevisionId: datasetRevision1.id, candidateImageId: candStandF2.id, imageArtifactId: candArtifacts[1].id, captionArtifactId: captionArtifacts[1].id, captionText: "1miku, standing pose, facing camera, detailed outfit, teal hair, anime style", repeatCount: 1, sortOrder: 2 },
+  });
+  await prisma.characterLoraDatasetItem.create({
+    data: { datasetRevisionId: datasetRevision1.id, candidateImageId: candAction1.id, imageArtifactId: candArtifacts[4].id, captionArtifactId: captionArtifacts[2].id, captionText: "1miku, dynamic jump pose, arms outstretched, dramatic angle, teal hair flowing", repeatCount: 1, sortOrder: 3 },
+  });
+
+  // Mark kept images as included_in_training
+  await prisma.characterLoraCandidateImage.updateMany({
+    where: { id: { in: [candStandF1.id, candStandF2.id, candAction1.id] }, jobId: loraJob.id },
+    data: { reviewStatus: "included_in_training", includedDatasetRevisionId: datasetRevision1.id },
+  });
+
+  // Update section keepCounts to reflect included_in_training
+  await prisma.characterLoraJobSection.update({
+    where: { id: sectionStandingFront.id },
+    data: { keepCount: 2 },
+  });
+  await prisma.characterLoraJobSection.update({
+    where: { id: sectionActionPose.id },
+    data: { keepCount: 1 },
+  });
+
+  console.log(`Seeded Character LoRA training data: job "${loraJob.slug}" with 5 canonical versions, 3 source images, 3 sections, 9 candidates, 1 dataset revision.`);
 
   console.log("Seeded local bootstrap data for ComfyUI Remote backend.");
 }
