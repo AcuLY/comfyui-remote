@@ -60,6 +60,9 @@ import {
   listCharacterLoraTrainingRuns as listTrainingRuns,
 } from "@/server/services/character-lora-training/training-service";
 import {
+  getCharacterLoraWorkerTask as getWorkerTaskFromRepository,
+} from "@/server/repositories/character-lora-training-repository";
+import {
   cleanupBenchmarkRunTemporaryResources as cleanupBenchmarkRunTemporaryResourcesInService,
   completeBenchmarkRun as completeBenchmarkRunInService,
   createPromotionDecision as createPromotionDecisionInService,
@@ -307,4 +310,8 @@ export async function completeCharacterLoraTask(taskId: string, input: unknown) 
 
 export async function failCharacterLoraTask(taskId: string, input: unknown) {
   return failTask(taskId, input);
+}
+
+export async function getCharacterLoraWorkerTask(taskId: string) {
+  return getWorkerTaskFromRepository(taskId);
 }

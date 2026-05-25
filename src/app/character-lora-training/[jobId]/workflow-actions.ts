@@ -14,6 +14,7 @@ import {
   enqueueCharacterLoraTrainingRun,
   freezeCharacterLoraDataset,
   getCharacterLoraPromptCardDraftTask,
+  getCharacterLoraWorkerTask,
   instantiateCharacterLoraJobSections,
   registerManualCharacterLoraCanonicalVersion,
   rejectCharacterLoraCanonicalVersion,
@@ -26,6 +27,12 @@ import {
 export type WorkflowActionResult = {
   ok: boolean;
   message: string;
+};
+
+export type TaskEnqueueResult = WorkflowActionResult & {
+  taskId?: string;
+  runId?: string;
+  workerType?: string;
 };
 
 export type PromptCardDraftTaskProgress = {
@@ -65,6 +72,7 @@ export type PromptCardDraftActionResult = WorkflowActionResult & {
   sourceImageCount?: number;
   canonicalImageCount?: number;
   imageCount?: number;
+  workerType?: string;
 };
 
 export async function uploadSourceImageAction(jobId: string, formData: FormData): Promise<WorkflowActionResult> {
@@ -77,7 +85,7 @@ export async function uploadSourceImageAction(jobId: string, formData: FormData)
   }
 }
 
-export async function enqueueCanonicalAction(jobId: string, formData: FormData): Promise<WorkflowActionResult> {
+export async function enqueueCanonicalAction(jobId: string, formData: FormData): Promise<TaskEnqueueResult> {
   try {
     const sourceImageIds = formData.getAll("sourceImageIds").map(String).filter(Boolean);
     const canonicalVersionIds = formData.getAll("canonicalVersionIds").map(String).filter(Boolean);
@@ -98,13 +106,16 @@ export async function enqueueCanonicalAction(jobId: string, formData: FormData):
       message: canonicalView
         ? `已入队${canonicalView}人设图任务：${runs.map((run) => compactActionId(run.id)).join(" / ")}。`
         : `已分别入队正面/背面/左侧/右侧 4 条人设图任务：${runs.map((run) => `${run.canonicalView}:${compactActionId(run.id)}`).join(" / ")}。`,
+      taskId: runs[0]?.workerTaskId,
+      runId: runs[0]?.id,
+      workerType: "image_generation",
     };
   } catch (error) {
     return toActionResult(error);
   }
 }
 
-export async function rerunCanonicalAction(jobId: string, formData: FormData): Promise<WorkflowActionResult> {
+export async function rerunCanonicalAction(jobId: string, formData: FormData): Promise<TaskEnqueueResult> {
   try {
     const userInstruction = requiredString(formData.get("userInstruction"), "userInstruction");
     const artifactId = requiredString(formData.get("artifactId"), "artifactId");
@@ -134,7 +145,13 @@ export async function rerunCanonicalAction(jobId: string, formData: FormData): P
       negativePrompt: stringOrNull(formData.get("negativePrompt")),
     });
     revalidateJob(jobId);
-    return { ok: true, message: `已入队人设图重生 run ${compactActionId(run.id)} / task ${compactActionId(run.workerTaskId)}。` };
+    return {
+      ok: true,
+      message: `已入队人设图重生 run ${compactActionId(run.id)} / task ${compactActionId(run.workerTaskId)}。`,
+      taskId: run.workerTaskId,
+      runId: run.id,
+      workerType: "image_generation",
+    };
   } catch (error) {
     return toActionResult(error);
   }
@@ -185,6 +202,7 @@ export async function draftPromptCardAction(jobId: string, input: unknown): Prom
       sourceImageCount: result.sourceImageCount,
       canonicalImageCount: result.canonicalImageCount,
       imageCount: result.imageCount,
+      workerType: "prompt_card_draft",
     };
   } catch (error) {
     return toActionResult(error);
@@ -220,7 +238,7 @@ export async function instantiateSectionsAction(jobId: string) {
   revalidateJob(jobId);
 }
 
-export async function enqueueSectionRunAction(sectionId: string, jobId: string, formData: FormData): Promise<WorkflowActionResult> {
+export async function enqueueSectionRunAction(sectionId: string, jobId: string, formData: FormData): Promise<TaskEnqueueResult> {
   try {
     const previousCandidateImageIds = formData.getAll("previousCandidateImageIds").map(String).filter(Boolean);
     const sourceImageIds = formData.getAll("sourceImageIds").map(String).filter(Boolean);
@@ -233,7 +251,13 @@ export async function enqueueSectionRunAction(sectionId: string, jobId: string, 
       sourceImageIds: sourceImageIds.length > 0 ? sourceImageIds : undefined,
     });
     revalidateJob(jobId);
-    return { ok: true, message: `已入队候选图 run ${compactActionId(run.id)} / task ${compactActionId(run.workerTaskId)}。` };
+    return {
+      ok: true,
+      message: `已入队候选图 run ${compactActionId(run.id)} / task ${compactActionId(run.workerTaskId)}。`,
+      taskId: run.workerTaskId,
+      runId: run.id,
+      workerType: "image_generation",
+    };
   } catch (error) {
     return toActionResult(error);
   }
@@ -300,6 +324,62 @@ export async function cancelTrainingAction(trainingRunId: string, jobId: string,
   } catch (error) {
     return toActionResult(error);
   }
+}
+
+export type WorkerTaskStatus = {
+  ok: boolean;
+  taskId: string;
+  status: string;
+  workerType: string;
+  progress: unknown;
+  errorSummary: string | null;
+  startedAt: string | null;
+  heartbeatAt: string | null;
+  finishedAt: string | null;
+};
+
+export async function getWorkerTaskStatusAction(jobId: string, taskId: string): Promise<WorkerTaskStatus> {
+  const task = await getCharacterLoraWorkerTask(taskId);
+
+  if (!task) {
+    return {
+      ok: false,
+      taskId,
+      status: "not_found",
+      workerType: "",
+      progress: null,
+      errorSummary: "Worker task not found",
+      startedAt: null,
+      heartbeatAt: null,
+      finishedAt: null,
+    };
+  }
+
+  if (task.jobId !== jobId) {
+    return {
+      ok: false,
+      taskId,
+      status: "not_found",
+      workerType: "",
+      progress: null,
+      errorSummary: "Worker task does not belong to this job",
+      startedAt: null,
+      heartbeatAt: null,
+      finishedAt: null,
+    };
+  }
+
+  return {
+    ok: true,
+    taskId: task.id,
+    status: task.status,
+    workerType: task.workerType,
+    progress: task.progressJson,
+    errorSummary: task.errorSummary ?? null,
+    startedAt: task.startedAt ?? null,
+    heartbeatAt: task.heartbeatAt ?? null,
+    finishedAt: task.finishedAt ?? null,
+  };
 }
 
 function revalidateJob(jobId: string) {
