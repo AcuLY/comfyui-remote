@@ -286,6 +286,453 @@ async function main() {
     },
   });
 
+  // ─── Character LoRA Training Module ────────────────────────────────────────
+
+  // Training template
+  const loraTemplate = await prisma.characterLoraTrainingTemplate.upsert({
+    where: { key: "character_identity_default" },
+    update: {},
+    create: {
+      key: "character_identity_default",
+      name: "角色身份默认模板",
+      description: "标准四视图人设图 + 多模块训练集流程",
+      baseFamily: "sdxl",
+      captionStrategyDefault: "controllable_identity",
+      canonicalDefaults: {
+        provider: "openai-codex",
+        imageModel: "gpt-image-2",
+        size: "1024x1536",
+        quality: "high",
+      },
+      promptCardDefaults: { provider: "openai-codex" },
+      trainingDefaults: {
+        steps: 1500,
+        learningRate: 1e-4,
+        networkDim: 32,
+        networkAlpha: 16,
+        resolution: "1024,1024",
+      },
+      benchmarkDefaults: { prompts: 5, stepsPerPrompt: 30 },
+      promotionDefaults: { minBenchmarkScore: 0.7 },
+      isActive: true,
+      sortOrder: 1,
+    },
+  });
+
+  // Job: Active training in canonical_pending phase
+  const artifactRoot = "data/character-lora-training/mock-miku-lora";
+  const loraJob = await prisma.characterLoraTrainingJob.upsert({
+    where: { slug: "mock-miku-lora" },
+    update: {},
+    create: {
+      slug: "mock-miku-lora",
+      characterName: "初音ミク",
+      triggerToken: "1miku",
+      status: "canonical_pending",
+      phase: "canonical",
+      trainingScope: {
+        views: ["front", "back", "left", "right"],
+        sectionKeys: ["standing_front", "standing_back", "pose_dynamic"],
+      },
+      captionStrategy: "controllable_identity",
+      baseFamily: "sdxl",
+      artifactRoot,
+      trainingTemplateId: loraTemplate.id,
+      trainingTemplateSnapshot: {
+        key: loraTemplate.key,
+        name: loraTemplate.name,
+        canonicalDefaults: loraTemplate.canonicalDefaults,
+      },
+      createdBy: "seed",
+    },
+  });
+
+  // Artifacts for source images
+  const sourceArtifactFront = await prisma.characterLoraArtifact.upsert({
+    where: { jobId_relativePath: { jobId: loraJob.id, relativePath: "source-images/ref-front-01.png" } },
+    update: {},
+    create: {
+      jobId: loraJob.id,
+      kind: "source_image",
+      relativePath: "source-images/ref-front-01.png",
+      sha256: "aaa111front",
+      byteSize: BigInt(50000),
+      mimeType: "image/png",
+    },
+  });
+  const sourceArtifactSide = await prisma.characterLoraArtifact.upsert({
+    where: { jobId_relativePath: { jobId: loraJob.id, relativePath: "source-images/ref-side-01.png" } },
+    update: {},
+    create: {
+      jobId: loraJob.id,
+      kind: "source_image",
+      relativePath: "source-images/ref-side-01.png",
+      sha256: "bbb222side",
+      byteSize: BigInt(48000),
+      mimeType: "image/png",
+    },
+  });
+  const sourceArtifactBack = await prisma.characterLoraArtifact.upsert({
+    where: { jobId_relativePath: { jobId: loraJob.id, relativePath: "source-images/ref-back-01.png" } },
+    update: {},
+    create: {
+      jobId: loraJob.id,
+      kind: "source_image",
+      relativePath: "source-images/ref-back-01.png",
+      sha256: "ccc333back",
+      byteSize: BigInt(47000),
+      mimeType: "image/png",
+    },
+  });
+
+  // Source images
+  await prisma.characterLoraSourceImage.upsert({
+    where: { jobId_sha256_role: { jobId: loraJob.id, sha256: "aaa111front", role: "reference" } },
+    update: {},
+    create: {
+      jobId: loraJob.id,
+      role: "reference",
+      artifactId: sourceArtifactFront.id,
+      filePath: "source-images/ref-front-01.png",
+      sha256: "aaa111front",
+      width: 512,
+      height: 768,
+      sortOrder: 1,
+    },
+  });
+  await prisma.characterLoraSourceImage.upsert({
+    where: { jobId_sha256_role: { jobId: loraJob.id, sha256: "bbb222side", role: "reference" } },
+    update: {},
+    create: {
+      jobId: loraJob.id,
+      role: "reference",
+      artifactId: sourceArtifactSide.id,
+      filePath: "source-images/ref-side-01.png",
+      sha256: "bbb222side",
+      width: 512,
+      height: 768,
+      sortOrder: 2,
+    },
+  });
+  await prisma.characterLoraSourceImage.upsert({
+    where: { jobId_sha256_role: { jobId: loraJob.id, sha256: "ccc333back", role: "reference" } },
+    update: {},
+    create: {
+      jobId: loraJob.id,
+      role: "reference",
+      artifactId: sourceArtifactBack.id,
+      filePath: "source-images/ref-back-01.png",
+      sha256: "ccc333back",
+      width: 512,
+      height: 768,
+      sortOrder: 3,
+    },
+  });
+
+  // Artifacts for canonical images
+  const canonicalArtifactFrontV1 = await prisma.characterLoraArtifact.upsert({
+    where: { jobId_relativePath: { jobId: loraJob.id, relativePath: "canonical/front-v1.png" } },
+    update: {},
+    create: {
+      jobId: loraJob.id,
+      kind: "canonical_image",
+      relativePath: "canonical/front-v1.png",
+      sha256: "canon_front_v1_hash",
+      byteSize: BigInt(120000),
+      mimeType: "image/png",
+    },
+  });
+  const canonicalArtifactFrontV2 = await prisma.characterLoraArtifact.upsert({
+    where: { jobId_relativePath: { jobId: loraJob.id, relativePath: "canonical/front-v2.png" } },
+    update: {},
+    create: {
+      jobId: loraJob.id,
+      kind: "canonical_image",
+      relativePath: "canonical/front-v2.png",
+      sha256: "canon_front_v2_hash",
+      byteSize: BigInt(125000),
+      mimeType: "image/png",
+    },
+  });
+  const canonicalArtifactBackV1 = await prisma.characterLoraArtifact.upsert({
+    where: { jobId_relativePath: { jobId: loraJob.id, relativePath: "canonical/back-v1.png" } },
+    update: {},
+    create: {
+      jobId: loraJob.id,
+      kind: "canonical_image",
+      relativePath: "canonical/back-v1.png",
+      sha256: "canon_back_v1_hash",
+      byteSize: BigInt(118000),
+      mimeType: "image/png",
+    },
+  });
+  const canonicalArtifactLeftV1 = await prisma.characterLoraArtifact.upsert({
+    where: { jobId_relativePath: { jobId: loraJob.id, relativePath: "canonical/left-v1.png" } },
+    update: {},
+    create: {
+      jobId: loraJob.id,
+      kind: "canonical_image",
+      relativePath: "canonical/left-v1.png",
+      sha256: "canon_left_v1_hash",
+      byteSize: BigInt(110000),
+      mimeType: "image/png",
+    },
+  });
+  const canonicalArtifactRightV1 = await prisma.characterLoraArtifact.upsert({
+    where: { jobId_relativePath: { jobId: loraJob.id, relativePath: "canonical/right-v1.png" } },
+    update: {},
+    create: {
+      jobId: loraJob.id,
+      kind: "canonical_image",
+      relativePath: "canonical/right-v1.png",
+      sha256: "canon_right_v1_hash",
+      byteSize: BigInt(112000),
+      mimeType: "image/png",
+    },
+  });
+
+  // Generation runs
+  const genRunFrontV1 = await prisma.characterLoraGenerationRun.create({
+    data: {
+      jobId: loraJob.id,
+      kind: "canonical",
+      canonicalView: "front",
+      status: "done",
+      provider: "openai-codex",
+      hostModel: "gpt-4.1",
+      imageModel: "gpt-image-2",
+      hostInstruction: "Generate front view canonical reference",
+      visualPrompt: "Full body front view, standing pose, white background",
+      toolParams: { size: "1024x1536", quality: "high", outputFormat: "png", background: "opaque" },
+      inputImages: [],
+      startedAt: hoursAgo(48),
+      finishedAt: hoursAgo(47.5),
+      createdAt: hoursAgo(48),
+    },
+  });
+  const genRunFrontV2 = await prisma.characterLoraGenerationRun.create({
+    data: {
+      jobId: loraJob.id,
+      kind: "canonical",
+      canonicalView: "front",
+      parentRunId: genRunFrontV1.id,
+      status: "done",
+      provider: "openai-codex",
+      hostModel: "gpt-4.1",
+      imageModel: "gpt-image-2",
+      hostInstruction: "Regenerate front view with adjusted pose",
+      visualPrompt: "Full body front view, slightly relaxed pose, white background",
+      toolParams: { size: "1024x1536", quality: "high", outputFormat: "png", background: "opaque" },
+      inputImages: [{ artifactId: canonicalArtifactFrontV1.id, role: "previous_candidate", relativePath: "canonical/front-v1.png", sha256: "canon_front_v1_hash" }],
+      startedAt: hoursAgo(24),
+      finishedAt: hoursAgo(23.5),
+      createdAt: hoursAgo(24),
+    },
+  });
+  const genRunBack = await prisma.characterLoraGenerationRun.create({
+    data: {
+      jobId: loraJob.id,
+      kind: "canonical",
+      canonicalView: "back",
+      status: "done",
+      provider: "openai-codex",
+      hostModel: "gpt-4.1",
+      imageModel: "gpt-image-2",
+      hostInstruction: "Generate back view canonical reference",
+      visualPrompt: "Full body back view, standing pose, white background",
+      toolParams: { size: "1024x1536", quality: "high", outputFormat: "png", background: "opaque" },
+      inputImages: [],
+      startedAt: hoursAgo(36),
+      finishedAt: hoursAgo(35.5),
+      createdAt: hoursAgo(36),
+    },
+  });
+  const genRunLeft = await prisma.characterLoraGenerationRun.create({
+    data: {
+      jobId: loraJob.id,
+      kind: "canonical",
+      canonicalView: "left",
+      status: "done",
+      provider: "openai-codex",
+      hostModel: "gpt-4.1",
+      imageModel: "gpt-image-2",
+      hostInstruction: "Generate left side view canonical reference",
+      visualPrompt: "Full body left side view, standing pose, white background",
+      toolParams: { size: "1024x1536", quality: "high", outputFormat: "png", background: "opaque" },
+      inputImages: [],
+      startedAt: hoursAgo(12),
+      finishedAt: hoursAgo(11.5),
+      createdAt: hoursAgo(12),
+    },
+  });
+  const genRunRight = await prisma.characterLoraGenerationRun.create({
+    data: {
+      jobId: loraJob.id,
+      kind: "canonical",
+      canonicalView: "right",
+      status: "running",
+      provider: "openai-codex",
+      hostModel: "gpt-4.1",
+      imageModel: "gpt-image-2",
+      hostInstruction: "Generate right side view canonical reference",
+      visualPrompt: "Full body right side view, standing pose, white background",
+      toolParams: { size: "1024x1536", quality: "high", outputFormat: "png", background: "opaque" },
+      inputImages: [],
+      startedAt: hoursAgo(1),
+      createdAt: hoursAgo(1),
+    },
+  });
+
+  // Canonical versions
+  const canonFrontV1 = await prisma.characterLoraCanonicalVersion.create({
+    data: {
+      jobId: loraJob.id,
+      version: 1,
+      status: "selected",
+      canonicalView: "front",
+      sourceRunId: genRunFrontV1.id,
+      imageArtifactId: canonicalArtifactFrontV1.id,
+      selectedAt: hoursAgo(46),
+      notes: "初版正面图，基本合格",
+      createdAt: hoursAgo(47),
+    },
+  });
+  const canonFrontV2 = await prisma.characterLoraCanonicalVersion.create({
+    data: {
+      jobId: loraJob.id,
+      version: 2,
+      status: "candidate",
+      canonicalView: "front",
+      sourceRunId: genRunFrontV2.id,
+      imageArtifactId: canonicalArtifactFrontV2.id,
+      notes: "二版正面图，调整了姿态",
+      createdAt: hoursAgo(23),
+    },
+  });
+  const canonBackV1 = await prisma.characterLoraCanonicalVersion.create({
+    data: {
+      jobId: loraJob.id,
+      version: 3,
+      status: "selected",
+      canonicalView: "back",
+      sourceRunId: genRunBack.id,
+      imageArtifactId: canonicalArtifactBackV1.id,
+      selectedAt: hoursAgo(34),
+      notes: "背面图 OK",
+      createdAt: hoursAgo(35),
+    },
+  });
+  const canonLeftV1 = await prisma.characterLoraCanonicalVersion.create({
+    data: {
+      jobId: loraJob.id,
+      version: 4,
+      status: "rejected",
+      canonicalView: "left",
+      sourceRunId: genRunLeft.id,
+      imageArtifactId: canonicalArtifactLeftV1.id,
+      notes: "左侧服装细节不对，需要重做",
+      createdAt: hoursAgo(11),
+    },
+  });
+  await prisma.characterLoraCanonicalVersion.create({
+    data: {
+      jobId: loraJob.id,
+      version: 5,
+      status: "candidate",
+      canonicalView: "right",
+      sourceRunId: genRunRight.id,
+      imageArtifactId: canonicalArtifactRightV1.id,
+      notes: "右侧生成中",
+      createdAt: hoursAgo(0.5),
+    },
+  });
+
+  // Update job to point to selected canonical
+  await prisma.characterLoraTrainingJob.update({
+    where: { id: loraJob.id },
+    data: { currentCanonicalVersionId: canonFrontV1.id },
+  });
+
+  // Worker tasks
+  await prisma.characterLoraWorkerTask.create({
+    data: {
+      jobId: loraJob.id,
+      workerType: "image_generation",
+      targetType: "generationRun",
+      targetId: genRunFrontV1.id,
+      status: "done",
+      payload: { provider: "openai-codex", canonicalView: "front" },
+      attemptCount: 1,
+      startedAt: hoursAgo(48),
+      finishedAt: hoursAgo(47.5),
+      heartbeatAt: hoursAgo(47.5),
+      createdAt: hoursAgo(48),
+    },
+  });
+  await prisma.characterLoraWorkerTask.create({
+    data: {
+      jobId: loraJob.id,
+      workerType: "image_generation",
+      targetType: "generationRun",
+      targetId: genRunFrontV2.id,
+      status: "done",
+      payload: { provider: "openai-codex", canonicalView: "front" },
+      attemptCount: 1,
+      startedAt: hoursAgo(24),
+      finishedAt: hoursAgo(23.5),
+      heartbeatAt: hoursAgo(23.5),
+      createdAt: hoursAgo(24),
+    },
+  });
+  await prisma.characterLoraWorkerTask.create({
+    data: {
+      jobId: loraJob.id,
+      workerType: "image_generation",
+      targetType: "generationRun",
+      targetId: genRunBack.id,
+      status: "done",
+      payload: { provider: "openai-codex", canonicalView: "back" },
+      attemptCount: 1,
+      startedAt: hoursAgo(36),
+      finishedAt: hoursAgo(35.5),
+      heartbeatAt: hoursAgo(35.5),
+      createdAt: hoursAgo(36),
+    },
+  });
+  await prisma.characterLoraWorkerTask.create({
+    data: {
+      jobId: loraJob.id,
+      workerType: "image_generation",
+      targetType: "generationRun",
+      targetId: genRunLeft.id,
+      status: "done",
+      payload: { provider: "openai-codex", canonicalView: "left" },
+      attemptCount: 1,
+      startedAt: hoursAgo(12),
+      finishedAt: hoursAgo(11.5),
+      heartbeatAt: hoursAgo(11.5),
+      createdAt: hoursAgo(12),
+    },
+  });
+  await prisma.characterLoraWorkerTask.create({
+    data: {
+      jobId: loraJob.id,
+      workerType: "image_generation",
+      targetType: "generationRun",
+      targetId: genRunRight.id,
+      status: "running",
+      payload: { provider: "openai-codex", canonicalView: "right" },
+      leaseOwner: "worker-gpu-01",
+      leaseExpiresAt: new Date(now.getTime() + 10 * 60 * 1000),
+      attemptCount: 1,
+      startedAt: hoursAgo(1),
+      heartbeatAt: new Date(now.getTime() - 30_000),
+      createdAt: hoursAgo(1),
+    },
+  });
+
+  console.log(`Seeded Character LoRA training data: job "${loraJob.slug}" with ${5} canonical versions, ${3} source images.`);
+
   console.log("Seeded local bootstrap data for ComfyUI Remote backend.");
 }
 
