@@ -1,26 +1,15 @@
 "use client";
 
-import { useState } from "react";
-import { Check, ChevronDown, RefreshCw, X } from "lucide-react";
+import { Check, RefreshCw, X } from "lucide-react";
 
-import { getEffectiveCanonicalViewLabel } from "@/lib/character-lora-canonical-views";
-import { ArtifactThumbCompact, compactId } from "./shared-ui";
-import { WorkflowActionForm } from "./workflow-action-form";
-import type { WorkflowActionResult } from "./workflow-actions";
+import { ArtifactThumbCompact } from "./shared-ui";
 
 type CanonicalVersion = {
   id: string;
   version: number;
   status: string;
   canonicalView?: string | null;
-  notes?: string | null;
-  createdAt?: string;
   artifact?: { id: string; relativePath: string | null; sha256: string | null } | null;
-};
-
-type SourceImage = {
-  id: string;
-  relativePath: string | null;
 };
 
 type ViewSpec = {
@@ -33,51 +22,30 @@ type CanonicalViewPanelProps = {
   viewSpec: ViewSpec;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   candidates: any[];
-  sourceImages: SourceImage[];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  allNonRejectedVersions: any[];
   jobId: string;
   currentCanonicalVersionId: string | null;
-  enqueueAction: (formData: FormData) => Promise<WorkflowActionResult>;
   selectAction: (versionId: string) => Promise<void>;
   rejectAction: (versionId: string) => Promise<void>;
   onAddToRerun?: (candidate: { id: string; version: number; canonicalView: string | null; artifactId: string; relativePath: string; sha256: string }) => void;
-  disabled: boolean;
 };
 
 export function CanonicalViewPanel({
   viewSpec,
   candidates,
-  sourceImages,
-  allNonRejectedVersions,
   jobId,
   currentCanonicalVersionId,
-  enqueueAction,
   selectAction,
   rejectAction,
   onAddToRerun,
-  disabled,
 }: CanonicalViewPanelProps) {
-  const [genExpanded, setGenExpanded] = useState(false);
-
   return (
     <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-2.5">
       {/* Header */}
-      <div className="mb-2 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <h3 className="text-sm font-semibold text-zinc-100">{viewSpec.label}</h3>
-          <span className="rounded-full bg-white/[0.06] px-1.5 py-0.5 text-[10px] tabular-nums text-zinc-400">
-            {candidates.length}
-          </span>
-        </div>
-        <button
-          type="button"
-          onClick={() => setGenExpanded(!genExpanded)}
-          className="inline-flex h-6 items-center gap-1 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 text-[11px] font-medium text-emerald-300 transition hover:bg-emerald-500/20"
-        >
-          生成
-          <ChevronDown className={`size-3 transition-transform ${genExpanded ? "rotate-180" : ""}`} />
-        </button>
+      <div className="mb-2 flex items-center gap-2">
+        <h3 className="text-sm font-semibold text-zinc-100">{viewSpec.label}</h3>
+        <span className="rounded-full bg-white/[0.06] px-1.5 py-0.5 text-[10px] tabular-nums text-zinc-400">
+          {candidates.length}
+        </span>
       </div>
 
       {/* Candidate horizontal strip */}
@@ -151,7 +119,7 @@ export function CanonicalViewPanel({
                           });
                         }
                       }}
-                      title="加入重生"
+                      title="加入生图面板"
                       className="flex h-5 flex-1 items-center justify-center rounded bg-white/[0.06] text-zinc-400 transition hover:bg-violet-500/20 hover:text-violet-300 disabled:opacity-30"
                     >
                       <RefreshCw className="size-3" />
@@ -161,75 +129,6 @@ export function CanonicalViewPanel({
               </div>
             );
           })}
-        </div>
-      )}
-
-      {/* Generation form (collapsible) */}
-      {genExpanded && (
-        <div className="mt-2 rounded-md border border-emerald-500/20 bg-emerald-500/[0.04] p-2">
-          <WorkflowActionForm
-            action={enqueueAction}
-            submitLabel={`生成${viewSpec.label}`}
-            pendingLabel="入队中"
-            successMessage={`${viewSpec.label}人设图任务已入队`}
-            disabled={disabled}
-            className="space-y-2"
-            buttonClassName="h-7 w-full rounded-md bg-emerald-500 px-2 text-[11px] font-medium text-white transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <input type="hidden" name="canonicalView" value={viewSpec.key} />
-            <label className="block text-[11px] text-zinc-400">
-              生成器
-              <select
-                name="provider"
-                defaultValue="openai-codex"
-                className="mt-0.5 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 text-[11px] text-zinc-200 outline-none transition focus:border-emerald-400"
-              >
-                <option value="openai-codex">openai-codex</option>
-                <option value="mock-local">mock-local</option>
-              </select>
-            </label>
-
-            {/* Source images */}
-            {sourceImages.length > 0 && (
-              <details className="rounded border border-white/10 bg-black/20 p-1.5 text-[11px]">
-                <summary className="cursor-pointer text-zinc-300">原始参考图 ({sourceImages.length})</summary>
-                <div className="mt-1 space-y-0.5">
-                  {sourceImages.map((image) => (
-                    <label key={image.id} className="flex items-center gap-1.5 px-1 py-0.5 text-zinc-400">
-                      <input name="sourceImageIds" value={image.id} type="checkbox" defaultChecked className="size-3 accent-sky-500" />
-                      <span className="font-mono">{compactId(image.id)}</span>
-                    </label>
-                  ))}
-                </div>
-              </details>
-            )}
-
-            {/* Reference versions */}
-            {allNonRejectedVersions.length > 0 && (
-              <details className="rounded border border-white/10 bg-black/20 p-1.5 text-[11px]">
-                <summary className="cursor-pointer text-zinc-300">已有视图参考 ({allNonRejectedVersions.length})</summary>
-                <div className="mt-1 space-y-0.5">
-                  {allNonRejectedVersions.map((version) => (
-                    <label key={version.id} className="flex items-center gap-1.5 px-1 py-0.5 text-zinc-400">
-                      <input name="canonicalVersionIds" value={version.id} type="checkbox" className="size-3 accent-violet-500" />
-                      <span>v{version.version} / {getEffectiveCanonicalViewLabel(version.canonicalView)}</span>
-                    </label>
-                  ))}
-                </div>
-              </details>
-            )}
-
-            <input name="negativePrompt" placeholder="负面提示词（可选）" className="w-full rounded border border-white/10 bg-black/30 px-2 py-1 text-[11px] text-zinc-200 outline-none transition focus:border-emerald-400" />
-            <textarea name="characterDescription" rows={2} placeholder="角色描述（可选）" className="w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 text-[11px] leading-4 text-zinc-200 outline-none transition focus:border-emerald-400" />
-            <textarea name="finalPromptDraft" rows={2} placeholder="成品提示词（可选）" className="w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 text-[11px] leading-4 text-zinc-200 outline-none transition focus:border-emerald-400" />
-            <textarea name="visualPrompt" rows={2} placeholder="本次补充说明（可选）" className="w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 text-[11px] leading-4 text-zinc-200 outline-none transition focus:border-emerald-400" />
-
-            {disabled && (
-              <div className="rounded border border-amber-500/25 bg-amber-500/10 px-2 py-1.5 text-[11px] text-amber-200">
-                需要至少一张原始参考图或已有 canonical 视图
-              </div>
-            )}
-          </WorkflowActionForm>
         </div>
       )}
     </div>

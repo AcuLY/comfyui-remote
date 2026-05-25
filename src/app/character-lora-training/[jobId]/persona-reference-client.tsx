@@ -4,7 +4,7 @@ import { useCallback, useState } from "react";
 
 import { CANONICAL_VIEW_SPECS } from "@/lib/character-lora-canonical-views";
 import { CanonicalViewPanel } from "./canonical-view-panel";
-import { RerunPanel, type RerunBaseImage } from "./rerun-panel";
+import { GenerationPanel, type RerunBaseImage } from "./rerun-panel";
 import type { WorkflowActionResult } from "./workflow-actions";
 
 type PersonaReferenceClientProps = {
@@ -57,13 +57,17 @@ export function PersonaReferenceClient({
 
   return (
     <div className="space-y-3">
-      {/* Rerun panel (above the grid) */}
-      <RerunPanel
+      {/* Unified generation panel (always visible) */}
+      <GenerationPanel
         baseImages={rerunBaseImages}
         onRemoveImage={handleRemoveFromRerun}
         onClear={handleClearRerun}
         jobId={jobId}
+        sourceImages={sourceImages}
+        allNonRejectedVersions={allNonRejectedVersions}
+        enqueueAction={enqueueAction}
         rerunAction={rerunAction}
+        disabled={disabled}
       />
 
       {/* View panels grid */}
@@ -73,15 +77,11 @@ export function PersonaReferenceClient({
             key={view.key}
             viewSpec={view}
             candidates={candidatesByView[view.key]}
-            sourceImages={sourceImages}
-            allNonRejectedVersions={allNonRejectedVersions}
             jobId={jobId}
             currentCanonicalVersionId={currentCanonicalVersionId}
-            enqueueAction={enqueueAction}
             selectAction={selectAction}
             rejectAction={rejectAction}
             onAddToRerun={handleAddToRerun}
-            disabled={disabled}
           />
         ))}
       </div>
