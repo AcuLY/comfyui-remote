@@ -4,6 +4,13 @@ import path from "node:path";
 
 import { Prisma } from "@/generated/prisma";
 import { env } from "@/lib/env";
+import { CharacterLoraServiceError } from "@/server/services/character-lora-training/shared/service-error";
+import {
+  normalizeId as sharedNormalizeId,
+  toInputJsonValue,
+  readJsonRecord,
+  asJsonRecord,
+} from "@/server/services/character-lora-training/shared/service-utils";
 import {
   characterLoraBenchmarkCompleteRequestSchema,
   characterLoraBenchmarkCleanupRequestSchema,
@@ -88,13 +95,13 @@ type MinimalCharacterLoraJob = {
   selectedDatasetRevisionId: string | null;
 };
 
-export class CharacterLoraBenchmarkPromotionServiceError extends Error {
+export class CharacterLoraBenchmarkPromotionServiceError extends CharacterLoraServiceError {
   constructor(
     message: string,
-    readonly status: number,
-    readonly details?: unknown,
+    status: number,
+    details?: unknown,
   ) {
-    super(message);
+    super(message, status, details);
     this.name = "CharacterLoraBenchmarkPromotionServiceError";
   }
 }
@@ -597,9 +604,9 @@ function assertBenchmarkHasApprovedPromotionEvidence(
 }
 
 function inspectApprovedPromotionEvidence(resultSummary: unknown, selectedCheckpoint: string | undefined) {
-  const summary = readRecord(resultSummary);
-  const counts = readRecord(summary?.counts);
-  const matrixExpansion = readRecord(summary?.matrixExpansion);
+  const summary = readJsonRecord(resultSummary);
+  const counts = readJsonRecord(summary?.counts);
+  const matrixExpansion = readJsonRecord(summary?.matrixExpansion);
   const sections = Array.isArray(summary?.sections) ? summary.sections : [];
   const runIds = readStringArray(summary?.runIds);
   const sectionEvidenceCount = countBenchmarkSectionEvidence(sections);
@@ -909,8 +916,8 @@ async function buildPromotionPlan(decisionId: string, input: CharacterLoraPromot
   if (!halfUndressedVariant) warnings.push("Half-undressed clothing linked variant was not found.");
   if (!nakedVariant) warnings.push("Naked clothing linked variant was not found.");
 
-  const perVariantWeightOverrides = parseRecord(decision.perVariantWeightOverrides);
-  const variantPromptDrafts = parseRecord(decision.variantPromptDrafts);
+  const perVariantWeightOverrides = asJsonRecord(decision.perVariantWeightOverrides);
+  const variantPromptDrafts = asJsonRecord(decision.variantPromptDrafts);
   const variants = STANDARD_VARIANTS.map((variant, index) => {
     const resolvedWeight = roundWeight(resolveVariantWeight(
       variant.slug,
@@ -1199,12 +1206,6 @@ function unusableBenchmarkTemplateError(
   );
 }
 
-function parseRecord(value: unknown): Record<string, unknown> {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : {};
-}
-
 function roundWeight(value: number) {
   return Math.round(value * 100) / 100;
 }
@@ -1238,11 +1239,7 @@ function slugifyForService(value: string) {
 }
 
 function normalizeId(value: string, fieldName: string) {
-  const normalized = value.trim();
-  if (!normalized) {
-    throw new CharacterLoraBenchmarkPromotionServiceError(`${fieldName} is required`, 400);
-  }
-  return normalized;
+  return sharedNormalizeId(value, fieldName, CharacterLoraBenchmarkPromotionServiceError);
 }
 
 function parseWithSchema<T>(schema: z.ZodType<T>, input: unknown) {
@@ -1318,16 +1315,6 @@ function buildBaseCheckpointSnapshot(job: MinimalCharacterLoraJob) {
   };
 }
 
-function toInputJsonValue(value: unknown) {
-  return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
-}
-
-function readRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : null;
-}
-
 function readNumber(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
@@ -1340,12 +1327,12 @@ function readStringArray(value: unknown) {
 
 function countBenchmarkSectionEvidence(sections: unknown[]) {
   return sections.filter((section) => {
-    const sectionRecord = readRecord(section);
+    const sectionRecord = readJsonRecord(section);
     if (!sectionRecord || typeof sectionRecord.sectionId !== "string" || !sectionRecord.sectionId.trim()) {
       return false;
     }
 
-    const latestRun = readRecord(sectionRecord.latestRun);
+    const latestRun = readJsonRecord(sectionRecord.latestRun);
     return (
       typeof latestRun?.id === "string" &&
       latestRun.id.trim().length > 0 &&

@@ -3,6 +3,11 @@ import { copyFile, readFile } from "node:fs/promises";
 import path from "node:path";
 
 import { Prisma } from "@/generated/prisma";
+import { CharacterLoraServiceError } from "@/server/services/character-lora-training/shared/service-error";
+import {
+  normalizeId as sharedNormalizeId,
+  toInputJsonValue,
+} from "@/server/services/character-lora-training/shared/service-utils";
 import {
   CharacterLoraImageReviewStatus,
   CharacterLoraWorkerType,
@@ -88,13 +93,13 @@ const DEFAULT_LEASE_OWNER = "local-worker";
 const DEFAULT_LEASE_SECONDS = 300;
 const DEFAULT_SOURCE_WEIGHT = 1;
 
-export class CharacterLoraPhase3ServiceError extends Error {
+export class CharacterLoraPhase3ServiceError extends CharacterLoraServiceError {
   constructor(
     message: string,
-    readonly status: number,
-    readonly details?: unknown,
+    status: number,
+    details?: unknown,
   ) {
-    super(message);
+    super(message, status, details);
     this.name = "CharacterLoraPhase3ServiceError";
   }
 }
@@ -1562,11 +1567,7 @@ function isFileNotFoundError(error: unknown) {
 }
 
 function normalizeId(value: string, fieldName: string) {
-  const normalized = value.trim();
-  if (!normalized) {
-    throw new CharacterLoraPhase3ServiceError(`${fieldName} is required`, 400);
-  }
-  return normalized;
+  return sharedNormalizeId(value, fieldName, CharacterLoraPhase3ServiceError);
 }
 
 function parseWithSchema<T>(schema: z.ZodType<T>, input: unknown) {
@@ -1583,6 +1584,3 @@ function parseWithSchema<T>(schema: z.ZodType<T>, input: unknown) {
   });
 }
 
-function toInputJsonValue(value: unknown) {
-  return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
-}

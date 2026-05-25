@@ -2,6 +2,11 @@ import { randomUUID } from "node:crypto";
 
 import { Prisma } from "@/generated/prisma";
 import { CharacterLoraRunStatus } from "@/generated/prisma/enums";
+import { CharacterLoraServiceError } from "@/server/services/character-lora-training/shared/service-error";
+import {
+  normalizeId as sharedNormalizeId,
+  toInputJsonValue,
+} from "@/server/services/character-lora-training/shared/service-utils";
 import {
   characterLoraImageGenerationRequestSchema,
   characterLoraImageGenerationTaskPayloadSchema,
@@ -85,13 +90,13 @@ const registerManualCanonicalSchema = z
   })
   .strict();
 
-export class CharacterLoraCanonicalServiceError extends Error {
+export class CharacterLoraCanonicalServiceError extends CharacterLoraServiceError {
   constructor(
     message: string,
-    readonly status: number,
-    readonly details?: unknown,
+    status: number,
+    details?: unknown,
   ) {
-    super(message);
+    super(message, status, details);
     this.name = "CharacterLoraCanonicalServiceError";
   }
 }
@@ -829,13 +834,7 @@ function buildDefaultCanonicalVisualPrompt(job: CharacterLoraTrainingJobSummary)
 }
 
 function normalizeId(value: string, fieldName: string) {
-  const normalized = value.trim();
-
-  if (!normalized) {
-    throw new CharacterLoraCanonicalServiceError(`${fieldName} is required`, 400);
-  }
-
-  return normalized;
+  return sharedNormalizeId(value, fieldName, CharacterLoraCanonicalServiceError);
 }
 
 function parseWithSchema<T>(schema: z.ZodType<T>, input: unknown) {
@@ -866,6 +865,3 @@ function nullableTrimmedStringSchema() {
     .optional();
 }
 
-function toInputJsonValue(value: unknown) {
-  return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
-}

@@ -2,6 +2,12 @@ import { randomUUID } from "node:crypto";
 import { open, stat } from "node:fs/promises";
 
 import { Prisma } from "@/generated/prisma";
+import { CharacterLoraServiceError } from "@/server/services/character-lora-training/shared/service-error";
+import {
+  normalizeId as sharedNormalizeId,
+  toInputJsonValue,
+  asJsonRecord,
+} from "@/server/services/character-lora-training/shared/service-utils";
 import {
   characterLoraTrainingCompleteOutputSchema,
   characterLoraTrainingEnqueueRequestSchema,
@@ -42,13 +48,13 @@ import { z } from "zod";
 const DEFAULT_LEASE_OWNER = "training-worker";
 const DEFAULT_LEASE_SECONDS = 300;
 
-export class CharacterLoraTrainingServiceError extends Error {
+export class CharacterLoraTrainingServiceError extends CharacterLoraServiceError {
   constructor(
     message: string,
-    readonly status: number,
-    readonly details?: unknown,
+    status: number,
+    details?: unknown,
   ) {
-    super(message);
+    super(message, status, details);
     this.name = "CharacterLoraTrainingServiceError";
   }
 }
@@ -502,12 +508,12 @@ function resolveTrainingConfig(
 }
 
 function readRecipeTrainingDefaults(snapshot: unknown) {
-  const snapshotRecord = asRecord(snapshot);
-  const trainingDefaults = asRecord(snapshotRecord.trainingDefaults);
-  const configProfiles = asRecord(trainingDefaults.configProfiles);
-  const ordinarySource = mergeRecords(asRecord(trainingDefaults.ordinary), asRecord(configProfiles.ordinary));
-  const advancedSource = mergeRecords(asRecord(trainingDefaults.advanced), asRecord(configProfiles.advanced));
-  const expertSource = mergeRecords(asRecord(trainingDefaults.expert), asRecord(configProfiles.expert));
+  const snapshotRecord = asJsonRecord(snapshot);
+  const trainingDefaults = asJsonRecord(snapshotRecord.trainingDefaults);
+  const configProfiles = asJsonRecord(trainingDefaults.configProfiles);
+  const ordinarySource = mergeRecords(asJsonRecord(trainingDefaults.ordinary), asJsonRecord(configProfiles.ordinary));
+  const advancedSource = mergeRecords(asJsonRecord(trainingDefaults.advanced), asJsonRecord(configProfiles.advanced));
+  const expertSource = mergeRecords(asJsonRecord(trainingDefaults.expert), asJsonRecord(configProfiles.expert));
   const precision = readString(ordinarySource, "precision") ?? readString(advancedSource, "mixedPrecision");
   const learningRate = readNumber(ordinarySource, "learningRate") ?? readNumber(advancedSource, "learningRate");
 
@@ -536,10 +542,6 @@ function readRecipeTrainingDefaults(snapshot: unknown) {
     }),
     expert: expertSource,
   };
-}
-
-function asRecord(value: unknown): Record<string, unknown> {
-  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
 }
 
 function mergeRecords(...records: Array<Record<string, unknown>>) {
@@ -969,11 +971,7 @@ function getCancelSignalPathFromTaskPayload(payload: unknown, fallbackOutputDir:
 }
 
 function normalizeId(value: string, fieldName: string) {
-  const normalized = value.trim();
-  if (!normalized) {
-    throw new CharacterLoraTrainingServiceError(`${fieldName} is required`, 400);
-  }
-  return normalized;
+  return sharedNormalizeId(value, fieldName, CharacterLoraTrainingServiceError);
 }
 
 function parseWithSchema<T>(schema: z.ZodType<T>, input: unknown) {
@@ -990,6 +988,3 @@ function parseWithSchema<T>(schema: z.ZodType<T>, input: unknown) {
   });
 }
 
-function toInputJsonValue(value: unknown) {
-  return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
-}

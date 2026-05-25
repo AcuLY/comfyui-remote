@@ -239,31 +239,3 @@ export function generateLoraEntryId(): string {
   return `lora-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
-/**
- * Convert LoraBinding to LoraEntry with source
- */
-export function bindingToEntry(
-  binding: LoraBinding,
-  source: LoraSource,
-  sourceLabel?: string,
-): LoraEntry {
-  return {
-    id: generateLoraEntryId(),
-    path: binding.path,
-    weight: Math.round(binding.weight * 100) / 100,
-    enabled: binding.enabled,
-    source,
-    sourceLabel,
-  };
-}
-
-/**
- * Create default LoRA binding
- */
-export function createDefaultLoraBinding(): LoraBinding {
-  return {
-    path: "",
-    weight: 1.0,
-    enabled: true,
-  };
-}
