@@ -29,7 +29,10 @@ import {
 import {
   persistComfyOutputImages,
   removeManagedRunOutput,
+  type PersistedRunOutput,
 } from "@/server/services/image-result-service";
+import { rm } from "node:fs/promises";
+import { resolve } from "node:path";
 import { audit } from "@/server/services/audit-service";
 import { buildComfyPromptDraft } from "@/server/worker/payload-builder";
 import {
@@ -278,6 +281,8 @@ export async function pollRunCompletion(runId: string): Promise<void> {
       apiPrompt = validatedDraft.apiPrompt;
     }
 
+    let persistedOutput: PersistedRunOutput | null = null;
+
     try {
       // Keep DB status aligned with ComfyUI's real queue state. A submitted
       // prompt is still "queued" until ComfyUI moves it into queue_running.
@@ -296,7 +301,7 @@ export async function pollRunCompletion(runId: string): Promise<void> {
         const started = await waitForPromptToStart(
           apiUrl,
           comfyPromptId,
-          { pollIntervalMs: 2000 },
+          { pollIntervalMs: 2000, shouldContinue: () => isRunStillPollingPrompt(runId, comfyPromptId!) },
         );
 
         if (started) {
@@ -349,12 +354,29 @@ export async function pollRunCompletion(runId: string): Promise<void> {
       const claimedFinalization = await claimRunFinalization(runId, runRecord.outputDir, comfyPromptId);
 
       if (!claimedFinalization) {
-        runLog.info("Run finalization is already claimed elsewhere, skipping duplicate poll");
+        // Re-check: is the run potentially stuck without a valid finalizer?
+        const currentState = await db.run.findUnique({
+          where: { id: runId },
+          select: { status: true, outputDir: true },
+        });
+        if (
+          currentState &&
+          (currentState.status === RunStatus.queued || currentState.status === RunStatus.running) &&
+          !currentState.outputDir?.startsWith(FINALIZING_OUTPUT_DIR_PREFIX)
+        ) {
+          runLog.warn("Run still active but no finalizer marker present — potential stuck run", {
+            runId,
+            status: currentState.status,
+            outputDir: currentState.outputDir,
+          });
+        } else {
+          runLog.info("Run finalization is already claimed elsewhere, skipping duplicate poll");
+        }
         runTimer.done({ status: "duplicate-finalizer" });
         return;
       }
 
-      const persistedOutput = await persistComfyOutputImages(
+      persistedOutput = await persistComfyOutputImages(
         run,
         run.comfyApiUrl,
         outputImages,
@@ -425,7 +447,12 @@ export async function pollRunCompletion(runId: string): Promise<void> {
       runLog.error("Run failed", error, { comfyPromptId });
 
       try {
-        await removeManagedRunOutput(run);
+        if (persistedOutput?.outputDir) {
+          const absoluteDir = resolve(process.cwd(), persistedOutput.outputDir);
+          await rm(absoluteDir, { recursive: true, force: true });
+        } else {
+          await removeManagedRunOutput(run);
+        }
       } catch (cleanupError) {
         runLog.warn("Cleanup failed", { error: formatError(cleanupError) });
       }
@@ -508,10 +535,17 @@ export async function recoverStaleRuns(): Promise<void> {
 
     log.info("Recovering stale runs", { count: needsRecovery.length });
 
-    for (const run of needsRecovery) {
-      pollRunCompletion(run.id).catch((err) => {
-        log.error("pollRunCompletion failed", err instanceof Error ? err : new Error(String(err)), { runId: run.id });
-      });
+    const RECOVERY_CONCURRENCY = 3;
+    for (let i = 0; i < needsRecovery.length; i += RECOVERY_CONCURRENCY) {
+      const batch = needsRecovery.slice(i, i + RECOVERY_CONCURRENCY);
+      for (const run of batch) {
+        pollRunCompletion(run.id).catch((err) => {
+          log.error("pollRunCompletion failed", err instanceof Error ? err : new Error(String(err)), { runId: run.id });
+        });
+      }
+      if (i + RECOVERY_CONCURRENCY < needsRecovery.length) {
+        await new Promise(r => setTimeout(r, 1000));
+      }
     }
   } finally {
     recoveryInProgress = false;

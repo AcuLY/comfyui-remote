@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, rename, rm, unlink, writeFile } from "node:fs/promises";
+import { mkdir, rename, rm, stat, unlink, writeFile } from "node:fs/promises";
 import { join, posix, resolve } from "node:path";
 
 import sharp from "sharp";
@@ -77,7 +77,7 @@ async function retryOnEBUSY<T>(
 function sanitizePathSegment(value: string, fallback: string) {
   const sanitizedValue = value
     .trim()
-    .replace(/[^A-Za-z0-9._-]+/g, "-")
+    .replace(/[^\p{L}\p{N}._-]+/gu, "-")
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "");
 
@@ -166,6 +166,11 @@ async function downloadOutputImageBuffer(
   apiUrl: string,
   outputImage: ComfyPromptOutputImage,
 ): Promise<Buffer> {
+  // Validate filename — reject path traversal attempts
+  if (/[/\\]|\.\./.test(outputImage.filename)) {
+    throw new Error(`Unsafe filename from ComfyUI history: "${outputImage.filename}"`);
+  }
+
   const controller = new AbortController();
   const timeout = setTimeout(() => {
     controller.abort();
@@ -214,20 +219,17 @@ async function downloadCompressAndPersist(
 ): Promise<{ fileSize: bigint; width: number | null; height: number | null; jpegBuffer: Buffer }> {
   const rawBuffer = await downloadOutputImageBuffer(apiUrl, outputImage);
 
-  const sourceImage = sharp(rawBuffer).rotate();
-  const metadata = await sourceImage.metadata();
-
-  const jpegBuffer = await sharp(rawBuffer)
+  const { data: jpegBuffer, info } = await sharp(rawBuffer)
     .rotate()
     .jpeg({ quality: 90 })
-    .toBuffer();
+    .toBuffer({ resolveWithObject: true });
 
   await atomicWriteFile(targetAbsolutePath, jpegBuffer);
 
   return {
     fileSize: BigInt(jpegBuffer.byteLength),
-    width: metadata.width ?? null,
-    height: metadata.height ?? null,
+    width: info.width ?? null,
+    height: info.height ?? null,
     jpegBuffer,
   };
 }
@@ -268,8 +270,17 @@ async function cleanupStaleFiles(dirPath: string, keepFiles: Set<string>) {
   }
 
   for (const entry of entries) {
-    // Skip .tmp files - they may be part of an in-progress atomic write
+    // Clean up stale tmp files older than 5 minutes
     if (entry.endsWith(".tmp")) {
+      try {
+        const entryPath = join(dirPath, entry);
+        const fileStat = await stat(entryPath);
+        if (Date.now() - fileStat.mtimeMs > 5 * 60 * 1000) {
+          await unlink(entryPath).catch(() => {});
+        }
+      } catch {
+        // Ignore — file may have been removed already
+      }
       continue;
     }
     if (!keepFiles.has(entry)) {

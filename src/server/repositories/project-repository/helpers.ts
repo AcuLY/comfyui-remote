@@ -562,11 +562,6 @@ export async function createQueuedRunsForPositions(
       },
     });
 
-    await tx.projectSection.update({
-      where: { id: section.id },
-      data: { latestRunId: createdRun.id },
-    });
-
     queuedRuns.push(serializeEnqueuedRun(section, createdRun));
   }
 

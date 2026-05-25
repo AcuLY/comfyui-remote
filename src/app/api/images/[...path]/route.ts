@@ -28,9 +28,13 @@ function isSafePathSegment(segment: string) {
     segment !== "" &&
     segment !== "." &&
     segment !== ".." &&
+    !/^\.+$/.test(segment) &&
     !segment.includes("/") &&
     !segment.includes("\\") &&
-    !segment.includes(":")
+    !segment.includes(":") &&
+    !segment.includes("\0") &&
+    !/[．／＼]/.test(segment) &&
+    !/[\s.]+$/.test(segment)
   );
 }
 
@@ -61,8 +65,12 @@ export async function GET(
     return NextResponse.json({ error: "Unsupported file type" }, { status: 400 });
   }
 
-  const resolved = `${RESOLVED_OUTPUT_BASE}${path.sep}${segments.join(path.sep)}`;
-  if (!resolved.startsWith(RESOLVED_OUTPUT_BASE + path.sep)) {
+  const resolved = path.resolve(RESOLVED_OUTPUT_BASE, ...segments);
+  const normalizedResolved = process.platform === "win32" ? resolved.toLowerCase() : resolved;
+  const normalizedBase = process.platform === "win32"
+    ? (RESOLVED_OUTPUT_BASE + path.sep).toLowerCase()
+    : RESOLVED_OUTPUT_BASE + path.sep;
+  if (!normalizedResolved.startsWith(normalizedBase)) {
     return NextResponse.json({ error: "Access denied" }, { status: 403 });
   }
 

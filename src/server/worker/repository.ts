@@ -244,6 +244,7 @@ export async function completeWorkerRun(
         outputDir: true,
         comfyPromptId: true,
         projectId: true,
+        projectSectionId: true,
       },
     });
 
@@ -252,6 +253,12 @@ export async function completeWorkerRun(
     }
 
     await updateProjectStatus(tx, finalizedRun.projectId);
+
+    // Update latestRunId to reflect the most recently completed run
+    await tx.projectSection.update({
+      where: { id: finalizedRun.projectSectionId },
+      data: { latestRunId: runId },
+    });
 
     return {
       runId: finalizedRun.id,
@@ -262,5 +269,5 @@ export async function completeWorkerRun(
       outputDir: finalizedRun.outputDir,
       comfyPromptId: finalizedRun.comfyPromptId,
     };
-  });
+  }, { timeout: 15000 });
 }

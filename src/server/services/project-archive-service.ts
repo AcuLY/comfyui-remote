@@ -39,6 +39,10 @@ export async function archiveProject(projectId: string): Promise<ArchiveProjectR
   }
 
   const exportDir = resolve(process.cwd(), "data", "export", project.title);
+  const exportBase = resolve(process.cwd(), "data", "export") + sep;
+  if (!exportDir.startsWith(exportBase)) {
+    return { success: false, message: "Invalid project title for filesystem path", deletedManagedDir: false, deletedTrashFiles: 0, deletedComfyDirs: 0 };
+  }
   try {
     await access(exportDir);
   } catch {
@@ -58,6 +62,14 @@ export async function archiveProject(projectId: string): Promise<ArchiveProjectR
     for (const image of trashedImages) {
       if (image.trashRecord && image.trashRecord.trashPath) {
         const trashFilePath = resolve(process.cwd(), image.trashRecord.trashPath);
+
+        // Safety check: only delete files under project data directories
+        const dataBase = resolve(process.cwd(), "data") + sep;
+        if (!trashFilePath.startsWith(dataBase)) {
+          log.warn("Skipping trash file outside data directory", { path: trashFilePath });
+          continue;
+        }
+
         try {
           await rm(trashFilePath, { force: true });
           deletedTrashFiles++;

@@ -379,7 +379,8 @@ async function fetchJson(
     }
 
     if (responseText && typeof data === "string") {
-      throw new Error(`${context} returned an invalid JSON response: ${formatUnknownValue(data)}`);
+      // Non-JSON text from a successful response (e.g., /interrupt returns "ok")
+      return null;
     }
 
     return data;
@@ -687,12 +688,16 @@ async function isPromptInComfyQueue(
 export async function waitForPromptToStart(
   apiUrl: string,
   promptId: string,
-  opts?: { pollIntervalMs?: number; maxAttempts?: number },
+  opts?: { pollIntervalMs?: number; maxAttempts?: number; shouldContinue?: () => boolean | Promise<boolean> },
 ): Promise<boolean> {
   const pollIntervalMs = opts?.pollIntervalMs ?? 1000;
   const maxAttempts = opts?.maxAttempts ?? 21_600; // 12 hours at the worker's 2s interval
 
   for (let i = 0; i < maxAttempts; i++) {
+    if (opts?.shouldContinue && !(await opts.shouldContinue())) {
+      return false; // Aborted — caller should stop
+    }
+
     // Check queue first; only hit /history after the prompt leaves both
     // pending and running queues.
     const position = await getComfyQueuePosition(apiUrl, promptId);
@@ -751,6 +756,21 @@ export async function pollComfyPromptHistory(
       totalAttempts++;
 
       if (options.shouldContinue && !(await options.shouldContinue())) {
+        // One last check — prompt might have completed just now
+        try {
+          const finalPayload = await fetchJson(
+            `${apiUrl}/history/${encodeURIComponent(promptId)}`,
+            { method: "GET" },
+            `ComfyUI final history check for prompt ${promptId}`,
+          );
+          const finalEntry = extractHistoryEntry(finalPayload, promptId);
+          if (finalEntry && isHistoryComplete(finalEntry) && !extractHistoryFailureMessage(finalEntry)) {
+            log.info("Prompt completed just before shouldContinue abort", { promptId });
+            return finalEntry;
+          }
+        } catch {
+          // Final check failed — proceed with abort
+        }
         throw new ComfyPromptPollAbortedError(promptId);
       }
 
@@ -850,17 +870,19 @@ export async function executeComfyPromptDraft(
   const validatedDraft = await validateComfyPromptDraft(apiUrl, promptDraft);
 
   // Debug: write the resolved prompt to disk for inspection
-  try {
-    const fs = await import("fs/promises");
-    const path = await import("path");
-    const debugPath = path.join(process.cwd(), "debug-submitted-prompt.json");
-    await fs.writeFile(
-      debugPath,
-      JSON.stringify(validatedDraft.apiPrompt, null, 2),
-      "utf-8",
-    );
-  } catch {
-    // Best-effort — don't block execution
+  if (env.logLevel === "debug") {
+    try {
+      const fs = await import("fs/promises");
+      const path = await import("path");
+      const debugPath = path.join(process.cwd(), "debug-submitted-prompt.json");
+      await fs.writeFile(
+        debugPath,
+        JSON.stringify(validatedDraft.apiPrompt, null, 2),
+        "utf-8",
+      );
+    } catch {
+      // Best-effort — don't block execution
+    }
   }
 
   log.debug("Submitting prompt to ComfyUI", { apiUrl: validatedDraft.apiUrl });
