@@ -9,7 +9,8 @@ import {
   serializeSectionLoraConfig,
   type LoraEntry,
 } from "@/lib/lora-types";
-import { detachSectionLorasFromPresetBinding, getDetachedPresetPaths } from "@/lib/preset-binding-utils";
+import { getDetachedPresetPaths } from "@/lib/preset-binding-utils";
+import { detachSectionLorasFromPresetBinding } from "@/server/services/preset-binding-service";
 import { recordSectionChange } from "@/server/services/section-change-history-service";
 import { resolveVariantContent } from "./preset-variant";
 import {

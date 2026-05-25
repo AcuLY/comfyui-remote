@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
+import { fail, ok } from "@/lib/api-response";
 import { applyParamToAllSections, type ApplyParamName } from "@/lib/actions/project";
 
 const VALID_PARAMS: ApplyParamName[] = [
@@ -17,22 +18,31 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ projectId: string }> },
 ) {
-  const { projectId } = await params;
-  const body = await request.json();
-  const { param, value } = body;
+  try {
+    const { projectId } = await params;
 
-  if (!param || !VALID_PARAMS.includes(param)) {
-    return NextResponse.json(
-      { ok: false, error: `无效参数名: ${param}` },
-      { status: 400 },
-    );
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return fail("Invalid JSON body", 400);
+    }
+
+    const { param, value } = body as { param: string; value: unknown };
+
+    if (!param || !VALID_PARAMS.includes(param as ApplyParamName)) {
+      return fail(`无效参数名: ${param}`, 400);
+    }
+
+    const result = await applyParamToAllSections(projectId, param as ApplyParamName, value);
+
+    if (!result.ok) {
+      return fail(result.error ?? "Apply failed", 400);
+    }
+
+    return ok(result);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return fail(message, 500);
   }
-
-  const result = await applyParamToAllSections(projectId, param, value);
-
-  if (!result.ok) {
-    return NextResponse.json(result, { status: 400 });
-  }
-
-  return NextResponse.json(result);
 }

@@ -10,7 +10,7 @@ import {
 import { audit } from "@/server/services/audit-service";
 import { ActorType } from "@/lib/db-enums";
 import { prisma } from "@/lib/prisma";
-import { detachSectionLorasFromPresetBinding } from "@/lib/preset-binding-utils";
+import { detachSectionLorasFromPresetBinding } from "@/server/services/preset-binding-service";
 
 class PromptBlockServiceError extends Error {
   constructor(

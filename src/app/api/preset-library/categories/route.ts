@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { ok, fail } from "@/lib/api-response";
-import { createPresetCategory } from "@/lib/actions";
+import { createPresetCategory, type PresetCategoryInput } from "@/lib/actions";
 import { getPresetCategoriesWithPresets } from "@/lib/server-data";
 
 export async function GET() {
@@ -14,9 +14,15 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  let body: unknown;
   try {
-    const body = await request.json();
-    const result = await createPresetCategory(body);
+    body = await request.json();
+  } catch {
+    return fail("Invalid JSON body", 400);
+  }
+
+  try {
+    const result = await createPresetCategory(body as PresetCategoryInput);
     return ok(result);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
