@@ -22,10 +22,8 @@ import {
 import { SourceImageUploader } from "../source-image-uploader";
 import { PersonaReferenceClient } from "../persona-reference-client";
 import {
-  enqueueCanonicalAction,
   registerManualCanonicalAction,
   rejectCanonicalAction,
-  rerunCanonicalAction,
   selectCanonicalAction,
   uploadSourceImageAction,
 } from "../workflow-actions";
@@ -56,8 +54,6 @@ export default async function PersonaReferencePage({
   const activeCanonicalTasks = canonicalTasks.filter((task) => task.status === "queued" || task.status === "running");
   const failedCanonicalTasks = canonicalTasks.filter((task) => task.status === "failed");
   const canonicalVersionsByView = groupCanonicalVersionsByView(report.canonicalVersions);
-  const referenceVersions = report.canonicalVersions.filter((version) => version.status !== "rejected");
-  const genDisabled = report.sourceImages.length === 0 && referenceVersions.length === 0;
   const manualSourceImages = report.sourceImages;
 
   return (
@@ -96,11 +92,8 @@ export default async function PersonaReferencePage({
           sourceImages={report.sourceImages}
           jobId={job.id}
           currentCanonicalVersionId={job.currentCanonicalVersionId}
-          enqueueAction={enqueueCanonicalAction.bind(null, job.id)}
           selectAction={selectCanonicalAction.bind(null, job.id)}
           rejectAction={rejectCanonicalAction.bind(null, job.id)}
-          rerunAction={rerunCanonicalAction.bind(null, job.id)}
-          disabled={genDisabled}
         />
 
         {/* Sidebar */}

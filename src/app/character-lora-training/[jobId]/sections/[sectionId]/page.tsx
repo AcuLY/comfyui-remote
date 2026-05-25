@@ -17,8 +17,9 @@ import {
   compactId,
   formatDate,
 } from "../../shared-ui";
-import { enqueueSectionRunAction, reviewCandidateAction, updateCaptionAction } from "../../workflow-actions";
-import { SectionGenerationClient } from "./section-generation-client";
+import { reviewCandidateAction, updateCaptionAction } from "../../workflow-actions";
+import { SectionPanelConfig } from "./section-panel-config";
+import { CandidateAddButton } from "./candidate-add-button";
 
 export const dynamic = "force-dynamic";
 
@@ -86,11 +87,9 @@ export default async function SectionDetailPage({
             <InfoRow label="更新时间" value={formatDate(section.updatedAt)} />
           </dl>
           <div className="mt-4">
-            <SectionGenerationClient
-              candidateImages={candidateImages.map((img) => ({ id: img.id, relativePath: img.relativePath, generationRunId: img.generationRunId, reviewStatus: img.reviewStatus }))}
+            <SectionPanelConfig
               jobId={job.id}
-              enqueueAction={enqueueSectionRunAction.bind(null, section.id, job.id)}
-              rerunAction={enqueueSectionRunAction.bind(null, section.id, job.id)}
+              sectionId={sectionId}
               disabled={!canGenerate}
               disabledReason={blockingReasons.length > 0 ? `阻塞：${blockingReasons.join("；")}` : undefined}
             />
@@ -167,7 +166,10 @@ export default async function SectionDetailPage({
                       <StatusPill value={image.reviewStatus} />
                       <span className="font-mono text-zinc-500">{compactId(image.id)}</span>
                     </div>
-                    <div className="mt-1 break-all font-mono text-[11px] text-zinc-500">run {compactId(image.generationRunId)}</div>
+                    <div className="mt-1 flex items-center justify-between gap-2">
+                      <span className="break-all font-mono text-[11px] text-zinc-500">run {compactId(image.generationRunId)}</span>
+                      <CandidateAddButton image={{ id: image.id, relativePath: image.relativePath, generationRunId: image.generationRunId }} />
+                    </div>
                     <form action={updateCaptionAction.bind(null, job.id, image.id)} className="mt-2 space-y-2">
                       <textarea name="captionDraft" rows={4} defaultValue={image.captionDraft ?? ""} required className="w-full rounded-md border border-white/10 bg-black/30 px-2 py-2 text-xs leading-5 text-zinc-200 outline-none transition focus:border-sky-400" />
                       <button className="h-8 rounded-md border border-white/10 px-2 text-xs text-zinc-200 transition hover:bg-white/[0.06]">

@@ -4,15 +4,17 @@ import { Toaster } from "sonner";
 import type { ReactNode } from "react";
 import { PersistentBottomNav } from "@/components/persistent-bottom-nav";
 import { SfwModeProvider } from "@/components/sfw-mode-provider";
+import { TaskPanelProvider, TaskPanelContainer } from "@/components/task-panel";
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
-    <>
+    <TaskPanelProvider>
       <SfwModeProvider />
-      <main className="mx-auto flex w-full max-w-5xl min-w-0 flex-col gap-3 overflow-x-hidden px-3 py-4 pb-24 sm:px-6">
+      <main className="mx-auto flex w-full max-w-5xl min-w-0 flex-col gap-3 overflow-x-hidden px-3 py-4 pb-24 sm:px-6 lg:mr-0 transition-[margin] duration-300">
         {children}
       </main>
       <PersistentBottomNav />
+      <TaskPanelContainer />
       <Toaster
         theme="dark"
         position="top-right"
@@ -30,6 +32,6 @@ export function AppShell({ children }: { children: ReactNode }) {
           },
         }}
       />
-    </>
+    </TaskPanelProvider>
   );
 }
