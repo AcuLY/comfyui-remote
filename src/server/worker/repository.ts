@@ -32,6 +32,7 @@ type CompleteWorkerRunInput = {
   executionMeta?: Record<string, unknown> | null;
   submittedPrompt?: Record<string, unknown> | null;
   outputDir?: string | null;
+  comfyOutputSubfolder?: string | null;
   images?: Array<{
     filePath: string;
     thumbPath: string | null;
@@ -193,6 +194,10 @@ export async function completeWorkerRun(
 
     if (input.outputDir !== undefined) {
       data.outputDir = input.outputDir;
+    }
+
+    if (input.comfyOutputSubfolder !== undefined) {
+      data.comfyOutputSubfolder = input.comfyOutputSubfolder;
     }
 
     const completedRun = await tx.run.updateMany({

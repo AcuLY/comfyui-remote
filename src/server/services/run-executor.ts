@@ -19,6 +19,7 @@ import {
   submitComfyPrompt,
   pollComfyPromptHistory,
   extractOutputImages,
+  extractOutputDir,
   extractExecutionMeta,
   getComfyQueuePosition,
   ComfyPromptPollAbortedError,
@@ -373,6 +374,7 @@ export async function pollRunCompletion(runId: string): Promise<void> {
         executionMeta,
         submittedPrompt: apiPrompt,
         outputDir: persistedOutput.outputDir,
+        comfyOutputSubfolder: extractOutputDir(outputImages),
         images: persistedOutput.images,
       });
 

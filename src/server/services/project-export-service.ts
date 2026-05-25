@@ -165,6 +165,12 @@ export async function exportProjectImages(projectId: string): Promise<ExportProj
     await rm(previewDir, { recursive: true, force: true });
   }
 
+  // Mark project as published
+  await prisma.project.update({
+    where: { id: projectId },
+    data: { publishedAt: new Date() },
+  });
+
   return {
     success: true,
     message: `图片整合完成：${allKept.length} 张保留图打包为 ${exportName}.zip，封面已输出 cover.jpg${pixivIndex > 1 ? `，${pixivIndex - 1} 张 p站图输出到 pixiv/` : ""}${previewIndex > 1 ? `，${previewIndex - 1} 张预览图输出到 preview/` : ""}`,

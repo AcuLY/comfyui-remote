@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, rename, rm, unlink, writeFile } from "node:fs/promises";
-import { extname, join, posix, resolve } from "node:path";
+import { join, posix, resolve } from "node:path";
 
 import sharp from "sharp";
 
@@ -132,11 +132,6 @@ function resolveManagedRunOutputPaths(run: WorkerRunSnapshot): ManagedRunOutputP
   };
 }
 
-function resolveTargetExtension(outputImage: ComfyPromptOutputImage) {
-  const extension = extname(outputImage.filename).toLowerCase();
-  return extension && extension.length <= 10 ? extension : ".png";
-}
-
 /**
  * Atomic write: write to a temp file first, then rename to the target.
  * Prevents partial reads when the file is being served concurrently
@@ -167,11 +162,10 @@ async function atomicWriteFile(targetPath: string, data: Buffer) {
   }
 }
 
-async function downloadOutputImage(
+async function downloadOutputImageBuffer(
   apiUrl: string,
   outputImage: ComfyPromptOutputImage,
-  targetAbsolutePath: string,
-) {
+): Promise<Buffer> {
   const controller = new AbortController();
   const timeout = setTimeout(() => {
     controller.abort();
@@ -199,11 +193,7 @@ async function downloadOutputImage(
     }
 
     const arrayBuffer = await response.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
-    await atomicWriteFile(targetAbsolutePath, buffer);
-
-    return BigInt(buffer.byteLength);
+    return Buffer.from(arrayBuffer);
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {
       throw new Error(`ComfyUI output download timed out after ${env.comfyRequestTimeoutMs}ms`);
@@ -217,30 +207,36 @@ async function downloadOutputImage(
   }
 }
 
-async function persistSingleOutputImage(
+async function downloadCompressAndPersist(
   apiUrl: string,
   outputImage: ComfyPromptOutputImage,
   targetAbsolutePath: string,
-) {
-  // Always download via ComfyUI API — avoids path mismatches between
-  // ComfyUI output dir and our managed image store.
-  return downloadOutputImage(apiUrl, outputImage, targetAbsolutePath);
-}
+): Promise<{ fileSize: bigint; width: number | null; height: number | null; jpegBuffer: Buffer }> {
+  const rawBuffer = await downloadOutputImageBuffer(apiUrl, outputImage);
 
-async function createThumbnailAndReadDimensions(
-  sourceAbsolutePath: string,
-  targetThumbAbsolutePath: string,
-) {
-  // Read source file into memory first to avoid holding a file handle
-  // (prevents EBUSY on Windows when the file is deleted later)
-  const { readFile } = await import("node:fs/promises");
-  const sourceBuffer = await readFile(sourceAbsolutePath);
-
-  const sourceImage = sharp(sourceBuffer);
+  const sourceImage = sharp(rawBuffer).rotate();
   const metadata = await sourceImage.metadata();
 
-  const thumbBuffer = await sourceImage
-    .clone()
+  const jpegBuffer = await sharp(rawBuffer)
+    .rotate()
+    .jpeg({ quality: 90 })
+    .toBuffer();
+
+  await atomicWriteFile(targetAbsolutePath, jpegBuffer);
+
+  return {
+    fileSize: BigInt(jpegBuffer.byteLength),
+    width: metadata.width ?? null,
+    height: metadata.height ?? null,
+    jpegBuffer,
+  };
+}
+
+async function createThumbnail(
+  sourceBuffer: Buffer,
+  targetThumbAbsolutePath: string,
+) {
+  const thumbBuffer = await sharp(sourceBuffer)
     .rotate()
     .resize({
       width: THUMBNAIL_MAX_DIMENSION,
@@ -255,11 +251,6 @@ async function createThumbnailAndReadDimensions(
 
   // Write thumbnail atomically
   await atomicWriteFile(targetThumbAbsolutePath, thumbBuffer);
-
-  return {
-    width: metadata.width ?? null,
-    height: metadata.height ?? null,
-  };
 }
 
 /**
@@ -322,20 +313,19 @@ export async function persistComfyOutputImages(
 
   try {
     for (const [index, outputImage] of outputImages.entries()) {
-      const fileName = `${String(index + 1).padStart(2, "0")}${resolveTargetExtension(outputImage)}`;
+      const fileName = `${String(index + 1).padStart(2, "0")}.jpg`;
       const thumbFileName = `${String(index + 1).padStart(2, "0")}${THUMBNAIL_EXTENSION}`;
       const relativeFilePath = posix.join(relativeOutputDir, fileName);
       const relativeThumbPath = posix.join(relativeThumbDir, thumbFileName);
       const absoluteFilePath = join(absoluteOutputDir, fileName);
       const absoluteThumbPath = join(absoluteThumbDir, thumbFileName);
 
-      const fileSize = await persistSingleOutputImage(apiUrl, outputImage, absoluteFilePath);
+      const { fileSize, width, height, jpegBuffer } = await downloadCompressAndPersist(
+        apiUrl, outputImage, absoluteFilePath,
+      );
       writtenRawFiles.add(fileName);
 
-      const { width, height } = await createThumbnailAndReadDimensions(
-        absoluteFilePath,
-        absoluteThumbPath,
-      );
+      await createThumbnail(jpegBuffer, absoluteThumbPath);
       writtenThumbFiles.add(thumbFileName);
 
       persistedImages.push({

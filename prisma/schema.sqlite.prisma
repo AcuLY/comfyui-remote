@@ -216,6 +216,8 @@ model Project {
   checkpointName        String?
   projectLevelOverrides Json?
   notes                 String?
+  publishedAt           DateTime?
+  archivedAt            DateTime?
   createdAt             DateTime              @default(now())
   updatedAt             DateTime              @updatedAt
   folder                ProjectFolder?        @relation(fields: [folderId], references: [id], onDelete: SetNull)
@@ -332,6 +334,7 @@ model Run {
   executionMeta         Json?
   submittedPrompt       Json?               // Full submitted ComfyUI workflow JSON
   outputDir             String?
+  comfyOutputSubfolder  String?
   errorMessage          String?
   startedAt             DateTime?
   finishedAt            DateTime?
