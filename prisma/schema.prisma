@@ -94,6 +94,7 @@ enum CharacterLoraWorkerType {
   training
   benchmark
   promotion
+  prompt_card_draft
 }
 
 enum CharacterLoraDecisionStatus {

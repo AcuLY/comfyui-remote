@@ -306,6 +306,8 @@ export async function createManagerClient() {
       request<ManagerJob>("GET", `/api/character-lora-training/jobs/${encodeURIComponent(jobId)}`),
     getJobReport: (jobId: string) =>
       request<ManagerJobReport>("GET", `/api/character-lora-training/jobs/${encodeURIComponent(jobId)}/report`),
+    generatePromptCardDraft: (jobId: string, body: unknown) =>
+      request<unknown>("POST", `/api/character-lora-training/jobs/${encodeURIComponent(jobId)}/prompt-cards/draft`, body),
     runProject: (projectId: string, body: { batchSize?: number } = {}) =>
       request<ManagerProjectRunResponse>(
         "POST",

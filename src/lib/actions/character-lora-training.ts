@@ -16,7 +16,9 @@ import {
 } from "@/server/services/character-lora-training/source-image-service";
 import {
   createCharacterLoraPromptCardVersion as createPromptCardVersion,
+  enqueueCharacterLoraPromptCardDraft as enqueuePromptCardDraft,
   generateCharacterLoraPromptCardDraft as generatePromptCardDraft,
+  getCharacterLoraPromptCardDraftTask as getPromptCardDraftTask,
   listCharacterLoraPromptCardVersions as listPromptCardVersions,
   promoteCharacterLoraSectionInstructionToPromptCardVersion as promoteSectionInstructionToPromptCardVersion,
 } from "@/server/services/character-lora-training/prompt-card-service";
@@ -125,6 +127,14 @@ export async function createCharacterLoraPromptCardVersion(jobId: string, input:
 
 export async function generateCharacterLoraPromptCardDraft(jobId: string, input?: unknown) {
   return generatePromptCardDraft(jobId, input ?? {});
+}
+
+export async function enqueueCharacterLoraPromptCardDraft(jobId: string, input?: unknown) {
+  return enqueuePromptCardDraft(jobId, input ?? {});
+}
+
+export async function getCharacterLoraPromptCardDraftTask(jobId: string, taskId: string) {
+  return getPromptCardDraftTask(jobId, taskId);
 }
 
 export async function promoteCharacterLoraSectionInstructionToPromptCardVersion(jobId: string, input: unknown) {

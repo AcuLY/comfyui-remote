@@ -29,6 +29,8 @@ import {
 } from "@/server/character-lora-training/contracts";
 import {
   completeDatasetFreezeWorkerTask,
+  completeImageGenerationWorkerTask,
+  completePromptCardDraftWorkerTask,
   createCharacterLoraJobArtifact,
   createCharacterLoraDatasetFreezeWorkerTask,
   createCharacterLoraSectionGenerationRunWithTask,
@@ -52,7 +54,6 @@ import {
   listCharacterLoraSourceImages,
   reviewCharacterLoraCandidateImages,
   updateCharacterLoraCandidateCaption,
-  completeImageGenerationWorkerTask,
   type CharacterLoraSourceImageSummary,
   type CharacterLoraCandidateImageSummary,
 } from "@/server/repositories/character-lora-training-repository";
@@ -379,6 +380,17 @@ export async function completeCharacterLoraTask(taskId: string, input: unknown) 
 
   if (payload.taskType === "dataset_freeze") {
     return completeCharacterLoraDatasetFreezeTask(id, parsed.leaseOwner, payload);
+  }
+
+  if (payload.taskType === "prompt_card_draft") {
+    const result = await completePromptCardDraftWorkerTask({
+      taskId: id,
+      leaseOwner: parsed.leaseOwner,
+    });
+    if (!result) {
+      throw new CharacterLoraPhase3ServiceError("Worker task not found, not running, or lease owner mismatch", 404);
+    }
+    return { task: result };
   }
 
   if (payload.taskType !== "image_generation") {

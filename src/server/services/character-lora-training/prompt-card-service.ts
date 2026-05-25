@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { spawn } from "node:child_process";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -7,16 +8,20 @@ import { Prisma } from "@/generated/prisma";
 import {
   PromptCardDraftParseError,
   buildPromptCardDraftPrompt,
+  normalizePromptCardDraftImageSelection,
   parsePromptCardDraftResponse,
   selectLatestCanonicalVersionsByView,
   type PromptCardDraftFields,
+  type PromptCardDraftImageSelection,
 } from "@/lib/character-lora-prompt-card-draft";
 import {
+  createCharacterLoraPromptCardDraftWorkerTask,
   createCharacterLoraPromptCardVersion as createPromptCardVersionInRepository,
   getCharacterLoraArtifact as getArtifactFromRepository,
   getCharacterLoraCanonicalVersion as getCanonicalVersionFromRepository,
   getCharacterLoraPromptCardVersion as getPromptCardVersionFromRepository,
   getCharacterLoraTrainingJob as getJobFromRepository,
+  getCharacterLoraWorkerTask as getWorkerTaskFromRepository,
   listCharacterLoraCanonicalVersions as listCanonicalVersionsFromRepository,
   listCharacterLoraPromptCardVersions as listPromptCardVersionsFromRepository,
   listCharacterLoraSourceImages as listSourceImagesFromRepository,
@@ -50,6 +55,8 @@ const promptCardDraftProviderSchema = z.enum(["codex-cli", "mock-local"]);
 const generatePromptCardDraftSchema = z
   .object({
     canonicalVersionId: nullableTrimmedStringSchema(),
+    canonicalVersionIds: z.array(z.string().trim().min(1)).optional(),
+    sourceImageIds: z.array(z.string().trim().min(1)).optional(),
     provider: promptCardDraftProviderSchema.optional(),
     operatorNotes: nullableTrimmedStringSchema(),
   })
@@ -135,7 +142,12 @@ export async function generateCharacterLoraPromptCardDraft(jobId: string, input:
   const job = await getExistingJob(id);
   const parsed = parseWithSchema(generatePromptCardDraftSchema, input);
   const provider = parsed.provider ?? DEFAULT_PROMPT_CARD_DRAFT_PROVIDER;
-  const images = await resolvePromptCardDraftImages(id, parsed.canonicalVersionId ?? null);
+  const selection = normalizePromptCardDraftImageSelection({
+    sourceImageIds: parsed.sourceImageIds,
+    canonicalVersionId: parsed.canonicalVersionId,
+    canonicalVersionIds: parsed.canonicalVersionIds,
+  });
+  const images = await resolvePromptCardDraftImages(id, selection);
   const sourceImageCount = images.filter((image) => image.role === "source").length;
   const canonicalImageCount = images.filter((image) => image.role === "canonical").length;
 
@@ -143,7 +155,7 @@ export async function generateCharacterLoraPromptCardDraft(jobId: string, input:
     throw new CharacterLoraPromptCardServiceError(
       "At least one source or canonical image is required to draft a Prompt Card",
       409,
-      { jobId: id },
+      { jobId: id, sourceImageIds: selection.sourceImageIds, canonicalVersionIds: selection.canonicalVersionIds },
     );
   }
 
@@ -170,8 +182,77 @@ export async function generateCharacterLoraPromptCardDraft(jobId: string, input:
     sourceImageCount,
     canonicalImageCount,
     imageCount: images.length,
+    sourceImageIds: images.filter((image) => image.role === "source").map((image) => image.id),
+    canonicalVersionIds: images.filter((image) => image.role === "canonical").map((image) => image.id),
     draft,
   };
+}
+
+export async function enqueueCharacterLoraPromptCardDraft(jobId: string, input: unknown = {}) {
+  const id = normalizeId(jobId, "jobId");
+  await getExistingJob(id);
+  const parsed = parseWithSchema(generatePromptCardDraftSchema, input);
+  const provider = parsed.provider ?? DEFAULT_PROMPT_CARD_DRAFT_PROVIDER;
+  const selection = normalizePromptCardDraftImageSelection({
+    sourceImageIds: parsed.sourceImageIds,
+    canonicalVersionId: parsed.canonicalVersionId,
+    canonicalVersionIds: parsed.canonicalVersionIds,
+  });
+  const images = await resolvePromptCardDraftImages(id, selection);
+
+  if (images.length === 0) {
+    throw new CharacterLoraPromptCardServiceError(
+      "At least one source or canonical image is required to draft a Prompt Card",
+      409,
+      { jobId: id, sourceImageIds: selection.sourceImageIds, canonicalVersionIds: selection.canonicalVersionIds },
+    );
+  }
+
+  const sourceImageIds = images.filter((image) => image.role === "source").map((image) => image.id);
+  const canonicalVersionIds = images.filter((image) => image.role === "canonical").map((image) => image.id);
+  const taskId = randomUUID();
+  const task = await createCharacterLoraPromptCardDraftWorkerTask({
+    taskId,
+    jobId: id,
+    taskPayload: {
+      taskType: "prompt_card_draft",
+      jobId: id,
+      request: {
+        provider,
+        operatorNotes: parsed.operatorNotes ?? null,
+        sourceImageIds,
+        canonicalVersionIds,
+      },
+    },
+  });
+
+  return {
+    task,
+    taskId: task.id,
+    provider,
+    sourceImageCount: sourceImageIds.length,
+    canonicalImageCount: canonicalVersionIds.length,
+    imageCount: images.length,
+  };
+}
+
+export async function getCharacterLoraPromptCardDraftTask(jobId: string, taskId: string) {
+  const id = normalizeId(jobId, "jobId");
+  const normalizedTaskId = normalizeId(taskId, "taskId");
+  const task = await getWorkerTaskFromRepository(normalizedTaskId);
+
+  if (!task) {
+    throw new CharacterLoraPromptCardServiceError("Prompt-card draft task not found", 404, { taskId: normalizedTaskId });
+  }
+
+  if (task.jobId !== id || task.workerType !== "prompt_card_draft" || task.targetType !== "promptCardDraft") {
+    throw new CharacterLoraPromptCardServiceError("Prompt-card draft task does not belong to this job", 404, {
+      jobId: id,
+      taskId: normalizedTaskId,
+    });
+  }
+
+  return task;
 }
 
 export async function promoteCharacterLoraSectionInstructionToPromptCardVersion(jobId: string, input: unknown) {
@@ -374,12 +455,13 @@ function toInputJsonValue(value: unknown) {
   return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
 }
 
-async function resolvePromptCardDraftImages(jobId: string, canonicalVersionId: string | null): Promise<PromptCardDraftImageInput[]> {
+async function resolvePromptCardDraftImages(jobId: string, selection: PromptCardDraftImageSelection): Promise<PromptCardDraftImageInput[]> {
   const [sourceImages, canonicalVersions] = await Promise.all([
     listSourceImagesFromRepository(jobId),
     listCanonicalVersionsFromRepository(jobId),
   ]);
-  const selectedCanonicalVersions = selectPromptCardDraftCanonicalVersions(canonicalVersions, canonicalVersionId);
+  const selectedSourceImages = selectPromptCardDraftSourceImages(sourceImages, selection);
+  const selectedCanonicalVersions = selectPromptCardDraftCanonicalVersions(canonicalVersions, selection);
 
   const canonicalInputs = await Promise.all(
     selectedCanonicalVersions
@@ -397,7 +479,7 @@ async function resolvePromptCardDraftImages(jobId: string, canonicalVersionId: s
   );
 
   const sourceInputs = await Promise.all(
-    sourceImages.map(async (image) => {
+    selectedSourceImages.map(async (image) => {
       const artifact = await getArtifactFromRepository(image.artifactId);
       if (!artifact) return null;
       return {
@@ -414,23 +496,44 @@ async function resolvePromptCardDraftImages(jobId: string, canonicalVersionId: s
     .slice(0, MAX_PROMPT_CARD_DRAFT_IMAGES);
 }
 
+function selectPromptCardDraftSourceImages(
+  sourceImages: Awaited<ReturnType<typeof listSourceImagesFromRepository>>,
+  selection: PromptCardDraftImageSelection,
+) {
+  if (!selection.sourceSelectionProvided) {
+    return sourceImages;
+  }
+
+  const byId = new Map(sourceImages.map((image) => [image.id, image]));
+  const selected = selection.sourceImageIds.map((sourceImageId) => byId.get(sourceImageId)).filter(Boolean);
+  const missingIds = selection.sourceImageIds.filter((sourceImageId) => !byId.has(sourceImageId));
+  if (missingIds.length > 0) {
+    throw new CharacterLoraPromptCardServiceError("Selected source image was not found", 404, { sourceImageIds: missingIds });
+  }
+
+  return selected as typeof sourceImages;
+}
+
 function selectPromptCardDraftCanonicalVersions(
   versions: Awaited<ReturnType<typeof listCanonicalVersionsFromRepository>>,
-  canonicalVersionId: string | null,
+  selection: PromptCardDraftImageSelection,
 ) {
-  if (canonicalVersionId) {
-    const version = versions.find((candidate) => candidate.id === canonicalVersionId);
-    if (!version) {
-      throw new CharacterLoraPromptCardServiceError("Canonical version not found", 404, { canonicalVersionId });
+  if (selection.canonicalSelectionProvided) {
+    const byId = new Map(versions.map((version) => [version.id, version]));
+    const selected = selection.canonicalVersionIds.map((canonicalVersionId) => byId.get(canonicalVersionId)).filter(Boolean);
+    const missingIds = selection.canonicalVersionIds.filter((canonicalVersionId) => !byId.has(canonicalVersionId));
+    if (missingIds.length > 0) {
+      throw new CharacterLoraPromptCardServiceError("Selected canonical version was not found", 404, { canonicalVersionIds: missingIds });
     }
-    if (version.status === "rejected") {
+    const rejected = selected.find((version) => version?.status === "rejected");
+    if (rejected) {
       throw new CharacterLoraPromptCardServiceError(
         "Rejected canonical version cannot be used for Prompt Card draft extraction",
         409,
-        { canonicalVersionId, status: version.status },
+        { canonicalVersionId: rejected.id, status: rejected.status },
       );
     }
-    return [version];
+    return selected as typeof versions;
   }
 
   return selectLatestCanonicalVersionsByView(versions);

@@ -17,6 +17,7 @@ import type {
   CharacterLoraImageGenerationOutput,
   CharacterLoraImageGenerationTaskPayload,
   CharacterLoraBenchmarkTaskPayload,
+  CharacterLoraPromptCardDraftTaskPayload,
   CharacterLoraPromotionReturnPoint,
   CharacterLoraTrainingCompleteOutput,
   CharacterLoraTrainingTaskPayload,
@@ -3112,6 +3113,46 @@ export async function createCharacterLoraDatasetFreezeWorkerTask(input: {
   return serializeWorkerTask(task);
 }
 
+export async function createCharacterLoraPromptCardDraftWorkerTask(input: {
+  taskId: string;
+  jobId: string;
+  taskPayload: CharacterLoraPromptCardDraftTaskPayload;
+}) {
+  const task = await db.$transaction(async (tx) => {
+    const created = await tx.characterLoraWorkerTask.create({
+      data: {
+        id: input.taskId,
+        jobId: input.jobId,
+        workerType: CharacterLoraWorkerType.prompt_card_draft,
+        targetType: "promptCardDraft",
+        targetId: input.taskId,
+        status: CharacterLoraRunStatus.queued,
+        payload: toInputJsonValue(input.taskPayload),
+        progressJson: toInputJsonValue({
+          status: "queued",
+          provider: input.taskPayload.request.provider,
+          sourceImageIds: input.taskPayload.request.sourceImageIds,
+          canonicalVersionIds: input.taskPayload.request.canonicalVersionIds,
+        }),
+      },
+      select: WORKER_TASK_SELECT,
+    });
+
+    await tx.characterLoraTrainingJob.update({
+      where: { id: input.jobId },
+      data: {
+        phase: "prompt_card",
+        failureSummary: null,
+      },
+      select: { id: true },
+    });
+
+    return created;
+  });
+
+  return serializeWorkerTask(task);
+}
+
 export async function leaseNextCharacterLoraWorkerTask(input: {
   workerType: CharacterLoraWorkerType;
   leaseOwner: string;
@@ -4136,6 +4177,44 @@ export async function completeDatasetFreezeWorkerTask(input: {
         revision: serializeDatasetRevision(result.revision),
       }
     : null;
+}
+
+export async function completePromptCardDraftWorkerTask(input: {
+  taskId: string;
+  leaseOwner?: string;
+}) {
+  const task = await db.$transaction(async (tx) => {
+    const existing = await tx.characterLoraWorkerTask.findUnique({
+      where: { id: input.taskId },
+      select: WORKER_TASK_SELECT,
+    });
+
+    if (!existing || existing.status !== CharacterLoraRunStatus.running) {
+      return null;
+    }
+
+    if (input.leaseOwner && existing.leaseOwner !== input.leaseOwner) {
+      return null;
+    }
+
+    if (existing.workerType !== CharacterLoraWorkerType.prompt_card_draft || existing.targetType !== "promptCardDraft") {
+      return null;
+    }
+
+    return tx.characterLoraWorkerTask.update({
+      where: { id: existing.id },
+      data: {
+        status: CharacterLoraRunStatus.done,
+        leaseExpiresAt: null,
+        heartbeatAt: new Date(),
+        finishedAt: new Date(),
+        errorSummary: null,
+      },
+      select: WORKER_TASK_SELECT,
+    });
+  });
+
+  return task ? serializeWorkerTask(task) : null;
 }
 
 async function createFrozenCharacterLoraDatasetRevisionInTx(

@@ -15,6 +15,7 @@ import {
 import {
   PromptCardDraftParseError,
   buildPromptCardDraftPrompt,
+  normalizePromptCardDraftImageSelection,
   parsePromptCardDraftResponse,
   selectLatestCanonicalVersionsByView,
 } from "./src/lib/character-lora-prompt-card-draft";
@@ -203,4 +204,34 @@ test("prompt card draft canonical selection picks the latest non-rejected versio
     "left-good",
     "right-good",
   ]);
+});
+
+test("prompt card draft image selection preserves manual source and canonical picks", () => {
+  const selection = normalizePromptCardDraftImageSelection({
+    sourceImageIds: ["src-1", "src-2", "src-1", ""],
+    canonicalVersionId: "canonical-current",
+    canonicalVersionIds: ["canonical-back", "canonical-current", "  canonical-left  "],
+  });
+
+  assert.equal(selection.sourceSelectionProvided, true);
+  assert.equal(selection.canonicalSelectionProvided, true);
+  assert.deepEqual(selection.sourceImageIds, ["src-1", "src-2"]);
+  assert.deepEqual(selection.canonicalVersionIds, ["canonical-current", "canonical-back", "canonical-left"]);
+});
+
+test("prompt card draft UI exposes manual image selection and task status", () => {
+  const form = readFileSync("src/app/character-lora-training/[jobId]/prompt-card/prompt-card-form.tsx", "utf8");
+  const workflowActions = readFileSync("src/app/character-lora-training/[jobId]/workflow-actions.ts", "utf8");
+  const workerQueue = readFileSync("scripts/character-lora-training/worker-queue.ts", "utf8");
+  const contracts = readFileSync("src/server/character-lora-training/contracts.ts", "utf8");
+
+  assert.match(form, /selectedSourceImageIds/);
+  assert.match(form, /selectedCanonicalVersionIds/);
+  assert.match(form, /ArtifactImagePreview/);
+  assert.match(form, /draftTask/);
+  assert.match(form, /getPromptCardDraftTaskAction/);
+  assert.match(workflowActions, /enqueueCharacterLoraPromptCardDraft/);
+  assert.match(workflowActions, /getPromptCardDraftTaskAction/);
+  assert.match(workerQueue, /prompt-card-draft-worker\.ts/);
+  assert.match(contracts, /prompt_card_draft/);
 });

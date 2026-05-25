@@ -15,6 +15,29 @@ export type PromptCardDraftFields = {
   finalPromptDraft: string;
 };
 
+export type PromptCardDraftImageSelection = {
+  sourceImageIds: string[];
+  canonicalVersionIds: string[];
+  sourceSelectionProvided: boolean;
+  canonicalSelectionProvided: boolean;
+};
+
+export function normalizePromptCardDraftImageSelection(input: {
+  sourceImageIds?: readonly unknown[] | null;
+  canonicalVersionId?: unknown;
+  canonicalVersionIds?: readonly unknown[] | null;
+}): PromptCardDraftImageSelection {
+  return {
+    sourceImageIds: uniqueTrimmedStrings(input.sourceImageIds ?? []),
+    canonicalVersionIds: uniqueTrimmedStrings([
+      input.canonicalVersionId,
+      ...(input.canonicalVersionIds ?? []),
+    ]),
+    sourceSelectionProvided: Array.isArray(input.sourceImageIds),
+    canonicalSelectionProvided: input.canonicalVersionId !== undefined || Array.isArray(input.canonicalVersionIds),
+  };
+}
+
 export function buildPromptCardDraftPrompt(input: {
   characterName: string;
   triggerToken: string;
@@ -155,6 +178,21 @@ function compareCanonicalVersionChoiceDesc(a: PromptCardDraftCanonicalVersionCho
   }
 
   return timestampFromUnknown(b.createdAt) - timestampFromUnknown(a.createdAt);
+}
+
+function uniqueTrimmedStrings(values: readonly unknown[]) {
+  const seen = new Set<string>();
+  const result: string[] = [];
+
+  for (const value of values) {
+    if (typeof value !== "string") continue;
+    const trimmed = value.trim();
+    if (!trimmed || seen.has(trimmed)) continue;
+    seen.add(trimmed);
+    result.push(trimmed);
+  }
+
+  return result;
 }
 
 function timestampFromUnknown(value: Date | string | number | null | undefined) {

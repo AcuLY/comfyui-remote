@@ -36,11 +36,17 @@ export default async function PromptCardPage({
   const currentPrompt = promptCards.find((card) => card.id === job.currentPromptCardVersionId) ?? promptCards[promptCards.length - 1] ?? null;
   const currentCanonical = report.canonicalVersions.find((version) => version.id === job.currentCanonicalVersionId) ?? null;
   const usableCanonicalVersions = report.canonicalVersions.filter((version) => version.status !== "rejected");
+  const sourceOptions = report.sourceImages.map((image, index) => ({
+    id: image.id,
+    label: `source ${index + 1} / ${compactId(image.id)}`,
+    relativePath: image.artifact?.relativePath ?? image.relativePath ?? null,
+  }));
   const canonicalOptions = usableCanonicalVersions.map((version) => ({
     id: version.id,
     version: version.version,
     status: version.status,
     label: `v${version.version} / ${getCanonicalViewLabel(version.canonicalView)} / ${version.status} / ${compactId(version.id)}`,
+    relativePath: version.artifact?.relativePath ?? null,
   }));
   const initialDraft = {
     characterDescription: currentPrompt ? extractCharacterDescription(currentPrompt.identityTraits) : "",
@@ -69,6 +75,7 @@ export default async function PromptCardPage({
               jobId={job.id}
               triggerToken={job.triggerToken}
               defaultCanonicalVersionId={currentCanonical?.id ?? ""}
+              sourceOptions={sourceOptions}
               canonicalOptions={canonicalOptions}
               initialDraft={initialDraft}
             />

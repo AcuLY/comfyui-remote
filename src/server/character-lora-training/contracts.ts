@@ -57,6 +57,7 @@ export const CHARACTER_LORA_WORKER_TYPES = [
   "training",
   "benchmark",
   "promotion",
+  "prompt_card_draft",
 ] as const;
 
 export const CHARACTER_LORA_DECISION_STATUSES = [
@@ -752,12 +753,24 @@ export const characterLoraPromotionTaskPayloadSchema = z.object({
   variantPromptDrafts: jsonObjectSchema,
 });
 
+export const characterLoraPromptCardDraftTaskPayloadSchema = z.object({
+  taskType: z.literal("prompt_card_draft"),
+  jobId: z.string().min(1),
+  request: z.object({
+    provider: z.enum(["codex-cli", "mock-local"]),
+    operatorNotes: z.string().trim().min(1).nullable().optional(),
+    sourceImageIds: z.array(z.string().trim().min(1)).default([]),
+    canonicalVersionIds: z.array(z.string().trim().min(1)).default([]),
+  }).strict(),
+}).strict();
+
 export const characterLoraWorkerTaskPayloadSchema = z.discriminatedUnion("taskType", [
   characterLoraImageGenerationTaskPayloadSchema,
   characterLoraDatasetFreezeTaskPayloadSchema,
   characterLoraTrainingTaskPayloadSchema,
   characterLoraBenchmarkTaskPayloadSchema,
   characterLoraPromotionTaskPayloadSchema,
+  characterLoraPromptCardDraftTaskPayloadSchema,
 ]);
 
 export type CharacterLoraImageGenerationTaskPayload = z.infer<typeof characterLoraImageGenerationTaskPayloadSchema>;
@@ -765,6 +778,7 @@ export type CharacterLoraDatasetFreezeTaskPayload = z.infer<typeof characterLora
 export type CharacterLoraTrainingTaskPayload = z.infer<typeof characterLoraTrainingTaskPayloadSchema>;
 export type CharacterLoraBenchmarkTaskPayload = z.infer<typeof characterLoraBenchmarkTaskPayloadSchema>;
 export type CharacterLoraPromotionTaskPayload = z.infer<typeof characterLoraPromotionTaskPayloadSchema>;
+export type CharacterLoraPromptCardDraftTaskPayload = z.infer<typeof characterLoraPromptCardDraftTaskPayloadSchema>;
 export type CharacterLoraWorkerTaskPayload = z.infer<typeof characterLoraWorkerTaskPayloadSchema>;
 
 function normalizeTrainingScopeDerivedStates(

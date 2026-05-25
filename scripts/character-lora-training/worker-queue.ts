@@ -48,6 +48,7 @@ Options:
   --skip-dataset-freeze        Do not start the dataset freeze worker.
   --skip-training              Do not start the training worker.
   --skip-benchmark             Do not start the benchmark worker.
+  --skip-prompt-card-draft     Do not start the prompt-card draft worker.
 
 Notes:
   The supervisor does not run inside Next.js. Keep it alive beside the Manager
@@ -208,6 +209,13 @@ function buildWorkerSpecs(values: Map<string, string | true>): WorkerSpec[] {
         ...(values.has("--benchmark-skip-wait") ? ["--skip-wait"] : []),
         ...(benchmarkTimeoutMs ? ["--timeout-ms", String(benchmarkTimeoutMs)] : []),
       ],
+    },
+    {
+      key: "prompt-card-draft",
+      script: "prompt-card-draft-worker.ts",
+      ownerSuffix: "prompt-card-draft-worker",
+      skipFlag: "--skip-prompt-card-draft",
+      extraArgs: [],
     },
   ];
 }

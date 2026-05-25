@@ -9,10 +9,11 @@ import {
   createCharacterLoraPromptCardVersion,
   enqueueCharacterLoraCanonicalGenerationRun,
   enqueueCharacterLoraCanonicalViewGenerationRuns,
+  enqueueCharacterLoraPromptCardDraft,
   enqueueCharacterLoraSectionGenerationRun,
   enqueueCharacterLoraTrainingRun,
   freezeCharacterLoraDataset,
-  generateCharacterLoraPromptCardDraft,
+  getCharacterLoraPromptCardDraftTask,
   instantiateCharacterLoraJobSections,
   registerManualCharacterLoraCanonicalVersion,
   rejectCharacterLoraCanonicalVersion,
@@ -27,8 +28,39 @@ export type WorkflowActionResult = {
   message: string;
 };
 
+export type PromptCardDraftTaskProgress = {
+  status?: string;
+  provider?: string;
+  sourceImageCount?: number;
+  canonicalImageCount?: number;
+  imageCount?: number;
+  sourceImageIds?: string[];
+  canonicalVersionIds?: string[];
+  draft?: PromptCardDraftFields;
+  message?: string;
+  startedAt?: string;
+  finishedAt?: string;
+};
+
+export type PromptCardDraftTaskSnapshot = {
+  id: string;
+  status: string;
+  provider?: string;
+  sourceImageCount?: number;
+  canonicalImageCount?: number;
+  imageCount?: number;
+  progress?: PromptCardDraftTaskProgress | null;
+  errorSummary?: string | null;
+  createdAt?: string;
+  startedAt?: string | null;
+  heartbeatAt?: string | null;
+  finishedAt?: string | null;
+};
+
 export type PromptCardDraftActionResult = WorkflowActionResult & {
   draft?: PromptCardDraftFields;
+  taskId?: string;
+  task?: PromptCardDraftTaskSnapshot;
   provider?: string;
   sourceImageCount?: number;
   canonicalImageCount?: number;
@@ -142,15 +174,41 @@ export async function createPromptCardAction(jobId: string, formData: FormData) 
 
 export async function draftPromptCardAction(jobId: string, input: unknown): Promise<PromptCardDraftActionResult> {
   try {
-    const result = await generateCharacterLoraPromptCardDraft(jobId, input ?? {});
+    const result = await enqueueCharacterLoraPromptCardDraft(jobId, input ?? {});
+    const task = toPromptCardDraftTaskSnapshot(result.task);
     return {
       ok: true,
-      message: `AI 草稿已生成（${result.provider}，source ${result.sourceImageCount}，canonical ${result.canonicalImageCount}）。请检查后再创建新版本。`,
-      draft: result.draft,
+      message: `AI 草拟任务已入队（${result.provider}，source ${result.sourceImageCount}，canonical ${result.canonicalImageCount}，task ${compactActionId(result.taskId)}）。下方会自动刷新状态。`,
+      taskId: result.taskId,
+      task,
       provider: result.provider,
       sourceImageCount: result.sourceImageCount,
       canonicalImageCount: result.canonicalImageCount,
       imageCount: result.imageCount,
+    };
+  } catch (error) {
+    return toActionResult(error);
+  }
+}
+
+export async function getPromptCardDraftTaskAction(jobId: string, taskId: string): Promise<PromptCardDraftActionResult> {
+  try {
+    const task = toPromptCardDraftTaskSnapshot(await getCharacterLoraPromptCardDraftTask(jobId, taskId));
+    const progress = task.progress;
+    return {
+      ok: true,
+      message: task.status === "done"
+        ? "AI 草稿已生成。请检查后再创建新版本。"
+        : task.status === "failed"
+          ? task.errorSummary ?? "AI 草拟任务失败。"
+          : `AI 草拟任务状态：${progress?.status ?? task.status}`,
+      draft: progress?.draft,
+      taskId: task.id,
+      task,
+      provider: task.provider ?? progress?.provider,
+      sourceImageCount: task.sourceImageCount ?? progress?.sourceImageCount,
+      canonicalImageCount: task.canonicalImageCount ?? progress?.canonicalImageCount,
+      imageCount: task.imageCount ?? progress?.imageCount,
     };
   } catch (error) {
     return toActionResult(error);
@@ -251,6 +309,92 @@ function revalidateJob(jobId: string) {
   revalidatePath(`/character-lora-training/${jobId}/sections`);
   revalidatePath(`/character-lora-training/${jobId}/dataset`);
   revalidatePath(`/character-lora-training/${jobId}/training`);
+}
+
+function toPromptCardDraftTaskSnapshot(task: {
+  id: string;
+  status: string;
+  payload: unknown;
+  progressJson: unknown;
+  errorSummary?: string | null;
+  createdAt?: string;
+  startedAt?: string | null;
+  heartbeatAt?: string | null;
+  finishedAt?: string | null;
+}): PromptCardDraftTaskSnapshot {
+  const progress = normalizePromptCardDraftTaskProgress(task.progressJson);
+  const payload = isPlainRecord(task.payload) ? task.payload : null;
+  const request = isPlainRecord(payload?.request) ? payload.request : null;
+  const provider = progress?.provider ?? readString(request, "provider");
+  const sourceImageIds = progress?.sourceImageIds ?? readStringArray(request, "sourceImageIds");
+  const canonicalVersionIds = progress?.canonicalVersionIds ?? readStringArray(request, "canonicalVersionIds");
+
+  return {
+    id: task.id,
+    status: task.status,
+    provider,
+    sourceImageCount: progress?.sourceImageCount ?? sourceImageIds?.length,
+    canonicalImageCount: progress?.canonicalImageCount ?? canonicalVersionIds?.length,
+    imageCount: progress?.imageCount ?? (sourceImageIds || canonicalVersionIds ? (sourceImageIds?.length ?? 0) + (canonicalVersionIds?.length ?? 0) : undefined),
+    progress,
+    errorSummary: task.errorSummary ?? null,
+    createdAt: task.createdAt,
+    startedAt: task.startedAt ?? null,
+    heartbeatAt: task.heartbeatAt ?? null,
+    finishedAt: task.finishedAt ?? null,
+  };
+}
+
+function normalizePromptCardDraftTaskProgress(value: unknown): PromptCardDraftTaskProgress | null {
+  if (!isPlainRecord(value)) return null;
+  const draft = normalizePromptCardDraftFields(value.draft);
+  return {
+    status: readString(value, "status"),
+    provider: readString(value, "provider"),
+    sourceImageCount: readNumber(value, "sourceImageCount"),
+    canonicalImageCount: readNumber(value, "canonicalImageCount"),
+    imageCount: readNumber(value, "imageCount"),
+    sourceImageIds: readStringArray(value, "sourceImageIds"),
+    canonicalVersionIds: readStringArray(value, "canonicalVersionIds"),
+    draft,
+    message: readString(value, "message"),
+    startedAt: readString(value, "startedAt"),
+    finishedAt: readString(value, "finishedAt"),
+  };
+}
+
+function normalizePromptCardDraftFields(value: unknown): PromptCardDraftFields | undefined {
+  if (!isPlainRecord(value)) return undefined;
+  const characterDescription = readString(value, "characterDescription");
+  const identityTraits = readString(value, "identityTraits");
+  const outfitTraits = readString(value, "outfitTraits");
+  const negativeTraits = readString(value, "negativeTraits");
+  const finalPromptDraft = readString(value, "finalPromptDraft");
+  if (!characterDescription || !identityTraits || !outfitTraits || !negativeTraits || !finalPromptDraft) {
+    return undefined;
+  }
+  return { characterDescription, identityTraits, outfitTraits, negativeTraits, finalPromptDraft };
+}
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function readString(record: Record<string, unknown> | null, key: string) {
+  const value = record?.[key];
+  return typeof value === "string" && value.trim() ? value : undefined;
+}
+
+function readNumber(record: Record<string, unknown>, key: string) {
+  const value = record[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function readStringArray(record: Record<string, unknown> | null, key: string) {
+  const value = record?.[key];
+  if (!Array.isArray(value)) return undefined;
+  const strings = value.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+  return strings.length > 0 ? strings : undefined;
 }
 
 function textPayload(value: FormDataEntryValue | null) {
