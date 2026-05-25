@@ -23,8 +23,6 @@ export function TaskPanelTrigger() {
         "backdrop-blur-sm transition-all duration-200",
         "hover:bg-zinc-700/90 hover:scale-105 hover:border-white/15",
         "active:scale-95",
-        // Hide on lg when panel would be shown inline
-        "lg:hidden",
         // Pulsing ring when tasks are running
         hasRunning && "ring-2 ring-sky-400/50 animate-pulse",
       )}
