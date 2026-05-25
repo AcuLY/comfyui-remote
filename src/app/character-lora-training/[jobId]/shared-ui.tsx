@@ -168,6 +168,28 @@ export function ArtifactThumb({
   );
 }
 
+export function ArtifactThumbCompact({
+  jobId,
+  relativePath,
+  alt,
+}: {
+  jobId: string;
+  relativePath: string | null | undefined;
+  alt: string;
+}) {
+  return (
+    <ArtifactImagePreview
+      jobId={jobId}
+      relativePath={relativePath}
+      alt={alt}
+      thumbnailOptions={{ w: 180, q: 70 }}
+      imageClassName="aspect-[3/4] w-full rounded-md border border-white/10 bg-black/30 object-cover"
+      emptyClassName="flex aspect-[3/4] items-center justify-center rounded-md border border-dashed border-white/10 bg-black/20 text-[10px] text-zinc-600"
+      emptyLabel="—"
+    />
+  );
+}
+
 export function ImageStrip({
   jobId,
   images,
