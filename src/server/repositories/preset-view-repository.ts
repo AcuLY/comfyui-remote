@@ -9,6 +9,60 @@ import {
 } from "@/server/services/preset-change-history-service";
 
 // ---------------------------------------------------------------------------
+// Shared helper: resolve display names for group members
+// ---------------------------------------------------------------------------
+
+type MemberLike = {
+  presetId?: string | null;
+  variantId?: string | null;
+  subGroupId?: string | null;
+};
+
+type ResolvedNameMaps = {
+  presetMap: Map<string, string>;
+  variantMap: Map<string, string>;
+  groupMap: Map<string, string>;
+};
+
+/**
+ * Collect member IDs from groups, batch-fetch preset/variant/group names,
+ * and return lookup maps for display name resolution.
+ */
+async function resolveMemberNames(
+  groups: Array<{ members: MemberLike[] }>,
+): Promise<ResolvedNameMaps> {
+  const allPresetIds = new Set<string>();
+  const allVariantIds = new Set<string>();
+  const allGroupIds = new Set<string>();
+
+  for (const g of groups) {
+    for (const m of g.members) {
+      if (m.presetId) allPresetIds.add(m.presetId);
+      if (m.variantId) allVariantIds.add(m.variantId);
+      if (m.subGroupId) allGroupIds.add(m.subGroupId);
+    }
+  }
+
+  const [presetNames, variantNames, groupNames] = await Promise.all([
+    allPresetIds.size > 0
+      ? prisma.preset.findMany({ where: { id: { in: [...allPresetIds] } }, select: { id: true, name: true } })
+      : [],
+    allVariantIds.size > 0
+      ? prisma.presetVariant.findMany({ where: { id: { in: [...allVariantIds] } }, select: { id: true, name: true } })
+      : [],
+    allGroupIds.size > 0
+      ? prisma.presetGroup.findMany({ where: { id: { in: [...allGroupIds] } }, select: { id: true, name: true } })
+      : [],
+  ]);
+
+  return {
+    presetMap: new Map(presetNames.map((p) => [p.id, p.name])),
+    variantMap: new Map(variantNames.map((v) => [v.id, v.name])),
+    groupMap: new Map(groupNames.map((g) => [g.id, g.name])),
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Preset Categories & Presets — 预制管理
 // ---------------------------------------------------------------------------
 
@@ -128,32 +182,9 @@ export async function getPresetCategoriesWithPresets(): Promise<PresetCategoryFu
   });
 
   // Resolve display names for group members (batch)
-  const allPresetIds = new Set<string>();
-  const allVariantIds = new Set<string>();
-  const allGroupIds = new Set<string>();
-  for (const c of categories) {
-    for (const g of c.groups) {
-      for (const m of g.members) {
-        if (m.presetId) allPresetIds.add(m.presetId);
-        if (m.variantId) allVariantIds.add(m.variantId);
-        if (m.subGroupId) allGroupIds.add(m.subGroupId);
-      }
-    }
-  }
-  const [presetNames, variantNames, groupNames] = await Promise.all([
-    allPresetIds.size > 0
-      ? prisma.preset.findMany({ where: { id: { in: [...allPresetIds] } }, select: { id: true, name: true } })
-      : [],
-    allVariantIds.size > 0
-      ? prisma.presetVariant.findMany({ where: { id: { in: [...allVariantIds] } }, select: { id: true, name: true } })
-      : [],
-    allGroupIds.size > 0
-      ? prisma.presetGroup.findMany({ where: { id: { in: [...allGroupIds] } }, select: { id: true, name: true } })
-      : [],
-  ]);
-  const pMap = new Map(presetNames.map((p) => [p.id, p.name]));
-  const vMap = new Map(variantNames.map((v) => [v.id, v.name]));
-  const gMap = new Map(groupNames.map((g) => [g.id, g.name]));
+  const { presetMap: pMap, variantMap: vMap, groupMap: gMap } = await resolveMemberNames(
+    categories.flatMap((c) => c.groups),
+  );
 
   return categories.map((c) => ({
     id: c.id,
@@ -303,34 +334,9 @@ export async function getPresetLibraryV2(): Promise<PresetLibraryV2> {
   });
 
   // Resolve member display names for groups
-  const allPresetIds = new Set<string>();
-  const allVariantIds = new Set<string>();
-  const allSubGroupIds = new Set<string>();
-  for (const c of categories) {
-    for (const g of c.groups) {
-      for (const m of g.members) {
-        if (m.presetId) allPresetIds.add(m.presetId);
-        if (m.variantId) allVariantIds.add(m.variantId);
-        if (m.subGroupId) allSubGroupIds.add(m.subGroupId);
-      }
-    }
-  }
-
-  const [presetNames, variantNames, groupNames] = await Promise.all([
-    allPresetIds.size > 0
-      ? prisma.preset.findMany({ where: { id: { in: [...allPresetIds] } }, select: { id: true, name: true } })
-      : [],
-    allVariantIds.size > 0
-      ? prisma.presetVariant.findMany({ where: { id: { in: [...allVariantIds] } }, select: { id: true, name: true } })
-      : [],
-    allSubGroupIds.size > 0
-      ? prisma.presetGroup.findMany({ where: { id: { in: [...allSubGroupIds] } }, select: { id: true, name: true } })
-      : [],
-  ]);
-
-  const presetNameMap = new Map(presetNames.map((p) => [p.id, p.name]));
-  const variantNameMap = new Map(variantNames.map((v) => [v.id, v.name]));
-  const groupNameMap = new Map(groupNames.map((g) => [g.id, g.name]));
+  const { presetMap: presetNameMap, variantMap: variantNameMap, groupMap: groupNameMap } = await resolveMemberNames(
+    categories.flatMap((c) => c.groups),
+  );
 
   return {
     categories: categories.map((c) => ({
@@ -415,32 +421,8 @@ export async function getPresetGroups(): Promise<PresetGroupItem[]> {
   });
 
   // Resolve display names for members
-  const allPresetIds = new Set<string>();
-  const allVariantIds = new Set<string>();
-  const allGroupIds = new Set<string>();
-  for (const g of groups) {
-    for (const m of g.members) {
-      if (m.presetId) allPresetIds.add(m.presetId);
-      if (m.variantId) allVariantIds.add(m.variantId);
-      if (m.subGroupId) allGroupIds.add(m.subGroupId);
-    }
-  }
+  const { presetMap: pMap, variantMap: vMap, groupMap: gMap } = await resolveMemberNames(groups);
 
-  const [presetNames, variantNames, groupNames] = await Promise.all([
-    allPresetIds.size > 0
-      ? prisma.preset.findMany({ where: { id: { in: [...allPresetIds] } }, select: { id: true, name: true } })
-      : [],
-    allVariantIds.size > 0
-      ? prisma.presetVariant.findMany({ where: { id: { in: [...allVariantIds] } }, select: { id: true, name: true } })
-      : [],
-    allGroupIds.size > 0
-      ? prisma.presetGroup.findMany({ where: { id: { in: [...allGroupIds] } }, select: { id: true, name: true } })
-      : [],
-  ]);
-
-  const pMap = new Map(presetNames.map((p) => [p.id, p.name]));
-  const vMap = new Map(variantNames.map((v) => [v.id, v.name]));
-  const gMap = new Map(groupNames.map((g) => [g.id, g.name]));
 
   return groups.map((g) => ({
     id: g.id,

@@ -4,11 +4,16 @@
  * Manually trigger a health check against the ComfyUI API and return the result.
  */
 
-import { ok } from "@/lib/api-response";
+import { ok, fail } from "@/lib/api-response";
 import { getComfyProcessManager } from "@/server/services/comfy-process-manager";
 
 export async function POST() {
-  const manager = getComfyProcessManager();
-  const result = await manager.probeHealth();
-  return ok(result);
+  try {
+    const manager = getComfyProcessManager();
+    const result = await manager.probeHealth();
+    return ok(result);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return fail(message, 500);
+  }
 }

@@ -1,8 +1,14 @@
+import { z } from "zod";
 import { fail, ok } from "@/lib/api-response";
 import {
   ModelAssetError,
   moveModelFile,
 } from "@/server/services/model-asset-service";
+
+const MoveSchema = z.object({
+  sourcePath: z.string().min(1),
+  targetDir: z.string().min(1),
+});
 
 export async function POST(request: Request) {
   try {
@@ -10,7 +16,11 @@ export async function POST(request: Request) {
     if (!body || typeof body !== "object" || Array.isArray(body)) {
       return fail("Invalid JSON body", 400);
     }
-    const data = await moveModelFile("lora", body as { sourcePath?: string; targetDir?: string });
+    const result = MoveSchema.safeParse(body);
+    if (!result.success) {
+      return fail("Invalid input", 400, result.error.flatten());
+    }
+    const data = await moveModelFile("lora", result.data);
     return ok(data);
   } catch (error) {
     if (error instanceof ModelAssetError) {

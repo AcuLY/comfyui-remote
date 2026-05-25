@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { NextRequest } from "next/server";
 import { fail, ok } from "@/lib/api-response";
 import {
@@ -6,6 +7,12 @@ import {
   parseModelKind,
   updateModelNotes,
 } from "@/server/services/model-asset-service";
+
+const NotesSchema = z.object({
+  path: z.string().min(1),
+  notes: z.string().optional(),
+  triggerWords: z.string().optional(),
+});
 
 export async function GET(request: NextRequest) {
   try {
@@ -28,7 +35,11 @@ export async function PUT(request: NextRequest) {
     if (!body || typeof body !== "object" || Array.isArray(body)) {
       return fail("Invalid JSON body", 400);
     }
-    const data = await updateModelNotes(kind, body as { path?: string; notes?: string; triggerWords?: string });
+    const result = NotesSchema.safeParse(body);
+    if (!result.success) {
+      return fail("Invalid input", 400, result.error.flatten());
+    }
+    const data = await updateModelNotes(kind, result.data);
     return ok(data);
   } catch (error) {
     if (error instanceof ModelAssetError) {
