@@ -94,7 +94,6 @@ export default async function PersonaReferencePage({
         <PersonaReferenceClient
           candidatesByView={canonicalVersionsByView}
           sourceImages={report.sourceImages}
-          allNonRejectedVersions={referenceVersions}
           jobId={job.id}
           currentCanonicalVersionId={job.currentCanonicalVersionId}
           enqueueAction={enqueueCanonicalAction.bind(null, job.id)}

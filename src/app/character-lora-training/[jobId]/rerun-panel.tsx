@@ -8,49 +8,56 @@ import { ArtifactThumbCompact } from "./shared-ui";
 import { WorkflowActionForm } from "./workflow-action-form";
 import type { WorkflowActionResult } from "./workflow-actions";
 
-export type RerunBaseImage = {
+export type GenerationBaseImage = {
   id: string;
-  version: number;
-  canonicalView: string | null;
-  artifactId: string;
+  label: string;
   relativePath: string;
-  sha256: string;
+  // Canonical variant fields
+  artifactId?: string;
+  sha256?: string;
+  canonicalView?: string | null;
+  // Section variant fields
+  generationRunId?: string;
 };
 
 type GenerationPanelProps = {
-  baseImages: RerunBaseImage[];
+  /** "canonical" for persona-reference page; "section" for section detail page */
+  variant?: "canonical" | "section";
+  baseImages: GenerationBaseImage[];
   onRemoveImage: (id: string) => void;
   onClear: () => void;
   jobId: string;
-  sourceImages: Array<{ id: string; relativePath: string | null }>;
-  allNonRejectedVersions: Array<{ id: string; version: number; canonicalView?: string | null }>;
+  sourceImages?: Array<{ id: string; relativePath: string | null }>;
   enqueueAction: (formData: FormData) => Promise<WorkflowActionResult>;
   rerunAction: (formData: FormData) => Promise<WorkflowActionResult>;
   disabled: boolean;
+  disabledReason?: string;
 };
 
 export function GenerationPanel({
+  variant = "canonical",
   baseImages,
   onRemoveImage,
   onClear,
   jobId,
-  sourceImages,
-  allNonRejectedVersions,
+  sourceImages = [],
   enqueueAction,
   rerunAction,
   disabled,
+  disabledReason,
 }: GenerationPanelProps) {
   const [canonicalView, setCanonicalView] = useState<string>("front");
   const [submitted, setSubmitted] = useState(false);
 
   const isRerunMode = baseImages.length > 0;
+  const isCanonical = variant === "canonical";
 
-  // Auto-select canonical view from first base image
+  // Auto-select canonical view from first base image (canonical variant only)
   useEffect(() => {
-    if (baseImages.length > 0 && baseImages[0].canonicalView) {
+    if (isCanonical && baseImages.length > 0 && baseImages[0].canonicalView) {
       setCanonicalView(baseImages[0].canonicalView);
     }
-  }, [baseImages]);
+  }, [baseImages, isCanonical]);
 
   // Clear base images after successful rerun submission
   useEffect(() => {
@@ -69,6 +76,11 @@ export function GenerationPanel({
     }
     return result;
   };
+
+  // Determine if rerun submit should be disabled
+  const rerunDisabled = isCanonical
+    ? (!firstImage?.artifactId || !firstImage?.sha256)
+    : (!firstImage?.generationRunId);
 
   return (
     <div className="rounded-lg border border-sky-400/20 bg-sky-500/[0.03] p-3">
@@ -104,7 +116,7 @@ export function GenerationPanel({
                 <ArtifactThumbCompact
                   jobId={jobId}
                   relativePath={img.relativePath}
-                  alt={`v${img.version}`}
+                  alt={img.label}
                 />
               </div>
               <button
@@ -115,7 +127,7 @@ export function GenerationPanel({
                 <X className="size-2.5" />
               </button>
               <div className="mt-0.5 text-center text-[9px] tabular-nums text-zinc-500">
-                v{img.version}
+                {img.label}
               </div>
             </div>
           ))}
@@ -128,39 +140,49 @@ export function GenerationPanel({
         submitLabel={isRerunMode ? "重生入队" : "生成入队"}
         pendingLabel="入队中"
         successMessage={isRerunMode ? "重生任务已入队" : "生图任务已入队"}
-        disabled={isRerunMode ? (!firstImage?.relativePath || !firstImage?.sha256) : disabled}
+        disabled={isRerunMode ? rerunDisabled : disabled}
         className="space-y-2"
         buttonClassName="h-8 w-full rounded-md bg-sky-500 px-3 text-xs font-medium text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {/* Hidden inputs for rerun mode: base image artifact */}
-        {isRerunMode && firstImage && (
+        {/* Hidden inputs for rerun mode */}
+        {isRerunMode && firstImage && isCanonical && (
           <>
-            <input type="hidden" name="artifactId" value={firstImage.artifactId} />
+            <input type="hidden" name="artifactId" value={firstImage.artifactId ?? ""} />
             <input type="hidden" name="relativePath" value={firstImage.relativePath} />
-            <input type="hidden" name="sha256" value={firstImage.sha256} />
+            <input type="hidden" name="sha256" value={firstImage.sha256 ?? ""} />
             {baseImages.slice(1).map((img) => (
               <input key={img.id} type="hidden" name="canonicalVersionIds" value={img.id} />
             ))}
           </>
         )}
+        {isRerunMode && firstImage && !isCanonical && (
+          <>
+            <input type="hidden" name="parentRunId" value={firstImage.generationRunId ?? ""} />
+            {baseImages.map((img) => (
+              <input key={img.id} type="hidden" name="previousCandidateImageIds" value={img.id} />
+            ))}
+          </>
+        )}
 
-        {/* Row: view + provider */}
-        <div className="grid gap-2 sm:grid-cols-2">
-          <label className="block text-[11px] text-zinc-400">
-            目标角度
-            <select
-              name="canonicalView"
-              value={canonicalView}
-              onChange={(e) => setCanonicalView(e.target.value)}
-              className="mt-0.5 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 text-[11px] text-zinc-200 outline-none transition focus:border-sky-400"
-            >
-              {CANONICAL_VIEW_SPECS.map((view) => (
-                <option key={view.key} value={view.key}>
-                  {view.label}
-                </option>
-              ))}
-            </select>
-          </label>
+        {/* Row: view selector (canonical only) + provider */}
+        <div className={`grid gap-2 ${isCanonical ? "sm:grid-cols-2" : ""}`}>
+          {isCanonical && (
+            <label className="block text-[11px] text-zinc-400">
+              目标角度
+              <select
+                name="canonicalView"
+                value={canonicalView}
+                onChange={(e) => setCanonicalView(e.target.value)}
+                className="mt-0.5 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 text-[11px] text-zinc-200 outline-none transition focus:border-sky-400"
+              >
+                {CANONICAL_VIEW_SPECS.map((view) => (
+                  <option key={view.key} value={view.key}>
+                    {view.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <label className="block text-[11px] text-zinc-400">
             生成器
             <select
@@ -186,18 +208,8 @@ export function GenerationPanel({
           />
         </label>
 
-        {/* Text inputs */}
-        {isRerunMode ? (
-          /* Rerun mode: userInstruction is required */
-          <textarea
-            name="userInstruction"
-            rows={2}
-            required
-            placeholder="说明要调整的地方（必填）..."
-            className="w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 text-[11px] leading-4 text-zinc-200 outline-none transition focus:border-sky-400"
-          />
-        ) : (
-          /* Initial mode: characterDescription + visualPrompt */
+        {/* Text inputs: differ by variant and mode */}
+        {isCanonical && !isRerunMode && (
           <>
             <textarea
               name="characterDescription"
@@ -214,14 +226,25 @@ export function GenerationPanel({
           </>
         )}
 
+        {/* Section variant or rerun mode: userInstruction */}
+        {(!isCanonical || isRerunMode) && (
+          <textarea
+            name="userInstruction"
+            rows={2}
+            required={isRerunMode}
+            placeholder={isRerunMode ? "说明要调整的地方（必填）..." : "本轮生成指令（可选，补充角度、姿势、构图要求）"}
+            className="w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 text-[11px] leading-4 text-zinc-200 outline-none transition focus:border-sky-400"
+          />
+        )}
+
         <input
           name="negativePrompt"
           placeholder="负面提示词（可选）"
           className="w-full rounded border border-white/10 bg-black/30 px-1.5 py-1 text-[11px] text-zinc-200 outline-none transition focus:border-sky-400"
         />
 
-        {/* Source image checkboxes (for initial generation) */}
-        {!isRerunMode && sourceImages.length > 0 && (
+        {/* Source image checkboxes (canonical initial mode only) */}
+        {isCanonical && !isRerunMode && sourceImages.length > 0 && (
           <details className="rounded border border-white/10 bg-black/20 p-1.5 text-[11px]" open>
             <summary className="cursor-pointer text-zinc-300">原始参考图 ({sourceImages.length})</summary>
             <div className="mt-1 space-y-0.5">
@@ -236,9 +259,9 @@ export function GenerationPanel({
         )}
 
         {/* Disabled message */}
-        {!isRerunMode && disabled && (
+        {!isRerunMode && disabled && disabledReason && (
           <div className="rounded border border-amber-500/25 bg-amber-500/10 px-2 py-1.5 text-[11px] text-amber-200">
-            需要至少一张原始参考图或已有 canonical 视图才能初次生图
+            {disabledReason}
           </div>
         )}
       </WorkflowActionForm>

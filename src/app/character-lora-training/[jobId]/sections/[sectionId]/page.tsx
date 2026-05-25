@@ -17,8 +17,8 @@ import {
   compactId,
   formatDate,
 } from "../../shared-ui";
-import { WorkflowActionForm } from "../../workflow-action-form";
 import { enqueueSectionRunAction, reviewCandidateAction, updateCaptionAction } from "../../workflow-actions";
+import { SectionGenerationClient } from "./section-generation-client";
 
 export const dynamic = "force-dynamic";
 
@@ -85,35 +85,16 @@ export default async function SectionDetailPage({
             <InfoRow label="生成批次" value={section.counts.generationRuns} />
             <InfoRow label="更新时间" value={formatDate(section.updatedAt)} />
           </dl>
-          <WorkflowActionForm
-            action={enqueueSectionRunAction.bind(null, section.id, job.id)}
-            submitLabel="入队生成本模块"
-            pendingLabel="正在入队"
-            successMessage="候选图任务已入队"
-            disabled={!canGenerate}
-            className="mt-4 space-y-3 rounded-lg border border-white/10 bg-white/[0.03] p-3"
-          >
-            {!canGenerate ? (
-              <div className="rounded-md border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
-                阻塞：{blockingReasons.join("；")}
-              </div>
-            ) : null}
-            <label className="block text-xs text-zinc-400">
-              生成器
-              <select name="provider" defaultValue="openai-codex" className="mt-1 w-full rounded-md border border-white/10 bg-black/30 px-2 py-2 text-sm text-zinc-200 outline-none transition focus:border-sky-400">
-                <option value="openai-codex">openai-codex</option>
-                <option value="mock-local">mock-local</option>
-              </select>
-            </label>
-            <label className="block text-xs text-zinc-400">
-              本轮生成指令
-              <textarea name="userInstruction" rows={4} placeholder="补充角度、姿势、构图或修正要求" className="mt-1 w-full rounded-md border border-white/10 bg-black/30 px-2 py-2 text-sm text-zinc-200 outline-none transition focus:border-sky-400" />
-            </label>
-            <label className="block text-xs text-zinc-400">
-              负面提示词
-              <input name="negativePrompt" placeholder="可选" className="mt-1 w-full rounded-md border border-white/10 bg-black/30 px-2 py-2 text-sm text-zinc-200 outline-none transition focus:border-sky-400" />
-            </label>
-          </WorkflowActionForm>
+          <div className="mt-4">
+            <SectionGenerationClient
+              candidateImages={candidateImages.map((img) => ({ id: img.id, relativePath: img.relativePath, generationRunId: img.generationRunId, reviewStatus: img.reviewStatus }))}
+              jobId={job.id}
+              enqueueAction={enqueueSectionRunAction.bind(null, section.id, job.id)}
+              rerunAction={enqueueSectionRunAction.bind(null, section.id, job.id)}
+              disabled={!canGenerate}
+              disabledReason={blockingReasons.length > 0 ? `阻塞：${blockingReasons.join("；")}` : undefined}
+            />
+          </div>
         </SimpleSection>
 
         <div className="space-y-4">
@@ -187,20 +168,6 @@ export default async function SectionDetailPage({
                       <span className="font-mono text-zinc-500">{compactId(image.id)}</span>
                     </div>
                     <div className="mt-1 break-all font-mono text-[11px] text-zinc-500">run {compactId(image.generationRunId)}</div>
-                    <WorkflowActionForm
-                      action={enqueueSectionRunAction.bind(null, section.id, job.id)}
-                      submitLabel="基于此图重跑"
-                      pendingLabel="重跑入队中"
-                      successMessage="基于候选图的重跑任务已入队"
-                      disabled={!canGenerate}
-                      className="mt-2 space-y-2 rounded-md border border-sky-500/20 bg-sky-500/10 p-2"
-                      buttonClassName="h-8 w-full rounded-md bg-sky-500 px-2 text-xs font-medium text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      <input type="hidden" name="provider" value="openai-codex" />
-                      <input type="hidden" name="parentRunId" value={image.generationRunId} />
-                      <input type="hidden" name="previousCandidateImageIds" value={image.id} />
-                      <textarea name="userInstruction" rows={3} required placeholder="基于这张候选图继续修改：姿势、表情、构图、细节..." className="w-full rounded-md border border-white/10 bg-black/30 px-2 py-2 text-xs leading-5 text-zinc-200 outline-none transition focus:border-sky-400" />
-                    </WorkflowActionForm>
                     <form action={updateCaptionAction.bind(null, job.id, image.id)} className="mt-2 space-y-2">
                       <textarea name="captionDraft" rows={4} defaultValue={image.captionDraft ?? ""} required className="w-full rounded-md border border-white/10 bg-black/30 px-2 py-2 text-xs leading-5 text-zinc-200 outline-none transition focus:border-sky-400" />
                       <button className="h-8 rounded-md border border-white/10 px-2 text-xs text-zinc-200 transition hover:bg-white/[0.06]">

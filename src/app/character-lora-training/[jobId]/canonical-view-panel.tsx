@@ -26,7 +26,7 @@ type CanonicalViewPanelProps = {
   currentCanonicalVersionId: string | null;
   selectAction: (versionId: string) => Promise<void>;
   rejectAction: (versionId: string) => Promise<void>;
-  onAddToRerun?: (candidate: { id: string; version: number; canonicalView: string | null; artifactId: string; relativePath: string; sha256: string }) => void;
+  onAddToRerun?: (candidate: { id: string; label: string; relativePath: string; artifactId: string; sha256: string; canonicalView: string | null }) => void;
 };
 
 export function CanonicalViewPanel({
@@ -111,11 +111,11 @@ export function CanonicalViewPanel({
                         if (hasArtifact && onAddToRerun) {
                           onAddToRerun({
                             id: version.id,
-                            version: version.version,
-                            canonicalView: version.canonicalView ?? null,
-                            artifactId: version.artifact!.id,
+                            label: `v${version.version}`,
                             relativePath: version.artifact!.relativePath!,
+                            artifactId: version.artifact!.id,
                             sha256: version.artifact!.sha256!,
+                            canonicalView: version.canonicalView ?? null,
                           });
                         }
                       }}

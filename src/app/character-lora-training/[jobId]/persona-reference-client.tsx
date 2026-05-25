@@ -4,7 +4,7 @@ import { useCallback, useState } from "react";
 
 import { CANONICAL_VIEW_SPECS } from "@/lib/character-lora-canonical-views";
 import { CanonicalViewPanel } from "./canonical-view-panel";
-import { GenerationPanel, type RerunBaseImage } from "./rerun-panel";
+import { GenerationPanel, type GenerationBaseImage } from "./rerun-panel";
 import type { WorkflowActionResult } from "./workflow-actions";
 
 type PersonaReferenceClientProps = {
@@ -16,7 +16,6 @@ type PersonaReferenceClientProps = {
     artifact?: { id: string; relativePath: string | null; sha256: string | null } | null;
   }>>;
   sourceImages: Array<{ id: string; relativePath: string | null }>;
-  allNonRejectedVersions: Array<{ id: string; version: number; canonicalView?: string | null }>;
   jobId: string;
   currentCanonicalVersionId: string | null;
   enqueueAction: (formData: FormData) => Promise<WorkflowActionResult>;
@@ -29,7 +28,6 @@ type PersonaReferenceClientProps = {
 export function PersonaReferenceClient({
   candidatesByView,
   sourceImages,
-  allNonRejectedVersions,
   jobId,
   currentCanonicalVersionId,
   enqueueAction,
@@ -38,9 +36,9 @@ export function PersonaReferenceClient({
   rerunAction,
   disabled,
 }: PersonaReferenceClientProps) {
-  const [rerunBaseImages, setRerunBaseImages] = useState<RerunBaseImage[]>([]);
+  const [rerunBaseImages, setRerunBaseImages] = useState<GenerationBaseImage[]>([]);
 
-  const handleAddToRerun = useCallback((candidate: RerunBaseImage) => {
+  const handleAddToRerun = useCallback((candidate: GenerationBaseImage) => {
     setRerunBaseImages((prev) => {
       if (prev.some((img) => img.id === candidate.id)) return prev;
       return [...prev, candidate];
@@ -59,15 +57,16 @@ export function PersonaReferenceClient({
     <div className="space-y-3">
       {/* Unified generation panel (always visible) */}
       <GenerationPanel
+        variant="canonical"
         baseImages={rerunBaseImages}
         onRemoveImage={handleRemoveFromRerun}
         onClear={handleClearRerun}
         jobId={jobId}
         sourceImages={sourceImages}
-        allNonRejectedVersions={allNonRejectedVersions}
         enqueueAction={enqueueAction}
         rerunAction={rerunAction}
         disabled={disabled}
+        disabledReason="需要至少一张原始参考图或已有 canonical 视图才能初次生图"
       />
 
       {/* View panels grid */}
