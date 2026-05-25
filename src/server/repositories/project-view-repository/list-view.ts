@@ -1,0 +1,134 @@
+import { prisma } from "@/lib/prisma";
+import { buildFolderScopedItemOrder } from "@/lib/folder-navigation";
+import { toImageUrl } from "@/lib/image-url";
+import type { ProjectCard, ProjectFolderItem, ReviewStatus } from "@/lib/types";
+import {
+  batchResolvePresetNames,
+  extractPresetNames,
+  collectPresetIds,
+  formatDate,
+  type PresetBindingJson,
+} from "@/server/repositories/queue-data-repository";
+
+// ---------------------------------------------------------------------------
+// Projects — 大项目列表
+// ---------------------------------------------------------------------------
+
+export async function listProjectNavigationItems() {
+  const [folders, projects] = await Promise.all([
+    prisma.projectFolder.findMany({
+      orderBy: [{ parentId: "asc" }, { sortOrder: "asc" }, { name: "asc" }],
+      select: {
+        id: true,
+        name: true,
+        parentId: true,
+        sortOrder: true,
+      },
+    }),
+    prisma.project.findMany({
+      orderBy: { updatedAt: "desc" },
+      select: {
+        id: true,
+        title: true,
+        folderId: true,
+      },
+    }),
+  ]);
+
+  return buildFolderScopedItemOrder(folders, projects);
+}
+
+export async function listProjects(): Promise<ProjectCard[]> {
+  const projects = await prisma.project.findMany({
+    orderBy: { updatedAt: "desc" },
+    select: {
+      id: true,
+      title: true,
+      folderId: true,
+      status: true,
+      updatedAt: true,
+      presetBindings: true,
+      runs: {
+        where: { status: "done" },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: {
+          id: true,
+          status: true,
+          createdAt: true,
+          images: {
+            orderBy: { createdAt: "asc" },
+            take: 6,
+            select: {
+              id: true,
+              thumbPath: true,
+              filePath: true,
+              reviewStatus: true,
+            },
+          },
+          _count: {
+            select: {
+              images: true,
+            },
+          },
+        },
+      },
+      _count: { select: { sections: true } },
+    },
+  });
+
+  // Batch resolve preset names
+  const presetMap = await batchResolvePresetNames(
+    collectPresetIds(projects.map((j) => j.presetBindings)),
+  );
+
+  return projects.map((project) => {
+    const presetNames = extractPresetNames(project.presetBindings as PresetBindingJson | null, presetMap);
+    const latestRun = project.runs[0] ?? null;
+    return {
+      id: project.id,
+      title: project.title,
+      folderId: project.folderId,
+      presetNames,
+      status: project.status as ProjectCard["status"],
+      updatedAt: formatDate(project.updatedAt),
+      sectionCount: project._count.sections,
+      latestRunId: latestRun?.id ?? null,
+      latestRunAt: latestRun ? formatDate(latestRun.createdAt) : null,
+      latestRunStatus: latestRun?.status as ProjectCard["latestRunStatus"],
+      latestImages: (latestRun?.images ?? []).map((img) => ({
+        id: img.id,
+        src: (toImageUrl(img.thumbPath ?? img.filePath) ?? "") + "?w=400&q=75",
+        status: img.reviewStatus as ReviewStatus,
+      })),
+      latestImageCount: latestRun?._count.images ?? 0,
+    };
+  });
+}
+
+export async function listProjectFolders(): Promise<ProjectFolderItem[]> {
+  const folders = await prisma.projectFolder.findMany({
+    orderBy: [{ parentId: "asc" }, { sortOrder: "asc" }, { name: "asc" }],
+    select: {
+      id: true,
+      name: true,
+      parentId: true,
+      sortOrder: true,
+      _count: {
+        select: {
+          projects: true,
+          children: true,
+        },
+      },
+    },
+  });
+
+  return folders.map((folder) => ({
+    id: folder.id,
+    name: folder.name,
+    parentId: folder.parentId,
+    sortOrder: folder.sortOrder,
+    projectCount: folder._count.projects,
+    childCount: folder._count.children,
+  }));
+}
