@@ -457,6 +457,10 @@ export function mapCharacterLoraCanonicalError(error: unknown) {
     };
   }
 
+  if (error instanceof CharacterLoraServiceError) {
+    return { message: error.message, status: error.status, details: error.details };
+  }
+
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
     if (error.code === "P2002") {
       return {
