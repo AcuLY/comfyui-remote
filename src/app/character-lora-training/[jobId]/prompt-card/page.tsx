@@ -13,7 +13,9 @@ import {
   compactId,
   formatDate,
 } from "../shared-ui";
-import { PromptCardForm } from "./prompt-card-form";
+import { listPromptCardDraftResultsAction } from "../workflow-actions";
+import { PromptCardDraftClient } from "./prompt-card-draft-client";
+import { PromptCardPanelConfig } from "./prompt-card-panel-config";
 
 export const dynamic = "force-dynamic";
 
@@ -29,24 +31,16 @@ export default async function PromptCardPage({
   });
   if (!job) notFound();
 
-  const [promptCards, report] = await Promise.all([
+  const [promptCards, report, draftResults] = await Promise.all([
     listCharacterLoraPromptCardVersions(jobId),
     getCharacterLoraJobReport(jobId),
+    listPromptCardDraftResultsAction(jobId),
   ]);
   const currentPrompt = promptCards.find((card) => card.id === job.currentPromptCardVersionId) ?? promptCards[promptCards.length - 1] ?? null;
   const currentCanonical = report.canonicalVersions.find((version) => version.id === job.currentCanonicalVersionId) ?? null;
-  const usableCanonicalVersions = report.canonicalVersions.filter((version) => version.status !== "rejected");
-  const sourceOptions = report.sourceImages.map((image, index) => ({
+  const sourceOptions = report.sourceImages.map((image) => ({
     id: image.id,
-    label: `source ${index + 1} / ${compactId(image.id)}`,
     relativePath: image.artifact?.relativePath ?? image.relativePath ?? null,
-  }));
-  const canonicalOptions = usableCanonicalVersions.map((version) => ({
-    id: version.id,
-    version: version.version,
-    status: version.status,
-    label: `v${version.version} / ${getCanonicalViewLabel(version.canonicalView)} / ${version.status} / ${compactId(version.id)}`,
-    relativePath: version.artifact?.relativePath ?? null,
   }));
   const initialDraft = {
     characterDescription: currentPrompt ? extractCharacterDescription(currentPrompt.identityTraits) : "",
@@ -56,6 +50,8 @@ export default async function PromptCardPage({
     finalPromptDraft: currentPrompt?.finalPromptDraft ?? `${job.triggerToken}, `,
   };
 
+  const doneCount = draftResults.filter((d) => d.status === "done").length;
+
   return (
     <JobPageShell
       job={job}
@@ -63,21 +59,23 @@ export default async function PromptCardPage({
       title={`${job.characterName} / 提示词卡`}
       description="创建可追踪的提示词卡版本，供后续模块生成与训练集冻结使用。"
     >
+      {/* Configure global task panel */}
+      <PromptCardPanelConfig jobId={job.id} sourceImages={sourceOptions} />
+
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-4">
-          <SimpleSection title="创建提示词卡版本" subtitle={currentCanonical ? `默认绑定人设图 v${currentCanonical.version}` : "当前没有 canonical，可创建无绑定版本"}>
+          <SimpleSection title="AI 草稿" subtitle={`${doneCount} 个已完成`}>
             {!currentCanonical ? (
               <div className="mb-3 rounded-md border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
                 机械警告：没有当前人设图时，后续 section lineage 仍会阻塞；该提示词卡可先保存，但不能独立生成训练图。
               </div>
             ) : null}
-            <PromptCardForm
-              jobId={job.id}
+            <PromptCardDraftClient
+              drafts={draftResults}
               triggerToken={job.triggerToken}
               defaultCanonicalVersionId={currentCanonical?.id ?? ""}
-              sourceOptions={sourceOptions}
-              canonicalOptions={canonicalOptions}
               initialDraft={initialDraft}
+              jobId={job.id}
             />
           </SimpleSection>
 

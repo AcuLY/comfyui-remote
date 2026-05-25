@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { db } from "@/lib/db";
 import { buildCanonicalRerunPrompt } from "@/lib/character-lora-canonical-views";
 import type { PromptCardDraftFields } from "@/lib/character-lora-prompt-card-draft";
 import {
@@ -74,6 +75,40 @@ export type PromptCardDraftActionResult = WorkflowActionResult & {
   imageCount?: number;
   workerType?: string;
 };
+
+export type PromptCardDraftResult = {
+  taskId: string;
+  status: string;
+  provider: string | null;
+  draft: PromptCardDraftFields | null;
+  errorSummary: string | null;
+  createdAt: string;
+  finishedAt: string | null;
+};
+
+export async function listPromptCardDraftResultsAction(jobId: string): Promise<PromptCardDraftResult[]> {
+  const tasks = await db.characterLoraWorkerTask.findMany({
+    where: { jobId, workerType: "prompt_card_draft", status: { in: ["done", "failed"] } },
+    orderBy: { createdAt: "desc" },
+    take: 20,
+  });
+
+  return tasks.map((task) => {
+    const progress = isPlainRecord(task.progressJson) ? task.progressJson : null;
+    const draft = progress ? normalizePromptCardDraftFields(progress.draft) ?? null : null;
+    const provider = (progress && typeof progress.provider === "string" ? progress.provider : null);
+
+    return {
+      taskId: task.id,
+      status: task.status,
+      provider,
+      draft,
+      errorSummary: task.errorSummary ?? null,
+      createdAt: (task.createdAt instanceof Date ? task.createdAt.toISOString() : String(task.createdAt)),
+      finishedAt: task.finishedAt ? (task.finishedAt instanceof Date ? task.finishedAt.toISOString() : String(task.finishedAt)) : null,
+    };
+  });
+}
 
 export async function uploadSourceImageAction(jobId: string, formData: FormData): Promise<WorkflowActionResult> {
   try {
