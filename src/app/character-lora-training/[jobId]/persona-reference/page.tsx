@@ -20,7 +20,7 @@ import {
   formatDate,
 } from "../shared-ui";
 import { SourceImageUploader } from "../source-image-uploader";
-import { CanonicalViewPanel } from "../canonical-view-panel";
+import { PersonaReferenceClient } from "../persona-reference-client";
 import {
   enqueueCanonicalAction,
   registerManualCanonicalAction,
@@ -90,25 +90,19 @@ export default async function PersonaReferencePage({
 
       {/* Main content: view panels + sidebar */}
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
-        {/* View panels */}
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {CANONICAL_VIEW_SPECS.map((view) => (
-            <CanonicalViewPanel
-              key={view.key}
-              viewSpec={view}
-              candidates={canonicalVersionsByView[view.key]}
-              sourceImages={report.sourceImages}
-              allNonRejectedVersions={referenceVersions}
-              jobId={job.id}
-              currentCanonicalVersionId={job.currentCanonicalVersionId}
-              enqueueAction={enqueueCanonicalAction.bind(null, job.id)}
-              selectAction={selectCanonicalAction.bind(null, job.id)}
-              rejectAction={rejectCanonicalAction.bind(null, job.id)}
-              rerunAction={rerunCanonicalAction.bind(null, job.id)}
-              disabled={genDisabled}
-            />
-          ))}
-        </div>
+        {/* Client component with rerun panel + view panels */}
+        <PersonaReferenceClient
+          candidatesByView={canonicalVersionsByView}
+          sourceImages={report.sourceImages}
+          allNonRejectedVersions={referenceVersions}
+          jobId={job.id}
+          currentCanonicalVersionId={job.currentCanonicalVersionId}
+          enqueueAction={enqueueCanonicalAction.bind(null, job.id)}
+          selectAction={selectCanonicalAction.bind(null, job.id)}
+          rejectAction={rejectCanonicalAction.bind(null, job.id)}
+          rerunAction={rerunCanonicalAction.bind(null, job.id)}
+          disabled={genDisabled}
+        />
 
         {/* Sidebar */}
         <div className="space-y-3">

@@ -41,7 +41,7 @@ type CanonicalViewPanelProps = {
   enqueueAction: (formData: FormData) => Promise<WorkflowActionResult>;
   selectAction: (versionId: string) => Promise<void>;
   rejectAction: (versionId: string) => Promise<void>;
-  rerunAction: (formData: FormData) => Promise<WorkflowActionResult>;
+  onAddToRerun?: (candidate: { id: string; version: number; canonicalView: string | null; artifactId: string; relativePath: string; sha256: string }) => void;
   disabled: boolean;
 };
 
@@ -55,13 +55,10 @@ export function CanonicalViewPanel({
   enqueueAction,
   selectAction,
   rejectAction,
-  rerunAction,
+  onAddToRerun,
   disabled,
 }: CanonicalViewPanelProps) {
   const [genExpanded, setGenExpanded] = useState(false);
-  const [rerunTarget, setRerunTarget] = useState<string | null>(null);
-
-  const rerunCandidate = rerunTarget ? candidates.find((c) => c.id === rerunTarget) : null;
 
   return (
     <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-2.5">
@@ -93,7 +90,7 @@ export function CanonicalViewPanel({
           {candidates.map((version) => {
             const isCurrent = version.id === currentCanonicalVersionId;
             const isRejected = version.status === "rejected";
-            const isRerunTarget = rerunTarget === version.id;
+            const hasArtifact = !!(version.artifact?.id && version.artifact?.relativePath && version.artifact?.sha256);
             return (
               <div
                 key={version.id}
@@ -101,7 +98,7 @@ export function CanonicalViewPanel({
                 style={{ width: "clamp(72px, 18vw, 100px)" }}
               >
                 <div
-                  className={`overflow-hidden rounded-md ${isCurrent ? "ring-2 ring-sky-400/70" : ""} ${isRerunTarget ? "ring-2 ring-violet-400/70" : ""}`}
+                  className={`overflow-hidden rounded-md ${isCurrent ? "ring-2 ring-sky-400/70" : ""}`}
                 >
                   <ArtifactThumbCompact
                     jobId={jobId}
@@ -141,9 +138,21 @@ export function CanonicalViewPanel({
                     </form>
                     <button
                       type="button"
-                      onClick={() => setRerunTarget(isRerunTarget ? null : version.id)}
-                      title="重生"
-                      className={`flex h-5 flex-1 items-center justify-center rounded transition ${isRerunTarget ? "bg-violet-500/30 text-violet-200" : "bg-white/[0.06] text-zinc-400 hover:bg-violet-500/20 hover:text-violet-300"}`}
+                      disabled={!hasArtifact}
+                      onClick={() => {
+                        if (hasArtifact && onAddToRerun) {
+                          onAddToRerun({
+                            id: version.id,
+                            version: version.version,
+                            canonicalView: version.canonicalView ?? null,
+                            artifactId: version.artifact!.id,
+                            relativePath: version.artifact!.relativePath!,
+                            sha256: version.artifact!.sha256!,
+                          });
+                        }
+                      }}
+                      title="加入重生"
+                      className="flex h-5 flex-1 items-center justify-center rounded bg-white/[0.06] text-zinc-400 transition hover:bg-violet-500/20 hover:text-violet-300 disabled:opacity-30"
                     >
                       <RefreshCw className="size-3" />
                     </button>
@@ -152,42 +161,6 @@ export function CanonicalViewPanel({
               </div>
             );
           })}
-        </div>
-      )}
-
-      {/* Rerun form (shown when a candidate is selected for rerun) */}
-      {rerunCandidate && rerunCandidate.artifact?.id && (
-        <div className="mt-2 rounded-md border border-violet-400/20 bg-violet-500/[0.06] p-2">
-          <div className="mb-1.5 text-[11px] font-medium text-violet-200">
-            基于 v{rerunCandidate.version} 重生
-          </div>
-          <WorkflowActionForm
-            action={rerunAction}
-            submitLabel="重生入队"
-            pendingLabel="入队中"
-            successMessage="重生任务已入队"
-            disabled={!rerunCandidate.artifact?.relativePath || !rerunCandidate.artifact?.sha256}
-            className="space-y-1.5"
-            buttonClassName="h-7 w-full rounded-md bg-violet-500 px-2 text-[11px] font-medium text-white transition hover:bg-violet-400 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <input type="hidden" name="provider" value="openai-codex" />
-            <input type="hidden" name="canonicalView" value={rerunCandidate.canonicalView ?? viewSpec.key} />
-            <input type="hidden" name="artifactId" value={rerunCandidate.artifact.id} />
-            <input type="hidden" name="relativePath" value={rerunCandidate.artifact.relativePath ?? ""} />
-            <input type="hidden" name="sha256" value={rerunCandidate.artifact.sha256 ?? ""} />
-            <textarea
-              name="userInstruction"
-              rows={2}
-              required
-              placeholder="说明要调整的地方..."
-              className="w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 text-[11px] leading-4 text-zinc-200 outline-none transition focus:border-violet-400"
-            />
-            <input
-              name="negativePrompt"
-              placeholder="负面提示词（可选）"
-              className="w-full rounded border border-white/10 bg-black/30 px-1.5 py-1 text-[11px] text-zinc-200 outline-none transition focus:border-violet-400"
-            />
-          </WorkflowActionForm>
         </div>
       )}
 
