@@ -13,11 +13,12 @@
 import { ComfyPromptDraft } from "@/server/worker/types";
 import { resolveResolution } from "@/lib/aspect-ratio-utils";
 import { DEFAULT_CHECKPOINT_NAME } from "@/lib/model-constants";
+import { env } from "@/lib/env";
 
 type JsonRecord = Record<string, unknown>;
 
 const DEFAULT_CHECKPOINT =
-  process.env.COMFYUI_CHECKPOINT ?? DEFAULT_CHECKPOINT_NAME;
+  env.comfyCheckpoint || DEFAULT_CHECKPOINT_NAME;
 
 // ---------------------------------------------------------------------------
 // Helpers

@@ -63,6 +63,9 @@ export const env = {
   logMaxFileSize: readPositiveIntegerEnv("LOG_MAX_FILE_SIZE", 10 * 1024 * 1024), // 10MB
   logMaxFiles: readPositiveIntegerEnv("LOG_MAX_FILES", 5),
 
+  // ComfyUI checkpoint
+  comfyCheckpoint: process.env.COMFYUI_CHECKPOINT ?? "",
+
   // Auth
   authToken: process.env.AUTH_TOKEN ?? "",
 };

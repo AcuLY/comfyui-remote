@@ -10,6 +10,10 @@
  * Paused runs stay paused on startup and are resumed explicitly after deploy.
  */
 
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger({ module: "startup" });
+
 const ORPHANED_RUN_THRESHOLD_MS = 30 * 60 * 1000; // 30 minutes
 
 export async function registerNodeInstrumentation() {
@@ -65,14 +69,14 @@ async function resumePausedRunsIfHealthy() {
     }
 
     if (!comfyHealthy) {
-      console.log(
-        `[startup] Found ${pausedRuns.length} paused run(s) but ComfyUI is not reachable — skipping resume`,
+      log.info(
+        `Found ${pausedRuns.length} paused run(s) but ComfyUI is not reachable — skipping resume`,
       );
       return;
     }
 
-    console.log(
-      `[startup] Resuming ${pausedRuns.length} paused run(s) — ComfyUI is healthy`,
+    log.info(
+      `Resuming ${pausedRuns.length} paused run(s) — ComfyUI is healthy`,
     );
 
     // Import resumeRun logic (direct DB, not the server action which has revalidatePath)
@@ -96,10 +100,10 @@ async function resumePausedRunsIfHealthy() {
 
         // Start polling
         pollRunCompletion(runId).catch((err) => {
-          console.error(`[startup] pollRunCompletion failed for resumed run ${runId}:`, err);
+          log.error(`pollRunCompletion failed for resumed run ${runId}`, err);
         });
       } catch (err) {
-        console.error(`[startup] Failed to resume run ${runId}:`, err);
+        log.error(`Failed to resume run ${runId}`, err);
         await db.run.update({
           where: { id: runId },
           data: { status: "failed", errorMessage: `Resume failed: ${err instanceof Error ? err.message : String(err)}` },
@@ -107,7 +111,7 @@ async function resumePausedRunsIfHealthy() {
       }
     }
   } catch (error) {
-    console.error("[startup] Failed to resume paused runs:", error);
+    log.error("Failed to resume paused runs", error);
   }
 }
 
@@ -117,12 +121,12 @@ async function logPausedRunsAwaitingManualResume() {
     const pausedCount = await db.run.count({ where: { status: "paused" } });
 
     if (pausedCount > 0) {
-      console.log(
-        `[startup] ${pausedCount} paused run(s) are waiting for manual resume via POST /api/queue/resume-paused`,
+      log.info(
+        `${pausedCount} paused run(s) are waiting for manual resume via POST /api/queue/resume-paused`,
       );
     }
   } catch (error) {
-    console.error("[startup] Failed to inspect paused runs:", error);
+    log.error("Failed to inspect paused runs", error);
   }
 }
 
@@ -137,7 +141,7 @@ function registerShutdownHooks() {
     if (shuttingDown) return;
     shuttingDown = true;
 
-    console.log(`[shutdown] Received ${signal}, pausing active runs...`);
+    log.info(`Received ${signal}, pausing active runs...`);
 
     try {
       const { db } = await import("@/lib/db");
@@ -150,7 +154,7 @@ function registerShutdownHooks() {
       });
 
       if (activeRuns.length > 0) {
-        console.log(`[shutdown] Pausing ${activeRuns.length} active run(s)...`);
+        log.info(`Pausing ${activeRuns.length} active run(s)...`);
 
         // Cancel in ComfyUI (best-effort) and set to paused
         const { interruptComfyPrompt, deleteComfyQueueItems, getComfyQueuePosition } = await import("@/server/services/comfyui-service");
@@ -175,12 +179,12 @@ function registerShutdownHooks() {
           }).catch(() => {});
         }
 
-        console.log(`[shutdown] Paused ${activeRuns.length} run(s) — will resume on next startup`);
+        log.info(`Paused ${activeRuns.length} run(s) — will resume on next startup`);
       } else {
-        console.log("[shutdown] No active runs to pause");
+        log.info("No active runs to pause");
       }
     } catch (error) {
-      console.error("[shutdown] Error during graceful shutdown:", error);
+      log.error("Error during graceful shutdown", error);
     }
 
     process.exit(0);
@@ -212,11 +216,11 @@ async function cleanupOrphanedRuns() {
     });
 
     if (result.count > 0) {
-      console.log(
-        `[startup] Cleaned up ${result.count} orphaned running run(s) that were started before ${cutoff.toISOString()}`,
+      log.info(
+        `Cleaned up ${result.count} orphaned running run(s) that were started before ${cutoff.toISOString()}`,
       );
     }
   } catch (error) {
-    console.error("[startup] Failed to cleanup orphaned runs:", error);
+    log.error("Failed to cleanup orphaned runs", error);
   }
 }

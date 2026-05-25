@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { ok, fail } from "@/lib/api-response";
 import { updatePresetVariant, deletePresetVariant } from "@/lib/actions";
+import type { PresetVariantInput } from "@/lib/actions/preset-variant-crud";
 
 type RouteContext = {
   params: Promise<{ variantId: string }>;
@@ -9,9 +10,15 @@ type RouteContext = {
 export async function PATCH(request: NextRequest, context: RouteContext) {
   const { variantId } = await context.params;
 
+  let body: unknown;
   try {
-    const body = await request.json();
-    const result = await updatePresetVariant(variantId, body);
+    body = await request.json();
+  } catch {
+    return fail("Invalid JSON body", 400);
+  }
+
+  try {
+    const result = await updatePresetVariant(variantId, body as Partial<PresetVariantInput>);
     return ok(result);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
