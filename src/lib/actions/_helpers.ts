@@ -58,6 +58,9 @@ type ConcreteGroupMember = {
   presetId: string;
   variantId: string;
   categoryId: string;
+  positivePromptOrder: number;
+  lora1Order: number;
+  lora2Order: number;
   label: string;
   positive: string;
   negative: string | null;

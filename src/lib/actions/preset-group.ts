@@ -15,6 +15,12 @@ import {
   makePresetLoraEntry,
   type ConcreteGroupMember,
 } from "./_helpers";
+import {
+  buildPresetGroupPlaceholderCreateInput,
+  canonicalPresetGroupBindingId,
+  haveSamePresetGroupMemberSet,
+  sortConcreteGroupMembersForSection,
+} from "./preset-group-sync";
 import { resolveVariantContent } from "./preset-variant";
 
 // ---------------------------------------------------------------------------
@@ -81,7 +87,7 @@ async function resolveConcreteGroupMembers(groupId: string): Promise<ConcreteGro
     const preset = await prisma.preset.findUnique({
       where: { id: member.presetId },
       include: {
-        category: { select: { id: true, name: true, color: true } },
+        category: { select: { id: true, name: true, color: true, positivePromptOrder: true, lora1Order: true, lora2Order: true } },
         variants: { where: { isActive: true }, orderBy: { sortOrder: "asc" } },
       },
     });
@@ -97,6 +103,9 @@ async function resolveConcreteGroupMembers(groupId: string): Promise<ConcreteGro
       presetId: preset.id,
       variantId: variant.id,
       categoryId: preset.category.id,
+      positivePromptOrder: preset.category.positivePromptOrder,
+      lora1Order: preset.category.lora1Order,
+      lora2Order: preset.category.lora2Order,
       label: preset.variants.length === 1 ? preset.name : `${preset.name} / ${variant.name}`,
       positive: resolved.prompt,
       negative: resolved.negativePrompt,
@@ -108,7 +117,7 @@ async function resolveConcreteGroupMembers(groupId: string): Promise<ConcreteGro
     });
   }
 
-  return concreteMembers;
+  return sortConcreteGroupMembersForSection(concreteMembers);
 }
 
 function groupMemberSignature(members: Array<{ presetId: string; variantId: string }>) {
@@ -169,21 +178,20 @@ async function syncPresetGroupInstances(
     }
 
     for (const [groupBindingId, groupBlocks] of blocksByGroup) {
-      const currentSignature = groupMemberSignature(
-        groupBlocks
-          .filter((block) => block.type === "preset" && block.sourceId && block.variantId)
-          .map((block) => ({
-            presetId: block.sourceId as string,
-            variantId: block.variantId as string,
-          })),
-      );
+      const currentMembers = groupBlocks
+        .filter((block) => block.type === "preset" && block.sourceId && block.variantId)
+        .map((block) => ({
+          presetId: block.sourceId as string,
+          variantId: block.variantId as string,
+        }));
       const isTrackedGroup = groupBindingId.startsWith(groupBindingPrefix);
-      const isLegacyMatch = Boolean(previousSignature && currentSignature === previousSignature);
+      const isLegacyMatch = previousMembers.length > 0 && haveSamePresetGroupMemberSet(previousMembers, currentMembers);
       if (!isTrackedGroup && !isLegacyMatch) continue;
 
       const oldBindingIds = new Set(
         groupBlocks.map((block) => block.bindingId).filter((id): id is string => Boolean(id)),
       );
+      const targetGroupBindingId = canonicalPresetGroupBindingId(groupId, groupBindingId);
       const nextBindingIds = nextMembers.map(() => createBindingId());
 
       await prisma.$transaction(async (tx) => {
@@ -198,25 +206,41 @@ async function syncPresetGroupInstances(
         const createBlocks: Prisma.PromptBlockCreateManyInput[] = [];
         let insertedGroup = false;
 
+        const enqueueSyncedGroupBlocks = () => {
+          if (nextMembers.length === 0) {
+            createBlocks.push(
+              buildPresetGroupPlaceholderCreateInput({
+                sectionId: section.id,
+                groupBindingId: targetGroupBindingId,
+                sortOrder: nextSortOrder,
+              }) as Prisma.PromptBlockCreateManyInput,
+            );
+            nextSortOrder += 1;
+            return;
+          }
+
+          nextMembers.forEach((member, index) => {
+            createBlocks.push({
+              projectSectionId: section.id,
+              type: "preset",
+              sourceId: member.presetId,
+              variantId: member.variantId,
+              categoryId: member.categoryId,
+              bindingId: nextBindingIds[index],
+              groupBindingId: targetGroupBindingId,
+              label: member.label,
+              positive: member.positive,
+              negative: member.negative,
+              sortOrder: nextSortOrder,
+            });
+            nextSortOrder += 1;
+          });
+        };
+
         for (const block of section.promptBlocks) {
           if (block.groupBindingId === groupBindingId) {
             if (!insertedGroup) {
-              nextMembers.forEach((member, index) => {
-                createBlocks.push({
-                  projectSectionId: section.id,
-                  type: "preset",
-                  sourceId: member.presetId,
-                  variantId: member.variantId,
-                  categoryId: member.categoryId,
-                  bindingId: nextBindingIds[index],
-                  groupBindingId,
-                  label: member.label,
-                  positive: member.positive,
-                  negative: member.negative,
-                  sortOrder: nextSortOrder,
-                });
-                nextSortOrder += 1;
-              });
+              enqueueSyncedGroupBlocks();
               insertedGroup = true;
             }
             continue;
@@ -238,7 +262,8 @@ async function syncPresetGroupInstances(
         const loraConfig = parseSectionLoraConfig(section.loraConfig);
         const shouldRemoveLora = (entry: LoraEntry) =>
           (entry.bindingId ? oldBindingIds.has(entry.bindingId) : false) ||
-          entry.groupBindingId === groupBindingId;
+          entry.groupBindingId === groupBindingId ||
+          entry.groupBindingId === targetGroupBindingId;
 
         const replaceLoras = (
           existing: LoraEntry[],
@@ -250,16 +275,22 @@ async function syncPresetGroupInstances(
           return filtered;
         };
 
-        const detachedLora1Paths = getDetachedGroupPresetPaths(loraConfig.lora1, groupBindingId);
-        const detachedLora2Paths = getDetachedGroupPresetPaths(loraConfig.lora2, groupBindingId);
+        const detachedLora1Paths = new Set([
+          ...getDetachedGroupPresetPaths(loraConfig.lora1, groupBindingId),
+          ...getDetachedGroupPresetPaths(loraConfig.lora1, targetGroupBindingId),
+        ]);
+        const detachedLora2Paths = new Set([
+          ...getDetachedGroupPresetPaths(loraConfig.lora2, groupBindingId),
+          ...getDetachedGroupPresetPaths(loraConfig.lora2, targetGroupBindingId),
+        ]);
         const nextLora1 = nextMembers.flatMap((member, index) =>
           member.lora1.filter((binding) => !detachedLora1Paths.has(binding.path)).map((binding) =>
-            makePresetLoraEntry(binding, member, nextBindingIds[index], groupBindingId),
+            makePresetLoraEntry(binding, member, nextBindingIds[index], targetGroupBindingId),
           ),
         );
         const nextLora2 = nextMembers.flatMap((member, index) =>
           member.lora2.filter((binding) => !detachedLora2Paths.has(binding.path)).map((binding) =>
-            makePresetLoraEntry(binding, member, nextBindingIds[index], groupBindingId),
+            makePresetLoraEntry(binding, member, nextBindingIds[index], targetGroupBindingId),
           ),
         );
 
