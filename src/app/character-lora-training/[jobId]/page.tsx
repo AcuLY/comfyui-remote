@@ -141,15 +141,13 @@ export default async function CharacterLoraTrainingJobPage({
           </SimpleSection>
         </div>
 
-        <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:block lg:space-y-4">
           <SimpleSection title="人设参考图" subtitle={currentCanonical ? `v${currentCanonical.version}` : "未选择"}>
-            <div className="max-w-[180px] lg:max-w-none">
-              <ArtifactThumb
-                jobId={job.id}
-                relativePath={currentCanonical?.artifact?.relativePath ?? null}
-                alt="current persona reference"
-              />
-            </div>
+            <ArtifactThumb
+              jobId={job.id}
+              relativePath={currentCanonical?.artifact?.relativePath ?? null}
+              alt="current persona reference"
+            />
           </SimpleSection>
 
           <SimpleSection title="提示词卡" subtitle={latestPromptCard ? `v${latestPromptCard.version}` : "未创建"}>
