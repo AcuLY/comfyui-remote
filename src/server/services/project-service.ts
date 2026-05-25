@@ -16,6 +16,12 @@ import {
   submitRunToComfyUI,
   pollRunCompletion,
 } from "@/server/services/run-executor";
+import {
+  ServiceValidationError,
+  parseRequestBody,
+  ensureSupportedFields,
+  normalizeRequiredStringField,
+} from "@/server/services/validation-utils";
 import { getWorkerRun } from "@/server/worker/repository";
 import { prisma } from "@/lib/prisma";
 import { recordSectionChange } from "@/server/services/section-change-history-service";
@@ -117,37 +123,15 @@ const SECTION_RUN_PARAM_SELECT = {
   checkpointName: true,
 } as const;
 
-class ProjectServiceError extends Error {
+class ProjectServiceError extends ServiceValidationError {
   constructor(
     message: string,
-    readonly status: number,
-    readonly details?: unknown,
+    status: number,
+    details?: unknown,
   ) {
-    super(message);
+    super(message, status, details);
     this.name = "ProjectServiceError";
   }
-}
-
-function parsePatchRequestBody<T extends Record<string, unknown>>(body: unknown): T {
-  if (!body || typeof body !== "object" || Array.isArray(body)) {
-    throw new ProjectServiceError("Request body must be an object", 400);
-  }
-
-  return body as T;
-}
-
-function normalizeRequiredStringField(value: unknown, fieldName: string) {
-  if (typeof value !== "string") {
-    throw new ProjectServiceError(`${fieldName} is required`, 400);
-  }
-
-  const normalizedValue = value.trim();
-
-  if (!normalizedValue) {
-    throw new ProjectServiceError(`${fieldName} is required`, 400);
-  }
-
-  return normalizedValue;
 }
 
 function normalizeRequiredId(value: string, fieldName: string) {
@@ -158,20 +142,6 @@ function normalizeRequiredId(value: string, fieldName: string) {
   }
 
   return normalizedValue;
-}
-
-function ensureSupportedFields(
-  body: Record<string, unknown>,
-  supportedFields: readonly string[],
-) {
-  const unsupportedFields = Object.keys(body).filter((field) => !supportedFields.includes(field));
-
-  if (unsupportedFields.length > 0) {
-    throw new ProjectServiceError("Unsupported fields in request body", 400, {
-      unsupportedFields,
-      supportedFields,
-    });
-  }
 }
 
 function normalizeNullableStringField(value: unknown, fieldName: string) {
@@ -360,7 +330,7 @@ export async function listProjects(query: ListProjectsQuery = {}) {
 }
 
 export async function createProject(body: unknown, actorType: ActorType = ActorType.user) {
-  const parsedBody = parsePatchRequestBody<CreateProjectRequestBody>(body);
+  const parsedBody = parseRequestBody<CreateProjectRequestBody>(body);
   ensureSupportedFields(parsedBody, PROJECT_CREATE_FIELDS);
 
   const input = {
@@ -381,7 +351,7 @@ export async function createProject(body: unknown, actorType: ActorType = ActorT
 }
 
 export function normalizeProjectUpdateBody(body: unknown) {
-  const parsedBody = parsePatchRequestBody<UpdateProjectRequestBody>(body);
+  const parsedBody = parseRequestBody<UpdateProjectRequestBody>(body);
   ensureSupportedFields(parsedBody, PROJECT_UPDATE_FIELDS);
 
   const input = {
@@ -423,7 +393,7 @@ export async function updateProjectSection(
   body: unknown,
   actorType: ActorType = ActorType.user,
 ) {
-  const parsedBody = parsePatchRequestBody<UpdateProjectSectionRequestBody>(body);
+  const parsedBody = parseRequestBody<UpdateProjectSectionRequestBody>(body);
   ensureSupportedFields(parsedBody, PROJECT_SECTION_UPDATE_FIELDS);
 
   const input = {
@@ -587,7 +557,7 @@ export async function enqueueProjectSectionRun(
 }
 
 export function mapProjectError(error: unknown) {
-  if (error instanceof ProjectServiceError) {
+  if (error instanceof ServiceValidationError) {
     log.warn("Project service error", { message: error.message, status: error.status });
     return {
       message: error.message,

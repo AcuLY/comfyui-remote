@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { normalizeCivitaiLinks } from "@/lib/utils";
 import {
   groupPresetGroupHistory,
   groupPresetHistory,
@@ -83,12 +84,6 @@ export type PresetFull = PresetItem & {
   variants: PresetVariantItem[];
   changeHistory: Record<PresetChangeDimension, PresetHistoryEntry<PresetChangeDimension>[]>;
 };
-
-function normalizeCivitaiLinks(value: unknown): string[] {
-  return Array.isArray(value)
-    ? value.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0)
-    : [];
-}
 
 export async function getPresetCategoriesWithPresets(): Promise<PresetCategoryFull[]> {
   const categories = await prisma.presetCategory.findMany({

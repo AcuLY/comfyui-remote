@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { normalizeCivitaiLinks } from "@/lib/utils";
 
 export type PresetQueryFilters = {
   name?: string;
@@ -16,12 +17,6 @@ function optionalContains(value?: string | null) {
 function normalizeBoolean(value?: string | null) {
   if (!value) return false;
   return value === "true" || value === "1";
-}
-
-function normalizeCivitaiLinks(value: unknown): string[] {
-  return Array.isArray(value)
-    ? value.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0)
-    : [];
 }
 
 export function parsePresetQuery(searchParams: URLSearchParams): PresetQueryFilters {

@@ -8,29 +8,25 @@ import {
   trashRunImages as trashRunImagesInRepository,
 } from "@/server/repositories/review-repository";
 import { audit, auditMany } from "@/server/services/audit-service";
+import {
+  ServiceValidationError,
+  parseRequestBody,
+} from "@/server/services/validation-utils";
 
 type ReviewRequestBody = {
   imageIds?: unknown;
   reason?: unknown;
 };
 
-class ReviewServiceError extends Error {
+class ReviewServiceError extends ServiceValidationError {
   constructor(
     message: string,
-    readonly status: number,
-    readonly details?: unknown,
+    status: number,
+    details?: unknown,
   ) {
-    super(message);
+    super(message, status, details);
     this.name = "ReviewServiceError";
   }
-}
-
-function parseReviewRequestBody(body: unknown): ReviewRequestBody {
-  if (!body || typeof body !== "object" || Array.isArray(body)) {
-    throw new ReviewServiceError("Request body must be an object", 400);
-  }
-
-  return body as ReviewRequestBody;
 }
 
 function normalizeRequiredId(value: string, fieldName: string) {
@@ -78,7 +74,7 @@ function normalizeReason(value: unknown) {
 }
 
 export async function keepRunImages(runId: string, body: unknown, actorType: ActorType = ActorType.user) {
-  const { imageIds } = parseReviewRequestBody(body);
+  const { imageIds } = parseRequestBody<ReviewRequestBody>(body);
   const normalizedRunId = normalizeRequiredId(runId, "runId");
   const normalizedImageIds = normalizeImageIds(imageIds);
 
@@ -94,7 +90,7 @@ export async function keepRunImages(runId: string, body: unknown, actorType: Act
 }
 
 export async function trashRunImages(runId: string, body: unknown, actorType: ActorType = ActorType.user) {
-  const { imageIds, reason } = parseReviewRequestBody(body);
+  const { imageIds, reason } = parseRequestBody<ReviewRequestBody>(body);
   const normalizedRunId = normalizeRequiredId(runId, "runId");
   const normalizedImageIds = normalizeImageIds(imageIds);
   const normalizedReason = normalizeReason(reason);
@@ -126,7 +122,7 @@ export async function getRunAgentContext(runId: string) {
 }
 
 export function mapReviewError(error: unknown) {
-  if (error instanceof ReviewServiceError) {
+  if (error instanceof ServiceValidationError) {
     return {
       message: error.message,
       status: error.status,

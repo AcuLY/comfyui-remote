@@ -2,6 +2,12 @@ import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import { listProjectFolders as listProjectFoldersInRepository } from "@/server/repositories/project-view-repository";
+import {
+  ServiceValidationError,
+  parseRequestBody,
+  ensureSupportedFields,
+  normalizeRequiredStringField,
+} from "@/server/services/validation-utils";
 
 type CreateProjectFolderBody = {
   parentId?: unknown;
@@ -27,50 +33,15 @@ const PROJECT_FOLDER_RENAME_FIELDS = ["name"] as const;
 const PROJECT_FOLDER_MOVE_FIELDS = ["projectId", "folderId"] as const;
 const PROJECT_FOLDER_REORDER_FIELDS = ["parentId", "ids"] as const;
 
-class ProjectFolderServiceError extends Error {
+class ProjectFolderServiceError extends ServiceValidationError {
   constructor(
     message: string,
-    readonly status: number,
-    readonly details?: unknown,
+    status: number,
+    details?: unknown,
   ) {
-    super(message);
+    super(message, status, details);
     this.name = "ProjectFolderServiceError";
   }
-}
-
-function parseRequestBody<T extends Record<string, unknown>>(body: unknown): T {
-  if (!body || typeof body !== "object" || Array.isArray(body)) {
-    throw new ProjectFolderServiceError("Request body must be an object", 400);
-  }
-
-  return body as T;
-}
-
-function ensureSupportedFields(
-  body: Record<string, unknown>,
-  supportedFields: readonly string[],
-) {
-  const unsupportedFields = Object.keys(body).filter((field) => !supportedFields.includes(field));
-
-  if (unsupportedFields.length > 0) {
-    throw new ProjectFolderServiceError("Unsupported fields in request body", 400, {
-      unsupportedFields,
-      supportedFields,
-    });
-  }
-}
-
-function normalizeRequiredString(value: unknown, fieldName: string) {
-  if (typeof value !== "string") {
-    throw new ProjectFolderServiceError(`${fieldName} is required`, 400);
-  }
-
-  const normalizedValue = value.trim();
-  if (!normalizedValue) {
-    throw new ProjectFolderServiceError(`${fieldName} is required`, 400);
-  }
-
-  return normalizedValue;
 }
 
 function normalizeOptionalNullableId(value: unknown, fieldName: string) {
@@ -165,7 +136,7 @@ export function normalizeCreateProjectFolderBody(body: unknown) {
 
   return {
     parentId: normalizeOptionalNullableId(parsedBody.parentId, "parentId"),
-    name: normalizeRequiredString(parsedBody.name, "name"),
+    name: normalizeRequiredStringField(parsedBody.name, "name"),
   };
 }
 
@@ -174,7 +145,7 @@ export function normalizeRenameProjectFolderBody(body: unknown) {
   ensureSupportedFields(parsedBody, PROJECT_FOLDER_RENAME_FIELDS);
 
   return {
-    name: normalizeRequiredString(parsedBody.name, "name"),
+    name: normalizeRequiredStringField(parsedBody.name, "name"),
   };
 }
 
@@ -343,7 +314,7 @@ export async function reorderProjectFolders(body: unknown) {
 }
 
 export function mapProjectFolderError(error: unknown) {
-  if (error instanceof ProjectFolderServiceError) {
+  if (error instanceof ServiceValidationError) {
     return {
       message: error.message,
       status: error.status,

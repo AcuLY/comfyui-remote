@@ -3,6 +3,12 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { DEFAULT_MANUAL_EXCLUSION_NAMES } from "./phase0-baseline";
+import {
+  serializeCsv,
+  compareStrings,
+  rate,
+  parseNullableNumber,
+} from "./csv-utils";
 
 export const PHASE1_HIGH_RISK_SECTION_NAMES = [
   "第三人称 · 背后跪姿手交",
@@ -1067,32 +1073,6 @@ function serializeHighRiskMetricsCsv(metrics: readonly Phase1MetricGroup[]): str
   );
 }
 
-function serializeCsv(
-  headers: readonly string[],
-  rows: readonly (readonly unknown[])[],
-): string {
-  const lines = [headers.map(csvCell).join(",")];
-  for (const row of rows) {
-    lines.push(row.map(csvCell).join(","));
-  }
-  return `${lines.join("\n")}\n`;
-}
-
-function csvCell(value: unknown): string {
-  if (value === null || value === undefined) return "";
-  const text = spreadsheetSafeText(value);
-  if (!/[",\n\r]|^\s|\s$/.test(text)) return text;
-  return `"${text.replace(/"/g, '""')}"`;
-}
-
-function spreadsheetSafeText(value: unknown): string {
-  const text = String(value);
-  if (typeof value === "string" && /^[=+\-@]/.test(text)) {
-    return `'${text}`;
-  }
-  return text;
-}
-
 function manualExclusionsAreExcludedFromMainMetrics(object: Record<string, unknown>): boolean {
   const flag = object.manualExclusionsExcludedFromMainMetrics;
   if (flag !== true) return false;
@@ -1183,12 +1163,6 @@ function numberFromUnknown(value: unknown): number {
   return Number.NaN;
 }
 
-function parseNullableNumber(value: unknown): number | null {
-  if (value === null || value === undefined || value === "") return null;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
 function booleanFromUnknown(value: unknown): boolean | undefined {
   if (typeof value === "boolean") return value;
   if (typeof value === "string") {
@@ -1238,17 +1212,6 @@ function uniquePreservingOrder(values: readonly string[]): string[] {
   return unique;
 }
 
-function rate(numerator: number, denominator: number): number {
-  if (denominator <= 0) return 0;
-  return roundRate(numerator / denominator);
-}
-
 function roundRate(value: number): number {
   return Number(value.toFixed(4));
-}
-
-function compareStrings(left: string, right: string): number {
-  if (left < right) return -1;
-  if (left > right) return 1;
-  return 0;
 }

@@ -2,6 +2,13 @@ import { createHash } from "node:crypto";
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import {
+  serializeCsv,
+  compareStrings,
+  rate,
+  parseNullableNumber,
+} from "./csv-utils";
+
 export const VALID_REFERENCE_PROJECT_TITLES = [
   "叶瞬光",
   "大乔",
@@ -879,7 +886,7 @@ function normalizeSourceRow(sourceRow: Phase0SourceRow): NormalizedSourceRow {
     ...sourceRow,
     sectionName,
     canonicalSectionName,
-    sortOrder: normalizeNullableNumber(sourceRow.sortOrder),
+    sortOrder: parseNullableNumber(sourceRow.sortOrder),
     reviewStatus: String(sourceRow.reviewStatus ?? "").trim().toLowerCase(),
     checkpointName: String(sourceRow.checkpointName ?? "").trim(),
     loraConfigSummary: summarizeLoraConfig(sourceRow.loraConfig),
@@ -972,11 +979,6 @@ function hasSortOrderVariance(aggregateRows: readonly Phase0AggregateRow[]): boo
   });
 }
 
-function rate(numerator: number, denominator: number): number {
-  if (denominator <= 0) return 0;
-  return Number((numerator / denominator).toFixed(4));
-}
-
 function compareAggregateRows(left: Phase0AggregateRow, right: Phase0AggregateRow): number {
   return (
     right.trashRate - left.trashRate ||
@@ -1033,12 +1035,6 @@ function compareLabeledRows(
 
 function projectTitleIndex(projectTitle: string, titleOrder: Map<string, number>): number {
   return titleOrder.get(projectTitle) ?? Number.MAX_SAFE_INTEGER;
-}
-
-function compareStrings(left: string, right: string): number {
-  if (left < right) return -1;
-  if (left > right) return 1;
-  return 0;
 }
 
 function compareNullableNumbers(left: number | null, right: number | null): number {
@@ -1165,32 +1161,6 @@ function serializeSectionProjectCsv(rows: readonly Phase0SectionProjectRow[]): s
   );
 }
 
-function serializeCsv(
-  headers: readonly string[],
-  rows: readonly (readonly unknown[])[],
-): string {
-  const lines = [headers.map(csvCell).join(",")];
-  for (const row of rows) {
-    lines.push(row.map(csvCell).join(","));
-  }
-  return `${lines.join("\n")}\n`;
-}
-
-function csvCell(value: unknown): string {
-  if (value === null || value === undefined) return "";
-  const text = spreadsheetSafeText(value);
-  if (!/[",\n\r]|^\s|\s$/.test(text)) return text;
-  return `"${text.replace(/"/g, '""')}"`;
-}
-
-function spreadsheetSafeText(value: unknown): string {
-  const text = String(value);
-  if (typeof value === "string" && /^[=+\-@]/.test(text)) {
-    return `'${text}`;
-  }
-  return text;
-}
-
 function serializeMarkdownReport(
   baseline: Phase0Baseline,
   verification: Phase0VerificationResult,
@@ -1302,7 +1272,7 @@ function mapSqliteRow(row: SqliteBaselineRow): Phase0SourceRow {
     projectTitle: textFromUnknown(row.projectTitle),
     sectionId: textFromUnknown(row.sectionId),
     sectionName: textFromUnknown(row.sectionName),
-    sortOrder: normalizeNullableNumber(row.sortOrder),
+    sortOrder: parseNullableNumber(row.sortOrder),
     runId: textFromUnknown(row.runId),
     imageId: textFromUnknown(row.imageId),
     filePath: textFromUnknown(row.filePath),
@@ -1325,12 +1295,6 @@ function parseJson(value: unknown, fallback: unknown): unknown {
 function textFromUnknown(value: unknown): string {
   if (value === null || value === undefined) return "";
   return String(value);
-}
-
-function normalizeNullableNumber(value: unknown): number | null {
-  if (value === null || value === undefined || value === "") return null;
-  const number = Number(value);
-  return Number.isFinite(number) ? number : null;
 }
 
 function extractManualExclusions(parsed: unknown): (string | Phase0ManualExclusion)[] {
