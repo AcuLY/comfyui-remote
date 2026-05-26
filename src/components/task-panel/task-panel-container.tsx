@@ -21,6 +21,30 @@ export function TaskPanelContainer() {
     };
   }, [isOpen]);
 
+  // Close on Escape key
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [isOpen, setOpen]);
+
+  // Close on browser back (push history state when opening)
+  useEffect(() => {
+    if (!isOpen) return;
+    const state = { taskPanelOpen: true };
+    window.history.pushState(state, "");
+    const handler = () => {
+      setOpen(false);
+    };
+    window.addEventListener("popstate", handler);
+    return () => {
+      window.removeEventListener("popstate", handler);
+    };
+  }, [isOpen, setOpen]);
+
   return (
     <>
       {/* FAB trigger */}

@@ -14,7 +14,7 @@ export function TaskPanelContent() {
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex shrink-0 items-center justify-between border-b border-white/[0.06] px-4 py-3">
+      <div className="flex shrink-0 items-center justify-between border-b border-white/[0.06] px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <div className="flex items-center gap-2">
           <h2 className="text-sm font-medium text-zinc-200">生图</h2>
           {activeTaskCount > 0 && (
@@ -26,7 +26,7 @@ export function TaskPanelContent() {
         <button
           type="button"
           onClick={() => setOpen(false)}
-          className="rounded-md p-1 text-zinc-500 transition hover:bg-white/[0.06] hover:text-zinc-300"
+          className="flex size-8 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-zinc-400 transition hover:bg-white/[0.08] hover:text-zinc-200 active:scale-90"
           aria-label="关闭面板"
         >
           <X className="size-4" />
