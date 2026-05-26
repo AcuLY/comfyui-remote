@@ -51,20 +51,7 @@ export function SourceImageUploader({
   }
 
   return (
-    <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3">
-      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="text-xs text-zinc-400">上传的图片统一作为参考源图使用。</div>
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          disabled={isPending}
-          className="inline-flex h-8 items-center justify-center gap-2 rounded-md bg-sky-500 px-3 text-xs font-medium text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <UploadCloud className="size-3.5" />
-          选择文件
-        </button>
-      </div>
-
+    <div className="rounded-lg border border-white/10 bg-white/[0.03] p-2">
       <button
         type="button"
         onClick={() => inputRef.current?.click()}
@@ -74,11 +61,13 @@ export function SourceImageUploader({
           submitFiles(event.dataTransfer.files);
         }}
         disabled={isPending}
-        className="flex min-h-32 w-full cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-white/15 bg-black/20 px-4 text-center transition hover:border-sky-400/60 hover:bg-sky-500/10 disabled:cursor-not-allowed disabled:opacity-50"
+        className="flex h-16 w-full cursor-pointer items-center justify-center gap-3 rounded-md border border-dashed border-white/15 bg-black/20 px-4 transition hover:border-sky-400/60 hover:bg-sky-500/10 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        <UploadCloud className="mb-2 size-7 text-sky-300" />
-        <span className="text-sm font-medium text-zinc-200">拖入图片或点击上传</span>
-        <span className="mt-1 text-xs text-zinc-500">支持 png / jpg / jpeg / webp，单张最大 50MB</span>
+        <UploadCloud className="size-5 text-sky-300" />
+        <div className="text-left">
+          <span className="text-xs font-medium text-zinc-200">拖入图片或点击上传</span>
+          <span className="ml-2 text-[11px] text-zinc-500">png / jpg / webp</span>
+        </div>
       </button>
 
       <input

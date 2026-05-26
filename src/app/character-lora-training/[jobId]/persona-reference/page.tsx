@@ -63,24 +63,24 @@ export default async function PersonaReferencePage({
       title={`${job.characterName} / 人设参考图`}
       description="上传源图、发起人设图生成，并选择当前训练使用的人设参考图。"
     >
-      {/* Compact source section */}
+      {/* Source section: gallery + compact upload */}
       <SimpleSection
         title="源图"
         subtitle={`${report.sourceImages.length} 张参考图`}
       >
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-          <div className="flex-1">
-            <SourceImageUploader uploadAction={uploadSourceImageAction.bind(null, job.id)} />
-          </div>
+        <div className="space-y-3">
+          {/* Source image gallery */}
           {report.sourceImages.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 sm:max-w-[240px]">
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
               {report.sourceImages.map((image) => (
-                <div key={image.id} className="size-12 flex-none overflow-hidden rounded-md border border-white/10">
+                <div key={image.id} className="overflow-hidden rounded-lg border border-white/10">
                   <ArtifactThumbCompact jobId={job.id} relativePath={image.relativePath} alt={compactId(image.id)} />
                 </div>
               ))}
             </div>
           )}
+          {/* Compact uploader */}
+          <SourceImageUploader uploadAction={uploadSourceImageAction.bind(null, job.id)} />
         </div>
       </SimpleSection>
 
