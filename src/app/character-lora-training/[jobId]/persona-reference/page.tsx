@@ -5,7 +5,6 @@ import {
   getCharacterLoraTrainingJob,
 } from "@/lib/actions/character-lora-training";
 import {
-  CANONICAL_VIEW_SPECS,
   getEffectiveCanonicalViewLabel,
   getCanonicalViewLabel,
   groupCanonicalVersionsByView,
@@ -54,7 +53,6 @@ export default async function PersonaReferencePage({
   const activeCanonicalTasks = canonicalTasks.filter((task) => task.status === "queued" || task.status === "running");
   const failedCanonicalTasks = canonicalTasks.filter((task) => task.status === "failed");
   const canonicalVersionsByView = groupCanonicalVersionsByView(report.canonicalVersions);
-  const manualSourceImages = report.sourceImages;
 
   return (
     <JobPageShell
@@ -79,8 +77,11 @@ export default async function PersonaReferencePage({
               ))}
             </div>
           )}
-          {/* Compact uploader */}
-          <SourceImageUploader uploadAction={uploadSourceImageAction.bind(null, job.id)} />
+          {/* Compact uploader with target selector */}
+          <SourceImageUploader
+            uploadAction={uploadSourceImageAction.bind(null, job.id)}
+            registerCanonicalAction={registerManualCanonicalAction.bind(null, job.id)}
+          />
         </div>
       </SimpleSection>
 
@@ -142,47 +143,6 @@ export default async function PersonaReferencePage({
                     ))}
                 </div>
               )}
-            </div>
-          </details>
-
-          {/* Manual register (collapsible) */}
-          <details className="rounded-lg border border-white/[0.08] bg-white/[0.02]">
-            <summary className="cursor-pointer px-2.5 py-2 text-xs font-semibold text-zinc-200">
-              手动登记人设图
-            </summary>
-            <div className="border-t border-white/[0.06] px-2.5 py-2">
-              <form action={registerManualCanonicalAction.bind(null, job.id)} className="space-y-2">
-                {manualSourceImages.length === 0 ? (
-                  <div className="rounded border border-amber-500/25 bg-amber-500/10 px-2 py-1.5 text-[11px] text-amber-200">
-                    请先上传参考图
-                  </div>
-                ) : (
-                  <label className="block text-[11px] text-zinc-400">
-                    源图
-                    <select name="sourceImageId" className="mt-0.5 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 text-[11px] text-zinc-200 outline-none focus:border-sky-400">
-                      {manualSourceImages.map((image) => (
-                        <option key={image.id} value={image.id}>{compactId(image.id)}</option>
-                      ))}
-                    </select>
-                  </label>
-                )}
-                <label className="block text-[11px] text-zinc-400">
-                  角度
-                  <select name="canonicalView" className="mt-0.5 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 text-[11px] text-zinc-200 outline-none focus:border-sky-400">
-                    <option value="">未标注</option>
-                    {CANONICAL_VIEW_SPECS.map((view) => (
-                      <option key={view.key} value={view.key}>{view.label}</option>
-                    ))}
-                  </select>
-                </label>
-                <label className="block text-[11px] text-zinc-400">
-                  备注
-                  <textarea name="notes" rows={2} className="mt-0.5 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 text-[11px] text-zinc-200 outline-none focus:border-sky-400" />
-                </label>
-                <button disabled={manualSourceImages.length === 0} className="h-7 rounded-md bg-emerald-500 px-2.5 text-[11px] font-medium text-white transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50">
-                  登记
-                </button>
-              </form>
             </div>
           </details>
 

@@ -110,11 +110,11 @@ export async function listPromptCardDraftResultsAction(jobId: string): Promise<P
   });
 }
 
-export async function uploadSourceImageAction(jobId: string, formData: FormData): Promise<WorkflowActionResult> {
+export async function uploadSourceImageAction(jobId: string, formData: FormData): Promise<WorkflowActionResult & { sourceImageId?: string }> {
   try {
-    await uploadCharacterLoraSourceImage(jobId, formData);
+    const result = await uploadCharacterLoraSourceImage(jobId, formData);
     revalidateJob(jobId);
-    return { ok: true, message: "已上传参考图。" };
+    return { ok: true, message: "已上传参考图。", sourceImageId: result.id };
   } catch (error) {
     return toActionResult(error);
   }
