@@ -265,61 +265,69 @@ export async function syncPresetToSections(presetId: string) {
     affectedSections.set(block.projectSectionId, block.projectSection.projectId);
   }
 
-  for (const block of blocks) {
-    const variant = resolvePresetVariant(block.variantId, block.label);
-    const resolved = await getResolvedVariantContent(variant.id);
-    const label = makePresetLabel(variant);
+  // Resolve variant content outside the transaction to avoid holding it open during I/O
+  const resolvedBlocks = await Promise.all(
+    blocks.map(async (block) => {
+      const variant = resolvePresetVariant(block.variantId, block.label);
+      const resolved = await getResolvedVariantContent(variant.id);
+      const label = makePresetLabel(variant);
+      return { block, variant, resolved, label };
+    }),
+  );
 
-    const updatedBlock = await prisma.promptBlock.update({
-      where: { id: block.id },
-      data: { label, positive: resolved.prompt, negative: resolved.negativePrompt },
-      select: { id: true, label: true, positive: true, negative: true, sortOrder: true, bindingId: true, groupBindingId: true },
-    });
-    await recordSectionChange({
-      sectionId: block.projectSectionId,
-      dimension: "prompt",
-      title: `同步预制提示词：${label}`,
-      before: {
-        id: block.id,
-        label: block.label,
-        positive: block.positive,
-        negative: block.negative,
-        sortOrder: block.sortOrder,
-        bindingId: block.bindingId,
-        groupBindingId: block.groupBindingId,
-      },
-      after: updatedBlock,
-    });
-
-    if (block.bindingId) {
-      const bindingId = block.bindingId;
-      const section = await prisma.projectSection.findUnique({
-        where: { id: block.projectSectionId },
-        select: { loraConfig: true },
+  await prisma.$transaction(async (tx) => {
+    for (const { block, resolved, label } of resolvedBlocks) {
+      const updatedBlock = await tx.promptBlock.update({
+        where: { id: block.id },
+        data: { label, positive: resolved.prompt, negative: resolved.negativePrompt },
+        select: { id: true, label: true, positive: true, negative: true, sortOrder: true, bindingId: true, groupBindingId: true },
       });
-      if (!section) continue;
+      await recordSectionChange({
+        sectionId: block.projectSectionId,
+        dimension: "prompt",
+        title: `同步预制提示词：${label}`,
+        before: {
+          id: block.id,
+          label: block.label,
+          positive: block.positive,
+          negative: block.negative,
+          sortOrder: block.sortOrder,
+          bindingId: block.bindingId,
+          groupBindingId: block.groupBindingId,
+        },
+        after: updatedBlock,
+      });
 
-      const beforeLoraConfig = section.loraConfig ?? null;
-      const config = parseSectionLoraConfig(section.loraConfig);
-      const currentConfig = serializeSectionLoraConfig(config);
-      syncPresetLoraConfig(config, bindingId, block.groupBindingId, resolved);
-      const nextConfig = serializeSectionLoraConfig(config);
-      const changed = JSON.stringify(currentConfig) !== JSON.stringify(nextConfig);
-      if (changed) {
-        await prisma.projectSection.update({
+      if (block.bindingId) {
+        const bindingId = block.bindingId;
+        const section = await tx.projectSection.findUnique({
           where: { id: block.projectSectionId },
-          data: { loraConfig: nextConfig as Prisma.InputJsonValue },
+          select: { loraConfig: true },
         });
-        await recordSectionChange({
-          sectionId: block.projectSectionId,
-          dimension: "lora",
-          title: `同步预制 LoRA：${label}`,
-          before: beforeLoraConfig,
-          after: nextConfig,
-        });
+        if (!section) continue;
+
+        const beforeLoraConfig = section.loraConfig ?? null;
+        const config = parseSectionLoraConfig(section.loraConfig);
+        const currentConfig = serializeSectionLoraConfig(config);
+        syncPresetLoraConfig(config, bindingId, block.groupBindingId, resolved);
+        const nextConfig = serializeSectionLoraConfig(config);
+        const changed = JSON.stringify(currentConfig) !== JSON.stringify(nextConfig);
+        if (changed) {
+          await tx.projectSection.update({
+            where: { id: block.projectSectionId },
+            data: { loraConfig: nextConfig as Prisma.InputJsonValue },
+          });
+          await recordSectionChange({
+            sectionId: block.projectSectionId,
+            dimension: "lora",
+            title: `同步预制 LoRA：${label}`,
+            before: beforeLoraConfig,
+            after: nextConfig,
+          });
+        }
       }
     }
-  }
+  });
   const affectedTemplateIds = new Set<string>();
   for (const templateSection of templateSections) {
     const rawBlocks = Array.isArray(templateSection.promptBlocks) ? templateSection.promptBlocks : [];

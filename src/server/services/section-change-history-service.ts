@@ -1,24 +1,11 @@
-import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
+import { stableStringify, toPrismaJson } from "./change-history-utils";
 
 export type SectionChangeDimension = "runParams" | "prompt" | "lora";
 
 const HISTORY_LIMIT_PER_DIMENSION = 10;
 
 const DIMENSIONS: SectionChangeDimension[] = ["runParams", "prompt", "lora"];
-
-function cloneForJson(value: unknown): unknown {
-  if (value === undefined) return null;
-  return JSON.parse(JSON.stringify(value));
-}
-
-function stableStringify(value: unknown): string {
-  return JSON.stringify(cloneForJson(value));
-}
-
-function toPrismaJson(value: unknown): Prisma.InputJsonValue {
-  return cloneForJson(value) as Prisma.InputJsonValue;
-}
 
 async function pruneSectionHistory(sectionId: string, dimension: SectionChangeDimension) {
   const stale = await prisma.sectionChangeLog.findMany({

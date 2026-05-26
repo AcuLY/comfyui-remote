@@ -71,29 +71,31 @@ export async function createPromptBlock(
   sectionId: string,
   input: PromptBlockCreateInput,
 ): Promise<PromptBlockRecord> {
-  const maxSortOrder = await db.promptBlock.aggregate({
-    where: { projectSectionId: sectionId },
-    _max: { sortOrder: true },
-  });
+  return db.$transaction(async (tx) => {
+    const maxResult = await tx.promptBlock.aggregate({
+      where: { projectSectionId: sectionId },
+      _max: { sortOrder: true },
+    });
 
-  const sortOrder =
-    input.sortOrder ?? (maxSortOrder._max.sortOrder ?? -1) + 1;
+    const sortOrder =
+      input.sortOrder ?? (maxResult._max.sortOrder ?? -1) + 1;
 
-  return db.promptBlock.create({
-    data: {
-      projectSectionId: sectionId,
-      type: input.type,
-      sourceId: input.sourceId ?? null,
-      variantId: input.variantId ?? null,
-      categoryId: input.categoryId ?? null,
-      bindingId: input.bindingId ?? null,
-      groupBindingId: input.groupBindingId ?? null,
-      label: input.label,
-      positive: input.positive,
-      negative: input.negative ?? null,
-      sortOrder,
-    },
-    select: BLOCK_SELECT,
+    return tx.promptBlock.create({
+      data: {
+        projectSectionId: sectionId,
+        type: input.type,
+        sourceId: input.sourceId ?? null,
+        variantId: input.variantId ?? null,
+        categoryId: input.categoryId ?? null,
+        bindingId: input.bindingId ?? null,
+        groupBindingId: input.groupBindingId ?? null,
+        label: input.label,
+        positive: input.positive,
+        negative: input.negative ?? null,
+        sortOrder,
+      },
+      select: BLOCK_SELECT,
+    });
   });
 }
 

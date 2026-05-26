@@ -132,25 +132,36 @@ export async function addSection(projectId: string, name?: string, folderId?: st
       return catA - catB;
     });
 
-    const loraConfig: { lora1: Array<Record<string, unknown>>; lora2: Array<Record<string, unknown>> } = { lora1: [], lora2: [] };
+    // Pre-resolve all variant content outside the transaction
+    const resolvedBindings: Array<{
+      binding: typeof sortedBindings[number];
+      preset: NonNullable<ReturnType<typeof presetMap.get>>;
+      variant: NonNullable<ReturnType<typeof presetMap.get>>["variants"][number];
+      resolved: Awaited<ReturnType<typeof resolveVariantContent>>;
+      bindingId: string;
+    }> = [];
 
     for (const binding of sortedBindings) {
       const preset = presetMap.get(binding.presetId);
       if (!preset) continue;
 
-      // 获取变体（如果指定了 variantId，否则使用第一个变体）
       const variant = binding.variantId
         ? preset.variants.find(v => v.id === binding.variantId)
         : preset.variants[0];
 
       if (variant) {
-        // Resolve with linked variants
         const resolved = await resolveVariantContent(variant.id);
-
-        // Generate a bindingId to link this block with its LoRAs
         const bindingId = createBindingId();
+        resolvedBindings.push({ binding, preset, variant, resolved, bindingId });
+      }
+    }
 
-        await prisma.promptBlock.create({
+    // Perform all DB writes in a single transaction
+    await prisma.$transaction(async (tx) => {
+      const loraConfig: { lora1: Array<Record<string, unknown>>; lora2: Array<Record<string, unknown>> } = { lora1: [], lora2: [] };
+
+      for (const { preset, variant, resolved, bindingId } of resolvedBindings) {
+        await tx.promptBlock.create({
           data: {
             projectSectionId: section.id,
             type: "preset",
@@ -188,35 +199,35 @@ export async function addSection(projectId: string, name?: string, folderId?: st
           }
         }
       }
-    }
 
-    const categoryOrderByName = new Map(
-      presets.map((preset) => [
-        preset.category.name,
-        {
-          lora1Order: preset.category.lora1Order,
-          lora2Order: preset.category.lora2Order,
-        },
-      ]),
-    );
-    loraConfig.lora1 = sortSectionLoraEntriesByCategoryOrder(
-      loraConfig.lora1,
-      "lora1Order",
-      categoryOrderByName,
-    );
-    loraConfig.lora2 = sortSectionLoraEntriesByCategoryOrder(
-      loraConfig.lora2,
-      "lora2Order",
-      categoryOrderByName,
-    );
+      const categoryOrderByName = new Map(
+        presets.map((preset) => [
+          preset.category.name,
+          {
+            lora1Order: preset.category.lora1Order,
+            lora2Order: preset.category.lora2Order,
+          },
+        ]),
+      );
+      loraConfig.lora1 = sortSectionLoraEntriesByCategoryOrder(
+        loraConfig.lora1,
+        "lora1Order",
+        categoryOrderByName,
+      );
+      loraConfig.lora2 = sortSectionLoraEntriesByCategoryOrder(
+        loraConfig.lora2,
+        "lora2Order",
+        categoryOrderByName,
+      );
 
-    // Persist the composed loraConfig
-    if (loraConfig.lora1.length > 0 || loraConfig.lora2.length > 0) {
-      await prisma.projectSection.update({
-        where: { id: section.id },
-        data: { loraConfig: loraConfig as Prisma.InputJsonValue },
-      });
-    }
+      // Persist the composed loraConfig
+      if (loraConfig.lora1.length > 0 || loraConfig.lora2.length > 0) {
+        await tx.projectSection.update({
+          where: { id: section.id },
+          data: { loraConfig: loraConfig as Prisma.InputJsonValue },
+        });
+      }
+    });
   }
 
   revalidatePath(`/projects/${projectId}`);

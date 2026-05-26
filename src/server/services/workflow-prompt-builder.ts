@@ -121,7 +121,8 @@ function resolveSeed(params: KSamplerParams): number {
     case "fixed":
       return 42;
     case "increment":
-      return Math.floor(Math.random() * MAX_SEED);
+    // Falls through to "random": ComfyUI doesn't track previous seeds across
+    // runs, so true increment is not possible. Use random as the safe default.
     case "random":
     default:
       return Math.floor(Math.random() * MAX_SEED);
