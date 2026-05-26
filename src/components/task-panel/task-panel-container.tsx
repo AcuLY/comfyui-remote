@@ -1,5 +1,7 @@
 "use client";
 
+import { useCallback, useRef, useState } from "react";
+
 import { cn } from "@/lib/utils";
 import { useTaskPanel } from "./task-panel-provider";
 import { TaskPanelTrigger } from "./task-panel-trigger";
@@ -7,8 +9,36 @@ import { TaskPanelContent } from "./task-panel-content";
 
 export function TaskPanelContainer() {
   const { isOpen, setOpen, activeTasks } = useTaskPanel();
-
   const hasRunning = activeTasks.some((t) => t.status === "running");
+
+  // Touch drag state for bottom sheet
+  const [dragOffset, setDragOffset] = useState(0);
+  const dragStartY = useRef(0);
+  const isDragging = useRef(false);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    dragStartY.current = touch.clientY;
+    isDragging.current = true;
+    setDragOffset(0);
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!isDragging.current) return;
+    const touch = e.touches[0];
+    const diff = touch.clientY - dragStartY.current;
+    // Only allow dragging down (positive offset)
+    setDragOffset(Math.max(0, diff));
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    isDragging.current = false;
+    // If dragged more than 100px down, close the panel
+    if (dragOffset > 100) {
+      setOpen(false);
+    }
+    setDragOffset(0);
+  }, [dragOffset, setOpen]);
 
   return (
     <>
@@ -40,38 +70,43 @@ export function TaskPanelContainer() {
           "max-lg:inset-x-0 max-lg:bottom-0 max-lg:max-h-[75vh] max-lg:rounded-t-2xl max-lg:border-t",
           isOpen ? "max-lg:translate-y-0" : "max-lg:translate-y-full",
 
+          // Disable transition during drag
+          isDragging.current && "!duration-0",
+
           // Border color: gradient accent when running, subtle otherwise
           hasRunning
             ? "border-sky-400/40"
             : "border-white/[0.06]",
         )}
-        // Accessible panel role
+        style={
+          // Apply drag offset for touch dragging (mobile only)
+          dragOffset > 0 ? { transform: `translateY(${dragOffset}px)` } : undefined
+        }
         role="complementary"
         aria-label="生图任务面板"
       >
-        {/* Running tasks gradient accent (left border on lg, top border on mobile) */}
+        {/* Running tasks gradient accent */}
         {hasRunning && (
           <>
-            {/* Left accent for desktop */}
             <div
               className="absolute left-0 top-0 bottom-0 w-0.5 hidden lg:block"
-              style={{
-                background: "linear-gradient(to bottom, #38bdf8, #a78bfa)",
-              }}
+              style={{ background: "linear-gradient(to bottom, #38bdf8, #a78bfa)" }}
             />
-            {/* Top accent for mobile */}
             <div
               className="absolute top-0 left-0 right-0 h-0.5 lg:hidden"
-              style={{
-                background: "linear-gradient(to right, #38bdf8, #a78bfa)",
-              }}
+              style={{ background: "linear-gradient(to right, #38bdf8, #a78bfa)" }}
             />
           </>
         )}
 
-        {/* Drag handle for mobile */}
-        <div className="flex justify-center pt-2 pb-0 lg:hidden">
-          <div className="h-1 w-8 rounded-full bg-white/20" />
+        {/* Drag handle for mobile — now with touch events */}
+        <div
+          className="flex justify-center pt-3 pb-1 lg:hidden cursor-grab active:cursor-grabbing touch-none"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
+          <div className="h-1.5 w-10 rounded-full bg-white/25" />
         </div>
 
         {/* Content */}
