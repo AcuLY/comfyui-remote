@@ -1,5 +1,8 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { createWriteStream } from "node:fs";
+import { mkdir, stat } from "node:fs/promises";
 import path from "node:path";
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
 
@@ -44,10 +47,20 @@ export async function saveUploadedLora(file: File, targetDir: string) {
 
   const safeName = sanitizeFileName(file.name);
   const targetPath = path.join(absoluteTargetDir, safeName);
-  const buffer = Buffer.from(await file.arrayBuffer());
+
+  const MAX_UPLOAD_SIZE = 10 * 1024 * 1024 * 1024; // 10GB
+  if (file.size > MAX_UPLOAD_SIZE) {
+    throw new LoraUploadError("File too large (max 10GB)", 413);
+  }
 
   await mkdir(absoluteTargetDir, { recursive: true });
-  await writeFile(targetPath, buffer);
+
+  // Stream file to disk to avoid loading entire upload into memory
+  const writeStream = createWriteStream(targetPath);
+  await pipeline(Readable.fromWeb(file.stream() as any), writeStream);
+
+  const fileStat = await stat(targetPath);
+  const fileSize = fileStat.size;
 
   const relativePath = path
     .relative(env.loraBaseDir, targetPath)
@@ -61,7 +74,7 @@ export async function saveUploadedLora(file: File, targetDir: string) {
       fileName: safeName,
       absolutePath: targetPath,
       relativePath,
-      size: BigInt(buffer.byteLength),
+      size: BigInt(fileSize),
       source: "upload",
     },
   });

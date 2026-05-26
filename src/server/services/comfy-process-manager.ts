@@ -103,6 +103,8 @@ class ComfyProcessManager {
   private consecutiveHealthFailures = 0;
   /** Timestamp when the process was last spawned — used for startup grace period */
   private spawnedAt: number | null = null;
+  /** Timer for auto-restart delay — tracked to prevent duplicate spawns */
+  private autoRestartTimer: NodeJS.Timeout | null = null;
 
   /**
    * When true, ComfyUI was detected as already running (not spawned by us).
@@ -150,6 +152,12 @@ class ComfyProcessManager {
       return { ok: false, message: `ComfyUI is already ${this.state}` };
     }
 
+    // Cancel any pending auto-restart to prevent duplicate spawns
+    if (this.autoRestartTimer) {
+      clearTimeout(this.autoRestartTimer);
+      this.autoRestartTimer = null;
+    }
+
     // Check if ComfyUI is already reachable (e.g. started externally)
     const alreadyRunning = await this.checkExistingComfyUI();
     if (alreadyRunning) {
@@ -178,6 +186,12 @@ class ComfyProcessManager {
   }
 
   async stop(): Promise<{ ok: boolean; message: string }> {
+    // Cancel any pending auto-restart to prevent duplicate spawns
+    if (this.autoRestartTimer) {
+      clearTimeout(this.autoRestartTimer);
+      this.autoRestartTimer = null;
+    }
+
     // ComfyUI detected as externally started — kill by port
     const shouldKillExternal =
       !this.process &&
@@ -371,7 +385,7 @@ class ComfyProcessManager {
         this.process.kill("SIGTERM");
         // Force kill after 5 seconds if still alive
         const child = this.process;
-        setTimeout(() => {
+        const killTimer = setTimeout(() => {
           try {
             if (child && !child.killed) {
               this.log("[manager] Force killing with SIGKILL...");
@@ -381,6 +395,7 @@ class ComfyProcessManager {
             // Ignore
           }
         }, 5000);
+        killTimer.unref();
       }
     } catch {
       // Process may already be dead
@@ -444,7 +459,7 @@ class ComfyProcessManager {
 
     try {
       if (isWin) {
-        // netstat -ano | findstr :PORT
+        // netstat -ano | findstr :PORT — then filter for exact port match
         const output = execSync(`netstat -ano | findstr :${port}`, {
           encoding: "utf8",
           timeout: 5000,
@@ -452,7 +467,12 @@ class ComfyProcessManager {
         const pids = new Set<number>();
         for (const line of output.split("\n")) {
           const match = line.match(/\s+LISTENING\s+(\d+)/);
-          if (match) pids.add(parseInt(match[1], 10));
+          if (!match) continue;
+          // Verify exact port match: local address should contain :PORT followed by a non-digit
+          const localAddrMatch = line.match(/:(\d+)\s/);
+          if (localAddrMatch && parseInt(localAddrMatch[1], 10) === port) {
+            pids.add(parseInt(match[1], 10));
+          }
         }
         return [...pids];
       } else {
@@ -484,7 +504,7 @@ class ComfyProcessManager {
         this.log(`[manager] Sent SIGTERM to PID ${pid}`);
 
         // Force kill after 3 seconds
-        setTimeout(() => {
+        const killTimer = setTimeout(() => {
           try {
             process.kill(pid, 0); // Check if process still exists
             this.log(`[manager] PID ${pid} still alive, sending SIGKILL...`);
@@ -493,6 +513,7 @@ class ComfyProcessManager {
             // Process already dead
           }
         }, 3000);
+        killTimer.unref();
       }
       return true;
     } catch (err) {
@@ -714,7 +735,8 @@ class ComfyProcessManager {
     );
 
     // Small delay before restart
-    setTimeout(async () => {
+    this.autoRestartTimer = setTimeout(async () => {
+      this.autoRestartTimer = null;
       // Don't restart if user has stopped the process in the meantime
       if (this.state === "stopped") {
         this.log("[manager] Auto-restart cancelled: process was stopped");

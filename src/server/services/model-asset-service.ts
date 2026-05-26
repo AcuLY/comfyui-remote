@@ -1,7 +1,9 @@
 import { createHash } from "node:crypto";
-import { createReadStream } from "node:fs";
-import { mkdir, readdir, rename, stat, writeFile } from "node:fs/promises";
+import { createReadStream, createWriteStream } from "node:fs";
+import { mkdir, readdir, rename, stat } from "node:fs/promises";
 import path from "node:path";
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
 import type { ModelKind } from "@/lib/model-constants";
@@ -395,10 +397,15 @@ export async function saveUploadedModelFile(kind: ModelKind, file: File, targetD
   }
 
   const targetPath = path.join(absoluteTargetDir, safeName);
-  const buffer = Buffer.from(await file.arrayBuffer());
 
   await mkdir(absoluteTargetDir, { recursive: true });
-  await writeFile(targetPath, buffer);
+
+  // Stream file to disk to avoid loading entire upload into memory
+  const writeStream = createWriteStream(targetPath);
+  await pipeline(Readable.fromWeb(file.stream() as any), writeStream);
+
+  const fileStat = await stat(targetPath);
+  const fileSize = fileStat.size;
 
   const relativePath = path.relative(baseDir, targetPath).replace(/\\/g, "/");
   const record = await db.loraAsset.upsert({
@@ -409,7 +416,7 @@ export async function saveUploadedModelFile(kind: ModelKind, file: File, targetD
       category: normalizedDir || ".",
       fileName: safeName,
       relativePath,
-      size: BigInt(buffer.byteLength),
+      size: BigInt(fileSize),
       source: "upload",
     },
     create: {
@@ -419,7 +426,7 @@ export async function saveUploadedModelFile(kind: ModelKind, file: File, targetD
       fileName: safeName,
       absolutePath: targetPath,
       relativePath,
-      size: BigInt(buffer.byteLength),
+      size: BigInt(fileSize),
       source: "upload",
     },
   });

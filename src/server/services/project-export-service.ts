@@ -1,6 +1,6 @@
 import { createWriteStream } from "node:fs";
 import { access, mkdir, readdir, rm, unlink } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { join, resolve, sep } from "node:path";
 import archiver from "archiver";
 import sharp from "sharp";
 import { prisma } from "@/lib/prisma";
@@ -74,6 +74,12 @@ export async function exportProjectImages(projectId: string): Promise<ExportProj
   }
 
   const exportDir = join(EXPORT_ROOT, exportName);
+
+  // Path containment check to prevent traversal via project title
+  if (!resolve(exportDir).startsWith(resolve(EXPORT_ROOT) + sep)) {
+    return { success: false, message: "Invalid project title for export path" };
+  }
+
   const pixivDir = join(exportDir, "pixiv");
   const previewDir = join(exportDir, "preview");
   const tempJpgDir = join(exportDir, "_temp_jpg");
@@ -184,6 +190,7 @@ function createZip(sourceDir: string, outputPath: string): Promise<void> {
     const archive = archiver("zip", { zlib: { level: 6 } });
 
     output.on("close", () => resolvePromise());
+    output.on("error", (err) => reject(err));
     archive.on("error", (error) => reject(error));
 
     archive.pipe(output);
