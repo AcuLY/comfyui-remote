@@ -1,10 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { resolve } from "node:path";
+import { rm } from "node:fs/promises";
 import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import { parseSectionLoraConfig, serializeSectionLoraConfig } from "@/lib/lora-types";
 import { detachAllPresetLoraEntries } from "@/lib/preset-binding-utils";
+import { cleanupProjectSectionFiles } from "@/server/services/section-cleanup-service";
 import type { PresetBinding } from "./project";
 import { resolveVariantContent } from "./preset-variant";
 import {
@@ -445,4 +448,111 @@ export async function deleteSections(sectionIds: string[]): Promise<void> {
   for (const projectId of uniqueProjectIds) {
     revalidatePath(`/projects/${projectId}`);
   }
+}
+
+// ---------------------------------------------------------------------------
+// 获取清空小节预览数据
+// ---------------------------------------------------------------------------
+
+export type ClearSectionsPreview = {
+  sectionCount: number;
+  runCount: number;
+  imageCount: number;
+  hasActiveRuns: boolean;
+};
+
+export async function getClearSectionsPreview(projectId: string): Promise<ClearSectionsPreview> {
+  const [sectionCount, runCount, imageCount, activeRunCount] = await Promise.all([
+    prisma.projectSection.count({ where: { projectId } }),
+    prisma.run.count({ where: { projectId } }),
+    prisma.imageResult.count({ where: { run: { projectId } } }),
+    prisma.run.count({ where: { projectId, status: { in: ["queued", "running"] } } }),
+  ]);
+
+  return {
+    sectionCount,
+    runCount,
+    imageCount,
+    hasActiveRuns: activeRunCount > 0,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// 清空所有小节（含文件清理）
+// ---------------------------------------------------------------------------
+
+export type ClearAllSectionsResult =
+  | { ok: true; deletedSections: number }
+  | { ok: false; message: string };
+
+export async function clearAllSections(projectId: string): Promise<ClearAllSectionsResult> {
+  // 1. Query project with sections and runs
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: {
+      id: true,
+      slug: true,
+      sections: {
+        select: {
+          id: true,
+          runs: { select: { comfyOutputSubfolder: true, status: true } },
+        },
+      },
+    },
+  });
+
+  if (!project) return { ok: false, message: "项目不存在" };
+  if (project.sections.length === 0) return { ok: false, message: "项目没有小节" };
+
+  // 2. Check for active runs
+  const hasActiveRuns = project.sections.some((s) =>
+    s.runs.some((r) => r.status === "queued" || r.status === "running"),
+  );
+  if (hasActiveRuns) {
+    return { ok: false, message: "有正在执行或排队中的任务，请等待完成后再清空" };
+  }
+
+  // 3. Clean up disk files
+  await cleanupProjectSectionFiles(project.slug, project.sections);
+
+  // 4. Delete trash records for this project's images
+  const trashedImages = await prisma.imageResult.findMany({
+    where: { run: { projectId }, reviewStatus: "trashed" },
+    select: { trashRecord: { select: { id: true, trashPath: true } } },
+  });
+  const trashRecordIds: string[] = [];
+  for (const image of trashedImages) {
+    if (image.trashRecord) {
+      if (image.trashRecord.trashPath) {
+        const dataBase = resolve(process.cwd(), "data");
+        const trashFilePath = resolve(process.cwd(), image.trashRecord.trashPath);
+        if (trashFilePath.startsWith(dataBase)) {
+          try {
+            await rm(trashFilePath, { force: true });
+          } catch {
+            // ignore
+          }
+        }
+      }
+      trashRecordIds.push(image.trashRecord.id);
+    }
+  }
+  if (trashRecordIds.length > 0) {
+    await prisma.trashRecord.deleteMany({ where: { id: { in: trashRecordIds } } });
+  }
+
+  // 5. Delete all sections (cascade handles runs/images/promptBlocks)
+  const deleteResult = await prisma.projectSection.deleteMany({ where: { projectId } });
+
+  // 6. Also delete section folders for this project
+  await prisma.projectSectionFolder.deleteMany({ where: { projectId } });
+
+  // 7. Reset project status to draft
+  await prisma.project.update({
+    where: { id: projectId },
+    data: { status: "draft" },
+  });
+
+  revalidatePath(`/projects/${projectId}`);
+  return { ok: true, deletedSections: deleteResult.count };
 }
