@@ -156,7 +156,7 @@ function presetVariantContentSnapshot(variant: {
   };
 }
 
-export function shouldSyncVariantContent(input: Partial<PresetVariantInput>) {
+function shouldSyncVariantContent(input: Partial<PresetVariantInput>) {
   return (
     input.name !== undefined ||
     input.prompt !== undefined ||
