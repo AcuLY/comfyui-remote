@@ -18,7 +18,7 @@ import {
   compactId,
   formatDate,
 } from "../shared-ui";
-import { SourceImageUploader } from "../source-image-uploader";
+import { InlineUploadButton } from "../source-image-uploader";
 import { PersonaReferenceClient } from "../persona-reference-client";
 import {
   registerManualCanonicalAction,
@@ -61,26 +61,17 @@ export default async function PersonaReferencePage({
       title={`${job.characterName} / 人设参考图`}
       description="上传源图、发起人设图生成，并选择当前训练使用的人设参考图。"
     >
-      {/* Source section: gallery + compact upload */}
-      <SimpleSection
-        title="源图"
-        subtitle={`${report.sourceImages.length} 张参考图`}
-      >
-        <div className="space-y-3">
-          {/* Source image gallery */}
-          {report.sourceImages.length > 0 && (
-            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
-              {report.sourceImages.map((image) => (
-                <div key={image.id} className="overflow-hidden rounded-lg border border-white/10">
-                  <ArtifactThumbCompact jobId={job.id} relativePath={image.relativePath} alt={compactId(image.id)} />
-                </div>
-              ))}
+      {/* Source images with inline upload */}
+      <SimpleSection title="源图" subtitle={`${report.sourceImages.length} 张参考图`}>
+        <div className="grid grid-cols-4 gap-2 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8">
+          {report.sourceImages.map((image) => (
+            <div key={image.id} className="overflow-hidden rounded-md border border-white/10">
+              <ArtifactThumbCompact jobId={job.id} relativePath={image.relativePath} alt={compactId(image.id)} />
             </div>
-          )}
-          {/* Compact uploader with target selector */}
-          <SourceImageUploader
+          ))}
+          <InlineUploadButton
+            label="上传"
             uploadAction={uploadSourceImageAction.bind(null, job.id)}
-            registerCanonicalAction={registerManualCanonicalAction.bind(null, job.id)}
           />
         </div>
       </SimpleSection>
@@ -95,6 +86,8 @@ export default async function PersonaReferencePage({
           currentCanonicalVersionId={job.currentCanonicalVersionId}
           selectAction={selectCanonicalAction.bind(null, job.id)}
           rejectAction={rejectCanonicalAction.bind(null, job.id)}
+          uploadAction={uploadSourceImageAction.bind(null, job.id)}
+          registerCanonicalAction={registerManualCanonicalAction.bind(null, job.id)}
         />
 
         {/* Sidebar */}

@@ -20,6 +20,8 @@ type PersonaReferenceClientProps = {
   currentCanonicalVersionId: string | null;
   selectAction: (versionId: string) => Promise<void>;
   rejectAction: (versionId: string) => Promise<void>;
+  uploadAction?: (formData: FormData) => Promise<{ ok: boolean; message: string; sourceImageId?: string }>;
+  registerCanonicalAction?: (formData: FormData) => Promise<void>;
 };
 
 export function PersonaReferenceClient({
@@ -29,6 +31,8 @@ export function PersonaReferenceClient({
   currentCanonicalVersionId,
   selectAction,
   rejectAction,
+  uploadAction,
+  registerCanonicalAction,
 }: PersonaReferenceClientProps) {
   const { pushBaseImage, setFormConfig, setOpen } = useTaskPanel();
 
@@ -61,6 +65,8 @@ export function PersonaReferenceClient({
           selectAction={selectAction}
           rejectAction={rejectAction}
           onAddToRerun={handleAddToRerun}
+          uploadAction={uploadAction}
+          registerCanonicalAction={registerCanonicalAction}
         />
       ))}
     </div>

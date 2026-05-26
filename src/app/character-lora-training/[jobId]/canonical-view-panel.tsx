@@ -1,6 +1,9 @@
 "use client";
 
-import { Check, RefreshCw, X } from "lucide-react";
+import { Check, RefreshCw, UploadCloud, X } from "lucide-react";
+import { useRef, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 import { ArtifactThumbCompact } from "./shared-ui";
 
@@ -27,6 +30,8 @@ type CanonicalViewPanelProps = {
   selectAction: (versionId: string) => Promise<void>;
   rejectAction: (versionId: string) => Promise<void>;
   onAddToRerun?: (candidate: { id: string; label: string; relativePath: string; artifactId: string; sha256: string; canonicalView: string | null }) => void;
+  uploadAction?: (formData: FormData) => Promise<{ ok: boolean; message: string; sourceImageId?: string }>;
+  registerCanonicalAction?: (formData: FormData) => Promise<void>;
 };
 
 export function CanonicalViewPanel({
@@ -37,7 +42,34 @@ export function CanonicalViewPanel({
   selectAction,
   rejectAction,
   onAddToRerun,
+  uploadAction,
+  registerCanonicalAction,
 }: CanonicalViewPanelProps) {
+  const router = useRouter();
+  const uploadRef = useRef<HTMLInputElement>(null);
+  const [isUploading, startUpload] = useTransition();
+
+  function handleUploadFiles(files: FileList | File[]) {
+    const selected = Array.from(files).filter((f) => f.size > 0 && f.type.startsWith("image/"));
+    if (!selected.length || !uploadAction) return;
+    startUpload(async () => {
+      for (const file of selected) {
+        const formData = new FormData();
+        formData.set("file", file);
+        const result = await uploadAction(formData);
+        if (!result.ok) { toast.error(result.message); return; }
+        if (registerCanonicalAction && result.sourceImageId) {
+          const regForm = new FormData();
+          regForm.set("sourceImageId", result.sourceImageId);
+          regForm.set("canonicalView", viewSpec.key);
+          await registerCanonicalAction(regForm);
+        }
+      }
+      toast.success(`已上传至「${viewSpec.label}」`);
+      router.refresh();
+    });
+  }
+
   return (
     <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-2.5">
       {/* Header */}
@@ -48,10 +80,28 @@ export function CanonicalViewPanel({
         </span>
       </div>
 
-      {/* Candidate horizontal strip */}
+      {/* Candidate horizontal strip + upload button */}
       {candidates.length === 0 ? (
-        <div className="flex h-20 items-center justify-center rounded-md border border-dashed border-white/[0.08] text-[11px] text-zinc-600">
-          暂无候选
+        <div className="grid grid-cols-2 gap-2">
+          <div className="flex aspect-[3/4] items-center justify-center rounded-md border border-dashed border-white/[0.08] text-[11px] text-zinc-600">
+            暂无候选
+          </div>
+          {uploadAction && (
+            <>
+              <button
+                type="button"
+                onClick={() => uploadRef.current?.click()}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => { e.preventDefault(); handleUploadFiles(e.dataTransfer.files); }}
+                disabled={isUploading}
+                className="flex aspect-[3/4] cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-white/15 bg-black/20 transition hover:border-sky-400/50 hover:bg-sky-500/10 disabled:opacity-50"
+              >
+                <UploadCloud className="size-4 text-sky-300/70" />
+                <span className="mt-1 text-[9px] text-zinc-500">{isUploading ? "上传中" : "上传"}</span>
+              </button>
+              <input ref={uploadRef} type="file" accept="image/png,image/jpeg,image/webp" multiple className="sr-only" onChange={(e) => { if (e.currentTarget.files) handleUploadFiles(e.currentTarget.files); e.currentTarget.value = ""; }} />
+            </>
+          )}
         </div>
       ) : (
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
@@ -129,6 +179,24 @@ export function CanonicalViewPanel({
               </div>
             );
           })}
+          {/* Upload button at end of strip */}
+          {uploadAction && (
+            <>
+              <button
+                type="button"
+                onClick={() => uploadRef.current?.click()}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => { e.preventDefault(); handleUploadFiles(e.dataTransfer.files); }}
+                disabled={isUploading}
+                className="flex-none flex flex-col items-center justify-center rounded-md border border-dashed border-white/15 bg-black/20 transition hover:border-sky-400/50 hover:bg-sky-500/10 disabled:opacity-50"
+                style={{ width: "clamp(72px, 18vw, 100px)" }}
+              >
+                <UploadCloud className="size-3.5 text-sky-300/70" />
+                <span className="mt-0.5 text-[9px] text-zinc-500">{isUploading ? "..." : "上传"}</span>
+              </button>
+              <input ref={uploadRef} type="file" accept="image/png,image/jpeg,image/webp" multiple className="sr-only" onChange={(e) => { if (e.currentTarget.files) handleUploadFiles(e.currentTarget.files); e.currentTarget.value = ""; }} />
+            </>
+          )}
         </div>
       )}
     </div>
