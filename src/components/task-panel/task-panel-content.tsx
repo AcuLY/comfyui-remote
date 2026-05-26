@@ -48,7 +48,7 @@ export function TaskPanelContent() {
                   className="group relative shrink-0"
                 >
                   <img
-                    src={`/api/character-lora-training/jobs/${formConfig?.jobId}/artifacts/image?path=${encodeURIComponent(img.relativePath)}&w=120&q=60`}
+                    src={formConfig?.jobId ? `/api/character-lora-training/jobs/${formConfig.jobId}/artifacts/image?path=${encodeURIComponent(img.relativePath)}&w=120&q=60` : undefined}
                     alt={img.label}
                     className="size-14 rounded-lg border border-white/10 object-cover"
                   />
