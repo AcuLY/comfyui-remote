@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+
 import { cn } from "@/lib/utils";
 import { useTaskPanel } from "./task-panel-provider";
 import { TaskPanelTrigger } from "./task-panel-trigger";
@@ -9,16 +11,26 @@ export function TaskPanelContainer() {
   const { isOpen, setOpen, activeTasks } = useTaskPanel();
   const hasRunning = activeTasks.some((t) => t.status === "running");
 
+  // Lock body scroll when panel is open
+  useEffect(() => {
+    if (!isOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [isOpen]);
+
   return (
     <>
       {/* FAB trigger */}
       <TaskPanelTrigger />
 
-      {/* Backdrop */}
+      {/* Backdrop (only visible on sm+ where panel doesn't fill full width) */}
       <div
         className={cn(
-          "fixed inset-0 z-40 bg-black/50 backdrop-blur-sm transition-opacity duration-300",
-          isOpen ? "opacity-100" : "pointer-events-none opacity-0",
+          "fixed inset-0 z-40 bg-black/50 backdrop-blur-sm transition-opacity duration-300 hidden sm:block",
+          isOpen ? "sm:opacity-100" : "pointer-events-none opacity-0",
         )}
         onClick={() => setOpen(false)}
         aria-hidden="true"
@@ -27,11 +39,11 @@ export function TaskPanelContainer() {
       {/* Panel: right-side drawer on all sizes */}
       <aside
         className={cn(
-          "fixed top-0 right-0 bottom-0 z-40 flex flex-col overflow-hidden border-l",
+          "fixed top-0 right-0 bottom-0 z-50 flex flex-col overflow-hidden border-l",
           "bg-[var(--panel,#111217)] shadow-2xl shadow-black/50",
           "transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]",
 
-          // Width: full on mobile, 360px on lg+
+          // Width: full on mobile, 85vw on sm, 360px on md+
           "w-full sm:w-[85vw] md:w-[360px]",
 
           // Slide in/out
