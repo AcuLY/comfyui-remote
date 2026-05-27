@@ -729,31 +729,49 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
               暂无打码记录
             </div>
           ) : (
-            <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 md:grid-cols-8">
-              {censoringHistory.map((task) => (
-                <div key={task.id} className="relative overflow-hidden rounded-lg border border-white/10">
-                  <Image
-                    src={task.thumbUrl}
-                    alt=""
-                    width={80}
-                    height={120}
-                    className="aspect-[3/4] w-full object-cover"
-                    unoptimized
-                  />
-                  <div className={`absolute bottom-0 left-0 right-0 py-0.5 text-center text-[8px] font-medium text-white ${
-                    task.status === "done" ? "bg-emerald-500/80" :
-                    task.status === "failed" ? "bg-rose-500/80" :
-                    task.status === "running" ? "bg-amber-500/80" :
-                    task.status === "cancelled" ? "bg-zinc-500/80" :
-                    "bg-sky-500/80"
-                  }`}>
-                    {task.status === "done" ? "完成" :
-                     task.status === "failed" ? "失败" :
-                     task.status === "running" ? "运行中" :
-                     task.status === "cancelled" ? "已取消" : "队列中"}
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
+              {censoringHistory.map((task) => {
+                const createdDate = new Date(task.createdAt);
+                const finishedDate = task.finishedAt ? new Date(task.finishedAt) : null;
+                const startedDate = task.startedAt ? new Date(task.startedAt) : null;
+                const durationMs = finishedDate && startedDate ? finishedDate.getTime() - startedDate.getTime() : null;
+                const durationStr = durationMs != null ? (durationMs < 60000 ? `${Math.round(durationMs / 1000)}s` : `${Math.round(durationMs / 60000)}m`) : null;
+                const timeStr = `${createdDate.getMonth() + 1}/${createdDate.getDate()} ${String(createdDate.getHours()).padStart(2, "0")}:${String(createdDate.getMinutes()).padStart(2, "0")}`;
+
+                return (
+                  <div
+                    key={task.id}
+                    className="relative overflow-hidden rounded-lg border border-white/10"
+                    title={`创建: ${task.createdAt}\n${task.startedAt ? `开始: ${task.startedAt}\n` : ""}${task.finishedAt ? `完成: ${task.finishedAt}` : ""}${task.errorMessage ? `\n错误: ${task.errorMessage}` : ""}`}
+                  >
+                    <Image
+                      src={task.thumbUrl}
+                      alt=""
+                      width={120}
+                      height={160}
+                      className="aspect-[3/4] w-full object-cover"
+                      unoptimized
+                    />
+                    <div className="absolute left-0 right-0 top-0 bg-black/60 px-1 py-0.5 text-[8px] text-zinc-300">
+                      {timeStr}{durationStr && <span className="ml-1 text-zinc-500">({durationStr})</span>}
+                    </div>
+                    <div className={`absolute bottom-0 left-0 right-0 py-0.5 text-center text-[8px] font-medium text-white ${
+                      task.status === "done" ? "bg-emerald-500/80" :
+                      task.status === "failed" ? "bg-rose-500/80" :
+                      task.status === "running" ? "bg-amber-500/80" :
+                      task.status === "cancelled" ? "bg-zinc-500/80" :
+                      task.status === "paused" ? "bg-sky-500/80" :
+                      "bg-sky-500/80"
+                    }`}>
+                      {task.status === "done" ? "完成" :
+                       task.status === "failed" ? "失败" :
+                       task.status === "running" ? "运行中" :
+                       task.status === "cancelled" ? "已取消" :
+                       task.status === "paused" ? "已暂停" : "队列中"}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </SectionCard>

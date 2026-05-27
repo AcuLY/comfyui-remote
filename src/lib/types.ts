@@ -142,6 +142,7 @@ export type CensoringHistoryItem = {
   status: string;
   errorMessage: string | null;
   createdAt: string;
+  startedAt: string | null;
   finishedAt: string | null;
   projectTitle: string;
   thumbUrl: string;

@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { getQueueRunsPage, getRunningRuns, getFailedRuns, getTrashItems } from "@/lib/server-data";
 import { recoverStaleRuns } from "@/server/services/run-executor";
 import { prisma } from "@/lib/prisma";
+import { toImageUrl } from "@/lib/image-url";
 
 function readPositiveInteger(value: string | null) {
   if (!value) return undefined;
@@ -81,7 +82,7 @@ export async function GET(request: NextRequest) {
 
   // Get censoring history — last 50 completed/failed tasks for the "打码" tab
   const censoringHistory = await prisma.censoringTask.findMany({
-    where: { status: { in: ["done", "failed", "cancelled", "queued", "running"] } },
+    where: { status: { in: ["done", "failed", "cancelled", "queued", "running", "paused"] } },
     orderBy: { createdAt: "desc" },
     take: 50,
     select: {
@@ -89,6 +90,7 @@ export async function GET(request: NextRequest) {
       status: true,
       errorMessage: true,
       createdAt: true,
+      startedAt: true,
       finishedAt: true,
       project: { select: { id: true, title: true } },
       imageResult: { select: { id: true, thumbPath: true, filePath: true, censoredThumbPath: true } },
@@ -106,13 +108,10 @@ export async function GET(request: NextRequest) {
       status: t.status,
       errorMessage: t.errorMessage,
       createdAt: t.createdAt.toISOString(),
+      startedAt: t.startedAt?.toISOString() ?? null,
       finishedAt: t.finishedAt?.toISOString() ?? null,
       projectTitle: t.project.title,
-      thumbUrl: t.imageResult.censoredThumbPath
-        ? `/api/images/${t.imageResult.censoredThumbPath}`
-        : t.imageResult.thumbPath
-          ? `/api/images/${t.imageResult.thumbPath}`
-          : `/api/images/${t.imageResult.filePath}`,
+      thumbUrl: toImageUrl(t.imageResult.censoredThumbPath ?? t.imageResult.thumbPath ?? t.imageResult.filePath) ?? "",
     })),
     ...(trashItems ? { trashItems } : {}),
   });
