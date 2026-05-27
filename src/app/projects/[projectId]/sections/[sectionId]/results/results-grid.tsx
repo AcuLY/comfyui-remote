@@ -18,7 +18,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { keepImages, trashImages, runSection } from "@/lib/actions";
+import { keepImages, trashImages, runSection, censorImage } from "@/lib/actions";
 import { BatchSizeQuickFill } from "@/components/batch-size-quick-fill";
 import { ResultsGalleryProvider } from "./results-gallery";
 
@@ -424,7 +424,7 @@ export function ResultsGrid({
 
                 {/* Batch action buttons — one set per run */}
                 {run.images.length > 0 && (
-                  <div className="mt-2 grid grid-cols-2 gap-2">
+                  <div className="mt-2 grid grid-cols-3 gap-2">
                     <button
                       onClick={() => {
                         if (runSelectedIds.length === 0) {
@@ -487,6 +487,43 @@ export function ResultsGrid({
                           : runPendingImages.length > 0
                             ? `全部删除 (${runPendingImages.length})`
                             : "删除"}
+                    </button>
+                    <button
+                      onClick={() => {
+                        // Censor: if selected → censor selected kept; else → censor all uncensored kept in run
+                        const targetIds = runSelectedIds.length > 0
+                          ? run.images.filter((img) => runSelectedIds.includes(img.id) && img.status === "kept" && !img.censoredAt).map((img) => img.id)
+                          : run.images.filter((img) => img.status === "kept" && !img.censoredAt).map((img) => img.id);
+                        if (targetIds.length === 0) {
+                          toast.info("没有需要打码的图片");
+                          return;
+                        }
+                        startTransition(async () => {
+                          let success = 0;
+                          let failed = 0;
+                          for (const id of targetIds) {
+                            const result = await censorImage(id);
+                            if (result.success) success++;
+                            else failed++;
+                          }
+                          setSelected(new Set());
+                          router.refresh();
+                          if (failed === 0) {
+                            toast.success(`已创建 ${success} 个打码任务`);
+                          } else {
+                            toast.error(`${success} 个成功，${failed} 个失败`);
+                          }
+                        });
+                      }}
+                      disabled={isPending}
+                      className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-300 transition hover:bg-amber-500/20 disabled:opacity-40"
+                    >
+                      <Shield className="size-3" />
+                      {isPending
+                        ? "处理中…"
+                        : runSelectedCount > 0
+                          ? `打码 (${run.images.filter((img) => runSelectedIds.includes(img.id) && img.status === "kept" && !img.censoredAt).length})`
+                          : `打码 (${run.images.filter((img) => img.status === "kept" && !img.censoredAt).length})`}
                     </button>
                   </div>
                 )}

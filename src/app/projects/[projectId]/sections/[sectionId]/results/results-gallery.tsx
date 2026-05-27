@@ -11,7 +11,7 @@ import {
 import { useRouter } from "next/navigation";
 import { Check, ChevronLeft, ChevronRight, Eye, ImageIcon, Shield, Star, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
-import { keepImages, trashImages } from "@/lib/actions";
+import { keepImages, trashImages, censorImage } from "@/lib/actions";
 
 type GalleryImage = {
   id: string;
@@ -468,7 +468,7 @@ export function ResultsGalleryProvider({
           </div>
 
           <div
-            className="z-10 grid grid-cols-2 gap-2 border-t border-white/10 bg-black/50 p-3 sm:grid-cols-6 sm:px-4"
+            className="z-10 grid grid-cols-2 gap-2 border-t border-white/10 bg-black/50 p-3 sm:grid-cols-7 sm:px-4"
             onClick={(event) => event.stopPropagation()}
           >
             <button
@@ -548,6 +548,32 @@ export function ResultsGalleryProvider({
               <Shield className="size-4" />
               {current.censoredFull ? "按住:打码" : "暂未打码"}
             </button>
+            {/* Single-image censor trigger */}
+            {current.status === "kept" && !current.censoredAt && (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => {
+                  startTransition(async () => {
+                    try {
+                      const result = await censorImage(current.id);
+                      if (result.success) {
+                        toast.success(result.message);
+                        router.refresh();
+                      } else {
+                        toast.error(result.message);
+                      }
+                    } catch {
+                      toast.error("打码失败");
+                    }
+                  });
+                }}
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-amber-500/25 bg-amber-500/12 px-3 text-sm font-medium text-amber-200 transition hover:bg-amber-500/20 disabled:opacity-45"
+              >
+                <Shield className="size-4" />
+                执行打码
+              </button>
+            )}
           </div>
         </div>
       )}
