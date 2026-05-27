@@ -26,9 +26,16 @@ const CENSOR_SCHEDULER = "normal";
 
 const THUMBNAIL_WIDTH = 300;
 
+// --- Types ---
+
+type ImageResultForCensor = {
+  id: string;
+  filePath: string;
+  reviewStatus: string;
+};
+
 /**
  * Upload an image buffer to ComfyUI's /upload/image endpoint.
- * Returns the filename as stored by ComfyUI.
  */
 async function uploadImageToComfyUI(
   apiUrl: string,
@@ -52,9 +59,7 @@ async function uploadImageToComfyUI(
 
     if (!response.ok) {
       const text = await response.text().catch(() => "");
-      throw new Error(
-        `ComfyUI upload failed (${response.status}): ${text}`,
-      );
+      throw new Error(`ComfyUI upload failed (${response.status}): ${text}`);
     }
 
     const json = (await response.json()) as { name?: string };
@@ -161,7 +166,7 @@ async function downloadCensoredImage(
 }
 
 /**
- * Write buffer to file atomically (write to .tmp first, then rename).
+ * Write buffer to file atomically.
  */
 async function atomicWriteFile(targetPath: string, data: Buffer): Promise<void> {
   const tempPath = `${targetPath}.${randomUUID()}.tmp`;
@@ -186,13 +191,21 @@ async function atomicWriteFile(targetPath: string, data: Buffer): Promise<void> 
   }
 }
 
+// ---------------------------------------------------------------------------
+// Phase 1: Submit — upload image + submit prompt (fast, ~1s)
+// ---------------------------------------------------------------------------
+
 /**
- * Run the full censoring pipeline for a single ImageResult.
+ * Upload the source image to ComfyUI and submit the censoring prompt.
+ * Returns the promptId and image info for the polling phase.
  */
-export async function censorSingleImage(imageResultId: string): Promise<void> {
+export async function submitCensorPrompt(imageResultId: string): Promise<{
+  promptId: string;
+  imageResult: ImageResultForCensor;
+}> {
   const imageResult = await prisma.imageResult.findUnique({
     where: { id: imageResultId },
-    include: { run: true },
+    select: { id: true, filePath: true, reviewStatus: true },
   });
 
   if (!imageResult) {
@@ -207,17 +220,15 @@ export async function censorSingleImage(imageResultId: string): Promise<void> {
 
   const apiUrl = env.comfyApiUrl.replace(/\/$/, "");
 
-  // Read the source image
+  // Read source image
   const absolutePath = resolve(process.cwd(), imageResult.filePath);
-  log.info("Reading source image", { imageResultId, path: absolutePath });
   const sourceBuffer = await readFile(absolutePath);
 
   // Upload to ComfyUI
   const uploadFilename = `censor_input_${randomUUID().slice(0, 8)}_${imageResult.filePath.split("/").pop() ?? "image.jpg"}`;
   const comfyFilename = await uploadImageToComfyUI(apiUrl, sourceBuffer, uploadFilename);
-  log.info("Uploaded to ComfyUI", { imageResultId, comfyFilename });
 
-  // Build and submit the censoring prompt
+  // Build and submit prompt
   const outputPrefix = `censored_${randomUUID().slice(0, 8)}`;
   const apiPrompt = buildCensorApiPrompt(comfyFilename, outputPrefix);
 
@@ -249,30 +260,45 @@ export async function censorSingleImage(imageResultId: string): Promise<void> {
 
   log.info("Submitted censoring prompt", { imageResultId, promptId });
 
+  return { promptId, imageResult };
+}
+
+// ---------------------------------------------------------------------------
+// Phase 2: Poll + download + save (slow, runs in background per task)
+// ---------------------------------------------------------------------------
+
+/**
+ * Poll ComfyUI for prompt completion, download result, compress, and save.
+ */
+export async function pollCensorCompletion(
+  promptId: string,
+  imageResult: ImageResultForCensor,
+): Promise<void> {
+  const apiUrl = env.comfyApiUrl.replace(/\/$/, "");
+
   // Poll for completion
   const historyEntry = await pollComfyPromptHistory(apiUrl, promptId);
 
   // Extract output images
   const outputImages = extractOutputImages(historyEntry);
   if (outputImages.length === 0) {
-    throw new Error(`Censoring produced no output images for ${imageResultId}`);
+    throw new Error(`Censoring produced no output images for ${imageResult.id}`);
   }
 
   // Download the first output image
   const rawOutputBuffer = await downloadCensoredImage(apiUrl, outputImages[0]);
   log.info("Downloaded censored image", {
-    imageResultId,
+    imageResultId: imageResult.id,
     size: rawOutputBuffer.length,
   });
 
-  // Process with sharp — normalize orientation and convert to JPEG
+  // Process with sharp
   const { data: jpegBuffer } = await sharp(rawOutputBuffer)
     .rotate()
     .jpeg({ quality: 90 })
     .toBuffer({ resolveWithObject: true });
 
   // Determine censored file paths
-  // Original: data/images/.../raw/01.jpg → censored: data/images/.../censored/01.jpg
   const censoredFilePath = imageResult.filePath.replace("/raw/", "/censored/");
   const censoredThumbPath = imageResult.filePath.replace("/raw/", "/censored-thumb/");
 
@@ -292,10 +318,8 @@ export async function censorSingleImage(imageResultId: string): Promise<void> {
   await atomicWriteFile(censoredThumbAbsPath, thumbBuffer);
 
   // Update the database record
-  // Note: censoredFilePath/censoredThumbPath/censoredAt fields require `prisma generate`
-  // after schema changes are applied.
   await prisma.imageResult.update({
-    where: { id: imageResultId },
+    where: { id: imageResult.id },
     data: {
       censoredFilePath,
       censoredThumbPath,
@@ -303,5 +327,18 @@ export async function censorSingleImage(imageResultId: string): Promise<void> {
     },
   });
 
-  log.info("Censoring complete", { imageResultId, censoredFilePath, censoredThumbPath });
+  log.info("Censoring complete", { imageResultId: imageResult.id, censoredFilePath });
+}
+
+// ---------------------------------------------------------------------------
+// Legacy single-image function (kept for direct single-image censoring)
+// ---------------------------------------------------------------------------
+
+/**
+ * Run the full censoring pipeline synchronously for a single image.
+ * Used by the single-image censor button in the lightbox.
+ */
+export async function censorSingleImage(imageResultId: string): Promise<void> {
+  const { promptId, imageResult } = await submitCensorPrompt(imageResultId);
+  await pollCensorCompletion(promptId, imageResult);
 }

@@ -1,6 +1,9 @@
 import { createLogger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
-import { censorSingleImage } from "@/server/services/censoring-service";
+import {
+  submitCensorPrompt,
+  pollCensorCompletion,
+} from "@/server/services/censoring-service";
 
 const log = createLogger({ module: "censoring-executor" });
 
@@ -8,50 +11,80 @@ let processing = false;
 let wakeResolver: (() => void) | null = null;
 
 /**
- * Process the next queued censoring task.
- * Returns true if a task was processed, false if queue is empty.
+ * Submit all queued censoring tasks to ComfyUI at once (fire-and-forget polling).
+ * Returns the number of tasks submitted.
  */
-async function processNextTask(): Promise<boolean> {
-  // Claim the next queued task atomically
-  const task = await prisma.censoringTask.findFirst({
+async function submitQueuedTasks(): Promise<number> {
+  const tasks = await prisma.censoringTask.findMany({
     where: { status: "queued" },
     orderBy: { createdAt: "asc" },
     select: { id: true, imageResultId: true, projectId: true },
   });
 
-  if (!task) return false;
+  if (tasks.length === 0) return 0;
 
-  // Mark as running
-  const claimed = await prisma.censoringTask.updateMany({
-    where: { id: task.id, status: "queued" },
-    data: { status: "running", startedAt: new Date() },
-  });
+  let submitted = 0;
 
-  if (claimed.count === 0) return true; // Someone else claimed it, try next
-
-  log.info("Processing censoring task", { taskId: task.id, imageResultId: task.imageResultId });
-
-  try {
-    await censorSingleImage(task.imageResultId);
-    await prisma.censoringTask.update({
-      where: { id: task.id },
-      data: { status: "done", finishedAt: new Date() },
+  for (const task of tasks) {
+    // Claim atomically
+    const claimed = await prisma.censoringTask.updateMany({
+      where: { id: task.id, status: "queued" },
+      data: { status: "running", startedAt: new Date() },
     });
-    log.info("Censoring task completed", { taskId: task.id });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    await prisma.censoringTask.update({
-      where: { id: task.id },
-      data: { status: "failed", errorMessage: message, finishedAt: new Date() },
+
+    if (claimed.count === 0) continue;
+
+    log.info("Submitting censoring task", { taskId: task.id, imageResultId: task.imageResultId });
+
+    // Submit to ComfyUI and immediately start polling (fire-and-forget)
+    submitAndPoll(task.id, task.imageResultId).catch((error) => {
+      log.error("Censoring task submit failed", { taskId: task.id, error: String(error) });
     });
-    log.error("Censoring task failed", { taskId: task.id, error: message });
+
+    submitted++;
   }
 
-  return true;
+  return submitted;
 }
 
 /**
- * Main processing loop. Runs until queue is empty, then sleeps.
+ * Submit a single task to ComfyUI, then poll for completion in the background.
+ */
+async function submitAndPoll(taskId: string, imageResultId: string): Promise<void> {
+  try {
+    // Phase 1: Upload image + submit prompt to ComfyUI (fast)
+    const { promptId, imageResult } = await submitCensorPrompt(imageResultId);
+
+    log.info("Censoring prompt submitted, polling", { taskId, promptId });
+
+    // Update task with promptId for reference
+    await prisma.censoringTask.update({
+      where: { id: taskId },
+      data: { errorMessage: `promptId:${promptId}` }, // Store promptId temporarily
+    });
+
+    // Phase 2: Poll for completion + download + save (slow, runs in background)
+    await pollCensorCompletion(promptId, imageResult);
+
+    // Mark done
+    await prisma.censoringTask.update({
+      where: { id: taskId },
+      data: { status: "done", finishedAt: new Date(), errorMessage: null },
+    });
+
+    log.info("Censoring task completed", { taskId });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    await prisma.censoringTask.update({
+      where: { id: taskId },
+      data: { status: "failed", errorMessage: message, finishedAt: new Date() },
+    }).catch(() => {});
+    log.error("Censoring task failed", { taskId, error: message });
+  }
+}
+
+/**
+ * Main processing loop. Submits all queued tasks then sleeps until woken.
  */
 async function processingLoop(): Promise<void> {
   processing = true;
@@ -59,27 +92,28 @@ async function processingLoop(): Promise<void> {
 
   try {
     while (true) {
-      const hadWork = await processNextTask();
-      if (!hadWork) {
-        // Queue empty — wait for wake signal
-        log.debug("Censoring queue empty, sleeping");
-        await new Promise<void>((resolve) => {
-          wakeResolver = resolve;
-        });
-        wakeResolver = null;
-        log.debug("Censoring processor woken up");
+      const submitted = await submitQueuedTasks();
+      if (submitted > 0) {
+        log.info(`Submitted ${submitted} censoring tasks to ComfyUI`);
       }
+
+      // Sleep until new tasks are queued
+      log.debug("Censoring queue empty or all submitted, sleeping");
+      await new Promise<void>((resolve) => {
+        wakeResolver = resolve;
+      });
+      wakeResolver = null;
+      log.debug("Censoring processor woken up");
     }
   } catch (error) {
     log.error("Censoring processor crashed", error);
     processing = false;
-    // Restart after a brief delay
     setTimeout(() => startCensoringProcessor(), 5000);
   }
 }
 
 /**
- * Start the censoring processor (idempotent — no-op if already running).
+ * Start the censoring processor (idempotent).
  */
 export function startCensoringProcessor(): void {
   if (processing) return;
@@ -91,7 +125,6 @@ export function startCensoringProcessor(): void {
 
 /**
  * Wake the processor to check for new tasks.
- * Call this after creating new CensoringTask records.
  */
 export function wakeUpCensoringProcessor(): void {
   if (wakeResolver) {
