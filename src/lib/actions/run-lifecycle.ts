@@ -13,8 +13,13 @@ import {
 } from "@/server/services/comfyui-service";
 import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
+import {
+  RUN_CANCELLABLE_STATUSES,
+  isRunCancellableStatus,
+} from "@/lib/actions/cancellation-helpers";
 
 const QUEUE_PAUSE_META_KEY = "__queuePause";
+const RUN_ACTIVE_STATUSES = [...RUN_CANCELLABLE_STATUSES];
 
 type QueuePauseMarker = {
   source: string;
@@ -58,6 +63,16 @@ type ResumeAllRunsResult = {
 // ---------------------------------------------------------------------------
 // Private helpers
 // ---------------------------------------------------------------------------
+
+async function updateProjectStatusFromActiveRuns(projectId: string) {
+  const activeRuns = await prisma.run.count({
+    where: { projectId, status: { in: RUN_ACTIVE_STATUSES } },
+  });
+  await prisma.project.update({
+    where: { id: projectId },
+    data: { status: activeRuns > 0 ? "queued" : "draft" },
+  });
+}
 
 function buildQueuePauseMarker(input: QueuePauseMarkerInput): QueuePauseMarker {
   return {
@@ -157,13 +172,13 @@ function matchesResumeOptions(
  * running prompt and deletes pending ones from the queue.
  */
 async function cancelComfyPrompts(
-  runs: Array<{ comfyPromptId: string | null }>,
+  runs: Array<{ status?: string; comfyPromptId: string | null }>,
 ): Promise<void> {
   const promptIdsToDelete: string[] = [];
   let shouldInterrupt = false;
 
   for (const run of runs) {
-    if (!run.comfyPromptId) continue;
+    if (run.status === "paused" || !run.comfyPromptId) continue;
     const position = await getComfyQueuePosition(
       env.comfyApiUrl,
       run.comfyPromptId,
@@ -210,11 +225,7 @@ export async function cancelRun(
     select: { id: true, status: true, projectId: true, comfyPromptId: true },
   });
   if (!run) return { ok: false, error: "任务不存在" };
-  if (
-    run.status !== "queued" &&
-    run.status !== "running" &&
-    run.status !== "paused"
-  ) {
+  if (!isRunCancellableStatus(run.status)) {
     return { ok: false, error: `任务状态为「${run.status}」，无法取消` };
   }
 
@@ -236,16 +247,7 @@ export async function cancelRun(
     },
   });
 
-  // Recalculate project status
-  const activeRuns = await prisma.run.count({
-    where: { projectId: run.projectId, status: { in: ["queued", "running"] } },
-  });
-  if (activeRuns === 0) {
-    await prisma.project.update({
-      where: { id: run.projectId },
-      data: { status: "draft" },
-    });
-  }
+  await updateProjectStatusFromActiveRuns(run.projectId);
 
   revalidatePath("/queue");
   revalidatePath(`/projects/${run.projectId}`);
@@ -258,7 +260,7 @@ export async function cancelProjectRuns(projectId: string): Promise<number> {
   const activeRuns = await prisma.run.findMany({
     where: {
       projectId,
-      status: { in: ["queued", "running"] },
+      status: { in: RUN_ACTIVE_STATUSES },
     },
     select: { id: true, status: true, comfyPromptId: true },
   });
@@ -272,7 +274,7 @@ export async function cancelProjectRuns(projectId: string): Promise<number> {
   const result = await prisma.run.updateMany({
     where: {
       projectId,
-      status: { in: ["queued", "running"] },
+      status: { in: RUN_ACTIVE_STATUSES },
     },
     data: {
       status: "cancelled",
@@ -280,10 +282,7 @@ export async function cancelProjectRuns(projectId: string): Promise<number> {
       errorMessage: "用户取消",
     },
   });
-  await prisma.project.update({
-    where: { id: projectId },
-    data: { status: "draft" },
-  });
+  await updateProjectStatusFromActiveRuns(projectId);
   revalidatePath("/queue");
   revalidatePath(`/projects/${projectId}`);
   return result.count;
@@ -297,8 +296,8 @@ export async function clearActiveRuns(): Promise<{
 }> {
   try {
     const activeRuns = await prisma.run.findMany({
-      where: { status: { in: ["queued", "running"] } },
-      select: { id: true, projectId: true, comfyPromptId: true },
+      where: { status: { in: RUN_ACTIVE_STATUSES } },
+      select: { id: true, projectId: true, status: true, comfyPromptId: true },
     });
 
     try {
@@ -308,7 +307,7 @@ export async function clearActiveRuns(): Promise<{
     }
 
     const result = await prisma.run.updateMany({
-      where: { status: { in: ["queued", "running"] } },
+      where: { status: { in: RUN_ACTIVE_STATUSES } },
       data: {
         status: "cancelled",
         finishedAt: new Date(),
@@ -317,11 +316,8 @@ export async function clearActiveRuns(): Promise<{
     });
 
     const projectIds = [...new Set(activeRuns.map((run) => run.projectId))];
-    if (projectIds.length > 0) {
-      await prisma.project.updateMany({
-        where: { id: { in: projectIds } },
-        data: { status: "draft" },
-      });
+    for (const projectId of projectIds) {
+      await updateProjectStatusFromActiveRuns(projectId);
     }
 
     revalidatePath("/queue");

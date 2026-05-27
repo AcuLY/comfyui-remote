@@ -5,6 +5,12 @@ import {
   submitCensorPrompt,
   pollCensorCompletion,
 } from "@/server/services/censoring-service";
+import {
+  clearComfyQueueSnapshotCache,
+  deleteComfyQueueItems,
+  getComfyQueuePosition,
+  interruptComfyPrompt,
+} from "@/server/services/comfyui-service";
 
 const log = createLogger({ module: "censoring-executor" });
 
@@ -19,6 +25,47 @@ type ActiveTask = {
 };
 
 const activeTasks = new Map<string, ActiveTask>();
+
+async function cancelSubmittedCensoringPrompt(promptId: string): Promise<void> {
+  clearComfyQueueSnapshotCache();
+  try {
+    const position = await getComfyQueuePosition(env.comfyApiUrl, promptId);
+    if (position === "running") {
+      await interruptComfyPrompt(env.comfyApiUrl);
+    } else if (position === "pending") {
+      await deleteComfyQueueItems(env.comfyApiUrl, [promptId]);
+    }
+  } finally {
+    clearComfyQueueSnapshotCache();
+  }
+}
+
+async function pruneInactiveActiveTasks(): Promise<number> {
+  if (activeTasks.size === 0) return 0;
+
+  const entries = Array.from(activeTasks.entries());
+  const taskIds = entries.map(([, task]) => task.taskId);
+  const dbTasks = await prisma.censoringTask.findMany({
+    where: { id: { in: taskIds } },
+    select: { id: true, status: true },
+  });
+  const runningTaskIds = new Set(
+    dbTasks.filter((task) => task.status === "running").map((task) => task.id),
+  );
+
+  let pruned = 0;
+  for (const [promptId, task] of entries) {
+    if (!runningTaskIds.has(task.taskId)) {
+      activeTasks.delete(promptId);
+      pruned++;
+    }
+  }
+
+  if (pruned > 0) {
+    log.info("Pruned inactive censoring prompts", { count: pruned });
+  }
+  return pruned;
+}
 
 /**
  * On startup, reset any "running" tasks back to "queued" and clear
@@ -91,11 +138,23 @@ async function submitQueuedTasks(): Promise<number> {
     try {
       const { promptId, imageResult } = await submitCensorPrompt(task.imageResultId);
 
-      // Store promptId in DB for recovery
-      await prisma.censoringTask.update({
-        where: { id: task.id },
+      // Store promptId in DB for recovery, unless the task was cancelled while
+      // the prompt was being submitted.
+      const persisted = await prisma.censoringTask.updateMany({
+        where: { id: task.id, status: "running" },
         data: { errorMessage: `promptId:${promptId}` },
       });
+
+      if (persisted.count === 0) {
+        await cancelSubmittedCensoringPrompt(promptId).catch((cancelError) => {
+          log.warn("Failed to cancel prompt for inactive censoring task", {
+            taskId: task.id,
+            promptId,
+            error: cancelError instanceof Error ? cancelError.message : String(cancelError),
+          });
+        });
+        continue;
+      }
 
       // Track for unified polling
       activeTasks.set(promptId, { taskId: task.id, promptId, imageResult });
@@ -124,6 +183,9 @@ async function submitQueuedTasks(): Promise<number> {
 async function pollActiveTasksOnce(): Promise<number> {
   if (activeTasks.size === 0) return 0;
 
+  await pruneInactiveActiveTasks();
+  if (activeTasks.size === 0) return 0;
+
   const apiUrl = env.comfyApiUrl.replace(/\/$/, "");
   let completed = 0;
 
@@ -140,7 +202,7 @@ async function pollActiveTasksOnce(): Promise<number> {
   }
 
   // Check each active task
-  for (const [promptId, task] of activeTasks) {
+  for (const [promptId, task] of Array.from(activeTasks.entries())) {
     const entry = historyData[promptId];
     if (!entry) continue; // Not completed yet
 
@@ -148,20 +210,41 @@ async function pollActiveTasksOnce(): Promise<number> {
     activeTasks.delete(promptId);
 
     try {
+      const currentTask = await prisma.censoringTask.findUnique({
+        where: { id: task.taskId },
+        select: { status: true },
+      });
+      if (currentTask?.status !== "running") {
+        log.info("Skipping completed censoring prompt for inactive task", {
+          taskId: task.taskId,
+          promptId,
+          status: currentTask?.status ?? "missing",
+        });
+        continue;
+      }
+
       // Download and save the censored image
       await pollCensorCompletion(promptId, task.imageResult);
 
-      await prisma.censoringTask.update({
-        where: { id: task.taskId },
+      const updated = await prisma.censoringTask.updateMany({
+        where: { id: task.taskId, status: "running" },
         data: { status: "done", finishedAt: new Date(), errorMessage: null },
       });
+
+      if (updated.count === 0) {
+        log.info("Censoring task changed state before completion update", {
+          taskId: task.taskId,
+          promptId,
+        });
+        continue;
+      }
 
       log.info("Censoring task completed", { taskId: task.taskId, promptId });
       completed++;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      await prisma.censoringTask.update({
-        where: { id: task.taskId },
+      await prisma.censoringTask.updateMany({
+        where: { id: task.taskId, status: "running" },
         data: { status: "failed", errorMessage: message, finishedAt: new Date() },
       }).catch(() => {});
       log.error("Censoring task failed during download", { taskId: task.taskId, error: message });
