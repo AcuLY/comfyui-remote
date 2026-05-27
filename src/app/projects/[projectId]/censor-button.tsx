@@ -3,13 +3,15 @@
 import { useEffect, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { Shield, X, Loader2 } from "lucide-react";
+import { Shield, X, Loader2, Pause, Play } from "lucide-react";
 import { toast } from "sonner";
 import {
   censorProjectImages,
   getCensoringPreview,
   getCensoringProgress,
   cancelCensoringTasks,
+  pauseCensoringTasks,
+  resumeCensoringTasks,
   type CensoringPreview,
   type CensoringProgress,
 } from "@/lib/actions";
@@ -27,8 +29,18 @@ export function CensorButton({ projectId }: { projectId: string }) {
   useEffect(() => {
     if (!isOpen) return;
     setIsLoadingPreview(true);
-    getCensoringPreview(projectId)
-      .then(setPreview)
+    // Also check if there are already active tasks
+    Promise.all([
+      getCensoringPreview(projectId),
+      getCensoringProgress(projectId),
+    ])
+      .then(([prev, prog]) => {
+        setPreview(prev);
+        if (prog.queued + prog.running > 0) {
+          setProgress(prog);
+          setIsPolling(true);
+        }
+      })
       .catch(() => setPreview(null))
       .finally(() => setIsLoadingPreview(false));
   }, [isOpen, projectId]);
@@ -39,14 +51,14 @@ export function CensorButton({ projectId }: { projectId: string }) {
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape" && !isPending && !isPolling) setIsOpen(false);
+      if (event.key === "Escape" && !isPending) setIsOpen(false);
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => {
       document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isOpen, isPending, isPolling]);
+  }, [isOpen, isPending]);
 
   // Polling effect
   useEffect(() => {
@@ -54,17 +66,20 @@ export function CensorButton({ projectId }: { projectId: string }) {
     let active = true;
     const poll = async () => {
       while (active) {
+        await new Promise((r) => setTimeout(r, 3000));
+        if (!active) break;
         const p = await getCensoringProgress(projectId);
         if (!active) break;
         setProgress(p);
         // If no more queued or running, stop polling
         if (p.queued === 0 && p.running === 0) {
           setIsPolling(false);
-          toast.success(`打码完成：${p.done} 张成功${p.failed > 0 ? `，${p.failed} 张失败` : ""}`);
+          if (p.done > 0) {
+            toast.success(`打码完成：${p.done} 张成功${p.failed > 0 ? `，${p.failed} 张失败` : ""}`);
+          }
           router.refresh();
           break;
         }
-        await new Promise((r) => setTimeout(r, 3000));
       }
     };
     poll();
@@ -72,9 +87,9 @@ export function CensorButton({ projectId }: { projectId: string }) {
   }, [isPolling, projectId, router]);
 
   function closeDialog() {
-    if (!isPending && !isPolling) {
+    if (!isPending) {
       setIsOpen(false);
-      setProgress(null);
+      // Don't reset progress/polling — tasks continue in background
     }
   }
 
@@ -85,10 +100,8 @@ export function CensorButton({ projectId }: { projectId: string }) {
         if (result.success) {
           toast.success(result.message);
           if (result.taskCount > 0) {
-            // Start polling for progress
             setIsPolling(true);
           } else {
-            setIsOpen(false);
             router.refresh();
           }
         } else {
@@ -107,7 +120,6 @@ export function CensorButton({ projectId }: { projectId: string }) {
         toast.success(result.message);
         setIsPolling(false);
         setProgress(null);
-        setIsOpen(false);
         router.refresh();
       } else {
         toast.error(result.message);
@@ -117,7 +129,41 @@ export function CensorButton({ projectId }: { projectId: string }) {
     }
   }
 
+  async function handlePause() {
+    try {
+      const result = await pauseCensoringTasks(projectId);
+      if (result.success) {
+        toast.success(result.message);
+        setIsPolling(false);
+        // Refresh progress to reflect paused state
+        const p = await getCensoringProgress(projectId);
+        setProgress(p);
+        router.refresh();
+      } else {
+        toast.error(result.message);
+      }
+    } catch {
+      toast.error("暂停失败");
+    }
+  }
+
+  async function handleResume() {
+    try {
+      const result = await resumeCensoringTasks(projectId);
+      if (result.success) {
+        toast.success(result.message);
+        setIsPolling(true);
+        router.refresh();
+      } else {
+        toast.error(result.message);
+      }
+    } catch {
+      toast.error("恢复失败");
+    }
+  }
+
   const showProgress = isPolling || (progress && (progress.queued + progress.running > 0));
+  const isPaused = progress && progress.queued === 0 && progress.running === 0 && progress.paused > 0;
 
   const dialogContent = isOpen
     ? createPortal(
@@ -145,7 +191,7 @@ export function CensorButton({ projectId }: { projectId: string }) {
               <button
                 type="button"
                 onClick={closeDialog}
-                disabled={isPending || isPolling}
+                disabled={isPending}
                 className="shrink-0 rounded-lg border border-white/10 bg-white/[0.04] p-1.5 text-zinc-400 transition hover:bg-white/[0.08] hover:text-zinc-200 disabled:opacity-50"
                 aria-label="关闭"
               >
@@ -154,7 +200,7 @@ export function CensorButton({ projectId }: { projectId: string }) {
             </div>
 
             <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
-              {showProgress ? (
+              {showProgress || isPaused ? (
                 <>
                   <div className="space-y-1.5 text-sm text-zinc-300">
                     <div className="flex items-center justify-between rounded-lg bg-white/[0.03] px-3 py-2">
@@ -169,6 +215,12 @@ export function CensorButton({ projectId }: { projectId: string }) {
                       <span className="text-zinc-400">队列中</span>
                       <span className="font-mono text-zinc-100">{progress?.queued ?? 0}</span>
                     </div>
+                    {(progress?.paused ?? 0) > 0 && (
+                      <div className="flex items-center justify-between rounded-lg bg-white/[0.03] px-3 py-2">
+                        <span className="text-zinc-400">已暂停</span>
+                        <span className="font-mono text-sky-300">{progress?.paused}</span>
+                      </div>
+                    )}
                     {(progress?.failed ?? 0) > 0 && (
                       <div className="flex items-center justify-between rounded-lg bg-white/[0.03] px-3 py-2">
                         <span className="text-zinc-400">失败</span>
@@ -245,14 +297,43 @@ export function CensorButton({ projectId }: { projectId: string }) {
 
             <div className="flex items-center justify-end gap-2 border-t border-white/10 p-3">
               {showProgress ? (
-                <button
-                  type="button"
-                  onClick={handleCancel}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-300 transition hover:bg-red-500/20"
-                >
-                  <X className="size-3" />
-                  取消剩余
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={handlePause}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-sky-500/20 bg-sky-500/10 px-3 py-1.5 text-xs font-medium text-sky-300 transition hover:bg-sky-500/20"
+                  >
+                    <Pause className="size-3" />
+                    暂停
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCancel}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-300 transition hover:bg-red-500/20"
+                  >
+                    <X className="size-3" />
+                    取消剩余
+                  </button>
+                </>
+              ) : isPaused ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleResume}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-300 transition hover:bg-emerald-500/20"
+                  >
+                    <Play className="size-3" />
+                    继续
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCancel}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-300 transition hover:bg-red-500/20"
+                  >
+                    <X className="size-3" />
+                    取消全部
+                  </button>
+                </>
               ) : (
                 <>
                   <button

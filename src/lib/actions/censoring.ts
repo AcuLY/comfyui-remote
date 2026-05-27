@@ -42,6 +42,7 @@ export type CensoringProgress = {
   queued: number;
   failed: number;
   cancelled: number;
+  paused: number;
 };
 
 export async function getCensoringProgress(
@@ -60,6 +61,7 @@ export async function getCensoringProgress(
     queued: 0,
     failed: 0,
     cancelled: 0,
+    paused: 0,
   };
 
   for (const group of tasks) {
@@ -70,6 +72,7 @@ export async function getCensoringProgress(
     else if (group.status === "queued") counts.queued = count;
     else if (group.status === "failed") counts.failed = count;
     else if (group.status === "cancelled") counts.cancelled = count;
+    else if (group.status === "paused") counts.paused = count;
   }
 
   return counts;
@@ -219,5 +222,65 @@ export async function cancelCensoringTasks(projectId: string): Promise<{
   } catch (error) {
     const message = error instanceof Error ? error.message : "取消失败";
     return { success: false, message, cancelledCount: 0 };
+  }
+}
+
+export async function pauseCensoringTasks(projectId: string): Promise<{
+  success: boolean;
+  message: string;
+}> {
+  try {
+    const result = await prisma.censoringTask.updateMany({
+      where: {
+        projectId,
+        status: "queued",
+      },
+      data: {
+        status: "paused",
+      },
+    });
+
+    revalidatePath("/");
+    return {
+      success: true,
+      message: result.count > 0
+        ? `已暂停 ${result.count} 个打码任务`
+        : "没有可暂停的任务",
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "暂停失败";
+    return { success: false, message };
+  }
+}
+
+export async function resumeCensoringTasks(projectId: string): Promise<{
+  success: boolean;
+  message: string;
+}> {
+  try {
+    const result = await prisma.censoringTask.updateMany({
+      where: {
+        projectId,
+        status: "paused",
+      },
+      data: {
+        status: "queued",
+      },
+    });
+
+    if (result.count > 0) {
+      wakeUpCensoringProcessor();
+    }
+
+    revalidatePath("/");
+    return {
+      success: true,
+      message: result.count > 0
+        ? `已恢复 ${result.count} 个打码任务`
+        : "没有已暂停的任务",
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "恢复失败";
+    return { success: false, message };
   }
 }
