@@ -790,16 +790,13 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
               {censoringHistory.map((task) => {
                 const createdDate = new Date(task.createdAt);
                 const finishedDate = task.finishedAt ? new Date(task.finishedAt) : null;
-                const startedDate = task.startedAt ? new Date(task.startedAt) : null;
-                const durationMs = finishedDate && startedDate ? finishedDate.getTime() - startedDate.getTime() : null;
-                const durationStr = durationMs != null ? (durationMs < 60000 ? `${Math.round(durationMs / 1000)}s` : `${Math.round(durationMs / 60000)}m`) : null;
                 const timeStr = `${createdDate.getMonth() + 1}/${createdDate.getDate()} ${String(createdDate.getHours()).padStart(2, "0")}:${String(createdDate.getMinutes()).padStart(2, "0")}`;
 
                 return (
                   <div
                     key={task.id}
                     className="relative overflow-hidden rounded-lg border border-white/10"
-                    title={`创建: ${task.createdAt}\n${task.startedAt ? `开始: ${task.startedAt}\n` : ""}${task.finishedAt ? `完成: ${task.finishedAt}` : ""}${task.errorMessage ? `\n错误: ${task.errorMessage}` : ""}`}
+                    title={`${task.projectTitle}\n创建: ${task.createdAt}${task.finishedAt ? `\n完成: ${task.finishedAt}` : ""}${task.errorMessage ? `\n错误: ${task.errorMessage}` : ""}`}
                   >
                     <Image
                       src={task.thumbUrl}
@@ -810,7 +807,7 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
                       unoptimized
                     />
                     <div className="absolute left-0 right-0 top-0 bg-black/60 px-1 py-0.5 text-[8px] text-zinc-300">
-                      {timeStr}{durationStr && <span className="ml-1 text-zinc-500">({durationStr})</span>}
+                      {finishedDate ? `${finishedDate.getMonth() + 1}/${finishedDate.getDate()} ${String(finishedDate.getHours()).padStart(2, "0")}:${String(finishedDate.getMinutes()).padStart(2, "0")}` : timeStr}
                     </div>
                     <div className={`absolute bottom-0 left-0 right-0 py-0.5 text-center text-[8px] font-medium text-white ${
                       task.status === "done" ? "bg-emerald-500/80" :
