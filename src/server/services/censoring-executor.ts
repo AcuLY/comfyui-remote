@@ -11,9 +11,18 @@ const log = createLogger({ module: "censoring-executor" });
 let processing = false;
 let wakeResolver: (() => void) | null = null;
 
+// Track active tasks: taskId → { promptId, imageResult }
+type ActiveTask = {
+  taskId: string;
+  promptId: string;
+  imageResult: { id: string; filePath: string; reviewStatus: string };
+};
+
+const activeTasks = new Map<string, ActiveTask>();
+
 /**
- * On startup, reset any "running" tasks back to "queued" so they get re-submitted.
- * Also clear any censoring prompts from ComfyUI's queue to avoid duplicates.
+ * On startup, reset any "running" tasks back to "queued" and clear
+ * their stale prompts from ComfyUI's queue.
  */
 async function recoverStaleCensoringTasks(): Promise<void> {
   const staleTasks = await prisma.censoringTask.findMany({
@@ -23,7 +32,7 @@ async function recoverStaleCensoringTasks(): Promise<void> {
 
   if (staleTasks.length === 0) return;
 
-  // Collect promptIds from stale tasks (stored in errorMessage field during execution)
+  // Collect promptIds from stale tasks
   const promptIdsToDelete: string[] = [];
   for (const task of staleTasks) {
     if (task.errorMessage?.startsWith("promptId:")) {
@@ -31,7 +40,7 @@ async function recoverStaleCensoringTasks(): Promise<void> {
     }
   }
 
-  // Clear these prompts from ComfyUI's queue (best-effort)
+  // Clear stale prompts from ComfyUI queue (best-effort)
   if (promptIdsToDelete.length > 0) {
     try {
       const apiUrl = env.comfyApiUrl.replace(/\/$/, "");
@@ -43,7 +52,7 @@ async function recoverStaleCensoringTasks(): Promise<void> {
       });
       log.info(`Cleared ${promptIdsToDelete.length} stale censoring prompts from ComfyUI queue`);
     } catch (error) {
-      log.warn("Failed to clear stale prompts from ComfyUI queue (non-fatal)", { error: String(error) });
+      log.warn("Failed to clear stale prompts from ComfyUI queue", { error: String(error) });
     }
   }
 
@@ -53,12 +62,12 @@ async function recoverStaleCensoringTasks(): Promise<void> {
     data: { status: "queued", startedAt: null, errorMessage: null },
   });
 
-  log.info(`Recovered ${result.count} stale censoring task(s) from "running" to "queued"`);
+  log.info(`Recovered ${result.count} stale censoring task(s)`);
 }
 
 /**
- * Submit all queued censoring tasks to ComfyUI at once (fire-and-forget polling).
- * Returns the number of tasks submitted.
+ * Submit all queued tasks to ComfyUI.
+ * Returns promptIds for the unified polling loop.
  */
 async function submitQueuedTasks(): Promise<number> {
   const tasks = await prisma.censoringTask.findMany({
@@ -72,7 +81,6 @@ async function submitQueuedTasks(): Promise<number> {
   let submitted = 0;
 
   for (const task of tasks) {
-    // Claim atomically
     const claimed = await prisma.censoringTask.updateMany({
       where: { id: task.id, status: "queued" },
       data: { status: "running", startedAt: new Date() },
@@ -80,57 +88,94 @@ async function submitQueuedTasks(): Promise<number> {
 
     if (claimed.count === 0) continue;
 
-    log.info("Submitting censoring task", { taskId: task.id, imageResultId: task.imageResultId });
+    try {
+      const { promptId, imageResult } = await submitCensorPrompt(task.imageResultId);
 
-    // Submit to ComfyUI and immediately start polling (fire-and-forget)
-    submitAndPoll(task.id, task.imageResultId).catch((error) => {
-      log.error("Censoring task submit failed", { taskId: task.id, error: String(error) });
-    });
+      // Store promptId in DB for recovery
+      await prisma.censoringTask.update({
+        where: { id: task.id },
+        data: { errorMessage: `promptId:${promptId}` },
+      });
 
-    submitted++;
+      // Track for unified polling
+      activeTasks.set(promptId, { taskId: task.id, promptId, imageResult });
+
+      log.info("Submitted censoring prompt", { taskId: task.id, promptId });
+      submitted++;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      await prisma.censoringTask.update({
+        where: { id: task.id },
+        data: { status: "failed", errorMessage: message, finishedAt: new Date() },
+      }).catch(() => {});
+      log.error("Failed to submit censoring task", { taskId: task.id, error: message });
+    }
   }
 
   return submitted;
 }
 
 /**
- * Submit a single task to ComfyUI, then poll for completion in the background.
+ * Unified polling loop: check ComfyUI history for ALL active prompts
+ * in a single request, then process completed ones.
+ *
+ * Only 1 HTTP request per poll cycle regardless of task count.
  */
-async function submitAndPoll(taskId: string, imageResultId: string): Promise<void> {
+async function pollActiveTasksOnce(): Promise<number> {
+  if (activeTasks.size === 0) return 0;
+
+  const apiUrl = env.comfyApiUrl.replace(/\/$/, "");
+  let completed = 0;
+
+  // Fetch full history (recent) — ComfyUI returns all completed prompts
+  let historyData: Record<string, unknown>;
   try {
-    // Phase 1: Upload image + submit prompt to ComfyUI (fast)
-    const { promptId, imageResult } = await submitCensorPrompt(imageResultId);
-
-    log.info("Censoring prompt submitted, polling", { taskId, promptId });
-
-    // Update task with promptId for reference
-    await prisma.censoringTask.update({
-      where: { id: taskId },
-      data: { errorMessage: `promptId:${promptId}` }, // Store promptId temporarily
+    const response = await fetch(`${apiUrl}/history`, {
+      signal: AbortSignal.timeout(env.comfyRequestTimeoutMs),
     });
-
-    // Phase 2: Poll for completion + download + save (slow, runs in background)
-    await pollCensorCompletion(promptId, imageResult);
-
-    // Mark done
-    await prisma.censoringTask.update({
-      where: { id: taskId },
-      data: { status: "done", finishedAt: new Date(), errorMessage: null },
-    });
-
-    log.info("Censoring task completed", { taskId });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    await prisma.censoringTask.update({
-      where: { id: taskId },
-      data: { status: "failed", errorMessage: message, finishedAt: new Date() },
-    }).catch(() => {});
-    log.error("Censoring task failed", { taskId, error: message });
+    if (!response.ok) return 0;
+    historyData = await response.json() as Record<string, unknown>;
+  } catch {
+    return 0; // Network error, retry next cycle
   }
+
+  // Check each active task
+  for (const [promptId, task] of activeTasks) {
+    const entry = historyData[promptId];
+    if (!entry) continue; // Not completed yet
+
+    // This prompt is done — process it
+    activeTasks.delete(promptId);
+
+    try {
+      // Download and save the censored image
+      await pollCensorCompletion(promptId, task.imageResult);
+
+      await prisma.censoringTask.update({
+        where: { id: task.taskId },
+        data: { status: "done", finishedAt: new Date(), errorMessage: null },
+      });
+
+      log.info("Censoring task completed", { taskId: task.taskId, promptId });
+      completed++;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      await prisma.censoringTask.update({
+        where: { id: task.taskId },
+        data: { status: "failed", errorMessage: message, finishedAt: new Date() },
+      }).catch(() => {});
+      log.error("Censoring task failed during download", { taskId: task.taskId, error: message });
+    }
+  }
+
+  return completed;
 }
 
 /**
- * Main processing loop. Submits all queued tasks then sleeps until woken.
+ * Main processing loop:
+ * 1. Submit all queued tasks
+ * 2. Poll for completions (single request per cycle)
+ * 3. When all done, sleep until new tasks arrive
  */
 async function processingLoop(): Promise<void> {
   processing = true;
@@ -138,13 +183,27 @@ async function processingLoop(): Promise<void> {
 
   try {
     while (true) {
+      // Submit any new queued tasks
       const submitted = await submitQueuedTasks();
       if (submitted > 0) {
         log.info(`Submitted ${submitted} censoring tasks to ComfyUI`);
       }
 
-      // Sleep until new tasks are queued
-      log.debug("Censoring queue empty or all submitted, sleeping");
+      // Poll until all active tasks are done
+      while (activeTasks.size > 0) {
+        await sleep(env.comfyHistoryPollIntervalMs);
+        const completed = await pollActiveTasksOnce();
+        if (completed > 0) {
+          // Check if new tasks were queued while we were polling
+          const newSubmitted = await submitQueuedTasks();
+          if (newSubmitted > 0) {
+            log.info(`Submitted ${newSubmitted} new censoring tasks while polling`);
+          }
+        }
+      }
+
+      // All done — sleep until woken
+      log.debug("All censoring tasks complete, sleeping");
       await new Promise<void>((resolve) => {
         wakeResolver = resolve;
       });
@@ -158,9 +217,12 @@ async function processingLoop(): Promise<void> {
   }
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 /**
  * Start the censoring processor (idempotent).
- * On first start, recovers stale "running" tasks from a previous session.
  */
 export function startCensoringProcessor(): void {
   if (processing) return;
