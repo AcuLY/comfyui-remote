@@ -513,6 +513,10 @@ export function ProjectResultsClient({
       if (event.key === "Escape") closeLightbox();
       if (event.key === "ArrowLeft") goLightboxPrev();
       if (event.key === "ArrowRight") goLightboxNext();
+      if (event.key === "h" || event.key === "H") {
+        event.preventDefault();
+        setShowCensoredMode((prev) => !prev);
+      }
     }
 
     window.addEventListener("keydown", handleKeyDown);
