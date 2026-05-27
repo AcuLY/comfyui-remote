@@ -11,6 +11,21 @@ let processing = false;
 let wakeResolver: (() => void) | null = null;
 
 /**
+ * On startup, reset any "running" tasks back to "queued" so they get re-submitted.
+ * These are tasks whose polling was lost due to a server restart.
+ */
+async function recoverStaleCensoringTasks(): Promise<void> {
+  const result = await prisma.censoringTask.updateMany({
+    where: { status: "running" },
+    data: { status: "queued", startedAt: null },
+  });
+
+  if (result.count > 0) {
+    log.info(`Recovered ${result.count} stale censoring task(s) from "running" to "queued"`);
+  }
+}
+
+/**
  * Submit all queued censoring tasks to ComfyUI at once (fire-and-forget polling).
  * Returns the number of tasks submitted.
  */
@@ -114,13 +129,16 @@ async function processingLoop(): Promise<void> {
 
 /**
  * Start the censoring processor (idempotent).
+ * On first start, recovers stale "running" tasks from a previous session.
  */
 export function startCensoringProcessor(): void {
   if (processing) return;
-  processingLoop().catch((error) => {
-    log.error("Censoring processor loop error", error);
-    processing = false;
-  });
+  recoverStaleCensoringTasks()
+    .then(() => processingLoop())
+    .catch((error) => {
+      log.error("Censoring processor startup error", error);
+      processing = false;
+    });
 }
 
 /**
