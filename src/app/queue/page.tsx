@@ -1,6 +1,7 @@
 import { QueuePageClient } from "./queue-page-client";
 import { getQueueRunsPage, getRunningRuns, getFailedRuns, getTrashItems } from "@/lib/server-data";
 import { prisma } from "@/lib/prisma";
+import { toImageUrl } from "@/lib/image-url";
 
 export const dynamic = "force-dynamic";
 
@@ -74,6 +75,34 @@ export default async function QueuePage({
     }
   }
 
+  // Get censoring history — last 50 done/failed tasks
+  const censoringHistoryRaw = await prisma.censoringTask.findMany({
+    where: { status: { in: ["done", "failed"] } },
+    orderBy: { finishedAt: "desc" },
+    take: 50,
+    select: {
+      id: true,
+      status: true,
+      errorMessage: true,
+      createdAt: true,
+      startedAt: true,
+      finishedAt: true,
+      project: { select: { id: true, title: true } },
+      imageResult: { select: { id: true, thumbPath: true, filePath: true, censoredThumbPath: true } },
+    },
+  });
+
+  const censoringHistory = censoringHistoryRaw.map((t) => ({
+    id: t.id,
+    status: t.status,
+    errorMessage: t.errorMessage,
+    createdAt: t.createdAt.toISOString(),
+    startedAt: t.startedAt?.toISOString() ?? null,
+    finishedAt: t.finishedAt?.toISOString() ?? null,
+    projectTitle: t.project.title,
+    thumbUrl: toImageUrl(t.imageResult.censoredThumbPath ?? t.imageResult.thumbPath ?? t.imageResult.filePath) ?? "",
+  }));
+
   return (
     <QueuePageClient
       initialQueueRuns={queuePage.runs}
@@ -82,6 +111,7 @@ export default async function QueuePage({
       initialFailedRuns={failedRuns}
       initialTrashItems={trashItems}
       initialCensoringProgress={censoringProgress}
+      initialCensoringHistory={censoringHistory}
     />
   );
 }
