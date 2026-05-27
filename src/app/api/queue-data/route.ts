@@ -79,12 +79,41 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  // Get censoring history — last 50 completed/failed tasks for the "打码" tab
+  const censoringHistory = await prisma.censoringTask.findMany({
+    where: { status: { in: ["done", "failed", "cancelled", "queued", "running"] } },
+    orderBy: { createdAt: "desc" },
+    take: 50,
+    select: {
+      id: true,
+      status: true,
+      errorMessage: true,
+      createdAt: true,
+      finishedAt: true,
+      project: { select: { id: true, title: true } },
+      imageResult: { select: { id: true, thumbPath: true, filePath: true, censoredThumbPath: true } },
+    },
+  });
+
   return NextResponse.json({
     queueRuns: queuePage.runs,
     queuePagination: queuePage.pagination,
     runningRuns,
     failedRuns,
     censoringProgress,
+    censoringHistory: censoringHistory.map((t) => ({
+      id: t.id,
+      status: t.status,
+      errorMessage: t.errorMessage,
+      createdAt: t.createdAt.toISOString(),
+      finishedAt: t.finishedAt?.toISOString() ?? null,
+      projectTitle: t.project.title,
+      thumbUrl: t.imageResult.censoredThumbPath
+        ? `/api/images/${t.imageResult.censoredThumbPath}`
+        : t.imageResult.thumbPath
+          ? `/api/images/${t.imageResult.thumbPath}`
+          : `/api/images/${t.imageResult.filePath}`,
+    })),
     ...(trashItems ? { trashItems } : {}),
   });
 }

@@ -10,15 +10,16 @@ import { PageHeader } from "@/components/page-header";
 import { SectionCard } from "@/components/section-card";
 import { StatChip } from "@/components/stat-chip";
 import { cancelRun, runSection, clearRuns, clearActiveRuns, clearTrash, restoreImage, pauseRun, resumeRun, pauseAllRuns, resumeAllRuns } from "@/lib/actions";
-import type { QueuePagination, QueueRun, RunningRun, FailedRun, TrashItem, CensoringProgressItem } from "@/lib/types";
+import type { QueuePagination, QueueRun, RunningRun, FailedRun, TrashItem, CensoringProgressItem, CensoringHistoryItem } from "@/lib/types";
 
-export type QueueTabKey = "pending" | "running" | "failed" | "trash";
+export type QueueTabKey = "pending" | "running" | "failed" | "censoring" | "trash";
 
 type TabDef = { key: QueueTabKey; label: string };
 
 const TABS: TabDef[] = [
   { key: "pending", label: "待审核" },
   { key: "running", label: "运行中" },
+  { key: "censoring", label: "打码" },
   { key: "failed", label: "失败" },
   { key: "trash", label: "回收站" },
 ];
@@ -106,6 +107,7 @@ type Props = {
   initialFailedRuns?: FailedRun[];
   initialTrashItems?: TrashItem[];
   initialCensoringProgress?: CensoringProgressItem[];
+  initialCensoringHistory?: CensoringHistoryItem[];
 };
 
 function CensoringProgressCard({
@@ -151,7 +153,7 @@ function CensoringProgressCard({
   );
 }
 
-export function QueuePageClient({ initialQueueRuns, initialQueuePagination, initialRunningRuns, initialFailedRuns, initialTrashItems, initialCensoringProgress }: Props) {
+export function QueuePageClient({ initialQueueRuns, initialQueuePagination, initialRunningRuns, initialFailedRuns, initialTrashItems, initialCensoringProgress, initialCensoringHistory }: Props) {
   const [activeTab, setActiveTab] = useState<QueueTabKey>("pending");
   const [queueRuns, setQueueRuns] = useState<QueueRun[]>(initialQueueRuns);
   const [queuePagination, setQueuePagination] = useState<QueuePagination>(initialQueuePagination);
@@ -159,6 +161,7 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
   const [failedRuns, setFailedRuns] = useState<FailedRun[]>(initialFailedRuns ?? []);
   const [trashItems, setTrashItems] = useState<TrashItem[]>(initialTrashItems ?? []);
   const [censoringProgress, setCensoringProgress] = useState<CensoringProgressItem[]>(initialCensoringProgress ?? []);
+  const [censoringHistory, setCensoringHistory] = useState<CensoringHistoryItem[]>(initialCensoringHistory ?? []);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
@@ -227,6 +230,7 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
         setTrashItems(data.trashItems);
       }
       setCensoringProgress(data.censoringProgress ?? []);
+      setCensoringHistory(data.censoringHistory ?? []);
 
       router.refresh();
     });
@@ -256,6 +260,7 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
   const runTotal = queuePagination.totalItems;
   const censoringActiveCount = censoringProgress.reduce((sum, item) => sum + item.running + item.queued, 0);
   const runningCount = runningRuns.length + censoringActiveCount;
+  const censoringCount = censoringHistory.length;
   const failedCount = failedRuns.length;
   const trashCount = trashItems.length;
   const visiblePages = Array.from(
@@ -342,6 +347,7 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
           const badge =
             tab.key === "pending" ? pendingTotal :
             tab.key === "running" ? runningCount :
+            tab.key === "censoring" ? censoringCount :
             tab.key === "failed" ? failedCount :
             trashCount;
           return (
@@ -701,6 +707,52 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
               </div>
               {censoringProgress.map((item) => (
                 <CensoringProgressCard key={item.projectId} item={item} onCancel={handleCancelCensoring} />
+              ))}
+            </div>
+          )}
+        </SectionCard>
+      )}
+
+      {/* Censoring tab */}
+      {activeTab === "censoring" && (
+        <SectionCard title="打码记录" subtitle="最近 50 条打码任务。">
+          {/* Active progress at top */}
+          {censoringProgress.length > 0 && (
+            <div className="mb-4 space-y-3">
+              {censoringProgress.map((item) => (
+                <CensoringProgressCard key={item.projectId} item={item} onCancel={handleCancelCensoring} />
+              ))}
+            </div>
+          )}
+          {censoringHistory.length === 0 ? (
+            <div className="rounded-xl border border-white/5 bg-white/[0.02] p-6 text-center text-sm text-zinc-500">
+              暂无打码记录
+            </div>
+          ) : (
+            <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 md:grid-cols-8">
+              {censoringHistory.map((task) => (
+                <div key={task.id} className="relative overflow-hidden rounded-lg border border-white/10">
+                  <Image
+                    src={task.thumbUrl}
+                    alt=""
+                    width={80}
+                    height={120}
+                    className="aspect-[3/4] w-full object-cover"
+                    unoptimized
+                  />
+                  <div className={`absolute bottom-0 left-0 right-0 py-0.5 text-center text-[8px] font-medium text-white ${
+                    task.status === "done" ? "bg-emerald-500/80" :
+                    task.status === "failed" ? "bg-rose-500/80" :
+                    task.status === "running" ? "bg-amber-500/80" :
+                    task.status === "cancelled" ? "bg-zinc-500/80" :
+                    "bg-sky-500/80"
+                  }`}>
+                    {task.status === "done" ? "完成" :
+                     task.status === "failed" ? "失败" :
+                     task.status === "running" ? "运行中" :
+                     task.status === "cancelled" ? "已取消" : "队列中"}
+                  </div>
+                </div>
               ))}
             </div>
           )}

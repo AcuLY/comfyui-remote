@@ -136,3 +136,13 @@ export type CensoringProgressItem = {
   queued: number;
   failed: number;
 };
+
+export type CensoringHistoryItem = {
+  id: string;
+  status: string;
+  errorMessage: string | null;
+  createdAt: string;
+  finishedAt: string | null;
+  projectTitle: string;
+  thumbUrl: string;
+};

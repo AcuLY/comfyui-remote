@@ -490,9 +490,9 @@ export function ResultsGrid({
                     </button>
                     <button
                       onClick={() => {
-                        // Censor: if selected → censor selected kept; else → censor all uncensored kept in run
+                        // Censor: if selected → censor selected kept (including re-censor); else → censor all uncensored kept in run
                         const targetIds = runSelectedIds.length > 0
-                          ? run.images.filter((img) => runSelectedIds.includes(img.id) && img.status === "kept" && !img.censoredAt).map((img) => img.id)
+                          ? run.images.filter((img) => runSelectedIds.includes(img.id) && img.status === "kept").map((img) => img.id)
                           : run.images.filter((img) => img.status === "kept" && !img.censoredAt).map((img) => img.id);
                         if (targetIds.length === 0) {
                           toast.info("没有需要打码的图片");
@@ -522,7 +522,7 @@ export function ResultsGrid({
                       {isPending
                         ? "处理中…"
                         : runSelectedCount > 0
-                          ? `打码 (${run.images.filter((img) => runSelectedIds.includes(img.id) && img.status === "kept" && !img.censoredAt).length})`
+                          ? `打码 (${run.images.filter((img) => runSelectedIds.includes(img.id) && img.status === "kept").length})`
                           : `打码 (${run.images.filter((img) => img.status === "kept" && !img.censoredAt).length})`}
                     </button>
                   </div>

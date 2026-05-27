@@ -282,11 +282,11 @@ export function ResultsGalleryProvider({
         return;
       }
 
-      // H key: show censored version while held
+      // H key: toggle censored version
       if (key === "h" || key === "H") {
         event.preventDefault();
         if (current?.censoredFull) {
-          setShowCensored(true);
+          setShowCensored((prev) => !prev);
         }
         return;
       }
@@ -294,18 +294,6 @@ export function ResultsGalleryProvider({
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [allImages.length, goNext, goPrev, open, reviewCurrent, toggleMarker, onUndo, current]);
-
-  // H key release: hide censored version
-  useEffect(() => {
-    if (!open) return;
-    const handler = (event: KeyboardEvent) => {
-      if (event.key === "h" || event.key === "H") {
-        setShowCensored(false);
-      }
-    };
-    window.addEventListener("keyup", handler);
-    return () => window.removeEventListener("keyup", handler);
-  }, [open]);
 
   // Reset censored view when navigating
   useEffect(() => {
@@ -534,19 +522,17 @@ export function ResultsGalleryProvider({
             <button
               type="button"
               disabled={!current.censoredFull}
-              onMouseDown={() => current.censoredFull && setShowCensored(true)}
-              onMouseUp={() => setShowCensored(false)}
-              onMouseLeave={() => setShowCensored(false)}
+              onClick={() => current.censoredFull && setShowCensored((prev) => !prev)}
               className={`inline-flex h-11 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-medium transition disabled:opacity-45 ${
                 showCensored
-                  ? "border-amber-300/35 bg-amber-400/25 text-amber-100"
+                  ? "border-amber-300/35 bg-amber-400/25 text-amber-100 hover:bg-amber-400/30"
                   : current.censoredFull
                     ? "border-white/15 bg-white/10 text-white/80 hover:bg-white/15 hover:text-amber-100"
                     : "border-white/10 bg-white/5 text-zinc-600"
               }`}
             >
               <Shield className="size-4" />
-              {current.censoredFull ? "按住:打码" : "暂未打码"}
+              {showCensored ? "显示原图" : current.censoredFull ? "查看打码" : "暂未打码"}
             </button>
             {/* Single-image censor trigger */}
             {current.status === "kept" && !current.censoredAt && (
