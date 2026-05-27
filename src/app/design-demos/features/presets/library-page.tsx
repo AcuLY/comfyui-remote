@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { type MouseEvent as ReactMouseEvent, useState } from "react";
+import { type MouseEvent as ReactMouseEvent, useLayoutEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, ChevronDown, Copy, Edit3, FolderTree, GripVertical, Plus, Shuffle, Trash2, X } from "lucide-react";
 
 import {
@@ -245,7 +245,7 @@ export function PresetLibraryItemRow({
   const openHref = demoHref(href);
 
   return (
-    <div ref={ref} style={style} className={s.presetItemSortableFrame}>
+    <div ref={ref} style={style} className={s.presetItemSortableFrame} data-preset-id={item.id}>
       <UnitRowShell
         actions={(
           <>
@@ -367,6 +367,28 @@ export function PresetsPage({ data }: { data: DemoData }) {
   const [moveTargetId, setMoveTargetId] = useState<string | null>(null);
   const [showDraftFolder, setShowDraftFolder] = useState(false);
   const [itemOrder, setItemOrder] = useState<string[]>([]);
+
+  const [scrollToId] = useState(() => {
+    try {
+      const v = sessionStorage.getItem("demo-presets-from");
+      if (v) { sessionStorage.removeItem("demo-presets-from"); return v; }
+    } catch {}
+    return undefined;
+  });
+  const listRef = useRef<HTMLElement>(null);
+
+  useLayoutEffect(() => {
+    if (!scrollToId) return;
+    const el = listRef.current?.querySelector(`[data-preset-id="${scrollToId}"]`);
+    if (el) { el.scrollIntoView({ block: "center", behavior: "instant" }); }
+    else {
+      const t = setTimeout(() => {
+        listRef.current?.querySelector(`[data-preset-id="${scrollToId}"]`)?.scrollIntoView({ block: "center", behavior: "instant" });
+      }, 100);
+      return () => clearTimeout(t);
+    }
+  }, []);
+
   const visibleCategories = data.categories.filter((c) => !hiddenCategoryIds.has(c.id));
   const category = visibleCategories.find((item) => item.id === categoryId) ?? visibleCategories[0];
   const categoryItems = category ? presetLibraryItemsWithDemoData(category) : [];
@@ -510,7 +532,7 @@ export function PresetsPage({ data }: { data: DemoData }) {
                 selectedCount={selectedCount}
               />
             ) : null}
-            <section className={s.presetLibrarySurface}>
+            <section ref={listRef} className={s.presetLibrarySurface}>
               {currentFolderId ? (
                 <button className={s.presetFolderBack} type="button" onClick={() => {
                   const currentFolder = presetFolderBreadcrumb(category, currentFolderId)[presetFolderBreadcrumb(category, currentFolderId).length - 1];

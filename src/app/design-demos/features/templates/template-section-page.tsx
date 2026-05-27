@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Copy, Download, GripVertical, Plus, Rows3, Save, Trash2 } from "lucide-react";
 
 import type { DemoData, DemoTemplate } from "../../data";
@@ -33,6 +33,10 @@ export function TemplateSectionPage({ template, sectionIndex, data }: { template
     { id: "lora-2-0", stage: 1, name: template.name, weight: 0.7 },
     { id: "lora-2-1", stage: 1, name: template.name, weight: 0.8 },
   ]);
+
+  useEffect(() => {
+    try { sessionStorage.setItem("demo-template-sections-from", String(safeIndex)); } catch {}
+  }, [safeIndex]);
 
   return (
     <div className={s.page}>

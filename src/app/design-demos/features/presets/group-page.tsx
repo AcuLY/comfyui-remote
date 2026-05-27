@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { GripVertical, Plus, Save, Search, Trash2 } from "lucide-react";
 
 import { categoryTypeLabel, presetFolderBreadcrumb, type DemoData, type DemoPresetGroup } from "../../data";
@@ -19,6 +19,10 @@ export function PresetGroupPage({ data, group }: { data: DemoData; group: DemoPr
   const [deleted, setDeleted] = useState(false);
   const [removedMemberIds, setRemovedMemberIds] = useState<Set<string>>(new Set());
   const [addedMembers, setAddedMembers] = useState<Array<{ id: string; name: string; categoryName: string; variant: string }>>([]);
+
+  useEffect(() => {
+    if (group) { try { sessionStorage.setItem("demo-presets-from", group.id); } catch {} }
+  }, [group]);
 
   if (deleted) return <EmptyPage title="预设组已删除" />;
   if (!group) return <EmptyPage title="没有预设组数据" />;

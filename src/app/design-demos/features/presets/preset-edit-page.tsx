@@ -70,6 +70,14 @@ function PresetEditPageContent({ data, preset }: { data: DemoData; preset: DemoP
     };
   }, [saveState]);
 
+  useEffect(() => {
+    try { sessionStorage.setItem("demo-presets-from", preset.id); } catch {}
+  }, [preset.id]);
+
+  useEffect(() => {
+    try { sessionStorage.setItem("demo-presets-from", preset.id); } catch {}
+  }, [preset.id]);
+
   function addLoraRow() {
     const stage: LoraStageId = 1;
     const newRow: LoraDraftRow = {

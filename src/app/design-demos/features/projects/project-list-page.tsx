@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Folder, Save, X } from "lucide-react";
 
@@ -22,6 +22,7 @@ const PROJECT_LIST_CREATE_FOLDER_EVENT = "design-demo:projects:create-folder";
 const PROJECT_LIST_CREATE_PROJECT_EVENT = "design-demo:projects:create-project";
 const PROJECT_LIST_VIEW_MODE_EVENT = "design-demo:projects:view-mode";
 const PROJECT_LIST_VIEW_MODE_STORAGE_KEY = "design-demo:projects:view-mode";
+const SCROLL_KEY = "demo-projects-from";
 
 type ProjectListViewMode = "card" | "compact";
 
@@ -35,6 +36,17 @@ function readProjectListViewMode(): ProjectListViewMode {
   return isProjectListViewMode(stored) ? stored : "card";
 }
 
+function readAndClearScrollTarget(): string | undefined {
+  try {
+    const v = sessionStorage.getItem(SCROLL_KEY);
+    if (v) {
+      sessionStorage.removeItem(SCROLL_KEY);
+      return v;
+    }
+  } catch {}
+  return undefined;
+}
+
 export function ProjectsPage({ data }: { data: DemoData }) {
   const router = useRouter();
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
@@ -45,6 +57,8 @@ export function ProjectsPage({ data }: { data: DemoData }) {
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [listViewMode, setListViewMode] = useState<ProjectListViewMode>(readProjectListViewMode);
   const [newFolderName, setNewFolderName] = useState("角色组探索");
+  const [scrollTargetId] = useState(readAndClearScrollTarget);
+  const listRef = useRef<HTMLDivElement>(null);
   const folders = data.projectFolders;
   const visibleFolders = folders
     .filter((folder) => folder.parentId === currentFolderId && !hiddenFolderIds.has(folder.id))
@@ -82,6 +96,21 @@ export function ProjectsPage({ data }: { data: DemoData }) {
     window.addEventListener(PROJECT_LIST_VIEW_MODE_EVENT, handleViewModeChange);
     return () => window.removeEventListener(PROJECT_LIST_VIEW_MODE_EVENT, handleViewModeChange);
   }, []);
+
+  useLayoutEffect(() => {
+    if (!scrollTargetId) return;
+    const el = listRef.current?.querySelector(`[data-project-id="${scrollTargetId}"]`);
+    if (el) {
+      el.scrollIntoView({ block: "center", behavior: "instant" });
+    } else {
+      const t = setTimeout(() => {
+        listRef.current
+          ?.querySelector(`[data-project-id="${scrollTargetId}"]`)
+          ?.scrollIntoView({ block: "center", behavior: "instant" });
+      }, 100);
+      return () => clearTimeout(t);
+    }
+  }, [scrollTargetId]);
 
   function navigateFolder(folderId: string | null) {
     setCurrentFolderId(folderId);
@@ -161,7 +190,7 @@ export function ProjectsPage({ data }: { data: DemoData }) {
           </div>
         ) : null}
 
-        <div className={cx(s.projectFolderSurface, listViewMode === "compact" && s.projectFolderSurfaceCompact)}>
+        <div className={cx(s.projectFolderSurface, listViewMode === "compact" && s.projectFolderSurfaceCompact)} ref={listRef}>
           {visibleFolders.length ? (
             <div className={s.projectFolderGrid}>
               {visibleFolders.map((folder) => {
@@ -187,14 +216,15 @@ export function ProjectsPage({ data }: { data: DemoData }) {
           {visibleProjects.length ? (
             <div className={s.projectListGrid}>
               {visibleProjects.map((project) => (
-                <ProjectListItem
-                  compact={listViewMode === "compact"}
-                  key={project.id}
-                  onDelete={() => setHiddenProjectIds(prev => new Set([...prev, project.id]))}
-                  project={project}
-                  selected={selectedIds.has(project.id)}
-                  onToggleSelected={() => toggleProjectSelection(project.id)}
-                />
+                <div data-project-id={project.id} key={project.id}>
+                  <ProjectListItem
+                    compact={listViewMode === "compact"}
+                    onDelete={() => setHiddenProjectIds(prev => new Set([...prev, project.id]))}
+                    project={project}
+                    selected={selectedIds.has(project.id)}
+                    onToggleSelected={() => toggleProjectSelection(project.id)}
+                  />
+                </div>
               ))}
             </div>
           ) : visibleFolders.length ? null : (

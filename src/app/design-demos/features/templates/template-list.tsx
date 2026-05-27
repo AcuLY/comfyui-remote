@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useLayoutEffect, useRef, useState } from "react";
 import { Edit3, Layers3, Plus, Trash2 } from "lucide-react";
 
 import type { DemoData } from "../../data";
@@ -11,7 +12,36 @@ import { ButtonLink } from "../../shared/primitives/button";
 import { PageHeader } from "../../shared/primitives/page-header";
 import { StatusBadge } from "../../shared/primitives/status-badge";
 
+const SCROLL_KEY = "demo-templates-from";
+
+function readAndClear() {
+  try {
+    const v = sessionStorage.getItem(SCROLL_KEY);
+    if (v) {
+      sessionStorage.removeItem(SCROLL_KEY);
+      return v;
+    }
+  } catch {}
+  return undefined;
+}
+
 export function TemplatesPage({ data }: { data: DemoData }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [fromId] = useState(readAndClear);
+
+  useLayoutEffect(() => {
+    if (!fromId) return;
+    const el = ref.current?.querySelector(`[data-template-id="${fromId}"]`);
+    if (el) {
+      el.scrollIntoView({ block: "center", behavior: "instant" });
+    } else {
+      const t = setTimeout(() => {
+        ref.current?.querySelector(`[data-template-id="${fromId}"]`)?.scrollIntoView({ block: "center", behavior: "instant" });
+      }, 100);
+      return () => clearTimeout(t);
+    }
+  }, []);
+
   return (
     <div className={s.page}>
       <PageHeader
@@ -20,9 +50,9 @@ export function TemplatesPage({ data }: { data: DemoData }) {
         subtitle="管理可复用的小节结构、默认参数和预设导入配置。"
         actions={<ButtonLink href="/templates/new" tone="primary" icon={Plus}>新建模板</ButtonLink>}
       />
-      <div className={s.rowList}>
+      <div className={s.rowList} ref={ref}>
         {data.templates.map((template) => (
-          <article className={s.templateListItem} key={template.id}>
+          <article className={s.templateListItem} key={template.id} data-template-id={template.id}>
             <div className={s.templateListMain}>
               <div className={s.templateListTitle}>
                 <Link href={demoHref(`/templates/${template.id}/edit`)}>

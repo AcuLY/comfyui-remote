@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import type { DemoProject, DemoSection } from "../../data";
 import { cx, filterImages } from "../../routing";
@@ -15,6 +15,8 @@ type ProjectSectionViewMode = "standard" | "compact";
 
 const PROJECT_SECTION_VIEW_MODE_EVENT = "design-demo:projects:section-view-mode";
 const PROJECT_SECTION_VIEW_MODE_STORAGE_KEY = "design-demo:projects:section-view-mode";
+const SCROLL_KEY = "demo-projects-from";
+const SECTION_SCROLL_KEY = "demo-project-sections-from";
 
 function isProjectSectionViewMode(value: unknown): value is ProjectSectionViewMode {
   return value === "standard" || value === "compact";
@@ -37,6 +39,28 @@ export function ProjectDetailPage({
   const [filter, setFilter] = useState<ResultDemoFilter>("all");
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
   const [localSections, setLocalSections] = useState<DemoSection[]>(project?.sections ?? []);
+  const sectionListRef = useRef<HTMLDivElement>(null);
+  const [fromSectionId] = useState(() => {
+    try {
+      const v = sessionStorage.getItem(SECTION_SCROLL_KEY);
+      if (v) { sessionStorage.removeItem(SECTION_SCROLL_KEY); return v; }
+    } catch {}
+    return undefined;
+  });
+
+  useLayoutEffect(() => {
+    if (!fromSectionId) return;
+    const el = sectionListRef.current?.querySelector(`[data-section-card="${fromSectionId}"]`);
+    if (el) {
+      el.scrollIntoView({ block: "center", behavior: "instant" });
+    } else {
+      const t = setTimeout(() => {
+        sectionListRef.current?.querySelector(`[data-section-card="${fromSectionId}"]`)
+          ?.scrollIntoView({ block: "center", behavior: "instant" });
+      }, 100);
+      return () => clearTimeout(t);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     function handleSectionViewModeChange(event: Event) {
@@ -51,6 +75,12 @@ export function ProjectDetailPage({
     window.addEventListener(PROJECT_SECTION_VIEW_MODE_EVENT, handleSectionViewModeChange);
     return () => window.removeEventListener(PROJECT_SECTION_VIEW_MODE_EVENT, handleSectionViewModeChange);
   }, []);
+
+  useEffect(() => {
+    if (project) {
+      try { sessionStorage.setItem(SCROLL_KEY, project.id); } catch {}
+    }
+  }, [project]);
 
   if (!project) return <EmptyPage title="没有项目数据" />;
   const sections = localSections;
@@ -90,7 +120,7 @@ export function ProjectDetailPage({
           {isResultView ? (
             <ProjectResultsToolbar images={projectImages} filter={filter} onFilterChange={setFilter} />
           ) : null}
-          <div className={cx(s.sectionCardList, compact && !isResultView && s.sectionCardListCompact)}>
+          <div ref={sectionListRef} className={cx(s.sectionCardList, compact && !isResultView && s.sectionCardListCompact)}>
             {sections.map((section, index) => (
               isResultView ? (
                 <ProjectSectionResultCard

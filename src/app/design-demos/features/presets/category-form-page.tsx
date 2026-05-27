@@ -1,7 +1,7 @@
 "use client";
 
 import type { CSSProperties } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { GripVertical, Plus, Save, X } from "lucide-react";
 
 import {
@@ -122,6 +122,10 @@ export function PresetCategoryFormPage({
   mode: "new" | "edit";
 }) {
   const target: DemoCategory | null = mode === "edit" ? (category ?? null) : null;
+
+  useEffect(() => {
+    if (mode === "edit" && category) { try { sessionStorage.setItem("demo-presets-from", category.id); } catch {} }
+  }, [mode, category]);
 
   if (mode === "edit" && !target) return <EmptyPage title="没有预设分类数据" />;
 

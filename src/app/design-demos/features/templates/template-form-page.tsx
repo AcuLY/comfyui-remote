@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Copy, GripVertical, Plus, Save, SlidersHorizontal, Trash2 } from "lucide-react";
 
 import type { DemoData, DemoTemplate } from "../../data";
@@ -19,10 +19,47 @@ import { StatusBadge } from "../../shared/primitives/status-badge";
 import { TemplateSectionShell, templateSectionAnchorId } from "./template-section-shell";
 import { SortableList, useDemoSortable } from "../../shared/primitives/sortable";
 
+const TEMPLATE_SCROLL_KEY = "demo-templates-from";
+const SECTION_SCROLL_KEY = "demo-template-sections-from";
+
+function readAndClearSection() {
+  try {
+    const v = sessionStorage.getItem(SECTION_SCROLL_KEY);
+    if (v) {
+      sessionStorage.removeItem(SECTION_SCROLL_KEY);
+      return v;
+    }
+  } catch {}
+  return undefined;
+}
+
 export function TemplateFormPage({ template, mode, data }: { template?: DemoTemplate; mode: "new" | "edit"; data?: DemoData }) {
   const sections = template?.sections ?? [];
   const [extraSections, setExtraSections] = useState<DemoTemplateSection[]>([]);
   const allSections = [...sections, ...extraSections];
+  const sectionListRef = useRef<HTMLDivElement>(null);
+  const [fromSectionIndex] = useState(readAndClearSection);
+
+  // Level 1: Store template ID for scroll restoration when navigating back to list
+  useEffect(() => {
+    if (mode === "edit" && template) {
+      try { sessionStorage.setItem(TEMPLATE_SCROLL_KEY, template.id); } catch {}
+    }
+  }, [mode, template]);
+
+  // Level 2: Scroll to section when returning from section page
+  useLayoutEffect(() => {
+    if (!fromSectionIndex) return;
+    const el = sectionListRef.current?.querySelector(`[data-section-index="${fromSectionIndex}"]`);
+    if (el) {
+      el.scrollIntoView({ block: "center", behavior: "instant" });
+    } else {
+      const t = setTimeout(() => {
+        sectionListRef.current?.querySelector(`[data-section-index="${fromSectionIndex}"]`)?.scrollIntoView({ block: "center", behavior: "instant" });
+      }, 100);
+      return () => clearTimeout(t);
+    }
+  }, []);
 
   function addSection() {
     const newSection: DemoTemplateSection = {
@@ -73,7 +110,7 @@ export function TemplateFormPage({ template, mode, data }: { template?: DemoTemp
 
   if (mode === "edit" && template) {
     return (
-      <div className={s.page}>
+      <div className={s.page} ref={sectionListRef}>
         <PageHeader
           back={{ href: "/templates", label: "返回模板列表" }}
           eyebrow="模板"
@@ -190,6 +227,7 @@ export function TemplateSectionRow({
     <article
       className={s.templateSectionRow}
       data-section-card={section.id}
+      data-section-index={index}
       id={templateSectionAnchorId(section)}
     >
       <button
