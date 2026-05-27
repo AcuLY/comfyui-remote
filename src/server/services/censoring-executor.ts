@@ -1,5 +1,6 @@
 import { createLogger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
+import { env } from "@/lib/env";
 import {
   submitCensorPrompt,
   pollCensorCompletion,
@@ -12,17 +13,47 @@ let wakeResolver: (() => void) | null = null;
 
 /**
  * On startup, reset any "running" tasks back to "queued" so they get re-submitted.
- * These are tasks whose polling was lost due to a server restart.
+ * Also clear any censoring prompts from ComfyUI's queue to avoid duplicates.
  */
 async function recoverStaleCensoringTasks(): Promise<void> {
-  const result = await prisma.censoringTask.updateMany({
+  const staleTasks = await prisma.censoringTask.findMany({
     where: { status: "running" },
-    data: { status: "queued", startedAt: null },
+    select: { id: true, errorMessage: true },
   });
 
-  if (result.count > 0) {
-    log.info(`Recovered ${result.count} stale censoring task(s) from "running" to "queued"`);
+  if (staleTasks.length === 0) return;
+
+  // Collect promptIds from stale tasks (stored in errorMessage field during execution)
+  const promptIdsToDelete: string[] = [];
+  for (const task of staleTasks) {
+    if (task.errorMessage?.startsWith("promptId:")) {
+      promptIdsToDelete.push(task.errorMessage.slice("promptId:".length));
+    }
   }
+
+  // Clear these prompts from ComfyUI's queue (best-effort)
+  if (promptIdsToDelete.length > 0) {
+    try {
+      const apiUrl = env.comfyApiUrl.replace(/\/$/, "");
+      await fetch(`${apiUrl}/queue`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ delete: promptIdsToDelete }),
+        signal: AbortSignal.timeout(10000),
+      });
+      log.info(`Cleared ${promptIdsToDelete.length} stale censoring prompts from ComfyUI queue`);
+    } catch (error) {
+      log.warn("Failed to clear stale prompts from ComfyUI queue (non-fatal)", { error: String(error) });
+    }
+  }
+
+  // Reset tasks to queued
+  const result = await prisma.censoringTask.updateMany({
+    where: { status: "running" },
+    data: { status: "queued", startedAt: null, errorMessage: null },
+  });
+
+  log.info(`Recovered ${result.count} stale censoring task(s) from "running" to "queued"`);
 }
 
 /**
