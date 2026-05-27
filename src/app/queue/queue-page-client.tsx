@@ -254,7 +254,8 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
 
   const pendingTotal = queuePagination.totalPendingImages;
   const runTotal = queuePagination.totalItems;
-  const runningCount = runningRuns.length;
+  const censoringActiveCount = censoringProgress.reduce((sum, item) => sum + item.running + item.queued, 0);
+  const runningCount = runningRuns.length + censoringActiveCount;
   const failedCount = failedRuns.length;
   const trashCount = trashItems.length;
   const visiblePages = Array.from(
