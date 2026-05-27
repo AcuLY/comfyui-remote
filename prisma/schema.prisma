@@ -469,6 +469,9 @@ model ImageResult {
   updatedAt             DateTime        @updatedAt
   run                   Run             @relation(fields: [runId], references: [id], onDelete: Cascade)
   trashRecord           TrashRecord?
+  censoredFilePath      String?
+  censoredThumbPath     String?
+  censoredAt            DateTime?
 
   @@index([reviewStatus, createdAt])
   @@index([runId, createdAt])

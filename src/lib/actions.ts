@@ -13,3 +13,4 @@ export * from "./actions/section-folder";
 export * from "./actions/template";
 export * from "./actions/lora";
 export * from "./actions/character-lora-training";
+export * from "./actions/censoring";

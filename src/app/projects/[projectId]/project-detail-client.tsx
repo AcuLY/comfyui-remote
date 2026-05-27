@@ -20,6 +20,7 @@ import type { ProjectSectionFolderItem } from "@/lib/server-data";
 import { AddSectionButton, ImportTemplateButton } from "./section-actions";
 import { SyncPresetVariantFlowDialog } from "./sync-preset-variant-flow-dialog";
 import { ClearSectionsButton } from "./clear-sections-button";
+import { CensorButton } from "./censor-button";
 import { AppSidebar } from "./app-sidebar";
 import { SectionCards, type Section } from "./section-cards";
 
@@ -262,7 +263,7 @@ export function ProjectDetailClient({
           <div className="sticky top-0 z-20 -mx-4 flex items-center gap-2 border-b border-white/[0.06] bg-[var(--bg)]/80 px-4 py-2 backdrop-blur sm:-mx-6 sm:px-6">
             <SidebarTrigger className="-ml-1 hidden md:inline-flex" />
             <div className="flex-1" />
-            <div className="grid w-full grid-cols-1 gap-1.5 sm:w-auto sm:grid-cols-6 sm:gap-2" style={{ maxWidth: "54rem" }}>
+            <div className="grid w-full grid-cols-1 gap-1.5 sm:w-auto sm:grid-cols-7 sm:gap-2" style={{ maxWidth: "54rem" }}>
               <AddSectionButton projectId={projectId} folderId={currentFolderId} />
               <ImportTemplateButton projectId={projectId} />
               <SyncPresetVariantFlowDialog projectId={projectId} projectTitle={projectTitle} />
@@ -278,6 +279,7 @@ export function ProjectDetailClient({
               >
                 <Plus className="size-3.5" /> 批量创建
               </Link>
+              <CensorButton projectId={projectId} />
               <ClearSectionsButton projectId={projectId} />
             </div>
           </div>

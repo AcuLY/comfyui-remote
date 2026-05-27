@@ -34,6 +34,7 @@ export async function exportProjectImages(projectId: string): Promise<ExportProj
                   filePath: true,
                   featured: true,
                   featured2: true,
+                  censoredFilePath: true,
                 },
               },
             },
@@ -59,7 +60,7 @@ export async function exportProjectImages(projectId: string): Promise<ExportProj
       reviewStatus: { not: "trashed" },
       run: { projectId: project.id },
     },
-    select: { filePath: true },
+    select: { filePath: true, censoredFilePath: true },
   });
 
   if (!coverImage) {
@@ -82,13 +83,16 @@ export async function exportProjectImages(projectId: string): Promise<ExportProj
 
   const pixivDir = join(exportDir, "pixiv");
   const previewDir = join(exportDir, "preview");
+  const pixivCensoredDir = join(exportDir, "pixiv_censored");
+  const previewCensoredDir = join(exportDir, "preview_censored");
   const tempJpgDir = join(exportDir, "_temp_jpg");
+  const tempCensoredJpgDir = join(exportDir, "_temp_censored_jpg");
 
-  const allKept: { filePath: string; featured: boolean; featured2: boolean }[] = [];
+  const allKept: { filePath: string; featured: boolean; featured2: boolean; censoredFilePath: string | null }[] = [];
   for (const section of project.sections) {
     for (const run of section.runs) {
       for (const image of run.images) {
-        allKept.push({ filePath: image.filePath, featured: image.featured, featured2: image.featured2 });
+        allKept.push({ filePath: image.filePath, featured: image.featured, featured2: image.featured2, censoredFilePath: image.censoredFilePath });
       }
     }
   }
@@ -102,6 +106,13 @@ export async function exportProjectImages(projectId: string): Promise<ExportProj
   await mkdir(pixivDir, { recursive: true });
   await mkdir(previewDir, { recursive: true });
 
+  const hasCensored = allKept.some((img) => img.censoredFilePath);
+  if (hasCensored) {
+    await mkdir(tempCensoredJpgDir, { recursive: true });
+    await mkdir(pixivCensoredDir, { recursive: true });
+    await mkdir(previewCensoredDir, { recursive: true });
+  }
+
   try {
     await sharp(coverSourcePath).jpeg({ quality: 90 }).toFile(join(exportDir, "cover.jpg"));
   } catch (error) {
@@ -110,10 +121,23 @@ export async function exportProjectImages(projectId: string): Promise<ExportProj
     return { success: false, message: "封面图片转换失败，请检查封面图片文件" };
   }
 
+  if (coverImage.censoredFilePath) {
+    const censoredCoverSource = resolve(process.cwd(), coverImage.censoredFilePath);
+    try {
+      await access(censoredCoverSource);
+      await sharp(censoredCoverSource).jpeg({ quality: 90 }).toFile(join(exportDir, "cover_censored.jpg"));
+    } catch (error) {
+      console.error(`Failed to convert censored cover image:`, error);
+      // Non-fatal: censored cover is optional
+    }
+  }
+
   const jpgFiles: string[] = [];
+  const censoredJpgFiles: string[] = [];
   let globalIndex = 1;
   let pixivIndex = 1;
   let previewIndex = 1;
+  let censoredCount = 0;
 
   for (const image of allKept) {
     const sourcePath = resolve(/* turbopackIgnore: true */ process.cwd(), image.filePath);
@@ -151,6 +175,41 @@ export async function exportProjectImages(projectId: string): Promise<ExportProj
       previewIndex++;
     }
 
+    // Censored versions
+    if (image.censoredFilePath) {
+      const censoredSourcePath = resolve(process.cwd(), image.censoredFilePath);
+      try {
+        await access(censoredSourcePath);
+        const censoredJpgName = `${exportName}_${String(globalIndex).padStart(2, "0")}.jpg`;
+        const censoredJpgPath = join(tempCensoredJpgDir, censoredJpgName);
+        await sharp(censoredSourcePath).jpeg({ quality: 90 }).toFile(censoredJpgPath);
+        censoredJpgFiles.push(censoredJpgPath);
+        censoredCount++;
+
+        if (image.featured) {
+          const pixivCensoredName = `${exportName}_${String(pixivIndex - 1).padStart(2, "0")}.jpg`;
+          const pixivCensoredPath = join(pixivCensoredDir, pixivCensoredName);
+          try {
+            await sharp(censoredSourcePath).jpeg({ quality: 90 }).toFile(pixivCensoredPath);
+          } catch (error) {
+            console.error(`Failed to convert censored pixiv image:`, error);
+          }
+        }
+
+        if (image.featured2) {
+          const previewCensoredName = `${exportName}_${String(previewIndex - 1).padStart(2, "0")}.jpg`;
+          const previewCensoredPath = join(previewCensoredDir, previewCensoredName);
+          try {
+            await sharp(censoredSourcePath).jpeg({ quality: 90 }).toFile(previewCensoredPath);
+          } catch (error) {
+            console.error(`Failed to convert censored preview image:`, error);
+          }
+        }
+      } catch (error) {
+        console.error(`Failed to process censored image ${image.censoredFilePath}:`, error);
+      }
+    }
+
     globalIndex++;
   }
 
@@ -162,6 +221,17 @@ export async function exportProjectImages(projectId: string): Promise<ExportProj
   }
   await rm(tempJpgDir, { recursive: true, force: true });
 
+  // Create censored zip if there are censored images
+  if (censoredCount > 0) {
+    const censoredZipPath = join(exportDir, `${exportName}_censored.zip`);
+    await createZip(tempCensoredJpgDir, censoredZipPath);
+  }
+
+  for (const filePath of censoredJpgFiles) {
+    await unlink(filePath).catch(() => {});
+  }
+  await rm(tempCensoredJpgDir, { recursive: true, force: true });
+
   const pixivFiles = await readdir(pixivDir).catch(() => []);
   if (pixivFiles.length === 0) {
     await rm(pixivDir, { recursive: true, force: true });
@@ -169,6 +239,15 @@ export async function exportProjectImages(projectId: string): Promise<ExportProj
   const previewFiles = await readdir(previewDir).catch(() => []);
   if (previewFiles.length === 0) {
     await rm(previewDir, { recursive: true, force: true });
+  }
+
+  const pixivCensoredFiles = await readdir(pixivCensoredDir).catch(() => []);
+  if (pixivCensoredFiles.length === 0) {
+    await rm(pixivCensoredDir, { recursive: true, force: true });
+  }
+  const previewCensoredFiles = await readdir(previewCensoredDir).catch(() => []);
+  if (previewCensoredFiles.length === 0) {
+    await rm(previewCensoredDir, { recursive: true, force: true });
   }
 
   // Mark project as published
@@ -179,7 +258,7 @@ export async function exportProjectImages(projectId: string): Promise<ExportProj
 
   return {
     success: true,
-    message: `图片整合完成：${allKept.length} 张保留图打包为 ${exportName}.zip，封面已输出 cover.jpg${pixivIndex > 1 ? `，${pixivIndex - 1} 张 p站图输出到 pixiv/` : ""}${previewIndex > 1 ? `，${previewIndex - 1} 张预览图输出到 preview/` : ""}`,
+    message: `图片整合完成：${allKept.length} 张保留图打包为 ${exportName}.zip，封面已输出 cover.jpg${pixivIndex > 1 ? `，${pixivIndex - 1} 张 p站图输出到 pixiv/` : ""}${previewIndex > 1 ? `，${previewIndex - 1} 张预览图输出到 preview/` : ""}${censoredCount > 0 ? `，${censoredCount} 张和谐版打包为 ${exportName}_censored.zip` : ""}`,
     path: exportDir,
   };
 }

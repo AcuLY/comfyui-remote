@@ -1,0 +1,337 @@
+import { readFile, mkdir, writeFile, rename, unlink } from "node:fs/promises";
+import { resolve, dirname } from "node:path";
+import { randomUUID } from "node:crypto";
+import sharp from "sharp";
+import { env } from "@/lib/env";
+import { prisma } from "@/lib/prisma";
+import { createLogger } from "@/lib/logger";
+import {
+  pollComfyPromptHistory,
+  extractOutputImages,
+  type ComfyPromptOutputImage,
+} from "@/server/services/comfyui-service";
+
+const log = createLogger({ module: "censoring" });
+
+// --- Hard-coded workflow parameters ---
+const CENSOR_CHECKPOINT = "waiIllustriousSDXL_v170.safetensors";
+const CENSOR_LORA = "nsfw\\illustrious_mosaic_censor_v2.safetensors";
+const CENSOR_LORA_STRENGTH_MODEL = 1.95;
+const CENSOR_LORA_STRENGTH_CLIP = 2.08;
+const CENSOR_DENOISE = 0.45;
+const CENSOR_STEPS = 10;
+const CENSOR_CFG = 5;
+const CENSOR_SAMPLER = "dpm_adaptive";
+const CENSOR_SCHEDULER = "normal";
+
+const THUMBNAIL_WIDTH = 300;
+
+/**
+ * Upload an image buffer to ComfyUI's /upload/image endpoint.
+ * Returns the filename as stored by ComfyUI.
+ */
+async function uploadImageToComfyUI(
+  apiUrl: string,
+  imageBuffer: Buffer,
+  filename: string,
+): Promise<string> {
+  const formData = new FormData();
+  const blob = new Blob([imageBuffer as unknown as BlobPart]);
+  formData.append("image", blob, filename);
+  formData.append("overwrite", "true");
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), env.comfyRequestTimeoutMs);
+
+  try {
+    const response = await fetch(`${apiUrl}/upload/image`, {
+      method: "POST",
+      body: formData,
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => "");
+      throw new Error(
+        `ComfyUI upload failed (${response.status}): ${text}`,
+      );
+    }
+
+    const json = (await response.json()) as { name?: string };
+    if (!json.name) {
+      throw new Error("ComfyUI upload response missing 'name' field");
+    }
+
+    return json.name;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+/**
+ * Build the ComfyUI API prompt JSON for the mosaic censoring workflow.
+ */
+function buildCensorApiPrompt(
+  inputFilename: string,
+  outputPrefix: string,
+): Record<string, unknown> {
+  return {
+    "1": {
+      class_type: "CheckpointLoaderSimple",
+      inputs: { ckpt_name: CENSOR_CHECKPOINT },
+    },
+    "2": {
+      class_type: "LoraLoader",
+      inputs: {
+        model: ["1", 0],
+        clip: ["1", 1],
+        lora_name: CENSOR_LORA,
+        strength_model: CENSOR_LORA_STRENGTH_MODEL,
+        strength_clip: CENSOR_LORA_STRENGTH_CLIP,
+      },
+    },
+    "3": {
+      class_type: "LoadImage",
+      inputs: { image: inputFilename },
+    },
+    "4": {
+      class_type: "VAEEncode",
+      inputs: { pixels: ["3", 0], vae: ["1", 2] },
+    },
+    "5": {
+      class_type: "CLIPTextEncode",
+      inputs: { clip: ["2", 1], text: "" },
+    },
+    "6": {
+      class_type: "CLIPTextEncode",
+      inputs: { clip: ["2", 1], text: "" },
+    },
+    "7": {
+      class_type: "KSampler",
+      inputs: {
+        model: ["2", 0],
+        positive: ["5", 0],
+        negative: ["6", 0],
+        latent_image: ["4", 0],
+        seed: Math.floor(Math.random() * 2 ** 32),
+        steps: CENSOR_STEPS,
+        cfg: CENSOR_CFG,
+        sampler_name: CENSOR_SAMPLER,
+        scheduler: CENSOR_SCHEDULER,
+        denoise: CENSOR_DENOISE,
+      },
+    },
+    "8": {
+      class_type: "VAEDecode",
+      inputs: { samples: ["7", 0], vae: ["1", 2] },
+    },
+    "10": {
+      class_type: "SaveImage",
+      inputs: { images: ["8", 0], filename_prefix: outputPrefix },
+    },
+  };
+}
+
+/**
+ * Download the censored output image from ComfyUI's /view endpoint.
+ */
+async function downloadCensoredImage(
+  apiUrl: string,
+  outputImage: ComfyPromptOutputImage,
+): Promise<Buffer> {
+  const url = `${apiUrl}/view?filename=${encodeURIComponent(outputImage.filename)}&subfolder=${encodeURIComponent(outputImage.subfolder)}&type=${encodeURIComponent(outputImage.type)}`;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), env.comfyRequestTimeoutMs);
+
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+
+    if (!response.ok) {
+      throw new Error(
+        `ComfyUI download failed (${response.status}) for ${outputImage.filename}`,
+      );
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    return Buffer.from(arrayBuffer);
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+/**
+ * Write buffer to file atomically (write to .tmp first, then rename).
+ */
+async function atomicWriteFile(targetPath: string, data: Buffer): Promise<void> {
+  const tempPath = `${targetPath}.${randomUUID()}.tmp`;
+  await writeFile(tempPath, data);
+
+  try {
+    await unlink(targetPath);
+  } catch (error) {
+    if (
+      !(error instanceof Error) ||
+      (error as NodeJS.ErrnoException).code !== "ENOENT"
+    ) {
+      throw error;
+    }
+  }
+
+  try {
+    await rename(tempPath, targetPath);
+  } catch (error) {
+    await unlink(tempPath).catch(() => {});
+    throw error;
+  }
+}
+
+/**
+ * Run the full censoring pipeline for a single ImageResult.
+ */
+export async function censorSingleImage(imageResultId: string): Promise<void> {
+  const imageResult = await prisma.imageResult.findUnique({
+    where: { id: imageResultId },
+    include: { run: true },
+  });
+
+  if (!imageResult) {
+    throw new Error(`ImageResult not found: ${imageResultId}`);
+  }
+
+  if (imageResult.reviewStatus !== "kept") {
+    throw new Error(
+      `ImageResult ${imageResultId} has status "${imageResult.reviewStatus}", expected "kept"`,
+    );
+  }
+
+  const apiUrl = env.comfyApiUrl.replace(/\/$/, "");
+
+  // Read the source image
+  const absolutePath = resolve(process.cwd(), imageResult.filePath);
+  log.info("Reading source image", { imageResultId, path: absolutePath });
+  const sourceBuffer = await readFile(absolutePath);
+
+  // Upload to ComfyUI
+  const uploadFilename = `censor_input_${randomUUID().slice(0, 8)}_${imageResult.filePath.split("/").pop() ?? "image.jpg"}`;
+  const comfyFilename = await uploadImageToComfyUI(apiUrl, sourceBuffer, uploadFilename);
+  log.info("Uploaded to ComfyUI", { imageResultId, comfyFilename });
+
+  // Build and submit the censoring prompt
+  const outputPrefix = `censored_${randomUUID().slice(0, 8)}`;
+  const apiPrompt = buildCensorApiPrompt(comfyFilename, outputPrefix);
+
+  const controller = new AbortController();
+  const submitTimeout = setTimeout(() => controller.abort(), env.comfyRequestTimeoutMs);
+
+  let promptId: string;
+  try {
+    const submitResponse = await fetch(`${apiUrl}/prompt`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt: apiPrompt }),
+      signal: controller.signal,
+    });
+
+    if (!submitResponse.ok) {
+      const text = await submitResponse.text().catch(() => "");
+      throw new Error(`ComfyUI prompt submission failed (${submitResponse.status}): ${text}`);
+    }
+
+    const submitJson = (await submitResponse.json()) as { prompt_id?: string };
+    if (!submitJson.prompt_id) {
+      throw new Error("ComfyUI prompt response missing 'prompt_id'");
+    }
+    promptId = submitJson.prompt_id;
+  } finally {
+    clearTimeout(submitTimeout);
+  }
+
+  log.info("Submitted censoring prompt", { imageResultId, promptId });
+
+  // Poll for completion
+  const historyEntry = await pollComfyPromptHistory(apiUrl, promptId);
+
+  // Extract output images
+  const outputImages = extractOutputImages(historyEntry);
+  if (outputImages.length === 0) {
+    throw new Error(`Censoring produced no output images for ${imageResultId}`);
+  }
+
+  // Download the first output image
+  const rawOutputBuffer = await downloadCensoredImage(apiUrl, outputImages[0]);
+  log.info("Downloaded censored image", {
+    imageResultId,
+    size: rawOutputBuffer.length,
+  });
+
+  // Process with sharp — normalize orientation and convert to JPEG
+  const { data: jpegBuffer } = await sharp(rawOutputBuffer)
+    .rotate()
+    .jpeg({ quality: 90 })
+    .toBuffer({ resolveWithObject: true });
+
+  // Determine censored file paths
+  // Original: data/images/.../raw/01.jpg → censored: data/images/.../censored/01.jpg
+  const censoredFilePath = imageResult.filePath.replace("/raw/", "/censored/");
+  const censoredThumbPath = imageResult.filePath.replace("/raw/", "/censored-thumb/");
+
+  // Write censored full image
+  const censoredAbsPath = resolve(process.cwd(), censoredFilePath);
+  await mkdir(dirname(censoredAbsPath), { recursive: true });
+  await atomicWriteFile(censoredAbsPath, jpegBuffer);
+
+  // Generate and write thumbnail
+  const thumbBuffer = await sharp(jpegBuffer)
+    .resize({ width: THUMBNAIL_WIDTH })
+    .jpeg({ quality: 80 })
+    .toBuffer();
+
+  const censoredThumbAbsPath = resolve(process.cwd(), censoredThumbPath);
+  await mkdir(dirname(censoredThumbAbsPath), { recursive: true });
+  await atomicWriteFile(censoredThumbAbsPath, thumbBuffer);
+
+  // Update the database record
+  // Note: censoredFilePath/censoredThumbPath/censoredAt fields require `prisma generate`
+  // after schema changes are applied.
+  await prisma.imageResult.update({
+    where: { id: imageResultId },
+    data: {
+      censoredFilePath,
+      censoredThumbPath,
+      censoredAt: new Date(),
+    },
+  });
+
+  log.info("Censoring complete", { imageResultId, censoredFilePath, censoredThumbPath });
+}
+
+/**
+ * Censor a batch of images, continuing on individual failures.
+ */
+export async function censorBatchImages(
+  imageResultIds: string[],
+): Promise<{
+  success: number;
+  failed: number;
+  errors: Array<{ imageId: string; error: string }>;
+}> {
+  let success = 0;
+  let failed = 0;
+  const errors: Array<{ imageId: string; error: string }> = [];
+
+  for (const imageId of imageResultIds) {
+    try {
+      await censorSingleImage(imageId);
+      success++;
+    } catch (error) {
+      failed++;
+      const message = error instanceof Error ? error.message : String(error);
+      errors.push({ imageId, error: message });
+      log.error("Failed to censor image", { imageId, error: message });
+    }
+  }
+
+  log.info("Batch censoring complete", { success, failed, total: imageResultIds.length });
+  return { success, failed, errors };
+}
