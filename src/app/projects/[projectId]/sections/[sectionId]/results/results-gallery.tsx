@@ -535,7 +535,7 @@ export function ResultsGalleryProvider({
               {showCensored ? "显示原图" : current.censoredFull ? "查看打码" : "暂未打码"}
             </button>
             {/* Single-image censor trigger */}
-            {current.status === "kept" && !current.censoredAt && (
+            {(current.status === "kept" || current.status === "pending") && !current.censoredAt && (
               <button
                 type="button"
                 disabled={busy}

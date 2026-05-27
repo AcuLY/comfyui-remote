@@ -16,14 +16,14 @@ export async function getCensoringPreview(
   const totalKept = await prisma.imageResult.count({
     where: {
       run: { projectId },
-      reviewStatus: "kept",
+      reviewStatus: { in: ["kept", "pending"] },
     },
   });
 
   const alreadyCensored = await prisma.imageResult.count({
     where: {
       run: { projectId },
-      reviewStatus: "kept",
+      reviewStatus: { in: ["kept", "pending"] },
       censoredAt: { not: null },
     },
   });
@@ -91,8 +91,8 @@ export async function censorImage(
       return { success: false, message: "图片不存在" };
     }
 
-    if (image.reviewStatus !== "kept") {
-      return { success: false, message: "只能对已保留的图片执行打码" };
+    if (image.reviewStatus !== "kept" && image.reviewStatus !== "pending") {
+      return { success: false, message: "只能对已保留或待审核的图片执行打码" };
     }
 
     // Check if there's already an active task for this image
@@ -130,11 +130,11 @@ export async function censorProjectImages(projectId: string): Promise<{
   taskCount: number;
 }> {
   try {
-    // Find all kept images without censoring that don't have an active task
+    // Find all kept/pending images without censoring that don't have an active task
     const images = await prisma.imageResult.findMany({
       where: {
         run: { projectId },
-        reviewStatus: "kept",
+        reviewStatus: { in: ["kept", "pending"] },
         censoredAt: null,
         censoringTasks: {
           none: {},
@@ -147,7 +147,7 @@ export async function censorProjectImages(projectId: string): Promise<{
     const imagesWithFailedTasks = await prisma.imageResult.findMany({
       where: {
         run: { projectId },
-        reviewStatus: "kept",
+        reviewStatus: { in: ["kept", "pending"] },
         censoredAt: null,
         censoringTasks: {
           every: { status: { in: ["failed", "cancelled"] } },

@@ -212,9 +212,9 @@ export async function submitCensorPrompt(imageResultId: string): Promise<{
     throw new Error(`ImageResult not found: ${imageResultId}`);
   }
 
-  if (imageResult.reviewStatus !== "kept") {
+  if (imageResult.reviewStatus !== "kept" && imageResult.reviewStatus !== "pending") {
     throw new Error(
-      `ImageResult ${imageResultId} has status "${imageResult.reviewStatus}", expected "kept"`,
+      `ImageResult ${imageResultId} has status "${imageResult.reviewStatus}", expected "kept" or "pending"`,
     );
   }
 
