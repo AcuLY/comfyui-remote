@@ -305,33 +305,3 @@ export async function censorSingleImage(imageResultId: string): Promise<void> {
 
   log.info("Censoring complete", { imageResultId, censoredFilePath, censoredThumbPath });
 }
-
-/**
- * Censor a batch of images, continuing on individual failures.
- */
-export async function censorBatchImages(
-  imageResultIds: string[],
-): Promise<{
-  success: number;
-  failed: number;
-  errors: Array<{ imageId: string; error: string }>;
-}> {
-  let success = 0;
-  let failed = 0;
-  const errors: Array<{ imageId: string; error: string }> = [];
-
-  for (const imageId of imageResultIds) {
-    try {
-      await censorSingleImage(imageId);
-      success++;
-    } catch (error) {
-      failed++;
-      const message = error instanceof Error ? error.message : String(error);
-      errors.push({ imageId, error: message });
-      log.error("Failed to censor image", { imageId, error: message });
-    }
-  }
-
-  log.info("Batch censoring complete", { success, failed, total: imageResultIds.length });
-  return { success, failed, errors };
-}

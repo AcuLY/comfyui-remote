@@ -28,6 +28,10 @@ export async function registerNodeInstrumentation() {
   const manager = getComfyProcessManager();
   manager.initAutoStart();
 
+  // Start censoring task processor
+  const { startCensoringProcessor } = await import("@/server/services/censoring-executor");
+  startCensoringProcessor();
+
   // Keep paused runs idle until deployment verification explicitly resumes them.
   // Set AUTO_RESUME_PAUSED_RUNS_ON_STARTUP=true only for crash-recovery sessions
   // where immediate replay is intentional.

@@ -4,13 +4,13 @@ import { useState, useEffect, useTransition, useCallback, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { RotateCw, ChevronLeft, ChevronRight, Clock3, Loader2, RefreshCw, AlertTriangle, XCircle, ImageIcon, Trash2, RotateCcw, Pause, Play } from "lucide-react";
+import { RotateCw, ChevronLeft, ChevronRight, Clock3, Loader2, RefreshCw, AlertTriangle, XCircle, ImageIcon, Trash2, RotateCcw, Pause, Play, Shield } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/page-header";
 import { SectionCard } from "@/components/section-card";
 import { StatChip } from "@/components/stat-chip";
 import { cancelRun, runSection, clearRuns, clearActiveRuns, clearTrash, restoreImage, pauseRun, resumeRun, pauseAllRuns, resumeAllRuns } from "@/lib/actions";
-import type { QueuePagination, QueueRun, RunningRun, FailedRun, TrashItem } from "@/lib/types";
+import type { QueuePagination, QueueRun, RunningRun, FailedRun, TrashItem, CensoringProgressItem } from "@/lib/types";
 
 export type QueueTabKey = "pending" | "running" | "failed" | "trash";
 
@@ -105,15 +105,60 @@ type Props = {
   initialRunningRuns: RunningRun[];
   initialFailedRuns?: FailedRun[];
   initialTrashItems?: TrashItem[];
+  initialCensoringProgress?: CensoringProgressItem[];
 };
 
-export function QueuePageClient({ initialQueueRuns, initialQueuePagination, initialRunningRuns, initialFailedRuns, initialTrashItems }: Props) {
+function CensoringProgressCard({
+  item,
+  onCancel,
+}: {
+  item: CensoringProgressItem;
+  onCancel: (projectId: string) => void;
+}) {
+  const percent = item.total > 0 ? Math.round((item.done / item.total) * 100) : 0;
+
+  return (
+    <div className="rounded-xl border border-amber-500/10 bg-amber-500/[0.03] p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <div className="truncate text-xs font-medium text-zinc-200">{item.projectTitle}</div>
+          <div className="mt-0.5 text-[10px] text-zinc-500">
+            已完成 {item.done} · 运行中 {item.running} · 队列中 {item.queued}
+            {item.failed > 0 && <span className="text-rose-400"> · 失败 {item.failed}</span>}
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => onCancel(item.projectId)}
+          className="shrink-0 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-[10px] text-zinc-400 transition hover:bg-white/[0.08] hover:text-zinc-200"
+        >
+          取消剩余
+        </button>
+      </div>
+      <div className="mt-2">
+        <div className="flex items-center justify-between text-[10px]">
+          <span className="text-zinc-400">打码进度 {item.done}/{item.total}</span>
+          <span className="font-mono text-amber-200">{percent}%</span>
+        </div>
+        <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-white/10">
+          <div
+            className="h-full rounded-full bg-amber-400 transition-all duration-500"
+            style={{ width: `${percent}%` }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function QueuePageClient({ initialQueueRuns, initialQueuePagination, initialRunningRuns, initialFailedRuns, initialTrashItems, initialCensoringProgress }: Props) {
   const [activeTab, setActiveTab] = useState<QueueTabKey>("pending");
   const [queueRuns, setQueueRuns] = useState<QueueRun[]>(initialQueueRuns);
   const [queuePagination, setQueuePagination] = useState<QueuePagination>(initialQueuePagination);
   const [runningRuns, setRunningRuns] = useState<RunningRun[]>(initialRunningRuns);
   const [failedRuns, setFailedRuns] = useState<FailedRun[]>(initialFailedRuns ?? []);
   const [trashItems, setTrashItems] = useState<TrashItem[]>(initialTrashItems ?? []);
+  const [censoringProgress, setCensoringProgress] = useState<CensoringProgressItem[]>(initialCensoringProgress ?? []);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
@@ -181,6 +226,7 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
       if (Array.isArray(data.trashItems)) {
         setTrashItems(data.trashItems);
       }
+      setCensoringProgress(data.censoringProgress ?? []);
 
       router.refresh();
     });
@@ -268,6 +314,21 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
       }
     });
   }
+
+  const handleCancelCensoring = useCallback(async (projectId: string) => {
+    try {
+      const { cancelCensoringTasks } = await import("@/lib/actions");
+      const result = await cancelCensoringTasks(projectId);
+      if (result.success) {
+        toast.success(result.message);
+        refresh();
+      } else {
+        toast.error(result.message);
+      }
+    } catch {
+      toast.error("取消失败");
+    }
+  }, [refresh]);
 
   return (
     <div className="space-y-4">
@@ -630,6 +691,18 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
               </div>
             ))}
           </div>
+          {/* Censoring tasks */}
+          {censoringProgress.length > 0 && (
+            <div className="mt-4 space-y-3">
+              <div className="flex items-center gap-2 text-xs text-zinc-400">
+                <Shield className="size-3.5 text-amber-400" />
+                <span>打码任务</span>
+              </div>
+              {censoringProgress.map((item) => (
+                <CensoringProgressCard key={item.projectId} item={item} onCancel={handleCancelCensoring} />
+              ))}
+            </div>
+          )}
         </SectionCard>
       )}
 

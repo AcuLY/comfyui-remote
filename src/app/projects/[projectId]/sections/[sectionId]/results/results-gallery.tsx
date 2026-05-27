@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
-import { Check, ChevronLeft, ChevronRight, Eye, ImageIcon, Star, Trash2, X } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Eye, ImageIcon, Shield, Star, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { keepImages, trashImages } from "@/lib/actions";
 
@@ -22,6 +22,9 @@ type GalleryImage = {
   featured2: boolean;
   cover: boolean;
   runIndex: number;
+  censoredSrc: string | null;
+  censoredFull: string | null;
+  censoredAt: string | null;
 };
 
 type MarkerField = "featured" | "featured2" | "cover";
@@ -48,6 +51,7 @@ export function ResultsGalleryProvider({
   const [loadedImageId, setLoadedImageId] = useState<string | null>(null);
   const [togglingMarker, setTogglingMarker] = useState<MarkerField | null>(null);
   const [reviewingAction, setReviewingAction] = useState<ReviewAction | null>(null);
+  const [showCensored, setShowCensored] = useState(false);
   const preloadedImageUrlsRef = useRef<Set<string>>(new Set());
   const preloadImagesRef = useRef<HTMLImageElement[]>([]);
   const [, startTransition] = useTransition();
@@ -277,10 +281,36 @@ export function ResultsGalleryProvider({
         }
         return;
       }
+
+      // H key: show censored version while held
+      if (key === "h" || key === "H") {
+        event.preventDefault();
+        if (current?.censoredFull) {
+          setShowCensored(true);
+        }
+        return;
+      }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [allImages.length, goNext, goPrev, open, reviewCurrent, toggleMarker, onUndo]);
+  }, [allImages.length, goNext, goPrev, open, reviewCurrent, toggleMarker, onUndo, current]);
+
+  // H key release: hide censored version
+  useEffect(() => {
+    if (!open) return;
+    const handler = (event: KeyboardEvent) => {
+      if (event.key === "h" || event.key === "H") {
+        setShowCensored(false);
+      }
+    };
+    window.addEventListener("keyup", handler);
+    return () => window.removeEventListener("keyup", handler);
+  }, [open]);
+
+  // Reset censored view when navigating
+  useEffect(() => {
+    setShowCensored(false);
+  }, [currentIndex]);
 
   const openLightbox = useCallback(
     (index: number) => {
@@ -367,6 +397,11 @@ export function ResultsGalleryProvider({
                   封面
                 </span>
               )}
+              {showCensored && (
+                <span className="rounded bg-amber-500/80 px-1.5 py-0.5 text-[10px] text-white">
+                  打码版
+                </span>
+              )}
             </div>
 
             <button
@@ -408,7 +443,7 @@ export function ResultsGalleryProvider({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 key={current.id}
-                src={current.full}
+                src={showCensored && current.censoredFull ? current.censoredFull : current.full}
                 alt=""
                 onLoad={() => setLoadedImageId(current.id)}
                 onError={() => setLoadedImageId(current.id)}
@@ -433,7 +468,7 @@ export function ResultsGalleryProvider({
           </div>
 
           <div
-            className="z-10 grid grid-cols-2 gap-2 border-t border-white/10 bg-black/50 p-3 sm:grid-cols-5 sm:px-4"
+            className="z-10 grid grid-cols-2 gap-2 border-t border-white/10 bg-black/50 p-3 sm:grid-cols-6 sm:px-4"
             onClick={(event) => event.stopPropagation()}
           >
             <button
@@ -495,6 +530,23 @@ export function ResultsGalleryProvider({
             >
               <ImageIcon className="size-4" />
               {current.cover ? "封面" : "设为封面"}
+            </button>
+            <button
+              type="button"
+              disabled={!current.censoredFull}
+              onMouseDown={() => current.censoredFull && setShowCensored(true)}
+              onMouseUp={() => setShowCensored(false)}
+              onMouseLeave={() => setShowCensored(false)}
+              className={`inline-flex h-11 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-medium transition disabled:opacity-45 ${
+                showCensored
+                  ? "border-amber-300/35 bg-amber-400/25 text-amber-100"
+                  : current.censoredFull
+                    ? "border-white/15 bg-white/10 text-white/80 hover:bg-white/15 hover:text-amber-100"
+                    : "border-white/10 bg-white/5 text-zinc-600"
+              }`}
+            >
+              <Shield className="size-4" />
+              {current.censoredFull ? "按住:打码" : "暂未打码"}
             </button>
           </div>
         </div>

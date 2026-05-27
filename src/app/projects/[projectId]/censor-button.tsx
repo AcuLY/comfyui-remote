@@ -8,7 +8,10 @@ import { toast } from "sonner";
 import {
   censorProjectImages,
   getCensoringPreview,
+  getCensoringProgress,
+  cancelCensoringTasks,
   type CensoringPreview,
+  type CensoringProgress,
 } from "@/lib/actions";
 
 export function CensorButton({ projectId }: { projectId: string }) {
@@ -17,6 +20,8 @@ export function CensorButton({ projectId }: { projectId: string }) {
   const [preview, setPreview] = useState<CensoringPreview | null>(null);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [progress, setProgress] = useState<CensoringProgress | null>(null);
+  const [isPolling, setIsPolling] = useState(false);
 
   // Fetch preview data when dialog opens
   useEffect(() => {
@@ -34,17 +39,43 @@ export function CensorButton({ projectId }: { projectId: string }) {
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape" && !isPending) setIsOpen(false);
+      if (event.key === "Escape" && !isPending && !isPolling) setIsOpen(false);
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => {
       document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isOpen, isPending]);
+  }, [isOpen, isPending, isPolling]);
+
+  // Polling effect
+  useEffect(() => {
+    if (!isPolling) return;
+    let active = true;
+    const poll = async () => {
+      while (active) {
+        const p = await getCensoringProgress(projectId);
+        if (!active) break;
+        setProgress(p);
+        // If no more queued or running, stop polling
+        if (p.queued === 0 && p.running === 0) {
+          setIsPolling(false);
+          toast.success(`打码完成：${p.done} 张成功${p.failed > 0 ? `，${p.failed} 张失败` : ""}`);
+          router.refresh();
+          break;
+        }
+        await new Promise((r) => setTimeout(r, 3000));
+      }
+    };
+    poll();
+    return () => { active = false; };
+  }, [isPolling, projectId, router]);
 
   function closeDialog() {
-    if (!isPending) setIsOpen(false);
+    if (!isPending && !isPolling) {
+      setIsOpen(false);
+      setProgress(null);
+    }
   }
 
   function handleConfirm() {
@@ -53,8 +84,13 @@ export function CensorButton({ projectId }: { projectId: string }) {
         const result = await censorProjectImages(projectId);
         if (result.success) {
           toast.success(result.message);
-          setIsOpen(false);
-          router.refresh();
+          if (result.taskCount > 0) {
+            // Start polling for progress
+            setIsPolling(true);
+          } else {
+            setIsOpen(false);
+            router.refresh();
+          }
         } else {
           toast.error(result.message);
         }
@@ -63,6 +99,25 @@ export function CensorButton({ projectId }: { projectId: string }) {
       }
     });
   }
+
+  async function handleCancel() {
+    try {
+      const result = await cancelCensoringTasks(projectId);
+      if (result.success) {
+        toast.success(result.message);
+        setIsPolling(false);
+        setProgress(null);
+        setIsOpen(false);
+        router.refresh();
+      } else {
+        toast.error(result.message);
+      }
+    } catch {
+      toast.error("取消失败");
+    }
+  }
+
+  const showProgress = isPolling || (progress && (progress.queued + progress.running > 0));
 
   const dialogContent = isOpen
     ? createPortal(
@@ -90,7 +145,7 @@ export function CensorButton({ projectId }: { projectId: string }) {
               <button
                 type="button"
                 onClick={closeDialog}
-                disabled={isPending}
+                disabled={isPending || isPolling}
                 className="shrink-0 rounded-lg border border-white/10 bg-white/[0.04] p-1.5 text-zinc-400 transition hover:bg-white/[0.08] hover:text-zinc-200 disabled:opacity-50"
                 aria-label="关闭"
               >
@@ -99,7 +154,50 @@ export function CensorButton({ projectId }: { projectId: string }) {
             </div>
 
             <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
-              {isLoadingPreview ? (
+              {showProgress ? (
+                <>
+                  <div className="space-y-1.5 text-sm text-zinc-300">
+                    <div className="flex items-center justify-between rounded-lg bg-white/[0.03] px-3 py-2">
+                      <span className="text-zinc-400">已完成</span>
+                      <span className="font-mono text-emerald-300">{progress?.done ?? 0}</span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-lg bg-white/[0.03] px-3 py-2">
+                      <span className="text-zinc-400">运行中</span>
+                      <span className="font-mono text-amber-300">{progress?.running ?? 0}</span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-lg bg-white/[0.03] px-3 py-2">
+                      <span className="text-zinc-400">队列中</span>
+                      <span className="font-mono text-zinc-100">{progress?.queued ?? 0}</span>
+                    </div>
+                    {(progress?.failed ?? 0) > 0 && (
+                      <div className="flex items-center justify-between rounded-lg bg-white/[0.03] px-3 py-2">
+                        <span className="text-zinc-400">失败</span>
+                        <span className="font-mono text-rose-400">{progress?.failed ?? 0}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="mt-3">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-zinc-400">
+                        打码进度 {progress?.done ?? 0}/{progress?.total ?? 0}
+                      </span>
+                      <span className="font-mono text-amber-200">
+                        {progress && progress.total > 0
+                          ? Math.round((progress.done / progress.total) * 100)
+                          : 0}%
+                      </span>
+                    </div>
+                    <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/10">
+                      <div
+                        className="h-full rounded-full bg-amber-400 transition-all duration-500"
+                        style={{
+                          width: `${progress && progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                </>
+              ) : isLoadingPreview ? (
                 <div className="flex items-center justify-center py-6 text-zinc-500">
                   <Loader2 className="size-4 animate-spin" />
                   <span className="ml-2 text-xs">加载中...</span>
@@ -146,39 +244,52 @@ export function CensorButton({ projectId }: { projectId: string }) {
             </div>
 
             <div className="flex items-center justify-end gap-2 border-t border-white/10 p-3">
-              <button
-                type="button"
-                onClick={closeDialog}
-                disabled={isPending}
-                className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-zinc-300 transition hover:bg-white/[0.08] disabled:opacity-50"
-              >
-                取消
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirm}
-                disabled={
-                  isPending ||
-                  isLoadingPreview ||
-                  !preview ||
-                  preview.needsCensoring === 0
-                }
-                className="inline-flex items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-amber-500 disabled:opacity-50"
-              >
-                {isPending ? (
-                  <>
-                    <Loader2 className="size-3 animate-spin" />
-                    打码中...
-                  </>
-                ) : (
-                  <>
-                    <Shield className="size-3" />
-                    确认打码{preview && preview.needsCensoring > 0
-                      ? ` (${preview.needsCensoring} 张)`
-                      : ""}
-                  </>
-                )}
-              </button>
+              {showProgress ? (
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-300 transition hover:bg-red-500/20"
+                >
+                  <X className="size-3" />
+                  取消剩余
+                </button>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={closeDialog}
+                    disabled={isPending}
+                    className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-zinc-300 transition hover:bg-white/[0.08] disabled:opacity-50"
+                  >
+                    取消
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirm}
+                    disabled={
+                      isPending ||
+                      isLoadingPreview ||
+                      !preview ||
+                      preview.needsCensoring === 0
+                    }
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-amber-500 disabled:opacity-50"
+                  >
+                    {isPending ? (
+                      <>
+                        <Loader2 className="size-3 animate-spin" />
+                        提交中...
+                      </>
+                    ) : (
+                      <>
+                        <Shield className="size-3" />
+                        确认打码{preview && preview.needsCensoring > 0
+                          ? ` (${preview.needsCensoring} 张)`
+                          : ""}
+                      </>
+                    )}
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </>,

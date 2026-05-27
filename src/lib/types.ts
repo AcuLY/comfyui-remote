@@ -126,3 +126,13 @@ export type LoraAsset = {
   relativePath: string;
   uploadedAt: string;
 };
+
+export type CensoringProgressItem = {
+  projectId: string;
+  projectTitle: string;
+  total: number;
+  done: number;
+  running: number;
+  queued: number;
+  failed: number;
+};

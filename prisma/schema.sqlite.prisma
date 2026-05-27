@@ -224,6 +224,7 @@ model Project {
   sections              ProjectSection[]
   sectionFolders        ProjectSectionFolder[]
   runs                  Run[]
+  censoringTasks        CensoringTask[]
   @@index([status, updatedAt])
   @@index([coverImageId])
   @@index([folderId])
@@ -368,6 +369,7 @@ model ImageResult {
   censoredFilePath      String?
   censoredThumbPath     String?
   censoredAt            DateTime?
+  censoringTasks        CensoringTask[]
 
   @@index([reviewStatus, createdAt])
   @@index([runId, createdAt])
@@ -386,6 +388,22 @@ model TrashRecord {
 
   @@index([deletedAt])
   @@index([restoredAt])
+}
+
+model CensoringTask {
+  id              String       @id @default(cuid())
+  projectId       String
+  imageResultId   String
+  status          String       @default("queued")
+  errorMessage    String?
+  createdAt       DateTime     @default(now())
+  startedAt       DateTime?
+  finishedAt      DateTime?
+  project         Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  imageResult     ImageResult  @relation(fields: [imageResultId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, status])
+  @@index([status, createdAt])
 }
 
 model LoraAsset {

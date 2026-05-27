@@ -12,6 +12,7 @@ import {
   ImageIcon,
   Loader2,
   Play,
+  Shield,
   Square,
   Star,
   Trash2,
@@ -41,6 +42,9 @@ type RunData = {
     featured: boolean;
     featured2: boolean;
     cover: boolean;
+    censoredSrc: string | null;
+    censoredFull: string | null;
+    censoredAt: string | null;
   }[];
 };
 
@@ -381,6 +385,13 @@ export function ResultsGrid({
                               {cover && (
                                 <ImageIcon className="size-3.5 rounded-full bg-violet-400/90 p-0.5 text-zinc-950 shadow" />
                               )}
+                            </div>
+                          )}
+
+                          {/* Censored badge */}
+                          {img.censoredAt && (
+                            <div className="absolute bottom-5 right-1.5">
+                              <Shield className="size-3.5 text-amber-400 drop-shadow" />
                             </div>
                           )}
 

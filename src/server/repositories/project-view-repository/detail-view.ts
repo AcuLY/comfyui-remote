@@ -243,6 +243,9 @@ export type SectionResultsData = {
       featured: boolean;
       featured2: boolean;
       cover: boolean;
+      censoredSrc: string | null;
+      censoredFull: string | null;
+      censoredAt: string | null;
     }[];
   }[];
   totalPending: number;
@@ -277,6 +280,9 @@ export type ProjectResultsData = {
         cover: boolean;
         width: number | null;
         height: number | null;
+        censoredSrc: string | null;
+        censoredFull: string | null;
+        censoredAt: string | null;
       }[];
     }[];
   }[];
@@ -299,6 +305,9 @@ export async function getSectionResults(sectionId: string): Promise<SectionResul
               reviewStatus: true,
               featured: true,
               featured2: true,
+              censoredFilePath: true,
+              censoredThumbPath: true,
+              censoredAt: true,
             },
           },
         },
@@ -375,6 +384,9 @@ export async function getSectionResults(sectionId: string): Promise<SectionResul
         featured: img.featured,
         featured2: img.featured2,
         cover: img.id === pos.project.coverImageId,
+        censoredSrc: img.censoredThumbPath ? (toImageUrl(img.censoredThumbPath) ?? "") + "?w=400&q=75" : null,
+        censoredFull: img.censoredFilePath ? (toImageUrl(img.censoredFilePath) ?? "") + "?w=1920&q=85" : null,
+        censoredAt: img.censoredAt ? img.censoredAt.toISOString() : null,
       }));
 
     const runPending = images.filter((img) => img.status === "pending").length;
@@ -436,6 +448,9 @@ export async function getProjectResults(projectId: string): Promise<ProjectResul
                     featured2: true,
                     width: true,
                     height: true,
+                    censoredFilePath: true,
+                    censoredThumbPath: true,
+                    censoredAt: true,
                   },
                 },
               },
@@ -486,6 +501,9 @@ export async function getProjectResults(projectId: string): Promise<ProjectResul
               cover: img.id === project.coverImageId,
               width: img.width,
               height: img.height,
+              censoredSrc: img.censoredThumbPath ? (toImageUrl(img.censoredThumbPath) ?? "") + "?w=400&q=75" : null,
+              censoredFull: img.censoredFilePath ? (toImageUrl(img.censoredFilePath) ?? "") + "?w=1920&q=85" : null,
+              censoredAt: img.censoredAt ? img.censoredAt.toISOString() : null,
             };
           });
 

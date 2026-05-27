@@ -2,36 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import {
-  censorSingleImage,
-  censorBatchImages,
-} from "@/server/services/censoring-service";
-
-export async function censorImage(
-  imageResultId: string,
-): Promise<{ success: boolean; message: string }> {
-  try {
-    const image = await prisma.imageResult.findUnique({
-      where: { id: imageResultId },
-    });
-
-    if (!image) {
-      return { success: false, message: "图片不存在" };
-    }
-
-    if (image.reviewStatus !== "kept") {
-      return { success: false, message: "只能对已保留的图片执行打码" };
-    }
-
-    await censorSingleImage(imageResultId);
-
-    revalidatePath("/");
-    return { success: true, message: "打码完成" };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "打码失败";
-    return { success: false, message };
-  }
-}
+import { wakeUpCensoringProcessor } from "@/server/services/censoring-executor";
 
 export type CensoringPreview = {
   totalKept: number;
@@ -64,49 +35,189 @@ export async function getCensoringPreview(
   };
 }
 
+export type CensoringProgress = {
+  total: number;
+  done: number;
+  running: number;
+  queued: number;
+  failed: number;
+  cancelled: number;
+};
+
+export async function getCensoringProgress(
+  projectId: string,
+): Promise<CensoringProgress> {
+  const tasks = await prisma.censoringTask.groupBy({
+    by: ["status"],
+    where: { projectId },
+    _count: { _all: true },
+  });
+
+  const counts: CensoringProgress = {
+    total: 0,
+    done: 0,
+    running: 0,
+    queued: 0,
+    failed: 0,
+    cancelled: 0,
+  };
+
+  for (const group of tasks) {
+    const count = group._count._all;
+    counts.total += count;
+    if (group.status === "done") counts.done = count;
+    else if (group.status === "running") counts.running = count;
+    else if (group.status === "queued") counts.queued = count;
+    else if (group.status === "failed") counts.failed = count;
+    else if (group.status === "cancelled") counts.cancelled = count;
+  }
+
+  return counts;
+}
+
+export async function censorImage(
+  imageResultId: string,
+): Promise<{ success: boolean; message: string }> {
+  try {
+    const image = await prisma.imageResult.findUnique({
+      where: { id: imageResultId },
+      include: { run: { select: { projectId: true } } },
+    });
+
+    if (!image) {
+      return { success: false, message: "图片不存在" };
+    }
+
+    if (image.reviewStatus !== "kept") {
+      return { success: false, message: "只能对已保留的图片执行打码" };
+    }
+
+    // Check if there's already an active task for this image
+    const existing = await prisma.censoringTask.findFirst({
+      where: {
+        imageResultId,
+        status: { in: ["queued", "running"] },
+      },
+    });
+
+    if (existing) {
+      return { success: false, message: "该图片已有进行中的打码任务" };
+    }
+
+    await prisma.censoringTask.create({
+      data: {
+        projectId: image.run.projectId,
+        imageResultId,
+        status: "queued",
+      },
+    });
+
+    wakeUpCensoringProcessor();
+    revalidatePath("/");
+    return { success: true, message: "打码任务已加入队列" };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "创建打码任务失败";
+    return { success: false, message };
+  }
+}
+
 export async function censorProjectImages(projectId: string): Promise<{
   success: boolean;
   message: string;
-  total: number;
-  censored: number;
-  failed: number;
+  taskCount: number;
 }> {
   try {
+    // Find all kept images without censoring that don't have an active task
     const images = await prisma.imageResult.findMany({
       where: {
         run: { projectId },
         reviewStatus: "kept",
         censoredAt: null,
+        censoringTasks: {
+          none: {},
+        },
       },
       select: { id: true },
     });
 
-    if (images.length === 0) {
-      return {
-        success: true,
-        message: "没有需要打码的图片",
-        total: 0,
-        censored: 0,
-        failed: 0,
-      };
+    // Also find images with only failed/cancelled tasks (allow retry)
+    const imagesWithFailedTasks = await prisma.imageResult.findMany({
+      where: {
+        run: { projectId },
+        reviewStatus: "kept",
+        censoredAt: null,
+        censoringTasks: {
+          every: { status: { in: ["failed", "cancelled"] } },
+          some: {},
+        },
+      },
+      select: { id: true },
+    });
+
+    const allImageIds = [...new Set([...images.map(i => i.id), ...imagesWithFailedTasks.map(i => i.id)])];
+
+    if (allImageIds.length === 0) {
+      return { success: true, message: "没有需要打码的图片", taskCount: 0 };
     }
 
-    const result = await censorBatchImages(images.map((img) => img.id));
+    // Delete old failed/cancelled tasks for these images before creating new ones
+    await prisma.censoringTask.deleteMany({
+      where: {
+        imageResultId: { in: allImageIds },
+        status: { in: ["failed", "cancelled"] },
+      },
+    });
 
+    // Create tasks in bulk
+    await prisma.censoringTask.createMany({
+      data: allImageIds.map((imageResultId) => ({
+        projectId,
+        imageResultId,
+        status: "queued",
+      })),
+    });
+
+    wakeUpCensoringProcessor();
     revalidatePath("/");
 
     return {
-      success: result.failed === 0,
-      message:
-        result.failed === 0
-          ? `成功打码 ${result.success} 张图片`
-          : `打码完成：${result.success} 张成功，${result.failed} 张失败`,
-      total: images.length,
-      censored: result.success,
-      failed: result.failed,
+      success: true,
+      message: `已创建 ${allImageIds.length} 个打码任务`,
+      taskCount: allImageIds.length,
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : "批量打码失败";
-    return { success: false, message, total: 0, censored: 0, failed: 0 };
+    return { success: false, message, taskCount: 0 };
+  }
+}
+
+export async function cancelCensoringTasks(projectId: string): Promise<{
+  success: boolean;
+  message: string;
+  cancelledCount: number;
+}> {
+  try {
+    const result = await prisma.censoringTask.updateMany({
+      where: {
+        projectId,
+        status: "queued",
+      },
+      data: {
+        status: "cancelled",
+        finishedAt: new Date(),
+      },
+    });
+
+    revalidatePath("/");
+    return {
+      success: true,
+      message: result.count > 0
+        ? `已取消 ${result.count} 个待执行的打码任务`
+        : "没有可取消的任务",
+      cancelledCount: result.count,
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "取消失败";
+    return { success: false, message, cancelledCount: 0 };
   }
 }

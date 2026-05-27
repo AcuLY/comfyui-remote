@@ -17,6 +17,7 @@ import {
   ClipboardCheck,
   Eye,
   ImageIcon,
+  Shield,
   Star,
   Trash2,
   X,
@@ -170,6 +171,7 @@ function ResultImageCard({
   onToggleFeatured2,
   onSetCover,
   disabled,
+  showCensoredMode,
 }: {
   image: ProjectResultsImageWithRun;
   onOpen: (imageId: string) => void;
@@ -177,6 +179,7 @@ function ResultImageCard({
   onToggleFeatured2: (imageId: string, featured2: boolean) => void;
   onSetCover: (imageId: string) => void;
   disabled: boolean;
+  showCensoredMode?: boolean;
 }) {
   const aspectRatio =
     image.width && image.height && image.width > 0 && image.height > 0
@@ -202,12 +205,17 @@ function ResultImageCard({
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={image.src}
+          src={showCensoredMode && image.censoredSrc ? image.censoredSrc : image.src}
           alt=""
           loading="lazy"
           decoding="async"
           className="max-h-full max-w-full object-contain"
         />
+        {showCensoredMode && !image.censoredSrc && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/60">
+            <span className="text-[10px] text-zinc-400">暂未打码</span>
+          </div>
+        )}
       </button>
 
       <div className="absolute right-1.5 top-1.5 flex items-center gap-1">
@@ -290,6 +298,7 @@ function SectionResultsBlock({
   isExpanded,
   onToggleExpanded,
   collapsedImageCount,
+  showCensoredMode,
 }: {
   projectId: string;
   section: ProjectResultsSection;
@@ -301,6 +310,7 @@ function SectionResultsBlock({
   isExpanded: boolean;
   onToggleExpanded: (sectionId: string) => void;
   collapsedImageCount: number;
+  showCensoredMode?: boolean;
 }) {
   const images = section.runs.flatMap((run) =>
     run.images.map((image) => ({
@@ -375,6 +385,7 @@ function SectionResultsBlock({
                 onToggleFeatured2={onToggleFeatured2}
                 onSetCover={onSetCover}
                 disabled={togglingImageId === image.id}
+                showCensoredMode={showCensoredMode}
               />
             ))}
           </div>
@@ -418,6 +429,7 @@ export function ProjectResultsClient({
   const [togglingImageId, setTogglingImageId] = useState<string | null>(null);
   const [isTrashingAll, setIsTrashingAll] = useState(false);
   const [lightboxImageId, setLightboxImageId] = useState<string | null>(null);
+  const [showCensoredMode, setShowCensoredMode] = useState(false);
   const [, startTransition] = useTransition();
   const sectionIds = useMemo(
     () => sections.map((section) => section.id),
@@ -810,6 +822,18 @@ export function ProjectResultsClient({
             </div>
             <button
               type="button"
+              onClick={() => setShowCensoredMode(!showCensoredMode)}
+              className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+                showCensoredMode
+                  ? "border-amber-500/30 bg-amber-500/10 text-amber-300"
+                  : "border-white/10 bg-white/5 text-zinc-400 hover:bg-white/10 hover:text-zinc-200"
+              }`}
+            >
+              <Shield className="size-3.5" />
+              {showCensoredMode ? "显示打码版" : "显示原图"}
+            </button>
+            <button
+              type="button"
               disabled={isTrashingAll || totalImages === 0}
               onClick={handleTrashAllImages}
               className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-red-500/20 bg-red-500/10 px-2.5 py-1.5 text-[11px] font-medium text-red-300 transition hover:bg-red-500/20 disabled:opacity-40 sm:px-3 sm:text-xs"
@@ -838,6 +862,7 @@ export function ProjectResultsClient({
                 isExpanded={expandedSectionIds.has(section.id)}
                 onToggleExpanded={toggleExpandedSection}
                 collapsedImageCount={collapsedImageCount}
+                showCensoredMode={showCensoredMode}
               />
             ))
           )}
@@ -934,7 +959,7 @@ export function ProjectResultsClient({
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={lightboxImage.full}
+              src={showCensoredMode && lightboxImage.censoredFull ? lightboxImage.censoredFull : lightboxImage.full}
               alt=""
               className="max-h-full max-w-full rounded-lg object-contain"
             />
