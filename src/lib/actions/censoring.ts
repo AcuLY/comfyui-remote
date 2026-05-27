@@ -124,17 +124,19 @@ export async function censorImage(
   }
 }
 
-export async function censorProjectImages(projectId: string): Promise<{
+export async function censorProjectImages(projectId: string, mode: "all" | "kept" = "all"): Promise<{
   success: boolean;
   message: string;
   taskCount: number;
 }> {
   try {
-    // Find all kept/pending images without censoring that don't have an active task
+    const reviewStatuses = mode === "kept" ? ["kept"] : ["kept", "pending"];
+
+    // Find all images without censoring that don't have an active task
     const images = await prisma.imageResult.findMany({
       where: {
         run: { projectId },
-        reviewStatus: { in: ["kept", "pending"] },
+        reviewStatus: { in: reviewStatuses as ("kept" | "pending")[] },
         censoredAt: null,
         censoringTasks: {
           none: {},
@@ -147,7 +149,7 @@ export async function censorProjectImages(projectId: string): Promise<{
     const imagesWithFailedTasks = await prisma.imageResult.findMany({
       where: {
         run: { projectId },
-        reviewStatus: { in: ["kept", "pending"] },
+        reviewStatus: { in: reviewStatuses as ("kept" | "pending")[] },
         censoredAt: null,
         censoringTasks: {
           every: { status: { in: ["failed", "cancelled"] } },
