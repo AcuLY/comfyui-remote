@@ -135,6 +135,7 @@ export type CensoringProgressItem = {
   running: number;
   queued: number;
   failed: number;
+  paused: number;
 };
 
 export type CensoringHistoryItem = {

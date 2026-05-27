@@ -30,10 +30,10 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  // Get censoring progress - find projects with active (queued/running) tasks
+  // Get censoring progress - find projects with active (queued/running/paused) tasks
   const activeCensoringProjects = await prisma.censoringTask.groupBy({
     by: ["projectId"],
-    where: { status: { in: ["queued", "running"] } },
+    where: { status: { in: ["queued", "running", "paused"] } },
   });
 
   let censoringProgress: Array<{
@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
 
     // Aggregate per project
     for (const pid of projectIds) {
-      const counts = { total: 0, done: 0, running: 0, queued: 0, failed: 0 };
+      const counts = { total: 0, done: 0, running: 0, queued: 0, failed: 0, paused: 0 };
       for (const group of taskCounts) {
         if (group.projectId !== pid) continue;
         const c = group._count._all;
@@ -71,6 +71,7 @@ export async function GET(request: NextRequest) {
         else if (group.status === "running") counts.running = c;
         else if (group.status === "queued") counts.queued = c;
         else if (group.status === "failed") counts.failed = c;
+        else if (group.status === "paused") counts.paused = c;
       }
       censoringProgress.push({
         projectId: pid,
@@ -82,8 +83,8 @@ export async function GET(request: NextRequest) {
 
   // Get censoring history — last 50 completed/failed tasks for the "打码" tab
   const censoringHistory = await prisma.censoringTask.findMany({
-    where: { status: { in: ["done", "failed", "cancelled", "queued", "running", "paused"] } },
-    orderBy: { createdAt: "desc" },
+    where: { status: { in: ["done", "failed"] } },
+    orderBy: { finishedAt: "desc" },
     take: 50,
     select: {
       id: true,

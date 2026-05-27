@@ -26,7 +26,7 @@ export default async function QueuePage({
   // Get censoring progress
   const activeCensoringProjects = await prisma.censoringTask.groupBy({
     by: ["projectId"],
-    where: { status: { in: ["queued", "running"] } },
+    where: { status: { in: ["queued", "running", "paused"] } },
   });
 
   let censoringProgress: Array<{
@@ -37,6 +37,7 @@ export default async function QueuePage({
     running: number;
     queued: number;
     failed: number;
+    paused: number;
   }> = [];
 
   if (activeCensoringProjects.length > 0) {
@@ -54,7 +55,7 @@ export default async function QueuePage({
     });
 
     for (const pid of projectIds) {
-      const counts = { total: 0, done: 0, running: 0, queued: 0, failed: 0 };
+      const counts = { total: 0, done: 0, running: 0, queued: 0, failed: 0, paused: 0 };
       for (const group of taskCounts) {
         if (group.projectId !== pid) continue;
         const c = group._count._all;
@@ -63,6 +64,7 @@ export default async function QueuePage({
         else if (group.status === "running") counts.running = c;
         else if (group.status === "queued") counts.queued = c;
         else if (group.status === "failed") counts.failed = c;
+        else if (group.status === "paused") counts.paused = c;
       }
       censoringProgress.push({
         projectId: pid,
