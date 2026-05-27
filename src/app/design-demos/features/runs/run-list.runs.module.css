@@ -157,27 +157,42 @@
 
 .queueProjectHeader {
   display: grid;
-  grid-template-columns: 18px minmax(140px, 0.42fr) minmax(180px, 1fr);
+  grid-template-columns: 1fr 28px;
   align-items: center;
-  gap: 8px;
+  gap: 0;
   min-width: 0;
   border: 0;
   border-bottom: 1px solid var(--demo-border);
   background: color-mix(in srgb, var(--demo-field-bg) 58%, transparent);
   color: inherit;
-  cursor: pointer;
-  padding: 9px 14px;
+  padding: 0;
+  padding-right: 14px;
   text-align: left;
   transition: background-color 140ms ease;
 }
 
 .queueProjectHeader:hover,
-.queueProjectHeader:focus-visible {
+.queueProjectHeader:focus-within {
   background: var(--demo-field-bg);
-  outline: none;
 }
 
-.queueProjectHeader .icon {
+.queueProjectHeaderToggle {
+  display: grid;
+  grid-template-columns: 18px minmax(140px, 0.42fr) minmax(180px, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 42px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  padding: 10px 14px;
+  text-align: left;
+}
+
+.queueProjectHeader .icon,
+.queueProjectHeaderToggle .icon {
   width: 15px;
   height: 15px;
   color: var(--demo-muted);
@@ -188,7 +203,8 @@
   transform: rotate(-90deg);
 }
 
-.queueProjectHeader span {
+.queueProjectHeader span,
+.queueProjectHeaderToggle span {
   min-width: 0;
   overflow: hidden;
   color: var(--demo-text);
@@ -198,7 +214,8 @@
   white-space: nowrap;
 }
 
-.queueProjectHeader em {
+.queueProjectHeader em,
+.queueProjectHeaderToggle em {
   min-width: 0;
   overflow: hidden;
   color: var(--demo-muted);
@@ -244,7 +261,6 @@
 
 .queueRunRowSelectable {
   grid-template-columns: 28px minmax(180px, 1fr) auto;
-  cursor: pointer;
 }
 
 .queueRunRowFailed {
@@ -350,6 +366,8 @@
   display: grid;
   min-width: 0;
   gap: 4px;
+  text-decoration: none;
+  color: inherit;
 }
 
 .queueRunMain strong {
@@ -402,6 +420,7 @@
 .queueRunErrorHeader {
   display: inline-flex;
   min-width: 0;
+  width: 100%;
   align-items: center;
   gap: 6px;
   color: color-mix(in srgb, var(--demo-red) 86%, var(--demo-text));
@@ -426,6 +445,32 @@
   line-height: inherit;
   text-overflow: clip;
   white-space: normal;
+}
+
+.queueRunErrorTextClamped {
+  display: -webkit-box;
+  -webkit-line-clamp: var(--error-clamp-lines, 3);
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.queueRunErrorToggle {
+  all: unset;
+  margin-left: auto;
+  color: color-mix(in srgb, var(--demo-red) 72%, var(--demo-text));
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 580;
+  line-height: 1;
+  opacity: 0.82;
+  transition: opacity 120ms ease;
+}
+
+.queueRunErrorToggle:hover,
+.queueRunErrorToggle:focus-visible {
+  opacity: 1;
+  text-decoration: underline;
 }
 
 .queueRunFailureToolbar {
@@ -572,12 +617,19 @@
   }
 
   .queueProjectHeader {
+    grid-template-columns: 1fr 28px;
+    gap: 0;
+    padding-right: 12px;
+  }
+
+  .queueProjectHeaderToggle {
     grid-template-columns: 18px minmax(0, 1fr);
     gap: 7px;
     padding: 9px 12px;
   }
 
-  .queueProjectHeader em {
+  .queueProjectHeader em,
+  .queueProjectHeaderToggle em {
     grid-column: 2;
     white-space: normal;
   }

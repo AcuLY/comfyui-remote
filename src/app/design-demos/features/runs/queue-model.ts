@@ -1,5 +1,4 @@
 import type { DemoRun } from "../../data";
-import type { QueueDemoTab } from "../../routing";
 import type { DemoCurrentRun, DemoRunProgress, QueueProjectGroup, QueueReviewRow, QueueRunMode } from "./types";
 
 export function buildQueueReviewRows(runs: DemoRun[]): QueueReviewRow[] {
@@ -109,6 +108,6 @@ export function groupRunsByProject(runs: DemoRun[]) {
   return groupRowsByProject(runs.map((run) => ({ run })));
 }
 
-export function groupCollapsedKey(tab: QueueDemoTab, groupId: string) {
-  return `${tab}:${groupId}`;
+export function groupCollapsedKey(groupId: string) {
+  return groupId;
 }

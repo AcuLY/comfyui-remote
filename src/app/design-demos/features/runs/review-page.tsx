@@ -14,9 +14,20 @@ import { ReviewImageBoard } from "../../shared/media/review-image-board";
 import { mergeExecutionMeta, ReviewMetaCard } from "./review-meta-card";
 import s from "./review-page.runs.module.css";
 
+const SCROLL_RESTORE_KEY = "demo-runs-from";
+
 export function ReviewPage({ data, run }: { data: DemoData; run: DemoRun | undefined }) {
+  const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+  const metaOpen = searchParams?.get("meta") === "open";
   const [filter, setFilter] = useState<ResultDemoFilter>("all");
   const [runImages, setRunImages] = useState(run?.images ?? []);
+
+  // Store current runId in sessionStorage so the list page can scroll back to it
+  useEffect(() => {
+    if (run) {
+      try { sessionStorage.setItem(SCROLL_RESTORE_KEY, run.id); } catch {}
+    }
+  }, [run]);
 
   // Reset when run changes
   useEffect(() => { if (run) setRunImages(run.images); }, [run]);
@@ -46,7 +57,7 @@ export function ReviewPage({ data, run }: { data: DemoData; run: DemoRun | undef
         }
       />
       {section ? (
-        <ReviewMetaCard run={run} meta={executionMeta} />
+        <ReviewMetaCard run={run} meta={executionMeta} defaultOpen={metaOpen} />
       ) : null}
       <section className={s.reviewSurface}>
         <SegmentedControl

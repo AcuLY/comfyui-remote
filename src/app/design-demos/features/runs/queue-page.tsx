@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import type { DemoData } from "../../data";
 import type { QueueDemoTab } from "../../routing";
@@ -19,20 +19,65 @@ import { QueueMetrics } from "./queue-metrics";
 import { RunList } from "./run-list";
 import s from "./queue-page.runs.module.css";
 
+const SCROLL_RESTORE_KEY = "demo-runs-from";
+
+function readAndClearScrollRestore(): string | undefined {
+  try {
+    const value = sessionStorage.getItem(SCROLL_RESTORE_KEY);
+    if (value) {
+      sessionStorage.removeItem(SCROLL_RESTORE_KEY);
+      return value;
+    }
+  } catch {}
+  return undefined;
+}
+
+function detectTabForRun(
+  runId: string,
+  reviewRows: { run: { id: string } }[],
+  running: { id: string }[],
+  failed: { id: string }[],
+): QueueDemoTab {
+  if (running.some((r) => r.id === runId)) return "running";
+  if (failed.some((r) => r.id === runId)) return "failed";
+  if (reviewRows.some((r) => r.run.id === runId)) return "pending";
+  return "pending";
+}
+
 export function QueuePage({ data }: { data: DemoData }) {
+  const [fromRunId] = useState(readAndClearScrollRestore);
+
   const reviewRows = buildQueueReviewRows(data.runs);
   const running = buildQueueStatusRuns(data.runs, "running");
   const currentRunningRuns = buildCurrentRunningRuns(running);
   const failed = buildQueueStatusRuns(data.runs, "failed");
-  const [activeTab, setActiveTab] = useState<QueueDemoTab>("pending");
+
+  const initialTab = fromRunId ? detectTabForRun(fromRunId, reviewRows, running, failed) : "pending";
+  const [activeTab, setActiveTab] = useState<QueueDemoTab>(initialTab);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const stackRef = useRef<HTMLDivElement>(null);
+
+  function handleTabChange(tab: QueueDemoTab) {
+    // Pin scroll position: keep the tab bar at the same viewport Y after content changes
+    const rect = stackRef.current?.getBoundingClientRect();
+    const topBefore = rect?.top ?? 0;
+    setActiveTab(tab);
+    requestAnimationFrame(() => {
+      if (!stackRef.current) return;
+      const topAfter = stackRef.current.getBoundingClientRect().top;
+      const delta = topAfter - topBefore;
+      if (Math.abs(delta) > 1) {
+        window.scrollBy({ top: delta, behavior: "instant" });
+      }
+    });
+  }
   const reviewGroups = groupRowsByProject(reviewRows);
   const totalPending = reviewRows.reduce((sum, row) => sum + row.pendingCount, 0);
   const pageSize = pendingReviewPageSize();
   const totalPages = Math.max(1, Math.ceil(reviewGroups.length / pageSize));
 
-  function toggleGroup(tab: QueueDemoTab, groupId: string) {
-    const key = groupCollapsedKey(tab, groupId);
+  function toggleGroup(groupId: string) {
+    const key = groupCollapsedKey(groupId);
     setCollapsedGroups((current) => {
       const next = new Set(current);
       if (next.has(key)) next.delete(key);
@@ -55,7 +100,7 @@ export function QueuePage({ data }: { data: DemoData }) {
         failedCount={failed.length}
       />
       <CurrentRunningProgressCard runs={currentRunningRuns} />
-      <div className={s.queueSurfaceStack}>
+      <div className={s.queueSurfaceStack} ref={stackRef}>
         <SegmentedControl
           ariaLabel="切换视图"
           panel
@@ -66,7 +111,7 @@ export function QueuePage({ data }: { data: DemoData }) {
             { value: "failed", label: "失败", count: failed.length },
           ]}
           value={activeTab}
-          onChange={setActiveTab}
+          onChange={handleTabChange}
         />
         {activeTab === "pending" ? (
           <PendingReviewGroups
@@ -76,27 +121,32 @@ export function QueuePage({ data }: { data: DemoData }) {
             totalPending={totalPending}
             totalPages={totalPages}
             collapsedGroups={collapsedGroups}
-            onToggleGroup={(groupId) => toggleGroup("pending", groupId)}
+            onToggleGroup={toggleGroup}
+            highlightRunId={fromRunId}
           />
         ) : activeTab === "running" ? (
           <RunList
+            key="running"
             className={s.queueSurface}
             title="运行中"
             runs={running}
             empty="当前没有运行中或排队中的任务"
             mode="running"
             collapsedGroups={collapsedGroups}
-            onToggleGroup={(groupId) => toggleGroup("running", groupId)}
+            onToggleGroup={toggleGroup}
+            highlightRunId={fromRunId}
           />
         ) : activeTab === "failed" ? (
           <RunList
+            key="failed"
             className={s.queueSurface}
             title="最近失败"
             runs={failed}
             empty="当前没有失败任务"
             mode="failed"
             collapsedGroups={collapsedGroups}
-            onToggleGroup={(groupId) => toggleGroup("failed", groupId)}
+            onToggleGroup={toggleGroup}
+            highlightRunId={fromRunId}
           />
         ) : null}
       </div>

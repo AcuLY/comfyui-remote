@@ -1,0 +1,231 @@
+================================================================================
+NAVIGATION PATTERN SEARCH COMPLETE
+================================================================================
+
+PROJECT: /Users/luca/dev/comfyui-remote
+DIRECTORY: src/app/design-demos/
+SEARCH DATE: May 2026
+
+================================================================================
+FINDINGS OVERVIEW
+================================================================================
+
+TOTAL PATTERNS FOUND: 7 major navigation pairs
+TOTAL DETAIL PAGES: 11 unique detail routes
+TOTAL LIST PAGES: 4 core list pages
+
+All patterns follow "list → detail → back to list" structure, though 
+implementation methods vary by feature area.
+
+================================================================================
+PATTERN BREAKDOWN
+================================================================================
+
+1. RUNS (Tasks Queue)
+   ├─ List: /runs
+   │  └─ File: src/app/design-demos/features/runs/queue-page.tsx
+   │  └─ File: src/app/design-demos/features/runs/run-list.tsx (line 215)
+   │
+   └─ Detail: /runs/:runId
+      └─ File: src/app/design-demos/features/runs/review-page.tsx
+      └─ Back Button: Line 45
+      └─ Pattern: sessionStorage-based scroll restoration
+
+2. TEMPLATES
+   ├─ List: /templates
+   │  └─ File: src/app/design-demos/features/templates/template-list.tsx
+   │
+   ├─ Detail (Edit): /templates/:id/edit
+   │  └─ File: src/app/design-demos/features/templates/template-form-page.tsx
+   │  └─ Back Button: Line 78, 96
+   │  └─ Pattern: 2-level nesting
+   │
+   └─ Detail (Section): /templates/:id/sections/:idx
+      └─ File: src/app/design-demos/features/templates/template-section-page.tsx
+      └─ Back Button: Line 40
+      └─ Pattern: 3-level hierarchy (only multi-level pattern found)
+
+3. PRESETS LIBRARY (Most Complex)
+   ├─ List: /presets
+   │  └─ File: src/app/design-demos/features/presets/library-page.tsx
+   │
+   ├─ Detail (Preset): /presets?category=X&folder=Y&preset=Z
+   │  └─ File: src/app/design-demos/features/presets/preset-edit-page.tsx
+   │  └─ Back Button: Line 254
+   │  └─ Pattern: Query parameters preserve context
+   │
+   ├─ Detail (Group): /presets?category=X&folder=Y&group=Z
+   │  └─ File: src/app/design-demos/features/presets/group-page.tsx
+   │  └─ Back Button: Line 61
+   │  └─ Pattern: Query parameters preserve context
+   │
+   ├─ Detail (Sort Rules): /presets/sort-rules
+   │  └─ File: src/app/design-demos/features/presets/sort-rules-page.tsx
+   │  └─ Back Button: Line 26
+   │
+   └─ Detail (Category Edit): /presets/categories/:id/edit
+      └─ File: src/app/design-demos/features/presets/category-form-page.tsx
+      └─ Back Button: Line 131
+
+4. PROJECTS (Partial Pattern - No Explicit Back)
+   ├─ List: /projects
+   │  └─ File: src/app/design-demos/features/projects/project-list-page.tsx
+   │
+   ├─ Detail: /projects/:id
+   │  └─ File: src/app/design-demos/features/projects/project-detail-page.tsx
+   │  └─ Back Button: NONE (implicit through shell)
+   │
+   └─ Tertiary (Batch): /projects/:id/batch
+      └─ File: src/app/design-demos/features/projects/batch/batch-create.tsx
+      └─ Back Button: Line 76
+      └─ Pattern: One-level nested from detail
+
+================================================================================
+KEY IMPLEMENTATION PATTERNS
+================================================================================
+
+BACK BUTTON IMPLEMENTATION:
+┌─────────────────────────────────────────────────────────────────┐
+│ <PageHeader                                                     │
+│   back={{ href: "/target-route", label: "返回标签" }}           │
+│ />                                                              │
+└─────────────────────────────────────────────────────────────────┘
+
+NAVIGATION LINK IMPLEMENTATION:
+┌─────────────────────────────────────────────────────────────────┐
+│ <Link href={demoHref(`/route/${id}`)}>                          │
+│   Content                                                       │
+│ </Link>                                                         │
+└─────────────────────────────────────────────────────────────────┘
+
+CONTEXT PRESERVATION METHODS:
+─────────────────────────────────────────────────────────────────
+
+Method 1: Session Storage (Runs)
+- Detail page: sessionStorage.setItem("demo-runs-from", runId)
+- List page: sessionStorage.getItem() + scroll to position
+- Use case: Simple ID-based scroll restoration
+
+Method 2: Query Parameters (Presets)
+- URL: /presets?category=X&folder=Y&preset=Z
+- Back button includes same params
+- List page re-initializes to saved state
+- Use case: Complex hierarchical context
+
+Method 3: Implicit Navigation (Projects)
+- No back button in PageHeader
+- Navigation through ProjectSectionShell
+- Scroll sync between rail and content
+- Use case: Complex multi-level scrolling
+
+Method 4: URL Path Structure (Templates)
+- Each level has distinct path
+- /templates → /templates/:id/edit → /templates/:id/sections/:idx
+- Use case: Hierarchical navigation
+
+================================================================================
+ROUTING HELPER FUNCTION
+================================================================================
+
+All navigation uses demoHref() helper from:
+  src/app/design-demos/routing/href.ts
+
+Purpose: Ensures proper design-demo routing context
+Usage: demoHref(`/route/${id}`)
+
+================================================================================
+SPECIAL CASES AND NOTES
+================================================================================
+
+1. Projects don't use explicit back buttons
+   - Navigation is implicit through ProjectSectionShell
+   - This is UNIQUE among all patterns
+   - May need refactoring for consistency
+
+2. Templates have 3-level nesting
+   - ONLY multi-level pattern found
+   - Goes: list → edit → section edit
+   - Only back buttons between consecutive levels
+
+3. Presets use query parameters extensively
+   - Most complex navigation pattern
+   - Allows restoration of exact view state
+   - Folder navigation context preserved
+
+4. Section URLs in Projects are special
+   - /projects/:id/sections/:sectionId exists
+   - But doesn't render separate page
+   - Triggers scroll sync in existing detail view
+   - Can be linked to directly
+
+================================================================================
+FILES MODIFIED / CREATED FOR THIS ANALYSIS
+================================================================================
+
+✓ NAVIGATION_PATTERNS.md
+  - Comprehensive breakdown of all 7 patterns
+  - Line numbers and file references
+  - Route patterns with examples
+  - Implementation details and scroll restoration
+
+✓ NAVIGATION_QUICK_REFERENCE.md
+  - Tables with quick lookup
+  - File structure overview
+  - Key insights summary
+  - Search tips and bash commands
+
+✓ NAVIGATION_DIAGRAMS.md
+  - ASCII diagrams of all patterns
+  - Flow visualizations
+  - Query parameter flows
+  - Session storage flows
+  - Section rail scroll sync explanation
+
+✓ FINDINGS_SUMMARY.txt (this file)
+  - Executive overview
+  - Complete pattern checklist
+  - Implementation patterns
+  - Special cases and notes
+
+================================================================================
+RECOMMENDATIONS
+================================================================================
+
+1. Consider adding back button to ProjectDetailPage for consistency
+   - Currently uses implicit navigation only
+   - All other detail pages have explicit back buttons
+   - Would improve UX consistency
+
+2. Document query parameter structure in routing/href.ts
+   - Presets use complex params: ?category=X&folder=Y&preset=Z
+   - Central documentation would help maintainability
+
+3. Extract scroll restoration patterns into reusable utilities
+   - sessionStorage pattern could be a hook
+   - Query param preservation could be a helper
+   - Would reduce code duplication
+
+4. Consider whether /projects/:id/sections/:sectionId needs 
+   explicit page handling
+   - Currently inline scroll sync only
+   - May want separate page view for future features
+   - Current implementation works but is non-standard
+
+================================================================================
+SEARCH METHODOLOGY
+================================================================================
+
+1. Located all .tsx files in design-demos/features/
+2. Searched for "back=" to find detail pages with back buttons
+3. Searched for "href={demoHref" to find navigation links
+4. Traced each navigation pair to identify list ↔ detail relationships
+5. Examined implementations for scroll restoration patterns
+6. Cross-referenced route patterns in href.ts
+
+Total files examined: 50+
+Total grep commands: 20+
+Search depth: Very thorough (all directories covered)
+
+================================================================================
+END OF FINDINGS SUMMARY
+================================================================================

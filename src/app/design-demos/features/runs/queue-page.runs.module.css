@@ -56,8 +56,19 @@
   background: var(--demo-glass-bg);
 }
 
+.queueSurfaceStack > [data-panel="card-header"] {
+  border: 0;
+  border-bottom: 1px solid var(--demo-border);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
 .queueSurface {
   min-width: 0;
+  min-height: 280px;
 }
 
 .queueSurfaceStack > .queueSurface {

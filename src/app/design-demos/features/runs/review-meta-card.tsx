@@ -154,11 +154,13 @@ function ReviewExecutionMeta({ meta }: { meta: Record<string, unknown> }) {
 export function ReviewMetaCard({
   run,
   meta,
+  defaultOpen = false,
 }: {
   run: DemoRun;
   meta: Record<string, unknown> | null;
+  defaultOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const completedAt = run.finishedAt ?? run.createdAt;
 
   return (

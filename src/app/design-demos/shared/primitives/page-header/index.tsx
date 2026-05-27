@@ -15,7 +15,7 @@ export function PageHeaderBack({
   label: string;
 }) {
   return (
-    <ButtonLink ariaLabel={label} href={href} tone="subtle" icon={ArrowLeft} iconOnly size="sm" className={s.pageBackLink}>
+    <ButtonLink ariaLabel={label} href={href} tone="subtle" icon={ArrowLeft} iconOnly size="sm" className={s.pageBackLink} scroll={false}>
       {label}
     </ButtonLink>
   );

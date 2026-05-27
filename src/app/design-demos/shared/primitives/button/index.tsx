@@ -110,6 +110,7 @@ export function ButtonLink({
   ariaLabel,
   className,
   size = "md",
+  scroll,
 }: {
   href: string;
   children?: React.ReactNode;
@@ -119,12 +120,14 @@ export function ButtonLink({
   ariaLabel?: string;
   className?: string;
   size?: "sm" | "md";
+  scroll?: boolean;
 }) {
   const label = controlLabel(children, ariaLabel);
 
   return (
     <Link
       href={demoHref(href)}
+      scroll={scroll}
       data-demo-ui-button="true"
       data-demo-ui-button-icon-only={iconOnly ? "true" : undefined}
       data-demo-ui-button-size={size}
