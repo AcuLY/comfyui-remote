@@ -133,7 +133,7 @@ export async function censorImage(
   try {
     const image = await prisma.imageResult.findUnique({
       where: { id: imageResultId },
-      include: { run: { select: { projectId: true } } },
+      include: { run: { select: { id: true, projectId: true, latentFilePath: true } } },
     });
 
     if (!image) {
@@ -142,6 +142,10 @@ export async function censorImage(
 
     if (image.reviewStatus !== "kept" && image.reviewStatus !== "pending") {
       return { success: false, message: "只能对已保留或待审核的图片执行打码" };
+    }
+
+    if (!image.run.latentFilePath) {
+      return { success: false, message: "此图片不支持打码（无潜空间文件）" };
     }
 
     // Check if there's already an active task for this image
@@ -184,7 +188,7 @@ export async function censorProjectImages(projectId: string, mode: "all" | "kept
     // Find all images without censoring that don't have an active task
     const images = await prisma.imageResult.findMany({
       where: {
-        run: { projectId },
+        run: { projectId, latentFilePath: { not: null } },
         reviewStatus: { in: reviewStatuses as ("kept" | "pending")[] },
         censoredAt: null,
         censoringTasks: {
@@ -197,7 +201,7 @@ export async function censorProjectImages(projectId: string, mode: "all" | "kept
     // Also find images with only failed/cancelled tasks (allow retry)
     const imagesWithFailedTasks = await prisma.imageResult.findMany({
       where: {
-        run: { projectId },
+        run: { projectId, latentFilePath: { not: null } },
         reviewStatus: { in: reviewStatuses as ("kept" | "pending")[] },
         censoredAt: null,
         censoringTasks: {
