@@ -11,8 +11,12 @@ import {
   getComfyQueuePosition,
   interruptComfyPrompt,
 } from "@/server/services/comfyui-service";
+import {
+  removeManagedRunOutput,
+} from "@/server/services/image-result-service";
 import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
+import { WorkerRunSnapshot } from "@/server/worker/types";
 import {
   RUN_CANCELLABLE_STATUSES,
   isRunCancellableStatus,
@@ -339,9 +343,50 @@ export async function clearRuns(): Promise<{
   error?: string;
 }> {
   try {
+    // 1. Find all runs that will be deleted
+    const runsToDelete = await prisma.run.findMany({
+      where: { status: { in: ["done", "failed", "cancelled"] } },
+      include: {
+        project: { select: { id: true, slug: true } },
+        projectSection: { select: { id: true, sortOrder: true } },
+      },
+    });
+
+    // 2. Delete managed output files for each run
+    for (const run of runsToDelete) {
+      try {
+        const sectionSlug = `section_${run.projectSection.sortOrder + 1}`;
+        const runSnapshot: WorkerRunSnapshot = {
+          runId: run.id,
+          runIndex: run.runIndex,
+          status: "done",
+          workflowId: "",
+          comfyApiUrl: "",
+          outputDir: null,
+          resolvedConfigSnapshot: null,
+          project: {
+            id: run.project.id,
+            title: "",
+            slug: run.project.slug,
+          },
+          section: {
+            id: run.projectSection.id,
+            name: "",
+            slug: sectionSlug,
+          },
+        };
+        await removeManagedRunOutput(runSnapshot);
+      } catch (error) {
+        // Log but continue with other runs and database deletion
+        console.warn("Failed to cleanup files for run", { runId: run.id, error });
+      }
+    }
+
+    // 3. Delete database records (cascade handles images, etc.)
     const result = await prisma.run.deleteMany({
       where: { status: { in: ["done", "failed", "cancelled"] } },
     });
+
     revalidatePath("/queue");
     return { ok: true, count: result.count };
   } catch (e) {

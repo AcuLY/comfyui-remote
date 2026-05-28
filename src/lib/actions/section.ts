@@ -413,11 +413,25 @@ export async function copySection(sectionId: string): Promise<string | null> {
 export async function deleteSection(sectionId: string): Promise<void> {
   const section = await prisma.projectSection.findUnique({
     where: { id: sectionId },
-    select: { projectId: true },
+    select: {
+      id: true,
+      projectId: true,
+      project: { select: { slug: true } },
+      runs: { select: { comfyOutputSubfolder: true } },
+    },
   });
   if (!section) return;
 
-  // Cascade delete handles PromptBlocks automatically
+  // Clean up disk files BEFORE database deletion
+  // This prevents orphaned latent files and image directories
+  try {
+    await cleanupProjectSectionFiles(section.project.slug, [section]);
+  } catch (error) {
+    // Log but don't block deletion if cleanup fails
+    console.warn("Failed to cleanup section files", { sectionId, error });
+  }
+
+  // Then delete from database (cascade handles runs, images, blocks)
   await prisma.projectSection.delete({
     where: { id: sectionId },
   });
@@ -432,11 +446,39 @@ export async function deleteSection(sectionId: string): Promise<void> {
 export async function deleteSections(sectionIds: string[]): Promise<void> {
   if (sectionIds.length === 0) return;
 
-  // Get projectIds for revalidation
+  // Get projectIds and fetch all section data for cleanup
   const sections = await prisma.projectSection.findMany({
     where: { id: { in: sectionIds } },
-    select: { id: true, projectId: true },
+    select: {
+      id: true,
+      projectId: true,
+      project: { select: { slug: true } },
+      runs: { select: { comfyOutputSubfolder: true } },
+    },
   });
+
+  // Group sections by projectId
+  const sectionsByProject = new Map<string, typeof sections>();
+  for (const section of sections) {
+    if (!sectionsByProject.has(section.projectId)) {
+      sectionsByProject.set(section.projectId, []);
+    }
+    sectionsByProject.get(section.projectId)!.push(section);
+  }
+
+  // Clean up files for each project before database deletion
+  for (const [projectId, projectSections] of sectionsByProject) {
+    // Get project slug for cleanup
+    const project = projectSections[0]?.project;
+    if (project) {
+      try {
+        await cleanupProjectSectionFiles(project.slug, projectSections);
+      } catch (error) {
+        // Log but don't block deletion if cleanup fails
+        console.warn("Failed to cleanup section files for project", { projectId, error });
+      }
+    }
+  }
 
   // Cascade delete handles PromptBlocks automatically
   await prisma.projectSection.deleteMany({
