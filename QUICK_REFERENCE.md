@@ -1,339 +1,210 @@
-# Quick Reference - Layout & JSX Patterns
+# ComfyUI Remote - Quick Reference Guide
 
-## File Locations
-| File | Purpose |
-|------|---------|
-| `src/app/queue/page.tsx` | Server-side queue page wrapper |
-| `src/app/queue/queue-page-client.tsx` | Client component - tabs, list, stats |
-| `src/app/queue/[runId]/page.tsx` | Server-side single group view |
-| `src/app/queue/[runId]/review-grid.tsx` | **Main image grid component** (3-col) |
-| `src/app/queue/[runId]/images/[imageId]/page.tsx` | Single image fullscreen view |
-| `src/components/section-card.tsx` | Card wrapper with title/subtitle |
-| `src/components/app-shell.tsx` | Main layout wrapper (header/nav) |
+## 🎯 Quick Answers
 
----
+### Q: Where is the Run/Task database schema?
+**A:** `prisma/schema.prisma` - Lines 431-455
+- Stores: `submittedPrompt` (full JSON), `executionMeta` (metadata), `resolvedConfigSnapshot` (config)
 
-## Key JSX Patterns to Copy
+### Q: How are ComfyUI prompts built?
+**A:** Two-step process:
+1. `buildComfyPromptDraft()` in `src/server/worker/payload-builder.ts`
+2. `buildWorkflowPrompt()` in `src/server/services/workflow-prompt-builder.ts` ← fills template
 
-### 1. Main Container
-```jsx
-<div className="space-y-4">
-  {/* Content with 16px gaps between major sections */}
-</div>
-```
+### Q: What's the workflow template?
+**A:** `docs/workflow.api.json` - Single immutable ComfyUI graph with 14 nodes
 
-### 2. Section Card
-```jsx
-<SectionCard title="Title" subtitle="Subtitle">
-  <div className="grid grid-cols-3 gap-3">
-    {/* 3-column grid content */}
-  </div>
-</SectionCard>
-```
+### Q: How many KSamplers are there?
+**A:** **Two (conditionally):**
+- **KSampler1** (node 3) - Always: base generation, 30 steps, cfg=4, denoise=1
+- **KSampler2** (node 427) - Conditional: hires-fix refinement if upscaleFactor > 1, 30 steps, cfg=7, denoise=0.6
 
-### 3. 2-Column Grid (Stats/Buttons)
-```jsx
-<div className="grid grid-cols-2 gap-3">
-  <div>Left</div>
-  <div>Right</div>
-</div>
-```
-
-### 4. 3-Column Image Grid ⭐️
-```jsx
-<div className="grid grid-cols-3 gap-3">
-  {images.map((image) => (
-    <div
-      key={image.id}
-      className="group relative overflow-hidden rounded-2xl border border-white/10 bg-[var(--panel-soft)] transition"
-    >
-      <Image
-        src={image.src}
-        alt={image.id}
-        width={400}
-        height={560}
-        className="aspect-[3/4] w-full object-cover transition group-hover:scale-[1.02]"
-        unoptimized
-      />
-    </div>
-  ))}
-</div>
-```
-
-### 5. Button Grid (Actions)
-```jsx
-<div className="grid grid-cols-2 gap-3">
-  <button className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm">
-    Keep
-  </button>
-  <button className="rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm">
-    Delete
-  </button>
-</div>
-```
-
-### 6. Vertical Stack (Cards)
-```jsx
-<div className="space-y-3">
-  {items.map((item) => (
-    <Link href={`/${item.id}`} className="block rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-      {/* Card content */}
-    </Link>
-  ))}
-</div>
-```
-
-### 7. Status Badge
-```jsx
-<span className={`rounded-full border px-2 py-0.5 text-[11px] ${
-  image.status === "kept"
-    ? "border-emerald-500/30 bg-emerald-500/20 text-emerald-300"
-    : image.status === "trashed"
-      ? "border-rose-500/30 bg-rose-500/20 text-rose-300"
-      : "border-white/10 bg-black/30"
-}`}>
-  {image.status}
-</span>
-```
-
----
-
-## Tailwind Classes Quick Lookup
-
-### Gaps & Spacing
-| Class | Size |
-|-------|------|
-| `gap-1` | 4px |
-| `gap-2` | 8px |
-| `gap-3` | 12px |
-| `gap-4` | 16px |
-| `space-y-3` | 12px between children |
-| `space-y-4` | 16px between children |
-
-### Grid Columns
-| Class | Columns |
-|-------|---------|
-| `grid-cols-1` | 1 |
-| `grid-cols-2` | 2 |
-| `grid-cols-3` | 3 |
-| `grid-cols-6` | 6 (bottom nav) |
-
-### Rounded Corners
-| Class | Size |
-|-------|------|
-| `rounded-lg` | 8px |
-| `rounded-xl` | 12px |
-| `rounded-2xl` | 16px |
-| `rounded-3xl` | 24px |
-| `rounded-[28px]` | 28px |
-
-### Colors
-| Situation | Class |
-|-----------|-------|
-| Default border | `border-white/10` |
-| Subtle border | `border-white/5` |
-| Default bg | `bg-white/[0.03]` |
-| Hover bg | `bg-white/[0.06]` |
-| Keep/Positive | `border-emerald-500/20 bg-emerald-500/10 text-emerald-300` |
-| Delete/Negative | `border-rose-500/20 bg-rose-500/10 text-rose-300` |
-
----
-
-## Image Grid Deep Dive
-
-### Container
-```jsx
-<div className="grid grid-cols-3 gap-3">
-  {/* 3 equal-width columns, 12px gap */}
-</div>
-```
-
-### Per-Item Structure
-```jsx
-<div className="group relative overflow-hidden rounded-2xl border border-white/10 bg-[var(--panel-soft)]">
-  {/* Overlay for checkbox + label */}
-  <div className="absolute left-2 top-2 z-10 flex items-center gap-2">
-    <button className="flex size-5 items-center justify-center rounded border">
-      <Check className="size-3" />
-    </button>
-    <span className="rounded-full bg-black/55 px-2 py-0.5 text-[10px] text-white">
-      {image.label}
-    </span>
-  </div>
-
-  {/* Image with 3:4 aspect ratio */}
-  <Image
-    src={image.src}
-    alt={image.id}
-    width={400}
-    height={560}
-    className="aspect-[3/4] w-full object-cover transition group-hover:scale-[1.02]"
-    unoptimized
-  />
-
-  {/* Bottom overlay with status + link */}
-  <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-gradient-to-t from-black/80 to-transparent px-2 pb-2 pt-8">
-    <span className="rounded-full border px-2 py-0.5 text-[10px]">
-      {image.status}
-    </span>
-    <Link href={`/queue/${runId}/images/${image.id}`}>
-      <Expand className="size-3" /> 查看
-    </Link>
-  </div>
-</div>
-```
-
-### Selection State (Active)
-```jsx
-className={`group relative overflow-hidden rounded-2xl border transition ${
-  isSelected ? "border-sky-400/50 ring-2 ring-sky-400/30" : "border-white/10"
-}`}
-```
-
----
-
-## Common Patterns
-
-### Page Layout Template
-```jsx
-export default function PageName() {
-  return (
-    <div className="space-y-4">
-      <PageHeader title="Title" description="Description" />
-
-      <SectionCard title="Section 1" subtitle="Subtitle">
-        <div className="grid grid-cols-2 gap-3">
-          {/* Content */}
-        </div>
-      </SectionCard>
-
-      <SectionCard title="Section 2">
-        <div className="space-y-3">
-          {/* Content */}
-        </div>
-      </SectionCard>
-    </div>
-  );
+### Q: Where are KSampler parameters defined?
+**A:** `src/lib/lora-types.ts` - Lines 40-67
+```typescript
+type KSamplerParams = {
+  steps, cfg, sampler_name, scheduler, denoise, seedPolicy
 }
 ```
 
-### Link Card Pattern
-```jsx
-<Link
-  href={`/${item.id}`}
-  className="block rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition hover:bg-white/[0.06]"
->
-  <div className="flex items-start justify-between gap-3">
-    <div>
-      <div className="text-sm font-semibold text-white">{item.title}</div>
-      <div className="mt-1 text-xs text-zinc-400">{item.subtitle}</div>
-    </div>
-    <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-[11px]">
-      {item.status}
-    </span>
-  </div>
-</Link>
-```
+### Q: How is latent space handled?
+**A:** 
+- Created fresh each run (node 407: EmptyLatentImage)
+- Dimensions: aspect ratio + short side pixels, rounded to 8-pixel boundaries
+- Upscaled via LatentUpscale node (425), NOT image upscaling
+- No explicit storage - flows through ComfyUI API
 
-### Flex with Icon + Text
-```jsx
-<div className="flex items-center gap-2 text-sm text-zinc-300">
-  <ArrowLeft className="size-4" />
-  Back
-</div>
-```
+### Q: How are LoRAs applied?
+**A:** Two-stage Power Lora Loader:
+- **lora1** (node 522 → KSampler1): initial generation
+- **lora2** (node 36 → KSampler2): hires-fix refinement
+
+### Q: What gets stored after a run completes?
+**A:** In `Run` record:
+- `submittedPrompt`: Full workflow JSON
+- `executionMeta`: Seeds, steps, cfg, sampler names, prompts, dimensions, LoRA list
+- Plus `workflow.json` file saved alongside output images
 
 ---
 
-## Responsive Considerations
+## 🔗 File Navigation
 
-### Currently NOT Responsive
-- Image grid is fixed at 3 columns
-- Button/stat grids are fixed at 2 columns
-- Queue list is fixed at 1 column
+### Core Database
+- **Schema:** `prisma/schema.prisma`
+- **Run Model:** Lines 431-455
+- **ProjectSection Model:** Lines 349-380
 
-### To Make Responsive (Future)
-```jsx
-{/* Image grid responsive */}
-<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+### Workflow Execution
+- **Template:** `docs/workflow.api.json`
+- **Template Filling:** `src/server/services/workflow-prompt-builder.ts`
+- **Draft Building:** `src/server/worker/payload-builder.ts`
+- **Submission:** `src/server/services/run-executor.ts`
+- **ComfyUI API:** `src/server/services/comfyui-service.ts`
 
-{/* Buttons responsive */}
-<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+### Types & Definitions
+- **KSampler Types:** `src/lib/lora-types.ts`
+- **Worker Types:** `src/server/worker/types.ts`
+- **LoRA Types:** `src/lib/lora-types.ts` (line 10-30)
 
-{/* Stats responsive */}
-<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+### UI Components
+- **KSampler Panel:** `src/components/ksampler-panel.tsx`
+- **Sampler Options:** Lines 12-42
+
+---
+
+## 📊 Data Models
+
+### Run Model Key Fields
+```
+submittedPrompt    → Full workflow JSON (reproducibility)
+executionMeta      → Extracted: ks1Seed, ks1Steps, ks1Cfg, ks1Sampler, 
+                     ks1Scheduler, ks1Denoise, + same for ks2, 
+                     positivePrompt, negativePrompt, aspectRatio, 
+                     shortSidePx, batchSize, upscaleFactor, 
+                     checkpointName, lora1, lora2
+resolvedConfigSnapshot → Full configuration at submission
+comfyPromptId      → ComfyUI prompt ID (from /prompt response)
+status             → queued | running | done | failed | cancelled | paused
+outputDir          → Path to saved images
 ```
 
----
-
-## CSS Variables Used
-- `--panel`: Main panel background
-- `--panel-soft`: Softer panel background variant
-
----
-
-## Import Statements
-```jsx
-// Icons from lucide-react
-import { Check, ChevronLeft, ChevronRight, Expand, ArrowLeft, Download, Ellipsis } from "lucide-react";
-
-// Next Image component
-import Image from "next/image";
-
-// Next Link
-import Link from "next/link";
-
-// Server data functions
-import { getReviewGroup, getReviewGroupIds } from "@/lib/server-data";
-
-// Components
-import { SectionCard } from "@/components/section-card";
-import { PageHeader } from "@/components/page-header";
-```
-
----
-
-## State Management Patterns
-
-### Selection State (ReviewGrid)
-```jsx
-const [selected, setSelected] = useState<Set<string>>(new Set());
-
-function toggleSelect(id: string) {
-  setSelected((prev) => {
-    const next = new Set(prev);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    return next;
-  });
+### KSamplerParams Type
+```typescript
+{
+  steps?: number              // Default: 30
+  cfg?: number                // Default: 4 (KS1) / 7 (KS2)
+  sampler_name?: string       // Default: "euler_ancestral" (KS1) / "dpmpp_2m" (KS2)
+  scheduler?: string          // Default: "karras"
+  denoise?: number            // Default: 1 (KS1) / 0.6 (KS2)
+  seedPolicy?: SeedPolicy     // "random" | "fixed" | "increment"
 }
-
-const selectedCount = selected.size;
 ```
 
-### Pending State (ReviewGrid)
-```jsx
-const pendingImages = images.filter((img) => img.status === "pending");
-const remainingPendingIds = pendingImages
-  .filter((img) => !selected.has(img.id))
-  .map((img) => img.id);
+### LoraEntry Type
+```typescript
+{
+  id: string                  // Unique ID
+  path: string                // "path/to/lora.safetensors"
+  weight: number              // 0.00 - 2.00
+  enabled: boolean
+  source: "preset" | "manual"
+  sourceLabel?: string        // Category name
+  sourceName?: string         // Preset name
+  bindingId?: string          // Groups related LoRAs
+  groupBindingId?: string
+  suppressed?: boolean        // Soft-deleted
+}
 ```
 
 ---
 
-## Element Overlay Pattern (Absolute Positioning)
+## 🔄 Execution Flow
 
-### Top-left overlay (checkbox + label)
-```jsx
-<div className="absolute left-2 top-2 z-10 flex items-center gap-2">
-  {/* Content */}
-</div>
+### Submission Phase
+```
+runProject/runSection (server action)
+  ↓
+submitRunToComfyUI()
+  ├─ buildComfyPromptDraft(WorkerRunSnapshot)
+  ├─ validateComfyPromptDraft() → gets apiPrompt
+  ├─ submitComfyPrompt() → POST /prompt
+  └─ Return: comfyPromptId
+  
+Create Run record:
+  status=queued
+  submittedPrompt=full JSON
+  executionMeta=extracted
+  comfyPromptId=from response
+  
+Fire pollRunCompletion(runId) async
 ```
 
-### Bottom overlay (status + link)
-```jsx
-<div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent px-2 pb-2 pt-8">
-  {/* Content */}
-</div>
+### Polling Phase
+```
+pollRunCompletion()
+  ├─ waitForPromptToStart() → transitions queued→running
+  └─ pollComfyPromptHistory()
+      ├─ Extract output images
+      ├─ Persist to disk
+      ├─ Save workflow.json
+      └─ Update status=done
 ```
 
+---
+
+## 🛠️ Common Tasks
+
+### Find where KSampler defaults are set
+→ `src/lib/lora-types.ts:50-67`
+
+### Find where workflow template is loaded
+→ `src/server/services/workflow-prompt-builder.ts:142` (buildWorkflowPrompt function)
+
+### Find where seeds are resolved
+→ `src/server/services/workflow-prompt-builder.ts:115` (resolveSeed function)
+
+### Find where latent dimensions are calculated
+→ `src/server/services/workflow-prompt-builder.ts:156-160` (node 407 setup)
+
+### Find where LoRAs are filled
+→ `src/server/services/workflow-prompt-builder.ts:86-112` (fillPowerLoraLoader function)
+
+### Find the execution metadata structure
+→ `src/server/services/comfyui-service.ts:229-283` (extractExecutionMeta function)
+
+---
+
+## 🎓 Architecture Summary
+
+**Pattern:** Template → Draft → Workflow JSON → ComfyUI API → Poll → Finalize
+
+**Multi-Stage Processing:**
+1. Base generation (KSampler1 @ base resolution)
+2. Latent upscale (2x default)
+3. Refinement (KSampler2 @ upscaled resolution)
+4. VAE decode → pixels
+5. Save & metadata capture
+
+**Data Integrity:**
+- Full workflow JSON stored for auditability
+- Execution metadata extracted for summaries
+- workflow.json saved alongside images
+
+**No Latent Caching:** All latent flows through ComfyUI API, no intermediate storage.
+
+---
+
+## 📝 File Count Summary
+- **Core files:** 10
+- **Total lines analyzed:** ~2000
+- **Key findings:** 9 major components
+- **Database models involved:** 5 (Project, ProjectSection, Run, Preset, PromptBlock)
+
+---
+
+**Documents Generated:**
+- `CODEBASE_ANALYSIS.md` - Detailed 10-section analysis
+- `CODEBASE_SUMMARY.md` - Executive summary with findings
+- `QUICK_REFERENCE.md` - This file
+
+Last updated: 2026-05-28
