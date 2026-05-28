@@ -1,4 +1,4 @@
-import { readFile, mkdir, writeFile, rename, unlink } from "node:fs/promises";
+import { readFile, mkdir, writeFile, rename, unlink, access } from "node:fs/promises";
 import { resolve, dirname } from "node:path";
 import { randomUUID } from "node:crypto";
 import sharp from "sharp";
@@ -13,17 +13,9 @@ import {
 
 const log = createLogger({ module: "censoring" });
 
-// --- Hard-coded workflow parameters ---
-const CENSOR_CHECKPOINT = "waiIllustriousSDXL_v170.safetensors";
-const CENSOR_LORA = "nsfw\\illustrious_mosaic_censor_v2.safetensors";
-const CENSOR_LORA_STRENGTH_MODEL = 1.95;
-const CENSOR_LORA_STRENGTH_CLIP = 2.08;
-const CENSOR_DENOISE = 0.45;
-const CENSOR_STEPS = 10;
-const CENSOR_CFG = 5;
-const CENSOR_SAMPLER = "dpm_adaptive";
-const CENSOR_SCHEDULER = "normal";
-
+// --- Constants ---
+const MOSAIC_LORA_PATH = "nsfw/illustrious_mosaic_censor_v2.safetensors";
+const MOSAIC_LORA_WEIGHT = 1.2;
 const THUMBNAIL_WIDTH = 300;
 
 // --- Types ---
@@ -34,16 +26,20 @@ type ImageResultForCensor = {
   reviewStatus: string;
 };
 
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
 /**
- * Upload an image buffer to ComfyUI's /upload/image endpoint.
+ * Upload a latent file buffer to ComfyUI's /upload/image endpoint.
  */
-async function uploadImageToComfyUI(
+async function uploadLatentToComfyUI(
   apiUrl: string,
-  imageBuffer: Buffer,
+  buffer: Buffer,
   filename: string,
 ): Promise<string> {
   const formData = new FormData();
-  const blob = new Blob([imageBuffer as unknown as BlobPart]);
+  const blob = new Blob([buffer as unknown as BlobPart]);
   formData.append("image", blob, filename);
   formData.append("overwrite", "true");
 
@@ -74,65 +70,105 @@ async function uploadImageToComfyUI(
 }
 
 /**
- * Build the ComfyUI API prompt JSON for the mosaic censoring workflow.
+ * Derive batch index from file path.
+ * e.g. "data/images/.../raw/01.jpg" → 0 (1-indexed filename to 0-indexed batch)
  */
-function buildCensorApiPrompt(
-  inputFilename: string,
-  outputPrefix: string,
-): Record<string, unknown> {
+function deriveBatchIndex(filePath: string): number {
+  const match = filePath.match(/(\d+)\.\w+$/);
+  if (!match) {
+    throw new Error(`Cannot derive batch index from filePath: ${filePath}`);
+  }
+  return parseInt(match[1], 10) - 1;
+}
+
+/**
+ * Build the ComfyUI API prompt JSON for the latent-based mosaic censoring workflow.
+ */
+function buildLatentCensorWorkflow(params: {
+  latentFilename: string;
+  batchIndex: number;
+  checkpointName: string;
+  lora2List: Array<{ path: string; weight: number; enabled: boolean }>;
+  positivePrompt: string;
+  negativePrompt: string;
+  ks2Seed: number;
+  ks2Steps: number;
+  ks2Cfg: number;
+  ks2Sampler: string;
+  ks2Scheduler: string;
+  ks2Denoise: number;
+  outputPrefix: string;
+}): Record<string, unknown> {
+  // Build lora inputs for Power Lora Loader (rgthree)
+  const loraInputs: Record<string, unknown> = {
+    model: ["1", 0],
+    clip: ["1", 1],
+  };
+
+  for (let i = 0; i < params.lora2List.length; i++) {
+    const lora = params.lora2List[i];
+    loraInputs[`lora_${i + 1}`] = {
+      on: true,
+      lora: lora.path.replace(/\\/g, "/"),
+      strength: lora.weight,
+    };
+  }
+
   return {
     "1": {
       class_type: "CheckpointLoaderSimple",
-      inputs: { ckpt_name: CENSOR_CHECKPOINT },
+      inputs: { ckpt_name: params.checkpointName },
     },
-    "2": {
-      class_type: "LoraLoader",
-      inputs: {
-        model: ["1", 0],
-        clip: ["1", 1],
-        lora_name: CENSOR_LORA,
-        strength_model: CENSOR_LORA_STRENGTH_MODEL,
-        strength_clip: CENSOR_LORA_STRENGTH_CLIP,
-      },
+    "36": {
+      class_type: "Power Lora Loader (rgthree)",
+      inputs: loraInputs,
     },
-    "3": {
-      class_type: "LoadImage",
-      inputs: { image: inputFilename },
+    "511": {
+      class_type: "Text Multiline",
+      inputs: { text: params.positivePrompt },
     },
-    "4": {
-      class_type: "VAEEncode",
-      inputs: { pixels: ["3", 0], vae: ["1", 2] },
+    "513": {
+      class_type: "Text Multiline",
+      inputs: { text: params.negativePrompt },
     },
-    "5": {
+    "519": {
       class_type: "CLIPTextEncode",
-      inputs: { clip: ["2", 1], text: "" },
+      inputs: { text: ["511", 0], clip: ["36", 1] },
     },
-    "6": {
+    "520": {
       class_type: "CLIPTextEncode",
-      inputs: { clip: ["2", 1], text: "" },
+      inputs: { text: ["513", 0], clip: ["36", 1] },
     },
-    "7": {
+    "900": {
+      class_type: "LoadLatent",
+      inputs: { latent: params.latentFilename },
+    },
+    "901": {
+      class_type: "LatentFromBatch",
+      inputs: { samples: ["900", 0], batch_index: params.batchIndex, length: 1 },
+    },
+    "427": {
       class_type: "KSampler",
       inputs: {
-        model: ["2", 0],
-        positive: ["5", 0],
-        negative: ["6", 0],
-        latent_image: ["4", 0],
-        seed: Math.floor(Math.random() * 2 ** 32),
-        steps: CENSOR_STEPS,
-        cfg: CENSOR_CFG,
-        sampler_name: CENSOR_SAMPLER,
-        scheduler: CENSOR_SCHEDULER,
-        denoise: CENSOR_DENOISE,
+        model: ["36", 0],
+        positive: ["519", 0],
+        negative: ["520", 0],
+        latent_image: ["901", 0],
+        seed: params.ks2Seed,
+        steps: params.ks2Steps,
+        cfg: params.ks2Cfg,
+        sampler_name: params.ks2Sampler,
+        scheduler: params.ks2Scheduler,
+        denoise: params.ks2Denoise,
       },
     },
-    "8": {
+    "410": {
       class_type: "VAEDecode",
-      inputs: { samples: ["7", 0], vae: ["1", 2] },
+      inputs: { samples: ["427", 0], vae: ["1", 2] },
     },
     "10": {
       class_type: "SaveImage",
-      inputs: { images: ["8", 0], filename_prefix: outputPrefix },
+      inputs: { images: ["410", 0], filename_prefix: params.outputPrefix },
     },
   };
 }
@@ -192,11 +228,11 @@ async function atomicWriteFile(targetPath: string, data: Buffer): Promise<void> 
 }
 
 // ---------------------------------------------------------------------------
-// Phase 1: Submit — upload image + submit prompt (fast, ~1s)
+// Phase 1: Submit — upload latent + submit prompt (fast, ~1s)
 // ---------------------------------------------------------------------------
 
 /**
- * Upload the source image to ComfyUI and submit the censoring prompt.
+ * Upload the source latent to ComfyUI and submit the censoring prompt.
  * Returns the promptId and image info for the polling phase.
  */
 export async function submitCensorPrompt(imageResultId: string): Promise<{
@@ -205,7 +241,17 @@ export async function submitCensorPrompt(imageResultId: string): Promise<{
 }> {
   const imageResult = await prisma.imageResult.findUnique({
     where: { id: imageResultId },
-    select: { id: true, filePath: true, reviewStatus: true },
+    select: {
+      id: true,
+      filePath: true,
+      reviewStatus: true,
+      run: {
+        select: {
+          latentFilePath: true,
+          executionMeta: true,
+        },
+      },
+    },
   });
 
   if (!imageResult) {
@@ -218,20 +264,66 @@ export async function submitCensorPrompt(imageResultId: string): Promise<{
     );
   }
 
+  if (!imageResult.run?.latentFilePath) {
+    throw new Error("此图片不支持打码（无潜空间文件）");
+  }
+
+  // Read latent file from disk
+  const latentAbsPath = resolve(process.cwd(), imageResult.run.latentFilePath);
+  let latentBuffer: Buffer;
+  try {
+    await access(latentAbsPath);
+    latentBuffer = await readFile(latentAbsPath);
+  } catch {
+    throw new Error("潜空间文件丢失");
+  }
+
+  // Derive batch index from imageResult.filePath
+  const batchIndex = deriveBatchIndex(imageResult.filePath);
+
+  // Upload latent to ComfyUI
   const apiUrl = env.comfyApiUrl.replace(/\/$/, "");
+  const latentUploadFilename = `censor_${randomUUID().slice(0, 8)}.latent`;
+  const comfyLatentFilename = await uploadLatentToComfyUI(apiUrl, latentBuffer, latentUploadFilename);
 
-  // Read source image
-  const absolutePath = resolve(process.cwd(), imageResult.filePath);
-  const sourceBuffer = await readFile(absolutePath);
+  // Parse executionMeta
+  const meta = imageResult.run.executionMeta as Record<string, unknown>;
+  const checkpointName = meta.checkpointName as string;
+  const lora2 = (meta.lora2 as Array<{ path: string; weight: number; enabled: boolean }>) ?? [];
+  const positivePrompt = meta.positivePrompt as string;
+  const negativePrompt = meta.negativePrompt as string;
+  const ks2Seed = meta.ks2Seed as number;
+  const ks2Steps = meta.ks2Steps as number;
+  const ks2Cfg = meta.ks2Cfg as number;
+  const ks2Sampler = meta.ks2Sampler as string;
+  const ks2Scheduler = meta.ks2Scheduler as string;
+  const ks2Denoise = meta.ks2Denoise as number;
 
-  // Upload to ComfyUI
-  const uploadFilename = `censor_input_${randomUUID().slice(0, 8)}_${imageResult.filePath.split("/").pop() ?? "image.jpg"}`;
-  const comfyFilename = await uploadImageToComfyUI(apiUrl, sourceBuffer, uploadFilename);
+  // Build lora2 list: original + mosaic LoRA appended
+  const lora2List = [
+    ...lora2.filter((l) => l.enabled),
+    { path: MOSAIC_LORA_PATH, weight: MOSAIC_LORA_WEIGHT, enabled: true },
+  ];
 
-  // Build and submit prompt
+  // Build workflow
   const outputPrefix = `censored_${randomUUID().slice(0, 8)}`;
-  const apiPrompt = buildCensorApiPrompt(comfyFilename, outputPrefix);
+  const workflow = buildLatentCensorWorkflow({
+    latentFilename: comfyLatentFilename,
+    batchIndex,
+    checkpointName,
+    lora2List,
+    positivePrompt,
+    negativePrompt,
+    ks2Seed,
+    ks2Steps,
+    ks2Cfg,
+    ks2Sampler,
+    ks2Scheduler,
+    ks2Denoise,
+    outputPrefix,
+  });
 
+  // Submit to ComfyUI
   const controller = new AbortController();
   const submitTimeout = setTimeout(() => controller.abort(), env.comfyRequestTimeoutMs);
 
@@ -240,7 +332,7 @@ export async function submitCensorPrompt(imageResultId: string): Promise<{
     const submitResponse = await fetch(`${apiUrl}/prompt`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt: apiPrompt }),
+      body: JSON.stringify({ prompt: workflow }),
       signal: controller.signal,
     });
 
@@ -258,9 +350,12 @@ export async function submitCensorPrompt(imageResultId: string): Promise<{
     clearTimeout(submitTimeout);
   }
 
-  log.info("Submitted censoring prompt", { imageResultId, promptId });
+  log.info("Submitted censoring prompt (latent-based)", { imageResultId, promptId });
 
-  return { promptId, imageResult };
+  return {
+    promptId,
+    imageResult: { id: imageResult.id, filePath: imageResult.filePath, reviewStatus: imageResult.reviewStatus },
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -331,7 +426,7 @@ export async function pollCensorCompletion(
 }
 
 // ---------------------------------------------------------------------------
-// Legacy single-image function (kept for direct single-image censoring)
+// Legacy single-image function (kept for backwards compat)
 // ---------------------------------------------------------------------------
 
 /**

@@ -327,6 +327,40 @@ export function extractOutputImages(entry: ComfyPromptHistoryEntry): ComfyPrompt
   return images;
 }
 
+export function extractLatentOutputs(entry: ComfyPromptHistoryEntry): ComfyPromptOutputImage[] {
+  if (!entry.outputs) {
+    return [];
+  }
+
+  const latents: ComfyPromptOutputImage[] = [];
+
+  for (const nodeOutput of Object.values(entry.outputs)) {
+    const output = asRecord(nodeOutput);
+    const outputLatents = Array.isArray(output?.latents) ? output.latents : [];
+
+    for (const latent of outputLatents) {
+      const latentRecord = asRecord(latent);
+      const filename =
+        typeof latentRecord?.filename === "string" ? latentRecord.filename.trim() : "";
+
+      if (!filename) {
+        continue;
+      }
+
+      const subfolder =
+        typeof latentRecord?.subfolder === "string" ? latentRecord.subfolder.trim() : "";
+      const type =
+        typeof latentRecord?.type === "string" && latentRecord.type.trim()
+          ? latentRecord.type.trim()
+          : "output";
+
+      latents.push({ filename, subfolder, type });
+    }
+  }
+
+  return latents;
+}
+
 export function extractOutputDir(images: ComfyPromptOutputImage[]) {
   if (images.length === 0) {
     return null;

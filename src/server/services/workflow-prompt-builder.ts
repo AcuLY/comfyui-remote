@@ -209,5 +209,16 @@ export function buildWorkflowPrompt(input: WorkflowBuildInput): Record<string, u
   // Use a unique filename_prefix to avoid collisions with manual ComfyUI runs
   nodeInputs(wf, "515").filename_prefix = input.runId ?? "";
 
+  // 10. SaveLatent — persist LatentUpscale output for future censoring re-generation
+  if (!skipHiresFix) {
+    wf["900"] = {
+      class_type: "SaveLatent",
+      inputs: {
+        samples: ["425", 0],
+        filename_prefix: `latents/${input.runId || "run"}`,
+      },
+    };
+  }
+
   return wf;
 }
