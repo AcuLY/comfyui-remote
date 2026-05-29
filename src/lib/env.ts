@@ -48,7 +48,7 @@ export const env = {
   comfyLaunchCmd: process.env.COMFY_LAUNCH_CMD ?? "",
   comfyLaunchCwd: process.env.COMFY_LAUNCH_CWD ?? "",
   comfyAutoStart: readBoolEnv("COMFY_AUTO_START", false),
-  comfyAutoRestart: readBoolEnv("COMFY_AUTO_RESTART", true),
+  comfyAutoRestart: readBoolEnv("COMFY_AUTO_RESTART", false),
   comfyHealthIntervalMs: readPositiveIntegerEnv("COMFY_HEALTH_INTERVAL_MS", 10_000),
   comfyMaxRestarts: readPositiveIntegerEnv("COMFY_MAX_RESTARTS", 3),
   comfyRestartWindowMs: readPositiveIntegerEnv("COMFY_RESTART_WINDOW_MS", 300_000),

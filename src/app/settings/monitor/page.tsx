@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Play, Square, RotateCw, RefreshCw, HeartPulse } from "lucide-react";
+import { ArrowLeft, Play, Square, RefreshCw, HeartPulse } from "lucide-react";
 import { SectionCard } from "@/components/section-card";
 import { StatChip } from "@/components/stat-chip";
 
@@ -206,7 +206,7 @@ export default function MonitorPage() {
   }, []);
 
   // Actions
-  const performAction = useCallback(async (action: "start" | "stop" | "restart") => {
+  const performAction = useCallback(async (action: "start" | "stop") => {
     setActionPending(true);
     setActionResult(null);
     try {
@@ -280,9 +280,8 @@ export default function MonitorPage() {
     );
   }
 
-  const canStart = status.state === "stopped" || status.state === "error";
+  const canStart = status.state === "stopped" || status.state === "error" || status.state === "unhealthy";
   const canStop = status.state === "running" || status.state === "starting" || status.state === "unhealthy";
-  const canRestart = status.managedMode && status.state !== "stopped";
 
   return (
     <div className="space-y-4">
@@ -307,18 +306,12 @@ export default function MonitorPage() {
           />
           <StatChip label="运行时长" value={formatUptime(status.uptime)} />
           <StatChip label="PID" value={status.pid ?? "—"} />
-          <StatChip
-            label="重启次数"
-            value={`${status.restartCount}${status.maxRestartsReached ? " (上限)" : ""}`}
-            tone={status.maxRestartsReached ? "warn" : "default"}
-          />
         </div>
 
         {/* Additional info */}
         <div className="mt-3 space-y-1 text-xs text-zinc-500">
           <div>API 地址：<span className="text-zinc-300">{status.comfyApiUrl}</span></div>
           <div>上次健康检查：<span className="text-zinc-300">{formatTime(status.lastHealthCheck)}</span> {status.lastHealthOk ? "✓" : "✗"}</div>
-          <div>自动重启：<span className="text-zinc-300">{status.autoRestartEnabled ? "启用" : "禁用"}</span></div>
           {status.errorMessage && (
             <div className="mt-2 rounded-lg border border-red-500/20 bg-red-500/5 p-2 text-red-300">
               {status.errorMessage}
@@ -342,12 +335,6 @@ export default function MonitorPage() {
               icon={Square}
               label="停止"
               variant="danger"
-            />
-            <ActionButton
-              onClick={() => performAction("restart")}
-              disabled={actionPending || !canRestart}
-              icon={RotateCw}
-              label="重启"
             />
             <ActionButton
               onClick={probeHealth}
