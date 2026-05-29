@@ -6,7 +6,7 @@ import {
   RUN_CANCELLABLE_STATUSES,
   extractCensoringPromptId,
   selectCensoringPromptIds,
-} from "./src/lib/actions/cancellation-helpers";
+} from "../src/lib/actions/cancellation-helpers";
 
 test("run bulk cancellation treats paused runs as cancellable active work", () => {
   assert.deepEqual(RUN_CANCELLABLE_STATUSES, ["queued", "running", "paused"]);

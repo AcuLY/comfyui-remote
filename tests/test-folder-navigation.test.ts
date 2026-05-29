@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   buildFolderScopedItemOrder,
   hrefWithFolderQuery,
-} from "./src/lib/folder-navigation";
+} from "../src/lib/folder-navigation";
 
 const folders = [
   { id: "folder-a", name: "A", parentId: null, sortOrder: 0 },

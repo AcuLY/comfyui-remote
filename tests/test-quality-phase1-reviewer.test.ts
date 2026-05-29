@@ -13,9 +13,9 @@ import {
   writePhase1ReviewerPredictionsJsonl,
   type CodexExecRequest,
   type Phase1ReviewerClient,
-} from "./src/server/quality/phase1-reviewer";
-import { type Phase1LabeledImageRow } from "./src/server/quality/phase1-offline-eval";
-import { parseReviewArgs } from "./scripts/quality/review";
+} from "../src/server/quality/phase1-reviewer";
+import { type Phase1LabeledImageRow } from "../src/server/quality/phase1-offline-eval";
+import { parseReviewArgs } from "../scripts/quality/review";
 
 function labeledRow(overrides: Partial<Phase1LabeledImageRow> = {}): Phase1LabeledImageRow {
   return {

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { removeLoraEntriesByBinding } from "./src/lib/lora-types";
+import { removeLoraEntriesByBinding } from "../src/lib/lora-types";
 
 test("removeLoraEntriesByBinding removes only entries matching the binding in both slots", () => {
   const input = {

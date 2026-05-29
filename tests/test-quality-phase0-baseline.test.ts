@@ -13,11 +13,11 @@ import {
   writePhase0BaselineReports,
   type Phase0BaselineSummary,
   type Phase0SourceRow,
-} from "./src/server/quality/phase0-baseline";
+} from "../src/server/quality/phase0-baseline";
 import {
   parseVerifyArgs,
   verifyPhase0BaselineSummaryFile,
-} from "./scripts/quality/verify";
+} from "../scripts/quality/verify";
 
 function sourceRow(overrides: Partial<Phase0SourceRow>): Phase0SourceRow {
   return {

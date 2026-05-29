@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildTemplateSectionFolderClonePlan } from "./src/lib/actions/section-folder-utils";
+import { buildTemplateSectionFolderClonePlan } from "../src/lib/actions/section-folder-utils";
 
 test("buildTemplateSectionFolderClonePlan maps project section folders into template folders", () => {
   const plan = buildTemplateSectionFolderClonePlan({

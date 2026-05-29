@@ -4,7 +4,7 @@ import {
   buildSyncPresetVariantFlowVerification,
   parseSyncPresetVariantFlowInput,
   pickLatestProjectByExactTitle,
-} from "./src/server/services/agent-preset-variant-flow-core";
+} from "../src/server/services/agent-preset-variant-flow-core";
 
 test("parseSyncPresetVariantFlowInput defaults to dry-run and can infer preset names", () => {
   const input = parseSyncPresetVariantFlowInput({

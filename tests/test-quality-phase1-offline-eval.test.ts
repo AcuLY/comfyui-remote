@@ -17,13 +17,13 @@ import {
   type Phase1EvaluationSummary,
   type Phase1LabeledImageRow,
   type Phase1PredictionRecord,
-} from "./src/server/quality/phase1-offline-eval";
-import { parseEvaluateArgs } from "./scripts/quality/evaluate";
+} from "../src/server/quality/phase1-offline-eval";
+import { parseEvaluateArgs } from "../scripts/quality/evaluate";
 import {
   parseVerifyArgs,
   verifyQualitySummaryFile,
   verifyPhase1EvaluationSummaryFile,
-} from "./scripts/quality/verify";
+} from "../scripts/quality/verify";
 
 function labeledRow(overrides: Partial<Phase1LabeledImageRow> = {}): Phase1LabeledImageRow {
   return {

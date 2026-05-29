@@ -4,15 +4,15 @@ import assert from "node:assert/strict";
 process.env.DB_PROVIDER ??= "sqlite";
 process.env.DATABASE_URL ??= "file:./data/test-project-folder-api.db";
 
-let normalizeCreateProjectFolderBody: typeof import("./src/server/services/project-folder-service").normalizeCreateProjectFolderBody;
-let normalizeMoveProjectToFolderBody: typeof import("./src/server/services/project-folder-service").normalizeMoveProjectToFolderBody;
-let normalizeRenameProjectFolderBody: typeof import("./src/server/services/project-folder-service").normalizeRenameProjectFolderBody;
-let normalizeReorderProjectFoldersBody: typeof import("./src/server/services/project-folder-service").normalizeReorderProjectFoldersBody;
-let normalizeProjectUpdateBody: typeof import("./src/server/services/project-service").normalizeProjectUpdateBody;
+let normalizeCreateProjectFolderBody: typeof import("../src/server/services/project-folder-service").normalizeCreateProjectFolderBody;
+let normalizeMoveProjectToFolderBody: typeof import("../src/server/services/project-folder-service").normalizeMoveProjectToFolderBody;
+let normalizeRenameProjectFolderBody: typeof import("../src/server/services/project-folder-service").normalizeRenameProjectFolderBody;
+let normalizeReorderProjectFoldersBody: typeof import("../src/server/services/project-folder-service").normalizeReorderProjectFoldersBody;
+let normalizeProjectUpdateBody: typeof import("../src/server/services/project-service").normalizeProjectUpdateBody;
 
 test.before(async () => {
-  const projectFolderService = await import("./src/server/services/project-folder-service");
-  const projectService = await import("./src/server/services/project-service");
+  const projectFolderService = await import("../src/server/services/project-folder-service");
+  const projectService = await import("../src/server/services/project-service");
 
   normalizeCreateProjectFolderBody = projectFolderService.normalizeCreateProjectFolderBody;
   normalizeMoveProjectToFolderBody = projectFolderService.normalizeMoveProjectToFolderBody;

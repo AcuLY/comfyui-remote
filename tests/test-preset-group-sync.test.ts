@@ -8,7 +8,7 @@ import {
   isPresetGroupPlaceholderBlock,
   sortConcreteGroupMembersForSection,
   sortSectionPromptBlocksByCategoryOrder,
-} from "./src/lib/actions/preset-group-sync";
+} from "../src/lib/actions/preset-group-sync";
 
 test("empty synced preset groups keep a placeholder prompt block with the same group binding", () => {
   const placeholder = buildPresetGroupPlaceholderCreateInput({

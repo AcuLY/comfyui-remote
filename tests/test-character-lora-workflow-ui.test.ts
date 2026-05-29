@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
 
-import { normalizeSourceImageUploadRole } from "./src/lib/character-lora-source-images";
+import { normalizeSourceImageUploadRole } from "../src/lib/character-lora-source-images";
 import {
   CANONICAL_VIEW_SPECS,
   buildCanonicalRerunPrompt,
@@ -11,14 +11,14 @@ import {
   buildCanonicalViewVisualPrompt,
   groupCanonicalVersionsByView,
   normalizeCanonicalViewKey,
-} from "./src/lib/character-lora-canonical-views";
+} from "../src/lib/character-lora-canonical-views";
 import {
   PromptCardDraftParseError,
   buildPromptCardDraftPrompt,
   normalizePromptCardDraftImageSelection,
   parsePromptCardDraftResponse,
   selectLatestCanonicalVersionsByView,
-} from "./src/lib/character-lora-prompt-card-draft";
+} from "../src/lib/character-lora-prompt-card-draft";
 
 test("source image uploads are normalized to one undifferentiated source role", () => {
   assert.equal(normalizeSourceImageUploadRole(undefined), "source");
@@ -132,13 +132,17 @@ test("canonical view is a persisted backend field on generation runs and canonic
 });
 
 test("persona reference UI exposes per-view generation, canonical reference checkboxes, and uploadable rerun references", () => {
-  const page = readFileSync("src/app/character-lora-training/[jobId]/persona-reference/page.tsx", "utf8");
+  const client = readFileSync("src/app/character-lora-training/[jobId]/persona-reference-client.tsx", "utf8");
+  const rerunPanel = readFileSync("src/app/character-lora-training/[jobId]/rerun-panel.tsx", "utf8");
 
-  assert.match(page, /CANONICAL_VIEW_SPECS\.map/);
-  assert.match(page, /submitLabel=\{`生成\$\{view\.label\}`\}/);
-  assert.match(page, /name="canonicalVersionIds"/);
-  assert.match(page, /name="referenceFiles"/);
-  assert.match(page, /type="file"/);
+  // Per-view generation: the client maps every canonical view spec into its own panel.
+  assert.match(client, /CANONICAL_VIEW_SPECS\.map/);
+  assert.match(client, /CanonicalViewPanel/);
+  // Canonical reference checkboxes feed the selected canonical versions into a rerun.
+  assert.match(rerunPanel, /name="canonicalVersionIds"/);
+  // Uploadable rerun references accept files.
+  assert.match(rerunPanel, /name="referenceFiles"/);
+  assert.match(rerunPanel, /type="file"/);
 });
 
 test("prompt card draft prompt requests reviewed JSON fields without saving", () => {

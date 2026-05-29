@@ -5,7 +5,7 @@ import {
   extractSyncPresetVariantFlowError,
   parseSampleSectionNumbersInput,
   summarizeSyncPresetVariantFlowPlan,
-} from "./src/lib/sync-preset-variant-flow-ui";
+} from "../src/lib/sync-preset-variant-flow-ui";
 
 test("buildSyncPresetVariantFlowPayload trims titles, omits blank optional presets, and keeps dryRun boolean", () => {
   const payload = buildSyncPresetVariantFlowPayload({
