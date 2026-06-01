@@ -1,0 +1,215 @@
+export type PromptBlockType = "custom" | "preset";
+export type LoraStage = "lora1" | "lora2";
+
+export type LoraBinding = {
+  path: string;
+  weight: number;
+  enabled: boolean;
+};
+
+export type ResolvedLoraEntry = LoraBinding & {
+  id: string;
+  source: "preset" | "manual";
+  sourceLabel?: string;
+  sourceColor?: string;
+  sourceName?: string;
+  bindingId?: string;
+  groupBindingId?: string;
+  detachedBindingId?: string;
+  detachedGroupBindingId?: string;
+  detachedPresetPath?: string;
+  suppressed?: boolean;
+};
+
+export type SectionLoraConfig = {
+  lora1: ResolvedLoraEntry[];
+  lora2: ResolvedLoraEntry[];
+};
+
+export type PresetVariantRow = {
+  id: string;
+  presetId: string;
+  name?: string | null;
+  prompt: string;
+  negativePrompt: string | null;
+  lora1: unknown;
+  lora2: unknown;
+  linkedVariants: unknown;
+  sortOrder?: number | null;
+  isActive?: boolean | null;
+};
+
+export type PresetVariantMetadataRow = {
+  id: string;
+  presetId: string;
+  name?: string | null;
+  sortOrder?: number | null;
+  isActive?: boolean | null;
+};
+
+export type PresetVariantLinkRow = {
+  sourceVariantId: string;
+  linkedVariantId: string;
+  sortOrder?: number | null;
+};
+
+export type PresetCategoryRow = {
+  id: string;
+  name: string;
+  color?: string | null;
+  positivePromptOrder?: number | null;
+  negativePromptOrder?: number | null;
+  lora1Order?: number | null;
+  lora2Order?: number | null;
+};
+
+export type PresetRow = {
+  id: string;
+  categoryId: string;
+  name: string;
+  variants?: PresetVariantMetadataRow[];
+};
+
+export type SectionPresetBindingRow = {
+  id: string;
+  projectSectionId: string;
+  bindingKey: string;
+  categoryId: string;
+  presetId: string;
+  variantId: string | null;
+  groupBindingKey: string | null;
+  sortOrder: number;
+  category: PresetCategoryRow;
+  preset: PresetRow;
+};
+
+export type SectionPromptBlockRow = {
+  id: string;
+  projectSectionId: string;
+  sectionBindingId: string | null;
+  type: PromptBlockType;
+  customLabel: string | null;
+  customPositive: string | null;
+  customNegative: string | null;
+  sortOrder: number;
+};
+
+export type SectionManualLoraEntryRow = {
+  id: string;
+  projectSectionId: string;
+  sectionBindingId: string | null;
+  stage: string;
+  path: string;
+  weight: number;
+  enabled: boolean;
+  detachedFromBindingKey: string | null;
+  detachedFromPresetId: string | null;
+  detachedFromVariantId: string | null;
+  detachedFromPath: string | null;
+  metadata: unknown;
+  sortOrder: number;
+};
+
+export type LegacyPromptBlockRow = {
+  type: PromptBlockType | string;
+  sourceId: string | null;
+  variantId?: string | null;
+  categoryId: string | null;
+  bindingId?: string | null;
+  groupBindingId?: string | null;
+  label: string;
+  positive: string;
+  negative: string | null;
+  sortOrder: number;
+};
+
+export type SectionResolverSectionRow = {
+  id: string;
+  positivePrompt: string | null;
+  negativePrompt: string | null;
+  loraConfig: unknown;
+  aspectRatio?: string | null;
+  shortSidePx?: number | null;
+  batchSize?: number | null;
+  seedPolicy1?: string | null;
+  seedPolicy2?: string | null;
+  upscaleFactor?: number | null;
+  checkpointName?: string | null;
+  ksampler1?: unknown;
+  ksampler2?: unknown;
+  extraParams?: unknown;
+  project?: {
+    checkpointName?: string | null;
+    projectLevelOverrides?: unknown;
+  } | null;
+};
+
+export type MissingReferenceKind =
+  | "preset"
+  | "presetVariant"
+  | "sectionBinding"
+  | "variantLink";
+
+export type MissingReference = {
+  kind: MissingReferenceKind;
+  id: string;
+  ownerId?: string;
+};
+
+export type ResolvedPresetVariantContent = {
+  prompt: string;
+  negativePrompt: string | null;
+  lora1: LoraBinding[];
+  lora2: LoraBinding[];
+  missingReferences: MissingReference[];
+};
+
+export type ResolvePresetVariantContentInput = {
+  variants: PresetVariantRow[];
+  variantLinks?: PresetVariantLinkRow[];
+};
+
+export type ResolvedPromptBlock = {
+  type: PromptBlockType | string;
+  sourceId: string | null;
+  variantId: string | null;
+  categoryId: string | null;
+  bindingId: string | null;
+  groupBindingId: string | null;
+  label: string;
+  positive: string;
+  negative: string | null;
+  sortOrder: number;
+};
+
+export type ResolvedSectionConfig = {
+  promptBlocks: ResolvedPromptBlock[];
+  prompt: {
+    positive: string;
+    negative: string | null;
+  };
+  presets: Array<{
+    categoryId: string;
+    presetId: string;
+    variantId: string | null;
+    bindingId: string;
+    label: string;
+  }>;
+  loraConfig: SectionLoraConfig;
+  parameters: Record<string, unknown>;
+  ksampler1: unknown;
+  ksampler2: unknown;
+  extraParams: unknown;
+  warnings: string[];
+  missingReferences: MissingReference[];
+};
+
+export type ResolveSectionConfigInput = {
+  section: SectionResolverSectionRow;
+  presetBindings: SectionPresetBindingRow[];
+  promptBlockRows: SectionPromptBlockRow[];
+  manualLoraEntries: SectionManualLoraEntryRow[];
+  legacyPromptBlocks?: LegacyPromptBlockRow[];
+  presetVariants?: PresetVariantRow[];
+  variantLinks?: PresetVariantLinkRow[];
+};

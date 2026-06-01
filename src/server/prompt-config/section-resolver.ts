@@ -1,0 +1,743 @@
+import {
+  dedupeLoraEntriesByPath,
+  joinPromptParts,
+  sortBySortOrder,
+  sortResolvedLoras,
+  sortResolvedPromptBlocks,
+  type LoraSortInput,
+  type PromptBlockSortInput,
+} from "./order";
+import {
+  loadReachablePresetVariantGraph,
+  resolvePresetVariantContentFromRows,
+} from "./preset-resolver";
+import type {
+  LegacyPromptBlockRow,
+  LoraStage,
+  MissingReference,
+  PresetVariantLinkRow,
+  PresetVariantRow,
+  ResolveSectionConfigInput,
+  ResolvedLoraEntry,
+  ResolvedPromptBlock,
+  ResolvedSectionConfig,
+  SectionLoraConfig,
+  SectionManualLoraEntryRow,
+  SectionPresetBindingRow,
+} from "./types";
+
+type SectionResolverDbSection = ResolveSectionConfigInput["section"] & {
+  presetBindingRows: SectionPresetBindingRow[];
+  sectionPromptBlocks: ResolveSectionConfigInput["promptBlockRows"];
+  manualLoraEntries: SectionManualLoraEntryRow[];
+  promptBlocks: LegacyPromptBlockRow[];
+};
+
+type SectionResolverDbClient = {
+  projectSection: {
+    findUnique(args: unknown): Promise<SectionResolverDbSection | null>;
+  };
+  presetVariant: {
+    findUnique(args: unknown): Promise<PresetVariantRow | null>;
+    findFirst(args: unknown): Promise<PresetVariantRow | null>;
+  };
+  presetVariantLink: {
+    findMany(args: unknown): Promise<PresetVariantLinkRow[]>;
+  };
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isResolvedLoraEntry(value: unknown): value is ResolvedLoraEntry {
+  if (!isRecord(value)) return false;
+  return (
+    typeof value.id === "string" &&
+    typeof value.path === "string" &&
+    typeof value.weight === "number" &&
+    typeof value.enabled === "boolean" &&
+    (value.source === "preset" || value.source === "manual")
+  );
+}
+
+function parseLegacyLoraConfig(value: unknown): SectionLoraConfig {
+  if (!isRecord(value)) return { lora1: [], lora2: [] };
+
+  const parseStage = (stageValue: unknown) => {
+    if (!Array.isArray(stageValue)) return [];
+    return stageValue
+      .filter(isResolvedLoraEntry)
+      .map((entry) => ({
+        ...entry,
+        weight: Math.round(entry.weight * 100) / 100,
+      }));
+  };
+
+  return {
+    lora1: parseStage(value.lora1),
+    lora2: parseStage(value.lora2),
+  };
+}
+
+function hasNewSectionRows(input: ResolveSectionConfigInput) {
+  return (
+    input.presetBindings.length > 0 ||
+    input.promptBlockRows.length > 0 ||
+    input.manualLoraEntries.length > 0
+  );
+}
+
+function readProjectOverrides(section: ResolveSectionConfigInput["section"]) {
+  const overrides = section.project?.projectLevelOverrides;
+  return isRecord(overrides) ? overrides : {};
+}
+
+function readOverrideString(overrides: Record<string, unknown>, key: string) {
+  const value = overrides[key];
+  return typeof value === "string" ? value : null;
+}
+
+function readOverrideNumber(overrides: Record<string, unknown>, key: string) {
+  const value = overrides[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function readOverrideRecord(overrides: Record<string, unknown>, key: string) {
+  const value = overrides[key];
+  return isRecord(value) ? value : null;
+}
+
+function buildSectionParameters(section: ResolveSectionConfigInput["section"]) {
+  const overrides = readProjectOverrides(section);
+
+  return {
+    aspectRatio: section.aspectRatio ??
+      readOverrideString(overrides, "defaultAspectRatio") ??
+      readOverrideString(overrides, "aspectRatio") ??
+      null,
+    shortSidePx: section.shortSidePx ??
+      readOverrideNumber(overrides, "defaultShortSidePx") ??
+      readOverrideNumber(overrides, "shortSidePx") ??
+      null,
+    batchSize: section.batchSize ??
+      readOverrideNumber(overrides, "defaultBatchSize") ??
+      readOverrideNumber(overrides, "batchSize") ??
+      null,
+    seedPolicy: section.seedPolicy1 ?? readOverrideString(overrides, "defaultSeedPolicy1") ?? null,
+    seedPolicy1: section.seedPolicy1 ?? readOverrideString(overrides, "defaultSeedPolicy1") ?? null,
+    seedPolicy2: section.seedPolicy2 ?? readOverrideString(overrides, "defaultSeedPolicy2") ?? null,
+    upscaleFactor: section.upscaleFactor ?? readOverrideNumber(overrides, "defaultUpscaleFactor") ?? null,
+    checkpointName: section.checkpointName ?? section.project?.checkpointName ?? null,
+  };
+}
+
+function buildResolvedPrompt(promptBlocks: readonly ResolvedPromptBlock[]) {
+  const positive = joinPromptParts(promptBlocks.map((block) => block.positive), " BREAK ");
+  const negative = joinPromptParts(promptBlocks.map((block) => block.negative), " BREAK ") || null;
+
+  return { positive, negative };
+}
+
+function buildResolvedPresets(promptBlocks: readonly ResolvedPromptBlock[]) {
+  return promptBlocks
+    .filter((block) => block.type === "preset" && block.categoryId && block.sourceId && block.bindingId)
+    .map((block) => ({
+      categoryId: block.categoryId!,
+      presetId: block.sourceId!,
+      variantId: block.variantId,
+      bindingId: block.bindingId!,
+      label: block.label,
+    }));
+}
+
+function buildResolverWarnings(missingReferences: readonly MissingReference[]) {
+  return missingReferences.map((missingReference) =>
+    missingReference.ownerId
+      ? `${missingReference.kind}:${missingReference.ownerId}:${missingReference.id}`
+      : `${missingReference.kind}:${missingReference.id}`,
+  );
+}
+
+function hasVariantContent(variant: unknown): variant is PresetVariantRow {
+  return (
+    isRecord(variant) &&
+    typeof variant.id === "string" &&
+    typeof variant.presetId === "string" &&
+    typeof variant.prompt === "string" &&
+    "lora1" in variant &&
+    "lora2" in variant
+  );
+}
+
+function buildResolvedSectionConfig(
+  input: ResolveSectionConfigInput,
+  promptBlocks: ResolvedSectionConfig["promptBlocks"],
+  loraConfig: ResolvedSectionConfig["loraConfig"],
+  missingReferences: MissingReference[],
+): ResolvedSectionConfig {
+  return {
+    promptBlocks,
+    prompt: buildResolvedPrompt(promptBlocks),
+    presets: buildResolvedPresets(promptBlocks),
+    loraConfig,
+    parameters: buildSectionParameters(input.section),
+    ksampler1: input.section.ksampler1 ?? readOverrideRecord(readProjectOverrides(input.section), "defaultKsampler1"),
+    ksampler2: input.section.ksampler2 ?? readOverrideRecord(readProjectOverrides(input.section), "defaultKsampler2"),
+    extraParams: input.section.extraParams ?? null,
+    warnings: buildResolverWarnings(missingReferences),
+    missingReferences,
+  };
+}
+
+function collectPresetVariants(input: ResolveSectionConfigInput) {
+  const variants = [...(input.presetVariants ?? [])];
+  const seen = new Set(variants.map((variant) => variant.id));
+
+  for (const binding of input.presetBindings) {
+    for (const variant of binding.preset.variants ?? []) {
+      if (!hasVariantContent(variant)) continue;
+      if (seen.has(variant.id)) continue;
+      seen.add(variant.id);
+      variants.push(variant);
+    }
+  }
+
+  return variants;
+}
+
+function activePresetVariants(binding: SectionPresetBindingRow, variants: readonly PresetVariantRow[]) {
+  const presetVariants = variants.filter(
+    (variant) => variant.presetId === binding.presetId && variant.isActive !== false,
+  );
+  return sortBySortOrder(presetVariants);
+}
+
+function resolveBindingVariant(
+  binding: SectionPresetBindingRow,
+  variants: readonly PresetVariantRow[],
+) {
+  const presetVariants = activePresetVariants(binding, variants);
+  if (binding.variantId) {
+    return presetVariants.find((variant) => variant.id === binding.variantId) ?? null;
+  }
+
+  return presetVariants[0] ?? null;
+}
+
+function buildPresetBlockLabel(
+  binding: SectionPresetBindingRow,
+  variant: PresetVariantRow | null,
+  variants: readonly PresetVariantRow[],
+) {
+  if (!variant) return binding.preset.name;
+
+  const bindingVariants = binding.preset.variants ?? [];
+  const variantCount = bindingVariants.length > 0
+    ? bindingVariants.filter((item) => item.isActive !== false).length
+    : variants.filter((item) => item.presetId === binding.presetId && item.isActive !== false).length;
+  if (variantCount <= 1) return binding.preset.name;
+
+  return `${binding.preset.name} / ${variant.name ?? variant.id}`;
+}
+
+function resolvePresetBlock(
+  binding: SectionPresetBindingRow,
+  options: {
+    variants: readonly PresetVariantRow[];
+    variantLinks: readonly PresetVariantLinkRow[];
+    customLabel?: string | null;
+    customPositive?: string | null;
+    customNegative?: string | null;
+    sortOrder: number;
+    missingReferences: MissingReference[];
+  },
+): ResolvedPromptBlock {
+  const variant = resolveBindingVariant(binding, options.variants);
+
+  if (!variant) {
+    options.missingReferences.push({
+      kind: "presetVariant",
+      id: binding.variantId ?? `${binding.presetId}:default`,
+      ownerId: binding.bindingKey,
+    });
+  }
+
+  const resolved = variant
+    ? resolvePresetVariantContentFromRows(variant.id, {
+        variants: [...options.variants],
+        variantLinks: [...options.variantLinks],
+      })
+    : null;
+  if (resolved) options.missingReferences.push(...resolved.missingReferences);
+
+  return {
+    type: "preset",
+    sourceId: binding.presetId,
+    variantId: variant?.id ?? binding.variantId,
+    categoryId: binding.categoryId,
+    bindingId: binding.bindingKey,
+    groupBindingId: binding.groupBindingKey,
+    label: options.customLabel ?? buildPresetBlockLabel(binding, variant, options.variants),
+    positive: options.customPositive ?? resolved?.prompt ?? "",
+    negative: options.customNegative ?? resolved?.negativePrompt ?? null,
+    sortOrder: options.sortOrder,
+  };
+}
+
+function resolveCustomBlock(row: ResolveSectionConfigInput["promptBlockRows"][number]): ResolvedPromptBlock {
+  return {
+    type: row.type,
+    sourceId: null,
+    variantId: null,
+    categoryId: null,
+    bindingId: null,
+    groupBindingId: null,
+    label: row.customLabel ?? "Custom",
+    positive: row.customPositive ?? "",
+    negative: row.customNegative ?? null,
+    sortOrder: row.sortOrder,
+  };
+}
+
+function resolvePromptBlocks(
+  input: ResolveSectionConfigInput,
+  variants: readonly PresetVariantRow[],
+  missingReferences: MissingReference[],
+) {
+  const bindingById = new Map(input.presetBindings.map((binding) => [binding.id, binding]));
+  const blockBindingIds = new Set<string>();
+  const sortableBlocks: PromptBlockSortInput[] = [];
+  let index = 0;
+
+  for (const row of input.promptBlockRows) {
+    const binding = row.sectionBindingId ? bindingById.get(row.sectionBindingId) : null;
+    if (row.sectionBindingId) blockBindingIds.add(row.sectionBindingId);
+
+    if (binding) {
+      sortableBlocks.push({
+        block: resolvePresetBlock(binding, {
+          variants,
+          variantLinks: input.variantLinks ?? [],
+          customLabel: row.customLabel,
+          customPositive: row.customPositive,
+          customNegative: row.customNegative,
+          sortOrder: row.sortOrder,
+          missingReferences,
+        }),
+        rowSortOrder: row.sortOrder,
+        index,
+      });
+    } else {
+      if (row.sectionBindingId) {
+        missingReferences.push({ kind: "sectionBinding", id: row.sectionBindingId, ownerId: row.id });
+      }
+      sortableBlocks.push({
+        block: resolveCustomBlock(row),
+        rowSortOrder: row.sortOrder,
+        index,
+      });
+    }
+    index += 1;
+  }
+
+  for (const binding of input.presetBindings) {
+    if (blockBindingIds.has(binding.id)) continue;
+
+    sortableBlocks.push({
+      block: resolvePresetBlock(binding, {
+        variants,
+        variantLinks: input.variantLinks ?? [],
+        sortOrder: binding.sortOrder,
+        missingReferences,
+      }),
+      categoryOrder: binding.category.positivePromptOrder,
+      bindingSortOrder: binding.sortOrder,
+      index,
+    });
+    index += 1;
+  }
+
+  return sortResolvedPromptBlocks(sortableBlocks);
+}
+
+function readMetadataSuppressed(metadata: unknown) {
+  return isRecord(metadata) && metadata.suppressed === true;
+}
+
+function resolveStage(value: string): LoraStage | null {
+  if (value === "lora1" || value === "lora2") return value;
+  return null;
+}
+
+function detachedBindingKey(
+  row: SectionManualLoraEntryRow,
+  bindingById: Map<string, SectionPresetBindingRow>,
+) {
+  if (row.detachedFromBindingKey) return row.detachedFromBindingKey;
+  if (!row.sectionBindingId) return null;
+  return bindingById.get(row.sectionBindingId)?.bindingKey ?? null;
+}
+
+function buildSuppressedPresetPathKeys(
+  rows: readonly SectionManualLoraEntryRow[],
+  bindingById: Map<string, SectionPresetBindingRow>,
+) {
+  const keys = new Set<string>();
+
+  for (const row of rows) {
+    const stage = resolveStage(row.stage);
+    if (!stage || !row.detachedFromPath) continue;
+
+    const bindingKey = detachedBindingKey(row, bindingById);
+    if (!bindingKey) continue;
+    keys.add(`${stage}:${bindingKey}:${row.detachedFromPath}`);
+  }
+
+  return keys;
+}
+
+function isPresetPathSuppressed(
+  stage: LoraStage,
+  bindingKey: string,
+  path: string,
+  suppressedPresetPathKeys: Set<string>,
+) {
+  return suppressedPresetPathKeys.has(`${stage}:${bindingKey}:${path}`);
+}
+
+function makePresetLoraEntry(
+  binding: SectionPresetBindingRow,
+  stage: LoraStage,
+  index: number,
+  lora: { path: string; weight: number; enabled: boolean },
+): ResolvedLoraEntry {
+  return {
+    id: `preset:${binding.bindingKey}:${stage}:${index}:${lora.path}`,
+    path: lora.path,
+    weight: lora.weight,
+    enabled: lora.enabled,
+    source: "preset",
+    sourceLabel: binding.category.name,
+    sourceColor: binding.category.color ?? undefined,
+    sourceName: binding.preset.name,
+    bindingId: binding.bindingKey,
+    groupBindingId: binding.groupBindingKey ?? undefined,
+  };
+}
+
+function makeManualLoraEntry(
+  row: SectionManualLoraEntryRow,
+  bindingById: Map<string, SectionPresetBindingRow>,
+): ResolvedLoraEntry {
+  const binding = row.sectionBindingId ? bindingById.get(row.sectionBindingId) : null;
+  const detachedKey = detachedBindingKey(row, bindingById);
+  const suppressed = readMetadataSuppressed(row.metadata);
+
+  return {
+    id: `manual:${row.id}`,
+    path: row.path,
+    weight: Math.round(row.weight * 100) / 100,
+    enabled: suppressed ? false : row.enabled,
+    source: "manual",
+    bindingId: !row.detachedFromPath && binding ? binding.bindingKey : undefined,
+    groupBindingId: !row.detachedFromPath && binding?.groupBindingKey ? binding.groupBindingKey : undefined,
+    detachedBindingId: detachedKey ?? undefined,
+    detachedGroupBindingId: row.detachedFromPath && binding?.groupBindingKey ? binding.groupBindingKey : undefined,
+    detachedPresetPath: row.detachedFromPath ?? undefined,
+    suppressed: suppressed ? true : undefined,
+  };
+}
+
+function resolveLoraConfig(
+  input: ResolveSectionConfigInput,
+  variants: readonly PresetVariantRow[],
+  missingReferences: MissingReference[],
+): SectionLoraConfig {
+  const bindingById = new Map(input.presetBindings.map((binding) => [binding.id, binding]));
+  const suppressedPresetPathKeys = buildSuppressedPresetPathKeys(input.manualLoraEntries, bindingById);
+  const sortable: Record<LoraStage, LoraSortInput[]> = {
+    lora1: [],
+    lora2: [],
+  };
+  let index = 0;
+
+  for (const binding of input.presetBindings) {
+    const variant = resolveBindingVariant(binding, variants);
+    if (!variant) continue;
+
+    const resolved = resolvePresetVariantContentFromRows(variant.id, {
+      variants: [...variants],
+      variantLinks: input.variantLinks ?? [],
+    });
+    missingReferences.push(...resolved.missingReferences);
+
+    for (const stage of ["lora1", "lora2"] as const) {
+      const order = stage === "lora1" ? binding.category.lora1Order : binding.category.lora2Order;
+      resolved[stage].forEach((lora, loraIndex) => {
+        if (isPresetPathSuppressed(stage, binding.bindingKey, lora.path, suppressedPresetPathKeys)) return;
+
+        sortable[stage].push({
+          entry: makePresetLoraEntry(binding, stage, loraIndex, lora),
+          order,
+          secondaryOrder: binding.sortOrder,
+          index,
+        });
+        index += 1;
+      });
+    }
+  }
+
+  for (const row of input.manualLoraEntries) {
+    const stage = resolveStage(row.stage);
+    if (!stage) continue;
+
+    sortable[stage].push({
+      entry: makeManualLoraEntry(row, bindingById),
+      order: row.sortOrder,
+      secondaryOrder: 0,
+      index,
+    });
+    index += 1;
+  }
+
+  return {
+    lora1: dedupeLoraEntriesByPath(sortResolvedLoras(sortable.lora1)),
+    lora2: dedupeLoraEntriesByPath(sortResolvedLoras(sortable.lora2)),
+  };
+}
+
+function resolveLegacyPromptBlocks(input: ResolveSectionConfigInput): ResolvedPromptBlock[] {
+  const legacyBlocks = sortBySortOrder(input.legacyPromptBlocks ?? []);
+  if (legacyBlocks.length > 0) {
+    return legacyBlocks.map((block) => ({
+      type: block.type,
+      sourceId: block.sourceId,
+      variantId: block.variantId ?? null,
+      categoryId: block.categoryId,
+      bindingId: block.bindingId ?? null,
+      groupBindingId: block.groupBindingId ?? null,
+      label: block.label,
+      positive: block.positive,
+      negative: block.negative,
+      sortOrder: block.sortOrder,
+    }));
+  }
+
+  if (input.section.positivePrompt || input.section.negativePrompt) {
+    return [
+      {
+        type: "custom",
+        sourceId: null,
+        variantId: null,
+        categoryId: null,
+        bindingId: null,
+        groupBindingId: null,
+        label: "Section prompt",
+        positive: input.section.positivePrompt ?? "",
+        negative: input.section.negativePrompt ?? null,
+        sortOrder: 0,
+      },
+    ];
+  }
+
+  return [];
+}
+
+export function resolveSectionConfigFromRows(input: ResolveSectionConfigInput): ResolvedSectionConfig {
+  if (!hasNewSectionRows(input)) {
+    return buildResolvedSectionConfig(
+      input,
+      resolveLegacyPromptBlocks(input),
+      parseLegacyLoraConfig(input.section.loraConfig),
+      [],
+    );
+  }
+
+  const variants = collectPresetVariants(input);
+  const missingReferences: MissingReference[] = [];
+  const promptBlocks = resolvePromptBlocks(input, variants, missingReferences);
+  const loraConfig = resolveLoraConfig(input, variants, missingReferences);
+
+  return buildResolvedSectionConfig(input, promptBlocks, loraConfig, missingReferences);
+}
+
+async function resolveInitialVariantIds(
+  bindings: readonly SectionPresetBindingRow[],
+  client: SectionResolverDbClient,
+) {
+  const variantIds: string[] = [];
+
+  for (const binding of bindings) {
+    if (binding.variantId) {
+      variantIds.push(binding.variantId);
+      continue;
+    }
+
+    const localDefaultVariant = sortBySortOrder(
+      (binding.preset.variants ?? []).filter((variant) => variant.isActive !== false),
+    )[0];
+    if (localDefaultVariant?.id) {
+      variantIds.push(localDefaultVariant.id);
+      continue;
+    }
+
+    const defaultVariant = await client.presetVariant.findFirst({
+      where: {
+        presetId: binding.presetId,
+        isActive: true,
+      },
+      select: { id: true },
+      orderBy: { sortOrder: "asc" },
+    });
+
+    if (defaultVariant?.id) variantIds.push(defaultVariant.id);
+  }
+
+  return variantIds;
+}
+
+export async function resolveSectionConfig(
+  sectionId: string,
+  client?: SectionResolverDbClient,
+) {
+  const db = client ?? ((await import("@/lib/prisma")).prisma as SectionResolverDbClient);
+  const section = await db.projectSection.findUnique({
+    where: { id: sectionId },
+    select: {
+      id: true,
+      positivePrompt: true,
+      negativePrompt: true,
+      loraConfig: true,
+      aspectRatio: true,
+      shortSidePx: true,
+      batchSize: true,
+      seedPolicy1: true,
+      seedPolicy2: true,
+      upscaleFactor: true,
+      checkpointName: true,
+      ksampler1: true,
+      ksampler2: true,
+      extraParams: true,
+      project: {
+        select: {
+          checkpointName: true,
+          projectLevelOverrides: true,
+        },
+      },
+      presetBindingRows: {
+        select: {
+          id: true,
+          projectSectionId: true,
+          bindingKey: true,
+          categoryId: true,
+          presetId: true,
+          variantId: true,
+          groupBindingKey: true,
+          sortOrder: true,
+          category: {
+            select: {
+              id: true,
+              name: true,
+              color: true,
+              positivePromptOrder: true,
+              negativePromptOrder: true,
+              lora1Order: true,
+              lora2Order: true,
+            },
+          },
+          preset: {
+            select: {
+              id: true,
+              categoryId: true,
+              name: true,
+              variants: {
+                where: { isActive: true },
+                select: {
+                  id: true,
+                  presetId: true,
+                  name: true,
+                  sortOrder: true,
+                  isActive: true,
+                },
+                orderBy: { sortOrder: "asc" },
+              },
+            },
+          },
+        },
+        orderBy: { sortOrder: "asc" },
+      },
+      sectionPromptBlocks: {
+        select: {
+          id: true,
+          projectSectionId: true,
+          sectionBindingId: true,
+          type: true,
+          customLabel: true,
+          customPositive: true,
+          customNegative: true,
+          sortOrder: true,
+        },
+        orderBy: { sortOrder: "asc" },
+      },
+      manualLoraEntries: {
+        select: {
+          id: true,
+          projectSectionId: true,
+          sectionBindingId: true,
+          stage: true,
+          path: true,
+          weight: true,
+          enabled: true,
+          detachedFromBindingKey: true,
+          detachedFromPresetId: true,
+          detachedFromVariantId: true,
+          detachedFromPath: true,
+          metadata: true,
+          sortOrder: true,
+        },
+        orderBy: { sortOrder: "asc" },
+      },
+      promptBlocks: {
+        select: {
+          type: true,
+          sourceId: true,
+          variantId: true,
+          categoryId: true,
+          bindingId: true,
+          groupBindingId: true,
+          label: true,
+          positive: true,
+          negative: true,
+          sortOrder: true,
+        },
+        orderBy: { sortOrder: "asc" },
+      },
+    },
+  });
+
+  if (!section) return null;
+
+  const resolverInput: ResolveSectionConfigInput = {
+    section,
+    presetBindings: section.presetBindingRows,
+    promptBlockRows: section.sectionPromptBlocks,
+    manualLoraEntries: section.manualLoraEntries,
+    legacyPromptBlocks: section.promptBlocks,
+    presetVariants: [],
+    variantLinks: [],
+  };
+
+  if (!hasNewSectionRows(resolverInput)) {
+    return resolveSectionConfigFromRows(resolverInput);
+  }
+
+  const initialVariantIds = await resolveInitialVariantIds(section.presetBindingRows, db);
+  const { variants, variantLinks } = await loadReachablePresetVariantGraph(initialVariantIds, db);
+
+  return resolveSectionConfigFromRows({
+    ...resolverInput,
+    presetVariants: variants,
+    variantLinks,
+  });
+}
