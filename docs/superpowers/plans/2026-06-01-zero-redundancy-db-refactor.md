@@ -80,30 +80,34 @@ Character LoRA 分类：
 
 Preset 关系：
 
+`Preset` 需要 `@@unique([categoryId, id])`，`PresetVariant` 需要 `@@unique([presetId, id])`，供绑定表用复合 FK 防止 category/preset/variant 错配。
+
 ```prisma
 model PresetVariantLink {
   id              String @id @default(cuid())
-  parentVariantId String
-  linkedPresetId  String
+  sourceVariantId String
   linkedVariantId String
   sortOrder       Int    @default(0)
-  parentVariant   PresetVariant @relation("PresetVariantLinks", fields: [parentVariantId], references: [id], onDelete: Cascade)
-  linkedVariant   PresetVariant @relation("PresetVariantLinkedBy", fields: [linkedVariantId], references: [id], onDelete: Restrict)
+  sourceVariant   PresetVariant @relation("PresetVariantLinkSource", fields: [sourceVariantId], references: [id], onDelete: Cascade)
+  linkedVariant   PresetVariant @relation("PresetVariantLinkTarget", fields: [linkedVariantId], references: [id], onDelete: Cascade)
 
-  @@unique([parentVariantId, linkedVariantId])
+  @@unique([sourceVariantId, linkedVariantId])
+  @@index([sourceVariantId, sortOrder])
   @@index([linkedVariantId])
 }
 
 model PresetCategorySlot {
   id              String @id @default(cuid())
-  groupCategoryId String
+  categoryId      String
+  slotKey         String
   slotCategoryId  String
   label           String?
   sortOrder       Int    @default(0)
-  groupCategory   PresetCategory @relation("PresetGroupSlots", fields: [groupCategoryId], references: [id], onDelete: Cascade)
-  slotCategory    PresetCategory @relation("PresetSlotMembers", fields: [slotCategoryId], references: [id], onDelete: Restrict)
+  category        PresetCategory @relation("PresetCategorySlotOwner", fields: [categoryId], references: [id], onDelete: Cascade)
+  slotCategory    PresetCategory @relation("PresetCategorySlotTarget", fields: [slotCategoryId], references: [id], onDelete: Restrict)
 
-  @@unique([groupCategoryId, slotCategoryId])
+  @@unique([categoryId, slotKey])
+  @@index([categoryId, sortOrder])
   @@index([slotCategoryId])
 }
 ```
@@ -122,10 +126,11 @@ model ProjectPresetBinding {
   updatedAt  DateTime @updatedAt
   project    Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   category   PresetCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  preset     Preset @relation(fields: [presetId], references: [id], onDelete: Restrict)
-  variant    PresetVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  preset     Preset @relation(fields: [categoryId, presetId], references: [categoryId, id], onDelete: Restrict)
+  variant    PresetVariant? @relation(fields: [presetId, variantId], references: [presetId, id], onDelete: Restrict)
 
   @@unique([projectId, categoryId])
+  @@index([projectId, sortOrder])
   @@index([presetId])
   @@index([variantId])
 }
@@ -137,12 +142,15 @@ model ProjectTemplatePresetBinding {
   presetId           String
   variantId          String?
   sortOrder          Int    @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
   projectTemplate    ProjectTemplate @relation(fields: [projectTemplateId], references: [id], onDelete: Cascade)
   category           PresetCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  preset             Preset @relation(fields: [presetId], references: [id], onDelete: Restrict)
-  variant            PresetVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  preset             Preset @relation(fields: [categoryId, presetId], references: [categoryId, id], onDelete: Restrict)
+  variant            PresetVariant? @relation(fields: [presetId, variantId], references: [presetId, id], onDelete: Restrict)
 
   @@unique([projectTemplateId, categoryId])
+  @@index([projectTemplateId, sortOrder])
   @@index([presetId])
   @@index([variantId])
 }
@@ -164,11 +172,13 @@ model SectionPresetBinding {
   updatedAt       DateTime @updatedAt
   projectSection  ProjectSection @relation(fields: [projectSectionId], references: [id], onDelete: Cascade)
   category        PresetCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  preset          Preset @relation(fields: [presetId], references: [id], onDelete: Restrict)
-  variant         PresetVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  preset          Preset @relation(fields: [categoryId, presetId], references: [categoryId, id], onDelete: Restrict)
+  variant         PresetVariant? @relation(fields: [presetId, variantId], references: [presetId, id], onDelete: Restrict)
   promptBlock     SectionPromptBlock?
 
   @@unique([projectSectionId, bindingKey])
+  @@unique([projectSectionId, id])
+  @@index([projectSectionId, sortOrder])
   @@index([presetId])
   @@index([variantId])
 }
@@ -178,21 +188,23 @@ model SectionPromptBlock {
   projectSectionId String
   type             String @default("custom")
   sectionBindingId String? @unique
-  label            String
+  customLabel      String?
   customPositive   String?
   customNegative   String?
   sortOrder        Int @default(0)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
   projectSection   ProjectSection @relation(fields: [projectSectionId], references: [id], onDelete: Cascade)
-  presetBinding    SectionPresetBinding? @relation(fields: [sectionBindingId], references: [id], onDelete: Cascade)
+  sectionBinding   SectionPresetBinding? @relation(fields: [projectSectionId, sectionBindingId], references: [projectSectionId, id], onDelete: Cascade)
 
   @@index([projectSectionId, sortOrder])
+  @@unique([projectSectionId, sectionBindingId])
 }
 
 model SectionManualLoraEntry {
   id                    String @id @default(cuid())
   projectSectionId      String
+  sectionBindingId      String?
   stage                 String
   path                  String
   weight                Float  @default(1)
@@ -206,13 +218,15 @@ model SectionManualLoraEntry {
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
   projectSection        ProjectSection @relation(fields: [projectSectionId], references: [id], onDelete: Cascade)
+  sectionBinding        SectionPresetBinding? @relation(fields: [projectSectionId, sectionBindingId], references: [projectSectionId, id], onDelete: Restrict)
 
   @@index([projectSectionId, stage, sortOrder])
+  @@index([sectionBindingId])
   @@index([detachedFromBindingKey])
 }
 ```
 
-Template section 需要同构表：`TemplateSectionPresetBinding`、`TemplateSectionPromptBlock`、`TemplateSectionManualLoraEntry`。字段与 section 版本一致，父级改为 `projectTemplateSectionId`，manual LoRA 同样需要 `metadata Json?`。模板保存/导入时不得再写 `ProjectTemplateSection.promptBlocks/loraConfig`。
+Template section 需要同构表：`TemplateSectionPresetBinding`、`TemplateSectionPromptBlock`、`TemplateSectionManualLoraEntry`。字段与 section 版本一致，父级改为 `projectTemplateSectionId`，binding 子项用 `[projectTemplateSectionId, templateSectionBindingId] -> [projectTemplateSectionId, id]` 约束，manual LoRA 同样需要 `metadata Json?`。模板保存/导入时不得再写 `ProjectTemplateSection.promptBlocks/loraConfig`。
 
 旧字段删除目标：
 
@@ -308,7 +322,7 @@ TDD 单元测试：
 
 - `node --import tsx --test tests/test-zero-redundancy-migration.test.ts`
 - `DB_PROVIDER=sqlite npx prisma generate`
-- `npx prisma generate`
+- `DB_PROVIDER=postgresql npx prisma generate`
 - `DB_PROVIDER=sqlite DATABASE_URL=file:./prisma/data/comfyui.db npx tsx scripts/db/verify-zero-redundancy.ts --read-only --format summary`
 - `DATABASE_URL=$POSTGRES_URL npx tsx scripts/db/verify-zero-redundancy.ts --read-only --format summary`
 
@@ -378,12 +392,11 @@ git commit -m "test: add zero redundancy inventory baseline"
 
 - 修改：`prisma/schema.sqlite.prisma`
 - 修改：`prisma/schema.prisma`
-- 修改：`src/generated/*`，由 Prisma generate 生成
 - 创建：`tests/test-zero-redundancy-schema-shape.test.ts`
 
 - [ ] **步骤 1：编写失败的 schema shape 测试**
 
-测试生成后的 Prisma client 暴露 `projectPresetBinding`、`projectTemplatePresetBinding`、`sectionPresetBinding`、`sectionPromptBlock`、`sectionManualLoraEntry`、`templateSectionPresetBinding`、`templateSectionPromptBlock`、`templateSectionManualLoraEntry`、`presetVariantLink` 和 `presetCategorySlot`。
+测试两份 Prisma schema 声明 `projectPresetBinding`、`projectTemplatePresetBinding`、`sectionPresetBinding`、`sectionPromptBlock`、`sectionManualLoraEntry`、`templateSectionPresetBinding`、`templateSectionPromptBlock`、`templateSectionManualLoraEntry`、`presetVariantLink` 和 `presetCategorySlot` 对应模型，并锁住零冗余字段形状。
 
 运行：`node --import tsx --test tests/test-zero-redundancy-schema-shape.test.ts`
 
@@ -399,10 +412,10 @@ git commit -m "test: add zero redundancy inventory baseline"
 
 ```bash
 DB_PROVIDER=sqlite npx prisma generate
-npx prisma generate
+DB_PROVIDER=postgresql npx prisma generate
 ```
 
-预期：两份 generated client 都生成成功。
+预期：两份 ignored generated client 都生成成功，作为本地验证证据；不要把 `src/generated/**` 纳入提交。
 
 - [ ] **步骤 4：运行测试**
 
@@ -418,7 +431,7 @@ npm test
 - [ ] **步骤 5：提交**
 
 ```bash
-git add prisma/schema.sqlite.prisma prisma/schema.prisma src/generated tests/test-zero-redundancy-schema-shape.test.ts
+git add prisma/schema.sqlite.prisma prisma/schema.prisma tests/test-zero-redundancy-schema-shape.test.ts
 git commit -m "feat: add zero redundancy relationship tables"
 ```
 
@@ -797,7 +810,7 @@ Run:
 
 ```bash
 DB_PROVIDER=sqlite npx prisma generate
-npx prisma generate
+DB_PROVIDER=postgresql npx prisma generate
 node --import tsx --test tests/test-zero-redundancy-no-legacy-fields.test.ts
 npm test
 npm run lint

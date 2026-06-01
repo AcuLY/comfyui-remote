@@ -30,6 +30,12 @@ model PresetCategory {
   presets             Preset[]
   groups              PresetGroup[]
   folders             PresetFolder[]
+  ownedSlots          PresetCategorySlot[] @relation("PresetCategorySlotOwner")
+  usedInSlots         PresetCategorySlot[] @relation("PresetCategorySlotTarget")
+  projectBindings     ProjectPresetBinding[]
+  templateBindings    ProjectTemplatePresetBinding[]
+  sectionBindings     SectionPresetBinding[]
+  templateSectionBindings     TemplateSectionPresetBinding[]
 }
 
 model Preset {
@@ -48,8 +54,13 @@ model Preset {
   folder          PresetFolder?   @relation(fields: [folderId], references: [id], onDelete: SetNull)
   variants        PresetVariant[]
   changeLogs      PresetChangeLog[]
+  projectBindings  ProjectPresetBinding[]
+  templateBindings ProjectTemplatePresetBinding[]
+  sectionBindings  SectionPresetBinding[]
+  templateSectionBindings     TemplateSectionPresetBinding[]
 
   @@unique([categoryId, slug])
+  @@unique([categoryId, id])
   @@index([categoryId, sortOrder])
 }
 
@@ -68,9 +79,31 @@ model PresetVariant {
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
   preset          Preset          @relation(fields: [presetId], references: [id], onDelete: Cascade)
+  outgoingLinks   PresetVariantLink[] @relation("PresetVariantLinkSource")
+  incomingLinks   PresetVariantLink[] @relation("PresetVariantLinkTarget")
+  projectBindings ProjectPresetBinding[]
+  templateBindings ProjectTemplatePresetBinding[]
+  sectionBindings SectionPresetBinding[]
+  templateSectionBindings     TemplateSectionPresetBinding[]
 
   @@unique([presetId, slug])
+  @@unique([presetId, id])
   @@index([presetId, sortOrder])
+}
+
+model PresetVariantLink {
+  id              String        @id @default(cuid())
+  sourceVariantId String
+  linkedVariantId String
+  sortOrder       Int           @default(0)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  sourceVariant   PresetVariant @relation("PresetVariantLinkSource", fields: [sourceVariantId], references: [id], onDelete: Cascade)
+  linkedVariant   PresetVariant @relation("PresetVariantLinkTarget", fields: [linkedVariantId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceVariantId, linkedVariantId])
+  @@index([sourceVariantId, sortOrder])
+  @@index([linkedVariantId])
 }
 
 model PresetGroup {
@@ -131,6 +164,23 @@ model PresetGroupMember {
   @@index([groupId, sortOrder])
 }
 
+model PresetCategorySlot {
+  id             String         @id @default(cuid())
+  categoryId     String
+  slotKey        String
+  slotCategoryId String
+  label          String?
+  sortOrder      Int            @default(0)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  category       PresetCategory @relation("PresetCategorySlotOwner", fields: [categoryId], references: [id], onDelete: Cascade)
+  slotCategory   PresetCategory @relation("PresetCategorySlotTarget", fields: [slotCategoryId], references: [id], onDelete: Restrict)
+
+  @@unique([categoryId, slotKey])
+  @@index([categoryId, sortOrder])
+  @@index([slotCategoryId])
+}
+
 model PresetFolder {
   id          String         @id @default(cuid())
   categoryId  String
@@ -157,8 +207,30 @@ model ProjectTemplate {
   updatedAt      DateTime                @updatedAt
   sections       ProjectTemplateSection[]
   sectionFolders ProjectTemplateSectionFolder[]
+  presetBindingRows ProjectTemplatePresetBinding[]
 
   @@index([createdAt])
+}
+
+model ProjectTemplatePresetBinding {
+  id                String          @id @default(cuid())
+  projectTemplateId String
+  categoryId        String
+  presetId          String
+  variantId         String?
+  sortOrder         Int             @default(0)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  projectTemplate   ProjectTemplate @relation(fields: [projectTemplateId], references: [id], onDelete: Cascade)
+  category          PresetCategory  @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  preset            Preset          @relation(fields: [categoryId, presetId], references: [categoryId, id], onDelete: Restrict)
+  variant           PresetVariant?  @relation(fields: [presetId, variantId], references: [presetId, id], onDelete: Restrict)
+
+  @@unique([projectTemplateId, categoryId])
+  @@index([projectTemplateId, sortOrder])
+  @@index([categoryId])
+  @@index([presetId])
+  @@index([variantId])
 }
 
 model ProjectTemplateSection {
@@ -182,9 +254,81 @@ model ProjectTemplateSection {
   promptBlocks      Json?
   projectTemplate    ProjectTemplate  @relation(fields: [projectTemplateId], references: [id], onDelete: Cascade)
   folder             ProjectTemplateSectionFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  presetBindingRows  TemplateSectionPresetBinding[]
+  promptBlockRows    TemplateSectionPromptBlock[]
+  manualLoraEntries  TemplateSectionManualLoraEntry[]
 
   @@index([projectTemplateId, sortOrder])
   @@index([folderId])
+}
+
+model TemplateSectionPresetBinding {
+  id                       String                 @id @default(cuid())
+  projectTemplateSectionId String
+  bindingKey               String
+  categoryId               String
+  presetId                 String
+  variantId                String?
+  groupBindingKey          String?
+  sortOrder                Int                    @default(0)
+  createdAt                DateTime               @default(now())
+  updatedAt                DateTime               @updatedAt
+  projectTemplateSection   ProjectTemplateSection @relation(fields: [projectTemplateSectionId], references: [id], onDelete: Cascade)
+  category                 PresetCategory         @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  preset                   Preset                 @relation(fields: [categoryId, presetId], references: [categoryId, id], onDelete: Restrict)
+  variant                  PresetVariant?         @relation(fields: [presetId, variantId], references: [presetId, id], onDelete: Restrict)
+  promptBlock              TemplateSectionPromptBlock?
+  manualLoraEntries        TemplateSectionManualLoraEntry[]
+
+  @@unique([projectTemplateSectionId, bindingKey])
+  @@unique([projectTemplateSectionId, id])
+  @@index([projectTemplateSectionId, sortOrder])
+  @@index([categoryId])
+  @@index([presetId])
+  @@index([variantId])
+  @@index([groupBindingKey])
+}
+
+model TemplateSectionPromptBlock {
+  id                       String                        @id @default(cuid())
+  projectTemplateSectionId String
+  templateSectionBindingId String?                       @unique
+  type                     String                        @default("custom")
+  customLabel              String?
+  customPositive           String?
+  customNegative           String?
+  sortOrder                Int                           @default(0)
+  createdAt                DateTime                      @default(now())
+  updatedAt                DateTime                      @updatedAt
+  projectTemplateSection   ProjectTemplateSection        @relation(fields: [projectTemplateSectionId], references: [id], onDelete: Cascade)
+  templateSectionBinding   TemplateSectionPresetBinding? @relation(fields: [projectTemplateSectionId, templateSectionBindingId], references: [projectTemplateSectionId, id], onDelete: Cascade)
+
+  @@index([projectTemplateSectionId, sortOrder])
+  @@unique([projectTemplateSectionId, templateSectionBindingId])
+}
+
+model TemplateSectionManualLoraEntry {
+  id                       String                        @id @default(cuid())
+  projectTemplateSectionId String
+  templateSectionBindingId String?
+  stage                    String
+  path                     String
+  weight                   Float                         @default(1)
+  enabled                  Boolean                       @default(true)
+  detachedFromBindingKey   String?
+  detachedFromPresetId     String?
+  detachedFromVariantId    String?
+  detachedFromPath         String?
+  metadata                 Json?
+  sortOrder                Int                           @default(0)
+  createdAt                DateTime                      @default(now())
+  updatedAt                DateTime                      @updatedAt
+  projectTemplateSection   ProjectTemplateSection        @relation(fields: [projectTemplateSectionId], references: [id], onDelete: Cascade)
+  templateSectionBinding   TemplateSectionPresetBinding? @relation(fields: [projectTemplateSectionId, templateSectionBindingId], references: [projectTemplateSectionId, id], onDelete: Restrict)
+
+  @@index([projectTemplateSectionId, stage, sortOrder])
+  @@index([templateSectionBindingId])
+  @@index([detachedFromBindingKey])
 }
 
 model ProjectTemplateSectionFolder {
@@ -225,9 +369,31 @@ model Project {
   sectionFolders        ProjectSectionFolder[]
   runs                  Run[]
   censoringTasks        CensoringTask[]
+  presetBindingRows     ProjectPresetBinding[]
   @@index([status, updatedAt])
   @@index([coverImageId])
   @@index([folderId])
+}
+
+model ProjectPresetBinding {
+  id          String         @id @default(cuid())
+  projectId   String
+  categoryId  String
+  presetId    String
+  variantId   String?
+  sortOrder   Int            @default(0)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  project     Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  category    PresetCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  preset      Preset         @relation(fields: [categoryId, presetId], references: [categoryId, id], onDelete: Restrict)
+  variant     PresetVariant? @relation(fields: [presetId, variantId], references: [presetId, id], onDelete: Restrict)
+
+  @@unique([projectId, categoryId])
+  @@index([projectId, sortOrder])
+  @@index([categoryId])
+  @@index([presetId])
+  @@index([variantId])
 }
 
 model ProjectFolder {
@@ -270,9 +436,81 @@ model ProjectSection {
   runs                  Run[]
   promptBlocks          PromptBlock[]
   changeLogs            SectionChangeLog[]
+  presetBindingRows     SectionPresetBinding[]
+  sectionPromptBlocks   SectionPromptBlock[]
+  manualLoraEntries     SectionManualLoraEntry[]
 
   @@index([projectId, sortOrder])
   @@index([folderId])
+}
+
+model SectionPresetBinding {
+  id                String                   @id @default(cuid())
+  projectSectionId  String
+  bindingKey        String
+  categoryId        String
+  presetId          String
+  variantId         String?
+  groupBindingKey   String?
+  sortOrder         Int                      @default(0)
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
+  projectSection    ProjectSection           @relation(fields: [projectSectionId], references: [id], onDelete: Cascade)
+  category          PresetCategory           @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  preset            Preset                   @relation(fields: [categoryId, presetId], references: [categoryId, id], onDelete: Restrict)
+  variant           PresetVariant?           @relation(fields: [presetId, variantId], references: [presetId, id], onDelete: Restrict)
+  promptBlock       SectionPromptBlock?
+  manualLoraEntries SectionManualLoraEntry[]
+
+  @@unique([projectSectionId, bindingKey])
+  @@unique([projectSectionId, id])
+  @@index([projectSectionId, sortOrder])
+  @@index([categoryId])
+  @@index([presetId])
+  @@index([variantId])
+  @@index([groupBindingKey])
+}
+
+model SectionPromptBlock {
+  id               String                @id @default(cuid())
+  projectSectionId String
+  sectionBindingId String?               @unique
+  type             String                @default("custom")
+  customLabel      String?
+  customPositive   String?
+  customNegative   String?
+  sortOrder        Int                   @default(0)
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+  projectSection   ProjectSection        @relation(fields: [projectSectionId], references: [id], onDelete: Cascade)
+  sectionBinding   SectionPresetBinding? @relation(fields: [projectSectionId, sectionBindingId], references: [projectSectionId, id], onDelete: Cascade)
+
+  @@index([projectSectionId, sortOrder])
+  @@unique([projectSectionId, sectionBindingId])
+}
+
+model SectionManualLoraEntry {
+  id               String                @id @default(cuid())
+  projectSectionId String
+  sectionBindingId String?
+  stage            String
+  path             String
+  weight           Float                 @default(1)
+  enabled          Boolean               @default(true)
+  detachedFromBindingKey String?
+  detachedFromPresetId   String?
+  detachedFromVariantId  String?
+  detachedFromPath       String?
+  metadata         Json?
+  sortOrder        Int                   @default(0)
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+  projectSection   ProjectSection        @relation(fields: [projectSectionId], references: [id], onDelete: Cascade)
+  sectionBinding   SectionPresetBinding? @relation(fields: [projectSectionId, sectionBindingId], references: [projectSectionId, id], onDelete: Restrict)
+
+  @@index([projectSectionId, stage, sortOrder])
+  @@index([sectionBindingId])
+  @@index([detachedFromBindingKey])
 }
 
 model ProjectSectionFolder {
