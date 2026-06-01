@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { resolveSectionConfigsById } from "@/server/repositories/project-repository/helpers";
 
 // ---------------------------------------------------------------------------
 // Project Form Options — 创建/编辑 Project 所需的下拉选项
@@ -126,6 +127,9 @@ export async function getProjectEditData(projectId: string): Promise<ProjectEdit
   });
 
   if (!project) return null;
+  const resolvedConfigsBySectionId = await resolveSectionConfigsById(
+    project.sections.map((section) => section.id),
+  );
 
   // 解析 projectLevelOverrides
   const overrides = (project.projectLevelOverrides ?? {}) as {
@@ -146,9 +150,18 @@ export async function getProjectEditData(projectId: string): Promise<ProjectEdit
     checkpointName: project.checkpointName,
     presetBindings: Array.isArray(project.presetBindings) ? (project.presetBindings as PresetBinding[]) : [],
     notes: project.notes,
-    sections: project.sections.map((pos) => ({
-      ...pos,
-    })),
+    sections: project.sections.map((pos) => {
+      const resolvedConfig = resolvedConfigsBySectionId.get(pos.id);
+      if (!resolvedConfig) {
+        throw new Error("JOB_POSITION_CONFIG_NOT_FOUND");
+      }
+
+      return {
+        ...pos,
+        positivePrompt: resolvedConfig.prompt.positive,
+        negativePrompt: resolvedConfig.prompt.negative,
+      };
+    }),
     // 小节默认值
     defaultAspectRatio: overrides.defaultAspectRatio ?? "2:3",
     defaultShortSidePx: overrides.defaultShortSidePx ?? 512,

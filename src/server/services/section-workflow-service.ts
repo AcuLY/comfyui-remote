@@ -1,10 +1,7 @@
 import { env } from "@/lib/env";
 import { db } from "@/lib/db";
-import {
-  buildResolvedConfigSnapshot,
-  type ProjectSectionRecord,
-  type QueuableProjectRecord,
-} from "@/server/repositories/project-repository/helpers";
+import { buildResolvedConfigSnapshot } from "@/server/repositories/project-repository/helpers";
+import { resolveSectionConfig } from "@/server/prompt-config/section-resolver";
 import { validateComfyPromptDraft } from "@/server/services/comfyui-service";
 import { buildComfyPromptDraft } from "@/server/worker/payload-builder";
 import type { WorkerRunSnapshot } from "@/server/worker/types";
@@ -48,31 +45,6 @@ export async function buildCurrentSectionWorkflow(projectId: string, sectionId: 
       name: true,
       sortOrder: true,
       enabled: true,
-      latestRunId: true,
-      positivePrompt: true,
-      negativePrompt: true,
-      aspectRatio: true,
-      shortSidePx: true,
-      batchSize: true,
-      seedPolicy1: true,
-      seedPolicy2: true,
-      ksampler1: true,
-      ksampler2: true,
-      upscaleFactor: true,
-      checkpointName: true,
-      loraConfig: true,
-      extraParams: true,
-      promptBlocks: {
-        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-        select: {
-          positive: true,
-          negative: true,
-          type: true,
-          categoryId: true,
-          sourceId: true,
-          label: true,
-        },
-      },
     },
   });
 
@@ -85,15 +57,15 @@ export async function buildCurrentSectionWorkflow(projectId: string, sectionId: 
     _max: { runIndex: true },
   });
 
-  const sectionRecord: ProjectSectionRecord = {
-    ...section,
-    runs: [],
-  };
-  const projectRecord: QueuableProjectRecord = project;
+  const resolvedConfig = await resolveSectionConfig(section.id);
+  if (!resolvedConfig) {
+    throw new Error("JOB_POSITION_CONFIG_NOT_FOUND");
+  }
+
   const resolvedConfigSnapshot = buildResolvedConfigSnapshot(
-    projectRecord,
-    sectionRecord,
-    sectionRecord.promptBlocks,
+    project,
+    section,
+    resolvedConfig,
   ) as unknown as WorkerRunSnapshot["resolvedConfigSnapshot"];
   const fallbackSectionName = sectionSlug(section.sortOrder);
   const sectionName = section.name ?? fallbackSectionName;

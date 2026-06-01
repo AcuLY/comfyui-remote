@@ -9,7 +9,10 @@ import {
   formatDate,
   type PresetBindingJson,
 } from "@/server/repositories/queue-data-repository";
+import { resolveSectionConfigsById } from "@/server/repositories/project-repository/helpers";
+import { resolveSectionConfig } from "@/server/prompt-config/section-resolver";
 import { listProjectNavigationItems } from "./list-view";
+import type { ResolvedSectionConfig } from "@/server/prompt-config/types";
 
 // ---------------------------------------------------------------------------
 // Project Detail — 大项目详情 + sections
@@ -67,6 +70,22 @@ export type ProjectSectionFolderItem = {
   sectionCount: number;
   childCount: number;
 };
+
+function readResolvedNumber(
+  resolvedConfig: ResolvedSectionConfig,
+  key: string,
+) {
+  const value = resolvedConfig.parameters[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function readResolvedString(
+  resolvedConfig: ResolvedSectionConfig,
+  key: string,
+) {
+  const value = resolvedConfig.parameters[key];
+  return typeof value === "string" ? value : null;
+}
 
 export async function getProjectDetail(projectId: string): Promise<ProjectDetail | null> {
   const [project, projectNavItems] = await Promise.all([
@@ -150,6 +169,9 @@ export async function getProjectDetail(projectId: string): Promise<ProjectDetail
   const pendingCountByRunId = new Map(
     pendingCounts.map((row) => [row.runId, row._count._all]),
   );
+  const resolvedConfigsBySectionId = await resolveSectionConfigsById(
+    project.sections.map((section) => section.id),
+  );
 
   // Resolve display names from presetBindings
   const presetMap = await batchResolvePresetNames(
@@ -188,20 +210,24 @@ export async function getProjectDetail(projectId: string): Promise<ProjectDetail
       childCount: folder._count.children,
     })),
     sections: project.sections.map((pos) => {
-      const positiveBlockCount = pos.promptBlocks.filter((b) => b.positive?.trim()).length;
-      const negativeBlockCount = pos.promptBlocks.filter((b) => b.negative?.trim()).length;
+      const resolvedConfig = resolvedConfigsBySectionId.get(pos.id);
+      if (!resolvedConfig) {
+        throw new Error("JOB_POSITION_CONFIG_NOT_FOUND");
+      }
+      const positiveBlockCount = resolvedConfig.promptBlocks.filter((b) => b.positive.trim()).length;
+      const negativeBlockCount = resolvedConfig.promptBlocks.filter((b) => b.negative?.trim()).length;
       const latestRun = pos.runs[0] ?? null;
       return {
         id: pos.id,
         name: pos.name || `小节 ${pos.sortOrder}`,
         folderId: pos.folderId,
-        batchSize: pos.batchSize ?? projectDefaultBatchSize,
-        aspectRatio: pos.aspectRatio,
-        seedPolicy1: pos.seedPolicy1,
-        seedPolicy2: pos.seedPolicy2,
+        batchSize: readResolvedNumber(resolvedConfig, "batchSize") ?? projectDefaultBatchSize,
+        aspectRatio: readResolvedString(resolvedConfig, "aspectRatio"),
+        seedPolicy1: readResolvedString(resolvedConfig, "seedPolicy1"),
+        seedPolicy2: readResolvedString(resolvedConfig, "seedPolicy2"),
         latestRunStatus: latestRun?.status ?? null,
         latestRunId: latestRun?.id ?? null,
-        promptBlockCount: pos.promptBlocks.length,
+        promptBlockCount: resolvedConfig.promptBlocks.length,
         positiveBlockCount,
         negativeBlockCount,
         latestImages: (latestRun?.images ?? []).map((img) => ({
@@ -292,7 +318,14 @@ export async function getSectionResults(sectionId: string): Promise<SectionResul
   const pos = await prisma.projectSection.findUnique({
     where: { id: sectionId },
     include: {
-      project: { select: { id: true, title: true, coverImageId: true } },
+      project: {
+        select: {
+          id: true,
+          title: true,
+          coverImageId: true,
+          projectLevelOverrides: true,
+        },
+      },
       runs: {
         orderBy: { createdAt: "desc" },
         include: {
@@ -317,7 +350,7 @@ export async function getSectionResults(sectionId: string): Promise<SectionResul
 
   if (!pos) return null;
 
-  const [projectSectionFolders, projectSections, pendingRuns] = await Promise.all([
+  const [projectSectionFolders, projectSections, pendingRuns, resolvedConfig] = await Promise.all([
     prisma.projectSectionFolder.findMany({
       where: { projectId: pos.project.id },
       orderBy: [{ parentId: "asc" }, { sortOrder: "asc" }, { name: "asc" }],
@@ -337,7 +370,19 @@ export async function getSectionResults(sectionId: string): Promise<SectionResul
       },
       select: { projectSectionId: true },
     }),
+    resolveSectionConfig(pos.id),
   ]);
+  const projectLevelOverrides = (pos.project.projectLevelOverrides ?? {}) as {
+    defaultBatchSize?: number;
+    batchSize?: number;
+  };
+  const projectDefaultBatchSize =
+    projectLevelOverrides.defaultBatchSize ??
+    projectLevelOverrides.batchSize ??
+    null;
+  const resolvedBatchSize = resolvedConfig
+    ? readResolvedNumber(resolvedConfig, "batchSize")
+    : null;
   const orderedProjectSections = buildFolderScopedItemOrder(projectSectionFolders, projectSections);
   const currentIndex = orderedProjectSections.findIndex((section) => section.id === pos.id);
   const previousSection =
@@ -406,7 +451,7 @@ export async function getSectionResults(sectionId: string): Promise<SectionResul
     projectTitle: pos.project.title,
     sectionId: pos.id,
     sectionName: pos.name || `小节`,
-    batchSize: pos.batchSize,
+    batchSize: resolvedBatchSize ?? projectDefaultBatchSize,
     sectionFolderId: pos.folderId,
     previousSection,
     nextSection,

@@ -21,6 +21,12 @@ type LoraConfig2 = {
   lora2: LoraEntry[];
 };
 
+const RESOLVED_ONLY_BLOCK_ID_PREFIX = "resolved:";
+
+function isResolvedOnlyBlockId(blockId: string) {
+  return blockId.startsWith(RESOLVED_ONLY_BLOCK_ID_PREFIX);
+}
+
 /** A preset binding record (derived from blocks + loras with same bindingId) */
 type PresetBindingInfo = {
   bindingId: string;
@@ -35,6 +41,7 @@ type PresetBindingInfo = {
   blockCount: number;
   loraCount: number;
   availableVariants: Array<{ id: string; name: string }>;  // from library data
+  resolvedOnly: boolean;
 };
 
 type SectionEditorProps = {
@@ -99,6 +106,7 @@ export function SectionEditor({
         const existing = map.get(b.bindingId);
         if (existing) {
           existing.blockCount++;
+          existing.resolvedOnly = existing.resolvedOnly && isResolvedOnlyBlockId(b.id);
         } else {
           // Look up available variants and category info from library data
           let availableVariants: Array<{ id: string; name: string }> = [];
@@ -150,6 +158,7 @@ export function SectionEditor({
             blockCount: 1,
             loraCount: 0,
             availableVariants,
+            resolvedOnly: isResolvedOnlyBlockId(b.id),
           });
         }
       }
@@ -640,7 +649,7 @@ export function SectionEditor({
                     </Link>
                   )}
                   {/* Variant switcher — show only if preset has multiple variants */}
-                  {binding.availableVariants.length > 1 && (
+                  {!binding.resolvedOnly && binding.availableVariants.length > 1 && (
                     <div className="relative">
                       <select
                         value={binding.variantId ?? ""}
@@ -674,24 +683,28 @@ export function SectionEditor({
                       <ClipboardCopy className="size-3" />
                     </button>
                   )}
-                  <button
-                    type="button"
-                    onClick={() => handleStandaloneDeleteBinding(binding.bindingId)}
-                    disabled={isPending}
-                    title="独立删除（仅此预制）"
-                    className="rounded p-1 text-zinc-600 hover:bg-amber-500/10 hover:text-amber-400 disabled:opacity-50"
-                  >
-                    <Unlink className="size-3" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteBinding(binding.bindingId)}
-                    disabled={isPending}
-                    title="级联删除（含同组预制）"
-                    className="rounded p-1 text-zinc-600 hover:bg-red-500/10 hover:text-red-400 disabled:opacity-50"
-                  >
-                    <Trash2 className="size-3" />
-                  </button>
+                  {!binding.resolvedOnly && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handleStandaloneDeleteBinding(binding.bindingId)}
+                        disabled={isPending}
+                        title="独立删除（仅此预制）"
+                        className="rounded p-1 text-zinc-600 hover:bg-amber-500/10 hover:text-amber-400 disabled:opacity-50"
+                      >
+                        <Unlink className="size-3" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteBinding(binding.bindingId)}
+                        disabled={isPending}
+                        title="级联删除（含同组预制）"
+                        className="rounded p-1 text-zinc-600 hover:bg-red-500/10 hover:text-red-400 disabled:opacity-50"
+                      >
+                        <Trash2 className="size-3" />
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             ))}

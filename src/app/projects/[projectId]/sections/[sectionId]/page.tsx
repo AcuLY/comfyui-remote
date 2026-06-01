@@ -10,13 +10,15 @@ import { SectionNameEditor } from "./section-name-editor";
 import { SectionRunButton } from "@/app/projects/[projectId]/project-detail-actions";
 import type { PromptBlockData } from "@/lib/actions";
 import { getPresetLibraryV2 } from "@/lib/server-data";
-import { parseSectionLoraConfig, serializeSectionLoraConfig, generateLoraEntryId, parseLoraBindings } from "@/lib/lora-types";
+import { parseSectionLoraConfig } from "@/lib/lora-types";
 import type { LoraEntry } from "@/lib/lora-types";
-import { getDetachedPresetPaths } from "@/lib/preset-binding-utils";
 import { revalidatePath } from "next/cache";
 import { getSectionChangeHistory } from "@/server/services/section-change-history-service";
 import { SectionChangeHistory } from "./section-change-history";
 import { SectionSwitchHeaderLink, SectionSwitchScrollRestorer, SectionKeyboardShortcuts } from "./section-switch-navigation";
+import { resolveSectionConfig } from "@/server/prompt-config/section-resolver";
+
+const RESOLVED_ONLY_BLOCK_ID_PREFIX = "resolved:";
 
 export default async function SectionEditPage({
   params,
@@ -25,13 +27,12 @@ export default async function SectionEditPage({
 }) {
   const { projectId, sectionId } = await params;
 
-  const [pos, libraryV2, siblingFolders, siblingSections] = await Promise.all([
+  const [pos, resolvedConfig, libraryV2, siblingFolders, siblingSections] = await Promise.all([
     prisma.projectSection.findUnique({
       where: { id: sectionId },
       include: {
         project: {
           select: {
-            presetBindings: true,
             checkpointName: true,
           },
         },
@@ -77,6 +78,7 @@ export default async function SectionEditPage({
         },
       },
     }),
+    resolveSectionConfig(sectionId),
     getPresetLibraryV2(),
     prisma.projectSectionFolder.findMany({
       where: { projectId },
@@ -117,167 +119,106 @@ export default async function SectionEditPage({
     status: img.reviewStatus,
   }));
 
-  const initialBlocks: PromptBlockData[] = pos.promptBlocks.map((b) => ({
-    id: b.id,
-    type: b.type,
-    sourceId: b.sourceId,
-    variantId: b.variantId,
-    categoryId: b.categoryId,
-    bindingId: b.bindingId,
-    groupBindingId: b.groupBindingId,
-    label: b.label,
-    positive: b.positive,
-    negative: b.negative,
-    sortOrder: b.sortOrder,
-  }));
-
-  const sectionParams = {
-    batchSize: pos.batchSize ?? null,
-    aspectRatio: pos.aspectRatio ?? null,
-    shortSidePx: pos.shortSidePx ?? null,
-    // v0.3: dual seedPolicy
-    seedPolicy1: pos.seedPolicy1 ?? null,
-    seedPolicy2: pos.seedPolicy2 ?? null,
-    // v0.3: ksampler params
-    ksampler1: pos.ksampler1 ?? null,
-    ksampler2: pos.ksampler2 ?? null,
-    upscaleFactor: pos.upscaleFactor ?? null,
-    checkpointName: pos.checkpointName ?? null,
-    projectCheckpointName: pos.project.checkpointName ?? null,
+  const readResolvedStringParam = (key: string) => {
+    const value = resolvedConfig?.parameters[key];
+    return typeof value === "string" ? value : null;
+  };
+  const readResolvedIntegerParam = (key: string) => {
+    const value = resolvedConfig?.parameters[key];
+    return typeof value === "number" && Number.isInteger(value) ? value : null;
+  };
+  const readResolvedNumberParam = (key: string) => {
+    const value = resolvedConfig?.parameters[key];
+    return typeof value === "number" && Number.isFinite(value) ? value : null;
   };
 
-  // Parse existing LoRA config ({ lora1, lora2 })
-  const loraConfig = parseSectionLoraConfig(pos.loraConfig);
+  const resolvedPromptBlocks = resolvedConfig?.promptBlocks ?? [];
+  const usedResolvedBlockIndexes = new Set<number>();
 
-  // Unified: ALL presets' lora1 → section.lora1, lora2 → section.lora2
-  if (pos.project) {
-    let loraChanged = false;
+  const initialBlocksFromLegacy: PromptBlockData[] = pos.promptBlocks.map((b, index) => {
+    const bindingMatchedIndex = b.bindingId
+      ? resolvedPromptBlocks.findIndex((block) => block.bindingId === b.bindingId)
+      : -1;
+    const identityMatchedIndex = resolvedPromptBlocks.findIndex((block, blockIndex) =>
+      !usedResolvedBlockIndexes.has(blockIndex) &&
+        block.sortOrder === b.sortOrder &&
+        block.type === b.type &&
+        block.sourceId === b.sourceId &&
+        block.variantId === b.variantId &&
+        block.categoryId === b.categoryId,
+    );
+    const indexMatchedIndex = usedResolvedBlockIndexes.has(index) ? -1 : index;
+    const resolvedBlockIndex =
+      bindingMatchedIndex >= 0
+        ? bindingMatchedIndex
+        : identityMatchedIndex >= 0
+          ? identityMatchedIndex
+          : indexMatchedIndex >= 0 && indexMatchedIndex < resolvedPromptBlocks.length
+            ? indexMatchedIndex
+            : -1;
+    const resolvedBlock = resolvedBlockIndex >= 0 ? resolvedPromptBlocks[resolvedBlockIndex] : null;
+    if (resolvedBlockIndex >= 0) usedResolvedBlockIndexes.add(resolvedBlockIndex);
 
-    type PresetBindingJson = Array<{ categoryId: string; presetId: string }>;
-    const bindings = pos.project.presetBindings as PresetBindingJson | null;
-    if (bindings && bindings.length > 0) {
-      const presetIds = bindings.map((b) => b.presetId);
-      const variants = await prisma.presetVariant.findMany({
-        where: { presetId: { in: presetIds } },
-        select: {
-          id: true, name: true, presetId: true, lora1: true, lora2: true,
-          preset: {
-            select: {
-              name: true,
-              category: { select: { name: true, color: true } },
-            },
-          },
-        },
-      });
+    return {
+      id: b.id,
+      type: resolvedBlock ? resolvedBlock.type : b.type,
+      sourceId: resolvedBlock ? resolvedBlock.sourceId : b.sourceId,
+      variantId: resolvedBlock ? resolvedBlock.variantId : b.variantId,
+      categoryId: resolvedBlock ? resolvedBlock.categoryId : b.categoryId,
+      bindingId: resolvedBlock ? resolvedBlock.bindingId : b.bindingId,
+      groupBindingId: resolvedBlock ? resolvedBlock.groupBindingId : b.groupBindingId,
+      label: resolvedBlock ? resolvedBlock.label : b.label,
+      positive: resolvedBlock ? resolvedBlock.positive : b.positive,
+      negative: resolvedBlock ? resolvedBlock.negative : b.negative,
+      sortOrder: b.sortOrder,
+    };
+  });
+  const resolverOnlyBlocks: PromptBlockData[] = resolvedPromptBlocks
+    .map((block, index) => ({ block, index }))
+    .filter(({ index }) => !usedResolvedBlockIndexes.has(index))
+    .map(({ block, index }) => ({
+      id: `${RESOLVED_ONLY_BLOCK_ID_PREFIX}${block.bindingId ?? block.sourceId ?? "block"}:${index}`,
+      type: block.type,
+      sourceId: block.sourceId,
+      variantId: block.variantId,
+      categoryId: block.categoryId,
+      bindingId: block.bindingId,
+      groupBindingId: block.groupBindingId,
+      label: block.label,
+      positive: block.positive,
+      negative: block.negative,
+      sortOrder: block.sortOrder,
+    }));
+  const initialBlocks = [...initialBlocksFromLegacy, ...resolverOnlyBlocks]
+    .sort((left, right) => left.sortOrder - right.sortOrder || left.id.localeCompare(right.id));
 
-      // Build a lookup: presetId → bindingId from the section's prompt blocks
-      const blockBindingMap = new Map<string, string>();
-      for (const block of pos.promptBlocks) {
-        if (block.sourceId && block.bindingId) {
-          blockBindingMap.set(block.sourceId, block.bindingId);
-        }
+  const sectionParams = resolvedConfig
+    ? {
+        batchSize: readResolvedIntegerParam("batchSize"),
+        aspectRatio: readResolvedStringParam("aspectRatio"),
+        shortSidePx: readResolvedIntegerParam("shortSidePx"),
+        seedPolicy1: readResolvedStringParam("seedPolicy1"),
+        seedPolicy2: readResolvedStringParam("seedPolicy2"),
+        ksampler1: resolvedConfig.ksampler1 ?? null,
+        ksampler2: resolvedConfig.ksampler2 ?? null,
+        upscaleFactor: readResolvedNumberParam("upscaleFactor"),
+        checkpointName: pos.checkpointName ?? null,
+        projectCheckpointName: readResolvedStringParam("checkpointName"),
       }
+    : {
+        batchSize: pos.batchSize ?? null,
+        aspectRatio: pos.aspectRatio ?? null,
+        shortSidePx: pos.shortSidePx ?? null,
+        seedPolicy1: pos.seedPolicy1 ?? null,
+        seedPolicy2: pos.seedPolicy2 ?? null,
+        ksampler1: pos.ksampler1 ?? null,
+        ksampler2: pos.ksampler2 ?? null,
+        upscaleFactor: pos.upscaleFactor ?? null,
+        checkpointName: pos.checkpointName ?? null,
+        projectCheckpointName: pos.project.checkpointName ?? null,
+      };
 
-      // Build a lookup: presetId → { categoryName, presetName, lora paths }
-      // so we can backfill bindingId on existing entries that lack one
-      const presetLoraPathMap = new Map<string, Set<string>>();
-      for (const variant of variants) {
-        const paths = presetLoraPathMap.get(variant.presetId) ?? new Set<string>();
-        if (variant.lora1) {
-          for (const b of parseLoraBindings(variant.lora1)) {
-            if (b.path) paths.add(b.path);
-          }
-        }
-        if (variant.lora2) {
-          for (const b of parseLoraBindings(variant.lora2)) {
-            if (b.path) paths.add(b.path);
-          }
-        }
-        presetLoraPathMap.set(variant.presetId, paths);
-      }
-
-      for (const variant of variants) {
-        const categoryName = variant.preset.category.name;
-        const categoryColor = variant.preset.category.color;
-        const presetName = variant.preset.name;
-        const bindingId = blockBindingMap.get(variant.presetId);
-        if (variant.lora1) {
-          const lora1Bindings = parseLoraBindings(variant.lora1);
-          const detachedPaths = getDetachedPresetPaths(loraConfig.lora1, bindingId ?? null);
-          for (const binding of lora1Bindings) {
-            if (!binding.path) continue;
-            if (detachedPaths.has(binding.path)) continue;
-            const exists = loraConfig.lora1.some((e) => e.path === binding.path);
-            if (!exists) {
-              loraConfig.lora1.push({
-                id: generateLoraEntryId(),
-                path: binding.path,
-                weight: binding.weight,
-                enabled: binding.enabled,
-                source: "preset",
-                sourceLabel: categoryName,
-                sourceColor: categoryColor ?? undefined,
-                sourceName: presetName,
-                bindingId,
-              });
-              loraChanged = true;
-            }
-          }
-        }
-        if (variant.lora2) {
-          const lora2Bindings = parseLoraBindings(variant.lora2);
-          const detachedPaths = getDetachedPresetPaths(loraConfig.lora2, bindingId ?? null);
-          for (const binding of lora2Bindings) {
-            if (!binding.path) continue;
-            if (detachedPaths.has(binding.path)) continue;
-            const exists = loraConfig.lora2.some((e) => e.path === binding.path);
-            if (!exists) {
-              loraConfig.lora2.push({
-                id: generateLoraEntryId(),
-                path: binding.path,
-                weight: binding.weight,
-                enabled: binding.enabled,
-                source: "preset",
-                sourceLabel: categoryName,
-                sourceColor: categoryColor ?? undefined,
-                sourceName: presetName,
-                bindingId,
-              });
-              loraChanged = true;
-            }
-          }
-        }
-      }
-
-      // Backfill: add bindingId to existing entries that are missing one
-      // by matching their path + sourceName against known presets
-      for (const [presetId, paths] of presetLoraPathMap) {
-        const bindingId = blockBindingMap.get(presetId);
-        if (!bindingId) continue;
-        for (const entry of loraConfig.lora1) {
-          if (!entry.bindingId && entry.source === "preset" && paths.has(entry.path)) {
-            entry.bindingId = bindingId;
-            loraChanged = true;
-          }
-        }
-        for (const entry of loraConfig.lora2) {
-          if (!entry.bindingId && entry.source === "preset" && paths.has(entry.path)) {
-            entry.bindingId = bindingId;
-            loraChanged = true;
-          }
-        }
-      }
-    }
-
-    if (loraChanged) {
-      await prisma.projectSection.update({
-        where: { id: sectionId },
-        data: {
-          loraConfig: serializeSectionLoraConfig(loraConfig),
-        },
-      });
-    }
-  }
+  const loraConfig = resolvedConfig?.loraConfig ?? parseSectionLoraConfig(pos.loraConfig);
 
   // Server action to save LoRA config (2-partition: lora1, lora2)
   async function handleLoraChange(config: { lora1: LoraEntry[]; lora2: LoraEntry[] }) {

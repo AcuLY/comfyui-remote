@@ -94,6 +94,12 @@ type CategoryConfig = {
   icon: string | null;
 };
 
+const RESOLVED_ONLY_BLOCK_ID_PREFIX = "resolved:";
+
+function isResolvedOnlyBlockId(blockId: string) {
+  return blockId.startsWith(RESOLVED_ONLY_BLOCK_ID_PREFIX);
+}
+
 // ---------------------------------------------------------------------------
 // Icon / Color resolution
 // ---------------------------------------------------------------------------
@@ -198,6 +204,7 @@ type SortableBlockCardProps = {
   onStandaloneDelete?: () => void;
   isSaving: boolean;
   categoryMap: Map<string, CategoryConfig>;
+  isReadOnly: boolean;
 };
 
 function SortableBlockCard({
@@ -213,9 +220,11 @@ function SortableBlockCard({
   onStandaloneDelete,
   isSaving,
   categoryMap,
+  isReadOnly,
 }: SortableBlockCardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: block.id,
+    disabled: isReadOnly,
   });
 
   const [mounted, setMounted] = useState(false);
@@ -242,9 +251,13 @@ function SortableBlockCard({
       <div className="flex items-center gap-1.5 p-2">
         <button
           type="button"
-          className="cursor-grab touch-none text-zinc-600 hover:text-zinc-400"
-          {...(mounted ? attributes : {})}
-          {...(mounted ? listeners : {})}
+          className={
+            isReadOnly
+              ? "touch-none text-zinc-700"
+              : "cursor-grab touch-none text-zinc-600 hover:text-zinc-400"
+          }
+          {...(mounted && !isReadOnly ? attributes : {})}
+          {...(mounted && !isReadOnly ? listeners : {})}
         >
           <GripVertical className="size-3.5" />
         </button>
@@ -260,19 +273,21 @@ function SortableBlockCard({
           )}
         </div>
         <div className="flex items-center gap-0.5">
-          {!isEditing && (
+          {!isReadOnly && !isEditing && (
             <button type="button" onClick={onStartEdit} className="rounded p-1 text-zinc-500 hover:bg-white/[0.06] hover:text-white">
               <Pencil className="size-3" />
             </button>
           )}
-          {onStandaloneDelete && block.bindingId && (
+          {!isReadOnly && onStandaloneDelete && block.bindingId && (
             <button type="button" onClick={onStandaloneDelete} title="独立删除（仅此块）" className="rounded p-1 text-zinc-500 hover:bg-amber-500/10 hover:text-amber-400">
               <Unlink className="size-3" />
             </button>
           )}
-          <button type="button" onClick={onDelete} title="级联删除（含绑定）" className="rounded p-1 text-zinc-500 hover:bg-red-500/10 hover:text-red-400">
-            <Trash2 className="size-3" />
-          </button>
+          {!isReadOnly && (
+            <button type="button" onClick={onDelete} title="级联删除（含绑定）" className="rounded p-1 text-zinc-500 hover:bg-red-500/10 hover:text-red-400">
+              <Trash2 className="size-3" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -382,23 +397,27 @@ function BlockColumn({
           暂无
         </div>
       ) : (
-        visibleBlocks.map((block) => (
-          <SortableBlockCard
-            key={block.id}
-            block={block}
-            column={column}
-            isEditing={editingId === block.id}
-            editValue={editValue}
-            onEditChange={onEditChange}
-            onStartEdit={() => onStartEdit(block)}
-            onCancelEdit={onCancelEdit}
-            onSaveEdit={onSaveEdit}
-            onDelete={() => onDelete(block.id)}
-            onStandaloneDelete={onStandaloneDelete ? () => onStandaloneDelete(block.id) : undefined}
-            isSaving={isSaving}
-            categoryMap={categoryMap}
-          />
-        ))
+        visibleBlocks.map((block) => {
+          const isReadOnly = isResolvedOnlyBlockId(block.id);
+          return (
+            <SortableBlockCard
+              key={block.id}
+              block={block}
+              column={column}
+              isEditing={editingId === block.id}
+              editValue={editValue}
+              onEditChange={onEditChange}
+              onStartEdit={() => onStartEdit(block)}
+              onCancelEdit={onCancelEdit}
+              onSaveEdit={onSaveEdit}
+              onDelete={() => onDelete(block.id)}
+              onStandaloneDelete={onStandaloneDelete ? () => onStandaloneDelete(block.id) : undefined}
+              isSaving={isSaving}
+              categoryMap={categoryMap}
+              isReadOnly={isReadOnly}
+            />
+          );
+        })
       )}
     </div>
   );
@@ -636,6 +655,7 @@ export function PromptBlockEditor({
     const oldIndex = blocks.findIndex((b) => b.id === active.id);
     const newIndex = blocks.findIndex((b) => b.id === over.id);
     if (oldIndex === -1 || newIndex === -1) return;
+    if (isResolvedOnlyBlockId(String(active.id)) || isResolvedOnlyBlockId(String(over.id))) return;
 
     const nextBlocks = arrayMove(blocks, oldIndex, newIndex);
     setBlocks(nextBlocks);

@@ -96,6 +96,7 @@ export default async function SectionResultsPage({
         subtitle={`${data.projectTitle} · ${data.runs.length} 次运行 · ${totalImages} 张图片${data.totalPending > 0 ? ` · ${data.totalPending} 张待审` : ""}`}
       >
         <ResultsGrid
+          key={`${sectionId}:${data.batchSize ?? 2}`}
           runs={data.runs}
           sectionId={sectionId}
           initialBatchSize={data.batchSize ?? 2}

@@ -16,9 +16,9 @@ import {
   serializeLatestRun,
   resolveLatestRun,
   serializeProjectSection,
+  resolveSectionConfigsById,
   buildProjectLevelOverridesUpdate,
   buildResolvedConfigSnapshot,
-  buildResolvedPromptDraft,
   cloneJsonValueForCreate,
   resolveUniqueProjectSlug,
   resolveUniqueProjectCopyIdentity,
@@ -166,6 +166,9 @@ export async function getProjectDetail(projectId: string) {
     .filter((runId): runId is string => runId !== null);
 
   const latestRunsById = await getLatestRunsById(latestRunIds);
+  const resolvedConfigsBySectionId = await resolveSectionConfigsById(
+    project.sections.map((section) => section.id),
+  );
 
   return {
     id: project.id,
@@ -181,7 +184,13 @@ export async function getProjectDetail(projectId: string) {
     promptOverview: {
       projectLevelOverrides: project.projectLevelOverrides,
     },
-    sections: project.sections.map((section) => serializeProjectSection(section, latestRunsById)),
+    sections: project.sections.map((section) =>
+      serializeProjectSection(
+        section,
+        latestRunsById,
+        resolvedConfigsBySectionId.get(section.id),
+      ),
+    ),
   };
 }
 
@@ -254,7 +263,10 @@ export async function getProjectAgentContext(projectId: string) {
     .map((section) => section.latestRunId)
     .filter((runId): runId is string => runId !== null);
 
-  const latestRunsById = await getLatestRunsById(latestRunIds);
+  const [latestRunsById, resolvedConfigsBySectionId] = await Promise.all([
+    getLatestRunsById(latestRunIds),
+    resolveSectionConfigsById(project.sections.map((section) => section.id)),
+  ]);
   const latestRunStatusCounts: Record<string, number> = {};
   const latestRunImageSummary = {
     totalCount: 0,
@@ -266,6 +278,10 @@ export async function getProjectAgentContext(projectId: string) {
 
   const sections = project.sections.map((section) => {
     const latestRun = resolveLatestRun(section, latestRunsById);
+    const resolvedConfig = resolvedConfigsBySectionId.get(section.id);
+    if (!resolvedConfig) {
+      throw new Error("JOB_POSITION_CONFIG_NOT_FOUND");
+    }
 
     if (latestRun) {
       positionsWithLatestRunCount += 1;
@@ -287,9 +303,9 @@ export async function getProjectAgentContext(projectId: string) {
       name: section.name ?? null,
       slug: null,
       latestRun: serializeLatestRun(latestRun),
-      promptBlocks: section.promptBlocks,
-      promptDraft: buildResolvedPromptDraft(project, section, section.promptBlocks),
-      resolvedConfig: buildResolvedConfigSnapshot(project, section, section.promptBlocks),
+      promptBlocks: resolvedConfig.promptBlocks,
+      promptDraft: resolvedConfig.prompt,
+      resolvedConfig: buildResolvedConfigSnapshot(project, section, resolvedConfig),
     };
   });
 
@@ -390,9 +406,16 @@ export async function getProjectSectionDetail(projectId: string, sectionId: stri
   }
 
   const latestRunIds = section.latestRunId ? [section.latestRunId] : [];
-  const latestRunsById = await getLatestRunsById(latestRunIds);
+  const [latestRunsById, resolvedConfigsBySectionId] = await Promise.all([
+    getLatestRunsById(latestRunIds),
+    resolveSectionConfigsById([section.id]),
+  ]);
 
-  return serializeProjectSection(section, latestRunsById);
+  return serializeProjectSection(
+    section,
+    latestRunsById,
+    resolvedConfigsBySectionId.get(section.id),
+  );
 }
 
 export async function createProject(input: ProjectCreateInput) {

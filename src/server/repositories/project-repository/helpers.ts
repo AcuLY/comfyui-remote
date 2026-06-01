@@ -1,6 +1,8 @@
 import { Prisma } from "@/generated/prisma";
 import { JobStatus, ReviewStatus } from "@/lib/db-enums";
 import { db } from "@/lib/db";
+import { resolveSectionConfig } from "@/server/prompt-config/section-resolver";
+import type { ResolvedSectionConfig } from "@/server/prompt-config/types";
 
 export type ProjectUpdateInput = {
   aspectRatio?: string | null;
@@ -168,7 +170,19 @@ export function resolveLatestRun(
 export function serializeProjectSection(
   section: ProjectSectionRecord,
   latestRunsById: Map<string, LatestRunRecord>,
+  resolvedConfig?: ResolvedSectionConfig,
 ) {
+  const hasResolvedConfig = resolvedConfig !== undefined;
+  const resolvedParameters = resolvedConfig?.parameters;
+  const resolvedString = (key: string) => {
+    const value = resolvedParameters?.[key];
+    return typeof value === "string" ? value : null;
+  };
+  const resolvedNumber = (key: string) => {
+    const value = resolvedParameters?.[key];
+    return typeof value === "number" && Number.isFinite(value) ? value : null;
+  };
+
   return {
     id: section.id,
     sortOrder: section.sortOrder,
@@ -176,22 +190,42 @@ export function serializeProjectSection(
     latestRunId: section.latestRunId,
     name: section.name ?? null,
     slug: null,
-    aspectRatio: section.aspectRatio ?? null,
-    batchSize: section.batchSize ?? null,
-    seedPolicy1: section.seedPolicy1 ?? null,
-    seedPolicy2: section.seedPolicy2 ?? null,
-    ksampler1: section.ksampler1 ?? null,
-    ksampler2: section.ksampler2 ?? null,
-    checkpointName: section.checkpointName,
-    loraConfig: section.loraConfig,
-    extraParams: section.extraParams,
+    aspectRatio: hasResolvedConfig ? resolvedString("aspectRatio") : section.aspectRatio ?? null,
+    batchSize: hasResolvedConfig ? resolvedNumber("batchSize") : section.batchSize ?? null,
+    seedPolicy1: hasResolvedConfig ? resolvedString("seedPolicy1") : section.seedPolicy1 ?? null,
+    seedPolicy2: hasResolvedConfig ? resolvedString("seedPolicy2") : section.seedPolicy2 ?? null,
+    ksampler1: hasResolvedConfig ? resolvedConfig.ksampler1 : section.ksampler1 ?? null,
+    ksampler2: hasResolvedConfig ? resolvedConfig.ksampler2 : section.ksampler2 ?? null,
+    checkpointName: hasResolvedConfig ? resolvedString("checkpointName") : section.checkpointName,
+    loraConfig: hasResolvedConfig ? resolvedConfig.loraConfig : section.loraConfig,
+    extraParams: hasResolvedConfig ? resolvedConfig.extraParams : section.extraParams,
     promptOverview: {
       templatePrompt: null,
-      positivePrompt: section.positivePrompt,
-      negativePrompt: section.negativePrompt ?? null,
+      positivePrompt: hasResolvedConfig ? resolvedConfig.prompt.positive : section.positivePrompt,
+      negativePrompt: hasResolvedConfig ? resolvedConfig.prompt.negative : section.negativePrompt ?? null,
     },
     latestRun: serializeLatestRun(resolveLatestRun(section, latestRunsById)),
   };
+}
+
+export async function resolveSectionConfigsById(
+  sectionIds: readonly string[],
+  client?: Prisma.TransactionClient,
+) {
+  const entries = await Promise.all(
+    sectionIds.map(async (sectionId) => {
+      const resolvedConfig = await resolveSectionConfig(
+        sectionId,
+        client as Parameters<typeof resolveSectionConfig>[1],
+      );
+      if (!resolvedConfig) {
+        throw new Error("JOB_POSITION_CONFIG_NOT_FOUND");
+      }
+      return [sectionId, resolvedConfig] as const;
+    }),
+  );
+
+  return new Map(entries);
 }
 
 export async function getLatestRunsById(latestRunIds: string[]) {
@@ -285,46 +319,39 @@ export function resolveProjectOverrideInteger(
   return typeof value === "number" && Number.isInteger(value) ? value : null;
 }
 
+function cloneInputJsonValue(value: unknown): Prisma.InputJsonValue | null {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
+}
+
+function cloneInputJsonObject(value: unknown): MutableInputJsonObject | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+
+  return JSON.parse(JSON.stringify(value)) as MutableInputJsonObject;
+}
+
+function readSnapshotCheckpointName(parameters: Prisma.InputJsonObject) {
+  const checkpointName = parameters.checkpointName;
+  return typeof checkpointName === "string" ? checkpointName : null;
+}
+
 export function buildResolvedConfigSnapshot(
   project: QueuableProjectRecord,
-  section: ProjectSectionRecord,
-  blocks?: Array<{
-    positive: string;
-    negative: string | null;
-    type?: string;
-    categoryId?: string | null;
-    sourceId?: string | null;
-    label?: string;
-  }>,
+  section: Pick<ProjectSectionRecord, "id" | "name" | "sortOrder">,
+  resolvedConfig: ResolvedSectionConfig,
   overrideBatchSize?: number,
 ): Prisma.InputJsonObject {
-  const projectLevelOverrides = toInputJsonObject(project.projectLevelOverrides);
-  const resolvedAspectRatio =
-    section.aspectRatio ??
-    resolveProjectOverrideString(projectLevelOverrides, "defaultAspectRatio") ??
-    resolveProjectOverrideString(projectLevelOverrides, "aspectRatio") ??
-    null;
-  const resolvedShortSidePx =
-    section.shortSidePx ??
-    resolveProjectOverrideInteger(projectLevelOverrides, "shortSidePx") ??
-    null;
-  const resolvedBatchSize =
-    overrideBatchSize ??
-    section.batchSize ??
-    resolveProjectOverrideInteger(projectLevelOverrides, "defaultBatchSize") ??
-    resolveProjectOverrideInteger(projectLevelOverrides, "batchSize") ??
-    null;
-  const resolvedSeedPolicy1 =
-    section.seedPolicy1 ?? null;
-  const resolvedSeedPolicy2 =
-    section.seedPolicy2 ?? null;
-  const resolvedCheckpointName =
-    section.checkpointName ??
-    project.checkpointName ??
-    null;
-
-  // Compose final prompt from blocks (v0.2) or legacy fallback
-  const promptDraft = buildResolvedPromptDraft(project, section, blocks);
+  const parameters = cloneInputJsonObject(resolvedConfig.parameters) ?? {};
+  if (overrideBatchSize !== undefined) {
+    parameters.batchSize = overrideBatchSize;
+  }
+  const resolvedCheckpointName = readSnapshotCheckpointName(parameters);
+  const fallbackSectionName = `section_${section.sortOrder + 1}`;
 
   return {
     project: {
@@ -337,39 +364,22 @@ export function buildResolvedConfigSnapshot(
       templateId: null,
       sortOrder: section.sortOrder,
       name: section.name ?? `section_${section.sortOrder + 1}`,
-      slug: `section_${section.sortOrder + 1}`,
+      slug: fallbackSectionName,
       templatePrompt: null,
-      positivePrompt: section.positivePrompt,
-      negativePrompt: section.negativePrompt ?? null,
+      positivePrompt: resolvedConfig.prompt.positive,
+      negativePrompt: resolvedConfig.prompt.negative,
     },
-    promptBlocks: blocks ?? null,
-    // v0.4: presets array from blocks that have type=preset
-    presets: blocks
-      ? blocks
-          .filter((b) => b.type === "preset" && b.categoryId && b.sourceId)
-          .map((b) => ({
-            categoryId: b.categoryId,
-            presetId: b.sourceId,
-            label: b.label ?? null,
-          }))
-      : null,
-    composedPrompt: promptDraft,
-    parameters: {
-      aspectRatio: resolvedAspectRatio,
-      shortSidePx: resolvedShortSidePx,
-      batchSize: resolvedBatchSize,
-      // v0.3: dual seedPolicy (keep seedPolicy for backward compat)
-      seedPolicy: resolvedSeedPolicy1,
-      seedPolicy1: resolvedSeedPolicy1,
-      seedPolicy2: resolvedSeedPolicy2,
-      upscaleFactor: section.upscaleFactor ?? null,
-      checkpointName: resolvedCheckpointName,
-    },
+    promptBlocks: cloneInputJsonValue(resolvedConfig.promptBlocks),
+    presets: cloneInputJsonValue(resolvedConfig.presets),
+    composedPrompt: cloneInputJsonValue(resolvedConfig.prompt),
+    parameters,
     checkpointName: resolvedCheckpointName,
-    ksampler1: section.ksampler1 ?? null,
-    ksampler2: section.ksampler2 ?? null,
-    loraConfig: section.loraConfig,
-    extraParams: section.extraParams ? (JSON.parse(JSON.stringify(section.extraParams)) as Prisma.InputJsonObject) : null,
+    ksampler1: cloneInputJsonValue(resolvedConfig.ksampler1),
+    ksampler2: cloneInputJsonValue(resolvedConfig.ksampler2),
+    loraConfig: cloneInputJsonValue(resolvedConfig.loraConfig),
+    extraParams: cloneInputJsonValue(resolvedConfig.extraParams),
+    warnings: cloneInputJsonValue(resolvedConfig.warnings),
+    missingReferences: cloneInputJsonValue(resolvedConfig.missingReferences),
   };
 }
 
@@ -519,11 +529,25 @@ export async function ensureQueuedProjectStatus(
   return updatedProject.status;
 }
 
+async function resolveSectionConfigForRun(
+  sectionId: string,
+  client: Prisma.TransactionClient,
+) {
+  return resolveSectionConfig(
+    sectionId,
+    client as Parameters<typeof resolveSectionConfig>[1],
+  );
+}
+
 export async function createQueuedRunsForPositions(
   tx: Prisma.TransactionClient,
   project: QueuableProjectRecord,
   sections: ProjectSectionRecord[],
   overrideBatchSize?: number,
+  resolveConfig: (
+    sectionId: string,
+    client: Prisma.TransactionClient,
+  ) => Promise<ResolvedSectionConfig | null> = resolveSectionConfigForRun,
 ) {
   const sectionIds = sections.map((section) => section.id);
   const latestRunIndexes = await tx.run.groupBy({
@@ -546,13 +570,18 @@ export async function createQueuedRunsForPositions(
   const queuedRuns: Array<ReturnType<typeof serializeEnqueuedRun>> = [];
 
   for (const section of sections) {
+    const resolvedConfig = await resolveConfig(section.id, tx);
+    if (!resolvedConfig) {
+      throw new Error("JOB_POSITION_CONFIG_NOT_FOUND");
+    }
+
     const createdRun = await tx.run.create({
       data: {
         projectId: project.id,
         projectSectionId: section.id,
         runIndex: (latestRunIndexBySectionId.get(section.id) ?? 0) + 1,
         status: "queued",
-        resolvedConfigSnapshot: buildResolvedConfigSnapshot(project, section, section.promptBlocks, overrideBatchSize),
+        resolvedConfigSnapshot: buildResolvedConfigSnapshot(project, section, resolvedConfig, overrideBatchSize),
       },
       select: {
         id: true,
