@@ -4,8 +4,8 @@ pov纯手 1girl, pov, first person view
 脱衣服的描述应该和小节绑定？？？
 全部加motion lines!!!
 体位不需要强调插入？？
-### 服饰
 
+### 服饰
 
 胸部及以上、腰部及以上
 
@@ -18,9 +18,7 @@ pov纯手 1girl, pov, first person view
 - 画幅：
 - 暴露：
 
-
 ### 裙底
-
 
 upskirt view, from below skirt, looking up under skirt, panty focus, crotch shot from below, detailed panties, cameltoe, low angle between legs, thighs framing view, skirt hem above
 
@@ -31,9 +29,7 @@ upskirt view, from below skirt, looking up under skirt, panty focus, crotch shot
 - 画幅：竖屏
 - 暴露：
 
-
 ### 股间
-
 
 close-up thighs and hip, hip focus, from below
 
@@ -44,9 +40,7 @@ close-up thighs and hip, hip focus, from below
 - 画幅：竖屏
 - 暴露：
 
-
 ### 胸部
-
 
 low angle view, from below breasts, looking up at breasts, upward perspective on chest, detailed underboob and nipple view 横屏
 
@@ -57,9 +51,7 @@ low angle view, from below breasts, looking up at breasts, upward perspective on
 - 画幅：竖屏
 - 暴露：
 
-
 ### 拉开上衣
-
 
 girl using her own hand to pull open her top, her hand pulling her shirt apart, self undressing, exposing own breasts, deep cleavage, nipples visible, nipples revealed, seductive self-exposure, pulling clothing aside by herself, bare breasts revealed, teasing pose, seductive motion
 
@@ -70,9 +62,7 @@ girl using her own hand to pull open her top, her hand pulling her shirt apart, 
 - 画幅：竖屏
 - 暴露：胸部
 
-
 ### 正面摸胸
-
 
 male's hands caressing female body, male hands groping breasts, male hands brabbing breasts, squeezing breasts, breasts play, female hands relaxed at sides
 
@@ -83,9 +73,7 @@ male's hands caressing female body, male hands groping breasts, male hands brabb
 - 画幅：竖屏
 - 暴露：胸部
 
-
 ### 背后摸胸
-
 
 male behind female, male hands grabbing female breasts from behind, male hands groping breasts from behind, squeezing breasts, hands sliding around waist and chest, female hands relaxed at sides
 
@@ -96,9 +84,7 @@ male behind female, male hands grabbing female breasts from behind, male hands g
 - 画幅：竖屏
 - 暴露：胸部
 
-
 ### 舔胸
-
 
 male mouth on breasts, male licking breasts, male tongue licking nipples, male sucking nipples, sensual breast licking, nipple sucking, tongue teasing breasts, wet tongue play on chest, male face buried in breasts BREAK
 
@@ -109,9 +95,7 @@ male mouth on breasts, male licking breasts, male tongue licking nipples, male s
 - 画幅：竖屏
 - 暴露：胸部
 
-
 ### 背后抚摸
-
 
 male standing behind female, female standing, front view, male sniffing her neck, groping her thigh, groping her crotch, caressing from behind, groping, female turn her head away, her arms relaxed at sides
 
@@ -122,9 +106,7 @@ male standing behind female, female standing, front view, male sniffing her neck
 - 画幅：竖屏
 - 暴露：内裤
 
-
 ### 背后站姿隔内裤爱抚
-
 
 male standing behind female, female standing, male hands reaching around from behind to female crotch, male fingers pressing against female pussy, fingering, reach around fingering, fingering from behind, fingering under panties, female arms relaxed at sides, and in panties
 
@@ -135,9 +117,7 @@ male standing behind female, female standing, male hands reaching around from be
 - 画幅：竖屏
 - 暴露：内裤
 
-
 ### 背后坐姿摸胸爱抚
-
 
 hand on another's crotch, male fingering her pussy, looking at viewer, fingering, male's finger in pussy, grabbing, breast grab, panties pull, groping, reach-around, sitting
 
@@ -148,9 +128,7 @@ hand on another's crotch, male fingering her pussy, looking at viewer, fingering
 - 画幅：竖屏
 - 暴露：胸部
 
-
 ### 背后坐姿开腿爱抚
-
 
 male sitting behind female, female sitting on male's lap, female legs spread, male hands reaching around from behind to female crotch, male fingers pressing against female pussy, fingering, reach around fingering, fingering from behind, fingering under panties, female arms relaxed at sides
 
@@ -161,9 +139,7 @@ male sitting behind female, female sitting on male's lap, female legs spread, ma
 - 画幅：竖屏
 - 暴露：胸部
 
-
 ### 背后坐姿接吻爱抚
-
 
 french kiss fingering, sitting, pussy, spread legs, fingering, torogao, half-closed eyes
 
@@ -174,9 +150,7 @@ french kiss fingering, sitting, pussy, spread legs, fingering, torogao, half-clo
 - 画幅：竖屏
 - 暴露：胸部
 
-
 ### 躺姿爱抚
-
 
 male torso leaning over female, full body, female semi-reclining on back, male facing female, male hand reaching between female legs, male fingers fingering vagina, male fingers penetrating deeply, male fingers sliding in and out, fingering motion, male hand between female thighs
 
@@ -187,17 +161,13 @@ male torso leaning over female, full body, female semi-reclining on back, male f
 - 画幅：
 - 暴露：
 
-
 ### 潮吹
-
 
 female reclining on back, female lying on back, m shaped open leg, legs spread, knees bent, knees pulled up to chest, knees bent up, calves tucked against thighs, feet visible, full body, fingering, male fingering vagina, male fingers sliding in and out, fingering motion, female in intense orgasm, orgasm, female trembling, squirting, female ejaculation, vagina gushing, her hand on her chest, from above, top down view, close-up
 
 ## 胸
 
-
 ### 蹭乳头
-
 
 njrub, nipple job, hand job, penis on nipple, glans at nipple, before cum, cum on breasts, her hand on penis base
 
@@ -208,9 +178,7 @@ njrub, nipple job, hand job, penis on nipple, glans at nipple, before cum, cum o
 - 画幅：竖屏
 - 暴露：胸部
 
-
 ### 乳交
-
 
 titjob, titfuck, penis, before cum, breasts press, breasts squeezez together, her hands holding breasts
 
@@ -221,9 +189,7 @@ titjob, titfuck, penis, before cum, breasts press, breasts squeezez together, he
 - 画幅：竖屏
 - 暴露：胸部
 
-
 ### 躺姿乳交
-
 
 titjob, titfuck, paizuri, penis squeezed between breasts, penis trapped in cleavage, before cum, (lying on her back:1.3), (girl supine:1.3), female lying down, her both arms lying limp beside her body, her upper arms relaxed along the sides of her torso, her forearms resting on the surface beside her ribs, her palms upward, her fingers curved, viewer straddling her chest, top down angle, high angle view
 
@@ -234,9 +200,7 @@ titjob, titfuck, paizuri, penis squeezed between breasts, penis trapped in cleav
 - 画幅：竖屏
 - 暴露：胸部
 
-
 ### 胸部射精
-
 
 (lying on her back:1.45), (supine:1.35), back flat, back of head resting, chest facing straight up, upper body only, top-down view, directly above her chest, her both arms lying limp beside her body, her upper arms relaxed along the sides of her torso, her forearms resting on the surface beside her ribs, her palms relaxed upward, ejaculation, cum, cum on breasts, semen on chest and cleavage, fresh semen dripping on tits, glossy cum, penis, penis visible, penis at bottom of frame
 
@@ -247,9 +211,7 @@ titjob, titfuck, paizuri, penis squeezed between breasts, penis trapped in cleav
 - 画幅：竖屏
 - 暴露：胸部
 
-
 ### 夹紧腋交
-
 
 armpit sex, girl clamping her armpit, her armpit clamping penis tightly, penis, girl sitting, female sitting
 
@@ -260,9 +222,7 @@ armpit sex, girl clamping her armpit, her armpit clamping penis tightly, penis, 
 - 画幅：竖屏
 - 暴露：胸部
 
-
 ### 腿锁跪姿口
-
 
 leg lock fellatio, leg lock, fellatio, penis, cum in mouth, male lying on back, female kneeling, full body
 
@@ -273,9 +233,7 @@ leg lock fellatio, leg lock, fellatio, penis, cum in mouth, male lying on back, 
 - 画幅：竖屏
 - 暴露：服饰
 
-
 ### 趴姿口
-
 
 lying on lap, lying on person, fellatio, penis, penis in her mouth, male sitting, male leaning back, female lying on male's lap, his legs spread, her head between male's legs, her feet playfully kicked up, her legs raised, full body, side view, profile view
 
@@ -286,9 +244,7 @@ lying on lap, lying on person, fellatio, penis, penis in her mouth, male sitting
 - 画幅：横屏
 - 暴露：
 
-
 ### 男性胯下视角口
-
 
 view between legs, implied fellatio, deepthroat, oral, testicles, saliva, squatting, leg grab
 
@@ -299,9 +255,7 @@ view between legs, implied fellatio, deepthroat, oral, testicles, saliva, squatt
 - 画幅：竖屏
 - 暴露：服饰
 
-
 ### 开腿坐姿口
-
 
 ss_fellatio, back view, penis, leg split, fellatio, hand on penis
 
@@ -312,9 +266,7 @@ ss_fellatio, back view, penis, leg split, fellatio, hand on penis
 - 画幅：竖屏
 - 暴露：
 
-
 ### 跪坐口
-
 
 Side_fellatio, hands between legs, feet down
 
@@ -325,9 +277,7 @@ Side_fellatio, hands between legs, feet down
 - 画幅：竖屏
 - 暴露：
 
-
 ### 男坐女跪背后视角口
-
 
 Implied_Fellatio, implied fellatio, fellatio, back view, male leaning back, female wariza, female seiza
 
@@ -338,9 +288,7 @@ Implied_Fellatio, implied fellatio, fellatio, back view, male leaning back, fema
 - 画幅：竖屏
 - 暴露：无
 
-
 ### 按手靠墙口
-
 
 standing boy, pov hands, boy holding girl's wrist, boy holding girl's arms, oral, fellatio, irrumatio, deepthroat, cum, cum in mouth, arms up, hands up, from above, face focus, against wall
 
@@ -351,9 +299,7 @@ standing boy, pov hands, boy holding girl's wrist, boy holding girl's arms, oral
 - 画幅：竖屏
 - 暴露：
 
-
 ### 第一视角跪姿口
-
 
 (deepthroat:1.4), (penis deep in throat:1.38), (throat bulge:1.35), sucking penis, her hand holding penis base, her hand on penis, girl kneeling, all fours, kneeling on all fours
 
@@ -364,9 +310,7 @@ standing boy, pov hands, boy holding girl's wrist, boy holding girl's arms, oral
 - 画幅：
 - 暴露：
 
-
 ### 口完张嘴
-
 
 open mouth, (cum on tongue:1.35), (semen on tongue:1.3), tongue out, cum in open mouth, thick white semen, viscous semen, string of semen, drooling cum, face focus, close-up, after oral, penis, penis visible, after cum
 
@@ -377,9 +321,7 @@ open mouth, (cum on tongue:1.35), (semen on tongue:1.3), tongue out, cum in open
 - 画幅：
 - 暴露：
 
-
 ### 手交姿势
-
 
 handj0b gesture, handjob gesture, single hand up, motion lines only, hand pumping up and down in air, stroking motion, fingers wrapped around, air handjob, empty hand performing handjob gesture
 
@@ -390,9 +332,7 @@ handj0b gesture, handjob gesture, single hand up, motion lines only, hand pumpin
 - 画幅：
 - 暴露：
 
-
 ### 隔裤子手交
-
 
 clothedhandjobILL, handjob, clothed handjob, handjob through clothes
 
@@ -403,9 +343,7 @@ clothedhandjobILL, handjob, clothed handjob, handjob through clothes
 - 画幅：竖屏
 - 暴露：
 
-
 ### 靠墙胸压手交
-
 
 Standing_Breast_Press_Handjob, breasts press, handjob, standing, her hand on penis, her hand rubbing penis, against wall
 
@@ -416,9 +354,7 @@ Standing_Breast_Press_Handjob, breasts press, handjob, standing, her hand on pen
 - 画幅：竖屏
 - 暴露：
 
-
 ### 反手手交
-
 
 backhand_handjobV1, handjob, her hand on penis
 
@@ -429,9 +365,7 @@ backhand_handjobV1, handjob, her hand on penis
 - 画幅：
 - 暴露：
 
-
 ### 胯下骑乘手交
-
 
 straddling, handjob, cowgirl, leaning back, penis focus, from below, foreshortening
 
@@ -442,9 +376,7 @@ straddling, handjob, cowgirl, leaning back, penis focus, from below, foreshorten
 - 画幅：竖屏
 - 暴露：
 
-
 ### 近距离漏胸手交
-
 
 povlyhjbf, close-up nipples, breast focus, pov penis,  handjob, from side
 
@@ -455,9 +387,7 @@ povlyhjbf, close-up nipples, breast focus, pov penis,  handjob, from side
 - 画幅：横屏
 - 暴露：
 
-
 ### 坐姿侧边手交
-
 
 cuddling handjob, female leaning against male, her hand in his mouth, sitting, penis, before cum, erection, testicles, handjob, femdom
 
@@ -468,9 +398,7 @@ cuddling handjob, female leaning against male, her hand in his mouth, sitting, p
 - 画幅：横屏
 - 暴露：
 
-
 ### 远离趴姿手交
-
 
 Handjob_AU, pose1, prone, handjob, ass view, crossed feet, oblique view
 
@@ -481,9 +409,7 @@ Handjob_AU, pose1, prone, handjob, ass view, crossed feet, oblique view
 - 画幅：竖屏
 - 暴露：
 
-
 ### 正常位手交
-
 
 tekoki, handjob, penis, cowboy shot, female lying on back, on back, arm behind head, spread legs, motion lines
 
@@ -494,9 +420,7 @@ tekoki, handjob, penis, cowboy shot, female lying on back, on back, arm behind h
 - 画幅：竖屏
 - 暴露：
 
-
 ### 躺姿胸前手交
-
 
 penis on breasts, penis on her chest, rubbing penis against her nipple, glans at nipple, glans sticking nipple, before cum, (lying on her back:1.3), (girl supine:1.3), female lying down, her hand rubbing penis, handjob, her hand on penis, viewer straddling her chest, top down angle, high angle view
 
@@ -507,9 +431,7 @@ penis on breasts, penis on her chest, rubbing penis against her nipple, glans at
 - 画幅：竖屏
 - 暴露：胸部
 
-
 ### 坐姿正常足交
-
 
 toes_grasp_penis, foot job, penis, foot rubbing penis, footjob, footjob by one foot, footjob with single foot
 
@@ -520,9 +442,7 @@ toes_grasp_penis, foot job, penis, foot rubbing penis, footjob, footjob by one f
 - 画幅：竖屏
 - 暴露：
 
-
 ### 单脚足交
-
 
 sitting leaning back, thighs spread, one leg fully extended forward, single foot giving footjob, sole pressing and stroking penis up and down, toes gripping glans, other leg bent with knee raised, other foot resting far from penis, strictly one foot footjob, only one foot on cock
 
@@ -533,9 +453,7 @@ sitting leaning back, thighs spread, one leg fully extended forward, single foot
 - 画幅：横屏
 - 暴露：
 
-
 ### 背后抱住足交
-
 
 rearfj, hug, two-footed footjob, penis, arms behind back, ejaculation, projectile cum
 
@@ -546,9 +464,7 @@ rearfj, hug, two-footed footjob, penis, arms behind back, ejaculation, projectil
 - 画幅：竖屏
 - 暴露：
 
-
 ### 舔脚足交
-
 
 male sitting on floor, male sitting low, female sitting on table, female sitting high up, one leg extended forward, one leg raised and bent, one foot giving footjob, sole pressing and stroking penis, toes gripping cock, other foot raised to male's face, foot licked and sucked by male, toes in male's mouth, male licking her foot, (tongue_out:0.7), sucklickfoot, footjob, full body
 
@@ -559,9 +475,7 @@ male sitting on floor, male sitting low, female sitting on table, female sitting
 - 画幅：竖屏
 - 暴露：
 
-
 ### 低角度足交
-
 
 two-footed_job, footjob, from below, low angle, penis, feet rubbing penis
 
@@ -572,9 +486,7 @@ two-footed_job, footjob, from below, low angle, penis, feet rubbing penis
 - 画幅：竖屏
 - 暴露：
 
-
 ### 坐在身上大腿夹住第三人称
-
 
 lapsithj, sitting in lap, handjob, sitting on male, penis, penis between her thighs, thighs clamping penis, pussy, penis at pussy
 
@@ -585,9 +497,7 @@ lapsithj, sitting in lap, handjob, sitting on male, penis, penis between her thi
 - 画幅：
 - 暴露：
 
-
 ### 坐在身上大腿夹住第一人称
-
 
 sitting on lap, from behind, from above, breasts, her nipples visible, pussy, pussy visible, pussy juice, penis at pussy, penis, thigh sex, handjob, her hand rubbing penis, foreshortening, sitting, looking back
 
@@ -598,9 +508,7 @@ sitting on lap, from behind, from above, breasts, her nipples visible, pussy, pu
 - 画幅：竖屏
 - 暴露：
 
-
 ### 坐在身上摩擦屁股
-
 
 sitting on lap, from behind, from above, breasts, her nipples visible, penis, penis on ass, penis rubbing her ass, foreshortening, sitting, looking back
 
@@ -611,9 +519,7 @@ sitting on lap, from behind, from above, breasts, her nipples visible, penis, pe
 - 画幅：竖屏
 - 暴露：
 
-
 ### 第一人称素股
-
 
 female lying on back, female lying, legs raised high, knees bent towards chest, thighs pressed tightly together, penis buried deep between thighs, penis completely enclosed by thighs, thighs occluding penis, shaft hidden inside thigh gap, thighs squeezing and covering cock, penis trapped and occluded by soft thighs, deep thigh penetration appearance, legsup_tj, intense thighjob
 
@@ -624,9 +530,7 @@ female lying on back, female lying, legs raised high, knees bent towards chest, 
 - 画幅：竖屏
 - 暴露：
 
-
 ### 第三人称抬腿素股
-
 
 legsup_tj, thigh sex, legs up, lying, on back, grabbing thighs, penis between thighs, standing, side view, from side
 
@@ -637,9 +541,7 @@ legsup_tj, thigh sex, legs up, lying, on back, grabbing thighs, penis between th
 - 画幅：横屏
 - 暴露：
 
-
 ### 第三人称侧面素股
-
 
 ThighSexSide, penis between thighs, thigh sex, on side, girl on top, girl on side, laying on side
 
@@ -650,9 +552,7 @@ ThighSexSide, penis between thighs, thigh sex, on side, girl on top, girl on sid
 - 画幅：竖屏
 - 暴露：
 
-
 ### 女上坐姿素股第三人称
-
 
 ThighSexSitting, girl on top, man on bottom, girl sitting up, girl sitting in lap, penis between thighs, thigh sex
 
@@ -663,9 +563,7 @@ ThighSexSitting, girl on top, man on bottom, girl sitting up, girl sitting in la
 - 画幅：竖屏
 - 暴露：
 
-
 ### 女上躺姿素股
-
 
 ThighSexBack, lying, lying on back, man on bottom, girl on top, girl on back, thigh sex, penis between thighs
 
@@ -676,9 +574,7 @@ ThighSexBack, lying, lying on back, man on bottom, girl on top, girl on back, th
 - 画幅：竖屏
 - 暴露：
 
-
 ### 第一人称正常位素股
-
 
 ThighSexThighs, female lying on back, lying on back, thighs up, missionary, missionary position, knees together, legs together, (feet apart), her feet spread apart, thigh sex, penis between thighs, top down angle, from above
 
@@ -689,9 +585,7 @@ ThighSexThighs, female lying on back, lying on back, thighs up, missionary, miss
 - 画幅：竖屏
 - 暴露：
 
-
 ### 第三人称正常位素股
-
 
 ThighSexThighs, female lying on back, lying on back, thighs up, missionary, missionary position, knees together, legs together, (feet apart), her feet spread apart, thigh sex, penis between thighs, female's head at bottom of frame, reverse angle shot
 
@@ -702,9 +596,7 @@ ThighSexThighs, female lying on back, lying on back, thighs up, missionary, miss
 - 画幅：竖屏
 - 暴露：
 
-
 ### 跪姿素股
-
 
 ThighSexThighs, kneeling, male behind female, thighs up, knees together, legs together, feet on his shoulder, feet apart, thigh sex, penis between thighs, female's head at bottom of frame
 
@@ -715,9 +607,7 @@ ThighSexThighs, kneeling, male behind female, thighs up, knees together, legs to
 - 画幅：竖屏
 - 暴露：
 
-
 ### 女趴在男身上素股背后视角
-
 
 Interrcrural, lying prone on top of male, male grabbing her ass, male on bottom, female on top, prone, thigh sex, penis between thighs, close-up
 
@@ -728,9 +618,7 @@ Interrcrural, lying prone on top of male, male grabbing her ass, male on bottom,
 - 画幅：竖屏
 - 暴露：
 
-
 ### 女趴在男身上素股正面视角
-
 
 Interrcrural, lying prone on top of male, male on bottom, female on top, male grabbing her ass, prone, thigh sex, penis, penis between thighs, close-up, her breasts pressing his chest, female's breasts pressing against male's chest, facing camera, shot from the head end
 
@@ -741,9 +629,7 @@ Interrcrural, lying prone on top of male, male on bottom, female on top, male gr
 - 画幅：横屏
 - 暴露：
 
-
 ### 站姿素股
-
 
 thigh sex, standing, grabbing another's ass, penis, penis between thighs
 
@@ -754,9 +640,7 @@ thigh sex, standing, grabbing another's ass, penis, penis between thighs
 - 画幅：竖屏
 - 暴露：
 
-
 ### 站姿面对面素股背面
-
 
 thigh sex, standing, from behind, back view, ass, grabbing another's ass, penis, penis between thighs, female looking back
 
@@ -767,9 +651,7 @@ thigh sex, standing, from behind, back view, ass, grabbing another's ass, penis,
 - 画幅：竖屏
 - 暴露：
 
-
 ### 女跪姿面对面素股背面
-
 
 thigh sex, male behind female, male's body hidden by female, kneeling, female kneeling, from behind, back view, ass, ass focus, thigh focus, soles, close-up, penis, penis between thighs, female look back, low angle, from below, forced perspective, strong foreshortening
 
@@ -780,9 +662,7 @@ thigh sex, male behind female, male's body hidden by female, kneeling, female kn
 - 画幅：竖屏
 - 暴露：
 
-
 ### 正面翘腿素股
-
 
 thigh sex, sitting, thick thigh, penis between thighs, crossing her legs, crossed legs, side view, from below, low angle
 
@@ -793,9 +673,7 @@ thigh sex, sitting, thick thigh, penis between thighs, crossing her legs, crosse
 - 画幅：竖屏
 - 暴露：
 
-
 ### 站姿膝盖内侧夹住
-
 
 (knee job), penis between back of the knee, standing, male's hands behind his back, female leaning against male, female standing on one leg, female lifting one leg high, female's hand on her thigh, penis rubbing her thigh, female knees clamping penis between inner thighs, female squeezing penis with inner knee sides, knees pressing tightly around penis from both sides, penis trapped and squeezed between female knees
 
@@ -806,9 +684,7 @@ thigh sex, sitting, thick thigh, penis between thighs, crossing her legs, crosse
 - 画幅：竖屏
 - 暴露：
 
-
 ### 第一人称膝盖内侧夹住
-
 
 (knee job), knee job, penis between back of the knee, penis rubbing knee pit, knee pit, glans at back of knee, penis
 
@@ -819,9 +695,7 @@ thigh sex, sitting, thick thigh, penis between thighs, crossing her legs, crosse
 - 画幅：竖屏
 - 暴露：
 
-
 ### 背后脱内裤
-
 
 panty pull, pussy, from behind, looking back
 
@@ -832,9 +706,7 @@ panty pull, pussy, from behind, looking back
 - 画幅：竖屏
 - 暴露：
 
-
 ### 正面脱内裤
-
 
 panty pull, standing, pussy, facing viewer, teasing pose, playful pose
 
@@ -845,9 +717,7 @@ panty pull, standing, pussy, facing viewer, teasing pose, playful pose
 - 画幅：竖屏
 - 暴露：
 
-
 ### 抬腿脱内裤
-
 
 panty pull, standing, pussy, facing viewer, legs up, teasing pose, playful pose
 
@@ -858,9 +728,7 @@ panty pull, standing, pussy, facing viewer, legs up, teasing pose, playful pose
 - 画幅：竖屏
 - 暴露：
 
-
 ### 骑乘前
-
 
 straddling guided penetration, straddling, guided penetration, penis, penis grab, squatting cowgirl position, hetero, girl on top, cowboy shot, before insert, her hand on penis
 
@@ -871,9 +739,7 @@ straddling guided penetration, straddling, guided penetration, penis, penis grab
 - 画幅：竖屏
 - 暴露：
 
-
 ### 女上坐姿并腿
-
 
 reverse upright straddle, reverse cowgirl position, sitting on person, sitting on lap, legs together, wide shot, full body
 
@@ -884,9 +750,7 @@ reverse upright straddle, reverse cowgirl position, sitting on person, sitting o
 - 画幅：竖屏
 - 暴露：
 
-
 ### 女上坐姿开腿
-
 
 reverse upright straddle, reverse cowgirl position, sitting on person, sitting on lap, spread legs, wide spread legs, wide shot, full body
 
@@ -897,9 +761,7 @@ reverse upright straddle, reverse cowgirl position, sitting on person, sitting o
 - 画幅：竖屏
 - 暴露：
 
-
 ### 女上坐姿抬腿
-
 
 reverse upright straddle, reverse cowgirl position, sitting on person, sitting on lap, legs up, feet raised, wide shot, full body
 
@@ -910,9 +772,7 @@ reverse upright straddle, reverse cowgirl position, sitting on person, sitting o
 - 画幅：竖屏
 - 暴露：
 
-
 ### 第一人称坐姿反向骑乘
-
 
 sitting on lap, reverse cowgirl position, from behind, from above, vaginal penetration, penis deep inside vagina, insertion, penis in pussy, pussy gripping cock, breasts, her nipples visible, foreshortening, looking back, sitting, female sitting on male's lap, both sitting, motion lines, intense penetration
 
@@ -923,9 +783,7 @@ sitting on lap, reverse cowgirl position, from behind, from above, vaginal penet
 - 画幅：竖屏
 - 暴露：
 
-
 ### 第一人称躺姿反向骑乘
-
 
 reverse cowgirl position, cowgirl, penis in pussy, penis, intense penetration, female looking back, from below, low angle
 
@@ -936,9 +794,7 @@ reverse cowgirl position, cowgirl, penis in pussy, penis, intense penetration, f
 - 画幅：竖屏
 - 暴露：
 
-
 ### 第一人称翘腿骑乘
-
 
 cowgirl, straddling, crossed legs, twisting her waist, arm support, leaning back, penis in pussy, intense penetration
 
@@ -949,9 +805,7 @@ cowgirl, straddling, crossed legs, twisting her waist, arm support, leaning back
 - 画幅：竖屏
 - 暴露：
 
-
 ### 第一人称侧位骑乘
-
 
 CGTP, Sex, twisting her waist, penis in pussy, intense penetration
 
@@ -962,9 +816,7 @@ CGTP, Sex, twisting her waist, penis in pussy, intense penetration
 - 画幅：竖屏
 - 暴露：
 
-
 ### 趴姿骑乘后侧视角
-
 
 from behind, cowgirl position, vaginal, deep penetration, straddling, penis, testicles, girl on top, lying, sex, ass focus, pussy juice, feet, female looking back
 
@@ -975,9 +827,7 @@ from behind, cowgirl position, vaginal, deep penetration, straddling, penis, tes
 - 画幅：竖屏
 - 暴露：
 
-
 ### 第三人称骑乘
-
 
 cowgirl position, girl on top, straddling, cowgirl, female on top of male, female in cowgirl position, female leaning back, female arching her back backward, female facing camera, penis in pussy, intense penetration
 
@@ -988,9 +838,7 @@ cowgirl position, girl on top, straddling, cowgirl, female on top of male, femal
 - 画幅：竖屏
 - 暴露：
 
-
 ### 后入前
-
 
 standing, ass, bent over, looking back
 
@@ -1001,9 +849,7 @@ standing, ass, bent over, looking back
 - 画幅：竖屏
 - 暴露：
 
-
 ### 扶桌后入
-
 
 doggy_over_desk, sex from behind, sex, standing, bent over, doggystyle, torso grab, ass grab, standing sex
 
@@ -1014,9 +860,7 @@ doggy_over_desk, sex from behind, sex, standing, bent over, doggystyle, torso gr
 - 画幅：横屏
 - 暴露：
 
-
 ### 趴姿后入
-
 
 (((cum in pussy))), orgasm, trembling, bouncing breasts, bouncing body,(((sweat))), sex, doggystyle, all fours, from front, side view, oblique view
 
@@ -1027,9 +871,7 @@ doggy_over_desk, sex from behind, sex, standing, bent over, doggystyle, torso gr
 - 画幅：横屏
 - 暴露：
 
-
 ### 低机位后入
-
 
 facefocus_doggy,sex from behind, cumshot, cum drip, cum in pussy, looking at penis, dutch angle, top down bottom up
 
@@ -1040,9 +882,7 @@ facefocus_doggy,sex from behind, cumshot, cum drip, cum in pussy, looking at pen
 - 画幅：横屏
 - 暴露：
 
-
 ### 壁咚
-
 
 standing, penis, pressed up against wall, wall, leaning on wall, from above
 
@@ -1053,9 +893,7 @@ standing, penis, pressed up against wall, wall, leaning on wall, from above
 - 画幅：横屏
 - 暴露：
 
-
 ### 第一人称靠墙后入
-
 
 poagwasex, sex from behind, standing, poagwasex, penis, pussy, ass, pressed up against wall, wall, leaning on wall, deep penetration, dutch angle, ass grab, facing away, spreading ass, female looking back
 
@@ -1066,9 +904,7 @@ poagwasex, sex from behind, standing, poagwasex, penis, pussy, ass, pressed up a
 - 画幅：横屏
 - 暴露：
 
-
 ### 事后口
-
 
 ablowjob,after sex,fellatio, after sex, spread legs, pussy focus, cum dripping, penis licking, open mouth, handjob
 
@@ -1078,4 +914,3 @@ ablowjob,after sex,fellatio, after sex, spread legs, pussy focus, cum dripping, 
 - 服饰范围：全身
 - 画幅：竖屏
 - 暴露：
-
