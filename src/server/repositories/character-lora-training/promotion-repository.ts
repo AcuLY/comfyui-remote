@@ -11,7 +11,6 @@ import {
   mapRejectedPromotionReturnPointToJobPhase,
   mapRejectedPromotionReturnPointToJobStatus,
   resolveUniquePresetSlug,
-  toInputJsonValue,
 } from "./helpers";
 import { serializeLoraAsset, serializePromotionDecision } from "./serializers";
 import {
@@ -19,6 +18,46 @@ import {
   JOB_SUMMARY_SELECT,
   PROMOTION_DECISION_SELECT,
 } from "./types";
+
+type LinkedVariantRef = {
+  variantId: string;
+  sortOrder: number;
+};
+
+function normalizeLinkedVariantRefs(linkedVariants: unknown): LinkedVariantRef[] {
+  if (linkedVariants == null) return [];
+  if (!Array.isArray(linkedVariants)) {
+    throw new Error("linkedVariants must be an array");
+  }
+
+  const seen = new Set<string>();
+  const refs: LinkedVariantRef[] = [];
+
+  linkedVariants.forEach((entry, index) => {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) return;
+    const record = entry as {
+      variantId?: unknown;
+      linkedVariantId?: unknown;
+      sortOrder?: unknown;
+    };
+    const variantId = typeof record.variantId === "string"
+      ? record.variantId
+      : typeof record.linkedVariantId === "string"
+        ? record.linkedVariantId
+        : null;
+    if (!variantId || seen.has(variantId)) return;
+    seen.add(variantId);
+
+    refs.push({
+      variantId,
+      sortOrder: typeof record.sortOrder === "number" && Number.isFinite(record.sortOrder)
+        ? record.sortOrder
+        : index,
+    });
+  });
+
+  return refs;
+}
 
 export async function upsertCharacterLoraAsset(input: {
   name: string;
@@ -247,6 +286,24 @@ export async function promoteCharacterLoraDecisionInRepository(input: {
         })
       : null;
 
+    const existingVariantIds = existingPreset
+      ? (await tx.presetVariant.findMany({
+          where: { presetId: existingPreset.id },
+          select: { id: true },
+        })).map((variant) => variant.id)
+      : [];
+
+    if (existingVariantIds.length > 0) {
+      await tx.presetVariantLink.deleteMany({
+        where: {
+          OR: [
+            { sourceVariantId: { in: existingVariantIds } },
+            { linkedVariantId: { in: existingVariantIds } },
+          ],
+        },
+      });
+    }
+
     const preset = existingPreset
       ? await tx.preset.update({
           where: { id: existingPreset.id },
@@ -270,7 +327,7 @@ export async function promoteCharacterLoraDecisionInRepository(input: {
         });
 
     for (const variant of input.variants) {
-      await tx.presetVariant.create({
+      const createdVariant = await tx.presetVariant.create({
         data: {
           presetId: preset.id,
           name: variant.name,
@@ -279,12 +336,23 @@ export async function promoteCharacterLoraDecisionInRepository(input: {
           negativePrompt: variant.negativePrompt ?? null,
           lora1: variant.lora1,
           lora2: variant.lora2,
-          linkedVariants: variant.linkedVariants ?? Prisma.DbNull,
+          linkedVariants: Prisma.DbNull,
           sortOrder: variant.sortOrder,
           isActive: true,
         },
         select: { id: true },
       });
+
+      const linkedRefs = normalizeLinkedVariantRefs(variant.linkedVariants);
+      if (linkedRefs.length > 0) {
+        await tx.presetVariantLink.createMany({
+          data: linkedRefs.map((ref) => ({
+            sourceVariantId: createdVariant.id,
+            linkedVariantId: ref.variantId,
+            sortOrder: ref.sortOrder,
+          })),
+        });
+      }
     }
 
     const reportArtifact = await tx.characterLoraArtifact.create({

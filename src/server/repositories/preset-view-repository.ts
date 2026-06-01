@@ -24,6 +24,27 @@ type ResolvedNameMaps = {
   groupMap: Map<string, string>;
 };
 
+type LinkedVariantSource = {
+  linkedVariants: unknown;
+  outgoingLinks?: Array<{
+    linkedVariantId: string;
+    linkedVariant: { presetId: string };
+  }>;
+};
+
+function linkedVariantRefs(variant: LinkedVariantSource): LinkedVariantRef[] {
+  if (variant.outgoingLinks && variant.outgoingLinks.length > 0) {
+    return variant.outgoingLinks.map((link) => ({
+      presetId: link.linkedVariant.presetId,
+      variantId: link.linkedVariantId,
+    }));
+  }
+
+  return Array.isArray(variant.linkedVariants)
+    ? variant.linkedVariants as LinkedVariantRef[]
+    : [];
+}
+
 /**
  * Collect member IDs from groups, batch-fetch preset/variant/group names,
  * and return lookup maps for display name resolution.
@@ -157,6 +178,15 @@ export async function getPresetCategoriesWithPresets(): Promise<PresetCategoryFu
           variants: {
             where: { isActive: true },
             orderBy: { sortOrder: "asc" },
+            include: {
+              outgoingLinks: {
+                orderBy: { sortOrder: "asc" },
+                select: {
+                  linkedVariantId: true,
+                  linkedVariant: { select: { presetId: true } },
+                },
+              },
+            },
           },
           changeLogs: {
             orderBy: [{ createdAt: "desc" }, { id: "desc" }],
@@ -222,7 +252,7 @@ export async function getPresetCategoriesWithPresets(): Promise<PresetCategoryFu
         negativePrompt: v.negativePrompt,
         lora1: v.lora1,
         lora2: v.lora2,
-        linkedVariants: (Array.isArray(v.linkedVariants) ? v.linkedVariants : []) as LinkedVariantRef[],
+        linkedVariants: linkedVariantRefs(v),
         sortOrder: v.sortOrder,
         isActive: v.isActive,
       })),
@@ -319,7 +349,22 @@ export async function getPresetLibraryV2(): Promise<PresetLibraryV2> {
           variants: {
             where: { isActive: true },
             orderBy: { sortOrder: "asc" },
-            select: { id: true, name: true, prompt: true, negativePrompt: true, lora1: true, lora2: true, linkedVariants: true },
+            select: {
+              id: true,
+              name: true,
+              prompt: true,
+              negativePrompt: true,
+              lora1: true,
+              lora2: true,
+              linkedVariants: true,
+              outgoingLinks: {
+                orderBy: { sortOrder: "asc" },
+                select: {
+                  linkedVariantId: true,
+                  linkedVariant: { select: { presetId: true } },
+                },
+              },
+            },
           },
         },
       },
@@ -359,7 +404,15 @@ export async function getPresetLibraryV2(): Promise<PresetLibraryV2> {
         id: p.id,
         name: p.name,
         folderId: p.folderId,
-        variants: p.variants,
+        variants: p.variants.map((variant) => ({
+          id: variant.id,
+          name: variant.name,
+          prompt: variant.prompt,
+          negativePrompt: variant.negativePrompt,
+          lora1: variant.lora1,
+          lora2: variant.lora2,
+          linkedVariants: linkedVariantRefs(variant),
+        })),
       })),
       groups: c.groups.map((g) => ({
         id: g.id,

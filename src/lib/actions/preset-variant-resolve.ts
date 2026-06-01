@@ -1,9 +1,7 @@
 "use server";
 
-import { Prisma } from "@/generated/prisma";
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { parseSectionLoraConfig, serializeSectionLoraConfig } from "@/lib/lora-types";
-import { recordSectionChange } from "@/server/services/section-change-history-service";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -39,14 +37,27 @@ export async function findPresetIdsAffectedByVariantChange(variantId: string, pr
   const variants = await prisma.presetVariant.findMany({
     select: { id: true, presetId: true, linkedVariants: true },
   });
+  const relationLinks = await prisma.presetVariantLink.findMany({
+    select: { sourceVariantId: true, linkedVariantId: true },
+  });
   const variantById = new Map(variants.map((variant) => [variant.id, variant]));
+  const relationSourceIds = new Set(relationLinks.map((link) => link.sourceVariantId));
   const parentVariantIdsByLinkedVariantId = new Map<string, string[]>();
 
+  const addParentLink = (sourceVariantId: string, linkedVariantId: string) => {
+    const parentVariantIds = parentVariantIdsByLinkedVariantId.get(linkedVariantId) ?? [];
+    parentVariantIds.push(sourceVariantId);
+    parentVariantIdsByLinkedVariantId.set(linkedVariantId, parentVariantIds);
+  };
+
+  for (const link of relationLinks) {
+    addParentLink(link.sourceVariantId, link.linkedVariantId);
+  }
+
   for (const variant of variants) {
+    if (relationSourceIds.has(variant.id)) continue;
     for (const linkedVariantId of getLinkedVariantIds(variant.linkedVariants)) {
-      const parentVariantIds = parentVariantIdsByLinkedVariantId.get(linkedVariantId) ?? [];
-      parentVariantIds.push(variant.id);
-      parentVariantIdsByLinkedVariantId.set(linkedVariantId, parentVariantIds);
+      addParentLink(variant.id, linkedVariantId);
     }
   }
 
@@ -71,134 +82,13 @@ export async function findPresetIdsAffectedByVariantChange(variantId: string, pr
 
 export async function syncVariantContentToImportedSections(variantId: string, presetId: string) {
   const presetIds = await findPresetIdsAffectedByVariantChange(variantId, presetId);
-  const { syncPresetToSections } = await import("./preset-sync");
-
-  for (const affectedPresetId of presetIds) {
-    await syncPresetToSections(affectedPresetId);
-  }
+  revalidatePath("/projects");
+  return [...presetIds];
 }
 
 export async function syncPresetMetadataToImportedSections(presetId: string) {
-  const preset = await prisma.preset.findUnique({
-    where: { id: presetId },
-    include: {
-      category: { select: { id: true, name: true, color: true } },
-      variants: { where: { isActive: true }, orderBy: { sortOrder: "asc" } },
-    },
-  });
-  if (!preset) return;
-
-  const defaultVariant = preset.variants[0] ?? null;
-  const blocks = await prisma.promptBlock.findMany({
-    where: { sourceId: presetId },
-    select: {
-      id: true,
-      projectSectionId: true,
-      variantId: true,
-      categoryId: true,
-      bindingId: true,
-      groupBindingId: true,
-      label: true,
-      positive: true,
-      negative: true,
-      sortOrder: true,
-    },
-  });
-  if (blocks.length === 0) return;
-
-  const bindingIdsBySection = new Map<string, Set<string>>();
-
-  for (const block of blocks) {
-    const variant = block.variantId
-      ? (preset.variants.find((item) => item.id === block.variantId) ?? defaultVariant)
-      : defaultVariant;
-    const nextLabel = preset.variants.length <= 1 || !variant
-      ? preset.name
-      : `${preset.name} / ${variant.name}`;
-
-    if (block.bindingId) {
-      const sectionBindingIds = bindingIdsBySection.get(block.projectSectionId) ?? new Set<string>();
-      sectionBindingIds.add(block.bindingId);
-      bindingIdsBySection.set(block.projectSectionId, sectionBindingIds);
-    }
-
-    if (block.label === nextLabel && block.categoryId === preset.categoryId) continue;
-
-    const before = {
-      id: block.id,
-      label: block.label,
-      categoryId: block.categoryId,
-      bindingId: block.bindingId,
-      groupBindingId: block.groupBindingId,
-      sortOrder: block.sortOrder,
-    };
-    const updatedBlock = await prisma.promptBlock.update({
-      where: { id: block.id },
-      data: { label: nextLabel, categoryId: preset.categoryId },
-      select: {
-        id: true,
-        label: true,
-        categoryId: true,
-        bindingId: true,
-        groupBindingId: true,
-        sortOrder: true,
-      },
-    });
-    await recordSectionChange({
-      sectionId: block.projectSectionId,
-      dimension: "prompt",
-      title: `Sync preset metadata: ${nextLabel}`,
-      before,
-      after: updatedBlock,
-    });
-  }
-
-  for (const [sectionId, bindingIds] of bindingIdsBySection) {
-    const section = await prisma.projectSection.findUnique({
-      where: { id: sectionId },
-      select: { loraConfig: true },
-    });
-    if (!section?.loraConfig) continue;
-
-    const before = section.loraConfig;
-    const config = parseSectionLoraConfig(section.loraConfig);
-    let changed = false;
-    const updateEntry = <T extends { bindingId?: string; source?: string; sourceName?: string; sourceLabel?: string; sourceColor?: string }>(entry: T) => {
-      if (entry.source !== "preset" || !entry.bindingId || !bindingIds.has(entry.bindingId)) return entry;
-      if (
-        entry.sourceName === preset.name &&
-        entry.sourceLabel === preset.category.name &&
-        entry.sourceColor === (preset.category.color ?? undefined)
-      ) {
-        return entry;
-      }
-      changed = true;
-      return {
-        ...entry,
-        sourceName: preset.name,
-        sourceLabel: preset.category.name,
-        sourceColor: preset.category.color ?? undefined,
-      };
-    };
-
-    config.lora1 = config.lora1.map(updateEntry);
-    config.lora2 = config.lora2.map(updateEntry);
-
-    if (!changed) continue;
-
-    const nextConfig = serializeSectionLoraConfig(config);
-    await prisma.projectSection.update({
-      where: { id: sectionId },
-      data: { loraConfig: nextConfig as Prisma.InputJsonValue },
-    });
-    await recordSectionChange({
-      sectionId,
-      dimension: "lora",
-      title: `Sync preset metadata: ${preset.name}`,
-      before,
-      after: nextConfig,
-    });
-  }
+  revalidatePath("/projects");
+  return [presetId];
 }
 
 // ---------------------------------------------------------------------------
@@ -235,13 +125,17 @@ export async function resolveVariantContent(
   const lora1 = parseLora(variant.lora1);
   const lora2 = parseLora(variant.lora2);
 
-  // Resolve linked variants
-  const linked = Array.isArray(variant.linkedVariants)
-    ? (variant.linkedVariants as Array<{ presetId: string; variantId: string }>)
-    : [];
+  const relationLinks = await prisma.presetVariantLink.findMany({
+    where: { sourceVariantId: variant.id },
+    select: { linkedVariantId: true },
+    orderBy: { sortOrder: "asc" },
+  });
+  const linkedVariantIds = relationLinks.length > 0
+    ? relationLinks.map((link) => link.linkedVariantId)
+    : getLinkedVariantIds(variant.linkedVariants);
 
-  for (const ref of linked) {
-    const resolved = await resolveVariantContent(ref.variantId, visited);
+  for (const linkedVariantId of linkedVariantIds) {
+    const resolved = await resolveVariantContent(linkedVariantId, visited);
     if (resolved.prompt) prompt += ", " + resolved.prompt;
     if (resolved.negativePrompt) {
       negativePrompt = negativePrompt

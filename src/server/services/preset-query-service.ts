@@ -19,6 +19,35 @@ function normalizeBoolean(value?: string | null) {
   return value === "true" || value === "1";
 }
 
+function linkedVariantsFromRows(variant: {
+  linkedVariants: unknown;
+  outgoingLinks?: Array<{
+    linkedVariantId: string;
+    linkedVariant: { presetId: string };
+  }>;
+}) {
+  if (variant.outgoingLinks && variant.outgoingLinks.length > 0) {
+    return variant.outgoingLinks.map((link) => ({
+      presetId: link.linkedVariant.presetId,
+      variantId: link.linkedVariantId,
+    }));
+  }
+
+  return Array.isArray(variant.linkedVariants) ? variant.linkedVariants : [];
+}
+
+function variantResponse<Variant extends { linkedVariants: unknown; outgoingLinks?: Array<{ linkedVariantId: string; linkedVariant: { presetId: string } }> }>(
+  variant: Variant,
+) {
+  const { outgoingLinks, ...rest } = variant;
+  void outgoingLinks;
+
+  return {
+    ...rest,
+    linkedVariants: linkedVariantsFromRows(variant),
+  };
+}
+
 export function parsePresetQuery(searchParams: URLSearchParams): PresetQueryFilters {
   return {
     name: searchParams.get("name") ?? undefined,
@@ -78,6 +107,13 @@ export async function listPresets(filters: PresetQueryFilters = {}) {
           lora1: true,
           lora2: true,
           linkedVariants: true,
+          outgoingLinks: {
+            orderBy: { sortOrder: "asc" },
+            select: {
+              linkedVariantId: true,
+              linkedVariant: { select: { presetId: true } },
+            },
+          },
           sortOrder: true,
           isActive: true,
         },
@@ -96,7 +132,7 @@ export async function listPresets(filters: PresetQueryFilters = {}) {
     folderId: preset.folderId,
     sortOrder: preset.sortOrder,
     isActive: preset.isActive,
-    variants: preset.variants,
+    variants: preset.variants.map(variantResponse),
   }));
 }
 
@@ -130,6 +166,13 @@ export async function getPresetById(presetId: string, includeInactive = false) {
           lora1: true,
           lora2: true,
           linkedVariants: true,
+          outgoingLinks: {
+            orderBy: { sortOrder: "asc" },
+            select: {
+              linkedVariantId: true,
+              linkedVariant: { select: { presetId: true } },
+            },
+          },
           sortOrder: true,
           isActive: true,
         },
@@ -150,6 +193,6 @@ export async function getPresetById(presetId: string, includeInactive = false) {
     folderId: preset.folderId,
     sortOrder: preset.sortOrder,
     isActive: preset.isActive,
-    variants: preset.variants,
+    variants: preset.variants.map(variantResponse),
   };
 }
