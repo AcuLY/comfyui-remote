@@ -10,6 +10,7 @@ import {
   type LoraEntry,
 } from "@/lib/lora-types";
 import { getDetachedPresetPaths } from "@/lib/preset-binding-utils";
+import { resolveSectionConfig } from "@/server/prompt-config/section-resolver";
 import { detachSectionLorasFromPresetBinding } from "@/server/services/preset-binding-service";
 import { recordSectionChange } from "@/server/services/section-change-history-service";
 import { resolveVariantContent } from "./preset-variant";
@@ -51,47 +52,223 @@ async function getCategoryOrderByName() {
   return new Map(categories.map((category) => [category.name, category]));
 }
 
-async function persistImportedLoras(
-  sectionId: string,
-  lora1: LoraEntry[],
-  lora2: LoraEntry[],
-  title: string,
+function safeRevalidatePath(path: string) {
+  try {
+    revalidatePath(path);
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message.includes("static generation store missing")
+    ) {
+      return;
+    }
+    throw error;
+  }
+}
+
+function buildPresetBlockLabel(
+  preset: { name: string; variants: Array<{ id: string; name: string }> },
+  variant: { id: string; name: string },
 ) {
-  if (lora1.length === 0 && lora2.length === 0) return;
+  return preset.variants.length === 1
+    ? preset.name
+    : `${preset.name} / ${variant.name}`;
+}
 
-  const section = await prisma.projectSection.findUnique({
-    where: { id: sectionId },
-    select: { loraConfig: true },
-  });
-  if (!section) return;
+function makeResolvedOnlyBlockId(bindingKey: string, index = 0) {
+  return `resolved:${bindingKey}:${index}`;
+}
 
-  const before = section.loraConfig ?? null;
-  const categoryOrderByName = await getCategoryOrderByName();
-  const current = parseSectionLoraConfig(section.loraConfig);
-  const next = serializeSectionLoraConfig({
-    lora1: sortSectionLoraEntriesByCategoryOrder(
-      [...current.lora1, ...lora1],
-      "lora1Order",
-      categoryOrderByName,
-    ),
-    lora2: sortSectionLoraEntriesByCategoryOrder(
-      [...current.lora2, ...lora2],
-      "lora2Order",
-      categoryOrderByName,
-    ),
+function parseResolvedOnlyBlockId(blockId: string) {
+  if (!blockId.startsWith("resolved:")) return null;
+  const rest = blockId.slice("resolved:".length);
+  const indexSeparator = rest.lastIndexOf(":");
+  return indexSeparator >= 0 ? rest.slice(0, indexSeparator) : rest;
+}
+
+function makePresetLoraEntries(
+  input: {
+    bindingKey: string;
+    groupBindingKey: string | null;
+    category: { name: string; color: string | null };
+    preset: { name: string };
+    resolved: Awaited<ReturnType<typeof resolveVariantContent>>;
+  },
+) {
+  const makeLora = (
+    stage: "lora1" | "lora2",
+    index: number,
+    entry: { path: string; weight: number; enabled: boolean },
+  ): LoraEntry => ({
+    id: `preset:${input.bindingKey}:${stage}:${index}:${entry.path}`,
+    path: entry.path,
+    weight: entry.weight,
+    enabled: entry.enabled,
+    source: "preset",
+    sourceLabel: input.category.name,
+    sourceColor: input.category.color ?? undefined,
+    sourceName: input.preset.name,
+    bindingId: input.bindingKey,
+    groupBindingId: input.groupBindingKey ?? undefined,
   });
 
-  await prisma.projectSection.update({
-    where: { id: sectionId },
-    data: { loraConfig: next as Prisma.InputJsonValue },
+  return {
+    lora1: input.resolved.lora1.map((entry, index) => makeLora("lora1", index, entry)),
+    lora2: input.resolved.lora2.map((entry, index) => makeLora("lora2", index, entry)),
+  };
+}
+
+async function findNormalizedPromptBlockById(blockId: string) {
+  const direct = await prisma.sectionPromptBlock.findUnique({
+    where: { id: blockId },
+    include: {
+      sectionBinding: {
+        select: {
+          id: true,
+          bindingKey: true,
+          categoryId: true,
+          presetId: true,
+          variantId: true,
+          groupBindingKey: true,
+        },
+      },
+    },
   });
-  await recordSectionChange({
-    sectionId,
-    dimension: "lora",
-    title,
-    before,
-    after: next,
+  if (direct) return direct;
+
+  const bindingKey = parseResolvedOnlyBlockId(blockId);
+  if (!bindingKey) return null;
+
+  const bindings = await prisma.sectionPresetBinding.findMany({
+    where: { bindingKey },
+    take: 2,
+    select: { id: true, projectSectionId: true },
   });
+  if (bindings.length !== 1) return null;
+
+  const binding = bindings[0];
+  const existing = await prisma.sectionPromptBlock.findFirst({
+    where: {
+      projectSectionId: binding.projectSectionId,
+      sectionBindingId: binding.id,
+    },
+    include: {
+      sectionBinding: {
+        select: {
+          id: true,
+          bindingKey: true,
+          categoryId: true,
+          presetId: true,
+          variantId: true,
+          groupBindingKey: true,
+        },
+      },
+    },
+  });
+  if (existing) return existing;
+
+  return prisma.sectionPromptBlock.create({
+    data: {
+      projectSectionId: binding.projectSectionId,
+      sectionBindingId: binding.id,
+      type: "preset",
+      sortOrder: 0,
+    },
+    include: {
+      sectionBinding: {
+        select: {
+          id: true,
+          bindingKey: true,
+          categoryId: true,
+          presetId: true,
+          variantId: true,
+          groupBindingKey: true,
+        },
+      },
+    },
+  });
+}
+
+async function resolvePromptBlockDataForRow(
+  row: {
+    id: string;
+    projectSectionId: string;
+    sectionBindingId: string | null;
+    type: string;
+    customLabel: string | null;
+    customPositive: string | null;
+    customNegative: string | null;
+    sortOrder: number;
+    sectionBinding?: { bindingKey: string } | null;
+  },
+): Promise<PromptBlockData> {
+  const resolvedConfig = await resolveSectionConfig(row.projectSectionId);
+  const resolvedBlock = row.sectionBinding?.bindingKey
+    ? resolvedConfig?.promptBlocks.find((block) => block.bindingId === row.sectionBinding?.bindingKey)
+    : resolvedConfig?.promptBlocks.find((block) =>
+        block.sortOrder === row.sortOrder &&
+        block.type === row.type &&
+        block.positive === (row.customPositive ?? ""),
+      );
+
+  return {
+    id: row.id,
+    type: resolvedBlock?.type ?? row.type,
+    sourceId: resolvedBlock?.sourceId ?? null,
+    variantId: resolvedBlock?.variantId ?? null,
+    categoryId: resolvedBlock?.categoryId ?? null,
+    bindingId: resolvedBlock?.bindingId ?? null,
+    groupBindingId: resolvedBlock?.groupBindingId ?? null,
+    label: resolvedBlock?.label ?? row.customLabel ?? "Custom",
+    positive: resolvedBlock?.positive ?? row.customPositive ?? "",
+    negative: resolvedBlock?.negative ?? row.customNegative ?? null,
+    sortOrder: row.sortOrder,
+  };
+}
+
+async function resolvePromptBlockDataForBinding(
+  sectionId: string,
+  bindingKey: string,
+): Promise<PromptBlockData | null> {
+  const binding = await prisma.sectionPresetBinding.findUnique({
+    where: {
+      projectSectionId_bindingKey: {
+        projectSectionId: sectionId,
+        bindingKey,
+      },
+    },
+    select: { id: true },
+  });
+  if (!binding) return null;
+
+  const row = await prisma.sectionPromptBlock.findFirst({
+    where: { projectSectionId: sectionId, sectionBindingId: binding.id },
+    include: {
+      sectionBinding: {
+        select: { bindingKey: true },
+      },
+    },
+  });
+  if (!row) {
+    const resolvedConfig = await resolveSectionConfig(sectionId);
+    const resolvedBlock = resolvedConfig?.promptBlocks.find((block) => block.bindingId === bindingKey);
+    if (!resolvedBlock) return null;
+    return {
+      id: makeResolvedOnlyBlockId(bindingKey),
+      type: resolvedBlock.type,
+      sourceId: resolvedBlock.sourceId,
+      variantId: resolvedBlock.variantId,
+      categoryId: resolvedBlock.categoryId,
+      bindingId: resolvedBlock.bindingId,
+      groupBindingId: resolvedBlock.groupBindingId,
+      label: resolvedBlock.label,
+      positive: resolvedBlock.positive,
+      negative: resolvedBlock.negative,
+      sortOrder: resolvedBlock.sortOrder,
+    };
+  }
+
+  return resolvePromptBlockDataForRow(row);
 }
 
 // ---------------------------------------------------------------------------
@@ -143,6 +320,66 @@ export async function updateSectionBlock(
 ): Promise<PromptBlockData> {
   const { updatePromptBlock } = await import("@/server/repositories/prompt-block-repository");
   const { audit } = await import("@/server/services/audit-service");
+
+  const normalizedBefore = await findNormalizedPromptBlockById(blockId);
+  if (normalizedBefore) {
+    const beforeResolved = await resolvePromptBlockDataForRow(normalizedBefore);
+    const shouldDetachFromPreset = Boolean(normalizedBefore.sectionBinding);
+    let updatedRow;
+
+    if (shouldDetachFromPreset && normalizedBefore.sectionBinding) {
+      await detachSectionLorasFromPresetBinding(
+        normalizedBefore.projectSectionId,
+        normalizedBefore.sectionBinding.bindingKey,
+      );
+      updatedRow = await prisma.$transaction(async (tx) => {
+        const row = await tx.sectionPromptBlock.update({
+          where: { id: normalizedBefore.id },
+          data: {
+            sectionBindingId: null,
+            type: "custom",
+            customLabel: input.label ?? beforeResolved.label,
+            customPositive: input.positive ?? beforeResolved.positive,
+            customNegative: input.negative !== undefined ? input.negative : beforeResolved.negative,
+          },
+          include: {
+            sectionBinding: {
+              select: { bindingKey: true },
+            },
+          },
+        });
+        await tx.sectionPresetBinding.delete({
+          where: { id: normalizedBefore.sectionBinding!.id },
+        });
+        return row;
+      });
+    } else {
+      updatedRow = await prisma.sectionPromptBlock.update({
+        where: { id: normalizedBefore.id },
+        data: {
+          ...(input.label !== undefined ? { customLabel: input.label } : {}),
+          ...(input.positive !== undefined ? { customPositive: input.positive } : {}),
+          ...(input.negative !== undefined ? { customNegative: input.negative } : {}),
+        },
+        include: {
+          sectionBinding: {
+            select: { bindingKey: true },
+          },
+        },
+      });
+    }
+
+    const block = await resolvePromptBlockDataForRow(updatedRow);
+    audit("PromptBlock", normalizedBefore.id, "update", Object.fromEntries(Object.entries(input)), "user" as const);
+    await recordSectionChange({
+      sectionId: normalizedBefore.projectSectionId,
+      dimension: "prompt",
+      title: `编辑提示词块：${beforeResolved.label}`,
+      before: beforeResolved,
+      after: block,
+    });
+    return block;
+  }
 
   const before = await prisma.promptBlock.findUnique({
     where: { id: blockId },
@@ -273,47 +510,37 @@ export async function importPresetToSection(
   const variant = preset.variants.find((v) => v.id === variantId) ?? preset.variants[0];
   if (!variant) return null;
 
-  // Resolve with linked variants
   const resolved = await resolveVariantContent(variant.id);
+  const bindingKey = createBindingId();
+  const label = buildPresetBlockLabel(preset, variant);
 
-  const bindingId = createBindingId();
-  const label = preset.variants.length === 1
-    ? preset.name
-    : `${preset.name} / ${variant.name}`;
-
-  // --- Compute insertion sortOrder based on category positivePromptOrder ---
-  // 1. Get all existing blocks with their category's positivePromptOrder
-  const existingBlocks = await prisma.promptBlock.findMany({
+  const existingBlocks = await prisma.sectionPromptBlock.findMany({
     where: { projectSectionId: sectionId },
-    select: { id: true, sortOrder: true, categoryId: true },
+    select: {
+      id: true,
+      sortOrder: true,
+      sectionBinding: {
+        select: {
+          category: { select: { positivePromptOrder: true } },
+        },
+      },
+    },
     orderBy: { sortOrder: "asc" },
   });
 
   const myOrder = preset.category.positivePromptOrder;
 
-  // Look up category orders for existing blocks
-  const existingCategoryIds = [...new Set(existingBlocks.map((b) => b.categoryId).filter(Boolean))] as string[];
-  const catOrders = await prisma.presetCategory.findMany({
-    where: { id: { in: existingCategoryIds } },
-    select: { id: true, positivePromptOrder: true },
-  });
-  const catOrderMap = new Map(catOrders.map((c) => [c.id, c.positivePromptOrder]));
-
-  // Find insertion index: after last block whose category positivePromptOrder <= myOrder
   let insertAfterIndex = -1;
   for (let i = 0; i < existingBlocks.length; i++) {
-    const catId = existingBlocks[i].categoryId;
-    const order = catId ? (catOrderMap.get(catId) ?? 999) : 999;
+    const order = existingBlocks[i].sectionBinding?.category.positivePromptOrder ?? 999;
     if (order <= myOrder) insertAfterIndex = i;
   }
 
-  // Shift blocks after insertion point
   const insertSortOrder = insertAfterIndex >= 0
     ? existingBlocks[insertAfterIndex].sortOrder + 1
     : 0;
 
-  // Bump all blocks at or after insertSortOrder
-  await prisma.promptBlock.updateMany({
+  await prisma.sectionPromptBlock.updateMany({
     where: {
       projectSectionId: sectionId,
       sortOrder: { gte: insertSortOrder },
@@ -321,51 +548,48 @@ export async function importPresetToSection(
     data: { sortOrder: { increment: 1 } },
   });
 
-  // Create prompt block at the correct position
-  const { createPromptBlock } = await import("@/server/repositories/prompt-block-repository");
-  const block = await createPromptBlock(sectionId, {
-    type: "preset" as "custom" | "preset",
-    sourceId: presetId,
-    variantId: variant.id,
-    categoryId: preset.category.id,
-    bindingId,
-    groupBindingId: groupBindingId ?? null,
-    label,
-    positive: resolved.prompt,
-    negative: resolved.negativePrompt,
-    sortOrder: insertSortOrder,
+  const { binding, promptRow } = await prisma.$transaction(async (tx) => {
+    const binding = await tx.sectionPresetBinding.create({
+      data: {
+        projectSectionId: sectionId,
+        bindingKey,
+        categoryId: preset.category.id,
+        presetId,
+        variantId: variant.id,
+        groupBindingKey: groupBindingId ?? null,
+        sortOrder: insertSortOrder,
+      },
+    });
+    const promptRow = await tx.sectionPromptBlock.create({
+      data: {
+        projectSectionId: sectionId,
+        sectionBindingId: binding.id,
+        type: "preset",
+        sortOrder: insertSortOrder,
+      },
+      include: {
+        sectionBinding: { select: { bindingKey: true } },
+      },
+    });
+    return { binding, promptRow };
   });
+
+  const block = await resolvePromptBlockDataForRow(promptRow);
   await recordSectionChange({
     sectionId,
     dimension: "prompt",
     title: `导入预制：${label}`,
     before: null,
-    after: block,
+    after: { binding, block },
   });
 
-  // Build LoRA entries
-  const makeLora = (b: { path: string; weight: number; enabled: boolean }): LoraEntry => ({
-    id: createLoraEntryId(),
-    path: b.path,
-    weight: b.weight,
-    enabled: b.enabled,
-    source: "preset" as const,
-    sourceLabel: preset.category.name,
-    sourceColor: preset.category.color ?? undefined,
-    sourceName: preset.name,
-    bindingId,
-    groupBindingId: groupBindingId ?? undefined,
+  const { lora1, lora2 } = makePresetLoraEntries({
+    bindingKey,
+    groupBindingKey: groupBindingId ?? null,
+    category: preset.category,
+    preset,
+    resolved,
   });
-
-  const lora1 = resolved.lora1.map(makeLora);
-  const lora2 = resolved.lora2.map(makeLora);
-
-  await persistImportedLoras(
-    sectionId,
-    lora1,
-    lora2,
-    `Import preset LoRA: ${label}`,
-  );
 
   return {
     block,
@@ -422,7 +646,7 @@ export async function removeImportedPresetFromSection(
       after: nextConfig,
     });
   }
-  revalidatePath("/projects");
+  safeRevalidatePath("/projects");
 
   return { deletedBlocks: blocks.length, removedLoras: removed };
 }
@@ -436,6 +660,69 @@ export async function switchBindingVariant(
   bindingId: string,
   newVariantId: string,
 ): Promise<{ block: PromptBlockData; lora1: ImportPresetResult["lora1"]; lora2: ImportPresetResult["lora2"] } | null> {
+  const sectionBinding = await prisma.sectionPresetBinding.findUnique({
+    where: {
+      projectSectionId_bindingKey: {
+        projectSectionId: sectionId,
+        bindingKey: bindingId,
+      },
+    },
+    include: {
+      category: { select: { id: true, name: true, color: true } },
+      preset: {
+        select: {
+          id: true,
+          name: true,
+          variants: {
+            where: { isActive: true },
+            select: { id: true, name: true, sortOrder: true, isActive: true },
+            orderBy: { sortOrder: "asc" },
+          },
+        },
+      },
+    },
+  });
+  if (sectionBinding) {
+    const variant = sectionBinding.preset.variants.find((item) => item.id === newVariantId);
+    if (!variant) return null;
+
+    const before = {
+      id: sectionBinding.id,
+      bindingKey: sectionBinding.bindingKey,
+      variantId: sectionBinding.variantId,
+    };
+    const updatedBinding = await prisma.sectionPresetBinding.update({
+      where: { id: sectionBinding.id },
+      data: { variantId: newVariantId },
+    });
+    const label = buildPresetBlockLabel(sectionBinding.preset, variant);
+    const block = await resolvePromptBlockDataForBinding(sectionId, bindingId);
+    if (!block) return null;
+    await recordSectionChange({
+      sectionId,
+      dimension: "prompt",
+      title: `切换预制变体：${label}`,
+      before,
+      after: {
+        id: updatedBinding.id,
+        bindingKey: updatedBinding.bindingKey,
+        variantId: updatedBinding.variantId,
+      },
+    });
+
+    const resolved = await resolveVariantContent(newVariantId);
+    const { lora1, lora2 } = makePresetLoraEntries({
+      bindingKey: bindingId,
+      groupBindingKey: sectionBinding.groupBindingKey,
+      category: sectionBinding.category,
+      preset: sectionBinding.preset,
+      resolved,
+    });
+
+    safeRevalidatePath("/projects");
+    return { block, lora1, lora2 };
+  }
+
   // Find the block with this bindingId
   const block = await prisma.promptBlock.findFirst({
     where: { projectSectionId: sectionId, bindingId },

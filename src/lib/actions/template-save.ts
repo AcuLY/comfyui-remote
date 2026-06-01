@@ -1,54 +1,95 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import { DEFAULT_CHECKPOINT_NAME } from "@/lib/model-constants";
-import { toJsonValue } from "./_helpers";
-import type { PresetBinding } from "./project";
+import {
+  buildTemplateSectionRowsForProjectSectionSave,
+  type TemplateSectionManualLoraEntryWrite,
+  type TemplateSectionPresetBindingWrite,
+  type TemplateSectionPromptBlockWrite,
+} from "@/server/prompt-config/template-resolver";
 import { buildTemplateSectionFolderClonePlan } from "./section-folder-utils";
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-type TemplateSectionJsonBlock = {
-  type?: string | null;
-  sourceId?: string | null;
+type ProjectLevelTemplateBinding = {
+  categoryId: string;
+  presetId: string;
   variantId?: string | null;
-  categoryId?: string | null;
-  bindingId?: string | null;
-  groupBindingId?: string | null;
-  sortOrder: number;
+  sortOrder?: number | null;
 };
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
+function parseLegacyProjectBindings(value: unknown): ProjectLevelTemplateBinding[] {
+  if (!Array.isArray(value)) return [];
+  const bindings: ProjectLevelTemplateBinding[] = [];
 
-function findProjectLevelTemplateBindings(
-  blocks: TemplateSectionJsonBlock[],
-  projectBindings: PresetBinding[],
-) {
-  const projectLevelBlockIndexes = new Set<number>();
-  const projectLevelBindingIds = new Set<string>();
+  value.forEach((item, index) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return;
+    const binding = item as Record<string, unknown>;
+    if (typeof binding.categoryId !== "string" || typeof binding.presetId !== "string") return;
+    bindings.push({
+      categoryId: binding.categoryId,
+      presetId: binding.presetId,
+      variantId: typeof binding.variantId === "string" ? binding.variantId : null,
+      sortOrder: index,
+    });
+  });
 
-  for (const binding of projectBindings) {
-    const blockIndex = blocks.findIndex(
-      (block, index) =>
-        !projectLevelBlockIndexes.has(index) &&
-        block.type === "preset" &&
-        !block.groupBindingId &&
-        block.sourceId === binding.presetId &&
-        (!binding.categoryId || block.categoryId === binding.categoryId),
-    );
+  return bindings;
+}
 
-    if (blockIndex < 0) continue;
-    projectLevelBlockIndexes.add(blockIndex);
-    const bindingId = blocks[blockIndex].bindingId;
-    if (bindingId) projectLevelBindingIds.add(bindingId);
+function uniqueProjectLevelBindings(bindings: readonly ProjectLevelTemplateBinding[]) {
+  const seen = new Set<string>();
+  const unique: ProjectLevelTemplateBinding[] = [];
+
+  for (const binding of bindings) {
+    if (seen.has(binding.categoryId)) continue;
+    seen.add(binding.categoryId);
+    unique.push(binding);
   }
 
-  return { projectLevelBlockIndexes, projectLevelBindingIds };
+  return unique;
+}
+
+function projectTemplatePresetBindingData(
+  projectTemplateId: string,
+  binding: ProjectLevelTemplateBinding,
+  index: number,
+) {
+  return {
+    id: `projectTemplatePresetBinding:${projectTemplateId}:${binding.categoryId}`,
+    projectTemplateId,
+    categoryId: binding.categoryId,
+    presetId: binding.presetId,
+    variantId: binding.variantId ?? null,
+    sortOrder: binding.sortOrder ?? index,
+  };
+}
+
+async function createTemplateSectionRows(
+  tx: typeof prisma,
+  rows: {
+    presetBindings: TemplateSectionPresetBindingWrite[];
+    promptBlocks: TemplateSectionPromptBlockWrite[];
+    manualLoraEntries: TemplateSectionManualLoraEntryWrite[];
+  },
+) {
+  for (const row of rows.presetBindings) {
+    await tx.templateSectionPresetBinding.create({ data: row });
+  }
+  for (const row of rows.promptBlocks) {
+    await tx.templateSectionPromptBlock.create({ data: row });
+  }
+  for (const row of rows.manualLoraEntries) {
+    await tx.templateSectionManualLoraEntry.create({
+      data: {
+        ...row,
+        metadata: row.metadata == null
+          ? undefined
+          : JSON.parse(JSON.stringify(row.metadata)) as Prisma.InputJsonValue,
+      },
+    });
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -64,6 +105,15 @@ export async function saveProjectAsTemplate(
     where: { id: projectId },
     select: {
       presetBindings: true,
+      presetBindingRows: {
+        select: {
+          categoryId: true,
+          presetId: true,
+          variantId: true,
+          sortOrder: true,
+        },
+        orderBy: { sortOrder: "asc" },
+      },
       checkpointName: true,
       sectionFolders: {
         orderBy: [{ parentId: "asc" }, { sortOrder: "asc" }, { name: "asc" }],
@@ -92,15 +142,90 @@ export async function saveProjectAsTemplate(
               sortOrder: true,
             },
           },
+          presetBindingRows: {
+            select: {
+              id: true,
+              projectSectionId: true,
+              bindingKey: true,
+              categoryId: true,
+              presetId: true,
+              variantId: true,
+              groupBindingKey: true,
+              sortOrder: true,
+              category: {
+                select: {
+                  id: true,
+                  name: true,
+                  color: true,
+                  positivePromptOrder: true,
+                  negativePromptOrder: true,
+                  lora1Order: true,
+                  lora2Order: true,
+                },
+              },
+              preset: {
+                select: {
+                  id: true,
+                  categoryId: true,
+                  name: true,
+                  variants: {
+                    where: { isActive: true },
+                    select: {
+                      id: true,
+                      presetId: true,
+                      name: true,
+                      sortOrder: true,
+                      isActive: true,
+                    },
+                    orderBy: { sortOrder: "asc" },
+                  },
+                },
+              },
+            },
+            orderBy: { sortOrder: "asc" },
+          },
+          sectionPromptBlocks: {
+            select: {
+              id: true,
+              projectSectionId: true,
+              sectionBindingId: true,
+              type: true,
+              customLabel: true,
+              customPositive: true,
+              customNegative: true,
+              sortOrder: true,
+            },
+            orderBy: { sortOrder: "asc" },
+          },
+          manualLoraEntries: {
+            select: {
+              id: true,
+              projectSectionId: true,
+              sectionBindingId: true,
+              stage: true,
+              path: true,
+              weight: true,
+              enabled: true,
+              detachedFromBindingKey: true,
+              detachedFromPresetId: true,
+              detachedFromVariantId: true,
+              detachedFromPath: true,
+              metadata: true,
+              sortOrder: true,
+            },
+            orderBy: { sortOrder: "asc" },
+          },
         },
       },
     },
   });
   if (!project) throw new Error("PROJECT_NOT_FOUND");
 
-  const projectBindings = Array.isArray(project.presetBindings)
-    ? (project.presetBindings as PresetBinding[])
-    : [];
+  const projectBindings = uniqueProjectLevelBindings(
+    project.presetBindingRows.length > 0
+      ? project.presetBindingRows
+      : parseLegacyProjectBindings(project.presetBindings),
+  );
 
   const folderClonePlan = buildTemplateSectionFolderClonePlan({
     projectFolders: project.sectionFolders,
@@ -110,90 +235,22 @@ export async function saveProjectAsTemplate(
     })),
   });
 
-  const buildSectionCreateData = (section: (typeof project.sections)[number]) => {
-    const { projectLevelBlockIndexes, projectLevelBindingIds } =
-      findProjectLevelTemplateBindings(section.promptBlocks, projectBindings);
-
-    // Filter out blocks from project-level bindings, keep section-level imports
-    // For section-level imports, preserve bindingId/groupBindingId for group relationship
-    const templateBlocks = section.promptBlocks
-      .filter((block, index) => {
-        // Keep custom blocks
-        if (block.type === "custom") return true;
-        // For preset blocks: only drop the concrete block matched to a project-level binding.
-        if (projectLevelBlockIndexes.has(index)) return false;
-        return true;
-      })
-      .map((block) => ({
-        type: block.type,
-        label: block.label,
-        positive: block.positive,
-        negative: block.negative,
-        sortOrder: block.sortOrder,
-        categoryId: block.categoryId,
-        // Preserve preset identity and binding ids for section-level imports
-        sourceId: block.type === "preset" ? block.sourceId : undefined,
-        variantId: block.type === "preset" ? block.variantId : undefined,
-        bindingId: block.type === "preset" ? block.bindingId : undefined,
-        groupBindingId: block.type === "preset" ? block.groupBindingId : undefined,
-      }));
-
-    // Filter out loras from project-level bindings, keep section-level imports
-    const loraCfg = section.loraConfig as Record<string, unknown> | null;
-
-    const filterLorasByBinding = (arr: unknown) => {
-      if (!Array.isArray(arr)) return [];
-      return arr
-        .filter((e): e is Record<string, unknown> => typeof e === "object" && e !== null)
-        .filter((e) => {
-          // Keep manual loras
-          if (e.source !== "preset") return true;
-          // Preset-group members are section-level imports and must remain in templates.
-          if (e.groupBindingId) return true;
-          // Filter out loras from project-level bindings
-          if (e.bindingId && projectLevelBindingIds.has(e.bindingId as string)) return false;
-          return true;
-        })
-        .map((e) => ({
-          id: e.id,
-          path: e.path,
-          weight: e.weight,
-          enabled: e.enabled,
-          source: e.source,
-          sourceLabel: e.sourceLabel,
-          sourceColor: e.sourceColor,
-          sourceName: e.sourceName,
-          // Preserve bindingId and groupBindingId for section-level imports
-          bindingId: e.source === "preset" ? e.bindingId : undefined,
-          groupBindingId: e.source === "preset" ? e.groupBindingId : undefined,
-        }));
-    };
-
-    const templateLoraConfig = loraCfg
-      ? { lora1: filterLorasByBinding(loraCfg.lora1), lora2: filterLorasByBinding(loraCfg.lora2) }
-      : null;
-
-    return {
-      folderId: folderClonePlan.sectionFolderIdBySectionId.get(section.id) ?? null,
-      sortOrder: section.sortOrder,
-      name: section.name,
-      notes: null,
-      aspectRatio: section.aspectRatio,
-      shortSidePx: section.shortSidePx,
-      batchSize: section.batchSize,
-      seedPolicy1: section.seedPolicy1,
-      seedPolicy2: section.seedPolicy2,
-      ksampler1: section.ksampler1 ?? undefined,
-      ksampler2: section.ksampler2 ?? undefined,
-      upscaleFactor: section.upscaleFactor ?? undefined,
-      checkpointName: section.checkpointName ?? project.checkpointName ?? DEFAULT_CHECKPOINT_NAME,
-      loraConfig: (templateLoraConfig && (templateLoraConfig.lora1.length > 0 || templateLoraConfig.lora2.length > 0))
-        ? toJsonValue(templateLoraConfig)
-        : undefined,
-      extraParams: section.extraParams ?? undefined,
-      promptBlocks: templateBlocks.length > 0 ? toJsonValue(templateBlocks) : undefined,
-    };
-  };
+  const buildSectionCreateData = (section: (typeof project.sections)[number]) => ({
+    folderId: folderClonePlan.sectionFolderIdBySectionId.get(section.id) ?? null,
+    sortOrder: section.sortOrder,
+    name: section.name,
+    notes: null,
+    aspectRatio: section.aspectRatio,
+    shortSidePx: section.shortSidePx,
+    batchSize: section.batchSize,
+    seedPolicy1: section.seedPolicy1,
+    seedPolicy2: section.seedPolicy2,
+    ksampler1: section.ksampler1 ?? undefined,
+    ksampler2: section.ksampler2 ?? undefined,
+    upscaleFactor: section.upscaleFactor ?? undefined,
+    checkpointName: section.checkpointName ?? project.checkpointName ?? DEFAULT_CHECKPOINT_NAME,
+    extraParams: section.extraParams ?? undefined,
+  });
 
   const template = await prisma.$transaction(async (tx) => {
     const createdTemplate = await tx.projectTemplate.create({
@@ -202,6 +259,12 @@ export async function saveProjectAsTemplate(
         description: templateDescription ?? null,
       },
     });
+
+    for (const [index, binding] of projectBindings.entries()) {
+      await tx.projectTemplatePresetBinding.create({
+        data: projectTemplatePresetBindingData(createdTemplate.id, binding, index),
+      });
+    }
 
     for (const folder of folderClonePlan.foldersToCreate) {
       await tx.projectTemplateSectionFolder.create({
@@ -216,12 +279,22 @@ export async function saveProjectAsTemplate(
     }
 
     for (const section of project.sections) {
-      await tx.projectTemplateSection.create({
+      const createdSection = await tx.projectTemplateSection.create({
         data: {
           projectTemplateId: createdTemplate.id,
           ...buildSectionCreateData(section),
         },
       });
+
+      const relationRows = buildTemplateSectionRowsForProjectSectionSave({
+        projectTemplateSectionId: createdSection.id,
+        projectSection: section,
+        presetBindings: section.presetBindingRows,
+        promptBlockRows: section.sectionPromptBlocks,
+        manualLoraEntries: section.manualLoraEntries,
+        projectLevelBindings: projectBindings,
+      });
+      await createTemplateSectionRows(tx as typeof prisma, relationRows);
     }
 
     return createdTemplate;

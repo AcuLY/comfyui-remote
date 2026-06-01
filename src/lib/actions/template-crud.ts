@@ -4,8 +4,13 @@ import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import type { ProjectTemplateSectionData } from "@/lib/server-data";
+import {
+  buildTemplateSectionRowsFromLegacyTemplateData,
+  type TemplateSectionManualLoraEntryWrite,
+  type TemplateSectionPresetBindingWrite,
+  type TemplateSectionPromptBlockWrite,
+} from "@/server/prompt-config/template-resolver";
 import { resolveVariantContent } from "./preset-variant";
-import { toJsonValue } from "./_helpers";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -69,6 +74,20 @@ function toNullableJsonValue(value: unknown): Prisma.InputJsonValue | typeof Pri
   return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
 }
 
+function safeRevalidatePath(path: string) {
+  try {
+    revalidatePath(path);
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message.includes("static generation store missing")
+    ) {
+      return;
+    }
+    throw error;
+  }
+}
+
 function buildTemplateSectionUpdateData(section: ProjectTemplateSectionData) {
   return {
     folderId: section.folderId,
@@ -83,13 +102,53 @@ function buildTemplateSectionUpdateData(section: ProjectTemplateSectionData) {
     ksampler2: toNullableJsonValue(section.ksampler2),
     upscaleFactor: section.upscaleFactor,
     checkpointName: section.checkpointName,
-    loraConfig: toNullableJsonValue(section.loraConfig),
+    loraConfig: Prisma.DbNull,
     extraParams: toNullableJsonValue(section.extraParams),
-    promptBlocks:
-      section.promptBlocks.length > 0
-        ? toNullableJsonValue(section.promptBlocks)
-        : Prisma.DbNull,
+    promptBlocks: Prisma.DbNull,
   };
+}
+
+async function createTemplateSectionRelationRows(
+  tx: Prisma.TransactionClient,
+  rows: {
+    presetBindings: TemplateSectionPresetBindingWrite[];
+    promptBlocks: TemplateSectionPromptBlockWrite[];
+    manualLoraEntries: TemplateSectionManualLoraEntryWrite[];
+  },
+) {
+  for (const row of rows.presetBindings) {
+    await tx.templateSectionPresetBinding.create({ data: row });
+  }
+  for (const row of rows.promptBlocks) {
+    await tx.templateSectionPromptBlock.create({ data: row });
+  }
+  for (const row of rows.manualLoraEntries) {
+    await tx.templateSectionManualLoraEntry.create({
+      data: {
+        ...row,
+        metadata: row.metadata == null
+          ? undefined
+          : JSON.parse(JSON.stringify(row.metadata)) as Prisma.InputJsonValue,
+      },
+    });
+  }
+}
+
+async function replaceTemplateSectionRelationRows(
+  tx: Prisma.TransactionClient,
+  projectTemplateSectionId: string,
+  section: ProjectTemplateSectionData,
+) {
+  await tx.templateSectionPromptBlock.deleteMany({ where: { projectTemplateSectionId } });
+  await tx.templateSectionManualLoraEntry.deleteMany({ where: { projectTemplateSectionId } });
+  await tx.templateSectionPresetBinding.deleteMany({ where: { projectTemplateSectionId } });
+
+  const rows = buildTemplateSectionRowsFromLegacyTemplateData({
+    projectTemplateSectionId,
+    promptBlocks: section.promptBlocks,
+    loraConfig: section.loraConfig,
+  });
+  await createTemplateSectionRelationRows(tx, rows);
 }
 
 // ---------------------------------------------------------------------------
@@ -99,34 +158,31 @@ function buildTemplateSectionUpdateData(section: ProjectTemplateSectionData) {
 export async function createProjectTemplate(
   input: CreateProjectTemplateInput,
 ): Promise<string> {
-  const template = await prisma.projectTemplate.create({
-    data: {
-      name: input.name,
-      description: input.description ?? null,
-      sections: {
-        create: input.sections.map((s, index) => ({
-          folderId: s.folderId,
-          sortOrder: s.sortOrder ?? index,
-          name: s.name,
-          notes: s.notes,
-          aspectRatio: s.aspectRatio,
-          shortSidePx: s.shortSidePx,
-          batchSize: s.batchSize,
-          seedPolicy1: s.seedPolicy1,
-          seedPolicy2: s.seedPolicy2,
-          ksampler1: s.ksampler1 ? toJsonValue(s.ksampler1) : undefined,
-          ksampler2: s.ksampler2 ? toJsonValue(s.ksampler2) : undefined,
-          upscaleFactor: s.upscaleFactor,
-          checkpointName: s.checkpointName,
-          loraConfig: s.loraConfig ? toJsonValue(s.loraConfig) : undefined,
-          extraParams: s.extraParams ? toJsonValue(s.extraParams) : undefined,
-          promptBlocks:
-            s.promptBlocks.length > 0 ? toJsonValue(s.promptBlocks) : undefined,
-        })),
+  const template = await prisma.$transaction(async (tx) => {
+    const createdTemplate = await tx.projectTemplate.create({
+      data: {
+        name: input.name,
+        description: input.description ?? null,
       },
-    },
+    });
+
+    for (const [index, section] of input.sections.entries()) {
+      const createdSection = await tx.projectTemplateSection.create({
+        data: {
+          projectTemplateId: createdTemplate.id,
+          ...buildTemplateSectionUpdateData({
+            ...section,
+            sortOrder: section.sortOrder ?? index,
+          }),
+          sortOrder: section.sortOrder ?? index,
+        },
+      });
+      await replaceTemplateSectionRelationRows(tx, createdSection.id, section);
+    }
+
+    return createdTemplate;
   });
-  revalidatePath("/assets/templates");
+  safeRevalidatePath("/assets/templates");
   return template.id;
 }
 
@@ -175,21 +231,25 @@ export async function updateProjectTemplate(
             },
             data,
           });
-          if (updated.count > 0) continue;
+          if (updated.count > 0) {
+            await replaceTemplateSectionRelationRows(tx, section.id, section);
+            continue;
+          }
         }
 
-        await tx.projectTemplateSection.create({
+        const createdSection = await tx.projectTemplateSection.create({
           data: {
             projectTemplateId: id,
             ...data,
           },
         });
+        await replaceTemplateSectionRelationRows(tx, createdSection.id, section);
       }
     }
   });
 
-  revalidatePath("/assets/templates");
-  revalidatePath(`/assets/templates/${id}/edit`);
+  safeRevalidatePath("/assets/templates");
+  safeRevalidatePath(`/assets/templates/${id}/edit`);
 }
 
 export async function updateProjectTemplateSection(
@@ -205,14 +265,17 @@ export async function updateProjectTemplateSection(
 
   if (!existing) throw new Error("TEMPLATE_SECTION_NOT_FOUND");
 
-  await prisma.projectTemplateSection.update({
-    where: { id: input.sectionId },
-    data: buildTemplateSectionUpdateData(input.section),
+  await prisma.$transaction(async (tx) => {
+    await tx.projectTemplateSection.update({
+      where: { id: input.sectionId },
+      data: buildTemplateSectionUpdateData(input.section),
+    });
+    await replaceTemplateSectionRelationRows(tx, input.sectionId, input.section);
   });
 
-  revalidatePath("/assets/templates");
-  revalidatePath(`/assets/templates/${input.templateId}/edit`);
-  revalidatePath(`/assets/templates/${input.templateId}/sections/${existing.sortOrder}`);
+  safeRevalidatePath("/assets/templates");
+  safeRevalidatePath(`/assets/templates/${input.templateId}/edit`);
+  safeRevalidatePath(`/assets/templates/${input.templateId}/sections/${existing.sortOrder}`);
 }
 
 export async function deleteProjectTemplateSection(
@@ -241,20 +304,25 @@ export async function deleteProjectTemplateSection(
     });
   });
 
-  revalidatePath("/assets/templates");
-  revalidatePath(`/assets/templates/${input.templateId}/edit`);
+  safeRevalidatePath("/assets/templates");
+  safeRevalidatePath(`/assets/templates/${input.templateId}/edit`);
 }
 
 export async function deleteProjectTemplate(
   templateId: string,
 ): Promise<void> {
   await prisma.projectTemplate.delete({ where: { id: templateId } });
-  revalidatePath("/assets/templates");
+  safeRevalidatePath("/assets/templates");
 }
 
 export async function copyProjectTemplateSection(sectionId: string): Promise<string | null> {
   const section = await prisma.projectTemplateSection.findUnique({
     where: { id: sectionId },
+    include: {
+      presetBindingRows: { orderBy: { sortOrder: "asc" } },
+      promptBlockRows: { orderBy: { sortOrder: "asc" } },
+      manualLoraEntries: { orderBy: { sortOrder: "asc" } },
+    },
   });
 
   if (!section) return null;
@@ -263,30 +331,104 @@ export async function copyProjectTemplateSection(sectionId: string): Promise<str
     where: { projectTemplateId: section.projectTemplateId },
   });
 
-  const copied = await prisma.projectTemplateSection.create({
-    data: {
-      projectTemplateId: section.projectTemplateId,
-      sortOrder: count,
-      folderId: section.folderId,
-      name: section.name ? `${section.name} (副本)` : null,
-      notes: section.notes,
-      aspectRatio: section.aspectRatio,
-      shortSidePx: section.shortSidePx,
-      batchSize: section.batchSize,
-      seedPolicy1: section.seedPolicy1,
-      seedPolicy2: section.seedPolicy2,
-      ksampler1: section.ksampler1 ?? undefined,
-      ksampler2: section.ksampler2 ?? undefined,
-      upscaleFactor: section.upscaleFactor ?? undefined,
-      checkpointName: section.checkpointName,
-      loraConfig: section.loraConfig ?? undefined,
-      extraParams: section.extraParams ?? undefined,
-      promptBlocks: section.promptBlocks ?? undefined,
-    },
+  const copied = await prisma.$transaction(async (tx) => {
+    const createdSection = await tx.projectTemplateSection.create({
+      data: {
+        projectTemplateId: section.projectTemplateId,
+        sortOrder: count,
+        folderId: section.folderId,
+        name: section.name ? `${section.name} (副本)` : null,
+        notes: section.notes,
+        aspectRatio: section.aspectRatio,
+        shortSidePx: section.shortSidePx,
+        batchSize: section.batchSize,
+        seedPolicy1: section.seedPolicy1,
+        seedPolicy2: section.seedPolicy2,
+        ksampler1: section.ksampler1 ?? undefined,
+        ksampler2: section.ksampler2 ?? undefined,
+        upscaleFactor: section.upscaleFactor ?? undefined,
+        checkpointName: section.checkpointName,
+        loraConfig: Prisma.DbNull,
+        extraParams: section.extraParams ?? undefined,
+        promptBlocks: Prisma.DbNull,
+      },
+    });
+
+    if (
+      section.presetBindingRows.length > 0 ||
+      section.promptBlockRows.length > 0 ||
+      section.manualLoraEntries.length > 0
+    ) {
+      const bindingIdMap = new Map<string, string>();
+      for (const row of section.presetBindingRows) {
+        const copiedBindingId = `templateSectionPresetBinding:${createdSection.id}:${row.bindingKey}`;
+        bindingIdMap.set(row.id, copiedBindingId);
+        await tx.templateSectionPresetBinding.create({
+          data: {
+            id: copiedBindingId,
+            projectTemplateSectionId: createdSection.id,
+            bindingKey: row.bindingKey,
+            categoryId: row.categoryId,
+            presetId: row.presetId,
+            variantId: row.variantId,
+            groupBindingKey: row.groupBindingKey,
+            sortOrder: row.sortOrder,
+          },
+        });
+      }
+      for (const row of section.promptBlockRows) {
+        await tx.templateSectionPromptBlock.create({
+          data: {
+            id: `templateSectionPromptBlock:${createdSection.id}:${row.id}`,
+            projectTemplateSectionId: createdSection.id,
+            templateSectionBindingId: row.templateSectionBindingId
+              ? (bindingIdMap.get(row.templateSectionBindingId) ?? null)
+              : null,
+            type: row.type,
+            customLabel: row.customLabel,
+            customPositive: row.customPositive,
+            customNegative: row.customNegative,
+            sortOrder: row.sortOrder,
+          },
+        });
+      }
+      for (const row of section.manualLoraEntries) {
+        await tx.templateSectionManualLoraEntry.create({
+          data: {
+            id: `templateSectionManualLoraEntry:${createdSection.id}:${row.id}`,
+            projectTemplateSectionId: createdSection.id,
+            templateSectionBindingId: row.templateSectionBindingId
+              ? (bindingIdMap.get(row.templateSectionBindingId) ?? null)
+              : null,
+            stage: row.stage,
+            path: row.path,
+            weight: row.weight,
+            enabled: row.enabled,
+            detachedFromBindingKey: row.detachedFromBindingKey,
+            detachedFromPresetId: row.detachedFromPresetId,
+            detachedFromVariantId: row.detachedFromVariantId,
+            detachedFromPath: row.detachedFromPath,
+            metadata: row.metadata == null
+              ? undefined
+              : JSON.parse(JSON.stringify(row.metadata)) as Prisma.InputJsonValue,
+            sortOrder: row.sortOrder,
+          },
+        });
+      }
+    } else {
+      const rows = buildTemplateSectionRowsFromLegacyTemplateData({
+        projectTemplateSectionId: createdSection.id,
+        promptBlocks: section.promptBlocks,
+        loraConfig: section.loraConfig,
+      });
+      await createTemplateSectionRelationRows(tx, rows);
+    }
+
+    return createdSection;
   });
 
-  revalidatePath("/assets/templates");
-  revalidatePath(`/assets/templates/${section.projectTemplateId}/edit`);
+  safeRevalidatePath("/assets/templates");
+  safeRevalidatePath(`/assets/templates/${section.projectTemplateId}/edit`);
   return copied.id;
 }
 

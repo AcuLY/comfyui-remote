@@ -1,15 +1,16 @@
 import {
   listPromptBlocks,
-  createPromptBlock,
   updatePromptBlock,
   deletePromptBlock,
   reorderPromptBlocks,
+  PromptBlockRecord,
   PromptBlockCreateInput,
   PromptBlockUpdateInput,
 } from "@/server/repositories/prompt-block-repository";
 import { audit } from "@/server/services/audit-service";
 import { ActorType } from "@/lib/db-enums";
 import { prisma } from "@/lib/prisma";
+import { resolveSectionConfig } from "@/server/prompt-config/section-resolver";
 import { detachSectionLorasFromPresetBinding } from "@/server/services/preset-binding-service";
 
 class PromptBlockServiceError extends Error {
@@ -75,6 +76,15 @@ function ensurePositiveInteger(value: unknown, fieldName: string): number | unde
 }
 
 export async function getPromptBlocks(sectionId: string) {
+  const rows = await prisma.sectionPromptBlock.findMany({
+    where: { projectSectionId: sectionId },
+    include: { sectionBinding: { select: { bindingKey: true } } },
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+  });
+  if (rows.length > 0) {
+    return Promise.all(rows.map(resolveNormalizedPromptBlockRecord));
+  }
+
   return listPromptBlocks(sectionId);
 }
 
@@ -93,6 +103,16 @@ export async function assertPromptBlockBelongsToSection(
   sectionId: string,
   blockId: string,
 ) {
+  const normalizedBlock = await prisma.sectionPromptBlock.findFirst({
+    where: {
+      id: blockId,
+      projectSectionId: sectionId,
+      projectSection: { projectId },
+    },
+    select: { id: true },
+  });
+  if (normalizedBlock) return;
+
   const block = await prisma.promptBlock.findFirst({
     where: {
       id: blockId,
@@ -104,6 +124,116 @@ export async function assertPromptBlockBelongsToSection(
   if (!block) {
     throw new PromptBlockServiceError("Prompt block not found in section", 404);
   }
+}
+
+type NormalizedPromptBlockRow = {
+  id: string;
+  projectSectionId: string;
+  sectionBindingId: string | null;
+  type: string;
+  customLabel: string | null;
+  customPositive: string | null;
+  customNegative: string | null;
+  sortOrder: number;
+  sectionBinding?: { bindingKey: string } | null;
+};
+
+async function findNormalizedPromptBlock(blockId: string) {
+  return prisma.sectionPromptBlock.findUnique({
+    where: { id: blockId },
+    include: { sectionBinding: { select: { id: true, bindingKey: true } } },
+  });
+}
+
+async function resolveNormalizedPromptBlockRecord(
+  row: NormalizedPromptBlockRow,
+): Promise<PromptBlockRecord> {
+  const resolvedConfig = await resolveSectionConfig(row.projectSectionId);
+  const resolvedBlock = row.sectionBinding?.bindingKey
+    ? resolvedConfig?.promptBlocks.find((block) => block.bindingId === row.sectionBinding?.bindingKey)
+    : resolvedConfig?.promptBlocks.find((block) =>
+        block.sortOrder === row.sortOrder &&
+        block.type === row.type &&
+        block.positive === (row.customPositive ?? ""),
+      );
+
+  return {
+    id: row.id,
+    type: (resolvedBlock?.type ?? row.type) as PromptBlockRecord["type"],
+    sourceId: resolvedBlock?.sourceId ?? null,
+    variantId: resolvedBlock?.variantId ?? null,
+    categoryId: resolvedBlock?.categoryId ?? null,
+    bindingId: resolvedBlock?.bindingId ?? null,
+    groupBindingId: resolvedBlock?.groupBindingId ?? null,
+    label: resolvedBlock?.label ?? row.customLabel ?? "Custom",
+    positive: resolvedBlock?.positive ?? row.customPositive ?? "",
+    negative: resolvedBlock?.negative ?? row.customNegative ?? null,
+    sortOrder: row.sortOrder,
+  };
+}
+
+async function createNormalizedPromptBlock(
+  sectionId: string,
+  input: PromptBlockCreateInput,
+): Promise<PromptBlockRecord> {
+  const row = await prisma.$transaction(async (tx) => {
+    const maxResult = await tx.sectionPromptBlock.aggregate({
+      where: { projectSectionId: sectionId },
+      _max: { sortOrder: true },
+    });
+    const sortOrder = input.sortOrder ?? (maxResult._max.sortOrder ?? -1) + 1;
+
+    if (input.type === "preset") {
+      if (!input.sourceId || !input.categoryId || !input.bindingId) {
+        throw new PromptBlockServiceError("Preset blocks require complete identity fields", 400);
+      }
+      const existingBinding = await tx.sectionPresetBinding.findUnique({
+        where: {
+          projectSectionId_bindingKey: {
+            projectSectionId: sectionId,
+            bindingKey: input.bindingId,
+          },
+        },
+        select: { id: true },
+      });
+      const binding = existingBinding ?? await tx.sectionPresetBinding.create({
+        data: {
+          projectSectionId: sectionId,
+          bindingKey: input.bindingId,
+          categoryId: input.categoryId,
+          presetId: input.sourceId,
+          variantId: input.variantId ?? null,
+          groupBindingKey: input.groupBindingId ?? null,
+          sortOrder,
+        },
+        select: { id: true },
+      });
+
+      return tx.sectionPromptBlock.create({
+        data: {
+          projectSectionId: sectionId,
+          sectionBindingId: binding.id,
+          type: "preset",
+          sortOrder,
+        },
+        include: { sectionBinding: { select: { bindingKey: true } } },
+      });
+    }
+
+    return tx.sectionPromptBlock.create({
+      data: {
+        projectSectionId: sectionId,
+        type: "custom",
+        customLabel: input.label,
+        customPositive: input.positive,
+        customNegative: input.negative ?? null,
+        sortOrder,
+      },
+      include: { sectionBinding: { select: { bindingKey: true } } },
+    });
+  });
+
+  return resolveNormalizedPromptBlockRecord(row);
 }
 
 function validatePresetIdentity(input: {
@@ -155,7 +285,7 @@ export async function addPromptBlock(
   };
   validatePresetIdentity(input);
 
-  const result = await createPromptBlock(sectionId, input);
+  const result = await createNormalizedPromptBlock(sectionId, input);
   audit("PromptBlock", result.id, "create", { sectionId, type: input.type }, actorType);
   return result;
 }
@@ -210,6 +340,51 @@ export async function editPromptBlock(
     input.positive !== undefined ||
     input.negative !== undefined;
   const shouldAutoDetachContent = hasContentWrite && actorType !== ActorType.agent;
+
+  const normalizedBefore = await findNormalizedPromptBlock(blockId);
+  if (normalizedBefore) {
+    const before = await resolveNormalizedPromptBlockRecord(normalizedBefore);
+    const shouldDetachFromPreset = shouldAutoDetachContent && Boolean(normalizedBefore.sectionBinding);
+    let updatedRow: NormalizedPromptBlockRow;
+
+    if (shouldDetachFromPreset && normalizedBefore.sectionBinding) {
+      await detachSectionLorasFromPresetBinding(
+        normalizedBefore.projectSectionId,
+        normalizedBefore.sectionBinding.bindingKey,
+      );
+      updatedRow = await prisma.$transaction(async (tx) => {
+        const row = await tx.sectionPromptBlock.update({
+          where: { id: normalizedBefore.id },
+          data: {
+            sectionBindingId: null,
+            type: "custom",
+            customLabel: input.label ?? before.label,
+            customPositive: input.positive ?? before.positive,
+            customNegative: input.negative !== undefined ? input.negative : before.negative,
+            ...(input.sortOrder !== undefined ? { sortOrder: input.sortOrder } : {}),
+          },
+          include: { sectionBinding: { select: { bindingKey: true } } },
+        });
+        await tx.sectionPresetBinding.delete({ where: { id: normalizedBefore.sectionBinding!.id } });
+        return row;
+      });
+    } else {
+      updatedRow = await prisma.sectionPromptBlock.update({
+        where: { id: normalizedBefore.id },
+        data: {
+          ...(input.label !== undefined ? { customLabel: input.label } : {}),
+          ...(input.positive !== undefined ? { customPositive: input.positive } : {}),
+          ...(input.negative !== undefined ? { customNegative: input.negative } : {}),
+          ...(input.sortOrder !== undefined ? { sortOrder: input.sortOrder } : {}),
+        },
+        include: { sectionBinding: { select: { bindingKey: true } } },
+      });
+    }
+
+    const result = await resolveNormalizedPromptBlockRecord(updatedRow);
+    audit("PromptBlock", blockId, "update", Object.fromEntries(Object.entries(input)), actorType);
+    return result;
+  }
 
   if (
     input.type !== undefined ||
@@ -266,6 +441,23 @@ export async function removePromptBlock(
   blockId: string,
   actorType: ActorType = ActorType.user,
 ) {
+  const normalized = await findNormalizedPromptBlock(blockId);
+  if (normalized) {
+    await prisma.$transaction(async (tx) => {
+      if (normalized.sectionBinding) {
+        await tx.sectionManualLoraEntry.deleteMany({
+          where: { projectSectionId: normalized.projectSectionId, sectionBindingId: normalized.sectionBinding.id },
+        });
+        await tx.sectionPromptBlock.delete({ where: { id: blockId } });
+        await tx.sectionPresetBinding.delete({ where: { id: normalized.sectionBinding.id } });
+      } else {
+        await tx.sectionPromptBlock.delete({ where: { id: blockId } });
+      }
+    });
+    audit("PromptBlock", blockId, "delete", {}, actorType);
+    return;
+  }
+
   await deletePromptBlock(blockId);
   audit("PromptBlock", blockId, "delete", {}, actorType);
 }
@@ -286,6 +478,31 @@ export async function setPromptBlockOrder(
   }
 
   const blockIds = body.map((id: unknown) => (id as string).trim());
+  const normalizedBlocks = await prisma.sectionPromptBlock.findMany({
+    where: { id: { in: blockIds }, projectSectionId: sectionId },
+    select: { id: true },
+  });
+  if (normalizedBlocks.length > 0) {
+    const existingIds = new Set(normalizedBlocks.map((block) => block.id));
+    for (const blockId of blockIds) {
+      if (!existingIds.has(blockId)) {
+        throw new Error("PROMPT_BLOCK_NOT_FOUND");
+      }
+    }
+    const rows = await prisma.$transaction(
+      blockIds.map((blockId, index) =>
+        prisma.sectionPromptBlock.update({
+          where: { id: blockId },
+          data: { sortOrder: index },
+          include: { sectionBinding: { select: { bindingKey: true } } },
+        }),
+      ),
+    );
+    const result = await Promise.all(rows.map(resolveNormalizedPromptBlockRecord));
+    audit("PromptBlock", sectionId, "reorder", { blockIds }, actorType);
+    return result;
+  }
+
   const result = await reorderPromptBlocks(sectionId, blockIds);
   audit("PromptBlock", sectionId, "reorder", { blockIds }, actorType);
   return result;

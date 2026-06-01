@@ -110,6 +110,46 @@ export type SectionManualLoraEntryRow = {
   sortOrder: number;
 };
 
+export type TemplateSectionPresetBindingRow = {
+  id: string;
+  projectTemplateSectionId: string;
+  bindingKey: string;
+  categoryId: string;
+  presetId: string;
+  variantId: string | null;
+  groupBindingKey: string | null;
+  sortOrder: number;
+  category: PresetCategoryRow;
+  preset: PresetRow;
+};
+
+export type TemplateSectionPromptBlockRow = {
+  id: string;
+  projectTemplateSectionId: string;
+  templateSectionBindingId: string | null;
+  type: PromptBlockType;
+  customLabel: string | null;
+  customPositive: string | null;
+  customNegative: string | null;
+  sortOrder: number;
+};
+
+export type TemplateSectionManualLoraEntryRow = {
+  id: string;
+  projectTemplateSectionId: string;
+  templateSectionBindingId: string | null;
+  stage: string;
+  path: string;
+  weight: number;
+  enabled: boolean;
+  detachedFromBindingKey: string | null;
+  detachedFromPresetId: string | null;
+  detachedFromVariantId: string | null;
+  detachedFromPath: string | null;
+  metadata: unknown;
+  sortOrder: number;
+};
+
 export type LegacyPromptBlockRow = {
   type: PromptBlockType | string;
   sourceId: string | null;
@@ -209,6 +249,33 @@ export type ResolveSectionConfigInput = {
   presetBindings: SectionPresetBindingRow[];
   promptBlockRows: SectionPromptBlockRow[];
   manualLoraEntries: SectionManualLoraEntryRow[];
+  legacyPromptBlocks?: LegacyPromptBlockRow[];
+  presetVariants?: PresetVariantRow[];
+  variantLinks?: PresetVariantLinkRow[];
+};
+
+export type TemplateResolverSectionRow = Omit<
+  SectionResolverSectionRow,
+  "positivePrompt" | "negativePrompt" | "loraConfig"
+> & {
+  loraConfig: unknown;
+  promptBlocks: unknown;
+};
+
+export type ProjectTemplatePresetBindingRow = {
+  id?: string;
+  projectTemplateId?: string;
+  categoryId: string;
+  presetId: string;
+  variantId: string | null;
+  sortOrder: number;
+};
+
+export type ResolveTemplateSectionConfigInput = {
+  templateSection: TemplateResolverSectionRow;
+  presetBindings: TemplateSectionPresetBindingRow[];
+  promptBlockRows: TemplateSectionPromptBlockRow[];
+  manualLoraEntries: TemplateSectionManualLoraEntryRow[];
   legacyPromptBlocks?: LegacyPromptBlockRow[];
   presetVariants?: PresetVariantRow[];
   variantLinks?: PresetVariantLinkRow[];

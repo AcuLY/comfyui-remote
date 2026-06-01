@@ -6,11 +6,6 @@ import { prisma } from "@/lib/prisma";
 import { DEFAULT_CHECKPOINT_NAME } from "@/lib/model-constants";
 import { copyProject as copyProjectRepo } from "@/server/repositories/project-repository";
 import { deleteProjectCompletely } from "@/server/services/project-deletion-service";
-import {
-  importPresetToSection,
-  removeImportedPresetFromSection,
-  switchBindingVariant,
-} from "./prompt-block";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -61,6 +56,62 @@ export type UpdateProjectInput = {
 // 创建项目
 // ---------------------------------------------------------------------------
 
+function safeRevalidatePath(path: string) {
+  try {
+    revalidatePath(path);
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message.includes("static generation store missing")
+    ) {
+      return;
+    }
+    throw error;
+  }
+}
+
+function normalizeProjectPresetBindings(bindings: readonly PresetBinding[]) {
+  const seen = new Set<string>();
+  const normalized: Array<{
+    categoryId: string;
+    presetId: string;
+    variantId: string | null;
+    sortOrder: number;
+  }> = [];
+
+  for (const [index, binding] of bindings.entries()) {
+    if (seen.has(binding.categoryId)) continue;
+    seen.add(binding.categoryId);
+    normalized.push({
+      categoryId: binding.categoryId,
+      presetId: binding.presetId,
+      variantId: binding.variantId ?? null,
+      sortOrder: index,
+    });
+  }
+
+  return normalized;
+}
+
+async function replaceProjectPresetBindingRows(
+  tx: Prisma.TransactionClient,
+  projectId: string,
+  bindings: readonly PresetBinding[],
+) {
+  await tx.projectPresetBinding.deleteMany({ where: { projectId } });
+  for (const binding of normalizeProjectPresetBindings(bindings)) {
+    await tx.projectPresetBinding.create({
+      data: {
+        projectId,
+        categoryId: binding.categoryId,
+        presetId: binding.presetId,
+        variantId: binding.variantId,
+        sortOrder: binding.sortOrder,
+      },
+    });
+  }
+}
+
 export async function createProject(input: CreateProjectInput): Promise<string> {
   const checkpointName = input.checkpointName.trim() || DEFAULT_CHECKPOINT_NAME;
 
@@ -82,19 +133,23 @@ export async function createProject(input: CreateProjectInput): Promise<string> 
   const MAX_RETRIES = 5;
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     try {
-      const project = await prisma.project.create({
-        data: {
-          title: input.title,
-          slug,
-          status: "draft",
-          folderId: input.folderId ?? null,
-          checkpointName,
-          presetBindings: input.presetBindings.length > 0 ? input.presetBindings : undefined,
-          notes: input.notes,
-        },
+      const project = await prisma.$transaction(async (tx) => {
+        const createdProject = await tx.project.create({
+          data: {
+            title: input.title,
+            slug,
+            status: "draft",
+            folderId: input.folderId ?? null,
+            checkpointName,
+            presetBindings: Prisma.DbNull,
+            notes: input.notes,
+          },
+        });
+        await replaceProjectPresetBindingRows(tx, createdProject.id, input.presetBindings);
+        return createdProject;
       });
 
-      revalidatePath("/projects");
+      safeRevalidatePath("/projects");
       return project.id;
     } catch (error) {
       // If it's a unique constraint violation on slug, try next suffix
@@ -126,205 +181,60 @@ function parsePresetBindings(value: unknown): PresetBinding[] {
   });
 }
 
-function samePresetBinding(a: PresetBinding | undefined, b: PresetBinding | undefined) {
-  return a?.presetId === b?.presetId && (a?.variantId ?? null) === (b?.variantId ?? null);
-}
-
-async function resolveBindingVariantId(binding: PresetBinding) {
-  if (binding.variantId) return binding.variantId;
-  const variant = await prisma.presetVariant.findFirst({
-    where: { presetId: binding.presetId, isActive: true },
-    orderBy: { sortOrder: "asc" },
-    select: { id: true },
-  });
-  return variant?.id ?? null;
-}
-
-async function recomposeSectionPrompts(sectionId: string) {
-  const blocks = await prisma.promptBlock.findMany({
-    where: { projectSectionId: sectionId },
-    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-    select: { positive: true, negative: true },
-  });
-  const positiveParts = blocks
-    .map((block) => block.positive)
-    .filter((value): value is string => Boolean(value && value.trim()));
-  const negativeParts = blocks
-    .map((block) => block.negative)
-    .filter((value): value is string => Boolean(value && value.trim()));
-
-  await prisma.projectSection.update({
-    where: { id: sectionId },
-    data: {
-      positivePrompt: positiveParts.join(" BREAK "),
-      negativePrompt: negativeParts.length > 0 ? negativeParts.join(" BREAK ") : null,
-    },
-  });
-}
-
-async function syncProjectPresetBindingsToSections(
-  projectId: string,
-  previousBindings: PresetBinding[],
-  nextBindings: PresetBinding[],
-) {
-  const previousByCategory = new Map(previousBindings.map((binding) => [binding.categoryId, binding]));
-  const nextByCategory = new Map(nextBindings.map((binding) => [binding.categoryId, binding]));
-  const categoryIds = new Set([...previousByCategory.keys(), ...nextByCategory.keys()]);
-  const changedCategoryIds = [...categoryIds].filter(
-    (categoryId) => !samePresetBinding(previousByCategory.get(categoryId), nextByCategory.get(categoryId)),
-  );
-  if (changedCategoryIds.length === 0) return;
-
-  const sections = await prisma.projectSection.findMany({
-    where: { projectId },
-    orderBy: { sortOrder: "asc" },
-    select: {
-      id: true,
-      promptBlocks: {
-        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-        select: {
-          type: true,
-          sourceId: true,
-          categoryId: true,
-          bindingId: true,
-          groupBindingId: true,
-        },
-      },
-    },
-  });
-
-  const variantIdByBinding = new Map<string, string | null>();
-  const getVariantId = async (binding: PresetBinding) => {
-    const key = `${binding.presetId}:${binding.variantId ?? ""}`;
-    if (!variantIdByBinding.has(key)) {
-      variantIdByBinding.set(key, await resolveBindingVariantId(binding));
-    }
-    return variantIdByBinding.get(key) ?? null;
-  };
-
-  const touchedSectionIds = new Set<string>();
-
-  for (const categoryId of changedCategoryIds) {
-    const previous = previousByCategory.get(categoryId);
-    const next = nextByCategory.get(categoryId);
-
-    for (const section of sections) {
-      const existingBlock = previous
-        ? section.promptBlocks.find((block) =>
-            block.type === "preset" &&
-            block.sourceId === previous.presetId &&
-            block.categoryId === categoryId &&
-            !block.groupBindingId &&
-            Boolean(block.bindingId),
-          )
-        : null;
-
-      if (previous && !existingBlock) {
-        continue;
-      }
-
-      if (!next) {
-        if (existingBlock?.bindingId) {
-          await removeImportedPresetFromSection(section.id, existingBlock.bindingId);
-          touchedSectionIds.add(section.id);
-        }
-        continue;
-      }
-
-      const nextVariantId = await getVariantId(next);
-      if (!nextVariantId) continue;
-
-      if (!previous) {
-        const alreadyPresent = section.promptBlocks.some((block) =>
-          block.type === "preset" &&
-          block.sourceId === next.presetId &&
-          block.categoryId === categoryId &&
-          !block.groupBindingId,
-        );
-        if (!alreadyPresent) {
-          await importPresetToSection(section.id, next.presetId, nextVariantId);
-          touchedSectionIds.add(section.id);
-        }
-        continue;
-      }
-
-      if (!existingBlock?.bindingId) continue;
-
-      if (previous.presetId === next.presetId) {
-        await switchBindingVariant(section.id, existingBlock.bindingId, nextVariantId);
-      } else {
-        await removeImportedPresetFromSection(section.id, existingBlock.bindingId);
-        await importPresetToSection(section.id, next.presetId, nextVariantId);
-      }
-      touchedSectionIds.add(section.id);
-    }
-  }
-
-  for (const sectionId of touchedSectionIds) {
-    await recomposeSectionPrompts(sectionId);
-    revalidatePath(`/projects/${projectId}/sections/${sectionId}`);
-  }
-}
-
 export async function updateProject(input: UpdateProjectInput) {
   const { projectId, sections, projectLevelOverrides, presetBindings, ...projectData } = input;
-  const previousProject = presetBindings !== undefined
-    ? await prisma.project.findUnique({
-        where: { id: projectId },
-        select: { presetBindings: true },
-      })
-    : null;
-  const previousBindings = parsePresetBindings(previousProject?.presetBindings);
 
-  // 更新 project 基础字段（包括 projectLevelOverrides）
-  await prisma.project.update({
-    where: { id: projectId },
-    data: {
-      ...projectData,
-      ...(presetBindings !== undefined ? { presetBindings } : {}),
-      ...(projectLevelOverrides !== undefined ? { projectLevelOverrides: projectLevelOverrides as object } : {}),
-    },
-  });
-
-  // 如果传了 sections，更新现有小节的排序和字段
-  if (sections) {
-    // Update existing sections' sortOrder and enabled status.
-    // We fetch existing sections and update them individually rather than
-    // delete-recreate, which would cascade-delete all runs, images, and blocks.
-    const existingSections = await prisma.projectSection.findMany({
-      where: { projectId },
-      select: { id: true, sortOrder: true },
-      orderBy: { sortOrder: "asc" },
+  await prisma.$transaction(async (tx) => {
+    // 更新 project 基础字段（包括 projectLevelOverrides）
+    await tx.project.update({
+      where: { id: projectId },
+      data: {
+        ...projectData,
+        ...(presetBindings !== undefined ? { presetBindings: Prisma.DbNull } : {}),
+        ...(projectLevelOverrides !== undefined ? { projectLevelOverrides: projectLevelOverrides as object } : {}),
+      },
     });
 
-    // Update each section by position
-    for (let idx = 0; idx < Math.min(sections.length, existingSections.length); idx++) {
-      const section = existingSections[idx];
-      const update = sections[idx];
-      await prisma.projectSection.update({
-        where: { id: section.id },
-        data: {
-          sortOrder: update.sortOrder,
-          enabled: update.enabled,
-          positivePrompt: update.positivePrompt ?? null,
-          negativePrompt: update.negativePrompt ?? null,
-          aspectRatio: update.aspectRatio ?? null,
-          batchSize: update.batchSize ?? null,
-          seedPolicy1: update.seedPolicy1 ?? null,
-          seedPolicy2: update.seedPolicy2 ?? null,
-          ksampler1: update.ksampler1 ? (update.ksampler1 as Prisma.InputJsonValue) : undefined,
-          ksampler2: update.ksampler2 ? (update.ksampler2 as Prisma.InputJsonValue) : undefined,
-        },
-      });
+    if (presetBindings !== undefined) {
+      await replaceProjectPresetBindingRows(tx, projectId, presetBindings);
     }
-  }
 
-  if (presetBindings !== undefined) {
-    await syncProjectPresetBindingsToSections(projectId, previousBindings, presetBindings);
-  }
+    // 如果传了 sections，更新现有小节的排序和字段
+    if (sections) {
+      // Update existing sections' sortOrder and enabled status.
+      // We fetch existing sections and update them individually rather than
+      // delete-recreate, which would cascade-delete all runs, images, and blocks.
+      const existingSections = await tx.projectSection.findMany({
+        where: { projectId },
+        select: { id: true, sortOrder: true },
+        orderBy: { sortOrder: "asc" },
+      });
 
-  revalidatePath("/projects");
-  revalidatePath(`/projects/${projectId}`);
+      // Update each section by position
+      for (let idx = 0; idx < Math.min(sections.length, existingSections.length); idx++) {
+        const section = existingSections[idx];
+        const update = sections[idx];
+        await tx.projectSection.update({
+          where: { id: section.id },
+          data: {
+            sortOrder: update.sortOrder,
+            enabled: update.enabled,
+            positivePrompt: update.positivePrompt ?? null,
+            negativePrompt: update.negativePrompt ?? null,
+            aspectRatio: update.aspectRatio ?? null,
+            batchSize: update.batchSize ?? null,
+            seedPolicy1: update.seedPolicy1 ?? null,
+            seedPolicy2: update.seedPolicy2 ?? null,
+            ksampler1: update.ksampler1 ? (update.ksampler1 as Prisma.InputJsonValue) : undefined,
+            ksampler2: update.ksampler2 ? (update.ksampler2 as Prisma.InputJsonValue) : undefined,
+          },
+        });
+      }
+    }
+  });
+
+  safeRevalidatePath("/projects");
+  safeRevalidatePath(`/projects/${projectId}`);
 }
 
 // ---------------------------------------------------------------------------
@@ -369,17 +279,88 @@ export async function applyParamToAllSections(
   try {
     const project = await prisma.project.findUnique({
       where: { id: projectId },
-      select: { id: true, presetBindings: true },
+      select: {
+        id: true,
+        presetBindings: true,
+        presetBindingRows: {
+          orderBy: { sortOrder: "asc" },
+          select: {
+            categoryId: true,
+            presetId: true,
+            variantId: true,
+            sortOrder: true,
+          },
+        },
+      },
     });
     if (!project) return { ok: false, count: 0, error: "项目不存在" };
 
     if (param === "presets") {
-      // For presets: force-apply current project bindings to all sections
-      // by treating previous as empty (all are "new additions")
-      const currentBindings = parsePresetBindings(project.presetBindings);
-      await syncProjectPresetBindingsToSections(projectId, [], currentBindings);
-      const count = await prisma.projectSection.count({ where: { projectId } });
-      revalidatePath(`/projects/${projectId}`);
+      const currentBindings = project.presetBindingRows.length > 0
+        ? project.presetBindingRows
+        : normalizeProjectPresetBindings(parsePresetBindings(project.presetBindings));
+      const sections = await prisma.projectSection.findMany({
+        where: { projectId },
+        orderBy: { sortOrder: "asc" },
+        select: { id: true },
+      });
+
+      await prisma.$transaction(async (tx) => {
+        for (const section of sections) {
+          const projectAppliedBindings = await tx.sectionPresetBinding.findMany({
+            where: {
+              projectSectionId: section.id,
+              bindingKey: { startsWith: "project:" },
+            },
+            select: { id: true },
+          });
+          const projectAppliedBindingIds = projectAppliedBindings.map((binding) => binding.id);
+          if (projectAppliedBindingIds.length > 0) {
+            await tx.sectionPromptBlock.deleteMany({
+              where: {
+                projectSectionId: section.id,
+                sectionBindingId: { in: projectAppliedBindingIds },
+              },
+            });
+            await tx.sectionManualLoraEntry.deleteMany({
+              where: {
+                projectSectionId: section.id,
+                sectionBindingId: { in: projectAppliedBindingIds },
+              },
+            });
+            await tx.sectionPresetBinding.deleteMany({
+              where: { id: { in: projectAppliedBindingIds } },
+            });
+          }
+
+          for (const [index, binding] of currentBindings.entries()) {
+            const bindingKey = `project:${binding.categoryId}`;
+            const sectionBinding = await tx.sectionPresetBinding.create({
+              data: {
+                id: `sectionPresetBinding:${section.id}:${bindingKey}`,
+                projectSectionId: section.id,
+                bindingKey,
+                categoryId: binding.categoryId,
+                presetId: binding.presetId,
+                variantId: binding.variantId ?? null,
+                sortOrder: binding.sortOrder ?? index,
+              },
+            });
+            await tx.sectionPromptBlock.create({
+              data: {
+                id: `sectionPromptBlock:${section.id}:${bindingKey}`,
+                projectSectionId: section.id,
+                sectionBindingId: sectionBinding.id,
+                type: "preset",
+                sortOrder: binding.sortOrder ?? index,
+              },
+            });
+          }
+        }
+      });
+
+      const count = sections.length;
+      safeRevalidatePath(`/projects/${projectId}`);
       return { ok: true, count };
     }
 
@@ -427,7 +408,7 @@ export async function applyParamToAllSections(
       data,
     });
 
-    revalidatePath(`/projects/${projectId}`);
+    safeRevalidatePath(`/projects/${projectId}`);
     return { ok: true, count: result.count };
   } catch (e) {
     console.error("Failed to apply param to all sections:", e);
