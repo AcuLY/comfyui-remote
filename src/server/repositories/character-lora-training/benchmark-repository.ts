@@ -7,6 +7,7 @@ import {
 } from "@/generated/prisma/enums";
 import { db } from "@/lib/db";
 import type { CharacterLoraBenchmarkTaskPayload } from "@/server/character-lora-training/contracts";
+import { deleteProjectCompletely } from "@/server/services/project-deletion-service";
 
 import {
   buildBenchmarkExtraParams,
@@ -489,7 +490,7 @@ export async function cleanupCharacterLoraBenchmarkTemporaryResourcesInRepositor
   const cleanedAt = input.cleanedAt ?? new Date();
   const cleanedAtIso = cleanedAt.toISOString();
 
-  return db.$transaction(async (tx) => {
+  const plan = await db.$transaction(async (tx) => {
     const run = await tx.characterLoraBenchmarkRun.findUnique({
       where: { id: input.benchmarkRunId },
       select: BENCHMARK_RUN_SELECT,
@@ -533,37 +534,7 @@ export async function cleanupCharacterLoraBenchmarkTemporaryResourcesInRepositor
             details: { projectId: project.id, benchmarkRunId: run.id },
           });
         } else {
-          const activeRuns = await tx.run.findMany({
-            where: {
-              projectId: project.id,
-              status: { in: [RunStatus.queued, RunStatus.running] },
-            },
-            orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-            take: 20,
-            select: {
-              id: true,
-              status: true,
-              projectSectionId: true,
-              createdAt: true,
-            },
-          });
-          projectState.activeRuns = activeRuns.map((activeRun) => ({
-            id: activeRun.id,
-            status: activeRun.status,
-            projectSectionId: activeRun.projectSectionId,
-            createdAt: activeRun.createdAt.toISOString(),
-          }));
-
-          if (activeRuns.length > 0) {
-            projectState.action = "blocked_active_runs";
-            blockers.push({
-              code: "project_active_runs",
-              message: "Benchmark test project still has queued or running project runs",
-              details: { projectId: project.id, activeRuns: projectState.activeRuns },
-            });
-          } else {
-            projectState.action = "delete";
-          }
+          projectState.action = "delete";
         }
       }
     }
@@ -618,27 +589,50 @@ export async function cleanupCharacterLoraBenchmarkTemporaryResourcesInRepositor
 
     if (blockers.length > 0 || input.dryRun) {
       return {
-        benchmarkRun: serializeBenchmarkRun(run),
-        cleanup: summary,
-        blockers,
-        dryRun: input.dryRun,
-        canCleanup: blockers.length === 0,
+        kind: "result" as const,
+        result: {
+          benchmarkRun: serializeBenchmarkRun(run),
+          cleanup: summary,
+          blockers,
+          dryRun: input.dryRun,
+          canCleanup: blockers.length === 0,
+        },
       };
     }
 
-    const updateData: Prisma.CharacterLoraBenchmarkRunUpdateInput = {
-      cleanupSummary: toInputJsonValue(summary),
+    return {
+      kind: "cleanup" as const,
+      run,
+      summary,
+      projectState,
+      presetState,
     };
+  });
 
-    if (projectState.action === "delete" && run.testProjectId) {
-      const deletion = await tx.project.deleteMany({ where: { id: run.testProjectId } });
-      projectState.action = deletion.count > 0 ? "deleted" : "already_missing";
-      projectState.deletedCount = deletion.count;
-      updateData.testProjectCleanedAt = cleanedAt;
-    } else if (projectState.action === "already_missing") {
-      updateData.testProjectCleanedAt = cleanedAt;
-    }
+  if (!plan) return null;
+  if (plan.kind === "result") return plan.result;
 
+  const { run, summary, projectState, presetState } = plan;
+  const updateData: Prisma.CharacterLoraBenchmarkRunUpdateInput = {
+    cleanupSummary: toInputJsonValue(summary),
+  };
+
+  if (projectState.action === "delete" && run.testProjectId) {
+    const deletion = await deleteProjectCompletely(run.testProjectId);
+    projectState.action = deletion.deletedProject ? "deleted" : "already_missing";
+    projectState.deletedCount = deletion.deletedProject ? 1 : 0;
+    projectState.cancelledRuns = deletion.cancelledRuns;
+    projectState.cancelledCensoringTasks = deletion.cancelledCensoringTasks;
+    projectState.deletedManagedDir = deletion.deletedManagedDir;
+    projectState.deletedExportDir = deletion.deletedExportDir;
+    projectState.deletedTrashFiles = deletion.deletedTrashFiles;
+    projectState.deletedComfyDirs = deletion.deletedComfyDirs;
+    updateData.testProjectCleanedAt = cleanedAt;
+  } else if (projectState.action === "already_missing") {
+    updateData.testProjectCleanedAt = cleanedAt;
+  }
+
+  const updated = await db.$transaction(async (tx) => {
     if (presetState.action === "delete" && run.testPresetId) {
       const deletion = await tx.preset.deleteMany({ where: { id: run.testPresetId } });
       presetState.action = deletion.count > 0 ? "deleted" : "already_missing";
@@ -656,15 +650,16 @@ export async function cleanupCharacterLoraBenchmarkTemporaryResourcesInRepositor
       data: updateData,
       select: BENCHMARK_RUN_SELECT,
     });
-
-    return {
-      benchmarkRun: serializeBenchmarkRun(updated),
-      cleanup: summary,
-      blockers: [],
-      dryRun: false,
-      canCleanup: true,
-    };
+    return updated;
   });
+
+  return {
+    benchmarkRun: serializeBenchmarkRun(updated),
+    cleanup: summary,
+    blockers: [],
+    dryRun: false,
+    canCleanup: true,
+  };
 }
 
 export async function findCharacterLoraBenchmarkTemplate() {

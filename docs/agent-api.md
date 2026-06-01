@@ -153,7 +153,11 @@ Use `null` to clear nullable fields where supported.
 
 ### `DELETE /api/projects/:projectId`
 
-Deletes the project and cascaded data.
+Cancels queued, running, and paused project runs plus queued, running, and paused
+censoring tasks, then deletes the project and cascaded data. Cleanup also removes
+managed images under `data/images/{project.slug}`, trash files under `data/`,
+ComfyUI output folders referenced by project runs, and exported artifacts under
+`data/export/{project.title}/` including full-export zip files in that directory.
 
 ## Project Folders
 
@@ -226,6 +230,7 @@ Moves a project to a folder. `PATCH /api/projects/:projectId` with `{ "folderId"
 | `POST` | `/api/projects/:projectId/run` | `{ "overrideBatchSize": 4 }` optional | enqueues and submits all enabled sections |
 | `POST` | `/api/projects/:projectId/cancel-runs` | none | cancels queued/running runs for the project |
 | `POST` | `/api/projects/:projectId/export` | none | requires a project cover, exports kept images into `data/export`, writes `cover.jpg`, writes p站 images to `pixiv/`, and writes 预览 images to `preview/` |
+| `POST` | `/api/projects/:projectId/archive` | none | requires an exported done/partial-done project, cancels remaining project/censoring tasks, marks it archived, and removes managed image, trash, ComfyUI output, and `data/export/{project.title}/` artifact files |
 | `POST` | `/api/projects/:projectId/save-as-template` | template metadata | saves the current project as a reusable template |
 
 ## Sections

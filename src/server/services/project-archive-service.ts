@@ -1,15 +1,20 @@
 import { access, rm } from "node:fs/promises";
-import { join, resolve, sep } from "node:path";
+import { resolve, sep } from "node:path";
 import { prisma } from "@/lib/prisma";
 import { env } from "@/lib/env";
 import { createLogger } from "@/lib/logger";
+import { cancelProjectTasksForCleanup } from "@/server/services/project-deletion-service";
+import { cleanupProjectExportDirectory } from "@/server/services/project-file-cleanup-service";
 
 const log = createLogger({ module: "project-archive-service" });
 
 export type ArchiveProjectResult = {
   success: boolean;
   message: string;
+  cancelledRuns: number;
+  cancelledCensoringTasks: number;
   deletedManagedDir: boolean;
+  deletedExportDir: boolean;
   deletedTrashFiles: number;
   deletedComfyDirs: number;
 };
@@ -23,31 +28,33 @@ export async function archiveProject(projectId: string): Promise<ArchiveProjectR
 
   // 2. Validate preconditions
   if (!project) {
-    return { success: false, message: "Project not found", deletedManagedDir: false, deletedTrashFiles: 0, deletedComfyDirs: 0 };
+    return { success: false, message: "Project not found", cancelledRuns: 0, cancelledCensoringTasks: 0, deletedManagedDir: false, deletedExportDir: false, deletedTrashFiles: 0, deletedComfyDirs: 0 };
   }
 
   if (project.archivedAt !== null) {
-    return { success: false, message: "Project is already archived", deletedManagedDir: false, deletedTrashFiles: 0, deletedComfyDirs: 0 };
+    return { success: false, message: "Project is already archived", cancelledRuns: 0, cancelledCensoringTasks: 0, deletedManagedDir: false, deletedExportDir: false, deletedTrashFiles: 0, deletedComfyDirs: 0 };
   }
 
   if (project.publishedAt === null) {
-    return { success: false, message: "Project must be exported (published) before archiving", deletedManagedDir: false, deletedTrashFiles: 0, deletedComfyDirs: 0 };
+    return { success: false, message: "Project must be exported (published) before archiving", cancelledRuns: 0, cancelledCensoringTasks: 0, deletedManagedDir: false, deletedExportDir: false, deletedTrashFiles: 0, deletedComfyDirs: 0 };
   }
 
   if (project.status !== "done" && project.status !== "partial_done") {
-    return { success: false, message: `Project status is ${project.status}`, deletedManagedDir: false, deletedTrashFiles: 0, deletedComfyDirs: 0 };
+    return { success: false, message: `Project status is ${project.status}`, cancelledRuns: 0, cancelledCensoringTasks: 0, deletedManagedDir: false, deletedExportDir: false, deletedTrashFiles: 0, deletedComfyDirs: 0 };
   }
 
   const exportDir = resolve(process.cwd(), "data", "export", project.title);
   const exportBase = resolve(process.cwd(), "data", "export") + sep;
   if (!exportDir.startsWith(exportBase)) {
-    return { success: false, message: "Invalid project title for filesystem path", deletedManagedDir: false, deletedTrashFiles: 0, deletedComfyDirs: 0 };
+    return { success: false, message: "Invalid project title for filesystem path", cancelledRuns: 0, cancelledCensoringTasks: 0, deletedManagedDir: false, deletedExportDir: false, deletedTrashFiles: 0, deletedComfyDirs: 0 };
   }
   try {
     await access(exportDir);
   } catch {
-    return { success: false, message: `Export directory not found at data/export/${project.title}/`, deletedManagedDir: false, deletedTrashFiles: 0, deletedComfyDirs: 0 };
+    return { success: false, message: `Export directory not found at data/export/${project.title}/`, cancelledRuns: 0, cancelledCensoringTasks: 0, deletedManagedDir: false, deletedExportDir: false, deletedTrashFiles: 0, deletedComfyDirs: 0 };
   }
+
+  const cancellation = await cancelProjectTasksForCleanup(projectId);
 
   // 3. Delete trash files
   let deletedTrashFiles = 0;
@@ -140,17 +147,23 @@ export async function archiveProject(projectId: string): Promise<ArchiveProjectR
     }
   }
 
-  // 6. Set archivedAt
+  // 6. Delete export artifacts
+  const exportCleanup = await cleanupProjectExportDirectory(project.title);
+
+  // 7. Set archivedAt
   await prisma.project.update({
     where: { id: projectId },
     data: { archivedAt: new Date() },
   });
 
-  // 7. Return success result
+  // 8. Return success result
   return {
     success: true,
     message: "Project archived successfully",
+    cancelledRuns: cancellation.cancelledRuns,
+    cancelledCensoringTasks: cancellation.cancelledCensoringTasks,
     deletedManagedDir,
+    deletedExportDir: exportCleanup.deletedExportDir,
     deletedTrashFiles,
     deletedComfyDirs,
   };

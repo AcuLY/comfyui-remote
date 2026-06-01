@@ -1,13 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { resolve } from "node:path";
-import { rm } from "node:fs/promises";
 import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import { DEFAULT_CHECKPOINT_NAME } from "@/lib/model-constants";
 import { copyProject as copyProjectRepo } from "@/server/repositories/project-repository";
-import { cleanupProjectSectionFiles } from "@/server/services/section-cleanup-service";
+import { deleteProjectCompletely } from "@/server/services/project-deletion-service";
 import {
   importPresetToSection,
   removeImportedPresetFromSection,
@@ -344,53 +342,7 @@ export async function copyProject(projectId: string): Promise<string | null> {
 // ---------------------------------------------------------------------------
 
 export async function deleteProject(projectId: string): Promise<void> {
-  const project = await prisma.project.findUnique({
-    where: { id: projectId },
-    select: {
-      id: true,
-      slug: true,
-      sections: {
-        select: {
-          id: true,
-          runs: { select: { comfyOutputSubfolder: true } },
-        },
-      },
-    },
-  });
-  if (!project) return;
-
-  // Clean up disk files (managed images + ComfyUI output directories)
-  await cleanupProjectSectionFiles(project.slug, project.sections);
-
-  // Delete trash files for this project's images
-  const trashedImages = await prisma.imageResult.findMany({
-    where: { run: { projectId }, reviewStatus: "trashed" },
-    select: { trashRecord: { select: { id: true, trashPath: true } } },
-  });
-  const trashRecordIds: string[] = [];
-  for (const image of trashedImages) {
-    if (image.trashRecord) {
-      if (image.trashRecord.trashPath) {
-        const dataBase = resolve(process.cwd(), "data");
-        const trashFilePath = resolve(process.cwd(), image.trashRecord.trashPath);
-        if (trashFilePath.startsWith(dataBase)) {
-          try {
-            await rm(trashFilePath, { force: true });
-          } catch {
-            // ignore
-          }
-        }
-      }
-      trashRecordIds.push(image.trashRecord.id);
-    }
-  }
-  if (trashRecordIds.length > 0) {
-    await prisma.trashRecord.deleteMany({ where: { id: { in: trashRecordIds } } });
-  }
-
-  // Prisma onDelete: Cascade handles sections, runs, blocks, images
-  await prisma.project.delete({ where: { id: projectId } });
-
+  await deleteProjectCompletely(projectId);
   revalidatePath("/projects");
 }
 
