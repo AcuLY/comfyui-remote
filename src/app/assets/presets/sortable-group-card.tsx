@@ -80,6 +80,7 @@ export function SortableGroupCard({
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition: dndTransition,
+    zIndex: isDragging ? 50 : undefined,
     opacity: isDragging ? 0.5 : 1,
   };
 
@@ -148,41 +149,49 @@ export function SortableGroupCard({
   }
 
   return (
-    <div ref={setNodeRef} style={style} className="rounded-xl border border-white/5 bg-white/[0.02]">
-      <Link
-        href={`/assets/preset-groups/${group.id}`}
-        className="flex items-center gap-2 px-3 py-2.5 transition hover:bg-white/[0.03]"
-      >
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`rounded-xl border border-white/5 bg-white/[0.02] ${
+        isDragging ? "shadow-lg ring-2 ring-sky-500/30" : ""
+      }`}
+    >
+      <div className="flex items-center gap-2 px-3 py-2.5 transition hover:bg-white/[0.03]">
         <button
           type="button"
           className="shrink-0 text-zinc-600 hover:text-sky-400"
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleSelect(); }}
+          onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}
         >
           {isSelected ? <CheckSquare className="size-3.5 text-sky-400" /> : <Square className="size-3.5" />}
         </button>
         <button
           type="button"
-          className="cursor-grab touch-none text-zinc-600 hover:text-zinc-400"
-          onClick={(e) => e.preventDefault()}
+          className="cursor-grab touch-none rounded p-0.5 text-zinc-600 hover:text-zinc-400 active:cursor-grabbing"
+          aria-label={`拖拽排序预制组：${group.name}`}
           {...attributes}
           {...listeners}
         >
           <GripVertical className="size-3.5" />
         </button>
-        <div className="min-w-0 flex-1">
-          <div className="text-xs font-medium text-zinc-200">{group.name}</div>
-          <div className="text-[10px] text-zinc-500">
-            {members.length} 个成员
+        <Link
+          href={`/assets/preset-groups/${group.id}`}
+          className="min-w-0 flex-1"
+        >
+          <div className="min-w-0 flex-1">
+            <div className="text-xs font-medium text-zinc-200">{group.name}</div>
+            <div className="text-[10px] text-zinc-500">
+              {members.length} 个成员
+            </div>
           </div>
-        </div>
-        <span onClick={(e) => e.preventDefault()}>
+        </Link>
+        <div className="flex shrink-0 items-center gap-1">
           <MoveToFolderButton
             currentFolderId={group.folderId}
             folders={folders}
             onMove={onMoveToFolder}
           />
-        </span>
-      </Link>
+        </div>
+      </div>
 
       {isEditing && (
         <div className="border-t border-white/5 px-3 py-3 space-y-3">

@@ -791,6 +791,7 @@ function SortablePresetCard({
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
+    zIndex: isDragging ? 50 : undefined,
     opacity: isDragging ? 0.5 : 1,
   };
 
@@ -800,27 +801,33 @@ function SortablePresetCard({
   const loraCount = lora1.length + lora2.length;
 
   return (
-    <div ref={setNodeRef} style={style} className="rounded-xl border border-white/5 bg-white/[0.02]">
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`flex items-center gap-2 rounded-xl border border-white/5 bg-white/[0.02] px-3 py-2.5 transition hover:bg-white/[0.03] ${
+        isDragging ? "shadow-lg ring-2 ring-sky-500/30" : ""
+      }`}
+    >
+      <button
+        type="button"
+        className="shrink-0 text-zinc-600 hover:text-sky-400"
+        onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}
+      >
+        {isSelected ? <CheckSquare className="size-3.5 text-sky-400" /> : <Square className="size-3.5" />}
+      </button>
+      <button
+        type="button"
+        className="cursor-grab touch-none rounded p-0.5 text-zinc-600 hover:text-zinc-400 active:cursor-grabbing"
+        aria-label={`拖拽排序预制：${preset.name}`}
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="size-3.5" />
+      </button>
       <Link
         href={`/assets/presets/${preset.id}`}
-        className="flex items-center gap-2 px-3 py-2.5 transition hover:bg-white/[0.03]"
+        className="min-w-0 flex-1"
       >
-        <button
-          type="button"
-          className="shrink-0 text-zinc-600 hover:text-sky-400"
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleSelect(); }}
-        >
-          {isSelected ? <CheckSquare className="size-3.5 text-sky-400" /> : <Square className="size-3.5" />}
-        </button>
-        <button
-          type="button"
-          className="cursor-grab touch-none text-zinc-600 hover:text-zinc-400"
-          onClick={(e) => e.preventDefault()}
-          {...attributes}
-          {...listeners}
-        >
-          <GripVertical className="size-3.5" />
-        </button>
         <div className="min-w-0 flex-1">
           <div className="text-xs font-medium text-zinc-200">{preset.name}</div>
           <div className="text-[10px] text-zinc-500">
@@ -828,17 +835,17 @@ function SortablePresetCard({
             {loraCount > 0 && <span> · {loraCount} LoRA</span>}
           </div>
         </div>
-        <span onClick={(e) => e.preventDefault()}>
-          <MoveToFolderButton
-            currentFolderId={preset.folderId}
-            folders={folders}
-            onMove={onMoveToFolder}
-          />
-        </span>
+      </Link>
+      <div className="flex shrink-0 items-center gap-1">
+        <MoveToFolderButton
+          currentFolderId={preset.folderId}
+          folders={folders}
+          onMove={onMoveToFolder}
+        />
         {onCopy && (
           <button
             type="button"
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onCopy(); }}
+            onClick={(e) => { e.stopPropagation(); onCopy(); }}
             className="shrink-0 rounded p-1 text-zinc-600 transition hover:bg-sky-500/10 hover:text-sky-400"
             title="复制预制"
           >
@@ -848,14 +855,14 @@ function SortablePresetCard({
         {onDelete && (
           <button
             type="button"
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete(); }}
+            onClick={(e) => { e.stopPropagation(); onDelete(); }}
             className="shrink-0 rounded p-1 text-zinc-600 transition hover:bg-red-500/10 hover:text-red-400"
             title="删除预制"
           >
             <Trash2 className="size-3.5" />
           </button>
         )}
-      </Link>
+      </div>
     </div>
   );
 }
