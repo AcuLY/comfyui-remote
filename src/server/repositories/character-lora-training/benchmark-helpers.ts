@@ -1,5 +1,3 @@
-import { randomUUID } from "node:crypto";
-
 import { Prisma } from "@/generated/prisma";
 import { db } from "@/lib/db";
 
@@ -7,12 +5,9 @@ import { toInputJsonValue, readJsonRecord } from "./helpers";
 import { serializeBenchmarkTemplate } from "./serializers";
 import {
   BENCHMARK_TEMPLATE_SELECT,
-  CHARACTER_LORA_BENCHMARK_TEMPLATE_NAME,
   CHARACTER_LORA_BENCHMARK_TEMPLATE_NAME_TERMS,
-  CHARACTER_LORA_BENCHMARK_TEMPLATE_DESCRIPTION,
   CHARACTER_LORA_BENCHMARK_TEMPLATE_REQUIRED_SECTION_COUNT,
   CHARACTER_LORA_BENCHMARK_TEMPLATE_SECTIONS,
-  type BenchmarkTemplateRecord,
 } from "./types";
 
 export function buildBenchmarkMatrixItems(checkpointMatrix: string[], weightMatrix: number[]) {
@@ -74,25 +69,20 @@ export function buildBenchmarkExtraParams(
   });
 }
 
-export function buildBenchmarkSectionLoraConfig(loraPath: string, weight: number) {
-  return toInputJsonValue({
-    lora1: [makeBenchmarkSectionLoraEntry(loraPath, weight, "lora1")],
-    lora2: [makeBenchmarkSectionLoraEntry(loraPath, weight, "lora2")],
-  });
-}
-
-function makeBenchmarkSectionLoraEntry(pathValue: string, weight: number, suffix: string) {
-  return {
-    id: `lora-${randomUUID()}`,
-    path: pathValue,
-    weight: roundBenchmarkWeight(weight),
+export function buildBenchmarkSectionManualLoraEntries(
+  loraPath: string,
+  metadata: ReturnType<typeof buildBenchmarkSectionMetadata>,
+) {
+  return (["lora1", "lora2"] as const).map((stage, index) => ({
+    stage,
+    path: loraPath,
+    weight: roundBenchmarkWeight(metadata.weight),
     enabled: true,
-    source: "preset",
-    sourceLabel: "Character LoRA",
-    sourceColor: "78 50% 55%",
-    sourceName: "Character LoRA benchmark",
-    bindingId: `bind-${suffix}-${randomUUID()}`,
-  };
+    metadata: toInputJsonValue({
+      characterLoraBenchmark: metadata,
+    }),
+    sortOrder: index,
+  }));
 }
 
 export function buildBenchmarkMatrixExpansionSummary(input: {
@@ -105,6 +95,15 @@ export function buildBenchmarkMatrixExpansionSummary(input: {
     checkpointName: string | null;
     loraConfig: unknown;
     extraParams: unknown;
+    sectionPromptBlocks: Array<{
+      customLabel: string | null;
+      customPositive: string | null;
+    }>;
+    manualLoraEntries: Array<{
+      weight: number;
+      enabled: boolean;
+      metadata: unknown;
+    }>;
     promptBlocks: Array<{
       label: string | null;
       positive: string;
@@ -112,9 +111,16 @@ export function buildBenchmarkMatrixExpansionSummary(input: {
   }>;
 }) {
   const sections = input.sections.map((section) => {
-    const metadata = readBenchmarkMetadata(section.extraParams);
+    const metadata = readBenchmarkMetadataFromManualLoraEntries(section.manualLoraEntries) ?? readBenchmarkMetadata(section.extraParams);
     const checkpointName = metadata?.checkpointName ?? section.checkpointName ?? null;
-    const weight = metadata?.weight ?? readLoraWeight(section.loraConfig);
+    const weight = metadata?.weight ?? readManualLoraWeight(section.manualLoraEntries) ?? readLoraWeight(section.loraConfig);
+    const promptBlockLabels = section.sectionPromptBlocks.length > 0
+      ? section.sectionPromptBlocks
+        .map((block) => block.customLabel)
+        .filter((label): label is string => Boolean(label))
+      : section.promptBlocks
+        .map((block) => block.label)
+        .filter((label): label is string => Boolean(label));
     return {
       projectSectionId: section.id,
       sectionName: section.name,
@@ -127,9 +133,7 @@ export function buildBenchmarkMatrixExpansionSummary(input: {
       weight,
       weightIndex: metadata?.weightIndex ?? inferNumberIndex(input.weightMatrix, weight),
       matrixIndex: metadata?.matrixIndex ?? null,
-      promptBlockLabels: section.promptBlocks
-        .map((block) => block.label)
-        .filter((label): label is string => Boolean(label)),
+      promptBlockLabels,
     };
   });
   const baseKeys = new Set(
@@ -150,6 +154,17 @@ export function buildBenchmarkMatrixExpansionSummary(input: {
     weightMatrix: input.weightMatrix,
     sections,
   };
+}
+
+export function readBenchmarkMetadataFromManualLoraEntries(
+  entries: Array<{ enabled: boolean; metadata: unknown }>,
+) {
+  for (const entry of entries) {
+    if (!entry.enabled) continue;
+    const metadata = readBenchmarkMetadata(entry.metadata);
+    if (metadata) return metadata;
+  }
+  return null;
 }
 
 export function readBenchmarkMetadata(value: unknown) {
@@ -183,6 +198,15 @@ export function readLoraWeight(value: unknown) {
       if (typeof weight === "number" && weight > 0) {
         return roundBenchmarkWeight(weight);
       }
+    }
+  }
+  return null;
+}
+
+export function readManualLoraWeight(entries: Array<{ weight: number; enabled: boolean }>) {
+  for (const entry of entries) {
+    if (entry.enabled && entry.weight > 0) {
+      return roundBenchmarkWeight(entry.weight);
     }
   }
   return null;

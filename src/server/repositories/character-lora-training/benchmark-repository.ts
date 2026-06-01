@@ -13,7 +13,7 @@ import {
   buildBenchmarkExtraParams,
   buildBenchmarkMatrixExpansionSummary,
   buildBenchmarkMatrixItems,
-  buildBenchmarkSectionLoraConfig,
+  buildBenchmarkSectionManualLoraEntries,
   buildBenchmarkSectionMetadata,
   buildBenchmarkTemplateStatus,
   buildCharacterLoraBenchmarkTemplateSections,
@@ -75,7 +75,6 @@ export async function createCharacterLoraBenchmarkRunWithTask(input: {
     checkpointMatrix: string[];
     weightMatrix: number[];
     loraPath: string;
-    sectionLoraConfig: Prisma.InputJsonValue;
     promptBlock: {
       label: string;
       positive: string;
@@ -140,12 +139,15 @@ export async function createCharacterLoraBenchmarkRunWithTask(input: {
         slug: projectSlug,
         status: "draft",
         checkpointName: input.tempProject.checkpointName ?? null,
-        presetBindings: toInputJsonValue([{
-          categoryId: category.id,
-          presetId: preset.id,
-          variantId,
-        }]),
         notes: input.tempProject.notes,
+        presetBindingRows: {
+          create: {
+            categoryId: category.id,
+            presetId: preset.id,
+            variantId,
+            sortOrder: 0,
+          },
+        },
       },
       select: { id: true },
     });
@@ -184,8 +186,6 @@ export async function createCharacterLoraBenchmarkRunWithTask(input: {
               sortOrder: expandedSortOrder,
               enabled: true,
               name: section.name,
-              positivePrompt: decoratedBlocks.map((block) => block.positive).filter(Boolean).join("\n"),
-              negativePrompt: decoratedBlocks.map((block) => block.negative).filter(Boolean).join("\n") || null,
               aspectRatio: section.aspectRatio,
               shortSidePx: section.shortSidePx,
               batchSize: section.batchSize,
@@ -195,16 +195,18 @@ export async function createCharacterLoraBenchmarkRunWithTask(input: {
               ksampler2: cloneJsonValueForRepository(section.ksampler2),
               upscaleFactor: section.upscaleFactor,
               checkpointName: matrixItem.checkpointName,
-              loraConfig: buildBenchmarkSectionLoraConfig(input.tempProject.loraPath, matrixItem.weight),
               extraParams: buildBenchmarkExtraParams(section.extraParams, matrixMetadata),
-              promptBlocks: {
+              sectionPromptBlocks: {
                 create: decoratedBlocks.map((block, blockIndex) => ({
                   type: "custom",
-                  label: block.label,
-                  positive: block.positive,
-                  negative: block.negative ?? null,
+                  customLabel: block.label,
+                  customPositive: block.positive,
+                  customNegative: block.negative ?? null,
                   sortOrder: block.sortOrder ?? blockIndex,
                 })),
+              },
+              manualLoraEntries: {
+                create: buildBenchmarkSectionManualLoraEntries(input.tempProject.loraPath, matrixMetadata),
               },
             },
             select: { id: true },
@@ -235,19 +237,19 @@ export async function createCharacterLoraBenchmarkRunWithTask(input: {
               sortOrder: expandedSortOrder,
               enabled: true,
               name: section.name,
-              positivePrompt: decoratedBlocks.map((block) => block.positive).filter(Boolean).join("\n"),
-              negativePrompt: decoratedBlocks.map((block) => block.negative).filter(Boolean).join("\n") || null,
               checkpointName: matrixItem.checkpointName,
-              loraConfig: buildBenchmarkSectionLoraConfig(input.tempProject.loraPath, matrixItem.weight),
               extraParams: buildBenchmarkExtraParams(null, matrixMetadata),
-              promptBlocks: {
+              sectionPromptBlocks: {
                 create: decoratedBlocks.map((block, blockIndex) => ({
                   type: "custom",
-                  label: block.label,
-                  positive: block.positive,
-                  negative: block.negative ?? null,
+                  customLabel: block.label,
+                  customPositive: block.positive,
+                  customNegative: block.negative ?? null,
                   sortOrder: block.sortOrder ?? blockIndex,
                 })),
+              },
+              manualLoraEntries: {
+                create: buildBenchmarkSectionManualLoraEntries(input.tempProject.loraPath, matrixMetadata),
               },
             },
             select: { id: true },
@@ -373,6 +375,21 @@ export async function getCharacterLoraBenchmarkMatrixExpansionSummary(benchmarkR
       checkpointName: true,
       loraConfig: true,
       extraParams: true,
+      sectionPromptBlocks: {
+        orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+        select: {
+          customLabel: true,
+          customPositive: true,
+        },
+      },
+      manualLoraEntries: {
+        orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+        select: {
+          weight: true,
+          enabled: true,
+          metadata: true,
+        },
+      },
       promptBlocks: {
         orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
         select: {

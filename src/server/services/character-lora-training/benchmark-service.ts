@@ -8,7 +8,6 @@ import { CharacterLoraServiceError } from "@/server/services/character-lora-trai
 import {
   normalizeId as sharedNormalizeId,
   toInputJsonValue,
-  readJsonRecord,
 } from "@/server/services/character-lora-training/shared/service-utils";
 import {
   characterLoraBenchmarkCompleteRequestSchema,
@@ -372,10 +371,6 @@ export async function enqueueCharacterLoraBenchmarkRun(trainingRunId: string, in
         busy: busyDetails,
         baseCheckpoint,
       }, null, 2),
-      sectionLoraConfig: toInputJsonValue({
-        lora1: [makeSectionLoraEntry(loraPath, defaultWeight, "lora1")],
-        lora2: [makeSectionLoraEntry(loraPath, defaultWeight, "lora2")],
-      }),
       promptBlock: {
         label: "Character LoRA benchmark",
         positive: `${job.triggerToken}, ${job.characterName}, full body, clear face, benchmark test`,
@@ -700,20 +695,6 @@ async function tryCopyToCharacterLoraDir(input: {
     input.warnings.push(`copyToCharacterDir failed: ${error instanceof Error ? error.message : String(error)}`);
     return null;
   }
-}
-
-function makeSectionLoraEntry(pathValue: string, weight: number, suffix: string) {
-  return {
-    id: `lora-${randomUUID()}`,
-    path: pathValue,
-    weight: roundWeight(weight),
-    enabled: true,
-    source: "preset",
-    sourceLabel: ROLE_CATEGORY_NAME,
-    sourceColor: "78 50% 55%",
-    sourceName: "Character LoRA benchmark",
-    bindingId: `bind-${suffix}-${randomUUID()}`,
-  };
 }
 
 function buildBenchmarkFallbackSections(job: MinimalCharacterLoraJob) {
