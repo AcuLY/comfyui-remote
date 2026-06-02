@@ -43,6 +43,8 @@ export const env = {
     ? path.join(process.env.MODEL_BASE_DIR, "checkpoints")
     : "",
   characterLoraArtifactRoot: process.env.CHARACTER_LORA_ARTIFACT_ROOT ?? "",
+  autoCensorModelPath: process.env.AUTO_CENSOR_MODEL_PATH ?? "",
+  autoCensorPythonCmd: process.env.AUTO_CENSOR_PYTHON_CMD ?? "",
 
   // ComfyUI 进程管理
   comfyLaunchCmd: process.env.COMFY_LAUNCH_CMD ?? "",
