@@ -35,6 +35,7 @@
 
 - Node.js 20+
 - ComfyUI 实例运行中（默认 `http://127.0.0.1:8188`）
+- 自动打码需要额外 Python 环境，安装 `ultralytics`、`opencv-python` 和 `pillow`，并通过 `AUTO_CENSOR_MODEL_PATH` 指向 YOLO `.pt` 模型
 - **方案 A**：Docker（用于 PostgreSQL）
 - **方案 B**：无需 Docker，使用 SQLite（零依赖、数据存在本地文件）
 
@@ -95,6 +96,8 @@ DB_PROVIDER=sqlite DATABASE_URL="file:./data/comfyui.db" npm run dev
 | `COMFY_API_URL` | 否 | `http://127.0.0.1:8188` | `http://127.0.0.1:8188` | ComfyUI API 地址 |
 | `IMAGE_BASE_DIR` | 否 | — | `D:\ComfyUI\output` | ComfyUI 的默认输出目录。Worker 会从此目录本地复制生成的图片到 `data/images/`；不填则通过 HTTP 下载 |
 | `MODEL_BASE_DIR` | 否 | — | `D:\ComfyUI\models` | ComfyUI 模型根目录，用于推导 `loras` 和 `checkpoints` 子目录 |
+| `AUTO_CENSOR_MODEL_PATH` | 打码时必填 | — | `D:\Models\auto-censor.pt` | auto-censor YOLO `.pt` 模型绝对路径 |
+| `AUTO_CENSOR_PYTHON_CMD` | 否 | `python3` | `D:\venvs\auto-censor\Scripts\python.exe` | 运行 auto-censor runner 的 Python/venv 命令 |
 | `LOG_LEVEL` | 否 | `info` | `info` | 日志级别：`debug` / `info` / `warn` / `error` |
 | `LOG_FORMAT` | 否 | `pretty` | `pretty` | 输出格式：`pretty` / `json` |
 | `LOG_ENABLE_FILE` | 否 | `false` | `false` | 是否写入日志文件 |
