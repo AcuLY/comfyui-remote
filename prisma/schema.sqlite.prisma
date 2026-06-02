@@ -544,7 +544,6 @@ model Run {
   submittedPrompt       Json?               // Full submitted ComfyUI workflow JSON
   outputDir             String?
   comfyOutputSubfolder  String?
-  latentFilePath        String?               // Saved latent file path for censoring re-generation
   errorMessage          String?
   startedAt             DateTime?
   finishedAt            DateTime?
