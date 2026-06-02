@@ -28,6 +28,14 @@ test("censoring actions do not require latentFilePath and project batch defaults
   assert.match(source, /reviewStatus:\s*\{\s*in:\s*reviewStatuses/);
 });
 
+test("censoring cancellation stays local instead of mutating ComfyUI queues", () => {
+  const source = readSource("src/lib/actions/censoring.ts");
+
+  assert.doesNotMatch(source, /deleteComfyQueueItems/);
+  assert.doesNotMatch(source, /getComfyQueuePosition/);
+  assert.doesNotMatch(source, /interruptComfyPrompt/);
+});
+
 test("manual selected-image censoring keeps re-censor flexibility without stale re-censor comment", () => {
   const source = readSource("src/app/projects/[projectId]/sections/[sectionId]/results/results-grid.tsx");
 
