@@ -646,12 +646,13 @@ function SortableSectionCard({
   const res = resolveResolution(aspectRatio, section.shortSidePx ?? 512);
   const resDisplay = `${res.width}x${res.height}`;
 
-  const loraConfig = (section.loraConfig as {
+  const { loraConfig: resolvedLoraConfig, promptBlocks } = section;
+  const loraConfig = (resolvedLoraConfig as {
     lora1: LoraEntry[];
     lora2: LoraEntry[];
   }) || { lora1: [], lora2: [] };
   const loraCount = loraConfig.lora1.length + loraConfig.lora2.length;
-  const blockCount = (section.promptBlocks || []).length;
+  const blockCount = (promptBlocks || []).length;
   const checkpointLabel = section.checkpointName
     ? section.checkpointName.split("/").pop()
     : null;

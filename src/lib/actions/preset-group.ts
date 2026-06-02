@@ -1,22 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import { recordPresetGroupChange } from "@/server/services/preset-change-history-service";
 import {
-  parseSectionLoraConfig,
-  serializeSectionLoraConfig,
-  type LoraEntry,
-} from "@/lib/lora-types";
-import { getDetachedGroupPresetPaths } from "@/lib/preset-binding-utils";
-import {
   createBindingId,
-  makePresetLoraEntry,
   type ConcreteGroupMember,
 } from "./_helpers";
 import {
-  buildPresetGroupPlaceholderCreateInput,
   canonicalPresetGroupBindingId,
   haveSamePresetGroupMemberSet,
   sortConcreteGroupMembersForSection,
@@ -143,29 +134,41 @@ async function syncPresetGroupInstances(
   const categoryOrderById = new Map(categories.map((category) => [category.id, category.positivePromptOrder]));
   const sections = await prisma.projectSection.findMany({
     where: {
-      promptBlocks: {
-        some: { groupBindingId: { not: null } },
+      presetBindingRows: {
+        some: { groupBindingKey: { not: null } },
       },
     },
     select: {
       id: true,
       projectId: true,
-      loraConfig: true,
-      promptBlocks: {
+      presetBindingRows: {
         orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
         select: {
           id: true,
-          type: true,
-          sourceId: true,
-          variantId: true,
           categoryId: true,
-          bindingId: true,
-          groupBindingId: true,
-          label: true,
-          positive: true,
-          negative: true,
+          bindingKey: true,
+          presetId: true,
+          variantId: true,
+          groupBindingKey: true,
           sortOrder: true,
           createdAt: true,
+        },
+      },
+      sectionPromptBlocks: {
+        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+        select: {
+          id: true,
+          sectionBindingId: true,
+          type: true,
+          sortOrder: true,
+          createdAt: true,
+          sectionBinding: {
+            select: {
+              id: true,
+              categoryId: true,
+              groupBindingKey: true,
+            },
+          },
         },
       },
     },
@@ -174,196 +177,158 @@ async function syncPresetGroupInstances(
   const touchedProjectIds = new Set<string>();
 
   for (const section of sections) {
-    const blocksByGroup = new Map<string, typeof section.promptBlocks>();
-    for (const block of section.promptBlocks) {
-      if (!block.groupBindingId) continue;
-      const groupBlocks = blocksByGroup.get(block.groupBindingId) ?? [];
-      groupBlocks.push(block);
-      blocksByGroup.set(block.groupBindingId, groupBlocks);
+    const bindingsByGroup = new Map<string, typeof section.presetBindingRows>();
+    for (const binding of section.presetBindingRows) {
+      if (!binding.groupBindingKey) continue;
+      const groupBindings = bindingsByGroup.get(binding.groupBindingKey) ?? [];
+      groupBindings.push(binding);
+      bindingsByGroup.set(binding.groupBindingKey, groupBindings);
     }
 
-    for (const [groupBindingId, groupBlocks] of blocksByGroup) {
-      const currentMembers = groupBlocks
-        .filter((block) => block.type === "preset" && block.sourceId && block.variantId)
-        .map((block) => ({
-          presetId: block.sourceId as string,
-          variantId: block.variantId as string,
+    for (const [groupBindingId, groupBindings] of bindingsByGroup) {
+      const currentMembers = groupBindings
+        .filter((binding) => binding.variantId)
+        .map((binding) => ({
+          presetId: binding.presetId,
+          variantId: binding.variantId as string,
         }));
       const isTrackedGroup = groupBindingId.startsWith(groupBindingPrefix);
       const isLegacyMatch = previousMembers.length > 0 && haveSamePresetGroupMemberSet(previousMembers, currentMembers);
       if (!isTrackedGroup && !isLegacyMatch) continue;
 
-      const oldBindingIds = new Set(
-        groupBlocks.map((block) => block.bindingId).filter((id): id is string => Boolean(id)),
-      );
       const targetGroupBindingId = canonicalPresetGroupBindingId(groupId, groupBindingId);
       const nextBindingIds = nextMembers.map(() => createBindingId());
+      const deletedBindingRowIds = new Set(groupBindings.map((binding) => binding.id));
 
       await prisma.$transaction(async (tx) => {
-        await tx.promptBlock.deleteMany({
-          where: {
-            projectSectionId: section.id,
-            groupBindingId,
-          },
-        });
+        if (deletedBindingRowIds.size > 0) {
+          await tx.sectionManualLoraEntry.deleteMany({
+            where: {
+              projectSectionId: section.id,
+              sectionBindingId: { in: [...deletedBindingRowIds] },
+            },
+          });
+          await tx.sectionPromptBlock.deleteMany({
+            where: {
+              projectSectionId: section.id,
+              sectionBindingId: { in: [...deletedBindingRowIds] },
+            },
+          });
+          await tx.sectionPresetBinding.deleteMany({
+            where: {
+              projectSectionId: section.id,
+              id: { in: [...deletedBindingRowIds] },
+            },
+          });
+        }
 
-        type ExistingPromptBlock = (typeof section.promptBlocks)[number];
-        type SortablePromptBlock =
+        type ExistingSectionPromptRow = (typeof section.sectionPromptBlocks)[number];
+        type SortableSectionPromptRow =
           | {
               kind: "existing";
-              block: ExistingPromptBlock;
+              row: ExistingSectionPromptRow;
               categoryOrder: number | null;
               sortOrder: number;
             }
           | {
               kind: "create";
-              data: Prisma.PromptBlockCreateManyInput;
+              member: ConcreteGroupMember;
+              bindingKey: string;
               categoryOrder: number | null;
               sortOrder: number;
             };
 
-        const getCategoryOrderForBlock = (block: { categoryId: string | null; sortOrder: number }) =>
-          block.categoryId ? categoryOrderById.get(block.categoryId) ?? block.sortOrder : block.sortOrder;
-        const fallbackGroupSortOrder = groupBlocks.reduce(
-          (min, block) => Math.min(min, block.sortOrder),
+        const getCategoryOrderForRow = (row: {
+          sortOrder: number;
+          sectionBinding?: { categoryId: string } | null;
+        }) =>
+          row.sectionBinding?.categoryId
+            ? categoryOrderById.get(row.sectionBinding.categoryId) ?? row.sortOrder
+            : row.sortOrder;
+        const fallbackGroupSortOrder = groupBindings.reduce(
+          (min, binding) => Math.min(min, binding.sortOrder),
           Number.POSITIVE_INFINITY,
         );
         const groupSortOrder = Number.isFinite(fallbackGroupSortOrder) ? fallbackGroupSortOrder : 0;
         const usedAnchorIndexes = new Set<number>();
         const takeAnchorBlock = (member: ConcreteGroupMember, index: number) => {
-          const exactIndex = groupBlocks.findIndex((block, blockIndex) =>
+          const exactIndex = groupBindings.findIndex((binding, blockIndex) =>
             !usedAnchorIndexes.has(blockIndex) &&
-            block.type === "preset" &&
-            block.sourceId === member.presetId &&
-            block.variantId === member.variantId,
+            binding.presetId === member.presetId &&
+            binding.variantId === member.variantId,
           );
           const categoryIndex = exactIndex >= 0
             ? exactIndex
-            : groupBlocks.findIndex((block, blockIndex) =>
-              !usedAnchorIndexes.has(blockIndex) && block.categoryId === member.categoryId,
+            : groupBindings.findIndex((binding, blockIndex) =>
+              !usedAnchorIndexes.has(blockIndex) && binding.categoryId === member.categoryId,
             );
           const anchorIndex = categoryIndex >= 0 ? categoryIndex : -1;
           if (anchorIndex >= 0) {
             usedAnchorIndexes.add(anchorIndex);
-            return groupBlocks[anchorIndex];
+            return groupBindings[anchorIndex];
           }
           return { categoryId: member.categoryId, sortOrder: groupSortOrder + index };
         };
 
-        const sortableBlocks: SortablePromptBlock[] = section.promptBlocks
-          .filter((block) => block.groupBindingId !== groupBindingId)
-          .map((block) => ({
+        const sortableRows: SortableSectionPromptRow[] = section.sectionPromptBlocks
+          .filter((row) => !row.sectionBindingId || !deletedBindingRowIds.has(row.sectionBindingId))
+          .map((row) => ({
             kind: "existing" as const,
-            block,
-            categoryOrder: getCategoryOrderForBlock(block),
-            sortOrder: block.sortOrder,
+            row,
+            categoryOrder: getCategoryOrderForRow(row),
+            sortOrder: row.sortOrder,
           }));
 
-        if (nextMembers.length === 0) {
-          const anchorBlock: { categoryId: string | null; sortOrder: number } = groupBlocks[0]
-            ? { categoryId: groupBlocks[0].categoryId, sortOrder: groupBlocks[0].sortOrder }
-            : { categoryId: null, sortOrder: groupSortOrder };
-          sortableBlocks.push({
+        nextMembers.forEach((member, index) => {
+          const anchorBlock = takeAnchorBlock(member, index);
+          sortableRows.push({
             kind: "create",
-            data: buildPresetGroupPlaceholderCreateInput({
-              sectionId: section.id,
-              groupBindingId: targetGroupBindingId,
-              sortOrder: groupSortOrder,
-            }) as Prisma.PromptBlockCreateManyInput,
-            categoryOrder: getCategoryOrderForBlock(anchorBlock),
+            member,
+            bindingKey: nextBindingIds[index],
+            categoryOrder: member.positivePromptOrder,
             sortOrder: anchorBlock.sortOrder,
           });
-        } else {
-          nextMembers.forEach((member, index) => {
-            const anchorBlock = takeAnchorBlock(member, index);
-            sortableBlocks.push({
-              kind: "create",
+        });
+
+        const sortedRows = sortSectionPromptBlocksByCategoryOrder(sortableRows);
+        for (const [nextSortOrder, item] of sortedRows.entries()) {
+          if (item.kind === "create") {
+            const binding = await tx.sectionPresetBinding.create({
               data: {
                 projectSectionId: section.id,
-                type: "preset",
-                sourceId: member.presetId,
-                variantId: member.variantId,
-                categoryId: member.categoryId,
-                bindingId: nextBindingIds[index],
-                groupBindingId: targetGroupBindingId,
-                label: member.label,
-                positive: member.positive,
-                negative: member.negative,
-                sortOrder: anchorBlock.sortOrder,
+                bindingKey: item.bindingKey,
+                categoryId: item.member.categoryId,
+                presetId: item.member.presetId,
+                variantId: item.member.variantId,
+                groupBindingKey: targetGroupBindingId,
+                sortOrder: nextSortOrder,
               },
-              categoryOrder: member.positivePromptOrder,
-              sortOrder: anchorBlock.sortOrder,
+              select: { id: true },
             });
-          });
-        }
+            await tx.sectionPromptBlock.create({
+              data: {
+                projectSectionId: section.id,
+                sectionBindingId: binding.id,
+                type: "preset",
+                sortOrder: nextSortOrder,
+              },
+            });
+            continue;
+          }
 
-        const createBlocks: Prisma.PromptBlockCreateManyInput[] = [];
-        const sortedBlocks = sortSectionPromptBlocksByCategoryOrder(sortableBlocks);
-        const updateSortOrderPromises = sortedBlocks
-          .map((item, nextSortOrder) => {
-            if (item.kind === "create") {
-              createBlocks.push({ ...item.data, sortOrder: nextSortOrder });
-              return null;
-            }
-            return item.block.sortOrder !== nextSortOrder
-              ? tx.promptBlock.update({
-                where: { id: item.block.id },
+          if (item.row.sortOrder !== nextSortOrder) {
+            await tx.sectionPromptBlock.update({
+              where: { id: item.row.id },
+              data: { sortOrder: nextSortOrder },
+            });
+            if (item.row.sectionBindingId) {
+              await tx.sectionPresetBinding.update({
+                where: { id: item.row.sectionBindingId },
                 data: { sortOrder: nextSortOrder },
-              })
-              : null;
-          })
-          .filter((promise): promise is ReturnType<typeof tx.promptBlock.update> => Boolean(promise));
-
-        await Promise.all(updateSortOrderPromises);
-
-        if (createBlocks.length > 0) {
-          await tx.promptBlock.createMany({ data: createBlocks });
+              });
+            }
+          }
         }
-
-        const loraConfig = parseSectionLoraConfig(section.loraConfig);
-        const shouldRemoveLora = (entry: LoraEntry) =>
-          (entry.bindingId ? oldBindingIds.has(entry.bindingId) : false) ||
-          entry.groupBindingId === groupBindingId ||
-          entry.groupBindingId === targetGroupBindingId;
-
-        const replaceLoras = (
-          existing: LoraEntry[],
-          nextEntries: LoraEntry[],
-        ) => {
-          const insertAt = existing.findIndex(shouldRemoveLora);
-          const filtered = existing.filter((entry) => !shouldRemoveLora(entry));
-          filtered.splice(insertAt >= 0 ? insertAt : filtered.length, 0, ...nextEntries);
-          return filtered;
-        };
-
-        const detachedLora1Paths = new Set([
-          ...getDetachedGroupPresetPaths(loraConfig.lora1, groupBindingId),
-          ...getDetachedGroupPresetPaths(loraConfig.lora1, targetGroupBindingId),
-        ]);
-        const detachedLora2Paths = new Set([
-          ...getDetachedGroupPresetPaths(loraConfig.lora2, groupBindingId),
-          ...getDetachedGroupPresetPaths(loraConfig.lora2, targetGroupBindingId),
-        ]);
-        const nextLora1 = nextMembers.flatMap((member, index) =>
-          member.lora1.filter((binding) => !detachedLora1Paths.has(binding.path)).map((binding) =>
-            makePresetLoraEntry(binding, member, nextBindingIds[index], targetGroupBindingId),
-          ),
-        );
-        const nextLora2 = nextMembers.flatMap((member, index) =>
-          member.lora2.filter((binding) => !detachedLora2Paths.has(binding.path)).map((binding) =>
-            makePresetLoraEntry(binding, member, nextBindingIds[index], targetGroupBindingId),
-          ),
-        );
-
-        await tx.projectSection.update({
-          where: { id: section.id },
-          data: {
-            loraConfig: serializeSectionLoraConfig({
-              lora1: replaceLoras(loraConfig.lora1, nextLora1),
-              lora2: replaceLoras(loraConfig.lora2, nextLora2),
-            }) as Prisma.InputJsonValue,
-          },
-        });
       });
 
       touchedProjectIds.add(section.projectId);

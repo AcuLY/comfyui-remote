@@ -528,31 +528,12 @@ async function seedPresetSection() {
       checkpointName: `${key}.ckpt`,
     },
   });
-  const staleLoraConfig = {
-    lora1: [
-      {
-        id: `${key}-stale-lora`,
-        path: `/${key}-stale.safetensors`,
-        weight: 1,
-        enabled: true,
-        source: "preset",
-        sourceName: `${key} Old Preset`,
-        sourceLabel: `${key} Old Category`,
-        sourceColor: "#000000",
-        bindingId: `${key}-binding`,
-      },
-    ],
-    lora2: [],
-  };
   const section = await prisma.projectSection.create({
     data: {
       id: `${key}-section`,
       projectId: project.id,
       name: `${key} Section`,
       sortOrder: 0,
-      positivePrompt: `${key} stale section positive`,
-      negativePrompt: `${key} stale section negative`,
-      loraConfig: staleLoraConfig,
     },
   });
   const binding = await prisma.sectionPresetBinding.create({
@@ -575,62 +556,17 @@ async function seedPresetSection() {
       sortOrder: 0,
     },
   });
-  const legacyPromptBlock = await prisma.promptBlock.create({
-    data: {
-      id: `${key}-legacy-prompt-block`,
-      projectSectionId: section.id,
-      type: "preset",
-      sourceId: preset.id,
-      variantId: variantA.id,
-      categoryId: category.id,
-      bindingId: binding.bindingKey,
-      label: `${key} stale expanded label`,
-      positive: `${key} stale expanded positive`,
-      negative: `${key} stale expanded negative`,
-      sortOrder: 9,
-    },
-  });
   const template = await prisma.projectTemplate.create({
     data: {
       id: `${key}-template`,
       name: `${key} Template`,
     },
   });
-  const templatePromptBlocks = [
-    {
-      type: "preset",
-      sourceId: preset.id,
-      variantId: variantA.id,
-      categoryId: category.id,
-      bindingId: binding.bindingKey,
-      label: `${key} stale template label`,
-      positive: `${key} stale template positive`,
-      negative: `${key} stale template negative`,
-      sortOrder: 0,
-    },
-  ];
-  const templateLoraConfig = {
-    lora1: [
-      {
-        id: `${key}-template-lora`,
-        path: `/${key}-template-stale.safetensors`,
-        weight: 1,
-        enabled: true,
-        source: "preset",
-        sourceName: `${key} Old Template Preset`,
-        sourceLabel: `${key} Old Template Category`,
-        bindingId: binding.bindingKey,
-      },
-    ],
-    lora2: [],
-  };
   const templateSection = await prisma.projectTemplateSection.create({
     data: {
       id: `${key}-template-section`,
       projectTemplateId: template.id,
       name: `${key} Template Section`,
-      promptBlocks: templatePromptBlocks,
-      loraConfig: templateLoraConfig,
     },
   });
 
@@ -647,12 +583,8 @@ async function seedPresetSection() {
     section,
     binding,
     sectionPromptBlock,
-    legacyPromptBlock,
-    staleLoraConfig,
     template,
     templateSection,
-    templatePromptBlocks,
-    templateLoraConfig,
   };
 }
 
@@ -693,20 +625,16 @@ test("updating variant content is resolved lazily without writing downstream cac
     `/${seed.key}-updated-upscale-a.safetensors`,
   ]);
 
-  const section = await prisma.projectSection.findUniqueOrThrow({ where: { id: seed.section.id } });
-  assert.equal(section.positivePrompt, `${seed.key} stale section positive`);
-  assert.equal(section.negativePrompt, `${seed.key} stale section negative`);
-  assert.deepEqual(section.loraConfig, seed.staleLoraConfig);
-
-  const legacyBlock = await prisma.promptBlock.findUniqueOrThrow({ where: { id: seed.legacyPromptBlock.id } });
-  assert.equal(legacyBlock.label, `${seed.key} stale expanded label`);
-  assert.equal(legacyBlock.positive, `${seed.key} stale expanded positive`);
-  assert.equal(legacyBlock.negative, `${seed.key} stale expanded negative`);
+  await prisma.projectSection.findUniqueOrThrow({ where: { id: seed.section.id } });
   assert.deepEqual(await sectionRelationSnapshots(seed), beforeRelations);
 });
 
-test("updating preset metadata does not bulk rewrite section or template legacy caches", async () => {
+test("updating preset metadata does not bulk rewrite downstream relation rows", async () => {
   const seed = await seedPresetSection();
+  const beforeRelations = await sectionRelationSnapshots(seed);
+  const beforeTemplatePromptRows = await prisma.templateSectionPromptBlock.findMany({
+    where: { projectTemplateSectionId: seed.templateSection.id },
+  });
 
   await ignoreStaticRevalidateError(() =>
     updatePreset(seed.preset.id, {
@@ -715,18 +643,13 @@ test("updating preset metadata does not bulk rewrite section or template legacy 
     })
   );
 
-  const legacyBlock = await prisma.promptBlock.findUniqueOrThrow({ where: { id: seed.legacyPromptBlock.id } });
-  assert.equal(legacyBlock.label, `${seed.key} stale expanded label`);
-  assert.equal(legacyBlock.categoryId, seed.category.id);
-
-  const section = await prisma.projectSection.findUniqueOrThrow({ where: { id: seed.section.id } });
-  assert.deepEqual(section.loraConfig, seed.staleLoraConfig);
-
-  const templateSection = await prisma.projectTemplateSection.findUniqueOrThrow({
-    where: { id: seed.templateSection.id },
-  });
-  assert.deepEqual(templateSection.promptBlocks, seed.templatePromptBlocks);
-  assert.deepEqual(templateSection.loraConfig, seed.templateLoraConfig);
+  assert.deepEqual(await sectionRelationSnapshots(seed), beforeRelations);
+  assert.deepEqual(
+    await prisma.templateSectionPromptBlock.findMany({
+      where: { projectTemplateSectionId: seed.templateSection.id },
+    }),
+    beforeTemplatePromptRows,
+  );
 });
 
 test("variant link writes use PresetVariantLink rows and section resolver follows relation rows", async () => {
@@ -747,7 +670,6 @@ test("variant link writes use PresetVariantLink rows and section resolver follow
     where: { presetId: seed.preset.id, slug: `${seed.key}-created-linked` },
   });
 
-  assert.equal(created.linkedVariants, null);
   assert.deepEqual(
     (await prisma.presetVariantLink.findMany({ where: { sourceVariantId: created.id } }))
       .map((row) => [row.linkedVariantId, row.sortOrder]),
@@ -759,8 +681,6 @@ test("variant link writes use PresetVariantLink rows and section resolver follow
       linkedVariants: [{ presetId: seed.preset.id, variantId: seed.variantB.id }],
     })
   );
-  let updated = await prisma.presetVariant.findUniqueOrThrow({ where: { id: created.id } });
-  assert.equal(updated.linkedVariants, null);
   assert.deepEqual(
     (await prisma.presetVariantLink.findMany({ where: { sourceVariantId: created.id } }))
       .map((row) => row.linkedVariantId),
@@ -779,8 +699,7 @@ test("variant link writes use PresetVariantLink rows and section resolver follow
       linkedVariants: [{ presetId: seed.linkedPreset.id, variantId: seed.linkedVariant.id }],
     })
   );
-  updated = await prisma.presetVariant.findUniqueOrThrow({ where: { id: created.id } });
-  assert.equal(updated.linkedVariants, null);
+  const updated = await prisma.presetVariant.findUniqueOrThrow({ where: { id: created.id } });
   assert.equal(updated.prompt, `${seed.key} upserted root`);
 
   const binding = await prisma.sectionPresetBinding.update({
@@ -824,8 +743,6 @@ test("copyPreset copies and remaps PresetVariantLink rows", async () => {
   const copiedB = copiedVariants.find((variant) => variant.slug === seed.variantB.slug);
   assert.ok(copiedA);
   assert.ok(copiedB);
-  assert.equal(copiedA.linkedVariants, null);
-  assert.equal(copiedB.linkedVariants, null);
   assert.deepEqual(
     (await prisma.presetVariantLink.findMany({ where: { sourceVariantId: copiedA.id } }))
       .map((row) => [row.linkedVariantId, row.sortOrder]),
@@ -870,8 +787,8 @@ test("getPresetUsage reports normalized project, section, template, and template
   const usage = await getPresetUsage(seed.preset.id);
   const usageById = new Map(usage.sections.map((entry) => [entry.sectionId, entry]));
 
-  assert.equal(usage.totalBlocks, 5);
-  assert.equal(usageById.get(seed.section.id)?.blockCount, 2);
+  assert.equal(usage.totalBlocks, 4);
+  assert.equal(usageById.get(seed.section.id)?.blockCount, 1);
   assert.equal(usageById.get(`project:${seed.project.id}`)?.projectTitle, seed.project.title);
   assert.equal(usageById.get(`project-template:${seed.template.id}`)?.projectTitle, `模板：${seed.template.name}`);
   assert.equal(
@@ -949,30 +866,25 @@ test("deletePresetCascade removes normalized bindings and variant links tied to 
   );
 });
 
-test("deletePresetCascade keeps unrelated legacy PromptBlock rows with reused binding keys", async () => {
+test("deletePresetCascade keeps unrelated normalized custom prompt rows", async () => {
   const seed = await seedPresetSection();
-  const unrelatedBlock = await prisma.promptBlock.create({
+  const unrelatedBlock = await prisma.sectionPromptBlock.create({
     data: {
-      id: `${seed.key}-unrelated-legacy-block`,
+      id: `${seed.key}-unrelated-custom-block`,
       projectSectionId: seed.section.id,
-      type: "preset",
-      sourceId: seed.linkedPreset.id,
-      variantId: seed.linkedVariant.id,
-      categoryId: seed.category.id,
-      bindingId: seed.binding.bindingKey,
-      label: `${seed.key} unrelated label`,
-      positive: `${seed.key} unrelated positive`,
-      negative: null,
+      sectionBindingId: null,
+      type: "custom",
+      customLabel: `${seed.key} unrelated label`,
+      customPositive: `${seed.key} unrelated positive`,
+      customNegative: null,
       sortOrder: 10,
     },
   });
 
   await ignoreStaticRevalidateError(() => deletePresetCascade(seed.preset.id));
 
-  assert.equal(await prisma.promptBlock.count({ where: { id: seed.legacyPromptBlock.id } }), 0);
-  assert.equal(await prisma.promptBlock.count({ where: { id: unrelatedBlock.id } }), 1);
-  const section = await prisma.projectSection.findUniqueOrThrow({ where: { id: seed.section.id } });
-  assert.deepEqual(section.loraConfig, seed.staleLoraConfig);
+  assert.equal(await prisma.sectionPromptBlock.count({ where: { id: seed.sectionPromptBlock.id } }), 0);
+  assert.equal(await prisma.sectionPromptBlock.count({ where: { id: unrelatedBlock.id } }), 1);
 });
 
 test("character LoRA promotion writes relation links and leaves legacy linkedVariants empty", async () => {
@@ -1057,7 +969,6 @@ test("character LoRA promotion writes relation links and leaves legacy linkedVar
     orderBy: { sortOrder: "asc" },
   });
   assert.equal(variants.length, 2);
-  assert.deepEqual(variants.map((variant) => variant.linkedVariants), [null, null]);
   assert.deepEqual(
     await prisma.presetVariantLink.findMany({
       where: { sourceVariantId: variants[0].id },

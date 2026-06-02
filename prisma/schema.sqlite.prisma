@@ -24,7 +24,6 @@ model PresetCategory {
   lora2Order          Int             @default(0)
   sortOrder           Int             @default(0)
   type                String          @default("preset") // "preset" | "group"
-  slotTemplate        Json?           // type=group: [{ categoryId: string, label?: string }]
   createdAt           DateTime        @default(now())
   updatedAt           DateTime        @updatedAt
   presets             Preset[]
@@ -73,7 +72,6 @@ model PresetVariant {
   negativePrompt  String?
   lora1           Json?           // Array<LoraBinding> — stage 1
   lora2           Json?           // Array<LoraBinding> — stage 2 (upscale)
-  linkedVariants  Json?           // [{ presetId: string, variantId: string }] — linked variant refs
   sortOrder       Int             @default(0)
   isActive        Boolean         @default(true)
   createdAt       DateTime        @default(now())
@@ -202,7 +200,6 @@ model ProjectTemplate {
   id             String                  @id @default(cuid())
   name           String
   description    String?
-  presetBindings Json?                    // [{ categoryId, presetId, variantId? }] — project-level preset bindings
   createdAt      DateTime                @default(now())
   updatedAt      DateTime                @updatedAt
   sections       ProjectTemplateSection[]
@@ -249,9 +246,7 @@ model ProjectTemplateSection {
   ksampler2         Json?
   upscaleFactor     Float?
   checkpointName    String?
-  loraConfig        Json?
   extraParams       Json?
-  promptBlocks      Json?
   projectTemplate    ProjectTemplate  @relation(fields: [projectTemplateId], references: [id], onDelete: Cascade)
   folder             ProjectTemplateSectionFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
   presetBindingRows  TemplateSectionPresetBinding[]
@@ -356,7 +351,6 @@ model Project {
   status                String                @default("draft")
   coverImageId          String?
   folderId              String?
-  presetBindings        Json?                 // [{ categoryId, presetId, variantId? }]
   checkpointName        String?
   projectLevelOverrides Json?
   notes                 String?
@@ -415,8 +409,6 @@ model ProjectSection {
   name                  String?
   sortOrder             Int                   @default(0)
   enabled               Boolean               @default(true)
-  positivePrompt        String?
-  negativePrompt        String?
   aspectRatio           String?
   shortSidePx           Int?
   batchSize             Int?
@@ -426,7 +418,6 @@ model ProjectSection {
   ksampler2             Json?
   upscaleFactor         Float?
   checkpointName        String?
-  loraConfig            Json?                 // { lora1: LoraEntry[], lora2: LoraEntry[] }
   extraParams           Json?
   latestRunId           String?
   createdAt             DateTime              @default(now())
@@ -434,7 +425,6 @@ model ProjectSection {
   project               Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
   folder                ProjectSectionFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
   runs                  Run[]
-  promptBlocks          PromptBlock[]
   changeLogs            SectionChangeLog[]
   presetBindingRows     SectionPresetBinding[]
   sectionPromptBlocks   SectionPromptBlock[]
@@ -540,26 +530,6 @@ model SectionChangeLog {
   projectSection        ProjectSection        @relation(fields: [projectSectionId], references: [id], onDelete: Cascade)
 
   @@index([projectSectionId, dimension, createdAt])
-}
-
-model PromptBlock {
-  id                    String                @id @default(cuid())
-  projectSectionId      String
-  type                  String                @default("custom")
-  sourceId              String?               // FK to Preset (when type="preset")
-  variantId             String?               // FK to PresetVariant (current variant)
-  categoryId            String?               // FK to PresetCategory
-  bindingId             String?               // groups blocks+loras from same preset import
-  groupBindingId        String?               // groups all bindings from same group import
-  label                 String
-  positive              String
-  negative              String?
-  sortOrder             Int                   @default(0)
-  createdAt             DateTime              @default(now())
-  updatedAt             DateTime              @updatedAt
-  projectSection        ProjectSection        @relation(fields: [projectSectionId], references: [id], onDelete: Cascade)
-
-  @@index([projectSectionId, sortOrder])
 }
 
 model Run {

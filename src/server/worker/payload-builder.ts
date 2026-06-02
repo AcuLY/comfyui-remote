@@ -34,12 +34,17 @@ function asInteger(value: Prisma.JsonValue | undefined, fallback: number) {
 }
 
 function composePositivePrompt(snapshot: NormalizedResolvedConfigSnapshot) {
-  return [
-    snapshot.section.templatePrompt,
-    snapshot.section.positivePrompt,
-  ]
+  return (snapshot.promptBlocks ?? [])
+    .map((block) => block.positive)
     .filter((value): value is string => Boolean(value && value.trim()))
     .join(" BREAK ");
+}
+
+function composeNegativePrompt(snapshot: NormalizedResolvedConfigSnapshot) {
+  const parts = (snapshot.promptBlocks ?? [])
+    .map((block) => block.negative)
+    .filter((value): value is string => Boolean(value && value.trim()));
+  return parts.length > 0 ? parts.join(" BREAK ") : null;
 }
 
 export function normalizeResolvedConfigSnapshot(
@@ -74,8 +79,8 @@ export function normalizeResolvedConfigSnapshot(
       name: asString(section?.name),
       slug: asString(section?.slug),
       templatePrompt: asString(section?.templatePrompt),
-      positivePrompt: asNullableString(section?.positivePrompt),
-      negativePrompt: asNullableString(section?.negativePrompt),
+      positivePrompt: null,
+      negativePrompt: null,
     },
     promptBlocks,
     composedPrompt: composedPrompt
@@ -105,9 +110,9 @@ export function normalizeResolvedConfigSnapshot(
 export function buildComfyPromptDraft(run: WorkerRunSnapshot): ComfyPromptDraft {
   const resolvedConfig = normalizeResolvedConfigSnapshot(run.resolvedConfigSnapshot);
 
-  // Prefer composedPrompt from blocks (v0.2), fall back to legacy composition
+  // Prefer resolved composed prompt; block composition is only for older snapshots.
   const positive = resolvedConfig.composedPrompt?.positive ?? composePositivePrompt(resolvedConfig);
-  const negative = resolvedConfig.composedPrompt?.negative ?? resolvedConfig.section.negativePrompt;
+  const negative = resolvedConfig.composedPrompt?.negative ?? composeNegativePrompt(resolvedConfig);
 
   return {
     clientId: `run-${run.runId}`,

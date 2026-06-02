@@ -16,11 +16,13 @@ export default async function BatchCreatePage({
     return <div className="p-6 text-sm text-zinc-400">项目不存在</div>;
   }
 
+  const { presetBindings: projectPresetSelections } = project;
+
   return (
     <BatchCreateClient
       projectId={projectId}
       projectTitle={project.title}
-      presetBindings={project.presetBindings}
+      presetBindings={projectPresetSelections}
       defaultAspectRatio={project.defaultAspectRatio}
       defaultShortSidePx={project.defaultShortSidePx}
       library={library}

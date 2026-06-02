@@ -6,6 +6,9 @@ import {
   type ManagedImageMoveStatus,
   moveManagedImageFile,
 } from "@/server/services/image-file-service";
+import {
+  extractPresetNames,
+} from "@/server/repositories/queue-data-repository";
 
 type ReviewableImage = {
   id: string;
@@ -49,7 +52,13 @@ async function getRunReviewBase(runId: string) {
           title: true,
           slug: true,
           status: true,
-          presetBindings: true,
+          presetBindingRows: {
+            orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+            select: {
+              presetId: true,
+              preset: { select: { id: true, name: true, slug: true } },
+            },
+          },
         },
       },
       projectSection: {
@@ -85,20 +94,7 @@ async function getRunReviewBase(runId: string) {
 export async function getRunReviewGroup(runId: string) {
   const run = await getRunReviewBase(runId);
 
-  // Resolve preset names from presetBindings
-  type PresetBindingJson = Array<{ categoryId: string; presetId: string }>;
-  const bindings = run.project.presetBindings as PresetBindingJson | null;
-  const presetNames: string[] = [];
-  if (bindings && bindings.length > 0) {
-    const presetIds = bindings.map((b) => b.presetId);
-    const presets = await db.preset.findMany({
-      where: { id: { in: presetIds } },
-      select: { id: true, name: true },
-    });
-    for (const preset of presets) {
-      presetNames.push(preset.name);
-    }
-  }
+  const presetNames = extractPresetNames(run.project.presetBindingRows);
 
   const images = run.images.map((image, index) => ({
     id: image.id,
@@ -124,20 +120,9 @@ export async function getRunReviewGroup(runId: string) {
 export async function getRunAgentContext(runId: string) {
   const run = await getRunReviewBase(runId);
 
-  // Resolve preset info from presetBindings
-  type PresetBindingJson2 = Array<{ categoryId: string; presetId: string }>;
-  const bindings2 = run.project.presetBindings as PresetBindingJson2 | null;
-  const presetInfos: { id: string; name: string; slug: string }[] = [];
-  if (bindings2 && bindings2.length > 0) {
-    const presetIds = bindings2.map((b) => b.presetId);
-    const presets = await db.preset.findMany({
-      where: { id: { in: presetIds } },
-      select: { id: true, name: true, slug: true },
-    });
-    for (const preset of presets) {
-      presetInfos.push({ id: preset.id, name: preset.name, slug: preset.slug });
-    }
-  }
+  const presetInfos = run.project.presetBindingRows
+    .map((binding) => binding.preset)
+    .filter((preset): preset is { id: string; name: string; slug: string } => Boolean(preset));
 
   const imageSummary = run.images.reduce(
     (summary, image) => {

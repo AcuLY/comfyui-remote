@@ -28,6 +28,15 @@ const parityModels = [
   ...expectedModels,
 ] as const;
 
+const removedLegacyEditableFields = {
+  PresetCategory: ["slotTemplate"],
+  PresetVariant: ["linkedVariants"],
+  Project: ["presetBindings"],
+  ProjectTemplate: ["presetBindings"],
+  ProjectSection: ["positivePrompt", "negativePrompt", "loraConfig", "promptBlocks"],
+  ProjectTemplateSection: ["promptBlocks", "loraConfig"],
+} as const;
+
 const forbiddenPromptBlockFields = [
   "label",
   "positive",
@@ -112,6 +121,33 @@ for (const schemaFile of schemaFiles) {
     for (const modelName of expectedModels) {
       await readSchemaModel(schemaFile, modelName);
     }
+  });
+
+  test(`${schemaFile} removes editable legacy redundancy storage`, async () => {
+    const schema = await readFile(schemaFile, "utf8");
+
+    assert.equal(/model PromptBlock\s+\{/.test(schema), false, "PromptBlock model is removed");
+
+    for (const [modelName, fieldNames] of Object.entries(removedLegacyEditableFields)) {
+      const modelSource = await readSchemaModel(schemaFile, modelName);
+      assertModelDoesNotDeclareFields(modelSource, fieldNames);
+    }
+  });
+
+  test(`${schemaFile} keeps source prompts and immutable run snapshots`, async () => {
+    const presetVariant = await readSchemaModel(schemaFile, "PresetVariant");
+    const run = await readSchemaModel(schemaFile, "Run");
+
+    assertModelDeclaresFields(presetVariant, [
+      isPostgres ? "prompt String @db.Text" : "prompt String",
+      isPostgres ? "negativePrompt String? @db.Text" : "negativePrompt String?",
+      "lora1 Json?",
+      "lora2 Json?",
+    ]);
+    assertModelDeclaresFields(run, [
+      "resolvedConfigSnapshot Json",
+      "submittedPrompt Json?",
+    ]);
   });
 
   test(`${schemaFile} keeps new prompt blocks resolver-backed instead of copying legacy payloads`, async () => {

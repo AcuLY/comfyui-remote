@@ -4,7 +4,6 @@ import { pathToFileURL } from "node:url";
 import { diffResolvedSectionConfig } from "../../src/server/prompt-config/diff";
 import { resolveSectionConfigFromRows } from "../../src/server/prompt-config/section-resolver";
 import type {
-  LegacyPromptBlockRow,
   LoraStage,
   PresetCategoryRow,
   PresetRow,
@@ -16,6 +15,19 @@ import type {
   SectionPromptBlockRow,
   SectionPresetBindingRow,
 } from "../../src/server/prompt-config/types";
+
+type LegacyPromptBlockRow = {
+  type: string;
+  sourceId: string | null;
+  variantId: string | null;
+  categoryId: string | null;
+  bindingId: string | null;
+  groupBindingId: string | null;
+  label: string;
+  positive: string;
+  negative: string | null;
+  sortOrder: number;
+};
 
 export type ZeroRedundancyMigrationFormat = "summary" | "json";
 
@@ -436,6 +448,7 @@ export function buildZeroRedundancyMigrationPlan(
       presets,
       variants,
       variantLinks: effective.presetVariantLinks,
+      stats: { invalidJsonRowCount: 0, invalidReferenceCount: 0 },
     }),
     ...buildTemplateVerificationPairs({
       templateSections: rows.projectTemplateSections ?? [],
@@ -612,10 +625,10 @@ export async function readZeroRedundancyMigrationRowsFromDb(): Promise<ZeroRedun
     templateSectionManualLoraEntries,
   ] = await Promise.all([
     findMany(db, "project", {
-      select: { id: true, presetBindings: true },
+      select: { id: true },
     }),
     findMany(db, "projectTemplate", {
-      select: { id: true, presetBindings: true },
+      select: { id: true },
     }),
     findMany(db, "presetCategory", {
       select: {
@@ -626,7 +639,6 @@ export async function readZeroRedundancyMigrationRowsFromDb(): Promise<ZeroRedun
         negativePromptOrder: true,
         lora1Order: true,
         lora2Order: true,
-        slotTemplate: true,
       },
     }),
     findMany(db, "preset", {
@@ -641,7 +653,6 @@ export async function readZeroRedundancyMigrationRowsFromDb(): Promise<ZeroRedun
         negativePrompt: true,
         lora1: true,
         lora2: true,
-        linkedVariants: true,
         sortOrder: true,
         isActive: true,
       },
@@ -650,9 +661,6 @@ export async function readZeroRedundancyMigrationRowsFromDb(): Promise<ZeroRedun
       select: {
         id: true,
         projectId: true,
-        positivePrompt: true,
-        negativePrompt: true,
-        loraConfig: true,
         aspectRatio: true,
         shortSidePx: true,
         batchSize: true,
@@ -685,8 +693,6 @@ export async function readZeroRedundancyMigrationRowsFromDb(): Promise<ZeroRedun
       select: {
         id: true,
         projectTemplateId: true,
-        promptBlocks: true,
-        loraConfig: true,
         aspectRatio: true,
         shortSidePx: true,
         batchSize: true,
@@ -1288,6 +1294,7 @@ function buildSectionVerificationPairs(input: {
   presets: Map<string, PresetRow>;
   variants: PresetVariantRow[];
   variantLinks: readonly PresetVariantLinkRow[];
+  stats: MigrationStats;
 }): ZeroRedundancyVerificationPair[] {
   const blocksBySection = groupBy(input.legacyPromptBlocks, (block) => block.projectSectionId);
   return input.sections.flatMap((section) => {
@@ -1302,15 +1309,7 @@ function buildSectionVerificationPairs(input: {
         }),
       },
     );
-    const legacy = resolveSectionConfigFromRows({
-      section: sectionForResolver(section),
-      presetBindings: [],
-      promptBlockRows: [],
-      manualLoraEntries: [],
-      legacyPromptBlocks,
-      presetVariants: input.variants,
-      variantLinks: [...input.variantLinks],
-    });
+    const legacy = legacyResolvedSectionConfig(section, legacyPromptBlocks, input.stats, "ProjectSection.loraConfig");
     const resolved = resolveSectionConfigFromRows({
       section: sectionForResolver({ ...section, positivePrompt: null, negativePrompt: null, loraConfig: null }),
       presetBindings: input.normalizedPresetBindings
@@ -1323,7 +1322,6 @@ function buildSectionVerificationPairs(input: {
       manualLoraEntries: input.normalizedManualLoras
         .filter((entry) => entry.projectSectionId === section.id)
         .map(sectionManualLoraToResolverRow),
-      legacyPromptBlocks: [],
       presetVariants: input.variants,
       variantLinks: [...input.variantLinks],
     });
@@ -1363,15 +1361,12 @@ function buildTemplateVerificationPairs(input: {
         }),
       },
     );
-    const legacy = resolveSectionConfigFromRows({
-      section: sectionForResolver(templateSectionAsSection(section)),
-      presetBindings: [],
-      promptBlockRows: [],
-      manualLoraEntries: [],
+    const legacy = legacyResolvedSectionConfig(
+      templateSectionAsSection(section),
       legacyPromptBlocks,
-      presetVariants: input.variants,
-      variantLinks: [...input.variantLinks],
-    });
+      input.stats,
+      "ProjectTemplateSection.loraConfig",
+    );
     const resolved = resolveSectionConfigFromRows({
       section: sectionForResolver({ ...templateSectionAsSection(section), loraConfig: null }),
       presetBindings: input.normalizedPresetBindings
@@ -1384,7 +1379,6 @@ function buildTemplateVerificationPairs(input: {
       manualLoraEntries: input.normalizedManualLoras
         .filter((entry) => entry.projectTemplateSectionId === section.id)
         .map(templateManualLoraToResolverRow),
-      legacyPromptBlocks: [],
       presetVariants: input.variants,
       variantLinks: [...input.variantLinks],
     });
@@ -1393,6 +1387,95 @@ function buildTemplateVerificationPairs(input: {
     }
     return [{ id: section.id, kind: "templateSection" as const, legacy, resolved }];
   });
+}
+
+function legacyResolvedSectionConfig(
+  section: LegacyProjectSectionRow,
+  promptBlocks: readonly LegacyPromptBlockRow[],
+  stats: MigrationStats,
+  loraField: string,
+): ResolvedSectionConfig {
+  const legacyLoras = parseLegacyLoraConfig(section.loraConfig, stats, loraField, section.id);
+  const resolvedPromptBlocks = promptBlocks.map((block) => ({
+    type: block.type,
+    sourceId: block.sourceId,
+    variantId: block.variantId,
+    categoryId: block.categoryId,
+    bindingId: block.bindingId,
+    groupBindingId: block.groupBindingId,
+    label: block.label,
+    positive: block.positive,
+    negative: block.negative,
+    sortOrder: block.sortOrder,
+  }));
+  const positive = resolvedPromptBlocks
+    .map((block) => block.positive)
+    .filter((value) => value.trim().length > 0)
+    .join(" BREAK ");
+  const negative = resolvedPromptBlocks
+    .map((block) => block.negative)
+    .filter((value): value is string => Boolean(value?.trim()))
+    .join(" BREAK ") || null;
+
+  return {
+    promptBlocks: resolvedPromptBlocks,
+    prompt: { positive, negative },
+    presets: resolvedPromptBlocks
+      .filter((block) => block.type === "preset" && block.categoryId && block.sourceId && block.bindingId)
+      .map((block) => ({
+        categoryId: block.categoryId!,
+        presetId: block.sourceId!,
+        variantId: block.variantId,
+        bindingId: block.bindingId!,
+        label: block.label,
+      })),
+    loraConfig: legacyLoraConfigToResolved(legacyLoras),
+    parameters: {
+      aspectRatio: section.aspectRatio ?? null,
+      shortSidePx: section.shortSidePx ?? null,
+      batchSize: section.batchSize ?? null,
+      seedPolicy: section.seedPolicy1 ?? null,
+      seedPolicy1: section.seedPolicy1 ?? null,
+      seedPolicy2: section.seedPolicy2 ?? null,
+      upscaleFactor: section.upscaleFactor ?? null,
+      checkpointName: section.checkpointName ?? null,
+    },
+    ksampler1: section.ksampler1 ?? null,
+    ksampler2: section.ksampler2 ?? null,
+    extraParams: section.extraParams ?? null,
+    warnings: [],
+    missingReferences: [],
+  };
+}
+
+function legacyLoraConfigToResolved(config: LegacyLoraConfig): ResolvedSectionConfig["loraConfig"] {
+  return {
+    lora1: config.lora1.map((entry, index) => legacyLoraEntryToResolved("lora1", entry, index)),
+    lora2: config.lora2.map((entry, index) => legacyLoraEntryToResolved("lora2", entry, index)),
+  };
+}
+
+function legacyLoraEntryToResolved(
+  stage: LoraStage,
+  entry: LegacyLoraEntry,
+  index: number,
+): ResolvedSectionConfig["loraConfig"][LoraStage][number] {
+  return {
+    id: entry.id ?? `legacy:${stage}:${index}:${entry.path}`,
+    path: entry.path,
+    weight: entry.weight,
+    enabled: entry.suppressed ? false : entry.enabled,
+    source: entry.source === "preset" ? "preset" : "manual",
+    sourceLabel: entry.sourceLabel ?? undefined,
+    sourceColor: entry.sourceColor ?? undefined,
+    sourceName: entry.sourceName ?? undefined,
+    bindingId: entry.bindingId ?? undefined,
+    groupBindingId: entry.groupBindingId ?? undefined,
+    detachedBindingId: entry.detachedBindingId ?? undefined,
+    detachedGroupBindingId: entry.detachedGroupBindingId ?? undefined,
+    detachedPresetPath: entry.detachedPresetPath ?? undefined,
+    suppressed: entry.suppressed ? true : undefined,
+  };
 }
 
 function normalizeCategories(categories: readonly LegacyPresetCategoryRow[]): Map<string, PresetCategoryRow> {
@@ -1431,7 +1514,6 @@ function normalizeVariants(variants: readonly LegacyPresetVariantRow[]): PresetV
     negativePrompt: normalizeNullableText(variant.negativePrompt),
     lora1: variant.lora1 ?? [],
     lora2: variant.lora2 ?? [],
-    linkedVariants: variant.linkedVariants ?? null,
     sortOrder: variant.sortOrder ?? 0,
     isActive: variant.isActive ?? true,
   }));
@@ -1597,7 +1679,6 @@ function resolveSinglePresetPromptBlock(
       sortOrder: binding.sortOrder,
     }],
     manualLoraEntries: [],
-    legacyPromptBlocks: [],
     presetVariants: [...variants],
     variantLinks: [...variantLinks],
   });
@@ -1615,7 +1696,6 @@ function buildCleanLoraKeys(
     presetBindings: [...bindings],
     promptBlockRows: [],
     manualLoraEntries: [],
-    legacyPromptBlocks: [],
     presetVariants: [...variants],
     variantLinks: [...variantLinks],
   });
@@ -1794,9 +1874,6 @@ function loraMetadata(entry: LegacyLoraEntry): Record<string, unknown> | null {
 function sectionForResolver(section: LegacyProjectSectionRow): ResolveSectionConfigInput["section"] {
   return {
     id: section.id,
-    positivePrompt: normalizeNullableText(section.positivePrompt),
-    negativePrompt: normalizeNullableText(section.negativePrompt),
-    loraConfig: section.loraConfig ?? null,
     aspectRatio: section.aspectRatio ?? null,
     shortSidePx: section.shortSidePx ?? null,
     batchSize: section.batchSize ?? null,

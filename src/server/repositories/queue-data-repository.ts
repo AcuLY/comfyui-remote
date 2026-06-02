@@ -7,10 +7,21 @@ import type { QueuePagination, QueueRun, RunningRun, FailedRun, ReviewGroup, Rev
 import { getLatestComfyLogProgress } from "@/server/services/comfy-progress-service";
 
 // ---------------------------------------------------------------------------
-// Preset binding helpers — resolve display names from presetBindings JSON
+// Preset binding helpers — resolve display names from normalized project rows
 // ---------------------------------------------------------------------------
 
-export type PresetBindingJson = Array<{ categoryId: string; presetId: string }>;
+export type ProjectPresetBindingDisplayRow = {
+  presetId: string;
+  preset?: { name: string } | null;
+};
+
+export const PROJECT_PRESET_BINDING_DISPLAY_SELECT = {
+  orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+  select: {
+    presetId: true,
+    preset: { select: { name: true } },
+  },
+} satisfies Prisma.Project$presetBindingRowsArgs;
 
 export async function batchResolvePresetNames(presetIds: string[]): Promise<Map<string, { name: string }>> {
   if (presetIds.length === 0) return new Map();
@@ -22,21 +33,18 @@ export async function batchResolvePresetNames(presetIds: string[]): Promise<Map<
 }
 
 export function extractPresetNames(
-  bindings: PresetBindingJson | null,
-  presetMap: Map<string, { name: string }>,
+  rows: readonly ProjectPresetBindingDisplayRow[],
+  presetMap?: Map<string, { name: string }>,
 ): string[] {
-  if (!bindings) return [];
-  return bindings
-    .map((b) => presetMap.get(b.presetId)?.name)
+  return rows
+    .map((row) => row.preset?.name ?? presetMap?.get(row.presetId)?.name)
     .filter((n): n is string => !!n);
 }
 
-/** Collect all unique preset IDs from an array of presetBindings JSON values */
-export function collectPresetIds(bindingsArray: (unknown)[]): string[] {
+export function collectPresetIds(rowsArray: readonly (readonly ProjectPresetBindingDisplayRow[])[]): string[] {
   const ids = new Set<string>();
-  for (const raw of bindingsArray) {
-    const bindings = raw as PresetBindingJson | null;
-    if (bindings) for (const b of bindings) ids.add(b.presetId);
+  for (const rows of rowsArray) {
+    for (const row of rows) ids.add(row.presetId);
   }
   return [...ids];
 }
@@ -144,7 +152,12 @@ const VISIBLE_QUEUE_RUN_ORDER_BY = [
 
 const VISIBLE_QUEUE_RUN_INCLUDE = {
   project: {
-    select: { id: true, title: true, coverImageId: true, presetBindings: true },
+    select: {
+      id: true,
+      title: true,
+      coverImageId: true,
+      presetBindingRows: PROJECT_PRESET_BINDING_DISPLAY_SELECT,
+    },
   },
   projectSection: true,
   images: {
@@ -167,7 +180,7 @@ function serializeQueueRun(
   const pendingImages = availableImages.filter((img) => img.reviewStatus === "pending");
   if (pendingImages.length === 0) return null;
 
-  const presetNames = extractPresetNames(run.project.presetBindings as PresetBindingJson | null, presetMap);
+  const presetNames = extractPresetNames(run.project.presetBindingRows, presetMap);
 
   return {
     id: run.id,
@@ -236,7 +249,7 @@ export async function getQueueRunsPage(options: QueuePageOptions = {}): Promise<
   const { runs, totalItems, totalPages, safePage, startIndex, totalPendingImages } =
     await loadVisibleQueueRunPage(page, pageSize);
   const presetMap = await batchResolvePresetNames(
-    collectPresetIds(runs.map((r) => r.project.presetBindings)),
+    collectPresetIds(runs.map((r) => r.project.presetBindingRows)),
   );
   let staleImageCount = 0;
   const pagedRuns: QueueRun[] = [];
@@ -287,14 +300,19 @@ export async function getRunningRuns(): Promise<RunningRun[]> {
     orderBy: { createdAt: "desc" },
     include: {
       project: {
-        select: { id: true, title: true, coverImageId: true, presetBindings: true },
+        select: {
+          id: true,
+          title: true,
+          coverImageId: true,
+          presetBindingRows: PROJECT_PRESET_BINDING_DISPLAY_SELECT,
+        },
       },
       projectSection: true,
     },
   });
 
   const presetMap = await batchResolvePresetNames(
-    collectPresetIds(runs.map((r) => r.project.presetBindings)),
+    collectPresetIds(runs.map((r) => r.project.presetBindingRows)),
   );
   const activeRunningRun = runs.find((run) => run.status === "running");
   const activeProgress = activeRunningRun
@@ -302,7 +320,7 @@ export async function getRunningRuns(): Promise<RunningRun[]> {
     : null;
 
   return runs.map((run) => {
-    const presetNames = extractPresetNames(run.project.presetBindings as PresetBindingJson | null, presetMap);
+    const presetNames = extractPresetNames(run.project.presetBindingRows, presetMap);
     return {
       id: run.id,
       presetNames,
@@ -340,18 +358,22 @@ export async function getFailedRuns(): Promise<FailedRun[]> {
     take: 20,
     include: {
       project: {
-        select: { id: true, title: true, presetBindings: true },
+        select: {
+          id: true,
+          title: true,
+          presetBindingRows: PROJECT_PRESET_BINDING_DISPLAY_SELECT,
+        },
       },
       projectSection: true,
     },
   });
 
   const presetMap = await batchResolvePresetNames(
-    collectPresetIds(runs.map((r) => r.project.presetBindings)),
+    collectPresetIds(runs.map((r) => r.project.presetBindingRows)),
   );
 
   return runs.map((run) => {
-    const presetNames = extractPresetNames(run.project.presetBindings as PresetBindingJson | null, presetMap);
+    const presetNames = extractPresetNames(run.project.presetBindingRows, presetMap);
     return {
       id: run.id,
       presetNames,
@@ -375,7 +397,12 @@ export async function getReviewGroup(runId: string): Promise<ReviewGroup | null>
     where: { id: runId },
     include: {
       project: {
-        select: { id: true, title: true, coverImageId: true, presetBindings: true },
+        select: {
+          id: true,
+          title: true,
+          coverImageId: true,
+          presetBindingRows: PROJECT_PRESET_BINDING_DISPLAY_SELECT,
+        },
       },
       projectSection: true,
       images: {
@@ -386,11 +413,10 @@ export async function getReviewGroup(runId: string): Promise<ReviewGroup | null>
 
   if (!run) return null;
 
-  // Resolve preset names from presetBindings
   const presetMap = await batchResolvePresetNames(
-    collectPresetIds([run.project.presetBindings]),
+    collectPresetIds([run.project.presetBindingRows]),
   );
-  const presetNames = extractPresetNames(run.project.presetBindings as PresetBindingJson | null, presetMap);
+  const presetNames = extractPresetNames(run.project.presetBindingRows, presetMap);
 
   const availableImages = run.images
     .map((image) => toAvailableImage(image))

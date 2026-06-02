@@ -144,7 +144,7 @@ export function diffResolvedSectionConfig(
   }
 
   if (isRecord(oldSnapshotLike)) {
-    for (const key of ["positivePrompt", "negativePrompt", "loraConfigJson", "legacyPromptBlocks", "composedPrompt"]) {
+    for (const key of ["positivePrompt", "negativePrompt", "loraConfigJson", "composedPrompt"]) {
       if (key in oldSnapshotLike && !(key in resolved)) {
         addMismatch(diffs, "legacyOnly", key, "legacy-only field is not part of resolver output");
       }

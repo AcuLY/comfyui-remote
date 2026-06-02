@@ -126,7 +126,20 @@ export async function createCharacterLoraBenchmarkRunWithTask(input: {
           where: { id: input.templateId },
           include: {
             sectionFolders: { orderBy: [{ parentId: "asc" }, { sortOrder: "asc" }, { id: "asc" }] },
-            sections: { orderBy: [{ sortOrder: "asc" }, { id: "asc" }] },
+            sections: {
+              orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+              include: {
+                promptBlockRows: {
+                  orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+                  select: {
+                    customLabel: true,
+                    customPositive: true,
+                    customNegative: true,
+                    sortOrder: true,
+                  },
+                },
+              },
+            },
           },
         })
       : null;
@@ -169,7 +182,15 @@ export async function createCharacterLoraBenchmarkRunWithTask(input: {
 
       let expandedSortOrder = 0;
       for (const [index, section] of template.sections.entries()) {
-        const blocks = normalizeTemplatePromptBlocks(section.promptBlocks, input.tempProject.promptBlock);
+        const blocks = normalizeTemplatePromptBlocks(
+          section.promptBlockRows.map((block) => ({
+            label: block.customLabel,
+            positive: block.customPositive,
+            negative: block.customNegative,
+            sortOrder: block.sortOrder,
+          })),
+          input.tempProject.promptBlock,
+        );
         for (const matrixItem of buildBenchmarkMatrixItems(input.tempProject.checkpointMatrix, input.tempProject.weightMatrix)) {
           const matrixMetadata = buildBenchmarkSectionMetadata({
             benchmarkRunId: input.benchmarkRunId,
@@ -373,7 +394,6 @@ export async function getCharacterLoraBenchmarkMatrixExpansionSummary(benchmarkR
       name: true,
       sortOrder: true,
       checkpointName: true,
-      loraConfig: true,
       extraParams: true,
       sectionPromptBlocks: {
         orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
@@ -390,20 +410,13 @@ export async function getCharacterLoraBenchmarkMatrixExpansionSummary(benchmarkR
           metadata: true,
         },
       },
-      promptBlocks: {
-        orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
-        select: {
-          label: true,
-          positive: true,
-        },
-      },
     },
   });
 
   return buildBenchmarkMatrixExpansionSummary({
     checkpointMatrix: readStringArrayFromJson(benchmark.checkpointMatrix),
     weightMatrix: readNumberArrayFromJson(benchmark.weightMatrix),
-    sections,
+    sections: sections.map((section) => ({ ...section, promptBlocks: [] })),
   });
 }
 
@@ -707,9 +720,23 @@ export async function ensureCharacterLoraBenchmarkTemplateInRepository(input: {
       data: {
         name: CHARACTER_LORA_BENCHMARK_TEMPLATE_NAME,
         description: CHARACTER_LORA_BENCHMARK_TEMPLATE_DESCRIPTION,
-        presetBindings: toInputJsonValue([]),
         sections: {
-          create: buildCharacterLoraBenchmarkTemplateSections(checkpointName),
+          create: buildCharacterLoraBenchmarkTemplateSections(checkpointName).map(({ promptBlocks, ...section }) => ({
+            ...section,
+            promptBlockRows: {
+              create: normalizeTemplatePromptBlocks(promptBlocks, {
+                label: "Benchmark prompt",
+                positive: "",
+                negative: null,
+              }).map((block, blockIndex) => ({
+                type: "custom",
+                customLabel: block.label,
+                customPositive: block.positive,
+                customNegative: block.negative ?? null,
+                sortOrder: block.sortOrder ?? blockIndex,
+              })),
+            },
+          })),
         },
       },
       select: BENCHMARK_TEMPLATE_SELECT,

@@ -6,12 +6,10 @@ import { prisma } from "@/lib/prisma";
 import {
   buildProjectSectionDataForTemplateImport,
   buildProjectSectionRowsForTemplateImport,
-  parseTemplateLegacyPromptBlocks,
   type SectionManualLoraEntryWrite,
   type SectionPresetBindingWrite,
   type SectionPromptBlockWrite,
 } from "@/server/prompt-config/template-resolver";
-import type { PresetBinding } from "./project";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -57,21 +55,6 @@ function safeRevalidatePath(path: string) {
     }
     throw error;
   }
-}
-
-function parseProjectPresetBindings(value: unknown) {
-  if (!Array.isArray(value)) return [];
-  return value.flatMap((item, index) => {
-    if (!item || typeof item !== "object" || Array.isArray(item)) return [];
-    const binding = item as PresetBinding;
-    if (typeof binding.categoryId !== "string" || typeof binding.presetId !== "string") return [];
-    return [{
-      categoryId: binding.categoryId,
-      presetId: binding.presetId,
-      variantId: typeof binding.variantId === "string" ? binding.variantId : null,
-      sortOrder: index,
-    }];
-  });
 }
 
 async function createImportedSectionRows(
@@ -220,7 +203,6 @@ export async function importTemplateToProject(
   const project = await prisma.project.findUnique({
     where: { id: projectId },
     select: {
-      presetBindings: true,
       checkpointName: true,
       presetBindingRows: {
         orderBy: { sortOrder: "asc" },
@@ -296,9 +278,7 @@ export async function importTemplateToProject(
     throw new Error("TEMPLATE_IMPORT_DUPLICATE_SECTIONS");
   }
 
-  const projectBindings = project.presetBindingRows.length > 0
-    ? project.presetBindingRows
-    : parseProjectPresetBindings(project.presetBindings);
+  const projectBindings = project.presetBindingRows;
 
   await prisma.$transaction(async (tx) => {
     if (onExistingSections === "replace") {
@@ -325,8 +305,6 @@ export async function importTemplateToProject(
         templatePresetBindings: ts.presetBindingRows,
         templatePromptBlocks: ts.promptBlockRows,
         templateManualLoraEntries: ts.manualLoraEntries,
-        legacyPromptBlocks: parseTemplateLegacyPromptBlocks(ts.promptBlocks),
-        legacyLoraConfig: ts.loraConfig,
       });
       await createImportedSectionRows(tx, relationRows);
     }

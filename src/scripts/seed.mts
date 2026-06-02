@@ -69,6 +69,7 @@ async function buildSeedImages(
     thumbPath: string;
     width: number;
     height: number;
+    reviewStatus: "pending" | "kept" | "trashed";
   }> = [];
 
   for (let i = 0; i < count; i++) {
@@ -86,7 +87,7 @@ async function buildSeedImages(
       width: 900,
       height: 1200,
       reviewStatus: reviewStatusFn(i),
-    } as any);
+    });
   }
 
   return entries;
@@ -99,8 +100,8 @@ async function main() {
   await prisma.trashRecord.deleteMany({});
   await prisma.imageResult.deleteMany({});
   await prisma.run.deleteMany({});
-  await prisma.promptBlock.deleteMany({});
-  console.log("   Cleaned old run / image / trash / prompt-block data.");
+  await prisma.sectionPromptBlock.deleteMany({});
+  console.log("   Cleaned old run / image / trash / section-prompt-block data.");
 
   // --- Projects ---
   const jobMiku = await prisma.project.upsert({
@@ -139,13 +140,13 @@ async function main() {
     });
   }
 
-  await prisma.promptBlock.create({
+  await prisma.sectionPromptBlock.create({
     data: {
       projectSectionId: mikuStanding.id,
       type: "custom",
-      label: "Standing prompt",
-      positive: "standing pose, full body, looking at viewer, arms at sides",
-      negative: "bad anatomy, extra limbs, blurry",
+      customLabel: "Standing prompt",
+      customPositive: "standing pose, full body, looking at viewer, arms at sides",
+      customNegative: "bad anatomy, extra limbs, blurry",
       sortOrder: 0,
     },
   });
@@ -165,13 +166,13 @@ async function main() {
     });
   }
 
-  await prisma.promptBlock.create({
+  await prisma.sectionPromptBlock.create({
     data: {
       projectSectionId: mikuWatching.id,
       type: "custom",
-      label: "Watching prompt",
-      positive: "watching pose, upper body, looking away, thoughtful expression",
-      negative: "bad anatomy, extra limbs, blurry",
+      customLabel: "Watching prompt",
+      customPositive: "watching pose, upper body, looking away, thoughtful expression",
+      customNegative: "bad anatomy, extra limbs, blurry",
       sortOrder: 0,
     },
   });
@@ -191,13 +192,13 @@ async function main() {
     });
   }
 
-  await prisma.promptBlock.create({
+  await prisma.sectionPromptBlock.create({
     data: {
       projectSectionId: tangtangBench.id,
       type: "custom",
-      label: "Bench sit prompt",
-      positive: "sitting on bench, relaxed pose, legs crossed, upper body",
-      negative: "bad anatomy, extra limbs, blurry",
+      customLabel: "Bench sit prompt",
+      customPositive: "sitting on bench, relaxed pose, legs crossed, upper body",
+      customNegative: "bad anatomy, extra limbs, blurry",
       sortOrder: 0,
     },
   });

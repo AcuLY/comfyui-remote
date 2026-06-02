@@ -5,7 +5,6 @@ import {
   getCharacterLoraTrainingJob,
   listCharacterLoraPromptCardVersions,
 } from "@/lib/actions/character-lora-training";
-import { getCanonicalViewLabel } from "@/lib/character-lora-canonical-views";
 import {
   InfoRow,
   JobPageShell,
@@ -89,9 +88,9 @@ export default async function PromptCardPage({
                   <InfoRow label="创建时间" value={formatDate(currentPrompt.createdAt)} />
                   <InfoRow label="变更原因" value={currentPrompt.changeReason ?? "-"} />
                 </dl>
-                <PromptBlock title="角色核心特征" value={currentPrompt.identityTraits} />
-                <PromptBlock title="服装/形态特征" value={currentPrompt.outfitTraits} />
-                <PromptBlock title="负面约束" value={currentPrompt.negativeTraits} />
+                <PromptTraitPanel title="角色核心特征" value={currentPrompt.identityTraits} />
+                <PromptTraitPanel title="服装/形态特征" value={currentPrompt.outfitTraits} />
+                <PromptTraitPanel title="负面约束" value={currentPrompt.negativeTraits} />
                 <PromptText title="最终完整提示词" value={currentPrompt.finalPromptDraft} />
               </div>
             ) : (
@@ -133,7 +132,7 @@ export default async function PromptCardPage({
   );
 }
 
-function PromptBlock({ title, value }: { title: string; value: unknown }) {
+function PromptTraitPanel({ title, value }: { title: string; value: unknown }) {
   return <PromptText title={title} value={formatJsonish(value)} />;
 }
 

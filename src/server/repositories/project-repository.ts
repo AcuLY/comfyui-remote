@@ -1,8 +1,6 @@
 import { Prisma } from "@/generated/prisma";
 import { JobStatus } from "@/lib/db-enums";
 import { db } from "@/lib/db";
-import { parseSectionLoraConfig, serializeSectionLoraConfig } from "@/lib/lora-types";
-import { detachAllPresetLoraEntries } from "@/lib/preset-binding-utils";
 import { detectProvider } from "@/lib/prisma";
 import {
   type ProjectUpdateInput,
@@ -126,13 +124,6 @@ export async function getProjectDetail(projectId: string) {
         where: { enabled: true },
         orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
         include: {
-          promptBlocks: {
-            orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-            select: {
-              positive: true,
-              negative: true,
-            },
-          },
           runs: {
             orderBy: [{ createdAt: "desc" }, { id: "desc" }],
             take: 1,
@@ -215,22 +206,6 @@ export async function getProjectAgentContext(projectId: string) {
         where: { enabled: true },
         orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
         include: {
-          promptBlocks: {
-            orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-            select: {
-              id: true,
-              type: true,
-              sourceId: true,
-              variantId: true,
-              categoryId: true,
-              bindingId: true,
-              groupBindingId: true,
-              label: true,
-              positive: true,
-              negative: true,
-              sortOrder: true,
-            },
-          },
           runs: {
             orderBy: [{ createdAt: "desc" }, { id: "desc" }],
             take: 1,
@@ -363,22 +338,6 @@ export async function getProjectSectionDetail(projectId: string, sectionId: stri
       projectId: projectId,
     },
     include: {
-      promptBlocks: {
-        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-        select: {
-          id: true,
-          type: true,
-          sourceId: true,
-          variantId: true,
-          categoryId: true,
-          bindingId: true,
-          groupBindingId: true,
-          label: true,
-          positive: true,
-          negative: true,
-          sortOrder: true,
-        },
-      },
       runs: {
         orderBy: [{ createdAt: "desc" }, { id: "desc" }],
         take: 1,
@@ -510,14 +469,6 @@ export async function updateProjectSection(
     data.name = input.name;
   }
 
-  if (input.positivePrompt !== undefined) {
-    data.positivePrompt = input.positivePrompt;
-  }
-
-  if (input.negativePrompt !== undefined) {
-    data.negativePrompt = input.negativePrompt;
-  }
-
   if (input.aspectRatio !== undefined) {
     data.aspectRatio = input.aspectRatio;
   }
@@ -552,12 +503,6 @@ export async function updateProjectSection(
     data.checkpointName = input.checkpointName;
   }
 
-  if (input.loraConfig !== undefined) {
-    data.loraConfig = input.loraConfig
-      ? (JSON.parse(JSON.stringify(input.loraConfig)) as Prisma.InputJsonValue)
-      : Prisma.DbNull;
-  }
-
   await db.projectSection.update({
     where: { id: sectionId },
     data,
@@ -574,11 +519,11 @@ export async function copyProject(projectId: string) {
         sections: {
           orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
           select: {
+            id: true,
             sortOrder: true,
             enabled: true,
-            positivePrompt: true,
-            negativePrompt: true,
             aspectRatio: true,
+            shortSidePx: true,
             batchSize: true,
             // v0.3: dual seedPolicy
             seedPolicy1: true,
@@ -588,16 +533,43 @@ export async function copyProject(projectId: string) {
             ksampler2: true,
             upscaleFactor: true,
             checkpointName: true,
-            loraConfig: true,
             extraParams: true,
-            promptBlocks: {
+            presetBindingRows: {
               orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
               select: {
+                id: true,
+                bindingKey: true,
+                categoryId: true,
+                presetId: true,
+                variantId: true,
+                groupBindingKey: true,
+                sortOrder: true,
+              },
+            },
+            sectionPromptBlocks: {
+              orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+              select: {
+                sectionBindingId: true,
                 type: true,
-                sourceId: true,
-                label: true,
-                positive: true,
-                negative: true,
+                customLabel: true,
+                customPositive: true,
+                customNegative: true,
+                sortOrder: true,
+              },
+            },
+            manualLoraEntries: {
+              orderBy: [{ stage: "asc" }, { sortOrder: "asc" }],
+              select: {
+                sectionBindingId: true,
+                stage: true,
+                path: true,
+                weight: true,
+                enabled: true,
+                detachedFromBindingKey: true,
+                detachedFromPresetId: true,
+                detachedFromVariantId: true,
+                detachedFromPath: true,
+                metadata: true,
                 sortOrder: true,
               },
             },
@@ -620,34 +592,20 @@ export async function copyProject(projectId: string) {
         folderId: project.folderId,
         checkpointName: project.checkpointName,
         notes: project.notes,
-        presetBindings: Prisma.DbNull,
         sections: {
           create: project.sections.map((section) => ({
             sortOrder: section.sortOrder,
             enabled: section.enabled,
-            positivePrompt: section.positivePrompt,
-            negativePrompt: section.negativePrompt,
             aspectRatio: section.aspectRatio,
+            shortSidePx: section.shortSidePx,
             batchSize: section.batchSize,
             seedPolicy1: section.seedPolicy1,
             seedPolicy2: section.seedPolicy2,
             ksampler1: cloneJsonValueForCreate(section.ksampler1),
             ksampler2: cloneJsonValueForCreate(section.ksampler2),
+            upscaleFactor: section.upscaleFactor,
             checkpointName: section.checkpointName,
-            loraConfig: section.loraConfig
-              ? (serializeSectionLoraConfig(detachAllPresetLoraEntries(parseSectionLoraConfig(section.loraConfig))) as Prisma.InputJsonValue)
-              : Prisma.DbNull,
             extraParams: cloneJsonValueForCreate(section.extraParams),
-            promptBlocks: {
-              create: section.promptBlocks.map((block) => ({
-                type: "custom",
-                sourceId: null,
-                label: block.label,
-                positive: block.positive,
-                negative: block.negative,
-                sortOrder: block.sortOrder,
-              })),
-            },
           })),
         },
       },
@@ -658,10 +616,76 @@ export async function copyProject(projectId: string) {
         status: true,
         createdAt: true,
         sections: {
-          select: { id: true },
+          orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+          select: { id: true, sortOrder: true },
         },
       },
     });
+
+    const copiedSectionBySourceId = new Map<string, string>();
+    for (const [index, sourceSection] of project.sections.entries()) {
+      const copiedSectionId = copiedProject.sections[index]?.id;
+      if (copiedSectionId) copiedSectionBySourceId.set(sourceSection.id, copiedSectionId);
+    }
+
+    for (const sourceSection of project.sections) {
+      const copiedSectionId = copiedSectionBySourceId.get(sourceSection.id);
+      if (!copiedSectionId) continue;
+
+      const copiedBindingIdBySourceId = new Map<string, string>();
+      for (const binding of sourceSection.presetBindingRows) {
+        const copiedBinding = await tx.sectionPresetBinding.create({
+          data: {
+            projectSectionId: copiedSectionId,
+            bindingKey: binding.bindingKey,
+            categoryId: binding.categoryId,
+            presetId: binding.presetId,
+            variantId: binding.variantId,
+            groupBindingKey: binding.groupBindingKey,
+            sortOrder: binding.sortOrder,
+          },
+          select: { id: true },
+        });
+        copiedBindingIdBySourceId.set(binding.id, copiedBinding.id);
+      }
+
+      for (const block of sourceSection.sectionPromptBlocks) {
+        await tx.sectionPromptBlock.create({
+          data: {
+            projectSectionId: copiedSectionId,
+            sectionBindingId: block.sectionBindingId
+              ? copiedBindingIdBySourceId.get(block.sectionBindingId) ?? null
+              : null,
+            type: block.type,
+            customLabel: block.customLabel,
+            customPositive: block.customPositive,
+            customNegative: block.customNegative,
+            sortOrder: block.sortOrder,
+          },
+        });
+      }
+
+      for (const entry of sourceSection.manualLoraEntries) {
+        await tx.sectionManualLoraEntry.create({
+          data: {
+            projectSectionId: copiedSectionId,
+            sectionBindingId: entry.sectionBindingId
+              ? copiedBindingIdBySourceId.get(entry.sectionBindingId) ?? null
+              : null,
+            stage: entry.stage,
+            path: entry.path,
+            weight: entry.weight,
+            enabled: entry.enabled,
+            detachedFromBindingKey: entry.detachedFromBindingKey,
+            detachedFromPresetId: entry.detachedFromPresetId,
+            detachedFromVariantId: entry.detachedFromVariantId,
+            detachedFromPath: entry.detachedFromPath,
+            metadata: entry.metadata ?? undefined,
+            sortOrder: entry.sortOrder,
+          },
+        });
+      }
+    }
 
     return {
       id: copiedProject.id,

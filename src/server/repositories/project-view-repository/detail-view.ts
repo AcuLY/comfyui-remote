@@ -3,11 +3,9 @@ import { buildFolderScopedItemOrder } from "@/lib/folder-navigation";
 import { toImageUrl } from "@/lib/image-url";
 import type { ReviewStatus } from "@/lib/types";
 import {
-  batchResolvePresetNames,
   extractPresetNames,
-  collectPresetIds,
   formatDate,
-  type PresetBindingJson,
+  PROJECT_PRESET_BINDING_DISPLAY_SELECT,
 } from "@/server/repositories/queue-data-repository";
 import { resolveSectionConfigsById } from "@/server/repositories/project-repository/helpers";
 import { resolveSectionConfig } from "@/server/prompt-config/section-resolver";
@@ -96,7 +94,7 @@ export async function getProjectDetail(projectId: string): Promise<ProjectDetail
         title: true,
         folderId: true,
         status: true,
-        presetBindings: true,
+        presetBindingRows: PROJECT_PRESET_BINDING_DISPLAY_SELECT,
         projectLevelOverrides: true,
         sectionFolders: {
           orderBy: [{ parentId: "asc" }, { sortOrder: "asc" }, { name: "asc" }],
@@ -140,10 +138,6 @@ export async function getProjectDetail(projectId: string): Promise<ProjectDetail
                 },
               },
             },
-            promptBlocks: {
-              orderBy: { sortOrder: "asc" },
-              select: { id: true, positive: true, negative: true },
-            },
           },
         },
       },
@@ -173,11 +167,7 @@ export async function getProjectDetail(projectId: string): Promise<ProjectDetail
     project.sections.map((section) => section.id),
   );
 
-  // Resolve display names from presetBindings
-  const presetMap = await batchResolvePresetNames(
-    collectPresetIds([project.presetBindings]),
-  );
-  const presetNames = extractPresetNames(project.presetBindings as PresetBindingJson | null, presetMap);
+  const presetNames = extractPresetNames(project.presetBindingRows);
   const projectLevelOverrides = (project.projectLevelOverrides ?? {}) as {
     defaultBatchSize?: number;
     batchSize?: number;

@@ -114,8 +114,6 @@ function resolverInput(
   return {
     templateSection: {
       id: "template-section-1",
-      loraConfig: null,
-      promptBlocks: null,
       aspectRatio: null,
       shortSidePx: null,
       batchSize: null,
@@ -130,7 +128,6 @@ function resolverInput(
     presetBindings: [],
     promptBlockRows: [],
     manualLoraEntries: [],
-    legacyPromptBlocks: [],
     variantLinks: [],
     ...overrides,
   };
@@ -173,27 +170,8 @@ test("template section bindings resolve preset prompt and lora lazily from curre
         sortOrder: 0,
       },
     ],
-    legacyPromptBlocks: [
-      {
-        type: "preset",
-        sourceId: stylePreset.id,
-        variantId: "variant-style",
-        categoryId: style.id,
-        bindingId: "old-binding",
-        groupBindingId: null,
-        label: "stale copied label",
-        positive: "stale copied prompt",
-        negative: "stale copied negative",
-        sortOrder: 0,
-      },
-    ],
     templateSection: {
       id: "template-section-1",
-      loraConfig: {
-        lora1: [{ id: "legacy-lora", path: "/stale.safetensors", weight: 1, enabled: true, source: "preset" }],
-        lora2: [],
-      },
-      promptBlocks: null,
       aspectRatio: null,
       shortSidePx: null,
       batchSize: null,
@@ -242,33 +220,6 @@ test("saving a template section writes relation rows without copying clean prese
     projectTemplateSectionId: "template-section-1",
     projectSection: {
       id: "section-1",
-      promptBlocks: [
-        {
-          type: "preset",
-          sourceId: "preset-style",
-          variantId: "variant-style",
-          categoryId: "cat-style",
-          bindingId: "bind-style",
-          groupBindingId: null,
-          label: "Style",
-          positive: "stale copied prompt",
-          negative: null,
-          sortOrder: 0,
-        },
-      ],
-      loraConfig: {
-        lora1: [
-          {
-            id: "legacy-preset-lora",
-            path: "/preset-style.safetensors",
-            weight: 0.5,
-            enabled: true,
-            source: "preset",
-            bindingId: "bind-style",
-          },
-        ],
-        lora2: [],
-      },
     },
     presetBindings: [binding],
     promptBlockRows: [
@@ -351,24 +302,6 @@ test("importing a template section plans section relation rows without legacy ex
       },
     ],
     templateManualLoraEntries: [],
-    legacyPromptBlocks: [
-      {
-        type: "preset",
-        sourceId: "preset-style",
-        variantId: "variant-style",
-        categoryId: "cat-style",
-        bindingId: "bind-style",
-        groupBindingId: null,
-        label: "Legacy",
-        positive: "legacy expanded prompt",
-        negative: null,
-        sortOrder: 0,
-      },
-    ],
-    legacyLoraConfig: {
-      lora1: [{ id: "legacy", path: "/expanded.safetensors", weight: 1, enabled: true, source: "preset" }],
-      lora2: [],
-    },
   });
 
   assert.equal("positivePrompt" in sectionData, false);

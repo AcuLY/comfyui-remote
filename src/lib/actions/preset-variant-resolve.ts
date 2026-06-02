@@ -15,33 +15,17 @@ export type ResolvedVariantContent = {
 };
 
 // ---------------------------------------------------------------------------
-// Internal helpers
-// ---------------------------------------------------------------------------
-
-function getLinkedVariantIds(value: unknown) {
-  if (!Array.isArray(value)) return [];
-  return value
-    .map((entry) => {
-      if (!entry || typeof entry !== "object" || Array.isArray(entry)) return null;
-      const variantId = (entry as { variantId?: unknown }).variantId;
-      return typeof variantId === "string" && variantId ? variantId : null;
-    })
-    .filter((variantId): variantId is string => Boolean(variantId));
-}
-
-// ---------------------------------------------------------------------------
 // Resolution and sync functions
 // ---------------------------------------------------------------------------
 
 export async function findPresetIdsAffectedByVariantChange(variantId: string, presetId: string) {
   const variants = await prisma.presetVariant.findMany({
-    select: { id: true, presetId: true, linkedVariants: true },
+    select: { id: true, presetId: true },
   });
   const relationLinks = await prisma.presetVariantLink.findMany({
     select: { sourceVariantId: true, linkedVariantId: true },
   });
   const variantById = new Map(variants.map((variant) => [variant.id, variant]));
-  const relationSourceIds = new Set(relationLinks.map((link) => link.sourceVariantId));
   const parentVariantIdsByLinkedVariantId = new Map<string, string[]>();
 
   const addParentLink = (sourceVariantId: string, linkedVariantId: string) => {
@@ -52,13 +36,6 @@ export async function findPresetIdsAffectedByVariantChange(variantId: string, pr
 
   for (const link of relationLinks) {
     addParentLink(link.sourceVariantId, link.linkedVariantId);
-  }
-
-  for (const variant of variants) {
-    if (relationSourceIds.has(variant.id)) continue;
-    for (const linkedVariantId of getLinkedVariantIds(variant.linkedVariants)) {
-      addParentLink(variant.id, linkedVariantId);
-    }
   }
 
   const affectedPresetIds = new Set<string>([presetId]);
@@ -130,9 +107,7 @@ export async function resolveVariantContent(
     select: { linkedVariantId: true },
     orderBy: { sortOrder: "asc" },
   });
-  const linkedVariantIds = relationLinks.length > 0
-    ? relationLinks.map((link) => link.linkedVariantId)
-    : getLinkedVariantIds(variant.linkedVariants);
+  const linkedVariantIds = relationLinks.map((link) => link.linkedVariantId);
 
   for (const linkedVariantId of linkedVariantIds) {
     const resolved = await resolveVariantContent(linkedVariantId, visited);

@@ -66,11 +66,13 @@ export function ProjectEditForm({ project, categories }: Props) {
   const [checkpointName, setCheckpointName] = useState(project.checkpointName ?? DEFAULT_CHECKPOINT_NAME);
   const [notes, setNotes] = useState(project.notes ?? "");
 
-  // Initialize selections from presetBindings
+  const { presetBindings: projectPresetSelections } = project;
+
+  // Initialize selections from normalized project binding rows.
   const [selections, setSelections] = useState<Record<string, { presetId: string; variantId?: string }>>(() => {
     const init: Record<string, { presetId: string; variantId?: string }> = {};
     for (const cat of categories) init[cat.id] = { presetId: "" };
-    for (const binding of project.presetBindings) {
+    for (const binding of projectPresetSelections) {
       if (init[binding.categoryId] !== undefined) {
         init[binding.categoryId] = { presetId: binding.presetId, variantId: binding.variantId };
       }

@@ -20,23 +20,18 @@ function normalizeBoolean(value?: string | null) {
 }
 
 function linkedVariantsFromRows(variant: {
-  linkedVariants: unknown;
-  outgoingLinks?: Array<{
+  outgoingLinks: Array<{
     linkedVariantId: string;
     linkedVariant: { presetId: string };
   }>;
 }) {
-  if (variant.outgoingLinks && variant.outgoingLinks.length > 0) {
-    return variant.outgoingLinks.map((link) => ({
-      presetId: link.linkedVariant.presetId,
-      variantId: link.linkedVariantId,
-    }));
-  }
-
-  return Array.isArray(variant.linkedVariants) ? variant.linkedVariants : [];
+  return variant.outgoingLinks.map((link) => ({
+    presetId: link.linkedVariant.presetId,
+    variantId: link.linkedVariantId,
+  }));
 }
 
-function variantResponse<Variant extends { linkedVariants: unknown; outgoingLinks?: Array<{ linkedVariantId: string; linkedVariant: { presetId: string } }> }>(
+function variantResponse<Variant extends { outgoingLinks: Array<{ linkedVariantId: string; linkedVariant: { presetId: string } }> }>(
   variant: Variant,
 ) {
   const { outgoingLinks, ...rest } = variant;
@@ -106,7 +101,6 @@ export async function listPresets(filters: PresetQueryFilters = {}) {
           negativePrompt: true,
           lora1: true,
           lora2: true,
-          linkedVariants: true,
           outgoingLinks: {
             orderBy: { sortOrder: "asc" },
             select: {
@@ -165,7 +159,6 @@ export async function getPresetById(presetId: string, includeInactive = false) {
           negativePrompt: true,
           lora1: true,
           lora2: true,
-          linkedVariants: true,
           outgoingLinks: {
             orderBy: { sortOrder: "asc" },
             select: {

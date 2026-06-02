@@ -22,7 +22,7 @@ export type AuditEntityType =
   | "PresetCategory"
   | "Preset"
   | "PresetVariant"
-  | "PromptBlock"
+  | "SectionPromptBlock"
   | "PresetGroup";
 
 export type AuditAction =

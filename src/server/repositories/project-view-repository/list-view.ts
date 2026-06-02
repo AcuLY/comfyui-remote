@@ -3,11 +3,9 @@ import { buildFolderScopedItemOrder } from "@/lib/folder-navigation";
 import { toImageUrl } from "@/lib/image-url";
 import type { ProjectCard, ProjectFolderItem, ReviewStatus } from "@/lib/types";
 import {
-  batchResolvePresetNames,
   extractPresetNames,
-  collectPresetIds,
   formatDate,
-  type PresetBindingJson,
+  PROJECT_PRESET_BINDING_DISPLAY_SELECT,
 } from "@/server/repositories/queue-data-repository";
 
 // ---------------------------------------------------------------------------
@@ -47,7 +45,7 @@ export async function listProjects(): Promise<ProjectCard[]> {
       folderId: true,
       status: true,
       updatedAt: true,
-      presetBindings: true,
+      presetBindingRows: PROJECT_PRESET_BINDING_DISPLAY_SELECT,
       runs: {
         where: { status: "done" },
         orderBy: { createdAt: "desc" },
@@ -77,13 +75,8 @@ export async function listProjects(): Promise<ProjectCard[]> {
     },
   });
 
-  // Batch resolve preset names
-  const presetMap = await batchResolvePresetNames(
-    collectPresetIds(projects.map((j) => j.presetBindings)),
-  );
-
   return projects.map((project) => {
-    const presetNames = extractPresetNames(project.presetBindings as PresetBindingJson | null, presetMap);
+    const presetNames = extractPresetNames(project.presetBindingRows);
     const latestRun = project.runs[0] ?? null;
     return {
       id: project.id,

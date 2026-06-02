@@ -49,7 +49,7 @@ test("relation rows take precedence over legacy linkedVariants JSON", () => {
   assert.equal(resolved.prompt, "root prompt, relation prompt");
 });
 
-test("legacy linkedVariants JSON is used when a variant has no relation rows", () => {
+test("legacy linkedVariants JSON is ignored when a variant has no relation rows", () => {
   const resolved = resolvePresetVariantContentFromRows("root", {
     variants: [
       variant({
@@ -63,8 +63,8 @@ test("legacy linkedVariants JSON is used when a variant has no relation rows", (
     variantLinks: [],
   });
 
-  assert.equal(resolved.prompt, "root prompt, legacy prompt");
-  assert.equal(resolved.negativePrompt, "root negative, legacy negative");
+  assert.equal(resolved.prompt, "root prompt");
+  assert.equal(resolved.negativePrompt, "root negative");
 });
 
 test("linked variant cycles are ignored with visited variant ids", () => {

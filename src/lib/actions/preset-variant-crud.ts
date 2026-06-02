@@ -170,7 +170,7 @@ async function replaceVariantLinks(
   return refs;
 }
 
-async function readVariantLinkSnapshot(sourceVariantId: string, legacyLinkedVariants: unknown) {
+async function readVariantLinkSnapshot(sourceVariantId: string) {
   const relationLinks = await prisma.presetVariantLink.findMany({
     where: { sourceVariantId },
     select: {
@@ -183,15 +183,10 @@ async function readVariantLinkSnapshot(sourceVariantId: string, legacyLinkedVari
     orderBy: { sortOrder: "asc" },
   });
 
-  const linkedVariants = relationLinks.length > 0
-    ? relationLinks.map((link) => ({
-        presetId: link.linkedVariant.presetId,
-        variantId: link.linkedVariantId,
-      }))
-    : normalizeLinkedVariantRefs(legacyLinkedVariants).map((link) => ({
-        presetId: link.presetId,
-        variantId: link.variantId,
-      }));
+  const linkedVariants = relationLinks.map((link) => ({
+    presetId: link.linkedVariant.presetId,
+    variantId: link.linkedVariantId,
+  }));
 
   return { linkedVariants };
 }
@@ -210,14 +205,9 @@ function presetVariantRosterSnapshot(variant: {
   };
 }
 
-function presetVariantLinkedSnapshot(variant: {
-  linkedVariants: unknown;
-}) {
+function emptyPresetVariantLinkedSnapshot() {
   return {
-    linkedVariants: normalizeLinkedVariantRefs(variant.linkedVariants).map((link) => ({
-      presetId: link.presetId,
-      variantId: link.variantId,
-    })),
+    linkedVariants: [],
   };
 }
 
@@ -357,7 +347,6 @@ export async function copyPreset(presetId: string) {
     const createdVariants: Array<{
       oldId: string;
       newId: string;
-      linkedRefs: LinkedVariantRef[];
     }> = [];
 
     for (const variant of source.variants) {
@@ -370,7 +359,6 @@ export async function copyPreset(presetId: string) {
           negativePrompt: variant.negativePrompt,
           lora1: cloneJsonField(variant.lora1),
           lora2: cloneJsonField(variant.lora2),
-          linkedVariants: Prisma.DbNull,
           isActive: variant.isActive,
           sortOrder: variant.sortOrder,
         },
@@ -380,7 +368,6 @@ export async function copyPreset(presetId: string) {
       createdVariants.push({
         oldId: variant.id,
         newId: newVariant.id,
-        linkedRefs: normalizeLinkedVariantRefs(variant.linkedVariants),
       });
     }
 
@@ -401,7 +388,7 @@ export async function copyPreset(presetId: string) {
     }
 
     for (const variant of createdVariants) {
-      const sourceRefs = linksBySourceVariantId.get(variant.oldId) ?? variant.linkedRefs;
+      const sourceRefs = linksBySourceVariantId.get(variant.oldId) ?? [];
       const linkedRefs = remapLinkedVariantRefs(
         sourceRefs,
         source.id,
@@ -441,7 +428,6 @@ export async function createPresetVariant(input: PresetVariantInput) {
         ...rest,
         lora1: toJsonValue(lora1) ?? Prisma.DbNull,
         lora2: toJsonValue(lora2) ?? Prisma.DbNull,
-        linkedVariants: Prisma.DbNull,
       },
     });
     await replaceVariantLinks(tx, created.id, linkedVariants);
@@ -473,15 +459,12 @@ export async function upsertPresetVariantBySlug(input: PresetVariantInput) {
     return createPresetVariant(input);
   }
 
-  const beforeLinked = await readVariantLinkSnapshot(existing.id, existing.linkedVariants);
+  const beforeLinked = await readVariantLinkSnapshot(existing.id);
   const { lora1, lora2, linkedVariants, ...rest } = input;
   const data: Record<string, unknown> = { ...rest, isActive: true };
   delete data.presetId;
   if (lora1 !== undefined) data.lora1 = toJsonValue(lora1) ?? Prisma.DbNull;
   if (lora2 !== undefined) data.lora2 = toJsonValue(lora2) ?? Prisma.DbNull;
-  if (linkedVariants !== undefined) {
-    data.linkedVariants = Prisma.DbNull;
-  }
 
   const variant = await prisma.$transaction(async (tx) => {
     const updated = await tx.presetVariant.update({
@@ -493,7 +476,7 @@ export async function upsertPresetVariantBySlug(input: PresetVariantInput) {
     }
     return updated;
   });
-  const afterLinked = await readVariantLinkSnapshot(variant.id, variant.linkedVariants);
+  const afterLinked = await readVariantLinkSnapshot(variant.id);
   await recordPresetChange({
     presetId: variant.presetId,
     dimension: "variants",
@@ -532,15 +515,12 @@ export async function updatePresetVariant(id: string, input: Partial<PresetVaria
   const before = await prisma.presetVariant.findUnique({ where: { id } });
   const { lora1, lora2, linkedVariants, ...rest } = input;
   const beforeLinked = before
-    ? await readVariantLinkSnapshot(before.id, before.linkedVariants)
-    : presetVariantLinkedSnapshot({ linkedVariants: null });
+    ? await readVariantLinkSnapshot(before.id)
+    : emptyPresetVariantLinkedSnapshot();
   const data: Record<string, unknown> = { ...rest };
   delete data.presetId;
   if (lora1 !== undefined) data.lora1 = toJsonValue(lora1) ?? Prisma.DbNull;
   if (lora2 !== undefined) data.lora2 = toJsonValue(lora2) ?? Prisma.DbNull;
-  if (linkedVariants !== undefined) {
-    data.linkedVariants = Prisma.DbNull;
-  }
 
   const variant = await prisma.$transaction(async (tx) => {
     const updated = await tx.presetVariant.update({ where: { id }, data });
@@ -550,7 +530,7 @@ export async function updatePresetVariant(id: string, input: Partial<PresetVaria
     return updated;
   });
   if (before) {
-    const afterLinked = await readVariantLinkSnapshot(variant.id, variant.linkedVariants);
+    const afterLinked = await readVariantLinkSnapshot(variant.id);
     await recordPresetChange({
       presetId: variant.presetId,
       dimension: "variants",

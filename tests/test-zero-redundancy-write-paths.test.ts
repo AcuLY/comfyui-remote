@@ -305,7 +305,6 @@ let sequence = 0;
 
 type SeedOptions = {
   withProjectBinding?: boolean;
-  withLegacyProjectBinding?: boolean;
 };
 
 test.before(async () => {
@@ -383,34 +382,6 @@ async function seedProjectWithPreset(options: SeedOptions = {}) {
       sortOrder: 1,
     },
   });
-  const legacyCategory = await prisma.presetCategory.create({
-    data: {
-      id: `${key}-legacy-category`,
-      name: `${key} Legacy Category`,
-      slug: `${key}-legacy-category`,
-      positivePromptOrder: 1,
-    },
-  });
-  const legacyPreset = await prisma.preset.create({
-    data: {
-      id: `${key}-legacy-preset`,
-      categoryId: legacyCategory.id,
-      name: `${key} Legacy Preset`,
-      slug: `${key}-legacy-preset`,
-    },
-  });
-  const legacyVariant = await prisma.presetVariant.create({
-    data: {
-      id: `${key}-legacy-variant`,
-      presetId: legacyPreset.id,
-      name: "Legacy",
-      slug: `${key}-legacy-variant`,
-      prompt: `${key} legacy positive`,
-      negativePrompt: null,
-      lora1: [{ path: `/${key}-legacy.safetensors`, weight: 1, enabled: true }],
-      lora2: [],
-    },
-  });
   const project = await prisma.project.create({
     data: {
       id: `${key}-project`,
@@ -418,9 +389,6 @@ async function seedProjectWithPreset(options: SeedOptions = {}) {
       slug: `${key}-project`,
       status: "draft",
       checkpointName: `${key}.ckpt`,
-      presetBindings: options.withLegacyProjectBinding
-        ? [{ categoryId: legacyCategory.id, presetId: legacyPreset.id, variantId: legacyVariant.id }]
-        : undefined,
       projectLevelOverrides: {
         defaultAspectRatio: "1:1",
         defaultShortSidePx: 512,
@@ -446,8 +414,6 @@ async function seedProjectWithPreset(options: SeedOptions = {}) {
       name: `${key} Section`,
       sortOrder: 1,
       enabled: true,
-      positivePrompt: `${key} stale positive cache`,
-      negativePrompt: `${key} stale negative cache`,
     },
   });
 
@@ -586,24 +552,12 @@ test("importPresetToSection writes normalized binding rows without legacy expand
   assert.equal(promptRows[0].customPositive, null);
   assert.equal(promptRows[0].customNegative, null);
 
-  assert.equal(await prisma.promptBlock.count({ where: { projectSectionId: seed.section.id } }), 0);
-  const section = await prisma.projectSection.findUniqueOrThrow({ where: { id: seed.section.id } });
-  assert.equal(section.positivePrompt, `${seed.key} stale positive cache`);
-  assert.equal(section.negativePrompt, `${seed.key} stale negative cache`);
-  assert.equal(section.loraConfig, null);
+  await prisma.projectSection.findUniqueOrThrow({ where: { id: seed.section.id } });
 });
 
 test("switchBindingVariant only updates the SectionPresetBinding variant", async () => {
   const seed = await seedProjectWithPreset();
   const { binding } = await createNormalizedPresetBlock(seed);
-  const staleLoraConfig = {
-    lora1: [{ id: "stale", path: "/stale.safetensors", weight: 1, enabled: true, source: "manual" }],
-    lora2: [],
-  };
-  await prisma.projectSection.update({
-    where: { id: seed.section.id },
-    data: { loraConfig: staleLoraConfig },
-  });
 
   const result = await switchBindingVariant(seed.section.id, binding.bindingKey, seed.variantB.id);
 
@@ -613,13 +567,10 @@ test("switchBindingVariant only updates the SectionPresetBinding variant", async
   const promptRow = await prisma.sectionPromptBlock.findFirstOrThrow({ where: { projectSectionId: seed.section.id } });
   assert.equal(promptRow.customPositive, null);
   assert.equal(promptRow.customNegative, null);
-  assert.equal(await prisma.promptBlock.count({ where: { projectSectionId: seed.section.id } }), 0);
-  const section = await prisma.projectSection.findUniqueOrThrow({ where: { id: seed.section.id } });
-  assert.deepEqual(section.loraConfig, staleLoraConfig);
 });
 
 test("addSection prefers ProjectPresetBinding rows and does not expand prompt or LoRA caches", async () => {
-  const seed = await seedProjectWithPreset({ withProjectBinding: true, withLegacyProjectBinding: true });
+  const seed = await seedProjectWithPreset({ withProjectBinding: true });
 
   const sectionId = await addSection(seed.project.id, "Normalized Section");
 
@@ -627,15 +578,10 @@ test("addSection prefers ProjectPresetBinding rows and does not expand prompt or
   assert.equal(bindings.length, 1);
   assert.equal(bindings[0].presetId, seed.preset.id);
   assert.equal(bindings[0].variantId, seed.variantA.id);
-  assert.equal(await prisma.promptBlock.count({ where: { projectSectionId: sectionId } }), 0);
   const promptRows = await prisma.sectionPromptBlock.findMany({ where: { projectSectionId: sectionId } });
   assert.equal(promptRows.length, 1);
   assert.equal(promptRows[0].sectionBindingId, bindings[0].id);
   assert.equal(promptRows[0].customPositive, null);
-  const section = await prisma.projectSection.findUniqueOrThrow({ where: { id: sectionId } });
-  assert.equal(section.positivePrompt, null);
-  assert.equal(section.negativePrompt, null);
-  assert.equal(section.loraConfig, null);
 });
 
 test("copySection copies normalized rows without expanding clean preset content", async () => {
@@ -666,16 +612,6 @@ test("copySection copies normalized rows without expanding clean preset content"
       sortOrder: 0,
     },
   });
-  await prisma.projectSection.update({
-    where: { id: seed.section.id },
-    data: {
-      loraConfig: {
-        lora1: [{ id: "stale-preset", path: "/stale-expanded.safetensors", weight: 1, enabled: true, source: "preset", bindingId: binding.bindingKey }],
-        lora2: [],
-      },
-    },
-  });
-
   const copiedSectionId = await copySection(seed.section.id);
 
   assert.ok(copiedSectionId);
@@ -698,11 +634,6 @@ test("copySection copies normalized rows without expanding clean preset content"
   assert.equal(copiedManualRows.length, 1);
   assert.equal(copiedManualRows[0].path, "/local-detached.safetensors");
   assert.equal(copiedManualRows[0].sectionBindingId, null);
-  assert.equal(await prisma.promptBlock.count({ where: { projectSectionId: copiedSectionId } }), 0);
-  const copiedSection = await prisma.projectSection.findUniqueOrThrow({ where: { id: copiedSectionId } });
-  assert.equal(copiedSection.positivePrompt, null);
-  assert.equal(copiedSection.negativePrompt, null);
-  assert.equal(copiedSection.loraConfig, null);
 });
 
 test("editing a preset-bound SectionPromptBlock detaches prompt and LoRA rows without loraConfig writes", async () => {
@@ -759,9 +690,7 @@ test("editing a preset-bound SectionPromptBlock detaches prompt and LoRA rows wi
       },
     ],
   );
-  const section = await prisma.projectSection.findUniqueOrThrow({ where: { id: seed.section.id } });
-  assert.equal(section.loraConfig, null);
-  assert.equal(await prisma.promptBlock.count({ where: { projectSectionId: seed.section.id } }), 0);
+  await prisma.projectSection.findUniqueOrThrow({ where: { id: seed.section.id } });
 });
 
 test("prompt block service CRUD uses normalized SectionPromptBlock rows for custom blocks", async () => {
@@ -780,7 +709,6 @@ test("prompt block service CRUD uses normalized SectionPromptBlock rows for cust
     negative: null,
   });
 
-  assert.equal(await prisma.promptBlock.count({ where: { projectSectionId: seed.section.id } }), 0);
   const rows = await prisma.sectionPromptBlock.findMany({
     where: { projectSectionId: seed.section.id },
     orderBy: { sortOrder: "asc" },
@@ -803,7 +731,6 @@ test("prompt block service CRUD uses normalized SectionPromptBlock rows for cust
 
   await removePromptBlock(first.id);
   assert.equal(await prisma.sectionPromptBlock.count({ where: { id: first.id } }), 0);
-  assert.equal(await prisma.promptBlock.count({ where: { projectSectionId: seed.section.id } }), 0);
 });
 
 test("prompt block service detaches normalized preset blocks when edited", async () => {
@@ -822,44 +749,59 @@ test("prompt block service detaches normalized preset blocks when edited", async
   assert.equal(updated.type, "custom");
   assert.equal(updated.customPositive, "service owned positive");
   assert.equal(updated.customNegative, `${seed.key} source negative A`);
-  assert.equal(await prisma.promptBlock.count({ where: { projectSectionId: seed.section.id } }), 0);
 });
 
-test("importTemplateToProject creates normalized rows from legacy template JSON without expanded caches", async () => {
+test("importTemplateToProject creates normalized rows from template relation rows without expanded caches", async () => {
   const seed = await seedProjectWithPreset();
   const template = await prisma.projectTemplate.create({
     data: { id: `${seed.key}-template`, name: `${seed.key} Template` },
   });
-  await prisma.projectTemplateSection.create({
+  const templateSection = await prisma.projectTemplateSection.create({
     data: {
       id: `${seed.key}-template-section`,
       projectTemplateId: template.id,
       sortOrder: 0,
       name: `${seed.key} Imported Section`,
-      promptBlocks: [
-        legacyPresetPromptBlock(seed),
-        legacyCustomPromptBlock(seed),
-      ],
-      loraConfig: {
-        lora1: [
-          {
-            id: `${seed.key}-preset-expanded-lora`,
-            path: `/${seed.key}-a.safetensors`,
-            weight: 0.7,
-            enabled: true,
-            source: "preset",
-            bindingId: `${seed.key}-legacy-binding`,
-          },
-          {
-            id: `${seed.key}-manual-lora`,
-            path: `/${seed.key}-manual.safetensors`,
-            weight: 0.25,
-            enabled: true,
-            source: "manual",
-          },
-        ],
-        lora2: [],
+    },
+  });
+  const templateBinding = await prisma.templateSectionPresetBinding.create({
+    data: {
+      projectTemplateSectionId: templateSection.id,
+      bindingKey: `${seed.key}-template-binding`,
+      categoryId: seed.category.id,
+      presetId: seed.preset.id,
+      variantId: seed.variantA.id,
+      sortOrder: 0,
+    },
+  });
+  await prisma.templateSectionPromptBlock.createMany({
+    data: [
+      {
+        projectTemplateSectionId: templateSection.id,
+        templateSectionBindingId: templateBinding.id,
+        type: "preset",
+        sortOrder: 0,
       },
+      {
+        projectTemplateSectionId: templateSection.id,
+        templateSectionBindingId: null,
+        type: "custom",
+        customLabel: `${seed.key} Custom`,
+        customPositive: `${seed.key} custom positive`,
+        customNegative: `${seed.key} custom negative`,
+        sortOrder: 1,
+      },
+    ],
+  });
+  await prisma.templateSectionManualLoraEntry.create({
+    data: {
+      projectTemplateSectionId: templateSection.id,
+      templateSectionBindingId: null,
+      stage: "lora1",
+      path: `/${seed.key}-manual.safetensors`,
+      weight: 0.25,
+      enabled: true,
+      sortOrder: 0,
     },
   });
 
@@ -871,10 +813,6 @@ test("importTemplateToProject creates normalized rows from legacy template JSON 
   const importedSection = await prisma.projectSection.findFirstOrThrow({
     where: { projectId: seed.project.id, name: `${seed.key} Imported Section` },
   });
-  assert.equal(importedSection.positivePrompt, null);
-  assert.equal(importedSection.negativePrompt, null);
-  assert.equal(importedSection.loraConfig, null);
-  assert.equal(await prisma.promptBlock.count({ where: { projectSectionId: importedSection.id } }), 0);
 
   const bindings = await prisma.sectionPresetBinding.findMany({ where: { projectSectionId: importedSection.id } });
   assert.equal(bindings.length, 1);
@@ -899,7 +837,7 @@ test("importTemplateToProject creates normalized rows from legacy template JSON 
   ]);
 });
 
-test("template CRUD converts submitted legacy prompt and lora data into template relation rows", async () => {
+test("template CRUD converts submitted prompt and manual lora data into template relation rows", async () => {
   const seed = await seedProjectWithPreset();
 
   const templateId = await ignoreStaticRevalidateError(() => createProjectTemplate({
@@ -912,9 +850,7 @@ test("template CRUD converts submitted legacy prompt and lora data into template
   const section = await prisma.projectTemplateSection.findFirstOrThrow({
     where: { projectTemplateId: templateId },
   });
-  assert.equal(section.promptBlocks, null);
-  assert.equal(section.loraConfig, null);
-  assert.equal(await prisma.templateSectionPresetBinding.count({ where: { projectTemplateSectionId: section.id } }), 1);
+  assert.equal(await prisma.templateSectionPresetBinding.count({ where: { projectTemplateSectionId: section.id } }), 0);
   assert.equal(await prisma.templateSectionPromptBlock.count({ where: { projectTemplateSectionId: section.id } }), 2);
   assert.equal(await prisma.templateSectionManualLoraEntry.count({ where: { projectTemplateSectionId: section.id } }), 1);
 
@@ -940,12 +876,11 @@ test("template CRUD converts submitted legacy prompt and lora data into template
     }),
   }));
   const updatedSection = await prisma.projectTemplateSection.findUniqueOrThrow({ where: { id: section.id } });
-  assert.equal(updatedSection.promptBlocks, null);
-  assert.equal(updatedSection.loraConfig, null);
+  assert.equal(updatedSection.name, `${seed.key} Updated Template Section`);
   const updatedBindings = await prisma.templateSectionPresetBinding.findMany({
     where: { projectTemplateSectionId: section.id },
   });
-  assert.deepEqual(updatedBindings.map((row) => row.bindingKey), [`${seed.key}-updated-binding`]);
+  assert.deepEqual(updatedBindings.map((row) => row.bindingKey), []);
   assert.equal(await prisma.templateSectionPromptBlock.count({ where: { projectTemplateSectionId: section.id } }), 1);
   assert.deepEqual(
     (await prisma.templateSectionManualLoraEntry.findMany({ where: { projectTemplateSectionId: section.id } }))
@@ -964,9 +899,8 @@ test("template CRUD converts submitted legacy prompt and lora data into template
     })).id;
   assert.ok(copiedSectionId);
   const copied = await prisma.projectTemplateSection.findUniqueOrThrow({ where: { id: copiedSectionId } });
-  assert.equal(copied.promptBlocks, null);
-  assert.equal(copied.loraConfig, null);
-  assert.equal(await prisma.templateSectionPresetBinding.count({ where: { projectTemplateSectionId: copiedSectionId } }), 1);
+  assert.equal(copied.projectTemplateId, templateId);
+  assert.equal(await prisma.templateSectionPresetBinding.count({ where: { projectTemplateSectionId: copiedSectionId } }), 0);
   assert.equal(await prisma.templateSectionPromptBlock.count({ where: { projectTemplateSectionId: copiedSectionId } }), 1);
   assert.equal(await prisma.templateSectionManualLoraEntry.count({ where: { projectTemplateSectionId: copiedSectionId } }), 1);
 });
@@ -984,8 +918,7 @@ test("project preset binding writes use ProjectPresetBinding rows without rewrit
     select: { id: true },
   })).id;
   assert.equal(await prisma.projectPresetBinding.count({ where: { projectId: createdProjectId } }), 1);
-  const createdProject = await prisma.project.findUniqueOrThrow({ where: { id: createdProjectId } });
-  assert.equal(createdProject.presetBindings, null);
+  await prisma.project.findUniqueOrThrow({ where: { id: createdProjectId } });
 
   await ignoreStaticRevalidateError(() => updateProject({
     projectId: seed.project.id,
@@ -996,20 +929,12 @@ test("project preset binding writes use ProjectPresetBinding rows without rewrit
   assert.deepEqual(rows.map((row) => [row.categoryId, row.presetId, row.variantId]), [
     [seed.category.id, seed.preset.id, seed.variantB.id],
   ]);
-  const section = await prisma.projectSection.findUniqueOrThrow({ where: { id: seed.section.id } });
-  assert.equal(section.positivePrompt, `${seed.key} stale positive cache`);
-  assert.equal(section.negativePrompt, `${seed.key} stale negative cache`);
-  assert.equal(section.loraConfig, null);
-  assert.equal(await prisma.promptBlock.count({ where: { projectSectionId: seed.section.id } }), 0);
+  await prisma.projectSection.findUniqueOrThrow({ where: { id: seed.section.id } });
   assert.equal(await prisma.sectionPromptBlock.count({ where: { projectSectionId: seed.section.id } }), 0);
 });
 
 test("applyParamToAllSections presets applies ProjectPresetBinding rows as section bindings only", async () => {
   const seed = await seedProjectWithPreset();
-  const staleLoraConfig = {
-    lora1: [{ id: "stale", path: "/stale.safetensors", weight: 1, enabled: true, source: "manual" }],
-    lora2: [],
-  };
   await prisma.projectPresetBinding.create({
     data: {
       projectId: seed.project.id,
@@ -1018,10 +943,6 @@ test("applyParamToAllSections presets applies ProjectPresetBinding rows as secti
       variantId: seed.variantA.id,
       sortOrder: 0,
     },
-  });
-  await prisma.projectSection.update({
-    where: { id: seed.section.id },
-    data: { loraConfig: staleLoraConfig },
   });
 
   const result = await applyParamToAllSections(seed.project.id, "presets", null);
@@ -1034,9 +955,5 @@ test("applyParamToAllSections presets applies ProjectPresetBinding rows as secti
   const promptRows = await prisma.sectionPromptBlock.findMany({ where: { projectSectionId: seed.section.id } });
   assert.equal(promptRows.length, 1);
   assert.equal(promptRows[0].sectionBindingId, bindings[0].id);
-  assert.equal(await prisma.promptBlock.count({ where: { projectSectionId: seed.section.id } }), 0);
-  const section = await prisma.projectSection.findUniqueOrThrow({ where: { id: seed.section.id } });
-  assert.equal(section.positivePrompt, `${seed.key} stale positive cache`);
-  assert.equal(section.negativePrompt, `${seed.key} stale negative cache`);
-  assert.deepEqual(section.loraConfig, staleLoraConfig);
+  await prisma.projectSection.findUniqueOrThrow({ where: { id: seed.section.id } });
 });

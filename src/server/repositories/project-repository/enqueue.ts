@@ -20,13 +20,6 @@ export async function enqueueProjectRuns(projectId: string, overrideBatchSize?: 
           where: { enabled: true },
           orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
           include: {
-            promptBlocks: {
-              orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-              select: {
-                positive: true,
-                negative: true,
-              },
-            },
             runs: {
               orderBy: [{ createdAt: "desc" }, { id: "desc" }],
               take: 1,
@@ -106,13 +99,6 @@ export async function enqueueProjectSectionRun(projectId: string, sectionId: str
         projectId: projectId,
       },
       include: {
-        promptBlocks: {
-          orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-          select: {
-            positive: true,
-            negative: true,
-          },
-        },
         runs: {
           orderBy: [{ createdAt: "desc" }, { id: "desc" }],
           take: 1,

@@ -21,8 +21,8 @@ export type DemoSection = {
   shortSidePx: number;
   seedPolicy1: string;
   seedPolicy2: string;
-  positivePrompt: string;
-  negativePrompt: string;
+  promptPositiveText: string;
+  promptNegativeText: string;
   checkpointName: string;
   projectCheckpointName?: string | null;
   upscaleFactor: number;

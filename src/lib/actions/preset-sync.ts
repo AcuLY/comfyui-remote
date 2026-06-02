@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 
 // ---------------------------------------------------------------------------
@@ -58,30 +57,14 @@ function addUsageEntry(
   sectionMap.set(entry.sectionId, { ...entry, blockCount: 1 });
 }
 
-/** Check which sections reference a given preset via binding rows or legacy PromptBlock.sourceId */
+/** Check which sections reference a given preset via normalized binding rows. */
 export async function getPresetUsage(presetId: string): Promise<PresetUsageInfo> {
   const [
-    blocks,
     sectionBindings,
     templateSectionBindings,
     projectBindings,
     projectTemplateBindings,
   ] = await Promise.all([
-    prisma.promptBlock.findMany({
-      where: { sourceId: presetId },
-      select: {
-        id: true,
-        bindingId: true,
-        projectSection: {
-          select: {
-            id: true,
-            name: true,
-            sortOrder: true,
-            project: { select: { title: true } },
-          },
-        },
-      },
-    }),
     prisma.sectionPresetBinding.findMany({
       where: { presetId },
       select: {
@@ -130,9 +113,6 @@ export async function getPresetUsage(presetId: string): Promise<PresetUsageInfo>
     string,
     { sectionId: string; sectionName: string; projectTitle: string; blockCount: number }
   >();
-  for (const block of blocks) {
-    addUsageSection(sectionMap, block.projectSection);
-  }
   for (const binding of sectionBindings) {
     addUsageSection(sectionMap, binding.projectSection);
   }
@@ -162,7 +142,6 @@ export async function getPresetUsage(presetId: string): Promise<PresetUsageInfo>
   return {
     sections: [...sectionMap.values()],
     totalBlocks:
-      blocks.length +
       sectionBindings.length +
       templateSectionBindings.length +
       projectBindings.length +
@@ -170,7 +149,7 @@ export async function getPresetUsage(presetId: string): Promise<PresetUsageInfo>
   };
 }
 
-/** Delete preset and cascade-remove all related PromptBlocks + LoRAs in sections */
+/** Delete preset and cascade-remove all related normalized section rows. */
 export async function deletePresetCascade(presetId: string) {
   await prisma.$transaction(async (tx) => {
     const presetVariantIds = (await tx.presetVariant.findMany({
@@ -230,84 +209,6 @@ export async function deletePresetCascade(presetId: string) {
     await tx.projectPresetBinding.deleteMany({ where: { presetId } });
     await tx.projectTemplatePresetBinding.deleteMany({ where: { presetId } });
 
-    const blocks = await tx.promptBlock.findMany({
-      where: { sourceId: presetId },
-      select: { id: true, bindingId: true, projectSectionId: true },
-    });
-
-    const blockIds = blocks.map((block) => block.id);
-    const bindingIdsBySection = new Map<string, Set<string>>();
-    const sectionIds = new Set<string>();
-    for (const block of blocks) {
-      if (block.bindingId) {
-        const sectionBindingIds = bindingIdsBySection.get(block.projectSectionId) ?? new Set<string>();
-        sectionBindingIds.add(block.bindingId);
-        bindingIdsBySection.set(block.projectSectionId, sectionBindingIds);
-      }
-      sectionIds.add(block.projectSectionId);
-    }
-
-    if (blockIds.length > 0) {
-      await tx.promptBlock.deleteMany({
-        where: { id: { in: blockIds } },
-      });
-    }
-
-    for (const sectionId of sectionIds) {
-      const sectionBindingIds = bindingIdsBySection.get(sectionId) ?? new Set<string>();
-      const survivingBindingIds = new Set<string>();
-      if (sectionBindingIds.size > 0) {
-        const survivingBlocks = await tx.promptBlock.findMany({
-          where: {
-            projectSectionId: sectionId,
-            bindingId: { in: [...sectionBindingIds] },
-          },
-          select: { bindingId: true },
-        });
-        for (const block of survivingBlocks) {
-          if (block.bindingId) survivingBindingIds.add(block.bindingId);
-        }
-      }
-
-      const section = await tx.projectSection.findUnique({
-        where: { id: sectionId },
-        select: { loraConfig: true },
-      });
-      if (!section?.loraConfig) continue;
-
-      const config = section.loraConfig as {
-        lora1?: Array<Record<string, unknown>>;
-        lora2?: Array<Record<string, unknown>>;
-      };
-      let changed = false;
-
-      if (config.lora1) {
-        const before = config.lora1.length;
-        config.lora1 = config.lora1.filter((entry) =>
-          typeof entry.bindingId !== "string" ||
-          !sectionBindingIds.has(entry.bindingId) ||
-          survivingBindingIds.has(entry.bindingId)
-        );
-        if (config.lora1.length !== before) changed = true;
-      }
-      if (config.lora2) {
-        const before = config.lora2.length;
-        config.lora2 = config.lora2.filter((entry) =>
-          typeof entry.bindingId !== "string" ||
-          !sectionBindingIds.has(entry.bindingId) ||
-          survivingBindingIds.has(entry.bindingId)
-        );
-        if (config.lora2.length !== before) changed = true;
-      }
-
-      if (changed) {
-        await tx.projectSection.update({
-          where: { id: sectionId },
-          data: { loraConfig: config as Prisma.InputJsonValue },
-        });
-      }
-    }
-
     await tx.preset.update({ where: { id: presetId }, data: { isActive: false } });
   });
 
@@ -317,8 +218,7 @@ export async function deletePresetCascade(presetId: string) {
 
 /**
  * Preset content now resolves lazily through binding rows. The old sync endpoint
- * is retained for callers but no longer rewrites PromptBlock, ProjectSection, or
- * ProjectTemplateSection caches.
+ * is retained for callers but no longer rewrites prompt block or section caches.
  */
 export async function syncPresetToSections(presetId: string) {
   revalidatePath("/projects");

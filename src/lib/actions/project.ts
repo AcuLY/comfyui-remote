@@ -141,7 +141,6 @@ export async function createProject(input: CreateProjectInput): Promise<string> 
             status: "draft",
             folderId: input.folderId ?? null,
             checkpointName,
-            presetBindings: Prisma.DbNull,
             notes: input.notes,
           },
         });
@@ -172,15 +171,6 @@ export async function createProject(input: CreateProjectInput): Promise<string> 
 // 更新项目
 // ---------------------------------------------------------------------------
 
-function parsePresetBindings(value: unknown): PresetBinding[] {
-  if (!Array.isArray(value)) return [];
-  return value.filter((item): item is PresetBinding => {
-    if (!item || typeof item !== "object") return false;
-    const binding = item as Record<string, unknown>;
-    return typeof binding.categoryId === "string" && typeof binding.presetId === "string";
-  });
-}
-
 export async function updateProject(input: UpdateProjectInput) {
   const { projectId, sections, projectLevelOverrides, presetBindings, ...projectData } = input;
 
@@ -190,7 +180,6 @@ export async function updateProject(input: UpdateProjectInput) {
       where: { id: projectId },
       data: {
         ...projectData,
-        ...(presetBindings !== undefined ? { presetBindings: Prisma.DbNull } : {}),
         ...(projectLevelOverrides !== undefined ? { projectLevelOverrides: projectLevelOverrides as object } : {}),
       },
     });
@@ -219,8 +208,6 @@ export async function updateProject(input: UpdateProjectInput) {
           data: {
             sortOrder: update.sortOrder,
             enabled: update.enabled,
-            positivePrompt: update.positivePrompt ?? null,
-            negativePrompt: update.negativePrompt ?? null,
             aspectRatio: update.aspectRatio ?? null,
             batchSize: update.batchSize ?? null,
             seedPolicy1: update.seedPolicy1 ?? null,
@@ -281,7 +268,6 @@ export async function applyParamToAllSections(
       where: { id: projectId },
       select: {
         id: true,
-        presetBindings: true,
         presetBindingRows: {
           orderBy: { sortOrder: "asc" },
           select: {
@@ -296,9 +282,7 @@ export async function applyParamToAllSections(
     if (!project) return { ok: false, count: 0, error: "项目不存在" };
 
     if (param === "presets") {
-      const currentBindings = project.presetBindingRows.length > 0
-        ? project.presetBindingRows
-        : normalizeProjectPresetBindings(parsePresetBindings(project.presetBindings));
+      const currentBindings = project.presetBindingRows;
       const sections = await prisma.projectSection.findMany({
         where: { projectId },
         orderBy: { sortOrder: "asc" },

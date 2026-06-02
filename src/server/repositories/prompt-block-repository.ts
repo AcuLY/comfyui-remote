@@ -1,224 +1,96 @@
-import { PromptBlockType } from "@/generated/prisma";
 import { db } from "@/lib/db";
+import {
+  addPromptBlock,
+  editPromptBlock,
+  getPromptBlocks,
+  removePromptBlock,
+  setPromptBlockOrder,
+  type PromptBlockCreateInput,
+  type PromptBlockRecord,
+  type PromptBlockUpdateInput,
+} from "@/server/services/prompt-block-service";
 
-const BLOCK_SELECT = {
-  id: true,
-  type: true,
-  sourceId: true,
-  variantId: true,
-  categoryId: true,
-  bindingId: true,
-  groupBindingId: true,
-  label: true,
-  positive: true,
-  negative: true,
-  sortOrder: true,
-} as const;
-
-export type PromptBlockRecord = {
-  id: string;
-  type: PromptBlockType;
-  sourceId: string | null;
-  variantId: string | null;
-  categoryId: string | null;
-  bindingId: string | null;
-  groupBindingId: string | null;
-  label: string;
-  positive: string;
-  negative: string | null;
-  sortOrder: number;
-};
-
-export type PromptBlockCreateInput = {
-  type: PromptBlockType;
-  sourceId?: string | null;
-  variantId?: string | null;
-  categoryId?: string | null;
-  bindingId?: string | null;
-  groupBindingId?: string | null;
-  label: string;
-  positive: string;
-  negative?: string | null;
-  sortOrder?: number;
-};
-
-export type PromptBlockUpdateInput = {
-  type?: PromptBlockType;
-  sourceId?: string | null;
-  variantId?: string | null;
-  categoryId?: string | null;
-  bindingId?: string | null;
-  groupBindingId?: string | null;
-  label?: string;
-  positive?: string;
-  negative?: string | null;
-  sortOrder?: number;
+export type {
+  PromptBlockCreateInput,
+  PromptBlockRecord,
+  PromptBlockUpdateInput,
 };
 
 export async function listPromptBlocks(
   sectionId: string,
 ): Promise<PromptBlockRecord[]> {
-  const blocks = await db.promptBlock.findMany({
-    where: { projectSectionId: sectionId },
-    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-    select: BLOCK_SELECT,
-  });
-
-  return blocks;
+  return getPromptBlocks(sectionId);
 }
 
 export async function createPromptBlock(
   sectionId: string,
   input: PromptBlockCreateInput,
 ): Promise<PromptBlockRecord> {
-  return db.$transaction(async (tx) => {
-    const maxResult = await tx.promptBlock.aggregate({
-      where: { projectSectionId: sectionId },
-      _max: { sortOrder: true },
-    });
-
-    const sortOrder =
-      input.sortOrder ?? (maxResult._max.sortOrder ?? -1) + 1;
-
-    return tx.promptBlock.create({
-      data: {
-        projectSectionId: sectionId,
-        type: input.type,
-        sourceId: input.sourceId ?? null,
-        variantId: input.variantId ?? null,
-        categoryId: input.categoryId ?? null,
-        bindingId: input.bindingId ?? null,
-        groupBindingId: input.groupBindingId ?? null,
-        label: input.label,
-        positive: input.positive,
-        negative: input.negative ?? null,
-        sortOrder,
-      },
-      select: BLOCK_SELECT,
-    });
-  });
+  return addPromptBlock(sectionId, input);
 }
 
 export async function batchCreatePromptBlocks(
   sectionId: string,
   inputs: PromptBlockCreateInput[],
 ): Promise<PromptBlockRecord[]> {
-  if (inputs.length === 0) return [];
-
-  return db.$transaction(
-    inputs.map((input, index) =>
-      db.promptBlock.create({
-        data: {
-          projectSectionId: sectionId,
-          type: input.type,
-          sourceId: input.sourceId ?? null,
-          variantId: input.variantId ?? null,
-          categoryId: input.categoryId ?? null,
-          bindingId: input.bindingId ?? null,
-          groupBindingId: input.groupBindingId ?? null,
-          label: input.label,
-          positive: input.positive,
-          negative: input.negative ?? null,
-          sortOrder: input.sortOrder ?? index,
-        },
-        select: BLOCK_SELECT,
-      }),
-    ),
-  );
+  const records: PromptBlockRecord[] = [];
+  for (const [index, input] of inputs.entries()) {
+    records.push(await addPromptBlock(sectionId, {
+      ...input,
+      sortOrder: input.sortOrder ?? index,
+    }));
+  }
+  return records;
 }
 
 export async function updatePromptBlock(
   blockId: string,
   input: PromptBlockUpdateInput,
 ): Promise<PromptBlockRecord> {
-  const block = await db.promptBlock.findUnique({
-    where: { id: blockId },
-    select: { id: true },
-  });
-
-  if (!block) {
-    throw new Error("PROMPT_BLOCK_NOT_FOUND");
-  }
-
-  const data: Record<string, unknown> = {};
-  if (input.type !== undefined) data.type = input.type;
-  if (input.sourceId !== undefined) data.sourceId = input.sourceId;
-  if (input.variantId !== undefined) data.variantId = input.variantId;
-  if (input.categoryId !== undefined) data.categoryId = input.categoryId;
-  if (input.bindingId !== undefined) data.bindingId = input.bindingId;
-  if (input.groupBindingId !== undefined) data.groupBindingId = input.groupBindingId;
-  if (input.label !== undefined) data.label = input.label;
-  if (input.positive !== undefined) data.positive = input.positive;
-  if (input.negative !== undefined) data.negative = input.negative;
-  if (input.sortOrder !== undefined) data.sortOrder = input.sortOrder;
-
-  return db.promptBlock.update({
-    where: { id: blockId },
-    data,
-    select: BLOCK_SELECT,
-  });
+  return editPromptBlock(blockId, input);
 }
 
 export async function deletePromptBlock(blockId: string): Promise<void> {
-  const block = await db.promptBlock.findUnique({
-    where: { id: blockId },
-    select: { id: true },
-  });
-
-  if (!block) {
-    throw new Error("PROMPT_BLOCK_NOT_FOUND");
-  }
-
-  await db.promptBlock.delete({ where: { id: blockId } });
+  await removePromptBlock(blockId);
 }
 
-/** Delete all prompt blocks with a given bindingId in a section */
+/** Delete all normalized prompt rows with a given binding key in a section. */
 export async function deletePromptBlocksByBinding(
   sectionId: string,
   bindingId: string,
 ): Promise<number> {
-  const result = await db.promptBlock.deleteMany({
-    where: { projectSectionId: sectionId, bindingId },
+  const binding = await db.sectionPresetBinding.findUnique({
+    where: {
+      projectSectionId_bindingKey: {
+        projectSectionId: sectionId,
+        bindingKey: bindingId,
+      },
+    },
+    select: { id: true },
   });
-  return result.count;
+  if (!binding) return 0;
+
+  return db.$transaction(async (tx) => {
+    await tx.sectionManualLoraEntry.deleteMany({
+      where: { projectSectionId: sectionId, sectionBindingId: binding.id },
+    });
+    const promptRows = await tx.sectionPromptBlock.deleteMany({
+      where: { projectSectionId: sectionId, sectionBindingId: binding.id },
+    });
+    await tx.sectionPresetBinding.delete({ where: { id: binding.id } });
+    return promptRows.count;
+  });
 }
 
 export async function reorderPromptBlocks(
   sectionId: string,
   blockIds: string[],
 ): Promise<PromptBlockRecord[]> {
-  if (blockIds.length === 0) return [];
-
-  const existingBlocks = await db.promptBlock.findMany({
-    where: {
-      id: { in: blockIds },
-      projectSectionId: sectionId,
-    },
-    select: { id: true },
-  });
-
-  const existingIds = new Set(existingBlocks.map((b) => b.id));
-  for (const blockId of blockIds) {
-    if (!existingIds.has(blockId)) {
-      throw new Error("PROMPT_BLOCK_NOT_FOUND");
-    }
-  }
-
-  const reordered = await db.$transaction(
-    blockIds.map((blockId, index) =>
-      db.promptBlock.update({
-        where: { id: blockId },
-        data: { sortOrder: index },
-        select: BLOCK_SELECT,
-      }),
-    ),
-  );
-
-  return reordered;
+  return setPromptBlockOrder(sectionId, blockIds);
 }
 
 /**
- * Compose the final positive/negative prompt strings from ordered PromptBlocks.
+ * Compose the final positive/negative prompt strings from ordered prompt blocks.
  */
 export function composePromptFromBlocks(blocks: PromptBlockRecord[]): {
   positive: string;

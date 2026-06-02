@@ -52,18 +52,6 @@ export function parseVariantLora(value: unknown): LoraBinding[] {
     }));
 }
 
-function readLegacyLinkedVariantIds(value: unknown) {
-  if (!Array.isArray(value)) return [];
-
-  return value
-    .map((entry) => {
-      if (!entry || typeof entry !== "object" || Array.isArray(entry)) return null;
-      const variantId = (entry as { variantId?: unknown }).variantId;
-      return typeof variantId === "string" && variantId ? variantId : null;
-    })
-    .filter((variantId): variantId is string => Boolean(variantId));
-}
-
 export async function loadReachablePresetVariantGraph(
   variantIds: readonly string[],
   client: PresetResolverDbClient,
@@ -90,7 +78,6 @@ export async function loadReachablePresetVariantGraph(
           negativePrompt: true,
           lora1: true,
           lora2: true,
-          linkedVariants: true,
           sortOrder: true,
           isActive: true,
         },
@@ -117,9 +104,7 @@ export async function loadReachablePresetVariantGraph(
     });
     variantLinks.push(...relationLinks);
 
-    const linkedVariantIds = relationLinks.length > 0
-      ? relationLinks.map((link) => link.linkedVariantId)
-      : readLegacyLinkedVariantIds(variant.linkedVariants);
+    const linkedVariantIds = relationLinks.map((link) => link.linkedVariantId);
 
     for (const linkedVariantId of linkedVariantIds) {
       if (
@@ -164,11 +149,7 @@ function resolveLinkedVariantIds(
   linksBySource: Map<string, PresetVariantLinkRow[]>,
 ) {
   const relationRows = linksBySource.get(variant.id) ?? [];
-  if (relationRows.length > 0) {
-    return relationRows.map((link) => link.linkedVariantId);
-  }
-
-  return readLegacyLinkedVariantIds(variant.linkedVariants);
+  return relationRows.map((link) => link.linkedVariantId);
 }
 
 export function resolvePresetVariantContentFromRows(

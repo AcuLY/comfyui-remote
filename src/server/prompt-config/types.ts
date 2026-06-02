@@ -34,7 +34,6 @@ export type PresetVariantRow = {
   negativePrompt: string | null;
   lora1: unknown;
   lora2: unknown;
-  linkedVariants: unknown;
   sortOrder?: number | null;
   isActive?: boolean | null;
 };
@@ -150,24 +149,8 @@ export type TemplateSectionManualLoraEntryRow = {
   sortOrder: number;
 };
 
-export type LegacyPromptBlockRow = {
-  type: PromptBlockType | string;
-  sourceId: string | null;
-  variantId?: string | null;
-  categoryId: string | null;
-  bindingId?: string | null;
-  groupBindingId?: string | null;
-  label: string;
-  positive: string;
-  negative: string | null;
-  sortOrder: number;
-};
-
 export type SectionResolverSectionRow = {
   id: string;
-  positivePrompt: string | null;
-  negativePrompt: string | null;
-  loraConfig: unknown;
   aspectRatio?: string | null;
   shortSidePx?: number | null;
   batchSize?: number | null;
@@ -249,18 +232,11 @@ export type ResolveSectionConfigInput = {
   presetBindings: SectionPresetBindingRow[];
   promptBlockRows: SectionPromptBlockRow[];
   manualLoraEntries: SectionManualLoraEntryRow[];
-  legacyPromptBlocks?: LegacyPromptBlockRow[];
   presetVariants?: PresetVariantRow[];
   variantLinks?: PresetVariantLinkRow[];
 };
 
-export type TemplateResolverSectionRow = Omit<
-  SectionResolverSectionRow,
-  "positivePrompt" | "negativePrompt" | "loraConfig"
-> & {
-  loraConfig: unknown;
-  promptBlocks: unknown;
-};
+export type TemplateResolverSectionRow = SectionResolverSectionRow;
 
 export type ProjectTemplatePresetBindingRow = {
   id?: string;
@@ -276,7 +252,6 @@ export type ResolveTemplateSectionConfigInput = {
   presetBindings: TemplateSectionPresetBindingRow[];
   promptBlockRows: TemplateSectionPromptBlockRow[];
   manualLoraEntries: TemplateSectionManualLoraEntryRow[];
-  legacyPromptBlocks?: LegacyPromptBlockRow[];
   presetVariants?: PresetVariantRow[];
   variantLinks?: PresetVariantLinkRow[];
 };

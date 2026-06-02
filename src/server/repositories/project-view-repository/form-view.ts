@@ -109,14 +109,20 @@ export async function getProjectEditData(projectId: string): Promise<ProjectEdit
   const project = await prisma.project.findUnique({
     where: { id: projectId },
     include: {
+      presetBindingRows: {
+        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+        select: {
+          categoryId: true,
+          presetId: true,
+          variantId: true,
+        },
+      },
       sections: {
         orderBy: { sortOrder: "asc" },
         select: {
           id: true,
           sortOrder: true,
           enabled: true,
-          positivePrompt: true,
-          negativePrompt: true,
           aspectRatio: true,
           batchSize: true,
           seedPolicy1: true,
@@ -148,7 +154,11 @@ export async function getProjectEditData(projectId: string): Promise<ProjectEdit
     title: project.title,
     slug: project.slug,
     checkpointName: project.checkpointName,
-    presetBindings: Array.isArray(project.presetBindings) ? (project.presetBindings as PresetBinding[]) : [],
+    presetBindings: project.presetBindingRows.map((binding) => ({
+      categoryId: binding.categoryId,
+      presetId: binding.presetId,
+      ...(binding.variantId ? { variantId: binding.variantId } : {}),
+    })),
     notes: project.notes,
     sections: project.sections.map((pos) => {
       const resolvedConfig = resolvedConfigsBySectionId.get(pos.id);

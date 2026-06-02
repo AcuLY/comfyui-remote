@@ -10,8 +10,7 @@ import { SectionNameEditor } from "./section-name-editor";
 import { SectionRunButton } from "@/app/projects/[projectId]/project-detail-actions";
 import type { PromptBlockData } from "@/lib/actions";
 import { getPresetLibraryV2 } from "@/lib/server-data";
-import { parseSectionLoraConfig } from "@/lib/lora-types";
-import type { LoraEntry } from "@/lib/lora-types";
+import type { SectionLoraConfig } from "@/lib/lora-types";
 import { revalidatePath } from "next/cache";
 import { getSectionChangeHistory } from "@/server/services/section-change-history-service";
 import { SectionChangeHistory } from "./section-change-history";
@@ -36,20 +35,21 @@ export default async function SectionEditPage({
             checkpointName: true,
           },
         },
-        promptBlocks: {
+        sectionPromptBlocks: {
           orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
           select: {
             id: true,
             type: true,
-            sourceId: true,
-            variantId: true,
-            categoryId: true,
-            bindingId: true,
-            groupBindingId: true,
-            label: true,
-            positive: true,
-            negative: true,
+            sectionBindingId: true,
+            customLabel: true,
+            customPositive: true,
+            customNegative: true,
             sortOrder: true,
+            sectionBinding: {
+              select: {
+                bindingKey: true,
+              },
+            },
           },
         },
         runs: {
@@ -135,17 +135,16 @@ export default async function SectionEditPage({
   const resolvedPromptBlocks = resolvedConfig?.promptBlocks ?? [];
   const usedResolvedBlockIndexes = new Set<number>();
 
-  const initialBlocksFromLegacy: PromptBlockData[] = pos.promptBlocks.map((b, index) => {
-    const bindingMatchedIndex = b.bindingId
-      ? resolvedPromptBlocks.findIndex((block) => block.bindingId === b.bindingId)
+  const initialBlocksFromRows: PromptBlockData[] = pos.sectionPromptBlocks.map((b, index) => {
+    const bindingKey = b.sectionBinding?.bindingKey ?? null;
+    const bindingMatchedIndex = bindingKey
+      ? resolvedPromptBlocks.findIndex((block) => block.bindingId === bindingKey)
       : -1;
     const identityMatchedIndex = resolvedPromptBlocks.findIndex((block, blockIndex) =>
       !usedResolvedBlockIndexes.has(blockIndex) &&
         block.sortOrder === b.sortOrder &&
         block.type === b.type &&
-        block.sourceId === b.sourceId &&
-        block.variantId === b.variantId &&
-        block.categoryId === b.categoryId,
+        block.positive === (b.customPositive ?? ""),
     );
     const indexMatchedIndex = usedResolvedBlockIndexes.has(index) ? -1 : index;
     const resolvedBlockIndex =
@@ -162,14 +161,14 @@ export default async function SectionEditPage({
     return {
       id: b.id,
       type: resolvedBlock ? resolvedBlock.type : b.type,
-      sourceId: resolvedBlock ? resolvedBlock.sourceId : b.sourceId,
-      variantId: resolvedBlock ? resolvedBlock.variantId : b.variantId,
-      categoryId: resolvedBlock ? resolvedBlock.categoryId : b.categoryId,
-      bindingId: resolvedBlock ? resolvedBlock.bindingId : b.bindingId,
-      groupBindingId: resolvedBlock ? resolvedBlock.groupBindingId : b.groupBindingId,
-      label: resolvedBlock ? resolvedBlock.label : b.label,
-      positive: resolvedBlock ? resolvedBlock.positive : b.positive,
-      negative: resolvedBlock ? resolvedBlock.negative : b.negative,
+      sourceId: resolvedBlock?.sourceId ?? null,
+      variantId: resolvedBlock?.variantId ?? null,
+      categoryId: resolvedBlock?.categoryId ?? null,
+      bindingId: resolvedBlock?.bindingId ?? bindingKey,
+      groupBindingId: resolvedBlock?.groupBindingId ?? null,
+      label: resolvedBlock?.label ?? b.customLabel ?? "Custom",
+      positive: resolvedBlock?.positive ?? b.customPositive ?? "",
+      negative: resolvedBlock?.negative ?? b.customNegative ?? null,
       sortOrder: b.sortOrder,
     };
   });
@@ -189,7 +188,7 @@ export default async function SectionEditPage({
       negative: block.negative,
       sortOrder: block.sortOrder,
     }));
-  const initialBlocks = [...initialBlocksFromLegacy, ...resolverOnlyBlocks]
+  const initialBlocks = [...initialBlocksFromRows, ...resolverOnlyBlocks]
     .sort((left, right) => left.sortOrder - right.sortOrder || left.id.localeCompare(right.id));
 
   const sectionParams = resolvedConfig
@@ -218,32 +217,62 @@ export default async function SectionEditPage({
         projectCheckpointName: pos.project.checkpointName ?? null,
       };
 
-  const loraConfig = resolvedConfig?.loraConfig ?? parseSectionLoraConfig(pos.loraConfig);
+  const loraConfig = resolvedConfig?.loraConfig ?? { lora1: [], lora2: [] };
 
   // Server action to save LoRA config (2-partition: lora1, lora2)
-  async function handleLoraChange(config: { lora1: LoraEntry[]; lora2: LoraEntry[] }) {
+  async function handleLoraChange(config: SectionLoraConfig) {
     "use server";
     const { prisma } = await import("@/lib/prisma");
-    const { serializeSectionLoraConfig } = await import("@/lib/lora-types");
+    const { resolveSectionConfig } = await import("@/server/prompt-config/section-resolver");
     const { recordSectionChange } = await import("@/server/services/section-change-history-service");
-    const before = await prisma.projectSection.findUnique({
-      where: { id: sectionId },
-      select: { loraConfig: true },
+    const before = await resolveSectionConfig(sectionId);
+    const bindings = await prisma.sectionPresetBinding.findMany({
+      where: { projectSectionId: sectionId },
+      select: { id: true, bindingKey: true, presetId: true, variantId: true },
     });
-    const nextConfig = serializeSectionLoraConfig(config);
+    const bindingByKey = new Map(bindings.map((binding) => [binding.bindingKey, binding]));
+    const manualRows = (["lora1", "lora2"] as const).flatMap((stage) =>
+      config[stage].flatMap((entry, index) => {
+        const cleanPresetEntry =
+          entry.source === "preset" &&
+          !entry.detachedBindingId &&
+          !entry.detachedPresetPath &&
+          entry.suppressed !== true;
+        if (cleanPresetEntry) return [];
 
-    await prisma.projectSection.update({
-      where: { id: sectionId },
-      data: {
-        loraConfig: nextConfig,
-      },
+        const bindingKey = entry.detachedBindingId ?? entry.bindingId ?? null;
+        const binding = bindingKey ? bindingByKey.get(bindingKey) ?? null : null;
+        return [{
+          projectSectionId: sectionId,
+          sectionBindingId: binding?.id ?? null,
+          stage,
+          path: entry.path,
+          weight: Math.round(entry.weight * 100) / 100,
+          enabled: entry.suppressed === true ? false : entry.enabled,
+          detachedFromBindingKey: entry.detachedBindingId ?? (entry.source === "preset" ? entry.bindingId ?? null : null),
+          detachedFromPresetId: binding?.presetId ?? null,
+          detachedFromVariantId: binding?.variantId ?? null,
+          detachedFromPath: entry.detachedPresetPath ?? (entry.source === "preset" ? entry.path : null),
+          metadata: entry.suppressed === true ? { suppressed: true } : undefined,
+          sortOrder: index,
+        }];
+      }),
+    );
+
+    await prisma.$transaction(async (tx) => {
+      await tx.sectionManualLoraEntry.deleteMany({
+        where: { projectSectionId: sectionId },
+      });
+      if (manualRows.length > 0) {
+        await tx.sectionManualLoraEntry.createMany({ data: manualRows });
+      }
     });
     await recordSectionChange({
       sectionId,
       dimension: "lora",
       title: "更新 LoRA 配置",
       before: before?.loraConfig ?? null,
-      after: nextConfig,
+      after: config,
     });
 
     revalidatePath(`/projects/${projectId}/sections/${sectionId}`);

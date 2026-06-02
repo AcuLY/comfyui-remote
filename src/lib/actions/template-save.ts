@@ -19,25 +19,6 @@ type ProjectLevelTemplateBinding = {
   sortOrder?: number | null;
 };
 
-function parseLegacyProjectBindings(value: unknown): ProjectLevelTemplateBinding[] {
-  if (!Array.isArray(value)) return [];
-  const bindings: ProjectLevelTemplateBinding[] = [];
-
-  value.forEach((item, index) => {
-    if (!item || typeof item !== "object" || Array.isArray(item)) return;
-    const binding = item as Record<string, unknown>;
-    if (typeof binding.categoryId !== "string" || typeof binding.presetId !== "string") return;
-    bindings.push({
-      categoryId: binding.categoryId,
-      presetId: binding.presetId,
-      variantId: typeof binding.variantId === "string" ? binding.variantId : null,
-      sortOrder: index,
-    });
-  });
-
-  return bindings;
-}
-
 function uniqueProjectLevelBindings(bindings: readonly ProjectLevelTemplateBinding[]) {
   const seen = new Set<string>();
   const unique: ProjectLevelTemplateBinding[] = [];
@@ -104,7 +85,6 @@ export async function saveProjectAsTemplate(
   const project = await prisma.project.findUnique({
     where: { id: projectId },
     select: {
-      presetBindings: true,
       presetBindingRows: {
         select: {
           categoryId: true,
@@ -127,21 +107,6 @@ export async function saveProjectAsTemplate(
       sections: {
         orderBy: { sortOrder: "asc" },
         include: {
-          promptBlocks: {
-            orderBy: { sortOrder: "asc" },
-            select: {
-              type: true,
-              sourceId: true,
-              variantId: true,
-              categoryId: true,
-              bindingId: true,
-              groupBindingId: true,
-              label: true,
-              positive: true,
-              negative: true,
-              sortOrder: true,
-            },
-          },
           presetBindingRows: {
             select: {
               id: true,
@@ -222,9 +187,7 @@ export async function saveProjectAsTemplate(
   if (!project) throw new Error("PROJECT_NOT_FOUND");
 
   const projectBindings = uniqueProjectLevelBindings(
-    project.presetBindingRows.length > 0
-      ? project.presetBindingRows
-      : parseLegacyProjectBindings(project.presetBindings),
+    project.presetBindingRows,
   );
 
   const folderClonePlan = buildTemplateSectionFolderClonePlan({

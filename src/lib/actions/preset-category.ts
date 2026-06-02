@@ -24,6 +24,41 @@ export type PresetCategoryInput = {
 
 type SortDimension = "positivePromptOrder" | "negativePromptOrder" | "lora1Order" | "lora2Order";
 
+function normalizeSlotTemplate(
+  slotTemplate: Array<{ categoryId: string; label?: string }> | null | undefined,
+) {
+  if (!slotTemplate) return [];
+
+  return slotTemplate
+    .map((slot, index) => ({
+      slotKey: `${index}:${slot.categoryId}`,
+      slotCategoryId: slot.categoryId,
+      label: slot.label?.trim() || null,
+      sortOrder: index,
+    }))
+    .filter((slot) => slot.slotCategoryId);
+}
+
+async function replaceCategorySlotTemplate(
+  tx: Prisma.TransactionClient,
+  categoryId: string,
+  slotTemplate: Array<{ categoryId: string; label?: string }> | null | undefined,
+) {
+  const slots = normalizeSlotTemplate(slotTemplate);
+  await tx.presetCategorySlot.deleteMany({ where: { categoryId } });
+  if (slots.length === 0) return;
+
+  await tx.presetCategorySlot.createMany({
+    data: slots.map((slot) => ({
+      categoryId,
+      slotKey: slot.slotKey,
+      slotCategoryId: slot.slotCategoryId,
+      label: slot.label,
+      sortOrder: slot.sortOrder,
+    })),
+  });
+}
+
 // ---------------------------------------------------------------------------
 // PresetCategory CRUD
 // ---------------------------------------------------------------------------
@@ -40,22 +75,26 @@ export async function createPresetCategory(input: PresetCategoryInput) {
     input.color = `${hue} 50% 55%`;
   }
   const { slotTemplate, ...rest } = input;
-  const data = { ...rest } as Record<string, unknown>;
-  if (slotTemplate !== undefined) {
-    data.slotTemplate = slotTemplate != null ? (slotTemplate as unknown as Prisma.InputJsonValue) : Prisma.DbNull;
-  }
-  const cat = await prisma.presetCategory.create({ data: data as any }); // eslint-disable-line @typescript-eslint/no-explicit-any
+  const cat = await prisma.$transaction(async (tx) => {
+    const created = await tx.presetCategory.create({ data: rest });
+    if (slotTemplate !== undefined) {
+      await replaceCategorySlotTemplate(tx, created.id, slotTemplate);
+    }
+    return created;
+  });
   revalidatePath("/assets/presets");
   return cat;
 }
 
 export async function updatePresetCategory(id: string, input: Partial<PresetCategoryInput>) {
   const { slotTemplate, ...rest } = input;
-  const data = { ...rest } as Record<string, unknown>;
-  if (slotTemplate !== undefined) {
-    data.slotTemplate = slotTemplate != null ? (slotTemplate as unknown as Prisma.InputJsonValue) : Prisma.DbNull;
-  }
-  const cat = await prisma.presetCategory.update({ where: { id }, data: data as any }); // eslint-disable-line @typescript-eslint/no-explicit-any
+  const cat = await prisma.$transaction(async (tx) => {
+    const updated = await tx.presetCategory.update({ where: { id }, data: rest });
+    if (slotTemplate !== undefined) {
+      await replaceCategorySlotTemplate(tx, id, slotTemplate);
+    }
+    return updated;
+  });
   revalidatePath("/assets/presets");
   return cat;
 }
@@ -113,9 +152,8 @@ export async function updateCategorySlotTemplate(
   categoryId: string,
   slotTemplate: Array<{ categoryId: string; label?: string }>,
 ) {
-  await prisma.presetCategory.update({
-    where: { id: categoryId },
-    data: { slotTemplate: slotTemplate as Prisma.InputJsonValue },
+  await prisma.$transaction(async (tx) => {
+    await replaceCategorySlotTemplate(tx, categoryId, slotTemplate);
   });
   revalidatePath("/assets/presets");
 }

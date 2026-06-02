@@ -17,8 +17,8 @@ export function mergeExecutionMeta(run: DemoRun, section: NonNullable<ReturnType
     workflowId: run.id,
     lora1: section.lora1 ?? [],
     lora2: section.lora2 ?? [],
-    positivePrompt: section.positivePrompt,
-    negativePrompt: section.negativePrompt,
+    positivePrompt: section.promptPositiveText,
+    negativePrompt: section.promptNegativeText,
   };
 
   for (const [key, value] of Object.entries(run.executionMeta ?? {})) {

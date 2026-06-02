@@ -25,24 +25,26 @@ type ResolvedNameMaps = {
 };
 
 type LinkedVariantSource = {
-  linkedVariants: unknown;
-  outgoingLinks?: Array<{
+  outgoingLinks: Array<{
     linkedVariantId: string;
     linkedVariant: { presetId: string };
   }>;
 };
 
 function linkedVariantRefs(variant: LinkedVariantSource): LinkedVariantRef[] {
-  if (variant.outgoingLinks && variant.outgoingLinks.length > 0) {
-    return variant.outgoingLinks.map((link) => ({
-      presetId: link.linkedVariant.presetId,
-      variantId: link.linkedVariantId,
-    }));
-  }
+  return variant.outgoingLinks.map((link) => ({
+    presetId: link.linkedVariant.presetId,
+    variantId: link.linkedVariantId,
+  }));
+}
 
-  return Array.isArray(variant.linkedVariants)
-    ? variant.linkedVariants as LinkedVariantRef[]
-    : [];
+function slotTemplateFromRows(
+  slots: Array<{ slotCategoryId: string; label: string | null }>,
+): SlotTemplateDef[] {
+  return slots.map((slot) => ({
+    categoryId: slot.slotCategoryId,
+    ...(slot.label ? { label: slot.label } : {}),
+  }));
 }
 
 /**
@@ -170,6 +172,13 @@ export async function getPresetCategoriesWithPresets(): Promise<PresetCategoryFu
           groups: { where: { isActive: true } },
         },
       },
+      ownedSlots: {
+        orderBy: { sortOrder: "asc" },
+        select: {
+          slotCategoryId: true,
+          label: true,
+        },
+      },
       presets: {
         where: { isActive: true },
         orderBy: { sortOrder: "asc" },
@@ -223,7 +232,7 @@ export async function getPresetCategoriesWithPresets(): Promise<PresetCategoryFu
     icon: c.icon,
     color: c.color,
     type: c.type,
-    slotTemplate: (Array.isArray(c.slotTemplate) ? c.slotTemplate : []) as SlotTemplateDef[],
+    slotTemplate: slotTemplateFromRows(c.ownedSlots),
     positivePromptOrder: c.positivePromptOrder,
     negativePromptOrder: c.negativePromptOrder,
     lora1Order: c.lora1Order,
@@ -356,7 +365,6 @@ export async function getPresetLibraryV2(): Promise<PresetLibraryV2> {
               negativePrompt: true,
               lora1: true,
               lora2: true,
-              linkedVariants: true,
               outgoingLinks: {
                 orderBy: { sortOrder: "asc" },
                 select: {

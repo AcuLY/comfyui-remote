@@ -1193,11 +1193,14 @@ async function main() {
     select: {
       name: true,
       checkpointName: true,
-      loraConfig: true,
       extraParams: true,
-      promptBlocks: {
+      sectionPromptBlocks: {
         orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
-        select: { label: true, positive: true },
+        select: { customLabel: true, customPositive: true },
+      },
+      manualLoraEntries: {
+        orderBy: [{ stage: "asc" }, { sortOrder: "asc" }, { id: "asc" }],
+        select: { weight: true, enabled: true, metadata: true },
       },
     },
   });
@@ -1235,7 +1238,7 @@ async function main() {
     "benchmark result summary should record baseSectionCount",
   );
   assert(
-    benchmarkSections.every((section) => section.promptBlocks.some((block) => block.label && block.positive)),
+    benchmarkSections.every((section) => section.sectionPromptBlocks.some((block) => block.customLabel && block.customPositive)),
     "benchmark sections should record prompt blocks",
   );
   const autoBenchmarkRuns = await services.benchmarkPromotionService.listCharacterLoraBenchmarkRunsForTrainingRun(completedTrainingRun.id);
@@ -1506,8 +1509,11 @@ async function main() {
       name: true,
       sortOrder: true,
       checkpointName: true,
-      loraConfig: true,
       extraParams: true,
+      manualLoraEntries: {
+        orderBy: [{ stage: "asc" }, { sortOrder: "asc" }, { id: "asc" }],
+        select: { weight: true, enabled: true, metadata: true },
+      },
     },
   });
   const approvalBaseSectionCount = countBenchmarkBaseSections(approvalBenchmarkSections);
@@ -1780,11 +1786,14 @@ async function main() {
       slug: "character-lora-smoke-manager-project",
       status: "draft",
       checkpointName: "fake-base.safetensors",
-      presetBindings: [{
-        categoryId: promoted.categoryId,
-        presetId: promoted.presetId,
-        variantId: defaultVariant.id,
-      }],
+      presetBindingRows: {
+        create: {
+          categoryId: promoted.categoryId,
+          presetId: promoted.presetId,
+          variantId: defaultVariant.id,
+          sortOrder: 0,
+        },
+      },
       notes: "Verifies promoted Character LoRA preset can be consumed by ordinary Manager project section creation.",
     },
     select: { id: true },
@@ -1799,45 +1808,54 @@ async function main() {
     where: { id: managerSectionId },
     select: {
       id: true,
-      loraConfig: true,
-      promptBlocks: {
+      sectionPromptBlocks: {
         orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
         select: {
           id: true,
           type: true,
-          sourceId: true,
-          variantId: true,
-          positive: true,
-          bindingId: true,
+          sectionBinding: {
+            select: {
+              id: true,
+              bindingKey: true,
+              presetId: true,
+              variantId: true,
+            },
+          },
         },
       },
     },
   });
   assert(managerSection, "ordinary Manager project section should be created");
-  const managerPresetBlock = managerSection.promptBlocks.find((block) => block.sourceId === promoted.presetId);
+  const managerPresetBlock = managerSection.sectionPromptBlocks.find((block) => block.sectionBinding?.presetId === promoted.presetId);
   assert(managerPresetBlock, "ordinary Manager section should import the promoted preset prompt block");
   assert(managerPresetBlock.type === "preset", "ordinary Manager imported block should remain preset-linked");
-  assert(managerPresetBlock.variantId === defaultVariant.id, "ordinary Manager imported block should use the promoted default variant");
-  assert(managerPresetBlock.positive === defaultVariant.prompt, "ordinary Manager imported block should use the promoted variant prompt");
-  assert(managerPresetBlock.bindingId, "ordinary Manager imported block should have a bindingId for LoRA linkage");
-  const managerLoraConfig = readJsonRecord(managerSection.loraConfig);
-  const managerLora1 = readJsonArray(managerLoraConfig.lora1).map(readJsonRecord);
-  const managerLora2 = readJsonArray(managerLoraConfig.lora2).map(readJsonRecord);
+  assert(managerPresetBlock.sectionBinding?.variantId === defaultVariant.id, "ordinary Manager imported block should use the promoted default variant");
+  assert(managerPresetBlock.sectionBinding?.bindingKey, "ordinary Manager imported block should have a binding key for LoRA linkage");
+  const { resolveSectionConfig } = await import("../../src/server/prompt-config/section-resolver");
+  const managerResolvedConfig = await resolveSectionConfig(managerSection.id);
+  assert(managerResolvedConfig, "ordinary Manager section should resolve prompt config from relation rows");
+  const managerResolvedBlock = managerResolvedConfig.promptBlocks.find((block) => block.bindingId === managerPresetBlock.sectionBinding?.bindingKey);
+  assert(managerResolvedBlock, "ordinary Manager section should resolve the promoted preset prompt block");
+  assert(managerResolvedBlock.sourceId === promoted.presetId, "ordinary Manager resolved block should reference the promoted preset");
+  assert(managerResolvedBlock.variantId === defaultVariant.id, "ordinary Manager resolved block should use the promoted default variant");
+  assert(managerResolvedBlock.positive === defaultVariant.prompt, "ordinary Manager resolved block should use the promoted variant prompt");
+  const managerLora1 = managerResolvedConfig.loraConfig.lora1.map((entry) => ({ ...entry }));
+  const managerLora2 = managerResolvedConfig.loraConfig.lora2.map((entry) => ({ ...entry }));
   assert(
     managerLora1.some((entry) =>
       entry.path === defaultVariantLoraPath &&
       entry.source === "preset" &&
-      entry.bindingId === managerPresetBlock.bindingId
+      entry.bindingId === managerPresetBlock.sectionBinding?.bindingKey
     ),
-    "ordinary Manager section should materialize promoted preset lora1",
+    "ordinary Manager section should resolve promoted preset lora1",
   );
   assert(
     managerLora2.some((entry) =>
       entry.path === defaultVariantLoraPath &&
       entry.source === "preset" &&
-      entry.bindingId === managerPresetBlock.bindingId
+      entry.bindingId === managerPresetBlock.sectionBinding?.bindingKey
     ),
-    "ordinary Manager section should materialize promoted preset lora2",
+    "ordinary Manager section should resolve promoted preset lora2",
   );
 
   const persistedReport = await services.reportService.persistCharacterLoraJobReport(job.id);
@@ -2103,12 +2121,15 @@ async function createIncompleteBenchmarkProjectTemplate(
           seedPolicy1: "random",
           seedPolicy2: "reuse",
           checkpointName,
-          promptBlocks: [{
-            label: "Incomplete benchmark",
-            positive: "smoke_lora_chr, Smoke Character",
-            negative: "low quality",
-            sortOrder: 0,
-          }],
+          promptBlockRows: {
+            create: {
+              type: "custom",
+              customLabel: "Incomplete benchmark",
+              customPositive: "smoke_lora_chr, Smoke Character",
+              customNegative: "low quality",
+              sortOrder: 0,
+            },
+          },
         }],
       },
     },
@@ -2540,21 +2561,23 @@ async function listReleasedBenchmarkGpuLocks(services: ServiceModules, benchmark
   });
 }
 
-function readBenchmarkSectionWeight(section: { loraConfig: unknown; extraParams: unknown }) {
+function readBenchmarkSectionWeight(section: {
+  extraParams: unknown;
+  manualLoraEntries?: Array<{ weight: number; enabled: boolean; metadata?: unknown }>;
+}) {
   const metadataWeight = readJsonRecord(readJsonRecord(section.extraParams).characterLoraBenchmark).weight;
   if (typeof metadataWeight === "number" && metadataWeight > 0) {
     return roundBenchmarkWeight(metadataWeight);
   }
 
-  const config = readJsonRecord(section.loraConfig);
-  for (const key of ["lora1", "lora2"] as const) {
-    const entries = config[key];
-    if (!Array.isArray(entries)) continue;
-    for (const entry of entries) {
-      const weight = readJsonRecord(entry).weight;
-      if (typeof weight === "number" && weight > 0) {
-        return roundBenchmarkWeight(weight);
-      }
+  for (const entry of section.manualLoraEntries ?? []) {
+    const metadata = readJsonRecord(readJsonRecord(entry.metadata).characterLoraBenchmark);
+    const metadataEntryWeight = metadata.weight;
+    if (typeof metadataEntryWeight === "number" && metadataEntryWeight > 0) {
+      return roundBenchmarkWeight(metadataEntryWeight);
+    }
+    if (entry.enabled && entry.weight > 0) {
+      return roundBenchmarkWeight(entry.weight);
     }
   }
   return null;

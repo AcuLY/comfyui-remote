@@ -336,7 +336,6 @@ export async function promoteCharacterLoraDecisionInRepository(input: {
           negativePrompt: variant.negativePrompt ?? null,
           lora1: variant.lora1,
           lora2: variant.lora2,
-          linkedVariants: Prisma.DbNull,
           sortOrder: variant.sortOrder,
           isActive: true,
         },

@@ -82,14 +82,10 @@ function input(overrides: Partial<ResolveSectionConfigInput>): ResolveSectionCon
   return {
     section: {
       id: "section-1",
-      positivePrompt: "legacy section positive",
-      negativePrompt: "legacy section negative",
-      loraConfig: null,
     },
     presetBindings: [],
     promptBlockRows: [],
     manualLoraEntries: [],
-    legacyPromptBlocks: [],
     variantLinks: [],
     ...overrides,
   };
@@ -123,20 +119,6 @@ test("section bindings resolve preset prompt from source rows instead of stale d
         customLabel: null,
         customPositive: null,
         customNegative: null,
-        sortOrder: 0,
-      },
-    ],
-    legacyPromptBlocks: [
-      {
-        type: "preset",
-        sourceId: characterPreset.id,
-        variantId: "variant-character",
-        categoryId: character.id,
-        bindingId: "old-db-id",
-        groupBindingId: null,
-        label: "stale copied label",
-        positive: "stale copied prompt",
-        negative: "stale copied negative",
         sortOrder: 0,
       },
     ],
@@ -446,54 +428,20 @@ test("detached LoRA suppression is scoped to the originating binding key", () =>
   assert.equal(sharedEntries[0].sourceName, "Style");
 });
 
-test("sections without new rows fall back to legacy prompt blocks, loraConfig, and section-level prompts", () => {
-  const legacyWithBlocks = resolveSectionConfigFromRows(input({
-    section: {
-      id: "section-1",
-      positivePrompt: "section fallback positive",
-      negativePrompt: "section fallback negative",
-      loraConfig: {
-        lora1: [{ id: "legacy-lora", path: "/legacy.safetensors", weight: 0.9, enabled: true, source: "manual" }],
-        lora2: [],
-      },
-    },
-    legacyPromptBlocks: [
-      {
-        type: "custom",
-        sourceId: null,
-        variantId: null,
-        categoryId: null,
-        bindingId: null,
-        groupBindingId: null,
-        label: "Legacy Block",
-        positive: "legacy block positive",
-        negative: null,
-        sortOrder: 0,
-      },
-    ],
-  }));
-  const legacySectionPrompt = resolveSectionConfigFromRows(input({
-    section: {
-      id: "section-2",
-      positivePrompt: "section fallback positive",
-      negativePrompt: "section fallback negative",
-      loraConfig: null,
-    },
+test("sections without relation rows resolve empty editable prompt and lora state", () => {
+  const resolved = resolveSectionConfigFromRows(input({
+    section: { id: "section-empty" },
   }));
 
-  assert.equal(legacyWithBlocks.promptBlocks[0].positive, "legacy block positive");
-  assert.equal(legacyWithBlocks.loraConfig.lora1[0].path, "/legacy.safetensors");
-  assert.equal(legacySectionPrompt.promptBlocks[0].positive, "section fallback positive");
-  assert.equal(legacySectionPrompt.promptBlocks[0].negative, "section fallback negative");
+  assert.deepEqual(resolved.promptBlocks, []);
+  assert.deepEqual(resolved.prompt, { positive: "", negative: null });
+  assert.deepEqual(resolved.loraConfig, { lora1: [], lora2: [] });
 });
 
 test("resolved section config preserves params shape and diff avoids params false positives", () => {
   const projectDefaultResolved = resolveSectionConfigFromRows(input({
     section: {
       id: "section-project-defaults",
-      positivePrompt: null,
-      negativePrompt: null,
-      loraConfig: null,
       project: {
         checkpointName: "project.ckpt",
         projectLevelOverrides: {
@@ -512,9 +460,6 @@ test("resolved section config preserves params shape and diff avoids params fals
   const emptyResolved = resolveSectionConfigFromRows(input({
     section: {
       id: "section-empty-params",
-      positivePrompt: null,
-      negativePrompt: null,
-      loraConfig: null,
     },
   }));
   const emptySnapshot = {
@@ -534,9 +479,6 @@ test("resolved section config preserves params shape and diff avoids params fals
   };
   const sectionWithParams = {
     id: "section-params",
-    positivePrompt: null,
-    negativePrompt: null,
-    loraConfig: null,
     aspectRatio: "2:3",
     shortSidePx: 1024,
     batchSize: 4,
@@ -641,46 +583,43 @@ test("resolved section config exposes aggregate prompt, presets, and warnings", 
   assert.deepEqual(resolved.warnings, []);
 });
 
-test("DB wrapper returns legacy-only sections without loading preset variants or links", async () => {
+test("DB wrapper returns empty relation-only sections without loading preset variants or links", async () => {
   const client = {
     projectSection: {
       async findUnique() {
         return {
-          id: "section-legacy",
-          positivePrompt: "legacy positive",
-          negativePrompt: null,
-          loraConfig: null,
+          id: "section-empty",
           ksampler1: null,
           ksampler2: null,
           extraParams: null,
           presetBindingRows: [],
           sectionPromptBlocks: [],
           manualLoraEntries: [],
-          promptBlocks: [],
         };
       },
     },
     presetVariant: {
       async findMany() {
-        throw new Error("legacy-only sections should not load preset variants");
+        throw new Error("empty sections should not load preset variants");
       },
       async findUnique() {
-        throw new Error("legacy-only sections should not load preset variants");
+        throw new Error("empty sections should not load preset variants");
       },
       async findFirst() {
-        throw new Error("legacy-only sections should not load preset variants");
+        throw new Error("empty sections should not load preset variants");
       },
     },
     presetVariantLink: {
       async findMany() {
-        throw new Error("legacy-only sections should not load preset variant links");
+        throw new Error("empty sections should not load preset variant links");
       },
     },
   };
 
-  const resolved = await resolveSectionConfig("section-legacy", client);
+  const resolved = await resolveSectionConfig("section-empty", client);
 
-  assert.equal(resolved?.promptBlocks[0].positive, "legacy positive");
+  assert.deepEqual(resolved?.promptBlocks, []);
+  assert.deepEqual(resolved?.loraConfig, { lora1: [], lora2: [] });
 });
 
 test("DB wrapper resolves new binding rows lazily while preserving multi-variant labels", async () => {
@@ -720,9 +659,6 @@ test("DB wrapper resolves new binding rows lazily while preserving multi-variant
 
         return {
           id: "section-new",
-          positivePrompt: null,
-          negativePrompt: null,
-          loraConfig: null,
           aspectRatio: null,
           shortSidePx: null,
           batchSize: null,
@@ -744,7 +680,6 @@ test("DB wrapper resolves new binding rows lazily while preserving multi-variant
           ],
           sectionPromptBlocks: [],
           manualLoraEntries: [],
-          promptBlocks: [],
         };
       },
     },

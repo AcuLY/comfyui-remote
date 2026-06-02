@@ -29,11 +29,6 @@ function parsePresetLoras(value: SqlRow[string]) {
   return Array.isArray(parsed) ? parsed : [];
 }
 
-function parseLinkedVariants(value: SqlRow[string]) {
-  const parsed = parseJson<DemoPresetLinkedVariant[]>(value, []);
-  return Array.isArray(parsed) ? parsed : [];
-}
-
 function parseCivitaiLinks(value: SqlRow[string]) {
   const parsed = parseJson<string[]>(value, []);
   return Array.isArray(parsed) ? parsed.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0) : [];
@@ -103,17 +98,13 @@ export async function loadDesignDemoData(): Promise<DemoData> {
     const projects = (db
       .prepare(
         `select
-           p.id, p.title, p.slug, p.folderId, p.status, p.updatedAt, p.notes, p.checkpointName, p.presetBindings,
+           p.id, p.title, p.slug, p.folderId, p.status, p.updatedAt, p.notes, p.checkpointName,
            (select count(*) from ProjectSection s where s.projectId = p.id) as sectionCount
          from Project p
          order by datetime(p.updatedAt) desc
          limit 8`,
       )
       .all() as SqlRow[]).map((row) => {
-      const bindings = parseJson<Array<{ presetId?: string }>>(row.presetBindings, []);
-      const presetNames = bindings
-        .map((binding) => (binding.presetId ? presetNameById.get(binding.presetId) : null))
-        .filter((name): name is string => Boolean(name));
       return {
         id: text(row.id),
         title: text(row.title, "未命名项目"),
@@ -123,7 +114,7 @@ export async function loadDesignDemoData(): Promise<DemoData> {
         updatedAt: shortDate(row.updatedAt),
         notes: text(row.notes),
         checkpointName: text(row.checkpointName, "未指定 checkpoint"),
-        presetNames,
+        presetNames: [] as string[],
         sectionCount: int(row.sectionCount),
         sections: [],
         images: [],
@@ -150,14 +141,36 @@ export async function loadDesignDemoData(): Promise<DemoData> {
     } satisfies DemoProjectFolder));
 
     const projectIds = projects.map((project) => project.id);
+    if (projectIds.length > 0) {
+      const presetNamesByProjectId = new Map<string, string[]>();
+      for (const row of db
+        .prepare(
+          `select projectId, presetId
+           from ProjectPresetBinding
+           where projectId in (${projectIds.map(() => "?").join(",")})
+           order by projectId asc, sortOrder asc`,
+        )
+        .all(...projectIds) as SqlRow[]) {
+        const projectId = text(row.projectId);
+        const presetName = presetNameById.get(text(row.presetId));
+        if (!presetName) continue;
+        if (!presetNamesByProjectId.has(projectId)) presetNamesByProjectId.set(projectId, []);
+        presetNamesByProjectId.get(projectId)!.push(presetName);
+      }
+      for (const project of projects) {
+        project.presetNames = presetNamesByProjectId.get(project.id) ?? [];
+      }
+    }
+
     const sectionRows = projectIds.length
       ? (db
           .prepare(
             `select
                id, projectId, name, sortOrder, enabled, aspectRatio, batchSize, shortSidePx,
-               seedPolicy1, seedPolicy2, positivePrompt, negativePrompt, checkpointName, loraConfig,
+               seedPolicy1, seedPolicy2, checkpointName,
                upscaleFactor, ksampler1, ksampler2,
-               (select count(*) from PromptBlock b where b.projectSectionId = ProjectSection.id) as promptBlockCount,
+               (select count(*) from SectionPromptBlock b where b.projectSectionId = ProjectSection.id) as promptBlockCount,
+               (select count(*) from SectionManualLoraEntry l where l.projectSectionId = ProjectSection.id) as loraCount,
                (select max(r.createdAt) from Run r where r.projectSectionId = ProjectSection.id) as latestRunAt
              from ProjectSection
              where projectId in (${projectIds.map(() => "?").join(",")})
@@ -167,7 +180,6 @@ export async function loadDesignDemoData(): Promise<DemoData> {
       : [];
 
     const sections: DemoSection[] = sectionRows.map((row): DemoSection => {
-      const loraConfig = parseJson<{ lora1?: unknown[]; lora2?: unknown[] }>(row.loraConfig, {});
       const rawId = text(row.id);
       const ksampler1 = parseJson<{ steps?: number; cfg?: number; sampler_name?: string; scheduler?: string }>(row.ksampler1, {});
       const ksampler2 = parseJson<{ steps?: number; cfg?: number; sampler_name?: string; scheduler?: string }>(row.ksampler2, {});
@@ -181,8 +193,8 @@ export async function loadDesignDemoData(): Promise<DemoData> {
         shortSidePx: int(row.shortSidePx, 768),
         seedPolicy1: text(row.seedPolicy1, "random"),
         seedPolicy2: text(row.seedPolicy2, "reuse"),
-        positivePrompt: text(row.positivePrompt, "由 Prompt Block 组合生成"),
-        negativePrompt: text(row.negativePrompt, "low quality, bad anatomy"),
+        promptPositiveText: "由提示词块组合生成",
+        promptNegativeText: "low quality, bad anatomy",
         checkpointName: text(row.checkpointName, "继承项目设置"),
         projectCheckpointName: null,
         upscaleFactor: int(row.upscaleFactor, 2),
@@ -199,9 +211,9 @@ export async function loadDesignDemoData(): Promise<DemoData> {
           scheduler: text(ksampler2.scheduler, "karras"),
         },
         promptBlockCount: int(row.promptBlockCount),
-        loraCount: (Array.isArray(loraConfig.lora1) ? loraConfig.lora1.length : 0) + (Array.isArray(loraConfig.lora2) ? loraConfig.lora2.length : 0),
-        lora1: Array.isArray(loraConfig.lora1) ? loraConfig.lora1 : [],
-        lora2: Array.isArray(loraConfig.lora2) ? loraConfig.lora2 : [],
+        loraCount: int(row.loraCount),
+        lora1: [],
+        lora2: [],
         images: [],
         latestRunAt: row.latestRunAt ? shortDate(row.latestRunAt) : undefined,
       } satisfies DemoSection;
@@ -251,10 +263,27 @@ export async function loadDesignDemoData(): Promise<DemoData> {
       } satisfies DemoRun;
     });
 
+    const linkedVariantsBySource = new Map<string, DemoPresetLinkedVariant[]>();
+    for (const row of db
+      .prepare(
+        `select l.sourceVariantId, l.linkedVariantId, v.presetId as linkedPresetId
+         from PresetVariantLink l
+         join PresetVariant v on v.id = l.linkedVariantId
+         order by l.sourceVariantId asc, l.sortOrder asc`,
+      )
+      .all() as SqlRow[]) {
+      const sourceVariantId = text(row.sourceVariantId);
+      if (!linkedVariantsBySource.has(sourceVariantId)) linkedVariantsBySource.set(sourceVariantId, []);
+      linkedVariantsBySource.get(sourceVariantId)!.push({
+        presetId: text(row.linkedPresetId),
+        variantId: text(row.linkedVariantId),
+      });
+    }
+
     const variantsByPreset = new Map<string, DemoPresetVariant[]>();
     for (const row of db
       .prepare(
-        `select id, presetId, name, slug, prompt, negativePrompt, lora1, lora2, linkedVariants
+        `select id, presetId, name, slug, prompt, negativePrompt, lora1, lora2
          from PresetVariant
          where isActive = 1
          order by presetId asc, sortOrder asc
@@ -262,16 +291,17 @@ export async function loadDesignDemoData(): Promise<DemoData> {
       )
       .all() as SqlRow[]) {
       const presetId = text(row.presetId);
+      const variantId = text(row.id);
       if (!variantsByPreset.has(presetId)) variantsByPreset.set(presetId, []);
       variantsByPreset.get(presetId)!.push({
-        id: text(row.id),
+        id: variantId,
         name: text(row.name, "默认"),
         slug: text(row.slug),
         prompt: text(row.prompt, "positive prompt"),
         negativePrompt: text(row.negativePrompt, "negative prompt"),
         lora1: parsePresetLoras(row.lora1),
         lora2: parsePresetLoras(row.lora2),
-        linkedVariants: parseLinkedVariants(row.linkedVariants),
+        linkedVariants: linkedVariantsBySource.get(variantId) ?? [],
       });
     }
 

@@ -37,7 +37,10 @@ export type FlowSectionForVerification = {
   id: string;
   name: string | null;
   sortOrder: number;
-  loraConfig: unknown;
+  manualLoraEntries: Array<{
+    sectionBindingId: string | null;
+    enabled: boolean;
+  }>;
   promptBlocks: FlowPromptBlock[];
 };
 
@@ -149,14 +152,6 @@ function getTargetBlock(section: FlowSectionForVerification, targetPresetId: str
     .sort((left, right) => left.sortOrder - right.sortOrder)[0] ?? null;
 }
 
-function getLoraEntries(config: unknown): Array<Record<string, unknown>> {
-  if (!config || typeof config !== "object" || Array.isArray(config)) return [];
-  const record = config as Record<string, unknown>;
-  return [record.lora1, record.lora2]
-    .flatMap((slot) => (Array.isArray(slot) ? slot : []))
-    .filter((entry): entry is Record<string, unknown> => Boolean(entry) && typeof entry === "object" && !Array.isArray(entry));
-}
-
 function defaultSampleSectionNumbers(total: number): number[] {
   if (total <= 0) return [];
   return [...new Set([1, Math.ceil(total / 2), total])];
@@ -188,14 +183,14 @@ export function buildSyncPresetVariantFlowVerification(input: BuildFlowVerificat
       continue;
     }
 
-    const hasRoleLoraEntry = getLoraEntries(section.loraConfig).some(
-      (entry) => entry.bindingId === block.bindingId && entry.sourceName === input.targetPresetName,
+    const hasRoleLoraEntry = section.manualLoraEntries.some(
+      (entry) => entry.enabled && entry.sectionBindingId === block.bindingId,
     );
     if (!hasRoleLoraEntry) {
       missing.push({
         sectionId: section.id,
         sectionName: section.name,
-        reason: "Target binding LoRA entry not found in loraConfig",
+        reason: "Target binding LoRA entry not found in manual LoRA rows",
       });
     }
   }

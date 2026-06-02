@@ -3,12 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { resolve } from "node:path";
 import { rm } from "node:fs/promises";
-import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
-import { parseSectionLoraConfig, serializeSectionLoraConfig } from "@/lib/lora-types";
-import { detachAllPresetLoraEntries } from "@/lib/preset-binding-utils";
 import { cleanupProjectSectionFiles } from "@/server/services/section-cleanup-service";
-import type { PresetBinding } from "./project";
 import { createBindingId } from "./_helpers";
 import { importPresetToSection } from "./prompt-block";
 import { switchBindingVariant } from "./prompt-block";
@@ -61,7 +57,6 @@ export async function addSection(projectId: string, name?: string, folderId?: st
     where: { id: projectId },
     select: {
       id: true,
-      presetBindings: true,
       presetBindingRows: {
         orderBy: { sortOrder: "asc" },
         select: {
@@ -137,32 +132,13 @@ export async function addSection(projectId: string, name?: string, folderId?: st
     sortOrder: number;
     categoryOrder: number;
   };
-  let initialBindings: InitialSectionBinding[] = project.presetBindingRows.map((binding) => ({
+  const initialBindings: InitialSectionBinding[] = project.presetBindingRows.map((binding) => ({
     categoryId: binding.categoryId,
     presetId: binding.presetId,
     variantId: binding.variantId,
     sortOrder: binding.sortOrder,
     categoryOrder: binding.category.positivePromptOrder,
   }));
-
-  if (initialBindings.length === 0) {
-    const legacyBindings = Array.isArray(project.presetBindings) ? (project.presetBindings as PresetBinding[]) : [];
-    if (legacyBindings.length > 0) {
-      const categoryIds = [...new Set(legacyBindings.map((binding) => binding.categoryId))];
-      const categories = await prisma.presetCategory.findMany({
-        where: { id: { in: categoryIds } },
-        select: { id: true, positivePromptOrder: true },
-      });
-      const categoryOrderById = new Map(categories.map((category) => [category.id, category.positivePromptOrder]));
-      initialBindings = legacyBindings.map((binding, index) => ({
-        categoryId: binding.categoryId,
-        presetId: binding.presetId,
-        variantId: binding.variantId ?? null,
-        sortOrder: index,
-        categoryOrder: categoryOrderById.get(binding.categoryId) ?? 999,
-      }));
-    }
-  }
 
   initialBindings.sort((left, right) =>
     left.categoryOrder - right.categoryOrder || left.sortOrder - right.sortOrder,
@@ -301,9 +277,6 @@ export async function copySection(sectionId: string): Promise<string | null> {
   const section = await prisma.projectSection.findUnique({
     where: { id: sectionId },
     include: {
-      promptBlocks: {
-        orderBy: { sortOrder: "asc" },
-      },
       presetBindingRows: {
         orderBy: { sortOrder: "asc" },
       },
@@ -323,11 +296,6 @@ export async function copySection(sectionId: string): Promise<string | null> {
     where: { projectId: section.projectId },
   });
 
-  const hasNormalizedRows =
-    section.presetBindingRows.length > 0 ||
-    section.sectionPromptBlocks.length > 0 ||
-    section.manualLoraEntries.length > 0;
-
   // 创建新小节
   const newSection = await prisma.projectSection.create({
     data: {
@@ -336,8 +304,6 @@ export async function copySection(sectionId: string): Promise<string | null> {
       sortOrder: count + 1,
       enabled: section.enabled,
       name: section.name ? `${section.name} (副本)` : null,
-      positivePrompt: hasNormalizedRows ? null : section.positivePrompt,
-      negativePrompt: hasNormalizedRows ? null : section.negativePrompt,
       aspectRatio: section.aspectRatio,
       shortSidePx: section.shortSidePx,
       batchSize: section.batchSize,
@@ -349,82 +315,61 @@ export async function copySection(sectionId: string): Promise<string | null> {
       ksampler1: section.ksampler1 ?? undefined,
       ksampler2: section.ksampler2 ?? undefined,
       upscaleFactor: section.upscaleFactor ?? undefined,
-      loraConfig: !hasNormalizedRows && section.loraConfig
-        ? (serializeSectionLoraConfig(detachAllPresetLoraEntries(parseSectionLoraConfig(section.loraConfig))) as Prisma.InputJsonValue)
-        : undefined,
       extraParams: section.extraParams ?? undefined,
     },
   });
 
-  if (hasNormalizedRows) {
-    const bindingIdBySourceId = new Map<string, string>();
+  const bindingIdBySourceId = new Map<string, string>();
 
-    await prisma.$transaction(async (tx) => {
-      for (const binding of section.presetBindingRows) {
-        const copiedBinding = await tx.sectionPresetBinding.create({
-          data: {
-            projectSectionId: newSection.id,
-            bindingKey: binding.bindingKey,
-            categoryId: binding.categoryId,
-            presetId: binding.presetId,
-            variantId: binding.variantId,
-            groupBindingKey: binding.groupBindingKey,
-            sortOrder: binding.sortOrder,
-          },
-        });
-        bindingIdBySourceId.set(binding.id, copiedBinding.id);
-      }
+  await prisma.$transaction(async (tx) => {
+    for (const binding of section.presetBindingRows) {
+      const copiedBinding = await tx.sectionPresetBinding.create({
+        data: {
+          projectSectionId: newSection.id,
+          bindingKey: binding.bindingKey,
+          categoryId: binding.categoryId,
+          presetId: binding.presetId,
+          variantId: binding.variantId,
+          groupBindingKey: binding.groupBindingKey,
+          sortOrder: binding.sortOrder,
+        },
+      });
+      bindingIdBySourceId.set(binding.id, copiedBinding.id);
+    }
 
-      for (const block of section.sectionPromptBlocks) {
-        await tx.sectionPromptBlock.create({
-          data: {
-            projectSectionId: newSection.id,
-            sectionBindingId: block.sectionBindingId ? bindingIdBySourceId.get(block.sectionBindingId) ?? null : null,
-            type: block.type,
-            customLabel: block.customLabel,
-            customPositive: block.customPositive,
-            customNegative: block.customNegative,
-            sortOrder: block.sortOrder,
-          },
-        });
-      }
+    for (const block of section.sectionPromptBlocks) {
+      await tx.sectionPromptBlock.create({
+        data: {
+          projectSectionId: newSection.id,
+          sectionBindingId: block.sectionBindingId ? bindingIdBySourceId.get(block.sectionBindingId) ?? null : null,
+          type: block.type,
+          customLabel: block.customLabel,
+          customPositive: block.customPositive,
+          customNegative: block.customNegative,
+          sortOrder: block.sortOrder,
+        },
+      });
+    }
 
-      for (const entry of section.manualLoraEntries) {
-        await tx.sectionManualLoraEntry.create({
-          data: {
-            projectSectionId: newSection.id,
-            sectionBindingId: entry.sectionBindingId ? bindingIdBySourceId.get(entry.sectionBindingId) ?? null : null,
-            stage: entry.stage,
-            path: entry.path,
-            weight: entry.weight,
-            enabled: entry.enabled,
-            detachedFromBindingKey: entry.detachedFromBindingKey,
-            detachedFromPresetId: entry.detachedFromPresetId,
-            detachedFromVariantId: entry.detachedFromVariantId,
-            detachedFromPath: entry.detachedFromPath,
-            metadata: entry.metadata ?? undefined,
-            sortOrder: entry.sortOrder,
-          },
-        });
-      }
-    });
-  } else if (section.promptBlocks.length > 0) {
-    await prisma.promptBlock.createMany({
-      data: section.promptBlocks.map((block) => ({
-        projectSectionId: newSection.id,
-        type: "custom",
-        sourceId: null,
-        variantId: null,
-        categoryId: null,
-        bindingId: null,
-        groupBindingId: null,
-        label: block.label,
-        positive: block.positive,
-        negative: block.negative,
-        sortOrder: block.sortOrder,
-      })),
-    });
-  }
+    for (const entry of section.manualLoraEntries) {
+      await tx.sectionManualLoraEntry.create({
+        data: {
+          projectSectionId: newSection.id,
+          sectionBindingId: entry.sectionBindingId ? bindingIdBySourceId.get(entry.sectionBindingId) ?? null : null,
+          stage: entry.stage,
+          path: entry.path,
+          weight: entry.weight,
+          enabled: entry.enabled,
+          detachedFromBindingKey: entry.detachedFromBindingKey,
+          detachedFromPresetId: entry.detachedFromPresetId,
+          detachedFromVariantId: entry.detachedFromVariantId,
+          detachedFromPath: entry.detachedFromPath,
+          metadata: entry.metadata ?? undefined,
+          sortOrder: entry.sortOrder,
+        },
+      });
+    }
+  });
 
   safeRevalidatePath(`/projects/${section.projectId}`);
   return newSection.id;

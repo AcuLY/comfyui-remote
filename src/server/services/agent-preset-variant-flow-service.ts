@@ -66,18 +66,25 @@ async function inferPresetNameFromProject(projectId: string, explicitPresetName:
   const sections = await prisma.projectSection.findMany({
     where: { projectId, enabled: true },
     select: {
-      promptBlocks: {
-        where: { type: "preset", sourceId: { not: null } },
-        select: { sourceId: true },
+      sectionPromptBlocks: {
+        where: {
+          sectionBinding: { isNot: null },
+        },
+        select: {
+          sectionBinding: {
+            select: { presetId: true },
+          },
+        },
       },
     },
   });
 
   const counts = new Map<string, number>();
   for (const section of sections) {
-    for (const block of section.promptBlocks) {
-      if (block.sourceId) {
-        counts.set(block.sourceId, (counts.get(block.sourceId) ?? 0) + 1);
+    for (const block of section.sectionPromptBlocks) {
+      const presetId = block.sectionBinding?.presetId;
+      if (presetId) {
+        counts.set(presetId, (counts.get(presetId) ?? 0) + 1);
       }
     }
   }
@@ -147,27 +154,57 @@ async function findPresetForVerification(nameOrSlug: string): Promise<FlowTarget
 }
 
 async function getSectionsForVerification(projectId: string): Promise<FlowSectionForVerification[]> {
-  return prisma.projectSection.findMany({
+  const sections = await prisma.projectSection.findMany({
     where: { projectId, enabled: true },
     orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
     select: {
       id: true,
       name: true,
       sortOrder: true,
-      loraConfig: true,
-      promptBlocks: {
+      manualLoraEntries: {
+        select: {
+          sectionBindingId: true,
+          enabled: true,
+        },
+      },
+      sectionPromptBlocks: {
         orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
         select: {
           id: true,
-          sourceId: true,
-          variantId: true,
-          bindingId: true,
-          label: true,
+          sectionBindingId: true,
+          customLabel: true,
+          sectionBinding: {
+            select: {
+              presetId: true,
+              variantId: true,
+              preset: { select: { name: true } },
+              variant: { select: { name: true } },
+            },
+          },
           sortOrder: true,
         },
       },
     },
   });
+
+  return sections.map((section) => ({
+    id: section.id,
+    name: section.name,
+    sortOrder: section.sortOrder,
+    manualLoraEntries: section.manualLoraEntries,
+    promptBlocks: section.sectionPromptBlocks.map((block) => ({
+      id: block.id,
+      sourceId: block.sectionBinding?.presetId ?? null,
+      variantId: block.sectionBinding?.variantId ?? null,
+      bindingId: block.sectionBindingId,
+      label: block.customLabel ??
+        [
+          block.sectionBinding?.preset.name,
+          block.sectionBinding?.variant?.name,
+        ].filter(Boolean).join(" / "),
+      sortOrder: block.sortOrder,
+    })),
+  }));
 }
 
 function toVerificationDryRun(result: Awaited<ReturnType<typeof syncPresetVariants>>): FlowDryRunForVerification {

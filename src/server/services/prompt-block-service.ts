@@ -1,17 +1,49 @@
-import {
-  listPromptBlocks,
-  updatePromptBlock,
-  deletePromptBlock,
-  reorderPromptBlocks,
-  PromptBlockRecord,
-  PromptBlockCreateInput,
-  PromptBlockUpdateInput,
-} from "@/server/repositories/prompt-block-repository";
+import { type PromptBlockType } from "@/generated/prisma";
 import { audit } from "@/server/services/audit-service";
 import { ActorType } from "@/lib/db-enums";
 import { prisma } from "@/lib/prisma";
 import { resolveSectionConfig } from "@/server/prompt-config/section-resolver";
 import { detachSectionLorasFromPresetBinding } from "@/server/services/preset-binding-service";
+
+export type PromptBlockRecord = {
+  id: string;
+  type: PromptBlockType;
+  sourceId: string | null;
+  variantId: string | null;
+  categoryId: string | null;
+  bindingId: string | null;
+  groupBindingId: string | null;
+  label: string;
+  positive: string;
+  negative: string | null;
+  sortOrder: number;
+};
+
+export type PromptBlockCreateInput = {
+  type: PromptBlockType;
+  sourceId?: string | null;
+  variantId?: string | null;
+  categoryId?: string | null;
+  bindingId?: string | null;
+  groupBindingId?: string | null;
+  label: string;
+  positive: string;
+  negative?: string | null;
+  sortOrder?: number;
+};
+
+export type PromptBlockUpdateInput = {
+  type?: PromptBlockType;
+  sourceId?: string | null;
+  variantId?: string | null;
+  categoryId?: string | null;
+  bindingId?: string | null;
+  groupBindingId?: string | null;
+  label?: string;
+  positive?: string;
+  negative?: string | null;
+  sortOrder?: number;
+};
 
 class PromptBlockServiceError extends Error {
   constructor(
@@ -81,11 +113,7 @@ export async function getPromptBlocks(sectionId: string) {
     include: { sectionBinding: { select: { bindingKey: true } } },
     orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
   });
-  if (rows.length > 0) {
-    return Promise.all(rows.map(resolveNormalizedPromptBlockRecord));
-  }
-
-  return listPromptBlocks(sectionId);
+  return Promise.all(rows.map(resolveNormalizedPromptBlockRecord));
 }
 
 export async function assertSectionBelongsToProject(projectId: string, sectionId: string) {
@@ -113,17 +141,7 @@ export async function assertPromptBlockBelongsToSection(
   });
   if (normalizedBlock) return;
 
-  const block = await prisma.promptBlock.findFirst({
-    where: {
-      id: blockId,
-      projectSectionId: sectionId,
-      projectSection: { projectId },
-    },
-    select: { id: true },
-  });
-  if (!block) {
-    throw new PromptBlockServiceError("Prompt block not found in section", 404);
-  }
+  throw new PromptBlockServiceError("Prompt block not found in section", 404);
 }
 
 type NormalizedPromptBlockRow = {
@@ -286,7 +304,7 @@ export async function addPromptBlock(
   validatePresetIdentity(input);
 
   const result = await createNormalizedPromptBlock(sectionId, input);
-  audit("PromptBlock", result.id, "create", { sectionId, type: input.type }, actorType);
+  audit("SectionPromptBlock", result.id, "create", { sectionId, type: input.type }, actorType);
   return result;
 }
 
@@ -382,59 +400,11 @@ export async function editPromptBlock(
     }
 
     const result = await resolveNormalizedPromptBlockRecord(updatedRow);
-    audit("PromptBlock", blockId, "update", Object.fromEntries(Object.entries(input)), actorType);
+    audit("SectionPromptBlock", blockId, "update", Object.fromEntries(Object.entries(input)), actorType);
     return result;
   }
 
-  if (
-    input.type !== undefined ||
-    input.sourceId !== undefined ||
-    input.variantId !== undefined ||
-    input.categoryId !== undefined ||
-    input.bindingId !== undefined ||
-    input.groupBindingId !== undefined ||
-    shouldAutoDetachContent
-  ) {
-    const current = await prisma.promptBlock.findUnique({
-      where: { id: blockId },
-      select: {
-        projectSectionId: true,
-        type: true,
-        sourceId: true,
-        variantId: true,
-        categoryId: true,
-        bindingId: true,
-        groupBindingId: true,
-      },
-    });
-    if (!current) throw new Error("PROMPT_BLOCK_NOT_FOUND");
-    const shouldDetachFromPreset =
-      shouldAutoDetachContent &&
-      (current.type === "preset" || Boolean(current.sourceId || current.bindingId));
-    if (shouldDetachFromPreset) {
-      input.type = "custom";
-      input.sourceId = null;
-      input.variantId = null;
-      input.categoryId = null;
-      input.bindingId = null;
-      input.groupBindingId = null;
-    }
-    validatePresetIdentity({
-      type: input.type ?? current.type,
-      sourceId: input.sourceId !== undefined ? input.sourceId : current.sourceId,
-      variantId: input.variantId !== undefined ? input.variantId : current.variantId,
-      categoryId: input.categoryId !== undefined ? input.categoryId : current.categoryId,
-      bindingId: input.bindingId !== undefined ? input.bindingId : current.bindingId,
-      groupBindingId: input.groupBindingId !== undefined ? input.groupBindingId : current.groupBindingId,
-    });
-    if (shouldDetachFromPreset && current.bindingId) {
-      await detachSectionLorasFromPresetBinding(current.projectSectionId, current.bindingId);
-    }
-  }
-
-  const result = await updatePromptBlock(blockId, input);
-  audit("PromptBlock", blockId, "update", Object.fromEntries(Object.entries(input)), actorType);
-  return result;
+  throw new Error("PROMPT_BLOCK_NOT_FOUND");
 }
 
 export async function removePromptBlock(
@@ -454,12 +424,11 @@ export async function removePromptBlock(
         await tx.sectionPromptBlock.delete({ where: { id: blockId } });
       }
     });
-    audit("PromptBlock", blockId, "delete", {}, actorType);
+    audit("SectionPromptBlock", blockId, "delete", {}, actorType);
     return;
   }
 
-  await deletePromptBlock(blockId);
-  audit("PromptBlock", blockId, "delete", {}, actorType);
+  throw new Error("PROMPT_BLOCK_NOT_FOUND");
 }
 
 export async function setPromptBlockOrder(
@@ -499,13 +468,11 @@ export async function setPromptBlockOrder(
       ),
     );
     const result = await Promise.all(rows.map(resolveNormalizedPromptBlockRecord));
-    audit("PromptBlock", sectionId, "reorder", { blockIds }, actorType);
+    audit("SectionPromptBlock", sectionId, "reorder", { blockIds }, actorType);
     return result;
   }
 
-  const result = await reorderPromptBlocks(sectionId, blockIds);
-  audit("PromptBlock", sectionId, "reorder", { blockIds }, actorType);
-  return result;
+  throw new Error("PROMPT_BLOCK_NOT_FOUND");
 }
 
 export function mapPromptBlockError(error: unknown) {

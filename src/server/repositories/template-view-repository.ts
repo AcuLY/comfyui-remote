@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { formatDate } from "@/server/repositories/queue-data-repository";
+import { resolveTemplateSectionConfig } from "@/server/prompt-config/template-resolver";
 
 // ---------------------------------------------------------------------------
 // Project Templates
@@ -101,6 +102,10 @@ export async function getProjectTemplateDetail(
   });
   if (!template) return null;
 
+  const resolvedSections = await Promise.all(
+    template.sections.map((section) => resolveTemplateSectionConfig(section.id)),
+  );
+
   return {
     id: template.id,
     name: template.name,
@@ -113,24 +118,38 @@ export async function getProjectTemplateDetail(
       sectionCount: folder._count.sections,
       childCount: folder._count.children,
     })),
-    sections: template.sections.map((s) => ({
-      id: s.id,
-      folderId: s.folderId,
-      sortOrder: s.sortOrder,
-      name: s.name,
-      notes: s.notes,
-      aspectRatio: s.aspectRatio,
-      shortSidePx: s.shortSidePx,
-      batchSize: s.batchSize,
-      seedPolicy1: s.seedPolicy1,
-      seedPolicy2: s.seedPolicy2,
-      ksampler1: s.ksampler1 as Record<string, unknown> | null,
-      ksampler2: s.ksampler2 as Record<string, unknown> | null,
-      upscaleFactor: s.upscaleFactor,
-      checkpointName: s.checkpointName,
-      loraConfig: s.loraConfig as Record<string, unknown> | null,
-      extraParams: s.extraParams as Record<string, unknown> | null,
-      promptBlocks: (Array.isArray(s.promptBlocks) ? s.promptBlocks : []) as ProjectTemplateSectionData["promptBlocks"],
-    })),
+    sections: template.sections.map((s, index) => {
+      const resolvedConfig = resolvedSections[index];
+      return {
+        id: s.id,
+        folderId: s.folderId,
+        sortOrder: s.sortOrder,
+        name: s.name,
+        notes: s.notes,
+        aspectRatio: s.aspectRatio,
+        shortSidePx: s.shortSidePx,
+        batchSize: s.batchSize,
+        seedPolicy1: s.seedPolicy1,
+        seedPolicy2: s.seedPolicy2,
+        ksampler1: s.ksampler1 as Record<string, unknown> | null,
+        ksampler2: s.ksampler2 as Record<string, unknown> | null,
+        upscaleFactor: s.upscaleFactor,
+        checkpointName: s.checkpointName,
+        loraConfig: resolvedConfig?.loraConfig ?? null,
+        extraParams: s.extraParams as Record<string, unknown> | null,
+        promptBlocks: resolvedConfig?.promptBlocks.map((block) => ({
+          label: block.label,
+          positive: block.positive,
+          negative: block.negative,
+          sortOrder: block.sortOrder,
+          type: block.type,
+          sourceId: block.sourceId,
+          variantId: block.variantId,
+          categoryId: block.categoryId,
+          bindingId: block.bindingId,
+          groupBindingId: block.groupBindingId,
+        })) ?? [],
+      };
+    }),
   };
 }

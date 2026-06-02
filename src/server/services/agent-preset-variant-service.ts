@@ -178,17 +178,12 @@ async function getProjectSectionsForSync(projectId: string) {
           id: true,
           name: true,
           sortOrder: true,
-          promptBlocks: {
-            orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+          presetBindingRows: {
+            orderBy: { sortOrder: "asc" },
             select: {
-              id: true,
-              type: true,
-              sourceId: true,
+              bindingKey: true,
+              presetId: true,
               variantId: true,
-              bindingId: true,
-              groupBindingId: true,
-              categoryId: true,
-              label: true,
               sortOrder: true,
             },
           },
@@ -243,10 +238,10 @@ export async function syncPresetVariants(targetProjectId: string, body: unknown)
       continue;
     }
 
-    const sourceBlock = sourceSection.promptBlocks.find(
-      (block) => block.type === "preset" && block.sourceId === sourcePreset.id && block.variantId,
+    const sourceBinding = sourceSection.presetBindingRows.find(
+      (binding) => binding.presetId === sourcePreset.id && binding.variantId,
     );
-    if (!sourceBlock?.variantId) {
+    if (!sourceBinding?.variantId) {
       plan.push({
         sectionId: targetSection.id,
         sectionName: targetSection.name,
@@ -257,7 +252,7 @@ export async function syncPresetVariants(targetProjectId: string, body: unknown)
       continue;
     }
 
-    const sourceVariant = sourceVariantsById.get(sourceBlock.variantId);
+    const sourceVariant = sourceVariantsById.get(sourceBinding.variantId);
     if (!sourceVariant) {
       plan.push({
         sectionId: targetSection.id,
@@ -283,10 +278,10 @@ export async function syncPresetVariants(targetProjectId: string, body: unknown)
       continue;
     }
 
-    const targetBlock = targetSection.promptBlocks.find(
-      (block) => block.type === "preset" && block.sourceId === targetPreset.id && block.bindingId,
+    const targetBinding = targetSection.presetBindingRows.find(
+      (binding) => binding.presetId === targetPreset.id && binding.bindingKey,
     );
-    if (!targetBlock?.bindingId) {
+    if (!targetBinding?.bindingKey) {
       plan.push({
         sectionId: targetSection.id,
         sectionName: targetSection.name,
@@ -301,13 +296,13 @@ export async function syncPresetVariants(targetProjectId: string, body: unknown)
       continue;
     }
 
-    if (targetBlock.variantId === targetVariant.id) {
+    if (targetBinding.variantId === targetVariant.id) {
       plan.push({
         sectionId: targetSection.id,
         sectionName: targetSection.name,
         sourceSectionId: sourceSection.id,
-        bindingId: targetBlock.bindingId,
-        currentVariantId: targetBlock.variantId,
+        bindingId: targetBinding.bindingKey,
+        currentVariantId: targetBinding.variantId,
         targetVariantId: targetVariant.id,
         targetVariantName: targetVariant.name,
         action: "skip",
@@ -318,7 +313,7 @@ export async function syncPresetVariants(targetProjectId: string, body: unknown)
 
     const update = {
       sectionId: targetSection.id,
-      bindingId: targetBlock.bindingId,
+      bindingId: targetBinding.bindingKey,
       newVariantId: targetVariant.id,
     };
     updates.push(update);
@@ -328,7 +323,7 @@ export async function syncPresetVariants(targetProjectId: string, body: unknown)
       sourceSectionId: sourceSection.id,
       sourceVariantId: sourceVariant.id,
       sourceVariantName: sourceVariant.name,
-      currentVariantId: targetBlock.variantId,
+      currentVariantId: targetBinding.variantId,
       targetVariantName: targetVariant.name,
       action: "switch",
     });

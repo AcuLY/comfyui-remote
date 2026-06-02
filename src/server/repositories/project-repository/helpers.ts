@@ -74,8 +74,8 @@ export type ProjectSectionRecord = {
   sortOrder: number;
   enabled: boolean;
   latestRunId: string | null;
-  positivePrompt: string | null;
-  negativePrompt: string | null;
+  positivePrompt?: string | null;
+  negativePrompt?: string | null;
   aspectRatio: string | null;
   shortSidePx: number | null;
   batchSize: number | null;
@@ -85,10 +85,10 @@ export type ProjectSectionRecord = {
   ksampler2: Prisma.JsonValue | null;
   upscaleFactor: number | null;
   checkpointName: string | null;
-  loraConfig: Prisma.JsonValue | null;
+  loraConfig?: Prisma.JsonValue | null;
   extraParams: Prisma.JsonValue | null;
   runs: LatestRunRecord[];
-  promptBlocks: PromptBlockSummaryRecord[];
+  promptBlocks?: PromptBlockSummaryRecord[];
 };
 
 export type QueuableProjectRecord = {
@@ -172,7 +172,9 @@ export function serializeProjectSection(
   latestRunsById: Map<string, LatestRunRecord>,
   resolvedConfig?: ResolvedSectionConfig,
 ) {
-  const hasResolvedConfig = resolvedConfig !== undefined;
+  if (!resolvedConfig) {
+    throw new Error("JOB_POSITION_CONFIG_NOT_FOUND");
+  }
   const resolvedParameters = resolvedConfig?.parameters;
   const resolvedString = (key: string) => {
     const value = resolvedParameters?.[key];
@@ -190,19 +192,19 @@ export function serializeProjectSection(
     latestRunId: section.latestRunId,
     name: section.name ?? null,
     slug: null,
-    aspectRatio: hasResolvedConfig ? resolvedString("aspectRatio") : section.aspectRatio ?? null,
-    batchSize: hasResolvedConfig ? resolvedNumber("batchSize") : section.batchSize ?? null,
-    seedPolicy1: hasResolvedConfig ? resolvedString("seedPolicy1") : section.seedPolicy1 ?? null,
-    seedPolicy2: hasResolvedConfig ? resolvedString("seedPolicy2") : section.seedPolicy2 ?? null,
-    ksampler1: hasResolvedConfig ? resolvedConfig.ksampler1 : section.ksampler1 ?? null,
-    ksampler2: hasResolvedConfig ? resolvedConfig.ksampler2 : section.ksampler2 ?? null,
-    checkpointName: hasResolvedConfig ? resolvedString("checkpointName") : section.checkpointName,
-    loraConfig: hasResolvedConfig ? resolvedConfig.loraConfig : section.loraConfig,
-    extraParams: hasResolvedConfig ? resolvedConfig.extraParams : section.extraParams,
+    aspectRatio: resolvedString("aspectRatio"),
+    batchSize: resolvedNumber("batchSize"),
+    seedPolicy1: resolvedString("seedPolicy1"),
+    seedPolicy2: resolvedString("seedPolicy2"),
+    ksampler1: resolvedConfig.ksampler1,
+    ksampler2: resolvedConfig.ksampler2,
+    checkpointName: resolvedString("checkpointName"),
+    loraConfig: resolvedConfig.loraConfig,
+    extraParams: resolvedConfig.extraParams,
     promptOverview: {
       templatePrompt: null,
-      positivePrompt: hasResolvedConfig ? resolvedConfig.prompt.positive : section.positivePrompt,
-      negativePrompt: hasResolvedConfig ? resolvedConfig.prompt.negative : section.negativePrompt ?? null,
+      positivePrompt: resolvedConfig.prompt.positive,
+      negativePrompt: resolvedConfig.prompt.negative,
     },
     latestRun: serializeLatestRun(resolveLatestRun(section, latestRunsById)),
   };
@@ -385,10 +387,7 @@ export function buildResolvedConfigSnapshot(
 
 export function buildResolvedPromptDraft(
   _project: Pick<QueuableProjectRecord, "id">,
-  section: Pick<
-    ProjectSectionRecord,
-    "positivePrompt" | "negativePrompt"
-  >,
+  _section: Pick<ProjectSectionRecord, "id">,
   blocks?: Array<{
     positive: string;
     negative: string | null;
@@ -409,10 +408,9 @@ export function buildResolvedPromptDraft(
     };
   }
 
-  // Fallback: use section-level prompts only
   return {
-    positive: section.positivePrompt ?? "",
-    negative: section.negativePrompt ?? null,
+    positive: "",
+    negative: null,
   };
 }
 

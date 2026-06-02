@@ -12,7 +12,6 @@ import {
   resolvePresetVariantContentFromRows,
 } from "./preset-resolver";
 import type {
-  LegacyPromptBlockRow,
   LoraStage,
   MissingReference,
   PresetVariantLinkRow,
@@ -30,7 +29,6 @@ type SectionResolverDbSection = ResolveSectionConfigInput["section"] & {
   presetBindingRows: SectionPresetBindingRow[];
   sectionPromptBlocks: ResolveSectionConfigInput["promptBlockRows"];
   manualLoraEntries: SectionManualLoraEntryRow[];
-  promptBlocks: LegacyPromptBlockRow[];
 };
 
 type SectionResolverDbClient = {
@@ -48,44 +46,6 @@ type SectionResolverDbClient = {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function isResolvedLoraEntry(value: unknown): value is ResolvedLoraEntry {
-  if (!isRecord(value)) return false;
-  return (
-    typeof value.id === "string" &&
-    typeof value.path === "string" &&
-    typeof value.weight === "number" &&
-    typeof value.enabled === "boolean" &&
-    (value.source === "preset" || value.source === "manual")
-  );
-}
-
-function parseLegacyLoraConfig(value: unknown): SectionLoraConfig {
-  if (!isRecord(value)) return { lora1: [], lora2: [] };
-
-  const parseStage = (stageValue: unknown) => {
-    if (!Array.isArray(stageValue)) return [];
-    return stageValue
-      .filter(isResolvedLoraEntry)
-      .map((entry) => ({
-        ...entry,
-        weight: Math.round(entry.weight * 100) / 100,
-      }));
-  };
-
-  return {
-    lora1: parseStage(value.lora1),
-    lora2: parseStage(value.lora2),
-  };
-}
-
-function hasNewSectionRows(input: ResolveSectionConfigInput) {
-  return (
-    input.presetBindings.length > 0 ||
-    input.promptBlockRows.length > 0 ||
-    input.manualLoraEntries.length > 0
-  );
 }
 
 function readProjectOverrides(section: ResolveSectionConfigInput["section"]) {
@@ -507,53 +467,7 @@ function resolveLoraConfig(
   };
 }
 
-function resolveLegacyPromptBlocks(input: ResolveSectionConfigInput): ResolvedPromptBlock[] {
-  const legacyBlocks = sortBySortOrder(input.legacyPromptBlocks ?? []);
-  if (legacyBlocks.length > 0) {
-    return legacyBlocks.map((block) => ({
-      type: block.type,
-      sourceId: block.sourceId,
-      variantId: block.variantId ?? null,
-      categoryId: block.categoryId,
-      bindingId: block.bindingId ?? null,
-      groupBindingId: block.groupBindingId ?? null,
-      label: block.label,
-      positive: block.positive,
-      negative: block.negative,
-      sortOrder: block.sortOrder,
-    }));
-  }
-
-  if (input.section.positivePrompt || input.section.negativePrompt) {
-    return [
-      {
-        type: "custom",
-        sourceId: null,
-        variantId: null,
-        categoryId: null,
-        bindingId: null,
-        groupBindingId: null,
-        label: "Section prompt",
-        positive: input.section.positivePrompt ?? "",
-        negative: input.section.negativePrompt ?? null,
-        sortOrder: 0,
-      },
-    ];
-  }
-
-  return [];
-}
-
 export function resolveSectionConfigFromRows(input: ResolveSectionConfigInput): ResolvedSectionConfig {
-  if (!hasNewSectionRows(input)) {
-    return buildResolvedSectionConfig(
-      input,
-      resolveLegacyPromptBlocks(input),
-      parseLegacyLoraConfig(input.section.loraConfig),
-      [],
-    );
-  }
-
   const variants = collectPresetVariants(input);
   const missingReferences: MissingReference[] = [];
   const promptBlocks = resolvePromptBlocks(input, variants, missingReferences);
@@ -606,9 +520,6 @@ export async function resolveSectionConfig(
     where: { id: sectionId },
     select: {
       id: true,
-      positivePrompt: true,
-      negativePrompt: true,
-      loraConfig: true,
       aspectRatio: true,
       shortSidePx: true,
       batchSize: true,
@@ -698,21 +609,6 @@ export async function resolveSectionConfig(
         },
         orderBy: { sortOrder: "asc" },
       },
-      promptBlocks: {
-        select: {
-          type: true,
-          sourceId: true,
-          variantId: true,
-          categoryId: true,
-          bindingId: true,
-          groupBindingId: true,
-          label: true,
-          positive: true,
-          negative: true,
-          sortOrder: true,
-        },
-        orderBy: { sortOrder: "asc" },
-      },
     },
   });
 
@@ -723,14 +619,9 @@ export async function resolveSectionConfig(
     presetBindings: section.presetBindingRows,
     promptBlockRows: section.sectionPromptBlocks,
     manualLoraEntries: section.manualLoraEntries,
-    legacyPromptBlocks: section.promptBlocks,
     presetVariants: [],
     variantLinks: [],
   };
-
-  if (!hasNewSectionRows(resolverInput)) {
-    return resolveSectionConfigFromRows(resolverInput);
-  }
 
   const initialVariantIds = await resolveInitialVariantIds(section.presetBindingRows, db);
   const { variants, variantLinks } = await loadReachablePresetVariantGraph(initialVariantIds, db);

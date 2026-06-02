@@ -93,7 +93,6 @@ export function buildBenchmarkMatrixExpansionSummary(input: {
     name: string | null;
     sortOrder: number;
     checkpointName: string | null;
-    loraConfig: unknown;
     extraParams: unknown;
     sectionPromptBlocks: Array<{
       customLabel: string | null;
@@ -113,7 +112,7 @@ export function buildBenchmarkMatrixExpansionSummary(input: {
   const sections = input.sections.map((section) => {
     const metadata = readBenchmarkMetadataFromManualLoraEntries(section.manualLoraEntries) ?? readBenchmarkMetadata(section.extraParams);
     const checkpointName = metadata?.checkpointName ?? section.checkpointName ?? null;
-    const weight = metadata?.weight ?? readManualLoraWeight(section.manualLoraEntries) ?? readLoraWeight(section.loraConfig);
+    const weight = metadata?.weight ?? readManualLoraWeight(section.manualLoraEntries);
     const promptBlockLabels = section.sectionPromptBlocks.length > 0
       ? section.sectionPromptBlocks
         .map((block) => block.customLabel)
