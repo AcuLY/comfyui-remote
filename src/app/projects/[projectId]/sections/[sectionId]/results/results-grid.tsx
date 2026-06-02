@@ -490,7 +490,7 @@ export function ResultsGrid({
                     </button>
                     <button
                       onClick={() => {
-                        // Censor: if selected → censor selected kept (including re-censor); else → censor all uncensored kept in run
+                        // Censor selected kept/pending images; without a selection, censor uncensored kept/pending images in this run.
                         const targetIds = runSelectedIds.length > 0
                           ? run.images.filter((img) => runSelectedIds.includes(img.id) && (img.status === "kept" || img.status === "pending")).map((img) => img.id)
                           : run.images.filter((img) => (img.status === "kept" || img.status === "pending") && !img.censoredAt).map((img) => img.id);
