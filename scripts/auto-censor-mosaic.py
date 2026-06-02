@@ -1,11 +1,18 @@
 #!/usr/bin/env python3
 import argparse
 import json
+import math
 import sys
 from pathlib import Path
 
-import cv2
-from ultralytics import YOLO
+MIN_MOSAIC_SIZE = 20
+
+
+def load_dependencies():
+    import cv2
+    from ultralytics import YOLO
+
+    return cv2, YOLO
 
 
 def parse_classes(value: str) -> set[int]:
@@ -18,7 +25,14 @@ def parse_classes(value: str) -> set[int]:
     return classes
 
 
+def validate_mosaic_size(mosaic_size: int) -> None:
+    if mosaic_size < MIN_MOSAIC_SIZE:
+        raise ValueError(f"mosaic-size must be at least {MIN_MOSAIC_SIZE}")
+
+
 def create_mosaic(roi, mosaic_size: int):
+    validate_mosaic_size(mosaic_size)
+    cv2, _YOLO = load_dependencies()
     block_size = max(1, int(mosaic_size * 0.1))
     height, width = roi.shape[:2]
     small_width = max(1, width // block_size)
@@ -28,6 +42,8 @@ def create_mosaic(roi, mosaic_size: int):
 
 
 def run(model_path: Path, input_path: Path, output_path: Path, selected_classes: set[int], mosaic_size: int):
+    validate_mosaic_size(mosaic_size)
+    cv2, YOLO = load_dependencies()
     image = cv2.imread(str(input_path))
     if image is None:
         raise RuntimeError(f"failed to read input image: {input_path}")
@@ -46,12 +62,16 @@ def run(model_path: Path, input_path: Path, output_path: Path, selected_classes:
             if cls not in selected_classes:
                 continue
 
-            x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
+            coords = box.xyxy[0].cpu().numpy()
+            if not all(math.isfinite(float(value)) for value in coords):
+                continue
+
+            x1, y1, x2, y2 = coords
             height, width = image.shape[:2]
-            left = max(0, int(x1))
-            top = max(0, int(y1))
-            right = min(width, int(x2))
-            bottom = min(height, int(y2))
+            left = max(0, math.floor(float(x1)))
+            top = max(0, math.floor(float(y1)))
+            right = min(width, math.ceil(float(x2)))
+            bottom = min(height, math.ceil(float(y2)))
             if right <= left or bottom <= top:
                 continue
 
