@@ -165,6 +165,13 @@ male torso leaning over female, full body, female semi-reclining on back, male f
 
 female reclining on back, female lying on back, m shaped open leg, legs spread, knees bent, knees pulled up to chest, knees bent up, calves tucked against thighs, feet visible, full body, fingering, male fingering vagina, male fingers sliding in and out, fingering motion, female in intense orgasm, orgasm, female trembling, squirting, female ejaculation, vagina gushing, her hand on her chest, from above, top down view, close-up
 
+- 负面：
+- lora：
+- 视角：
+- 服饰范围：
+- 画幅：
+- 暴露：
+
 ## 胸
 
 ### 蹭乳头
