@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
-import { access, mkdir } from "node:fs/promises";
+import { constants } from "node:fs";
+import { access, mkdir, stat } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 
 import { env } from "@/lib/env";
@@ -66,10 +67,22 @@ export async function runAutoCensorMosaic(
 }
 
 async function ensureReadableFile(path: string, label: string) {
+  let fileStat;
+
   try {
-    await access(path);
+    fileStat = await stat(path);
   } catch (error) {
     throw new Error(`${label} does not exist: ${path}`, { cause: error });
+  }
+
+  if (!fileStat.isFile()) {
+    throw new Error(`${label} must be a file: ${path}`);
+  }
+
+  try {
+    await access(path, constants.R_OK);
+  } catch (error) {
+    throw new Error(`${label} is not readable: ${path}`, { cause: error });
   }
 }
 
