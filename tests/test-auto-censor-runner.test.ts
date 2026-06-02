@@ -36,13 +36,15 @@ test("auto-censor documentation names model path and python command env vars", (
 });
 
 type RunnerCaseOptions = {
-  mode?: "success" | "nonzero" | "invalid-json" | "array-json" | "missing-stats" | "non-finite-stats";
+  mode?: "success" | "nonzero" | "invalid-json" | "array-json" | "missing-stats" | "non-finite-stats" | "timeout";
+  harnessSafetyTimeoutMs?: number;
   modelPathEnv?: string | null;
   modelExists?: boolean;
   modelIsDirectory?: boolean;
   sourceIsDirectory?: boolean;
   sourceExists?: boolean;
   outputPath?: string;
+  timeoutMs?: number;
 };
 
 type RunnerCaseResult = {
@@ -93,7 +95,8 @@ async function runRunnerCase(options: RunnerCaseOptions = {}): Promise<RunnerCas
       outputPath,
       root: tempRoot,
       sourcePath,
-    });
+      timeoutMs: options.timeoutMs,
+    }, options.harnessSafetyTimeoutMs);
 
     const args = existsSync(argsPath)
       ? JSON.parse(await readFile(argsPath, "utf8")) as string[]
@@ -124,11 +127,15 @@ async function runNodeHarness(
     outputPath: string;
     root: string;
     sourcePath: string;
+    timeoutMs?: number;
   },
+  safetyTimeoutMs = 8_000,
 ): Promise<RunnerCaseResult["result"]> {
   const stdout = await new Promise<string>((resolvePromise, rejectPromise) => {
     const stdoutChunks: Buffer[] = [];
     const stderrChunks: Buffer[] = [];
+    let settled = false;
+    let forceKillTimer: NodeJS.Timeout | undefined;
     const child = spawn(process.execPath, ["--import", "tsx", harnessPath], {
       cwd: process.cwd(),
       env: {
@@ -139,14 +146,38 @@ async function runNodeHarness(
       windowsHide: true,
     });
 
+    const safetyTimer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      child.kill("SIGTERM");
+      forceKillTimer = setTimeout(() => child.kill("SIGKILL"), 1_000);
+      forceKillTimer.unref();
+      rejectPromise(new Error(`runner harness safety timeout after ${safetyTimeoutMs} ms`));
+    }, safetyTimeoutMs);
+    safetyTimer.unref();
+
+    const cleanup = () => {
+      clearTimeout(safetyTimer);
+      if (forceKillTimer) clearTimeout(forceKillTimer);
+    };
+
     child.stdout.on("data", (chunk: Buffer | string) => {
       stdoutChunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
     });
     child.stderr.on("data", (chunk: Buffer | string) => {
       stderrChunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
     });
-    child.on("error", rejectPromise);
+    child.on("error", (error) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      rejectPromise(error);
+    });
     child.on("close", (code) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+
       const stdout = Buffer.concat(stdoutChunks).toString("utf8");
       const stderr = Buffer.concat(stderrChunks).toString("utf8");
 
@@ -201,7 +232,7 @@ try {
   const result = await runAutoCensorMosaic({
     sourcePath: input.sourcePath,
     outputPath: input.outputPath,
-    timeoutMs: 5000,
+    timeoutMs: input.timeoutMs ?? 5000,
   });
   console.log(JSON.stringify({ ok: true, result }));
 } catch (error) {
@@ -235,6 +266,11 @@ switch (process.env.FAKE_AUTO_CENSOR_MODE) {
   case "non-finite-stats":
     console.log(JSON.stringify({ detections: "NaN", selectedDetections: "Infinity" }));
     process.exit(0);
+  case "timeout":
+    setTimeout(() => {
+      console.log(JSON.stringify({ detections: 1, selectedDetections: 1 }));
+    }, 10000);
+    break;
   default:
     console.log("fake startup noise");
     console.log(JSON.stringify({ detections: 5, selectedDetections: 3, outputPath: "ignored-by-wrapper" }));
@@ -307,6 +343,18 @@ test("auto-censor runner rejects non-zero Python exits with stderr detail", asyn
   assert.equal(result.ok, false);
   assert.match(result.message, /code 7/);
   assert.match(result.message, /fake auto-censor failure/);
+});
+
+test("auto-censor runner rejects hung Python CLI after timeout", async () => {
+  const { args, result } = await runRunnerCase({
+    harnessSafetyTimeoutMs: 2_500,
+    mode: "timeout",
+    timeoutMs: 50,
+  });
+
+  assert.ok(args, "fake CLI should start before timing out");
+  assert.equal(result.ok, false);
+  assert.match(result.message, /timed out after 50 ms/);
 });
 
 test("auto-censor runner rejects invalid and non-object JSON results", async () => {
