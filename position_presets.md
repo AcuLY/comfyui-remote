@@ -9,14 +9,14 @@ pov纯手 1girl, pov, first person view
 
 胸部及以上、腰部及以上
 
-## 单人
-
 - 负面：
 - lora：
 - 视角：
 - 服饰范围：
 - 画幅：
 - 暴露：
+
+## 单人
 
 ### 裙底
 
@@ -25,7 +25,7 @@ upskirt view, from below skirt, looking up under skirt, panty focus, crotch shot
 - 负面：
 - lora：
 - 视角：单人
-- 服饰范围：
+- 服饰范围：脚以上
 - 画幅：竖屏
 - 暴露：
 
@@ -36,7 +36,7 @@ close-up thighs and hip, hip focus, from below
 - 负面：
 - lora：
 - 视角：单人
-- 服饰范围：
+- 服饰范围：脚以上
 - 画幅：竖屏
 - 暴露：
 
@@ -62,6 +62,8 @@ girl using her own hand to pull open her top, her hand pulling her shirt apart, 
 - 画幅：竖屏
 - 暴露：胸部
 
+## 抚摸
+
 ### 正面摸胸
 
 male's hands caressing female body, male hands groping breasts, male hands brabbing breasts, squeezing breasts, breasts play, female hands relaxed at sides
@@ -71,7 +73,7 @@ male's hands caressing female body, male hands groping breasts, male hands brabb
 - 视角：第一人称仅四肢
 - 服饰范围：腰部以上
 - 画幅：竖屏
-- 暴露：胸部
+- 暴露：胸部+无
 
 ### 背后摸胸
 
@@ -80,9 +82,9 @@ male behind female, male hands grabbing female breasts from behind, male hands g
 - 负面：
 - lora：
 - 视角：第三人称
-- 服饰范围：
+- 服饰范围：脚以上
 - 画幅：竖屏
-- 暴露：胸部
+- 暴露：胸部+无
 
 ### 舔胸
 
@@ -126,7 +128,7 @@ hand on another's crotch, male fingering her pussy, looking at viewer, fingering
 - 视角：第三人称
 - 服饰范围：全身
 - 画幅：竖屏
-- 暴露：胸部
+- 暴露：胸部+内裤
 
 ### 背后坐姿开腿爱抚
 
@@ -137,7 +139,7 @@ male sitting behind female, female sitting on male's lap, female legs spread, ma
 - 视角：第三人称
 - 服饰范围：全身
 - 画幅：竖屏
-- 暴露：胸部
+- 暴露：胸部+内裤
 
 ### 背后坐姿接吻爱抚
 
@@ -148,7 +150,7 @@ french kiss fingering, sitting, pussy, spread legs, fingering, torogao, half-clo
 - 视角：第三人称
 - 服饰范围：全身
 - 画幅：竖屏
-- 暴露：胸部
+- 暴露：胸部+内裤
 
 ### 躺姿爱抚
 
@@ -316,6 +318,7 @@ standing boy, pov hands, boy holding girl's wrist, boy holding girl's arms, oral
 - 服饰范围：
 - 画幅：
 - 暴露：
+- 原口交
 
 ### 口完张嘴
 
@@ -333,7 +336,7 @@ open mouth, (cum on tongue:1.35), (semen on tongue:1.3), tongue out, cum in open
 handj0b gesture, handjob gesture, single hand up, motion lines only, hand pumping up and down in air, stroking motion, fingers wrapped around, air handjob, empty hand performing handjob gesture
 
 - 负面：
-- lora：handjob
+- lora：handjob、gesture
 - 视角：单人
 - 服饰范围：
 - 画幅：
@@ -401,16 +404,18 @@ cuddling handjob, female leaning against male, her hand in his mouth, sitting, p
 - 负面：
 - lora：cuddling-handjob
 - 视角：
-- 服饰范围：
+- 服饰范围：脚以上
 - 画幅：横屏
 - 暴露：
+- 权重
+- 稍微降
 
 ### 远离趴姿手交
 
 Handjob_AU, pose1, prone, handjob, ass view, crossed feet, oblique view
 
 - 负面：
-- lora：
+- lora：Ass_up
 - 视角：
 - 服饰范围：全身
 - 画幅：竖屏
@@ -423,7 +428,7 @@ tekoki, handjob, penis, cowboy shot, female lying on back, on back, arm behind h
 - 负面：
 - lora：tekoki-00
 - 视角：
-- 服饰范围：
+- 服饰范围：脚以上
 - 画幅：竖屏
 - 暴露：
 
@@ -443,7 +448,7 @@ penis on breasts, penis on her chest, rubbing penis against her nipple, glans at
 toes_grasp_penis, foot job, penis, foot rubbing penis, footjob, footjob by one foot, footjob with single foot
 
 - 负面：
-- lora：
+- lora：Foot_job
 - 视角：
 - 服饰范围：
 - 画幅：竖屏
@@ -476,7 +481,7 @@ rearfj, hug, two-footed footjob, penis, arms behind back, ejaculation, projectil
 male sitting on floor, male sitting low, female sitting on table, female sitting high up, one leg extended forward, one leg raised and bent, one foot giving footjob, sole pressing and stroking penis, toes gripping cock, other foot raised to male's face, foot licked and sucked by male, toes in male's mouth, male licking her foot, (tongue_out:0.7), sucklickfoot, footjob, full body
 
 - 负面：licking penis, female licking her own foot, female sitting on bed, female sitting on floor
-- lora：
+- lora：FootjobLickSuck
 - 视角：
 - 服饰范围：全身
 - 画幅：竖屏
@@ -487,7 +492,7 @@ male sitting on floor, male sitting low, female sitting on table, female sitting
 two-footed_job, footjob, from below, low angle, penis, feet rubbing penis
 
 - 负面：
-- lora：
+- lora：Footjob_Under
 - 视角：
 - 服饰范围：全身
 - 画幅：竖屏
@@ -525,24 +530,27 @@ sitting on lap, from behind, from above, breasts, her nipples visible, penis, pe
 - 服饰范围：全身
 - 画幅：竖屏
 - 暴露：
+- pov_sitting_on_lap,
 
 ### 第一人称素股
 
 female lying on back, female lying, legs raised high, knees bent towards chest, thighs pressed tightly together, penis buried deep between thighs, penis completely enclosed by thighs, thighs occluding penis, shaft hidden inside thigh gap, thighs squeezing and covering cock, penis trapped and occluded by soft thighs, deep thigh penetration appearance, legsup_tj, intense thighjob
 
 - 负面：vaginal sex, vaginal, penis in pussy
-- lora：
+- lora：V3_
 - 视角：
 - 服饰范围：全身
 - 画幅：竖屏
 - 暴露：
+- 权重
+- 0.8
 
 ### 第三人称抬腿素股
 
 legsup_tj, thigh sex, legs up, lying, on back, grabbing thighs, penis between thighs, standing, side view, from side
 
 - 负面：vaginal sex, vaginal, penis in pussy
-- lora：
+- lora：V3
 - 视角：
 - 服饰范围：全身
 - 画幅：横屏
@@ -553,9 +561,9 @@ legsup_tj, thigh sex, legs up, lying, on back, grabbing thighs, penis between th
 ThighSexSide, penis between thighs, thigh sex, on side, girl on top, girl on side, laying on side
 
 - 负面：vaginal sex, vaginal, penis in pussy
-- lora：
+- lora：Thigh_Sex_v2
 - 视角：
-- 服饰范围：
+- 服饰范围：脚以上
 - 画幅：竖屏
 - 暴露：
 
@@ -564,9 +572,9 @@ ThighSexSide, penis between thighs, thigh sex, on side, girl on top, girl on sid
 ThighSexSitting, girl on top, man on bottom, girl sitting up, girl sitting in lap, penis between thighs, thigh sex
 
 - 负面：vaginal sex, vaginal, penis in pussy
-- lora：
+- lora：Thigh_Sex_v2
 - 视角：
-- 服饰范围：
+- 服饰范围：脚以上
 - 画幅：竖屏
 - 暴露：
 
@@ -575,9 +583,9 @@ ThighSexSitting, girl on top, man on bottom, girl sitting up, girl sitting in la
 ThighSexBack, lying, lying on back, man on bottom, girl on top, girl on back, thigh sex, penis between thighs
 
 - 负面：vaginal sex, vaginal, penis in pussy
-- lora：
+- lora：Thigh_Sex_v2
 - 视角：
-- 服饰范围：
+- 服饰范围：脚以上
 - 画幅：竖屏
 - 暴露：
 
@@ -586,7 +594,7 @@ ThighSexBack, lying, lying on back, man on bottom, girl on top, girl on back, th
 ThighSexThighs, female lying on back, lying on back, thighs up, missionary, missionary position, knees together, legs together, (feet apart), her feet spread apart, thigh sex, penis between thighs, top down angle, from above
 
 - 负面：vaginal sex, vaginal, penis in pussy, male on bottom, girl on top, sitting, prone, female lying on top of male, lying on male, lying on stomach
-- lora：
+- lora：Thigh_Sex_v2
 - 视角：
 - 服饰范围：全身
 - 画幅：竖屏
@@ -597,7 +605,7 @@ ThighSexThighs, female lying on back, lying on back, thighs up, missionary, miss
 ThighSexThighs, female lying on back, lying on back, thighs up, missionary, missionary position, knees together, legs together, (feet apart), her feet spread apart, thigh sex, penis between thighs, female's head at bottom of frame, reverse angle shot
 
 - 负面：vaginal sex, vaginal, penis in pussy, male on bottom, girl on top, sitting, prone, female lying on top of male, lying on male, lying on stomach
-- lora：
+- lora：Thigh_Sex_v2、Missionary_sex_-_Reverse
 - 视角：
 - 服饰范围：全身
 - 画幅：竖屏
@@ -608,7 +616,7 @@ ThighSexThighs, female lying on back, lying on back, thighs up, missionary, miss
 ThighSexThighs, kneeling, male behind female, thighs up, knees together, legs together, feet on his shoulder, feet apart, thigh sex, penis between thighs, female's head at bottom of frame
 
 - 负面：vaginal sex, vaginal, penis in pussy, male on bottom, girl on top, sitting, prone
-- lora：
+- lora：Thigh_Sex_v2
 - 视角：
 - 服饰范围：全身
 - 画幅：竖屏
@@ -619,7 +627,7 @@ ThighSexThighs, kneeling, male behind female, thighs up, knees together, legs to
 Interrcrural, lying prone on top of male, male grabbing her ass, male on bottom, female on top, prone, thigh sex, penis between thighs, close-up
 
 - 负面：vaginal sex, vaginal, penis in pussy
-- lora：
+- lora：Intercrucral
 - 视角：
 - 服饰范围：全身
 - 画幅：竖屏
@@ -630,9 +638,9 @@ Interrcrural, lying prone on top of male, male grabbing her ass, male on bottom,
 Interrcrural, lying prone on top of male, male on bottom, female on top, male grabbing her ass, prone, thigh sex, penis, penis between thighs, close-up, her breasts pressing his chest, female's breasts pressing against male's chest, facing camera, shot from the head end
 
 - 负面：vaginal sex, vaginal, penis in pussy, thigh focus, feet focus, her back facing camera, thigh close to camera, thigh foreground
-- lora：
+- lora：Intercrucral
 - 视角：
-- 服饰范围：
+- 服饰范围：脚以上
 - 画幅：横屏
 - 暴露：
 
@@ -643,7 +651,7 @@ thigh sex, standing, grabbing another's ass, penis, penis between thighs
 - 负面：vaginal sex, vaginal, penis in pussy
 - lora：thighsex
 - 视角：
-- 服饰范围：
+- 服饰范围：脚以上
 - 画幅：竖屏
 - 暴露：
 
@@ -654,7 +662,7 @@ thigh sex, standing, from behind, back view, ass, grabbing another's ass, penis,
 - 负面：vaginal sex, vaginal, penis in pussy
 - lora：thighsex
 - 视角：
-- 服饰范围：
+- 服饰范围：脚以上
 - 画幅：竖屏
 - 暴露：
 
@@ -679,13 +687,14 @@ thigh sex, sitting, thick thigh, penis between thighs, crossing her legs, crosse
 - 服饰范围：全身
 - 画幅：竖屏
 - 暴露：
+- thighsex,
 
 ### 站姿膝盖内侧夹住
 
 (knee job), penis between back of the knee, standing, male's hands behind his back, female leaning against male, female standing on one leg, female lifting one leg high, female's hand on her thigh, penis rubbing her thigh, female knees clamping penis between inner thighs, female squeezing penis with inner knee sides, knees pressing tightly around penis from both sides, penis trapped and squeezed between female knees
 
 - 负面：
-- lora：knee
+- lora：knee、job
 - 视角：
 - 服饰范围：全身
 - 画幅：竖屏
@@ -696,7 +705,7 @@ thigh sex, sitting, thick thigh, penis between thighs, crossing her legs, crosse
 (knee job), knee job, penis between back of the knee, penis rubbing knee pit, knee pit, glans at back of knee, penis
 
 - 负面：hand on penis, handjob
-- lora：knee
+- lora：knee、job
 - 视角：
 - 服饰范围：全身
 - 画幅：竖屏
@@ -707,9 +716,9 @@ thigh sex, sitting, thick thigh, penis between thighs, crossing her legs, crosse
 panty pull, pussy, from behind, looking back
 
 - 负面：
-- lora：
+- lora：Pulling_down_panties
 - 视角：
-- 服饰范围：
+- 服饰范围：脚以上
 - 画幅：竖屏
 - 暴露：
 
@@ -718,9 +727,9 @@ panty pull, pussy, from behind, looking back
 panty pull, standing, pussy, facing viewer, teasing pose, playful pose
 
 - 负面：
-- lora：
+- lora：Pulling_down_panties
 - 视角：
-- 服饰范围：
+- 服饰范围：脚以上
 - 画幅：竖屏
 - 暴露：
 
@@ -729,9 +738,9 @@ panty pull, standing, pussy, facing viewer, teasing pose, playful pose
 panty pull, standing, pussy, facing viewer, legs up, teasing pose, playful pose
 
 - 负面：
-- lora：
+- lora：Pulling_down_panties
 - 视角：
-- 服饰范围：
+- 服饰范围：脚以上
 - 画幅：竖屏
 - 暴露：
 
@@ -806,7 +815,7 @@ reverse cowgirl position, cowgirl, penis in pussy, penis, intense penetration, f
 cowgirl, straddling, crossed legs, twisting her waist, arm support, leaning back, penis in pussy, intense penetration
 
 - 负面：
-- lora：
+- lora：LZP
 - 视角：
 - 服饰范围：全身
 - 画幅：竖屏
@@ -817,7 +826,7 @@ cowgirl, straddling, crossed legs, twisting her waist, arm support, leaning back
 CGTP, Sex, twisting her waist, penis in pussy, intense penetration
 
 - 负面：
-- lora：
+- lora：Bastion
 - 视角：
 - 服饰范围：全身
 - 画幅：竖屏
@@ -828,7 +837,7 @@ CGTP, Sex, twisting her waist, penis in pussy, intense penetration
 from behind, cowgirl position, vaginal, deep penetration, straddling, penis, testicles, girl on top, lying, sex, ass focus, pussy juice, feet, female looking back
 
 - 负面：
-- lora：
+- lora：Lying_cowgirl
 - 视角：
 - 服饰范围：全身
 - 画幅：竖屏
@@ -852,7 +861,7 @@ standing, ass, bent over, looking back
 - 负面：
 - lora：
 - 视角：
-- 服饰范围：
+- 服饰范围：脚以上
 - 画幅：竖屏
 - 暴露：
 
@@ -899,6 +908,7 @@ standing, penis, pressed up against wall, wall, leaning on wall, from above
 - 服饰范围：全身
 - 画幅：横屏
 - 暴露：
+- Pov Against
 
 ### 第一人称靠墙后入
 
@@ -910,6 +920,7 @@ poagwasex, sex from behind, standing, poagwasex, penis, pussy, ass, pressed up a
 - 服饰范围：全身
 - 画幅：横屏
 - 暴露：
+- Pov Against
 
 ### 事后口
 
