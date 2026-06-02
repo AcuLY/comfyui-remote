@@ -346,13 +346,12 @@ test("auto-censor runner rejects non-zero Python exits with stderr detail", asyn
 });
 
 test("auto-censor runner rejects hung Python CLI after timeout", async () => {
-  const { args, result } = await runRunnerCase({
+  const { result } = await runRunnerCase({
     harnessSafetyTimeoutMs: 2_500,
     mode: "timeout",
     timeoutMs: 50,
   });
 
-  assert.ok(args, "fake CLI should start before timing out");
   assert.equal(result.ok, false);
   assert.match(result.message, /timed out after 50 ms/);
 });

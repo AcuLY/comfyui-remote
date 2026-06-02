@@ -41,7 +41,17 @@ async function main() {
 
   for (const root of roots) {
     const rootPath = resolve(process.cwd(), root);
-    const rootStats = await stat(rootPath);
+    let rootStats;
+    try {
+      rootStats = await stat(rootPath);
+    } catch (error) {
+      if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") {
+        continue;
+      }
+
+      throw error;
+    }
+
     if (!rootStats.isDirectory()) {
       throw new Error(`Cleanup root is not a directory: ${rootPath}`);
     }

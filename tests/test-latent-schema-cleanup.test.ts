@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
@@ -68,5 +68,33 @@ test("cleanup script deletes only latent artifacts", async () => {
 
   for (const keepPath of keepPaths) {
     assert.equal(existsSync(keepPath), true, `${keepPath} should be preserved`);
+  }
+
+  await rm(root, { recursive: true, force: true });
+});
+
+test("cleanup script treats missing roots as no-op", async () => {
+  const root = await mkdtemp(join(tmpdir(), "latent-cleanup-missing-"));
+  const missingRoot = join(root, "missing");
+
+  try {
+    const { stdout } = await execFileAsync(
+      process.execPath,
+      ["scripts/cleanup-latent-artifacts.mjs", missingRoot],
+      { cwd: process.cwd() },
+    );
+    const summary = JSON.parse(stdout) as {
+      latentDirectories: number;
+      latentFiles: number;
+      roots: number;
+    };
+
+    assert.deepEqual(summary, {
+      roots: 0,
+      latentDirectories: 0,
+      latentFiles: 0,
+    });
+  } finally {
+    await rm(root, { recursive: true, force: true });
   }
 });
