@@ -46,7 +46,17 @@ async function processQueuedTasks(): Promise<number> {
     processed++;
 
     try {
-      await processCensorTask(task.imageResultId);
+      const result = await processCensorTask({
+        imageResultId: task.imageResultId,
+        taskId: task.id,
+      });
+
+      if (!result.persisted) {
+        log.info("Skipping completion update for inactive censoring task", {
+          taskId: task.id,
+        });
+        continue;
+      }
 
       const updated = await prisma.censoringTask.updateMany({
         where: { id: task.id, status: "running" },

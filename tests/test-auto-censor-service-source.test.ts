@@ -36,6 +36,43 @@ test("censoring cancellation stays local instead of mutating ComfyUI queues", ()
   assert.doesNotMatch(source, /interruptComfyPrompt/);
 });
 
+test("censoring service rechecks running task state after auto-censor before persisting", () => {
+  const source = readSource("src/server/services/censoring-service.ts");
+
+  assert.match(source, /taskId\?:\s*string/);
+  assert.match(source, /persisted:\s*boolean/);
+  assert.match(source, /prisma\.censoringTask\.findUnique/);
+  assert.match(source, /status\s*!==\s*"running"/);
+  assert.match(source, /return\s*\{\s*persisted:\s*false\s*\}/);
+  assert.match(source, /return\s*\{\s*persisted:\s*true\s*\}/);
+
+  const runIndex = source.indexOf("await runAutoCensorMosaic");
+  const statusCheckIndex = source.indexOf("await shouldPersistForTaskContext", runIndex);
+  const persistIndex = source.indexOf("await persistCensoredImage", runIndex);
+
+  assert.ok(runIndex >= 0, "runner call must be present");
+  assert.ok(statusCheckIndex > runIndex, "task status must be checked after runner returns");
+  assert.ok(statusCheckIndex < persistIndex, "task status must be checked before persistence");
+});
+
+test("censoring executor passes task context and skips done update for non-persisted work", () => {
+  const source = readSource("src/server/services/censoring-executor.ts");
+
+  assert.match(
+    source,
+    /processCensorTask\(\{[\s\S]*imageResultId:\s*task\.imageResultId,[\s\S]*taskId:\s*task\.id/,
+  );
+  assert.match(source, /if\s*\(!result\.persisted\)/);
+
+  const processIndex = source.indexOf("await processCensorTask");
+  const skipIndex = source.indexOf("if (!result.persisted)", processIndex);
+  const doneUpdateIndex = source.indexOf('status: "done"', processIndex);
+
+  assert.ok(processIndex >= 0, "executor must process censor task");
+  assert.ok(skipIndex > processIndex, "executor must branch on process result");
+  assert.ok(skipIndex < doneUpdateIndex, "executor must skip before done update");
+});
+
 test("manual selected-image censoring keeps re-censor flexibility without stale re-censor comment", () => {
   const source = readSource("src/app/projects/[projectId]/sections/[sectionId]/results/results-grid.tsx");
 

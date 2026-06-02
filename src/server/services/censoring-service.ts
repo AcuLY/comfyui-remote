@@ -17,6 +17,15 @@ type ImageResultForCensor = {
   reviewStatus: string;
 };
 
+type ProcessCensorTaskInput = {
+  imageResultId: string;
+  taskId?: string;
+};
+
+type ProcessCensorTaskResult = {
+  persisted: boolean;
+};
+
 async function atomicWriteFile(targetPath: string, data: Buffer): Promise<void> {
   const tempPath = `${targetPath}.${randomUUID()}.tmp`;
   await writeFile(tempPath, data);
@@ -104,7 +113,39 @@ async function persistCensoredImage(
   return { censoredFilePath, censoredThumbPath };
 }
 
-export async function processCensorTask(imageResultId: string): Promise<void> {
+function normalizeProcessCensorTaskInput(
+  input: string | ProcessCensorTaskInput,
+): ProcessCensorTaskInput {
+  if (typeof input === "string") {
+    return { imageResultId: input };
+  }
+
+  return input;
+}
+
+async function shouldPersistForTaskContext(taskId: string | undefined): Promise<boolean> {
+  if (!taskId) return true;
+
+  const task = await prisma.censoringTask.findUnique({
+    where: { id: taskId },
+    select: { status: true },
+  });
+
+  if (task?.status !== "running") {
+    log.info("Skipping censored image persistence for inactive task", {
+      taskId,
+      status: task?.status ?? "missing",
+    });
+    return false;
+  }
+
+  return true;
+}
+
+export async function processCensorTask(
+  input: string | ProcessCensorTaskInput,
+): Promise<ProcessCensorTaskResult> {
+  const { imageResultId, taskId } = normalizeProcessCensorTaskInput(input);
   const imageResult = await prisma.imageResult.findUnique({
     where: { id: imageResultId },
     select: {
@@ -136,6 +177,10 @@ export async function processCensorTask(imageResultId: string): Promise<void> {
       outputPath: tempOutputPath,
     });
 
+    if (!(await shouldPersistForTaskContext(taskId))) {
+      return { persisted: false };
+    }
+
     const { censoredFilePath } = await persistCensoredImage(
       imageResult,
       tempOutputPath,
@@ -147,6 +192,8 @@ export async function processCensorTask(imageResultId: string): Promise<void> {
       selectedDetections: result.selectedDetections,
       censoredFilePath,
     });
+
+    return { persisted: true };
   } finally {
     await unlink(resolve(process.cwd(), tempOutputPath)).catch(() => {});
   }
