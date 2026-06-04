@@ -53,6 +53,39 @@ girl using her own hand to pull open her top, her hand pulling her shirt apart, 
 - 画幅：竖屏
 - 暴露：胸部
 
+### 背后脱内裤
+
+panty pull, pussy, from behind, looking back
+
+- 负面：
+- lora：Pulling_down_panties
+- 视角：单人
+- 服饰范围：脚以上
+- 画幅：竖屏
+- 暴露：内裤
+
+### 正面脱内裤
+
+panty pull, standing, pussy, facing viewer, teasing pose, playful pose
+
+- 负面：
+- lora：Pulling_down_panties
+- 视角：单人
+- 服饰范围：脚以上
+- 画幅：竖屏
+- 暴露：内裤
+
+### 抬腿脱内裤
+
+panty pull, standing, pussy, facing viewer, legs up, teasing pose, playful pose
+
+- 负面：
+- lora：Pulling_down_panties
+- 视角：单人
+- 服饰范围：脚以上
+- 画幅：竖屏
+- 暴露：内裤
+
 ## 抚摸
 
 ### 正面摸胸
@@ -712,38 +745,7 @@ thigh sex, sitting, thick thigh, penis between thighs, crossing her legs, crosse
 - 画幅：竖屏
 - 暴露：内裤+脱鞋
 
-### 背后脱内裤
-
-panty pull, pussy, from behind, looking back
-
-- 负面：
-- lora：Pulling_down_panties
-- 视角：单人
-- 服饰范围：脚以上
-- 画幅：竖屏
-- 暴露：内裤
-
-### 正面脱内裤
-
-panty pull, standing, pussy, facing viewer, teasing pose, playful pose
-
-- 负面：
-- lora：Pulling_down_panties
-- 视角：单人
-- 服饰范围：脚以上
-- 画幅：竖屏
-- 暴露：内裤
-
-### 抬腿脱内裤
-
-panty pull, standing, pussy, facing viewer, legs up, teasing pose, playful pose
-
-- 负面：
-- lora：Pulling_down_panties
-- 视角：单人
-- 服饰范围：脚以上
-- 画幅：竖屏
-- 暴露：内裤
+## 其他
 
 ### 骑乘前
 
