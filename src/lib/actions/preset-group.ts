@@ -35,6 +35,11 @@ export type PresetGroupMemberInput = {
   slotCategoryId?: string;
 };
 
+export type PresetGroupMemberReplacementInput = {
+  presetId: string;
+  variantId: string;
+};
+
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
@@ -460,6 +465,71 @@ export async function removeGroupMember(memberId: string) {
   });
   await syncPresetGroupInstances(existing.groupId, previousMembers);
   revalidatePath("/assets/presets");
+}
+
+export async function updateGroupMember(memberId: string, input: PresetGroupMemberReplacementInput) {
+  const existing = await prisma.presetGroupMember.findUnique({
+    where: { id: memberId },
+    select: {
+      groupId: true,
+      presetId: true,
+      subGroupId: true,
+      slotCategoryId: true,
+    },
+  });
+  if (!existing) return null;
+  if (!existing.presetId || existing.subGroupId) {
+    throw new Error("只能替换普通预制成员");
+  }
+
+  const [existingPreset, replacementVariant] = await Promise.all([
+    prisma.preset.findUnique({
+      where: { id: existing.presetId },
+      select: { categoryId: true },
+    }),
+    prisma.presetVariant.findFirst({
+      where: {
+        id: input.variantId,
+        presetId: input.presetId,
+        isActive: true,
+      },
+      include: { preset: { select: { categoryId: true } } },
+    }),
+  ]);
+
+  if (!existingPreset || !replacementVariant) {
+    throw new Error("替换预制或变体无效");
+  }
+  if (existingPreset.categoryId !== replacementVariant.preset.categoryId) {
+    throw new Error("只能替换为同分类预制");
+  }
+  if (existing.slotCategoryId && existing.slotCategoryId !== replacementVariant.preset.categoryId) {
+    throw new Error("只能替换为槽位分类内的预制");
+  }
+
+  const previousMembers = await resolveConcreteGroupMembers(existing.groupId);
+  const before = await groupMembersSnapshot(existing.groupId);
+  const updated = await prisma.presetGroupMember.update({
+    where: { id: memberId },
+    data: {
+      presetId: input.presetId,
+      variantId: input.variantId,
+      subGroupId: null,
+    },
+  });
+  const after = await groupMembersSnapshot(existing.groupId);
+  await recordPresetGroupChange({
+    groupId: existing.groupId,
+    dimension: "members",
+    title: "替换预制组成员",
+    before,
+    after,
+  });
+  await syncPresetGroupInstances(existing.groupId, previousMembers);
+  revalidatePath("/assets/presets");
+  revalidatePath("/assets/preset-groups");
+  revalidatePath(`/assets/preset-groups/${existing.groupId}`);
+  return updated;
 }
 
 export async function reorderPresetGroups(categoryId: string, ids: string[]) {

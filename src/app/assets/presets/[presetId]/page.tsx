@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { buildFolderScopedItemOrder, findNeighborItems } from "@/lib/folder-navigation";
 import { getPresetCategoriesWithPresets } from "@/lib/server-data";
 import { PresetEditClient } from "./preset-edit-client";
 
@@ -18,11 +19,24 @@ export default async function PresetEditPage({
     notFound();
   }
 
+  const orderedPresets = buildFolderScopedItemOrder(category.folders, category.presets);
+  const {
+    previous: previousPreset,
+    next: nextPreset,
+    index: presetPosition,
+    total: totalPresets,
+  } = findNeighborItems(orderedPresets, presetId);
+
   return (
     <PresetEditClient
+      key={preset.id}
       categories={categories}
       category={category}
       preset={preset}
+      previousPreset={previousPreset}
+      nextPreset={nextPreset}
+      presetPosition={presetPosition}
+      totalPresets={totalPresets}
     />
   );
 }

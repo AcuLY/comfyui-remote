@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ChevronLeft, ChevronRight, Images, Pencil } from "lucide-react";
+import { ArrowLeft, Images, Pencil } from "lucide-react";
+import { NeighborNavigation } from "@/components/neighbor-navigation";
 import { SectionCard } from "@/components/section-card";
 import { getSectionResults } from "@/lib/server-data";
 import { hrefWithFolderQuery } from "@/lib/folder-navigation";
@@ -55,38 +56,19 @@ export default async function SectionResultsPage({
             <Images className="size-3.5" />
             项目结果
           </Link>
-          {data.previousSection ? (
-            <Link
-              href={`/projects/${projectId}/sections/${data.previousSection.id}/results`}
-              data-section-nav="previous"
-              title={data.previousSection.name}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
-            >
-              <ChevronLeft className="size-3.5" />
-              上一节
-            </Link>
-          ) : (
-            <span className="inline-flex items-center gap-1.5 rounded-xl border border-white/5 px-3 py-2 text-xs text-zinc-600">
-              <ChevronLeft className="size-3.5" />
-              上一节
-            </span>
-          )}
-          {data.nextSection ? (
-            <Link
-              href={`/projects/${projectId}/sections/${data.nextSection.id}/results`}
-              data-section-nav="next"
-              title={data.nextSection.name}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
-            >
-              下一节
-              <ChevronRight className="size-3.5" />
-            </Link>
-          ) : (
-            <span className="inline-flex items-center gap-1.5 rounded-xl border border-white/5 px-3 py-2 text-xs text-zinc-600">
-              下一节
-              <ChevronRight className="size-3.5" />
-            </span>
-          )}
+          <NeighborNavigation
+            previousHref={data.previousSection ? `/projects/${projectId}/sections/${data.previousSection.id}/results` : null}
+            nextHref={data.nextSection ? `/projects/${projectId}/sections/${data.nextSection.id}/results` : null}
+            previousLabel="上一节"
+            nextLabel="下一节"
+            previousTitle={data.previousSection?.name}
+            nextTitle={data.nextSection?.name}
+            previousDataAttributes={data.previousSection ? { "data-section-nav": "previous" } : undefined}
+            nextDataAttributes={data.nextSection ? { "data-section-nav": "next" } : undefined}
+            controlClassName="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
+            disabledControlClassName="inline-flex items-center gap-1.5 rounded-xl border border-white/5 px-3 py-2 text-xs text-zinc-600"
+            iconClassName="size-3.5"
+          />
         </div>
       </div>
 

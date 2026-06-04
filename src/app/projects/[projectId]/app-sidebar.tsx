@@ -10,8 +10,6 @@ import {
   Save,
   LayoutList,
   LayoutGrid,
-  ChevronLeft,
-  ChevronRight,
   ImageIcon,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -23,6 +21,7 @@ import {
 import { hrefWithFolderQuery } from "@/lib/folder-navigation";
 import { exportProjectImages } from "@/app/projects/actions-export";
 import { BatchSizeQuickFill } from "@/components/batch-size-quick-fill";
+import { NeighborNavigation } from "@/components/neighbor-navigation";
 import {
   SidebarSectionNav,
   useSyncedSidebarContent,
@@ -155,44 +154,20 @@ export function AppSidebar({
             <h1 className="truncate text-[15px] font-semibold leading-5 text-sky-50">
               {projectTitle}
             </h1>
-            <div className="grid grid-cols-2 gap-1.5">
-              {previousProject ? (
-                <Link
-                  href={`/projects/${previousProject.id}`}
-                  title={`上一个项目：${previousProject.title}`}
-                  aria-label={`上一个项目：${previousProject.title}`}
-                  className="inline-flex h-8 min-w-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
-                >
-                  <ChevronLeft className="size-4 shrink-0" />
-                </Link>
-              ) : (
-                <span
-                  title="没有上一个项目"
-                  aria-label="没有上一个项目"
-                  className="inline-flex h-8 items-center justify-center rounded-lg border border-white/5 text-zinc-600"
-                >
-                  <ChevronLeft className="size-4" />
-                </span>
-              )}
-              {nextProject ? (
-                <Link
-                  href={`/projects/${nextProject.id}`}
-                  title={`下一个项目：${nextProject.title}`}
-                  aria-label={`下一个项目：${nextProject.title}`}
-                  className="inline-flex h-8 min-w-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
-                >
-                  <ChevronRight className="size-4 shrink-0" />
-                </Link>
-              ) : (
-                <span
-                  title="没有下一个项目"
-                  aria-label="没有下一个项目"
-                  className="inline-flex h-8 items-center justify-center rounded-lg border border-white/5 text-zinc-600"
-                >
-                  <ChevronRight className="size-4" />
-                </span>
-              )}
-            </div>
+            <NeighborNavigation
+              previousHref={previousProject ? `/projects/${previousProject.id}` : null}
+              nextHref={nextProject ? `/projects/${nextProject.id}` : null}
+              previousLabel={null}
+              nextLabel={null}
+              previousTitle={previousProject ? `上一个项目：${previousProject.title}` : "没有上一个项目"}
+              nextTitle={nextProject ? `下一个项目：${nextProject.title}` : "没有下一个项目"}
+              previousAriaLabel={previousProject ? `上一个项目：${previousProject.title}` : "没有上一个项目"}
+              nextAriaLabel={nextProject ? `下一个项目：${nextProject.title}` : "没有下一个项目"}
+              className="grid grid-cols-2 gap-1.5"
+              controlClassName="inline-flex h-8 min-w-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
+              disabledControlClassName="inline-flex h-8 items-center justify-center rounded-lg border border-white/5 text-zinc-600"
+              iconClassName="size-4 shrink-0"
+            />
           </div>
         )}
       </SidebarHeader>

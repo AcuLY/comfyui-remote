@@ -20,7 +20,8 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { CheckSquare, ChevronRight, GripVertical, Square, X } from "lucide-react";
+import { CheckSquare, ChevronRight, GripVertical, Repeat2, Square, X } from "lucide-react";
+import { PresetCascadePicker } from "@/components/preset-cascade-picker";
 import type {
   FolderItem,
   PresetCategoryFull,
@@ -32,6 +33,7 @@ import {
   deletePresetGroup,
   removeGroupMember,
   reorderGroupMembers,
+  updateGroupMember,
   updatePresetGroup,
 } from "@/lib/actions";
 import { toast } from "sonner";
@@ -89,6 +91,7 @@ export function SortableGroupCard({
     members: PresetGroupItem["members"];
   } | null>(null);
   const [expandedPreviewIds, setExpandedPreviewIds] = useState<Set<string>>(new Set());
+  const [openReplaceMemberId, setOpenReplaceMemberId] = useState<string | null>(null);
   const memberDndId = useId();
   const members = localMembers?.sourceMembers === group.members ? localMembers.members : group.members;
 
@@ -110,6 +113,16 @@ export function SortableGroupCard({
     for (const cat of categories) {
       for (const preset of cat.presets) {
         if (preset.variants.length > 0) map.set(preset.id, preset.variants);
+      }
+    }
+    return map;
+  }, [categories]);
+
+  const presetCategoryLookup = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const cat of categories) {
+      for (const preset of cat.presets) {
+        map.set(preset.id, cat.id);
       }
     }
     return map;
@@ -241,14 +254,21 @@ export function SortableGroupCard({
                 {members.map((m) => {
                   const variant = m.subGroupId ? null : getMemberVariant(m);
                   const isExpanded = expandedPreviewIds.has(m.id);
+                  const memberCategoryId = m.presetId ? presetCategoryLookup.get(m.presetId) : undefined;
                   return (
                     <SortableGroupMemberItem
                       key={m.id}
                       member={m}
                       variant={variant}
+                      categories={categories}
+                      memberCategoryId={memberCategoryId}
                       isExpanded={isExpanded}
                       onToggle={() => togglePreview(m.id)}
                       isPending={isPending}
+                      startTransition={startTransition}
+                      onRefresh={onRefresh}
+                      openReplaceMemberId={openReplaceMemberId}
+                      setOpenReplaceMemberId={setOpenReplaceMemberId}
                       onRemove={() => {
                         startTransition(async () => {
                           try {
@@ -307,17 +327,29 @@ type GroupMemberDisplay = PresetGroupItem["members"][number];
 function SortableGroupMemberItem({
   member,
   variant,
+  categories,
+  memberCategoryId,
   isExpanded,
   onToggle,
   isPending,
+  startTransition,
+  onRefresh,
+  openReplaceMemberId,
+  setOpenReplaceMemberId,
   onRemove,
   onNavigate,
 }: {
   member: GroupMemberDisplay;
   variant: PresetVariantItem | null;
+  categories: PresetCategoryFull[];
+  memberCategoryId?: string;
   isExpanded: boolean;
   onToggle: () => void;
   isPending: boolean;
+  startTransition: React.TransitionStartFunction;
+  onRefresh: () => void;
+  openReplaceMemberId: string | null;
+  setOpenReplaceMemberId: React.Dispatch<React.SetStateAction<string | null>>;
   onRemove: () => void;
   onNavigate?: () => void;
 }) {
@@ -381,6 +413,55 @@ function SortableGroupMemberItem({
             </button>
           )}
         </button>
+        {!member.subGroupId && member.presetId && member.variantId && (
+          <>
+            <button
+              type="button"
+              aria-label={`替换成员：${member.presetName ?? member.presetId}`}
+              title="替换成员"
+              disabled={isPending}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setOpenReplaceMemberId(openReplaceMemberId === member.id ? null : member.id);
+              }}
+              className="shrink-0 rounded p-0.5 text-zinc-600 hover:text-sky-400 disabled:opacity-50"
+            >
+              <Repeat2 className="size-3" />
+            </button>
+            {openReplaceMemberId === member.id && (
+              <div
+                className="w-36 shrink-0"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+              >
+                <PresetCascadePicker
+                  categories={categories}
+                  value={{ presetId: member.presetId, variantId: member.variantId }}
+                  onChange={(val) => {
+                    if (!val) return;
+                    startTransition(async () => {
+                      try {
+                        await updateGroupMember(member.id, { presetId: val.presetId, variantId: val.variantId });
+                        toast.success("成员已替换");
+                        setOpenReplaceMemberId(null);
+                        onRefresh();
+                      } catch (e: unknown) {
+                        toast.error(e instanceof Error ? e.message : "替换成员失败");
+                      }
+                    });
+                  }}
+                  lockedCategoryId={memberCategoryId}
+                  placeholder="替换..."
+                  disabled={isPending}
+                  defaultOpen
+                />
+              </div>
+            )}
+          </>
+        )}
         <button
           type="button"
           disabled={isPending}

@@ -3,12 +3,15 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
-import { ArrowLeft, Save, Trash2, X } from "lucide-react";
+import { ArrowLeft, Repeat2, Save, Trash2, X } from "lucide-react";
+import { NeighborNavigation } from "@/components/neighbor-navigation";
+import { PresetCascadePicker } from "@/components/preset-cascade-picker";
 import type { PresetCategoryFull, PresetGroupItem, PresetVariantItem } from "@/lib/server-data";
 import {
   addGroupMember,
   deletePresetGroup,
   removeGroupMember,
+  updateGroupMember,
   updatePresetGroup,
 } from "@/lib/actions";
 import { AddGroupMemberForm } from "../../presets/add-group-member-form";
@@ -36,17 +39,29 @@ export function PresetGroupEditClient({
   categoryId,
   group,
   groups,
+  previousGroup,
+  nextGroup,
+  groupPosition,
+  totalGroups,
 }: {
   categories: PresetCategoryFull[];
   categoryId: string;
   group: PresetGroupItem;
   groups: PresetGroupItem[];
+  previousGroup: PresetGroupItem | null;
+  nextGroup: PresetGroupItem | null;
+  groupPosition: number;
+  totalGroups: number;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [name, setName] = useState(group.name);
+  const [openReplaceMemberId, setOpenReplaceMemberId] = useState<string | null>(null);
   const backHref = groupListUrl(categoryId, group.id, group.folderId);
   const selectableGroups = groups.filter((item) => item.id !== group.id);
+  const previousGroupHref = previousGroup?.id ? `/assets/preset-groups/${previousGroup.id}` : null;
+  const nextGroupHref = nextGroup?.id ? `/assets/preset-groups/${nextGroup.id}` : null;
+  const groupPositionText = groupPosition >= 0 ? `${groupPosition + 1} / ${totalGroups}` : null;
 
   // Build variant lookup for preview card
   const variantLookup = useMemo(() => {
@@ -56,6 +71,16 @@ export function PresetGroupEditClient({
         for (const v of preset.variants) {
           map.set(v.id, v);
         }
+      }
+    }
+    return map;
+  }, [categories]);
+
+  const presetCategoryLookup = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const cat of categories) {
+      for (const preset of cat.presets) {
+        map.set(preset.id, cat.id);
       }
     }
     return map;
@@ -127,9 +152,19 @@ export function PresetGroupEditClient({
 
   return (
     <div className="space-y-4">
-      <Link href={backHref} className="inline-flex items-center gap-1.5 text-xs text-zinc-400 transition hover:text-zinc-200">
-        <ArrowLeft className="size-3.5" /> 返回预制列表
-      </Link>
+      <div className="flex items-center justify-between gap-3">
+        <Link href={backHref} className="inline-flex items-center gap-1.5 text-xs text-zinc-400 transition hover:text-zinc-200">
+          <ArrowLeft className="size-3.5" /> 返回预制列表
+        </Link>
+        <NeighborNavigation
+          previousHref={previousGroupHref}
+          nextHref={nextGroupHref}
+          previousTitle={previousGroup?.name}
+          nextTitle={nextGroup?.name}
+          positionText={groupPositionText}
+          className="justify-end"
+        />
+      </div>
       <div>
         <h1 className="text-lg font-semibold text-white">{group.name}</h1>
         <p className="mt-1 text-sm text-zinc-400">预制组 / {group.members.length} 个成员</p>
@@ -156,16 +191,68 @@ export function PresetGroupEditClient({
             <div className="space-y-1.5">
               {group.members.map((member) => {
                 const presetHref = member.presetId ? `/assets/presets/${member.presetId}` : null;
-                const inner = (
-                  <>
-                    <div className="min-w-0">
-                      <div className="truncate text-xs text-zinc-200">
-                        {member.subGroupName ?? member.presetName ?? "未知成员"}
-                      </div>
-                      <div className="truncate text-[10px] text-zinc-500">
-                        {member.subGroupName ? "子组" : member.variantName ? `变体：${member.variantName}` : "默认变体"}
-                      </div>
+                const memberCategoryId = member.presetId ? presetCategoryLookup.get(member.presetId) : undefined;
+                const title = (
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-xs text-zinc-200">
+                      {member.subGroupName ?? member.presetName ?? "未知成员"}
                     </div>
+                    <div className="truncate text-[10px] text-zinc-500">
+                      {member.subGroupName ? "子组" : member.variantName ? `变体：${member.variantName}` : "默认变体"}
+                    </div>
+                  </div>
+                );
+                const controls = (
+                  <>
+                    {!member.subGroupId && member.presetId && member.variantId && (
+                      <>
+                        <button
+                          type="button"
+                          aria-label={`替换成员：${member.presetName ?? member.presetId}`}
+                          title="替换成员"
+                          disabled={isPending}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setOpenReplaceMemberId(openReplaceMemberId === member.id ? null : member.id);
+                          }}
+                          className="rounded p-1 text-zinc-500 transition hover:bg-sky-500/10 hover:text-sky-400 disabled:opacity-50"
+                        >
+                          <Repeat2 className="size-3.5" />
+                        </button>
+                        {openReplaceMemberId === member.id && (
+                          <div
+                            className="w-44 shrink-0"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                            }}
+                          >
+                            <PresetCascadePicker
+                              categories={categories}
+                              value={{ presetId: member.presetId, variantId: member.variantId }}
+                              onChange={(val) => {
+                                if (!val) return;
+                                startTransition(async () => {
+                                  try {
+                                    await updateGroupMember(member.id, { presetId: val.presetId, variantId: val.variantId });
+                                    toast.success("成员已替换");
+                                    setOpenReplaceMemberId(null);
+                                    router.refresh();
+                                  } catch (error) {
+                                    toast.error(error instanceof Error ? error.message : "替换成员失败");
+                                  }
+                                });
+                              }}
+                              lockedCategoryId={memberCategoryId}
+                              placeholder="替换成员..."
+                              disabled={isPending}
+                              defaultOpen
+                            />
+                          </div>
+                        )}
+                      </>
+                    )}
                     <button
                       type="button"
                       disabled={isPending}
@@ -185,19 +272,22 @@ export function PresetGroupEditClient({
                   </>
                 );
                 return presetHref ? (
-                  <Link
+                  <div
                     key={member.id}
-                    href={presetHref}
                     className="flex items-center justify-between gap-2 rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2 transition hover:bg-white/[0.04] hover:border-white/10"
                   >
-                    {inner}
-                  </Link>
+                    <Link href={presetHref} className="min-w-0 flex-1">
+                      {title}
+                    </Link>
+                    {controls}
+                  </div>
                 ) : (
                   <div
                     key={member.id}
                     className="flex items-center justify-between gap-2 rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2"
                   >
-                    {inner}
+                    {title}
+                    {controls}
                   </div>
                 );
               })}

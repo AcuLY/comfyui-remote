@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useTransition } from "react";
 import { ArrowLeft } from "lucide-react";
+import { NeighborNavigation } from "@/components/neighbor-navigation";
 import type { PresetCategoryFull, PresetFull } from "@/lib/server-data";
 import {
   updatePreset,
@@ -153,15 +154,26 @@ export function PresetEditClient({
   categories,
   category,
   preset,
+  previousPreset,
+  nextPreset,
+  presetPosition,
+  totalPresets,
 }: {
   categories: PresetCategoryFull[];
   category: PresetCategoryFull;
   preset: PresetFull;
+  previousPreset: PresetFull | null;
+  nextPreset: PresetFull | null;
+  presetPosition: number;
+  totalPresets: number;
 }) {
   const router = useRouter();
   const [isPending, startRefreshTransition] = useTransition();
   const savedSnapshotRef = useRef(createSavedSnapshot(preset));
   const backHref = listUrl(category, preset);
+  const previousPresetHref = previousPreset?.id ? `/assets/presets/${previousPreset.id}` : null;
+  const nextPresetHref = nextPreset?.id ? `/assets/presets/${nextPreset.id}` : null;
+  const presetPositionText = presetPosition >= 0 ? `${presetPosition + 1} / ${totalPresets}` : null;
 
   useEffect(() => {
     savedSnapshotRef.current = createSavedSnapshot(preset);
@@ -211,9 +223,19 @@ export function PresetEditClient({
 
   return (
     <div className="mx-auto w-full max-w-2xl min-w-0 space-y-4">
-      <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => router.push(backHref)} className="inline-flex items-center gap-1.5 text-xs text-zinc-400 transition hover:text-zinc-200">
-        <ArrowLeft className="size-3.5" /> 返回预制列表
-      </button>
+      <div className="flex items-center justify-between gap-3">
+        <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => router.push(backHref)} className="inline-flex items-center gap-1.5 text-xs text-zinc-400 transition hover:text-zinc-200">
+          <ArrowLeft className="size-3.5" /> 返回预制列表
+        </button>
+        <NeighborNavigation
+          previousHref={previousPresetHref}
+          nextHref={nextPresetHref}
+          previousTitle={previousPreset?.name}
+          nextTitle={nextPreset?.name}
+          positionText={presetPositionText}
+          className="justify-end"
+        />
+      </div>
       <div>
         <h1 className="text-lg font-semibold text-white">{preset.name}</h1>
         <p className="mt-1 text-sm text-zinc-400">{category.name} / {preset.variants.length} 个变体</p>

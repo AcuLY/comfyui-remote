@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, Download, Package, Trash2, Unlink, ClipboardCopy, ExternalLink } from "lucide-react";
+import { ArrowLeft, ChevronDown, Download, Package, Trash2, Unlink, ClipboardCopy, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { flattenGroup, resolveTemplatePresetImports, updateProjectTemplateSection } from "@/lib/actions";
 import { AspectRatioPicker } from "@/components/aspect-ratio-picker";
@@ -13,6 +13,7 @@ import { KSamplerPanel, parseInitialKSampler } from "@/components/ksampler-panel
 import { CheckpointCascadePicker } from "@/components/checkpoint-cascade-picker";
 import { ImportPresetPanel, type ImportCategory } from "@/components/section-editor";
 import { LoraListEditor } from "@/components/lora-list-editor";
+import { NeighborNavigation } from "@/components/neighbor-navigation";
 import { TemplatePromptBlockEditor, type TemplateBlockData } from "@/components/template-prompt-block-editor";
 import { generateLoraEntryId, type LoraEntry, DEFAULT_KSAMPLER1, DEFAULT_KSAMPLER2, type KSamplerParams } from "@/lib/lora-types";
 import { hrefWithFolderQuery } from "@/lib/folder-navigation";
@@ -650,27 +651,23 @@ export function TemplateSectionDetailClient({
         >
           <ArrowLeft className="size-4" /> 返回模板
         </Link>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            disabled={previousSectionIndex === null}
-            onClick={() => navigateToSection(previousSectionIndex)}
-            className="rounded-lg border border-white/10 bg-white/[0.04] p-1.5 text-zinc-400 transition hover:bg-white/[0.08] disabled:opacity-30"
-          >
-            <ChevronLeft className="size-4" />
-          </button>
-          <span className="text-xs text-zinc-400">
-            {sectionPosition + 1} / {totalSections}
-          </span>
-          <button
-            type="button"
-            disabled={nextSectionIndex === null}
-            onClick={() => navigateToSection(nextSectionIndex)}
-            className="rounded-lg border border-white/10 bg-white/[0.04] p-1.5 text-zinc-400 transition hover:bg-white/[0.08] disabled:opacity-30"
-          >
-            <ChevronRight className="size-4" />
-          </button>
-        </div>
+        <NeighborNavigation
+          previousOnClick={() => navigateToSection(previousSectionIndex)}
+          nextOnClick={() => navigateToSection(nextSectionIndex)}
+          previousDisabled={previousSectionIndex === null}
+          nextDisabled={nextSectionIndex === null}
+          previousLabel={null}
+          nextLabel={null}
+          previousTitle="上一节"
+          nextTitle="下一节"
+          previousAriaLabel="上一节"
+          nextAriaLabel="下一节"
+          positionText={`${sectionPosition + 1} / ${totalSections}`}
+          className="gap-2"
+          controlClassName="rounded-lg border border-white/10 bg-white/[0.04] p-1.5 text-zinc-400 transition hover:bg-white/[0.08] disabled:opacity-30"
+          disabledControlClassName="rounded-lg border border-white/10 bg-white/[0.04] p-1.5 text-zinc-400 opacity-30"
+          iconClassName="size-4"
+        />
       </div>
 
       {/* Section name */}

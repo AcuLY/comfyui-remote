@@ -10,6 +10,14 @@ export type FolderNavigationItem = {
   folderId: string | null;
 };
 
+export type NeighborItems<TItem> = {
+  previous: TItem | null;
+  current: TItem | null;
+  next: TItem | null;
+  index: number;
+  total: number;
+};
+
 export function buildFolderScopedItemOrder<TItem extends FolderNavigationItem>(
   folders: FolderNavigationFolder[],
   items: TItem[],
@@ -55,6 +63,32 @@ export function buildFolderScopedItemOrder<TItem extends FolderNavigationItem>(
 
   appendFolderContents(null);
   return orderedItems;
+}
+
+export function findNeighborItems<TItem extends { id: string }>(
+  items: TItem[],
+  currentId: string,
+): NeighborItems<TItem> {
+  const index = items.findIndex((item) => item.id === currentId);
+  const total = items.length;
+
+  if (index < 0) {
+    return {
+      previous: null,
+      current: null,
+      next: null,
+      index: -1,
+      total,
+    };
+  }
+
+  return {
+    previous: index > 0 ? items[index - 1] : null,
+    current: items[index],
+    next: index < total - 1 ? items[index + 1] : null,
+    index,
+    total,
+  };
 }
 
 export function firstSearchParam(value: string | string[] | undefined): string | null {

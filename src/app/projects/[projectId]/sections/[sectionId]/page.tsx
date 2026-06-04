@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ImageIcon, ChevronLeft, ChevronRight, Download } from "lucide-react";
+import { ArrowLeft, ImageIcon, Download } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { buildFolderScopedItemOrder, hrefWithFolderQuery } from "@/lib/folder-navigation";
 import { toImageUrl } from "@/lib/image-url";
+import { NeighborNavigation } from "@/components/neighbor-navigation";
 import { SectionEditor } from "@/components/section-editor";
 import { SectionParamsForm } from "./section-params-form";
 import { SectionNameEditor } from "./section-name-editor";
@@ -295,34 +296,21 @@ export default async function SectionEditPage({
               >
                 <ArrowLeft className="size-4" /> 返回
               </Link>
-              <div className="flex min-w-0 items-center gap-1.5">
-                {prevSection ? (
+              <NeighborNavigation
+                previousHref={prevSection ? `/projects/${projectId}/sections/${prevSection.id}` : null}
+                nextHref={nextSection ? `/projects/${projectId}/sections/${nextSection.id}` : null}
+                previousLabel="上一节"
+                nextLabel="下一节"
+                renderLink={({ href, className, children }) => (
                   <SectionSwitchHeaderLink
                     projectId={projectId}
-                    href={`/projects/${projectId}/sections/${prevSection.id}`}
-                    className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
+                    href={href}
+                    className={className}
                   >
-                    <ChevronLeft className="size-3" /> 上一节
+                    {children}
                   </SectionSwitchHeaderLink>
-                ) : (
-                  <span className="inline-flex items-center gap-1 rounded-lg border border-white/5 px-2 py-1 text-xs text-zinc-600">
-                    <ChevronLeft className="size-3" /> 上一节
-                  </span>
                 )}
-                {nextSection ? (
-                  <SectionSwitchHeaderLink
-                    projectId={projectId}
-                    href={`/projects/${projectId}/sections/${nextSection.id}`}
-                    className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
-                  >
-                    下一节 <ChevronRight className="size-3" />
-                  </SectionSwitchHeaderLink>
-                ) : (
-                  <span className="inline-flex items-center gap-1 rounded-lg border border-white/5 px-2 py-1 text-xs text-zinc-600">
-                    下一节 <ChevronRight className="size-3" />
-                  </span>
-                )}
-              </div>
+              />
             </div>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
