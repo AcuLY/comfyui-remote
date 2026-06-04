@@ -290,39 +290,50 @@ export function ReviewGrid({
       const imageId = lightboxImage.id;
       const removedIndex = lightboxIndex ?? 0;
       const imageCount = reviewImages.length;
+      const previousImages = reviewImages;
+      const previousSelected = selected;
+      const previousLastAction = lastAction;
       setReviewingAction(action);
+
+      if (action === "keep") {
+        markImagesKept([imageId]);
+        // Auto-advance to next image after keep (matching section results behavior)
+        if (imageCount > 1) {
+          setLightboxIndex((idx) =>
+            idx !== null && idx < imageCount - 1 ? idx + 1 : idx,
+          );
+        }
+      } else {
+        removeImages([imageId]);
+        if (imageCount <= 1) {
+          setLightboxIndex(null);
+        } else {
+          setLightboxIndex(Math.min(removedIndex, imageCount - 2));
+        }
+      }
+      removeSelectedIds([imageId]);
+      setLastAction(action);
 
       startTransition(async () => {
         try {
           if (action === "keep") {
             await keepImages([imageId]);
-            markImagesKept([imageId]);
-            // Auto-advance to next image after keep (matching section results behavior)
-            if (imageCount > 1) {
-              setLightboxIndex((idx) =>
-                idx !== null && idx < imageCount - 1 ? idx + 1 : idx,
-              );
-            }
           } else {
             await trashImages([imageId]);
-            removeImages([imageId]);
-            if (imageCount <= 1) {
-              setLightboxIndex(null);
-            } else {
-              setLightboxIndex(Math.min(removedIndex, imageCount - 2));
-            }
           }
-          removeSelectedIds([imageId]);
-          setLastAction(action);
           router.refresh();
         } catch (error) {
+          setReviewImages(previousImages);
+          setSelected(previousSelected);
+          setLastAction(previousLastAction);
+          setLightboxIndex(removedIndex);
           toast.error(error instanceof Error ? error.message : "审核失败");
         } finally {
           setReviewingAction(null);
         }
       });
     },
-    [lightboxBusy, lightboxImage, lightboxIndex, reviewImages.length, router],
+    [lastAction, lightboxBusy, lightboxImage, lightboxIndex, reviewImages, router, selected],
   );
 
   return (

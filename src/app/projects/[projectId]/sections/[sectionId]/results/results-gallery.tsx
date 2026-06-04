@@ -170,44 +170,54 @@ export function ResultsGalleryProvider({
 
       const imageId = current.id;
       const imageCount = allImages.length;
+      const previousImages = allImages;
+      const previousIndex = currentIndex;
+      const previousOpen = open;
       setReviewingAction(action);
+
+      if (action === "keep") {
+        setAllImages((prev) =>
+          prev.map((image) =>
+            image.id === imageId ? { ...image, status: "kept" } : image,
+          ),
+        );
+        if (autoNext && imageCount > 1) {
+          goNext();
+        }
+      } else {
+        // Record trashed image ID for undo
+        const setLastTrashedIds = (window as unknown as Record<string, (ids: string[]) => void>).__resultsGridSetLastTrashedIds;
+        if (setLastTrashedIds) {
+          setLastTrashedIds([imageId]);
+        }
+
+        setAllImages((prev) => prev.filter((image) => image.id !== imageId));
+        if (imageCount <= 1) {
+          setOpen(false);
+        } else {
+          setCurrentIndex(Math.min(currentIndex, imageCount - 2));
+        }
+      }
 
       startTransition(async () => {
         try {
           if (action === "keep") {
             await keepImages([imageId]);
-            setAllImages((prev) =>
-              prev.map((image) =>
-                image.id === imageId ? { ...image, status: "kept" } : image,
-              ),
-            );
-            if (autoNext && imageCount > 1) {
-              goNext();
-            }
           } else {
-            // Record trashed image ID for undo
-            const setLastTrashedIds = (window as unknown as Record<string, (ids: string[]) => void>).__resultsGridSetLastTrashedIds;
-            if (setLastTrashedIds) {
-              setLastTrashedIds([imageId]);
-            }
-
             await trashImages([imageId]);
-            setAllImages((prev) => prev.filter((image) => image.id !== imageId));
-            if (imageCount <= 1) {
-              setOpen(false);
-            } else {
-              setCurrentIndex(Math.min(currentIndex, imageCount - 2));
-            }
           }
           router.refresh();
         } catch (error) {
+          setAllImages(previousImages);
+          setCurrentIndex(previousIndex);
+          setOpen(previousOpen);
           toast.error(error instanceof Error ? error.message : "审核失败");
         } finally {
           setReviewingAction(null);
         }
       });
     },
-    [allImages.length, busy, current, currentIndex, router, goNext],
+    [allImages, busy, current, currentIndex, goNext, open, router],
   );
 
   useEffect(() => {
