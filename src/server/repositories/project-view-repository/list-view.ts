@@ -91,7 +91,7 @@ export async function listProjects(): Promise<ProjectCard[]> {
       latestRunStatus: latestRun?.status as ProjectCard["latestRunStatus"],
       latestImages: (latestRun?.images ?? []).map((img) => ({
         id: img.id,
-        src: (toImageUrl(img.thumbPath ?? img.filePath) ?? "") + "?w=400&q=75",
+        src: toImageUrl(img.thumbPath ?? img.filePath) ?? "",
         status: img.reviewStatus as ReviewStatus,
       })),
       latestImageCount: latestRun?._count.images ?? 0,

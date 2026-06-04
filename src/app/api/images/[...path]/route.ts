@@ -4,16 +4,11 @@
  * Serves local image files from the data/images directory.
  * This allows the frontend to display worker-generated images
  * using paths like /api/images/job-slug/run-id/raw/001.png
- *
- * Optional query params:
- *   ?q=<1-100>  — compress to JPEG at the given quality (default: raw)
- *   ?w=<pixels> — resize to fit within this width (height scales proportionally)
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { readFile, stat } from "node:fs/promises";
 import path from "path";
-import sharp from "sharp";
 
 const OUTPUT_BASE =
   process.env.OUTPUT_BASE_PATH ??
@@ -39,7 +34,7 @@ function isSafePathSegment(segment: string) {
 }
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }
 ) {
   const { path: segments } = await params;
@@ -82,31 +77,6 @@ export async function GET(
 
     const rawData = await readFile(resolved);
 
-    // Check for compression / resize query params
-    const qParam = request.nextUrl.searchParams.get("q");
-    const wParam = request.nextUrl.searchParams.get("w");
-    const quality = qParam ? Math.min(100, Math.max(1, Number(qParam) || 80)) : null;
-    const width = wParam ? Math.max(1, Number(wParam) || 0) : null;
-
-    if (quality !== null || width !== null) {
-      // Use sharp to compress / resize
-      let pipeline = sharp(rawData).rotate(); // auto-rotate based on EXIF
-      if (width) {
-        pipeline = pipeline.resize({ width, withoutEnlargement: true });
-      }
-      const outputBuffer = await pipeline
-        .jpeg({ quality: quality ?? 80 })
-        .toBuffer();
-
-      return new NextResponse(new Uint8Array(outputBuffer), {
-        headers: {
-          "Content-Type": "image/jpeg",
-          "Cache-Control": "public, max-age=86400, immutable",
-        },
-      });
-    }
-
-    // Serve raw file as-is
     const mimeMap: Record<string, string> = {
       ".png": "image/png",
       ".jpg": "image/jpeg",

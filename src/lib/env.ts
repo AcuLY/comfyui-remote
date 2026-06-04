@@ -45,6 +45,7 @@ export const env = {
   characterLoraArtifactRoot: process.env.CHARACTER_LORA_ARTIFACT_ROOT ?? "",
   autoCensorModelPath: process.env.AUTO_CENSOR_MODEL_PATH ?? "",
   autoCensorPythonCmd: process.env.AUTO_CENSOR_PYTHON_CMD ?? "",
+  autoCensorConcurrency: readPositiveIntegerEnv("AUTO_CENSOR_CONCURRENCY", 4),
 
   // ComfyUI 进程管理
   comfyLaunchCmd: process.env.COMFY_LAUNCH_CMD ?? "",

@@ -19,82 +19,90 @@ async function recoverStaleCensoringTasks(): Promise<void> {
   }
 }
 
+type QueuedCensoringTask = {
+  id: string;
+  imageResultId: string;
+};
+
+async function processQueuedTask(task: QueuedCensoringTask): Promise<boolean> {
+  const claimed = await prisma.censoringTask.updateMany({
+    where: { id: task.id, status: "queued" },
+    data: {
+      status: "running",
+      startedAt: new Date(),
+      finishedAt: null,
+      errorMessage: null,
+    },
+  });
+
+  if (claimed.count === 0) return false;
+
+  try {
+    const result = await processCensorTask({
+      imageResultId: task.imageResultId,
+      taskId: task.id,
+    });
+
+    if (!result.persisted) {
+      log.info("Skipping completion update for inactive censoring task", {
+        taskId: task.id,
+      });
+      return true;
+    }
+
+    const updated = await prisma.censoringTask.updateMany({
+      where: { id: task.id, status: "running" },
+      data: { status: "done", finishedAt: new Date(), errorMessage: null },
+    });
+
+    if (updated.count === 0) {
+      log.info("Censoring task changed state before completion update", {
+        taskId: task.id,
+      });
+      return true;
+    }
+
+    log.info("Censoring task completed", { taskId: task.id });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const updated = await prisma.censoringTask.updateMany({
+      where: { id: task.id, status: "running" },
+      data: {
+        status: "failed",
+        errorMessage: message,
+        finishedAt: new Date(),
+      },
+    });
+
+    if (updated.count === 0) {
+      log.info("Censoring task changed state before failure update", {
+        taskId: task.id,
+        error: message,
+      });
+      return true;
+    }
+
+    log.error("Censoring task failed", { taskId: task.id, error: message });
+  }
+
+  return true;
+}
+
 async function processQueuedTasks(): Promise<number> {
   const tasks = await prisma.censoringTask.findMany({
     where: { status: "queued" },
     orderBy: { createdAt: "asc" },
+    take: env.autoCensorConcurrency,
     select: { id: true, imageResultId: true },
   });
 
   if (tasks.length === 0) return 0;
 
-  let processed = 0;
+  const results = await Promise.all(
+    tasks.map((task) => processQueuedTask(task)),
+  );
 
-  for (const task of tasks) {
-    const claimed = await prisma.censoringTask.updateMany({
-      where: { id: task.id, status: "queued" },
-      data: {
-        status: "running",
-        startedAt: new Date(),
-        finishedAt: null,
-        errorMessage: null,
-      },
-    });
-
-    if (claimed.count === 0) continue;
-
-    processed++;
-
-    try {
-      const result = await processCensorTask({
-        imageResultId: task.imageResultId,
-        taskId: task.id,
-      });
-
-      if (!result.persisted) {
-        log.info("Skipping completion update for inactive censoring task", {
-          taskId: task.id,
-        });
-        continue;
-      }
-
-      const updated = await prisma.censoringTask.updateMany({
-        where: { id: task.id, status: "running" },
-        data: { status: "done", finishedAt: new Date(), errorMessage: null },
-      });
-
-      if (updated.count === 0) {
-        log.info("Censoring task changed state before completion update", {
-          taskId: task.id,
-        });
-        continue;
-      }
-
-      log.info("Censoring task completed", { taskId: task.id });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      const updated = await prisma.censoringTask.updateMany({
-        where: { id: task.id, status: "running" },
-        data: {
-          status: "failed",
-          errorMessage: message,
-          finishedAt: new Date(),
-        },
-      });
-
-      if (updated.count === 0) {
-        log.info("Censoring task changed state before failure update", {
-          taskId: task.id,
-          error: message,
-        });
-        continue;
-      }
-
-      log.error("Censoring task failed", { taskId: task.id, error: message });
-    }
-  }
-
-  return processed;
+  return results.filter(Boolean).length;
 }
 
 async function waitForWakeOrTimeout(): Promise<void> {

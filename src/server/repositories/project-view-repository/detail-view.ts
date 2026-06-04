@@ -222,7 +222,7 @@ export async function getProjectDetail(projectId: string): Promise<ProjectDetail
         negativeBlockCount,
         latestImages: (latestRun?.images ?? []).map((img) => ({
           id: img.id,
-          src: (toImageUrl(img.thumbPath ?? img.filePath) ?? "") + "?w=400&q=75",
+          src: toImageUrl(img.thumbPath ?? img.filePath) ?? "",
           status: img.reviewStatus,
         })),
         latestImageCount: latestRun?._count.images ?? 0,
@@ -413,14 +413,14 @@ export async function getSectionResults(sectionId: string): Promise<SectionResul
       .filter((img) => img.reviewStatus !== "trashed")
       .map((img) => ({
         id: img.id,
-        src: (toImageUrl(img.thumbPath ?? img.filePath) ?? "") + "?w=400&q=75",
-        full: (toImageUrl(img.filePath) ?? "") + "?w=1920&q=85",
+        src: toImageUrl(img.thumbPath ?? img.filePath) ?? "",
+        full: toImageUrl(img.filePath) ?? "",
         status: img.reviewStatus as ReviewStatus,
         featured: img.featured,
         featured2: img.featured2,
         cover: img.id === pos.project.coverImageId,
-        censoredSrc: img.censoredThumbPath ? (toImageUrl(img.censoredThumbPath) ?? "") + "?w=400&q=75" : null,
-        censoredFull: img.censoredFilePath ? (toImageUrl(img.censoredFilePath) ?? "") + "?w=1920&q=85" : null,
+        censoredSrc: img.censoredThumbPath ? toImageUrl(img.censoredThumbPath) ?? "" : null,
+        censoredFull: img.censoredFilePath ? toImageUrl(img.censoredFilePath) ?? "" : null,
         censoredAt: img.censoredAt ? img.censoredAt.toISOString() : null,
       }));
 
@@ -528,16 +528,16 @@ export async function getProjectResults(projectId: string): Promise<ProjectResul
 
             return {
               id: img.id,
-              src: (toImageUrl(img.thumbPath ?? img.filePath) ?? "") + "?w=400&q=75",
-              full: (toImageUrl(img.filePath) ?? "") + "?w=1920&q=85",
+              src: toImageUrl(img.thumbPath ?? img.filePath) ?? "",
+              full: toImageUrl(img.filePath) ?? "",
               status: img.reviewStatus as ReviewStatus,
               featured: img.featured,
               featured2: img.featured2,
               cover: img.id === project.coverImageId,
               width: img.width,
               height: img.height,
-              censoredSrc: img.censoredThumbPath ? (toImageUrl(img.censoredThumbPath) ?? "") + "?w=400&q=75" : null,
-              censoredFull: img.censoredFilePath ? (toImageUrl(img.censoredFilePath) ?? "") + "?w=1920&q=85" : null,
+              censoredSrc: img.censoredThumbPath ? toImageUrl(img.censoredThumbPath) ?? "" : null,
+              censoredFull: img.censoredFilePath ? toImageUrl(img.censoredFilePath) ?? "" : null,
               censoredAt: img.censoredAt ? img.censoredAt.toISOString() : null,
             };
           });

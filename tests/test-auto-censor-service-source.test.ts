@@ -73,6 +73,32 @@ test("censoring executor passes task context and skips done update for non-persi
   assert.ok(skipIndex < doneUpdateIndex, "executor must skip before done update");
 });
 
+test("auto-censor queue concurrency is configurable and defaults to four workers", () => {
+  const envSource = readSource("src/lib/env.ts");
+  const exampleEnv = readSource(".env.example");
+
+  assert.match(
+    envSource,
+    /autoCensorConcurrency:\s*readPositiveIntegerEnv\("AUTO_CENSOR_CONCURRENCY",\s*4\)/,
+  );
+  assert.match(exampleEnv, /AUTO_CENSOR_CONCURRENCY="4"/);
+});
+
+test("censoring executor claims a configured batch and dispatches tasks concurrently", () => {
+  const source = readSource("src/server/services/censoring-executor.ts");
+
+  assert.match(source, /take:\s*env\.autoCensorConcurrency/);
+  assert.match(source, /Promise\.all\(\s*tasks\.map\(\(task\)\s*=>/);
+  assert.match(
+    source,
+    /updateMany\(\{[\s\S]*where:\s*\{\s*id:\s*task\.id,\s*status:\s*"queued"\s*\}/,
+  );
+  assert.doesNotMatch(
+    source,
+    /for\s*\(const task of tasks\)\s*\{[\s\S]*?await\s+processCensorTask/,
+  );
+});
+
 test("manual selected-image censoring keeps re-censor flexibility without stale re-censor comment", () => {
   const source = readSource("src/app/projects/[projectId]/sections/[sectionId]/results/results-grid.tsx");
 

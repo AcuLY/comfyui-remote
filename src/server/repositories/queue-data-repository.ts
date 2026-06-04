@@ -197,7 +197,7 @@ function serializeQueueRun(
     staleImageCount: run.images.length - availableImages.length,
     thumbnailUrls: availableImages
       .slice(0, 8)
-      .map((img) => (toImageUrl(img.displayPath) ?? "") + "?w=400&q=75")
+      .map((img) => toImageUrl(img.displayPath) ?? "")
       .filter(Boolean),
   };
 }
@@ -424,8 +424,8 @@ export async function getReviewGroup(runId: string): Promise<ReviewGroup | null>
 
   const images: ReviewImage[] = availableImages.map((img, index) => ({
     id: img.id,
-    src: (toImageUrl(img.displayPath) ?? "") + "?w=400&q=75",
-    full: (toImageUrl(img.filePath) ?? "") + "?w=1920&q=85",
+    src: toImageUrl(img.displayPath) ?? "",
+    full: toImageUrl(img.filePath) ?? "",
     label: `${index + 1}`.padStart(2, "0"),
     status: img.reviewStatus as ReviewStatus,
     featured: img.featured,
