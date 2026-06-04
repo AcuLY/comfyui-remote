@@ -19,7 +19,6 @@ import {
   submitComfyPrompt,
   pollComfyPromptHistory,
   extractOutputImages,
-  extractLatentOutputs,
   extractOutputDir,
   extractExecutionMeta,
   getComfyQueuePosition,
@@ -29,7 +28,6 @@ import {
 } from "@/server/services/comfyui-service";
 import {
   persistComfyOutputImages,
-  downloadAndPersistLatent,
   removeManagedRunOutput,
   type PersistedRunOutput,
 } from "@/server/services/image-result-service";
@@ -384,20 +382,6 @@ export async function pollRunCompletion(runId: string): Promise<void> {
         outputImages,
       );
 
-      // Download and persist latent file (from SaveLatent node 900)
-      let latentFilePath: string | null = null;
-      const latentOutputs = extractLatentOutputs(historyEntry);
-      if (latentOutputs.length > 0) {
-        try {
-          latentFilePath = await downloadAndPersistLatent(run, apiUrl, latentOutputs[0]);
-          runLog.info("Saved latent file", { latentFilePath });
-        } catch (latentError) {
-          runLog.warn("Failed to save latent file (non-fatal)", {
-            error: latentError instanceof Error ? latentError.message : String(latentError),
-          });
-        }
-      }
-
       // Save workflow JSON alongside images
       if (persistedOutput.outputDir) {
         const fs = await import("fs/promises");
@@ -413,7 +397,6 @@ export async function pollRunCompletion(runId: string): Promise<void> {
         submittedPrompt: apiPrompt,
         outputDir: persistedOutput.outputDir,
         comfyOutputSubfolder: extractOutputDir(outputImages),
-        latentFilePath,
         images: persistedOutput.images,
       });
 

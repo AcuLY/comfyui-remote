@@ -2,56 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { env } from "@/lib/env";
 import { wakeUpCensoringProcessor } from "@/server/services/censoring-executor";
-import {
-  clearComfyQueueSnapshotCache,
-  deleteComfyQueueItems,
-  getComfyQueuePosition,
-  interruptComfyPrompt,
-} from "@/server/services/comfyui-service";
-import {
-  CENSORING_CANCELLABLE_STATUSES,
-  selectCensoringPromptIds,
-} from "@/lib/actions/cancellation-helpers";
+import { CENSORING_CANCELLABLE_STATUSES } from "@/lib/actions/cancellation-helpers";
 
 const CENSORING_ACTIVE_STATUSES = [...CENSORING_CANCELLABLE_STATUSES];
-
-async function cancelCensoringComfyPrompts(promptIds: string[]) {
-  if (promptIds.length === 0) return;
-
-  const promptIdsToDelete: string[] = [];
-  let shouldInterrupt = false;
-
-  clearComfyQueueSnapshotCache();
-  try {
-    for (const promptId of promptIds) {
-      const position = await getComfyQueuePosition(env.comfyApiUrl, promptId);
-      if (position === "running") {
-        shouldInterrupt = true;
-      } else if (position === "pending") {
-        promptIdsToDelete.push(promptId);
-      }
-    }
-
-    const failures: string[] = [];
-    if (promptIdsToDelete.length > 0) {
-      await deleteComfyQueueItems(env.comfyApiUrl, promptIdsToDelete).catch((error) => {
-        failures.push(error instanceof Error ? error.message : String(error));
-      });
-    }
-    if (shouldInterrupt) {
-      await interruptComfyPrompt(env.comfyApiUrl).catch((error) => {
-        failures.push(error instanceof Error ? error.message : String(error));
-      });
-    }
-    if (failures.length > 0) {
-      throw new Error("one or more ComfyUI cancellation requests failed");
-    }
-  } finally {
-    clearComfyQueueSnapshotCache();
-  }
-}
 
 export type CensoringPreview = {
   totalKept: number;
@@ -133,7 +87,7 @@ export async function censorImage(
   try {
     const image = await prisma.imageResult.findUnique({
       where: { id: imageResultId },
-      include: { run: { select: { id: true, projectId: true, latentFilePath: true } } },
+      include: { run: { select: { id: true, projectId: true } } },
     });
 
     if (!image) {
@@ -142,10 +96,6 @@ export async function censorImage(
 
     if (image.reviewStatus !== "kept" && image.reviewStatus !== "pending") {
       return { success: false, message: "只能对已保留或待审核的图片执行打码" };
-    }
-
-    if (!image.run.latentFilePath) {
-      return { success: false, message: "此图片不支持打码（无潜空间文件）" };
     }
 
     // Check if there's already an active task for this image
@@ -188,7 +138,7 @@ export async function censorProjectImages(projectId: string, mode: "all" | "kept
     // Find all images without censoring that don't have an active task
     const images = await prisma.imageResult.findMany({
       where: {
-        run: { projectId, latentFilePath: { not: null } },
+        run: { projectId },
         reviewStatus: { in: reviewStatuses as ("kept" | "pending")[] },
         censoredAt: null,
         censoringTasks: {
@@ -201,7 +151,7 @@ export async function censorProjectImages(projectId: string, mode: "all" | "kept
     // Also find images with only failed/cancelled tasks (allow retry)
     const imagesWithFailedTasks = await prisma.imageResult.findMany({
       where: {
-        run: { projectId, latentFilePath: { not: null } },
+        run: { projectId },
         reviewStatus: { in: reviewStatuses as ("kept" | "pending")[] },
         censoredAt: null,
         censoringTasks: {
@@ -255,23 +205,6 @@ export async function cancelCensoringTasks(projectId: string): Promise<{
   cancelledCount: number;
 }> {
   try {
-    const activeTasks = await prisma.censoringTask.findMany({
-      where: {
-        projectId,
-        status: { in: CENSORING_ACTIVE_STATUSES },
-      },
-      select: { errorMessage: true },
-    });
-    const promptIds = selectCensoringPromptIds(activeTasks);
-    try {
-      await cancelCensoringComfyPrompts(promptIds);
-    } catch (error) {
-      console.warn(
-        "Failed to cancel censoring prompts in ComfyUI:",
-        error instanceof Error ? error.message : String(error),
-      );
-    }
-
     const result = await prisma.censoringTask.updateMany({
       where: {
         projectId,
