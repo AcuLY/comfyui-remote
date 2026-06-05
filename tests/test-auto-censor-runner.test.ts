@@ -36,7 +36,15 @@ test("auto-censor documentation names model path and python command env vars", (
 });
 
 type RunnerCaseOptions = {
-  mode?: "success" | "nonzero" | "invalid-json" | "array-json" | "missing-stats" | "non-finite-stats" | "timeout";
+  mode?:
+    | "success"
+    | "nonzero"
+    | "invalid-json"
+    | "array-json"
+    | "missing-stats"
+    | "non-finite-stats"
+    | "timeout"
+    | "batch-item-error";
   harnessSafetyTimeoutMs?: number;
   modelPathEnv?: string | null;
   modelExists?: boolean;
@@ -50,6 +58,7 @@ type RunnerCaseOptions = {
 type RunnerCaseResult = {
   result: { ok: true; result: unknown } | { ok: false; message: string };
   args?: string[];
+  manifest?: unknown;
   outputDirExists: boolean;
   paths: {
     modelPath: string;
@@ -57,6 +66,23 @@ type RunnerCaseResult = {
     outputPath: string;
     sourcePath: string;
   };
+  spawnCalls: string[][];
+};
+
+type BatchRunnerCaseResult = {
+  result: RunnerCaseResult["result"];
+  args?: string[];
+  manifest?: unknown;
+  outputDirExists: Record<string, boolean>;
+  paths: {
+    modelPath: string;
+    items: Array<{
+      sourcePath: string;
+      outputAbsPath: string;
+      outputPath: string;
+    }>;
+  };
+  spawnCalls: string[][];
 };
 
 async function runRunnerCase(options: RunnerCaseOptions = {}): Promise<RunnerCaseResult> {
@@ -68,6 +94,8 @@ async function runRunnerCase(options: RunnerCaseOptions = {}): Promise<RunnerCas
   const outputPath = options.outputPath ?? "nested/output.png";
   const outputAbsPath = resolve(childRoot, outputPath);
   const argsPath = join(tempRoot, "spawn-args.json");
+  const manifestSnapshotPath = join(tempRoot, "batch-manifest.json");
+  const spawnsPath = join(tempRoot, "spawn-calls.json");
   const fakeScriptPath = join(tempRoot, "scripts", "auto-censor-mosaic.py");
   const harnessPath = join(tempRoot, "run-wrapper.mjs");
 
@@ -92,19 +120,28 @@ async function runRunnerCase(options: RunnerCaseOptions = {}): Promise<RunnerCas
       argsPath,
       mode: options.mode ?? "success",
       modelPath,
+      manifestSnapshotPath,
       outputPath,
       root: tempRoot,
       sourcePath,
+      spawnsPath,
       timeoutMs: options.timeoutMs,
     }, options.harnessSafetyTimeoutMs);
 
     const args = existsSync(argsPath)
       ? JSON.parse(await readFile(argsPath, "utf8")) as string[]
       : undefined;
+    const spawnCalls = existsSync(spawnsPath)
+      ? JSON.parse(await readFile(spawnsPath, "utf8")) as string[][]
+      : [];
+    const manifest = existsSync(manifestSnapshotPath)
+      ? JSON.parse(await readFile(manifestSnapshotPath, "utf8")) as unknown
+      : undefined;
 
     return {
       result,
       args,
+      manifest,
       outputDirExists: await pathExists(dirname(outputAbsPath)),
       paths: {
         modelPath: modelPath ?? "",
@@ -112,6 +149,94 @@ async function runRunnerCase(options: RunnerCaseOptions = {}): Promise<RunnerCas
         outputPath,
         sourcePath,
       },
+      spawnCalls,
+    };
+  } finally {
+    await rm(tempRoot, { recursive: true, force: true });
+  }
+}
+
+async function runBatchRunnerCase(
+  options: RunnerCaseOptions = {},
+): Promise<BatchRunnerCaseResult> {
+  const tempRoot = await mkdtemp(join(tmpdir(), "auto-censor-runner-batch-"));
+  const childRoot = await realpath(tempRoot);
+  const defaultModelPath = join(tempRoot, "model.pt");
+  const modelPath = options.modelPathEnv === undefined ? defaultModelPath : options.modelPathEnv;
+  const argsPath = join(tempRoot, "spawn-args.json");
+  const manifestSnapshotPath = join(tempRoot, "batch-manifest.json");
+  const spawnsPath = join(tempRoot, "spawn-calls.json");
+  const fakeScriptPath = join(tempRoot, "scripts", "auto-censor-mosaic.py");
+  const harnessPath = join(tempRoot, "run-wrapper.mjs");
+  const items = [
+    {
+      sourcePath: join(tempRoot, "sources", "one.png"),
+      outputPath: "batch-output/one.png",
+    },
+    {
+      sourcePath: join(tempRoot, "sources", "two.png"),
+      outputPath: "batch-output/nested/two.png",
+    },
+    {
+      sourcePath: join(tempRoot, "sources", "three.png"),
+      outputPath: "batch-output/three.png",
+    },
+  ];
+
+  try {
+    await mkdir(join(tempRoot, "sources"), { recursive: true });
+    await Promise.all(items.map((item) => writeFile(item.sourcePath, "source")));
+
+    if (modelPath && options.modelIsDirectory) {
+      await mkdir(modelPath, { recursive: true });
+    } else if (modelPath && options.modelExists !== false) {
+      await writeFile(modelPath, "model");
+    }
+
+    await mkdir(dirname(fakeScriptPath), { recursive: true });
+    await writeFile(fakeScriptPath, fakeAutoCensorScriptSource());
+    await writeFile(harnessPath, runnerHarnessSource());
+
+    const result = await runNodeHarness(harnessPath, {
+      api: "batch",
+      argsPath,
+      items,
+      manifestSnapshotPath,
+      mode: options.mode ?? "success",
+      modelPath,
+      root: tempRoot,
+      spawnsPath,
+      timeoutMs: options.timeoutMs,
+    }, options.harnessSafetyTimeoutMs);
+
+    const args = existsSync(argsPath)
+      ? JSON.parse(await readFile(argsPath, "utf8")) as string[]
+      : undefined;
+    const spawnCalls = existsSync(spawnsPath)
+      ? JSON.parse(await readFile(spawnsPath, "utf8")) as string[][]
+      : [];
+    const manifest = existsSync(manifestSnapshotPath)
+      ? JSON.parse(await readFile(manifestSnapshotPath, "utf8")) as unknown
+      : undefined;
+    const paths = items.map((item) => ({
+      sourcePath: item.sourcePath,
+      outputAbsPath: resolve(childRoot, item.outputPath),
+      outputPath: item.outputPath,
+    }));
+    const outputDirEntries = await Promise.all(
+      paths.map(async (item) => [item.outputPath, await pathExists(dirname(item.outputAbsPath))] as const),
+    );
+
+    return {
+      result,
+      args,
+      manifest,
+      outputDirExists: Object.fromEntries(outputDirEntries),
+      paths: {
+        modelPath: modelPath ?? "",
+        items: paths,
+      },
+      spawnCalls,
     };
   } finally {
     await rm(tempRoot, { recursive: true, force: true });
@@ -121,12 +246,19 @@ async function runRunnerCase(options: RunnerCaseOptions = {}): Promise<RunnerCas
 async function runNodeHarness(
   harnessPath: string,
   input: {
+    api?: "single" | "batch";
     argsPath: string;
+    items?: Array<{
+      sourcePath: string;
+      outputPath: string;
+    }>;
+    manifestSnapshotPath: string;
     mode: string;
     modelPath: string | null | undefined;
-    outputPath: string;
+    outputPath?: string;
     root: string;
-    sourcePath: string;
+    sourcePath?: string;
+    spawnsPath: string;
     timeoutMs?: number;
   },
   safetyTimeoutMs = 8_000,
@@ -208,6 +340,24 @@ async function pathExists(path: string) {
   }
 }
 
+function readManifestItems(manifest: unknown) {
+  assert.ok(manifest && typeof manifest === "object", "manifest must be an object");
+
+  const payload = manifest as {
+    items?: unknown;
+  };
+  assert.ok(Array.isArray(payload.items), "manifest must contain an items array");
+
+  return payload.items.map((item) => {
+    assert.ok(item && typeof item === "object", "manifest item must be an object");
+    const record = item as Record<string, unknown>;
+    return {
+      sourcePath: record.sourcePath ?? record.inputPath ?? record.input,
+      outputPath: record.outputPath ?? record.output,
+    };
+  });
+}
+
 function runnerHarnessSource() {
   const runnerUrl = pathToFileURL(resolve(process.cwd(), "src/server/services/auto-censor-runner.ts")).href;
 
@@ -225,15 +375,23 @@ if (input.modelPath) {
 process.env.AUTO_CENSOR_PYTHON_CMD = process.execPath;
 process.env.FAKE_AUTO_CENSOR_MODE = input.mode;
 process.env.FAKE_AUTO_CENSOR_ARGS_PATH = input.argsPath;
+process.env.FAKE_AUTO_CENSOR_MANIFEST_PATH = input.manifestSnapshotPath;
+process.env.FAKE_AUTO_CENSOR_SPAWNS_PATH = input.spawnsPath;
 
-const { runAutoCensorMosaic } = await import(${JSON.stringify(runnerUrl)});
+const runner = await import(${JSON.stringify(runnerUrl)});
 
 try {
-  const result = await runAutoCensorMosaic({
-    sourcePath: input.sourcePath,
-    outputPath: input.outputPath,
-    timeoutMs: input.timeoutMs ?? 5000,
-  });
+  const result = input.api === "batch"
+    ? await runner.runAutoCensorMosaicBatch(input.items.map((item) => ({
+        sourcePath: item.sourcePath,
+        outputPath: item.outputPath,
+        timeoutMs: input.timeoutMs ?? 5000,
+      })))
+    : await runner.runAutoCensorMosaic({
+        sourcePath: input.sourcePath,
+        outputPath: input.outputPath,
+        timeoutMs: input.timeoutMs ?? 5000,
+      });
   console.log(JSON.stringify({ ok: true, result }));
 } catch (error) {
   console.log(JSON.stringify({
@@ -246,9 +404,74 @@ try {
 
 function fakeAutoCensorScriptSource() {
   return `
-const { writeFileSync } = require("node:fs");
+const { existsSync, readFileSync, writeFileSync } = require("node:fs");
 
-writeFileSync(process.env.FAKE_AUTO_CENSOR_ARGS_PATH, JSON.stringify(process.argv.slice(2)));
+const args = process.argv.slice(2);
+writeFileSync(process.env.FAKE_AUTO_CENSOR_ARGS_PATH, JSON.stringify(args));
+
+if (process.env.FAKE_AUTO_CENSOR_SPAWNS_PATH) {
+  const previousCalls = existsSync(process.env.FAKE_AUTO_CENSOR_SPAWNS_PATH)
+    ? JSON.parse(readFileSync(process.env.FAKE_AUTO_CENSOR_SPAWNS_PATH, "utf8"))
+    : [];
+  previousCalls.push(args);
+  writeFileSync(process.env.FAKE_AUTO_CENSOR_SPAWNS_PATH, JSON.stringify(previousCalls));
+}
+
+function readBatchItems() {
+  const batchIndex = args.indexOf("--batch");
+  if (batchIndex < 0) return null;
+
+  const manifest = JSON.parse(readFileSync(args[batchIndex + 1], "utf8"));
+  writeFileSync(process.env.FAKE_AUTO_CENSOR_MANIFEST_PATH, JSON.stringify(manifest));
+  return manifest.items;
+}
+
+function itemInputPath(item) {
+  return item.sourcePath ?? item.inputPath ?? item.input;
+}
+
+function itemOutputPath(item) {
+  return item.outputPath ?? item.output;
+}
+
+function batchResultForItem(item, index) {
+  if (process.env.FAKE_AUTO_CENSOR_MODE === "batch-item-error" && index === 1) {
+    return {
+      ok: false,
+      inputPath: itemInputPath(item),
+      outputPath: itemOutputPath(item),
+      error: "fake item failure",
+    };
+  }
+
+  if (process.env.FAKE_AUTO_CENSOR_MODE === "missing-stats") {
+    return {
+      ok: true,
+      inputPath: itemInputPath(item),
+      outputPath: itemOutputPath(item),
+    };
+  }
+
+  if (process.env.FAKE_AUTO_CENSOR_MODE === "non-finite-stats") {
+    return {
+      ok: true,
+      inputPath: itemInputPath(item),
+      outputPath: itemOutputPath(item),
+      detections: "NaN",
+      selectedDetections: "Infinity",
+    };
+  }
+
+  return {
+    ok: true,
+    inputPath: itemInputPath(item),
+    outputPath: itemOutputPath(item),
+    detections: 5 + index,
+    selectedDetections: 3 + index,
+  };
+}
+
+const batchItems = readBatchItems();
 
 switch (process.env.FAKE_AUTO_CENSOR_MODE) {
   case "nonzero":
@@ -261,9 +484,17 @@ switch (process.env.FAKE_AUTO_CENSOR_MODE) {
     console.log("[]");
     process.exit(0);
   case "missing-stats":
+    if (batchItems) {
+      console.log(JSON.stringify({ results: batchItems.map(batchResultForItem) }));
+      process.exit(0);
+    }
     console.log(JSON.stringify({}));
     process.exit(0);
   case "non-finite-stats":
+    if (batchItems) {
+      console.log(JSON.stringify({ results: batchItems.map(batchResultForItem) }));
+      process.exit(0);
+    }
     console.log(JSON.stringify({ detections: "NaN", selectedDetections: "Infinity" }));
     process.exit(0);
   case "timeout":
@@ -272,6 +503,12 @@ switch (process.env.FAKE_AUTO_CENSOR_MODE) {
     }, 10000);
     break;
   default:
+    if (batchItems) {
+      console.log("fake startup noise");
+      console.log(JSON.stringify({ results: batchItems.map(batchResultForItem) }));
+      break;
+    }
+
     console.log("fake startup noise");
     console.log(JSON.stringify({ detections: 5, selectedDetections: 3, outputPath: "ignored-by-wrapper" }));
 }
@@ -312,28 +549,85 @@ test("auto-censor runner rejects directories during source and model preflight",
   assert.match(modelDirectory.result.message, /Auto-censor model must be a file/);
 });
 
-test("auto-censor runner creates output directory and passes expected CLI args", async () => {
+test("auto-censor single-image wrapper uses batch-of-one while preserving return shape", async () => {
   const outputPath = "created-output/original-return.png";
-  const { args, outputDirExists, paths, result } = await runRunnerCase({ outputPath });
+  const { args, manifest, outputDirExists, paths, result, spawnCalls } = await runRunnerCase({ outputPath });
 
   assert.equal(result.ok, true);
   assert.equal(outputDirExists, true);
+  assert.equal(spawnCalls.length, 1);
   assert.deepEqual(result.result, {
     detections: 5,
     selectedDetections: 3,
     outputPath,
   });
-  assert.deepEqual(args, [
-    "--model",
-    paths.modelPath,
-    "--input",
-    paths.sourcePath,
-    "--output",
-    paths.outputAbsPath,
-    "--classes",
-    "2,4",
-    "--mosaic-size",
-    "100",
+
+  assert.ok(args, "Python CLI args must be captured");
+  assert.equal(args[args.indexOf("--model") + 1], paths.modelPath);
+  assert.ok(args.includes("--batch"), "single-image wrapper must call batch CLI mode");
+  assert.equal(args.includes("--input"), false);
+  assert.equal(args.includes("--output"), false);
+  assert.equal(args[args.indexOf("--classes") + 1], "2,4");
+  assert.equal(args[args.indexOf("--mosaic-size") + 1], "100");
+  assert.deepEqual(readManifestItems(manifest), [
+    {
+      sourcePath: paths.sourcePath,
+      outputPath: paths.outputAbsPath,
+    },
+  ]);
+});
+
+test("auto-censor batch runner spawns once with manifest and returns per-item errors", async () => {
+  const { args, manifest, outputDirExists, paths, result, spawnCalls } =
+    await runBatchRunnerCase({ mode: "batch-item-error" });
+
+  if (!result.ok) {
+    assert.fail(result.message);
+  }
+
+  assert.equal(spawnCalls.length, 1);
+  assert.deepEqual(args, spawnCalls[0]);
+
+  assert.ok(args, "Python CLI args must be captured");
+  assert.equal(args[args.indexOf("--model") + 1], paths.modelPath);
+  assert.ok(args.includes("--batch"), "batch runner must call batch CLI mode");
+  assert.equal(args.includes("--input"), false);
+  assert.equal(args.includes("--output"), false);
+  assert.equal(args[args.indexOf("--classes") + 1], "2,4");
+  assert.equal(args[args.indexOf("--mosaic-size") + 1], "100");
+
+  assert.deepEqual(
+    readManifestItems(manifest),
+    paths.items.map((item) => ({
+      sourcePath: item.sourcePath,
+      outputPath: item.outputAbsPath,
+    })),
+  );
+  for (const item of paths.items) {
+    assert.equal(
+      outputDirExists[item.outputPath],
+      true,
+      `output directory must be created for ${item.outputPath}`,
+    );
+  }
+  assert.deepEqual(result.result, [
+    {
+      ok: true,
+      detections: 5,
+      selectedDetections: 3,
+      outputPath: paths.items[0].outputPath,
+    },
+    {
+      ok: false,
+      error: "fake item failure",
+      outputPath: paths.items[1].outputPath,
+    },
+    {
+      ok: true,
+      detections: 7,
+      selectedDetections: 5,
+      outputPath: paths.items[2].outputPath,
+    },
   ]);
 });
 

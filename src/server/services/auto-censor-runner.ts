@@ -1,7 +1,9 @@
 import { spawn } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { constants } from "node:fs";
-import { access, mkdir, stat } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { access, mkdir, mkdtemp, rm, stat, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
 
 import { env } from "@/lib/env";
 
@@ -22,48 +24,113 @@ export type AutoCensorRunResult = {
   outputPath: string;
 };
 
+export type AutoCensorBatchRunInput = AutoCensorRunInput & {
+  id?: string;
+};
+
+export type AutoCensorBatchRunResult =
+  | {
+      ok: true;
+      detections: number;
+      selectedDetections: number;
+      outputPath: string;
+    }
+  | {
+      ok: false;
+      error: string;
+      outputPath: string;
+    };
+
+type NormalizedBatchInput = {
+  id: string;
+  outputAbsPath: string;
+  outputPath: string;
+  sourceAbsPath: string;
+  timeoutMs?: number;
+};
+
 export async function runAutoCensorMosaic(
   input: AutoCensorRunInput,
 ): Promise<AutoCensorRunResult> {
+  const [result] = await runAutoCensorMosaicBatch([input]);
+
+  if (!result) {
+    throw new Error("Auto-censor batch returned no result for single image.");
+  }
+
+  if (!result.ok) {
+    throw new Error(result.error);
+  }
+
+  return {
+    detections: result.detections,
+    selectedDetections: result.selectedDetections,
+    outputPath: result.outputPath,
+  };
+}
+
+export async function runAutoCensorMosaicBatch(
+  inputs: AutoCensorBatchRunInput[],
+): Promise<AutoCensorBatchRunResult[]> {
+  if (inputs.length === 0) return [];
+
   const modelPath = env.autoCensorModelPath.trim();
 
   if (!modelPath) {
     throw new Error("AUTO_CENSOR_MODEL_PATH is not configured.");
   }
 
-  const sourceAbsPath = resolve(input.sourcePath);
-  const outputAbsPath = resolve(input.outputPath);
   const modelAbsPath = resolve(modelPath);
   const scriptPath = resolve(process.cwd(), "scripts/auto-censor-mosaic.py");
-
-  await ensureReadableFile(sourceAbsPath, "Auto-censor source image");
-  await ensureReadableFile(modelAbsPath, "Auto-censor model");
-  await mkdir(dirname(outputAbsPath), { recursive: true });
-
-  const command = env.autoCensorPythonCmd.trim() || "python3";
-  const stdout = await runPythonCli(command, [
-    scriptPath,
-    "--model",
-    modelAbsPath,
-    "--input",
-    sourceAbsPath,
-    "--output",
-    outputAbsPath,
-    "--classes",
-    AUTO_CENSOR_SELECTED_CLASSES.join(","),
-    "--mosaic-size",
-    String(AUTO_CENSOR_MOSAIC_SIZE),
-  ], input.timeoutMs ?? DEFAULT_TIMEOUT_MS);
-
-  const payload = parseAutoCensorJson(stdout);
-
-  return {
-    detections: readFiniteNumber(payload.detections),
-    selectedDetections: readFiniteNumber(
-      payload.selectedDetections ?? payload.selected_detections,
-    ),
+  const normalizedInputs = inputs.map((input, index) => ({
+    id: input.id ?? String(index),
+    outputAbsPath: resolve(input.outputPath),
     outputPath: input.outputPath,
-  };
+    sourceAbsPath: resolve(input.sourcePath),
+    timeoutMs: input.timeoutMs,
+  }));
+
+  await ensureReadableFile(modelAbsPath, "Auto-censor model");
+  await Promise.all(
+    normalizedInputs.map(async (input) => {
+      await ensureReadableFile(input.sourceAbsPath, "Auto-censor source image");
+      await mkdir(dirname(input.outputAbsPath), { recursive: true });
+    }),
+  );
+
+  const tempRoot = await mkdtemp(join(tmpdir(), "auto-censor-batch-"));
+  const manifestPath = join(tempRoot, `manifest-${randomUUID()}.json`);
+
+  try {
+    await writeFile(
+      manifestPath,
+      JSON.stringify({
+        items: normalizedInputs.map((input) => ({
+          id: input.id,
+          inputPath: input.sourceAbsPath,
+          outputPath: input.outputAbsPath,
+        })),
+      }),
+    );
+
+    const command = env.autoCensorPythonCmd.trim() || "python3";
+    const stdout = await runPythonCli(command, [
+      scriptPath,
+      "--model",
+      modelAbsPath,
+      "--batch",
+      manifestPath,
+      "--classes",
+      AUTO_CENSOR_SELECTED_CLASSES.join(","),
+      "--mosaic-size",
+      String(AUTO_CENSOR_MOSAIC_SIZE),
+    ], batchTimeoutMs(normalizedInputs));
+
+    const payload = parseAutoCensorJson(stdout);
+    return parseBatchResults(payload, normalizedInputs);
+  } finally {
+    await rm(tempRoot, { recursive: true, force: true }).catch(() => {});
+  }
 }
 
 async function ensureReadableFile(path: string, label: string) {
@@ -84,6 +151,18 @@ async function ensureReadableFile(path: string, label: string) {
   } catch (error) {
     throw new Error(`${label} is not readable: ${path}`, { cause: error });
   }
+}
+
+function batchTimeoutMs(inputs: NormalizedBatchInput[]) {
+  const explicitTimeouts = inputs
+    .map((input) => input.timeoutMs)
+    .filter((timeoutMs): timeoutMs is number => typeof timeoutMs === "number");
+
+  if (explicitTimeouts.length > 0) {
+    return Math.max(...explicitTimeouts);
+  }
+
+  return DEFAULT_TIMEOUT_MS * Math.max(1, inputs.length);
 }
 
 function runPythonCli(
@@ -183,6 +262,51 @@ function parseAutoCensorJson(stdout: string): Record<string, unknown> {
   }
 
   return parsed as Record<string, unknown>;
+}
+
+function parseBatchResults(
+  payload: Record<string, unknown>,
+  inputs: NormalizedBatchInput[],
+): AutoCensorBatchRunResult[] {
+  const items = Array.isArray(payload.results)
+    ? payload.results
+    : Array.isArray(payload.items)
+      ? payload.items
+      : inputs.length === 1
+        ? [payload]
+        : [];
+
+  return inputs.map((input, index) => {
+    const item = items[index];
+
+    if (!item || typeof item !== "object") {
+      return {
+        ok: false,
+        error: "Auto-censor Python CLI did not return a result for this item.",
+        outputPath: input.outputPath,
+      };
+    }
+
+    const record = item as Record<string, unknown>;
+    const error = typeof record.error === "string" ? record.error : "";
+
+    if (record.ok === false || error) {
+      return {
+        ok: false,
+        error: error || "Auto-censor Python CLI reported item failure.",
+        outputPath: input.outputPath,
+      };
+    }
+
+    return {
+      ok: true,
+      detections: readFiniteNumber(record.detections),
+      selectedDetections: readFiniteNumber(
+        record.selectedDetections ?? record.selected_detections,
+      ),
+      outputPath: input.outputPath,
+    };
+  });
 }
 
 function readFiniteNumber(value: unknown) {

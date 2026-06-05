@@ -1,7 +1,7 @@
 import { env } from "@/lib/env";
 import { createLogger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
-import { processCensorTask } from "@/server/services/censoring-service";
+import { processCensorTasksBatch, type ProcessCensorTaskResult } from "@/server/services/censoring-service";
 
 const log = createLogger({ module: "censoring-executor" });
 
@@ -24,7 +24,7 @@ type QueuedCensoringTask = {
   imageResultId: string;
 };
 
-async function processQueuedTask(task: QueuedCensoringTask): Promise<boolean> {
+async function claimQueuedTask(task: QueuedCensoringTask): Promise<QueuedCensoringTask | null> {
   const claimed = await prisma.censoringTask.updateMany({
     where: { id: task.id, status: "queued" },
     data: {
@@ -35,74 +35,102 @@ async function processQueuedTask(task: QueuedCensoringTask): Promise<boolean> {
     },
   });
 
-  if (claimed.count === 0) return false;
+  return claimed.count === 0 ? null : task;
+}
 
-  try {
-    const result = await processCensorTask({
-      imageResultId: task.imageResultId,
-      taskId: task.id,
+async function markTaskDone(result: ProcessCensorTaskResult): Promise<void> {
+  if (!result.taskId) return;
+
+  const updated = await prisma.censoringTask.updateMany({
+    where: { id: result.taskId, status: "running" },
+    data: { status: "done", finishedAt: new Date(), errorMessage: null },
+  });
+
+  if (updated.count === 0) {
+    log.info("Censoring task changed state before completion update", {
+      taskId: result.taskId,
     });
-
-    if (!result.persisted) {
-      log.info("Skipping completion update for inactive censoring task", {
-        taskId: task.id,
-      });
-      return true;
-    }
-
-    const updated = await prisma.censoringTask.updateMany({
-      where: { id: task.id, status: "running" },
-      data: { status: "done", finishedAt: new Date(), errorMessage: null },
-    });
-
-    if (updated.count === 0) {
-      log.info("Censoring task changed state before completion update", {
-        taskId: task.id,
-      });
-      return true;
-    }
-
-    log.info("Censoring task completed", { taskId: task.id });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    const updated = await prisma.censoringTask.updateMany({
-      where: { id: task.id, status: "running" },
-      data: {
-        status: "failed",
-        errorMessage: message,
-        finishedAt: new Date(),
-      },
-    });
-
-    if (updated.count === 0) {
-      log.info("Censoring task changed state before failure update", {
-        taskId: task.id,
-        error: message,
-      });
-      return true;
-    }
-
-    log.error("Censoring task failed", { taskId: task.id, error: message });
+    return;
   }
 
-  return true;
+  log.info("Censoring task completed", { taskId: result.taskId });
+}
+
+async function markTaskFailed(taskId: string, error: string): Promise<void> {
+  const updated = await prisma.censoringTask.updateMany({
+    where: { id: taskId, status: "running" },
+    data: {
+      status: "failed",
+      errorMessage: error,
+      finishedAt: new Date(),
+    },
+  });
+
+  if (updated.count === 0) {
+    log.info("Censoring task changed state before failure update", {
+      taskId,
+      error,
+    });
+    return;
+  }
+
+  log.error("Censoring task failed", { taskId, error });
+}
+
+async function finishBatchResult(result: ProcessCensorTaskResult): Promise<void> {
+  if (!result.taskId) return;
+
+  if (result.error) {
+    await markTaskFailed(result.taskId, result.error);
+    return;
+  }
+
+  if (!result.persisted) {
+    log.info("Skipping completion update for inactive censoring task", {
+      taskId: result.taskId,
+    });
+    return;
+  }
+
+  await markTaskDone(result);
 }
 
 async function processQueuedTasks(): Promise<number> {
   const tasks = await prisma.censoringTask.findMany({
     where: { status: "queued" },
     orderBy: { createdAt: "asc" },
-    take: env.autoCensorConcurrency,
+    take: env.autoCensorBatchSize,
     select: { id: true, imageResultId: true },
   });
 
   if (tasks.length === 0) return 0;
 
-  const results = await Promise.all(
-    tasks.map((task) => processQueuedTask(task)),
-  );
+  const claimedTasks: QueuedCensoringTask[] = [];
 
-  return results.filter(Boolean).length;
+  for (const task of tasks) {
+    const claimed = await claimQueuedTask(task);
+    if (claimed) claimedTasks.push(claimed);
+  }
+
+  if (claimedTasks.length === 0) return 0;
+
+  try {
+    const results = await processCensorTasksBatch(
+      claimedTasks.map((task) => ({
+        imageResultId: task.imageResultId,
+        taskId: task.id,
+      })),
+    );
+
+    for (const result of results) {
+      await finishBatchResult(result);
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    await Promise.all(claimedTasks.map((task) => markTaskFailed(task.id, message)));
+  }
+
+  return claimedTasks.length;
 }
 
 async function waitForWakeOrTimeout(): Promise<void> {

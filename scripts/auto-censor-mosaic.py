@@ -4,6 +4,7 @@ import json
 import math
 import sys
 from pathlib import Path
+from typing import Any
 
 MIN_MOSAIC_SIZE = 20
 
@@ -41,14 +42,12 @@ def create_mosaic(roi, mosaic_size: int):
     return cv2.resize(small, (width, height), interpolation=cv2.INTER_NEAREST)
 
 
-def run(model_path: Path, input_path: Path, output_path: Path, selected_classes: set[int], mosaic_size: int):
+def process_image(cv2, model, input_path: Path, output_path: Path, selected_classes: set[int], mosaic_size: int):
     validate_mosaic_size(mosaic_size)
-    cv2, YOLO = load_dependencies()
     image = cv2.imread(str(input_path))
     if image is None:
         raise RuntimeError(f"failed to read input image: {input_path}")
 
-    model = YOLO(str(model_path))
     results = model(image)
     detections = 0
     selected_detections = 0
@@ -84,29 +83,114 @@ def run(model_path: Path, input_path: Path, output_path: Path, selected_classes:
         raise RuntimeError(f"failed to write output image: {output_path}")
 
     return {
+        "ok": True,
+        "inputPath": str(input_path),
+        "outputPath": str(output_path),
         "detections": detections,
         "selectedDetections": selected_detections,
-        "output": str(output_path),
     }
 
 
+def run(model_path: Path, input_path: Path, output_path: Path, selected_classes: set[int], mosaic_size: int):
+    cv2, YOLO = load_dependencies()
+    model = YOLO(str(model_path))
+    return process_image(cv2, model, input_path, output_path, selected_classes, mosaic_size)
+
+
+def read_item_path(item: dict[str, Any], *keys: str) -> Path:
+    for key in keys:
+        value = item.get(key)
+        if isinstance(value, str) and value:
+            return Path(value)
+    raise ValueError(f"batch item missing path field: {', '.join(keys)}")
+
+
+def load_batch_items(batch_path: Path) -> list[dict[str, Any]]:
+    with batch_path.open("r", encoding="utf-8") as handle:
+        manifest = json.load(handle)
+
+    if not isinstance(manifest, dict):
+        raise ValueError("batch manifest must be a JSON object")
+
+    items = manifest.get("items")
+    if not isinstance(items, list):
+        raise ValueError('batch manifest must contain an "items" array')
+
+    normalized_items: list[dict[str, Any]] = []
+    for index, item in enumerate(items):
+        if not isinstance(item, dict):
+            raise ValueError(f"batch item {index} must be a JSON object")
+        normalized_items.append(item)
+
+    return normalized_items
+
+
+def run_batch(model_path: Path, batch_path: Path, selected_classes: set[int], mosaic_size: int):
+    validate_mosaic_size(mosaic_size)
+    items = load_batch_items(batch_path)
+    cv2, YOLO = load_dependencies()
+    model = YOLO(str(model_path))
+    results = []
+
+    for index, item in enumerate(items):
+        input_path = read_item_path(item, "inputPath", "sourcePath", "input")
+        output_path = read_item_path(item, "outputPath", "output")
+        result_id = item.get("id", str(index))
+
+        try:
+            item_result = process_image(
+                cv2=cv2,
+                model=model,
+                input_path=input_path,
+                output_path=output_path,
+                selected_classes=selected_classes,
+                mosaic_size=mosaic_size,
+            )
+            item_result["id"] = result_id
+            results.append(item_result)
+        except Exception as error:
+            results.append({
+                "ok": False,
+                "id": result_id,
+                "inputPath": str(input_path),
+                "outputPath": str(output_path),
+                "error": str(error),
+            })
+
+    return {"results": results}
+
+
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Apply YOLO-based mosaic censoring to one image.")
+    parser = argparse.ArgumentParser(description="Apply YOLO-based mosaic censoring to one image or a batch manifest.")
     parser.add_argument("--model", required=True)
-    parser.add_argument("--input", required=True)
-    parser.add_argument("--output", required=True)
+    parser.add_argument("--input")
+    parser.add_argument("--output")
+    parser.add_argument("--batch")
     parser.add_argument("--classes", required=True)
     parser.add_argument("--mosaic-size", required=True, type=int)
     args = parser.parse_args()
 
     try:
-        stats = run(
-            model_path=Path(args.model),
-            input_path=Path(args.input),
-            output_path=Path(args.output),
-            selected_classes=parse_classes(args.classes),
-            mosaic_size=args.mosaic_size,
-        )
+        validate_mosaic_size(args.mosaic_size)
+        selected_classes = parse_classes(args.classes)
+
+        if args.batch:
+            stats = run_batch(
+                model_path=Path(args.model),
+                batch_path=Path(args.batch),
+                selected_classes=selected_classes,
+                mosaic_size=args.mosaic_size,
+            )
+        else:
+            if not args.input or not args.output:
+                raise ValueError("--input and --output are required unless --batch is provided")
+            stats = run(
+                model_path=Path(args.model),
+                input_path=Path(args.input),
+                output_path=Path(args.output),
+                selected_classes=selected_classes,
+                mosaic_size=args.mosaic_size,
+            )
     except Exception as error:
         print(str(error), file=sys.stderr)
         return 1
