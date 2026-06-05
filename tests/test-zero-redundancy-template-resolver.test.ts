@@ -2,6 +2,7 @@ import { test } from "node:test";
 import { strict as assert } from "node:assert";
 
 import {
+  buildTemplateSectionRowsFromSectionData,
   buildProjectSectionDataForTemplateImport,
   buildProjectSectionRowsForTemplateImport,
   buildTemplateSectionRowsForProjectSectionSave,
@@ -250,6 +251,190 @@ test("saving a template section writes relation rows without copying clean prese
   assert.equal(rows.promptBlocks[0].customPositive, null);
   assert.equal("positive" in rows.promptBlocks[0], false);
   assert.equal(rows.manualLoraEntries.some((entry) => entry.path === "/preset-style.safetensors"), false);
+});
+
+test("saving template editor section data preserves preset bindings instead of resolved prompt snapshots", () => {
+  const rows = buildTemplateSectionRowsFromSectionData({
+    projectTemplateSectionId: "template-section-1",
+    section: {
+      promptBlocks: [
+        {
+          label: "Style",
+          positive: "resolved prompt that must not be copied",
+          negative: "resolved negative that must not be copied",
+          sortOrder: 3,
+          type: "preset",
+          sourceId: "preset-style",
+          variantId: "variant-style",
+          categoryId: "cat-style",
+          bindingId: "bind-style",
+          groupBindingId: "group-1",
+        },
+      ],
+      loraConfig: {
+        lora1: [
+          {
+            id: "lora-clean",
+            path: "/preset-style.safetensors",
+            weight: 0.5,
+            enabled: true,
+            source: "preset",
+            bindingId: "bind-style",
+            groupBindingId: "group-1",
+          },
+        ],
+        lora2: [],
+      },
+    },
+  });
+
+  assert.deepEqual(rows.presetBindings.map((row) => ({
+    bindingKey: row.bindingKey,
+    categoryId: row.categoryId,
+    presetId: row.presetId,
+    variantId: row.variantId,
+    groupBindingKey: row.groupBindingKey,
+    sortOrder: row.sortOrder,
+  })), [
+    {
+      bindingKey: "bind-style",
+      categoryId: "cat-style",
+      presetId: "preset-style",
+      variantId: "variant-style",
+      groupBindingKey: "group-1",
+      sortOrder: 3,
+    },
+  ]);
+  assert.deepEqual(rows.promptBlocks.map((row) => ({
+    type: row.type,
+    templateSectionBindingId: row.templateSectionBindingId,
+    customLabel: row.customLabel,
+    customPositive: row.customPositive,
+    customNegative: row.customNegative,
+    sortOrder: row.sortOrder,
+  })), [
+    {
+      type: "preset",
+      templateSectionBindingId: "templateSectionPresetBinding:template-section-1:bind-style",
+      customLabel: null,
+      customPositive: null,
+      customNegative: null,
+      sortOrder: 3,
+    },
+  ]);
+  assert.equal("positive" in rows.promptBlocks[0], false);
+  assert.equal(rows.manualLoraEntries.length, 0);
+});
+
+test("saving template editor section data keeps custom blocks and detached lora rows", () => {
+  const rows = buildTemplateSectionRowsFromSectionData({
+    projectTemplateSectionId: "template-section-1",
+    section: {
+      promptBlocks: [
+        {
+          label: "Style",
+          positive: "preset prompt",
+          negative: null,
+          sortOrder: 0,
+          type: "preset",
+          sourceId: "preset-style",
+          variantId: "variant-style",
+          categoryId: "cat-style",
+          bindingId: "bind-style",
+        },
+        {
+          label: "Edited",
+          positive: "local edited prompt",
+          negative: "local edited negative",
+          sortOrder: 1,
+          type: "custom",
+        },
+      ],
+      loraConfig: {
+        lora1: [
+          {
+            id: "lora-detached",
+            path: "/preset-style.safetensors",
+            weight: 0.75,
+            enabled: true,
+            source: "manual",
+            detachedBindingId: "bind-style",
+            detachedPresetPath: "/preset-style.safetensors",
+            suppressed: true,
+          },
+        ],
+        lora2: [
+          {
+            id: "lora-manual",
+            path: "/manual.safetensors",
+            weight: 1.25,
+            enabled: true,
+            source: "manual",
+          },
+        ],
+      },
+    },
+  });
+
+  assert.deepEqual(rows.promptBlocks.map((row) => ({
+    type: row.type,
+    templateSectionBindingId: row.templateSectionBindingId,
+    customLabel: row.customLabel,
+    customPositive: row.customPositive,
+    customNegative: row.customNegative,
+  })), [
+    {
+      type: "preset",
+      templateSectionBindingId: "templateSectionPresetBinding:template-section-1:bind-style",
+      customLabel: null,
+      customPositive: null,
+      customNegative: null,
+    },
+    {
+      type: "custom",
+      templateSectionBindingId: null,
+      customLabel: "Edited",
+      customPositive: "local edited prompt",
+      customNegative: "local edited negative",
+    },
+  ]);
+  assert.deepEqual(rows.manualLoraEntries.map((row) => ({
+    templateSectionBindingId: row.templateSectionBindingId,
+    stage: row.stage,
+    path: row.path,
+    weight: row.weight,
+    enabled: row.enabled,
+    detachedFromBindingKey: row.detachedFromBindingKey,
+    detachedFromPresetId: row.detachedFromPresetId,
+    detachedFromVariantId: row.detachedFromVariantId,
+    detachedFromPath: row.detachedFromPath,
+    metadata: row.metadata,
+  })), [
+    {
+      templateSectionBindingId: "templateSectionPresetBinding:template-section-1:bind-style",
+      stage: "lora1",
+      path: "/preset-style.safetensors",
+      weight: 0.75,
+      enabled: false,
+      detachedFromBindingKey: "bind-style",
+      detachedFromPresetId: "preset-style",
+      detachedFromVariantId: "variant-style",
+      detachedFromPath: "/preset-style.safetensors",
+      metadata: { suppressed: true },
+    },
+    {
+      templateSectionBindingId: null,
+      stage: "lora2",
+      path: "/manual.safetensors",
+      weight: 1.25,
+      enabled: true,
+      detachedFromBindingKey: null,
+      detachedFromPresetId: null,
+      detachedFromVariantId: null,
+      detachedFromPath: null,
+      metadata: null,
+    },
+  ]);
 });
 
 test("importing a template section plans section relation rows without legacy expanded section caches", () => {

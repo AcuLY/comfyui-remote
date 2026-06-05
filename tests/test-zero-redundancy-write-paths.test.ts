@@ -850,8 +850,21 @@ test("template CRUD converts submitted prompt and manual lora data into template
   const section = await prisma.projectTemplateSection.findFirstOrThrow({
     where: { projectTemplateId: templateId },
   });
-  assert.equal(await prisma.templateSectionPresetBinding.count({ where: { projectTemplateSectionId: section.id } }), 0);
-  assert.equal(await prisma.templateSectionPromptBlock.count({ where: { projectTemplateSectionId: section.id } }), 2);
+  const createdBindings = await prisma.templateSectionPresetBinding.findMany({
+    where: { projectTemplateSectionId: section.id },
+  });
+  assert.deepEqual(createdBindings.map((row) => [row.bindingKey, row.presetId, row.variantId]), [
+    [`${seed.key}-legacy-binding`, seed.preset.id, seed.variantA.id],
+  ]);
+  const createdPromptRows = await prisma.templateSectionPromptBlock.findMany({
+    where: { projectTemplateSectionId: section.id },
+    orderBy: { sortOrder: "asc" },
+  });
+  assert.equal(createdPromptRows.length, 2);
+  assert.equal(createdPromptRows[0].templateSectionBindingId, createdBindings[0].id);
+  assert.equal(createdPromptRows[0].customPositive, null);
+  assert.equal(createdPromptRows[1].templateSectionBindingId, null);
+  assert.equal(createdPromptRows[1].customPositive, `${seed.key} custom positive`);
   assert.equal(await prisma.templateSectionManualLoraEntry.count({ where: { projectTemplateSectionId: section.id } }), 1);
 
   await ignoreStaticRevalidateError(() => updateProjectTemplateSection({
@@ -880,7 +893,9 @@ test("template CRUD converts submitted prompt and manual lora data into template
   const updatedBindings = await prisma.templateSectionPresetBinding.findMany({
     where: { projectTemplateSectionId: section.id },
   });
-  assert.deepEqual(updatedBindings.map((row) => row.bindingKey), []);
+  assert.deepEqual(updatedBindings.map((row) => [row.bindingKey, row.presetId, row.variantId]), [
+    [`${seed.key}-updated-binding`, seed.preset.id, seed.variantA.id],
+  ]);
   assert.equal(await prisma.templateSectionPromptBlock.count({ where: { projectTemplateSectionId: section.id } }), 1);
   assert.deepEqual(
     (await prisma.templateSectionManualLoraEntry.findMany({ where: { projectTemplateSectionId: section.id } }))
@@ -900,7 +915,7 @@ test("template CRUD converts submitted prompt and manual lora data into template
   assert.ok(copiedSectionId);
   const copied = await prisma.projectTemplateSection.findUniqueOrThrow({ where: { id: copiedSectionId } });
   assert.equal(copied.projectTemplateId, templateId);
-  assert.equal(await prisma.templateSectionPresetBinding.count({ where: { projectTemplateSectionId: copiedSectionId } }), 0);
+  assert.equal(await prisma.templateSectionPresetBinding.count({ where: { projectTemplateSectionId: copiedSectionId } }), 1);
   assert.equal(await prisma.templateSectionPromptBlock.count({ where: { projectTemplateSectionId: copiedSectionId } }), 1);
   assert.equal(await prisma.templateSectionManualLoraEntry.count({ where: { projectTemplateSectionId: copiedSectionId } }), 1);
 });

@@ -5,6 +5,7 @@ import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import type { ProjectTemplateSectionData } from "@/lib/server-data";
 import {
+  buildTemplateSectionRowsFromSectionData,
   type TemplateSectionManualLoraEntryWrite,
   type TemplateSectionPresetBindingWrite,
   type TemplateSectionPromptBlockWrite,
@@ -73,18 +74,6 @@ function toNullableJsonValue(value: unknown): Prisma.InputJsonValue | typeof Pri
   return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function readString(value: unknown) {
-  return typeof value === "string" && value.trim().length > 0 ? value : null;
-}
-
-function readNumber(value: unknown, fallback: number) {
-  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
-}
-
 function safeRevalidatePath(path: string) {
   try {
     revalidatePath(path);
@@ -114,55 +103,6 @@ function buildTemplateSectionUpdateData(section: ProjectTemplateSectionData) {
     upscaleFactor: section.upscaleFactor,
     checkpointName: section.checkpointName,
     extraParams: toNullableJsonValue(section.extraParams),
-  };
-}
-
-function buildTemplateSectionRowsFromSectionData(
-  projectTemplateSectionId: string,
-  section: ProjectTemplateSectionData,
-) {
-  const manualLoraEntries: TemplateSectionManualLoraEntryWrite[] = [];
-  const { loraConfig: submittedLoraConfig } = section;
-  const loraConfig = isRecord(submittedLoraConfig) ? submittedLoraConfig : {};
-  for (const stage of ["lora1", "lora2"] as const) {
-    const entries = loraConfig[stage];
-    if (!Array.isArray(entries)) continue;
-    entries.forEach((entry, index) => {
-      if (!isRecord(entry)) return;
-      if (entry.source === "preset") return;
-      const loraPath = readString(entry.path);
-      if (!loraPath) return;
-      manualLoraEntries.push({
-        id: `templateSectionManualLoraEntry:${projectTemplateSectionId}:${stage}:${index}:${loraPath}`,
-        projectTemplateSectionId,
-        templateSectionBindingId: null,
-        stage,
-        path: loraPath,
-        weight: readNumber(entry.weight, 1),
-        enabled: entry.enabled !== false,
-        detachedFromBindingKey: null,
-        detachedFromPresetId: null,
-        detachedFromVariantId: null,
-        detachedFromPath: null,
-        metadata: null,
-        sortOrder: index,
-      });
-    });
-  }
-
-  return {
-    presetBindings: [] as TemplateSectionPresetBindingWrite[],
-    promptBlocks: section.promptBlocks.map((block, index): TemplateSectionPromptBlockWrite => ({
-      id: `templateSectionPromptBlock:${projectTemplateSectionId}:custom:${index}`,
-      projectTemplateSectionId,
-      templateSectionBindingId: null,
-      type: "custom",
-      customLabel: block.label,
-      customPositive: block.positive,
-      customNegative: block.negative ?? null,
-      sortOrder: block.sortOrder ?? index,
-    })),
-    manualLoraEntries,
   };
 }
 
@@ -201,7 +141,10 @@ async function replaceTemplateSectionRelationRows(
   await tx.templateSectionManualLoraEntry.deleteMany({ where: { projectTemplateSectionId } });
   await tx.templateSectionPresetBinding.deleteMany({ where: { projectTemplateSectionId } });
 
-  const rows = buildTemplateSectionRowsFromSectionData(projectTemplateSectionId, section);
+  const rows = buildTemplateSectionRowsFromSectionData({
+    projectTemplateSectionId,
+    section,
+  });
   await createTemplateSectionRelationRows(tx, rows);
 }
 

@@ -49,6 +49,24 @@ type TemplateSectionForImport = {
   extraParams?: unknown;
 };
 
+type TemplateEditorPromptBlockInput = {
+  label?: string | null;
+  positive?: string | null;
+  negative?: string | null;
+  sortOrder?: number | null;
+  type?: string | null;
+  sourceId?: string | null;
+  variantId?: string | null;
+  categoryId?: string | null;
+  bindingId?: string | null;
+  groupBindingId?: string | null;
+};
+
+type TemplateEditorSectionDataInput = {
+  promptBlocks?: readonly TemplateEditorPromptBlockInput[] | null;
+  loraConfig?: unknown;
+};
+
 type TemplateResolverDbSection = TemplateResolverSectionRow & {
   presetBindingRows: TemplateSectionPresetBindingRow[];
   promptBlockRows: TemplateSectionPromptBlockRow[];
@@ -70,6 +88,63 @@ type TemplateResolverDbClient = {
 
 function relationId(prefix: string, ownerId: string, key: string) {
   return `${prefix}:${ownerId}:${key}`;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function readString(value: unknown) {
+  return typeof value === "string" && value.trim().length > 0 ? value : null;
+}
+
+function readNullableString(value: unknown) {
+  return typeof value === "string" ? value : null;
+}
+
+function readNumber(value: unknown, fallback: number) {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function readSortOrder(value: unknown, fallback: number) {
+  return Math.trunc(readNumber(value, fallback));
+}
+
+function readBoolean(value: unknown, fallback: boolean) {
+  return typeof value === "boolean" ? value : fallback;
+}
+
+function roundLoraWeight(value: unknown) {
+  return Math.round(readNumber(value, 1) * 100) / 100;
+}
+
+function cleanPresetPromptBlock(block: TemplateEditorPromptBlockInput) {
+  const bindingKey = readString(block.bindingId);
+  const categoryId = readString(block.categoryId);
+  const presetId = readString(block.sourceId);
+
+  if (block.type !== "preset" || !bindingKey || !categoryId || !presetId) return null;
+
+  return {
+    bindingKey,
+    categoryId,
+    presetId,
+    variantId: readString(block.variantId),
+    groupBindingKey: readString(block.groupBindingId),
+  };
+}
+
+function readTemplateEditorLoraEntries(loraConfig: unknown, stage: "lora1" | "lora2") {
+  if (!isRecord(loraConfig)) return [];
+  const entries = loraConfig[stage];
+  return Array.isArray(entries) ? entries : [];
+}
+
+function isCleanPresetLoraEntry(entry: Record<string, unknown>) {
+  return readString(entry.source) === "preset" &&
+    !readString(entry.detachedBindingId) &&
+    !readString(entry.detachedPresetPath) &&
+    entry.suppressed !== true;
 }
 
 function adaptTemplateInput(input: ResolveTemplateSectionConfigInput): ResolveSectionConfigInput {
@@ -334,6 +409,98 @@ function templatePromptBlockWrite(
     customNegative: row.customNegative,
     sortOrder: row.sortOrder,
   };
+}
+
+export function buildTemplateSectionRowsFromSectionData(input: {
+  projectTemplateSectionId: string;
+  section: TemplateEditorSectionDataInput;
+}) {
+  const presetBindings: TemplateSectionPresetBindingWrite[] = [];
+  const promptBlocks: TemplateSectionPromptBlockWrite[] = [];
+  const manualLoraEntries: TemplateSectionManualLoraEntryWrite[] = [];
+  const bindingByKey = new Map<string, TemplateSectionPresetBindingWrite>();
+  const blocks = input.section.promptBlocks ?? [];
+
+  blocks.forEach((block, index) => {
+    const sortOrder = readSortOrder(block.sortOrder, index);
+    const presetBlock = cleanPresetPromptBlock(block);
+
+    if (presetBlock) {
+      let binding = bindingByKey.get(presetBlock.bindingKey);
+      if (!binding) {
+        binding = {
+          id: relationId("templateSectionPresetBinding", input.projectTemplateSectionId, presetBlock.bindingKey),
+          projectTemplateSectionId: input.projectTemplateSectionId,
+          bindingKey: presetBlock.bindingKey,
+          categoryId: presetBlock.categoryId,
+          presetId: presetBlock.presetId,
+          variantId: presetBlock.variantId,
+          groupBindingKey: presetBlock.groupBindingKey,
+          sortOrder,
+        };
+        bindingByKey.set(presetBlock.bindingKey, binding);
+        presetBindings.push(binding);
+      }
+
+      promptBlocks.push(templatePromptBlockWrite(input.projectTemplateSectionId, {
+        id: relationId("templateSectionPromptBlock", input.projectTemplateSectionId, `preset:${presetBlock.bindingKey}`),
+        bindingId: binding.id,
+        type: "preset",
+        customLabel: null,
+        customPositive: null,
+        customNegative: null,
+        sortOrder,
+      }));
+      return;
+    }
+
+    promptBlocks.push(templatePromptBlockWrite(input.projectTemplateSectionId, {
+      id: relationId("templateSectionPromptBlock", input.projectTemplateSectionId, `custom:${index}`),
+      bindingId: null,
+      type: "custom",
+      customLabel: readNullableString(block.label),
+      customPositive: readNullableString(block.positive) ?? "",
+      customNegative: readNullableString(block.negative),
+      sortOrder,
+    }));
+  });
+
+  const submittedLoraConfig = input.section["loraConfig"];
+  for (const stage of ["lora1", "lora2"] as const) {
+    const entries = readTemplateEditorLoraEntries(submittedLoraConfig, stage);
+    entries.forEach((entry, index) => {
+      if (!isRecord(entry)) return;
+      if (isCleanPresetLoraEntry(entry)) return;
+
+      const loraPath = readString(entry.path);
+      if (!loraPath) return;
+
+      const detachedBindingKey = readString(entry.detachedBindingId);
+      const bindingKey = detachedBindingKey ?? readString(entry.bindingId);
+      const binding = bindingKey ? bindingByKey.get(bindingKey) ?? null : null;
+      const source = readString(entry.source);
+      const suppressed = entry.suppressed === true;
+      const detachedFromPath = readString(entry.detachedPresetPath) ?? (source === "preset" ? loraPath : null);
+
+      manualLoraEntries.push({
+        id: relationId("templateSectionManualLoraEntry", input.projectTemplateSectionId, `${stage}:${index}:${loraPath}`),
+        projectTemplateSectionId: input.projectTemplateSectionId,
+        templateSectionBindingId: binding?.id ?? null,
+        stage,
+        path: loraPath,
+        weight: roundLoraWeight(entry.weight),
+        enabled: suppressed ? false : readBoolean(entry.enabled, true),
+        detachedFromBindingKey: detachedBindingKey ?? (source === "preset" ? readString(entry.bindingId) : null),
+        detachedFromPresetId: binding?.presetId ?? null,
+        detachedFromVariantId: binding?.variantId ?? null,
+        detachedFromPath,
+        metadata: suppressed ? { suppressed: true } : null,
+        sortOrder: index,
+      });
+    });
+  }
+
+  return { presetBindings, promptBlocks, manualLoraEntries };
 }
 
 function templateManualLoraWriteFromSectionManual(
