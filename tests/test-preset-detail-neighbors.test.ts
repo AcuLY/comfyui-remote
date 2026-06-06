@@ -146,3 +146,28 @@ test("detail pages remount editors when neighbor links switch route items", () =
     );
   }
 });
+
+test("preset and group detail clients support s/f neighbor shortcuts outside form fields", () => {
+  const cases = [
+    {
+      file: "src/app/assets/presets/[presetId]/preset-edit-client.tsx",
+      previousHrefConst: "previousPresetHref",
+      nextHrefConst: "nextPresetHref",
+    },
+    {
+      file: "src/app/assets/preset-groups/[groupId]/preset-group-edit-client.tsx",
+      previousHrefConst: "previousGroupHref",
+      nextHrefConst: "nextGroupHref",
+    },
+  ];
+
+  for (const { file, previousHrefConst, nextHrefConst } of cases) {
+    const source = readSource(file);
+
+    assert.match(source, /window\.addEventListener\("keydown", handleKeyDown\)/, `${file} should bind a page shortcut handler`);
+    assert.match(source, /event\.key\.toLowerCase\(\) === "s"[\s\S]*\? previous\w+Href/, `${file} should map s to the previous item`);
+    assert.match(source, /event\.key\.toLowerCase\(\) === "f"[\s\S]*\? next\w+Href/, `${file} should map f to the next item`);
+    assert.match(source, new RegExp(`router\\.push\\(href\\)[\\s\\S]*\\}, \\[${nextHrefConst}, ${previousHrefConst}, router\\]\\)`), `${file} should navigate with the current neighbor hrefs`);
+    assert.match(source, /target\.isContentEditable[\s\S]*tagName === "INPUT"[\s\S]*tagName === "TEXTAREA"[\s\S]*tagName === "SELECT"/, `${file} should ignore shortcuts while editing form fields`);
+  }
+});

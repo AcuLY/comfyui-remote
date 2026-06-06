@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { ArrowLeft, Repeat2, Save, Trash2, X } from "lucide-react";
 import { NeighborNavigation } from "@/components/neighbor-navigation";
 import { PresetCascadePicker } from "@/components/preset-cascade-picker";
@@ -62,6 +62,38 @@ export function PresetGroupEditClient({
   const previousGroupHref = previousGroup?.id ? `/assets/preset-groups/${previousGroup.id}` : null;
   const nextGroupHref = nextGroup?.id ? `/assets/preset-groups/${nextGroup.id}` : null;
   const groupPositionText = groupPosition >= 0 ? `${groupPosition + 1} / ${totalGroups}` : null;
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.defaultPrevented || event.metaKey || event.altKey || event.ctrlKey || event.shiftKey) {
+        return;
+      }
+
+      const target = event.target;
+      if (target instanceof HTMLElement) {
+        const tagName = target.tagName;
+        if (target.isContentEditable || tagName === "INPUT" || tagName === "TEXTAREA" || tagName === "SELECT") {
+          return;
+        }
+      }
+
+      const href = event.key.toLowerCase() === "s"
+        ? previousGroupHref
+        : event.key.toLowerCase() === "f"
+          ? nextGroupHref
+          : null;
+
+      if (!href) {
+        return;
+      }
+
+      event.preventDefault();
+      router.push(href);
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [nextGroupHref, previousGroupHref, router]);
 
   // Build variant lookup for preview card
   const variantLookup = useMemo(() => {

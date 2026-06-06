@@ -179,6 +179,38 @@ export function PresetEditClient({
     savedSnapshotRef.current = createSavedSnapshot(preset);
   }, [preset]);
 
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.defaultPrevented || event.metaKey || event.altKey || event.ctrlKey || event.shiftKey) {
+        return;
+      }
+
+      const target = event.target;
+      if (target instanceof HTMLElement) {
+        const tagName = target.tagName;
+        if (target.isContentEditable || tagName === "INPUT" || tagName === "TEXTAREA" || tagName === "SELECT") {
+          return;
+        }
+      }
+
+      const href = event.key.toLowerCase() === "s"
+        ? previousPresetHref
+        : event.key.toLowerCase() === "f"
+          ? nextPresetHref
+          : null;
+
+      if (!href) {
+        return;
+      }
+
+      event.preventDefault();
+      router.push(href);
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [nextPresetHref, previousPresetHref, router]);
+
   async function savePreset(
     data: PresetSaveData,
     variantDrafts: VariantDraft[],
