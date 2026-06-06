@@ -64,6 +64,24 @@ test("updateGroupMember replaces a preset member and propagates group changes", 
   assert.match(body, /return updated/, "replacement should return the updated member");
 });
 
+test("removeGroupMember removes a member without blocking on imported group sync", () => {
+  const source = readSource("src/lib/actions/preset-group.ts");
+  const body = exportedFunctionSource(source, "removeGroupMember");
+
+  assert.match(source, /import { after as afterResponse } from "next\/server"/, "member removal should use after() for non-blocking downstream sync");
+  assert.match(body, /findUnique\([\s\S]*where:\s*{\s*id:\s*memberId\s*}/, "missing members should be checked before removal");
+  assert.match(body, /if \(!existing\) return/, "missing members should return without syncing");
+  assert.match(body, /resolveConcreteGroupMembers\(existing\.groupId\)/, "previous concrete members should be captured before deleting the member");
+  assert.match(body, /presetGroupMember\.delete\([\s\S]*where:\s*{\s*id:\s*memberId\s*}/, "the requested member should be deleted");
+  assert.match(body, /recordPresetGroupChange\([\s\S]*dimension:\s*"members"/, "member removal should record members history");
+  assert.match(body, /afterResponse\(async \(\) =>[\s\S]*syncPresetGroupInstances\(existing\.groupId,\s*previousMembers\)/, "member removal should sync imported group instances after responding");
+  assert.doesNotMatch(body, /^  await syncPresetGroupInstances\(existing\.groupId,\s*previousMembers\)/m, "member removal should not block the UI on imported group instance sync");
+  assert.match(body, /Failed to sync preset group instances after member removal/, "background sync failures should be logged");
+  assert.match(body, /revalidatePath\("\/assets\/presets"\)/, "member removal should revalidate presets");
+  assert.match(body, /revalidatePath\("\/assets\/preset-groups"\)/, "member removal should revalidate preset groups");
+  assert.match(body, /revalidatePath\(`\/assets\/preset-groups\/\$\{existing\.groupId\}`\)/, "member removal should revalidate the changed group detail route");
+});
+
 test("group detail member rows use a locked preset picker without navigating the row link", () => {
   const source = readSource("src/app/assets/preset-groups/[groupId]/preset-group-edit-client.tsx");
 

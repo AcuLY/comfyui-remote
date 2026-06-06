@@ -464,8 +464,16 @@ export async function removeGroupMember(memberId: string) {
     before,
     after,
   });
-  await syncPresetGroupInstances(existing.groupId, previousMembers);
+  afterResponse(async () => {
+    try {
+      await syncPresetGroupInstances(existing.groupId, previousMembers);
+    } catch (error) {
+      console.error("Failed to sync preset group instances after member removal", error);
+    }
+  });
   revalidatePath("/assets/presets");
+  revalidatePath("/assets/preset-groups");
+  revalidatePath(`/assets/preset-groups/${existing.groupId}`);
 }
 
 export async function updateGroupMember(memberId: string, input: PresetGroupMemberReplacementInput) {
