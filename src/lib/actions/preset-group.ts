@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after as afterResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { recordPresetGroupChange } from "@/server/services/preset-change-history-service";
 import {
@@ -525,7 +526,13 @@ export async function updateGroupMember(memberId: string, input: PresetGroupMemb
     before,
     after,
   });
-  await syncPresetGroupInstances(existing.groupId, previousMembers);
+  afterResponse(async () => {
+    try {
+      await syncPresetGroupInstances(existing.groupId, previousMembers);
+    } catch (error) {
+      console.error("Failed to sync preset group instances after member replacement", error);
+    }
+  });
   revalidatePath("/assets/presets");
   revalidatePath("/assets/preset-groups");
   revalidatePath(`/assets/preset-groups/${existing.groupId}`);

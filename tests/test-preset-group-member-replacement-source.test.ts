@@ -33,6 +33,7 @@ test("updateGroupMember replaces a preset member and propagates group changes", 
   const source = readSource("src/lib/actions/preset-group.ts");
   const body = exportedFunctionSource(source, "updateGroupMember");
 
+  assert.match(source, /import { after as afterResponse } from "next\/server"/, "replacement should use after() for non-blocking downstream sync");
   assert.match(body, /findUnique\([\s\S]*where:\s*{\s*id:\s*memberId\s*}/, "missing members should be checked before update");
   assert.match(body, /presetId:\s*true/, "existing member lookup should select presetId");
   assert.match(body, /subGroupId:\s*true/, "existing member lookup should select subGroupId");
@@ -55,7 +56,8 @@ test("updateGroupMember replaces a preset member and propagates group changes", 
   assert.doesNotMatch(body, /slotCategoryId:\s*input/, "replacement should preserve existing slotCategoryId");
   assert.match(body, /dimension:\s*"members"/, "replacement should record members history");
   assert.match(body, /title:\s*"替换预制组成员"/, "replacement history should use the replacement title");
-  assert.match(body, /syncPresetGroupInstances\(existing\.groupId,\s*previousMembers\)/, "replacement should sync imported group instances");
+  assert.match(body, /afterResponse\(async \(\) =>[\s\S]*syncPresetGroupInstances\(existing\.groupId,\s*previousMembers\)/, "replacement should sync imported group instances after responding");
+  assert.doesNotMatch(body, /^  await syncPresetGroupInstances\(existing\.groupId,\s*previousMembers\)/m, "replacement should not block the UI on imported group instance sync");
   assert.match(body, /revalidatePath\("\/assets\/presets"\)/, "replacement should revalidate presets");
   assert.match(body, /revalidatePath\("\/assets\/preset-groups"\)/, "replacement should revalidate preset groups");
   assert.match(body, /revalidatePath\(`\/assets\/preset-groups\/\$\{existing\.groupId\}`\)/, "replacement should revalidate the changed group detail route");
