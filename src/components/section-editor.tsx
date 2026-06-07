@@ -7,7 +7,7 @@ import { PromptBlockEditor } from "@/components/prompt-block-editor";
 import { LoraListEditor } from "@/components/lora-list-editor";
 import {
   canSwitchSectionPresetVariant,
-  getSectionPresetBindingDisplayName,
+  expandSectionPresetBindingDisplayRows,
 } from "@/components/section-editor-binding-rules";
 import type { PromptBlockData } from "@/lib/actions";
 import {
@@ -181,6 +181,10 @@ export function SectionEditor({
     }
     return [...map.values()];
   }, [blocks, lora1, lora2, libraryV2]);
+  const presetBindingRows = useMemo(
+    () => expandSectionPresetBindingDisplayRows(presetBindings, libraryV2),
+    [presetBindings, libraryV2],
+  );
 
   // ── Switch variant for an imported preset ──
   function handleSwitchVariant(bindingId: string, newVariantId: string) {
@@ -565,9 +569,9 @@ export function SectionEditor({
           <div className="flex items-center gap-2 text-xs text-zinc-400">
             <Package className="size-3.5" />
             <span>已导入预制</span>
-            {presetBindings.length > 0 && (
+            {presetBindingRows.length > 0 && (
               <span className="rounded bg-sky-500/20 px-1.5 py-0.5 text-[10px] text-sky-300">
-                {presetBindings.length}
+                {presetBindingRows.length}
               </span>
             )}
           </div>
@@ -581,48 +585,59 @@ export function SectionEditor({
         </div>
 
         {/* Binding cards */}
-        {presetBindings.length > 0 && (
+        {presetBindingRows.length > 0 && (
           <div className="grid grid-cols-1 gap-1 lg:grid-cols-2">
-            {presetBindings.map((binding) => {
-              const presetDisplayName = getSectionPresetBindingDisplayName(binding);
+            {presetBindingRows.map((row) => {
+              const binding = row.binding;
+              const canSwitchVariant = !row.isPresetGroupMember && canSwitchSectionPresetVariant(binding);
 
               return (
                 <div
-                  key={binding.bindingId}
+                  key={row.key}
                   className="flex items-center justify-between rounded-lg border border-white/5 bg-white/[0.02] px-3 py-1.5"
                 >
                 <div className="flex items-center gap-2 min-w-0">
                   {/* Category tag */}
-                  {binding.categoryName && (
+                  {row.categoryName && (
                     <span
                       className="shrink-0 rounded px-1.5 py-0.5 text-[9px] font-medium"
-                      style={binding.categoryColor ? {
-                        backgroundColor: `hsl(${binding.categoryColor} / 0.15)`,
-                        color: `hsl(${binding.categoryColor})`,
+                      style={row.categoryColor ? {
+                        backgroundColor: `hsl(${row.categoryColor} / 0.15)`,
+                        color: `hsl(${row.categoryColor})`,
                       } : {
                         backgroundColor: "rgba(255,255,255,0.06)",
                         color: "#a1a1aa",
                       }}
                     >
-                      {binding.categoryName}
+                      {row.categoryName}
                     </span>
                   )}
                   {/* Group indicator */}
                   {(binding.presetGroupId || binding.groupBindingId) && (
                     <span className="shrink-0 rounded bg-amber-500/15 px-1 py-px text-[8px] text-amber-400">组</span>
                   )}
-                  <span className="text-[11px] text-zinc-300 truncate">{presetDisplayName}</span>
-                  {binding.sourceId && (
+                  <span className="text-[11px] text-zinc-300 truncate">{row.presetName}</span>
+                  {row.isPresetGroupMember && row.variantName && row.variantName !== "默认" && (
+                    <span className="shrink-0 rounded border border-white/10 px-1 py-px text-[9px] text-zinc-500">
+                      {row.variantName}
+                    </span>
+                  )}
+                  {row.sourceId && (
                     <Link
-                      href={getPresetManagerHref(binding)}
+                      href={getPresetManagerHref({
+                        ...binding,
+                        sourceId: row.sourceId,
+                        variantId: row.variantId,
+                        categoryId: row.categoryId,
+                      })}
                       className="shrink-0 rounded p-0.5 text-zinc-500 hover:bg-white/5 hover:text-sky-400"
                       title="在预制管理中打开"
                     >
                       <ExternalLink className="size-3" />
                     </Link>
                   )}
-                  {/* Variant switcher — show only if preset has multiple variants */}
-                  {canSwitchSectionPresetVariant(binding) && (
+                  {/* Variant switcher – show only if preset has multiple variants */}
+                  {canSwitchVariant && (
                     <div className="relative">
                       <select
                         value={binding.variantId ?? ""}
@@ -642,14 +657,14 @@ export function SectionEditor({
                     </div>
                   )}
                   <span className="text-[9px] text-zinc-500">
-                    {binding.blockCount} 块 · {binding.loraCount} LoRA
+                    {row.blockCount} 块 · {row.loraCount} LoRA
                   </span>
                 </div>
                 <div className="flex items-center gap-0.5 shrink-0">
                   {onRename && (
                     <button
                       type="button"
-                      onClick={() => onRename(binding.groupName ?? presetDisplayName)}
+                      onClick={() => onRename(binding.groupName ?? row.presetName)}
                       title="用预制名作为小节名"
                       className="rounded p-1 text-zinc-600 hover:bg-sky-500/10 hover:text-sky-400"
                     >
