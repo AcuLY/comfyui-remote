@@ -113,26 +113,53 @@ export function SectionSwitchHeaderLink({
 export function SectionKeyboardShortcuts({
   projectId,
   sectionId,
+  prevSectionId,
+  nextSectionId,
 }: {
   projectId: string;
   sectionId: string;
+  prevSectionId: string | null;
+  nextSectionId: string | null;
 }) {
+  const router = useRouter();
+  const prevHref = prevSectionId ? `/projects/${projectId}/sections/${prevSectionId}` : null;
+  const nextHref = nextSectionId ? `/projects/${projectId}/sections/${nextSectionId}` : null;
+
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
-      if (
-        event.target instanceof HTMLInputElement ||
-        event.target instanceof HTMLTextAreaElement ||
-        (event.target instanceof HTMLElement && event.target.isContentEditable)
-      )
+      if (event.defaultPrevented || event.metaKey || event.altKey || event.ctrlKey || event.shiftKey) {
         return;
+      }
+
+      const target = event.target;
+      if (target instanceof HTMLElement) {
+        const tagName = target.tagName;
+        if (target.isContentEditable || tagName === "INPUT" || tagName === "TEXTAREA" || tagName === "SELECT") {
+          return;
+        }
+      }
+
       if (event.key === "a" || event.key === "A") {
         event.preventDefault();
         window.location.href = `/projects/${projectId}/sections/${sectionId}/results`;
+        return;
+      }
+
+      const href = event.key.toLowerCase() === "s"
+        ? prevHref
+        : event.key.toLowerCase() === "f"
+          ? nextHref
+          : null;
+
+      if (href) {
+        event.preventDefault();
+        saveSectionSwitchScroll(projectId);
+        router.push(href, { scroll: false });
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [projectId, sectionId]);
+  }, [nextHref, prevHref, projectId, router, sectionId]);
 
   return null;
 }
