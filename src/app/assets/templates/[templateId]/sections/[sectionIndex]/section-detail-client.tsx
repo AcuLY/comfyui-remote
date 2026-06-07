@@ -215,7 +215,7 @@ export function TemplateSectionDetailClient({
             variantId = preset.variants.find((item) => item.name === variantName)?.id ?? variantId;
           }
         }
-        if (!presetGroupId) {
+        if (sourceId) {
           for (const cat of library.categories) {
             const preset = sourceId ? cat.presets.find((item) => item.id === sourceId) : undefined;
             if (preset) {
@@ -641,7 +641,7 @@ export function TemplateSectionDetailClient({
     if (!binding) return;
 
     const bindingIds = new Set<string>([bindingId]);
-    if (binding.groupBindingId && !binding.presetGroupId) {
+    if (binding.groupBindingId) {
       for (const block of promptBlocks) {
         if (block.groupBindingId === binding.groupBindingId && block.bindingId) {
           bindingIds.add(block.bindingId);
@@ -1037,7 +1037,7 @@ export function TemplateSectionDetailClient({
                       <ExternalLink className="size-3" />
                     </Link>
                   )}
-                  {!binding.presetGroupId && binding.availableVariants.length > 1 && (
+                  {binding.sourceId && binding.availableVariants.length > 1 && (
                     <div className="relative">
                       <select
                         value={binding.variantId ?? ""}

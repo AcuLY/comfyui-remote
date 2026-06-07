@@ -308,6 +308,8 @@ setupDb.close();
 
 let prisma: typeof PrismaClientSingleton;
 let importPresetToSection: typeof PromptBlockActions.importPresetToSection;
+let importPresetGroupToSection: typeof PromptBlockActions.importPresetGroupToSection;
+let removeImportedPresetFromSection: typeof PromptBlockActions.removeImportedPresetFromSection;
 let switchBindingVariant: typeof PromptBlockActions.switchBindingVariant;
 let updateSectionBlock: typeof PromptBlockActions.updateSectionBlock;
 let addSection: typeof SectionActions.addSection;
@@ -341,6 +343,8 @@ test.before(async () => {
 
   prisma = prismaModule.prisma;
   importPresetToSection = promptBlockActions.importPresetToSection;
+  importPresetGroupToSection = promptBlockActions.importPresetGroupToSection;
+  removeImportedPresetFromSection = promptBlockActions.removeImportedPresetFromSection;
   switchBindingVariant = promptBlockActions.switchBindingVariant;
   updateSectionBlock = promptBlockActions.updateSectionBlock;
   addSection = sectionActions.addSection;
@@ -578,6 +582,178 @@ test("importPresetToSection writes normalized binding rows without legacy expand
   await prisma.projectSection.findUniqueOrThrow({ where: { id: seed.section.id } });
 });
 
+test("importPresetGroupToSection expands group members into independent preset bindings", async () => {
+  const seed = await seedProjectWithPreset();
+  const earlierCategory = await prisma.presetCategory.create({
+    data: {
+      id: `${seed.key}-earlier-category`,
+      name: `${seed.key} Earlier Category`,
+      slug: `${seed.key}-earlier-category`,
+      positivePromptOrder: 5,
+      lora1Order: 5,
+      lora2Order: 5,
+    },
+  });
+  const earlierPreset = await prisma.preset.create({
+    data: {
+      id: `${seed.key}-earlier-preset`,
+      categoryId: earlierCategory.id,
+      name: `${seed.key} Earlier Preset`,
+      slug: `${seed.key}-earlier-preset`,
+    },
+  });
+  const earlierVariant = await prisma.presetVariant.create({
+    data: {
+      id: `${seed.key}-earlier-variant`,
+      presetId: earlierPreset.id,
+      name: "Default",
+      slug: `${seed.key}-earlier-variant`,
+      prompt: `${seed.key} earlier positive`,
+      negativePrompt: `${seed.key} earlier negative`,
+      lora1: [{ path: `/${seed.key}-earlier.safetensors`, weight: 0.3, enabled: true }],
+      lora2: [],
+      sortOrder: 0,
+    },
+  });
+  const groupCategory = await prisma.presetCategory.create({
+    data: {
+      id: `${seed.key}-group-category`,
+      name: `${seed.key} Group Category`,
+      slug: `${seed.key}-group-category`,
+      type: "group",
+      positivePromptOrder: 99,
+    },
+  });
+  const group = await prisma.presetGroup.create({
+    data: {
+      id: `${seed.key}-group`,
+      categoryId: groupCategory.id,
+      name: `${seed.key} Group`,
+      slug: `${seed.key}-group`,
+    },
+  });
+  await prisma.presetGroupMember.createMany({
+    data: [
+      {
+        id: `${seed.key}-group-member-later`,
+        groupId: group.id,
+        presetId: seed.preset.id,
+        variantId: seed.variantA.id,
+        sortOrder: 0,
+      },
+      {
+        id: `${seed.key}-group-member-earlier`,
+        groupId: group.id,
+        presetId: earlierPreset.id,
+        variantId: earlierVariant.id,
+        sortOrder: 1,
+      },
+    ],
+  });
+
+  const result = await importPresetGroupToSection(seed.section.id, group.id);
+  const groupResult = result as Awaited<ReturnType<typeof importPresetGroupToSection>> & {
+    results: Awaited<ReturnType<typeof importPresetToSection>>[];
+  };
+
+  assert.ok(groupResult);
+  assert.equal(Array.isArray(groupResult.results), true);
+  assert.equal(groupResult.results.length, 2);
+  const bindings = await prisma.sectionPresetBinding.findMany({
+    where: { projectSectionId: seed.section.id },
+    orderBy: { sortOrder: "asc" },
+  });
+  assert.equal(bindings.length, 2);
+  assert.deepEqual(bindings.map((binding) => binding.presetId), [earlierPreset.id, seed.preset.id]);
+  assert.deepEqual(bindings.map((binding) => binding.variantId), [earlierVariant.id, seed.variantA.id]);
+  assert.deepEqual(bindings.map((binding) => binding.categoryId), [earlierCategory.id, seed.category.id]);
+  assert.deepEqual(bindings.map((binding) => binding.presetGroupId), [group.id, group.id]);
+  assert.equal(new Set(bindings.map((binding) => binding.groupBindingKey)).size, 1);
+  assert.equal(bindings.some((binding) => binding.presetId === null && binding.presetGroupId === group.id), false);
+
+  const promptRows = await prisma.sectionPromptBlock.findMany({
+    where: { projectSectionId: seed.section.id },
+    orderBy: { sortOrder: "asc" },
+  });
+  assert.equal(promptRows.length, 2);
+  assert.deepEqual(promptRows.map((row) => row.sectionBindingId), bindings.map((binding) => binding.id));
+  assert.deepEqual(groupResult.results.map((item) => item?.block.bindingId), bindings.map((binding) => binding.bindingKey));
+});
+
+test("removeImportedPresetFromSection cascades a group import by group binding key", async () => {
+  const seed = await seedProjectWithPreset();
+  const groupCategory = await prisma.presetCategory.create({
+    data: {
+      id: `${seed.key}-group-category`,
+      name: `${seed.key} Group Category`,
+      slug: `${seed.key}-group-category`,
+      type: "group",
+    },
+  });
+  const group = await prisma.presetGroup.create({
+    data: {
+      id: `${seed.key}-group`,
+      categoryId: groupCategory.id,
+      name: `${seed.key} Group`,
+      slug: `${seed.key}-group`,
+    },
+  });
+  const groupBindingKey = `grp:${group.id}:${seed.key}-instance`;
+  const firstBinding = await prisma.sectionPresetBinding.create({
+    data: {
+      projectSectionId: seed.section.id,
+      bindingKey: `${seed.key}-group-member-a`,
+      categoryId: seed.category.id,
+      presetId: seed.preset.id,
+      variantId: seed.variantA.id,
+      presetGroupId: group.id,
+      groupBindingKey,
+      sortOrder: 0,
+    },
+  });
+  const secondBinding = await prisma.sectionPresetBinding.create({
+    data: {
+      projectSectionId: seed.section.id,
+      bindingKey: `${seed.key}-group-member-b`,
+      categoryId: seed.category.id,
+      presetId: seed.preset.id,
+      variantId: seed.variantB.id,
+      presetGroupId: group.id,
+      groupBindingKey,
+      sortOrder: 1,
+    },
+  });
+  await prisma.sectionPromptBlock.createMany({
+    data: [
+      { projectSectionId: seed.section.id, sectionBindingId: firstBinding.id, type: "preset", sortOrder: 0 },
+      { projectSectionId: seed.section.id, sectionBindingId: secondBinding.id, type: "preset", sortOrder: 1 },
+    ],
+  });
+  await prisma.sectionManualLoraEntry.createMany({
+    data: [
+      {
+        projectSectionId: seed.section.id,
+        sectionBindingId: firstBinding.id,
+        stage: "lora1",
+        path: `/${seed.key}-manual-a.safetensors`,
+      },
+      {
+        projectSectionId: seed.section.id,
+        sectionBindingId: secondBinding.id,
+        stage: "lora2",
+        path: `/${seed.key}-manual-b.safetensors`,
+      },
+    ],
+  });
+
+  const result = await removeImportedPresetFromSection(seed.section.id, firstBinding.bindingKey);
+
+  assert.deepEqual(result, { deletedBlocks: 2, removedLoras: { lora1: 1, lora2: 1 } });
+  assert.equal(await prisma.sectionPresetBinding.count({ where: { projectSectionId: seed.section.id, groupBindingKey } }), 0);
+  assert.equal(await prisma.sectionPromptBlock.count({ where: { projectSectionId: seed.section.id } }), 0);
+  assert.equal(await prisma.sectionManualLoraEntry.count({ where: { projectSectionId: seed.section.id } }), 0);
+});
+
 test("switchBindingVariant only updates the SectionPresetBinding variant", async () => {
   const seed = await seedProjectWithPreset();
   const { binding } = await createNormalizedPresetBlock(seed);
@@ -590,6 +766,53 @@ test("switchBindingVariant only updates the SectionPresetBinding variant", async
   const promptRow = await prisma.sectionPromptBlock.findFirstOrThrow({ where: { projectSectionId: seed.section.id } });
   assert.equal(promptRow.customPositive, null);
   assert.equal(promptRow.customNegative, null);
+});
+
+test("switchBindingVariant allows real preset rows imported from a preset group", async () => {
+  const seed = await seedProjectWithPreset();
+  const groupCategory = await prisma.presetCategory.create({
+    data: {
+      id: `${seed.key}-group-category`,
+      name: `${seed.key} Group Category`,
+      slug: `${seed.key}-group-category`,
+      type: "group",
+    },
+  });
+  const group = await prisma.presetGroup.create({
+    data: {
+      id: `${seed.key}-group`,
+      categoryId: groupCategory.id,
+      name: `${seed.key} Group`,
+      slug: `${seed.key}-group`,
+    },
+  });
+  const binding = await prisma.sectionPresetBinding.create({
+    data: {
+      projectSectionId: seed.section.id,
+      bindingKey: `${seed.key}-group-member`,
+      categoryId: seed.category.id,
+      presetId: seed.preset.id,
+      variantId: seed.variantA.id,
+      presetGroupId: group.id,
+      groupBindingKey: `grp:${group.id}:${seed.key}-instance`,
+      sortOrder: 0,
+    },
+  });
+  await prisma.sectionPromptBlock.create({
+    data: {
+      projectSectionId: seed.section.id,
+      sectionBindingId: binding.id,
+      type: "preset",
+      sortOrder: 0,
+    },
+  });
+
+  const result = await switchBindingVariant(seed.section.id, binding.bindingKey, seed.variantB.id);
+
+  assert.ok(result);
+  const afterBinding = await prisma.sectionPresetBinding.findUniqueOrThrow({ where: { id: binding.id } });
+  assert.equal(afterBinding.variantId, seed.variantB.id);
+  assert.equal(afterBinding.presetGroupId, group.id);
 });
 
 test("addSection prefers ProjectPresetBinding rows and does not expand prompt or LoRA caches", async () => {

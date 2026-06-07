@@ -68,7 +68,7 @@ export type SectionPresetBindingDisplayRow<TBinding extends SectionPresetBinding
 };
 
 export function canSwitchSectionPresetVariant(binding: SectionPresetVariantSwitchState) {
-  return !binding.presetGroupId && binding.availableVariants.length > 1;
+  return binding.availableVariants.length > 1;
 }
 
 export function getSectionPresetBindingDisplayName(binding: SectionPresetBindingDisplayNameState) {
@@ -202,7 +202,7 @@ export function expandSectionPresetBindingDisplayRows<TBinding extends SectionPr
   };
 
   for (const binding of bindings) {
-    if (!binding.presetGroupId) {
+    if (!binding.presetGroupId || binding.sourceId) {
       pushBindingRow(binding);
       continue;
     }

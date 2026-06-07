@@ -21,15 +21,12 @@ test("resolver-only preset bindings can still switch variants", () => {
   );
 });
 
-test("preset groups and single-variant presets do not expose variant switching", () => {
+test("legacy preset group containers and single-variant presets do not expose variant switching", () => {
   assert.equal(
     canSwitchSectionPresetVariant({
       presetGroupId: "group-1",
       resolvedOnly: false,
-      availableVariants: [
-        { id: "variant-default", name: "Default" },
-        { id: "variant-alt", name: "Alt" },
-      ],
+      availableVariants: [],
     }),
     false,
   );
@@ -41,6 +38,20 @@ test("preset groups and single-variant presets do not expose variant switching",
       availableVariants: [{ id: "variant-default", name: "Default" }],
     }),
     false,
+  );
+});
+
+test("group-imported preset rows can still switch variants", () => {
+  assert.equal(
+    canSwitchSectionPresetVariant({
+      presetGroupId: "group-1",
+      resolvedOnly: false,
+      availableVariants: [
+        { id: "variant-default", name: "Default" },
+        { id: "variant-alt", name: "Alt" },
+      ],
+    }),
+    true,
   );
 });
 
@@ -174,6 +185,88 @@ test("section preset list expands preset group members in preset category order"
         categoryName: "姿势",
         isPresetGroupMember: true,
         parentPresetGroupName: "单人-背手站立",
+      },
+    ],
+  );
+});
+
+test("section preset list keeps real group-imported preset bindings as independent rows", () => {
+  const rows = expandSectionPresetBindingDisplayRows(
+    [
+      {
+        bindingId: "member-binding",
+        presetName: "鍗曚汉",
+        sourceId: "preset-person",
+        variantId: "variant-person-default",
+        presetGroupId: "group-section",
+        categoryId: "person-cat",
+        categoryName: "浜烘暟",
+        categoryColor: "23 50% 55%",
+        blockCount: 1,
+        loraCount: 0,
+        availableVariants: [
+          { id: "variant-person-default", name: "榛樿" },
+          { id: "variant-person-alt", name: "鍙樹綋" },
+        ],
+      },
+    ],
+    {
+      categories: [
+        {
+          id: "group-cat",
+          name: "灏忚妭",
+          color: "30 50% 55%",
+          presets: [],
+          groups: [
+            {
+              id: "group-section",
+              name: "鍗曚汉-鑳屾墜绔欑珛",
+              members: [
+                {
+                  id: "member-pose",
+                  presetId: "preset-pose",
+                  variantId: "variant-pose-default",
+                  subGroupId: null,
+                  presetName: "鑳屾墜绔欑珛",
+                },
+              ],
+            },
+          ],
+        },
+        {
+          id: "person-cat",
+          name: "浜烘暟",
+          color: "23 50% 55%",
+          presets: [
+            {
+              id: "preset-person",
+              name: "鍗曚汉",
+              variants: [
+                { id: "variant-person-default", name: "榛樿" },
+                { id: "variant-person-alt", name: "鍙樹綋" },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+  );
+
+  assert.deepEqual(
+    rows.map((row) => ({
+      key: row.key,
+      sourceId: row.sourceId,
+      presetGroupId: row.binding.presetGroupId,
+      isPresetGroupMember: row.isPresetGroupMember,
+      availableVariantCount: row.availableVariants.length,
+    })),
+    [
+      {
+        key: "member-binding",
+        sourceId: "preset-person",
+        presetGroupId: "group-section",
+        isPresetGroupMember: false,
+        availableVariantCount: 2,
       },
     ],
   );

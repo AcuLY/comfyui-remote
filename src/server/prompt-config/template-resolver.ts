@@ -136,7 +136,7 @@ function cleanPresetPromptBlock(block: TemplateEditorPromptBlockInput) {
     bindingKey,
     categoryId,
     presetId,
-    variantId: presetGroupId ? null : readString(block.variantId),
+    variantId: presetId ? readString(block.variantId) : null,
     presetGroupId,
     groupBindingKey: readString(block.groupBindingId),
   };
@@ -361,6 +361,7 @@ export async function resolveTemplateSectionConfig(
 
   const initialVariantIds = await resolveInitialVariantIds(templateSection.presetBindingRows, db);
   const presetGroupIds = templateSection.presetBindingRows
+    .filter((binding) => binding.presetGroupId && !binding.presetId)
     .map((binding) => binding.presetGroupId)
     .filter((groupId): groupId is string => Boolean(groupId));
   const canResolvePresetGroups = Boolean(db.presetGroup && db.preset && db.presetVariant && db.presetVariantLink);

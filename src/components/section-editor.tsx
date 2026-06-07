@@ -131,7 +131,7 @@ export function SectionEditor({
               variantId = preset.variants.find((v) => v.name === variantName)?.id ?? variantId;
             }
           }
-          if (!presetGroupId && sourceId && libraryV2) {
+          if (sourceId && libraryV2) {
             for (const cat of libraryV2.categories) {
               const preset = cat.presets.find((p) => p.id === sourceId);
               if (preset) {
@@ -289,14 +289,20 @@ export function SectionEditor({
     startTransition(async () => {
       const result = await importPresetGroupToSection(sectionId, groupId);
       if (!result) return;
+      const newBlocks = result.blocks.length > 0
+        ? result.blocks
+        : result.results.map((item) => item.block);
 
       setBlocks((prev) => {
-        const updated = prev.map((b) =>
-          b.sortOrder >= result.block.sortOrder
-            ? { ...b, sortOrder: b.sortOrder + 1 }
-            : b,
-        );
-        updated.push(result.block);
+        const newSortOrders = newBlocks.map((block) => block.sortOrder).sort((a, b) => a - b);
+        const updated = prev.map((block) => {
+          let bump = 0;
+          for (const sortOrder of newSortOrders) {
+            if (block.sortOrder >= sortOrder - bump) bump += 1;
+          }
+          return bump > 0 ? { ...block, sortOrder: block.sortOrder + bump } : block;
+        });
+        updated.push(...newBlocks);
         updated.sort((a, b) => a.sortOrder - b.sortOrder);
         return updated;
       });
@@ -305,25 +311,27 @@ export function SectionEditor({
       const updatedLora2 = [...lora2];
       let loraChanged = false;
 
-      if (result.lora1.length > 0) {
-        const myOrder = result.categoryOrders.lora1Order;
-        let insertIdx = updatedLora1.length;
-        for (let i = 0; i < updatedLora1.length; i++) {
-          const entryCatOrder = getCategoryLoraOrder(updatedLora1[i], "lora1");
-          if (entryCatOrder > myOrder) { insertIdx = i; break; }
+      for (const item of result.results) {
+        if (item.lora1.length > 0) {
+          const myOrder = item.categoryOrders.lora1Order;
+          let insertIdx = updatedLora1.length;
+          for (let i = 0; i < updatedLora1.length; i++) {
+            const entryCatOrder = getCategoryLoraOrder(updatedLora1[i], "lora1");
+            if (entryCatOrder > myOrder) { insertIdx = i; break; }
+          }
+          updatedLora1.splice(insertIdx, 0, ...item.lora1.map((l) => ({ ...l, source: "preset" as const })));
+          loraChanged = true;
         }
-        updatedLora1.splice(insertIdx, 0, ...result.lora1.map((l) => ({ ...l, source: "preset" as const })));
-        loraChanged = true;
-      }
-      if (result.lora2.length > 0) {
-        const myOrder = result.categoryOrders.lora2Order;
-        let insertIdx = updatedLora2.length;
-        for (let i = 0; i < updatedLora2.length; i++) {
-          const entryCatOrder = getCategoryLoraOrder(updatedLora2[i], "lora2");
-          if (entryCatOrder > myOrder) { insertIdx = i; break; }
+        if (item.lora2.length > 0) {
+          const myOrder = item.categoryOrders.lora2Order;
+          let insertIdx = updatedLora2.length;
+          for (let i = 0; i < updatedLora2.length; i++) {
+            const entryCatOrder = getCategoryLoraOrder(updatedLora2[i], "lora2");
+            if (entryCatOrder > myOrder) { insertIdx = i; break; }
+          }
+          updatedLora2.splice(insertIdx, 0, ...item.lora2.map((l) => ({ ...l, source: "preset" as const })));
+          loraChanged = true;
         }
-        updatedLora2.splice(insertIdx, 0, ...result.lora2.map((l) => ({ ...l, source: "preset" as const })));
-        loraChanged = true;
       }
 
       if (loraChanged) {
@@ -370,7 +378,7 @@ export function SectionEditor({
     const block = blocks.find((b) => b.bindingId === bindingId);
     const groupBid = block?.groupBindingId;
 
-    if (groupBid && !info.presetGroupId) {
+    if (groupBid) {
       // Collect all bindings in the same group
       const groupBindingIds = new Set(
         blocks.filter((b) => b.groupBindingId === groupBid).map((b) => b.bindingId).filter(Boolean) as string[],
@@ -443,7 +451,7 @@ export function SectionEditor({
     if (!block) return true; // allow delete
     if (block.bindingId) {
       const groupBid = block.groupBindingId;
-      if (groupBid && !block.presetGroupId) {
+      if (groupBid) {
         // Part of a group import — confirm group-level delete
         const groupBindingIds = new Set(
           blocks.filter((b) => b.groupBindingId === groupBid).map((b) => b.bindingId).filter(Boolean) as string[],
@@ -468,7 +476,7 @@ export function SectionEditor({
     const block = blocks.find((b) => b.id === blockId);
     if (block?.bindingId) {
       const groupBid = block.groupBindingId;
-      if (groupBid && !block.presetGroupId) {
+      if (groupBid) {
         // Delete entire group
         const groupBindingIds = new Set(
           blocks.filter((b) => b.groupBindingId === groupBid).map((b) => b.bindingId).filter(Boolean) as string[],

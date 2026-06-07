@@ -213,7 +213,7 @@ function resolvedGroupsById(input: ResolveSectionConfigInput) {
 }
 
 function isPresetGroupBinding(binding: SectionPresetBindingRow) {
-  return Boolean(binding.presetGroupId);
+  return Boolean(binding.presetGroupId) && !binding.presetId;
 }
 
 function resolvePresetGroupBlock(
@@ -298,6 +298,7 @@ function resolvePresetBlock(
     type: "preset",
     sourceId: binding.presetId,
     variantId: variant?.id ?? binding.variantId,
+    ...(binding.presetGroupId ? { presetGroupId: binding.presetGroupId } : {}),
     categoryId: binding.categoryId,
     bindingId: binding.bindingKey,
     groupBindingId: binding.groupBindingKey,
@@ -762,6 +763,7 @@ export async function resolveSectionConfig(
 
   const initialVariantIds = await resolveInitialVariantIds(section.presetBindingRows, db);
   const presetGroupIds = section.presetBindingRows
+    .filter(isPresetGroupBinding)
     .map((binding) => binding.presetGroupId)
     .filter((groupId): groupId is string => Boolean(groupId));
   const canResolvePresetGroups = Boolean(db.presetGroup && db.preset && db.presetVariant && db.presetVariantLink);

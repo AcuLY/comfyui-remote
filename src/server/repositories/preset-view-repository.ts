@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { buildFolderScopedItemOrder } from "@/lib/folder-navigation";
 import { normalizeCivitaiLinks } from "@/lib/utils";
 import {
   groupPresetGroupHistory,
@@ -239,74 +240,79 @@ export async function getPresetCategoriesWithPresets(): Promise<PresetCategoryFu
     categories.flatMap((c) => c.groups),
   );
 
-  return categories.map((c) => ({
-    id: c.id,
-    name: c.name,
-    slug: c.slug,
-    icon: c.icon,
-    color: c.color,
-    type: c.type,
-    slotTemplate: slotTemplateFromRows(c.ownedSlots),
-    positivePromptOrder: c.positivePromptOrder,
-    negativePromptOrder: c.negativePromptOrder,
-    lora1Order: c.lora1Order,
-    lora2Order: c.lora2Order,
-    sortOrder: c.sortOrder,
-    presetCount: c._count.presets,
-    groupCount: c._count.groups,
-    presets: c.presets.map((p) => ({
-      id: p.id,
-      categoryId: p.categoryId,
-      name: p.name,
-      slug: p.slug,
-      isActive: p.isActive,
-      sortOrder: p.sortOrder,
-      notes: p.notes,
-      civitaiLinks: normalizeCivitaiLinks(p.civitaiLinks),
-      folderId: p.folderId,
-      variantCount: p._count.variants,
-      changeHistory: groupPresetHistory(p.changeLogs),
-      variants: p.variants.map((v) => ({
-        id: v.id,
-        presetId: v.presetId,
-        name: v.name,
-        slug: v.slug,
-        prompt: v.prompt,
-        negativePrompt: v.negativePrompt,
-        lora1: v.lora1,
-        lora2: v.lora2,
-        linkedVariants: linkedVariantRefs(v),
-        sortOrder: v.sortOrder,
-        isActive: v.isActive,
+  return categories.map((c) => {
+    const orderedPresets = buildFolderScopedItemOrder(c.folders, c.presets);
+    const orderedGroups = buildFolderScopedItemOrder(c.folders, c.groups);
+
+    return {
+      id: c.id,
+      name: c.name,
+      slug: c.slug,
+      icon: c.icon,
+      color: c.color,
+      type: c.type,
+      slotTemplate: slotTemplateFromRows(c.ownedSlots),
+      positivePromptOrder: c.positivePromptOrder,
+      negativePromptOrder: c.negativePromptOrder,
+      lora1Order: c.lora1Order,
+      lora2Order: c.lora2Order,
+      sortOrder: c.sortOrder,
+      presetCount: c._count.presets,
+      groupCount: c._count.groups,
+      presets: orderedPresets.map((p) => ({
+        id: p.id,
+        categoryId: p.categoryId,
+        name: p.name,
+        slug: p.slug,
+        isActive: p.isActive,
+        sortOrder: p.sortOrder,
+        notes: p.notes,
+        civitaiLinks: normalizeCivitaiLinks(p.civitaiLinks),
+        folderId: p.folderId,
+        variantCount: p._count.variants,
+        changeHistory: groupPresetHistory(p.changeLogs),
+        variants: p.variants.map((v) => ({
+          id: v.id,
+          presetId: v.presetId,
+          name: v.name,
+          slug: v.slug,
+          prompt: v.prompt,
+          negativePrompt: v.negativePrompt,
+          lora1: v.lora1,
+          lora2: v.lora2,
+          linkedVariants: linkedVariantRefs(v),
+          sortOrder: v.sortOrder,
+          isActive: v.isActive,
+        })),
       })),
-    })),
-    groups: c.groups.map((g) => ({
-      id: g.id,
-      categoryId: g.categoryId,
-      name: g.name,
-      slug: g.slug,
-      sortOrder: g.sortOrder,
-      folderId: g.folderId,
-      changeHistory: groupPresetGroupHistory(g.changeLogs),
-      members: g.members.map((m) => ({
-        id: m.id,
-        presetId: m.presetId,
-        variantId: m.variantId,
-        subGroupId: m.subGroupId,
-        slotCategoryId: m.slotCategoryId,
-        sortOrder: m.sortOrder,
-        presetName: m.presetId ? pMap.get(m.presetId) : undefined,
-        variantName: m.variantId ? vMap.get(m.variantId) : undefined,
-        subGroupName: m.subGroupId ? gMap.get(m.subGroupId) : undefined,
+      groups: orderedGroups.map((g) => ({
+        id: g.id,
+        categoryId: g.categoryId,
+        name: g.name,
+        slug: g.slug,
+        sortOrder: g.sortOrder,
+        folderId: g.folderId,
+        changeHistory: groupPresetGroupHistory(g.changeLogs),
+        members: g.members.map((m) => ({
+          id: m.id,
+          presetId: m.presetId,
+          variantId: m.variantId,
+          subGroupId: m.subGroupId,
+          slotCategoryId: m.slotCategoryId,
+          sortOrder: m.sortOrder,
+          presetName: m.presetId ? pMap.get(m.presetId) : undefined,
+          variantName: m.variantId ? vMap.get(m.variantId) : undefined,
+          subGroupName: m.subGroupId ? gMap.get(m.subGroupId) : undefined,
+        })),
       })),
-    })),
-    folders: c.folders.map((f) => ({
-      id: f.id,
-      name: f.name,
-      parentId: f.parentId,
-      sortOrder: f.sortOrder,
-    })),
-  }));
+      folders: c.folders.map((f) => ({
+        id: f.id,
+        name: f.name,
+        parentId: f.parentId,
+        sortOrder: f.sortOrder,
+      })),
+    };
+  });
 }
 
 export type PresetGroupEditData = {
@@ -429,81 +435,86 @@ export async function getPresetGroupEditData(groupId: string): Promise<PresetGro
     }
   }
 
-  const mappedCategories: PresetCategoryFull[] = categories.map((category) => ({
-    id: category.id,
-    name: category.name,
-    slug: category.slug,
-    icon: category.icon,
-    color: category.color,
-    type: category.type,
-    slotTemplate: slotTemplateFromRows(category.ownedSlots),
-    positivePromptOrder: category.positivePromptOrder,
-    negativePromptOrder: category.negativePromptOrder,
-    lora1Order: category.lora1Order,
-    lora2Order: category.lora2Order,
-    sortOrder: category.sortOrder,
-    presetCount: category._count.presets,
-    groupCount: category._count.groups,
-    presets: category.presets.map((preset) => ({
-      id: preset.id,
-      categoryId: preset.categoryId,
-      name: preset.name,
-      slug: preset.slug,
-      isActive: preset.isActive,
-      sortOrder: preset.sortOrder,
-      notes: preset.notes,
-      civitaiLinks: normalizeCivitaiLinks(preset.civitaiLinks),
-      folderId: preset.folderId,
-      variantCount: preset._count.variants,
-      changeHistory: emptyPresetHistory(),
-      variants: preset.variants.map((variant) => {
-        const content = contentByVariantId.get(variant.id);
-        return {
-          id: variant.id,
-          presetId: variant.presetId,
-          name: variant.name,
-          slug: variant.slug,
-          prompt: content?.prompt ?? "",
-          negativePrompt: content?.negativePrompt ?? null,
-          lora1: content?.lora1 ?? null,
-          lora2: content?.lora2 ?? null,
-          linkedVariants: content ? linkedVariantRefs(content) : [],
-          sortOrder: variant.sortOrder,
-          isActive: variant.isActive,
-        };
-      }),
-    })),
-    groups: category.groups.map((group) => ({
-      id: group.id,
-      categoryId: group.categoryId,
-      name: group.name,
-      slug: group.slug,
-      sortOrder: group.sortOrder,
-      folderId: group.folderId,
-      changeHistory: group.id === currentGroup.id
-        ? groupPresetGroupHistory(currentGroup.changeLogs)
-        : emptyPresetGroupHistory(),
-      members: group.id === currentGroup.id
-        ? currentGroup.members.map((member) => ({
-            id: member.id,
-            presetId: member.presetId,
-            variantId: member.variantId,
-            subGroupId: member.subGroupId,
-            slotCategoryId: member.slotCategoryId,
-            sortOrder: member.sortOrder,
-            presetName: member.presetId ? presetNameMap.get(member.presetId) : undefined,
-            variantName: member.variantId ? variantNameMap.get(member.variantId) : undefined,
-            subGroupName: member.subGroupId ? groupNameMap.get(member.subGroupId) : undefined,
-          }))
-        : [],
-    })),
-    folders: category.folders.map((folder) => ({
-      id: folder.id,
-      name: folder.name,
-      parentId: folder.parentId,
-      sortOrder: folder.sortOrder,
-    })),
-  }));
+  const mappedCategories: PresetCategoryFull[] = categories.map((category) => {
+    const orderedPresets = buildFolderScopedItemOrder(category.folders, category.presets);
+    const orderedGroups = buildFolderScopedItemOrder(category.folders, category.groups);
+
+    return {
+      id: category.id,
+      name: category.name,
+      slug: category.slug,
+      icon: category.icon,
+      color: category.color,
+      type: category.type,
+      slotTemplate: slotTemplateFromRows(category.ownedSlots),
+      positivePromptOrder: category.positivePromptOrder,
+      negativePromptOrder: category.negativePromptOrder,
+      lora1Order: category.lora1Order,
+      lora2Order: category.lora2Order,
+      sortOrder: category.sortOrder,
+      presetCount: category._count.presets,
+      groupCount: category._count.groups,
+      presets: orderedPresets.map((preset) => ({
+        id: preset.id,
+        categoryId: preset.categoryId,
+        name: preset.name,
+        slug: preset.slug,
+        isActive: preset.isActive,
+        sortOrder: preset.sortOrder,
+        notes: preset.notes,
+        civitaiLinks: normalizeCivitaiLinks(preset.civitaiLinks),
+        folderId: preset.folderId,
+        variantCount: preset._count.variants,
+        changeHistory: emptyPresetHistory(),
+        variants: preset.variants.map((variant) => {
+          const content = contentByVariantId.get(variant.id);
+          return {
+            id: variant.id,
+            presetId: variant.presetId,
+            name: variant.name,
+            slug: variant.slug,
+            prompt: content?.prompt ?? "",
+            negativePrompt: content?.negativePrompt ?? null,
+            lora1: content?.lora1 ?? null,
+            lora2: content?.lora2 ?? null,
+            linkedVariants: content ? linkedVariantRefs(content) : [],
+            sortOrder: variant.sortOrder,
+            isActive: variant.isActive,
+          };
+        }),
+      })),
+      groups: orderedGroups.map((group) => ({
+        id: group.id,
+        categoryId: group.categoryId,
+        name: group.name,
+        slug: group.slug,
+        sortOrder: group.sortOrder,
+        folderId: group.folderId,
+        changeHistory: group.id === currentGroup.id
+          ? groupPresetGroupHistory(currentGroup.changeLogs)
+          : emptyPresetGroupHistory(),
+        members: group.id === currentGroup.id
+          ? currentGroup.members.map((member) => ({
+              id: member.id,
+              presetId: member.presetId,
+              variantId: member.variantId,
+              subGroupId: member.subGroupId,
+              slotCategoryId: member.slotCategoryId,
+              sortOrder: member.sortOrder,
+              presetName: member.presetId ? presetNameMap.get(member.presetId) : undefined,
+              variantName: member.variantId ? variantNameMap.get(member.variantId) : undefined,
+              subGroupName: member.subGroupId ? groupNameMap.get(member.subGroupId) : undefined,
+            }))
+          : [],
+      })),
+      folders: category.folders.map((folder) => ({
+        id: folder.id,
+        name: folder.name,
+        parentId: folder.parentId,
+        sortOrder: folder.sortOrder,
+      })),
+    };
+  });
 
   const category = mappedCategories.find((item) => item.id === currentGroup.categoryId);
   const group = category?.groups.find((item) => item.id === groupId) ?? null;
@@ -615,52 +626,57 @@ export async function getPresetLibraryV2(): Promise<PresetLibraryV2> {
   );
 
   return {
-    categories: categories.map((c) => ({
-      id: c.id,
-      name: c.name,
-      slug: c.slug,
-      color: c.color,
-      icon: c.icon,
-      type: c.type,
-      positivePromptOrder: c.positivePromptOrder,
-      lora1Order: c.lora1Order,
-      lora2Order: c.lora2Order,
-      folders: c.folders.map((f) => ({
-        id: f.id,
-        name: f.name,
-        parentId: f.parentId,
-        sortOrder: f.sortOrder,
-      })),
-      presets: c.presets.map((p) => ({
-        id: p.id,
-        name: p.name,
-        folderId: p.folderId,
-        variants: p.variants.map((variant) => ({
-          id: variant.id,
-          name: variant.name,
-          prompt: variant.prompt,
-          negativePrompt: variant.negativePrompt,
-          lora1: variant.lora1,
-          lora2: variant.lora2,
-          linkedVariants: linkedVariantRefs(variant),
+    categories: categories.map((c) => {
+      const orderedPresets = buildFolderScopedItemOrder(c.folders, c.presets);
+      const orderedGroups = buildFolderScopedItemOrder(c.folders, c.groups);
+
+      return {
+        id: c.id,
+        name: c.name,
+        slug: c.slug,
+        color: c.color,
+        icon: c.icon,
+        type: c.type,
+        positivePromptOrder: c.positivePromptOrder,
+        lora1Order: c.lora1Order,
+        lora2Order: c.lora2Order,
+        folders: c.folders.map((f) => ({
+          id: f.id,
+          name: f.name,
+          parentId: f.parentId,
+          sortOrder: f.sortOrder,
         })),
-      })),
-      groups: c.groups.map((g) => ({
-        id: g.id,
-        name: g.name,
-        slug: g.slug,
-        folderId: g.folderId,
-        members: g.members.map((m) => ({
-          id: m.id,
-          presetId: m.presetId,
-          variantId: m.variantId,
-          subGroupId: m.subGroupId,
-          presetName: m.presetId ? presetNameMap.get(m.presetId) : undefined,
-          variantName: m.variantId ? variantNameMap.get(m.variantId) : undefined,
-          subGroupName: m.subGroupId ? groupNameMap.get(m.subGroupId) : undefined,
+        presets: orderedPresets.map((p) => ({
+          id: p.id,
+          name: p.name,
+          folderId: p.folderId,
+          variants: p.variants.map((variant) => ({
+            id: variant.id,
+            name: variant.name,
+            prompt: variant.prompt,
+            negativePrompt: variant.negativePrompt,
+            lora1: variant.lora1,
+            lora2: variant.lora2,
+            linkedVariants: linkedVariantRefs(variant),
+          })),
         })),
-      })),
-    })),
+        groups: orderedGroups.map((g) => ({
+          id: g.id,
+          name: g.name,
+          slug: g.slug,
+          folderId: g.folderId,
+          members: g.members.map((m) => ({
+            id: m.id,
+            presetId: m.presetId,
+            variantId: m.variantId,
+            subGroupId: m.subGroupId,
+            presetName: m.presetId ? presetNameMap.get(m.presetId) : undefined,
+            variantName: m.variantId ? variantNameMap.get(m.variantId) : undefined,
+            subGroupName: m.subGroupId ? groupNameMap.get(m.subGroupId) : undefined,
+          })),
+        })),
+      };
+    }),
   };
 }
 
