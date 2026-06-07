@@ -15,6 +15,7 @@ type ModelFileItem = {
   size?: number;
   notes?: string;
   triggerWords?: string;
+  civitaiLink?: string;
 };
 
 export type ModelBrowseItem =
@@ -101,6 +102,24 @@ function isAllowedModelFile(kind: ModelKind, fileName: string) {
   return MODEL_CONFIG[kind].extensions.has(path.extname(fileName).toLowerCase());
 }
 
+function normalizeCivitaiLink(value: string | undefined) {
+  const link = value?.trim() ?? "";
+  if (!link) return null;
+
+  let parsed: URL;
+  try {
+    parsed = new URL(link);
+  } catch {
+    throw new ModelAssetError(`Invalid Civitai URL: ${link}`, 400);
+  }
+
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new ModelAssetError(`Invalid Civitai URL protocol: ${link}`, 400);
+  }
+
+  return parsed.toString();
+}
+
 async function collectFilesRecursive(
   kind: ModelKind,
   baseDir: string,
@@ -145,13 +164,16 @@ async function attachAssetNotes(kind: ModelKind, baseDir: string, items: ModelBr
       modelType: kind,
       absolutePath: { in: fileAbsolutePaths },
     },
-    select: { absolutePath: true, notes: true, triggerWords: true },
+    select: { absolutePath: true, notes: true, triggerWords: true, civitaiLink: true },
   });
   const notesMap = new Map(
     assets.filter((asset) => asset.notes).map((asset) => [asset.absolutePath, asset.notes!]),
   );
   const triggerMap = new Map(
     assets.filter((asset) => asset.triggerWords).map((asset) => [asset.absolutePath, asset.triggerWords!]),
+  );
+  const civitaiLinkMap = new Map(
+    assets.filter((asset) => asset.civitaiLink).map((asset) => [asset.absolutePath, asset.civitaiLink!]),
   );
 
   for (const item of items) {
@@ -163,6 +185,8 @@ async function attachAssetNotes(kind: ModelKind, baseDir: string, items: ModelBr
     if (kind === "lora" && triggerWords) {
       item.triggerWords = triggerWords;
     }
+    const civitaiLink = civitaiLinkMap.get(absPath);
+    if (civitaiLink) item.civitaiLink = civitaiLink;
   }
 }
 
@@ -317,18 +341,19 @@ export async function getModelNotes(kind: ModelKind, rawPaths: string) {
       modelType: kind,
       absolutePath: { in: absolutePaths },
     },
-    select: { absolutePath: true, notes: true, triggerWords: true },
+    select: { absolutePath: true, notes: true, triggerWords: true, civitaiLink: true },
   });
 
-  const result: Record<string, { notes?: string; triggerWords?: string }> = {};
+  const result: Record<string, { notes?: string; triggerWords?: string; civitaiLink?: string }> = {};
   for (const asset of assets) {
-    if (!asset.notes && !asset.triggerWords) continue;
+    if (!asset.notes && !asset.triggerWords && !asset.civitaiLink) continue;
     const relativePath = path.relative(baseDir, asset.absolutePath).replace(/\\/g, "/");
     result[relativePath] = {};
     if (asset.notes) result[relativePath].notes = asset.notes;
     if (kind === "lora" && asset.triggerWords) {
       result[relativePath].triggerWords = asset.triggerWords;
     }
+    if (asset.civitaiLink) result[relativePath].civitaiLink = asset.civitaiLink;
   }
 
   return result;
@@ -336,12 +361,13 @@ export async function getModelNotes(kind: ModelKind, rawPaths: string) {
 
 export async function updateModelNotes(
   kind: ModelKind,
-  input: { path?: string; notes?: string; triggerWords?: string },
+  input: { path?: string; notes?: string; triggerWords?: string; civitaiLink?: string },
 ) {
   const baseDir = getRequiredModelBaseDir(kind);
   const relativePath = input.path ? normalizeRelativePath(input.path) : "";
   const notes = input.notes ?? "";
   const triggerWords = kind === "lora" ? (input.triggerWords ?? "") : null;
+  const civitaiLink = normalizeCivitaiLink(input.civitaiLink);
 
   if (!relativePath.trim()) {
     throw new ModelAssetError("path is required", 400);
@@ -362,6 +388,7 @@ export async function updateModelNotes(
       modelType: kind,
       notes,
       triggerWords,
+      civitaiLink,
     },
     create: {
       modelType: kind,
@@ -372,10 +399,11 @@ export async function updateModelNotes(
       relativePath,
       notes,
       triggerWords,
+      civitaiLink,
     },
   });
 
-  return { id: asset.id, notes: asset.notes, triggerWords: asset.triggerWords };
+  return { id: asset.id, notes: asset.notes, triggerWords: asset.triggerWords, civitaiLink: asset.civitaiLink };
 }
 
 export async function saveUploadedModelFile(kind: ModelKind, file: File, targetDir: string) {

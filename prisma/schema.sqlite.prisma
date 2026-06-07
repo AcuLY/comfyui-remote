@@ -634,6 +634,7 @@ model LoraAsset {
   source                String?
   notes                 String?
   triggerWords          String?     // trigger words for this LoRA
+  civitaiLink           String?
   uploadedAt            DateTime    @default(now())
   updatedAt             DateTime    @updatedAt
 }

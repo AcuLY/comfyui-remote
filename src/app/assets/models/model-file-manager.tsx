@@ -1,15 +1,19 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { type ReactNode, useCallback, useEffect, useRef, useState, useTransition } from "react";
 import {
   ArrowRightLeft,
   Check,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ExternalLink,
   FileText,
   Folder,
   FolderOpen,
   HardDrive,
+  Info,
+  Link as LinkIcon,
   Loader2,
   MessageSquare,
   Upload,
@@ -26,6 +30,7 @@ type BrowseItem = {
   size?: number;
   notes?: string;
   triggerWords?: string;
+  civitaiLink?: string;
 };
 
 type BrowseResult = {
@@ -57,6 +62,150 @@ function buildModelUrl(endpoint: string, kind: ModelKind, params?: URLSearchPara
   const query = params ?? new URLSearchParams();
   query.set("kind", kind);
   return `/api/models/${endpoint}?${query.toString()}`;
+}
+
+function normalizeCivitaiLink(rawValue: string) {
+  const value = rawValue.trim();
+  if (!value) return "";
+
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch {
+    return null;
+  }
+
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    return null;
+  }
+
+  return parsed.toString();
+}
+
+function isFileItem(item: BrowseItem): item is BrowseItem & { type: "file" } {
+  return item.type === "file";
+}
+
+function parentDirectory(filePath: string) {
+  const index = filePath.lastIndexOf("/");
+  return index === -1 ? "根目录" : filePath.slice(0, index);
+}
+
+function ModelInfoRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="space-y-1">
+      <div className="text-[10px] font-medium uppercase tracking-[0.08em] text-zinc-600">{label}</div>
+      <div className="min-w-0 text-xs leading-5 text-zinc-300">{children}</div>
+    </div>
+  );
+}
+
+function ModelInfoDetails({
+  item,
+  kind,
+  onEdit,
+  onMove,
+  compact = false,
+}: {
+  item: BrowseItem & { type: "file" };
+  kind: ModelKind;
+  onEdit: () => void;
+  onMove: () => void;
+  compact?: boolean;
+}) {
+  return (
+    <div className={compact ? "space-y-3" : "space-y-4"}>
+      <ModelInfoRow label="文件名">
+        <span className="break-all text-zinc-100">{item.name}</span>
+      </ModelInfoRow>
+      <ModelInfoRow label="路径">
+        <span className="break-all font-mono text-[11px] text-zinc-400">{item.path}</span>
+      </ModelInfoRow>
+      <div className="grid grid-cols-2 gap-3">
+        <ModelInfoRow label="类型">{KIND_LABEL[kind]}</ModelInfoRow>
+        <ModelInfoRow label="大小">{item.size != null ? formatSize(item.size) : "未知"}</ModelInfoRow>
+      </div>
+      <ModelInfoRow label="所在目录">
+        <span className="break-all text-zinc-400">{parentDirectory(item.path)}</span>
+      </ModelInfoRow>
+      {kind === "lora" && (
+        <ModelInfoRow label="触发词">
+          {item.triggerWords ? (
+            <span className="break-words text-amber-300/80">{item.triggerWords}</span>
+          ) : (
+            <span className="text-zinc-600">未填写</span>
+          )}
+        </ModelInfoRow>
+      )}
+      <ModelInfoRow label="Civitai">
+        {item.civitaiLink ? (
+          <a
+            href={item.civitaiLink}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex max-w-full items-center gap-1 text-sky-300 transition hover:text-sky-200"
+          >
+            <ExternalLink className="size-3 shrink-0" />
+            <span className="truncate">{item.civitaiLink}</span>
+          </a>
+        ) : (
+          <span className="text-zinc-600">未填写</span>
+        )}
+      </ModelInfoRow>
+      <ModelInfoRow label="备注">
+        {item.notes ? <span className="break-words text-zinc-300">{item.notes}</span> : <span className="text-zinc-600">未填写</span>}
+      </ModelInfoRow>
+      <div className="flex items-center gap-2 pt-1">
+        <button
+          type="button"
+          onClick={onEdit}
+          className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-zinc-300 transition hover:border-sky-500/30 hover:bg-sky-500/10 hover:text-sky-200"
+        >
+          <MessageSquare className="size-3.5" />
+          编辑信息
+        </button>
+        <button
+          type="button"
+          onClick={onMove}
+          className="inline-flex items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] p-2 text-zinc-400 transition hover:bg-white/[0.06] hover:text-zinc-200"
+          title="移动文件"
+        >
+          <ArrowRightLeft className="size-3.5" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ModelInfoPanel({
+  item,
+  kind,
+  onEdit,
+  onMove,
+}: {
+  item: (BrowseItem & { type: "file" }) | null;
+  kind: ModelKind;
+  onEdit: (item: BrowseItem & { type: "file" }) => void;
+  onMove: (item: BrowseItem & { type: "file" }) => void;
+}) {
+  return (
+    <aside className="hidden min-h-[26rem] flex-col rounded-xl border border-white/10 bg-white/[0.02] lg:flex">
+      <div className="flex items-center gap-2 border-b border-white/5 px-4 py-3">
+        <Info className="size-4 text-sky-300/80" />
+        <h2 className="text-sm font-medium text-zinc-100">模型信息</h2>
+      </div>
+      <div className="flex-1 overflow-y-auto p-4">
+        {item ? (
+          <ModelInfoDetails item={item} kind={kind} onEdit={() => onEdit(item)} onMove={() => onMove(item)} />
+        ) : (
+          <div className="flex h-full min-h-64 flex-col items-center justify-center text-center text-xs text-zinc-600">
+            <FileText className="mb-2 size-8 text-zinc-700" />
+            选择一个模型文件查看详情
+          </div>
+        )}
+      </div>
+    </aside>
+  );
 }
 
 function MoveTargetPicker({
@@ -207,9 +356,13 @@ export function ModelFileManager() {
   const [movingFile, setMovingFile] = useState<string | null>(null);
   const [moveMsg, setMoveMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
+  const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null);
+  const [expandedFilePath, setExpandedFilePath] = useState<string | null>(null);
+
   const [editingNotesPath, setEditingNotesPath] = useState<string | null>(null);
   const [editingNotesText, setEditingNotesText] = useState("");
   const [editingTriggerText, setEditingTriggerText] = useState("");
+  const [editingCivitaiLink, setEditingCivitaiLink] = useState("");
   const [savingNotes, setSavingNotes] = useState(false);
   const notesInputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -217,6 +370,7 @@ export function ModelFileManager() {
     setLoading(true);
     setError(null);
     setEditingNotesPath(null);
+    setExpandedFilePath(null);
     try {
       const params = new URLSearchParams();
       if (dirPath) params.set("path", dirPath);
@@ -230,9 +384,11 @@ export function ModelFileManager() {
       setItems(data.items);
       setParentPath(data.parentPath);
       setCurrentPath(data.currentPath);
+      setSelectedFilePath(data.items.find(isFileItem)?.path ?? null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "加载失败");
       setItems([]);
+      setSelectedFilePath(null);
     } finally {
       setLoading(false);
     }
@@ -260,6 +416,11 @@ export function ModelFileManager() {
       return;
     }
     fetchDir(kind, item.path);
+  }
+
+  function handleSelectFile(item: BrowseItem & { type: "file" }) {
+    setSelectedFilePath(item.path);
+    setExpandedFilePath((current) => (current === item.path ? null : item.path));
   }
 
   function handleFileSelected(event: React.ChangeEvent<HTMLInputElement>) {
@@ -338,14 +499,25 @@ export function ModelFileManager() {
       setEditingNotesPath(null);
       return;
     }
+    if (item.type === "file") {
+      setSelectedFilePath(item.path);
+      setExpandedFilePath(item.path);
+    }
     setEditingNotesPath(item.path);
     setEditingNotesText(item.notes ?? "");
     setEditingTriggerText(kind === "lora" ? (item.triggerWords ?? "") : "");
+    setEditingCivitaiLink(item.type === "file" ? (item.civitaiLink ?? "") : "");
     setTimeout(() => notesInputRef.current?.focus(), 50);
   }
 
   async function handleSaveNotes() {
     if (!editingNotesPath) return;
+    const civitaiLink = normalizeCivitaiLink(editingCivitaiLink);
+    if (civitaiLink === null) {
+      toast.error("请输入完整链接，例如 https://civitai.com/models/...");
+      return;
+    }
+
     setSavingNotes(true);
     try {
       const res = await fetch(buildModelUrl("notes", kind), {
@@ -355,6 +527,7 @@ export function ModelFileManager() {
           path: editingNotesPath,
           notes: editingNotesText,
           triggerWords: kind === "lora" ? editingTriggerText : undefined,
+          civitaiLink,
         }),
       });
       const data = await res.json().catch(() => null);
@@ -366,6 +539,7 @@ export function ModelFileManager() {
                   ...item,
                   notes: editingNotesText || undefined,
                   triggerWords: kind === "lora" ? (editingTriggerText || undefined) : undefined,
+                  civitaiLink: civitaiLink || undefined,
                 }
               : item,
           ),
@@ -386,6 +560,9 @@ export function ModelFileManager() {
   const fileCount = items.filter((item) => item.type === "file").length;
   const dirCount = items.filter((item) => item.type === "directory").length;
   const showRootCheckpoint = kind === "lora" && currentPath === "";
+  const selectedFile = selectedFilePath
+    ? items.find((item): item is BrowseItem & { type: "file" } => item.type === "file" && item.path === selectedFilePath) ?? null
+    : null;
   const rootCheckpointEntry: RootEntry = {
     name: "checkpoints",
     type: "directory",
@@ -394,7 +571,8 @@ export function ModelFileManager() {
   };
 
   return (
-    <div className="space-y-3">
+    <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_19rem] xl:grid-cols-[minmax(0,1fr)_21rem]">
+      <div className="min-w-0 space-y-3">
       <div className="flex items-center gap-2">
         {(parentPath !== null || kind === "checkpoint") && (
           <button
@@ -488,38 +666,66 @@ export function ModelFileManager() {
             </>
           )}
 
-          {items.map((item) => (
+          {items.map((item) => {
+            const fileItem = isFileItem(item) ? item : null;
+            const isSelected = fileItem !== null && selectedFilePath === fileItem.path;
+            const isExpanded = fileItem !== null && expandedFilePath === fileItem.path;
+
+            return (
             <div key={`${kind}:${item.path}`}>
-              <div className="group flex items-center gap-3 rounded-xl px-3 py-2.5 transition hover:bg-white/[0.03]" style={{ minHeight: 44 }}>
-                {item.type === "directory" ? (
+              {fileItem === null ? (
+                <div className="group flex items-center gap-3 rounded-xl px-3 py-2.5 transition hover:bg-white/[0.03]" style={{ minHeight: 44 }}>
                   <button type="button" onClick={() => handleOpenDirectory(item)} className="flex flex-1 items-center gap-3 text-left">
                     <Folder className="size-4 shrink-0 text-amber-400/70" />
                     <span className="flex-1 truncate text-xs text-zinc-200">{item.name}</span>
                     <ChevronRight className="size-3.5 shrink-0 text-zinc-600" />
                   </button>
-                ) : (
-                  <>
-                    <FileText className="size-4 shrink-0 text-zinc-500" />
-                    <div className="min-w-0 flex-1">
-                      <span className="block truncate text-xs text-zinc-300">{item.name}</span>
-                      {item.notes && editingNotesPath !== item.path && (
-                        <span className="mt-0.5 block truncate text-[10px] text-zinc-500">{item.notes}</span>
-                      )}
-                      {kind === "lora" && item.triggerWords && editingNotesPath !== item.path && (
-                        <span className="mt-0.5 block truncate text-[10px] text-amber-400/50">
-                          <Zap className="mr-0.5 inline size-2.5" />
-                          {item.triggerWords}
-                        </span>
-                      )}
-                    </div>
-                    {item.size != null && <span className="shrink-0 text-[10px] text-zinc-600">{formatSize(item.size)}</span>}
+                </div>
+              ) : (
+                <>
+                  <div
+                    className={`group flex items-center gap-2 rounded-xl px-2.5 py-2 transition hover:bg-white/[0.03] ${
+                      isSelected ? "bg-sky-500/10 ring-1 ring-sky-500/20" : ""
+                    }`}
+                    style={{ minHeight: 44 }}
+                  >
                     <button
                       type="button"
-                      onClick={() => handleEditNotes(item)}
-                      className={`shrink-0 rounded-lg p-1.5 transition ${
-                        editingNotesPath === item.path
+                      aria-expanded={expandedFilePath === fileItem.path}
+                      onClick={() => handleSelectFile(fileItem)}
+                      className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                    >
+                      <FileText className="size-4 shrink-0 text-zinc-500" />
+                      <div className="min-w-0 flex-1">
+                        <span className="block truncate text-xs text-zinc-300">{fileItem.name}</span>
+                        {editingNotesPath !== fileItem.path && (
+                          <span className="mt-0.5 flex min-w-0 items-center gap-2 text-[10px] text-zinc-500">
+                            {fileItem.notes && <span className="truncate">{fileItem.notes}</span>}
+                            {kind === "lora" && fileItem.triggerWords && (
+                              <span className="inline-flex min-w-0 items-center gap-0.5 text-amber-400/50">
+                                <Zap className="size-2.5 shrink-0" />
+                                <span className="truncate">{fileItem.triggerWords}</span>
+                              </span>
+                            )}
+                            {fileItem.civitaiLink && (
+                              <span className="inline-flex min-w-0 items-center gap-0.5 text-sky-400/60">
+                                <LinkIcon className="size-2.5 shrink-0" />
+                                <span className="truncate">Civitai</span>
+                              </span>
+                            )}
+                          </span>
+                        )}
+                      </div>
+                      {fileItem.size != null && <span className="hidden shrink-0 text-[10px] text-zinc-600 sm:inline">{formatSize(fileItem.size)}</span>}
+                      <ChevronDown className={`size-3.5 shrink-0 text-zinc-600 transition md:hidden ${isExpanded ? "rotate-180" : ""}`} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleEditNotes(fileItem)}
+                      className={`hidden shrink-0 rounded-lg p-1.5 transition md:inline-flex ${
+                        editingNotesPath === fileItem.path
                           ? "bg-sky-500/10 text-sky-400"
-                          : item.notes
+                          : fileItem.notes || fileItem.civitaiLink
                             ? "text-sky-500/50 hover:bg-white/[0.06] hover:text-sky-400"
                             : "text-zinc-600 opacity-0 hover:bg-white/[0.06] hover:text-zinc-300 group-hover:opacity-100"
                       }`}
@@ -529,15 +735,26 @@ export function ModelFileManager() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setMovingFile(item.path)}
-                      className="shrink-0 rounded-lg p-1.5 text-zinc-600 opacity-0 transition hover:bg-white/[0.06] hover:text-zinc-300 group-hover:opacity-100"
+                      onClick={() => setMovingFile(fileItem.path)}
+                      className="hidden shrink-0 rounded-lg p-1.5 text-zinc-600 opacity-0 transition hover:bg-white/[0.06] hover:text-zinc-300 group-hover:opacity-100 md:inline-flex"
                       title="移动文件"
                     >
                       <ArrowRightLeft className="size-3.5" />
                     </button>
-                  </>
-                )}
-              </div>
+                  </div>
+                  {isExpanded && (
+                    <div className="mx-2 mb-2 rounded-xl border border-white/10 bg-white/[0.02] p-3 md:hidden">
+                      <ModelInfoDetails
+                        compact
+                        item={fileItem}
+                        kind={kind}
+                        onEdit={() => handleEditNotes(fileItem)}
+                        onMove={() => setMovingFile(fileItem.path)}
+                      />
+                    </div>
+                  )}
+                </>
+              )}
 
               {editingNotesPath === item.path && (
                 <div className="mb-1 ml-10 mr-3 space-y-1.5">
@@ -573,6 +790,23 @@ export function ModelFileManager() {
                           />
                         </div>
                       )}
+                      <div className="flex items-center gap-1.5">
+                        <LinkIcon className="size-3 shrink-0 text-sky-400/50" />
+                        <input
+                          type="url"
+                          value={editingCivitaiLink}
+                          onChange={(event) => setEditingCivitaiLink(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") {
+                              event.preventDefault();
+                              handleSaveNotes();
+                            }
+                            if (event.key === "Escape") setEditingNotesPath(null);
+                          }}
+                          placeholder="https://civitai.com/models/..."
+                          className="flex-1 rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1.5 text-xs text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30"
+                        />
+                      </div>
                     </div>
                     <button
                       type="button"
@@ -587,7 +821,8 @@ export function ModelFileManager() {
                 </div>
               )}
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -625,6 +860,9 @@ export function ModelFileManager() {
           {moveMsg.text}
         </div>
       )}
+      </div>
+
+      <ModelInfoPanel kind={kind} item={selectedFile} onEdit={handleEditNotes} onMove={(item) => setMovingFile(item.path)} />
 
       {movingFile && (
         <MoveTargetPicker

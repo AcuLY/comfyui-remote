@@ -1,0 +1,45 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+const rootDir = process.cwd();
+
+function readSource(path: string) {
+  return readFileSync(join(rootDir, path), "utf8");
+}
+
+function readSchemaModel(schemaFile: string, modelName: string) {
+  const schema = readSource(schemaFile);
+  const match = schema.match(new RegExp(`model ${modelName} \\{\\r?\\n([\\s\\S]*?)\\r?\\n\\}`));
+  assert.notEqual(match, null, `${modelName} exists in ${schemaFile}`);
+  return match![1];
+}
+
+test("LoraAsset schema stores one Civitai link for model files", () => {
+  for (const schemaFile of ["prisma/schema.prisma", "prisma/schema.sqlite.prisma"]) {
+    const modelSource = readSchemaModel(schemaFile, "LoraAsset");
+    assert.match(modelSource, /^\s*civitaiLink\s+String\?\s*$/m, `${schemaFile} declares civitaiLink`);
+  }
+});
+
+test("model notes endpoint accepts and persists the Civitai link", () => {
+  const routeSource = readSource("src/app/api/models/notes/route.ts");
+  const serviceSource = readSource("src/server/services/model-asset-service.ts");
+
+  assert.match(routeSource, /civitaiLink:\s*z\.string\(\)\.optional\(\)/, "notes route validates civitaiLink");
+  assert.match(serviceSource, /select:\s*\{[\s\S]*?civitaiLink:\s*true/, "asset reads include civitaiLink");
+  assert.match(serviceSource, /update:\s*\{[\s\S]*?civitaiLink/, "upsert update persists civitaiLink");
+  assert.match(serviceSource, /create:\s*\{[\s\S]*?civitaiLink/, "upsert create persists civitaiLink");
+  assert.match(serviceSource, /return\s+\{[\s\S]*?civitaiLink:\s*asset\.civitaiLink/, "save response returns civitaiLink");
+});
+
+test("model file manager exposes desktop detail and mobile accordion model info", () => {
+  const source = readSource("src/app/assets/models/model-file-manager.tsx");
+
+  assert.match(source, /civitaiLink\?:\s*string/, "browse item includes civitaiLink");
+  assert.match(source, /selectedFilePath/, "desktop model info panel tracks selected file");
+  assert.match(source, /<aside[\s\S]*模型信息/, "desktop side panel renders model information");
+  assert.match(source, /aria-expanded=\{expandedFilePath === (?:item|fileItem)\.path\}/, "mobile file cards expose accordion state");
+  assert.match(source, /target="_blank"[\s\S]*rel="noreferrer"/, "Civitai link opens safely");
+});
