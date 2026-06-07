@@ -11,6 +11,10 @@ import {
   loadReachablePresetVariantGraph,
   resolvePresetVariantContentFromRows,
 } from "./preset-resolver";
+import {
+  resolvePresetGroupContents,
+  type PresetGroupResolverDbClient,
+} from "./preset-group-resolver";
 import type {
   LoraStage,
   MissingReference,
@@ -19,6 +23,7 @@ import type {
   ResolveSectionConfigInput,
   ResolvedLoraEntry,
   ResolvedPromptBlock,
+  ResolvedPresetGroupContent,
   ResolvedSectionConfig,
   SectionLoraConfig,
   SectionManualLoraEntryRow,
@@ -42,7 +47,7 @@ type SectionResolverDbClient = {
   presetVariantLink: {
     findMany(args: unknown): Promise<PresetVariantLinkRow[]>;
   };
-};
+} & Partial<PresetGroupResolverDbClient>;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -155,7 +160,7 @@ function collectPresetVariants(input: ResolveSectionConfigInput) {
   const seen = new Set(variants.map((variant) => variant.id));
 
   for (const binding of input.presetBindings) {
-    for (const variant of binding.preset.variants ?? []) {
+    for (const variant of binding.preset?.variants ?? []) {
       if (!hasVariantContent(variant)) continue;
       if (seen.has(variant.id)) continue;
       seen.add(variant.id);
@@ -167,6 +172,7 @@ function collectPresetVariants(input: ResolveSectionConfigInput) {
 }
 
 function activePresetVariants(binding: SectionPresetBindingRow, variants: readonly PresetVariantRow[]) {
+  if (!binding.presetId) return [];
   const presetVariants = variants.filter(
     (variant) => variant.presetId === binding.presetId && variant.isActive !== false,
   );
@@ -190,15 +196,61 @@ function buildPresetBlockLabel(
   variant: PresetVariantRow | null,
   variants: readonly PresetVariantRow[],
 ) {
+  if (!binding.preset) return binding.presetGroup?.name ?? binding.bindingKey;
   if (!variant) return binding.preset.name;
 
-  const bindingVariants = binding.preset.variants ?? [];
+  const bindingVariants = binding.preset?.variants ?? [];
   const variantCount = bindingVariants.length > 0
     ? bindingVariants.filter((item) => item.isActive !== false).length
     : variants.filter((item) => item.presetId === binding.presetId && item.isActive !== false).length;
   if (variantCount <= 1) return binding.preset.name;
 
   return `${binding.preset.name} / ${variant.name ?? variant.id}`;
+}
+
+function resolvedGroupsById(input: ResolveSectionConfigInput) {
+  return new Map((input.presetGroupResolutions ?? []).map((group) => [group.groupId, group]));
+}
+
+function isPresetGroupBinding(binding: SectionPresetBindingRow) {
+  return Boolean(binding.presetGroupId);
+}
+
+function resolvePresetGroupBlock(
+  binding: SectionPresetBindingRow,
+  options: {
+    resolvedGroups: Map<string, ResolvedPresetGroupContent>;
+    customLabel?: string | null;
+    customPositive?: string | null;
+    customNegative?: string | null;
+    sortOrder: number;
+    missingReferences: MissingReference[];
+  },
+): ResolvedPromptBlock {
+  const groupId = binding.presetGroupId;
+  const resolved = groupId ? options.resolvedGroups.get(groupId) ?? null : null;
+  if (!resolved && groupId) {
+    options.missingReferences.push({
+      kind: "presetGroup",
+      id: groupId,
+      ownerId: binding.bindingKey,
+    });
+  }
+  if (resolved) options.missingReferences.push(...resolved.missingReferences);
+
+  return {
+    type: "preset",
+    sourceId: null,
+    variantId: null,
+    presetGroupId: groupId,
+    categoryId: binding.categoryId,
+    bindingId: binding.bindingKey,
+    groupBindingId: binding.groupBindingKey,
+    label: options.customLabel ?? resolved?.name ?? binding.presetGroup?.name ?? groupId ?? binding.bindingKey,
+    positive: options.customPositive ?? resolved?.prompt ?? "",
+    negative: options.customNegative ?? resolved?.negativePrompt ?? null,
+    sortOrder: options.sortOrder,
+  };
 }
 
 function resolvePresetBlock(
@@ -213,6 +265,17 @@ function resolvePresetBlock(
     missingReferences: MissingReference[];
   },
 ): ResolvedPromptBlock {
+  if (isPresetGroupBinding(binding)) {
+    return resolvePresetGroupBlock(binding, {
+      resolvedGroups: new Map(),
+      customLabel: options.customLabel,
+      customPositive: options.customPositive,
+      customNegative: options.customNegative,
+      sortOrder: options.sortOrder,
+      missingReferences: options.missingReferences,
+    });
+  }
+
   const variant = resolveBindingVariant(binding, options.variants);
 
   if (!variant) {
@@ -266,6 +329,7 @@ function resolvePromptBlocks(
   missingReferences: MissingReference[],
 ) {
   const bindingById = new Map(input.presetBindings.map((binding) => [binding.id, binding]));
+  const groupById = resolvedGroupsById(input);
   const blockBindingIds = new Set<string>();
   const sortableBlocks: PromptBlockSortInput[] = [];
   let index = 0;
@@ -275,16 +339,26 @@ function resolvePromptBlocks(
     if (row.sectionBindingId) blockBindingIds.add(row.sectionBindingId);
 
     if (binding) {
+      const block = isPresetGroupBinding(binding)
+        ? resolvePresetGroupBlock(binding, {
+            resolvedGroups: groupById,
+            customLabel: row.customLabel,
+            customPositive: row.customPositive,
+            customNegative: row.customNegative,
+            sortOrder: row.sortOrder,
+            missingReferences,
+          })
+        : resolvePresetBlock(binding, {
+            variants,
+            variantLinks: input.variantLinks ?? [],
+            customLabel: row.customLabel,
+            customPositive: row.customPositive,
+            customNegative: row.customNegative,
+            sortOrder: row.sortOrder,
+            missingReferences,
+          });
       sortableBlocks.push({
-        block: resolvePresetBlock(binding, {
-          variants,
-          variantLinks: input.variantLinks ?? [],
-          customLabel: row.customLabel,
-          customPositive: row.customPositive,
-          customNegative: row.customNegative,
-          sortOrder: row.sortOrder,
-          missingReferences,
-        }),
+        block,
         rowSortOrder: row.sortOrder,
         index,
       });
@@ -304,13 +378,20 @@ function resolvePromptBlocks(
   for (const binding of input.presetBindings) {
     if (blockBindingIds.has(binding.id)) continue;
 
+    const block = isPresetGroupBinding(binding)
+      ? resolvePresetGroupBlock(binding, {
+          resolvedGroups: groupById,
+          sortOrder: binding.sortOrder,
+          missingReferences,
+        })
+      : resolvePresetBlock(binding, {
+          variants,
+          variantLinks: input.variantLinks ?? [],
+          sortOrder: binding.sortOrder,
+          missingReferences,
+        });
     sortableBlocks.push({
-      block: resolvePresetBlock(binding, {
-        variants,
-        variantLinks: input.variantLinks ?? [],
-        sortOrder: binding.sortOrder,
-        missingReferences,
-      }),
+      block,
       categoryOrder: binding.category.positivePromptOrder,
       bindingSortOrder: binding.sortOrder,
       index,
@@ -380,7 +461,30 @@ function makePresetLoraEntry(
     source: "preset",
     sourceLabel: binding.category.name,
     sourceColor: binding.category.color ?? undefined,
-    sourceName: binding.preset.name,
+    sourceName: binding.preset?.name ?? binding.presetGroup?.name,
+    bindingId: binding.bindingKey,
+    groupBindingId: binding.groupBindingKey ?? undefined,
+  };
+}
+
+function makePresetGroupLoraEntry(
+  binding: SectionPresetBindingRow,
+  group: ResolvedPresetGroupContent,
+  member: ResolvedPresetGroupContent["members"][number],
+  stage: LoraStage,
+  memberIndex: number,
+  loraIndex: number,
+  lora: { path: string; weight: number; enabled: boolean },
+): ResolvedLoraEntry {
+  return {
+    id: `preset:${binding.bindingKey}:${stage}:${memberIndex}:${loraIndex}:${lora.path}`,
+    path: lora.path,
+    weight: lora.weight,
+    enabled: lora.enabled,
+    source: "preset",
+    sourceLabel: binding.category.name,
+    sourceColor: binding.category.color ?? undefined,
+    sourceName: `${group.name} / ${member.label}`,
     bindingId: binding.bindingKey,
     groupBindingId: binding.groupBindingKey ?? undefined,
   };
@@ -415,6 +519,7 @@ function resolveLoraConfig(
   missingReferences: MissingReference[],
 ): SectionLoraConfig {
   const bindingById = new Map(input.presetBindings.map((binding) => [binding.id, binding]));
+  const groupById = resolvedGroupsById(input);
   const suppressedPresetPathKeys = buildSuppressedPresetPathKeys(input.manualLoraEntries, bindingById);
   const sortable: Record<LoraStage, LoraSortInput[]> = {
     lora1: [],
@@ -423,6 +528,29 @@ function resolveLoraConfig(
   let index = 0;
 
   for (const binding of input.presetBindings) {
+    if (isPresetGroupBinding(binding)) {
+      const group = binding.presetGroupId ? groupById.get(binding.presetGroupId) ?? null : null;
+      if (!group) continue;
+
+      for (const stage of ["lora1", "lora2"] as const) {
+        const order = stage === "lora1" ? binding.category.lora1Order : binding.category.lora2Order;
+        group.members.forEach((member, memberIndex) => {
+          member[stage].forEach((lora, loraIndex) => {
+            if (isPresetPathSuppressed(stage, binding.bindingKey, lora.path, suppressedPresetPathKeys)) return;
+
+            sortable[stage].push({
+              entry: makePresetGroupLoraEntry(binding, group, member, stage, memberIndex, loraIndex, lora),
+              order,
+              secondaryOrder: binding.sortOrder,
+              index,
+            });
+            index += 1;
+          });
+        });
+      }
+      continue;
+    }
+
     const variant = resolveBindingVariant(binding, variants);
     if (!variant) continue;
 
@@ -483,13 +611,14 @@ async function resolveInitialVariantIds(
   const variantIds: string[] = [];
 
   for (const binding of bindings) {
+    if (!binding.presetId) continue;
     if (binding.variantId) {
       variantIds.push(binding.variantId);
       continue;
     }
 
     const localDefaultVariant = sortBySortOrder(
-      (binding.preset.variants ?? []).filter((variant) => variant.isActive !== false),
+      (binding.preset?.variants ?? []).filter((variant) => variant.isActive !== false),
     )[0];
     if (localDefaultVariant?.id) {
       variantIds.push(localDefaultVariant.id);
@@ -544,6 +673,7 @@ export async function resolveSectionConfig(
           categoryId: true,
           presetId: true,
           variantId: true,
+          presetGroupId: true,
           groupBindingKey: true,
           sortOrder: true,
           category: {
@@ -573,6 +703,13 @@ export async function resolveSectionConfig(
                 },
                 orderBy: { sortOrder: "asc" },
               },
+            },
+          },
+          presetGroup: {
+            select: {
+              id: true,
+              categoryId: true,
+              name: true,
             },
           },
         },
@@ -624,11 +761,21 @@ export async function resolveSectionConfig(
   };
 
   const initialVariantIds = await resolveInitialVariantIds(section.presetBindingRows, db);
-  const { variants, variantLinks } = await loadReachablePresetVariantGraph(initialVariantIds, db);
+  const presetGroupIds = section.presetBindingRows
+    .map((binding) => binding.presetGroupId)
+    .filter((groupId): groupId is string => Boolean(groupId));
+  const canResolvePresetGroups = Boolean(db.presetGroup && db.preset && db.presetVariant && db.presetVariantLink);
+  const [variantGraph, presetGroupResolutions] = await Promise.all([
+    loadReachablePresetVariantGraph(initialVariantIds, db),
+    presetGroupIds.length > 0 && canResolvePresetGroups
+      ? resolvePresetGroupContents(presetGroupIds, db as PresetGroupResolverDbClient)
+      : Promise.resolve([]),
+  ]);
 
   return resolveSectionConfigFromRows({
     ...resolverInput,
-    presetVariants: variants,
-    variantLinks,
+    presetVariants: variantGraph.variants,
+    variantLinks: variantGraph.variantLinks,
+    presetGroupResolutions,
   });
 }

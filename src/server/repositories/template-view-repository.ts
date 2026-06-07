@@ -31,6 +31,7 @@ export type ProjectTemplateSectionData = {
     type?: string | null;
     sourceId?: string | null;
     variantId?: string | null;
+    presetGroupId?: string | null;
     categoryId?: string | null;
     bindingId?: string | null;
     groupBindingId?: string | null;
@@ -145,6 +146,7 @@ export async function getProjectTemplateDetail(
           type: block.type,
           sourceId: block.sourceId,
           variantId: block.variantId,
+          presetGroupId: block.presetGroupId,
           categoryId: block.categoryId,
           bindingId: block.bindingId,
           groupBindingId: block.groupBindingId,

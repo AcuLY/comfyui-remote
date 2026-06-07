@@ -21,11 +21,16 @@ export async function POST(request: Request, context: RouteContext) {
       name: body?.name as string | undefined,
       aspectRatio: body?.aspectRatio as string | undefined,
       shortSidePx: body?.shortSidePx as number | undefined,
-      extraImports: (body?.extraImports ?? []) as Array<{
-        presetId: string;
-        variantId: string;
-        groupBindingId?: string;
-      }>,
+      extraImports: (body?.extraImports ?? []) as Array<
+        | {
+            presetId: string;
+            variantId: string;
+            groupBindingId?: string;
+          }
+        | {
+            presetGroupId: string;
+          }
+      >,
       bindingVariantOverrides: (body?.bindingVariantOverrides ?? []) as Array<{
         presetId: string;
         variantId: string;

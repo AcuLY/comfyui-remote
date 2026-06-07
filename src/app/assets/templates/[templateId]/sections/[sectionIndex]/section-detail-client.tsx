@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ChevronDown, Download, Package, Trash2, Unlink, ClipboardCopy, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
-import { flattenGroup, resolveTemplatePresetImports, updateProjectTemplateSection } from "@/lib/actions";
+import { resolveTemplatePresetImports, updateProjectTemplateSection } from "@/lib/actions";
 import { AspectRatioPicker } from "@/components/aspect-ratio-picker";
 import { BatchSizeQuickFill } from "@/components/batch-size-quick-fill";
 import { UpscaleFactorQuickFill } from "@/components/upscale-factor-quick-fill";
@@ -40,6 +40,7 @@ type PresetBindingInfo = {
   groupName: string | undefined;
   sourceId: string | null;
   variantId: string | null;
+  presetGroupId: string | null;
   categoryId: string | null;
   categoryName?: string;
   categoryColor?: string;
@@ -192,8 +193,18 @@ export function TemplateSectionDetailClient({
       let categoryColor: string | undefined;
       let sourceId = block.sourceId ?? null;
       let variantId = block.variantId ?? null;
+      const presetGroupId = block.presetGroupId ?? null;
       if (library) {
-        if (!sourceId && block.categoryId) {
+        if (presetGroupId) {
+          for (const cat of library.categories) {
+            const group = (cat.groups ?? []).find((item) => item.id === presetGroupId);
+            if (group) {
+              categoryName = cat.name;
+              categoryColor = cat.color ?? undefined;
+              break;
+            }
+          }
+        } else if (!sourceId && block.categoryId) {
           const cat = library.categories.find((item) => item.id === block.categoryId);
           const preset = cat?.presets.find((item) => block.label === item.name || block.label.startsWith(`${item.name} /`));
           if (preset) {
@@ -204,13 +215,15 @@ export function TemplateSectionDetailClient({
             variantId = preset.variants.find((item) => item.name === variantName)?.id ?? variantId;
           }
         }
-        for (const cat of library.categories) {
-          const preset = sourceId ? cat.presets.find((item) => item.id === sourceId) : undefined;
-          if (preset) {
-            availableVariants = preset.variants.map((variant) => ({ id: variant.id, name: variant.name }));
-            categoryName = cat.name;
-            categoryColor = cat.color ?? undefined;
-            break;
+        if (!presetGroupId) {
+          for (const cat of library.categories) {
+            const preset = sourceId ? cat.presets.find((item) => item.id === sourceId) : undefined;
+            if (preset) {
+              availableVariants = preset.variants.map((variant) => ({ id: variant.id, name: variant.name }));
+              categoryName = cat.name;
+              categoryColor = cat.color ?? undefined;
+              break;
+            }
           }
         }
         if (!categoryName && block.categoryId) {
@@ -228,6 +241,7 @@ export function TemplateSectionDetailClient({
         groupName: groupNamesByBindingId.get(block.bindingId),
         sourceId,
         variantId,
+        presetGroupId,
         categoryId: block.categoryId ?? null,
         categoryName,
         categoryColor,
@@ -450,27 +464,8 @@ export function TemplateSectionDetailClient({
 
   function handleImportPreset(
     presetId: string,
-    presetName: string,
     variantId: string,
-    variantName: string,
-    prompt: string,
-    negativePrompt: string | null,
-    lora1: unknown,
-    lora2: unknown,
-    categoryId: string,
-    categoryName: string,
-    categoryColor: string | null,
   ) {
-    void presetName;
-    void variantName;
-    void prompt;
-    void negativePrompt;
-    void lora1;
-    void lora2;
-    void categoryId;
-    void categoryName;
-    void categoryColor;
-
     startTransition(async () => {
       const [item] = await resolveTemplatePresetImports([{ presetId, variantId }]);
       if (item) importPresets([item]);
@@ -536,29 +531,68 @@ export function TemplateSectionDetailClient({
   }
 
   function handleImportGroup(groupId: string) {
-    startTransition(async () => {
-      const members = await flattenGroup(groupId);
-      const inputs = members.flatMap((member) => {
+    startTransition(() => {
+      let selectedCategory: ImportCategory | null = null;
+      let selectedGroup: NonNullable<ImportCategory["groups"]>[number] | null = null;
+      for (const cat of library?.categories ?? []) {
+        const group = (cat.groups ?? []).find((item) => item.id === groupId);
+        if (group) {
+          selectedCategory = cat;
+          selectedGroup = group;
+          break;
+        }
+      }
+
+      if (!selectedCategory || !selectedGroup) {
+        toast.error("未找到预制组");
+        return;
+      }
+
+      const positiveParts: string[] = [];
+      const negativeParts: string[] = [];
+      for (const member of selectedGroup.members) {
+        if (!member.presetId) continue;
         for (const cat of library?.categories ?? []) {
           const preset = cat.presets.find((item) => item.id === member.presetId);
           if (!preset) continue;
           const variant = member.variantId
             ? preset.variants.find((item) => item.id === member.variantId)
             : preset.variants[0];
-          return variant ? [{ presetId: preset.id, variantId: variant.id }] : [];
+          if (variant?.prompt.trim()) positiveParts.push(variant.prompt.trim());
+          if (variant?.negativePrompt?.trim()) negativeParts.push(variant.negativePrompt.trim());
+          break;
         }
-        return [];
-      });
-
-      if (inputs.length === 0) {
-        toast.error("未找到预制组");
-        return;
       }
 
-      // Generate a groupBindingId for all presets in this group
-      const groupBindingId = `group-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-      const items = await resolveTemplatePresetImports(inputs);
-      importPresets(items, groupBindingId);
+      const bindingId = `bind-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+      const groupBindingId = `group-${groupId}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+      const groupBlock: TemplateBlockData = {
+        label: selectedGroup.name,
+        positive: positiveParts.join("\n"),
+        negative: negativeParts.length > 0 ? negativeParts.join("\n") : null,
+        sortOrder: promptBlocks.length,
+        type: "preset",
+        sourceId: null,
+        variantId: null,
+        presetGroupId: groupId,
+        categoryId: selectedCategory.id,
+        bindingId,
+        groupBindingId,
+      };
+      const currentBlocks = [...promptBlocks, groupBlock];
+      const sortedBlocks = currentBlocks
+        .map((block, index) => ({
+          block,
+          index,
+          order: block.categoryId ? getPresetCategoryOrder(block.categoryId) : 999,
+        }))
+        .sort((a, b) => a.order - b.order || a.index - b.index)
+        .map(({ block }, index) => ({ ...block, sortOrder: index }));
+
+      setPromptBlocks(sortedBlocks);
+      setShowImport(false);
+      scheduleSaveAfterState();
+      toast.success(selectedGroup.name);
     });
   }
 
@@ -607,7 +641,7 @@ export function TemplateSectionDetailClient({
     if (!binding) return;
 
     const bindingIds = new Set<string>([bindingId]);
-    if (binding.groupBindingId) {
+    if (binding.groupBindingId && !binding.presetGroupId) {
       for (const block of promptBlocks) {
         if (block.groupBindingId === binding.groupBindingId && block.bindingId) {
           bindingIds.add(block.bindingId);
@@ -990,7 +1024,7 @@ export function TemplateSectionDetailClient({
                       {binding.categoryName}
                     </span>
                   )}
-                  {binding.groupBindingId && (
+                  {(binding.presetGroupId || binding.groupBindingId) && (
                     <span className="shrink-0 rounded bg-amber-500/15 px-1 py-px text-[8px] text-amber-400">组</span>
                   )}
                   <span className="truncate text-[11px] text-zinc-300">{binding.presetName}</span>
@@ -1003,7 +1037,7 @@ export function TemplateSectionDetailClient({
                       <ExternalLink className="size-3" />
                     </Link>
                   )}
-                  {binding.availableVariants.length > 1 && (
+                  {!binding.presetGroupId && binding.availableVariants.length > 1 && (
                     <div className="relative">
                       <select
                         value={binding.variantId ?? ""}

@@ -10,6 +10,7 @@ export type PromptBlockRecord = {
   type: PromptBlockType;
   sourceId: string | null;
   variantId: string | null;
+  presetGroupId: string | null;
   categoryId: string | null;
   bindingId: string | null;
   groupBindingId: string | null;
@@ -23,6 +24,7 @@ export type PromptBlockCreateInput = {
   type: PromptBlockType;
   sourceId?: string | null;
   variantId?: string | null;
+  presetGroupId?: string | null;
   categoryId?: string | null;
   bindingId?: string | null;
   groupBindingId?: string | null;
@@ -36,6 +38,7 @@ export type PromptBlockUpdateInput = {
   type?: PromptBlockType;
   sourceId?: string | null;
   variantId?: string | null;
+  presetGroupId?: string | null;
   categoryId?: string | null;
   bindingId?: string | null;
   groupBindingId?: string | null;
@@ -180,6 +183,7 @@ async function resolveNormalizedPromptBlockRecord(
     type: (resolvedBlock?.type ?? row.type) as PromptBlockRecord["type"],
     sourceId: resolvedBlock?.sourceId ?? null,
     variantId: resolvedBlock?.variantId ?? null,
+    presetGroupId: resolvedBlock?.presetGroupId ?? null,
     categoryId: resolvedBlock?.categoryId ?? null,
     bindingId: resolvedBlock?.bindingId ?? null,
     groupBindingId: resolvedBlock?.groupBindingId ?? null,
@@ -202,7 +206,7 @@ async function createNormalizedPromptBlock(
     const sortOrder = input.sortOrder ?? (maxResult._max.sortOrder ?? -1) + 1;
 
     if (input.type === "preset") {
-      if (!input.sourceId || !input.categoryId || !input.bindingId) {
+      if (!input.categoryId || !input.bindingId || (!input.sourceId && !input.presetGroupId)) {
         throw new PromptBlockServiceError("Preset blocks require complete identity fields", 400);
       }
       const existingBinding = await tx.sectionPresetBinding.findUnique({
@@ -219,8 +223,9 @@ async function createNormalizedPromptBlock(
           projectSectionId: sectionId,
           bindingKey: input.bindingId,
           categoryId: input.categoryId,
-          presetId: input.sourceId,
-          variantId: input.variantId ?? null,
+          presetId: input.presetGroupId ? null : input.sourceId,
+          variantId: input.presetGroupId ? null : input.variantId ?? null,
+          presetGroupId: input.presetGroupId ?? null,
           groupBindingKey: input.groupBindingId ?? null,
           sortOrder,
         },
@@ -258,11 +263,12 @@ function validatePresetIdentity(input: {
   type?: PromptBlockCreateInput["type"];
   sourceId?: string | null;
   variantId?: string | null;
+  presetGroupId?: string | null;
   categoryId?: string | null;
   bindingId?: string | null;
   groupBindingId?: string | null;
 }) {
-  const identityFields = ["sourceId", "variantId", "categoryId", "bindingId", "groupBindingId"] as const;
+  const identityFields = ["sourceId", "variantId", "presetGroupId", "categoryId", "bindingId", "groupBindingId"] as const;
   const hasIdentity = identityFields.some((field) => Boolean(input[field]));
 
   if (input.type === "custom" && hasIdentity) {
@@ -271,8 +277,12 @@ function validatePresetIdentity(input: {
 
   if (input.type !== "preset") return;
 
-  const missingFields = (["sourceId", "variantId", "categoryId", "bindingId"] as const)
+  const missingFields: string[] = (["categoryId", "bindingId"] as const)
     .filter((field) => !input[field]);
+  const hasPresetSource = Boolean(input.sourceId);
+  const hasGroupSource = Boolean(input.presetGroupId);
+  if (!hasPresetSource && !hasGroupSource) missingFields.push("sourceId");
+  if (hasPresetSource && !input.variantId) missingFields.push("variantId");
   if (missingFields.length > 0) {
     throw new PromptBlockServiceError("Preset blocks require complete identity fields", 400, { missingFields });
   }
@@ -296,6 +306,7 @@ export async function addPromptBlock(
     negative: ensureNullableString(parsed.negative, "negative"),
     sourceId: ensureNullableString(parsed.sourceId, "sourceId"),
     variantId: ensureNullableString(parsed.variantId, "variantId"),
+    presetGroupId: ensureNullableString(parsed.presetGroupId, "presetGroupId"),
     categoryId: ensureNullableString(parsed.categoryId, "categoryId"),
     bindingId: ensureNullableString(parsed.bindingId, "bindingId"),
     groupBindingId: ensureNullableString(parsed.groupBindingId, "groupBindingId"),
@@ -322,6 +333,7 @@ export async function editPromptBlock(
     "type",
     "sourceId",
     "variantId",
+    "presetGroupId",
     "categoryId",
     "bindingId",
     "groupBindingId",
@@ -345,6 +357,7 @@ export async function editPromptBlock(
   if (parsed.type !== undefined) input.type = optionalBlockType(parsed.type);
   if (parsed.sourceId !== undefined) input.sourceId = optionalNullableString(parsed.sourceId, "sourceId");
   if (parsed.variantId !== undefined) input.variantId = optionalNullableString(parsed.variantId, "variantId");
+  if (parsed.presetGroupId !== undefined) input.presetGroupId = optionalNullableString(parsed.presetGroupId, "presetGroupId");
   if (parsed.categoryId !== undefined) input.categoryId = optionalNullableString(parsed.categoryId, "categoryId");
   if (parsed.bindingId !== undefined) input.bindingId = optionalNullableString(parsed.bindingId, "bindingId");
   if (parsed.groupBindingId !== undefined) input.groupBindingId = optionalNullableString(parsed.groupBindingId, "groupBindingId");

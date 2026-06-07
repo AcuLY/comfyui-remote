@@ -50,6 +50,27 @@ setupDb.exec(`
   );
   CREATE UNIQUE INDEX "Preset_categoryId_slug_key" ON "Preset"("categoryId", "slug");
   CREATE UNIQUE INDEX "Preset_categoryId_id_key" ON "Preset"("categoryId", "id");
+  CREATE TABLE "PresetGroup" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "categoryId" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "slug" TEXT NOT NULL,
+    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "folderId" TEXT,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE UNIQUE INDEX "PresetGroup_categoryId_slug_key" ON "PresetGroup"("categoryId", "slug");
+  CREATE TABLE "PresetGroupMember" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "groupId" TEXT NOT NULL,
+    "presetId" TEXT,
+    "variantId" TEXT,
+    "subGroupId" TEXT,
+    "slotCategoryId" TEXT,
+    "sortOrder" INTEGER NOT NULL DEFAULT 0
+  );
   CREATE TABLE "PresetVariant" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "presetId" TEXT NOT NULL,
@@ -123,8 +144,9 @@ setupDb.exec(`
     "projectSectionId" TEXT NOT NULL,
     "bindingKey" TEXT NOT NULL,
     "categoryId" TEXT NOT NULL,
-    "presetId" TEXT NOT NULL,
+    "presetId" TEXT,
     "variantId" TEXT,
+    "presetGroupId" TEXT,
     "groupBindingKey" TEXT,
     "sortOrder" INTEGER NOT NULL DEFAULT 0,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -221,8 +243,9 @@ setupDb.exec(`
     "projectTemplateSectionId" TEXT NOT NULL,
     "bindingKey" TEXT NOT NULL,
     "categoryId" TEXT NOT NULL,
-    "presetId" TEXT NOT NULL,
+    "presetId" TEXT,
     "variantId" TEXT,
+    "presetGroupId" TEXT,
     "groupBindingKey" TEXT,
     "sortOrder" INTEGER NOT NULL DEFAULT 0,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,

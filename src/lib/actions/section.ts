@@ -6,7 +6,7 @@ import { rm } from "node:fs/promises";
 import { prisma } from "@/lib/prisma";
 import { cleanupProjectSectionFiles } from "@/server/services/section-cleanup-service";
 import { createBindingId } from "./_helpers";
-import { importPresetToSection } from "./prompt-block";
+import { importPresetGroupToSection, importPresetToSection } from "./prompt-block";
 import { switchBindingVariant } from "./prompt-block";
 
 // ---------------------------------------------------------------------------
@@ -18,11 +18,16 @@ export type CreateSectionFromTemplateInput = {
   name?: string;
   aspectRatio?: string;
   shortSidePx?: number;
-  extraImports: Array<{
-    presetId: string;
-    variantId: string;
-    groupBindingId?: string;
-  }>;
+  extraImports: Array<
+    | {
+        presetId: string;
+        variantId: string;
+        groupBindingId?: string;
+      }
+    | {
+        presetGroupId: string;
+      }
+  >;
   bindingVariantOverrides: Array<{
     presetId: string;
     variantId: string;
@@ -202,6 +207,11 @@ export async function createSectionFromTemplate(
 
   // 3. 导入额外预制
   for (const imp of extraImports) {
+    if ("presetGroupId" in imp) {
+      await importPresetGroupToSection(sectionId, imp.presetGroupId);
+      continue;
+    }
+
     await importPresetToSection(sectionId, imp.presetId, imp.variantId, imp.groupBindingId);
   }
 
@@ -330,6 +340,7 @@ export async function copySection(sectionId: string): Promise<string | null> {
           categoryId: binding.categoryId,
           presetId: binding.presetId,
           variantId: binding.variantId,
+          presetGroupId: binding.presetGroupId,
           groupBindingKey: binding.groupBindingKey,
           sortOrder: binding.sortOrder,
         },

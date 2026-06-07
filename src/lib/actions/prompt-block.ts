@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { type LoraEntry } from "@/lib/lora-types";
 import { resolveSectionConfig } from "@/server/prompt-config/section-resolver";
+import { resolvePresetGroupContent } from "@/server/prompt-config/preset-group-resolver";
+import type { ResolvedPresetGroupContent } from "@/server/prompt-config/types";
 import { detachSectionLorasFromPresetBinding } from "@/server/services/preset-binding-service";
 import { recordSectionChange } from "@/server/services/section-change-history-service";
 import { resolveVariantContent } from "./preset-variant";
@@ -20,6 +22,7 @@ export type PromptBlockData = {
   type: string;
   sourceId: string | null;
   variantId: string | null;
+  presetGroupId?: string | null;
   categoryId: string | null;
   bindingId: string | null;
   groupBindingId: string | null;
@@ -102,6 +105,43 @@ function makePresetLoraEntries(
   };
 }
 
+function makePresetGroupLoraEntries(
+  input: {
+    bindingKey: string;
+    groupBindingKey: string | null;
+    category: { name: string; color: string | null };
+    group: ResolvedPresetGroupContent;
+  },
+) {
+  const makeLora = (
+    stage: "lora1" | "lora2",
+    memberIndex: number,
+    loraIndex: number,
+    memberLabel: string,
+    entry: { path: string; weight: number; enabled: boolean },
+  ): LoraEntry => ({
+    id: `preset:${input.bindingKey}:${stage}:${memberIndex}:${loraIndex}:${entry.path}`,
+    path: entry.path,
+    weight: entry.weight,
+    enabled: entry.enabled,
+    source: "preset",
+    sourceLabel: input.category.name,
+    sourceColor: input.category.color ?? undefined,
+    sourceName: `${input.group.name} / ${memberLabel}`,
+    bindingId: input.bindingKey,
+    groupBindingId: input.groupBindingKey ?? undefined,
+  });
+
+  return {
+    lora1: input.group.members.flatMap((member, memberIndex) =>
+      member.lora1.map((entry, loraIndex) => makeLora("lora1", memberIndex, loraIndex, member.label, entry)),
+    ),
+    lora2: input.group.members.flatMap((member, memberIndex) =>
+      member.lora2.map((entry, loraIndex) => makeLora("lora2", memberIndex, loraIndex, member.label, entry)),
+    ),
+  };
+}
+
 async function findNormalizedPromptBlockById(blockId: string) {
   const direct = await prisma.sectionPromptBlock.findUnique({
     where: { id: blockId },
@@ -113,6 +153,7 @@ async function findNormalizedPromptBlockById(blockId: string) {
           categoryId: true,
           presetId: true,
           variantId: true,
+          presetGroupId: true,
           groupBindingKey: true,
         },
       },
@@ -144,6 +185,7 @@ async function findNormalizedPromptBlockById(blockId: string) {
           categoryId: true,
           presetId: true,
           variantId: true,
+          presetGroupId: true,
           groupBindingKey: true,
         },
       },
@@ -166,6 +208,7 @@ async function findNormalizedPromptBlockById(blockId: string) {
           categoryId: true,
           presetId: true,
           variantId: true,
+          presetGroupId: true,
           groupBindingKey: true,
         },
       },
@@ -200,6 +243,7 @@ async function resolvePromptBlockDataForRow(
     type: resolvedBlock?.type ?? row.type,
     sourceId: resolvedBlock?.sourceId ?? null,
     variantId: resolvedBlock?.variantId ?? null,
+    presetGroupId: resolvedBlock?.presetGroupId ?? null,
     categoryId: resolvedBlock?.categoryId ?? null,
     bindingId: resolvedBlock?.bindingId ?? null,
     groupBindingId: resolvedBlock?.groupBindingId ?? null,
@@ -242,6 +286,7 @@ async function resolvePromptBlockDataForBinding(
       type: resolvedBlock.type,
       sourceId: resolvedBlock.sourceId,
       variantId: resolvedBlock.variantId,
+      presetGroupId: resolvedBlock.presetGroupId,
       categoryId: resolvedBlock.categoryId,
       bindingId: resolvedBlock.bindingId,
       groupBindingId: resolvedBlock.groupBindingId,
@@ -264,6 +309,7 @@ async function createSectionPromptBlockRow(
     negative?: string | null;
     sourceId?: string | null;
     variantId?: string | null;
+    presetGroupId?: string | null;
     categoryId?: string | null;
     bindingId?: string | null;
     groupBindingId?: string | null;
@@ -278,7 +324,7 @@ async function createSectionPromptBlockRow(
     const sortOrder = input.sortOrder ?? (maxResult._max.sortOrder ?? -1) + 1;
 
     if (input.type === "preset") {
-      if (!input.sourceId || !input.categoryId || !input.bindingId) {
+      if (!input.categoryId || !input.bindingId || (!input.sourceId && !input.presetGroupId)) {
         throw new Error("PRESET_BLOCK_IDENTITY_REQUIRED");
       }
       const existingBinding = await tx.sectionPresetBinding.findUnique({
@@ -295,8 +341,9 @@ async function createSectionPromptBlockRow(
           projectSectionId: sectionId,
           bindingKey: input.bindingId,
           categoryId: input.categoryId,
-          presetId: input.sourceId,
-          variantId: input.variantId ?? null,
+          presetId: input.presetGroupId ? null : input.sourceId,
+          variantId: input.presetGroupId ? null : input.variantId ?? null,
+          presetGroupId: input.presetGroupId ?? null,
           groupBindingKey: input.groupBindingId ?? null,
           sortOrder,
         },
@@ -352,6 +399,7 @@ export async function addSectionBlock(
     sourceId?: string;
     categoryId?: string | null;
     bindingId?: string | null;
+    presetGroupId?: string | null;
   },
 ): Promise<PromptBlockData> {
   const { audit } = await import("@/server/services/audit-service");
@@ -361,6 +409,7 @@ export async function addSectionBlock(
     sourceId: input.sourceId ?? null,
     categoryId: input.categoryId ?? null,
     bindingId: input.bindingId ?? null,
+    presetGroupId: input.presetGroupId ?? null,
     label: input.label,
     positive: input.positive,
     negative: input.negative ?? null,
@@ -640,6 +689,125 @@ export async function importPresetToSection(
   };
 }
 
+export async function importPresetGroupToSection(
+  sectionId: string,
+  presetGroupId: string,
+  groupBindingId?: string,
+): Promise<ImportPresetResult | null> {
+  const group = await prisma.presetGroup.findUnique({
+    where: { id: presetGroupId },
+    include: {
+      category: {
+        select: {
+          id: true,
+          name: true,
+          color: true,
+          positivePromptOrder: true,
+          lora1Order: true,
+          lora2Order: true,
+        },
+      },
+    },
+  });
+  if (!group || group.isActive === false) return null;
+
+  const resolved = await resolvePresetGroupContent(
+    presetGroupId,
+    prisma as Parameters<typeof resolvePresetGroupContent>[1],
+  );
+  if (!resolved) return null;
+
+  const bindingKey = createBindingId();
+  const groupBindingKey = groupBindingId ?? `grp:${presetGroupId}:${bindingKey}`;
+
+  const existingBlocks = await prisma.sectionPromptBlock.findMany({
+    where: { projectSectionId: sectionId },
+    select: {
+      id: true,
+      sortOrder: true,
+      sectionBinding: {
+        select: {
+          category: { select: { positivePromptOrder: true } },
+        },
+      },
+    },
+    orderBy: { sortOrder: "asc" },
+  });
+
+  const myOrder = group.category.positivePromptOrder;
+  let insertAfterIndex = -1;
+  for (let i = 0; i < existingBlocks.length; i++) {
+    const order = existingBlocks[i].sectionBinding?.category.positivePromptOrder ?? 999;
+    if (order <= myOrder) insertAfterIndex = i;
+  }
+
+  const insertSortOrder = insertAfterIndex >= 0
+    ? existingBlocks[insertAfterIndex].sortOrder + 1
+    : 0;
+
+  await prisma.sectionPromptBlock.updateMany({
+    where: {
+      projectSectionId: sectionId,
+      sortOrder: { gte: insertSortOrder },
+    },
+    data: { sortOrder: { increment: 1 } },
+  });
+
+  const { binding, promptRow } = await prisma.$transaction(async (tx) => {
+    const binding = await tx.sectionPresetBinding.create({
+      data: {
+        projectSectionId: sectionId,
+        bindingKey,
+        categoryId: group.category.id,
+        presetId: null,
+        variantId: null,
+        presetGroupId,
+        groupBindingKey,
+        sortOrder: insertSortOrder,
+      },
+    });
+    const promptRow = await tx.sectionPromptBlock.create({
+      data: {
+        projectSectionId: sectionId,
+        sectionBindingId: binding.id,
+        type: "preset",
+        sortOrder: insertSortOrder,
+      },
+      include: {
+        sectionBinding: { select: { bindingKey: true } },
+      },
+    });
+    return { binding, promptRow };
+  });
+
+  const block = await resolvePromptBlockDataForRow(promptRow);
+  await recordSectionChange({
+    sectionId,
+    dimension: "prompt",
+    title: `瀵煎叆棰勫埗缁勶細${group.name}`,
+    before: null,
+    after: { binding, block },
+  });
+
+  const { lora1, lora2 } = makePresetGroupLoraEntries({
+    bindingKey,
+    groupBindingKey,
+    category: group.category,
+    group: resolved,
+  });
+
+  return {
+    block,
+    lora1,
+    lora2,
+    categoryOrders: {
+      positivePromptOrder: myOrder,
+      lora1Order: group.category.lora1Order,
+      lora2Order: group.category.lora2Order,
+    },
+  };
+}
+
 export async function removeImportedPresetFromSection(
   sectionId: string,
   bindingId: string,
@@ -722,6 +890,7 @@ export async function switchBindingVariant(
     },
     include: {
       category: { select: { id: true, name: true, color: true } },
+      presetGroup: { select: { id: true } },
       preset: {
         select: {
           id: true,
@@ -736,6 +905,7 @@ export async function switchBindingVariant(
     },
   });
   if (sectionBinding) {
+    if (sectionBinding.presetGroupId || !sectionBinding.preset) return null;
     const variant = sectionBinding.preset.variants.find((item) => item.id === newVariantId);
     if (!variant) return null;
 

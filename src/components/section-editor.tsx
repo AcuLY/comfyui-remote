@@ -9,8 +9,8 @@ import { canSwitchSectionPresetVariant } from "@/components/section-editor-bindi
 import type { PromptBlockData } from "@/lib/actions";
 import {
   deleteSectionBlock,
+  importPresetGroupToSection,
   importPresetToSection,
-  flattenGroup,
   switchBindingVariant,
 } from "@/lib/actions";
 import { isSuppressedLoraEntry, type LoraEntry } from "@/lib/lora-types";
@@ -35,6 +35,7 @@ type PresetBindingInfo = {
   groupName: string | undefined;  // names of presets imported in the same group instance
   sourceId: string | null;  // preset ID
   variantId: string | null;  // current variant ID
+  presetGroupId: string | null;
   categoryId: string | null;
   categoryName?: string;
   categoryColor?: string;
@@ -115,7 +116,8 @@ export function SectionEditor({
           let categoryColor: string | undefined;
           let sourceId = b.sourceId;
           let variantId = b.variantId;
-          if (!sourceId && b.categoryId && libraryV2) {
+          const presetGroupId = b.presetGroupId ?? null;
+          if (!presetGroupId && !sourceId && b.categoryId && libraryV2) {
             const cat = libraryV2.categories.find((c) => c.id === b.categoryId);
             const preset = cat?.presets.find((p) => b.label === p.name || b.label.startsWith(`${p.name} /`));
             if (preset) {
@@ -126,7 +128,7 @@ export function SectionEditor({
               variantId = preset.variants.find((v) => v.name === variantName)?.id ?? variantId;
             }
           }
-          if (sourceId && libraryV2) {
+          if (!presetGroupId && sourceId && libraryV2) {
             for (const cat of libraryV2.categories) {
               const preset = cat.presets.find((p) => p.id === sourceId);
               if (preset) {
@@ -152,6 +154,7 @@ export function SectionEditor({
             groupName,
             sourceId,
             variantId,
+            presetGroupId,
             categoryId: b.categoryId,
             categoryName,
             categoryColor,
@@ -210,16 +213,7 @@ export function SectionEditor({
   // ── Import a preset (server-side resolution of linkedVariants) ──
   function handlePresetImport(
     presetId: string,
-    _presetName: string,
     variantId: string,
-    _variantName: string,
-    _prompt: string,
-    _negativePrompt: string | null,
-    _lora1Bindings: unknown,
-    _lora2Bindings: unknown,
-    _categoryId: string,
-    _categoryName: string,
-    _categoryColor: string | null,
   ) {
     startTransition(async () => {
       const result = await importPresetToSection(sectionId, presetId, variantId);
@@ -283,75 +277,46 @@ export function SectionEditor({
     });
   }
 
-  // ── Import a preset group (flatten → import each member) ──
+  // ── Import a preset group reference ──
   function handleGroupImport(groupId: string) {
     startTransition(async () => {
-      const members = await flattenGroup(groupId);
-      const groupBid = `grp:${groupId}:${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-      const newBlocks: PromptBlockData[] = [];
+      const result = await importPresetGroupToSection(sectionId, groupId);
+      if (!result) return;
+
+      setBlocks((prev) => {
+        const updated = prev.map((b) =>
+          b.sortOrder >= result.block.sortOrder
+            ? { ...b, sortOrder: b.sortOrder + 1 }
+            : b,
+        );
+        updated.push(result.block);
+        updated.sort((a, b) => a.sortOrder - b.sortOrder);
+        return updated;
+      });
+
       const updatedLora1 = [...lora1];
       const updatedLora2 = [...lora2];
       let loraChanged = false;
 
-      for (const m of members) {
-        if (!m.presetId) continue;
-        // Use default variant if none specified
-        let variantId = m.variantId;
-        if (!variantId) {
-          for (const cat of libraryV2?.categories ?? []) {
-            const preset = cat.presets.find((p) => p.id === m.presetId);
-            if (preset && preset.variants.length > 0) {
-              variantId = preset.variants[0].id;
-              break;
-            }
-          }
+      if (result.lora1.length > 0) {
+        const myOrder = result.categoryOrders.lora1Order;
+        let insertIdx = updatedLora1.length;
+        for (let i = 0; i < updatedLora1.length; i++) {
+          const entryCatOrder = getCategoryLoraOrder(updatedLora1[i], "lora1");
+          if (entryCatOrder > myOrder) { insertIdx = i; break; }
         }
-        if (!variantId) continue;
-
-        const result = await importPresetToSection(sectionId, m.presetId, variantId, groupBid);
-        if (!result) continue;
-
-        newBlocks.push(result.block);
-
-        // Insert LoRAs at correct position based on category order
-        if (result.lora1.length > 0) {
-          const myOrder = result.categoryOrders.lora1Order;
-          let insertIdx = updatedLora1.length;
-          for (let i = 0; i < updatedLora1.length; i++) {
-            const entryCatOrder = getCategoryLoraOrder(updatedLora1[i], "lora1");
-            if (entryCatOrder > myOrder) { insertIdx = i; break; }
-          }
-          updatedLora1.splice(insertIdx, 0, ...result.lora1.map((l) => ({ ...l, source: "preset" as const })));
-          loraChanged = true;
-        }
-        if (result.lora2.length > 0) {
-          const myOrder = result.categoryOrders.lora2Order;
-          let insertIdx = updatedLora2.length;
-          for (let i = 0; i < updatedLora2.length; i++) {
-            const entryCatOrder = getCategoryLoraOrder(updatedLora2[i], "lora2");
-            if (entryCatOrder > myOrder) { insertIdx = i; break; }
-          }
-          updatedLora2.splice(insertIdx, 0, ...result.lora2.map((l) => ({ ...l, source: "preset" as const })));
-          loraChanged = true;
-        }
+        updatedLora1.splice(insertIdx, 0, ...result.lora1.map((l) => ({ ...l, source: "preset" as const })));
+        loraChanged = true;
       }
-
-      if (newBlocks.length > 0) {
-        setBlocks((prev) => {
-          // Server already bumped sortOrders for each insertion; rebuild local state
-          // by collecting all sortOrders used by new blocks and incrementing old blocks accordingly
-          const newSortOrders = newBlocks.map((b) => b.sortOrder).sort((a, b) => a - b);
-          const updated = prev.map((b) => {
-            let bump = 0;
-            for (const ns of newSortOrders) {
-              if (b.sortOrder >= ns - bump) bump++;
-            }
-            return bump > 0 ? { ...b, sortOrder: b.sortOrder + bump } : b;
-          });
-          updated.push(...newBlocks);
-          updated.sort((a, b) => a.sortOrder - b.sortOrder);
-          return updated;
-        });
+      if (result.lora2.length > 0) {
+        const myOrder = result.categoryOrders.lora2Order;
+        let insertIdx = updatedLora2.length;
+        for (let i = 0; i < updatedLora2.length; i++) {
+          const entryCatOrder = getCategoryLoraOrder(updatedLora2[i], "lora2");
+          if (entryCatOrder > myOrder) { insertIdx = i; break; }
+        }
+        updatedLora2.splice(insertIdx, 0, ...result.lora2.map((l) => ({ ...l, source: "preset" as const })));
+        loraChanged = true;
       }
 
       if (loraChanged) {
@@ -398,7 +363,7 @@ export function SectionEditor({
     const block = blocks.find((b) => b.bindingId === bindingId);
     const groupBid = block?.groupBindingId;
 
-    if (groupBid) {
+    if (groupBid && !info.presetGroupId) {
       // Collect all bindings in the same group
       const groupBindingIds = new Set(
         blocks.filter((b) => b.groupBindingId === groupBid).map((b) => b.bindingId).filter(Boolean) as string[],
@@ -471,7 +436,7 @@ export function SectionEditor({
     if (!block) return true; // allow delete
     if (block.bindingId) {
       const groupBid = block.groupBindingId;
-      if (groupBid) {
+      if (groupBid && !block.presetGroupId) {
         // Part of a group import — confirm group-level delete
         const groupBindingIds = new Set(
           blocks.filter((b) => b.groupBindingId === groupBid).map((b) => b.bindingId).filter(Boolean) as string[],
@@ -496,7 +461,7 @@ export function SectionEditor({
     const block = blocks.find((b) => b.id === blockId);
     if (block?.bindingId) {
       const groupBid = block.groupBindingId;
-      if (groupBid) {
+      if (groupBid && !block.presetGroupId) {
         // Delete entire group
         const groupBindingIds = new Set(
           blocks.filter((b) => b.groupBindingId === groupBid).map((b) => b.bindingId).filter(Boolean) as string[],
@@ -535,7 +500,7 @@ export function SectionEditor({
   }
 
   // ── Standalone block delete: just this one block, no cascade ──
-  function handleStandaloneDeleteBlock(blockId: string): boolean {
+  function handleStandaloneDeleteBlock(): boolean {
     return confirm("独立删除此提示词块？不影响同绑定的其他块和 LoRA。");
   }
 
@@ -637,7 +602,7 @@ export function SectionEditor({
                     </span>
                   )}
                   {/* Group indicator */}
-                  {binding.groupBindingId && (
+                  {(binding.presetGroupId || binding.groupBindingId) && (
                     <span className="shrink-0 rounded bg-amber-500/15 px-1 py-px text-[8px] text-amber-400">组</span>
                   )}
                   <span className="text-[11px] text-zinc-300 truncate">{binding.presetName}</span>
@@ -791,16 +756,7 @@ export function ImportPresetPanel({
   categories: ImportCategory[];
   onImport: (
     presetId: string,
-    presetName: string,
     variantId: string,
-    variantName: string,
-    prompt: string,
-    negativePrompt: string | null,
-    lora1: unknown,
-    lora2: unknown,
-    categoryId: string,
-    categoryName: string,
-    categoryColor: string | null,
   ) => void;
   onImportGroup: (groupId: string) => void;
   onClose: () => void;
@@ -988,16 +944,7 @@ export function ImportPresetPanel({
                   if (!selectedCat) return;
                   onImport(
                     item.presetId,
-                    item.presetName,
                     item.variantId,
-                    item.variantName,
-                    item.prompt,
-                    item.negativePrompt,
-                    item.lora1,
-                    item.lora2,
-                    selectedCat.id,
-                    selectedCat.name,
-                    selectedCat.color,
                   );
                 }}
                 className="w-full rounded-lg border border-white/5 bg-white/[0.02] p-2 text-left transition hover:border-white/10 disabled:opacity-50"

@@ -69,17 +69,25 @@ export type PresetRow = {
   variants?: PresetVariantMetadataRow[];
 };
 
+export type PresetGroupRow = {
+  id: string;
+  categoryId: string;
+  name: string;
+};
+
 export type SectionPresetBindingRow = {
   id: string;
   projectSectionId: string;
   bindingKey: string;
   categoryId: string;
-  presetId: string;
+  presetId: string | null;
   variantId: string | null;
+  presetGroupId?: string | null;
   groupBindingKey: string | null;
   sortOrder: number;
   category: PresetCategoryRow;
-  preset: PresetRow;
+  preset: PresetRow | null;
+  presetGroup?: PresetGroupRow | null;
 };
 
 export type SectionPromptBlockRow = {
@@ -114,12 +122,14 @@ export type TemplateSectionPresetBindingRow = {
   projectTemplateSectionId: string;
   bindingKey: string;
   categoryId: string;
-  presetId: string;
+  presetId: string | null;
   variantId: string | null;
+  presetGroupId?: string | null;
   groupBindingKey: string | null;
   sortOrder: number;
   category: PresetCategoryRow;
-  preset: PresetRow;
+  preset: PresetRow | null;
+  presetGroup?: PresetGroupRow | null;
 };
 
 export type TemplateSectionPromptBlockRow = {
@@ -169,6 +179,7 @@ export type SectionResolverSectionRow = {
 
 export type MissingReferenceKind =
   | "preset"
+  | "presetGroup"
   | "presetVariant"
   | "sectionBinding"
   | "variantLink";
@@ -196,6 +207,7 @@ export type ResolvedPromptBlock = {
   type: PromptBlockType | string;
   sourceId: string | null;
   variantId: string | null;
+  presetGroupId?: string | null;
   categoryId: string | null;
   bindingId: string | null;
   groupBindingId: string | null;
@@ -203,6 +215,29 @@ export type ResolvedPromptBlock = {
   positive: string;
   negative: string | null;
   sortOrder: number;
+};
+
+export type ResolvedPresetGroupMemberContent = {
+  presetId: string;
+  variantId: string;
+  presetName: string;
+  label: string;
+  prompt: string;
+  negativePrompt: string | null;
+  lora1: LoraBinding[];
+  lora2: LoraBinding[];
+};
+
+export type ResolvedPresetGroupContent = {
+  groupId: string;
+  categoryId: string;
+  name: string;
+  prompt: string;
+  negativePrompt: string | null;
+  lora1: LoraBinding[];
+  lora2: LoraBinding[];
+  members: ResolvedPresetGroupMemberContent[];
+  missingReferences: MissingReference[];
 };
 
 export type ResolvedSectionConfig = {
@@ -234,6 +269,7 @@ export type ResolveSectionConfigInput = {
   manualLoraEntries: SectionManualLoraEntryRow[];
   presetVariants?: PresetVariantRow[];
   variantLinks?: PresetVariantLinkRow[];
+  presetGroupResolutions?: ResolvedPresetGroupContent[];
 };
 
 export type TemplateResolverSectionRow = SectionResolverSectionRow;
@@ -254,4 +290,5 @@ export type ResolveTemplateSectionConfigInput = {
   manualLoraEntries: TemplateSectionManualLoraEntryRow[];
   presetVariants?: PresetVariantRow[];
   variantLinks?: PresetVariantLinkRow[];
+  presetGroupResolutions?: ResolvedPresetGroupContent[];
 };

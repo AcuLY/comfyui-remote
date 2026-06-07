@@ -155,6 +155,7 @@ async function syncPresetGroupInstances(
           bindingKey: true,
           presetId: true,
           variantId: true,
+          presetGroupId: true,
           groupBindingKey: true,
           sortOrder: true,
           createdAt: true,
@@ -186,6 +187,7 @@ async function syncPresetGroupInstances(
     const bindingsByGroup = new Map<string, typeof section.presetBindingRows>();
     for (const binding of section.presetBindingRows) {
       if (!binding.groupBindingKey) continue;
+      if (binding.presetGroupId || !binding.presetId) continue;
       const groupBindings = bindingsByGroup.get(binding.groupBindingKey) ?? [];
       groupBindings.push(binding);
       bindingsByGroup.set(binding.groupBindingKey, groupBindings);
@@ -193,9 +195,9 @@ async function syncPresetGroupInstances(
 
     for (const [groupBindingId, groupBindings] of bindingsByGroup) {
       const currentMembers = groupBindings
-        .filter((binding) => binding.variantId)
+        .filter((binding) => binding.presetId && binding.variantId)
         .map((binding) => ({
-          presetId: binding.presetId,
+          presetId: binding.presetId as string,
           variantId: binding.variantId as string,
         }));
       const isTrackedGroup = groupBindingId.startsWith(groupBindingPrefix);

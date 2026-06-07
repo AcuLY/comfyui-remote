@@ -7,7 +7,7 @@ import {
   Folder, ClipboardCopy, Check, Replace,
 } from "lucide-react";
 import { toast } from "sonner";
-import { createSectionFromTemplate, flattenGroup } from "@/lib/actions";
+import { createSectionFromTemplate } from "@/lib/actions";
 import type { PresetLibraryV2 } from "@/components/prompt-block-editor";
 import { ASPECT_RATIOS, resolveResolution } from "@/lib/aspect-ratio-utils";
 
@@ -20,8 +20,9 @@ type PresetBinding = { categoryId: string; presetId: string; variantId?: string 
 type ImportItem = {
   /** Unique key for this slot */
   key: string;
-  presetId: string;
-  variantId: string;
+  presetId?: string;
+  variantId?: string;
+  presetGroupId?: string;
   groupBindingId?: string;
   /** Display label (preset name / variant name) */
   label: string;
@@ -29,6 +30,7 @@ type ImportItem = {
   groupName?: string;
   /** Category info for locating in browser */
   categoryId: string;
+  categoryName?: string;
   folderId: string | null;
   /** All available variants */
   variants: Array<{ id: string; name: string }>;
@@ -46,6 +48,24 @@ function buildGroupSectionName(items: ImportItem[], groupBindingId: string) {
     .map((item) => item.label.trim())
     .filter(Boolean)
     .join(" · ");
+}
+
+function findGroupImportInfo(library: PresetLibraryV2, groupId: string): Omit<ImportItem, "key"> | null {
+  for (const category of library.categories) {
+    const group = (category.groups ?? []).find((item) => item.id === groupId);
+    if (group) {
+      return {
+        presetGroupId: group.id,
+        label: group.name,
+        groupName: group.name,
+        categoryId: category.id,
+        categoryName: category.name,
+        folderId: group.folderId ?? null,
+        variants: [],
+      };
+    }
+  }
+  return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -179,6 +199,19 @@ export function BatchCreateClient({
     [library],
   );
 
+  const navigateToImportItem = useCallback(
+    (item: ImportItem) => {
+      if (item.presetGroupId) {
+        setSelectedCatId(item.categoryId);
+        setCurrentFolderId(item.folderId);
+        setSearchQuery("");
+        return;
+      }
+      if (item.presetId) navigateToPreset(item.presetId, item.categoryId);
+    },
+    [navigateToPreset],
+  );
+
   const selectCategory = useCallback((categoryId: string) => {
     setSelectedCatId(categoryId);
     setCurrentFolderId(null);
@@ -236,125 +269,38 @@ export function BatchCreateClient({
   );
 
   const addGroupToImportList = useCallback(
-    async (groupId: string) => {
-      const members = await flattenGroup(groupId);
-      const newItems: ImportItem[] = [];
-      const groupBindingId = `grp-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-
-      // Look up the group name directly from the group that was clicked
-      let resolvedGroupName: string | undefined;
-      for (const cat of library.categories) {
-        const g = (cat.groups ?? []).find((gg) => gg.id === groupId);
-        if (g) { resolvedGroupName = g.name; break; }
-      }
-
-      for (const m of members) {
-        if (importList.some((item) => item.presetId === m.presetId)) continue;
-        // Find preset info
-        let presetName = "";
-        let folderId: string | null = null;
-        let categoryId = "";
-        let variantId = m.variantId ?? "";
-        let variants: Array<{ id: string; name: string }> = [];
-        for (const cat of library.categories) {
-          const preset = cat.presets.find((p) => p.id === m.presetId);
-          if (preset) {
-            presetName = preset.name;
-            folderId = preset.folderId ?? null;
-            categoryId = cat.id;
-            variants = preset.variants.map((v) => ({ id: v.id, name: v.name }));
-            if (!variantId && preset.variants.length > 0) variantId = preset.variants[0].id;
-            break;
-          }
-        }
-        if (!presetName) continue;
-        const variantName = variants.length > 1 ? variants.find((v) => v.id === variantId)?.name ?? "" : "";
-        newItems.push({
-          key: `imp-${m.presetId}`,
-          presetId: m.presetId,
-          variantId,
-          groupBindingId,
-          label: variantName ? `${presetName} / ${variantName}` : presetName,
-          groupName: resolvedGroupName,
-          categoryId,
-          folderId,
-          variants,
-        });
-      }
-      if (newItems.length > 0) {
-        setImportList((prev) => [...prev, ...newItems]);
-      }
+    (groupId: string) => {
+      if (importList.some((item) => item.presetGroupId === groupId)) return;
+      const groupInfo = findGroupImportInfo(library, groupId);
+      if (!groupInfo) return;
+      setImportList((prev) => [...prev, { key: `grp-${groupId}`, ...groupInfo }]);
     },
     [importList, library],
   );
 
   const overrideAddGroup = useCallback(
-    async (groupId: string) => {
-      const members = await flattenGroup(groupId);
-      const newItems: ImportItem[] = [];
-      const groupBindingId = `grp-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-
-      // Look up the group name
-      let resolvedGroupName: string | undefined;
-      for (const cat of library.categories) {
-        const g = (cat.groups ?? []).find((gg) => gg.id === groupId);
-        if (g) { resolvedGroupName = g.name; break; }
-      }
-
-      // Build new items
-      for (const m of members) {
-        let presetName = "";
-        let folderId: string | null = null;
-        let categoryId = "";
-        let variantId = m.variantId ?? "";
-        let variants: Array<{ id: string; name: string }> = [];
-        for (const cat of library.categories) {
-          const preset = cat.presets.find((p) => p.id === m.presetId);
-          if (preset) {
-            presetName = preset.name;
-            folderId = preset.folderId ?? null;
-            categoryId = cat.id;
-            variants = preset.variants.map((v) => ({ id: v.id, name: v.name }));
-            if (!variantId && preset.variants.length > 0) variantId = preset.variants[0].id;
-            break;
-          }
-        }
-        if (!presetName) continue;
-        const variantName = variants.length > 1 ? variants.find((v) => v.id === variantId)?.name ?? "" : "";
-        newItems.push({
-          key: `imp-${m.presetId}`,
-          presetId: m.presetId,
-          variantId,
-          groupBindingId,
-          label: variantName ? `${presetName} / ${variantName}` : presetName,
-          groupName: resolvedGroupName,
-          categoryId,
-          folderId,
-          variants,
-        });
-      }
-
-      // Collect all category IDs that the group's members belong to
-      const groupMemberCatIds = new Set(newItems.map((i) => i.categoryId));
+    (groupId: string) => {
+      const groupInfo = findGroupImportInfo(library, groupId);
+      if (!groupInfo) return;
 
       // Clear same-category items, keep other categories and new group items
       setImportList((prev) => [
-        ...prev.filter((i) => !groupMemberCatIds.has(i.categoryId)),
-        ...newItems,
+        ...prev.filter((i) => i.categoryId !== groupInfo.categoryId),
+        { key: `grp-${groupId}`, ...groupInfo },
       ]);
       // Clear binding overrides for categories that group members belong to
       setBindingOverrides((prev) => {
         const catPresetIds = new Set(
           projectBindingInfos
-            .filter((b) => groupMemberCatIds.has(b.categoryId))
+            .filter((b) => b.categoryId === groupInfo.categoryId)
             .map((b) => b.presetId),
         );
         const next = { ...prev };
         for (const pid of catPresetIds) delete next[pid];
         return next;
       });
-      const groupSectionName = buildGroupSectionName(newItems, groupBindingId);
-      if (groupSectionName) setSectionName(groupSectionName);
+      const resolvedGroupName = groupInfo.label;
+      setSectionName(groupInfo.label);
       toast.success(`已覆盖 ${resolvedGroupName}`);
     },
     [library, projectBindingInfos],
@@ -387,7 +333,9 @@ export function BatchCreateClient({
     (key: string) => {
       const item = importList.find((i) => i.key === key);
       if (!item) return;
-      if (item.groupBindingId) {
+      if (item.presetGroupId) {
+        setSectionName(item.label);
+      } else if (item.groupBindingId) {
         setSectionName(buildGroupSectionName(importList, item.groupBindingId));
       } else {
         setSectionName(item.label);
@@ -398,11 +346,17 @@ export function BatchCreateClient({
 
   const handleCreate = useCallback(() => {
     startTransition(async () => {
-      const extraImports = importList.map((item) => ({
-        presetId: item.presetId,
-        variantId: item.variantId,
-        groupBindingId: item.groupBindingId,
-      }));
+      const extraImports: Array<
+        | { presetId: string; variantId: string }
+        | { presetGroupId: string }
+      > = [];
+      for (const item of importList) {
+        if (item.presetGroupId) {
+          extraImports.push({ presetGroupId: item.presetGroupId });
+        } else if (item.presetId && item.variantId) {
+          extraImports.push({ presetId: item.presetId, variantId: item.variantId });
+        }
+      }
       const bindingVariantOverrides = Object.entries(bindingOverrides)
         .filter(([, variantId]) => !!variantId)
         .map(([presetId, variantId]) => ({ presetId, variantId }));
@@ -428,6 +382,11 @@ export function BatchCreateClient({
   // --- Check if preset is already in import list ---
   const isPresetInList = useCallback(
     (presetId: string) => importList.some((item) => item.presetId === presetId),
+    [importList],
+  );
+
+  const isGroupInList = useCallback(
+    (groupId: string) => importList.some((item) => item.presetGroupId === groupId),
     [importList],
   );
 
@@ -523,15 +482,16 @@ export function BatchCreateClient({
                 <div className="py-2 text-center text-[10px] text-zinc-600">暂无可导入的预制组</div>
               ) : (
                 filteredGroups.map((group) => {
-                  // For group categories, members' categoryId is the preset's actual category,
-                  // not the group category. So check broadly or always show the override button.
+                  // Group imports are stored as one reference row.
                   const hasItems = importList.length > 0 || projectBindingInfos.length > 0;
+                  const inList = isGroupInList(group.id);
                   return (
                   <button
                     key={group.id}
                     type="button"
                     onClick={() => addGroupToImportList(group.id)}
-                    className="w-full rounded-lg border border-white/5 bg-white/[0.02] p-2 text-left transition hover:border-sky-500/30"
+                    disabled={inList}
+                    className="w-full rounded-lg border border-white/5 bg-white/[0.02] p-2 text-left transition hover:border-sky-500/30 disabled:opacity-40"
                   >
                     <div className="flex items-center justify-between gap-1.5">
                       <div className="flex items-center gap-1.5">
@@ -552,7 +512,11 @@ export function BatchCreateClient({
                             <Replace className="size-2.5" />
                           </span>
                         )}
-                        <Plus className="size-3 text-zinc-600" />
+                        {inList ? (
+                          <Check className="size-3 text-sky-400" />
+                        ) : (
+                          <Plus className="size-3 text-zinc-600" />
+                        )}
                       </div>
                     </div>
                     <div className="mt-0.5 text-[10px] text-zinc-500">
@@ -638,7 +602,7 @@ export function BatchCreateClient({
                   {/* Name & variant */}
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1">
-                      {item.groupBindingId && (
+                      {(item.presetGroupId || item.groupBindingId) && (
                         <span className="rounded bg-amber-500/15 px-1 py-px text-[8px] text-amber-400 shrink-0">组</span>
                       )}
                       <span className="text-[11px] text-zinc-200 truncate">{item.label}</span>
@@ -674,7 +638,7 @@ export function BatchCreateClient({
                     {/* Navigate to this preset in browser */}
                     <button
                       type="button"
-                      onClick={() => navigateToPreset(item.presetId, item.categoryId)}
+                      onClick={() => navigateToImportItem(item)}
                       title="在浏览器中定位"
                       className="rounded p-1 text-zinc-600 hover:bg-amber-500/10 hover:text-amber-400"
                     >

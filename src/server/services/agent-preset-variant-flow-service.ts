@@ -197,9 +197,9 @@ async function getSectionsForVerification(projectId: string): Promise<FlowSectio
       sourceId: block.sectionBinding?.presetId ?? null,
       variantId: block.sectionBinding?.variantId ?? null,
       bindingId: block.sectionBindingId,
-      label: block.customLabel ??
-        [
-          block.sectionBinding?.preset.name,
+        label: block.customLabel ??
+          [
+          block.sectionBinding?.preset?.name,
           block.sectionBinding?.variant?.name,
         ].filter(Boolean).join(" / "),
       sortOrder: block.sortOrder,

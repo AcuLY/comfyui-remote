@@ -50,7 +50,7 @@ const forbiddenPromptBlockFields = [
 
 async function readSchemaModel(schemaFile: string, modelName: string) {
   const schema = await readFile(schemaFile, "utf8");
-  const match = schema.match(new RegExp(`model ${modelName} \\{\\n([\\s\\S]*?)\\n\\}`));
+  const match = schema.match(new RegExp(`model ${modelName} \\{\\r?\\n([\\s\\S]*?)\\r?\\n\\}`));
 
   assert.notEqual(match, null, `${modelName} exists in ${schemaFile}`);
   return match![1];
@@ -68,7 +68,7 @@ function assertModelDoesNotDeclareFields(modelSource: string, fieldNames: readon
 
 function normalizeDeclaration(source: string) {
   return source
-    .replace(/\s*\/\/.*$/g, "")
+    .replace(/\s*\/\/[^\r\n]*$/g, "")
     .replace(/[ \t]+/g, " ")
     .trim();
 }
@@ -76,7 +76,7 @@ function normalizeDeclaration(source: string) {
 function collectModelDeclarations(modelSource: string) {
   return new Set(
     modelSource
-      .split("\n")
+      .split(/\r?\n/)
       .map((line) => normalizeDeclaration(line))
       .filter(Boolean),
   );
@@ -103,6 +103,7 @@ async function readSchemaModels(schemaFile: string, modelNames: readonly string[
 
 function normalizeSchemaProviderDifferences(modelSource: string) {
   return modelSource
+    .replace(/\r\n/g, "\n")
     .replace(/\s*\/\/.*$/gm, "")
     .replace(/@db\.Text/g, "")
     .replace(/\bPromptBlockType\b/g, "String")
@@ -178,9 +179,11 @@ for (const schemaFile of schemaFiles) {
   test(`${schemaFile} constrains binding preset and variant references with composite relations`, async () => {
     const preset = await readSchemaModel(schemaFile, "Preset");
     const presetVariant = await readSchemaModel(schemaFile, "PresetVariant");
-    const bindingModels = await readSchemaModels(schemaFile, [
+    const projectBindingModels = await readSchemaModels(schemaFile, [
       "ProjectPresetBinding",
       "ProjectTemplatePresetBinding",
+    ]);
+    const sectionBindingModels = await readSchemaModels(schemaFile, [
       "SectionPresetBinding",
       "TemplateSectionPresetBinding",
     ]);
@@ -188,12 +191,33 @@ for (const schemaFile of schemaFiles) {
     assertModelDeclaresFields(preset, ["@@unique([categoryId, id])"]);
     assertModelDeclaresFields(presetVariant, ["@@unique([presetId, id])"]);
 
-    for (const [modelName, modelSource] of bindingModels) {
+    for (const [modelName, modelSource] of projectBindingModels) {
       assertModelDeclaresFields(modelSource, [
         "presetId String",
         "variantId String?",
         "preset Preset @relation(fields: [categoryId, presetId], references: [categoryId, id], onDelete: Restrict)",
         "variant PresetVariant? @relation(fields: [presetId, variantId], references: [presetId, id], onDelete: Restrict)",
+      ]);
+      assert.equal(
+        /@relation\(fields:\s*\[presetId\],\s*references:\s*\[id\]/.test(modelSource),
+        false,
+        `${modelName} does not relate preset by presetId alone`,
+      );
+      assert.equal(
+        /@relation\(fields:\s*\[variantId\],\s*references:\s*\[id\]/.test(modelSource),
+        false,
+        `${modelName} does not relate variant by variantId alone`,
+      );
+    }
+
+    for (const [modelName, modelSource] of sectionBindingModels) {
+      assertModelDeclaresFields(modelSource, [
+        "presetId String?",
+        "variantId String?",
+        "presetGroupId String?",
+        "preset Preset? @relation(fields: [categoryId, presetId], references: [categoryId, id], onDelete: Restrict)",
+        "variant PresetVariant? @relation(fields: [presetId, variantId], references: [presetId, id], onDelete: Restrict)",
+        "presetGroup PresetGroup? @relation(fields: [presetGroupId], references: [id], onDelete: Restrict)",
       ]);
       assert.equal(
         /@relation\(fields:\s*\[presetId\],\s*references:\s*\[id\]/.test(modelSource),

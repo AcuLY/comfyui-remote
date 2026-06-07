@@ -74,6 +74,8 @@ async function detachNormalizedSectionLorasFromPresetBinding(
     },
   });
   if (!binding) return false;
+  const presetId = binding.presetId;
+  if (!presetId || !binding.preset) return false;
 
   const before = binding.manualLoraEntries;
   const represented = new Set<string>();
@@ -83,7 +85,12 @@ async function detachNormalizedSectionLorasFromPresetBinding(
     represented.add(`${row.stage}:${path}`);
   }
 
-  const resolved = await resolveBindingVariantLoras(binding);
+  const resolved = await resolveBindingVariantLoras({
+    id: binding.id,
+    presetId,
+    variantId: binding.variantId,
+    preset: binding.preset,
+  });
   const rowsToCreate: Array<{
     projectSectionId: string;
     sectionBindingId: null;
@@ -113,7 +120,7 @@ async function detachNormalizedSectionLorasFromPresetBinding(
           weight: entry.weight,
           enabled: entry.enabled,
           detachedFromBindingKey: binding.bindingKey,
-          detachedFromPresetId: binding.presetId,
+          detachedFromPresetId: presetId,
           detachedFromVariantId: resolved.variantId,
           detachedFromPath: entry.path,
           sortOrder: index,
@@ -129,7 +136,7 @@ async function detachNormalizedSectionLorasFromPresetBinding(
         data: {
           sectionBindingId: null,
           detachedFromBindingKey: row.detachedFromBindingKey ?? binding.bindingKey,
-          detachedFromPresetId: row.detachedFromPresetId ?? binding.presetId,
+          detachedFromPresetId: row.detachedFromPresetId ?? presetId,
           detachedFromVariantId: row.detachedFromVariantId ?? resolved?.variantId ?? binding.variantId,
           detachedFromPath: row.detachedFromPath ?? row.path,
           metadata: readSuppressed(row.metadata) ? { suppressed: true } : row.metadata ?? undefined,

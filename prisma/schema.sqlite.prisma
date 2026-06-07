@@ -118,6 +118,8 @@ model PresetGroup {
   folder      PresetFolder?        @relation(fields: [folderId], references: [id], onDelete: SetNull)
   members     PresetGroupMember[]
   changeLogs  PresetGroupChangeLog[]
+  sectionBindings SectionPresetBinding[]
+  templateSectionBindings TemplateSectionPresetBinding[]
 
   @@unique([categoryId, slug])
   @@index([categoryId, sortOrder])
@@ -262,16 +264,18 @@ model TemplateSectionPresetBinding {
   projectTemplateSectionId String
   bindingKey               String
   categoryId               String
-  presetId                 String
+  presetId                 String?
   variantId                String?
+  presetGroupId            String?
   groupBindingKey          String?
   sortOrder                Int                    @default(0)
   createdAt                DateTime               @default(now())
   updatedAt                DateTime               @updatedAt
   projectTemplateSection   ProjectTemplateSection @relation(fields: [projectTemplateSectionId], references: [id], onDelete: Cascade)
   category                 PresetCategory         @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  preset                   Preset                 @relation(fields: [categoryId, presetId], references: [categoryId, id], onDelete: Restrict)
+  preset                   Preset?                @relation(fields: [categoryId, presetId], references: [categoryId, id], onDelete: Restrict)
   variant                  PresetVariant?         @relation(fields: [presetId, variantId], references: [presetId, id], onDelete: Restrict)
+  presetGroup              PresetGroup?           @relation(fields: [presetGroupId], references: [id], onDelete: Restrict)
   promptBlock              TemplateSectionPromptBlock?
   manualLoraEntries        TemplateSectionManualLoraEntry[]
 
@@ -281,6 +285,7 @@ model TemplateSectionPresetBinding {
   @@index([categoryId])
   @@index([presetId])
   @@index([variantId])
+  @@index([presetGroupId])
   @@index([groupBindingKey])
 }
 
@@ -439,16 +444,18 @@ model SectionPresetBinding {
   projectSectionId  String
   bindingKey        String
   categoryId        String
-  presetId          String
+  presetId          String?
   variantId         String?
+  presetGroupId     String?
   groupBindingKey   String?
   sortOrder         Int                      @default(0)
   createdAt         DateTime                 @default(now())
   updatedAt         DateTime                 @updatedAt
   projectSection    ProjectSection           @relation(fields: [projectSectionId], references: [id], onDelete: Cascade)
   category          PresetCategory           @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  preset            Preset                   @relation(fields: [categoryId, presetId], references: [categoryId, id], onDelete: Restrict)
+  preset            Preset?                  @relation(fields: [categoryId, presetId], references: [categoryId, id], onDelete: Restrict)
   variant           PresetVariant?           @relation(fields: [presetId, variantId], references: [presetId, id], onDelete: Restrict)
+  presetGroup       PresetGroup?             @relation(fields: [presetGroupId], references: [id], onDelete: Restrict)
   promptBlock       SectionPromptBlock?
   manualLoraEntries SectionManualLoraEntry[]
 
@@ -458,6 +465,7 @@ model SectionPresetBinding {
   @@index([categoryId])
   @@index([presetId])
   @@index([variantId])
+  @@index([presetGroupId])
   @@index([groupBindingKey])
 }
 

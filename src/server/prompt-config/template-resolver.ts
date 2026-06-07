@@ -1,5 +1,9 @@
 import { resolveSectionConfigFromRows } from "./section-resolver";
 import { loadReachablePresetVariantGraph } from "./preset-resolver";
+import {
+  resolvePresetGroupContents,
+  type PresetGroupResolverDbClient,
+} from "./preset-group-resolver";
 import { sortBySortOrder } from "./order";
 import type {
   PresetVariantLinkRow,
@@ -16,10 +20,10 @@ import type {
   TemplateSectionPromptBlockRow,
 } from "./types";
 
-export type TemplateSectionPresetBindingWrite = Omit<TemplateSectionPresetBindingRow, "category" | "preset">;
+export type TemplateSectionPresetBindingWrite = Omit<TemplateSectionPresetBindingRow, "category" | "preset" | "presetGroup">;
 export type TemplateSectionPromptBlockWrite = TemplateSectionPromptBlockRow;
 export type TemplateSectionManualLoraEntryWrite = TemplateSectionManualLoraEntryRow;
-export type SectionPresetBindingWrite = Omit<SectionPresetBindingRow, "category" | "preset">;
+export type SectionPresetBindingWrite = Omit<SectionPresetBindingRow, "category" | "preset" | "presetGroup">;
 export type SectionPromptBlockWrite = ResolveSectionConfigInput["promptBlockRows"][number];
 export type SectionManualLoraEntryWrite = SectionManualLoraEntryRow;
 
@@ -57,6 +61,7 @@ type TemplateEditorPromptBlockInput = {
   type?: string | null;
   sourceId?: string | null;
   variantId?: string | null;
+  presetGroupId?: string | null;
   categoryId?: string | null;
   bindingId?: string | null;
   groupBindingId?: string | null;
@@ -84,7 +89,7 @@ type TemplateResolverDbClient = {
   presetVariantLink: {
     findMany(args: unknown): Promise<PresetVariantLinkRow[]>;
   };
-};
+} & Partial<PresetGroupResolverDbClient>;
 
 function relationId(prefix: string, ownerId: string, key: string) {
   return `${prefix}:${ownerId}:${key}`;
@@ -122,14 +127,17 @@ function cleanPresetPromptBlock(block: TemplateEditorPromptBlockInput) {
   const bindingKey = readString(block.bindingId);
   const categoryId = readString(block.categoryId);
   const presetId = readString(block.sourceId);
+  const presetGroupId = readString(block.presetGroupId);
 
-  if (block.type !== "preset" || !bindingKey || !categoryId || !presetId) return null;
+  if (block.type !== "preset" || !bindingKey || !categoryId) return null;
+  if (!presetId && !presetGroupId) return null;
 
   return {
     bindingKey,
     categoryId,
     presetId,
-    variantId: readString(block.variantId),
+    variantId: presetGroupId ? null : readString(block.variantId),
+    presetGroupId,
     groupBindingKey: readString(block.groupBindingId),
   };
 }
@@ -157,10 +165,12 @@ function adaptTemplateInput(input: ResolveTemplateSectionConfigInput): ResolveSe
       categoryId: binding.categoryId,
       presetId: binding.presetId,
       variantId: binding.variantId,
+      presetGroupId: binding.presetGroupId,
       groupBindingKey: binding.groupBindingKey,
       sortOrder: binding.sortOrder,
       category: binding.category,
       preset: binding.preset,
+      presetGroup: binding.presetGroup,
     })),
     promptBlockRows: input.promptBlockRows.map((row) => ({
       id: row.id,
@@ -189,6 +199,7 @@ function adaptTemplateInput(input: ResolveTemplateSectionConfigInput): ResolveSe
     })),
     presetVariants: input.presetVariants,
     variantLinks: input.variantLinks,
+    presetGroupResolutions: input.presetGroupResolutions,
   };
 }
 
@@ -205,13 +216,14 @@ async function resolveInitialVariantIds(
   const variantIds: string[] = [];
 
   for (const binding of bindings) {
+    if (!binding.presetId) continue;
     if (binding.variantId) {
       variantIds.push(binding.variantId);
       continue;
     }
 
     const localDefaultVariant = sortBySortOrder(
-      (binding.preset.variants ?? []).filter((variant) => variant.isActive !== false),
+      (binding.preset?.variants ?? []).filter((variant) => variant.isActive !== false),
     )[0];
     if (localDefaultVariant?.id) {
       variantIds.push(localDefaultVariant.id);
@@ -260,6 +272,7 @@ export async function resolveTemplateSectionConfig(
           categoryId: true,
           presetId: true,
           variantId: true,
+          presetGroupId: true,
           groupBindingKey: true,
           sortOrder: true,
           category: {
@@ -289,6 +302,13 @@ export async function resolveTemplateSectionConfig(
                 },
                 orderBy: { sortOrder: "asc" },
               },
+            },
+          },
+          presetGroup: {
+            select: {
+              id: true,
+              categoryId: true,
+              name: true,
             },
           },
         },
@@ -340,20 +360,37 @@ export async function resolveTemplateSectionConfig(
   };
 
   const initialVariantIds = await resolveInitialVariantIds(templateSection.presetBindingRows, db);
-  const { variants, variantLinks } = await loadReachablePresetVariantGraph(initialVariantIds, db);
+  const presetGroupIds = templateSection.presetBindingRows
+    .map((binding) => binding.presetGroupId)
+    .filter((groupId): groupId is string => Boolean(groupId));
+  const canResolvePresetGroups = Boolean(db.presetGroup && db.preset && db.presetVariant && db.presetVariantLink);
+  const [variantGraph, presetGroupResolutions] = await Promise.all([
+    loadReachablePresetVariantGraph(initialVariantIds, db),
+    presetGroupIds.length > 0 && canResolvePresetGroups
+      ? resolvePresetGroupContents(presetGroupIds, db as PresetGroupResolverDbClient)
+      : Promise.resolve([]),
+  ]);
 
   return resolveTemplateSectionConfigFromRows({
     ...resolverInput,
-    presetVariants: variants,
-    variantLinks,
+    presetVariants: variantGraph.variants,
+    variantLinks: variantGraph.variantLinks,
+    presetGroupResolutions,
   });
 }
 
 function projectLevelBindingMatches(
-  binding: { categoryId: string; presetId: string; variantId?: string | null; groupBindingKey?: string | null },
+  binding: {
+    categoryId: string;
+    presetId: string | null;
+    variantId?: string | null;
+    presetGroupId?: string | null;
+    groupBindingKey?: string | null;
+  },
   projectLevelBinding: ProjectLevelBindingLike,
 ) {
   if (binding.groupBindingKey) return false;
+  if (binding.presetGroupId || !binding.presetId) return false;
   if (binding.categoryId !== projectLevelBinding.categoryId) return false;
   if (binding.presetId !== projectLevelBinding.presetId) return false;
   if (projectLevelBinding.variantId && binding.variantId && projectLevelBinding.variantId !== binding.variantId) {
@@ -363,7 +400,13 @@ function projectLevelBindingMatches(
 }
 
 function isProjectLevelBinding(
-  binding: { categoryId: string; presetId: string; variantId?: string | null; groupBindingKey?: string | null },
+  binding: {
+    categoryId: string;
+    presetId: string | null;
+    variantId?: string | null;
+    presetGroupId?: string | null;
+    groupBindingKey?: string | null;
+  },
   projectLevelBindings: readonly ProjectLevelBindingLike[],
 ) {
   return projectLevelBindings.some((projectLevelBinding) =>
@@ -382,6 +425,7 @@ function templateBindingWriteFromSectionBinding(
     categoryId: binding.categoryId,
     presetId: binding.presetId,
     variantId: binding.variantId,
+    presetGroupId: binding.presetGroupId,
     groupBindingKey: binding.groupBindingKey,
     sortOrder: binding.sortOrder,
   };
@@ -435,6 +479,7 @@ export function buildTemplateSectionRowsFromSectionData(input: {
           categoryId: presetBlock.categoryId,
           presetId: presetBlock.presetId,
           variantId: presetBlock.variantId,
+          presetGroupId: presetBlock.presetGroupId,
           groupBindingKey: presetBlock.groupBindingKey,
           sortOrder,
         };
@@ -617,6 +662,7 @@ function sectionBindingWriteFromTemplateBinding(
     categoryId: binding.categoryId,
     presetId: binding.presetId,
     variantId: binding.variantId,
+    presetGroupId: binding.presetGroupId,
     groupBindingKey: binding.groupBindingKey,
     sortOrder: binding.sortOrder,
   };
@@ -635,6 +681,7 @@ function sectionBindingWriteFromProjectTemplateBinding(
     categoryId: binding.categoryId,
     presetId: binding.presetId,
     variantId: binding.variantId ?? null,
+    presetGroupId: null,
     groupBindingKey: null,
     sortOrder: binding.sortOrder ?? index,
   };
