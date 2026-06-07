@@ -9,6 +9,10 @@ import {
 } from "@/server/services/image-file-service";
 import { listSectionTrashItems } from "@/server/repositories/trash-repository";
 
+type ReviewImageMutationOptions = {
+  revalidate?: boolean;
+};
+
 // ---------------------------------------------------------------------------
 // 查询小节回收站
 // ---------------------------------------------------------------------------
@@ -26,7 +30,10 @@ export async function getSectionTrashItems(sectionId: string) {
 // 审核操作：保留图片
 // ---------------------------------------------------------------------------
 
-export async function keepImages(imageIds: string[]) {
+export async function keepImages(
+  imageIds: string[],
+  options: ReviewImageMutationOptions = {},
+) {
   const uniqueImageIds = [...new Set(imageIds.filter(Boolean))];
   if (uniqueImageIds.length === 0) return;
 
@@ -97,16 +104,21 @@ export async function keepImages(imageIds: string[]) {
     }),
   ]);
 
-  for (const p of sectionPaths) revalidatePath(p);
-  for (const p of projectPaths) revalidatePath(p);
-  revalidatePath("/queue");
+  if (options.revalidate !== false) {
+    for (const p of sectionPaths) revalidatePath(p);
+    for (const p of projectPaths) revalidatePath(p);
+    revalidatePath("/queue");
+  }
 }
 
 // ---------------------------------------------------------------------------
 // 审核操作：删除图片（移入回收站）
 // ---------------------------------------------------------------------------
 
-export async function trashImages(imageIds: string[]) {
+export async function trashImages(
+  imageIds: string[],
+  options: ReviewImageMutationOptions = {},
+) {
   const uniqueImageIds = [...new Set(imageIds.filter(Boolean))];
   if (uniqueImageIds.length === 0) return { count: 0, imageIds: [] };
 
@@ -195,9 +207,11 @@ export async function trashImages(imageIds: string[]) {
     }),
   ]);
 
-  for (const p of sectionPaths) revalidatePath(p);
-  for (const p of projectPaths) revalidatePath(p);
-  revalidatePath("/queue");
+  if (options.revalidate !== false) {
+    for (const p of sectionPaths) revalidatePath(p);
+    for (const p of projectPaths) revalidatePath(p);
+    revalidatePath("/queue");
+  }
 
   return { count: plans.length, imageIds: plans.map((plan) => plan.imageId) };
 }

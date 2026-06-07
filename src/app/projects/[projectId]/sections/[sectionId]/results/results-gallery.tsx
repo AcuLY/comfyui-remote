@@ -12,6 +12,10 @@ import { useRouter } from "next/navigation";
 import { Check, ChevronLeft, ChevronRight, Eye, ImageIcon, Shield, Star, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { keepImages, trashImages, censorImage } from "@/lib/actions";
+import {
+  getLightboxPreloadCandidates,
+  LIGHTBOX_PRELOAD_AHEAD,
+} from "@/lib/review-lightbox-state";
 
 type GalleryImage = {
   id: string;
@@ -73,17 +77,23 @@ export function ResultsGalleryProvider({
 
   useEffect(() => {
     if (!open) return;
+    if (!current || !imageLoaded) return;
 
-    const remainingImages = allImages.slice(currentIndex + 1);
+    const remainingImages = getLightboxPreloadCandidates(
+      allImages,
+      currentIndex,
+      LIGHTBOX_PRELOAD_AHEAD,
+    );
     for (const image of remainingImages) {
       if (!image.full || preloadedImageUrlsRef.current.has(image.full)) continue;
       const preloadImage = new window.Image();
       preloadImage.decoding = "async";
+      preloadImage.setAttribute("fetchpriority", "low");
       preloadImage.src = image.full;
       preloadedImageUrlsRef.current.add(image.full);
       preloadImagesRef.current.push(preloadImage);
     }
-  }, [allImages, currentIndex, open]);
+  }, [allImages, current, currentIndex, imageLoaded, open]);
 
   const goPrev = useCallback(() => {
     setCurrentIndex((index) => (index > 0 ? index - 1 : allImages.length - 1));
@@ -202,11 +212,10 @@ export function ResultsGalleryProvider({
       startTransition(async () => {
         try {
           if (action === "keep") {
-            await keepImages([imageId]);
+            await keepImages([imageId], { revalidate: false });
           } else {
-            await trashImages([imageId]);
+            await trashImages([imageId], { revalidate: false });
           }
-          router.refresh();
         } catch (error) {
           setAllImages(previousImages);
           setCurrentIndex(previousIndex);
@@ -217,7 +226,7 @@ export function ResultsGalleryProvider({
         }
       });
     },
-    [allImages, busy, current, currentIndex, goNext, open, router],
+    [allImages, busy, current, currentIndex, goNext, open],
   );
 
   useEffect(() => {
@@ -443,6 +452,8 @@ export function ResultsGalleryProvider({
                 key={current.id}
                 src={showCensored && current.censoredFull ? current.censoredFull : current.full}
                 alt=""
+                loading="eager"
+                fetchPriority="high"
                 onLoad={() => setLoadedImageId(current.id)}
                 onError={() => setLoadedImageId(current.id)}
                 className={`max-h-[calc(100dvh-11rem)] max-w-full rounded-lg object-contain transition-opacity duration-150 ${

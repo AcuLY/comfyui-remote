@@ -28,6 +28,7 @@ export function ImageLightbox({
   onNext,
   onReview,
   onToggleMarker,
+  onImageLoaded,
 }: {
   image: ReviewImage | null;
   visible: boolean;
@@ -40,6 +41,7 @@ export function ImageLightbox({
   onNext: () => void;
   onReview: (action: ReviewAction) => void;
   onToggleMarker: (field: MarkerField) => void;
+  onImageLoaded?: (imageId: string) => void;
 }) {
   const [loadedImageId, setLoadedImageId] = useState<string | null>(null);
   const shieldTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -191,8 +193,16 @@ export function ImageLightbox({
             key={image.id}
             src={image.full}
             alt={image.id}
-            onLoad={() => setLoadedImageId(image.id)}
-            onError={() => setLoadedImageId(image.id)}
+            loading="eager"
+            fetchPriority="high"
+            onLoad={() => {
+              setLoadedImageId(image.id);
+              onImageLoaded?.(image.id);
+            }}
+            onError={() => {
+              setLoadedImageId(image.id);
+              onImageLoaded?.(image.id);
+            }}
             draggable={false}
             className={`max-h-[calc(100dvh-11rem)] max-w-full rounded-lg object-contain drop-shadow-2xl transition-opacity duration-150 ${
               imageLoaded ? "opacity-100" : "opacity-0"
