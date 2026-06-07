@@ -48,15 +48,16 @@ test("updateGroupMember replaces a preset member and propagates group changes", 
   assert.match(body, /existingPreset[\s\S]*preset\.findUnique/, "existing preset category should be loaded for the category lock");
   assert.match(body, /existingPreset\.categoryId !== replacementVariant\.preset\.categoryId/, "replacement should stay in the existing preset category");
   assert.match(body, /existing\.slotCategoryId[\s\S]*existing\.slotCategoryId !== replacementVariant\.preset\.categoryId/, "slot members should also enforce the slot category");
-  assert.match(body, /resolveConcreteGroupSyncMembers\(existing\.groupId\)/, "previous sync members should be captured without resolving full prompt content");
+  assert.match(body, /variantId:\s*true/, "existing member lookup should select variantId for deferred history");
+  assert.match(body, /sortOrder:\s*true/, "existing member lookup should select sortOrder for deferred history");
   assert.match(body, /presetId:\s*input\.presetId/, "replacement should update presetId");
   assert.match(body, /variantId:\s*input\.variantId/, "replacement should update variantId");
   assert.match(body, /subGroupId:\s*null/, "replacement should clear subGroupId");
   assert.doesNotMatch(body, /sortOrder:\s*input/, "replacement should preserve existing sortOrder");
   assert.doesNotMatch(body, /slotCategoryId:\s*input/, "replacement should preserve existing slotCategoryId");
-  assert.match(body, /dimension:\s*"members"/, "replacement should record members history");
   assert.match(body, /title:\s*"替换预制组成员"/, "replacement history should use the replacement title");
-  assert.match(body, /schedulePresetGroupInstanceSync\(existing\.groupId,\s*previousMembers\)/, "replacement should schedule imported group instance sync after responding");
+  assert.match(body, /schedulePresetGroupMemberChangeEffects\(/, "replacement should schedule history and imported group instance sync after responding");
+  assert.match(body, /previousMember:\s*GroupMemberSnapshot/, "replacement should keep the old member row for deferred history");
   assert.doesNotMatch(body, /^  await syncPresetGroupInstances\(existing\.groupId,\s*previousMembers\)/m, "replacement should not block the UI on imported group instance sync");
   assert.match(body, /revalidatePath\("\/assets\/presets"\)/, "replacement should revalidate presets");
   assert.match(body, /revalidatePath\("\/assets\/preset-groups"\)/, "replacement should revalidate preset groups");
@@ -71,12 +72,14 @@ test("removeGroupMember removes a member without blocking on imported group sync
   assert.match(source, /import { after as afterResponse } from "next\/server"/, "member removal should use after() for non-blocking downstream sync");
   assert.match(body, /findUnique\([\s\S]*where:\s*{\s*id:\s*memberId\s*}/, "missing members should be checked before removal");
   assert.match(body, /if \(!existing\) return/, "missing members should return without syncing");
-  assert.match(body, /resolveConcreteGroupSyncMembers\(existing\.groupId\)/, "previous sync members should be captured before deleting the member without resolving full prompt content");
+  assert.match(body, /presetId:\s*true/, "existing member lookup should select presetId for deferred history");
+  assert.match(body, /variantId:\s*true/, "existing member lookup should select variantId for deferred history");
+  assert.match(body, /sortOrder:\s*true/, "existing member lookup should select sortOrder for deferred history");
   assert.match(body, /presetGroupMember\.delete\([\s\S]*where:\s*{\s*id:\s*memberId\s*}/, "the requested member should be deleted");
-  assert.match(body, /recordPresetGroupChange\([\s\S]*dimension:\s*"members"/, "member removal should record members history");
-  assert.match(body, /schedulePresetGroupInstanceSync\(existing\.groupId,\s*previousMembers\)/, "member removal should schedule imported group instance sync after responding");
+  assert.match(body, /deletedMember:\s*GroupMemberSnapshot/, "member removal should keep the deleted row for deferred history");
+  assert.match(body, /schedulePresetGroupMemberChangeEffects\(/, "member removal should schedule history and imported group instance sync after responding");
   assert.doesNotMatch(body, /^  await syncPresetGroupInstances\(existing\.groupId,\s*previousMembers\)/m, "member removal should not block the UI on imported group instance sync");
-  assert.match(source, /Failed to sync preset group instances after member change/, "background sync failures should be logged");
+  assert.match(source, /Failed to process preset group member change after response/, "background effect failures should be logged");
   assert.match(body, /revalidatePath\("\/assets\/presets"\)/, "member removal should revalidate presets");
   assert.match(body, /revalidatePath\("\/assets\/preset-groups"\)/, "member removal should revalidate preset groups");
   assert.match(body, /revalidatePath\(`\/assets\/preset-groups\/\$\{existing\.groupId\}`\)/, "member removal should revalidate the changed group detail route");
@@ -92,12 +95,15 @@ test("group member mutations use lightweight sync snapshots and never resolve va
   assert.doesNotMatch(source, /resolveVariantContent/, "preset group member mutations should not load resolved prompt/LoRA content");
   assert.doesNotMatch(source, /resolveConcreteGroupMembers/, "preset group member mutations should not use the old full-content member resolver");
 
-  assert.match(addBody, /resolveConcreteGroupSyncMembers\(input\.groupId\)/, "adding a member should capture a lightweight previous member snapshot");
-  assert.match(addBody, /schedulePresetGroupInstanceSync\(input\.groupId,\s*previousMembers\)/, "adding a member should schedule legacy group sync after the response");
+  assert.doesNotMatch(addBody, /resolveConcreteGroupSyncMembers\(/, "adding a member should not resolve group members before responding");
+  assert.match(addBody, /schedulePresetGroupMemberChangeEffects\(/, "adding a member should schedule history and legacy sync after the response");
+  assert.match(addBody, /revalidatePath\(`\/assets\/preset-groups\/\$\{input\.groupId\}`\)/, "adding a member should revalidate the changed group detail route");
   assert.doesNotMatch(addBody, /^  await syncPresetGroupInstances\(input\.groupId,\s*previousMembers\)/m, "adding a member should not wait for legacy sync");
 
-  assert.match(removeBody, /resolveConcreteGroupSyncMembers\(existing\.groupId\)/, "removing a member should capture a lightweight previous member snapshot");
-  assert.match(updateBody, /resolveConcreteGroupSyncMembers\(existing\.groupId\)/, "replacing a member should capture a lightweight previous member snapshot");
+  assert.doesNotMatch(removeBody, /resolveConcreteGroupSyncMembers\(/, "removing a member should not resolve group members before responding");
+  assert.match(removeBody, /schedulePresetGroupMemberChangeEffects\(/, "removing a member should schedule history and legacy sync after the response");
+  assert.doesNotMatch(updateBody, /resolveConcreteGroupSyncMembers\(/, "replacing a member should not resolve group members before responding");
+  assert.match(updateBody, /schedulePresetGroupMemberChangeEffects\(/, "replacing a member should schedule history and legacy sync after the response");
   assert.doesNotMatch(reorderBody, /resolveConcreteGroupSyncMembers\(/, "reordering members should not resolve a sync snapshot because the member set is unchanged");
   assert.doesNotMatch(reorderBody, /syncPresetGroupInstances\(/, "reordering members should not run legacy member-set sync");
 });
@@ -118,6 +124,20 @@ test("group detail member rows use a locked preset picker without navigating the
   assert.match(source, /catch \(error\)[\s\S]*toast\.error\(error instanceof Error \? error\.message : "替换成员失败"\)/, "detail replacement should toast failures");
   assert.match(source, /router\.refresh\(\)/, "selection should refresh the route");
   assertStopsNavigation(source, "detail replacement controls");
+});
+
+test("group detail member mutations update the local member list without waiting for route refresh", () => {
+  const source = readSource("src/app/assets/preset-groups/[groupId]/preset-group-edit-client.tsx");
+
+  assert.match(source, /const \[currentGroup,\s*setCurrentGroup\] = useState\(group\)/, "detail page should keep a local group copy");
+  assert.match(source, /setCurrentGroup\(group\)/, "server props should still resync the local group copy");
+  assert.match(source, /currentGroup\.members/, "member rendering should read the local group copy");
+  assert.match(source, /members:\s*current\.members\.filter\(\(item\) => item\.id !== member\.id\)/, "removing a member should remove it locally after the mutation succeeds");
+  assert.match(source, /const addedMember = await addGroupMember\(input\)/, "adding a member should use the returned member row");
+  assert.match(source, /toGroupMemberDisplay\(addedMember,\s*categories,\s*groups\)/, "added members should be converted to display data locally");
+  assert.match(source, /const updatedMember = await updateGroupMember\(member\.id/, "replacement should use the returned member row");
+  assert.match(source, /toGroupMemberDisplay\(updatedMember,\s*categories,\s*groups\)/, "replaced members should be converted to display data locally");
+  assert.doesNotMatch(source, /await removeGroupMember\(member\.id\)[\s\S]{0,160}router\.refresh\(\)/, "removing a member should not depend on a route refresh to update visible content");
 });
 
 test("sortable group card inline editor can replace ordinary preset members", () => {

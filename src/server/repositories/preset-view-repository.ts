@@ -47,6 +47,20 @@ function slotTemplateFromRows(
   }));
 }
 
+function emptyPresetHistory(): Record<PresetChangeDimension, PresetHistoryEntry<PresetChangeDimension>[]> {
+  return {
+    variants: [],
+    content: [],
+  };
+}
+
+function emptyPresetGroupHistory(): Record<PresetGroupChangeDimension, PresetHistoryEntry<PresetGroupChangeDimension>[]> {
+  return {
+    meta: [],
+    members: [],
+  };
+}
+
 /**
  * Collect member IDs from groups, batch-fetch preset/variant/group names,
  * and return lookup maps for display name resolution.
@@ -293,6 +307,215 @@ export async function getPresetCategoriesWithPresets(): Promise<PresetCategoryFu
       sortOrder: f.sortOrder,
     })),
   }));
+}
+
+export type PresetGroupEditData = {
+  categories: PresetCategoryFull[];
+  category: PresetCategoryFull;
+  group: PresetGroupItem;
+  groups: PresetGroupItem[];
+};
+
+export async function getPresetGroupEditData(groupId: string): Promise<PresetGroupEditData | null> {
+  const currentGroup = await prisma.presetGroup.findFirst({
+    where: { id: groupId, isActive: true },
+    include: {
+      members: { orderBy: { sortOrder: "asc" } },
+      changeLogs: {
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        take: 20,
+      },
+    },
+  });
+
+  if (!currentGroup) return null;
+
+  const contentVariantIds = currentGroup.members
+    .filter((member) => member.variantId && !member.subGroupId)
+    .map((member) => member.variantId as string);
+
+  const [categories, contentVariants] = await Promise.all([
+    prisma.presetCategory.findMany({
+      orderBy: { sortOrder: "asc" },
+      include: {
+        _count: {
+          select: {
+            presets: { where: { isActive: true } },
+            groups: { where: { isActive: true } },
+          },
+        },
+        ownedSlots: {
+          orderBy: { sortOrder: "asc" },
+          select: {
+            slotCategoryId: true,
+            label: true,
+          },
+        },
+        presets: {
+          where: { isActive: true },
+          orderBy: { sortOrder: "asc" },
+          select: {
+            id: true,
+            categoryId: true,
+            name: true,
+            slug: true,
+            isActive: true,
+            sortOrder: true,
+            notes: true,
+            civitaiLinks: true,
+            folderId: true,
+            _count: { select: { variants: true } },
+            variants: {
+              where: { isActive: true },
+              orderBy: { sortOrder: "asc" },
+              select: {
+                id: true,
+                presetId: true,
+                name: true,
+                slug: true,
+                sortOrder: true,
+                isActive: true,
+              },
+            },
+          },
+        },
+        groups: {
+          where: { isActive: true },
+          orderBy: { sortOrder: "asc" },
+          select: {
+            id: true,
+            categoryId: true,
+            name: true,
+            slug: true,
+            sortOrder: true,
+            folderId: true,
+          },
+        },
+        folders: {
+          orderBy: { sortOrder: "asc" },
+        },
+      },
+    }),
+    contentVariantIds.length > 0
+      ? prisma.presetVariant.findMany({
+          where: { id: { in: [...new Set(contentVariantIds)] }, isActive: true },
+          include: {
+            outgoingLinks: {
+              orderBy: { sortOrder: "asc" },
+              select: {
+                linkedVariantId: true,
+                linkedVariant: { select: { presetId: true } },
+              },
+            },
+          },
+        })
+      : [],
+  ]);
+
+  const contentByVariantId = new Map(contentVariants.map((variant) => [variant.id, variant]));
+  const presetNameMap = new Map<string, string>();
+  const variantNameMap = new Map<string, string>();
+  const groupNameMap = new Map<string, string>();
+
+  for (const category of categories) {
+    for (const preset of category.presets) {
+      presetNameMap.set(preset.id, preset.name);
+      for (const variant of preset.variants) {
+        variantNameMap.set(variant.id, variant.name);
+      }
+    }
+    for (const group of category.groups) {
+      groupNameMap.set(group.id, group.name);
+    }
+  }
+
+  const mappedCategories: PresetCategoryFull[] = categories.map((category) => ({
+    id: category.id,
+    name: category.name,
+    slug: category.slug,
+    icon: category.icon,
+    color: category.color,
+    type: category.type,
+    slotTemplate: slotTemplateFromRows(category.ownedSlots),
+    positivePromptOrder: category.positivePromptOrder,
+    negativePromptOrder: category.negativePromptOrder,
+    lora1Order: category.lora1Order,
+    lora2Order: category.lora2Order,
+    sortOrder: category.sortOrder,
+    presetCount: category._count.presets,
+    groupCount: category._count.groups,
+    presets: category.presets.map((preset) => ({
+      id: preset.id,
+      categoryId: preset.categoryId,
+      name: preset.name,
+      slug: preset.slug,
+      isActive: preset.isActive,
+      sortOrder: preset.sortOrder,
+      notes: preset.notes,
+      civitaiLinks: normalizeCivitaiLinks(preset.civitaiLinks),
+      folderId: preset.folderId,
+      variantCount: preset._count.variants,
+      changeHistory: emptyPresetHistory(),
+      variants: preset.variants.map((variant) => {
+        const content = contentByVariantId.get(variant.id);
+        return {
+          id: variant.id,
+          presetId: variant.presetId,
+          name: variant.name,
+          slug: variant.slug,
+          prompt: content?.prompt ?? "",
+          negativePrompt: content?.negativePrompt ?? null,
+          lora1: content?.lora1 ?? null,
+          lora2: content?.lora2 ?? null,
+          linkedVariants: content ? linkedVariantRefs(content) : [],
+          sortOrder: variant.sortOrder,
+          isActive: variant.isActive,
+        };
+      }),
+    })),
+    groups: category.groups.map((group) => ({
+      id: group.id,
+      categoryId: group.categoryId,
+      name: group.name,
+      slug: group.slug,
+      sortOrder: group.sortOrder,
+      folderId: group.folderId,
+      changeHistory: group.id === currentGroup.id
+        ? groupPresetGroupHistory(currentGroup.changeLogs)
+        : emptyPresetGroupHistory(),
+      members: group.id === currentGroup.id
+        ? currentGroup.members.map((member) => ({
+            id: member.id,
+            presetId: member.presetId,
+            variantId: member.variantId,
+            subGroupId: member.subGroupId,
+            slotCategoryId: member.slotCategoryId,
+            sortOrder: member.sortOrder,
+            presetName: member.presetId ? presetNameMap.get(member.presetId) : undefined,
+            variantName: member.variantId ? variantNameMap.get(member.variantId) : undefined,
+            subGroupName: member.subGroupId ? groupNameMap.get(member.subGroupId) : undefined,
+          }))
+        : [],
+    })),
+    folders: category.folders.map((folder) => ({
+      id: folder.id,
+      name: folder.name,
+      parentId: folder.parentId,
+      sortOrder: folder.sortOrder,
+    })),
+  }));
+
+  const category = mappedCategories.find((item) => item.id === currentGroup.categoryId);
+  const group = category?.groups.find((item) => item.id === groupId) ?? null;
+
+  if (!category || !group) return null;
+
+  return {
+    categories: mappedCategories,
+    category,
+    group,
+    groups: mappedCategories.flatMap((item) => item.groups),
+  };
 }
 
 /** V2 prompt library: dynamic categories for the block editor import panel */

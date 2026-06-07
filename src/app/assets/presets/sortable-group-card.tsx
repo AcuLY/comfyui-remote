@@ -20,7 +20,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { CheckSquare, ChevronRight, GripVertical, Repeat2, Square, X } from "lucide-react";
+import { CheckSquare, ChevronRight, Copy, GripVertical, Repeat2, Square, X } from "lucide-react";
 import { PresetCascadePicker } from "@/components/preset-cascade-picker";
 import type {
   FolderItem,
@@ -57,6 +57,7 @@ export function SortableGroupCard({
   onRefresh,
   onGroupDeleted,
   onMoveToFolder,
+  onCopy,
   isPending,
   startTransition,
   isSelected,
@@ -72,6 +73,7 @@ export function SortableGroupCard({
   onRefresh: () => void;
   onGroupDeleted: () => void;
   onMoveToFolder: (folderId: string | null) => void;
+  onCopy?: () => void;
   isPending: boolean;
   startTransition: React.TransitionStartFunction;
   isSelected: boolean;
@@ -203,6 +205,16 @@ export function SortableGroupCard({
             folders={folders}
             onMove={onMoveToFolder}
           />
+          {onCopy && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onCopy(); }}
+              className="shrink-0 rounded p-1 text-zinc-600 transition hover:bg-sky-500/10 hover:text-sky-400"
+              title="复制预制组"
+            >
+              <Copy className="size-3.5" />
+            </button>
+          )}
         </div>
       </div>
 

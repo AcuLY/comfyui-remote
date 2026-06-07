@@ -18,6 +18,7 @@ export { listSectionTrashItems as getSectionTrashItems, listTrashItems as getTra
 export {
   getPresetCategoriesWithPresets,
   getPresetLibraryV2,
+  getPresetGroupEditData,
   getPresetGroups,
   getPresetGroup,
   getPresetFolders,
@@ -35,6 +36,7 @@ export type {
   PresetFull,
   PresetLibraryV2,
   PresetGroupItem,
+  PresetGroupEditData,
 } from "@/server/repositories/preset-view-repository";
 
 // Template view data

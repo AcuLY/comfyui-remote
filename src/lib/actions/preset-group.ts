@@ -44,6 +44,8 @@ type ConcreteGroupSyncMember = {
   positivePromptOrder: number;
 };
 
+type GroupMemberSnapshot = Awaited<ReturnType<typeof groupMembersSnapshot>>[number];
+
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
@@ -80,8 +82,31 @@ async function groupMembersSnapshot(groupId: string) {
   return members;
 }
 
-async function resolveConcreteGroupSyncMembers(groupId: string): Promise<ConcreteGroupSyncMember[]> {
-  const members = await flattenGroup(groupId);
+function sortGroupMemberSnapshots(members: GroupMemberSnapshot[]): GroupMemberSnapshot[] {
+  return [...members].sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id));
+}
+
+async function flattenGroupMemberRows(
+  rows: readonly GroupMemberSnapshot[],
+  visited: Set<string>,
+): Promise<Array<{ presetId: string; variantId?: string }>> {
+  const result: Array<{ presetId: string; variantId?: string }> = [];
+
+  for (const member of rows) {
+    if (member.subGroupId) {
+      const sub = await flattenGroup(member.subGroupId, visited);
+      result.push(...sub);
+    } else if (member.presetId) {
+      result.push({ presetId: member.presetId, variantId: member.variantId ?? undefined });
+    }
+  }
+
+  return result;
+}
+
+async function resolveConcreteGroupSyncMembersFromFlatMembers(
+  members: Array<{ presetId: string; variantId?: string }>,
+): Promise<ConcreteGroupSyncMember[]> {
   if (members.length === 0) return [];
 
   const presets = await prisma.preset.findMany({
@@ -126,16 +151,43 @@ async function resolveConcreteGroupSyncMembers(groupId: string): Promise<Concret
   return sortConcreteGroupMembersForSection(concreteMembers);
 }
 
+async function resolveConcreteGroupSyncMembers(groupId: string): Promise<ConcreteGroupSyncMember[]> {
+  return resolveConcreteGroupSyncMembersFromFlatMembers(await flattenGroup(groupId));
+}
+
+async function resolveConcreteGroupSyncMembersFromRows(
+  groupId: string,
+  rows: readonly GroupMemberSnapshot[],
+): Promise<ConcreteGroupSyncMember[]> {
+  return resolveConcreteGroupSyncMembersFromFlatMembers(
+    await flattenGroupMemberRows(rows, new Set([groupId])),
+  );
+}
+
 function groupMemberSignature(members: Array<{ presetId: string; variantId?: string | null }>) {
   return members.map((m) => `${m.presetId}:${m.variantId ?? ""}`).join("|");
 }
 
-function schedulePresetGroupInstanceSync(groupId: string, previousMembers: ConcreteGroupSyncMember[]) {
+function schedulePresetGroupMemberChangeEffects(input: {
+  groupId: string;
+  title: string;
+  buildBefore: (after: GroupMemberSnapshot[]) => GroupMemberSnapshot[];
+}) {
   afterResponse(async () => {
     try {
-      await syncPresetGroupInstances(groupId, previousMembers);
+      const after = await groupMembersSnapshot(input.groupId);
+      const before = sortGroupMemberSnapshots(input.buildBefore(after));
+      await recordPresetGroupChange({
+        groupId: input.groupId,
+        dimension: "members",
+        title: input.title,
+        before,
+        after,
+      });
+      const previousMembers = await resolveConcreteGroupSyncMembersFromRows(input.groupId, before);
+      await syncPresetGroupInstances(input.groupId, previousMembers);
     } catch (error) {
-      console.error("Failed to sync preset group instances after member change", error);
+      console.error("Failed to process preset group member change after response", error);
     }
   });
 }
@@ -413,6 +465,97 @@ export async function createPresetGroup(input: PresetGroupInput) {
   return group;
 }
 
+export async function copyPresetGroup(groupId: string) {
+  const source = await prisma.presetGroup.findUnique({
+    where: { id: groupId },
+    include: {
+      members: {
+        orderBy: { sortOrder: "asc" },
+        select: {
+          presetId: true,
+          variantId: true,
+          subGroupId: true,
+          slotCategoryId: true,
+          sortOrder: true,
+        },
+      },
+    },
+  });
+
+  if (!source || !source.isActive) {
+    throw new Error("Preset group not found");
+  }
+
+  let copyIdentity: { name: string; slug: string } | null = null;
+  for (let attempt = 1; attempt <= 100; attempt += 1) {
+    const copySuffix = attempt === 1 ? "Copy" : `Copy ${attempt}`;
+    const slugSuffix = attempt === 1 ? "copy" : `copy-${attempt}`;
+    const candidateSlug = `${source.slug}-${slugSuffix}`;
+    const existing = await prisma.presetGroup.findUnique({
+      where: {
+        categoryId_slug: {
+          categoryId: source.categoryId,
+          slug: candidateSlug,
+        },
+      },
+      select: { id: true },
+    });
+
+    if (!existing) {
+      copyIdentity = { name: `${source.name} ${copySuffix}`, slug: candidateSlug };
+      break;
+    }
+  }
+
+  if (!copyIdentity) {
+    throw new Error("Unable to generate a unique preset group copy slug");
+  }
+
+  const maxOrder = await prisma.presetGroup.aggregate({
+    where: { categoryId: source.categoryId },
+    _max: { sortOrder: true },
+  });
+
+  const copied = await prisma.$transaction(async (tx) => {
+    const newGroup = await tx.presetGroup.create({
+      data: {
+        categoryId: source.categoryId,
+        folderId: source.folderId,
+        name: copyIdentity.name,
+        slug: copyIdentity.slug,
+        isActive: true,
+        sortOrder: (maxOrder._max.sortOrder ?? -1) + 1,
+      },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        categoryId: true,
+        folderId: true,
+      },
+    });
+
+    if (source.members.length > 0) {
+      await tx.presetGroupMember.createMany({
+        data: source.members.map((member) => ({
+          groupId: newGroup.id,
+          presetId: member.presetId,
+          variantId: member.variantId,
+          subGroupId: member.subGroupId,
+          slotCategoryId: member.slotCategoryId,
+          sortOrder: member.sortOrder,
+        })),
+      });
+    }
+
+    return newGroup;
+  });
+
+  revalidatePath("/assets/presets");
+  revalidatePath(`/assets/preset-groups/${copied.id}`);
+  return copied;
+}
+
 export async function updatePresetGroup(id: string, input: Partial<PresetGroupInput>) {
   const before = await prisma.presetGroup.findUnique({ where: { id } });
   const group = await prisma.presetGroup.update({ where: { id }, data: input });
@@ -445,10 +588,6 @@ export async function deletePresetGroup(id: string) {
 }
 
 export async function addGroupMember(input: PresetGroupMemberInput) {
-  const [previousMembers, before] = await Promise.all([
-    resolveConcreteGroupSyncMembers(input.groupId),
-    groupMembersSnapshot(input.groupId),
-  ]);
   const maxOrder = await prisma.presetGroupMember.aggregate({
     where: { groupId: input.groupId },
     _max: { sortOrder: true },
@@ -456,39 +595,45 @@ export async function addGroupMember(input: PresetGroupMemberInput) {
   const member = await prisma.presetGroupMember.create({
     data: { ...input, sortOrder: (maxOrder._max.sortOrder ?? -1) + 1 },
   });
-  const after = await groupMembersSnapshot(input.groupId);
-  await recordPresetGroupChange({
+  schedulePresetGroupMemberChangeEffects({
     groupId: input.groupId,
-    dimension: "members",
     title: "添加预制组成员",
-    before,
-    after,
+    buildBefore: (after) => after.filter((item) => item.id !== member.id),
   });
-  schedulePresetGroupInstanceSync(input.groupId, previousMembers);
   revalidatePath("/assets/presets");
+  revalidatePath("/assets/preset-groups");
+  revalidatePath(`/assets/preset-groups/${input.groupId}`);
   return member;
 }
 
 export async function removeGroupMember(memberId: string) {
   const existing = await prisma.presetGroupMember.findUnique({
     where: { id: memberId },
-    select: { groupId: true },
+    select: {
+      id: true,
+      groupId: true,
+      presetId: true,
+      variantId: true,
+      subGroupId: true,
+      slotCategoryId: true,
+      sortOrder: true,
+    },
   });
   if (!existing) return;
-  const [previousMembers, before] = await Promise.all([
-    resolveConcreteGroupSyncMembers(existing.groupId),
-    groupMembersSnapshot(existing.groupId),
-  ]);
   await prisma.presetGroupMember.delete({ where: { id: memberId } });
-  const after = await groupMembersSnapshot(existing.groupId);
-  await recordPresetGroupChange({
+  const deletedMember: GroupMemberSnapshot = {
+    id: existing.id,
+    presetId: existing.presetId,
+    variantId: existing.variantId,
+    subGroupId: existing.subGroupId,
+    slotCategoryId: existing.slotCategoryId,
+    sortOrder: existing.sortOrder,
+  };
+  schedulePresetGroupMemberChangeEffects({
     groupId: existing.groupId,
-    dimension: "members",
     title: "移除预制组成员",
-    before,
-    after,
+    buildBefore: (after) => [...after, deletedMember],
   });
-  schedulePresetGroupInstanceSync(existing.groupId, previousMembers);
   revalidatePath("/assets/presets");
   revalidatePath("/assets/preset-groups");
   revalidatePath(`/assets/preset-groups/${existing.groupId}`);
@@ -498,10 +643,13 @@ export async function updateGroupMember(memberId: string, input: PresetGroupMemb
   const existing = await prisma.presetGroupMember.findUnique({
     where: { id: memberId },
     select: {
+      id: true,
       groupId: true,
       presetId: true,
+      variantId: true,
       subGroupId: true,
       slotCategoryId: true,
+      sortOrder: true,
     },
   });
   if (!existing) return null;
@@ -534,10 +682,6 @@ export async function updateGroupMember(memberId: string, input: PresetGroupMemb
     throw new Error("只能替换为槽位分类内的预制");
   }
 
-  const [previousMembers, before] = await Promise.all([
-    resolveConcreteGroupSyncMembers(existing.groupId),
-    groupMembersSnapshot(existing.groupId),
-  ]);
   const updated = await prisma.presetGroupMember.update({
     where: { id: memberId },
     data: {
@@ -546,15 +690,23 @@ export async function updateGroupMember(memberId: string, input: PresetGroupMemb
       subGroupId: null,
     },
   });
-  const after = await groupMembersSnapshot(existing.groupId);
-  await recordPresetGroupChange({
+  const previousMember: GroupMemberSnapshot = {
+    id: existing.id,
+    presetId: existing.presetId,
+    variantId: existing.variantId,
+    subGroupId: existing.subGroupId,
+    slotCategoryId: existing.slotCategoryId,
+    sortOrder: existing.sortOrder,
+  };
+  schedulePresetGroupMemberChangeEffects({
     groupId: existing.groupId,
-    dimension: "members",
     title: "替换预制组成员",
-    before,
-    after,
+    buildBefore: (after) => {
+      const hasChangedMember = after.some((item) => item.id === memberId);
+      if (!hasChangedMember) return [...after, previousMember];
+      return after.map((item) => item.id === memberId ? previousMember : item);
+    },
   });
-  schedulePresetGroupInstanceSync(existing.groupId, previousMembers);
   revalidatePath("/assets/presets");
   revalidatePath("/assets/preset-groups");
   revalidatePath(`/assets/preset-groups/${existing.groupId}`);

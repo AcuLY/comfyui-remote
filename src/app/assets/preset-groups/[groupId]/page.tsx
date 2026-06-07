@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { buildFolderScopedItemOrder, findNeighborItems } from "@/lib/folder-navigation";
-import { getPresetCategoriesWithPresets } from "@/lib/server-data";
+import { getPresetGroupEditData } from "@/lib/server-data";
 import { PresetGroupEditClient } from "./preset-group-edit-client";
 
 export const dynamic = "force-dynamic";
@@ -11,15 +11,13 @@ export default async function PresetGroupEditPage({
   params: Promise<{ groupId: string }>;
 }) {
   const { groupId } = await params;
-  const categories = await getPresetCategoriesWithPresets();
-  const category = categories.find((item) => item.groups.some((group) => group.id === groupId));
-  const group = category?.groups.find((item) => item.id === groupId) ?? null;
-  const groups = categories.flatMap((item) => item.groups);
+  const data = await getPresetGroupEditData(groupId);
 
-  if (!category || !group) {
+  if (!data) {
     notFound();
   }
 
+  const { categories, category, group, groups } = data;
   const orderedGroups = buildFolderScopedItemOrder(category.folders, category.groups);
   const {
     previous: previousGroup,

@@ -34,6 +34,58 @@ function groupListUrl(categoryId: string, groupId?: string | null, folderId?: st
   return `/assets/presets?${params.toString()}`;
 }
 
+type GroupMemberDisplay = PresetGroupItem["members"][number];
+
+type GroupMemberMutationResult = {
+  id: string;
+  presetId: string | null;
+  variantId: string | null;
+  subGroupId: string | null;
+  slotCategoryId: string | null;
+  sortOrder: number;
+};
+
+function sortGroupMembers(members: GroupMemberDisplay[]) {
+  return [...members].sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id));
+}
+
+function toGroupMemberDisplay(
+  member: GroupMemberMutationResult,
+  categories: PresetCategoryFull[],
+  groups: PresetGroupItem[],
+): GroupMemberDisplay {
+  let presetName: string | undefined;
+  let variantName: string | undefined;
+
+  if (member.presetId) {
+    for (const category of categories) {
+      const preset = category.presets.find((item) => item.id === member.presetId);
+      if (!preset) continue;
+      presetName = preset.name;
+      variantName = member.variantId
+        ? preset.variants.find((variant) => variant.id === member.variantId)?.name
+        : undefined;
+      break;
+    }
+  }
+
+  const subGroupName = member.subGroupId
+    ? groups.find((item) => item.id === member.subGroupId)?.name
+    : undefined;
+
+  return {
+    id: member.id,
+    presetId: member.presetId,
+    variantId: member.variantId,
+    subGroupId: member.subGroupId,
+    slotCategoryId: member.slotCategoryId,
+    sortOrder: member.sortOrder,
+    presetName,
+    variantName,
+    subGroupName,
+  };
+}
+
 export function PresetGroupEditClient({
   categories,
   categoryId,
@@ -55,13 +107,22 @@ export function PresetGroupEditClient({
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [currentGroup, setCurrentGroup] = useState(group);
   const [name, setName] = useState(group.name);
   const [openReplaceMemberId, setOpenReplaceMemberId] = useState<string | null>(null);
-  const backHref = groupListUrl(categoryId, group.id, group.folderId);
-  const selectableGroups = groups.filter((item) => item.id !== group.id);
+  const backHref = groupListUrl(categoryId, currentGroup.id, currentGroup.folderId);
+  const selectableGroups = groups.filter((item) => item.id !== currentGroup.id);
   const previousGroupHref = previousGroup?.id ? `/assets/preset-groups/${previousGroup.id}` : null;
   const nextGroupHref = nextGroup?.id ? `/assets/preset-groups/${nextGroup.id}` : null;
   const groupPositionText = groupPosition >= 0 ? `${groupPosition + 1} / ${totalGroups}` : null;
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      setCurrentGroup(group);
+      setName(group.name);
+      setOpenReplaceMemberId(null);
+    });
+  }, [group]);
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -128,7 +189,7 @@ export function PresetGroupEditClient({
     }
 
     // Collect members with their category info
-    const memberEntries = group.members
+    const memberEntries = currentGroup.members
       .filter((m) => m.variantId && !m.subGroupId)
       .map((m) => {
         const variant = variantLookup.get(m.variantId!);
@@ -149,15 +210,16 @@ export function PresetGroupEditClient({
 
     // Sort groups by category sortOrder
     return [...catMap.values()].sort((a, b) => (a.category?.sortOrder ?? 0) - (b.category?.sortOrder ?? 0));
-  }, [group.members, variantLookup, categories]);
+  }, [currentGroup.members, variantLookup, categories]);
 
   function saveGroup() {
     startTransition(async () => {
       try {
-        await updatePresetGroup(group.id, {
+        await updatePresetGroup(currentGroup.id, {
           categoryId,
           name: name.trim(),
         });
+        setCurrentGroup((current) => ({ ...current, name: name.trim() }));
         toast.success("预制组已保存");
         router.refresh();
       } catch (error) {
@@ -167,15 +229,15 @@ export function PresetGroupEditClient({
   }
 
   function removeGroup() {
-    if (!confirm(`确认删除预制组「${group.name}」？`)) {
+    if (!confirm(`确认删除预制组「${currentGroup.name}」？`)) {
       return;
     }
 
     startTransition(async () => {
       try {
-        await deletePresetGroup(group.id);
+        await deletePresetGroup(currentGroup.id);
         toast.success("预制组已删除");
-        router.push(groupListUrl(categoryId, null, group.folderId));
+        router.push(groupListUrl(categoryId, null, currentGroup.folderId));
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "删除失败");
       }
@@ -198,8 +260,8 @@ export function PresetGroupEditClient({
         />
       </div>
       <div>
-        <h1 className="text-lg font-semibold text-white">{group.name}</h1>
-        <p className="mt-1 text-sm text-zinc-400">预制组 / {group.members.length} 个成员</p>
+        <h1 className="text-lg font-semibold text-white">{currentGroup.name}</h1>
+        <p className="mt-1 text-sm text-zinc-400">预制组 / {currentGroup.members.length} 个成员</p>
       </div>
       <div className="space-y-4">
         <div className="grid gap-3 border-t border-white/5 pt-3">
@@ -215,13 +277,13 @@ export function PresetGroupEditClient({
 
         <div className="space-y-2 rounded-xl border border-white/10 bg-black/10 p-3">
           <div className="text-xs font-medium text-zinc-200">成员</div>
-          {group.members.length === 0 ? (
+          {currentGroup.members.length === 0 ? (
             <div className="rounded-lg border border-dashed border-white/10 py-5 text-center text-[11px] text-zinc-600">
               暂无成员
             </div>
           ) : (
             <div className="space-y-1.5">
-              {group.members.map((member) => {
+              {currentGroup.members.map((member) => {
                 const presetHref = member.presetId ? `/assets/presets/${member.presetId}` : null;
                 const memberCategoryId = member.presetId ? presetCategoryLookup.get(member.presetId) : undefined;
                 const title = (
@@ -267,10 +329,21 @@ export function PresetGroupEditClient({
                                 if (!val) return;
                                 startTransition(async () => {
                                   try {
-                                    await updateGroupMember(member.id, { presetId: val.presetId, variantId: val.variantId });
+                                    const updatedMember = await updateGroupMember(member.id, { presetId: val.presetId, variantId: val.variantId });
+                                    if (updatedMember) {
+                                      setCurrentGroup((current) => ({
+                                        ...current,
+                                        members: sortGroupMembers(
+                                          current.members.map((item) =>
+                                            item.id === member.id
+                                              ? toGroupMemberDisplay(updatedMember, categories, groups)
+                                              : item,
+                                          ),
+                                        ),
+                                      }));
+                                    }
                                     toast.success("成员已替换");
                                     setOpenReplaceMemberId(null);
-                                    router.refresh();
                                   } catch (error) {
                                     toast.error(error instanceof Error ? error.message : "替换成员失败");
                                   }
@@ -292,9 +365,17 @@ export function PresetGroupEditClient({
                         e.preventDefault();
                         e.stopPropagation();
                         startTransition(async () => {
-                          await removeGroupMember(member.id);
-                          toast.success("成员已移除");
-                          router.refresh();
+                          try {
+                            await removeGroupMember(member.id);
+                            setCurrentGroup((current) => ({
+                              ...current,
+                              members: current.members.filter((item) => item.id !== member.id),
+                            }));
+                            setOpenReplaceMemberId((current) => current === member.id ? null : current);
+                            toast.success("成员已移除");
+                          } catch (error) {
+                            toast.error(error instanceof Error ? error.message : "移除成员失败");
+                          }
                         });
                       }}
                       className="rounded p-1 text-zinc-500 transition hover:bg-red-500/10 hover:text-red-400 disabled:opacity-50"
@@ -326,14 +407,24 @@ export function PresetGroupEditClient({
             </div>
           )}
           <AddGroupMemberForm
-            groupId={group.id}
+            groupId={currentGroup.id}
             categories={categories}
             groups={selectableGroups}
             onAdd={(input) => {
               startTransition(async () => {
-                await addGroupMember(input);
-                toast.success("成员已添加");
-                router.refresh();
+                try {
+                  const addedMember = await addGroupMember(input);
+                  setCurrentGroup((current) => ({
+                    ...current,
+                    members: sortGroupMembers([
+                      ...current.members,
+                      toGroupMemberDisplay(addedMember, categories, groups),
+                    ]),
+                  }));
+                  toast.success("成员已添加");
+                } catch (error) {
+                  toast.error(error instanceof Error ? error.message : "添加成员失败");
+                }
               });
             }}
             isPending={isPending}
@@ -394,7 +485,7 @@ export function PresetGroupEditClient({
           </div>
         )}
 
-        <PresetChangeHistoryPanel history={group.changeHistory} tabs={GROUP_HISTORY_TABS} />
+        <PresetChangeHistoryPanel history={currentGroup.changeHistory} tabs={GROUP_HISTORY_TABS} />
 
         <div className="flex flex-wrap gap-2 border-t border-white/5 pt-3">
           <button

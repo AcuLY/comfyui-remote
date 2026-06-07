@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useId, useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useId, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   closestCenter,
@@ -22,6 +22,7 @@ import { Folder, FolderPlus, Plus, Save, X } from "lucide-react";
 import type { FolderItem, PresetCategoryFull } from "@/lib/server-data";
 import {
   addGroupMember,
+  copyPresetGroup,
   createPresetFolder,
   createPresetGroup,
   deletePresetFolder,
@@ -39,6 +40,7 @@ import {
 } from "./folder-components";
 import { GroupCreateForm } from "./group-create-form";
 import { SortableGroupCard } from "./sortable-group-card";
+import type { PresetQueryPatch } from "./preset-types";
 
 const EMPTY_SELECTED_GROUP_IDS = new Set<string>();
 
@@ -50,10 +52,16 @@ export function GroupList({
   category,
   allCategories,
   onRefresh,
+  queryFolderId,
+  queryGroupId,
+  onViewChange,
 }: {
   category: PresetCategoryFull;
   allCategories: PresetCategoryFull[];
   onRefresh: () => void;
+  queryFolderId: string | null;
+  queryGroupId: string | null;
+  onViewChange: (patch: Omit<PresetQueryPatch, "category">) => void;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -89,6 +97,19 @@ export function GroupList({
   const selectedGroupIds =
     folderState.categoryId === category.id ? folderState.selectedGroupIds : EMPTY_SELECTED_GROUP_IDS;
 
+  const queryGroup = queryGroupId
+    ? groups.find((group) => group.id === queryGroupId)
+    : null;
+  const resolvedQueryFolderId = useMemo(() => {
+    if (queryGroup) {
+      return queryGroup.folderId ?? null;
+    }
+
+    return queryFolderId && category.folders.some((folder) => folder.id === queryFolderId)
+      ? queryFolderId
+      : null;
+  }, [category.folders, queryFolderId, queryGroup]);
+
   const setCurrentFolderId = useCallback((folderId: string | null) => {
     setFolderState({
       categoryId: category.id,
@@ -110,6 +131,12 @@ export function GroupList({
     });
   }, [category.id]);
 
+  useEffect(() => {
+    queueMicrotask(() => {
+      setCurrentFolderId(resolvedQueryFolderId);
+    });
+  }, [resolvedQueryFolderId, setCurrentFolderId]);
+
   // Filter groups and folders for current folder level
   const visibleGroups = groups.filter((g) => (g.folderId ?? null) === currentFolderId);
   const visibleFolders = category.folders.filter((f) => (f.parentId ?? null) === currentFolderId);
@@ -117,7 +144,8 @@ export function GroupList({
   // Clear selection when navigating folders
   const navigateGroupFolder = useCallback((folderId: string | null) => {
     setCurrentFolderId(folderId);
-  }, [setCurrentFolderId]);
+    onViewChange({ folder: folderId, preset: null, variant: null });
+  }, [onViewChange, setCurrentFolderId]);
 
   // Toggle selection
   const toggleGroupSelection = useCallback((id: string) => {
@@ -366,6 +394,25 @@ export function GroupList({
                     onRefresh();
                   } catch (e: unknown) {
                     toast.error(e instanceof Error ? e.message : "移动失败");
+                  }
+                });
+              }}
+              onCopy={() => {
+                startTransition(async () => {
+                  try {
+                    const copied = await copyPresetGroup(group.id);
+                    toast.success(`已复制预制组：${copied.name}`);
+                    setCurrentFolderId(copied.folderId ?? null);
+                    setEditingGroupId(copied.id);
+                    setLocalGroups(null);
+                    onViewChange({
+                      folder: copied.folderId ?? null,
+                      preset: copied.id,
+                      variant: null,
+                    });
+                    onRefresh();
+                  } catch (e: unknown) {
+                    toast.error(e instanceof Error ? e.message : "复制失败");
                   }
                 });
               }}

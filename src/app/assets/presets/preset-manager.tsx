@@ -344,6 +344,9 @@ export function PresetManager({
                   category={selectedCat}
                   allCategories={categories}
                   onRefresh={refresh}
+                  queryFolderId={queryFolderId}
+                  queryGroupId={queryPresetId}
+                  onViewChange={(patch) => replacePresetQuery({ category: selectedCat.id, ...patch })}
                 />
               ) : (
                 <PresetList

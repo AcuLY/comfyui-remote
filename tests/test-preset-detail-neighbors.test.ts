@@ -147,6 +147,21 @@ test("detail pages remount editors when neighbor links switch route items", () =
   }
 });
 
+test("group detail page uses lightweight edit data instead of the full preset library", () => {
+  const source = readSource("src/app/assets/preset-groups/[groupId]/page.tsx");
+
+  assert.match(
+    source,
+    /\bgetPresetGroupEditData\b/,
+    "group detail navigation should use route-specific edit data",
+  );
+  assert.doesNotMatch(
+    source,
+    /\bgetPresetCategoriesWithPresets\b/,
+    "group detail navigation should not reload the full preset library on every previous/next switch",
+  );
+});
+
 test("preset and group detail clients support s/f neighbor shortcuts outside form fields", () => {
   const cases = [
     {
@@ -170,4 +185,47 @@ test("preset and group detail clients support s/f neighbor shortcuts outside for
     assert.match(source, new RegExp(`router\\.push\\(href\\)[\\s\\S]*\\}, \\[${nextHrefConst}, ${previousHrefConst}, router\\]\\)`), `${file} should navigate with the current neighbor hrefs`);
     assert.match(source, /target\.isContentEditable[\s\S]*tagName === "INPUT"[\s\S]*tagName === "TEXTAREA"[\s\S]*tagName === "SELECT"/, `${file} should ignore shortcuts while editing form fields`);
   }
+});
+
+test("preset and group detail back links restore folder context in the preset library", () => {
+  const presetClient = readSource("src/app/assets/presets/[presetId]/preset-edit-client.tsx");
+  const groupClient = readSource("src/app/assets/preset-groups/[groupId]/preset-group-edit-client.tsx");
+  const managerSource = readSource("src/app/assets/presets/preset-manager.tsx");
+  const groupListSource = readSource("src/app/assets/presets/group-list.tsx");
+
+  assert.match(
+    presetClient,
+    /if \(preset\.folderId\) \{\s*params\.set\("folder", preset\.folderId\);\s*\}/,
+    "preset detail back href should include the preset folder",
+  );
+  assert.match(
+    groupClient,
+    /if \(folderId\) \{\s*params\.set\("folder", folderId\);\s*\}/,
+    "group detail back href should include the group folder",
+  );
+  assert.match(
+    managerSource,
+    /<GroupList[\s\S]*queryFolderId=\{queryFolderId\}[\s\S]*queryGroupId=\{queryPresetId\}[\s\S]*onViewChange=\{\(patch\) => replacePresetQuery\(\{ category: selectedCat\.id, \.\.\.patch \}\)\}/,
+    "group list should receive preset-library query state from the URL",
+  );
+  assert.match(
+    groupListSource,
+    /queryGroupId:\s*string \| null/,
+    "group list should accept the detail-return group id query",
+  );
+  assert.match(
+    groupListSource,
+    /const resolvedQueryFolderId = useMemo\([\s\S]*queryGroup[\s\S]*queryGroup\.folderId \?\? null[\s\S]*queryFolderId/,
+    "group list should resolve folder from the returned group id before falling back to folder query",
+  );
+  assert.match(
+    groupListSource,
+    /setCurrentFolderId\(resolvedQueryFolderId\)/,
+    "group list should restore current folder from the resolved query folder",
+  );
+  assert.match(
+    groupListSource,
+    /onViewChange\(\{ folder: folderId, preset: null, variant: null \}\)/,
+    "group folder navigation should keep the URL query in sync",
+  );
 });
