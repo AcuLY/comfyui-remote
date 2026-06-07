@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Plus, Trash2, Unlink, Package, ChevronDown, ClipboardCopy, Folder, ChevronLeft, Search, X, ExternalLink } from "lucide-react";
 import { PromptBlockEditor } from "@/components/prompt-block-editor";
 import { LoraListEditor } from "@/components/lora-list-editor";
+import { canSwitchSectionPresetVariant } from "@/components/section-editor-binding-rules";
 import type { PromptBlockData } from "@/lib/actions";
 import {
   deleteSectionBlock,
@@ -650,7 +651,7 @@ export function SectionEditor({
                     </Link>
                   )}
                   {/* Variant switcher — show only if preset has multiple variants */}
-                  {!binding.resolvedOnly && binding.availableVariants.length > 1 && (
+                  {canSwitchSectionPresetVariant(binding) && (
                     <div className="relative">
                       <select
                         value={binding.variantId ?? ""}
