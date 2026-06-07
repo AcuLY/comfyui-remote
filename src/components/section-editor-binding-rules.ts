@@ -91,6 +91,7 @@ export function expandSectionPresetBindingDisplayRows<TBinding extends SectionPr
     categoryId: string;
     categoryName: string;
     categoryColor?: string;
+    categoryOrder: number;
     variants: readonly { id: string; name: string }[];
   }>();
   const groupInfoById = new Map<string, {
@@ -99,7 +100,11 @@ export function expandSectionPresetBindingDisplayRows<TBinding extends SectionPr
     members: readonly SectionPresetBindingDisplayGroupMember[];
   }>();
 
+  let categoryOrder = 0;
   for (const category of library?.categories ?? []) {
+    const currentCategoryOrder = categoryOrder;
+    categoryOrder += 1;
+
     for (const preset of category.presets) {
       presetInfoById.set(preset.id, {
         id: preset.id,
@@ -107,6 +112,7 @@ export function expandSectionPresetBindingDisplayRows<TBinding extends SectionPr
         categoryId: category.id,
         categoryName: category.name,
         categoryColor: category.color ?? undefined,
+        categoryOrder: currentCategoryOrder,
         variants: preset.variants,
       });
     }
@@ -120,6 +126,10 @@ export function expandSectionPresetBindingDisplayRows<TBinding extends SectionPr
   }
 
   const rows: Array<SectionPresetBindingDisplayRow<TBinding>> = [];
+  type SortableGroupRow = SectionPresetBindingDisplayRow<TBinding> & {
+    categoryOrder: number;
+    groupOrder: number;
+  };
 
   const pushBindingRow = (binding: TBinding) => {
     rows.push({
@@ -143,6 +153,8 @@ export function expandSectionPresetBindingDisplayRows<TBinding extends SectionPr
     groupId: string,
     parentGroupName: string,
     visitedGroupIds: Set<string>,
+    groupRows: SortableGroupRow[],
+    groupOrder: { value: number },
   ) => {
     if (visitedGroupIds.has(groupId)) return;
     const group = groupInfoById.get(groupId);
@@ -154,7 +166,7 @@ export function expandSectionPresetBindingDisplayRows<TBinding extends SectionPr
         const preset = presetInfoById.get(member.presetId);
         const variantName = member.variantName
           ?? preset?.variants.find((variant) => variant.id === member.variantId)?.name;
-        rows.push({
+        groupRows.push({
           key: `${binding.bindingId}:${member.id}`,
           binding,
           presetName: member.presetName ?? preset?.name ?? binding.presetName,
@@ -169,7 +181,10 @@ export function expandSectionPresetBindingDisplayRows<TBinding extends SectionPr
           isPresetGroupMember: true,
           parentPresetGroupName: parentGroupName,
           variantName,
+          categoryOrder: preset?.categoryOrder ?? Number.MAX_SAFE_INTEGER,
+          groupOrder: groupOrder.value,
         });
+        groupOrder.value += 1;
         continue;
       }
 
@@ -179,6 +194,8 @@ export function expandSectionPresetBindingDisplayRows<TBinding extends SectionPr
           member.subGroupId,
           parentGroupName,
           new Set(visitedGroupIds),
+          groupRows,
+          groupOrder,
         );
       }
     }
@@ -190,9 +207,18 @@ export function expandSectionPresetBindingDisplayRows<TBinding extends SectionPr
       continue;
     }
 
-    const beforeCount = rows.length;
-    collectGroupRows(binding, binding.presetGroupId, binding.presetName, new Set());
-    if (rows.length === beforeCount) pushBindingRow(binding);
+    const groupRows: SortableGroupRow[] = [];
+    collectGroupRows(binding, binding.presetGroupId, binding.presetName, new Set(), groupRows, { value: 0 });
+    if (groupRows.length === 0) {
+      pushBindingRow(binding);
+      continue;
+    }
+
+    rows.push(
+      ...groupRows
+        .sort((left, right) => left.categoryOrder - right.categoryOrder || left.groupOrder - right.groupOrder)
+        .map(({ categoryOrder: _categoryOrder, groupOrder: _groupOrder, ...row }) => row),
+    );
   }
 
   return rows;

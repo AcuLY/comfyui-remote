@@ -69,7 +69,7 @@ test("section preset list title keeps slash text that is not the selected varian
   );
 });
 
-test("section preset list expands preset group members into separate rows", () => {
+test("section preset list expands preset group members in preset category order", () => {
   const rows = expandSectionPresetBindingDisplayRows(
     [
       {
@@ -99,19 +99,19 @@ test("section preset list expands preset group members into separate rows", () =
               name: "单人-背手站立",
               members: [
                 {
-                  id: "member-person",
-                  presetId: "preset-person",
-                  variantId: "variant-person-default",
-                  subGroupId: null,
-                  presetName: "单人",
-                  variantName: "默认",
-                },
-                {
                   id: "member-pose",
                   presetId: "preset-pose",
                   variantId: "variant-pose-default",
                   subGroupId: null,
                   presetName: "背手站立",
+                  variantName: "默认",
+                },
+                {
+                  id: "member-person",
+                  presetId: "preset-person",
+                  variantId: "variant-person-default",
+                  subGroupId: null,
+                  presetName: "单人",
                   variantName: "默认",
                 },
               ],
