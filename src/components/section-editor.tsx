@@ -374,7 +374,6 @@ export function SectionEditor({
   function getPresetManagerHref(binding: PresetBindingInfo): string {
     const params = new URLSearchParams();
     if (binding.categoryId) params.set("category", binding.categoryId);
-    if (binding.sourceId) params.set("preset", binding.sourceId);
     if (binding.variantId) params.set("variant", binding.variantId);
 
     const preset = libraryV2?.categories
@@ -383,6 +382,9 @@ export function SectionEditor({
     if (preset?.folderId) params.set("folder", preset.folderId);
 
     const query = params.toString();
+    if (binding.sourceId) {
+      return query ? `/assets/presets/${binding.sourceId}?${query}` : `/assets/presets/${binding.sourceId}`;
+    }
     return query ? `/assets/presets?${query}` : "/assets/presets";
   }
 
@@ -641,7 +643,6 @@ export function SectionEditor({
                   {binding.sourceId && (
                     <Link
                       href={getPresetManagerHref(binding)}
-                      target="_blank"
                       className="shrink-0 rounded p-0.5 text-zinc-500 hover:bg-white/5 hover:text-sky-400"
                       title="在预制管理中打开"
                     >
