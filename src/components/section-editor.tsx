@@ -5,7 +5,10 @@ import Link from "next/link";
 import { Plus, Trash2, Unlink, Package, ChevronDown, ClipboardCopy, Folder, ChevronLeft, Search, X, ExternalLink } from "lucide-react";
 import { PromptBlockEditor } from "@/components/prompt-block-editor";
 import { LoraListEditor } from "@/components/lora-list-editor";
-import { canSwitchSectionPresetVariant } from "@/components/section-editor-binding-rules";
+import {
+  canSwitchSectionPresetVariant,
+  getSectionPresetBindingDisplayName,
+} from "@/components/section-editor-binding-rules";
 import type { PromptBlockData } from "@/lib/actions";
 import {
   deleteSectionBlock,
@@ -580,11 +583,14 @@ export function SectionEditor({
         {/* Binding cards */}
         {presetBindings.length > 0 && (
           <div className="grid grid-cols-1 gap-1 lg:grid-cols-2">
-            {presetBindings.map((binding) => (
-              <div
-                key={binding.bindingId}
-                className="flex items-center justify-between rounded-lg border border-white/5 bg-white/[0.02] px-3 py-1.5"
-              >
+            {presetBindings.map((binding) => {
+              const presetDisplayName = getSectionPresetBindingDisplayName(binding);
+
+              return (
+                <div
+                  key={binding.bindingId}
+                  className="flex items-center justify-between rounded-lg border border-white/5 bg-white/[0.02] px-3 py-1.5"
+                >
                 <div className="flex items-center gap-2 min-w-0">
                   {/* Category tag */}
                   {binding.categoryName && (
@@ -605,7 +611,7 @@ export function SectionEditor({
                   {(binding.presetGroupId || binding.groupBindingId) && (
                     <span className="shrink-0 rounded bg-amber-500/15 px-1 py-px text-[8px] text-amber-400">组</span>
                   )}
-                  <span className="text-[11px] text-zinc-300 truncate">{binding.presetName}</span>
+                  <span className="text-[11px] text-zinc-300 truncate">{presetDisplayName}</span>
                   {binding.sourceId && (
                     <Link
                       href={getPresetManagerHref(binding)}
@@ -643,7 +649,7 @@ export function SectionEditor({
                   {onRename && (
                     <button
                       type="button"
-                      onClick={() => onRename(binding.groupName ?? binding.presetName)}
+                      onClick={() => onRename(binding.groupName ?? presetDisplayName)}
                       title="用预制名作为小节名"
                       className="rounded p-1 text-zinc-600 hover:bg-sky-500/10 hover:text-sky-400"
                     >
@@ -673,8 +679,9 @@ export function SectionEditor({
                     </>
                   )}
                 </div>
-              </div>
-            ))}
+                </div>
+              );
+            })}
           </div>
         )}
 
