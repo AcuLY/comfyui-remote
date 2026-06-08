@@ -86,11 +86,18 @@ function setupDb(dbPath: string) {
       ('section-binding-b', 'section-1', 'bind-b', 'cat-member', 'preset-b', 'variant-b', 'grp:group-1:instance-1', 11, '2026-01-02'),
       ('section-legacy-a', 'section-1', 'legacy-a', 'cat-member', 'preset-c', 'variant-c', 'legacy-instance', 20, '2026-01-03'),
       ('section-legacy-b', 'section-1', 'legacy-b', 'cat-member', 'preset-d', 'variant-d', 'legacy-instance', 21, '2026-01-04');
+    INSERT INTO "SectionPresetBinding"
+      ("id", "projectSectionId", "bindingKey", "categoryId", "presetId", "variantId", "presetGroupId", "groupBindingKey", "sortOrder", "createdAt")
+      VALUES
+      ('section-tracked-a', 'section-2', 'tracked-a', 'cat-member', 'preset-a', 'variant-a', 'group-1', 'grp:group-1:tracked-instance', 30, '2026-01-05'),
+      ('section-tracked-b', 'section-2', 'tracked-b', 'cat-member', 'preset-b', 'variant-b', 'group-1', 'grp:group-1:tracked-instance', 31, '2026-01-06');
     INSERT INTO "SectionPromptBlock"
       ("id", "projectSectionId", "sectionBindingId", "type", "sortOrder", "createdAt")
       VALUES
       ('section-prompt-a', 'section-1', 'section-binding-a', 'preset', 10, '2026-01-01'),
-      ('section-prompt-b', 'section-1', 'section-binding-b', 'preset', 11, '2026-01-02');
+      ('section-prompt-b', 'section-1', 'section-binding-b', 'preset', 11, '2026-01-02'),
+      ('section-tracked-prompt-a', 'section-2', 'section-tracked-a', 'preset', 30, '2026-01-05'),
+      ('section-tracked-prompt-b', 'section-2', 'section-tracked-b', 'preset', 31, '2026-01-06');
     INSERT INTO "SectionManualLoraEntry"
       ("id", "projectSectionId", "sectionBindingId", "stage", "path", "detachedFromBindingKey", "detachedFromPath")
       VALUES
@@ -122,14 +129,14 @@ test("collapsePresetGroupBindings dry-run reports without writing", async () => 
   try {
     const summary = collapsePresetGroupBindings({ databaseUrl: `file:${dbPath}` });
     assert.equal(summary.dryRun, true);
-    assert.equal(summary.section.collapsedGroups, 1);
+    assert.equal(summary.section.collapsedGroups, 2);
     assert.equal(summary.section.skippedLegacyGroups, 1);
     assert.equal(summary.template.collapsedGroups, 1);
 
     const db = new Database(dbPath, { readonly: true });
     try {
       const sectionRefs = db.prepare("SELECT COUNT(*) AS count FROM SectionPresetBinding WHERE presetGroupId IS NOT NULL").get() as { count: number };
-      assert.equal(sectionRefs.count, 0);
+      assert.equal(sectionRefs.count, 2);
     } finally {
       db.close();
     }
@@ -146,9 +153,9 @@ test("collapsePresetGroupBindings folds expanded section and template members in
   try {
     const summary = collapsePresetGroupBindings({ databaseUrl: `file:${dbPath}`, write: true });
     assert.equal(summary.dryRun, false);
-    assert.equal(summary.section.collapsedGroups, 1);
-    assert.equal(summary.section.deletedBindings, 1);
-    assert.equal(summary.section.deletedPromptBlocks, 1);
+    assert.equal(summary.section.collapsedGroups, 2);
+    assert.equal(summary.section.deletedBindings, 2);
+    assert.equal(summary.section.deletedPromptBlocks, 2);
     assert.equal(summary.section.movedManualLoras, 1);
     assert.equal(summary.template.collapsedGroups, 1);
 
@@ -173,7 +180,26 @@ test("collapsePresetGroupBindings folds expanded section and template members in
         },
       ]);
 
-      const sectionPrompts = db.prepare("SELECT id, sectionBindingId, type, sortOrder FROM SectionPromptBlock ORDER BY id").all();
+      const trackedRows = db.prepare(`
+        SELECT id, bindingKey, categoryId, presetId, variantId, presetGroupId, groupBindingKey, sortOrder
+        FROM SectionPresetBinding
+        WHERE groupBindingKey = 'grp:group-1:tracked-instance'
+        ORDER BY sortOrder
+      `).all();
+      assert.deepEqual(trackedRows, [
+        {
+          id: "section-tracked-a",
+          bindingKey: "tracked-a",
+          categoryId: "cat-group",
+          presetId: null,
+          variantId: null,
+          presetGroupId: "group-1",
+          groupBindingKey: "grp:group-1:tracked-instance",
+          sortOrder: 30,
+        },
+      ]);
+
+      const sectionPrompts = db.prepare("SELECT id, sectionBindingId, type, sortOrder FROM SectionPromptBlock WHERE projectSectionId = 'section-1' ORDER BY id").all();
       assert.deepEqual(sectionPrompts, [
         { id: "section-prompt-a", sectionBindingId: "section-binding-a", type: "preset", sortOrder: 10 },
       ]);

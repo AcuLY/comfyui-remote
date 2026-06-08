@@ -195,7 +195,7 @@ function loadPresetGroups(db: Database.Database) {
   return new Map(groups.map((group) => [group.id, group]));
 }
 
-function loadLegacyBindingRows(db: Database.Database, config: ScopeConfig) {
+function loadExpandedGroupBindingRows(db: Database.Database, config: ScopeConfig) {
   return db.prepare(`
     SELECT
       id,
@@ -209,10 +209,19 @@ function loadLegacyBindingRows(db: Database.Database, config: ScopeConfig) {
       sortOrder,
       createdAt
     FROM ${config.bindingTable}
-    WHERE presetGroupId IS NULL
-      AND groupBindingKey IS NOT NULL
+    WHERE groupBindingKey IS NOT NULL
+      AND (
+        presetGroupId IS NULL
+        OR presetId IS NOT NULL
+      )
     ORDER BY ${config.ownerColumn}, groupBindingKey, sortOrder, createdAt, id
   `).all() as BindingRow[];
+}
+
+function resolvePresetGroupId(groupRows: readonly BindingRow[]) {
+  const explicitIds = [...new Set(groupRows.map((row) => row.presetGroupId).filter((id): id is string => Boolean(id)))];
+  if (explicitIds.length === 1) return explicitIds[0];
+  return parsePresetGroupId(groupRows[0]?.groupBindingKey ?? null);
 }
 
 function loadExistingReferenceBinding(
@@ -282,8 +291,8 @@ function choosePromptToKeep(promptRows: PromptRow[], keeperId: string) {
 function collapseScope(db: Database.Database, config: ScopeConfig, write: boolean) {
   const summary = emptyScopeSummary();
   const presetGroups = loadPresetGroups(db);
-  const legacyRows = loadLegacyBindingRows(db, config);
-  const groups = groupByInstance(legacyRows);
+  const expandedRows = loadExpandedGroupBindingRows(db, config);
+  const groups = groupByInstance(expandedRows);
 
   summary.candidateGroups = groups.size;
 
@@ -367,7 +376,7 @@ function collapseScope(db: Database.Database, config: ScopeConfig, write: boolea
 
   for (const groupRows of groups.values()) {
     const groupBindingKey = groupRows[0].groupBindingKey;
-    const presetGroupId = parsePresetGroupId(groupBindingKey);
+    const presetGroupId = resolvePresetGroupId(groupRows);
     if (!presetGroupId) {
       summary.skippedLegacyGroups += 1;
       continue;

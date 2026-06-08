@@ -208,6 +208,8 @@ export function TemplateSectionDetailClient({
               break;
             }
           }
+          sourceId = null;
+          variantId = null;
         } else if (!sourceId && block.categoryId) {
           const cat = library.categories.find((item) => item.id === block.categoryId);
           const preset = cat?.presets.find((item) => block.label === item.name || block.label.startsWith(`${item.name} /`));
@@ -219,7 +221,7 @@ export function TemplateSectionDetailClient({
             variantId = preset.variants.find((item) => item.name === variantName)?.id ?? variantId;
           }
         }
-        if (sourceId) {
+        if (!presetGroupId && sourceId) {
           for (const cat of library.categories) {
             const preset = sourceId ? cat.presets.find((item) => item.id === sourceId) : undefined;
             if (preset) {

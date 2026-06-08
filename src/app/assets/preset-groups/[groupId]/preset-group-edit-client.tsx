@@ -228,12 +228,12 @@ export function PresetGroupEditClient({
       }
 
       event.preventDefault();
-      router.push(href);
+      window.location.assign(href);
     }
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [nextGroupHref, previousGroupHref, router]);
+  }, [nextGroupHref, previousGroupHref]);
 
   // Build variant lookup for preview card
   const variantLookup = useMemo(() => {
@@ -394,6 +394,7 @@ export function PresetGroupEditClient({
           nextTitle={nextGroup?.name}
           positionText={groupPositionText}
           className="justify-end"
+          hardNavigation
         />
       </div>
       <div>

@@ -253,6 +253,67 @@ function resolvePresetGroupBlock(
   };
 }
 
+function resolvePresetGroupMemberBlocks(
+  binding: SectionPresetBindingRow,
+  options: {
+    resolvedGroups: Map<string, ResolvedPresetGroupContent>;
+    sortOrder: number;
+    index: number;
+    missingReferences: MissingReference[];
+  },
+): PromptBlockSortInput[] {
+  const groupId = binding.presetGroupId;
+  const resolved = groupId ? options.resolvedGroups.get(groupId) ?? null : null;
+  if (!resolved) {
+    return [{
+      block: resolvePresetGroupBlock(binding, {
+        resolvedGroups: options.resolvedGroups,
+        sortOrder: options.sortOrder,
+        missingReferences: options.missingReferences,
+      }),
+      rowSortOrder: options.sortOrder,
+      categoryOrder: binding.category.positivePromptOrder,
+      bindingSortOrder: binding.sortOrder,
+      index: options.index,
+    }];
+  }
+
+  if (resolved.members.length === 0) {
+    return [{
+      block: resolvePresetGroupBlock(binding, {
+        resolvedGroups: options.resolvedGroups,
+        sortOrder: options.sortOrder,
+        missingReferences: options.missingReferences,
+      }),
+      rowSortOrder: options.sortOrder,
+      categoryOrder: binding.category.positivePromptOrder,
+      bindingSortOrder: binding.sortOrder,
+      index: options.index,
+    }];
+  }
+
+  options.missingReferences.push(...resolved.missingReferences);
+  return resolved.members.map((member, memberIndex) => ({
+    block: {
+      type: "preset",
+      sourceId: member.presetId,
+      variantId: member.variantId,
+      presetGroupId: groupId,
+      categoryId: member.categoryId,
+      bindingId: binding.bindingKey,
+      groupBindingId: binding.groupBindingKey,
+      label: member.label,
+      positive: member.prompt,
+      negative: member.negativePrompt,
+      sortOrder: options.sortOrder + memberIndex,
+    },
+    rowSortOrder: options.sortOrder,
+    categoryOrder: member.positivePromptOrder,
+    bindingSortOrder: binding.sortOrder,
+    index: options.index + memberIndex,
+  }));
+}
+
 function resolvePresetBlock(
   binding: SectionPresetBindingRow,
   options: {
@@ -340,24 +401,27 @@ function resolvePromptBlocks(
     if (row.sectionBindingId) blockBindingIds.add(row.sectionBindingId);
 
     if (binding) {
-      const block = isPresetGroupBinding(binding)
-        ? resolvePresetGroupBlock(binding, {
-            resolvedGroups: groupById,
-            customLabel: row.customLabel,
-            customPositive: row.customPositive,
-            customNegative: row.customNegative,
-            sortOrder: row.sortOrder,
-            missingReferences,
-          })
-        : resolvePresetBlock(binding, {
-            variants,
-            variantLinks: input.variantLinks ?? [],
-            customLabel: row.customLabel,
-            customPositive: row.customPositive,
-            customNegative: row.customNegative,
-            sortOrder: row.sortOrder,
-            missingReferences,
-          });
+      if (isPresetGroupBinding(binding)) {
+        const groupBlocks = resolvePresetGroupMemberBlocks(binding, {
+          resolvedGroups: groupById,
+          sortOrder: row.sortOrder,
+          index,
+          missingReferences,
+        });
+        sortableBlocks.push(...groupBlocks);
+        index += groupBlocks.length;
+        continue;
+      }
+
+      const block = resolvePresetBlock(binding, {
+        variants,
+        variantLinks: input.variantLinks ?? [],
+        customLabel: row.customLabel,
+        customPositive: row.customPositive,
+        customNegative: row.customNegative,
+        sortOrder: row.sortOrder,
+        missingReferences,
+      });
       sortableBlocks.push({
         block,
         rowSortOrder: row.sortOrder,
@@ -381,18 +445,24 @@ function resolvePromptBlocks(
   for (const binding of input.presetBindings) {
     if (blockBindingIds.has(binding.id)) continue;
 
-    const block = isPresetGroupBinding(binding)
-      ? resolvePresetGroupBlock(binding, {
-          resolvedGroups: groupById,
-          sortOrder: binding.sortOrder,
-          missingReferences,
-        })
-      : resolvePresetBlock(binding, {
-          variants,
-          variantLinks: input.variantLinks ?? [],
-          sortOrder: binding.sortOrder,
-          missingReferences,
-        });
+    if (isPresetGroupBinding(binding)) {
+      const groupBlocks = resolvePresetGroupMemberBlocks(binding, {
+        resolvedGroups: groupById,
+        sortOrder: binding.sortOrder,
+        index,
+        missingReferences,
+      });
+      sortableBlocks.push(...groupBlocks);
+      index += groupBlocks.length;
+      continue;
+    }
+
+    const block = resolvePresetBlock(binding, {
+      variants,
+      variantLinks: input.variantLinks ?? [],
+      sortOrder: binding.sortOrder,
+      missingReferences,
+    });
     sortableBlocks.push({
       block,
       categoryOrder: binding.category.positivePromptOrder,
@@ -485,8 +555,8 @@ function makePresetGroupLoraEntry(
     weight: lora.weight,
     enabled: lora.enabled,
     source: "preset",
-    sourceLabel: binding.category.name,
-    sourceColor: binding.category.color ?? undefined,
+    sourceLabel: member.categoryName,
+    sourceColor: member.categoryColor ?? undefined,
     sourceName: `${group.name} / ${member.label}`,
     bindingId: binding.bindingKey,
     groupBindingId: binding.groupBindingKey ?? undefined,
@@ -536,8 +606,8 @@ function resolveLoraConfig(
       if (!group) continue;
 
       for (const stage of ["lora1", "lora2"] as const) {
-        const order = stage === "lora1" ? binding.category.lora1Order : binding.category.lora2Order;
         group.members.forEach((member, memberIndex) => {
+          const order = stage === "lora1" ? member.lora1Order : member.lora2Order;
           member[stage].forEach((lora, loraIndex) => {
             if (isPresetPathSuppressed(stage, binding.bindingKey, lora.path, suppressedPresetPathKeys)) return;
 

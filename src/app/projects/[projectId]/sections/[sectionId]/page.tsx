@@ -49,6 +49,8 @@ export default async function SectionEditPage({
             sectionBinding: {
               select: {
                 bindingKey: true,
+                presetId: true,
+                presetGroupId: true,
               },
             },
           },
@@ -136,8 +138,9 @@ export default async function SectionEditPage({
   const resolvedPromptBlocks = resolvedConfig?.promptBlocks ?? [];
   const usedResolvedBlockIndexes = new Set<number>();
 
-  const initialBlocksFromRows: PromptBlockData[] = pos.sectionPromptBlocks.map((b, index) => {
+  const initialBlocksFromRows: PromptBlockData[] = pos.sectionPromptBlocks.flatMap((b, index) => {
     const bindingKey = b.sectionBinding?.bindingKey ?? null;
+    if (b.sectionBinding?.presetGroupId && !b.sectionBinding.presetId) return [];
     const bindingMatchedIndex = bindingKey
       ? resolvedPromptBlocks.findIndex((block) => block.bindingId === bindingKey)
       : -1;
@@ -159,7 +162,7 @@ export default async function SectionEditPage({
     const resolvedBlock = resolvedBlockIndex >= 0 ? resolvedPromptBlocks[resolvedBlockIndex] : null;
     if (resolvedBlockIndex >= 0) usedResolvedBlockIndexes.add(resolvedBlockIndex);
 
-    return {
+    return [{
       id: b.id,
       type: resolvedBlock ? resolvedBlock.type : b.type,
       sourceId: resolvedBlock?.sourceId ?? null,
@@ -172,7 +175,7 @@ export default async function SectionEditPage({
       positive: resolvedBlock?.positive ?? b.customPositive ?? "",
       negative: resolvedBlock?.negative ?? b.customNegative ?? null,
       sortOrder: resolvedBlockIndex >= 0 ? resolvedBlockIndex : b.sortOrder,
-    };
+    }];
   });
   const resolverOnlyBlocks: PromptBlockData[] = resolvedPromptBlocks
     .map((block, index) => ({ block, index }))

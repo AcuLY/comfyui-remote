@@ -16,6 +16,7 @@ import {
   deleteSectionBlock,
   importPresetGroupToSection,
   importPresetToSection,
+  removeImportedPresetFromSection,
   switchBindingVariant,
 } from "@/lib/actions";
 import { isSuppressedLoraEntry, type LoraEntry } from "@/lib/lora-types";
@@ -122,6 +123,18 @@ export function SectionEditor({
           let sourceId = b.sourceId;
           let variantId = b.variantId;
           const presetGroupId = b.presetGroupId ?? null;
+          if (presetGroupId && libraryV2) {
+            for (const cat of libraryV2.categories) {
+              const group = cat.groups?.find((item) => item.id === presetGroupId);
+              if (group) {
+                categoryName = cat.name;
+                categoryColor = cat.color ?? undefined;
+                break;
+              }
+            }
+            sourceId = null;
+            variantId = null;
+          }
           if (!presetGroupId && !sourceId && b.categoryId && libraryV2) {
             const cat = libraryV2.categories.find((c) => c.id === b.categoryId);
             const preset = cat?.presets.find((p) => b.label === p.name || b.label.startsWith(`${p.name} /`));
@@ -133,7 +146,7 @@ export function SectionEditor({
               variantId = preset.variants.find((v) => v.name === variantName)?.id ?? variantId;
             }
           }
-          if (sourceId && libraryV2) {
+          if (!presetGroupId && sourceId && libraryV2) {
             for (const cat of libraryV2.categories) {
               const preset = cat.presets.find((p) => p.id === sourceId);
               if (preset) {
@@ -168,7 +181,7 @@ export function SectionEditor({
             blockCount: 1,
             loraCount: 0,
             availableVariants,
-            resolvedOnly: isResolvedOnlyBlockId(b.id),
+            resolvedOnly: isResolvedOnlyBlockId(b.id) && !presetGroupId,
           });
         }
       }
@@ -292,9 +305,7 @@ export function SectionEditor({
     startTransition(async () => {
       const result = await importPresetGroupToSection(sectionId, groupId);
       if (!result) return;
-      const newBlocks = result.blocks.length > 0
-        ? result.blocks
-        : result.results.map((item) => item.block);
+      const newBlocks = result.blocks;
 
       setBlocks((prev) => {
         const newSortOrders = newBlocks.map((block) => block.sortOrder).sort((a, b) => a - b);
@@ -314,27 +325,26 @@ export function SectionEditor({
       const updatedLora2 = [...lora2];
       let loraChanged = false;
 
-      for (const item of result.results) {
-        if (item.lora1.length > 0) {
-          const myOrder = item.categoryOrders.lora1Order;
-          let insertIdx = updatedLora1.length;
-          for (let i = 0; i < updatedLora1.length; i++) {
-            const entryCatOrder = getCategoryLoraOrder(updatedLora1[i], "lora1");
-            if (entryCatOrder > myOrder) { insertIdx = i; break; }
-          }
-          updatedLora1.splice(insertIdx, 0, ...item.lora1.map((l) => ({ ...l, source: "preset" as const })));
-          loraChanged = true;
+      for (const entry of result.lora1) {
+        const myOrder = getCategoryLoraOrder(entry, "lora1");
+        let insertIdx = updatedLora1.length;
+        for (let i = 0; i < updatedLora1.length; i++) {
+          const entryCatOrder = getCategoryLoraOrder(updatedLora1[i], "lora1");
+          if (entryCatOrder > myOrder) { insertIdx = i; break; }
         }
-        if (item.lora2.length > 0) {
-          const myOrder = item.categoryOrders.lora2Order;
-          let insertIdx = updatedLora2.length;
-          for (let i = 0; i < updatedLora2.length; i++) {
-            const entryCatOrder = getCategoryLoraOrder(updatedLora2[i], "lora2");
-            if (entryCatOrder > myOrder) { insertIdx = i; break; }
-          }
-          updatedLora2.splice(insertIdx, 0, ...item.lora2.map((l) => ({ ...l, source: "preset" as const })));
-          loraChanged = true;
+        updatedLora1.splice(insertIdx, 0, { ...entry, source: "preset" as const });
+        loraChanged = true;
+      }
+
+      for (const entry of result.lora2) {
+        const myOrder = getCategoryLoraOrder(entry, "lora2");
+        let insertIdx = updatedLora2.length;
+        for (let i = 0; i < updatedLora2.length; i++) {
+          const entryCatOrder = getCategoryLoraOrder(updatedLora2[i], "lora2");
+          if (entryCatOrder > myOrder) { insertIdx = i; break; }
         }
+        updatedLora2.splice(insertIdx, 0, { ...entry, source: "preset" as const });
+        loraChanged = true;
       }
 
       if (loraChanged) {
@@ -380,16 +390,12 @@ export function SectionEditor({
       if (!confirm(`此预制属于预制组导入。删除将同时移除整组内容：\n${groupNames.map(n => `  · ${n}`).join("\n")}\n\n确认删除？`)) return;
 
       startTransition(async () => {
-        // Delete all blocks in the group
-        const blocksToDelete = blocks.filter((b) => b.groupBindingId === groupBid);
-        for (const b of blocksToDelete) {
-          await deleteSectionBlock(b.id);
-        }
+        await removeImportedPresetFromSection(sectionId, bindingId);
         setBlocks((prev) => prev.filter((b) => b.groupBindingId !== groupBid));
 
         // Remove all LoRAs whose bindingId belongs to this group
-        const updatedLora1 = lora1.filter((e) => !e.bindingId || !groupBindingIds.has(e.bindingId));
-        const updatedLora2 = lora2.filter((e) => !e.bindingId || !groupBindingIds.has(e.bindingId));
+        const updatedLora1 = lora1.filter((e) => e.groupBindingId !== groupBid && (!e.bindingId || !groupBindingIds.has(e.bindingId)));
+        const updatedLora2 = lora2.filter((e) => e.groupBindingId !== groupBid && (!e.bindingId || !groupBindingIds.has(e.bindingId)));
         setLora1(updatedLora1);
         setLora2(updatedLora2);
         await onLoraChange({ lora1: updatedLora1, lora2: updatedLora2 });
@@ -666,15 +672,17 @@ export function SectionEditor({
                   )}
                   {!binding.resolvedOnly && (
                     <>
-                      <button
-                        type="button"
-                        onClick={() => handleStandaloneDeleteBinding(binding.bindingId)}
-                        disabled={isPending}
-                        title="独立删除（仅此预制）"
-                        className="rounded p-1 text-zinc-600 hover:bg-amber-500/10 hover:text-amber-400 disabled:opacity-50"
-                      >
-                        <Unlink className="size-3" />
-                      </button>
+                      {!row.isPresetGroupMember && (
+                        <button
+                          type="button"
+                          onClick={() => handleStandaloneDeleteBinding(binding.bindingId)}
+                          disabled={isPending}
+                          title="独立删除（仅此预制）"
+                          className="rounded p-1 text-zinc-600 hover:bg-amber-500/10 hover:text-amber-400 disabled:opacity-50"
+                        >
+                          <Unlink className="size-3" />
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => handleDeleteBinding(binding.bindingId)}

@@ -29,11 +29,15 @@ function assertStopsNavigation(source: string, label: string) {
   assert.match(source, /stopPropagation\(\)/, `${label} should stop row/link click propagation`);
 }
 
-test("updateGroupMember replaces a preset member and propagates group changes", () => {
+test("updateGroupMember replaces a preset member without scanning imported sections", () => {
   const source = readSource("src/lib/actions/preset-group.ts");
   const body = exportedFunctionSource(source, "updateGroupMember");
 
-  assert.match(source, /import { after as afterResponse } from "next\/server"/, "replacement should use after() for non-blocking downstream sync");
+  assert.match(source, /import { after as afterResponse } from "next\/server"/, "replacement should defer change history until after the response");
+  assert.doesNotMatch(source, /function syncPresetGroupInstances/, "member updates should not keep a section sync implementation in this action file");
+  assert.doesNotMatch(source, /syncPresetGroupInstances\(/, "member updates should not scan section instances after group edits");
+  assert.doesNotMatch(source, /projectSection\.findMany/, "member updates should not scan project sections");
+  assert.doesNotMatch(source, /templateSectionPresetBinding|templateSection\.findMany/, "member updates should not scan template sections");
   assert.match(body, /findUnique\([\s\S]*where:\s*{\s*id:\s*memberId\s*}/, "missing members should be checked before update");
   assert.match(body, /presetId:\s*true/, "existing member lookup should select presetId");
   assert.match(body, /subGroupId:\s*true/, "existing member lookup should select subGroupId");
@@ -56,20 +60,22 @@ test("updateGroupMember replaces a preset member and propagates group changes", 
   assert.doesNotMatch(body, /sortOrder:\s*input/, "replacement should preserve existing sortOrder");
   assert.doesNotMatch(body, /slotCategoryId:\s*input/, "replacement should preserve existing slotCategoryId");
   assert.match(body, /title:\s*"替换预制组成员"/, "replacement history should use the replacement title");
-  assert.match(body, /schedulePresetGroupMemberChangeEffects\(/, "replacement should schedule history and imported group instance sync after responding");
+  assert.match(body, /schedulePresetGroupMemberChangeEffects\(/, "replacement should schedule change history after responding");
   assert.match(body, /previousMember:\s*GroupMemberSnapshot/, "replacement should keep the old member row for deferred history");
-  assert.doesNotMatch(body, /^  await syncPresetGroupInstances\(existing\.groupId,\s*previousMembers\)/m, "replacement should not block the UI on imported group instance sync");
   assert.match(body, /revalidatePath\("\/assets\/presets"\)/, "replacement should revalidate presets");
   assert.match(body, /revalidatePath\("\/assets\/preset-groups"\)/, "replacement should revalidate preset groups");
   assert.match(body, /revalidatePath\(`\/assets\/preset-groups\/\$\{existing\.groupId\}`\)/, "replacement should revalidate the changed group detail route");
   assert.match(body, /return updated/, "replacement should return the updated member");
 });
 
-test("removeGroupMember removes a member without blocking on imported group sync", () => {
+test("removeGroupMember removes a member without scanning imported sections", () => {
   const source = readSource("src/lib/actions/preset-group.ts");
   const body = exportedFunctionSource(source, "removeGroupMember");
 
-  assert.match(source, /import { after as afterResponse } from "next\/server"/, "member removal should use after() for non-blocking downstream sync");
+  assert.match(source, /import { after as afterResponse } from "next\/server"/, "member removal should defer change history until after the response");
+  assert.doesNotMatch(source, /function syncPresetGroupInstances/, "member removal should not keep a section sync implementation in this action file");
+  assert.doesNotMatch(source, /syncPresetGroupInstances\(/, "member removal should not scan section instances after group edits");
+  assert.doesNotMatch(source, /projectSection\.findMany/, "member removal should not scan project sections");
   assert.match(body, /findUnique\([\s\S]*where:\s*{\s*id:\s*memberId\s*}/, "missing members should be checked before removal");
   assert.match(body, /if \(!existing\) return/, "missing members should return without syncing");
   assert.match(body, /presetId:\s*true/, "existing member lookup should select presetId for deferred history");
@@ -77,15 +83,14 @@ test("removeGroupMember removes a member without blocking on imported group sync
   assert.match(body, /sortOrder:\s*true/, "existing member lookup should select sortOrder for deferred history");
   assert.match(body, /presetGroupMember\.delete\([\s\S]*where:\s*{\s*id:\s*memberId\s*}/, "the requested member should be deleted");
   assert.match(body, /deletedMember:\s*GroupMemberSnapshot/, "member removal should keep the deleted row for deferred history");
-  assert.match(body, /schedulePresetGroupMemberChangeEffects\(/, "member removal should schedule history and imported group instance sync after responding");
-  assert.doesNotMatch(body, /^  await syncPresetGroupInstances\(existing\.groupId,\s*previousMembers\)/m, "member removal should not block the UI on imported group instance sync");
+  assert.match(body, /schedulePresetGroupMemberChangeEffects\(/, "member removal should schedule change history after responding");
   assert.match(source, /Failed to process preset group member change after response/, "background effect failures should be logged");
   assert.match(body, /revalidatePath\("\/assets\/presets"\)/, "member removal should revalidate presets");
   assert.match(body, /revalidatePath\("\/assets\/preset-groups"\)/, "member removal should revalidate preset groups");
   assert.match(body, /revalidatePath\(`\/assets\/preset-groups\/\$\{existing\.groupId\}`\)/, "member removal should revalidate the changed group detail route");
 });
 
-test("group member mutations use lightweight sync snapshots and never resolve variant content on the response path", () => {
+test("group member mutations only record history and never resolve section sync snapshots", () => {
   const source = readSource("src/lib/actions/preset-group.ts");
   const addBody = exportedFunctionSource(source, "addGroupMember");
   const removeBody = exportedFunctionSource(source, "removeGroupMember");
@@ -94,18 +99,19 @@ test("group member mutations use lightweight sync snapshots and never resolve va
 
   assert.doesNotMatch(source, /resolveVariantContent/, "preset group member mutations should not load resolved prompt/LoRA content");
   assert.doesNotMatch(source, /resolveConcreteGroupMembers/, "preset group member mutations should not use the old full-content member resolver");
+  assert.doesNotMatch(source, /resolveConcreteGroupSyncMembers/, "preset group member mutations should not resolve sync snapshots");
+  assert.doesNotMatch(source, /syncPresetGroupInstances/, "preset group member mutations should not run imported-section sync");
 
   assert.doesNotMatch(addBody, /resolveConcreteGroupSyncMembers\(/, "adding a member should not resolve group members before responding");
-  assert.match(addBody, /schedulePresetGroupMemberChangeEffects\(/, "adding a member should schedule history and legacy sync after the response");
+  assert.match(addBody, /schedulePresetGroupMemberChangeEffects\(/, "adding a member should schedule history after the response");
   assert.match(addBody, /revalidatePath\(`\/assets\/preset-groups\/\$\{input\.groupId\}`\)/, "adding a member should revalidate the changed group detail route");
-  assert.doesNotMatch(addBody, /^  await syncPresetGroupInstances\(input\.groupId,\s*previousMembers\)/m, "adding a member should not wait for legacy sync");
 
   assert.doesNotMatch(removeBody, /resolveConcreteGroupSyncMembers\(/, "removing a member should not resolve group members before responding");
-  assert.match(removeBody, /schedulePresetGroupMemberChangeEffects\(/, "removing a member should schedule history and legacy sync after the response");
+  assert.match(removeBody, /schedulePresetGroupMemberChangeEffects\(/, "removing a member should schedule history after the response");
   assert.doesNotMatch(updateBody, /resolveConcreteGroupSyncMembers\(/, "replacing a member should not resolve group members before responding");
-  assert.match(updateBody, /schedulePresetGroupMemberChangeEffects\(/, "replacing a member should schedule history and legacy sync after the response");
+  assert.match(updateBody, /schedulePresetGroupMemberChangeEffects\(/, "replacing a member should schedule history after the response");
   assert.doesNotMatch(reorderBody, /resolveConcreteGroupSyncMembers\(/, "reordering members should not resolve a sync snapshot because the member set is unchanged");
-  assert.doesNotMatch(reorderBody, /syncPresetGroupInstances\(/, "reordering members should not run legacy member-set sync");
+  assert.doesNotMatch(reorderBody, /syncPresetGroupInstances\(/, "reordering members should not run imported-section sync");
 });
 
 test("group detail member rows use a locked preset picker without navigating the row link", () => {

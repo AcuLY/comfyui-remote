@@ -130,81 +130,90 @@ test("section bindings resolve preset prompt from source rows instead of stale d
   assert.equal(resolved.loraConfig.lora1[0].bindingId, "bind-character");
 });
 
-test("group-imported preset bindings resolve as independent preset blocks", () => {
+test("single preset group binding resolves to member prompt blocks in preset category order", () => {
   const character = category({ id: "cat-character", name: "Character", positivePromptOrder: 10, lora1Order: 10 });
   const pose = category({ id: "cat-pose", name: "Pose", positivePromptOrder: 20, lora1Order: 20 });
-  const characterPreset = preset({
-    id: "preset-character",
-    categoryId: character.id,
-    name: "Character Preset",
-    variants: [
-      {
-        id: "variant-character",
-        name: "Default",
-        prompt: "character prompt",
-        lora1: [{ path: "/character.safetensors", weight: 0.8, enabled: true }],
-      },
-    ],
-  });
-  const posePreset = preset({
-    id: "preset-pose",
-    categoryId: pose.id,
-    name: "Pose Preset",
-    variants: [
-      {
-        id: "variant-pose",
-        name: "Default",
-        prompt: "pose prompt",
-        lora1: [{ path: "/pose.safetensors", weight: 0.5, enabled: true }],
-      },
-    ],
-  });
+  const groupCategory = category({ id: "cat-group", name: "Section Group", positivePromptOrder: 99, lora1Order: 99 });
   const groupBindingKey = "grp:group-1:instance-1";
-  const characterBinding = {
-    ...binding({
-      id: "db-binding-character",
-      bindingKey: "bind-character",
-      category: character,
-      preset: characterPreset,
-      sortOrder: 0,
-    }),
+  const groupBinding: SectionPresetBindingRow = {
+    id: "db-binding-group",
+    projectSectionId: "section-1",
+    bindingKey: "bind-group",
+    categoryId: groupCategory.id,
+    presetId: null,
+    variantId: null,
     presetGroupId: "group-1",
     groupBindingKey,
-  };
-  const poseBinding = {
-    ...binding({
-      id: "db-binding-pose",
-      bindingKey: "bind-pose",
-      category: pose,
-      preset: posePreset,
-      sortOrder: 1,
-    }),
-    presetGroupId: "group-1",
-    groupBindingKey,
+    sortOrder: 0,
+    category: groupCategory,
+    preset: null,
+    presetGroup: {
+      id: "group-1",
+      categoryId: groupCategory.id,
+      name: "Character Pose Group",
+    },
   };
 
   const resolved = resolveSectionConfigFromRows(input({
-    presetBindings: [poseBinding, characterBinding],
+    presetBindings: [groupBinding],
     promptBlockRows: [
       {
-        id: "db-block-pose",
+        id: "db-block-group",
         projectSectionId: "section-1",
-        sectionBindingId: poseBinding.id,
-        type: "preset",
-        customLabel: null,
-        customPositive: null,
-        customNegative: null,
-        sortOrder: 1,
-      },
-      {
-        id: "db-block-character",
-        projectSectionId: "section-1",
-        sectionBindingId: characterBinding.id,
+        sectionBindingId: groupBinding.id,
         type: "preset",
         customLabel: null,
         customPositive: null,
         customNegative: null,
         sortOrder: 0,
+      },
+    ],
+    presetGroupResolutions: [
+      {
+        groupId: "group-1",
+        categoryId: groupCategory.id,
+        name: "Character Pose Group",
+        prompt: "pose prompt BREAK character prompt",
+        negativePrompt: null,
+        lora1: [],
+        lora2: [],
+        members: [
+          {
+            presetId: "preset-pose",
+            variantId: "variant-pose",
+            presetName: "Pose Preset",
+            label: "Pose Preset",
+            categoryId: pose.id,
+            categoryName: pose.name,
+            categoryColor: pose.color,
+            positivePromptOrder: pose.positivePromptOrder,
+            negativePromptOrder: pose.negativePromptOrder,
+            lora1Order: pose.lora1Order,
+            lora2Order: pose.lora2Order,
+            prompt: "pose prompt",
+            negativePrompt: null,
+            lora1: [{ path: "/pose.safetensors", weight: 0.5, enabled: true }],
+            lora2: [],
+          },
+          {
+            presetId: "preset-character",
+            variantId: "variant-character",
+            presetName: "Character Preset",
+            label: "Character Preset",
+            categoryId: character.id,
+            categoryName: character.name,
+            categoryColor: character.color,
+            positivePromptOrder: character.positivePromptOrder,
+            negativePromptOrder: character.negativePromptOrder,
+            lora1Order: character.lora1Order,
+            lora2Order: character.lora2Order,
+            prompt: "character prompt",
+            negativePrompt: null,
+            lora1: [{ path: "/character.safetensors", weight: 0.8, enabled: true }],
+            lora2: [],
+          },
+        ],
+        missingReferences: [],
       },
     ],
   }));
@@ -238,7 +247,10 @@ test("group-imported preset bindings resolve as independent preset blocks", () =
     ],
   );
   assert.equal(resolved.prompt.positive, "character prompt BREAK pose prompt");
-  assert.deepEqual(resolved.loraConfig.lora1.map((entry) => entry.bindingId), ["bind-character", "bind-pose"]);
+  assert.deepEqual(resolved.loraConfig.lora1.map((entry) => [entry.bindingId, entry.sourceLabel, entry.path]), [
+    ["bind-group", "Character", "/character.safetensors"],
+    ["bind-group", "Pose", "/pose.safetensors"],
+  ]);
 });
 
 test("custom prompt overrides keep preset metadata but replace resolved text and label", () => {

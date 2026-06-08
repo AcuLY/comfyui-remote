@@ -4,10 +4,13 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { type LoraEntry } from "@/lib/lora-types";
 import { resolveSectionConfig } from "@/server/prompt-config/section-resolver";
+import {
+  resolvePresetGroupContent,
+  type PresetGroupResolverDbClient,
+} from "@/server/prompt-config/preset-group-resolver";
 import { detachSectionLorasFromPresetBinding } from "@/server/services/preset-binding-service";
 import { recordSectionChange } from "@/server/services/section-change-history-service";
 import { resolveVariantContent } from "./preset-variant";
-import { sortConcreteGroupMembersForSection } from "./preset-group-sync";
 import {
   createBindingId,
 } from "./_helpers";
@@ -110,85 +113,6 @@ function makePresetLoraEntries(
     lora1: input.resolved.lora1.map((entry, index) => makeLora("lora1", index, entry)),
     lora2: input.resolved.lora2.map((entry, index) => makeLora("lora2", index, entry)),
   };
-}
-
-async function flattenPresetGroupImportMembers(
-  groupId: string,
-  visited = new Set<string>(),
-): Promise<Array<{ presetId: string; variantId?: string }>> {
-  if (visited.has(groupId)) return [];
-  visited.add(groupId);
-
-  const group = await prisma.presetGroup.findUnique({
-    where: { id: groupId },
-    select: {
-      isActive: true,
-      members: {
-        orderBy: { sortOrder: "asc" },
-        select: {
-          presetId: true,
-          variantId: true,
-          subGroupId: true,
-        },
-      },
-    },
-  });
-  if (!group || group.isActive === false) return [];
-
-  const members: Array<{ presetId: string; variantId?: string }> = [];
-  for (const member of group.members) {
-    if (member.subGroupId) {
-      members.push(...await flattenPresetGroupImportMembers(member.subGroupId, visited));
-      continue;
-    }
-    if (member.presetId) {
-      members.push({ presetId: member.presetId, variantId: member.variantId ?? undefined });
-    }
-  }
-  return members;
-}
-
-async function resolvePresetGroupImportMembers(groupId: string) {
-  const flatMembers = await flattenPresetGroupImportMembers(groupId);
-  if (flatMembers.length === 0) return [];
-
-  const presets = await prisma.preset.findMany({
-    where: {
-      id: { in: [...new Set(flatMembers.map((member) => member.presetId))] },
-      isActive: true,
-    },
-    select: {
-      id: true,
-      category: {
-        select: { positivePromptOrder: true },
-      },
-      variants: {
-        where: { isActive: true },
-        orderBy: { sortOrder: "asc" },
-        select: { id: true },
-      },
-    },
-  });
-  const presetById = new Map(presets.map((preset) => [preset.id, preset]));
-  const concreteMembers: Array<{ presetId: string; variantId: string; positivePromptOrder: number }> = [];
-
-  for (const member of flatMembers) {
-    const preset = presetById.get(member.presetId);
-    if (!preset) continue;
-
-    const variant = member.variantId
-      ? preset.variants.find((item) => item.id === member.variantId)
-      : preset.variants[0];
-    if (!variant) continue;
-
-    concreteMembers.push({
-      presetId: preset.id,
-      variantId: variant.id,
-      positivePromptOrder: preset.category.positivePromptOrder,
-    });
-  }
-
-  return sortConcreteGroupMembersForSection(concreteMembers);
 }
 
 async function findNormalizedPromptBlockById(blockId: string) {
@@ -747,35 +671,97 @@ export async function importPresetGroupToSection(
 ): Promise<ImportPresetGroupResult | null> {
   const group = await prisma.presetGroup.findUnique({
     where: { id: presetGroupId },
-    select: { id: true, name: true, isActive: true },
+    select: { id: true, categoryId: true, name: true, isActive: true },
   });
   if (!group || group.isActive === false) return null;
 
-  const members = await resolvePresetGroupImportMembers(presetGroupId);
-  if (members.length === 0) return null;
+  const resolvedGroup = await resolvePresetGroupContent(
+    presetGroupId,
+    prisma as unknown as PresetGroupResolverDbClient,
+  );
+  if (!resolvedGroup || resolvedGroup.members.length === 0) return null;
 
   const groupBindingKey = groupBindingId ?? `grp:${presetGroupId}:${createBindingId()}`;
-  const importedResults: ImportPresetResult[] = [];
+  const bindingKey = createBindingId();
+  const firstMemberOrder = Math.min(...resolvedGroup.members.map((member) => member.positivePromptOrder));
+  const existingBlocks = await prisma.sectionPromptBlock.findMany({
+    where: { projectSectionId: sectionId },
+    select: {
+      id: true,
+      sortOrder: true,
+      sectionBinding: {
+        select: {
+          category: { select: { positivePromptOrder: true } },
+        },
+      },
+    },
+    orderBy: { sortOrder: "asc" },
+  });
 
-  for (const member of members) {
-    const result = await importPresetToSection(
-      sectionId,
-      member.presetId,
-      member.variantId,
-      groupBindingKey,
-      presetGroupId,
-    );
-    if (result) importedResults.push(result);
+  let insertAfterIndex = -1;
+  for (let i = 0; i < existingBlocks.length; i++) {
+    const order = existingBlocks[i].sectionBinding?.category.positivePromptOrder ?? 999;
+    if (order <= firstMemberOrder) insertAfterIndex = i;
   }
 
-  if (importedResults.length === 0) return null;
+  const insertSortOrder = insertAfterIndex >= 0
+    ? existingBlocks[insertAfterIndex].sortOrder + 1
+    : 0;
 
-  const results = await Promise.all(importedResults.map(async (result) => {
-    const bindingId = result.block.bindingId;
-    if (!bindingId) return result;
-    const block = await resolvePromptBlockDataForBinding(sectionId, bindingId);
-    return block ? { ...result, block } : result;
-  }));
+  await prisma.sectionPromptBlock.updateMany({
+    where: {
+      projectSectionId: sectionId,
+      sortOrder: { gte: insertSortOrder },
+    },
+    data: { sortOrder: { increment: 1 } },
+  });
+
+  const { binding } = await prisma.$transaction(async (tx) => {
+    const binding = await tx.sectionPresetBinding.create({
+      data: {
+        projectSectionId: sectionId,
+        bindingKey,
+        categoryId: group.categoryId,
+        presetId: null,
+        variantId: null,
+        presetGroupId,
+        groupBindingKey,
+        sortOrder: insertSortOrder,
+      },
+    });
+    await tx.sectionPromptBlock.create({
+      data: {
+        projectSectionId: sectionId,
+        sectionBindingId: binding.id,
+        type: "preset",
+        sortOrder: insertSortOrder,
+      },
+    });
+    return { binding };
+  });
+
+  const resolvedConfig = await resolveSectionConfig(sectionId);
+  const blocks = (resolvedConfig?.promptBlocks ?? [])
+    .filter((block) => block.bindingId === binding.bindingKey && block.presetGroupId === presetGroupId)
+    .map((block, index) => ({
+      id: makeResolvedOnlyBlockId(binding.bindingKey, index),
+      type: block.type,
+      sourceId: block.sourceId,
+      variantId: block.variantId,
+      presetGroupId: block.presetGroupId,
+      categoryId: block.categoryId,
+      bindingId: block.bindingId,
+      groupBindingId: block.groupBindingId,
+      label: block.label,
+      positive: block.positive,
+      negative: block.negative,
+      sortOrder: block.sortOrder,
+    }));
+  const lora1 = (resolvedConfig?.loraConfig.lora1 ?? [])
+    .filter((entry) => entry.bindingId === binding.bindingKey && entry.groupBindingId === binding.groupBindingKey);
+  const lora2 = (resolvedConfig?.loraConfig.lora2 ?? [])
+    .filter((entry) => entry.bindingId === binding.bindingKey && entry.groupBindingId === binding.groupBindingKey);
+
   await recordSectionChange({
     sectionId,
     dimension: "prompt",
@@ -784,20 +770,21 @@ export async function importPresetGroupToSection(
     after: {
       groupId: group.id,
       groupBindingKey,
-      bindings: results.map((result) => ({
-        bindingId: result.block.bindingId,
-        sourceId: result.block.sourceId,
-        variantId: result.block.variantId,
+      bindingId: binding.bindingKey,
+      blocks: blocks.map((block) => ({
+        sourceId: block.sourceId,
+        variantId: block.variantId,
+        categoryId: block.categoryId,
       })),
     },
   });
 
   return {
     groupBindingId: groupBindingKey,
-    results,
-    blocks: results.map((result) => result.block),
-    lora1: results.flatMap((result) => result.lora1),
-    lora2: results.flatMap((result) => result.lora2),
+    results: [],
+    blocks,
+    lora1,
+    lora2,
   };
 }
 

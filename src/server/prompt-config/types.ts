@@ -222,6 +222,13 @@ export type ResolvedPresetGroupMemberContent = {
   variantId: string;
   presetName: string;
   label: string;
+  categoryId: string;
+  categoryName: string;
+  categoryColor?: string | null;
+  positivePromptOrder: number;
+  negativePromptOrder: number;
+  lora1Order: number;
+  lora2Order: number;
   prompt: string;
   negativePrompt: string | null;
   lora1: LoraBinding[];

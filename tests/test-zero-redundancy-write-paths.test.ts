@@ -582,7 +582,7 @@ test("importPresetToSection writes normalized binding rows without legacy expand
   await prisma.projectSection.findUniqueOrThrow({ where: { id: seed.section.id } });
 });
 
-test("importPresetGroupToSection expands group members into independent preset bindings", async () => {
+test("importPresetGroupToSection stores one group binding and returns resolved member blocks", async () => {
   const seed = await seedProjectWithPreset();
   const earlierCategory = await prisma.presetCategory.create({
     data: {
@@ -652,32 +652,32 @@ test("importPresetGroupToSection expands group members into independent preset b
   });
 
   const result = await importPresetGroupToSection(seed.section.id, group.id);
-  const groupResult = result as Awaited<ReturnType<typeof importPresetGroupToSection>> & {
-    results: Awaited<ReturnType<typeof importPresetToSection>>[];
-  };
 
-  assert.ok(groupResult);
-  assert.equal(Array.isArray(groupResult.results), true);
-  assert.equal(groupResult.results.length, 2);
+  assert.ok(result);
   const bindings = await prisma.sectionPresetBinding.findMany({
     where: { projectSectionId: seed.section.id },
     orderBy: { sortOrder: "asc" },
   });
-  assert.equal(bindings.length, 2);
-  assert.deepEqual(bindings.map((binding) => binding.presetId), [earlierPreset.id, seed.preset.id]);
-  assert.deepEqual(bindings.map((binding) => binding.variantId), [earlierVariant.id, seed.variantA.id]);
-  assert.deepEqual(bindings.map((binding) => binding.categoryId), [earlierCategory.id, seed.category.id]);
-  assert.deepEqual(bindings.map((binding) => binding.presetGroupId), [group.id, group.id]);
-  assert.equal(new Set(bindings.map((binding) => binding.groupBindingKey)).size, 1);
-  assert.equal(bindings.some((binding) => binding.presetId === null && binding.presetGroupId === group.id), false);
+  assert.equal(bindings.length, 1);
+  assert.equal(bindings[0].presetId, null);
+  assert.equal(bindings[0].variantId, null);
+  assert.equal(bindings[0].categoryId, groupCategory.id);
+  assert.equal(bindings[0].presetGroupId, group.id);
+  assert.match(bindings[0].groupBindingKey ?? "", new RegExp(`^grp:${group.id}:`));
 
   const promptRows = await prisma.sectionPromptBlock.findMany({
     where: { projectSectionId: seed.section.id },
     orderBy: { sortOrder: "asc" },
   });
-  assert.equal(promptRows.length, 2);
-  assert.deepEqual(promptRows.map((row) => row.sectionBindingId), bindings.map((binding) => binding.id));
-  assert.deepEqual(groupResult.results.map((item) => item?.block.bindingId), bindings.map((binding) => binding.bindingKey));
+  assert.equal(promptRows.length, 1);
+  assert.equal(promptRows[0].sectionBindingId, bindings[0].id);
+  assert.equal(promptRows[0].type, "preset");
+  assert.deepEqual(result.blocks.map((block) => block.sourceId), [earlierPreset.id, seed.preset.id]);
+  assert.deepEqual(result.blocks.map((block) => block.variantId), [earlierVariant.id, seed.variantA.id]);
+  assert.deepEqual(result.blocks.map((block) => block.categoryId), [earlierCategory.id, seed.category.id]);
+  assert.deepEqual(result.blocks.map((block) => block.bindingId), [bindings[0].bindingKey, bindings[0].bindingKey]);
+  assert.deepEqual(result.blocks.map((block) => block.groupBindingId), [bindings[0].groupBindingKey, bindings[0].groupBindingKey]);
+  assert.deepEqual(result.lora1.map((entry) => entry.path), [`/${seed.key}-earlier.safetensors`, `/${seed.key}-a.safetensors`]);
 });
 
 test("removeImportedPresetFromSection cascades a group import by group binding key", async () => {

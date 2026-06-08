@@ -163,28 +163,20 @@ test("group detail page uses lightweight edit data instead of the full preset li
 });
 
 test("preset and group detail clients support s/f neighbor shortcuts outside form fields", () => {
-  const cases = [
-    {
-      file: "src/app/assets/presets/[presetId]/preset-edit-client.tsx",
-      previousHrefConst: "previousPresetHref",
-      nextHrefConst: "nextPresetHref",
-    },
-    {
-      file: "src/app/assets/preset-groups/[groupId]/preset-group-edit-client.tsx",
-      previousHrefConst: "previousGroupHref",
-      nextHrefConst: "nextGroupHref",
-    },
-  ];
+  const presetSource = readSource("src/app/assets/presets/[presetId]/preset-edit-client.tsx");
+  assert.match(presetSource, /window\.addEventListener\("keydown", handleKeyDown\)/, "preset detail should bind a page shortcut handler");
+  assert.match(presetSource, /event\.key\.toLowerCase\(\) === "s"[\s\S]*\? previous\w+Href/, "preset detail should map s to the previous item");
+  assert.match(presetSource, /event\.key\.toLowerCase\(\) === "f"[\s\S]*\? next\w+Href/, "preset detail should map f to the next item");
+  assert.match(presetSource, /router\.push\(href\)[\s\S]*\}, \[nextPresetHref, previousPresetHref, router\]\)/, "preset detail should keep client navigation shortcuts");
+  assert.match(presetSource, /target\.isContentEditable[\s\S]*tagName === "INPUT"[\s\S]*tagName === "TEXTAREA"[\s\S]*tagName === "SELECT"/, "preset detail should ignore shortcuts while editing form fields");
 
-  for (const { file, previousHrefConst, nextHrefConst } of cases) {
-    const source = readSource(file);
-
-    assert.match(source, /window\.addEventListener\("keydown", handleKeyDown\)/, `${file} should bind a page shortcut handler`);
-    assert.match(source, /event\.key\.toLowerCase\(\) === "s"[\s\S]*\? previous\w+Href/, `${file} should map s to the previous item`);
-    assert.match(source, /event\.key\.toLowerCase\(\) === "f"[\s\S]*\? next\w+Href/, `${file} should map f to the next item`);
-    assert.match(source, new RegExp(`router\\.push\\(href\\)[\\s\\S]*\\}, \\[${nextHrefConst}, ${previousHrefConst}, router\\]\\)`), `${file} should navigate with the current neighbor hrefs`);
-    assert.match(source, /target\.isContentEditable[\s\S]*tagName === "INPUT"[\s\S]*tagName === "TEXTAREA"[\s\S]*tagName === "SELECT"/, `${file} should ignore shortcuts while editing form fields`);
-  }
+  const groupSource = readSource("src/app/assets/preset-groups/[groupId]/preset-group-edit-client.tsx");
+  assert.match(groupSource, /window\.addEventListener\("keydown", handleKeyDown\)/, "group detail should bind a page shortcut handler");
+  assert.match(groupSource, /event\.key\.toLowerCase\(\) === "s"[\s\S]*\? previous\w+Href/, "group detail should map s to the previous item");
+  assert.match(groupSource, /event\.key\.toLowerCase\(\) === "f"[\s\S]*\? next\w+Href/, "group detail should map f to the next item");
+  assert.match(groupSource, /window\.location\.assign\(href\)[\s\S]*\}, \[nextGroupHref, previousGroupHref\]\)/, "group detail shortcuts should use hard navigation");
+  assert.match(groupSource, /<NeighborNavigation[\s\S]*hardNavigation/, "group detail previous/next links should bypass Next client navigation");
+  assert.match(groupSource, /target\.isContentEditable[\s\S]*tagName === "INPUT"[\s\S]*tagName === "TEXTAREA"[\s\S]*tagName === "SELECT"/, "group detail should ignore shortcuts while editing form fields");
 });
 
 test("preset and group detail back links restore folder context in the preset library", () => {

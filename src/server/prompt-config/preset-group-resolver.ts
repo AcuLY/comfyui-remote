@@ -33,6 +33,7 @@ type PresetForGroupRow = {
   id: string;
   categoryId: string;
   name: string;
+  category: PresetCategoryRow;
   variants: Array<{
     id: string;
     presetId: string;
@@ -62,6 +63,7 @@ type ConcreteGroupMember = {
   presetId: string;
   variantId: string;
   presetName: string;
+  category: PresetCategoryRow;
   variantName: string | null;
   variantCount: number;
 };
@@ -131,6 +133,17 @@ async function loadConcreteGroupMembers(
         id: true,
         categoryId: true,
         name: true,
+        category: {
+          select: {
+            id: true,
+            name: true,
+            color: true,
+            positivePromptOrder: true,
+            negativePromptOrder: true,
+            lora1Order: true,
+            lora2Order: true,
+          },
+        },
         variants: {
           where: { isActive: true },
           orderBy: { sortOrder: "asc" },
@@ -166,6 +179,7 @@ async function loadConcreteGroupMembers(
       presetId: preset.id,
       variantId: variant.id,
       presetName: preset.name,
+      category: preset.category,
       variantName: variant.name ?? null,
       variantCount: activeVariants.length,
     });
@@ -178,6 +192,21 @@ function buildMemberLabel(member: ConcreteGroupMember) {
   return member.variantCount <= 1 || !member.variantName
     ? member.presetName
     : `${member.presetName} / ${member.variantName}`;
+}
+
+function normalizeCategoryOrder(value: number | null | undefined) {
+  return typeof value === "number" && Number.isFinite(value) ? value : 999;
+}
+
+function sortConcreteMembersByPresetCategory(members: readonly ConcreteGroupMember[]) {
+  return [...members]
+    .map((member, index) => ({ member, index }))
+    .sort((left, right) =>
+      normalizeCategoryOrder(left.member.category.positivePromptOrder) -
+        normalizeCategoryOrder(right.member.category.positivePromptOrder) ||
+      left.index - right.index,
+    )
+    .map(({ member }) => member);
 }
 
 function resolveMemberContent(
@@ -199,6 +228,13 @@ function resolveMemberContent(
       variantId: member.variantId,
       presetName: member.presetName,
       label: buildMemberLabel(member),
+      categoryId: member.category.id,
+      categoryName: member.category.name,
+      categoryColor: member.category.color,
+      positivePromptOrder: normalizeCategoryOrder(member.category.positivePromptOrder),
+      negativePromptOrder: normalizeCategoryOrder(member.category.negativePromptOrder),
+      lora1Order: normalizeCategoryOrder(member.category.lora1Order),
+      lora2Order: normalizeCategoryOrder(member.category.lora2Order),
       prompt: resolved.prompt,
       negativePrompt: resolved.negativePrompt,
       lora1: resolved.lora1,
@@ -217,7 +253,9 @@ export async function resolvePresetGroupContent(
   if (!group || group.isActive === false) return null;
 
   const missingReferences: MissingReference[] = [];
-  const concreteMembers = await loadConcreteGroupMembers(groupId, client, missingReferences);
+  const concreteMembers = sortConcreteMembersByPresetCategory(
+    await loadConcreteGroupMembers(groupId, client, missingReferences),
+  );
   const { variants, variantLinks } = await loadReachablePresetVariantGraph(
     concreteMembers.map((member) => member.variantId),
     client,
