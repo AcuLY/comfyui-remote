@@ -140,6 +140,16 @@ test("group detail member mutations update the local member list without waiting
   assert.doesNotMatch(source, /await removeGroupMember\(member\.id\)[\s\S]{0,160}router\.refresh\(\)/, "removing a member should not depend on a route refresh to update visible content");
 });
 
+test("group detail fixed slot rows can reorder the category slot template", () => {
+  const source = readSource("src/app/assets/preset-groups/[groupId]/preset-group-edit-client.tsx");
+
+  assert.match(source, /DndContext/, "group detail should use dnd-kit for fixed slot rows");
+  assert.match(source, /SortableContext/, "group detail should wrap fixed slot rows in a sortable context");
+  assert.match(source, /updateCategorySlotTemplate/, "slot row reorder should persist through the category slot template action");
+  assert.match(source, /handleSlotDragEnd/, "group detail should have a dedicated slot drag end handler");
+  assert.match(source, /arrayMove\(slotTemplate,\s*oldIndex,\s*newIndex\)/, "slot row reorder should move the slot template rows, not extra members");
+});
+
 test("sortable group card inline editor can replace ordinary preset members", () => {
   const source = readSource("src/app/assets/presets/sortable-group-card.tsx");
 

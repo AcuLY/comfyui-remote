@@ -8,6 +8,8 @@ import { LoraListEditor } from "@/components/lora-list-editor";
 import {
   canSwitchSectionPresetVariant,
   expandSectionPresetBindingDisplayRows,
+  getSectionPresetBindingGroupName,
+  getSectionPresetManagerHref,
 } from "@/components/section-editor-binding-rules";
 import type { PromptBlockData } from "@/lib/actions";
 import {
@@ -150,7 +152,8 @@ export function SectionEditor({
               categoryColor = cat.color ?? undefined;
             }
           }
-          const groupName = groupNamesByBindingId.get(b.bindingId);
+          const groupName = getSectionPresetBindingGroupName({ presetGroupId }, libraryV2) ??
+            groupNamesByBindingId.get(b.bindingId);
           map.set(b.bindingId, {
             bindingId: b.bindingId,
             presetName: b.label,
@@ -353,20 +356,7 @@ export function SectionEditor({
   }
 
   function getPresetManagerHref(binding: PresetBindingInfo): string {
-    const params = new URLSearchParams();
-    if (binding.categoryId) params.set("category", binding.categoryId);
-    if (binding.variantId) params.set("variant", binding.variantId);
-
-    const preset = libraryV2?.categories
-      .find((cat) => cat.id === binding.categoryId)
-      ?.presets.find((item) => item.id === binding.sourceId);
-    if (preset?.folderId) params.set("folder", preset.folderId);
-
-    const query = params.toString();
-    if (binding.sourceId) {
-      return query ? `/assets/presets/${binding.sourceId}?${query}` : `/assets/presets/${binding.sourceId}`;
-    }
-    return query ? `/assets/presets?${query}` : "/assets/presets";
+    return getSectionPresetManagerHref(binding, libraryV2);
   }
 
   // ── Delete an entire preset binding (and cascade to group if part of one) ──
@@ -630,7 +620,7 @@ export function SectionEditor({
                       {row.variantName}
                     </span>
                   )}
-                  {row.sourceId && (
+                  {(row.sourceId || binding.presetGroupId) && (
                     <Link
                       href={getPresetManagerHref(binding)}
                       className="shrink-0 rounded p-0.5 text-zinc-500 hover:bg-white/5 hover:text-sky-400"

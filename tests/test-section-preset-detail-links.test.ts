@@ -36,7 +36,7 @@ function presetLinkBlock(source: string) {
   return block;
 }
 
-test("section preset binding links navigate to preset detail in the same tab", () => {
+test("section preset binding detail links use shared preset-or-group target in the same tab", () => {
   for (const file of sectionPresetLinkFiles) {
     const source = readSource(file);
     const hrefFunction = functionSource(source, "getPresetManagerHref");
@@ -44,8 +44,13 @@ test("section preset binding links navigate to preset detail in the same tab", (
 
     assert.match(
       hrefFunction,
-      /\/assets\/presets\/\$\{binding\.sourceId\}/,
-      `${file} should link preset bindings to the preset detail route`,
+      /getSectionPresetManagerHref\(binding,\s*(?:libraryV2|library)\)/,
+      `${file} should delegate preset binding links to the shared preset/group route helper`,
+    );
+    assert.match(
+      source,
+      /(?:row|binding)\.sourceId\s*\|\|\s*binding\.presetGroupId/,
+      `${file} should show the detail link for preset group bindings as well as preset bindings`,
     );
     assert.doesNotMatch(link, /target=["']_blank["']/, `${file} should navigate in the same tab`);
   }

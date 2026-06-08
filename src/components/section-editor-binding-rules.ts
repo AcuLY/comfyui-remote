@@ -1,3 +1,5 @@
+import { buildPresetGroupMemberLayout } from "@/lib/preset-group-slot-layout";
+
 export type SectionPresetVariantSwitchState = {
   presetGroupId?: string | null;
   resolvedOnly: boolean;
@@ -26,19 +28,24 @@ export type SectionPresetBindingDisplayLibrary = {
     id: string;
     name: string;
     color: string | null;
+    slotTemplate?: readonly { categoryId: string; label?: string }[];
     presets: readonly {
       id: string;
       name: string;
+      folderId?: string | null;
       variants: readonly { id: string; name: string }[];
     }[];
     groups?: readonly {
       id: string;
       name: string;
+      folderId?: string | null;
       members: readonly {
         id: string;
         presetId: string | null;
         variantId: string | null;
         subGroupId: string | null;
+        slotCategoryId?: string | null;
+        sortOrder?: number;
         presetName?: string;
         variantName?: string;
         subGroupName?: string;
@@ -79,6 +86,95 @@ export function getSectionPresetBindingDisplayName(binding: SectionPresetBinding
   if (!binding.presetName.endsWith(selectedVariantSuffix)) return binding.presetName;
 
   return binding.presetName.slice(0, -selectedVariantSuffix.length);
+}
+
+export function getSectionPresetManagerHref(
+  binding: Pick<SectionPresetBindingDisplaySource, "sourceId" | "variantId" | "presetGroupId" | "categoryId">,
+  library?: SectionPresetBindingDisplayLibrary,
+) {
+  const params = new URLSearchParams();
+
+  if (binding.presetGroupId) {
+    let groupCategoryId: string | null = null;
+    let groupFolderId: string | null = null;
+
+    for (const category of library?.categories ?? []) {
+      const group = category.groups?.find((item) => item.id === binding.presetGroupId);
+      if (!group) continue;
+      groupCategoryId = category.id;
+      groupFolderId = group.folderId ?? null;
+      break;
+    }
+
+    if (groupCategoryId) params.set("category", groupCategoryId);
+    if (groupFolderId) params.set("folder", groupFolderId);
+
+    const query = params.toString();
+    return query
+      ? `/assets/preset-groups/${binding.presetGroupId}?${query}`
+      : `/assets/preset-groups/${binding.presetGroupId}`;
+  }
+
+  if (binding.categoryId) params.set("category", binding.categoryId);
+  if (binding.variantId) params.set("variant", binding.variantId);
+
+  const preset = library?.categories
+    .find((cat) => cat.id === binding.categoryId)
+    ?.presets.find((item) => item.id === binding.sourceId);
+  if (preset?.folderId) params.set("folder", preset.folderId);
+
+  const query = params.toString();
+  if (binding.sourceId) {
+    return query ? `/assets/presets/${binding.sourceId}?${query}` : `/assets/presets/${binding.sourceId}`;
+  }
+  return query ? `/assets/presets?${query}` : "/assets/presets";
+}
+
+export function getSectionPresetBindingGroupName(
+  binding: Pick<SectionPresetBindingDisplaySource, "presetGroupId">,
+  library?: SectionPresetBindingDisplayLibrary,
+) {
+  if (!binding.presetGroupId) return null;
+
+  const presetInfoById = new Map<string, { categoryId: string; name: string }>();
+  let groupCategory: SectionPresetBindingDisplayLibrary["categories"][number] | null = null;
+  let group: NonNullable<SectionPresetBindingDisplayLibrary["categories"][number]["groups"]>[number] | null = null;
+
+  for (const category of library?.categories ?? []) {
+    for (const preset of category.presets) {
+      presetInfoById.set(preset.id, { categoryId: category.id, name: preset.name });
+    }
+
+    const candidate = category.groups?.find((item) => item.id === binding.presetGroupId);
+    if (candidate) {
+      groupCategory = category;
+      group = candidate;
+    }
+  }
+
+  if (!group) return null;
+
+  const members = group.members.map((member, index) => ({
+    ...member,
+    sortOrder: member.sortOrder ?? index,
+    categoryId: member.presetId ? presetInfoById.get(member.presetId)?.categoryId ?? null : null,
+  }));
+  const rows = buildPresetGroupMemberLayout({
+    slots: groupCategory?.slotTemplate ?? [],
+    members,
+    getMemberCategoryId: (member) => member.categoryId,
+  });
+  const names = rows
+    .map((row) => row.member)
+    .filter((member): member is NonNullable<typeof member> => Boolean(member))
+    .map((member) =>
+      member.subGroupName ??
+      member.presetName ??
+      (member.presetId ? presetInfoById.get(member.presetId)?.name : undefined)
+    )
+    .filter((name): name is string => Boolean(name?.trim()));
+
+  return names.length > 0 ? names.join(" · ") : null;
 }
 
 export function expandSectionPresetBindingDisplayRows<TBinding extends SectionPresetBindingDisplaySource>(

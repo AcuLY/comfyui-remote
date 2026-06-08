@@ -541,6 +541,7 @@ export type PresetLibraryV2 = {
     positivePromptOrder?: number;
     lora1Order?: number;
     lora2Order?: number;
+    slotTemplate: Array<{ categoryId: string; label?: string }>;
     folders: Array<{ id: string; name: string; parentId: string | null; sortOrder: number }>;
     presets: Array<{
       id: string;
@@ -566,6 +567,8 @@ export type PresetLibraryV2 = {
         presetId: string | null;
         variantId: string | null;
         subGroupId: string | null;
+        slotCategoryId: string | null;
+        sortOrder: number;
         presetName?: string;
         variantName?: string;
         subGroupName?: string;
@@ -578,6 +581,10 @@ export async function getPresetLibraryV2(): Promise<PresetLibraryV2> {
   const categories = await prisma.presetCategory.findMany({
     orderBy: { sortOrder: "asc" },
     include: {
+      ownedSlots: {
+        orderBy: { sortOrder: "asc" },
+        select: { slotCategoryId: true, label: true },
+      },
       folders: {
         orderBy: { sortOrder: "asc" },
         select: { id: true, name: true, parentId: true, sortOrder: true },
@@ -640,6 +647,10 @@ export async function getPresetLibraryV2(): Promise<PresetLibraryV2> {
         positivePromptOrder: c.positivePromptOrder,
         lora1Order: c.lora1Order,
         lora2Order: c.lora2Order,
+        slotTemplate: c.ownedSlots.map((slot) => ({
+          categoryId: slot.slotCategoryId,
+          ...(slot.label ? { label: slot.label } : {}),
+        })),
         folders: c.folders.map((f) => ({
           id: f.id,
           name: f.name,
@@ -670,6 +681,8 @@ export async function getPresetLibraryV2(): Promise<PresetLibraryV2> {
             presetId: m.presetId,
             variantId: m.variantId,
             subGroupId: m.subGroupId,
+            slotCategoryId: m.slotCategoryId,
+            sortOrder: m.sortOrder,
             presetName: m.presetId ? presetNameMap.get(m.presetId) : undefined,
             variantName: m.variantId ? variantNameMap.get(m.variantId) : undefined,
             subGroupName: m.subGroupId ? groupNameMap.get(m.subGroupId) : undefined,

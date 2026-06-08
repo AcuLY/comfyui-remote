@@ -2,8 +2,25 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, useTransition } from "react";
-import { ArrowLeft, Repeat2, Save, Trash2, X } from "lucide-react";
+import { useEffect, useId, useMemo, useState, useTransition, type CSSProperties, type ReactNode } from "react";
+import {
+  closestCenter,
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { ArrowLeft, GripVertical, Repeat2, Save, Trash2, X } from "lucide-react";
 import { NeighborNavigation } from "@/components/neighbor-navigation";
 import { PresetCascadePicker } from "@/components/preset-cascade-picker";
 import type { PresetCategoryFull, PresetGroupItem, PresetVariantItem } from "@/lib/server-data";
@@ -12,6 +29,7 @@ import {
   addGroupMember,
   deletePresetGroup,
   removeGroupMember,
+  updateCategorySlotTemplate,
   updateGroupMember,
   updatePresetGroup,
 } from "@/lib/actions";
@@ -36,6 +54,8 @@ function groupListUrl(categoryId: string, groupId?: string | null, folderId?: st
 }
 
 type GroupMemberDisplay = PresetGroupItem["members"][number];
+type GroupMemberLayoutRow = ReturnType<typeof buildPresetGroupMemberLayout<GroupMemberDisplay>>[number];
+type GroupMemberSlotRow = Extract<GroupMemberLayoutRow, { kind: "slot" }>;
 
 type GroupMemberMutationResult = {
   id: string;
@@ -87,6 +107,51 @@ function toGroupMemberDisplay(
   };
 }
 
+function SortableSlotShell({
+  id,
+  dashed,
+  disabled,
+  children,
+}: {
+  id: string;
+  dashed: boolean;
+  disabled: boolean;
+  children: ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, disabled });
+  const style: CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 20 : undefined,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`flex items-center justify-between gap-2 rounded-lg border px-3 py-2 ${
+        dashed
+          ? "border-dashed border-white/10 bg-white/[0.015]"
+          : "border-white/5 bg-white/[0.02] transition hover:border-white/10 hover:bg-white/[0.04]"
+      }`}
+    >
+      <button
+        type="button"
+        aria-label="拖拽调整槽位顺序"
+        title="拖拽调整槽位顺序"
+        disabled={disabled}
+        className="shrink-0 cursor-grab touch-none rounded p-1 text-zinc-600 transition hover:bg-white/5 hover:text-zinc-300 disabled:cursor-default disabled:opacity-30"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="size-3.5" />
+      </button>
+      {children}
+    </div>
+  );
+}
+
 export function PresetGroupEditClient({
   categories,
   categoryId,
@@ -107,10 +172,18 @@ export function PresetGroupEditClient({
   totalGroups: number;
 }) {
   const router = useRouter();
+  const initialCategory = categories.find((category) => category.id === group.categoryId) ??
+    categories.find((category) => category.id === categoryId);
   const [isPending, startTransition] = useTransition();
   const [currentGroup, setCurrentGroup] = useState(group);
   const [name, setName] = useState(group.name);
   const [openReplaceMemberId, setOpenReplaceMemberId] = useState<string | null>(null);
+  const [slotTemplate, setSlotTemplate] = useState(initialCategory?.slotTemplate ?? []);
+  const slotDndId = useId();
+  const slotSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
   const backHref = groupListUrl(categoryId, currentGroup.id, currentGroup.folderId);
   const selectableGroups = groups.filter((item) => item.id !== currentGroup.id);
   const previousGroupHref = previousGroup?.id ? `/assets/preset-groups/${previousGroup.id}` : null;
@@ -120,12 +193,15 @@ export function PresetGroupEditClient({
     categories.find((category) => category.id === categoryId);
 
   useEffect(() => {
+    const nextCategory = categories.find((category) => category.id === group.categoryId) ??
+      categories.find((category) => category.id === categoryId);
     queueMicrotask(() => {
       setCurrentGroup(group);
       setName(group.name);
       setOpenReplaceMemberId(null);
+      setSlotTemplate(nextCategory?.slotTemplate ?? []);
     });
-  }, [group]);
+  }, [categories, categoryId, group]);
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -186,11 +262,12 @@ export function PresetGroupEditClient({
 
   const memberRows = useMemo(() =>
     buildPresetGroupMemberLayout({
-      slots: currentCategory?.slotTemplate ?? [],
+      slots: slotTemplate,
       members: currentGroup.members,
       getMemberCategoryId: (member) => member.presetId ? presetCategoryLookup.get(member.presetId) : null,
     }),
-  [currentCategory, currentGroup.members, presetCategoryLookup]);
+  [currentGroup.members, presetCategoryLookup, slotTemplate]);
+  const slotRows = memberRows.filter((row): row is GroupMemberSlotRow => row.kind === "slot");
 
   // Group non-sub-group members by their preset's category sortOrder
   const previewGroups = useMemo(() => {
@@ -280,6 +357,30 @@ export function PresetGroupEditClient({
     });
   }
 
+  function handleSlotDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id || !currentCategory) return;
+
+    const oldIndex = slotRows.findIndex((row) => row.key === active.id);
+    const newIndex = slotRows.findIndex((row) => row.key === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const previousSlots = slotTemplate;
+    const nextSlots = arrayMove(slotTemplate, oldIndex, newIndex);
+    setSlotTemplate(nextSlots);
+
+    startTransition(async () => {
+      try {
+        await updateCategorySlotTemplate(currentCategory.id, nextSlots);
+        toast.success("槽位顺序已更新");
+        router.refresh();
+      } catch (error) {
+        setSlotTemplate(previousSlots);
+        toast.error(error instanceof Error ? error.message : "调整槽位顺序失败");
+      }
+    });
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
@@ -318,15 +419,19 @@ export function PresetGroupEditClient({
               暂无成员
             </div>
           ) : (
-            <div className="space-y-1.5">
+            <DndContext id={slotDndId} sensors={slotSensors} collisionDetection={closestCenter} onDragEnd={handleSlotDragEnd}>
+              <SortableContext items={slotRows.map((row) => row.key)} strategy={verticalListSortingStrategy}>
+                <div className="space-y-1.5">
               {memberRows.map((row) => {
                 if (row.kind === "slot" && !row.member) {
                   const slotCategory = categoryLookup.get(row.slot.categoryId);
                   const slotLabel = row.slot.label ?? slotCategory?.name ?? `槽位 ${row.slotIndex + 1}`;
                   return (
-                    <div
+                    <SortableSlotShell
                       key={row.key}
-                      className="flex items-center justify-between gap-2 rounded-lg border border-dashed border-white/10 bg-white/[0.015] px-3 py-2"
+                      id={row.key}
+                      dashed
+                      disabled={isPending || slotRows.length < 2}
                     >
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-xs text-zinc-300">{slotLabel}</div>
@@ -357,7 +462,7 @@ export function PresetGroupEditClient({
                           presetCategoriesOnly
                         />
                       </div>
-                    </div>
+                    </SortableSlotShell>
                   );
                 }
 
@@ -476,6 +581,25 @@ export function PresetGroupEditClient({
                     </button>
                   </>
                 );
+                if (row.kind === "slot") {
+                  return (
+                    <SortableSlotShell
+                      key={row.key}
+                      id={row.key}
+                      dashed={false}
+                      disabled={isPending || slotRows.length < 2}
+                    >
+                      {presetHref ? (
+                        <Link href={presetHref} className="min-w-0 flex-1">
+                          {title}
+                        </Link>
+                      ) : (
+                        <div className="min-w-0 flex-1">{title}</div>
+                      )}
+                      {controls}
+                    </SortableSlotShell>
+                  );
+                }
                 return presetHref ? (
                   <div
                     key={member.id}
@@ -496,7 +620,9 @@ export function PresetGroupEditClient({
                   </div>
                 );
               })}
-            </div>
+                </div>
+              </SortableContext>
+            </DndContext>
           )}
           <AddGroupMemberForm
             groupId={currentGroup.id}

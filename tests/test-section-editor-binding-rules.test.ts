@@ -4,6 +4,8 @@ import assert from "node:assert/strict";
 import {
   canSwitchSectionPresetVariant,
   expandSectionPresetBindingDisplayRows,
+  getSectionPresetBindingGroupName,
+  getSectionPresetManagerHref,
   getSectionPresetBindingDisplayName,
 } from "../src/components/section-editor-binding-rules";
 
@@ -78,6 +80,151 @@ test("section preset list title keeps slash text that is not the selected varian
     }),
     "Preset / Collection",
   );
+});
+
+test("section preset manager link opens the source preset group before member preset", () => {
+  const href = getSectionPresetManagerHref(
+    {
+      sourceId: "preset-person",
+      variantId: "variant-default",
+      presetGroupId: "group-section",
+      categoryId: "person-cat",
+    },
+    {
+      categories: [
+        {
+          id: "group-cat",
+          name: "小节",
+          color: "30 50% 55%",
+          presets: [],
+          groups: [
+            {
+              id: "group-section",
+              name: "单人-背手站立",
+              folderId: "group-folder",
+              members: [],
+            },
+          ],
+        },
+        {
+          id: "person-cat",
+          name: "人数",
+          color: "23 50% 55%",
+          presets: [
+            {
+              id: "preset-person",
+              name: "单人",
+              variants: [{ id: "variant-default", name: "默认" }],
+            },
+          ],
+        },
+      ],
+    },
+  );
+
+  assert.equal(href, "/assets/preset-groups/group-section?category=group-cat&folder=group-folder");
+});
+
+test("section preset manager link keeps ordinary preset detail targets", () => {
+  const href = getSectionPresetManagerHref(
+    {
+      sourceId: "preset-person",
+      variantId: "variant-default",
+      presetGroupId: null,
+      categoryId: "person-cat",
+    },
+    {
+      categories: [
+        {
+          id: "person-cat",
+          name: "人数",
+          color: "23 50% 55%",
+          presets: [
+            {
+              id: "preset-person",
+              name: "单人",
+              folderId: "preset-folder",
+              variants: [{ id: "variant-default", name: "默认" }],
+            },
+          ],
+        },
+      ],
+    },
+  );
+
+  assert.equal(href, "/assets/presets/preset-person?category=person-cat&variant=variant-default&folder=preset-folder");
+});
+
+test("section rename group name follows preset group slot template order", () => {
+  const name = getSectionPresetBindingGroupName(
+    { presetGroupId: "group-section" },
+    {
+      categories: [
+        {
+          id: "group-cat",
+          name: "小节",
+          color: "30 50% 55%",
+          slotTemplate: [
+            { categoryId: "pose-cat", label: "姿势" },
+            { categoryId: "person-cat", label: "人数" },
+          ],
+          presets: [],
+          groups: [
+            {
+              id: "group-section",
+              name: "单人-背手站立",
+              members: [
+                {
+                  id: "member-person",
+                  presetId: "preset-person",
+                  variantId: "variant-person-default",
+                  subGroupId: null,
+                  presetName: "单人",
+                  variantName: "默认",
+                  sortOrder: 0,
+                },
+                {
+                  id: "member-pose",
+                  presetId: "preset-pose",
+                  variantId: "variant-pose-default",
+                  subGroupId: null,
+                  presetName: "背手站立",
+                  variantName: "默认",
+                  sortOrder: 1,
+                },
+              ],
+            },
+          ],
+        },
+        {
+          id: "person-cat",
+          name: "人数",
+          color: "23 50% 55%",
+          presets: [
+            {
+              id: "preset-person",
+              name: "单人",
+              variants: [{ id: "variant-person-default", name: "默认" }],
+            },
+          ],
+        },
+        {
+          id: "pose-cat",
+          name: "姿势",
+          color: "258 50% 55%",
+          presets: [
+            {
+              id: "preset-pose",
+              name: "背手站立",
+              variants: [{ id: "variant-pose-default", name: "默认" }],
+            },
+          ],
+        },
+      ],
+    },
+  );
+
+  assert.equal(name, "背手站立 · 单人");
 });
 
 test("section preset list expands preset group members in preset category order", () => {

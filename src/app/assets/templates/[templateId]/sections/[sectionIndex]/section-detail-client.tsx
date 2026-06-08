@@ -12,6 +12,10 @@ import { UpscaleFactorQuickFill } from "@/components/upscale-factor-quick-fill";
 import { KSamplerPanel, parseInitialKSampler } from "@/components/ksampler-panel";
 import { CheckpointCascadePicker } from "@/components/checkpoint-cascade-picker";
 import { ImportPresetPanel, type ImportCategory } from "@/components/section-editor";
+import {
+  getSectionPresetBindingGroupName,
+  getSectionPresetManagerHref,
+} from "@/components/section-editor-binding-rules";
 import { LoraListEditor } from "@/components/lora-list-editor";
 import { NeighborNavigation } from "@/components/neighbor-navigation";
 import { TemplatePromptBlockEditor, type TemplateBlockData } from "@/components/template-prompt-block-editor";
@@ -238,7 +242,8 @@ export function TemplateSectionDetailClient({
       map.set(block.bindingId, {
         bindingId: block.bindingId,
         presetName: block.label,
-        groupName: groupNamesByBindingId.get(block.bindingId),
+        groupName: getSectionPresetBindingGroupName({ presetGroupId }, library) ??
+          groupNamesByBindingId.get(block.bindingId),
         sourceId,
         variantId,
         presetGroupId,
@@ -446,20 +451,7 @@ export function TemplateSectionDetailClient({
   }
 
   function getPresetManagerHref(binding: PresetBindingInfo): string {
-    const params = new URLSearchParams();
-    if (binding.categoryId) params.set("category", binding.categoryId);
-    if (binding.variantId) params.set("variant", binding.variantId);
-
-    const preset = library?.categories
-      .find((cat) => cat.id === binding.categoryId)
-      ?.presets.find((item) => item.id === binding.sourceId);
-    if (preset?.folderId) params.set("folder", preset.folderId);
-
-    const query = params.toString();
-    if (binding.sourceId) {
-      return query ? `/assets/presets/${binding.sourceId}?${query}` : `/assets/presets/${binding.sourceId}`;
-    }
-    return query ? `/assets/presets?${query}` : "/assets/presets";
+    return getSectionPresetManagerHref(binding, library);
   }
 
   function handleImportPreset(
@@ -1028,7 +1020,7 @@ export function TemplateSectionDetailClient({
                     <span className="shrink-0 rounded bg-amber-500/15 px-1 py-px text-[8px] text-amber-400">组</span>
                   )}
                   <span className="truncate text-[11px] text-zinc-300">{binding.presetName}</span>
-                  {binding.sourceId && (
+                  {(binding.sourceId || binding.presetGroupId) && (
                     <Link
                       href={getPresetManagerHref(binding)}
                       className="shrink-0 rounded p-0.5 text-zinc-500 hover:bg-white/5 hover:text-sky-400"

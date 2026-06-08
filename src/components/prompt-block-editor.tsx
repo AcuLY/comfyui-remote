@@ -53,6 +53,7 @@ export type PresetLibraryV2 = {
     positivePromptOrder?: number;
     lora1Order?: number;
     lora2Order?: number;
+    slotTemplate?: Array<{ categoryId: string; label?: string }>;
     folders?: Array<{ id: string; name: string; parentId: string | null; sortOrder: number }>;
     presets: Array<{
       id: string;
@@ -77,6 +78,8 @@ export type PresetLibraryV2 = {
         presetId: string | null;
         variantId: string | null;
         subGroupId: string | null;
+        slotCategoryId?: string | null;
+        sortOrder?: number;
         presetName?: string;
         variantName?: string;
         subGroupName?: string;
