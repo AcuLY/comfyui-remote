@@ -10,11 +10,12 @@ import {
 import type { ReviewImage } from "../src/lib/types";
 
 function sourceSlice(source: string, startNeedle: string, endNeedle: string) {
-  const start = source.indexOf(startNeedle);
+  const normalizedSource = source.replace(/\r\n/g, "\n");
+  const start = normalizedSource.indexOf(startNeedle);
   assert.notEqual(start, -1, `missing start needle: ${startNeedle}`);
-  const end = source.indexOf(endNeedle, start);
+  const end = normalizedSource.indexOf(endNeedle, start);
   assert.notEqual(end, -1, `missing end needle: ${endNeedle}`);
-  return source.slice(start, end);
+  return normalizedSource.slice(start, end);
 }
 
 function assertBefore(source: string, earlier: string, later: string, message: string) {
