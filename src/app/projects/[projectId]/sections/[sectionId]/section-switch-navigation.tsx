@@ -1,10 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import type { MouseEvent, ReactNode } from "react";
 import { useCallback, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+
+import { HardNavigationLink } from "@/components/hard-navigation-link";
 
 type SectionSwitchNavigationProps = {
   projectId: string;
@@ -104,9 +104,9 @@ export function SectionSwitchHeaderLink({
   }
 
   return (
-    <Link href={href} scroll={false} onClick={handleClick} className={className}>
+    <HardNavigationLink href={href} onClick={handleClick} className={className}>
       {children}
-    </Link>
+    </HardNavigationLink>
   );
 }
 
@@ -121,7 +121,6 @@ export function SectionKeyboardShortcuts({
   prevSectionId: string | null;
   nextSectionId: string | null;
 }) {
-  const router = useRouter();
   const prevHref = prevSectionId ? `/projects/${projectId}/sections/${prevSectionId}` : null;
   const nextHref = nextSectionId ? `/projects/${projectId}/sections/${nextSectionId}` : null;
 
@@ -154,12 +153,12 @@ export function SectionKeyboardShortcuts({
       if (href) {
         event.preventDefault();
         saveSectionSwitchScroll(projectId);
-        router.push(href, { scroll: false });
+        window.location.assign(href);
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [nextHref, prevHref, projectId, router, sectionId]);
+  }, [nextHref, prevHref, projectId, sectionId]);
 
   return null;
 }
@@ -170,7 +169,6 @@ export function SectionSwitchNavigation({
   prevSectionId,
   nextSectionId,
 }: SectionSwitchNavigationProps) {
-  const router = useRouter();
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const prevHref = prevSectionId ? `/projects/${projectId}/sections/${prevSectionId}` : null;
   const nextHref = nextSectionId ? `/projects/${projectId}/sections/${nextSectionId}` : null;
@@ -183,9 +181,9 @@ export function SectionSwitchNavigation({
     (href: string | null) => {
       if (!href) return;
       saveSectionSwitchScroll(projectId);
-      router.push(href, { scroll: false });
+      window.location.assign(href);
     },
-    [projectId, router],
+    [projectId],
   );
 
   useEffect(() => {

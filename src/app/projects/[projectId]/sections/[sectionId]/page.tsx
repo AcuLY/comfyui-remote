@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ImageIcon, Download } from "lucide-react";
+import { HardNavigationLink } from "@/components/hard-navigation-link";
 import { prisma } from "@/lib/prisma";
 import { buildFolderScopedItemOrder, hrefWithFolderQuery } from "@/lib/folder-navigation";
 import { toImageUrl } from "@/lib/image-url";
@@ -296,13 +296,12 @@ export default async function SectionEditPage({
         <div className="sticky top-0 z-20 -mx-5 -mt-4 border-b border-white/[0.08] bg-[var(--panel)]/95 px-5 pb-3 pt-4 shadow-[0_14px_30px_rgba(0,0,0,0.22)] backdrop-blur sm:-mx-6 sm:px-6">
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between gap-2">
-              <Link
+              <HardNavigationLink
                 href={returnHref}
-                scroll={false}
                 className="inline-flex items-center gap-2 text-sm text-zinc-300"
               >
                 <ArrowLeft className="size-4" /> 返回
-              </Link>
+              </HardNavigationLink>
               <NeighborNavigation
                 previousHref={prevSection ? `/projects/${projectId}/sections/${prevSection.id}` : null}
                 nextHref={nextSection ? `/projects/${projectId}/sections/${nextSection.id}` : null}
@@ -339,26 +338,26 @@ export default async function SectionEditPage({
             </span>
             <div className="ml-auto flex shrink-0 items-center gap-1.5">
               {latestRun && (
-                <Link
+                <HardNavigationLink
                   href={`/projects/${projectId}/sections/${sectionId}/results`}
                   className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
                 >
                   <ImageIcon className="size-3" /> 查看全部
-                </Link>
+                </HardNavigationLink>
               )}
-              <Link
+              <a
                 href={`/api/projects/${projectId}/section-workflow/${sectionId}`}
                 download
                 className="inline-flex items-center gap-1 rounded-lg border border-sky-500/20 bg-sky-500/[0.08] px-2 py-1 text-xs text-sky-200 transition hover:bg-sky-500/15 hover:text-sky-100"
               >
                 <Download className="size-3" /> 下载 workflow
-              </Link>
+              </a>
             </div>
           </div>
           {latestResultImages.length > 0 ? (
             <div className="flex h-24 gap-1.5 overflow-x-auto scrollbar-none sm:h-28">
               {latestResultImages.map((img) => (
-                <Link
+                <HardNavigationLink
                   key={img.id}
                   href={`/projects/${projectId}/sections/${sectionId}/results`}
                   className={`relative h-full w-20 shrink-0 overflow-hidden rounded-lg border bg-[var(--panel-soft)] transition hover:border-sky-500/40 sm:w-24 ${
@@ -377,15 +376,15 @@ export default async function SectionEditPage({
                     draggable={false}
                     className="h-full w-full object-cover"
                   />
-                </Link>
+                </HardNavigationLink>
               ))}
               {(latestRun?._count.images ?? 0) > latestResultImages.length && (
-                <Link
+                <HardNavigationLink
                   href={`/projects/${projectId}/sections/${sectionId}/results`}
                   className="flex h-full w-16 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-xs text-zinc-400 transition hover:border-sky-500/30 hover:text-zinc-200"
                 >
                   +{(latestRun?._count.images ?? 0) - latestResultImages.length}
-                </Link>
+                </HardNavigationLink>
               )}
             </div>
           ) : (

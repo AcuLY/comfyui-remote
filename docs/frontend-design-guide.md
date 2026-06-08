@@ -568,6 +568,20 @@ body::before {
 
 ---
 
+## 🔗 导航性能约束
+
+### 图片密集页面的跨页出口
+
+项目详情、项目结果、小节结果、队列审核等页面会同时加载大量缩略图或原图。用户点击跨页出口时，优先级是立刻离开当前页面，而不是继续等待当前页面剩余图片下载。
+
+- 图片密集页面的主要跨页出口使用 `src/components/hard-navigation-link.tsx`，或在事件处理里使用 `window.location.assign(href)`。
+- 共享的上一项/下一项控件通过 `NeighborNavigation` 的 `hardNavigation` 参数启用硬导航。
+- 保留 Next `Link` 给轻量页面、页内分页、筛选、设置类页面，或不会被当前页面大批图片请求拖慢的跳转。
+- `loading.tsx`、Suspense 和 prefetch 只能改善目标路由加载观感；它们不会取消当前页面已经发出的图片请求，因此不能替代硬导航。
+- 修改这类出口时同步维护 `tests/test-hard-navigation-for-image-heavy-pages.test.ts`，避免回退成软跳转。
+
+---
+
 ## 🔧 主题切换实现
 
 ### HTML 结构

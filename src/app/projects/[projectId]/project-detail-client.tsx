@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import Link from "next/link";
 import { ImageIcon, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 
+import { HardNavigationLink } from "@/components/hard-navigation-link";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { useScrollSpy } from "@/hooks/use-scroll-spy";
 import { hrefWithFolderQuery } from "@/lib/folder-navigation";
@@ -267,18 +267,18 @@ export function ProjectDetailClient({
               <AddSectionButton projectId={projectId} folderId={currentFolderId} />
               <ImportTemplateButton projectId={projectId} />
               <SyncPresetVariantFlowDialog projectId={projectId} projectTitle={projectTitle} />
-              <Link
+              <HardNavigationLink
                 href={`/projects/${projectId}/results`}
                 className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-violet-500/20 bg-violet-500/[0.04] px-2 py-2 text-[11px] text-violet-300 transition hover:bg-violet-500/[0.1] sm:gap-2 sm:px-3 sm:py-3 sm:text-xs"
               >
                 <ImageIcon className="size-3.5" /> 项目结果
-              </Link>
-              <Link
+              </HardNavigationLink>
+              <HardNavigationLink
                 href={`/projects/${projectId}/batch-create`}
                 className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-sky-500/20 bg-sky-500/[0.03] px-2 py-2 text-[11px] text-sky-400 transition hover:bg-sky-500/[0.08] sm:gap-2 sm:px-3 sm:py-3 sm:text-xs"
               >
                 <Plus className="size-3.5" /> 批量创建
-              </Link>
+              </HardNavigationLink>
               <CensorButton projectId={projectId} />
               <ClearSectionsButton projectId={projectId} />
             </div>

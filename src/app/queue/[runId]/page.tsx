@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ChevronLeft, ChevronRight, Download, ExternalLink, Images } from "lucide-react";
+import { HardNavigationLink } from "@/components/hard-navigation-link";
 import { SectionCard } from "@/components/section-card";
 import { getReviewGroup, getReviewGroupIds } from "@/lib/server-data";
 import { ReviewGrid } from "./review-grid";
@@ -174,25 +174,25 @@ export default async function ReviewGroupPage({ params }: { params: Promise<{ ru
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <Link href={`/queue#run-${runId}`} className="inline-flex items-center gap-2 text-sm text-zinc-300">
+        <HardNavigationLink href={`/queue#run-${runId}`} className="inline-flex items-center gap-2 text-sm text-zinc-300">
           <ArrowLeft className="size-4" /> 返回队列
-        </Link>
+        </HardNavigationLink>
         <div className="flex items-center gap-2">
           {group.projectId && group.projectSectionId && (
-            <Link
+            <HardNavigationLink
               href={`/projects/${group.projectId}/sections/${group.projectSectionId}`}
               className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-2 text-xs text-zinc-300"
             >
               <ExternalLink className="size-3.5" /> 跳转小节
-            </Link>
+            </HardNavigationLink>
           )}
           {group.projectId && group.projectSectionId && (
-            <Link
+            <HardNavigationLink
               href={`/projects/${group.projectId}/sections/${group.projectSectionId}/results`}
               className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-2 text-xs text-zinc-300"
             >
               <Images className="size-3.5" /> 查看结果
-            </Link>
+            </HardNavigationLink>
           )}
           <a
             href={`/api/runs/${runId}/workflow`}
@@ -232,14 +232,14 @@ export default async function ReviewGroupPage({ params }: { params: Promise<{ ru
 
       <div className="grid grid-cols-2 gap-3">
         {prevId ? (
-          <Link href={`/queue/${prevId}`} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-zinc-300">
+          <HardNavigationLink href={`/queue/${prevId}`} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-zinc-300">
             <ChevronLeft className="size-4" /> 上一组
-          </Link>
+          </HardNavigationLink>
         ) : <div />}
         {nextId ? (
-          <Link href={`/queue/${nextId}`} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-zinc-300">
+          <HardNavigationLink href={`/queue/${nextId}`} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-zinc-300">
             下一组 <ChevronRight className="size-4" />
-          </Link>
+          </HardNavigationLink>
         ) : <div />}
       </div>
     </div>

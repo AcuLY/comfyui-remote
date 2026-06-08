@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Images, Pencil } from "lucide-react";
+import { HardNavigationLink } from "@/components/hard-navigation-link";
 import { NeighborNavigation } from "@/components/neighbor-navigation";
 import { SectionCard } from "@/components/section-card";
 import { getSectionResults } from "@/lib/server-data";
@@ -40,32 +40,32 @@ export default async function SectionResultsPage({
       <ResultsRoutePrefetcher hrefs={[...new Set(sectionResultPrefetchHrefs)]} />
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Link
+        <HardNavigationLink
           href={returnHref}
-          scroll={false}
           className="inline-flex items-center gap-2 text-sm text-zinc-300"
         >
           <ArrowLeft className="size-4" /> 返回项目详情
-        </Link>
+        </HardNavigationLink>
         <div className="flex flex-wrap items-center justify-end gap-2">
-          <Link
+          <HardNavigationLink
             href={`/projects/${projectId}/sections/${sectionId}`}
             data-nav-editor
             className="inline-flex items-center gap-1.5 rounded-xl border border-sky-500/20 bg-sky-500/10 px-3 py-2 text-xs text-sky-300 transition hover:bg-sky-500/20 hover:text-sky-200"
           >
             <Pencil className="size-3.5" />
             返回小节
-          </Link>
-          <Link
+          </HardNavigationLink>
+          <HardNavigationLink
             href={`/projects/${projectId}/results`}
             className="inline-flex items-center gap-1.5 rounded-xl border border-violet-500/20 bg-violet-500/10 px-3 py-2 text-xs text-violet-300 transition hover:bg-violet-500/20 hover:text-violet-200"
           >
             <Images className="size-3.5" />
             项目结果
-          </Link>
+          </HardNavigationLink>
           <NeighborNavigation
             previousHref={data.previousSection ? `/projects/${projectId}/sections/${data.previousSection.id}/results` : null}
             nextHref={data.nextSection ? `/projects/${projectId}/sections/${data.nextSection.id}/results` : null}
+            hardNavigation
             previousLabel="上一节"
             nextLabel="下一节"
             previousTitle={data.previousSection?.name}

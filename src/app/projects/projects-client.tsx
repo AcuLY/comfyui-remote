@@ -20,6 +20,7 @@ import {
 } from "@dnd-kit/sortable";
 import { ChevronRight, Folder, FolderPlus, ImageIcon, Plus, Save, X } from "lucide-react";
 import { toast } from "sonner";
+import { HardNavigationLink } from "@/components/hard-navigation-link";
 import { SectionCard } from "@/components/section-card";
 import {
   createProjectFolder,
@@ -326,7 +327,7 @@ function ProjectCard({
           aria-label={`选择项目：${project.title}`}
         />
       </label>
-      <Link href={`/projects/${project.id}`} className="block p-3 pt-12">
+      <HardNavigationLink href={`/projects/${project.id}`} className="block p-3 pt-12">
         {project.latestImages && project.latestImages.length > 0 ? (
           <div className="mb-3 border-b border-white/5 pb-3">
             <div className="mb-1.5 flex items-center gap-1.5 text-[10px] text-zinc-500">
@@ -382,7 +383,7 @@ function ProjectCard({
           最近更新：{project.updatedAt} · {project.sectionCount} 个小节
           {project.latestRunAt ? ` · 最近运行：${project.latestRunAt}` : ""}
         </div>
-      </Link>
+      </HardNavigationLink>
     </article>
   );
 }

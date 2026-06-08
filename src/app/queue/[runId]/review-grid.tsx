@@ -42,6 +42,10 @@ export function ReviewGrid({
   const preloadedUrlsRef = useRef<Set<string>>(new Set());
   const preloadImagesRef = useRef<HTMLImageElement[]>([]);
 
+  const navigateDocument = useCallback((href: string) => {
+    window.location.assign(href);
+  }, []);
+
   useEffect(() => {
     const reconciledImages = reconcileReviewImagesWithOptimisticReviews(
       images,
@@ -109,11 +113,11 @@ export function ReviewGrid({
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
       // S / ArrowLeft: prev group
       if (event.key === "s" || event.key === "S" || event.key === "ArrowLeft") {
-        if (prevRunId) router.push(`/queue/${prevRunId}`);
+        if (prevRunId) navigateDocument(`/queue/${prevRunId}`);
       }
       // F / ArrowRight: next group
       if (event.key === "f" || event.key === "F" || event.key === "ArrowRight") {
-        if (nextRunId) router.push(`/queue/${nextRunId}`);
+        if (nextRunId) navigateDocument(`/queue/${nextRunId}`);
       }
       // I / D: open lightbox
       if (event.key === "i" || event.key === "I" || event.key === "d" || event.key === "D") {
@@ -122,7 +126,7 @@ export function ReviewGrid({
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [lightboxIndex, prevRunId, nextRunId, router, reviewImages.length]);
+  }, [lightboxIndex, navigateDocument, prevRunId, nextRunId, reviewImages.length]);
 
   const pendingImages = reviewImages.filter((img) => img.status === "pending");
   const selectedCount = selected.size;
@@ -246,9 +250,9 @@ export function ReviewGrid({
           }
         }
         if (nextRunId) {
-          router.push(`/queue/${nextRunId}`);
+          navigateDocument(`/queue/${nextRunId}`);
         } else {
-          router.push("/queue");
+          navigateDocument("/queue");
         }
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "处理失败");

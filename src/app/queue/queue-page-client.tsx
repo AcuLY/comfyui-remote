@@ -6,6 +6,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { RotateCw, ChevronLeft, ChevronRight, Clock3, Loader2, RefreshCw, AlertTriangle, XCircle, ImageIcon, Trash2, RotateCcw, Pause, Play, Shield } from "lucide-react";
 import { toast } from "sonner";
+import { HardNavigationLink } from "@/components/hard-navigation-link";
 import { PageHeader } from "@/components/page-header";
 import { SectionCard } from "@/components/section-card";
 import { StatChip } from "@/components/stat-chip";
@@ -499,7 +500,7 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
                 </div>
               )}
               {queueRuns.map((run) => (
-                <Link
+                <HardNavigationLink
                   key={run.id}
                   id={`run-${run.id}`}
                   href={`/queue/${run.id}`}
@@ -538,7 +539,7 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
                       查看宫格 <ChevronRight className="size-3" />
                     </span>
                   </div>
-                </Link>
+                </HardNavigationLink>
               ))}
             </div>
             {queuePagination.totalItems > 0 && (

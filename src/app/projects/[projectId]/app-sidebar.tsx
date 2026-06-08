@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import Link from "next/link";
 import {
   ArrowLeft,
   Play,
@@ -21,6 +20,7 @@ import {
 import { hrefWithFolderQuery } from "@/lib/folder-navigation";
 import { exportProjectImages } from "@/app/projects/actions-export";
 import { BatchSizeQuickFill } from "@/components/batch-size-quick-fill";
+import { HardNavigationLink } from "@/components/hard-navigation-link";
 import { NeighborNavigation } from "@/components/neighbor-navigation";
 import {
   SidebarSectionNav,
@@ -142,13 +142,13 @@ export function AppSidebar({
       className="border-r border-white/5"
     >
       <SidebarHeader className="gap-1.5 px-3.5 py-3 group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:px-2">
-        <Link
+        <HardNavigationLink
           href={projectsHref}
           className="inline-flex items-center gap-1.5 text-xs text-zinc-400 transition hover:text-zinc-200 group-data-[collapsible=icon]:justify-center"
         >
           <ArrowLeft className="size-3.5" />
           {isExpanded && <span>返回项目列表</span>}
-        </Link>
+        </HardNavigationLink>
         {isExpanded && (
           <div className="mt-1 space-y-2 rounded-xl border border-sky-500/15 bg-sky-500/[0.06] px-3 py-2 shadow-inner shadow-sky-500/5">
             <h1 className="truncate text-[15px] font-semibold leading-5 text-sky-50">
@@ -157,6 +157,7 @@ export function AppSidebar({
             <NeighborNavigation
               previousHref={previousProject ? `/projects/${previousProject.id}` : null}
               nextHref={nextProject ? `/projects/${nextProject.id}` : null}
+              hardNavigation
               previousLabel={null}
               nextLabel={null}
               previousTitle={previousProject ? `上一个项目：${previousProject.title}` : "没有上一个项目"}
@@ -208,7 +209,7 @@ export function AppSidebar({
               {/* 编辑项目参数 */}
               <SidebarMenuItem>
                 <SidebarMenuButton
-                  render={<Link href={`/projects/${projectId}/edit`} />}
+                  render={<HardNavigationLink href={`/projects/${projectId}/edit`} />}
                   tooltip="编辑项目参数"
                 >
                   <SlidersHorizontal className="size-4" />
@@ -218,7 +219,7 @@ export function AppSidebar({
 
               <SidebarMenuItem>
                 <SidebarMenuButton
-                  render={<Link href={`/projects/${projectId}/results`} />}
+                  render={<HardNavigationLink href={`/projects/${projectId}/results`} />}
                   tooltip="项目结果"
                   className="text-violet-300 hover:bg-violet-500/10 hover:text-violet-200 text-[11px] sm:text-sm"
                 >

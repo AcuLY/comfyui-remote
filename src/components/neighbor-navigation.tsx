@@ -2,6 +2,7 @@ import type { MouseEvent, ReactNode } from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
+import { HardNavigationLink } from "@/components/hard-navigation-link";
 import { cn } from "@/lib/utils";
 
 type NeighborNavigationDataAttributes = Record<`data-${string}`, string | number | boolean | undefined>;
@@ -22,6 +23,7 @@ type NeighborNavigationControlProps = {
   onClick?: () => void;
   onNavigate?: (href: string, direction: "previous" | "next") => void;
   renderLink?: (props: NeighborNavigationLinkRenderProps) => ReactNode;
+  hardNavigation?: boolean;
   label?: ReactNode;
   title?: string;
   ariaLabel?: string;
@@ -39,6 +41,7 @@ export type NeighborNavigationProps = {
   nextOnClick?: () => void;
   onNavigate?: (href: string, direction: "previous" | "next") => void;
   renderLink?: (props: NeighborNavigationLinkRenderProps) => ReactNode;
+  hardNavigation?: boolean;
   previousLabel?: ReactNode;
   nextLabel?: ReactNode;
   previousTitle?: string;
@@ -67,6 +70,7 @@ function NeighborNavigationControl({
   onClick,
   onNavigate,
   renderLink,
+  hardNavigation,
   label,
   title,
   ariaLabel,
@@ -139,8 +143,10 @@ function NeighborNavigationControl({
 
     const navigateProps = onNavigate ? { onClick: handleNavigate } : {};
 
+    const NavigationLink = hardNavigation ? HardNavigationLink : Link;
+
     return (
-      <Link
+      <NavigationLink
         href={href}
         title={title}
         aria-label={ariaLabel}
@@ -149,7 +155,7 @@ function NeighborNavigationControl({
         {...navigateProps}
       >
         {content}
-      </Link>
+      </NavigationLink>
     );
   }
 
@@ -174,6 +180,7 @@ export function NeighborNavigation({
   nextOnClick,
   onNavigate,
   renderLink,
+  hardNavigation = false,
   previousLabel = "上一项",
   nextLabel = "下一项",
   previousTitle,
@@ -198,6 +205,7 @@ export function NeighborNavigation({
         onClick={previousOnClick}
         onNavigate={onNavigate}
         renderLink={renderLink}
+        hardNavigation={hardNavigation}
         label={previousLabel}
         title={previousTitle}
         ariaLabel={previousAriaLabel}
@@ -216,6 +224,7 @@ export function NeighborNavigation({
         onClick={nextOnClick}
         onNavigate={onNavigate}
         renderLink={renderLink}
+        hardNavigation={hardNavigation}
         label={nextLabel}
         title={nextTitle}
         ariaLabel={nextAriaLabel}

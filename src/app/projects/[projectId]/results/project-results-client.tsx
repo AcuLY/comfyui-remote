@@ -7,7 +7,6 @@ import {
   useState,
   useTransition,
 } from "react";
-import Link from "next/link";
 import {
   ArrowLeft,
   ChevronDown,
@@ -25,6 +24,7 @@ import {
 import { toast } from "sonner";
 
 import type { ProjectResultsData } from "@/lib/server-data";
+import { HardNavigationLink } from "@/components/hard-navigation-link";
 import { useScrollSpy } from "@/hooks/use-scroll-spy";
 import { getPreferredScrollContainer } from "@/lib/scroll-container";
 import { NeighborNavigation } from "@/components/neighbor-navigation";
@@ -93,13 +93,13 @@ function ProjectResultsSidebar({
       className="border-r border-white/5"
     >
       <SidebarHeader className="gap-1.5 px-3.5 py-3 group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:px-2">
-        <Link
+        <HardNavigationLink
           href={`/projects/${project.id}`}
           className="inline-flex items-center gap-1.5 text-xs text-zinc-400 transition hover:text-zinc-200 group-data-[collapsible=icon]:justify-center"
         >
           <ArrowLeft className="size-3.5" />
           {isExpanded && <span>返回项目详情</span>}
-        </Link>
+        </HardNavigationLink>
         {isExpanded && (
           <div className="mt-1 space-y-2 rounded-xl border border-sky-500/15 bg-sky-500/[0.06] px-3 py-2 shadow-inner shadow-sky-500/5">
             <p className="text-[10px] text-sky-300/70">项目结果</p>
@@ -109,6 +109,7 @@ function ProjectResultsSidebar({
             <NeighborNavigation
               previousHref={project.previousProject ? `/projects/${project.previousProject.id}/results` : null}
               nextHref={project.nextProject ? `/projects/${project.nextProject.id}/results` : null}
+              hardNavigation
               previousLabel={null}
               nextLabel={null}
               previousTitle={project.previousProject ? `上一个项目：${project.previousProject.title}` : "没有上一个项目"}
@@ -337,13 +338,13 @@ function SectionResultsBlock({
             )}
           </div>
         </div>
-        <Link
+        <HardNavigationLink
           href={`/projects/${projectId}/sections/${section.id}/results`}
           className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-sky-500/20 bg-sky-500/10 px-3 py-1.5 text-xs text-sky-300 transition hover:bg-sky-500/20"
         >
           <ClipboardCheck className="size-3.5" />
           小节审核
-        </Link>
+        </HardNavigationLink>
       </div>
 
       {section.imageCount === 0 ? (

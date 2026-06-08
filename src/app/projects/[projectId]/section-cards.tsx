@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useTransition, useId } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   DndContext,
@@ -30,6 +29,7 @@ import {
 import { moveProjectSectionsToFolder, reorderSections, deleteSections } from "@/lib/actions";
 import { toast } from "sonner";
 import type { FolderItem } from "@/lib/server-data";
+import { HardNavigationLink } from "@/components/hard-navigation-link";
 import { BatchActionBar, MoveToFolderButton } from "@/app/assets/presets/folder-components";
 import { SectionRunButton } from "./project-detail-actions";
 import { CopySectionButton, DeleteSectionButton } from "./section-actions";
@@ -335,14 +335,14 @@ function SortableCompactCard({
         <GripVertical className="size-3.5" />
       </button>
 
-      <Link
+      <HardNavigationLink
         href={`/projects/${projectId}/sections/${section.id}`}
         className="flex min-w-0 flex-1 items-center gap-2"
       >
         <span className="min-w-0 text-xs font-semibold text-white line-clamp-2">
           {index + 1}. {section.name}
         </span>
-      </Link>
+      </HardNavigationLink>
 
       <div className="flex shrink-0 items-center gap-2">
         <MoveToFolderButton currentFolderId={section.folderId} folders={folders} onMove={onMove} />
@@ -409,14 +409,14 @@ function SortableSectionCard({
           <GripVertical className="size-4" />
         </button>
 
-        <Link
+        <HardNavigationLink
           href={`/projects/${projectId}/sections/${section.id}`}
           className="min-w-0 flex-1 cursor-pointer"
         >
           <span className="text-xs font-medium text-white line-clamp-2 sm:text-sm">
             {index + 1}. {section.name}
           </span>
-        </Link>
+        </HardNavigationLink>
 
         <div className="flex shrink-0 items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
           <MoveToFolderButton currentFolderId={section.folderId} folders={folders} onMove={onMove} />
@@ -442,18 +442,18 @@ function SortableSectionCard({
               )}
             </span>
             {section.latestRunId && (
-              <Link
+              <HardNavigationLink
                 href={`/projects/${projectId}/sections/${section.id}/results`}
                 className="ml-auto text-sky-400 hover:text-sky-300"
                 onClick={(e) => e.stopPropagation()}
               >
                 查看全部
-              </Link>
+              </HardNavigationLink>
             )}
           </div>
           <div className="flex gap-1.5 overflow-x-auto scrollbar-none">
             {section.latestImages.slice(0, 8).map((img) => (
-              <Link
+              <HardNavigationLink
                 key={img.id}
                 href={section.latestRunId ? `/queue/${section.latestRunId}` : "#"}
                 onClick={(e) => e.stopPropagation()}
@@ -477,7 +477,7 @@ function SortableSectionCard({
                     kept
                   </div>
                 )}
-              </Link>
+              </HardNavigationLink>
             ))}
             {section.latestImageCount > 8 && (
               <div className="flex shrink-0 items-center justify-center rounded-lg border border-white/5 bg-white/[0.02] px-3 text-[10px] text-zinc-500">

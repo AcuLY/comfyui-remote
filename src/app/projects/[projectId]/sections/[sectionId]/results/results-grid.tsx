@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition, useEffect, useCallback } from "react";
 import {
@@ -20,6 +19,7 @@ import {
 import { toast } from "sonner";
 import { keepImages, trashImages, runSection, censorImage } from "@/lib/actions";
 import { BatchSizeQuickFill } from "@/components/batch-size-quick-fill";
+import { HardNavigationLink } from "@/components/hard-navigation-link";
 import { ResultsGalleryProvider } from "./results-gallery";
 
 const RUN_STATUS_BADGE: Record<string, string> = {
@@ -324,14 +324,14 @@ export function ResultsGrid({
                       {isRunFullySelected ? "取消全选" : "全选"}
                     </button>
                   )}
-                  <Link
+                  <HardNavigationLink
                     href={`/queue/${run.id}`}
                     className="inline-flex items-center gap-1 rounded-lg border border-sky-500/20 bg-sky-500/10 px-2 py-1 text-[10px] text-sky-300 transition hover:bg-sky-500/20"
                     onClick={(event) => event.stopPropagation()}
                   >
                     <ClipboardCheck className="size-3" />
                     跳转至审核
-                  </Link>
+                  </HardNavigationLink>
                 </div>
 
                 {/* Image grid */}

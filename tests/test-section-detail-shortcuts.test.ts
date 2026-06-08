@@ -42,8 +42,8 @@ test("project section detail page wires s/f shortcuts to previous and next secti
   );
   assert.match(
     shortcutSource,
-    /saveSectionSwitchScroll\(projectId\)[\s\S]*router\.push\(href, \{ scroll: false \}\)/,
-    "s/f shortcuts should preserve scroll behavior used by section navigation",
+    /saveSectionSwitchScroll\(projectId\)[\s\S]*window\.location\.assign\(href\)/,
+    "s/f shortcuts should preserve scroll state before document navigation",
   );
   assert.match(
     shortcutSource,
