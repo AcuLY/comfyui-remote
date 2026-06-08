@@ -7,6 +7,7 @@ import { ArrowLeft, Repeat2, Save, Trash2, X } from "lucide-react";
 import { NeighborNavigation } from "@/components/neighbor-navigation";
 import { PresetCascadePicker } from "@/components/preset-cascade-picker";
 import type { PresetCategoryFull, PresetGroupItem, PresetVariantItem } from "@/lib/server-data";
+import { buildPresetGroupMemberLayout } from "@/lib/preset-group-slot-layout";
 import {
   addGroupMember,
   deletePresetGroup,
@@ -115,6 +116,8 @@ export function PresetGroupEditClient({
   const previousGroupHref = previousGroup?.id ? `/assets/preset-groups/${previousGroup.id}` : null;
   const nextGroupHref = nextGroup?.id ? `/assets/preset-groups/${nextGroup.id}` : null;
   const groupPositionText = groupPosition >= 0 ? `${groupPosition + 1} / ${totalGroups}` : null;
+  const currentCategory = categories.find((category) => category.id === currentGroup.categoryId) ??
+    categories.find((category) => category.id === categoryId);
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -178,6 +181,16 @@ export function PresetGroupEditClient({
     }
     return map;
   }, [categories]);
+
+  const categoryLookup = useMemo(() => new Map(categories.map((cat) => [cat.id, cat])), [categories]);
+
+  const memberRows = useMemo(() =>
+    buildPresetGroupMemberLayout({
+      slots: currentCategory?.slotTemplate ?? [],
+      members: currentGroup.members,
+      getMemberCategoryId: (member) => member.presetId ? presetCategoryLookup.get(member.presetId) : null,
+    }),
+  [currentCategory, currentGroup.members, presetCategoryLookup]);
 
   // Group non-sub-group members by their preset's category sortOrder
   const previewGroups = useMemo(() => {
@@ -244,6 +257,29 @@ export function PresetGroupEditClient({
     });
   }
 
+  function addSlotMember(slotCategoryId: string, value: { presetId: string; variantId: string }) {
+    startTransition(async () => {
+      try {
+        const addedMember = await addGroupMember({
+          groupId: currentGroup.id,
+          presetId: value.presetId,
+          variantId: value.variantId,
+          slotCategoryId,
+        });
+        setCurrentGroup((current) => ({
+          ...current,
+          members: sortGroupMembers([
+            ...current.members,
+            toGroupMemberDisplay(addedMember, categories, groups),
+          ]),
+        }));
+        toast.success("成员已添加");
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "添加成员失败");
+      }
+    });
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
@@ -277,22 +313,77 @@ export function PresetGroupEditClient({
 
         <div className="space-y-2 rounded-xl border border-white/10 bg-black/10 p-3">
           <div className="text-xs font-medium text-zinc-200">成员</div>
-          {currentGroup.members.length === 0 ? (
+          {memberRows.length === 0 ? (
             <div className="rounded-lg border border-dashed border-white/10 py-5 text-center text-[11px] text-zinc-600">
               暂无成员
             </div>
           ) : (
             <div className="space-y-1.5">
-              {currentGroup.members.map((member) => {
+              {memberRows.map((row) => {
+                if (row.kind === "slot" && !row.member) {
+                  const slotCategory = categoryLookup.get(row.slot.categoryId);
+                  const slotLabel = row.slot.label ?? slotCategory?.name ?? `槽位 ${row.slotIndex + 1}`;
+                  return (
+                    <div
+                      key={row.key}
+                      className="flex items-center justify-between gap-2 rounded-lg border border-dashed border-white/10 bg-white/[0.015] px-3 py-2"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-xs text-zinc-300">{slotLabel}</div>
+                        <div className="truncate text-[10px] text-zinc-600">
+                          {slotCategory ? `固定分类：${slotCategory.name}` : "固定槽位"}
+                        </div>
+                      </div>
+                      <div
+                        className="w-48 shrink-0"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                        }}
+                      >
+                        <PresetCascadePicker
+                          categories={categories}
+                          value={null}
+                          onChange={(value) => {
+                            if (!value) return;
+                            addSlotMember(row.slot.categoryId, {
+                              presetId: value.presetId,
+                              variantId: value.variantId,
+                            });
+                          }}
+                          lockedCategoryId={row.slot.categoryId}
+                          placeholder={`选择${slotCategory?.name ?? "预制"}...`}
+                          disabled={isPending}
+                          presetCategoriesOnly
+                        />
+                      </div>
+                    </div>
+                  );
+                }
+
+                const member = row.member;
+                if (!member) return null;
                 const presetHref = member.presetId ? `/assets/presets/${member.presetId}` : null;
-                const memberCategoryId = member.presetId ? presetCategoryLookup.get(member.presetId) : undefined;
+                const memberCategoryId = row.kind === "slot"
+                  ? row.slot.categoryId
+                  : member.presetId
+                    ? presetCategoryLookup.get(member.presetId)
+                    : undefined;
+                const slotCategory = row.kind === "slot" ? categoryLookup.get(row.slot.categoryId) : null;
+                const slotLabel = row.kind === "slot"
+                  ? row.slot.label ?? slotCategory?.name ?? `槽位 ${row.slotIndex + 1}`
+                  : null;
                 const title = (
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-xs text-zinc-200">
                       {member.subGroupName ?? member.presetName ?? "未知成员"}
                     </div>
                     <div className="truncate text-[10px] text-zinc-500">
-                      {member.subGroupName ? "子组" : member.variantName ? `变体：${member.variantName}` : "默认变体"}
+                      {slotLabel
+                        ? `${slotLabel} · ${member.variantName ? `变体：${member.variantName}` : "默认变体"}`
+                        : member.subGroupName
+                          ? "子组"
+                          : member.variantName ? `变体：${member.variantName}` : "默认变体"}
                     </div>
                   </div>
                 );
@@ -352,6 +443,7 @@ export function PresetGroupEditClient({
                               lockedCategoryId={memberCategoryId}
                               placeholder="替换成员..."
                               disabled={isPending}
+                              presetCategoriesOnly
                               defaultOpen
                             />
                           </div>

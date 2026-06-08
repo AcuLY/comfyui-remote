@@ -15,7 +15,7 @@ export function AddGroupMemberForm({
   groupId: string;
   categories: PresetCategoryFull[];
   groups: PresetGroupItem[];
-  onAdd: (input: { groupId: string; presetId?: string; variantId?: string; subGroupId?: string }) => void;
+  onAdd: (input: { groupId: string; presetId?: string; variantId?: string; subGroupId?: string; slotCategoryId?: string }) => void;
   isPending: boolean;
 }) {
   const [mode, setMode] = useState<"preset" | "group">("preset");
