@@ -72,6 +72,18 @@ test("runtime source no longer reads or writes editable legacy redundancy fields
   assert.deepEqual(violations, []);
 });
 
+test("section run parameter history does not select removed section loraConfig storage", async () => {
+  const source = await readFile("src/server/services/project-service.ts", "utf8");
+  const runParamSelect = source.match(/const SECTION_RUN_PARAM_SELECT = \{[\s\S]*?\n\} as const;/);
+
+  assert.notEqual(runParamSelect, null, "SECTION_RUN_PARAM_SELECT exists");
+  assert.equal(
+    /\bloraConfig\s*:\s*true\b/.test(runParamSelect![0]),
+    false,
+    "run parameter history must not select ProjectSection.loraConfig",
+  );
+});
+
 function readModelSource(schema: string, modelName: string, schemaFile: string) {
   const match = schema.match(new RegExp(`model ${modelName} \\{\\n([\\s\\S]*?)\\n\\}`));
   assert.notEqual(match, null, `${modelName} exists in ${schemaFile}`);

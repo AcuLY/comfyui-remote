@@ -107,7 +107,6 @@ const SECTION_RUN_PARAM_FIELDS = [
   "ksampler2",
   "upscaleFactor",
   "checkpointName",
-  "loraConfig",
 ] as const;
 
 const SECTION_RUN_PARAM_SELECT = {
@@ -119,7 +118,6 @@ const SECTION_RUN_PARAM_SELECT = {
   ksampler1: true,
   ksampler2: true,
   upscaleFactor: true,
-  loraConfig: true,
   checkpointName: true,
 } as const;
 
