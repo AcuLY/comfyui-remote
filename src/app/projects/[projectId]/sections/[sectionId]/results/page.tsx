@@ -22,7 +22,6 @@ export default async function SectionResultsPage({
     notFound();
   }
 
-  const totalImages = data.runs.reduce((sum, run) => sum + run.images.length, 0);
   const returnHref = hrefWithFolderQuery(
     `/projects/${projectId}`,
     "sectionFolder",
@@ -82,7 +81,7 @@ export default async function SectionResultsPage({
       {/* Title */}
       <SectionCard
         title={`${data.sectionName} — 审核`}
-        subtitle={`${data.projectTitle} · ${data.runs.length} 次运行 · ${totalImages} 张图片${data.totalPending > 0 ? ` · ${data.totalPending} 张待审` : ""}`}
+        subtitle={`${data.projectTitle} · ${data.runs.length} 次运行`}
       >
         <ResultsGrid
           key={`${sectionId}:${data.batchSize ?? 2}`}

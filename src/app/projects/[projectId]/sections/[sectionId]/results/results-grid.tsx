@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useState, useTransition, useEffect, useCallback } from "react";
+import { useState, useTransition, useEffect, useCallback, useMemo } from "react";
 import {
   Check,
   CheckSquare,
@@ -77,11 +77,15 @@ export function ResultsGrid({
   }, [isPending, router, sectionId, startTransition, tempBatchSize]);
 
   // Flatten all images for the lightbox
-  const allImages = runs.flatMap((run) =>
-    run.images.map((img) => ({
-      ...img,
-      runIndex: run.runIndex,
-    })),
+  const allImages = useMemo(
+    () =>
+      runs.flatMap((run) =>
+        run.images.map((img) => ({
+          ...img,
+          runIndex: run.runIndex,
+        })),
+      ),
+    [runs],
   );
 
   function toggleSelect(id: string, e?: React.MouseEvent) {
@@ -246,14 +250,17 @@ export function ResultsGrid({
       allImages={allImages}
       onUndo={handleUndo}
     >
-      {({ openLightbox, isFeatured, isFeatured2, isCover }) => {
+      {({ openImageLightbox, getImage, imageCount, pendingImageCount, isFeatured, isFeatured2, isCover }) => {
         return (
         <div className="space-y-6">
           <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
                 <div className="text-xs font-medium text-zinc-300">临时运行</div>
-                <div className="mt-0.5 text-[11px] text-zinc-500">Batch {tempBatchSize}</div>
+                <div className="mt-0.5 text-[11px] text-zinc-500">
+                  Batch {tempBatchSize} · {imageCount} 张图片
+                  {pendingImageCount > 0 ? ` · ${pendingImageCount} 张待审` : ""}
+                </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-[10px] uppercase text-zinc-500">Batch</span>
@@ -286,9 +293,12 @@ export function ResultsGrid({
 
           {/* Image grid by run */}
           {runs.map((run) => {
-            const runPendingImages = run.images.filter((img) => img.status === "pending");
-            const runImageIds = run.images.map((img) => img.id);
-            const runSelectedIds = run.images.filter((img) => selected.has(img.id)).map((img) => img.id);
+            const runImages = run.images
+              .map((image) => getImage(image.id))
+              .filter((image): image is NonNullable<ReturnType<typeof getImage>> => Boolean(image));
+            const runPendingImages = runImages.filter((img) => img.status === "pending");
+            const runImageIds = runImages.map((img) => img.id);
+            const runSelectedIds = runImages.filter((img) => selected.has(img.id)).map((img) => img.id);
             const runSelectedCount = runSelectedIds.length;
             const isRunFullySelected = runImageIds.length > 0 && runImageIds.every((id) => selected.has(id));
 
@@ -314,7 +324,7 @@ export function ResultsGrid({
                       {runPendingImages.length} 张待审
                     </span>
                   )}
-                  {run.images.length > 0 && (
+                  {runImages.length > 0 && (
                     <button
                       type="button"
                       onClick={() => toggleRunSelect(runImageIds)}
@@ -335,16 +345,13 @@ export function ResultsGrid({
                 </div>
 
                 {/* Image grid */}
-                {run.images.length === 0 ? (
+                {runImages.length === 0 ? (
                   <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4 text-center text-[11px] text-zinc-600">
                     无图片
                   </div>
                 ) : (
                   <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 md:grid-cols-5">
-                    {run.images.map((img) => {
-                      const globalIndex = allImages.findIndex(
-                        (a) => a.id === img.id
-                      );
+                    {runImages.map((img) => {
                       const featured = isFeatured(img.id);
                       const featured2 = isFeatured2(img.id);
                       const cover = isCover(img.id);
@@ -359,7 +366,7 @@ export function ResultsGrid({
                                 ? "border-emerald-500/30 hover:border-sky-500/40"
                                 : "border-white/10 hover:border-sky-500/40"
                           }`}
-                          onClick={() => openLightbox(globalIndex)}
+                          onClick={() => openImageLightbox(img.id)}
                         >
                           {/* Checkbox */}
                           <button
@@ -423,7 +430,7 @@ export function ResultsGrid({
                 )}
 
                 {/* Batch action buttons — one set per run */}
-                {run.images.length > 0 && (
+                {runImages.length > 0 && (
                   <div className="mt-2 grid grid-cols-3 gap-2">
                     <button
                       onClick={() => {
@@ -492,8 +499,8 @@ export function ResultsGrid({
                       onClick={() => {
                         // Censor selected kept/pending images; without a selection, censor uncensored kept/pending images in this run.
                         const targetIds = runSelectedIds.length > 0
-                          ? run.images.filter((img) => runSelectedIds.includes(img.id) && (img.status === "kept" || img.status === "pending")).map((img) => img.id)
-                          : run.images.filter((img) => (img.status === "kept" || img.status === "pending") && !img.censoredAt).map((img) => img.id);
+                          ? runImages.filter((img) => runSelectedIds.includes(img.id) && (img.status === "kept" || img.status === "pending")).map((img) => img.id)
+                          : runImages.filter((img) => (img.status === "kept" || img.status === "pending") && !img.censoredAt).map((img) => img.id);
                         if (targetIds.length === 0) {
                           toast.info("没有需要打码的图片");
                           return;
@@ -522,8 +529,8 @@ export function ResultsGrid({
                       {isPending
                         ? "处理中…"
                         : runSelectedCount > 0
-                          ? `打码 (${run.images.filter((img) => runSelectedIds.includes(img.id) && (img.status === "kept" || img.status === "pending")).length})`
-                          : `打码 (${run.images.filter((img) => img.status === "kept" && !img.censoredAt).length})`}
+                          ? `打码 (${runImages.filter((img) => runSelectedIds.includes(img.id) && (img.status === "kept" || img.status === "pending")).length})`
+                          : `打码 (${runImages.filter((img) => img.status === "kept" && !img.censoredAt).length})`}
                     </button>
                   </div>
                 )}

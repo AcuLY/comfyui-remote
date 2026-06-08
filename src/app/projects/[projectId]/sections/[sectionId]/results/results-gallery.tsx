@@ -4,6 +4,7 @@ import {
   useState,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useTransition,
   type ReactNode,
@@ -44,6 +45,10 @@ export function ResultsGalleryProvider({
   allImages: GalleryImage[];
   children: (ctx: {
     openLightbox: (index: number) => void;
+    openImageLightbox: (imageId: string) => void;
+    getImage: (imageId: string) => GalleryImage | null;
+    imageCount: number;
+    pendingImageCount: number;
     isFeatured: (imageId: string) => boolean;
     isFeatured2: (imageId: string) => boolean;
     isCover: (imageId: string) => boolean;
@@ -74,6 +79,18 @@ export function ResultsGalleryProvider({
   }, [initialImages]);
 
   const current = allImages[currentIndex];
+  const imageById = useMemo(
+    () => new Map(allImages.map((image) => [image.id, image])),
+    [allImages],
+  );
+  const imageIndexById = useMemo(
+    () => new Map(allImages.map((image, index) => [image.id, index])),
+    [allImages],
+  );
+  const pendingImageCount = useMemo(
+    () => allImages.reduce((count, image) => count + (image.status === "pending" ? 1 : 0), 0),
+    [allImages],
+  );
   const imageLoaded = current ? loadedImageIds.has(current.id) : false;
   const busy = Boolean(togglingMarker);
   const currentReviewingAction = current
@@ -386,6 +403,21 @@ export function ResultsGalleryProvider({
     [allImages],
   );
 
+  const openImageLightbox = useCallback(
+    (imageId: string) => {
+      const index = imageIndexById.get(imageId);
+      if (index === undefined) return;
+      setCurrentIndex(index);
+      setOpen(true);
+    },
+    [imageIndexById],
+  );
+
+  const getImage = useCallback(
+    (imageId: string) => imageById.get(imageId) ?? null,
+    [imageById],
+  );
+
   const toggleLightbox = useCallback(
     (index: number = 0) => {
       if (open) {
@@ -410,23 +442,32 @@ export function ResultsGalleryProvider({
   const reviewingAction = currentReviewingAction;
 
   const isFeatured = useCallback(
-    (imageId: string) => allImages.find((img) => img.id === imageId)?.featured ?? false,
-    [allImages],
+    (imageId: string) => imageById.get(imageId)?.featured ?? false,
+    [imageById],
   );
 
   const isFeatured2 = useCallback(
-    (imageId: string) => allImages.find((img) => img.id === imageId)?.featured2 ?? false,
-    [allImages],
+    (imageId: string) => imageById.get(imageId)?.featured2 ?? false,
+    [imageById],
   );
 
   const isCover = useCallback(
-    (imageId: string) => allImages.find((img) => img.id === imageId)?.cover ?? false,
-    [allImages],
+    (imageId: string) => imageById.get(imageId)?.cover ?? false,
+    [imageById],
   );
 
   return (
     <>
-      {children({ openLightbox, isFeatured, isFeatured2, isCover })}
+      {children({
+        openLightbox,
+        openImageLightbox,
+        getImage,
+        imageCount: allImages.length,
+        pendingImageCount,
+        isFeatured,
+        isFeatured2,
+        isCover,
+      })}
 
       {open && current && (
         <div

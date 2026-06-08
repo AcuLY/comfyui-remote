@@ -126,6 +126,102 @@ test("section results lightbox navigates optimistically before awaiting review a
   );
 });
 
+test("section results thumbnail list reads the same optimistic image state as the lightbox", () => {
+  const gallerySource = readFileSync(
+    "src/app/projects/[projectId]/sections/[sectionId]/results/results-gallery.tsx",
+    "utf8",
+  );
+  const gridSource = readFileSync(
+    "src/app/projects/[projectId]/sections/[sectionId]/results/results-grid.tsx",
+    "utf8",
+  );
+  const pageSource = readFileSync(
+    "src/app/projects/[projectId]/sections/[sectionId]/results/page.tsx",
+    "utf8",
+  );
+  const childContext = sourceSlice(
+    gallerySource,
+    "children: (ctx: {",
+    "  onUndo?: () => Promise<void>;",
+  );
+  const renderChildren = sourceSlice(
+    gridSource,
+    "<ResultsGalleryProvider",
+    "</ResultsGalleryProvider>",
+  );
+  const runLoop = sourceSlice(
+    gridSource,
+    "{runs.map((run) => {",
+    "                {/* Batch action buttons",
+  );
+
+  assert.match(
+    childContext,
+    /getImage: \(imageId: string\) => GalleryImage \| null/,
+    "results gallery provider should expose current optimistic image state to the thumbnail list",
+  );
+  assert.match(
+    childContext,
+    /imageCount: number/,
+    "results gallery provider should expose the current optimistic total count",
+  );
+  assert.match(
+    childContext,
+    /pendingImageCount: number/,
+    "results gallery provider should expose the current optimistic pending count",
+  );
+  assert.match(
+    childContext,
+    /openImageLightbox: \(imageId: string\) => void/,
+    "results gallery provider should open the lightbox by current image id, not stale initial index",
+  );
+  assert.match(
+    renderChildren,
+    /getImage/,
+    "results grid should subscribe to the provider image lookup",
+  );
+  assert.match(
+    renderChildren,
+    /pendingImageCount/,
+    "results grid should render live counts from the provider state",
+  );
+  assert.match(
+    gridSource,
+    /const allImages = useMemo\(/,
+    "results grid should keep the provider initial image list stable across local UI renders",
+  );
+  assert.match(
+    renderChildren,
+    /openImageLightbox/,
+    "results grid should open images through the provider id lookup",
+  );
+  assert.match(
+    runLoop,
+    /const runImages = run\.images\s*\.map\(\(image\) => getImage\(image\.id\)\)/,
+    "results grid should derive run thumbnails from current provider state",
+  );
+  assert.doesNotMatch(
+    runLoop,
+    /run\.images\.map\(\(img\) => \{/,
+    "results grid should not render thumbnails from stale initial run images",
+  );
+  assert.match(
+    runLoop,
+    /onClick=\{\(\) => openImageLightbox\(img\.id\)\}/,
+    "thumbnail clicks should resolve the lightbox index from the current provider state",
+  );
+  assert.doesNotMatch(
+    pageSource,
+    /const totalImages = data\.runs\.reduce/,
+    "section results server page should not keep stale image totals outside the optimistic provider",
+  );
+  assert.doesNotMatch(
+    pageSource,
+    /data\.totalPending/,
+    "section results server page should not keep stale pending totals outside the optimistic provider",
+  );
+});
+
 test("single-image lightbox review actions use background API mutations", () => {
   const queueSource = readFileSync("src/app/queue/[runId]/review-grid.tsx", "utf8");
   const queueReviewLightboxImage = sourceSlice(
