@@ -6,6 +6,7 @@ import { SectionCard } from "@/components/section-card";
 import { getSectionResults } from "@/lib/server-data";
 import { hrefWithFolderQuery } from "@/lib/folder-navigation";
 import { ResultsGrid } from "./results-grid";
+import { ResultsRoutePrefetcher } from "./results-route-prefetcher";
 
 export const dynamic = "force-dynamic";
 
@@ -28,9 +29,15 @@ export default async function SectionResultsPage({
     data.sectionFolderId,
     `section-${sectionId}`,
   );
+  const sectionResultPrefetchHrefs = [
+    data.previousSection ? `/projects/${projectId}/sections/${data.previousSection.id}/results` : null,
+    data.nextSection ? `/projects/${projectId}/sections/${data.nextSection.id}/results` : null,
+    data.nextPendingSection ? `/projects/${projectId}/sections/${data.nextPendingSection.id}/results` : null,
+  ].filter((href): href is string => Boolean(href));
 
   return (
     <div className="space-y-4">
+      <ResultsRoutePrefetcher hrefs={[...new Set(sectionResultPrefetchHrefs)]} />
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link

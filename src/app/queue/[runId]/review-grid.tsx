@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { Check, ChevronRight, Eye, ImageIcon, Star, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { keepImages, trashImages } from "@/lib/actions";
+import { submitReviewMutation } from "@/lib/client-review-mutation";
 import {
   getLightboxPreloadCandidates,
   LIGHTBOX_PRELOAD_AHEAD,
@@ -33,10 +34,13 @@ export function ReviewGrid({
   /** Tracks the last bulk action so we can offer the complementary "handle rest" button. */
   const [lastAction, setLastAction] = useState<LastAction | null>(null);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
-  const [reviewingAction, setReviewingAction] = useState<LastAction | null>(null);
+  const [pendingReviewActions, setPendingReviewActions] = useState<Map<string, LastAction>>(new Map());
   const [togglingMarker, setTogglingMarker] = useState<MarkerField | null>(null);
-  const [loadedLightboxImageId, setLoadedLightboxImageId] = useState<string | null>(null);
+  const [loadedLightboxImageIds, setLoadedLightboxImageIds] = useState<Set<string>>(new Set());
   const optimisticReviewsRef = useRef<Map<string, LastAction>>(new Map());
+  const pendingReviewIdsRef = useRef<Set<string>>(new Set());
+  const preloadedUrlsRef = useRef<Set<string>>(new Set());
+  const preloadImagesRef = useRef<HTMLImageElement[]>([]);
 
   useEffect(() => {
     const reconciledImages = reconcileReviewImagesWithOptimisticReviews(
@@ -59,29 +63,44 @@ export function ReviewGrid({
     });
   }, [reviewImages.length]);
 
-  // Preload upcoming images when lightbox is open
-  const preloadedUrlsRef = useRef<Set<string>>(new Set());
+  const markLightboxImageLoaded = useCallback((imageId: string, full?: string) => {
+    if (full) {
+      preloadedUrlsRef.current.add(full);
+    }
+    setLoadedLightboxImageIds((prev) => {
+      if (prev.has(imageId)) return prev;
+      const next = new Set(prev);
+      next.add(imageId);
+      return next;
+    });
+  }, []);
+
+  // Preload upcoming images after the current full image has loaded.
   useEffect(() => {
     if (lightboxIndex === null) return;
 
     const currentLightboxImage = reviewImages[lightboxIndex];
     if (!currentLightboxImage) return;
-    if (loadedLightboxImageId !== currentLightboxImage.id) return;
+    if (!loadedLightboxImageIds.has(currentLightboxImage.id)) return;
 
-    const upcoming = getLightboxPreloadCandidates(
+    const preloadTargets = getLightboxPreloadCandidates(
       reviewImages,
       lightboxIndex,
       LIGHTBOX_PRELOAD_AHEAD,
     );
-    for (const img of upcoming) {
+
+    for (const img of preloadTargets) {
       if (!img.full || preloadedUrlsRef.current.has(img.full)) continue;
       const preload = new window.Image();
       preload.decoding = "async";
       preload.setAttribute("fetchpriority", "low");
+      preload.onload = () => markLightboxImageLoaded(img.id, img.full);
+      preload.onerror = () => markLightboxImageLoaded(img.id, img.full);
       preload.src = img.full;
       preloadedUrlsRef.current.add(img.full);
+      preloadImagesRef.current.push(preload);
     }
-  }, [loadedLightboxImageId, lightboxIndex, reviewImages]);
+  }, [lightboxIndex, loadedLightboxImageIds, markLightboxImageLoaded, reviewImages]);
 
   // Page-level shortcuts (lightbox closed)
   useEffect(() => {
@@ -108,7 +127,12 @@ export function ReviewGrid({
   const pendingImages = reviewImages.filter((img) => img.status === "pending");
   const selectedCount = selected.size;
   const lightboxImage = lightboxIndex === null ? null : reviewImages[lightboxIndex] ?? null;
-  const lightboxBusy = isPending || Boolean(reviewingAction || togglingMarker);
+  const lightboxBusy = Boolean(
+    togglingMarker || (lightboxImage && pendingReviewActions.has(lightboxImage.id)),
+  );
+  const lightboxReviewingAction = lightboxImage
+    ? pendingReviewActions.get(lightboxImage.id) ?? null
+    : null;
 
   /** IDs of images that are still pending **and** were NOT part of the last action selection. */
   const remainingPendingIds = pendingImages
@@ -156,6 +180,25 @@ export function ReviewGrid({
   function removeImages(ids: string[]) {
     const idSet = new Set(ids);
     setReviewImages((prev) => prev.filter((image) => !idSet.has(image.id)));
+  }
+
+  function addPendingReviewAction(imageId: string, action: LastAction) {
+    pendingReviewIdsRef.current.add(imageId);
+    setPendingReviewActions((prev) => {
+      const next = new Map(prev);
+      next.set(imageId, action);
+      return next;
+    });
+  }
+
+  function removePendingReviewAction(imageId: string) {
+    pendingReviewIdsRef.current.delete(imageId);
+    setPendingReviewActions((prev) => {
+      if (!prev.has(imageId)) return prev;
+      const next = new Map(prev);
+      next.delete(imageId);
+      return next;
+    });
   }
 
   function handleKeep() {
@@ -314,17 +357,18 @@ export function ReviewGrid({
 
   const reviewLightboxImage = useCallback(
     (action: LastAction) => {
-      if (!lightboxImage || lightboxBusy) return;
+      if (!lightboxImage || togglingMarker) return;
 
       const imageId = lightboxImage.id;
+      if (pendingReviewIdsRef.current.has(imageId)) return;
+
       const removedIndex = lightboxIndex ?? 0;
       const imageCount = reviewImages.length;
-      const previousImages = reviewImages;
-      const previousSelected = selected;
       const previousLastAction = lastAction;
       const previousOptimisticAction = optimisticReviewsRef.current.get(imageId);
+      const wasSelected = selected.has(imageId);
       optimisticReviewsRef.current.set(imageId, action);
-      setReviewingAction(action);
+      addPendingReviewAction(imageId, action);
 
       if (action === "keep") {
         markImagesKept([imageId]);
@@ -345,30 +389,35 @@ export function ReviewGrid({
       removeSelectedIds([imageId]);
       setLastAction(action);
 
-      startTransition(async () => {
-        try {
-          if (action === "keep") {
-            await keepImages([imageId], { revalidate: false });
-          } else {
-            await trashImages([imageId], { revalidate: false });
-          }
-        } catch (error) {
+      void submitReviewMutation(action, [imageId])
+        .catch((error) => {
           if (previousOptimisticAction) {
             optimisticReviewsRef.current.set(imageId, previousOptimisticAction);
           } else {
             optimisticReviewsRef.current.delete(imageId);
           }
-          setReviewImages(previousImages);
-          setSelected(previousSelected);
+          if (action === "keep") {
+            setReviewImages((prev) =>
+              prev.map((image) => (image.id === imageId ? lightboxImage : image)),
+            );
+          } else {
+            setReviewImages((prev) => {
+              if (prev.some((image) => image.id === imageId)) return prev;
+              const next = [...prev];
+              next.splice(Math.min(removedIndex, next.length), 0, lightboxImage);
+              return next;
+            });
+          }
+
+          if (wasSelected) {
+            setSelected((prev) => new Set(prev).add(imageId));
+          }
           setLastAction(previousLastAction);
-          setLightboxIndex(removedIndex);
           toast.error(error instanceof Error ? error.message : "审核失败");
-        } finally {
-          setReviewingAction(null);
-        }
-      });
+        })
+        .finally(() => removePendingReviewAction(imageId));
     },
-    [lastAction, lightboxBusy, lightboxImage, lightboxIndex, reviewImages, selected],
+    [lastAction, lightboxImage, lightboxIndex, reviewImages.length, selected, togglingMarker],
   );
 
   return (
@@ -471,8 +520,12 @@ export function ReviewGrid({
         imageIndex={lightboxIndex ?? 0}
         imageCount={reviewImages.length}
         busy={lightboxBusy}
-        reviewingAction={reviewingAction}
-        onImageLoaded={setLoadedLightboxImageId}
+        reviewingAction={lightboxReviewingAction}
+        preloadedImageIds={loadedLightboxImageIds}
+        onImageLoaded={(imageId) => {
+          const loadedImage = reviewImages.find((image) => image.id === imageId);
+          markLightboxImageLoaded(imageId, loadedImage?.full);
+        }}
         onClose={() => setLightboxIndex(null)}
         onPrev={goPrev}
         onNext={goNext}

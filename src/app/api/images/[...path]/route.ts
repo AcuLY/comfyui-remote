@@ -7,8 +7,10 @@
  */
 
 import { type NextRequest, NextResponse } from "next/server";
-import { readFile, stat } from "node:fs/promises";
+import { createReadStream } from "node:fs";
+import { stat } from "node:fs/promises";
 import path from "path";
+import { Readable } from "node:stream";
 
 const OUTPUT_BASE =
   process.env.OUTPUT_BASE_PATH ??
@@ -75,8 +77,6 @@ export async function GET(
       return NextResponse.json({ error: "Not a file" }, { status: 404 });
     }
 
-    const rawData = await readFile(resolved);
-
     const mimeMap: Record<string, string> = {
       ".png": "image/png",
       ".jpg": "image/jpeg",
@@ -85,9 +85,12 @@ export async function GET(
       ".gif": "image/gif",
     };
 
-    return new NextResponse(rawData, {
+    const stream = Readable.toWeb(createReadStream(resolved)) as ReadableStream<Uint8Array>;
+
+    return new NextResponse(stream, {
       headers: {
         "Content-Type": mimeMap[ext] ?? "application/octet-stream",
+        "Content-Length": String(fileStat.size),
         "Cache-Control": "public, max-age=86400, immutable",
       },
     });

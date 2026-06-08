@@ -11,10 +11,12 @@ import {
 import { useRouter } from "next/navigation";
 import { Check, ChevronLeft, ChevronRight, Eye, ImageIcon, Shield, Star, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
-import { keepImages, trashImages, censorImage } from "@/lib/actions";
+import { censorImage } from "@/lib/actions";
+import { submitReviewMutation } from "@/lib/client-review-mutation";
 import {
   getLightboxPreloadCandidates,
   LIGHTBOX_PRELOAD_AHEAD,
+  reconcileReviewImagesWithOptimisticReviews,
 } from "@/lib/review-lightbox-state";
 
 type GalleryImage = {
@@ -52,21 +54,32 @@ export function ResultsGalleryProvider({
   const [open, setOpen] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [allImages, setAllImages] = useState(initialImages);
-  const [loadedImageId, setLoadedImageId] = useState<string | null>(null);
+  const [loadedImageIds, setLoadedImageIds] = useState<Set<string>>(new Set());
   const [togglingMarker, setTogglingMarker] = useState<MarkerField | null>(null);
-  const [reviewingAction, setReviewingAction] = useState<ReviewAction | null>(null);
+  const [pendingReviewActions, setPendingReviewActions] = useState<Map<string, ReviewAction>>(new Map());
   const [showCensored, setShowCensored] = useState(false);
   const preloadedImageUrlsRef = useRef<Set<string>>(new Set());
   const preloadImagesRef = useRef<HTMLImageElement[]>([]);
+  const optimisticReviewsRef = useRef<Map<string, ReviewAction>>(new Map());
+  const pendingReviewIdsRef = useRef<Set<string>>(new Set());
   const [, startTransition] = useTransition();
 
   useEffect(() => {
-    setAllImages(initialImages);
+    setAllImages(
+      reconcileReviewImagesWithOptimisticReviews(
+        initialImages,
+        optimisticReviewsRef.current,
+      ),
+    );
   }, [initialImages]);
 
   const current = allImages[currentIndex];
-  const imageLoaded = current ? loadedImageId === current.id : false;
-  const busy = Boolean(togglingMarker || reviewingAction);
+  const imageLoaded = current ? loadedImageIds.has(current.id) : false;
+  const busy = Boolean(togglingMarker);
+  const currentReviewingAction = current
+    ? pendingReviewActions.get(current.id) ?? null
+    : null;
+  const currentReviewBusy = Boolean(currentReviewingAction);
 
   useEffect(() => {
     if (open && allImages.length === 0) setOpen(false);
@@ -75,25 +88,41 @@ export function ResultsGalleryProvider({
     }
   }, [allImages.length, currentIndex, open]);
 
+  const markImageLoaded = useCallback((image: Pick<GalleryImage, "id" | "full">) => {
+    if (image.full) {
+      preloadedImageUrlsRef.current.add(image.full);
+    }
+    setLoadedImageIds((prev) => {
+      if (prev.has(image.id)) return prev;
+      const next = new Set(prev);
+      next.add(image.id);
+      return next;
+    });
+  }, []);
+
   useEffect(() => {
     if (!open) return;
-    if (!current || !imageLoaded) return;
+    if (!current) return;
+    if (!loadedImageIds.has(current.id)) return;
 
-    const remainingImages = getLightboxPreloadCandidates(
+    const preloadTargets = getLightboxPreloadCandidates(
       allImages,
       currentIndex,
       LIGHTBOX_PRELOAD_AHEAD,
     );
-    for (const image of remainingImages) {
+
+    for (const image of preloadTargets) {
       if (!image.full || preloadedImageUrlsRef.current.has(image.full)) continue;
       const preloadImage = new window.Image();
       preloadImage.decoding = "async";
       preloadImage.setAttribute("fetchpriority", "low");
+      preloadImage.onload = () => markImageLoaded(image);
+      preloadImage.onerror = () => markImageLoaded(image);
       preloadImage.src = image.full;
       preloadedImageUrlsRef.current.add(image.full);
       preloadImagesRef.current.push(preloadImage);
     }
-  }, [allImages, current, currentIndex, imageLoaded, open]);
+  }, [allImages, current, currentIndex, loadedImageIds, markImageLoaded, open]);
 
   const goPrev = useCallback(() => {
     setCurrentIndex((index) => (index > 0 ? index - 1 : allImages.length - 1));
@@ -174,16 +203,37 @@ export function ResultsGalleryProvider({
     [allImages, busy, current, router, setImageMarker],
   );
 
+  function addPendingReviewAction(imageId: string, action: ReviewAction) {
+    pendingReviewIdsRef.current.add(imageId);
+    setPendingReviewActions((prev) => {
+      const next = new Map(prev);
+      next.set(imageId, action);
+      return next;
+    });
+  }
+
+  function removePendingReviewAction(imageId: string) {
+    pendingReviewIdsRef.current.delete(imageId);
+    setPendingReviewActions((prev) => {
+      if (!prev.has(imageId)) return prev;
+      const next = new Map(prev);
+      next.delete(imageId);
+      return next;
+    });
+  }
+
   const reviewCurrent = useCallback(
     (action: ReviewAction, autoNext = false) => {
       if (!current || busy) return;
 
       const imageId = current.id;
+      if (pendingReviewIdsRef.current.has(imageId)) return;
+
       const imageCount = allImages.length;
-      const previousImages = allImages;
-      const previousIndex = currentIndex;
-      const previousOpen = open;
-      setReviewingAction(action);
+      const removedIndex = currentIndex;
+      const previousOptimisticAction = optimisticReviewsRef.current.get(imageId);
+      optimisticReviewsRef.current.set(imageId, action);
+      addPendingReviewAction(imageId, action);
 
       if (action === "keep") {
         setAllImages((prev) =>
@@ -209,24 +259,32 @@ export function ResultsGalleryProvider({
         }
       }
 
-      startTransition(async () => {
-        try {
-          if (action === "keep") {
-            await keepImages([imageId], { revalidate: false });
+      void submitReviewMutation(action, [imageId])
+        .catch((error) => {
+          if (previousOptimisticAction) {
+            optimisticReviewsRef.current.set(imageId, previousOptimisticAction);
           } else {
-            await trashImages([imageId], { revalidate: false });
+            optimisticReviewsRef.current.delete(imageId);
           }
-        } catch (error) {
-          setAllImages(previousImages);
-          setCurrentIndex(previousIndex);
-          setOpen(previousOpen);
+
+          if (action === "keep") {
+            setAllImages((prev) =>
+              prev.map((image) => (image.id === imageId ? current : image)),
+            );
+          } else {
+            setAllImages((prev) => {
+              if (prev.some((image) => image.id === imageId)) return prev;
+              const next = [...prev];
+              next.splice(Math.min(removedIndex, next.length), 0, current);
+              return next;
+            });
+            setOpen(true);
+          }
           toast.error(error instanceof Error ? error.message : "审核失败");
-        } finally {
-          setReviewingAction(null);
-        }
-      });
+        })
+        .finally(() => removePendingReviewAction(imageId));
     },
-    [allImages, busy, current, currentIndex, goNext, open],
+    [allImages.length, busy, current, currentIndex, goNext],
   );
 
   useEffect(() => {
@@ -349,6 +407,8 @@ export function ResultsGalleryProvider({
     };
   }, [toggleLightbox]);
 
+  const reviewingAction = currentReviewingAction;
+
   const isFeatured = useCallback(
     (imageId: string) => allImages.find((img) => img.id === imageId)?.featured ?? false,
     [allImages],
@@ -454,8 +514,8 @@ export function ResultsGalleryProvider({
                 alt=""
                 loading="eager"
                 fetchPriority="high"
-                onLoad={() => setLoadedImageId(current.id)}
-                onError={() => setLoadedImageId(current.id)}
+                onLoad={() => markImageLoaded(current)}
+                onError={() => markImageLoaded(current)}
                 className={`max-h-[calc(100dvh-11rem)] max-w-full rounded-lg object-contain transition-opacity duration-150 ${
                   imageLoaded ? "opacity-100" : "opacity-0"
                 }`}
@@ -482,7 +542,7 @@ export function ResultsGalleryProvider({
           >
             <button
               type="button"
-              disabled={busy}
+              disabled={busy || currentReviewBusy}
               onClick={() => reviewCurrent("keep", true)}
               className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-emerald-400/25 bg-emerald-500/12 px-3 text-sm font-medium text-emerald-200 transition hover:bg-emerald-500/20 disabled:opacity-45"
             >
@@ -491,7 +551,7 @@ export function ResultsGalleryProvider({
             </button>
             <button
               type="button"
-              disabled={busy}
+              disabled={busy || currentReviewBusy}
               onClick={() => reviewCurrent("trash", true)}
               className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-rose-400/25 bg-rose-500/12 px-3 text-sm font-medium text-rose-200 transition hover:bg-rose-500/20 disabled:opacity-45"
             >

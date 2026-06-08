@@ -1,13 +1,11 @@
-import type { ReviewImage } from "@/lib/types";
-
 export type OptimisticReviewAction = "keep" | "trash";
 export type OptimisticReviewState = ReadonlyMap<string, OptimisticReviewAction>;
-export const LIGHTBOX_PRELOAD_AHEAD = 2;
+export const LIGHTBOX_PRELOAD_AHEAD = 4;
 
-export function reconcileReviewImagesWithOptimisticReviews(
-  images: ReviewImage[],
+export function reconcileReviewImagesWithOptimisticReviews<T extends { id: string; status: string }>(
+  images: T[],
   optimisticReviews: OptimisticReviewState,
-): ReviewImage[] {
+): T[] {
   if (optimisticReviews.size === 0) {
     return images;
   }
@@ -18,7 +16,7 @@ export function reconcileReviewImagesWithOptimisticReviews(
       return [];
     }
     if (optimisticAction === "keep") {
-      return [{ ...image, status: "kept" }];
+      return [{ ...image, status: "kept" } as T];
     }
     return [image];
   });

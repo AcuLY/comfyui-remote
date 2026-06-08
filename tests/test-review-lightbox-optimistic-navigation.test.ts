@@ -49,8 +49,8 @@ test("queue review lightbox navigates optimistically before awaiting review acti
   assertBefore(
     reviewLightboxImage,
     "setLightboxIndex((idx)",
-    "await keepImages([imageId],",
-    "queue keep should advance the lightbox before waiting for the server action",
+    "submitReviewMutation(action, [imageId])",
+    "queue keep should advance the lightbox before submitting the background mutation",
   );
   assert.match(
     reviewLightboxImage,
@@ -60,8 +60,8 @@ test("queue review lightbox navigates optimistically before awaiting review acti
   assertBefore(
     reviewLightboxImage,
     "removeImages([imageId])",
-    "await trashImages([imageId],",
-    "queue trash should remove/advance the lightbox before waiting for the server action",
+    "submitReviewMutation(action, [imageId])",
+    "queue trash should remove/advance the lightbox before submitting the background mutation",
   );
 });
 
@@ -114,18 +114,18 @@ test("section results lightbox navigates optimistically before awaiting review a
   assertBefore(
     reviewCurrent,
     "goNext();",
-    "await keepImages([imageId],",
-    "section results keep should advance the lightbox before waiting for the server action",
+    "submitReviewMutation(action, [imageId])",
+    "section results keep should advance the lightbox before submitting the background mutation",
   );
   assertBefore(
     reviewCurrent,
     "setAllImages((prev) => prev.filter((image) => image.id !== imageId))",
-    "await trashImages([imageId],",
-    "section results trash should remove/advance the lightbox before waiting for the server action",
+    "submitReviewMutation(action, [imageId])",
+    "section results trash should remove/advance the lightbox before submitting the background mutation",
   );
 });
 
-test("single-image lightbox review actions do not refresh the whole page", () => {
+test("single-image lightbox review actions use background API mutations", () => {
   const queueSource = readFileSync("src/app/queue/[runId]/review-grid.tsx", "utf8");
   const queueReviewLightboxImage = sourceSlice(
     queueSource,
@@ -141,6 +141,8 @@ test("single-image lightbox review actions do not refresh the whole page", () =>
     "const reviewCurrent = useCallback",
     "  useEffect(() => {",
   );
+  const clientMutationSource = readFileSync("src/lib/client-review-mutation.ts", "utf8");
+  const routeSource = readFileSync("src/app/api/image-review/route.ts", "utf8");
 
   assert.doesNotMatch(
     queueReviewLightboxImage,
@@ -149,13 +151,13 @@ test("single-image lightbox review actions do not refresh the whole page", () =>
   );
   assert.match(
     queueReviewLightboxImage,
-    /await keepImages\(\[imageId\],\s*\{\s*revalidate:\s*false\s*\}\)/,
-    "queue lightbox keep should skip server-action revalidation",
+    /submitReviewMutation\(action,\s*\[imageId\]\)/,
+    "queue lightbox review should submit through the background review API",
   );
-  assert.match(
+  assert.doesNotMatch(
     queueReviewLightboxImage,
-    /await trashImages\(\[imageId\],\s*\{\s*revalidate:\s*false\s*\}\)/,
-    "queue lightbox trash should skip server-action revalidation",
+    /await (?:keepImages|trashImages)\(\[imageId\]/,
+    "queue lightbox review should not block on direct Server Action calls",
   );
   assert.doesNotMatch(
     sectionReviewCurrent,
@@ -164,13 +166,77 @@ test("single-image lightbox review actions do not refresh the whole page", () =>
   );
   assert.match(
     sectionReviewCurrent,
-    /await keepImages\(\[imageId\],\s*\{\s*revalidate:\s*false\s*\}\)/,
-    "section results lightbox keep should skip server-action revalidation",
+    /submitReviewMutation\(action,\s*\[imageId\]\)/,
+    "section results lightbox review should submit through the background review API",
+  );
+  assert.doesNotMatch(
+    sectionReviewCurrent,
+    /await (?:keepImages|trashImages)\(\[imageId\]/,
+    "section results lightbox review should not block on direct Server Action calls",
+  );
+  assert.match(
+    clientMutationSource,
+    /fetch\("\/api\/image-review"/,
+    "client review mutation helper should call the dedicated API route",
+  );
+  assert.match(
+    routeSource,
+    /await keepImages\(imageIds,\s*\{\s*revalidate:\s*false\s*\}\)/,
+    "review API should keep images without path revalidation",
+  );
+  assert.match(
+    routeSource,
+    /await trashImages\(imageIds,\s*\{\s*revalidate:\s*false\s*\}\)/,
+    "review API should trash images without path revalidation",
+  );
+});
+
+test("single-image review controls do not use one global pending lock", () => {
+  const queueSource = readFileSync("src/app/queue/[runId]/review-grid.tsx", "utf8");
+  const queueBusySource = sourceSlice(
+    queueSource,
+    "  const lightboxBusy =",
+    "  /** IDs",
+  );
+  const queueReviewLightboxImage = sourceSlice(
+    queueSource,
+    "const reviewLightboxImage = useCallback",
+    "  return (",
+  );
+  const sectionSource = readFileSync(
+    "src/app/projects/[projectId]/sections/[sectionId]/results/results-gallery.tsx",
+    "utf8",
+  );
+  const sectionBusySource = sourceSlice(
+    sectionSource,
+    "  const busy =",
+    "  useEffect(() => {",
+  );
+  const sectionReviewCurrent = sourceSlice(
+    sectionSource,
+    "const reviewCurrent = useCallback",
+    "  useEffect(() => {",
+  );
+
+  assert.doesNotMatch(
+    queueBusySource,
+    /isPending/,
+    "queue lightbox should not disable review controls for unrelated pending mutations",
+  );
+  assert.match(
+    queueReviewLightboxImage,
+    /pendingReviewIdsRef\.current\.has\(imageId\)/,
+    "queue lightbox should only guard duplicate submissions for the current image",
+  );
+  assert.doesNotMatch(
+    sectionBusySource,
+    /reviewingAction/,
+    "section results lightbox should not disable review controls for unrelated review mutations",
   );
   assert.match(
     sectionReviewCurrent,
-    /await trashImages\(\[imageId\],\s*\{\s*revalidate:\s*false\s*\}\)/,
-    "section results lightbox trash should skip server-action revalidation",
+    /pendingReviewIdsRef\.current\.has\(imageId\)/,
+    "section results lightbox should only guard duplicate submissions for the current image",
   );
 });
 
@@ -209,22 +275,22 @@ test("review server actions can skip page revalidation for optimistic lightbox a
   );
 });
 
-test("lightbox preloads only a bounded set after the current image has loaded", () => {
+test("lightbox preloads neighbors only after the current full image has loaded", () => {
   const candidates = getLightboxPreloadCandidates(
     [image("image-a"), image("image-b"), image("image-c"), image("image-d")],
     2,
   );
 
-  assert.equal(LIGHTBOX_PRELOAD_AHEAD, 2);
+  assert.equal(LIGHTBOX_PRELOAD_AHEAD, 4);
   assert.deepEqual(
     candidates.map((item) => item.id),
-    ["image-d", "image-a"],
+    ["image-d", "image-a", "image-b"],
   );
 
   const queueSource = readFileSync("src/app/queue/[runId]/review-grid.tsx", "utf8");
   const queuePreloadEffect = sourceSlice(
     queueSource,
-    "// Preload upcoming images when lightbox is open",
+    "// Preload upcoming images after the current full image has loaded.",
     "  // Page-level shortcuts",
   );
   const queueLightboxSource = readFileSync("src/app/queue/[runId]/image-lightbox.tsx", "utf8");
@@ -243,10 +309,20 @@ test("lightbox preloads only a bounded set after the current image has loaded", 
     /reviewImages\.slice\(lightboxIndex \+ 1\)/,
     "queue lightbox should not preload every remaining image when opened",
   );
-  assert.match(
+  assert.doesNotMatch(
     queuePreloadEffect,
     /loadedLightboxImageId !== currentLightboxImage\.id/,
+    "queue lightbox should use the current loaded image set instead of the old single loaded id state",
+  );
+  assert.match(
+    queuePreloadEffect,
+    /!loadedLightboxImageIds\.has\(currentLightboxImage\.id\)/,
     "queue lightbox should wait for the current full image before preloading neighbors",
+  );
+  assert.doesNotMatch(
+    queuePreloadEffect,
+    /const preloadTargets = \[\s*currentLightboxImage,/,
+    "queue lightbox background preloading should not request the current image alongside neighbors",
   );
   assert.match(
     queuePreloadEffect,
@@ -254,9 +330,19 @@ test("lightbox preloads only a bounded set after the current image has loaded", 
     "queue lightbox should use bounded preload candidates",
   );
   assert.match(
+    queuePreloadEffect,
+    /markLightboxImageLoaded/,
+    "queue lightbox should mark images loaded when background preload completes",
+  );
+  assert.match(
     queueLightboxSource,
     /onImageLoaded\?: \(imageId: string\) => void/,
     "queue lightbox should notify the parent when the current image has loaded",
+  );
+  assert.match(
+    queueLightboxSource,
+    /preloadedImageIds\?: ReadonlySet<string>/,
+    "queue lightbox should use parent preload state to avoid skeleton flashes",
   );
   assert.match(
     queueLightboxSource,
@@ -273,15 +359,30 @@ test("lightbox preloads only a bounded set after the current image has loaded", 
     /allImages\.slice\(currentIndex \+ 1\)/,
     "section results lightbox should not preload every remaining image when opened",
   );
-  assert.match(
+  assert.doesNotMatch(
     sectionPreloadEffect,
     /!imageLoaded/,
+    "section results lightbox should not use the old negated imageLoaded guard spelling",
+  );
+  assert.match(
+    sectionPreloadEffect,
+    /loadedImageIds\.has\(current\.id\)/,
     "section results lightbox should wait for the current full image before preloading neighbors",
+  );
+  assert.doesNotMatch(
+    sectionPreloadEffect,
+    /const preloadTargets = \[\s*current,/,
+    "section results background preloading should not request the current image alongside neighbors",
   );
   assert.match(
     sectionPreloadEffect,
     /getLightboxPreloadCandidates\(\s*allImages,\s*currentIndex/,
     "section results lightbox should use bounded preload candidates",
+  );
+  assert.match(
+    sectionPreloadEffect,
+    /markImageLoaded/,
+    "section results lightbox should mark images loaded when background preload completes",
   );
   assert.match(
     sectionSource,
@@ -318,5 +419,62 @@ test("queue review lightbox keeps local optimistic review state across server re
       ["image-b", "kept"],
       ["image-c", "pending"],
     ],
+  );
+});
+
+test("section results page prefetches neighboring result routes", () => {
+  const pageSource = readFileSync(
+    "src/app/projects/[projectId]/sections/[sectionId]/results/page.tsx",
+    "utf8",
+  );
+  const prefetcherSource = readFileSync(
+    "src/app/projects/[projectId]/sections/[sectionId]/results/results-route-prefetcher.tsx",
+    "utf8",
+  );
+
+  assert.match(
+    pageSource,
+    /<ResultsRoutePrefetcher/,
+    "section results page should render the route prefetcher",
+  );
+  assert.match(
+    pageSource,
+    /data\.previousSection/,
+    "section results page should include previous section result route in prefetch candidates",
+  );
+  assert.match(
+    pageSource,
+    /data\.nextSection/,
+    "section results page should include next section result route in prefetch candidates",
+  );
+  assert.match(
+    prefetcherSource,
+    /router\.prefetch\(href\)/,
+    "route prefetcher should warm each neighboring route with router.prefetch",
+  );
+});
+
+test("local image route streams files instead of buffering full images", () => {
+  const source = readFileSync("src/app/api/images/[...path]/route.ts", "utf8");
+
+  assert.match(
+    source,
+    /createReadStream/,
+    "image route should stream local image files to reduce first-byte latency",
+  );
+  assert.match(
+    source,
+    /Readable\.toWeb\(createReadStream\(resolved\)\)/,
+    "image route should convert the Node stream to a web stream for NextResponse",
+  );
+  assert.match(
+    source,
+    /"Content-Length": String\(fileStat\.size\)/,
+    "image route should include Content-Length for browser loading",
+  );
+  assert.doesNotMatch(
+    source,
+    /readFile/,
+    "image route should not buffer the entire image before responding",
   );
 });

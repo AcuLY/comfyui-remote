@@ -29,6 +29,7 @@ export function ImageLightbox({
   onReview,
   onToggleMarker,
   onImageLoaded,
+  preloadedImageIds,
 }: {
   image: ReviewImage | null;
   visible: boolean;
@@ -42,6 +43,7 @@ export function ImageLightbox({
   onReview: (action: ReviewAction) => void;
   onToggleMarker: (field: MarkerField) => void;
   onImageLoaded?: (imageId: string) => void;
+  preloadedImageIds?: ReadonlySet<string>;
 }) {
   const [loadedImageId, setLoadedImageId] = useState<string | null>(null);
   const shieldTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -108,7 +110,7 @@ export function ImageLightbox({
     return null;
   }
 
-  const imageLoaded = loadedImageId === image.id;
+  const imageLoaded = loadedImageId === image.id || preloadedImageIds?.has(image.id);
 
   return (
     <div
