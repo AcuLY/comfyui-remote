@@ -63,21 +63,30 @@ export type PromptBlockSortInput = {
   bindingSortOrder?: number | null;
 };
 
+function promptPrimaryOrder(item: PromptBlockSortInput) {
+  if (item.categoryOrder !== null && item.categoryOrder !== undefined) {
+    return normalizeOrder(item.categoryOrder);
+  }
+  if (item.rowSortOrder !== null && item.rowSortOrder !== undefined) {
+    return normalizeOrder(item.rowSortOrder, 0);
+  }
+  return normalizeOrder(item.bindingSortOrder, 0);
+}
+
+function promptSecondaryOrder(item: PromptBlockSortInput) {
+  if (item.categoryOrder !== null && item.categoryOrder !== undefined) {
+    return normalizeOrder(item.bindingSortOrder ?? item.rowSortOrder, 0);
+  }
+  return normalizeOrder(item.rowSortOrder ?? item.bindingSortOrder, 0);
+}
+
 export function sortResolvedPromptBlocks(items: readonly PromptBlockSortInput[]) {
   return [...items]
-    .sort((a, b) => {
-      const aHasRowOrder = a.rowSortOrder !== null && a.rowSortOrder !== undefined;
-      const bHasRowOrder = b.rowSortOrder !== null && b.rowSortOrder !== undefined;
-
-      if (aHasRowOrder || bHasRowOrder) {
-        if (aHasRowOrder !== bHasRowOrder) return aHasRowOrder ? -1 : 1;
-        return normalizeOrder(a.rowSortOrder, 0) - normalizeOrder(b.rowSortOrder, 0) || a.index - b.index;
-      }
-
-      return normalizeOrder(a.categoryOrder) - normalizeOrder(b.categoryOrder) ||
-        normalizeOrder(a.bindingSortOrder, 0) - normalizeOrder(b.bindingSortOrder, 0) ||
-        a.index - b.index;
-    })
+    .sort((a, b) =>
+      promptPrimaryOrder(a) - promptPrimaryOrder(b) ||
+      promptSecondaryOrder(a) - promptSecondaryOrder(b) ||
+      a.index - b.index,
+    )
     .map((item) => item.block);
 }
 

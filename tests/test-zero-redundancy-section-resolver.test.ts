@@ -357,6 +357,96 @@ test("binding-only sections synthesize preset-backed blocks sorted by category o
   assert.deepEqual(resolved.promptBlocks.map((block) => block.positive), ["early prompt", "late prompt"]);
 });
 
+test("section prompt rows interleave with binding-only presets by category order", () => {
+  const embedCategory = category({ id: "cat-embed", name: "Embed", positivePromptOrder: 0 });
+  const personCategory = category({ id: "cat-person", name: "Person", positivePromptOrder: 1 });
+  const characterCategory = category({ id: "cat-character", name: "Character", positivePromptOrder: 2 });
+  const expressionCategory = category({ id: "cat-expression", name: "Expression", positivePromptOrder: 5 });
+  const poseCategory = category({ id: "cat-pose", name: "Pose", positivePromptOrder: 7 });
+  const sceneCategory = category({ id: "cat-scene", name: "Scene", positivePromptOrder: 8 });
+  const styleCategory = category({ id: "cat-style", name: "Style", positivePromptOrder: 9 });
+
+  const makePreset = (id: string, categoryId: string, prompt: string) => preset({
+    id,
+    categoryId,
+    name: prompt,
+    variants: [{ id: `${id}-variant`, name: "Default", prompt }],
+  });
+  const embedPreset = makePreset("preset-embed", embedCategory.id, "embed prompt");
+  const personPreset = makePreset("preset-person", personCategory.id, "person prompt");
+  const characterPreset = makePreset("preset-character", characterCategory.id, "character prompt");
+  const expressionPreset = makePreset("preset-expression", expressionCategory.id, "expression prompt");
+  const posePreset = makePreset("preset-pose", poseCategory.id, "pose prompt");
+  const scenePreset = makePreset("preset-scene", sceneCategory.id, "scene prompt");
+  const stylePreset = makePreset("preset-style", styleCategory.id, "style prompt");
+
+  const embedBinding = binding({ id: "binding-embed", bindingKey: "bind-embed", category: embedCategory, preset: embedPreset, sortOrder: 1 });
+  const personBinding = binding({ id: "binding-person", bindingKey: "bind-person", category: personCategory, preset: personPreset, sortOrder: 0 });
+  const characterBinding = binding({ id: "binding-character", bindingKey: "bind-character", category: characterCategory, preset: characterPreset, sortOrder: 0 });
+  const expressionBinding = binding({ id: "binding-expression", bindingKey: "bind-expression", category: expressionCategory, preset: expressionPreset, sortOrder: 1 });
+  const poseBinding = binding({ id: "binding-pose", bindingKey: "bind-pose", category: poseCategory, preset: posePreset, sortOrder: 1 });
+  const sceneBinding = binding({ id: "binding-scene", bindingKey: "bind-scene", category: sceneCategory, preset: scenePreset, sortOrder: 3 });
+  const styleBinding = binding({ id: "binding-style", bindingKey: "bind-style", category: styleCategory, preset: stylePreset, sortOrder: 2 });
+
+  const resolved = resolveSectionConfigFromRows(input({
+    presetBindings: [
+      personBinding,
+      characterBinding,
+      expressionBinding,
+      poseBinding,
+      embedBinding,
+      styleBinding,
+      sceneBinding,
+    ],
+    promptBlockRows: [
+      {
+        id: "block-person",
+        projectSectionId: "section-1",
+        sectionBindingId: personBinding.id,
+        type: "preset",
+        customLabel: null,
+        customPositive: null,
+        customNegative: null,
+        sortOrder: 0,
+      },
+      {
+        id: "block-pose",
+        projectSectionId: "section-1",
+        sectionBindingId: poseBinding.id,
+        type: "preset",
+        customLabel: null,
+        customPositive: null,
+        customNegative: null,
+        sortOrder: 1,
+      },
+      {
+        id: "block-expression",
+        projectSectionId: "section-1",
+        sectionBindingId: expressionBinding.id,
+        type: "preset",
+        customLabel: null,
+        customPositive: null,
+        customNegative: null,
+        sortOrder: 2,
+      },
+    ],
+  }));
+
+  assert.deepEqual(resolved.promptBlocks.map((block) => block.bindingId), [
+    "bind-embed",
+    "bind-person",
+    "bind-character",
+    "bind-expression",
+    "bind-pose",
+    "bind-scene",
+    "bind-style",
+  ]);
+  assert.equal(
+    resolved.prompt.positive,
+    "embed prompt BREAK person prompt BREAK character prompt BREAK expression prompt BREAK pose prompt BREAK scene prompt BREAK style prompt",
+  );
+});
+
 test("manual and detached LoRA rows are resolved with stable binding keys and detached rows suppress preset paths", () => {
   const character = category({ id: "cat-character", name: "Character", lora1Order: 10 });
   const style = category({ id: "cat-style", name: "Style", lora1Order: 30 });
@@ -653,7 +743,7 @@ test("resolved section config preserves params shape and diff avoids params fals
 });
 
 test("resolved section config exposes aggregate prompt, presets, and warnings", () => {
-  const style = category({ id: "cat-style", name: "Style" });
+  const style = category({ id: "cat-style", name: "Style", positivePromptOrder: 20 });
   const stylePreset = preset({
     id: "preset-style",
     categoryId: style.id,

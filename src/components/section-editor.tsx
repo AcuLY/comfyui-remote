@@ -632,12 +632,7 @@ export function SectionEditor({
                   )}
                   {row.sourceId && (
                     <Link
-                      href={getPresetManagerHref({
-                        ...binding,
-                        sourceId: row.sourceId,
-                        variantId: row.variantId,
-                        categoryId: row.categoryId,
-                      })}
+                      href={getPresetManagerHref(binding)}
                       className="shrink-0 rounded p-0.5 text-zinc-500 hover:bg-white/5 hover:text-sky-400"
                       title="在预制管理中打开"
                     >

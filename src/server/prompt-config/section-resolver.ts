@@ -361,6 +361,8 @@ function resolvePromptBlocks(
       sortableBlocks.push({
         block,
         rowSortOrder: row.sortOrder,
+        categoryOrder: binding.category.positivePromptOrder,
+        bindingSortOrder: binding.sortOrder,
         index,
       });
     } else {

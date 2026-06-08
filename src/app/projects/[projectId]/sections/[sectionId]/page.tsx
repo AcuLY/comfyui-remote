@@ -171,7 +171,7 @@ export default async function SectionEditPage({
       label: resolvedBlock?.label ?? b.customLabel ?? "Custom",
       positive: resolvedBlock?.positive ?? b.customPositive ?? "",
       negative: resolvedBlock?.negative ?? b.customNegative ?? null,
-      sortOrder: b.sortOrder,
+      sortOrder: resolvedBlockIndex >= 0 ? resolvedBlockIndex : b.sortOrder,
     };
   });
   const resolverOnlyBlocks: PromptBlockData[] = resolvedPromptBlocks
@@ -189,7 +189,7 @@ export default async function SectionEditPage({
       label: block.label,
       positive: block.positive,
       negative: block.negative,
-      sortOrder: block.sortOrder,
+      sortOrder: index,
     }));
   const initialBlocks = [...initialBlocksFromRows, ...resolverOnlyBlocks]
     .sort((left, right) => left.sortOrder - right.sortOrder || left.id.localeCompare(right.id));

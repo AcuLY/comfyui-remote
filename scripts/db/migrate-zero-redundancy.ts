@@ -1307,6 +1307,7 @@ function buildSectionVerificationPairs(input: {
           presets: input.presets,
           variants: input.variants,
         }),
+        categoryOrderForBlock: (block) => legacyPresetBlockCategoryOrder(block, input.categories, input.presets),
       },
     );
     const legacy = legacyResolvedSectionConfig(section, legacyPromptBlocks, input.stats, "ProjectSection.loraConfig");
@@ -1359,6 +1360,7 @@ function buildTemplateVerificationPairs(input: {
           presets: input.presets,
           variants: input.variants,
         }),
+        categoryOrderForBlock: (block) => legacyPresetBlockCategoryOrder(block, input.categories, input.presets),
       },
     );
     const legacy = legacyResolvedSectionConfig(
@@ -1724,6 +1726,7 @@ function legacyPromptBlocksForVerification(
   blocks: readonly LegacyPromptBlockInputRow[],
   options: {
     isMigratablePresetBlock?: (block: LegacyPromptBlockInputRow) => boolean;
+    categoryOrderForBlock?: (block: LegacyPromptBlockRow) => number | null;
   } = {},
 ): LegacyPromptBlockRow[] {
   const normalized = sortLegacyBlocks(blocks).map((block) => {
@@ -1756,7 +1759,36 @@ function legacyPromptBlocksForVerification(
       sortOrder: maxSortOrder + 1,
     });
   }
-  return normalized;
+  return sortLegacyPromptBlocksForResolvedOrder(normalized, options.categoryOrderForBlock);
+}
+
+function legacyPresetBlockCategoryOrder(
+  block: LegacyPromptBlockRow,
+  categories: Map<string, PresetCategoryRow>,
+  presets: Map<string, PresetRow>,
+) {
+  if (block.type !== "preset") return null;
+  const categoryId = block.categoryId ?? (block.sourceId ? presets.get(block.sourceId)?.categoryId : null);
+  return categoryId ? categories.get(categoryId)?.positivePromptOrder ?? null : null;
+}
+
+function sortLegacyPromptBlocksForResolvedOrder(
+  blocks: readonly LegacyPromptBlockRow[],
+  categoryOrderForBlock: ((block: LegacyPromptBlockRow) => number | null) | undefined,
+) {
+  return blocks
+    .map((block, index) => ({ block, index }))
+    .sort((a, b) => {
+      const aCategoryOrder = categoryOrderForBlock?.(a.block) ?? null;
+      const bCategoryOrder = categoryOrderForBlock?.(b.block) ?? null;
+      const aPrimary = aCategoryOrder ?? a.block.sortOrder;
+      const bPrimary = bCategoryOrder ?? b.block.sortOrder;
+      const aSecondary = aCategoryOrder === null ? 0 : a.block.sortOrder;
+      const bSecondary = bCategoryOrder === null ? 0 : b.block.sortOrder;
+
+      return aPrimary - bPrimary || aSecondary - bSecondary || a.index - b.index;
+    })
+    .map(({ block }) => block);
 }
 
 function parseBindingRefs(value: unknown, stats: MigrationStats, field: string, ownerId: string): BindingRef[] {
