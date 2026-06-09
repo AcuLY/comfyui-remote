@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useCallback, useId, useState } from "react";
-import { Plus, Trash2, Unlink, GripVertical, Zap } from "lucide-react";
+import Link from "next/link";
+import { ExternalLink, Plus, Trash2, Unlink, GripVertical, Zap } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -24,6 +25,7 @@ import {
   type LoraEntry,
   type LoraSource,
 } from "@/lib/lora-types";
+import { buildModelAssetSelectionHref } from "@/lib/model-asset-navigation";
 
 const SOURCE_LABELS: Record<LoraSource, { label: string; color: string }> = {
   preset: { label: "预制", color: "bg-sky-500/20 text-sky-300 border-sky-500/30" },
@@ -164,6 +166,7 @@ function SortableLoraRow({
   const tagLabel = !isManual && entry.sourceLabel
     ? entry.sourceLabel
     : SOURCE_LABELS[entry.source]?.label || "自定义";
+  const modelAssetHref = entry.path ? buildModelAssetSelectionHref("lora", entry.path) : null;
 
   return (
     <div
@@ -201,6 +204,16 @@ function SortableLoraRow({
               {tagLabel}
             </span>
             <TriggerWordHint loraPath={entry.path} />
+            {modelAssetHref && (
+              <Link
+                href={modelAssetHref}
+                className="rounded p-0.5 text-zinc-500 transition hover:bg-sky-500/10 hover:text-sky-300"
+                title="在模型页打开"
+                aria-label={`在模型页打开 ${fileName}`}
+              >
+                <ExternalLink className="size-3" />
+              </Link>
+            )}
             {!readOnly && (
               <div className="ml-auto flex items-center gap-0.5 shrink-0">
                 {onStandaloneRemove && (
