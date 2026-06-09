@@ -148,6 +148,7 @@ const VISIBLE_QUEUE_RUN_WHERE = {
 const VISIBLE_QUEUE_RUN_ORDER_BY = [
   { finishedAt: "desc" },
   { createdAt: "desc" },
+  { id: "desc" },
 ] satisfies Prisma.RunOrderByWithRelationInput[];
 
 const VISIBLE_QUEUE_RUN_INCLUDE = {
