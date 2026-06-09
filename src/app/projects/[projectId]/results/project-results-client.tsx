@@ -54,6 +54,32 @@ type ProjectResultsImageWithRun = ProjectResultsImage & {
   runIndex: number;
 };
 
+function summarizeSectionReviewCounts(runs: ProjectResultsSection["runs"]) {
+  return {
+    imageCount: runs.reduce((sum, run) => sum + run.images.length, 0),
+    keptCount: runs.reduce(
+      (sum, run) =>
+        sum + run.images.filter((image) => image.status === "kept").length,
+      0,
+    ),
+    pendingCount: runs.reduce(
+      (sum, run) =>
+        sum + run.images.filter((image) => image.status === "pending").length,
+      0,
+    ),
+    featuredCount: runs.reduce(
+      (sum, run) =>
+        sum + run.images.filter((image) => image.featured).length,
+      0,
+    ),
+    featured2Count: runs.reduce(
+      (sum, run) =>
+        sum + run.images.filter((image) => image.featured2).length,
+      0,
+    ),
+  };
+}
+
 function scrollToSection(sectionId: string) {
   const element = document.getElementById(`section-${sectionId}`);
   if (!element) return;
@@ -315,12 +341,10 @@ function SectionResultsBlock({
           </h2>
           <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-zinc-500">
             <span>{section.runCount} 次运行</span>
-            <span>{section.imageCount} 张图片</span>
-            {section.pendingCount > 0 && (
-              <span className="text-amber-400">
-                {section.pendingCount} 待审
-              </span>
-            )}
+            <span className="text-emerald-300">{section.keptCount} 保留</span>
+            <span className={section.pendingCount > 0 ? "text-amber-400" : undefined}>
+              {section.pendingCount} 待审
+            </span>
             {section.featuredCount > 0 && (
               <span className="text-amber-300">
                 {section.featuredCount} p站
@@ -437,6 +461,14 @@ export function ProjectResultsClient({
     (sum, section) => sum + section.imageCount,
     0,
   );
+  const totalKept = sections.reduce(
+    (sum, section) => sum + section.keptCount,
+    0,
+  );
+  const totalPending = sections.reduce(
+    (sum, section) => sum + section.pendingCount,
+    0,
+  );
   const totalFeatured = sections.reduce(
     (sum, section) => sum + section.featuredCount,
     0,
@@ -535,17 +567,7 @@ export function ProjectResultsClient({
 
         if (!sectionChanged) return section;
 
-        const pendingCount = runs.reduce(
-          (sum, run) =>
-            sum + run.images.filter((image) => image.status === "pending").length,
-          0,
-        );
-        const featuredCount = runs.reduce(
-          (sum, run) =>
-            sum + run.images.filter((image) => image.featured).length,
-          0,
-        );
-        return { ...section, runs, pendingCount, featuredCount };
+        return { ...section, runs, ...summarizeSectionReviewCounts(runs) };
       }),
     );
   }, []);
@@ -572,17 +594,7 @@ export function ProjectResultsClient({
 
         if (!sectionChanged) return section;
 
-        const pendingCount = runs.reduce(
-          (sum, run) =>
-            sum + run.images.filter((image) => image.status === "pending").length,
-          0,
-        );
-        const featured2Count = runs.reduce(
-          (sum, run) =>
-            sum + run.images.filter((image) => image.featured2).length,
-          0,
-        );
-        return { ...section, runs, pendingCount, featured2Count };
+        return { ...section, runs, ...summarizeSectionReviewCounts(runs) };
       }),
     );
   }, []);
@@ -601,12 +613,7 @@ export function ProjectResultsClient({
                 : image.status,
           })),
         }));
-        const pendingCount = runs.reduce(
-          (sum, run) =>
-            sum + run.images.filter((image) => image.status === "pending").length,
-          0,
-        );
-        return { ...section, pendingCount, runs };
+        return { ...section, runs, ...summarizeSectionReviewCounts(runs) };
       }),
     );
   }, []);
@@ -752,6 +759,7 @@ export function ProjectResultsClient({
           currentSections.map((section) => ({
             ...section,
             imageCount: 0,
+            keptCount: 0,
             pendingCount: 0,
             featuredCount: 0,
             featured2Count: 0,
@@ -797,7 +805,10 @@ export function ProjectResultsClient({
             </div>
             <div className="hidden shrink-0 items-center gap-2 text-[11px] text-zinc-500 sm:flex">
               <span>{sections.length} 小节</span>
-              <span>{totalImages} 张图片</span>
+              <span className="text-emerald-300">{totalKept} 保留</span>
+              <span className={totalPending > 0 ? "text-amber-400" : undefined}>
+                {totalPending} 待审
+              </span>
               <span>{totalFeatured} p站</span>
               <span>{totalFeatured2} 预览</span>
               {hasCover && <span>已设封面</span>}
