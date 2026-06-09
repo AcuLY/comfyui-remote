@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import type { ModelKind } from "@/lib/model-constants";
+import { modelSelectionDirectory } from "@/lib/model-asset-navigation";
 
 type BrowseItem = {
   name: string;
@@ -341,8 +342,14 @@ function MoveTargetPicker({
   );
 }
 
-export function ModelFileManager() {
-  const [kind, setKind] = useState<ModelKind>("lora");
+export function ModelFileManager({
+  initialKind = "lora",
+  initialPath: selectedModelPath = "",
+}: {
+  initialKind?: ModelKind;
+  initialPath?: string;
+}) {
+  const [kind, setKind] = useState<ModelKind>(initialKind);
   const [currentPath, setCurrentPath] = useState("");
   const [items, setItems] = useState<BrowseItem[]>([]);
   const [parentPath, setParentPath] = useState<string | null>(null);
@@ -366,7 +373,7 @@ export function ModelFileManager() {
   const [savingNotes, setSavingNotes] = useState(false);
   const notesInputRef = useRef<HTMLTextAreaElement>(null);
 
-  const fetchDir = useCallback(async (nextKind: ModelKind, dirPath: string) => {
+  const fetchDir = useCallback(async (nextKind: ModelKind, dirPath: string, preferredSelectedPath?: string) => {
     setLoading(true);
     setError(null);
     setEditingNotesPath(null);
@@ -380,11 +387,15 @@ export function ModelFileManager() {
         throw new Error(result?.error?.message ?? `HTTP ${res.status}`);
       }
       const data: BrowseResult = result.data;
+      const preferredFile = preferredSelectedPath
+        ? data.items.find((item): item is BrowseItem & { type: "file" } => item.type === "file" && item.path === preferredSelectedPath)
+        : null;
       setKind(nextKind);
       setItems(data.items);
       setParentPath(data.parentPath);
       setCurrentPath(data.currentPath);
-      setSelectedFilePath(data.items.find(isFileItem)?.path ?? null);
+      setSelectedFilePath(preferredFile?.path ?? data.items.find(isFileItem)?.path ?? null);
+      setExpandedFilePath(preferredFile?.path ?? null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "加载失败");
       setItems([]);
@@ -395,8 +406,9 @@ export function ModelFileManager() {
   }, []);
 
   useEffect(() => {
-    fetchDir("lora", "");
-  }, [fetchDir]);
+    const initialPath = modelSelectionDirectory(selectedModelPath);
+    fetchDir(initialKind, initialPath, selectedModelPath);
+  }, [fetchDir, initialKind, selectedModelPath]);
 
   function openCheckpointsRoot() {
     setUploadMsg(null);
