@@ -7,6 +7,7 @@ import { tmpdir } from "node:os";
 import Database from "better-sqlite3";
 import type { prisma as PrismaClientSingleton } from "../src/lib/prisma";
 import type * as PresetVariantCrudActions from "../src/lib/actions/preset-variant-crud";
+import type * as PresetGroupActions from "../src/lib/actions/preset-group";
 import type * as PresetSyncActions from "../src/lib/actions/preset-sync";
 import type * as SectionResolver from "../src/server/prompt-config/section-resolver";
 import type * as PromotionRepository from "../src/server/repositories/character-lora-training/promotion-repository";
@@ -416,6 +417,7 @@ let updatePresetVariant: typeof PresetVariantCrudActions.updatePresetVariant;
 let createPresetVariant: typeof PresetVariantCrudActions.createPresetVariant;
 let upsertPresetVariantBySlug: typeof PresetVariantCrudActions.upsertPresetVariantBySlug;
 let copyPreset: typeof PresetVariantCrudActions.copyPreset;
+let copyPresetGroup: typeof PresetGroupActions.copyPresetGroup;
 let getPresetUsage: typeof PresetSyncActions.getPresetUsage;
 let deletePresetCascade: typeof PresetSyncActions.deletePresetCascade;
 let resolveSectionConfig: typeof SectionResolver.resolveSectionConfig;
@@ -428,6 +430,7 @@ type SeedResult = Awaited<ReturnType<typeof seedPresetSection>>;
 test.before(async () => {
   const prismaModule = await import("../src/lib/prisma");
   const presetVariantCrudActions = await import("../src/lib/actions/preset-variant-crud");
+  const presetGroupActions = await import("../src/lib/actions/preset-group");
   const presetSyncActions = await import("../src/lib/actions/preset-sync");
   const sectionResolver = await import("../src/server/prompt-config/section-resolver");
   const promotionRepository = await import("../src/server/repositories/character-lora-training/promotion-repository");
@@ -438,6 +441,7 @@ test.before(async () => {
   createPresetVariant = presetVariantCrudActions.createPresetVariant;
   upsertPresetVariantBySlug = presetVariantCrudActions.upsertPresetVariantBySlug;
   copyPreset = presetVariantCrudActions.copyPreset;
+  copyPresetGroup = presetGroupActions.copyPresetGroup;
   getPresetUsage = presetSyncActions.getPresetUsage;
   deletePresetCascade = presetSyncActions.deletePresetCascade;
   resolveSectionConfig = sectionResolver.resolveSectionConfig;
@@ -771,6 +775,68 @@ test("copyPreset copies and remaps PresetVariantLink rows", async () => {
       .map((row) => [row.linkedVariantId, row.sortOrder]),
     [[copiedB.id, 0]],
   );
+});
+
+test("copyPreset inserts the copied preset immediately after the source preset", async () => {
+  const seed = await seedPresetSection();
+
+  const copiedPreset = await ignoreStaticRevalidateError(() => copyPreset(seed.preset.id)) ??
+    await prisma.preset.findFirstOrThrow({
+      where: { slug: `${seed.preset.slug}-copy` },
+    });
+
+  const orderedPresets = await prisma.preset.findMany({
+    where: { categoryId: seed.category.id, isActive: true },
+    orderBy: { sortOrder: "asc" },
+    select: { id: true, sortOrder: true },
+  });
+  assert.deepEqual(orderedPresets.map((preset) => preset.id), [
+    seed.preset.id,
+    copiedPreset.id,
+    seed.linkedPreset.id,
+  ]);
+  assert.deepEqual(orderedPresets.map((preset) => preset.sortOrder), [0, 1, 2]);
+});
+
+test("copyPresetGroup inserts the copied group immediately after the source group", async () => {
+  const seed = await seedPresetSection();
+  const sourceGroup = await prisma.presetGroup.create({
+    data: {
+      id: `${seed.key}-source-group`,
+      categoryId: seed.category.id,
+      name: `${seed.key} Source Group`,
+      slug: `${seed.key}-source-group`,
+      sortOrder: 0,
+      isActive: true,
+    },
+  });
+  const laterGroup = await prisma.presetGroup.create({
+    data: {
+      id: `${seed.key}-later-group`,
+      categoryId: seed.category.id,
+      name: `${seed.key} Later Group`,
+      slug: `${seed.key}-later-group`,
+      sortOrder: 1,
+      isActive: true,
+    },
+  });
+
+  const copiedGroup = await ignoreStaticRevalidateError(() => copyPresetGroup(sourceGroup.id)) ??
+    await prisma.presetGroup.findFirstOrThrow({
+      where: { slug: `${sourceGroup.slug}-copy` },
+    });
+
+  const orderedGroups = await prisma.presetGroup.findMany({
+    where: { categoryId: seed.category.id, isActive: true },
+    orderBy: { sortOrder: "asc" },
+    select: { id: true, sortOrder: true },
+  });
+  assert.deepEqual(orderedGroups.map((group) => group.id), [
+    sourceGroup.id,
+    copiedGroup.id,
+    laterGroup.id,
+  ]);
+  assert.deepEqual(orderedGroups.map((group) => group.sortOrder), [0, 1, 2]);
 });
 
 test("getPresetUsage reports normalized project, section, template, and template-section references", async () => {

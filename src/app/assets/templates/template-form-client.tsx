@@ -298,10 +298,16 @@ export function TemplateFormClient({
         const copiedSection: ProjectTemplateSectionData = {
           ...section,
           id: copiedId,
-          sortOrder: sections.length,
+          sortOrder: section.sortOrder + 1,
           name: section.name ? `${section.name} (副本)` : null,
         };
-        setSections((prev) => [...prev, copiedSection]);
+        setSections((prev) => {
+          const sourceIndex = prev.findIndex((item) => item.id === section.id);
+          const insertIndex = sourceIndex === -1 ? prev.length : sourceIndex + 1;
+          const nextSections = [...prev];
+          nextSections.splice(insertIndex, 0, copiedSection);
+          return nextSections.map((item, index) => ({ ...item, sortOrder: index }));
+        });
         toast.success("小节已复制");
       } catch (e: unknown) {
         toast.error(e instanceof Error ? e.message : "复制失败");

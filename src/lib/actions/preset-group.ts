@@ -184,12 +184,16 @@ export async function copyPresetGroup(groupId: string) {
     throw new Error("Unable to generate a unique preset group copy slug");
   }
 
-  const maxOrder = await prisma.presetGroup.aggregate({
-    where: { categoryId: source.categoryId },
-    _max: { sortOrder: true },
-  });
-
   const copied = await prisma.$transaction(async (tx) => {
+    const insertSortOrder = source.sortOrder + 1;
+    await tx.presetGroup.updateMany({
+      where: {
+        categoryId: source.categoryId,
+        sortOrder: { gt: source.sortOrder },
+      },
+      data: { sortOrder: { increment: 1 } },
+    });
+
     const newGroup = await tx.presetGroup.create({
       data: {
         categoryId: source.categoryId,
@@ -197,7 +201,7 @@ export async function copyPresetGroup(groupId: string) {
         name: copyIdentity.name,
         slug: copyIdentity.slug,
         isActive: true,
-        sortOrder: (maxOrder._max.sortOrder ?? -1) + 1,
+        sortOrder: insertSortOrder,
       },
       select: {
         id: true,

@@ -324,15 +324,20 @@ export async function copyProjectTemplateSection(sectionId: string): Promise<str
 
   if (!section) return null;
 
-  const count = await prisma.projectTemplateSection.count({
-    where: { projectTemplateId: section.projectTemplateId },
-  });
-
   const copied = await prisma.$transaction(async (tx) => {
+    const insertSortOrder = section.sortOrder + 1;
+    await tx.projectTemplateSection.updateMany({
+      where: {
+        projectTemplateId: section.projectTemplateId,
+        sortOrder: { gt: section.sortOrder },
+      },
+      data: { sortOrder: { increment: 1 } },
+    });
+
     const createdSection = await tx.projectTemplateSection.create({
       data: {
         projectTemplateId: section.projectTemplateId,
-        sortOrder: count,
+        sortOrder: insertSortOrder,
         folderId: section.folderId,
         name: section.name ? `${section.name} (副本)` : null,
         notes: section.notes,

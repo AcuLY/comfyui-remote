@@ -317,12 +317,16 @@ export async function copyPreset(presetId: string) {
     throw new Error("Unable to generate a unique preset copy slug");
   }
 
-  const maxOrder = await prisma.preset.aggregate({
-    where: { categoryId: source.categoryId },
-    _max: { sortOrder: true },
-  });
-
   const copied = await prisma.$transaction(async (tx) => {
+    const insertSortOrder = source.sortOrder + 1;
+    await tx.preset.updateMany({
+      where: {
+        categoryId: source.categoryId,
+        sortOrder: { gt: source.sortOrder },
+      },
+      data: { sortOrder: { increment: 1 } },
+    });
+
     const newPreset = await tx.preset.create({
       data: {
         categoryId: source.categoryId,
@@ -332,7 +336,7 @@ export async function copyPreset(presetId: string) {
         notes: source.notes,
         civitaiLinks: cloneJsonField(source.civitaiLinks),
         isActive: true,
-        sortOrder: (maxOrder._max.sortOrder ?? -1) + 1,
+        sortOrder: insertSortOrder,
       },
       select: {
         id: true,

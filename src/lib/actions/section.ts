@@ -301,41 +301,44 @@ export async function copySection(sectionId: string): Promise<string | null> {
 
   if (!section) return null;
 
-  // 获取当前任务的小节数量以确定新的 sortOrder
-  const count = await prisma.projectSection.count({
-    where: { projectId: section.projectId },
-  });
+  const newSection = await prisma.$transaction(async (tx) => {
+    const insertSortOrder = section.sortOrder + 1;
+    await tx.projectSection.updateMany({
+      where: {
+        projectId: section.projectId,
+        sortOrder: { gt: section.sortOrder },
+      },
+      data: { sortOrder: { increment: 1 } },
+    });
 
-  // 创建新小节
-  const newSection = await prisma.projectSection.create({
-    data: {
-      projectId: section.projectId,
-      folderId: section.folderId,
-      sortOrder: count + 1,
-      enabled: section.enabled,
-      name: section.name ? `${section.name} (副本)` : null,
-      aspectRatio: section.aspectRatio,
-      shortSidePx: section.shortSidePx,
-      batchSize: section.batchSize,
-      checkpointName: section.checkpointName,
-      // v0.3: dual seedPolicy
-      seedPolicy1: section.seedPolicy1,
-      seedPolicy2: section.seedPolicy2,
-      // v0.3: ksampler params
-      ksampler1: section.ksampler1 ?? undefined,
-      ksampler2: section.ksampler2 ?? undefined,
-      upscaleFactor: section.upscaleFactor ?? undefined,
-      extraParams: section.extraParams ?? undefined,
-    },
-  });
+    const createdSection = await tx.projectSection.create({
+      data: {
+        projectId: section.projectId,
+        folderId: section.folderId,
+        sortOrder: insertSortOrder,
+        enabled: section.enabled,
+        name: section.name ? `${section.name} (副本)` : null,
+        aspectRatio: section.aspectRatio,
+        shortSidePx: section.shortSidePx,
+        batchSize: section.batchSize,
+        checkpointName: section.checkpointName,
+        // v0.3: dual seedPolicy
+        seedPolicy1: section.seedPolicy1,
+        seedPolicy2: section.seedPolicy2,
+        // v0.3: ksampler params
+        ksampler1: section.ksampler1 ?? undefined,
+        ksampler2: section.ksampler2 ?? undefined,
+        upscaleFactor: section.upscaleFactor ?? undefined,
+        extraParams: section.extraParams ?? undefined,
+      },
+    });
 
-  const bindingIdBySourceId = new Map<string, string>();
+    const bindingIdBySourceId = new Map<string, string>();
 
-  await prisma.$transaction(async (tx) => {
     for (const binding of section.presetBindingRows) {
       const copiedBinding = await tx.sectionPresetBinding.create({
         data: {
-          projectSectionId: newSection.id,
+          projectSectionId: createdSection.id,
           bindingKey: binding.bindingKey,
           categoryId: binding.categoryId,
           presetId: binding.presetId,
@@ -351,7 +354,7 @@ export async function copySection(sectionId: string): Promise<string | null> {
     for (const block of section.sectionPromptBlocks) {
       await tx.sectionPromptBlock.create({
         data: {
-          projectSectionId: newSection.id,
+          projectSectionId: createdSection.id,
           sectionBindingId: block.sectionBindingId ? bindingIdBySourceId.get(block.sectionBindingId) ?? null : null,
           type: block.type,
           customLabel: block.customLabel,
@@ -365,7 +368,7 @@ export async function copySection(sectionId: string): Promise<string | null> {
     for (const entry of section.manualLoraEntries) {
       await tx.sectionManualLoraEntry.create({
         data: {
-          projectSectionId: newSection.id,
+          projectSectionId: createdSection.id,
           sectionBindingId: entry.sectionBindingId ? bindingIdBySourceId.get(entry.sectionBindingId) ?? null : null,
           stage: entry.stage,
           path: entry.path,
@@ -380,6 +383,7 @@ export async function copySection(sectionId: string): Promise<string | null> {
         },
       });
     }
+    return createdSection;
   });
 
   safeRevalidatePath(`/projects/${section.projectId}`);

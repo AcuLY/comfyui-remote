@@ -882,6 +882,34 @@ test("copySection copies normalized rows without expanding clean preset content"
   assert.equal(copiedManualRows[0].sectionBindingId, null);
 });
 
+test("copySection inserts the copied section immediately after the source section", async () => {
+  const seed = await seedProjectWithPreset();
+  const laterSection = await prisma.projectSection.create({
+    data: {
+      id: `${seed.key}-later-section`,
+      projectId: seed.project.id,
+      name: `${seed.key} Later Section`,
+      sortOrder: 2,
+      enabled: true,
+    },
+  });
+
+  const copiedSectionId = await copySection(seed.section.id);
+
+  assert.ok(copiedSectionId);
+  const orderedSections = await prisma.projectSection.findMany({
+    where: { projectId: seed.project.id },
+    orderBy: { sortOrder: "asc" },
+    select: { id: true, sortOrder: true },
+  });
+  assert.deepEqual(orderedSections.map((section) => section.id), [
+    seed.section.id,
+    copiedSectionId,
+    laterSection.id,
+  ]);
+  assert.deepEqual(orderedSections.map((section) => section.sortOrder), [1, 2, 3]);
+});
+
 test("editing a preset-bound SectionPromptBlock detaches prompt and LoRA rows without loraConfig writes", async () => {
   const seed = await seedProjectWithPreset();
   const { binding, block } = await createNormalizedPresetBlock(seed);
@@ -1164,6 +1192,50 @@ test("template CRUD converts submitted prompt and manual lora data into template
   assert.equal(await prisma.templateSectionPresetBinding.count({ where: { projectTemplateSectionId: copiedSectionId } }), 1);
   assert.equal(await prisma.templateSectionPromptBlock.count({ where: { projectTemplateSectionId: copiedSectionId } }), 1);
   assert.equal(await prisma.templateSectionManualLoraEntry.count({ where: { projectTemplateSectionId: copiedSectionId } }), 1);
+});
+
+test("copyProjectTemplateSection inserts the copy immediately after the source section", async () => {
+  const seed = await seedProjectWithPreset();
+  const template = await prisma.projectTemplate.create({
+    data: {
+      id: `${seed.key}-copy-order-template`,
+      name: `${seed.key} Copy Order Template`,
+    },
+  });
+  const sourceSection = await prisma.projectTemplateSection.create({
+    data: {
+      id: `${seed.key}-template-source-section`,
+      projectTemplateId: template.id,
+      sortOrder: 0,
+      name: `${seed.key} Template Source`,
+    },
+  });
+  const laterSection = await prisma.projectTemplateSection.create({
+    data: {
+      id: `${seed.key}-template-later-section`,
+      projectTemplateId: template.id,
+      sortOrder: 1,
+      name: `${seed.key} Template Later`,
+    },
+  });
+
+  const copiedSectionId = await ignoreStaticRevalidateError(() => copyProjectTemplateSection(sourceSection.id)) ??
+    (await prisma.projectTemplateSection.findFirstOrThrow({
+      where: { projectTemplateId: template.id, id: { notIn: [sourceSection.id, laterSection.id] } },
+      select: { id: true },
+    })).id;
+
+  const orderedSections = await prisma.projectTemplateSection.findMany({
+    where: { projectTemplateId: template.id },
+    orderBy: { sortOrder: "asc" },
+    select: { id: true, sortOrder: true },
+  });
+  assert.deepEqual(orderedSections.map((section) => section.id), [
+    sourceSection.id,
+    copiedSectionId,
+    laterSection.id,
+  ]);
+  assert.deepEqual(orderedSections.map((section) => section.sortOrder), [0, 1, 2]);
 });
 
 test("project preset binding writes use ProjectPresetBinding rows without rewriting section caches", async () => {
