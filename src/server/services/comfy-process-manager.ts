@@ -11,6 +11,11 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { execSync } from "node:child_process";
 import { env } from "@/lib/env";
+import {
+  getCachedGpuAvailability,
+  shouldDeferComfyRestartForGpu,
+  type GpuAvailability,
+} from "@/server/services/comfy-gpu-watchdog";
 import { applyComfyPatches } from "@/server/services/comfy-patch-manager";
 
 // ---------------------------------------------------------------------------
@@ -22,6 +27,7 @@ export type ComfyProcessState =
   | "starting"
   | "running"
   | "unhealthy"
+  | "waiting_for_gpu"
   | "restarting"
   | "error";
 
@@ -35,6 +41,8 @@ export type ComfyProcessStatus = {
   restartsInWindow: number;
   maxRestartsReached: boolean;
   autoRestartEnabled: boolean;
+  gpuAwareRestartEnabled: boolean;
+  gpuAvailability: GpuAvailability | null;
   managedMode: boolean;
   logs: string[];
   comfyApiUrl: string;
@@ -105,6 +113,7 @@ class ComfyProcessManager {
   private spawnedAt: number | null = null;
   /** Timer for auto-restart delay — tracked to prevent duplicate spawns */
   private autoRestartTimer: NodeJS.Timeout | null = null;
+  private lastGpuAvailability: GpuAvailability | null = null;
 
   /**
    * When true, ComfyUI was detected as already running (not spawned by us).
@@ -132,6 +141,8 @@ class ComfyProcessManager {
       restartsInWindow: this.restartsInWindow(),
       maxRestartsReached: this.maxRestartsReached,
       autoRestartEnabled: env.comfyAutoRestart,
+      gpuAwareRestartEnabled: env.comfyGpuAwareRestart,
+      gpuAvailability: this.lastGpuAvailability,
       managedMode: Boolean(env.comfyLaunchCmd.trim()),
       logs: this.logs.toArray(),
       comfyApiUrl: env.comfyApiUrl,
@@ -198,6 +209,7 @@ class ComfyProcessManager {
       (this.externallyStarted ||
         this.state === "running" ||
         this.state === "unhealthy" ||
+        this.state === "waiting_for_gpu" ||
         this.state === "starting" ||
         this.state === "restarting");
 
@@ -641,7 +653,12 @@ class ComfyProcessManager {
         }
 
         // Transition to running if we were starting
-        if (this.state === "starting" || this.state === "unhealthy" || this.state === "restarting") {
+        if (
+          this.state === "starting" ||
+          this.state === "unhealthy" ||
+          this.state === "waiting_for_gpu" ||
+          this.state === "restarting"
+        ) {
           this.log("[health] ComfyUI is responsive ✓");
           this.setState("running");
         }
@@ -685,7 +702,7 @@ class ComfyProcessManager {
         `[health] ComfyUI unreachable (${this.consecutiveHealthFailures} consecutive failures) ✗`,
       );
       this.setState("unhealthy");
-      this.maybeAutoRestart();
+      void this.maybeAutoRestart();
     }
   }
 
@@ -698,10 +715,10 @@ class ComfyProcessManager {
       return; // User-initiated stop, don't auto-restart
     }
 
-    this.maybeAutoRestart();
+    void this.maybeAutoRestart();
   }
 
-  private maybeAutoRestart() {
+  private async maybeAutoRestart() {
     if (!env.comfyAutoRestart) {
       this.log("[manager] Auto-restart disabled");
       return;
@@ -713,6 +730,35 @@ class ComfyProcessManager {
 
     if (this.maxRestartsReached) {
       return; // Already logged
+    }
+
+    if (this.autoRestartTimer) {
+      return; // Restart or GPU-wait retry is already scheduled
+    }
+
+    if (env.comfyGpuAwareRestart) {
+      const gpuAvailability = getCachedGpuAvailability(env.comfyGpuCheckIntervalMs);
+      this.lastGpuAvailability = gpuAvailability;
+
+      if (shouldDeferComfyRestartForGpu(env.comfyGpuAwareRestart, gpuAvailability)) {
+        this.setState("waiting_for_gpu");
+        this.errorMessage = `Waiting for GPU before restarting ComfyUI: ${gpuAvailability.message}`;
+        this.log(`[manager] GPU unavailable; pausing auto-restart: ${gpuAvailability.message}`);
+        this.autoRestartTimer = setTimeout(() => {
+          this.autoRestartTimer = null;
+          if (this.state === "stopped") {
+            this.log("[manager] GPU-aware auto-restart cancelled: process was stopped");
+            return;
+          }
+          void this.maybeAutoRestart();
+        }, env.comfyGpuCheckIntervalMs);
+        this.autoRestartTimer.unref?.();
+        return;
+      }
+
+      if (this.state === "waiting_for_gpu") {
+        this.log(`[manager] GPU check no longer blocks restart (${gpuAvailability.state}: ${gpuAvailability.message})`);
+      }
     }
 
     const windowRestarts = this.restartsInWindow();
@@ -774,6 +820,7 @@ class ComfyProcessManager {
     if (
       this.state !== "running" &&
       this.state !== "unhealthy" &&
+      this.state !== "waiting_for_gpu" &&
       this.state !== "starting" &&
       this.state !== "restarting"
     ) {

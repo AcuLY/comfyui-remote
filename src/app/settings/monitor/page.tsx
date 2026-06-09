@@ -15,6 +15,7 @@ type ComfyProcessState =
   | "starting"
   | "running"
   | "unhealthy"
+  | "waiting_for_gpu"
   | "restarting"
   | "error";
 
@@ -28,6 +29,8 @@ type ComfyStatus = {
   restartsInWindow: number;
   maxRestartsReached: boolean;
   autoRestartEnabled: boolean;
+  gpuAwareRestartEnabled: boolean;
+  gpuAvailability: { state: "available" | "unavailable" | "unknown"; message: string } | null;
   managedMode: boolean;
   logs: string[];
   comfyApiUrl: string;
@@ -47,6 +50,7 @@ const STATE_CONFIG: Record<ComfyProcessState, { label: string; color: string; bg
   starting: { label: "启动中", color: "text-amber-300", bg: "bg-amber-500/20" },
   running: { label: "运行中", color: "text-emerald-300", bg: "bg-emerald-500/20" },
   unhealthy: { label: "不健康", color: "text-red-300", bg: "bg-red-500/20" },
+  waiting_for_gpu: { label: "等待 GPU", color: "text-sky-300", bg: "bg-sky-500/20" },
   restarting: { label: "重启中", color: "text-amber-300", bg: "bg-amber-500/20" },
   error: { label: "错误", color: "text-red-300", bg: "bg-red-500/20" },
 };
@@ -280,8 +284,16 @@ export default function MonitorPage() {
     );
   }
 
-  const canStart = status.state === "stopped" || status.state === "error" || status.state === "unhealthy";
-  const canStop = status.state === "running" || status.state === "starting" || status.state === "unhealthy";
+  const canStart =
+    status.state === "stopped" ||
+    status.state === "error" ||
+    status.state === "unhealthy" ||
+    status.state === "waiting_for_gpu";
+  const canStop =
+    status.state === "running" ||
+    status.state === "starting" ||
+    status.state === "unhealthy" ||
+    status.state === "waiting_for_gpu";
 
   return (
     <div className="space-y-4">
@@ -306,12 +318,20 @@ export default function MonitorPage() {
           />
           <StatChip label="运行时长" value={formatUptime(status.uptime)} />
           <StatChip label="PID" value={status.pid ?? "—"} />
+          <StatChip
+            label="GPU Watchdog"
+            value={status.gpuAwareRestartEnabled ? (status.gpuAvailability?.state ?? "待检查") : "关闭"}
+            tone={status.gpuAvailability?.state === "unavailable" ? "warn" : status.gpuAvailability?.state === "available" ? "accent" : "default"}
+          />
         </div>
 
         {/* Additional info */}
         <div className="mt-3 space-y-1 text-xs text-zinc-500">
           <div>API 地址：<span className="text-zinc-300">{status.comfyApiUrl}</span></div>
           <div>上次健康检查：<span className="text-zinc-300">{formatTime(status.lastHealthCheck)}</span> {status.lastHealthOk ? "✓" : "✗"}</div>
+          {status.gpuAvailability && (
+            <div>GPU 检查：<span className="text-zinc-300">{status.gpuAvailability.state}</span> · {status.gpuAvailability.message}</div>
+          )}
           {status.errorMessage && (
             <div className="mt-2 rounded-lg border border-red-500/20 bg-red-500/5 p-2 text-red-300">
               {status.errorMessage}
