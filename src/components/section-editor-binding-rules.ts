@@ -95,6 +95,19 @@ export function getSectionPresetManagerHref(
 ) {
   const params = new URLSearchParams();
 
+  if (binding.sourceId) {
+    if (binding.categoryId) params.set("category", binding.categoryId);
+    if (binding.variantId) params.set("variant", binding.variantId);
+
+    const preset = library?.categories
+      .find((cat) => cat.id === binding.categoryId)
+      ?.presets.find((item) => item.id === binding.sourceId);
+    if (preset?.folderId) params.set("folder", preset.folderId);
+
+    const query = params.toString();
+    return query ? `/assets/presets/${binding.sourceId}?${query}` : `/assets/presets/${binding.sourceId}`;
+  }
+
   if (binding.presetGroupId) {
     let groupCategoryId: string | null = null;
     let groupFolderId: string | null = null;
@@ -119,15 +132,7 @@ export function getSectionPresetManagerHref(
   if (binding.categoryId) params.set("category", binding.categoryId);
   if (binding.variantId) params.set("variant", binding.variantId);
 
-  const preset = library?.categories
-    .find((cat) => cat.id === binding.categoryId)
-    ?.presets.find((item) => item.id === binding.sourceId);
-  if (preset?.folderId) params.set("folder", preset.folderId);
-
   const query = params.toString();
-  if (binding.sourceId) {
-    return query ? `/assets/presets/${binding.sourceId}?${query}` : `/assets/presets/${binding.sourceId}`;
-  }
   return query ? `/assets/presets?${query}` : "/assets/presets";
 }
 
@@ -317,7 +322,12 @@ export function expandSectionPresetBindingDisplayRows<TBinding extends SectionPr
     rows.push(
       ...groupRows
         .sort((left, right) => left.categoryOrder - right.categoryOrder || left.groupOrder - right.groupOrder)
-        .map(({ categoryOrder: _categoryOrder, groupOrder: _groupOrder, ...row }) => row),
+        .map((row) => {
+          const { categoryOrder, groupOrder, ...displayRow } = row;
+          void categoryOrder;
+          void groupOrder;
+          return displayRow;
+        }),
     );
   }
 

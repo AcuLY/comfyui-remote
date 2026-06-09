@@ -365,8 +365,16 @@ export function SectionEditor({
     return dimension === "lora1" ? (cat.lora1Order ?? 999) : (cat.lora2Order ?? 999);
   }
 
-  function getPresetManagerHref(binding: PresetBindingInfo): string {
-    return getSectionPresetManagerHref(binding, libraryV2);
+  function getPresetManagerHref(row: (typeof presetBindingRows)[number]): string {
+    return getSectionPresetManagerHref(
+      {
+        sourceId: row.sourceId,
+        variantId: row.variantId,
+        presetGroupId: row.sourceId ? null : row.binding.presetGroupId,
+        categoryId: row.categoryId,
+      },
+      libraryV2,
+    );
   }
 
   // ── Delete an entire preset binding (and cascade to group if part of one) ──
@@ -594,13 +602,14 @@ export function SectionEditor({
             {presetBindingRows.map((row) => {
               const binding = row.binding;
               const canSwitchVariant = !row.isPresetGroupMember && canSwitchSectionPresetVariant(binding);
+              const detailHref = (row.sourceId || binding.presetGroupId) ? getPresetManagerHref(row) : null;
 
               return (
                 <div
                   key={row.key}
                   className="flex items-center justify-between rounded-lg border border-white/5 bg-white/[0.02] px-3 py-1.5"
                 >
-                <div className="flex items-center gap-2 min-w-0">
+                <div className="flex min-w-0 flex-1 items-center gap-2">
                   {/* Category tag */}
                   {row.categoryName && (
                     <span
@@ -620,15 +629,33 @@ export function SectionEditor({
                   {(binding.presetGroupId || binding.groupBindingId) && (
                     <span className="shrink-0 rounded bg-amber-500/15 px-1 py-px text-[8px] text-amber-400">组</span>
                   )}
-                  <span className="text-[11px] text-zinc-300 truncate">{row.presetName}</span>
-                  {row.isPresetGroupMember && row.variantName && row.variantName !== "默认" && (
+                  {detailHref ? (
+                    <Link
+                      href={detailHref}
+                      className="flex min-w-0 flex-1 items-center gap-2 rounded-md py-0.5 pr-1 transition hover:text-sky-300 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-500/60"
+                      title="在预制详情中打开"
+                    >
+                      <span className="truncate text-[11px] text-zinc-300">{row.presetName}</span>
+                      {row.isPresetGroupMember && row.variantName && row.variantName !== "默认" && (
+                        <span className="shrink-0 rounded border border-white/10 px-1 py-px text-[9px] text-zinc-500">
+                          {row.variantName}
+                        </span>
+                      )}
+                      <span className="text-[9px] text-zinc-500">
+                        {row.blockCount} 块 · {row.loraCount} LoRA
+                      </span>
+                    </Link>
+                  ) : (
+                    <span className="truncate text-[11px] text-zinc-300">{row.presetName}</span>
+                  )}
+                  {!detailHref && row.isPresetGroupMember && row.variantName && row.variantName !== "默认" && (
                     <span className="shrink-0 rounded border border-white/10 px-1 py-px text-[9px] text-zinc-500">
                       {row.variantName}
                     </span>
                   )}
-                  {(row.sourceId || binding.presetGroupId) && (
+                  {detailHref && (
                     <Link
-                      href={getPresetManagerHref(binding)}
+                      href={detailHref}
                       className="shrink-0 rounded p-0.5 text-zinc-500 hover:bg-white/5 hover:text-sky-400"
                       title="在预制管理中打开"
                     >
@@ -655,9 +682,11 @@ export function SectionEditor({
                       <ChevronDown className="pointer-events-none absolute right-1 top-1/2 size-2.5 -translate-y-1/2 text-zinc-500" />
                     </div>
                   )}
-                  <span className="text-[9px] text-zinc-500">
-                    {row.blockCount} 块 · {row.loraCount} LoRA
-                  </span>
+                  {!detailHref && (
+                    <span className="text-[9px] text-zinc-500">
+                      {row.blockCount} 块 · {row.loraCount} LoRA
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center gap-0.5 shrink-0">
                   {onRename && (
