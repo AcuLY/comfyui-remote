@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { PersistentBottomNav } from "@/components/persistent-bottom-nav";
 import { SfwModeProvider } from "@/components/sfw-mode-provider";
 import { TaskPanelProvider, TaskPanelContainer } from "@/components/task-panel";
+import { NotificationCopyButtons } from "@/components/notification-copy-buttons";
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
@@ -15,6 +16,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </main>
       <PersistentBottomNav />
       <TaskPanelContainer />
+      <NotificationCopyButtons />
       <Toaster
         theme="dark"
         position="top-right"
@@ -26,7 +28,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           closeButton: true,
           closeButtonAriaLabel: "关闭通知",
           classNames: {
-            toast: "!pr-10",
+            toast: "!pr-20",
             closeButton:
               "!top-1/2 !h-6 !w-6 !border-white/10 !bg-white/5 !text-zinc-300 [--toast-close-button-end:0.5rem] [--toast-close-button-start:auto] [--toast-close-button-transform:translateY(-50%)] hover:!border-white/20 hover:!bg-white/10 hover:!text-white",
           },
