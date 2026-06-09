@@ -337,6 +337,159 @@ test("section preset list expands preset group members in preset category order"
   );
 });
 
+test("section preset list expands preset group members in positive prompt order", () => {
+  const rows = expandSectionPresetBindingDisplayRows(
+    [
+      {
+        bindingId: "group-binding",
+        presetName: "单人-背手站立",
+        sourceId: null,
+        variantId: null,
+        presetGroupId: "group-section",
+        categoryId: "group-cat",
+        categoryName: "小节",
+        categoryColor: "30 50% 55%",
+        blockCount: 1,
+        loraCount: 0,
+        availableVariants: [],
+      },
+    ],
+    {
+      categories: [
+        {
+          id: "group-cat",
+          name: "小节",
+          color: "30 50% 55%",
+          presets: [],
+          groups: [
+            {
+              id: "group-section",
+              name: "单人-背手站立",
+              members: [
+                {
+                  id: "member-person",
+                  presetId: "preset-person",
+                  variantId: "variant-person-default",
+                  subGroupId: null,
+                  presetName: "单人",
+                  variantName: "默认",
+                },
+                {
+                  id: "member-pose",
+                  presetId: "preset-pose",
+                  variantId: "variant-pose-default",
+                  subGroupId: null,
+                  presetName: "背手站立",
+                  variantName: "默认",
+                },
+              ],
+            },
+          ],
+        },
+        {
+          id: "person-cat",
+          name: "人数",
+          color: "23 50% 55%",
+          positivePromptOrder: 1,
+          presets: [
+            {
+              id: "preset-person",
+              name: "单人",
+              variants: [{ id: "variant-person-default", name: "默认" }],
+            },
+          ],
+        },
+        {
+          id: "pose-cat",
+          name: "姿势",
+          color: "258 50% 55%",
+          positivePromptOrder: 0,
+          presets: [
+            {
+              id: "preset-pose",
+              name: "背手站立",
+              variants: [{ id: "variant-pose-default", name: "默认" }],
+            },
+          ],
+        },
+      ],
+    },
+  );
+
+  assert.deepEqual(
+    rows.map((row) => row.presetName),
+    ["背手站立", "单人"],
+  );
+});
+
+test("section preset list sorts ordinary preset bindings by positive prompt order", () => {
+  const rows = expandSectionPresetBindingDisplayRows(
+    [
+      {
+        bindingId: "person-binding",
+        presetName: "单人",
+        sourceId: "preset-person",
+        variantId: "variant-person-default",
+        presetGroupId: null,
+        categoryId: "person-cat",
+        categoryName: "人数",
+        categoryColor: "23 50% 55%",
+        blockCount: 1,
+        loraCount: 0,
+        availableVariants: [{ id: "variant-person-default", name: "默认" }],
+      },
+      {
+        bindingId: "pose-binding",
+        presetName: "背手站立",
+        sourceId: "preset-pose",
+        variantId: "variant-pose-default",
+        presetGroupId: null,
+        categoryId: "pose-cat",
+        categoryName: "姿势",
+        categoryColor: "258 50% 55%",
+        blockCount: 1,
+        loraCount: 0,
+        availableVariants: [{ id: "variant-pose-default", name: "默认" }],
+      },
+    ],
+    {
+      categories: [
+        {
+          id: "person-cat",
+          name: "人数",
+          color: "23 50% 55%",
+          positivePromptOrder: 1,
+          presets: [
+            {
+              id: "preset-person",
+              name: "单人",
+              variants: [{ id: "variant-person-default", name: "默认" }],
+            },
+          ],
+        },
+        {
+          id: "pose-cat",
+          name: "姿势",
+          color: "258 50% 55%",
+          positivePromptOrder: 0,
+          presets: [
+            {
+              id: "preset-pose",
+              name: "背手站立",
+              variants: [{ id: "variant-pose-default", name: "默认" }],
+            },
+          ],
+        },
+      ],
+    },
+  );
+
+  assert.deepEqual(
+    rows.map((row) => row.presetName),
+    ["背手站立", "单人"],
+  );
+});
+
 test("section preset list keeps real group-imported preset bindings as independent rows", () => {
   const rows = expandSectionPresetBindingDisplayRows(
     [

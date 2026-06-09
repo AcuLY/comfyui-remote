@@ -28,6 +28,7 @@ export type SectionPresetBindingDisplayLibrary = {
     id: string;
     name: string;
     color: string | null;
+    positivePromptOrder?: number | null;
     slotTemplate?: readonly { categoryId: string; label?: string }[];
     presets: readonly {
       id: string;
@@ -190,6 +191,7 @@ export function expandSectionPresetBindingDisplayRows<TBinding extends SectionPr
     categoryOrder: number;
     variants: readonly { id: string; name: string }[];
   }>();
+  const categoryOrderById = new Map<string, number>();
   const groupInfoById = new Map<string, {
     id: string;
     name: string;
@@ -200,6 +202,8 @@ export function expandSectionPresetBindingDisplayRows<TBinding extends SectionPr
   for (const category of library?.categories ?? []) {
     const currentCategoryOrder = categoryOrder;
     categoryOrder += 1;
+    const currentPositivePromptOrder = category.positivePromptOrder ?? currentCategoryOrder;
+    categoryOrderById.set(category.id, currentPositivePromptOrder);
 
     for (const preset of category.presets) {
       presetInfoById.set(preset.id, {
@@ -208,7 +212,7 @@ export function expandSectionPresetBindingDisplayRows<TBinding extends SectionPr
         categoryId: category.id,
         categoryName: category.name,
         categoryColor: category.color ?? undefined,
-        categoryOrder: currentCategoryOrder,
+        categoryOrder: currentPositivePromptOrder,
         variants: preset.variants,
       });
     }
@@ -317,5 +321,17 @@ export function expandSectionPresetBindingDisplayRows<TBinding extends SectionPr
     );
   }
 
-  return rows;
+  return rows
+    .map((row, index) => ({
+      row,
+      index,
+      categoryOrder: row.categoryId
+        ? categoryOrderById.get(row.categoryId) ?? Number.MAX_SAFE_INTEGER
+        : Number.MAX_SAFE_INTEGER,
+    }))
+    .sort((left, right) =>
+      left.categoryOrder - right.categoryOrder ||
+      left.index - right.index
+    )
+    .map(({ row }) => row);
 }
