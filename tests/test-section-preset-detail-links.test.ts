@@ -29,29 +29,35 @@ function functionSource(source: string, name: string) {
   assert.fail(`${name} body should close`);
 }
 
-function presetLinkBlock(source: string) {
+function presetLinkBlocks(source: string) {
   const blocks = source.match(/<Link\b[\s\S]*?<\/Link>/g) ?? [];
-  const block = blocks.find((item) => item.includes("getPresetManagerHref(binding)"));
-  assert.ok(block, "preset binding detail Link should exist");
-  return block;
+  return blocks.filter((item) => item.includes("detailHref"));
 }
 
-test("section preset binding detail links use shared preset-or-group target in the same tab", () => {
+test("section preset cards expose same-tab detail links from the card body", () => {
   for (const file of sectionPresetLinkFiles) {
     const source = readSource(file);
     const hrefFunction = functionSource(source, "getPresetManagerHref");
-    const link = presetLinkBlock(source);
+    const links = presetLinkBlocks(source);
 
     assert.match(
       hrefFunction,
-      /getSectionPresetManagerHref\(binding,\s*(?:libraryV2|library)\)/,
+      /getSectionPresetManagerHref\([\s\S]*,\s*(?:libraryV2|library),?\s*\)/,
       `${file} should delegate preset binding links to the shared preset/group route helper`,
     );
+    assert.match(source, /const detailHref = [^;]*getPresetManagerHref\((?:row|binding)\)/, `${file} should compute a per-card detail href`);
     assert.match(
       source,
       /(?:row|binding)\.sourceId\s*\|\|\s*binding\.presetGroupId/,
       `${file} should show the detail link for preset group bindings as well as preset bindings`,
     );
-    assert.doesNotMatch(link, /target=["']_blank["']/, `${file} should navigate in the same tab`);
+    assert.ok(links.length >= 1, `${file} should render a card-body detail Link`);
+    assert.ok(links.some((link) => /href=\{detailHref\}/.test(link)), `${file} should link the card body to the detail href`);
+    assert.ok(links.some((link) => /ExternalLink/.test(link)), `${file} should keep a visible detail icon link`);
+    for (const link of links) {
+      assert.doesNotMatch(link, /target=["']_blank["']/, `${file} should navigate in the same tab`);
+      assert.doesNotMatch(link, /<button\b/, `${file} detail Links must not wrap action buttons`);
+      assert.doesNotMatch(link, /<select\b/, `${file} detail Links must not wrap variant selectors`);
+    }
   }
 });
