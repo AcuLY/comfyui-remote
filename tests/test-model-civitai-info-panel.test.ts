@@ -25,9 +25,11 @@ test("LoraAsset schema stores one Civitai link for model files", () => {
 
 test("model notes endpoint accepts and persists the Civitai link", () => {
   const routeSource = readSource("src/app/api/models/notes/route.ts");
+  const legacyLoraRouteSource = readSource("src/app/api/loras/notes/route.ts");
   const serviceSource = readSource("src/server/services/model-asset-service.ts");
 
-  assert.match(routeSource, /civitaiLink:\s*z\.string\(\)\.optional\(\)/, "notes route validates civitaiLink");
+  assert.match(routeSource, /civitaiLink:\s*z\.string\(\)\.optional\(\)/, "model notes route validates civitaiLink");
+  assert.match(legacyLoraRouteSource, /civitaiLink:\s*z\.string\(\)\.optional\(\)/, "legacy LoRA notes route validates civitaiLink");
   assert.match(serviceSource, /select:\s*\{[\s\S]*?civitaiLink:\s*true/, "asset reads include civitaiLink");
   assert.match(serviceSource, /update:\s*\{[\s\S]*?civitaiLink/, "upsert update persists civitaiLink");
   assert.match(serviceSource, /create:\s*\{[\s\S]*?civitaiLink/, "upsert create persists civitaiLink");

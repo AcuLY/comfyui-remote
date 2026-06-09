@@ -11,6 +11,7 @@ const NotesSchema = z.object({
   path: z.string().min(1),
   notes: z.string().optional(),
   triggerWords: z.string().optional(),
+  civitaiLink: z.string().optional(),
 });
 
 export async function GET(request: NextRequest) {
