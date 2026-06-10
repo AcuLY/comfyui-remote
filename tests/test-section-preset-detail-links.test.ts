@@ -5,10 +5,8 @@ import { join } from "node:path";
 
 const rootDir = process.cwd();
 
-const sectionPresetLinkFiles = [
-  "src/components/section-editor.tsx",
-  "src/app/assets/templates/[templateId]/sections/[sectionIndex]/section-detail-client.tsx",
-];
+const projectSectionEditorFile = "src/components/section-editor.tsx";
+const templateSectionEditorFile = "src/app/assets/templates/[templateId]/sections/[sectionIndex]/section-detail-client.tsx";
 
 function readSource(path: string) {
   return readFileSync(join(rootDir, path), "utf8");
@@ -36,22 +34,51 @@ function presetLinkBlock(source: string) {
   return block;
 }
 
-test("section preset binding detail links use shared preset-or-group target in the same tab", () => {
-  for (const file of sectionPresetLinkFiles) {
-    const source = readSource(file);
-    const hrefFunction = functionSource(source, "getPresetManagerHref");
-    const link = presetLinkBlock(source);
+test("project section preset group member rows split card and member preset links in the same tab", () => {
+  const source = readSource(projectSectionEditorFile);
 
-    assert.match(
-      hrefFunction,
-      /getSectionPresetManagerHref\(binding,\s*(?:libraryV2|library)\)/,
-      `${file} should delegate preset binding links to the shared preset/group route helper`,
-    );
-    assert.match(
-      source,
-      /(?:row|binding)\.sourceId\s*\|\|\s*binding\.presetGroupId/,
-      `${file} should show the detail link for preset group bindings as well as preset bindings`,
-    );
-    assert.doesNotMatch(link, /target=["']_blank["']/, `${file} should navigate in the same tab`);
-  }
+  assert.match(
+    source,
+    /const cardHref = getSectionPresetRowCardHref\(row,\s*libraryV2\)/,
+    "member row card clicks should use the row-level preset group target",
+  );
+  assert.match(
+    source,
+    /const memberPresetHref = getSectionPresetMemberPresetHref\(row,\s*libraryV2\)/,
+    "member detail buttons should use the row-level member preset target",
+  );
+  assert.match(
+    source,
+    /\{cardHref \? \(\s*<Link[\s\S]*?href=\{cardHref\}/,
+    "preset group member card content should link to the preset group detail page",
+  );
+  assert.match(
+    source,
+    /\{memberPresetHref && \(\s*<Link[\s\S]*?href=\{memberPresetHref\}/,
+    "only preset group member rows should render a separate member preset detail button",
+  );
+  assert.doesNotMatch(
+    source,
+    /\(row\.sourceId \|\| binding\.presetGroupId\)\s*&&\s*\(\s*<Link/,
+    "ordinary preset rows should not keep the old detail jump button condition",
+  );
+  assert.doesNotMatch(source, /target=["']_blank["']/, "project section links should navigate in the same tab");
+});
+
+test("template section preset binding detail links still use the shared manager target in the same tab", () => {
+  const source = readSource(templateSectionEditorFile);
+  const hrefFunction = functionSource(source, "getPresetManagerHref");
+  const link = presetLinkBlock(source);
+
+  assert.match(
+    hrefFunction,
+    /getSectionPresetManagerHref\(binding,\s*library\)/,
+    `${templateSectionEditorFile} should delegate preset binding links to the shared preset/group route helper`,
+  );
+  assert.match(
+    source,
+    /binding\.sourceId\s*\|\|\s*binding\.presetGroupId/,
+    `${templateSectionEditorFile} should show the detail link for preset group bindings as well as preset bindings`,
+  );
+  assert.doesNotMatch(link, /target=["']_blank["']/, `${templateSectionEditorFile} should navigate in the same tab`);
 });

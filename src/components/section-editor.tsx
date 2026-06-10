@@ -8,8 +8,9 @@ import { LoraListEditor } from "@/components/lora-list-editor";
 import {
   canSwitchSectionPresetVariant,
   expandSectionPresetBindingDisplayRows,
+  getSectionPresetMemberPresetHref,
   getSectionPresetBindingGroupName,
-  getSectionPresetManagerHref,
+  getSectionPresetRowCardHref,
 } from "@/components/section-editor-binding-rules";
 import type { PromptBlockData } from "@/lib/actions";
 import {
@@ -365,10 +366,6 @@ export function SectionEditor({
     return dimension === "lora1" ? (cat.lora1Order ?? 999) : (cat.lora2Order ?? 999);
   }
 
-  function getPresetManagerHref(binding: PresetBindingInfo): string {
-    return getSectionPresetManagerHref(binding, libraryV2);
-  }
-
   // ── Delete an entire preset binding (and cascade to group if part of one) ──
   function handleDeleteBinding(bindingId: string) {
     const info = presetBindings.find((b) => b.bindingId === bindingId);
@@ -594,13 +591,10 @@ export function SectionEditor({
             {presetBindingRows.map((row) => {
               const binding = row.binding;
               const canSwitchVariant = !row.isPresetGroupMember && canSwitchSectionPresetVariant(binding);
-
-              return (
-                <div
-                  key={row.key}
-                  className="flex items-center justify-between rounded-lg border border-white/5 bg-white/[0.02] px-3 py-1.5"
-                >
-                <div className="flex items-center gap-2 min-w-0">
+              const cardHref = getSectionPresetRowCardHref(row, libraryV2);
+              const memberPresetHref = getSectionPresetMemberPresetHref(row, libraryV2);
+              const rowSummary = (
+                <>
                   {/* Category tag */}
                   {row.categoryName && (
                     <span
@@ -626,15 +620,6 @@ export function SectionEditor({
                       {row.variantName}
                     </span>
                   )}
-                  {(row.sourceId || binding.presetGroupId) && (
-                    <Link
-                      href={getPresetManagerHref(binding)}
-                      className="shrink-0 rounded p-0.5 text-zinc-500 hover:bg-white/5 hover:text-sky-400"
-                      title="在预制管理中打开"
-                    >
-                      <ExternalLink className="size-3" />
-                    </Link>
-                  )}
                   {/* Variant switcher – show only if preset has multiple variants */}
                   {canSwitchVariant && (
                     <div className="relative">
@@ -658,43 +643,74 @@ export function SectionEditor({
                   <span className="text-[9px] text-zinc-500">
                     {row.blockCount} 块 · {row.loraCount} LoRA
                   </span>
-                </div>
-                <div className="flex items-center gap-0.5 shrink-0">
-                  {onRename && (
-                    <button
-                      type="button"
-                      onClick={() => onRename(binding.groupName ?? row.presetName)}
-                      title="用预制名作为小节名"
-                      className="rounded p-1 text-zinc-600 hover:bg-sky-500/10 hover:text-sky-400"
+                </>
+              );
+
+              return (
+                <div
+                  key={row.key}
+                  className={`flex items-center justify-between gap-2 rounded-lg border border-white/5 bg-white/[0.02] px-3 py-1.5 ${
+                    cardHref ? "transition hover:border-sky-500/20 hover:bg-white/[0.04]" : ""
+                  }`}
+                >
+                  {cardHref ? (
+                    <Link
+                      href={cardHref}
+                      className="-mx-1 flex min-w-0 flex-1 items-center gap-2 rounded px-1 py-0.5"
+                      title="打开所属预制组"
                     >
-                      <ClipboardCopy className="size-3" />
-                    </button>
+                      {rowSummary}
+                    </Link>
+                  ) : (
+                    <div className="flex min-w-0 flex-1 items-center gap-2">
+                      {rowSummary}
+                    </div>
                   )}
-                  {!binding.resolvedOnly && (
-                    <>
-                      {!row.isPresetGroupMember && (
-                        <button
-                          type="button"
-                          onClick={() => handleStandaloneDeleteBinding(binding.bindingId)}
-                          disabled={isPending}
-                          title="独立删除（仅此预制）"
-                          className="rounded p-1 text-zinc-600 hover:bg-amber-500/10 hover:text-amber-400 disabled:opacity-50"
-                        >
-                          <Unlink className="size-3" />
-                        </button>
-                      )}
+                  <div className="flex shrink-0 items-center gap-0.5">
+                    {memberPresetHref && (
+                      <Link
+                        href={memberPresetHref}
+                        className="rounded p-1 text-zinc-600 hover:bg-white/5 hover:text-sky-400"
+                        title="打开成员预制详情"
+                      >
+                        <ExternalLink className="size-3" />
+                      </Link>
+                    )}
+                    {onRename && (
                       <button
                         type="button"
-                        onClick={() => handleDeleteBinding(binding.bindingId)}
-                        disabled={isPending}
-                        title="级联删除（含同组预制）"
-                        className="rounded p-1 text-zinc-600 hover:bg-red-500/10 hover:text-red-400 disabled:opacity-50"
+                        onClick={() => onRename(binding.groupName ?? row.presetName)}
+                        title="用预制名作为小节名"
+                        className="rounded p-1 text-zinc-600 hover:bg-sky-500/10 hover:text-sky-400"
                       >
-                        <Trash2 className="size-3" />
+                        <ClipboardCopy className="size-3" />
                       </button>
-                    </>
-                  )}
-                </div>
+                    )}
+                    {!binding.resolvedOnly && (
+                      <>
+                        {!row.isPresetGroupMember && (
+                          <button
+                            type="button"
+                            onClick={() => handleStandaloneDeleteBinding(binding.bindingId)}
+                            disabled={isPending}
+                            title="独立删除（仅此预制）"
+                            className="rounded p-1 text-zinc-600 hover:bg-amber-500/10 hover:text-amber-400 disabled:opacity-50"
+                          >
+                            <Unlink className="size-3" />
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteBinding(binding.bindingId)}
+                          disabled={isPending}
+                          title="级联删除（含同组预制）"
+                          className="rounded p-1 text-zinc-600 hover:bg-red-500/10 hover:text-red-400 disabled:opacity-50"
+                        >
+                          <Trash2 className="size-3" />
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
               );
             })}

@@ -131,6 +131,31 @@ export function getSectionPresetManagerHref(
   return query ? `/assets/presets?${query}` : "/assets/presets";
 }
 
+export function getSectionPresetRowCardHref<TBinding extends SectionPresetBindingDisplaySource>(
+  row: Pick<SectionPresetBindingDisplayRow<TBinding>, "binding" | "isPresetGroupMember">,
+  library?: SectionPresetBindingDisplayLibrary,
+) {
+  if (!row.isPresetGroupMember || !row.binding.presetGroupId) return null;
+  return getSectionPresetManagerHref(row.binding, library);
+}
+
+export function getSectionPresetMemberPresetHref<TBinding extends SectionPresetBindingDisplaySource>(
+  row: Pick<SectionPresetBindingDisplayRow<TBinding>, "sourceId" | "variantId" | "categoryId" | "isPresetGroupMember">,
+  library?: SectionPresetBindingDisplayLibrary,
+) {
+  if (!row.isPresetGroupMember || !row.sourceId) return null;
+
+  return getSectionPresetManagerHref(
+    {
+      sourceId: row.sourceId,
+      variantId: row.variantId,
+      presetGroupId: null,
+      categoryId: row.categoryId,
+    },
+    library,
+  );
+}
+
 export function getSectionPresetBindingGroupName(
   binding: Pick<SectionPresetBindingDisplaySource, "presetGroupId">,
   library?: SectionPresetBindingDisplayLibrary,
@@ -317,7 +342,12 @@ export function expandSectionPresetBindingDisplayRows<TBinding extends SectionPr
     rows.push(
       ...groupRows
         .sort((left, right) => left.categoryOrder - right.categoryOrder || left.groupOrder - right.groupOrder)
-        .map(({ categoryOrder: _categoryOrder, groupOrder: _groupOrder, ...row }) => row),
+        .map((row) => {
+          const { categoryOrder, groupOrder, ...displayRow } = row;
+          void categoryOrder;
+          void groupOrder;
+          return displayRow;
+        }),
     );
   }
 

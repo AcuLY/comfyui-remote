@@ -4,8 +4,10 @@ import assert from "node:assert/strict";
 import {
   canSwitchSectionPresetVariant,
   expandSectionPresetBindingDisplayRows,
+  getSectionPresetMemberPresetHref,
   getSectionPresetBindingGroupName,
   getSectionPresetManagerHref,
+  getSectionPresetRowCardHref,
   getSectionPresetBindingDisplayName,
 } from "../src/components/section-editor-binding-rules";
 
@@ -153,6 +155,113 @@ test("section preset manager link keeps ordinary preset detail targets", () => {
   );
 
   assert.equal(href, "/assets/presets/preset-person?category=person-cat&variant=variant-default&folder=preset-folder");
+});
+
+test("section preset group member rows split card and member-detail navigation", () => {
+  const library = {
+    categories: [
+      {
+        id: "group-cat",
+        name: "小节",
+        color: "30 50% 55%",
+        presets: [],
+        groups: [
+          {
+            id: "group-section",
+            name: "单人-背手站立",
+            folderId: "group-folder",
+            members: [
+              {
+                id: "member-person",
+                presetId: "preset-person",
+                variantId: "variant-default",
+                subGroupId: null,
+                presetName: "单人",
+                variantName: "默认",
+              },
+            ],
+          },
+        ],
+      },
+      {
+        id: "person-cat",
+        name: "人数",
+        color: "23 50% 55%",
+        presets: [
+          {
+            id: "preset-person",
+            name: "单人",
+            folderId: "preset-folder",
+            variants: [{ id: "variant-default", name: "默认" }],
+          },
+        ],
+      },
+    ],
+  };
+  const [row] = expandSectionPresetBindingDisplayRows(
+    [
+      {
+        bindingId: "group-binding",
+        presetName: "单人-背手站立",
+        sourceId: null,
+        variantId: null,
+        presetGroupId: "group-section",
+        categoryId: "group-cat",
+        categoryName: "小节",
+        categoryColor: "30 50% 55%",
+        blockCount: 1,
+        loraCount: 0,
+        availableVariants: [],
+      },
+    ],
+    library,
+  );
+
+  assert.equal(row.isPresetGroupMember, true);
+  assert.equal(getSectionPresetRowCardHref(row, library), "/assets/preset-groups/group-section?category=group-cat&folder=group-folder");
+  assert.equal(getSectionPresetMemberPresetHref(row, library), "/assets/presets/preset-person?category=person-cat&variant=variant-default&folder=preset-folder");
+});
+
+test("ordinary section preset rows do not expose a member-detail navigation target", () => {
+  const library = {
+    categories: [
+      {
+        id: "person-cat",
+        name: "人数",
+        color: "23 50% 55%",
+        presets: [
+          {
+            id: "preset-person",
+            name: "单人",
+            folderId: "preset-folder",
+            variants: [{ id: "variant-default", name: "默认" }],
+          },
+        ],
+      },
+    ],
+  };
+  const [row] = expandSectionPresetBindingDisplayRows(
+    [
+      {
+        bindingId: "person-binding",
+        presetName: "单人",
+        sourceId: "preset-person",
+        variantId: "variant-default",
+        presetGroupId: null,
+        categoryId: "person-cat",
+        categoryName: "人数",
+        categoryColor: "23 50% 55%",
+        blockCount: 1,
+        loraCount: 0,
+        availableVariants: [{ id: "variant-default", name: "默认" }],
+      },
+    ],
+    library,
+  );
+
+  assert.equal(row.isPresetGroupMember, false);
+  assert.equal(getSectionPresetRowCardHref(row, library), null);
+  assert.equal(getSectionPresetMemberPresetHref(row, library), null);
 });
 
 test("section rename group name follows preset group slot template order", () => {
