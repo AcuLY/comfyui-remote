@@ -48,6 +48,10 @@ type RunData = {
   }[];
 };
 
+type ResultsGalleryUndoHelpers = {
+  restoreImages: (imageIds: string[]) => void;
+};
+
 export function ResultsGrid({
   runs,
   sectionId,
@@ -223,7 +227,7 @@ export function ResultsGrid({
   }, [allImages.length, trashLatestRunImages, tempBatchSize, handleQuickRun]);
 
   // Undo function
-  const handleUndo = useCallback(async () => {
+  const handleUndo = useCallback(async ({ restoreImages }: ResultsGalleryUndoHelpers) => {
     if (lastTrashedIds.length === 0) {
       toast.error("没有可撤销的操作");
       return;
@@ -231,12 +235,20 @@ export function ResultsGrid({
     try {
       // Restore all last trashed images
       await Promise.all(
-        lastTrashedIds.map((id) =>
-          fetch(`/api/images/${encodeURIComponent(id)}/restore`, {
+        lastTrashedIds.map(async (id) => {
+          const response = await fetch(`/api/images/${encodeURIComponent(id)}/restore`, {
             method: "POST",
-          }),
-        ),
+          });
+          const result = (await response.json().catch(() => null)) as {
+            ok?: boolean;
+            error?: { message?: string };
+          } | null;
+          if (!response.ok || result?.ok === false) {
+            throw new Error(result?.error?.message ?? "撤销失败");
+          }
+        }),
       );
+      restoreImages(lastTrashedIds);
       setLastTrashedIds([]);
       toast.success(`已撤销，恢复了 ${lastTrashedIds.length} 张图片`);
       router.refresh();

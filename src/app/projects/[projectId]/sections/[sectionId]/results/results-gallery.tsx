@@ -36,6 +36,9 @@ type GalleryImage = {
 
 type MarkerField = "featured" | "featured2" | "cover";
 type ReviewAction = "keep" | "trash";
+type ResultsGalleryUndoHelpers = {
+  restoreImages: (imageIds: string[]) => void;
+};
 
 export function ResultsGalleryProvider({
   allImages: initialImages,
@@ -53,7 +56,7 @@ export function ResultsGalleryProvider({
     isFeatured2: (imageId: string) => boolean;
     isCover: (imageId: string) => boolean;
   }) => ReactNode;
-  onUndo?: () => Promise<void>;
+  onUndo?: (helpers: ResultsGalleryUndoHelpers) => Promise<void>;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -67,9 +70,15 @@ export function ResultsGalleryProvider({
   const preloadImagesRef = useRef<HTMLImageElement[]>([]);
   const optimisticReviewsRef = useRef<Map<string, ReviewAction>>(new Map());
   const pendingReviewIdsRef = useRef<Set<string>>(new Set());
+  const knownImageByIdRef = useRef<Map<string, GalleryImage>>(new Map());
+  const imageOrderByIdRef = useRef<Map<string, number>>(new Map());
   const [, startTransition] = useTransition();
 
   useEffect(() => {
+    initialImages.forEach((image, index) => {
+      knownImageByIdRef.current.set(image.id, image);
+      imageOrderByIdRef.current.set(image.id, index);
+    });
     setAllImages(
       reconcileReviewImagesWithOptimisticReviews(
         initialImages,
@@ -166,6 +175,40 @@ export function ResultsGalleryProvider({
     [],
   );
 
+  const restoreImages = useCallback((imageIds: string[]) => {
+    const uniqueImageIds = [...new Set(imageIds.filter(Boolean))];
+    if (uniqueImageIds.length === 0) return;
+
+    for (const imageId of uniqueImageIds) {
+      optimisticReviewsRef.current.delete(imageId);
+      pendingReviewIdsRef.current.delete(imageId);
+    }
+
+    setPendingReviewActions((prev) => {
+      let changed = false;
+      const next = new Map(prev);
+      for (const imageId of uniqueImageIds) {
+        changed = next.delete(imageId) || changed;
+      }
+      return changed ? next : prev;
+    });
+
+    setAllImages((prev) => {
+      const nextById = new Map(prev.map((image) => [image.id, image]));
+      for (const imageId of uniqueImageIds) {
+        const knownImage = knownImageByIdRef.current.get(imageId);
+        if (!knownImage) continue;
+        nextById.set(imageId, { ...knownImage, status: "pending" });
+      }
+
+      return [...nextById.values()].sort((a, b) => {
+        const aOrder = imageOrderByIdRef.current.get(a.id) ?? Number.MAX_SAFE_INTEGER;
+        const bOrder = imageOrderByIdRef.current.get(b.id) ?? Number.MAX_SAFE_INTEGER;
+        return aOrder - bOrder;
+      });
+    });
+  }, []);
+
   const toggleMarker = useCallback(
     (field: MarkerField) => {
       if (!current || busy) return;
@@ -249,6 +292,10 @@ export function ResultsGalleryProvider({
       const imageCount = allImages.length;
       const removedIndex = currentIndex;
       const previousOptimisticAction = optimisticReviewsRef.current.get(imageId);
+      knownImageByIdRef.current.set(imageId, current);
+      if (!imageOrderByIdRef.current.has(imageId)) {
+        imageOrderByIdRef.current.set(imageId, currentIndex);
+      }
       optimisticReviewsRef.current.set(imageId, action);
       addPendingReviewAction(imageId, action);
 
@@ -369,7 +416,7 @@ export function ResultsGalleryProvider({
       if ((key === "z" || key === "Z") && !event.ctrlKey && !event.metaKey) {
         event.preventDefault();
         if (onUndo) {
-          onUndo().catch((error) => {
+          onUndo({ restoreImages }).catch((error) => {
             toast.error(error instanceof Error ? error.message : "撤销失败");
           });
         }
@@ -387,7 +434,7 @@ export function ResultsGalleryProvider({
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [allImages.length, goNext, goPrev, open, reviewCurrent, toggleMarker, onUndo, current]);
+  }, [allImages.length, goNext, goPrev, open, restoreImages, reviewCurrent, toggleMarker, onUndo, current]);
 
   // Reset censored view when navigating
   useEffect(() => {

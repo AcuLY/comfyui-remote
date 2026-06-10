@@ -142,7 +142,7 @@ test("section results thumbnail list reads the same optimistic image state as th
   const childContext = sourceSlice(
     gallerySource,
     "children: (ctx: {",
-    "  onUndo?: () => Promise<void>;",
+    "  onUndo?: (helpers: ResultsGalleryUndoHelpers) => Promise<void>;",
   );
   const renderChildren = sourceSlice(
     gridSource,
@@ -219,6 +219,58 @@ test("section results thumbnail list reads the same optimistic image state as th
     pageSource,
     /data\.totalPending/,
     "section results server page should not keep stale pending totals outside the optimistic provider",
+  );
+});
+
+test("section results undo restores the optimistic thumbnail state before refreshing", () => {
+  const gallerySource = readFileSync(
+    "src/app/projects/[projectId]/sections/[sectionId]/results/results-gallery.tsx",
+    "utf8",
+  );
+  const gridSource = readFileSync(
+    "src/app/projects/[projectId]/sections/[sectionId]/results/results-grid.tsx",
+    "utf8",
+  );
+  const undoHandler = sourceSlice(
+    gridSource,
+    "  // Undo function",
+    "  return (",
+  );
+  const restoreImages = sourceSlice(
+    gallerySource,
+    "const restoreImages = useCallback",
+    "const reviewCurrent = useCallback",
+  );
+  const keyboardUndo = sourceSlice(
+    gallerySource,
+    "      // Undo: Z",
+    "      // H key: toggle censored version",
+  );
+
+  assert.match(
+    gallerySource,
+    /type ResultsGalleryUndoHelpers = \{\s*restoreImages: \(imageIds: string\[\]\) => void;\s*\}/,
+    "results gallery provider should pass local restore helpers to undo handlers",
+  );
+  assert.match(
+    restoreImages,
+    /optimisticReviewsRef\.current\.delete\(imageId\)/,
+    "undo should clear stale optimistic trash state so router.refresh can include restored images",
+  );
+  assert.match(
+    restoreImages,
+    /setAllImages\(\(prev\) => \{/,
+    "undo should update the local gallery image list immediately",
+  );
+  assert.match(
+    undoHandler,
+    /restoreImages\(lastTrashedIds\)/,
+    "results undo should restore thumbnails locally after the restore API succeeds",
+  );
+  assert.match(
+    keyboardUndo,
+    /onUndo\(\{ restoreImages \}\)/,
+    "lightbox keyboard undo should provide the local restore helper",
   );
 });
 
