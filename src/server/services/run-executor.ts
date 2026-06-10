@@ -37,6 +37,7 @@ import { audit } from "@/server/services/audit-service";
 import { buildComfyPromptDraft } from "@/server/worker/payload-builder";
 import {
   completeWorkerRun,
+  getWorkerRun,
 } from "@/server/worker/repository";
 import { db } from "@/lib/db";
 import type { WorkerRunSnapshot, ComfyPromptDraft } from "@/server/worker/types";
@@ -170,6 +171,74 @@ export async function submitRunToComfyUI(
   });
 
   return { comfyPromptId, validatedDraft, promptDraft };
+}
+
+export type QueuedRunSubmissionOutcome =
+  | { status: "submitted"; runId: string; comfyPromptId: string }
+  | { status: "deferred"; runId: string; errorMessage: string }
+  | { status: "missing"; runId: string };
+
+export async function trySubmitQueuedRunToComfyUI(
+  runId: string,
+  options: SubmitComfyPromptOptions = {},
+): Promise<QueuedRunSubmissionOutcome> {
+  const run = await getWorkerRun(runId);
+  if (!run) {
+    log.warn("Queued run not found before ComfyUI submission", { runId });
+    return { status: "missing", runId };
+  }
+
+  try {
+    const submitResult = await submitRunToComfyUI(run, options);
+    const updateResult = await db.run.updateMany({
+      where: {
+        id: run.runId,
+        status: RunStatus.queued,
+        comfyPromptId: null,
+      },
+      data: {
+        ...buildSubmittedRunData(submitResult),
+        errorMessage: null,
+      },
+    });
+
+    if (updateResult.count === 0) {
+      log.info("Queued run changed before ComfyUI submission result was saved", {
+        runId: run.runId,
+        comfyPromptId: submitResult.comfyPromptId,
+      });
+      return { status: "missing", runId: run.runId };
+    }
+
+    pollRunCompletion(run.runId).catch((err) => {
+      log.error(
+        "pollRunCompletion failed",
+        err instanceof Error ? err : new Error(String(err)),
+        { runId: run.runId },
+      );
+    });
+
+    return {
+      status: "submitted",
+      runId: run.runId,
+      comfyPromptId: submitResult.comfyPromptId,
+    };
+  } catch (error) {
+    const errorMessage = formatError(error);
+    log.warn("ComfyUI submission deferred; run remains queued", {
+      runId: run.runId,
+      projectId: run.project.id,
+      sectionId: run.section.id,
+      error: errorMessage,
+    });
+    audit("Run", run.runId, "executor.submit_deferred", {
+      projectId: run.project.id,
+      sectionName: run.section.name,
+      errorMessage,
+    });
+
+    return { status: "deferred", runId: run.runId, errorMessage };
+  }
 }
 
 // ─── Poll ──────────────────────────────────────────────────────────────────
@@ -525,6 +594,20 @@ export async function recoverStaleRuns(): Promise<void> {
       },
       select: { id: true, comfyPromptId: true },
     });
+
+    const unsubmittedQueuedRuns = await db.run.findMany({
+      where: {
+        status: RunStatus.queued,
+        comfyPromptId: null,
+      },
+      select: { id: true },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      take: 10,
+    });
+
+    for (const run of unsubmittedQueuedRuns) {
+      await trySubmitQueuedRunToComfyUI(run.id);
+    }
 
     if (staleRuns.length === 0) return;
 

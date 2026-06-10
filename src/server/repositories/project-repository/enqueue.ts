@@ -52,16 +52,6 @@ export async function enqueueProjectRuns(projectId: string, overrideBatchSize?: 
       throw new Error("JOB_HAS_NO_ENABLED_POSITIONS");
     }
 
-    const activeRunCount = await tx.run.count({
-      where: {
-        projectId: project.id,
-        status: { in: ["queued", "running"] },
-      },
-    });
-    if (activeRunCount > 0) {
-      throw new Error("PROJECT_HAS_ACTIVE_RUNS");
-    }
-
     const runs = await createQueuedRunsForPositions(tx, project, project.sections, overrideBatchSize);
     const projectStatus = await ensureQueuedProjectStatus(tx, project);
 
@@ -127,16 +117,6 @@ export async function enqueueProjectSectionRun(projectId: string, sectionId: str
 
     if (!section.enabled) {
       throw new Error("JOB_POSITION_DISABLED");
-    }
-
-    const activeSectionRunCount = await tx.run.count({
-      where: {
-        projectSectionId: section.id,
-        status: { in: ["queued", "running"] },
-      },
-    });
-    if (activeSectionRunCount > 0) {
-      throw new Error("SECTION_HAS_ACTIVE_RUN");
     }
 
     const runs = await createQueuedRunsForPositions(tx, project, [section], overrideBatchSize);

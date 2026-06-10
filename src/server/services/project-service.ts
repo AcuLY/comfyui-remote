@@ -12,9 +12,7 @@ import {
 } from "@/server/repositories/project-repository";
 import { audit } from "@/server/services/audit-service";
 import {
-  buildSubmittedRunData,
-  submitRunToComfyUI,
-  pollRunCompletion,
+  trySubmitQueuedRunToComfyUI,
 } from "@/server/services/run-executor";
 import {
   ServiceValidationError,
@@ -22,12 +20,25 @@ import {
   ensureSupportedFields,
   normalizeRequiredStringField,
 } from "@/server/services/validation-utils";
-import { getWorkerRun } from "@/server/worker/repository";
 import { prisma } from "@/lib/prisma";
 import { recordSectionChange } from "@/server/services/section-change-history-service";
 
 // Project service logger
 const log = createLogger({ module: "project-service" });
+
+type EnqueuedRun = {
+  runId: string;
+};
+
+function submitQueuedRunsInBackground(runs: EnqueuedRun[]) {
+  void (async () => {
+    for (const enqueuedRun of runs) {
+      await trySubmitQueuedRunToComfyUI(enqueuedRun.runId);
+    }
+  })().catch((error) => {
+    log.error("Failed to submit queued runs to ComfyUI in background", error);
+  });
+}
 
 type CreateProjectRequestBody = {
   title?: unknown;
@@ -470,33 +481,7 @@ export async function enqueueProjectRuns(projectId: string, overrideBatchSize?: 
   log.info("Project runs enqueued", { projectId: normalizedId, queuedRunCount: result.queuedRunCount });
   audit("Project", normalizedId, "enqueue", { queuedRunCount: result.queuedRunCount }, actorType);
 
-  // Submit each run to ComfyUI synchronously
-  let allFailed = true;
-  const { prisma } = await import("@/lib/prisma");
-
-  for (const enqueuedRun of result.runs) {
-    const run = await getWorkerRun(enqueuedRun.runId);
-    if (!run) continue;
-
-    try {
-      const submitResult = await submitRunToComfyUI(run);
-      await prisma.run.update({
-        where: { id: run.runId },
-        data: buildSubmittedRunData(submitResult),
-      });
-      pollRunCompletion(run.runId).catch((err) => {
-        log.error("pollRunCompletion failed", err instanceof Error ? err : new Error(String(err)), { runId: run.runId });
-      });
-      allFailed = false;
-    } catch (error) {
-      log.error(`Failed to submit run ${run.runId} to ComfyUI`, error);
-      await prisma.run.delete({ where: { id: run.runId } }).catch(() => {});
-    }
-  }
-
-  if (allFailed && result.runs.length > 0) {
-    throw new Error("无法连接到 ComfyUI，请检查服务是否运行");
-  }
+  submitQueuedRunsInBackground(result.runs);
 
   return result;
 }
@@ -528,28 +513,7 @@ export async function enqueueProjectSectionRun(
   );
   audit("ProjectSection", normalizedSectionId, "enqueue", { projectId: normalizedProjectId }, actorType);
 
-  // Submit to ComfyUI synchronously
-  const { prisma } = await import("@/lib/prisma");
-
-  for (const enqueuedRun of result.runs) {
-    const run = await getWorkerRun(enqueuedRun.runId);
-    if (!run) continue;
-
-    try {
-      const submitResult = await submitRunToComfyUI(run);
-      await prisma.run.update({
-        where: { id: run.runId },
-        data: buildSubmittedRunData(submitResult),
-      });
-      pollRunCompletion(run.runId).catch((err) => {
-        log.error("pollRunCompletion failed", err instanceof Error ? err : new Error(String(err)), { runId: run.runId });
-      });
-    } catch (error) {
-      log.error(`Failed to submit run ${run.runId} to ComfyUI`, error);
-      await prisma.run.delete({ where: { id: run.runId } }).catch(() => {});
-      throw new Error("无法连接到 ComfyUI，请检查服务是否运行");
-    }
-  }
+  submitQueuedRunsInBackground(result.runs);
 
   return result;
 }

@@ -6,17 +6,28 @@ import {
   enqueueProjectRuns as enqueueProjectRunsRepo,
   enqueueProjectSectionRun as enqueueProjectSectionRunRepo,
 } from "@/server/repositories/project-repository";
-import {
-  buildSubmittedRunData,
-  submitRunToComfyUI,
-  pollRunCompletion,
-} from "@/server/services/run-executor";
-import { getWorkerRun } from "@/server/worker/repository";
-import { logger } from "@/lib/logger";
+import { trySubmitQueuedRunToComfyUI } from "@/server/services/run-executor";
 
 type RunSectionOptions = {
   prioritize?: boolean;
 };
+
+type EnqueuedRun = {
+  runId: string;
+};
+
+function submitQueuedRunsInBackground(
+  runs: EnqueuedRun[],
+  optionsForRun?: (run: EnqueuedRun) => Parameters<typeof trySubmitQueuedRunToComfyUI>[1],
+) {
+  void (async () => {
+    for (const enqueuedRun of runs) {
+      await trySubmitQueuedRunToComfyUI(enqueuedRun.runId, optionsForRun?.(enqueuedRun));
+    }
+  })().catch((error) => {
+    console.error("Failed to submit queued runs to ComfyUI in background:", error);
+  });
+}
 
 // ---------------------------------------------------------------------------
 // 运行整个项目
@@ -32,52 +43,11 @@ export async function runProject(
     overrideBatchSize ?? undefined,
   );
 
-  // 2. Submit each created run to ComfyUI synchronously
-  let allFailed = true;
-
-  for (const enqueuedRun of result.runs) {
-    const run = await getWorkerRun(enqueuedRun.runId);
-    if (!run) continue;
-
-    try {
-      const submitResult = await submitRunToComfyUI(run);
-      // Store comfyPromptId — now "queued" means "in ComfyUI's queue"
-      await prisma.run.update({
-        where: { id: run.runId },
-        data: buildSubmittedRunData(submitResult),
-      });
-      // Fire-and-forget: poll for completion
-      pollRunCompletion(run.runId).catch((err) => {
-        logger.error(
-          "pollRunCompletion failed",
-          err instanceof Error ? err : new Error(String(err)),
-          { runId: run.runId },
-        );
-      });
-      allFailed = false;
-    } catch (error) {
-      // ComfyUI submission failed — delete the Run record
-      console.error(`Failed to submit run ${run.runId} to ComfyUI:`, error);
-      await prisma.run.delete({ where: { id: run.runId } }).catch(() => {});
-    }
-  }
-
-  // If all runs were deleted, reset project status from "queued" back to "draft"
-  if (allFailed && result.runs.length > 0) {
-    await prisma.project
-      .update({
-        where: { id: projectId },
-        data: { status: "draft" },
-      })
-      .catch(() => {});
-  }
+  submitQueuedRunsInBackground(result.runs);
 
   revalidatePath("/projects");
   revalidatePath("/queue");
 
-  if (allFailed && result.runs.length > 0) {
-    throw new Error("无法连接到 ComfyUI，请检查服务是否运行");
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -107,39 +77,9 @@ export async function runSection(
     ? [...result.runs].reverse()
     : result.runs;
 
-  // 2. Submit to ComfyUI synchronously
-  for (const enqueuedRun of runsToSubmit) {
-    const run = await getWorkerRun(enqueuedRun.runId);
-    if (!run) continue;
-
-    try {
-      const submitResult = await submitRunToComfyUI(run, {
-        front: options?.prioritize === true,
-      });
-      await prisma.run.update({
-        where: { id: run.runId },
-        data: buildSubmittedRunData(submitResult),
-      });
-      pollRunCompletion(run.runId).catch((err) => {
-        logger.error(
-          "pollRunCompletion failed",
-          err instanceof Error ? err : new Error(String(err)),
-          { runId: run.runId },
-        );
-      });
-    } catch (error) {
-      console.error(`Failed to submit run ${run.runId} to ComfyUI:`, error);
-      await prisma.run.delete({ where: { id: run.runId } }).catch(() => {});
-      // Reset project status from "queued" back since the run was deleted
-      await prisma.project
-        .update({
-          where: { id: pos.projectId },
-          data: { status: "draft" },
-        })
-        .catch(() => {});
-      throw new Error("无法连接到 ComfyUI，请检查服务是否运行");
-    }
-  }
+  submitQueuedRunsInBackground(runsToSubmit, () => ({
+    front: options?.prioritize === true,
+  }));
 
   revalidatePath("/projects");
   revalidatePath("/queue");
