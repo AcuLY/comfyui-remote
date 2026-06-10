@@ -246,6 +246,7 @@ export async function updatePresetGroup(id: string, input: Partial<PresetGroupIn
     });
   }
   revalidatePath("/assets/presets");
+  revalidatePath(`/assets/preset-groups/${id}`);
   return group;
 }
 
