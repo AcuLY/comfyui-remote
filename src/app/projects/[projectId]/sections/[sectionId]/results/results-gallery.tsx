@@ -50,6 +50,7 @@ export function ResultsGalleryProvider({
     openLightbox: (index: number) => void;
     openImageLightbox: (imageId: string) => void;
     getImage: (imageId: string) => GalleryImage | null;
+    reviewImages: (action: ReviewAction, imageIds: string[]) => void;
     imageCount: number;
     pendingImageCount: number;
     isFeatured: (imageId: string) => boolean;
@@ -282,6 +283,85 @@ export function ResultsGalleryProvider({
     });
   }
 
+  const reviewImages = useCallback(
+    (action: ReviewAction, imageIds: string[]) => {
+      const uniqueImageIds = [...new Set(imageIds.filter(Boolean))];
+      if (uniqueImageIds.length === 0) return;
+
+      const idSet = new Set(uniqueImageIds);
+      const currentImagesById = new Map(allImages.map((image) => [image.id, image]));
+      const previousOptimisticActions = new Map(
+        uniqueImageIds.map((imageId) => [imageId, optimisticReviewsRef.current.get(imageId)]),
+      );
+
+      for (const imageId of uniqueImageIds) {
+        const image = currentImagesById.get(imageId);
+        if (image) {
+          knownImageByIdRef.current.set(imageId, image);
+          if (!imageOrderByIdRef.current.has(imageId)) {
+            imageOrderByIdRef.current.set(imageId, allImages.findIndex((item) => item.id === imageId));
+          }
+        }
+        optimisticReviewsRef.current.set(imageId, action);
+        addPendingReviewAction(imageId, action);
+      }
+
+      if (action === "keep") {
+        setAllImages((prev) =>
+          prev.map((image) =>
+            idSet.has(image.id) ? { ...image, status: "kept" } : image,
+          ),
+        );
+      } else {
+        setAllImages((prev) => prev.filter((image) => !idSet.has(image.id)));
+      }
+
+      void submitReviewMutation(action, uniqueImageIds)
+        .catch((error) => {
+          for (const imageId of uniqueImageIds) {
+            const previousAction = previousOptimisticActions.get(imageId);
+            if (previousAction) {
+              optimisticReviewsRef.current.set(imageId, previousAction);
+            } else {
+              optimisticReviewsRef.current.delete(imageId);
+            }
+          }
+
+          if (action === "keep") {
+            setAllImages((prev) =>
+              prev.map((image) => {
+                const previousImage = currentImagesById.get(image.id);
+                return previousImage ? previousImage : image;
+              }),
+            );
+          } else {
+            setAllImages((prev) => {
+              const nextById = new Map(prev.map((image) => [image.id, image]));
+              for (const imageId of uniqueImageIds) {
+                const image = currentImagesById.get(imageId);
+                if (image && !nextById.has(imageId)) {
+                  nextById.set(imageId, image);
+                }
+              }
+
+              return [...nextById.values()].sort((a, b) => {
+                const aOrder = imageOrderByIdRef.current.get(a.id) ?? Number.MAX_SAFE_INTEGER;
+                const bOrder = imageOrderByIdRef.current.get(b.id) ?? Number.MAX_SAFE_INTEGER;
+                return aOrder - bOrder;
+              });
+            });
+          }
+          toast.error(error instanceof Error ? error.message : "审核失败");
+        })
+        .finally(() => {
+          for (const imageId of uniqueImageIds) {
+            removePendingReviewAction(imageId);
+          }
+        });
+    },
+    [allImages],
+  );
+
   const reviewCurrent = useCallback(
     (action: ReviewAction, autoNext = false) => {
       if (!current || busy) return;
@@ -509,6 +589,7 @@ export function ResultsGalleryProvider({
         openLightbox,
         openImageLightbox,
         getImage,
+        reviewImages,
         imageCount: allImages.length,
         pendingImageCount,
         isFeatured,

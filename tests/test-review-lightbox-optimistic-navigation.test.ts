@@ -340,6 +340,68 @@ test("single-image lightbox review actions use background API mutations", () => 
   );
 });
 
+test("section results batch review buttons use optimistic background mutations", () => {
+  const gallerySource = readFileSync(
+    "src/app/projects/[projectId]/sections/[sectionId]/results/results-gallery.tsx",
+    "utf8",
+  );
+  const gridSource = readFileSync(
+    "src/app/projects/[projectId]/sections/[sectionId]/results/results-grid.tsx",
+    "utf8",
+  );
+  const childContext = sourceSlice(
+    gallerySource,
+    "children: (ctx: {",
+    "  onUndo?: (helpers: ResultsGalleryUndoHelpers) => Promise<void>;",
+  );
+  const batchButtons = sourceSlice(
+    gridSource,
+    "                {/* Batch action buttons",
+    "                        // Censor selected kept/pending images",
+  );
+
+  assert.match(
+    childContext,
+    /reviewImages: \(action: ReviewAction, imageIds: string\[\]\) => void/,
+    "results gallery provider should expose batch optimistic review mutations",
+  );
+  assert.match(
+    gallerySource,
+    /submitReviewMutation\(action,\s*uniqueImageIds\)/,
+    "provider batch review helper should use the background review API",
+  );
+  assert.match(
+    batchButtons,
+    /reviewImages\("keep", ids\)/,
+    "quick keep should update provider state instead of blocking on server actions",
+  );
+  assert.match(
+    batchButtons,
+    /reviewImages\("trash", ids\)/,
+    "quick trash should update provider state instead of blocking on server actions",
+  );
+  assert.match(
+    batchButtons,
+    /reviewImages\("keep", runSelectedIds\)/,
+    "selected keep should update provider state instead of blocking on server actions",
+  );
+  assert.match(
+    batchButtons,
+    /reviewImages\("trash", runSelectedIds\)/,
+    "selected trash should update provider state instead of blocking on server actions",
+  );
+  assert.doesNotMatch(
+    batchButtons,
+    /await (?:keepImages|trashImages)\(/,
+    "section results batch review buttons should not await direct Server Actions",
+  );
+  assert.doesNotMatch(
+    batchButtons,
+    /router\.refresh\(\)/,
+    "section results batch review buttons should not refresh the whole image-heavy route",
+  );
+});
+
 test("single-image review controls do not use one global pending lock", () => {
   const queueSource = readFileSync("src/app/queue/[runId]/review-grid.tsx", "utf8");
   const queueBusySource = sourceSlice(

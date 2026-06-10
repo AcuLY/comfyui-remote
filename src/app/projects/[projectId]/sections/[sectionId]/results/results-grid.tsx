@@ -17,7 +17,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { keepImages, trashImages, runSection, censorImage } from "@/lib/actions";
+import { trashImages, runSection, censorImage } from "@/lib/actions";
 import { BatchSizeQuickFill } from "@/components/batch-size-quick-fill";
 import { HardNavigationLink } from "@/components/hard-navigation-link";
 import { ResultsGalleryProvider } from "./results-gallery";
@@ -262,7 +262,7 @@ export function ResultsGrid({
       allImages={allImages}
       onUndo={handleUndo}
     >
-      {({ openImageLightbox, getImage, imageCount, pendingImageCount, isFeatured, isFeatured2, isCover }) => {
+      {({ openImageLightbox, getImage, reviewImages, imageCount, pendingImageCount, isFeatured, isFeatured2, isCover }) => {
         return (
         <div className="space-y-6">
           <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
@@ -450,17 +450,11 @@ export function ResultsGrid({
                           // Quick keep: keep all pending in this run
                           const ids = runPendingImages.map((img) => img.id);
                           if (ids.length === 0) return;
-                          startTransition(async () => {
-                            await keepImages(ids);
-                            setSelected(new Set());
-                            router.refresh();
-                          });
+                          reviewImages("keep", ids);
+                          setSelected(new Set());
                         } else {
-                          startTransition(async () => {
-                            await keepImages(runSelectedIds);
-                            setSelected(new Set());
-                            router.refresh();
-                          });
+                          reviewImages("keep", runSelectedIds);
+                          setSelected(new Set());
                         }
                       }}
                       disabled={isPending}
@@ -481,18 +475,12 @@ export function ResultsGrid({
                           const ids = runPendingImages.map((img) => img.id);
                           if (ids.length === 0) return;
                           setLastTrashedIds(ids);
-                          startTransition(async () => {
-                            await trashImages(ids);
-                            setSelected(new Set());
-                            router.refresh();
-                          });
+                          reviewImages("trash", ids);
+                          setSelected(new Set());
                         } else {
                           setLastTrashedIds(runSelectedIds);
-                          startTransition(async () => {
-                            await trashImages(runSelectedIds);
-                            setSelected(new Set());
-                            router.refresh();
-                          });
+                          reviewImages("trash", runSelectedIds);
+                          setSelected(new Set());
                         }
                       }}
                       disabled={isPending}
