@@ -170,6 +170,7 @@ export default async function ReviewGroupPage({ params }: { params: Promise<{ ru
   const currentIndex = allIds.indexOf(runId);
   const prevId = currentIndex > 0 ? allIds[currentIndex - 1] : null;
   const nextId = currentIndex < allIds.length - 1 ? allIds[currentIndex + 1] : null;
+  const sectionDisplayName = `第 ${group.sectionSortOrder + 1} 小节 · ${group.sectionName}`;
 
   return (
     <div className="space-y-4">
@@ -216,7 +217,7 @@ export default async function ReviewGroupPage({ params }: { params: Promise<{ ru
         </div>
       )}
 
-      <SectionCard title={group.title} subtitle={`${group.presetNames.join(" · ") || group.sectionName} · ${group.createdAt}`}>
+      <SectionCard title={group.title} subtitle={`${sectionDisplayName} · ${group.presetNames.join(" · ") || "无预制"} · ${group.createdAt}`}>
         <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-zinc-500">
           <span>待审核<strong className="ml-1.5 text-sm font-semibold text-white">{group.pendingCount}</strong></span>
           <span>总张数<strong className="ml-1.5 text-sm font-semibold text-white">{group.totalCount}</strong></span>

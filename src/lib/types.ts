@@ -71,6 +71,7 @@ export type ReviewGroup = {
   title: string;
   presetNames: string[];
   sectionName: string;
+  sectionSortOrder: number;
   createdAt: string;
   pendingCount: number;
   totalCount: number;

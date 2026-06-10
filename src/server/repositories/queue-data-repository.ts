@@ -443,6 +443,7 @@ export async function getReviewGroup(runId: string): Promise<ReviewGroup | null>
     sectionName:
       run.projectSection.name ??
       `section_${run.projectSection.sortOrder + 1}`,
+    sectionSortOrder: run.projectSection.sortOrder,
     createdAt: formatDate(run.createdAt),
     pendingCount: images.filter((img) => img.status === "pending").length,
     totalCount: images.length,
