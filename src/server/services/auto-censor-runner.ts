@@ -6,9 +6,9 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 
 import { env } from "@/lib/env";
+import { AUTO_CENSOR_MOSAIC_SIZE } from "@/lib/quick-censor-core";
 
 export const AUTO_CENSOR_SELECTED_CLASSES = [2, 4] as const; // CLI argument: "2,4"
-export const AUTO_CENSOR_MOSAIC_SIZE = 100;
 
 const DEFAULT_TIMEOUT_MS = 120_000;
 

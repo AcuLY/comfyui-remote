@@ -22,7 +22,8 @@ test("auto-censor runner passes fixed mosaic settings to the Python CLI", () => 
   const runnerSource = readSource("src/server/services/auto-censor-runner.ts");
 
   assert.match(runnerSource, /AUTO_CENSOR_SELECTED_CLASSES\s*=\s*\[2,\s*4\]/);
-  assert.match(runnerSource, /AUTO_CENSOR_MOSAIC_SIZE\s*=\s*100/);
+  assert.match(runnerSource, /AUTO_CENSOR_MOSAIC_SIZE/);
+  assert.match(runnerSource, /from ["']@\/lib\/quick-censor-core["']/);
   assert.match(runnerSource, /--classes/);
   assert.match(runnerSource, /2,4/);
   assert.match(runnerSource, /--mosaic-size/);

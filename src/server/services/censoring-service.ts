@@ -42,6 +42,12 @@ type PreparedCensorTaskWithIndex = {
   task: PreparedCensorTask;
 };
 
+type PersistedCensoredImage = {
+  censoredAt: Date;
+  censoredFilePath: string;
+  censoredThumbPath: string;
+};
+
 async function atomicWriteFile(targetPath: string, data: Buffer): Promise<void> {
   const tempPath = `${targetPath}.${randomUUID()}.tmp`;
   await writeFile(tempPath, data);
@@ -94,7 +100,7 @@ function censoredPathsForSource(filePath: string): {
 async function persistCensoredImage(
   imageResult: ImageResultForCensor,
   sourceImagePath: string,
-): Promise<{ censoredFilePath: string; censoredThumbPath: string }> {
+): Promise<PersistedCensoredImage> {
   const { censoredFilePath, censoredThumbPath } = censoredPathsForSource(
     imageResult.filePath,
   );
@@ -117,16 +123,19 @@ async function persistCensoredImage(
   await mkdir(dirname(censoredThumbAbsPath), { recursive: true });
   await atomicWriteFile(censoredThumbAbsPath, thumbBuffer);
 
-  await prisma.imageResult.update({
+  const updatedImage = await prisma.imageResult.update({
     where: { id: imageResult.id },
     data: {
       censoredFilePath,
       censoredThumbPath,
       censoredAt: new Date(),
     },
+    select: {
+      censoredAt: true,
+    },
   });
 
-  return { censoredFilePath, censoredThumbPath };
+  return { censoredAt: updatedImage.censoredAt!, censoredFilePath, censoredThumbPath };
 }
 
 function normalizeProcessCensorTaskInput(
@@ -331,4 +340,37 @@ export async function processCensorTask(
 
 export async function censorSingleImage(imageResultId: string): Promise<void> {
   await processCensorTask(imageResultId);
+}
+
+export async function persistManualCensoredImage(
+  imageResultId: string,
+  manualCensoredImage: Buffer,
+): Promise<PersistedCensoredImage> {
+  const imageResult = await prisma.imageResult.findUnique({
+    where: { id: imageResultId },
+    select: {
+      id: true,
+      filePath: true,
+      reviewStatus: true,
+    },
+  });
+
+  if (!imageResult) {
+    throw new Error(`ImageResult not found: ${imageResultId}`);
+  }
+
+  if (imageResult.reviewStatus !== "kept" && imageResult.reviewStatus !== "pending") {
+    throw new Error(`ImageResult ${imageResultId} has status "${imageResult.reviewStatus}", expected "kept" or "pending"`);
+  }
+
+  const manualCensoredImagePath = `data/images/.tmp/manual-censor-${imageResult.id}-${randomUUID()}.jpg`;
+  const manualCensoredImageAbsPath = resolve(process.cwd(), manualCensoredImagePath);
+  await mkdir(dirname(manualCensoredImageAbsPath), { recursive: true });
+  await writeFile(manualCensoredImageAbsPath, manualCensoredImage);
+
+  try {
+    return await persistCensoredImage(imageResult, manualCensoredImagePath);
+  } finally {
+    await unlink(manualCensoredImageAbsPath).catch(() => {});
+  }
 }

@@ -12,6 +12,7 @@ import {
 import { useRouter } from "next/navigation";
 import { Check, ChevronLeft, ChevronRight, Eye, ImageIcon, Shield, Star, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
+import { QuickCensorCanvas } from "@/components/quick-censor-canvas";
 import { censorImage } from "@/lib/actions";
 import { submitReviewMutation } from "@/lib/client-review-mutation";
 import {
@@ -38,6 +39,17 @@ type MarkerField = "featured" | "featured2" | "cover";
 type ReviewAction = "keep" | "trash";
 type ResultsGalleryUndoHelpers = {
   restoreImages: (imageIds: string[]) => void;
+};
+type ManualCensorUploadResponse = {
+  ok?: boolean;
+  data?: {
+    censoredAt?: string;
+    censoredFull?: string | null;
+    censoredSrc?: string | null;
+  };
+  error?: {
+    message?: string;
+  };
 };
 
 export function ResultsGalleryProvider({
@@ -67,6 +79,7 @@ export function ResultsGalleryProvider({
   const [togglingMarker, setTogglingMarker] = useState<MarkerField | null>(null);
   const [pendingReviewActions, setPendingReviewActions] = useState<Map<string, ReviewAction>>(new Map());
   const [showCensored, setShowCensored] = useState(false);
+  const [quickCensorMode, setQuickCensorMode] = useState(false);
   const preloadedImageUrlsRef = useRef<Set<string>>(new Set());
   const preloadImagesRef = useRef<HTMLImageElement[]>([]);
   const optimisticReviewsRef = useRef<Map<string, ReviewAction>>(new Map());
@@ -176,6 +189,31 @@ export function ResultsGalleryProvider({
     [],
   );
 
+  const setImageCensoredResult = useCallback(
+    (
+      imageId: string,
+      result: {
+        censoredAt: string;
+        censoredFull: string | null;
+        censoredSrc: string | null;
+      },
+    ) => {
+      setAllImages((prev) =>
+        prev.map((image) =>
+          image.id === imageId
+            ? {
+                ...image,
+                censoredAt: result.censoredAt,
+                censoredFull: result.censoredFull,
+                censoredSrc: result.censoredSrc,
+              }
+            : image,
+        ),
+      );
+    },
+    [],
+  );
+
   const restoreImages = useCallback((imageIds: string[]) => {
     const uniqueImageIds = [...new Set(imageIds.filter(Boolean))];
     if (uniqueImageIds.length === 0) return;
@@ -262,6 +300,39 @@ export function ResultsGalleryProvider({
       });
     },
     [allImages, busy, current, router, setImageMarker],
+  );
+
+  const finishQuickCensor = useCallback(
+    async (blob: Blob) => {
+      if (!current) return;
+
+      const formData = new FormData();
+      formData.set("file", blob, `${current.id}-manual-censor.jpg`);
+
+      const response = await fetch(
+        `/api/images/${encodeURIComponent(current.id)}/manual-censor`,
+        {
+          method: "POST",
+          body: formData,
+        },
+      );
+      const payload = (await response.json().catch(() => null)) as ManualCensorUploadResponse | null;
+
+      if (!response.ok || payload?.ok === false || !payload?.data) {
+        throw new Error(payload?.error?.message ?? "保存快速打码失败");
+      }
+
+      setImageCensoredResult(current.id, {
+        censoredAt: payload.data.censoredAt ?? new Date().toISOString(),
+        censoredFull: payload.data.censoredFull ?? current.censoredFull,
+        censoredSrc: payload.data.censoredSrc ?? current.censoredSrc,
+      });
+      setQuickCensorMode(false);
+      setShowCensored(true);
+      toast.success("快速打码已保存");
+      router.refresh();
+    },
+    [current, router, setImageCensoredResult],
   );
 
   function addPendingReviewAction(imageId: string, action: ReviewAction) {
@@ -439,6 +510,14 @@ export function ResultsGalleryProvider({
 
       const key = event.key;
 
+      if (quickCensorMode) {
+        if (key === "Escape") {
+          event.preventDefault();
+          setQuickCensorMode(false);
+        }
+        return;
+      }
+
       // Close lightbox: I / D / Escape
       if (key === "i" || key === "I" || key === "d" || key === "D") {
         event.preventDefault();
@@ -514,12 +593,19 @@ export function ResultsGalleryProvider({
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [allImages.length, goNext, goPrev, open, restoreImages, reviewCurrent, toggleMarker, onUndo, current]);
+  }, [allImages.length, goNext, goPrev, open, quickCensorMode, restoreImages, reviewCurrent, toggleMarker, onUndo, current]);
 
   // Reset censored view when navigating
   useEffect(() => {
     setShowCensored(false);
+    setQuickCensorMode(false);
   }, [currentIndex]);
+
+  useEffect(() => {
+    if (!open) {
+      setQuickCensorMode(false);
+    }
+  }, [open]);
 
   const openLightbox = useCallback(
     (index: number) => {
@@ -656,7 +742,7 @@ export function ResultsGalleryProvider({
           <div className="grid h-[calc(100dvh-8.5rem)] min-h-0 flex-1 grid-cols-[3rem_minmax(0,1fr)_3rem] sm:grid-cols-[4.5rem_minmax(0,1fr)_4.5rem]">
             <button
               type="button"
-              disabled={allImages.length <= 1}
+              disabled={quickCensorMode || allImages.length <= 1}
               className="flex h-full items-center justify-center border-r border-white/5 text-white/70 transition hover:bg-white/10 hover:text-white disabled:pointer-events-none disabled:text-white/10"
               onClick={(event) => {
                 event.stopPropagation();
@@ -671,29 +757,41 @@ export function ResultsGalleryProvider({
               className="relative flex min-w-0 items-center justify-center px-1 py-3"
               onClick={(event) => event.stopPropagation()}
             >
-              {!imageLoaded && (
-                <div className="absolute inset-3 flex items-center justify-center">
-                  <div className="h-full max-h-[calc(100dvh-11rem)] w-full max-w-5xl animate-pulse rounded-lg bg-white/[0.08]" />
-                </div>
+              {quickCensorMode ? (
+                <QuickCensorCanvas
+                  source={current.full}
+                  disabled={busy}
+                  onCancel={() => setQuickCensorMode(false)}
+                  onComplete={finishQuickCensor}
+                />
+              ) : (
+                <>
+                  {!imageLoaded && (
+                    <div className="absolute inset-3 flex items-center justify-center">
+                      <div className="h-full max-h-[calc(100dvh-11rem)] w-full max-w-5xl animate-pulse rounded-lg bg-white/[0.08]" />
+                    </div>
+                  )}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    key={current.id}
+                    src={showCensored && current.censoredFull ? current.censoredFull : current.full}
+                    alt=""
+                    loading="eager"
+                    fetchPriority="high"
+                    draggable={false}
+                    onLoad={() => markImageLoaded(current)}
+                    onError={() => markImageLoaded(current)}
+                    className={`max-h-[calc(100dvh-11rem)] max-w-full rounded-lg object-contain transition-opacity duration-150 ${
+                      imageLoaded ? "opacity-100" : "opacity-0"
+                    }`}
+                  />
+                </>
               )}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                key={current.id}
-                src={showCensored && current.censoredFull ? current.censoredFull : current.full}
-                alt=""
-                loading="eager"
-                fetchPriority="high"
-                onLoad={() => markImageLoaded(current)}
-                onError={() => markImageLoaded(current)}
-                className={`max-h-[calc(100dvh-11rem)] max-w-full rounded-lg object-contain transition-opacity duration-150 ${
-                  imageLoaded ? "opacity-100" : "opacity-0"
-                }`}
-              />
             </div>
 
             <button
               type="button"
-              disabled={allImages.length <= 1}
+              disabled={quickCensorMode || allImages.length <= 1}
               className="flex h-full items-center justify-center border-l border-white/5 text-white/70 transition hover:bg-white/10 hover:text-white disabled:pointer-events-none disabled:text-white/10"
               onClick={(event) => {
                 event.stopPropagation();
@@ -706,12 +804,12 @@ export function ResultsGalleryProvider({
           </div>
 
           <div
-            className="z-10 grid grid-cols-2 gap-2 border-t border-white/10 bg-black/50 p-3 sm:grid-cols-7 sm:px-4"
+            className="z-10 grid grid-cols-2 gap-2 border-t border-white/10 bg-black/50 p-3 sm:grid-cols-8 sm:px-4"
             onClick={(event) => event.stopPropagation()}
           >
             <button
               type="button"
-              disabled={busy || currentReviewBusy}
+              disabled={quickCensorMode || busy || currentReviewBusy}
               onClick={() => reviewCurrent("keep", true)}
               className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-emerald-400/25 bg-emerald-500/12 px-3 text-sm font-medium text-emerald-200 transition hover:bg-emerald-500/20 disabled:opacity-45"
             >
@@ -720,7 +818,7 @@ export function ResultsGalleryProvider({
             </button>
             <button
               type="button"
-              disabled={busy || currentReviewBusy}
+              disabled={quickCensorMode || busy || currentReviewBusy}
               onClick={() => reviewCurrent("trash", true)}
               className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-rose-400/25 bg-rose-500/12 px-3 text-sm font-medium text-rose-200 transition hover:bg-rose-500/20 disabled:opacity-45"
             >
@@ -729,7 +827,7 @@ export function ResultsGalleryProvider({
             </button>
             <button
               type="button"
-              disabled={busy}
+              disabled={quickCensorMode || busy}
               onClick={() => toggleMarker("featured")}
               className={`inline-flex h-11 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-medium transition disabled:opacity-45 ${
                 current.featured
@@ -745,7 +843,7 @@ export function ResultsGalleryProvider({
             </button>
             <button
               type="button"
-              disabled={busy}
+              disabled={quickCensorMode || busy}
               onClick={() => toggleMarker("featured2")}
               className={`inline-flex h-11 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-medium transition disabled:opacity-45 ${
                 current.featured2
@@ -758,7 +856,7 @@ export function ResultsGalleryProvider({
             </button>
             <button
               type="button"
-              disabled={busy || current.cover}
+              disabled={quickCensorMode || busy || current.cover}
               onClick={() => toggleMarker("cover")}
               className={`inline-flex h-11 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-medium transition disabled:opacity-45 ${
                 current.cover
@@ -771,7 +869,7 @@ export function ResultsGalleryProvider({
             </button>
             <button
               type="button"
-              disabled={!current.censoredFull}
+              disabled={quickCensorMode || !current.censoredFull}
               onClick={() => current.censoredFull && setShowCensored((prev) => !prev)}
               className={`inline-flex h-11 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-medium transition disabled:opacity-45 ${
                 showCensored
@@ -784,11 +882,25 @@ export function ResultsGalleryProvider({
               <Shield className="size-4" />
               {showCensored ? "显示原图" : current.censoredFull ? "查看打码" : "暂未打码"}
             </button>
+            {(current.status === "kept" || current.status === "pending") && (
+              <button
+                type="button"
+                disabled={quickCensorMode || busy}
+                onClick={() => {
+                  setShowCensored(false);
+                  setQuickCensorMode(true);
+                }}
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-amber-400/25 bg-amber-500/12 px-3 text-sm font-medium text-amber-100 transition hover:bg-amber-500/20 disabled:opacity-45"
+              >
+                <Shield className="size-4" />
+                开始打码
+              </button>
+            )}
             {/* Single-image censor trigger */}
             {(current.status === "kept" || current.status === "pending") && !current.censoredAt && (
               <button
                 type="button"
-                disabled={busy}
+                disabled={quickCensorMode || busy}
                 onClick={() => {
                   startTransition(async () => {
                     try {
