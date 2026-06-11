@@ -13,6 +13,26 @@ export type ExportProjectImagesResult = {
   path?: string;
 };
 
+type ExportFeatureKey = "featured" | "featured2";
+type CensoredFeatureImage = {
+  featured: boolean;
+  featured2: boolean;
+  censoredFilePath: string | null;
+};
+
+export function getExportImageIndexWidth(totalImages: number): number {
+  return String(Math.max(1, Math.trunc(totalImages))).length;
+}
+
+export function formatExportImageFileName(exportName: string, index: number, totalImages: number): string {
+  const width = getExportImageIndexWidth(totalImages);
+  return `${exportName}_${String(index).padStart(width, "0")}.jpg`;
+}
+
+export function selectCensoredFeatureImages<T extends CensoredFeatureImage>(images: T[], feature: ExportFeatureKey): T[] {
+  return images.filter((image) => image[feature] && image.censoredFilePath);
+}
+
 export async function exportProjectImages(projectId: string): Promise<ExportProjectImagesResult> {
   const project = await prisma.project.findUnique({
     where: { id: projectId },
@@ -83,8 +103,6 @@ export async function exportProjectImages(projectId: string): Promise<ExportProj
 
   const pixivDir = join(exportDir, "pixiv");
   const previewDir = join(exportDir, "preview");
-  const pixivCensoredDir = join(exportDir, "pixiv_censored");
-  const previewCensoredDir = join(exportDir, "preview_censored");
   const tempJpgDir = join(exportDir, "_temp_jpg");
   const tempCensoredJpgDir = join(exportDir, "_temp_censored_jpg");
 
@@ -101,6 +119,10 @@ export async function exportProjectImages(projectId: string): Promise<ExportProj
     return { success: false, message: "No kept images to export" };
   }
 
+  const totalImageCount = allKept.length;
+  const pixivImageCount = selectCensoredFeatureImages(allKept, "featured").length;
+  const previewImageCount = selectCensoredFeatureImages(allKept, "featured2").length;
+
   await rm(exportDir, { recursive: true, force: true });
   await mkdir(tempJpgDir, { recursive: true });
   await mkdir(pixivDir, { recursive: true });
@@ -109,8 +131,6 @@ export async function exportProjectImages(projectId: string): Promise<ExportProj
   const hasCensored = allKept.some((img) => img.censoredFilePath);
   if (hasCensored) {
     await mkdir(tempCensoredJpgDir, { recursive: true });
-    await mkdir(pixivCensoredDir, { recursive: true });
-    await mkdir(previewCensoredDir, { recursive: true });
   }
 
   try {
@@ -141,7 +161,7 @@ export async function exportProjectImages(projectId: string): Promise<ExportProj
 
   for (const image of allKept) {
     const sourcePath = resolve(/* turbopackIgnore: true */ process.cwd(), image.filePath);
-    const jpgName = `${exportName}_${String(globalIndex).padStart(2, "0")}.jpg`;
+    const jpgName = formatExportImageFileName(exportName, globalIndex, totalImageCount);
     const jpgPath = join(tempJpgDir, jpgName);
 
     try {
@@ -153,57 +173,37 @@ export async function exportProjectImages(projectId: string): Promise<ExportProj
       continue;
     }
 
-    if (image.featured) {
-      const pixivName = `${exportName}_${String(pixivIndex).padStart(2, "0")}.jpg`;
-      const pixivPath = join(pixivDir, pixivName);
-      try {
-        await sharp(sourcePath).jpeg({ quality: 90 }).toFile(pixivPath);
-      } catch (error) {
-        console.error(`Failed to convert pixiv image ${sourcePath}:`, error);
-      }
-      pixivIndex++;
-    }
-
-    if (image.featured2) {
-      const previewName = `${exportName}_${String(previewIndex).padStart(2, "0")}.jpg`;
-      const previewPath = join(previewDir, previewName);
-      try {
-        await sharp(sourcePath).jpeg({ quality: 90 }).toFile(previewPath);
-      } catch (error) {
-        console.error(`Failed to convert preview image ${sourcePath}:`, error);
-      }
-      previewIndex++;
-    }
-
     // Censored versions
     if (image.censoredFilePath) {
       const censoredSourcePath = resolve(process.cwd(), image.censoredFilePath);
       try {
         await access(censoredSourcePath);
-        const censoredJpgName = `${exportName}_${String(globalIndex).padStart(2, "0")}.jpg`;
+        const censoredJpgName = formatExportImageFileName(exportName, globalIndex, totalImageCount);
         const censoredJpgPath = join(tempCensoredJpgDir, censoredJpgName);
         await sharp(censoredSourcePath).jpeg({ quality: 90 }).toFile(censoredJpgPath);
         censoredJpgFiles.push(censoredJpgPath);
         censoredCount++;
 
         if (image.featured) {
-          const pixivCensoredName = `${exportName}_${String(pixivIndex - 1).padStart(2, "0")}.jpg`;
-          const pixivCensoredPath = join(pixivCensoredDir, pixivCensoredName);
+          const pixivName = formatExportImageFileName(exportName, pixivIndex, pixivImageCount);
+          const pixivPath = join(pixivDir, pixivName);
           try {
-            await sharp(censoredSourcePath).jpeg({ quality: 90 }).toFile(pixivCensoredPath);
+            await sharp(censoredSourcePath).jpeg({ quality: 90 }).toFile(pixivPath);
           } catch (error) {
             console.error(`Failed to convert censored pixiv image:`, error);
           }
+          pixivIndex++;
         }
 
         if (image.featured2) {
-          const previewCensoredName = `${exportName}_${String(previewIndex - 1).padStart(2, "0")}.jpg`;
-          const previewCensoredPath = join(previewCensoredDir, previewCensoredName);
+          const previewName = formatExportImageFileName(exportName, previewIndex, previewImageCount);
+          const previewPath = join(previewDir, previewName);
           try {
-            await sharp(censoredSourcePath).jpeg({ quality: 90 }).toFile(previewCensoredPath);
+            await sharp(censoredSourcePath).jpeg({ quality: 90 }).toFile(previewPath);
           } catch (error) {
             console.error(`Failed to convert censored preview image:`, error);
           }
+          previewIndex++;
         }
       } catch (error) {
         console.error(`Failed to process censored image ${image.censoredFilePath}:`, error);
@@ -241,15 +241,6 @@ export async function exportProjectImages(projectId: string): Promise<ExportProj
     await rm(previewDir, { recursive: true, force: true });
   }
 
-  const pixivCensoredFiles = await readdir(pixivCensoredDir).catch(() => []);
-  if (pixivCensoredFiles.length === 0) {
-    await rm(pixivCensoredDir, { recursive: true, force: true });
-  }
-  const previewCensoredFiles = await readdir(previewCensoredDir).catch(() => []);
-  if (previewCensoredFiles.length === 0) {
-    await rm(previewCensoredDir, { recursive: true, force: true });
-  }
-
   // Mark project as published
   await prisma.project.update({
     where: { id: projectId },
@@ -258,7 +249,7 @@ export async function exportProjectImages(projectId: string): Promise<ExportProj
 
   return {
     success: true,
-    message: `图片整合完成：${allKept.length} 张保留图打包为 ${exportName}.zip，封面已输出 cover.jpg${pixivIndex > 1 ? `，${pixivIndex - 1} 张 p站图输出到 pixiv/` : ""}${previewIndex > 1 ? `，${previewIndex - 1} 张预览图输出到 preview/` : ""}${censoredCount > 0 ? `，${censoredCount} 张和谐版打包为 ${exportName}_censored.zip` : ""}`,
+    message: `图片整合完成：${allKept.length} 张保留图打包为 ${exportName}.zip，封面已输出 cover.jpg${pixivIndex > 1 ? `，${pixivIndex - 1} 张 p站打码图输出到 pixiv/` : ""}${previewIndex > 1 ? `，${previewIndex - 1} 张预览打码图输出到 preview/` : ""}${censoredCount > 0 ? `，${censoredCount} 张和谐版打包为 ${exportName}_censored.zip` : ""}`,
     path: exportDir,
   };
 }
