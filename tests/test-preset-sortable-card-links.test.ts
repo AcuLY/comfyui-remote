@@ -37,3 +37,13 @@ test("sortable preset and group cards keep drag buttons outside detail links", (
   assertLinkBlocksExcludeControls("src/app/assets/presets/preset-manager.tsx", "SortablePresetCard");
   assertLinkBlocksExcludeControls("src/app/assets/presets/sortable-group-card.tsx", "SortableGroupCard");
 });
+
+test("creating a preset navigates to the new preset detail route", () => {
+  const body = functionSource(readSource("src/app/assets/presets/preset-manager.tsx"), "PresetList");
+
+  assert.match(
+    body,
+    /const newPreset = await createPreset\(data\);[\s\S]*for \(const v of variantDrafts\)[\s\S]*await createPresetVariant\([\s\S]*router\.push\(`\/assets\/presets\/\$\{newPreset\.id\}`\)/,
+    "new preset creation should open the created preset detail page instead of refreshing back to the list",
+  );
+});

@@ -389,6 +389,7 @@ function PresetList({
   queryPresetId: string | null;
   onViewChange: (patch: Omit<PresetQueryPatch, "category">) => void;
 }) {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [isCreating, setIsCreating] = useState(false);
   const [presets, setPresets] = useState(category.presets);
@@ -675,7 +676,7 @@ function PresetList({
                 }
                 toast.success("预制已创建");
                 setIsCreating(false);
-                onRefresh();
+                router.push(`/assets/presets/${newPreset.id}`);
               } catch (e: unknown) {
                 toast.error(e instanceof Error ? e.message : "创建失败");
               }
