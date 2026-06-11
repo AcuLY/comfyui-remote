@@ -57,29 +57,44 @@ log in. Do not hard-code the token, print it in logs, or commit token values.
      ```powershell
      $lockDir = "D:\Luca\Code\MyProject\comfyui-manager\.deploy.lock"
      $lockMeta = Join-Path $lockDir "owner.json"
+     $deadline = (Get-Date).AddMinutes(30)
+     $sleepSeconds = 5
 
-     try {
-       New-Item -ItemType Directory -Path $lockDir -ErrorAction Stop | Out-Null
+     while ($true) {
+       try {
+         New-Item -ItemType Directory -Path $lockDir -ErrorAction Stop | Out-Null
 
-       @{
-         owner = "$env:USERNAME@$env:COMPUTERNAME"
-         pid = $PID
-         startedAt = (Get-Date).ToString("o")
-         cwd = (Get-Location).Path
-         branch = (git rev-parse --abbrev-ref HEAD 2>$null)
-         phase = "acquired"
-       } | ConvertTo-Json | Set-Content -Encoding UTF8 $lockMeta
-     } catch {
-       if (Test-Path $lockMeta) {
-         Get-Content $lockMeta -Raw
+         @{
+           owner = "$env:USERNAME@$env:COMPUTERNAME"
+           pid = $PID
+           startedAt = (Get-Date).ToString("o")
+           cwd = (Get-Location).Path
+           branch = (git rev-parse --abbrev-ref HEAD 2>$null)
+           phase = "acquired"
+         } | ConvertTo-Json | Set-Content -Encoding UTF8 $lockMeta
+         break
+       } catch {
+         if ((Get-Date) -ge $deadline) {
+           if (Test-Path $lockMeta) {
+             Get-Content $lockMeta -Raw
+           }
+           throw "Deployment lock is still held after waiting 30 minutes. Stop this deployment."
+         }
+
+         if (Test-Path $lockMeta) {
+           Get-Content $lockMeta -Raw
+         }
+         Start-Sleep -Seconds $sleepSeconds
+         $sleepSeconds = [Math]::Min($sleepSeconds * 2, 120)
        }
-       throw "Deployment lock is already held. Stop this deployment."
      }
      ```
    - 锁必须覆盖后续 `git add`/`commit`/`push`、目标机 `git pull`、队列检查/暂停、Prisma、`.next` 清理、构建、停止/重启服务、公网验证和队列恢复。
    - 如果当前不在 `mypc` 且后续需要 SSH 到 `mypc` 部署，进入目标机项目目录后也必须先用同样规则获取目标目录的 `.deploy.lock`，再执行 `git pull` 或任何会影响服务的动作。
    - 获取锁后，应随着部署阶段更新 `owner.json` 的 `phase`；如果暂停了队列任务，必须把本次接口返回的 `batchId` 和 `runIds` 写入 `owner.json`。
-   - 锁获取失败时不要继续部署；读取 `owner.json` 后向用户报告当前持有者、进程、分支、阶段和开始时间。
+   - 如果锁已经被占用，不要继续执行部署动作；读取 `owner.json` 后按指数退避等待锁释放，初始等待 5 秒、每次翻倍、单次等待最多 120 秒，总等待时间最多 30 分钟。
+   - 等待期间每次重试仍必须使用原子目录创建获取锁，不要用 `Test-Path` 先判断再创建。
+   - 如果等待 30 分钟后仍然无法获取锁，停止部署；读取 `owner.json` 后向用户报告当前持有者、进程、分支、阶段和开始时间。
    - 正常完成公网验证并恢复本次暂停的任务后，删除 `.deploy.lock` 释放锁；如果部署失败、验证失败、或存在尚未恢复的本次暂停任务，更新 `owner.json` 为失败阶段并保留锁，等待用户确认后再接管或清理。
    - `.deploy.lock/` 是运行时锁目录，不要提交到 git。
 2. `git add` + `git commit` + `git push`（提交并推送到远程）。
