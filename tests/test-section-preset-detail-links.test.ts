@@ -27,9 +27,9 @@ function functionSource(source: string, name: string) {
   assert.fail(`${name} body should close`);
 }
 
-function presetLinkBlock(source: string) {
+function presetDetailHrefLinkBlock(source: string) {
   const blocks = source.match(/<Link\b[\s\S]*?<\/Link>/g) ?? [];
-  const block = blocks.find((item) => item.includes("getPresetManagerHref(binding)"));
+  const block = blocks.find((item) => item.includes("href={detailHref}"));
   assert.ok(block, "preset binding detail Link should exist");
   return block;
 }
@@ -68,7 +68,7 @@ test("project section preset group member rows split card and member preset link
 test("template section preset binding detail links still use the shared manager target in the same tab", () => {
   const source = readSource(templateSectionEditorFile);
   const hrefFunction = functionSource(source, "getPresetManagerHref");
-  const link = presetLinkBlock(source);
+  const link = presetDetailHrefLinkBlock(source);
 
   assert.match(
     hrefFunction,
@@ -79,6 +79,11 @@ test("template section preset binding detail links still use the shared manager 
     source,
     /binding\.sourceId\s*\|\|\s*binding\.presetGroupId/,
     `${templateSectionEditorFile} should show the detail link for preset group bindings as well as preset bindings`,
+  );
+  assert.match(
+    source,
+    /const detailHref = \(binding\.sourceId \|\| binding\.presetGroupId\) \? getPresetManagerHref\(binding\) : null/,
+    `${templateSectionEditorFile} should derive detailHref from the shared manager target`,
   );
   assert.doesNotMatch(link, /target=["']_blank["']/, `${templateSectionEditorFile} should navigate in the same tab`);
 });

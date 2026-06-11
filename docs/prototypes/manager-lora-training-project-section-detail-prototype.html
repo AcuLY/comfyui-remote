@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#09090b" />
     <title>LoRA 训练模式 - 小节详情原型</title>
-    <link rel="stylesheet" href="./assets/lora-training-shared.css?v=20260611-lora-section-detail-1" />
+    <link rel="stylesheet" href="./assets/lora-training-shared.css?v=20260611-lora-section-detail-2" />
   </head>
   <body>
     <main class="app-shell">
@@ -33,17 +33,33 @@
         <section class="layout wide-left">
           <div class="stack">
             <section class="panel">
-              <div class="panel-header"><h2>场景块</h2></div>
+              <div class="panel-header">
+                <h2>场景块</h2>
+                <div class="panel-actions">
+                  <button class="button" type="button"><i data-lucide="package-plus" aria-hidden="true"></i>导入预制</button>
+                  <button class="button primary" type="button"><i data-lucide="plus" aria-hidden="true"></i>添加块</button>
+                </div>
+              </div>
               <div class="panel-body block-list">
                 <div class="block-item">
                   <span class="block-index">1</span>
                   <div class="row-title"><strong>lighting / cyan rim light</strong><span>来自预制 · 强青色轮廓光</span></div>
                   <span class="status-note blue">预制</span>
+                  <div class="block-actions">
+                    <button class="icon-button" type="button" aria-label="替换预制"><i data-lucide="pencil" aria-hidden="true"></i></button>
+                    <button class="icon-button" type="button" aria-label="调整排序"><i data-lucide="grip-vertical" aria-hidden="true"></i></button>
+                    <button class="icon-button" type="button" aria-label="删除场景块"><i data-lucide="trash-2" aria-hidden="true"></i></button>
+                  </div>
                 </div>
                 <div class="block-item">
                   <span class="block-index">2</span>
                   <div class="row-title"><strong>local prompt</strong><span>舞台聚光、干净剪影、杂志构图</span></div>
                   <span class="status-note">本地</span>
+                  <div class="block-actions">
+                    <button class="icon-button" type="button" aria-label="编辑本地块"><i data-lucide="pencil" aria-hidden="true"></i></button>
+                    <button class="icon-button" type="button" aria-label="调整排序"><i data-lucide="grip-vertical" aria-hidden="true"></i></button>
+                    <button class="icon-button" type="button" aria-label="删除场景块"><i data-lucide="trash-2" aria-hidden="true"></i></button>
+                  </div>
                 </div>
               </div>
             </section>

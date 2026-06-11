@@ -497,6 +497,15 @@ h3 {
   border-bottom: 1px solid var(--line-soft);
 }
 
+.panel-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
 .panel-body {
   padding: 12px;
 }
@@ -1310,7 +1319,7 @@ input:focus-visible {
 
 .block-item {
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) auto;
+  grid-template-columns: 34px minmax(0, 1fr) auto auto;
   gap: 10px;
   align-items: center;
   padding: 10px;
@@ -1329,6 +1338,23 @@ input:focus-visible {
   color: var(--muted-strong);
   font-size: 12px;
   font-weight: 650;
+}
+
+.block-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: max-content;
+}
+
+.block-actions .icon-button {
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+}
+
+.block-actions .icon-button[aria-label*="删除"] {
+  color: #fda4af;
 }
 
 .empty {
@@ -1541,6 +1567,24 @@ input:focus-visible {
   .entity-row {
     grid-template-columns: 1fr;
     align-items: start;
+  }
+
+  .panel-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .panel-actions .button {
+    flex: 1 1 120px;
+  }
+
+  .block-item {
+    grid-template-columns: 30px minmax(0, 1fr) auto;
+  }
+
+  .block-actions {
+    grid-column: 2 / -1;
+    justify-content: flex-start;
   }
 
   .reference-grid {

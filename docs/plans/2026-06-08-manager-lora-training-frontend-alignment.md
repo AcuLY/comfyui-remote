@@ -150,7 +150,7 @@ lora_training:
 - 项目总览正文只保留角色资料、最近任务、训练入口和最近产物；小节、结果池、数据集由 tab 页面负责。
 - 小节列表不展示确定进度条；`TrainingSectionRun` / `TrainingGenerationTask` 当前只有状态和时间字段，没有 `currentStep` / `totalSteps`，只能展示最近生成状态。确定进度条只用于 `TrainingRun`。
 - 小节列表参考生图模块的 section cards：页面有小节导航 rail，卡片主体跳小节详情，最近结果使用固定 4 格缩略槽，运行/排序是独立操作按钮；不使用独立指标块、大状态胶囊或列表级进度条。空间足够时卡片保持双列，窄屏再退为单列。
-- 小节详情页的结果区也使用结果池同款多列小缩略图；点击缩略图打开 lightbox，不在详情正文直接铺开大图。
+- 小节详情页的场景块必须提供导入预制、添加本地块、编辑、排序和删除入口，分别对应 `TrainingSceneDescriptionBlock.sceneDescriptionPresetId`、`localText`、`sortOrder` 和块删除；结果区使用结果池同款多列小缩略图，点击缩略图打开 lightbox，不在详情正文直接铺开大图。
 - 结果池参考生图审核/结果网格的密度：项目级结果以多列小缩略图卡展示，点击图片打开 lightbox；移动端也不退化为单列大图。
 - 数据集页 readiness 摘要压入当前草稿标题行或训练准备区，不单独使用大面积 `metric-grid`；kept 草稿样本使用结果池同款多列小缩略图。
 - 运行页默认展示“生成任务 / 完成”，状态 tab 顺序固定为“完成 / 进行中 / 排队 / 失败/取消”。
