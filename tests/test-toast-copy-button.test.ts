@@ -10,12 +10,12 @@ function readSource(path: string) {
 }
 
 test("global notification toasts expose a copy button", () => {
-  const source = readSource("src/components/app-shell.tsx");
+  const appShellSource = readSource("src/components/app-shell.tsx");
+  const source = readSource("src/components/notification-copy-buttons.tsx");
 
-  assert.match(source, /ToastCopyButtons/, "AppShell should install global toast copy controls");
-  assert.match(source, /data-toast-copy-button/, "copy buttons should be marked for deduping");
+  assert.match(appShellSource, /NotificationCopyButtons/, "AppShell should install global toast copy controls");
+  assert.match(source, /data-notification-copy-button/, "copy buttons should be marked for deduping");
   assert.match(source, /\[data-sonner-toast\]/, "copy controls should attach to Sonner toast elements");
-  assert.match(source, /\[data-title\]/, "copy text should include the toast title");
-  assert.match(source, /\[data-description\]/, "copy text should include the toast description");
+  assert.match(source, /cloneNode\(true\)/, "copy text should clone toast contents before filtering controls");
   assert.match(source, /navigator\.clipboard\.writeText/, "copy controls should use the Clipboard API when available");
 });

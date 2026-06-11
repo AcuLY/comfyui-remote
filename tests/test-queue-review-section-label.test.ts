@@ -31,7 +31,12 @@ test("queue review page displays the section number and name", () => {
   );
   assert.match(
     pageSource,
-    /<SectionCard title=\{group\.title\} subtitle=\{`\$\{sectionDisplayName\} · \$\{group\.presetNames\.join\(" · "\) \|\| "无预制"\} · \$\{group\.createdAt\}`\}>/,
+    /const reviewGroupSubtitle = \[[\s\S]*sectionDisplayName[\s\S]*group\.presetNames\.join\(" · "\) \|\| "无预制"[\s\S]*group\.createdAt[\s\S]*\]\.filter\(Boolean\)\.join\(" · "\);/,
     "queue review page should show the formatted section display in the review card subtitle",
+  );
+  assert.match(
+    pageSource,
+    /<SectionCard title=\{`\$\{group\.title\}：\$\{group\.sectionName\}`\} subtitle=\{reviewGroupSubtitle\}>/,
+    "queue review page should keep the section name in the card title while using the formatted subtitle",
   );
 });
