@@ -1114,6 +1114,60 @@ test("importTemplateToProject creates normalized rows from template relation row
   ]);
 });
 
+test("importTemplateToProject imports template project binding sections without duplicate section binding ids", async () => {
+  const seed = await seedProjectWithPreset({ withProjectBinding: true });
+  const template = await prisma.projectTemplate.create({
+    data: { id: `${seed.key}-template`, name: `${seed.key} Template` },
+  });
+  const templateSection = await prisma.projectTemplateSection.create({
+    data: {
+      id: `${seed.key}-template-section`,
+      projectTemplateId: template.id,
+      sortOrder: 0,
+      name: `${seed.key} Imported Project Binding Section`,
+    },
+  });
+  const templateBinding = await prisma.templateSectionPresetBinding.create({
+    data: {
+      projectTemplateSectionId: templateSection.id,
+      bindingKey: `template-project:${seed.category.id}`,
+      categoryId: seed.category.id,
+      presetId: seed.preset.id,
+      variantId: seed.variantB.id,
+      sortOrder: 0,
+    },
+  });
+  await prisma.templateSectionPromptBlock.create({
+    data: {
+      projectTemplateSectionId: templateSection.id,
+      templateSectionBindingId: templateBinding.id,
+      type: "preset",
+      sortOrder: 0,
+    },
+  });
+
+  const importedCount = await ignoreStaticRevalidateError(() =>
+    importTemplateToProject(seed.project.id, template.id) as Promise<number>
+  );
+
+  if (importedCount !== undefined) assert.equal(importedCount, 1);
+  const importedSection = await prisma.projectSection.findFirstOrThrow({
+    where: { projectId: seed.project.id, name: `${seed.key} Imported Project Binding Section` },
+  });
+  const bindings = await prisma.sectionPresetBinding.findMany({
+    where: { projectSectionId: importedSection.id },
+  });
+  assert.deepEqual(bindings.map((binding) => binding.bindingKey), [
+    `template-project:${seed.category.id}`,
+  ]);
+  assert.equal(bindings[0].variantId, seed.variantA.id);
+
+  const promptRow = await prisma.sectionPromptBlock.findFirstOrThrow({
+    where: { projectSectionId: importedSection.id },
+  });
+  assert.equal(promptRow.sectionBindingId, bindings[0].id);
+});
+
 test("template CRUD converts submitted prompt and manual lora data into template relation rows", async () => {
   const seed = await seedProjectWithPreset();
 

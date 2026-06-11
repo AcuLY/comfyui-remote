@@ -703,7 +703,16 @@ export function buildProjectSectionRowsForTemplateImport(input: {
   const promptBlocks: SectionPromptBlockWrite[] = [];
   const manualLoraEntries: SectionManualLoraEntryWrite[] = [];
   const templateBindingIdToSectionBindingId = new Map<string, string>();
+  const sectionBindingIdByKey = new Map<string, string>();
   const projectBindingCategoryIds = new Set<string>();
+
+  const addPresetBinding = (write: SectionPresetBindingWrite) => {
+    const existingId = sectionBindingIdByKey.get(write.bindingKey);
+    if (existingId) return existingId;
+    presetBindings.push(write);
+    sectionBindingIdByKey.set(write.bindingKey, write.id);
+    return write.id;
+  };
 
   const projectBindings = [
     ...(input.projectLevelBindings ?? []),
@@ -713,13 +722,13 @@ export function buildProjectSectionRowsForTemplateImport(input: {
     if (projectBindingCategoryIds.has(binding.categoryId)) continue;
     projectBindingCategoryIds.add(binding.categoryId);
     const write = sectionBindingWriteFromProjectTemplateBinding(input.projectSectionId, binding, index);
-    presetBindings.push(write);
+    addPresetBinding(write);
   }
 
   for (const binding of input.templatePresetBindings) {
     const write = sectionBindingWriteFromTemplateBinding(input.projectSectionId, binding);
-    presetBindings.push(write);
-    templateBindingIdToSectionBindingId.set(binding.id, write.id);
+    const sectionBindingId = addPresetBinding(write);
+    templateBindingIdToSectionBindingId.set(binding.id, sectionBindingId);
   }
 
   for (const row of sortBySortOrder(input.templatePromptBlocks)) {

@@ -509,3 +509,52 @@ test("importing a template section plans section relation rows without legacy ex
   assert.equal("positive" in rows.promptBlocks[0], false);
   assert.equal(rows.manualLoraEntries.length, 0);
 });
+
+test("importing a template section reuses project-level binding rows for template project binding keys", () => {
+  const style = category({ id: "cat-style", name: "Style" });
+  const stylePreset = preset({
+    id: "preset-style",
+    categoryId: style.id,
+    name: "Style",
+    variants: [{ id: "variant-style", name: "Default", prompt: "current preset prompt" }],
+  });
+  const templateProjectBindingKey = `template-project:${style.id}`;
+  const binding = templateBinding({
+    id: "template-binding-project-style",
+    bindingKey: templateProjectBindingKey,
+    category: style,
+    preset: stylePreset,
+  });
+
+  const rows = buildProjectSectionRowsForTemplateImport({
+    projectSectionId: "section-imported",
+    projectLevelBindings: [
+      {
+        categoryId: style.id,
+        presetId: stylePreset.id,
+        variantId: stylePreset.variants[0]?.id ?? null,
+        sortOrder: 0,
+      },
+    ],
+    templateProjectPresetBindings: [],
+    templatePresetBindings: [binding],
+    templatePromptBlocks: [
+      {
+        id: "template-block-style",
+        projectTemplateSectionId: "template-section-1",
+        templateSectionBindingId: binding.id,
+        type: "preset",
+        customLabel: null,
+        customPositive: null,
+        customNegative: null,
+        sortOrder: 0,
+      },
+    ],
+    templateManualLoraEntries: [],
+  });
+
+  assert.deepEqual(rows.presetBindings.map((row) => row.bindingKey), [templateProjectBindingKey]);
+  assert.deepEqual(rows.promptBlocks.map((row) => row.sectionBindingId), [
+    `sectionPresetBinding:section-imported:${templateProjectBindingKey}`,
+  ]);
+});
