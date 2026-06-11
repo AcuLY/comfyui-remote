@@ -11,7 +11,7 @@ import { SectionNameEditor } from "./section-name-editor";
 import { SectionRunButton } from "@/app/projects/[projectId]/project-detail-actions";
 import type { PromptBlockData } from "@/lib/actions";
 import { getPresetLibraryV2 } from "@/lib/server-data";
-import type { SectionLoraConfig } from "@/lib/lora-types";
+import { shouldPersistLoraBindingLink, type SectionLoraConfig } from "@/lib/lora-types";
 import { revalidatePath } from "next/cache";
 import { getSectionChangeHistory } from "@/server/services/section-change-history-service";
 import { SectionChangeHistory } from "./section-change-history";
@@ -258,9 +258,10 @@ export default async function SectionEditPage({
 
         const bindingKey = entry.detachedBindingId ?? entry.bindingId ?? null;
         const binding = bindingKey ? bindingByKey.get(bindingKey) ?? null : null;
+        const shouldLinkBinding = shouldPersistLoraBindingLink(entry);
         return [{
           projectSectionId: sectionId,
-          sectionBindingId: binding?.id ?? null,
+          sectionBindingId: shouldLinkBinding ? binding?.id ?? null : null,
           stage,
           path: entry.path,
           weight: Math.round(entry.weight * 100) / 100,

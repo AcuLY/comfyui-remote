@@ -5,6 +5,7 @@ import {
   type PresetGroupResolverDbClient,
 } from "./preset-group-resolver";
 import { sortBySortOrder } from "./order";
+import { shouldPersistLoraBindingLink } from "@/lib/lora-types";
 import type {
   PresetVariantLinkRow,
   PresetVariantRow,
@@ -529,11 +530,18 @@ export function buildTemplateSectionRowsFromSectionData(input: {
       const source = readString(entry.source);
       const suppressed = entry.suppressed === true;
       const detachedFromPath = readString(entry.detachedPresetPath) ?? (source === "preset" ? loraPath : null);
+      const shouldLinkBinding = shouldPersistLoraBindingLink({
+        source: source === "preset" ? "preset" : "manual",
+        bindingId: readString(entry.bindingId) ?? undefined,
+        detachedBindingId: detachedBindingKey ?? undefined,
+        detachedPresetPath: readString(entry.detachedPresetPath) ?? undefined,
+        suppressed,
+      });
 
       manualLoraEntries.push({
         id: relationId("templateSectionManualLoraEntry", input.projectTemplateSectionId, `${stage}:${index}:${loraPath}`),
         projectTemplateSectionId: input.projectTemplateSectionId,
-        templateSectionBindingId: binding?.id ?? null,
+        templateSectionBindingId: shouldLinkBinding ? binding?.id ?? null : null,
         stage,
         path: loraPath,
         weight: roundLoraWeight(entry.weight),

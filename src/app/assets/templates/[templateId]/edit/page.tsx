@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getProjectTemplateDetail } from "@/lib/server-data";
+import { getPresetLibraryV2, getProjectTemplateDetail } from "@/lib/server-data";
 import { firstSearchParam } from "@/lib/folder-navigation";
 import { TemplateFormClient } from "../../template-form-client";
 
@@ -11,7 +11,10 @@ export default async function EditTemplatePage({
   searchParams: Promise<{ sectionFolder?: string | string[] | undefined }>;
 }) {
   const { templateId } = await params;
-  const template = await getProjectTemplateDetail(templateId);
+  const [template, presetLibrary] = await Promise.all([
+    getProjectTemplateDetail(templateId),
+    getPresetLibraryV2(),
+  ]);
   if (!template) notFound();
   const requestedSectionFolderId = firstSearchParam((await searchParams).sectionFolder);
   const initialSectionFolderId =
@@ -28,6 +31,7 @@ export default async function EditTemplatePage({
       initialSectionFolders={template.sectionFolders}
       initialSectionFolderId={initialSectionFolderId}
       initialSections={template.sections}
+      presetLibrary={presetLibrary}
     />
   );
 }

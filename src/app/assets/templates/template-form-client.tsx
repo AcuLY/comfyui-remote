@@ -20,6 +20,7 @@ import {
   Save,
 } from "lucide-react";
 import { toast } from "sonner";
+import { PresetSectionReplacementDialog } from "@/components/preset-section-replacement-dialog";
 import {
   DndContext,
   closestCenter,
@@ -71,6 +72,7 @@ import {
 import type { ProjectTemplateSectionData, ProjectTemplateSectionFolderItem } from "@/lib/server-data";
 import { type LoraEntry } from "@/lib/lora-types";
 import { DEFAULT_CHECKPOINT_NAME } from "@/lib/model-constants";
+import type { PresetLibraryV2 } from "@/lib/server-data";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -83,6 +85,7 @@ type Props = {
   initialSectionFolders?: ProjectTemplateSectionFolderItem[];
   initialSectionFolderId?: string | null;
   initialSections?: ProjectTemplateSectionData[];
+  presetLibrary?: PresetLibraryV2;
 };
 
 function scrollToTemplateSection(sectionId: string) {
@@ -177,6 +180,7 @@ export function TemplateFormClient({
   initialSectionFolders = [],
   initialSectionFolderId = null,
   initialSections = [],
+  presetLibrary,
 }: Props) {
   const router = useRouter();
   const [name, setName] = useState(initialName);
@@ -524,18 +528,29 @@ export function TemplateFormClient({
           />
         )}
 
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <span className="text-sm font-medium text-zinc-300">
             小节配置 ({visibleSections.length}{visibleSections.length === sections.length ? "" : ` / ${sections.length}`})
           </span>
-          <button
-            type="button"
-            disabled={isPending}
-            onClick={addSection}
-            className="inline-flex items-center gap-1 rounded-xl border border-dashed border-white/10 bg-white/[0.02] px-3 py-1.5 text-xs text-zinc-400 transition hover:border-sky-500/30 hover:text-sky-300 disabled:opacity-50"
-          >
-            <Plus className="size-3" /> 添加小节
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            {isEdit && templateId && presetLibrary && (
+              <PresetSectionReplacementDialog
+                targetType="template"
+                targetId={templateId}
+                targetName={name || "未命名模板"}
+                library={presetLibrary}
+                buttonClassName="inline-flex items-center justify-center gap-1 rounded-xl border border-teal-500/20 bg-teal-500/[0.03] px-3 py-1.5 text-xs text-teal-300 transition hover:bg-teal-500/[0.08]"
+              />
+            )}
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={addSection}
+              className="inline-flex items-center gap-1 rounded-xl border border-dashed border-white/10 bg-white/[0.02] px-3 py-1.5 text-xs text-zinc-400 transition hover:border-sky-500/30 hover:text-sky-300 disabled:opacity-50"
+            >
+              <Plus className="size-3" /> 添加小节
+            </button>
+          </div>
         </div>
 
         {visibleSections.length === 0 && visibleFolders.length === 0 && (

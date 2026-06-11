@@ -199,6 +199,18 @@ export function isSuppressedLoraEntry(entry: Pick<LoraEntry, "suppressed">): boo
   return entry.suppressed === true;
 }
 
+export function shouldPersistLoraBindingLink(
+  entry: Pick<LoraEntry, "source" | "bindingId" | "detachedBindingId" | "detachedPresetPath" | "suppressed">,
+) {
+  return (
+    entry.source === "preset" &&
+    Boolean(entry.bindingId) &&
+    !entry.detachedBindingId &&
+    !entry.detachedPresetPath &&
+    entry.suppressed !== true
+  );
+}
+
 export function suppressPresetLoraEntry(entry: LoraEntry): LoraEntry {
   return {
     ...entry,
@@ -238,4 +250,3 @@ export function removeLoraEntriesByBinding(
 export function generateLoraEntryId(): string {
   return `lora-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
-

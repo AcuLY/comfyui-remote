@@ -411,7 +411,7 @@ test("saving template editor section data keeps custom blocks and detached lora 
     metadata: row.metadata,
   })), [
     {
-      templateSectionBindingId: "templateSectionPresetBinding:template-section-1:bind-style",
+      templateSectionBindingId: null,
       stage: "lora1",
       path: "/preset-style.safetensors",
       weight: 0.75,

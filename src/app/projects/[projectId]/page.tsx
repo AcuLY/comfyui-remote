@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getProjectDetail } from "@/lib/server-data";
+import { getPresetLibraryV2, getProjectDetail } from "@/lib/server-data";
 import { firstSearchParam } from "@/lib/folder-navigation";
 import { ProjectDetailClient } from "./project-detail-client";
 
@@ -13,7 +13,10 @@ export default async function ProjectDetailPage({
   searchParams: Promise<{ sectionFolder?: string | string[] | undefined }>;
 }) {
   const { projectId } = await params;
-  const project = await getProjectDetail(projectId);
+  const [project, presetLibrary] = await Promise.all([
+    getProjectDetail(projectId),
+    getPresetLibraryV2(),
+  ]);
   if (!project) notFound();
   const requestedSectionFolderId = firstSearchParam((await searchParams).sectionFolder);
   const initialSectionFolderId =
@@ -32,6 +35,7 @@ export default async function ProjectDetailPage({
       sectionFolders={project.sectionFolders}
       initialSectionFolderId={initialSectionFolderId}
       sections={project.sections}
+      presetLibrary={presetLibrary}
     />
   );
 }
