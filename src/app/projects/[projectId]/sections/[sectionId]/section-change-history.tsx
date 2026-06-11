@@ -68,8 +68,8 @@ function Summary({ entry }: { entry: SectionChangeHistoryEntry }) {
     const beforeText = stringifyCompact(before?.positive ?? before?.negative ?? before?.label ?? null);
     const afterText = stringifyCompact(after?.positive ?? after?.negative ?? after?.label ?? null);
     return (
-      <div className="truncate text-[11px] text-zinc-500">
-        {beforeText.slice(0, 80)} → {afterText.slice(0, 80)}
+      <div className="whitespace-pre-wrap break-words text-[11px] leading-5 text-zinc-500">
+        {beforeText} → {afterText}
       </div>
     );
   }
@@ -80,11 +80,13 @@ function Summary({ entry }: { entry: SectionChangeHistoryEntry }) {
         .map(([key, value]) => `${key}: ${stringifyCompact(value)}`)
         .join("；")
     : "";
-  return <div className="truncate text-[11px] text-zinc-500">{params || "运行参数已更新"}</div>;
+  return <div className="whitespace-pre-wrap break-words text-[11px] leading-5 text-zinc-500">{params || "运行参数已更新"}</div>;
 }
 
 export function SectionChangeHistory({ history }: SectionChangeHistoryProps) {
-  const [activeTab, setActiveTab] = useState<SectionChangeDimension>("runParams");
+  const [activeTab, setActiveTab] = useState<SectionChangeDimension>(
+    () => TABS.find((tab) => (history[tab.key]?.length ?? 0) > 0)?.key ?? "runParams",
+  );
   const entries = history[activeTab] ?? [];
   const totalCount = useMemo(
     () => TABS.reduce((sum, tab) => sum + (history[tab.key]?.length ?? 0), 0),
@@ -128,7 +130,7 @@ export function SectionChangeHistory({ history }: SectionChangeHistoryProps) {
               <summary className="cursor-pointer list-none">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
-                    <div className="text-xs font-medium text-zinc-300">{entry.title}</div>
+                    <div className="break-words text-xs font-medium text-zinc-300">{entry.title}</div>
                     <Summary entry={entry} />
                   </div>
                   <div className="shrink-0 text-[10px] text-zinc-600">{formatDate(entry.createdAt)}</div>

@@ -354,6 +354,7 @@
   font-size: 12.5px;
   font-weight: 620;
   color: var(--demo-text);
+  overflow-wrap: anywhere;
 }
 
 .diffEmpty {
@@ -373,12 +374,17 @@
 .diffField {
   color: var(--demo-muted);
   font-size: 10.5px;
+  overflow-wrap: anywhere;
 }
 
 .diffPill {
+  min-width: 0;
+  max-width: 100%;
   padding: 1px 8px;
   border-radius: 6px;
   font-size: 10.5px;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .diffBefore {
@@ -419,7 +425,7 @@
   }
 
   .diffLine {
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
   }
 
   .diffField {

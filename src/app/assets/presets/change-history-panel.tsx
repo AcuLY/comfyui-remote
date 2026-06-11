@@ -81,8 +81,8 @@ export function PresetChangeHistoryPanel<Dimension extends string>({
               <summary className="cursor-pointer list-none">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
-                    <div className="text-[11px] font-medium text-zinc-300">{entry.title}</div>
-                    <div className="truncate text-[10px] text-zinc-500">{historySummary(entry)}</div>
+                    <div className="break-words text-[11px] font-medium text-zinc-300">{entry.title}</div>
+                    <div className="whitespace-pre-wrap break-words text-[10px] leading-4 text-zinc-500">{historySummary(entry)}</div>
                   </div>
                   <div className="shrink-0 text-[10px] text-zinc-600">{formatHistoryDate(entry.createdAt)}</div>
                 </div>

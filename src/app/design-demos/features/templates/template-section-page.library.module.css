@@ -292,8 +292,7 @@
   gap: 2px;
 }
 
-.bindingRow strong,
-.historyDiffRow strong {
+.bindingRow strong {
   overflow: hidden;
   color: var(--demo-text);
   font-size: 12px;
@@ -302,13 +301,25 @@
   white-space: nowrap;
 }
 
-.bindingRow span,
-.historyDiffRow span {
+.historyDiffRow strong {
+  color: var(--demo-text);
+  font-size: 12px;
+  font-weight: 560;
+  overflow-wrap: anywhere;
+}
+
+.bindingRow span {
   overflow: hidden;
   color: var(--demo-muted);
   font-size: 10px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.historyDiffRow span {
+  color: var(--demo-muted);
+  font-size: 10px;
+  overflow-wrap: anywhere;
 }
 
 .promptBlockRow {

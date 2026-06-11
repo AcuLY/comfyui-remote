@@ -245,20 +245,16 @@
 }
 
 .historyDiffRow strong {
-  overflow: hidden;
   color: var(--demo-text);
   font-size: 12px;
   font-weight: 560;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .historyDiffRow span {
-  overflow: hidden;
   color: var(--demo-muted);
   font-size: 10px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .promptColumns,

@@ -8,22 +8,7 @@ type DiffRow = {
 };
 
 const MISSING = Symbol("missing");
-const MAX_TEXT_LENGTH = 180;
 const ARRAY_ID_KEYS = ["id", "bindingId", "sourceId", "variantId", "name", "label", "path"];
-const VALUE_KEYS = [
-  "name",
-  "label",
-  "title",
-  "category",
-  "variantId",
-  "bindingId",
-  "groupBindingId",
-  "sourceId",
-  "sourceName",
-  "path",
-  "weight",
-  "enabled",
-];
 
 const FIELD_LABELS: Record<string, string> = {
   aspectRatio: "画幅比例",
@@ -46,9 +31,12 @@ const FIELD_LABELS: Record<string, string> = {
   path: "路径",
   positive: "正向提示词",
   prompt: "提示词",
+  presetId: "预制 ID",
   seed: "种子",
   seedPolicy: "种子策略",
   shortSidePx: "短边尺寸",
+  slotCategoryId: "槽位分类 ID",
+  sortOrder: "排序",
   sourceId: "来源 ID",
   sourceName: "来源名称",
   steps: "步数",
@@ -67,7 +55,15 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 function compactText(value: string) {
   const normalized = value.replace(/\s+/g, " ").trim();
   if (!normalized) return "空";
-  return normalized.length > MAX_TEXT_LENGTH ? `${normalized.slice(0, MAX_TEXT_LENGTH)}...` : normalized;
+  return normalized;
+}
+
+function stringifyFull(value: unknown) {
+  try {
+    return JSON.stringify(value, null, 2) ?? String(value);
+  } catch {
+    return String(value);
+  }
 }
 
 function formatValue(value: unknown): string {
@@ -75,41 +71,7 @@ function formatValue(value: unknown): string {
   if (value === null) return "空";
   if (typeof value === "string") return compactText(value);
   if (typeof value === "number" || typeof value === "boolean") return String(value);
-
-  if (Array.isArray(value)) {
-    if (value.length === 0) return "0 项";
-    const labels = value
-      .slice(0, 4)
-      .map((item) => itemLabel(item))
-      .filter(Boolean);
-    const suffix = value.length > 4 ? "..." : "";
-    return labels.length > 0 ? `${value.length} 项：${labels.join("、")}${suffix}` : `${value.length} 项`;
-  }
-
-  if (isPlainObject(value)) {
-    const parts = VALUE_KEYS.flatMap((key) => {
-      if (!(key in value)) return [];
-      return [`${FIELD_LABELS[key] ?? key}: ${formatValue(value[key])}`];
-    });
-    if (parts.length > 0) return compactText(parts.slice(0, 4).join("；"));
-    return `${Object.keys(value).length} 个字段`;
-  }
-
-  return String(value);
-}
-
-function itemLabel(value: unknown): string | null {
-  if (typeof value === "string") return compactText(value);
-  if (typeof value === "number" || typeof value === "boolean") return String(value);
-  if (!isPlainObject(value)) return null;
-
-  for (const key of ["name", "label", "title", "sourceName", "path", "id"]) {
-    const candidate = value[key];
-    if (typeof candidate === "string" && candidate.trim()) return compactText(candidate);
-    if (typeof candidate === "number") return String(candidate);
-  }
-
-  return null;
+  return stringifyFull(value);
 }
 
 function arrayIdentity(value: unknown): string | null {
@@ -265,12 +227,12 @@ export function ChangeDiffView({ before, after }: { before: unknown; after: unkn
             <div className="grid grid-cols-1 gap-2 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:items-start">
               <div className="min-w-0 rounded border border-white/5 bg-black/15 p-2">
                 <div className="mb-1 text-[10px] text-zinc-600">变更前</div>
-                <div className="break-words text-[11px] leading-5 text-zinc-400">{row.before}</div>
+                <div className="whitespace-pre-wrap break-words text-[11px] leading-5 text-zinc-400">{row.before}</div>
               </div>
               <div className="hidden px-1 pt-7 text-[11px] text-zinc-600 md:block">→</div>
               <div className="min-w-0 rounded border border-white/5 bg-black/15 p-2">
                 <div className="mb-1 text-[10px] text-zinc-600">变更后</div>
-                <div className="break-words text-[11px] leading-5 text-zinc-200">{row.after}</div>
+                <div className="whitespace-pre-wrap break-words text-[11px] leading-5 text-zinc-200">{row.after}</div>
               </div>
             </div>
           </div>
