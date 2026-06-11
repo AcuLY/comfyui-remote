@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#09090b" />
     <title>LoRA 训练模式 - 数据集版本原型</title>
-    <link rel="stylesheet" href="./assets/lora-training-shared.css?v=20260611-lora-dataset-revision-1" />
+    <link rel="stylesheet" href="./assets/lora-training-shared.css?v=20260611-lora-rewrite-2" />
   </head>
   <body>
     <main class="app-shell">
@@ -20,29 +20,27 @@
         <section class="layout wide-left">
           <div class="stack">
             <section class="panel">
-              <div class="panel-header">
-                <div class="row-title"><h2>冻结样本</h2><span>42 张快照 · captionSnapshot 已锁定</span></div>
-              </div>
-              <div class="panel-body result-grid">
-                <article class="media-card result-card"><button class="image-card-img" type="button" data-lightbox-src="./assets/images/lora-training-generation-result-output.png" data-lightbox-caption="captionSnapshot: vela_neon_jacket, stage portrait, cyan rim light, glossy teal jacket"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="训练图片缩略图" /></button><div class="media-body"><span class="chip">001</span><p class="caption" id="rev-caption-1">vela_neon_jacket, stage portrait, cyan rim light, glossy teal jacket</p><button class="button" type="button" data-toggle-caption="#rev-caption-1">展开</button></div></article>
-                <article class="media-card result-card"><button class="image-card-img" type="button" data-lightbox-src="./assets/images/lora-training-generation-result-output.png" data-lightbox-caption="captionSnapshot: vela_neon_jacket, night street, wet pavement, teal jacket reflection"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="训练图片缩略图" /></button><div class="media-body"><span class="chip">002</span><p class="caption">vela_neon_jacket, night street, wet pavement, teal jacket reflection</p></div></article>
-                <article class="media-card result-card"><button class="image-card-img" type="button" data-lightbox-src="./assets/images/lora-training-generation-result-output.png" data-lightbox-caption="captionSnapshot: vela_neon_jacket, white studio portrait, clean background"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="训练图片缩略图" /></button><div class="media-body"><span class="chip">003</span><p class="caption">vela_neon_jacket, white studio portrait, clean background</p></div></article>
+              <div class="panel-header"><h2>冻结样本</h2></div>
+              <div class="panel-body image-grid">
+                <article class="media-card"><button class="image-card-img" type="button" data-lightbox-src="./assets/images/lora-training-generation-result-output.png" data-lightbox-caption="captionSnapshot: vela_neon_jacket, stage portrait, cyan rim light, glossy teal jacket"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="训练图片缩略图" /></button><div class="media-body"><span class="chip">001</span><p class="caption" id="rev-caption-1">vela_neon_jacket, stage portrait, cyan rim light, glossy teal jacket</p><button class="button" type="button" data-toggle-caption="#rev-caption-1">展开</button></div></article>
+                <article class="media-card"><button class="image-card-img" type="button" data-lightbox-src="./assets/images/lora-training-generation-result-output.png" data-lightbox-caption="captionSnapshot: vela_neon_jacket, night street, wet pavement, teal jacket reflection"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="训练图片缩略图" /></button><div class="media-body"><span class="chip">002</span><p class="caption">vela_neon_jacket, night street, wet pavement, teal jacket reflection</p></div></article>
+                <article class="media-card"><button class="image-card-img" type="button" data-lightbox-src="./assets/images/lora-training-generation-result-output.png" data-lightbox-caption="captionSnapshot: vela_neon_jacket, white studio portrait, clean background"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="训练图片缩略图" /></button><div class="media-body"><span class="chip">003</span><p class="caption">vela_neon_jacket, white studio portrait, clean background</p></div></article>
               </div>
             </section>
           </div>
           <aside class="stack">
             <section class="panel">
-              <div class="panel-header"><h2>版本</h2></div>
+              <div class="panel-header"><h2>版本字段</h2></div>
               <div class="panel-body kv">
-                <div>版本号</div><div>5</div>
+                <div>version</div><div>5</div>
                 <div>状态</div><div>可用</div>
-                <div>样本</div><div>42 张</div>
-                <div>清单</div><div>dataset-v5-manifest.json</div>
-                <div>冻结时间</div><div>15:47</div>
+                <div>itemCount</div><div>42</div>
+                <div>manifest</div><div>dataset-v5-manifest.json</div>
+                <div>frozenAt</div><div>15:47</div>
               </div>
             </section>
             <section class="panel">
-              <div class="panel-header"><h2>关联训练</h2></div>
+              <div class="panel-header"><h2>TrainingRun</h2></div>
               <div class="panel-body stack">
                 <a class="list-row" href="./manager-lora-training-training-detail-prototype.html?task=vela-completed"><div class="row-title"><strong>run 20260610-1550</strong><span>完成 · final LoRA 已保存</span></div></a>
               </div>

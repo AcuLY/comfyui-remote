@@ -153,12 +153,9 @@ lora_training:
 - 小节详情页的场景块必须提供导入预制、添加本地块、编辑、排序和删除入口，分别对应 `TrainingSceneDescriptionBlock.sceneDescriptionPresetId`、`localText`、`sortOrder` 和块删除；结果区使用结果池同款多列小缩略图，点击缩略图打开 lightbox，不在详情正文直接铺开大图。
 - 结果池参考生图审核/结果网格的密度：项目级结果以多列小缩略图卡展示，点击图片打开 lightbox；移动端也不退化为单列大图。
 - 数据集页 readiness 摘要压入当前草稿标题行或训练准备区，不单独使用大面积 `metric-grid`；kept 草稿样本使用结果池同款多列小缩略图。
-- 数据集冻结版本页也使用结果池同款小缩略图；`TrainingDatasetRevisionItem.captionSnapshot`、`snapshotArtifactId`、`filePathSnapshot` 作为只读快照展示，不用大图铺满正文。
 - 运行页默认展示“生成任务 / 完成”，状态 tab 顺序固定为“完成 / 进行中 / 排队 / 失败/取消”。
 - 生成详情页只展示最终输入 prompt、输入图和最终输出；不再展示来源拆解或上下文快照。
 - 训练详情页必须展示训练集样本 caption，caption 默认截断，可展开；样本图片可 lightbox 放大。
-- 成功训练详情页必须提供“创建预制”窄入口；仅当 `TrainingRun.finalLoraArtifactId` 存在且 `presetCreatedAt` 为空时显示，不展开 benchmark/promotion workflow。
-- 模板小节的场景块管理和项目小节保持同一心智：导入预制、添加本地块、编辑、排序、删除，对应 `TrainingTemplateSectionSceneDescriptionBlock.sceneDescriptionPresetId` / `localText` / `sortOrder`。
 - 所有图片元素需要 `alt`、`width`、`height`；装饰性图标需要 `aria-hidden="true"`；交互控件保留可见 focus。
 - 移动端 444px 宽度下核心页面不得出现横向溢出。
 
