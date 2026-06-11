@@ -14,17 +14,10 @@ import {
   Loader2,
   ChevronDown,
 } from "lucide-react";
-import { SectionCard } from "@/components/section-card";
 import type {
   PresetCategoryFull,
   SlotTemplateDef,
 } from "@/lib/server-data";
-import {
-  createPresetCategory,
-  updatePresetCategory,
-  deletePresetCategory,
-} from "@/lib/actions";
-import { toast } from "sonner";
 
 // ---------------------------------------------------------------------------
 // Color helpers — HSL-based

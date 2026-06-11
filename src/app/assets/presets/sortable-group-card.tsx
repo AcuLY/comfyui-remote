@@ -53,7 +53,6 @@ export function SortableGroupCard({
   groups,
   folders,
   isEditing,
-  onEdit,
   onRefresh,
   onGroupDeleted,
   onMoveToFolder,
@@ -69,7 +68,6 @@ export function SortableGroupCard({
   groups: PresetGroupItem[];
   folders: FolderItem[];
   isEditing: boolean;
-  onEdit: () => void;
   onRefresh: () => void;
   onGroupDeleted: () => void;
   onMoveToFolder: (folderId: string | null) => void;

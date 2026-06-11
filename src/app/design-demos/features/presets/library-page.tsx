@@ -387,7 +387,7 @@ export function PresetsPage({ data }: { data: DemoData }) {
       }, 100);
       return () => clearTimeout(t);
     }
-  }, []);
+  }, [scrollToId]);
 
   const visibleCategories = data.categories.filter((c) => !hiddenCategoryIds.has(c.id));
   const category = visibleCategories.find((item) => item.id === categoryId) ?? visibleCategories[0];

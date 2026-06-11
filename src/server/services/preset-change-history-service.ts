@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { cloneForJson, stableStringify, toPrismaJson } from "./change-history-utils";
+import { stableStringify, toPrismaJson } from "./change-history-utils";
 
 export type PresetChangeDimension = "variants" | "content";
 export type PresetGroupChangeDimension = "meta" | "members";

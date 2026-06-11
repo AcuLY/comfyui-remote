@@ -40,7 +40,7 @@ export function TemplatesPage({ data }: { data: DemoData }) {
       }, 100);
       return () => clearTimeout(t);
     }
-  }, []);
+  }, [fromId]);
 
   return (
     <div className={s.page}>

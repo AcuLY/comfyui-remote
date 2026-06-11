@@ -380,7 +380,6 @@ export function GroupList({
               groups={allGroups}
               folders={category.folders}
               isEditing={editingGroupId === group.id}
-              onEdit={() => setEditingGroupId(editingGroupId === group.id ? null : group.id)}
               onRefresh={onRefresh}
               onGroupDeleted={() => {
                 setEditingGroupId(null);

@@ -26,7 +26,6 @@ function buildFileItems(data: DemoData): FileItem[] {
     // Extract directory from relativePath
     const parts = asset.relativePath.split('/');
     const fileName = parts.pop() || asset.fileName;
-    const dirPath = parts.join('/');
 
     // Create folder entries for each directory level
     for (let i = 1; i <= parts.length; i++) {

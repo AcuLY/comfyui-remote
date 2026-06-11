@@ -19,24 +19,27 @@ export function TemplateSectionPage({ template, sectionIndex, data }: { template
   const index = Number(sectionIndex ?? "0");
   const safeIndex = Number.isFinite(index) ? index : 0;
   const section = template?.sections[safeIndex] ?? template?.sections[0];
-  if (!template || !section) return <EmptyPage title="没有模板小节" />;
+  const sectionName = section?.name ?? "模板小节";
+  const templateName = template?.name ?? "模板";
   const initialPromptBlocks = [
-    { id: "pb-main", label: "主体", positive: `${section.name} 正向提示词`, negative: "低质量、模糊" },
-    { id: "pb-style", label: "风格", positive: section.notes || `${template.name} 风格提示词`, negative: "结构错误、多余手指" },
+    { id: "pb-main", label: "主体", positive: `${sectionName} 正向提示词`, negative: "低质量、模糊" },
+    { id: "pb-style", label: "风格", positive: section?.notes || `${templateName} 风格提示词`, negative: "结构错误、多余手指" },
   ];
   const fallbackBindings = [{ id: "fb-char", name: "角色" }, { id: "fb-style", name: "风格" }, { id: "fb-scene", name: "场景" }];
   const [bindings, setBindings] = useState(() => data?.categories.slice(0, 3) ?? fallbackBindings);
   const [promptBlocks, setPromptBlocks] = useState(initialPromptBlocks);
   const [loraItems, setLoraItems] = useState<Array<{ id: string; stage: number; name: string; weight: number }>>(() => [
-    { id: "lora-1-0", stage: 0, name: section.name, weight: 0.7 },
-    { id: "lora-1-1", stage: 0, name: section.name, weight: 0.8 },
-    { id: "lora-2-0", stage: 1, name: template.name, weight: 0.7 },
-    { id: "lora-2-1", stage: 1, name: template.name, weight: 0.8 },
+    { id: "lora-1-0", stage: 0, name: sectionName, weight: 0.7 },
+    { id: "lora-1-1", stage: 0, name: sectionName, weight: 0.8 },
+    { id: "lora-2-0", stage: 1, name: templateName, weight: 0.7 },
+    { id: "lora-2-1", stage: 1, name: templateName, weight: 0.8 },
   ]);
 
   useEffect(() => {
     try { sessionStorage.setItem("demo-template-sections-from", String(safeIndex)); } catch {}
   }, [safeIndex]);
+
+  if (!template || !section) return <EmptyPage title="没有模板小节" />;
 
   return (
     <div className={s.page}>

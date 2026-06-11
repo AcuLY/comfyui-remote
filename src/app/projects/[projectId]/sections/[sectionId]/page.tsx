@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import Image from "next/image";
 import { ArrowLeft, ImageIcon, Download } from "lucide-react";
 import { HardNavigationLink } from "@/components/hard-navigation-link";
 import { prisma } from "@/lib/prisma";
@@ -382,11 +383,13 @@ export default async function SectionEditPage({
                         : "border-white/10"
                   }`}
                 >
-                  <img
+                  <Image
                     src={img.src}
                     alt=""
+                    width={96}
+                    height={112}
                     loading="lazy"
-                    decoding="async"
+                    unoptimized
                     draggable={false}
                     className="h-full w-full object-cover"
                   />

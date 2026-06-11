@@ -87,3 +87,5 @@ function initLoraPrototype(activeNav) {
     lucide.createIcons();
   }
 }
+
+window.initLoraPrototype = initLoraPrototype;

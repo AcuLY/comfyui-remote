@@ -44,8 +44,8 @@ export function useScrollSpy(
       .filter((item): item is { id: string; element: HTMLElement } => item.element instanceof HTMLElement);
 
     if (sectionElements.length === 0) {
-      setActiveId(null);
-      return;
+      const frameId = window.requestAnimationFrame(() => setActiveId(null));
+      return () => window.cancelAnimationFrame(frameId);
     }
 
     let frameId: number | null = null;

@@ -11,7 +11,6 @@ import path from "node:path";
 import { toInputJsonValue } from "@/server/services/character-lora-training/shared/service-utils";
 import { CharacterLoraImageReviewStatus } from "@/generated/prisma/enums";
 import {
-  characterLoraDatasetFreezeRequestSchema,
   characterLoraWorkerTaskPayloadSchema,
   type CharacterLoraDatasetFreezeForceOverride,
   type CharacterLoraDatasetFreezeRequest,
@@ -21,8 +20,6 @@ import {
 import {
   completeDatasetFreezeWorkerTask,
   createCharacterLoraJobArtifact,
-  createCharacterLoraDatasetFreezeWorkerTask,
-  createFrozenCharacterLoraDatasetRevision,
   getCharacterLoraArtifact,
   getCharacterLoraCanonicalVersion,
   getCharacterLoraCandidateImage,
@@ -45,7 +42,6 @@ import {
   assertUniqueIds,
   getExistingJob,
   normalizeCaptionTrigger,
-  normalizeId,
   parseWithSchema,
 } from "@/server/services/character-lora-training/phase3-internal";
 

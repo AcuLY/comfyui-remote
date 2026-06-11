@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition, useId } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
   DndContext,
@@ -566,11 +567,13 @@ function SortableSectionCard({
                       : "border-white/10"
                 }`}
               >
-                <img
+                <Image
                   src={img.src}
                   alt=""
+                  width={72}
+                  height={72}
                   loading="lazy"
-                  decoding="async"
+                  unoptimized
                   className="h-full w-auto object-contain"
                 />
                 {img.status === "kept" && (

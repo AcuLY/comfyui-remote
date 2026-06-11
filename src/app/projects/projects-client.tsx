@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition, useId } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -400,11 +401,13 @@ function ProjectCard({
                         : "border-white/10"
                   }`}
                 >
-                  <img
+                  <Image
                     src={img.src}
                     alt=""
+                    width={72}
+                    height={72}
                     loading="lazy"
-                    decoding="async"
+                    unoptimized
                     draggable={false}
                     className="h-full w-auto object-contain"
                   />

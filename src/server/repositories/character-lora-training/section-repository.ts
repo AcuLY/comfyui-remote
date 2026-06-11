@@ -1,6 +1,5 @@
 import { Prisma } from "@/generated/prisma";
 import {
-  CharacterLoraImageReviewStatus,
   CharacterLoraJobStatus,
   CharacterLoraRunStatus,
   CharacterLoraWorkerType,

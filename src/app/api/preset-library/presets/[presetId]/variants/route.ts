@@ -19,7 +19,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
 
     if (body.action === "create") {
-      const { action: _action, presetId: _bodyPresetId, ...input } = body;
+      const input = { ...body };
+      delete input.action;
+      delete input.presetId;
       const result = await createPresetVariant({ ...input, presetId });
       return ok(result);
     }

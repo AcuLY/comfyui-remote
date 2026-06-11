@@ -30,7 +30,7 @@ export default async function QueuePage({
     where: { status: { in: ["queued", "running", "paused"] } },
   });
 
-  let censoringProgress: Array<{
+  const censoringProgress: Array<{
     projectId: string;
     projectTitle: string;
     total: number;

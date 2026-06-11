@@ -5,7 +5,6 @@ import {
   CharacterLoraImageReviewStatus,
   CharacterLoraJobStatus,
   CharacterLoraRunStatus,
-  CharacterLoraWorkerType,
 } from "@/generated/prisma/enums";
 import { db } from "@/lib/db";
 import type { CharacterLoraArtifactKind } from "@/server/character-lora-training/contracts";

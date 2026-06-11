@@ -597,7 +597,7 @@ async function main() {
       createdAt: hoursAgo(47),
     },
   });
-  const canonFrontV2 = await prisma.characterLoraCanonicalVersion.create({
+  await prisma.characterLoraCanonicalVersion.create({
     data: {
       jobId: loraJob.id,
       version: 2,
@@ -609,7 +609,7 @@ async function main() {
       createdAt: hoursAgo(23),
     },
   });
-  const canonBackV1 = await prisma.characterLoraCanonicalVersion.create({
+  await prisma.characterLoraCanonicalVersion.create({
     data: {
       jobId: loraJob.id,
       version: 3,
@@ -622,7 +622,7 @@ async function main() {
       createdAt: hoursAgo(35),
     },
   });
-  const canonLeftV1 = await prisma.characterLoraCanonicalVersion.create({
+  await prisma.characterLoraCanonicalVersion.create({
     data: {
       jobId: loraJob.id,
       version: 4,

@@ -19,8 +19,6 @@ const SCROLL_RESTORE_KEY = "demo-runs-from";
 export function ReviewPage({ data, run }: { data: DemoData; run: DemoRun | undefined }) {
   const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
   const metaOpen = searchParams?.get("meta") === "open";
-  const [filter, setFilter] = useState<ResultDemoFilter>("all");
-  const [runImages, setRunImages] = useState(run?.images ?? []);
 
   // Store current runId in sessionStorage so the list page can scroll back to it
   useEffect(() => {
@@ -29,10 +27,13 @@ export function ReviewPage({ data, run }: { data: DemoData; run: DemoRun | undef
     }
   }, [run]);
 
-  // Reset when run changes
-  useEffect(() => { if (run) setRunImages(run.images); }, [run]);
-
   if (!run) return <EmptyPage title="没有可审核运行" />;
+  return <ReviewPageContent key={run.id} data={data} run={run} metaOpen={metaOpen} />;
+}
+
+function ReviewPageContent({ data, run, metaOpen }: { data: DemoData; run: DemoRun; metaOpen: boolean }) {
+  const [filter, setFilter] = useState<ResultDemoFilter>("all");
+  const [runImages, setRunImages] = useState(run.images);
   const images = filterImages(runImages, filter);
   const project = findProject(data, run.projectId);
   const section = findSection(project, run.sectionId);

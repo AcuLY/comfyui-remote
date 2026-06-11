@@ -349,7 +349,6 @@ type BlockColumnProps = {
   onAdd: () => void;
   onCancelAdd: () => void;
   onSubmitAdd: (input: { type: string; label: string; positive: string; negative?: string | null }) => void;
-  libraryV2?: PresetLibraryV2;
   categoryMap: Map<string, CategoryConfig>;
 };
 
@@ -372,7 +371,6 @@ function BlockColumn({
   onAdd,
   onCancelAdd,
   onSubmitAdd,
-  libraryV2,
   categoryMap,
 }: BlockColumnProps) {
   const sensors = useSensors(
@@ -723,7 +721,6 @@ export function PromptBlockEditor({
           onAdd={() => setAddingColumn("positive")}
           onCancelAdd={() => setAddingColumn(null)}
           onSubmitAdd={handleAdd}
-          libraryV2={libraryV2}
           categoryMap={categoryMap}
         />
         <BlockColumn
@@ -745,7 +742,6 @@ export function PromptBlockEditor({
           onAdd={() => setAddingColumn("negative")}
           onCancelAdd={() => setAddingColumn(null)}
           onSubmitAdd={handleAdd}
-          libraryV2={libraryV2}
           categoryMap={categoryMap}
         />
       </div>

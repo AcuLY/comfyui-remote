@@ -59,7 +59,7 @@ export function TemplateFormPage({ template, mode, data }: { template?: DemoTemp
       }, 100);
       return () => clearTimeout(t);
     }
-  }, []);
+  }, [fromSectionIndex]);
 
   function addSection() {
     const newSection: DemoTemplateSection = {
@@ -96,7 +96,7 @@ export function TemplateFormPage({ template, mode, data }: { template?: DemoTemp
         headerClassName={s.editorBlockHeader}
         title="小节配置"
       >
-        <SortableSectionList sections={allSections} template={template} onAddSection={addSection} />
+        <SortableSectionList sections={allSections} template={template} />
         <OperationStateStrip
           items={[
             { label: "排序", value: "拖拽释放后保存", tone: "info" },
@@ -141,7 +141,7 @@ export function TemplateFormPage({ template, mode, data }: { template?: DemoTemp
   );
 }
 
-function SortableSectionList({ sections, template, onAddSection }: { sections: DemoTemplateSection[]; template?: DemoTemplate; onAddSection?: () => void }) {
+function SortableSectionList({ sections, template }: { sections: DemoTemplateSection[]; template?: DemoTemplate }) {
   const [orderedIds, setOrderedIds] = useState(() => sections.map((sec) => sec.id));
   const [localCopies, setLocalCopies] = useState<DemoTemplateSection[]>([]);
   const allSections = [...sections, ...localCopies];

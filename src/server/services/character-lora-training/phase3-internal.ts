@@ -11,7 +11,6 @@ import {
   getCharacterLoraCandidateImage,
   getCharacterLoraJobSection,
   getCharacterLoraTrainingJob,
-  type CharacterLoraCandidateImageSummary,
 } from "@/server/repositories/character-lora-training-repository";
 
 export class CharacterLoraPhase3ServiceError extends CharacterLoraServiceError {

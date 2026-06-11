@@ -9,7 +9,7 @@ import s from "./editor-lora-history.module.css";
 import { cx } from "../../../routing";
 import { parseHue } from "./editor-shared";
 import { SelectChip, StepperInput } from "./editor-controls";
-import { SortableList, useDemoSortable } from "../../../shared/primitives/sortable";
+import { useDemoSortable } from "../../../shared/primitives/sortable";
 export type LoraRowData = {
   id: string;
   /** Bound preset display name; undefined for manual */

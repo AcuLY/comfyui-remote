@@ -86,5 +86,5 @@ class Router {
   }
 }
 
-// Create global router instance
-const router = new Router()
+// Create global router instance for inline demo links.
+window.router = new Router()

@@ -60,18 +60,23 @@ export function PresetCascadePicker({
   presetCategoriesOnly = false,
   defaultOpen = false,
 }: PresetCascadePickerProps) {
-  const [open, setOpen] = useState(defaultOpen ?? false);
-  const [selectedCatId, setSelectedCatId] = useState<string>("");
-  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const backdropRef = useRef<HTMLDivElement>(null);
-  const searchInputRef = useRef<HTMLInputElement>(null);
-
   // Filter categories
   const filteredCats = useMemo(
     () => presetCategoriesOnly ? categories.filter((c) => c.type === "preset") : categories,
     [categories, presetCategoriesOnly],
   );
+  const getInitialCategoryId = () =>
+    lockedCategoryId ??
+    (value ? findCategoryForPreset(categories, value.presetId) : "") ??
+    filteredCats[0]?.id ??
+    "";
+  const [open, setOpen] = useState(defaultOpen);
+  const [selectedCatId, setSelectedCatId] = useState<string>(getInitialCategoryId);
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [expandedPresetId, setExpandedPresetId] = useState<string | null>(null);
+  const backdropRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Resolve display name for current value
   const displayName = useMemo(() => {
@@ -87,21 +92,26 @@ export function PresetCascadePicker({
     return null;
   }, [value, categories]);
 
-  // Set initial category on open
-  useEffect(() => {
-    if (open) {
-      const catId = lockedCategoryId ?? (value ? findCategoryForPreset(categories, value.presetId) : "") ?? filteredCats[0]?.id ?? "";
-      setSelectedCatId(catId);
-      setCurrentFolderId(null);
-      setSearchQuery("");
-      setTimeout(() => searchInputRef.current?.focus(), 100);
-    }
-  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Reset folder when category changes
-  useEffect(() => {
+  function openPicker() {
+    setSelectedCatId(getInitialCategoryId());
     setCurrentFolderId(null);
-  }, [selectedCatId]);
+    setSearchQuery("");
+    setExpandedPresetId(null);
+    setOpen(true);
+  }
+
+  function handleSelectCategory(catId: string) {
+    setSelectedCatId(catId);
+    setCurrentFolderId(null);
+    setExpandedPresetId(null);
+  }
+
+  // Focus search after the dialog is mounted.
+  useEffect(() => {
+    if (!open) return;
+    const timeoutId = window.setTimeout(() => searchInputRef.current?.focus(), 100);
+    return () => window.clearTimeout(timeoutId);
+  }, [open]);
 
   // Close on Escape
   useEffect(() => {
@@ -111,8 +121,9 @@ export function PresetCascadePicker({
     return () => document.removeEventListener("keydown", h);
   }, [open]);
 
-  const selectedCat = filteredCats.find((c) => c.id === selectedCatId);
-  const folders = selectedCat?.folders ?? [];
+  const selectedCat = filteredCats.find((c) => c.id === selectedCatId) ?? filteredCats[0];
+  const activeCategoryId = selectedCat?.id ?? "";
+  const folders = useMemo(() => selectedCat?.folders ?? [], [selectedCat]);
 
   // Breadcrumb path
   const breadcrumb = useMemo(() => {
@@ -144,7 +155,7 @@ export function PresetCascadePicker({
     if (preset.variants.length === 0) return;
     if (preset.variants.length === 1) {
       const v = preset.variants[0];
-      onChange({ presetId: preset.id, variantId: v.id, presetName: preset.name, variantName: v.name, categoryId: selectedCatId });
+      onChange({ presetId: preset.id, variantId: v.id, presetName: preset.name, variantName: v.name, categoryId: activeCategoryId });
       setOpen(false);
     } else {
       // Show variant sub-menu — handled by expanding inline
@@ -152,10 +163,8 @@ export function PresetCascadePicker({
     }
   }
 
-  const [expandedPresetId, setExpandedPresetId] = useState<string | null>(null);
-
   function handleSelectVariant(preset: PresetDef, variant: VariantDef) {
-    onChange({ presetId: preset.id, variantId: variant.id, presetName: preset.name, variantName: variant.name, categoryId: selectedCatId });
+    onChange({ presetId: preset.id, variantId: variant.id, presetName: preset.name, variantName: variant.name, categoryId: activeCategoryId });
     setOpen(false);
   }
 
@@ -167,7 +176,7 @@ export function PresetCascadePicker({
       <button
         type="button"
         disabled={disabled}
-        onClick={() => setOpen(true)}
+        onClick={openPicker}
         className={`flex w-full items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-left outline-none transition hover:bg-white/[0.06] focus:border-sky-500/30 disabled:cursor-not-allowed disabled:opacity-50 ${
           displayName ? "text-zinc-200" : "text-zinc-500"
         }`}
@@ -191,9 +200,9 @@ export function PresetCascadePicker({
                   <button
                     key={cat.id}
                     type="button"
-                    onClick={() => setSelectedCatId(cat.id)}
+                    onClick={() => handleSelectCategory(cat.id)}
                     className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] transition ${
-                      selectedCatId === cat.id ? "bg-white/10 text-white" : "text-zinc-500 hover:text-zinc-300"
+                      activeCategoryId === cat.id ? "bg-white/10 text-white" : "text-zinc-500 hover:text-zinc-300"
                     }`}
                   >
                     {cat.color && (

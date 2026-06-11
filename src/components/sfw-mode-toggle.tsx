@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { EyeOff } from "lucide-react";
 import {
   isSfwModeEnabledValue,
@@ -15,16 +15,32 @@ function applySfwMode(enabled: boolean) {
   window.dispatchEvent(new Event(SFW_MODE_EVENT));
 }
 
-export function SfwModeToggle() {
-  const [enabled, setEnabled] = useState(false);
+function subscribeSfwMode(onStoreChange: () => void) {
+  window.addEventListener(SFW_MODE_EVENT, onStoreChange);
+  window.addEventListener("storage", onStoreChange);
+  return () => {
+    window.removeEventListener(SFW_MODE_EVENT, onStoreChange);
+    window.removeEventListener("storage", onStoreChange);
+  };
+}
 
-  useEffect(() => {
-    setEnabled(isSfwModeEnabledValue(window.localStorage.getItem(SFW_MODE_STORAGE_KEY)));
-  }, []);
+function getSfwModeSnapshot() {
+  return isSfwModeEnabledValue(window.localStorage.getItem(SFW_MODE_STORAGE_KEY));
+}
+
+function getSfwModeServerSnapshot() {
+  return false;
+}
+
+export function SfwModeToggle() {
+  const enabled = useSyncExternalStore(
+    subscribeSfwMode,
+    getSfwModeSnapshot,
+    getSfwModeServerSnapshot,
+  );
 
   function handleToggle() {
     const nextEnabled = !enabled;
-    setEnabled(nextEnabled);
     applySfwMode(nextEnabled);
   }
 

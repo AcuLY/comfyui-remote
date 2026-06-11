@@ -7,14 +7,6 @@ import { toast } from "sonner";
 
 import { ArtifactThumbCompact } from "./shared-ui";
 
-type CanonicalVersion = {
-  id: string;
-  version: number;
-  status: string;
-  canonicalView?: string | null;
-  artifact?: { id: string; relativePath: string | null; sha256: string | null } | null;
-};
-
 type ViewSpec = {
   key: string;
   label: string;

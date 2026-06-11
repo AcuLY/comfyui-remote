@@ -3,6 +3,7 @@ import { mkdir, stat } from "node:fs/promises";
 import path from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
+import type { ReadableStream as NodeReadableStream } from "node:stream/web";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
 
@@ -57,7 +58,8 @@ export async function saveUploadedLora(file: File, targetDir: string) {
 
   // Stream file to disk to avoid loading entire upload into memory
   const writeStream = createWriteStream(targetPath);
-  await pipeline(Readable.fromWeb(file.stream() as any), writeStream);
+  const uploadStream = file.stream() as unknown as NodeReadableStream<Uint8Array>;
+  await pipeline(Readable.fromWeb(uploadStream), writeStream);
 
   const fileStat = await stat(targetPath);
   const fileSize = fileStat.size;

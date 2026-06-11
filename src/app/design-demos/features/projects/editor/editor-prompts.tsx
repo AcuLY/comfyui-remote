@@ -8,7 +8,7 @@ import { Button } from "../../../shared/primitives/button";
 import s from "./editor-prompts.module.css";
 import { cx } from "../../../routing";
 import { parseHue } from "./editor-shared";
-import { SortableList, useDemoSortable } from "../../../shared/primitives/sortable";
+import { useDemoSortable } from "../../../shared/primitives/sortable";
 export type PromptBlockRowData = {
   id: string;
   label: string;

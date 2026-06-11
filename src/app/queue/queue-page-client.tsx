@@ -200,16 +200,12 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
   const knownDoneIdsRef = useRef<Set<string>>(new Set((initialQueueRuns ?? []).map((r) => r.id)));
 
   useEffect(() => {
-    /* eslint-disable react-hooks/set-state-in-effect -- server navigation refreshes this client boundary with new queue props */
     setQueueRuns(initialQueueRuns);
     setQueuePagination(initialQueuePagination);
-    /* eslint-enable react-hooks/set-state-in-effect */
   }, [initialQueueRuns, initialQueuePagination]);
 
   useEffect(() => {
-    /* eslint-disable react-hooks/set-state-in-effect -- server navigation refreshes this client boundary with new trash props */
     setTrashItems(initialTrashItems ?? []);
-    /* eslint-enable react-hooks/set-state-in-effect */
   }, [initialTrashItems]);
 
   const refresh = useCallback(() => {
@@ -518,11 +514,13 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
                     <div className="mt-2.5 flex gap-1.5 overflow-x-auto scrollbar-none">
                       {run.thumbnailUrls.map((src, i) => (
                         <div key={i} className="flex h-[72px] shrink-0 items-center justify-center overflow-hidden rounded-lg border border-white/10 bg-[var(--panel-soft)]">
-                          <img
+                          <Image
                             src={src}
                             alt=""
+                            width={72}
+                            height={72}
                             loading="lazy"
-                            decoding="async"
+                            unoptimized
                             className="h-full w-auto object-contain"
                           />
                         </div>

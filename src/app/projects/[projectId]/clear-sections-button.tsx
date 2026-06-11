@@ -18,15 +18,15 @@ export function ClearSectionsButton({ projectId }: { projectId: string }) {
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [isPending, startTransition] = useTransition();
 
-  // Fetch preview data when dialog opens
-  useEffect(() => {
-    if (!isOpen) return;
+  function openDialog() {
+    setPreview(null);
     setIsLoadingPreview(true);
+    setIsOpen(true);
     getClearSectionsPreview(projectId)
       .then(setPreview)
       .catch(() => setPreview(null))
       .finally(() => setIsLoadingPreview(false));
-  }, [isOpen, projectId]);
+  }
 
   // Lock body scroll + Escape key
   useEffect(() => {
@@ -172,7 +172,7 @@ export function ClearSectionsButton({ projectId }: { projectId: string }) {
     <>
       <button
         type="button"
-        onClick={() => setIsOpen(true)}
+        onClick={openDialog}
         className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-red-500/20 bg-red-500/[0.04] px-2 py-2 text-[11px] text-red-400 transition hover:bg-red-500/[0.1] sm:gap-2 sm:px-3 sm:py-3 sm:text-xs"
       >
         <Trash2 className="size-3.5" /> 清空小节

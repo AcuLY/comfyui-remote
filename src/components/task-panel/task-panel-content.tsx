@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -42,16 +43,27 @@ export function TaskPanelContent() {
               基准图片 ({baseImages.length})
             </h4>
             <div className="flex gap-2 overflow-x-auto pb-1">
-              {baseImages.map((img) => (
+              {baseImages.map((img) => {
+                const imageSrc = formConfig?.jobId
+                  ? `/api/character-lora-training/jobs/${formConfig.jobId}/artifacts/image?path=${encodeURIComponent(img.relativePath)}&w=120&q=60`
+                  : null;
+                return (
                 <div
                   key={img.id}
                   className="group relative shrink-0"
                 >
-                  <img
-                    src={formConfig?.jobId ? `/api/character-lora-training/jobs/${formConfig.jobId}/artifacts/image?path=${encodeURIComponent(img.relativePath)}&w=120&q=60` : undefined}
-                    alt={img.label}
-                    className="size-14 rounded-lg border border-white/10 object-cover"
-                  />
+                  {imageSrc ? (
+                    <Image
+                      src={imageSrc}
+                      alt={img.label}
+                      width={56}
+                      height={56}
+                      unoptimized
+                      className="size-14 rounded-lg border border-white/10 object-cover"
+                    />
+                  ) : (
+                    <div className="size-14 rounded-lg border border-white/10 bg-white/[0.04]" />
+                  )}
                   <button
                     type="button"
                     onClick={() => removeBaseImage(img.id)}
@@ -71,7 +83,8 @@ export function TaskPanelContent() {
                     </span>
                   )}
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

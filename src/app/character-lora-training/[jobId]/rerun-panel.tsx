@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { ImagePlus, X } from "lucide-react";
 
 import { CANONICAL_VIEW_SPECS } from "@/lib/character-lora-canonical-views";
@@ -46,33 +45,15 @@ export function GenerationPanel({
   disabled,
   disabledReason,
 }: GenerationPanelProps) {
-  const [canonicalView, setCanonicalView] = useState<string>("front");
-  const [submitted, setSubmitted] = useState(false);
-
   const isRerunMode = baseImages.length > 0;
   const isCanonical = variant === "canonical";
-
-  // Auto-select canonical view from first base image (canonical variant only)
-  useEffect(() => {
-    if (isCanonical && baseImages.length > 0 && baseImages[0].canonicalView) {
-      setCanonicalView(baseImages[0].canonicalView);
-    }
-  }, [baseImages, isCanonical]);
-
-  // Clear base images after successful rerun submission
-  useEffect(() => {
-    if (submitted) {
-      onClear();
-      setSubmitted(false);
-    }
-  }, [submitted, onClear]);
-
   const firstImage = baseImages[0] ?? null;
+  const initialCanonicalView = firstImage?.canonicalView ?? "front";
 
   const wrappedRerunAction = async (formData: FormData): Promise<WorkflowActionResult> => {
     const result = await rerunAction(formData);
     if (result.ok) {
-      setSubmitted(true);
+      onClear();
     }
     return result;
   };
@@ -170,9 +151,9 @@ export function GenerationPanel({
             <label className="block text-[11px] text-zinc-400">
               目标角度
               <select
+                key={`${firstImage?.id ?? "empty"}-${initialCanonicalView}`}
                 name="canonicalView"
-                value={canonicalView}
-                onChange={(e) => setCanonicalView(e.target.value)}
+                defaultValue={initialCanonicalView}
                 className="mt-0.5 w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 text-[11px] text-zinc-200 outline-none transition focus:border-sky-400"
               >
                 {CANONICAL_VIEW_SPECS.map((view) => (
