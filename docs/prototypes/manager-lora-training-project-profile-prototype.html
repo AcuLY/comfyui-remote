@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#09090b" />
+    <title>LoRA 训练模式 - 角色资料原型</title>
+    <link rel="stylesheet" href="./assets/lora-training-shared.css?v=20260611-lora-rewrite-2" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <div class="page">
+        <header class="topbar">
+          <div class="title-stack">
+            <a class="back-link" href="./manager-lora-training-project-detail-prototype.html"><i data-lucide="arrow-left" aria-hidden="true"></i> 返回项目</a>
+            <div class="title-row"><h1>Vela Neon Jacket / 资料</h1><span class="mode-pill"><i data-lucide="flask-conical" aria-hidden="true"></i> LoRA 训练</span></div>
+          </div>
+          <div class="topbar-actions">
+            <button class="button" type="button"><i data-lucide="sparkles" aria-hidden="true"></i> 生成文本</button>
+            <button class="button primary" type="button">保存</button>
+          </div>
+        </header>
+        <nav class="context-tabs" aria-label="项目页面">
+          <a href="./manager-lora-training-project-detail-prototype.html">总览</a><a class="active" href="./manager-lora-training-project-profile-prototype.html" aria-current="page">资料</a><a href="./manager-lora-training-project-sections-prototype.html">小节</a><a href="./manager-lora-training-project-results-prototype.html">结果池</a><a href="./manager-lora-training-project-dataset-prototype.html">数据集</a>
+        </nav>
+        <section class="stack">
+          <div class="stack">
+            <section class="panel">
+              <div class="panel-header"><h2>角色文本</h2></div>
+              <div class="panel-body form-grid">
+                <div class="field full"><label>LoRA 触发提示词</label><textarea class="textarea">vela_neon_jacket, silver-black short hair, cool blue eyes, sleek cyan jacket</textarea></div>
+                <div class="field full"><label>角色细节文本</label><textarea class="textarea">Silver-black short hair, cool blue eyes, glossy black and teal cropped jacket, calm confident expression, clean silhouette, front-facing portrait.</textarea></div>
+                <div class="field full"><label>Caption 指引</label><textarea class="textarea">Keep captions concise. Include trigger prompt first, then visual identity, clothing, pose, lighting, camera framing, and background.</textarea></div>
+              </div>
+            </section>
+            <section class="panel">
+              <div class="panel-header">
+                <h2>参考图</h2>
+                <div class="topbar-actions"><button class="button" type="button"><i data-lucide="upload" aria-hidden="true"></i> 上传</button><button class="button" type="button"><i data-lucide="image-plus" aria-hidden="true"></i> 生成参考图</button></div>
+              </div>
+              <div class="panel-body reference-grid">
+                <article class="media-card">
+                  <button class="image-card-img" type="button" data-lightbox-src="./assets/images/lora-training-generation-result-output.png" data-lightbox-caption="original_reference · 正面半身 · 已启用">
+                    <img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="训练图片缩略图" />
+                  </button>
+                  <div class="media-body"><div class="row-head"><strong class="small">正面半身</strong><span class="chip purple">original</span></div><span class="tiny muted">source: upload</span></div>
+                </article>
+                <article class="media-card">
+                  <button class="image-card-img" type="button" data-lightbox-src="./assets/images/lora-training-generation-result-output.png" data-lightbox-caption="generated_reference · 侧脸光影 · task output applied">
+                    <img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="训练图片缩略图" />
+                  </button>
+                  <div class="media-body"><div class="row-head"><strong class="small">侧脸光影</strong><span class="chip blue">generated</span></div><span class="tiny muted">source: generation output</span></div>
+                </article>
+                <article class="media-card">
+                  <button class="image-card-img" type="button" data-lightbox-src="./assets/images/lora-training-generation-result-output.png" data-lightbox-caption="auxiliary_reference · 外套材质">
+                    <img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="训练图片缩略图" />
+                  </button>
+                  <div class="media-body"><div class="row-head"><strong class="small">外套材质</strong><span class="chip">auxiliary</span></div><span class="tiny muted">可加入结果池</span></div>
+                </article>
+              </div>
+            </section>
+          </div>
+        </section>
+      </div>
+    </main>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="./assets/lora-training-shared.js?v=20260611-lora-rewrite-2"></script>
+    <script>initLoraPrototype("projects");</script>
+  </body>
+</html>

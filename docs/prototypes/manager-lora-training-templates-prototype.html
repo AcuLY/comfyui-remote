@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#09090b" />
+    <title>LoRA 训练模式 - 模板原型</title>
+    <link rel="stylesheet" href="./assets/lora-training-shared.css?v=20260611-lora-rewrite-2" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <div class="page">
+        <header class="topbar">
+          <div class="title-row"><h1>模板</h1><span class="mode-pill"><i data-lucide="flask-conical" aria-hidden="true"></i>LoRA 训练</span></div>
+          <div class="topbar-actions"><a class="button primary" href="./manager-lora-training-template-new-prototype.html"><i data-lucide="plus" aria-hidden="true"></i>新建</a></div>
+        </header>
+        <section class="grid-2">
+          <a class="card" href="./manager-lora-training-template-edit-prototype.html">
+            <div class="row-head"><div class="row-title"><strong>角色 LoRA 基础模板</strong><span>6 个小节 · sortOrder 1</span></div><span class="status-note green">启用</span></div>
+            <div class="summary-strip"><div class="summary-item"><span>指引</span><strong>4 字段</strong></div><div class="summary-item"><span>小节</span><strong>6</strong></div><div class="summary-item"><span>块</span><strong>18</strong></div></div>
+          </a>
+          <a class="card" href="./manager-lora-training-template-edit-prototype.html?template=portrait">
+            <div class="row-head"><div class="row-title"><strong>写实头像模板</strong><span>4 个小节 · sortOrder 2</span></div><span class="status-note green">启用</span></div>
+            <div class="summary-strip"><div class="summary-item"><span>指引</span><strong>4 字段</strong></div><div class="summary-item"><span>小节</span><strong>4</strong></div><div class="summary-item"><span>块</span><strong>11</strong></div></div>
+          </a>
+          <a class="card" href="./manager-lora-training-template-edit-prototype.html?template=legacy">
+            <div class="row-head"><div class="row-title"><strong>旧版角色模板</strong><span>保留给既有项目</span></div><span class="status-note">停用</span></div>
+            <div class="summary-strip"><div class="summary-item"><span>指引</span><strong>4 字段</strong></div><div class="summary-item"><span>小节</span><strong>5</strong></div><div class="summary-item"><span>块</span><strong>12</strong></div></div>
+          </a>
+        </section>
+      </div>
+    </main>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="./assets/lora-training-shared.js?v=20260611-lora-rewrite-2"></script>
+    <script>initLoraPrototype("templates");</script>
+  </body>
+</html>

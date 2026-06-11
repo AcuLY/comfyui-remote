@@ -138,7 +138,7 @@ updatedAt
 id
 name
 slug
-status = active | archived
+status = draft | active | completed | archived | cancelled?
 archivedAt?
 imagePromptGuidance
 imagePromptFormat
@@ -811,6 +811,13 @@ paramsJson.quality = high
 paramsJson.background = opaque
 ```
 
+首版不支持 ComfyUI 风格的 batch size / image count 参数。一个 `TrainingGenerationTask` 只产出一个最终 output：
+
+- `generationKind = image_generation`：产出一张图片；
+- `generationKind = text_generation`：产出一段文本；
+- GPT-Image-2 provider 按一次请求一张图处理；
+- 如需多张训练图、多张参考图或多段文本，创建多个 `TrainingGenerationTask`，而不是在一个 task 内批量输出。
+
 参考实现：
 
 ```text
@@ -930,6 +937,7 @@ createdAt
 
 规则：
 
+- 首版业务不变量：一个 `TrainingGenerationTask` 最多创建一个最终 `TrainingGenerationTaskOutput`；
 - 文本输出保存生成时 `textValue`；业务实体字段保存当前可编辑值；
 - 图片输出保存 `artifactId`；业务实体也指向同一个 artifact；
 - 不复制图片文件；
@@ -1016,7 +1024,7 @@ createdAt
 - reviewStatus：pending / kept / rejected；
 - 默认只汇总 kept 作为当前训练集草稿；
 - 显示 caption，未生成时提示生成/编辑；
-- 支持批量 caption generation：
+- 支持对多张图片批量发起 caption generation，但每张图片创建独立的单输出 `TrainingGenerationTask`：
   - all kept without captions；
   - selected images；
   - single regenerate。

@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#09090b" />
+    <title>LoRA 训练模式 - 小节列表原型</title>
+    <link rel="stylesheet" href="./assets/lora-training-shared.css?v=20260611-lora-sections-4" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <div class="page">
+        <header class="topbar">
+          <div class="title-stack">
+            <a class="back-link" href="./manager-lora-training-project-detail-prototype.html"><i data-lucide="arrow-left" aria-hidden="true"></i>返回项目</a>
+            <div class="title-row"><h1>Vela Neon Jacket / 小节</h1><span class="mode-pill"><i data-lucide="flask-conical" aria-hidden="true"></i>LoRA 训练</span></div>
+          </div>
+        </header>
+        <nav class="context-tabs" aria-label="项目页面">
+          <a href="./manager-lora-training-project-detail-prototype.html">总览</a>
+          <a href="./manager-lora-training-project-profile-prototype.html">资料</a>
+          <a class="active" href="./manager-lora-training-project-sections-prototype.html" aria-current="page">小节</a>
+          <a href="./manager-lora-training-project-results-prototype.html">结果池</a>
+          <a href="./manager-lora-training-project-dataset-prototype.html">数据集</a>
+        </nav>
+        <section class="section-shell">
+          <aside class="section-rail" aria-label="小节导航">
+            <div class="section-rail-head">
+              <strong>小节导航</strong>
+              <span>6 个小节</span>
+            </div>
+            <nav class="section-rail-list">
+              <a class="active" href="#section-stage"><strong>舞台灯光</strong><span>8 保留</span></a>
+              <a href="#section-street"><strong>街角夜景</strong><span>生成中</span></a>
+              <a href="#section-studio"><strong>白底棚拍</strong><span>10 保留</span></a>
+              <a href="#section-rain"><strong>雨夜背光</strong><span>排队</span></a>
+              <a href="#section-rooftop"><strong>逆光天台</strong><span>6 保留</span></a>
+              <a href="#section-window"><strong>室内窗边</strong><span>4 保留</span></a>
+            </nav>
+          </aside>
+
+          <section class="section-workbench">
+            <div class="section-toolbar">
+              <div class="row-title">
+                <h2>小节</h2>
+                <span>6 个启用 · 最近生成 15:20 · 42 张保留</span>
+              </div>
+              <div class="section-toolbar-actions">
+                <button class="button" type="button"><i data-lucide="arrow-up-down" aria-hidden="true"></i>排序</button>
+                <button class="button primary" type="button"><i data-lucide="plus" aria-hidden="true"></i>添加</button>
+              </div>
+            </div>
+            <div class="section-card-grid">
+              <article class="section-item" id="section-stage">
+                <a class="section-card-link" href="./manager-lora-training-project-section-detail-prototype.html">
+                  <div class="section-card-head">
+                    <span class="section-index">01</span>
+                    <div class="section-title">
+                      <strong>舞台灯光</strong>
+                      <span>2 个场景块 · 最近生成完成 15:20 · 8 张保留</span>
+                    </div>
+                    <span class="state-dot green" aria-label="最近生成完成"></span>
+                  </div>
+                  <div class="section-result-line">
+                    <span><i data-lucide="image" aria-hidden="true"></i>最近结果</span>
+                    <span>8 张 · 1 张待审</span>
+                  </div>
+                  <div class="section-thumb-row" aria-label="舞台灯光最近结果">
+                    <span class="section-thumb kept"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="" /></span>
+                    <span class="section-thumb pending"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="" /></span>
+                    <span class="section-thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="" /></span>
+                    <span class="section-thumb-more">+5</span>
+                  </div>
+                </a>
+                <div class="section-card-actions">
+                  <button class="icon-button" type="button" aria-label="拖拽排序"><i data-lucide="grip-vertical" aria-hidden="true"></i></button>
+                  <button class="button primary" type="button"><i data-lucide="play" aria-hidden="true"></i>生成</button>
+                </div>
+              </article>
+
+              <article class="section-item" id="section-street">
+                <a class="section-card-link" href="./manager-lora-training-project-section-detail-prototype.html?section=street">
+                  <div class="section-card-head">
+                    <span class="section-index">02</span>
+                    <div class="section-title">
+                      <strong>街角夜景</strong>
+                      <span>3 个场景块 · 最近生成中 · 7 张保留</span>
+                    </div>
+                    <span class="state-dot amber" aria-label="最近生成中"></span>
+                  </div>
+                  <div class="section-result-line">
+                    <span><i data-lucide="image" aria-hidden="true"></i>最近结果</span>
+                    <span>7 张 · 无新增待审</span>
+                  </div>
+                  <div class="section-thumb-row" aria-label="街角夜景最近结果">
+                    <span class="section-thumb kept"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="" /></span>
+                    <span class="section-thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="" /></span>
+                    <span class="section-thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="" /></span>
+                    <span class="section-thumb-more">+4</span>
+                  </div>
+                </a>
+                <div class="section-card-actions">
+                  <button class="icon-button" type="button" aria-label="拖拽排序"><i data-lucide="grip-vertical" aria-hidden="true"></i></button>
+                  <button class="button primary" type="button"><i data-lucide="play" aria-hidden="true"></i>生成</button>
+                </div>
+              </article>
+
+              <article class="section-item" id="section-studio">
+                <a class="section-card-link" href="./manager-lora-training-project-section-detail-prototype.html?section=studio">
+                  <div class="section-card-head">
+                    <span class="section-index">03</span>
+                    <div class="section-title">
+                      <strong>白底棚拍</strong>
+                      <span>1 个本地块 · 无进行中任务 · 10 张保留</span>
+                    </div>
+                    <span class="state-dot muted" aria-label="无进行中任务"></span>
+                  </div>
+                  <div class="section-result-line">
+                    <span><i data-lucide="image" aria-hidden="true"></i>最近结果</span>
+                    <span>10 张 · 已可入数据集</span>
+                  </div>
+                  <div class="section-thumb-row" aria-label="白底棚拍最近结果">
+                    <span class="section-thumb kept"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="" /></span>
+                    <span class="section-thumb kept"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="" /></span>
+                    <span class="section-thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="" /></span>
+                    <span class="section-thumb-more">+7</span>
+                  </div>
+                </a>
+                <div class="section-card-actions">
+                  <button class="icon-button" type="button" aria-label="拖拽排序"><i data-lucide="grip-vertical" aria-hidden="true"></i></button>
+                  <button class="button primary" type="button"><i data-lucide="play" aria-hidden="true"></i>生成</button>
+                </div>
+              </article>
+
+              <article class="section-item" id="section-rain">
+                <a class="section-card-link" href="./manager-lora-training-project-section-detail-prototype.html?section=rain">
+                  <div class="section-card-head">
+                    <span class="section-index">04</span>
+                    <div class="section-title">
+                      <strong>雨夜背光</strong>
+                      <span>2 个场景块 · 已排队 · 尚无待审结果</span>
+                    </div>
+                    <span class="state-dot amber" aria-label="已排队"></span>
+                  </div>
+                  <div class="section-result-line">
+                    <span><i data-lucide="image" aria-hidden="true"></i>最近结果</span>
+                    <span>等待生成任务开始</span>
+                  </div>
+                  <div class="section-thumb-row" aria-label="雨夜背光最近结果">
+                    <span class="section-thumb is-empty"></span>
+                    <span class="section-thumb is-empty"></span>
+                    <span class="section-thumb is-empty"></span>
+                    <span class="section-thumb-more">0</span>
+                  </div>
+                </a>
+                <div class="section-card-actions">
+                  <button class="icon-button" type="button" aria-label="拖拽排序"><i data-lucide="grip-vertical" aria-hidden="true"></i></button>
+                  <button class="button primary" type="button"><i data-lucide="play" aria-hidden="true"></i>生成</button>
+                </div>
+              </article>
+
+              <article class="section-item" id="section-rooftop">
+                <a class="section-card-link" href="./manager-lora-training-project-section-detail-prototype.html?section=rooftop">
+                  <div class="section-card-head">
+                    <span class="section-index">05</span>
+                    <div class="section-title">
+                      <strong>逆光天台</strong>
+                      <span>2 个场景块 · 最近生成完成 14:58 · 6 张保留</span>
+                    </div>
+                    <span class="state-dot green" aria-label="最近生成完成"></span>
+                  </div>
+                  <div class="section-result-line">
+                    <span><i data-lucide="image" aria-hidden="true"></i>最近结果</span>
+                    <span>6 张 · 2 张待审</span>
+                  </div>
+                  <div class="section-thumb-row" aria-label="逆光天台最近结果">
+                    <span class="section-thumb kept"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="" /></span>
+                    <span class="section-thumb pending"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="" /></span>
+                    <span class="section-thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="" /></span>
+                    <span class="section-thumb-more">+3</span>
+                  </div>
+                </a>
+                <div class="section-card-actions">
+                  <button class="icon-button" type="button" aria-label="拖拽排序"><i data-lucide="grip-vertical" aria-hidden="true"></i></button>
+                  <button class="button primary" type="button"><i data-lucide="play" aria-hidden="true"></i>生成</button>
+                </div>
+              </article>
+
+              <article class="section-item" id="section-window">
+                <a class="section-card-link" href="./manager-lora-training-project-section-detail-prototype.html?section=window">
+                  <div class="section-card-head">
+                    <span class="section-index">06</span>
+                    <div class="section-title">
+                      <strong>室内窗边</strong>
+                      <span>1 个场景块 · 最近生成完成 14:41 · 4 张保留</span>
+                    </div>
+                    <span class="state-dot green" aria-label="最近生成完成"></span>
+                  </div>
+                  <div class="section-result-line">
+                    <span><i data-lucide="image" aria-hidden="true"></i>最近结果</span>
+                    <span>4 张 · 已可入数据集</span>
+                  </div>
+                  <div class="section-thumb-row" aria-label="室内窗边最近结果">
+                    <span class="section-thumb kept"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="" /></span>
+                    <span class="section-thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="" /></span>
+                    <span class="section-thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="" /></span>
+                    <span class="section-thumb-more">+1</span>
+                  </div>
+                </a>
+                <div class="section-card-actions">
+                  <button class="icon-button" type="button" aria-label="拖拽排序"><i data-lucide="grip-vertical" aria-hidden="true"></i></button>
+                  <button class="button primary" type="button"><i data-lucide="play" aria-hidden="true"></i>生成</button>
+                </div>
+              </article>
+            </div>
+          </section>
+        </section>
+      </div>
+    </main>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="./assets/lora-training-shared.js?v=20260611-lora-rewrite-2"></script>
+    <script>initLoraPrototype("projects");</script>
+  </body>
+</html>

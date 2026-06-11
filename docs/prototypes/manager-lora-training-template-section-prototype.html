@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#09090b" />
+    <title>LoRA 训练模式 - 模板小节原型</title>
+    <link rel="stylesheet" href="./assets/lora-training-shared.css?v=20260611-lora-rewrite-2" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <div class="page">
+        <header class="topbar">
+          <div class="title-stack"><a class="back-link" href="./manager-lora-training-template-edit-prototype.html"><i data-lucide="arrow-left" aria-hidden="true"></i> 返回模板</a><div class="title-row"><h1>stage portrait</h1><span class="status-note green">启用</span><span class="mode-pill"><i data-lucide="flask-conical" aria-hidden="true"></i> LoRA 训练</span></div></div>
+          <div class="topbar-actions"><button class="button primary" type="button">保存小节</button></div>
+        </header>
+        <section class="layout wide-left">
+          <section class="panel">
+            <div class="panel-header"><h2>模板块</h2><button class="button" type="button"><i data-lucide="plus" aria-hidden="true"></i> 添加 block</button></div>
+            <div class="panel-body block-list">
+              <div class="block-item"><span class="block-index">1</span><div class="row-title"><strong>lighting / cyan rim light</strong><span>sourceType preset · sceneDescriptionPresetId</span></div><span class="status-note blue">预制</span></div>
+              <div class="block-item"><span class="block-index">2</span><div class="row-title"><strong>localText</strong><span>clean portrait crop, confident front-facing pose</span></div><span class="status-note">本地</span></div>
+            </div>
+          </section>
+          <aside class="panel"><div class="panel-header"><h2>小节默认值</h2></div><div class="panel-body compact-kv"><div><span>sortOrder</span><span>1</span></div><div><span>状态</span><span>启用</span></div><div><span>image size</span><span>1024x1536</span></div><div><span>quality</span><span>high</span></div></div></aside>
+        </section>
+      </div>
+    </main>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="./assets/lora-training-shared.js?v=20260611-lora-rewrite-2"></script>
+    <script>initLoraPrototype("templates");</script>
+  </body>
+</html>

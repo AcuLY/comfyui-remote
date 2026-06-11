@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#09090b" />
+    <title>LoRA 训练模式 - 项目生成任务原型</title>
+    <link rel="stylesheet" href="./assets/lora-training-shared.css?v=20260611-lora-rewrite-2" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <div class="page">
+        <header class="topbar">
+          <div class="title-stack">
+            <a class="back-link" href="./manager-lora-training-project-detail-prototype.html"><i data-lucide="arrow-left" aria-hidden="true"></i>返回项目</a>
+            <div class="title-row"><h1>Vela Neon Jacket / 生成任务</h1><span class="mode-pill"><i data-lucide="flask-conical" aria-hidden="true"></i>LoRA 训练</span></div>
+          </div>
+        </header>
+        <section class="panel">
+          <div class="panel-header"><h2>生成任务</h2></div>
+          <div class="panel-body entity-list">
+            <a class="entity-row" href="./manager-lora-training-generation-detail-prototype.html?task=vela-completed-image">
+              <div class="row-title"><strong>舞台灯光 / 训练集图片生成</strong><span>图片 · gpt-image-2 · 完成于 15:20</span></div>
+              <span class="status-note green">完成</span>
+            </a>
+            <a class="entity-row" href="./manager-lora-training-generation-detail-prototype.html?task=luna-completed-text">
+              <div class="row-title"><strong>角色细节文本生成</strong><span>文本 · Qwen2.5-VL · 已应用 14:49</span></div>
+              <span class="status-note green">完成</span>
+            </a>
+            <a class="entity-row" href="./manager-lora-training-generation-detail-prototype.html?task=rain-queued-image">
+              <div class="row-title"><strong>街角夜景 / 训练集图片生成</strong><span>图片 · gpt-image-2 · 尚无输出</span></div>
+              <span class="status-note amber">排队</span>
+            </a>
+          </div>
+        </section>
+      </div>
+    </main>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="./assets/lora-training-shared.js?v=20260611-lora-rewrite-2"></script>
+    <script>initLoraPrototype("projects");</script>
+  </body>
+</html>

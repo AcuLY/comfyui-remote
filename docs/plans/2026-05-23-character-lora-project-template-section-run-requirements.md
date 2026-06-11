@@ -1,5 +1,7 @@
 # Character LoRA Training 现状梳理与 Project / Template / Section / Run 化需求
 
+> 历史状态：本文属于 2026-05 `CharacterLoraTraining*` 旧方案，只作背景参考。当前 LoRA Training v2 文档入口是 `docs/plans/2026-06-07-manager-lora-training-docs-index.md`，主设计以 `docs/plans/2026-06-07-manager-lora-training-final-technical-design.md` 为准。新开发不得从本文继承 `CharacterLoraTraining*` 命名、`/character-lora-training/**` 路由、benchmark/promotion 闭环或页面结构。
+
 日期：2026-05-23
 范围：`character-lora-training` 模块的数据模型、API、前端页面、worker 流程，以及把用户提出的 Manager `project/template/section/run` 心智模型映射到 LoRA 训练领域后的改造需求。
 

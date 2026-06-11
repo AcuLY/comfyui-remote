@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#09090b" />
+    <title>LoRA 训练模式 - 运行原型</title>
+    <link rel="stylesheet" href="./assets/lora-training-shared.css?v=20260611-lora-rewrite-2" />
+    <style>
+      .run-tabs {
+        margin-bottom: 10px;
+      }
+
+      .task-stage,
+      .task-kind-view {
+        display: none;
+      }
+
+      .task-stage.active,
+      .task-kind-view.active {
+        display: grid;
+      }
+
+      .task-list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .task-row {
+        min-width: 0;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 14px;
+        align-items: center;
+        padding: 12px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: rgba(255, 255, 255, 0.03);
+        transition:
+          border-color 140ms ease,
+          background 140ms ease;
+      }
+
+      .task-row:hover {
+        border-color: rgba(255, 255, 255, 0.18);
+        background: rgba(255, 255, 255, 0.055);
+      }
+
+      .task-content {
+        min-width: 0;
+        display: grid;
+        gap: 8px;
+      }
+
+      .task-main-link {
+        min-width: 0;
+        display: grid;
+        gap: 8px;
+      }
+
+      .task-output {
+        min-width: 0;
+        display: grid;
+        grid-template-columns: 74px minmax(0, 1fr);
+        gap: 12px;
+        align-items: center;
+      }
+
+      .task-output.text-only {
+        grid-template-columns: 1fr;
+      }
+
+      .task-preview {
+        width: 74px;
+        aspect-ratio: 3 / 4;
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: #18181b;
+      }
+
+      .task-preview img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .task-actions {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        justify-content: flex-end;
+      }
+
+      .task-action-button {
+        width: 38px;
+        height: 38px;
+        flex: 0 0 auto;
+        border: 1px solid rgba(244, 63, 94, 0.28);
+        border-radius: 12px;
+        background: var(--red-soft);
+        color: var(--red);
+        cursor: pointer;
+      }
+
+      .task-progress {
+        display: grid;
+        gap: 5px;
+        max-width: 360px;
+      }
+
+      .progress-meta {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        color: var(--muted);
+        font-size: 12px;
+        font-variant-numeric: tabular-nums;
+      }
+
+      @media (max-width: 640px) {
+        .task-row,
+        .task-output {
+          grid-template-columns: 1fr;
+        }
+
+        .task-actions {
+          justify-content: stretch;
+        }
+
+        .task-action-button {
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <a class="skip-link" href="#runs-main">跳到任务列表</a>
+    <main class="app-shell" id="runs-main">
+      <div class="page">
+        <header class="topbar">
+          <div class="title-stack">
+            <div class="title-row">
+              <h1>运行</h1>
+              <span class="mode-pill"><i data-lucide="flask-conical" aria-hidden="true"></i>LoRA 训练</span>
+            </div>
+          </div>
+          <div class="topbar-actions">
+            <button class="icon-button" type="button" aria-label="刷新任务"><i data-lucide="refresh-cw" aria-hidden="true"></i></button>
+          </div>
+        </header>
+
+        <div class="context-tabs run-tabs" role="tablist" aria-label="任务类型">
+          <button type="button" role="tab" aria-selected="true" data-kind-tab="generation">生成任务</button>
+          <button type="button" role="tab" aria-selected="false" data-kind-tab="training">训练任务</button>
+        </div>
+
+        <section class="task-kind-view active" data-kind-view="generation" aria-label="生成任务">
+          <div class="status-tabs" role="tablist" aria-label="生成任务状态">
+            <button type="button" role="tab" aria-selected="true" data-stage-tab="generation:completed">完成 <span class="count">2</span></button>
+            <button type="button" role="tab" aria-selected="false" data-stage-tab="generation:running">进行中 <span class="count">2</span></button>
+            <button type="button" role="tab" aria-selected="false" data-stage-tab="generation:queued">排队 <span class="count">2</span></button>
+            <button type="button" role="tab" aria-selected="false" data-stage-tab="generation:failed">失败/取消 <span class="count">1</span></button>
+          </div>
+
+          <div class="task-stage task-list active" data-stage-view="generation:completed">
+            <a class="task-row" href="./manager-lora-training-generation-detail-prototype.html?task=vela-completed-image">
+              <div class="task-output">
+                <span class="task-preview"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="训练集图片生成缩略图" /></span>
+                <div class="task-content">
+                  <div class="row-title">
+                    <strong>Vela Neon Jacket / 训练集图片生成</strong>
+                    <span>图片 · 小节 舞台灯光 · 完成于 15:20</span>
+                  </div>
+                  <div class="plain-meta"><span>输出 1 张图片</span><span>已进入结果池</span></div>
+                </div>
+              </div>
+            </a>
+            <a class="task-row" href="./manager-lora-training-generation-detail-prototype.html?task=luna-completed-text">
+              <div class="task-output text-only">
+                <div class="task-content">
+                  <div class="row-title">
+                    <strong>Luna Editorial / 角色描述生成</strong>
+                    <span>文本 · 来自角色档案 · 完成于 14:47</span>
+                  </div>
+                  <p class="preview-text">银白短发、冷调蓝眼，穿着黑色高领与月白色风衣，整体是克制、清冷的杂志编辑风。</p>
+                </div>
+              </div>
+            </a>
+          </div>
+
+          <div class="task-stage task-list" data-stage-view="generation:running">
+            <div class="task-row">
+              <a class="task-main-link" href="./manager-lora-training-generation-detail-prototype.html?task=street-running-image">
+                <div class="row-title">
+                  <strong>Vela Neon Jacket / 街角夜景图片生成</strong>
+                  <span>图片 · gpt-image-2 · 开始于 15:42</span>
+                </div>
+                <div class="task-progress">
+                  <div class="progress-meta"><span>生成中</span><span>约 48%</span></div>
+                  <div class="progress"><span style="width: 48%"></span></div>
+                </div>
+              </a>
+              <div class="task-actions" aria-label="任务操作">
+                <button class="task-action-button" type="button" aria-label="终止任务"><i data-lucide="square" aria-hidden="true"></i></button>
+              </div>
+            </div>
+            <div class="task-row">
+              <a class="task-main-link" href="./manager-lora-training-generation-detail-prototype.html?task=profile-running-text">
+                <div class="row-title">
+                  <strong>Mika Soft Portrait / 角色细节补全</strong>
+                  <span>文本 · Qwen2.5-VL · 开始于 15:38</span>
+                </div>
+                <div class="task-progress">
+                  <div class="progress-meta"><span>生成中</span><span>约 36%</span></div>
+                  <div class="progress"><span style="width: 36%"></span></div>
+                </div>
+              </a>
+              <div class="task-actions" aria-label="任务操作">
+                <button class="task-action-button" type="button" aria-label="终止任务"><i data-lucide="square" aria-hidden="true"></i></button>
+              </div>
+            </div>
+          </div>
+
+          <div class="task-stage task-list" data-stage-view="generation:queued">
+            <div class="task-row">
+              <a class="task-main-link" href="./manager-lora-training-generation-detail-prototype.html?task=rain-queued-image">
+                <div class="row-title">
+                  <strong>Nova Rain Coat / 雨夜背光图片生成</strong>
+                  <span>图片 · gpt-image-2 · 创建于 15:44</span>
+                </div>
+                <div class="plain-meta"><span>尚无输出</span><span>排在当前生成任务之后</span></div>
+              </a>
+              <div class="task-actions" aria-label="任务操作">
+                <button class="task-action-button" type="button" aria-label="取消任务"><i data-lucide="trash-2" aria-hidden="true"></i></button>
+              </div>
+            </div>
+            <div class="task-row">
+              <a class="task-main-link" href="./manager-lora-training-generation-detail-prototype.html?task=studio-queued-image">
+                <div class="row-title">
+                  <strong>Vela Neon Jacket / 白底棚拍图片生成</strong>
+                  <span>图片 · gpt-image-2 · 创建于 15:45</span>
+                </div>
+                <div class="plain-meta"><span>尚无输出</span><span>等待生成槽位</span></div>
+              </a>
+              <div class="task-actions" aria-label="任务操作">
+                <button class="task-action-button" type="button" aria-label="取消任务"><i data-lucide="trash-2" aria-hidden="true"></i></button>
+              </div>
+            </div>
+          </div>
+
+          <div class="task-stage task-list" data-stage-view="generation:failed">
+            <div class="task-row">
+              <a class="task-main-link" href="./manager-lora-training-generation-detail-prototype.html?task=failed-image">
+                <div class="row-title">
+                  <strong>Mika Soft Portrait / 训练集图片生成</strong>
+                  <span>图片 · gpt-image-2 · 失败于 15:18</span>
+                </div>
+                <div class="plain-meta"><span>无输出</span><span>参考图不足，未进入结果池</span></div>
+              </a>
+              <div class="task-actions" aria-label="任务操作">
+                <button class="task-action-button" type="button" aria-label="删除记录"><i data-lucide="trash-2" aria-hidden="true"></i></button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="task-kind-view" data-kind-view="training" aria-label="训练任务">
+          <div class="status-tabs" role="tablist" aria-label="训练任务状态">
+            <button type="button" role="tab" aria-selected="true" data-stage-tab="training:completed">完成 <span class="count">1</span></button>
+            <button type="button" role="tab" aria-selected="false" data-stage-tab="training:running">进行中 <span class="count">2</span></button>
+            <button type="button" role="tab" aria-selected="false" data-stage-tab="training:queued">排队 <span class="count">3</span></button>
+            <button type="button" role="tab" aria-selected="false" data-stage-tab="training:failed">失败/取消 <span class="count">1</span></button>
+          </div>
+
+          <div class="task-stage task-list active" data-stage-view="training:completed">
+            <a class="task-row" href="./manager-lora-training-training-detail-prototype.html?task=vela-completed">
+              <div class="task-content">
+                <div class="row-title">
+                  <strong>Vela Neon Jacket / dataset v5</strong>
+                  <span>LoRA 训练 · 完成于 16:21</span>
+                </div>
+                <div class="plain-meta"><span translate="no">vela_neon_v05.safetensors</span><span>42 张图片</span></div>
+              </div>
+            </a>
+          </div>
+
+          <div class="task-stage task-list" data-stage-view="training:running">
+            <div class="task-row">
+              <a class="task-main-link" href="./manager-lora-training-training-detail-prototype.html?task=azure-running">
+                <div class="row-title">
+                  <strong>Azure Idol / dataset v4</strong>
+                  <span>LoRA 训练 · 开始于 16:02</span>
+                </div>
+                <div class="task-progress">
+                  <div class="progress-meta"><span>step 1280 / 2400</span><span>53%</span></div>
+                  <div class="progress"><span style="width: 53%"></span></div>
+                </div>
+              </a>
+              <div class="task-actions" aria-label="任务操作">
+                <button class="task-action-button" type="button" aria-label="终止训练"><i data-lucide="square" aria-hidden="true"></i></button>
+              </div>
+            </div>
+            <div class="task-row">
+              <a class="task-main-link" href="./manager-lora-training-training-detail-prototype.html?task=mika-running">
+                <div class="row-title">
+                  <strong>Mika Soft Portrait / dataset v3</strong>
+                  <span>LoRA 训练 · 开始于 16:18</span>
+                </div>
+                <div class="task-progress">
+                  <div class="progress-meta"><span>step 46 / 2200</span><span>2%</span></div>
+                  <div class="progress"><span style="width: 2%"></span></div>
+                </div>
+              </a>
+              <div class="task-actions" aria-label="任务操作">
+                <button class="task-action-button" type="button" aria-label="终止训练"><i data-lucide="square" aria-hidden="true"></i></button>
+              </div>
+            </div>
+          </div>
+
+          <div class="task-stage task-list" data-stage-view="training:queued">
+            <div class="task-row">
+              <a class="task-main-link" href="./manager-lora-training-training-detail-prototype.html?task=noir-queued">
+                <div class="row-title">
+                  <strong>Noir Runner / dataset v7</strong>
+                  <span>LoRA 训练 · 创建于 16:30</span>
+                </div>
+                <div class="plain-meta"><span>等待训练槽位</span><span>64 张图片</span></div>
+              </a>
+              <div class="task-actions" aria-label="任务操作">
+                <button class="task-action-button" type="button" aria-label="取消训练"><i data-lucide="trash-2" aria-hidden="true"></i></button>
+              </div>
+            </div>
+          </div>
+
+          <div class="task-stage task-list" data-stage-view="training:failed">
+            <div class="task-row">
+              <a class="task-main-link" href="./manager-lora-training-training-detail-prototype.html?task=mika-failed">
+                <div class="row-title">
+                  <strong>Mika Soft Portrait / dataset v3</strong>
+                  <span>LoRA 训练 · 失败于 15:55</span>
+                </div>
+                <div class="plain-meta"><span>无模型输出</span><span>3 张图片缺少 caption</span></div>
+              </a>
+              <div class="task-actions" aria-label="任务操作">
+                <button class="task-action-button" type="button" aria-label="删除记录"><i data-lucide="trash-2" aria-hidden="true"></i></button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="./assets/lora-training-shared.js?v=20260611-lora-rewrite-2"></script>
+    <script>
+      initLoraPrototype("runs");
+
+      const stageButtons = Array.from(document.querySelectorAll("[data-stage-tab]"));
+      const stageViews = Array.from(document.querySelectorAll("[data-stage-view]"));
+
+      function activateStage(key) {
+        stageButtons.forEach((button) => {
+          button.setAttribute("aria-selected", String(button.dataset.stageTab === key));
+        });
+        stageViews.forEach((view) => {
+          view.classList.toggle("active", view.dataset.stageView === key);
+        });
+      }
+
+      document.querySelectorAll("[data-kind-tab]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const kind = button.dataset.kindTab;
+          document.querySelectorAll("[data-kind-tab]").forEach((item) => {
+            item.setAttribute("aria-selected", String(item === button));
+          });
+          document.querySelectorAll("[data-kind-view]").forEach((view) => {
+            view.classList.toggle("active", view.dataset.kindView === kind);
+          });
+          activateStage(`${kind}:completed`);
+        });
+      });
+
+      stageButtons.forEach((button) => {
+        button.addEventListener("click", () => activateStage(button.dataset.stageTab));
+      });
+    </script>
+  </body>
+</html>

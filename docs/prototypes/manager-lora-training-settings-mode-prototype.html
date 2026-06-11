@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>设置 - 工作模式原型</title>
+    <link rel="stylesheet" href="./assets/lora-training-shared.css?v=20260611-lora-rewrite-2" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <div class="page">
+        <header class="topbar">
+          <div class="title-row"><h1>设置</h1><span class="mode-pill"><i data-lucide="flask-conical" aria-hidden="true"></i> LoRA 训练</span></div>
+        </header>
+        <section class="layout">
+          <section class="panel">
+            <div class="panel-header"><h2>工作模式</h2></div>
+            <div class="panel-body stack">
+              <div class="status-tabs" role="tablist" aria-label="工作模式">
+                <button type="button" role="tab" aria-selected="false" data-mode-option="generation"><i data-lucide="image" aria-hidden="true"></i> 生图</button>
+                <button type="button" role="tab" aria-selected="true" data-mode-option="training"><i data-lucide="flask-conical" aria-hidden="true"></i> LoRA 训练</button>
+              </div>
+              <div class="kv"><div>storage key</div><div>comfyui-manager:work-mode</div><div>current</div><div data-mode-current>lora_training</div><div>navigation</div><div>不跳转，仅切换资源路由解析</div></div>
+            </div>
+          </section>
+          <aside class="panel"><div class="panel-header"><h2>当前状态图标</h2></div><div class="panel-body"><span class="mode-pill"><i data-lucide="flask-conical" aria-hidden="true"></i> LoRA 训练</span></div></aside>
+        </section>
+      </div>
+    </main>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="./assets/lora-training-shared.js?v=20260611-lora-rewrite-2"></script>
+    <script>
+      initLoraPrototype("settings");
+      document.querySelectorAll("[data-mode-option]").forEach((button) => {
+        button.addEventListener("click", () => {
+          document.querySelectorAll("[data-mode-option]").forEach((item) => item.setAttribute("aria-selected", String(item === button)));
+          document.querySelector("[data-mode-current]").textContent = button.dataset.modeOption === "training" ? "lora_training" : "generation";
+        });
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#09090b" />
+    <title>LoRA 训练模式 - 小节详情原型</title>
+    <link rel="stylesheet" href="./assets/lora-training-shared.css?v=20260611-lora-section-detail-1" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <div class="page">
+        <header class="topbar">
+          <div class="title-stack">
+            <a class="back-link" href="./manager-lora-training-project-sections-prototype.html"><i data-lucide="arrow-left" aria-hidden="true"></i>返回小节</a>
+            <div class="title-row">
+              <h1>舞台灯光</h1>
+              <span class="state-line status-note green"><span class="state-dot"></span>启用</span>
+              <span class="mode-pill"><i data-lucide="flask-conical" aria-hidden="true"></i>LoRA 训练</span>
+            </div>
+          </div>
+          <div class="topbar-actions">
+            <a class="button primary" href="./manager-lora-training-generation-detail-prototype.html?task=street-running-image"><i data-lucide="image-plus" aria-hidden="true"></i>生成样本</a>
+          </div>
+        </header>
+        <nav class="context-tabs" aria-label="项目页面">
+          <a href="./manager-lora-training-project-detail-prototype.html">总览</a>
+          <a href="./manager-lora-training-project-profile-prototype.html">资料</a>
+          <a class="active" href="./manager-lora-training-project-sections-prototype.html" aria-current="page">小节</a>
+          <a href="./manager-lora-training-project-results-prototype.html">结果池</a>
+          <a href="./manager-lora-training-project-dataset-prototype.html">数据集</a>
+        </nav>
+        <section class="layout wide-left">
+          <div class="stack">
+            <section class="panel">
+              <div class="panel-header"><h2>场景块</h2></div>
+              <div class="panel-body block-list">
+                <div class="block-item">
+                  <span class="block-index">1</span>
+                  <div class="row-title"><strong>lighting / cyan rim light</strong><span>来自预制 · 强青色轮廓光</span></div>
+                  <span class="status-note blue">预制</span>
+                </div>
+                <div class="block-item">
+                  <span class="block-index">2</span>
+                  <div class="row-title"><strong>local prompt</strong><span>舞台聚光、干净剪影、杂志构图</span></div>
+                  <span class="status-note">本地</span>
+                </div>
+              </div>
+            </section>
+            <section class="panel">
+              <div class="panel-header"><h2>结果</h2></div>
+              <div class="panel-body result-grid">
+                <article class="media-card result-card">
+                  <button class="image-card-img" type="button" data-lightbox-src="./assets/images/lora-training-generation-result-output.png" data-lightbox-caption="舞台灯光 · 待审">
+                    <img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="舞台灯光待审结果缩略图" />
+                  </button>
+                  <div class="media-body">
+                    <div class="row-head"><span class="status-note amber">待审</span><button class="button green" type="button">保留</button></div>
+                  </div>
+                </article>
+                <article class="media-card result-card">
+                  <button class="image-card-img" type="button" data-lightbox-src="./assets/images/lora-training-generation-result-output.png" data-lightbox-caption="舞台灯光 · 已保留">
+                    <img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="舞台灯光已保留结果缩略图" />
+                  </button>
+                  <div class="media-body"><span class="status-note green">已保留</span><p class="caption">vela_neon_jacket, silver-black short hair, glossy teal jacket, cyan rim light, stage performance portrait</p></div>
+                </article>
+              </div>
+            </section>
+          </div>
+          <aside class="stack">
+            <section class="panel">
+              <div class="panel-header"><h2>参数</h2></div>
+              <div class="panel-body compact-kv">
+                <div><span>sortOrder</span><span>1</span></div>
+                <div><span>imageSize</span><span>1024 x 1536</span></div>
+                <div><span>quality</span><span>high</span></div>
+                <div><span>已保留</span><span>8 张</span></div>
+              </div>
+            </section>
+            <section class="panel">
+              <div class="panel-header"><h2>生成历史</h2></div>
+              <div class="panel-body entity-list">
+                <a class="entity-row" href="./manager-lora-training-generation-detail-prototype.html?task=vela-completed-image">
+                  <div class="row-title"><strong>run #12</strong><span>完成于 15:20 · 输出 1 张图片</span></div>
+                  <span class="status-note green">完成</span>
+                </a>
+                <a class="entity-row" href="./manager-lora-training-generation-detail-prototype.html?task=rain-queued-image">
+                  <div class="row-title"><strong>run #13</strong><span>已排队 · 尚无输出</span></div>
+                  <span class="status-note amber">排队</span>
+                </a>
+              </div>
+            </section>
+          </aside>
+        </section>
+      </div>
+    </main>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="./assets/lora-training-shared.js?v=20260611-lora-rewrite-2"></script>
+    <script>initLoraPrototype("projects");</script>
+  </body>
+</html>

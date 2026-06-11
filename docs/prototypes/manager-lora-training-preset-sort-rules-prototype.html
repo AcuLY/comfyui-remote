@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>LoRA 训练模式 - 预制排序规则原型</title>
+    <link rel="stylesheet" href="./assets/lora-training-shared.css?v=20260611-lora-rewrite-2" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <div class="page">
+        <header class="topbar">
+          <div class="title-stack"><a class="back-link" href="./manager-lora-training-presets-prototype.html"><i data-lucide="arrow-left" aria-hidden="true"></i> 返回预制</a><div class="title-row"><h1>排序规则</h1><span class="mode-pill"><i data-lucide="flask-conical" aria-hidden="true"></i> LoRA 训练</span></div></div>
+          <div class="topbar-actions"><button class="button primary" type="button">保存排序</button></div>
+        </header>
+        <section class="layout">
+          <section class="panel">
+            <div class="panel-header"><h2>sceneDescriptionOrder</h2></div>
+            <div class="panel-body block-list">
+              <div class="block-item"><span class="block-index">10</span><div class="row-title"><strong>lighting</strong><span>category.sceneDescriptionOrder</span></div><span class="chip blue">18</span></div>
+              <div class="block-item"><span class="block-index">20</span><div class="row-title"><strong>environment</strong><span>category.sceneDescriptionOrder</span></div><span class="chip">24</span></div>
+              <div class="block-item"><span class="block-index">30</span><div class="row-title"><strong>pose</strong><span>category.sceneDescriptionOrder</span></div><span class="chip">12</span></div>
+            </div>
+          </section>
+          <section class="panel">
+            <div class="panel-header"><h2>lighting sortOrder</h2></div>
+            <div class="panel-body block-list">
+              <div class="block-item"><span class="block-index">1</span><div class="row-title"><strong>cyan rim light</strong><span>TrainingSceneDescriptionPreset.sortOrder</span></div><button class="icon-button" type="button"><i data-lucide="grip-vertical" aria-hidden="true"></i></button></div>
+              <div class="block-item"><span class="block-index">2</span><div class="row-title"><strong>soft window light</strong><span>TrainingSceneDescriptionPreset.sortOrder</span></div><button class="icon-button" type="button"><i data-lucide="grip-vertical" aria-hidden="true"></i></button></div>
+              <div class="block-item"><span class="block-index">3</span><div class="row-title"><strong>night backlight</strong><span>TrainingSceneDescriptionPreset.sortOrder</span></div><button class="icon-button" type="button"><i data-lucide="grip-vertical" aria-hidden="true"></i></button></div>
+            </div>
+          </section>
+        </section>
+      </div>
+    </main>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="./assets/lora-training-shared.js?v=20260611-lora-rewrite-2"></script>
+    <script>initLoraPrototype("presets");</script>
+  </body>
+</html>

@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#09090b" />
+    <title>LoRA 训练模式 - 项目原型</title>
+    <link rel="stylesheet" href="./assets/lora-training-shared.css?v=20260611-lora-rewrite-2" />
+  </head>
+  <body>
+    <a class="skip-link" href="#project-list">跳到项目列表</a>
+    <main class="app-shell">
+      <div class="page">
+        <header class="topbar">
+          <div class="title-stack">
+            <div class="title-row">
+              <h1>项目</h1>
+              <span class="mode-pill"><i data-lucide="flask-conical" aria-hidden="true"></i>LoRA 训练</span>
+            </div>
+          </div>
+          <div class="topbar-actions">
+            <a class="button primary" href="./manager-lora-training-project-new-prototype.html">
+              <i data-lucide="plus" aria-hidden="true"></i>新建
+            </a>
+          </div>
+        </header>
+
+        <div class="status-tabs" role="tablist" aria-label="项目范围" data-filter-group data-filter-target=".project-card">
+          <button type="button" role="tab" aria-selected="true" data-filter="active">当前 <span class="count">6</span></button>
+          <button type="button" role="tab" aria-selected="false" data-filter="archived">已归档 <span class="count">1</span></button>
+        </div>
+
+        <section class="project-grid" id="project-list" aria-label="项目列表">
+          <a class="project-card" href="./manager-lora-training-project-detail-prototype.html?project=vela" data-filter-value="active">
+            <div class="row-head">
+              <div class="project-title">
+                <strong>Vela Neon Jacket</strong>
+                <span>更新于 16:28</span>
+              </div>
+              <span class="state-line status-note green"><span class="state-dot"></span>当前</span>
+            </div>
+            <div class="thumb-strip" aria-label="角色参考图">
+              <span class="thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="Vela 参考图 1" /></span>
+              <span class="thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="Vela 参考图 2" /></span>
+              <span class="thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="Vela 参考图 3" /></span>
+            </div>
+            <div class="project-facts">
+              <span>资料 <strong>完整</strong></span>
+              <span>小节 <strong>6 个启用</strong></span>
+              <span>结果池 <strong>42 已保留</strong></span>
+            </div>
+            <div class="plain-meta">
+              <span>dataset v5 · 可用 · 42 张图片</span>
+              <span>最近训练 · 已完成 · vela_neon_v05.safetensors</span>
+            </div>
+          </a>
+
+          <a class="project-card" href="./manager-lora-training-project-detail-prototype.html?project=azure" data-filter-value="active">
+            <div class="row-head">
+              <div class="project-title">
+                <strong>Azure Idol</strong>
+                <span>更新于 16:17</span>
+              </div>
+              <span class="state-line status-note green"><span class="state-dot"></span>当前</span>
+            </div>
+            <div class="thumb-strip" aria-label="角色参考图">
+              <span class="thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="Azure 参考图 1" /></span>
+              <span class="thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="Azure 参考图 2" /></span>
+            </div>
+            <div class="project-facts">
+              <span>资料 <strong>完整</strong></span>
+              <span>小节 <strong>5 个启用</strong></span>
+              <span>结果池 <strong>33 已保留</strong></span>
+            </div>
+            <div class="plain-meta">
+              <span>dataset v4 · 可用 · 42 张图片</span>
+              <span>最近训练 · 进行中 · step 1280 / 2400</span>
+            </div>
+          </a>
+
+          <a class="project-card" href="./manager-lora-training-project-detail-prototype.html?project=noir" data-filter-value="active">
+            <div class="row-head">
+              <div class="project-title">
+                <strong>Noir Runner</strong>
+                <span>更新于 15:58</span>
+              </div>
+              <span class="state-line status-note green"><span class="state-dot"></span>当前</span>
+            </div>
+            <div class="thumb-strip" aria-label="角色参考图">
+              <span class="thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="Noir 参考图 1" /></span>
+              <span class="thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="Noir 参考图 2" /></span>
+              <span class="thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="Noir 参考图 3" /></span>
+            </div>
+            <div class="project-facts">
+              <span>资料 <strong>完整</strong></span>
+              <span>小节 <strong>8 个启用</strong></span>
+              <span>结果池 <strong>64 已保留</strong></span>
+            </div>
+            <div class="plain-meta">
+              <span>dataset v7 · 可用 · 64 张图片</span>
+              <span>最近训练 · 已完成 · noir_runner_v07.safetensors</span>
+            </div>
+          </a>
+
+          <a class="project-card" href="./manager-lora-training-project-detail-prototype.html?project=mika" data-filter-value="active">
+            <div class="row-head">
+              <div class="project-title">
+                <strong>Mika Soft Portrait</strong>
+                <span>更新于 15:31</span>
+              </div>
+              <span class="state-line status-note amber"><span class="state-dot"></span>待补齐</span>
+            </div>
+            <div class="thumb-strip" aria-label="角色参考图">
+              <span class="thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="Mika 参考图 1" /></span>
+              <span class="thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="Mika 参考图 2" /></span>
+            </div>
+            <div class="project-facts">
+              <span>资料 <strong>缺少参考图</strong></span>
+              <span>小节 <strong>3 个启用</strong></span>
+              <span>结果池 <strong>12 已保留</strong></span>
+            </div>
+            <div class="plain-meta">
+              <span>dataset v3 · caption 缺失 3 张</span>
+              <span>最近训练 · 失败 · 数据集不可用</span>
+            </div>
+          </a>
+
+          <a class="project-card" href="./manager-lora-training-project-detail-prototype.html?project=luna" data-filter-value="active">
+            <div class="row-head">
+              <div class="project-title">
+                <strong>Luna Editorial</strong>
+                <span>更新于 14:49</span>
+              </div>
+              <span class="state-line status-note green"><span class="state-dot"></span>当前</span>
+            </div>
+            <div class="thumb-strip" aria-label="角色参考图">
+              <span class="thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="Luna 参考图 1" /></span>
+              <span class="thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="Luna 参考图 2" /></span>
+            </div>
+            <div class="project-facts">
+              <span>资料 <strong>完整</strong></span>
+              <span>小节 <strong>7 个启用</strong></span>
+              <span>结果池 <strong>58 已保留</strong></span>
+            </div>
+            <div class="plain-meta">
+              <span>dataset v9 · 可用 · 58 张图片</span>
+              <span>最近训练 · 已完成 · luna_editorial_v09.safetensors</span>
+            </div>
+          </a>
+
+          <a class="project-card" href="./manager-lora-training-project-detail-prototype.html?project=nova" data-filter-value="active">
+            <div class="row-head">
+              <div class="project-title">
+                <strong>Nova Rain Coat</strong>
+                <span>更新于 13:22</span>
+              </div>
+              <span class="state-line status-note blue"><span class="state-dot"></span>生成中</span>
+            </div>
+            <div class="thumb-strip" aria-label="角色参考图">
+              <span class="thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="Nova 参考图 1" /></span>
+              <span class="thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="Nova 参考图 2" /></span>
+            </div>
+            <div class="project-facts">
+              <span>资料 <strong>完整</strong></span>
+              <span>小节 <strong>4 个启用</strong></span>
+              <span>结果池 <strong>31 已保留</strong></span>
+            </div>
+            <div class="plain-meta">
+              <span>dataset v2 · 可用 · 31 张图片</span>
+              <span>最近生成 · 排队 · 1 个小节</span>
+            </div>
+          </a>
+
+          <a class="project-card" href="./manager-lora-training-project-detail-prototype.html?project=rin" data-filter-value="archived" style="display: none">
+            <div class="row-head">
+              <div class="project-title">
+                <strong>Rin Classic</strong>
+                <span>归档于 06-09 18:20</span>
+              </div>
+              <span class="state-line status-note"><span class="state-dot"></span>已归档</span>
+            </div>
+            <div class="thumb-strip" aria-label="角色参考图">
+              <span class="thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="Rin 参考图 1" /></span>
+              <span class="thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="Rin 参考图 2" /></span>
+            </div>
+            <div class="project-facts">
+              <span>资料 <strong>完整</strong></span>
+              <span>小节 <strong>4 个启用</strong></span>
+              <span>结果池 <strong>29 已保留</strong></span>
+            </div>
+            <div class="plain-meta">
+              <span>dataset v1 · 可用 · 29 张图片</span>
+              <span>最终训练 · 已完成 · rin_classic_v01.safetensors</span>
+            </div>
+          </a>
+        </section>
+      </div>
+    </main>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="./assets/lora-training-shared.js?v=20260611-lora-rewrite-2"></script>
+    <script>initLoraPrototype("projects");</script>
+  </body>
+</html>

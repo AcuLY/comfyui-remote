@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#09090b" />
+    <title>LoRA 训练模式 - 数据集原型</title>
+    <link rel="stylesheet" href="./assets/lora-training-shared.css?v=20260611-lora-dataset-1" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <div class="page">
+        <header class="topbar">
+          <div class="title-stack">
+            <a class="back-link" href="./manager-lora-training-project-detail-prototype.html"><i data-lucide="arrow-left" aria-hidden="true"></i> 返回项目</a>
+            <div class="title-row"><h1>Vela Neon Jacket / 数据集</h1><span class="mode-pill"><i data-lucide="flask-conical" aria-hidden="true"></i> LoRA 训练</span></div>
+          </div>
+          <div class="topbar-actions"><button class="button" type="button"><i data-lucide="snowflake" aria-hidden="true"></i> Freeze</button><button class="button primary" type="button"><i data-lucide="play" aria-hidden="true"></i> 启动训练</button></div>
+        </header>
+        <nav class="context-tabs" aria-label="项目页面">
+          <a href="./manager-lora-training-project-detail-prototype.html">总览</a><a href="./manager-lora-training-project-profile-prototype.html">资料</a><a href="./manager-lora-training-project-sections-prototype.html">小节</a><a href="./manager-lora-training-project-results-prototype.html">结果池</a><a class="active" href="./manager-lora-training-project-dataset-prototype.html" aria-current="page">数据集</a>
+        </nav>
+        <section class="layout wide-left">
+          <div class="stack">
+            <section class="panel">
+              <div class="panel-header">
+                <div class="row-title">
+                  <h2>当前保留草稿</h2>
+                  <span>42 张保留 · 0 张缺 caption · dataset v5 可用</span>
+                </div>
+                <button class="button" type="button"><i data-lucide="captions" aria-hidden="true"></i> 批量 caption</button>
+              </div>
+              <div class="panel-body result-grid">
+                <article class="media-card result-card"><button class="image-card-img" type="button" data-lightbox-src="./assets/images/lora-training-generation-result-output.png" data-lightbox-caption="caption 就绪 · 来自保留结果"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="训练图片缩略图" /></button><div class="media-body"><span class="status-note green">caption 就绪</span><p class="caption">vela_neon_jacket, stage portrait, cyan rim light, glossy teal jacket</p></div></article>
+                <article class="media-card result-card"><button class="image-card-img" type="button" data-lightbox-src="./assets/images/lora-training-generation-result-output.png" data-lightbox-caption="caption 就绪 · 来自保留结果"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="训练图片缩略图" /></button><div class="media-body"><span class="status-note green">caption 就绪</span><p class="caption">vela_neon_jacket, white studio portrait, clean background, front-facing pose</p></div></article>
+                <article class="media-card result-card"><button class="image-card-img" type="button" data-lightbox-src="./assets/images/lora-training-generation-result-output.png" data-lightbox-caption="caption 就绪 · 来自保留结果"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="训练图片缩略图" /></button><div class="media-body"><span class="status-note green">caption 就绪</span><p class="caption">vela_neon_jacket, night street, wet pavement, teal jacket reflection</p></div></article>
+              </div>
+            </section>
+            <section class="panel">
+              <div class="panel-header"><h2>数据集版本</h2></div>
+              <div class="panel-body stack">
+                <a class="list-row" href="./manager-lora-training-project-dataset-revision-prototype.html"><div class="row-head"><div class="row-title"><strong>dataset v5</strong><span>可用 · 42 项 · 冻结于 15:47</span></div><span class="status-note green">最新</span></div></a>
+                <a class="list-row" href="./manager-lora-training-project-dataset-revision-prototype.html?revision=v4"><div class="row-title"><strong>dataset v4</strong><span>可用 · 39 项 · 被 1 个训练任务使用</span></div></a>
+              </div>
+            </section>
+          </div>
+          <aside class="stack">
+            <section class="panel">
+              <div class="panel-header"><h2>启动训练</h2></div>
+              <div class="panel-body form-grid">
+                <div class="field full"><label>revision</label><select class="select"><option>dataset v5 · 可用 · 42 项</option></select></div>
+                <div class="field"><label>base</label><input class="input" value="sd_xl_base_1.0" /></div>
+                <div class="field"><label>runner</label><input class="input" value="local_wsl_sd_scripts" /></div>
+                <div class="field"><label>steps</label><input class="input" value="2400" /></div>
+                <div class="field"><label>resolution</label><input class="input" value="1024" /></div>
+                <div class="field full"><button class="button primary" type="button"><i data-lucide="play" aria-hidden="true"></i> 创建 TrainingRun</button></div>
+              </div>
+            </section>
+            <section class="panel">
+              <div class="panel-header"><h2>训练准备</h2></div>
+              <div class="panel-body kv"><div>保留图片</div><div>42</div><div>缺 caption</div><div>0</div><div>进行中训练</div><div>无</div><div>状态</div><div>可训练</div></div>
+            </section>
+          </aside>
+        </section>
+      </div>
+    </main>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="./assets/lora-training-shared.js?v=20260611-lora-rewrite-2"></script>
+    <script>initLoraPrototype("projects");</script>
+  </body>
+</html>

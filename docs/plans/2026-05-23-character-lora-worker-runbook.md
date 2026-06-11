@@ -1,5 +1,7 @@
 # Character LoRA 外置 Worker Runbook
 
+> 历史状态：本文属于 2026-05 `CharacterLoraTraining*` 旧方案，只作背景参考。当前 LoRA Training v2 文档入口是 `docs/plans/2026-06-07-manager-lora-training-docs-index.md`，主设计以 `docs/plans/2026-06-07-manager-lora-training-final-technical-design.md` 为准。新开发不得从本文继承 `CharacterLoraTraining*` 命名、`/character-lora-training/**` 路由、benchmark/promotion 闭环或页面结构。
+
 日期：2026-05-23
 
 范围：`scripts/character-lora-training/worker-common.ts`、`image-worker.ts`、`dataset-freeze-worker.ts`、`training-worker.ts`、`benchmark-worker.ts`。

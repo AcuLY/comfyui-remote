@@ -1,5 +1,7 @@
 # Character LoRA Training v2：外部 Agent 操作、训练边界收敛、前端重构需求
 
+> 历史状态：本文属于 2026-05 `CharacterLoraTraining*` 旧方案，只作背景参考。当前 LoRA Training v2 文档入口是 `docs/plans/2026-06-07-manager-lora-training-docs-index.md`，主设计以 `docs/plans/2026-06-07-manager-lora-training-final-technical-design.md` 为准。新开发不得从本文继承 `CharacterLoraTraining*` 命名、`/character-lora-training/**` 路由、benchmark/promotion 闭环或页面结构。
+
 日期：2026-05-24
 状态：需求修正版 / 给 Codex 或后续实现使用
 关联旧文档：`docs/plans/2026-05-23-character-lora-project-template-section-run-requirements.md`

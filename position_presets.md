@@ -95,7 +95,7 @@ male's hands caressing female body, male hands groping breasts, male hands brabb
 - 负面：
 - lora：
 - 视角：第一人称仅四肢
-- 服饰范围：腰部以上
+- 服饰范围：大腿以上
 - 画幅：竖屏
 - 暴露：胸部|无
 

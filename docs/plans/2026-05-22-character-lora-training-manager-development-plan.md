@@ -1,5 +1,7 @@
 # 角色 LoRA 自训练 Manager 集成开发计划
 
+> 历史状态：本文属于 2026-05 `CharacterLoraTraining*` 旧方案，只作背景参考。当前 LoRA Training v2 文档入口是 `docs/plans/2026-06-07-manager-lora-training-docs-index.md`，主设计以 `docs/plans/2026-06-07-manager-lora-training-final-technical-design.md` 为准。新开发不得从本文继承 `CharacterLoraTraining*` 命名、`/character-lora-training/**` 路由、benchmark/promotion 闭环或页面结构。
+
 Source PRD: `docs/prd/character-lora-training-manager-prd.md` v0.1, 2026-05-22.
 
 本文目标是把 PRD 中的“参考图/设定图 -> 训练集生成与审图 -> LoRA 训练 -> LoRA 测试 -> 人工审核 -> 正式角色 preset”拆成可落地的数据模型、接口、worker 契约和分阶段实施计划。本文不包含任何 token、OAuth refresh token、账号 ID 或其他密钥值；后续实现也只能记录 auth source shape 和 redacted request payload。

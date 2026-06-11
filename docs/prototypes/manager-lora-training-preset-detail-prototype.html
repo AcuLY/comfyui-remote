@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#09090b" />
+    <title>LoRA 训练模式 - 预制详情原型</title>
+    <link rel="stylesheet" href="./assets/lora-training-shared.css?v=20260611-lora-rewrite-2" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <div class="page">
+        <header class="topbar">
+          <div class="title-stack">
+            <a class="back-link" href="./manager-lora-training-presets-prototype.html"><i data-lucide="arrow-left" aria-hidden="true"></i>返回预制</a>
+            <div class="title-row"><h1>cyan rim light</h1><span class="status-note green">启用</span><span class="mode-pill"><i data-lucide="flask-conical" aria-hidden="true"></i>LoRA 训练</span></div>
+          </div>
+          <div class="topbar-actions"><button class="button red" type="button"><i data-lucide="trash-2" aria-hidden="true"></i>删除</button><button class="button primary" type="button">保存</button></div>
+        </header>
+        <section class="layout wide-left">
+          <div class="stack">
+            <section class="panel">
+              <div class="panel-header"><h2>预制内容</h2></div>
+              <div class="panel-body form-grid">
+                <div class="field"><label>名称</label><input class="input" value="cyan rim light" /></div>
+                <div class="field"><label>slug</label><input class="input" value="cyan-rim-light" /></div>
+                <div class="field"><label>category</label><input class="input" value="lighting" /></div>
+                <div class="field"><label>folder</label><input class="input" value="stage" /></div>
+                <div class="field full"><label>sceneDescriptionText</label><textarea class="textarea">strong cyan rim light, subtle spotlight haze, clean silhouette, fashion editorial framing</textarea></div>
+                <div class="field full"><label>notes</label><textarea class="textarea">Used by stage and portrait sections when the model needs a clean teal edge light.</textarea></div>
+              </div>
+            </section>
+          </div>
+          <aside class="stack">
+            <section class="panel">
+              <div class="panel-header"><h2>使用情况</h2></div>
+              <div class="panel-body compact-kv">
+                <div><span>projectBlocks</span><span>7</span></div>
+                <div><span>templateBlocks</span><span>3</span></div>
+                <div><span>状态</span><span>启用</span></div>
+                <div><span>updatedAt</span><span>16:12</span></div>
+              </div>
+            </section>
+            <section class="panel">
+              <div class="panel-header"><h2>引用</h2></div>
+              <div class="panel-body entity-list">
+                <a class="entity-row" href="./manager-lora-training-project-section-detail-prototype.html"><div class="row-title"><strong>Vela Neon Jacket / 舞台灯光</strong><span>TrainingSceneDescriptionBlock</span></div><i data-lucide="chevron-right" aria-hidden="true"></i></a>
+                <a class="entity-row" href="./manager-lora-training-template-section-prototype.html"><div class="row-title"><strong>角色 LoRA 基础模板 / stage</strong><span>TrainingTemplateSectionSceneDescriptionBlock</span></div><i data-lucide="chevron-right" aria-hidden="true"></i></a>
+              </div>
+            </section>
+          </aside>
+        </section>
+      </div>
+    </main>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="./assets/lora-training-shared.js?v=20260611-lora-rewrite-2"></script>
+    <script>initLoraPrototype("presets");</script>
+  </body>
+</html>

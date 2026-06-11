@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#09090b" />
+    <title>共享模型 - 原型</title>
+    <link rel="stylesheet" href="./assets/lora-training-shared.css?v=20260611-lora-rewrite-2" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <div class="page">
+        <header class="topbar">
+          <div class="title-stack">
+            <div class="title-row">
+              <h1>模型</h1>
+              <span class="state-line status-note blue"><span class="state-dot"></span>共享</span>
+              <span class="mode-pill"><i data-lucide="flask-conical" aria-hidden="true"></i>LoRA 训练</span>
+            </div>
+          </div>
+        </header>
+        <section class="panel">
+          <div class="panel-header"><h2>模型列表</h2></div>
+          <div class="panel-body entity-list">
+            <a class="entity-row" href="./manager-lora-training-training-detail-prototype.html?task=vela-completed">
+              <div class="row-title">
+                <strong translate="no">vela_neon_v05.safetensors</strong>
+                <span>LoRA · 来自 Vela Neon Jacket · 可用于生图</span>
+              </div>
+              <span class="status-note green">可用</span>
+            </a>
+          </div>
+        </section>
+      </div>
+    </main>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="./assets/lora-training-shared.js?v=20260611-lora-rewrite-2"></script>
+    <script>initLoraPrototype("models");</script>
+  </body>
+</html>

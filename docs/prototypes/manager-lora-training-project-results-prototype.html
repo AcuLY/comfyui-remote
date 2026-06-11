@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#09090b" />
+    <title>LoRA 训练模式 - 结果池原型</title>
+    <link rel="stylesheet" href="./assets/lora-training-shared.css?v=20260611-lora-results-1" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <div class="page">
+        <header class="topbar">
+          <div class="title-stack">
+            <a class="back-link" href="./manager-lora-training-project-detail-prototype.html"><i data-lucide="arrow-left" aria-hidden="true"></i> 返回项目</a>
+            <div class="title-row"><h1>Vela Neon Jacket / 结果池</h1><span class="mode-pill"><i data-lucide="flask-conical" aria-hidden="true"></i> LoRA 训练</span></div>
+          </div>
+          <div class="topbar-actions"><button class="button" type="button"><i data-lucide="upload" aria-hidden="true"></i> 上传结果</button><button class="button" type="button"><i data-lucide="captions" aria-hidden="true"></i> 生成 caption</button></div>
+        </header>
+        <nav class="context-tabs" aria-label="项目页面">
+          <a href="./manager-lora-training-project-detail-prototype.html">总览</a><a href="./manager-lora-training-project-profile-prototype.html">资料</a><a href="./manager-lora-training-project-sections-prototype.html">小节</a><a class="active" href="./manager-lora-training-project-results-prototype.html" aria-current="page">结果池</a><a href="./manager-lora-training-project-dataset-prototype.html">数据集</a>
+        </nav>
+        <div class="status-tabs" data-filter-group data-filter-target=".result-card" role="tablist" aria-label="结果状态">
+          <button type="button" role="tab" aria-selected="true" data-filter="all">全部 <span class="count">57</span></button>
+          <button type="button" role="tab" aria-selected="false" data-filter="pending">待审 <span class="count">6</span></button>
+          <button type="button" role="tab" aria-selected="false" data-filter="kept">保留 <span class="count">42</span></button>
+          <button type="button" role="tab" aria-selected="false" data-filter="rejected">拒绝 <span class="count">9</span></button>
+        </div>
+        <section class="result-grid">
+          <article class="media-card result-card" data-filter-value="pending">
+            <button class="image-card-img" type="button" data-lightbox-src="./assets/images/lora-training-generation-result-output.png" data-lightbox-caption="待审 · 舞台灯光 · 1024x1536">
+              <img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="训练图片缩略图" />
+            </button>
+            <div class="media-body"><div class="row-head"><span class="status-note amber">待审</span><div class="inline-row"><button class="button green" type="button">保留</button><button class="button red" type="button">拒绝</button></div></div><p class="caption" id="caption-1">vela_neon_jacket, silver-black short hair, cool blue eyes, glossy black and teal cropped jacket, strong cyan rim light, clean stage portrait</p><button class="button" type="button" data-toggle-caption="#caption-1">展开</button></div>
+          </article>
+          <article class="media-card result-card" data-filter-value="kept">
+            <button class="image-card-img" type="button" data-lightbox-src="./assets/images/lora-training-generation-result-output.png" data-lightbox-caption="已保留 · 街角夜景 · caption 就绪">
+              <img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="训练图片缩略图" />
+            </button>
+            <div class="media-body"><span class="status-note green">已保留</span><p class="caption" id="caption-2">vela_neon_jacket, neon street at night, wet pavement reflection, confident standing pose, teal jacket, cinematic side light</p><button class="button" type="button" data-toggle-caption="#caption-2">展开</button></div>
+          </article>
+          <article class="media-card result-card" data-filter-value="kept">
+            <button class="image-card-img" type="button" data-lightbox-src="./assets/images/lora-training-generation-result-output.png" data-lightbox-caption="已保留 · 白底棚拍 · caption 就绪">
+              <img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="训练图片缩略图" />
+            </button>
+            <div class="media-body"><span class="status-note green">已保留</span><p class="caption">vela_neon_jacket, clean white studio, front-facing half body, glossy cropped jacket, cool blue eyes</p></div>
+          </article>
+          <article class="media-card result-card" data-filter-value="rejected">
+            <button class="image-card-img" type="button" data-lightbox-src="./assets/images/lora-training-generation-result-output.png" data-lightbox-caption="已拒绝 · 手部错误">
+              <img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="训练图片缩略图" />
+            </button>
+            <div class="media-body"><span class="status-note red">已拒绝</span><span class="tiny muted">removeReason: anatomy issue</span></div>
+          </article>
+        </section>
+      </div>
+    </main>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="./assets/lora-training-shared.js?v=20260611-lora-rewrite-2"></script>
+    <script>initLoraPrototype("projects");</script>
+  </body>
+</html>

@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#09090b" />
+    <title>LoRA 训练模式 - 预制原型</title>
+    <link rel="stylesheet" href="./assets/lora-training-shared.css?v=20260611-lora-rewrite-2" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <div class="page">
+        <header class="topbar">
+          <div class="title-row"><h1>预制</h1><span class="mode-pill"><i data-lucide="flask-conical" aria-hidden="true"></i>LoRA 训练</span></div>
+          <div class="topbar-actions">
+            <a class="button" href="./manager-lora-training-preset-sort-rules-prototype.html"><i data-lucide="arrow-up-down" aria-hidden="true"></i>排序规则</a>
+            <button class="button primary" type="button"><i data-lucide="plus" aria-hidden="true"></i>新建</button>
+          </div>
+        </header>
+        <section class="layout">
+          <aside class="stack">
+            <section class="panel">
+              <div class="panel-header"><h2>分类</h2></div>
+              <div class="panel-body entity-list">
+                <div class="entity-row"><div class="row-title"><strong>lighting</strong><span>sceneDescriptionOrder 10</span></div><span class="count">18</span></div>
+                <div class="entity-row"><div class="row-title"><strong>environment</strong><span>sceneDescriptionOrder 20</span></div><span class="count">24</span></div>
+                <div class="entity-row"><div class="row-title"><strong>pose</strong><span>sceneDescriptionOrder 30</span></div><span class="count">12</span></div>
+              </div>
+            </section>
+            <section class="panel">
+              <div class="panel-header"><h2>文件夹</h2></div>
+              <div class="panel-body entity-list">
+                <div class="entity-row"><div class="row-title"><strong>stage</strong><span>sortOrder 1</span></div></div>
+                <div class="entity-row"><div class="row-title"><strong>studio</strong><span>sortOrder 2</span></div></div>
+              </div>
+            </section>
+          </aside>
+          <section class="stack">
+            <div class="status-tabs" data-filter-group data-filter-target=".preset-card" role="tablist" aria-label="预制状态">
+              <button type="button" role="tab" aria-selected="true" data-filter="all">全部 <span class="count">54</span></button>
+              <button type="button" role="tab" aria-selected="false" data-filter="active">启用 <span class="count">51</span></button>
+              <button type="button" role="tab" aria-selected="false" data-filter="inactive">停用 <span class="count">3</span></button>
+            </div>
+            <div class="grid-2">
+              <a class="card preset-card" data-filter-value="active" href="./manager-lora-training-preset-detail-prototype.html">
+                <div class="row-head"><div class="row-title"><strong>cyan rim light</strong><span>lighting / stage · sortOrder 10</span></div><span class="status-note green">启用</span></div>
+                <p class="small muted">strong cyan rim light, subtle spotlight haze, clean silhouette, fashion editorial framing</p>
+              </a>
+              <a class="card preset-card" data-filter-value="active" href="./manager-lora-training-preset-detail-prototype.html?preset=wet-street">
+                <div class="row-head"><div class="row-title"><strong>wet neon street</strong><span>environment / night · sortOrder 20</span></div><span class="status-note green">启用</span></div>
+                <p class="small muted">wet pavement reflection, neon storefront light, shallow depth of field, clean night air</p>
+              </a>
+              <a class="card preset-card" data-filter-value="active" href="./manager-lora-training-preset-detail-prototype.html?preset=front-pose">
+                <div class="row-head"><div class="row-title"><strong>front-facing pose</strong><span>pose / portrait · sortOrder 30</span></div><span class="status-note green">启用</span></div>
+                <p class="small muted">confident front-facing half body pose, relaxed shoulders, clear clothing silhouette</p>
+              </a>
+              <a class="card preset-card" data-filter-value="inactive" href="./manager-lora-training-preset-detail-prototype.html?preset=old-haze">
+                <div class="row-head"><div class="row-title"><strong>old heavy haze</strong><span>lighting / legacy · sortOrder 80</span></div><span class="status-note">停用</span></div>
+                <p class="small muted">legacy preset retained for existing mutable block cleanup before soft delete</p>
+              </a>
+            </div>
+          </section>
+        </section>
+      </div>
+    </main>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="./assets/lora-training-shared.js?v=20260611-lora-rewrite-2"></script>
+    <script>initLoraPrototype("presets");</script>
+  </body>
+</html>
