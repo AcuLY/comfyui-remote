@@ -278,6 +278,7 @@ export type ProjectResultsData = {
     sortOrder: number;
     runCount: number;
     imageCount: number;
+    keptCount: number;
     pendingCount: number;
     featuredCount: number;
     featured2Count: number;
@@ -513,6 +514,7 @@ export async function getProjectResults(projectId: string): Promise<ProjectResul
     nextProject,
     sections: project.sections.map((section) => {
       let imageCount = 0;
+      let keptCount = 0;
       let pendingCount = 0;
       let featuredCount = 0;
       let featured2Count = 0;
@@ -522,6 +524,7 @@ export async function getProjectResults(projectId: string): Promise<ProjectResul
           .filter((img) => img.reviewStatus !== "trashed")
           .map((img) => {
             imageCount += 1;
+            if (img.reviewStatus === "kept") keptCount += 1;
             if (img.reviewStatus === "pending") pendingCount += 1;
             if (img.featured) featuredCount += 1;
             if (img.featured2) featured2Count += 1;
@@ -557,6 +560,7 @@ export async function getProjectResults(projectId: string): Promise<ProjectResul
         sortOrder: section.sortOrder,
         runCount: runs.length,
         imageCount,
+        keptCount,
         pendingCount,
         featuredCount,
         featured2Count,

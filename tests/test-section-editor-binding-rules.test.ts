@@ -84,7 +84,7 @@ test("section preset list title keeps slash text that is not the selected varian
   );
 });
 
-test("section preset manager link opens the source preset group before member preset", () => {
+test("section preset manager link opens the member preset before its source preset group", () => {
   const href = getSectionPresetManagerHref(
     {
       sourceId: "preset-person",
@@ -117,6 +117,37 @@ test("section preset manager link opens the source preset group before member pr
               id: "preset-person",
               name: "单人",
               variants: [{ id: "variant-default", name: "默认" }],
+            },
+          ],
+        },
+      ],
+    },
+  );
+
+  assert.equal(href, "/assets/presets/preset-person?category=person-cat&variant=variant-default");
+});
+
+test("section preset manager link keeps preset group targets when there is no member preset", () => {
+  const href = getSectionPresetManagerHref(
+    {
+      sourceId: null,
+      variantId: null,
+      presetGroupId: "group-section",
+      categoryId: "group-cat",
+    },
+    {
+      categories: [
+        {
+          id: "group-cat",
+          name: "灏忚妭",
+          color: "30 50% 55%",
+          presets: [],
+          groups: [
+            {
+              id: "group-section",
+              name: "鍗曚汉-鑳屾墜绔欑珛",
+              folderId: "group-folder",
+              members: [],
             },
           ],
         },

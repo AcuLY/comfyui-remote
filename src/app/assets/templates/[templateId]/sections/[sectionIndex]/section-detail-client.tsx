@@ -1007,12 +1007,15 @@ export function TemplateSectionDetailClient({
 
         {presetBindings.length > 0 ? (
           <div className="grid grid-cols-1 gap-1 lg:grid-cols-2">
-            {presetBindings.map((binding) => (
+            {presetBindings.map((binding) => {
+              const detailHref = (binding.sourceId || binding.presetGroupId) ? getPresetManagerHref(binding) : null;
+
+              return (
               <div
                 key={binding.bindingId}
                 className="flex items-center justify-between rounded-lg border border-white/5 bg-white/[0.02] px-3 py-1.5"
               >
-                <div className="flex min-w-0 items-center gap-2">
+                <div className="flex min-w-0 flex-1 items-center gap-2">
                   {binding.categoryName && (
                     <span
                       className="shrink-0 rounded px-1.5 py-0.5 text-[9px] font-medium"
@@ -1030,10 +1033,23 @@ export function TemplateSectionDetailClient({
                   {(binding.presetGroupId || binding.groupBindingId) && (
                     <span className="shrink-0 rounded bg-amber-500/15 px-1 py-px text-[8px] text-amber-400">组</span>
                   )}
-                  <span className="truncate text-[11px] text-zinc-300">{binding.presetName}</span>
-                  {(binding.sourceId || binding.presetGroupId) && (
+                  {detailHref ? (
                     <Link
-                      href={getPresetManagerHref(binding)}
+                      href={detailHref}
+                      className="flex min-w-0 flex-1 items-center gap-2 rounded-md py-0.5 pr-1 transition hover:text-sky-300 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-500/60"
+                      title="在预制详情中打开"
+                    >
+                      <span className="truncate text-[11px] text-zinc-300">{binding.presetName}</span>
+                      <span className="text-[9px] text-zinc-500">
+                        {binding.blockCount} 块 · {binding.loraCount} LoRA
+                      </span>
+                    </Link>
+                  ) : (
+                    <span className="truncate text-[11px] text-zinc-300">{binding.presetName}</span>
+                  )}
+                  {detailHref && (
+                    <Link
+                      href={detailHref}
                       className="shrink-0 rounded p-0.5 text-zinc-500 hover:bg-white/5 hover:text-sky-400"
                       title="在预制详情中打开"
                     >
@@ -1061,9 +1077,11 @@ export function TemplateSectionDetailClient({
                       <ChevronDown className="pointer-events-none absolute right-1 top-1/2 size-2.5 -translate-y-1/2 text-zinc-500" />
                     </div>
                   )}
-                  <span className="text-[9px] text-zinc-500">
-                    {binding.blockCount} 块 · {binding.loraCount} LoRA
-                  </span>
+                  {!detailHref && (
+                    <span className="text-[9px] text-zinc-500">
+                      {binding.blockCount} 块 · {binding.loraCount} LoRA
+                    </span>
+                  )}
                 </div>
                 <div className="flex shrink-0 items-center gap-0.5">
                   <button
@@ -1094,7 +1112,8 @@ export function TemplateSectionDetailClient({
                   </button>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         ) : !showImport ? (
           <div className="rounded-lg border border-dashed border-white/5 px-3 py-2 text-center text-[10px] text-zinc-600">

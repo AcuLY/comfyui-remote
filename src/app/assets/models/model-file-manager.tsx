@@ -16,12 +16,14 @@ import {
   Link as LinkIcon,
   Loader2,
   MessageSquare,
+  Search,
   Upload,
   X,
   Zap,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { ModelKind } from "@/lib/model-constants";
+import { modelSelectionDirectory } from "@/lib/model-asset-navigation";
 
 type BrowseItem = {
   name: string;
@@ -89,6 +91,19 @@ function isFileItem(item: BrowseItem): item is BrowseItem & { type: "file" } {
 function parentDirectory(filePath: string) {
   const index = filePath.lastIndexOf("/");
   return index === -1 ? "根目录" : filePath.slice(0, index);
+}
+
+function matchesModelSearch(item: BrowseItem, query: string) {
+  const normalizedQuery = query.trim().toLowerCase();
+  if (!normalizedQuery) return true;
+
+  return [
+    item.name,
+    item.path,
+    item.notes,
+    item.triggerWords,
+    item.civitaiLink,
+  ].some((value) => value?.toLowerCase().includes(normalizedQuery));
 }
 
 function ModelInfoRow({ label, children }: { label: string; children: ReactNode }) {
@@ -341,13 +356,24 @@ function MoveTargetPicker({
   );
 }
 
-export function ModelFileManager() {
-  const [kind, setKind] = useState<ModelKind>("lora");
+export function ModelFileManager({
+  initialKind = "lora",
+  initialPath: selectedModelPath = "",
+}: {
+  initialKind?: ModelKind;
+  initialPath?: string;
+}) {
+  const [kind, setKind] = useState<ModelKind>(initialKind);
   const [currentPath, setCurrentPath] = useState("");
   const [items, setItems] = useState<BrowseItem[]>([]);
   const [parentPath, setParentPath] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchItems, setSearchItems] = useState<BrowseItem[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [searchRefreshKey, setSearchRefreshKey] = useState(0);
 
   const [uploading, startUploadTransition] = useTransition();
   const [uploadMsg, setUploadMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -366,7 +392,7 @@ export function ModelFileManager() {
   const [savingNotes, setSavingNotes] = useState(false);
   const notesInputRef = useRef<HTMLTextAreaElement>(null);
 
-  const fetchDir = useCallback(async (nextKind: ModelKind, dirPath: string) => {
+  const fetchDir = useCallback(async (nextKind: ModelKind, dirPath: string, preferredSelectedPath?: string) => {
     setLoading(true);
     setError(null);
     setEditingNotesPath(null);
@@ -380,11 +406,15 @@ export function ModelFileManager() {
         throw new Error(result?.error?.message ?? `HTTP ${res.status}`);
       }
       const data: BrowseResult = result.data;
+      const preferredFile = preferredSelectedPath
+        ? data.items.find((item): item is BrowseItem & { type: "file" } => item.type === "file" && item.path === preferredSelectedPath)
+        : null;
       setKind(nextKind);
       setItems(data.items);
       setParentPath(data.parentPath);
       setCurrentPath(data.currentPath);
-      setSelectedFilePath(data.items.find(isFileItem)?.path ?? null);
+      setSelectedFilePath(preferredFile?.path ?? data.items.find(isFileItem)?.path ?? null);
+      setExpandedFilePath(preferredFile?.path ?? null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "加载失败");
       setItems([]);
@@ -394,9 +424,62 @@ export function ModelFileManager() {
     }
   }, []);
 
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
+
   useEffect(() => {
-    fetchDir("lora", "");
-  }, [fetchDir]);
+    const initialPath = modelSelectionDirectory(selectedModelPath);
+    fetchDir(initialKind, initialPath, selectedModelPath);
+  }, [fetchDir, initialKind, selectedModelPath]);
+
+  useEffect(() => {
+    if (!normalizedSearchQuery) {
+      setSearchItems([]);
+      setSearchLoading(false);
+      setSearchError(null);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      setSearchLoading(true);
+      setSearchError(null);
+      setEditingNotesPath(null);
+      setExpandedFilePath(null);
+
+      try {
+        const params = new URLSearchParams();
+        params.set("recursive", "1");
+        const res = await fetch(buildModelUrl("browse", kind, params), {
+          signal: controller.signal,
+        });
+        const result = await res.json().catch(() => null);
+        if (!res.ok || !result?.ok) {
+          throw new Error(result?.error?.message ?? `HTTP ${res.status}`);
+        }
+
+        const data: BrowseResult = result.data;
+        const matchedItems = data.items
+          .filter(isFileItem)
+          .filter((item) => matchesModelSearch(item, normalizedSearchQuery));
+        if (controller.signal.aborted) return;
+
+        setSearchItems(matchedItems);
+        setSelectedFilePath(matchedItems[0]?.path ?? null);
+      } catch (err) {
+        if (controller.signal.aborted) return;
+        setSearchItems([]);
+        setSelectedFilePath(null);
+        setSearchError(err instanceof Error ? err.message : "搜索失败");
+      } finally {
+        if (!controller.signal.aborted) setSearchLoading(false);
+      }
+    }, 200);
+
+    return () => {
+      controller.abort();
+      window.clearTimeout(timer);
+    };
+  }, [kind, normalizedSearchQuery, searchRefreshKey]);
 
   function openCheckpointsRoot() {
     setUploadMsg(null);
@@ -449,6 +532,7 @@ export function ModelFileManager() {
         } else {
           setUploadMsg({ type: "success", text: `${file.name} 上传成功` });
           await fetchDir(kind, currentPath);
+          setSearchRefreshKey((value) => value + 1);
         }
       } catch {
         setUploadMsg({ type: "error", text: "上传失败" });
@@ -487,6 +571,7 @@ export function ModelFileManager() {
           text: `已移动到 ${targetDir || "根目录"}`,
         });
         await fetchDir(kind, currentPath);
+        setSearchRefreshKey((value) => value + 1);
       }
     } catch {
       setMoveMsg({ type: "error", text: "移动失败" });
@@ -532,7 +617,7 @@ export function ModelFileManager() {
       });
       const data = await res.json().catch(() => null);
       if (res.ok && data?.ok) {
-        setItems((prev) =>
+        const updateMetadata = (prev: BrowseItem[]) =>
           prev.map((item) =>
             item.path === editingNotesPath
               ? {
@@ -542,7 +627,11 @@ export function ModelFileManager() {
                   civitaiLink: civitaiLink || undefined,
                 }
               : item,
-          ),
+          );
+
+        setItems(updateMetadata);
+        setSearchItems((prev) =>
+          updateMetadata(prev).filter((item) => matchesModelSearch(item, normalizedSearchQuery)),
         );
         setEditingNotesPath(null);
         toast.success("备注已保存");
@@ -557,11 +646,15 @@ export function ModelFileManager() {
   }
 
   const segments = pathSegments(currentPath);
-  const fileCount = items.filter((item) => item.type === "file").length;
-  const dirCount = items.filter((item) => item.type === "directory").length;
-  const showRootCheckpoint = kind === "lora" && currentPath === "";
+  const isSearchActive = normalizedSearchQuery.length > 0;
+  const displayItems = isSearchActive ? searchItems : items;
+  const displayLoading = isSearchActive ? searchLoading : loading;
+  const displayError = isSearchActive ? searchError : error;
+  const fileCount = displayItems.filter((item) => item.type === "file").length;
+  const dirCount = displayItems.filter((item) => item.type === "directory").length;
+  const showRootCheckpoint = kind === "lora" && currentPath === "" && !isSearchActive;
   const selectedFile = selectedFilePath
-    ? items.find((item): item is BrowseItem & { type: "file" } => item.type === "file" && item.path === selectedFilePath) ?? null
+    ? displayItems.find((item): item is BrowseItem & { type: "file" } => item.type === "file" && item.path === selectedFilePath) ?? null
     : null;
   const rootCheckpointEntry: RootEntry = {
     name: "checkpoints",
@@ -626,25 +719,53 @@ export function ModelFileManager() {
             );
           })}
         </div>
-        {!loading && (
+        {!displayLoading && (
           <span className="shrink-0 text-[10px] text-zinc-600">
-            {dirCount > 0 && `${dirCount} 文件夹`}
-            {dirCount > 0 && fileCount > 0 && " · "}
-            {fileCount > 0 && `${fileCount} 文件`}
+            {isSearchActive ? (
+              `${fileCount} 匹配`
+            ) : (
+              <>
+                {dirCount > 0 && `${dirCount} 文件夹`}
+                {dirCount > 0 && fileCount > 0 && " · "}
+                {fileCount > 0 && `${fileCount} 文件`}
+              </>
+            )}
           </span>
         )}
       </div>
 
-      {loading ? (
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-zinc-600" />
+        <input
+          type="search"
+          value={searchQuery}
+          onChange={(event) => setSearchQuery(event.target.value)}
+          placeholder="搜索模型文件"
+          className="h-10 w-full rounded-xl border border-white/10 bg-white/[0.03] pl-9 pr-10 text-xs text-zinc-200 outline-none transition placeholder:text-zinc-600 focus:border-sky-500/30 focus:bg-white/[0.05]"
+        />
+        {searchQuery && (
+          <button
+            type="button"
+            onClick={() => setSearchQuery("")}
+            className="absolute right-2 top-1/2 rounded-lg p-1 text-zinc-500 transition -translate-y-1/2 hover:bg-white/[0.06] hover:text-zinc-200"
+            aria-label="清空搜索"
+            title="清空搜索"
+          >
+            <X className="size-3.5" />
+          </button>
+        )}
+      </div>
+
+      {displayLoading ? (
         <div className="flex items-center justify-center py-12 text-xs text-zinc-500">
-          <Loader2 className="mr-2 size-4 animate-spin" /> 加载中...
+          <Loader2 className="mr-2 size-4 animate-spin" /> {isSearchActive ? "搜索中..." : "加载中..."}
         </div>
-      ) : error ? (
-        <div className="rounded-xl bg-rose-500/10 px-3 py-3 text-xs text-rose-300">{error}</div>
-      ) : items.length === 0 && !showRootCheckpoint ? (
+      ) : displayError ? (
+        <div className="rounded-xl bg-rose-500/10 px-3 py-3 text-xs text-rose-300">{displayError}</div>
+      ) : displayItems.length === 0 && !showRootCheckpoint ? (
         <div className="flex flex-col items-center justify-center py-12 text-xs text-zinc-600">
           <Folder className="mb-2 size-8 text-zinc-700" />
-          空目录
+          {isSearchActive ? "没有匹配的模型文件" : "空目录"}
         </div>
       ) : (
         <div className="space-y-0.5">
@@ -666,7 +787,7 @@ export function ModelFileManager() {
             </>
           )}
 
-          {items.map((item) => {
+          {displayItems.map((item) => {
             const fileItem = isFileItem(item) ? item : null;
             const isSelected = fileItem !== null && selectedFilePath === fileItem.path;
             const isExpanded = fileItem !== null && expandedFilePath === fileItem.path;
