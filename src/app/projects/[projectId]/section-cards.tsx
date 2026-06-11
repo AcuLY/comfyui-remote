@@ -12,7 +12,6 @@ import {
   type DragEndEvent,
 } from "@dnd-kit/core";
 import {
-  arrayMove,
   SortableContext,
   rectSortingStrategy,
   sortableKeyboardCoordinates,
@@ -25,8 +24,10 @@ import {
   CheckSquare,
   Trash2,
   Square,
+  Play,
 } from "lucide-react";
-import { moveProjectSectionsToFolder, reorderSections, deleteSections } from "@/lib/actions";
+import { moveProjectSectionsToFolder, reorderSections, deleteSections, runSection } from "@/lib/actions";
+import { buildGroupedDragOrder, mergeVisibleOrderIntoAllIds } from "@/lib/section-list-ordering";
 import { toast } from "sonner";
 import type { FolderItem } from "@/lib/server-data";
 import { HardNavigationLink } from "@/components/hard-navigation-link";
@@ -82,6 +83,7 @@ export function SectionCards({
   const [isPending, startTransition] = useTransition();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isRunningSelected, setIsRunningSelected] = useState(false);
   const dndId = useId();
 
   useEffect(() => {
@@ -105,18 +107,25 @@ export function SectionCards({
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
-    const oldIndex = sections.findIndex((s) => s.id === active.id);
-    const newIndex = sections.findIndex((s) => s.id === over.id);
+    const visibleIds = sections.map((section) => section.id);
+    const nextVisibleIds = buildGroupedDragOrder({
+      visibleIds,
+      selectedIds,
+      activeId: String(active.id),
+      overId: String(over.id),
+    });
+    if (nextVisibleIds.every((id, index) => id === visibleIds[index])) return;
 
     const oldSections = sections;
-    const newSections = arrayMove(sections, oldIndex, newIndex);
+    const sectionById = new Map(sections.map((section) => [section.id, section]));
+    const newSections = nextVisibleIds
+      .map((id) => sectionById.get(id))
+      .filter((section): section is Section => Boolean(section));
     setSections(newSections);
-    const visibleIdSet = new Set(newSections.map((section) => section.id));
-    const nextVisibleIds = newSections.map((section) => section.id);
     const reorderIds =
       allSectionIds && allSectionIds.length > 0
-        ? allSectionIds.map((id) => (visibleIdSet.has(id) ? nextVisibleIds.shift()! : id))
-        : newSections.map((section) => section.id);
+        ? mergeVisibleOrderIntoAllIds({ allIds: allSectionIds, visibleIds: nextVisibleIds })
+        : nextVisibleIds;
 
     startTransition(async () => {
       try {
@@ -128,6 +137,26 @@ export function SectionCards({
       } catch (err) {
         setSections(oldSections);
         toast.error(err instanceof Error ? err.message : "排序失败");
+      }
+    });
+  }
+
+  function handleBatchRun() {
+    if (selectedIds.size === 0) return;
+    const idsToRun = sections.filter((section) => selectedIds.has(section.id)).map((section) => section.id);
+    setIsRunningSelected(true);
+    startTransition(async () => {
+      try {
+        for (const sectionId of idsToRun) {
+          await runSection(sectionId);
+        }
+        setSelectedIds(new Set());
+        router.refresh();
+        toast.success(`已提交 ${idsToRun.length} 个小节运行`);
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "批量运行失败");
+      } finally {
+        setIsRunningSelected(false);
       }
     });
   }
@@ -185,7 +214,7 @@ export function SectionCards({
 
   return (
     <>
-      {compact && sections.length > 0 && selectedIds.size === 0 && (
+      {sections.length > 0 && selectedIds.size === 0 && (
         <div className="mb-2 flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
           <button
             type="button"
@@ -193,12 +222,12 @@ export function SectionCards({
             className="flex items-center gap-1.5 text-xs text-zinc-400 transition hover:text-white"
           >
             <Square className="size-3.5" />
-            全选
+            全选当前列表
           </button>
         </div>
       )}
 
-      {compact && selectedIds.size > 0 && (
+      {selectedIds.size > 0 && (
         <div className="mb-2 flex flex-wrap items-center gap-2">
           <BatchActionBar
             selectedCount={selectedIds.size}
@@ -208,6 +237,15 @@ export function SectionCards({
             onSelectAll={selectAll}
             onClearSelection={deselectAll}
           />
+          <button
+            type="button"
+            disabled={isRunningSelected || isDeleting}
+            onClick={handleBatchRun}
+            className="flex items-center gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-300 transition hover:bg-emerald-500/20 disabled:opacity-50"
+          >
+            <Play className="size-3.5" />
+            {isRunningSelected ? "提交中…" : "批量运行"}
+          </button>
           {selectedIds.size > 0 && (
             <button
               type="button"
@@ -253,6 +291,8 @@ export function SectionCards({
                   setCardRef={setCardRef}
                   folders={folders}
                   onMove={(folderId) => handleMoveSections([section.id], folderId)}
+                  isSelected={selectedIds.has(section.id)}
+                  onToggleSelect={toggleSelect}
                   onDeleted={(deletedId) =>
                     setSections((prev) => prev.filter((item) => item.id !== deletedId))
                   }
@@ -368,6 +408,8 @@ function SortableSectionCard({
   setCardRef,
   folders,
   onMove,
+  isSelected,
+  onToggleSelect,
   onDeleted,
 }: {
   section: Section;
@@ -376,6 +418,8 @@ function SortableSectionCard({
   setCardRef: (id: string, el: HTMLDivElement | null) => void;
   folders: FolderItem[];
   onMove: (folderId: string | null) => void;
+  isSelected: boolean;
+  onToggleSelect: (id: string) => void;
   onDeleted: (sectionId: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -396,11 +440,28 @@ function SortableSectionCard({
       }}
       style={style}
       id={`section-${section.id}`}
-      className={`w-full rounded-xl border border-white/10 bg-white/[0.03] p-2.5 md:max-w-[500px] ${
+      className={`w-full rounded-xl border bg-white/[0.03] p-2.5 md:max-w-[500px] ${
         isDragging ? "shadow-lg ring-2 ring-sky-500/30" : ""
-      }`}
+      } ${isSelected ? "border-sky-500/40 ring-1 ring-sky-500/20" : "border-white/10"}`}
     >
       <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onToggleSelect(section.id);
+          }}
+          className="mt-1 shrink-0 rounded p-1 text-zinc-600 transition hover:bg-white/10 hover:text-zinc-300"
+          title={isSelected ? "取消选择" : "选择小节"}
+        >
+          {isSelected ? (
+            <CheckSquare className="size-4 text-sky-400" />
+          ) : (
+            <Square className="size-4" />
+          )}
+        </button>
+
         <button
           {...attributes}
           {...listeners}
