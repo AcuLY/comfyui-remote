@@ -5,6 +5,7 @@ import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import { DEFAULT_CHECKPOINT_NAME } from "@/lib/model-constants";
 import { copyProject as copyProjectRepo } from "@/server/repositories/project-repository";
+import { archiveProject as archiveProjectService } from "@/server/services/project-archive-service";
 import { deleteProjectCompletely } from "@/server/services/project-deletion-service";
 
 // ---------------------------------------------------------------------------
@@ -243,6 +244,19 @@ export async function copyProject(projectId: string): Promise<string | null> {
 export async function deleteProject(projectId: string): Promise<void> {
   await deleteProjectCompletely(projectId);
   revalidatePath("/projects");
+}
+
+// ---------------------------------------------------------------------------
+// 归档项目（保留记录，清理生成/导出文件）
+// ---------------------------------------------------------------------------
+
+export async function archiveProject(projectId: string): Promise<void> {
+  const result = await archiveProjectService(projectId);
+  if (!result.success) {
+    throw new Error(result.message);
+  }
+  safeRevalidatePath("/projects");
+  safeRevalidatePath(`/projects/${projectId}`);
 }
 
 // ---------------------------------------------------------------------------

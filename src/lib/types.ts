@@ -85,6 +85,8 @@ export type ProjectCard = {
   folderId: string | null;
   presetNames: string[];
   status: "draft" | "queued" | "running" | "partial_done" | "done" | "failed";
+  publishedAt?: string | null;
+  archivedAt?: string | null;
   updatedAt: string;
   sectionCount: number;
   enabledSectionCount?: number;

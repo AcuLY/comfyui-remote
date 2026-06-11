@@ -18,7 +18,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { ChevronRight, Folder, FolderPlus, ImageIcon, Plus, Save, X } from "lucide-react";
+import { Archive, ChevronRight, Folder, FolderPlus, ImageIcon, Plus, Save, X } from "lucide-react";
 import { toast } from "sonner";
 import { HardNavigationLink } from "@/components/hard-navigation-link";
 import { SectionCard } from "@/components/section-card";
@@ -38,6 +38,7 @@ import {
   MoveToFolderButton,
   SortableFolderRow,
 } from "@/app/assets/presets/folder-components";
+import { ProjectArchiveButton } from "./project-archive-button";
 import { ProjectDeleteButton } from "./project-delete-button";
 
 export function ProjectsClient({
@@ -55,15 +56,25 @@ export function ProjectsClient({
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showArchived, setShowArchived] = useState(false);
 
   const visibleFolders = useMemo(
     () => folders.filter((folder) => (folder.parentId ?? null) === currentFolderId),
     [folders, currentFolderId],
   );
-  const visibleProjects = useMemo(
+  const folderProjects = useMemo(
     () => initialProjects.filter((project) => (project.folderId ?? null) === currentFolderId),
     [initialProjects, currentFolderId],
   );
+  const visibleProjects = useMemo(
+    () => folderProjects.filter((project) => showArchived || !project.archivedAt),
+    [folderProjects, showArchived],
+  );
+  const countableProjects = useMemo(
+    () => showArchived ? initialProjects : initialProjects.filter((project) => !project.archivedAt),
+    [initialProjects, showArchived],
+  );
+  const archivedProjectCount = folderProjects.filter((project) => project.archivedAt).length;
   const breadcrumb = useMemo(() => {
     const path: ProjectFolderItem[] = [];
     let folderId = currentFolderId;
@@ -161,18 +172,35 @@ export function ProjectsClient({
           <Plus className="size-4" /> 创建新项目
         </Link>
       </div>
-      <SectionCard title="项目" subtitle="点击卡片进入详情页，在详情页中编辑参数和管理小节。">
+      <SectionCard
+        title="项目"
+        subtitle={`${visibleProjects.length} 个项目${!showArchived && archivedProjectCount > 0 ? `，隐藏 ${archivedProjectCount} 个归档` : ""}`}
+      >
         <div className="space-y-3">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <FolderBreadcrumb breadcrumb={breadcrumb} onNavigate={navigateFolder} />
-            <button
-              type="button"
-              onClick={() => setIsCreatingFolder(true)}
-              className="inline-flex w-fit items-center gap-1 rounded-lg bg-white/[0.04] px-2 py-1 text-[11px] text-zinc-400 hover:bg-white/[0.08]"
-            >
-              <FolderPlus className="size-3" />
-              新建文件夹
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="inline-flex h-8 items-center gap-2 rounded-lg border border-white/10 px-2 text-[11px] text-zinc-300 transition hover:bg-white/5">
+                <input
+                  type="checkbox"
+                  checked={showArchived}
+                  onChange={(event) => {
+                    setShowArchived(event.currentTarget.checked);
+                    setSelectedIds(new Set());
+                  }}
+                  className="size-3 accent-sky-500"
+                />
+                显示归档
+              </label>
+              <button
+                type="button"
+                onClick={() => setIsCreatingFolder(true)}
+                className="inline-flex h-8 items-center gap-1 rounded-lg bg-white/[0.04] px-2 text-[11px] text-zinc-400 hover:bg-white/[0.08]"
+              >
+                <FolderPlus className="size-3" />
+                新建文件夹
+              </button>
+            </div>
           </div>
 
           <BatchActionBar
@@ -235,7 +263,7 @@ export function ProjectsClient({
                   <SortableFolderRow
                     key={folder.id}
                     folder={folder}
-                    itemCount={countFolderItems(folder.id, folders, initialProjects)}
+                    itemCount={countFolderItems(folder.id, folders, countableProjects)}
                     onEnter={() => navigateFolder(folder.id)}
                     onRename={(name) => {
                       startTransition(async () => {
@@ -304,14 +332,35 @@ function ProjectCard({
   onToggleSelected: () => void;
   onMove: (folderId: string | null) => void;
 }) {
+  const isArchived = Boolean(project.archivedAt);
+
   return (
     <article
       className={`relative w-full rounded-xl border bg-white/[0.03] transition hover:border-white/20 hover:bg-white/[0.06] md:max-w-[500px] ${
-        selected ? "border-sky-400/50 ring-1 ring-sky-400/30" : "border-white/10"
+        selected
+          ? "border-sky-400/50 ring-1 ring-sky-400/30"
+          : isArchived
+            ? "border-amber-500/20"
+            : "border-white/10"
       }`}
     >
       <div className="absolute right-2 top-2 z-10 flex items-center gap-1">
         <MoveToFolderButton currentFolderId={project.folderId} folders={folders} onMove={onMove} />
+        {isArchived ? (
+          <span
+            className="inline-flex size-8 items-center justify-center rounded-lg border border-amber-500/20 bg-zinc-950/85 text-amber-300"
+            title={project.archivedAt ? `已归档：${project.archivedAt}` : "已归档"}
+            aria-label={`已归档项目：${project.title}`}
+          >
+            <Archive className="size-3.5" />
+          </span>
+        ) : (
+          <ProjectArchiveButton
+            projectId={project.id}
+            projectTitle={project.title}
+            className="inline-flex size-8 items-center justify-center rounded-lg border border-amber-500/20 bg-zinc-950/85 text-amber-300 shadow-sm transition hover:bg-amber-500/15 disabled:opacity-50"
+          />
+        )}
         <ProjectDeleteButton
           projectId={project.id}
           projectTitle={project.title}
@@ -328,7 +377,12 @@ function ProjectCard({
         />
       </label>
       <HardNavigationLink href={`/projects/${project.id}`} className="block p-3 pt-12">
-        {project.latestImages && project.latestImages.length > 0 ? (
+        {isArchived ? (
+          <div className="mb-3 flex h-24 items-center justify-center rounded-lg border border-amber-500/10 bg-amber-500/[0.03] text-[11px] text-amber-200/70">
+            <Archive className="mr-1.5 size-3.5" />
+            已归档 · 文件已清理
+          </div>
+        ) : project.latestImages && project.latestImages.length > 0 ? (
           <div className="mb-3 border-b border-white/5 pb-3">
             <div className="mb-1.5 flex items-center gap-1.5 text-[10px] text-zinc-500">
               <ImageIcon className="size-3" />
@@ -375,13 +429,15 @@ function ProjectCard({
             <div className="mt-1 text-xs text-zinc-400">{project.presetNames.join(" · ") || "无预设"}</div>
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            <span className="rounded-full border border-white/10 px-2 py-1 text-[11px] text-zinc-300">{project.status}</span>
+            <span className="rounded-full border border-white/10 px-2 py-1 text-[11px] text-zinc-300">
+              {isArchived ? "已归档" : project.status}
+            </span>
             <ChevronRight className="size-4 text-zinc-500" />
           </div>
         </div>
         <div className="mt-2 text-xs text-zinc-500">
           最近更新：{project.updatedAt} · {project.sectionCount} 个小节
-          {project.latestRunAt ? ` · 最近运行：${project.latestRunAt}` : ""}
+          {project.archivedAt ? ` · 归档：${project.archivedAt}` : project.latestRunAt ? ` · 最近运行：${project.latestRunAt}` : ""}
         </div>
       </HardNavigationLink>
     </article>

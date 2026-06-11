@@ -44,6 +44,8 @@ export async function listProjects(): Promise<ProjectCard[]> {
       title: true,
       folderId: true,
       status: true,
+      publishedAt: true,
+      archivedAt: true,
       updatedAt: true,
       presetBindingRows: PROJECT_PRESET_BINDING_DISPLAY_SELECT,
       runs: {
@@ -84,17 +86,19 @@ export async function listProjects(): Promise<ProjectCard[]> {
       folderId: project.folderId,
       presetNames,
       status: project.status as ProjectCard["status"],
+      publishedAt: project.publishedAt ? formatDate(project.publishedAt) : null,
+      archivedAt: project.archivedAt ? formatDate(project.archivedAt) : null,
       updatedAt: formatDate(project.updatedAt),
       sectionCount: project._count.sections,
       latestRunId: latestRun?.id ?? null,
       latestRunAt: latestRun ? formatDate(latestRun.createdAt) : null,
       latestRunStatus: latestRun?.status as ProjectCard["latestRunStatus"],
-      latestImages: (latestRun?.images ?? []).map((img) => ({
+      latestImages: project.archivedAt ? [] : (latestRun?.images ?? []).map((img) => ({
         id: img.id,
         src: toImageUrl(img.thumbPath ?? img.filePath) ?? "",
         status: img.reviewStatus as ReviewStatus,
       })),
-      latestImageCount: latestRun?._count.images ?? 0,
+      latestImageCount: project.archivedAt ? 0 : latestRun?._count.images ?? 0,
     };
   });
 }
