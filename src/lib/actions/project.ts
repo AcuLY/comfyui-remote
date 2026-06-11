@@ -31,9 +31,10 @@ export type UpdateProjectInput = {
     sortOrder: number;
     enabled: boolean;
     positivePrompt?: string | null;
-    negativePrompt?: string | null;
-    aspectRatio?: string | null;
-    batchSize?: number | null;
+      negativePrompt?: string | null;
+      aspectRatio?: string | null;
+      aspectRatios?: string[] | null;
+      batchSize?: number | null;
     seedPolicy1?: string | null;
     seedPolicy2?: string | null;
     ksampler1?: Record<string, unknown> | null;
@@ -209,6 +210,7 @@ export async function updateProject(input: UpdateProjectInput) {
             sortOrder: update.sortOrder,
             enabled: update.enabled,
             aspectRatio: update.aspectRatio ?? null,
+            aspectRatios: update.aspectRatios ?? (update.aspectRatio ? [update.aspectRatio] : Prisma.DbNull),
             batchSize: update.batchSize ?? null,
             seedPolicy1: update.seedPolicy1 ?? null,
             seedPolicy2: update.seedPolicy2 ?? null,
@@ -352,7 +354,9 @@ export async function applyParamToAllSections(
     let data: Record<string, unknown>;
     switch (param) {
       case "aspectRatio":
-        data = { aspectRatio: typeof value === "string" ? value : null };
+        data = typeof value === "string"
+          ? { aspectRatio: value, aspectRatios: [value] }
+          : { aspectRatio: null, aspectRatios: Prisma.DbNull };
         break;
       case "shortSidePx":
         data = { shortSidePx: typeof value === "number" ? value : null };

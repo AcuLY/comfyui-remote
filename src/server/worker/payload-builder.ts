@@ -21,6 +21,12 @@ function asNullableString(value: Prisma.JsonValue | undefined) {
   return typeof value === "string" ? value : null;
 }
 
+function asNullableStringArray(value: Prisma.JsonValue | undefined) {
+  if (!Array.isArray(value)) return null;
+  const values = value.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+  return values.length > 0 ? values : null;
+}
+
 function asNullableInteger(value: Prisma.JsonValue | undefined) {
   return typeof value === "number" && Number.isInteger(value) ? value : null;
 }
@@ -91,6 +97,7 @@ export function normalizeResolvedConfigSnapshot(
       : null,
     parameters: {
       aspectRatio: asNullableString(parameters?.aspectRatio),
+      aspectRatios: asNullableStringArray(parameters?.aspectRatios),
       shortSidePx: asNullableInteger(parameters?.shortSidePx),
       batchSize: asNullableInteger(parameters?.batchSize),
       seedPolicy: asNullableString(parameters?.seedPolicy),

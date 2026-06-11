@@ -459,6 +459,7 @@ test("importing a template section plans section relation rows without legacy ex
       id: "template-section-1",
       name: "Imported",
       aspectRatio: "2:3",
+      aspectRatios: ["2:3", "3:2"],
       shortSidePx: 768,
       batchSize: 4,
       seedPolicy1: "fixed",
@@ -492,6 +493,7 @@ test("importing a template section plans section relation rows without legacy ex
   assert.equal("positivePrompt" in sectionData, false);
   assert.equal("negativePrompt" in sectionData, false);
   assert.equal("loraConfig" in sectionData, false);
+  assert.deepEqual(sectionData.aspectRatios, ["2:3", "3:2"]);
   assert.deepEqual(rows.presetBindings.map((row) => row.bindingKey), ["bind-style"]);
   assert.deepEqual(rows.promptBlocks.map((row) => ({
     type: row.type,

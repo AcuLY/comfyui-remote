@@ -122,10 +122,16 @@ export default async function SectionEditPage({
     status: img.reviewStatus,
   }));
 
-  const readResolvedStringParam = (key: string) => {
-    const value = resolvedConfig?.parameters[key];
-    return typeof value === "string" ? value : null;
-  };
+    const readResolvedStringParam = (key: string) => {
+      const value = resolvedConfig?.parameters[key];
+      return typeof value === "string" ? value : null;
+    };
+    const readResolvedStringArrayParam = (key: string) => {
+      const value = resolvedConfig?.parameters[key];
+      return Array.isArray(value)
+        ? value.filter((item): item is string => typeof item === "string")
+        : null;
+    };
   const readResolvedIntegerParam = (key: string) => {
     const value = resolvedConfig?.parameters[key];
     return typeof value === "number" && Number.isInteger(value) ? value : null;
@@ -199,9 +205,10 @@ export default async function SectionEditPage({
 
   const sectionParams = resolvedConfig
     ? {
-        batchSize: readResolvedIntegerParam("batchSize"),
-        aspectRatio: readResolvedStringParam("aspectRatio"),
-        shortSidePx: readResolvedIntegerParam("shortSidePx"),
+          batchSize: readResolvedIntegerParam("batchSize"),
+          aspectRatio: readResolvedStringParam("aspectRatio"),
+          aspectRatios: readResolvedStringArrayParam("aspectRatios"),
+          shortSidePx: readResolvedIntegerParam("shortSidePx"),
         seedPolicy1: readResolvedStringParam("seedPolicy1"),
         seedPolicy2: readResolvedStringParam("seedPolicy2"),
         ksampler1: resolvedConfig.ksampler1 ?? null,
@@ -211,9 +218,12 @@ export default async function SectionEditPage({
         projectCheckpointName: readResolvedStringParam("checkpointName"),
       }
     : {
-        batchSize: pos.batchSize ?? null,
-        aspectRatio: pos.aspectRatio ?? null,
-        shortSidePx: pos.shortSidePx ?? null,
+          batchSize: pos.batchSize ?? null,
+          aspectRatio: pos.aspectRatio ?? null,
+          aspectRatios: Array.isArray(pos.aspectRatios)
+            ? pos.aspectRatios.filter((item): item is string => typeof item === "string")
+            : null,
+          shortSidePx: pos.shortSidePx ?? null,
         seedPolicy1: pos.seedPolicy1 ?? null,
         seedPolicy2: pos.seedPolicy2 ?? null,
         ksampler1: pos.ksampler1 ?? null,

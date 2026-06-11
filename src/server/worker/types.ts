@@ -44,9 +44,10 @@ export type NormalizedResolvedConfigSnapshot = {
     positive: string;
     negative: string | null;
   } | null;
-  parameters: {
-    aspectRatio: string | null;
-    shortSidePx: number | null;
+    parameters: {
+      aspectRatio: string | null;
+      aspectRatios: string[] | null;
+      shortSidePx: number | null;
     batchSize: number | null;
     /** @deprecated Use seedPolicy1 and seedPolicy2 */
     seedPolicy: string | null;
@@ -72,9 +73,10 @@ export type ComfyPromptDraft = {
     positive: string;
     negative: string | null;
   };
-  parameters: {
-    aspectRatio: string | null;
-    shortSidePx: number | null;
+    parameters: {
+      aspectRatio: string | null;
+      aspectRatios: string[] | null;
+      shortSidePx: number | null;
     batchSize: number | null;
     /** @deprecated Use seedPolicy1 and seedPolicy2 */
     seedPolicy: string | null;

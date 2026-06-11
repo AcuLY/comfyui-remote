@@ -1,6 +1,7 @@
 import { Prisma } from "@/generated/prisma";
 import { ActorType } from "@/lib/db-enums";
 import { createLogger } from "@/lib/logger";
+import { normalizeAspectRatioList, primaryAspectRatio } from "@/lib/aspect-ratio-utils";
 import {
   createProject as createProjectInRepository,
   copyProject as copyProjectInRepository,
@@ -67,6 +68,7 @@ type UpdateProjectSectionRequestBody = {
   positivePrompt?: unknown;
   negativePrompt?: unknown;
   aspectRatio?: unknown;
+  aspectRatios?: unknown;
   shortSidePx?: unknown;
   batchSize?: unknown;
   seedPolicy1?: unknown;
@@ -97,6 +99,7 @@ const PROJECT_SECTION_UPDATE_FIELDS = [
   "positivePrompt",
   "negativePrompt",
   "aspectRatio",
+  "aspectRatios",
   "shortSidePx",
   "batchSize",
   "seedPolicy1",
@@ -110,6 +113,7 @@ const PROJECT_SECTION_UPDATE_FIELDS = [
 
 const SECTION_RUN_PARAM_FIELDS = [
   "aspectRatio",
+  "aspectRatios",
   "shortSidePx",
   "batchSize",
   "seedPolicy1",
@@ -122,6 +126,7 @@ const SECTION_RUN_PARAM_FIELDS = [
 
 const SECTION_RUN_PARAM_SELECT = {
   aspectRatio: true,
+  aspectRatios: true,
   shortSidePx: true,
   batchSize: true,
   seedPolicy1: true,
@@ -303,6 +308,23 @@ function normalizeBatchSize(value: unknown, fieldName: string) {
   return value;
 }
 
+function normalizeAspectRatiosField(value: unknown, fieldName: string) {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (value === null) {
+    return null;
+  }
+
+  if (!Array.isArray(value)) {
+    throw new ProjectServiceError(`${fieldName} must be an array of strings or null`, 400);
+  }
+
+  const normalized = normalizeAspectRatioList(value);
+  return normalized.length > 0 ? normalized : null;
+}
+
 function ensureAtLeastOneField(
   fields: Record<string, unknown>,
   message: string,
@@ -404,12 +426,23 @@ export async function updateProjectSection(
 ) {
   const parsedBody = parseRequestBody<UpdateProjectSectionRequestBody>(body);
   ensureSupportedFields(parsedBody, PROJECT_SECTION_UPDATE_FIELDS);
+  const parsedAspectRatio = normalizeNullableStringField(parsedBody.aspectRatio, "aspectRatio");
+  const parsedAspectRatios = normalizeAspectRatiosField(parsedBody.aspectRatios, "aspectRatios");
+  const aspectRatios = parsedAspectRatios !== undefined
+    ? parsedAspectRatios
+    : parsedAspectRatio !== undefined
+      ? (parsedAspectRatio === null ? null : normalizeAspectRatioList(null, parsedAspectRatio))
+      : undefined;
+  const aspectRatio = aspectRatios !== undefined
+    ? primaryAspectRatio(aspectRatios)
+    : parsedAspectRatio;
 
   const input = {
     name: normalizeNullableStringField(parsedBody.name, "name"),
     positivePrompt: normalizeNullableStringField(parsedBody.positivePrompt, "positivePrompt"),
     negativePrompt: normalizeNullableStringField(parsedBody.negativePrompt, "negativePrompt"),
-    aspectRatio: normalizeNullableStringField(parsedBody.aspectRatio, "aspectRatio"),
+    aspectRatio,
+    aspectRatios,
     shortSidePx: normalizeBatchSize(parsedBody.shortSidePx, "shortSidePx"),
     batchSize: normalizeBatchSize(parsedBody.batchSize, "batchSize"),
     seedPolicy1: normalizeNullableStringField(parsedBody.seedPolicy1, "seedPolicy1"),

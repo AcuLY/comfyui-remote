@@ -678,6 +678,7 @@ test("resolved section config preserves params shape and diff avoids params fals
   const emptySnapshot = {
     parameters: {
       aspectRatio: null,
+      aspectRatios: null,
       shortSidePx: null,
       batchSize: null,
       seedPolicy: null,
@@ -693,6 +694,7 @@ test("resolved section config preserves params shape and diff avoids params fals
   const sectionWithParams = {
     id: "section-params",
     aspectRatio: "2:3",
+    aspectRatios: ["2:3"],
     shortSidePx: 1024,
     batchSize: 4,
     seedPolicy1: "fixed",
@@ -709,6 +711,7 @@ test("resolved section config preserves params shape and diff avoids params fals
   const matchingSnapshot = {
     parameters: {
       aspectRatio: "2:3",
+      aspectRatios: ["2:3"],
       shortSidePx: 1024,
       batchSize: 4,
       seedPolicy: "fixed",
@@ -724,6 +727,7 @@ test("resolved section config preserves params shape and diff avoids params fals
 
   assert.deepEqual(projectDefaultResolved.parameters, {
     aspectRatio: "4:5",
+    aspectRatios: ["4:5"],
     shortSidePx: 640,
     batchSize: 6,
     seedPolicy: "fixed",
@@ -752,6 +756,23 @@ test("resolved section config preserves params shape and diff avoids params fals
       .some((diff) => diff.category === "params"),
     true,
   );
+});
+
+test("resolved section config exposes multiple selected aspect ratios with primary fallback", () => {
+  const resolved = resolveSectionConfigFromRows(input({
+    section: {
+      id: "section-multi-aspect",
+      aspectRatio: "2:3",
+      aspectRatios: ["2:3", "3:2", "2:3", ""],
+      shortSidePx: 768,
+      batchSize: 2,
+    },
+  }));
+
+  assert.equal(resolved.parameters.aspectRatio, "2:3");
+  assert.deepEqual(resolved.parameters.aspectRatios, ["2:3", "3:2"]);
+  assert.equal(resolved.parameters.shortSidePx, 768);
+  assert.equal(resolved.parameters.batchSize, 2);
 });
 
 test("resolved section config exposes aggregate prompt, presets, and warnings", () => {
@@ -873,6 +894,7 @@ test("DB wrapper resolves new binding rows lazily while preserving multi-variant
         return {
           id: "section-new",
           aspectRatio: null,
+          aspectRatios: null,
           shortSidePx: null,
           batchSize: null,
           seedPolicy1: null,
@@ -933,6 +955,7 @@ test("diffResolvedSectionConfig classifies prompt, lora, missing reference, and 
       loraConfig: { lora1: [{ path: "/old.safetensors", weight: 1, enabled: true, source: "manual" }], lora2: [] },
       parameters: {
         aspectRatio: null,
+        aspectRatios: null,
         shortSidePx: null,
         batchSize: null,
         seedPolicy: null,
@@ -980,6 +1003,7 @@ test("diffResolvedSectionConfig classifies prompt, lora, missing reference, and 
       },
       parameters: {
         aspectRatio: null,
+        aspectRatios: null,
         shortSidePx: null,
         batchSize: null,
         seedPolicy: null,

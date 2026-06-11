@@ -46,6 +46,23 @@ function getNullableJsonObject(formData: FormData, fieldName: string): Record<st
   }
 }
 
+function getNullableStringArray(formData: FormData, fieldName: string): string[] | null | undefined {
+  if (!formData.has(fieldName)) return undefined;
+  const raw = String(formData.get(fieldName) ?? "").trim();
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return null;
+    const values = parsed
+      .filter((item): item is string => typeof item === "string")
+      .map((item) => item.trim())
+      .filter(Boolean);
+    return values.length > 0 ? [...new Set(values)] : null;
+  } catch {
+    return null;
+  }
+}
+
 function getPositiveInteger(formData: FormData, fieldName: string, label: string): PositiveIntegerResult {
   const rawValue = String(formData.get(fieldName) ?? "").trim();
 
@@ -95,6 +112,7 @@ export async function saveSectionEditAction(
 
   const ksampler1 = getNullableJsonObject(formData, "ksampler1");
   const ksampler2 = getNullableJsonObject(formData, "ksampler2");
+  const aspectRatios = getNullableStringArray(formData, "aspectRatios");
   const checkpointName = formData.has("checkpointName")
     ? getNullableString(formData, "checkpointName")
     : undefined;
@@ -108,13 +126,19 @@ export async function saveSectionEditAction(
   const seedPolicy2 = typeof ksampler2?.seedPolicy === "string" ? ksampler2.seedPolicy : getNullableString(formData, "seedPolicy2");
 
   const payload: Record<string, unknown> = {
-    positivePrompt: getNullableString(formData, "positivePrompt"),
-    negativePrompt: getNullableString(formData, "negativePrompt"),
-    aspectRatio: getNullableString(formData, "aspectRatio"),
-    shortSidePx: shortSidePx.value,
+      positivePrompt: getNullableString(formData, "positivePrompt"),
+      negativePrompt: getNullableString(formData, "negativePrompt"),
+      aspectRatio: aspectRatios !== undefined
+        ? (aspectRatios?.[0] ?? null)
+        : getNullableString(formData, "aspectRatio"),
+      shortSidePx: shortSidePx.value,
     seedPolicy1,
     seedPolicy2,
-  };
+    };
+
+  if (aspectRatios !== undefined) {
+    payload.aspectRatios = aspectRatios;
+  }
 
   if (checkpointName !== undefined) {
     payload.checkpointName = checkpointName;

@@ -11,9 +11,10 @@ export type ProjectTemplateSectionData = {
   folderId: string | null;
   sortOrder: number;
   name: string | null;
-  notes: string | null;
-  aspectRatio: string | null;
-  shortSidePx: number | null;
+    notes: string | null;
+    aspectRatio: string | null;
+    aspectRatios: string[] | null;
+    shortSidePx: number | null;
   batchSize: number | null;
   seedPolicy1: string | null;
   seedPolicy2: string | null;
@@ -126,9 +127,12 @@ export async function getProjectTemplateDetail(
         folderId: s.folderId,
         sortOrder: s.sortOrder,
         name: s.name,
-        notes: s.notes,
-        aspectRatio: s.aspectRatio,
-        shortSidePx: s.shortSidePx,
+          notes: s.notes,
+          aspectRatio: s.aspectRatio,
+          aspectRatios: Array.isArray(s.aspectRatios)
+            ? s.aspectRatios.filter((item): item is string => typeof item === "string")
+            : null,
+          shortSidePx: s.shortSidePx,
         batchSize: s.batchSize,
         seedPolicy1: s.seedPolicy1,
         seedPolicy2: s.seedPolicy2,

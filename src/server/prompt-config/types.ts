@@ -162,6 +162,7 @@ export type TemplateSectionManualLoraEntryRow = {
 export type SectionResolverSectionRow = {
   id: string;
   aspectRatio?: string | null;
+  aspectRatios?: unknown;
   shortSidePx?: number | null;
   batchSize?: number | null;
   seedPolicy1?: string | null;

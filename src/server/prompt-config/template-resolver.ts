@@ -42,6 +42,7 @@ type TemplateSectionForImport = {
   id: string;
   name?: string | null;
   aspectRatio?: string | null;
+  aspectRatios?: unknown;
   shortSidePx?: number | null;
   batchSize?: number | null;
   seedPolicy1?: string | null;
@@ -255,6 +256,7 @@ export async function resolveTemplateSectionConfig(
     select: {
       id: true,
       aspectRatio: true,
+      aspectRatios: true,
       shortSidePx: true,
       batchSize: true,
       seedPolicy1: true,
@@ -640,6 +642,7 @@ export function buildProjectSectionDataForTemplateImport(input: {
     enabled: true,
     name: section.name ?? null,
     ...(section.aspectRatio !== null && section.aspectRatio !== undefined ? { aspectRatio: section.aspectRatio } : {}),
+    ...(section.aspectRatios !== null && section.aspectRatios !== undefined ? { aspectRatios: section.aspectRatios } : {}),
     ...(section.shortSidePx !== null && section.shortSidePx !== undefined ? { shortSidePx: section.shortSidePx } : {}),
     ...(section.batchSize !== null && section.batchSize !== undefined ? { batchSize: section.batchSize } : {}),
     ...(section.seedPolicy1 !== null && section.seedPolicy1 !== undefined ? { seedPolicy1: section.seedPolicy1 } : {}),

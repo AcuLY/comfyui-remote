@@ -36,6 +36,7 @@ function staleSection(): ProjectSectionRecord {
     positivePrompt: "stale section positive",
     negativePrompt: "stale section negative",
     aspectRatio: "4:3",
+    aspectRatios: ["4:3"],
     shortSidePx: 512,
     batchSize: 2,
     seedPolicy1: "stale-seed-1",
@@ -116,6 +117,7 @@ function resolvedConfig(): ResolvedSectionConfig {
     },
     parameters: {
       aspectRatio: "16:9",
+      aspectRatios: ["16:9"],
       shortSidePx: 768,
       batchSize: 4,
       seedPolicy: "resolver-seed-1",
@@ -157,6 +159,7 @@ function assertSnapshotUsesResolvedConfig(
   assert.deepEqual(snapshot.ksampler2, resolved.ksampler2);
   assert.deepEqual(snapshot.extraParams, resolved.extraParams);
   assert.equal(parameters.aspectRatio, "16:9");
+  assert.deepEqual(parameters.aspectRatios, ["16:9"]);
   assert.equal(parameters.batchSize, expectedBatchSize);
   assert.equal(snapshot.checkpointName, "resolver.ckpt");
 
@@ -213,6 +216,60 @@ test("queued runs resolve each section before writing resolvedConfigSnapshot", a
   assertSnapshotUsesResolvedConfig(createdRun.resolvedConfigSnapshot, resolved, 11);
 });
 
+test("queued runs expand one section into one run per selected aspect ratio", async () => {
+  const resolved = {
+    ...resolvedConfig(),
+    parameters: {
+      ...resolvedConfig().parameters,
+      aspectRatio: "2:3",
+      aspectRatios: ["2:3", "3:2"],
+      batchSize: 2,
+    },
+  };
+  const createdRuns: unknown[] = [];
+  const tx = {
+    run: {
+      groupBy: async () => [{ projectSectionId: "section-1", _max: { runIndex: 4 } }],
+      create: async (args: { data: unknown }) => {
+        createdRuns.push(args.data);
+        return {
+          id: `run-${createdRuns.length}`,
+          runIndex: 4 + createdRuns.length,
+          status: "queued",
+          createdAt: new Date("2026-06-01T00:00:00.000Z"),
+        };
+      },
+    },
+  };
+
+  const runs = await createQueuedRunsForPositions(
+    tx as never,
+    project(),
+    [staleSection()],
+    undefined,
+    async () => resolved,
+  );
+
+  assert.equal(runs.length, 2);
+  assert.equal(createdRuns.length, 2);
+  assert.deepEqual(
+    createdRuns.map((run) => asSnapshot(asSnapshot(run).resolvedConfigSnapshot).parameters)
+      .map((parameters) => ({
+        aspectRatio: asSnapshot(parameters).aspectRatio,
+        aspectRatios: asSnapshot(parameters).aspectRatios,
+        batchSize: asSnapshot(parameters).batchSize,
+      })),
+    [
+      { aspectRatio: "2:3", aspectRatios: ["2:3"], batchSize: 2 },
+      { aspectRatio: "3:2", aspectRatios: ["3:2"], batchSize: 2 },
+    ],
+  );
+  assert.deepEqual(
+    createdRuns.map((run) => asSnapshot(run).runIndex),
+    [5, 6],
+  );
+});
+
 test("project section serialization prefers resolver output over stale section fields", () => {
   const resolved = resolvedConfig();
   const serialized = serializeProjectSection(
@@ -247,6 +304,7 @@ test("project section serialization treats resolver nulls as authoritative", () 
     },
     parameters: {
       aspectRatio: null,
+      aspectRatios: null,
       shortSidePx: null,
       batchSize: null,
       seedPolicy: null,
@@ -311,6 +369,7 @@ test("resolved config snapshots survive worker prompt draft normalization", () =
 
   assert.deepEqual(promptDraft.prompt, resolved.prompt);
   assert.equal(promptDraft.parameters.batchSize, 13);
+  assert.deepEqual(promptDraft.parameters.aspectRatios, ["16:9"]);
   assert.deepEqual(promptDraft.loraConfig, resolved.loraConfig);
   assert.deepEqual(promptDraft.ksampler1, resolved.ksampler1);
   assert.deepEqual(promptDraft.ksampler2, resolved.ksampler2);

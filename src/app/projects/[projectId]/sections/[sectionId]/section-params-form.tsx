@@ -26,10 +26,11 @@ const AUTO_SAVE_DELAY = 600;
 type SectionParamsFormProps = {
   projectId: string;
   sectionId: string;
-  initialParams: {
-    batchSize: number | null;
-    aspectRatio: string | null;
-    shortSidePx: number | null;
+    initialParams: {
+      batchSize: number | null;
+      aspectRatio: string | null;
+      aspectRatios: string[] | null;
+      shortSidePx: number | null;
     seedPolicy1: string | null;
     seedPolicy2: string | null;
     ksampler1: unknown;
@@ -132,13 +133,15 @@ export function SectionParamsForm({ projectId, sectionId, initialParams }: Secti
         <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,auto)_minmax(10rem,15rem)] md:items-end md:justify-start">
           <div className="space-y-1.5">
             <div className="text-[11px] text-zinc-500">画幅比例</div>
-            <AspectRatioPicker
-              name="aspectRatio"
-              defaultValue={initialParams.aspectRatio}
-              defaultShortSidePx={initialParams.shortSidePx}
-              disabled={pending}
-              onChange={scheduleAutoSave}
-            />
+              <AspectRatioPicker
+                name="aspectRatio"
+                defaultValue={initialParams.aspectRatio}
+                defaultValues={initialParams.aspectRatios}
+                defaultShortSidePx={initialParams.shortSidePx}
+                disabled={pending}
+                multiple
+                onChange={scheduleAutoSave}
+              />
           </div>
 
           <div className="max-w-[15rem] space-y-1.5">

@@ -21,6 +21,7 @@ import { NeighborNavigation } from "@/components/neighbor-navigation";
 import { TemplatePromptBlockEditor, type TemplateBlockData } from "@/components/template-prompt-block-editor";
 import { generateLoraEntryId, type LoraEntry, DEFAULT_KSAMPLER1, DEFAULT_KSAMPLER2, type KSamplerParams } from "@/lib/lora-types";
 import { hrefWithFolderQuery } from "@/lib/folder-navigation";
+import { normalizeAspectRatioList } from "@/lib/aspect-ratio-utils";
 import type { ProjectTemplateSectionData } from "@/lib/server-data";
 import type { PresetLibraryV2 } from "@/components/prompt-block-editor";
 
@@ -107,7 +108,10 @@ export function TemplateSectionDetailClient({
   // For template sections, null means "not set" (will not override on import)
   const [name, setName] = useState(initialSection.name ?? "");
   const [notes, setNotes] = useState(initialSection.notes ?? "");
-  const [aspectRatio, setAspectRatio] = useState<string | null>(initialSection.aspectRatio ?? null);
+  const [aspectRatios, setAspectRatios] = useState<string[] | null>(() => {
+    const values = normalizeAspectRatioList(initialSection.aspectRatios, initialSection.aspectRatio);
+    return values.length > 0 ? values : null;
+  });
   const [shortSidePx, setShortSidePx] = useState<number | null>(initialSection.shortSidePx ?? null);
   const [batchSize, setBatchSize] = useState<string | null>(initialSection.batchSize?.toString() ?? null);
   const [upscaleFactor, setUpscaleFactor] = useState<string | null>(initialSection.upscaleFactor?.toString() ?? null);
@@ -129,6 +133,7 @@ export function TemplateSectionDetailClient({
   const [showImport, setShowImport] = useState(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveRef = useRef<() => void>(() => {});
+  const aspectRatio = aspectRatios?.[0] ?? null;
 
   const categoryMap = useMemo(() => {
     const map = new Map<string, CategoryConfig>();
@@ -283,7 +288,8 @@ export function TemplateSectionDetailClient({
       sortOrder: sectionIndex,
       name: name.trim() || null,
       notes: notes.trim() || null,
-      aspectRatio, // null means not set
+      aspectRatio,
+      aspectRatios,
       shortSidePx,
       batchSize: batchSize ? parseInt(batchSize, 10) : null,
       seedPolicy1: ks1?.seedPolicy ?? null,
@@ -298,6 +304,7 @@ export function TemplateSectionDetailClient({
     };
   }, [
     aspectRatio,
+    aspectRatios,
     batchSize,
     initialSection.extraParams,
     initialSection.folderId,
@@ -777,7 +784,7 @@ export function TemplateSectionDetailClient({
               {aspectRatio !== null && (
                 <button
                   type="button"
-                  onClick={() => { setAspectRatio(null); setShortSidePx(null); scheduleSaveAfterState(); }}
+                  onClick={() => { setAspectRatios(null); setShortSidePx(null); scheduleSaveAfterState(); }}
                   className="text-[10px] text-zinc-500 hover:text-zinc-300"
                 >
                   清除
@@ -787,7 +794,7 @@ export function TemplateSectionDetailClient({
             {aspectRatio === null ? (
               <button
                 type="button"
-                onClick={() => { setAspectRatio("2:3"); setShortSidePx(512); scheduleSaveAfterState(); }}
+                onClick={() => { setAspectRatios(["2:3"]); setShortSidePx(512); scheduleSaveAfterState(); }}
                 className="w-full rounded-xl border border-dashed border-white/10 bg-white/[0.02] px-2.5 py-2 text-xs text-zinc-500 transition hover:bg-white/[0.04] hover:text-zinc-300"
               >
                 点击设置
@@ -796,11 +803,13 @@ export function TemplateSectionDetailClient({
               <AspectRatioPicker
                 name="aspectRatio"
                 defaultValue={aspectRatio}
+                defaultValues={aspectRatios}
                 defaultShortSidePx={shortSidePx}
                 disabled={isPending}
+                multiple
                 onChange={saveOnBlur}
-                onValueChange={(ratio, px) => {
-                  setAspectRatio(ratio || "2:3");
+                onValueChange={(ratio, px, ratios) => {
+                  setAspectRatios(ratios.length > 0 ? ratios : (ratio ? [ratio] : null));
                   setShortSidePx(px);
                   scheduleSaveAfterState();
                 }}

@@ -226,9 +226,10 @@ export function TemplateFormClient({
       folderId,
       sortOrder: index,
       name: null,
-      notes: null,
-      aspectRatio: "2:3",
-      shortSidePx: 512,
+        notes: null,
+        aspectRatio: "2:3",
+        aspectRatios: ["2:3"],
+        shortSidePx: 512,
       batchSize: 2,
       seedPolicy1: "random",
       seedPolicy2: "random",
@@ -648,9 +649,15 @@ function SortableSectionCard({
     opacity: isDragging ? 0.5 : 1,
   };
 
-  const aspectRatio = section.aspectRatio || "2:3";
+  const aspectRatios = section.aspectRatios && section.aspectRatios.length > 0
+    ? section.aspectRatios
+    : section.aspectRatio ? [section.aspectRatio] : ["2:3"];
+  const aspectRatio = aspectRatios[0] ?? "2:3";
   const res = resolveResolution(aspectRatio, section.shortSidePx ?? 512);
   const resDisplay = `${res.width}x${res.height}`;
+  const aspectRatioDisplay = aspectRatios.length > 1
+    ? `${aspectRatio} +${aspectRatios.length - 1}`
+    : aspectRatio;
 
   const { loraConfig: resolvedLoraConfig, promptBlocks } = section;
   const loraConfig = (resolvedLoraConfig as {
@@ -727,7 +734,7 @@ function SortableSectionCard({
 
       {/* Summary metadata */}
       <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-zinc-400">
-        <span>{aspectRatio}</span>
+        <span>{aspectRatioDisplay}</span>
         <span>{resDisplay}</span>
         <span>batch {section.batchSize ?? "—"}</span>
         <span>{section.upscaleFactor ?? 2}x</span>

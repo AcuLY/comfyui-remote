@@ -1432,9 +1432,10 @@ function legacyResolvedSectionConfig(
         label: block.label,
       })),
     loraConfig: legacyLoraConfigToResolved(legacyLoras),
-    parameters: {
-      aspectRatio: section.aspectRatio ?? null,
-      shortSidePx: section.shortSidePx ?? null,
+      parameters: {
+        aspectRatio: section.aspectRatio ?? null,
+        aspectRatios: section.aspectRatio ? [section.aspectRatio] : null,
+        shortSidePx: section.shortSidePx ?? null,
       batchSize: section.batchSize ?? null,
       seedPolicy: section.seedPolicy1 ?? null,
       seedPolicy1: section.seedPolicy1 ?? null,

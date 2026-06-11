@@ -1,6 +1,7 @@
 import { Prisma } from "@/generated/prisma";
 import { JobStatus, ReviewStatus } from "@/lib/db-enums";
 import { db } from "@/lib/db";
+import { normalizeAspectRatioList } from "@/lib/aspect-ratio-utils";
 import { resolveSectionConfig } from "@/server/prompt-config/section-resolver";
 import type { ResolvedSectionConfig } from "@/server/prompt-config/types";
 
@@ -23,6 +24,7 @@ export type ProjectSectionUpdateInput = {
   positivePrompt?: string | null;
   negativePrompt?: string | null;
   aspectRatio?: string | null;
+  aspectRatios?: string[] | null;
   shortSidePx?: number | null;
   batchSize?: number | null;
   // v0.3: dual seedPolicy
@@ -77,6 +79,7 @@ export type ProjectSectionRecord = {
   positivePrompt?: string | null;
   negativePrompt?: string | null;
   aspectRatio: string | null;
+  aspectRatios?: Prisma.JsonValue | null;
   shortSidePx: number | null;
   batchSize: number | null;
   seedPolicy1: string | null;
@@ -184,6 +187,12 @@ export function serializeProjectSection(
     const value = resolvedParameters?.[key];
     return typeof value === "number" && Number.isFinite(value) ? value : null;
   };
+  const resolvedStringArray = (key: string) => {
+    const value = resolvedParameters?.[key];
+    return Array.isArray(value)
+      ? value.filter((item): item is string => typeof item === "string")
+      : null;
+  };
 
   return {
     id: section.id,
@@ -193,6 +202,7 @@ export function serializeProjectSection(
     name: section.name ?? null,
     slug: null,
     aspectRatio: resolvedString("aspectRatio"),
+    aspectRatios: resolvedStringArray("aspectRatios"),
     batchSize: resolvedNumber("batchSize"),
     seedPolicy1: resolvedString("seedPolicy1"),
     seedPolicy2: resolvedString("seedPolicy2"),
@@ -262,7 +272,7 @@ export async function getLatestRunsById(latestRunIds: string[]) {
   );
 }
 
-export type MutableInputJsonObject = Record<string, Prisma.InputJsonValue>;
+export type MutableInputJsonObject = Record<string, Prisma.InputJsonValue | null>;
 
 export function toInputJsonObject(value: Prisma.JsonValue | null): MutableInputJsonObject {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -347,10 +357,20 @@ export function buildResolvedConfigSnapshot(
   section: Pick<ProjectSectionRecord, "id" | "name" | "sortOrder">,
   resolvedConfig: ResolvedSectionConfig,
   overrideBatchSize?: number,
+  overrideAspectRatio?: string | null,
 ): Prisma.InputJsonObject {
   const parameters = cloneInputJsonObject(resolvedConfig.parameters) ?? {};
   if (overrideBatchSize !== undefined) {
     parameters.batchSize = overrideBatchSize;
+  }
+  if (overrideAspectRatio !== undefined) {
+    if (overrideAspectRatio === null) {
+      parameters.aspectRatio = null;
+      parameters.aspectRatios = null;
+    } else {
+      parameters.aspectRatio = overrideAspectRatio;
+      parameters.aspectRatios = [overrideAspectRatio];
+    }
   }
   const resolvedCheckpointName = readSnapshotCheckpointName(parameters);
   const fallbackSectionName = `section_${section.sortOrder + 1}`;
@@ -441,6 +461,18 @@ export function cloneJsonValueForCreate(
   }
 
   return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
+}
+
+function readAspectRatiosForRuns(resolvedConfig: ResolvedSectionConfig) {
+  const aspectRatio = typeof resolvedConfig.parameters.aspectRatio === "string"
+    ? resolvedConfig.parameters.aspectRatio
+    : null;
+  const aspectRatios = normalizeAspectRatioList(
+    resolvedConfig.parameters.aspectRatios,
+    aspectRatio,
+  );
+
+  return aspectRatios.length > 0 ? aspectRatios : [null];
 }
 
 export function buildCopyTitle(title: string, copyNumber: number) {
@@ -573,23 +605,34 @@ export async function createQueuedRunsForPositions(
       throw new Error("JOB_POSITION_CONFIG_NOT_FOUND");
     }
 
-    const createdRun = await tx.run.create({
-      data: {
-        projectId: project.id,
-        projectSectionId: section.id,
-        runIndex: (latestRunIndexBySectionId.get(section.id) ?? 0) + 1,
-        status: "queued",
-        resolvedConfigSnapshot: buildResolvedConfigSnapshot(project, section, resolvedConfig, overrideBatchSize),
-      },
-      select: {
-        id: true,
-        runIndex: true,
-        status: true,
-        createdAt: true,
-      },
-    });
+    const aspectRatios = readAspectRatiosForRuns(resolvedConfig);
+    const latestRunIndex = latestRunIndexBySectionId.get(section.id) ?? 0;
 
-    queuedRuns.push(serializeEnqueuedRun(section, createdRun));
+    for (const [index, aspectRatio] of aspectRatios.entries()) {
+      const createdRun = await tx.run.create({
+        data: {
+          projectId: project.id,
+          projectSectionId: section.id,
+          runIndex: latestRunIndex + index + 1,
+          status: "queued",
+          resolvedConfigSnapshot: buildResolvedConfigSnapshot(
+            project,
+            section,
+            resolvedConfig,
+            overrideBatchSize,
+            aspectRatio,
+          ),
+        },
+        select: {
+          id: true,
+          runIndex: true,
+          status: true,
+          createdAt: true,
+        },
+      });
+
+      queuedRuns.push(serializeEnqueuedRun(section, createdRun));
+    }
   }
 
   return queuedRuns;

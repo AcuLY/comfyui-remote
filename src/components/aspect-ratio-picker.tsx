@@ -3,6 +3,7 @@
 import { useState } from "react";
 import {
   ASPECT_RATIOS,
+  normalizeAspectRatioList,
   resolveResolution,
   getDefaultShortSidePx,
 } from "@/lib/aspect-ratio-utils";
@@ -64,25 +65,32 @@ export function AspectRatioPicker({
   name,
   shortSidePxName = "shortSidePx",
   defaultValue,
+  defaultValues,
   defaultShortSidePx,
   disabled,
+  multiple = false,
   onChange,
   onValueChange,
 }: {
   name: string;
   shortSidePxName?: string;
   defaultValue: string | null;
+  defaultValues?: string[] | null;
   defaultShortSidePx?: number | null;
   disabled?: boolean;
+  multiple?: boolean;
   /** Called when aspect ratio or short-side px changes (for auto-save) */
   onChange?: () => void;
   /** Called with the new values when they change (for controlled usage outside forms) */
-  onValueChange?: (aspectRatio: string, shortSidePx: number | null) => void;
+  onValueChange?: (aspectRatio: string, shortSidePx: number | null, aspectRatios: string[]) => void;
 }) {
-  const [selected, setSelected] = useState(defaultValue ?? "");
+  const [selectedValues, setSelectedValues] = useState<string[]>(() =>
+    normalizeAspectRatioList(defaultValues, defaultValue),
+  );
   const [shortSidePx, setShortSidePx] = useState<string>(
     defaultShortSidePx ? String(defaultShortSidePx) : "",
   );
+  const selected = selectedValues[0] ?? "";
 
   const grouped = ORIENTATION_ORDER.map((orientation) => ({
     key: orientation,
@@ -100,6 +108,9 @@ export function AspectRatioPicker({
   return (
     <div className="space-y-2">
       <input type="hidden" name={name} value={selected} />
+      {multiple && (
+        <input type="hidden" name={`${name}s`} value={JSON.stringify(selectedValues)} />
+      )}
       <input
         type="hidden"
         name={shortSidePxName}
@@ -114,19 +125,26 @@ export function AspectRatioPicker({
             </div>
             <div className="flex gap-1">
               {group.items.map((opt) => {
-                const isSelected = selected === opt.value;
+                const isSelected = selectedValues.includes(opt.value);
                 const preview = getPreviewSize(opt);
                 return (
                   <button
                     key={opt.value}
                     type="button"
+                    aria-pressed={isSelected}
                     disabled={disabled}
                     onClick={() => {
-                      const next = isSelected ? "" : opt.value;
-                      setSelected(next);
+                      const nextValues = multiple
+                        ? isSelected
+                          ? selectedValues.filter((value) => value !== opt.value)
+                          : [...selectedValues, opt.value]
+                        : isSelected
+                          ? []
+                          : [opt.value];
+                      setSelectedValues(nextValues);
                       onChange?.();
                       const px = shortSidePx ? parseInt(shortSidePx, 10) : null;
-                      onValueChange?.(next, px && px > 0 ? px : null);
+                      onValueChange?.(nextValues[0] ?? "", px && px > 0 ? px : null, nextValues);
                     }}
                     title={`${opt.label} (${opt.width}×${opt.height})`}
                     className={`flex flex-col items-center gap-1 rounded-lg px-2 py-1.5 text-[10px] transition ${
@@ -174,7 +192,7 @@ export function AspectRatioPicker({
           onBlur={(ev) => {
             onChange?.();
             const px = ev.target.value ? parseInt(ev.target.value, 10) : null;
-            onValueChange?.(selected, px && px > 0 ? px : null);
+            onValueChange?.(selected, px && px > 0 ? px : null, selectedValues);
           }}
           placeholder={builtinShort ? String(builtinShort) : "1024"}
           className="input-number w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30 disabled:opacity-70"
@@ -191,7 +209,7 @@ export function AspectRatioPicker({
                   setShortSidePx(String(value));
                   setTimeout(() => {
                     onChange?.();
-                    onValueChange?.(selected, value);
+                    onValueChange?.(selected, value, selectedValues);
                   }, 0);
                 }}
                 className={`rounded-md border px-1.5 py-0.5 text-[10px] transition disabled:cursor-not-allowed disabled:opacity-50 ${

@@ -240,6 +240,7 @@ model ProjectTemplateSection {
   name              String?
   notes             String?
   aspectRatio       String?
+  aspectRatios      Json?
   shortSidePx       Int?
   batchSize         Int?
   seedPolicy1       String?
@@ -415,6 +416,7 @@ model ProjectSection {
   sortOrder             Int                   @default(0)
   enabled               Boolean               @default(true)
   aspectRatio           String?
+  aspectRatios          Json?
   shortSidePx           Int?
   batchSize             Int?
   seedPolicy1           String?

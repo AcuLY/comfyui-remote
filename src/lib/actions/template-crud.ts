@@ -91,10 +91,13 @@ function safeRevalidatePath(path: string) {
 function buildTemplateSectionUpdateData(section: ProjectTemplateSectionData) {
   return {
     folderId: section.folderId,
-    name: section.name,
-    notes: section.notes,
-    aspectRatio: section.aspectRatio,
-    shortSidePx: section.shortSidePx,
+      name: section.name,
+      notes: section.notes,
+      aspectRatio: section.aspectRatio,
+      aspectRatios: section.aspectRatios === null || section.aspectRatios === undefined
+        ? Prisma.DbNull
+        : JSON.parse(JSON.stringify(section.aspectRatios)) as Prisma.InputJsonValue,
+      shortSidePx: section.shortSidePx,
     batchSize: section.batchSize,
     seedPolicy1: section.seedPolicy1,
     seedPolicy2: section.seedPolicy2,
@@ -340,9 +343,10 @@ export async function copyProjectTemplateSection(sectionId: string): Promise<str
         sortOrder: insertSortOrder,
         folderId: section.folderId,
         name: section.name ? `${section.name} (副本)` : null,
-        notes: section.notes,
-        aspectRatio: section.aspectRatio,
-        shortSidePx: section.shortSidePx,
+          notes: section.notes,
+          aspectRatio: section.aspectRatio,
+          aspectRatios: section.aspectRatios ?? undefined,
+          shortSidePx: section.shortSidePx,
         batchSize: section.batchSize,
         seedPolicy1: section.seedPolicy1,
         seedPolicy2: section.seedPolicy2,

@@ -17,6 +17,7 @@ export type CreateSectionFromTemplateInput = {
   projectId: string;
   name?: string;
   aspectRatio?: string;
+  aspectRatios?: string[];
   shortSidePx?: number;
   extraImports: Array<
     | {
@@ -120,6 +121,7 @@ export async function addSection(projectId: string, name?: string, folderId?: st
       enabled: true,
       name: name || null,
       aspectRatio: defaultAspectRatio,
+      aspectRatios: [defaultAspectRatio],
       shortSidePx: defaultShortSidePx,
       batchSize: defaultBatchSize,
       upscaleFactor: defaultUpscaleFactor,
@@ -185,7 +187,7 @@ export async function addSection(projectId: string, name?: string, folderId?: st
 export async function createSectionFromTemplate(
   input: CreateSectionFromTemplateInput,
 ): Promise<string> {
-  const { projectId, name, aspectRatio, shortSidePx, extraImports, bindingVariantOverrides } = input;
+  const { projectId, name, aspectRatio, aspectRatios, shortSidePx, extraImports, bindingVariantOverrides } = input;
 
   // 1. 创建小节（自动导入项目级绑定）
   const sectionId = await addSection(projectId, name);
@@ -216,11 +218,13 @@ export async function createSectionFromTemplate(
   }
 
   // 4. 更新画幅配置
-  if (aspectRatio || shortSidePx) {
+  if (aspectRatio || aspectRatios || shortSidePx) {
     await prisma.projectSection.update({
       where: { id: sectionId },
       data: {
-        ...(aspectRatio ? { aspectRatio } : {}),
+        ...(aspectRatios && aspectRatios.length > 0
+          ? { aspectRatio: aspectRatios[0], aspectRatios }
+          : aspectRatio ? { aspectRatio, aspectRatios: [aspectRatio] } : {}),
         ...(shortSidePx ? { shortSidePx } : {}),
       },
     });
@@ -316,10 +320,11 @@ export async function copySection(sectionId: string): Promise<string | null> {
         projectId: section.projectId,
         folderId: section.folderId,
         sortOrder: insertSortOrder,
-        enabled: section.enabled,
-        name: section.name ? `${section.name} (副本)` : null,
-        aspectRatio: section.aspectRatio,
-        shortSidePx: section.shortSidePx,
+          enabled: section.enabled,
+          name: section.name ? `${section.name} (副本)` : null,
+          aspectRatio: section.aspectRatio,
+          aspectRatios: section.aspectRatios ?? undefined,
+          shortSidePx: section.shortSidePx,
         batchSize: section.batchSize,
         checkpointName: section.checkpointName,
         // v0.3: dual seedPolicy

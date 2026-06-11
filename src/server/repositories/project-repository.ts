@@ -473,6 +473,12 @@ export async function updateProjectSection(
     data.aspectRatio = input.aspectRatio;
   }
 
+  if (input.aspectRatios !== undefined) {
+    data.aspectRatios = input.aspectRatios === null
+      ? Prisma.DbNull
+      : JSON.parse(JSON.stringify(input.aspectRatios));
+  }
+
   if (input.shortSidePx !== undefined) {
     data.shortSidePx = input.shortSidePx;
   }
@@ -521,9 +527,10 @@ export async function copyProject(projectId: string) {
           select: {
             id: true,
             sortOrder: true,
-            enabled: true,
-            aspectRatio: true,
-            shortSidePx: true,
+              enabled: true,
+              aspectRatio: true,
+              aspectRatios: true,
+              shortSidePx: true,
             batchSize: true,
             // v0.3: dual seedPolicy
             seedPolicy1: true,
@@ -597,8 +604,9 @@ export async function copyProject(projectId: string) {
           create: project.sections.map((section) => ({
             sortOrder: section.sortOrder,
             enabled: section.enabled,
-            aspectRatio: section.aspectRatio,
-            shortSidePx: section.shortSidePx,
+              aspectRatio: section.aspectRatio,
+              aspectRatios: cloneJsonValueForCreate(section.aspectRatios),
+              shortSidePx: section.shortSidePx,
             batchSize: section.batchSize,
             seedPolicy1: section.seedPolicy1,
             seedPolicy2: section.seedPolicy2,

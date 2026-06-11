@@ -84,3 +84,34 @@ export function getDefaultShortSidePx(aspectRatio: string | null | undefined): n
   const entry = ASPECT_RATIOS[aspectRatio ?? DEFAULT_RATIO] ?? ASPECT_RATIOS[DEFAULT_RATIO];
   return Math.min(entry.width, entry.height);
 }
+
+export function normalizeAspectRatioList(
+  value: unknown,
+  fallback?: string | null,
+): string[] {
+  const values = Array.isArray(value) ? value : [];
+  const normalized: string[] = [];
+  const seen = new Set<string>();
+
+  for (const item of values) {
+    if (typeof item !== "string") continue;
+    const ratio = item.trim();
+    if (!ratio || seen.has(ratio)) continue;
+    seen.add(ratio);
+    normalized.push(ratio);
+  }
+
+  if (normalized.length > 0) {
+    return normalized;
+  }
+
+  const fallbackRatio = typeof fallback === "string" ? fallback.trim() : "";
+  return fallbackRatio ? [fallbackRatio] : [];
+}
+
+export function primaryAspectRatio(
+  value: unknown,
+  fallback?: string | null,
+): string | null {
+  return normalizeAspectRatioList(value, fallback)[0] ?? null;
+}

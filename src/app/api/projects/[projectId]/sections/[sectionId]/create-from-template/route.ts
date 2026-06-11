@@ -6,7 +6,7 @@ type RouteContext = {
 };
 
 export async function POST(request: Request, context: RouteContext) {
-  const { projectId, sectionId } = await context.params;
+  const { projectId } = await context.params;
 
   let body: Record<string, unknown> | null = null;
   try {
@@ -20,6 +20,9 @@ export async function POST(request: Request, context: RouteContext) {
       projectId,
       name: body?.name as string | undefined,
       aspectRatio: body?.aspectRatio as string | undefined,
+      aspectRatios: Array.isArray(body?.aspectRatios)
+        ? body.aspectRatios.filter((item): item is string => typeof item === "string")
+        : undefined,
       shortSidePx: body?.shortSidePx as number | undefined,
       extraImports: (body?.extraImports ?? []) as Array<
         | {

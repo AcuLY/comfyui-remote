@@ -259,6 +259,7 @@ export function extractExecutionMeta(
     meta.positivePrompt = promptDraft.prompt.positive || null;
     meta.negativePrompt = promptDraft.prompt.negative || null;
     meta.aspectRatio = promptDraft.parameters.aspectRatio ?? null;
+    meta.aspectRatios = promptDraft.parameters.aspectRatios ?? null;
     meta.shortSidePx = promptDraft.parameters.shortSidePx ?? null;
     meta.batchSize = promptDraft.parameters.batchSize ?? null;
     meta.upscaleFactor = promptDraft.parameters.upscaleFactor ?? null;

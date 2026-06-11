@@ -11,6 +11,7 @@ import {
   loadReachablePresetVariantGraph,
   resolvePresetVariantContentFromRows,
 } from "./preset-resolver";
+import { normalizeAspectRatioList } from "@/lib/aspect-ratio-utils";
 import {
   resolvePresetGroupContents,
   type PresetGroupResolverDbClient,
@@ -75,12 +76,15 @@ function readOverrideRecord(overrides: Record<string, unknown>, key: string) {
 
 function buildSectionParameters(section: ResolveSectionConfigInput["section"]) {
   const overrides = readProjectOverrides(section);
+  const fallbackAspectRatio = section.aspectRatio ??
+    readOverrideString(overrides, "defaultAspectRatio") ??
+    readOverrideString(overrides, "aspectRatio") ??
+    null;
+  const aspectRatios = normalizeAspectRatioList(section.aspectRatios, fallbackAspectRatio);
 
   return {
-    aspectRatio: section.aspectRatio ??
-      readOverrideString(overrides, "defaultAspectRatio") ??
-      readOverrideString(overrides, "aspectRatio") ??
-      null,
+    aspectRatio: aspectRatios[0] ?? null,
+    aspectRatios: aspectRatios.length > 0 ? aspectRatios : null,
     shortSidePx: section.shortSidePx ??
       readOverrideNumber(overrides, "defaultShortSidePx") ??
       readOverrideNumber(overrides, "shortSidePx") ??
@@ -723,6 +727,7 @@ export async function resolveSectionConfig(
     select: {
       id: true,
       aspectRatio: true,
+      aspectRatios: true,
       shortSidePx: true,
       batchSize: true,
       seedPolicy1: true,
