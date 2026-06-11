@@ -27,10 +27,12 @@ import {
   Play,
 } from "lucide-react";
 import { moveProjectSectionsToFolder, reorderSections, deleteSections, runSection } from "@/lib/actions";
+import { normalizeBatchRunBatchSize } from "@/lib/section-batch-run";
 import { buildGroupedDragOrder, mergeVisibleOrderIntoAllIds } from "@/lib/section-list-ordering";
 import { toast } from "sonner";
 import type { FolderItem } from "@/lib/server-data";
 import { HardNavigationLink } from "@/components/hard-navigation-link";
+import { BatchSizeQuickFill } from "@/components/batch-size-quick-fill";
 import { BatchActionBar, MoveToFolderButton } from "@/app/assets/presets/folder-components";
 import { SectionRunButton } from "./project-detail-actions";
 import { CopySectionButton, DeleteSectionButton } from "./section-actions";
@@ -84,7 +86,10 @@ export function SectionCards({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
   const [isRunningSelected, setIsRunningSelected] = useState(false);
+  const [batchRunBatchSize, setBatchRunBatchSize] = useState("");
   const dndId = useId();
+  const batchRunBatchSizeInputId = `${dndId}-batch-run-batch-size`;
+  const batchRunBatchSizeState = normalizeBatchRunBatchSize(batchRunBatchSize);
 
   useEffect(() => {
     setSections(initialSections);
@@ -143,16 +148,22 @@ export function SectionCards({
 
   function handleBatchRun() {
     if (selectedIds.size === 0) return;
+    if (!batchRunBatchSizeState.isValid) return;
     const idsToRun = sections.filter((section) => selectedIds.has(section.id)).map((section) => section.id);
+    const overrideBatchSize = batchRunBatchSizeState.overrideBatchSize;
     setIsRunningSelected(true);
     startTransition(async () => {
       try {
         for (const sectionId of idsToRun) {
-          await runSection(sectionId);
+          await runSection(sectionId, overrideBatchSize);
         }
         setSelectedIds(new Set());
         router.refresh();
-        toast.success(`已提交 ${idsToRun.length} 个小节运行`);
+        toast.success(
+          overrideBatchSize
+            ? `已提交 ${idsToRun.length} 个小节运行 (batch ${overrideBatchSize})`
+            : `已提交 ${idsToRun.length} 个小节运行`,
+        );
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "批量运行失败");
       } finally {
@@ -237,9 +248,38 @@ export function SectionCards({
             onSelectAll={selectAll}
             onClearSelection={deselectAll}
           />
+          <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1.5">
+            <label htmlFor={batchRunBatchSizeInputId} className="text-[10px] uppercase text-zinc-500">
+              Batch
+            </label>
+            <input
+              id={batchRunBatchSizeInputId}
+              type="number"
+              min={1}
+              inputMode="numeric"
+              value={batchRunBatchSize}
+              onChange={(event) => setBatchRunBatchSize(event.target.value)}
+              disabled={isRunningSelected || isDeleting}
+              placeholder="跟随"
+              aria-invalid={!batchRunBatchSizeState.isValid}
+              className={`input-number w-16 rounded-md border bg-white/[0.04] px-2 py-1 text-xs text-zinc-200 outline-none transition disabled:opacity-50 ${
+                batchRunBatchSizeState.isValid
+                  ? "border-white/10 focus:border-sky-500/30"
+                  : "border-rose-500/50 focus:border-rose-400/60"
+              }`}
+            />
+            <BatchSizeQuickFill
+              onSelect={(value) => setBatchRunBatchSize(String(value))}
+              currentValue={batchRunBatchSizeState.overrideBatchSize}
+              disabled={isRunningSelected || isDeleting}
+              showClear={batchRunBatchSize !== ""}
+              onClear={() => setBatchRunBatchSize("")}
+              size="sm"
+            />
+          </div>
           <button
             type="button"
-            disabled={isRunningSelected || isDeleting}
+            disabled={isRunningSelected || isDeleting || !batchRunBatchSizeState.isValid}
             onClick={handleBatchRun}
             className="flex items-center gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-300 transition hover:bg-emerald-500/20 disabled:opacity-50"
           >
