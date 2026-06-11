@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#09090b" />
     <title>LoRA 训练模式 - 模板编辑原型</title>
-    <link rel="stylesheet" href="./assets/lora-training-shared.css?v=20260611-lora-rewrite-2" />
+    <link rel="stylesheet" href="./assets/lora-training-shared.css?v=20260611-lora-template-edit-1" />
   </head>
   <body>
     <main class="app-shell">
@@ -19,17 +19,17 @@
         </header>
         <section class="layout wide-left">
           <div class="stack">
-            <section class="panel"><div class="panel-header"><h2>基础</h2></div><div class="panel-body form-grid"><div class="field"><label>name</label><input class="input" value="角色 LoRA 基础模板" /></div><div class="field"><label>slug</label><input class="input" value="character-lora-base" /></div><div class="field full"><label>description</label><textarea class="textarea">Default project seed for character LoRA training.</textarea></div></div></section>
-            <section class="panel"><div class="panel-header"><h2>Guidance</h2></div><div class="panel-body form-grid"><div class="field full"><label>imagePromptFormat</label><textarea class="textarea">Character: {{characterDetailPrompt}}
+            <section class="panel"><div class="panel-header"><h2>基础</h2></div><div class="panel-body form-grid"><div class="field"><label>名称</label><input class="input" value="角色 LoRA 基础模板" /></div><div class="field"><label>Slug</label><input class="input" value="character-lora-base" /></div><div class="field full"><label>描述</label><textarea class="textarea">Default project seed for character LoRA training.</textarea></div></div></section>
+            <section class="panel"><div class="panel-header"><h2>生成规则</h2></div><div class="panel-body form-grid"><div class="field full"><label>图片 Prompt 格式</label><textarea class="textarea">Character: {{characterDetailPrompt}}
 Scene: {{sceneDescriptionText}}
-Output: single character, full clean portrait, opaque background.</textarea></div><div class="field full"><label>trainingCaptionFormat</label><textarea class="textarea">{{loraUsagePrompt}}, {{visualIdentity}}, {{scene}}, {{camera}}, {{lighting}}</textarea></div></div></section>
+Output: single character, full clean portrait, opaque background.</textarea></div><div class="field full"><label>训练 Caption 格式</label><textarea class="textarea">{{loraUsagePrompt}}, {{visualIdentity}}, {{scene}}, {{camera}}, {{lighting}}</textarea></div></div></section>
           </div>
           <aside class="stack">
             <section class="panel">
-              <div class="panel-header"><h2>小节</h2><button class="button" type="button"><i data-lucide="plus" aria-hidden="true"></i>添加</button></div>
+              <div class="panel-header"><h2>小节</h2><button class="button" type="button"><i data-lucide="plus" aria-hidden="true"></i>添加小节</button></div>
               <div class="panel-body entity-list">
-                <a class="entity-row" href="./manager-lora-training-template-section-prototype.html"><div class="row-title"><strong>stage portrait</strong><span>启用 · 2 blocks</span></div><span class="status-note green">启用</span></a>
-                <a class="entity-row" href="./manager-lora-training-template-section-prototype.html?section=street"><div class="row-title"><strong>night street</strong><span>启用 · 3 blocks</span></div><span class="status-note green">启用</span></a>
+                <a class="entity-row" href="./manager-lora-training-template-section-prototype.html"><div class="row-title"><strong>舞台肖像</strong><span>启用 · 2 个场景块</span></div><span class="status-note green">启用</span></a>
+                <a class="entity-row" href="./manager-lora-training-template-section-prototype.html?section=street"><div class="row-title"><strong>街角夜景</strong><span>启用 · 3 个场景块</span></div><span class="status-note green">启用</span></a>
               </div>
             </section>
             <section class="panel"><div class="panel-header"><h2>默认训练参数</h2></div><div class="panel-body compact-kv"><div><span>networkDim</span><span>16</span></div><div><span>alpha</span><span>8</span></div><div><span>steps</span><span>2400</span></div><div><span>resolution</span><span>1024</span></div></div></section>
