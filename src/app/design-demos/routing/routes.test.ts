@@ -195,3 +195,38 @@ test("LoRA training run route headers use the matched run context", () => {
   assert.deepEqual(lunaGeneration.actions?.map((action) => action.label), ["项目详情"]);
   assert.equal(lunaGeneration.actions?.[0]?.href, "/training/projects/luna-editorial");
 });
+
+test("LoRA training project route headers use the matched project context", () => {
+  const data = fallbackData(null);
+
+  const projectDetail = findHeaderSpecForRoute(data, "/training/projects/azure-idol");
+  assert.ok(projectDetail, "project detail should resolve a header spec");
+  assert.equal(projectDetail.title, "Azure Idol");
+  assert.deepEqual(projectDetail.actions?.map((action) => action.label), ["启动训练", "保存为模板"]);
+  assert.equal(projectDetail.actions?.[0]?.href, "/training/projects/azure-idol/dataset");
+  assert.match(projectDetail.actions?.[1]?.href ?? "", /\/training\/templates\/new\?/);
+  assert.match(projectDetail.actions?.[1]?.href ?? "", /projectId=azure-idol/);
+  assert.match(projectDetail.actions?.[1]?.href ?? "", /sourceProject=Azure\+Idol/);
+
+  const sectionDetail = findHeaderSpecForRoute(data, "/training/projects/azure-idol/sections/stage-light");
+  assert.ok(sectionDetail, "section detail should resolve a header spec");
+  assert.equal(sectionDetail.title, "Azure Idol / 舞台灯光");
+  assert.equal(sectionDetail.back?.href, "/training/projects/azure-idol/sections");
+  assert.deepEqual(sectionDetail.actions?.map((action) => action.label), ["生成样本"]);
+  assert.equal(sectionDetail.actions?.[0]?.href, "/training/projects/azure-idol/sections/stage-light/generation-tasks/new");
+
+  const generationTasks = findHeaderSpecForRoute(data, "/training/projects/azure-idol/generation-tasks");
+  assert.ok(generationTasks, "project generation tasks should resolve a header spec");
+  assert.equal(generationTasks.title, "Azure Idol / 生成任务");
+  assert.equal(generationTasks.actions?.[0]?.href, "/training/projects/azure-idol/sections/stage-light/generation-tasks/new");
+
+  const trainingRuns = findHeaderSpecForRoute(data, "/training/projects/azure-idol/training-runs");
+  assert.ok(trainingRuns, "project training runs should resolve a header spec");
+  assert.equal(trainingRuns.title, "Azure Idol / 训练任务");
+  assert.equal(trainingRuns.actions?.[0]?.href, "/training/projects/azure-idol/dataset");
+
+  const datasetRevision = findHeaderSpecForRoute(data, "/training/projects/azure-idol/dataset/revisions/v4-current");
+  assert.ok(datasetRevision, "dataset revision should resolve a header spec");
+  assert.equal(datasetRevision.title, "Azure Idol / 数据集 v4");
+  assert.equal(datasetRevision.back?.href, "/training/projects/azure-idol/dataset");
+});

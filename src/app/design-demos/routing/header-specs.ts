@@ -24,7 +24,13 @@ import {
 
 import type { DemoData, DemoSection } from "../data";
 import { buildLoraTrainingDemoData } from "../features/lora-training/fixtures";
-import type { LoraTrainingRun, LoraTrainingTaskKind } from "../features/lora-training/types";
+import type {
+  LoraTrainingDatasetRevision,
+  LoraTrainingProject,
+  LoraTrainingRun,
+  LoraTrainingSection,
+  LoraTrainingTaskKind,
+} from "../features/lora-training/types";
 import {
   findCategory,
   findGroup,
@@ -937,6 +943,116 @@ function findLoraTrainingRun(data: DemoData, kind: LoraTrainingTaskKind, runId: 
   return buildLoraTrainingDemoData(data).runs.find((run) => run.kind === kind && run.id === runId);
 }
 
+function findLoraTrainingProject(data: DemoData, projectId: string | undefined) {
+  if (!projectId) return undefined;
+  return buildLoraTrainingDemoData(data).projects.find((project) => project.id === projectId);
+}
+
+function findLoraTrainingSection(project: LoraTrainingProject, sectionId: string | undefined) {
+  if (!sectionId) return undefined;
+  return project.sections.find((sectionItem) => sectionItem.id === sectionId);
+}
+
+function findLoraTrainingDatasetRevision(project: LoraTrainingProject, revisionId: string | undefined) {
+  if (!revisionId) return undefined;
+  return project.datasetRevisions.find((revision) => revision.id === revisionId);
+}
+
+function trainingProjectBaseHref(project: LoraTrainingProject) {
+  return `/training/projects/${project.id}`;
+}
+
+function trainingProjectSaveAsTemplateHref(project: LoraTrainingProject) {
+  const params = new URLSearchParams({
+    projectId: project.id,
+    sections: String(project.sections.length),
+    sourceProject: project.title,
+  });
+  return `/training/templates/new?${params.toString()}`;
+}
+
+function trainingProjectFirstSection(project: LoraTrainingProject) {
+  return project.sections[0]?.id ?? "stage-light";
+}
+
+function projectHeaderBase(spec: HeaderSpec, project: LoraTrainingProject, title = project.title) {
+  return {
+    ...spec,
+    subtitle: project.profileSummary,
+    title,
+  };
+}
+
+function sectionDetailHeader(spec: HeaderSpec, project: LoraTrainingProject, sectionItem: LoraTrainingSection) {
+  const projectHref = trainingProjectBaseHref(project);
+  return {
+    ...projectHeaderBase(spec, project, `${project.title} / ${sectionItem.title}`),
+    actions: [headerAction("生成样本", Plus, "primary", `${projectHref}/sections/${sectionItem.id}/generation-tasks/new`)],
+    back: { href: `${projectHref}/sections`, label: "返回小节" },
+  };
+}
+
+function datasetRevisionHeader(spec: HeaderSpec, project: LoraTrainingProject, revision: LoraTrainingDatasetRevision) {
+  const projectHref = trainingProjectBaseHref(project);
+  return {
+    ...projectHeaderBase(spec, project, `${project.title} / 数据集 ${revision.version}`),
+    back: { href: `${projectHref}/dataset`, label: "返回数据集" },
+  };
+}
+
+function loraTrainingProjectHeader(data: DemoData, spec: HeaderSpec, matched: ReturnType<typeof matchRoute>) {
+  const project = findLoraTrainingProject(data, matched.params.trainingProjectId);
+  if (!project) return spec;
+  const projectHref = trainingProjectBaseHref(project);
+
+  if (matched.key === "training-project-detail") {
+    return {
+      ...projectHeaderBase(spec, project),
+      actions: [
+        headerAction("启动训练", Play, "primary", `${projectHref}/dataset`),
+        headerAction("保存为模板", Copy, "default", trainingProjectSaveAsTemplateHref(project)),
+      ],
+    };
+  }
+
+  if (matched.key === "training-project-section-detail") {
+    const sectionItem = findLoraTrainingSection(project, matched.params.sectionId);
+    return sectionItem ? sectionDetailHeader(spec, project, sectionItem) : projectHeaderBase(spec, project);
+  }
+
+  if (matched.key === "training-generation-compose") {
+    const sectionItem = findLoraTrainingSection(project, matched.params.sectionId);
+    if (!sectionItem) return projectHeaderBase(spec, project);
+    return {
+      ...projectHeaderBase(spec, project, `${sectionItem.title} / 新建生成任务`),
+      back: { href: `${projectHref}/sections/${sectionItem.id}`, label: "返回小节" },
+      subtitle: "显式选择引用，补充提示词和图片附件，预览最终输入后再运行。",
+    };
+  }
+
+  if (matched.key === "training-project-dataset-revision") {
+    const revision = findLoraTrainingDatasetRevision(project, matched.params.revisionId);
+    return revision ? datasetRevisionHeader(spec, project, revision) : projectHeaderBase(spec, project);
+  }
+
+  if (matched.key === "training-project-training-runs") {
+    return {
+      ...projectHeaderBase(spec, project, `${project.title} / 训练任务`),
+      actions: [headerAction("启动训练", Play, "primary", `${projectHref}/dataset`)],
+    };
+  }
+
+  if (matched.key === "training-project-generation-tasks") {
+    const sectionId = trainingProjectFirstSection(project);
+    return {
+      ...projectHeaderBase(spec, project, `${project.title} / 生成任务`),
+      actions: [headerAction("新建生成任务", Plus, "primary", `${projectHref}/sections/${sectionId}/generation-tasks/new`)],
+    };
+  }
+
+  return spec;
+}
+
 function loraTrainingRunDetailHeader(data: DemoData, spec: HeaderSpec, matched: ReturnType<typeof matchRoute>) {
   if (matched.key === "training-generation-run-detail") {
     const run = findLoraTrainingRun(data, "generation", matched.params.taskId);
@@ -971,6 +1087,19 @@ export function findHeaderSpecForRoute(data: DemoData, currentRoute: string) {
   const spec = specs.find((item) => item.key === matched.key) ?? specs.find((item) => item.route === currentRoute) ?? specs.find((item) => item.key === "not-found") ?? null;
   if (spec && (matched.key === "training-generation-run-detail" || matched.key === "training-training-run-detail")) {
     return loraTrainingRunDetailHeader(data, spec, matched);
+  }
+  if (
+    spec
+    && (
+      matched.key === "training-project-detail"
+      || matched.key === "training-project-section-detail"
+      || matched.key === "training-generation-compose"
+      || matched.key === "training-project-dataset-revision"
+      || matched.key === "training-project-training-runs"
+      || matched.key === "training-project-generation-tasks"
+    )
+  ) {
+    return loraTrainingProjectHeader(data, spec, matched);
   }
   if (!spec || matched.key !== "section-editor") return spec;
 
