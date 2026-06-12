@@ -53,6 +53,13 @@ function moveTemplateBlock(blocks: LoraTrainingSectionBlock[], index: number, di
   return nextBlocks;
 }
 
+function nextTemplateSceneBlockOrdinal(blocks: LoraTrainingSectionBlock[], prefix: string) {
+  const ordinals = blocks
+    .map((block) => (block.id.startsWith(prefix) ? Number(block.id.slice(prefix.length)) : Number.NaN))
+    .filter((value) => Number.isFinite(value));
+  return ordinals.length ? Math.max(...ordinals) + 1 : 1;
+}
+
 function orderTemplateSectionsByIds(sections: LoraTrainingTemplateSection[], orderedIds: string[]) {
   const sectionMap = Object.fromEntries(sections.map((section) => [section.id, section]));
   const orderedSections = orderedIds.map((id) => sectionMap[id]).filter((section): section is LoraTrainingTemplateSection => Boolean(section));
@@ -1249,28 +1256,35 @@ export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex
   }
 
   function handleAddLocalTemplateBlock() {
-    updateTemplateBlocks((current) => [
-      ...current,
-      {
-        id: `${activeSection.id}-template-local-block-${current.length + 1}`,
-        source: "本地",
-        title: `模板补充块 ${current.length + 1}`,
-        text: "补充模板导入后默认带入的场景描述。",
-      },
-    ]);
+    updateTemplateBlocks((current) => {
+      const ordinal = nextTemplateSceneBlockOrdinal(current, `${activeSection.id}-template-local-block-`);
+      return [
+        ...current,
+        {
+          id: `${activeSection.id}-template-local-block-${ordinal}`,
+          source: "本地",
+          title: `模板补充块 ${ordinal}`,
+          text: "补充模板导入后默认带入的场景描述。",
+        },
+      ];
+    });
   }
 
   function handleImportTemplatePresetBlock() {
     if (!importedPreset) return;
-    updateTemplateBlocks((current) => [
-      ...current,
-      {
-        id: `${activeSection.id}-template-preset-block-${importedPreset.id}-${current.length + 1}`,
-        source: "预制",
-        title: importedPreset.title,
-        text: importedPreset.sceneDescriptionText,
-      },
-    ]);
+    updateTemplateBlocks((current) => {
+      const prefix = `${activeSection.id}-template-preset-block-${importedPreset.id}-`;
+      const ordinal = nextTemplateSceneBlockOrdinal(current, `${activeSection.id}-template-preset-block-${importedPreset.id}-`);
+      return [
+        ...current,
+        {
+          id: `${prefix}${ordinal}`,
+          source: "预制",
+          title: importedPreset.title,
+          text: importedPreset.sceneDescriptionText,
+        },
+      ];
+    });
   }
 
   function handleMoveTemplateBlock(index: number, direction: -1 | 1) {

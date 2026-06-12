@@ -88,6 +88,16 @@ test("training template section imports training presets into local scene blocks
   assert.doesNotMatch(templateSectionPage, /导入预制入口已预览/, "template preset import should not be a preview-only placeholder");
 });
 
+test("training template section generates block ids from existing ids instead of list length", () => {
+  const templateSectionPage = sourceFrom("export function LoraTrainingTemplateSectionPage");
+
+  assert.match(resourceSource, /function nextTemplateSceneBlockOrdinal/, "template block id generation should use a shared ordinal helper");
+  assert.match(templateSectionPage, /nextTemplateSceneBlockOrdinal\(current, `\$\{activeSection\.id\}-template-local-block-`\)/, "local template block ids should scan existing local ids");
+  assert.match(templateSectionPage, /nextTemplateSceneBlockOrdinal\(current, `\$\{activeSection\.id\}-template-preset-block-\$\{importedPreset\.id\}-`\)/, "imported template block ids should scan existing imported ids");
+  assert.doesNotMatch(templateSectionPage, /id:\s*`\$\{activeSection\.id\}-template-local-block-\$\{current\.length \+ 1\}`/, "local template block ids should not reuse ids after deleting earlier blocks");
+  assert.doesNotMatch(templateSectionPage, /id:\s*`\$\{activeSection\.id\}-template-preset-block-\$\{importedPreset\.id\}-\$\{current\.length \+ 1\}`/, "imported template block ids should not reuse ids after deleting earlier blocks");
+});
+
 test("training template section saves a visible local section draft", () => {
   const templateSectionPage = sourceFrom("export function LoraTrainingTemplateSectionPage");
 

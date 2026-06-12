@@ -99,6 +99,13 @@ function moveSceneBlock(blocks: LoraTrainingSectionBlock[], index: number, direc
   return nextBlocks;
 }
 
+function nextSceneBlockOrdinal(blocks: LoraTrainingSectionBlock[], prefix: string) {
+  const ordinals = blocks
+    .map((block) => (block.id.startsWith(prefix) ? Number(block.id.slice(prefix.length)) : Number.NaN))
+    .filter((value) => Number.isFinite(value));
+  return ordinals.length ? Math.max(...ordinals) + 1 : 1;
+}
+
 function buildSeedSectionCopy(section: LoraTrainingTemplateSeedSection, copyNumber: number): LoraTrainingTemplateSeedSection {
   return {
     ...section,
@@ -1285,28 +1292,35 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
   }
 
   function handleAddLocalSceneBlock() {
-    updateSceneBlocks((current) => [
-      ...current,
-      {
-        id: `${activeSection.id}-local-block-${current.length + 1}`,
-        source: "本地",
-        title: `本地补充块 ${current.length + 1}`,
-        text: "补充这一小节的造型、动作或画面约束。",
-      },
-    ]);
+    updateSceneBlocks((current) => {
+      const ordinal = nextSceneBlockOrdinal(current, `${activeSection.id}-local-block-`);
+      return [
+        ...current,
+        {
+          id: `${activeSection.id}-local-block-${ordinal}`,
+          source: "本地",
+          title: `本地补充块 ${ordinal}`,
+          text: "补充这一小节的造型、动作或画面约束。",
+        },
+      ];
+    });
   }
 
   function handleImportPresetBlock() {
     if (!importedPreset) return;
-    updateSceneBlocks((current) => [
-      ...current,
-      {
-        id: `${activeSection.id}-preset-block-${importedPreset.id}-${current.length + 1}`,
-        source: "预制",
-        title: importedPreset.title,
-        text: importedPreset.sceneDescriptionText,
-      },
-    ]);
+    updateSceneBlocks((current) => {
+      const prefix = `${activeSection.id}-preset-block-${importedPreset.id}-`;
+      const ordinal = nextSceneBlockOrdinal(current, `${activeSection.id}-preset-block-${importedPreset.id}-`);
+      return [
+        ...current,
+        {
+          id: `${prefix}${ordinal}`,
+          source: "预制",
+          title: importedPreset.title,
+          text: importedPreset.sceneDescriptionText,
+        },
+      ];
+    });
   }
 
   function handleMoveSceneBlock(index: number, direction: -1 | 1) {
