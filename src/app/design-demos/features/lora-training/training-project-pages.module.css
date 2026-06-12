@@ -67,6 +67,10 @@
   gap: 12px;
 }
 
+.projectCreateAside {
+  container-type: inline-size;
+}
+
 .twoCol {
   grid-template-columns: minmax(0, 1.12fr) minmax(320px, 0.88fr);
   align-items: start;
@@ -278,6 +282,12 @@
 
 @media (min-width: 720px) {
   .entityRows {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container (min-width: 480px) {
+  .sectionSeedList {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

@@ -18,6 +18,7 @@ test("training list surfaces expand to two columns when there is enough width", 
   assert.ok(hasResponsiveColumns(projectsCss, "projectGrid"), "Training project list should use a responsive two-column grid");
   assert.ok(hasResponsiveColumns(runsCss, "runRows"), "Training run groups should use responsive two-column rows");
   assert.ok(hasResponsiveColumns(projectPagesCss, "sectionGrid"), "Training section list should use a responsive two-column grid");
+  assert.ok(hasResponsiveColumns(projectPagesCss, "sectionSeedList"), "Initial training section seeds should use a responsive two-column grid");
   assert.ok(hasResponsiveColumns(projectPagesCss, "entityRows"), "Project detail entity lists should use responsive two-column rows");
   assert.ok(hasResponsiveColumns(resourcesCss, "resourceGrid"), "Training preset/template grids should use responsive two columns");
   assert.ok(hasResponsiveColumns(resourcesCss, "sortGrid"), "Sort rule grid should use responsive two columns");
