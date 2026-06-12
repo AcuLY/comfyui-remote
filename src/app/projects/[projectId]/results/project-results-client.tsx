@@ -50,6 +50,17 @@ type ProjectResultsImage = ProjectResultsRun["images"][number];
 
 const COLLAPSED_ROW_COUNT = 2;
 
+type ProjectResultFilter = "all" | "featured" | "featured2" | "cover";
+
+const PROJECT_RESULT_FILTER_OPTIONS: { value: ProjectResultFilter; label: string }[] = [
+  { value: "all", label: "全部" },
+  { value: "featured", label: "p站" },
+  { value: "featured2", label: "预览" },
+  { value: "cover", label: "封面" },
+];
+
+type ProjectResultFilterCounts = Record<ProjectResultFilter, number>;
+
 type ProjectResultsImageWithRun = ProjectResultsImage & {
   runIndex: number;
 };
@@ -80,6 +91,54 @@ function summarizeSectionReviewCounts(runs: ProjectResultsSection["runs"]) {
   };
 }
 
+function imageMatchesProjectResultFilter(
+  image: ProjectResultsImage,
+  resultFilter: ProjectResultFilter,
+) {
+  if (resultFilter === "featured") return image.featured;
+  if (resultFilter === "featured2") return image.featured2;
+  if (resultFilter === "cover") return image.cover;
+  return true;
+}
+
+function filterProjectResultSections(
+  sections: ProjectResultsSection[],
+  resultFilter: ProjectResultFilter,
+) {
+  return sections
+    .map((section) => {
+      if (resultFilter === "all") return section;
+
+      const runs = section.runs
+        .map((run) => ({
+          ...run,
+          images: run.images.filter((image) =>
+            imageMatchesProjectResultFilter(image, resultFilter),
+          ),
+        }))
+        .filter((run) => run.images.length > 0);
+
+      return {
+        ...section,
+        runCount: runs.length,
+        runs,
+        ...summarizeSectionReviewCounts(runs),
+      };
+    })
+    .filter((section) => section.imageCount > 0);
+}
+
+function collectProjectResultImages(sections: ProjectResultsSection[]) {
+  return sections.flatMap((section) =>
+    section.runs.flatMap((run) =>
+      run.images.map((image) => ({
+        ...image,
+        runIndex: run.runIndex,
+      })),
+    ),
+  );
+}
+
 function scrollToSection(sectionId: string) {
   const element = document.getElementById(`section-${sectionId}`);
   if (!element) return;
@@ -100,16 +159,18 @@ function scrollToSection(sectionId: string) {
 
 function ProjectResultsSidebar({
   project,
+  sections,
   activeSectionId,
 }: {
   project: ProjectResultsData;
+  sections: ProjectResultsSection[];
   activeSectionId: string | null;
 }) {
   const { state: sidebarState } = useSidebar();
   const isExpanded = sidebarState === "expanded";
   const sidebarContentRef = useSyncedSidebarContent({
     activeSectionId,
-    itemCount: project.sections.length,
+    itemCount: sections.length,
   });
 
   return (
@@ -154,7 +215,7 @@ function ProjectResultsSidebar({
       <SidebarContent ref={sidebarContentRef} className="overflow-x-hidden">
         <SidebarSectionNav
           label="小节结果"
-          sections={project.sections}
+          sections={sections}
           activeSectionId={activeSectionId}
           onNavigateToSection={scrollToSection}
           menuClassName="gap-1"
@@ -165,6 +226,58 @@ function ProjectResultsSidebar({
       <SidebarFooter className="px-3 py-3" />
       <SidebarRail />
     </Sidebar>
+  );
+}
+
+function ProjectResultFilterIcon({ filter }: { filter: ProjectResultFilter }) {
+  if (filter === "featured") {
+    return <Star className="size-3.5" />;
+  }
+  if (filter === "featured2") {
+    return <Eye className="size-3.5" />;
+  }
+  return <ImageIcon className="size-3.5" />;
+}
+
+function ProjectResultFilterControl({
+  value,
+  onChange,
+  counts,
+}: {
+  value: ProjectResultFilter;
+  onChange: (value: ProjectResultFilter) => void;
+  counts: ProjectResultFilterCounts;
+}) {
+  return (
+    <div
+      className="order-last flex w-full items-center gap-1 overflow-x-auto rounded-lg border border-white/10 bg-white/[0.035] p-1 sm:order-none sm:w-auto"
+      role="group"
+      aria-label="筛选展示图片类型"
+    >
+      {PROJECT_RESULT_FILTER_OPTIONS.map((option) => {
+        const active = value === option.value;
+        return (
+          <button
+            key={option.value}
+            type="button"
+            data-result-filter={option.value}
+            aria-pressed={active}
+            onClick={() => onChange(option.value)}
+            className={`inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 text-[11px] font-medium transition ${
+              active
+                ? "bg-sky-500/20 text-sky-100"
+                : "text-zinc-400 hover:bg-white/[0.06] hover:text-zinc-200"
+            }`}
+          >
+            <ProjectResultFilterIcon filter={option.value} />
+            <span>{option.label}</span>
+            <span className="min-w-4 rounded bg-black/20 px-1 text-center text-[10px] text-zinc-300">
+              {counts[option.value]}
+            </span>
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
@@ -432,30 +545,31 @@ export function ProjectResultsClient({
   const [isTrashingAll, setIsTrashingAll] = useState(false);
   const [lightboxImageId, setLightboxImageId] = useState<string | null>(null);
   const [showCensoredMode, setShowCensoredMode] = useState(false);
+  const [resultFilter, setResultFilter] = useState<ProjectResultFilter>("all");
   const [, startTransition] = useTransition();
+  const filteredSections = useMemo(() =>
+    filterProjectResultSections(sections, resultFilter),
+    [sections, resultFilter],
+  );
   const sectionIds = useMemo(
-    () => sections.map((section) => section.id),
-    [sections],
+    () => filteredSections.map((section) => section.id),
+    [filteredSections],
   );
   const activeSectionId = useScrollSpy(sectionIds, {
     rootSelector: '[data-slot="sidebar-inset"]',
   });
   const allImages = useMemo(
-    () =>
-      sections.flatMap((section) =>
-        section.runs.flatMap((run) =>
-          run.images.map((image) => ({
-            ...image,
-            runIndex: run.runIndex,
-          })),
-        ),
-      ),
+    () => collectProjectResultImages(sections),
     [sections],
   );
+  const filteredImages = useMemo(
+    () => collectProjectResultImages(filteredSections),
+    [filteredSections],
+  );
   const lightboxIndex = lightboxImageId
-    ? allImages.findIndex((image) => image.id === lightboxImageId)
+    ? filteredImages.findIndex((image) => image.id === lightboxImageId)
     : -1;
-  const lightboxImage = lightboxIndex >= 0 ? allImages[lightboxIndex] : null;
+  const lightboxImage = lightboxIndex >= 0 ? filteredImages[lightboxIndex] : null;
 
   const totalImages = sections.reduce(
     (sum, section) => sum + section.imageCount,
@@ -478,6 +592,15 @@ export function ProjectResultsClient({
     0,
   );
   const hasCover = allImages.some((image) => image.cover);
+  const resultFilterCounts: ProjectResultFilterCounts = {
+    all: totalImages,
+    featured: totalFeatured,
+    featured2: totalFeatured2,
+    cover: hasCover ? 1 : 0,
+  };
+  const activeFilterLabel =
+    PROJECT_RESULT_FILTER_OPTIONS.find((option) => option.value === resultFilter)?.label ??
+    "结果";
 
   useEffect(() => {
     const getColumnCount = () => {
@@ -505,16 +628,22 @@ export function ProjectResultsClient({
   }, []);
 
   const goLightboxPrev = useCallback(() => {
-    if (allImages.length === 0 || lightboxIndex < 0) return;
-    const nextIndex = lightboxIndex > 0 ? lightboxIndex - 1 : allImages.length - 1;
-    setLightboxImageId(allImages[nextIndex].id);
-  }, [allImages, lightboxIndex]);
+    if (filteredImages.length === 0 || lightboxIndex < 0) return;
+    const nextIndex = lightboxIndex > 0 ? lightboxIndex - 1 : filteredImages.length - 1;
+    setLightboxImageId(filteredImages[nextIndex].id);
+  }, [filteredImages, lightboxIndex]);
 
   const goLightboxNext = useCallback(() => {
-    if (allImages.length === 0 || lightboxIndex < 0) return;
-    const nextIndex = lightboxIndex < allImages.length - 1 ? lightboxIndex + 1 : 0;
-    setLightboxImageId(allImages[nextIndex].id);
-  }, [allImages, lightboxIndex]);
+    if (filteredImages.length === 0 || lightboxIndex < 0) return;
+    const nextIndex = lightboxIndex < filteredImages.length - 1 ? lightboxIndex + 1 : 0;
+    setLightboxImageId(filteredImages[nextIndex].id);
+  }, [filteredImages, lightboxIndex]);
+
+  useEffect(() => {
+    if (!lightboxImageId) return;
+    if (filteredImages.some((image) => image.id === lightboxImageId)) return;
+    setLightboxImageId(null);
+  }, [filteredImages, lightboxImageId]);
 
   useEffect(() => {
     if (!lightboxImage) return;
@@ -786,15 +915,16 @@ export function ProjectResultsClient({
       className="-mx-5 min-h-[calc(100dvh-5rem)] w-[calc(100%+2.5rem)] bg-transparent sm:-mx-6 sm:w-[calc(100%+3rem)]"
     >
       <ProjectResultsSidebar
-        project={{ ...project, sections }}
+        project={project}
+        sections={filteredSections}
         activeSectionId={activeSectionId}
       />
 
       <SidebarInset className="flex-1 overflow-auto bg-transparent">
         <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 pb-24 pt-4 sm:px-6">
-          <div className="sticky top-0 z-20 -mx-4 flex items-center gap-2 border-b border-white/[0.06] bg-[var(--bg)]/80 px-4 py-2 backdrop-blur sm:-mx-6 sm:px-6">
+          <div className="sticky top-0 z-20 -mx-4 flex flex-wrap items-center gap-2 border-b border-white/[0.06] bg-[var(--bg)]/80 px-4 py-2 backdrop-blur sm:-mx-6 sm:px-6">
             <SidebarTrigger className="-ml-1 hidden md:inline-flex" />
-            <div className="min-w-0 flex-1">
+            <div className="min-w-[10rem] flex-1">
               <div className="flex items-center gap-1.5 text-xs text-zinc-500">
                 <ImageIcon className="size-3.5" />
                 <span>项目结果</span>
@@ -813,6 +943,11 @@ export function ProjectResultsClient({
               <span>{totalFeatured2} 预览</span>
               {hasCover && <span>已设封面</span>}
             </div>
+            <ProjectResultFilterControl
+              value={resultFilter}
+              onChange={setResultFilter}
+              counts={resultFilterCounts}
+            />
             <button
               type="button"
               onClick={() => setShowCensoredMode(!showCensoredMode)}
@@ -841,8 +976,14 @@ export function ProjectResultsClient({
             <div className="rounded-xl border border-dashed border-white/10 p-8 text-center text-sm text-zinc-500">
               暂无小节
             </div>
+          ) : filteredSections.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-white/10 p-8 text-center text-sm text-zinc-500">
+              {resultFilter === "all"
+                ? "暂无结果图片"
+                : `暂无${activeFilterLabel}图片`}
+            </div>
           ) : (
-            sections.map((section) => (
+            filteredSections.map((section) => (
               <SectionResultsBlock
                 key={section.id}
                 projectId={project.id}
@@ -929,10 +1070,10 @@ export function ProjectResultsClient({
           </div>
 
           <div className="absolute left-4 top-4 z-10 rounded-full bg-white/10 px-3 py-1.5 text-xs text-zinc-300">
-            Run #{lightboxImage.runIndex} · {lightboxIndex + 1}/{allImages.length}
+            Run #{lightboxImage.runIndex} · {lightboxIndex + 1}/{filteredImages.length}
           </div>
 
-          {allImages.length > 1 && (
+          {filteredImages.length > 1 && (
             <button
               type="button"
               className="absolute left-3 z-10 rounded-full bg-white/10 p-2 text-white transition hover:bg-white/20"
@@ -958,7 +1099,7 @@ export function ProjectResultsClient({
             />
           </div>
 
-          {allImages.length > 1 && (
+          {filteredImages.length > 1 && (
             <button
               type="button"
               className="absolute right-3 z-10 rounded-full bg-white/10 p-2 text-white transition hover:bg-white/20"

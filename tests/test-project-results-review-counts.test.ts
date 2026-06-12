@@ -30,3 +30,58 @@ test("project results page shows kept and pending counts instead of total image 
   assert.match(source, /\{section\.keptCount\} 保留/, "section summary should show kept count");
   assert.match(source, /\{section\.pendingCount\} 待审/, "section summary should show pending count");
 });
+
+test("project results page filters by one result marker and hides sections without visible images", () => {
+  const source = readSource("src/app/projects/[projectId]/results/project-results-client.tsx");
+
+  assert.match(
+    source,
+    /type ProjectResultFilter = "all" \| "featured" \| "featured2" \| "cover"/,
+    "project results should model the marker filter as a single selected value",
+  );
+  assert.match(
+    source,
+    /PROJECT_RESULT_FILTER_OPTIONS[\s\S]*value: "featured"[\s\S]*label: "p站"[\s\S]*value: "featured2"[\s\S]*label: "预览"[\s\S]*value: "cover"[\s\S]*label: "封面"/,
+    "project results should expose p站, 预览, and 封面 filter choices",
+  );
+  assert.match(
+    source,
+    /const \[resultFilter, setResultFilter\] = useState<ProjectResultFilter>\("all"\)/,
+    "project results should keep one active filter in client state",
+  );
+  assert.match(
+    source,
+    /function filterProjectResultSections\(/,
+    "project results should derive display sections through a dedicated filter helper",
+  );
+  assert.match(
+    source,
+    /\.filter\(\(section\) => section\.imageCount > 0\)/,
+    "project results should remove sections that have no visible images after filtering",
+  );
+  assert.match(
+    source,
+    /const filteredSections = useMemo\(\(\) =>\s*filterProjectResultSections\(sections, resultFilter\),\s*\[sections, resultFilter\],\s*\)/,
+    "project results should memoize sections filtered by the active marker",
+  );
+  assert.match(
+    source,
+    /sections=\{filteredSections\}/,
+    "the project results sidebar should receive the filtered section list",
+  );
+  assert.match(
+    source,
+    /filteredSections\.map\(\(section\) =>/,
+    "the project results grid should render only filtered non-empty sections",
+  );
+  assert.match(
+    source,
+    /const filteredImages = useMemo\(/,
+    "the project results lightbox should navigate within the filtered image set",
+  );
+  assert.match(
+    source,
+    /data-result-filter=\{option\.value\}/,
+    "filter controls should expose stable attributes for UI verification",
+  );
+});
