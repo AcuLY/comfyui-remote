@@ -167,3 +167,31 @@ test("LoRA training route header actions are navigable instead of inert buttons"
     }
   }
 });
+
+test("LoRA training run route headers use the matched run context", () => {
+  const data = fallbackData(null);
+
+  const completedTraining = findHeaderSpecForRoute(data, "/training/runs/training/train-vela-v5");
+  assert.ok(completedTraining, "completed training run should resolve a header spec");
+  assert.equal(completedTraining.title, "Vela Neon Jacket / LoRA 训练 v5");
+  assert.deepEqual(completedTraining.actions?.map((action) => action.label), ["数据集版本", "创建预制"]);
+  assert.equal(completedTraining.actions?.[0]?.href, "/training/projects/vela-neon/dataset/revisions/v5-current");
+  assert.match(completedTraining.actions?.[1]?.href ?? "", /\/training\/presets\/new\?/);
+  assert.match(completedTraining.actions?.[1]?.href ?? "", /sourceRun=train-vela-v5/);
+  assert.match(completedTraining.actions?.[1]?.href ?? "", /artifact=vela_neon_v05\.safetensors/);
+
+  const runningTraining = findHeaderSpecForRoute(data, "/training/runs/training/train-azure-v4");
+  assert.ok(runningTraining, "running training run should resolve a header spec");
+  assert.deepEqual(runningTraining.actions?.map((action) => action.label), ["数据集版本"]);
+  assert.equal(runningTraining.actions?.[0]?.href, "/training/projects/azure-idol/dataset/revisions/v4-current");
+
+  const failedTraining = findHeaderSpecForRoute(data, "/training/runs/training/train-noir-failed");
+  assert.ok(failedTraining, "failed training run should resolve a header spec");
+  assert.deepEqual(failedTraining.actions?.map((action) => action.label), ["数据集版本"]);
+
+  const lunaGeneration = findHeaderSpecForRoute(data, "/training/runs/generation/gen-luna-profile");
+  assert.ok(lunaGeneration, "generation run should resolve a header spec");
+  assert.equal(lunaGeneration.title, "Luna Editorial / 角色描述生成");
+  assert.deepEqual(lunaGeneration.actions?.map((action) => action.label), ["项目详情"]);
+  assert.equal(lunaGeneration.actions?.[0]?.href, "/training/projects/luna-editorial");
+});

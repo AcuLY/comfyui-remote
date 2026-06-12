@@ -23,6 +23,8 @@ import {
 } from "lucide-react";
 
 import type { DemoData, DemoSection } from "../data";
+import { buildLoraTrainingDemoData } from "../features/lora-training/fixtures";
+import type { LoraTrainingRun, LoraTrainingTaskKind } from "../features/lora-training/types";
 import {
   findCategory,
   findGroup,
@@ -902,10 +904,74 @@ function sectionHeaderMeta(section: DemoSection | undefined) {
   ];
 }
 
+function trainingRunTitle(run: LoraTrainingRun) {
+  return `${run.projectTitle} / ${run.title}`;
+}
+
+function trainingProjectHref(run: LoraTrainingRun) {
+  return `/training/projects/${run.projectId}`;
+}
+
+function trainingDatasetHref(run: LoraTrainingRun) {
+  const projectHref = trainingProjectHref(run);
+  return run.datasetRevisionId ? `${projectHref}/dataset/revisions/${run.datasetRevisionId}` : `${projectHref}/dataset`;
+}
+
+function trainingPresetHref(run: LoraTrainingRun) {
+  const params = new URLSearchParams({
+    category: "训练产物",
+    folder: "LoRA 产物",
+    sourceRun: run.id,
+    project: run.projectTitle,
+  });
+  params.set("artifact", run.artifactName ?? run.finalLoraArtifactId ?? "");
+  return `/training/presets/new?${params.toString()}`;
+}
+
+function canCreateTrainingPreset(run: LoraTrainingRun) {
+  return run.kind === "training" && run.status === "completed" && Boolean(run.finalLoraArtifactId) && !run.presetCreatedAt;
+}
+
+function findLoraTrainingRun(data: DemoData, kind: LoraTrainingTaskKind, runId: string | undefined) {
+  if (!runId) return undefined;
+  return buildLoraTrainingDemoData(data).runs.find((run) => run.kind === kind && run.id === runId);
+}
+
+function loraTrainingRunDetailHeader(data: DemoData, spec: HeaderSpec, matched: ReturnType<typeof matchRoute>) {
+  if (matched.key === "training-generation-run-detail") {
+    const run = findLoraTrainingRun(data, "generation", matched.params.taskId);
+    if (!run) return spec;
+    return {
+      ...spec,
+      actions: [headerAction("项目详情", ExternalLink, "default", trainingProjectHref(run))],
+      title: trainingRunTitle(run),
+    };
+  }
+
+  if (matched.key === "training-training-run-detail") {
+    const run = findLoraTrainingRun(data, "training", matched.params.trainingRunId);
+    if (!run) return spec;
+    const actions = [headerAction("数据集版本", History, "default", trainingDatasetHref(run))];
+    if (canCreateTrainingPreset(run)) {
+      actions.push(headerAction("创建预制", Plus, "primary", trainingPresetHref(run)));
+    }
+    return {
+      ...spec,
+      actions,
+      title: trainingRunTitle(run),
+    };
+  }
+
+  return spec;
+}
+
 export function findHeaderSpecForRoute(data: DemoData, currentRoute: string) {
   const specs = flattenHeaderSpecs(data);
   const matched = matchRoute(currentRoute);
   const spec = specs.find((item) => item.key === matched.key) ?? specs.find((item) => item.route === currentRoute) ?? specs.find((item) => item.key === "not-found") ?? null;
+  if (spec && (matched.key === "training-generation-run-detail" || matched.key === "training-training-run-detail")) {
+    return loraTrainingRunDetailHeader(data, spec, matched);
+  }
   if (!spec || matched.key !== "section-editor") return spec;
 
   const project = findProject(data, matched.params.projectId);
