@@ -1033,17 +1033,90 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
   const seedTemplate = template ?? training.templates[0];
   const title = mode === "new" ? "新建训练模板" : template?.title ?? "训练模板";
   const templateEditorId = seedTemplate?.id ?? "new-template";
-  const [localTemplateSections, setLocalTemplateSections] = useState<LoraTrainingTemplateSection[]>(() => seedTemplate?.sections ?? []);
-  const [orderedTemplateSectionIds, setOrderedTemplateSectionIds] = useState(() => (seedTemplate?.sections ?? []).map((section) => section.id));
-  const templateSections = localTemplateSections;
-  const templateSectionMap = Object.fromEntries(templateSections.map((section) => [section.id, section]));
-  const [templateForm, setTemplateForm] = useState({
+  const templateSeedSections = seedTemplate?.sections ?? [];
+  const templateSeedSectionIds = templateSeedSections.map((section) => section.id);
+  const templateFormContextId = [
+    mode,
+    template?.id ?? templateId ?? "new",
+    seedTemplate?.id ?? "no-template",
+    newTemplateHints.projectId,
+    newTemplateHints.sourceProject,
+    newTemplateHints.sections,
+  ].join(":");
+  const initialTemplateForm = {
     captionGuidance: "先写 LoRA 触发词，再补充姿态、服装、光线、镜头和背景。",
     description: seedTemplate?.description ?? "用于新角色 LoRA 训练项目的起始模板。",
     imageGuidance: "每次生成 1 张干净训练图，优先保证角色身份稳定、轮廓清晰。",
     title: newTemplateHints.sourceProject ? `${newTemplateHints.sourceProject} 训练模板` : seedTemplate?.title ?? "新角色 LoRA 模板",
-  });
-  const [templateDraft, setTemplateDraft] = useState<typeof templateForm & { mode: "new" | "edit"; sectionCount: number; sourceProject: string } | null>(null);
+  };
+  const [templateSectionState, setTemplateSectionState] = useState(() => ({
+    contextId: templateFormContextId,
+    orderedIds: templateSeedSectionIds,
+    sections: templateSeedSections,
+  }));
+  const [templateFormState, setTemplateFormState] = useState(() => ({
+    contextId: templateFormContextId,
+    form: initialTemplateForm,
+  }));
+  const [templateDraftState, setTemplateDraftState] = useState<{
+    contextId: string;
+    draft: typeof initialTemplateForm & { mode: "new" | "edit"; sectionCount: number; sourceProject: string } | null;
+  }>(() => ({
+    contextId: templateFormContextId,
+    draft: null,
+  }));
+  const templateSections = templateSectionState.contextId === templateFormContextId ? templateSectionState.sections : templateSeedSections;
+  const orderedTemplateSectionIds = templateSectionState.contextId === templateFormContextId ? templateSectionState.orderedIds : templateSeedSectionIds;
+  const templateForm = templateFormState.contextId === templateFormContextId ? templateFormState.form : initialTemplateForm;
+  const templateDraft = templateDraftState.contextId === templateFormContextId ? templateDraftState.draft : null;
+  const templateSectionMap = Object.fromEntries(templateSections.map((section) => [section.id, section]));
+
+  function activeTemplateSectionState(current: typeof templateSectionState) {
+    return current.contextId === templateFormContextId ? current : {
+      contextId: templateFormContextId,
+      orderedIds: templateSeedSectionIds,
+      sections: templateSeedSections,
+    };
+  }
+
+  function setLocalTemplateSections(updater: (current: LoraTrainingTemplateSection[]) => LoraTrainingTemplateSection[]) {
+    setTemplateSectionState((current) => {
+      const active = activeTemplateSectionState(current);
+      const sections = updater(active.sections);
+      const sectionIds = new Set(sections.map((section) => section.id));
+      return {
+        contextId: templateFormContextId,
+        orderedIds: active.orderedIds.filter((id) => sectionIds.has(id)),
+        sections,
+      };
+    });
+  }
+
+  function setOrderedTemplateSectionIds(updater: string[] | ((current: string[]) => string[])) {
+    setTemplateSectionState((current) => {
+      const active = activeTemplateSectionState(current);
+      const orderedIds = typeof updater === "function" ? updater(active.orderedIds) : updater;
+      return {
+        ...active,
+        contextId: templateFormContextId,
+        orderedIds,
+      };
+    });
+  }
+
+  function setTemplateForm(updater: (current: typeof initialTemplateForm) => typeof initialTemplateForm) {
+    setTemplateFormState((current) => ({
+      contextId: templateFormContextId,
+      form: updater(current.contextId === templateFormContextId ? current.form : initialTemplateForm),
+    }));
+  }
+
+  function setTemplateDraft(draft: typeof initialTemplateForm & { mode: "new" | "edit"; sectionCount: number; sourceProject: string }) {
+    setTemplateDraftState({
+      contextId: templateFormContextId,
+      draft,
+    });
+  }
 
   function handleUpdateTemplateForm(field: keyof typeof templateForm, value: string) {
     setTemplateForm((current) => ({ ...current, [field]: value }));
@@ -1083,15 +1156,13 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
   }
 
   function handleAddTemplateSection() {
-    setLocalTemplateSections((current) => {
-      const draft = createDraftTemplateSection(current, "");
-      setOrderedTemplateSectionIds((ids) => [...ids, draft.id]);
-      return [...current, draft];
-    });
+    const draft = createDraftTemplateSection(templateSections, "");
+    setLocalTemplateSections((current) => [...current, draft]);
+    setOrderedTemplateSectionIds((ids) => [...ids, draft.id]);
   }
 
   function handleCopyTemplateSection(section: LoraTrainingTemplateSection) {
-    const copyNumber = nextTemplateSectionCopyNumber(localTemplateSections, section.id);
+    const copyNumber = nextTemplateSectionCopyNumber(templateSections, section.id);
     const copy: LoraTrainingTemplateSection = {
       ...section,
       id: `${section.id}-copy-${copyNumber}`,

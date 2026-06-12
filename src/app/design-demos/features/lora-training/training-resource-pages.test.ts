@@ -274,6 +274,27 @@ test("training template form saves a visible local template draft instead of onl
   assert.doesNotMatch(formSource, /训练模板已保存/, "template save should not remain feedback-only");
 });
 
+test("training template form state stays scoped to the active template context", () => {
+  const formStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
+  const sectionStart = pageSource.indexOf("export function LoraTrainingTemplateSectionPage");
+  assert.notEqual(formStart, -1);
+  assert.notEqual(sectionStart, -1);
+
+  const formSource = pageSource.slice(formStart, sectionStart);
+
+  assert.match(formSource, /templateFormContextId/, "template form should derive a route/query context id");
+  assert.match(formSource, /templateSectionState/, "template section list state should be stored with template context");
+  assert.match(formSource, /templateFormState/, "template field state should be stored with template context");
+  assert.match(formSource, /templateDraftState/, "template draft state should be stored with template context");
+  assert.match(formSource, /templateSectionState\.contextId === templateFormContextId \? templateSectionState\.sections : templateSeedSections/, "template sections should fall back after context changes");
+  assert.match(formSource, /templateFormState\.contextId === templateFormContextId \? templateFormState\.form : initialTemplateForm/, "template fields should fall back after context changes");
+  assert.match(formSource, /templateDraftState\.contextId === templateFormContextId \? templateDraftState\.draft : null/, "template draft should reset after context changes");
+  assert.doesNotMatch(formSource, /const \[localTemplateSections, setLocalTemplateSections\] = useState<LoraTrainingTemplateSection\[\]>/, "template sections should not be stored without template context");
+  assert.doesNotMatch(formSource, /const \[orderedTemplateSectionIds, setOrderedTemplateSectionIds\] = useState\(\(\) => \(seedTemplate\?\.sections \?\? \[\]\)\.map/, "template order should not be stored without template context");
+  assert.doesNotMatch(formSource, /const \[templateForm, setTemplateForm\] = useState\(/, "template form fields should not be stored without template context");
+  assert.doesNotMatch(formSource, /const \[templateDraft, setTemplateDraft\] = useState/, "template draft should not be stored without template context");
+});
+
 test("training template form section actions update local front-end state", () => {
   const formStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
   const rowStart = pageSource.indexOf("function TemplateEditorSectionRow");
@@ -285,7 +306,7 @@ test("training template form section actions update local front-end state", () =
   const formSource = pageSource.slice(formStart, sectionStart);
   const rowSource = pageSource.slice(rowStart, formStart);
 
-  assert.match(formSource, /localTemplateSections/, "template form should keep local editable sections");
+  assert.match(formSource, /templateSections/, "template form should keep local editable sections");
   assert.match(formSource, /setLocalTemplateSections/, "template section actions should update local state");
   assert.match(formSource, /handleAddTemplateSection/, "template form should define local add behavior");
   assert.match(formSource, /handleCopyTemplateSection/, "template form should define local copy behavior");
@@ -320,7 +341,7 @@ test("training template form scans existing section ids for local copy and draft
 
   assert.match(pageSource, /function nextTemplateSectionCopyNumber/, "template section copy ids should use a shared ordinal helper");
   assert.match(pageSource, /function nextTemplateSectionDraftNumber/, "new template section draft ids should use a shared ordinal helper");
-  assert.match(formSource, /nextTemplateSectionCopyNumber\(localTemplateSections, section\.id\)/, "template copy ids should scan existing copied section ids");
+  assert.match(formSource, /nextTemplateSectionCopyNumber\(templateSections, section\.id\)/, "template copy ids should scan existing copied section ids");
   assert.match(formSource, /nextTemplateSectionDraftNumber\(current\)/, "new template section ids should scan existing draft section ids");
   assert.doesNotMatch(formSource, /id:\s*`\$\{section\.id\}-copy-\$\{Date\.now\(\)\}`/, "template copy ids should not depend on Date.now");
   assert.doesNotMatch(formSource, /id:\s*`new-template-section-\$\{Date\.now\(\)\}`/, "new template section ids should not depend on Date.now");
