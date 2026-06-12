@@ -197,6 +197,102 @@
   white-space: nowrap;
 }
 
+.projectRunRows {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+}
+
+@media (min-width: 720px) {
+  .projectRunRows {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.projectRunRow {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 10px;
+  border: 1px solid var(--demo-border);
+  border-radius: 10px;
+  background: var(--demo-field-bg);
+  color: inherit;
+  padding: 10px 12px;
+  text-decoration: none;
+  transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+
+.projectRunRow:hover,
+.projectRunRow:focus-visible {
+  border-color: var(--demo-glass-accent-border);
+  background: var(--demo-glass-hover);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.projectRunText {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.projectRunText strong,
+.projectRunText span,
+.projectRunText em {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.projectRunText strong {
+  color: var(--demo-text);
+  font-size: 13px;
+  font-weight: 620;
+}
+
+.projectRunText span {
+  color: var(--demo-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.projectRunText em {
+  color: var(--demo-faint);
+  font-size: 10px;
+  font-style: normal;
+  line-height: 1.35;
+}
+
+.projectRunError {
+  color: var(--demo-red);
+}
+
+.projectRunThumbs {
+  grid-column: 1 / -1;
+  display: grid;
+  min-width: 0;
+  width: 100%;
+  gap: 5px;
+  overflow: hidden;
+  border-top: 1px solid var(--demo-border);
+  padding-top: 8px;
+}
+
+.projectRunThumbs :where([data-demo-ui-image-thumb-small="true"]) {
+  width: 58px;
+  border: 1px solid var(--demo-border);
+  border-radius: 7px;
+  background: var(--demo-panel-2);
+}
+
+.projectRunStatus {
+  display: inline-flex;
+  justify-self: end;
+}
+
 .emptyInline {
   border: 1px dashed var(--demo-border);
   border-radius: 10px;
@@ -872,19 +968,28 @@
   }
 
   .entityRow,
+  .projectRunRow,
   .sectionActions {
     grid-template-columns: 1fr;
     align-items: start;
   }
 
-  .entityRow {
+  .entityRow,
+  .projectRunRow {
     gap: 8px;
   }
 
   .entityRow span,
   .entityRow strong,
+  .projectRunText strong,
+  .projectRunText span,
+  .projectRunText em,
   .sectionActions > span {
     white-space: normal;
+  }
+
+  .projectRunStatus {
+    justify-self: start;
   }
 
   .sectionActions {

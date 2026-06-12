@@ -77,3 +77,21 @@ test("training result cards keep thumbnail density and clamp captions", () => {
   assert.match(cssSource, /\.referenceImageGrid\b/, "profile reference image card grid CSS should exist");
   assert.match(cssSource, /\.manifestList\b/, "dataset revision manifest list CSS should exist");
 });
+
+test("project-scoped run rows use task cards with recent output thumbnails", () => {
+  const runRowsStart = pagesSource.indexOf("function runPreviewImages");
+  const sectionRailStart = pagesSource.indexOf("type ReferenceCandidate");
+  assert.notEqual(runRowsStart, -1);
+  assert.notEqual(sectionRailStart, -1);
+
+  const runRowsSource = pagesSource.slice(runRowsStart, sectionRailStart);
+
+  assert.match(runRowsSource, /project:\s*LoraTrainingProject/, "RunRows should receive the active project context");
+  assert.match(runRowsSource, /runPreviewImages/, "RunRows should resolve previews per run");
+  assert.match(runRowsSource, /ImageListSmall/, "RunRows should render the shared small thumbnail strip");
+  assert.match(runRowsSource, /resultPool/, "generation task rows should source previews from project results");
+  assert.match(runRowsSource, /datasetSamples/, "training task rows should source previews from dataset samples");
+  assert.doesNotMatch(runRowsSource, /className=\{s\.entityRow\}/, "RunRows should not collapse back to generic entity rows");
+  assert.match(cssSource, /\.projectRunRows\b/, "project run rows should have dedicated list styling");
+  assert.match(cssSource, /\.projectRunThumbs\b/, "project run rows should style thumbnail strips separately");
+});

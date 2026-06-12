@@ -202,20 +202,50 @@ function TrainingResultGrid({
   );
 }
 
-function RunRows({ runs }: { runs: LoraTrainingRun[] }) {
+function runPreviewImages(run: LoraTrainingRun, project: LoraTrainingProject) {
+  if (run.kind === "training") {
+    return (run.datasetSamples ?? []).map((sample) => sample.image).slice(0, 4);
+  }
+
+  if (!run.summary.startsWith("图片")) return [];
+  return project.resultPool.map((result) => result.image).slice(0, run.status === "completed" ? 4 : 3);
+}
+
+function projectRunStatusLabel(status: LoraTrainingTaskStatus) {
+  if (status === "completed") return "完成";
+  if (status === "running") return "进行中";
+  if (status === "queued") return "排队";
+  return "失败";
+}
+
+function RunRows({ project, runs }: { project: LoraTrainingProject; runs: LoraTrainingRun[] }) {
   if (runs.length === 0) return <div className={s.emptyInline}>没有任务记录</div>;
 
   return (
-    <div className={s.entityRows}>
+    <div className={s.projectRunRows}>
       {runs.map((run) => {
         const type = run.kind === "generation" ? "generation" : "training";
+        const previewImages = runPreviewImages(run, project);
         return (
-          <Link className={s.entityRow} href={demoHref(`/training/runs/${type}/${run.id}`)} key={run.id}>
-            <div>
+          <Link className={s.projectRunRow} href={demoHref(`/training/runs/${type}/${run.id}`)} key={run.id}>
+            <span className={s.projectRunText}>
               <strong>{run.title}</strong>
               <span>{run.summary} · {run.timestamp}</span>
-            </div>
-            <StatusBadge status={run.status === "completed" ? "done" : run.status} label={run.status === "completed" ? "完成" : run.status === "running" ? "进行中" : run.status === "queued" ? "排队" : "失败"} />
+              {run.outputLabel ? <em>{run.outputLabel}</em> : null}
+              {run.waitReason ? <em>{run.waitReason}</em> : null}
+              {run.errorMessage ? <em className={s.projectRunError}>{run.errorMessage}</em> : null}
+            </span>
+            {previewImages.length > 0 ? (
+              <ImageListSmall
+                className={s.projectRunThumbs}
+                images={previewImages}
+                limit={previewImages.length}
+                showCounts={run.kind === "generation"}
+              />
+            ) : null}
+            <span className={s.projectRunStatus}>
+              <StatusBadge status={run.status === "completed" ? "done" : run.status} label={projectRunStatusLabel(run.status)} />
+            </span>
           </Link>
         );
       })}
@@ -451,7 +481,7 @@ export function LoraTrainingProjectDetailPage({ data, projectId }: { data: DemoD
           <ButtonLink href={`/training/projects/${project.id}/dataset`} icon={Layers} tone="primary">打开数据集工作台</ButtonLink>
         </Panel>
         <Panel title="最近任务">
-          <RunRows runs={recentRuns} />
+          <RunRows project={project} runs={recentRuns} />
         </Panel>
         <Panel title="最近产物" subtitle="只展示最近保留结果，完整审查在结果池。">
           <TrainingResultGrid results={recentResults} title="最近产物" />
@@ -755,7 +785,7 @@ export function LoraTrainingProjectDatasetRevisionPage({ data, projectId, revisi
           </dl>
         </Panel>
         <Panel title="关联训练">
-          <RunRows runs={relatedRuns} />
+          <RunRows project={project} runs={relatedRuns} />
         </Panel>
       </div>
       <Panel title="Snapshot 样本与 caption">
@@ -803,7 +833,7 @@ export function LoraTrainingProjectScopedRunsPage({
         onChange={setStatus}
       />
       <Panel title={kind === "generation" ? "项目生成任务" : "项目训练任务"}>
-        <RunRows runs={visibleRuns} />
+        <RunRows project={project} runs={visibleRuns} />
       </Panel>
     </div>
   );
