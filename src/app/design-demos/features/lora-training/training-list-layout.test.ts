@@ -37,8 +37,8 @@ test("sortable training resource lists use ancestor surfaces for container queri
   );
   assert.match(
     resourcesCss,
-    /@container\s*\(min-width:\s*700px\)\s*\{[\s\S]*?\.trainingPresetFolderGrid[\s\S]*?\.trainingPresetItemList[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/,
-    "Training preset folders and items should use a container query rather than viewport width",
+    /@container\s*\(min-width:\s*520px\)\s*\{\s*\.trainingPresetFolderGrid,\s*\.trainingPresetItemList\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/,
+    "Training preset folders and items should match the project-demo library breakpoint",
   );
   assert.match(
     resourcesCss,

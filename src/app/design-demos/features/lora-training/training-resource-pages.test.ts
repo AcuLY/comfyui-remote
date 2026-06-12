@@ -83,20 +83,16 @@ test("training preset library uses the shared managed-library row model", () => 
   assert.match(cssSource, /\.trainingPresetItemList\b[\s\S]*?repeat\(2,\s*minmax\(0,\s*1fr\)\)/, "training preset rows should expand to two columns");
 });
 
-test("training preset folder and item lists share the container-driven two-column layout", () => {
-  const responsiveListBlock = cssSource.match(/@container \(min-width: 700px\) \{([\s\S]*?)\n\}/)?.[1] ?? "";
-
+test("training preset folder and item lists share the project-demo container-driven two-column layout", () => {
   assert.match(
     cssSource,
     /\.trainingPresetLibrarySurface\s*\{[\s\S]*?container-type:\s*inline-size/,
     "training preset library should query the actual workspace width",
   );
-  assert.match(responsiveListBlock, /\.trainingPresetFolderGrid\b/, "training preset folders should also expand at the library breakpoint");
-  assert.match(responsiveListBlock, /\.trainingPresetItemList\b/, "training preset items should expand at the same breakpoint");
   assert.match(
-    responsiveListBlock,
-    /grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/,
-    "training preset library lists should use the same two-column grid rule",
+    cssSource,
+    /@container \(min-width: 520px\) \{\s*\.trainingPresetFolderGrid,\s*\.trainingPresetItemList\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/,
+    "training preset folders and items should expand together at the project-demo library breakpoint",
   );
 });
 
