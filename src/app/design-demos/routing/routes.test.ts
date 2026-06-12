@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { fallbackData } from "../data/fallback-data";
+import { findHeaderSpecForRoute } from "./header-specs";
 import { demoHref, matchRoute, MOBILE_NAV_LINKS, NAV_LINKS, ROUTES, sampleRouteInventory } from "./routes";
 
 test("LoRA training entry routes are registered in the demo router", () => {
@@ -86,4 +87,13 @@ test("LoRA training primary pages are discoverable from demo navigation", () => 
     "/training/runs",
     "/training/projects",
   ]);
+});
+
+test("LoRA training dataset header uses training-prep product language", () => {
+  const spec = findHeaderSpecForRoute(fallbackData(null), "/training/projects/vela-neon/dataset");
+
+  assert.ok(spec, "dataset route should have a header spec");
+  assert.equal(spec.title, "数据集");
+  assert.match(spec.subtitle ?? "", /训练准备/);
+  assert.doesNotMatch(spec.subtitle ?? "", /Readiness/i);
 });

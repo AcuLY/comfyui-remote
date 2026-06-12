@@ -296,7 +296,7 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         group: "LoRA 训练",
         eyebrow: "数据集",
         title: "数据集",
-        subtitle: "Readiness、kept 草稿、冻结版本和启动训练入口。",
+        subtitle: "训练准备、kept 草稿、冻结版本和启动训练入口。",
         back: { href: currentRoute(routes, "training-project-detail"), label: "返回项目" },
         actions: [headerAction("启动训练", Play, "primary")],
         status: "数据集",
