@@ -739,7 +739,7 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Demo
             image,
             kind: "auxiliary",
             label: `上传参考图 ${draftIndex}`,
-            note: "本地上传草稿，后续接入文件选择和后端存储。",
+            note: "页面内本地上传草稿，可继续作为角色辅助参考图管理。",
           },
         ],
         projectId: project.id,
@@ -1183,11 +1183,39 @@ export function LoraTrainingProjectResultsPage({ data, projectId }: { data: Demo
 
 export function LoraTrainingProjectDatasetPage({ data, projectId }: { data: DemoData; projectId?: string }) {
   const project = findProject(data, projectId);
+  const [trainingDraft, setTrainingDraft] = useState<{
+    captionMissingCount: number;
+    keptCount: number;
+    stepCount: number;
+    version: string;
+  } | null>(null);
   if (!project) return <EmptyPage title="没有训练数据集数据" />;
+
+  function handleOpenTrainingDraft() {
+    setTrainingDraft({
+      captionMissingCount: project.captionMissingCount,
+      keptCount: project.keptCount,
+      stepCount: 2400,
+      version: project.datasetVersion,
+    });
+  }
 
   return (
     <div className={s.page}>
-      <ProjectHeader active="dataset" project={project} actions={<Button tone="primary" icon={Play} feedback={{ title: "启动训练配置已打开", detail: project.datasetVersion }}>启动训练</Button>} />
+      <ProjectHeader
+        active="dataset"
+        project={project}
+        actions={(
+          <Button
+            tone="primary"
+            icon={Play}
+            onClick={handleOpenTrainingDraft}
+            feedback={{ title: trainingDraft ? "训练配置草稿已更新" : "训练配置草稿已打开", detail: project.datasetVersion }}
+          >
+            {trainingDraft ? "更新训练草稿" : "启动训练"}
+          </Button>
+        )}
+      />
       <div className={s.twoCol}>
         <Panel title="Readiness" subtitle="只有 kept 图片进入冻结版本，后续编辑不会回写已冻结 revision。">
           <StatGrid project={project} />
@@ -1206,6 +1234,16 @@ export function LoraTrainingProjectDatasetPage({ data, projectId }: { data: Demo
           </div>
         </Panel>
       </div>
+      {trainingDraft ? (
+        <Panel title="训练配置草稿" subtitle="基于当前数据集版本生成，可继续调整结果池和数据集后更新。">
+          <dl className={s.trainingDraft}>
+            <div><dt>数据集版本</dt><dd>{trainingDraft.version}</dd></div>
+            <div><dt>Kept 图片</dt><dd>{trainingDraft.keptCount} 张</dd></div>
+            <div><dt>缺 caption</dt><dd>{trainingDraft.captionMissingCount}</dd></div>
+            <div><dt>训练步数</dt><dd>{trainingDraft.stepCount}</dd></div>
+          </dl>
+        </Panel>
+      ) : null}
       <Panel title="Kept 草稿">
         <TrainingResultGrid results={project.resultPool.filter((result) => result.reviewStatus === "kept")} title="Kept 草稿" />
       </Panel>

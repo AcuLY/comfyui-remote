@@ -108,6 +108,7 @@ test("training profile page uploads reference images into local front-end state"
   assert.match(profileSource, /localReferenceImages\.map/, "reference cards should render the local reference list");
   assert.match(profileSource, /onClick=\{handleUploadReferenceImage\}/, "upload action should call the local upload handler");
   assert.doesNotMatch(profileSource, /上传参考图入口已预览/, "reference upload should not remain a feedback-only placeholder");
+  assert.doesNotMatch(profileSource, /后续接入文件选择和后端存储/, "reference upload should not expose backend wiring gaps in the UI");
 });
 
 test("training results and dataset pages use caption-aware review grids instead of bare image grids", () => {
@@ -147,6 +148,24 @@ test("training result review actions update local front-end review state", () =>
   assert.match(resultsPageSource, /onReviewStatusChange=\{handleReviewResult\}/, "project results grid should be wired to the review handler");
   assert.match(sectionDetailSource, /sectionResults/, "section detail results should render from local review state");
   assert.match(sectionDetailSource, /onReviewStatusChange=\{handleReviewSectionResult\}/, "section detail result grid should be wired to a review handler");
+});
+
+test("training dataset page opens a local training draft instead of only previewing the start action", () => {
+  const datasetPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetPage");
+  const revisionPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetRevisionPage");
+  assert.notEqual(datasetPageStart, -1);
+  assert.notEqual(revisionPageStart, -1);
+
+  const datasetPageSource = pagesSource.slice(datasetPageStart, revisionPageStart);
+
+  assert.match(datasetPageSource, /trainingDraft/, "dataset page should expose a local training draft state");
+  assert.match(datasetPageSource, /setTrainingDraft/, "start training should update local training draft state");
+  assert.match(datasetPageSource, /handleOpenTrainingDraft/, "dataset page should define a start-training handler");
+  assert.match(datasetPageSource, /onClick=\{handleOpenTrainingDraft\}/, "start training button should call the local draft handler");
+  assert.match(datasetPageSource, /训练配置草稿/, "dataset page should render a visible training draft panel");
+  assert.match(datasetPageSource, /project\.datasetVersion/, "training draft should carry the active dataset version");
+  assert.match(datasetPageSource, /project\.keptCount/, "training draft should carry kept image count");
+  assert.doesNotMatch(datasetPageSource, /启动训练配置已打开/, "start training should not remain a toast-only placeholder");
 });
 
 test("training result cards keep thumbnail density and clamp captions", () => {
